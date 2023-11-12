@@ -23,4 +23,4 @@ console.log(cfg)//直接打印无法看到全部的数据结构，建议调试
 
 起始语句为entry，结尾语句为exit，均无内容，然后通过next（或nextT，nextF等）指向下一个语句。
 
-![image]([image/example.png])
+![image](image/example.png)
