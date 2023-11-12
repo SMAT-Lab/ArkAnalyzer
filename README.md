@@ -19,7 +19,7 @@ let cfg:CFG=new CFG(ast.root,"main");//以AST的根节点构造CFG，第二个�
 console.log(cfg)//直接打印无法看到全部的数据结构，建议调试
 ```
 
-通过调试查看生成的CFG对象，示例如图所示：
+通过vscode调试查看生成的CFG对象，示例如图所示：
 
 起始语句为entry，结尾语句为exit，均无内容。每个语句展示代码内容和类型，然后通过next（或nextT，nextF等）指向下一个语句。
 

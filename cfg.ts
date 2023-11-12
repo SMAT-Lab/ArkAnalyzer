@@ -36,27 +36,27 @@ export class switchStatement extends statement{
     }
 }
 
-export class Class{
-    name:string;
-    methods:CFG[];
-    cons:CFG;
-    constructor(name:string,methods:CFG[],cons:CFG){
-        this.name=name;
-        this.cons=cons;
-        this.methods=methods;
-    }
-}
+// export class Class{
+//     name:string;
+//     methods:CFG[];
+//     cons:CFG;
+//     constructor(name:string,methods:CFG[],cons:CFG){
+//         this.name=name;
+//         this.cons=cons;
+//         this.methods=methods;
+//     }
+// }
 
-export class Struct{
-    name:string;
-    methods:CFG[];
-    build:CFG;
-    constructor(name:string,methods:CFG[],build:CFG){
-        this.name=name;
-        this.build=build;
-        this.methods=methods;
-    }
-}
+// export class Struct{
+//     name:string;
+//     methods:CFG[];
+//     build:CFG;
+//     constructor(name:string,methods:CFG[],build:CFG){
+//         this.name=name;
+//         this.build=build;
+//         this.methods=methods;
+//     }
+// }
 
 export class CFG{
     name:string;
@@ -65,8 +65,8 @@ export class CFG{
     loopStack:conditionStatement[];
     switchExitStack:statement[];
     functions:CFG[];
-    classes:Class[];
-    structs:Struct[];
+    // classes:Class[];
+    // structs:Struct[];
     breakin:string;
     constructor(ast:NodeA,name:string){
         this.name=name;
@@ -75,8 +75,8 @@ export class CFG{
         this.loopStack=[];
         this.switchExitStack=[];
         this.functions=[];
-        this.classes=[];
-        this.structs=[];
+        // this.classes=[];
+        // this.structs=[];
         this.breakin=""
         this.buildCFG();
     }
@@ -107,7 +107,7 @@ export class CFG{
             if(node.kind=="Block")
                 return node;
             else{
-                let ret=null;
+                let ret:NodeA|null=null;
                 for(let child of node.children){
                     ret=ret||checkBlock(child);
                 }
@@ -382,8 +382,8 @@ export class CFG{
                 let tryExit=new statement("tryExit","");
                 this.walkAST(trystm,tryExit,c.children[1].children[1]);
                 lastStatement=tryExit;
-                let catchClause=null;
-                let finalBlock=null;
+                let catchClause:NodeA|null=null;
+                let finalBlock:NodeA|null=null;
                 let haveFinal=false;
                 for(let trychild of c.children){
                     if(haveFinal){
@@ -616,7 +616,7 @@ export class CFG{
 }
 
 
-let fileContent = fs.readFileSync('t.ts', 'utf8');
-let ast:ASTree=new ASTree(fileContent);
-let cfg:CFG=new CFG(ast.root,"main");
-console.log(cfg)
+let fileContent = fs.readFileSync('t.ts', 'utf8');//读取t.ts代码内容
+let ast:ASTree=new ASTree(fileContent);//用代码内容构造AST
+let cfg:CFG=new CFG(ast.root,"main");//以AST的根节点构造CFG，第二个参数为CFG的名字
+console.log(cfg)//直接打印无法看到全部的数据结构，建议调试
