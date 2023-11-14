@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
       {
-        "type": "pwa-node",
+        "type": "node",
         "request": "launch",
         "name": "Launch Program",
         //作用：调试时加载ts-node包（在调试时直接运行ts代码）
