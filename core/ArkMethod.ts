@@ -1,6 +1,7 @@
-import { CFG } from "../cfg";
+import { ArkClass } from "./ArkClass";
+import { Stmt } from "./Stmt";
 
-class ArkFunction {
+export class ArkMethod {
     name: string;
     exported: boolean = false;
     declaringClass: ArkClass | null;
@@ -8,13 +9,10 @@ class ArkFunction {
     parameterTypes: any[] = [];
 
     stmts: Stmt[] = [];
-    cfg: CFG | null;
 
     constructor(name: string) {
         this.name = name;
 
         this.declaringClass = null;
-
-        this.cfg = null;
     }
 }

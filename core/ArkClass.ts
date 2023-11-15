@@ -1,6 +1,8 @@
+import { ArkField } from "./ArkField";
+import { ArkMethod } from "./ArkMethod";
 
 //一个文件（Module）默认当做一个类(类名称为M_FileName)
-class ArkClass {
+export class ArkClass {
     isModule: boolean = false;
     isExported: boolean = false;
 
@@ -10,11 +12,15 @@ class ArkClass {
     implementedInterfaces: ArkClass[] = [];
 
     fields: ArkField[] = [];
-    functions: ArkClass[] = [];
+    methods: ArkMethod[] = [];
 
     constructor(name: string) {
         this.name = name;
 
         this.superClass = null;
+    }
+
+    public getMethods(): ArkMethod[] {
+        return []
     }
 }

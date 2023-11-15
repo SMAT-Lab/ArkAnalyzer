@@ -1,5 +1,7 @@
+import { ArkClass } from "./ArkClass";
 
-class ArkNamespace {
+// Namespace可以在多个文件中实现
+export class ArkNamespace {
     name: string;
 
     classes: ArkClass[] = [];

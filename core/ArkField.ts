@@ -1,4 +1,5 @@
 
-class ArkField {
+export class ArkField {
     
+
 }
