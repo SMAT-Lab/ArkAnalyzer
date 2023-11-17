@@ -4,17 +4,19 @@ import { ArkMethod } from "./ArkMethod";
 import { Stmt } from "./Stmt";
 
 /**
- * A TS file is regarded as a module.
+ * 
  */
-export class ArkModule {
+export class ArkFile {
     name: string;
+    ast: Ast;
 
     importStmts:Stmt[] = []
 
     methods:ArkMethod[] = [];
     classes:ArkClass[] = []
 
-    constructor(name: string) {
+    constructor(name: string, ast: Ast) {
         this.name = name;
+        this.ast = ast;
     }
 }

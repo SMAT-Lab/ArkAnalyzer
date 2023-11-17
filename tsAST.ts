@@ -22,7 +22,6 @@ export class NodeA{
         else{
             this.kind=ts.SyntaxKind[node.kind];
         }
-        
     }
 }
 

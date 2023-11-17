@@ -4,8 +4,6 @@ import { ArkClass } from "./core/ArkClass";
 import { ArkMethod } from "./core/ArkMethod";
 
 
-
-
 function run(config:Config) {
     //(1) Construct ASTs
     //ast = ...

@@ -8,9 +8,9 @@ export class ArkMethod {
     returnType: any;
     parameterTypes: any[] = [];
 
-    stmts: Stmt[] = [];
+    cfg:Cfg | null = null;
 
-    constructor(name: string) {
+    constructor(name: string, ) {
         this.name = name;
 
         this.declaringClass = null;
