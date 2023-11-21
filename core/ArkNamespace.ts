@@ -1,55 +1,42 @@
 import { ArkClass } from "./ArkClass";
-import { ArkFile } from "./ArkFile";
 import { ArkMethod } from "./ArkMethod";
 import { NodeA, ASTree } from "./base/Ast";
 
 
 export class ArkNamespace {
     name: string;
-    //myArkFile: ArkFile | null;
     code: string
     isExported: boolean = false;
     classes: ArkClass[] = [];
     methods: ArkMethod[] = [];
-    // interfaces: ArkInterface[] = [];
 
-    constructor(node: NodeA, name: string) {
+    constructor(name: string, nsNode: NodeA) {
         this.name = name;
-        this.code = node.text;
-        this.buildArkNamespaces(node);
+        this.code = nsNode.text;
+        this.buildArkNamespaces(nsNode);
     }
 
-    public buildArkNamespaces(node: NodeA) {
-        //TODO: check
-        if (node.kind == 'NamespaceExportDeclaration') {
-            this.isExported = true;
-        }
-        this.getClasses(node);
-        this.getMethods(node);
-    }
-
-    public getClasses(nsNode: NodeA) {
-        const nodeKinds: string[] = ['ClassDeclaration', '', ''];//TODO: check kind again
-        let clsNode: NodeA[] = nsNode.walkChildren2Find(nodeKinds);
-        for (let node of clsNode) {
-            let name: string = 'clsName';//TODO
-            let cls: ArkClass = new ArkClass(name, node);
-            this.classes.push(cls);
+    // TODO: check and update
+    private buildArkNamespaces(nsNode: NodeA) {
+        for (let child of nsNode.children) {
+            if (child.kind == 'ClassDeclaration') {
+                let name: string = 'clsName';
+                let cls: ArkClass = new ArkClass(name, child);
+                this.classes.push(cls);
+            }
+            else if (child.kind == 'FunctionDeclaration') {
+                let name: string = 'mthdName';
+                let mthd: ArkMethod = new ArkMethod(name, child);
+                this.methods.push(mthd);
+            }
         }
     }
 
-    public getMethods(nsNode: NodeA) {
-        const nodeKinds: string[] = ['FunctionDeclaration', '', ''];//TODO: check kind again
-        let mthdNode: NodeA[] = nsNode.walkChildren2Find(nodeKinds);
-        for (let node of mthdNode) {
-            let name: string = 'mthdName';//TODO
-            let mthd: ArkMethod = new ArkMethod(name, node);
-            this.methods.push(mthd);
-        }
+    public getClasses(): ArkClass[] {
+        return this.classes;
     }
 
-    // TODO: need or not?
-    public getInterfaces() {
-        //
+    public getMethods(): ArkMethod[] {
+        return this.methods;
     }
 }

@@ -78,7 +78,7 @@ export class ASTree {
         this.copyTree(rootA, rootN)
     }
 
-    walkAST2Find(nodeKinds: string[]): NodeA[] {
+    walkAST2Find(asTree: ASTree): NodeA[] {
         return [];
     }
 

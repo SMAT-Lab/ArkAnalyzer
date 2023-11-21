@@ -1,5 +1,4 @@
 import { ArkClass } from "./ArkClass";
-import { ArkNamespace } from "./ArkNamespace";
 import { ASTree, NodeA } from "./base/Ast";
 import { CFG } from "./base/Cfg";
 
@@ -13,24 +12,28 @@ export class ArkMethod {
     implementedInterfaces: ArkClass[] = [];
     cfg: CFG | null = null;
 
-    constructor(name: string, node: NodeA) {
+    constructor(name: string, mtdNode: NodeA) {
         this.name = name;
-        this.code = node.text;
+        this.code = mtdNode.text;
         this.declaringClass = null;
-        this.buildArkMethod(node);
+        this.buildArkMethod(mtdNode);
     }
 
-    public buildArkMethod(node:NodeA) {
+    public buildArkMethod(mtdNode: NodeA) {
         // TODO: check
         if ('ExportDeclaration') {
             this.isExported = true;
         }
-        this.buildCfg(node);
+        this.buildCfg(mtdNode);
     }
 
     // TODO: modify
-    public buildCfg(node: NodeA) {
+    private buildCfg(mtdNode: NodeA) {
         //const ast: ASTree = new ASTree(this.code);
-        this.cfg = new CFG(node, this.name);
+        this.cfg = new CFG(mtdNode, this.name);
+    }
+
+    public getCFG() {
+        return this.cfg;
     }
 }

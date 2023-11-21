@@ -1,7 +1,6 @@
 import fs from 'fs';
 
 import { ArkClass } from "./ArkClass";
-import { ArkField } from "./ArkField";
 import { ArkMethod } from "./ArkMethod";
 import { Statement } from "./base/Stmt";
 import { NodeA, ASTree } from "./base/Ast";
@@ -26,54 +25,44 @@ export class ArkFile {
         this.buildArkFile();
     }
 
-    public buildArkFile() {
-        this.getImportStmts();
-        //TODO: reconstruct below 3 functions
-        this.getNamespaces();
-        this.getClasses();
-        this.getMethods();
-    }
-
-    public getImportStmts() {
-        //
-    }
-
-    public getNamespaces() {
-        //遍历AST节点获取namespace
-        const nodeKinds: string[] = ['NamespaceKeyword', '', ''];//TODO: check kind again
-        let nsNode: NodeA[] = this.ast.walkAST2Find(nodeKinds);
-        for (let node of nsNode) {
-            let name: string = 'nsName';
-            let ns: ArkNamespace = new ArkNamespace(node, name);
-            this.nameSpaces.push(ns);
+    // TODO: check and update
+    private buildArkFile() {
+        let children = this.ast.root?.children;
+        for (let child of children) {
+            if (child.kind == 'ImportDeclaration') {
+                //
+            }
+            else if (child.kind == 'NamespaceKeyword') {
+                let name: string = 'nsName';
+                let ns: ArkNamespace = new ArkNamespace(name, child);
+                this.nameSpaces.push(ns);
+            }
+            else if (child.kind == 'ClassDeclaration') {
+                let name: string = 'clsName';
+                let cls: ArkClass = new ArkClass(name, child);
+                this.classes.push(cls);
+            }
+            else if (child.kind == 'FunctionDeclaration') {
+                let name: string = 'mthdName';//TODO
+                let mthd: ArkMethod = new ArkMethod(name, child);
+                this.methods.push(mthd);
+            }
         }
     }
 
-    // TODO: check
-    public getClasses() {
-        //遍历AST节点获取Classes
-        const nodeKinds: string[] = ['ClassDeclaration', '', ''];//TODO: check kind again
-        let clsNode: NodeA[] = this.ast.walkAST2Find(nodeKinds);
-        for (let node of clsNode) {
-            let name: string = 'clsName';
-            let cls: ArkClass = new ArkClass(name, node);
-            this.classes.push(cls);
-        }
+    public getImportStmts(): Statement[] {
+        return this.importStmts;
     }
 
-    public getMethods() {
-        const nodeKinds: string[] = ['FunctionDeclaration', '', ''];//TODO: check kind again
-        let mthdNode: NodeA[] = this.ast.walkAST2Find(nodeKinds);
-        for (let node of mthdNode) {
-            let name: string = 'mthdName';//TODO
-            let mthd: ArkMethod = new ArkMethod(name, node);
-            this.methods.push(mthd);
-        }
+    public getNamespaces(): ArkNamespace[] {
+        return this.nameSpaces;
     }
 
-    // TODO: need or not?
-    public getInterfaces() {
-        //
+    public getClasses(): ArkClass[] {
+        return this.classes;
     }
 
+    public getMethods(): ArkMethod[] {
+        return this.methods;
+    }
 }
