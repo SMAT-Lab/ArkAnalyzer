@@ -2,6 +2,7 @@ import { ArkClass } from "./core/ArkClass";
 import { ArkFile } from "./core/ArkFile";
 import { ArkMethod } from "./core/ArkMethod";
 import { ArkNamespace } from "./core/ArkNamespace";
+import { ClassSignature, MethodSignature, MethodSubSignature } from "./core/ArkSignature";
 
 /**
  * The Scene class includes everything in the analyzed project.
@@ -35,16 +36,21 @@ export class Scene {
         return [];
     }
 
-    public getClassNumber(): any {
-        return 0;
+    public getClass(classSignature:ClassSignature):ArkClass | null {
+        return null;
     }
 
     public getMethods(): ArkMethod[] {
         return [];
     }
 
-    public getMethodNumber(): any {
-        return 0;
+    public getMethod(methodSignature:MethodSignature): ArkMethod | null {
+        for (let fl of this.arkFiles) {
+            if (fl.name == methodSignature.arkFile.name) {
+                return fl.getMethod(methodSignature);
+            }
+        }
+        return null;
     }
 
     public getNamespaces(): ArkNamespace[] {
@@ -62,5 +68,10 @@ export class Scene {
     //Get the set of entry points that are used to build the call graph.
     public getEntryPoints() {
         return [];
+    }
+
+    public getMethodSignature(fileName: ArkFile, methodName: string, parameters: any[], returnType: any, classType?: ArkClass): MethodSignature {
+        let methodSubSignature = new MethodSubSignature(methodName, parameters, returnType);
+        return new MethodSignature(fileName, methodSubSignature, classType);
     }
 }
