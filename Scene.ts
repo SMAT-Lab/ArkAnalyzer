@@ -2,6 +2,7 @@ import { ArkClass } from "./core/ArkClass";
 import { ArkFile } from "./core/ArkFile";
 import { ArkMethod } from "./core/ArkMethod";
 import { ArkNamespace } from "./core/ArkNamespace";
+import { CallGraph } from "./callgraph/CallGraph"
 
 /**
  * The Scene class includes everything in the analyzed project.
@@ -13,6 +14,7 @@ export class Scene {
     namespaces: ArkNamespace[] = [];
     classes: ArkClass[] = [];
     arkFiles: ArkFile[] = [];
+    callgraph: CallGraph;
     constructor(name: string, files: string[]) {
         this.projectName = name;
         this.projectFiles = files;
@@ -55,12 +57,18 @@ export class Scene {
         return false;
     }
 
-    public genCallGraph() {
-        //
+    public getCallGraph(): CallGraph {
+        return this.callgraph;
     }
 
     //Get the set of entry points that are used to build the call graph.
     public getEntryPoints() {
         return [];
+    }
+
+    public makeCallGraph(): void {
+        this.callgraph = new CallGraph(new Set<string>, new Map<string, string[]>);
+        this.callgraph.processFiles(this.projectFiles);
+
     }
 }
