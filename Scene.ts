@@ -2,7 +2,11 @@ import { ArkClass } from "./core/ArkClass";
 import { ArkFile } from "./core/ArkFile";
 import { ArkMethod } from "./core/ArkMethod";
 import { ArkNamespace } from "./core/ArkNamespace";
+<<<<<<< HEAD
 import { ClassSignature, MethodSignature, MethodSubSignature } from "./core/ArkSignature";
+=======
+import { CallGraph } from "./callgraph/CallGraph"
+>>>>>>> ad881edb9ebb56335153921cbc02265ab8f25fd9
 
 /**
  * The Scene class includes everything in the analyzed project.
@@ -14,6 +18,7 @@ export class Scene {
     namespaces: ArkNamespace[] = [];
     classes: ArkClass[] = [];
     arkFiles: ArkFile[] = [];
+    callgraph: CallGraph;
     constructor(name: string, files: string[]) {
         this.projectName = name;
         this.projectFiles = files;
@@ -61,8 +66,8 @@ export class Scene {
         return false;
     }
 
-    public genCallGraph() {
-        //
+    public getCallGraph(): CallGraph {
+        return this.callgraph;
     }
 
     //Get the set of entry points that are used to build the call graph.
@@ -70,8 +75,15 @@ export class Scene {
         return [];
     }
 
+<<<<<<< HEAD
     public getMethodSignature(fileName: ArkFile, methodName: string, parameters: any[], returnType: any, classType?: ArkClass): MethodSignature {
         let methodSubSignature = new MethodSubSignature(methodName, parameters, returnType);
         return new MethodSignature(fileName, methodSubSignature, classType);
+=======
+    public makeCallGraph(): void {
+        this.callgraph = new CallGraph(new Set<string>, new Map<string, string[]>);
+        this.callgraph.processFiles(this.projectFiles);
+
+>>>>>>> ad881edb9ebb56335153921cbc02265ab8f25fd9
     }
 }
