@@ -2,11 +2,8 @@ import { ArkClass } from "./core/ArkClass";
 import { ArkFile } from "./core/ArkFile";
 import { ArkMethod } from "./core/ArkMethod";
 import { ArkNamespace } from "./core/ArkNamespace";
-<<<<<<< HEAD
 import { ClassSignature, MethodSignature, MethodSubSignature } from "./core/ArkSignature";
-=======
 import { CallGraph } from "./callgraph/CallGraph"
->>>>>>> ad881edb9ebb56335153921cbc02265ab8f25fd9
 
 /**
  * The Scene class includes everything in the analyzed project.
@@ -41,7 +38,7 @@ export class Scene {
         return [];
     }
 
-    public getClass(classSignature:ClassSignature):ArkClass | null {
+    public getClass(classSignature: ClassSignature): ArkClass | null {
         return null;
     }
 
@@ -49,7 +46,7 @@ export class Scene {
         return [];
     }
 
-    public getMethod(methodSignature:MethodSignature): ArkMethod | null {
+    public getMethod(methodSignature: MethodSignature): ArkMethod | null {
         for (let fl of this.arkFiles) {
             if (fl.name == methodSignature.arkFile.name) {
                 return fl.getMethod(methodSignature);
@@ -75,15 +72,13 @@ export class Scene {
         return [];
     }
 
-<<<<<<< HEAD
     public getMethodSignature(fileName: ArkFile, methodName: string, parameters: any[], returnType: any, classType?: ArkClass): MethodSignature {
         let methodSubSignature = new MethodSubSignature(methodName, parameters, returnType);
         return new MethodSignature(fileName, methodSubSignature, classType);
-=======
+    }
+
     public makeCallGraph(): void {
         this.callgraph = new CallGraph(new Set<string>, new Map<string, string[]>);
         this.callgraph.processFiles(this.projectFiles);
-
->>>>>>> ad881edb9ebb56335153921cbc02265ab8f25fd9
     }
 }
