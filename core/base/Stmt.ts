@@ -1,5 +1,7 @@
 import * as fs from 'fs';
 import { NodeA, ASTree } from './Ast';
+import { ArkExpression } from './Expr';
+
 
 export class Statement {
     type: string;
@@ -38,178 +40,105 @@ export class SwitchStatement extends Statement {
     }
 }
 
-
-abstract class StmtPositionInfo {
-    pos: number;
-    end: number;
-
-    getFirstLine(): number {
-        return this.pos;
-    }
-
-    getLastLine(): number {
-        return this.end;
-    }
+// todo:考虑多行statement的场景
+export interface SimpleStmtPositionInfo {
+    line: number;
 }
 
-interface Stmt {
-    branchs(): boolean;
+export interface ArkStmt {
 
-    getExpectedSuccessorCount(): number;
-
-    containsInvokeExpr(): boolean;
-
-    containsArrayRef(): boolean;
-
-    containsFieldRef(): boolean;
-
-    getPositionInfo(): StmtPositionInfo;
 }
 
-abstract class AbstractStmt implements Stmt {
-    positionInfo: StmtPositionInfo;
-
-    constructor(positionInfo: StmtPositionInfo) {
+export abstract class ArkAbstractStmt implements ArkStmt {
+    positionInfo: SimpleStmtPositionInfo;
+    constructor(positionInfo: SimpleStmtPositionInfo){
         this.positionInfo = positionInfo;
     }
+}
 
-    getExpectedSuccessorCount(): number {
-        return 1;
-    }
-
-    containsInvokeExpr(): boolean {
-        return false;
-    }
-
-    containsArrayRef(): boolean {
-        return false;
-    }
-
-    containsFieldRef(): boolean {
-        return false;
-    }
-
-    getPositionInfo(): StmtPositionInfo {
-        return this.positionInfo;
-    }
-
-    branchs(): boolean {
-        return false;
-    }
+export interface ArkBlock extends ArkAbstractStmt {
+    // readonly statements: NodeArray<Statement>;
 }
 
 
-class ArkAssignStmt extends AbstractStmt {
-    leftOp: any;
-    rightOp: any;
-
-    constructor(leftOp: any, rightOp: any, positionInfo: StmtPositionInfo) {
-        super(positionInfo);
-        this.leftOp = leftOp;
-        this.rightOp = rightOp;
-    }
-
-    getLeftOp() {
-        return this.leftOp;
-    }
-
-    getRightOp() {
-        return this.rightOp;
-    }
-
-    branches(): boolean {
-        return false;
-    }
-}
-
-interface BranchingStmt extends Stmt {
+export interface ArkFlowStmt extends ArkStmt{
 
 }
 
-
-
-class ArkIfStmt extends AbstractStmt implements BranchingStmt {
-    FALSE_BRANCH_IDX: number = 0;
-    TRUE_BRANCH_IDX: number = 1;
-
-
-    constructor(positionInfo: StmtPositionInfo) {
-        super(positionInfo);
-    }
-
-    branches(): boolean {
-        return true;
-    }
-
-    getExpectedSuccessorCount() {
-        return 2;
-    }
+export class ArkExpressionStatement extends ArkAbstractStmt implements ArkFlowStmt {
+    expression: ArkExpression;    
 }
 
 
-class ArkInvokeStmt extends AbstractStmt {
-    constructor(positionInfo: StmtPositionInfo) {
-        super(positionInfo);
-    }
+export class ArkIfStatement extends ArkAbstractStmt implements ArkFlowStmt {    
+    expression: ArkExpression;
+    thenStatement: ArkStmt;
+    elseStatement?: ArkStmt;
+}
 
-    containsInvokeExpr(): boolean {
-        return true;
-    }
+export class ArkBreakStatement extends ArkAbstractStmt implements ArkFlowStmt {    
+    // label?: Identifier;
+}
+
+export class ArkContinueStatement extends ArkAbstractStmt implements ArkFlowStmt {    
+    // label?: Identifier;
+}
+
+export class ArkReturnStatement extends ArkAbstractStmt implements ArkFlowStmt {    
+    expression?: ArkExpression;
+}
+
+export class ArkWithStatement extends ArkAbstractStmt implements ArkFlowStmt {    
+    expression?: ArkExpression;
+    statement: ArkStmt;
+}
+
+export class ArkSwitchStatement extends ArkAbstractStmt implements ArkFlowStmt {    
+    expression?: ArkExpression;
+    // caseBlock: CaseBlock;
+}
+
+export class ArkThrowStatement extends ArkAbstractStmt implements ArkFlowStmt {    
+    expression?: ArkExpression;    
+}
+
+export class ArkTryStatement extends ArkAbstractStmt implements ArkFlowStmt {    
+    tryBlock: ArkBlock;
+    // catchClause?: CatchClause;
+    finallyBlock?: ArkBlock;      
 }
 
 
-class ArkReturnStmt extends AbstractStmt {
-    op: any;
-    constructor(op: any, positionInfo: StmtPositionInfo) {
-        super(positionInfo);
-        this.op = op;
-    }
-
-    containsInvokeExpr(): boolean {
-        return true;
-    }
-
-    getOp(): any {
-        return this.op;
-    }
-
-    getExpectedSuccessorCount(): number {
-        return 0;
-    }
+export interface ArkIterationStatement extends ArkStmt {
+    statement: ArkStmt;
 }
 
-
-class ArkReturnVoidStmt extends AbstractStmt {
-    constructor(positionInfo: StmtPositionInfo) {
-        super(positionInfo);
-    }
-
-    containsInvokeExpr(): boolean {
-        return true;
-    }
-
-
-    getExpectedSuccessorCount(): number {
-        return 0;
-    }
+export class ArkDoStatement extends ArkAbstractStmt implements ArkFlowStmt, ArkIterationStatement{   
+    statement: ArkStmt;
+    expression: ArkExpression;
 }
 
+export class ArkWhileStatement extends ArkAbstractStmt implements ArkFlowStmt, ArkIterationStatement{   
+    statement: ArkStmt;
+    expression: ArkExpression;
+}
 
-class ArkThrowStmt extends AbstractStmt {
-    op: any;
-    constructor(op: any, positionInfo: StmtPositionInfo) {
-        super(positionInfo);
-        this.op = op;
-    }
-    containsInvokeExpr(): boolean {
-        return true;
-    }
+export class ArkForStatement extends ArkAbstractStmt implements ArkFlowStmt, ArkIterationStatement{   
+    statement: ArkStmt;
+    // initializer?: ForInitializer;
+    condition?: ArkExpression;
+    incrementor?: ArkExpression;
+}
 
-    getOp(): any {
-        return this.op;
-    }
+export class ArkForInStatement extends ArkAbstractStmt implements ArkFlowStmt, ArkIterationStatement{   
+    statement: ArkStmt;
+    // initializer?: ForInitializer;
+    expression?: ArkExpression;    
+}
 
-    getExpectedSuccessorCount(): number {
-        return 0;
-    }
+export class ArkForOfStatement extends ArkAbstractStmt implements ArkFlowStmt, ArkIterationStatement{   
+    statement: ArkStmt;
+    // readonly awaitModifier?: AwaitKeyword;
+    // readonly initializer: ForInitializer;
+    expression: ArkExpression;
 }
