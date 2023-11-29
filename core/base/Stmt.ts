@@ -51,61 +51,94 @@ export interface ArkStmt {
 
 export abstract class ArkAbstractStmt implements ArkStmt {
     positionInfo: SimpleStmtPositionInfo;
-    constructor(positionInfo: SimpleStmtPositionInfo){
+    constructor(positionInfo: SimpleStmtPositionInfo) {
         this.positionInfo = positionInfo;
     }
 }
 
-export interface ArkBlock extends ArkAbstractStmt {
+export class ArkBlock extends ArkAbstractStmt {
     // readonly statements: NodeArray<Statement>;
 }
 
 
-export interface ArkFlowStmt extends ArkStmt{
+export interface ArkFlowStmt extends ArkStmt {
 
 }
 
 export class ArkExpressionStatement extends ArkAbstractStmt implements ArkFlowStmt {
-    expression: ArkExpression;    
+    expression: ArkExpression;
+    constructor(positionInfo: SimpleStmtPositionInfo, expression: ArkExpression) {
+        super(positionInfo)
+        this.expression = expression
+    }
 }
 
 
-export class ArkIfStatement extends ArkAbstractStmt implements ArkFlowStmt {    
+export class ArkIfStatement extends ArkAbstractStmt implements ArkFlowStmt {
     expression: ArkExpression;
     thenStatement: ArkStmt;
     elseStatement?: ArkStmt;
+    constructor(positionInfo: SimpleStmtPositionInfo, expression: ArkExpression, thenStatement: ArkStmt,
+        elseStatement?: ArkStmt) {
+        super(positionInfo)
+        this.expression = expression;
+        this.thenStatement = thenStatement;
+        this.elseStatement = elseStatement;
+    }
 }
 
-export class ArkBreakStatement extends ArkAbstractStmt implements ArkFlowStmt {    
+export class ArkBreakStatement extends ArkAbstractStmt implements ArkFlowStmt {
     // label?: Identifier;
 }
 
-export class ArkContinueStatement extends ArkAbstractStmt implements ArkFlowStmt {    
+export class ArkContinueStatement extends ArkAbstractStmt implements ArkFlowStmt {
     // label?: Identifier;
 }
 
-export class ArkReturnStatement extends ArkAbstractStmt implements ArkFlowStmt {    
+export class ArkReturnStatement extends ArkAbstractStmt implements ArkFlowStmt {
     expression?: ArkExpression;
+    constructor(positionInfo: SimpleStmtPositionInfo, expression?: ArkExpression) {
+        super(positionInfo)
+        this.expression = expression
+    }
 }
 
-export class ArkWithStatement extends ArkAbstractStmt implements ArkFlowStmt {    
+export class ArkWithStatement extends ArkAbstractStmt implements ArkFlowStmt {
     expression?: ArkExpression;
     statement: ArkStmt;
+    constructor(positionInfo: SimpleStmtPositionInfo, statement: ArkStmt, expression?: ArkExpression) {
+        super(positionInfo)
+        this.expression = expression;
+        this.statement = statement;
+    }
 }
 
-export class ArkSwitchStatement extends ArkAbstractStmt implements ArkFlowStmt {    
+export class ArkSwitchStatement extends ArkAbstractStmt implements ArkFlowStmt {
     expression?: ArkExpression;
     // caseBlock: CaseBlock;
+    constructor(positionInfo: SimpleStmtPositionInfo, expression?: ArkExpression) {
+        super(positionInfo)
+        this.expression = expression;
+    }
 }
 
-export class ArkThrowStatement extends ArkAbstractStmt implements ArkFlowStmt {    
-    expression?: ArkExpression;    
+export class ArkThrowStatement extends ArkAbstractStmt implements ArkFlowStmt {
+    expression?: ArkExpression;
+    constructor(positionInfo: SimpleStmtPositionInfo, expression?: ArkExpression) {
+        super(positionInfo)
+        this.expression = expression;
+    }
 }
 
-export class ArkTryStatement extends ArkAbstractStmt implements ArkFlowStmt {    
+export class ArkTryStatement extends ArkAbstractStmt implements ArkFlowStmt {
     tryBlock: ArkBlock;
     // catchClause?: CatchClause;
-    finallyBlock?: ArkBlock;      
+    finallyBlock?: ArkBlock;
+    constructor(positionInfo: SimpleStmtPositionInfo, tryBlock: ArkBlock, finallyBlock?: ArkBlock) {
+        super(positionInfo);
+        this.tryBlock = tryBlock;
+        this.finallyBlock = finallyBlock;
+    }
 }
 
 
@@ -113,32 +146,58 @@ export interface ArkIterationStatement extends ArkStmt {
     statement: ArkStmt;
 }
 
-export class ArkDoStatement extends ArkAbstractStmt implements ArkFlowStmt, ArkIterationStatement{   
+export class ArkDoStatement extends ArkAbstractStmt implements ArkFlowStmt, ArkIterationStatement {
     statement: ArkStmt;
     expression: ArkExpression;
+    constructor(positionInfo: SimpleStmtPositionInfo, statement: ArkStmt, expression: ArkExpression) {
+        super(positionInfo);
+        this.statement = statement;
+        this.expression = expression;
+    }
 }
 
-export class ArkWhileStatement extends ArkAbstractStmt implements ArkFlowStmt, ArkIterationStatement{   
+export class ArkWhileStatement extends ArkAbstractStmt implements ArkFlowStmt, ArkIterationStatement {
     statement: ArkStmt;
     expression: ArkExpression;
+    constructor(positionInfo: SimpleStmtPositionInfo, statement: ArkStmt, expression: ArkExpression) {
+        super(positionInfo);
+        this.statement = statement;
+        this.expression = expression;
+    }
 }
 
-export class ArkForStatement extends ArkAbstractStmt implements ArkFlowStmt, ArkIterationStatement{   
+export class ArkForStatement extends ArkAbstractStmt implements ArkFlowStmt, ArkIterationStatement {
     statement: ArkStmt;
     // initializer?: ForInitializer;
     condition?: ArkExpression;
     incrementor?: ArkExpression;
+    constructor(positionInfo: SimpleStmtPositionInfo, statement: ArkStmt, condition?: ArkExpression,
+        incrementor?: ArkExpression) {
+        super(positionInfo);
+        this.condition = condition;
+        this.incrementor = incrementor;
+    }
 }
 
-export class ArkForInStatement extends ArkAbstractStmt implements ArkFlowStmt, ArkIterationStatement{   
+export class ArkForInStatement extends ArkAbstractStmt implements ArkFlowStmt, ArkIterationStatement {
     statement: ArkStmt;
     // initializer?: ForInitializer;
-    expression?: ArkExpression;    
+    expression?: ArkExpression;
+    constructor(positionInfo: SimpleStmtPositionInfo, statement: ArkStmt, expression?: ArkExpression) {
+        super(positionInfo);
+        this.statement = statement;
+        this.expression = expression;
+    }
 }
 
-export class ArkForOfStatement extends ArkAbstractStmt implements ArkFlowStmt, ArkIterationStatement{   
+export class ArkForOfStatement extends ArkAbstractStmt implements ArkFlowStmt, ArkIterationStatement {
     statement: ArkStmt;
     // readonly awaitModifier?: AwaitKeyword;
     // readonly initializer: ForInitializer;
     expression: ArkExpression;
+    constructor(positionInfo: SimpleStmtPositionInfo, statement: ArkStmt, expression: ArkExpression) {
+        super(positionInfo);
+        this.statement = statement;
+        this.expression = expression;
+    }
 }
