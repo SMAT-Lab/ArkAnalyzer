@@ -12,26 +12,44 @@ export class ArkClass {
     declaringArkFile: ArkFile;
     classSignature: ClassSignature;
     isExported: boolean = false;
+    superClassName: string | null;
     superClass: ArkClass | null;
-    implementedInterfaces: ArkClass[] = [];//TODO: check
+    implementedInterfaces: ArkClass[] = [];
+    implementedInterfaceNames: string[] = [];
     fields: ArkField[] = [];
+    properties: string[] = [];//TODO: transform properties to fields
     methods: ArkMethod[] = [];
 
-    constructor(name: string, clsNode: NodeA, arkFile:ArkFile) {
-        this.name = name;
+    constructor(clsNode: NodeA, arkFile:ArkFile) {
         this.code = clsNode.text;
         this.superClass = null;
         this.declaringArkFile = arkFile;
         this.buildArkClass(clsNode);
     }
 
-    private buildArkClass(nsNode: NodeA) {
+    private buildArkClass(clsNode: NodeA) {
         this.classSignature = new ClassSignature(this.declaringArkFile, this.name);
+        
+        this.name = clsNode.classHeadInfo.name;
+        if (clsNode.modifiers.indexOf('ExportKeyWord')) {
+            this.isExported = true;
+        }
 
-        for (let child of nsNode.children) {
+        for (let [key, value] of clsNode.classHeadInfo.heritageClausesMap) {
+            if (value == 'ExtendsKeyword') {
+                this.superClassName = key;
+            }
+            else {
+                this.implementedInterfaceNames.push(key);
+            }
+        }
+        
+        //TODO: string[] to ArkField[]
+        this.properties = clsNode.classHeadInfo.properties;
+
+        for (let child of clsNode.children) {
             if (child.kind == 'FunctionDeclaration') {
-                let name: string = 'mthdName';
-                let mthd: ArkMethod = new ArkMethod(name, child, this.declaringArkFile, this);
+                let mthd: ArkMethod = new ArkMethod(child, this.declaringArkFile, this);
                 this.methods.push(mthd);
             }
         }

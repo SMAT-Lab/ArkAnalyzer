@@ -39,13 +39,11 @@ export class ArkFile {
             //    this.nameSpaces.push(ns);
             //}
             else if (child.kind == 'ClassDeclaration') {
-                let name: string = 'clsName';
-                let cls: ArkClass = new ArkClass(name, child, this);
+                let cls: ArkClass = new ArkClass(child, this);
                 this.classes.push(cls);
             }
             else if (child.kind == 'FunctionDeclaration') {
-                let name: string = 'mthdName';//TODO
-                let mthd: ArkMethod = new ArkMethod(name, child, this);
+                let mthd: ArkMethod = new ArkMethod(child, this);
                 this.methods.push(mthd);
             }
         }

@@ -3,6 +3,7 @@ import { ArkFile } from "./ArkFile";
 import { ASTree, NodeA } from "./base/Ast";
 import { CFG } from "./base/Cfg";
 import { MethodSignature, MethodSubSignature } from "./ArkSignature";
+import { ExportDeclaration } from "ts-morph";
 
 export class ArkMethod {
     name: string;
@@ -12,14 +13,13 @@ export class ArkMethod {
     declaringClass: ArkClass | undefined;
     returnType: any;
     parameterTypes: any[] = [];
-    implementedInterfaces: ArkClass[] = [];
+    //implementedInterfaces: ArkClass[] = [];
     cfg: CFG | null = null;
     modifier: string;
     methodSignature: MethodSignature;
     methodSubSignature: MethodSubSignature;
 
-    constructor(methodName: string, methodNode: NodeA, declaringArkFile: ArkFile, declaringClass?: ArkClass | undefined) {
-        this.name = methodName;
+    constructor(methodNode: NodeA, declaringArkFile: ArkFile, declaringClass?: ArkClass | undefined) {
         this.code = methodNode.text;
         this.declaringArkFile = declaringArkFile;
 
@@ -28,10 +28,16 @@ export class ArkMethod {
     }
 
     private buildArkMethod(methodNode: NodeA) {
-        // TODO: check
-        if ('ExportDeclaration') {
+        this.name = methodNode.functionHeadInfo.name;
+        
+        if (methodNode.modifiers.indexOf('ExportKeyWord')) {
             this.isExported = true;
         }
+
+        this.parameterTypes = methodNode.functionHeadInfo.parameterTypes;
+        this.returnType = methodNode.functionHeadInfo.returnType;
+        
+
         this.cfg = new CFG(methodNode, this.name);
         this.genSignatures();
     }

@@ -10,8 +10,16 @@ export class NodeA {
     kind: string;
     text: string;
     start: number;
+    name: string | null;
+    modifiers: any[] = [];
+    heritageClauses : any[] = [];
+    parameterTypes: any[] = [];
+    returnType: string;
+    properties: any[] = [];
+    classHeadInfo: any | undefined;
+    functionHeadInfo: any | undefined;
 
-    constructor(node: ts.Node | undefined, parent: NodeA | null, children: NodeA[], text: string, start: number) {
+    constructor(node: ts.Node | undefined, parent: NodeA | null, children: NodeA[], text: string, start: number, classHeadInfo?: any, functionHeadInfo?: any) {
         this.parent = parent;
         this.children = children;
         this.text = text;
@@ -21,6 +29,12 @@ export class NodeA {
         }
         else {
             this.kind = ts.SyntaxKind[node.kind];
+        }
+        if (classHeadInfo != undefined) {
+            this.classHeadInfo = classHeadInfo;
+        }
+        if (functionHeadInfo != undefined) {
+            this.functionHeadInfo = functionHeadInfo;
         }
     }
 
@@ -44,7 +58,6 @@ export class ASTree {
             ts.ScriptTarget.Latest
         );
         this.buildTree();
-
     }
 
     /**
@@ -60,12 +73,22 @@ export class ASTree {
         }
         let cas: NodeA[] = [];
         for (let child of children) {
-            let ca = new NodeA(child, null, [], child.getText(this.sourceFile), child.getStart(this.sourceFile))
-            this.copyTree(ca, child)
-            cas.push(ca)
-            ca.parent = nodea
+            let ca: any;
+            let classHeadInfo;
+            let functionHeadInfo;
+
+            if (ts.isClassDeclaration(child)) {
+                classHeadInfo = handleClassNode(child);
+            }
+            else if (ts.isFunctionDeclaration(child)) {
+                functionHeadInfo = handleFunctionNode(child);
+            }
+            ca = new NodeA(child, null, [], child.getText(this.sourceFile), child.getStart(this.sourceFile), classHeadInfo, functionHeadInfo);
+            this.copyTree(ca, child);
+            cas.push(ca);
+            ca.parent = nodea;
         }
-        nodea.children = cas
+        nodea.children = cas;
     }
 
     // 建树
@@ -96,5 +119,68 @@ export class ASTree {
             console.log("no root")
         }
         this.singlePrintAST(this.root, 0)
+    }
+}
+
+function handleClassNode(node: ts.ClassDeclaration) {
+    // get class name, export flag, super class, etc.
+    let name = node.name? node.name.escapedText.toString() : undefined;
+    
+    let modifiers: string[] = [];
+    if (node.modifiers != null) {
+        for (let modifier of node.modifiers) {
+            modifiers.push(ts.SyntaxKind[modifier.kind]);
+        }
+    }
+
+    let heritageClausesMap = new Map();
+    if (node.heritageClauses != null) {
+        for (let heritageClause of node.heritageClauses) {
+            for (let type of heritageClause.types) {
+                heritageClausesMap.set(type.expression.getText(), ts.tokenToString(heritageClause.token));
+            }
+        }
+    }
+
+    let properties: string[] = [];
+    if (node.members != null) {
+        for (let member of node.members) {
+            if (ts.isPropertyDeclaration(member)) {
+                let property = member.getText();
+                properties.push(property);
+            }
+        }
+    }
+
+    return {name, modifiers, heritageClausesMap, properties};
+}
+
+function handleFunctionNode(node: ts.FunctionDeclaration) {
+    //get function name, parameters, return type, etc.
+    let name = node.name? node.name.escapedText.toString() : undefined;
+
+    let parameterTypes: any = [];
+    if (node.parameters != null) {
+        for (let parameter of node.parameters) {
+            let type = parameter.type? parameter.type.kind:undefined;
+            parameterTypes.push(type);
+        }
+    }
+
+    let modifiers: string[] = [];
+    if (node.modifiers != null) {
+        for (let modifier of node.modifiers) {
+            modifiers.push(ts.SyntaxKind[modifier.kind]);
+        }
+    }
+
+    let returnType:string;
+    if (node.type != null) {
+        if (node.type.kind == ts.SyntaxKind.TypeLiteral) {
+           //TODO;
+        }
+        else {
+            returnType = ts.SyntaxKind[node.type.kind];
+        }
     }
 }
