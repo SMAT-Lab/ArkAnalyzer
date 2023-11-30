@@ -62,7 +62,6 @@ export class ArkBlock extends ArkAbstractStmt {
 
 
 export interface ArkFlowStmt extends ArkStmt {
-
 }
 
 export class ArkExpressionStatement extends ArkAbstractStmt implements ArkFlowStmt {
