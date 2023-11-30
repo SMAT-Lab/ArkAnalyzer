@@ -34,8 +34,7 @@ export class ArkFile {
                 this.importStmts.push(new Statement('', child.text));
             }
             //else if (child.kind == 'NamespaceKeyword') {
-            //    let name: string = 'nsName';
-            //    let ns: ArkNamespace = new ArkNamespace(name, child);
+            //    let ns: ArkNamespace = new ArkNamespace(child, this);
             //    this.nameSpaces.push(ns);
             //}
             else if (child.kind == 'ClassDeclaration') {

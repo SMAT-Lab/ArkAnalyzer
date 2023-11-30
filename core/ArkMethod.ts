@@ -36,7 +36,6 @@ export class ArkMethod {
 
         this.parameterTypes = methodNode.functionHeadInfo.parameterTypes;
         this.returnType = methodNode.functionHeadInfo.returnType;
-        
 
         this.cfg = new CFG(methodNode, this.name);
         this.genSignatures();
