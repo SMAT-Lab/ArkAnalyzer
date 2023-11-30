@@ -11,7 +11,7 @@
         //作用：调试时加载ts-node包（在调试时直接运行ts代码）
         "runtimeArgs": ["-r","ts-node/register"],
         //01调试.ts表示要调试的ts文件
-        "args": ["./Main.ts"]
+        "args": ["./tests/CallGraphTest.ts"]
       }
     ]
   }

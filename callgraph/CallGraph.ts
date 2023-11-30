@@ -21,55 +21,55 @@ export class CallGraph {
         }
     }
 
-    public processFiles(filenames: string[]) {
-        let currentFunction: string = 'dumpy';
 
-        function extractFunctionCalls(node: ts.Node, sourceFile: ts.SourceFile, indentLevel: number) {
-
-            // e.g `function hello()`
-            if (ts.isFunctionDeclaration(node)) {
-                node.forEachChild(child => {
-                    if (ts.isIdentifier(child)) {
-                        const declaredFunction: string = child.getText(sourceFile);
-                        currentFunction = declaredFunction;
-                        this.addMethod(currentFunction);
-                    }
-                });
-            }
-
-            // Arrow function
-            if (
-                ts.isVariableDeclaration(node) &&
-                node.initializer &&
-                ts.isArrowFunction(node.initializer) &&
-                indentLevel === 3
-            ) {
-                const child = node.getChildAt(0, sourceFile);
+    private extractFunctionCalls(node: ts.Node, sourceFile: ts.SourceFile, indentLevel: number, currentFunction:string) {
+        // e.g `function hello()`
+        if (ts.isFunctionDeclaration(node)) {
+            node.forEachChild(child => {
                 if (ts.isIdentifier(child)) {
                     const declaredFunction: string = child.getText(sourceFile);
                     currentFunction = declaredFunction;
-                    this.addMethod(currentFunction)
+                    this.addMethod(currentFunction);
                 }
-            }
-
-            // First child must be `Identifier`
-            // examples of what gets skipped: `fs.readFile('lol.json')` or `ipc.on('something', () => {})`
-            if (ts.isCallExpression(node)) {
-                const child = node.getChildAt(0, sourceFile);
-                if (ts.isIdentifier(child)) {
-                    const calledFunction: string = child.getText(sourceFile);
-                    this.addCall(currentFunction, calledFunction);
-                }
-            }
-            node.forEachChild(child => extractFunctionCalls(child, sourceFile, indentLevel + 1));
+            });
         }
 
+        // Arrow function
+        if (
+            ts.isVariableDeclaration(node) &&
+            node.initializer &&
+            ts.isArrowFunction(node.initializer) &&
+            indentLevel === 3
+        ) {
+            const child = node.getChildAt(0, sourceFile);
+            if (ts.isIdentifier(child)) {
+                const declaredFunction: string = child.getText(sourceFile);
+                currentFunction = declaredFunction;
+                this.addMethod(currentFunction)
+            }
+        }
+
+        // First child must be `Identifier`
+        // examples of what gets skipped: `fs.readFile('lol.json')` or `ipc.on('something', () => {})`
+        if (ts.isCallExpression(node)) {
+            const child = node.getChildAt(0, sourceFile);
+            if (ts.isIdentifier(child)) {
+                const calledFunction: string = child.getText(sourceFile);
+                this.addCall(currentFunction, calledFunction);
+            }
+        }
+        node.forEachChild(child => this.extractFunctionCalls(child, sourceFile, indentLevel + 1, currentFunction));
+    }
+
+
+    public processFiles(filenames: string[]) {
+        let currentFunction: string = 'dumpy';
 
         filenames.forEach((filename) => {
 
             const rootNodes: ts.Node[] = [];
 
-            let codeAsString: string;
+            let codeAsString: string = '';
 
             let skipFile: boolean = false;
 
@@ -89,7 +89,7 @@ export class CallGraph {
 
                 rootNodes.forEach((node: ts.Node) => {
                     currentFunction = 'dumpy';
-                    extractFunctionCalls(node, sourceFile, 1);
+                    this.extractFunctionCalls(node, sourceFile, 1, currentFunction);
                 });
             }
 
