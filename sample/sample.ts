@@ -1,3 +1,5 @@
+import fs from 'fs';
+
 const sampleData: number[] = [1, 2, 3, 4, 5];
 
 for (let i = 0; i < sampleData.length; i++) {
@@ -44,5 +46,26 @@ for (let i = 0; i < sampleData.length; i++) {
         if (k === 1) {
             break; // 终止整个循环
         }
+    }
+}
+
+interface Alarm {
+    alert(): void;
+}
+
+class Door {
+}
+
+export function foo(x: number): number {
+    var y: number = 0;
+    for (let k = 0; k < x; k++) {
+        y = y + k;
+    }
+    return y;
+}
+
+export class SecurityDoor extends Door implements Alarm {
+    alert(): void {
+        console.log("SecurityDoor alert");
     }
 }

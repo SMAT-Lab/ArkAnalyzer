@@ -8,8 +8,8 @@ export class Config {
     input_dir:string;
     projectName:string;
 
-    functionTransformer: FunctionTransformer | null = null;
-    sceneTransformer: SceneTransformer | null = null;
+    //functionTransformer: FunctionTransformer | null = null;
+    //sceneTransformer: SceneTransformer | null = null;
 
     constructor(projectName:string, input_dir:string) {
         this.projectName = projectName;

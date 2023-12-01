@@ -3,21 +3,20 @@ import { ArkFile } from "./ArkFile";
 import { ASTree, NodeA } from "./base/Ast";
 import { CFG } from "./base/Cfg";
 import { MethodSignature, MethodSubSignature } from "./ArkSignature";
-import { ExportDeclaration } from "ts-morph";
 
 export class ArkMethod {
-    name: string;
+    name: string | undefined;
     code: string;
     isExported: boolean = false;
     declaringArkFile: ArkFile;
     declaringClass: ArkClass | undefined;
-    returnType: any;
-    parameterTypes: any[] = [];
+    returnType: string | undefined;
+    parameterTypes: string[] = [];
     //implementedInterfaces: ArkClass[] = [];
     cfg: CFG | null = null;
-    modifier: string;
-    methodSignature: MethodSignature;
-    methodSubSignature: MethodSubSignature;
+    modifier: string | undefined;
+    methodSignature: MethodSignature | undefined;
+    methodSubSignature: MethodSubSignature | undefined;
 
     constructor(methodNode: NodeA, declaringArkFile: ArkFile, declaringClass?: ArkClass | undefined) {
         this.code = methodNode.text;

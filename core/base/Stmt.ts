@@ -167,7 +167,7 @@ export class ArkWhileStatement extends ArkAbstractStmt implements ArkFlowStmt, A
 }
 
 export class ArkForStatement extends ArkAbstractStmt implements ArkFlowStmt, ArkIterationStatement {
-    statement: ArkStmt;
+    statement!: ArkStmt;
     // initializer?: ForInitializer;
     condition?: ArkExpression;
     incrementor?: ArkExpression;

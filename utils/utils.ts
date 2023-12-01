@@ -30,6 +30,8 @@ export function getAllFiles(
     // 拼接文件的绝对路径
     const realFile = path.resolve(realSrc, filename);
 
+    //TODO: 增加排除文件后缀和目录
+
     // 如果是目录，递归提取
     if (fs.statSync(realFile).isDirectory()) {
       getAllFiles(realFile, exts, filenameArr);

@@ -10,11 +10,11 @@ export class NodeA {
     kind: string;
     text: string;
     start: number;
-    name: string | null;
+    //name: string | undefined;
     modifiers: any[] = [];
-    heritageClauses : any[] = [];
+    heritageClauses: any[] = [];
     parameterTypes: any[] = [];
-    returnType: string;
+    //returnType: string;
     properties: any[] = [];
     classHeadInfo: any | undefined;
     functionHeadInfo: any | undefined;
@@ -124,8 +124,8 @@ export class ASTree {
 
 function handleClassNode(node: ts.ClassDeclaration) {
     // get class name, export flag, super class, etc.
-    let name = node.name? node.name.escapedText.toString() : undefined;
-    
+    let name = node.name?.escapedText.toString();
+
     let modifiers: string[] = [];
     if (node.modifiers != null) {
         for (let modifier of node.modifiers) {
@@ -137,7 +137,7 @@ function handleClassNode(node: ts.ClassDeclaration) {
     if (node.heritageClauses != null) {
         for (let heritageClause of node.heritageClauses) {
             for (let type of heritageClause.types) {
-                heritageClausesMap.set(type.expression.getText(), ts.tokenToString(heritageClause.token));
+                heritageClausesMap.set(type.expression.escapedText, ts.tokenToString(heritageClause.token));
             }
         }
     }
@@ -152,18 +152,21 @@ function handleClassNode(node: ts.ClassDeclaration) {
         }
     }
 
-    return {name, modifiers, heritageClausesMap, properties};
+    return { name, modifiers, heritageClausesMap, properties };
 }
 
+
+//TODO: support arrow function and exportDefault
 function handleFunctionNode(node: ts.FunctionDeclaration) {
     //get function name, parameters, return type, etc.
-    let name = node.name? node.name.escapedText.toString() : undefined;
+    let name = node.name?.escapedText.toString();
 
-    let parameterTypes: any = [];
+    let parameterTypes: string[] = [];
     if (node.parameters != null) {
         for (let parameter of node.parameters) {
-            let type = parameter.type? parameter.type.kind:undefined;
-            parameterTypes.push(type);
+            if (parameter.type) {
+                parameterTypes.push(ts.SyntaxKind[parameter.type.kind]);
+            }
         }
     }
 
@@ -174,13 +177,15 @@ function handleFunctionNode(node: ts.FunctionDeclaration) {
         }
     }
 
-    let returnType:string;
+    let returnType: string | undefined;
     if (node.type != null) {
         if (node.type.kind == ts.SyntaxKind.TypeLiteral) {
-           //TODO;
+            //TODO;
         }
         else {
             returnType = ts.SyntaxKind[node.type.kind];
         }
     }
+
+    return { name, modifiers, parameterTypes, returnType };
 }

@@ -15,11 +15,12 @@ export class Scene {
     namespaces: ArkNamespace[] = [];
     classes: ArkClass[] = [];
     arkFiles: ArkFile[] = [];
-    callgraph: CallGraph;
+    callgraph!: CallGraph;
     constructor(name: string, files: string[]) {
         this.projectName = name;
         this.projectFiles = files;
         this.genArkFiles();
+        this.makeCallGraph();
     }
 
     private genArkFiles() {

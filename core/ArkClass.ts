@@ -7,12 +7,12 @@ import { MethodSubSignature, ClassSignature } from "./ArkSignature";
 
 
 export class ArkClass {
-    name: string;
+    name!: string;
     code: string | null;
     declaringArkFile: ArkFile;
-    classSignature: ClassSignature;
+    classSignature!: ClassSignature;
     isExported: boolean = false;
-    superClassName: string | null;
+    superClassName: string | undefined;
     superClass: ArkClass | null;
     implementedInterfaces: ArkClass[] = [];
     implementedInterfaceNames: string[] = [];
@@ -28,9 +28,9 @@ export class ArkClass {
     }
 
     private buildArkClass(clsNode: NodeA) {
+        this.name = clsNode.classHeadInfo.name;
         this.classSignature = new ClassSignature(this.declaringArkFile, this.name);
         
-        this.name = clsNode.classHeadInfo.name;
         if (clsNode.modifiers.indexOf('ExportKeyWord')) {
             this.isExported = true;
         }

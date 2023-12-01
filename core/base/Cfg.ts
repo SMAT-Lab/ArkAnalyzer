@@ -8,14 +8,14 @@ import { NodeA, ASTree } from './Ast';
 import { Statement, ConditionStatement, SwitchStatement } from "./Stmt";
 
 export class CFG {
-    name: string;
+    name: string | undefined;
     astRoot: NodeA;
     entry: Statement;
     loopStack: ConditionStatement[];
     switchExitStack: Statement[];
     functions: CFG[];
     breakin: string;
-    constructor(ast: NodeA, name: string) {
+    constructor(ast: NodeA, name: string | undefined) {
         this.name = name;
         this.astRoot = ast;
         this.entry = new Statement("entry", "");
