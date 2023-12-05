@@ -1,5 +1,55 @@
 import fs from 'fs';
 
+export function test() {
+    const sampleData: number[] = [1, 2, 3, 4, 5];
+
+    for (let i = 0; i < sampleData.length; i++) {
+        // 使用 if 判断
+        if (sampleData[i] % 2 === 0) {
+            console.log(`${sampleData[i]} 是偶数`);
+        } else {
+            console.log(`${sampleData[i]} 是奇数`);
+        }
+
+        // 使用 switch 判断
+        switch (sampleData[i] % 3) {
+            case 0:
+                console.log(`${sampleData[i]} 可被 3 整除`);
+                break;
+            case 1:
+                console.log(`${sampleData[i]} 除以 3 余 1`);
+                break;
+            case 2:
+                console.log(`${sampleData[i]} 除以 3 余 2`);
+                break;
+            default:
+                console.log("无法判断");
+        }
+
+        // 使用 while 循环
+        let count = 0;
+        while (count < sampleData[i]) {
+            console.log(`当前计数: ${count}`);
+            count++;
+        }
+
+        // 使用 for 循环和 continue
+        for (let j = 0; j < 5; j++) {
+            if (j === 2) {
+                continue; // 跳过本次循环的剩余代码，进入下一次循环
+            }
+            console.log(`当前内层循环计数: ${j}`);
+        }
+
+        // 使用 break 终止循环
+        for (let k = 0; k < 3; k++) {
+            console.log(`外层循环计数: ${k}`);
+            if (k === 1) {
+                break; // 终止整个循环
+            }
+        }
+    }
+}
 const sampleData: number[] = [1, 2, 3, 4, 5];
 
 for (let i = 0; i < sampleData.length; i++) {
@@ -53,10 +103,14 @@ interface Alarm {
     alert(): void;
 }
 
+interface Alarm2 {
+    alert2(): void;
+}
+
 class Door {
 }
 
-export function foo(x: number): number {
+export default function foo(x: number): number {
     var y: number = 0;
     for (let k = 0; k < x; k++) {
         y = y + k;
@@ -64,8 +118,15 @@ export function foo(x: number): number {
     return y;
 }
 
-export class SecurityDoor extends Door implements Alarm {
+export function listParameters(u: number, v: number, w: string): { x: number, y: number, z: string } {
+    return { x: u, y: v, z: w }
+}
+
+export class SecurityDoor extends Door implements Alarm, Alarm2 {
     alert(): void {
         console.log("SecurityDoor alert");
+    }
+    alert2(): void {
+        console.log("SecurityDoor alert2");
     }
 }

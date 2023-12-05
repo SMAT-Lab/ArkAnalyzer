@@ -4,8 +4,8 @@ import { ArkFile } from "./ArkFile";
 export class MethodSubSignature {
     methodName: string | undefined;
     parameters: string[] = [];
-    returnType: string | undefined;
-    constructor(methodName: string | undefined, parameters: string[], returnType: string | undefined) {
+    returnType: string[] = [];
+    constructor(methodName: string | undefined, parameters: string[], returnType: string[]) {
         this.methodName = methodName;
         this.parameters = parameters;
         this.returnType = returnType;

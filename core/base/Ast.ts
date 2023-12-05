@@ -37,10 +37,6 @@ export class NodeA {
             this.functionHeadInfo = functionHeadInfo;
         }
     }
-
-    public walkChildren2Find(kinds: string[]): NodeA[] {
-        return [];
-    }
 }
 
 /**
@@ -137,7 +133,8 @@ function handleClassNode(node: ts.ClassDeclaration) {
     if (node.heritageClauses != null) {
         for (let heritageClause of node.heritageClauses) {
             for (let type of heritageClause.types) {
-                heritageClausesMap.set(type.expression.escapedText, ts.tokenToString(heritageClause.token));
+                let superClassName = (type.expression as ts.Identifier).escapedText;
+                heritageClausesMap.set(superClassName, ts.tokenToString(heritageClause.token));
             }
         }
     }
@@ -156,7 +153,7 @@ function handleClassNode(node: ts.ClassDeclaration) {
 }
 
 
-//TODO: support arrow function and exportDefault
+//TODO: support arrow function
 function handleFunctionNode(node: ts.FunctionDeclaration) {
     //get function name, parameters, return type, etc.
     let name = node.name?.escapedText.toString();
@@ -177,15 +174,19 @@ function handleFunctionNode(node: ts.FunctionDeclaration) {
         }
     }
 
-    let returnType: string | undefined;
+    let returnType: string[] = [];
     if (node.type != null) {
         if (node.type.kind == ts.SyntaxKind.TypeLiteral) {
-            //TODO;
+            for (let member of (node.type as ts.TypeLiteralNode).members) {
+                let memberType = (member as ts.PropertySignature).type;
+                if (memberType != undefined) {
+                    returnType?.push(ts.SyntaxKind[memberType.kind]);
+                }
+            }
         }
         else {
-            returnType = ts.SyntaxKind[node.type.kind];
+            returnType.push(ts.SyntaxKind[node.type.kind]);
         }
     }
-
     return { name, modifiers, parameterTypes, returnType };
 }

@@ -38,18 +38,15 @@ export class ArkFile {
             //    this.nameSpaces.push(ns);
             //}
             else if (child.kind == 'ClassDeclaration') {
-                console.log("Yifei-2");
                 let cls: ArkClass = new ArkClass(child, this);
                 this.classes.push(cls);
             }
             else if (child.kind == 'FunctionDeclaration') {
                 let mthd: ArkMethod = new ArkMethod(child, this);
+                console.log(mthd.cfg);
                 this.methods.push(mthd);
             }
         }
-        console.log(this.importStmts);
-        console.log("#######Yifei-1#######");
-        console.log(this.methods);
     }
 
     public getImportStmts(): Statement[] {

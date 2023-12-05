@@ -10,7 +10,7 @@ export class ArkMethod {
     isExported: boolean = false;
     declaringArkFile: ArkFile;
     declaringClass: ArkClass | undefined;
-    returnType: string | undefined;
+    returnType: string[] = [];
     parameterTypes: string[] = [];
     //implementedInterfaces: ArkClass[] = [];
     cfg: CFG | null = null;
