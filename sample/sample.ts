@@ -1,6 +1,6 @@
 import fs from 'fs';
 
-export function test() {
+function test() {
     const sampleData: number[] = [1, 2, 3, 4, 5];
 
     for (let i = 0; i < sampleData.length; i++) {
@@ -123,10 +123,24 @@ export function listParameters(u: number, v: number, w: string): { x: number, y:
 }
 
 export class SecurityDoor extends Door implements Alarm, Alarm2 {
+    x:number = 0;
+    y:string = '';
     alert(): void {
         console.log("SecurityDoor alert");
     }
     alert2(): void {
         console.log("SecurityDoor alert2");
+    }
+    public Members = class {
+
+    }
+    public fooo() {
+        console.log("This is fooo!");
+    }
+    constructor(x:number, y:string) {
+        super();
+        this.x = x;
+        this.y = y;
+        console.log("This is a constrctor!");
     }
 }

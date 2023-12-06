@@ -9,16 +9,12 @@ export class Statement {
     next: Statement | null;
     walked: boolean;
     index: number;
-    posStart: number | string;
-    posEnd: number | string;
     constructor(type: string, code: string) {
         this.type = type;
         this.code = code;
         this.next = null;
         this.walked = false;
         this.index = 0;
-        this.posStart = 0;// TODO: modify to use real pos number
-        this.posEnd = 0;// TODO: modify to use real pos number
     }
 }
 

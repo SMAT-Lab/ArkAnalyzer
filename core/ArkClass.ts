@@ -31,7 +31,8 @@ export class ArkClass {
         this.name = clsNode.classHeadInfo.name;
         this.classSignature = new ClassSignature(this.declaringArkFile, this.name);
         
-        if (clsNode.modifiers.indexOf('ExportKeyWord')) {
+        let mdfs:string[] = clsNode.classHeadInfo.modifiers;
+        if (mdfs.find(element => element === 'ExportKeyword')) {
             this.isExported = true;
         }
 
@@ -47,10 +48,17 @@ export class ArkClass {
         //TODO: string[] to ArkField[]
         this.properties = clsNode.classHeadInfo.properties;
 
+        //console.log(clsNode.children);
         for (let child of clsNode.children) {
-            if (child.kind == 'FunctionDeclaration') {
-                let mthd: ArkMethod = new ArkMethod(child, this.declaringArkFile, this);
-                this.methods.push(mthd);
+            if (child.kind == 'SyntaxList') {
+                //console.log(child.children);
+                for (let cld of child.children) {
+                    //console.log(cld);
+                    if (cld.kind == 'MethodDeclaration' || cld.kind == 'Constructor') {
+                        let mthd: ArkMethod = new ArkMethod(cld, this.declaringArkFile, this);
+                        this.methods.push(mthd);
+                    }
+                }
             }
         }
     }

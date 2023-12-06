@@ -64,10 +64,6 @@ export class Scene {
         return false;
     }
 
-    public getCallGraph(): CallGraph {
-        return this.callgraph;
-    }
-
     //Get the set of entry points that are used to build the call graph.
     public getEntryPoints() {
         return [];

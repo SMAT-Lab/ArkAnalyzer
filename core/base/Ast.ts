@@ -10,11 +10,6 @@ export class NodeA {
     kind: string;
     text: string;
     start: number;
-    //name: string | undefined;
-    modifiers: any[] = [];
-    heritageClauses: any[] = [];
-    parameterTypes: any[] = [];
-    //returnType: string;
     properties: any[] = [];
     classHeadInfo: any | undefined;
     functionHeadInfo: any | undefined;
@@ -76,7 +71,7 @@ export class ASTree {
             if (ts.isClassDeclaration(child)) {
                 classHeadInfo = handleClassNode(child);
             }
-            else if (ts.isFunctionDeclaration(child)) {
+            else if (ts.isFunctionDeclaration(child) || ts.isMethodDeclaration(child) || ts.isConstructorDeclaration(child)) {
                 functionHeadInfo = handleFunctionNode(child);
             }
             ca = new NodeA(child, null, [], child.getText(this.sourceFile), child.getStart(this.sourceFile), classHeadInfo, functionHeadInfo);
@@ -95,10 +90,6 @@ export class ASTree {
         const rootA = new NodeA(rootN, null, [], rootN.getText(this.sourceFile), rootN.getStart(this.sourceFile))
         this.root = rootA
         this.copyTree(rootA, rootN)
-    }
-
-    walkAST2Find(asTree: ASTree): NodeA[] {
-        return [];
     }
 
     singlePrintAST(node: NodeA, i: number) {
@@ -134,17 +125,27 @@ function handleClassNode(node: ts.ClassDeclaration) {
         for (let heritageClause of node.heritageClauses) {
             for (let type of heritageClause.types) {
                 let superClassName = (type.expression as ts.Identifier).escapedText;
-                heritageClausesMap.set(superClassName, ts.tokenToString(heritageClause.token));
+                heritageClausesMap.set(superClassName, ts.SyntaxKind[heritageClause.token]);
             }
         }
     }
 
-    let properties: string[] = [];
+    let properties = new Map();
     if (node.members != null) {
         for (let member of node.members) {
             if (ts.isPropertyDeclaration(member)) {
-                let property = member.getText();
-                properties.push(property);
+                let key = (member.name as ts.Identifier).escapedText;
+                let value: string;
+                if (member.type) {
+                    value = ts.SyntaxKind[member.type.kind];
+                }
+                else if (member.initializer) {
+                    value = ts.SyntaxKind[member.initializer.kind];
+                }
+                else {
+                    value = 'undefined';
+                }
+                properties.set(key, value);
             }
         }
     }
@@ -154,9 +155,15 @@ function handleClassNode(node: ts.ClassDeclaration) {
 
 
 //TODO: support arrow function
-function handleFunctionNode(node: ts.FunctionDeclaration) {
+function handleFunctionNode(node: ts.FunctionDeclaration | ts.MethodDeclaration | ts.ConstructorDeclaration) {
     //get function name, parameters, return type, etc.
-    let name = node.name?.escapedText.toString();
+    let name:string | undefined;
+    if (ts.isFunctionDeclaration(node)) {
+        name = node.name?.escapedText.toString();
+    }
+    else if (ts.isMethodDeclaration(node)) {
+        name = (node.name as ts.Identifier).escapedText.toString();
+    }
 
     let parameterTypes: string[] = [];
     if (node.parameters != null) {

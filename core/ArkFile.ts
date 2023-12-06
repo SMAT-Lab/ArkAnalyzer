@@ -43,7 +43,6 @@ export class ArkFile {
             }
             else if (child.kind == 'FunctionDeclaration') {
                 let mthd: ArkMethod = new ArkMethod(child, this);
-                console.log(mthd.cfg);
                 this.methods.push(mthd);
             }
         }

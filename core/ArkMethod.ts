@@ -29,7 +29,8 @@ export class ArkMethod {
     private buildArkMethod(methodNode: NodeA) {
         this.name = methodNode.functionHeadInfo.name;
         
-        if (methodNode.modifiers.indexOf('ExportKeyWord')) {
+        let mdfs:string[] = methodNode.functionHeadInfo.modifiers;
+        if (mdfs.find(element => element === 'ExportKeyword')) {
             this.isExported = true;
         }
 
@@ -38,6 +39,7 @@ export class ArkMethod {
 
         this.cfg = new CFG(methodNode, this.name);
         this.genSignatures();
+        console.log(this.methodSignature);
     }
 
     public getCFG() {
