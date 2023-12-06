@@ -71,9 +71,10 @@ export class ASTree {
             if (ts.isClassDeclaration(child)) {
                 classHeadInfo = handleClassNode(child);
             }
-            else if (ts.isFunctionDeclaration(child) || ts.isMethodDeclaration(child) || ts.isConstructorDeclaration(child)) {
+            else if (ts.isFunctionDeclaration(child) || ts.isMethodDeclaration(child) || ts.isConstructorDeclaration(child) || ts.isArrowFunction(child)) {
                 functionHeadInfo = handleFunctionNode(child);
             }
+
             ca = new NodeA(child, null, [], child.getText(this.sourceFile), child.getStart(this.sourceFile), classHeadInfo, functionHeadInfo);
             this.copyTree(ca, child);
             cas.push(ca);
@@ -154,8 +155,8 @@ function handleClassNode(node: ts.ClassDeclaration) {
 }
 
 
-//TODO: support arrow function
-function handleFunctionNode(node: ts.FunctionDeclaration | ts.MethodDeclaration | ts.ConstructorDeclaration) {
+
+function handleFunctionNode(node: ts.FunctionDeclaration | ts.MethodDeclaration | ts.ConstructorDeclaration | ts.ArrowFunction) {
     //get function name, parameters, return type, etc.
     let name:string | undefined;
     if (ts.isFunctionDeclaration(node)) {

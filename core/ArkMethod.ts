@@ -39,7 +39,6 @@ export class ArkMethod {
 
         this.cfg = new CFG(methodNode, this.name);
         this.genSignatures();
-        console.log(this.methodSignature);
     }
 
     public getCFG() {

@@ -118,6 +118,30 @@ export default function foo(x: number): number {
     return y;
 }
 
+class Person {
+    constructor(public age:number) {}
+    growOld = () => {
+        this.age++;
+    }
+}
+
+class Adder {
+    constructor(public a: number) {}
+    // This function is now safe to pass around
+    add = (b: string): string => {
+        return this.a + b;
+    }
+}
+
+class ExtendedAdder extends Adder {
+    // Create a copy of parent before creating our own
+    private superAdd = this.add;
+    // Now create our override
+    add = (b: string): string => {
+        return this.superAdd(b);
+    }
+}
+
 export function listParameters(u: number, v: number, w: string): { x: number, y: number, z: string } {
     return { x: u, y: v, z: w }
 }
