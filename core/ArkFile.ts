@@ -5,7 +5,7 @@ import { ArkMethod } from "./ArkMethod";
 import { Statement } from "./base/Stmt";
 import { NodeA, ASTree } from "./base/Ast";
 import { ArkNamespace } from "./ArkNamespace";
-import { ClassSignature, MethodSignature } from "./ArkSignature";
+import { ClassSignature, MethodSignature, methodSignatureCompare, classSignatureCompare } from "./ArkSignature";
 
 /**
  * 
@@ -42,7 +42,7 @@ export class ArkFile {
                 this.classes.push(cls);
             }
             else if (child.kind == 'FunctionDeclaration') {
-                let mthd: ArkMethod = new ArkMethod(child, this);
+                let mthd: ArkMethod = new ArkMethod(child, this, undefined);
                 this.methods.push(mthd);
             }
         }
@@ -61,10 +61,11 @@ export class ArkFile {
     }
 
     public getClass(classSignature: ClassSignature): ArkClass | null {
-        for (let cls of this.classes) {
-            if (cls.classSignature == classSignature) {
-                return cls;
-            }
+        let cls = this.classes.find((obj) => {
+            return classSignatureCompare(obj.classSignature, classSignature);
+        })
+        if (cls) {
+            return cls;
         }
         return null;
     }
@@ -73,16 +74,23 @@ export class ArkFile {
         return this.methods;
     }
 
-    //TODO
-    public getMethod(methodSignature: MethodSignature): ArkMethod | null {
-        if (methodSignature.arkClass) {
-            return methodSignature.arkClass.getMethod(methodSignature.methodSubSignature);
+    //TODO: err handle
+    public getMethod(methodSignature: MethodSignature): ArkMethod | null  {
+        if (methodSignature.arkClass.classType) {
+            let arkCls = this.getClass(methodSignature.arkClass);
+            if (arkCls) {
+                return arkCls.getMethod(methodSignature.methodSubSignature);
+            }
+            else {
+                throw new Error('MethodSignature wrong. No ArkClass found.');
+            }
         }
         else {
-            for (let mthd of this.methods) {
-                if (mthd.methodSignature == methodSignature) {
-                    return mthd;
-                }
+            let mtd = this.methods.find((obj) => {
+                return methodSignatureCompare(obj.methodSignature, methodSignature);
+            })
+            if (mtd) {
+                return mtd;
             }
         }
         return null;

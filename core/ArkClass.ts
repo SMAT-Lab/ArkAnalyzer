@@ -3,7 +3,7 @@ import { ArkFile } from "./ArkFile";
 import { ArkMethod } from "./ArkMethod";
 import { ArkNamespace } from "./ArkNamespace";
 import { NodeA } from "./base/Ast";
-import { MethodSubSignature, ClassSignature } from "./ArkSignature";
+import { MethodSubSignature, ClassSignature, methodSubSignatureCompare } from "./ArkSignature";
 
 
 export class ArkClass {
@@ -29,7 +29,7 @@ export class ArkClass {
 
     private buildArkClass(clsNode: NodeA) {
         this.name = clsNode.classHeadInfo.name;
-        this.classSignature = new ClassSignature(this.declaringArkFile, this.name);
+        this.classSignature = new ClassSignature(this.declaringArkFile.name, this.name);
         
         let mdfs:string[] = clsNode.classHeadInfo.modifiers;
         if (mdfs.find(element => element === 'ExportKeyword')) {
@@ -48,12 +48,9 @@ export class ArkClass {
         //TODO: string[] to ArkField[]
         this.properties = clsNode.classHeadInfo.properties;
 
-        //console.log(clsNode.children);
         for (let child of clsNode.children) {
             if (child.kind == 'SyntaxList') {
-                //console.log(child.children);
                 for (let cld of child.children) {
-                    //console.log(cld);
                     if (cld.kind == 'MethodDeclaration' || cld.kind == 'Constructor') {
                         let mthd: ArkMethod = new ArkMethod(cld, this.declaringArkFile, this);
                         this.methods.push(mthd);
@@ -63,10 +60,9 @@ export class ArkClass {
         }
     }
 
-    //TODO
     public getMethod(methodSubSignature: MethodSubSignature): ArkMethod | null {
         for (let mthd of this.methods) {
-            if (mthd.methodSubSignature == methodSubSignature) {
+            if (methodSubSignatureCompare(mthd.methodSubSignature, methodSubSignature)) {
                 return mthd;
             }
         }

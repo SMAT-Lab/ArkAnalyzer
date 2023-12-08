@@ -39,21 +39,30 @@ export class Scene {
         return [];
     }
 
-    public getClass(classSignature: ClassSignature): ArkClass | null {
-        return null;
+    public getClass(arkFile: string, arkClassType: string): ArkClass | null {
+        const fl = this.arkFiles.find((obj) => {
+            return obj.name === arkFile;
+        })
+        if (!fl) {
+            return null;
+        }
+        const claSig = this.getClassSignature(arkFile, arkClassType);
+        return fl.getClass(claSig);
     }
 
     public getMethods(): ArkMethod[] {
         return [];
     }
 
-    public getMethod(methodSignature: MethodSignature): ArkMethod | null {
-        for (let fl of this.arkFiles) {
-            if (fl.name == methodSignature.arkFile.name) {
-                return fl.getMethod(methodSignature);
-            }
+    public getMethod(arkFile: string, methodName: string, parameters: string[], returnType: string[], arkClassType?: string): ArkMethod | null {
+        const fl = this.arkFiles.find((obj) => {
+            return obj.name === arkFile;
+        })
+        if (!fl) {
+            return null;
         }
-        return null;
+        const mtdSig = this.getMethodSignature(arkFile, methodName, parameters, returnType, arkClassType);
+        return fl.getMethod(mtdSig);
     }
 
     public getNamespaces(): ArkNamespace[] {
@@ -69,9 +78,13 @@ export class Scene {
         return [];
     }
 
-    public getMethodSignature(fileName: ArkFile, methodName: string, parameters: any[], returnType: any, classType?: ArkClass): MethodSignature {
+    private getMethodSignature(fileName: string, methodName: string, parameters: string[], returnType: string[], classType?: string): MethodSignature {
         let methodSubSignature = new MethodSubSignature(methodName, parameters, returnType);
-        return new MethodSignature(fileName, methodSubSignature, classType);
+        let classSignature = classType ? this.getClassSignature(fileName, classType) : this.getClassSignature(fileName, undefined);
+        return new MethodSignature(methodSubSignature, classSignature);
+    }
+    private getClassSignature(arkFile: string, classType: string | undefined): ClassSignature {
+        return new ClassSignature(arkFile, classType);
     }
 
     public makeCallGraph(): void {

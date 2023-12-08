@@ -2,7 +2,7 @@ import { ArkClass } from "./ArkClass";
 import { ArkFile } from "./ArkFile";
 import { ASTree, NodeA } from "./base/Ast";
 import { CFG } from "./base/Cfg";
-import { MethodSignature, MethodSubSignature } from "./ArkSignature";
+import { ClassSignature, MethodSignature, MethodSubSignature } from "./ArkSignature";
 
 export class ArkMethod {
     name: string | undefined;
@@ -12,13 +12,12 @@ export class ArkMethod {
     declaringClass: ArkClass | undefined;
     returnType: string[] = [];
     parameterTypes: string[] = [];
-    //implementedInterfaces: ArkClass[] = [];
     cfg: CFG | null = null;
     modifier: string | undefined;
-    methodSignature: MethodSignature | undefined;
-    methodSubSignature: MethodSubSignature | undefined;
+    methodSignature!: MethodSignature;
+    methodSubSignature!: MethodSubSignature;
 
-    constructor(methodNode: NodeA, declaringArkFile: ArkFile, declaringClass?: ArkClass | undefined) {
+    constructor(methodNode: NodeA, declaringArkFile: ArkFile, declaringClass: ArkClass | undefined) {
         this.code = methodNode.text;
         this.declaringArkFile = declaringArkFile;
 
@@ -39,6 +38,7 @@ export class ArkMethod {
 
         this.cfg = new CFG(methodNode, this.name);
         this.genSignatures();
+        //console.log(this.methodSignature);
     }
 
     public getCFG() {
@@ -51,6 +51,12 @@ export class ArkMethod {
 
     private genSignatures() {
         this.methodSubSignature = new MethodSubSignature(this.name, this.parameterTypes, this.returnType);
-        this.methodSignature = new MethodSignature(this.declaringArkFile, this.methodSubSignature, this.declaringClass);
+        if (!this.declaringClass) {
+            let clsSig = new ClassSignature(this.declaringArkFile.name, undefined);
+            this.methodSignature = new MethodSignature(this.methodSubSignature, clsSig);
+        }
+        else {
+            this.methodSignature = new MethodSignature(this.methodSubSignature, this.declaringClass.classSignature);
+        }
     }
 }

@@ -158,14 +158,21 @@ function handleClassNode(node: ts.ClassDeclaration) {
 
 function handleFunctionNode(node: ts.FunctionDeclaration | ts.MethodDeclaration | ts.ConstructorDeclaration | ts.ArrowFunction) {
     //get function name, parameters, return type, etc.
-    let name:string | undefined;
+
+    //TODO: consider function without name
+    let name: string | undefined;
     if (ts.isFunctionDeclaration(node)) {
         name = node.name?.escapedText.toString();
     }
     else if (ts.isMethodDeclaration(node)) {
         name = (node.name as ts.Identifier).escapedText.toString();
     }
+    //TODO, do not use hard code
+    else if (ts.isConstructorDeclaration(node)) {
+        name = 'Constructor';
+    }
 
+    // TODO: support question token which means optional parameter
     let parameterTypes: string[] = [];
     if (node.parameters != null) {
         for (let parameter of node.parameters) {

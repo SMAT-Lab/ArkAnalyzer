@@ -15,6 +15,10 @@ function run(config: Config) {
 
     //(2) Fill Scene class
     let scene: Scene = new Scene(projectName, projectFiles);
+    const fl = '/Users/yifei/Documents/Code/ArkAnalyzer/sample/sample.ts';
+    let mtd = scene.getMethod(fl, 'foo', ['NumberKeyword'], ['NumberKeyword']);
+    console.log(mtd);
+    console.log(mtd?.cfg);
 
     //(3) Conduct Code Transformation
     //if (null != config.sceneTransformer) {
