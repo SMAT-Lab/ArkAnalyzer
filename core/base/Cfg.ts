@@ -103,8 +103,11 @@ export class CFG{
     exitBlock:Block;
     currentDeclarationKeyword:string;
 
-    constructor(ast:NodeA,name:string){
-        this.name=name;
+    constructor(ast:NodeA,name:string|undefined){
+        if(name)
+            this.name=name;
+        else
+            this.name="undefined";
         this.astRoot=ast;
         this.entry=new statement("entry","",ast,0);
         this.loopStack=[];
