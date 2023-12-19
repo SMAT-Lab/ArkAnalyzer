@@ -4,6 +4,8 @@ import { ArkClass } from "./core/ArkClass";
 import { ArkMethod } from "./core/ArkMethod";
 import { ArkFile } from "./core/ArkFile";
 import * as utils from "./utils/utils";
+import * as ts from "typescript";
+import fs from 'fs';
 
 function run(config: Config) {
     const projectName: string = config.projectName;
@@ -17,8 +19,8 @@ function run(config: Config) {
     let scene: Scene = new Scene(projectName, projectFiles);
     const fl = '/Users/yifei/Documents/Code/ArkAnalyzer/sample/sample.ts';
     let mtd = scene.getMethod(fl, 'foo', ['NumberKeyword'], ['NumberKeyword']);
-    console.log(mtd);
-    console.log(mtd?.cfg);
+    //console.log(mtd);
+    //console.log(mtd?.cfg);
 
     //(3) Conduct Code Transformation
     //if (null != config.sceneTransformer) {
@@ -33,6 +35,63 @@ function run(config: Config) {
     //(4) Re-generate Code
 }
 
-let config:Config = new Config("sample", "./sample");
+let config: Config = new Config("sample", "./sample");
 run(config);
+
+const filename = "test.ts";
+const code = `
+const x = {
+    foo: true
+})
+`;
+
+function codeGen() {
+    const sourceFile = ts.createSourceFile(
+        filename, code, ts.ScriptTarget.Latest
+    );
+
+    const transformerFactory: ts.TransformerFactory<ts.Node> = (
+        context: ts.TransformationContext
+    ) => {
+        return (rootNode) => {
+            function visit(node: ts.Node): ts.Node {
+                const { factory } = context;
+                if (ts.isObjectLiteralExpression(node)) {
+                    return factory.updateObjectLiteralExpression(node, [
+                        ...node.properties,
+                        factory.createPropertyAssignment(
+                            factory.createIdentifier("bar"),
+                            factory.createTrue()
+                        )
+                    ]
+                    );
+                }
+                return ts.visitEachChild(node, visit, context);
+            }
+            return ts.visitNode(rootNode, visit);
+        };
+    };
+
+    const transformationResult = ts.transform(
+        sourceFile, [transformerFactory]
+    );
+
+    const transformedSourceFile = transformationResult.transformed[0];
+    console.log(transformedSourceFile);
+
+    const printer = ts.createPrinter();
+
+    //const newContent = printer.printFile(transformedSourceFile as ts.SourceFile);
+
+    const result = printer.printNode(
+        ts.EmitHint.Unspecified,
+        transformedSourceFile,
+        sourceFile
+    );
+
+    console.log(result); // const testsuffix: number = 1 + 2;
+}
+
+//codeGen();
+
 debugger;

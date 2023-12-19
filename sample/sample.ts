@@ -119,14 +119,14 @@ export default function foo(x: number): number {
 }
 
 class Person {
-    constructor(public age:number) {}
+    constructor(public age: number) { }
     growOld = () => {
         this.age++;
     }
 }
 
 class Adder {
-    constructor(public a: number) {}
+    constructor(public a: number) { }
     // This function is now safe to pass around
     add = (b: string): string => {
         return this.a + b;
@@ -147,8 +147,8 @@ export function listParameters(u: number, v: number, w: string): { x: number, y:
 }
 
 export class SecurityDoor extends Door implements Alarm, Alarm2 {
-    x:number = 0;
-    y:string = '';
+    x: number = 0;
+    y: string = '';
     alert(): void {
         console.log("SecurityDoor alert");
     }
@@ -161,7 +161,7 @@ export class SecurityDoor extends Door implements Alarm, Alarm2 {
     public fooo() {
         console.log("This is fooo!");
     }
-    constructor(x:number, y:string) {
+    constructor(x: number, y: string) {
         super();
         this.x = x;
         this.y = y;

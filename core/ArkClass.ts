@@ -17,10 +17,10 @@ export class ArkClass {
     implementedInterfaces: ArkClass[] = [];
     implementedInterfaceNames: string[] = [];
     fields: ArkField[] = [];
-    properties: string[] = [];//TODO: transform properties to fields
+    properties: Map<string, string> = new Map([]);//TODO: transform properties to fields
     methods: ArkMethod[] = [];
 
-    constructor(clsNode: NodeA, arkFile:ArkFile) {
+    constructor(clsNode: NodeA, arkFile: ArkFile) {
         this.code = clsNode.text;
         this.superClass = null;
         this.declaringArkFile = arkFile;
@@ -30,8 +30,8 @@ export class ArkClass {
     private buildArkClass(clsNode: NodeA) {
         this.name = clsNode.classHeadInfo.name;
         this.classSignature = new ClassSignature(this.declaringArkFile.name, this.name);
-        
-        let mdfs:string[] = clsNode.classHeadInfo.modifiers;
+
+        let mdfs: string[] = clsNode.classHeadInfo.modifiers;
         if (mdfs.find(element => element === 'ExportKeyword')) {
             this.isExported = true;
         }
@@ -44,7 +44,7 @@ export class ArkClass {
                 this.implementedInterfaceNames.push(key);
             }
         }
-        
+
         //TODO: string[] to ArkField[]
         this.properties = clsNode.classHeadInfo.properties;
 
