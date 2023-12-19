@@ -1,41 +1,55 @@
-import {ArkStmt} from '../base/Stmt'
+import { 
+    ArkStmt,
+    ASTNode2ArkStatements
+} from '../base/Stmt'
 import * as ts from "typescript";
 
-export class StmtGraph{
-    statemnents:ArkStmt[];
+export class StmtGraph {
+    statements: ArkStmt[]=[];
 
 
     // construct from ast
-    constructor(root:ts.Node){
-        this.buildGraph(root);
+    constructor(funcRoot:ts.FunctionDeclaration|ts.FunctionExpression) {
+        this.buildGraph(funcRoot);
     }
 
 
-    public getNodes():ArkStmt[]{
-        return this.statemnents;
+    public getNodes(): ArkStmt[] {
+        return this.statements;
     }
 
-    public getStartingStmt(){        
-    }
-
-    // todo: 实现
-    public successors(curr:ArkStmt):ArkStmt[]{        
-        return this.statemnents;
+    public getStartingStmt() {
     }
 
     // todo: 实现
-    public predecessors(curr:ArkStmt):ArkStmt[]{        
-        return this.statemnents;
-    }    
+    public successors(curr: ArkStmt): ArkStmt[] {
+        return this.statements;
+    }
+
+    // todo: 实现
+    public predecessors(curr: ArkStmt): ArkStmt[] {
+        return this.statements;
+    }
 
 
     // for test
-    public printStmtGraph(){
-
+    public printStmtGraph() {
+        for(const stmt of this.statements){
+            console.log(stmt);
+        }
     }
 
-    
-    private buildGraph(root:ts.Node){
+
+    private buildGraph(funcRoot:ts.FunctionDeclaration|ts.FunctionExpression) {
+        let bodyStatements=funcRoot.body?.statements;
+        if(!bodyStatements)       {
+            return;
+        }
+
+        for(const stmt of bodyStatements){
+            this.statements.push(...ASTNode2ArkStatements(stmt));
+        }    
+
 
     }
 }

@@ -1,6 +1,8 @@
+import * as ts from 'typescript';
 import {
     ArkStmt,
 } from './Stmt'
+
 
 
 export enum OperatorToken {
@@ -224,6 +226,7 @@ export class ArkAssignmentExpression extends ArkBinaryExpression {
     binaryOperator: AssignmentOperator;
     constructor(left: ArkExpression, binaryOperator: AssignmentOperator, right: ArkExpression) {
         super(left, binaryOperator, right);
+        this.binaryOperator = binaryOperator
     }
 }
 
@@ -238,3 +241,4 @@ export class ArkConditionalExpression extends ArkAbstractExpression {
         this.whenFalse = whenFalse;
     }
 }
+

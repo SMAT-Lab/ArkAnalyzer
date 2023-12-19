@@ -1,10 +1,15 @@
 import * as fs from 'fs';
+import * as ts from 'typescript';
+
 import { NodeA, ASTree } from './Ast';
 import {
     ArkExpression,
     ArkIdentifier,
-}
-    from './Expr'
+    ArkLiteralExpression,
+    LiteralType,
+} from './Expr'
+import { text } from 'stream/consumers';
+
 
 
 export class Statement {
@@ -53,6 +58,12 @@ export class SimpleStmtPositionInfo {
     }
 }
 
+export class NoSimpleStmtPositionInfo extends SimpleStmtPositionInfo {
+    constructor() {
+        super(0, 0)
+    }
+}
+
 export interface ArkStmt {
 
 }
@@ -72,6 +83,17 @@ export class ArkBlock extends ArkAbstractStmt {
     }
 }
 
+// 单句变量定义，融合tsc VariableDeclaration和VariableStatement
+export class ArkVariableStatement extends ArkAbstractStmt {
+    name: ArkIdentifier;
+    // readonly type?: TypeNode;                      // Optional type annotation
+    initializer?: ArkExpression;
+    constructor(positionInfo: SimpleStmtPositionInfo, name: ArkIdentifier, initializer?: ArkExpression) {
+        super(positionInfo);
+        this.name = name;
+        this.initializer = initializer;
+    }
+}
 
 export class ArkExpressionStatement extends ArkAbstractStmt {
     expression: ArkExpression;
@@ -222,4 +244,55 @@ export class ArkForOfStatement extends ArkAbstractStmt implements ArkIterationSt
         this.statement = statement;
         this.expression = expression;
     }
+}
+
+
+
+// AST node to ArkStatemen
+export function ASTNode2ArkStatements(node: ts.Node): ArkStmt[] {
+    let arkStatements: ArkStmt[] = [];
+    if (ts.isVariableStatement(node)) {
+        arkStatements.push(ASTNode2VariableStatement(node as ts.VariableStatement));
+    }
+    return arkStatements;
+}
+
+function ASTNode2VariableStatement(variableStatement: ts.VariableStatement): ArkStmt {
+
+    let variableDeclaration = variableStatement.declarationList.declarations[0];
+    let identifier = variableDeclaration.name as ts.Identifier;
+    let arkIdentifier = new ArkIdentifier(identifier.text)
+
+    let noSimpleStmtPositionInfo = new NoSimpleStmtPositionInfo();
+    if (variableDeclaration.initializer == undefined) {
+        return new ArkVariableStatement(noSimpleStmtPositionInfo, arkIdentifier);
+    }
+
+    let arkInitializer;
+    let initializer = variableDeclaration.initializer;
+    if (ts.isLiteralTypeLiteral(initializer)) {
+        let text, literalType;
+        if (ts.isLiteralExpression(initializer)) {
+            text = initializer.text;
+
+            if (ts.isNumericLiteral(initializer)) {
+                literalType = LiteralType.NumericLiteral;
+            }
+            else if (ts.isStringLiteral(initializer)) {
+                literalType = LiteralType.StringLiteral;
+            }
+        }
+        else if (initializer.kind === ts.SyntaxKind.TrueKeyword) {
+            text = 'true';
+            literalType = LiteralType.BooleanLiteral;
+        }
+        else if (initializer.kind === ts.SyntaxKind.FalseKeyword) {
+            text = 'false';
+            literalType = LiteralType.BooleanLiteral;
+        }
+        if (literalType !== undefined && text !== undefined) {
+            arkInitializer = new ArkLiteralExpression(text, literalType);
+        }
+    }
+    return new ArkVariableStatement(new NoSimpleStmtPositionInfo, arkIdentifier, arkInitializer);
 }

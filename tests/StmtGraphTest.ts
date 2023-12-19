@@ -8,7 +8,9 @@ export class StmtGraphTest {
         let filename = './tests/resources/cfg/main.ts';
         let codeAsString = fs.readFileSync(filename).toString();
         let sourceFile = ts.createSourceFile(filename, codeAsString, ts.ScriptTarget.Latest);
-        return new StmtGraph(sourceFile);
+        let functionDeclaration = sourceFile.statements[0] as ts.FunctionDeclaration;       
+        
+        return new StmtGraph(functionDeclaration);
     }
 
     public testStmtGraph() {
@@ -21,3 +23,5 @@ export class StmtGraphTest {
 
 let callGraphTest = new StmtGraphTest();
 callGraphTest.testStmtGraph();
+
+debugger
