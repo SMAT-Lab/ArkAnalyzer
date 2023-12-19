@@ -10,7 +10,7 @@ export class NodeA {
     kind: string;
     text: string;
     start: number;
-    properties: any[] = [];
+    //properties: any[] = [];
     classHeadInfo: any | undefined;
     functionHeadInfo: any | undefined;
 
@@ -197,7 +197,7 @@ function handleClassNode(node: ts.ClassDeclaration) {
     if (node.members != null) {
         for (let member of node.members) {
             if (ts.isPropertyDeclaration(member)) {
-                let key = (member.name as ts.Identifier).escapedText;
+                let key = (member.name as ts.Identifier).escapedText.toString();
                 let value: string;
                 if (member.type) {
                     value = ts.SyntaxKind[member.type.kind];
