@@ -6,6 +6,7 @@ import { ArkFile } from "./core/ArkFile";
 import * as utils from "./utils/utils";
 import * as ts from "typescript";
 import fs from 'fs';
+import { ClassSignature } from "./core/ArkSignature";
 
 function run(config: Config) {
     const projectName: string = config.projectName;
@@ -21,6 +22,9 @@ function run(config: Config) {
     let mtd = scene.getMethod(fl, 'foo', ['NumberKeyword'], ['NumberKeyword']);
     //console.log(mtd);
     //console.log(mtd?.cfg);
+    
+    //let clsSig = new ClassSignature(fl, "SecurityDoor");
+    //console.log(scene.getFather(clsSig));
 
     //(3) Conduct Code Transformation
     //if (null != config.sceneTransformer) {

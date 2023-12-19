@@ -13,7 +13,7 @@ export class Scene {
     projectName: string = '';
     projectFiles: string[] = [];
     namespaces: ArkNamespace[] = [];
-    classes: ArkClass[] = [];
+    //allClasses: Map<ArkFile, ArkClass> = new Map([]);
     arkFiles: ArkFile[] = [];
     callgraph!: CallGraph;
     constructor(name: string, files: string[]) {
@@ -34,9 +34,31 @@ export class Scene {
     public getApplicationClasses(): ArkClass[] {
         return [];
     }
+    public getFile(fileName: string): ArkFile | null {
+        for (let arkFile of this.arkFiles) {
+            if (arkFile.name == fileName) {
+                return arkFile;
+            }
+        }
+        return null;
+    }
 
     public getClasses(): ArkClass[] {
+        for (let fl of this.arkFiles) {
+            //
+        }
         return [];
+    }
+
+    public getClassGlobally(arkClassType: string): ArkClass | null {
+        for (let fl of this.arkFiles) {
+            for (let cls of fl.classes) {
+                if (cls.isExported && cls.name == arkClassType) {
+                    return cls;
+                }
+            }
+        }
+        return null;
     }
 
     public getClass(arkFile: string, arkClassType: string): ArkClass | null {
@@ -52,6 +74,29 @@ export class Scene {
 
     public getMethods(): ArkMethod[] {
         return [];
+    }
+
+    public getFather(classSignature: ClassSignature): ArkClass | null {
+        let thisArkFile = this.getFile(classSignature.arkFile);
+        if (thisArkFile == null) {
+            throw new Error('No ArkFile found.');
+        }
+        let thisArkClass = thisArkFile.getClass(classSignature);
+        if (thisArkFile == null) {
+            throw new Error('No ArkClass found.');
+        }
+        let fatherName = thisArkClass?.superClassName;
+        if (!fatherName) {
+            return null;
+        }
+        // get father locally
+        for (let cls of thisArkFile.getClasses()) {
+            if (cls.name == fatherName) {
+                return cls;
+            }
+        }
+        // get father globally
+        return this.getClassGlobally(fatherName);
     }
 
     public getMethod(arkFile: string, methodName: string, parameters: string[], returnType: string[], arkClassType?: string): ArkMethod | null {
