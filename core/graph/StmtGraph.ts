@@ -34,6 +34,7 @@ export class StmtGraph {
 
     // for test
     public printStmtGraph() {
+        console.log('-------- statemnts of stmtgraph');
         for(const stmt of this.statements){
             console.log(stmt);
         }
@@ -49,7 +50,5 @@ export class StmtGraph {
         for(const stmt of bodyStatements){
             this.statements.push(...ASTNode2ArkStatements(stmt));
         }    
-
-
     }
 }

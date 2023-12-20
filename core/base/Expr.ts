@@ -242,3 +242,33 @@ export class ArkConditionalExpression extends ArkAbstractExpression {
     }
 }
 
+
+// utils for ArkExpression
+export function isCallExpression(expr: ArkExpression): boolean {
+    return expr instanceof ArkCallExpression;
+}
+
+
+// AST node to ArkExpression
+export function ASTNode2ArkExpression(node: ts.Node): ArkExpression {
+    if (ts.isCallExpression(node)) {
+        return ASTNode2ArkArkCallExpression(node as ts.CallExpression);
+    }
+
+    return ASTNode2ArkArkIdentifier(node as ts.Identifier);
+}
+
+
+function ASTNode2ArkArkIdentifier(identifier: ts.Identifier): ArkExpression {
+    return new ArkIdentifier(identifier.text);
+}
+
+
+function ASTNode2ArkArkCallExpression(callExpression: ts.CallExpression): ArkExpression {
+    let arkExpression = ASTNode2ArkExpression(callExpression.expression);
+    let arkArguments: ArkExpression[] = [];
+    for (const argu of callExpression.arguments) {
+        arkArguments.push(argu);
+    }
+    return new ArkCallExpression(arkExpression, arkArguments);
+}

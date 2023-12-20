@@ -7,6 +7,8 @@ import {
     ArkIdentifier,
     ArkLiteralExpression,
     LiteralType,
+    ASTNode2ArkExpression,
+    isCallExpression,
 } from './Expr'
 import { text } from 'stream/consumers';
 
@@ -155,9 +157,9 @@ export interface ArkBranchingStmt extends ArkStmt {
 
 export class ArkIfStatement extends ArkAbstractStmt implements ArkBranchingStmt {
     expression: ArkExpression;
-    thenStatement: ArkStmt;
+    thenStatement?: ArkStmt;
     elseStatement?: ArkStmt;
-    constructor(positionInfo: SimpleStmtPositionInfo, expression: ArkExpression, thenStatement: ArkStmt,
+    constructor(positionInfo: SimpleStmtPositionInfo, expression: ArkExpression, thenStatement?: ArkStmt,
         elseStatement?: ArkStmt) {
         super(positionInfo)
         this.expression = expression;
@@ -184,7 +186,7 @@ export class ArkContinueStatement extends ArkAbstractStmt implements ArkBranchin
 
 
 export interface ArkIterationStatement extends ArkStmt {
-    statement: ArkStmt; // 循环体
+    statement?: ArkStmt; // 循环体
 }
 
 export class ArkDoStatement extends ArkAbstractStmt implements ArkIterationStatement {
@@ -208,11 +210,11 @@ export class ArkWhileStatement extends ArkAbstractStmt implements ArkIterationSt
 }
 
 export class ArkForStatement extends ArkAbstractStmt implements ArkIterationStatement {
-    statement: ArkStmt;
+    statement?: ArkStmt;
     initializer?: ArkExpression;
     condition?: ArkExpression;
     incrementor?: ArkExpression;
-    constructor(positionInfo: SimpleStmtPositionInfo, statement: ArkStmt, initializer?: ArkExpression, condition?: ArkExpression,
+    constructor(positionInfo: SimpleStmtPositionInfo, statement?: ArkStmt, initializer?: ArkExpression, condition?: ArkExpression,
         incrementor?: ArkExpression) {
         super(positionInfo);
         this.statement = statement;
@@ -223,10 +225,10 @@ export class ArkForStatement extends ArkAbstractStmt implements ArkIterationStat
 }
 
 export class ArkForInStatement extends ArkAbstractStmt implements ArkIterationStatement {
-    statement: ArkStmt;
+    statement?: ArkStmt;
     initializer?: ArkExpression;
     expression?: ArkExpression;
-    constructor(positionInfo: SimpleStmtPositionInfo, statement: ArkStmt, initializer?: ArkExpression, expression?: ArkExpression) {
+    constructor(positionInfo: SimpleStmtPositionInfo, statement?: ArkStmt, initializer?: ArkExpression, expression?: ArkExpression) {
         super(positionInfo);
         this.initializer = initializer;
         this.statement = statement;
@@ -246,13 +248,26 @@ export class ArkForOfStatement extends ArkAbstractStmt implements ArkIterationSt
     }
 }
 
+// utils for ArkStatement
+export function isCallStatemnt(stmt:ArkStmt):boolean{
+    return stmt instanceof ArkExpressionStatement &&  isCallExpression(stmt.expression);
+}
 
 
-// AST node to ArkStatemen
+// AST node to ArkStatement
 export function ASTNode2ArkStatements(node: ts.Node): ArkStmt[] {
     let arkStatements: ArkStmt[] = [];
     if (ts.isVariableStatement(node)) {
         arkStatements.push(ASTNode2VariableStatement(node as ts.VariableStatement));
+    }
+    else if (ts.isIfStatement(node)) {
+        arkStatements.push(...ASTNode2IfStatement(node as ts.IfStatement));
+    }
+    else if (ts.isExpressionStatement(node)) {
+        arkStatements.push(ASTNode2ExpressionStatement(node as ts.ExpressionStatement));
+    }
+    else if (ts.isForStatement(node)) {
+        arkStatements.push(...ASTNode2ForStatement(node as ts.ForStatement));
     }
     return arkStatements;
 }
@@ -295,4 +310,83 @@ function ASTNode2VariableStatement(variableStatement: ts.VariableStatement): Ark
         }
     }
     return new ArkVariableStatement(new NoSimpleStmtPositionInfo, arkIdentifier, arkInitializer);
+}
+
+function ASTNode2IfStatement(ifStatement: ts.IfStatement): ArkStmt[] {
+    let arkConditionExpr = ASTNode2ArkExpression(ifStatement.expression);
+
+    let arkThenStatements: ArkStmt[] = [];
+    let thenStatement = ifStatement.thenStatement;
+    if (thenStatement && ts.isBlock(thenStatement)) {
+        for(const stmt of thenStatement.statements){
+            arkThenStatements.push(...ASTNode2ArkStatements(stmt));
+        }        
+    }
+
+    let arkElseStatements: ArkStmt[] = [];
+    let elseStatement = ifStatement.elseStatement;
+    if (elseStatement && ts.isBlock(elseStatement)) {
+        for(const stmt of elseStatement.statements){
+            arkElseStatements.push(...ASTNode2ArkStatements(stmt));
+        } 
+    }
+
+    let arkThenStatement;
+    let arkElseStatement;
+    if (arkThenStatements.length > 0) {
+        arkThenStatement = arkThenStatements[0];
+    }
+    if (arkElseStatements.length > 0) {
+        arkElseStatement = arkElseStatements[0];
+    }
+    let arkIfStatement = new ArkIfStatement(new NoSimpleStmtPositionInfo(), arkConditionExpr, arkThenStatement, arkElseStatement);
+
+    let arkStmts: ArkStmt[] = [];
+    arkStmts.push(arkIfStatement);
+    arkStmts.push(...arkThenStatements);
+    arkStmts.push(...arkElseStatements);
+    return arkStmts;
+}
+
+
+function ASTNode2ExpressionStatement(expressionStatement: ts.ExpressionStatement): ArkStmt {
+    let arkExpression = ASTNode2ArkExpression(expressionStatement.expression);
+    return new ArkExpressionStatement(new NoSimpleStmtPositionInfo(), arkExpression);
+}
+
+
+function ASTNode2ForStatement(forStatement: ts.ForStatement): ArkStmt[] {
+    let arkForBodyStatements: ArkStmt[] = [];
+    let statement = forStatement.statement;
+    if (statement && ts.isBlock(statement)) {
+        for(const stmt of statement.statements){
+            arkForBodyStatements.push(...ASTNode2ArkStatements(stmt));
+        }
+    }
+
+    let initializer = forStatement.initializer;
+    let arkInitializer;
+    if(initializer && ts.isExpression(initializer)){
+        arkInitializer = ASTNode2ArkExpression(initializer);
+    }
+    let condition = forStatement.condition;
+    let arkCondition;
+    if(condition){
+        arkCondition = ASTNode2ArkExpression(condition as ts.Expression);
+    }
+    let incrementor = forStatement.incrementor;
+    let arkIncrementor;
+    if(incrementor){
+        arkIncrementor = ASTNode2ArkExpression(incrementor as ts.Expression);
+    }
+
+    let arkForFirstStatement;
+    if(arkForBodyStatements.length>0){
+        arkForFirstStatement=arkForBodyStatements[0];
+    }
+    let arkForStatement =new ArkForStatement(new NoSimpleStmtPositionInfo(), arkForFirstStatement, arkInitializer, arkCondition, arkIncrementor);
+    
+    let arkStmts: ArkStmt[] = [arkForStatement];
+    arkStmts.push(...arkForBodyStatements);    
+    return arkStmts;
 }
