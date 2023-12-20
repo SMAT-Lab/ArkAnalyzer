@@ -1,14 +1,21 @@
 function main() {
-    let a = 1;
-    let s = 'hello';
-    if (a) {
-        console.log('if: then path');
+    let flag = true;
+    if (flag) {
+        log('if then')
     }
     else {
-        console.log('if: else path')
+        log('if else')
     }
 
-    for (let i = 0; i < 3; i++) {
+    let cnt: number = 3;
+    for (let i = 0; i < cnt; i++) {
         console.log('for:' + i);
     }
+
+    let s = 'hi'
+}
+
+
+function log(s: string): void {
+    console.log(s);
 }

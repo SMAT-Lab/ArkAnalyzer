@@ -108,6 +108,68 @@ export class ASTree {
         }
         this.singlePrintAST(this.root, 0)
     }
+
+    For2While(node:NodeA){
+        let semicolon1=-1,semicolon2=-1;
+        for(let i=0;i<node.children.length;i++){
+            if(node.children[i].kind=="SemicolonToken"){
+                if(semicolon1==-1)
+                    semicolon1=i;
+                else
+                    semicolon2=i;
+            }
+        }
+        let whileStatement=new NodeA(undefined,node.parent,[],"",-1,"WhileStatement");
+        let whileKeyword=new NodeA(undefined,whileStatement,[],"while",-1,"WhileKeyword");
+        let open=new NodeA(undefined,whileStatement,[],"(",-1,"OpenParenToken");
+        let close=new NodeA(undefined,whileStatement,[],")",-1,"CloseParenToken");
+        let condition=node.children[semicolon1+1];
+        let block=node.children[node.children.length-1];
+        whileStatement.children=[whileKeyword,open,condition,close,block];
+        if(!node.parent){
+            console.log("for without parent");
+            process.exit();
+        }
+        node.parent.children[node.parent.children.indexOf(node)]=whileStatement;
+        if(node.children[semicolon1-1].kind!="OpenParenToken"){
+            let initKind="";
+            let initChild=node.children[semicolon1-1];
+            if(initChild.kind=="VariableDeclarationList")
+                initKind="FirstStatement";
+            else
+                initKind="ExpressionStatement";
+            let semi=new NodeA(undefined,whileStatement,[],";",-1,"SemicolonToken");
+            let init=new NodeA(undefined,node.parent,[initChild,semi],initChild.text+";",-1,initKind);
+            node.parent.children.splice(node.parent.children.indexOf(whileStatement),0,init);
+        }
+        if(node.children[semicolon2-1].kind!="CloseParenToken"){
+            let updateChild=node.children[semicolon2+1];
+            let semi=new NodeA(undefined,whileStatement,[],";",-1,"SemicolonToken");
+            let update=new NodeA(undefined,block,[updateChild,semi],updateChild.text+";",-1,"ExpressionStatement");
+            block.children[1].children.push(update);
+        }
+    }
+
+    simplify(node:NodeA){
+        if(node.kind=="ForStatement"){
+            this.For2While(node);
+        }
+        for(let child of node.children){
+            this.simplify(child);
+        }
+    }
+
+    updateStart(node:NodeA){
+        for(let i=0;i<node.children.length;i++){
+            if(i==0){
+                node.children[i].start=node.start;
+            }
+            else{
+                node.children[i].start=node.children[i-1].start+node.children[i].text.length;
+            }
+            this.updateStart(node.children[i]);
+        }
+    }
 }
 
 function handleClassNode(node: ts.ClassDeclaration) {
