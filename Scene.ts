@@ -4,6 +4,7 @@ import { ArkMethod } from "./core/ArkMethod";
 import { ArkNamespace } from "./core/ArkNamespace";
 import { ClassSignature, MethodSignature, MethodSubSignature } from "./core/ArkSignature";
 import { CallGraph } from "./callgraph/CallGraph"
+import {ClassHierarchyAnalysis} from "./callgraph/ClassHierarchyAnalysis";
 
 /**
  * The Scene class includes everything in the analyzed project.
@@ -16,6 +17,7 @@ export class Scene {
     //allClasses: Map<ArkFile, ArkClass> = new Map([]);
     arkFiles: ArkFile[] = [];
     callgraph!: CallGraph;
+    classHierarchyCallGraph!: ClassHierarchyAnalysis;
     constructor(name: string, files: string[]) {
         this.projectName = name;
         this.projectFiles = files;
@@ -82,7 +84,7 @@ export class Scene {
             throw new Error('No ArkFile found.');
         }
         let thisArkClass = thisArkFile.getClass(classSignature);
-        if (thisArkFile == null) {
+        if (thisArkClass == null) {
             throw new Error('No ArkClass found.');
         }
         let fatherName = thisArkClass?.superClassName;
@@ -134,6 +136,11 @@ export class Scene {
 
     public makeCallGraph(): void {
         this.callgraph = new CallGraph(new Set<string>, new Map<string, string[]>);
-        this.callgraph.processFiles(this.projectFiles);
+        this.callgraph.processFiles(this.projectFiles, this.arkFiles);
+    }
+
+    public makeCallGraphCHA() {
+        this.classHierarchyCallGraph = new ClassHierarchyAnalysis(new Set<string>, new Map<string, string[]>);
+        this.classHierarchyCallGraph.processFiles(this.arkFiles);
     }
 }
