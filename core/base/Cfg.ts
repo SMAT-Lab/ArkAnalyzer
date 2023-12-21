@@ -1035,6 +1035,7 @@ export class CFG{
             insertPosition=parent.children.length;
         let stmAST=insertAST.root.children[0];
         parent.children.splice(insertPosition,0,stmAST);
+        stmAST.parent=parent;
         this.updateParentText(parent);
         return stmAST;
         
@@ -1066,6 +1067,7 @@ export class CFG{
             insertPosition=parent.children.length;
         let stmAST=insertAST.root.children[0]
         parent.children.splice(insertPosition,0,stmAST);
+        stmAST.parent=parent;
         this.updateParentText(parent);
         return stmAST;
 
@@ -1101,6 +1103,7 @@ export class CFG{
         let astNode=stm.astNode;
         if(astNode&&astNode.parent){
             astNode.parent.children.splice(astNode.parent.children.indexOf(astNode),1);
+            this.updateParentText(astNode.parent);
         }
     }
 
@@ -1186,8 +1189,12 @@ export class CFG{
         this.resetWalked(this.entry);
         this.cfg2Array(this.entry);
     }
+<<<<<<< HEAD
 }
 
 
 
 
+=======
+}
+>>>>>>> 18619e2ab744af07d92f23bf621c08b581571453
