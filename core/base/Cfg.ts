@@ -1189,12 +1189,4 @@ export class CFG{
         this.resetWalked(this.entry);
         this.cfg2Array(this.entry);
     }
-<<<<<<< HEAD
 }
-
-
-
-
-=======
-}
->>>>>>> 18619e2ab744af07d92f23bf621c08b581571453
