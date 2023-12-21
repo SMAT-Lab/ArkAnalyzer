@@ -136,7 +136,7 @@ export class Scene {
 
     public makeCallGraph(): void {
         this.callgraph = new CallGraph(new Set<string>, new Map<string, string[]>);
-        this.callgraph.processFiles(this.projectFiles, this.arkFiles);
+        this.callgraph.processFiles(this.projectFiles);
     }
 
     public makeCallGraphCHA() {

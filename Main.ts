@@ -39,8 +39,8 @@ function run(config: Config) {
     //(4) Re-generate Code
 }
 
-let config: Config = new Config("sample", "./sample");
-run(config);
+//let config: Config = new Config("sample", "./sample");
+//run(config);
 
 const filename = "test.ts";
 const code = `
@@ -50,6 +50,8 @@ const x = {
 `;
 
 function codeGen() {
+    console.log(code);
+    console.log("#################");
     const sourceFile = ts.createSourceFile(
         filename, code, ts.ScriptTarget.Latest
     );
@@ -93,9 +95,9 @@ function codeGen() {
         sourceFile
     );
 
-    console.log(result); // const testsuffix: number = 1 + 2;
+    console.log(result);
 }
 
-//codeGen();
+codeGen();
 
 debugger;

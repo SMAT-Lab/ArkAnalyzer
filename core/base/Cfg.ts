@@ -1189,22 +1189,5 @@ export class CFG{
 }
 
 
-let fileContent = fs.readFileSync('t.ts', 'utf8');
-let ast:ASTree=new ASTree(fileContent);
-let cfg:CFG=new CFG(ast.root,"main");
-cfg.resetWalked(cfg.entry);
-cfg.simplify();
-ast.text=ast.root.text;
-cfg=new CFG(ast.root,"main");
-// let stms=cfg.getStatementByText("let x=1;");
-// if(!(stms&&stms?.length>0))
-//     process.exit()
-// for(let s of stms){
-//     cfg.insertStatementAfter(s,"x++;");
-//     cfg.insertStatementBefore(s,"x--;");
-// }
-cfg.generateDot()
-
-
 
 
