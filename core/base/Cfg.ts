@@ -1035,6 +1035,7 @@ export class CFG{
             insertPosition=parent.children.length;
         let stmAST=insertAST.root.children[0];
         parent.children.splice(insertPosition,0,stmAST);
+        stmAST.parent=parent;
         this.updateParentText(parent);
         return stmAST;
         
@@ -1066,6 +1067,7 @@ export class CFG{
             insertPosition=parent.children.length;
         let stmAST=insertAST.root.children[0]
         parent.children.splice(insertPosition,0,stmAST);
+        stmAST.parent=parent;
         this.updateParentText(parent);
         return stmAST;
 
@@ -1101,6 +1103,7 @@ export class CFG{
         let astNode=stm.astNode;
         if(astNode&&astNode.parent){
             astNode.parent.children.splice(astNode.parent.children.indexOf(astNode),1);
+            this.updateParentText(astNode.parent);
         }
     }
 
@@ -1187,24 +1190,3 @@ export class CFG{
         this.cfg2Array(this.entry);
     }
 }
-
-
-let fileContent = fs.readFileSync('t.ts', 'utf8');
-let ast:ASTree=new ASTree(fileContent);
-let cfg:CFG=new CFG(ast.root,"main");
-cfg.resetWalked(cfg.entry);
-cfg.simplify();
-ast.text=ast.root.text;
-cfg=new CFG(ast.root,"main");
-// let stms=cfg.getStatementByText("let x=1;");
-// if(!(stms&&stms?.length>0))
-//     process.exit()
-// for(let s of stms){
-//     cfg.insertStatementAfter(s,"x++;");
-//     cfg.insertStatementBefore(s,"x--;");
-// }
-cfg.generateDot()
-
-
-
-
