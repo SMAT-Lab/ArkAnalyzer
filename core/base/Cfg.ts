@@ -6,6 +6,7 @@
 import {NodeA,ASTree} from './Ast';
 import * as fs from 'fs';
 import { exec } from 'child_process';
+import { ArkClass } from '../ArkClass';
 
 
 export class statement{
@@ -102,13 +103,15 @@ export class CFG{
     entryBlock:Block;
     exitBlock:Block;
     currentDeclarationKeyword:string;
+    declaringClass: ArkClass;
 
-    constructor(ast:NodeA,name:string|undefined){
+    constructor(ast:NodeA,name:string|undefined, declaringClass: ArkClass){
         if(name)
             this.name=name;
         else
             this.name="undefined";
         this.astRoot=ast;
+        this.declaringClass = declaringClass;
         this.entry=new statement("entry","",ast,0);
         this.loopStack=[];
         this.switchExitStack=[];

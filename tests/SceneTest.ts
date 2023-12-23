@@ -7,8 +7,6 @@ import { ClassSignature } from "../core/ArkSignature";
 function run(config: Config) {
     const projectName: string = config.projectName;
     const input_dir: string = config.input_dir;
-    console.log(input_dir);
-    debugger;
 
     //(1)get all files under input_dir
     //TODO: add support for using tscconfig to get files
@@ -17,12 +15,13 @@ function run(config: Config) {
     //(2) Fill Scene class
     let scene: Scene = new Scene(projectName, projectFiles);
     const fl = fs.realpathSync('./sample/sample.ts');
-    let mtd = scene.getMethod(fl, 'foo', ['NumberKeyword'], ['NumberKeyword']);
-    console.log(mtd);
-    //console.log(mtd?.cfg);
+    let mtd = scene.getMethod(fl, 'foo', ['NumberKeyword'], ['NumberKeyword'], "_DEFAULT_ARK_CLASS");
+    //let mtd = scene.getMethod(fl, '_DEFAULT_ARK_METHOD', [], [], "_DEFAULT_ARK_CLASS");
+    //console.log(mtd?.modifier);
+    console.log(mtd?.cfg?.declaringClass.classSignature);
     
     let clsSig = new ClassSignature(fl, "SecurityDoor");
-    console.log(scene.getFather(clsSig));
+    //console.log(scene.getFather(clsSig));
 }
 
 let config: Config = new Config("sample", "./sample");

@@ -19,20 +19,38 @@ export class ArkClass {
     fields: ArkField[] = [];
     properties: Map<string, string> = new Map([]);//TODO: transform properties to fields
     methods: ArkMethod[] = [];
+    defaultMethod!: ArkMethod;
+    modifiers: string[] = [];
 
     constructor(clsNode: NodeA, arkFile: ArkFile) {
         this.code = clsNode.text;
         this.superClass = null;
         this.declaringArkFile = arkFile;
-        this.buildArkClass(clsNode);
+        if (clsNode.kind != 'ClassDeclaration') {
+            this.buildDefaultArkClass(clsNode);
+        }
+        else {
+            this.buildArkClass(clsNode);
+        }
+        this.genDefaultMethod(clsNode);
+    }
+
+    private genDefaultMethod(clsNode: NodeA) {
+        this.defaultMethod = new ArkMethod(clsNode, this.declaringArkFile, this);
+        this.methods.push(this.defaultMethod);
+    }
+
+    private buildDefaultArkClass(clsNode: NodeA) {
+        this.name = "_DEFAULT_ARK_CLASS";
+        this.classSignature = new ClassSignature(this.declaringArkFile.name, this.name);
     }
 
     private buildArkClass(clsNode: NodeA) {
         this.name = clsNode.classHeadInfo.name;
         this.classSignature = new ClassSignature(this.declaringArkFile.name, this.name);
 
-        let mdfs: string[] = clsNode.classHeadInfo.modifiers;
-        if (mdfs.find(element => element === 'ExportKeyword')) {
+        this.modifiers = clsNode.classHeadInfo.modifiers;
+        if (this.modifiers.find(element => element === 'ExportKeyword')) {
             this.isExported = true;
         }
 

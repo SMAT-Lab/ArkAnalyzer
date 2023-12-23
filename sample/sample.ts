@@ -140,3 +140,11 @@ export class SecurityDoor extends Door implements Alarm, Alarm2 {
         console.log("This is a constrctor!");
     }
 }
+
+abstract class Animal {
+    public name;
+    public constructor(name:string) {
+      this.name = name;
+    }
+    public abstract sayHi():void;
+  }

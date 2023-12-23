@@ -177,14 +177,20 @@ function handleClassNode(node: ts.ClassDeclaration) {
     let name = node.name?.escapedText.toString();
 
     let modifiers: string[] = [];
-    if (node.modifiers != null) {
+    if (node.modifiers != undefined) {
         for (let modifier of node.modifiers) {
+            //TODO: find reason!!
+            //console.log(name, modifier.kind, ts.SyntaxKind.AbstractKeyword);
+            if (ts.SyntaxKind[modifier.kind] == 'FirstContextualKeyword') {
+                modifiers.push('AbstractKeyword');
+                break;
+            }
             modifiers.push(ts.SyntaxKind[modifier.kind]);
         }
     }
 
     let heritageClausesMap = new Map();
-    if (node.heritageClauses != null) {
+    if (node.heritageClauses != undefined) {
         for (let heritageClause of node.heritageClauses) {
             for (let type of heritageClause.types) {
                 let superClassName = (type.expression as ts.Identifier).escapedText;
@@ -245,14 +251,14 @@ function handleFunctionNode(node: ts.FunctionDeclaration | ts.MethodDeclaration 
     }
 
     let modifiers: string[] = [];
-    if (node.modifiers != null) {
+    if (node.modifiers != undefined) {
         for (let modifier of node.modifiers) {
             modifiers.push(ts.SyntaxKind[modifier.kind]);
         }
     }
 
     let returnType: string[] = [];
-    if (node.type != null) {
+    if (node.type != undefined) {
         if (node.type.kind == ts.SyntaxKind.TypeLiteral) {
             for (let member of (node.type as ts.TypeLiteralNode).members) {
                 let memberType = (member as ts.PropertySignature).type;
