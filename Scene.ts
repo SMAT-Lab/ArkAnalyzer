@@ -121,6 +121,17 @@ export class Scene {
         return fl.getMethod(mtdSig);
     }
 
+    public getMethodByName(methodName: string): ArkMethod[] {
+        let arkMethods: ArkMethod[] = [];
+        for (let method of this.getMethods()) {
+            if (method.methodSubSignature.methodName == methodName) {
+                arkMethods.push(method);
+            }
+        }
+
+        return arkMethods;
+    }
+
     public getNamespaces(): ArkNamespace[] {
         return [];
     }
