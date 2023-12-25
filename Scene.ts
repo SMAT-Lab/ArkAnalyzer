@@ -46,10 +46,11 @@ export class Scene {
     }
 
     public getClasses(): ArkClass[] {
+        let arkClasses: ArkClass[] = [];
         for (let fl of this.arkFiles) {
-            //
+            arkClasses.push(...fl.getClasses());
         }
-        return [];
+        return arkClasses;
     }
 
     public getClassGlobally(arkClassType: string): ArkClass | null {
@@ -75,7 +76,15 @@ export class Scene {
     }
 
     public getMethods(): ArkMethod[] {
-        return [];
+        let arkMethods: ArkMethod[] = [];
+
+        let arkClasses = this.getClasses();
+        for (let arkClass of arkClasses) {
+            let methods: ArkMethod[] = arkClass.getMethods();
+            arkMethods.push(...methods);
+        }
+
+        return arkMethods;
     }
 
     public getFather(classSignature: ClassSignature): ArkClass | null {
