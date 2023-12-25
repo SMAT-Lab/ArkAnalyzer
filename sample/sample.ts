@@ -1,5 +1,13 @@
 import fs from 'fs';
 
+function forLoopTest() {
+    let myPerson = new Person(10);
+    for (let i = 0; i < 10; i++) {
+        let newAge = myPerson.age + i;
+        console.log(newAge);
+    }
+}
+
 function test() {
     const sampleData: number[] = [1, 2, 3, 4, 5];
 
