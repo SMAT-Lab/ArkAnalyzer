@@ -7,12 +7,11 @@ export class ClassHierarchyAnalysis {
     methods: Set<string>;
     calls: Map<string, string[]>;
     arkFiles: ArkFile[] = [];
-    instanceMap: Map<string, string>;
+    tips: string = "Warning! This class of generating the call graph has been deprecated."
 
     constructor(methods: Set<string>, calls: Map<string, string[]>) {
         this.methods = methods;
         this.calls = calls;
-        this.instanceMap = new Map<string, string>();
     }
 
     public getFile(fileName: string): ArkFile | null {
@@ -69,9 +68,9 @@ export class ClassHierarchyAnalysis {
                 if (child.kind == "Identifier") {
                     variableName = child.text
                 } else if (child.kind == "NewExpression") {
+                    // TODO: 与类型推理接入
                     variableType = child.children[1].text;
-                    this.instanceMap.set(variableName, variableType)
-                    // TODO: 获取变量所属类
+                    node.putInstanceMap(variableName, variableType);
                 }
             }
         }
@@ -90,8 +89,6 @@ export class ClassHierarchyAnalysis {
             }
         }
 
-        // First child must be `Identifier`
-        // examples of what gets skipped: `fs.readFile('lol.json')` or `ipc.on('something', () => {})`
         if (node.kind == "CallExpression") {
             let calledFunction: string = '';
             // calledFunction = node.children[0].text
@@ -100,17 +97,15 @@ export class ClassHierarchyAnalysis {
                 calledFunction = child.text
                 this.addCall(currentFunction, calledFunction);
             } else if (child.kind == "PropertyAccessExpression") {
-                // TODO:对于形如{a}.{b}的方法调用
-                // 查找a是否是变量，如果是则找到变量所属类，并获得所有的祖宗类
-                // 对祖宗类查找是否存在相符的方法，并将所有符合的方法加入到call集合中
                 let variable = child.children[0].text
-                if (this.instanceMap.has(variable)) {
-                    let classSignature = new ClassSignature(arkFile.name, "");
-                    let arkClass = this.getFatherClass(classSignature);
+                let classType = node.checkInstanceMap(variable)
+                if (classType !== null) {
+                    let classSignature = new ClassSignature(arkFile.name, classType);
+                    let arkClass = arkFile.getClass(classSignature);
                     while (arkClass != null) {
                         let classMethods = arkClass.getMethods();
                         for (let method of classMethods) {
-                            if (method.name == child.children[1].text) {
+                            if (method.name == child.children[2].text) {
                                 calledFunction = `${arkClass.name}.${method.name}`;
                                 this.addCall(currentFunction, calledFunction);
                             }
@@ -129,6 +124,10 @@ export class ClassHierarchyAnalysis {
         }
     }
 
+    private extractFunctionCallsCHAByCFG() {
+
+    }
+
     public processFiles(arkFiles: ArkFile[]) {
         this.arkFiles = arkFiles
         let currentFunction: string = 'dumpy';
@@ -137,6 +136,18 @@ export class ClassHierarchyAnalysis {
             currentFunction = 'dumpy';
             this.extractFunctionCallsCHA(arkFile, arkFile.ast.root, 1, currentFunction, null);
         });
+
+        this.calls.delete('dumpy');
+    }
+
+    public processFilesByCFG(entrypoint: []) {
+        let currentFunction: string = 'dumpy';
+        let entryPoints = entrypoint
+
+        for (let entry of entryPoints) {
+
+        }
+
 
         this.calls.delete('dumpy');
     }
@@ -182,7 +193,5 @@ export class ClassHierarchyAnalysis {
         console.log(this.methods);
         console.log('--------------------------------------');
         console.log(this.calls);
-        console.log('--------------------------------------');
-        console.log(this.instanceMap);
     }
 }

@@ -17,13 +17,20 @@ export class ArkFile {
     importStmts: Statement[] = [];
     methods: ArkMethod[] = [];
     classes: ArkClass[] = [];
+    defaultClass!: ArkClass;
     nameSpaces: ArkNamespace[] = [];
 
     constructor(file: string) {
         this.name = file;
         this.code = fs.readFileSync(file, 'utf8');
         this.ast = new ASTree(this.code);
+        this.genDefaultArkClass();
         this.buildArkFile();
+    }
+
+    private genDefaultArkClass() {
+        this.defaultClass = new ArkClass(this.ast.root, this);
+        this.classes.push(this.defaultClass);
     }
 
     // TODO: check and update
@@ -42,8 +49,8 @@ export class ArkFile {
                 this.classes.push(cls);
             }
             else if (child.kind == 'FunctionDeclaration') {
-                let mthd: ArkMethod = new ArkMethod(child, this, undefined);
-                this.methods.push(mthd);
+                let mthd: ArkMethod = new ArkMethod(child, this, this.defaultClass);
+                this.defaultClass.methods.push(mthd);
             }
         }
     }

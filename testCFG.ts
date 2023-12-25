@@ -5,11 +5,11 @@ import * as fs from 'fs';
 let fileContent = fs.readFileSync('t.ts', 'utf8');
 let ast:ASTree=new ASTree(fileContent);
 console.log(ast.root.text)
-let cfg:CFG=new CFG(ast.root,"main");
+let cfg:CFG=new CFG(ast.root,"main",null);
 cfg.resetWalked(cfg.entry);
 // cfg.simplify();
 ast.text=ast.root.text;
-cfg=new CFG(ast.root,"main");
+cfg=new CFG(ast.root,"main",null);
 // let stms=cfg.getStatementByText("let x=1;");
 // if(!(stms&&stms?.length>0))
 //     process.exit()

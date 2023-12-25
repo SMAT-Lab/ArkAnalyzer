@@ -13,6 +13,7 @@ export class NodeA {
     //properties: any[] = [];
     classHeadInfo: any | undefined;
     functionHeadInfo: any | undefined;
+    instanceMap: Map<string, string> | undefined;
 
     constructor(node: ts.Node | undefined, parent: NodeA | null, children: NodeA[], text: string, start: number, classHeadInfo?: any, functionHeadInfo?: any) {
         this.parent = parent;
@@ -24,12 +25,46 @@ export class NodeA {
         }
         else {
             this.kind = ts.SyntaxKind[node.kind];
+            if (this.kind == "Block" || this.parent === null) {
+                this.instanceMap = new Map<string, string>();
+            } else {
+                this.instanceMap = undefined
+            }
         }
         if (classHeadInfo != undefined) {
             this.classHeadInfo = classHeadInfo;
         }
         if (functionHeadInfo != undefined) {
             this.functionHeadInfo = functionHeadInfo;
+        }
+    }
+
+    public putInstanceMap(variableName: string, variableType: string): void {
+        if (typeof this.instanceMap === "undefined") {
+            // instanceMap 未初始化
+            let parentNode = this.parent
+            if (parentNode != null) {
+                parentNode.putInstanceMap(variableName, variableType)
+            }
+        } else {
+            // instanceMap 已初始化
+            this.instanceMap.set(variableName, variableType)
+        }
+    }
+
+    public checkInstanceMap(variableName: string): string | null {
+        let parentNode = this.parent
+        if (typeof this.instanceMap !== "undefined") {
+            // instanceMap 已初始化
+            if (this.instanceMap.has(variableName)) {
+                let value = this.instanceMap.get(variableName);
+                return value !== undefined ? value : null;
+            }
+        }
+        if (parentNode != null) {
+            return parentNode.checkInstanceMap(variableName)
+        } else {
+            return null;
         }
     }
 }
@@ -75,7 +110,7 @@ export class ASTree {
                 functionHeadInfo = handleFunctionNode(child);
             }
 
-            ca = new NodeA(child, null, [], child.getText(this.sourceFile), child.getStart(this.sourceFile), classHeadInfo, functionHeadInfo);
+            ca = new NodeA(child, nodea, [], child.getText(this.sourceFile), child.getStart(this.sourceFile), classHeadInfo, functionHeadInfo);
             this.copyTree(ca, child);
             cas.push(ca);
             ca.parent = nodea;
@@ -94,7 +129,8 @@ export class ASTree {
     }
 
     singlePrintAST(node: NodeA, i: number) {
-        console.log(' '.repeat(i) + node.kind)
+        console.log('   '.repeat(i) + node.kind)
+        // console.log(' '.repeat(i) + node.kind + ":" + node.text)
         if (node.children == null)
             return;
         for (let c of node.children) {
@@ -177,14 +213,20 @@ function handleClassNode(node: ts.ClassDeclaration) {
     let name = node.name?.escapedText.toString();
 
     let modifiers: string[] = [];
-    if (node.modifiers != null) {
+    if (node.modifiers != undefined) {
         for (let modifier of node.modifiers) {
+            //TODO: find reason!!
+            //console.log(name, modifier.kind, ts.SyntaxKind.AbstractKeyword);
+            if (ts.SyntaxKind[modifier.kind] == 'FirstContextualKeyword') {
+                modifiers.push('AbstractKeyword');
+                break;
+            }
             modifiers.push(ts.SyntaxKind[modifier.kind]);
         }
     }
 
     let heritageClausesMap = new Map();
-    if (node.heritageClauses != null) {
+    if (node.heritageClauses != undefined) {
         for (let heritageClause of node.heritageClauses) {
             for (let type of heritageClause.types) {
                 let superClassName = (type.expression as ts.Identifier).escapedText;
@@ -245,14 +287,14 @@ function handleFunctionNode(node: ts.FunctionDeclaration | ts.MethodDeclaration 
     }
 
     let modifiers: string[] = [];
-    if (node.modifiers != null) {
+    if (node.modifiers != undefined) {
         for (let modifier of node.modifiers) {
             modifiers.push(ts.SyntaxKind[modifier.kind]);
         }
     }
 
     let returnType: string[] = [];
-    if (node.type != null) {
+    if (node.type != undefined) {
         if (node.type.kind == ts.SyntaxKind.TypeLiteral) {
             for (let member of (node.type as ts.TypeLiteralNode).members) {
                 let memberType = (member as ts.PropertySignature).type;

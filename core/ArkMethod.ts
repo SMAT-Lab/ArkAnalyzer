@@ -5,40 +5,47 @@ import { CFG } from "./base/Cfg";
 import { ClassSignature, MethodSignature, MethodSubSignature } from "./ArkSignature";
 
 export class ArkMethod {
-    name: string | undefined;
+    name!: string;
     code: string;
     isExported: boolean = false;
     declaringArkFile: ArkFile;
-    declaringClass: ArkClass | undefined;
+    declaringClass: ArkClass;
     returnType: string[] = [];
     parameterTypes: string[] = [];
-    cfg: CFG | null = null;
-    modifier: string | undefined;
+    cfg: CFG;
+    modifiers: string[] = [];
     methodSignature!: MethodSignature;
     methodSubSignature!: MethodSubSignature;
 
-    constructor(methodNode: NodeA, declaringArkFile: ArkFile, declaringClass: ArkClass | undefined) {
+    constructor(methodNode: NodeA, declaringArkFile: ArkFile, declaringClass: ArkClass) {
         this.code = methodNode.text;
         this.declaringArkFile = declaringArkFile;
-
         this.declaringClass = declaringClass;
-        this.buildArkMethod(methodNode);
+        if (methodNode.kind != 'MethodDeclaration' && methodNode.kind != 'Constructor' && methodNode.kind != 'FunctionDeclaration') {
+            this.buildDefaultArkMethod(methodNode);
+        }
+        else {
+            this.buildArkMethod(methodNode);
+        }
+        this.genSignatures();
+        this.cfg = new CFG(methodNode, this.name, this.declaringClass);
+    }
+
+    private buildDefaultArkMethod(methodNode: NodeA) {
+        this.name = "_DEFAULT_ARK_METHOD";
     }
 
     private buildArkMethod(methodNode: NodeA) {
         this.name = methodNode.functionHeadInfo.name;
+        this.modifiers = methodNode.functionHeadInfo.modifiers;
         
-        let mdfs:string[] = methodNode.functionHeadInfo.modifiers;
-        if (mdfs.find(element => element === 'ExportKeyword')) {
+        //let mdfs:string[] = methodNode.functionHeadInfo.modifiers;
+        if (this.modifiers.find(element => element === 'ExportKeyword')) {
             this.isExported = true;
         }
 
         this.parameterTypes = methodNode.functionHeadInfo.parameterTypes;
         this.returnType = methodNode.functionHeadInfo.returnType;
-
-        this.cfg = new CFG(methodNode, this.name);
-        this.genSignatures();
-        //console.log(this.methodSignature);
     }
 
     public getCFG() {
@@ -46,17 +53,11 @@ export class ArkMethod {
     }
 
     public getModifier() {
-        return this.modifier;
+        return this.modifiers;
     }
 
     private genSignatures() {
         this.methodSubSignature = new MethodSubSignature(this.name, this.parameterTypes, this.returnType);
-        if (!this.declaringClass) {
-            let clsSig = new ClassSignature(this.declaringArkFile.name, undefined);
-            this.methodSignature = new MethodSignature(this.methodSubSignature, clsSig);
-        }
-        else {
-            this.methodSignature = new MethodSignature(this.methodSubSignature, this.declaringClass.classSignature);
-        }
+        this.methodSignature = new MethodSignature(this.methodSubSignature, this.declaringClass.classSignature);
     }
 }

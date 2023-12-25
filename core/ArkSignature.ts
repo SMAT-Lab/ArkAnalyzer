@@ -8,6 +8,10 @@ export class MethodSubSignature {
         this.parameters = parameters;
         this.returnType = returnType;
     }
+
+    public toString(): string {
+        return `${this.methodName}(${this.parameters})`
+    }
 }
 
 export class MethodSignature {
@@ -17,6 +21,10 @@ export class MethodSignature {
         this.methodSubSignature = subSignature;
         this.arkClass = arkClass;
     }
+
+    public toString(): string {
+        return `[${this.arkClass.arkFile}.${this.arkClass.classType}].${this.methodSubSignature.methodName}`
+    }
 }
 
 export class ClassSignature {
@@ -25,6 +33,10 @@ export class ClassSignature {
     constructor (arkFile:string, classType:string | undefined) {
         this.arkFile = arkFile;
         this.classType = classType;
+    }
+
+    public toString(): string {
+        return `${this.arkFile}.${this.classType}`
     }
 }
 

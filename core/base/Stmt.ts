@@ -249,7 +249,7 @@ export class ArkForOfStatement extends ArkAbstractStmt implements ArkIterationSt
 }
 
 // utils for ArkStatement
-export function isCallStatemnt(stmt:ArkStmt):boolean{
+export function isCallStatement(stmt:ArkStmt):boolean{
     return stmt instanceof ArkExpressionStatement &&  isCallExpression(stmt.expression);
 }
 
