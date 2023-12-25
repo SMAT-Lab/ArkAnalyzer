@@ -1,23 +1,27 @@
-import {MethodSignature} from "../core/ArkSignature";
+import {ClassSignature, MethodSignature} from "../core/ArkSignature";
 import {CFG} from "../core/base/Cfg";
 import {ArkFile} from "../core/ArkFile";
 import {ArkMethod} from "../core/ArkMethod";
+import {ArkCallExpression} from "../core/base/Expr";
+import {isCallStatement} from "../core/base/Stmt";
+import {Scene} from "../Scene";
+import {ArkClass} from "../core/ArkClass";
 
 export abstract class AbstractCallGraphAlgorithm {
-    private methods : Set<MethodSignature>;
-    private calls : Map<MethodSignature, MethodSignature[]>;
+    private methods : Set<string>;
+    private calls : Map<string, string[]>;
     private _signatureManager: MethodSignatureManager;
-    private _arkFiles: ArkFileManager;
+    private _scene: SceneManager;
 
     protected abstract resolveCall(sourceMethodSignature: MethodSignature, invokeExpression): MethodSignature[];
     protected abstract preProcessMethod(methodSignature: MethodSignature): void;
 
-    public initialize(arkFiles : ArkFile[]): void {
-        this.methods = new Set<MethodSignature>();
-        this.calls = new Map<MethodSignature, MethodSignature[]>();
+    public initialize(scene: Scene): void {
+        this.methods = new Set<string>();
+        this.calls = new Map<string, string[]>();
         this._signatureManager = new MethodSignatureManager();
-        this._arkFiles = new ArkFileManager();
-        this._arkFiles.arkFiles = arkFiles;
+        this._scene = new SceneManager();
+        this._scene.scene = scene;
     }
 
     public loadCallGraph(entryPoints: MethodSignature[]) {
@@ -29,30 +33,32 @@ export abstract class AbstractCallGraphAlgorithm {
     }
 
 
-    get arkFiles(): ArkFileManager {
-        return this._arkFiles;
+    get scene(): SceneManager {
+        return this._scene;
     }
 
     protected addMethod(method: MethodSignature): void {
-        this.methods.add(method);
+        this.methods.add(method.toString());
     }
 
     protected hasMethod(method: MethodSignature): boolean {
-        return this.methods.has(method);
+        return this.methods.has(method.toString());
     }
 
     protected addCall(source: MethodSignature, target: MethodSignature): void {
-        if (this.calls.has(source)) {
-            this.calls.get(source).push(target);
+        if (this.calls.has(source.toString())) {
+            // for (let call of this.calls.get())
+            this.calls.get(source.toString()).push(target.toString());
         } else {
-            this.calls.set(source, [target]);
+            this.calls.set(source.toString(), [target.toString()]);
         }
     }
 
-    protected getCall(source: MethodSignature): MethodSignature[] {
-        return this.calls.get(source);
+    protected getCall(source: MethodSignature): string[] {
+        return this.calls.get(source.toString());
     }
 
+    // call graph主要处理函数，遍历workList处理函数
     public processWorkList(
         entryPoints: MethodSignature[],
     ) {
@@ -63,35 +69,36 @@ export abstract class AbstractCallGraphAlgorithm {
             if (this.signatureManager.findInProcessedList(methodSignature)) {
                 continue
             }
+            // 前处理，主要用于RTA
             this.preProcessMethod(methodSignature);
-            // 获取该function中的调用目标
+            // 处理该function, method中的调用目标
             let invokeTargets = this.processMethod(methodSignature)
+            // 将调用目标加入到workList
             for (let invokeTarget of invokeTargets) {
                 this.signatureManager.addToWorkList(invokeTarget);
             }
-
+            // 当前函数标记为已处理
             this.signatureManager.addToProcessedList(methodSignature);
         }
     }
 
+    // 对具体方法解析其方法体，获取该方法内的调用关系
     public processMethod(sourceMethodSignature: MethodSignature): MethodSignature[] {
-        // TODO: 根据方法签名获取cfg
-        let cfg : CFG;
+        let cfg : CFG = this._scene.getMethod(sourceMethodSignature).cfg;
         let invocationTargets : MethodSignature[]
-        // TODO: 获取cfg中的语句
-        // for (let stmt of cfg.?) {
-        //     // TODO: 获取调用语句，并调用相关算法(CHA, RTA)解析调用语句获取调用目标
-        //     if (stmt == invokeStmt) {
-        //         invocationTargets = this.resolveCall(sourceMethodSignature, stmt)
-        //     }
-        // }
-        return []
+        for (let stmt of cfg.statementArray) {
+            if (isCallStatement(stmt)) {
+                // 调用CHA, RTA处理调用语句
+                invocationTargets = this.resolveCall(sourceMethodSignature, stmt)
+            }
+        }
+        return invocationTargets
     }
 }
 
 class MethodSignatureManager {
     private _workList: MethodSignature[] = [];
-    private _processedList: MethodSignature[] = [];
+    private _processedList: string[] = [];
 
     get workList(): MethodSignature[] {
         return this._workList;
@@ -101,11 +108,11 @@ class MethodSignatureManager {
         this._workList = list;
     }
 
-    get processedList(): MethodSignature[] {
+    get processedList(): string[] {
         return this._processedList;
     }
 
-    set processedList(list: MethodSignature[]) {
+    set processedList(list: string[]) {
         this._processedList = list;
     }
 
@@ -113,8 +120,8 @@ class MethodSignatureManager {
         return this.workList.find(item => item === signature);
     }
 
-    public findInProcessedList(signature: MethodSignature): MethodSignature | undefined {
-        return this.processedList.find(item => item === signature);
+    public findInProcessedList(signature: MethodSignature): string {
+        return this.processedList.find(item => item === signature.toString());
     }
 
     public addToWorkList(signature: MethodSignature): void {
@@ -122,7 +129,7 @@ class MethodSignatureManager {
     }
 
     public addToProcessedList(signature: MethodSignature): void {
-        this.processedList.push(signature);
+        this.processedList.push(signature.toString());
     }
 
     public removeFromWorkList(signature: MethodSignature): void {
@@ -130,28 +137,32 @@ class MethodSignatureManager {
     }
 
     public removeFromProcessedList(signature: MethodSignature): void {
-        this.processedList = this.processedList.filter(item => item !== signature);
+        this.processedList = this.processedList.filter(item => item !== signature.toString());
     }
 }
 
-class ArkFileManager {
-    private _arkFiles: ArkFile[] = [];
+class SceneManager {
+    private _scene: Scene;
 
-    set arkFiles(value: ArkFile[]) {
-        this._arkFiles = value;
+    set scene(value: Scene) {
+        this._scene = value;
     }
 
-    get arkFiles(): ArkFile[] {
-        return this._arkFiles;
+    get scene(): Scene {
+        return this._scene;
     }
 
     public getMethod(method: MethodSignature): ArkMethod | null {
-        for (let arkFile of this._arkFiles) {
-            let tempMethod = arkFile.getMethod(method);
-            if (tempMethod != null) {
-                return tempMethod;
-            }
-        }
+        this._scene.getMethod(method.arkClass.arkFile,
+            method.methodSubSignature.methodName,
+            method.methodSubSignature.parameters,
+            [],
+            method.arkClass.classType
+            )
         return null;
+    }
+
+    public getClass(arkClass: ClassSignature): ArkClass | null {
+        return this._scene.getClass(arkClass.arkFile, arkClass.classType)
     }
 }
