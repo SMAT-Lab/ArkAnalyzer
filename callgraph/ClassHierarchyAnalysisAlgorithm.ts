@@ -11,7 +11,7 @@ class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm {
         let concreteMethod : ArkMethod;
         let callTargetMethods : MethodSignature[];
 
-        concreteMethodSignature = cfg.getMethodSignature(invokeExpression);
+        // concreteMethodSignature = cfg.getMethodSignature(invokeExpression);
         concreteMethod = this.arkFiles.getMethod(concreteMethodSignature)
 
         if (concreteMethodSignature == null ||

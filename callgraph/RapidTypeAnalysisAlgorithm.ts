@@ -14,7 +14,7 @@ class RapidTypeAnalysisAlgorithm extends AbstractCallGraphAlgorithm {
         let callTargetMethods : MethodSignature[];
 
         // TODO: 根据调用语句获取具体方法，函数签名
-        concreteMethodSignature = cfg.getMethodSignature(invokeExpression);
+        // concreteMethodSignature = cfg.getMethodSignature(invokeExpression);
         concreteMethod = this.arkFiles.getMethod(concreteMethodSignature)
 
         if (concreteMethodSignature == null ||
