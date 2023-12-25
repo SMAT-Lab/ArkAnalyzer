@@ -26,6 +26,7 @@ export class statement{
     scopeID:number;
     addressCode3:string[];
     haveCall:boolean;
+    block:Block|null;
 
     constructor(type:string,code:string,astNode:NodeA|null,scopeID:number){
         this.type=type;
@@ -42,6 +43,7 @@ export class statement{
         this.defspecial=new Set<Variable>;
         this.addressCode3=[];
         this.haveCall=false;
+        this.block=null;
     }
 }
 
@@ -99,10 +101,12 @@ export class Block{
     stms:statement[];
     nexts:Block[];
     walked:boolean=false;
-    constructor(id:number,stms:statement[],nexts:Block[]){
+    loopNode:NodeA|null;
+    constructor(id:number,stms:statement[],nexts:Block[],loopNode:NodeA|null){
         this.id=id;
         this.stms=stms;
         this.nexts=nexts;
+        this.loopNode=loopNode;
     }
 }
 
@@ -148,9 +152,9 @@ export class CFG{
         this.tempVariableNum=0;
         this.current3ACstm=this.entry;
         this.blocks=[];
-        this.entryBlock=new Block(this.blocks.length,[this.entry],[]);
+        this.entryBlock=new Block(this.blocks.length,[this.entry],[],null);
         this.blocks.push(this.entryBlock);
-        this.exitBlock=new Block(-1,[this.entry],[]);
+        this.exitBlock=new Block(-1,[this.entry],[],null);
         this.currentDeclarationKeyword="";
         this.variables=[];
         this.buildCFG();
@@ -505,7 +509,7 @@ export class CFG{
             return;
         stm.walked=true;
         if(stm.type=="entry"){
-            let b=new Block(this.blocks.length,[],[]);
+            let b=new Block(this.blocks.length,[],[],null);
             this.blocks.push(b);
             block.nexts.push(b);
             if(stm.next!=null)
@@ -513,6 +517,7 @@ export class CFG{
             return;
         }
         block.stms.push(stm);
+        stm.block=block;
         if(stm.type=="ifStatement"||stm.type=="loopStatement"||stm.type=="catchOrNot"){
             let cstm=stm as conditionStatement;
             if(cstm.nextT?.type.includes("Exit")){
@@ -541,9 +546,15 @@ export class CFG{
                 this.errorIf(cstm);
                 return;
             }
-            let b1=new Block(this.blocks.length,[],[]);
+            let b1:Block,b2:Block;
+            if(stm.type=="loopStatement"){
+                b1=new Block(this.blocks.length,[],[],stm.astNode);
+            }
+            else{
+                b1=new Block(this.blocks.length,[],[],null);
+            }
+            b2=new Block(this.blocks.length,[],[],null);
             this.blocks.push(b1);
-            let b2=new Block(this.blocks.length,[],[]);
             this.blocks.push(b2);
             block.nexts.push(b1);
             block.nexts.push(b2);
@@ -565,7 +576,7 @@ export class CFG{
                     }
                     sstm.nexts[j]=p;
                 }
-                let b=new Block(this.blocks.length,[],[]);
+                let b=new Block(this.blocks.length,[],[],null);
                 this.blocks.push(b);
                 block.nexts.push(b);
                 this.deleteExit(sstm.nexts[j],b);
@@ -583,13 +594,19 @@ export class CFG{
                     p=p.next;
                 }
                 stm.next=p;
-                let b=new Block(this.blocks.length,[],[]);
+                let b=new Block(this.blocks.length,[],[],null);
                 this.blocks.push(b);
                 block.nexts.push(b);
                 block=b;
             }
-            if(stm.next!=null)
+            if(stm.next!=null){
+                if(stm.next.type=="loopStatement"&&stm.next.block){
+                    block.nexts.push(stm.next.block);
+                    block=stm.next.block;
+                }
                 this.deleteExit(stm.next,block);
+
+            }
         }
     }
 
