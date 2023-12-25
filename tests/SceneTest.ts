@@ -15,12 +15,23 @@ function run(config: Config) {
     //(2) Fill Scene class
     let scene: Scene = new Scene(projectName, projectFiles);
     const fl = fs.realpathSync('./sample/sample.ts');
-    let mtd = scene.getMethod(fl, 'foo', ['NumberKeyword'], ['NumberKeyword'], "_DEFAULT_ARK_CLASS");
+    let mtd = scene.getMethod(fl, 'forLoopTest', [], [], "_DEFAULT_ARK_CLASS");
     //let mtd = scene.getMethod(fl, '_DEFAULT_ARK_METHOD', [], [], "_DEFAULT_ARK_CLASS");
     //console.log(mtd?.modifier);
-    console.log(mtd?.cfg?.declaringClass.classSignature);
+    if (!mtd) {
+        throw new Error('No ArkMethod found.');
+    }
+    //console.log(mtd.cfg.blocks);
+    for (let stmt of mtd.cfg.statementArray) {
+        //console.log(stmt.type);
+        if (stmt.type == 'loopStatement') {
+            for (let cld of stmt.astNode?.children!) {
+                //console.log("#####", cld.kind, "#####", cld.text);
+            }
+        }
+    }
     
-    let clsSig = new ClassSignature(fl, "SecurityDoor");
+    //let clsSig = new ClassSignature(fl, "SecurityDoor");
     //console.log(scene.getFather(clsSig));
 }
 

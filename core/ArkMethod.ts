@@ -12,7 +12,7 @@ export class ArkMethod {
     declaringClass: ArkClass;
     returnType: string[] = [];
     parameterTypes: string[] = [];
-    cfg: CFG | null = null;
+    cfg: CFG;
     modifiers: string[] = [];
     methodSignature!: MethodSignature;
     methodSubSignature!: MethodSubSignature;
