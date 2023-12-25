@@ -2,25 +2,28 @@ import {AbstractCallGraphAlgorithm} from "./AbstractCallGraphAlgorithm";
 import {ClassSignature, MethodSignature, MethodSubSignature} from "../core/ArkSignature";
 import {ArkClass} from "../core/ArkClass";
 import {ArkFile} from "../core/ArkFile";
+import {ArkMethod} from "../core/ArkMethod";
 
 class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm {
     protected resolveCall(sourceMethodSignature: MethodSignature, invokeExpression): MethodSignature[] {
         // TODO: 根据调用语句获取具体方法签名或函数签名
-        let concreteMethod : MethodSignature;
+        let concreteMethodSignature : MethodSignature;
+        let concreteMethod : ArkMethod;
         let callTargetMethods : MethodSignature[];
 
-        // concreteMethod = cfg.getMethodSignature(invokeExpression);
+        concreteMethodSignature = cfg.getMethodSignature(invokeExpression);
+        concreteMethod = this.arkFiles.getMethod(concreteMethodSignature)
 
-        // if (concreteMethod == null ||
-        //     concreteMethod.isStatic()) {
-        //     // 若调用函数为静态方法直接返回签名
-        //     callTargetMethods.push(concreteMethod)
-        //     return callTargetMethods
-        // } else {
-        //     // TODO: 根据获取的方法签名获取可能的全部调用目标方法，方法签名需要包括所在类
-        //     callTargetMethods = this.resolveAllCallTargets(concreteMethod)
-        //     return callTargetMethods
-        // }
+        if (concreteMethodSignature == null ||
+            concreteMethod.modifiers.includes("StaticKeyword")) {
+            // 若调用函数为静态方法直接返回签名
+            callTargetMethods.push(concreteMethodSignature)
+            return callTargetMethods
+        } else {
+            // TODO: 根据获取的方法签名获取可能的全部调用目标方法，方法签名需要包括所在类
+            callTargetMethods = this.resolveAllCallTargets(concreteMethodSignature)
+            return callTargetMethods
+        }
         return []
     }
 

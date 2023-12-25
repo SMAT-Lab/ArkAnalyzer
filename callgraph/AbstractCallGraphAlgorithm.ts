@@ -1,18 +1,23 @@
 import {MethodSignature} from "../core/ArkSignature";
 import {CFG} from "../core/base/Cfg";
+import {ArkFile} from "../core/ArkFile";
+import {ArkMethod} from "../core/ArkMethod";
 
 export abstract class AbstractCallGraphAlgorithm {
     private methods : Set<MethodSignature>;
     private calls : Map<MethodSignature, MethodSignature[]>;
     private _signatureManager: MethodSignatureManager;
+    private _arkFiles: ArkFileManager;
 
     protected abstract resolveCall(sourceMethodSignature: MethodSignature, invokeExpression): MethodSignature[];
     protected abstract preProcessMethod(methodSignature: MethodSignature): void;
 
-    public initialize(): void {
+    public initialize(arkFiles : ArkFile[]): void {
         this.methods = new Set<MethodSignature>();
         this.calls = new Map<MethodSignature, MethodSignature[]>();
         this._signatureManager = new MethodSignatureManager();
+        this._arkFiles = new ArkFileManager();
+        this._arkFiles.arkFiles = arkFiles;
     }
 
     public loadCallGraph(entryPoints: MethodSignature[]) {
@@ -21,6 +26,11 @@ export abstract class AbstractCallGraphAlgorithm {
 
     get signatureManager(): MethodSignatureManager {
         return this._signatureManager;
+    }
+
+
+    get arkFiles(): ArkFileManager {
+        return this._arkFiles;
     }
 
     protected addMethod(method: MethodSignature): void {
@@ -121,5 +131,27 @@ class MethodSignatureManager {
 
     public removeFromProcessedList(signature: MethodSignature): void {
         this.processedList = this.processedList.filter(item => item !== signature);
+    }
+}
+
+class ArkFileManager {
+    private _arkFiles: ArkFile[] = [];
+
+    set arkFiles(value: ArkFile[]) {
+        this._arkFiles = value;
+    }
+
+    get arkFiles(): ArkFile[] {
+        return this._arkFiles;
+    }
+
+    public getMethod(method: MethodSignature): ArkMethod | null {
+        for (let arkFile of this._arkFiles) {
+            let tempMethod = arkFile.getMethod(method);
+            if (tempMethod != null) {
+                return tempMethod;
+            }
+        }
+        return null;
     }
 }

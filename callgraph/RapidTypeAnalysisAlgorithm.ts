@@ -1,6 +1,7 @@
 import {AbstractCallGraphAlgorithm} from "./AbstractCallGraphAlgorithm";
 import {ClassSignature, MethodSignature, MethodSubSignature} from "../core/ArkSignature";
 import {CFG} from "../core/base/Cfg";
+import {ArkMethod} from "../core/ArkMethod";
 
 type Tuple = [MethodSignature, MethodSignature];
 class RapidTypeAnalysisAlgorithm extends AbstractCallGraphAlgorithm {
@@ -8,27 +9,32 @@ class RapidTypeAnalysisAlgorithm extends AbstractCallGraphAlgorithm {
     // TODO: ignoredCalls未做重复检查
     private ignoredCalls : Map<ClassSignature, Tuple[]>
     protected resolveCall(sourceMethodSignature: MethodSignature, invokeExpression): MethodSignature[] {
-        // TODO: 根据调用语句获取具体方法，函数签名
-        let concreteMethod : MethodSignature;
+        let concreteMethodSignature : MethodSignature;
+        let concreteMethod : ArkMethod;
         let callTargetMethods : MethodSignature[];
 
-        // if (concreteMethod == null ||
-        //     concreteMethod.isStatic()) {
-        //     // 若调用函数为静态方法直接返回签名
-        //     callTargetMethods.push(concreteMethod)
-        //     return callTargetMethods
-        // } else {
-        //     if (this.instancedClasses.has(sourceMethodSignature.arkClass)) {
-        //         // TODO: 获取可能的全部调用目标方法
-        //         callTargetMethods = this.resolveAllCallTargets(sourceMethodSignature, concreteMethod)
-        //         if (!concreteMethod.isAbstract()) {
-        //             callTargetMethods.push(concreteMethod)
-        //         }
-        //     } else {
-        //         // TODO: 未实例化需要加入到ignoredCalls中
-        //     }
-        //     return callTargetMethods
-        // }
+        // TODO: 根据调用语句获取具体方法，函数签名
+        concreteMethodSignature = cfg.getMethodSignature(invokeExpression);
+        concreteMethod = this.arkFiles.getMethod(concreteMethodSignature)
+
+        if (concreteMethodSignature == null ||
+            concreteMethod.modifiers.includes("StaticKeyword")) {
+            // 若调用函数为静态方法直接返回签名
+            callTargetMethods.push(concreteMethodSignature)
+            return callTargetMethods
+        } else {
+            if (this.instancedClasses.has(sourceMethodSignature.arkClass)) {
+                // 获取可能的全部调用目标方法
+                callTargetMethods = this.resolveAllCallTargets(sourceMethodSignature, concreteMethodSignature)
+                if (!concreteMethod.modifiers.includes("AbstractKeyword")) {
+                    callTargetMethods.push(concreteMethodSignature)
+                }
+            } else {
+                // TODO: 未实例化需要加入到ignoredCalls中
+
+            }
+            return callTargetMethods
+        }
         return []
     }
 
