@@ -19,11 +19,12 @@ export class statement{
     // TODO:以下两个属性需要获取    
     line:number;//行号//ast节点存了一个start值为这段代码的起始地址，可以从start开始往回查原文有几个换行符确定行号    
     astNode:NodeA|null;//ast节点对象
-    use:Set<String>;
-    def:Set<String>;
-    defspecial:Set<String>;
+    use:Set<Variable>;
+    def:Set<Variable>;
+    defspecial:Set<Variable>;
     scopeID:number;
     addressCode3:string[];
+    haveCall:boolean;
 
     constructor(type:string,code:string,astNode:NodeA|null,scopeID:number){
         this.type=type;
@@ -35,10 +36,11 @@ export class statement{
         this.line = 0;        
         this.astNode = astNode;
         this.scopeID=scopeID;
-        this.use=new Set<String>;
-        this.def=new Set<String>;
-        this.defspecial=new Set<String>;
+        this.use=new Set<Variable>;
+        this.def=new Set<Variable>;
+        this.defspecial=new Set<Variable>;
         this.addressCode3=[];
+        this.haveCall=false;
     }
 }
 
@@ -57,6 +59,26 @@ export class switchStatement extends statement{
     constructor(type:string,code:string,astNode:NodeA,scopeID:number){
         super(type,code,astNode,scopeID);
         this.nexts=[];
+    }
+}
+
+export class DefUseChain{
+    def:statement;
+    use:statement;
+    constructor(def:statement,use:statement){
+        this.def=def;
+        this.use=use;
+    }
+}
+
+export class Variable{
+    name:string;
+    lastDef:statement;
+    defUse:DefUseChain[];
+    constructor(name:string,lastDef:statement){
+        this.name=name;
+        this.lastDef=lastDef;
+        this.defUse=[];
     }
 }
 
@@ -102,6 +124,7 @@ export class CFG{
     entryBlock:Block;
     exitBlock:Block;
     currentDeclarationKeyword:string;
+    variables:Variable[];
 
     constructor(ast:NodeA,name:string|undefined){
         if(name)
@@ -126,6 +149,7 @@ export class CFG{
         this.blocks.push(this.entryBlock);
         this.exitBlock=new Block(-1,[this.entry],[]);
         this.currentDeclarationKeyword="";
+        this.variables=[];
         this.buildCFG();
     }
 
@@ -174,7 +198,6 @@ export class CFG{
         for (let i = 0; i < node.children.length; i++) {
             let c = node.children[i];
             if(c.kind=="FirstStatement"||c.kind=="VariableStatement"||c.kind=="ExpressionStatement"||c.kind=="ThrowStatement"){
-                let block=checkBlock(c);
                 if(c.kind=="FirstStatement"||c.kind=="VariableStatement"){
                     let declList=c.children[this.findChildIndex(c,"VariableDeclarationList")];
                     declList=declList.children[this.findChildIndex(declList,"SyntaxList")];
@@ -182,6 +205,7 @@ export class CFG{
                         scope.variable.add(decl.children[0]?.text);
                     }
                 }
+                let block=checkBlock(c);
                 if(block==null){
                     let s=new statement("statement",c.text,c,scope.id);
                     judgeLastType(s);
@@ -200,8 +224,7 @@ export class CFG{
                 let s=new statement("statement",c.text,c,scope.id);
                 judgeLastType(s);
                 lastStatement=s;
-                s.astNode = c;//获取ast节点
-                // TODO: 获取对应行号
+                s.astNode = c;
                 break;
             }
             if(c.kind=="BreakStatement"){
@@ -566,10 +589,26 @@ export class CFG{
                 this.deleteExit(stm.next,block);
         }
     }
-    buildLast(stm:statement){
+
+    nodeHaveCall(node:NodeA):boolean{
+        if(node.kind=="CallExpression"||node.kind=="NewExpression"){
+            return true;
+        }
+        let haveCall=false;
+        for(let child of node.children){
+            if(child.kind=="Block")
+                continue;
+            haveCall=haveCall||this.nodeHaveCall(child);
+        }
+        return haveCall;
+    }
+
+    buildLastAndHaveCall(stm:statement){
         if(stm.walked)
             return;
         stm.walked=true;
+        if(stm.astNode)
+            stm.haveCall=this.nodeHaveCall(stm.astNode);
         if(stm.type=="ifStatement"||stm.type=="loopStatement"||stm.type=="catchOrNot"){
             let cstm=stm as conditionStatement;
             if(cstm.nextT==null||cstm.nextF==null){
@@ -578,20 +617,20 @@ export class CFG{
             }
             cstm.nextT.lasts.push(cstm);
             cstm.nextF.lasts.push(cstm);
-            this.buildLast(cstm.nextT);
-            this.buildLast(cstm.nextF);
+            this.buildLastAndHaveCall(cstm.nextT);
+            this.buildLastAndHaveCall(cstm.nextF);
         }
         else if(stm.type=="switchStatement"){
             let sstm=stm as switchStatement;
             for(let s of sstm.nexts){
                 s.lasts.push(sstm);
-                this.buildLast(s);
+                this.buildLastAndHaveCall(s);
             }
         }
         else{
             if(stm.next){
                 stm.next?.lasts.push(stm);
-                this.buildLast(stm.next);
+                this.buildLastAndHaveCall(stm.next);
             }
         }
         
@@ -748,17 +787,27 @@ export class CFG{
         // });
         
     }
-    // use，def要区分scope。
-    // ddg可能有多个来源，但现在只有一个
+
     dfsUseDef(stm:statement,node:NodeA,mode:string){
-        let set:Set<String>=new Set();
+        let set:Set<Variable>=new Set();
         if(mode=="use")
             set=stm.use;
         else if(mode=="def")
             set=stm.def;
 
         if(node.kind=="Identifier"||node.kind=="PropertyAccessExpression"){
-            set.add(node.text);
+            for(let v of this.variables){
+                if(v.name==node.text){
+                    set.add(v);
+                    if(mode=="use"){
+                        let chain=new DefUseChain(v.lastDef,stm);
+                        v.defUse.push(chain);
+                    }
+                    else{
+                        v.lastDef=stm;
+                    }
+                }
+            }
             return;
         }
         let indexOfDef=-1;
@@ -767,9 +816,14 @@ export class CFG{
             this.dfsUseDef(stm,node.children[indexOfDef],"def");
         }
         for(let i=0;i<node.children.length;i++){
+            if(i==indexOfDef)
+                continue;
+            let child=node.children[i];
+            this.dfsUseDef(stm, child,mode);
+        }
+        for(let i=0;i<node.children.length;i++){
             let child=node.children[i];
             if(child.kind=="FirstAssignment"){
-                // stm.def.add(node.children[i-1].text)
                 if(i>=2&&node.children[i-2].kind=="ColonToken"){
                     indexOfDef=i-3;
                     this.dfsUseDef(stm,node.children[indexOfDef],"def");
@@ -780,15 +834,8 @@ export class CFG{
                 }
             }
             if(child.kind.includes("EqualsToken")&&child.kind!="EqualsEqualsToken"||child.kind=="PlusPlusToken"||child.kind=="MinusMinusToken"){
-                // stm.def.add(node.children[i-1].text)
                 this.dfsUseDef(stm,node.children[i-1],"def")
             }
-        }
-        for(let i=0;i<node.children.length;i++){
-            if(i==indexOfDef)
-                continue;
-            let child=node.children[i];
-            this.dfsUseDef(stm, child,mode);
         }
     }
     findChildIndex(node:NodeA,kind:string):number{
@@ -800,18 +847,32 @@ export class CFG{
     }
     generateUseDef(stm:statement){
         if(stm.walked)return;
-        // if(stm.type=="entry"||stm.type=="exit")return;
         stm.walked = true;
-        // TODO:生成此节点的use、def
         if(stm.astNode == null)return;
         let node:NodeA = stm.astNode;
         switch(stm.astNode?.kind){
+            case "FirstStatement":
+            case "VariableStatement":
+                let c=stm.astNode;
+                let declList=c.children[this.findChildIndex(c,"VariableDeclarationList")];
+                declList=declList.children[this.findChildIndex(declList,"SyntaxList")];
+                for(let decl of declList.children){
+                    if(decl.children[0]){
+                        const v=new Variable(decl.children[0]?.text,stm);
+                        this.variables.push(v);
+                        this.dfsUseDef(stm,decl,"use");
+                    }
+                }
+                break;
             case "IfStatement":
             case "WhileStatement":
             case "DoStatement":
                 for(let child of node.children){
                     if(child.kind=="Identifier"){
-                        stm.use.add(child.text);
+                        for(let v of this.variables){
+                            if(v.name==child.text)
+                                stm.use.add(v);
+                        }
                     }
                     else if(child.kind=="BinaryExpression"){
                         this.dfsUseDef(stm,child,"use");
@@ -820,7 +881,7 @@ export class CFG{
                 break;
             case "ForStatement":
                 let semicolon=0;
-                let beforeDef=new Set<String>;
+                let beforeDef=new Set<Variable>;
                 for(let child of node.children){
                     if(child.kind=="SemicolonToken"){
                         semicolon++;
@@ -885,34 +946,50 @@ export class CFG{
             this.ac3(node.children[0],tempV,begin);
             return;
         }
-        if(node.kind=="CallExpression"){
-            if(node.children[0].children[0]?.children.length>0)
-                simpleStm+="temp"+this.tempVariableNum;
-            let propertyAccessExpression=node.children[0];
-            // this.ac3(propertyAccessExpression,this.tempVariableNum++);
-            if(propertyAccessExpression.children.length==0){
-                simpleStm+=propertyAccessExpression.text;
-            }
-            for(let i=0;i<propertyAccessExpression.children.length;i++){
-                let cc=propertyAccessExpression.children[i];
-                if(i==0&&cc.children.length>0){
-                    this.ac3(cc,this.tempVariableNum++,false);
+        if(node.kind=="CallExpression"||node.kind=="NewExpression"){
+            if(node.kind=="CallExpression"){
+                if(node.children[0].children[0]?.children.length>0)
+                    simpleStm+="temp"+this.tempVariableNum;
+                let propertyAccessExpression=node.children[0];
+                // this.ac3(propertyAccessExpression,this.tempVariableNum++);
+                if(propertyAccessExpression.children.length==0){
+                    simpleStm+=propertyAccessExpression.text;
                 }
+                for(let i=0;i<propertyAccessExpression.children.length;i++){
+                    let cc=propertyAccessExpression.children[i];
+                    if(i==0&&cc.children.length>0){
+                        this.ac3(cc,this.tempVariableNum++,false);
+                    }
+                    else{
+                        simpleStm+=cc.text;
+                    }
+                }
+            }
+            else{
+                simpleStm+="new "+node.children[this.findChildIndex(node,"Identifier")].text;
+            }
+            simpleStm+="(";
+            let params=node.children[this.findChildIndex(node,"SyntaxList")];
+            for(let param of params.children){
+                if(param.children.length<2)
+                    simpleStm+=param.text;
                 else{
-                    simpleStm+=cc.text;
+                    simpleStm+="temp"+this.tempVariableNum;
+                    this.ac3(param,this.tempVariableNum++,false);
                 }
             }
-            for(let i=1;i<node.children.length;i++){
-                simpleStm+=node.children[i].text;
-            }
+            simpleStm+=")";
+            // for(let i=1;i<node.children.length;i++){
+            //     simpleStm+=node.children[i].text;
+            // }
         }
         else{
             for(let child of node.children){
-                if(child.kind=="PropertyAccessExpression"||child.kind=="BinaryExpression"||child.kind=="CallExpression"||child.kind=="ElementAccessExpression"){
-                    // if(child.kind=="PropertyAccessExpression"&&node.kind=="CallExpression"){
-                    //     this.ac3(child,this.tempVariableNum++);
-                    //     return;
-                    // }
+                if(child.kind=="PropertyAccessExpression"||child.kind=="BinaryExpression"||child.kind=="CallExpression"||node.kind=="NewExpression"||child.kind=="ElementAccessExpression"){
+                    if(child.kind=="CallExpression"&&node.children.length<3){
+                        this.ac3(child,this.tempVariableNum++,false);
+                        return;
+                    }
                     simpleStm+="temp"+this.tempVariableNum;
                     this.ac3(child,this.tempVariableNum++,false);
                 }
@@ -920,20 +997,6 @@ export class CFG{
                     simpleStm+="temp"+this.tempVariableNum;
                     this.ac3(child.children[1],this.tempVariableNum++,false);
                 }
-                // else if(child.kind=="CallExpression"&&child.children[0].kind=="PropertyAccessExpression"){
-                //     simpleStm+="temp"+this.tempVariableNum;
-                //     let propertyAccessExpression=child.children[0];
-                //     // this.ac3(propertyAccessExpression,this.tempVariableNum++);
-                //     for(let i=0;i<propertyAccessExpression.children.length;i++){
-                //         let cc=propertyAccessExpression.children[i];
-                //         if(i==0){
-                //             this.ac3(cc,this.tempVariableNum++);
-                //         }
-                //         else{
-                //             simpleStm+=cc.text;
-                //         }
-                //     }
-                // }
                 else{
                     if(child.kind!="Block")
                         simpleStm+=child.text;
@@ -952,7 +1015,7 @@ export class CFG{
         stm.walked = true;
         let hasAccess=false;
         for(let u of stm.use){
-            if(u.includes(".")){
+            if(u.name.includes(".")){
                 hasAccess=true;
                 break;
             }
@@ -971,7 +1034,9 @@ export class CFG{
                 this.currentDeclarationKeyword="";
                 this.ac3(stm.astNode,this.tempVariableNum++,true);
             }
-
+        }
+        if(stm.addressCode3.length==1){
+            stm.addressCode3=[];
         }
         if(stm.type=="ifStatement"||stm.type=="loopStatement"||stm.type=="catchOrNot"){
             let cstm=stm as conditionStatement;
@@ -1180,7 +1245,7 @@ export class CFG{
         this.walkAST(this.entry,this.exit,this.astRoot);
         this.deleteExit(this.entry,this.entryBlock);
         this.resetWalked(this.entry);
-        this.buildLast(this.entry);
+        this.buildLastAndHaveCall(this.entry);
         this.blocks=this.blocks.filter((b)=>b.stms.length!=0);
         this.resetWalked(this.entry);
         this.generateUseDef(this.entry);
