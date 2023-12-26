@@ -1,11 +1,8 @@
-import { 
-    ArkStmt,
-    ASTNode2ArkStatements
-} from '../base/Stmt'
+import { Stmt } from "../base/Stmt";
 import * as ts from "typescript";
 
 export class StmtGraph {
-    statements: ArkStmt[]=[];
+    statements: Stmt[]=[];
 
 
     // construct from ast
@@ -14,7 +11,7 @@ export class StmtGraph {
     }
 
 
-    public getNodes(): ArkStmt[] {
+    public getNodes(): Stmt[] {
         return this.statements;
     }
 
@@ -22,12 +19,12 @@ export class StmtGraph {
     }
 
     // todo: 实现
-    public successors(curr: ArkStmt): ArkStmt[] {
+    public successors(curr: Stmt): Stmt[] {
         return this.statements;
     }
 
     // todo: 实现
-    public predecessors(curr: ArkStmt): ArkStmt[] {
+    public predecessors(curr: Stmt): Stmt[] {
         return this.statements;
     }
 
@@ -48,7 +45,7 @@ export class StmtGraph {
         }
 
         for(const stmt of bodyStatements){
-            this.statements.push(...ASTNode2ArkStatements(stmt));
+            
         }    
     }
 }
