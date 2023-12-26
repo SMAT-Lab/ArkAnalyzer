@@ -1,8 +1,5 @@
 import ts from "typescript";
 import { StmtGraph } from "../core/graph/StmtGraph";
-import {
-    isCallStatement,
-} from '../core/base/Stmt';
 const fs = require('fs');
 
 StmtGraph
@@ -22,8 +19,7 @@ export class StmtGraphTest {
 
         let stmts=stmtGraph.getNodes();
         console.log('\n---------- statement is callstatemnt or not ------------')
-        for(const stmt of stmts){
-            console.log(isCallStatement(stmt));
+        for(const stmt of stmts){            
         }
     }
 }
