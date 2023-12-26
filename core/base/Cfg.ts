@@ -51,11 +51,13 @@ export class conditionStatement extends statement{
     nextT:statement|null;
     nextF:statement|null;
     loopBlock:Block|null;
+    condition:string;
     constructor(type:string,code:string,astNode:NodeA,scopeID:number){
         super(type,code,astNode,scopeID);
         this.nextT=null;
         this.nextF=null;
         this.loopBlock=null;
+        this.condition="";
     }
 }
 
@@ -155,7 +157,7 @@ export class CFG{
         this.current3ACstm=this.entry;
         this.blocks=[];
         this.entryBlock=new Block(this.blocks.length,[this.entry],[],null);
-        this.blocks.push(this.entryBlock);
+        // this.blocks.push(this.entryBlock);
         this.exitBlock=new Block(-1,[this.entry],[],null);
         this.currentDeclarationKeyword="";
         this.variables=[];
@@ -272,6 +274,7 @@ export class CFG{
                 for(let j=0;j<c.children.length;j++){
                     let ifchild=c.children[j];
                     if(ifchild.kind=="BinaryExpression"){
+                        ifstm.condition=ifchild.text;
                         expressionCondition=true;
                         ifstm.code="if("+ifchild.text+")";
                     }
@@ -294,6 +297,7 @@ export class CFG{
                     for(let ifchild of c.children){
                         if(ifchild.kind=="PrefixUnaryExpression"||ifchild.kind=="Identifier"||ifchild.kind=="PropertyAccessExpression"){
                             ifstm.code="if("+ifchild.text+")";
+                            ifstm.condition=ifchild.text;
                             break;
                         }
                     }
@@ -316,6 +320,7 @@ export class CFG{
                     if(loopchild.kind=="BinaryExpression"){
                         expressionCondition=true;
                         loopstm.code="while("+loopchild.text+")";
+                        loopstm.condition=loopchild.text;
                     }
                     if((loopchild.kind=="CloseParenToken")&&c.children[j+1].kind!="Block"){
                         let tempBlock=new NodeA(undefined,c,[],"undefined",0,"Block");
@@ -334,6 +339,7 @@ export class CFG{
                     for(let loopchild of c.children){
                         if(loopchild.kind=="PrefixUnaryExpression"||loopchild.kind=="Identifier"||loopchild.kind=="PropertyAccessExpression"){
                             loopstm.code="while("+loopchild.text+")";
+                            loopstm.condition=loopchild.text;
                             break;
                         }
                     }
@@ -372,6 +378,7 @@ export class CFG{
                     if(loopchild.kind=="BinaryExpression"){
                         expressionCondition=true;
                         loopstm.code="while("+loopchild.text+")";
+                        loopstm.condition=loopchild.text;
                     }
                     if(loopchild.kind=="Block"){
                         this.walkAST(lastStatement,loopstm,loopchild.children[1]);
@@ -389,6 +396,7 @@ export class CFG{
                     for(let loopchild of c.children){
                         if(loopchild.kind=="PrefixUnaryExpression"||loopchild.kind=="Identifier"||loopchild.kind=="PropertyAccessExpression"){
                             loopstm.code="while("+loopchild.text+")";
+                            loopstm.condition=loopchild.text;
                             break;
                         }
                     }
@@ -518,8 +526,10 @@ export class CFG{
                 this.deleteExit(stm.next,b);
             return;
         }
-        block.stms.push(stm);
-        stm.block=block;
+        if(stm.type!="loopStatement"){
+            block.stms.push(stm);
+            stm.block=block;
+        }
         if(stm.type=="ifStatement"||stm.type=="loopStatement"||stm.type=="catchOrNot"){
             let cstm=stm as conditionStatement;
             if(cstm.nextT?.type.includes("Exit")){
@@ -548,20 +558,27 @@ export class CFG{
                 this.errorIf(cstm);
                 return;
             }
+            // this.blocks=this.blocks.filter((b)=>b.stms.length!=0);
             let b1:Block,b2:Block;
             if(cstm.type=="loopStatement"){
+                let loopBlock=new Block(this.blocks.length,[cstm],[],null);
+                this.blocks.push(loopBlock);
+                block.nexts.push(loopBlock);
+                block=loopBlock;
+                cstm.block=block;
                 b1=new Block(this.blocks.length,[],[],cstm);
+                this.blocks.push(b1);
                 cstm.loopBlock=b1;
             }
             else{
                 b1=new Block(this.blocks.length,[],[],null);
+                this.blocks.push(b1);
             }
-            b2=new Block(this.blocks.length,[],[],null);
-            this.blocks.push(b1);
-            this.blocks.push(b2);
             block.nexts.push(b1);
-            block.nexts.push(b2);
             this.deleteExit(cstm.nextT,b1);
+            b2=new Block(this.blocks.length,[],[],null);
+            this.blocks.push(b2);
+            block.nexts.push(b2);
             this.deleteExit(cstm.nextF,b2);
         }
         else if(stm.type=="switchStatement"){
@@ -579,6 +596,7 @@ export class CFG{
                     }
                     sstm.nexts[j]=p;
                 }
+                // this.blocks=this.blocks.filter((b)=>b.stms.length!=0);
                 let b=new Block(this.blocks.length,[],[],null);
                 this.blocks.push(b);
                 block.nexts.push(b);
@@ -597,12 +615,28 @@ export class CFG{
                     p=p.next;
                 }
                 stm.next=p;
+                // this.blocks=this.blocks.filter((b)=>b.stms.length!=0);
                 let b=new Block(this.blocks.length,[],[],null);
                 this.blocks.push(b);
                 block.nexts.push(b);
                 block=b;
             }
             if(stm.next!=null){
+                if(stm.type=="breakStatement"){
+                    if(stm.next.block){
+                        block.nexts.push((stm.next.block));
+                    }
+                    else{
+                        let b=new Block(this.blocks.length,[],[],null);
+                        this.blocks.push(b);
+                        block.nexts.push(b);
+                        block=b;
+                    }
+                }
+                if(stm.type=="continueStatement"&&stm.next.block){
+                    block.nexts.push(stm.next.block);
+                    return;
+                }
                 if(stm.next.type=="loopStatement"&&stm.next.block){
                     block.nexts.push(stm.next.block);
                     block=stm.next.block;
@@ -818,7 +852,7 @@ export class CFG{
         else if(mode=="def")
             set=stm.def;
 
-        if(node.kind=="Identifier"||node.kind=="PropertyAccessExpression"){
+        if(node.kind=="Identifier"){
             for(let v of this.variables){
                 if(v.name==node.text){
                     set.add(v);
@@ -1207,7 +1241,7 @@ export class CFG{
     stm23AC(stm:statement){
         if(stm.addressCode3.length>0){
             if(stm.type.includes("loop")||stm.type.includes("if")||stm.type.includes("switch")){
-                let last3AC:NodeA=new NodeA(undefined,null,[],"temp",-1);
+                let last3AC:NodeA=new NodeA(undefined,null,[],"temp",-1,"undefined");
                 for(let i=0;i<stm.addressCode3.length;i++){
                     let ac=stm.addressCode3[i]
                     let temp=this.insertStatementBefore(stm,ac);
@@ -1263,12 +1297,50 @@ export class CFG{
         this.simplifyByStm(this.entry);
     }
 
+    printBlocks(){
+        let text="";
+        for(let bi=0;bi<this.blocks.length;bi++){
+            let block=this.blocks[bi];
+            text+="label"+block.id+":\n";
+            let length=block.stms.length
+            for(let i=0;i<length;i++){
+                if(i!=length-1){
+                    text+=block.stms[i].code+'\n';
+                }
+                else{
+                    let lastStm=block.stms[i];
+                    if(lastStm.type=="ifStatement"||lastStm.type=="loopStatement"||lastStm.type=="catchOrNot"){
+                        let cstm=lastStm as conditionStatement;
+                        if(cstm.nextT==null||cstm.nextF==null){
+                            this.errorIf(cstm);
+                            return;
+                        }
+                        if(!cstm.nextF.block||!cstm.nextT.block){
+                            console.log("nextF without block");
+                            process.exit();
+                        }
+                        text+="if !("+cstm.condition+") goto label"+cstm.nextF.block.id+'\n';
+                        if(bi+1<this.blocks.length&&this.blocks[bi+1].id!=cstm.nextT.block.id)
+                            text+="goto label"+cstm.nextT.block.id+'\n'
+                    }
+                    else{
+                        text+=block.stms[i].code+'\n';
+                        if(lastStm.next?.block&&(bi+1<this.blocks.length&&this.blocks[bi+1].id!=lastStm.next.block.id||bi+1==this.blocks.length))
+                            text+="goto label"+lastStm.next?.block.id+'\n';
+                    }
+                }
+            }
+            
+        }
+        console.log(text);
+    }
+
     buildCFG(){
         this.walkAST(this.entry,this.exit,this.astRoot);
         this.deleteExit(this.entry,this.entryBlock);
+        this.blocks=this.blocks.filter((b)=>b.stms.length!=0);
         this.resetWalked(this.entry);
         this.buildLastAndHaveCall(this.entry);
-        this.blocks=this.blocks.filter((b)=>b.stms.length!=0);
         this.resetWalked(this.entry);
         this.generateUseDef(this.entry);
         this.resetWalked(this.entry);
