@@ -50,10 +50,12 @@ export class statement{
 export class conditionStatement extends statement{
     nextT:statement|null;
     nextF:statement|null;
+    loopBlock:Block|null;
     constructor(type:string,code:string,astNode:NodeA,scopeID:number){
         super(type,code,astNode,scopeID);
         this.nextT=null;
-        this.nextF=null
+        this.nextF=null;
+        this.loopBlock=null;
     }
 }
 
@@ -101,12 +103,12 @@ export class Block{
     stms:statement[];
     nexts:Block[];
     walked:boolean=false;
-    loopNode:NodeA|null;
-    constructor(id:number,stms:statement[],nexts:Block[],loopNode:NodeA|null){
+    loopStmt:statement|null;
+    constructor(id:number,stms:statement[],nexts:Block[],loopStmt:statement|null){
         this.id=id;
         this.stms=stms;
         this.nexts=nexts;
-        this.loopNode=loopNode;
+        this.loopStmt=loopStmt;
     }
 }
 
@@ -547,8 +549,9 @@ export class CFG{
                 return;
             }
             let b1:Block,b2:Block;
-            if(stm.type=="loopStatement"){
-                b1=new Block(this.blocks.length,[],[],stm.astNode);
+            if(cstm.type=="loopStatement"){
+                b1=new Block(this.blocks.length,[],[],cstm);
+                cstm.loopBlock=b1;
             }
             else{
                 b1=new Block(this.blocks.length,[],[],null);
@@ -1031,7 +1034,6 @@ export class CFG{
     
     get3AddressCode(stm:statement){
         if(stm.walked)return;
-        // if(stm.type=="entry"||stm.type=="exit")return;
         stm.walked = true;
         let hasAccess=false;
         for(let u of stm.use){
