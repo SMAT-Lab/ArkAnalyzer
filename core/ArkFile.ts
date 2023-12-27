@@ -2,7 +2,7 @@ import fs from 'fs';
 
 import { ArkClass } from "./ArkClass";
 import { ArkMethod } from "./ArkMethod";
-import { Statement } from "./base/Stmt";
+import { statement } from "./base/Cfg";
 import { NodeA, ASTree } from "./base/Ast";
 import { ArkNamespace } from "./ArkNamespace";
 import { ClassSignature, MethodSignature, methodSignatureCompare, classSignatureCompare } from "./ArkSignature";
@@ -14,7 +14,7 @@ export class ArkFile {
     name: string;
     code: string;
     ast: ASTree;
-    importStmts: Statement[] = [];
+    importStmts: statement[] = [];
     methods: ArkMethod[] = [];
     classes: ArkClass[] = [];
     defaultClass!: ArkClass;
@@ -26,6 +26,7 @@ export class ArkFile {
         this.ast = new ASTree(this.code);
         this.genDefaultArkClass();
         this.buildArkFile();
+        this.genImportStmts();
     }
 
     private genDefaultArkClass() {
@@ -37,14 +38,11 @@ export class ArkFile {
     private buildArkFile() {
         let children = this.ast.root?.children;
         for (let child of children) {
-            if (child.kind == 'ImportDeclaration') {
-                this.importStmts.push(new Statement('', child.text));
-            }
             //else if (child.kind == 'NamespaceKeyword') {
             //    let ns: ArkNamespace = new ArkNamespace(child, this);
             //    this.nameSpaces.push(ns);
             //}
-            else if (child.kind == 'ClassDeclaration') {
+            if (child.kind == 'ClassDeclaration') {
                 let cls: ArkClass = new ArkClass(child, this);
                 this.classes.push(cls);
             }
@@ -55,7 +53,17 @@ export class ArkFile {
         }
     }
 
-    public getImportStmts(): Statement[] {
+    //TODO
+    private genImportStmts() {
+        let cfg = this.defaultClass.defaultMethod.cfg;
+        for (let stmt of cfg.statementArray) {
+            if (stmt.astNode?.kind == "ImportDeclaration") {
+                this.importStmts.push(stmt);
+            }
+        }
+    }
+
+    public getImportStmts(): statement[] {
         return this.importStmts;
     }
 
