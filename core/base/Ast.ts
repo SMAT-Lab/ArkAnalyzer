@@ -15,13 +15,13 @@ export class NodeA {
     functionHeadInfo: any | undefined;
     instanceMap: Map<string, string> | undefined;
 
-    constructor(node: ts.Node | undefined, parent: NodeA | null, children: NodeA[], text: string, start: number, classHeadInfo?: any, functionHeadInfo?: any) {
+    constructor(node: ts.Node | undefined, parent: NodeA | null, children: NodeA[], text: string, start: number, kind:string, classHeadInfo?: any, functionHeadInfo?: any) {
         this.parent = parent;
         this.children = children;
         this.text = text;
         this.start = start;
         if (node == undefined) {
-            this.kind = "undefined";
+            this.kind = kind;
         }
         else {
             this.kind = ts.SyntaxKind[node.kind];
@@ -74,7 +74,7 @@ export class NodeA {
  */
 export class ASTree {
     text: string;
-    root: NodeA = new NodeA(undefined, null, [], "undefined", 0);
+    root: NodeA = new NodeA(undefined, null, [], "undefined", 0,"undefined");
     sourceFile: ts.SourceFile;
     constructor(text: string) {
         this.text = text;
@@ -110,7 +110,7 @@ export class ASTree {
                 functionHeadInfo = handleFunctionNode(child);
             }
 
-            ca = new NodeA(child, nodea, [], child.getText(this.sourceFile), child.getStart(this.sourceFile), classHeadInfo, functionHeadInfo);
+            ca = new NodeA(child, nodea, [], child.getText(this.sourceFile), child.getStart(this.sourceFile), "", classHeadInfo, functionHeadInfo);
             this.copyTree(ca, child);
             cas.push(ca);
             ca.parent = nodea;
@@ -123,9 +123,10 @@ export class ASTree {
         const rootN = this.sourceFile.getChildren(this.sourceFile)[0]
         if (rootN == null)
             process.exit(0);
-        const rootA = new NodeA(rootN, null, [], rootN.getText(this.sourceFile), rootN.getStart(this.sourceFile))
+        const rootA = new NodeA(rootN, null, [], rootN.getText(this.sourceFile), rootN.getStart(this.sourceFile),"")
         this.root = rootA
         this.copyTree(rootA, rootN)
+        this.simplify(this.root);
     }
 
     singlePrintAST(node: NodeA, i: number) {

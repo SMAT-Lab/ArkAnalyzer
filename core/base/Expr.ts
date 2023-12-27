@@ -1,274 +1,332 @@
-import * as ts from 'typescript';
-import {
-    ArkStmt,
-} from './Stmt'
+import { Value } from "../comon/Value";
+import { MethodSignature } from "../ArkSignature";
+
+export interface Expr extends Value { }
 
 
+// 函数调用表达式
+export abstract class AbstractInvokeExpr implements Expr {
+    private methodSignature: MethodSignature;
+    private args: Value[];
 
-export enum OperatorToken {
-    // 算术运算符
-    PlusToken,
-    MinusToken,
-    AsteriskToken,
-    SlashToken,
-
-    // 逻辑运算符
-    AmpersandAmpersandToken,
-    BarBarToken,
-
-    // 位运算符
-    AmpersandToken,
-    BarToken,
-    CaretToken,
-
-    // 赋值运算符
-    EqualsToken,
-    PlusEqualsToken,
-    MinusEqualsToken,
-
-    PlusPlusToken,
-    MinusMinusToken,
-}
-
-export type ArithmeticOperator =
-    | OperatorToken.PlusToken
-    | OperatorToken.MinusToken
-    | OperatorToken.AsteriskToken
-    | OperatorToken.SlashToken
-
-export type LogicalOperator =
-    | OperatorToken.AmpersandAmpersandToken
-    | OperatorToken.BarBarToken
-
-export type BitwiseOperator =
-    | OperatorToken.AmpersandToken
-    | OperatorToken.BarToken
-    | OperatorToken.CaretToken
-
-export type AssignmentOperator =
-    | OperatorToken.EqualsToken
-    | OperatorToken.PlusEqualsToken
-    | OperatorToken.MinusEqualsToken
-
-export type BinaryOperator =
-    | ArithmeticOperator
-    | LogicalOperator
-    | BitwiseOperator
-    | AssignmentOperator
-
-
-export type PrefixUnaryOperator =
-    | OperatorToken.PlusPlusToken
-    | OperatorToken.MinusMinusToken
-
-
-export type PostfixUnaryOperator =
-    | OperatorToken.PlusPlusToken
-    | OperatorToken.MinusMinusToken
-
-
-export enum LiteralType {
-    NumericLiteral,
-    StringLiteral,
-    BigIntLiteral,
-    BooleanLiteral,
-    NullLiteral,
-}
-
-
-export interface ArkExpression {
-
-}
-
-
-export abstract class ArkAbstractExpression implements ArkExpression {
-
-}
-
-export class ArkCallExpression extends ArkAbstractExpression {
-    expression: ArkExpression;
-    args: ArkExpression[];
-    constructor(expression: ArkExpression, args: ArkExpression[]) {
-        super();
-        this.expression = expression;
+    constructor(methodSignature: MethodSignature, args: Value[]) {
+        this.methodSignature = methodSignature;
         this.args = args;
     }
-}
 
+    public getUses(): Value[] {
+        let uses: Value[] = [];
+        return uses;
+    }
 
-export class ArkFunctionExpression extends ArkAbstractExpression {
-    name?: ArkIdentifier;
-    body: ArkStmt;
-    constructor(body: ArkStmt, name?: ArkIdentifier) {
-        super();
-        this.name = name;
-        this.body = body;
+    public getMethodSignature(): MethodSignature {
+        return this.methodSignature;
+    }
+
+    public getArgs(): Value[] {
+        return this.args;
     }
 }
 
-export class ArkArrowFunctionExpression extends ArkAbstractExpression {
-    name?: ArkIdentifier;
-    body: ArkStmt;
-    constructor(body: ArkStmt, name?: ArkIdentifier) {
-        super();
-        this.name = name;
-        this.body = body;
+export abstract class AbstractInstanceInvokeExpr extends AbstractInvokeExpr {
+    private base: Value;
+
+    constructor(base: Value, methodSignature: MethodSignature, args: Value[]) {
+        super(methodSignature, args);
+        this.base = base;
+    }
+
+    public getBase(): Value {
+        return this.base;
+    }
+
+    public getUses(): Value[] {
+        let uses: Value[] = [];
+        return uses;
     }
 }
 
-export interface ArkClassExpression extends ArkAbstractExpression {
+
+export class ArkInterfaceInvokeExpr extends AbstractInstanceInvokeExpr {
+    constructor(base: Value, methodSignature: MethodSignature, args: Value[]) {
+        super(base, methodSignature, args);
+    }
 }
 
 
-
-export class ArkUnaryExpression extends ArkAbstractExpression {
+// 构造函数、私有函数、虚拟初始化函数
+export class ArkSpecialInvokeExpr extends AbstractInstanceInvokeExpr {
+    constructor(base: Value, methodSignature: MethodSignature, args: Value[]) {
+        super(base, methodSignature, args);
+    }
 }
 
 
-export class ArkNewExpression extends ArkUnaryExpression {
-    expression: ArkExpression;
-    args: ArkExpression[];
-    constructor(expression: ArkExpression, args: ArkExpression[]) {
-        super();
-        this.expression = expression;
+export class ArkStaticInvokeExpr extends AbstractInvokeExpr {
+    constructor(methodSignature: MethodSignature, args: Value[]) {
+        super(methodSignature, args);
+    }
+}
+
+
+// SSA phi函数
+export class ArkPhiExpr implements Expr {
+    private args: Value[];
+    // private blockToArg:Map<>;
+    // private argToBlock:Map<>;
+
+    constructor(args: Value[]) {
         this.args = args;
     }
-}
-
-export interface ArkDeleteExpression extends ArkUnaryExpression {
-    readonly expression: ArkExpression;
-}
 
 
-export class ArkLiteralExpression extends ArkUnaryExpression {
-    text: string;
-    literalType: LiteralType;
-    constructor(text: string, literalType: LiteralType) {
-        super();
-        this.text = text;
-        this.literalType = literalType;
+    public getArgs() {
+        return this.args;
     }
-}
 
-export class ArkArrayLiteralExpression extends ArkUnaryExpression {
-    elements: ArkExpression[];
-    constructor(elements: ArkExpression[]) {
-        super();
-        this.elements = elements;
-    }
-}
-
-export class ArkIdentifier extends ArkUnaryExpression {
-    text: string;
-    constructor(text: string) {
-        super();
-        this.text = text;
-    }
-}
-
-export class ArkPrefixUnaryExpression extends ArkUnaryExpression {
-    operator: PrefixUnaryOperator;
-    operand: ArkExpression;
-    constructor(operator: PrefixUnaryOperator, operand: ArkExpression) {
-        super();
-        this.operator = operator;
-        this.operand = operand;
-    }
-}
-
-export class ArkPostfixUnaryExpression extends ArkUnaryExpression {
-    operator: PostfixUnaryOperator;
-    operand: ArkExpression;
-    constructor(operator: PostfixUnaryOperator, operand: ArkExpression) {
-        super();
-        this.operator = operator;
-        this.operand = operand;
-    }
-}
-
-export class ArkPropertyAccessExpression extends ArkUnaryExpression {
-    expression: ArkExpression;
-    questionDotToken: boolean;
-    name: ArkIdentifier;
-    constructor(expression: ArkExpression, questionDotToken: boolean, name: ArkIdentifier) {
-        super();
-        this.expression = expression;
-        this.questionDotToken = questionDotToken;
-        this.name = name;
-    }
-}
-
-export class ArkElementAccessExpression extends ArkUnaryExpression {
-    expression: ArkExpression;
-    questionDotToken: boolean;
-    argumentExpression: ArkExpression;
-    constructor(expression: ArkExpression, questionDotToken: boolean, argumentExpression: ArkExpression) {
-        super();
-        this.expression = expression;
-        this.questionDotToken = questionDotToken;
-        this.argumentExpression = argumentExpression;
-    }
-}
-
-export class ArkBinaryExpression extends ArkAbstractExpression {
-    left: ArkExpression;
-    binaryOperator: BinaryOperator;
-    right: ArkExpression;
-    constructor(left: ArkExpression, binaryOperator: BinaryOperator, right: ArkExpression) {
-        super();
-        this.left = left;
-        this.right = right;
-        this.binaryOperator = binaryOperator;
-    }
-}
-
-export class ArkAssignmentExpression extends ArkBinaryExpression {
-    binaryOperator: AssignmentOperator;
-    constructor(left: ArkExpression, binaryOperator: AssignmentOperator, right: ArkExpression) {
-        super(left, binaryOperator, right);
-        this.binaryOperator = binaryOperator
-    }
-}
-
-export class ArkConditionalExpression extends ArkAbstractExpression {
-    condition: ArkExpression;
-    whenTrue: ArkExpression;
-    whenFalse: ArkExpression;
-    constructor(condition: ArkExpression, whenTrue: ArkExpression, whenFalse: ArkExpression) {
-        super();
-        this.condition = condition;
-        this.whenTrue = whenTrue;
-        this.whenFalse = whenFalse;
+    public getUses(): Value[] {
+        let uses: Value[] = [];
+        return uses;
     }
 }
 
 
-// utils for ArkExpression
-export function isCallExpression(expr: ArkExpression): boolean {
-    return expr instanceof ArkCallExpression;
-}
+export class ArkNewExpr implements Expr {
+    constructor() {
 
-
-// AST node to ArkExpression
-export function ASTNode2ArkExpression(node: ts.Node): ArkExpression {
-    if (ts.isCallExpression(node)) {
-        return ASTNode2ArkArkCallExpression(node as ts.CallExpression);
     }
 
-    return ASTNode2ArkArkIdentifier(node as ts.Identifier);
-}
 
-
-function ASTNode2ArkArkIdentifier(identifier: ts.Identifier): ArkExpression {
-    return new ArkIdentifier(identifier.text);
-}
-
-
-function ASTNode2ArkArkCallExpression(callExpression: ts.CallExpression): ArkExpression {
-    let arkExpression = ASTNode2ArkExpression(callExpression.expression);
-    let arkArguments: ArkExpression[] = [];
-    for (const argu of callExpression.arguments) {
-        arkArguments.push(argu);
+    public getUses(): Value[] {
+        let uses: Value[] = [];
+        return uses;
     }
-    return new ArkCallExpression(arkExpression, arkArguments);
+}
+
+export class ArkDeleteExpr implements Expr {
+    constructor() {
+
+    }
+
+
+    public getUses(): Value[] {
+        let uses: Value[] = [];
+        return uses;
+    }
+
+}
+
+
+
+
+// 一元运算表达式
+export abstract class AbstractUnopExpr implements Expr {
+    private op: Value;
+
+    constructor(op: Value) {
+        this.op = op;
+    }
+
+    public getOp(): Value {
+        return this.op;
+    }
+
+    public getUses(): Value[] {
+        let uses: Value[] = [];
+        return uses;
+    }
+}
+
+
+export class ArkNegExpr extends AbstractUnopExpr {
+    constructor(op: Value) {
+        super(op);
+    }
+}
+
+
+
+// 二元运算表达式
+export abstract class AbstractBinopExpr implements Expr {
+    private op1: Value;
+    private op2: Value;
+
+    constructor(op1: Value, op2: Value) {
+        this.op1 = op1;
+        this.op2 = op2;
+    }
+
+    public getUses(): Value[] {
+        let uses: Value[] = [];
+        return uses;
+    }
+}
+
+
+// 条件运算表达式
+export abstract class AbstractConditionExpr extends AbstractBinopExpr {
+    constructor(op1: Value, op2: Value) {
+        super(op1, op2);
+    }
+}
+
+
+// ==
+class ArkEqExpr extends AbstractConditionExpr {
+    constructor(op1: Value, op2: Value) {
+        super(op1, op2);
+    }
+}
+
+
+// >=
+class ArkGeExpr extends AbstractConditionExpr {
+    constructor(op1: Value, op2: Value) {
+        super(op1, op2);
+    }
+}
+
+
+// >
+class ArkGtExpr extends AbstractConditionExpr {
+    constructor(op1: Value, op2: Value) {
+        super(op1, op2);
+    }
+}
+
+
+// <=
+class ArkLeExpr extends AbstractConditionExpr {
+    constructor(op1: Value, op2: Value) {
+        super(op1, op2);
+    }
+}
+
+
+// <
+class ArkLtExpr extends AbstractConditionExpr {
+    constructor(op1: Value, op2: Value) {
+        super(op1, op2);
+    }
+}
+
+
+// !=
+class ArkNeExpr extends AbstractConditionExpr {
+    constructor(op1: Value, op2: Value) {
+        super(op1, op2);
+    }
+}
+
+
+// &&
+class ArkLogicAndExpr extends AbstractConditionExpr {
+    constructor(op1: Value, op2: Value) {
+        super(op1, op2);
+    }
+}
+
+
+// ||
+class ArkLogicOrExpr extends AbstractConditionExpr {
+    constructor(op1: Value, op2: Value) {
+        super(op1, op2);
+    }
+}
+
+
+// 算术运算表达式
+export abstract class AbstractArithmeticExpr extends AbstractBinopExpr {
+    constructor(op1: Value, op2: Value) {
+        super(op1, op2);
+    }
+}
+
+
+export class ArkAddExpr extends AbstractArithmeticExpr {
+    constructor(op1: Value, op2: Value) {
+        super(op1, op2);
+    }
+}
+
+
+export class ArkSubExpr extends AbstractArithmeticExpr {
+    constructor(op1: Value, op2: Value) {
+        super(op1, op2);
+    }
+}
+
+
+export class ArkMulExpr extends AbstractArithmeticExpr {
+    constructor(op1: Value, op2: Value) {
+        super(op1, op2);
+    }
+}
+
+
+export class ArkDivExpr extends AbstractArithmeticExpr {
+    constructor(op1: Value, op2: Value) {
+        super(op1, op2);
+    }
+}
+
+
+// 取余 %
+export class ArkRemExpr extends AbstractArithmeticExpr {
+    constructor(op1: Value, op2: Value) {
+        super(op1, op2);
+    }
+}
+
+
+
+// 位运算表达式
+export abstract class AbstractBitwiseExpr extends AbstractBinopExpr {
+    constructor(op1: Value, op2: Value) {
+        super(op1, op2);
+    }
+}
+
+
+export class ArkBitwiseAndExpr extends AbstractBitwiseExpr {
+    constructor(op1: Value, op2: Value) {
+        super(op1, op2);
+    }
+}
+
+export class ArkBitwiseOrExpr extends AbstractBitwiseExpr {
+    constructor(op1: Value, op2: Value) {
+        super(op1, op2);
+    }
+}
+
+
+export class ArkBitwiseXorExpr extends AbstractBitwiseExpr {
+    constructor(op1: Value, op2: Value) {
+        super(op1, op2);
+    }
+}
+
+
+// 左移 <<
+export class ArkBitwiseShlExpr extends AbstractBitwiseExpr {
+    constructor(op1: Value, op2: Value) {
+        super(op1, op2);
+    }
+}
+
+
+// 右移 >>
+export class ArkBitwiseShrExpr extends AbstractBitwiseExpr {
+    constructor(op1: Value, op2: Value) {
+        super(op1, op2);
+    }
+}
+
+
+// 无符号右移 >>>
+export class ArkBitwiseUshrExpr extends AbstractBitwiseExpr {
+    constructor(op1: Value, op2: Value) {
+        super(op1, op2);
+    }
 }
