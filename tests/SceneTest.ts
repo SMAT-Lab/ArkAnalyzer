@@ -3,6 +3,7 @@ import { Scene } from "../Scene";
 import * as utils from "../utils/utils";
 import fs from 'fs';
 import { ClassSignature } from "../core/ArkSignature";
+import { conditionStatement } from "../core/base/Cfg";
 
 function run(config: Config) {
     const projectName: string = config.projectName;
@@ -16,18 +17,29 @@ function run(config: Config) {
     let scene: Scene = new Scene(projectName, projectFiles);
     const fl = fs.realpathSync('./sample/sample.ts');
     let mtd = scene.getMethod(fl, 'forLoopTest', [], [], "_DEFAULT_ARK_CLASS");
-    //let mtd = scene.getMethod(fl, '_DEFAULT_ARK_METHOD', [], [], "_DEFAULT_ARK_CLASS");
-    //console.log(mtd?.modifier);
+    //let mtd2 = scene.getMethod(fl, '_DEFAULT_ARK_METHOD', [], [], "_DEFAULT_ARK_CLASS");
+    //console.log(mtd2?.modifiers);
     if (!mtd) {
         throw new Error('No ArkMethod found.');
     }
     //console.log(mtd.cfg.blocks);
     for (let stmt of mtd.cfg.statementArray) {
-        //console.log(stmt.type);
+        //console.log("******START******");
+        //console.log("Code: ", stmt.code);
+        //console.log("########");
+        //console.log("Def: ", stmt.def);
+        //console.log("########");
+        //console.log("Use: ", stmt.use);
+        //console.log("########");
+        //console.log("Def-Use: ", stmt.use);
+        for (let defUse of stmt.use) {
+            //console.log("Def-Use: ", defUse);
+        }
+        //console.log("******END******");
         if (stmt.type == 'loopStatement') {
-            for (let cld of stmt.astNode?.children!) {
-                //console.log("#####", cld.kind, "#####", cld.text);
-            }
+            //console.log((stmt as conditionStatement).nextT?.code);
+            //console.log("#######");
+            //console.log((stmt as conditionStatement).nextF);
         }
     }
     
