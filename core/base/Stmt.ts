@@ -63,7 +63,7 @@ export abstract class AbstractStmt implements Stmt {
         return false;
     }
 
-    public abstract getInvokeExpr();
+    public abstract getInvokeExpr():AbstractInvokeExpr;
 
     public containsFieldRef(): boolean {
         return false;

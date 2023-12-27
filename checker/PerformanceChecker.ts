@@ -1,26 +1,28 @@
 import * as ts from 'typescript';
+import { ArkFile } from '../core/ArkFile';
+import { statement } from '../core/base/Cfg';
 
 export class PerformanceChecker {
-    public checkDeteleProperty(sourceFile: ts.SourceFile): void {
-        let statements = sourceFile.statements;
-        for (const stmt of statements) {
-            checkDeleteStatement(stmt);
-        }
-        return
-
-        function checkDeleteStatement(stmt: ts.Statement): void {
-            if (ts.isExpressionStatement(stmt) && ts.isDeleteExpression(stmt.expression)) {
-                let deleteExpression = stmt.expression as ts.DeleteExpression;
-                if (ts.isPropertyAccessExpression(deleteExpression.expression) || ts.isElementAccessExpression(deleteExpression.expression)) {
-                    console.log("Should not delele property, source text is \"", deleteExpression.getText(sourceFile), "\"");
-                }
+    public checkDeteleProperty(arkFile: ArkFile) {
+        let stmts: statement[] = [];
+        for (const arkClass of arkFile.getClasses()) {
+            for (const arkMethod of arkClass.getMethods()) {
+                stmts.push(...arkMethod.cfg.statementArray);
             }
+        }
 
-            else if (ts.isFunctionDeclaration(stmt)) {
-                if (stmt.body) {
-                    let statements = stmt.body.statements;
-                    for (const stmt of statements) {
-                        checkDeleteStatement(stmt);
+        for (const stmt of stmts) {
+            let astNode = stmt.astNode;
+            let lineno = stmt.line;
+            const sourceCode = stmt.code;
+            if (astNode?.kind == "ExpressionStatement") {
+                for (const child of astNode.children) {
+                    if (child.kind == "DeleteExpression") {
+                        for (const grandson of child.children) {
+                            if (grandson.kind == "PropertyAccessExpression" || grandson.kind == "ElementAccessExpression") {
+                                console.log("Should not delele property, source text is \"" + sourceCode + "\"");
+                            }
+                        }
                     }
                 }
             }

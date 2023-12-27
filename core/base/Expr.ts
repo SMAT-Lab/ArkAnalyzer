@@ -172,7 +172,7 @@ export abstract class AbstractConditionExpr extends AbstractBinopExpr {
 
 
 // ==
-class ArkEqExpr extends AbstractConditionExpr {
+export class ArkEqExpr extends AbstractConditionExpr {
     constructor(op1: Value, op2: Value) {
         super(op1, op2);
     }
@@ -180,7 +180,7 @@ class ArkEqExpr extends AbstractConditionExpr {
 
 
 // >=
-class ArkGeExpr extends AbstractConditionExpr {
+export class ArkGeExpr extends AbstractConditionExpr {
     constructor(op1: Value, op2: Value) {
         super(op1, op2);
     }
@@ -188,7 +188,7 @@ class ArkGeExpr extends AbstractConditionExpr {
 
 
 // >
-class ArkGtExpr extends AbstractConditionExpr {
+export class ArkGtExpr extends AbstractConditionExpr {
     constructor(op1: Value, op2: Value) {
         super(op1, op2);
     }
@@ -196,7 +196,7 @@ class ArkGtExpr extends AbstractConditionExpr {
 
 
 // <=
-class ArkLeExpr extends AbstractConditionExpr {
+export class ArkLeExpr extends AbstractConditionExpr {
     constructor(op1: Value, op2: Value) {
         super(op1, op2);
     }
@@ -204,7 +204,7 @@ class ArkLeExpr extends AbstractConditionExpr {
 
 
 // <
-class ArkLtExpr extends AbstractConditionExpr {
+export class ArkLtExpr extends AbstractConditionExpr {
     constructor(op1: Value, op2: Value) {
         super(op1, op2);
     }
@@ -212,7 +212,7 @@ class ArkLtExpr extends AbstractConditionExpr {
 
 
 // !=
-class ArkNeExpr extends AbstractConditionExpr {
+export class ArkNeExpr extends AbstractConditionExpr {
     constructor(op1: Value, op2: Value) {
         super(op1, op2);
     }
@@ -220,7 +220,7 @@ class ArkNeExpr extends AbstractConditionExpr {
 
 
 // &&
-class ArkLogicAndExpr extends AbstractConditionExpr {
+export class ArkLogicAndExpr extends AbstractConditionExpr {
     constructor(op1: Value, op2: Value) {
         super(op1, op2);
     }
@@ -228,7 +228,7 @@ class ArkLogicAndExpr extends AbstractConditionExpr {
 
 
 // ||
-class ArkLogicOrExpr extends AbstractConditionExpr {
+export class ArkLogicOrExpr extends AbstractConditionExpr {
     constructor(op1: Value, op2: Value) {
         super(op1, op2);
     }
