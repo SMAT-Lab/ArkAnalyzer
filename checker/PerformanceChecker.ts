@@ -20,7 +20,7 @@ export class PerformanceChecker {
                     if (child.kind == "DeleteExpression") {
                         for (const grandson of child.children) {
                             if (grandson.kind == "PropertyAccessExpression" || grandson.kind == "ElementAccessExpression") {
-                                console.log("Should not delele property, line:", lineno, ", source text is \"" + sourceCode + "\"");
+                                console.log("Should not delele property, source text is \"" + sourceCode + "\"");
                             }
                         }
                     }
