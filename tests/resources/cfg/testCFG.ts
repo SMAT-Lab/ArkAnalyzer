@@ -1,5 +1,5 @@
-import {NodeA,ASTree} from './core/base/Ast';
-import {CFG} from './core/base/Cfg';
+import {NodeA,ASTree} from '../../../core/base/Ast';
+import {CFG} from '../../../core/base/Cfg';
 import * as fs from 'fs';
 
 let fileContent = fs.readFileSync('t.ts', 'utf8');

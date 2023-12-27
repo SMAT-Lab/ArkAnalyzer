@@ -135,6 +135,7 @@ export class CFG{
     currentDeclarationKeyword:string;
     variables:Variable[];
     declaringClass: ArkClass|null;
+    importFromPath:string[];
 
     constructor(ast:NodeA,name:string|undefined, declaringClass: ArkClass|null){
         if(name)
@@ -161,6 +162,7 @@ export class CFG{
         this.exitBlock=new Block(-1,[this.entry],[],null);
         this.currentDeclarationKeyword="";
         this.variables=[];
+        this.importFromPath=[];
         this.buildCFG();
     }
 
@@ -230,6 +232,14 @@ export class CFG{
                     this.walkAST(begin,end,block.children[1]);
                     lastStatement=end;
                 }
+            }
+            if(c.kind=="ImportDeclaration"){
+                let stm=new statement("statement",c.text,c,scope.id);
+                judgeLastType(stm);
+                lastStatement=stm;
+                stm.astNode=c;
+                let indexPath=this.findChildIndex(c,"FromKeyword")+1;
+                this.importFromPath.push(c.children[indexPath].text);
             }
             if(c.kind=="ReturnStatement"){
                 let s=new statement("statement",c.text,c,scope.id);
@@ -907,10 +917,10 @@ export class CFG{
         stm.walked = true;
         if(stm.astNode == null)return;
         let node:NodeA = stm.astNode;
+        let c=stm.astNode;
         switch(stm.astNode?.kind){
             case "FirstStatement":
             case "VariableStatement":
-                let c=stm.astNode;
                 let declList=c.children[this.findChildIndex(c,"VariableDeclarationList")];
                 declList=declList.children[this.findChildIndex(declList,"SyntaxList")];
                 for(let decl of declList.children){
@@ -919,6 +929,26 @@ export class CFG{
                         this.variables.push(v);
                         this.dfsUseDef(stm,decl,"use");
                     }
+                }
+                break;
+            case "ImportDeclaration":
+                let importClause=c.children[this.findChildIndex(c,"ImportClause")];
+                let nameImport=importClause.children[0]
+                if(nameImport.kind=="NamedImports"){
+                    let syntaxList=nameImport.children[this.findChildIndex(nameImport,"SyntaxList")];
+                    for(let importSpecifier of syntaxList.children){
+                        if (importSpecifier.kind!="ImportSpecifier")
+                            continue;
+                        const v=new Variable(importSpecifier.text,stm);
+                        this.variables.push(v);
+                        stm.def.add(v);
+                    }
+                }
+                else if(nameImport.kind=="NamespaceImport"){
+                    let identifier=nameImport.children[this.findChildIndex(nameImport,"Identifier")];
+                    const v=new Variable(identifier.text,stm);
+                    this.variables.push(v);
+                    stm.def.add(v);
                 }
                 break;
             case "IfStatement":
