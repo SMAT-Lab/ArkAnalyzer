@@ -18,11 +18,16 @@ export class Scene {
     arkFiles: ArkFile[] = [];
     callgraph!: CallGraph;
     classHierarchyCallGraph!: ClassHierarchyAnalysis;
+    extendedClasses: Map<string, ArkClass[]> = new Map();
     constructor(name: string, files: string[]) {
         this.projectName = name;
         this.projectFiles = files;
         this.genArkFiles();
         this.makeCallGraph();
+        this.genExtendedClasses();
+        for (let cls of this.extendedClasses.keys()) {
+            console.log(cls);
+        }
     }
 
     private genArkFiles() {
@@ -43,6 +48,22 @@ export class Scene {
             }
         }
         return null;
+    }
+
+    private genExtendedClasses() {
+        let myArkClasses = this.getClasses();
+        for (let cls of myArkClasses) {
+            let clsFather = this.getFather(cls.classSignature);
+            if (clsFather) {
+                let sig = clsFather.classSignature.toString();
+                if (this.extendedClasses.has(sig)) {
+                    this.extendedClasses.get(sig)!.push(cls);
+                }
+                else {
+                    this.extendedClasses.set(sig, [cls]);
+                }
+            }
+        }
     }
 
     public getClasses(): ArkClass[] {
@@ -147,7 +168,7 @@ export class Scene {
 
     private getMethodSignature(fileName: string, methodName: string, parameters: string[], returnType: string[], classType?: string): MethodSignature {
         let methodSubSignature = new MethodSubSignature(methodName, parameters, returnType);
-        let classSignature = classType ? this.getClassSignature(fileName, classType) : this.getClassSignature(fileName, undefined);
+        let classSignature = this.getClassSignature(fileName, classType);
         return new MethodSignature(methodSubSignature, classSignature);
     }
     private getClassSignature(arkFile: string, classType: string | undefined): ClassSignature {
