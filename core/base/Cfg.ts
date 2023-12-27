@@ -28,6 +28,7 @@ export class statement{
     haveCall:boolean;
     block:Block|null;
     ifExitPass:boolean;
+    numOfIdentifier:number=0;
 
     constructor(type:string,code:string,astNode:NodeA|null,scopeID:number){
         this.type=type;
@@ -95,10 +96,12 @@ export class Scope{
     id:number;
     variable:Set<String>;
     level:number;
+    parent:Scope|null;
     constructor(id:number,variable:Set<String>,level:number){
         this.id=id;
         this.variable=variable;
         this.level=level;
+        this.parent=null;
     }
 }
 
@@ -208,6 +211,12 @@ export class CFG{
         
         this.scopeLevel++;
         let scope=new Scope(this.scopes.length,new Set(),this.scopeLevel);
+        for(let i=this.scopes.length-1;i>=0;i--){
+            if(this.scopes[i].level==this.scopeLevel-1){
+                scope.parent=this.scopes[i];
+                break;
+            }
+        }
         this.scopes.push(scope)
 
         for (let i = 0; i < node.children.length; i++) {
@@ -282,13 +291,13 @@ export class CFG{
                 judgeLastType(ifstm);
                 let ifexit:statement=new statement("ifExit","",c,scope.id);
                 let elsed:boolean=false;
-                let expressionCondition=false;
+                // let expressionCondition=false;
                 for(let j=0;j<c.children.length;j++){
                     let ifchild=c.children[j];
-                    if(ifchild.kind=="BinaryExpression"){
-                        ifstm.condition=ifchild.text;
-                        expressionCondition=true;
-                        ifstm.code="if("+ifchild.text+")";
+                    if(ifchild.kind=="OpenParenToken"){
+                        ifstm.condition=c.children[j+1].text;
+                        // expressionCondition=true;
+                        ifstm.code="if("+ifstm.condition+")";
                     }
                     if((ifchild.kind=="CloseParenToken"||ifchild.kind=="ElseKeyword")&&c.children[j+1].kind!="Block"){
                         let tempBlock=new NodeA(undefined,c,[],"undefined",0,"Block");
@@ -305,15 +314,15 @@ export class CFG{
                         this.walkAST(ifstm,ifexit,ifchild.children[1])
                     }
                 }
-                if(!expressionCondition){
-                    for(let ifchild of c.children){
-                        if(ifchild.kind=="PrefixUnaryExpression"||ifchild.kind=="Identifier"||ifchild.kind=="PropertyAccessExpression"){
-                            ifstm.code="if("+ifchild.text+")";
-                            ifstm.condition=ifchild.text;
-                            break;
-                        }
-                    }
-                }
+                // if(!expressionCondition){
+                //     for(let ifchild of c.children){
+                //         if(ifchild.kind=="PrefixUnaryExpression"||ifchild.kind=="Identifier"||ifchild.kind=="PropertyAccessExpression"){
+                //             ifstm.code="if("+ifchild.text+")";
+                //             ifstm.condition=ifchild.text;
+                //             break;
+                //         }
+                //     }
+                // }
                 if(!elsed){
                     ifstm.nextF=ifexit;
                 }
@@ -326,13 +335,13 @@ export class CFG{
                 judgeLastType(loopstm);
                 let loopExit=new statement("loopExit","",c,scope.id);
                 loopstm.nextF=loopExit;
-                let expressionCondition=false;
+                // let expressionCondition=false;
                 for(let j=0;j<c.children.length;j++){
                     let loopchild=c.children[j];
-                    if(loopchild.kind=="BinaryExpression"){
-                        expressionCondition=true;
-                        loopstm.code="while("+loopchild.text+")";
-                        loopstm.condition=loopchild.text;
+                    if(loopchild.kind=="OpenParenToken"){
+                        // expressionCondition=true;
+                        loopstm.condition=c.children[j+1].text;
+                        loopstm.code="while("+loopstm.condition+")";
                     }
                     if((loopchild.kind=="CloseParenToken")&&c.children[j+1].kind!="Block"){
                         let tempBlock=new NodeA(undefined,c,[],"undefined",0,"Block");
@@ -347,15 +356,15 @@ export class CFG{
                         this.walkAST(loopstm,loopstm,loopchild.children[1]);
                     }
                 }
-                if(!expressionCondition){
-                    for(let loopchild of c.children){
-                        if(loopchild.kind=="PrefixUnaryExpression"||loopchild.kind=="Identifier"||loopchild.kind=="PropertyAccessExpression"){
-                            loopstm.code="while("+loopchild.text+")";
-                            loopstm.condition=loopchild.text;
-                            break;
-                        }
-                    }
-                }
+                // if(!expressionCondition){
+                //     for(let loopchild of c.children){
+                //         if(loopchild.kind=="PrefixUnaryExpression"||loopchild.kind=="Identifier"||loopchild.kind=="PropertyAccessExpression"){
+                //             loopstm.code="while("+loopchild.text+")";
+                //             loopstm.condition=loopchild.text;
+                //             break;
+                //         }
+                //     }
+                // }
                 lastStatement=loopExit;
                 this.loopStack.pop();
             }
@@ -385,12 +394,13 @@ export class CFG{
                 this.loopStack.push(loopstm);
                 let loopExit=new statement("loopExit","",c,scope.id);
                 loopstm.nextF=loopExit;
-                let expressionCondition=false;
-                for(let loopchild of c.children){
-                    if(loopchild.kind=="BinaryExpression"){
-                        expressionCondition=true;
-                        loopstm.code="while("+loopchild.text+")";
-                        loopstm.condition=loopchild.text;
+                // let expressionCondition=false;
+                for(let j=0;j<c.children.length;j++){
+                    let loopchild=c.children[j]
+                    if(loopchild.kind=="OpenParenToken"){
+                        // expressionCondition=true;
+                        loopstm.condition=c.children[j+1].text;
+                        loopstm.code="while("+loopstm.condition+")";
                     }
                     if(loopchild.kind=="Block"){
                         this.walkAST(lastStatement,loopstm,loopchild.children[1]);
@@ -404,15 +414,15 @@ export class CFG{
                 else{
                     loopstm.nextT=lastStatement.next;
                 }
-                if(!expressionCondition){
-                    for(let loopchild of c.children){
-                        if(loopchild.kind=="PrefixUnaryExpression"||loopchild.kind=="Identifier"||loopchild.kind=="PropertyAccessExpression"){
-                            loopstm.code="while("+loopchild.text+")";
-                            loopstm.condition=loopchild.text;
-                            break;
-                        }
-                    }
-                }
+                // if(!expressionCondition){
+                //     for(let loopchild of c.children){
+                //         if(loopchild.kind=="PrefixUnaryExpression"||loopchild.kind=="Identifier"||loopchild.kind=="PropertyAccessExpression"){
+                //             loopstm.code="while("+loopchild.text+")";
+                //             loopstm.condition=loopchild.text;
+                //             break;
+                //         }
+                //     }
+                // }
                 lastStatement=loopExit;
                 this.loopStack.pop();
             }
@@ -1027,6 +1037,8 @@ export class CFG{
     }
 
     ac3(node:NodeA,tempV:number,begin:boolean){
+        if(node.kind=="Block")
+            return;
         let simpleStm:string="let temp"+tempV+"=";
         if(begin){
             simpleStm=this.currentDeclarationKeyword;
@@ -1087,7 +1099,11 @@ export class CFG{
                     this.ac3(child.children[1],this.tempVariableNum++,false);
                 }
                 else{
-                    if(child.kind!="Block")
+                    if(child.children.length>0){
+                        
+
+                    }
+                    
                         simpleStm+=child.text;
                 }
                 
@@ -1097,33 +1113,41 @@ export class CFG{
             simpleStm+=";";
         this.current3ACstm.addressCode3.push(simpleStm);
     }
+
+    getNumOfIdentifier(node:NodeA,stm:statement){
+        if(node.kind=="Identifier")
+            stm.numOfIdentifier++;
+        for(let child of node.children)
+            this.getNumOfIdentifier(child,stm);
+    }
     
     get3AddressCode(stm:statement){
         if(stm.walked)return;
         stm.walked = true;
-        let hasAccess=false;
-        for(let u of stm.use){
-            if(u.name.includes(".")){
-                hasAccess=true;
-                break;
+        if(stm.astNode&&stm.code!=""){
+            let node:NodeA=stm.astNode;
+            if(stm.type=="ifStatement"||stm.type=="loopStatement"||stm.type=="catchOrNot"){
+                node=node.children[this.findChildIndex(node,"OpenParenToken")+1]
             }
-        }
-        if(stm.astNode&&stm.code!=""&&(stm.use.size>2||hasAccess)){
-            this.current3ACstm=stm;
-            if(stm.astNode.kind=="FirstStatement"){
-                let declList=stm.astNode.children[this.findChildIndex(stm.astNode,"VariableDeclarationList")];
-                this.currentDeclarationKeyword=declList.children[0].text+" ";
-                let decls=declList.children[this.findChildIndex(declList,"SyntaxList")];
-                for(let decl of decls.children){
-                    this.ac3(decl,this.tempVariableNum++,true);
+            this.getNumOfIdentifier(node,stm);
+            if(stm.numOfIdentifier>2){
+                this.current3ACstm=stm;
+                if(stm.astNode.kind=="FirstStatement"){
+                    let declList=stm.astNode.children[this.findChildIndex(stm.astNode,"VariableDeclarationList")];
+                    this.currentDeclarationKeyword=declList.children[0].text+" ";
+                    let decls=declList.children[this.findChildIndex(declList,"SyntaxList")];
+                    for(let decl of decls.children){
+                        this.ac3(decl,this.tempVariableNum++,true);
+                    }
+                }
+                else{
+                    this.currentDeclarationKeyword="";
+                    this.ac3(stm.astNode,this.tempVariableNum++,true);
                 }
             }
-            else{
-                this.currentDeclarationKeyword="";
-                this.ac3(stm.astNode,this.tempVariableNum++,true);
-            }
+            
         }
-        if(stm.addressCode3.length==1){
+        if(stm.addressCode3.length<3){
             stm.addressCode3=[];
         }
         if(stm.type=="ifStatement"||stm.type=="loopStatement"||stm.type=="catchOrNot"){
