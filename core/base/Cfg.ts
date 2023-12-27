@@ -27,6 +27,7 @@ export class statement{
     addressCode3:string[];
     haveCall:boolean;
     block:Block|null;
+    ifExitPass:boolean;
 
     constructor(type:string,code:string,astNode:NodeA|null,scopeID:number){
         this.type=type;
@@ -44,6 +45,7 @@ export class statement{
         this.addressCode3=[];
         this.haveCall=false;
         this.block=null;
+        this.ifExitPass=false
     }
 }
 
@@ -569,23 +571,15 @@ export class CFG{
                 return;
             }
             // this.blocks=this.blocks.filter((b)=>b.stms.length!=0);
-            let b1:Block,b2:Block;
+            let b2:Block;
             if(cstm.type=="loopStatement"){
                 let loopBlock=new Block(this.blocks.length,[cstm],[],null);
                 this.blocks.push(loopBlock);
                 block.nexts.push(loopBlock);
                 block=loopBlock;
                 cstm.block=block;
-                b1=new Block(this.blocks.length,[],[],cstm);
-                this.blocks.push(b1);
-                cstm.loopBlock=b1;
             }
-            else{
-                b1=new Block(this.blocks.length,[],[],null);
-                this.blocks.push(b1);
-            }
-            block.nexts.push(b1);
-            this.deleteExit(cstm.nextT,b1);
+            this.deleteExit(cstm.nextT,block);
             b2=new Block(this.blocks.length,[],[],null);
             this.blocks.push(b2);
             block.nexts.push(b2);
@@ -616,8 +610,14 @@ export class CFG{
         else{
             if(stm.next?.type.includes("Exit")){
                 let p=stm.next;
-
+                let ifExitStop=false;
                 while(p.type.includes("Exit")){
+                    if(p.type=="ifExit"){
+                        if(!p.ifExitPass&&p.lasts.length>1){
+                            ifExitStop=true;
+                            p.ifExitPass=true;
+                        }
+                    }
                     if(p.next==null){
                         console.log("error exit");
                         process.exit();
@@ -625,6 +625,8 @@ export class CFG{
                     p=p.next;
                 }
                 stm.next=p;
+                if(ifExitStop||stm.type=="breakStatement"||stm.type=="continueStatement")
+                    return;
                 // this.blocks=this.blocks.filter((b)=>b.stms.length!=0);
                 let b=new Block(this.blocks.length,[],[],null);
                 this.blocks.push(b);
@@ -632,17 +634,17 @@ export class CFG{
                 block=b;
             }
             if(stm.next!=null){
-                if(stm.type=="breakStatement"){
-                    if(stm.next.block){
-                        block.nexts.push((stm.next.block));
-                    }
-                    else{
-                        let b=new Block(this.blocks.length,[],[],null);
-                        this.blocks.push(b);
-                        block.nexts.push(b);
-                        block=b;
-                    }
-                }
+                // if(stm.type=="breakStatement"){
+                //     if(stm.next.block){
+                //         block.nexts.push((stm.next.block));
+                //     }
+                //     else{
+                //         let b=new Block(this.blocks.length,[],[],null);
+                //         this.blocks.push(b);
+                //         block.nexts.push(b);
+                //         block=b;
+                //     }
+                // }
                 if(stm.type=="continueStatement"&&stm.next.block){
                     block.nexts.push(stm.next.block);
                     return;
@@ -1258,6 +1260,16 @@ export class CFG{
         }
     }
 
+    // forOfIn2For(stm:conditionStatement){
+    //     if(!stm.astNode)
+    //         return;
+    //     let node=stm.astNode;
+    //     let VariableDeclarationList=node.children[this.findChildIndex(node,"VariableDeclarationList")];
+    //     let SyntaxList=VariableDeclarationList.children[this.findChildIndex(VariableDeclarationList,"SyntaxList")];
+    //     let decl=SyntaxList.children[0].children[0].text;
+    //     let array=node.children[this.findChildIndex(node,"Identifier")];
+    // }
+
     getStatementByText(text:string){
         const ret:statement[]=[];
         for(let stm of this.statementArray){
@@ -1331,34 +1343,47 @@ export class CFG{
         let text="";
         for(let bi=0;bi<this.blocks.length;bi++){
             let block=this.blocks[bi];
-            text+="label"+block.id+":\n";
+            if(bi!=0)
+                text+="label"+block.id+":\n";
             let length=block.stms.length
             for(let i=0;i<length;i++){
-                if(i!=length-1){
-                    text+=block.stms[i].code+'\n';
+                let stm=block.stms[i];
+                if(stm.type=="ifStatement"||stm.type=="loopStatement"||stm.type=="catchOrNot"){
+                    let cstm=stm as conditionStatement;
+                    if(cstm.nextT==null||cstm.nextF==null){
+                        this.errorIf(cstm);
+                        return;
+                    }
+                    if(!cstm.nextF.block||!cstm.nextT.block){
+                        console.log("nextF without block");
+                        process.exit();
+                    }
+                    stm.code="if !("+cstm.condition+") goto label"+cstm.nextF.block.id
+                    // text+="    if !("+cstm.condition+") goto label"+cstm.nextF.block.id+'\n';
+                    if(i==length-1&&bi+1<this.blocks.length&&this.blocks[bi+1].id!=cstm.nextT.block.id){
+                        let gotoStm=new statement("statement","goto label"+cstm.nextT.block.id,null,block.stms[0].scopeID);
+                        block.stms.push(gotoStm);
+                        length++;
+                    }
+                        // text+="    goto label"+cstm.nextT.block.id+'\n'
+                }
+                if(stm.type=="breakStatement"||stm.type=="continueStatement"){
+                    if(!stm.next?.block){
+                        console.log("break/continue without block");
+                        process.exit();
+                    }
+                    stm.code="goto label"+stm.next?.block.id;
                 }
                 else{
-                    let lastStm=block.stms[i];
-                    if(lastStm.type=="ifStatement"||lastStm.type=="loopStatement"||lastStm.type=="catchOrNot"){
-                        let cstm=lastStm as conditionStatement;
-                        if(cstm.nextT==null||cstm.nextF==null){
-                            this.errorIf(cstm);
-                            return;
-                        }
-                        if(!cstm.nextF.block||!cstm.nextT.block){
-                            console.log("nextF without block");
-                            process.exit();
-                        }
-                        text+="if !("+cstm.condition+") goto label"+cstm.nextF.block.id+'\n';
-                        if(bi+1<this.blocks.length&&this.blocks[bi+1].id!=cstm.nextT.block.id)
-                            text+="goto label"+cstm.nextT.block.id+'\n'
+                    // text+="    "+block.stms[i].code+'\n';
+                    if(i==length-1&&stm.next?.block&&(bi+1<this.blocks.length&&this.blocks[bi+1].id!=stm.next.block.id||bi+1==this.blocks.length)){
+                        let gotoStm=new statement("statement","goto label"+stm.next?.block.id,null,block.stms[0].scopeID);
+                        block.stms.push(gotoStm);
+                        length++;
                     }
-                    else{
-                        text+=block.stms[i].code+'\n';
-                        if(lastStm.next?.block&&(bi+1<this.blocks.length&&this.blocks[bi+1].id!=lastStm.next.block.id||bi+1==this.blocks.length))
-                            text+="goto label"+lastStm.next?.block.id+'\n';
-                    }
+                        // text+="    goto label"+stm.next?.block.id+'\n';
                 }
+                text+="    "+stm.code+"\n";
             }
             
         }
@@ -1367,10 +1392,10 @@ export class CFG{
 
     buildCFG(){
         this.walkAST(this.entry,this.exit,this.astRoot);
+        this.buildLastAndHaveCall(this.entry);
+        this.resetWalked(this.entry);
         this.deleteExit(this.entry,this.entryBlock);
         this.blocks=this.blocks.filter((b)=>b.stms.length!=0);
-        this.resetWalked(this.entry);
-        this.buildLastAndHaveCall(this.entry);
         this.resetWalked(this.entry);
         this.generateUseDef(this.entry);
         this.resetWalked(this.entry);

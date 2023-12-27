@@ -4,6 +4,7 @@ import * as fs from 'fs';
 
 let fileContent = fs.readFileSync('t.ts', 'utf8');
 let ast:ASTree=new ASTree(fileContent);
+ast.simplify(ast.root);
 // console.log(ast.root.text)
 let cfg:CFG=new CFG(ast.root,"main",null);
 // cfg.resetWalked(cfg.entry);
@@ -18,3 +19,4 @@ let cfg:CFG=new CFG(ast.root,"main",null);
 //     cfg.insertStatementBefore(s,"x--;");
 // }
 cfg.printBlocks();
+

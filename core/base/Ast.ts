@@ -126,7 +126,7 @@ export class ASTree {
         const rootA = new NodeA(rootN, null, [], rootN.getText(this.sourceFile), rootN.getStart(this.sourceFile),"")
         this.root = rootA
         this.copyTree(rootA, rootN)
-        this.simplify(this.root);
+        // this.simplify(this.root);
     }
 
     singlePrintAST(node: NodeA, i: number) {
@@ -162,6 +162,7 @@ export class ASTree {
         let close=new NodeA(undefined,whileStatement,[],")",-1,"CloseParenToken");
         let condition=node.children[semicolon1+1];
         let block=node.children[node.children.length-1];
+        block.parent=whileStatement;
         whileStatement.children=[whileKeyword,open,condition,close,block];
         if(!node.parent){
             console.log("for without parent");
@@ -185,15 +186,62 @@ export class ASTree {
             let update=new NodeA(undefined,block,[updateChild,semi],updateChild.text+";",-1,"ExpressionStatement");
             block.children[1].children.push(update);
         }
+        this.updateParentText(block.children[1]);
+    }
+
+    findChildIndex(node:NodeA,kind:string):number{
+        for(let i=0;i<node.children.length;i++){
+            if(node.children[i].kind==kind)
+                return i;
+        }
+        return -1;
+    }
+
+    forOfIn2For(node:NodeA):NodeA{
+        let VariableDeclarationList=node.children[this.findChildIndex(node,"VariableDeclarationList")];
+        let SyntaxList=VariableDeclarationList.children[this.findChildIndex(VariableDeclarationList,"SyntaxList")];
+        let decl=SyntaxList.children[0].children[0].text;
+        let array=node.children[this.findChildIndex(node,"Identifier")].text;
+        let tempTree=new ASTree("for(let _i=0;_i<"+array+".length;_i++)");
+        let forStm=tempTree.root.children[0];
+        forStm.parent=node.parent;
+        if(node.parent)
+            node.parent.children[node.parent.children.indexOf(node)]=forStm;
+        let block=node.children[this.findChildIndex(node,"Block")];
+        forStm.children[forStm.children.length-1]=block;
+        tempTree=new ASTree("let "+decl+"="+array+"[_i];");
+        let initStm=tempTree.root.children[0];
+        block.children[1].children.splice(0,0,initStm);
+        this.updateParentText(forStm);
+        return forStm;
     }
 
     simplify(node:NodeA){
+        if(node.kind=="ForInStatement"||node.kind=="ForOfStatement"){
+            
+            this.For2While(this.forOfIn2For(node));
+        }
         if(node.kind=="ForStatement"){
             this.For2While(node);
         }
         for(let child of node.children){
             this.simplify(child);
         }
+    }
+
+    updateParentText(node:NodeA){
+        if(!node)
+            return;
+        node.text=""
+        for(let child of node.children){
+            node.text+=child.text;
+            if(child.kind.includes("Keyword"))
+                node.text+=" ";
+            if(node.kind=="SyntaxList"&&child.kind.includes("Statement"))
+                node.text+="\r\n";
+        }
+        if(node.parent)
+            this.updateParentText(node.parent);
     }
 
     updateStart(node:NodeA){
