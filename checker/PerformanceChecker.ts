@@ -11,6 +11,7 @@ export class PerformanceChecker {
             }
         }
 
+        let sourceText = arkFile.ast.sourceFile.text;
         for (const stmt of stmts) {
             let astNode = stmt.astNode;
             let lineno = stmt.line;
@@ -20,12 +21,22 @@ export class PerformanceChecker {
                     if (child.kind == "DeleteExpression") {
                         for (const grandson of child.children) {
                             if (grandson.kind == "PropertyAccessExpression" || grandson.kind == "ElementAccessExpression") {
-                                console.log("Should not delele property, source text is \"" + sourceCode + "\"");
+                                console.log("Should not delele property, line: " + getLineNumber(sourceText, astNode.start) + ", source text is \"" + sourceCode + "\"");
                             }
                         }
                     }
                 }
             }
+        }
+
+        function getLineNumber(fileContent: string, charPosition: number): number {
+            let lineNumber = 1;
+            for (let i = 0; i < charPosition && i < fileContent.length; i++) {
+                if (fileContent[i] === '\n') {
+                    lineNumber++;
+                }
+            }
+            return lineNumber;
         }
     }
 }
