@@ -2,7 +2,7 @@ import {NodeA,ASTree} from '../../../core/base/Ast';
 import {CFG} from '../../../core/base/Cfg';
 import * as fs from 'fs';
 
-let fileContent = fs.readFileSync('t.ts', 'utf8');
+let fileContent = fs.readFileSync('D:/11study/ArkAnalyzer/tests/resources/cfg/t.ts', 'utf8');
 let ast:ASTree=new ASTree(fileContent);
 ast.simplify(ast.root);
 // console.log(ast.root.text)

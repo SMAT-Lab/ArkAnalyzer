@@ -510,11 +510,16 @@ export class CFG{
                     }
                 }
                 if(catchClause){
-                    let catchOrNot=new conditionStatement("catchOrNot",catchClause.children[0].text+catchClause.children[1].text+catchClause.children[2].text+catchClause.children[3].text,c,scope.id);
+                    let text="catch";
+                    if(catchClause.children.length>2){
+                        text=catchClause.children[0].text+catchClause.children[1].text+catchClause.children[2].text+catchClause.children[3].text
+                    }
+                    let catchOrNot=new conditionStatement("catchOrNot",text,c,scope.id);
                     judgeLastType(catchOrNot);
                     let catchExit=new statement("catchExit","",c,scope.id);
                     catchOrNot.nextF=catchExit;
-                    this.walkAST(catchOrNot,catchExit,catchClause.children[4].children[1]);
+                    let block=catchClause.children[this.findChildIndex(catchClause,"Block")];
+                    this.walkAST(catchOrNot,catchExit,block.children[1]);
                     if(!catchOrNot.nextT){
                         catchOrNot.nextT=catchExit;
                     }
