@@ -8,7 +8,7 @@ export abstract class Position {
     public abstract getLastCol(): number;
 }
 
-
+/*
 export class LinePosition extends Position {
     private readonly lineNo: number;
 
@@ -31,5 +31,18 @@ export class LinePosition extends Position {
 
     public getLastCol(): number {
         return 0;
+    }
+}
+*/
+
+export class LinePosition {
+    private readonly lineNo: number;
+
+    constructor(lineNo: number) {
+        this.lineNo = lineNo;
+    }
+
+    public getLineNo(): number {
+        return this.lineNo;
     }
 }

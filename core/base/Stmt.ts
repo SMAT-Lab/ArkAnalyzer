@@ -1,4 +1,169 @@
+import { ArkField } from "../ArkField";
+import { LinePosition } from "../common/Position";
+import { ArkArrayRef, ArkFieldRef } from "../common/Ref";
+import { Value, ValueTag } from "../common/Value";
+import { ArkInvokeExpr } from "./Expr";
 
+export class Stmt {
+    private defs: Value[] = [];
+    private uses: Value[] = [];
+    private position: LinePosition = new LinePosition(0);
+    private valueVersion = new Map<Value, string>();
+    private valueTags = new Map<Value, Set<ValueTag>>;
+
+    constructor() {
+    }
+
+    public getUses(): Value[] {
+        return this.uses;
+    }
+
+    public addUse(use: Value): void {
+
+    }
+
+    public getdefs(): Value[] {
+        return this.defs;
+    }
+
+    public addDef(def: Value): void {
+
+    }
+
+    public getValueVersion(value: Value): string | undefined {
+        return this.valueVersion.get(value);
+    }
+
+    public setValueVersion(value: Value, version: string): void {
+
+    }
+
+    public getValueTags(value: Value): Set<ValueTag> | undefined {
+        return this.valueTags.get(value);
+    }
+
+    public setValueTag(value: Value, valueTag: ValueTag): void {
+        this.valueTags.get(value)?.add(valueTag);
+    }
+
+
+    public isBranch(): boolean {
+        return false;
+    }
+
+    public getExpectedSuccessorCount(): number {
+        return 1;
+    }
+
+    // 属性变量、数组变量和函数变量包含在use和def中，不额外存储
+    public containsInvokeExpr(): boolean {
+        for (const use of this.uses) {
+            if (use instanceof ArkInvokeExpr) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public getInvokeExpr(): ArkInvokeExpr | undefined {
+        for (const use of this.uses) {
+            if (use instanceof ArkInvokeExpr) {
+                return use as ArkInvokeExpr;
+            }
+        }
+        return undefined;
+    }
+
+
+    public containsArrayRef(): boolean {
+        for (const use of this.uses) {
+            if (use instanceof ArkArrayRef) {
+                return true;
+            }
+        }
+        for (const def of this.defs) {
+            if (def instanceof ArkArrayRef) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public getArrayRef(): ArkArrayRef | undefined {
+        for (const use of this.uses) {
+            if (use instanceof ArkArrayRef) {
+                return use as ArkArrayRef;
+            }
+        }
+        for (const def of this.defs) {
+            if (def instanceof ArkArrayRef) {
+                return def as ArkArrayRef;
+            }
+        }
+        return undefined;
+    }
+
+    public containsFieldRef(): boolean {
+        for (const use of this.uses) {
+            if (use instanceof ArkFieldRef) {
+                return true;
+            }
+        }
+        for (const def of this.defs) {
+            if (def instanceof ArkFieldRef) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public getFieldRef(): ArkFieldRef | undefined {
+        for (const use of this.uses) {
+            if (use instanceof ArkFieldRef) {
+                return use as ArkFieldRef;
+            }
+        }
+        for (const def of this.defs) {
+            if (def instanceof ArkFieldRef) {
+                return def as ArkFieldRef;
+            }
+        }
+        return undefined;
+    }
+
+
+    public getPositionInfo(): LinePosition {
+        return this.position;
+    }
+
+}
+
+// 赋值
+export class ArkAssignStmt extends Stmt {
+    private leftOp: Value;
+    private rightOp: Value;
+
+    constructor(leftOp: Value, rightOp: Value) {
+        super();
+        this.leftOp = leftOp;
+        this.rightOp = rightOp;
+        super.addDef(leftOp);
+        super.addUse(rightOp);
+    }
+
+    public getLeftOp(): Value {
+        return this.leftOp;
+    }
+
+    public getRightOp(): Value {
+        return this.rightOp;
+    }
+}
+
+
+
+
+/*
 import { Value, LValue } from '../comon/Value';
 import { Position } from '../comon/Position';
 import { AbstractConditionExpr, AbstractInvokeExpr } from './Expr';
@@ -248,3 +413,4 @@ export class ArkInvokeStmt extends AbstractStmt {
         return this.invokeExpr;
     }
 }
+*/
