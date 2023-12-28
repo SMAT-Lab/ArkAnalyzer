@@ -716,29 +716,32 @@ export class CFG{
         }
         
     }
-    resetWalked(stm:statement){
-        if(!stm.walked)
-            return;
-        stm.walked=false;
-        if(stm.type=="ifStatement"||stm.type=="loopStatement"||stm.type=="catchOrNot"){
-            let cstm=stm as conditionStatement;
-            if(cstm.nextT==null||cstm.nextF==null){
-                this.errorIf(cstm);
-                return;
-            }
-            this.resetWalked(cstm.nextF);
-            this.resetWalked(cstm.nextT);
+    resetWalked(){
+        for(let stm of this.statementArray){
+            stm.walked=false;
         }
-        else if(stm.type=="switchStatement"){
-            let sstm=stm as switchStatement;
-            for(let j in sstm.nexts){
-                this.resetWalked(sstm.nexts[j]);
-            }
-        }
-        else{
-            if(stm.next!=null)
-                this.resetWalked(stm.next);
-        }
+        // if(!stm.walked)
+        //     return;
+        // stm.walked=false;
+        // if(stm.type=="ifStatement"||stm.type=="loopStatement"||stm.type=="catchOrNot"){
+        //     let cstm=stm as conditionStatement;
+        //     if(cstm.nextT==null||cstm.nextF==null){
+        //         this.errorIf(cstm);
+        //         return;
+        //     }
+        //     this.resetWalked(cstm.nextF);
+        //     this.resetWalked(cstm.nextT);
+        // }
+        // else if(stm.type=="switchStatement"){
+        //     let sstm=stm as switchStatement;
+        //     for(let j in sstm.nexts){
+        //         this.resetWalked(sstm.nexts[j]);
+        //     }
+        // }
+        // else{
+        //     if(stm.next!=null)
+        //         this.resetWalked(stm.next);
+        // }
         
     }
 
@@ -820,7 +823,7 @@ export class CFG{
     }
 
     generateDot(){
-        this.resetWalked(this.entry);
+        this.resetWalked();
         this.getDotEdges(this.entry);
         const filename=this.name+".dot";
 
@@ -1436,14 +1439,14 @@ export class CFG{
     buildCFG(){
         this.walkAST(this.entry,this.exit,this.astRoot);
         this.buildLastAndHaveCall(this.entry);
-        this.resetWalked(this.entry);
+        this.resetWalked();
         this.deleteExit(this.entry,this.entryBlock);
         this.blocks=this.blocks.filter((b)=>b.stms.length!=0);
-        this.resetWalked(this.entry);
+        this.resetWalked();
         this.generateUseDef(this.entry);
-        this.resetWalked(this.entry);
+        this.resetWalked();
         this.get3AddressCode(this.entry);
-        this.resetWalked(this.entry);
+        this.resetWalked();
         this.cfg2Array(this.entry);
     }
 }
