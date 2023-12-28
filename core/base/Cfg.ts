@@ -66,9 +66,20 @@ export class conditionStatement extends statement{
 
 export class switchStatement extends statement{
     nexts:statement[];
+    cases:Case[]=[];
+    default:statement|null=null;
     constructor(type:string,code:string,astNode:NodeA,scopeID:number){
         super(type,code,astNode,scopeID);
         this.nexts=[];
+    }
+}
+
+export class Case{
+    value:string;
+    stm:statement;
+    constructor(value:string,stm:statement){
+        this.value=value;
+        this.stm=stm;
     }
 }
 
@@ -553,7 +564,7 @@ export class CFG{
                 this.deleteExit(stm.next,b);
             return;
         }
-        if(stm.type!="loopStatement"){
+        if(stm.type!="loopStatement"&&stm.type!="SwitchStatement"){
             block.stms.push(stm);
             stm.block=block;
         }
@@ -910,8 +921,14 @@ export class CFG{
                     this.dfsUseDef(stm,node.children[indexOfDef],"def");
                 }
             }
-            if(child.kind.includes("EqualsToken")&&child.kind!="EqualsEqualsToken"||child.kind=="PlusPlusToken"||child.kind=="MinusMinusToken"){
-                this.dfsUseDef(stm,node.children[i-1],"def")
+            if(child.kind.includes("EqualsToken")&&child.kind!="EqualsEqualsToken"){
+                this.dfsUseDef(stm,node.children[i-1],"def");
+            }
+            else if(child.kind=="PlusPlusToken"||child.kind=="MinusMinusToken"){
+                if(i==0)
+                    this.dfsUseDef(stm,node.children[i+1],"def");
+                else
+                    this.dfsUseDef(stm,node.children[i-1],"def");
             }
         }
     }
@@ -1092,7 +1109,12 @@ export class CFG{
                 }
             }
             else{
-                simpleStm+="new "+node.children[this.findChildIndex(node,"Identifier")].text;
+                if(node.children[1].children.length==0)
+                    simpleStm+="new "+node.children[this.findChildIndex(node,"Identifier")].text;
+                else{
+                    simpleStm+="new temp"+this.tempVariableNum;
+                    this.ac3(node.children[1],this.tempVariableNum++,false);
+                }
             }
             simpleStm+="(";
             let params=node.children[this.findChildIndex(node,"SyntaxList")];
