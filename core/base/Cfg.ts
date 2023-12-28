@@ -686,8 +686,10 @@ export class CFG{
         if(stm.walked)
             return;
         stm.walked=true;
-        if(stm.astNode)
+        if(stm.astNode){
             stm.haveCall=this.nodeHaveCall(stm.astNode);
+            stm.line=stm.astNode.line;
+        }
         if(stm.type=="ifStatement"||stm.type=="loopStatement"||stm.type=="catchOrNot"){
             let cstm=stm as conditionStatement;
             if(cstm.nextT==null||cstm.nextF==null){
@@ -715,21 +717,9 @@ export class CFG{
         
     }
     resetWalked(stm:statement){
-        function getLineNumber(fileContent: string, charPosition: number): number {
-            let lineNumber = 1;
-            for (let i = 0; i < charPosition && i < fileContent.length; i++) {
-              if (fileContent[i] === '\n') {
-                lineNumber++;
-              }
-            }
-            return lineNumber;
-        }
-
         if(!stm.walked)
             return;
         stm.walked=false;
-        if(stm.astNode)
-            stm.line = getLineNumber(this.astRoot.text,stm.astNode.start);
         if(stm.type=="ifStatement"||stm.type=="loopStatement"||stm.type=="catchOrNot"){
             let cstm=stm as conditionStatement;
             if(cstm.nextT==null||cstm.nextF==null){
@@ -1043,11 +1033,38 @@ export class CFG{
         if(begin){
             simpleStm=this.currentDeclarationKeyword;
         }
-        if(node.children.length==1){
+        if(node.children.length==1||node.children.length==2&&node.children[1].text==";"){
             this.ac3(node.children[0],tempV,begin);
             return;
         }
-        if(node.kind=="CallExpression"||node.kind=="NewExpression"){
+        if(node.kind=="BinaryExpression"&&node.children[1].kind=="FirstAssignment"){
+            if(node.children[0].children.length>0){
+                for(let i =0;i<node.children[0].children.length;i++){
+                    let child=node.children[0].children[i];
+                    if(i==0||i==2){
+                        if(child.children.length>0){
+                            simpleStm+="temp"+this.tempVariableNum;
+                            this.ac3(child,this.tempVariableNum++,false);
+                        }
+                        else
+                            simpleStm+=child.text;
+                    }
+                    else
+                        simpleStm+=child.text;
+                }
+            }
+            else
+                simpleStm+=node.children[0].text;
+            simpleStm+="=";
+            if(node.children[2].children.length>0){
+                simpleStm+="temp"+this.tempVariableNum;
+                this.ac3(node.children[2],this.tempVariableNum++,false);
+            }
+            else
+                simpleStm+=node.children[2].text;
+            simpleStm+=";"
+        }
+        else if(node.kind=="CallExpression"||node.kind=="NewExpression"){
             if(node.kind=="CallExpression"){
                 if(node.children[0].children[0]?.children.length>0)
                     simpleStm+="temp"+this.tempVariableNum;
@@ -1086,7 +1103,7 @@ export class CFG{
         }
         else{
             for(let child of node.children){
-                if(child.kind=="PropertyAccessExpression"||child.kind=="BinaryExpression"||child.kind=="CallExpression"||node.kind=="NewExpression"||child.kind=="ElementAccessExpression"){
+                if(child.kind=="PropertyAccessExpression"||child.kind=="BinaryExpression"||child.kind=="CallExpression"||node.kind=="NewExpression"||child.kind=="ElementAccessExpression"||child.kind=="ConditionalExpression"){
                     if(child.kind=="CallExpression"&&node.children.length<3){
                         this.ac3(child,this.tempVariableNum++,false);
                         return;
@@ -1099,12 +1116,14 @@ export class CFG{
                     this.ac3(child.children[1],this.tempVariableNum++,false);
                 }
                 else{
-                    if(child.children.length>0){
-                        
-
+                    if(child.kind!="Block"){
+                        if(child.kind.includes("Keyword")){
+                            simpleStm+=" "+child.text+" ";
+                        }
+                        else
+                            simpleStm+=child.text;
                     }
-                    
-                        simpleStm+=child.text;
+                        
                 }
                 
             }

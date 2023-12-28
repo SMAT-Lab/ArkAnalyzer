@@ -14,6 +14,8 @@ export class NodeA {
     classHeadInfo: any | undefined;
     functionHeadInfo: any | undefined;
     instanceMap: Map<string, string> | undefined;
+    line:number=-1;
+    character:number=-1;
 
     constructor(node: ts.Node | undefined, parent: NodeA | null, children: NodeA[], text: string, start: number, kind:string, classHeadInfo?: any, functionHeadInfo?: any) {
         this.parent = parent;
@@ -111,6 +113,12 @@ export class ASTree {
             }
 
             ca = new NodeA(child, nodea, [], child.getText(this.sourceFile), child.getStart(this.sourceFile), "", classHeadInfo, functionHeadInfo);
+            const {line,character}=ts.getLineAndCharacterOfPosition(
+                this.sourceFile,
+                child.getStart(this.sourceFile)
+              );
+            ca.line=line;
+            ca.character=character;
             this.copyTree(ca, child);
             cas.push(ca);
             ca.parent = nodea;
@@ -124,6 +132,12 @@ export class ASTree {
         if (rootN == null)
             process.exit(0);
         const rootA = new NodeA(rootN, null, [], rootN.getText(this.sourceFile), rootN.getStart(this.sourceFile),"")
+        const {line,character}=ts.getLineAndCharacterOfPosition(
+            this.sourceFile,
+            rootN.getStart(this.sourceFile)
+          );
+        rootA.line=line;
+        rootA.character=character;
         this.root = rootA
         this.copyTree(rootA, rootN)
         // this.simplify(this.root);
