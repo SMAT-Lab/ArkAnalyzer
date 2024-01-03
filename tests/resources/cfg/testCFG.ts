@@ -7,7 +7,7 @@ let ast:ASTree=new ASTree(fileContent);
 ast.simplify(ast.root);
 // console.log(ast.root.text)
 let cfg:CFG=new CFG(ast.root,"main",null);
-cfg.simplify();
+// cfg.simplify();
 // ast.text=ast.root.text;
 cfg=new CFG(ast.root,"main",null);
 // let stms=cfg.getStatementByText("let x=1;");

@@ -7,6 +7,7 @@ import {NodeA,ASTree} from './Ast';
 import * as fs from 'fs';
 import { exec } from 'child_process';
 import { ArkClass } from '../ArkClass';
+import exp from 'constants';
 
 
 export class statement{
@@ -28,6 +29,7 @@ export class statement{
     haveCall:boolean;
     block:Block|null;
     ifExitPass:boolean;
+    passTmies:number=0;
     numOfIdentifier:number=0;
 
     constructor(type:string,code:string,astNode:NodeA|null,scopeID:number){
@@ -71,6 +73,17 @@ export class switchStatement extends statement{
     constructor(type:string,code:string,astNode:NodeA,scopeID:number){
         super(type,code,astNode,scopeID);
         this.nexts=[];
+    }
+}
+
+export class tryStatement extends statement{
+    tryFirst:statement|null=null;
+    catchStatements:statement[];
+    catchErrors:string[]=[];
+    finallyStatement:statement|null=null;
+    constructor(type:string,code:string,astNode:NodeA,scopeID:number){
+        super(type,code,astNode,scopeID);
+        this.catchStatements=[];
     }
 }
 
@@ -130,6 +143,19 @@ export class Block{
     }
 }
 
+export class Catch{
+    errorName:string;
+    from:number;
+    to:number;
+    withLabel:number;
+    constructor(errorName:string,from:number,to:number,withLabel:number){
+        this.errorName=errorName;
+        this.from=from;
+        this.to=to;
+        this.withLabel=withLabel;
+    }
+}
+
 export class CFG{
     name:string;
     astRoot:NodeA;
@@ -152,6 +178,7 @@ export class CFG{
     variables:Variable[];
     declaringClass: ArkClass|null;
     importFromPath:string[];
+    catches:Catch[];
 
     constructor(ast:NodeA,name:string|undefined, declaringClass: ArkClass|null){
         if(name)
@@ -167,7 +194,7 @@ export class CFG{
         this.breakin="";
         this.statementArray=[];
         this.dotEdges=[];
-        this.exit = new statement("exit","",null,0);
+        this.exit = new statement("exit","return;",null,0);
         this.scopes=[];
         this.scopeLevel=0;
         this.tempVariableNum=0;
@@ -179,6 +206,7 @@ export class CFG{
         this.currentDeclarationKeyword="";
         this.variables=[];
         this.importFromPath=[];
+        this.catches=[];
         this.buildCFG();
     }
 
@@ -266,8 +294,8 @@ export class CFG{
             if(c.kind=="ReturnStatement"){
                 let s=new statement("statement",c.text,c,scope.id);
                 judgeLastType(s);
-                lastStatement=s;
                 s.astNode = c;
+                lastStatement=s;
                 break;
             }
             if(c.kind=="BreakStatement"){
@@ -449,7 +477,7 @@ export class CFG{
                     }
                     else{
                         let lastCaseExit:statement|null=null;
-                        let preCaseWords="";
+                        let preCases:string[]=[];
                         for(let j=0;j< schild.children[1].children.length;j++){
                             let caseClause=schild.children[1].children[j];
                             let syntaxList:NodeA|null=null;
@@ -468,14 +496,32 @@ export class CFG{
                                 process.exit();
                             }
                             if(syntaxList.children.length==0){
-                                preCaseWords+=caseWords+" "
+                                preCases.push(caseWords);
                             }
                             else{
-                                caseWords=preCaseWords+caseWords;
+                                let thisCase=caseWords;
+                                for(let w of preCases){
+                                    caseWords+=w+" ";
+                                }
+                                caseWords+=caseWords;
                                 let casestm=new statement("statement",caseWords,caseClause,scope.id);
                                 switchstm.nexts.push(casestm);
                                 let caseExit=new statement("caseExit","",null,scope.id);
                                 this.walkAST(casestm,caseExit,syntaxList);
+                                for(let w of preCases){
+                                    if(casestm.next){
+                                        let cas=new Case(w,casestm.next);
+                                        switchstm.cases.push(cas);
+                                    }
+                                }
+                                if(casestm.next){
+                                    if(thisCase[0]=="c"){
+                                        let cas=new Case(thisCase,casestm.next);
+                                        switchstm.cases.push(cas);
+                                    }
+                                    else
+                                        switchstm.default=casestm.next;
+                                }
                                 if(lastCaseExit){
                                     lastCaseExit.next=casestm.next;
                                 }
@@ -485,12 +531,14 @@ export class CFG{
                                 else{
                                     lastCaseExit=caseExit;
                                 }
-                                preCaseWords=""
+                                preCases=[];
                             }
 
                         }
                     }
                 }
+                if(switchstm.default==null)
+                    switchstm.default=switchExit;
                 lastStatement=switchExit;
                 this.switchExitStack.pop();
             }
@@ -500,11 +548,12 @@ export class CFG{
                 lastStatement=blockExit;
             }
             if(c.kind=="TryStatement"){
-                let trystm=new statement("statement","try",c,scope.id);
+                let trystm=new tryStatement("tryStatement","try",c,scope.id);
                 judgeLastType(trystm);
-                let tryExit=new statement("tryExit","",c,scope.id);
+                let tryExit=new statement("try exit","",c,scope.id);
                 this.walkAST(trystm,tryExit,c.children[1].children[1]);
-                lastStatement=tryExit;
+                trystm.tryFirst=trystm.next;
+                // lastStatement=tryExit;
                 let catchClause:NodeA|null=null;
                 let finalBlock:NodeA|null=null;
                 let haveFinal=false;
@@ -515,34 +564,45 @@ export class CFG{
                     }
                     if(trychild.kind=="CatchClause"){
                         catchClause=trychild;
+                        let text="catch";
+                        if(catchClause.children.length>2){
+                            text=catchClause.children[0].text+catchClause.children[1].text+catchClause.children[2].text+catchClause.children[3].text
+                        }
+                        let catchOrNot=new conditionStatement("catchOrNot",text,c,scope.id);
+                        // judgeLastType(catchOrNot);
+                        let catchExit=new statement("catch exit","",c,scope.id);
+                        catchOrNot.nextF=catchExit;
+                        let block=catchClause.children[this.findChildIndex(catchClause,"Block")];
+                        this.walkAST(catchOrNot,catchExit,block.children[1]);
+                        if(!catchOrNot.nextT){
+                            catchOrNot.nextT=catchExit;
+                        }
+                        // lastStatement=catchExit;
+
+                        trystm.catchStatements.push(catchOrNot.nextT);
+                        let VD=catchClause.children[this.findChildIndex(catchClause,"VariableDeclaration")];
+                        let error=VD.children[this.findChildIndex(VD,"TypeReference")];
+                        if(error){
+                            trystm.catchErrors.push(error.text);
+                        }
+                        else{
+                            trystm.catchErrors.push("Error");
+                        }
                     }
                     if(trychild.kind=="FinallyKeyword"){
                         haveFinal=true;
                     }
                 }
-                if(catchClause){
-                    let text="catch";
-                    if(catchClause.children.length>2){
-                        text=catchClause.children[0].text+catchClause.children[1].text+catchClause.children[2].text+catchClause.children[3].text
-                    }
-                    let catchOrNot=new conditionStatement("catchOrNot",text,c,scope.id);
-                    judgeLastType(catchOrNot);
-                    let catchExit=new statement("catchExit","",c,scope.id);
-                    catchOrNot.nextF=catchExit;
-                    let block=catchClause.children[this.findChildIndex(catchClause,"Block")];
-                    this.walkAST(catchOrNot,catchExit,block.children[1]);
-                    if(!catchOrNot.nextT){
-                        catchOrNot.nextT=catchExit;
-                    }
-                    lastStatement=catchExit;
-                }
                 if(finalBlock){
                     let final=new statement("statement","finally",c,scope.id);
-                    judgeLastType(final);
-                    let finalExit=new statement("finalExit","",c,scope.id);
+                    // judgeLastType(final);
+                    let finalExit=new statement("finally exit","",c,scope.id);
                     this.walkAST(final,finalExit,finalBlock.children[1]);
-                    lastStatement=finalExit;
+                    // lastStatement=finalExit;
+
+                    trystm.finallyStatement=final.next;
                 }
+                lastStatement=trystm;
             }
     
         }
@@ -550,24 +610,12 @@ export class CFG{
         if(lastStatement.type!="breakStatement"&&lastStatement.type!="continueStatement"){
             lastStatement.next=nextStatement;
         }
-    }   
+    }
 
-    deleteExit(stm:statement,block:Block){
+    deleteExit(stm:statement){
         if(stm.walked)
             return;
         stm.walked=true;
-        if(stm.type=="entry"){
-            let b=new Block(this.blocks.length,[],[],null);
-            this.blocks.push(b);
-            block.nexts.push(b);
-            if(stm.next!=null)
-                this.deleteExit(stm.next,b);
-            return;
-        }
-        if(stm.type!="loopStatement"&&stm.type!="SwitchStatement"){
-            block.stms.push(stm);
-            stm.block=block;
-        }
         if(stm.type=="ifStatement"||stm.type=="loopStatement"||stm.type=="catchOrNot"){
             let cstm=stm as conditionStatement;
             if(cstm.nextT?.type.includes("Exit")){
@@ -596,20 +644,8 @@ export class CFG{
                 this.errorIf(cstm);
                 return;
             }
-            // this.blocks=this.blocks.filter((b)=>b.stms.length!=0);
-            let b2:Block;
-            if(cstm.type=="loopStatement"){
-                let loopBlock=new Block(this.blocks.length,[cstm],[],null);
-                this.blocks.push(loopBlock);
-                block.nexts.push(loopBlock);
-                block=loopBlock;
-                cstm.block=block;
-            }
-            this.deleteExit(cstm.nextT,block);
-            b2=new Block(this.blocks.length,[],[],null);
-            this.blocks.push(b2);
-            block.nexts.push(b2);
-            this.deleteExit(cstm.nextF,b2);
+            this.deleteExit(cstm.nextT);
+            this.deleteExit(cstm.nextF);
         }
         else if(stm.type=="switchStatement"){
             let sstm=stm as switchStatement;
@@ -626,24 +662,25 @@ export class CFG{
                     }
                     sstm.nexts[j]=p;
                 }
-                // this.blocks=this.blocks.filter((b)=>b.stms.length!=0);
-                let b=new Block(this.blocks.length,[],[],null);
-                this.blocks.push(b);
-                block.nexts.push(b);
-                this.deleteExit(sstm.nexts[j],b);
+                this.deleteExit(sstm.nexts[j]);
+            }
+        }
+        else if(stm.type=="tryStatement"){
+            let trystm=stm as tryStatement;
+            if(trystm.tryFirst){
+                this.deleteExit(trystm.tryFirst);
+            }
+            for(let cat of trystm.catchStatements){
+                this.deleteExit(cat);
+            }
+            if(trystm.finallyStatement){
+                this.deleteExit(trystm.finallyStatement);
             }
         }
         else{
             if(stm.next?.type.includes("Exit")){
                 let p=stm.next;
-                let ifExitStop=false;
                 while(p.type.includes("Exit")){
-                    if(p.type=="ifExit"){
-                        if(!p.ifExitPass&&p.lasts.length>1){
-                            ifExitStop=true;
-                            p.ifExitPass=true;
-                        }
-                    }
                     if(p.next==null){
                         console.log("error exit");
                         process.exit();
@@ -651,26 +688,138 @@ export class CFG{
                     p=p.next;
                 }
                 stm.next=p;
-                if(ifExitStop||stm.type=="breakStatement"||stm.type=="continueStatement")
-                    return;
-                // this.blocks=this.blocks.filter((b)=>b.stms.length!=0);
+            }
+            if(stm.next)
+                this.deleteExit(stm.next);
+        }
+    }
+
+    buildBlocks(stm:statement,block:Block){
+        if(stm.type.includes(" exit")||stm.walked)
+            return;
+        stm.walked=true;
+        if(stm.type=="entry"){
+            let b=new Block(this.blocks.length,[],[],null);
+            this.blocks.push(b);
+            block.nexts.push(b);
+            if(stm.next!=null)
+                this.buildBlocks(stm.next,b);
+            return;
+        }
+        if(stm.type!="loopStatement"&&stm.type!="SwitchStatement"&&stm.type!="tryStatement"){
+            block.stms.push(stm);
+            stm.block=block;
+        }
+        if(stm.type=="ifStatement"||stm.type=="loopStatement"||stm.type=="catchOrNot"){
+            let cstm=stm as conditionStatement;
+            if(cstm.nextT==null||cstm.nextF==null){
+                this.errorIf(cstm);
+                return;
+            }
+            // this.blocks=this.blocks.filter((b)=>b.stms.length!=0);
+            let b2:Block;
+            if(cstm.type=="loopStatement"){
+                this.blocks=this.blocks.filter((b)=>b.stms.length!=0);
+                let loopBlock=new Block(this.blocks.length,[cstm],[],null);
+                this.blocks.push(loopBlock);
+                block.nexts.push(loopBlock);
+                block=loopBlock;
+                cstm.block=block;
+            }
+            this.buildBlocks(cstm.nextT,block);
+            this.blocks=this.blocks.filter((b)=>b.stms.length!=0);
+            b2=new Block(this.blocks.length,[],[],null);
+            this.blocks.push(b2);
+            block.nexts.push(b2);
+            this.buildBlocks(cstm.nextF,b2);
+        }
+        else if(stm.type=="switchStatement"){
+            let sstm=stm as switchStatement;
+            for(let j in sstm.nexts){
+                let sn:statement|null=sstm.nexts[j].next;
+                this.blocks=this.blocks.filter((b)=>b.stms.length!=0);
                 let b=new Block(this.blocks.length,[],[],null);
                 this.blocks.push(b);
                 block.nexts.push(b);
-                block=b;
+                if(sn)
+                    this.buildBlocks(sn,b);
             }
-            if(stm.next!=null){
-                // if(stm.type=="breakStatement"){
-                //     if(stm.next.block){
-                //         block.nexts.push((stm.next.block));
-                //     }
-                //     else{
-                //         let b=new Block(this.blocks.length,[],[],null);
-                //         this.blocks.push(b);
-                //         block.nexts.push(b);
-                //         block=b;
-                //     }
+        }
+        else if(stm.type=="tryStatement"){
+            let trystm=stm as tryStatement;
+            if(!trystm.tryFirst){
+                console.log("try without tryFirst");
+                process.exit();
+            }
+            this.blocks=this.blocks.filter((b)=>b.stms.length!=0);
+            let tryFirstBlock=new Block(this.blocks.length,[],[],null);
+            this.blocks.push(tryFirstBlock);
+            // block.nexts.push(tryFirstBlock);
+            this.buildBlocks(trystm.tryFirst,tryFirstBlock);
+
+            this.blocks=this.blocks.filter((b)=>b.stms.length!=0);
+            let finallyBlock=new Block(this.blocks.length,[],[],null);
+            this.blocks.push(finallyBlock);
+            // block.nexts.push(afterTry);
+            if(trystm.finallyStatement){
+                this.buildBlocks(trystm.finallyStatement,finallyBlock);
+                // let stm=new statement("gotoStatement","goto label"+finallyBlock.id,null,tryFirstBlock.stms[0].scopeID);
+                // tryFirstBlock.stms.push(stm);
+            }
+            else{
+                let stm=new statement("tmp","",null,-1);
+                finallyBlock.stms=[stm];
+            }
+            // let catchBlocks:Block[]=[];
+            for(let i=0;i<trystm.catchStatements.length;i++){
+                this.blocks=this.blocks.filter((b)=>b.stms.length!=0);
+                let b=new Block(this.blocks.length,[],[],null);
+                this.blocks.push(b);
+                this.buildBlocks(trystm.catchStatements[i],b);
+                // if(trystm.finallyStatement){
+                //     let stm=new statement("gotoStatement","goto label"+finallyBlock.id,null,tryFirstBlock.stms[0].scopeID);
+                //     b.stms.push(stm);
                 // }
+                this.catches.push(new Catch(trystm.catchErrors[i],tryFirstBlock.id,finallyBlock.id,b.id));
+            }
+            if(trystm.finallyStatement){
+                this.resetWalkedPartial(trystm.finallyStatement);
+                this.blocks=this.blocks.filter((b)=>b.stms.length!=0);
+                let errorFinallyBlock=new Block(this.blocks.length,[],[],null);
+                this.blocks.push(errorFinallyBlock);
+                for(let stm of finallyBlock.stms){
+                    errorFinallyBlock.stms.push(stm);
+                }
+                let stm=new statement("Statement","throw Error",null,trystm.finallyStatement.scopeID);
+                errorFinallyBlock.stms.push(stm);
+                this.catches.push(new Catch("Error",tryFirstBlock.id,finallyBlock.id,errorFinallyBlock.id));
+                for(let i=0;i<trystm.catchStatements.length;i++){
+                    let block=trystm.catchStatements[i].block
+                    if(!block){
+                        console.log("catch without block");
+                        process.exit();
+                    }
+                    this.catches.push(new Catch(trystm.catchErrors[i],block.id,finallyBlock.id,errorFinallyBlock.id));
+                    let goto=new statement("gotoStatement","goto label"+finallyBlock.id,null,finallyBlock.stms[0].scopeID);
+                    block.stms.push(goto);
+                }
+            }
+            this.blocks=this.blocks.filter((b)=>b.stms.length!=0);
+            let nextBlock=new Block(this.blocks.length,[],[],null);
+            this.blocks.push(nextBlock);
+            block.nexts.push(nextBlock);
+            if(trystm.next)
+                this.buildBlocks(trystm.next,nextBlock);
+            let goto=new statement("gotoStatement","goto label"+nextBlock.id,null,tryFirstBlock.stms[0].scopeID);
+            if(trystm.finallyStatement){
+                finallyBlock.stms.push(goto);
+            }
+            else{
+                finallyBlock.stms=[goto];
+            }
+        }
+        else{
+            if(stm.next){
                 if(stm.type=="continueStatement"&&stm.next.block){
                     block.nexts.push(stm.next.block);
                     return;
@@ -678,10 +827,62 @@ export class CFG{
                 if(stm.next.type=="loopStatement"&&stm.next.block){
                     block.nexts.push(stm.next.block);
                     block=stm.next.block;
+                    return;
                 }
-                this.deleteExit(stm.next,block);
-
+                
+                stm.next.passTmies++;
+                if(stm.next.passTmies==stm.next.lasts.length||stm.next.type=="loopStatement"){
+                    if(stm.next.scopeID!=stm.scopeID){
+                        this.blocks=this.blocks.filter((b)=>b.stms.length!=0);
+                        let b=new Block(this.blocks.length,[],[],null);
+                        this.blocks.push(b);
+                        block.nexts.push(b);
+                        block=b;
+                    }
+                    this.buildBlocks(stm.next,block);
+                }
             }
+
+
+            // if(stm.next?.type.includes("Exit")){
+            //     let p=stm.next;
+            //     let ifExitStop=false;
+            //     while(p.type.includes("Exit")){
+            //         if(p.type=="ifExit"){
+            //             if(!p.ifExitPass&&p.lasts.length>1){
+            //                 ifExitStop=true;
+            //                 p.ifExitPass=true;
+            //             }
+            //         }
+            //         if(p.next==null){
+            //             console.log("error exit");
+            //             process.exit();
+            //         }
+            //         p=p.next;
+            //     }
+            //     stm.next=p;
+            //     if(ifExitStop||stm.type=="breakStatement"||stm.type=="continueStatement")
+            //         return;
+            //     // this.blocks=this.blocks.filter((b)=>b.stms.length!=0);
+            //     let b=new Block(this.blocks.length,[],[],null);
+            //     this.blocks.push(b);
+            //     block.nexts.push(b);
+            //     block=b;
+            // }
+            // if(stm.next!=null){
+            //     if(stm.type=="continueStatement"&&stm.next.block){
+            //         block.nexts.push(stm.next.block);
+            //         return;
+            //     }
+            //     if(stm.next.type=="loopStatement"&&stm.next.block){
+            //         block.nexts.push(stm.next.block);
+            //         block=stm.next.block;
+            //     }
+            //     stm.passTmies++;
+            //     if(stm.passTmies==stm.lasts.length)
+            //         this.buildBlocks(stm.next,block);
+
+            // }
         }
     }
 
@@ -706,6 +907,7 @@ export class CFG{
             stm.haveCall=this.nodeHaveCall(stm.astNode);
             stm.line=stm.astNode.line;
         }
+        
         if(stm.type=="ifStatement"||stm.type=="loopStatement"||stm.type=="catchOrNot"){
             let cstm=stm as conditionStatement;
             if(cstm.nextT==null||cstm.nextF==null){
@@ -724,6 +926,18 @@ export class CFG{
                 this.buildLastAndHaveCall(s);
             }
         }
+        else if(stm.type=="tryStatement"){
+            let trystm=stm as tryStatement;
+            if(trystm.tryFirst){
+                this.buildLastAndHaveCall(trystm.tryFirst);
+            }
+            for(let cat of trystm.catchStatements){
+                this.buildLastAndHaveCall(cat);
+            }
+            if(trystm.finallyStatement){
+                this.buildLastAndHaveCall(trystm.finallyStatement);
+            }
+        }
         else{
             if(stm.next){
                 stm.next?.lasts.push(stm);
@@ -732,32 +946,50 @@ export class CFG{
         }
         
     }
+
     resetWalked(){
         for(let stm of this.statementArray){
             stm.walked=false;
         }
-        // if(!stm.walked)
-        //     return;
-        // stm.walked=false;
-        // if(stm.type=="ifStatement"||stm.type=="loopStatement"||stm.type=="catchOrNot"){
-        //     let cstm=stm as conditionStatement;
-        //     if(cstm.nextT==null||cstm.nextF==null){
-        //         this.errorIf(cstm);
-        //         return;
-        //     }
-        //     this.resetWalked(cstm.nextF);
-        //     this.resetWalked(cstm.nextT);
+    }
+    resetWalkedPartial(stm:statement){
+        // for(let stm of this.statementArray){
+        //     stm.walked=false;
         // }
-        // else if(stm.type=="switchStatement"){
-        //     let sstm=stm as switchStatement;
-        //     for(let j in sstm.nexts){
-        //         this.resetWalked(sstm.nexts[j]);
-        //     }
-        // }
-        // else{
-        //     if(stm.next!=null)
-        //         this.resetWalked(stm.next);
-        // }
+        if(!stm.walked)
+            return;
+        stm.walked=false;
+        if(stm.type=="ifStatement"||stm.type=="loopStatement"||stm.type=="catchOrNot"){
+            let cstm=stm as conditionStatement;
+            if(cstm.nextT==null||cstm.nextF==null){
+                this.errorIf(cstm);
+                return;
+            }
+            this.resetWalkedPartial(cstm.nextF);
+            this.resetWalkedPartial(cstm.nextT);
+        }
+        else if(stm.type=="switchStatement"){
+            let sstm=stm as switchStatement;
+            for(let j in sstm.nexts){
+                this.resetWalkedPartial(sstm.nexts[j]);
+            }
+        }
+        else if(stm.type=="tryStatement"){
+            let trystm=stm as tryStatement;
+            if(trystm.tryFirst){
+                this.resetWalkedPartial(trystm.tryFirst);
+            }
+            for(let cat of trystm.catchStatements){
+                this.resetWalkedPartial(cat);
+            }
+            if(trystm.finallyStatement){
+                this.resetWalkedPartial(trystm.finallyStatement);
+            }
+        }
+        else{
+            if(stm.next!=null)
+                this.resetWalkedPartial(stm.next);
+        }
         
     }
 
@@ -772,11 +1004,12 @@ export class CFG{
 
     cfg2Array(stm:statement){
 
-        if(stm.walked)
+        if(!stm.walked)
             return;
-        stm.walked=true;
+        stm.walked=false;
         stm.index=this.statementArray.length;
-        this.statementArray.push(stm);
+        if(!stm.type.includes(" exit"))
+            this.statementArray.push(stm);
         if(stm.type=="ifStatement"||stm.type=="loopStatement"||stm.type=="catchOrNot"){
             let cstm=stm as conditionStatement;
             if(cstm.nextT==null||cstm.nextF==null){
@@ -792,11 +1025,46 @@ export class CFG{
                 this.cfg2Array(ss);
             }
         }
+        else if(stm.type=="tryStatement"){
+            let trystm=stm as tryStatement;
+            if(trystm.tryFirst){
+                this.cfg2Array(trystm.tryFirst);
+            }
+            for(let cat of trystm.catchStatements){
+                this.cfg2Array(cat);
+            }
+            if(trystm.finallyStatement){
+                this.cfg2Array(trystm.finallyStatement);
+            }
+        }
         else{
             if(stm.next!=null)
                 this.cfg2Array(stm.next);
         }
     }
+
+    // buildBlocks2(){
+    //     for(let stm of this.statementArray){
+    //         if(stm.type.includes("Exit")){
+    //             this.statementArray.splice(this.statementArray.indexOf(stm),1);
+    //         }
+    //         if(stm.type=="switchStatement"){
+    //             let sstm=stm as switchStatement;
+    //             if(sstm.default?.type.includes("Exit")){
+    //                 let p=sstm.default;
+    //                 while(p.type.includes("Exit")){
+    //                     if(p.next)
+    //                         p=p.next;
+    //                     else{
+    //                         console.log("exit error");
+    //                         process.exit();
+    //                     }
+    //                 }
+    //                 sstm.default=p;
+    //             }
+    //         }
+    //     }
+    // }
 
     getDotEdges(stm:statement){
         if(this.statementArray.length==0)
@@ -894,9 +1162,40 @@ export class CFG{
                     else{
                         v.lastDef=stm;
                     }
+                    return;
                 }
             }
-            return;
+        }
+        if(node.kind=="PropertyAccessExpression"){
+            // this.dfsUseDef(stm,node.children[0],mode);
+            for(let v of this.variables){
+                if(v.name==node.children[0].text){
+                    if(mode=="use"){
+                        for(let v of this.variables){
+                            if(v.name==node.text){
+                                set.add(v);
+                                let chain=new DefUseChain(v.lastDef,stm);
+                                v.defUse.push(chain);
+                                return;
+                            }
+                        }
+                        set.add(v);
+                        let chain=new DefUseChain(v.lastDef,stm);
+                        v.defUse.push(chain);
+                    }
+                    else{
+                        for(let v of this.variables){
+                            if(v.name==node.text){
+                                v.lastDef=stm;
+                                return;
+                            }
+                        }
+                        const property=new Variable(node.text,stm);
+                        this.variables.push(property);
+                    }
+                    return;
+                }
+            }
         }
         let indexOfDef=-1;
         if(node.kind=="VariableDeclaration"){
@@ -939,116 +1238,118 @@ export class CFG{
         }
         return -1;
     }
-    generateUseDef(stm:statement){
-        if(stm.walked)return;
-        stm.walked = true;
-        if(stm.astNode == null)return;
-        let node:NodeA = stm.astNode;
-        let c=stm.astNode;
-        switch(stm.astNode?.kind){
-            case "FirstStatement":
-            case "VariableStatement":
-                let declList=c.children[this.findChildIndex(c,"VariableDeclarationList")];
-                declList=declList.children[this.findChildIndex(declList,"SyntaxList")];
-                for(let decl of declList.children){
-                    if(decl.children[0]){
-                        const v=new Variable(decl.children[0]?.text,stm);
-                        this.variables.push(v);
-                        this.dfsUseDef(stm,decl,"use");
+    generateUseDef(){
+        // if(stm.walked)return;
+        // stm.walked = true;
+        for(let stm of this.statementArray){
+            if(stm.astNode == null)continue;
+            let node:NodeA = stm.astNode;
+            let c=stm.astNode;
+            switch(stm.astNode?.kind){
+                case "FirstStatement":
+                case "VariableStatement":
+                    let declList=c.children[this.findChildIndex(c,"VariableDeclarationList")];
+                    declList=declList.children[this.findChildIndex(declList,"SyntaxList")];
+                    for(let decl of declList.children){
+                        if(decl.children[0]){
+                            const v=new Variable(decl.children[0]?.text,stm);
+                            this.variables.push(v);
+                            this.dfsUseDef(stm,decl,"use");
+                        }
                     }
-                }
-                break;
-            case "ImportDeclaration":
-                let importClause=c.children[this.findChildIndex(c,"ImportClause")];
-                let nameImport=importClause.children[0]
-                if(nameImport.kind=="NamedImports"){
-                    let syntaxList=nameImport.children[this.findChildIndex(nameImport,"SyntaxList")];
-                    for(let importSpecifier of syntaxList.children){
-                        if (importSpecifier.kind!="ImportSpecifier")
-                            continue;
-                        const v=new Variable(importSpecifier.text,stm);
+                    break;
+                case "ImportDeclaration":
+                    let importClause=c.children[this.findChildIndex(c,"ImportClause")];
+                    let nameImport=importClause.children[0]
+                    if(nameImport.kind=="NamedImports"){
+                        let syntaxList=nameImport.children[this.findChildIndex(nameImport,"SyntaxList")];
+                        for(let importSpecifier of syntaxList.children){
+                            if (importSpecifier.kind!="ImportSpecifier")
+                                continue;
+                            const v=new Variable(importSpecifier.text,stm);
+                            this.variables.push(v);
+                            stm.def.add(v);
+                        }
+                    }
+                    else if(nameImport.kind=="NamespaceImport"){
+                        let identifier=nameImport.children[this.findChildIndex(nameImport,"Identifier")];
+                        const v=new Variable(identifier.text,stm);
                         this.variables.push(v);
                         stm.def.add(v);
                     }
-                }
-                else if(nameImport.kind=="NamespaceImport"){
-                    let identifier=nameImport.children[this.findChildIndex(nameImport,"Identifier")];
-                    const v=new Variable(identifier.text,stm);
-                    this.variables.push(v);
-                    stm.def.add(v);
-                }
-                break;
-            case "IfStatement":
-            case "WhileStatement":
-            case "DoStatement":
-                for(let child of node.children){
-                    if(child.kind=="Identifier"){
-                        for(let v of this.variables){
-                            if(v.name==child.text)
-                                stm.use.add(v);
+                    break;
+                case "IfStatement":
+                case "WhileStatement":
+                case "DoStatement":
+                    for(let child of node.children){
+                        if(child.kind=="Identifier"){
+                            for(let v of this.variables){
+                                if(v.name==child.text)
+                                    stm.use.add(v);
+                            }
+                        }
+                        else if(child.kind=="BinaryExpression"){
+                            this.dfsUseDef(stm,child,"use");
                         }
                     }
-                    else if(child.kind=="BinaryExpression"){
+                    break;
+                case "ForStatement":
+                    let semicolon=0;
+                    let beforeDef=new Set<Variable>;
+                    for(let child of node.children){
+                        if(child.kind=="SemicolonToken"){
+                            semicolon++;
+                            if(semicolon==2){
+                                beforeDef=new Set(stm.def);
+                            }
+                        }
+                        if(child.kind=="Block"){
+                            break;
+                        }
                         this.dfsUseDef(stm,child,"use");
                     }
-                }
-                break;
-            case "ForStatement":
-                let semicolon=0;
-                let beforeDef=new Set<Variable>;
-                for(let child of node.children){
-                    if(child.kind=="SemicolonToken"){
-                        semicolon++;
-                        if(semicolon==2){
-                            beforeDef=new Set(stm.def);
+                    for(let element of stm.def){
+                        if(!beforeDef.has(element)){
+                            stm.defspecial.add(element)
                         }
                     }
-                    if(child.kind=="Block"){
-                        break;
-                    }
-                    this.dfsUseDef(stm,child,"use");
-                }
-                for(let element of stm.def){
-                    if(!beforeDef.has(element)){
-                        stm.defspecial.add(element)
-                    }
-                }
-                break;
-            case "ForInStatement":
-                let indexOfIn=this.findChildIndex(node,"InKeyword");
-                this.dfsUseDef(stm,node.children[indexOfIn+1],"use");
-                this.dfsUseDef(stm,node.children[indexOfIn-1],"use");
-                break;
-            case "ForOfStatement":
-                let indexOfOf=this.findChildIndex(node,"LastContextualKeyword");//of
-                this.dfsUseDef(stm,node.children[indexOfOf+1],"use");
-                this.dfsUseDef(stm,node.children[indexOfOf-1],"use");
-                break;
-            default:
-                if(stm.type!="entry"&&stm.type!="exit")
-                    this.dfsUseDef(stm,node,"use");
-        }
-
-
-        if(stm.type=="ifStatement"||stm.type=="loopStatement"||stm.type=="catchOrNot"){
-            let cstm=stm as conditionStatement;
-            if(cstm.nextT==null||cstm.nextF==null){
-                this.errorIf(cstm);
-                return;
-            }
-            this.generateUseDef(cstm.nextF);
-            this.generateUseDef(cstm.nextT);
-        }
-        else if(stm.type=="switchStatement"){
-            let sstm=stm as switchStatement;
-            for(let j in sstm.nexts){
-                this.generateUseDef(sstm.nexts[j]);
+                    break;
+                case "ForInStatement":
+                    let indexOfIn=this.findChildIndex(node,"InKeyword");
+                    this.dfsUseDef(stm,node.children[indexOfIn+1],"use");
+                    this.dfsUseDef(stm,node.children[indexOfIn-1],"use");
+                    break;
+                case "ForOfStatement":
+                    let indexOfOf=this.findChildIndex(node,"LastContextualKeyword");//of
+                    this.dfsUseDef(stm,node.children[indexOfOf+1],"use");
+                    this.dfsUseDef(stm,node.children[indexOfOf-1],"use");
+                    break;
+                default:
+                    if(stm.type!="entry"&&stm.type!="exit")
+                        this.dfsUseDef(stm,node,"use");
             }
         }
-        else{
-            if(stm.next!=null)
-                this.generateUseDef(stm.next);
-        }
+
+        // if(stm.type=="ifStatement"||stm.type=="loopStatement"||stm.type=="catchOrNot"){
+        //     let cstm=stm as conditionStatement;
+        //     if(cstm.nextT==null||cstm.nextF==null){
+        //         this.errorIf(cstm);
+        //         return;
+        //     }
+        //     this.generateUseDef(cstm.nextF);
+        //     this.generateUseDef(cstm.nextT);
+        // }
+        // else if(stm.type=="switchStatement"){
+        //     let sstm=stm as switchStatement;
+        //     for(let j in sstm.nexts){
+        //         this.generateUseDef(sstm.nexts[j]);
+        //     }
+        // }
+        // else{
+        //     if(stm.next!=null)
+        //         this.generateUseDef(stm.next);
+        // }
+        
     }
 
     ac3(node:NodeA,tempV:number,begin:boolean){
@@ -1170,54 +1471,56 @@ export class CFG{
             this.getNumOfIdentifier(child,stm);
     }
     
-    get3AddressCode(stm:statement){
-        if(stm.walked)return;
-        stm.walked = true;
-        if(stm.astNode&&stm.code!=""){
-            let node:NodeA=stm.astNode;
-            if(stm.type=="ifStatement"||stm.type=="loopStatement"||stm.type=="catchOrNot"){
-                node=node.children[this.findChildIndex(node,"OpenParenToken")+1]
-            }
-            this.getNumOfIdentifier(node,stm);
-            if(stm.numOfIdentifier>2){
-                this.current3ACstm=stm;
-                if(stm.astNode.kind=="FirstStatement"){
-                    let declList=stm.astNode.children[this.findChildIndex(stm.astNode,"VariableDeclarationList")];
-                    this.currentDeclarationKeyword=declList.children[0].text+" ";
-                    let decls=declList.children[this.findChildIndex(declList,"SyntaxList")];
-                    for(let decl of decls.children){
-                        this.ac3(decl,this.tempVariableNum++,true);
+    get3AddressCode(){
+        // if(stm.walked)return;
+        // stm.walked = true;
+        for(let stm of this.statementArray){
+            if(stm.astNode&&stm.code!=""){
+                let node:NodeA=stm.astNode;
+                if(stm.type=="ifStatement"||stm.type=="loopStatement"||stm.type=="catchOrNot"){
+                    node=node.children[this.findChildIndex(node,"OpenParenToken")+1]
+                }
+                this.getNumOfIdentifier(node,stm);
+                if(stm.numOfIdentifier>2){
+                    this.current3ACstm=stm;
+                    if(stm.astNode.kind=="FirstStatement"){
+                        let declList=stm.astNode.children[this.findChildIndex(stm.astNode,"VariableDeclarationList")];
+                        this.currentDeclarationKeyword=declList.children[0].text+" ";
+                        let decls=declList.children[this.findChildIndex(declList,"SyntaxList")];
+                        for(let decl of decls.children){
+                            this.ac3(decl,this.tempVariableNum++,true);
+                        }
+                    }
+                    else{
+                        this.currentDeclarationKeyword="";
+                        this.ac3(stm.astNode,this.tempVariableNum++,true);
                     }
                 }
-                else{
-                    this.currentDeclarationKeyword="";
-                    this.ac3(stm.astNode,this.tempVariableNum++,true);
-                }
+                
             }
-            
-        }
-        if(stm.addressCode3.length<3){
-            stm.addressCode3=[];
-        }
-        if(stm.type=="ifStatement"||stm.type=="loopStatement"||stm.type=="catchOrNot"){
-            let cstm=stm as conditionStatement;
-            if(cstm.nextT==null||cstm.nextF==null){
-                this.errorIf(cstm);
-                return;
-            }
-            this.get3AddressCode(cstm.nextF);
-            this.get3AddressCode(cstm.nextT);
-        }
-        else if(stm.type=="switchStatement"){
-            let sstm=stm as switchStatement;
-            for(let j in sstm.nexts){
-                this.get3AddressCode(sstm.nexts[j]);
+            if(stm.addressCode3.length<3){
+                stm.addressCode3=[];
             }
         }
-        else{
-            if(stm.next!=null)
-                this.get3AddressCode(stm.next);
-        }
+        // if(stm.type=="ifStatement"||stm.type=="loopStatement"||stm.type=="catchOrNot"){
+        //     let cstm=stm as conditionStatement;
+        //     if(cstm.nextT==null||cstm.nextF==null){
+        //         this.errorIf(cstm);
+        //         return;
+        //     }
+        //     this.get3AddressCode(cstm.nextF);
+        //     this.get3AddressCode(cstm.nextT);
+        // }
+        // else if(stm.type=="switchStatement"){
+        //     let sstm=stm as switchStatement;
+        //     for(let j in sstm.nexts){
+        //         this.get3AddressCode(sstm.nexts[j]);
+        //     }
+        // }
+        // else{
+        //     if(stm.next!=null)
+        //         this.get3AddressCode(stm.next);
+        // }
     }
     
 
@@ -1437,13 +1740,13 @@ export class CFG{
                     stm.code="if !("+cstm.condition+") goto label"+cstm.nextF.block.id
                     // text+="    if !("+cstm.condition+") goto label"+cstm.nextF.block.id+'\n';
                     if(i==length-1&&bi+1<this.blocks.length&&this.blocks[bi+1].id!=cstm.nextT.block.id){
-                        let gotoStm=new statement("statement","goto label"+cstm.nextT.block.id,null,block.stms[0].scopeID);
+                        let gotoStm=new statement("gotoStatement","goto label"+cstm.nextT.block.id,null,block.stms[0].scopeID);
                         block.stms.push(gotoStm);
                         length++;
                     }
                         // text+="    goto label"+cstm.nextT.block.id+'\n'
                 }
-                if(stm.type=="breakStatement"||stm.type=="continueStatement"){
+                else if(stm.type=="breakStatement"||stm.type=="continueStatement"){
                     if(!stm.next?.block){
                         console.log("break/continue without block");
                         process.exit();
@@ -1459,24 +1762,55 @@ export class CFG{
                     }
                         // text+="    goto label"+stm.next?.block.id+'\n';
                 }
-                text+="    "+stm.code+"\n";
+                // text+="    "+stm.code+"\n";
+                if(stm.addressCode3.length==0){
+                    text+="    "+stm.code+"\n";
+                }
+                else{
+                    for(let ac of stm.addressCode3){
+                        if(ac.includes("if")||ac.includes("while")){
+                            let cstm=stm as conditionStatement;
+                            let condition=ac.substring(ac.indexOf("("));
+                            let goto="";
+                            if(cstm.nextF?.block)
+                                goto="if !"+condition+" goto label"+cstm.nextF?.block.id;
+                            stm.addressCode3[stm.addressCode3.indexOf(ac)]=goto;
+                            text+="    "+goto+"\n";
+                        }
+                        else
+                            text+="    "+ac+"\n";
+                    }
+                }
+                if(stm.type=="switchStatement"){
+                    let sstm=stm as switchStatement;
+                    for(let cas of sstm.cases){
+                        if(cas.stm.block)
+                            text+="        "+cas.value+"goto label"+cas.stm.block.id+'\n';
+                    }
+                    if(sstm.default?.block)
+                        text+="        default : goto label"+sstm.default?.block.id+'\n';
+                }
             }
             
+        }
+        for(let cat of this.catches){
+            text+="catch "+cat.errorName+" from label "+cat.from+" to label "+cat.to+" with label"+cat.withLabel+"\n";
         }
         console.log(text);
     }
 
     buildCFG(){
         this.walkAST(this.entry,this.exit,this.astRoot);
+        this.deleteExit(this.entry);
         this.cfg2Array(this.entry);
         this.resetWalked();
         this.buildLastAndHaveCall(this.entry);
         this.resetWalked();
-        this.deleteExit(this.entry,this.entryBlock);
+        this.buildBlocks(this.entry,this.entryBlock);
         this.blocks=this.blocks.filter((b)=>b.stms.length!=0);
         this.resetWalked();
-        this.generateUseDef(this.entry);
+        this.generateUseDef();
         this.resetWalked();
-        this.get3AddressCode(this.entry);
+        this.get3AddressCode();
     }
 }
