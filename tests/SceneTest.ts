@@ -4,6 +4,8 @@ import * as utils from "../utils/utils";
 import fs from 'fs';
 import { ClassSignature } from "../core/ArkSignature";
 import { conditionStatement } from "../core/base/Cfg";
+import { ASTree } from "../core/base/Ast";
+import { HotPropertyAccessCheck } from "../checker/HotPropertyAccessCheck";
 
 function run(config: Config) {
     const projectName: string = config.projectName;
@@ -15,37 +17,14 @@ function run(config: Config) {
 
     //(2) Fill Scene class
     let scene: Scene = new Scene(projectName, projectFiles);
-    const fl = fs.realpathSync('./sample/sample.ts');
-    let mtd = scene.getMethod(fl, 'forLoopTest', [], [], "_DEFAULT_ARK_CLASS");
-    //let mtd2 = scene.getMethod(fl, '_DEFAULT_ARK_METHOD', [], [], "_DEFAULT_ARK_CLASS");
-    //console.log(mtd2?.modifiers);
-    if (!mtd) {
-        throw new Error('No ArkMethod found.');
-    }
-    //console.log(mtd.cfg.blocks);
-    for (let stmt of mtd.cfg.statementArray) {
-        //console.log("******START******");
-        //console.log("Code: ", stmt.code);
-        //console.log("########");
-        //console.log("Def: ", stmt.def);
-        //console.log("########");
-        //console.log("Use: ", stmt.use);
-        //console.log("########");
-        //console.log("Def-Use: ", stmt.use);
-        for (let defUse of stmt.use) {
-            //console.log("Def-Use: ", defUse);
-        }
-        //console.log("******END******");
-        if (stmt.type == 'loopStatement') {
-            //console.log((stmt as conditionStatement).nextT?.code);
-            //console.log("#######");
-            //console.log((stmt as conditionStatement).nextF);
-        }
-    }
+    HotPropertyAccessCheck(scene);
     
-    //let clsSig = new ClassSignature(fl, "SecurityDoor");
-    //console.log(scene.getFather(clsSig));
+    //let code = 'let age = myPerson.age + i;';
+    //let codeTree = new ASTree(code);
+    //codeTree.printAST();
 }
 
-let config: Config = new Config("sample", "./sample");
+//let config: Config = new Config("app_photo", "/Users/yifei/Documents/Code/applications_photos/common/src/main/ets");
+//let config: Config = new Config("app_photo", "/Users/yifei/Documents/Code/applications_systemui");
+let config: Config = new Config("app_photo", "./sample");
 run(config);

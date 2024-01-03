@@ -25,9 +25,6 @@ export class Scene {
         this.genArkFiles();
         this.makeCallGraph();
         this.genExtendedClasses();
-        for (let cls of this.extendedClasses.keys()) {
-            console.log(cls);
-        }
     }
 
     private genArkFiles() {
