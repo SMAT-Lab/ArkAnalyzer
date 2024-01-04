@@ -62,6 +62,8 @@ export class ArkBinopExpr implements Expr {
 
     public getUses(): Value[] {
         let uses: Value[] = [];
+        uses.push(this.op1);
+        uses.push(this.op2);
         return uses;
     }
 }

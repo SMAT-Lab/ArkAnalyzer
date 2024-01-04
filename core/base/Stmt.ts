@@ -149,6 +149,9 @@ export class ArkAssignStmt extends Stmt {
         this.rightOp = rightOp;
         this.addDef(leftOp);
         this.addUse(rightOp);
+        for (const use of rightOp.getUses()) {
+            this.addUse(use);
+        }
     }
 
     public getLeftOp(): Value {

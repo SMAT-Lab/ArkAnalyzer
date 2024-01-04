@@ -11,8 +11,8 @@ import exp from 'constants';
 import { ArkAssignStmt, ArkInvokeStmt, Stmt } from './Stmt';
 import { Local } from '../common/Local';
 import { Value } from '../common/Value';
-import { ArkFieldRef } from '../common/Ref';
-import { ArkInvokeExpr, ArkNewExpr } from './Expr';
+import { ArkArrayRef, ArkFieldRef } from '../common/Ref';
+import { ArkBinopExpr, ArkInvokeExpr, ArkNewExpr } from './Expr';
 
 
 export class statement {
@@ -1484,19 +1484,17 @@ export class CFG {
                 rightOp = new ArkInvokeExpr(methodSignature, args);
                 threeAdressStmt = new ArkAssignStmt(leftOp, rightOp);
             } else {
-                let classSignature = rigtOpNames.join('');                
+                let classSignature = rigtOpNames.join('');
                 threeAdressStmt = new ArkAssignStmt(leftOp, new ArkNewExpr(classSignature));
                 this.current3ACstm.threeAdressStmts.push(threeAdressStmt);
 
                 let methodSignature = 'constructor';
                 threeAdressStmt = new ArkInvokeStmt(new ArkInvokeExpr(methodSignature, args));
             }
-
-
         }
         else {
             let leftOp = new Local("temp" + tempV);
-            let rightOpName = '';
+            let rigtOpNames: string[] = [];
             for (let child of node.children) {
                 if (child.kind == "PropertyAccessExpression" || child.kind == "BinaryExpression" || child.kind == "CallExpression" || node.kind == "NewExpression" || child.kind == "ElementAccessExpression" || child.kind == "ConditionalExpression") {
                     if (child.kind == "CallExpression" && node.children.length < 3) {
@@ -1504,7 +1502,7 @@ export class CFG {
                         return;
                     }
                     simpleStm += "temp" + this.tempVariableNum;
-                    rightOpName += "temp" + this.tempVariableNum;
+                    rigtOpNames.push("temp" + this.tempVariableNum);
                     this.ac3(child, this.tempVariableNum++, false);
                 }
                 else if (child.kind == "ParenthesizedExpression") {
@@ -1516,16 +1514,22 @@ export class CFG {
                         if (child.kind.includes("Keyword")) {
                             simpleStm += " " + child.text + " ";
                         }
-                        else
+                        else {
                             simpleStm += child.text;
-                        rightOpName += child.text;
+                            rigtOpNames.push(child.text);
+                        }
+
                     }
                 }
             }
 
             let rightOp: any;
             if (node.kind == 'PropertyAccessExpression') {
-                rightOp = new ArkFieldRef(new Local(rightOpName));
+                rightOp = new ArkFieldRef(new Local(rigtOpNames.join('')));
+            } else if (node.kind == 'ElementAccessExpression') {
+                rightOp = new ArkArrayRef(new Local(rigtOpNames[0]), new Local(rigtOpNames[2]));
+            } else if (node.kind == 'BinaryExpression') {
+                rightOp = new ArkBinopExpr(new Local(rigtOpNames[0]), new Local(rigtOpNames[2]), rigtOpNames[1]);
             }
             threeAdressStmt = new ArkAssignStmt(leftOp, rightOp);
         }
