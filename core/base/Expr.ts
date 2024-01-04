@@ -5,15 +5,15 @@ import { ClassSignature, MethodSignature } from "../ArkSignature";
 export interface Expr extends Value { }
 
 export class ArkInvokeExpr implements Expr {
-    private methodSignature: MethodSignature;
+    private methodSignature: string;
     private args: Value[];
 
-    constructor(methodSignature: MethodSignature, args: Value[]) {
+    constructor(methodSignature: string, args: Value[]) {
         this.methodSignature = methodSignature;
         this.args = args;
     }
 
-    public getMethodSignature(): MethodSignature {
+    public getMethodSignature(): string {
         return this.methodSignature;
     }
 
@@ -36,9 +36,9 @@ export class ArkInvokeExpr implements Expr {
 
 
 export class ArkNewExpr implements Expr {
-    private classSignature: ClassSignature;
+    private classSignature: string;
 
-    constructor(classSignature: ClassSignature) {
+    constructor(classSignature: string) {
         this.classSignature = classSignature;
     }
 

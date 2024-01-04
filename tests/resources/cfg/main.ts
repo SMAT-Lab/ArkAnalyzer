@@ -42,6 +42,6 @@
 // return outStack;
 
 
-// a = b + c + d;
+a.b.c=new B(1,2,3);
 
-a.c =c.d.e;
+// d=a.b.c.Call();

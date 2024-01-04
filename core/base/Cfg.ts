@@ -8,10 +8,11 @@ import * as fs from 'fs';
 import { exec } from 'child_process';
 import { ArkClass } from '../ArkClass';
 import exp from 'constants';
-import { ArkAssignStmt, Stmt } from './Stmt';
+import { ArkAssignStmt, ArkInvokeStmt, Stmt } from './Stmt';
 import { Local } from '../common/Local';
 import { Value } from '../common/Value';
 import { ArkFieldRef } from '../common/Ref';
+import { ArkInvokeExpr, ArkNewExpr } from './Expr';
 
 
 export class statement {
@@ -1361,7 +1362,7 @@ export class CFG {
     ac3(node: NodeA, tempV: number, begin: boolean) {
         if (node.kind == "Block")
             return;
-        let threeAdressStmt = new Stmt();
+        let threeAdressStmt: any;
         let simpleStm: string = "let temp" + tempV + "=";
         if (begin) {
             simpleStm = this.currentDeclarationKeyword;
@@ -1372,35 +1373,40 @@ export class CFG {
             return;
         }
         if (node.kind == "BinaryExpression" && node.children[1].kind == "FirstAssignment") {
-            let leftOp: any;
+            let leftOpNames: string[] = [];
             if (node.children[0].children.length > 0) {
-                let leftOpName = '';
                 for (let i = 0; i < node.children[0].children.length; i++) {
                     let child = node.children[0].children[i];
                     if (i == 0 || i == 2) {
                         if (child.children.length > 0) {
                             simpleStm += "temp" + this.tempVariableNum;
-                            leftOpName += "temp" + this.tempVariableNum;
+                            leftOpNames.push("temp" + this.tempVariableNum);
                             this.ac3(child, this.tempVariableNum++, false);
                         }
                         else {
                             simpleStm += child.text;
-                            leftOpName += child.text;
-
+                            leftOpNames.push(child.text);
                         }
                     }
                     else {
                         simpleStm += child.text;
-                        leftOpName += child.text;
-
+                        leftOpNames.push(child.text);
                     }
-                    leftOp = new ArkFieldRef(new Local(leftOpName));
                 }
             }
             else {
                 simpleStm += node.children[0].text;
-                leftOp = new Local(node.children[0].text);
+                leftOpNames.push(node.children[0].text);
             }
+
+            let leftOp: any;
+            if (leftOpNames.length > 1) {
+                leftOp = new ArkFieldRef(new Local(leftOpNames.join('')));
+            } else {
+                leftOp = new Local(leftOpNames[0]);
+            }
+
+
             simpleStm += "=";
             let rightOp: Local;
             if (node.children[2].children.length > 0) {
@@ -1416,8 +1422,9 @@ export class CFG {
             threeAdressStmt = new ArkAssignStmt(leftOp, rightOp);
         }
         else if (node.kind == "CallExpression" || node.kind == "NewExpression") {
-            let args: Value[];
-            let rightOp: Local;
+            let leftOp = new Local("temp" + tempV);
+
+            let rigtOpNames: string[] = [];
             if (node.kind == "CallExpression") {
                 if (node.children[0].children[0]?.children.length > 0)
                     simpleStm += "temp" + this.tempVariableNum;
@@ -1425,28 +1432,34 @@ export class CFG {
                 // this.ac3(propertyAccessExpression,this.tempVariableNum++);
                 if (propertyAccessExpression.children.length == 0) {
                     simpleStm += propertyAccessExpression.text;
+                    rigtOpNames.push(propertyAccessExpression.text);
                 }
                 for (let i = 0; i < propertyAccessExpression.children.length; i++) {
                     let cc = propertyAccessExpression.children[i];
                     if (i == 0 && cc.children.length > 0) {
-                        rightOp = new Local("temp" + this.tempVariableNum);
+                        rigtOpNames.push("temp" + this.tempVariableNum);
                         this.ac3(cc, this.tempVariableNum++, false);
                     }
                     else {
                         simpleStm += cc.text;
-
+                        rigtOpNames.push(cc.text);
                     }
                 }
             }
             else {
-                if (node.children[1].children.length == 0)
+                if (node.children[1].children.length == 0) {
                     simpleStm += "new " + node.children[this.findChildIndex(node, "Identifier")].text;
+                    rigtOpNames.push(node.children[this.findChildIndex(node, "Identifier")].text);
+                }
                 else {
                     simpleStm += "new temp" + this.tempVariableNum;
+                    rigtOpNames.push("temp" + this.tempVariableNum);
                     this.ac3(node.children[1], this.tempVariableNum++, false);
                 }
             }
             simpleStm += "(";
+
+            let args: Value[] = [];
             let params = node.children[this.findChildIndex(node, "SyntaxList")];
             for (let param of params.children) {
                 if (param.children.length < 2)
@@ -1455,12 +1468,29 @@ export class CFG {
                     simpleStm += "temp" + this.tempVariableNum;
                     this.ac3(param, this.tempVariableNum++, false);
                 }
+
+                if (param.kind != 'CommaToken') {
+                    args.push(new Local(param.text));
+                }
             }
             simpleStm += ")";
             // for(let i=1;i<node.children.length;i++){
             //     simpleStm+=node.children[i].text;
             // }
 
+            let rightOp: any;
+            if (node.kind == "CallExpression") {
+                let methodSignature = rigtOpNames.join('');
+                rightOp = new ArkInvokeExpr(methodSignature, args);
+                threeAdressStmt = new ArkAssignStmt(leftOp, rightOp);
+            } else {
+                let classSignature = rigtOpNames.join('');                
+                threeAdressStmt = new ArkAssignStmt(leftOp, new ArkNewExpr(classSignature));
+                this.current3ACstm.threeAdressStmts.push(threeAdressStmt);
+
+                let methodSignature = 'constructor';
+                threeAdressStmt = new ArkInvokeStmt(new ArkInvokeExpr(methodSignature, args));
+            }
 
 
         }

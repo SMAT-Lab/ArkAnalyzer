@@ -19,7 +19,7 @@ export class Stmt {
     }
 
     public addUse(use: Value): void {
-
+        this.uses.push(use);
     }
 
     public getdefs(): Value[] {
@@ -27,7 +27,7 @@ export class Stmt {
     }
 
     public addDef(def: Value): void {
-
+        this.defs.push(def);
     }
 
     public getValueVersion(value: Value): string | undefined {
@@ -147,8 +147,8 @@ export class ArkAssignStmt extends Stmt {
         super();
         this.leftOp = leftOp;
         this.rightOp = rightOp;
-        super.addDef(leftOp);
-        super.addUse(rightOp);
+        this.addDef(leftOp);
+        this.addUse(rightOp);
     }
 
     public getLeftOp(): Value {
@@ -159,6 +159,26 @@ export class ArkAssignStmt extends Stmt {
         return this.rightOp;
     }
 }
+
+// 函数调用
+export class ArkInvokeStmt extends Stmt {
+    private invokeExpr: ArkInvokeExpr;
+
+    constructor(invokeExpr: ArkInvokeExpr) {
+        super();
+        this.invokeExpr = invokeExpr;
+        this.addUse(invokeExpr);
+        for (const use of invokeExpr.getUses()) {
+            this.addUse(use);
+        }
+    }
+
+    public getInvokeExpr() {
+        return this.invokeExpr;
+    }
+}
+
+
 
 
 
