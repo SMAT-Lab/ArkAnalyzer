@@ -42,13 +42,6 @@
 // return outStack;
 
 
-a = b + c * d / e;
 
-f = g.Call(h, i, j) + 1;
-
-k.l = new Object();
-
-m.n = o.p.j
-
-x = y[0] + y[1]
+let a = [1,2,3];
 

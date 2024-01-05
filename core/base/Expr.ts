@@ -48,6 +48,23 @@ export class ArkNewExpr implements Expr {
     }
 }
 
+export class ArkNewArrayExpr implements Expr {
+    private baseType: string;
+    private size: Value;
+
+    constructor(baseType: string, size: Value) {
+        this.baseType = baseType;
+        this.size = size;
+    }
+
+    public getUses(): Value[] {
+        let uses: Value[] = [this.size];
+        uses.push(...this.size.getUses());
+        return uses;
+    }
+}
+
+
 // 二元运算表达式
 export class ArkBinopExpr implements Expr {
     private op1: Value;
