@@ -109,6 +109,8 @@ export class Variable{
     name:string;
     lastDef:statement;
     defUse:DefUseChain[];
+    properties:Variable[]=[];
+    propOf:Variable|null=null;
     constructor(name:string,lastDef:statement){
         this.name=name;
         this.lastDef=lastDef;
@@ -664,6 +666,13 @@ export class CFG{
                 }
                 this.deleteExit(sstm.nexts[j]);
             }
+            if(sstm.default?.type.includes("Exit")){
+                let p=sstm.default;
+                while(p.type.includes("Exit")&&p.next){
+                    p=p.next;
+                }
+                sstm.default=p;
+            }
         }
         else if(stm.type=="tryStatement"){
             let trystm=stm as tryStatement;
@@ -1161,6 +1170,9 @@ export class CFG{
                     }
                     else{
                         v.lastDef=stm;
+                        for(let p of v.properties){
+                            p.lastDef=stm;
+                        }
                     }
                     return;
                 }
@@ -1171,11 +1183,16 @@ export class CFG{
             for(let v of this.variables){
                 if(v.name==node.children[0].text){
                     if(mode=="use"){
-                        for(let v of this.variables){
-                            if(v.name==node.text){
-                                set.add(v);
-                                let chain=new DefUseChain(v.lastDef,stm);
-                                v.defUse.push(chain);
+                        for(let prop of this.variables){
+                            if(prop.name==node.text){
+                                set.add(prop);
+                                let chain=new DefUseChain(prop.lastDef,stm);
+                                prop.defUse.push(chain);
+                                if(prop.lastDef==v.lastDef){
+                                    set.add(v);
+                                    chain=new DefUseChain(v.lastDef,stm);
+                                    v.defUse.push(chain);
+                                }
                                 return;
                             }
                         }
@@ -1192,6 +1209,12 @@ export class CFG{
                         }
                         const property=new Variable(node.text,stm);
                         this.variables.push(property);
+                        for(let v of this.variables){
+                            if(v.name==node.children[0].text){
+                                v.properties.push(property);
+                                property.propOf=v;
+                            }
+                        }
                     }
                     return;
                 }
@@ -1201,6 +1224,9 @@ export class CFG{
         if(node.kind=="VariableDeclaration"){
             indexOfDef=0;
             this.dfsUseDef(stm,node.children[indexOfDef],"def");
+        }
+        if(node.kind=="BinaryExpression"&&node.children[1].kind=="FirstAssignment"){
+            indexOfDef=0;
         }
         for(let i=0;i<node.children.length;i++){
             if(i==indexOfDef)
