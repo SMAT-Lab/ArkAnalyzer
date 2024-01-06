@@ -19,8 +19,8 @@ let cfg:CFG=new CFG(ast.root,"main",null);
 // }
 // cfg.printBlocks();
 
-cfg.printThreeAddressStrs();
-cfg.printThreeAddressStmts();
+// cfg.printThreeAddressStrs();
+// cfg.printThreeAddressStmts();
 
 debugger
 
