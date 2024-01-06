@@ -1,8 +1,8 @@
-import {NodeA,ASTree} from '../../../core/base/Ast';
-import {CFG} from '../../../core/base/Cfg';
+import {NodeA,ASTree} from '../core/base/Ast';
+import {CFG} from '../core/base/Cfg';
 import * as fs from 'fs';
 
-let fileContent = fs.readFileSync('D:/11study/ArkAnalyzer/tests/resources/cfg/t.ts', 'utf8');
+let fileContent = fs.readFileSync('.\\tests\\resources\\cfg\\t.ts', 'utf8');
 let ast:ASTree=new ASTree(fileContent);
 ast.simplify(ast.root);
 // console.log(ast.root.text)
@@ -17,5 +17,10 @@ let cfg:CFG=new CFG(ast.root,"main",null);
 //     cfg.insertStatementAfter(s,"x++;");
 //     cfg.insertStatementBefore(s,"x--;");
 // }
-cfg.printBlocks();
+// cfg.printBlocks();
+
+cfg.printThreeAddressStrs();
+cfg.printThreeAddressStmts();
+
+debugger
 

@@ -1,9 +1,93 @@
-import { Value } from "../comon/Value";
-import { MethodSignature } from "../ArkSignature";
+import { Value } from "../common/Value";
+import { ClassSignature, MethodSignature } from "../ArkSignature";
+
 
 export interface Expr extends Value { }
 
+export class ArkInvokeExpr implements Expr {
+    private methodSignature: string;
+    private args: Value[];
 
+    constructor(methodSignature: string, args: Value[]) {
+        this.methodSignature = methodSignature;
+        this.args = args;
+    }
+
+    public getMethodSignature(): string {
+        return this.methodSignature;
+    }
+
+    public getArg(index: number): Value {
+        return this.args[index];
+    }
+
+    public getArgs(): Value[] {
+        return this.args;
+    }
+
+    public getUses(): Value[] {
+        let uses: Value[] = [];
+        for (const arg of this.args) {
+            uses.push(...arg.getUses());
+        }
+        return uses;
+    }
+}
+
+
+export class ArkNewExpr implements Expr {
+    private classSignature: string;
+
+    constructor(classSignature: string) {
+        this.classSignature = classSignature;
+    }
+
+    public getUses(): Value[] {
+        let uses: Value[] = [];
+        return uses;
+    }
+}
+
+export class ArkNewArrayExpr implements Expr {
+    private baseType: string;
+    private size: Value;
+
+    constructor(baseType: string, size: Value) {
+        this.baseType = baseType;
+        this.size = size;
+    }
+
+    public getUses(): Value[] {
+        let uses: Value[] = [this.size];
+        uses.push(...this.size.getUses());
+        return uses;
+    }
+}
+
+
+// 二元运算表达式
+export class ArkBinopExpr implements Expr {
+    private op1: Value;
+    private op2: Value;
+    private operator: string;
+
+    constructor(op1: Value, op2: Value, operator: string) {
+        this.op1 = op1;
+        this.op2 = op2;
+        this.operator = operator;
+    }
+
+    public getUses(): Value[] {
+        let uses: Value[] = [];
+        uses.push(this.op1);
+        uses.push(this.op2);
+        return uses;
+    }
+}
+
+
+
+/*
 // 函数调用表达式
 export abstract class AbstractInvokeExpr implements Expr {
     private methodSignature: MethodSignature;
@@ -330,3 +414,4 @@ export class ArkBitwiseUshrExpr extends AbstractBitwiseExpr {
         super(op1, op2);
     }
 }
+*/

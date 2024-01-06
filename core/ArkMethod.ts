@@ -28,6 +28,13 @@ export class ArkMethod {
             this.buildArkMethod(methodNode);
         }
         this.genSignatures();
+        try{
+            this.cfg = new CFG(methodNode, this.name, this.declaringClass);
+
+        }catch(error){
+            console.log(declaringArkFile.name+"."+declaringClass.name+"."+this.name);
+            console.log(error)
+        }
         this.cfg = new CFG(methodNode, this.name, this.declaringClass);
     }
 
