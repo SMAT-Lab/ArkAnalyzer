@@ -8,11 +8,11 @@ import * as fs from 'fs';
 import { exec } from 'child_process';
 import { ArkClass } from '../ArkClass';
 import exp from 'constants';
-import { ArkAssignStmt, ArkInvokeStmt, Stmt } from './Stmt';
+import { ArkAssignStmt, ArkIfStmt, ArkInvokeStmt, Stmt } from './Stmt';
 import { Local } from '../common/Local';
 import { Value } from '../common/Value';
 import { ArkArrayRef, ArkFieldRef } from '../common/Ref';
-import { ArkBinopExpr, ArkInvokeExpr, ArkNewArrayExpr, ArkNewExpr } from './Expr';
+import { ArkBinopExpr, ArkConditionExprExpr, ArkInvokeExpr, ArkNewArrayExpr, ArkNewExpr } from './Expr';
 
 
 export class statement {
@@ -1391,7 +1391,14 @@ export class CFG {
             this.ac3(node.children[0], tempV, begin);
             return;
         }
-        if (node.kind == "BinaryExpression" && node.children[1].kind == "FirstAssignment") {
+        if (node.kind == 'Identifier') {
+            let leftOpName = "temp" + tempV;
+            let rightOpName = node.text;
+
+            simpleStm += rightOpName;
+
+            threeAddressStmt = new ArkAssignStmt(new Local(leftOpName), new Local(rightOpName));
+        } else if (node.kind == "BinaryExpression" && node.children[1].kind == "FirstAssignment") {
             if (node.children[0].children.length > 0) {
                 for (let i = 0; i < node.children[0].children.length; i++) {
                     let child = node.children[0].children[i];
@@ -1424,25 +1431,30 @@ export class CFG {
                 if (node.children[0].children[0]?.children.length > 0)
                     simpleStm += "temp" + this.tempVariableNum;
                 let propertyAccessExpression = node.children[0];
-                // this.ac3(propertyAccessExpression,this.tempVariableNum++);
                 if (propertyAccessExpression.children.length == 0) {
                     simpleStm += propertyAccessExpression.text;
+                    rigtOpNames.push(propertyAccessExpression.text);
                 }
                 for (let i = 0; i < propertyAccessExpression.children.length; i++) {
                     let cc = propertyAccessExpression.children[i];
                     if (i == 0 && cc.children.length > 0) {
+                        rigtOpNames.push("temp" + this.tempVariableNum);
                         this.ac3(cc, this.tempVariableNum++, false);
                     }
                     else {
                         simpleStm += cc.text;
+                        rigtOpNames.push(cc.text);
                     }
                 }
             }
             else {
-                if (node.children[1].children.length == 0)
+                if (node.children[1].children.length == 0) {
                     simpleStm += "new " + node.children[this.findChildIndex(node, "Identifier")].text;
+                    rigtOpNames.push(node.children[this.findChildIndex(node, "Identifier")].text);
+                }
                 else {
                     simpleStm += "new temp" + this.tempVariableNum;
+                    rigtOpNames.push("temp" + this.tempVariableNum);
                     this.ac3(node.children[1], this.tempVariableNum++, false);
                 }
             }
@@ -1461,11 +1473,7 @@ export class CFG {
                     args.push(new Local(param.text));
                 }
             }
-
             simpleStm += ")";
-            // for(let i=1;i<node.children.length;i++){
-            //     simpleStm+=node.children[i].text;
-            // }
 
             let leftOp = new Local("temp" + tempV);
             let rightOp: any;
@@ -1486,6 +1494,7 @@ export class CFG {
                 threeAddressStmt = new ArkInvokeStmt(new ArkInvokeExpr(methodSignature, args));
             }
         }
+        // TODO:fix bug
         else if (node.kind == "TemplateExpression" && getNumOfIdentifier(node) > 2) {
             for (let cc of node.children) {
                 if (cc.kind != "SyntaxList") {
@@ -1523,8 +1532,8 @@ export class CFG {
                         }
                         else {
                             simpleStm += child.text;
-                            opNames.push(child.text);
                         }
+                        opNames.push(child.text);
                     }
 
                 }
@@ -1533,7 +1542,6 @@ export class CFG {
 
             let leftOpName = '';
             if (begin) {
-                // VariableDeclaration的情况
                 leftOpName = opNames[0];
                 opNames.splice(0, 2);
             } else {
@@ -1565,17 +1573,32 @@ export class CFG {
             simpleStm += ";";
         }
         this.current3ACstm.addressCode3.push(simpleStm);
+        this.current3ACstm.threeAddressStmts.push(threeAddressStmt);
     }
 
+    private ifStatement2ThreeAddress(stmt: statement) {
+        let conditionNode = stmt.astNode?.children[2] as NodeA;
+        let opNames: string[] = [];
+
+        opNames.push('if(')
+        opNames.push("!temp" + this.tempVariableNum);
+        this.ac3(conditionNode, this.tempVariableNum++, false);
+        opNames.push(') goto:')
+
+        let conditionExpr = new ArkConditionExprExpr(opNames[1]);
+        let ifStatement = new ArkIfStmt(conditionExpr);
+        this.current3ACstm.addressCode3.push(opNames.join(''));
+        this.current3ACstm.threeAddressStmts.push(ifStatement);
+    }
 
     get3AddressCode() {
         for (let stm of this.statementArray) {
             if (stm.astNode && stm.code != "" && stm.astNode.kind != 'ImportDeclaration') {
                 // console.log('------ origin stmt: ',stm.code);
-                let node: NodeA = stm.astNode;
-                if (stm.type == "ifStatement" || stm.type == "loopStatement" || stm.type == "catchOrNot") {
-                    node = node.children[this.findChildIndex(node, "OpenParenToken") + 1]
-                }
+                // let node: NodeA = stm.astNode;
+                // if (stm.type == "ifStatement" || stm.type == "loopStatement" || stm.type == "catchOrNot") {
+                //     node = node.children[this.findChildIndex(node, "OpenParenToken") + 1]
+                // }
                 this.current3ACstm = stm;
                 if (stm.astNode.kind == "FirstStatement") {
                     let declList = stm.astNode.children[this.findChildIndex(stm.astNode, "VariableDeclarationList")];
@@ -1584,6 +1607,8 @@ export class CFG {
                     for (let decl of decls.children) {
                         this.ac3(decl, this.tempVariableNum++, true);
                     }
+                } else if (stm.type == 'ifStatement') {
+                    this.ifStatement2ThreeAddress(stm);
                 }
                 else if (stm.type != "breakStatement" && stm.type != "returnStatement") {
                     this.currentDeclarationKeyword = "";
@@ -1592,6 +1617,7 @@ export class CFG {
 
             }
 
+            // 去除冗余三地址码转换
             // if (stm.addressCode3.length == 2) {
             //     // stm.addressCode3 = [];                
             //     let originalFirstStr = stm.addressCode3[0];
@@ -1941,6 +1967,12 @@ export class CFG {
             for (const threeAddressStmt of stmt.threeAddressStmts) {
                 console.log(threeAddressStmt);
             }
+        }
+    }
+
+    public printOriginStmts() {
+        for (const stmt of this.statementArray) {
+            console.log('----- origin stmt: ', stmt.code);
         }
     }
 

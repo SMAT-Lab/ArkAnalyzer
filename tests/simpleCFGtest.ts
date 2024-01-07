@@ -2,7 +2,7 @@ import {NodeA,ASTree} from '../core/base/Ast';
 import {CFG} from '../core/base/Cfg';
 import * as fs from 'fs';
 
-let fileContent = fs.readFileSync('.\\tests\\resources\\cfg\\t.ts', 'utf8');
+let fileContent = fs.readFileSync('tests\\resources\\cfg\\main.ts', 'utf8');
 let ast:ASTree=new ASTree(fileContent);
 ast.simplify(ast.root);
 // console.log(ast.root.text)
@@ -19,8 +19,15 @@ let cfg:CFG=new CFG(ast.root,"main",null);
 // }
 // cfg.printBlocks();
 
+// cfg.printOriginStmts();
+
 // cfg.printThreeAddressStrs();
 // cfg.printThreeAddressStmts();
+
+
+
+cfg.printThreeAddressStrsAndStmts();
+
 
 debugger
 

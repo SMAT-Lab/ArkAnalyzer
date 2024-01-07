@@ -42,8 +42,9 @@
 // return outStack;
 
 
-
-let commonStyleManager = new CommonStyleManager();
-
-
-let a = b.Call();
+let a = false;
+if (a) {
+    console.log('true');
+} else {
+    console.log('false');
+}

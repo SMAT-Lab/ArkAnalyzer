@@ -86,6 +86,18 @@ export class ArkBinopExpr implements Expr {
 }
 
 
+export class ArkConditionExprExpr implements Expr {
+    private condition: string;
+
+    constructor(condition: string) {
+        this.condition = condition;
+    }
+
+    public getUses(): Value[] {
+        let uses: Value[] = [];
+        return uses;
+    }
+}
 
 /*
 // 函数调用表达式

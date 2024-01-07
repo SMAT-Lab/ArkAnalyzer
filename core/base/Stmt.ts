@@ -2,11 +2,12 @@ import { ArkField } from "../ArkField";
 import { LinePosition } from "../common/Position";
 import { ArkArrayRef, ArkFieldRef } from "../common/Ref";
 import { Value, ValueTag } from "../common/Value";
-import { ArkInvokeExpr } from "./Expr";
+import { ArkConditionExprExpr, ArkInvokeExpr } from "./Expr";
 
 export class Stmt {
     private defs: Value[] = [];
     private uses: Value[] = [];
+    private originPosition: LinePosition = new LinePosition(0);
     private position: LinePosition = new LinePosition(0);
     private valueVersion = new Map<Value, string>();
     private valueTags = new Map<Value, Set<ValueTag>>;
@@ -136,6 +137,9 @@ export class Stmt {
         return this.position;
     }
 
+    public getOriginPositionInfo(): LinePosition {
+        return this.originPosition;
+    }
 }
 
 // 赋值
@@ -182,8 +186,28 @@ export class ArkInvokeStmt extends Stmt {
 }
 
 
+export class ArkIfStmt extends Stmt {
+    private conditionExprExpr: ArkConditionExprExpr;
 
+    constructor(conditionExprExpr: ArkConditionExprExpr) {
+        super();
+        this.conditionExprExpr = conditionExprExpr;
+        this.addUse(conditionExprExpr);
+        for (const use of conditionExprExpr.getUses()) {
+            this.addUse(use);
+        }
+    }
 
+    public getConditionExprExpr() {
+        return this.conditionExprExpr;
+    }
+}
+
+export class ArkGotoStmt extends Stmt {
+    constructor() {
+        super();
+    }
+}
 
 
 /*
