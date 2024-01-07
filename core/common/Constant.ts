@@ -11,4 +11,8 @@ export class Constant implements Value {
     public getUses(): Value[] {
         return [];
     }
+
+    public toString(): string {
+        return this.value;
+    }
 }

@@ -22,11 +22,11 @@ let cfg:CFG=new CFG(ast.root,"main",null);
 // cfg.printOriginStmts();
 
 // cfg.printThreeAddressStrs();
-// cfg.printThreeAddressStmts();
+cfg.printThreeAddressStmts();
 
 
 
-cfg.printThreeAddressStrsAndStmts();
+// cfg.printThreeAddressStrsAndStmts();
 
 
 debugger

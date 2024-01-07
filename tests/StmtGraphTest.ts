@@ -28,8 +28,9 @@ export class StmtGraphTest {
 
 
     public testThreeAddresStmt() {
-        let config = new Config("ThreeAddresStmtTest", "D:\\codes\\tests\\applications_systemui\\common\\src\\main\\ets\\default");
-        // let config = new Config("ThreeAddresStmtTest", "D:\\codes\\tests\\applications_systemui");
+        // let config = new Config("ThreeAddresStmtTest", "D:\\codes\\tests\\applications_systemui\\common\\src\\main\\ets\\default");
+        // let config = new Config("ThreeAddresStmtTest", "D:\\codes\\tests\\applications_systemui\\common\\src\\main\\ets\\default\\abilitymanager");
+        let config = new Config("ThreeAddresStmtTest", "D:\\codes\\tests\\applications_systemui");
     
         const projectName: string = config.projectName;
         const input_dir: string = config.input_dir;
@@ -41,16 +42,16 @@ export class StmtGraphTest {
 
         let scene = new Scene(projectName, projectFiles);
 
-        for (const arkFile of scene.arkFiles) {
-            console.log('=============== arkFile:', arkFile.name, ' ================');
-            for (const arkClass of arkFile.getClasses()) {
-                for (const arkMethod of arkClass.getMethods()) {
-                    console.log();
-                    console.log('********* arkMethod:', arkMethod.name, ' ***********');
-                    arkMethod.cfg.printThreeAddressStrsAndStmts();
-                }
-            }
-        }
+        // for (const arkFile of scene.arkFiles) {
+        //     console.log('=============== arkFile:', arkFile.name, ' ================');
+        //     for (const arkClass of arkFile.getClasses()) {
+        //         for (const arkMethod of arkClass.getMethods()) {
+        //             console.log();
+        //             console.log('********* arkMethod:', arkMethod.name, ' ***********');
+        //             arkMethod.cfg.printThreeAddressStmts();
+        //         }
+        //     }
+        // }
     }
 }
 

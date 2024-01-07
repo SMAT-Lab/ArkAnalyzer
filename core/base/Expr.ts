@@ -1,15 +1,18 @@
 import { Value } from "../common/Value";
 import { ClassSignature, MethodSignature } from "../ArkSignature";
+import { Local } from "../common/Local";
 
 
 export interface Expr extends Value { }
 
 export class ArkInvokeExpr implements Expr {
     private methodSignature: string;
+    private base: Local;
     private args: Value[];
 
-    constructor(methodSignature: string, args: Value[]) {
+    constructor(base: Local, methodSignature: string, args: Value[]) {
         this.methodSignature = methodSignature;
+        this.base = base;
         this.args = args;
     }
 
@@ -32,6 +35,21 @@ export class ArkInvokeExpr implements Expr {
         }
         return uses;
     }
+
+    public toString(): string {
+        let strs: string[] = [];
+        strs.push(this.base.toString());
+        strs.push('.');
+        strs.push(this.methodSignature);
+        strs.push('(');
+        for (const arg of this.args) {
+            strs.push(arg.toString());
+            strs.push(', ');
+        }
+        strs.pop();
+        strs.push(')');
+        return strs.join('');
+    }
 }
 
 
@@ -42,9 +60,17 @@ export class ArkNewExpr implements Expr {
         this.classSignature = classSignature;
     }
 
+    public getClassSignature(): string {
+        return this.classSignature;
+    }
+
     public getUses(): Value[] {
         let uses: Value[] = [];
         return uses;
+    }
+
+    public toString(): string {
+        return 'new ' + this.classSignature;
     }
 }
 
@@ -61,6 +87,10 @@ export class ArkNewArrayExpr implements Expr {
         let uses: Value[] = [this.size];
         uses.push(...this.size.getUses());
         return uses;
+    }
+
+    public toString(): string {
+        return 'newarray ' + this.baseType + '[' + this.size + ']';
     }
 }
 
@@ -83,10 +113,14 @@ export class ArkBinopExpr implements Expr {
         uses.push(this.op2);
         return uses;
     }
+
+    public toString(): string {
+        return this.op1 + ' ' + this.operator + ' ' + this.op2;
+    }
 }
 
-
-export class ArkConditionExprExpr implements Expr {
+// TODO:表示为二元比较
+export class ArkConditionExpr implements Expr {
     private condition: string;
 
     constructor(condition: string) {
@@ -96,6 +130,69 @@ export class ArkConditionExprExpr implements Expr {
     public getUses(): Value[] {
         let uses: Value[] = [];
         return uses;
+    }
+
+    public toString(): string {
+        return this.condition;
+    }
+}
+
+
+export class ArkTypeOfExpr implements Expr {
+    private op: Value;
+
+    constructor(op: Value) {
+        this.op = op;
+    }
+
+    public getUses(): Value[] {
+        let uses: Value[] = [];
+        return uses;
+    }
+
+    public toString(): string {
+        return 'typeof ' + this.op;
+    }
+}
+
+
+export class ArkInstanceOfExpr implements Expr {
+    private op: Value;
+    private checkType: string;
+
+    constructor(op: Value, checkType: string) {
+        this.op = op;
+        this.checkType = checkType;
+    }
+
+    public getUses(): Value[] {
+        let uses: Value[] = [];
+        return uses;
+    }
+
+    public toString(): string {
+        return this.op + ' instanceof ' + this.checkType;
+    }
+}
+
+
+// 类型转换
+export class ArkCastExpr implements Expr {
+    private op: Value;
+    private type: string;
+
+    constructor(op: Value, type: string) {
+        this.op = op;
+        this.type = type;
+    }
+
+    public getUses(): Value[] {
+        let uses: Value[] = [];
+        return uses;
+    }
+
+    public toString(): string {
+        return '<' + this.type + '>' + this.op;
     }
 }
 
