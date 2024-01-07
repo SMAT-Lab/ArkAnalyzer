@@ -29,6 +29,7 @@ export class Scene {
 
     private genArkFiles() {
         for (let file of this.projectFiles) {
+            // console.log('file name:', file)
             let arkFile: ArkFile = new ArkFile(file);
             this.arkFiles.push(arkFile);
         }

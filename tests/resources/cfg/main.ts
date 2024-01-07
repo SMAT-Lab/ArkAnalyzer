@@ -43,5 +43,7 @@
 
 
 
-let a = [1,2,3];
+let commonStyleManager = new CommonStyleManager();
 
+
+let a = b.Call();

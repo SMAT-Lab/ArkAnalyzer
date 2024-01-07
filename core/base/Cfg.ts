@@ -1717,7 +1717,8 @@ export class CFG {
 
     get3AddressCode() {
         for (let stm of this.statementArray) {
-            if (stm.astNode && stm.code != "") {
+            if (stm.astNode && stm.code != "" && stm.astNode.kind != 'ImportDeclaration') {
+                // console.log('------ origin stmt: ',stm.code);
                 let node: NodeA = stm.astNode;
                 if (stm.type == "ifStatement" || stm.type == "loopStatement" || stm.type == "catchOrNot") {
                     node = node.children[this.findChildIndex(node, "OpenParenToken") + 1]
@@ -2056,8 +2057,9 @@ export class CFG {
     }
 
     public printThreeAddressStmts() {
-        console.log('----- printThreeAddressStmts -----');
+        console.log('#### printThreeAddressStmts ####');
         for (const stmt of this.statementArray) {
+            console.log('------ origin stmt: ', stmt.code);
             for (const threeAddressStmt of stmt.threeAddressStmts) {
                 console.log(threeAddressStmt);
             }
@@ -2065,10 +2067,26 @@ export class CFG {
     }
 
     public printThreeAddressStrs() {
-        console.log('----- printThreeAddressStrs -----');
+        console.log('#### printThreeAddressStrs ####');
         for (const stmt of this.statementArray) {
+            console.log('------ origin stmt: ', stmt.code);
             for (const threeAddressstr of stmt.addressCode3) {
                 console.log(threeAddressstr);
+            }
+        }
+    }
+
+    public printThreeAddressStrsAndStmts() {
+        // console.log('#### printThreeAddressStrsAndStmts ####');
+        for (const stmt of this.statementArray) {
+            console.log('----- origin stmt: ', stmt.code);
+            console.log('-- threeAddressStrs:');
+            for (const threeAddressstr of stmt.addressCode3) {
+                console.log(threeAddressstr);
+            }
+            console.log('-- threeAddressStmts:');
+            for (const threeAddressStmt of stmt.threeAddressStmts) {
+                console.log(threeAddressStmt);
             }
         }
     }
@@ -2086,6 +2104,6 @@ export class CFG {
         this.generateUseDef();
         this.resetWalked();
         this.get3AddressCode();
-        this.printBlocks();
+        // this.printBlocks();
     }
 }
