@@ -41,10 +41,6 @@
 // this.cache[stack] = outStack
 // return outStack;
 
+// let a =new AbortController()
 
-let a = false;
-if (a) {
-    console.log('true');
-} else {
-    console.log('false');
-}
+abstract.b.c=d.e.f

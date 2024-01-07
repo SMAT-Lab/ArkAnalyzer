@@ -210,6 +210,25 @@ export class ArkGotoStmt extends Stmt {
 }
 
 
+export class ArkReturnStmt extends Stmt {
+    private op: Value;
+
+    constructor(op: Value) {
+        super();
+        this.op = op;
+    }
+}
+
+
+export class ArkReturnVoidStmt extends Stmt {
+    constructor() {
+        super();
+    }
+}
+
+
+
+
 /*
 import { Value, LValue } from '../comon/Value';
 import { Position } from '../comon/Position';
