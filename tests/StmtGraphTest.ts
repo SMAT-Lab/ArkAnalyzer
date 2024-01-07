@@ -30,6 +30,7 @@ export class StmtGraphTest {
     public testThreeAddresStmt() {
         // let config = new Config("ThreeAddresStmtTest", "D:\\codes\\tests\\applications_systemui\\common\\src\\main\\ets\\default");
         let config = new Config("ThreeAddresStmtTest", "D:\\codes\\tests\\applications_systemui");
+    
         const projectName: string = config.projectName;
         const input_dir: string = config.input_dir;
 

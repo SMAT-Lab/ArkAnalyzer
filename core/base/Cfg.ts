@@ -112,16 +112,16 @@ export class DefUseChain {
     }
 }
 
-export class Variable{
-    name:string;
-    lastDef:statement;
-    defUse:DefUseChain[];
-    properties:Variable[]=[];
-    propOf:Variable|null=null;
-    constructor(name:string,lastDef:statement){
-        this.name=name;
-        this.lastDef=lastDef;
-        this.defUse=[];
+export class Variable {
+    name: string;
+    lastDef: statement;
+    defUse: DefUseChain[];
+    properties: Variable[] = [];
+    propOf: Variable | null = null;
+    constructor(name: string, lastDef: statement) {
+        this.name = name;
+        this.lastDef = lastDef;
+        this.defUse = [];
     }
 }
 
@@ -175,12 +175,12 @@ class textError extends Error {
     }
 }
 
-function getNumOfIdentifier(node: NodeA):number {
-    let num=0;
+function getNumOfIdentifier(node: NodeA): number {
+    let num = 0;
     if (node.kind == "Identifier")
         return 1;
     for (let child of node.children)
-        num+=getNumOfIdentifier(child);
+        num += getNumOfIdentifier(child);
     return num;
 }
 
@@ -335,7 +335,7 @@ export class CFG {
                         brstm.next = this.loopStack[this.loopStack.length - 1].nextF;
                         break;
                     }
-                    if (p.kind.includes("CaseClause")||p.kind.includes("DefaultClause")) {
+                    if (p.kind.includes("CaseClause") || p.kind.includes("DefaultClause")) {
                         brstm.next = this.switchExitStack[this.switchExitStack.length - 1];
                         break;
                     }
@@ -390,11 +390,11 @@ export class CFG {
                 //         }
                 //     }
                 // }
-                if (!elsed||!ifstm.nextF) {
+                if (!elsed || !ifstm.nextF) {
                     ifstm.nextF = ifexit;
                 }
-                if(!ifstm.nextT){
-                    ifstm.nextT=ifexit;
+                if (!ifstm.nextT) {
+                    ifstm.nextT = ifexit;
                 }
                 lastStatement = ifexit;
             }
@@ -612,7 +612,7 @@ export class CFG {
 
                         trystm.catchStatements.push(catchOrNot.nextT);
                         let VD = catchClause.children[this.findChildIndex(catchClause, "VariableDeclaration")];
-                        if(VD){
+                        if (VD) {
                             let error = VD.children[this.findChildIndex(VD, "TypeReference")];
                             if (error) {
                                 trystm.catchErrors.push(error.text);
@@ -700,12 +700,12 @@ export class CFG {
                 }
                 this.deleteExit(sstm.nexts[j]);
             }
-            if(sstm.default?.type.includes("Exit")){
-                let p=sstm.default;
-                while(p.type.includes("Exit")&&p.next){
-                    p=p.next;
+            if (sstm.default?.type.includes("Exit")) {
+                let p = sstm.default;
+                while (p.type.includes("Exit") && p.next) {
+                    p = p.next;
                 }
-                sstm.default=p;
+                sstm.default = p;
             }
         }
         else if (stm.type == "tryStatement") {
@@ -738,8 +738,8 @@ export class CFG {
     }
 
     buildBlocks(stm: statement, block: Block) {
-        if(stm.type.includes(" exit")){
-            stm.block=block;
+        if (stm.type.includes(" exit")) {
+            stm.block = block;
             return;
         }
         if (stm.walked)
@@ -800,7 +800,7 @@ export class CFG {
             }
             this.blocks = this.blocks.filter((b) => b.stms.length != 0);
             let tryFirstBlock = new Block(this.blocks.length, [], [], null);
-            trystm.block=tryFirstBlock;
+            trystm.block = tryFirstBlock;
             this.blocks.push(tryFirstBlock);
             // block.nexts.push(tryFirstBlock);
             this.buildBlocks(trystm.tryFirst, tryFirstBlock);
@@ -1166,10 +1166,10 @@ export class CFG {
                         let chain = new DefUseChain(v.lastDef, stm);
                         v.defUse.push(chain);
                     }
-                    else{
-                        v.lastDef=stm;
-                        for(let p of v.properties){
-                            p.lastDef=stm;
+                    else {
+                        v.lastDef = stm;
+                        for (let p of v.properties) {
+                            p.lastDef = stm;
                         }
                     }
                     return;
@@ -1178,17 +1178,17 @@ export class CFG {
         }
         if (node.kind == "PropertyAccessExpression") {
             // this.dfsUseDef(stm,node.children[0],mode);
-            for(let v of this.variables){
-                if(v.name==node.children[0].text){
-                    if(mode=="use"){
-                        for(let prop of this.variables){
-                            if(prop.name==node.text){
+            for (let v of this.variables) {
+                if (v.name == node.children[0].text) {
+                    if (mode == "use") {
+                        for (let prop of this.variables) {
+                            if (prop.name == node.text) {
                                 set.add(prop);
-                                let chain=new DefUseChain(prop.lastDef,stm);
+                                let chain = new DefUseChain(prop.lastDef, stm);
                                 prop.defUse.push(chain);
-                                if(prop.lastDef==v.lastDef){
+                                if (prop.lastDef == v.lastDef) {
                                     set.add(v);
-                                    chain=new DefUseChain(v.lastDef,stm);
+                                    chain = new DefUseChain(v.lastDef, stm);
                                     v.defUse.push(chain);
                                 }
                                 return;
@@ -1207,10 +1207,10 @@ export class CFG {
                         }
                         const property = new Variable(node.text, stm);
                         this.variables.push(property);
-                        for(let v of this.variables){
-                            if(v.name==node.children[0].text){
+                        for (let v of this.variables) {
+                            if (v.name == node.children[0].text) {
                                 v.properties.push(property);
-                                property.propOf=v;
+                                property.propOf = v;
                             }
                         }
                     }
@@ -1223,14 +1223,14 @@ export class CFG {
             indexOfDef = 0;
             this.dfsUseDef(stm, node.children[indexOfDef], "def");
         }
-        if(node.kind=="BinaryExpression"&&node.children[1].kind=="FirstAssignment"){
-            indexOfDef=0;
+        if (node.kind == "BinaryExpression" && node.children[1].kind == "FirstAssignment") {
+            indexOfDef = 0;
         }
-        if(node.kind=="BinaryExpression"&&node.children[1].kind=="FirstAssignment"){
-            indexOfDef=0;
+        if (node.kind == "BinaryExpression" && node.children[1].kind == "FirstAssignment") {
+            indexOfDef = 0;
         }
-        for(let i=0;i<node.children.length;i++){
-            if(i==indexOfDef)
+        for (let i = 0; i < node.children.length; i++) {
+            if (i == indexOfDef)
                 continue;
             let child = node.children[i];
             this.dfsUseDef(stm, child, mode);
@@ -1379,338 +1379,191 @@ export class CFG {
 
     }
 
-    // ac3(node: NodeA, tempV: number, begin: boolean) {
-    //     if (node.kind == "Block")
-    //         return;
-    //     let threeAddressStmt: any;
-    //     let simpleStm: string = "let temp" + tempV + "=";
-    //     if (begin) {
-    //         simpleStm = this.currentDeclarationKeyword;
-    //     }
-
-    //     if (node.children.length == 1 || node.children.length == 2 && node.children[1].text == ";") {
-    //         this.ac3(node.children[0], tempV, begin);
-    //         return;
-    //     }
-    //     if (node.kind == "BinaryExpression" && node.children[1].kind == "FirstAssignment") {
-    //         let leftOpNames: string[] = [];
-    //         if (node.children[0].children.length > 0) {
-    //             for (let i = 0; i < node.children[0].children.length; i++) {
-    //                 let child = node.children[0].children[i];
-    //                 if (i == 0 || i == 2) {
-    //                     if (child.children.length > 0) {
-    //                         simpleStm += "temp" + this.tempVariableNum;
-    //                         leftOpNames.push("temp" + this.tempVariableNum);
-    //                         this.ac3(child, this.tempVariableNum++, false);
-    //                     }
-    //                     else {
-    //                         simpleStm += child.text;
-    //                         leftOpNames.push(child.text);
-    //                     }
-    //                 }
-    //                 else {
-    //                     simpleStm += child.text;
-    //                     leftOpNames.push(child.text);
-    //                 }
-    //             }
-    //         }
-    //         else {
-    //             simpleStm += node.children[0].text;
-    //             leftOpNames.push(node.children[0].text);
-    //         }
-
-    //         let leftOp: any;
-    //         if (leftOpNames.length > 1) {
-    //             leftOp = new ArkFieldRef(new Local(leftOpNames.join('')));
-    //         } else {
-    //             leftOp = new Local(leftOpNames[0]);
-    //         }
-
-
-    //         simpleStm += "=";
-    //         let rightOp: Local;
-    //         if (node.children[2].children.length > 0) {
-    //             simpleStm += "temp" + this.tempVariableNum;
-    //             rightOp = new Local("temp" + this.tempVariableNum);
-    //             this.ac3(node.children[2], this.tempVariableNum++, false);
-    //         }
-    //         else {
-    //             simpleStm += node.children[2].text;
-    //             rightOp = new Local(node.children[2].text);
-    //         }
-    //         simpleStm += ";"
-    //         threeAddressStmt = new ArkAssignStmt(leftOp, rightOp);
-    //     }
-    //     else if (node.kind == "CallExpression" || node.kind == "NewExpression") {
-    //         let leftOp = new Local("temp" + tempV);
-
-    //         let rigtOpNames: string[] = [];
-    //         if (node.kind == "CallExpression") {
-    //             if (node.children[0].children[0]?.children.length > 0)
-    //                 simpleStm += "temp" + this.tempVariableNum;
-    //             let propertyAccessExpression = node.children[0];
-    //             // this.ac3(propertyAccessExpression,this.tempVariableNum++);
-    //             if (propertyAccessExpression.children.length == 0) {
-    //                 simpleStm += propertyAccessExpression.text;
-    //                 rigtOpNames.push(propertyAccessExpression.text);
-    //             }
-    //             for (let i = 0; i < propertyAccessExpression.children.length; i++) {
-    //                 let cc = propertyAccessExpression.children[i];
-    //                 if (i == 0 && cc.children.length > 0) {
-    //                     rigtOpNames.push("temp" + this.tempVariableNum);
-    //                     this.ac3(cc, this.tempVariableNum++, false);
-    //                 }
-    //                 else {
-    //                     simpleStm += cc.text;
-    //                     rigtOpNames.push(cc.text);
-    //                 }
-    //             }
-    //         }
-    //         else {
-    //             if (node.children[1].children.length == 0) {
-    //                 simpleStm += "new " + node.children[this.findChildIndex(node, "Identifier")].text;
-    //                 rigtOpNames.push(node.children[this.findChildIndex(node, "Identifier")].text);
-    //             }
-    //             else {
-    //                 simpleStm += "new temp" + this.tempVariableNum;
-    //                 rigtOpNames.push("temp" + this.tempVariableNum);
-    //                 this.ac3(node.children[1], this.tempVariableNum++, false);
-    //             }
-    //         }
-    //         simpleStm += "(";
-
-    //         let args: Value[] = [];
-    //         let params = node.children[this.findChildIndex(node, "SyntaxList")];
-    //         for (let param of params.children) {
-    //             if (param.children.length < 2)
-    //                 simpleStm += param.text;
-    //             else {
-    //                 simpleStm += "temp" + this.tempVariableNum;
-    //                 this.ac3(param, this.tempVariableNum++, false);
-    //             }
-
-    //             if (param.kind != 'CommaToken') {
-    //                 args.push(new Local(param.text));
-    //             }
-    //         }
-    //         simpleStm += ")";
-    //         // for(let i=1;i<node.children.length;i++){
-    //         //     simpleStm+=node.children[i].text;
-    //         // }
-
-    //         let rightOp: any;
-    //         if (node.kind == "CallExpression") {
-    //             let methodSignature = rigtOpNames.join('');
-    //             rightOp = new ArkInvokeExpr(methodSignature, args);
-    //             threeAddressStmt = new ArkAssignStmt(leftOp, rightOp);
-    //         } else {
-    //             let classSignature = rigtOpNames.join('');
-    //             threeAddressStmt = new ArkAssignStmt(leftOp, new ArkNewExpr(classSignature));
-    //             this.current3ACstm.threeAddressStmts.push(threeAddressStmt);
-
-    //             let methodSignature = 'constructor';
-    //             threeAddressStmt = new ArkInvokeStmt(new ArkInvokeExpr(methodSignature, args));
-    //         }
-    //     }
-    //     else {
-
-    //         let opNames: string[] = [];
-    //         for (let child of node.children) {
-    //             if (child.kind == "PropertyAccessExpression" || child.kind == "BinaryExpression" || child.kind == "CallExpression" || node.kind == "NewExpression"
-    //                 || child.kind == "ElementAccessExpression" || child.kind == "ConditionalExpression") {
-    //                 if (child.kind == "CallExpression" && node.children.length < 3) {
-    //                     this.ac3(child, this.tempVariableNum++, false);
-    //                     return;
-    //                 }
-    //                 simpleStm += "temp" + this.tempVariableNum;
-    //                 opNames.push("temp" + this.tempVariableNum);
-    //                 this.ac3(child, this.tempVariableNum++, false);
-    //             }
-    //             else if (child.kind == "ParenthesizedExpression") {
-    //                 simpleStm += "temp" + this.tempVariableNum;
-    //                 this.ac3(child.children[1], this.tempVariableNum++, false);
-    //             }
-    //             // else if (child.kind == "ArrayLiteralExpression") {
-    //             //     simpleStm += child.text;
-
-    //             //     for (const token of child.children[1].children) {
-    //             //         if (token.kind != 'CommaToken') {
-    //             //             opNames.push(token.text);
-    //             //         }
-    //             //     }
-    //             // }
-    //             else {
-    //                 if (child.kind != "Block") {
-    //                     if (child.kind.includes("Keyword")) {
-    //                         simpleStm += " " + child.text + " ";
-    //                     }
-    //                     else {
-    //                         simpleStm += child.text;
-    //                         opNames.push(child.text);
-    //                     }
-
-    //                 }
-    //             }
-    //         }
-
-    //         let leftOpName = '';
-    //         if (begin) {
-    //             // VariableDeclaration的情况
-    //             leftOpName = opNames[0];
-    //             opNames.splice(0, 2);
-    //         } else {
-    //             leftOpName = "temp" + tempV;
-    //         }
-    //         let leftOp = new Local(leftOpName);
-
-    //         let rightOp: any;
-    //         if (node.kind == 'PropertyAccessExpression') {
-    //             rightOp = new ArkFieldRef(new Local(opNames.join('')));
-    //         } else if (node.kind == 'ElementAccessExpression') {
-    //             rightOp = new ArkArrayRef(new Local(opNames[0]), new Local(opNames[2]));
-    //         } else if (node.kind == 'BinaryExpression') {
-    //             rightOp = new ArkBinopExpr(new Local(opNames[0]), new Local(opNames[2]), opNames[1]);
-    //         } else if (node.kind == 'VariableDeclaration') {
-    //             if (node.children[2].kind == 'ArrayLiteralExpression') {
-    //                 let arraySize = Math.ceil(node.children[2].children[1].children.length / 2);
-    //                 rightOp = new ArkNewArrayExpr('int', new Local(arraySize.toString()));
-    //             }
-    //             else {
-    //                 rightOp = new Local(opNames[0]);
-    //             }
-
-    //         }
-    //         threeAddressStmt = new ArkAssignStmt(leftOp, rightOp);
-    //     }
-    //     if (simpleStm[simpleStm.length - 1] != ")")
-    //         simpleStm += ";";
-    //     this.current3ACstm.addressCode3.push(simpleStm);
-    //     this.current3ACstm.threeAddressStmts.push(threeAddressStmt);
-    // }
-    ac3(node:NodeA,tempV:number,begin:boolean){
-        if(node.kind=="Block")
+    ac3(node: NodeA, tempV: number, begin: boolean) {
+        if (node.kind == "Block")
             return;
-        let simpleStm:string="let temp"+tempV+"=";
-        if(begin){
-            simpleStm=this.currentDeclarationKeyword;
+        let threeAddressStmt: any;
+        let simpleStm: string = "let temp" + tempV + "=";
+        if (begin) {
+            simpleStm = this.currentDeclarationKeyword;
         }
-        if(node.children.length==1||node.children.length==2&&node.children[1].text==";"){
-            this.ac3(node.children[0],tempV,begin);
+        if (node.children.length == 1 || node.children.length == 2 && node.children[1].text == ";") {
+            this.ac3(node.children[0], tempV, begin);
             return;
         }
-        if(node.kind=="BinaryExpression"&&node.children[1].kind=="FirstAssignment"){
-            if(node.children[0].children.length>0){
-                for(let i =0;i<node.children[0].children.length;i++){
-                    let child=node.children[0].children[i];
-                    if(i==0||i==2){
-                        if(child.children.length>0){
-                            simpleStm+="temp"+this.tempVariableNum;
-                            this.ac3(child,this.tempVariableNum++,false);
+        if (node.kind == "BinaryExpression" && node.children[1].kind == "FirstAssignment") {
+            if (node.children[0].children.length > 0) {
+                for (let i = 0; i < node.children[0].children.length; i++) {
+                    let child = node.children[0].children[i];
+                    if (i == 0 || i == 2) {
+                        if (child.children.length > 0) {
+                            simpleStm += "temp" + this.tempVariableNum;
+                            this.ac3(child, this.tempVariableNum++, false);
                         }
                         else
-                            simpleStm+=child.text;
+                            simpleStm += child.text;
                     }
                     else
-                        simpleStm+=child.text;
+                        simpleStm += child.text;
                 }
             }
             else
-                simpleStm+=node.children[0].text;
-            simpleStm+="=";
-            if(node.children[2].children.length>0){
-                simpleStm+="temp"+this.tempVariableNum;
-                this.ac3(node.children[2],this.tempVariableNum++,false);
+                simpleStm += node.children[0].text;
+            simpleStm += "=";
+            if (node.children[2].children.length > 0) {
+                simpleStm += "temp" + this.tempVariableNum;
+                this.ac3(node.children[2], this.tempVariableNum++, false);
             }
             else
-                simpleStm+=node.children[2].text;
-            simpleStm+=";"
+                simpleStm += node.children[2].text;
+            simpleStm += ";"
         }
-        else if(node.kind=="CallExpression"||node.kind=="NewExpression"){
-            if(node.kind=="CallExpression"){
-                if(node.children[0].children[0]?.children.length>0)
-                    simpleStm+="temp"+this.tempVariableNum;
-                let propertyAccessExpression=node.children[0];
+        else if (node.kind == "CallExpression" || node.kind == "NewExpression") {
+            let rigtOpNames: string[] = [];
+            if (node.kind == "CallExpression") {
+                if (node.children[0].children[0]?.children.length > 0)
+                    simpleStm += "temp" + this.tempVariableNum;
+                let propertyAccessExpression = node.children[0];
                 // this.ac3(propertyAccessExpression,this.tempVariableNum++);
-                if(propertyAccessExpression.children.length==0){
-                    simpleStm+=propertyAccessExpression.text;
+                if (propertyAccessExpression.children.length == 0) {
+                    simpleStm += propertyAccessExpression.text;
                 }
-                for(let i=0;i<propertyAccessExpression.children.length;i++){
-                    let cc=propertyAccessExpression.children[i];
-                    if(i==0&&cc.children.length>0){
-                        this.ac3(cc,this.tempVariableNum++,false);
+                for (let i = 0; i < propertyAccessExpression.children.length; i++) {
+                    let cc = propertyAccessExpression.children[i];
+                    if (i == 0 && cc.children.length > 0) {
+                        this.ac3(cc, this.tempVariableNum++, false);
                     }
-                    else{
-                        simpleStm+=cc.text;
+                    else {
+                        simpleStm += cc.text;
                     }
                 }
             }
-            else{
-                if(node.children[1].children.length==0)
-                    simpleStm+="new "+node.children[this.findChildIndex(node,"Identifier")].text;
-                else{
-                    simpleStm+="new temp"+this.tempVariableNum;
-                    this.ac3(node.children[1],this.tempVariableNum++,false);
+            else {
+                if (node.children[1].children.length == 0)
+                    simpleStm += "new " + node.children[this.findChildIndex(node, "Identifier")].text;
+                else {
+                    simpleStm += "new temp" + this.tempVariableNum;
+                    this.ac3(node.children[1], this.tempVariableNum++, false);
                 }
             }
-            simpleStm+="(";
-            let params=node.children[this.findChildIndex(node,"SyntaxList")];
-            for(let param of params.children){
-                if(param.children.length<2)
-                    simpleStm+=param.text;
-                else{
-                    simpleStm+="temp"+this.tempVariableNum;
-                    this.ac3(param,this.tempVariableNum++,false);
+            simpleStm += "(";
+
+            let args: Value[] = [];
+            let params = node.children[this.findChildIndex(node, "SyntaxList")];
+            for (let param of params.children) {
+                if (param.children.length < 2)
+                    simpleStm += param.text;
+                else {
+                    simpleStm += "temp" + this.tempVariableNum;
+                    this.ac3(param, this.tempVariableNum++, false);
+                }
+                if (param.kind != 'CommaToken') {
+                    args.push(new Local(param.text));
                 }
             }
-            simpleStm+=")";
+
+            simpleStm += ")";
             // for(let i=1;i<node.children.length;i++){
             //     simpleStm+=node.children[i].text;
             // }
-        }
-        else if(node.kind=="TemplateExpression"&&getNumOfIdentifier(node)>2){
-            for(let cc of node.children){
-                if(cc.kind!="SyntaxList"){
-                    simpleStm+=cc.text;
+
+            let leftOp = new Local("temp" + tempV);
+            let rightOp: any;
+            if (node.kind == "CallExpression") {
+                let methodSignature = rigtOpNames.join('');
+                rightOp = new ArkInvokeExpr(methodSignature, args);
+                if (begin) {
+                    threeAddressStmt = new ArkInvokeStmt(rightOp);
+                } else {
+                    threeAddressStmt = new ArkAssignStmt(leftOp, rightOp);
                 }
-                else{
-                    for(let ccc of cc.children){
-                        simpleStm+="temp"+this.tempVariableNum;
-                        this.ac3(ccc.children[0],this.tempVariableNum++,false);
-                        simpleStm+=ccc.children[1].text;
+            } else {
+                let classSignature = rigtOpNames.join('');
+                threeAddressStmt = new ArkAssignStmt(leftOp, new ArkNewExpr(classSignature));
+                this.current3ACstm.threeAddressStmts.push(threeAddressStmt);
+
+                let methodSignature = 'constructor';
+                threeAddressStmt = new ArkInvokeStmt(new ArkInvokeExpr(methodSignature, args));
+            }
+        }
+        else if (node.kind == "TemplateExpression" && getNumOfIdentifier(node) > 2) {
+            for (let cc of node.children) {
+                if (cc.kind != "SyntaxList") {
+                    simpleStm += cc.text;
+                }
+                else {
+                    for (let ccc of cc.children) {
+                        simpleStm += "temp" + this.tempVariableNum;
+                        this.ac3(ccc.children[0], this.tempVariableNum++, false);
+                        simpleStm += ccc.children[1].text;
                     }
                 }
             }
         }
-        else{
-            for(let child of node.children){
-                if(child.kind=="PropertyAccessExpression"||child.kind=="BinaryExpression"||child.kind=="CallExpression"||node.kind=="NewExpression"||
-                child.kind=="ElementAccessExpression"||child.kind=="ConditionalExpression"||child.kind=="AwaitExpression"){
-                    if(child.kind=="CallExpression"&&node.children.length<3&&node.kind!="AwaitExpression"){
-                        this.ac3(child,this.tempVariableNum++,false);
+        else {
+            let opNames: string[] = [];
+            for (let child of node.children) {
+                if (child.kind == "PropertyAccessExpression" || child.kind == "BinaryExpression" || child.kind == "CallExpression" || child.kind == "NewExpression"
+                    || child.kind == "ElementAccessExpression" || child.kind == "ConditionalExpression") {
+                    if (child.kind == "CallExpression" && node.children.length < 3) {
+                        this.ac3(child, this.tempVariableNum++, false);
                         return;
                     }
-                    simpleStm+="temp"+this.tempVariableNum;
-                    this.ac3(child,this.tempVariableNum++,false);
+                    simpleStm += "temp" + this.tempVariableNum;
+                    this.ac3(child, this.tempVariableNum++, false);
                 }
-                else if(child.kind=="ParenthesizedExpression"){
-                    simpleStm+="temp"+this.tempVariableNum;
-                    this.ac3(child.children[1],this.tempVariableNum++,false);
+                else if (child.kind == "ParenthesizedExpression") {
+                    simpleStm += "temp" + this.tempVariableNum;
+                    this.ac3(child.children[1], this.tempVariableNum++, false);
                 }
-                else{
-                    if(child.kind!="Block"){
-                        if(child.kind.includes("Keyword")){
-                            simpleStm+=" "+child.text+" ";
+                else {
+                    if (child.kind != "Block") {
+                        if (child.kind.includes("Keyword")) {
+                            simpleStm += " " + child.text + " ";
                         }
-                        else
-                            simpleStm+=child.text;
+                        else {
+                            simpleStm += child.text;
+                            opNames.push(child.text);
+                        }
                     }
-                        
+
                 }
-                
+
             }
+
+            let leftOpName = '';
+            if (begin) {
+                // VariableDeclaration的情况
+                leftOpName = opNames[0];
+                opNames.splice(0, 2);
+            } else {
+                leftOpName = "temp" + tempV;
+            }
+            let leftOp = new Local(leftOpName);
+
+            let rightOp: any;
+            if (node.kind == 'PropertyAccessExpression') {
+                rightOp = new ArkFieldRef(new Local(opNames.join('')));
+            } else if (node.kind == 'ElementAccessExpression') {
+                rightOp = new ArkArrayRef(new Local(opNames[0]), new Local(opNames[2]));
+            } else if (node.kind == 'BinaryExpression') {
+                rightOp = new ArkBinopExpr(new Local(opNames[0]), new Local(opNames[2]), opNames[1]);
+            } else if (node.kind == 'VariableDeclaration') {
+                if (node.children[2].kind == 'ArrayLiteralExpression') {
+                    let arraySize = Math.ceil(node.children[2].children[1].children.length / 2);
+                    rightOp = new ArkNewArrayExpr('int', new Local(arraySize.toString()));
+                }
+                else {
+                    rightOp = new Local(opNames[0]);
+                }
+            } else {
+                rightOp = new Local(opNames.join(''));
+            }
+            threeAddressStmt = new ArkAssignStmt(leftOp, rightOp);
         }
-        if(simpleStm[simpleStm.length-1]!=")")
-            simpleStm+=";";
+        if (simpleStm[simpleStm.length - 1] != ")") {
+            simpleStm += ";";
+        }
         this.current3ACstm.addressCode3.push(simpleStm);
     }
 
@@ -1732,7 +1585,7 @@ export class CFG {
                         this.ac3(decl, this.tempVariableNum++, true);
                     }
                 }
-                else if(stm.type!="breakStatement"&&stm.type!="returnStatement"){
+                else if (stm.type != "breakStatement" && stm.type != "returnStatement") {
                     this.currentDeclarationKeyword = "";
                     this.ac3(stm.astNode, this.tempVariableNum++, true);
                 }
@@ -1771,14 +1624,14 @@ export class CFG {
 
 
     errorTest(stm: statement) {
-        let mes="";
-        if(this.declaringClass?.declaringArkFile){
-            mes=this.declaringClass?.declaringArkFile.name+"."+this.declaringClass.name+"."+this.name;
+        let mes = "";
+        if (this.declaringClass?.declaringArkFile) {
+            mes = this.declaringClass?.declaringArkFile.name + "." + this.declaringClass.name + "." + this.name;
         }
-        else{
-            mes="ifnext error"
+        else {
+            mes = "ifnext error"
         }
-        mes+="\n"+stm.code;
+        mes += "\n" + stm.code;
         throw new textError(mes);
     }
 
@@ -1972,8 +1825,8 @@ export class CFG {
 
     printBlocks() {
         let text = "";
-        if(this.declaringClass?.declaringArkFile){
-            text+=this.declaringClass.declaringArkFile.name+"\n";
+        if (this.declaringClass?.declaringArkFile) {
+            text += this.declaringClass.declaringArkFile.name + "\n";
         }
         for (let bi = 0; bi < this.blocks.length; bi++) {
             let block = this.blocks[bi];
