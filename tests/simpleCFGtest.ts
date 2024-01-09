@@ -17,9 +17,12 @@ let cfg:CFG=new CFG(ast.root,"main",null);
 //     cfg.insertStatementAfter(s,"x++;");
 //     cfg.insertStatementBefore(s,"x--;");
 // }
-// cfg.printBlocks();
 
 // cfg.printOriginStmts();
+
+// cfg.printBlocks();
+
+
 
 // cfg.printThreeAddressStrs();
 cfg.printThreeAddressStmts();

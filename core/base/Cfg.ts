@@ -1652,6 +1652,17 @@ export class CFG {
     //     this.current3ACstm.threeAddressStmts.push(threeAddressStmt);
     // }
 
+
+
+    // utils begin
+    private getChild(node: NodeA, childKind: string): NodeA | null {
+        for (let i = 0; i < node.children.length; i++) {
+            if (node.children[i].kind == childKind)
+                return node.children[i];
+        }
+        return null;
+    }
+
     private needExpansion(node: NodeA): boolean {
         let nodeKind = node.kind;
         if (nodeKind == 'PropertyAccessExpression' || nodeKind == 'CallExpression') {
@@ -1660,10 +1671,66 @@ export class CFG {
         return false;
     }
 
-    private generateAssignStmt(node: NodeA | Value): Value {
+    private support(node: NodeA): boolean {
+        let nodeKind = node.kind;
+        if (nodeKind == 'ImportDeclaration' || nodeKind == 'TypeAliasDeclaration') {
+            return false;
+        }
+        return true;
+    }
+
+    // temp function
+    private toSupport(node: NodeA): boolean {
+        let nodeKind = node.kind;
+        if (nodeKind == 'SwitchStatement' || nodeKind == 'CaseClause' || nodeKind == 'ForStatement'
+            || nodeKind == 'TryStatement' || nodeKind == 'DefaultClause' || nodeKind == 'ForOfStatement'
+            || nodeKind == 'WhileStatement' || nodeKind == 'ConditionalExpression' || nodeKind == 'ThrowStatement'
+            || nodeKind == 'ForInStatement' || nodeKind == 'ContinueStatement') {
+            return true;
+        }
+        return false;
+    }
+
+    private getSyntaxListItems(node: NodeA): NodeA[] {
+        let items: NodeA[] = [];
+        for (const child of node.children) {
+            if (child.kind != 'CommaToken') {
+                items.push(child);
+            }
+        }
+        return items;
+    }
+
+    // temp function
+    private nopStmt(node: NodeA): boolean {
+        let nodeKind = node.kind;
+        if (nodeKind == 'BinaryExpression' || nodeKind == 'VariableDeclaration'
+            || nodeKind == 'VoidExpression') {
+            return true;
+        }
+        return false;
+    }
+
+    private shouldBeConstant(node: NodeA): boolean {
+        let nodeKind = node.kind;
+        if (nodeKind == 'FirstTemplateToken' || (nodeKind.includes('Literal') && nodeKind != 'ArrayLiteralExpression')
+            || nodeKind.includes('Keyword')) {
+            return true;
+        }
+        return false;
+    }
+
+    // utils end
+
+
+    private generateTempValue(): Value {
         let tempLeftOp = "temp" + this.tempVariableNum;
         this.tempVariableNum++;
-        let leftOp = new Local(tempLeftOp);
+        return new Local(tempLeftOp);
+    }
+
+    private generateAssignStmt(node: NodeA | Value): Value {
+        let leftOp = this.generateTempValue();
         let rightOp: any;
         if (node instanceof NodeA) {
             rightOp = this.astNodeToValue(node);
@@ -1684,14 +1751,8 @@ export class CFG {
             let typeNode = node.children[2];
             value = new Local(identifierNode.text);
         }
-        else if (node.kind == 'FirstTemplateToken') {
+        else if (this.shouldBeConstant(node)) {
             value = new Constant(node.text);
-        }
-        else if (node.kind.includes('Literal') && node.kind != 'ArrayLiteralExpression') {
-            value = new Constant(node.text)
-        }
-        else if (node.kind.includes('Keyword')) {
-            value = new Constant(node.text)
         }
         else if (node.kind == 'BinaryExpression') {
             let op1 = this.astNodeToValue(node.children[0]);
@@ -1723,19 +1784,25 @@ export class CFG {
             let methodSignature = '';
             if (methodValue instanceof ArkFieldRef) {
                 base = methodValue.getBase();
-                methodSignature = methodValue.getFieldSignature();
+                methodSignature = methodValue.getFieldName();
             } else {
                 base = new Local('globalThis');
                 methodSignature = methodValue.toString();
             }
 
-            let argsNode = node.children[2];
+
+            let syntaxListNode = node.children[this.findChildIndex(node, 'OpenParenToken') + 1];
+            let argNodes = this.getSyntaxListItems(syntaxListNode);
             let args: Value[] = [];
-            for (let argNode of argsNode.children) {
-                if (argNode.kind != 'CommaToken') {
-                    args.push(this.astNodeToValue(argNode));
+            for (const argNode of argNodes) {
+                let argValue = this.astNodeToValue(argNode);
+                if (IRUtils.moreThanOneAddress(argValue)) {
+                    argValue = this.generateAssignStmt(argValue);
                 }
+
+                args.push(argValue);
             }
+
             value = new ArkInvokeExpr(base, methodSignature, args);
         }
         else if (node.kind == "ArrowFunction") {
@@ -1751,6 +1818,27 @@ export class CFG {
                 }
             }
             value = new ArkInvokeExpr(base, methodSignature, args);
+        }
+        else if (node.kind == 'FunctionExpression') {
+            let base = new Local('globalThis');
+
+            let methodSignature = '';
+            if (node.children[1].kind != 'OpenParenToken') {
+                methodSignature = node.children[1].text;
+            } else {
+                methodSignature = 'anonymousFunc#' + this.anonymousFuncIndex;
+                this.anonymousFuncIndex++;
+            }
+
+            let argsNode = this.getChild(node, 'SyntaxList') as NodeA;
+            let args: Value[] = [];
+            for (let argNode of argsNode.children) {
+                if (argNode.kind != 'CommaToken') {
+                    args.push(this.astNodeToValue(argNode));
+                }
+            }
+            value = new ArkInvokeExpr(base, methodSignature, args);
+
         }
         else if (node.kind == "NewExpression") {
             let classValue = this.astNodeToValue(node.children[1]);
@@ -1776,7 +1864,7 @@ export class CFG {
         else if (node.kind == 'PrefixUnaryExpression') {
             let token = node.children[0].text;
             if (token == '++' || token == '--') {
-                value = this.astNodeToValue(node.children[0]);
+                value = this.astNodeToValue(node.children[1]);
                 let binopExpr = new ArkBinopExpr(value, new Constant('1'), token[0]);
                 this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(value, binopExpr));
             } else {
@@ -1785,7 +1873,7 @@ export class CFG {
         }
         else if (node.kind == 'PostfixUnaryExpression') {
             let token = node.children[1].text;
-            value = this.astNodeToValue(node.children[1]);
+            value = this.astNodeToValue(node.children[0]);
             let binopExpr = new ArkBinopExpr(value, new Constant('1'), token[0]);
             this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(value, binopExpr));
         }
@@ -1798,6 +1886,9 @@ export class CFG {
         else if (node.kind == 'ParenthesizedExpression') {
             value = this.astNodeToValue(node.children[1]);
         }
+        else if (node.kind == 'SpreadElement') {
+            value = this.astNodeToValue(node.children[1]);
+        }
         else if (node.kind == 'TypeOfExpression') {
             value = new ArkTypeOfExpr(this.astNodeToValue(node.children[1]));
         }
@@ -1805,6 +1896,22 @@ export class CFG {
             let typeName = node.children[2].text;
             let op = this.astNodeToValue(node.children[0]);
             value = new ArkCastExpr(op, typeName);
+        }
+        else if (node.kind == 'TypeAssertionExpression') {
+            let typeName = node.children[this.findChildIndex(node, 'FirstBinaryOperator') + 1].text;
+            let opNode = node.children[this.findChildIndex(node, 'GreaterThanToken') + 1]
+            let op = this.astNodeToValue(opNode);
+            value = new ArkCastExpr(op, typeName);
+        }
+        else if (node.kind == 'ArrayBindingPattern' || node.kind == 'ObjectBindingPattern') {
+            value = this.generateTempValue();
+        }
+        else if (node.kind == 'VoidExpression') {
+            this.astNodeToThreeAddressStmt(node.children[1]);
+            value = new Constant('undefined');
+        }
+        else if (this.toSupport(node)) {
+            value = new Local(node.text);
         }
         else {
             console.log('unsupported expr node type:', node.kind, ', text:', node.text)
@@ -1814,60 +1921,83 @@ export class CFG {
         return value;
     }
 
+    private astNodeToThreeAddressAssignStmt(node: NodeA): Stmt[] {
+        let leftOpNode = node.children[0];
+        let rightOpNode = node.children[this.findChildIndex(node, 'FirstAssignment') + 1];
+
+        let leftOp = this.astNodeToValue(leftOpNode);
+        let rightOp = this.astNodeToValue(rightOpNode);
+        if (IRUtils.moreThanOneAddress(leftOp) && IRUtils.moreThanOneAddress(rightOp)) {
+            rightOp = this.generateAssignStmt(rightOp);
+        }
+
+        let threeAddressAssignStmts: Stmt[] = [new ArkAssignStmt(leftOp, rightOp)];
+        if (rightOp instanceof ArkNewExpr) {
+            let methodSignature = 'constructor';
+
+            let syntaxListNode = rightOpNode.children[this.findChildIndex(rightOpNode, 'OpenParenToken') + 1];
+            let argNodes = this.getSyntaxListItems(syntaxListNode);
+            let args: Value[] = [];
+            for (const argNode of argNodes) {
+                args.push(this.astNodeToValue(argNode));
+            }
+            threeAddressAssignStmts.push(new ArkInvokeStmt(new ArkInvokeExpr(leftOp as Local, methodSignature, args)));
+        } else if (rightOp instanceof ArkNewArrayExpr) {
+            let argsNode = rightOpNode.children[1];
+            let index = 0;
+            for (let argNode of argsNode.children) {
+                if (argNode.kind != 'CommaToken') {
+                    // TODO:数组条目类型
+                    let arrayRef = new ArkArrayRef(leftOp as Local, new Local(index.toString()));
+                    let arrayItem = new Local(argNode.text);
+                    threeAddressAssignStmts.push(new ArkAssignStmt(arrayRef, arrayItem));
+                    index++;
+                }
+            }
+        }
+
+        if (leftOpNode.kind == 'ArrayBindingPattern' || leftOpNode.kind == 'ObjectBindingPattern') {
+            let argNodes = this.getSyntaxListItems(leftOpNode.children[1]);
+            let index = 0;
+            for (const argNode of argNodes) {
+                // TODO:数组条目类型
+                let arrayRef = new ArkArrayRef(leftOp as Local, new Local(index.toString()));
+                let arrayItem = new Local(argNode.text);
+                threeAddressAssignStmts.push(new ArkAssignStmt(arrayItem, arrayRef));
+                index++;
+            }
+        }
+        return threeAddressAssignStmts;
+    }
+
+    private astNodeToThreeAddressSwitchStatement(node: NodeA): Stmt[] {
+        let threeAddressStmts: Stmt[] = [];
+
+        return threeAddressStmts;
+    }
 
     private astNodeToThreeAddressStmt(node: NodeA) {
         let threeAddressStmts: Stmt[] = [];
         if (node.kind == "ReturnStatement") {
             let childCnt = node.children.length;
             if (childCnt > 1 && node.children[1].kind != 'SemicolonToken') {
-                threeAddressStmts.push(new ArkReturnStmt(this.astNodeToValue(node.children[1])));
+                let op = this.astNodeToValue(node.children[1]);
+                if (IRUtils.moreThanOneAddress(op)) {
+                    op = this.generateAssignStmt(op);
+                }
+                threeAddressStmts.push(new ArkReturnStmt(op));
             } else {
                 threeAddressStmts.push(new ArkReturnVoidStmt());
             }
         } else if ((node.kind == 'BinaryExpression' && node.children[1].kind == 'FirstAssignment')
             || (node.kind == 'VariableDeclaration' && this.findChildIndex(node, 'FirstAssignment') != -1)) {
-            let leftOpNode = node.children[0];
-            let rightOpNode = node.children[this.findChildIndex(node, 'FirstAssignment') + 1];
-
-            let leftOp = this.astNodeToValue(leftOpNode);
-            let rightOp = this.astNodeToValue(rightOpNode);
-            if (IRUtils.moreThanOneAddress(leftOp) && IRUtils.moreThanOneAddress(rightOp)) {
-                rightOp = this.generateAssignStmt(rightOp);
-            }
-
-            if (rightOp instanceof ArkNewExpr) {
-                threeAddressStmts.push(new ArkAssignStmt(leftOp, rightOp));
-
-                rightOp = rightOp as ArkNewExpr;
-                let methodSignature = 'constructor';
-                let argsNode = rightOpNode.children[3];
-                let args: Value[] = [];
-                for (let argNode of argsNode.children) {
-                    if (argNode.kind != 'CommaToken') {
-                        args.push(this.astNodeToValue(argNode));
-                    }
-                }
-                threeAddressStmts.push(new ArkInvokeStmt(new ArkInvokeExpr(leftOp as Local, methodSignature, args)));
-            } else if (rightOp instanceof ArkNewArrayExpr) {
-                threeAddressStmts.push(new ArkAssignStmt(leftOp, rightOp));
-
-                let argsNode = rightOpNode.children[1];
-                let index = 0;
-                for (let argNode of argsNode.children) {
-                    if (argNode.kind != 'CommaToken') {
-                        // TODO:数组条目类型
-                        let arrayRef = new ArkArrayRef(leftOp as Local, new Local(index.toString()));
-                        let arrayItem = new Local(argNode.text);
-                        threeAddressStmts.push(new ArkAssignStmt(arrayRef, arrayItem));
-                    }
-                }
-            }
-            else {
-                threeAddressStmts.push(new ArkAssignStmt(leftOp, rightOp));
-            }
-
+            threeAddressStmts.push(...this.astNodeToThreeAddressAssignStmt(node));
         } else if (node.kind == "ExpressionStatement") {
-            let expressionNode = node.children[0];
+            let expressionNodeIdx = 0;
+            if (node.children[0].kind == 'JSDocComment') {
+                expressionNodeIdx = 1;
+            }
+            let expressionNode = node.children[expressionNodeIdx];
             this.astNodeToThreeAddressStmt(expressionNode);
             return;
         }
@@ -1878,40 +2008,48 @@ export class CFG {
         } else if (node.kind == 'IfStatement') {
             let conditionExpr = new ArkConditionExpr('!(' + this.astNodeToValue(node.children[2]).toString() + ')');
             threeAddressStmts.push(new ArkIfStmt(conditionExpr));
-        } else if (node.kind == 'BinaryExpression') {
-            threeAddressStmts.push(new ArkNopStmt());
         } else if (node.kind == 'PostfixUnaryExpression' || node.kind == 'PrefixUnaryExpression') {
-
-        } else if (node.kind == 'CallExpression') {
+            this.astNodeToValue(node);
+        }
+        else if (node.kind == 'CallExpression') {
             threeAddressStmts.push(new ArkInvokeStmt(this.astNodeToValue(node) as ArkInvokeExpr));
-        } else {
-            console.log('unsupported stmt node, type:', node.kind, ', text:', node.text)
+        }
+        else if (node.kind == 'NewExpression') {
+            let leftOp = this.generateTempValue();
+            let rightOp = this.astNodeToValue(node);
+            threeAddressStmts.push(new ArkAssignStmt(leftOp, rightOp));
+
+            let methodSignature = 'constructor';
+
+            let syntaxListNode = node.children[this.findChildIndex(node, 'OpenParenToken') + 1];
+            let argNodes = this.getSyntaxListItems(syntaxListNode);
+            let args: Value[] = [];
+            for (const argNode of argNodes) {
+                args.push(this.astNodeToValue(argNode));
+            }
+            threeAddressStmts.push(new ArkInvokeStmt(new ArkInvokeExpr(leftOp as Local, methodSignature, args)));
+        }
+        else if (node.kind == 'VoidExpression') {
+            this.astNodeToThreeAddressStmt(node.children[1]);
+        }
+        else if (this.toSupport(node)) {
+
+        }
+        else if (this.nopStmt(node)) {
+            threeAddressStmts.push(new ArkNopStmt());
+        }
+        else {
+            console.log('unsupported stmt node, type:', node.kind, ', text:', node.text);
         }
 
         this.current3ACstm.threeAddressStmts.push(...threeAddressStmts);
         return;
     }
 
-    // private ifStatement2ThreeAddress(stmt: statement) {
-    //     let conditionNode = stmt.astNode?.children[2] as NodeA;
-    //     let opNames: string[] = [];
-
-    //     let newTempValueName = "temp" + this.tempVariableNum;
-    //     this.tempVariableNum++;
-    //     opNames.push('if(')
-    //     opNames.push("!" + newTempValueName);
-    //     this.ac3(conditionNode, newTempValueName, false);
-    //     opNames.push(') goto:')
-
-    //     let conditionExpr = new ArkConditionExprExpr(opNames[1]);
-    //     let ifStatement = new ArkIfStmt(conditionExpr);
-    //     this.current3ACstm.addressCode3.push(opNames.join(''));
-    //     this.current3ACstm.threeAddressStmts.push(ifStatement);
-    // }
 
     get3AddressCode() {
         for (let stm of this.statementArray) {
-            if (stm.astNode && stm.code != "" && stm.astNode.kind != 'ImportDeclaration') {
+            if (stm.astNode && stm.code != "" && this.support(stm.astNode)) {
                 // console.log('------ origin stmt: ', stm.code);
                 // let node: NodeA = stm.astNode;
                 // if (stm.type == "ifStatement" || stm.type == "loopStatement" || stm.type == "catchOrNot") {
@@ -2260,6 +2398,7 @@ export class CFG {
             console.log('------ origin stmt: ', stmt.code);
             for (const threeAddressStmt of stmt.threeAddressStmts) {
                 console.log(threeAddressStmt.toString());
+                // console.log(threeAddressStmt);
             }
         }
     }
@@ -2292,6 +2431,7 @@ export class CFG {
     }
 
     public printOriginStmts() {
+        console.log('#### printOriginStmts ####');
         for (const stmt of this.statementArray) {
             console.log(stmt);
         }

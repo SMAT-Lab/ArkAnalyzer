@@ -42,11 +42,13 @@ export class ArkInvokeExpr implements Expr {
         strs.push('.');
         strs.push(this.methodSignature);
         strs.push('(');
-        for (const arg of this.args) {
-            strs.push(arg.toString());
-            strs.push(', ');
+        if (this.args.length > 0) {
+            for (const arg of this.args) {
+                strs.push(arg.toString());
+                strs.push(', ');
+            }
+            strs.pop();
         }
-        strs.pop();
         strs.push(')');
         return strs.join('');
     }
