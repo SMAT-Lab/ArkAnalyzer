@@ -12,7 +12,7 @@ import { ArkAssignStmt, ArkGotoStmt, ArkIfStmt, ArkInvokeStmt, ArkNopStmt, ArkRe
 import { Local } from '../common/Local';
 import { Value } from '../common/Value';
 import { ArkArrayRef, ArkFieldRef } from '../common/Ref';
-import { ArkBinopExpr, ArkCastExpr, ArkConditionExpr, ArkInvokeExpr, ArkNewArrayExpr, ArkNewExpr, ArkTypeOfExpr } from './Expr';
+import { ArkBinopExpr, ArkCastExpr, ArkConditionExpr, ArkInvokeExpr, ArkLengthExpr, ArkNewArrayExpr, ArkNewExpr, ArkTypeOfExpr } from './Expr';
 import { Constant } from '../common/Constant';
 import { IRUtils } from '../common/IRUtils';
 
@@ -2031,6 +2031,29 @@ export class CFG {
             }
 
             this.current3ACstm.threeAddressStmts.push(new ArkGotoStmt());
+        } else if (node.kind == "ForOfStatement" || node.kind == "ForInStatement") {
+            // 暂时只支持数组遍历
+            let varIdx = this.findChildIndex(node, 'OpenParenToken') + 1;
+            let varNode = node.children[varIdx];
+            let iterableIdx = varIdx + 2;
+            let iterableNode = node.children[iterableIdx];
+
+            let iterableValue = this.astNodeToValue(iterableNode);
+            let lenghtLocal = this.generateTempValue();
+            this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(lenghtLocal, new ArkLengthExpr(iterableValue)));
+            let indexLocal = this.generateTempValue();
+            this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(indexLocal, new Constant('0')));
+
+            let conditionExpr = new ArkConditionExpr(indexLocal + ' >= ' + lenghtLocal);
+            this.current3ACstm.threeAddressStmts.push(new ArkIfStmt(conditionExpr));
+
+            let varLocal = this.astNodeToValue(varNode);
+            let arrayRef = new ArkArrayRef(iterableValue as Local, indexLocal);
+            this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(varLocal, arrayRef));
+
+            let incrExpr = new ArkBinopExpr(indexLocal, new Constant('1'), '+');
+            this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(indexLocal, incrExpr));
+            this.current3ACstm.threeAddressStmts.push(new ArkGotoStmt());
         }
     }
 
@@ -2076,7 +2099,7 @@ export class CFG {
         } else if (node.kind == 'PostfixUnaryExpression' || node.kind == 'PrefixUnaryExpression') {
             this.astNodeToValue(node);
         }
-        else if (node.kind == 'ForStatement') {
+        else if (node.kind == 'ForStatement' || node.kind == 'ForOfStatement' || node.kind == 'ForInStatement') {
             this.astNodeToThreeAddressIterationStatement(node);
         }
         else if (node.kind == 'CallExpression') {
@@ -2427,15 +2450,33 @@ export class CFG {
         this.blocks.splice(0, 0, new Block(0, [], [], null));
     }
 
-    public printThreeAddressStmts() {
-        if (this.blocks[0].stms[0].type == 'loopStatement') {
-            this.addFirstBlock();
+    private insertBlockbBefore(blocks: Block[], id: number) {
+        blocks.splice(id, 0, new Block(0, [], [], null));
+        for (let i = id; i < blocks.length; i++) {
+            blocks[i].id += 1;
         }
+    }
+
+
+    public printThreeAddressStmts() {
+        let stmtBlocks: Block[] = [];
+        stmtBlocks.push(...this.blocks);
+        if (stmtBlocks[0].stms[0].type == 'loopStatement') {
+            this.insertBlockbBefore(stmtBlocks, 0);
+        }
+        for (let blockId = 1; blockId < stmtBlocks.length; blockId++) {
+            if (stmtBlocks[blockId].stms[0].type == 'loopStatement'
+                && stmtBlocks[blockId - 1].stms[0].type == 'loopStatement') {
+                this.insertBlockbBefore(stmtBlocks, blockId);
+                blockId++;
+            }
+        }
+
 
         let blockTailStmtStrs = new Map<number, string[]>();
         let blockStmtStrs = new Map<number, string[]>();
-        for (let blockId = 0; blockId < this.blocks.length; blockId++) {
-            let currBlock = this.blocks[blockId];
+        for (let blockId = 0; blockId < stmtBlocks.length; blockId++) {
+            let currBlock = stmtBlocks[blockId];
             let currStmtStrs: string[] = [];
             for (const originStmt of currBlock.stms) {
                 if (originStmt.type == 'ifStatement') {
@@ -2456,7 +2497,7 @@ export class CFG {
         let indentation = ' '.repeat(4);
         let newline = ';\n' + indentation;
         let functionBodyStr = 'method: ' + this.name + ' {\n';
-        for (let blockId = 0; blockId < this.blocks.length; blockId++) {
+        for (let blockId = 0; blockId < stmtBlocks.length; blockId++) {
             let stmtStrs: string[] = [];
             let currStmtStrs = blockStmtStrs.get(blockId);
             if (currStmtStrs != undefined) {
@@ -2472,7 +2513,7 @@ export class CFG {
             }
             functionBodyStr += indentation;
             functionBodyStr += stmtStrs.join(newline);
-            functionBodyStr += '\n';
+            functionBodyStr += ';\n';
         }
 
         functionBodyStr += '}\n';
@@ -2510,6 +2551,7 @@ export class CFG {
 
             let strs: string[] = [];
             let findIf = false;
+            let appendAfterIf = iterationStmt.astNode?.kind == "ForOfStatement" || iterationStmt.astNode?.kind == "ForInStatement";
             for (const threeAddressStmt of iterationStmt.threeAddressStmts) {
                 if (threeAddressStmt instanceof ArkIfStmt) {
                     let nextBlockId = iterationStmt.nextF?.block?.id;
@@ -2519,6 +2561,9 @@ export class CFG {
                     preTailStmtStrs.push(threeAddressStmt.toString());
                 } else if (threeAddressStmt instanceof ArkGotoStmt) {
                     currTailStmtStrs.push('goto label' + bodyBlockId);
+                } else if (appendAfterIf) {
+                    strs.push(threeAddressStmt.toString());
+                    appendAfterIf = false;
                 } else {
                     currTailStmtStrs.push(threeAddressStmt.toString());
                 }

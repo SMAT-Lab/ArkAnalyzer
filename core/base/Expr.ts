@@ -177,6 +177,22 @@ export class ArkInstanceOfExpr implements Expr {
     }
 }
 
+export class ArkLengthExpr implements Expr {
+    private op: Value;
+
+    constructor(op: Value) {
+        this.op = op;
+    }
+
+    public getUses(): Value[] {
+        let uses: Value[] = [];
+        return uses;
+    }
+
+    public toString(): string {
+        return 'lengthof ' + this.op;
+    }
+}
 
 // 类型转换
 export class ArkCastExpr implements Expr {

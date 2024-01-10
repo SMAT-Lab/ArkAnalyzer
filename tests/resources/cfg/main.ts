@@ -1,6 +1,10 @@
 function test() {
-    let a = 10;
-    for (let i = 0; i < 10; i++) {
-        console.log(i);
+    let sa = [1, 2];
+    for (const s of sa) {
+        console.log(s);
+    }
+
+    for (const s in sa) {
+        console.log(s);
     }
 }
