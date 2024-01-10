@@ -7,8 +7,8 @@ import { ArkConditionExpr, ArkInvokeExpr } from "./Expr";
 export class Stmt {
     private defs: Value[] = [];
     private uses: Value[] = [];
-    private originPosition: LinePosition = new LinePosition(0);
-    private position: LinePosition = new LinePosition(0);
+    private originPosition: number = 0;
+    private position: number = 0;
     private valueVersion = new Map<Value, string>();
     private valueTags = new Map<Value, Set<ValueTag>>;
 
@@ -132,12 +132,19 @@ export class Stmt {
         return undefined;
     }
 
+    public setPositionInfo(position: number) {
+        this.position = position;
+    }
 
-    public getPositionInfo(): LinePosition {
+    public getPositionInfo(): number {
         return this.position;
     }
 
-    public getOriginPositionInfo(): LinePosition {
+    public setOriginPositionInfo(originPosition: number) {
+        this.originPosition = originPosition;
+    }
+
+    public getOriginPositionInfo(): number {
         return this.originPosition;
     }
 
@@ -250,7 +257,7 @@ export class ArkReturnVoidStmt extends Stmt {
     }
 
     public toString(): string {
-        return 'return ';
+        return 'return';
     }
 }
 

@@ -8,7 +8,7 @@ import * as fs from 'fs';
 import { exec } from 'child_process';
 import { ArkClass } from '../ArkClass';
 import exp from 'constants';
-import { ArkAssignStmt, ArkIfStmt, ArkInvokeStmt, ArkNopStmt, ArkReturnStmt, ArkReturnVoidStmt, Stmt } from './Stmt';
+import { ArkAssignStmt, ArkGotoStmt, ArkIfStmt, ArkInvokeStmt, ArkNopStmt, ArkReturnStmt, ArkReturnVoidStmt, Stmt } from './Stmt';
 import { Local } from '../common/Local';
 import { Value } from '../common/Value';
 import { ArkArrayRef, ArkFieldRef } from '../common/Ref';
@@ -1652,6 +1652,35 @@ export class CFG {
     //     this.current3ACstm.threeAddressStmts.push(threeAddressStmt);
     // }
 
+    // get3AddressCode() {
+    //     for (let stm of this.statementArray) {
+    //         if (stm.astNode && stm.code != "" && this.support(stm.astNode)) {
+    //             // console.log('------ origin stmt: ', stm.code);
+    //             // let node: NodeA = stm.astNode;
+    //             // if (stm.type == "ifStatement" || stm.type == "loopStatement" || stm.type == "catchOrNot") {
+    //             //     node = node.children[this.findChildIndex(node, "OpenParenToken") + 1]
+    //             // }
+    //             this.current3ACstm = stm;
+    //             if (stm.astNode.kind == "FirstStatement") {
+    //                 let declList = stm.astNode.children[this.findChildIndex(stm.astNode, "VariableDeclarationList")];
+    //                 this.currentDeclarationKeyword = declList.children[0].text + " ";
+    //                 let decls = declList.children[this.findChildIndex(declList, "SyntaxList")];
+    //                 for (let decl of decls.children) {
+    //                     // this.ac3(decl, '', true);
+    //                     this.astNodeToThreeAddressStmt(decl);
+    //                 }
+    //                 // } else if (stm.type == 'ifStatement') {
+    //                 //     this.ifStatement2ThreeAddress(stm);
+    //             } else if (stm.type != "breakStatement") {
+    //                 this.currentDeclarationKeyword = "";
+    //                 // this.ac3(stm.astNode, '', true);
+    //                 this.astNodeToThreeAddressStmt(stm.astNode);
+    //             }
+
+    //         }
+    //     }
+    // }
+
 
 
     // utils begin
@@ -1976,6 +2005,35 @@ export class CFG {
         return threeAddressStmts;
     }
 
+    private astNodeToThreeAddressIterationStatement(node: NodeA) {
+        if (node.kind == "ForStatement") {
+            let openParenTokenIdx = this.findChildIndex(node, 'OpenParenToken');
+            let mayConditionIdx = openParenTokenIdx + 3;
+            if (node.children[openParenTokenIdx + 1].kind != 'SemicolonToken') {
+                let initializer = node.children[openParenTokenIdx + 1]
+                this.astNodeToThreeAddressStmt(initializer);
+            } else {
+                mayConditionIdx = openParenTokenIdx + 2;
+            }
+
+            let incrementorIdx = mayConditionIdx + 2;
+            if (node.children[mayConditionIdx].kind != 'SemicolonToken') {
+                let conditionExprNode = node.children[mayConditionIdx];
+                let conditionExpr = new ArkConditionExpr('!(' + this.astNodeToValue(conditionExprNode).toString() + ')');
+                this.current3ACstm.threeAddressStmts.push(new ArkIfStmt(conditionExpr));
+            } else {
+                incrementorIdx = mayConditionIdx + 1;
+            }
+
+            if (node.children[incrementorIdx].kind != 'SemicolonToken') {
+                let incrementorNode = node.children[incrementorIdx];
+                this.astNodeToThreeAddressStmt(incrementorNode);
+            }
+
+            this.current3ACstm.threeAddressStmts.push(new ArkGotoStmt());
+        }
+    }
+
     private astNodeToThreeAddressStmt(node: NodeA) {
         let threeAddressStmts: Stmt[] = [];
         if (node.kind == "ReturnStatement") {
@@ -1989,7 +2047,19 @@ export class CFG {
             } else {
                 threeAddressStmts.push(new ArkReturnVoidStmt());
             }
-        } else if ((node.kind == 'BinaryExpression' && node.children[1].kind == 'FirstAssignment')
+        }
+        else if (node.kind == "FirstStatement" || node.kind == "VariableDeclarationList") {
+            let declListNode = node;
+            if (node.kind == 'FirstStatement') {
+                declListNode = node.children[this.findChildIndex(node, "VariableDeclarationList")];
+            }
+            let declsNode = declListNode.children[this.findChildIndex(declListNode, "SyntaxList")];
+            let syntaxListItems = this.getSyntaxListItems(declsNode);
+            for (let declNode of syntaxListItems) {
+                this.astNodeToThreeAddressStmt(declNode);
+            }
+        }
+        else if ((node.kind == 'BinaryExpression' && node.children[1].kind == 'FirstAssignment')
             || (node.kind == 'VariableDeclaration' && this.findChildIndex(node, 'FirstAssignment') != -1)) {
             threeAddressStmts.push(...this.astNodeToThreeAddressAssignStmt(node));
         } else if (node.kind == "ExpressionStatement") {
@@ -1999,17 +2069,15 @@ export class CFG {
             }
             let expressionNode = node.children[expressionNodeIdx];
             this.astNodeToThreeAddressStmt(expressionNode);
-            return;
-        }
-        else if (node.kind == "AwaitExpression") {
-            let expressionNode = node.children[1];
-            this.astNodeToThreeAddressStmt(expressionNode);
-            return;
         } else if (node.kind == 'IfStatement') {
-            let conditionExpr = new ArkConditionExpr('!(' + this.astNodeToValue(node.children[2]).toString() + ')');
+            let conditionExprNode = node.children[this.findChildIndex(node, 'OpenParenToken') + 1];
+            let conditionExpr = new ArkConditionExpr('!(' + this.astNodeToValue(conditionExprNode).toString() + ')');
             threeAddressStmts.push(new ArkIfStmt(conditionExpr));
         } else if (node.kind == 'PostfixUnaryExpression' || node.kind == 'PrefixUnaryExpression') {
             this.astNodeToValue(node);
+        }
+        else if (node.kind == 'ForStatement') {
+            this.astNodeToThreeAddressIterationStatement(node);
         }
         else if (node.kind == 'CallExpression') {
             threeAddressStmts.push(new ArkInvokeStmt(this.astNodeToValue(node) as ArkInvokeExpr));
@@ -2029,6 +2097,10 @@ export class CFG {
             }
             threeAddressStmts.push(new ArkInvokeStmt(new ArkInvokeExpr(leftOp as Local, methodSignature, args)));
         }
+        else if (node.kind == "AwaitExpression") {
+            let expressionNode = node.children[1];
+            this.astNodeToThreeAddressStmt(expressionNode);
+        }
         else if (node.kind == 'VoidExpression') {
             this.astNodeToThreeAddressStmt(node.children[1]);
         }
@@ -2046,62 +2118,18 @@ export class CFG {
         return;
     }
 
-
-    get3AddressCode() {
-        for (let stm of this.statementArray) {
-            if (stm.astNode && stm.code != "" && this.support(stm.astNode)) {
-                // console.log('------ origin stmt: ', stm.code);
-                // let node: NodeA = stm.astNode;
-                // if (stm.type == "ifStatement" || stm.type == "loopStatement" || stm.type == "catchOrNot") {
-                //     node = node.children[this.findChildIndex(node, "OpenParenToken") + 1]
-                // }
-                this.current3ACstm = stm;
-                if (stm.astNode.kind == "FirstStatement") {
-                    let declList = stm.astNode.children[this.findChildIndex(stm.astNode, "VariableDeclarationList")];
-                    this.currentDeclarationKeyword = declList.children[0].text + " ";
-                    let decls = declList.children[this.findChildIndex(declList, "SyntaxList")];
-                    for (let decl of decls.children) {
-                        // this.ac3(decl, '', true);
-                        this.astNodeToThreeAddressStmt(decl);
-                    }
-                    // } else if (stm.type == 'ifStatement') {
-                    //     this.ifStatement2ThreeAddress(stm);
-                } else if (stm.type != "breakStatement") {
-                    this.currentDeclarationKeyword = "";
-                    // this.ac3(stm.astNode, '', true);
-                    this.astNodeToThreeAddressStmt(stm.astNode);
+    private transformToThreeAddress() {
+        for (let blockId = 0; blockId < this.blocks.length; blockId++) {
+            let currBlock = this.blocks[blockId];
+            for (const originStmt of currBlock.stms) {
+                if (originStmt.astNode && originStmt.code != "" && this.support(originStmt.astNode)) {
+                    this.current3ACstm = originStmt;
+                    this.astNodeToThreeAddressStmt(originStmt.astNode);
+                } else if (originStmt.type == 'exit') {
+                    // 额外添加的return语句特殊处理
+                    originStmt.threeAddressStmts.push(new ArkReturnVoidStmt());
                 }
-
             }
-
-            // 去除冗余三地址码转换
-            // if (stm.addressCode3.length == 2) {
-            //     // stm.addressCode3 = [];                
-            //     let originalFirstStr = stm.addressCode3[0];
-            //     let originalSecondStr = stm.addressCode3[1];
-            //     let firstEqualsTokenIndex = originalFirstStr.indexOf('=');
-            //     let secondEqualsTokenIndex = originalSecondStr.indexOf('=');
-            //     stm.addressCode3 = [originalSecondStr.substring(0, secondEqualsTokenIndex + 1)
-            //         + originalFirstStr.substring(firstEqualsTokenIndex + 1, originalFirstStr.length - 1)];
-
-            //     // 需要考虑new语句拆分为两句的场景
-            //     let originalFirstAssignmentStmt = stm.threeAddressStmts[0] as ArkAssignStmt;
-            //     let tempSecondAssignmentStmt: any;
-            //     let maybeOriginalInvokeStmt = stm.threeAddressStmts[1];
-            //     let hasInvokeStmt = false;
-            //     if (stm.threeAddressStmts.length > 2) {
-            //         tempSecondAssignmentStmt = stm.threeAddressStmts[2];
-            //         hasInvokeStmt = true;
-            //     } else {
-            //         tempSecondAssignmentStmt = stm.threeAddressStmts[1];
-            //     }
-            //     let secondAssignmentStmt = tempSecondAssignmentStmt as ArkAssignStmt;
-
-            //     stm.threeAddressStmts = [new ArkAssignStmt(secondAssignmentStmt.getLeftOp(), originalFirstAssignmentStmt.getRightOp())];
-            //     if (hasInvokeStmt) {
-            //         stm.threeAddressStmts.push(maybeOriginalInvokeStmt);
-            //     }
-            // }
         }
     }
 
@@ -2392,14 +2420,110 @@ export class CFG {
         // fs.appendFileSync('ac3texts.txt', text);
     }
 
+    private addFirstBlock() {
+        for (let block of this.blocks) {
+            block.id += 1;
+        }
+        this.blocks.splice(0, 0, new Block(0, [], [], null));
+    }
+
     public printThreeAddressStmts() {
-        // console.log('#### printThreeAddressStmts ####');
-        for (const stmt of this.statementArray) {
-            console.log('------ origin stmt: ', stmt.code);
-            for (const threeAddressStmt of stmt.threeAddressStmts) {
-                console.log(threeAddressStmt.toString());
-                // console.log(threeAddressStmt);
+        if (this.blocks[0].stms[0].type == 'loopStatement') {
+            this.addFirstBlock();
+        }
+
+        let blockTailStmtStrs = new Map<number, string[]>();
+        let blockStmtStrs = new Map<number, string[]>();
+        for (let blockId = 0; blockId < this.blocks.length; blockId++) {
+            let currBlock = this.blocks[blockId];
+            let currStmtStrs: string[] = [];
+            for (const originStmt of currBlock.stms) {
+                if (originStmt.type == 'ifStatement') {
+                    currStmtStrs.push(...ifStmtToString(originStmt));
+                } else if (originStmt.type == 'loopStatement') {
+                    currStmtStrs.push(...iterationStmtToString(originStmt));
+                }
+                else {
+                    for (const threeAddressStmt of originStmt.threeAddressStmts) {
+                        currStmtStrs.push(threeAddressStmt.toString());
+                    }
+                }
             }
+            blockStmtStrs.set(blockId, currStmtStrs);
+        }
+
+        // add tail stmts and print to str        
+        let indentation = ' '.repeat(4);
+        let newline = ';\n' + indentation;
+        let functionBodyStr = 'method: ' + this.name + ' {\n';
+        for (let blockId = 0; blockId < this.blocks.length; blockId++) {
+            let stmtStrs: string[] = [];
+            let currStmtStrs = blockStmtStrs.get(blockId);
+            if (currStmtStrs != undefined) {
+                stmtStrs.push(...currStmtStrs);
+            }
+            let tailStmtStrs = blockTailStmtStrs.get(blockId);
+            if (tailStmtStrs != undefined) {
+                stmtStrs.push(...tailStmtStrs);
+            }
+
+            if (blockId != 0) {
+                functionBodyStr += "label" + blockId + ':\n';
+            }
+            functionBodyStr += indentation;
+            functionBodyStr += stmtStrs.join(newline);
+            functionBodyStr += '\n';
+        }
+
+        functionBodyStr += '}\n';
+        console.log(functionBodyStr);
+
+        function ifStmtToString(originStmt: statement): string[] {
+            let ifStmt = originStmt as conditionStatement;
+
+            let strs: string[] = [];
+            for (const threeAddressStmt of ifStmt.threeAddressStmts) {
+                if (threeAddressStmt instanceof ArkIfStmt) {
+                    let nextBlockId = ifStmt.nextF?.block?.id;
+                    strs.push(threeAddressStmt.toString() + ' goto label' + nextBlockId);
+                } else {
+                    strs.push(threeAddressStmt.toString());
+                }
+            }
+            return strs;
+        }
+
+        function iterationStmtToString(originStmt: statement): string[] {
+            let iterationStmt = originStmt as conditionStatement;
+
+            let bodyBlockId = iterationStmt.nextT?.block?.id as number;
+            if (blockTailStmtStrs.get(bodyBlockId) == undefined) {
+                blockTailStmtStrs.set(bodyBlockId, []);
+            }
+            let currTailStmtStrs = blockTailStmtStrs.get(bodyBlockId) as string[];
+
+            let preBlockId = bodyBlockId - 1;
+            if (blockTailStmtStrs.get(preBlockId) == undefined) {
+                blockTailStmtStrs.set(preBlockId, []);
+            }
+            let preTailStmtStrs = blockTailStmtStrs.get(preBlockId) as string[];
+
+            let strs: string[] = [];
+            let findIf = false;
+            for (const threeAddressStmt of iterationStmt.threeAddressStmts) {
+                if (threeAddressStmt instanceof ArkIfStmt) {
+                    let nextBlockId = iterationStmt.nextF?.block?.id;
+                    strs.push(threeAddressStmt.toString() + ' goto label' + nextBlockId);
+                    findIf = true;
+                } else if (!findIf) {
+                    preTailStmtStrs.push(threeAddressStmt.toString());
+                } else if (threeAddressStmt instanceof ArkGotoStmt) {
+                    currTailStmtStrs.push('goto label' + bodyBlockId);
+                } else {
+                    currTailStmtStrs.push(threeAddressStmt.toString());
+                }
+            }
+            return strs;
         }
     }
 
@@ -2449,7 +2573,7 @@ export class CFG {
         this.resetWalked();
         this.generateUseDef();
         this.resetWalked();
-        this.get3AddressCode();
-        // this.printBlocks();
+
+        this.transformToThreeAddress();
     }
 }

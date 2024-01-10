@@ -1,4 +1,6 @@
-/**
- * 直方图像素统计，RGBA每四个值为一组进行统计
- */
-workerPort.onmessage = function (e: MessageEvents): void {}
+function test() {
+    let a = 10;
+    for (let i = 0; i < 10; i++) {
+        console.log(i);
+    }
+}
