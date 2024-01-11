@@ -1711,9 +1711,12 @@ export class CFG {
     // temp function
     private toSupport(node: NodeA): boolean {
         let nodeKind = node.kind;
-        if (nodeKind == 'SwitchStatement' || nodeKind == 'CaseClause' || nodeKind == 'DefaultClause'
+        if (nodeKind == 'SwitchStatement'
+            || nodeKind == 'CaseClause'
+            || nodeKind == 'DefaultClause'
             || nodeKind == 'TryStatement'
-            || nodeKind == 'ConditionalExpression' || nodeKind == 'ThrowStatement') {
+            || nodeKind == 'ConditionalExpression'
+            || nodeKind == 'ThrowStatement') {
             return true;
         }
         return false;
@@ -1938,13 +1941,17 @@ export class CFG {
             this.astNodeToThreeAddressStmt(node.children[1]);
             value = new Constant('undefined');
         }
+        else if (node.kind == 'VariableDeclarationList') {
+            let declsNode = node.children[this.findChildIndex(node, "SyntaxList")];
+            let syntaxListItems = this.getSyntaxListItems(declsNode);
+            value = new Local(syntaxListItems[0].text);
+        }
         else if (this.toSupport(node)) {
             value = new Local(node.text);
         }
         else {
             console.log('unsupported expr node type:', node.kind, ', text:', node.text)
             value = new Local(node.text);
-
         }
         return value;
     }
@@ -2139,7 +2146,7 @@ export class CFG {
 
         }
         else if (this.nopStmt(node)) {
-            threeAddressStmts.push(new ArkNopStmt());
+            // threeAddressStmts.push(new ArkNopStmt());
         }
         else {
             console.log('unsupported stmt node, type:', node.kind, ', text:', node.text);
@@ -2473,12 +2480,16 @@ export class CFG {
 
         let stmtBlocks: Block[] = [];
         stmtBlocks.push(...this.blocks);
-        if (stmtBlocks[0].stms[0].type == 'loopStatement') {
-            this.insertBlockbBefore(stmtBlocks, 0);
+        let blockId = 0;
+        if (stmtBlocks[blockId].stms[blockId].type == 'loopStatement') {
+            this.insertBlockbBefore(stmtBlocks, blockId);
+            blockId = 1;
         }
-        for (let blockId = 1; blockId < stmtBlocks.length; blockId++) {
-            if (stmtBlocks[blockId].stms[0].type == 'loopStatement'
-                && stmtBlocks[blockId - 1].stms[0].type == 'loopStatement') {
+        blockId += 1;
+        for (; blockId < stmtBlocks.length; blockId++) {
+            let currStmt = stmtBlocks[blockId].stms[0];
+            let lastStmt = stmtBlocks[blockId - 1].stms[0];
+            if (currStmt.type == 'loopStatement' && lastStmt.type == 'loopStatement') {
                 this.insertBlockbBefore(stmtBlocks, blockId);
                 blockId++;
             }
@@ -2494,8 +2505,10 @@ export class CFG {
                 if (originStmt.type == 'ifStatement') {
                     currStmtStrs.push(...ifStmtToString(originStmt));
                 } else if (originStmt.type == 'loopStatement') {
+                    // console.log('loopStatement');
                     currStmtStrs.push(...iterationStmtToString(originStmt));
                 } else if (originStmt.type == 'switchStatement') {
+                    // console.log('switchStatement');
                     currStmtStrs.push(...switchStmtToString(originStmt));
                 } else if (originStmt.type == 'breakStatement' || originStmt.type == 'continueStatement') {
                     currStmtStrs.push(...jumpStmtToString(originStmt));

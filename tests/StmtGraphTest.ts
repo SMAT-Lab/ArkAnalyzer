@@ -38,11 +38,11 @@ export class StmtGraphTest {
         const projectName: string = config.projectName;
         const input_dir: string = config.input_dir;
 
-        // const projectFiles: string[] = utils.getAllFiles(input_dir, ['.ts']);
+        let projectFiles: string[] = utils.getAllFiles(input_dir, ['.ts']);
 
-        // let projectFiles = ['D:\\codes\\tests\\applications_systemui\\common\\src\\main\\ets\\default\\CommonStyleManager.ts']
-        // let projectFiles = ['D:\\codes\\openharmony\\applications\\applications_photos\\product\\phone\\src\\main\\ets\\workers\\HistogramWorker.ts']
-        let projectFiles = ['tests\\resources\\cfg\\main.ts'];
+        // let projectFiles = ['D:\\codes\\openharmony\\applications\\applications_photos\\common\\src\\main\\ets\\default\\model\\browser\\AbsDataSource.ts']        
+        projectFiles = ['D:\\codes\\openharmony\\applications\\applications_photos\\common\\src\\main\\ets\\default\\access\\UserFileManagerAccess.ts']        
+        // let projectFiles = ['tests\\resources\\cfg\\main.ts'];
 
         let scene = new Scene(projectName, projectFiles);
 
@@ -50,7 +50,7 @@ export class StmtGraphTest {
             console.log('=============== arkFile:', arkFile.name, ' ================');
             for (const arkClass of arkFile.getClasses()) {
                 for (const arkMethod of arkClass.getMethods()) {                    
-                    console.log('********* arkMethod:', arkMethod.name, ' ***********');
+                    // console.log('********* arkMethod:', arkMethod.name, ' ***********');
                     arkMethod.cfg.printThreeAddressStmts();
                 }
             }
