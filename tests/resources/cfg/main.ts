@@ -1,10 +1,15 @@
 function test() {
-    let sa = [1, 2];
-    for (const s of sa) {
-        console.log(s);
-    }
-
-    for (const s in sa) {
-        console.log(s);
+    let ss = 'd';
+    switch (ss) {
+        case 'a':
+            console.log('a');
+            break;
+        case 'b':
+            console.log('b');
+        case 'c':
+            console.log('c');
+            break;
+        default:
+            console.log('default');
     }
 }

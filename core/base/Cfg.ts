@@ -1711,10 +1711,9 @@ export class CFG {
     // temp function
     private toSupport(node: NodeA): boolean {
         let nodeKind = node.kind;
-        if (nodeKind == 'SwitchStatement' || nodeKind == 'CaseClause' || nodeKind == 'ForStatement'
-            || nodeKind == 'TryStatement' || nodeKind == 'DefaultClause' || nodeKind == 'ForOfStatement'
-            || nodeKind == 'WhileStatement' || nodeKind == 'ConditionalExpression' || nodeKind == 'ThrowStatement'
-            || nodeKind == 'ForInStatement' || nodeKind == 'ContinueStatement') {
+        if (nodeKind == 'SwitchStatement' || nodeKind == 'CaseClause' || nodeKind == 'DefaultClause'
+            || nodeKind == 'TryStatement'
+            || nodeKind == 'ConditionalExpression' || nodeKind == 'ThrowStatement') {
             return true;
         }
         return false;
@@ -1999,10 +1998,8 @@ export class CFG {
         return threeAddressAssignStmts;
     }
 
-    private astNodeToThreeAddressSwitchStatement(node: NodeA): Stmt[] {
-        let threeAddressStmts: Stmt[] = [];
+    private astNodeToThreeAddressSwitchStatement(node: NodeA) {
 
-        return threeAddressStmts;
     }
 
     private astNodeToThreeAddressIterationStatement(node: NodeA) {
@@ -2054,6 +2051,13 @@ export class CFG {
             let incrExpr = new ArkBinopExpr(indexLocal, new Constant('1'), '+');
             this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(indexLocal, incrExpr));
             this.current3ACstm.threeAddressStmts.push(new ArkGotoStmt());
+        } else if (node.kind == "WhileStatement") {
+            let conditionIdx = this.findChildIndex(node, 'OpenParenToken') + 1;
+            let conditionExprNode = node.children[conditionIdx];
+            let conditionExpr = new ArkConditionExpr('!(' + this.astNodeToValue(conditionExprNode).toString() + ')');
+            this.current3ACstm.threeAddressStmts.push(new ArkIfStmt(conditionExpr));
+
+            this.current3ACstm.threeAddressStmts.push(new ArkGotoStmt());
         }
     }
 
@@ -2099,8 +2103,12 @@ export class CFG {
         } else if (node.kind == 'PostfixUnaryExpression' || node.kind == 'PrefixUnaryExpression') {
             this.astNodeToValue(node);
         }
-        else if (node.kind == 'ForStatement' || node.kind == 'ForOfStatement' || node.kind == 'ForInStatement') {
+        else if (node.kind == 'ForStatement' || node.kind == 'ForOfStatement' || node.kind == 'ForInStatement'
+            || node.kind == 'WhileStatement') {
             this.astNodeToThreeAddressIterationStatement(node);
+        }
+        else if (node.kind == 'BreakStatement' || node.kind == 'ContinueStatement') {
+            threeAddressStmts.push(new ArkGotoStmt());
         }
         else if (node.kind == 'CallExpression') {
             threeAddressStmts.push(new ArkInvokeStmt(this.astNodeToValue(node) as ArkInvokeExpr));
@@ -2459,6 +2467,10 @@ export class CFG {
 
 
     public printThreeAddressStmts() {
+        // format
+        let indentation = ' '.repeat(4);
+        let lineEnd = ';\n';
+
         let stmtBlocks: Block[] = [];
         stmtBlocks.push(...this.blocks);
         if (stmtBlocks[0].stms[0].type == 'loopStatement') {
@@ -2483,6 +2495,10 @@ export class CFG {
                     currStmtStrs.push(...ifStmtToString(originStmt));
                 } else if (originStmt.type == 'loopStatement') {
                     currStmtStrs.push(...iterationStmtToString(originStmt));
+                } else if (originStmt.type == 'switchStatement') {
+                    currStmtStrs.push(...switchStmtToString(originStmt));
+                } else if (originStmt.type == 'breakStatement' || originStmt.type == 'continueStatement') {
+                    currStmtStrs.push(...jumpStmtToString(originStmt));
                 }
                 else {
                     for (const threeAddressStmt of originStmt.threeAddressStmts) {
@@ -2493,9 +2509,7 @@ export class CFG {
             blockStmtStrs.set(blockId, currStmtStrs);
         }
 
-        // add tail stmts and print to str        
-        let indentation = ' '.repeat(4);
-        let newline = ';\n' + indentation;
+        // add tail stmts and print to str
         let functionBodyStr = 'method: ' + this.name + ' {\n';
         for (let blockId = 0; blockId < stmtBlocks.length; blockId++) {
             let stmtStrs: string[] = [];
@@ -2512,8 +2526,8 @@ export class CFG {
                 functionBodyStr += "label" + blockId + ':\n';
             }
             functionBodyStr += indentation;
-            functionBodyStr += stmtStrs.join(newline);
-            functionBodyStr += ';\n';
+            functionBodyStr += stmtStrs.join(lineEnd + indentation);
+            functionBodyStr += lineEnd;
         }
 
         functionBodyStr += '}\n';
@@ -2569,6 +2583,32 @@ export class CFG {
                 }
             }
             return strs;
+        }
+
+        // TODO:参考soot还是sootup处理switch
+        function switchStmtToString(originStmt: statement): string[] {
+            let switchStmt = originStmt as switchStatement;
+
+
+            let identifierStr = switchStmt.astNode?.children[2].text;
+            let str = 'lookupswitch(' + identifierStr + '){\n' + indentation;
+
+            let strs: string[] = [];
+            let nextBlockId = -1;
+            for (const item of switchStmt.cases) {
+                strs.push(indentation + item.value + 'goto label' + item.stm.block?.id);
+                nextBlockId = item.stm.next?.block?.id as number;
+            }
+            strs.push(indentation + 'default: goto label' + nextBlockId);
+            str += strs.join(lineEnd + indentation);
+
+            str += lineEnd + indentation + '}';
+            return [str];
+        }
+
+        function jumpStmtToString(originStmt: statement): string[] {
+            let targetId = originStmt.next?.block?.id as number;
+            return ["goto label" + targetId];
         }
     }
 
