@@ -20,12 +20,12 @@ let cfg:CFG=new CFG(ast.root,"main",null);
 
 // cfg.printOriginStmts();
 
-// cfg.printBlocks();
+cfg.printBlocks();
 
 
 
 // cfg.printThreeAddressStrs();
-cfg.printThreeAddressStmts();
+// cfg.printThreeAddressStmts();
 
 
 

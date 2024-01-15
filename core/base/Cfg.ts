@@ -211,6 +211,7 @@ export class CFG {
     catches: Catch[];
 
     anonymousFuncIndex: number;
+    anonymousFunctions:CFG[];
 
     constructor(ast: NodeA, name: string | undefined, declaringClass: ArkClass | null) {
         if (name)
@@ -240,6 +241,7 @@ export class CFG {
         this.importFromPath = [];
         this.catches = [];
         this.anonymousFuncIndex = 0;
+        this.anonymousFunctions=[];
         this.buildCFG();
     }
 
@@ -278,6 +280,24 @@ export class CFG {
                 return ret;
             }
         }
+        function getAnonymous(node:NodeA):NodeA|null{
+            const stack:NodeA[]=[];
+            stack.push(node);
+            while(stack.length>0){
+                const n=stack.pop();
+                if(!n)
+                    return null;
+                if(n?.kind=="FunctionExpression"||n?.kind=="ArrowFunction"){
+                    return n;
+                }
+                if (n.children) {
+                    for (let i = n.children.length - 1; i >= 0; i--) {
+                        stack.push(n.children[i]);
+                    }
+                }
+            }
+            return null;
+        }
 
         // console.log(node.text)
 
@@ -308,12 +328,58 @@ export class CFG {
                     lastStatement = s;
                 }
                 else {
-                    let beginCode = c.text.substring(0, block.start - c.start);
-                    let begin = new statement("statement", beginCode, c, scope.id);
-                    judgeLastType(begin);
-                    let end = new statement("inBlockExit", "", c, scope.id);
-                    this.walkAST(begin, end, block.children[1]);
-                    lastStatement = end;
+                    // let beginCode = c.text.substring(0, block.start - c.start);
+                    // let begin = new statement("statement", beginCode, c, scope.id);
+                    // judgeLastType(begin);
+                    // let end = new statement("inBlockExit", "", c, scope.id);
+                    // this.walkAST(begin, end, block.children[1]);
+                    // lastStatement = end;
+                    let anonymous=getAnonymous(c);
+                    if(anonymous){
+                        let block=anonymous.children[this.findChildIndex(anonymous,"Block")];
+                        let syntaxList=block.children[this.findChildIndex(block,"SyntaxList")];
+                        let anoFuc=new CFG(syntaxList,"anonymous"+(this.anonymousFunctions.length+1),this.declaringClass);
+                        this.anonymousFunctions.push(anoFuc);
+
+                        let tempText="anonymous"+this.anonymousFunctions.length;
+                        let OpenParenTokenIndex=this.findChildIndex(anonymous,"OpenParenToken");
+                        let ColonTokenIndex=this.findChildIndex(anonymous,"ColonToken");
+                        let end=0;
+                        if(ColonTokenIndex>0){
+                            end=ColonTokenIndex+1;
+                        }
+                        else{
+                            end=this.findChildIndex(anonymous,"CloseParenToken");
+                        }
+                        let start=OpenParenTokenIndex;
+                        while(start<=end){
+                            tempText+=anonymous.children[start].text;
+                            start++;
+                        }
+                        anonymous.text=tempText;
+                        let p=anonymous.parent;
+                        while(p&&p!=c){
+                            p.text="";
+                            for(let pc of p.children){
+                                p.text+=pc.text;
+                                if(pc.kind.includes("Keyword")){
+                                    p.text+=' ';
+                                }
+                            }
+                            p=p.parent;
+                        }
+                        c.text="";
+                        for(let cc of c.children){
+                            c.text+=cc.text;
+                            if(cc.kind.includes("Keyword")){
+                                c.text+=' ';
+                            }
+                        }
+                        
+                        let s = new statement("statement", c.text, c, scope.id);
+                        judgeLastType(s);
+                        lastStatement = s;
+                    }
                 }
             }
             if (c.kind == "ImportDeclaration") {
@@ -2671,6 +2737,8 @@ export class CFG {
         this.resetWalked();
         this.generateUseDef();
         this.resetWalked();
+
+        this.printBlocks();
 
         this.transformToThreeAddress();
     }

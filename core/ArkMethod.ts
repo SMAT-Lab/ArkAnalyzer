@@ -28,12 +28,15 @@ export class ArkMethod {
             this.buildArkMethod(methodNode);
         }
         this.genSignatures();
-        try{
-            this.cfg = new CFG(methodNode, this.name, this.declaringClass);
+        // try{
+        //     this.cfg = new CFG(methodNode, this.name, this.declaringClass);
 
-        }catch(error){
-            console.log(declaringArkFile.name+"."+declaringClass.name+"."+this.name);
-            console.log(error)
+        // }catch(error){
+        //     console.log(declaringArkFile.name+"."+declaringClass.name+"."+this.name);
+        //     console.log(error)
+        // }
+        if(methodNode.kind!="SyntaxList"){
+            methodNode=methodNode.children[methodNode.children.length-1].children[1];
         }
         this.cfg = new CFG(methodNode, this.name, this.declaringClass);
     }
