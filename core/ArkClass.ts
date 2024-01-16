@@ -32,7 +32,6 @@ export class ArkClass {
         else {
             this.buildArkClass(clsNode);
         }
-        this.genDefaultMethod(clsNode);
     }
 
     private genDefaultMethod(clsNode: NodeA) {
@@ -43,6 +42,7 @@ export class ArkClass {
     private buildDefaultArkClass(clsNode: NodeA) {
         this.name = "_DEFAULT_ARK_CLASS";
         this.classSignature = new ClassSignature(this.declaringArkFile.name, this.name);
+        this.genDefaultMethod(clsNode);
     }
 
     private buildArkClass(clsNode: NodeA) {
