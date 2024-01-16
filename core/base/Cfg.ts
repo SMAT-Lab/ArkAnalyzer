@@ -813,7 +813,7 @@ export class CFG {
             stm.block = block;
             return;
         }
-        if (stm.walked)
+        if (stm.walked||stm.type=="exit")
             return;
         stm.walked = true;
         if (stm.type == "entry") {
@@ -1071,14 +1071,6 @@ export class CFG {
 
     }
 
-    // resetWalkedBlock(block: Block) {
-    //     if (!block.walked)
-    //         return;
-    //     block.walked = true;
-    //     for (let bn of block.nexts) {
-    //         this.resetWalkedBlock(bn);
-    //     }
-    // }
 
     cfg2Array(stm: statement) {
 
@@ -2738,7 +2730,7 @@ export class CFG {
         this.generateUseDef();
         this.resetWalked();
 
-        this.printBlocks();
+        // this.printBlocks();
 
         this.transformToThreeAddress();
     }
