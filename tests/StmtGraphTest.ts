@@ -2,7 +2,7 @@ import ts from "typescript";
 import { StmtGraph } from "../src/core/base/StmtGraph";
 import { Config } from "./Config";
 const fs = require('fs');
-import * as utils from "../src/utils/utils";
+import * as utils from "../src/utils/getAllFiles";
 import { Scene } from "../src/Scene";
 
 StmtGraph

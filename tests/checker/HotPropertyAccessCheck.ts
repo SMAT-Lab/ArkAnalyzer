@@ -3,6 +3,7 @@ import { NodeA } from "../../src/core/base/Ast";
 import { Cfg, Variable, conditionStatement, statement, switchStatement } from "../../src/core/Cfg";
 
 let thisScene: Scene;
+let totalCount:number = 0;
 
 export function HotPropertyAccessCheck(scene: Scene) {
     thisScene = scene;
@@ -80,6 +81,8 @@ function handle(stmt: statement, scopID: number, cfg: Cfg) {
                         console.log("Hot Property Access Found: ");
                         console.log("Line" + stmt.line + ": " + stmt.code);
                         console.log("PropertyAccess value: ", val.name);
+                        totalCount++;
+                        console.log(totalCount);
                     }
                     //TODO: val++ support
 

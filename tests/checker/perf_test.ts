@@ -1,7 +1,7 @@
 import { Scene } from "../../src/Scene";
 import { ArkMethod } from "../../src/core/model/ArkMethod";
 import { Cfg } from "../../src/core/Cfg";
-import * as utils from "../../src/utils/utils";
+import * as utils from "../../src/utils/getAllFiles";
 import * as ts from 'typescript';
 
 let input_dir = '/Users/li.li/Projects/gitee/codelabs/NetworkManagement/NewsDataArkTS'

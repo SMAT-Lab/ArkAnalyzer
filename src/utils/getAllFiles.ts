@@ -1,9 +1,6 @@
 import path from 'path';
 import fs from 'fs';
 
-import { ArkFile } from "../core/model/ArkFile";
-import { ASTree } from '../core/base/Ast';
-
 /**
  * 从指定目录中提取指定后缀名的所有文件
  * @param srcPath string 要提取文件的项目入口，相对或绝对路径都可

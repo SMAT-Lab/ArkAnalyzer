@@ -3,7 +3,7 @@ import { Scene } from "../src/Scene";
 import { ArkClass } from "../src/core/model/ArkClass";
 import { ArkMethod } from "../src/core/model/ArkMethod";
 import { ArkFile } from "../src/core/model/ArkFile";
-import * as utils from "../src/utils/utils";
+import * as utils from "../src/utils/getAllFiles";
 import * as ts from "typescript";
 import fs from 'fs';
 import { ClassSignature } from "../src/core/model/ArkSignature";
