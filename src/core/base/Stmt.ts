@@ -5,7 +5,8 @@ import { Value, ValueTag } from "./Value";
 import { ArkConditionExpr, ArkInvokeExpr } from "./Expr";
 
 export class Stmt {
-    private defs: Value[] = [];
+    private text!: string;
+    private def!: Value;
     private uses: Value[] = [];
     private originPosition: number = 0;
     private position: number = 0;
