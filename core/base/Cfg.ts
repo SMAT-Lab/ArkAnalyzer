@@ -311,7 +311,7 @@ export class CFG {
         }
         this.scopes.push(scope)
 
-        for (let i = 0; i < node.children.length; i++) {
+        for (let i = 0; i < node?.children.length; i++) {
             let c = node.children[i];
             if (c.kind == "FirstStatement" || c.kind == "VariableStatement" || c.kind == "ExpressionStatement" || c.kind == "ThrowStatement") {
                 if (c.kind == "FirstStatement" || c.kind == "VariableStatement") {
