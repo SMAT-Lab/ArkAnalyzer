@@ -40,4 +40,7 @@ export class Local implements Value {
         return [];
     }
 
+    public toString(): string {
+        return this.getName();
+    }
 }

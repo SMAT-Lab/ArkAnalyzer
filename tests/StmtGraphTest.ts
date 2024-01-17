@@ -28,26 +28,30 @@ export class StmtGraphTest {
 
 
     public testThreeAddresStmt() {
-        let config = new Config("ThreeAddresStmtTest", "D:\\codes\\tests\\applications_systemui\\common\\src\\main\\ets\\default");
+        // let config = new Config("ThreeAddresStmtTest", "D:\\codes\\tests\\applications_systemui\\common\\src\\main\\ets\\default");
+        // let config = new Config("ThreeAddresStmtTest", "D:\\codes\\tests\\applications_systemui\\common\\src\\main\\ets\\default\\abilitymanager");
         // let config = new Config("ThreeAddresStmtTest", "D:\\codes\\tests\\applications_systemui");
-    
+
+        let config = new Config("ThreeAddresStmtTest", "D:\\codes\\openharmony\\applications\\applications_photos");
+
+
         const projectName: string = config.projectName;
         const input_dir: string = config.input_dir;
 
-        const projectFiles: string[] = utils.getAllFiles(input_dir, ['.ts']);
+        let projectFiles: string[] = utils.getAllFiles(input_dir, ['.ts']);
 
-        // let projectFiles = ['D:\\codes\\tests\\applications_systemui\\common\\src\\main\\ets\\default\\CommonStyleManager.ts']
-
+        // let projectFiles = ['D:\\codes\\openharmony\\applications\\applications_photos\\common\\src\\main\\ets\\default\\model\\browser\\AbsDataSource.ts']        
+        projectFiles = ['D:\\codes\\openharmony\\applications\\applications_photos\\common\\src\\main\\ets\\default\\access\\UserFileManagerAccess.ts']        
+        // let projectFiles = ['tests\\resources\\cfg\\main.ts'];
 
         let scene = new Scene(projectName, projectFiles);
 
         for (const arkFile of scene.arkFiles) {
             console.log('=============== arkFile:', arkFile.name, ' ================');
             for (const arkClass of arkFile.getClasses()) {
-                for (const arkMethod of arkClass.getMethods()) {
-                    console.log();
-                    console.log('********* arkMethod:', arkMethod.name, ' ***********');
-                    arkMethod.cfg.printThreeAddressStrsAndStmts();
+                for (const arkMethod of arkClass.getMethods()) {                    
+                    // console.log('********* arkMethod:', arkMethod.name, ' ***********');
+                    arkMethod.cfg.printThreeAddressStmts();
                 }
             }
         }

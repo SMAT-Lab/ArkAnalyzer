@@ -2,13 +2,13 @@ import { ArkField } from "../ArkField";
 import { LinePosition } from "../common/Position";
 import { ArkArrayRef, ArkFieldRef } from "../common/Ref";
 import { Value, ValueTag } from "../common/Value";
-import { ArkConditionExprExpr, ArkInvokeExpr } from "./Expr";
+import { ArkConditionExpr, ArkInvokeExpr } from "./Expr";
 
 export class Stmt {
     private defs: Value[] = [];
     private uses: Value[] = [];
-    private originPosition: LinePosition = new LinePosition(0);
-    private position: LinePosition = new LinePosition(0);
+    private originPosition: number = 0;
+    private position: number = 0;
     private valueVersion = new Map<Value, string>();
     private valueTags = new Map<Value, Set<ValueTag>>;
 
@@ -132,13 +132,24 @@ export class Stmt {
         return undefined;
     }
 
+    public setPositionInfo(position: number) {
+        this.position = position;
+    }
 
-    public getPositionInfo(): LinePosition {
+    public getPositionInfo(): number {
         return this.position;
     }
 
-    public getOriginPositionInfo(): LinePosition {
+    public setOriginPositionInfo(originPosition: number) {
+        this.originPosition = originPosition;
+    }
+
+    public getOriginPositionInfo(): number {
         return this.originPosition;
+    }
+
+    public toString(): string {
+        return 'Stmt';
     }
 }
 
@@ -165,6 +176,10 @@ export class ArkAssignStmt extends Stmt {
     public getRightOp(): Value {
         return this.rightOp;
     }
+
+    public toString(): string {
+        return this.getLeftOp() + " = " + this.getRightOp();
+    }
 }
 
 // 函数调用
@@ -183,29 +198,41 @@ export class ArkInvokeStmt extends Stmt {
     public getInvokeExpr() {
         return this.invokeExpr;
     }
+
+    public toString(): string {
+        return this.invokeExpr.toString();
+    }
 }
 
 
 export class ArkIfStmt extends Stmt {
-    private conditionExprExpr: ArkConditionExprExpr;
+    private conditionExpr: ArkConditionExpr;
 
-    constructor(conditionExprExpr: ArkConditionExprExpr) {
+    constructor(conditionExpr: ArkConditionExpr) {
         super();
-        this.conditionExprExpr = conditionExprExpr;
-        this.addUse(conditionExprExpr);
-        for (const use of conditionExprExpr.getUses()) {
+        this.conditionExpr = conditionExpr;
+        this.addUse(conditionExpr);
+        for (const use of conditionExpr.getUses()) {
             this.addUse(use);
         }
     }
 
     public getConditionExprExpr() {
-        return this.conditionExprExpr;
+        return this.conditionExpr;
+    }
+
+    public toString(): string {
+        return 'if ' + this.conditionExpr;
     }
 }
 
 export class ArkGotoStmt extends Stmt {
     constructor() {
         super();
+    }
+
+    public toString(): string {
+        return 'goto';
     }
 }
 
@@ -217,6 +244,10 @@ export class ArkReturnStmt extends Stmt {
         super();
         this.op = op;
     }
+
+    public toString(): string {
+        return 'return ' + this.op;
+    }
 }
 
 
@@ -224,9 +255,22 @@ export class ArkReturnVoidStmt extends Stmt {
     constructor() {
         super();
     }
+
+    public toString(): string {
+        return 'return';
+    }
 }
 
 
+export class ArkNopStmt extends Stmt {
+    constructor() {
+        super();
+    }
+
+    public toString(): string {
+        return 'nop';
+    }
+}
 
 
 /*

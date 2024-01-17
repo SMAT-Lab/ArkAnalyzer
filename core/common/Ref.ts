@@ -1,10 +1,11 @@
+import { Local } from "./Local";
 import { Value } from "./Value";
 
 export class ArkArrayRef implements Value {
-    private base: Value;  // 数组变量
+    private base: Local;  // 数组变量
     private index: Value; // 索引
 
-    constructor(base: Value, index: Value) {
+    constructor(base: Local, index: Value) {
         this.base = base;
         this.index = index;
     }
@@ -22,20 +23,24 @@ export class ArkArrayRef implements Value {
         let uses: Value[] = [this.base, this.index];
         return uses;
     }
+
+    public toString(): string {
+        return this.base + '[' + this.index + ']';
+    }
 }
 
 export class ArkFieldRef implements Value {
-    private base: Value;     // 属性变量
+    private base: Local;     // 属性变量
     private fieldName: string;
-    // private fieldSignature: FieldSignature;  // 属性签名
+    // private fieldSignature: FieldSignature;  // 属性签名    
 
 
-    constructor(base: Value, fieldName: string) {
+    constructor(base: Local, fieldName: string) {
         this.base = base;
         this.fieldName = fieldName;
     }
 
-    public getBase(): Value {
+    public getBase(): Local {
         return this.base;
     }
 
@@ -52,5 +57,9 @@ export class ArkFieldRef implements Value {
     public getUses(): Value[] {
         let uses: Value[] = [];
         return uses;
+    }
+
+    public toString(): string {
+        return this.base.toString() + '.' + this.fieldName;
     }
 }
