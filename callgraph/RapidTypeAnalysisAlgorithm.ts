@@ -2,6 +2,7 @@ import {AbstractCallGraphAlgorithm} from "./AbstractCallGraphAlgorithm";
 import {ClassSignature, MethodSignature, MethodSubSignature} from "../core/ArkSignature";
 import {CFG} from "../core/base/Cfg";
 import {ArkMethod} from "../core/ArkMethod";
+import {isItemRegistered} from "./utils";
 
 type Tuple = [MethodSignature, MethodSignature];
 class RapidTypeAnalysisAlgorithm extends AbstractCallGraphAlgorithm {
@@ -12,22 +13,28 @@ class RapidTypeAnalysisAlgorithm extends AbstractCallGraphAlgorithm {
         let concreteMethod : ArkMethod;
         let callTargetMethods : MethodSignature[] = [];
 
-        // TODO: 根据调用语句获取具体方法，函数签名
+        // TODO: 根据调用语句获取具体方法签名或函数签名
         // concreteMethodSignature = cfg.getMethodSignature___(invokeExpression);
         concreteMethod = this.scene.getMethod(concreteMethodSignature)
 
         if (concreteMethodSignature == null ||
             concreteMethod.modifiers.includes("StaticKeyword") ||
             concreteMethod.modifiers.includes("Constructor")) {
-            // 若调用函数为static, constructor直接返回签名
+            // If the invoked function is static or a constructor, then return the signature.
             callTargetMethods.push(concreteMethodSignature)
             return callTargetMethods
         } else {
             if (this.instancedClasses.has(sourceMethodSignature.arkClass.toString())) {
-                // 获取可能的全部调用目标方法
+                // Obtain all possible target method signatures based on the acquired method signature.
                 callTargetMethods = this.resolveAllCallTargets(sourceMethodSignature, concreteMethodSignature)
                 if (!concreteMethod.modifiers.includes("AbstractKeyword")) {
-                    callTargetMethods.push(concreteMethodSignature)
+                    if (!isItemRegistered<MethodSignature>(
+                        concreteMethodSignature, callTargetMethods,
+                        (a, b) =>
+                            a.toString() === b.toString()
+                    )) {
+                        callTargetMethods.push(concreteMethodSignature)
+                    }
                 }
             } else {
                 this.saveIgnoredCalls(sourceMethodSignature, concreteMethodSignature)
@@ -36,20 +43,34 @@ class RapidTypeAnalysisAlgorithm extends AbstractCallGraphAlgorithm {
         }
     }
 
+    /**
+     * For the given method signature
+     * retrieve the class where the method resides, as well as all subclasses of this class.
+     * Check whether there are inherited methods in these classes.
+     *
+     * @param sourceMethodSignature
+     * @param targetMethodSignature
+     * @protected
+     */
     protected resolveAllCallTargets(sourceMethodSignature, targetMethodSignature: MethodSignature): MethodSignature[] {
-        // TODO: 对于给出方法签名，获取方法所在的类(done)，并该类的所有子类，是否存在继承的方法
         let targetClasses: ClassSignature[];
         let methodSignature: MethodSignature[] = [];
         targetClasses = []
         for (let targetClass of targetClasses) {
-            // TODO: 获取到类的信息
+            // TODO: 获取到子类的信息
             let arkClass = this.scene.getClass(targetClass)
             let methods = arkClass.getMethods()
 
             for (let method of methods) {
                 if (method.methodSubSignature.toString() === targetMethodSignature.methodSubSignature.toString()) {
                     if (this.instancedClasses.has(targetClass.toString())) {
-                        methodSignature.push(method.methodSignature)
+                        if (!isItemRegistered<MethodSignature>(
+                            method.methodSignature, methodSignature,
+                            (a, b) =>
+                                a.toString() === b.toString()
+                        )) {
+                            methodSignature.push(method.methodSignature)
+                        }
                     } else {
                         this.saveIgnoredCalls(sourceMethodSignature, method.methodSignature)
                     }
@@ -59,11 +80,20 @@ class RapidTypeAnalysisAlgorithm extends AbstractCallGraphAlgorithm {
         return methodSignature;
     }
 
+    /**
+     * Preprocessing of the RTA method:
+     * For the method being processed,
+     * get all the newly instantiated classes within the method body,
+     * and re-add the edges previously ignored from these classes back into the Call collection.
+     *
+     * @param methodSignature
+     * @protected
+     */
     protected preProcessMethod(methodSignature: MethodSignature): void {
         let newInstancedClasses = this.collectInstantiatedClassesInMethod(methodSignature)
         for (let newInstancedClass of newInstancedClasses) {
             // Soot中前处理没看明白，先写个简单版本
-            // 从未实例化方法调用中检查是否有新的实例，并重新加入到calls中
+            // Check from the ignoredCalls collection whether there are edges that need to be reactivated.
             if (this.ignoredCalls.has(newInstancedClass.toString())) {
                 let reinsertEdge = this.ignoredCalls.get(newInstancedClass.toString())
                 for (let edge of reinsertEdge) {
@@ -77,17 +107,29 @@ class RapidTypeAnalysisAlgorithm extends AbstractCallGraphAlgorithm {
         }
     }
 
-    // 获取方法中新创建的类对象
+    /**
+     * Retrieve the newly created class objects within the method.
+     *
+     * @param methodSignature
+     * @protected
+     */
     protected collectInstantiatedClassesInMethod(methodSignature: MethodSignature): ClassSignature[] {
-        let cfg : CFG = this.scene.getMethod(methodSignature).cfg;
+        let cfg : CFG = this.scene.getMethod(methodSignature).getCFG();
         let newInstancedClass: ClassSignature[]
         newInstancedClass = []
         for (let stmt of cfg.statementArray) {
+            // TODO: 判断语句类型，如果是赋值语句且创建了新的实例，则获取类签名
             if (stmt.type == "JAssignStmt") {
                 // Soot中JAssignStmt代表赋值操作，如果赋值操作中右操作数是new语句，则获取类签名
                 let classSignature: ClassSignature;
                 if (!this.instancedClasses.has(classSignature.toString())) {
-                    newInstancedClass.push(classSignature)
+                    if (!isItemRegistered<ClassSignature>(
+                        classSignature, newInstancedClass,
+                        (a, b) =>
+                            a.toString() === b.toString()
+                    )) {
+                        newInstancedClass.push(classSignature)
+                    }
                     this.instancedClasses.add(classSignature.toString())
                 }
             }
@@ -103,7 +145,13 @@ class RapidTypeAnalysisAlgorithm extends AbstractCallGraphAlgorithm {
                     return
                 }
             }
-            this.ignoredCalls.get(notInstancedClass.toString()).push([sourceMethodSignature, targetMethodSignature])
+            if (!isItemRegistered<Tuple>(
+                [sourceMethodSignature, targetMethodSignature], this.ignoredCalls.get(notInstancedClass.toString()),
+                (a, b) =>
+                    a[0].toString() === b[0].toString() && a[1].toString() === b[1].toString()
+            )) {
+                this.ignoredCalls.get(notInstancedClass.toString()).push([sourceMethodSignature, targetMethodSignature])
+            }
         } else {
             this.ignoredCalls.set(notInstancedClass.toString(), [sourceMethodSignature.toString(), targetMethodSignature.toString()])
         }

@@ -17,6 +17,7 @@ export class MethodSubSignature {
 export class MethodSignature {
     arkClass: ClassSignature;
     methodSubSignature: MethodSubSignature;
+
     constructor(subSignature: MethodSubSignature, arkClass:ClassSignature) {
         this.methodSubSignature = subSignature;
         this.arkClass = arkClass;

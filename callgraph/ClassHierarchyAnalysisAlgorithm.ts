@@ -1,14 +1,14 @@
 import {AbstractCallGraphAlgorithm} from "./AbstractCallGraphAlgorithm";
-import {ClassSignature, MethodSignature, MethodSubSignature} from "../core/ArkSignature";
+import {MethodSignature} from "../core/ArkSignature";
 import {ArkClass} from "../core/ArkClass";
-import {ArkFile} from "../core/ArkFile";
 import {ArkMethod} from "../core/ArkMethod";
+import {isItemRegistered} from "./utils";
 
 class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm {
     protected resolveCall(sourceMethodSignature: MethodSignature, invokeExpression): MethodSignature[] {
-        let concreteMethodSignature : MethodSignature;
-        let concreteMethod : ArkMethod;
-        let callTargetMethods : MethodSignature[] = [];
+        let concreteMethodSignature: MethodSignature;
+        let concreteMethod: ArkMethod;
+        let callTargetMethods: MethodSignature[] = [];
 
         // TODO: 根据调用语句获取具体方法签名或函数签名
         // concreteMethodSignature = cfg.getMethodSignature(invokeExpression);
@@ -27,7 +27,13 @@ class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm {
                 // remove abstract method
                 let targetMethod = this.scene.getMethod(targetMethodSignature)
                 if (!targetMethod.modifiers.includes("AbstractKeyword")) {
-                    callTargetMethods.push(concreteMethodSignature)
+                    if (!isItemRegistered<MethodSignature>(
+                        concreteMethodSignature, callTargetMethods,
+                        (a, b) =>
+                            a.toString() === b.toString()
+                    )) {
+                        callTargetMethods.push(concreteMethodSignature)
+                    }
                 }
             }
             return callTargetMethods
@@ -35,18 +41,22 @@ class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm {
     }
 
     protected resolveAllCallTargets(targetMethodSignature: MethodSignature): MethodSignature[] {
-        // TODO: 对于给出方法签名，获取方法所在的类(done)，并同时获取该类的所有子类，是否存在继承的方法
-        let targetClasses: ClassSignature[];
+        let targetClasses: ArkClass[];
         let methodSignature: MethodSignature[] = [];
-        targetClasses = [targetMethodSignature.arkClass]
+
+        targetClasses = this.scene.getExtendedClasses(targetMethodSignature.arkClass)
         for (let targetClass of targetClasses) {
-            let arkClass = this.scene.getClass(targetClass)
-            let methods = arkClass.getMethods()
+            let methods = targetClass.getMethods()
 
             for (let method of methods) {
-                // TODO: 后续需要考虑比较使用subSignature还是直接名字比较
                 if (method.methodSubSignature.toString() === targetMethodSignature.methodSubSignature.toString()) {
-                    methodSignature.push(method.methodSignature)
+                    if (!isItemRegistered<ArkMethod>(
+                        method, methods,
+                        (a, b) =>
+                            a.methodSignature.toString() === b.methodSignature.toString()
+                    )) {
+                        methodSignature.push(method.methodSignature)
+                    }
                 }
             }
         }
