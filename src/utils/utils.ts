@@ -1,7 +1,7 @@
 import path from 'path';
 import fs from 'fs';
 
-import { ArkFile } from "../core/ArkFile";
+import { ArkFile } from "../core/model/ArkFile";
 import { ASTree } from '../core/base/Ast';
 
 /**

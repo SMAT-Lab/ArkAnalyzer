@@ -1,7 +1,7 @@
-import { Config } from "../Config";
-import { Scene } from "../Scene";
-import { PerformanceChecker } from "../checker/PerformanceChecker";
-import * as utils from "../utils/utils";
+import { Config } from "./Config";
+import { Scene } from "../src/Scene";
+import { PerformanceChecker } from "./checker/PerformanceChecker";
+import * as utils from "../src/utils/utils";
 
 import ts from "typescript";
 const fs = require('fs');

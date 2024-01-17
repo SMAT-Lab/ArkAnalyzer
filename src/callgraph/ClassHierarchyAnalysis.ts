@@ -1,7 +1,7 @@
-import {ArkFile} from "../core/ArkFile";
+import {ArkFile} from "../core/model/ArkFile";
 import {NodeA} from "../core/base/Ast";
-import {ClassSignature} from "../core/ArkSignature";
-import {ArkClass} from "../core/ArkClass";
+import {ClassSignature} from "../core/model/ArkSignature";
+import {ArkClass} from "../core/model/ArkClass";
 
 export class ClassHierarchyAnalysis {
     methods: Set<string>;

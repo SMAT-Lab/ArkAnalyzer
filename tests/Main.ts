@@ -1,12 +1,12 @@
 import { Config } from "./Config";
-import { Scene } from "./Scene";
-import { ArkClass } from "./core/ArkClass";
-import { ArkMethod } from "./core/ArkMethod";
-import { ArkFile } from "./core/ArkFile";
-import * as utils from "./utils/utils";
+import { Scene } from "../src/Scene";
+import { ArkClass } from "../src/core/model/ArkClass";
+import { ArkMethod } from "../src/core/model/ArkMethod";
+import { ArkFile } from "../src/core/model/ArkFile";
+import * as utils from "../src/utils/utils";
 import * as ts from "typescript";
 import fs from 'fs';
-import { ClassSignature } from "./core/ArkSignature";
+import { ClassSignature } from "../src/core/model/ArkSignature";
 
 function run(config: Config) {
     const projectName: string = config.projectName;

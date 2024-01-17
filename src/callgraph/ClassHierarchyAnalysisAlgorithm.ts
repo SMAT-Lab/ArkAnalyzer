@@ -1,7 +1,7 @@
 import {AbstractCallGraphAlgorithm} from "./AbstractCallGraphAlgorithm";
-import {MethodSignature} from "../core/ArkSignature";
-import {ArkClass} from "../core/ArkClass";
-import {ArkMethod} from "../core/ArkMethod";
+import {MethodSignature} from "../core/model/ArkSignature";
+import {ArkClass} from "../core/model/ArkClass";
+import {ArkMethod} from "../core/model/ArkMethod";
 import {isItemRegistered} from "./utils";
 
 class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm {

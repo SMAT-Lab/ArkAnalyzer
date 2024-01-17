@@ -1,9 +1,9 @@
 import ts from "typescript";
-import { StmtGraph } from "../core/graph/StmtGraph";
-import { Config } from "../Config";
+import { StmtGraph } from "../src/core/base/StmtGraph";
+import { Config } from "./Config";
 const fs = require('fs');
-import * as utils from "../utils/utils";
-import { Scene } from "../Scene";
+import * as utils from "../src/utils/utils";
+import { Scene } from "../src/Scene";
 
 StmtGraph
 export class StmtGraphTest {

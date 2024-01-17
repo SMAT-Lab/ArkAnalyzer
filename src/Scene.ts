@@ -1,8 +1,8 @@
-import { ArkClass } from "./core/ArkClass";
-import { ArkFile } from "./core/ArkFile";
-import { ArkMethod } from "./core/ArkMethod";
-import { ArkNamespace } from "./core/ArkNamespace";
-import { ClassSignature, MethodSignature, MethodSubSignature } from "./core/ArkSignature";
+import { ArkClass } from "./core/model/ArkClass";
+import { ArkFile } from "./core/model/ArkFile";
+import { ArkMethod } from "./core/model/ArkMethod";
+import { ArkNamespace } from "./core/model/ArkNamespace";
+import { ClassSignature, MethodSignature, MethodSubSignature } from "./core/model/ArkSignature";
 import { CallGraph } from "./callgraph/CallGraph"
 import {ClassHierarchyAnalysis} from "./callgraph/ClassHierarchyAnalysis";
 

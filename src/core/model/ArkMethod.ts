@@ -1,7 +1,7 @@
 import { ArkClass } from "./ArkClass";
 import { ArkFile } from "./ArkFile";
-import { ASTree, NodeA } from "./base/Ast";
-import { CFG } from "./base/Cfg";
+import { ASTree, NodeA } from "../base/Ast";
+import { Cfg } from "../Cfg";
 import { ClassSignature, MethodSignature, MethodSubSignature } from "./ArkSignature";
 
 export class ArkMethod {
@@ -12,7 +12,8 @@ export class ArkMethod {
     declaringClass: ArkClass;
     returnType: string[] = [];
     parameterTypes: string[] = [];
-    cfg: CFG;
+    originalCfg!: Cfg;
+    cfg: Cfg;
     modifiers: string[] = [];
     methodSignature!: MethodSignature;
     methodSubSignature!: MethodSubSignature;
@@ -38,7 +39,7 @@ export class ArkMethod {
         if(methodNode.kind!="SyntaxList"){
             methodNode=methodNode.children[methodNode.children.length-1].children[1];
         }
-        this.cfg = new CFG(methodNode, this.name, this.declaringClass);
+        this.cfg = new Cfg(methodNode, this.name, this.declaringClass);
     }
 
     private buildDefaultArkMethod(methodNode: NodeA) {
@@ -58,7 +59,7 @@ export class ArkMethod {
         this.returnType = methodNode.functionHeadInfo.returnType;
     }
 
-    public getCFG() {
+    public getCfg() {
         return this.cfg;
     }
 

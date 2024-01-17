@@ -1,7 +1,7 @@
-import { ArkField } from "../ArkField";
-import { LinePosition } from "../common/Position";
-import { ArkArrayRef, ArkFieldRef } from "../common/Ref";
-import { Value, ValueTag } from "../common/Value";
+import { ArkField } from "../model/ArkField";
+import { LinePosition } from "./Position";
+import { ArkArrayRef, ArkFieldRef } from "./Ref";
+import { Value, ValueTag } from "./Value";
 import { ArkConditionExpr, ArkInvokeExpr } from "./Expr";
 
 export class Stmt {

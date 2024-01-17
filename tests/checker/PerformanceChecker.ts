@@ -1,6 +1,6 @@
 import * as ts from 'typescript';
-import { ArkFile } from '../core/ArkFile';
-import { statement } from '../core/base/Cfg';
+import { ArkFile } from '../../src/core/model/ArkFile';
+import { statement } from '../../src/core/Cfg';
 
 export class PerformanceChecker {
     public checkDeteleProperty(arkFile: ArkFile) {

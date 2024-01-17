@@ -1,6 +1,6 @@
 import { ArkClass } from "./ArkClass";
 import { ArkMethod } from "./ArkMethod";
-import { NodeA, ASTree } from "./base/Ast";
+import { NodeA, ASTree } from "../base/Ast";
 
 
 export class ArkNamespace {

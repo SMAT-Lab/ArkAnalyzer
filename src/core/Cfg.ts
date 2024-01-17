@@ -3,18 +3,18 @@
  * In this Cfg, every Stmt is represented as a node.
  */
 
-import { NodeA, ASTree } from './Ast';
+import { NodeA, ASTree } from './base/Ast';
 import * as fs from 'fs';
 import { exec } from 'child_process';
-import { ArkClass } from '../ArkClass';
+import { ArkClass } from './model/ArkClass';
 import exp from 'constants';
-import { ArkAssignStmt, ArkGotoStmt, ArkIfStmt, ArkInvokeStmt, ArkNopStmt, ArkReturnStmt, ArkReturnVoidStmt, Stmt } from './Stmt';
-import { Local } from '../common/Local';
-import { Value } from '../common/Value';
-import { ArkArrayRef, ArkFieldRef } from '../common/Ref';
-import { ArkBinopExpr, ArkCastExpr, ArkConditionExpr, ArkInvokeExpr, ArkLengthExpr, ArkNewArrayExpr, ArkNewExpr, ArkTypeOfExpr } from './Expr';
-import { Constant } from '../common/Constant';
-import { IRUtils } from '../common/IRUtils';
+import { ArkAssignStmt, ArkGotoStmt, ArkIfStmt, ArkInvokeStmt, ArkNopStmt, ArkReturnStmt, ArkReturnVoidStmt, Stmt } from './base/Stmt';
+import { Local } from './base/Local';
+import { Value } from './base/Value';
+import { ArkArrayRef, ArkFieldRef } from './base/Ref';
+import { ArkBinopExpr, ArkCastExpr, ArkConditionExpr, ArkInvokeExpr, ArkLengthExpr, ArkNewArrayExpr, ArkNewExpr, ArkTypeOfExpr } from './base/Expr';
+import { Constant } from './base/Constant';
+import { IRUtils } from './common/IRUtils';
 
 
 export class statement {
@@ -186,14 +186,14 @@ function getNumOfIdentifier(node: NodeA): number {
     return num;
 }
 
-export class CFG {
+export class Cfg {
     name: string;
     astRoot: NodeA;
     entry: statement;
     exit: statement;
     loopStack: conditionStatement[];
     switchExitStack: statement[];
-    functions: CFG[];
+    functions: Cfg[];
     breakin: string;
     statementArray: statement[];
     dotEdges: number[][];
@@ -211,7 +211,7 @@ export class CFG {
     catches: Catch[];
 
     anonymousFuncIndex: number;
-    anonymousFunctions:CFG[];
+    anonymousFunctions:Cfg[];
 
     constructor(ast: NodeA, name: string | undefined, declaringClass: ArkClass | null) {
         if (name)
@@ -338,7 +338,7 @@ export class CFG {
                     if(anonymous){
                         let block=anonymous.children[this.findChildIndex(anonymous,"Block")];
                         let syntaxList=block.children[this.findChildIndex(block,"SyntaxList")];
-                        let anoFuc=new CFG(syntaxList,"anonymous"+(this.anonymousFunctions.length+1),this.declaringClass);
+                        let anoFuc=new Cfg(syntaxList,"anonymous"+(this.anonymousFunctions.length+1),this.declaringClass);
                         this.anonymousFunctions.push(anoFuc);
 
                         let tempText="anonymous"+this.anonymousFunctions.length;

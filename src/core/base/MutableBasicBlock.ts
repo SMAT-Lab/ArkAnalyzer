@@ -1,4 +1,4 @@
-import { Stmt } from "../base/Stmt";
+import { Stmt } from "./Stmt";
 
 export class MutableBasicBlock {
     private predecessorBlocks: MutableBasicBlock[];

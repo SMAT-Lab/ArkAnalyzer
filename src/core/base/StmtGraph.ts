@@ -1,4 +1,4 @@
-import { Stmt } from "../base/Stmt";
+import { Stmt } from "./Stmt";
 import * as ts from "typescript";
 
 export class StmtGraph {

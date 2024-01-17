@@ -1,6 +1,6 @@
-import { Value } from "../common/Value";
-import { ClassSignature, MethodSignature } from "../ArkSignature";
-import { Local } from "../common/Local";
+import { Value } from "./Value";
+import { ClassSignature, MethodSignature } from "../model/ArkSignature";
+import { Local } from "./Local";
 
 
 export interface Expr extends Value { }

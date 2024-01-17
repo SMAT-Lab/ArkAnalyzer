@@ -1,4 +1,4 @@
-import { Stmt } from "../base/Stmt";
+import { Stmt } from "./Stmt";
 import { Value } from "./Value";
 
 export class Local implements Value {

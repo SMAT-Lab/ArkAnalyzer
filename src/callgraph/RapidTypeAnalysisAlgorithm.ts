@@ -1,7 +1,7 @@
 import {AbstractCallGraphAlgorithm} from "./AbstractCallGraphAlgorithm";
-import {ClassSignature, MethodSignature, MethodSubSignature} from "../core/ArkSignature";
-import {CFG} from "../core/base/Cfg";
-import {ArkMethod} from "../core/ArkMethod";
+import {ClassSignature, MethodSignature, MethodSubSignature} from "../core/model/ArkSignature";
+import {Cfg} from "../core/Cfg";
+import {ArkMethod} from "../core/model/ArkMethod";
 import {isItemRegistered} from "./utils";
 
 type Tuple = [MethodSignature, MethodSignature];
@@ -114,7 +114,7 @@ class RapidTypeAnalysisAlgorithm extends AbstractCallGraphAlgorithm {
      * @protected
      */
     protected collectInstantiatedClassesInMethod(methodSignature: MethodSignature): ClassSignature[] {
-        let cfg : CFG = this.scene.getMethod(methodSignature).getCFG();
+        let cfg : Cfg = this.scene.getMethod(methodSignature).getCFG();
         let newInstancedClass: ClassSignature[]
         newInstancedClass = []
         for (let stmt of cfg.statementArray) {

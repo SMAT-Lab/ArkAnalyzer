@@ -1,12 +1,12 @@
-import {NodeA,ASTree} from '../core/base/Ast';
-import {CFG} from '../core/base/Cfg';
+import {NodeA,ASTree} from '../src/core/base/Ast';
+import {Cfg} from '../src/core/Cfg';
 import * as fs from 'fs';
 
 let fileContent = fs.readFileSync('tests\\resources\\cfg\\main.ts', 'utf8');
 let ast:ASTree=new ASTree(fileContent);
 ast.simplify(ast.root);
 // console.log(ast.root.text)
-let cfg:CFG=new CFG(ast.root,"main",null);
+let cfg:Cfg=new Cfg(ast.root,"main",null);
 // cfg.simplify();
 // ast.text=ast.root.text;
 // cfg=new CFG(ast.root,"main",null);

@@ -1,4 +1,4 @@
-import { Stmt } from "../base/Stmt";
+import { Stmt } from "./Stmt";
 import { MutableBasicBlock } from "./MutableBasicBlock";
 
 export class MutableBlockStmtGraph {

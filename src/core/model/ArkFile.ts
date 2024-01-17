@@ -2,8 +2,8 @@ import fs from 'fs';
 
 import { ArkClass } from "./ArkClass";
 import { ArkMethod } from "./ArkMethod";
-import { statement } from "./base/Cfg";
-import { NodeA, ASTree } from "./base/Ast";
+import { statement } from "../Cfg";
+import { NodeA, ASTree } from "../base/Ast";
 import { ArkNamespace } from "./ArkNamespace";
 import { ClassSignature, MethodSignature, methodSignatureCompare, classSignatureCompare } from "./ArkSignature";
 

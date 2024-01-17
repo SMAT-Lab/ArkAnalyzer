@@ -1,8 +1,8 @@
-import {ClassSignature, MethodSignature} from "../core/ArkSignature";
-import {CFG} from "../core/base/Cfg";
-import {ArkMethod} from "../core/ArkMethod";
+import {ClassSignature, MethodSignature} from "../core/model/ArkSignature";
+import {Cfg} from "../core/Cfg";
+import {ArkMethod} from "../core/model/ArkMethod";
 import {Scene} from "../Scene";
-import {ArkClass} from "../core/ArkClass";
+import {ArkClass} from "../core/model/ArkClass";
 import {isItemRegistered, MethodSignatureManager, SceneManager} from "./utils";
 
 export abstract class AbstractCallGraphAlgorithm {
@@ -67,7 +67,7 @@ export abstract class AbstractCallGraphAlgorithm {
      * @param sourceMethodSignature
      */
     public processMethod(sourceMethodSignature: MethodSignature): MethodSignature[] {
-        let cfg: CFG = this.scene.getMethod(sourceMethodSignature).getCFG();
+        let cfg: Cfg = this.scene.getMethod(sourceMethodSignature).getCFG();
         let invocationTargets: MethodSignature[]
         for (let stmt of cfg.statementArray) {
             // TODO: 接入Stmt判断

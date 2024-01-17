@@ -1,6 +1,6 @@
 import { ArkBinopExpr, ArkInvokeExpr } from "../base/Expr";
-import { ArkFieldRef } from "./Ref";
-import { Value } from "./Value";
+import { ArkFieldRef } from "../base/Ref";
+import { Value } from "../base/Value";
 
 
 export class IRUtils {

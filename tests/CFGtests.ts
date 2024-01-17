@@ -1,11 +1,11 @@
-import { Config } from "../Config";
-import { Scene } from "../Scene";
-import * as utils from "../utils/utils";
+import { Config } from "./Config";
+import { Scene } from "../src/Scene";
+import * as utils from "../src/utils/utils";
 import fs from 'fs';
-import { ClassSignature } from "../core/ArkSignature";
-import { conditionStatement } from "../core/base/Cfg";
-import { ASTree } from "../core/base/Ast";
-import { HotPropertyAccessCheck } from "../checker/HotPropertyAccessCheck";
+import { ClassSignature } from "../src/core/model/ArkSignature";
+import { conditionStatement } from "../src/core/Cfg";
+import { ASTree } from "../src/core/base/Ast";
+import { HotPropertyAccessCheck } from "./checker/HotPropertyAccessCheck";
 
 function run(config: Config) {
     const projectName: string = config.projectName;

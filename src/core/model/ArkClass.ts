@@ -2,7 +2,7 @@ import { ArkField } from "./ArkField";
 import { ArkFile } from "./ArkFile";
 import { ArkMethod } from "./ArkMethod";
 import { ArkNamespace } from "./ArkNamespace";
-import { NodeA } from "./base/Ast";
+import { NodeA } from "../base/Ast";
 import { MethodSubSignature, ClassSignature, methodSubSignatureCompare } from "./ArkSignature";
 
 

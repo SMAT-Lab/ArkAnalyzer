@@ -1,6 +1,6 @@
-import { Scene } from "../Scene";
-import { NodeA } from "../core/base/Ast";
-import { CFG, Variable, conditionStatement, statement, switchStatement } from "../core/base/Cfg";
+import { Scene } from "../../src/Scene";
+import { NodeA } from "../../src/core/base/Ast";
+import { Cfg, Variable, conditionStatement, statement, switchStatement } from "../../src/core/Cfg";
 
 let thisScene: Scene;
 
@@ -31,7 +31,7 @@ export function HotPropertyAccessCheck(scene: Scene) {
 }
 
 // 
-function forInFor(stmtID: number, curScopeID: number, cfg: CFG):Boolean {
+function forInFor(stmtID: number, curScopeID: number, cfg: Cfg):Boolean {
     let parentScope = cfg.scopes[stmtID].parent;
     if (parentScope && (parentScope.id == curScopeID)) {
         return false;
@@ -39,7 +39,7 @@ function forInFor(stmtID: number, curScopeID: number, cfg: CFG):Boolean {
     return true;
 }
 
-function checkStatement(stmt: statement, curScopeID: number, cfg: CFG) {
+function checkStatement(stmt: statement, curScopeID: number, cfg: Cfg) {
     //console.log(stmt.scopeID, curScopeID);
     //console.log(stmt.astNode?.text);
     if ((stmt.type == 'loopStatement') && (stmt.scopeID != curScopeID) && forInFor(stmt.scopeID, curScopeID, cfg)) {
@@ -64,7 +64,7 @@ function checkStatement(stmt: statement, curScopeID: number, cfg: CFG) {
     }
 }
 
-function handle(stmt: statement, scopID: number, cfg: CFG) {
+function handle(stmt: statement, scopID: number, cfg: Cfg) {
     if (stmt.astNode == null) {
         return;
     }
@@ -136,7 +136,7 @@ function propertyAccessCheck(valName: string, stmtNode: NodeA): string | null {
 }
 
 // if match return false,
-function findScope(loopScopeID: number, defScopeID: number, cfg: CFG): Boolean {
+function findScope(loopScopeID: number, defScopeID: number, cfg: Cfg): Boolean {
     let parentScope = cfg.scopes[loopScopeID].parent;
     if (loopScopeID == defScopeID) {
         return false;
