@@ -15,8 +15,8 @@
         //01调试.ts表示要调试的ts文件        
         // "args": ["checker/perf_test.ts"]
         // "args": ["tests\\StmtGraphTest.ts"]
-        "args": ["tests\\simpleCFGtest.ts"]
-        // "args": ["tests\\CFGtests.ts"]
+        // "args": ["tests\\simpleCFGtest.ts"]
+        "args": ["tests\\CFGtests.ts"]
         // "args": ["tests\\resources\\cfg\\main.ts"]
       }
     ]

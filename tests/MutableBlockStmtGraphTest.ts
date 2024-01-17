@@ -1,9 +1,9 @@
-import { ArkEqExpr } from "../core/base/Expr";
-import { ArkAssignStmt, ArkGotoStmt, ArkIfStmt, ArkReturnVoidStmt, } from "../core/base/Stmt";
-import { Local } from "../core/comon/Local";
-import { LinePosition } from "../core/comon/Position";
-import { MutableBasicBlock } from "../core/graph/MutableBasicBlock";
-import { MutableBlockStmtGraph } from "../core/graph/MutableBlockStmtGraph";
+import { ArkEqExpr } from "../src/core/base/Expr";
+import { ArkAssignStmt, ArkGotoStmt, ArkIfStmt, ArkReturnVoidStmt, } from "../src/core/base/Stmt";
+import { Local } from "../src/core/comon/Local";
+import { LinePosition } from "../src/core/comon/Position";
+import { MutableBasicBlock } from "../src/core/base/MutableBasicBlock";
+import { MutableBlockStmtGraph } from "../src/core/base/MutableBlockStmtGraph";
 
 class MutableBlockStmtGraphTest {
     /* 3-address code

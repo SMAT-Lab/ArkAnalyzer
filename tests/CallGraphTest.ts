@@ -1,4 +1,4 @@
-import { CallGraph } from "../callgraph/CallGraph";
+import { CallGraph } from "../src/callgraph/CallGraph";
 
 
 export class CallGraphTest {
