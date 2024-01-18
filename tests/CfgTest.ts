@@ -1,32 +1,10 @@
 import ts from "typescript";
-import { StmtGraph } from "../src/core/base/StmtGraph";
 import { Config } from "./Config";
 const fs = require('fs');
 import * as utils from "../src/utils/getAllFiles";
 import { Scene } from "../src/Scene";
 
-StmtGraph
-export class StmtGraphTest {
-    private loadStmtGraph(): StmtGraph {
-        let filename = './tests/resources/cfg/main.ts';
-        let codeAsString = fs.readFileSync(filename).toString();
-        let sourceFile = ts.createSourceFile(filename, codeAsString, ts.ScriptTarget.Latest);
-        let functionDeclaration = sourceFile.statements[0] as ts.FunctionDeclaration;
-
-        return new StmtGraph(functionDeclaration);
-    }
-
-    public testStmtGraph() {
-        let stmtGraph = this.loadStmtGraph();
-        stmtGraph.printStmtGraph();
-
-        let stmts = stmtGraph.getNodes();
-        console.log('\n---------- statement is callstatemnt or not ------------')
-        for (const stmt of stmts) {
-        }
-    }
-
-
+export class CfgTest {
     public testThreeAddresStmt() {
         // let config = new Config("ThreeAddresStmtTest", "D:\\codes\\tests\\applications_systemui\\common\\src\\main\\ets\\default");
         // let config = new Config("ThreeAddresStmtTest", "D:\\codes\\tests\\applications_systemui\\common\\src\\main\\ets\\default\\abilitymanager");
@@ -41,7 +19,7 @@ export class StmtGraphTest {
         let projectFiles: string[] = utils.getAllFiles(input_dir, ['.ts']);
 
         // let projectFiles = ['D:\\codes\\openharmony\\applications\\applications_photos\\common\\src\\main\\ets\\default\\model\\browser\\AbsDataSource.ts']        
-        projectFiles = ['D:\\codes\\openharmony\\applications\\applications_photos\\common\\src\\main\\ets\\default\\access\\UserFileManagerAccess.ts']        
+        projectFiles = ['D:\\codes\\openharmony\\applications\\applications_photos\\common\\src\\main\\ets\\default\\access\\UserFileManagerAccess.ts']
         // let projectFiles = ['tests\\resources\\cfg\\main.ts'];
 
         let scene = new Scene(projectName, projectFiles);
@@ -49,9 +27,17 @@ export class StmtGraphTest {
         for (const arkFile of scene.arkFiles) {
             console.log('=============== arkFile:', arkFile.name, ' ================');
             for (const arkClass of arkFile.getClasses()) {
-                for (const arkMethod of arkClass.getMethods()) {                    
-                    // console.log('********* arkMethod:', arkMethod.name, ' ***********');
-                    arkMethod.cfg.printThreeAddressStmts();
+                for (const arkMethod of arkClass.getMethods()) {
+                    console.log('************ arkMethod:', arkMethod.name, ' **********');
+                    console.log('-- origalstmts:');                    
+                    for (const origalstmt of arkMethod.getOriginalCfg().getStmts()) {
+                        console.log(origalstmt.toString());
+                    }
+                    console.log();                
+                    console.log('-- threeAddresStmts:');
+                    for (const threeAddresStmt of arkMethod.getCfg().getStmts()) {
+                        console.log(threeAddresStmt.toString());
+                    }
                 }
             }
         }
@@ -60,7 +46,7 @@ export class StmtGraphTest {
 
 
 
-let stmtGraphTest = new StmtGraphTest();
-stmtGraphTest.testThreeAddresStmt();
+let cfgTest = new CfgTest();
+cfgTest.testThreeAddresStmt();
 
 debugger

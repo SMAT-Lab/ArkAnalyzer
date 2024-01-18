@@ -1,7 +1,7 @@
 import fs from 'fs';
 import { ArkClass } from "./ArkClass";
 import { ArkMethod } from "./ArkMethod";
-import { statement } from "../Cfg";
+// import { statement } from "../Cfg";
 import { NodeA, ASTree } from "../base/Ast";
 import { ArkNamespace } from "./ArkNamespace";
 import { ClassSignature, MethodSignature, methodSignatureCompare, classSignatureCompare } from "./ArkSignature";
@@ -38,7 +38,7 @@ export class ArkFile {
     name: string;
     code: string;
     ast: ASTree;
-    importStmts: statement[] = [];
+    // importStmts: statement[] = [];
     methods: ArkMethod[] = [];
     classes: ArkClass[] = [];
     defaultClass!: ArkClass;
@@ -52,7 +52,7 @@ export class ArkFile {
         this.ast = new ASTree(this.code);
         this.genDefaultArkClass();
         this.buildArkFile();
-        this.genImportStmts();
+        // this.genImportStmts();
     }
 
     private genDefaultArkClass() {
@@ -234,19 +234,19 @@ export class ArkFile {
         }
     }
 
-    //TODO
-    private genImportStmts() {
-        let cfg = this.defaultClass.defaultMethod.cfg;
-        for (let stmt of cfg.statementArray) {
-            if (stmt.astNode?.kind == "ImportDeclaration") {
-                this.importStmts.push(stmt);
-            }
-        }
-    }
+    // //TODO
+    // private genImportStmts() {
+    //     let cfg = this.defaultClass.defaultMethod.cfg;
+    //     for (let stmt of cfg.statementArray) {
+    //         if (stmt.astNode?.kind == "ImportDeclaration") {
+    //             this.importStmts.push(stmt);
+    //         }
+    //     }
+    // }
 
-    public getImportStmts(): statement[] {
-        return this.importStmts;
-    }
+    // public getImportStmts(): statement[] {
+    //     return this.importStmts;
+    // }
 
     public getNamespaces(): ArkNamespace[] {
         return this.nameSpaces;

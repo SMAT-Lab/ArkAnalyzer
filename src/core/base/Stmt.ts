@@ -5,9 +5,8 @@ import { Value, ValueTag } from "./Value";
 import { ArkConditionExpr, ArkInvokeExpr } from "./Expr";
 
 export class Stmt {
-    private text!: string;
-    private def!: Value;
-    private defs: Value[] = [];
+    private text: string = '';
+    private def: Value | null = null;
     private uses: Value[] = [];
     private originPosition: number = 0;
     private position: number = 0;
@@ -25,12 +24,12 @@ export class Stmt {
         this.uses.push(use);
     }
 
-    public getdefs(): Value[] {
-        return this.defs;
+    public getDef(): Value | null {
+        return this.def;
     }
 
-    public addDef(def: Value): void {
-        this.defs.push(def);
+    public setDef(def: Value): void {
+        this.def = def;
     }
 
     public getValueVersion(value: Value): string | undefined {
@@ -84,10 +83,8 @@ export class Stmt {
                 return true;
             }
         }
-        for (const def of this.defs) {
-            if (def instanceof ArkArrayRef) {
-                return true;
-            }
+        if (this.def instanceof ArkArrayRef) {
+            return true;
         }
         return false;
     }
@@ -98,11 +95,11 @@ export class Stmt {
                 return use as ArkArrayRef;
             }
         }
-        for (const def of this.defs) {
-            if (def instanceof ArkArrayRef) {
-                return def as ArkArrayRef;
-            }
+
+        if (this.def instanceof ArkArrayRef) {
+            return undefined;
         }
+
         return undefined;
     }
 
@@ -112,10 +109,9 @@ export class Stmt {
                 return true;
             }
         }
-        for (const def of this.defs) {
-            if (def instanceof ArkFieldRef) {
-                return true;
-            }
+
+        if (this.def instanceof ArkFieldRef) {
+            return true;
         }
         return false;
     }
@@ -126,10 +122,8 @@ export class Stmt {
                 return use as ArkFieldRef;
             }
         }
-        for (const def of this.defs) {
-            if (def instanceof ArkFieldRef) {
-                return def as ArkFieldRef;
-            }
+        if (this.def instanceof ArkFieldRef) {
+            return undefined;
         }
         return undefined;
     }
@@ -151,7 +145,11 @@ export class Stmt {
     }
 
     public toString(): string {
-        return 'Stmt';
+        return this.text;
+    }
+
+    public setText(text: string): void {
+        this.text = text;
     }
 }
 
@@ -164,7 +162,7 @@ export class ArkAssignStmt extends Stmt {
         super();
         this.leftOp = leftOp;
         this.rightOp = rightOp;
-        this.addDef(leftOp);
+        this.setDef(leftOp);
         this.addUse(rightOp);
         for (const use of rightOp.getUses()) {
             this.addUse(use);
