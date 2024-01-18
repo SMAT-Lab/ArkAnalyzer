@@ -7,6 +7,7 @@ import { ArkConditionExpr, ArkInvokeExpr } from "./Expr";
 export class Stmt {
     private text!: string;
     private def!: Value;
+    private defs: Value[] = [];
     private uses: Value[] = [];
     private originPosition: number = 0;
     private position: number = 0;

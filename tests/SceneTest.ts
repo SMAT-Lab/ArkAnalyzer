@@ -1,6 +1,6 @@
 import { Config } from "./Config";
 import { Scene } from "../src/Scene";
-import * as utils from "../src/utils/utils";
+import * as utils from "../src/utils/getAllFiles";
 import fs from 'fs';
 import { ClassSignature } from "../src/core/model/ArkSignature";
 import { conditionStatement } from "../src/core/Cfg";
@@ -17,7 +17,13 @@ function run(config: Config) {
 
     //(2) Fill Scene class
     let scene: Scene = new Scene(projectName, projectFiles);
-    HotPropertyAccessCheck(scene);
+    //HotPropertyAccessCheck(scene);
+
+    const fl = 'C:\\msys64\\home\\Yifei\\code\\ArkAnalyzer\\tests\\sample\\sample.ts';
+    let mtd = scene.getMethod(fl, '_DEFAULT_ARK_METHOD', [], [], '_DEFAULT_ARK_CLASS');
+    //console.log(mtd);
+    //console.log(mtd?.cfg);
+    debugger;
     
     //let code = 'let age = myPerson.age + i;';
     //let codeTree = new ASTree(code);
@@ -26,5 +32,5 @@ function run(config: Config) {
 
 //let config: Config = new Config("app_photo", "/Users/yifei/Documents/Code/applications_photos/common/src/main/ets");
 //let config: Config = new Config("app_photo", "/Users/yifei/Documents/Code/applications_systemui");
-let config: Config = new Config("app_photo", "./sample");
+let config: Config = new Config("app_photo", "./tests/sample");
 run(config);
