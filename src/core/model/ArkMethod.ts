@@ -1,8 +1,10 @@
 import { ArkClass } from "./ArkClass";
 import { ArkFile } from "./ArkFile";
 import { ASTree, NodeA } from "../base/Ast";
-import { Cfg } from "../Cfg";
 import { ClassSignature, MethodSignature, MethodSubSignature } from "./ArkSignature";
+import { ArkBody } from "./ArkBody";
+import { BodyBuilder } from "../common/BodyBuilder";
+import { Cfg } from "../graph/Cfg";
 
 export class ArkMethod {
     name!: string;
@@ -12,11 +14,11 @@ export class ArkMethod {
     declaringClass: ArkClass;
     returnType: string[] = [];
     parameterTypes: string[] = [];
-    originalCfg!: Cfg;
-    cfg: Cfg;
     modifiers: string[] = [];
     methodSignature!: MethodSignature;
     methodSubSignature!: MethodSubSignature;
+
+    private body: ArkBody;
 
     constructor(methodNode: NodeA, declaringArkFile: ArkFile, declaringClass: ArkClass) {
         this.code = methodNode.text;
@@ -36,10 +38,12 @@ export class ArkMethod {
         //     console.log(declaringArkFile.name+"."+declaringClass.name+"."+this.name);
         //     console.log(error)
         // }
-        if(methodNode.kind!="SyntaxList"){
-            methodNode=methodNode.children[methodNode.children.length-1].children[1];
+        if (methodNode.kind != "SyntaxList") {
+            methodNode = methodNode.children[methodNode.children.length - 1].children[1];
         }
-        this.cfg = new Cfg(methodNode, this.name, this.declaringClass);
+
+        let bodyBuilder = new BodyBuilder(this.methodSignature, methodNode, declaringClass);
+        this.body = bodyBuilder.build();
     }
 
     private buildDefaultArkMethod(methodNode: NodeA) {
@@ -49,7 +53,7 @@ export class ArkMethod {
     private buildArkMethod(methodNode: NodeA) {
         this.name = methodNode.functionHeadInfo.name;
         this.modifiers = methodNode.functionHeadInfo.modifiers;
-        
+
         //let mdfs:string[] = methodNode.functionHeadInfo.modifiers;
         if (this.modifiers.find(element => element === 'ExportKeyword')) {
             this.isExported = true;
@@ -59,8 +63,16 @@ export class ArkMethod {
         this.returnType = methodNode.functionHeadInfo.returnType;
     }
 
-    public getCfg() {
-        return this.cfg;
+    public getCfg(): Cfg {
+        return this.body.getCfg();
+    }
+
+    public getOriginalCfg() {
+        return this.body.getOriginalCfg();
+    }
+
+    public getBody(): ArkBody {
+        return this.body;
     }
 
     public getModifier() {

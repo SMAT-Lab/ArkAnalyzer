@@ -1,0 +1,26 @@
+
+import { loadavg } from "os";
+import { NodeA } from "../base/Ast"
+import { Cfg } from "../graph/Cfg";
+import { ArkBody } from "../model/ArkBody";
+import { ArkClass } from "../model/ArkClass";
+import { MethodSignature } from "../model/ArkSignature";
+import { CfgBuilder } from "./CfgBuilder";
+
+export class BodyBuilder {
+    private cfgBuilder: CfgBuilder;
+    private methodSignature: MethodSignature;
+
+    constructor(methodSignature: MethodSignature, sourceAstNode: NodeA, declaringClass: ArkClass | null) {
+        this.methodSignature = methodSignature;
+        this.cfgBuilder = new CfgBuilder(sourceAstNode, '', declaringClass);
+    }
+
+    public build(): ArkBody {
+        let cfg = this.cfgBuilder.buildCfg();
+        let originalCfg = this.cfgBuilder.buildOrigalCfg();
+        let locals = new Set(this.cfgBuilder.getLocals());
+
+        return new ArkBody(this.methodSignature, locals, originalCfg, cfg);
+    }
+}

@@ -5,8 +5,8 @@ import { Value, ValueTag } from "./Value";
 import { ArkConditionExpr, ArkInvokeExpr } from "./Expr";
 
 export class Stmt {
-    private text!: string;
-    private def!: Value;
+    private text: string = '';
+    private def: Value | null = null;
     private uses: Value[] = [];
     private originPosition: number = 0;
     private position: number = 0;
@@ -24,7 +24,7 @@ export class Stmt {
         this.uses.push(use);
     }
 
-    public getDef(): Value {
+    public getDef(): Value | null {
         return this.def;
     }
 
@@ -145,7 +145,11 @@ export class Stmt {
     }
 
     public toString(): string {
-        return 'Stmt';
+        return this.text;
+    }
+
+    public setText(text: string): void {
+        this.text = text;
     }
 }
 

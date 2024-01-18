@@ -3,7 +3,6 @@ import { Scene } from "../src/Scene";
 import * as utils from "../src/utils/getAllFiles";
 import fs from 'fs';
 import { ClassSignature } from "../src/core/model/ArkSignature";
-import { conditionStatement } from "../src/core/Cfg";
 import { ASTree } from "../src/core/base/Ast";
 import { HotPropertyAccessCheck } from "./checker/HotPropertyAccessCheck";
 
