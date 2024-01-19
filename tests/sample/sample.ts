@@ -1,4 +1,7 @@
 import fs from 'fs';
+import { ArkFile } from "../../src/core/model/ArkFile";
+import * as ts from 'typescript';
+import m = require("../../src/core/model/ArkMethod");
 
 function forLoopTest() {
     let myPerson = new Person(10);
@@ -97,7 +100,7 @@ interface Alarm2 {
 class Door {
 }
 
-export default function foo(x: number): number {
+export function foo(x: number): number {
     var y: number = 0;
     for (let k = 0; k < x; k++) {
         y = y + k;
@@ -156,3 +159,16 @@ abstract class Animal {
     }
     public abstract sayHi():void;
   }
+
+
+export default 123;
+export let x:number = 1;
+export const soo = 123;
+export interface StringValidator {
+    isAcceptable(s: string): boolean;
+}
+export { ExtendedAdder };
+export { ExtendedAdder as ExtAdder};
+
+export * from "../../src/utils/getAllFiles";
+export * as getFile from "../../src/utils/getAllFiles";
