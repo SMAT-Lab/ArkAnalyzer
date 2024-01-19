@@ -16,6 +16,7 @@ export class Stmt {
     constructor() {
     }
 
+    /** Return a list of values which are uesd in this statement */
     public getUses(): Value[] {
         return this.uses;
     }
@@ -24,6 +25,7 @@ export class Stmt {
         this.uses.push(use);
     }
 
+    /** Return the def which is uesd in this statement */
     public getDef(): Value | null {
         return this.def;
     }
@@ -48,16 +50,19 @@ export class Stmt {
         this.valueTags.get(value)?.add(valueTag);
     }
 
-
+    /** 
+     * Return true if the following statement may not execute after this statement.
+     * The ArkIfStmt and ArkGotoStmt will return true.
+     */
     public isBranch(): boolean {
         return false;
     }
 
+    /** Return the number of statements which this statement may go to */
     public getExpectedSuccessorCount(): number {
         return 1;
     }
 
-    // 属性变量、数组变量和函数变量包含在use和def中，不额外存储
     public containsInvokeExpr(): boolean {
         for (const use of this.uses) {
             if (use instanceof ArkInvokeExpr) {
@@ -153,7 +158,7 @@ export class Stmt {
     }
 }
 
-// 赋值
+
 export class ArkAssignStmt extends Stmt {
     private leftOp: Value;
     private rightOp: Value;
@@ -182,7 +187,7 @@ export class ArkAssignStmt extends Stmt {
     }
 }
 
-// 函数调用
+
 export class ArkInvokeStmt extends Stmt {
     private invokeExpr: ArkInvokeExpr;
 
@@ -221,14 +226,27 @@ export class ArkIfStmt extends Stmt {
         return this.conditionExpr;
     }
 
+    public isBranch(): boolean {
+        return true;
+    }
+
+    public getExpectedSuccessorCount(): number {
+        return 2;
+    }
+
     public toString(): string {
         return 'if ' + this.conditionExpr;
     }
 }
 
+
 export class ArkGotoStmt extends Stmt {
     constructor() {
         super();
+    }
+
+    public isBranch(): boolean {
+        return true;
     }
 
     public toString(): string {
@@ -245,6 +263,10 @@ export class ArkReturnStmt extends Stmt {
         this.op = op;
     }
 
+    public getExpectedSuccessorCount(): number {
+        return 0;
+    }
+
     public toString(): string {
         return 'return ' + this.op;
     }
@@ -254,6 +276,10 @@ export class ArkReturnStmt extends Stmt {
 export class ArkReturnVoidStmt extends Stmt {
     constructor() {
         super();
+    }
+
+    public getExpectedSuccessorCount(): number {
+        return 0;
     }
 
     public toString(): string {
@@ -271,256 +297,3 @@ export class ArkNopStmt extends Stmt {
         return 'nop';
     }
 }
-
-
-/*
-import { Value, LValue } from '../comon/Value';
-import { Position } from '../comon/Position';
-import { AbstractConditionExpr, AbstractInvokeExpr } from './Expr';
-
-
-
-export interface Stmt {
-    getUses(): Value[];
-
-    getDefs(): LValue[];
-
-    getUsesAndDefs(): Value[];
-
-    branches(): boolean;
-
-    getExpectedSuccessorCount(): number;
-
-    containsInvokeExpr(): boolean;
-
-    getInvokeExpr(): AbstractInvokeExpr;
-
-    containsFieldRef(): boolean;
-
-    // getFieldRef():JFieldRef;
-
-    getPositionInfo(): Position;
-}
-
-
-export abstract class AbstractStmt implements Stmt {
-    protected readonly positionInfo: Position
-
-    constructor(positionInfo: Position) {
-        this.positionInfo = positionInfo;
-    }
-
-    public getUses(): Value[] {
-        return [];
-    }
-
-    public getDefs(): LValue[] {
-        return [];
-    }
-
-    public getUsesAndDefs(): Value[] {
-        let values: Value[] = [];
-        values.push(...this.getUses());
-        values.push(...this.getDefs());
-        return values;
-    }
-
-    public getExpectedSuccessorCount(): number {
-        return 1;
-    }
-
-    public branches(): boolean {
-        return false;
-    }
-
-
-    public containsInvokeExpr(): boolean {
-        return false;
-    }
-
-    public abstract getInvokeExpr():AbstractInvokeExpr;
-
-    public containsFieldRef(): boolean {
-        return false;
-    }
-
-    public getPositionInfo(): Position {
-        return this.positionInfo;
-    }
-}
-
-
-export class ArkIfStmt extends AbstractStmt {
-    public static THEN_BRANCH_IDX: number = 0;
-    public static ELSE_BRANCH_IDX: number = 1;
-
-    private condition: AbstractConditionExpr;
-
-    constructor(condition: AbstractConditionExpr, positionInfo: Position) {
-        super(positionInfo);
-        this.condition = condition;
-    }
-
-    public getCondition(): AbstractConditionExpr {
-        return this.condition;
-    }
-
-    public getUses(): Value[] {
-        let uses: Value[] = [];
-        return uses;
-    }
-
-    public getExpectedSuccessorCount(): number {
-        return 2;
-    }
-
-    public branches(): boolean {
-        return true;
-    }
-
-    public getInvokeExpr(): never {
-        throw new Error();
-    }
-}
-
-
-export class ArkGotoStmt extends AbstractStmt {
-    public static BRANCH_IDX: number = 0;
-
-    constructor(positionInfo: Position) {
-        super(positionInfo);
-    }
-
-    public getExpectedSuccessorCount(): number {
-        return 1;
-    }
-
-    public branches(): boolean {
-        return true;
-    }
-
-    public getInvokeExpr(): never {
-        throw new Error();
-    }
-}
-
-
-export abstract class AbstractDefinitionStmt extends AbstractStmt {
-    constructor(positionInfo: Position) {
-        super(positionInfo);
-    }
-
-
-    public abstract getLeftOp(): LValue;
-
-    public abstract getRightOp(): Value;
-
-    public getUses(): Value[] {
-        let uses: Value[] = [];
-        return uses;
-    }
-
-    public getDefs(): Value[] {
-        let defs: Value[] = [];
-        return defs;
-    }
-}
-
-
-export class ArkAssignStmt extends AbstractDefinitionStmt {
-    private leftOp: LValue;
-    private rightOp: Value;
-
-    constructor(leftOp: LValue, rightOp: Value, positionInfo: Position) {
-        super(positionInfo);
-        this.leftOp = leftOp;
-        this.rightOp = rightOp;
-    }
-
-    public getLeftOp(): LValue {
-        return this.leftOp;
-    }
-
-    public getRightOp(): LValue {
-        return this.rightOp;
-    }
-
-
-    public containsInvokeExpr(): boolean {
-        return this.getRightOp() instanceof AbstractInvokeExpr;
-    }
-
-    public getInvokeExpr(): AbstractInvokeExpr {
-        if (!this.containsInvokeExpr()) {
-            throw new Error();
-        }
-        return <AbstractInvokeExpr>this.getRightOp();
-    }
-}
-
-
-export class ArkReturnStmt extends AbstractStmt {
-    private returnValue: Value;
-
-    constructor(returnValue: Value, positionInfo: Position) {
-        super(positionInfo);
-        this.returnValue = returnValue;
-    }
-
-    public getReturnValue(): Value {
-        return this.returnValue;
-    }
-
-    public getExpectedSuccessorCount(): number {
-        return 0;
-    }
-
-    public getInvokeExpr(): never {
-        throw new Error();
-    }
-}
-
-
-export class ArkReturnVoidStmt extends AbstractStmt {
-    constructor(positionInfo: Position) {
-        super(positionInfo);
-    }
-
-
-    public getExpectedSuccessorCount(): number {
-        return 0;
-    }
-
-    public getInvokeExpr(): never {
-        throw new Error();
-    }
-}
-
-
-export class ArkInvokeStmt extends AbstractStmt {
-    private invokeExpr: AbstractInvokeExpr;
-
-    constructor(invokeExpr: AbstractInvokeExpr, positionInfo: Position) {
-        super(positionInfo);
-        this.invokeExpr = invokeExpr;
-    }
-
-    public getUses(): Value[] {
-        let uses: Value[] = [];
-        return uses;
-    }
-
-    public getDefs(): Value[] {
-        let defs: Value[] = [];
-        return defs;
-    }
-
-    public containsInvokeExpr(): boolean {
-        return false;
-    }
-
-    public getInvokeExpr(): AbstractInvokeExpr {
-        return this.invokeExpr;
-    }
-}
-*/
