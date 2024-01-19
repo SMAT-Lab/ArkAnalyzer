@@ -215,7 +215,7 @@ export class ASTree {
         let VariableDeclarationList=node.children[this.findChildIndex(node,"VariableDeclarationList")];
         let SyntaxList=VariableDeclarationList.children[this.findChildIndex(VariableDeclarationList,"SyntaxList")];
         let decl=SyntaxList.children[0].children[0].text;
-        let array=node.children[this.findChildIndex(node,"Identifier")].text;
+        let array=node.children[this.findChildIndex(node,'CloseParenToken')-1].text;
         let tempTree=new ASTree("for(let _i=0;_i<"+array+".length;_i++)");
         let forStm=tempTree.root.children[0];
         forStm.parent=node.parent;
