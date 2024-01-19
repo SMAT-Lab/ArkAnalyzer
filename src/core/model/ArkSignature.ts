@@ -23,9 +23,17 @@ export class MethodSignature {
         this.arkClass = arkClass;
     }
 
+    //public toString(): string {
+    //    return `[${this.arkClass.arkFile}.${this.arkClass.classType}].${this.methodSubSignature.methodName}`
+    //}
+
     public toString(): string {
-        return `[${this.arkClass.arkFile}.${this.arkClass.classType}].${this.methodSubSignature.methodName}`
+        return `<${this.arkClass.classType}.${this.methodSubSignature.methodName}(${this.methodSubSignature.parameters})>`;
     }
+}
+
+export class FieldSignature {
+    
 }
 
 export class ClassSignature {
