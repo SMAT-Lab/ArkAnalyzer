@@ -1511,6 +1511,7 @@ export class CfgBuilder {
     private astNodeToValue(node: NodeA): Value {
         let value: any;
         if (node.kind == 'Identifier') {
+            // console.log("[astNodeToValue] Identifier " + node.children[0])
             value = new Local(node.text);
         }
         else if (node.kind == 'Parameter') {
@@ -1695,9 +1696,15 @@ export class CfgBuilder {
     private astNodeToThreeAddressAssignStmt(node: NodeA): Stmt[] {
         let leftOpNode = node.children[0];
         let rightOpNode = node.children[this.findChildIndex(node, 'FirstAssignment') + 1];
+        let leftOpType = this.getTypeNode(node)
 
         let leftOp = this.astNodeToValue(leftOpNode);
         let rightOp = this.astNodeToValue(rightOpNode);
+
+        if (leftOp instanceof Local) {
+            leftOp.setType(leftOpType)
+        }
+        // console.log("[astNodeToThreeAddressAssignStmt] left: " + leftOp + " type: " + leftOpType + " right: " + rightOp)
         if (IRUtils.moreThanOneAddress(leftOp) && IRUtils.moreThanOneAddress(rightOp)) {
             rightOp = this.generateAssignStmt(rightOp);
         }
@@ -2527,6 +2534,42 @@ export class CfgBuilder {
             }
         }
         return locals;
+    }
+
+    private getTypeNode(node: NodeA): string {
+        let typeNode: NodeA
+        for (let child of node.children) {
+            // console.log(child.kind)
+            switch (child.kind) {
+                case "BooleanKeyword":
+                    return "boolean"
+                case "NumberKeyword":
+                    return "number"
+                case "StringKeyword":
+                    return "string"
+                case "VoidKeyword":
+                    return "void"
+                case "AnyKeyword":
+                    return "any"
+                case "ArrayType":
+                    typeNode = node.children[0]
+                    let typeKeyword: string
+                    if (typeNode.kind == "TypeReference") {
+                        typeKeyword = typeNode.children[0].text
+                    } else {
+                        typeKeyword = typeNode.text
+                    }
+                    return typeKeyword + "[]"
+                case "TupleType":
+                case "TypeReference":
+                    typeNode = node.children[0]
+                    if (typeNode.kind == "Identifier") {
+                        return typeNode.text
+                    }
+                    return ""
+            }
+        }
+        return ""
     }
 
 }

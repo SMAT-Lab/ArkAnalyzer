@@ -27,6 +27,10 @@ export class Local implements Value {
         return this.type;
     }
 
+    public setType(type: string): void {
+        this.type = type
+    }
+
     public getOriginalValue(): Value | null {
         return this.originalValue;
     }

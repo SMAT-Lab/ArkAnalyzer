@@ -114,7 +114,8 @@ class RapidTypeAnalysisAlgorithm extends AbstractCallGraphAlgorithm {
      * @protected
      */
     protected collectInstantiatedClassesInMethod(methodSignature: MethodSignature): ClassSignature[] {
-        let cfg : Cfg = this.scene.getMethod(methodSignature).getCFG();
+        // let cfg : Cfg = this.scene.getMethod(methodSignature).getCFG();
+        let cfg: Cfg
         let newInstancedClass: ClassSignature[]
         newInstancedClass = []
         for (let stmt of cfg.statementArray) {
