@@ -1,6 +1,4 @@
-import { Block, NodeBuilderFlags, StringMappingType, VoidExpression } from "typescript";
 import { Stmt } from "../base/Stmt";
-import { resourceUsage } from "process";
 
 export class BasicBlock {
     private stmts: Stmt[] = [];
@@ -12,7 +10,7 @@ export class BasicBlock {
     }
 
     public getStmts() {
-        return Array.from(this.stmts);
+        return this.stmts;
     }
 
     public addStmt(stmt: Stmt): void {
@@ -35,7 +33,7 @@ export class BasicBlock {
     }
 
     public getSuccessors(): BasicBlock[] {
-        return Array.from(this.successorBlocks);
+        return this.successorBlocks;
     }
 
     public setSuccessorBlock(successorIdx: number, block: BasicBlock): boolean {
@@ -49,7 +47,7 @@ export class BasicBlock {
     }
 
     public getPredecessors(): BasicBlock[] {
-        return Array.from(this.predecessorBlocks);
+        return this.predecessorBlocks;
     }
 
     public addPredecessorBlock(block: BasicBlock): void {
