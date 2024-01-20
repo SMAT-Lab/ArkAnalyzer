@@ -1,5 +1,6 @@
 import * as ts from "typescript";
-import * as fs from 'fs';
+import { ClassInfo, buildClassInfo4ClassNode } from "../common/ClassBuilderInfo";
+import { MethodInfo, buildMethodInfo4MethodNode } from "../common/MethodInfoBuilder";
 
 /**
  * ast节点类，属性包括父节点，子节点列表，种类，文本内容，开始位置
@@ -10,14 +11,13 @@ export class NodeA {
     kind: string;
     text: string;
     start: number;
-    //properties: any[] = [];
-    classHeadInfo: any | undefined;
-    functionHeadInfo: any | undefined;
+    classNodeInfo: ClassInfo | undefined;
+    methodNodeInfo: MethodInfo | undefined;
     instanceMap: Map<string, string> | undefined;
-    line:number=-1;
-    character:number=-1;
+    line: number = -1;
+    character: number = -1;
 
-    constructor(node: ts.Node | undefined, parent: NodeA | null, children: NodeA[], text: string, start: number, kind:string, classHeadInfo?: any, functionHeadInfo?: any) {
+    constructor(node: ts.Node | undefined, parent: NodeA | null, children: NodeA[], text: string, start: number, kind: string, classNodeInfo?: ClassInfo, methodNodeInfo?: MethodInfo) {
         this.parent = parent;
         this.children = children;
         this.text = text;
@@ -33,12 +33,8 @@ export class NodeA {
                 this.instanceMap = undefined
             }
         }
-        if (classHeadInfo != undefined) {
-            this.classHeadInfo = classHeadInfo;
-        }
-        if (functionHeadInfo != undefined) {
-            this.functionHeadInfo = functionHeadInfo;
-        }
+        this.classNodeInfo = classNodeInfo;
+        this.methodNodeInfo = methodNodeInfo;
     }
 
     public putInstanceMap(variableName: string, variableType: string): void {
@@ -76,7 +72,7 @@ export class NodeA {
  */
 export class ASTree {
     text: string;
-    root: NodeA = new NodeA(undefined, null, [], "undefined", 0,"undefined");
+    root: NodeA = new NodeA(undefined, null, [], "undefined", 0, "undefined");
     sourceFile: ts.SourceFile;
     constructor(text: string) {
         this.text = text;
@@ -102,23 +98,26 @@ export class ASTree {
         let cas: NodeA[] = [];
         for (let child of children) {
             let ca: any;
-            let classHeadInfo;
-            let functionHeadInfo;
+            let classNodeInfo: ClassInfo | undefined;
+            let methodNodeInfo: MethodInfo | undefined;
 
             if (ts.isClassDeclaration(child)) {
-                classHeadInfo = handleClassNode(child);
+                classNodeInfo = buildClassInfo4ClassNode(child);
+            }
+            else if (ts.isClassExpression(child)) {
+                //TODO
             }
             else if (ts.isFunctionDeclaration(child) || ts.isMethodDeclaration(child) || ts.isConstructorDeclaration(child) || ts.isArrowFunction(child)) {
-                functionHeadInfo = handleFunctionNode(child);
+                methodNodeInfo = buildMethodInfo4MethodNode(child);
             }
 
-            ca = new NodeA(child, nodea, [], child.getText(this.sourceFile), child.getStart(this.sourceFile), "", classHeadInfo, functionHeadInfo);
-            const {line,character}=ts.getLineAndCharacterOfPosition(
+            ca = new NodeA(child, nodea, [], child.getText(this.sourceFile), child.getStart(this.sourceFile), "", classNodeInfo, methodNodeInfo);
+            const { line, character } = ts.getLineAndCharacterOfPosition(
                 this.sourceFile,
                 child.getStart(this.sourceFile)
-              );
-            ca.line=line;
-            ca.character=character;
+            );
+            ca.line = line;
+            ca.character = character;
             this.copyTree(ca, child);
             cas.push(ca);
             ca.parent = nodea;
@@ -131,13 +130,13 @@ export class ASTree {
         const rootN = this.sourceFile.getChildren(this.sourceFile)[0]
         if (rootN == null)
             process.exit(0);
-        const rootA = new NodeA(rootN, null, [], rootN.getText(this.sourceFile), rootN.getStart(this.sourceFile),"")
-        const {line,character}=ts.getLineAndCharacterOfPosition(
+        const rootA = new NodeA(rootN, null, [], rootN.getText(this.sourceFile), rootN.getStart(this.sourceFile), "")
+        const { line, character } = ts.getLineAndCharacterOfPosition(
             this.sourceFile,
             rootN.getStart(this.sourceFile)
-          );
-        rootA.line=line;
-        rootA.character=character;
+        );
+        rootA.line = line;
+        rootA.character = character;
         this.root = rootA
         this.copyTree(rootA, rootN)
         // this.simplify(this.root);
@@ -160,215 +159,113 @@ export class ASTree {
         this.singlePrintAST(this.root, 0)
     }
 
-    For2While(node:NodeA){
-        let semicolon1=-1,semicolon2=-1;
-        for(let i=0;i<node.children.length;i++){
-            if(node.children[i].kind=="SemicolonToken"){
-                if(semicolon1==-1)
-                    semicolon1=i;
+    For2While(node: NodeA) {
+        let semicolon1 = -1, semicolon2 = -1;
+        for (let i = 0; i < node.children.length; i++) {
+            if (node.children[i].kind == "SemicolonToken") {
+                if (semicolon1 == -1)
+                    semicolon1 = i;
                 else
-                    semicolon2=i;
+                    semicolon2 = i;
             }
         }
-        let whileStatement=new NodeA(undefined,node.parent,[],"",-1,"WhileStatement");
-        let whileKeyword=new NodeA(undefined,whileStatement,[],"while",-1,"WhileKeyword");
-        let open=new NodeA(undefined,whileStatement,[],"(",-1,"OpenParenToken");
-        let close=new NodeA(undefined,whileStatement,[],")",-1,"CloseParenToken");
-        let condition=node.children[semicolon1+1];
-        let block=node.children[node.children.length-1];
-        block.parent=whileStatement;
-        whileStatement.children=[whileKeyword,open,condition,close,block];
-        if(!node.parent){
+        let whileStatement = new NodeA(undefined, node.parent, [], "", -1, "WhileStatement");
+        let whileKeyword = new NodeA(undefined, whileStatement, [], "while", -1, "WhileKeyword");
+        let open = new NodeA(undefined, whileStatement, [], "(", -1, "OpenParenToken");
+        let close = new NodeA(undefined, whileStatement, [], ")", -1, "CloseParenToken");
+        let condition = node.children[semicolon1 + 1];
+        let block = node.children[node.children.length - 1];
+        block.parent = whileStatement;
+        whileStatement.children = [whileKeyword, open, condition, close, block];
+        if (!node.parent) {
             console.log("for without parent");
             process.exit();
         }
-        node.parent.children[node.parent.children.indexOf(node)]=whileStatement;
-        if(node.children[semicolon1-1].kind!="OpenParenToken"){
-            let initKind="";
-            let initChild=node.children[semicolon1-1];
-            if(initChild.kind=="VariableDeclarationList")
-                initKind="FirstStatement";
+        node.parent.children[node.parent.children.indexOf(node)] = whileStatement;
+        if (node.children[semicolon1 - 1].kind != "OpenParenToken") {
+            let initKind = "";
+            let initChild = node.children[semicolon1 - 1];
+            if (initChild.kind == "VariableDeclarationList")
+                initKind = "FirstStatement";
             else
-                initKind="ExpressionStatement";
-            let semi=new NodeA(undefined,whileStatement,[],";",-1,"SemicolonToken");
-            let init=new NodeA(undefined,node.parent,[initChild,semi],initChild.text+";",-1,initKind);
-            node.parent.children.splice(node.parent.children.indexOf(whileStatement),0,init);
+                initKind = "ExpressionStatement";
+            let semi = new NodeA(undefined, whileStatement, [], ";", -1, "SemicolonToken");
+            let init = new NodeA(undefined, node.parent, [initChild, semi], initChild.text + ";", -1, initKind);
+            node.parent.children.splice(node.parent.children.indexOf(whileStatement), 0, init);
         }
-        if(node.children[semicolon2-1].kind!="CloseParenToken"){
-            let updateChild=node.children[semicolon2+1];
-            let semi=new NodeA(undefined,whileStatement,[],";",-1,"SemicolonToken");
-            let update=new NodeA(undefined,block,[updateChild,semi],updateChild.text+";",-1,"ExpressionStatement");
+        if (node.children[semicolon2 - 1].kind != "CloseParenToken") {
+            let updateChild = node.children[semicolon2 + 1];
+            let semi = new NodeA(undefined, whileStatement, [], ";", -1, "SemicolonToken");
+            let update = new NodeA(undefined, block, [updateChild, semi], updateChild.text + ";", -1, "ExpressionStatement");
             block.children[1].children.push(update);
         }
         this.updateParentText(block.children[1]);
     }
 
-    findChildIndex(node:NodeA,kind:string):number{
-        for(let i=0;i<node.children.length;i++){
-            if(node.children[i].kind==kind)
+    findChildIndex(node: NodeA, kind: string): number {
+        for (let i = 0; i < node.children.length; i++) {
+            if (node.children[i].kind == kind)
                 return i;
         }
         return -1;
     }
 
-    forOfIn2For(node:NodeA):NodeA{
-        let VariableDeclarationList=node.children[this.findChildIndex(node,"VariableDeclarationList")];
-        let SyntaxList=VariableDeclarationList.children[this.findChildIndex(VariableDeclarationList,"SyntaxList")];
-        let decl=SyntaxList.children[0].children[0].text;
-        let array=node.children[this.findChildIndex(node,"Identifier")].text;
-        let tempTree=new ASTree("for(let _i=0;_i<"+array+".length;_i++)");
-        let forStm=tempTree.root.children[0];
-        forStm.parent=node.parent;
-        if(node.parent)
-            node.parent.children[node.parent.children.indexOf(node)]=forStm;
-        let block=node.children[this.findChildIndex(node,"Block")];
-        forStm.children[forStm.children.length-1]=block;
-        tempTree=new ASTree("let "+decl+"="+array+"[_i];");
-        let initStm=tempTree.root.children[0];
-        block.children[1].children.splice(0,0,initStm);
+    forOfIn2For(node: NodeA): NodeA {
+        let VariableDeclarationList = node.children[this.findChildIndex(node, "VariableDeclarationList")];
+        let SyntaxList = VariableDeclarationList.children[this.findChildIndex(VariableDeclarationList, "SyntaxList")];
+        let decl = SyntaxList.children[0].children[0].text;
+        let array = node.children[this.findChildIndex(node, "Identifier")].text;
+        let tempTree = new ASTree("for(let _i=0;_i<" + array + ".length;_i++)");
+        let forStm = tempTree.root.children[0];
+        forStm.parent = node.parent;
+        if (node.parent)
+            node.parent.children[node.parent.children.indexOf(node)] = forStm;
+        let block = node.children[this.findChildIndex(node, "Block")];
+        forStm.children[forStm.children.length - 1] = block;
+        tempTree = new ASTree("let " + decl + "=" + array + "[_i];");
+        let initStm = tempTree.root.children[0];
+        block.children[1].children.splice(0, 0, initStm);
         this.updateParentText(forStm);
         return forStm;
     }
 
-    simplify(node:NodeA){
-        if(node.kind=="ForInStatement"||node.kind=="ForOfStatement"){
-            
+    simplify(node: NodeA) {
+        if (node.kind == "ForInStatement" || node.kind == "ForOfStatement") {
+
             this.For2While(this.forOfIn2For(node));
         }
-        if(node.kind=="ForStatement"){
+        if (node.kind == "ForStatement") {
             this.For2While(node);
         }
-        for(let child of node.children){
+        for (let child of node.children) {
             this.simplify(child);
         }
     }
 
-    updateParentText(node:NodeA){
-        if(!node)
+    updateParentText(node: NodeA) {
+        if (!node)
             return;
-        node.text=""
-        for(let child of node.children){
-            node.text+=child.text;
-            if(child.kind.includes("Keyword"))
-                node.text+=" ";
-            if(node.kind=="SyntaxList"&&child.kind.includes("Statement"))
-                node.text+="\r\n";
+        node.text = ""
+        for (let child of node.children) {
+            node.text += child.text;
+            if (child.kind.includes("Keyword"))
+                node.text += " ";
+            if (node.kind == "SyntaxList" && child.kind.includes("Statement"))
+                node.text += "\r\n";
         }
-        if(node.parent)
+        if (node.parent)
             this.updateParentText(node.parent);
     }
 
-    updateStart(node:NodeA){
-        for(let i=0;i<node.children.length;i++){
-            if(i==0){
-                node.children[i].start=node.start;
+    updateStart(node: NodeA) {
+        for (let i = 0; i < node.children.length; i++) {
+            if (i == 0) {
+                node.children[i].start = node.start;
             }
-            else{
-                node.children[i].start=node.children[i-1].start+node.children[i].text.length;
+            else {
+                node.children[i].start = node.children[i - 1].start + node.children[i].text.length;
             }
             this.updateStart(node.children[i]);
         }
     }
-}
-
-function handleClassNode(node: ts.ClassDeclaration) {
-    // get class name, export flag, super class, etc.
-    let name = node.name?.escapedText.toString();
-
-    let modifiers: string[] = [];
-    if (node.modifiers != undefined) {
-        for (let modifier of node.modifiers) {
-            //TODO: find reason!!
-            //console.log(name, modifier.kind, ts.SyntaxKind.AbstractKeyword);
-            if (ts.SyntaxKind[modifier.kind] == 'FirstContextualKeyword') {
-                modifiers.push('AbstractKeyword');
-                break;
-            }
-            modifiers.push(ts.SyntaxKind[modifier.kind]);
-        }
-    }
-
-    let heritageClausesMap = new Map();
-    if (node.heritageClauses != undefined) {
-        for (let heritageClause of node.heritageClauses) {
-            for (let type of heritageClause.types) {
-                let superClassName = (type.expression as ts.Identifier).escapedText;
-                heritageClausesMap.set(superClassName, ts.SyntaxKind[heritageClause.token]);
-            }
-        }
-    }
-
-    let properties = new Map();
-    if (node.members != null) {
-        for (let member of node.members) {
-            if (ts.isPropertyDeclaration(member)) {
-                let key = (member.name as ts.Identifier).escapedText.toString();
-                let value: string;
-                if (member.type) {
-                    value = ts.SyntaxKind[member.type.kind];
-                }
-                else if (member.initializer) {
-                    value = ts.SyntaxKind[member.initializer.kind];
-                }
-                else {
-                    value = 'undefined';
-                }
-                properties.set(key, value);
-            }
-        }
-    }
-
-    return { name, modifiers, heritageClausesMap, properties };
-}
-
-
-
-function handleFunctionNode(node: ts.FunctionDeclaration | ts.MethodDeclaration | ts.ConstructorDeclaration | ts.ArrowFunction) {
-    //get function name, parameters, return type, etc.
-
-    //TODO: consider function without name
-    let name: string | undefined;
-    if (ts.isFunctionDeclaration(node)) {
-        name = node.name?.escapedText.toString();
-    }
-    else if (ts.isMethodDeclaration(node)) {
-        name = (node.name as ts.Identifier).escapedText.toString();
-    }
-    //TODO, do not use hard code
-    else if (ts.isConstructorDeclaration(node)) {
-        name = 'Constructor';
-    }
-
-    // TODO: support question token which means optional parameter
-    let parameterTypes: string[] = [];
-    if (node.parameters != null) {
-        for (let parameter of node.parameters) {
-            if (parameter.type) {
-                parameterTypes.push(ts.SyntaxKind[parameter.type.kind]);
-            }
-        }
-    }
-
-    let modifiers: string[] = [];
-    if (node.modifiers != undefined) {
-        for (let modifier of node.modifiers) {
-            modifiers.push(ts.SyntaxKind[modifier.kind]);
-        }
-    }
-
-    let returnType: string[] = [];
-    if (node.type != undefined) {
-        if (node.type.kind == ts.SyntaxKind.TypeLiteral) {
-            for (let member of (node.type as ts.TypeLiteralNode).members) {
-                let memberType = (member as ts.PropertySignature).type;
-                if (memberType != undefined) {
-                    returnType?.push(ts.SyntaxKind[memberType.kind]);
-                }
-            }
-        }
-        else {
-            returnType.push(ts.SyntaxKind[node.type.kind]);
-        }
-    }
-    return { name, modifiers, parameterTypes, returnType };
 }

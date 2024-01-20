@@ -14,7 +14,7 @@ export class ArkMethod {
     declaringClass: ArkClass;
     returnType: string[] = [];
     parameterTypes: string[] = [];
-    modifiers: string[] = [];
+    modifiers: Set<string> = new Set<string>();
     methodSignature!: MethodSignature;
     methodSubSignature!: MethodSubSignature;
 
@@ -51,16 +51,19 @@ export class ArkMethod {
     }
 
     private buildArkMethod(methodNode: NodeA) {
-        this.name = methodNode.functionHeadInfo.name;
-        this.modifiers = methodNode.functionHeadInfo.modifiers;
+        if (!methodNode.methodNodeInfo) {
+            throw new Error('Error: There is no methodNodeInfo for this method!');
+        }
+        this.name = methodNode.methodNodeInfo.name;
+        this.modifiers = methodNode.methodNodeInfo.modifiers;
 
-        //let mdfs:string[] = methodNode.functionHeadInfo.modifiers;
-        if (this.modifiers.find(element => element === 'ExportKeyword')) {
+        //let mdfs:string[] = methodNode.methodNodeInfo.modifiers;
+        if (this.modifiers.has('ExportKeyword')) {
             this.isExported = true;
         }
 
-        this.parameterTypes = methodNode.functionHeadInfo.parameterTypes;
-        this.returnType = methodNode.functionHeadInfo.returnType;
+        this.parameterTypes = methodNode.methodNodeInfo.parameterTypes;
+        this.returnType = methodNode.methodNodeInfo.returnType;
     }
 
     public getCfg(): Cfg {

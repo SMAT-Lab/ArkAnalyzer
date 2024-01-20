@@ -152,6 +152,14 @@ export class SecurityDoor extends Door implements Alarm, Alarm2 {
     }
 }
 
+const someClass = class<Type> {
+    content: Type;
+    constructor(value: Type) {
+      this.content = value;
+    }
+  };
+const m = new someClass("Hello, world");
+
 abstract class Animal {
     public name;
     public constructor(name:string) {

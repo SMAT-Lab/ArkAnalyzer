@@ -4,6 +4,7 @@ import { ArkMethod } from "./ArkMethod";
 import { ArkNamespace } from "./ArkNamespace";
 import { NodeA } from "../base/Ast";
 import { MethodSubSignature, ClassSignature, methodSubSignatureCompare } from "./ArkSignature";
+import { Property } from "../common/ClassBuilderInfo";
 
 
 export class ArkClass {
@@ -17,10 +18,10 @@ export class ArkClass {
     implementedInterfaces: ArkClass[] = [];
     implementedInterfaceNames: string[] = [];
     fields: ArkField[] = [];
-    properties: Map<string, string> = new Map([]);//TODO: transform properties to fields
+    properties: Property[] = [];
     methods: ArkMethod[] = [];
     defaultMethod!: ArkMethod;
-    modifiers: string[] = [];
+    modifiers: Set<string> = new Set<string>();
 
     constructor(clsNode: NodeA, arkFile: ArkFile) {
         this.code = clsNode.text;
@@ -46,15 +47,18 @@ export class ArkClass {
     }
 
     private buildArkClass(clsNode: NodeA) {
-        this.name = clsNode.classHeadInfo.name;
+        if (!clsNode.classNodeInfo) {
+            throw new Error('Error: There is no classNodeInfo for this class!');
+        }
+        this.name = clsNode.classNodeInfo.className;
         this.classSignature = new ClassSignature(this.declaringArkFile.name, this.name);
 
-        this.modifiers = clsNode.classHeadInfo.modifiers;
-        if (this.modifiers.find(element => element === 'ExportKeyword')) {
+        this.modifiers = clsNode.classNodeInfo.modifiers;
+        if (this.modifiers.has('ExportKeyword')) {
             this.isExported = true;
         }
 
-        for (let [key, value] of clsNode.classHeadInfo.heritageClausesMap) {
+        for (let [key, value] of clsNode.classNodeInfo.heritageClauses) {
             if (value == 'ExtendsKeyword') {
                 this.superClassName = key;
             }
@@ -63,9 +67,12 @@ export class ArkClass {
             }
         }
 
-        //TODO: string[] to ArkField[]
-        this.properties = clsNode.classHeadInfo.properties;
+        this.properties = clsNode.classNodeInfo.properties;
+        this.properties.forEach((property) => {
+            this.fields.push(new ArkField(this, property));
+        });
 
+        // generate ArkMethods of this class
         for (let child of clsNode.children) {
             if (child.kind == 'SyntaxList') {
                 for (let cld of child.children) {

@@ -35,10 +35,6 @@ export class Scene {
         }
     }
 
-    // Returns a chain of the application classes in this scene.
-    public getApplicationClasses(): ArkClass[] {
-        return [];
-    }
     public getFile(fileName: string): ArkFile | null {
         for (let arkFile of this.arkFiles) {
             if (arkFile.name == fileName) {
