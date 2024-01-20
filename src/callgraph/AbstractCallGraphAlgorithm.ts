@@ -67,7 +67,8 @@ export abstract class AbstractCallGraphAlgorithm {
      * @param sourceMethodSignature
      */
     public processMethod(sourceMethodSignature: MethodSignature): MethodSignature[] {
-        let cfg: Cfg = this.scene.getMethod(sourceMethodSignature).getCFG();
+        // let cfg: Cfg = this.scene.getMethod(sourceMethodSignature).getCFG();
+        let cfg: Cfg
         let invocationTargets: MethodSignature[]
         for (let stmt of cfg.statementArray) {
             // TODO: 接入Stmt判断
