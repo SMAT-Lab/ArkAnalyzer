@@ -22,6 +22,10 @@ export class Cfg {
         this.blocks.add(block);
     }
 
+    public getBlocks(): Set<BasicBlock> {
+        return this.blocks;
+    }
+
 
     // TODO: 整理成类似jimple的输出
     public toString(): string {

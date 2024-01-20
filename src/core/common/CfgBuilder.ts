@@ -1417,326 +1417,7 @@ export class CfgBuilder {
                         this.dfsUseDef(stm, node, "use");
             }
         }
-
-        // if(stm.type=="ifStatement"||stm.type=="loopStatement"||stm.type=="catchOrNot"){
-        //     let cstm=stm as ConditionStatementBuilder;
-        //     if(cstm.nextT==null||cstm.nextF==null){
-        //         this.errorTest(cstm);
-        //         return;
-        //     }
-        //     this.generateUseDef(cstm.nextF);
-        //     this.generateUseDef(cstm.nextT);
-        // }
-        // else if(stm.type=="SwitchStatementBuilder"){
-        //     let sstm=stm as SwitchStatementBuilder;
-        //     for(let j in sstm.nexts){
-        //         this.generateUseDef(sstm.nexts[j]);
-        //     }
-        // }
-        // else{
-        //     if(stm.next!=null)
-        //         this.generateUseDef(stm.next);
-        // }
-
     }
-
-    // private subStmt(currNode: NodeA, threeAddressStr: string[], opNames: string[]) {
-    //     let identifierCnt = getNumOfIdentifier(currNode);
-    //     if (identifierCnt > 2) {
-    //         let newTempValueName = "temp" + this.tempVariableNum;
-    //         this.tempVariableNum++;
-    //         opNames.push(newTempValueName);
-    //         threeAddressStr.push(newTempValueName);
-
-    //         this.ac3(currNode.children[0], newTempValueName, false);
-
-    //         for (let i = 1; i < currNode.children.length; i++) {
-    //             opNames.push(currNode.children[i].text);
-    //             threeAddressStr.push(currNode.children[i].text);
-    //         }
-    //     } else {
-    //         if (currNode.children.length > 1) {
-    //             for (const child of currNode.children) {
-    //                 opNames.push(child.text);
-    //             }
-    //         } else {
-    //             opNames.push(currNode.text);
-    //         }
-    //         threeAddressStr.push(currNode.text);
-    //     }
-
-    //     return;
-    // }
-
-    // private ac3(node: NodeA, tempLeftOpValueName: string, begin: boolean) {
-    //     if (node.kind == "Block")
-    //         return;
-    //     let threeAddressStmt: any;
-    //     let simpleStm = '';
-    //     if (begin) {
-    //         simpleStm = this.currentDeclarationKeyword;
-    //     }
-
-    //     if (node.children.length == 1 || node.children.length == 2 && node.children[1].text == ";"
-    //         && node.kind != "ReturnStatement") {
-    //         this.ac3(node.children[0], tempLeftOpValueName, begin);
-    //         return;
-    //     }
-    //     if (node.kind == 'Identifier') {
-    //         let leftOpName = tempLeftOpValueName;
-    //         let rightOpName = node.text;
-
-    //         simpleStm = rightOpName;
-    //         threeAddressStmt = new ArkAssignStmt(new Local(leftOpName), new Local(rightOpName));
-    //     } else if (node.kind == "ReturnStatement") {
-    //         let opNames: string[] = [];
-    //         if (node.children.length > 2) {
-    //             let newTempValueName = "temp" + this.tempVariableNum;
-    //             this.tempVariableNum++;
-    //             opNames.push(newTempValueName);
-    //             this.ac3(node.children[1], newTempValueName, false);
-    //             threeAddressStmt = new ArkReturnStmt(new Local(opNames[0]));
-    //         } else {
-    //             threeAddressStmt = new ArkReturnVoidStmt();
-    //         }
-
-    //         simpleStm = 'Return ' + opNames.join('');
-    //     }
-    //     else if (node.children[1].kind == "FirstAssignment") {
-    //         let leftOpNames: string[] = [];
-    //         simpleStm = "let ";
-    //         let leftOpNode = node.children[0];
-    //         let leftOpIdentifierCnt = getNumOfIdentifier(leftOpNode);
-    //         // TODO:a.b也会被拆分
-    //         if (leftOpIdentifierCnt > 1) {
-    //             let newTempValueName = "temp" + this.tempVariableNum;
-    //             this.tempVariableNum++;
-    //             leftOpNames.push(newTempValueName);
-    //             simpleStm += newTempValueName
-    //             this.ac3(leftOpNode, newTempValueName, false);
-    //         } else {
-    //             leftOpNames.push(leftOpNode.text);
-    //             simpleStm += leftOpNode.text
-    //         }
-    //         let leftOp = new Local(leftOpNames[0]);
-
-
-    //         let rightOpNames: string[] = [];
-    //         let threeAddressStr: string[] = [];
-    //         simpleStm += " = ";
-    //         let rightOpNode = node.children[2];
-    //         if (rightOpNode.kind == 'CallExpression' || rightOpNode.kind == 'NewExpression') {
-    //             let newTempValueName = "temp" + this.tempVariableNum;
-    //             this.tempVariableNum++;
-    //             rightOpNames.push(newTempValueName);
-    //             simpleStm += newTempValueName;
-    //             this.ac3(rightOpNode, newTempValueName, false);
-    //         } else {
-    //             this.subStmt(rightOpNode, threeAddressStr, rightOpNames);
-    //             simpleStm += threeAddressStr.join('');
-    //         }
-    //         let rightOp: any;
-    //         if (rightOpNames.length > 1) {
-    //             // rightOp = new ArkFieldRef(new Local(rightOpNames.join('')));
-    //         } else {
-    //             rightOp = new Local(rightOpNames[0]);
-    //         }
-    //         threeAddressStmt = new ArkAssignStmt(leftOp, rightOp);
-    //     }
-    //     else if (node.kind == "CallExpression") {
-    //         let rightOpNames: string[] = [];
-    //         let threeAddressStrs: string[] = [];
-
-    //         let calleeNode = node.children[0];
-    //         this.subStmt(calleeNode, threeAddressStrs, rightOpNames);
-
-    //         let args: Value[] = [];
-    //         let params = node.children[this.findChildIndex(node, "SyntaxList")];
-    //         threeAddressStrs.push('(');
-    //         for (let param of params.children) {
-    //             if (param.children.length < 2)
-    //                 threeAddressStrs.push(param.text);
-    //             else {
-    //                 let newTempValueName = "temp" + this.tempVariableNum;
-    //                 this.tempVariableNum++;
-    //                 threeAddressStrs.push(newTempValueName);
-    //                 this.ac3(param, newTempValueName, false);
-    //             }
-    //             if (param.kind != 'CommaToken') {
-    //                 args.push(new Local(param.text));
-    //             }
-    //         }
-    //         threeAddressStrs.push(')');
-
-    //         let methodSignature = rightOpNames.join('');
-    //         let rightOp = new ArkInvokeExpr(methodSignature, args);
-    //         if (begin) {
-    //             threeAddressStmt = new ArkInvokeStmt(rightOp);
-    //             simpleStm = threeAddressStrs.join('');
-    //         } else {
-    //             let leftOp = new Local(tempLeftOpValueName);
-    //             threeAddressStmt = new ArkAssignStmt(leftOp, rightOp);
-    //             simpleStm = "let " + tempLeftOpValueName + " = " + threeAddressStrs.join('');
-    //         }
-    //     } else if (node.kind == "NewExpression") {
-    //         let rightOpNames: string[] = [];
-    //         let threeAddressStrs: string[] = [];
-
-    //         let calleeNode = node.children[1];
-    //         this.subStmt(calleeNode, threeAddressStrs, rightOpNames);
-
-    //         let args: Value[] = [];
-    //         let params = node.children[this.findChildIndex(node, "SyntaxList")];
-    //         threeAddressStrs.push('(');
-    //         for (let param of params.children) {
-    //             if (param.children.length < 2)
-    //                 threeAddressStrs.push(param.text);
-    //             else {
-    //                 let newTempValueName = "temp" + this.tempVariableNum;
-    //                 this.tempVariableNum++;
-    //                 threeAddressStrs.push(newTempValueName);
-    //                 this.ac3(param, newTempValueName, false);
-    //             }
-    //             if (param.kind != 'CommaToken') {
-    //                 args.push(new Local(param.text));
-    //             }
-    //         }
-    //         threeAddressStrs.push(')');
-    //         simpleStm = threeAddressStrs.join('');
-
-    //         let leftOp = new Local(tempLeftOpValueName);
-    //         let classSignature = rightOpNames.join('');
-    //         threeAddressStmt = new ArkAssignStmt(leftOp, new ArkNewExpr(classSignature));
-    //         this.current3ACstm.threeAddressStmts.push(threeAddressStmt);
-
-    //         let methodSignature = 'constructor';
-    //         threeAddressStmt = new ArkInvokeStmt(new ArkInvokeExpr(methodSignature, args));
-    //         simpleStm = "let " + tempLeftOpValueName + " = new " + threeAddressStrs.join('');
-    //     }
-    //     /*
-    //     // TODO:fix bug
-    //     else if (node.kind == "TemplateExpression" && getNumOfIdentifier(node) > 2) {
-    //         for (let cc of node.children) {
-    //             if (cc.kind != "SyntaxList") {
-    //                 simpleStm += cc.text;
-    //             }
-    //             else {
-    //                 for (let ccc of cc.children) {
-    //                     simpleStm += "temp" + this.tempVariableNum;
-    //                     this.ac3(ccc.children[0], this.tempVariableNum++, false);
-    //                     simpleStm += ccc.children[1].text;
-    //                 }
-    //             }
-    //         }
-    //     }
-    //     */
-    //     else {
-    //         simpleStm = "let " + tempLeftOpValueName + ' = ';
-    //         let leftOp = new Local(tempLeftOpValueName);
-
-    //         let rightOpNames: string[] = [];
-    //         for (let child of node.children) {
-    //             if (child.kind == "PropertyAccessExpression" || child.kind == "BinaryExpression" || child.kind == "CallExpression" || child.kind == "NewExpression"
-    //                 || child.kind == "ElementAccessExpression" || child.kind == "ConditionalExpression") {
-    //                 if (child.kind == "CallExpression" && node.children.length < 3) {
-    //                     let newTempValueName = "temp" + this.tempVariableNum;
-    //                     this.tempVariableNum++;
-    //                     this.ac3(child, newTempValueName, false);
-    //                     return;
-    //                 }
-    //                 let newTempValueName = "temp" + this.tempVariableNum;
-    //                 this.tempVariableNum++;
-    //                 simpleStm += newTempValueName;
-    //                 rightOpNames.push(newTempValueName);
-    //                 this.ac3(child, newTempValueName, false);
-    //             }
-    //             else if (child.kind == "ParenthesizedExpression") {
-    //                 let newTempValueName = "temp" + this.tempVariableNum;
-    //                 this.tempVariableNum++;
-    //                 simpleStm += newTempValueName;
-    //                 rightOpNames.push(newTempValueName);
-    //                 this.ac3(child.children[1], newTempValueName, false);
-    //             }
-    //             else {
-    //                 if (child.kind != "Block") {
-    //                     if (child.kind.includes("Keyword")) {
-    //                         simpleStm += " " + child.text + " ";
-    //                     }
-    //                     else {
-    //                         simpleStm += child.text;
-    //                     }
-    //                     rightOpNames.push(child.text);
-    //                 }
-
-    //             }
-
-    //         }
-
-    //         // let leftOpName = '';
-    //         // if (begin) {
-    //         //     leftOpName = rightOpNames[0];
-    //         //     rightOpNames.splice(0, 2);
-    //         // } else {
-    //         //     leftOpName = tempLeftOpValueName;
-    //         // }
-
-
-    //         let rightOp: any;
-    //         if (node.kind == 'PropertyAccessExpression') {
-    //             // rightOp = new ArkFieldRef(new Local(rightOpNames.join('')));
-    //         } else if (node.kind == 'ElementAccessExpression') {
-    //             rightOp = new ArkArrayRef(new Local(rightOpNames[0]), new Local(rightOpNames[2]));
-    //         } else if (node.kind == 'BinaryExpression') {
-    //             rightOp = new ArkBinopExpr(new Local(rightOpNames[0]), new Local(rightOpNames[2]), rightOpNames[1]);
-    //         } else if (node.kind == 'VariableDeclaration') {
-    //             if (node.children[2].kind == 'ArrayLiteralExpression') {
-    //                 let arraySize = Math.ceil(node.children[2].children[1].children.length / 2);
-    //                 rightOp = new ArkNewArrayExpr('int', new Local(arraySize.toString()));
-    //             }
-    //             else {
-    //                 rightOp = new Local(rightOpNames[0]);
-    //             }
-    //         } else {
-    //             rightOp = new Local(rightOpNames.join(''));
-    //         }
-    //         threeAddressStmt = new ArkAssignStmt(leftOp, rightOp);
-    //     }
-    //     if (simpleStm[simpleStm.length - 1] != ")") {
-    //         simpleStm += ";";
-    //     }
-    //     this.current3ACstm.addressCode3.push(simpleStm);
-    //     this.current3ACstm.threeAddressStmts.push(threeAddressStmt);
-    // }
-
-    // get3AddressCode() {
-    //     for (let stm of this.statementArray) {
-    //         if (stm.astNode && stm.code != "" && this.support(stm.astNode)) {
-    //             // console.log('------ origin stmt: ', stm.code);
-    //             // let node: NodeA = stm.astNode;
-    //             // if (stm.type == "ifStatement" || stm.type == "loopStatement" || stm.type == "catchOrNot") {
-    //             //     node = node.children[this.findChildIndex(node, "OpenParenToken") + 1]
-    //             // }
-    //             this.current3ACstm = stm;
-    //             if (stm.astNode.kind == "FirstStatement") {
-    //                 let declList = stm.astNode.children[this.findChildIndex(stm.astNode, "VariableDeclarationList")];
-    //                 this.currentDeclarationKeyword = declList.children[0].text + " ";
-    //                 let decls = declList.children[this.findChildIndex(declList, "SyntaxList")];
-    //                 for (let decl of decls.children) {
-    //                     // this.ac3(decl, '', true);
-    //                     this.astNodeToThreeAddressStmt(decl);
-    //                 }
-    //                 // } else if (stm.type == 'ifStatement') {
-    //                 //     this.ifStatement2ThreeAddress(stm);
-    //             } else if (stm.type != "breakStatement") {
-    //                 this.currentDeclarationKeyword = "";
-    //                 // this.ac3(stm.astNode, '', true);
-    //                 this.astNodeToThreeAddressStmt(stm.astNode);
-    //             }
-
-    //         }
-    //     }
-    // }
-
 
 
     // utils begin
@@ -1806,7 +1487,6 @@ export class CfgBuilder {
         }
         return false;
     }
-
     // utils end
 
 
@@ -2733,8 +2413,11 @@ export class CfgBuilder {
         this.transformToThreeAddress();
     }
 
-    public buildOrigalCfg(): Cfg {
-        let origalCfg = new Cfg();
+    // TODO: Add more APIs to the class 'Cfg', and use these to build Cfg
+    public buildOriginalCfg(): Cfg {
+        let originalCfg = new Cfg();
+        let blockBuilderToBlock = new Map<Block, BasicBlock>();
+        let blockBuilderToSuccessor = new Map<Block, Block[]>();
         for (const blockBuilder of this.blocks) {
             let block = new BasicBlock();
             for (const stmtBuilder of blockBuilder.stms) {
@@ -2742,14 +2425,49 @@ export class CfgBuilder {
                 originlStmt.setText(stmtBuilder.code);
                 block.addStmt(originlStmt);
             }
-            origalCfg.addBlock(block);
+            originalCfg.addBlock(block);
+
+            // build the map
+            blockBuilderToBlock.set(blockBuilder, block);
+            let successors = new Array<Block>();
+            let tail = blockBuilder.stms[blockBuilder.stms.length - 1];
+            if (tail instanceof ConditionStatementBuilder) {
+                let nextTBlockId = tail.nextT?.block?.id
+                if (nextTBlockId) {
+                    successors.push(this.blocks[nextTBlockId]);
+                }
+                let nextFBlockId = tail.nextF?.block?.id;
+                if (nextFBlockId) {
+                    successors.push(this.blocks[nextFBlockId]);
+                }
+            } else if (tail instanceof SwitchStatementBuilder) {
+                for (const nxt of tail.nexts) {
+                    let nextBlockId = nxt.block?.id;
+                    if (nextBlockId) {
+                        successors.push(this.blocks[nextBlockId]);
+                    }
+                }
+            }
+            blockBuilderToSuccessor.set(blockBuilder, successors);
         }
-        return origalCfg;
+
+        // link block
+        for (const [blockBuilder, block] of blockBuilderToBlock) {
+            let successors = blockBuilderToSuccessor.get(blockBuilder) as Block[];
+            for (let i = 0; i < successors.length; i++) {
+                let successor = successors[i];
+                block.setSuccessorBlock(i, blockBuilderToBlock.get(successor) as BasicBlock);
+            }
+        }
+
+        return originalCfg;
     }
 
-
+    // TODO: Add more APIs to class 'Cfg', and use these to build Cfg
     public buildCfg(): Cfg {
         let cfg = new Cfg();
+        let blockBuilderToBlock = new Map<Block, BasicBlock>();
+        let blockBuilderToSuccessor = new Map<Block, Block[]>();
         for (const blockBuilder of this.blocks) {
             let block = new BasicBlock();
             for (const stmtBuilder of blockBuilder.stms) {
@@ -2759,7 +2477,40 @@ export class CfgBuilder {
                 }
             }
             cfg.addBlock(block);
+
+            // build the map
+            blockBuilderToBlock.set(blockBuilder, block);
+            let successors = new Array<Block>();
+            let tail = blockBuilder.stms[blockBuilder.stms.length - 1];
+            if (tail instanceof ConditionStatementBuilder) {
+                let nextTBlockId = tail.nextT?.block?.id
+                if (nextTBlockId) {
+                    successors.push(this.blocks[nextTBlockId]);
+                }
+                let nextFBlockId = tail.nextF?.block?.id;
+                if (nextFBlockId) {
+                    successors.push(this.blocks[nextFBlockId]);
+                }
+            } else if (tail instanceof SwitchStatementBuilder) {
+                for (const nxt of tail.nexts) {
+                    let nextBlockId = nxt.block?.id;
+                    if (nextBlockId) {
+                        successors.push(this.blocks[nextBlockId]);
+                    }
+                }
+            }
+            blockBuilderToSuccessor.set(blockBuilder, successors);
         }
+
+        // link block
+        for (const [blockBuilder, block] of blockBuilderToBlock) {
+            let successors = blockBuilderToSuccessor.get(blockBuilder) as Block[];
+            for (let i = 0; i < successors.length; i++) {
+                let successor = successors[i];
+                block.setSuccessorBlock(i, blockBuilderToBlock.get(successor) as BasicBlock);
+            }
+        }
+
         return cfg;
     }
 

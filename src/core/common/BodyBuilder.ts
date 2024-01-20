@@ -18,7 +18,7 @@ export class BodyBuilder {
 
     public build(): ArkBody {
         let cfg = this.cfgBuilder.buildCfg();
-        let originalCfg = this.cfgBuilder.buildOrigalCfg();
+        let originalCfg = this.cfgBuilder.buildOriginalCfg();
         let locals = new Set(this.cfgBuilder.getLocals());
 
         return new ArkBody(this.methodSignature, locals, originalCfg, cfg);

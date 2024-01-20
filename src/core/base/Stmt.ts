@@ -24,6 +24,11 @@ export class Stmt {
     public addUse(use: Value): void {
         this.uses.push(use);
     }
+    
+    // TODO
+    public replaceUse(oldUse: Value, newUse: Value): void {
+
+    }
 
     /** Return the def which is uesd in this statement */
     public getDef(): Value | null {
@@ -172,6 +177,12 @@ export class ArkAssignStmt extends Stmt {
         for (const use of rightOp.getUses()) {
             this.addUse(use);
         }
+    }
+
+    
+    // TODO
+    public replaceDef(oldDef:Value, newDef:Value){
+
     }
 
     public getLeftOp(): Value {
