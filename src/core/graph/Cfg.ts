@@ -1,6 +1,7 @@
 import { Stmt } from "../base/Stmt";
 import { BasicBlock } from "./BasicBlock";
 import { DefUseChain } from "../base/DefUseChain";
+import { Local } from "../base/Local";
 
 export class Cfg {
     private blocks: Set<BasicBlock> = new Set();
@@ -51,6 +52,10 @@ export class Cfg {
             for(let stmtIndex=0;stmtIndex<block.getStmts().length;stmtIndex++){
                 const stmt=block.getStmts()[stmtIndex];
                 for(const value of stmt.getUses()){
+                    if(value instanceof Local){
+                        const local=value as Local;
+                        local.addUses(stmt)
+                    }
                     const name=value.toString();
                     const defStmts:Stmt[]=[];
                     // 判断本block之前有无对应def
