@@ -36,7 +36,13 @@ export function buildMethodInfo4MethodNode(node: ts.FunctionDeclaration | ts.Met
     node.parameters.forEach((parameter) => {
         if (parameter.type) {
             if (parameter.type.kind == ts.SyntaxKind.TypeReference) {
-                parameterTypes.push(((parameter.type as ts.TypeReferenceNode).typeName as ts.Identifier).escapedText.toString());
+                let referenceNodeName = (parameter.type as ts.TypeReferenceNode).typeName;
+                if (ts.SyntaxKind[referenceNodeName.kind] == 'QualifiedName') {
+                    parameterTypes.push(handleQualifiedName(referenceNodeName as ts.QualifiedName));
+                }
+                else if (ts.SyntaxKind[referenceNodeName.kind] == 'Identifier') {
+                    parameterTypes.push((referenceNodeName as ts.Identifier).escapedText.toString())
+                }
             }
             else {
                 parameterTypes.push(ts.SyntaxKind[parameter.type.kind]);
@@ -69,4 +75,17 @@ export function buildMethodInfo4MethodNode(node: ts.FunctionDeclaration | ts.Met
     }
 
     return new MethodInfo(name, parameterTypes, modifiers, returnType);
+}
+
+function handleQualifiedName(node: ts.QualifiedName): string {
+    let right = (node.right as ts.Identifier).escapedText.toString();
+    let left:string = '';
+    if (ts.SyntaxKind[node.left.kind] == 'Identifier') {
+        left = (node.left as ts.Identifier).escapedText.toString();
+    }
+    else if (ts.SyntaxKind[node.left.kind] == 'QualifiedName') {
+        left = handleQualifiedName(node.left as ts.QualifiedName);
+    }
+    let qualifiedName = left + '.' + right;
+    return qualifiedName;
 }
