@@ -67,10 +67,22 @@ function buildExportDeclarationNode(node: ts.ExportDeclaration): ExportInfo[] {
 
 function buildExportAssignmentNode(node: ts.ExportAssignment): ExportInfo[] {
     let exportInfos: ExportInfo[] = [];
-    if (node.expression && ts.isIdentifier(node.expression)) {
-        let exportClauseType = "default";
-        let exportClauseName = node.expression.escapedText.toString();
-        exportInfos.push(new ExportInfo(exportClauseName, exportClauseType));
+    if (node.expression) {
+        if (ts.isIdentifier(node.expression)) {
+            let exportClauseType = "default";
+            let exportClauseName = node.expression.escapedText.toString();
+            exportInfos.push(new ExportInfo(exportClauseName, exportClauseType));
+        }
+        else if (ts.isObjectLiteralExpression(node.expression) && node.expression.properties) {
+            let exportClauseType = "default-Obj";
+            node.expression.properties.forEach((property) => {
+                if (property.name && ts.isIdentifier(property.name)) {
+                    let exportClauseName = property.name.escapedText.toString();
+                    exportInfos.push(new ExportInfo(exportClauseName, exportClauseType));
+                }
+            });
+        }
     }
+
     return exportInfos;
 }
