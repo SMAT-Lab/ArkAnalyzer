@@ -4,35 +4,12 @@ import { ArkMethod } from "./ArkMethod";
 import { NodeA, ASTree } from "../base/Ast";
 import { ArkNamespace } from "./ArkNamespace";
 import { ClassSignature, MethodSignature, methodSignatureCompare, classSignatureCompare } from "./ArkSignature";
+import { ExportInfo } from '../common/ExportBuilder';
+import { ImportInfo } from '../common/ImportBuilder';
 
 /**
  * 
  */
-
-class ImportInfo {
-    importClauseName: string;
-    importClauseType: string;
-    importFrom: string;
-    constructor(importClauseName: string, importClauseType: string, importFrom: string) {
-        this.importClauseName = importClauseName;
-        this.importClauseType = importClauseType;
-        this.importFrom = importFrom;
-    }
-}
-
-class ExportInfo {
-    exportClauseName: string;//ExtAdder of "export { ExtendedAdder as ExtAdder}"
-    exportClauseType: string;
-    exportFrom: string;
-    asName: string;//ExtendedAdder of "export { ExtendedAdder as ExtAdder}"
-    constructor(exportClauseName: string, exportClauseType: string, exportFrom: string, asName: string) {
-        this.exportClauseName = exportClauseName;
-        this.exportClauseType = exportClauseType;
-        this.exportFrom = exportFrom;
-        this.asName = asName;
-    }
-}
-
 export class ArkFile {
     name: string;
     code: string;
@@ -41,8 +18,8 @@ export class ArkFile {
     classes: ArkClass[] = [];
     defaultClass!: ArkClass;
     nameSpaces: ArkNamespace[] = [];
-    importInfo: ImportInfo[] = [];
-    exportInfo: ExportInfo[] = [];
+    importInfos: ImportInfo[] = [];
+    exportInfos: ExportInfo[] = [];
 
     constructor(file: string) {
         this.name = file;
@@ -58,95 +35,9 @@ export class ArkFile {
         this.classes.push(this.defaultClass);
     }
 
-    private processImportDeclarationNode(node: NodeA): void {
-        let importFrom: string = '';
-        let importClauseName: string = '';
-        let importClauseType: string = '';
-        let fromNode = this.findIndicatedChild(node, 'StringLiteral');
-        importFrom = fromNode ? fromNode.text : '';
-        let clauseNode = this.findIndicatedChild(node, 'ImportClause');
-        if (clauseNode) {
-            if (clauseNode.children[0].kind == 'Identifier') {
-                importClauseType = "Identifier";
-                importClauseName = clauseNode.children[0].text;
-                this.importInfo.push(new ImportInfo(importClauseName, importClauseType, importFrom));
-            }
-            else if (clauseNode.children[0].kind == 'NamedImports') {
-                importClauseType = "NamedImports";
-                let namedImport = clauseNode.children[0].children[1];
-                for (let cld of namedImport.children) {
-                    importClauseName = cld.text;
-                    this.importInfo.push(new ImportInfo(importClauseName, importClauseType, importFrom));
-                }
-            }
-            else if (clauseNode.children[0].kind == 'NamespaceImport') {
-                importClauseType = "NamespaceImport";
-                let nameSpaceImport = clauseNode.children[0].children[2];
-                importClauseName = nameSpaceImport.text;
-                this.importInfo.push(new ImportInfo(importClauseName, importClauseType, importFrom));
-            }
-        }
-    }
-
-    private processImportEqualsDeclarationNode(node: NodeA): void {
-        let importFrom: string = '';
-        let importClauseName: string = '';
-        let importClauseType: string = 'ImportEqualsDeclaration';
-        let nameNode = this.findIndicatedChild(node, 'Identifier');
-        importClauseName = nameNode ? nameNode.text : '';
-        let refNode = this.findIndicatedChild(node, 'ExternalModuleReference');
-        if (refNode) {
-            let fromNode = this.findIndicatedChild(refNode, 'StringLiteral');
-            importFrom = fromNode ? fromNode.text : '';
-        }
-        this.importInfo.push(new ImportInfo(importClauseName, importClauseType, importFrom));
-    }
-
-    private processExportDeclarationNode(node: NodeA): void {
-        let exportFrom: string = '';
-        let exportClauseName: string = '';
-        let exportClauseType: string = '';
-        let asName = '';
-        if (this.findIndicatedChild(node, 'NamedExports')) {
-            exportClauseType = "NamedExports";
-            let namedExportSyntaxExportSpecifier = node.children[1].children[1].children[0];
-            if (namedExportSyntaxExportSpecifier.children.length == 1) {
-                exportClauseName = namedExportSyntaxExportSpecifier.children[0].text;
-            }
-            else if (namedExportSyntaxExportSpecifier.children.length == 3) {
-                if (namedExportSyntaxExportSpecifier.children[1].kind == 'AsKeyword') {
-                    asName = namedExportSyntaxExportSpecifier.children[0].text;
-                    exportClauseName = namedExportSyntaxExportSpecifier.children[2].text;
-                }
-            }
-            this.exportInfo.push(new ExportInfo(exportClauseName, exportClauseType, exportFrom, asName));
-        }
-        else if (this.findIndicatedChild(node, 'NamespaceExport')) {
-            exportClauseType = "NamespaceExport";
-            let stringNode = this.findIndicatedChild(node, 'StringLiteral');
-            exportFrom = stringNode ? stringNode.text : '';
-            asName = '*';
-            for (let cld of node.children[1].children) {
-                if (cld.kind == 'Identifier') {
-                    exportClauseName = cld.text;
-                }
-            }
-            this.exportInfo.push(new ExportInfo(exportClauseName, exportClauseType, exportFrom, asName));
-        }
-        else if (node.children[1].kind == 'AsteriskToken') {
-            exportClauseType = "AsteriskToken";
-            let stringNode = this.findIndicatedChild(node, 'StringLiteral');
-            exportFrom = stringNode ? stringNode.text : '';
-            exportClauseName = "*";
-            this.exportInfo.push(new ExportInfo(exportClauseName, exportClauseType, exportFrom, asName));
-        }
-    }
-
     private processExportValAndFirstNode(node: NodeA): void {
-        let exportFrom: string = '';
         let exportClauseName: string = '';
         let exportClauseType: string = node.kind;
-        let asName = '';
         let cld = this.findIndicatedChild(node, 'VariableDeclarationList');
         if (cld) {
             let c = this.findIndicatedChild(cld, 'SyntaxList');
@@ -160,7 +51,7 @@ export class ArkFile {
                 }
             }
         }
-        this.exportInfo.push(new ExportInfo(exportClauseName, exportClauseType, exportFrom, asName));
+        this.exportInfos.push(new ExportInfo(exportClauseName, exportClauseType));
     }
 
     private findIndicatedChild(node: NodeA, childType: string): NodeA | null {
@@ -184,47 +75,37 @@ export class ArkFile {
                 let cls: ArkClass = new ArkClass(child, this);
                 this.classes.push(cls);
                 if (cls.isExported) {
-                    let exportFrom: string = '';
                     let exportClauseName: string = cls.name;
                     let exportClauseType: string = "Class";
-                    let asName = '';
-                    this.exportInfo.push(new ExportInfo(exportClauseName, exportClauseType, exportFrom, asName));
+                    this.exportInfos.push(new ExportInfo(exportClauseName, exportClauseType));
                 }
             }
-            else if (child.kind == 'FunctionDeclaration') {
+            if (child.kind == 'FunctionDeclaration') {
                 let mthd: ArkMethod = new ArkMethod(child, this, this.defaultClass);
                 this.defaultClass.methods.push(mthd);
                 if (mthd.isExported) {
-                    let exportFrom: string = '';
                     let exportClauseName: string = mthd.name;
                     let exportClauseType: string = "Method";
-                    let asName = '';
-                    this.exportInfo.push(new ExportInfo(exportClauseName, exportClauseType, exportFrom, asName));
+                    this.exportInfos.push(new ExportInfo(exportClauseName, exportClauseType));
                 }
             }
-            else if (child.kind == 'ImportDeclaration') {
-                this.processImportDeclarationNode(child);
+            if (child.kind == 'ImportDeclaration' || child.kind == 'ImportEqualsDeclaration') {
+                //this.processImportDeclarationNode(child);
+                child.importNodeInfo?.forEach((element) => {
+                    this.importInfos.push(element);
+                });
             }
-            else if (child.kind == 'ImportEqualsDeclaration') {
-                this.processImportEqualsDeclarationNode(child);
+            if (child.kind == 'ExportDeclaration' || child.kind == 'ExportAssignment') {
+                //this.processExportDeclarationNode(child);
+                child.exportNodeInfo?.forEach((element) => {
+                    this.exportInfos.push(element);
+                });
             }
-            else if (child.kind == 'ExportDeclaration') {
-                this.processExportDeclarationNode(child);
-            }
-            else if (child.kind == 'ExportAssignment') {
-                //this is a default export
-                let exportFrom: string = '';
-                let exportClauseName: string = child.children[2].text;
-                let exportClauseType: string = 'default';
-                let asName = '';
-                this.exportInfo.push(new ExportInfo(exportClauseName, exportClauseType, exportFrom, asName));
-            }
-            else if (child.kind == 'VariableStatement' || child.kind == 'FirstStatement') {
+            if (child.kind == 'VariableStatement' || child.kind == 'FirstStatement') {
                 //check ExportKeyword
                 let childSyntaxNode = this.findIndicatedChild(child, 'SyntaxList');
                 if (childSyntaxNode) {
-                    let exportKeyWordNode = this.findIndicatedChild(childSyntaxNode, 'ExportKeyword');
-                    if (exportKeyWordNode) {
+                    if (this.findIndicatedChild(childSyntaxNode, 'ExportKeyword')) {
                         this.processExportValAndFirstNode(child);
                     }
                 }

@@ -1,6 +1,8 @@
 import * as ts from "typescript";
 import { ClassInfo, buildClassInfo4ClassNode } from "../common/ClassBuilderInfo";
 import { MethodInfo, buildMethodInfo4MethodNode } from "../common/MethodInfoBuilder";
+import { ImportInfo, buildImportInfo4ImportNode } from "../common/ImportBuilder";
+import { ExportInfo, buildExportInfo4ExportNode } from "../common/ExportBuilder";
 
 /**
  * ast节点类，属性包括父节点，子节点列表，种类，文本内容，开始位置
@@ -13,11 +15,15 @@ export class NodeA {
     start: number;
     classNodeInfo: ClassInfo | undefined;
     methodNodeInfo: MethodInfo | undefined;
+    importNodeInfo: ImportInfo[] | undefined;
+    exportNodeInfo: ExportInfo[] | undefined;
     instanceMap: Map<string, string> | undefined;
     line: number = -1;
     character: number = -1;
 
-    constructor(node: ts.Node | undefined, parent: NodeA | null, children: NodeA[], text: string, start: number, kind: string, classNodeInfo?: ClassInfo, methodNodeInfo?: MethodInfo) {
+    constructor(node: ts.Node | undefined, parent: NodeA | null, children: NodeA[], text: string,
+        start: number, kind: string, classNodeInfo?: ClassInfo, methodNodeInfo?: MethodInfo,
+        importNodeInfo?: ImportInfo[], exportNodeInfo?: ExportInfo[]) {
         this.parent = parent;
         this.children = children;
         this.text = text;
@@ -35,6 +41,8 @@ export class NodeA {
         }
         this.classNodeInfo = classNodeInfo;
         this.methodNodeInfo = methodNodeInfo;
+        this.importNodeInfo = importNodeInfo;
+        this.exportNodeInfo = exportNodeInfo;
     }
 
     public putInstanceMap(variableName: string, variableType: string): void {
@@ -100,18 +108,27 @@ export class ASTree {
             let ca: any;
             let classNodeInfo: ClassInfo | undefined;
             let methodNodeInfo: MethodInfo | undefined;
+            let importNodeInfo: ImportInfo[] | undefined;
+            let exportNodeInfo: ExportInfo[] | undefined;
 
             if (ts.isClassDeclaration(child)) {
                 classNodeInfo = buildClassInfo4ClassNode(child);
             }
-            else if (ts.isClassExpression(child)) {
+            if (ts.isClassExpression(child)) {
                 //TODO
             }
-            else if (ts.isFunctionDeclaration(child) || ts.isMethodDeclaration(child) || ts.isConstructorDeclaration(child) || ts.isArrowFunction(child)) {
+            if (ts.isFunctionDeclaration(child) || ts.isMethodDeclaration(child) || ts.isConstructorDeclaration(child) || ts.isArrowFunction(child)) {
                 methodNodeInfo = buildMethodInfo4MethodNode(child);
             }
+            if (ts.isImportDeclaration(child) || ts.isImportEqualsDeclaration(child)) {
+                importNodeInfo = buildImportInfo4ImportNode(child);
+            }
+            if (ts.isExportDeclaration(child) || ts.isExportAssignment(child)) {
+                exportNodeInfo = buildExportInfo4ExportNode(child);
+            }
 
-            ca = new NodeA(child, nodea, [], child.getText(this.sourceFile), child.getStart(this.sourceFile), "", classNodeInfo, methodNodeInfo);
+            ca = new NodeA(child, nodea, [], child.getText(this.sourceFile), child.getStart(this.sourceFile), "",
+            classNodeInfo, methodNodeInfo, importNodeInfo, exportNodeInfo);
             const { line, character } = ts.getLineAndCharacterOfPosition(
                 this.sourceFile,
                 child.getStart(this.sourceFile)

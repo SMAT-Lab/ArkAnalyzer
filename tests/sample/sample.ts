@@ -1,7 +1,8 @@
 import fs from 'fs';
+import { ClassSignature, MethodSignature, methodSignatureCompare, classSignatureCompare } from "../../src/core/model/ArkSignature";
 import { ArkFile } from "../../src/core/model/ArkFile";
 import * as ts from 'typescript';
-import m = require("../../src/core/model/ArkMethod");
+import mmmm = require("../../src/core/model/ArkMethod");
 
 function forLoopTest() {
     let myPerson = new Person(10);
