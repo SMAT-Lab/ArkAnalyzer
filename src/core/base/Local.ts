@@ -44,6 +44,10 @@ export class Local implements Value {
         return [];
     }
 
+    public addUses(use:Stmt){
+        this.usedStmts.push(use);
+    }
+
     public toString(): string {
         return this.getName();
     }
