@@ -6,10 +6,12 @@ let fileContent = fs.readFileSync('tests\\resources\\cfg\\main.ts', 'utf8');
 let ast:ASTree=new ASTree(fileContent);
 ast.simplify(ast.root);
 // console.log(ast.root.text)
-let cfg:CfgBuilder=new CfgBuilder(ast.root,"main",null);
+let cfgBuilder:CfgBuilder=new CfgBuilder(ast.root,"main",null);
 
-cfg.printBlocks();
-
+let cfg=cfgBuilder.buildCfg();
+for(let block of cfg.getBlocks()){
+    console.log(1)
+}
 
 
 // cfg.printThreeAddressStrs();
