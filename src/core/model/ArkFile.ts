@@ -1,4 +1,5 @@
 import fs from 'fs';
+import path from 'path';
 import { ArkClass } from "./ArkClass";
 import { ArkMethod } from "./ArkMethod";
 import { NodeA, ASTree } from "../base/Ast";
@@ -12,6 +13,7 @@ import { ImportInfo } from '../common/ImportBuilder';
  */
 export class ArkFile {
     name: string;
+    projectDir: string;
     code: string;
     ast: ASTree;
     methods: ArkMethod[] = [];
@@ -21,8 +23,9 @@ export class ArkFile {
     importInfos: ImportInfo[] = [];
     exportInfos: ExportInfo[] = [];
 
-    constructor(file: string) {
-        this.name = file;
+    constructor(file: string, projectDir: string) {
+        this.name = path.relative(projectDir, file);//use relative path
+        this.projectDir = projectDir;
         this.code = fs.readFileSync(file, 'utf8');
         this.ast = new ASTree(this.code);
         this.genDefaultArkClass();

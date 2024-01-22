@@ -1,4 +1,5 @@
 
+import path from 'path';
 export class MethodSubSignature {
     methodName: string | undefined;
     parameters: string[] = [];
@@ -28,7 +29,7 @@ export class MethodSignature {
     //}
 
     public toString(): string {
-        return `<${this.arkClass.classType}.${this.methodSubSignature.methodName}(${this.methodSubSignature.parameters})>`;
+        return `<${this.arkClass.arkFileWithoutExt}.${this.arkClass.classType}.${this.methodSubSignature.methodName}(${this.methodSubSignature.parameters})>`;
     }
 }
 
@@ -42,20 +43,22 @@ export class FieldSignature {
     }
 
     public toString(): string {
-        return `${this.arkClass}.${this.fieldName}`
+        return `${this.arkClass.arkFileWithoutExt}.${this.arkClass.classType}.${this.fieldName}`
     }
 }
 
 export class ClassSignature {
     arkFile: string;
-    classType: string | undefined;//TODO, support ArkClass or not?
+    classType: string | undefined;
+    arkFileWithoutExt: string;
     constructor(arkFile: string, classType: string | undefined) {
         this.arkFile = arkFile;
         this.classType = classType;
+        this.arkFileWithoutExt = path.dirname(arkFile) + '/' + path.basename(arkFile, path.extname(arkFile));
     }
 
     public toString(): string {
-        return `${this.arkFile}.${this.classType}`
+        return `${this.arkFileWithoutExt}.${this.classType}`
     }
 }
 
@@ -98,4 +101,10 @@ function arrayCompare(leftArray: any[], rightArray: any[]) {
         }
     }
     return true;
+}
+
+function undateFilePath(filePath: string) {
+    let reg = /\//g;
+    let unixArkFilePath = path.posix.join(...filePath.split(/\\/));
+    return unixArkFilePath.replace(reg, '.');
 }
