@@ -63,4 +63,9 @@ export class BasicBlock {
             }
         }
     }
+
+    // Simplify edition just for SSA
+    public addStmtToFirst(stmt: Stmt) {
+        this.stmts.splice(0, 0, stmt);
+    }
 }

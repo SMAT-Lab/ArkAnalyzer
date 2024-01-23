@@ -13,7 +13,7 @@ export class Local implements Value {
     constructor(name: string) {
         this.name = name;
         this.type = "";
-        
+
         this.originalValue = null;
         this.declaringStmt = null;
         this.usedStmts = [];
@@ -35,6 +35,10 @@ export class Local implements Value {
         return this.originalValue;
     }
 
+    public setOriginalValue(originalValue: Value): void {
+        this.originalValue = originalValue;
+    }
+
     public getDeclaringStmt(): Stmt | null {
         return this.declaringStmt;
     }
@@ -44,7 +48,7 @@ export class Local implements Value {
         return [];
     }
 
-    public addUses(use:Stmt){
+    public addUses(use: Stmt) {
         this.usedStmts.push(use);
     }
 

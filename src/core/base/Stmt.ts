@@ -1,8 +1,7 @@
-import { ArkField } from "../model/ArkField";
-import { LinePosition } from "./Position";
+import { StmtUseReplacer } from "../common/StmtUseReplacer";
+import { ArkConditionExpr, ArkInvokeExpr } from "./Expr";
 import { ArkArrayRef, ArkFieldRef } from "./Ref";
 import { Value, ValueTag } from "./Value";
-import { ArkConditionExpr, ArkInvokeExpr } from "./Expr";
 
 export class Stmt {
     private text: string = '';
@@ -25,9 +24,9 @@ export class Stmt {
         this.uses.push(use);
     }
     
-    // TODO
     public replaceUse(oldUse: Value, newUse: Value): void {
-
+        let stmtUseReplacer = new StmtUseReplacer(oldUse, newUse);
+        stmtUseReplacer.caseStmt(this);
     }
 
     /** Return the def which is uesd in this statement */
@@ -179,9 +178,9 @@ export class ArkAssignStmt extends Stmt {
         }
     }
 
-    
+
     // TODO
-    public replaceDef(oldDef:Value, newDef:Value){
+    public replaceDef(oldDef: Value, newDef: Value) {
 
     }
 
@@ -191,6 +190,10 @@ export class ArkAssignStmt extends Stmt {
 
     public getRightOp(): Value {
         return this.rightOp;
+    }
+
+    public setRightOp(rightOp: Value): void {
+        this.rightOp = rightOp;
     }
 
     public toString(): string {
@@ -276,6 +279,14 @@ export class ArkReturnStmt extends Stmt {
 
     public getExpectedSuccessorCount(): number {
         return 0;
+    }
+
+    public getOp(): Value {
+        return this.op;
+    }
+
+    public setReturnValue(returnValue: Value): void {
+        this.op = returnValue;
     }
 
     public toString(): string {

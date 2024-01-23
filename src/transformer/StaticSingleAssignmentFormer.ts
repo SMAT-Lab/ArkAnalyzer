@@ -155,6 +155,7 @@ export class StaticSingleAssignmentFormer {
                     let newName = def.getName() + '#' + nextFreeIdx;
                     nextFreeIdx++;
                     let newDef = new Local(newName);
+                    newDef.setOriginalValue(def);
                     newLocals.add(newDef);
                     localToNameStack.get(def)?.push(newDef);
                     (<ArkAssignStmt>stmt).replaceDef(def, newDef);
@@ -257,9 +258,7 @@ export class StaticSingleAssignmentFormer {
         }
         return true;
     }
-
-
-    // TODO
+    
     private createEmptyPhiStmt(local: Local): ArkAssignStmt {
         let phiExpr = new ArkPhiExpr();
         return new ArkAssignStmt(local, phiExpr);

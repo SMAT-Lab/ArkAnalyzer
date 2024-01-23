@@ -1,8 +1,7 @@
-import ts from "typescript";
+import { Scene } from "../src/Scene";
+import * as utils from "../src/utils/getAllFiles";
 import { Config } from "./Config";
 const fs = require('fs');
-import * as utils from "../src/utils/getAllFiles";
-import { Scene } from "../src/Scene";
 
 export class CfgTest {
     public testThreeAddresStmt() {
@@ -22,7 +21,7 @@ export class CfgTest {
         // projectFiles = ['D:\\codes\\openharmony\\applications\\applications_photos\\common\\src\\main\\ets\\default\\access\\UserFileManagerAccess.ts']
         projectFiles = ['tests\\resources\\cfg\\cfgmain.ts'];
 
-        let scene = new Scene(projectName, projectFiles);
+        let scene = new Scene(projectName, projectFiles, 'D:\\Codes\\ark-analyzer-mirror');
 
         for (const arkFile of scene.arkFiles) {
             console.log('=============== arkFile:', arkFile.name, ' ================');

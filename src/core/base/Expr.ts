@@ -2,15 +2,17 @@ import { BasicBlock } from "../graph/BasicBlock";
 import { Local } from "./Local";
 import { Value } from "./Value";
 
+export abstract class AbstractExpr implements Value {
+    abstract getUses(): Value[];    
+}
 
-export interface Expr extends Value { }
-
-export class ArkInvokeExpr implements Expr {
+export class ArkInvokeExpr extends AbstractExpr {
     private methodSignature: string;
     private base: Local;
     private args: Value[];
 
     constructor(base: Local, methodSignature: string, args: Value[]) {
+        super();
         this.methodSignature = methodSignature;
         this.base = base;
         this.args = args;
@@ -26,6 +28,18 @@ export class ArkInvokeExpr implements Expr {
 
     public getArgs(): Value[] {
         return this.args;
+    }
+
+    public setArgs(newArgs: Value[]): void {
+        this.args = newArgs;
+    }
+
+    public getBase(): Local {
+        return this.base;
+    }
+
+    public setBase(newBase: Local): void {
+        this.base = newBase;
     }
 
     public getUses(): Value[] {
@@ -55,10 +69,11 @@ export class ArkInvokeExpr implements Expr {
 }
 
 
-export class ArkNewExpr implements Expr {
+export class ArkNewExpr extends AbstractExpr {
     private classSignature: string;
 
     constructor(classSignature: string) {
+        super();
         this.classSignature = classSignature;
     }
 
@@ -76,13 +91,22 @@ export class ArkNewExpr implements Expr {
     }
 }
 
-export class ArkNewArrayExpr implements Expr {
+export class ArkNewArrayExpr extends AbstractExpr {
     private baseType: string;
     private size: Value;
 
     constructor(baseType: string, size: Value) {
+        super();
         this.baseType = baseType;
         this.size = size;
+    }
+
+    public getSize(): Value {
+        return this.size;
+    }
+
+    public setSize(newSize: Value): void {
+        this.size = newSize;
     }
 
     public getUses(): Value[] {
@@ -98,15 +122,32 @@ export class ArkNewArrayExpr implements Expr {
 
 
 // 二元运算表达式
-export class ArkBinopExpr implements Expr {
+export class ArkBinopExpr extends AbstractExpr {
     private op1: Value;
     private op2: Value;
     private operator: string;
 
     constructor(op1: Value, op2: Value, operator: string) {
+        super();
         this.op1 = op1;
         this.op2 = op2;
         this.operator = operator;
+    }
+
+    public getOp1(): Value {
+        return this.op1;
+    }
+
+    public setOp1(newOp1: Value): void {
+        this.op1 = newOp1;
+    }
+
+    public getOp2(): Value {
+        return this.op2;
+    }
+
+    public setOp2(newOp2: Value): void {
+        this.op2 = newOp2;
     }
 
     public getUses(): Value[] {
@@ -122,10 +163,11 @@ export class ArkBinopExpr implements Expr {
 }
 
 // TODO:表示为二元比较
-export class ArkConditionExpr implements Expr {
+export class ArkConditionExpr extends AbstractExpr {
     private condition: string;
 
     constructor(condition: string) {
+        super();
         this.condition = condition;
     }
 
@@ -140,11 +182,20 @@ export class ArkConditionExpr implements Expr {
 }
 
 
-export class ArkTypeOfExpr implements Expr {
+export class ArkTypeOfExpr extends AbstractExpr {
     private op: Value;
 
     constructor(op: Value) {
+        super();
         this.op = op;
+    }
+
+    public getOp(): Value {
+        return this.op;
+    }
+
+    public setOp(newOp: Value): void {
+        this.op = newOp;
     }
 
     public getUses(): Value[] {
@@ -158,13 +209,22 @@ export class ArkTypeOfExpr implements Expr {
 }
 
 
-export class ArkInstanceOfExpr implements Expr {
+export class ArkInstanceOfExpr extends AbstractExpr {
     private op: Value;
     private checkType: string;
 
     constructor(op: Value, checkType: string) {
+        super();
         this.op = op;
         this.checkType = checkType;
+    }
+
+    public getOp(): Value {
+        return this.op;
+    }
+
+    public setOp(newOp: Value): void {
+        this.op = newOp;
     }
 
     public getUses(): Value[] {
@@ -177,11 +237,20 @@ export class ArkInstanceOfExpr implements Expr {
     }
 }
 
-export class ArkLengthExpr implements Expr {
+export class ArkLengthExpr extends AbstractExpr {
     private op: Value;
 
     constructor(op: Value) {
+        super();
         this.op = op;
+    }
+    
+    public getOp(): Value {
+        return this.op;
+    }
+
+    public setOp(newOp: Value): void {
+        this.op = newOp;
     }
 
     public getUses(): Value[] {
@@ -195,13 +264,22 @@ export class ArkLengthExpr implements Expr {
 }
 
 // 类型转换
-export class ArkCastExpr implements Expr {
+export class ArkCastExpr extends AbstractExpr {
     private op: Value;
     private type: string;
 
     constructor(op: Value, type: string) {
+        super();
         this.op = op;
         this.type = type;
+    }
+    
+    public getOp(): Value {
+        return this.op;
+    }
+
+    public setOp(newOp: Value): void {
+        this.op = newOp;
     }
 
     public getUses(): Value[] {
@@ -214,12 +292,13 @@ export class ArkCastExpr implements Expr {
     }
 }
 
-export class ArkPhiExpr implements Expr {
+export class ArkPhiExpr extends AbstractExpr {
     private args: Local[];
     private blockToArg: Map<BasicBlock, Local>;
     private argToBlock: Map<Local, BasicBlock>;
 
     constructor() {
+        super();
         this.args = [];
         this.blockToArg = new Map();
         this.argToBlock = new Map();
