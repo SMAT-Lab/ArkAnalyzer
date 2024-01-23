@@ -9,9 +9,7 @@ ast.simplify(ast.root);
 let cfgBuilder:CfgBuilder=new CfgBuilder(ast.root,"main",null);
 
 let cfg=cfgBuilder.buildCfg();
-for(let block of cfg.getBlocks()){
     console.log(1)
-}
 
 
 // cfg.printThreeAddressStrs();
