@@ -29,7 +29,7 @@ export class MethodSignature {
     //}
 
     public toString(): string {
-        return `<${this.arkClass.arkFileWithoutExt}.${this.arkClass.classType}.${this.methodSubSignature.methodName}(${this.methodSubSignature.parameters})>`;
+        return `<${this.arkClass.arkFile}>.<${this.arkClass.classType}>.<${this.methodSubSignature.methodName}(${this.methodSubSignature.parameters})>`;
     }
 }
 
@@ -43,7 +43,7 @@ export class FieldSignature {
     }
 
     public toString(): string {
-        return `${this.arkClass.arkFileWithoutExt}.${this.arkClass.classType}.${this.fieldName}`
+        return `<${this.arkClass.arkFile}>.<${this.arkClass.classType}>.<${this.fieldName}>`
     }
 }
 
@@ -58,7 +58,7 @@ export class ClassSignature {
     }
 
     public toString(): string {
-        return `${this.arkFileWithoutExt}.${this.classType}`
+        return `<${this.arkFile}>.<${this.classType}>`
     }
 }
 
