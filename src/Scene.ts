@@ -1,3 +1,4 @@
+import fs from 'fs';
 import { ArkClass } from "./core/model/ArkClass";
 import { ArkFile } from "./core/model/ArkFile";
 import { ArkMethod } from "./core/model/ArkMethod";
@@ -13,15 +14,16 @@ import {ClassHierarchyAnalysis} from "./callgraph/ClassHierarchyAnalysis";
 export class Scene {
     projectName: string = '';
     projectFiles: string[] = [];
+    realProjectDir: string;
     namespaces: ArkNamespace[] = [];
-    //allClasses: Map<ArkFile, ArkClass> = new Map([]);
     arkFiles: ArkFile[] = [];
     callgraph!: CallGraph;
     classHierarchyCallGraph!: ClassHierarchyAnalysis;
     extendedClasses: Map<string, ArkClass[]> = new Map();
-    constructor(name: string, files: string[]) {
+    constructor(name: string, files: string[], projectDir: string) {
         this.projectName = name;
         this.projectFiles = files;
+        this.realProjectDir = fs.realpathSync(projectDir);
         this.genArkFiles();
         this.makeCallGraph();
         this.genExtendedClasses();
@@ -29,8 +31,7 @@ export class Scene {
 
     private genArkFiles() {
         for (let file of this.projectFiles) {
-            // console.log('file name:', file)
-            let arkFile: ArkFile = new ArkFile(file);
+            let arkFile: ArkFile = new ArkFile(file, this.realProjectDir);
             this.arkFiles.push(arkFile);
         }
     }

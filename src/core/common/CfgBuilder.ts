@@ -2604,7 +2604,7 @@ export class CfgBuilder {
                 case "AnyKeyword":
                     return "any"
                 case "ArrayType":
-                    typeNode = node.children[0]
+                    typeNode = child.children[0]
                     let typeKeyword: string
                     if (typeNode.kind == "TypeReference") {
                         typeKeyword = typeNode.children[0].text
@@ -2612,9 +2612,8 @@ export class CfgBuilder {
                         typeKeyword = typeNode.text
                     }
                     return typeKeyword + "[]"
-                case "TupleType":
                 case "TypeReference":
-                    typeNode = node.children[0]
+                    typeNode = child.children[0]
                     if (typeNode.kind == "Identifier") {
                         return typeNode.text
                     }
