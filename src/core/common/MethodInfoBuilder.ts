@@ -37,7 +37,8 @@ export function buildMethodInfo4MethodNode(node: ts.FunctionDeclaration | ts.Met
         if (parameter.type) {
             if (parameter.type.kind == ts.SyntaxKind.TypeReference) {
                 let referenceNodeName = (parameter.type as ts.TypeReferenceNode).typeName;
-                if (ts.SyntaxKind[referenceNodeName.kind] == 'QualifiedName') {
+                if (ts.SyntaxKind[referenceNodeName.kind] == 'QualifiedName' ||
+                    ts.SyntaxKind[referenceNodeName.kind] == 'FirstNode') {
                     parameterTypes.push(handleQualifiedName(referenceNodeName as ts.QualifiedName));
                 }
                 else if (ts.SyntaxKind[referenceNodeName.kind] == 'Identifier') {
@@ -79,7 +80,7 @@ export function buildMethodInfo4MethodNode(node: ts.FunctionDeclaration | ts.Met
 
 function handleQualifiedName(node: ts.QualifiedName): string {
     let right = (node.right as ts.Identifier).escapedText.toString();
-    let left:string = '';
+    let left: string = '';
     if (ts.SyntaxKind[node.left.kind] == 'Identifier') {
         left = (node.left as ts.Identifier).escapedText.toString();
     }
