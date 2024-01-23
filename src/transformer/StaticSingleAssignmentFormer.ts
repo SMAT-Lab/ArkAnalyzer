@@ -144,7 +144,7 @@ export class StaticSingleAssignmentFormer {
                         if (use instanceof Local) {
                             let nameStack = localToNameStack.get(use) as Local[];
                             let newUse = nameStack[nameStack.length - 1];
-                            stmt.replaceUse(use, newUse);
+                            stmt.replaceUse(use, newUse);                            
                         }
                     }
                 }
@@ -158,7 +158,7 @@ export class StaticSingleAssignmentFormer {
                     newDef.setOriginalValue(def);
                     newLocals.add(newDef);
                     localToNameStack.get(def)?.push(newDef);
-                    (<ArkAssignStmt>stmt).replaceDef(def, newDef);
+                    (<ArkAssignStmt>stmt).setLeftOp(newDef);
                     if (this.constainsPhiExpr(stmt)) {
                         newPhiStmts.add(stmt);
                     }
@@ -258,7 +258,7 @@ export class StaticSingleAssignmentFormer {
         }
         return true;
     }
-    
+
     private createEmptyPhiStmt(local: Local): ArkAssignStmt {
         let phiExpr = new ArkPhiExpr();
         return new ArkAssignStmt(local, phiExpr);

@@ -17,7 +17,7 @@ export class ExprUseReplacer {
     // TODO:是否将该逻辑移Expr具体类中，利用多态实现
     public caseExpr(expr: AbstractExpr): void {
         if (expr instanceof ArkBinopExpr) {
-
+            this.caseBinopExp(expr);
         } else if (expr instanceof ArkInvokeExpr) {
             this.caseInvokeExpr(expr);
         } else if (expr instanceof ArkNewArrayExpr) {
@@ -32,6 +32,15 @@ export class ExprUseReplacer {
             this.caseLengthExpr(expr);
         } else if (expr instanceof ArkCastExpr) {
             this.caseCastExpr(expr);
+        }
+    }
+
+    private caseBinopExp(expr: ArkBinopExpr): void {
+        if (expr.getOp1() == this.oldUse) {
+            expr.setOp1(this.newUse);
+        }
+        if (expr.getOp2() == this.oldUse) {
+            expr.setOp2(this.newUse);
         }
     }
 

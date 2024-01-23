@@ -1,8 +1,11 @@
 function test() {
     let i = 0;
-    if (i < 10) {
-        console.log('true');
+    let j = i + 1;
+    i = 10;
+    if (i < 5) {
+        i = 100;
     } else {
-        console.log('false');
+        i = 200;
     }
+    j = i * 2;
 }

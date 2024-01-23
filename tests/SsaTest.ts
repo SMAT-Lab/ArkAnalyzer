@@ -1,10 +1,11 @@
 import { Scene } from "../src/Scene";
+import { StaticSingleAssignmentFormer } from "../src/transformer/StaticSingleAssignmentFormer";
 import * as utils from "../src/utils/getAllFiles";
 import { Config } from "./Config";
 const fs = require('fs');
 
-export class CfgTest {
-    public testThreeAddresStmt() {
+export class SsaTest {
+    public testStaticSingleAssignmentFormer() {
         // let config = new Config("ThreeAddresStmtTest", "D:\\codes\\tests\\applications_systemui\\common\\src\\main\\ets\\default");
         // let config = new Config("ThreeAddresStmtTest", "D:\\codes\\tests\\applications_systemui\\common\\src\\main\\ets\\default\\abilitymanager");
         // let config = new Config("ThreeAddresStmtTest", "D:\\codes\\tests\\applications_systemui");
@@ -19,28 +20,34 @@ export class CfgTest {
 
         // let projectFiles = ['D:\\codes\\openharmony\\applications\\applications_photos\\common\\src\\main\\ets\\default\\model\\browser\\AbsDataSource.ts']        
         // projectFiles = ['D:\\codes\\openharmony\\applications\\applications_photos\\common\\src\\main\\ets\\default\\access\\UserFileManagerAccess.ts']
-        projectFiles = ['tests\\resources\\cfg\\cfgmain.ts'];
+        projectFiles = ['tests\\resources\\ssa\\main.ts'];
 
         let scene = new Scene(projectName, projectFiles, 'D:\\Codes\\ark-analyzer-mirror');
-
+        let staticSingleAssignmentFormer = new StaticSingleAssignmentFormer();
         for (const arkFile of scene.arkFiles) {
             console.log('=============== arkFile:', arkFile.name, ' ================');
             for (const arkClass of arkFile.getClasses()) {
                 for (const arkMethod of arkClass.getMethods()) {
-                    console.log('************ arkMethod:', arkMethod.name, ' **********');
-                    console.log('-- origalstmts:');                    
-                    for (const origalstmt of arkMethod.getOriginalCfg().getStmts()) {
-                        console.log(origalstmt.toString());
+                    if (arkMethod.name == '_DEFAULT_ARK_METHOD') {
+                        continue;
                     }
-                    console.log();                
-                    console.log('-- threeAddresStmts:');
+                    console.log('************ arkMethod:', arkMethod.name, ' **********');
+                    console.log('-- before ssa:');
                     for (const threeAddresStmt of arkMethod.getCfg().getStmts()) {
                         console.log(threeAddresStmt.toString());
                     }
 
-                    console.log('-- locals:');                    
-                    for(const local of arkMethod.getBody().getLocals()){
-                        console.log(local.toString());
+                    let body = arkMethod.getBody();
+                    staticSingleAssignmentFormer.transformBody(body);
+
+                    console.log('-- after ssa:');
+                    for (const threeAddresStmt of arkMethod.getCfg().getStmts()) {
+                        console.log(threeAddresStmt.toString());
+                    }
+
+                    console.log('-- locals');
+                    for (const local of arkMethod.getBody().getLocals()) {
+                        console.log('ssa form:' + local.toString() + ', original form: ' + local.getOriginalValue()?.toString());
                     }
                 }
             }
@@ -50,7 +57,7 @@ export class CfgTest {
 
 
 
-let cfgTest = new CfgTest();
-cfgTest.testThreeAddresStmt();
+let ssaTest = new SsaTest();
+ssaTest.testStaticSingleAssignmentFormer();
 
 debugger

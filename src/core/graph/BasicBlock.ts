@@ -3,8 +3,7 @@ import { Stmt } from "../base/Stmt";
 export class BasicBlock {
     private stmts: Stmt[] = [];
     private predecessorBlocks: BasicBlock[] = [];
-    private successorBlocks: BasicBlock[] = new Array<BasicBlock>(1);
-
+    private successorBlocks: BasicBlock[] = [];
     constructor() {
 
     }
@@ -64,8 +63,13 @@ export class BasicBlock {
         }
     }
 
-    // Simplify edition just for SSA
+    // Temp just for SSA
     public addStmtToFirst(stmt: Stmt) {
         this.stmts.splice(0, 0, stmt);
+    }
+
+    // Temp just for SSA
+    public addSuccessorBlock(block: BasicBlock): void {
+        this.successorBlocks.push(block);
     }
 }

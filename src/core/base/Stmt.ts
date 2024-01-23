@@ -178,14 +178,12 @@ export class ArkAssignStmt extends Stmt {
         }
     }
 
-
-    // TODO
-    public replaceDef(oldDef: Value, newDef: Value) {
-
-    }
-
     public getLeftOp(): Value {
         return this.leftOp;
+    }
+
+    public setLeftOp(newLeftOp: Value): void {
+        this.leftOp = newLeftOp;
     }
 
     public getRightOp(): Value {

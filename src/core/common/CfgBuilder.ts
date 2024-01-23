@@ -1,17 +1,15 @@
-import { NodeA, ASTree } from '../base/Ast';
 import * as fs from 'fs';
-import { exec } from 'child_process';
-import { ArkClass } from '../model/ArkClass';
-import exp from 'constants';
-import { ArkAssignStmt, ArkGotoStmt, ArkIfStmt, ArkInvokeStmt, ArkNopStmt, ArkReturnStmt, ArkReturnVoidStmt, Stmt } from '../base/Stmt';
-import { Local } from '../base/Local';
-import { Value } from '../base/Value';
-import { ArkArrayRef, ArkFieldRef } from '../base/Ref';
-import { ArkBinopExpr, ArkCastExpr, ArkConditionExpr, ArkInvokeExpr, ArkLengthExpr, ArkNewArrayExpr, ArkNewExpr, ArkTypeOfExpr } from '../base/Expr';
+import { ASTree, NodeA } from '../base/Ast';
 import { Constant } from '../base/Constant';
-import { IRUtils } from './IRUtils';
-import { Cfg } from '../graph/Cfg';
+import { ArkBinopExpr, ArkCastExpr, ArkConditionExpr, ArkInvokeExpr, ArkLengthExpr, ArkNewArrayExpr, ArkNewExpr, ArkTypeOfExpr } from '../base/Expr';
+import { Local } from '../base/Local';
+import { ArkArrayRef, ArkFieldRef } from '../base/Ref';
+import { ArkAssignStmt, ArkGotoStmt, ArkIfStmt, ArkInvokeStmt, ArkReturnStmt, ArkReturnVoidStmt, Stmt } from '../base/Stmt';
+import { Value } from '../base/Value';
 import { BasicBlock } from '../graph/BasicBlock';
+import { Cfg } from '../graph/Cfg';
+import { ArkClass } from '../model/ArkClass';
+import { IRUtils } from './IRUtils';
 
 // todo:填cfg里的def use和local里的def use
 
@@ -212,6 +210,8 @@ export class CfgBuilder {
 
     anonymousFuncIndex: number;
     anonymousFunctions: CfgBuilder[];
+
+    private locals: Set<Local> = new Set();
 
     constructor(ast: NodeA, name: string | undefined, declaringClass: ArkClass | null) {
         if (name)
@@ -964,34 +964,34 @@ export class CfgBuilder {
         }
     }
 
-    buildBlocksNextLast(){
-        for(let block of this.blocks){
-            for(let originStatement of block.stms){
-                let lastStatement=(block.stms.indexOf(originStatement)==block.stms.length-1);
-                if(originStatement instanceof ConditionStatementBuilder){
-                    let nextT=originStatement.nextT?.block;
-                    if(nextT&&(lastStatement||nextT!=block)){
+    buildBlocksNextLast() {
+        for (let block of this.blocks) {
+            for (let originStatement of block.stms) {
+                let lastStatement = (block.stms.indexOf(originStatement) == block.stms.length - 1);
+                if (originStatement instanceof ConditionStatementBuilder) {
+                    let nextT = originStatement.nextT?.block;
+                    if (nextT && (lastStatement || nextT != block)) {
                         block.nexts.add(nextT);
                         nextT.lasts.add(block);
                     }
-                    let nextF=originStatement.next?.block;
-                    if(nextF&&(lastStatement||nextF!=block)){
+                    let nextF = originStatement.next?.block;
+                    if (nextF && (lastStatement || nextF != block)) {
                         block.nexts.add(nextF);
                         nextF.lasts.add(block);
                     }
                 }
-                else if(originStatement instanceof SwitchStatementBuilder){
-                    for(let nextStatement of originStatement.nexts){
-                        let next=nextStatement.block;
-                        if(next&&(lastStatement||next!=block)){
+                else if (originStatement instanceof SwitchStatementBuilder) {
+                    for (let nextStatement of originStatement.nexts) {
+                        let next = nextStatement.block;
+                        if (next && (lastStatement || next != block)) {
                             block.nexts.add(next);
                             next.lasts.add(block);
                         }
                     }
                 }
-                else{
-                    let next=originStatement.next?.block;
-                    if(next&&(lastStatement||next!=block)){
+                else {
+                    let next = originStatement.next?.block;
+                    if (next && (lastStatement || next != block)) {
                         block.nexts.add(next);
                         next.lasts.add(block);
                     }
@@ -1526,13 +1526,26 @@ export class CfgBuilder {
         }
         return false;
     }
+
+    private getOriginalLocal(local: Local): Local {
+        let oriName = local.getName();
+        for (const oriLocal of this.locals) {
+            if (oriLocal.getName() == oriName) {
+                return oriLocal;
+            }
+        }
+        this.locals.add(local);
+        return local;
+    }
     // utils end
 
 
     private generateTempValue(): Value {
-        let tempLeftOp = "temp" + this.tempVariableNum;
+        let tempLeftOpName = "temp" + this.tempVariableNum;
         this.tempVariableNum++;
-        return new Local(tempLeftOp);
+        let tempLeftOp = new Local(tempLeftOpName);
+        this.locals.add(tempLeftOp);
+        return tempLeftOp;
     }
 
     private generateAssignStmt(node: NodeA | Value): Value {
@@ -1552,11 +1565,13 @@ export class CfgBuilder {
         if (node.kind == 'Identifier') {
             // console.log("[astNodeToValue] Identifier " + node.children[0])
             value = new Local(node.text);
+            value = this.getOriginalLocal(value);
         }
         else if (node.kind == 'Parameter') {
             let identifierNode = node.children[0];
             let typeNode = node.children[2];
             value = new Local(identifierNode.text);
+            value = this.getOriginalLocal(value);
         }
         else if (this.shouldBeConstant(node)) {
             value = new Constant(node.text);
@@ -1580,6 +1595,7 @@ export class CfgBuilder {
                 base = this.generateAssignStmt(node.children[0])
             } else {
                 base = new Local(node.children[0].text);
+                base = this.getOriginalLocal(base);
             }
             value = new ArkFieldRef(base, fieldSignature);
         }
@@ -1596,7 +1612,7 @@ export class CfgBuilder {
                 base = new Local('globalThis');
                 methodSignature = methodValue.toString();
             }
-
+            base = this.getOriginalLocal(base);
 
             let syntaxListNode = node.children[this.findChildIndex(node, 'OpenParenToken') + 1];
             let argNodes = this.getSyntaxListItems(syntaxListNode);
@@ -1614,6 +1630,7 @@ export class CfgBuilder {
         }
         else if (node.kind == "ArrowFunction") {
             let base = new Local('globalThis');
+            base = this.getOriginalLocal(base);
             let methodSignature = 'anonymousFunc#' + this.anonymousFuncIndex;
             this.anonymousFuncIndex++;
 
@@ -1628,7 +1645,7 @@ export class CfgBuilder {
         }
         else if (node.kind == 'FunctionExpression') {
             let base = new Local('globalThis');
-
+            base = this.getOriginalLocal(base);
             let methodSignature = '';
             if (node.children[1].kind != 'OpenParenToken') {
                 methodSignature = node.children[1].text;
@@ -1676,6 +1693,7 @@ export class CfgBuilder {
                 this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(value, binopExpr));
             } else {
                 value = new Local(node.text);
+                value = this.getOriginalLocal(value);
             }
         }
         else if (node.kind == 'PostfixUnaryExpression') {
@@ -1721,6 +1739,7 @@ export class CfgBuilder {
             let declsNode = node.children[this.findChildIndex(node, "SyntaxList")];
             let syntaxListItems = this.getSyntaxListItems(declsNode);
             value = new Local(syntaxListItems[0].text);
+            value = this.getOriginalLocal(value);
         }
         else if (this.toSupport(node)) {
             value = new Local(node.text);
@@ -2514,7 +2533,6 @@ export class CfgBuilder {
     public buildCfg(): Cfg {
         let cfg = new Cfg();
         let blockBuilderToBlock = new Map<Block, BasicBlock>();
-        let blockBuilderToSuccessor = new Map<Block, Block[]>();
         for (const blockBuilder of this.blocks) {
             let block = new BasicBlock();
             for (const stmtBuilder of blockBuilder.stms) {
@@ -2527,65 +2545,22 @@ export class CfgBuilder {
 
             // build the map
             blockBuilderToBlock.set(blockBuilder, block);
-
-
-            let successors = new Array<Block>();
-            let tail = blockBuilder.stms[blockBuilder.stms.length - 1];
-            if (tail instanceof ConditionStatementBuilder) {
-                let nextTBlockId = tail.nextT?.block?.id
-                if (nextTBlockId) {
-                    successors.push(this.blocks[nextTBlockId]);
-                }
-                let nextFBlockId = tail.nextF?.block?.id;
-                if (nextFBlockId) {
-                    successors.push(this.blocks[nextFBlockId]);
-                }
-            } else if (tail instanceof SwitchStatementBuilder) {
-                for (const nxt of tail.nexts) {
-                    let nextBlockId = nxt.block?.id;
-                    if (nextBlockId) {
-                        successors.push(this.blocks[nextBlockId]);
-                    }
-                }
-            }
-            blockBuilderToSuccessor.set(blockBuilder, successors);
         }
 
         // link block
         for (const [blockBuilder, block] of blockBuilderToBlock) {
-            let successors = blockBuilderToSuccessor.get(blockBuilder) as Block[];
-            for (let i = 0; i < successors.length; i++) {
-                let successor = successors[i];
-                block.setSuccessorBlock(i, blockBuilderToBlock.get(successor) as BasicBlock);
-            }
-
-            for(const successor of blockBuilder.nexts){
-                for(const [successorBuilder,successorBlock] of blockBuilderToBlock){
-                    if(successor==successorBuilder){
-                        // block.addSuccessors(successorBlock);
-                        successorBlock.addPredecessorBlock(block);
-                        break;
-                    }
-                }
+            for (const successorBuilder of blockBuilder.nexts) {
+                let successorBlock = blockBuilderToBlock.get(successorBuilder) as BasicBlock;
+                successorBlock.addPredecessorBlock(block);
+                block.addSuccessorBlock(successorBlock);
             }
         }
 
         return cfg;
     }
 
-    public getLocals(): Local[] {
-        let locals = new Array<Local>();
-        for (const blockBuilder of this.blocks) {
-            for (const stmtBuilder of blockBuilder.stms) {
-                for (const threeAddressStmt of stmtBuilder.threeAddressStmts) {
-                    let def = threeAddressStmt.getDef();
-                    if (def != null && def instanceof Local) {
-                        locals.push(def);
-                    }
-                }
-            }
-        }
-        return locals;
+    public getLocals(): Set<Local> {
+        return this.locals;
     }
 
     private getTypeNode(node: NodeA): string {

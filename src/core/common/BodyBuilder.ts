@@ -1,7 +1,5 @@
 
-import { loadavg } from "os";
-import { NodeA } from "../base/Ast"
-import { Cfg } from "../graph/Cfg";
+import { NodeA } from "../base/Ast";
 import { ArkBody } from "../model/ArkBody";
 import { ArkClass } from "../model/ArkClass";
 import { MethodSignature } from "../model/ArkSignature";

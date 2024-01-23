@@ -1,5 +1,5 @@
-import { DominanceFinder } from "./DominanceFinder";
 import { BasicBlock } from "./BasicBlock";
+import { DominanceFinder } from "./DominanceFinder";
 
 export class DominanceTree {
     private blocks: BasicBlock[] = [];
@@ -48,8 +48,8 @@ export class DominanceTree {
 
     public getChildren(blcok: BasicBlock): BasicBlock[] {
         let childList = new Array<BasicBlock>();
-        let idx = this.blockToIdx.get(blcok);
-        for (const i of this.children[idx!]) {
+        let idx = this.blockToIdx.get(blcok) as number;
+        for (const i of this.children[idx]) {
             childList.push(this.blocks[i]);
         }
         return childList;

@@ -18,7 +18,7 @@ export class DominanceFinder {
         // calculate immediate dominator for each block
         this.idoms = new Array<number>(this.blocks.length);
         this.idoms[0] = 0;
-        for (let i = 0; i < this.idoms.length; i++) {
+        for (let i = 1; i < this.idoms.length; i++) {
             this.idoms[i] = -1;
         }
         let isChanged = true;
