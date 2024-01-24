@@ -1,4 +1,7 @@
-for(i=0;i<10;i++){
-    console.log(i)
+try{
+    i=1;
+}catch(err){
+    i++
+}finally{
+    i=i+2
 }
-console.log(1)
