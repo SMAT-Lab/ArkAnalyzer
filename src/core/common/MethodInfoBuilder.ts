@@ -3,13 +3,13 @@ import { buildModifiers } from "./BuildModifiers";
 
 export class MethodInfo {
     name: string;
-    parameterTypes: string[];
+    parameters: Map<string, string>;
     modifiers: Set<string>;
     returnType: string[];
 
-    constructor(name: string, parameterTypes: string[], modifiers: Set<string>, returnType: string[]) {
+    constructor(name: string, parameters: Map<string, string>, modifiers: Set<string>, returnType: string[]) {
         this.name = name;
-        this.parameterTypes = parameterTypes;
+        this.parameters = parameters;
         this.modifiers = modifiers;
         this.returnType = returnType;
     }
@@ -32,25 +32,26 @@ export function buildMethodInfo4MethodNode(node: ts.FunctionDeclaration | ts.Met
     }
 
     // TODO: support question token which means optional parameter
-    let parameterTypes: string[] = [];
+    let parameterTypes: Map<string, string> = new Map();
     node.parameters.forEach((parameter) => {
+        let parameterName = ts.isIdentifier(parameter.name)? parameter.name.escapedText.toString() : '';
         if (parameter.type) {
             if (parameter.type.kind == ts.SyntaxKind.TypeReference) {
                 let referenceNodeName = (parameter.type as ts.TypeReferenceNode).typeName;
                 if (ts.SyntaxKind[referenceNodeName.kind] == 'QualifiedName' ||
                     ts.SyntaxKind[referenceNodeName.kind] == 'FirstNode') {
-                    parameterTypes.push(handleQualifiedName(referenceNodeName as ts.QualifiedName));
+                    parameterTypes.set(parameterName, handleQualifiedName(referenceNodeName as ts.QualifiedName));
                 }
                 else if (ts.SyntaxKind[referenceNodeName.kind] == 'Identifier') {
-                    parameterTypes.push((referenceNodeName as ts.Identifier).escapedText.toString())
+                    parameterTypes.set(parameterName, (referenceNodeName as ts.Identifier).escapedText.toString())
                 }
             }
             else {
-                parameterTypes.push(ts.SyntaxKind[parameter.type.kind]);
+                parameterTypes.set(parameterName, ts.SyntaxKind[parameter.type.kind]);
             }
         }
         else {
-            parameterTypes.push('');
+            parameterTypes.set(parameterName, '');
         }
     });
 

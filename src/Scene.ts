@@ -126,7 +126,7 @@ export class Scene {
         return this.getClassGlobally(fatherName);
     }
 
-    public getMethod(arkFile: string, methodName: string, parameters: string[], returnType: string[], arkClassType?: string): ArkMethod | null {
+    public getMethod(arkFile: string, methodName: string, parameters: Map<string, string>, returnType: string[], arkClassType?: string): ArkMethod | null {
         const fl = this.arkFiles.find((obj) => {
             return obj.name === arkFile;
         })
@@ -161,7 +161,7 @@ export class Scene {
         return [];
     }
 
-    private getMethodSignature(fileName: string, methodName: string, parameters: string[], returnType: string[], classType?: string): MethodSignature {
+    private getMethodSignature(fileName: string, methodName: string, parameters: Map<string, string>, returnType: string[], classType?: string): MethodSignature {
         let methodSubSignature = new MethodSubSignature(methodName, parameters, returnType);
         let classSignature = this.getClassSignature(fileName, classType);
         return new MethodSignature(methodSubSignature, classSignature);

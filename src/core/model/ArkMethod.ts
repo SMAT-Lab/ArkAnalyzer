@@ -13,7 +13,7 @@ export class ArkMethod {
     declaringArkFile: ArkFile;
     declaringClass: ArkClass;
     returnType: string[] = [];
-    parameterTypes: string[] = [];
+    parameters: Map<string, string> = new Map();
     modifiers: Set<string> = new Set<string>();
     methodSignature!: MethodSignature;
     methodSubSignature!: MethodSubSignature;
@@ -62,7 +62,7 @@ export class ArkMethod {
             this.isExported = true;
         }
 
-        this.parameterTypes = methodNode.methodNodeInfo.parameterTypes;
+        this.parameters = methodNode.methodNodeInfo.parameters;
         this.returnType = methodNode.methodNodeInfo.returnType;
     }
 
@@ -83,7 +83,7 @@ export class ArkMethod {
     }
 
     private genSignatures() {
-        this.methodSubSignature = new MethodSubSignature(this.name, this.parameterTypes, this.returnType);
+        this.methodSubSignature = new MethodSubSignature(this.name, this.parameters, this.returnType);
         this.methodSignature = new MethodSignature(this.methodSubSignature, this.declaringClass.classSignature);
     }
 }
