@@ -834,19 +834,19 @@ export class CfgBuilder {
                 this.errorTest(cstm);
                 return;
             }
-            // this.blocks=this.blocks.filter((b)=>b.stms.length!=0);
-            let b2: Block;
             if (cstm.type == "loopStatement") {
                 this.blocks = this.blocks.filter((b) => b.stms.length != 0);
                 let loopBlock = new Block(this.blocks.length, [cstm], null);
                 this.blocks.push(loopBlock);
-                // block.nexts.push(loopBlock);
                 block = loopBlock;
                 cstm.block = block;
             }
-            this.buildBlocks(cstm.nextT, block);
+            this.blocks=this.blocks.filter((b)=>b.stms.length!=0);
+            let b1 = new Block(this.blocks.length, [], null);
+            this.blocks.push(b1);
+            this.buildBlocks(cstm.nextT, b1);
             this.blocks = this.blocks.filter((b) => b.stms.length != 0);
-            b2 = new Block(this.blocks.length, [], null);
+            let b2 = new Block(this.blocks.length, [], null);
             this.blocks.push(b2);
             // block.nexts.push(b2);
             this.buildBlocks(cstm.nextF, b2);

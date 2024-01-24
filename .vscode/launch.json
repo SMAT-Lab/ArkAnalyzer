@@ -17,9 +17,9 @@
         //"args": ["tests\\CfgTest.ts"]
         // "args": ["tests/SceneTest.ts"]
         //"args": ["tests\\SceneTest.ts"]
-        // "args": ["tests\\simpleCFGtest.ts"]
+        "args": ["tests\\simpleCFGtest.ts"]
         // "args": ["tests\\Cfgtest.ts"]
-        "args": ["tests\\SsaTest.ts"]
+        // "args": ["tests\\SsaTest.ts"]
         // "args": ["tests\\resources\\cfg\\main.ts"]
       }
     ]
