@@ -33,7 +33,11 @@ export class ArkArrayRef extends AbstractRef {
 
 
     public getUses(): Value[] {
-        let uses: Value[] = [this.base, this.index];
+        let uses: Value[] = [];
+        uses.push(this.base);
+        uses.push(...this.base.getUses());
+        uses.push(this.index);
+        uses.push(...this.index.getUses());
         return uses;
     }
 
@@ -74,6 +78,8 @@ export class ArkFieldRef extends AbstractRef {
 
     public getUses(): Value[] {
         let uses: Value[] = [];
+        uses.push(this.base);
+        uses.push(...this.base.getUses());
         return uses;
     }
 

@@ -3,7 +3,7 @@ import { Local } from "./Local";
 import { Value } from "./Value";
 
 export abstract class AbstractExpr implements Value {
-    abstract getUses(): Value[];    
+    abstract getUses(): Value[];
 }
 
 export class ArkInvokeExpr extends AbstractExpr {
@@ -44,6 +44,9 @@ export class ArkInvokeExpr extends AbstractExpr {
 
     public getUses(): Value[] {
         let uses: Value[] = [];
+        uses.push(this.base);
+        uses.push(...this.base.getUses());
+        uses.push(...this.args);
         for (const arg of this.args) {
             uses.push(...arg.getUses());
         }
@@ -153,7 +156,9 @@ export class ArkBinopExpr extends AbstractExpr {
     public getUses(): Value[] {
         let uses: Value[] = [];
         uses.push(this.op1);
+        uses.push(...this.op1.getUses());
         uses.push(this.op2);
+        uses.push(...this.op2.getUses());
         return uses;
     }
 
@@ -200,6 +205,8 @@ export class ArkTypeOfExpr extends AbstractExpr {
 
     public getUses(): Value[] {
         let uses: Value[] = [];
+        uses.push(this.op);
+        uses.push(...this.op.getUses());
         return uses;
     }
 
@@ -229,6 +236,8 @@ export class ArkInstanceOfExpr extends AbstractExpr {
 
     public getUses(): Value[] {
         let uses: Value[] = [];
+        uses.push(this.op);
+        uses.push(...this.op.getUses());
         return uses;
     }
 
@@ -244,7 +253,7 @@ export class ArkLengthExpr extends AbstractExpr {
         super();
         this.op = op;
     }
-    
+
     public getOp(): Value {
         return this.op;
     }
@@ -255,6 +264,8 @@ export class ArkLengthExpr extends AbstractExpr {
 
     public getUses(): Value[] {
         let uses: Value[] = [];
+        uses.push(this.op);
+        uses.push(...this.op.getUses());
         return uses;
     }
 
@@ -273,7 +284,7 @@ export class ArkCastExpr extends AbstractExpr {
         this.op = op;
         this.type = type;
     }
-    
+
     public getOp(): Value {
         return this.op;
     }
@@ -284,6 +295,8 @@ export class ArkCastExpr extends AbstractExpr {
 
     public getUses(): Value[] {
         let uses: Value[] = [];
+        uses.push(this.op);
+        uses.push(...this.op.getUses());
         return uses;
     }
 
@@ -306,6 +319,7 @@ export class ArkPhiExpr extends AbstractExpr {
 
     public getUses(): Value[] {
         let uses: Value[] = [];
+        uses.push(...this.args);
         return uses;
     }
 
