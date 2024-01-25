@@ -9,7 +9,8 @@ ast.simplify(ast.root);
 let cfgBuilder:CfgBuilder=new CfgBuilder(ast.root,"main",null);
 
 let cfg=cfgBuilder.buildCfg();
-    console.log(1)
+cfg.defUseChain();
+console.log(1)
 
 
 // cfg.printThreeAddressStrs();

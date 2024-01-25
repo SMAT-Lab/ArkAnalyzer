@@ -23,10 +23,14 @@ export class Stmt {
     public addUse(use: Value): void {
         this.uses.push(use);
     }
-    
+
     public replaceUse(oldUse: Value, newUse: Value): void {
         let stmtUseReplacer = new StmtUseReplacer(oldUse, newUse);
         stmtUseReplacer.caseStmt(this);
+    }
+
+    public replaceUses(uses: Value[]): void {
+        this.uses = Array.from(uses);
     }
 
     /** Return the def which is uesd in this statement */
@@ -172,10 +176,7 @@ export class ArkAssignStmt extends Stmt {
         this.leftOp = leftOp;
         this.rightOp = rightOp;
         this.setDef(leftOp);
-        this.addUse(rightOp);
-        for (const use of rightOp.getUses()) {
-            this.addUse(use);
-        }
+        this.updateUses();
     }
 
     public getLeftOp(): Value {
@@ -184,6 +185,7 @@ export class ArkAssignStmt extends Stmt {
 
     public setLeftOp(newLeftOp: Value): void {
         this.leftOp = newLeftOp;
+        this.updateUses();
     }
 
     public getRightOp(): Value {
@@ -192,10 +194,18 @@ export class ArkAssignStmt extends Stmt {
 
     public setRightOp(rightOp: Value): void {
         this.rightOp = rightOp;
+        this.setDef(rightOp);
     }
 
     public toString(): string {
         return this.getLeftOp() + " = " + this.getRightOp();
+    }
+
+    private updateUses(): void {
+        let uses: Value[] = [];
+        uses.push(this.rightOp);
+        uses.push(...this.rightOp.getUses());
+        this.replaceUses(uses);
     }
 }
 
@@ -206,10 +216,7 @@ export class ArkInvokeStmt extends Stmt {
     constructor(invokeExpr: ArkInvokeExpr) {
         super();
         this.invokeExpr = invokeExpr;
-        this.addUse(invokeExpr);
-        for (const use of invokeExpr.getUses()) {
-            this.addUse(use);
-        }
+        this.updateUses();
     }
 
     public getInvokeExpr() {
@@ -218,6 +225,13 @@ export class ArkInvokeStmt extends Stmt {
 
     public toString(): string {
         return this.invokeExpr.toString();
+    }
+
+    private updateUses(): void {
+        let uses: Value[] = [];
+        uses.push(this.invokeExpr);
+        uses.push(...this.invokeExpr.getUses());
+        this.replaceUses(uses);
     }
 }
 
@@ -228,10 +242,7 @@ export class ArkIfStmt extends Stmt {
     constructor(conditionExpr: ArkConditionExpr) {
         super();
         this.conditionExpr = conditionExpr;
-        this.addUse(conditionExpr);
-        for (const use of conditionExpr.getUses()) {
-            this.addUse(use);
-        }
+        this.updateUses();
     }
 
     public getConditionExprExpr() {
@@ -248,6 +259,13 @@ export class ArkIfStmt extends Stmt {
 
     public toString(): string {
         return 'if ' + this.conditionExpr;
+    }
+    
+    private updateUses(): void {
+        let uses: Value[] = [];
+        uses.push(this.conditionExpr);
+        uses.push(...this.conditionExpr.getUses());
+        this.replaceUses(uses);
     }
 }
 
@@ -273,6 +291,7 @@ export class ArkReturnStmt extends Stmt {
     constructor(op: Value) {
         super();
         this.op = op;
+        this.updateUses();
     }
 
     public getExpectedSuccessorCount(): number {
@@ -285,10 +304,19 @@ export class ArkReturnStmt extends Stmt {
 
     public setReturnValue(returnValue: Value): void {
         this.op = returnValue;
+        this.updateUses();
     }
 
     public toString(): string {
         return 'return ' + this.op;
+    }
+
+        
+    private updateUses(): void {
+        let uses: Value[] = [];
+        uses.push(this.op);
+        uses.push(...this.op.getUses());
+        this.replaceUses(uses);
     }
 }
 

@@ -55,7 +55,7 @@ export class Cfg {
     }
 
 
-    private defUseChain() {
+    defUseChain() {
         for (const block of this.blocks) {
             for (let stmtIndex = 0; stmtIndex < block.getStmts().length; stmtIndex++) {
                 const stmt = block.getStmts()[stmtIndex];
@@ -79,7 +79,10 @@ export class Cfg {
                         this.defUseChains.push(new DefUseChain(value, defStmts[0], stmt));
                     }
                     else {
-                        const needWalkBlocks = block.getPredecessors();
+                        const needWalkBlocks:BasicBlock[] = [];
+                        for(const predecessor of block.getPredecessors()){
+                            needWalkBlocks.push(predecessor);
+                        }
                         const walkedBlocks = new Set();
                         while (needWalkBlocks.length > 0) {
                             const predecessor = needWalkBlocks.pop();
