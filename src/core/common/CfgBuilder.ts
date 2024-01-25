@@ -1505,7 +1505,7 @@ export class CfgBuilder {
         if (nodeKind == 'SwitchStatement'
             || nodeKind == 'CaseClause'
             || nodeKind == 'DefaultClause'
-            || nodeKind == 'TryStatement'            
+            || nodeKind == 'TryStatement'
             || nodeKind == 'ThrowStatement') {
             return true;
         }
@@ -1525,8 +1525,7 @@ export class CfgBuilder {
     // temp function
     private nopStmt(node: NodeA): boolean {
         let nodeKind = node.kind;
-        if (nodeKind == 'BinaryExpression' || nodeKind == 'VariableDeclaration'
-            || nodeKind == 'VoidExpression') {
+        if (nodeKind == 'BinaryExpression' || nodeKind == 'VoidExpression') {
             return true;
         }
         return false;
@@ -1783,11 +1782,19 @@ export class CfgBuilder {
 
     private astNodeToThreeAddressAssignStmt(node: NodeA): Stmt[] {
         let leftOpNode = node.children[0];
-        let rightOpNode = node.children[this.findChildIndex(node, 'FirstAssignment') + 1];
+        let leftOp = this.astNodeToValue(leftOpNode);
+
         let leftOpType = this.getTypeNode(node)
 
-        let leftOp = this.astNodeToValue(leftOpNode);
-        let rightOp = this.astNodeToValue(rightOpNode);
+        let rightOpNode = new NodeA(undefined, null, [], 'dummy', -1, 'dummy');
+        let rightOp: Value;
+        if (this.findChildIndex(node, 'FirstAssignment') != -1) {
+            rightOpNode = node.children[this.findChildIndex(node, 'FirstAssignment') + 1];
+            rightOp = this.astNodeToValue(rightOpNode);
+        } else {
+            rightOp = new Constant('undefined');
+        }
+
 
         if (leftOp instanceof Local) {
             leftOp.setType(leftOpType)
@@ -1920,7 +1927,7 @@ export class CfgBuilder {
             }
         }
         else if ((node.kind == 'BinaryExpression' && node.children[1].kind == 'FirstAssignment')
-            || (node.kind == 'VariableDeclaration' && this.findChildIndex(node, 'FirstAssignment') != -1)) {
+            || (node.kind == 'VariableDeclaration')) {
             threeAddressStmts.push(...this.astNodeToThreeAddressAssignStmt(node));
         } else if (node.kind == "ExpressionStatement") {
             let expressionNodeIdx = 0;
