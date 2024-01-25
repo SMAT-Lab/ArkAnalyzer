@@ -1524,6 +1524,7 @@ export class CfgBuilder {
     }
 
     // temp function
+    // TODO: 支持i += 1;之类的复合赋值语句
     private nopStmt(node: NodeA): boolean {
         let nodeKind = node.kind;
         if (nodeKind == 'BinaryExpression' || nodeKind == 'VoidExpression') {
@@ -1746,7 +1747,7 @@ export class CfgBuilder {
             // TODO:新增block
             let conditionIdx = this.findChildIndex(node, 'QuestionToken') - 1;
             let conditionExprNode = node.children[conditionIdx];
-            let conditionExpr = new ArkConditionExpr('!(' + this.astNodeToValue(conditionExprNode).toString() + ')');
+            let conditionExpr = new ArkConditionExpr(this.astNodeToValue(conditionExprNode), new Constant('1'), '!=');
             this.current3ACstm.threeAddressStmts.push(new ArkIfStmt(conditionExpr));
 
             let resultLocal = this.generateTempValue();
@@ -1849,7 +1850,7 @@ export class CfgBuilder {
             let incrementorIdx = mayConditionIdx + 2;
             if (node.children[mayConditionIdx].kind != 'SemicolonToken') {
                 let conditionExprNode = node.children[mayConditionIdx];
-                let conditionExpr = new ArkConditionExpr('!(' + this.astNodeToValue(conditionExprNode).toString() + ')');
+                let conditionExpr = new ArkConditionExpr(this.astNodeToValue(conditionExprNode), new Constant('1'), '!=');
                 this.current3ACstm.threeAddressStmts.push(new ArkIfStmt(conditionExpr));
             } else {
                 incrementorIdx = mayConditionIdx + 1;
@@ -1872,7 +1873,7 @@ export class CfgBuilder {
             let indexLocal = this.generateTempValue();
             this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(indexLocal, new Constant('0')));
 
-            let conditionExpr = new ArkConditionExpr(indexLocal + ' >= ' + lenghtLocal);
+            let conditionExpr = new ArkConditionExpr(indexLocal, lenghtLocal, ' >= ');
             this.current3ACstm.threeAddressStmts.push(new ArkIfStmt(conditionExpr));
 
             let varLocal = this.astNodeToValue(varNode);
@@ -1884,7 +1885,7 @@ export class CfgBuilder {
         } else if (node.kind == "WhileStatement" || node.kind == "DoStatement") {
             let conditionIdx = this.findChildIndex(node, 'OpenParenToken') + 1;
             let conditionExprNode = node.children[conditionIdx];
-            let conditionExpr = new ArkConditionExpr('!(' + this.astNodeToValue(conditionExprNode).toString() + ')');
+            let conditionExpr = new ArkConditionExpr(this.astNodeToValue(conditionExprNode), new Constant('1'), '!=');
             this.current3ACstm.threeAddressStmts.push(new ArkIfStmt(conditionExpr));
         }
     }
@@ -1926,7 +1927,14 @@ export class CfgBuilder {
             this.astNodeToThreeAddressStmt(expressionNode);
         } else if (node.kind == 'IfStatement') {
             let conditionExprNode = node.children[this.findChildIndex(node, 'OpenParenToken') + 1];
-            let conditionExpr = new ArkConditionExpr('!(' + this.astNodeToValue(conditionExprNode).toString() + ')');
+            let conditionValue = this.astNodeToValue(conditionExprNode);
+            let conditionExpr: ArkConditionExpr;
+            if (conditionValue instanceof ArkBinopExpr) {
+                conditionExpr = new ArkConditionExpr(conditionValue.getOp1(), conditionValue.getOp2(), conditionValue.getOperator());
+            } else {
+                conditionExpr = new ArkConditionExpr(conditionValue, new Constant('1'), '!=');
+            }
+
             threeAddressStmts.push(new ArkIfStmt(conditionExpr));
         } else if (node.kind == 'PostfixUnaryExpression' || node.kind == 'PrefixUnaryExpression') {
             this.astNodeToValue(node);

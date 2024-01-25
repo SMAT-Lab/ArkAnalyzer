@@ -14,22 +14,22 @@ export class StaticSingleAssignmentFormer {
 
         let blockToDefs = new Map<BasicBlock, Set<Local>>();
         let localToBlocks = new Map<Local, Set<BasicBlock>>();
-        for (const blcok of cfg.getBlocks()) {
+        for (const block of cfg.getBlocks()) {
             let defs = new Set<Local>();
-            for (const stmt of blcok.getStmts()) {
+            for (const stmt of block.getStmts()) {
                 if (stmt.getDef() != null && stmt.getDef() instanceof Local) {
                     let local = stmt.getDef() as Local;
                     defs.add(local);
                     if (localToBlocks.has(local)) {
-                        localToBlocks.get(local)?.add(blcok);
+                        localToBlocks.get(local)?.add(block);
                     } else {
                         let blcoks = new Set<BasicBlock>();
-                        blcoks.add(blcok);
+                        blcoks.add(block);
                         localToBlocks.set(local, blcoks);
                     }
                 }
             }
-            blockToDefs.set(blcok, defs);
+            blockToDefs.set(block, defs);
         }
 
         let dominanceFinder = new DominanceFinder(cfg);
@@ -60,21 +60,21 @@ export class StaticSingleAssignmentFormer {
                         phiBlocks.add(df);
 
                         let phiStmt = this.createEmptyPhiStmt(local);
-                        if (blockToPhiStmts.has(block)) {
-                            blockToPhiStmts.get(block)?.add(phiStmt);
-                            blockToPhiLocals.get(block)?.add(local);
+                        if (blockToPhiStmts.has(df)) {
+                            blockToPhiStmts.get(df)?.add(phiStmt);
+                            blockToPhiLocals.get(df)?.add(local);
                         } else {
                             let phiStmts = new Set<Stmt>();
                             phiStmts.add(phiStmt);
-                            blockToPhiStmts.set(block, phiStmts);
+                            blockToPhiStmts.set(df, phiStmts);
                             let phiLocals = new Set<Local>();
                             phiLocals.add(local);
-                            blockToPhiLocals.set(block, phiLocals);
+                            blockToPhiLocals.set(df, phiLocals);
                         }
-                        blockToDefs.get(block)?.add(local);
+                        blockToDefs.get(df)?.add(local);
 
-                        if (!blockToDefs.get(block)?.has(local)) {
-                            blocks.push(block);
+                        if (!blockToDefs.get(df)?.has(local)) {
+                            blocks.push(df);
                         }
                     }
                 }
@@ -97,7 +97,7 @@ export class StaticSingleAssignmentFormer {
                         if (blockToDefs.get(block)?.has(local)) {
                             if (phiArgsNum.has(phi)) {
                                 let num = phiArgsNum.get(phi) as number;
-                                phiArgsNum.set(phi, num);
+                                phiArgsNum.set(phi, num + 1);
                             } else {
                                 phiArgsNum.set(phi, 1);
                             }
@@ -144,7 +144,7 @@ export class StaticSingleAssignmentFormer {
                         if (use instanceof Local) {
                             let nameStack = localToNameStack.get(use) as Local[];
                             let newUse = nameStack[nameStack.length - 1];
-                            stmt.replaceUse(use, newUse);                            
+                            stmt.replaceUse(use, newUse);
                         }
                     }
                 }

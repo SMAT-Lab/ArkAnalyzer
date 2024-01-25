@@ -191,6 +191,10 @@ export class ArkBinopExpr extends AbstractExpr {
         this.op2 = newOp2;
     }
 
+    public getOperator(): string {
+        return this.operator;
+    }
+
     public getUses(): Value[] {
         let uses: Value[] = [];
         uses.push(this.op1);
@@ -205,25 +209,11 @@ export class ArkBinopExpr extends AbstractExpr {
     }
 }
 
-// TODO:表示为二元比较
-export class ArkConditionExpr extends AbstractExpr {
-    private condition: string;
-
-    constructor(condition: string) {
-        super();
-        this.condition = condition;
-    }
-
-    public getUses(): Value[] {
-        let uses: Value[] = [];
-        return uses;
-    }
-
-    public toString(): string {
-        return this.condition;
+export class ArkConditionExpr extends ArkBinopExpr {
+    constructor(op1: Value, op2: Value, operator: string) {
+        super(op1, op2, operator);
     }
 }
-
 
 export class ArkTypeOfExpr extends AbstractExpr {
     private op: Value;
