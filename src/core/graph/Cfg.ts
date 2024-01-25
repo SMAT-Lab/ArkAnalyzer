@@ -56,9 +56,17 @@ export class Cfg {
 
 
     buildDefUseChain() {
+        const locals:Set<Local>=new Set();
         for (const block of this.blocks) {
             for (let stmtIndex = 0; stmtIndex < block.getStmts().length; stmtIndex++) {
                 const stmt = block.getStmts()[stmtIndex];
+                // 填declareStmt
+                const defValue=stmt.getDef()
+                if(defValue && defValue instanceof Local &&!locals.has(defValue)){
+                    defValue.setDeclaringStmt(stmt);
+                    locals.add(defValue);
+                }
+
                 for (const value of stmt.getUses()) {
                     if (value instanceof Local) {
                         const local = value as Local;

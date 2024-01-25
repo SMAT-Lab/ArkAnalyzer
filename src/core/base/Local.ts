@@ -43,6 +43,10 @@ export class Local implements Value {
         return this.declaringStmt;
     }
 
+    public setDeclaringStmt(declaringStmt:Stmt){
+        this.declaringStmt=declaringStmt;
+    }
+
 
     public getUses(): Value[] {
         return [];
