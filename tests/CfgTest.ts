@@ -18,8 +18,8 @@ export class CfgTest {
         let projectFiles: string[] = utils.getAllFiles(input_dir, ['.ts']);
 
         // let projectFiles = ['D:\\codes\\openharmony\\applications\\applications_photos\\common\\src\\main\\ets\\default\\model\\browser\\AbsDataSource.ts']        
-        // projectFiles = ['D:\\codes\\openharmony\\applications\\applications_photos\\common\\src\\main\\ets\\default\\access\\UserFileManagerAccess.ts']
-        projectFiles = ['tests\\resources\\cfg\\cfgmain.ts'];
+        projectFiles = ['D:\\codes\\openharmony\\applications\\applications_photos\\common\\src\\main\\ets\\default\\access\\UserFileManagerAccess.ts']
+        // projectFiles = ['tests\\resources\\cfg\\cfgmain.ts'];
 
         let scene = new Scene(projectName, projectFiles, 'D:\\Codes\\ark-analyzer-mirror');
 

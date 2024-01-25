@@ -841,7 +841,7 @@ export class CfgBuilder {
                 block = loopBlock;
                 cstm.block = block;
             }
-            this.blocks=this.blocks.filter((b)=>b.stms.length!=0);
+            this.blocks = this.blocks.filter((b) => b.stms.length != 0);
             let b1 = new Block(this.blocks.length, [], null);
             this.blocks.push(b1);
             this.buildBlocks(cstm.nextT, b1);
@@ -873,7 +873,7 @@ export class CfgBuilder {
             let tryFirstBlock = new Block(this.blocks.length, [], null);
             trystm.block = tryFirstBlock;
             this.blocks.push(tryFirstBlock);
-            if(block.stms.length>0){
+            if (block.stms.length > 0) {
                 block.nexts.add(tryFirstBlock);
                 tryFirstBlock.lasts.add(block);
             }
@@ -944,7 +944,7 @@ export class CfgBuilder {
             if (trystm.next)
                 this.buildBlocks(trystm.next, nextBlock);
             let goto = new StatementBuilder("gotoStatement", "goto label" + nextBlock.id, null, trystm.tryFirst.scopeID);
-            goto.block=finallyBlock;
+            goto.block = finallyBlock;
             if (trystm.finallyStatement) {
                 finallyBlock.stms.push(goto);
             }
@@ -1505,8 +1505,7 @@ export class CfgBuilder {
         if (nodeKind == 'SwitchStatement'
             || nodeKind == 'CaseClause'
             || nodeKind == 'DefaultClause'
-            || nodeKind == 'TryStatement'
-            || nodeKind == 'ConditionalExpression'
+            || nodeKind == 'TryStatement'            
             || nodeKind == 'ThrowStatement') {
             return true;
         }
@@ -1756,6 +1755,22 @@ export class CfgBuilder {
             value = new Local(syntaxListItems[0].text);
             value = this.getOriginalLocal(value);
         }
+        else if (node.kind == 'ConditionalExpression') {
+            // TODO:新增block
+            let conditionIdx = this.findChildIndex(node, 'QuestionToken') - 1;
+            let conditionExprNode = node.children[conditionIdx];
+            let conditionExpr = new ArkConditionExpr('!(' + this.astNodeToValue(conditionExprNode).toString() + ')');
+            this.current3ACstm.threeAddressStmts.push(new ArkIfStmt(conditionExpr));
+
+            let resultLocal = this.generateTempValue();
+            let whenTrueIdx = this.findChildIndex(node, 'QuestionToken') + 1;
+            let whenTrueNode = node.children[whenTrueIdx];
+            this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(resultLocal, this.astNodeToValue(whenTrueNode)));
+            let whenFalseIdx = this.findChildIndex(node, 'ColonToken') + 1;
+            let whenFalseNode = node.children[whenFalseIdx];
+            this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(resultLocal, this.astNodeToValue(whenFalseNode)));
+            value = resultLocal;
+        }
         else if (this.toSupport(node)) {
             value = new Local(node.text);
         }
@@ -1849,8 +1864,6 @@ export class CfgBuilder {
                 let incrementorNode = node.children[incrementorIdx];
                 this.astNodeToThreeAddressStmt(incrementorNode);
             }
-
-            this.current3ACstm.threeAddressStmts.push(new ArkGotoStmt());
         } else if (node.kind == "ForOfStatement" || node.kind == "ForInStatement") {
             // 暂时只支持数组遍历
             let varIdx = this.findChildIndex(node, 'OpenParenToken') + 1;
@@ -1873,14 +1886,11 @@ export class CfgBuilder {
 
             let incrExpr = new ArkBinopExpr(indexLocal, new Constant('1'), '+');
             this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(indexLocal, incrExpr));
-            this.current3ACstm.threeAddressStmts.push(new ArkGotoStmt());
-        } else if (node.kind == "WhileStatement") {
+        } else if (node.kind == "WhileStatement" || node.kind == "DoStatement") {
             let conditionIdx = this.findChildIndex(node, 'OpenParenToken') + 1;
             let conditionExprNode = node.children[conditionIdx];
             let conditionExpr = new ArkConditionExpr('!(' + this.astNodeToValue(conditionExprNode).toString() + ')');
             this.current3ACstm.threeAddressStmts.push(new ArkIfStmt(conditionExpr));
-
-            this.current3ACstm.threeAddressStmts.push(new ArkGotoStmt());
         }
     }
 
@@ -1927,7 +1937,7 @@ export class CfgBuilder {
             this.astNodeToValue(node);
         }
         else if (node.kind == 'ForStatement' || node.kind == 'ForOfStatement' || node.kind == 'ForInStatement'
-            || node.kind == 'WhileStatement') {
+            || node.kind == 'WhileStatement' || node.kind == 'DoStatement') {
             this.astNodeToThreeAddressIterationStatement(node);
         }
         else if (node.kind == 'BreakStatement' || node.kind == 'ContinueStatement') {
@@ -2562,14 +2572,14 @@ export class CfgBuilder {
             blockBuilderToBlock.set(blockBuilder, block);
         }
 
-        // link block
-        for (const [blockBuilder, block] of blockBuilderToBlock) {
-            for (const successorBuilder of Array.from(blockBuilder.nexts)) {
-                let successorBlock = blockBuilderToBlock.get(successorBuilder) as BasicBlock;
-                successorBlock.addPredecessorBlock(block);
-                block.addSuccessorBlock(successorBlock);
-            }
-        }
+        // // link block
+        // for (const [blockBuilder, block] of blockBuilderToBlock) {
+        //     for (const successorBuilder of Array.from(blockBuilder.nexts)) {
+        //         let successorBlock = blockBuilderToBlock.get(successorBuilder) as BasicBlock;
+        //         successorBlock.addPredecessorBlock(block);
+        //         block.addSuccessorBlock(successorBlock);
+        //     }
+        // }
 
         return cfg;
     }
