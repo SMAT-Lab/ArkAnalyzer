@@ -2,11 +2,11 @@
 import path from 'path';
 export class MethodSubSignature {
     methodName: string | undefined;
-    parameters: Map<string, string>;
+    parameters: string[] = [];
     returnType: string[] = [];
     constructor(methodName: string | undefined, parameters: Map<string, string>, returnType: string[]) {
         this.methodName = methodName;
-        this.parameters = parameters;
+        this.parameters.push(...parameters.values());
         this.returnType = returnType;
     }
 
@@ -78,7 +78,7 @@ export function methodSignatureCompare(leftSig: MethodSignature, rightSig: Metho
 }
 
 export function methodSubSignatureCompare(leftSig: MethodSubSignature, rightSig: MethodSubSignature): boolean {
-    if ((leftSig.methodName == rightSig.methodName) && parameterCompare(leftSig.parameters, rightSig.parameters) && arrayCompare(leftSig.returnType, rightSig.returnType)) {
+    if ((leftSig.methodName == rightSig.methodName) && arrayCompare(leftSig.parameters, rightSig.parameters) && arrayCompare(leftSig.returnType, rightSig.returnType)) {
         return true;
     }
     return false;
@@ -89,18 +89,6 @@ export function classSignatureCompare(leftSig: ClassSignature, rightSig: ClassSi
         return true;
     }
     return false;
-}
-
-function parameterCompare(leftParam: Map<string, string>, rightParam: Map<string, string>):boolean {
-    if (leftParam.size != rightParam.size) {
-        return false;
-    }
-    leftParam.forEach((value, key) => {
-        if (!rightParam.has(key) || (rightParam.get(key) != value)) {
-            return false;
-        }
-    });
-    return true;
 }
 
 function arrayCompare(leftArray: any[], rightArray: any[]) {
