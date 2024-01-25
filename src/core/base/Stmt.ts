@@ -260,7 +260,7 @@ export class ArkIfStmt extends Stmt {
     public toString(): string {
         return 'if ' + this.conditionExpr;
     }
-    
+
     private updateUses(): void {
         let uses: Value[] = [];
         uses.push(this.conditionExpr);
@@ -311,7 +311,6 @@ export class ArkReturnStmt extends Stmt {
         return 'return ' + this.op;
     }
 
-        
     private updateUses(): void {
         let uses: Value[] = [];
         uses.push(this.op);
@@ -343,5 +342,54 @@ export class ArkNopStmt extends Stmt {
 
     public toString(): string {
         return 'nop';
+    }
+}
+
+export class ArkSwitchStmt extends Stmt {
+    private key: Value;
+    private cases: Value[];  // default as an extra block
+
+    constructor(key: Value, cases: Value[]) {
+        super();
+        this.key = key;
+        this.cases = cases;
+        this.updateUses();
+    }
+
+    public getKey(): Value {
+        return this.key;
+    }
+
+    public getCases(): Value[] {
+        return this.cases;
+    }
+
+    public isBranch(): boolean {
+        return true;
+    }
+
+    public getExpectedSuccessorCount(): number {
+        return this.cases.length;
+    }
+
+    public toString(): string {
+        let strs: string[] = [];
+        strs.push('switch(' + this.key + ') {');
+        for (const c of this.cases) {
+            strs.push('case ');
+            strs.push(c.toString());
+            strs.push(': ');
+            strs.push(', ');
+        }
+
+        strs.push('default : }');
+        return strs.join('');
+    }
+
+    private updateUses(): void {
+        let uses: Value[] = [];
+        uses.push(this.key);
+        uses.push(...this.key.getUses());
+        this.replaceUses(uses);
     }
 }

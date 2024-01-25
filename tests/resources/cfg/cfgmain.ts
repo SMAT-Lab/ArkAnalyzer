@@ -1,11 +1,14 @@
 function test() {
-    let i = j + k;
-    i.call(l, m, n);
-    let o = new B(p);
-
-    if (q instanceof C) {
-        let r = s.t;
+    let a = 10;
+    switch (a) {
+        case 1:
+            console.log('1');
+        case 2:
+            console.log('2');
+            break;
+        case 3:
+            console.log('3');
+        default:
+            console.log('default');
     }
-
-    return z;
 }
