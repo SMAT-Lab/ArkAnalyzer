@@ -989,7 +989,7 @@ export class CfgBuilder {
                         block.nexts.add(nextT);
                         nextT.lasts.add(block);
                     }
-                    let nextF = originStatement.next?.block;
+                    let nextF = originStatement.nextF?.block;
                     if (nextF && (lastStatement || nextF != block) && !originStatement.nextF?.type.includes(" exit")) {
                         block.nexts.add(nextF);
                         nextF.lasts.add(block);

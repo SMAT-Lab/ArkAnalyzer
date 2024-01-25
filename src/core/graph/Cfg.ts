@@ -55,7 +55,7 @@ export class Cfg {
     }
 
 
-    defUseChain() {
+    buildDefUseChain() {
         for (const block of this.blocks) {
             for (let stmtIndex = 0; stmtIndex < block.getStmts().length; stmtIndex++) {
                 const stmt = block.getStmts()[stmtIndex];

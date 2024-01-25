@@ -9,7 +9,7 @@ ast.simplify(ast.root);
 let cfgBuilder:CfgBuilder=new CfgBuilder(ast.root,"main",null);
 
 let cfg=cfgBuilder.buildCfg();
-cfg.defUseChain();
+cfg.buildDefUseChain();
 console.log(1)
 
 
