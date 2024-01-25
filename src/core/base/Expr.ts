@@ -6,15 +6,13 @@ export abstract class AbstractExpr implements Value {
     abstract getUses(): Value[];
 }
 
-export class ArkInvokeExpr extends AbstractExpr {
+export abstract class AbstractInvokeExpr extends AbstractExpr {
     private methodSignature: string;
-    private base: Local;
     private args: Value[];
 
-    constructor(base: Local, methodSignature: string, args: Value[]) {
+    constructor(methodSignature: string, args: Value[]) {
         super();
         this.methodSignature = methodSignature;
-        this.base = base;
         this.args = args;
     }
 
@@ -34,6 +32,24 @@ export class ArkInvokeExpr extends AbstractExpr {
         this.args = newArgs;
     }
 
+    public getUses(): Value[] {
+        let uses: Value[] = [];
+        uses.push(...this.args);
+        for (const arg of this.args) {
+            uses.push(...arg.getUses());
+        }
+        return uses;
+    }
+}
+
+export class ArkInstanceInvokeExpr extends AbstractInvokeExpr {
+    private base: Local;
+
+    constructor(base: Local, methodSignature: string, args: Value[]) {
+        super(methodSignature, args);
+        this.base = base;
+    }
+
     public getBase(): Local {
         return this.base;
     }
@@ -46,8 +62,8 @@ export class ArkInvokeExpr extends AbstractExpr {
         let uses: Value[] = [];
         uses.push(this.base);
         uses.push(...this.base.getUses());
-        uses.push(...this.args);
-        for (const arg of this.args) {
+        uses.push(...this.getArgs());
+        for (const arg of this.getArgs()) {
             uses.push(...arg.getUses());
         }
         return uses;
@@ -57,10 +73,32 @@ export class ArkInvokeExpr extends AbstractExpr {
         let strs: string[] = [];
         strs.push(this.base.toString());
         strs.push('.');
-        strs.push(this.methodSignature);
+        strs.push(this.getMethodSignature());
         strs.push('(');
-        if (this.args.length > 0) {
-            for (const arg of this.args) {
+        if (this.getArgs().length > 0) {
+            for (const arg of this.getArgs()) {
+                strs.push(arg.toString());
+                strs.push(', ');
+            }
+            strs.pop();
+        }
+        strs.push(')');
+        return strs.join('');
+    }
+}
+
+export class ArkStaticInvokeExpr extends AbstractInvokeExpr {
+    constructor(methodSignature: string, args: Value[]) {
+        super(methodSignature, args);
+    }
+
+    public toString(): string {
+        let strs: string[] = [];
+        strs.push('staticinvoke ');
+        strs.push(this.getMethodSignature());
+        strs.push('(');
+        if (this.getArgs().length > 0) {
+            for (const arg of this.getArgs()) {
                 strs.push(arg.toString());
                 strs.push(', ');
             }

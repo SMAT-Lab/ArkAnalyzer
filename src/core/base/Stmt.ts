@@ -1,6 +1,6 @@
 import { StmtUseReplacer } from "../common/StmtUseReplacer";
-import { ArkConditionExpr, ArkInvokeExpr } from "./Expr";
-import { ArkArrayRef, ArkFieldRef } from "./Ref";
+import { AbstractInvokeExpr, ArkConditionExpr } from "./Expr";
+import { AbstractFieldRef, ArkArrayRef } from "./Ref";
 import { Value, ValueTag } from "./Value";
 
 export class Stmt {
@@ -73,17 +73,17 @@ export class Stmt {
 
     public containsInvokeExpr(): boolean {
         for (const use of this.uses) {
-            if (use instanceof ArkInvokeExpr) {
+            if (use instanceof AbstractInvokeExpr) {
                 return true;
             }
         }
         return false;
     }
 
-    public getInvokeExpr(): ArkInvokeExpr | undefined {
+    public getInvokeExpr(): AbstractInvokeExpr | undefined {
         for (const use of this.uses) {
-            if (use instanceof ArkInvokeExpr) {
-                return use as ArkInvokeExpr;
+            if (use instanceof AbstractInvokeExpr) {
+                return use as AbstractInvokeExpr;
             }
         }
         return undefined;
@@ -118,24 +118,24 @@ export class Stmt {
 
     public containsFieldRef(): boolean {
         for (const use of this.uses) {
-            if (use instanceof ArkFieldRef) {
+            if (use instanceof AbstractFieldRef) {
                 return true;
             }
         }
 
-        if (this.def instanceof ArkFieldRef) {
+        if (this.def instanceof AbstractFieldRef) {
             return true;
         }
         return false;
     }
 
-    public getFieldRef(): ArkFieldRef | undefined {
+    public getFieldRef(): AbstractFieldRef | undefined {
         for (const use of this.uses) {
-            if (use instanceof ArkFieldRef) {
-                return use as ArkFieldRef;
+            if (use instanceof AbstractFieldRef) {
+                return use as AbstractFieldRef;
             }
         }
-        if (this.def instanceof ArkFieldRef) {
+        if (this.def instanceof AbstractFieldRef) {
             return undefined;
         }
         return undefined;
@@ -211,9 +211,9 @@ export class ArkAssignStmt extends Stmt {
 
 
 export class ArkInvokeStmt extends Stmt {
-    private invokeExpr: ArkInvokeExpr;
+    private invokeExpr: AbstractInvokeExpr;
 
-    constructor(invokeExpr: ArkInvokeExpr) {
+    constructor(invokeExpr: AbstractInvokeExpr) {
         super();
         this.invokeExpr = invokeExpr;
         this.updateUses();

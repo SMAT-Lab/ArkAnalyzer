@@ -1,4 +1,4 @@
-import { AbstractExpr, ArkBinopExpr, ArkCastExpr, ArkInstanceOfExpr, ArkInvokeExpr, ArkLengthExpr, ArkNewArrayExpr, ArkTypeOfExpr } from "../base/Expr";
+import { AbstractExpr, AbstractInvokeExpr, ArkBinopExpr, ArkCastExpr, ArkInstanceInvokeExpr, ArkInstanceOfExpr, ArkLengthExpr, ArkNewArrayExpr, ArkTypeOfExpr } from "../base/Expr";
 import { Local } from "../base/Local";
 import { Value } from "../base/Value";
 
@@ -18,7 +18,7 @@ export class ExprUseReplacer {
     public caseExpr(expr: AbstractExpr): void {
         if (expr instanceof ArkBinopExpr) {
             this.caseBinopExp(expr);
-        } else if (expr instanceof ArkInvokeExpr) {
+        } else if (expr instanceof AbstractInvokeExpr) {
             this.caseInvokeExpr(expr);
         } else if (expr instanceof ArkNewArrayExpr) {
             this.caseNewArrayExpr(expr);
@@ -44,7 +44,7 @@ export class ExprUseReplacer {
         }
     }
 
-    private caseInvokeExpr(expr: ArkInvokeExpr): void {
+    private caseInvokeExpr(expr: AbstractInvokeExpr): void {
         let args = expr.getArgs();
         for (let i = 0; i < args.length; i++) {
             if (args[i] == this.oldUse) {
@@ -52,7 +52,7 @@ export class ExprUseReplacer {
             }
         }
 
-        if (expr.getBase() == this.oldUse) {
+        if (expr instanceof ArkInstanceInvokeExpr && expr.getBase() == this.oldUse) {
             expr.setBase(<Local>this.newUse);
         }
     }

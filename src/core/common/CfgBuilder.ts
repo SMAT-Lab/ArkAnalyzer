@@ -1,9 +1,9 @@
 import * as fs from 'fs';
 import { ASTree, NodeA } from '../base/Ast';
 import { Constant } from '../base/Constant';
-import { ArkBinopExpr, ArkCastExpr, ArkConditionExpr, ArkInvokeExpr, ArkLengthExpr, ArkNewArrayExpr, ArkNewExpr, ArkTypeOfExpr } from '../base/Expr';
+import { AbstractInvokeExpr, ArkBinopExpr, ArkCastExpr, ArkConditionExpr, ArkInstanceInvokeExpr, ArkLengthExpr, ArkNewArrayExpr, ArkNewExpr, ArkStaticInvokeExpr, ArkTypeOfExpr } from '../base/Expr';
 import { Local } from '../base/Local';
-import { ArkArrayRef, ArkFieldRef } from '../base/Ref';
+import { ArkArrayRef, ArkInstanceFieldRef, ArkStaticFieldRef } from '../base/Ref';
 import { ArkAssignStmt, ArkGotoStmt, ArkIfStmt, ArkInvokeStmt, ArkReturnStmt, ArkReturnVoidStmt, Stmt } from '../base/Stmt';
 import { Value } from '../base/Value';
 import { BasicBlock } from '../graph/BasicBlock';
@@ -1506,7 +1506,8 @@ export class CfgBuilder {
             || nodeKind == 'CaseClause'
             || nodeKind == 'DefaultClause'
             || nodeKind == 'TryStatement'
-            || nodeKind == 'ThrowStatement') {
+            || nodeKind == 'ThrowStatement'
+            || nodeKind == 'ElementAccessExpression') {
             return true;
         }
         return false;
@@ -1601,32 +1602,19 @@ export class CfgBuilder {
             }
             value = new ArkBinopExpr(op1, op2, operator);
         }
+        // TODO:属性访问是否需要展开
         else if (node.kind == 'PropertyAccessExpression') {
-            let fieldSignature = node.children[2].text;
-            let base: any;
-            if (this.needExpansion(node.children[0])) {
-                base = this.generateAssignStmt(node.children[0])
+            let tempBase = new Local(node.children[0].text);
+            let base = this.getOriginalLocal(tempBase);
+            if (base == tempBase) {
+                let fieldSignature = node.text;
+                value = new ArkStaticFieldRef(fieldSignature);
             } else {
-                base = new Local(node.children[0].text);
-                base = this.getOriginalLocal(base);
+                let fieldSignature = node.children[2].text;
+                value = new ArkInstanceFieldRef(base, fieldSignature);
             }
-            value = new ArkFieldRef(base, fieldSignature);
         }
         else if (node.kind == "CallExpression") {
-            let calleeNode = node.children[0];
-            let methodValue = this.astNodeToValue(calleeNode);
-
-            let base: Local;
-            let methodSignature = '';
-            if (methodValue instanceof ArkFieldRef) {
-                base = methodValue.getBase();
-                methodSignature = methodValue.getFieldName();
-            } else {
-                base = new Local('globalThis');
-                methodSignature = methodValue.toString();
-            }
-            base = this.getOriginalLocal(base);
-
             let syntaxListNode = node.children[this.findChildIndex(node, 'OpenParenToken') + 1];
             let argNodes = this.getSyntaxListItems(syntaxListNode);
             let args: Value[] = [];
@@ -1639,11 +1627,18 @@ export class CfgBuilder {
                 args.push(argValue);
             }
 
-            value = new ArkInvokeExpr(base, methodSignature, args);
+            let calleeNode = node.children[0];
+            let methodValue = this.astNodeToValue(calleeNode);
+            if (methodValue instanceof ArkInstanceFieldRef) {
+                value = new ArkInstanceInvokeExpr(methodValue.getBase(), methodValue.getFieldName(), args);
+            } else if (methodValue instanceof ArkStaticFieldRef) {
+                value = new ArkStaticInvokeExpr(methodValue.getFieldName(), args);
+            } else {
+                value = new ArkStaticInvokeExpr(calleeNode.text, args);
+            }
         }
+        // TODO:箭头函数视作静态方法还是普通方法
         else if (node.kind == "ArrowFunction") {
-            let base = new Local('globalThis');
-            base = this.getOriginalLocal(base);
             let methodSignature = 'anonymousFunc#' + this.anonymousFuncIndex;
             this.anonymousFuncIndex++;
 
@@ -1654,11 +1649,10 @@ export class CfgBuilder {
                     args.push(this.astNodeToValue(argNode));
                 }
             }
-            value = new ArkInvokeExpr(base, methodSignature, args);
+            value = new ArkStaticInvokeExpr(methodSignature, args);
         }
+        // TODO:函数表达式视作静态方法还是普通方法
         else if (node.kind == 'FunctionExpression') {
-            let base = new Local('globalThis');
-            base = this.getOriginalLocal(base);
             let methodSignature = '';
             if (node.children[1].kind != 'OpenParenToken') {
                 methodSignature = node.children[1].text;
@@ -1674,8 +1668,7 @@ export class CfgBuilder {
                     args.push(this.astNodeToValue(argNode));
                 }
             }
-            value = new ArkInvokeExpr(base, methodSignature, args);
-
+            value = new ArkStaticInvokeExpr(methodSignature, args);
         }
         else if (node.kind == "NewExpression") {
             let classValue = this.astNodeToValue(node.children[1]);
@@ -1692,11 +1685,6 @@ export class CfgBuilder {
             }
             // TODO:得到准确类型
             value = new ArkNewArrayExpr('int', new Local(size.toString()));
-        }
-        else if (node.kind == 'ElementAccessExpression') {
-            let base = this.astNodeToValue(node.children[0]) as Local;
-            let fieldSignature = this.astNodeToValue(node.children[2]).toString();
-            value = new ArkFieldRef(base, fieldSignature);
         }
         else if (node.kind == 'PrefixUnaryExpression') {
             let token = node.children[0].text;
@@ -1771,11 +1759,11 @@ export class CfgBuilder {
             value = resultLocal;
         }
         else if (this.toSupport(node)) {
-            value = new Local(node.text);
+            value = new Constant(node.text);
         }
         else {
             console.log('unsupported expr node type:', node.kind, ', text:', node.text)
-            value = new Local(node.text);
+            value = new Constant(node.text);
         }
         return value;
     }
@@ -1814,7 +1802,7 @@ export class CfgBuilder {
             for (const argNode of argNodes) {
                 args.push(this.astNodeToValue(argNode));
             }
-            threeAddressAssignStmts.push(new ArkInvokeStmt(new ArkInvokeExpr(leftOp as Local, methodSignature, args)));
+            threeAddressAssignStmts.push(new ArkInvokeStmt(new ArkInstanceInvokeExpr(leftOp as Local, methodSignature, args)));
         } else if (rightOp instanceof ArkNewArrayExpr) {
             let argsNode = rightOpNode.children[1];
             let index = 0;
@@ -1951,7 +1939,7 @@ export class CfgBuilder {
             threeAddressStmts.push(new ArkGotoStmt());
         }
         else if (node.kind == 'CallExpression') {
-            threeAddressStmts.push(new ArkInvokeStmt(this.astNodeToValue(node) as ArkInvokeExpr));
+            threeAddressStmts.push(new ArkInvokeStmt(this.astNodeToValue(node) as AbstractInvokeExpr));
         }
         else if (node.kind == 'NewExpression') {
             let leftOp = this.generateTempValue();
@@ -1966,7 +1954,7 @@ export class CfgBuilder {
             for (const argNode of argNodes) {
                 args.push(this.astNodeToValue(argNode));
             }
-            threeAddressStmts.push(new ArkInvokeStmt(new ArkInvokeExpr(leftOp as Local, methodSignature, args)));
+            threeAddressStmts.push(new ArkInvokeStmt(new ArkInstanceInvokeExpr(leftOp as Local, methodSignature, args)));
         }
         else if (node.kind == "AwaitExpression") {
             let expressionNode = node.children[1];
@@ -2579,14 +2567,14 @@ export class CfgBuilder {
             blockBuilderToBlock.set(blockBuilder, block);
         }
 
-        // // link block
-        // for (const [blockBuilder, block] of blockBuilderToBlock) {
-        //     for (const successorBuilder of Array.from(blockBuilder.nexts)) {
-        //         let successorBlock = blockBuilderToBlock.get(successorBuilder) as BasicBlock;
-        //         successorBlock.addPredecessorBlock(block);
-        //         block.addSuccessorBlock(successorBlock);
-        //     }
-        // }
+        // link block
+        for (const [blockBuilder, block] of blockBuilderToBlock) {
+            for (const successorBuilder of Array.from(blockBuilder.nexts)) {
+                let successorBlock = blockBuilderToBlock.get(successorBuilder) as BasicBlock;
+                successorBlock.addPredecessorBlock(block);
+                block.addSuccessorBlock(successorBlock);
+            }
+        }
 
         return cfg;
     }

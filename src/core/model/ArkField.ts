@@ -1,7 +1,5 @@
-import { ArkFieldRef } from "../base/Ref";
 import { Property } from "../common/ClassBuilderInfo";
 import { ArkClass } from "./ArkClass";
-import { ArkFile } from "./ArkFile";
 import { FieldSignature } from "./ArkSignature";
 
 export class ArkField {

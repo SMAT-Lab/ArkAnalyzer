@@ -46,24 +46,12 @@ export class ArkArrayRef extends AbstractRef {
     }
 }
 
-export class ArkFieldRef extends AbstractRef {
-    private base: Local;     // 属性变量
+export abstract class AbstractFieldRef extends AbstractRef {    
     private fieldName: string;
-    // private fieldSignature: FieldSignature;  // 属性签名    
 
-
-    constructor(base: Local, fieldName: string) {
-        super();
-        this.base = base;
+    constructor(fieldName: string) {
+        super();        
         this.fieldName = fieldName;
-    }
-
-    public getBase(): Local {
-        return this.base;
-    }
-
-    public setBase(newBase: Local): void {
-        this.base = newBase;
     }
 
     public getFieldName(): string {
@@ -74,7 +62,23 @@ export class ArkFieldRef extends AbstractRef {
         //TODO: add signature generation here.
         return "";
     }
+}
 
+export class ArkInstanceFieldRef extends AbstractFieldRef {
+    private base: Local;       // which obj this field belong to
+
+    constructor(base: Local, fieldName: string) {        
+        super(fieldName);
+        this.base = base;        
+    }
+
+    public getBase(): Local {
+        return this.base;
+    }
+
+    public setBase(newBase: Local): void {
+        this.base = newBase;
+    }
 
     public getUses(): Value[] {
         let uses: Value[] = [];
@@ -84,6 +88,22 @@ export class ArkFieldRef extends AbstractRef {
     }
 
     public toString(): string {
-        return this.base.toString() + '.' + this.fieldName;
+        return this.base.toString() + '.' + this.getFieldName();
     }
 }
+
+export class ArkStaticFieldRef extends AbstractFieldRef {
+    constructor(fieldName: string) {        
+        super(fieldName);             
+    }
+
+    public getUses(): Value[] {
+        let uses: Value[] = [];
+        return uses;
+    }
+
+    public toString(): string {
+        return this.getFieldName();
+    }
+}
+
