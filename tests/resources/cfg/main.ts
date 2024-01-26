@@ -1,16 +1,4 @@
-// let i=0;
-// if(i<1){
-//     i++;
-// }
-// else{
-//     i--
-// }
-// console.log(i)
-
-let p=new personalbar();
-x=p.y;
-p.y=t;
-y=p.y;
+x=1;
 
 // let a:number[]=[1,2,3];
 // let a1=1;

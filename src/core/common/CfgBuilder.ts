@@ -11,6 +11,7 @@ import { Cfg } from '../graph/Cfg';
 import { ArkClass } from '../model/ArkClass';
 import { IRUtils } from './IRUtils';
 import { ArkMethod } from '../model/ArkMethod';
+import { ArkFile } from '../model/ArkFile';
 
 // todo:填cfg里的def use和local里的def use
 
@@ -389,7 +390,7 @@ export class CfgBuilder {
                 this.importFromPath.push(c.children[indexPath].text);
             }
             if (c.kind == "ReturnStatement") {
-                let s = new StatementBuilder("statement", c.text, c, scope.id);
+                let s = new StatementBuilder("returnStatement", c.text, c, scope.id);
                 judgeLastType(s);
                 s.astNode = c;
                 lastStatement = s;
@@ -1010,6 +1011,35 @@ export class CfgBuilder {
                     }
                 }
 
+            }
+        }
+    }
+
+    addReturnBlock(){
+        let notReturnStmts:StatementBuilder[]=[];
+        for(let stmt of this.exit.lasts){
+            if(stmt.type!="returnStatement"){
+                notReturnStmts.push(stmt);
+            }
+        }
+        const returnStatement=new StatementBuilder("returnStatement","return;",null,this.exit.scopeID);
+        if(notReturnStmts.length==1){
+            const notReturnStmt=notReturnStmts[0];
+            notReturnStmt.next=returnStatement;
+            returnStatement.lasts=[notReturnStmt];
+            returnStatement.next=this.exit;
+            this.exit.lasts[this.exit.lasts.indexOf(notReturnStmt)]=returnStatement;
+            notReturnStmt.block?.stms.push(returnStatement);
+        }
+        else if(notReturnStmts.length>1){
+            let returnBlock=new Block(this.blocks.length,[returnStatement],null);
+            this.blocks.push(returnBlock);
+            for(const notReturnStmt of notReturnStmts){
+                notReturnStmt.next=returnStatement;
+                returnStatement.lasts.push(notReturnStmt);
+                returnStatement.next=this.exit;
+                this.exit.lasts[this.exit.lasts.indexOf(notReturnStmt)]=returnStatement;
+                notReturnStmt.block?.nexts.add(returnBlock);
             }
         }
     }
@@ -1820,7 +1850,9 @@ export class CfgBuilder {
             }
             threeAddressAssignStmts.push(new ArkInvokeStmt(new ArkInstanceInvokeExpr(leftOp as Local, methodSignature, args)));
 
-            this.getTypeNewExpr(node.children[2]);
+            if(leftOp instanceof Local && leftOp.getType()==""){
+                leftOp.setType(this.getTypeNewExpr(node.children[2]));
+            }
 
         } else if (rightOp instanceof ArkNewArrayExpr) {
             let argsNode = rightOpNode.children[1];
@@ -2516,6 +2548,7 @@ export class CfgBuilder {
         this.buildBlocks(this.entry, this.entryBlock);
         this.blocks = this.blocks.filter((b) => b.stms.length != 0);
         this.buildBlocksNextLast();
+        this.addReturnBlock();
         this.resetWalked();
         this.generateUseDef();
         this.resetWalked();
@@ -2644,9 +2677,50 @@ export class CfgBuilder {
         return ""
     }
 
-    private getTypeNewExpr(node:NodeA){
-        const className=node.children[this.findChildIndex(node,"Identifier")];
-        const file=this.declaringClass?.declaringArkFile;
+    private getTypeNewExpr(node:NodeA):string{
+        const className=node.children[this.findChildIndex(node,"Identifier")].text;
+        const file=this.declaringClass.declaringArkFile;
+        return this.searchImportClass(file,className);
+    }
+
+    private searchImportClass(file:ArkFile,className:string):string{
+        for(let classInFile of file.classes){
+            if(className==classInFile.name){
+                return classInFile.classSignature.arkFile+"."+className;
+            }
+        }
+        for(let importInfo of file.importInfos){
+            if(className==importInfo.importClauseName&&importInfo.importFrom!=undefined){
+                const fileDir=file.name.split("\\");
+                const importDir=importInfo.importFrom.split(/[\/\\]/).filter(item => item !== '.');
+                let parentDirNum=0;
+                while(importDir[parentDirNum]==".."){
+                    parentDirNum++;
+                }
+                if(parentDirNum<fileDir.length){
+                    let realImportFileName="";
+                    for(let i=0;i<fileDir.length-parentDirNum-1;i++){
+                        realImportFileName+=fileDir+"\\";
+                    }
+                    for(let i=parentDirNum;i<importDir.length;i++){
+                        realImportFileName+=importDir[i];
+                        if(i!=importDir.length-1){
+                            realImportFileName+="\\";
+                        }
+                    }
+
+                    const scene=file.scene;
+                    if(scene){
+                        for(let sceneFile of scene.arkFiles){
+                            if(sceneFile.name==realImportFileName){
+                                return this.searchImportClass(sceneFile,className);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return "";
     }
 
 }

@@ -7,6 +7,7 @@ import { ArkNamespace } from "./ArkNamespace";
 import { ClassSignature, MethodSignature, methodSignatureCompare, classSignatureCompare } from "./ArkSignature";
 import { ExportInfo } from '../common/ExportBuilder';
 import { ImportInfo } from '../common/ImportBuilder';
+import { Scene } from '../../Scene';
 
 /**
  * 
@@ -22,6 +23,8 @@ export class ArkFile {
     nameSpaces: ArkNamespace[] = [];
     importInfos: ImportInfo[] = [];
     exportInfos: ExportInfo[] = [];
+
+    scene:Scene|null=null;
 
     constructor(file: string, projectDir: string) {
         this.name = path.relative(projectDir, file);//use relative path
