@@ -10,6 +10,10 @@ export class Constant implements Value {
         this.type = ""
     }
 
+    public getValue(): string {
+        return this.value;
+    }
+
     public getUses(): Value[] {
         return [];
     }

@@ -24,7 +24,9 @@ export class ArkMethod {
         this.code = methodNode.text;
         this.declaringArkFile = declaringArkFile;
         this.declaringClass = declaringClass;
-        if (methodNode.kind != 'MethodDeclaration' && methodNode.kind != 'Constructor' && methodNode.kind != 'FunctionDeclaration') {
+        if (methodNode.kind != 'MethodDeclaration' && methodNode.kind != 'Constructor' &&
+            methodNode.kind != 'FunctionDeclaration' && methodNode.kind != 'GetAccessor' &&
+            methodNode.kind != 'SetAccessor' && methodNode.kind != 'ArrowFunction' && methodNode.kind != 'FunctionExpression') {
             this.buildDefaultArkMethod(methodNode);
         }
         else {

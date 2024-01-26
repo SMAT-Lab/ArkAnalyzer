@@ -83,7 +83,7 @@ export class ArkFile {
                     this.exportInfos.push(new ExportInfo(exportClauseName, exportClauseType));
                 }
             }
-            if (child.kind == 'FunctionDeclaration') {
+            if (child.kind == 'FunctionDeclaration' || child.kind == 'GetAccessor' || child.kind == 'SetAccessor') {
                 let mthd: ArkMethod = new ArkMethod(child, this, this.defaultClass);
                 this.defaultClass.methods.push(mthd);
                 if (mthd.isExported) {

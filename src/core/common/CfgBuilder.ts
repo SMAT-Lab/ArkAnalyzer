@@ -10,6 +10,7 @@ import { BasicBlock } from '../graph/BasicBlock';
 import { Cfg } from '../graph/Cfg';
 import { ArkClass } from '../model/ArkClass';
 import { IRUtils } from './IRUtils';
+import { ArkMethod } from '../model/ArkMethod';
 
 // todo:填cfg里的def use和local里的def use
 
@@ -204,7 +205,7 @@ export class CfgBuilder {
     exitBlock: Block;
     currentDeclarationKeyword: string;
     variables: Variable[];
-    declaringClass: ArkClass | null;
+    declaringClass: ArkClass;
     importFromPath: string[];
     catches: Catch[];
 
@@ -213,11 +214,8 @@ export class CfgBuilder {
 
     private locals: Set<Local> = new Set();
 
-    constructor(ast: NodeA, name: string | undefined, declaringClass: ArkClass | null) {
-        if (name)
-            this.name = name;
-        else
-            this.name = "undefined";
+    constructor(ast: NodeA, name: string, declaringClass: ArkClass) {
+        this.name = name;
         this.astRoot = ast;
         this.declaringClass = declaringClass;
         this.entry = new StatementBuilder("entry", "", ast, 0);
@@ -1640,7 +1638,13 @@ export class CfgBuilder {
         }
         // TODO:箭头函数视作静态方法还是普通方法
         else if (node.kind == "ArrowFunction") {
-            let methodSignature = 'anonymousFunc#' + this.anonymousFuncIndex;
+            let arrowFuncName = 'AnonymousFunc-' + this.name + '-' + this.anonymousFuncIndex;
+            if (node.methodNodeInfo) {
+                node.methodNodeInfo.updateName4anonymousFunc(arrowFuncName);
+            }
+            else {
+                throw new Error('No MethodNodeInfo found for ArrowFunction node. Please check.');
+            }
             this.anonymousFuncIndex++;
 
             let argsNode = node.children[1];
@@ -1650,16 +1654,25 @@ export class CfgBuilder {
                     args.push(this.astNodeToValue(argNode));
                 }
             }
-            value = new ArkStaticInvokeExpr(methodSignature, args);
+            let arrowArkMethod = new ArkMethod(node, this.declaringClass.declaringArkFile, this.declaringClass);
+            this.declaringClass.methods.push(arrowArkMethod);
+            value = new ArkStaticInvokeExpr(arrowArkMethod.methodSignature.toString(), args);
         }
         // TODO:函数表达式视作静态方法还是普通方法
         else if (node.kind == 'FunctionExpression') {
-            let methodSignature = '';
+            let funcExprName = '';
             if (node.children[1].kind != 'OpenParenToken') {
-                methodSignature = node.children[1].text;
+                funcExprName = node.children[1].text;
             } else {
-                methodSignature = 'anonymousFunc#' + this.anonymousFuncIndex;
+                funcExprName = 'AnonymousFunc-' + this.name + '-' + this.anonymousFuncIndex;
                 this.anonymousFuncIndex++;
+            }
+
+            if (node.methodNodeInfo) {
+                node.methodNodeInfo.updateName4anonymousFunc(funcExprName);
+            }
+            else {
+                throw new Error('No MethodNodeInfo found for ArrowFunction node. Please check.');
             }
 
             let argsNode = this.getChild(node, 'SyntaxList') as NodeA;
@@ -1669,7 +1682,9 @@ export class CfgBuilder {
                     args.push(this.astNodeToValue(argNode));
                 }
             }
-            value = new ArkStaticInvokeExpr(methodSignature, args);
+            let exprArkMethod = new ArkMethod(node, this.declaringClass.declaringArkFile, this.declaringClass);
+            this.declaringClass.methods.push(exprArkMethod);
+            value = new ArkStaticInvokeExpr(exprArkMethod.methodSignature.toString(), args);
         }
         else if (node.kind == "NewExpression") {
             let classValue = this.astNodeToValue(node.children[1]);

@@ -1,10 +1,10 @@
 
 import path from 'path';
 export class MethodSubSignature {
-    methodName: string | undefined;
+    methodName: string;
     parameters: string[] = [];
     returnType: string[] = [];
-    constructor(methodName: string | undefined, parameters: Map<string, string>, returnType: string[]) {
+    constructor(methodName: string, parameters: Map<string, string>, returnType: string[]) {
         this.methodName = methodName;
         this.parameters.push(...parameters.values());
         this.returnType = returnType;
