@@ -38,7 +38,7 @@ export class DominanceTree {
             dfsBlocks.push(curr);
             let childList = this.getChildren(curr);
             if (childList.length != 0) {
-                for (let i = this.children.length - 1; i >= 0; i--) {
+                for (let i = childList.length - 1; i >= 0; i--) {
                     queue.splice(0, 0, childList[i]);
                 }
             }
@@ -46,9 +46,9 @@ export class DominanceTree {
         return dfsBlocks;
     }
 
-    public getChildren(blcok: BasicBlock): BasicBlock[] {
+    public getChildren(block: BasicBlock): BasicBlock[] {
         let childList = new Array<BasicBlock>();
-        let idx = this.blockToIdx.get(blcok) as number;
+        let idx = this.blockToIdx.get(block) as number;             
         for (const i of this.children[idx]) {
             childList.push(this.blocks[i]);
         }

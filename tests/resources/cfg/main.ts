@@ -1,16 +1,16 @@
-let i=0;
-if(i<1){
-    i++;
-}
-else{
-    i--
-}
-console.log(i)
+// let i=0;
+// if(i<1){
+//     i++;
+// }
+// else{
+//     i--
+// }
+// console.log(i)
 
-// let p=new personalbar();
-// x=p.y;
-// p.y=t;
-// y=p.y;
+let p=new personalbar();
+x=p.y;
+p.y=t;
+y=p.y;
 
 // let a:number[]=[1,2,3];
 // let a1=1;

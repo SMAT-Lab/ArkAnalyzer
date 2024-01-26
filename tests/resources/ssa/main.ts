@@ -1,9 +1,9 @@
 function test() {
-    let i = 10;
-    if (i < 5) {
-        i += 1;
+    let i = 1;
+    if (i < 2) {
+        i = 3;
     } else {
-        i -= 1;
+        i = 4;
     }
-    console.log(i);
+    let j = i;
 }

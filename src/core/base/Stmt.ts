@@ -185,7 +185,7 @@ export class ArkAssignStmt extends Stmt {
 
     public setLeftOp(newLeftOp: Value): void {
         this.leftOp = newLeftOp;
-        this.updateUses();
+        this.setDef(newLeftOp);
     }
 
     public getRightOp(): Value {
@@ -194,7 +194,7 @@ export class ArkAssignStmt extends Stmt {
 
     public setRightOp(rightOp: Value): void {
         this.rightOp = rightOp;
-        this.setDef(rightOp);
+        this.updateUses();        
     }
 
     public toString(): string {

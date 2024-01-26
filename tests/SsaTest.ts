@@ -6,10 +6,6 @@ const fs = require('fs');
 
 export class SsaTest {
     public testStaticSingleAssignmentFormer() {
-        // let config = new Config("ThreeAddresStmtTest", "D:\\codes\\tests\\applications_systemui\\common\\src\\main\\ets\\default");
-        // let config = new Config("ThreeAddresStmtTest", "D:\\codes\\tests\\applications_systemui\\common\\src\\main\\ets\\default\\abilitymanager");
-        // let config = new Config("ThreeAddresStmtTest", "D:\\codes\\tests\\applications_systemui");
-
         let config = new Config("ThreeAddresStmtTest", "D:\\codes\\openharmony\\applications\\applications_photos");
 
 
@@ -18,8 +14,7 @@ export class SsaTest {
 
         let projectFiles: string[] = utils.getAllFiles(input_dir, ['.ts']);
 
-        // let projectFiles = ['D:\\codes\\openharmony\\applications\\applications_photos\\common\\src\\main\\ets\\default\\model\\browser\\AbsDataSource.ts']        
-        // projectFiles = ['D:\\codes\\openharmony\\applications\\applications_photos\\common\\src\\main\\ets\\default\\access\\UserFileManagerAccess.ts']
+
         projectFiles = ['tests\\resources\\ssa\\main.ts'];
 
         let scene = new Scene(projectName, projectFiles, 'D:\\Codes\\ark-analyzer-mirror');
