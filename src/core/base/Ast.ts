@@ -117,7 +117,8 @@ export class ASTree {
             if (ts.isClassExpression(child)) {
                 //TODO
             }
-            if (ts.isFunctionDeclaration(child) || ts.isMethodDeclaration(child) || ts.isConstructorDeclaration(child) || ts.isArrowFunction(child)) {
+            if (ts.isFunctionDeclaration(child) || ts.isMethodDeclaration(child) || ts.isConstructorDeclaration(child) ||
+                ts.isArrowFunction(child) || ts.isFunctionExpression(child) || ts.isAccessor(child)) {
                 methodNodeInfo = buildMethodInfo4MethodNode(child);
             }
             if (ts.isImportDeclaration(child) || ts.isImportEqualsDeclaration(child)) {
@@ -128,7 +129,7 @@ export class ASTree {
             }
 
             ca = new NodeA(child, nodea, [], child.getText(this.sourceFile), child.getStart(this.sourceFile), "",
-            classNodeInfo, methodNodeInfo, importNodeInfo, exportNodeInfo);
+                classNodeInfo, methodNodeInfo, importNodeInfo, exportNodeInfo);
             const { line, character } = ts.getLineAndCharacterOfPosition(
                 this.sourceFile,
                 child.getStart(this.sourceFile)
@@ -227,21 +228,21 @@ export class ASTree {
         return -1;
     }
 
-    forOfIn2For(node:NodeA):NodeA{
-        let VariableDeclarationList=node.children[this.findChildIndex(node,"VariableDeclarationList")];
-        let SyntaxList=VariableDeclarationList.children[this.findChildIndex(VariableDeclarationList,"SyntaxList")];
-        let decl=SyntaxList.children[0].children[0].text;
-        let array=node.children[this.findChildIndex(node,'CloseParenToken')-1].text;
-        let tempTree=new ASTree("for(let _i=0;_i<"+array+".length;_i++)");
-        let forStm=tempTree.root.children[0];
-        forStm.parent=node.parent;
-        if(node.parent)
-            node.parent.children[node.parent.children.indexOf(node)]=forStm;
-        let block=node.children[this.findChildIndex(node,"Block")];
-        forStm.children[forStm.children.length-1]=block;
-        tempTree=new ASTree("let "+decl+"="+array+"[_i];");
-        let initStm=tempTree.root.children[0];
-        block.children[1].children.splice(0,0,initStm);
+    forOfIn2For(node: NodeA): NodeA {
+        let VariableDeclarationList = node.children[this.findChildIndex(node, "VariableDeclarationList")];
+        let SyntaxList = VariableDeclarationList.children[this.findChildIndex(VariableDeclarationList, "SyntaxList")];
+        let decl = SyntaxList.children[0].children[0].text;
+        let array = node.children[this.findChildIndex(node, 'CloseParenToken') - 1].text;
+        let tempTree = new ASTree("for(let _i=0;_i<" + array + ".length;_i++)");
+        let forStm = tempTree.root.children[0];
+        forStm.parent = node.parent;
+        if (node.parent)
+            node.parent.children[node.parent.children.indexOf(node)] = forStm;
+        let block = node.children[this.findChildIndex(node, "Block")];
+        forStm.children[forStm.children.length - 1] = block;
+        tempTree = new ASTree("let " + decl + "=" + array + "[_i];");
+        let initStm = tempTree.root.children[0];
+        block.children[1].children.splice(0, 0, initStm);
         this.updateParentText(forStm);
         return forStm;
     }

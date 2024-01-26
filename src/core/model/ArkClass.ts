@@ -76,7 +76,7 @@ export class ArkClass {
         for (let child of clsNode.children) {
             if (child.kind == 'SyntaxList') {
                 for (let cld of child.children) {
-                    if (cld.kind == 'MethodDeclaration' || cld.kind == 'Constructor') {
+                    if (cld.kind == 'MethodDeclaration' || cld.kind == 'Constructor' || cld.kind == 'GetAccessor' || cld.kind == 'SetAccessor') {
                         let mthd: ArkMethod = new ArkMethod(cld, this.declaringArkFile, this);
                         this.methods.push(mthd);
                     }

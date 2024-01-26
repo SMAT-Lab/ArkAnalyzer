@@ -13,10 +13,15 @@ export class MethodInfo {
         this.modifiers = modifiers;
         this.returnType = returnType;
     }
+
+    public updateName4anonymousFunc(newName: string) {
+        this.name = newName;
+    }
 }
 
 //get function name, parameters, return type, etc.
-export function buildMethodInfo4MethodNode(node: ts.FunctionDeclaration | ts.MethodDeclaration | ts.ConstructorDeclaration | ts.ArrowFunction): MethodInfo {
+export function buildMethodInfo4MethodNode(node: ts.FunctionDeclaration | ts.MethodDeclaration | ts.ConstructorDeclaration |
+    ts.ArrowFunction | ts.AccessorDeclaration | ts.FunctionExpression): MethodInfo {
 
     //TODO: consider function without name
     let name: string = '';
@@ -30,11 +35,17 @@ export function buildMethodInfo4MethodNode(node: ts.FunctionDeclaration | ts.Met
     else if (ts.isConstructorDeclaration(node)) {
         name = '_Constructor';
     }
+    else if (ts.isGetAccessor(node) && ts.isIdentifier(node.name)) {
+        name = 'Get-' + node.name.escapedText.toString();
+    }
+    else if (ts.isSetAccessor(node) && ts.isIdentifier(node.name)) {
+        name = 'Set-' + node.name.escapedText.toString();
+    }
 
     // TODO: support question token which means optional parameter
     let parameterTypes: Map<string, string> = new Map();
     node.parameters.forEach((parameter) => {
-        let parameterName = ts.isIdentifier(parameter.name)? parameter.name.escapedText.toString() : '';
+        let parameterName = ts.isIdentifier(parameter.name) ? parameter.name.escapedText.toString() : '';
         if (parameter.type) {
             if (parameter.type.kind == ts.SyntaxKind.TypeReference) {
                 let referenceNodeName = (parameter.type as ts.TypeReferenceNode).typeName;
