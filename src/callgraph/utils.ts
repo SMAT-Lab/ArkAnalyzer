@@ -28,8 +28,11 @@ export class MethodSignatureManager {
         return this.workList.find(item => item === signature);
     }
 
-    public findInProcessedList(signature: MethodSignature): string {
-        return this.processedList.find(item => item === signature.toString());
+    public findInProcessedList(signature: MethodSignature): boolean {
+        let result = this.processedList.find(item => item === signature.toString());
+        if (typeof result === "undefined")
+            return false
+        return true
     }
 
     public addToWorkList(signature: MethodSignature): void {
@@ -62,7 +65,7 @@ export class MethodSignatureManager {
 }
 
 export class SceneManager {
-    private _scene: Scene;
+    private _scene!: Scene;
 
     get scene(): Scene {
         return this._scene;
@@ -73,17 +76,20 @@ export class SceneManager {
     }
 
     public getMethod(method: MethodSignature): ArkMethod | null {
-        this._scene.getMethod(method.arkClass.arkFile,
-            method.methodSubSignature.methodName,
-            method.methodSubSignature.parameters,
-            [],
-            method.arkClass.classType
+        let methods =  this._scene.getMethodByName(
+            method.getMethodSubSignature().getMethodName()
         )
+        for (let methodFromScene of methods) {
+            if (method.toString() === methodFromScene.getSignature().toString())
+                return methodFromScene
+        }
         return null;
     }
 
     public getClass(arkClass: ClassSignature): ArkClass | null {
-        return this._scene.getClass(arkClass.arkFile, arkClass.classType)
+        if (typeof arkClass.getClassType() === "undefined")
+            return null
+        return this._scene.getClass(arkClass.getArkFile(), arkClass.getClassType())
     }
 
     public getExtendedClasses(arkClass: ClassSignature): ArkClass[] {
@@ -93,15 +99,17 @@ export class SceneManager {
 
         while (classList.length > 0) {
             let tempClass = classList.shift()
+            if (tempClass == null)
+                continue
             let firstLevelSubclasses = this.scene.extendedClasses.get(
-                tempClass.classSignature.toString())
+                tempClass.getSignature().toString())
 
             if (firstLevelSubclasses) {
                 for (let subclass of firstLevelSubclasses) {
                     if (!isItemRegistered<ArkClass>(
                         subclass, extendedClasses,
                         (a, b) =>
-                            a.classSignature.toString() === b.classSignature.toString()
+                            a.getSignature().toString() === b.getSignature().toString()
                     )) {
                         // 子类未处理，加入到classList
                         classList.push(subclass)
@@ -113,7 +121,7 @@ export class SceneManager {
             if (!isItemRegistered<ArkClass>(
                 tempClass, extendedClasses,
                 (a, b) =>
-                    a.classSignature.toString() === b.classSignature.toString()
+                    a.getSignature().toString() === b.getSignature().toString()
             )) {
                 extendedClasses.push(tempClass)
             }
@@ -129,4 +137,18 @@ export function isItemRegistered<T>(item: T, array: T[], compareFunc: (a: T, b: 
         }
     }
     return false;
+}
+
+export function splitStringWithRegex(input: string): string[] {
+    // 正则表达式匹配 "a.b.c()" 并捕获 "a" "b" "c"
+    const regex = /^(\w+)\.(\w+)\.(\w+)\(\)$/;
+    const match = input.match(regex);
+
+    if (match) {
+        // 返回捕获的部分，忽略整个匹配结果
+        return match.slice(1);
+    } else {
+        // 如果输入不匹配，返回空数组
+        return [];
+    }
 }

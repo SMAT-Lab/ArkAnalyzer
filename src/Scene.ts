@@ -5,7 +5,9 @@ import { ArkMethod } from "./core/model/ArkMethod";
 import { ArkNamespace } from "./core/model/ArkNamespace";
 import { ClassSignature, MethodSignature, MethodSubSignature } from "./core/model/ArkSignature";
 import { CallGraph } from "./callgraph/CallGraph"
-import { ClassHierarchyAnalysis } from "./callgraph/ClassHierarchyAnalysis";
+import {ClassHierarchyAnalysis} from "./callgraph/ClassHierarchyAnalysis";
+import {ClassHierarchyAnalysisAlgorithm} from "./callgraph/ClassHierarchyAnalysisAlgorithm";
+import {AbstractCallGraphAlgorithm} from "./callgraph/AbstractCallGraphAlgorithm";
 import { ImportInfo } from './core/common/ImportBuilder';
 
 /**
@@ -19,15 +21,15 @@ export class Scene {
     namespaces: ArkNamespace[] = [];
     arkFiles: ArkFile[] = [];
     callgraph!: CallGraph;
-    classHierarchyCallGraph!: ClassHierarchyAnalysis;
+    classHierarchyCallGraph!: AbstractCallGraphAlgorithm;
     extendedClasses: Map<string, ArkClass[]> = new Map();
     constructor(name: string, files: string[], projectDir: string) {
         this.projectName = name;
         this.projectFiles = files;
         this.realProjectDir = fs.realpathSync(projectDir);
         this.genArkFiles();
-        this.makeCallGraph();
         this.genExtendedClasses();
+        // this.makeCallGraphCHA()
     }
 
     private genArkFiles() {
@@ -184,7 +186,7 @@ export class Scene {
     }
 
     public makeCallGraphCHA() {
-        this.classHierarchyCallGraph = new ClassHierarchyAnalysis(new Set<string>, new Map<string, string[]>);
-        this.classHierarchyCallGraph.processFiles(this.arkFiles);
+        this.classHierarchyCallGraph = new ClassHierarchyAnalysisAlgorithm(this);
+        this.classHierarchyCallGraph.loadCallGraph([this.arkFiles[2].getDefaultClass().getMethods()[0].getSignature()])
     }
 }

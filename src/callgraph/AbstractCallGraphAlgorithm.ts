@@ -1,9 +1,8 @@
-import {ClassSignature, MethodSignature} from "../core/model/ArkSignature";
-import {Cfg} from "../core/Cfg";
-import {ArkMethod} from "../core/model/ArkMethod";
+import {MethodSignature} from "../core/model/ArkSignature";
 import {Scene} from "../Scene";
-import {ArkClass} from "../core/model/ArkClass";
 import {isItemRegistered, MethodSignatureManager, SceneManager} from "./utils";
+import {Cfg} from "../core/graph/Cfg";
+import {ArkInvokeStmt} from "../core/base/Stmt";
 
 export abstract class AbstractCallGraphAlgorithm {
     private methods: Set<string>;
@@ -14,13 +13,13 @@ export abstract class AbstractCallGraphAlgorithm {
         return this._signatureManager;
     }
 
-    private _scene: SceneManager;
+    private readonly _scene: SceneManager;
 
     get scene(): SceneManager {
         return this._scene;
     }
 
-    public initialize(scene: Scene): void {
+    constructor(scene: Scene) {
         this.methods = new Set<string>();
         this.calls = new Map<string, string[]>();
         this._signatureManager = new MethodSignatureManager();
@@ -44,6 +43,8 @@ export abstract class AbstractCallGraphAlgorithm {
         this.signatureManager.workList = entryPoints
         while (this.signatureManager.workList.length != 0) {
             let methodSignature = this.signatureManager.workList.shift();
+            if (typeof methodSignature == "undefined")
+                continue
 
             if (this.signatureManager.findInProcessedList(methodSignature)) {
                 continue
@@ -55,9 +56,11 @@ export abstract class AbstractCallGraphAlgorithm {
             // 将调用目标加入到workList
             for (let invokeTarget of invokeTargets) {
                 this.signatureManager.addToWorkList(invokeTarget);
+                this.addCall(methodSignature, invokeTarget)
             }
             // 当前函数标记为已处理
             this.signatureManager.addToProcessedList(methodSignature);
+            this.addMethod(methodSignature)
         }
     }
 
@@ -68,19 +71,29 @@ export abstract class AbstractCallGraphAlgorithm {
      */
     public processMethod(sourceMethodSignature: MethodSignature): MethodSignature[] {
         // let cfg: Cfg = this.scene.getMethod(sourceMethodSignature).getCFG();
-        let cfg: Cfg
-        let invocationTargets: MethodSignature[]
-        for (let stmt of cfg.statementArray) {
-            // TODO: 接入Stmt判断
-            if (stmt) {
+        let invocationTargets: MethodSignature[] = []
+        let cfg: Cfg | undefined = this.scene.getMethod(sourceMethodSignature)?.getBody().getCfg()
+        if (typeof cfg == "undefined")
+            return invocationTargets
+        for (let stmt of cfg.getStmts()) {
+            if (stmt instanceof ArkInvokeStmt) {
                 // Process the invocation statement using CHA (Class Hierarchy Analysis) and RTA (Rapid Type Analysis).
-                invocationTargets = this.resolveCall(sourceMethodSignature, stmt)
+                let invocationTargetsOfSingleMethod = this.resolveCall(sourceMethodSignature, stmt)
+                for (let invocationTarget of invocationTargetsOfSingleMethod) {
+                    if (!isItemRegistered<MethodSignature>(
+                        invocationTarget, invocationTargets,
+                        (a, b) =>
+                            a.toString() === b.toString()
+                    )) {
+                        invocationTargets.push(invocationTarget)
+                    }
+                }
             }
         }
         return invocationTargets
     }
 
-    protected abstract resolveCall(sourceMethodSignature: MethodSignature, invokeExpression): MethodSignature[];
+    protected abstract resolveCall(sourceMethodSignature: MethodSignature, invokeExpression: ArkInvokeStmt): MethodSignature[];
 
     protected abstract preProcessMethod(methodSignature: MethodSignature): void;
 
@@ -96,10 +109,11 @@ export abstract class AbstractCallGraphAlgorithm {
         if (this.calls.has(source.toString())) {
             // for (let call of this.calls.get())
             if (!isItemRegistered<string>(
-                target.toString(), this.calls.get(source.toString()),
+                target.toString(), this.getCall(source),
                 (a, b) =>
                     a === b
             )) {
+                // @ts-ignore
                 this.calls.get(source.toString()).push(target.toString());
             }
         } else {
@@ -108,6 +122,33 @@ export abstract class AbstractCallGraphAlgorithm {
     }
 
     protected getCall(source: MethodSignature): string[] {
-        return this.calls.get(source.toString());
+        let targetCalls =  this.calls.get(source.toString());
+        if (typeof targetCalls == "undefined")
+            return []
+        return targetCalls
+    }
+
+    public printDetails(): void {
+        // 打印 Methods
+        console.log('Methods:');
+        this.methods.forEach(method => {
+            console.log(`    ${method}`);
+        });
+
+        // 打印 Calls
+        console.log('Calls:');
+        // 首先找到最长的method名称的长度
+        const longestMethodLength = Array.from(this.calls.keys()).reduce((max, method) => Math.max(max, method.length), 0);
+
+        this.calls.forEach((calledMethods, method) => {
+            // 使用padEnd确保method名称对齐
+            const paddedMethod = method.padEnd(longestMethodLength);
+            // 打印第一个调用关系，没有箭头前缀
+            console.log(`    ${paddedMethod}   ->   ${calledMethods[0]}`);
+            // 打印剩余的调用关系，每个都有箭头前缀
+            for (let i = 1; i < calledMethods.length; i++) {
+                console.log(`    ${' '.repeat(longestMethodLength)}       ->   ${calledMethods[i]}`);
+            }
+        });
     }
 }
