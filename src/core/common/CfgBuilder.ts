@@ -12,8 +12,8 @@ import { ArkClass } from '../model/ArkClass';
 import { ArkFile } from '../model/ArkFile';
 import { ArkMethod } from '../model/ArkMethod';
 import { IRUtils } from './IRUtils';
+import { ExportInfo } from './ExportBuilder';
 
-// todo:填cfg里的def use和local里的def use
 
 class StatementBuilder {
     type: string;
@@ -1774,6 +1774,19 @@ export class CfgBuilder {
             this.declaringClass.addMethod(exprArkMethod);
             value = new ArkStaticInvokeExpr(exprArkMethod.getSignature().toString(), args);
         }
+        // else if (node.kind == "ClassExpression"){
+        //     let cls: ArkClass = new ArkClass();
+        //     let arkFile=this.declaringClass.getDeclaringArkFile();
+        //     cls.buildArkClassFromAstNode(node, arkFile);
+        //     arkFile.addArkClass(cls);
+        //     if (cls.isExported()) {
+        //         let exportClauseName: string = cls.getName();
+        //         let exportClauseType: string = "Class";
+        //         let exportInfo = new ExportInfo();
+        //         exportInfo.build(exportClauseName, exportClauseType);
+        //         arkFile.exportInfos.push(exportInfo);
+        //     }
+        // }
         else if (node.kind == "NewExpression") {
             let classValue = this.astNodeToValue(node.children[1]);
             let classSignature = classValue.toString();
@@ -1909,9 +1922,9 @@ export class CfgBuilder {
             }
             threeAddressAssignStmts.push(new ArkInvokeStmt(new ArkInstanceInvokeExpr(leftOp as Local, methodSignature, args)));
 
-            if (leftOp instanceof Local && leftOp.getType() == "") {
-                leftOp.setType(this.getTypeNewExpr(node.children[2]));
-            }
+            // if (leftOp instanceof Local && leftOp.getType() == "") {
+            //     leftOp.setType(this.getTypeNewExpr(node.children[2]));
+            // }
 
         } else if (rightOp instanceof ArkNewArrayExpr) {
             let argsNode = rightOpNode.children[1];
@@ -2738,50 +2751,6 @@ export class CfgBuilder {
         return ""
     }
 
-    private getTypeNewExpr(node: NodeA): string {
-        const className = node.children[this.findChildIndex(node, "Identifier")].text;
-        const file = this.declaringClass.getDeclaringArkFile();
-        return this.searchImportClass(file, className);
-    }
 
-    private searchImportClass(file: ArkFile, className: string): string {
-        for (let classInFile of file.getClasses()) {
-            if (className == classInFile.getName()) {
-                return classInFile.getSignature().getArkFile() + "." + className;
-            }
-        }
-        for (let importInfo of file.getImportInfos()) {
-            if (className == importInfo.getImportClauseName() && importInfo.getImportFrom() != undefined) {
-                const fileDir = file.getName().split("\\");
-                const importDir = importInfo.getImportFrom()!.split(/[\/\\]/).filter(item => item !== '.');
-                let parentDirNum = 0;
-                while (importDir[parentDirNum] == "..") {
-                    parentDirNum++;
-                }
-                if (parentDirNum < fileDir.length) {
-                    let realImportFileName = "";
-                    for (let i = 0; i < fileDir.length - parentDirNum - 1; i++) {
-                        realImportFileName += fileDir + "\\";
-                    }
-                    for (let i = parentDirNum; i < importDir.length; i++) {
-                        realImportFileName += importDir[i];
-                        if (i != importDir.length - 1) {
-                            realImportFileName += "\\";
-                        }
-                    }
-
-                    const scene = file.getScene();
-                    if (scene) {
-                        for (let sceneFile of scene.arkFiles) {
-                            if (sceneFile.getName() == realImportFileName) {
-                                return this.searchImportClass(sceneFile, className);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        return "";
-    }
 
 }

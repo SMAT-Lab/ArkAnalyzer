@@ -2,6 +2,7 @@ import { DefUseChain } from "../base/DefUseChain";
 import { Local } from "../base/Local";
 import { Stmt } from "../base/Stmt";
 import { BasicBlock } from "./BasicBlock";
+import { ArkFile } from "../model/ArkFile";
 
 export class Cfg {
     private blocks: Set<BasicBlock> = new Set();
@@ -132,5 +133,55 @@ export class Cfg {
         }
     }
 
+    private typeReference(){
+        
+    }
+
+    // private getTypeNewExpr(node: NodeA): string {
+    //     const className = node.children[this.findChildIndex(node, "Identifier")].text;
+    //     const file = this.declaringClass.getDeclaringArkFile();
+    //     return this.searchImportClass(file, className);
+    // }
+
+    private searchImportClass(file: ArkFile, className: string): string {
+        for (let classInFile of file.getClasses()) {
+            if (className == classInFile.getName()) {
+                return classInFile.getSignature().getArkFile() + "." + className;
+            }
+        }
+        for (let importInfo of file.getImportInfos()) {
+            const importFromDir=importInfo.getImportFrom();
+            if (className == importInfo.getImportClauseName() && importFromDir != undefined) {
+                const fileDir = file.getName().split("\\");
+                const importDir = importFromDir.split(/[\/\\]/).filter(item => item !== '.');
+                let parentDirNum = 0;
+                while (importDir[parentDirNum] == "..") {
+                    parentDirNum++;
+                }
+                if (parentDirNum < fileDir.length) {
+                    let realImportFileName = "";
+                    for (let i = 0; i < fileDir.length - parentDirNum - 1; i++) {
+                        realImportFileName += fileDir + "\\";
+                    }
+                    for (let i = parentDirNum; i < importDir.length; i++) {
+                        realImportFileName += importDir[i];
+                        if (i != importDir.length - 1) {
+                            realImportFileName += "\\";
+                        }
+                    }
+
+                    const scene = file.getScene();
+                    if (scene) {
+                        for (let sceneFile of scene.arkFiles) {
+                            if (sceneFile.getName() == realImportFileName) {
+                                return this.searchImportClass(sceneFile, className);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return "";
+    }
 
 }
