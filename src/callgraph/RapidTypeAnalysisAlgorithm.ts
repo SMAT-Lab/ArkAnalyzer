@@ -1,6 +1,5 @@
 import {AbstractCallGraphAlgorithm} from "./AbstractCallGraphAlgorithm";
 import {ClassSignature, MethodSignature, MethodSubSignature} from "../core/model/ArkSignature";
-import {Cfg} from "../core/Cfg";
 import {ArkMethod} from "../core/model/ArkMethod";
 import {isItemRegistered} from "./utils";
 

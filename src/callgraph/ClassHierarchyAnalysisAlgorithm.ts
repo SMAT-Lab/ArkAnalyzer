@@ -1,23 +1,59 @@
 import {AbstractCallGraphAlgorithm} from "./AbstractCallGraphAlgorithm";
-import {MethodSignature} from "../core/model/ArkSignature";
+import {MethodSignature, MethodSubSignature} from "../core/model/ArkSignature";
 import {ArkClass} from "../core/model/ArkClass";
 import {ArkMethod} from "../core/model/ArkMethod";
-import {isItemRegistered} from "./utils";
+import {isItemRegistered, splitStringWithRegex} from "./utils";
+import {ArkInvokeStmt} from "../core/base/Stmt";
+import {ArkInstanceInvokeExpr, ArkStaticInvokeExpr} from "../core/base/Expr";
 
-class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm {
-    protected resolveCall(sourceMethodSignature: MethodSignature, invokeExpression): MethodSignature[] {
-        let concreteMethodSignature: MethodSignature;
+export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm {
+    protected resolveCall(sourceMethodSignature: MethodSignature, invokeExpression: ArkInvokeStmt): MethodSignature[] {
+        let concreteMethodSignature: MethodSignature|null = null;
         let concreteMethod: ArkMethod;
         let callTargetMethods: MethodSignature[] = [];
+        let invokeExpressionExpr = invokeExpression.getInvokeExpr()
+        let invokeClass: ArkClass | null = null
 
         // TODO: 根据调用语句获取具体方法签名或函数签名
-        // concreteMethodSignature = cfg.getMethodSignature(invokeExpression);
-        concreteMethod = this.scene.getMethod(concreteMethodSignature)
+        if (invokeExpressionExpr instanceof ArkInstanceInvokeExpr) {
+            // console.log(invokeExpressionExpr.getMethodSignature())
+            let classCompleteType = invokeExpressionExpr.getBase().getType()
+            let lastDotIndex = classCompleteType.lastIndexOf('.')
+            let fileName = classCompleteType.substring(0, lastDotIndex)
+            let className = classCompleteType.substring(lastDotIndex + 1)
+            invokeClass = this.resolveClassInstance(className, fileName)
+            if (invokeClass == null) {
+                return callTargetMethods
+            }
+        } else if (invokeExpressionExpr instanceof ArkStaticInvokeExpr) {
+            // console.log(invokeExpressionExpr.getMethodSignature())
+            let exprResults = splitStringWithRegex(invokeExpressionExpr.getMethodSignature())
+            // invokeClass = this.resolveClassInstance(exprResults[1])
+        }
+        if (invokeClass == null) {
+            // TODO: 处理函数调用
 
-        if (concreteMethodSignature == null ||
-            concreteMethod.modifiers.includes("StaticKeyword") ||
-            concreteMethod.modifiers.includes("Constructor")) {
+            return callTargetMethods
+        }
+        for (let method of invokeClass.getMethods()) {
+            if (method.getName() === invokeExpressionExpr.getMethodSignature()) {
+                concreteMethodSignature = method.getSignature()
+                concreteMethod = method
+            }
+        }
+        // if (invokeExpressionExpr.getMethodSignature() == "constructor" &&
+        //     concreteMethodSignature == null) {
+        //     concreteMethodSignature = new MethodSignature(
+        //         new MethodSubSignature("constructor", new Map<string, string>(), []),
+        //         invokeClass.classSignature
+        //     )
+        // }
+
+
+        if (concreteMethodSignature == null) {
             // If the invoked function is static or a constructor, then return the signature.
+            return callTargetMethods
+        } else if ((invokeExpressionExpr instanceof ArkStaticInvokeExpr)) {
             callTargetMethods.push(concreteMethodSignature)
             return callTargetMethods
         } else {
@@ -26,7 +62,10 @@ class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm {
             for (let targetMethodSignature of targetMethodSignatures) {
                 // remove abstract method
                 let targetMethod = this.scene.getMethod(targetMethodSignature)
-                if (!targetMethod.modifiers.includes("AbstractKeyword")) {
+                if (targetMethod == null) {
+                    continue
+                }
+                if (!targetMethod.getModifiers().has("AbstractKeyword")) {
                     if (!isItemRegistered<MethodSignature>(
                         concreteMethodSignature, callTargetMethods,
                         (a, b) =>
@@ -44,18 +83,18 @@ class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm {
         let targetClasses: ArkClass[];
         let methodSignature: MethodSignature[] = [];
 
-        targetClasses = this.scene.getExtendedClasses(targetMethodSignature.arkClass)
+        targetClasses = this.scene.getExtendedClasses(targetMethodSignature.getArkClass())
         for (let targetClass of targetClasses) {
             let methods = targetClass.getMethods()
 
             for (let method of methods) {
-                if (method.methodSubSignature.toString() === targetMethodSignature.methodSubSignature.toString()) {
-                    if (!isItemRegistered<ArkMethod>(
-                        method, methods,
+                if (method.getSubSignature().toString() === targetMethodSignature.getMethodSubSignature().toString()) {
+                    if (!isItemRegistered<MethodSignature>(
+                        method.getSignature(), methodSignature,
                         (a, b) =>
-                            a.methodSignature.toString() === b.methodSignature.toString()
+                            a.toString() === b.toString()
                     )) {
-                        methodSignature.push(method.methodSignature)
+                        methodSignature.push(method.getSignature())
                     }
                 }
             }
@@ -63,7 +102,27 @@ class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm {
         return methodSignature;
     }
 
+    protected resolveClassInstance(className: string, fileName: string) {
+        for (let file of this.scene.scene.arkFiles) {
+            if (file.getName() === fileName) {
+                for (let arkClass of file.getClasses()) {
+                    if (arkClass.getName() === className) {
+                        return arkClass
+                    }
+                }
+            }
+        }
+        return null
+    }
+
     protected preProcessMethod(methodSignature: MethodSignature): void {
         //do nothing
     }
+
+    // protected resolveFunctionCall(invokeExpressionExpr: ArkStaticInvokeExpr) {
+    //     let arkFiles = this.scene.scene.arkFiles
+    //     for (let files of arkFiles) {
+    //         if
+    //     }
+    // }
 }

@@ -1664,6 +1664,10 @@ export class CfgBuilder {
         }
         else if (this.shouldBeConstant(node)) {
             value = new Constant(node.text);
+            if (value instanceof Constant) {
+                // console.log(node.kind)
+                value.setType(this.resolveKeywordType(node))
+            }
         }
         else if (node.kind == 'BinaryExpression') {
             let op1 = this.astNodeToValue(node.children[0]);
@@ -1921,11 +1925,6 @@ export class CfgBuilder {
                 args.push(this.astNodeToValue(argNode));
             }
             threeAddressAssignStmts.push(new ArkInvokeStmt(new ArkInstanceInvokeExpr(leftOp as Local, methodSignature, args)));
-
-            // if (leftOp instanceof Local && leftOp.getType() == "") {
-            //     leftOp.setType(this.getTypeNewExpr(node.children[2]));
-            // }
-
         } else if (rightOp instanceof ArkNewArrayExpr) {
             let argsNode = rightOpNode.children[1];
             let index = 0;
@@ -2723,15 +2722,11 @@ export class CfgBuilder {
             // console.log(child.kind)
             switch (child.kind) {
                 case "BooleanKeyword":
-                    return "boolean"
                 case "NumberKeyword":
-                    return "number"
                 case "StringKeyword":
-                    return "string"
                 case "VoidKeyword":
-                    return "void"
                 case "AnyKeyword":
-                    return "any"
+                    return this.resolveKeywordType(child)
                 case "ArrayType":
                     typeNode = child.children[0]
                     let typeKeyword: string
@@ -2752,6 +2747,22 @@ export class CfgBuilder {
         return ""
     }
 
-
-
+    private resolveKeywordType(node: NodeA): string {
+        switch (node.kind) {
+            case "BooleanKeyword":
+                return "boolean"
+            case "NumberKeyword":
+            case "FirstLiteralToken":
+                return "number"
+            case "StringKeyword":
+            case "StringLiteralToken":
+                return "string"
+            case "VoidKeyword":
+                return "void"
+            case "AnyKeyword":
+                return "any"
+            default:
+                return ""
+        }
+    }
 }
