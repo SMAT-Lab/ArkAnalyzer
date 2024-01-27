@@ -1787,12 +1787,12 @@ export class CfgBuilder {
             let syntaxListNode = node.children[1];
             let size = 0;
             for (const syntaxNode of syntaxListNode.children) {
-                if (syntaxListNode.kind != 'CommaToken') {
+                if (syntaxNode.kind != 'CommaToken') {
                     size += 1;
                 }
             }
             // TODO:得到准确类型
-            value = new ArkNewArrayExpr('int', new Local(size.toString()));
+            value = new ArkNewArrayExpr('int', new Constant(size.toString()));
         }
         else if (node.kind == 'PrefixUnaryExpression') {
             let token = node.children[0].text;
@@ -1813,6 +1813,7 @@ export class CfgBuilder {
         }
         else if (node.kind == 'TemplateExpression') {
             value = new Local(node.text);
+            value = this.getOriginalLocal(value);
         }
         else if (node.kind == 'AwaitExpression') {
             value = this.astNodeToValue(node.children[1]);
@@ -1922,8 +1923,8 @@ export class CfgBuilder {
             for (let argNode of argsNode.children) {
                 if (argNode.kind != 'CommaToken') {
                     // TODO:数组条目类型
-                    let arrayRef = new ArkArrayRef(leftOp as Local, new Local(index.toString()));
-                    let arrayItem = new Local(argNode.text);
+                    let arrayRef = new ArkArrayRef(leftOp as Local, new Constant(index.toString()));
+                    let arrayItem = new Constant(argNode.text);
                     threeAddressAssignStmts.push(new ArkAssignStmt(arrayRef, arrayItem));
                     index++;
                 }
@@ -1935,8 +1936,8 @@ export class CfgBuilder {
             let index = 0;
             for (const argNode of argNodes) {
                 // TODO:数组条目类型
-                let arrayRef = new ArkArrayRef(leftOp as Local, new Local(index.toString()));
-                let arrayItem = new Local(argNode.text);
+                let arrayRef = new ArkArrayRef(leftOp as Local, new Constant(index.toString()));
+                let arrayItem = new Constant(argNode.text);
                 threeAddressAssignStmts.push(new ArkAssignStmt(arrayItem, arrayRef));
                 index++;
             }

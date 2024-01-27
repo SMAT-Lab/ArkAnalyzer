@@ -42,8 +42,9 @@ export class CfgTest {
                     console.log();
                     console.log('-- threeAddresStmts:');
                     for (const threeAddresStmt of arkMethod.getCfg().getStmts()) {
-                        console.log(threeAddresStmt.toString(), ', original pos:', threeAddresStmt.getOriginPositionInfo(),
-                            ', pos:', threeAddresStmt.getPositionInfo());
+                        console.log(threeAddresStmt.toString());
+                        // console.log(threeAddresStmt.toString(), ', original pos:', threeAddresStmt.getOriginPositionInfo(),
+                        //     ', pos:', threeAddresStmt.getPositionInfo());
                     }
 
                     console.log('-- locals:');
@@ -73,7 +74,7 @@ export class CfgTest {
 
 
 let cfgTest = new CfgTest();
-// cfgTest.testThreeAddresStmt();
-cfgTest.testBlocks();
+cfgTest.testThreeAddresStmt();
+// cfgTest.testBlocks();
 
 debugger
