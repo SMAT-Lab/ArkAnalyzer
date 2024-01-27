@@ -11,7 +11,7 @@ export class BodyBuilder {
 
     constructor(methodSignature: MethodSignature, sourceAstNode: NodeA, declaringClass: ArkClass) {
         this.methodSignature = methodSignature;
-        this.cfgBuilder = new CfgBuilder(sourceAstNode, this.methodSignature.methodSubSignature.methodName, declaringClass);
+        this.cfgBuilder = new CfgBuilder(sourceAstNode, this.methodSignature.getMethodSubSignature().getMethodName(), declaringClass);
     }
 
     public build(): ArkBody {

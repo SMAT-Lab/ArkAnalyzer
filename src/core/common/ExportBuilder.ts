@@ -5,11 +5,46 @@ export class ExportInfo {
     exportClauseType: string;
     exportFrom: string | undefined;
     nameBeforeAs: string | undefined;
-    constructor(exportClauseName: string, exportClauseType: string, exportFrom?: string, nameBeforeAs?: string) {
+
+    public getExportClauseName() {
+        return this.exportClauseName;
+    }
+
+    public setExportClauseName(exportClauseName: string) {
         this.exportClauseName = exportClauseName;
+    }
+
+    public getExportClauseType() {
+        return this.exportClauseType;
+    }
+
+    public setExportClauseType(exportClauseType: string) {
         this.exportClauseType = exportClauseType;
+    }
+
+    public getExportFrom() {
+        return this.exportFrom;
+    }
+
+    public setExportFrom(exportFrom: string | undefined) {
         this.exportFrom = exportFrom;
+    }
+
+    public getNameBeforeAs() {
+        return this.nameBeforeAs;
+    }
+
+    public setNameBeforeAs(nameBeforeAs: string | undefined) {
         this.nameBeforeAs = nameBeforeAs;
+    }
+
+    constructor() { }
+
+    public build(exportClauseName: string, exportClauseType: string, exportFrom?: string, nameBeforeAs?: string) {
+        this.setExportClauseName(exportClauseName);
+        this.setExportClauseType(exportClauseType);
+        this.setExportFrom(exportFrom);
+        this.setNameBeforeAs(nameBeforeAs);
     }
 }
 
@@ -35,11 +70,14 @@ function buildExportDeclarationNode(node: ts.ExportDeclaration): ExportInfo[] {
         node.exportClause.elements.forEach((element) => {
             let exportClauseName = element.name.escapedText.toString();
             if (element.propertyName && ts.isIdentifier(element.propertyName)) {
-                exportInfos.push(new ExportInfo(exportClauseName, exportClauseType,
-                    exportFrom, element.propertyName.escapedText.toString()));
+                let exportInfo = new ExportInfo();
+                exportInfo.build(exportClauseName, exportClauseType, exportFrom, element.propertyName.escapedText.toString());
+                exportInfos.push(exportInfo);
             }
             else {
-                exportInfos.push(new ExportInfo(exportClauseName, exportClauseType, exportFrom));
+                let exportInfo = new ExportInfo();
+                exportInfo.build(exportClauseName, exportClauseType, exportFrom);
+                exportInfos.push(exportInfo);
             }
         });
     }
@@ -49,7 +87,9 @@ function buildExportDeclarationNode(node: ts.ExportDeclaration): ExportInfo[] {
         if (ts.isIdentifier(node.exportClause.name)) {
             let exportClauseName = node.exportClause.name.escapedText.toString();
             let nameBeforeAs = '*';
-            exportInfos.push(new ExportInfo(exportClauseName, exportClauseType, exportFrom, nameBeforeAs));
+            let exportInfo = new ExportInfo();
+            exportInfo.build(exportClauseName, exportClauseType, exportFrom, nameBeforeAs);
+            exportInfos.push(exportInfo);
         }
 
     }
@@ -59,7 +99,9 @@ function buildExportDeclarationNode(node: ts.ExportDeclaration): ExportInfo[] {
     if (!node.exportClause && node.moduleSpecifier) {
         let exportClauseType = "NamespaceExport";
         let exportClauseName = '*';
-        exportInfos.push(new ExportInfo(exportClauseName, exportClauseType, exportFrom));
+        let exportInfo = new ExportInfo();
+        exportInfo.build(exportClauseName, exportClauseType, exportFrom);
+        exportInfos.push(exportInfo);
     }
 
     return exportInfos;
@@ -71,14 +113,18 @@ function buildExportAssignmentNode(node: ts.ExportAssignment): ExportInfo[] {
         if (ts.isIdentifier(node.expression)) {
             let exportClauseType = "default";
             let exportClauseName = node.expression.escapedText.toString();
-            exportInfos.push(new ExportInfo(exportClauseName, exportClauseType));
+            let exportInfo = new ExportInfo();
+            exportInfo.build(exportClauseName, exportClauseType);
+            exportInfos.push(exportInfo);
         }
         else if (ts.isObjectLiteralExpression(node.expression) && node.expression.properties) {
             let exportClauseType = "default-Obj";
             node.expression.properties.forEach((property) => {
                 if (property.name && ts.isIdentifier(property.name)) {
                     let exportClauseName = property.name.escapedText.toString();
-                    exportInfos.push(new ExportInfo(exportClauseName, exportClauseType));
+                    let exportInfo = new ExportInfo();
+                    exportInfo.build(exportClauseName, exportClauseType);
+                    exportInfos.push(exportInfo);
                 }
             });
         }

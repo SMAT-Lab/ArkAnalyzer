@@ -16,7 +16,7 @@ export class ClassHierarchyAnalysis {
 
     public getFile(fileName: string): ArkFile | null {
         for (let arkFile of this.arkFiles) {
-            if (arkFile.name == fileName) {
+            if (arkFile.getName() == fileName) {
                 return arkFile;
             }
         }
@@ -100,17 +100,18 @@ export class ClassHierarchyAnalysis {
                 let variable = child.children[0].text
                 let classType = node.checkInstanceMap(variable)
                 if (classType !== null) {
-                    let classSignature = new ClassSignature(arkFile.name, classType);
+                    let classSignature = new ClassSignature();
+                    classSignature.build(arkFile.getName(), classType);
                     let arkClass = arkFile.getClass(classSignature);
                     while (arkClass != null) {
                         let classMethods = arkClass.getMethods();
                         for (let method of classMethods) {
-                            if (method.name == child.children[2].text) {
-                                calledFunction = `${arkClass.name}.${method.name}`;
+                            if (method.getName() == child.children[2].text) {
+                                calledFunction = `${arkClass.getName()}.${method.getName()}`;
                                 this.addCall(currentFunction, calledFunction);
                             }
                         }
-                        arkClass = this.getFatherClass(arkClass.classSignature);
+                        arkClass = this.getFatherClass(arkClass.getSignature());
                     }
                 } else {
                     calledFunction = child.text
@@ -134,7 +135,7 @@ export class ClassHierarchyAnalysis {
 
         arkFiles.forEach((arkFile) => {
             currentFunction = 'dumpy';
-            this.extractFunctionCallsCHA(arkFile, arkFile.ast.root, 1, currentFunction, null);
+            this.extractFunctionCallsCHA(arkFile, arkFile.getAst().root, 1, currentFunction, null);
         });
 
         this.calls.delete('dumpy');
@@ -153,7 +154,7 @@ export class ClassHierarchyAnalysis {
     }
 
     public getFatherClass(classSignature: ClassSignature): ArkClass | null {
-        let thisArkFile = this.getFile(classSignature.arkFile);
+        let thisArkFile = this.getFile(classSignature.getArkFile());
         if (thisArkFile == null) {
             throw new Error('No ArkFile found.');
         }
@@ -162,13 +163,13 @@ export class ClassHierarchyAnalysis {
         if (thisArkClass == null) {
             throw new Error('No ArkClass found.');
         }
-        let fatherName = thisArkClass?.superClassName;
+        let fatherName = thisArkClass?.getSuperClassName();
         if (!fatherName) {
             return null;
         }
         // get father locally
         for (let cls of thisArkFile.getClasses()) {
-            if (cls.name == fatherName) {
+            if (cls.getName() == fatherName) {
                 return cls;
             }
         }
@@ -178,8 +179,8 @@ export class ClassHierarchyAnalysis {
 
     public getFatherClassGlobally(arkClassType: string): ArkClass | null {
         for (let fl of this.arkFiles) {
-            for (let cls of fl.classes) {
-                if (cls.isExported && cls.name == arkClassType) {
+            for (let cls of fl.getClasses()) {
+                if (cls.isExported() && cls.getName() == arkClassType) {
                     return cls;
                 }
             }

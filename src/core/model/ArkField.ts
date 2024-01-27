@@ -3,20 +3,68 @@ import { ArkClass } from "./ArkClass";
 import { FieldSignature } from "./ArkSignature";
 
 export class ArkField {
-    declaringClass: ArkClass;
-    name: string;
-    type: string;
-    modifiers: Set<string> = new Set<string>();
+    private declaringClass: ArkClass;
+    private name: string;
+    private type: string;
+    private modifiers: Set<string> = new Set<string>();
+    private fieldSignature: FieldSignature;
 
-    constructor(declaringClass: ArkClass, property: Property) {
+    public getDeclaringClass() {
+        return this.declaringClass;
+    }
+
+    public setDeclaringClass(declaringClass: ArkClass) {
         this.declaringClass = declaringClass;
-        this.name = property.propertyName;
-        this.type = property.type;
-        this.modifiers = property.modifiers;
+    }
+
+    public getName() {
+        return this.name;
+    }
+
+    public setName(name: string) {
+        this.name = name;
+    }
+
+    public getType() {
+        return this.type;
+    }
+
+    public setType(type: string) {
+        this.type = type;
+    }
+
+    public getModifiers() {
+        return this.modifiers;
+    }
+
+    public addModifier(modifier: string) {
+        this.modifiers.add(modifier);
     }
 
     public getSignature(): FieldSignature {
-        return new FieldSignature(this.declaringClass.classSignature, this.name);
+        return this.fieldSignature;
+    }
+
+    public setSignature(fieldSig: FieldSignature) {
+        this.fieldSignature = fieldSig;
+    }
+
+    constructor() { }
+
+    public buildFromArkClass(declaringClass: ArkClass, property: Property) {
+        this.setDeclaringClass(declaringClass);
+        this.setName(property.propertyName)
+        this.setType(property.type);
+        property.modifiers.forEach((modifier) => {
+            this.addModifier(modifier);
+        });
+        this.genSignature();
+    }
+
+    public genSignature() {
+        let fieldSig = new FieldSignature();
+        fieldSig.build(this.declaringClass.getSignature(), this.getName());
+        this.setSignature(fieldSig);
     }
 
     public isStatic(): boolean {

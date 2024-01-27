@@ -1654,9 +1654,10 @@ export class CfgBuilder {
                     args.push(this.astNodeToValue(argNode));
                 }
             }
-            let arrowArkMethod = new ArkMethod(node, this.declaringClass.declaringArkFile, this.declaringClass);
-            this.declaringClass.methods.push(arrowArkMethod);
-            value = new ArkStaticInvokeExpr(arrowArkMethod.methodSignature.toString(), args);
+            let arrowArkMethod = new ArkMethod();
+            arrowArkMethod.buildArkMethodFromAstNode(node, this.declaringClass);
+            this.declaringClass.addMethod(arrowArkMethod);
+            value = new ArkStaticInvokeExpr(arrowArkMethod.getSignature().toString(), args);
         }
         // TODO:函数表达式视作静态方法还是普通方法
         else if (node.kind == 'FunctionExpression') {
@@ -1682,9 +1683,10 @@ export class CfgBuilder {
                     args.push(this.astNodeToValue(argNode));
                 }
             }
-            let exprArkMethod = new ArkMethod(node, this.declaringClass.declaringArkFile, this.declaringClass);
-            this.declaringClass.methods.push(exprArkMethod);
-            value = new ArkStaticInvokeExpr(exprArkMethod.methodSignature.toString(), args);
+            let exprArkMethod = new ArkMethod();
+            exprArkMethod.buildArkMethodFromAstNode(node, this.declaringClass);
+            this.declaringClass.addMethod(exprArkMethod);
+            value = new ArkStaticInvokeExpr(exprArkMethod.getSignature().toString(), args);
         }
         else if (node.kind == "NewExpression") {
             let classValue = this.astNodeToValue(node.children[1]);
@@ -2018,8 +2020,8 @@ export class CfgBuilder {
 
     errorTest(stm: StatementBuilder) {
         let mes = "";
-        if (this.declaringClass?.declaringArkFile) {
-            mes = this.declaringClass?.declaringArkFile.name + "." + this.declaringClass.name + "." + this.name;
+        if (this.declaringClass?.getDeclaringArkFile()) {
+            mes = this.declaringClass?.getDeclaringArkFile().getName() + "." + this.declaringClass.getName() + "." + this.name;
         }
         else {
             mes = "ifnext error"
@@ -2218,8 +2220,8 @@ export class CfgBuilder {
 
     printBlocks() {
         let text = "";
-        if (this.declaringClass?.declaringArkFile) {
-            text += this.declaringClass.declaringArkFile.name + "\n";
+        if (this.declaringClass?.getDeclaringArkFile()) {
+            text += this.declaringClass.getDeclaringArkFile().getName() + "\n";
         }
         for (let bi = 0; bi < this.blocks.length; bi++) {
             let block = this.blocks[bi];
