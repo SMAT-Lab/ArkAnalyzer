@@ -111,11 +111,8 @@ export class ASTree {
             let importNodeInfo: ImportInfo[] | undefined;
             let exportNodeInfo: ExportInfo[] | undefined;
 
-            if (ts.isClassDeclaration(child)) {
+            if (ts.isClassDeclaration(child) || ts.isClassExpression(child)) {
                 classNodeInfo = buildClassInfo4ClassNode(child);
-            }
-            if (ts.isClassExpression(child)) {
-                //TODO
             }
             if (ts.isFunctionDeclaration(child) || ts.isMethodDeclaration(child) || ts.isConstructorDeclaration(child) ||
                 ts.isArrowFunction(child) || ts.isFunctionExpression(child) || ts.isAccessor(child)) {

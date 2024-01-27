@@ -147,6 +147,18 @@ export class ArkFile {
         return this.importInfos;
     }
 
+    public addImportInfos(importInfo: ImportInfo) {
+        this.importInfos.push(importInfo);
+    }
+
+    public getExportInfos(): ExportInfo[] {
+        return this.exportInfos;
+    }
+
+    public addExportInfos(exportInfo: ExportInfo) {
+        this.exportInfos.push(exportInfo);
+    }
+
     public buildArkFileFromSourceFile(sourceFile: string, projectDir: string) {
         this.setName(path.relative(projectDir, sourceFile));
         this.setCode(fs.readFileSync(sourceFile, 'utf8'));
