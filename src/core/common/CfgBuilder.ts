@@ -9,9 +9,9 @@ import { Value } from '../base/Value';
 import { BasicBlock } from '../graph/BasicBlock';
 import { Cfg } from '../graph/Cfg';
 import { ArkClass } from '../model/ArkClass';
-import { IRUtils } from './IRUtils';
-import { ArkMethod } from '../model/ArkMethod';
 import { ArkFile } from '../model/ArkFile';
+import { ArkMethod } from '../model/ArkMethod';
+import { IRUtils } from './IRUtils';
 
 // todo:填cfg里的def use和local里的def use
 
@@ -1009,30 +1009,30 @@ export class CfgBuilder {
         }
     }
 
-    addReturnBlock(){
-        let notReturnStmts:StatementBuilder[]=[];
-        for(let stmt of this.exit.lasts){
-            if(stmt.type!="returnStatement"){
+    addReturnBlock() {
+        let notReturnStmts: StatementBuilder[] = [];
+        for (let stmt of this.exit.lasts) {
+            if (stmt.type != "returnStatement") {
                 notReturnStmts.push(stmt);
             }
         }
-        const returnStatement=new StatementBuilder("returnStatement","return;",null,this.exit.scopeID);
-        if(notReturnStmts.length==1){
-            const notReturnStmt=notReturnStmts[0];
-            notReturnStmt.next=returnStatement;
-            returnStatement.lasts=[notReturnStmt];
-            returnStatement.next=this.exit;
-            this.exit.lasts[this.exit.lasts.indexOf(notReturnStmt)]=returnStatement;
+        const returnStatement = new StatementBuilder("returnStatement", "return;", null, this.exit.scopeID);
+        if (notReturnStmts.length == 1) {
+            const notReturnStmt = notReturnStmts[0];
+            notReturnStmt.next = returnStatement;
+            returnStatement.lasts = [notReturnStmt];
+            returnStatement.next = this.exit;
+            this.exit.lasts[this.exit.lasts.indexOf(notReturnStmt)] = returnStatement;
             notReturnStmt.block?.stms.push(returnStatement);
         }
-        else if(notReturnStmts.length>1){
-            let returnBlock=new Block(this.blocks.length,[returnStatement],null);
+        else if (notReturnStmts.length > 1) {
+            let returnBlock = new Block(this.blocks.length, [returnStatement], null);
             this.blocks.push(returnBlock);
-            for(const notReturnStmt of notReturnStmts){
-                notReturnStmt.next=returnStatement;
+            for (const notReturnStmt of notReturnStmts) {
+                notReturnStmt.next = returnStatement;
                 returnStatement.lasts.push(notReturnStmt);
-                returnStatement.next=this.exit;
-                this.exit.lasts[this.exit.lasts.indexOf(notReturnStmt)]=returnStatement;
+                returnStatement.next = this.exit;
+                this.exit.lasts[this.exit.lasts.indexOf(notReturnStmt)] = returnStatement;
                 notReturnStmt.block?.nexts.add(returnBlock);
             }
         }
@@ -1057,7 +1057,7 @@ export class CfgBuilder {
         stm.walked = true;
         if (stm.astNode) {
             stm.haveCall = this.nodeHaveCall(stm.astNode);
-            stm.line = stm.astNode.line;
+            stm.line = stm.astNode.line + 1; // ast的行号是从0开始
         }
 
         if (stm.type == "ifStatement" || stm.type == "loopStatement" || stm.type == "catchOrNot") {
@@ -1528,8 +1528,7 @@ export class CfgBuilder {
             || nodeKind == 'CaseClause'
             || nodeKind == 'DefaultClause'
             || nodeKind == 'TryStatement'
-            || nodeKind == 'ThrowStatement'
-            || nodeKind == 'ElementAccessExpression') {
+            || nodeKind == 'ThrowStatement') {
             return true;
         }
         return false;
@@ -1597,6 +1596,59 @@ export class CfgBuilder {
         return leftOp;
     }
 
+    // TODO:支持更多场景
+    private astNodeToConditionExpr(conditionExprNode: NodeA): ArkConditionExpr {
+        let conditionValue = this.astNodeToValue(conditionExprNode);
+        let conditionExpr: ArkConditionExpr;
+        if ((conditionValue instanceof ArkBinopExpr) && isRelationalOperator(conditionValue.getOperator())) {
+            conditionExpr = new ArkConditionExpr(conditionValue.getOp1(), conditionValue.getOp2(), flipOperator(conditionValue.getOperator()));
+        } else {
+            if (IRUtils.moreThanOneAddress(conditionValue)) {
+                conditionValue = this.generateAssignStmt(conditionValue);
+            }
+            conditionExpr = new ArkConditionExpr(conditionValue, new Constant('0'), '==');
+        }
+        return conditionExpr;
+
+        function isRelationalOperator(operator: string): boolean {
+            return operator == '<' || operator == '<=' || operator == '>' || operator == '<' ||
+                operator == '==' || operator == '===' || operator == '!=' || operator == '!==';
+        }
+
+        function flipOperator(operator: string): string {
+            let newOperater = '';
+            switch (operator) {
+                case '<':
+                    newOperater = '>='
+                    break;
+                case '<=':
+                    newOperater = '>'
+                    break;
+                case '>':
+                    newOperater = '<='
+                    break;
+                case '>=':
+                    newOperater = '<'
+                    break;
+                case '==':
+                    newOperater = '!='
+                    break;
+                case '===':
+                    newOperater = '!=='
+                    break;
+                case '!=':
+                    newOperater = '=='
+                    break;
+                case '!==':
+                    newOperater = '==='
+                    break;
+                default:
+                    break;
+            }
+            return newOperater;
+        }
+    }
+
     private astNodeToValue(node: NodeA): Value {
         let value: any;
         if (node.kind == 'Identifier') {
@@ -1625,7 +1677,7 @@ export class CfgBuilder {
             }
             value = new ArkBinopExpr(op1, op2, operator);
         }
-        // TODO:属性访问是否需要展开
+        // TODO:属性访问需要展开
         else if (node.kind == 'PropertyAccessExpression') {
             let tempBase = new Local(node.children[0].text);
             let base = this.getOriginalLocal(tempBase);
@@ -1636,6 +1688,16 @@ export class CfgBuilder {
                 let fieldSignature = node.children[2].text;
                 value = new ArkInstanceFieldRef(base, fieldSignature);
             }
+        }
+        else if (node.kind == 'ElementAccessExpression') {
+            let baseValue = this.astNodeToValue(node.children[0]);
+            let indexNodeIdx = this.findChildIndex(node, 'OpenBracketToken') + 1;
+            let indexValue = this.astNodeToValue(node.children[indexNodeIdx]);
+            if (!(baseValue instanceof Local)) {
+                baseValue = this.generateAssignStmt(baseValue);
+            }
+
+            value = new ArkArrayRef(baseValue as Local, indexValue);
         }
         else if (node.kind == "CallExpression") {
             let syntaxListNode = node.children[this.findChildIndex(node, 'OpenParenToken') + 1];
@@ -1719,12 +1781,12 @@ export class CfgBuilder {
             let syntaxListNode = node.children[1];
             let size = 0;
             for (const syntaxNode of syntaxListNode.children) {
-                if (syntaxListNode.kind != 'CommaToken') {
+                if (syntaxNode.kind != 'CommaToken') {
                     size += 1;
                 }
             }
             // TODO:得到准确类型
-            value = new ArkNewArrayExpr('int', new Local(size.toString()));
+            value = new ArkNewArrayExpr('int', new Constant(size.toString()));
         }
         else if (node.kind == 'PrefixUnaryExpression') {
             let token = node.children[0].text;
@@ -1745,6 +1807,7 @@ export class CfgBuilder {
         }
         else if (node.kind == 'TemplateExpression') {
             value = new Local(node.text);
+            value = this.getOriginalLocal(value);
         }
         else if (node.kind == 'AwaitExpression') {
             value = this.astNodeToValue(node.children[1]);
@@ -1786,7 +1849,7 @@ export class CfgBuilder {
             // TODO:新增block
             let conditionIdx = this.findChildIndex(node, 'QuestionToken') - 1;
             let conditionExprNode = node.children[conditionIdx];
-            let conditionExpr = new ArkConditionExpr(this.astNodeToValue(conditionExprNode), new Constant('1'), '!=');
+            let conditionExpr = this.astNodeToConditionExpr(conditionExprNode);
             this.current3ACstm.threeAddressStmts.push(new ArkIfStmt(conditionExpr));
 
             let resultLocal = this.generateTempValue();
@@ -1844,7 +1907,7 @@ export class CfgBuilder {
             }
             threeAddressAssignStmts.push(new ArkInvokeStmt(new ArkInstanceInvokeExpr(leftOp as Local, methodSignature, args)));
 
-            if(leftOp instanceof Local && leftOp.getType()==""){
+            if (leftOp instanceof Local && leftOp.getType() == "") {
                 leftOp.setType(this.getTypeNewExpr(node.children[2]));
             }
 
@@ -1854,8 +1917,8 @@ export class CfgBuilder {
             for (let argNode of argsNode.children) {
                 if (argNode.kind != 'CommaToken') {
                     // TODO:数组条目类型
-                    let arrayRef = new ArkArrayRef(leftOp as Local, new Local(index.toString()));
-                    let arrayItem = new Local(argNode.text);
+                    let arrayRef = new ArkArrayRef(leftOp as Local, new Constant(index.toString()));
+                    let arrayItem = new Constant(argNode.text);
                     threeAddressAssignStmts.push(new ArkAssignStmt(arrayRef, arrayItem));
                     index++;
                 }
@@ -1867,8 +1930,8 @@ export class CfgBuilder {
             let index = 0;
             for (const argNode of argNodes) {
                 // TODO:数组条目类型
-                let arrayRef = new ArkArrayRef(leftOp as Local, new Local(index.toString()));
-                let arrayItem = new Local(argNode.text);
+                let arrayRef = new ArkArrayRef(leftOp as Local, new Constant(index.toString()));
+                let arrayItem = new Constant(argNode.text);
                 threeAddressAssignStmts.push(new ArkAssignStmt(arrayItem, arrayRef));
                 index++;
             }
@@ -1894,7 +1957,7 @@ export class CfgBuilder {
             let incrementorIdx = mayConditionIdx + 2;
             if (node.children[mayConditionIdx].kind != 'SemicolonToken') {
                 let conditionExprNode = node.children[mayConditionIdx];
-                let conditionExpr = new ArkConditionExpr(this.astNodeToValue(conditionExprNode), new Constant('1'), '!=');
+                let conditionExpr = this.astNodeToConditionExpr(conditionExprNode);
                 this.current3ACstm.threeAddressStmts.push(new ArkIfStmt(conditionExpr));
             } else {
                 incrementorIdx = mayConditionIdx + 1;
@@ -1929,7 +1992,7 @@ export class CfgBuilder {
         } else if (node.kind == "WhileStatement" || node.kind == "DoStatement") {
             let conditionIdx = this.findChildIndex(node, 'OpenParenToken') + 1;
             let conditionExprNode = node.children[conditionIdx];
-            let conditionExpr = new ArkConditionExpr(this.astNodeToValue(conditionExprNode), new Constant('1'), '!=');
+            let conditionExpr = this.astNodeToConditionExpr(conditionExprNode);
             this.current3ACstm.threeAddressStmts.push(new ArkIfStmt(conditionExpr));
         }
     }
@@ -1971,14 +2034,7 @@ export class CfgBuilder {
             this.astNodeToThreeAddressStmt(expressionNode);
         } else if (node.kind == 'IfStatement') {
             let conditionExprNode = node.children[this.findChildIndex(node, 'OpenParenToken') + 1];
-            let conditionValue = this.astNodeToValue(conditionExprNode);
-            let conditionExpr: ArkConditionExpr;
-            if (conditionValue instanceof ArkBinopExpr) {
-                conditionExpr = new ArkConditionExpr(conditionValue.getOp1(), conditionValue.getOp2(), conditionValue.getOperator());
-            } else {
-                conditionExpr = new ArkConditionExpr(conditionValue, new Constant('1'), '!=');
-            }
-
+            let conditionExpr = this.astNodeToConditionExpr(conditionExprNode);
             threeAddressStmts.push(new ArkIfStmt(conditionExpr));
         } else if (node.kind == 'PostfixUnaryExpression' || node.kind == 'PrefixUnaryExpression') {
             this.astNodeToValue(node);
@@ -2036,7 +2092,7 @@ export class CfgBuilder {
                 if (originStmt.astNode && originStmt.code != "" && this.support(originStmt.astNode)) {
                     this.current3ACstm = originStmt;
                     this.astNodeToThreeAddressStmt(originStmt.astNode);
-                } else if (originStmt.type == 'exit') {
+                } else if (originStmt.code == 'return;') {
                     // 额外添加的return语句特殊处理
                     originStmt.threeAddressStmts.push(new ArkReturnVoidStmt());
                 }
@@ -2606,12 +2662,21 @@ export class CfgBuilder {
     public buildCfg(): Cfg {
         let cfg = new Cfg();
         let blockBuilderToBlock = new Map<Block, BasicBlock>();
+        let stmtPos = -1;
         for (const blockBuilder of this.blocks) {
             let block = new BasicBlock();
             for (const stmtBuilder of blockBuilder.stms) {
                 for (const threeAddressStmt of stmtBuilder.threeAddressStmts) {
+                    if (stmtPos == -1) {
+                        stmtPos = stmtBuilder.line;
+                        cfg.setStartingStmt(threeAddressStmt);
+                    }
                     threeAddressStmt.setText(threeAddressStmt.toString());
+                    threeAddressStmt.setOriginPositionInfo(stmtBuilder.line);
+                    threeAddressStmt.setPositionInfo(stmtPos);
+                    stmtPos++;
                     block.addStmt(threeAddressStmt);
+
                 }
             }
             cfg.addBlock(block);
@@ -2671,43 +2736,43 @@ export class CfgBuilder {
         return ""
     }
 
-    private getTypeNewExpr(node:NodeA):string{
-        const className=node.children[this.findChildIndex(node,"Identifier")].text;
-        const file=this.declaringClass.declaringArkFile;
-        return this.searchImportClass(file,className);
+    private getTypeNewExpr(node: NodeA): string {
+        const className = node.children[this.findChildIndex(node, "Identifier")].text;
+        const file = this.declaringClass.declaringArkFile;
+        return this.searchImportClass(file, className);
     }
 
-    private searchImportClass(file:ArkFile,className:string):string{
-        for(let classInFile of file.classes){
-            if(className==classInFile.name){
-                return classInFile.classSignature.arkFile+"."+className;
+    private searchImportClass(file: ArkFile, className: string): string {
+        for (let classInFile of file.classes) {
+            if (className == classInFile.name) {
+                return classInFile.classSignature.arkFile + "." + className;
             }
         }
-        for(let importInfo of file.importInfos){
-            if(className==importInfo.importClauseName&&importInfo.importFrom!=undefined){
-                const fileDir=file.name.split("\\");
-                const importDir=importInfo.importFrom.split(/[\/\\]/).filter(item => item !== '.');
-                let parentDirNum=0;
-                while(importDir[parentDirNum]==".."){
+        for (let importInfo of file.importInfos) {
+            if (className == importInfo.importClauseName && importInfo.importFrom != undefined) {
+                const fileDir = file.name.split("\\");
+                const importDir = importInfo.importFrom.split(/[\/\\]/).filter(item => item !== '.');
+                let parentDirNum = 0;
+                while (importDir[parentDirNum] == "..") {
                     parentDirNum++;
                 }
-                if(parentDirNum<fileDir.length){
-                    let realImportFileName="";
-                    for(let i=0;i<fileDir.length-parentDirNum-1;i++){
-                        realImportFileName+=fileDir+"\\";
+                if (parentDirNum < fileDir.length) {
+                    let realImportFileName = "";
+                    for (let i = 0; i < fileDir.length - parentDirNum - 1; i++) {
+                        realImportFileName += fileDir + "\\";
                     }
-                    for(let i=parentDirNum;i<importDir.length;i++){
-                        realImportFileName+=importDir[i];
-                        if(i!=importDir.length-1){
-                            realImportFileName+="\\";
+                    for (let i = parentDirNum; i < importDir.length; i++) {
+                        realImportFileName += importDir[i];
+                        if (i != importDir.length - 1) {
+                            realImportFileName += "\\";
                         }
                     }
 
-                    const scene=file.scene;
-                    if(scene){
-                        for(let sceneFile of scene.arkFiles){
-                            if(sceneFile.name==realImportFileName){
-                                return this.searchImportClass(sceneFile,className);
+                    const scene = file.scene;
+                    if (scene) {
+                        for (let sceneFile of scene.arkFiles) {
+                            if (sceneFile.name == realImportFileName) {
+                                return this.searchImportClass(sceneFile, className);
                             }
                         }
                     }
