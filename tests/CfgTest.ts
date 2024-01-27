@@ -4,7 +4,7 @@ import { Config } from "./Config";
 const fs = require('fs');
 
 export class CfgTest {
-    public testThreeAddresStmt() {
+    private buildScene(): Scene {
         // let config = new Config("ThreeAddresStmtTest", "D:\\codes\\tests\\applications_systemui\\common\\src\\main\\ets\\default");
         // let config = new Config("ThreeAddresStmtTest", "D:\\codes\\tests\\applications_systemui\\common\\src\\main\\ets\\default\\abilitymanager");
         // let config = new Config("ThreeAddresStmtTest", "D:\\codes\\tests\\applications_systemui");
@@ -21,27 +21,50 @@ export class CfgTest {
         // projectFiles = ['D:\\codes\\openharmony\\applications\\applications_photos\\common\\src\\main\\ets\\default\\access\\UserFileManagerAccess.ts']
         projectFiles = ['tests\\resources\\cfg\\cfgmain.ts'];
 
-        let scene = new Scene(projectName, projectFiles, 'D:\\Codes\\ark-analyzer-mirror');
+        return new Scene(projectName, projectFiles, 'D:\\Codes\\ark-analyzer-mirror');
+    }
+
+    public testThreeAddresStmt() {
+        let scene = this.buildScene();
 
         for (const arkFile of scene.arkFiles) {
-            console.log('=============== arkFile:', arkFile.name, ' ================');
+            console.log('=============== arkFile:', arkFile.getName(), ' ================');
             for (const arkClass of arkFile.getClasses()) {
                 for (const arkMethod of arkClass.getMethods()) {
-                    console.log('************ arkMethod:', arkMethod.name, ' **********');
-                    console.log('-- origalstmts:');                    
-                    for (const origalstmt of arkMethod.getOriginalCfg().getStmts()) {
+                    if (arkMethod.getName() == '_DEFAULT_ARK_METHOD') {
+                        continue;
+                    }
+                    console.log('************ arkMethod:', arkMethod.getName(), ' **********');
+                    console.log('-- origalstmts:');
+                    for (const origalstmt of arkMethod.getBody().getOriginalCfg().getStmts()) {
                         console.log(origalstmt.toString());
                     }
-                    console.log();                
+                    console.log();
                     console.log('-- threeAddresStmts:');
-                    for (const threeAddresStmt of arkMethod.getCfg().getStmts()) {
+                    for (const threeAddresStmt of arkMethod.getBody().getCfg().getStmts()) {
                         console.log(threeAddresStmt.toString());
+                        // console.log(threeAddresStmt.toString(), ', original pos:', threeAddresStmt.getOriginPositionInfo(),
+                        //     ', pos:', threeAddresStmt.getPositionInfo());
                     }
 
-                    console.log('-- locals:');                    
-                    for(const local of arkMethod.getBody().getLocals()){
+                    console.log('-- locals:');
+                    for (const local of arkMethod.getBody().getLocals()) {
                         console.log(local.toString());
                     }
+                }
+            }
+        }
+    }
+
+
+    public testBlocks() {
+        let scene = this.buildScene();
+
+        for (const arkFile of scene.arkFiles) {
+            for (const arkClass of arkFile.getClasses()) {
+                for (const arkMethod of arkClass.getMethods()) {
+                    console.log('************ arkMethod:', arkMethod.getName(), ' **********');
+                    console.log('StartingBlock:', arkMethod.getBody().getCfg().getStartingBlock());
                 }
             }
         }
@@ -52,5 +75,6 @@ export class CfgTest {
 
 let cfgTest = new CfgTest();
 cfgTest.testThreeAddresStmt();
+// cfgTest.testBlocks();
 
 debugger

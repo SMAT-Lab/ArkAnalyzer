@@ -15,7 +15,7 @@ function run(config: Config) {
     const projectFiles: string[] = utils.getAllFiles(input_dir, ['.ts']);
 
     //(2) Fill Scene class
-    let scene: Scene = new Scene(projectName, projectFiles,"D:/");
+    let scene: Scene = new Scene(projectName, projectFiles,config.input_dir);
     // HotPropertyAccessCheck(scene);
     
     //let code = 'let age = myPerson.age + i;';
@@ -27,5 +27,5 @@ function run(config: Config) {
 //let config: Config = new Config("app_photo", "/Users/yifei/Documents/Code/applications_systemui");
 // let config: Config = new Config("systemui", "./codeLab/codelabs2/NetworkManagement/NewsDataArkTS");
 // let config: Config = new Config("systemui", "./codeLab/codelabs2/");
-let config: Config = new Config("systemui", "./tests/resources/cfg");
+let config: Config = new Config("systemui", "D:\\11study\\ArkAnalyzer\\tests\\resources\\type");
 run(config);

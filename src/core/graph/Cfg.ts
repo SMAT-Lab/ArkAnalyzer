@@ -34,7 +34,7 @@ export class Cfg {
     public addBlock(block: BasicBlock): void {
         this.blocks.add(block);
 
-        for(const stmt of block.getStmts()){
+        for (const stmt of block.getStmts()) {
             this.stmtToBlock.set(stmt, block);
         }
     }
@@ -45,8 +45,16 @@ export class Cfg {
     }
 
 
-    public getStartingBlock(): BasicBlock {
-        return this.stmtToBlock.get(this.startingStmt) as BasicBlock;
+    public getStartingBlock(): BasicBlock | undefined {
+        return this.stmtToBlock.get(this.startingStmt);
+    }
+
+    public getStartingStmt(): Stmt {
+        return this.startingStmt;
+    }
+
+    public setStartingStmt(newStartingStmt: Stmt): void {
+        this.startingStmt = newStartingStmt;
     }
 
     // TODO: 整理成类似jimple的输出
@@ -56,13 +64,13 @@ export class Cfg {
 
 
     buildDefUseChain() {
-        const locals:Set<Local>=new Set();
+        const locals: Set<Local> = new Set();
         for (const block of this.blocks) {
             for (let stmtIndex = 0; stmtIndex < block.getStmts().length; stmtIndex++) {
                 const stmt = block.getStmts()[stmtIndex];
                 // 填declareStmt
-                const defValue=stmt.getDef()
-                if(defValue && defValue instanceof Local &&!locals.has(defValue)){
+                const defValue = stmt.getDef()
+                if (defValue && defValue instanceof Local && !locals.has(defValue)) {
                     defValue.setDeclaringStmt(stmt);
                     locals.add(defValue);
                 }
@@ -87,8 +95,8 @@ export class Cfg {
                         this.defUseChains.push(new DefUseChain(value, defStmts[0], stmt));
                     }
                     else {
-                        const needWalkBlocks:BasicBlock[] = [];
-                        for(const predecessor of block.getPredecessors()){
+                        const needWalkBlocks: BasicBlock[] = [];
+                        for (const predecessor of block.getPredecessors()) {
                             needWalkBlocks.push(predecessor);
                         }
                         const walkedBlocks = new Set();

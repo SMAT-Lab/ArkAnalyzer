@@ -7,6 +7,7 @@ import { ArkNamespace } from "./ArkNamespace";
 import { ClassSignature, MethodSignature, methodSignatureCompare, classSignatureCompare } from "./ArkSignature";
 import { ExportInfo } from '../common/ExportBuilder';
 import { ImportInfo } from '../common/ImportBuilder';
+import { Scene } from '../../Scene';
 
 /**
  * 
@@ -22,6 +23,7 @@ export class ArkFile {
     private nameSpaces: ArkNamespace[] = [];
     private importInfos: ImportInfo[] = [];
     private exportInfos: ExportInfo[] = [];
+    private scene: Scene;
 
     constructor() { }
 
@@ -31,6 +33,14 @@ export class ArkFile {
 
     public getName() {
         return this.name;
+    }
+
+    public setScene(scene: Scene) {
+        this.scene = scene;
+    }
+
+    public getScene() {
+        return this.scene;
     }
 
     public setProjectDir(projectDir: string) {

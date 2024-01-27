@@ -149,7 +149,7 @@ export class Stmt {
         return this.position;
     }
 
-    public setOriginPositionInfo(originPosition: number) {
+    public setOriginPositionInfo(originPosition: number): void {
         this.originPosition = originPosition;
     }
 
@@ -194,7 +194,7 @@ export class ArkAssignStmt extends Stmt {
 
     public setRightOp(rightOp: Value): void {
         this.rightOp = rightOp;
-        this.updateUses();        
+        this.updateUses();
     }
 
     public toString(): string {

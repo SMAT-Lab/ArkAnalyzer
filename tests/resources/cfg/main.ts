@@ -1,16 +1,8 @@
-// function fun(){let i=0;
-// if(i<1){
-//     i++;
-// }
-// else{
-//     i--
-// }
-// console.log(i)}
+x=1;
 
-let i:number;
-if(xx){
-    i=1;
-}
-else{
-    i=2;
-}
+// let a:number[]=[1,2,3];
+// let a1=1;
+// a.push(a1);
+// x=a[a1];
+// a[1]=0;
+// x=a[a1];

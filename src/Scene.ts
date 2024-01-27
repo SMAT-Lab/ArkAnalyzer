@@ -34,6 +34,7 @@ export class Scene {
         for (let file of this.projectFiles) {
             let arkFile: ArkFile = new ArkFile();
             arkFile.buildArkFileFromSourceFile(file, this.realProjectDir);
+            arkFile.setScene(this);
             this.arkFiles.push(arkFile);
         }
     }
