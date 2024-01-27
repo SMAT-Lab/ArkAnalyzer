@@ -8,14 +8,67 @@ export class Property {
     questionToken: boolean = false; //whether exists "?"
     exclamationToken: boolean = false; //whether exists "!"
     initializer: string;
-    constructor(propertyName: string, modifiers: Set<string>, type: string,
-        questionToken: boolean, exclamationToken: boolean, initializer: string) {
+
+    public getPropertyName() {
+        return this.propertyName;
+    }
+
+    public setPropertyName(propertyName: string) {
         this.propertyName = propertyName;
-        this.modifiers = modifiers;
+    }
+
+    public getModifiers() {
+        return this.modifiers;
+    }
+
+    public addModifier(modifier: string) {
+        this.modifiers.add(modifier);
+    }
+
+    public getType() {
+        return this.type;
+    }
+
+    public setType(type: string) {
         this.type = type;
+    }
+
+    public getQuestionToken() {
+        return this.questionToken;
+    }
+
+    public setQuestionToken(questionToken: boolean) {
         this.questionToken = questionToken;
+    }
+
+    public getExclamationToken() {
+        return this.exclamationToken;
+    }
+
+    public setExclamationToken(exclamationToken: boolean) {
         this.exclamationToken = exclamationToken;
+    }
+
+    public getInitializer() {
+        return this.initializer;
+    }
+
+    public setInitializer(initializer: string) {
         this.initializer = initializer;
+    }
+
+    constructor() { }
+
+    public build(propertyName: string, modifiers: Set<string>, type: string,
+        questionToken: boolean, exclamationToken: boolean, initializer: string) {
+        this.setPropertyName(propertyName);
+        modifiers.forEach((modifier) => {
+            this.addModifier(modifier);
+        });
+        this.setType(type);
+        this.setQuestionToken(questionToken);
+        this.setExclamationToken(exclamationToken);
+        this.setInitializer(initializer);
     }
 }
 
@@ -47,7 +100,9 @@ function buildProperty(member: ts.PropertyDeclaration): Property {
         initializer = ts.SyntaxKind[member.initializer.kind];
     }
 
-    return new Property(propertyName, modifiers, type, questionToken, exclamationToken, initializer);
+    let property = new Property();
+    property.build(propertyName, modifiers, type, questionToken, exclamationToken, initializer);
+    return property;
 }
 
 export class ClassInfo {
@@ -68,7 +123,7 @@ export class ClassInfo {
 }
 
 // build class name, modifiers, heritageClauses, properties
-export function buildClassInfo4ClassNode(node: ts.ClassDeclaration): ClassInfo {
+export function buildClassInfo4ClassNode(node: ts.ClassDeclaration | ts.ClassExpression): ClassInfo {
     let name = node.name ? node.name.escapedText.toString() : '';
 
     let modifiers: Set<string> = new Set<string>();
