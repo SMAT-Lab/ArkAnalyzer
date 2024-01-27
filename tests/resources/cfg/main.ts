@@ -1,20 +1,11 @@
-import { ApiResultSimpleInfo } from '../../typedef/checker/result_type';
-import { Check } from './src/api_check_plugin';
-import { LogUtil } from '../../utils/logUtil';
-import { compositiveResult } from '../../utils/checkUtils';
-/**
- * online entrance
- */
-export class Entry {
-  static checkEntry(): ApiResultSimpleInfo[] {
-    const mdFilesPath = '';
-    let result: ApiResultSimpleInfo[] = compositiveResult;
+function extendSyscap(apiInfo: ApiInfo): string {
+    const node: ts.Node | undefined = curApiInfo.getNode();
     try {
-      Check.scanEntry(mdFilesPath);
+      while (node) {
+        console.log(1)
+      }
     } catch (error) {
-      LogUtil.e('API_CHECK_ERROR', error);
-    } finally {
+      LogUtil.e('SYSCAP ERROR', error);
     }
-    return result;
+    return syscap;
   }
-}
