@@ -693,7 +693,7 @@ export class CfgBuilder {
                         haveFinal = true;
                     }
                 }
-                if (finalBlock) {
+                if (finalBlock&&finalBlock.children[1].children.length>0) {
                     let final = new StatementBuilder("statement", "finally", c, scope.id);
                     // judgeLastType(final);
                     let finalExit = new StatementBuilder("finally exit", "", c, scope.id);
@@ -904,7 +904,7 @@ export class CfgBuilder {
                 // }
                 this.catches.push(new Catch(trystm.catchErrors[i], tryFirstBlock.id, finallyBlock.id, catchBlock.id));
             }
-            if (trystm.finallyStatement&&trystm.finallyStatement.type!="finalyy exit") {
+            if (trystm.finallyStatement) {
                 this.resetWalkedPartial(trystm.finallyStatement);
                 this.blocks = this.blocks.filter((b) => b.stms.length != 0);
                 let errorFinallyBlock = new Block(this.blocks.length, [], null);
