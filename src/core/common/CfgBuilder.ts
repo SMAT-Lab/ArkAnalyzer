@@ -904,7 +904,7 @@ export class CfgBuilder {
                 // }
                 this.catches.push(new Catch(trystm.catchErrors[i], tryFirstBlock.id, finallyBlock.id, catchBlock.id));
             }
-            if (trystm.finallyStatement) {
+            if (trystm.finallyStatement&&trystm.finallyStatement.type!="finalyy exit") {
                 this.resetWalkedPartial(trystm.finallyStatement);
                 this.blocks = this.blocks.filter((b) => b.stms.length != 0);
                 let errorFinallyBlock = new Block(this.blocks.length, [], null);
