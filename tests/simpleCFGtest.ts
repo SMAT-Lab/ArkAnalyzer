@@ -3,7 +3,8 @@ import {CfgBuilder} from '../src/core/common/CfgBuilder';
 import * as fs from 'fs';
 import { ArkFile } from '../src/core/model/ArkFile';
 
-let file=new ArkFile('tests\\resources\\cfg\\main.ts',"D:\\11study\\ArkAnalyzer")
+let file=new ArkFile()
+file.buildArkFileFromSourceFile('tests\\resources\\cfg\\main.ts',"D:\\11study\\ArkAnalyzer")
 console.log(1);
 
 

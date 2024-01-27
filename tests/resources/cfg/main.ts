@@ -1,4 +1,1 @@
-while(i){
-
-}
-console.log(1)
+let x= new P()

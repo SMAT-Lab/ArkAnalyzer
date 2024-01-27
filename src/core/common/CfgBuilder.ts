@@ -1774,19 +1774,19 @@ export class CfgBuilder {
             this.declaringClass.addMethod(exprArkMethod);
             value = new ArkStaticInvokeExpr(exprArkMethod.getSignature().toString(), args);
         }
-        // else if (node.kind == "ClassExpression"){
-        //     let cls: ArkClass = new ArkClass();
-        //     let arkFile=this.declaringClass.getDeclaringArkFile();
-        //     cls.buildArkClassFromAstNode(node, arkFile);
-        //     arkFile.addArkClass(cls);
-        //     if (cls.isExported()) {
-        //         let exportClauseName: string = cls.getName();
-        //         let exportClauseType: string = "Class";
-        //         let exportInfo = new ExportInfo();
-        //         exportInfo.build(exportClauseName, exportClauseType);
-        //         arkFile.exportInfos.push(exportInfo);
-        //     }
-        // }
+        else if (node.kind == "ClassExpression"){
+            let cls: ArkClass = new ArkClass();
+            let arkFile=this.declaringClass.getDeclaringArkFile();
+            cls.buildArkClassFromAstNode(node, arkFile);
+            arkFile.addArkClass(cls);
+            if (cls.isExported()) {
+                let exportClauseName: string = cls.getName();
+                let exportClauseType: string = "Class";
+                let exportInfo = new ExportInfo();
+                exportInfo.build(exportClauseName, exportClauseType);
+                arkFile.addExportInfos(exportInfo);
+            }
+        }
         else if (node.kind == "NewExpression") {
             let classValue = this.astNodeToValue(node.children[1]);
             let classSignature = classValue.toString();
