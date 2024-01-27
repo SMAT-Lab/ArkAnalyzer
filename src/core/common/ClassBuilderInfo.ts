@@ -159,7 +159,7 @@ export function buildClassInfo4ClassNode(node: ts.ClassDeclaration | ts.ClassExp
     return new ClassInfo(name, modifiers, heritageClausesMap, properties, typeParameters);
 }
 
-function handleisPropertyAccessExpression(node: ts.PropertyAccessExpression): string {
+export function handleisPropertyAccessExpression(node: ts.PropertyAccessExpression): string {
     let right = (node.name as ts.Identifier).escapedText.toString();
     let left: string = '';
     if (ts.SyntaxKind[node.expression.kind] == 'Identifier') {

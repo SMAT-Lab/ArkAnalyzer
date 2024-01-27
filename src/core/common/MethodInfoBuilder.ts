@@ -1,5 +1,6 @@
 import * as ts from "typescript";
 import { buildModifiers } from "./BuildModifiers";
+import { handleisPropertyAccessExpression } from "./ClassBuilderInfo";
 
 export class MethodInfo {
     name: string;
@@ -29,7 +30,15 @@ export function buildMethodInfo4MethodNode(node: ts.FunctionDeclaration | ts.Met
         name = node.name ? node.name.escapedText.toString() : '';
     }
     else if (ts.isMethodDeclaration(node)) {
-        name = (node.name as ts.Identifier).escapedText.toString();
+        //debugger;
+        if (ts.isIdentifier(node.name)) {
+            name = (node.name as ts.Identifier).escapedText.toString();
+        }
+        else if (ts.isComputedPropertyName(node.name)) {
+            if (ts.isPropertyAccessExpression(node.name.expression)) {
+                name = handleisPropertyAccessExpression(node.name.expression);
+            }
+        }
     }
     //TODO, hard code
     else if (ts.isConstructorDeclaration(node)) {
