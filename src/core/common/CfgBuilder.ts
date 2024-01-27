@@ -1063,7 +1063,7 @@ export class CfgBuilder {
         stm.walked = true;
         if (stm.astNode) {
             stm.haveCall = this.nodeHaveCall(stm.astNode);
-            stm.line = stm.astNode.line;
+            stm.line = stm.astNode.line + 1; // ast的行号是从0开始
         }
 
         if (stm.type == "ifStatement" || stm.type == "loopStatement" || stm.type == "catchOrNot") {
@@ -2667,12 +2667,21 @@ export class CfgBuilder {
     public buildCfg(): Cfg {
         let cfg = new Cfg();
         let blockBuilderToBlock = new Map<Block, BasicBlock>();
+        let stmtPos = -1;
         for (const blockBuilder of this.blocks) {
             let block = new BasicBlock();
             for (const stmtBuilder of blockBuilder.stms) {
                 for (const threeAddressStmt of stmtBuilder.threeAddressStmts) {
+                    if (stmtPos == -1) {
+                        stmtPos = stmtBuilder.line;
+                        cfg.setStartingStmt(threeAddressStmt);
+                    }
                     threeAddressStmt.setText(threeAddressStmt.toString());
+                    threeAddressStmt.setOriginPositionInfo(stmtBuilder.line);
+                    threeAddressStmt.setPositionInfo(stmtPos);
+                    stmtPos++;
                     block.addStmt(threeAddressStmt);
+
                 }
             }
             cfg.addBlock(block);
@@ -2687,14 +2696,6 @@ export class CfgBuilder {
                 let successorBlock = blockBuilderToBlock.get(successorBuilder) as BasicBlock;
                 successorBlock.addPredecessorBlock(block);
                 block.addSuccessorBlock(successorBlock);
-            }
-        }
-
-        if (this.blocks.length > 0 && this.blocks[0].stms.length > 0) {
-            let stmtBuilder = this.blocks[0].stms[0];
-            for (const threeAddressStmt of stmtBuilder.threeAddressStmts) {
-                cfg.setStartingStmt(threeAddressStmt);
-                break;
             }
         }
 
