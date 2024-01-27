@@ -2676,6 +2676,7 @@ export class CfgBuilder {
     // TODO: Add more APIs to class 'Cfg', and use these to build Cfg
     public buildCfg(): Cfg {
         let cfg = new Cfg();
+        cfg.declaringClass=this.declaringClass;
         let blockBuilderToBlock = new Map<Block, BasicBlock>();
         let stmtPos = -1;
         for (const blockBuilder of this.blocks) {

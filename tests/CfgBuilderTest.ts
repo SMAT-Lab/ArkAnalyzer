@@ -16,11 +16,16 @@ function run(config: Config) {
 
     //(2) Fill Scene class
     let scene: Scene = new Scene(projectName, projectFiles,config.input_dir);
-    // HotPropertyAccessCheck(scene);
-    
-    //let code = 'let age = myPerson.age + i;';
-    //let codeTree = new ASTree(code);
-    //codeTree.printAST();
+
+    for(let file of scene.arkFiles){
+        for(let clas of file.getClasses()){
+            for(let method of clas.getMethods()){
+                const cfg=method.getBody().getCfg();
+                cfg.typeReference();
+                console.log(1)
+            }
+        }
+    }
 }
 
 //let config: Config = new Config("app_photo", "/Users/yifei/Documents/Code/applications_photos/common/src/main/ets");

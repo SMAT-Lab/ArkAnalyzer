@@ -1,8 +1,10 @@
 import { DefUseChain } from "../base/DefUseChain";
 import { Local } from "../base/Local";
-import { Stmt } from "../base/Stmt";
+import { ArkAssignStmt, Stmt } from "../base/Stmt";
 import { BasicBlock } from "./BasicBlock";
 import { ArkFile } from "../model/ArkFile";
+import { ArkNewExpr } from "../base/Expr";
+import { ArkClass } from "../model/ArkClass";
 
 export class Cfg {
     private blocks: Set<BasicBlock> = new Set();
@@ -10,6 +12,7 @@ export class Cfg {
     private startingStmt: Stmt = new Stmt();
 
     private defUseChains: DefUseChain[] = [];
+    declaringClass: ArkClass;
 
     constructor() {
 
@@ -133,15 +136,25 @@ export class Cfg {
         }
     }
 
-    private typeReference(){
-        
+    public typeReference(){
+        for(let block of this.blocks){
+            for(let stmt of block.getStmts()){
+                if(stmt instanceof ArkAssignStmt){
+                    const leftOp=stmt.getLeftOp();
+                    const rightOp=stmt.getRightOp();
+                    if(leftOp instanceof Local && rightOp instanceof ArkNewExpr){
+                        leftOp.setType(this.getTypeNewExpr(rightOp));
+                    }
+                }
+            }
+        }
     }
 
-    // private getTypeNewExpr(node: NodeA): string {
-    //     const className = node.children[this.findChildIndex(node, "Identifier")].text;
-    //     const file = this.declaringClass.getDeclaringArkFile();
-    //     return this.searchImportClass(file, className);
-    // }
+    private getTypeNewExpr(newExpr:ArkNewExpr): string {
+        const className = newExpr.getClassSignature();
+        const file = this.declaringClass.getDeclaringArkFile();
+        return this.searchImportClass(file, className);
+    }
 
     private searchImportClass(file: ArkFile, className: string): string {
         for (let classInFile of file.getClasses()) {
@@ -161,7 +174,7 @@ export class Cfg {
                 if (parentDirNum < fileDir.length) {
                     let realImportFileName = "";
                     for (let i = 0; i < fileDir.length - parentDirNum - 1; i++) {
-                        realImportFileName += fileDir + "\\";
+                        realImportFileName += fileDir[i] + "\\";
                     }
                     for (let i = parentDirNum; i < importDir.length; i++) {
                         realImportFileName += importDir[i];
@@ -169,7 +182,7 @@ export class Cfg {
                             realImportFileName += "\\";
                         }
                     }
-
+                    realImportFileName += ".ts";
                     const scene = file.getScene();
                     if (scene) {
                         for (let sceneFile of scene.arkFiles) {
