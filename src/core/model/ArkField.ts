@@ -53,9 +53,9 @@ export class ArkField {
 
     public buildFromArkClass(declaringClass: ArkClass, property: Property) {
         this.setDeclaringClass(declaringClass);
-        this.setName(property.propertyName)
-        this.setType(property.type);
-        property.modifiers.forEach((modifier) => {
+        this.setName(property.getPropertyName())
+        this.setType(property.getType());
+        property.getModifiers().forEach((modifier) => {
             this.addModifier(modifier);
         });
         this.genSignature();

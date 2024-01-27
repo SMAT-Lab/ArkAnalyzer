@@ -2,12 +2,12 @@ import * as ts from "typescript";
 import { buildModifiers } from "./BuildModifiers";
 
 export class Property {
-    propertyName: string;
-    modifiers: Set<string>;
-    type: string;
-    questionToken: boolean = false; //whether exists "?"
-    exclamationToken: boolean = false; //whether exists "!"
-    initializer: string;
+    private propertyName: string;
+    private modifiers: Set<string> = new Set<string>();
+    private type: string;
+    private questionToken: boolean = false; //whether exists "?"
+    private exclamationToken: boolean = false; //whether exists "!"
+    private initializer: string;
 
     public getPropertyName() {
         return this.propertyName;
