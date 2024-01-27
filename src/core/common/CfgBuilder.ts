@@ -451,15 +451,6 @@ export class CfgBuilder {
                         this.walkAST(ifstm, ifexit, ifchild.children[1])
                     }
                 }
-                // if(!expressionCondition){
-                //     for(let ifchild of c.children){
-                //         if(ifchild.kind=="PrefixUnaryExpression"||ifchild.kind=="Identifier"||ifchild.kind=="PropertyAccessExpression"){
-                //             ifstm.code="if("+ifchild.text+")";
-                //             ifstm.condition=ifchild.text;
-                //             break;
-                //         }
-                //     }
-                // }
                 if (!elsed || !ifstm.nextF) {
                     ifstm.nextF = ifexit;
                 }
@@ -496,15 +487,12 @@ export class CfgBuilder {
                         this.walkAST(loopstm, loopstm, loopchild.children[1]);
                     }
                 }
-                // if(!expressionCondition){
-                //     for(let loopchild of c.children){
-                //         if(loopchild.kind=="PrefixUnaryExpression"||loopchild.kind=="Identifier"||loopchild.kind=="PropertyAccessExpression"){
-                //             loopstm.code="while("+loopchild.text+")";
-                //             loopstm.condition=loopchild.text;
-                //             break;
-                //         }
-                //     }
-                // }
+                if (!loopstm.nextF) {
+                    loopstm.nextF = loopExit;
+                }
+                if (!loopstm.nextT) {
+                    loopstm.nextT = loopExit;
+                }
                 lastStatement = loopExit;
                 this.loopStack.pop();
             }
@@ -524,6 +512,12 @@ export class CfgBuilder {
                         loopstm.code = code;
                         this.walkAST(loopstm, loopstm, loopchild.children[1]);
                     }
+                }
+                if (!loopstm.nextF) {
+                    loopstm.nextF = loopExit;
+                }
+                if (!loopstm.nextT) {
+                    loopstm.nextT = loopExit;
                 }
                 lastStatement = loopExit;
                 this.loopStack.pop();
