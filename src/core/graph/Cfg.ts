@@ -174,7 +174,15 @@ export class Cfg {
         }
         for (let importInfo of file.getImportInfos()) {
             const importFromDir=importInfo.getImportFrom();
-            if (className == importInfo.getImportClauseName() && importFromDir != undefined) {
+            let importClassName:string;
+            let nameBeforeAs=importInfo.getNameBeforeAs()
+            if(nameBeforeAs!=undefined){
+                importClassName=nameBeforeAs;
+            }
+            else{
+                importClassName=importInfo.getImportClauseName()
+            }
+            if (className == importClassName && importFromDir != undefined) {
                 const fileDir = file.getName().split("\\");
                 const importDir = importFromDir.split(/[\/\\]/).filter(item => item !== '.');
                 let parentDirNum = 0;
