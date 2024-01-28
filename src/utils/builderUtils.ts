@@ -1,4 +1,4 @@
-import ts from "typescript";
+import ts, { isClassDeclaration } from "typescript";
 
 export function handleQualifiedName(node: ts.QualifiedName): string {
     let right = (node.right as ts.Identifier).escapedText.toString();
@@ -25,3 +25,49 @@ export function handleisPropertyAccessExpression(node: ts.PropertyAccessExpressi
     let propertyAccessExpressionName = left + '.' + right;
     return propertyAccessExpressionName;
 }
+
+export function buildModifiers(modifierArray: ts.NodeArray<ts.ModifierLike>): Set<string> {
+    let modifiers: Set<string> = new Set<string>();
+    modifierArray.forEach((modifier) => {
+        //TODO: find reason!!
+        //console.log(name, modifier.kind, ts.SyntaxKind.AbstractKeyword);
+        if (ts.SyntaxKind[modifier.kind] == 'FirstContextualKeyword') {
+            modifiers.add('AbstractKeyword');
+        }
+        else {
+            modifiers.add(ts.SyntaxKind[modifier.kind]);
+        }
+    });
+    return modifiers;
+}
+
+export function buildHeritageClauses(node: ts.ClassDeclaration | ts.ClassExpression | ts.InterfaceDeclaration): Map<string, string> {
+    let heritageClausesMap: Map<string, string> = new Map<string, string>();
+    node.heritageClauses?.forEach((heritageClause) => {
+        heritageClause.types.forEach((type) => {
+            let heritageClauseName: string = '';
+            if (ts.isIdentifier(type.expression)) {
+                heritageClauseName = (type.expression as ts.Identifier).escapedText.toString();
+            }
+            else if (ts.isPropertyAccessExpression(type.expression)) {
+                heritageClauseName = handleisPropertyAccessExpression(type.expression);
+            }
+            heritageClausesMap.set(heritageClauseName, ts.SyntaxKind[heritageClause.token]);
+        });
+    });
+    return heritageClausesMap;
+}
+
+export function buildTypeParameters(node: ts.ClassDeclaration | ts.ClassExpression | ts.InterfaceDeclaration
+    | ts.FunctionDeclaration | ts.MethodDeclaration | ts.ConstructorDeclaration |
+    ts.ArrowFunction | ts.AccessorDeclaration | ts.FunctionExpression): string[] {
+    let typeParameters: string[] = [];
+    node.typeParameters?.forEach((typeParameter) => {
+        if (ts.isIdentifier(typeParameter.name)) {
+            typeParameters.push(typeParameter.name.escapedText.toString());
+        }
+    });
+    return typeParameters;
+}
+
+

@@ -1,18 +1,19 @@
 import * as ts from "typescript";
-import { buildModifiers } from "./BuildModifiers";
-import { handleQualifiedName, handleisPropertyAccessExpression } from "../../utils/builderUtils";
+import { buildModifiers, buildTypeParameters, handleQualifiedName, handleisPropertyAccessExpression } from "../../utils/builderUtils";
 
 export class MethodInfo {
     name: string;
     parameters: Map<string, string>;
     modifiers: Set<string>;
     returnType: string[];
+    typeParameters: string[];
 
-    constructor(name: string, parameters: Map<string, string>, modifiers: Set<string>, returnType: string[]) {
+    constructor(name: string, parameters: Map<string, string>, modifiers: Set<string>, returnType: string[], typeParameters: string[]) {
         this.name = name;
         this.parameters = parameters;
         this.modifiers = modifiers;
         this.returnType = returnType;
+        this.typeParameters = typeParameters;
     }
 
     public updateName4anonymousFunc(newName: string) {
@@ -110,10 +111,21 @@ export function buildMethodInfo4MethodNode(node: ts.FunctionDeclaration | ts.Met
                 }
             }
         }
+        else if (ts.isTypeReferenceNode(node.type)) {
+            let referenceNodeName = node.type.typeName;
+            if (ts.isQualifiedName(referenceNodeName)) {
+                returnType.push(handleQualifiedName(referenceNodeName));
+            }
+            else if (ts.isIdentifier(referenceNodeName)) {
+                returnType.push(referenceNodeName.escapedText.toString());
+            }
+        }
         else {
             returnType.push(ts.SyntaxKind[node.type.kind]);
         }
     }
 
-    return new MethodInfo(name, parameterTypes, modifiers, returnType);
+    let typeParameters: string[] = buildTypeParameters(node);
+    
+    return new MethodInfo(name, parameterTypes, modifiers, returnType, typeParameters);
 }
