@@ -1,13 +1,21 @@
-import {A, Dog} from './a'
-import {B} from "./b";
+import {A, Dog as Cat, Main} from './a'
+import {B as C} from "./b";
+import {func1} from "./temp/a";
 
 
-A();
-B();
-// let dog = new Dog()
-// Dog.print()
+// A();
+// C();
+// let dog = new Cat()
+// let c = dog.aaaaaaaaaa
+// let d = c
+// Cat.print()
 // dog.sound()
+// Main.main()
+func1()
+
 
 // let a = 3
 // let b = 5
-// a = b + a
+// let c = a
+// let d = c + a
+// let e = a

@@ -200,6 +200,7 @@ export class Scene {
             for (let arkClass of arkFile.getClasses()) {
                 for (let arkMethod of arkClass.getMethods()) {
                     arkMethod.getBody().getCfg().typeReference()
+                    // console.log(arkMethod.getBody().getLocals())
                 }
             }
         }

@@ -30,6 +30,7 @@ export class Cat extends Animal {
 
 export class Main {
     public static makeAnimalSound(animal: Animal) {
+        let b = 1
         animal.sound()
     }
 
