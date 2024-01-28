@@ -79,6 +79,15 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
     }
 
     protected resolveClassInstance(className: string, file: ArkFile) {
+        /**
+         *
+         * TODO:第一句在后续可以进行优化，目前在instance中存储type是真实类文件，类名，
+         *  但是在StaticInvoke中只能拿到别名构建出的signature，导致该句不能省略
+         *  example:
+         *  import {C as D} from "./b.ts"
+         *  D.staticMethod()
+         *  在进到cg时的签名只有"D.staticMethod"，因此仍然需要递归分析import，后续待优化
+         */
         let classCompleteName = this.resolveImportClass(file, className)
         let lastDotIndex = classCompleteName.lastIndexOf('.')
         let fileName = classCompleteName.substring(0, lastDotIndex)
@@ -182,7 +191,7 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
         return null;
     }
 
-    protected getCurrentArkFileByName(fileName: string) {
+    protected getArkFileByName(fileName: string) {
         for (let sceneFile of this.scene.scene.arkFiles) {
             if (sceneFile.getName() === fileName) {
                 return sceneFile
@@ -192,15 +201,15 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
     }
 
     protected resolveInvokeExpr(invokeExpr: AbstractInvokeExpr, arkFileName: string) {
-        let arkFile = this.getCurrentArkFileByName(arkFileName)
+        let arkFile = this.getArkFileByName(arkFileName)
         let callName = invokeExpr.getMethodSignature()
         let className: string, methodName: string = callName
         if (invokeExpr instanceof ArkInstanceInvokeExpr) {
             let classCompleteType = invokeExpr.getBase().getType()
             let lastDotIndex = classCompleteType.lastIndexOf('.')
             className = classCompleteType.substring(lastDotIndex + 1)
+            arkFile = this.getArkFileByName(classCompleteType.substring(0, lastDotIndex))
         } else if (invokeExpr instanceof ArkStaticInvokeExpr) {
-            // console.log(callName)
             if (callName.includes('.')) {
                 let lastDotIndex = callName.lastIndexOf('.')
                 className = callName.substring(0, lastDotIndex)
@@ -213,9 +222,7 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
         if (invokeClass == null) {
             return null
         }
-        // console.log(invokeClass.getSignature().toString() + "....." + methodName)
         for (let method of invokeClass.getMethods()) {
-            // console.log(method.getName())
             if (method.getName() === methodName) {
                 return method
             }

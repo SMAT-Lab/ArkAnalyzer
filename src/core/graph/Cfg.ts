@@ -151,7 +151,6 @@ export class Cfg {
                         } else if (rightOp instanceof ArkBinopExpr){
                             let op1 = rightOp.getOp1()
                             let op2 = rightOp.getOp2()
-                            // console.log(1)
                             let op1Type: string, op2Type: string
                             if (op1 instanceof Local) {
                                 let declaringStmt = op1.getDeclaringStmt()
@@ -251,7 +250,6 @@ export class Cfg {
     }
 
     private searchImportClass(file: ArkFile, className: string): string {
-        console.log(className)
         for (let classInFile of file.getClasses()) {
             if (className == classInFile.getName()) {
                 return classInFile.getSignature().getArkFile() + "." + className;
