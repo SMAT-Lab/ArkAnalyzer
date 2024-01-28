@@ -1,8 +1,16 @@
 const addArrow = (x: number, y: number): number => {
   return x + y;
 };
+addArrow(1,2)
 
-// 或者可以省略返回类型，TypeScript 会自动推断
-const addArrowInferred = (x: number, y: number) => x + y;
+function func():number{
+  return 1;
+}
+let f=func()
 
-x=a.b.c()
+const punctuationMarkSet: Set<string> = new Set(['.', ',', ';']);
+
+punctuationMarkSet.forEach(punctuationMark => {
+  console.log(punctuationMark);
+  // 在这里执行对每个标点符号的操作
+});
