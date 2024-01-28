@@ -5,6 +5,7 @@ import {ArkMethod} from "../core/model/ArkMethod";
 import {isItemRegistered, splitStringWithRegex} from "./utils";
 import {ArkInvokeStmt} from "../core/base/Stmt";
 import {ArkInstanceInvokeExpr, ArkStaticInvokeExpr} from "../core/base/Expr";
+import {ArkFile} from "../core/model/ArkFile";
 
 export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm {
     protected resolveCall(sourceMethodSignature: MethodSignature, invokeExpression: ArkInvokeStmt): MethodSignature[] {
@@ -32,7 +33,10 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
         }
         if (invokeClass == null) {
             // TODO: 处理函数调用
-
+            let functionMethod = this.resolveFunctionCall(invokeExpressionExpr, sourceMethodSignature.getArkClass().getArkFile())
+            if (functionMethod != null) {
+                callTargetMethods.push(functionMethod.getSignature())
+            }
             return callTargetMethods
         }
         for (let method of invokeClass.getMethods()) {
@@ -48,7 +52,6 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
         //         invokeClass.classSignature
         //     )
         // }
-
 
         if (concreteMethodSignature == null) {
             // If the invoked function is static or a constructor, then return the signature.
@@ -115,14 +118,64 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
         return null
     }
 
+    protected resolveFunction(file: ArkFile, functionName: string) {
+        for (let arkMethod of file.getDefaultClass().getMethods()) {
+            if (arkMethod.getName() === functionName) {
+                return arkMethod
+            }
+        }
+        return null
+    }
+
     protected preProcessMethod(methodSignature: MethodSignature): void {
         //do nothing
     }
 
-    // protected resolveFunctionCall(invokeExpressionExpr: ArkStaticInvokeExpr) {
-    //     let arkFiles = this.scene.scene.arkFiles
-    //     for (let files of arkFiles) {
-    //         if
-    //     }
-    // }
+    protected resolveFunctionCall(invokeExpressionExpr: ArkStaticInvokeExpr, arkFileName: string): ArkMethod|null {
+        let arkFile!: ArkFile
+        for (let sceneFile of this.scene.scene.arkFiles) {
+            if (sceneFile.getName() === arkFileName) {
+                arkFile = sceneFile
+            }
+        }
+        let functionName = invokeExpressionExpr.getMethodSignature()
+        for (let fileFunction of arkFile.getDefaultClass().getMethods()) {
+            if (fileFunction.getName() === functionName) {
+                return fileFunction
+            }
+        }
+        for (let importInfo of arkFile.getImportInfos()) {
+            const importFromDir = importInfo.getImportFrom();
+            if (functionName == importInfo.getImportClauseName() && importFromDir != undefined) {
+                const fileDir = arkFile.getName().split("\\");
+                const importDir = importFromDir.split(/[\/\\]/).filter(item => item !== '.');
+                let parentDirNum = 0;
+                while (importDir[parentDirNum] == "..") {
+                    parentDirNum++;
+                }
+                if (parentDirNum < fileDir.length) {
+                    let realImportFileName = "";
+                    for (let i = 0; i < fileDir.length - parentDirNum - 1; i++) {
+                        realImportFileName += fileDir[i] + "\\";
+                    }
+                    for (let i = parentDirNum; i < importDir.length; i++) {
+                        realImportFileName += importDir[i];
+                        if (i != importDir.length - 1) {
+                            realImportFileName += "\\";
+                        }
+                    }
+                    realImportFileName += ".ts";
+                    const scene = arkFile.getScene();
+                    if (scene) {
+                        for (let sceneFile of scene.arkFiles) {
+                            if (sceneFile.getName() == realImportFileName) {
+                                return this.resolveFunction(sceneFile, functionName);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return null
+    }
 }

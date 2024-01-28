@@ -137,17 +137,19 @@ export abstract class AbstractCallGraphAlgorithm {
 
         // 打印 Calls
         console.log('Calls:');
-        // 首先找到最长的method名称的长度
-        const longestMethodLength = Array.from(this.calls.keys()).reduce((max, method) => Math.max(max, method.length), 0);
+        // 计算最长的method名称的长度，加上箭头和空格的长度
+        const longestCallerLength = Array.from(this.calls.keys()).reduce((max, method) => Math.max(max, method.length), 0);
+        const arrow = '->';
+        const spacesAfterArrow = '   ';
+        const prefixLength = longestCallerLength + arrow.length + spacesAfterArrow.length;
 
         this.calls.forEach((calledMethods, method) => {
-            // 使用padEnd确保method名称对齐
-            const paddedMethod = method.padEnd(longestMethodLength);
-            // 打印第一个调用关系，没有箭头前缀
-            console.log(`    ${paddedMethod}   ->   ${calledMethods[0]}`);
-            // 打印剩余的调用关系，每个都有箭头前缀
+            // 对于每个调用源，只打印一次调用源和第一个目标方法
+            const firstMethod = calledMethods[0];
+            console.log(`    ${method.padEnd(longestCallerLength)}   ${arrow}   ${firstMethod}`);
+
             for (let i = 1; i < calledMethods.length; i++) {
-                console.log(`    ${' '.repeat(longestMethodLength)}       ->   ${calledMethods[i]}`);
+                console.log(`       ${' '.repeat(prefixLength)}${calledMethods[i]}`);
             }
         });
     }
