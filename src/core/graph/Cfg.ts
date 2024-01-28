@@ -251,6 +251,7 @@ export class Cfg {
     }
 
     private searchImportClass(file: ArkFile, className: string): string {
+        console.log(className)
         for (let classInFile of file.getClasses()) {
             if (className == classInFile.getName()) {
                 return classInFile.getSignature().getArkFile() + "." + className;
@@ -258,17 +259,10 @@ export class Cfg {
         }
         for (let importInfo of file.getImportInfos()) {
             const importFromDir=importInfo.getImportFrom();
-            let importClassName:string;
-            let nameBeforeAs=importInfo.getNameBeforeAs()
-            if(nameBeforeAs!=undefined){
-                importClassName=nameBeforeAs;
-            }
-            else{
-                importClassName=importInfo.getImportClauseName()
-            }
-            if (className == importClassName && importFromDir != undefined) {
+            if (className == importInfo.getImportClauseName() && importFromDir != undefined) {
                 const fileDir = file.getName().split("\\");
                 const importDir = importFromDir.split(/[\/\\]/).filter(item => item !== '.');
+                let realName = importInfo.getNameBeforeAs()?importInfo.getNameBeforeAs():importInfo.getImportClauseName()
                 let parentDirNum = 0;
                 while (importDir[parentDirNum] == "..") {
                     parentDirNum++;
@@ -289,7 +283,7 @@ export class Cfg {
                     if (scene) {
                         for (let sceneFile of scene.arkFiles) {
                             if (sceneFile.getName() == realImportFileName) {
-                                return this.searchImportClass(sceneFile, className);
+                                return this.searchImportClass(sceneFile, realName!);
                             }
                         }
                     }
