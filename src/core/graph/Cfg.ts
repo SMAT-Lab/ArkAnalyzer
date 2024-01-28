@@ -7,6 +7,7 @@ import {ArkBinopExpr, ArkCastExpr, ArkConditionExpr, ArkNewExpr} from "../base/E
 import { ArkClass } from "../model/ArkClass";
 import {Constant} from "../base/Constant";
 import {ArkInstanceFieldRef} from "../base/Ref";
+import {isPrimaryType} from "../../utils/typeReferenceUtils";
 import { ArkStaticInvokeExpr } from "../base/Expr";
 
 export class Cfg {
@@ -173,7 +174,7 @@ export class Cfg {
                         } else if (rightOp instanceof ArkCastExpr) {
 
                         } else if (rightOp instanceof ArkInstanceFieldRef) {
-                            console.log(rightOp)
+                            // console.log(rightOp)
                             let completeClassName = rightOp.getBase().getType()
                             let lastDotIndex = completeClassName.lastIndexOf('.')
                             let targetArkFile = this.getArkFileByName(
@@ -181,14 +182,25 @@ export class Cfg {
                             )
                             let classInstance = this.resolveClassInstance(
                                 completeClassName, targetArkFile)
-                            // console.log(1)
-                            // console.log(rightOp.getFieldName())
-                            // console.log(classInstance)
                             if (classInstance != null) {
                                 for (let field of classInstance.getFields()) {
-                                    // console.log(field.getName())
+                                    // console.log(field.getType())
                                     if (field.getName() === rightOp.getFieldName()) {
-                                        leftOp.setType(field.getType())
+                                        let fieldType = field.getType()
+                                        if (isPrimaryType(fieldType)) {
+                                            leftOp.setType(fieldType)
+                                        } else {
+                                            let classInstanceFile = this.getArkFileByName(
+                                                classInstance.getSignature().getArkFile(),
+                                                this.declaringClass.getDeclaringArkFile())
+                                            if (classInstanceFile != null) {
+                                                let fieldTypeClassName = this.searchImportClass(
+                                                    classInstanceFile,
+                                                    fieldType
+                                                )
+                                                leftOp.setType(fieldTypeClassName)
+                                            }
+                                        }
                                     }
                                 }
                             }

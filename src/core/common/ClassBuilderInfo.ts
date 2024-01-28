@@ -1,6 +1,5 @@
 import * as ts from "typescript";
-import { buildModifiers } from "./BuildModifiers";
-import { handleQualifiedName, handleisPropertyAccessExpression } from "../../utils/builderUtils";
+import { buildHeritageClauses, buildModifiers, buildTypeParameters, handleQualifiedName, handleisPropertyAccessExpression } from "../../utils/builderUtils";
 
 export class Property {
     private propertyName: string;
@@ -158,19 +157,7 @@ export function buildClassInfo4ClassNode(node: ts.ClassDeclaration | ts.ClassExp
         modifiers = buildModifiers(node.modifiers);
     }
 
-    let heritageClausesMap: Map<string, string> = new Map<string, string>();
-    node.heritageClauses?.forEach((heritageClause) => {
-        heritageClause.types.forEach((type) => {
-            let heritageClauseName: string = '';
-            if (ts.isIdentifier(type.expression)) {
-                heritageClauseName = (type.expression as ts.Identifier).escapedText.toString();
-            }
-            else if (ts.isPropertyAccessExpression(type.expression)) {
-                heritageClauseName = handleisPropertyAccessExpression(type.expression);
-            }
-            heritageClausesMap.set(heritageClauseName, ts.SyntaxKind[heritageClause.token]);
-        });
-    });
+    let heritageClausesMap: Map<string, string> = buildHeritageClauses(node);
 
     let properties: Property[] = [];
     node.members.forEach((member) => {
@@ -179,9 +166,6 @@ export function buildClassInfo4ClassNode(node: ts.ClassDeclaration | ts.ClassExp
         }
     });
 
-    let typeParameters: string[] = [];
-    node.typeParameters?.forEach((typeParameter) => {
-        typeParameters.push((typeParameter.name as ts.Identifier).escapedText.toString());
-    });
+    let typeParameters: string[] = buildTypeParameters(node);
     return new ClassInfo(name, modifiers, heritageClausesMap, properties, typeParameters);
 }
