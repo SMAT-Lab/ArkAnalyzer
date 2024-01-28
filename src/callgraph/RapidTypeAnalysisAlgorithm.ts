@@ -1,7 +1,7 @@
 import {AbstractCallGraphAlgorithm} from "./AbstractCallGraphAlgorithm";
 import {ClassSignature, MethodSignature, MethodSubSignature} from "../core/model/ArkSignature";
 import {ArkMethod} from "../core/model/ArkMethod";
-import {isItemRegistered} from "./utils";
+import {isItemRegistered} from "../utils/callGraphUtils";
 
 type Tuple = [MethodSignature, MethodSignature];
 class RapidTypeAnalysisAlgorithm extends AbstractCallGraphAlgorithm {

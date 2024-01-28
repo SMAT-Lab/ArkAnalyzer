@@ -1,6 +1,6 @@
 import {MethodSignature} from "../core/model/ArkSignature";
 import {Scene} from "../Scene";
-import {isItemRegistered, MethodSignatureManager, SceneManager} from "./utils";
+import {isItemRegistered, MethodSignatureManager, SceneManager} from "../utils/callGraphUtils";
 import {Cfg} from "../core/graph/Cfg";
 import {ArkInvokeStmt} from "../core/base/Stmt";
 

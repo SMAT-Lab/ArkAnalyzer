@@ -1,4 +1,5 @@
 import { B } from "./b";
+import {C as D} from "./b"
 
 export function A(){
     B();
@@ -9,6 +10,7 @@ export abstract class Animal {
 }
 
 export class Dog extends Animal {
+    public aaaaaaaaaa: D
     public sound() {
         console.log("woof")
         let cat = new Cat()

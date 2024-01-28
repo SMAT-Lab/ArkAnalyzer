@@ -1,5 +1,5 @@
 function test() {
-    let arr = [1, 2, 3];
-
-    let b = [];
+    let dog = new Dog();
+    dog.print();
+    Dog.print();
 }
