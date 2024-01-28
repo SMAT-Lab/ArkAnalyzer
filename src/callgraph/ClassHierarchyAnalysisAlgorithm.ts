@@ -1,12 +1,11 @@
 import {AbstractCallGraphAlgorithm} from "./AbstractCallGraphAlgorithm";
-import {MethodSignature, MethodSubSignature} from "../core/model/ArkSignature";
+import {MethodSignature} from "../core/model/ArkSignature";
 import {ArkClass} from "../core/model/ArkClass";
 import {ArkMethod} from "../core/model/ArkMethod";
-import {isItemRegistered, splitStringWithRegex} from "../utils/callGraphUtils";
+import {isItemRegistered} from "../utils/callGraphUtils";
 import {ArkInvokeStmt} from "../core/base/Stmt";
 import {AbstractInvokeExpr, ArkInstanceInvokeExpr, ArkStaticInvokeExpr} from "../core/base/Expr";
 import {ArkFile} from "../core/model/ArkFile";
-import {c} from "../../t";
 
 export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm {
     protected resolveCall(sourceMethodSignature: MethodSignature, invokeExpression: ArkInvokeStmt): MethodSignature[] {
