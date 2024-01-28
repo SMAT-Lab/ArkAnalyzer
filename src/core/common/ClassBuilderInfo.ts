@@ -1,5 +1,6 @@
 import * as ts from "typescript";
 import { buildModifiers } from "./BuildModifiers";
+import { handleQualifiedName, handleisPropertyAccessExpression } from "../../utils/builderUtils";
 
 export class Property {
     private propertyName: string;
@@ -82,7 +83,33 @@ function buildProperty(member: ts.PropertyDeclaration): Property {
 
     let type: string = '';
     if (member.type) {
-        type = ts.SyntaxKind[member.type.kind];
+        if (ts.isTypeReferenceNode(member.type)) {
+            let referenceNodeName = member.type.typeName;
+            if (ts.isQualifiedName(referenceNodeName)) {
+                type = handleQualifiedName(referenceNodeName);
+            }
+            else if (ts.isIdentifier(referenceNodeName)) {
+                type = referenceNodeName.escapedText.toString();
+            }
+        }
+        else if (ts.isUnionTypeNode(member.type)) {
+            member.type.types.forEach((tmpType) => {
+                if (ts.isTypeReferenceNode(tmpType)) {
+                    if (ts.isQualifiedName(tmpType.typeName)) {
+                        type = type + handleQualifiedName(tmpType.typeName) + ' | ';
+                    }
+                    else if (ts.isIdentifier(tmpType.typeName)) {
+                        type = type + tmpType.typeName.escapedText.toString() + ' | ';
+                    }
+                }
+                else {
+                    type = type + ts.SyntaxKind[tmpType.kind] + ' | ';
+                }
+            });
+        }
+        else {
+            type = ts.SyntaxKind[member.type.kind];
+        }
     }
 
     let questionToken: boolean = false;
@@ -134,7 +161,7 @@ export function buildClassInfo4ClassNode(node: ts.ClassDeclaration | ts.ClassExp
     let heritageClausesMap: Map<string, string> = new Map<string, string>();
     node.heritageClauses?.forEach((heritageClause) => {
         heritageClause.types.forEach((type) => {
-            let heritageClauseName:string = '';
+            let heritageClauseName: string = '';
             if (ts.isIdentifier(type.expression)) {
                 heritageClauseName = (type.expression as ts.Identifier).escapedText.toString();
             }
@@ -157,17 +184,4 @@ export function buildClassInfo4ClassNode(node: ts.ClassDeclaration | ts.ClassExp
         typeParameters.push((typeParameter.name as ts.Identifier).escapedText.toString());
     });
     return new ClassInfo(name, modifiers, heritageClausesMap, properties, typeParameters);
-}
-
-export function handleisPropertyAccessExpression(node: ts.PropertyAccessExpression): string {
-    let right = (node.name as ts.Identifier).escapedText.toString();
-    let left: string = '';
-    if (ts.SyntaxKind[node.expression.kind] == 'Identifier') {
-        left = (node.expression as ts.Identifier).escapedText.toString();
-    }
-    else if (ts.isPropertyAccessExpression(node.expression)) {
-        left = handleisPropertyAccessExpression(node.expression as ts.PropertyAccessExpression);
-    }
-    let propertyAccessExpressionName = left + '.' + right;
-    return propertyAccessExpressionName;
 }

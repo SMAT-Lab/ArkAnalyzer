@@ -1,6 +1,6 @@
 import * as ts from "typescript";
 import { buildModifiers } from "./BuildModifiers";
-import { handleisPropertyAccessExpression } from "./ClassBuilderInfo";
+import { handleQualifiedName, handleisPropertyAccessExpression } from "../../utils/builderUtils";
 
 export class MethodInfo {
     name: string;
@@ -55,16 +55,35 @@ export function buildMethodInfo4MethodNode(node: ts.FunctionDeclaration | ts.Met
     let parameterTypes: Map<string, string> = new Map();
     node.parameters.forEach((parameter) => {
         let parameterName = ts.isIdentifier(parameter.name) ? parameter.name.escapedText.toString() : '';
+        if (parameter.questionToken) {
+            parameterName = parameterName + '?';
+        }
         if (parameter.type) {
-            if (parameter.type.kind == ts.SyntaxKind.TypeReference) {
-                let referenceNodeName = (parameter.type as ts.TypeReferenceNode).typeName;
-                if (ts.SyntaxKind[referenceNodeName.kind] == 'QualifiedName' ||
-                    ts.SyntaxKind[referenceNodeName.kind] == 'FirstNode') {
+            if (ts.isTypeReferenceNode(parameter.type)) {
+                let referenceNodeName = parameter.type.typeName;
+                if (ts.isQualifiedName(referenceNodeName)) {
                     parameterTypes.set(parameterName, handleQualifiedName(referenceNodeName as ts.QualifiedName));
                 }
-                else if (ts.SyntaxKind[referenceNodeName.kind] == 'Identifier') {
+                else if (ts.isIdentifier(referenceNodeName)) {
                     parameterTypes.set(parameterName, (referenceNodeName as ts.Identifier).escapedText.toString())
                 }
+            }
+            else if (ts.isUnionTypeNode(parameter.type)) {
+                let parameterType = '';
+                parameter.type.types.forEach((tmpType) => {
+                    if (ts.isTypeReferenceNode(tmpType)) {
+                        if (ts.isQualifiedName(tmpType.typeName)) {
+                            parameterType = parameterType + handleQualifiedName(tmpType.typeName) + ' | ';
+                        }
+                        else if (ts.isIdentifier(tmpType.typeName)) {
+                            parameterType = parameterType + tmpType.typeName.escapedText.toString() + ' | ';
+                        }
+                    }
+                    else {
+                        parameterType = parameterType + ts.SyntaxKind[tmpType.kind] + ' | ';
+                    }
+                });
+                parameterTypes.set(parameterName, parameterType);
             }
             else {
                 parameterTypes.set(parameterName, ts.SyntaxKind[parameter.type.kind]);
@@ -97,17 +116,4 @@ export function buildMethodInfo4MethodNode(node: ts.FunctionDeclaration | ts.Met
     }
 
     return new MethodInfo(name, parameterTypes, modifiers, returnType);
-}
-
-function handleQualifiedName(node: ts.QualifiedName): string {
-    let right = (node.right as ts.Identifier).escapedText.toString();
-    let left: string = '';
-    if (ts.SyntaxKind[node.left.kind] == 'Identifier') {
-        left = (node.left as ts.Identifier).escapedText.toString();
-    }
-    else if (ts.SyntaxKind[node.left.kind] == 'QualifiedName') {
-        left = handleQualifiedName(node.left as ts.QualifiedName);
-    }
-    let qualifiedName = left + '.' + right;
-    return qualifiedName;
 }
