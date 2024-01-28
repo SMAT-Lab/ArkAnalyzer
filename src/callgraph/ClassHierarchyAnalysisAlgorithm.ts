@@ -154,12 +154,15 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
     }
 
     private resolveFunctionCall(file: ArkFile, name: string): ArkMethod | null {
+        console.log(name)
         for (let functionOfFile of file.getDefaultClass().getMethods()) {
             if (name == functionOfFile.getName()) {
                 return functionOfFile
             }
         }
+        console.log(1)
         for (let importInfo of file.getImportInfos()) {
+            console.log(importInfo)
             const importFromDir=importInfo.getImportFrom();
             if (name == importInfo.getImportClauseName() && importFromDir != undefined) {
                 const fileDir = file.getName().split("\\");
@@ -222,7 +225,6 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
                 arkFile = currentClass!.getDeclaringArkFile()
             }
         } else if (invokeExpr instanceof ArkStaticInvokeExpr) {
-            console.log("static:   "+invokeExpr)
             if (callName.includes('.')) {
                 let lastDotIndex = callName.lastIndexOf('.')
                 className = callName.substring(0, lastDotIndex)
