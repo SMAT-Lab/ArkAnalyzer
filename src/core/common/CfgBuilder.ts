@@ -9,10 +9,9 @@ import { Value } from '../base/Value';
 import { BasicBlock } from '../graph/BasicBlock';
 import { Cfg } from '../graph/Cfg';
 import { ArkClass } from '../model/ArkClass';
-import { ArkFile } from '../model/ArkFile';
 import { ArkMethod } from '../model/ArkMethod';
-import { IRUtils } from './IRUtils';
 import { ExportInfo } from './ExportBuilder';
+import { IRUtils } from './IRUtils';
 
 
 class StatementBuilder {
@@ -644,7 +643,7 @@ export class CfgBuilder {
                 let trystm = new TryStatementBuilder("tryStatement", "try", c, scope.id);
                 judgeLastType(trystm);
                 let tryExit = new StatementBuilder("try exit", "", c, scope.id);
-                trystm.tryExit=tryExit;
+                trystm.tryExit = tryExit;
                 this.walkAST(trystm, tryExit, c.children[1].children[1]);
                 trystm.tryFirst = trystm.next;
                 // lastStatement=tryExit;
@@ -692,7 +691,7 @@ export class CfgBuilder {
                         haveFinal = true;
                     }
                 }
-                if (finalBlock&&finalBlock.children[1].children.length>0) {
+                if (finalBlock && finalBlock.children[1].children.length > 0) {
                     let final = new StatementBuilder("statement", "finally", c, scope.id);
                     // judgeLastType(final);
                     let finalExit = new StatementBuilder("finally exit", "", c, scope.id);
@@ -800,12 +799,12 @@ export class CfgBuilder {
         }
     }
 
-    buildNewBlock(stms:StatementBuilder[]):Block{
-        let block:Block;
-        if(this.blocks.length>0 && this.blocks[this.blocks.length-1].stms.length==0){
-            block=this.blocks[this.blocks.length-1];
+    buildNewBlock(stms: StatementBuilder[]): Block {
+        let block: Block;
+        if (this.blocks.length > 0 && this.blocks[this.blocks.length - 1].stms.length == 0) {
+            block = this.blocks[this.blocks.length - 1];
         }
-        else{
+        else {
             block = new Block(this.blocks.length, stms, null);
         }
         this.blocks.push(block);
@@ -838,11 +837,11 @@ export class CfgBuilder {
                 return;
             }
             if (cstm.type == "loopStatement") {
-                let loopBlock=this.buildNewBlock([cstm]);
+                let loopBlock = this.buildNewBlock([cstm]);
                 block = loopBlock;
                 cstm.block = block;
             }
-            let b1=this.buildNewBlock([]);
+            let b1 = this.buildNewBlock([]);
             this.buildBlocks(cstm.nextT, b1);
             let b2 = this.buildNewBlock([]);
             // block.nexts.push(b2);
@@ -873,12 +872,12 @@ export class CfgBuilder {
             // block.nexts.push(tryFirstBlock);
             this.buildBlocks(trystm.tryFirst, tryFirstBlock);
 
-            const lastBlocksInTry:Set<Block>=new Set();
-            if(!trystm.tryExit){
+            const lastBlocksInTry: Set<Block> = new Set();
+            if (!trystm.tryExit) {
                 process.exit();
             }
-            for(let stm of trystm.tryExit.lasts){
-                if(stm.block)
+            for (let stm of trystm.tryExit.lasts) {
+                if (stm.block)
                     lastBlocksInTry.add(stm.block);
             }
 
@@ -893,7 +892,7 @@ export class CfgBuilder {
                 let stm = new StatementBuilder("tmp", "", null, -1);
                 finallyBlock.stms = [stm];
             }
-            for(let lastBlockInTry of lastBlocksInTry){
+            for (let lastBlockInTry of lastBlocksInTry) {
                 lastBlockInTry.nexts.add(finallyBlock);
                 finallyBlock.lasts.add(lastBlockInTry);
             }
@@ -901,11 +900,11 @@ export class CfgBuilder {
             for (let i = 0; i < trystm.catchStatements.length; i++) {
                 let catchBlock = this.buildNewBlock([]);
                 this.buildBlocks(trystm.catchStatements[i], catchBlock);
-                for(let lastBlockInTry of lastBlocksInTry){
+                for (let lastBlockInTry of lastBlocksInTry) {
                     lastBlockInTry.nexts.add(catchBlock);
                     catchBlock.lasts.add(lastBlockInTry);
                 }
-                
+
                 catchBlock.nexts.add(finallyBlock);
                 finallyBlock.lasts.add(catchBlock);
                 // if(trystm.finallyStatement){
@@ -917,11 +916,11 @@ export class CfgBuilder {
             if (trystm.finallyStatement) {
                 this.resetWalkedPartial(trystm.finallyStatement);
                 let errorFinallyBlock = this.buildNewBlock([]);
-                for(let lastBlockInTry of lastBlocksInTry){
+                for (let lastBlockInTry of lastBlocksInTry) {
                     lastBlockInTry.nexts.add(errorFinallyBlock);
                     errorFinallyBlock.lasts.add(lastBlockInTry);
                 }
-                
+
                 for (let stm of finallyBlock.stms) {
                     errorFinallyBlock.stms.push(stm);
                 }
@@ -1570,14 +1569,16 @@ export class CfgBuilder {
         return false;
     }
 
-    private getOriginalLocal(local: Local): Local {
+    private getOriginalLocal(local: Local, addToLocal: boolean = true): Local {
         let oriName = local.getName();
         for (const oriLocal of this.locals) {
             if (oriLocal.getName() == oriName) {
                 return oriLocal;
             }
         }
-        this.locals.add(local);
+        if (addToLocal) {
+            this.locals.add(local);
+        }
         return local;
     }
     // utils end
@@ -1691,7 +1692,7 @@ export class CfgBuilder {
         // TODO:属性访问需要展开
         else if (node.kind == 'PropertyAccessExpression') {
             let tempBase = new Local(node.children[0].text);
-            let base = this.getOriginalLocal(tempBase);
+            let base = this.getOriginalLocal(tempBase, false);
             if (base == tempBase) {
                 let fieldSignature = node.text;
                 value = new ArkStaticFieldRef(fieldSignature);
@@ -1785,9 +1786,9 @@ export class CfgBuilder {
             this.declaringClass.addMethod(exprArkMethod);
             value = new ArkStaticInvokeExpr(exprArkMethod.getSignature().toString(), args);
         }
-        else if (node.kind == "ClassExpression"){
+        else if (node.kind == "ClassExpression") {
             let cls: ArkClass = new ArkClass();
-            let arkFile=this.declaringClass.getDeclaringArkFile();
+            let arkFile = this.declaringClass.getDeclaringArkFile();
             cls.buildArkClassFromAstNode(node, arkFile);
             arkFile.addArkClass(cls);
             if (cls.isExported()) {
@@ -2682,7 +2683,7 @@ export class CfgBuilder {
     // TODO: Add more APIs to class 'Cfg', and use these to build Cfg
     public buildCfg(): Cfg {
         let cfg = new Cfg();
-        cfg.declaringClass=this.declaringClass;
+        cfg.declaringClass = this.declaringClass;
         let blockBuilderToBlock = new Map<Block, BasicBlock>();
         let stmtPos = -1;
         for (const blockBuilder of this.blocks) {
