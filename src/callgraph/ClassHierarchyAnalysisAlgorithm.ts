@@ -2,7 +2,7 @@ import {AbstractCallGraphAlgorithm} from "./AbstractCallGraphAlgorithm";
 import {MethodSignature, MethodSubSignature} from "../core/model/ArkSignature";
 import {ArkClass} from "../core/model/ArkClass";
 import {ArkMethod} from "../core/model/ArkMethod";
-import {isItemRegistered, splitStringWithRegex} from "./utils";
+import {isItemRegistered, splitStringWithRegex} from "../utils/callGraphUtils";
 import {ArkInvokeStmt} from "../core/base/Stmt";
 import {AbstractInvokeExpr, ArkInstanceInvokeExpr, ArkStaticInvokeExpr} from "../core/base/Expr";
 import {ArkFile} from "../core/model/ArkFile";
