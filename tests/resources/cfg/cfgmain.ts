@@ -1,3 +1,5 @@
-function test() {    
-    Dog.log();
+function test() {
+    let dog = new Dog();
+    dog.print();
+    Dog.print();
 }

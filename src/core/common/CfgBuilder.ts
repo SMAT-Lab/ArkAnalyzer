@@ -1800,8 +1800,7 @@ export class CfgBuilder {
             }
         }
         else if (node.kind == "NewExpression") {
-            let classValue = this.astNodeToValue(node.children[1]);
-            let classSignature = classValue.toString();
+            let classSignature = node.children[1].text;
             value = new ArkNewExpr(classSignature);
         }
         else if (node.kind == 'ArrayLiteralExpression') {
