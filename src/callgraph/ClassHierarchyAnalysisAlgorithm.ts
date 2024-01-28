@@ -6,6 +6,7 @@ import {isItemRegistered, splitStringWithRegex} from "../utils/callGraphUtils";
 import {ArkInvokeStmt} from "../core/base/Stmt";
 import {AbstractInvokeExpr, ArkInstanceInvokeExpr, ArkStaticInvokeExpr} from "../core/base/Expr";
 import {ArkFile} from "../core/model/ArkFile";
+import {c} from "../../t";
 
 export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm {
     protected resolveCall(sourceMethodSignature: MethodSignature, invokeExpression: ArkInvokeStmt): MethodSignature[] {
@@ -15,7 +16,10 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
         let invokeExpressionExpr = invokeExpression.getInvokeExpr()
         let invokeClass: ArkClass | null = null
 
-        let methodFromInvoke = this.resolveInvokeExpr(invokeExpressionExpr, sourceMethodSignature.getArkClass().getArkFile())
+        let methodFromInvoke = this.resolveInvokeExpr(
+            invokeExpressionExpr,
+            sourceMethodSignature.getArkClass().getArkFile(),
+            sourceMethodSignature)
         if (methodFromInvoke == null) {
             return callTargetMethods
         }
@@ -200,20 +204,35 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
         return null
     }
 
-    protected resolveInvokeExpr(invokeExpr: AbstractInvokeExpr, arkFileName: string) {
+    protected resolveInvokeExpr(invokeExpr: AbstractInvokeExpr,
+                                arkFileName: string,
+                                sourceMethodSignature: MethodSignature) {
         let arkFile = this.getArkFileByName(arkFileName)
         let callName = invokeExpr.getMethodSignature()
         let className: string, methodName: string = callName
         if (invokeExpr instanceof ArkInstanceInvokeExpr) {
+            // console.log("instance:   "+invokeExpr)
             let classCompleteType = invokeExpr.getBase().getType()
             let lastDotIndex = classCompleteType.lastIndexOf('.')
             className = classCompleteType.substring(lastDotIndex + 1)
             arkFile = this.getArkFileByName(classCompleteType.substring(0, lastDotIndex))
+            if (className === "this") {
+                let currentClass = this.scene.getClass(sourceMethodSignature.getArkClass())
+                className = currentClass!.getName()
+                arkFile = currentClass!.getDeclaringArkFile()
+            }
         } else if (invokeExpr instanceof ArkStaticInvokeExpr) {
+            console.log("static:   "+invokeExpr)
             if (callName.includes('.')) {
                 let lastDotIndex = callName.lastIndexOf('.')
                 className = callName.substring(0, lastDotIndex)
+                // console.log(className)
                 methodName = callName.substring(lastDotIndex + 1)
+                if (className === "this") {
+                    let currentClass = this.scene.getClass(sourceMethodSignature.getArkClass())
+                    className = currentClass!.getName()
+                    arkFile = currentClass!.getDeclaringArkFile()
+                }
             } else {
                 return this.resolveFunctionCall(arkFile!, methodName)
             }
