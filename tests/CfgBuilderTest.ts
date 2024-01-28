@@ -36,7 +36,7 @@ function run(config: Config) {
 //let config: Config = new Config("app_photo", "/Users/yifei/Documents/Code/applications_photos/common/src/main/ets");
 //let config: Config = new Config("app_photo", "/Users/yifei/Documents/Code/applications_systemui");
 // let config: Config = new Config("systemui", "./codeLab/codelabs2/NetworkManagement/NewsDataArkTS");
-// let config: Config = new Config("systemui", "./codeLab/codelabs2/");
+let config: Config = new Config("systemui", "./codeLab/interface_sdk-js-master/");
 // let config: Config = new Config("systemui", "/Users/yangyizhuo/WebstormProjects/ArkAnalyzer/tests/resources/type");
-let config: Config = new Config("systemui", "/Users/yangyizhuo/WebstormProjects/ArkAnalyzer/tests/resources/callgraph");
+// let config: Config = new Config("systemui", "/Users/yangyizhuo/WebstormProjects/ArkAnalyzer/tests/resources/callgraph");
 run(config);

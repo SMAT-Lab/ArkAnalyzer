@@ -9,10 +9,9 @@ import { Value } from '../base/Value';
 import { BasicBlock } from '../graph/BasicBlock';
 import { Cfg } from '../graph/Cfg';
 import { ArkClass } from '../model/ArkClass';
-import { ArkFile } from '../model/ArkFile';
 import { ArkMethod } from '../model/ArkMethod';
-import { IRUtils } from './IRUtils';
 import { ExportInfo } from './ExportBuilder';
+import { IRUtils } from './IRUtils';
 
 
 class StatementBuilder {
@@ -85,6 +84,7 @@ class SwitchStatementBuilder extends StatementBuilder {
 
 class TryStatementBuilder extends StatementBuilder {
     tryFirst: StatementBuilder | null = null;
+    tryExit: StatementBuilder | null = null;
     catchStatements: StatementBuilder[];
     catchErrors: string[] = [];
     finallyStatement: StatementBuilder | null = null;
@@ -320,66 +320,63 @@ export class CfgBuilder {
                         scope.variable.add(decl.children[0]?.text);
                     }
                 }
-                let block = checkBlock(c);
-                if (block == null) {
-                    let s = new StatementBuilder("statement", c.text, c, scope.id);
-                    judgeLastType(s);
-                    lastStatement = s;
-                }
-                else {
-                    // let beginCode = c.text.substring(0, block.start - c.start);
-                    // let begin = new StatementBuilder("StatementBuilder", beginCode, c, scope.id);
-                    // judgeLastType(begin);
-                    // let end = new StatementBuilder("inBlockExit", "", c, scope.id);
-                    // this.walkAST(begin, end, block.children[1]);
-                    // lastStatement = end;
-                    let anonymous = getAnonymous(c);
-                    if (anonymous) {
-                        let block = anonymous.children[this.findChildIndex(anonymous, "Block")];
-                        let syntaxList = block.children[this.findChildIndex(block, "SyntaxList")];
-                        let anoFuc = new CfgBuilder(syntaxList, "anonymous" + (this.anonymousFunctions.length + 1), this.declaringClass);
-                        this.anonymousFunctions.push(anoFuc);
+                let s = new StatementBuilder("statement", c.text, c, scope.id);
+                judgeLastType(s);
+                lastStatement = s;
+                // let block = checkBlock(c);
+                // if (block == null) {
+                //     let s = new StatementBuilder("statement", c.text, c, scope.id);
+                //     judgeLastType(s);
+                //     lastStatement = s;
+                // }
+                // else {
+                //     let anonymous = getAnonymous(c);
+                //     if (anonymous) {
+                //         let block = anonymous.children[this.findChildIndex(anonymous, "Block")];
+                //         let syntaxList = block.children[this.findChildIndex(block, "SyntaxList")];
+                //         let anoFuc = new CfgBuilder(syntaxList, "anonymous" + (this.anonymousFunctions.length + 1), this.declaringClass);
+                //         this.anonymousFunctions.push(anoFuc);
 
-                        let tempText = "anonymous" + this.anonymousFunctions.length;
-                        let OpenParenTokenIndex = this.findChildIndex(anonymous, "OpenParenToken");
-                        let ColonTokenIndex = this.findChildIndex(anonymous, "ColonToken");
-                        let end = 0;
-                        if (ColonTokenIndex > 0) {
-                            end = ColonTokenIndex + 1;
-                        }
-                        else {
-                            end = this.findChildIndex(anonymous, "CloseParenToken");
-                        }
-                        let start = OpenParenTokenIndex;
-                        while (start <= end) {
-                            tempText += anonymous.children[start].text;
-                            start++;
-                        }
-                        anonymous.text = tempText;
-                        let p = anonymous.parent;
-                        while (p && p != c) {
-                            p.text = "";
-                            for (let pc of p.children) {
-                                p.text += pc.text;
-                                if (pc.kind.includes("Keyword")) {
-                                    p.text += ' ';
-                                }
-                            }
-                            p = p.parent;
-                        }
-                        c.text = "";
-                        for (let cc of c.children) {
-                            c.text += cc.text;
-                            if (cc.kind.includes("Keyword")) {
-                                c.text += ' ';
-                            }
-                        }
+                //         let tempText = "anonymous" + this.anonymousFunctions.length;
+                //         let OpenParenTokenIndex = this.findChildIndex(anonymous, "OpenParenToken");
+                //         let ColonTokenIndex = this.findChildIndex(anonymous, "ColonToken");
+                //         let end = 0;
+                //         if (ColonTokenIndex > 0) {
+                //             end = ColonTokenIndex + 1;
+                //         }
+                //         else {
+                //             end = this.findChildIndex(anonymous, "CloseParenToken");
+                //         }
+                //         let start = OpenParenTokenIndex;
+                //         while (start <= end) {
+                //             tempText += anonymous.children[start].text;
+                //             start++;
+                //         }
+                //         anonymous.text = tempText;
+                //         let p = anonymous.parent;
+                //         while (p && p != c) {
+                //             p.text = "";
+                //             for (let pc of p.children) {
+                //                 p.text += pc.text;
+                //                 if (pc.kind.includes("Keyword")) {
+                //                     p.text += ' ';
+                //                 }
+                //             }
+                //             p = p.parent;
+                //         }
+                //         c.text = "";
+                //         for (let cc of c.children) {
+                //             c.text += cc.text;
+                //             if (cc.kind.includes("Keyword")) {
+                //                 c.text += ' ';
+                //             }
+                //         }
 
-                        let s = new StatementBuilder("statement", c.text, c, scope.id);
-                        judgeLastType(s);
-                        lastStatement = s;
-                    }
-                }
+                //         let s = new StatementBuilder("statement", c.text, c, scope.id);
+                //         judgeLastType(s);
+                //         lastStatement = s;
+                //     }
+                // }
             }
             if (c.kind == "ImportDeclaration") {
                 let stm = new StatementBuilder("statement", c.text, c, scope.id);
@@ -646,6 +643,7 @@ export class CfgBuilder {
                 let trystm = new TryStatementBuilder("tryStatement", "try", c, scope.id);
                 judgeLastType(trystm);
                 let tryExit = new StatementBuilder("try exit", "", c, scope.id);
+                trystm.tryExit = tryExit;
                 this.walkAST(trystm, tryExit, c.children[1].children[1]);
                 trystm.tryFirst = trystm.next;
                 // lastStatement=tryExit;
@@ -693,7 +691,7 @@ export class CfgBuilder {
                         haveFinal = true;
                     }
                 }
-                if (finalBlock&&finalBlock.children[1].children.length>0) {
+                if (finalBlock && finalBlock.children[1].children.length > 0) {
                     let final = new StatementBuilder("statement", "finally", c, scope.id);
                     // judgeLastType(final);
                     let finalExit = new StatementBuilder("finally exit", "", c, scope.id);
@@ -801,6 +799,18 @@ export class CfgBuilder {
         }
     }
 
+    buildNewBlock(stms: StatementBuilder[]): Block {
+        let block: Block;
+        if (this.blocks.length > 0 && this.blocks[this.blocks.length - 1].stms.length == 0) {
+            block = this.blocks[this.blocks.length - 1];
+        }
+        else {
+            block = new Block(this.blocks.length, stms, null);
+        }
+        this.blocks.push(block);
+        return block;
+    }
+
     buildBlocks(stm: StatementBuilder, block: Block) {
         if (stm.type.includes(" exit")) {
             stm.block = block;
@@ -810,8 +820,7 @@ export class CfgBuilder {
             return;
         stm.walked = true;
         if (stm.type == "entry") {
-            let b = new Block(this.blocks.length, [], null);
-            this.blocks.push(b);
+            let b = this.buildNewBlock([]);
             // block.nexts.push(b);
             if (stm.next != null)
                 this.buildBlocks(stm.next, b);
@@ -828,19 +837,13 @@ export class CfgBuilder {
                 return;
             }
             if (cstm.type == "loopStatement") {
-                this.blocks = this.blocks.filter((b) => b.stms.length != 0);
-                let loopBlock = new Block(this.blocks.length, [cstm], null);
-                this.blocks.push(loopBlock);
+                let loopBlock = this.buildNewBlock([cstm]);
                 block = loopBlock;
                 cstm.block = block;
             }
-            this.blocks = this.blocks.filter((b) => b.stms.length != 0);
-            let b1 = new Block(this.blocks.length, [], null);
-            this.blocks.push(b1);
+            let b1 = this.buildNewBlock([]);
             this.buildBlocks(cstm.nextT, b1);
-            this.blocks = this.blocks.filter((b) => b.stms.length != 0);
-            let b2 = new Block(this.blocks.length, [], null);
-            this.blocks.push(b2);
+            let b2 = this.buildNewBlock([]);
             // block.nexts.push(b2);
             this.buildBlocks(cstm.nextF, b2);
         }
@@ -848,9 +851,7 @@ export class CfgBuilder {
             let sstm = stm as SwitchStatementBuilder;
             for (let j in sstm.nexts) {
                 let sn: StatementBuilder | null = sstm.nexts[j].next;
-                this.blocks = this.blocks.filter((b) => b.stms.length != 0);
-                let b = new Block(this.blocks.length, [], null);
-                this.blocks.push(b);
+                let b = this.buildNewBlock([]);
                 // block.nexts.push(b);
                 if (sn)
                     this.buildBlocks(sn, b);
@@ -862,10 +863,8 @@ export class CfgBuilder {
                 console.log("try without tryFirst");
                 process.exit();
             }
-            this.blocks = this.blocks.filter((b) => b.stms.length != 0);
-            let tryFirstBlock = new Block(this.blocks.length, [], null);
+            let tryFirstBlock = this.buildNewBlock([]);
             trystm.block = tryFirstBlock;
-            this.blocks.push(tryFirstBlock);
             if (block.stms.length > 0) {
                 block.nexts.add(tryFirstBlock);
                 tryFirstBlock.lasts.add(block);
@@ -873,9 +872,16 @@ export class CfgBuilder {
             // block.nexts.push(tryFirstBlock);
             this.buildBlocks(trystm.tryFirst, tryFirstBlock);
 
-            this.blocks = this.blocks.filter((b) => b.stms.length != 0);
-            let finallyBlock = new Block(this.blocks.length, [], null);
-            this.blocks.push(finallyBlock);
+            const lastBlocksInTry: Set<Block> = new Set();
+            if (!trystm.tryExit) {
+                process.exit();
+            }
+            for (let stm of trystm.tryExit.lasts) {
+                if (stm.block)
+                    lastBlocksInTry.add(stm.block);
+            }
+
+            let finallyBlock = this.buildNewBlock([]);
             // block.nexts.push(afterTry);
             if (trystm.finallyStatement) {
                 this.buildBlocks(trystm.finallyStatement, finallyBlock);
@@ -886,16 +892,19 @@ export class CfgBuilder {
                 let stm = new StatementBuilder("tmp", "", null, -1);
                 finallyBlock.stms = [stm];
             }
-            tryFirstBlock.nexts.add(finallyBlock);
-            finallyBlock.lasts.add(tryFirstBlock);
+            for (let lastBlockInTry of lastBlocksInTry) {
+                lastBlockInTry.nexts.add(finallyBlock);
+                finallyBlock.lasts.add(lastBlockInTry);
+            }
             // let catchBlocks:Block[]=[];
             for (let i = 0; i < trystm.catchStatements.length; i++) {
-                this.blocks = this.blocks.filter((b) => b.stms.length != 0);
-                let catchBlock = new Block(this.blocks.length, [], null);
-                this.blocks.push(catchBlock);
+                let catchBlock = this.buildNewBlock([]);
                 this.buildBlocks(trystm.catchStatements[i], catchBlock);
-                tryFirstBlock.nexts.add(catchBlock);
-                catchBlock.lasts.add(tryFirstBlock);
+                for (let lastBlockInTry of lastBlocksInTry) {
+                    lastBlockInTry.nexts.add(catchBlock);
+                    catchBlock.lasts.add(lastBlockInTry);
+                }
+
                 catchBlock.nexts.add(finallyBlock);
                 finallyBlock.lasts.add(catchBlock);
                 // if(trystm.finallyStatement){
@@ -906,11 +915,12 @@ export class CfgBuilder {
             }
             if (trystm.finallyStatement) {
                 this.resetWalkedPartial(trystm.finallyStatement);
-                this.blocks = this.blocks.filter((b) => b.stms.length != 0);
-                let errorFinallyBlock = new Block(this.blocks.length, [], null);
-                this.blocks.push(errorFinallyBlock);
-                tryFirstBlock.nexts.add(errorFinallyBlock);
-                errorFinallyBlock.lasts.add(tryFirstBlock);
+                let errorFinallyBlock = this.buildNewBlock([]);
+                for (let lastBlockInTry of lastBlocksInTry) {
+                    lastBlockInTry.nexts.add(errorFinallyBlock);
+                    errorFinallyBlock.lasts.add(lastBlockInTry);
+                }
+
                 for (let stm of finallyBlock.stms) {
                     errorFinallyBlock.stms.push(stm);
                 }
@@ -930,9 +940,7 @@ export class CfgBuilder {
                     errorFinallyBlock.lasts.add(block);
                 }
             }
-            this.blocks = this.blocks.filter((b) => b.stms.length != 0);
-            let nextBlock = new Block(this.blocks.length, [], null);
-            this.blocks.push(nextBlock);
+            let nextBlock = this.buildNewBlock([]);
             // block.nexts.push(nextBlock);
             if (trystm.next)
                 this.buildBlocks(trystm.next, nextBlock);
@@ -960,9 +968,7 @@ export class CfgBuilder {
                 stm.next.passTmies++;
                 if (stm.next.passTmies == stm.next.lasts.length || stm.next.type == "loopStatement") {
                     if (stm.next.scopeID != stm.scopeID && !stm.next.type.includes(" exit")) {
-                        this.blocks = this.blocks.filter((b) => b.stms.length != 0);
-                        let b = new Block(this.blocks.length, [], null);
-                        this.blocks.push(b);
+                        let b = this.buildNewBlock([]);
                         // block.nexts.push(b);
                         block = b;
                     }
@@ -1563,14 +1569,16 @@ export class CfgBuilder {
         return false;
     }
 
-    private getOriginalLocal(local: Local): Local {
+    private getOriginalLocal(local: Local, addToLocal: boolean = true): Local {
         let oriName = local.getName();
         for (const oriLocal of this.locals) {
             if (oriLocal.getName() == oriName) {
                 return oriLocal;
             }
         }
-        this.locals.add(local);
+        if (addToLocal) {
+            this.locals.add(local);
+        }
         return local;
     }
     // utils end
@@ -1684,7 +1692,7 @@ export class CfgBuilder {
         // TODO:属性访问需要展开
         else if (node.kind == 'PropertyAccessExpression') {
             let tempBase = new Local(node.children[0].text);
-            let base = this.getOriginalLocal(tempBase);
+            let base = this.getOriginalLocal(tempBase, false);
             if (base == tempBase) {
                 let fieldSignature = node.text;
                 value = new ArkStaticFieldRef(fieldSignature);
@@ -1778,9 +1786,9 @@ export class CfgBuilder {
             this.declaringClass.addMethod(exprArkMethod);
             value = new ArkStaticInvokeExpr(exprArkMethod.getSignature().toString(), args);
         }
-        else if (node.kind == "ClassExpression"){
+        else if (node.kind == "ClassExpression") {
             let cls: ArkClass = new ArkClass();
-            let arkFile=this.declaringClass.getDeclaringArkFile();
+            let arkFile = this.declaringClass.getDeclaringArkFile();
             cls.buildArkClassFromAstNode(node, arkFile);
             arkFile.addArkClass(cls);
             if (cls.isExported()) {
@@ -1792,8 +1800,7 @@ export class CfgBuilder {
             }
         }
         else if (node.kind == "NewExpression") {
-            let classValue = this.astNodeToValue(node.children[1]);
-            let classSignature = classValue.toString();
+            let classSignature = node.children[1].text;
             value = new ArkNewExpr(classSignature);
         }
         else if (node.kind == 'ArrayLiteralExpression') {
@@ -2614,8 +2621,8 @@ export class CfgBuilder {
         this.buildBlocksNextLast();
         this.addReturnBlock();
         this.resetWalked();
-        this.generateUseDef();
-        this.resetWalked();
+        // this.generateUseDef();
+        // this.resetWalked();
 
         // this.printBlocks();
 
@@ -2675,7 +2682,7 @@ export class CfgBuilder {
     // TODO: Add more APIs to class 'Cfg', and use these to build Cfg
     public buildCfg(): Cfg {
         let cfg = new Cfg();
-        cfg.declaringClass=this.declaringClass;
+        cfg.declaringClass = this.declaringClass;
         let blockBuilderToBlock = new Map<Block, BasicBlock>();
         let stmtPos = -1;
         for (const blockBuilder of this.blocks) {
@@ -2702,7 +2709,7 @@ export class CfgBuilder {
 
         // link block
         for (const [blockBuilder, block] of blockBuilderToBlock) {
-            for (const successorBuilder of Array.from(blockBuilder.nexts)) {
+            for (const successorBuilder of blockBuilder.nexts) {
                 let successorBlock = blockBuilderToBlock.get(successorBuilder) as BasicBlock;
                 successorBlock.addPredecessorBlock(block);
                 block.addSuccessorBlock(successorBlock);

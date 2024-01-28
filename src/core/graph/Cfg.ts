@@ -3,8 +3,10 @@ import { Local } from "../base/Local";
 import { ArkAssignStmt, Stmt } from "../base/Stmt";
 import { BasicBlock } from "./BasicBlock";
 import { ArkFile } from "../model/ArkFile";
-import { ArkNewExpr } from "../base/Expr";
+import {ArkBinopExpr, ArkCastExpr, ArkConditionExpr, ArkNewExpr} from "../base/Expr";
 import { ArkClass } from "../model/ArkClass";
+import {Constant} from "../base/Constant";
+import {ArkInstanceFieldRef} from "../base/Ref";
 
 export class Cfg {
     private blocks: Set<BasicBlock> = new Set();
@@ -139,15 +141,106 @@ export class Cfg {
     public typeReference(){
         for(let block of this.blocks){
             for(let stmt of block.getStmts()){
+                // console.log(stmt)
                 if(stmt instanceof ArkAssignStmt){
                     const leftOp=stmt.getLeftOp();
                     const rightOp=stmt.getRightOp();
-                    if(leftOp instanceof Local && rightOp instanceof ArkNewExpr){
-                        leftOp.setType(this.getTypeNewExpr(rightOp));
+                    if(leftOp instanceof Local){
+                        if (rightOp instanceof ArkNewExpr) {
+                            leftOp.setType(this.getTypeNewExpr(rightOp));
+                        } else if (rightOp instanceof ArkBinopExpr){
+                            let op1 = rightOp.getOp1()
+                            let op2 = rightOp.getOp2()
+                            let op1Type: string, op2Type: string
+                            if (op1 instanceof Local) {
+                                let declaringStmt = op1.getDeclaringStmt()
+                                if (declaringStmt instanceof ArkAssignStmt) {
+                                    op1Type = (<Local>(declaringStmt.getLeftOp())).getType()
+                                }
+                            } else if (op1 instanceof Constant) {
+                                op1Type = op1.getType()
+                            }
+                            if (op2 instanceof Local) {
+                                let declaringStmt = op2.getDeclaringStmt()
+                                if (declaringStmt instanceof ArkAssignStmt) {
+                                    op2Type = (<Local>(declaringStmt.getLeftOp())).getType()
+                                }
+                            } else if (op2 instanceof Constant) {
+                                op2Type = op2.getType()
+                            }
+                            leftOp.setType(this.resolveBinaryResultType(op1Type!, op2Type!, rightOp.getOperator()));
+                        } else if (rightOp instanceof ArkCastExpr) {
+
+                        } else if (rightOp instanceof ArkInstanceFieldRef) {
+                            console.log(rightOp)
+                            let completeClassName = rightOp.getBase().getType()
+                            let lastDotIndex = completeClassName.lastIndexOf('.')
+                            let targetArkFile = this.getArkFileByName(
+                                completeClassName.substring(0, lastDotIndex), this.declaringClass.getDeclaringArkFile()
+                            )
+                            let classInstance = this.resolveClassInstance(
+                                completeClassName, targetArkFile)
+                            // console.log(1)
+                            // console.log(rightOp.getFieldName())
+                            // console.log(classInstance)
+                            if (classInstance != null) {
+                                for (let field of classInstance.getFields()) {
+                                    // console.log(field.getName())
+                                    if (field.getName() === rightOp.getFieldName()) {
+                                        leftOp.setType(field.getType())
+                                    }
+                                }
+                            }
+                        } else if (rightOp instanceof Local || rightOp instanceof Constant) {
+                            leftOp.setType(rightOp.getType())
+                        }
                     }
                 }
             }
         }
+    }
+
+    private resolveBinaryResultType(op1Type: string, op2Type: string, operator: string): string {
+        switch (operator) {
+            case "+":
+                if (op1Type === "string" || op2Type === "string") {
+                    return "string";
+                }
+                if (op1Type === "number" && op2Type === "number") {
+                    return "number";
+                }
+                break;
+            case "-":
+            case "*":
+            case "/":
+            case "%":
+                if (op1Type === "number" && op2Type === "number") {
+                    return "number";
+                }
+                break;
+            case "<":
+            case "<=":
+            case ">":
+            case ">=":
+            case "==":
+            case "!=":
+            case "===":
+            case "!==":
+            case "&&":
+            case "||":
+                return "boolean";
+            case "&":
+            case "|":
+            case "^":
+            case "<<":
+            case ">>":
+            case ">>>":
+                if (op1Type === "number" && op2Type === "number") {
+                    return "number";
+                }
+                break;
+        }
+        return "";
     }
 
     private getTypeNewExpr(newExpr:ArkNewExpr): string {
@@ -167,6 +260,7 @@ export class Cfg {
             if (className == importInfo.getImportClauseName() && importFromDir != undefined) {
                 const fileDir = file.getName().split("\\");
                 const importDir = importFromDir.split(/[\/\\]/).filter(item => item !== '.');
+                let realName = importInfo.getNameBeforeAs()?importInfo.getNameBeforeAs():importInfo.getImportClauseName()
                 let parentDirNum = 0;
                 while (importDir[parentDirNum] == "..") {
                     parentDirNum++;
@@ -187,7 +281,7 @@ export class Cfg {
                     if (scene) {
                         for (let sceneFile of scene.arkFiles) {
                             if (sceneFile.getName() == realImportFileName) {
-                                return this.searchImportClass(sceneFile, className);
+                                return this.searchImportClass(sceneFile, realName!);
                             }
                         }
                     }
@@ -196,5 +290,25 @@ export class Cfg {
         }
         return "";
     }
+    protected resolveClassInstance(classCompleteName: string, file: ArkFile|null) {
+        if (file == null)
+            return null
+        let lastDotIndex = classCompleteName.lastIndexOf('.')
+        let classRealName = classCompleteName.substring(lastDotIndex + 1)
+        for (let arkClass of file.getClasses()) {
+            if (arkClass.getName() === classRealName) {
+                return arkClass
+            }
+        }
+        return null
+    }
 
+    protected getArkFileByName(fileName: string, currentFile: ArkFile) {
+        for (let sceneFile of currentFile.getScene().arkFiles) {
+            if (sceneFile.getName() === fileName) {
+                return sceneFile
+            }
+        }
+        return null
+    }
 }

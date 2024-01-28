@@ -2,9 +2,10 @@ import {AbstractCallGraphAlgorithm} from "./AbstractCallGraphAlgorithm";
 import {MethodSignature, MethodSubSignature} from "../core/model/ArkSignature";
 import {ArkClass} from "../core/model/ArkClass";
 import {ArkMethod} from "../core/model/ArkMethod";
-import {isItemRegistered, splitStringWithRegex} from "./utils";
+import {isItemRegistered, splitStringWithRegex} from "../utils/callGraphUtils";
 import {ArkInvokeStmt} from "../core/base/Stmt";
-import {ArkInstanceInvokeExpr, ArkStaticInvokeExpr} from "../core/base/Expr";
+import {AbstractInvokeExpr, ArkInstanceInvokeExpr, ArkStaticInvokeExpr} from "../core/base/Expr";
+import {ArkFile} from "../core/model/ArkFile";
 
 export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm {
     protected resolveCall(sourceMethodSignature: MethodSignature, invokeExpression: ArkInvokeStmt): MethodSignature[] {
@@ -14,41 +15,12 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
         let invokeExpressionExpr = invokeExpression.getInvokeExpr()
         let invokeClass: ArkClass | null = null
 
-        // TODO: 根据调用语句获取具体方法签名或函数签名
-        if (invokeExpressionExpr instanceof ArkInstanceInvokeExpr) {
-            // console.log(invokeExpressionExpr.getMethodSignature())
-            let classCompleteType = invokeExpressionExpr.getBase().getType()
-            let lastDotIndex = classCompleteType.lastIndexOf('.')
-            let fileName = classCompleteType.substring(0, lastDotIndex)
-            let className = classCompleteType.substring(lastDotIndex + 1)
-            invokeClass = this.resolveClassInstance(className, fileName)
-            if (invokeClass == null) {
-                return callTargetMethods
-            }
-        } else if (invokeExpressionExpr instanceof ArkStaticInvokeExpr) {
-            // console.log(invokeExpressionExpr.getMethodSignature())
-            let exprResults = splitStringWithRegex(invokeExpressionExpr.getMethodSignature())
-            // invokeClass = this.resolveClassInstance(exprResults[1])
-        }
-        if (invokeClass == null) {
-            // TODO: 处理函数调用
-
+        let methodFromInvoke = this.resolveInvokeExpr(invokeExpressionExpr, sourceMethodSignature.getArkClass().getArkFile())
+        if (methodFromInvoke == null) {
             return callTargetMethods
         }
-        for (let method of invokeClass.getMethods()) {
-            if (method.getName() === invokeExpressionExpr.getMethodSignature()) {
-                concreteMethodSignature = method.getSignature()
-                concreteMethod = method
-            }
-        }
-        // if (invokeExpressionExpr.getMethodSignature() == "constructor" &&
-        //     concreteMethodSignature == null) {
-        //     concreteMethodSignature = new MethodSignature(
-        //         new MethodSubSignature("constructor", new Map<string, string>(), []),
-        //         invokeClass.classSignature
-        //     )
-        // }
-
+        concreteMethodSignature = methodFromInvoke.getSignature()
+        concreteMethod = methodFromInvoke
 
         if (concreteMethodSignature == null) {
             // If the invoked function is static or a constructor, then return the signature.
@@ -57,6 +29,10 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
             callTargetMethods.push(concreteMethodSignature)
             return callTargetMethods
         } else {
+            if (concreteMethodSignature.getMethodSubSignature().getMethodName() === "constructor") {
+                callTargetMethods.push(concreteMethodSignature)
+                return callTargetMethods
+            }
             // Obtain all possible target method signatures based on the acquired method signature.
             let targetMethodSignatures = this.resolveAllCallTargets(concreteMethodSignature)
             for (let targetMethodSignature of targetMethodSignatures) {
@@ -102,11 +78,24 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
         return methodSignature;
     }
 
-    protected resolveClassInstance(className: string, fileName: string) {
+    protected resolveClassInstance(className: string, file: ArkFile) {
+        /**
+         *
+         * TODO:第一句在后续可以进行优化，目前在instance中存储type是真实类文件，类名，
+         *  但是在StaticInvoke中只能拿到别名构建出的signature，导致该句不能省略
+         *  example:
+         *  import {C as D} from "./b.ts"
+         *  D.staticMethod()
+         *  在进到cg时的签名只有"D.staticMethod"，因此仍然需要递归分析import，后续待优化
+         */
+        let classCompleteName = this.resolveImportClass(file, className)
+        let lastDotIndex = classCompleteName.lastIndexOf('.')
+        let fileName = classCompleteName.substring(0, lastDotIndex)
+        let classRealName = classCompleteName.substring(lastDotIndex + 1)
         for (let file of this.scene.scene.arkFiles) {
             if (file.getName() === fileName) {
                 for (let arkClass of file.getClasses()) {
-                    if (arkClass.getName() === className) {
+                    if (arkClass.getName() === classRealName) {
                         return arkClass
                     }
                 }
@@ -114,15 +103,130 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
         }
         return null
     }
-
     protected preProcessMethod(methodSignature: MethodSignature): void {
         //do nothing
     }
 
-    // protected resolveFunctionCall(invokeExpressionExpr: ArkStaticInvokeExpr) {
-    //     let arkFiles = this.scene.scene.arkFiles
-    //     for (let files of arkFiles) {
-    //         if
-    //     }
-    // }
+    private resolveImportClass(file: ArkFile, name: string): string {
+        for (let classInFile of file.getClasses()) {
+            if (name == classInFile.getName()) {
+                return classInFile.getSignature().getArkFile() + "." + name;
+            }
+        }
+        for (let importInfo of file.getImportInfos()) {
+            const importFromDir=importInfo.getImportFrom();
+            if (name == importInfo.getImportClauseName() && importFromDir != undefined) {
+                const fileDir = file.getName().split("\\");
+                const importDir = importFromDir.split(/[\/\\]/).filter(item => item !== '.');
+                let parentDirNum = 0;
+                let realName = importInfo.getNameBeforeAs()?importInfo.getNameBeforeAs():importInfo.getImportClauseName()
+                while (importDir[parentDirNum] == "..") {
+                    parentDirNum++;
+                }
+                if (parentDirNum < fileDir.length) {
+                    let realImportFileName = "";
+                    for (let i = 0; i < fileDir.length - parentDirNum - 1; i++) {
+                        realImportFileName += fileDir[i] + "\\";
+                    }
+                    for (let i = parentDirNum; i < importDir.length; i++) {
+                        realImportFileName += importDir[i];
+                        if (i != importDir.length - 1) {
+                            realImportFileName += "\\";
+                        }
+                    }
+                    realImportFileName += ".ts";
+                    const scene = file.getScene();
+                    if (scene) {
+                        for (let sceneFile of scene.arkFiles) {
+                            if (sceneFile.getName() == realImportFileName) {
+                                return this.resolveImportClass(sceneFile, realName!);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return "";
+    }
+
+    private resolveFunctionCall(file: ArkFile, name: string): ArkMethod | null {
+        for (let functionOfFile of file.getDefaultClass().getMethods()) {
+            if (name == functionOfFile.getName()) {
+                return functionOfFile
+            }
+        }
+        for (let importInfo of file.getImportInfos()) {
+            const importFromDir=importInfo.getImportFrom();
+            if (name == importInfo.getImportClauseName() && importFromDir != undefined) {
+                const fileDir = file.getName().split("\\");
+                const importDir = importFromDir.split(/[\/\\]/).filter(item => item !== '.');
+                let parentDirNum = 0;
+                let realName = importInfo.getNameBeforeAs()?importInfo.getNameBeforeAs():importInfo.getImportClauseName()
+                while (importDir[parentDirNum] == "..") {
+                    parentDirNum++;
+                }
+                if (parentDirNum < fileDir.length) {
+                    let realImportFileName = "";
+                    for (let i = 0; i < fileDir.length - parentDirNum - 1; i++) {
+                        realImportFileName += fileDir[i] + "\\";
+                    }
+                    for (let i = parentDirNum; i < importDir.length; i++) {
+                        realImportFileName += importDir[i];
+                        if (i != importDir.length - 1) {
+                            realImportFileName += "\\";
+                        }
+                    }
+                    realImportFileName += ".ts";
+                    const scene = file.getScene();
+                    if (scene) {
+                        for (let sceneFile of scene.arkFiles) {
+                            if (sceneFile.getName() == realImportFileName) {
+                                return this.resolveFunctionCall(sceneFile, realName!);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    protected getArkFileByName(fileName: string) {
+        for (let sceneFile of this.scene.scene.arkFiles) {
+            if (sceneFile.getName() === fileName) {
+                return sceneFile
+            }
+        }
+        return null
+    }
+
+    protected resolveInvokeExpr(invokeExpr: AbstractInvokeExpr, arkFileName: string) {
+        let arkFile = this.getArkFileByName(arkFileName)
+        let callName = invokeExpr.getMethodSignature()
+        let className: string, methodName: string = callName
+        if (invokeExpr instanceof ArkInstanceInvokeExpr) {
+            let classCompleteType = invokeExpr.getBase().getType()
+            let lastDotIndex = classCompleteType.lastIndexOf('.')
+            className = classCompleteType.substring(lastDotIndex + 1)
+            arkFile = this.getArkFileByName(classCompleteType.substring(0, lastDotIndex))
+        } else if (invokeExpr instanceof ArkStaticInvokeExpr) {
+            if (callName.includes('.')) {
+                let lastDotIndex = callName.lastIndexOf('.')
+                className = callName.substring(0, lastDotIndex)
+                methodName = callName.substring(lastDotIndex + 1)
+            } else {
+                return this.resolveFunctionCall(arkFile!, methodName)
+            }
+        }
+        let invokeClass = this.resolveClassInstance(className!, arkFile!)
+        if (invokeClass == null) {
+            return null
+        }
+        for (let method of invokeClass.getMethods()) {
+            if (method.getName() === methodName) {
+                return method
+            }
+        }
+        return null
+    }
 }

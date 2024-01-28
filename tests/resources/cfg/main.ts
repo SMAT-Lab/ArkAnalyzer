@@ -1,20 +1,8 @@
-import { ApiResultSimpleInfo } from '../../typedef/checker/result_type';
-import { Check } from './src/api_check_plugin';
-import { LogUtil } from '../../utils/logUtil';
-import { compositiveResult } from '../../utils/checkUtils';
-/**
- * online entrance
- */
-export class Entry {
-  static checkEntry(): ApiResultSimpleInfo[] {
-    const mdFilesPath = '';
-    let result: ApiResultSimpleInfo[] = compositiveResult;
-    try {
-      Check.scanEntry(mdFilesPath);
-    } catch (error) {
-      LogUtil.e('API_CHECK_ERROR', error);
-    } finally {
-    }
-    return result;
-  }
-}
+const addArrow = (x: number, y: number): number => {
+  return x + y;
+};
+
+// 或者可以省略返回类型，TypeScript 会自动推断
+const addArrowInferred = (x: number, y: number) => x + y;
+
+x=a.b.c()
