@@ -822,7 +822,6 @@ export class CfgBuilder {
         stm.walked = true;
         if (stm.type == "entry") {
             let b = this.buildNewBlock([]);
-            this.blocks.push(b);
             // block.nexts.push(b);
             if (stm.next != null)
                 this.buildBlocks(stm.next, b);
@@ -2622,8 +2621,8 @@ export class CfgBuilder {
         this.buildBlocksNextLast();
         this.addReturnBlock();
         this.resetWalked();
-        this.generateUseDef();
-        this.resetWalked();
+        // this.generateUseDef();
+        // this.resetWalked();
 
         // this.printBlocks();
 
