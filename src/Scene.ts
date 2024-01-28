@@ -29,7 +29,7 @@ export class Scene {
         this.realProjectDir = fs.realpathSync(projectDir);
         this.genArkFiles();
         this.genExtendedClasses();
-        // this.makeCallGraphCHA()
+        this.typeReference();
     }
 
     private genArkFiles() {
@@ -185,8 +185,23 @@ export class Scene {
         this.callgraph.processFiles(this.projectFiles);
     }
 
-    public makeCallGraphCHA() {
+    public makeCallGraphCHA(entryPoints: MethodSignature[]) {
         this.classHierarchyCallGraph = new ClassHierarchyAnalysisAlgorithm(this);
         this.classHierarchyCallGraph.loadCallGraph([this.arkFiles[2].getDefaultClass().getMethods()[0].getSignature()])
+        this.classHierarchyCallGraph.printDetails()
+    }
+
+    /**
+     * 对每个method方法体内部进行类型推导，将变量类型填入
+     * @private
+     */
+    private typeReference() {
+        for (let arkFile of this.arkFiles) {
+            for (let arkClass of arkFile.getClasses()) {
+                for (let arkMethod of arkClass.getMethods()) {
+                    arkMethod.getBody().getCfg().typeReference()
+                }
+            }
+        }
     }
 }
