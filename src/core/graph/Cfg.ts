@@ -3,7 +3,7 @@ import { Local } from "../base/Local";
 import { ArkAssignStmt, Stmt } from "../base/Stmt";
 import { BasicBlock } from "./BasicBlock";
 import { ArkFile } from "../model/ArkFile";
-import { ArkNewExpr } from "../base/Expr";
+import {ArkBinopExpr, ArkCastExpr, ArkConditionExpr, ArkNewExpr} from "../base/Expr";
 import { ArkClass } from "../model/ArkClass";
 
 export class Cfg {
@@ -142,8 +142,18 @@ export class Cfg {
                 if(stmt instanceof ArkAssignStmt){
                     const leftOp=stmt.getLeftOp();
                     const rightOp=stmt.getRightOp();
-                    if(leftOp instanceof Local && rightOp instanceof ArkNewExpr){
-                        leftOp.setType(this.getTypeNewExpr(rightOp));
+                    if(leftOp instanceof Local){
+                        if (rightOp instanceof ArkNewExpr) {
+                            leftOp.setType(this.getTypeNewExpr(rightOp));
+                        } else if (rightOp instanceof ArkBinopExpr){
+                            let op1 = rightOp.getOp1()
+                            let op2 = rightOp.getOp2()
+                            // console.log(rightOp)
+                        } else if (rightOp instanceof ArkConditionExpr) {
+
+                        } else if (rightOp instanceof ArkCastExpr) {
+
+                        }
                     }
                 }
             }
