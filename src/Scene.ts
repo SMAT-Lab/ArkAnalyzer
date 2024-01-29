@@ -1,13 +1,14 @@
 import fs from 'fs';
+import path from 'path';
 import { ArkClass } from "./core/model/ArkClass";
 import { ArkFile } from "./core/model/ArkFile";
 import { ArkMethod } from "./core/model/ArkMethod";
 import { ArkNamespace } from "./core/model/ArkNamespace";
-import { ClassSignature, MethodSignature, MethodSubSignature } from "./core/model/ArkSignature";
+import { ClassSignature, MethodSignature, MethodSubSignature, genSignature4ImportClause } from "./core/model/ArkSignature";
 import { CallGraph } from "./callgraph/CallGraph"
-import {ClassHierarchyAnalysis} from "./callgraph/ClassHierarchyAnalysis";
-import {ClassHierarchyAnalysisAlgorithm} from "./callgraph/ClassHierarchyAnalysisAlgorithm";
-import {AbstractCallGraphAlgorithm} from "./callgraph/AbstractCallGraphAlgorithm";
+import { ClassHierarchyAnalysis } from "./callgraph/ClassHierarchyAnalysis";
+import { ClassHierarchyAnalysisAlgorithm } from "./callgraph/ClassHierarchyAnalysisAlgorithm";
+import { AbstractCallGraphAlgorithm } from "./callgraph/AbstractCallGraphAlgorithm";
 import { ImportInfo } from './core/common/ImportBuilder';
 
 /**
@@ -23,6 +24,7 @@ export class Scene {
     callgraph!: CallGraph;
     classHierarchyCallGraph!: AbstractCallGraphAlgorithm;
     extendedClasses: Map<string, ArkClass[]> = new Map();
+    globalImportInfos: Map<string, string>;
     constructor(name: string, files: string[], projectDir: string) {
         this.projectName = name;
         this.projectFiles = files;
@@ -30,6 +32,7 @@ export class Scene {
         this.genArkFiles();
         this.genExtendedClasses();
         this.typeReference();
+        //this.generateGlobalImportInfos();
     }
 
     private genArkFiles() {
@@ -204,5 +207,41 @@ export class Scene {
                 }
             }
         }
+    }
+
+
+    private generateGlobalImportInfos() {
+        let globalImportInfos: Map<string, string> = new Map<string, string>();
+        let sdkConfigPrefix = 'ohos|system|kit';
+        this.arkFiles.forEach((arkFile) => {
+            arkFile.getImportInfos().forEach((importInfo) => {
+                let importClauseSignature = genSignature4ImportClause(arkFile.getName(), importInfo.getImportClauseName());
+                let importFrom = importInfo.getImportFrom();
+
+                const pathReg1 = new RegExp("^(\\.\\.\\/\|\\.\\/)");
+                const pathReg2 = new RegExp(`@(${sdkConfigPrefix})\[\.\|\/\]`);
+
+                // project internal imports
+                if (pathReg1.test(importFrom)) {
+                    if (importInfo.getNameBeforeAs()) {
+                        importFrom = `<${importFrom}>.<${importInfo.getNameBeforeAs()}>`;
+                    }
+                    else {
+                        importFrom = `<${importFrom}>.<${importInfo.getImportClauseName()}>`;
+                    }
+
+                }
+                // local sdk related imports, e.g. openharmony sdk
+                else if (pathReg2.test(importFrom)) {
+                    //console.log('pathReg2');
+                }
+                //third part npm package
+                else {
+                    //console.log('pathReg3');
+                }
+                globalImportInfos.set(importClauseSignature, importFrom);
+            });
+        });
+        this.globalImportInfos = globalImportInfos;
     }
 }

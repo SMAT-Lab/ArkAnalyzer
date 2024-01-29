@@ -1,10 +1,12 @@
 import * as ts from "typescript";
+import path from 'path';
 
 export class ImportInfo {
     private importClauseName: string;
-    private importClauseType: string;
-    private importFrom: string | undefined;
+    private importType: string;
+    private importFrom: string;
     private nameBeforeAs: string | undefined;
+    private clauseType: string = "";
 
     public getImportClauseName() {
         return this.importClauseName;
@@ -14,19 +16,19 @@ export class ImportInfo {
         this.importClauseName = importClauseName;
     }
 
-    public getImportClauseType() {
+    public getimportType() {
         return this.importClauseName;
     }
 
-    public setImportClauseType(importClauseType: string) {
-        this.importClauseType = importClauseType;
+    public setimportType(importType: string) {
+        this.importType = importType;
     }
 
     public getImportFrom() {
         return this.importFrom;
     }
 
-    public setImportFrom(importFrom: string | undefined) {
+    public setImportFrom(importFrom: string) {
         this.importFrom = importFrom;
     }
 
@@ -38,11 +40,26 @@ export class ImportInfo {
         this.nameBeforeAs = nameBeforeAs;
     }
 
+    public getClauseType() {
+        return this.clauseType;
+    }
+
+    public setClauseType(clauseType: string) {
+        this.clauseType = clauseType;
+    }
+
+    private transfer2UnixPath(path2Do: string) {
+        return path.posix.join(...path2Do.split(/\\/));
+    }
+
     constructor() { }
 
-    public build(importClauseName: string, importClauseType: string, importFrom?: string, nameBeforeAs?: string) {
+    public build(importClauseName: string, importType: string, importFrom: string, nameBeforeAs?: string) {
         this.setImportClauseName(importClauseName);
-        this.setImportClauseType(importClauseType);
+        this.setimportType(importType);
+        //if (importFrom) {
+        //    importFrom = this.transfer2UnixPath(importFrom);
+        //}
         this.setImportFrom(importFrom);
         this.setNameBeforeAs(nameBeforeAs);
     }
@@ -59,7 +76,7 @@ export function buildImportInfo4ImportNode(node: ts.ImportDeclaration | ts.Impor
 
 function buildImportDeclarationNode(node: ts.ImportDeclaration): ImportInfo[] {
     let importInfos: ImportInfo[] = [];
-    let importFrom: string | undefined;
+    let importFrom: string = '';
     if (ts.isStringLiteral(node.moduleSpecifier)) {
         importFrom = node.moduleSpecifier.text;
     }
@@ -67,36 +84,36 @@ function buildImportDeclarationNode(node: ts.ImportDeclaration): ImportInfo[] {
     // just like: import '../xxx'
     if (!node.importClause) {
         let importClauseName = '';
-        let importClauseType = '';
+        let importType = '';
         let importInfo = new ImportInfo();
-        importInfo.build(importClauseName, importClauseType, importFrom);
+        importInfo.build(importClauseName, importType, importFrom);
         importInfos.push(importInfo);
     }
 
     //just like: import fs from 'fs'
     if (node.importClause && node.importClause.name && ts.isIdentifier(node.importClause.name)) {
         let importClauseName = node.importClause.name.escapedText.toString();
-        let importClauseType = "Identifier";
+        let importType = "Identifier";
         let importInfo = new ImportInfo();
-        importInfo.build(importClauseName, importClauseType, importFrom);
+        importInfo.build(importClauseName, importType, importFrom);
         importInfos.push(importInfo);
     }
 
     // just like: import {xxx} from './yyy'
     if (node.importClause && node.importClause.namedBindings && ts.isNamedImports(node.importClause.namedBindings)) {
-        let importClauseType = "NamedImports";
+        let importType = "NamedImports";
         if (node.importClause.namedBindings.elements) {
             node.importClause.namedBindings.elements.forEach((element) => {
                 if (element.name && ts.isIdentifier(element.name)) {
                     let importClauseName = element.name.escapedText.toString();
                     if (element.propertyName && ts.isIdentifier(element.propertyName)) {
                         let importInfo = new ImportInfo();
-                        importInfo.build(importClauseName, importClauseType, importFrom, element.propertyName.escapedText.toString());
+                        importInfo.build(importClauseName, importType, importFrom, element.propertyName.escapedText.toString());
                         importInfos.push(importInfo);
                     }
                     else {
                         let importInfo = new ImportInfo();
-                        importInfo.build(importClauseName, importClauseType, importFrom)
+                        importInfo.build(importClauseName, importType, importFrom)
                         importInfos.push(importInfo);
                     }
                 }
@@ -106,11 +123,11 @@ function buildImportDeclarationNode(node: ts.ImportDeclaration): ImportInfo[] {
 
     // just like: import * as ts from 'typescript'
     if (node.importClause && node.importClause.namedBindings && ts.isNamespaceImport(node.importClause.namedBindings)) {
-        let importClauseType = "NamespaceImport";
+        let importType = "NamespaceImport";
         if (node.importClause.namedBindings.name && ts.isIdentifier(node.importClause.namedBindings.name)) {
             let importClauseName = node.importClause.namedBindings.name.escapedText.toString();
             let importInfo = new ImportInfo();
-            importInfo.build(importClauseName, importClauseType, importFrom);
+            importInfo.build(importClauseName, importType, importFrom);
             importInfos.push(importInfo);
         }
     }
@@ -120,13 +137,13 @@ function buildImportDeclarationNode(node: ts.ImportDeclaration): ImportInfo[] {
 
 function buildImportEqualsDeclarationNode(node: ts.ImportEqualsDeclaration): ImportInfo[] {
     let importInfos: ImportInfo[] = [];
-    let importClauseType = "EqualsImport";
+    let importType = "EqualsImport";
     if (node.moduleReference && ts.isExternalModuleReference(node.moduleReference) &&
         node.moduleReference.expression && ts.isStringLiteral(node.moduleReference.expression)) {
         let importFrom = node.moduleReference.expression.text;
         let importClauseName = node.name.escapedText.toString();
         let importInfo = new ImportInfo()
-        importInfo.build(importClauseName, importClauseType, importFrom);
+        importInfo.build(importClauseName, importType, importFrom);
         importInfos.push(importInfo);
     }
     return importInfos;

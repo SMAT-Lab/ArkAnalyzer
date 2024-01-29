@@ -1,6 +1,7 @@
 
 import path from 'path';
 import { ArkClass } from './ArkClass';
+import { ArkFile } from './ArkFile';
 export class MethodSubSignature {
     private methodName: string;
     private parameters: string[] = [];
@@ -189,4 +190,8 @@ function undateFilePath(filePath: string) {
     let reg = /\//g;
     let unixArkFilePath = path.posix.join(...filePath.split(/\\/));
     return unixArkFilePath.replace(reg, '.');
+}
+
+export function genSignature4ImportClause(arkFileName: string, importClauseName: string): string {
+    return `<${arkFileName}>.<${importClauseName}>`;
 }
