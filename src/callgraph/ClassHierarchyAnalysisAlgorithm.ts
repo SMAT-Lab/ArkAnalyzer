@@ -202,7 +202,7 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
                                 sourceMethodSignature: MethodSignature) {
         let arkFile = this.getArkFileByName(arkFileName)
         let callName = invokeExpr.getMethodSignature()
-        let className: string, methodName: string = callName
+        let className: string = "", methodName: string = callName
         if (invokeExpr instanceof ArkInstanceInvokeExpr) {
             // console.log("instance:   "+invokeExpr)
             let classCompleteType = invokeExpr.getBase().getType()
@@ -228,7 +228,10 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
                 return this.resolveFunctionCall(arkFile!, methodName)
             }
         }
-        let invokeClass = this.resolveClassInstance(className!, arkFile!)
+        if (arkFile == null || className == "") {
+            return null
+        }
+        let invokeClass = this.resolveClassInstance(className, arkFile)
         if (invokeClass == null) {
             return null
         }
