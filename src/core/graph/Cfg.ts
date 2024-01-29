@@ -6,7 +6,7 @@ import { ArkFile } from "../model/ArkFile";
 import {ArkBinopExpr, ArkCastExpr, ArkConditionExpr, ArkNewExpr} from "../base/Expr";
 import { ArkClass } from "../model/ArkClass";
 import {Constant} from "../base/Constant";
-import {ArkInstanceFieldRef} from "../base/Ref";
+import {ArkInstanceFieldRef, ArkParameterRef} from "../base/Ref";
 import {isPrimaryType} from "../../utils/typeReferenceUtils";
 import path from "path";
 import { ArkStaticInvokeExpr } from "../base/Expr";
@@ -205,7 +205,7 @@ export class Cfg {
                                     }
                                 }
                             }
-                        } else if (rightOp instanceof Local || rightOp instanceof Constant) {
+                        } else if (rightOp instanceof Local || rightOp instanceof ArkParameterRef) {
                             let rightOpType = rightOp.getType()
                             if (isPrimaryType(rightOpType)) {
                                 leftOp.setType(rightOp.getType())

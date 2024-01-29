@@ -7,6 +7,7 @@ import {ArkInvokeStmt} from "../core/base/Stmt";
 import {AbstractInvokeExpr, ArkInstanceInvokeExpr, ArkStaticInvokeExpr} from "../core/base/Expr";
 import {ArkFile} from "../core/model/ArkFile";
 import path from "path";
+import {Local} from "../core/base/Local";
 
 export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm {
     protected resolveCall(sourceMethodSignature: MethodSignature, invokeExpression: ArkInvokeStmt): MethodSignature[] {
@@ -46,11 +47,11 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
                 }
                 if (!targetMethod.getModifiers().has("AbstractKeyword")) {
                     if (!isItemRegistered<MethodSignature>(
-                        concreteMethodSignature, callTargetMethods,
+                        targetMethod.getSignature(), callTargetMethods,
                         (a, b) =>
                             a.toString() === b.toString()
                     )) {
-                        callTargetMethods.push(concreteMethodSignature)
+                        callTargetMethods.push(targetMethodSignature)
                     }
                 }
             }
@@ -206,15 +207,20 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
         if (invokeExpr instanceof ArkInstanceInvokeExpr) {
             // console.log("instance:   "+invokeExpr)
             let classCompleteType = invokeExpr.getBase().getType()
+            let classInstanceDeclareStmtLocal = invokeExpr.getBase().getDeclaringStmt()?.getDef()
+            if (classInstanceDeclareStmtLocal instanceof Local) {
+                classCompleteType = classInstanceDeclareStmtLocal.getType()
+            }
             let lastDotIndex = classCompleteType.lastIndexOf('.')
             className = classCompleteType.substring(lastDotIndex + 1)
             arkFile = this.getArkFileByName(classCompleteType.substring(0, lastDotIndex))
-            if (className === "this") {
+            if (invokeExpr.getBase().getName() === "this") {
                 let currentClass = this.scene.getClass(sourceMethodSignature.getArkClass())
                 className = currentClass!.getName()
                 arkFile = currentClass!.getDeclaringArkFile()
             }
         } else if (invokeExpr instanceof ArkStaticInvokeExpr) {
+            // console.log("static:   "+invokeExpr)
             if (callName.includes('.')) {
                 let lastDotIndex = callName.lastIndexOf('.')
                 className = callName.substring(0, lastDotIndex)
@@ -228,6 +234,7 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
                 return this.resolveFunctionCall(arkFile!, methodName)
             }
         }
+        // console.log("className: "+className+" arkFileName: "+arkFile?.getName())
         if (arkFile == null || className == "") {
             return null
         }
