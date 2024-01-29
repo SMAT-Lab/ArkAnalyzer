@@ -15,7 +15,7 @@ export class ImportInfo {
     }
 
     public getImportClauseType() {
-        return this.importClauseName;
+        return this.importClauseType;
     }
 
     public setImportClauseType(importClauseType: string) {

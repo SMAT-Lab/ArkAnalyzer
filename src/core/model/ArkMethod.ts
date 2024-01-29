@@ -1,10 +1,9 @@
+import { NodeA } from "../base/Ast";
+import { BodyBuilder } from "../common/BodyBuilder";
+import { ArkBody } from "./ArkBody";
 import { ArkClass } from "./ArkClass";
 import { ArkFile } from "./ArkFile";
-import { ASTree, NodeA } from "../base/Ast";
-import { ClassSignature, MethodSignature, MethodSubSignature } from "./ArkSignature";
-import { ArkBody } from "./ArkBody";
-import { BodyBuilder } from "../common/BodyBuilder";
-import { Cfg } from "../graph/Cfg";
+import { MethodSignature, MethodSubSignature } from "./ArkSignature";
 
 export const arkMethodNodeKind = ['MethodDeclaration', 'Constructor', 'FunctionDeclaration', 'GetAccessor',
     'SetAccessor', 'ArrowFunction', 'FunctionExpression'];
@@ -143,7 +142,7 @@ export class ArkMethod {
         if (methodNode.kind != "SyntaxList") {
             methodNode = methodNode.children[methodNode.children.length - 1].children[1];
         }
-        let bodyBuilder = new BodyBuilder(this.methodSignature, methodNode, declaringClass);
+        let bodyBuilder = new BodyBuilder(this.methodSignature, methodNode, this);
         this.setBody(bodyBuilder.build());
     }
 
