@@ -6,6 +6,7 @@ import {isItemRegistered} from "../utils/callGraphUtils";
 import {ArkInvokeStmt} from "../core/base/Stmt";
 import {AbstractInvokeExpr, ArkInstanceInvokeExpr, ArkStaticInvokeExpr} from "../core/base/Expr";
 import {ArkFile} from "../core/model/ArkFile";
+import path from "path";
 
 export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm {
     protected resolveCall(sourceMethodSignature: MethodSignature, invokeExpression: ArkInvokeStmt): MethodSignature[] {
@@ -13,7 +14,6 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
         let concreteMethod: ArkMethod;
         let callTargetMethods: MethodSignature[] = [];
         let invokeExpressionExpr = invokeExpression.getInvokeExpr()
-        let invokeClass: ArkClass | null = null
 
         let methodFromInvoke = this.resolveInvokeExpr(
             invokeExpressionExpr,
@@ -127,15 +127,12 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
                     parentDirNum++;
                 }
                 if (parentDirNum < fileDir.length) {
-                    let realImportFileName = "";
+                    let realImportFileName = path.dirname("");
                     for (let i = 0; i < fileDir.length - parentDirNum - 1; i++) {
-                        realImportFileName += fileDir[i] + "\\";
+                        realImportFileName = path.join(realImportFileName, fileDir[i])
                     }
                     for (let i = parentDirNum; i < importDir.length; i++) {
-                        realImportFileName += importDir[i];
-                        if (i != importDir.length - 1) {
-                            realImportFileName += "\\";
-                        }
+                        realImportFileName = path.join(realImportFileName, importDir[i])
                     }
                     realImportFileName += ".ts";
                     const scene = file.getScene();
@@ -153,15 +150,12 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
     }
 
     private resolveFunctionCall(file: ArkFile, name: string): ArkMethod | null {
-        console.log(name)
         for (let functionOfFile of file.getDefaultClass().getMethods()) {
             if (name == functionOfFile.getName()) {
                 return functionOfFile
             }
         }
-        console.log(1)
         for (let importInfo of file.getImportInfos()) {
-            console.log(importInfo)
             const importFromDir=importInfo.getImportFrom();
             if (name == importInfo.getImportClauseName() && importFromDir != undefined) {
                 const fileDir = file.getName().split("\\");
@@ -172,15 +166,12 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
                     parentDirNum++;
                 }
                 if (parentDirNum < fileDir.length) {
-                    let realImportFileName = "";
+                    let realImportFileName = path.dirname("");
                     for (let i = 0; i < fileDir.length - parentDirNum - 1; i++) {
-                        realImportFileName += fileDir[i] + "\\";
+                        realImportFileName = path.join(realImportFileName, fileDir[i])
                     }
                     for (let i = parentDirNum; i < importDir.length; i++) {
-                        realImportFileName += importDir[i];
-                        if (i != importDir.length - 1) {
-                            realImportFileName += "\\";
-                        }
+                        realImportFileName = path.join(realImportFileName, importDir[i])
                     }
                     realImportFileName += ".ts";
                     const scene = file.getScene();
@@ -213,7 +204,7 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
         let callName = invokeExpr.getMethodSignature()
         let className: string, methodName: string = callName
         if (invokeExpr instanceof ArkInstanceInvokeExpr) {
-            // console.log("instance:   "+invokeExpr)
+            console.log("instance:   "+invokeExpr)
             let classCompleteType = invokeExpr.getBase().getType()
             let lastDotIndex = classCompleteType.lastIndexOf('.')
             className = classCompleteType.substring(lastDotIndex + 1)
@@ -227,7 +218,6 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
             if (callName.includes('.')) {
                 let lastDotIndex = callName.lastIndexOf('.')
                 className = callName.substring(0, lastDotIndex)
-                // console.log(className)
                 methodName = callName.substring(lastDotIndex + 1)
                 if (className === "this") {
                     let currentClass = this.scene.getClass(sourceMethodSignature.getArkClass())

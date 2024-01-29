@@ -8,6 +8,7 @@ import { ArkClass } from "../model/ArkClass";
 import {Constant} from "../base/Constant";
 import {ArkInstanceFieldRef} from "../base/Ref";
 import {isPrimaryType} from "../../utils/typeReferenceUtils";
+import path from "path";
 
 export class Cfg {
     private blocks: Set<BasicBlock> = new Set();
@@ -278,15 +279,12 @@ export class Cfg {
                     parentDirNum++;
                 }
                 if (parentDirNum < fileDir.length) {
-                    let realImportFileName = "";
+                    let realImportFileName = path.dirname("");
                     for (let i = 0; i < fileDir.length - parentDirNum - 1; i++) {
-                        realImportFileName += fileDir[i] + "\\";
+                        realImportFileName = path.join(realImportFileName, fileDir[i])
                     }
                     for (let i = parentDirNum; i < importDir.length; i++) {
-                        realImportFileName += importDir[i];
-                        if (i != importDir.length - 1) {
-                            realImportFileName += "\\";
-                        }
+                        realImportFileName = path.join(realImportFileName, importDir[i])
                     }
                     realImportFileName += ".ts";
                     const scene = file.getScene();
