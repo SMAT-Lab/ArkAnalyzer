@@ -1,73 +1,62 @@
 import { NodeA } from "../base/Ast";
 import { Property } from "../common/ClassBuilderInfo";
+import { InterfaceMember } from "../common/InterfaceInfoBuilder";
 import { ArkField } from "./ArkField";
 import { ArkFile } from "./ArkFile";
 import { ArkMethod, arkMethodNodeKind } from "./ArkMethod";
-import { ClassSignature, MethodSubSignature, methodSubSignatureCompare } from "./ArkSignature";
+import { ClassSignature, InterfaceSignature, MethodSubSignature, methodSubSignatureCompare } from "./ArkSignature";
 
 export class ArkInterface {
     private name: string;
     private code: string;
     private declaringArkFile: ArkFile;
-    private interfaceSignature: ClassSignature;
+    private interfaceSignature: InterfaceSignature;
     private extendsNames: string[] = [];
     private fields: ArkField[] = [];
     private properties: Property[] = [];
     private methods: ArkMethod[] = [];
     private modifiers: Set<string> = new Set<string>();
+    private members: InterfaceMember[] = [];
 
     constructor() { }
+
+    public getMembers() {
+        return this.members;
+    }
+    
+    public addMember(member: InterfaceMember) {
+        this.members.push(member);
+    }
 
     public build(interfaceNode: NodeA, arkFile: ArkFile) {
         this.setDeclaringArkFile(arkFile);
         if (interfaceNode.kind == 'InterfaceDeclaration') {
             this.setCode(interfaceNode.text);
             this.buildArkInterfaceFromAstNode(interfaceNode);
+            this.genSignature();
         }
     }
 
     private buildArkInterfaceFromAstNode(interfaceNode: NodeA) {
         if (!interfaceNode.interfaceNodeInfo) {
-            throw new Error('Error: There is no classNodeInfo for this class!');
+            throw new Error('Error: There is no interfaceNodeInfo for this interface!');
         }
-        this.setName(interfaceNode.classNodeInfo.className);
+        this.setName(interfaceNode.interfaceNodeInfo.interfaceName);
         this.genSignature();
 
-        interfaceNode.classNodeInfo.modifiers.forEach((modifier) => {
+        interfaceNode.interfaceNodeInfo.modifiers.forEach((modifier) => {
             this.addModifier(modifier);
         });
 
-        for (let [key, value] of interfaceNode.classNodeInfo.heritageClauses) {
+        for (let [key, value] of interfaceNode.interfaceNodeInfo.heritageClauses) {
             if (value == 'ExtendsKeyword') {
-                this.setSuperClassName(key);
-            }
-            else {
-                this.addImplementedInterfaceName(key);
+                this.addExtendsName(key);
             }
         }
 
-        interfaceNode.interfaceNodeInfo.properties.forEach((property) => {
-            this.addProperty(property);
+        interfaceNode.interfaceNodeInfo.members.forEach((member) => {
+            this.addMember(member);
         });
-
-        this.getProperties().forEach((property) => {
-            let field = new ArkField();
-            field.buildFromArkClass(this, property);
-            this.addField(field);
-        });
-
-        // generate ArkMethods of this interface
-        for (let child of interfaceNode.children) {
-            if (child.kind == 'SyntaxList') {
-                for (let cld of child.children) {
-                    if (arkMethodNodeKind.indexOf(cld.kind) > -1) {
-                        let mthd: ArkMethod = new ArkMethod();
-                        mthd.buildArkMethodFromAstNode(cld, this);
-                        this.addMethod(mthd);
-                    }
-                }
-            }
-        }
     }
 
     public getName() {
@@ -102,21 +91,21 @@ export class ArkInterface {
         return this.interfaceSignature;
     }
 
-    public setSignature(interfaceSignature: ClassSignature) {
+    public setSignature(interfaceSignature: InterfaceSignature) {
         this.interfaceSignature = interfaceSignature;
     }
 
     public genSignature() {
-        let classSig = new ClassSignature();
-        classSig.build(this.declaringArkFile.getName(), this.getName());
-        this.setSignature(classSig);
+        let interfaceSig = new InterfaceSignature();
+        interfaceSig.build(this.declaringArkFile.getName(), this.getName());
+        this.setSignature(interfaceSig);
     }
 
-    public getSuperClassName() {
+    public getExtendsNames() {
         return this.extendsNames;
     }
 
-    public setSuperClassName(extendsNames: string[]) {
+    public setExtendsNames(extendsNames: string[]) {
         this.extendsNames = extendsNames;
     }
 

@@ -1,5 +1,5 @@
 import * as ts from "typescript";
-import { buildModifiers, buildTypeParameters, handleQualifiedName, handleisPropertyAccessExpression } from "../../utils/builderUtils";
+import { buildModifiers, buildParameters, buildReturnType4Method, buildTypeParameters, handleQualifiedName, handleisPropertyAccessExpression } from "../../utils/builderUtils";
 
 export class MethodInfo {
     name: string;
@@ -52,78 +52,15 @@ export function buildMethodInfo4MethodNode(node: ts.FunctionDeclaration | ts.Met
         name = 'Set-' + node.name.escapedText.toString();
     }
 
-    // TODO: support question token which means optional parameter
-    let parameterTypes: Map<string, string> = new Map();
-    node.parameters.forEach((parameter) => {
-        let parameterName = ts.isIdentifier(parameter.name) ? parameter.name.escapedText.toString() : '';
-        if (parameter.questionToken) {
-            parameterName = parameterName + '?';
-        }
-        if (parameter.type) {
-            if (ts.isTypeReferenceNode(parameter.type)) {
-                let referenceNodeName = parameter.type.typeName;
-                if (ts.isQualifiedName(referenceNodeName)) {
-                    parameterTypes.set(parameterName, handleQualifiedName(referenceNodeName as ts.QualifiedName));
-                }
-                else if (ts.isIdentifier(referenceNodeName)) {
-                    parameterTypes.set(parameterName, (referenceNodeName as ts.Identifier).escapedText.toString())
-                }
-            }
-            else if (ts.isUnionTypeNode(parameter.type)) {
-                let parameterType = '';
-                parameter.type.types.forEach((tmpType) => {
-                    if (ts.isTypeReferenceNode(tmpType)) {
-                        if (ts.isQualifiedName(tmpType.typeName)) {
-                            parameterType = parameterType + handleQualifiedName(tmpType.typeName) + ' | ';
-                        }
-                        else if (ts.isIdentifier(tmpType.typeName)) {
-                            parameterType = parameterType + tmpType.typeName.escapedText.toString() + ' | ';
-                        }
-                    }
-                    else {
-                        parameterType = parameterType + ts.SyntaxKind[tmpType.kind] + ' | ';
-                    }
-                });
-                parameterTypes.set(parameterName, parameterType);
-            }
-            else {
-                parameterTypes.set(parameterName, ts.SyntaxKind[parameter.type.kind]);
-            }
-        }
-        else {
-            parameterTypes.set(parameterName, '');
-        }
-    });
-
+    let parameterTypes = buildParameters(node);
+    
     //TODO: remember to test abstract method
     let modifiers: Set<string> = new Set<string>();
     if (node.modifiers) {
         modifiers = buildModifiers(node.modifiers);
     }
 
-    let returnType: string[] = [];
-    if (node.type) {
-        if (node.type.kind == ts.SyntaxKind.TypeLiteral) {
-            for (let member of (node.type as ts.TypeLiteralNode).members) {
-                let memberType = (member as ts.PropertySignature).type;
-                if (memberType) {
-                    returnType.push(ts.SyntaxKind[memberType.kind]);
-                }
-            }
-        }
-        else if (ts.isTypeReferenceNode(node.type)) {
-            let referenceNodeName = node.type.typeName;
-            if (ts.isQualifiedName(referenceNodeName)) {
-                returnType.push(handleQualifiedName(referenceNodeName));
-            }
-            else if (ts.isIdentifier(referenceNodeName)) {
-                returnType.push(referenceNodeName.escapedText.toString());
-            }
-        }
-        else {
-            returnType.push(ts.SyntaxKind[node.type.kind]);
-        }
-    }
+    let returnType: string[] = buildReturnType4Method(node);
 
     let typeParameters: string[] = buildTypeParameters(node);
     

@@ -19,6 +19,7 @@ export class ArkClass {
     private methods: ArkMethod[] = [];
     private defaultMethod: ArkMethod;
     private modifiers: Set<string> = new Set<string>();
+    private typeParameters: string[] = [];
 
     constructor() { }
 
@@ -120,6 +121,14 @@ export class ArkClass {
         this.modifiers.add(name);
     }
 
+    public getTypeParameter() {
+        return this.typeParameters;
+    }
+
+    public addTypeParameter(typeParameter: string) {
+        this.typeParameters.push(typeParameter);
+    }
+
     public containsModifier(name: string) {
         return this.modifiers.has(name);
     }
@@ -180,6 +189,10 @@ export class ArkClass {
 
         clsNode.classNodeInfo.properties.forEach((property) => {
             this.addProperty(property);
+        });
+
+        clsNode.classNodeInfo.typeParameters.forEach((typeParameter) => {
+            this.addTypeParameter(typeParameter);
         });
 
         this.getProperties().forEach((property) => {

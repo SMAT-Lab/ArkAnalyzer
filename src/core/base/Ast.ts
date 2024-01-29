@@ -3,6 +3,7 @@ import { ClassInfo, buildClassInfo4ClassNode } from "../common/ClassBuilderInfo"
 import { MethodInfo, buildMethodInfo4MethodNode } from "../common/MethodInfoBuilder";
 import { ImportInfo, buildImportInfo4ImportNode } from "../common/ImportBuilder";
 import { ExportInfo, buildExportInfo4ExportNode } from "../common/ExportBuilder";
+import { InterfaceInfo, buildInterfaceInfo4InterfaceNode } from "../common/InterfaceInfoBuilder";
 
 /**
  * ast节点类，属性包括父节点，子节点列表，种类，文本内容，开始位置
@@ -17,13 +18,14 @@ export class NodeA {
     methodNodeInfo: MethodInfo | undefined;
     importNodeInfo: ImportInfo[] | undefined;
     exportNodeInfo: ExportInfo[] | undefined;
+    interfaceNodeInfo: InterfaceInfo | undefined;
     instanceMap: Map<string, string> | undefined;
     line: number = -1;
     character: number = -1;
 
     constructor(node: ts.Node | undefined, parent: NodeA | null, children: NodeA[], text: string,
         start: number, kind: string, classNodeInfo?: ClassInfo, methodNodeInfo?: MethodInfo,
-        importNodeInfo?: ImportInfo[], exportNodeInfo?: ExportInfo[]) {
+        importNodeInfo?: ImportInfo[], exportNodeInfo?: ExportInfo[], interfaceNodeInfo?: InterfaceInfo) {
         this.parent = parent;
         this.children = children;
         this.text = text;
@@ -43,6 +45,7 @@ export class NodeA {
         this.methodNodeInfo = methodNodeInfo;
         this.importNodeInfo = importNodeInfo;
         this.exportNodeInfo = exportNodeInfo;
+        this.interfaceNodeInfo = interfaceNodeInfo;
     }
 
     public putInstanceMap(variableName: string, variableType: string): void {
@@ -110,6 +113,7 @@ export class ASTree {
             let methodNodeInfo: MethodInfo | undefined;
             let importNodeInfo: ImportInfo[] | undefined;
             let exportNodeInfo: ExportInfo[] | undefined;
+            let interfaceNodeInfo: InterfaceInfo | undefined;
 
             if (ts.isClassDeclaration(child) || ts.isClassExpression(child)) {
                 classNodeInfo = buildClassInfo4ClassNode(child);
@@ -124,9 +128,12 @@ export class ASTree {
             if (ts.isExportDeclaration(child) || ts.isExportAssignment(child)) {
                 exportNodeInfo = buildExportInfo4ExportNode(child);
             }
+            if (ts.isInterfaceDeclaration(child)) {
+                interfaceNodeInfo = buildInterfaceInfo4InterfaceNode(child);
+            }
 
             ca = new NodeA(child, nodea, [], child.getText(this.sourceFile), child.getStart(this.sourceFile), "",
-                classNodeInfo, methodNodeInfo, importNodeInfo, exportNodeInfo);
+                classNodeInfo, methodNodeInfo, importNodeInfo, exportNodeInfo, interfaceNodeInfo);
             const { line, character } = ts.getLineAndCharacterOfPosition(
                 this.sourceFile,
                 child.getStart(this.sourceFile)

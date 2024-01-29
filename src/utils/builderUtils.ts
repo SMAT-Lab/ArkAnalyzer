@@ -58,9 +58,10 @@ export function buildHeritageClauses(node: ts.ClassDeclaration | ts.ClassExpress
     return heritageClausesMap;
 }
 
-export function buildTypeParameters(node: ts.ClassDeclaration | ts.ClassExpression | ts.InterfaceDeclaration
-    | ts.FunctionDeclaration | ts.MethodDeclaration | ts.ConstructorDeclaration |
-    ts.ArrowFunction | ts.AccessorDeclaration | ts.FunctionExpression): string[] {
+export function buildTypeParameters(node: ts.ClassDeclaration | ts.ClassExpression |
+    ts.InterfaceDeclaration | ts.FunctionDeclaration | ts.MethodDeclaration |
+    ts.ConstructorDeclaration | ts.ArrowFunction | ts.AccessorDeclaration |
+    ts.FunctionExpression | ts.MethodSignature | ts.ConstructSignatureDeclaration): string[] {
     let typeParameters: string[] = [];
     node.typeParameters?.forEach((typeParameter) => {
         if (ts.isIdentifier(typeParameter.name)) {
@@ -70,4 +71,79 @@ export function buildTypeParameters(node: ts.ClassDeclaration | ts.ClassExpressi
     return typeParameters;
 }
 
+export function buildParameters(node: ts.FunctionDeclaration | ts.MethodDeclaration
+    | ts.ConstructorDeclaration | ts.ArrowFunction | ts.AccessorDeclaration |
+    ts.FunctionExpression | ts.CallSignatureDeclaration | ts.MethodSignature |
+    ts.ConstructSignatureDeclaration | ts.IndexSignatureDeclaration) {
+    let parameterTypes: Map<string, string> = new Map();
+    node.parameters.forEach((parameter) => {
+        let parameterName = ts.isIdentifier(parameter.name) ? parameter.name.escapedText.toString() : '';
+        if (parameter.questionToken) {
+            parameterName = parameterName + '?';
+        }
+        if (parameter.type) {
+            if (ts.isTypeReferenceNode(parameter.type)) {
+                let referenceNodeName = parameter.type.typeName;
+                if (ts.isQualifiedName(referenceNodeName)) {
+                    parameterTypes.set(parameterName, handleQualifiedName(referenceNodeName as ts.QualifiedName));
+                }
+                else if (ts.isIdentifier(referenceNodeName)) {
+                    parameterTypes.set(parameterName, (referenceNodeName as ts.Identifier).escapedText.toString())
+                }
+            }
+            else if (ts.isUnionTypeNode(parameter.type)) {
+                let parameterType = '';
+                parameter.type.types.forEach((tmpType) => {
+                    if (ts.isTypeReferenceNode(tmpType)) {
+                        if (ts.isQualifiedName(tmpType.typeName)) {
+                            parameterType = parameterType + handleQualifiedName(tmpType.typeName) + ' | ';
+                        }
+                        else if (ts.isIdentifier(tmpType.typeName)) {
+                            parameterType = parameterType + tmpType.typeName.escapedText.toString() + ' | ';
+                        }
+                    }
+                    else {
+                        parameterType = parameterType + ts.SyntaxKind[tmpType.kind] + ' | ';
+                    }
+                });
+                parameterTypes.set(parameterName, parameterType);
+            }
+            else {
+                parameterTypes.set(parameterName, ts.SyntaxKind[parameter.type.kind]);
+            }
+        }
+        else {
+            parameterTypes.set(parameterName, '');
+        }
+    });
+    return parameterTypes;
+}
 
+export function buildReturnType4Method(node: ts.FunctionDeclaration | ts.MethodDeclaration |
+    ts.ConstructorDeclaration | ts.ArrowFunction | ts.AccessorDeclaration |
+    ts.FunctionExpression | ts.MethodSignature | ts.ConstructSignatureDeclaration) {
+    let returnType: string[] = [];
+    if (node.type) {
+        if (node.type.kind == ts.SyntaxKind.TypeLiteral) {
+            for (let member of (node.type as ts.TypeLiteralNode).members) {
+                let memberType = (member as ts.PropertySignature).type;
+                if (memberType) {
+                    returnType.push(ts.SyntaxKind[memberType.kind]);
+                }
+            }
+        }
+        else if (ts.isTypeReferenceNode(node.type)) {
+            let referenceNodeName = node.type.typeName;
+            if (ts.isQualifiedName(referenceNodeName)) {
+                returnType.push(handleQualifiedName(referenceNodeName));
+            }
+            else if (ts.isIdentifier(referenceNodeName)) {
+                returnType.push(referenceNodeName.escapedText.toString());
+            }
+        }
+        else {
+            returnType.push(ts.SyntaxKind[node.type.kind]);
+        }
+    }
+    return returnType;
+}

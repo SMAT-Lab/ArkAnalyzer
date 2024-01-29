@@ -8,6 +8,7 @@ import { ClassSignature, MethodSignature, methodSignatureCompare, classSignature
 import { ExportInfo } from '../common/ExportBuilder';
 import { ImportInfo } from '../common/ImportBuilder';
 import { Scene } from '../../Scene';
+import { ArkInterface } from './ArkInterface';
 
 /**
  * 
@@ -19,6 +20,7 @@ export class ArkFile {
     private ast: ASTree;
     private methods: ArkMethod[] = [];
     private classes: ArkClass[] = [];
+    private interfaces: ArkInterface[] = [];
     private defaultClass: ArkClass;
     private nameSpaces: ArkNamespace[] = [];
     private importInfos: ImportInfo[] = [];
@@ -117,6 +119,14 @@ export class ArkFile {
         return this.classes;
     }
 
+    public getInterfaces(): ArkInterface[] {
+        return this.interfaces;
+    }
+
+    public addInterface(interFace: ArkInterface) {
+        this.interfaces.push(interFace);
+    }
+
     public getMethods(): ArkMethod[] {
         return this.methods;
     }
@@ -176,6 +186,18 @@ export class ArkFile {
             //    this.nameSpaces.push(ns);
             //}
 
+            if (child.kind == 'InterfaceDeclaration') {
+                let interFace: ArkInterface = new ArkInterface();
+                interFace.build(child, this);
+                this.addInterface(interFace);
+                if (interFace.isExported()) {
+                    let exportClauseName: string = interFace.getName();
+                    let exportClauseType: string = "Interface";
+                    let exportInfo = new ExportInfo();
+                    exportInfo.build(exportClauseName, exportClauseType);
+                    this.exportInfos.push(exportInfo);
+                }
+            }
             if (child.kind == 'ClassDeclaration') {
                 let cls: ArkClass = new ArkClass();
                 cls.buildArkClassFromAstNode(child, this);

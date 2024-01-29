@@ -111,6 +111,40 @@ export class FieldSignature {
     }
 }
 
+export class InterfaceSignature {
+    private arkFile: string;
+    private interfaceName: string;
+    private arkFileWithoutExt: string;
+
+    public getArkFile() {
+        return this.arkFile;
+    }
+
+    public setArkFile(arkFile: string) {
+        this.arkFile = arkFile;
+    }
+
+    public getInterfaceName() {
+        return this.interfaceName;
+    }
+
+    public setInterfaceName(interfaceName: string) {
+        this.interfaceName = interfaceName;
+    }
+
+    constructor() { }
+
+    public build(arkFile: string, interfaceName: string) {
+        this.setArkFile(arkFile);
+        this.setInterfaceName(interfaceName);
+        this.arkFileWithoutExt = path.dirname(arkFile) + '/' + path.basename(arkFile, path.extname(arkFile));
+    }
+
+    public toString(): string {
+        return `<${this.getArkFile()}>.<#Interface#>.<${this.getInterfaceName()}>`
+    }
+}
+
 export class ClassSignature {
     private arkFile: string;
     private classType: string;
@@ -169,6 +203,13 @@ export function methodSubSignatureCompare(leftSig: MethodSubSignature, rightSig:
 
 export function classSignatureCompare(leftSig: ClassSignature, rightSig: ClassSignature): boolean {
     if ((leftSig.getArkFile() == rightSig.getArkFile()) && (leftSig.getClassType() == rightSig.getClassType())) {
+        return true;
+    }
+    return false;
+}
+
+export function interfaceSignatureCompare(leftSig: InterfaceSignature, rightSig: InterfaceSignature): boolean {
+    if ((leftSig.getArkFile() == rightSig.getArkFile()) && (leftSig.getInterfaceName() == rightSig.getInterfaceName())) {
         return true;
     }
     return false;

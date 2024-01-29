@@ -16,6 +16,7 @@ export class ArkMethod {
     private returnType: string[] = [];
     private parameters: Map<string, string> = new Map();
     private modifiers: Set<string> = new Set<string>();
+    private typeParameters: string[] = [];
     private methodSignature: MethodSignature;
     private methodSubSignature: MethodSubSignature;
     private body: ArkBody;
@@ -107,6 +108,14 @@ export class ArkMethod {
         this.modifiers.add(name);
     }
 
+    public getTypeParameter() {
+        return this.typeParameters;
+    }
+
+    public addTypeParameter(typeParameter: string) {
+        this.typeParameters.push(typeParameter);
+    }
+
     public containsModifier(name: string) {
         return this.modifiers.has(name);
     }
@@ -165,6 +174,9 @@ export class ArkMethod {
         });
         methodNode.methodNodeInfo.returnType.forEach((type) => {
             this.addReturnType(type);
+        });
+        methodNode.methodNodeInfo.typeParameters.forEach((typeParameter) => {
+            this.addTypeParameter(typeParameter);
         });
     }
 }

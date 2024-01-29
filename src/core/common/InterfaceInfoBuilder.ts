@@ -1,7 +1,8 @@
 import * as ts from "typescript";
-import { buildHeritageClauses, buildModifiers, buildTypeParameters, handleQualifiedName, handleisPropertyAccessExpression } from "../../utils/builderUtils";
+import { buildHeritageClauses, buildModifiers, buildParameters, buildReturnType4Method, buildTypeParameters, handleQualifiedName, handleisPropertyAccessExpression } from "../../utils/builderUtils";
+import { ArkMethod } from "../model/ArkMethod";
 
-export class Property {
+export class InterfaceProperty {
     private propertyName: string;
     private modifiers: Set<string> = new Set<string>();
     private type: string;
@@ -62,8 +63,11 @@ export class Property {
     }
 }
 
-function buildProperty(member: ts.PropertySignature): Property {
-    let propertyName = (member.name as ts.Identifier).escapedText.toString();
+function buildInterfaceProperty(member: ts.PropertySignature): InterfaceProperty {
+    let propertyName = '';
+    if (ts.isIdentifier(member.name)) {
+        propertyName = member.name.escapedText.toString();
+    }
 
     let modifiers: Set<string> = new Set<string>();
     if (member.modifiers) {
@@ -106,24 +110,126 @@ function buildProperty(member: ts.PropertySignature): Property {
         questionToken = true;
     }
 
-    let property = new Property();
+    let property = new InterfaceProperty();
     property.build(propertyName, modifiers, type, questionToken);
     return property;
+}
+
+export class IndexSig {
+    modifiers: Set<string>;
+    parameters: Map<string, string>;
+    type: string;
+
+    public getModifiers() {
+        return this.modifiers;
+    }
+
+    public setModifiers(modifiers: Set<string>) {
+        this.modifiers = modifiers;
+    }
+
+    public getParameters() {
+        return this.parameters;
+    }
+
+    public setParameters(parameters: Map<string, string>) {
+        this.parameters = parameters;
+    }
+
+    public getType() {
+        return this.type;
+    }
+
+    public setType(type: string) {
+        this.type = type;
+    }
+
+    constructor() {}
+}
+
+export class InterfaceMember {
+    memberType: string;
+    memberParameters: Map<string, string> | undefined;
+    returnType: string | undefined;
+    property: InterfaceProperty | undefined;
+    method: ArkMethod | undefined;
+    index: IndexSig | undefined;
+    constructSig: ArkMethod | undefined;
+
+    constructor() { }
+
+    public getMemberType() {
+        return this.memberType;
+    }
+
+    public setMemberType(memberType: string) {
+        this.memberType = memberType;
+    }
+
+    public getMemberParameters() {
+        return this.memberParameters;
+    }
+
+    public setMemberParameters(memberParameters: Map<string, string>) {
+        this.memberParameters = memberParameters;
+    }
+
+    public getReturnType() {
+        return this.returnType;
+    }
+
+    public setReturnType(returnType: string) {
+        this.returnType = returnType;
+    }
+
+    public getProperty() {
+        return this.property;
+    }
+
+    public setProperty(property: InterfaceProperty) {
+        this.property = property;
+    }
+
+    public getMethod() {
+        return this.method;
+    }
+
+    public setMethod(method: ArkMethod) {
+        this.method = method;
+    }
+
+    public getIndex() {
+        return this.index;
+    }
+
+    public setIndex(index: IndexSig) {
+        this.index = index;
+    }
+
+    public getConstructSig() {
+        return this.constructSig;
+    }
+
+    public setConstructSig(constructSig: ArkMethod) {
+        this.constructSig = constructSig;
+    }
+
 }
 
 export class InterfaceInfo {
     interfaceName: string;
     modifiers: Set<string>;
     heritageClauses: Map<string, string>;
-    properties: Property[];
+    //properties: InterfaceProperty[];
+    members: InterfaceMember[];
     typeParameters: string[];
     constructor(interfaceName: string, modifiers: Set<string>,
-        heritageClauses: Map<string, string>, properties: Property[],
+        heritageClauses: Map<string, string>, members: InterfaceMember[],
         typeParameters: string[]) {
         this.interfaceName = interfaceName;
         this.modifiers = modifiers;
         this.heritageClauses = heritageClauses;
-        this.properties = properties;
+        this.members = members;
         this.typeParameters = typeParameters;
     }
 }
@@ -139,25 +245,107 @@ export function buildInterfaceInfo4InterfaceNode(node: ts.InterfaceDeclaration):
 
     let heritageClausesMap: Map<string, string> = buildHeritageClauses(node);
 
-    let properties: Property[] = [];
+    let interfaceMembers: InterfaceMember[] = [];
     node.members.forEach((member) => {
+        let interfaceMember = new InterfaceMember();
         if (ts.isPropertySignature(member)) {
-            properties.push(buildProperty(member));
+            interfaceMember.setMemberType('PropertySignature');
+            interfaceMember.setProperty(buildInterfaceProperty(member));
         }
         else if (ts.isCallSignatureDeclaration(member)) {
-            //
+            interfaceMember.setMemberType('CallSignature');
+            interfaceMember.setMemberParameters(buildParameters(member));
+            interfaceMember.setReturnType(buildReturnType(member));
         }
         else if (ts.isMethodSignature(member)) {
-            //
+            interfaceMember.setMemberType('MethodSignature');
+            let mtdMember = new ArkMethod();
+            // gen parameters
+            buildParameters(member).forEach((type, name) => {
+                mtdMember.addParameter(name, type);
+            });
+            // gen modifiers
+            if (member.modifiers) {
+                buildModifiers(member.modifiers).forEach((modifier) => {
+                    mtdMember.addModifier(modifier);
+                });
+            }
+            // gen name
+            let name = node.name ? node.name.escapedText.toString() : '';
+            mtdMember.setName(name);
+            // gen return type
+            buildReturnType4Method(member).forEach((returnType) => {
+                mtdMember.addReturnType(returnType);
+            });
+            // gen type parameters
+            buildTypeParameters(member).forEach((typeParameter) => {
+                mtdMember.addTypeParameter(typeParameter);
+            });
+            interfaceMember.setMethod(mtdMember);
         }
         else if (ts.isConstructSignatureDeclaration(member)) {
-            //
+            interfaceMember.setMemberType('ConstructSignature');
+            let constructMember = new ArkMethod();
+            // gen parameters
+            buildParameters(member).forEach((type, name) => {
+                constructMember.addParameter(name, type);
+            });
+            let name:string = "_Constructor";
+            constructMember.setName(name);
+            // gen return type
+            buildReturnType4Method(member).forEach((returnType) => {
+                constructMember.addReturnType(returnType);
+            });
+            // gen type parameters
+            buildTypeParameters(member).forEach((typeParameter) => {
+                //TODO
+                console.log("Please add typeParameter support in ArkMethod");
+            });
+            interfaceMember.setConstructSig(constructMember);
         }
         else if (ts.isIndexSignatureDeclaration(member)) {
-            //
+            interfaceMember.setMemberType('IndexSignature');
+            let indexSig = new IndexSig();
+            //gen parameters
+            indexSig.setParameters(buildParameters(member));
+            //gen type
+            indexSig.setType(buildReturnType(member));
+            //gen modifiers
+            if (member.modifiers) {
+                indexSig.setModifiers(buildModifiers(member.modifiers));
+            }
+            interfaceMember.setIndex(indexSig);
         }
+        interfaceMembers.push(interfaceMember);
     });
 
     let typeParameters: string[] = buildTypeParameters(node);
-    return new InterfaceInfo(name, modifiers, heritageClausesMap, properties, typeParameters);
+    return new InterfaceInfo(name, modifiers, heritageClausesMap, interfaceMembers, typeParameters);
+}
+
+function buildReturnType(node: ts.CallSignatureDeclaration | ts.IndexSignatureDeclaration) {
+    let returnType: string = "";
+    if (node.type) {
+        if (node.type.kind == ts.SyntaxKind.TypeLiteral) {
+            for (let member of (node.type as ts.TypeLiteralNode).members) {
+                let memberType = (member as ts.PropertySignature).type;
+                if (memberType) {
+                    returnType = ts.SyntaxKind[memberType.kind];
+                }
+            }
+        }
+        else if (ts.isTypeReferenceNode(node.type)) {
+            let referenceNodeName = node.type.typeName;
+            if (ts.isQualifiedName(referenceNodeName)) {
+                returnType = handleQualifiedName(referenceNodeName);
+            }
+            else if (ts.isIdentifier(referenceNodeName)) {
+                returnType = referenceNodeName.escapedText.toString();
+            }
+        }
+        else {
+            returnType = ts.SyntaxKind[node.type.kind];
+        }
+    }
+    return returnType;
 }
