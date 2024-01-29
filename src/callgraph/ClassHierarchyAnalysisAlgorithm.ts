@@ -204,7 +204,7 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
         let callName = invokeExpr.getMethodSignature()
         let className: string, methodName: string = callName
         if (invokeExpr instanceof ArkInstanceInvokeExpr) {
-            console.log("instance:   "+invokeExpr)
+            // console.log("instance:   "+invokeExpr)
             let classCompleteType = invokeExpr.getBase().getType()
             let lastDotIndex = classCompleteType.lastIndexOf('.')
             className = classCompleteType.substring(lastDotIndex + 1)

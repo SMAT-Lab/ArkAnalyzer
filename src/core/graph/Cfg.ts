@@ -205,6 +205,19 @@ export class Cfg {
                                 }
                             }
                         } else if (rightOp instanceof Local || rightOp instanceof Constant) {
+                            let rightOpType = rightOp.getType()
+                            if (isPrimaryType(rightOpType)) {
+                                leftOp.setType(rightOp.getType())
+                            } else {
+                                // 对应函数参数的解析
+                                if (!rightOpType.includes(".")) {
+                                    let completeClassName = this.searchImportClass(
+                                        this.declaringClass.getDeclaringArkFile(),
+                                        rightOpType)
+                                    leftOp.setType(completeClassName)
+                                }
+                            }
+                        } else if (rightOp instanceof Constant) {
                             leftOp.setType(rightOp.getType())
                         }
                     }
