@@ -209,7 +209,7 @@ export class Cfg {
                             if (isPrimaryType(rightOpType)) {
                                 leftOp.setType(rightOp.getType())
                             } else {
-                                // 对应函数参数的解析
+                                // TODO: 对应函数参数的解析,可能会与类属性解析冲突
                                 if (!rightOpType.includes(".")) {
                                     let completeClassName = this.searchImportClass(
                                         this.declaringClass.getDeclaringArkFile(),
