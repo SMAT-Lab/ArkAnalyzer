@@ -12,7 +12,7 @@ export class Local implements Value {
 
     constructor(name: string) {
         this.name = name;
-        this.type = "";
+        this.type = 'any';
 
         this.originalValue = null;
         this.declaringStmt = null;

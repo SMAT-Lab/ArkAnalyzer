@@ -26,11 +26,12 @@
 //         animal.sound()
 //     }
 
-//     public static main() {
-//         this.makeAnimalSound(new Dog())
-//     }
+    // public static main() {
+    //     this.makeAnimalSound(new Dog())
+    // }
 // }
 
-function main() {
-    let a = [1, 2, 4]
-}
+function main(a: number) {
+    console.log(a);
+
+} 

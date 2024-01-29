@@ -3,7 +3,7 @@ import { ASTree, NodeA } from '../base/Ast';
 import { Constant } from '../base/Constant';
 import { AbstractInvokeExpr, ArkBinopExpr, ArkCastExpr, ArkConditionExpr, ArkInstanceInvokeExpr, ArkLengthExpr, ArkNewArrayExpr, ArkNewExpr, ArkStaticInvokeExpr, ArkTypeOfExpr } from '../base/Expr';
 import { Local } from '../base/Local';
-import { ArkArrayRef, ArkInstanceFieldRef, ArkStaticFieldRef } from '../base/Ref';
+import { ArkArrayRef, ArkInstanceFieldRef, ArkParameterRef, ArkStaticFieldRef, ArkThisRef } from '../base/Ref';
 import { ArkAssignStmt, ArkGotoStmt, ArkIfStmt, ArkInvokeStmt, ArkReturnStmt, ArkReturnVoidStmt, Stmt } from '../base/Stmt';
 import { Value } from '../base/Value';
 import { BasicBlock } from '../graph/BasicBlock';
@@ -1946,9 +1946,9 @@ export class CfgBuilder {
         if (IRUtils.moreThanOneAddress(leftOp) && IRUtils.moreThanOneAddress(rightOp)) {
             rightOp = this.generateAssignStmt(rightOp);
         }
-        
+
         let threeAddressAssignStmts: Stmt[] = [];
-        threeAddressAssignStmts.push(new ArkAssignStmt(leftOp, rightOp))        
+        threeAddressAssignStmts.push(new ArkAssignStmt(leftOp, rightOp))
 
         if (leftOpNode.kind == 'ArrayBindingPattern' || leftOpNode.kind == 'ObjectBindingPattern') {
             let argNodes = this.getSyntaxListItems(leftOpNode.children[1]);
@@ -2111,14 +2111,19 @@ export class CfgBuilder {
     }
 
     private transformToThreeAddress() {
-        // process parameters
-        for (const [paraName, paraType] of this.declaringMethod.getParameters()) {
-            let paraLocal = new Local(paraName);
-            paraLocal.setType(paraType);
-            this.locals.add(paraLocal);
+        // process parameters        
+        if(this.blocks.length>0 && this.blocks[0].stms.length>0){       // 临时处理默认函数函数体为空的情况
+            this.current3ACstm = this.blocks[0].stms[0];
+            let index = 0;
+            for (const [paraName, paraType] of this.declaringMethod.getParameters()) {
+                let parameterRef = new ArkParameterRef(index, paraType);
+                this.generateAssignStmt(parameterRef);
+                index++;
+            }
+            let thisRef = new ArkThisRef(this.declaringClass.getSignature().toString());
+            this.generateAssignStmt(thisRef);
         }
-        let thisLocal = new Local('this');
-        this.locals.add(thisLocal);
+
 
         for (let blockId = 0; blockId < this.blocks.length; blockId++) {
             let currBlock = this.blocks[blockId];
