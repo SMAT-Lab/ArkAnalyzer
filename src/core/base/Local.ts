@@ -23,6 +23,10 @@ export class Local implements Value {
         return this.name;
     }
 
+    public setName(name: string): void {
+        this.name = name
+    }
+
     public getType(): string {
         return this.type;
     }
@@ -43,8 +47,8 @@ export class Local implements Value {
         return this.declaringStmt;
     }
 
-    public setDeclaringStmt(declaringStmt:Stmt){
-        this.declaringStmt=declaringStmt;
+    public setDeclaringStmt(declaringStmt: Stmt) {
+        this.declaringStmt = declaringStmt;
     }
 
 

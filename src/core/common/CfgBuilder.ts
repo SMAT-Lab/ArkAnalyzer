@@ -1587,7 +1587,7 @@ export class CfgBuilder {
     // utils end
 
 
-    private generateTempValue(): Value {
+    private generateTempValue(): Local {
         let tempLeftOpName = "temp" + this.tempVariableNum;
         this.tempVariableNum++;
         let tempLeftOp = new Local(tempLeftOpName);
@@ -1595,7 +1595,7 @@ export class CfgBuilder {
         return tempLeftOp;
     }
 
-    private generateAssignStmt(node: NodeA | Value): Value {
+    private generateAssignStmt(node: NodeA | Value): Local {
         let leftOp = this.generateTempValue();
         let rightOp: any;
         if (node instanceof NodeA) {
@@ -2112,16 +2112,18 @@ export class CfgBuilder {
 
     private transformToThreeAddress() {
         // process parameters        
-        if(this.blocks.length>0 && this.blocks[0].stms.length>0){       // 临时处理默认函数函数体为空的情况
+        if (this.blocks.length > 0 && this.blocks[0].stms.length > 0) {       // 临时处理默认函数函数体为空的情况
             this.current3ACstm = this.blocks[0].stms[0];
             let index = 0;
             for (const [paraName, paraType] of this.declaringMethod.getParameters()) {
                 let parameterRef = new ArkParameterRef(index, paraType);
-                this.generateAssignStmt(parameterRef);
+                let parameterLocal = this.generateAssignStmt(parameterRef);
+                parameterLocal.setName(paraName);
                 index++;
             }
             let thisRef = new ArkThisRef(this.declaringClass.getSignature().toString());
-            this.generateAssignStmt(thisRef);
+            let thisLocal = this.generateAssignStmt(thisRef);
+            thisLocal.setName('this');
         }
 
 
