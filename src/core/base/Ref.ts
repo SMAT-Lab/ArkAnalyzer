@@ -2,7 +2,7 @@ import { Local } from "./Local";
 import { Value } from "./Value";
 
 export abstract class AbstractRef implements Value {
-    abstract getUses(): Value[];    
+    abstract getUses(): Value[];
 }
 
 export class ArkArrayRef extends AbstractRef {
@@ -46,11 +46,11 @@ export class ArkArrayRef extends AbstractRef {
     }
 }
 
-export abstract class AbstractFieldRef extends AbstractRef {    
+export abstract class AbstractFieldRef extends AbstractRef {
     private fieldName: string;
 
     constructor(fieldName: string) {
-        super();        
+        super();
         this.fieldName = fieldName;
     }
 
@@ -67,9 +67,9 @@ export abstract class AbstractFieldRef extends AbstractRef {
 export class ArkInstanceFieldRef extends AbstractFieldRef {
     private base: Local;       // which obj this field belong to
 
-    constructor(base: Local, fieldName: string) {        
+    constructor(base: Local, fieldName: string) {
         super(fieldName);
-        this.base = base;        
+        this.base = base;
     }
 
     public getBase(): Local {
@@ -93,8 +93,8 @@ export class ArkInstanceFieldRef extends AbstractFieldRef {
 }
 
 export class ArkStaticFieldRef extends AbstractFieldRef {
-    constructor(fieldName: string) {        
-        super(fieldName);             
+    constructor(fieldName: string) {
+        super(fieldName);
     }
 
     public getUses(): Value[] {
@@ -107,3 +107,53 @@ export class ArkStaticFieldRef extends AbstractFieldRef {
     }
 }
 
+export class ArkParameterRef extends AbstractRef {
+    private index: number;
+    private paramType: string;
+
+    constructor(index: number, paramType: string) {
+        super();
+        this.index = index;
+        this.paramType = paramType;
+    }
+
+    public getIndex(): number {
+        return this.index;
+    }
+
+    public getType(): string {
+        return this.paramType;
+    }
+
+    public getUses(): Value[] {
+        let uses: Value[] = [];
+        return uses;
+    }
+
+    public toString(): string {
+        return 'parameter' + this.index + ': ' + this.paramType;
+    }
+}
+
+
+export class ArkThisRef extends AbstractRef {
+    private type: string;
+
+    constructor(type: string) {
+        super();
+        this.type = type;
+    }
+
+    public getType(): string {
+        return this.type;
+    }
+
+    public getUses(): Value[] {
+        let uses: Value[] = [];
+        return uses;
+    }
+
+    public toString(): string {
+        return 'this: ' + this.type;
+    }
+}

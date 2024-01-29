@@ -8,6 +8,8 @@ import { ArkClass } from "../model/ArkClass";
 import {Constant} from "../base/Constant";
 import {ArkInstanceFieldRef} from "../base/Ref";
 import {isPrimaryType} from "../../utils/typeReferenceUtils";
+import path from "path";
+import { ArkStaticInvokeExpr } from "../base/Expr";
 
 export class Cfg {
     private blocks: Set<BasicBlock> = new Set();
@@ -204,7 +206,25 @@ export class Cfg {
                                 }
                             }
                         } else if (rightOp instanceof Local || rightOp instanceof Constant) {
+                            let rightOpType = rightOp.getType()
+                            if (isPrimaryType(rightOpType)) {
+                                leftOp.setType(rightOp.getType())
+                            } else {
+                                // TODO: 对应函数参数的解析,可能会与类属性解析冲突
+                                if (!rightOpType.includes(".")) {
+                                    let completeClassName = this.searchImportClass(
+                                        this.declaringClass.getDeclaringArkFile(),
+                                        rightOpType)
+                                    leftOp.setType(completeClassName)
+                                }
+                            }
+                        } else if (rightOp instanceof Constant) {
                             leftOp.setType(rightOp.getType())
+                        } else if (rightOp instanceof ArkStaticInvokeExpr){
+                            const staticInvokeExpr=rightOp as ArkStaticInvokeExpr;
+                            if(staticInvokeExpr.toString().includes("<AnonymousFunc-")){
+                                leftOp.setType("Callable");
+                            }
                         }
                     }
                 }
@@ -278,15 +298,12 @@ export class Cfg {
                     parentDirNum++;
                 }
                 if (parentDirNum < fileDir.length) {
-                    let realImportFileName = "";
+                    let realImportFileName = path.dirname("");
                     for (let i = 0; i < fileDir.length - parentDirNum - 1; i++) {
-                        realImportFileName += fileDir[i] + "\\";
+                        realImportFileName = path.join(realImportFileName, fileDir[i])
                     }
                     for (let i = parentDirNum; i < importDir.length; i++) {
-                        realImportFileName += importDir[i];
-                        if (i != importDir.length - 1) {
-                            realImportFileName += "\\";
-                        }
+                        realImportFileName = path.join(realImportFileName, importDir[i])
                     }
                     realImportFileName += ".ts";
                     const scene = file.getScene();

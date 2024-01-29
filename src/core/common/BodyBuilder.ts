@@ -1,7 +1,7 @@
 
 import { NodeA } from "../base/Ast";
 import { ArkBody } from "../model/ArkBody";
-import { ArkClass } from "../model/ArkClass";
+import { ArkMethod } from "../model/ArkMethod";
 import { MethodSignature } from "../model/ArkSignature";
 import { CfgBuilder } from "./CfgBuilder";
 
@@ -9,9 +9,9 @@ export class BodyBuilder {
     private cfgBuilder: CfgBuilder;
     private methodSignature: MethodSignature;
 
-    constructor(methodSignature: MethodSignature, sourceAstNode: NodeA, declaringClass: ArkClass) {
+    constructor(methodSignature: MethodSignature, sourceAstNode: NodeA, declaringMethod: ArkMethod) {
         this.methodSignature = methodSignature;
-        this.cfgBuilder = new CfgBuilder(sourceAstNode, this.methodSignature.getMethodSubSignature().getMethodName(), declaringClass);
+        this.cfgBuilder = new CfgBuilder(sourceAstNode, this.methodSignature.getMethodSubSignature().getMethodName(), declaringMethod);
     }
 
     public build(): ArkBody {

@@ -31,10 +31,10 @@ export class CfgTest {
             console.log('=============== arkFile:', arkFile.getName(), ' ================');
             for (const arkClass of arkFile.getClasses()) {
                 for (const arkMethod of arkClass.getMethods()) {
-                    if (arkMethod.getName() == '_DEFAULT_ARK_METHOD') {
-                        continue;
-                    }
-                    console.log('************ arkMethod:', arkMethod.getName(), ' **********');
+                    // if (arkMethod.getName() == '_DEFAULT_ARK_METHOD') {
+                    //     continue;
+                    // }
+                    console.log('************ arkMethod:', arkMethod.getSignature().toString(), ' **********');
                     console.log('-- origalstmts:');
                     for (const origalstmt of arkMethod.getBody().getOriginalCfg().getStmts()) {
                         console.log(origalstmt.toString());
@@ -63,7 +63,7 @@ export class CfgTest {
         for (const arkFile of scene.arkFiles) {
             for (const arkClass of arkFile.getClasses()) {
                 for (const arkMethod of arkClass.getMethods()) {
-                    console.log('************ arkMethod:', arkMethod.getName(), ' **********');
+                    console.log('************ arkMethod:', arkMethod.getSignature().toString(), ' **********');
                     console.log('StartingBlock:', arkMethod.getBody().getCfg().getStartingBlock());
                 }
             }

@@ -12,7 +12,7 @@ export class Local implements Value {
 
     constructor(name: string) {
         this.name = name;
-        this.type = "";
+        this.type = 'any';
 
         this.originalValue = null;
         this.declaringStmt = null;
@@ -21,6 +21,10 @@ export class Local implements Value {
 
     public getName(): string {
         return this.name;
+    }
+
+    public setName(name: string): void {
+        this.name = name
     }
 
     public getType(): string {
@@ -43,8 +47,8 @@ export class Local implements Value {
         return this.declaringStmt;
     }
 
-    public setDeclaringStmt(declaringStmt:Stmt){
-        this.declaringStmt=declaringStmt;
+    public setDeclaringStmt(declaringStmt: Stmt) {
+        this.declaringStmt = declaringStmt;
     }
 
 

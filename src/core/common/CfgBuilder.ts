@@ -3,7 +3,7 @@ import { ASTree, NodeA } from '../base/Ast';
 import { Constant } from '../base/Constant';
 import { AbstractInvokeExpr, ArkBinopExpr, ArkCastExpr, ArkConditionExpr, ArkInstanceInvokeExpr, ArkLengthExpr, ArkNewArrayExpr, ArkNewExpr, ArkStaticInvokeExpr, ArkTypeOfExpr } from '../base/Expr';
 import { Local } from '../base/Local';
-import { ArkArrayRef, ArkInstanceFieldRef, ArkStaticFieldRef } from '../base/Ref';
+import { ArkArrayRef, ArkInstanceFieldRef, ArkParameterRef, ArkStaticFieldRef, ArkThisRef } from '../base/Ref';
 import { ArkAssignStmt, ArkGotoStmt, ArkIfStmt, ArkInvokeStmt, ArkReturnStmt, ArkReturnVoidStmt, Stmt } from '../base/Stmt';
 import { Value } from '../base/Value';
 import { BasicBlock } from '../graph/BasicBlock';
@@ -213,12 +213,15 @@ export class CfgBuilder {
     anonymousFuncIndex: number;
     anonymousFunctions: CfgBuilder[];
 
+    private declaringMethod: ArkMethod;
+
     private locals: Set<Local> = new Set();
 
-    constructor(ast: NodeA, name: string, declaringClass: ArkClass) {
+    constructor(ast: NodeA, name: string, declaringMethod: ArkMethod) {
         this.name = name;
         this.astRoot = ast;
-        this.declaringClass = declaringClass;
+        this.declaringMethod = declaringMethod;
+        this.declaringClass = declaringMethod.getDeclaringArkClass();
         this.entry = new StatementBuilder("entry", "", ast, 0);
         this.loopStack = [];
         this.switchExitStack = [];
@@ -1584,7 +1587,7 @@ export class CfgBuilder {
     // utils end
 
 
-    private generateTempValue(): Value {
+    private generateTempValue(): Local {
         let tempLeftOpName = "temp" + this.tempVariableNum;
         this.tempVariableNum++;
         let tempLeftOp = new Local(tempLeftOpName);
@@ -1592,7 +1595,7 @@ export class CfgBuilder {
         return tempLeftOp;
     }
 
-    private generateAssignStmt(node: NodeA | Value): Value {
+    private generateAssignStmt(node: NodeA | Value): Local {
         let leftOp = this.generateTempValue();
         let rightOp: any;
         if (node instanceof NodeA) {
@@ -1801,7 +1804,17 @@ export class CfgBuilder {
         }
         else if (node.kind == "NewExpression") {
             let classSignature = node.children[1].text;
-            value = new ArkNewExpr(classSignature);
+            let newExpr = new ArkNewExpr(classSignature);
+            value = this.generateAssignStmt(newExpr);
+
+            let methodSignature = 'constructor';
+            let syntaxListNode = node.children[this.findChildIndex(node, 'OpenParenToken') + 1];
+            let argNodes = this.getSyntaxListItems(syntaxListNode);
+            let args: Value[] = [];
+            for (const argNode of argNodes) {
+                args.push(this.astNodeToValue(argNode));
+            }
+            this.current3ACstm.threeAddressStmts.push(new ArkInvokeStmt(new ArkInstanceInvokeExpr(value as Local, methodSignature, args)));
         }
         else if (node.kind == 'ArrayLiteralExpression') {
             let syntaxListNode = node.children[1];
@@ -1812,7 +1825,20 @@ export class CfgBuilder {
                 }
             }
             // TODO:得到准确类型
-            value = new ArkNewArrayExpr('int', new Constant(size.toString()));
+            let newArrayExpr = new ArkNewArrayExpr('int', new Constant(size.toString()));
+            value = this.generateAssignStmt(newArrayExpr);
+
+            let argsNode = node.children[1];
+            let index = 0;
+            for (let argNode of argsNode.children) {
+                if (argNode.kind != 'CommaToken') {
+                    // TODO:数组条目类型
+                    let arrayRef = new ArkArrayRef(value as Local, new Constant(index.toString()));
+                    let arrayItem = new Constant(argNode.text);
+                    this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(arrayRef, arrayItem));
+                    index++;
+                }
+            }
         }
         else if (node.kind == 'PrefixUnaryExpression') {
             let token = node.children[0].text;
@@ -1921,30 +1947,8 @@ export class CfgBuilder {
             rightOp = this.generateAssignStmt(rightOp);
         }
 
-        let threeAddressAssignStmts: Stmt[] = [new ArkAssignStmt(leftOp, rightOp)];
-        if (rightOp instanceof ArkNewExpr) {
-            let methodSignature = 'constructor';
-
-            let syntaxListNode = rightOpNode.children[this.findChildIndex(rightOpNode, 'OpenParenToken') + 1];
-            let argNodes = this.getSyntaxListItems(syntaxListNode);
-            let args: Value[] = [];
-            for (const argNode of argNodes) {
-                args.push(this.astNodeToValue(argNode));
-            }
-            threeAddressAssignStmts.push(new ArkInvokeStmt(new ArkInstanceInvokeExpr(leftOp as Local, methodSignature, args)));
-        } else if (rightOp instanceof ArkNewArrayExpr) {
-            let argsNode = rightOpNode.children[1];
-            let index = 0;
-            for (let argNode of argsNode.children) {
-                if (argNode.kind != 'CommaToken') {
-                    // TODO:数组条目类型
-                    let arrayRef = new ArkArrayRef(leftOp as Local, new Constant(index.toString()));
-                    let arrayItem = new Constant(argNode.text);
-                    threeAddressAssignStmts.push(new ArkAssignStmt(arrayRef, arrayItem));
-                    index++;
-                }
-            }
-        }
+        let threeAddressAssignStmts: Stmt[] = [];
+        threeAddressAssignStmts.push(new ArkAssignStmt(leftOp, rightOp))
 
         if (leftOpNode.kind == 'ArrayBindingPattern' || leftOpNode.kind == 'ObjectBindingPattern') {
             let argNodes = this.getSyntaxListItems(leftOpNode.children[1]);
@@ -2107,6 +2111,22 @@ export class CfgBuilder {
     }
 
     private transformToThreeAddress() {
+        // process parameters        
+        if (this.blocks.length > 0 && this.blocks[0].stms.length > 0) {       // 临时处理默认函数函数体为空的情况
+            this.current3ACstm = this.blocks[0].stms[0];
+            let index = 0;
+            for (const [paraName, paraType] of this.declaringMethod.getParameters()) {
+                let parameterRef = new ArkParameterRef(index, paraType);
+                let parameterLocal = this.generateAssignStmt(parameterRef);
+                parameterLocal.setName(paraName);
+                index++;
+            }
+            let thisRef = new ArkThisRef(this.declaringClass.getSignature().toString());
+            let thisLocal = this.generateAssignStmt(thisRef);
+            thisLocal.setName('this');
+        }
+
+
         for (let blockId = 0; blockId < this.blocks.length; blockId++) {
             let currBlock = this.blocks[blockId];
             for (const originStmt of currBlock.stms) {
