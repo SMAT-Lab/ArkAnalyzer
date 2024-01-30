@@ -17,7 +17,7 @@ export class ImportInfo {
     }
 
     public getimportType() {
-        return this.importClauseName;
+        return this.importType;
     }
 
     public setimportType(importType: string) {
