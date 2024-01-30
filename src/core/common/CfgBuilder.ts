@@ -806,11 +806,12 @@ export class CfgBuilder {
         let block: Block;
         if (this.blocks.length > 0 && this.blocks[this.blocks.length - 1].stms.length == 0) {
             block = this.blocks[this.blocks.length - 1];
+            block.stms = stms;
         }
         else {
             block = new Block(this.blocks.length, stms, null);
+            this.blocks.push(block);
         }
-        this.blocks.push(block);
         return block;
     }
 
