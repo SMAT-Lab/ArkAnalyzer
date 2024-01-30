@@ -33,5 +33,4 @@
 
 function main(a: number) {
     console.log(a);
-
 } 

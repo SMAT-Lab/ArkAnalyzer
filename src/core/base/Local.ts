@@ -56,8 +56,12 @@ export class Local implements Value {
         return [];
     }
 
-    public addUses(use: Stmt) {
-        this.usedStmts.push(use);
+    public addUsedStmt(usedStmt: Stmt) {
+        this.usedStmts.push(usedStmt);
+    }
+
+    public getUsedStmts(): Stmt[] {
+        return this.usedStmts;
     }
 
     public toString(): string {

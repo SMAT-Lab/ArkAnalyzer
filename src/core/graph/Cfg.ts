@@ -1,15 +1,14 @@
-import { DefUseChain } from "../base/DefUseChain";
-import { Local } from "../base/Local";
-import { ArkAssignStmt, Stmt } from "../base/Stmt";
-import { BasicBlock } from "./BasicBlock";
-import { ArkFile } from "../model/ArkFile";
-import {ArkBinopExpr, ArkCastExpr, ArkConditionExpr, ArkNewExpr} from "../base/Expr";
-import { ArkClass } from "../model/ArkClass";
-import {Constant} from "../base/Constant";
-import {ArkInstanceFieldRef, ArkParameterRef} from "../base/Ref";
-import {isPrimaryType} from "../../utils/typeReferenceUtils";
 import path from "path";
-import { ArkStaticInvokeExpr } from "../base/Expr";
+import { isPrimaryType } from "../../utils/typeReferenceUtils";
+import { Constant } from "../base/Constant";
+import { DefUseChain } from "../base/DefUseChain";
+import { ArkBinopExpr, ArkCastExpr, ArkNewExpr, ArkStaticInvokeExpr } from "../base/Expr";
+import { Local } from "../base/Local";
+import { ArkInstanceFieldRef, ArkParameterRef } from "../base/Ref";
+import { ArkAssignStmt, Stmt } from "../base/Stmt";
+import { ArkClass } from "../model/ArkClass";
+import { ArkFile } from "../model/ArkFile";
+import { BasicBlock } from "./BasicBlock";
 
 export class Cfg {
     private blocks: Set<BasicBlock> = new Set();
@@ -87,7 +86,7 @@ export class Cfg {
                 for (const value of stmt.getUses()) {
                     if (value instanceof Local) {
                         const local = value as Local;
-                        local.addUses(stmt)
+                        local.addUsedStmt(stmt)
                     }
                     const name = value.toString();
                     const defStmts: Stmt[] = [];
