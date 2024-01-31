@@ -882,7 +882,6 @@ export class CfgBuilder {
                 block.nexts.add(tryFirstBlock);
                 tryFirstBlock.lasts.add(block);
             }
-            // block.nexts.push(tryFirstBlock);
             this.buildBlocks(trystm.tryFirst, tryFirstBlock);
 
             const lastBlocksInTry: Set<Block> = new Set();
@@ -895,7 +894,6 @@ export class CfgBuilder {
             }
 
             let finallyBlock = this.buildNewBlock([]);
-            // block.nexts.push(afterTry);
             if (trystm.finallyStatement) {
                 this.buildBlocks(trystm.finallyStatement, finallyBlock);
                 // let stm=new StatementBuilder("gotoStatement","goto label"+finallyBlock.id,null,tryFirstBlock.stms[0].scopeID);
@@ -920,10 +918,6 @@ export class CfgBuilder {
 
                 catchBlock.nexts.add(finallyBlock);
                 finallyBlock.lasts.add(catchBlock);
-                // if(trystm.finallyStatement){
-                //     let stm=new StatementBuilder("gotoStatement","goto label"+finallyBlock.id,null,tryFirstBlock.stms[0].scopeID);
-                //     b.stms.push(stm);
-                // }
                 this.catches.push(new Catch(trystm.catchErrors[i], tryFirstBlock.id, finallyBlock.id, catchBlock.id));
             }
             // if (trystm.finallyStatement) {
@@ -957,14 +951,27 @@ export class CfgBuilder {
             // block.nexts.push(nextBlock);
             if (trystm.next)
                 this.buildBlocks(trystm.next, nextBlock);
-            let goto = new StatementBuilder("gotoStatement", "goto label" + nextBlock.id, null, trystm.tryFirst.scopeID);
-            goto.block = finallyBlock;
-            if (trystm.finallyStatement) {
-                finallyBlock.stms.push(goto);
+            if(nextBlock.stms.length>0){
+                let goto = new StatementBuilder("gotoStatement", "goto label" + nextBlock.id, null, trystm.tryFirst.scopeID);
+                goto.block = finallyBlock;
+                if (trystm.finallyStatement) {
+                    finallyBlock.stms.push(goto);
+                }
+                else {
+                    finallyBlock.stms = [goto];
+                }
             }
-            else {
-                finallyBlock.stms = [goto];
+            else{
+                const returnStatement=new StatementBuilder("returnStatement", "return;", null, trystm.tryFirst.scopeID);
+                returnStatement.block = finallyBlock;
+                if (trystm.finallyStatement) {
+                    finallyBlock.stms.push(returnStatement);
+                }
+                else {
+                    finallyBlock.stms = [returnStatement];
+                }
             }
+            
         }
         else {
             if (stm.next) {

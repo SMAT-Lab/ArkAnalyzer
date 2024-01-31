@@ -44,3 +44,5 @@ try{
 } finally{
   console.log("f")
 }
+
+
