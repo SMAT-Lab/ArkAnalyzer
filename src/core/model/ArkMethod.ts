@@ -20,9 +20,80 @@ export class ArkMethod {
     private methodSignature: MethodSignature;
     private methodSubSignature: MethodSubSignature;
     private body: ArkBody;
+    private arkSignature: string;
+    private declaringSignature: string;
+    private arkInstancesMap: Map<string, any> = new Map<string, any>();
 
     constructor() { }
 
+    public buildArkMethodFromAstNode(methodNode: NodeA, declaringClass: ArkClass) {
+        this.setCode(methodNode.text);
+        this.setDeclaringArkClass(declaringClass);
+        this.setDeclaringArkFile();
+        if (arkMethodNodeKind.indexOf(methodNode.kind) > -1) {
+            this.buildNormalArkMethodFromAstNode(methodNode);
+        }
+        else {
+            this.buildDefaultArkMethodFromAstNode(methodNode);
+        }
+        this.genSignature();
+
+        if (methodNode.kind != "SyntaxList") {
+            methodNode = methodNode.children[methodNode.children.length - 1].children[1];
+        }
+        let bodyBuilder = new BodyBuilder(this.methodSignature, methodNode, this);
+        this.setBody(bodyBuilder.build());
+    }
+
+    private buildDefaultArkMethodFromAstNode(methodNode: NodeA) {
+        this.setName("_DEFAULT_ARK_METHOD");
+    }
+
+    private buildNormalArkMethodFromAstNode(methodNode: NodeA) {
+        if (!methodNode.methodNodeInfo) {
+            throw new Error('Error: There is no methodNodeInfo for this method!');
+        }
+        this.setName(methodNode.methodNodeInfo.name);
+
+        methodNode.methodNodeInfo.modifiers.forEach((modifier) => {
+            this.addModifier(modifier);
+        });
+
+        methodNode.methodNodeInfo.parameters.forEach((value, key) => {
+            this.addParameter(key, value);
+        });
+        methodNode.methodNodeInfo.returnType.forEach((type) => {
+            this.addReturnType(type);
+        });
+        methodNode.methodNodeInfo.typeParameters.forEach((typeParameter) => {
+            this.addTypeParameter(typeParameter);
+        });
+    }
+
+    public addArkInstance(arkSignature: string, arkInstance: any) {
+        this.arkInstancesMap.set(arkSignature, arkInstance);
+    }
+
+    public getArkInstancesMap() {
+        return this.arkInstancesMap;
+    }
+
+    public setDeclaringSignature(declaringSignature:string) {
+        this.declaringSignature = declaringSignature;
+    }
+
+    public getArkSignature() {
+        return this.arkSignature;
+    }
+
+    public setArkSignature(arkSignature: string) {
+        this.arkSignature = arkSignature;
+    }
+
+    public genArkSignature() {
+        this.arkSignature = this.declaringSignature + '.' + this.name;
+    }
+    
     public getName() {
         return this.name;
     }
@@ -98,6 +169,7 @@ export class ArkMethod {
         let mtdSig = new MethodSignature();
         mtdSig.build(this.methodSubSignature, this.getDeclaringArkClass().getSignature());
         this.setSignature(mtdSig);
+        this.genArkSignature();
     }
 
     public getModifiers() {
@@ -135,48 +207,4 @@ export class ArkMethod {
     //public getOriginalCfg() {
     //    return this.body.getOriginalCfg();
     //}
-
-    public buildArkMethodFromAstNode(methodNode: NodeA, declaringClass: ArkClass) {
-        this.setCode(methodNode.text);
-        this.setDeclaringArkClass(declaringClass);
-        this.setDeclaringArkFile();
-        if (arkMethodNodeKind.indexOf(methodNode.kind) > -1) {
-            this.buildNormalArkMethodFromAstNode(methodNode);
-        }
-        else {
-            this.buildDefaultArkMethodFromAstNode(methodNode);
-        }
-        this.genSignature();
-
-        if (methodNode.kind != "SyntaxList") {
-            methodNode = methodNode.children[methodNode.children.length - 1].children[1];
-        }
-        let bodyBuilder = new BodyBuilder(this.methodSignature, methodNode, this);
-        this.setBody(bodyBuilder.build());
-    }
-
-    private buildDefaultArkMethodFromAstNode(methodNode: NodeA) {
-        this.setName("_DEFAULT_ARK_METHOD");
-    }
-
-    private buildNormalArkMethodFromAstNode(methodNode: NodeA) {
-        if (!methodNode.methodNodeInfo) {
-            throw new Error('Error: There is no methodNodeInfo for this method!');
-        }
-        this.setName(methodNode.methodNodeInfo.name);
-
-        methodNode.methodNodeInfo.modifiers.forEach((modifier) => {
-            this.addModifier(modifier);
-        });
-
-        methodNode.methodNodeInfo.parameters.forEach((value, key) => {
-            this.addParameter(key, value);
-        });
-        methodNode.methodNodeInfo.returnType.forEach((type) => {
-            this.addReturnType(type);
-        });
-        methodNode.methodNodeInfo.typeParameters.forEach((typeParameter) => {
-            this.addTypeParameter(typeParameter);
-        });
-    }
 }

@@ -24,15 +24,20 @@ export class Scene {
     callgraph!: CallGraph;
     classHierarchyCallGraph!: AbstractCallGraphAlgorithm;
     extendedClasses: Map<string, ArkClass[]> = new Map();
-    globalImportInfos: Map<string, string>;
-    constructor(name: string, files: string[], projectDir: string) {
+    globalImportInfos: ImportInfo[] = [];
+    internalArkInstancesMap: Map<string, any> = new Map<string, any>();
+    apiArkInstancesMap: Map<string, any> | undefined;
+    globalInstancesMap: Map<string, any> = new Map<string, any>();
+    constructor(name: string, files: string[], projectDir: string, apiArkInstancesMap?: Map<string, any>) {
         this.projectName = name;
         this.projectFiles = files;
         this.realProjectDir = fs.realpathSync(projectDir);
+        this.apiArkInstancesMap = apiArkInstancesMap;
         this.genArkFiles();
         this.genExtendedClasses();
         this.typeReference();
-        //this.generateGlobalImportInfos();
+        this.generateGlobalImportInfos();
+        this.collectArkInstances();
     }
 
     private genArkFiles() {
@@ -211,37 +216,39 @@ export class Scene {
 
 
     private generateGlobalImportInfos() {
-        let globalImportInfos: Map<string, string> = new Map<string, string>();
-        let sdkConfigPrefix = 'ohos|system|kit';
         this.arkFiles.forEach((arkFile) => {
             arkFile.getImportInfos().forEach((importInfo) => {
-                let importClauseSignature = genSignature4ImportClause(arkFile.getName(), importInfo.getImportClauseName());
-                let importFrom = importInfo.getImportFrom();
-
-                const pathReg1 = new RegExp("^(\\.\\.\\/\|\\.\\/)");
-                const pathReg2 = new RegExp(`@(${sdkConfigPrefix})\[\.\|\/\]`);
-
-                // project internal imports
-                if (pathReg1.test(importFrom)) {
-                    if (importInfo.getNameBeforeAs()) {
-                        importFrom = `<${importFrom}>.<${importInfo.getNameBeforeAs()}>`;
-                    }
-                    else {
-                        importFrom = `<${importFrom}>.<${importInfo.getImportClauseName()}>`;
-                    }
-
-                }
-                // local sdk related imports, e.g. openharmony sdk
-                else if (pathReg2.test(importFrom)) {
-                    //console.log('pathReg2');
-                }
-                //third part npm package
-                else {
-                    //console.log('pathReg3');
-                }
-                globalImportInfos.set(importClauseSignature, importFrom);
+                this.globalImportInfos.push(importInfo);
             });
         });
-        this.globalImportInfos = globalImportInfos;
+    }
+
+    public addArkInstance(arkSignature: string, arkInstance: any) {
+        this.internalArkInstancesMap.set(arkSignature, arkInstance);
+    }
+
+    private collectArkInstances() {
+        this.arkFiles.forEach((arkFile) => {
+            arkFile.getArkInstancesMap().forEach((value, key) => {
+                this.addArkInstance(key, value);
+            });
+        });
+        if (this.apiArkInstancesMap) {
+            this.internalArkInstancesMap.forEach((value, key) => {
+                this.globalInstancesMap.set(key, value);
+            });
+            this.apiArkInstancesMap.forEach((value, key) => {
+                this.globalInstancesMap.set(key, value);
+            });
+        }
+        else {
+            this.internalArkInstancesMap.forEach((value, key) => {
+                this.globalInstancesMap.set(key, value);
+            });
+        }
+    }
+
+    public getArkInstancesMap() {
+        return this.internalArkInstancesMap;
     }
 }

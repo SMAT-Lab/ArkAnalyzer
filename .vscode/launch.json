@@ -16,9 +16,10 @@
         // "args": ["checker/perf_test.ts"]
         // "args": ["tests/SceneTest.ts"]
         //"args": ["tests\\SceneTest.ts"]
+        "args": ["tests\\AppTest.ts"]
         // "args": ["tests\\CfgBuilderTest.ts"]
         // "args": ["tests\\simpleCFGtest.ts"]
-        "args": ["tests\\Cfgtest.ts"]
+        //"args": ["tests\\Cfgtest.ts"]
         // "args": ["tests\\SsaTest.ts"]
         // "args": ["tests\\resources\\cfg\\main.ts"]
       }

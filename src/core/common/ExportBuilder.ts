@@ -5,6 +5,17 @@ export class ExportInfo {
     exportClauseType: string;
     exportFrom: string | undefined;
     nameBeforeAs: string | undefined;
+    declaringSignature: string;
+    arkSignature: string;
+
+    constructor() { }
+
+    public build(exportClauseName: string, exportClauseType: string, exportFrom?: string, nameBeforeAs?: string) {
+        this.setExportClauseName(exportClauseName);
+        this.setExportClauseType(exportClauseType);
+        this.setExportFrom(exportFrom);
+        this.setNameBeforeAs(nameBeforeAs);
+    }
 
     public getExportClauseName() {
         return this.exportClauseName;
@@ -38,13 +49,13 @@ export class ExportInfo {
         this.nameBeforeAs = nameBeforeAs;
     }
 
-    constructor() { }
+    public setArkSignature(declaringSignature:string) {
+        this.declaringSignature = declaringSignature;
+        this.arkSignature = declaringSignature + '.' + this.exportClauseName;
+    }
 
-    public build(exportClauseName: string, exportClauseType: string, exportFrom?: string, nameBeforeAs?: string) {
-        this.setExportClauseName(exportClauseName);
-        this.setExportClauseType(exportClauseType);
-        this.setExportFrom(exportFrom);
-        this.setNameBeforeAs(nameBeforeAs);
+    public getArkSignature() {
+        return this.arkSignature;
     }
 }
 
