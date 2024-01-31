@@ -1,5 +1,5 @@
 import { NodeA } from "../base/Ast";
-import { Property } from "../common/ClassBuilderInfo";
+import { Property } from "../common/ClassInfoBuilder";
 import { InterfaceMember } from "../common/InterfaceInfoBuilder";
 import { ArkField } from "./ArkField";
 import { ArkFile } from "./ArkFile";

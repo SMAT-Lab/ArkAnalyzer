@@ -1,4 +1,4 @@
-import { Property } from "../common/ClassBuilderInfo";
+import { Property } from "../common/ClassInfoBuilder";
 import { ArkClass } from "./ArkClass";
 import { FieldSignature } from "./ArkSignature";
 

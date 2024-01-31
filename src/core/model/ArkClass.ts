@@ -4,7 +4,7 @@ import { ArkMethod, arkMethodNodeKind } from "./ArkMethod";
 import { ArkNamespace } from "./ArkNamespace";
 import { NodeA } from "../base/Ast";
 import { MethodSubSignature, ClassSignature, methodSubSignatureCompare } from "./ArkSignature";
-import { Property } from "../common/ClassBuilderInfo";
+import { Property } from "../common/ClassInfoBuilder";
 
 
 export class ArkClass {

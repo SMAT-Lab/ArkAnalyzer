@@ -1,5 +1,5 @@
 import * as ts from "typescript";
-import { ClassInfo, buildClassInfo4ClassNode } from "../common/ClassBuilderInfo";
+import { ClassInfo, buildClassInfo4ClassNode } from "../common/ClassInfoBuilder";
 import { MethodInfo, buildMethodInfo4MethodNode } from "../common/MethodInfoBuilder";
 import { ImportInfo, buildImportInfo4ImportNode } from "../common/ImportBuilder";
 import { ExportInfo, buildExportInfo4ExportNode } from "../common/ExportBuilder";
