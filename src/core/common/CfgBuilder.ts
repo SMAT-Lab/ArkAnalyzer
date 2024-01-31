@@ -853,19 +853,18 @@ export class CfgBuilder {
         }
         else if (stm.type == "switchStatement") {
             let sstm = stm as SwitchStatementBuilder;
-            // const switchBlock=this.buildNewBlock([sstm]);
             block.stms.push(sstm)
             for(const cas of sstm.cases){
-                this.buildBlocks(cas.stm,this.buildNewBlock([]));
-                const caseStmt=new StatementBuilder("statement",cas.value,null,sstm.nexts[0].scopeID);
-                const gotoStmt=new StatementBuilder("statement","goto label"+cas.stm.block?.id,null,sstm.nexts[0].scopeID);
+                this.buildBlocks(cas.stm, this.buildNewBlock([]));
+                const caseStmt=new StatementBuilder("statement", cas.value,null,sstm.nexts[0].scopeID);
+                const gotoStmt=new StatementBuilder("statement", "goto label"+cas.stm.block?.id,null,sstm.nexts[0].scopeID);
                 block.stms.push(caseStmt);
                 block.stms.push(gotoStmt);
             }
             if(sstm.default){
                 this.buildBlocks(sstm.default,this.buildNewBlock([]));
-                const caseStmt=new StatementBuilder("statement","default :",null,sstm.nexts[0].scopeID);
-                const gotoStmt=new StatementBuilder("statement","goto label"+sstm.default.block?.id,null,sstm.nexts[0].scopeID);
+                const caseStmt=new StatementBuilder("statement", "default :", null,sstm.nexts[0].scopeID);
+                const gotoStmt=new StatementBuilder("statement", "goto label"+sstm.default.block?.id,null, sstm.nexts[0].scopeID);
                 block.stms.push(caseStmt);
                 block.stms.push(gotoStmt);
             }
@@ -1058,11 +1057,11 @@ export class CfgBuilder {
             returnStatement.next = this.exit;
             this.exit.lasts[this.exit.lasts.indexOf(notReturnStmt)] = returnStatement;
             notReturnStmt.block?.stms.push(returnStatement);
-            returnStatement.block=notReturnStmt.block;
+            returnStatement.block = notReturnStmt.block;
         }
         else if (notReturnStmts.length > 1) {
             let returnBlock = new Block(this.blocks.length, [returnStatement], null);
-            returnStatement.block=returnBlock;
+            returnStatement.block = returnBlock;
             this.blocks.push(returnBlock);
             for (const notReturnStmt of notReturnStmts) {
                 notReturnStmt.next = returnStatement;
@@ -2210,6 +2209,7 @@ export class CfgBuilder {
             let thisRef = new ArkThisRef(this.declaringClass.getSignature().toString());
             let thisLocal = this.generateAssignStmt(thisRef);
             thisLocal.setName('this');
+            thisLocal.setType(thisRef.getType());
         }
 
 
@@ -2730,7 +2730,7 @@ export class CfgBuilder {
         // this.generateUseDef();
         // this.resetWalked();
 
-        this.printBlocks();
+        // this.printBlocks();
 
         this.transformToThreeAddress();
     }
