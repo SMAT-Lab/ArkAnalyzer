@@ -632,8 +632,8 @@ export class CfgBuilder {
                         }
                     }
                 }
-                if (switchstm.default == null)
-                    switchstm.default = switchExit;
+                // if (switchstm.default == null)
+                //     switchstm.default = switchExit;
                 lastStatement = switchExit;
                 this.switchExitStack.pop();
             }
@@ -765,13 +765,13 @@ export class CfgBuilder {
                 }
                 this.deleteExit(sstm.nexts[j]);
             }
-            if (sstm.default?.type.includes("Exit")) {
-                let p = sstm.default;
-                while (p.type.includes("Exit") && p.next) {
-                    p = p.next;
-                }
-                sstm.default = p;
-            }
+            // if (sstm.default?.type.includes("Exit")) {
+            //     let p = sstm.default;
+            //     while (p.type.includes("Exit") && p.next) {
+            //         p = p.next;
+            //     }
+            //     sstm.default = p;
+            // }
         }
         else if (stm.type == "tryStatement") {
             let trystm = stm as TryStatementBuilder;
@@ -853,13 +853,25 @@ export class CfgBuilder {
         }
         else if (stm.type == "switchStatement") {
             let sstm = stm as SwitchStatementBuilder;
-            for (let j in sstm.nexts) {
-                let sn: StatementBuilder | null = sstm.nexts[j].next;
-                let b = this.buildNewBlock([]);
-                // block.nexts.push(b);
-                if (sn)
-                    this.buildBlocks(sn, b);
+            const switchBlock=this.buildNewBlock([sstm]);
+            for(const cas of sstm.cases){
+                this.buildBlocks(cas.stm,this.buildNewBlock([]));
+                const caseStmt=new StatementBuilder("statement",cas.value+"goto label"+cas.stm.block?.id,null,sstm.nexts[0].scopeID);
+                switchBlock.stms.push(caseStmt);
             }
+            if(sstm.default){
+                this.buildBlocks(sstm.default,this.buildNewBlock([]));
+                const caseStmt=new StatementBuilder("statement","default : goto label"+sstm.default.block?.id,null,sstm.nexts[0].scopeID);
+                switchBlock.stms.push(caseStmt);
+            }
+            
+            // for (let j in sstm.nexts) {
+            //     let sn: StatementBuilder | null = sstm.nexts[j].next;
+            //     let b = this.buildNewBlock([]);
+            //     // block.nexts.push(b);
+            //     if (sn)
+            //         this.buildBlocks(sn, b);
+            // }
         }
         else if (stm.type == "tryStatement") {
             let trystm = stm as TryStatementBuilder;
@@ -1034,9 +1046,11 @@ export class CfgBuilder {
             returnStatement.next = this.exit;
             this.exit.lasts[this.exit.lasts.indexOf(notReturnStmt)] = returnStatement;
             notReturnStmt.block?.stms.push(returnStatement);
+            returnStatement.block=notReturnStmt.block;
         }
         else if (notReturnStmts.length > 1) {
             let returnBlock = new Block(this.blocks.length, [returnStatement], null);
+            returnStatement.block=returnBlock;
             this.blocks.push(returnBlock);
             for (const notReturnStmt of notReturnStmts) {
                 notReturnStmt.next = returnStatement;
@@ -2463,15 +2477,15 @@ export class CfgBuilder {
                             text += "    " + ac + "\n";
                     }
                 }
-                if (stm.type == "switchStatement") {
-                    let sstm = stm as SwitchStatementBuilder;
-                    for (let cas of sstm.cases) {
-                        if (cas.stm.block)
-                            text += "        " + cas.value + "goto label" + cas.stm.block.id + '\n';
-                    }
-                    if (sstm.default?.block)
-                        text += "        default : goto label" + sstm.default?.block.id + '\n';
-                }
+                // if (stm.type == "switchStatement") {
+                //     let sstm = stm as SwitchStatementBuilder;
+                //     for (let cas of sstm.cases) {
+                //         if (cas.stm.block)
+                //             text += "        " + cas.value + "goto label" + cas.stm.block.id + '\n';
+                //     }
+                //     if (sstm.default?.block)
+                //         text += "        default : goto label" + sstm.default?.block.id + '\n';
+                // }
             }
 
         }
@@ -2699,7 +2713,7 @@ export class CfgBuilder {
         // this.generateUseDef();
         // this.resetWalked();
 
-        // this.printBlocks();
+        this.printBlocks();
 
         this.transformToThreeAddress();
     }

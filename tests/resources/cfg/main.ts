@@ -20,11 +20,11 @@
 //   // 在这里执行对每个标点符号的操作
 // });
 
-let t=class{
-  p:number;
-}
+// let t=class{
+//   p:number;
+// }
 
-let y=new t()
+// let y=new t()
 
 
 // class a{
@@ -37,10 +37,14 @@ let y=new t()
 //   }
 // }
 
-// function f1(){
-//   console.log(1)
-// }
-// f1()
-// let t=new a();
-// t.f();
+switch(x){
+  case 1:
+    console.log(1);
+    break
+  case 2:
+    console.log(2);
+    break;
+  default:
+    console.log(1)
+}
 
