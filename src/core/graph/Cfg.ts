@@ -220,10 +220,10 @@ export class Cfg {
                         } else if (rightOp instanceof Constant) {
                             leftOp.setType(rightOp.getType())
                         } else if (rightOp instanceof ArkStaticInvokeExpr){
-                            const staticInvokeExpr=rightOp as ArkStaticInvokeExpr;
-                            if(staticInvokeExpr.toString().includes("<AnonymousFunc-")){
-                                leftOp.setType("Callable");
-                            }
+                            // const staticInvokeExpr=rightOp as ArkStaticInvokeExpr;
+                            // if(staticInvokeExpr.toString().includes("<AnonymousFunc-")){
+                            leftOp.setType("Callable");
+                            // }
                         }
                     }
                 }
