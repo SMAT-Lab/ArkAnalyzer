@@ -393,3 +393,32 @@ export class ArkSwitchStmt extends Stmt {
         this.replaceUses(uses);
     }
 }
+
+export class ArkDeleteStmt extends Stmt {
+    private field: AbstractFieldRef;
+
+    constructor(field: AbstractFieldRef) {
+        super();
+        this.field = field;
+        this.updateUses();
+    }
+
+    public getField(): AbstractFieldRef {
+        return this.field;
+    }
+
+    public setField(newField: AbstractFieldRef): void {
+        this.field = newField;
+    }
+
+    public toString(): string {
+        return 'delete ' + this.field;
+    }
+
+    private updateUses(): void {
+        let uses: Value[] = [];
+        uses.push(this.field);
+        uses.push(...this.field.getUses());
+        this.replaceUses(uses);
+    }
+}
