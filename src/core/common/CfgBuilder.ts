@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import { ASTree, NodeA } from '../base/Ast';
 import { Constant } from '../base/Constant';
-import { AbstractInvokeExpr, ArkBinopExpr, ArkCastExpr, ArkConditionExpr, ArkInstanceInvokeExpr, ArkLengthExpr, ArkNewArrayExpr, ArkNewExpr, ArkStaticInvokeExpr, ArkTypeOfExpr } from '../base/Expr';
+import { AbstractInvokeExpr, ArkBinopExpr, ArkCastExpr, ArkConditionExpr, ArkInstanceInvokeExpr, ArkLengthExpr, ArkNewArrayExpr, ArkNewExpr, ArkStaticInvokeExpr, ArkTypeOfExpr, ArkUnopExpr } from '../base/Expr';
 import { Local } from '../base/Local';
 import { ArkArrayRef, ArkInstanceFieldRef, ArkParameterRef, ArkStaticFieldRef, ArkThisRef } from '../base/Ref';
 import { ArkAssignStmt, ArkGotoStmt, ArkIfStmt, ArkInvokeStmt, ArkReturnStmt, ArkReturnVoidStmt, Stmt } from '../base/Stmt';
@@ -1608,6 +1608,45 @@ export class CfgBuilder {
         return leftOp;
     }
 
+    private templateSpanNodeToValue(templateSpanExprNode: NodeA): Value {
+        let exprNode = templateSpanExprNode.children[0];
+        let expr = this.astNodeToValue(exprNode);
+        let literalNode = templateSpanExprNode.children[1];
+        let oriLiteralText = literalNode.text;
+        let literalText = '';
+        if (literalNode.kind == 'TemplateMiddle') {
+            literalText = oriLiteralText.substring(1, oriLiteralText.length - 2);
+        } else {
+            literalText = oriLiteralText.substring(1, oriLiteralText.length - 1);
+        }
+
+        if (literalText.length == 0) {
+            return expr;
+        }
+        let combinationExpr = new ArkBinopExpr(expr, new Constant(literalText, 'string'), '+');
+        return this.generateAssignStmt(combinationExpr);
+    }
+
+    private astNodeToTemplateExpr(templateExprNode: NodeA): Value {
+        let subValues: Value[] = [];
+        let templateHeadNode = templateExprNode.children[0];
+        let templateHeadText = templateHeadNode.text;
+        subValues.push(new Constant(templateHeadText.substring(1, templateHeadText.length - 2), 'string'));
+
+        let syntaxListNode = templateExprNode.children[1];
+        for (const child of syntaxListNode.children) {
+            subValues.push(this.templateSpanNodeToValue(child));
+        }
+
+        let combinationExpr = new ArkBinopExpr(subValues[0], subValues[1], '+');
+        let prevCombination = this.generateAssignStmt(combinationExpr);
+        for (let i = 2; i < subValues.length; i++) {
+            combinationExpr = new ArkBinopExpr(prevCombination, subValues[i], '+');
+            prevCombination = this.generateAssignStmt(combinationExpr);
+        }
+        return prevCombination;
+    }
+
     // TODO:支持更多场景
     private astNodeToConditionExpr(conditionExprNode: NodeA): ArkConditionExpr {
         let conditionValue = this.astNodeToValue(conditionExprNode);
@@ -1707,13 +1746,23 @@ export class CfgBuilder {
         }
         else if (node.kind == 'ElementAccessExpression') {
             let baseValue = this.astNodeToValue(node.children[0]);
-            let indexNodeIdx = this.findChildIndex(node, 'OpenBracketToken') + 1;
-            let indexValue = this.astNodeToValue(node.children[indexNodeIdx]);
             if (!(baseValue instanceof Local)) {
                 baseValue = this.generateAssignStmt(baseValue);
             }
 
-            value = new ArkArrayRef(baseValue as Local, indexValue);
+            let elementNodeIdx = this.findChildIndex(node, 'OpenBracketToken') + 1;
+            let elementValue = this.astNodeToValue(node.children[elementNodeIdx]);
+            if (IRUtils.moreThanOneAddress(elementValue)) {
+                elementValue = this.generateAssignStmt(elementValue);
+            }
+
+            let baseLocal = baseValue as Local;
+            if (baseLocal.getType() == 'array') {
+                value = new ArkArrayRef(baseLocal as Local, elementValue);
+            } else {
+                let fieldSignature = elementValue.toString();
+                value = new ArkInstanceFieldRef(baseLocal, fieldSignature);
+            }
         }
         else if (node.kind == "CallExpression") {
             let syntaxListNode = node.children[this.findChildIndex(node, 'OpenParenToken') + 1];
@@ -1828,6 +1877,7 @@ export class CfgBuilder {
             // TODO:得到准确类型
             let newArrayExpr = new ArkNewArrayExpr('int', new Constant(size.toString()));
             value = this.generateAssignStmt(newArrayExpr);
+            value.setType('array');
 
             let argsNode = node.children[1];
             let index = 0;
@@ -1848,8 +1898,9 @@ export class CfgBuilder {
                 let binopExpr = new ArkBinopExpr(value, new Constant('1'), token[0]);
                 this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(value, binopExpr));
             } else {
-                value = new Local(node.text);
-                value = this.getOriginalLocal(value);
+                let op = this.astNodeToValue(node.children[1]);
+                let arkUnopExpr = new ArkUnopExpr(op, token);
+                value = this.generateAssignStmt(arkUnopExpr);
             }
         }
         else if (node.kind == 'PostfixUnaryExpression') {
@@ -1859,8 +1910,7 @@ export class CfgBuilder {
             this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(value, binopExpr));
         }
         else if (node.kind == 'TemplateExpression') {
-            value = new Local(node.text);
-            value = this.getOriginalLocal(value);
+            value = this.astNodeToTemplateExpr(node);
         }
         else if (node.kind == 'AwaitExpression') {
             value = this.astNodeToValue(node.children[1]);
@@ -1939,10 +1989,14 @@ export class CfgBuilder {
             rightOp = new Constant('undefined');
         }
 
-
         if (leftOp instanceof Local) {
             leftOp.setType(leftOpType)
+
+            if (rightOp instanceof Local) {
+                leftOp.setType(rightOp.getType());
+            }
         }
+
         // console.log("[astNodeToThreeAddressAssignStmt] left: " + leftOp + " type: " + leftOpType + " right: " + rightOp)
         if (IRUtils.moreThanOneAddress(leftOp) && IRUtils.moreThanOneAddress(rightOp)) {
             rightOp = this.generateAssignStmt(rightOp);
