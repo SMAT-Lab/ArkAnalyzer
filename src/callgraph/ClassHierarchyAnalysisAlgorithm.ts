@@ -26,6 +26,10 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
         concreteMethodSignature = methodFromInvoke.getSignature()
         concreteMethod = methodFromInvoke
 
+        /** TODO: 加入多类型后对一个调用语句的解析可能会导致获取多个函数签名
+         *      这样需要多返回的多个函数签名每个都进行一次下面的过程，最后将全部内容返回
+         */
+
         if (concreteMethodSignature == null) {
             // If the invoked function is static or a constructor, then return the signature.
             return callTargetMethods
@@ -204,13 +208,16 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
         let arkFile = this.getArkFileByName(arkFileName)
         let callName = invokeExpr.getMethodSignature()
         let className: string = "", methodName: string = callName
+        // TODO: 对于基本类型的一些固定方法，需要讨论是否可以给这些类创建一个ArkClass等，这样不需要改动这里的内容
         if (invokeExpr instanceof ArkInstanceInvokeExpr) {
             // console.log("instance:   "+invokeExpr)
             let classCompleteType = invokeExpr.getBase().getType()
+            // TODO: getType函数可能返回字符串中包含多种类型
             let classInstanceDeclareStmtLocal = invokeExpr.getBase().getDeclaringStmt()?.getDef()
             if (classInstanceDeclareStmtLocal instanceof Local) {
                 classCompleteType = classInstanceDeclareStmtLocal.getType()
             }
+            // TODO: className, arkFile这些变量可能需要改成数组
             let lastDotIndex = classCompleteType.lastIndexOf('.')
             className = classCompleteType.substring(lastDotIndex + 1)
             arkFile = this.getArkFileByName(classCompleteType.substring(0, lastDotIndex))
@@ -238,10 +245,12 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
         if (arkFile == null || className == "") {
             return null
         }
+        // TODO: 对所有的类名进行解析，获取可能的实例
         let invokeClass = this.resolveClassInstance(className, arkFile)
         if (invokeClass == null) {
             return null
         }
+        // 调用方法名都是相同的，这里无需修改
         for (let method of invokeClass.getMethods()) {
             if (method.getName() === methodName) {
                 return method
