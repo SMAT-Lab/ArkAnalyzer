@@ -853,25 +853,23 @@ export class CfgBuilder {
         }
         else if (stm.type == "switchStatement") {
             let sstm = stm as SwitchStatementBuilder;
-            const switchBlock=this.buildNewBlock([sstm]);
+            // const switchBlock=this.buildNewBlock([sstm]);
+            block.stms.push(sstm)
             for(const cas of sstm.cases){
                 this.buildBlocks(cas.stm,this.buildNewBlock([]));
-                const caseStmt=new StatementBuilder("statement",cas.value+"goto label"+cas.stm.block?.id,null,sstm.nexts[0].scopeID);
-                switchBlock.stms.push(caseStmt);
+                const caseStmt=new StatementBuilder("statement",cas.value,null,sstm.nexts[0].scopeID);
+                const gotoStmt=new StatementBuilder("statement","goto label"+cas.stm.block?.id,null,sstm.nexts[0].scopeID);
+                block.stms.push(caseStmt);
+                block.stms.push(gotoStmt);
             }
             if(sstm.default){
                 this.buildBlocks(sstm.default,this.buildNewBlock([]));
-                const caseStmt=new StatementBuilder("statement","default : goto label"+sstm.default.block?.id,null,sstm.nexts[0].scopeID);
-                switchBlock.stms.push(caseStmt);
+                const caseStmt=new StatementBuilder("statement","default :",null,sstm.nexts[0].scopeID);
+                const gotoStmt=new StatementBuilder("statement","goto label"+sstm.default.block?.id,null,sstm.nexts[0].scopeID);
+                block.stms.push(caseStmt);
+                block.stms.push(gotoStmt);
             }
-            
-            // for (let j in sstm.nexts) {
-            //     let sn: StatementBuilder | null = sstm.nexts[j].next;
-            //     let b = this.buildNewBlock([]);
-            //     // block.nexts.push(b);
-            //     if (sn)
-            //         this.buildBlocks(sn, b);
-            // }
+
         }
         else if (stm.type == "tryStatement") {
             let trystm = stm as TryStatementBuilder;
@@ -929,33 +927,33 @@ export class CfgBuilder {
                 // }
                 this.catches.push(new Catch(trystm.catchErrors[i], tryFirstBlock.id, finallyBlock.id, catchBlock.id));
             }
-            if (trystm.finallyStatement) {
-                this.resetWalkedPartial(trystm.finallyStatement);
-                let errorFinallyBlock = this.buildNewBlock([]);
-                for (let lastBlockInTry of lastBlocksInTry) {
-                    lastBlockInTry.nexts.add(errorFinallyBlock);
-                    errorFinallyBlock.lasts.add(lastBlockInTry);
-                }
+            // if (trystm.finallyStatement) {
+            //     this.resetWalkedPartial(trystm.finallyStatement);
+            //     let errorFinallyBlock = this.buildNewBlock([]);
+            //     for (let lastBlockInTry of lastBlocksInTry) {
+            //         lastBlockInTry.nexts.add(errorFinallyBlock);
+            //         errorFinallyBlock.lasts.add(lastBlockInTry);
+            //     }
 
-                for (let stm of finallyBlock.stms) {
-                    errorFinallyBlock.stms.push(stm);
-                }
-                let stm = new StatementBuilder("statement", "throw Error", null, trystm.finallyStatement.scopeID);
-                errorFinallyBlock.stms.push(stm);
-                this.catches.push(new Catch("Error", tryFirstBlock.id, finallyBlock.id, errorFinallyBlock.id));
-                for (let i = 0; i < trystm.catchStatements.length; i++) {
-                    let block = trystm.catchStatements[i].block
-                    if (!block) {
-                        console.log("catch without block");
-                        process.exit();
-                    }
-                    this.catches.push(new Catch(trystm.catchErrors[i], block.id, finallyBlock.id, errorFinallyBlock.id));
-                    let goto = new StatementBuilder("gotoStatement", "goto label" + finallyBlock.id, null, finallyBlock.stms[0].scopeID);
-                    block.stms.push(goto);
-                    block.nexts.add(errorFinallyBlock);
-                    errorFinallyBlock.lasts.add(block);
-                }
-            }
+            //     for (let stm of finallyBlock.stms) {
+            //         errorFinallyBlock.stms.push(stm);
+            //     }
+            //     let stm = new StatementBuilder("statement", "throw Error", null, trystm.finallyStatement.scopeID);
+            //     errorFinallyBlock.stms.push(stm);
+            //     this.catches.push(new Catch("Error", tryFirstBlock.id, finallyBlock.id, errorFinallyBlock.id));
+            //     for (let i = 0; i < trystm.catchStatements.length; i++) {
+            //         let block = trystm.catchStatements[i].block
+            //         if (!block) {
+            //             console.log("catch without block");
+            //             process.exit();
+            //         }
+            //         this.catches.push(new Catch(trystm.catchErrors[i], block.id, finallyBlock.id, errorFinallyBlock.id));
+            //         let goto = new StatementBuilder("gotoStatement", "goto label" + finallyBlock.id, null, finallyBlock.stms[0].scopeID);
+            //         block.stms.push(goto);
+            //         block.nexts.add(errorFinallyBlock);
+            //         errorFinallyBlock.lasts.add(block);
+            //     }
+            // }
             let nextBlock = this.buildNewBlock([]);
             // block.nexts.push(nextBlock);
             if (trystm.next)
@@ -1011,13 +1009,27 @@ export class CfgBuilder {
                     }
                 }
                 else if (originStatement instanceof SwitchStatementBuilder) {
-                    for (let nextStatement of originStatement.nexts) {
-                        let next = nextStatement.block;
-                        if (next && (lastStatement || next != block) && !nextStatement.type.includes(" exit")) {
+                    for(const cas of originStatement.cases){
+                        const next = cas.stm.block;
+                        if (next && (lastStatement || next != block) && !cas.stm.type.includes(" exit")) {
                             block.nexts.add(next);
                             next.lasts.add(block);
                         }
                     }
+                    if(originStatement.default){
+                        const next = originStatement.default.block;
+                        if (next && (lastStatement || next != block) && !originStatement.default.type.includes(" exit")) {
+                            block.nexts.add(next);
+                            next.lasts.add(block);
+                        }
+                    }
+                    // for (let nextStatement of originStatement.nexts) {
+                    //     let next = nextStatement.block;
+                    //     if (next && (lastStatement || next != block) && !nextStatement.type.includes(" exit")) {
+                    //         block.nexts.add(next);
+                    //         next.lasts.add(block);
+                    //     }
+                    // }
                 }
                 else {
                     let next = originStatement.next?.block;
