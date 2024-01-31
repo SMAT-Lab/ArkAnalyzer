@@ -5,9 +5,9 @@ export class Constant implements Value {
     private value: string;
     private type: string;
 
-    constructor(value: string) {
+    constructor(value: string, type: string = 'any') {
         this.value = value;
-        this.type = ""
+        this.type = type;
     }
 
     public getValue(): string {
@@ -27,6 +27,10 @@ export class Constant implements Value {
     }
 
     public toString(): string {
+        // let outStr = this.value;
+        // if (this.type == 'string') {
+        //     outStr = '\'' + outStr + '\'';
+        // }
         return this.value;
     }
 }

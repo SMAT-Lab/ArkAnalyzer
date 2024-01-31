@@ -34,14 +34,18 @@ export class CfgTest {
                     if (arkMethod.getName() == '_DEFAULT_ARK_METHOD') {
                         continue;
                     }
+                    let arkBody = arkMethod.getBody()
                     console.log('************ arkMethod:', arkMethod.getSignature().toString(), ' **********');
                     console.log('-- origalstmts:');
-                    for (const origalstmt of arkMethod.getBody().getOriginalCfg().getStmts()) {
+
+                    let originalCfg = arkBody.getOriginalCfg();
+                    for (const origalstmt of originalCfg.getStmts()) {
                         console.log(origalstmt.toString());
                     }
                     console.log();
                     console.log('-- threeAddresStmts:');
-                    for (const threeAddresStmt of arkMethod.getBody().getCfg().getStmts()) {
+                    let cfg = arkBody.getCfg();
+                    for (const threeAddresStmt of cfg.getStmts()) {
                         console.log(threeAddresStmt.toString());
                         // console.log(threeAddresStmt.toString(), ', original pos:', threeAddresStmt.getOriginPositionInfo(),
                         //     ', pos:', threeAddresStmt.getPositionInfo());
@@ -51,6 +55,7 @@ export class CfgTest {
                     for (const local of arkMethod.getBody().getLocals()) {
                         console.log(local.toString());
                     }
+                    console.log();                    
                 }
             }
         }
