@@ -207,7 +207,7 @@ export class Cfg {
                         } else if (rightOp instanceof Local || rightOp instanceof ArkParameterRef) {
                             let rightOpType = rightOp.getType()
                             if (isPrimaryType(rightOpType)) {
-                                leftOp.setType(rightOp.getType())
+                                leftOp.setType(rightOpType)
                             } else {
                                 // TODO: 对应函数参数的解析,可能会与类属性解析冲突
                                 if (!rightOpType.includes(".")) {
@@ -215,6 +215,8 @@ export class Cfg {
                                         this.declaringClass.getDeclaringArkFile(),
                                         rightOpType)
                                     leftOp.setType(completeClassName)
+                                } else {
+                                    leftOp.setType(rightOpType)
                                 }
                             }
                         } else if (rightOp instanceof Constant) {

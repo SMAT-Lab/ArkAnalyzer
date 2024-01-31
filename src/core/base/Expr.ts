@@ -150,6 +150,10 @@ export class ArkNewArrayExpr extends AbstractExpr {
         this.size = newSize;
     }
 
+    public getType(): string {
+        return 'array';
+    }
+
     public getUses(): Value[] {
         let uses: Value[] = [this.size];
         uses.push(...this.size.getUses());
@@ -379,5 +383,28 @@ export class ArkPhiExpr extends AbstractExpr {
         }
         strs.push(')');
         return strs.join('');
+    }
+}
+
+// unary operation expression
+export class ArkUnopExpr extends AbstractExpr {
+    private op: Value;
+    private operator: string;
+
+    constructor(op: Value, operator: string) {
+        super();
+        this.op = op;
+        this.operator = operator;
+    }
+
+    public getUses(): Value[] {
+        let uses: Value[] = [];
+        uses.push(this.op);
+        uses.push(...this.op.getUses());
+        return uses;
+    }
+
+    public toString(): string {
+        return this.operator + this.op;
     }
 }

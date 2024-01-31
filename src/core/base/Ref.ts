@@ -31,7 +31,6 @@ export class ArkArrayRef extends AbstractRef {
         this.index = newIndex;
     }
 
-
     public getUses(): Value[] {
         let uses: Value[] = [];
         uses.push(this.base);
@@ -88,7 +87,7 @@ export class ArkInstanceFieldRef extends AbstractFieldRef {
     }
 
     public toString(): string {
-        return this.base.toString() + '.' + this.getFieldName();
+        return this.base.toString() + '.<' + this.getFieldName() + '>';
     }
 }
 

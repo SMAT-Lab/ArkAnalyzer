@@ -16,11 +16,11 @@ export class ImportInfo {
         this.importClauseName = importClauseName;
     }
 
-    public getimportType() {
-        return this.importClauseName;
+    public getImportType() {
+        return this.importType;
     }
 
-    public setimportType(importType: string) {
+    public setImportType(importType: string) {
         this.importType = importType;
     }
 
@@ -56,7 +56,7 @@ export class ImportInfo {
 
     public build(importClauseName: string, importType: string, importFrom: string, nameBeforeAs?: string) {
         this.setImportClauseName(importClauseName);
-        this.setimportType(importType);
+        this.setImportType(importType);
         //if (importFrom) {
         //    importFrom = this.transfer2UnixPath(importFrom);
         //}
