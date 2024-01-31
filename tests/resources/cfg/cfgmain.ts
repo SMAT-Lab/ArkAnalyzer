@@ -1,9 +1,8 @@
 function test() {
-    let a = 'a';
-    a = globalThis[a + 'b'];
+    let a = new A();
+    delete a.i;
+}
 
-    let b = [1, 2, 3];
-    let c = b[0];
-
-    let d = `hi, ${a}`
+class A {
+    public i?: number;
 }
