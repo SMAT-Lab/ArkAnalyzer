@@ -166,6 +166,11 @@ export class Stmt {
     }
 }
 
+export class ArkCompoundStmt extends Stmt {
+    constructor() {
+        super();
+    }
+}
 
 export class ArkAssignStmt extends Stmt {
     private leftOp: Value;

@@ -4,7 +4,7 @@ import { Constant } from '../base/Constant';
 import { AbstractInvokeExpr, ArkBinopExpr, ArkCastExpr, ArkConditionExpr, ArkInstanceInvokeExpr, ArkLengthExpr, ArkNewArrayExpr, ArkNewExpr, ArkStaticInvokeExpr, ArkTypeOfExpr, ArkUnopExpr } from '../base/Expr';
 import { Local } from '../base/Local';
 import { AbstractFieldRef, ArkArrayRef, ArkInstanceFieldRef, ArkParameterRef, ArkStaticFieldRef, ArkThisRef } from '../base/Ref';
-import { ArkAssignStmt, ArkDeleteStmt, ArkGotoStmt, ArkIfStmt, ArkInvokeStmt, ArkReturnStmt, ArkReturnVoidStmt, Stmt } from '../base/Stmt';
+import { ArkAssignStmt, ArkCompoundStmt, ArkDeleteStmt, ArkGotoStmt, ArkIfStmt, ArkInvokeStmt, ArkReturnStmt, ArkReturnVoidStmt, Stmt } from '../base/Stmt';
 import { Value } from '../base/Value';
 import { BasicBlock } from '../graph/BasicBlock';
 import { Cfg } from '../graph/Cfg';
@@ -598,7 +598,6 @@ export class CfgBuilder {
                                 for (let w of preCases) {
                                     caseWords += w + " ";
                                 }
-                                caseWords += caseWords;
                                 let casestm = new StatementBuilder("statement", caseWords, caseClause, scope.id);
                                 switchstm.nexts.push(casestm);
                                 let caseExit = new StatementBuilder("caseExit", "", null, scope.id);
@@ -1883,6 +1882,8 @@ export class CfgBuilder {
                 exportInfo.build(exportClauseName, exportClauseType);
                 arkFile.addExportInfos(exportInfo);
             }
+            // temp fix for issues/1
+            value = new Constant(cls.getName());
         }
         else if (node.kind == "NewExpression") {
             let classSignature = node.children[1].text;
@@ -2750,7 +2751,15 @@ export class CfgBuilder {
         for (const blockBuilder of this.blocks) {
             let block = new BasicBlock();
             for (const stmtBuilder of blockBuilder.stms) {
-                let originlStmt = new Stmt();
+                let originlStmt: Stmt;
+                // add compound stmt for output next stmts using "{}"
+                if (stmtBuilder instanceof ConditionStatementBuilder ||
+                    stmtBuilder instanceof SwitchStatementBuilder
+                    ) {
+                    originlStmt = new ArkCompoundStmt();
+                } else {
+                    originlStmt = new Stmt();
+                }
                 originlStmt.setText(stmtBuilder.code);
                 block.addStmt(originlStmt);
             }
