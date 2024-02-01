@@ -1,3 +1,20 @@
+import animator, { AnimatorResult } from '@ohos.animator';
+let backAnimator: AnimatorResult = animator.create({
+    duration: 2000,
+    easing: "ease",
+    delay: 0,
+    fill: "forwards",
+    direction: "normal",
+    iterations: 1,
+    begin: 100,
+    end: 200
+});
+backAnimator.onfinish = () => {
+    console.info('backAnimator onfinish');
+};
+
+
+
 // const addArrow = (x: number, y: number): number => {
 //   return x + y;
 // };
@@ -37,12 +54,12 @@
 //   }
 // }
 
-try{
-  console.log(1)
-}catch(e){
-  console.log(2)
-}finally{
+// try{
+//   console.log(1)
+// }catch(e){
+//   console.log(2)
+// }finally{
 
-}
+// }
 // let j=0;
 

@@ -148,7 +148,7 @@ export class Cfg {
                     const leftOp=stmt.getLeftOp();
                     const rightOp=stmt.getRightOp();
                     if(leftOp instanceof Local){
-                        if (rightOp instanceof ArkNewExpr) {
+                        if (rightOp instanceof ArkNewExpr && leftOp.getType()=="") {
                             leftOp.setType(this.getTypeNewExpr(rightOp));
                         } else if (rightOp instanceof ArkBinopExpr){
                             let op1 = rightOp.getOp1()
@@ -227,7 +227,7 @@ export class Cfg {
                             }
                         } else if (rightOp instanceof Constant) {
                             leftOp.setType(rightOp.getType())
-                        } else if (rightOp instanceof ArkStaticInvokeExpr){
+                        } else if (rightOp instanceof ArkStaticInvokeExpr && leftOp.getType()==""){
                             // const staticInvokeExpr=rightOp as ArkStaticInvokeExpr;
                             // if(staticInvokeExpr.toString().includes("<AnonymousFunc-")){
                             leftOp.setType("Callable");
