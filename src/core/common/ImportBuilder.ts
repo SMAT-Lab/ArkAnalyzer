@@ -2,6 +2,14 @@ import * as ts from "typescript";
 import path from 'path';
 import { transfer2UnixPath } from "../../utils/pathTransfer";
 
+var sdkConfigPrefix: string;
+var sdkPath: string;
+
+export function updateSdkConfigPrefix(sdkName: string, sdkRelativePath: string) {
+    sdkConfigPrefix = sdkName;
+    sdkPath = transfer2UnixPath(sdkRelativePath);
+}
+
 export class ImportInfo {
     private importClauseName: string;
     private importType: string;
@@ -11,7 +19,7 @@ export class ImportInfo {
     private declaringSignature: string;
     private arkSignature: string;
     private targetArkSignature: string;
-    private sdkConfigPrefix = 'ohos|system|kit';
+    //private sdkConfigPrefix = 'ohos|system|kit';
     private declaringFilePath: string;
     private projectPath: string;
 
@@ -43,8 +51,8 @@ export class ImportInfo {
 
     public genTargetArkSignature() {
         const pathReg1 = new RegExp("^(\\.\\.\\/\|\\.\\/)");
-        const pathReg2 = new RegExp(`@(${this.sdkConfigPrefix})\\.`);
-        const pathReg3 = new RegExp(`@(${this.sdkConfigPrefix})\\/`);
+        const pathReg2 = new RegExp(`@(${sdkConfigPrefix})\\.`);
+        const pathReg3 = new RegExp(`@(${sdkConfigPrefix})\\/`);
         //const pathReg2 = new RegExp(`@(${this.sdkConfigPrefix})\[\.\|\/\]`);
 
         let tmpSig: string;
@@ -71,20 +79,21 @@ export class ImportInfo {
         // local sdk related imports, e.g. openharmony sdk
         else if (pathReg2.test(this.importFrom)) {
             //console.log("###", this.importFrom, pathReg2);
+            tmpSig = (sdkPath + '/' + this.importFrom).replace(/^\.\//, '');
             if (this.nameBeforeAs) {
                 //tmpSig = transfer2UnixPath(this.importFrom).replace(/\//g, '.') + '.' + this.nameBeforeAs;
-                tmpSig = transfer2UnixPath(this.importFrom);
+                //tmpSig = transfer2UnixPath(this.importFrom);
                 tmpSig = `<${tmpSig}>`;
                 tmpSig = tmpSig + '.' + this.nameBeforeAs;
             }
             else if (this.importType == 'NamespaceImport') {
                 //tmpSig = transfer2UnixPath(this.importFrom).replace(/\//g, '.');
-                tmpSig = transfer2UnixPath(this.importFrom);
+                //tmpSig = transfer2UnixPath(this.importFrom);
                 tmpSig = `<${tmpSig}>`;
             }
             else {
                 //tmpSig = transfer2UnixPath(this.importFrom).replace(/\//g, '.') + '.' + this.importClauseName;
-                tmpSig = transfer2UnixPath(this.importFrom);
+                //tmpSig = transfer2UnixPath(this.importFrom);
                 tmpSig = `<${tmpSig}>`;
                 tmpSig = tmpSig + '.' + this.importClauseName;
             }

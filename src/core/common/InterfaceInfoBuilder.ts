@@ -95,10 +95,16 @@ function buildInterfaceProperty(member: ts.PropertySignature): InterfaceProperty
                         type = type + tmpType.typeName.escapedText.toString() + ' | ';
                     }
                 }
+                else if (ts.isLiteralTypeNode(tmpType)) {
+                    type = type + ts.SyntaxKind[tmpType.literal.kind] + ' | ';
+                }
                 else {
                     type = type + ts.SyntaxKind[tmpType.kind] + ' | ';
                 }
             });
+        }
+        else if (ts.isLiteralTypeNode(member.type)) {
+            type = ts.SyntaxKind[member.type.literal.kind];
         }
         else {
             type = ts.SyntaxKind[member.type.kind];
@@ -118,7 +124,7 @@ function buildInterfaceProperty(member: ts.PropertySignature): InterfaceProperty
 export class IndexSig {
     modifiers: Set<string>;
     parameters: Map<string, string>;
-    type: string;
+    type: string[] = [];
 
     public getModifiers() {
         return this.modifiers;
@@ -140,17 +146,17 @@ export class IndexSig {
         return this.type;
     }
 
-    public setType(type: string) {
+    public setType(type: string[]) {
         this.type = type;
     }
 
-    constructor() {}
+    constructor() { }
 }
 
 export class InterfaceMember {
     memberType: string;
     memberParameters: Map<string, string> | undefined;
-    returnType: string | undefined;
+    returnType: string[] | undefined;
     property: InterfaceProperty | undefined;
     method: ArkMethod | undefined;
     index: IndexSig | undefined;
@@ -178,7 +184,7 @@ export class InterfaceMember {
         return this.returnType;
     }
 
-    public setReturnType(returnType: string) {
+    public setReturnType(returnType: string[]) {
         this.returnType = returnType;
     }
 
@@ -290,7 +296,7 @@ export function buildInterfaceInfo4InterfaceNode(node: ts.InterfaceDeclaration):
             buildParameters(member).forEach((type, name) => {
                 constructMember.addParameter(name, type);
             });
-            let name:string = "_Constructor";
+            let name: string = "_Constructor";
             constructMember.setName(name);
             // gen return type
             buildReturnType4Method(member).forEach((returnType) => {
@@ -324,27 +330,47 @@ export function buildInterfaceInfo4InterfaceNode(node: ts.InterfaceDeclaration):
 }
 
 function buildReturnType(node: ts.CallSignatureDeclaration | ts.IndexSignatureDeclaration) {
-    let returnType: string = "";
+    let returnType: string[] = [];
     if (node.type) {
         if (node.type.kind == ts.SyntaxKind.TypeLiteral) {
             for (let member of (node.type as ts.TypeLiteralNode).members) {
                 let memberType = (member as ts.PropertySignature).type;
                 if (memberType) {
-                    returnType = ts.SyntaxKind[memberType.kind];
+                    returnType.push(ts.SyntaxKind[memberType.kind]);
                 }
             }
+        }
+        else if (ts.isUnionTypeNode(node.type)) {
+            let tmpReturnType = '';
+            node.type.types.forEach((tmpType) => {
+                if (ts.isTypeReferenceNode(tmpType)) {
+                    if (ts.isQualifiedName(tmpType.typeName)) {
+                        tmpReturnType = tmpReturnType + handleQualifiedName(tmpType.typeName) + ' | ';
+                    }
+                    else if (ts.isIdentifier(tmpType.typeName)) {
+                        tmpReturnType = tmpReturnType + tmpType.typeName.escapedText.toString() + ' | ';
+                    }
+                }
+                else if (ts.isLiteralTypeNode(tmpType)) {
+                    tmpReturnType = tmpReturnType + ts.SyntaxKind[tmpType.literal.kind] + ' | ';
+                }
+                else {
+                    tmpReturnType = tmpReturnType + ts.SyntaxKind[tmpType.kind] + ' | ';
+                }
+            });
+            returnType.push(tmpReturnType);
         }
         else if (ts.isTypeReferenceNode(node.type)) {
             let referenceNodeName = node.type.typeName;
             if (ts.isQualifiedName(referenceNodeName)) {
-                returnType = handleQualifiedName(referenceNodeName);
+                returnType.push(handleQualifiedName(referenceNodeName));
             }
             else if (ts.isIdentifier(referenceNodeName)) {
-                returnType = referenceNodeName.escapedText.toString();
+                returnType.push(referenceNodeName.escapedText.toString());
             }
         }
         else {
-            returnType = ts.SyntaxKind[node.type.kind];
+            returnType.push(ts.SyntaxKind[node.type.kind]);
         }
     }
     return returnType;

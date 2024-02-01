@@ -9,7 +9,8 @@ import { CallGraph } from "./callgraph/CallGraph"
 import { ClassHierarchyAnalysis } from "./callgraph/ClassHierarchyAnalysis";
 import { ClassHierarchyAnalysisAlgorithm } from "./callgraph/ClassHierarchyAnalysisAlgorithm";
 import { AbstractCallGraphAlgorithm } from "./callgraph/AbstractCallGraphAlgorithm";
-import { ImportInfo } from './core/common/ImportBuilder';
+import { ImportInfo, updateSdkConfigPrefix } from './core/common/ImportBuilder';
+import { ArkInterface } from './core/model/ArkInterface';
 
 /**
  * The Scene class includes everything in the analyzed project.
@@ -25,28 +26,55 @@ export class Scene {
     classHierarchyCallGraph!: AbstractCallGraphAlgorithm;
     extendedClasses: Map<string, ArkClass[]> = new Map();
     globalImportInfos: ImportInfo[] = [];
-    internalArkInstancesMap: Map<string, any> = new Map<string, any>();
-    apiArkInstancesMap: Map<string, any> | undefined;
-    globalInstancesMap: Map<string, any> = new Map<string, any>();
-    constructor(name: string, files: string[], projectDir: string, apiArkInstancesMap?: Map<string, any>) {
-        this.projectName = name;
-        this.projectFiles = files;
+
+    arkInstancesMap: Map<string, any> = new Map<string, any>();
+    arkFileMaps: Map<string, any> = new Map<string, any>();
+    arkNamespaceMaps: Map<string, any> = new Map<string, any>();
+    arkInterfaceMaps: Map<string, any> = new Map<string, any>();
+    arkClassMaps: Map<string, any> = new Map<string, any>();
+    arkMethodMaps: Map<string, any> = new Map<string, any>();
+
+    sdkName: string | undefined;
+    sdkFiles: string[] | undefined;
+    sdk_dir: string | undefined;
+
+    //apiArkInstancesMap: Map<string, any> | undefined;
+    //globalInstancesMap: Map<string, any> = new Map<string, any>();
+    constructor(projectName: string, projectFiles: string[], projectDir: string, sdkName?: string, sdkFiles?: string[], sdk_dir?: string) {
+        this.projectName = projectName;
+        this.projectFiles = projectFiles;
+        this.sdkName = sdkName;
+        this.sdkFiles = sdkFiles;
+        this.sdk_dir = sdk_dir;
         this.realProjectDir = fs.realpathSync(projectDir);
-        this.apiArkInstancesMap = apiArkInstancesMap;
+        //this.apiArkInstancesMap = apiArkInstancesMap;
         this.genArkFiles();
         this.genExtendedClasses();
         this.generateGlobalImportInfos();
-        this.collectArkInstances();
         this.typeReference();
     }
 
     private genArkFiles() {
-        for (let file of this.projectFiles) {
+        if (this.sdkName && this.sdkFiles && this.sdk_dir) {
+            updateSdkConfigPrefix(this.sdkName, path.relative(this.realProjectDir, this.sdk_dir));
+            this.sdkFiles.forEach((file) => {
+                let arkFile: ArkFile = new ArkFile();
+                arkFile.buildArkFileFromSourceFile(file, this.realProjectDir);
+                arkFile.setScene(this);
+                this.arkFiles.push(arkFile);
+            });
+            this.collectArkInstances(this.arkFiles);
+        }
+
+        let tmpArkFiles: ArkFile[] = [];
+        this.projectFiles.forEach((file) => {
             let arkFile: ArkFile = new ArkFile();
             arkFile.buildArkFileFromSourceFile(file, this.realProjectDir);
             arkFile.setScene(this);
             this.arkFiles.push(arkFile);
-        }
+            tmpArkFiles.push(arkFile);
+        });
+        this.collectArkInstances(tmpArkFiles);
     }
 
     public getFile(fileName: string): ArkFile | null {
@@ -224,35 +252,52 @@ export class Scene {
     }
 
     public addArkInstance(arkSignature: string, arkInstance: any) {
-        this.internalArkInstancesMap.set(arkSignature, arkInstance);
+        this.arkInstancesMap.set(arkSignature, arkInstance);
     }
 
-    private collectArkInstances() {
-        this.arkFiles.forEach((arkFile) => {
+    public addArkInstance2FileMap(arkSignature: string, arkInstance: any) {
+        this.arkFileMaps.set(arkSignature, arkInstance);
+    }
+
+    public addArkInstance2NamespaceMap(arkSignature: string, arkInstance: any) {
+        this.arkNamespaceMaps.set(arkSignature, arkInstance);
+    }
+
+    public addArkInstance2ClassMap(arkSignature: string, arkInstance: any) {
+        this.arkClassMaps.set(arkSignature, arkInstance);
+    }
+
+    public addArkInstance2InterfaceMap(arkSignature: string, arkInstance: any) {
+        this.arkInterfaceMaps.set(arkSignature, arkInstance);
+    }
+
+    public addArkInstance2MethodMap(arkSignature: string, arkInstance: any) {
+        this.arkMethodMaps.set(arkSignature, arkInstance);
+    }
+
+    private collectArkInstances(arkFiles: ArkFile[]) {
+        arkFiles.forEach((arkFile) => {
+            this.addArkInstance(arkFile.getArkSignature(), arkFile);
+            this.addArkInstance2FileMap(arkFile.getArkSignature(), arkFile);
             arkFile.getArkInstancesMap().forEach((value, key) => {
                 this.addArkInstance(key, value);
+                if (value instanceof ArkNamespace) {
+                    this.addArkInstance2NamespaceMap(key, value);
+                }
+                else if (value instanceof ArkInterface) {
+                    this.addArkInstance2InterfaceMap(key, value);
+                }
+                else if (value instanceof ArkClass) {
+                    this.addArkInstance2ClassMap(key, value);
+                }
+                else if (value instanceof ArkMethod) {
+                    this.addArkInstance2MethodMap(key, value);
+                }
             });
         });
-        if (this.apiArkInstancesMap) {
-            this.internalArkInstancesMap.forEach((value, key) => {
-                this.globalInstancesMap.set(key, value);
-            });
-            this.apiArkInstancesMap.forEach((value, key) => {
-                this.globalInstancesMap.set(key, value);
-            });
-        }
-        else {
-            this.internalArkInstancesMap.forEach((value, key) => {
-                this.globalInstancesMap.set(key, value);
-            });
-        }
     }
 
     public getArkInstancesMap() {
-        return this.internalArkInstancesMap;
-    }
-
-    public getGlobalArkInstancesMap() {
-        return this.globalInstancesMap;
+        return this.arkInstancesMap;
     }
 }
