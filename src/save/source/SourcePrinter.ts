@@ -11,19 +11,19 @@ import { Printer } from '../Printer';
 export class SourcePrinter extends Printer {
     protected printStart(streamOut: ArkStream): void {
         for (let info of this.arkFile.getImportInfos()) {
-            if (info.getimportType() === 'Identifier') {
+            if (info.getImportType() === 'Identifier') {
                 // import fs from 'fs'
                 streamOut.write('import ' + info.getImportClauseName() + ' from ')
                     .writeStringLiteral(info.getImportFrom() as string).writeLine(';');
-            } else if (info.getimportType() === 'NamedImports') {
+            } else if (info.getImportType() === 'NamedImports') {
                 // import {xxx} from './yyy'
                 streamOut.write('import {' + info.getImportClauseName() + '} from ')
                     .writeStringLiteral(info.getImportFrom() as string).writeLine(';');
-            } else if (info.getimportType() === 'NamespaceImport') {
+            } else if (info.getImportType() === 'NamespaceImport') {
                 // import * as ts from 'typescript'
                 streamOut.write('import * as ' + info.getImportClauseName() + ' from ')
                     .writeStringLiteral(info.getImportFrom() as string).writeLine(';');
-            } else if (info.getimportType() == 'EqualsImport') {
+            } else if (info.getImportType() == 'EqualsImport') {
                 // import mmmm = require('./xxx')
                 streamOut.write('import ' + info.getImportClauseName() + ' = require(')
                     .writeStringLiteral(info.getImportFrom() as string).writeLine(');');
@@ -78,7 +78,7 @@ export class SourcePrinter extends Printer {
     }
 
     protected printClass(cls: ArkClass, streamOut: ArkStream): void {
-        if (cls.isDefault()) {
+        if (cls.isDefaultArkClass()) {
             return this.printMethods(cls, streamOut);
         }
 
@@ -105,7 +105,7 @@ export class SourcePrinter extends Printer {
     
     private printMethods(cls: ArkClass, streamOut: ArkStream): void {
         for (let method of cls.getMethods()) {
-            if (method.isDefault()) {
+            if (method.isDefaultArkMethod()) {
                 this.printBody(method.getBody(), streamOut, true);
             } else {
                 this.printMethod(method, streamOut);
@@ -146,7 +146,7 @@ export class SourcePrinter extends Printer {
             streamOut.write(this.resolveKeywordType(m) + ' ');
         }
 
-        if (method.getDeclaringArkClass()?.isDefault()) {
+        if (method.getDeclaringArkClass()?.isDefaultArkClass()) {
             streamOut.write('function ');
         }
         let parameters: string[] = [];
