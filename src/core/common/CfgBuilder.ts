@@ -4,7 +4,7 @@ import { Constant } from '../base/Constant';
 import { AbstractInvokeExpr, ArkBinopExpr, ArkCastExpr, ArkConditionExpr, ArkInstanceInvokeExpr, ArkLengthExpr, ArkNewArrayExpr, ArkNewExpr, ArkStaticInvokeExpr, ArkTypeOfExpr, ArkUnopExpr } from '../base/Expr';
 import { Local } from '../base/Local';
 import { AbstractFieldRef, ArkArrayRef, ArkInstanceFieldRef, ArkParameterRef, ArkStaticFieldRef, ArkThisRef } from '../base/Ref';
-import { ArkAssignStmt, ArkDeleteStmt, ArkGotoStmt, ArkIfStmt, ArkInvokeStmt, ArkReturnStmt, ArkReturnVoidStmt, Stmt } from '../base/Stmt';
+import { ArkAssignStmt, ArkCompoundStmt, ArkDeleteStmt, ArkGotoStmt, ArkIfStmt, ArkInvokeStmt, ArkReturnStmt, ArkReturnVoidStmt, ArkSwitchStmt, Stmt } from '../base/Stmt';
 import { Value } from '../base/Value';
 import { BasicBlock } from '../graph/BasicBlock';
 import { Cfg } from '../graph/Cfg';
@@ -597,7 +597,6 @@ export class CfgBuilder {
                                 for (let w of preCases) {
                                     caseWords += w + " ";
                                 }
-                                caseWords += caseWords;
                                 let casestm = new StatementBuilder("statement", caseWords, caseClause, scope.id);
                                 switchstm.nexts.push(casestm);
                                 let caseExit = new StatementBuilder("caseExit", "", null, scope.id);
@@ -673,30 +672,30 @@ export class CfgBuilder {
                             catchOrNot.nextT = catchExit;
                         }
                         // lastStatement=catchExit;
-                        
+
                         // trystm.catchStatements.push(catchOrNot.nextT);
                         // catchOrNot.scopeID=catchOrNot.nextT.scopeID;
-                        const catchStatement=new StatementBuilder("statement",catchOrNot.code,null,catchOrNot.nextT.scopeID);
-                        catchStatement.next=catchOrNot.nextT;
-                        trystm.catchStatement=catchStatement;
+                        const catchStatement = new StatementBuilder("statement",catchOrNot.code,trychild,catchOrNot.nextT.scopeID);
+                        catchStatement.next = catchOrNot.nextT;
+                        trystm.catchStatement = catchStatement;
                         let VD = catchClause.children[this.findChildIndex(catchClause, "VariableDeclaration")];
                         if (VD) {
-                            if(VD.children[0].kind=="Identifier"){
-                                trystm.catchError=VD.children[0].text;
+                            if (VD.children[0].kind == "Identifier") {
+                                trystm.catchError = VD.children[0].text;
                             }
-                            else{
+                            else {
                                 let error = VD.children[this.findChildIndex(VD, "TypeReference")];
                                 if (error) {
-                                    trystm.catchError=error.text;
+                                    trystm.catchError = error.text;
                                 }
                                 else {
-                                    trystm.catchError="Error";
+                                    trystm.catchError = "Error";
                                 }
                             }
-                            
+
                         }
                         else {
-                            trystm.catchError="Error";
+                            trystm.catchError = "Error";
                         }
                     }
                     if (trychild.kind == "FinallyKeyword") {
@@ -787,7 +786,7 @@ export class CfgBuilder {
             if (trystm.tryFirst) {
                 this.deleteExit(trystm.tryFirst);
             }
-            if(trystm.catchStatement){
+            if (trystm.catchStatement) {
                 this.deleteExit(trystm.catchStatement);
             }
             if (trystm.finallyStatement) {
@@ -870,8 +869,8 @@ export class CfgBuilder {
                 // block.stms.push(caseStmt);
                 // block.stms.push(gotoStmt);
             }
-            if(sstm.default){
-                this.buildBlocks(sstm.default,this.buildNewBlock([]));
+            if (sstm.default) {
+                this.buildBlocks(sstm.default, this.buildNewBlock([]));
                 // const caseStmt=new StatementBuilder("statement", "default :", null,sstm.nexts[0].scopeID);
                 // const gotoStmt=new StatementBuilder("statement", "goto label"+sstm.default.block?.id,null, sstm.nexts[0].scopeID);
                 // block.stms.push(caseStmt);
@@ -917,7 +916,7 @@ export class CfgBuilder {
                 finallyBlock.lasts.add(lastBlockInTry);
             }
             // let catchBlocks:Block[]=[];
-            if(trystm.catchStatement){
+            if (trystm.catchStatement) {
                 let catchBlock = this.buildNewBlock([]);
                 this.buildBlocks(trystm.catchStatement, catchBlock);
                 for (let lastBlockInTry of lastBlocksInTry) {
@@ -963,18 +962,18 @@ export class CfgBuilder {
             let goto = new StatementBuilder("gotoStatement", "goto label" + nextBlock.id, null, trystm.tryFirst.scopeID);
             goto.block = finallyBlock;
             if (trystm.finallyStatement) {
-                if(trystm.catchStatement)
+                if (trystm.catchStatement)
                     finallyBlock.stms.push(goto);
             }
             else {
                 finallyBlock.stms = [goto];
             }
-            if(nextBlock.stms.length == 0){
-                const returnStatement=new StatementBuilder("returnStatement", "return;", null, trystm.tryFirst.scopeID);
-                goto.next=returnStatement;
-                returnStatement.lasts=[goto];
+            if (nextBlock.stms.length == 0) {
+                const returnStatement = new StatementBuilder("returnStatement", "return;", null, trystm.tryFirst.scopeID);
+                goto.next = returnStatement;
+                returnStatement.lasts = [goto];
                 nextBlock.stms.push(returnStatement);
-                returnStatement.block=nextBlock;
+                returnStatement.block = nextBlock;
             }
             // if(nextBlock.stms.length>0){
             //     let goto = new StatementBuilder("gotoStatement", "goto label" + nextBlock.id, null, trystm.tryFirst.scopeID);
@@ -997,7 +996,7 @@ export class CfgBuilder {
             //         finallyBlock.stms = [returnStatement];
             //     }
             // }
-            
+
         }
         else {
             if (stm.next) {
@@ -1151,7 +1150,7 @@ export class CfgBuilder {
             if (trystm.tryFirst) {
                 this.buildLastAndHaveCall(trystm.tryFirst);
             }
-            if(trystm.catchStatement){
+            if (trystm.catchStatement) {
                 this.buildLastAndHaveCall(trystm.catchStatement);
             }
             if (trystm.finallyStatement) {
@@ -1199,7 +1198,7 @@ export class CfgBuilder {
             if (trystm.tryFirst) {
                 this.resetWalkedPartial(trystm.tryFirst);
             }
-            if(trystm.catchStatement){
+            if (trystm.catchStatement) {
                 this.resetWalkedPartial(trystm.catchStatement);
             }
             if (trystm.finallyStatement) {
@@ -1242,7 +1241,7 @@ export class CfgBuilder {
             if (trystm.tryFirst) {
                 this.CfgBuilder2Array(trystm.tryFirst);
             }
-            if(trystm.catchStatement){
+            if (trystm.catchStatement) {
                 this.CfgBuilder2Array(trystm.catchStatement);
             }
             if (trystm.finallyStatement) {
@@ -1592,10 +1591,7 @@ export class CfgBuilder {
     // temp function
     private toSupport(node: NodeA): boolean {
         let nodeKind = node.kind;
-        if (nodeKind == 'SwitchStatement'
-            || nodeKind == 'CaseClause'
-            || nodeKind == 'DefaultClause'
-            || nodeKind == 'TryStatement'
+        if (nodeKind == 'TryStatement'
             || nodeKind == 'ThrowStatement') {
             return true;
         }
@@ -1920,6 +1916,8 @@ export class CfgBuilder {
                 exportInfo.build(exportClauseName, exportClauseType);
                 arkFile.addExportInfos(exportInfo);
             }
+            // temp fix for issues/1
+            value = new Constant(cls.getName());
         }
         else if (node.kind == "NewExpression") {
             let classSignature = node.children[1].text;
@@ -2112,8 +2110,28 @@ export class CfgBuilder {
         return threeAddressAssignStmts;
     }
 
-    private astNodeToThreeAddressSwitchStatement(node: NodeA) {
+    private astNodeToThreeAddressSwitchStatement(switchAstNode: NodeA) {
+        let exprNode = switchAstNode.children[this.findChildIndex(switchAstNode, 'OpenParenToken') + 1];
+        let exprValue = this.astNodeToValue(exprNode);
+        if (IRUtils.moreThanOneAddress(exprValue)) {
+            exprValue = this.generateAssignStmt(exprValue);
+        }
 
+        let caseBlockNode = switchAstNode.children[this.findChildIndex(switchAstNode, 'CloseParenToken') + 1];
+        let syntaxList = caseBlockNode.children[1];
+        let caseValues: Value[] = [];
+        for (const caseNode of syntaxList.children) {
+            if (caseNode.kind == 'DefaultClause') {
+                continue;
+            }
+            let caseExprNode = caseNode.children[1];
+            let caseExprValue = this.astNodeToValue(caseExprNode);
+            if (IRUtils.moreThanOneAddress(caseExprValue)) {
+                caseExprValue = this.generateAssignStmt(caseExprValue);
+            }
+            caseValues.push(caseExprValue);
+        }
+        this.current3ACstm.threeAddressStmts.push(new ArkSwitchStmt(exprValue, caseValues));
     }
 
     private astNodeToThreeAddressIterationStatement(node: NodeA) {
@@ -2222,6 +2240,9 @@ export class CfgBuilder {
         else if (node.kind == 'BreakStatement' || node.kind == 'ContinueStatement') {
             threeAddressStmts.push(new ArkGotoStmt());
         }
+        else if (node.kind == 'SwitchStatement') {
+            this.astNodeToThreeAddressSwitchStatement(node);
+        }
         else if (node.kind == 'CallExpression') {
             threeAddressStmts.push(new ArkInvokeStmt(this.astNodeToValue(node) as AbstractInvokeExpr));
         }
@@ -2283,14 +2304,13 @@ export class CfgBuilder {
             thisLocal.setType(thisRef.getType());
         }
 
-
         for (let blockId = 0; blockId < this.blocks.length; blockId++) {
             let currBlock = this.blocks[blockId];
             for (const originStmt of currBlock.stms) {
                 if (originStmt.astNode && originStmt.code != "" && this.support(originStmt.astNode)) {
                     this.current3ACstm = originStmt;
                     this.astNodeToThreeAddressStmt(originStmt.astNode);
-                } else if (originStmt.code == 'return;') {
+                } else if (originStmt.code.startsWith('return')) {
                     // 额外添加的return语句特殊处理
                     originStmt.threeAddressStmts.push(new ArkReturnVoidStmt());
                 }
@@ -2814,7 +2834,15 @@ export class CfgBuilder {
         for (const blockBuilder of this.blocks) {
             let block = new BasicBlock();
             for (const stmtBuilder of blockBuilder.stms) {
-                let originlStmt = new Stmt();
+                let originlStmt: Stmt;
+                // add compound stmt for output next stmts using "{}"
+                if (stmtBuilder instanceof ConditionStatementBuilder ||
+                    stmtBuilder instanceof SwitchStatementBuilder
+                ) {
+                    originlStmt = new ArkCompoundStmt();
+                } else {
+                    originlStmt = new Stmt();
+                }
                 originlStmt.setText(stmtBuilder.code);
                 block.addStmt(originlStmt);
             }

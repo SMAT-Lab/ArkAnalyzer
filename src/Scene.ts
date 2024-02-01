@@ -35,9 +35,9 @@ export class Scene {
         this.apiArkInstancesMap = apiArkInstancesMap;
         this.genArkFiles();
         this.genExtendedClasses();
-        this.typeReference();
         this.generateGlobalImportInfos();
         this.collectArkInstances();
+        this.typeReference();
     }
 
     private genArkFiles() {

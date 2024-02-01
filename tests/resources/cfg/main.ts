@@ -1,3 +1,13 @@
+// import { Project } from "ts-morph";
+
+// // 创建一个 TypeScript 项目
+// const project = new Project();
+
+// // 添加要解析的文件
+// const sourceFile = project.addSourceFileAtPath("path/to/your/file.ts");
+
+
+
 // const addArrow = (x: number, y: number): number => {
 //   return x + y;
 // };
@@ -26,23 +36,33 @@
 
 // let y=new t()
 
-
-// class a{
-//   x:number;
-//   constructor(){
-//     this.x=1;
-//   }
-//   f(){
-//     this.x++;
-//   }
+// switch(x){
+//   case 1:
+//     console.log(1)
 // }
 
-try{
-  console.log(1)
-}catch(e){
-  console.log(2)
-}finally{
-
+class a{
+  x:number;
+  constructor(){
+    this.x=1;
+  }
+  f():number|null{
+    this.x++;
+    return this.x;
+  }
 }
-// let j=0;
 
+
+let a1=new a();
+let y=a1.f();
+
+// let mySet = new Set([1, 2, 3, 4]);
+
+// // 创建一个新的 Set，其中的元素都加 1
+// let modifiedSet = new Set<number>();
+// mySet.forEach(value => {
+//   modifiedSet.add(value + 1);
+// });
+
+// // 输出新的 Set
+// console.log(modifiedSet);

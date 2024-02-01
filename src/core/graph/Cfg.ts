@@ -2,7 +2,7 @@ import path from "path";
 import { isPrimaryType } from "../../utils/typeReferenceUtils";
 import { Constant } from "../base/Constant";
 import { DefUseChain } from "../base/DefUseChain";
-import { ArkBinopExpr, ArkCastExpr, ArkNewExpr, ArkStaticInvokeExpr } from "../base/Expr";
+import { ArkBinopExpr, ArkCastExpr, ArkInstanceInvokeExpr, ArkNewExpr, ArkStaticInvokeExpr } from "../base/Expr";
 import { Local } from "../base/Local";
 import { ArkInstanceFieldRef, ArkParameterRef } from "../base/Ref";
 import { ArkAssignStmt, Stmt } from "../base/Stmt";
@@ -148,7 +148,7 @@ export class Cfg {
                     const leftOp=stmt.getLeftOp();
                     const rightOp=stmt.getRightOp();
                     if(leftOp instanceof Local){
-                        if (rightOp instanceof ArkNewExpr) {
+                        if (rightOp instanceof ArkNewExpr && (leftOp.getType()=="" || leftOp.getType()=="any")) {
                             leftOp.setType(this.getTypeNewExpr(rightOp));
                         } else if (rightOp instanceof ArkBinopExpr){
                             let op1 = rightOp.getOp1()
@@ -227,11 +227,30 @@ export class Cfg {
                             }
                         } else if (rightOp instanceof Constant) {
                             leftOp.setType(rightOp.getType())
-                        } else if (rightOp instanceof ArkStaticInvokeExpr){
+                        } else if (rightOp instanceof ArkStaticInvokeExpr && (leftOp.getType()=="" || leftOp.getType()=="any")){
                             // const staticInvokeExpr=rightOp as ArkStaticInvokeExpr;
                             // if(staticInvokeExpr.toString().includes("<AnonymousFunc-")){
                             leftOp.setType("Callable");
-                            // }
+                            // }/
+                        } else if (rightOp instanceof ArkInstanceInvokeExpr){
+                            const classType=rightOp.getBase().getType().replace(/\\\\/g, '.').split('.');
+                            let classMapSignature="";
+                            for(let i=0;i<classType.length;i++){
+                                if(i==classType.length-2){
+                                    continue;
+                                }
+                                else if(i==classType.length-3){
+                                    classMapSignature+='<'+classType[i]+'>.';
+                                }
+                                else{
+                                    classMapSignature+=classType[i]+'.';
+                                }
+                            }
+                            const methodMapSignature=classMapSignature+rightOp.getMethodSignature();
+                            const map=this.declaringClass.getDeclaringArkFile().getScene().getArkInstancesMap();
+                            const method=map.get(methodMapSignature);
+                            leftOp.setType(method.returnType);
+                            console.log(1)
                         }
                     }
                 }
