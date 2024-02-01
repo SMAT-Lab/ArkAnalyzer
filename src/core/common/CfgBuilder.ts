@@ -676,7 +676,7 @@ export class CfgBuilder {
                         
                         // trystm.catchStatements.push(catchOrNot.nextT);
                         // catchOrNot.scopeID=catchOrNot.nextT.scopeID;
-                        const catchStatement=new StatementBuilder("statement",catchOrNot.code,null,catchOrNot.nextT.scopeID);
+                        const catchStatement=new StatementBuilder("statement",catchOrNot.code,trychild,catchOrNot.nextT.scopeID);
                         catchStatement.next=catchOrNot.nextT;
                         trystm.catchStatement=catchStatement;
                         let VD = catchClause.children[this.findChildIndex(catchClause, "VariableDeclaration")];

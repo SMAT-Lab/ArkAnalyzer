@@ -41,5 +41,5 @@ function run(config: Config) {
 // let config: Config = new Config("systemui", "./codeLab/codelabs2/NetworkManagement/NewsDataArkTS");
 // let config: Config = new Config("systemui", "./codeLab/interface_sdk-js-master/");
 // let config: Config = new Config("systemui", "/Users/yangyizhuo/WebstormProjects/ArkAnalyzer/tests/resources/type");
-let config: Config = new Config("main", "./tests/resources/cfg", "");
+let config: Config = new Config("main", "./tests/resources/cfg", "./node_modules");
 run(config);
