@@ -17,26 +17,25 @@ function run(config: Config) {
 
     //(2) Fill Scene class
     let scene: Scene = new Scene(projectName, projectFiles,config.input_dir);
+
+    scene.makeCallGraphCHA([scene.arkFiles[2].getDefaultClass().getMethods()[0].getSignature()])
+
+    // for (let a of scene.arkFiles) {
+    //     for (let clas of a.getClasses()) {
+    //         for (let method of clas.getMethods())
+    //             if (method.getName() == "invokeParam") {
+    //                 console.log(method.getName())
+    //                 console.log(method.getBody().getLocals())
+    //             }
+    //     }
+    // }
     // scene.classHierarchyCallGraph.printDetails()
-
-    for(let file of scene.arkFiles){
-        for(let clas of file.getClasses()){
-            for(let method of clas.getMethods()){
-                const cfg=method.getBody().getCfg();
-                cfg.typeReference();
-                // console.log(method.getBody().getLocals())
-            }
-        }
-    }
-    scene.makeCallGraphCHA()
-    scene.classHierarchyCallGraph.printDetails()
-
 }
 
 //let config: Config = new Config("app_photo", "/Users/yifei/Documents/Code/applications_photos/common/src/main/ets");
 //let config: Config = new Config("app_photo", "/Users/yifei/Documents/Code/applications_systemui");
 // let config: Config = new Config("systemui", "./codeLab/codelabs2/NetworkManagement/NewsDataArkTS");
-let config: Config = new Config("systemui", "./codeLab/interface_sdk-js-master/");
+// let config: Config = new Config("systemui", "./codeLab/interface_sdk-js-master/");
 // let config: Config = new Config("systemui", "/Users/yangyizhuo/WebstormProjects/ArkAnalyzer/tests/resources/type");
-// let config: Config = new Config("systemui", "/Users/yangyizhuo/WebstormProjects/ArkAnalyzer/tests/resources/callgraph");
+let config: Config = new Config("systemui", "/Users/yangyizhuo/WebstormProjects/ArkAnalyzer/tests/resources/callgraph", "");
 run(config);
