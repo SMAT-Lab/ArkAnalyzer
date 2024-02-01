@@ -297,8 +297,10 @@ export class ArkFile {
     }
 
     public genArkSignature() {
-        let tmpSig = transfer2UnixPath(this.name).replace(/\//g, '.');
-        this.arkSignature = tmpSig.replace(/\.d\.ts|\.ts$/, '');
+        //let tmpSig = transfer2UnixPath(this.name).replace(/\//g, '.');
+        let tmpSig = transfer2UnixPath(this.name);
+        tmpSig = tmpSig.replace(/\.d\.ts|\.ts$/, '');
+        this.arkSignature = `<${tmpSig}>`;
     }
 
     private findIndicatedChild(node: NodeA, childType: string): NodeA | null {

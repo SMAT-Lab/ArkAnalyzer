@@ -102,11 +102,17 @@ export function buildParameters(node: ts.FunctionDeclaration | ts.MethodDeclarat
                             parameterType = parameterType + tmpType.typeName.escapedText.toString() + ' | ';
                         }
                     }
+                    else if (ts.isLiteralTypeNode(tmpType)) {
+                        parameterTypes.set(parameterName, ts.SyntaxKind[tmpType.literal.kind]) + ' | ';
+                    }
                     else {
                         parameterType = parameterType + ts.SyntaxKind[tmpType.kind] + ' | ';
                     }
                 });
                 parameterTypes.set(parameterName, parameterType);
+            }
+            else if (ts.isLiteralTypeNode(parameter.type)) {
+                parameterTypes.set(parameterName, ts.SyntaxKind[parameter.type.literal.kind]);
             }
             else {
                 parameterTypes.set(parameterName, ts.SyntaxKind[parameter.type.kind]);
