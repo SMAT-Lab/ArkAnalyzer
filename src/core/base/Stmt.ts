@@ -374,7 +374,7 @@ export class ArkSwitchStmt extends Stmt {
     }
 
     public getExpectedSuccessorCount(): number {
-        return this.cases.length;
+        return this.cases.length + 1;
     }
 
     public toString(): string {

@@ -14,6 +14,19 @@
 //     }    
 // }
 
+function testSwitch() {
+    let expr = 'a';
+    switch (expr) {
+        case 'a':
+            console.log('a');
+            break;
+        case 'b':
+            console.log('b');
+        default:
+            console.log(`default`);
+    }
+}
+
 // function testTryCatch() {
 //     try {
 //         let i = 0;
@@ -34,8 +47,3 @@
 //     let a = 'str1';
 //     let b = `template is ${a}`;
 // }
-
-function test() {
-    const object = { a: 1 };
-    console.log(object['a']);  
-}
