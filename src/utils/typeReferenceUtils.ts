@@ -10,3 +10,11 @@ export function isPrimaryType(type: string): boolean {
             return false
     }
 }
+
+export function splitType(typeName: string): string[] {
+    return typeName.split('|')
+}
+
+export function transformArrayToString<T>(array: T[], separator: string = '|'): string {
+    return array.join(separator);
+}
