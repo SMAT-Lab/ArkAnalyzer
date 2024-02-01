@@ -1814,6 +1814,17 @@ export class CfgBuilder {
                 elementValue = this.generateAssignStmt(elementValue);
             }
 
+            // temp
+            if (elementValue instanceof Constant) {
+                if (elementValue.getValue().startsWith('\'')) {
+                    let oldValue = elementValue.getValue();
+                    elementValue.setValue(oldValue.substring(1, oldValue.length - 1));
+                } else if (elementValue.getValue().startsWith('"')) {
+                    let oldValue = elementValue.getValue();
+                    elementValue.setValue(oldValue.substring(2, oldValue.length - 2));
+                }
+            }
+
             let baseLocal = baseValue as Local;
             if (baseLocal.getType() == 'array') {
                 value = new ArkArrayRef(baseLocal as Local, elementValue);
