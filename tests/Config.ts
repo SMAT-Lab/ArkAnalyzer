@@ -5,16 +5,18 @@ import * as ts from "typescript";
  */
 export class Config {
 
-    input_dir:string;
+    project_dir:string;
     projectName:string;
-    api_dir:string;
+    sdkName?: string;
+    sdk_dir?:string;
 
     //functionTransformer: FunctionTransformer | null = null;
     //sceneTransformer: SceneTransformer | null = null;
 
-    constructor(projectName:string, input_dir:string, api_dir:string) {
+    constructor(projectName:string, project_dir:string, sdkName?: string, sdk_dir?:string) {
         this.projectName = projectName;
-        this.input_dir = input_dir;
-        this.api_dir = api_dir;
+        this.project_dir = project_dir;
+        this.sdkName = sdkName;
+        this.sdk_dir = sdk_dir;
     }
 }

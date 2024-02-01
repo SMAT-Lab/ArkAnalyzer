@@ -33,12 +33,12 @@ export class ArkFile {
 
     constructor() { }
 
-    public buildArkFileFromSourceFile(sourceFile: string, projectDir: string) {
-        this.filePath = sourceFile;
+    public buildArkFileFromSourceFile(sourceFilePath: string, projectDir: string) {
+        this.filePath = sourceFilePath;
         this.projectDir = projectDir;
-        this.setName(path.relative(projectDir, sourceFile));
+        this.setName(path.relative(projectDir, sourceFilePath));
         this.genArkSignature();
-        this.setCode(fs.readFileSync(sourceFile, 'utf8'));
+        this.setCode(fs.readFileSync(sourceFilePath, 'utf8'));
         this.genAst();
         this.genDefaultArkClass();
         this.buildArkFile();
@@ -304,6 +304,7 @@ export class ArkFile {
         //let tmpSig = transfer2UnixPath(this.name).replace(/\//g, '.');
         let tmpSig = transfer2UnixPath(this.name);
         tmpSig = tmpSig.replace(/\.d\.ts|\.ts$/, '');
+        //tmpSig = tmpSig.replace(/\.ts$/, '');
         this.arkSignature = `<${tmpSig}>`;
     }
 
