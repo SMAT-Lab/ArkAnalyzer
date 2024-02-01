@@ -39,10 +39,10 @@
 
 try{
   console.log(1)
-} catch(error){
-  console.log(error)
-} finally{
-  console.log("f")
-}
+}catch(e){
+  console.log(2)
+}finally{
 
+}
+// let j=0;
 

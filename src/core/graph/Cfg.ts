@@ -320,6 +320,12 @@ export class Cfg {
                                 return this.searchImportClass(sceneFile, realName!);
                             }
                         }
+                        // file不在scene中，视为外部库
+                        const targetSignature=importInfo.getTargetArkSignature();
+                        const apiMap=scene.apiArkInstancesMap;
+                        if(apiMap!=undefined&&apiMap.get(targetSignature)!=undefined){
+                            return apiMap.get(targetSignature);
+                        }
                     }
                 }
             }
