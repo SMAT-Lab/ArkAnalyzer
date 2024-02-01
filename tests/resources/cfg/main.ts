@@ -1,13 +1,3 @@
-// import { Project } from "ts-morph";
-
-// // 创建一个 TypeScript 项目
-// const project = new Project();
-
-// // 添加要解析的文件
-// const sourceFile = project.addSourceFileAtPath("path/to/your/file.ts");
-
-
-
 // const addArrow = (x: number, y: number): number => {
 //   return x + y;
 // };
@@ -41,24 +31,24 @@
 //     console.log(1)
 // }
 
-try{
-  console.log(1)
-}catch(e:Error){
-  console.log(2)
-}finally{
 
+class a{
+  x:number;
+  constructor(){
+    this.x=1;
+  }
+  f():number|null{
+    this.x++;
+    return this.x;
+  }
+  f2(){
+    let t=this.f();
+    function f3(){
+      let x=1;
+    }
+    f3();
+  }
 }
-let j=1
-// class a{
-//   x:number;
-//   constructor(){
-//     this.x=1;
-//   }
-//   f():number|null{
-//     this.x++;
-//     return this.x;
-//   }
-// }
 
 
 // let a1=new a();

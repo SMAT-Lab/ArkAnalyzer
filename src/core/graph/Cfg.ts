@@ -227,10 +227,10 @@ export class Cfg {
                             }
                         } else if (rightOp instanceof Constant) {
                             leftOp.setType(rightOp.getType())
-                        } else if (rightOp instanceof ArkStaticInvokeExpr && (leftOp.getType()=="" || leftOp.getType()=="any")){
+                        // } else if (rightOp instanceof ArkStaticInvokeExpr && (leftOp.getType()=="" || leftOp.getType()=="any")){
                             // const staticInvokeExpr=rightOp as ArkStaticInvokeExpr;
                             // if(staticInvokeExpr.toString().includes("<AnonymousFunc-")){
-                            leftOp.setType("Callable");
+                            // leftOp.setType("Callable");
                             // }/
                         } else if (rightOp instanceof ArkInstanceInvokeExpr){
                             const classType=rightOp.getBase().getType().replace(/\\\\/g, '.').split('.');
@@ -249,8 +249,8 @@ export class Cfg {
                             const methodMapSignature=classMapSignature+rightOp.getMethodSignature();
                             const map=this.declaringClass.getDeclaringArkFile().getScene().getArkInstancesMap();
                             const method=map.get(methodMapSignature);
-                            leftOp.setType(method.returnType);
-                            console.log(1)
+                            if(method)
+                                leftOp.setType(method.returnType);
                         }
                     }
                 }
@@ -341,7 +341,7 @@ export class Cfg {
                         }
                         // file不在scene中，视为外部库
                         const targetSignature=importInfo.getTargetArkSignature();
-                        const apiMap=scene.apiArkInstancesMap;
+                        const apiMap=scene.arkClassMaps;
                         if(apiMap!=undefined&&apiMap.get(targetSignature)!=undefined){
                             return apiMap.get(targetSignature);
                         }

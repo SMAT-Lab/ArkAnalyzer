@@ -8,15 +8,16 @@ import { HotPropertyAccessCheck } from "./checker/HotPropertyAccessCheck";
 
 function run(config: Config) {
     const projectName: string = config.projectName;
-    const input_dir: string = config.input_dir;
+    const project_dir: string = config.project_dir;
+    const sdkName: string | undefined = config.sdkName;
+    const sdk_dir: string | undefined = config.sdk_dir;
 
-    //(1)get all files under input_dir
-    //TODO: add support for using tscconfig to get files
-    const projectFiles: string[] = utils.getAllFiles(input_dir, ['.ts']);
-    // console.log(projectFiles)
+    const sdkFiles: string[] = utils.getAllFiles(sdk_dir!, ['.ts']);
+    const projectFiles: string[] = utils.getAllFiles(project_dir, ['.ts']);
 
-    //(2) Fill Scene class
-    let scene: Scene = new Scene(projectName, projectFiles,config.input_dir);
+    //let apiScene: Scene = new Scene("sdk-js", apiFiles, api_dir!);
+    //const apiArkInstancesMap = apiScene.getArkInstancesMap();
+    let scene: Scene = new Scene(projectName, projectFiles, project_dir, sdkName, sdkFiles, sdk_dir);
 
 
     for (let file of scene.arkFiles) {
@@ -35,11 +36,14 @@ function run(config: Config) {
     }
     // scene.classHierarchyCallGraph.printDetails()
 }
-
+const input_dir = "./tests/resources/cfg";
+// const input_dir = "./codeLab/photos";
+const api_dir = "../openharmony/interface/sdk-js/api";
 //let config: Config = new Config("app_photo", "/Users/yifei/Documents/Code/applications_photos/common/src/main/ets");
 //let config: Config = new Config("app_photo", "/Users/yifei/Documents/Code/applications_systemui");
-// let config: Config = new Config("systemui", "./codeLab/codelabs2/NetworkManagement/NewsDataArkTS");
-// let config: Config = new Config("systemui", "./codeLab/interface_sdk-js-master/");
-// let config: Config = new Config("systemui", "/Users/yangyizhuo/WebstormProjects/ArkAnalyzer/tests/resources/type");
-let config: Config = new Config("main", "./tests/resources/cfg", "./node_modules");
+//let config: Config = new Config("app_photo", "./tests/sample");
+//let config: Config = new Config("app_test", "/Users/yifei/Documents/Code/test/HelloWorldApi9");
+//let config: Config = new Config("app_test", "C:\\msys64\\home\\Yifei\\code\\HelloWorldApi9")
+let config: Config = new Config("app_test", input_dir, "ohos", api_dir);
+//let config: Config = new Config("app_test", "C:\\msys64\\home\\Yifei\\code\\applications_photos\\resultTsDir\\common\\src\\main\\ets\\default\\view-bak");
 run(config);
