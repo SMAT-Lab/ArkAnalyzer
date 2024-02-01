@@ -14,6 +14,10 @@ export class Constant implements Value {
         return this.value;
     }
 
+    public setValue(newValue: string): void {
+        this.value = newValue;
+    }
+
     public getUses(): Value[] {
         return [];
     }

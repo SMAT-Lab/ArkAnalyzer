@@ -148,7 +148,7 @@ export class Cfg {
                     const leftOp=stmt.getLeftOp();
                     const rightOp=stmt.getRightOp();
                     if(leftOp instanceof Local){
-                        if (rightOp instanceof ArkNewExpr) {
+                        if (rightOp instanceof ArkNewExpr && leftOp.getType()=="") {
                             leftOp.setType(this.getTypeNewExpr(rightOp));
                         } else if (rightOp instanceof ArkBinopExpr){
                             let op1 = rightOp.getOp1()
@@ -227,7 +227,7 @@ export class Cfg {
                             }
                         } else if (rightOp instanceof Constant) {
                             leftOp.setType(rightOp.getType())
-                        } else if (rightOp instanceof ArkStaticInvokeExpr){
+                        } else if (rightOp instanceof ArkStaticInvokeExpr && leftOp.getType()==""){
                             // const staticInvokeExpr=rightOp as ArkStaticInvokeExpr;
                             // if(staticInvokeExpr.toString().includes("<AnonymousFunc-")){
                             leftOp.setType("Callable");
@@ -319,6 +319,12 @@ export class Cfg {
                             if (sceneFile.getName() == realImportFileName) {
                                 return this.searchImportClass(sceneFile, realName!);
                             }
+                        }
+                        // file不在scene中，视为外部库
+                        const targetSignature=importInfo.getTargetArkSignature();
+                        const apiMap=scene.apiArkInstancesMap;
+                        if(apiMap!=undefined&&apiMap.get(targetSignature)!=undefined){
+                            return apiMap.get(targetSignature);
                         }
                     }
                 }

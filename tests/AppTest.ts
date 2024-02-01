@@ -19,10 +19,11 @@ function run(config: Config) {
     const apiArkInstancesMap = apiScene.getArkInstancesMap();
     let projectScene: Scene = new Scene(projectName, projectFiles, input_dir, apiArkInstancesMap);
     //let projectScene: Scene = new Scene(projectName, projectFiles, input_dir);
-    const projectArkInstancesMap = projectScene.getArkInstancesMap();
+    const globalInstancesMap = projectScene.getGlobalArkInstancesMap();
 
-    
+
     //HotPropertyAccessCheck(scene);
+
 
     debugger;
 
@@ -32,6 +33,7 @@ function run(config: Config) {
 }
 
 const input_dir = "C:\\msys64\\home\\Yifei\\code\\HelloWorldApi9";
+//const input_dir = "C:\\msys64\\home\\Yifei\\code\\applications_photos";
 const api_dir = "C:\\msys64\\home\\Yifei\\code\\openharmony\\interface\\sdk-js\\api";
 //let config: Config = new Config("app_photo", "/Users/yifei/Documents/Code/applications_photos/common/src/main/ets");
 //let config: Config = new Config("app_photo", "/Users/yifei/Documents/Code/applications_systemui");

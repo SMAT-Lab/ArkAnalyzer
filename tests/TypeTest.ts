@@ -18,23 +18,21 @@ function run(config: Config) {
     //(2) Fill Scene class
     let scene: Scene = new Scene(projectName, projectFiles,config.input_dir);
 
-    let entryPoints = []
-    for (let method of scene.getMethods()) {
-        entryPoints.push(method.getSignature())
-    }
-    scene.makeCallGraphCHA(entryPoints)
 
-    // scene.getMethods()
-    // for (let a of scene.arkFiles) {
-    //     a.getMethods()
-    //     for (let clas of a.getClasses()) {
-    //         for (let method of clas.getMethods())
-    //             if (method.getName() == "invokeParam") {
-    //                 console.log(method.getName())
-    //                 console.log(method.getBody().getLocals())
-    //             }
-    //     }
-    // }
+    for (let file of scene.arkFiles) {
+        for(let clas of file.getClasses()){
+            if(clas.getName()=='_DEFAULT_ARK_CLASS'){
+                for(let method of clas.getMethods()){
+                    if(method.getName()=='_DEFAULT_ARK_METHOD'){
+                        let body=method.getBody();
+                        let cfg=body.getCfg();
+                        cfg.typeReference();
+                        console.log(1)
+                    }
+                }
+            }
+        }
+    }
     // scene.classHierarchyCallGraph.printDetails()
 }
 
@@ -43,5 +41,5 @@ function run(config: Config) {
 // let config: Config = new Config("systemui", "./codeLab/codelabs2/NetworkManagement/NewsDataArkTS");
 // let config: Config = new Config("systemui", "./codeLab/interface_sdk-js-master/");
 // let config: Config = new Config("systemui", "/Users/yangyizhuo/WebstormProjects/ArkAnalyzer/tests/resources/type");
-let config: Config = new Config("systemui", "/Users/yangyizhuo/WebstormProjects/ArkAnalyzer/tests/resources/callgraph", "");
+let config: Config = new Config("main", "./tests/resources/cfg", "");
 run(config);

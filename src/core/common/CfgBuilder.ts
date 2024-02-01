@@ -85,12 +85,11 @@ class SwitchStatementBuilder extends StatementBuilder {
 class TryStatementBuilder extends StatementBuilder {
     tryFirst: StatementBuilder | null = null;
     tryExit: StatementBuilder | null = null;
-    catchStatements: StatementBuilder[];
-    catchErrors: string[] = [];
+    catchStatement: StatementBuilder | null = null;
+    catchError: string = "";
     finallyStatement: StatementBuilder | null = null;
     constructor(type: string, code: string, astNode: NodeA, scopeID: number) {
         super(type, code, astNode, scopeID);
-        this.catchStatements = [];
     }
 }
 
@@ -673,20 +672,30 @@ export class CfgBuilder {
                             catchOrNot.nextT = catchExit;
                         }
                         // lastStatement=catchExit;
-
-                        trystm.catchStatements.push(catchOrNot.nextT);
+                        
+                        // trystm.catchStatements.push(catchOrNot.nextT);
+                        // catchOrNot.scopeID=catchOrNot.nextT.scopeID;
+                        const catchStatement=new StatementBuilder("statement",catchOrNot.code,null,catchOrNot.nextT.scopeID);
+                        catchStatement.next=catchOrNot.nextT;
+                        trystm.catchStatement=catchStatement;
                         let VD = catchClause.children[this.findChildIndex(catchClause, "VariableDeclaration")];
                         if (VD) {
-                            let error = VD.children[this.findChildIndex(VD, "TypeReference")];
-                            if (error) {
-                                trystm.catchErrors.push(error.text);
+                            if(VD.children[0].kind=="Identifier"){
+                                trystm.catchError=VD.children[0].text;
                             }
-                            else {
-                                trystm.catchErrors.push("Error");
+                            else{
+                                let error = VD.children[this.findChildIndex(VD, "TypeReference")];
+                                if (error) {
+                                    trystm.catchError=error.text;
+                                }
+                                else {
+                                    trystm.catchError="Error";
+                                }
                             }
+                            
                         }
                         else {
-                            trystm.catchErrors.push("Error");
+                            trystm.catchError="Error";
                         }
                     }
                     if (trychild.kind == "FinallyKeyword") {
@@ -777,8 +786,8 @@ export class CfgBuilder {
             if (trystm.tryFirst) {
                 this.deleteExit(trystm.tryFirst);
             }
-            for (let cat of trystm.catchStatements) {
-                this.deleteExit(cat);
+            if(trystm.catchStatement){
+                this.deleteExit(trystm.catchStatement);
             }
             if (trystm.finallyStatement) {
                 this.deleteExit(trystm.finallyStatement);
@@ -853,19 +862,19 @@ export class CfgBuilder {
         else if (stm.type == "switchStatement") {
             let sstm = stm as SwitchStatementBuilder;
             block.stms.push(sstm)
-            for(const cas of sstm.cases){
+            for (const cas of sstm.cases) {
                 this.buildBlocks(cas.stm, this.buildNewBlock([]));
-                const caseStmt=new StatementBuilder("statement", cas.value,null,sstm.nexts[0].scopeID);
-                const gotoStmt=new StatementBuilder("statement", "goto label"+cas.stm.block?.id,null,sstm.nexts[0].scopeID);
-                block.stms.push(caseStmt);
-                block.stms.push(gotoStmt);
+                // const caseStmt=new StatementBuilder("statement", cas.value,null,sstm.nexts[0].scopeID);
+                // const gotoStmt=new StatementBuilder("statement", "goto label"+cas.stm.block?.id,null,sstm.nexts[0].scopeID);
+                // block.stms.push(caseStmt);
+                // block.stms.push(gotoStmt);
             }
             if(sstm.default){
                 this.buildBlocks(sstm.default,this.buildNewBlock([]));
-                const caseStmt=new StatementBuilder("statement", "default :", null,sstm.nexts[0].scopeID);
-                const gotoStmt=new StatementBuilder("statement", "goto label"+sstm.default.block?.id,null, sstm.nexts[0].scopeID);
-                block.stms.push(caseStmt);
-                block.stms.push(gotoStmt);
+                // const caseStmt=new StatementBuilder("statement", "default :", null,sstm.nexts[0].scopeID);
+                // const gotoStmt=new StatementBuilder("statement", "goto label"+sstm.default.block?.id,null, sstm.nexts[0].scopeID);
+                // block.stms.push(caseStmt);
+                // block.stms.push(gotoStmt);
             }
 
         }
@@ -907,9 +916,9 @@ export class CfgBuilder {
                 finallyBlock.lasts.add(lastBlockInTry);
             }
             // let catchBlocks:Block[]=[];
-            for (let i = 0; i < trystm.catchStatements.length; i++) {
+            if(trystm.catchStatement){
                 let catchBlock = this.buildNewBlock([]);
-                this.buildBlocks(trystm.catchStatements[i], catchBlock);
+                this.buildBlocks(trystm.catchStatement, catchBlock);
                 for (let lastBlockInTry of lastBlocksInTry) {
                     lastBlockInTry.nexts.add(catchBlock);
                     catchBlock.lasts.add(lastBlockInTry);
@@ -917,7 +926,7 @@ export class CfgBuilder {
 
                 catchBlock.nexts.add(finallyBlock);
                 finallyBlock.lasts.add(catchBlock);
-                this.catches.push(new Catch(trystm.catchErrors[i], tryFirstBlock.id, finallyBlock.id, catchBlock.id));
+                this.catches.push(new Catch(trystm.catchError, tryFirstBlock.id, finallyBlock.id, catchBlock.id));
             }
             // if (trystm.finallyStatement) {
             //     this.resetWalkedPartial(trystm.finallyStatement);
@@ -950,26 +959,43 @@ export class CfgBuilder {
             // block.nexts.push(nextBlock);
             if (trystm.next)
                 this.buildBlocks(trystm.next, nextBlock);
-            if(nextBlock.stms.length>0){
-                let goto = new StatementBuilder("gotoStatement", "goto label" + nextBlock.id, null, trystm.tryFirst.scopeID);
-                goto.block = finallyBlock;
-                if (trystm.finallyStatement) {
+            let goto = new StatementBuilder("gotoStatement", "goto label" + nextBlock.id, null, trystm.tryFirst.scopeID);
+            goto.block = finallyBlock;
+            if (trystm.finallyStatement) {
+                if(trystm.catchStatement)
                     finallyBlock.stms.push(goto);
-                }
-                else {
-                    finallyBlock.stms = [goto];
-                }
             }
-            else{
+            else {
+                finallyBlock.stms = [goto];
+            }
+            if(nextBlock.stms.length == 0){
                 const returnStatement=new StatementBuilder("returnStatement", "return;", null, trystm.tryFirst.scopeID);
-                returnStatement.block = finallyBlock;
-                if (trystm.finallyStatement) {
-                    finallyBlock.stms.push(returnStatement);
-                }
-                else {
-                    finallyBlock.stms = [returnStatement];
-                }
+                goto.next=returnStatement;
+                returnStatement.lasts=[goto];
+                nextBlock.stms.push(returnStatement);
+                returnStatement.block=nextBlock;
             }
+            // if(nextBlock.stms.length>0){
+            //     let goto = new StatementBuilder("gotoStatement", "goto label" + nextBlock.id, null, trystm.tryFirst.scopeID);
+            //     goto.block = finallyBlock;
+            //     if (trystm.finallyStatement) {
+            //         if(trystm.catchStatements.length>0)
+            //             finallyBlock.stms.push(goto);
+            //     }
+            //     else {
+            //         finallyBlock.stms = [goto];
+            //     }
+            // }
+            // else{
+            //     const returnStatement=new StatementBuilder("returnStatement", "return;", null, trystm.tryFirst.scopeID);
+            //     returnStatement.block = finallyBlock;
+            //     if (trystm.finallyStatement) {
+            //         finallyBlock.stms.push(returnStatement);
+            //     }
+            //     else {
+            //         finallyBlock.stms = [returnStatement];
+            //     }
+            // }
             
         }
         else {
@@ -1014,14 +1040,14 @@ export class CfgBuilder {
                     }
                 }
                 else if (originStatement instanceof SwitchStatementBuilder) {
-                    for(const cas of originStatement.cases){
+                    for (const cas of originStatement.cases) {
                         const next = cas.stm.block;
                         if (next && (lastStatement || next != block) && !cas.stm.type.includes(" exit")) {
                             block.nexts.add(next);
                             next.lasts.add(block);
                         }
                     }
-                    if(originStatement.default){
+                    if (originStatement.default) {
                         const next = originStatement.default.block;
                         if (next && (lastStatement || next != block) && !originStatement.default.type.includes(" exit")) {
                             block.nexts.add(next);
@@ -1124,8 +1150,8 @@ export class CfgBuilder {
             if (trystm.tryFirst) {
                 this.buildLastAndHaveCall(trystm.tryFirst);
             }
-            for (let cat of trystm.catchStatements) {
-                this.buildLastAndHaveCall(cat);
+            if(trystm.catchStatement){
+                this.buildLastAndHaveCall(trystm.catchStatement);
             }
             if (trystm.finallyStatement) {
                 this.buildLastAndHaveCall(trystm.finallyStatement);
@@ -1172,8 +1198,8 @@ export class CfgBuilder {
             if (trystm.tryFirst) {
                 this.resetWalkedPartial(trystm.tryFirst);
             }
-            for (let cat of trystm.catchStatements) {
-                this.resetWalkedPartial(cat);
+            if(trystm.catchStatement){
+                this.resetWalkedPartial(trystm.catchStatement);
             }
             if (trystm.finallyStatement) {
                 this.resetWalkedPartial(trystm.finallyStatement);
@@ -1215,8 +1241,8 @@ export class CfgBuilder {
             if (trystm.tryFirst) {
                 this.CfgBuilder2Array(trystm.tryFirst);
             }
-            for (let cat of trystm.catchStatements) {
-                this.CfgBuilder2Array(cat);
+            if(trystm.catchStatement){
+                this.CfgBuilder2Array(trystm.catchStatement);
             }
             if (trystm.finallyStatement) {
                 this.CfgBuilder2Array(trystm.finallyStatement);
@@ -1787,6 +1813,17 @@ export class CfgBuilder {
                 elementValue = this.generateAssignStmt(elementValue);
             }
 
+            // temp
+            if (elementValue instanceof Constant) {
+                if (elementValue.getValue().startsWith('\'')) {
+                    let oldValue = elementValue.getValue();
+                    elementValue.setValue(oldValue.substring(1, oldValue.length - 1));
+                } else if (elementValue.getValue().startsWith('"')) {
+                    let oldValue = elementValue.getValue();
+                    elementValue.setValue(oldValue.substring(2, oldValue.length - 2));
+                }
+            }
+
             let baseLocal = baseValue as Local;
             if (baseLocal.getType() == 'array') {
                 value = new ArkArrayRef(baseLocal as Local, elementValue);
@@ -1818,7 +1855,7 @@ export class CfgBuilder {
                 value = new ArkStaticInvokeExpr(calleeNode.text, args);
             }
         }
-        // TODO:箭头函数视作静态方法还是普通方法
+
         else if (node.kind == "ArrowFunction") {
             let arrowFuncName = 'AnonymousFunc-' + this.name + '-' + this.anonymousFuncIndex;
             if (node.methodNodeInfo) {
@@ -2007,6 +2044,30 @@ export class CfgBuilder {
         return value;
     }
 
+    private astNodeToCompoundAssignment(node: NodeA): Stmt[] {
+        let operator = node.children[1].text;
+        if (!isCompoundAssignment(operator)) {
+            return [];
+        }
+
+        let stmts: Stmt[] = [];
+        let leftOpNode = node.children[0];
+        let leftOp = this.astNodeToValue(leftOpNode);
+        let rightOpNode = node.children[2];
+        let rightOp = this.astNodeToValue(rightOpNode);
+        if (IRUtils.moreThanOneAddress(leftOp) && IRUtils.moreThanOneAddress(rightOp)) {
+            rightOp = this.generateAssignStmt(rightOp);
+        }
+        stmts.push(new ArkAssignStmt(leftOp, new ArkBinopExpr(leftOp, rightOp, operator.substring(0, operator.length - 1))));
+        return stmts;
+
+        function isCompoundAssignment(operator: string): boolean {
+            return operator == '+=' || operator == '-=' || operator == '*=' || operator == '**=' ||
+                operator == '/=' || operator == '%=' || operator == '>>=' || operator == '>>>=' ||
+                operator == '<<=';
+        }
+    }
+
     private astNodeToThreeAddressAssignStmt(node: NodeA): Stmt[] {
         let leftOpNode = node.children[0];
         let leftOp = this.astNodeToValue(leftOpNode);
@@ -2138,6 +2199,9 @@ export class CfgBuilder {
         else if ((node.kind == 'BinaryExpression' && node.children[1].kind == 'FirstAssignment')
             || (node.kind == 'VariableDeclaration')) {
             threeAddressStmts.push(...this.astNodeToThreeAddressAssignStmt(node));
+        }
+        else if ((node.kind == 'BinaryExpression')) {
+            threeAddressStmts.push(...this.astNodeToCompoundAssignment(node));
         } else if (node.kind == "ExpressionStatement") {
             let expressionNodeIdx = 0;
             if (node.children[0].kind == 'JSDocComment') {
