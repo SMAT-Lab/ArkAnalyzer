@@ -47,6 +47,10 @@ export class ArkStream {
         return this;
     }
 
+    public getIndent(): string {
+        return this.indent;
+    }
+
     public close(): void {
         this.streamOut.close();
     }
