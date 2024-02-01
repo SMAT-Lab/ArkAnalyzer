@@ -18,9 +18,15 @@ function run(config: Config) {
     //(2) Fill Scene class
     let scene: Scene = new Scene(projectName, projectFiles,config.input_dir);
 
-    scene.makeCallGraphCHA([scene.arkFiles[2].getDefaultClass().getMethods()[0].getSignature()])
+    let entryPoints = []
+    for (let method of scene.getMethods()) {
+        entryPoints.push(method.getSignature())
+    }
+    scene.makeCallGraphCHA(entryPoints)
 
+    // scene.getMethods()
     // for (let a of scene.arkFiles) {
+    //     a.getMethods()
     //     for (let clas of a.getClasses()) {
     //         for (let method of clas.getMethods())
     //             if (method.getName() == "invokeParam") {
