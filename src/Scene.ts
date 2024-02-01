@@ -251,4 +251,8 @@ export class Scene {
     public getArkInstancesMap() {
         return this.internalArkInstancesMap;
     }
+
+    public getGlobalArkInstancesMap() {
+        return this.globalInstancesMap;
+    }
 }
