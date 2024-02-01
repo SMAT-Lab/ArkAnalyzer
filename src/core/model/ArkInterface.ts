@@ -14,7 +14,7 @@ export class ArkInterface {
     private declaringArkNamespace: ArkNamespace;
     private extendsNames: string[] = [];
     private fields: ArkField[] = [];
-    private properties: Property[] = [];
+    //private properties: Property[] = [];
     private methods: ArkMethod[] = [];
     private modifiers: Set<string> = new Set<string>();
     private members: InterfaceMember[] = [];
@@ -186,11 +186,11 @@ export class ArkInterface {
     }
 
     public getProperties() {
-        return this.properties;
+        //return this.properties;
     }
 
     public addProperty(property: Property) {
-        this.properties.push(property);
+        //this.properties.push(property);
     }
 
     public getModifiers() {

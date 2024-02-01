@@ -147,6 +147,29 @@ export function buildReturnType4Method(node: ts.FunctionDeclaration | ts.MethodD
                 returnType.push(referenceNodeName.escapedText.toString());
             }
         }
+        else if (ts.isUnionTypeNode(node.type)) {
+            let tmpReturnType = '';
+            node.type.types.forEach((tmpType) => {
+                if (ts.isTypeReferenceNode(tmpType)) {
+                    if (ts.isQualifiedName(tmpType.typeName)) {
+                        tmpReturnType = tmpReturnType + handleQualifiedName(tmpType.typeName) + ' | ';
+                    }
+                    else if (ts.isIdentifier(tmpType.typeName)) {
+                        tmpReturnType = tmpReturnType + tmpType.typeName.escapedText.toString() + ' | ';
+                    }
+                }
+                else if (ts.isLiteralTypeNode(tmpType)) {
+                    tmpReturnType = tmpReturnType + ts.SyntaxKind[tmpType.literal.kind] + ' | ';
+                }
+                else {
+                    tmpReturnType = tmpReturnType + ts.SyntaxKind[tmpType.kind] + ' | ';
+                }
+            });
+            returnType.push(tmpReturnType);
+        }
+        else if (ts.isLiteralTypeNode(node.type)) {
+            returnType.push(ts.SyntaxKind[node.type.literal.kind]);
+        }
         else {
             returnType.push(ts.SyntaxKind[node.type.kind]);
         }

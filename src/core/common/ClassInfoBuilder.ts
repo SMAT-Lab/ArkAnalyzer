@@ -101,10 +101,16 @@ function buildProperty(member: ts.PropertyDeclaration): Property {
                         type = type + tmpType.typeName.escapedText.toString() + ' | ';
                     }
                 }
+                else if (ts.isLiteralTypeNode(tmpType)) {
+                    type = type + ts.SyntaxKind[tmpType.literal.kind] + ' | ';
+                }
                 else {
                     type = type + ts.SyntaxKind[tmpType.kind] + ' | ';
                 }
             });
+        }
+        else if (ts.isLiteralTypeNode(member.type)) {
+            type = ts.SyntaxKind[member.type.literal.kind];
         }
         else {
             type = ts.SyntaxKind[member.type.kind];
