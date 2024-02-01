@@ -35,7 +35,7 @@
 //     let b = `template is ${a}`;
 // }
 
-function testCompoundAssignment() {
-    let a = 1;
-    a += 1;
+function test() {
+    const object = { a: 1 };
+    console.log(object['a']);  
 }
