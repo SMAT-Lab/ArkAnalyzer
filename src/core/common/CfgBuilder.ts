@@ -863,7 +863,7 @@ export class CfgBuilder {
         else if (stm.type == "switchStatement") {
             let sstm = stm as SwitchStatementBuilder;
             block.stms.push(sstm)
-            for(const cas of sstm.cases){
+            for (const cas of sstm.cases) {
                 this.buildBlocks(cas.stm, this.buildNewBlock([]));
                 // const caseStmt=new StatementBuilder("statement", cas.value,null,sstm.nexts[0].scopeID);
                 // const gotoStmt=new StatementBuilder("statement", "goto label"+cas.stm.block?.id,null,sstm.nexts[0].scopeID);
@@ -1041,14 +1041,14 @@ export class CfgBuilder {
                     }
                 }
                 else if (originStatement instanceof SwitchStatementBuilder) {
-                    for(const cas of originStatement.cases){
+                    for (const cas of originStatement.cases) {
                         const next = cas.stm.block;
                         if (next && (lastStatement || next != block) && !cas.stm.type.includes(" exit")) {
                             block.nexts.add(next);
                             next.lasts.add(block);
                         }
                     }
-                    if(originStatement.default){
+                    if (originStatement.default) {
                         const next = originStatement.default.block;
                         if (next && (lastStatement || next != block) && !originStatement.default.type.includes(" exit")) {
                             block.nexts.add(next);
@@ -1845,7 +1845,7 @@ export class CfgBuilder {
                 value = new ArkStaticInvokeExpr(calleeNode.text, args);
             }
         }
-        // TODO:箭头函数视作静态方法还是普通方法
+
         else if (node.kind == "ArrowFunction") {
             let arrowFuncName = 'AnonymousFunc-' + this.name + '-' + this.anonymousFuncIndex;
             if (node.methodNodeInfo) {
@@ -2032,6 +2032,30 @@ export class CfgBuilder {
         return value;
     }
 
+    private astNodeToCompoundAssignment(node: NodeA): Stmt[] {
+        let operator = node.children[1].text;
+        if (!isCompoundAssignment(operator)) {
+            return [];
+        }
+
+        let stmts: Stmt[] = [];
+        let leftOpNode = node.children[0];
+        let leftOp = this.astNodeToValue(leftOpNode);
+        let rightOpNode = node.children[2];
+        let rightOp = this.astNodeToValue(rightOpNode);
+        if (IRUtils.moreThanOneAddress(leftOp) && IRUtils.moreThanOneAddress(rightOp)) {
+            rightOp = this.generateAssignStmt(rightOp);
+        }
+        stmts.push(new ArkAssignStmt(leftOp, new ArkBinopExpr(leftOp, rightOp, operator.substring(0, operator.length - 1))));
+        return stmts;
+
+        function isCompoundAssignment(operator: string): boolean {
+            return operator == '+=' || operator == '-=' || operator == '*=' || operator == '**=' ||
+                operator == '/=' || operator == '%=' || operator == '>>=' || operator == '>>>=' ||
+                operator == '<<=';
+        }
+    }
+
     private astNodeToThreeAddressAssignStmt(node: NodeA): Stmt[] {
         let leftOpNode = node.children[0];
         let leftOp = this.astNodeToValue(leftOpNode);
@@ -2163,6 +2187,9 @@ export class CfgBuilder {
         else if ((node.kind == 'BinaryExpression' && node.children[1].kind == 'FirstAssignment')
             || (node.kind == 'VariableDeclaration')) {
             threeAddressStmts.push(...this.astNodeToThreeAddressAssignStmt(node));
+        }
+        else if ((node.kind == 'BinaryExpression')) {
+            threeAddressStmts.push(...this.astNodeToCompoundAssignment(node));
         } else if (node.kind == "ExpressionStatement") {
             let expressionNodeIdx = 0;
             if (node.children[0].kind == 'JSDocComment') {
