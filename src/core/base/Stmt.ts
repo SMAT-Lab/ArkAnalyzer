@@ -427,3 +427,28 @@ export class ArkDeleteStmt extends Stmt {
         this.replaceUses(uses);
     }
 }
+
+export class ArkThrowStmt extends Stmt {
+    private op: Value;
+
+    constructor(op: Value) {
+        super();
+        this.op = op;
+        this.updateUses();
+    }
+
+    public getOp():Value{
+        return this.op;
+    }
+
+    public toString(): string {
+        return 'throw ' + this.op;
+    }
+
+    private updateUses(): void {
+        let uses: Value[] = [];
+        uses.push(this.op);
+        uses.push(...this.op.getUses());
+        this.replaceUses(uses);
+    }
+}

@@ -3,8 +3,8 @@ import { ASTree, NodeA } from '../base/Ast';
 import { Constant } from '../base/Constant';
 import { AbstractInvokeExpr, ArkBinopExpr, ArkCastExpr, ArkConditionExpr, ArkInstanceInvokeExpr, ArkLengthExpr, ArkNewArrayExpr, ArkNewExpr, ArkStaticInvokeExpr, ArkTypeOfExpr, ArkUnopExpr } from '../base/Expr';
 import { Local } from '../base/Local';
-import { AbstractFieldRef, ArkArrayRef, ArkInstanceFieldRef, ArkParameterRef, ArkStaticFieldRef, ArkThisRef } from '../base/Ref';
-import { ArkAssignStmt, ArkCompoundStmt, ArkDeleteStmt, ArkGotoStmt, ArkIfStmt, ArkInvokeStmt, ArkReturnStmt, ArkReturnVoidStmt, ArkSwitchStmt, Stmt } from '../base/Stmt';
+import { AbstractFieldRef, ArkArrayRef, ArkCaughtExceptionRef, ArkInstanceFieldRef, ArkParameterRef, ArkStaticFieldRef, ArkThisRef } from '../base/Ref';
+import { ArkAssignStmt, ArkCompoundStmt, ArkDeleteStmt, ArkGotoStmt, ArkIfStmt, ArkInvokeStmt, ArkReturnStmt, ArkReturnVoidStmt, ArkSwitchStmt, ArkThrowStmt, Stmt } from '../base/Stmt';
 import { Value } from '../base/Value';
 import { BasicBlock } from '../graph/BasicBlock';
 import { Cfg } from '../graph/Cfg';
@@ -675,7 +675,7 @@ export class CfgBuilder {
 
                         // trystm.catchStatements.push(catchOrNot.nextT);
                         // catchOrNot.scopeID=catchOrNot.nextT.scopeID;
-                        const catchStatement = new StatementBuilder("statement",catchOrNot.code,trychild,catchOrNot.nextT.scopeID);
+                        const catchStatement = new StatementBuilder("statement", catchOrNot.code, trychild, catchOrNot.nextT.scopeID);
                         catchStatement.next = catchOrNot.nextT;
                         trystm.catchStatement = catchStatement;
                         let VD = catchClause.children[this.findChildIndex(catchClause, "VariableDeclaration")];
@@ -1588,16 +1588,6 @@ export class CfgBuilder {
         return true;
     }
 
-    // temp function
-    private toSupport(node: NodeA): boolean {
-        let nodeKind = node.kind;
-        if (nodeKind == 'TryStatement'
-            || nodeKind == 'ThrowStatement') {
-            return true;
-        }
-        return false;
-    }
-
     private getSyntaxListItems(node: NodeA): NodeA[] {
         let items: NodeA[] = [];
         for (const child of node.children) {
@@ -1609,7 +1599,6 @@ export class CfgBuilder {
     }
 
     // temp function
-    // TODO: 支持i += 1;之类的复合赋值语句
     private nopStmt(node: NodeA): boolean {
         let nodeKind = node.kind;
         if (nodeKind == 'BinaryExpression' || nodeKind == 'VoidExpression') {
@@ -2031,9 +2020,6 @@ export class CfgBuilder {
             this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(resultLocal, this.astNodeToValue(whenFalseNode)));
             value = resultLocal;
         }
-        else if (this.toSupport(node)) {
-            value = new Constant(node.text);
-        }
         else {
             console.log('unsupported expr node type:', node.kind, ', text:', node.text)
             value = new Constant(node.text);
@@ -2243,6 +2229,21 @@ export class CfgBuilder {
         else if (node.kind == 'SwitchStatement') {
             this.astNodeToThreeAddressSwitchStatement(node);
         }
+        else if (node.kind == 'ThrowStatement') {
+            let op = this.astNodeToValue(node.children[1]);
+            if (IRUtils.moreThanOneAddress(op)) {
+                op = this.generateAssignStmt(op);
+            }
+            threeAddressStmts.push(new ArkThrowStmt(op));
+        }
+        else if (node.kind == 'CatchClause') {
+            let catchedValueNode = node.children[this.findChildIndex(node, 'OpenParenToken') + 1];
+            let catchedValue = new Local(catchedValueNode.text);
+            catchedValue = this.getOriginalLocal(catchedValue);
+
+            let caughtExceptionRef = new ArkCaughtExceptionRef('Error');
+            threeAddressStmts.push(new ArkAssignStmt(catchedValue, caughtExceptionRef));
+        }
         else if (node.kind == 'CallExpression') {
             threeAddressStmts.push(new ArkInvokeStmt(this.astNodeToValue(node) as AbstractInvokeExpr));
         }
@@ -2272,9 +2273,6 @@ export class CfgBuilder {
             let popertyAccessExprNode = node.children[1];
             let popertyAccessExpr = this.astNodeToValue(popertyAccessExprNode) as AbstractFieldRef;
             threeAddressStmts.push(new ArkDeleteStmt(popertyAccessExpr));
-        }
-        else if (this.toSupport(node)) {
-
         }
         else if (this.nopStmt(node)) {
             // threeAddressStmts.push(new ArkNopStmt());
@@ -2313,6 +2311,9 @@ export class CfgBuilder {
                 } else if (originStmt.code.startsWith('return')) {
                     // 额外添加的return语句特殊处理
                     originStmt.threeAddressStmts.push(new ArkReturnVoidStmt());
+                } else if (originStmt.type == 'gotoStatement') {
+                    // 额外添加的goto语句特殊处理
+                    originStmt.threeAddressStmts.push(new ArkGotoStmt());
                 }
             }
         }

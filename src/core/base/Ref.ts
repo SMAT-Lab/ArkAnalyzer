@@ -156,3 +156,25 @@ export class ArkThisRef extends AbstractRef {
         return 'this: ' + this.type;
     }
 }
+
+export class ArkCaughtExceptionRef extends AbstractRef {
+    private type: string;
+
+    constructor(type: string) {
+        super();
+        this.type = type;
+    }
+
+    public getType(): string {
+        return this.type;
+    }
+
+    public getUses(): Value[] {
+        let uses: Value[] = [];
+        return uses;
+    }
+
+    public toString(): string {
+        return 'caughtexception: ' + this.type;
+    }
+}
