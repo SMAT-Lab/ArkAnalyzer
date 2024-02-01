@@ -103,7 +103,7 @@ export function buildParameters(node: ts.FunctionDeclaration | ts.MethodDeclarat
                         }
                     }
                     else if (ts.isLiteralTypeNode(tmpType)) {
-                        parameterTypes.set(parameterName, ts.SyntaxKind[tmpType.literal.kind]) + ' | ';
+                        parameterType = parameterType + ts.SyntaxKind[tmpType.literal.kind] + ' | ';
                     }
                     else {
                         parameterType = parameterType + ts.SyntaxKind[tmpType.kind] + ' | ';

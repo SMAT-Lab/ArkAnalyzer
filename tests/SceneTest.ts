@@ -33,9 +33,9 @@ function run(config: Config) {
 
 //let config: Config = new Config("app_photo", "/Users/yifei/Documents/Code/applications_photos/common/src/main/ets");
 //let config: Config = new Config("app_photo", "/Users/yifei/Documents/Code/applications_systemui");
-//let config: Config = new Config("app_photo", "./tests/sample");
+let config: Config = new Config("app_photo", "./tests/sample", "");
 //let config: Config = new Config("app_test", "/Users/yifei/Documents/Code/test/HelloWorldApi9");
 //let config: Config = new Config("app_test", "C:\\msys64\\home\\Yifei\\code\\HelloWorldApi9");
-let config: Config = new Config("app_test", "C:\\msys64\\home\\Yifei\\code\\openharmony\\interface\\sdk-js");
+//let config: Config = new Config("app_test", "C:\\msys64\\home\\Yifei\\code\\openharmony\\interface\\sdk-js");
 //let config: Config = new Config("app_test", "C:\\msys64\\home\\Yifei\\code\\applications_photos\\resultTsDir\\common\\src\\main\\ets\\default\\view-bak");
 run(config);
