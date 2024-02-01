@@ -902,8 +902,10 @@ export class CfgBuilder {
             }
 
             let finallyBlock = this.buildNewBlock([]);
+            let lastFinallyBlock : Block | null = null;
             if (trystm.finallyStatement) {
                 this.buildBlocks(trystm.finallyStatement, finallyBlock);
+                lastFinallyBlock=this.blocks[this.blocks.length-1];
                 // let stm=new StatementBuilder("gotoStatement","goto label"+finallyBlock.id,null,tryFirstBlock.stms[0].scopeID);
                 // tryFirstBlock.stms.push(stm);
             }
@@ -956,6 +958,9 @@ export class CfgBuilder {
             //     }
             // }
             let nextBlock = this.buildNewBlock([]);
+            if(lastFinallyBlock){
+                finallyBlock=lastFinallyBlock;
+            }
             // block.nexts.push(nextBlock);
             if (trystm.next)
                 this.buildBlocks(trystm.next, nextBlock);
@@ -968,6 +973,8 @@ export class CfgBuilder {
             else {
                 finallyBlock.stms = [goto];
             }
+            finallyBlock.nexts.add(nextBlock);
+            nextBlock.lasts.add(finallyBlock);
             if (nextBlock.stms.length == 0) {
                 const returnStatement = new StatementBuilder("returnStatement", "return;", null, trystm.tryFirst.scopeID);
                 goto.next = returnStatement;

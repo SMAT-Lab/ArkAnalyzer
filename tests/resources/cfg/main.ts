@@ -41,20 +41,28 @@
 //     console.log(1)
 // }
 
-class a{
-  x:number;
-  constructor(){
-    this.x=1;
-  }
-  f():number|null{
-    this.x++;
-    return this.x;
-  }
+try{
+  console.log(1)
+}catch(e:Error){
+  console.log(2)
+}finally{
+
 }
+let j=1
+// class a{
+//   x:number;
+//   constructor(){
+//     this.x=1;
+//   }
+//   f():number|null{
+//     this.x++;
+//     return this.x;
+//   }
+// }
 
 
-let a1=new a();
-let y=a1.f();
+// let a1=new a();
+// let y=a1.f();
 
 // let mySet = new Set([1, 2, 3, 4]);
 
