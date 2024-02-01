@@ -229,6 +229,7 @@ export class Scene {
 
     private collectArkInstances() {
         this.arkFiles.forEach((arkFile) => {
+            this.addArkInstance(arkFile.getArkSignature(), arkFile);
             arkFile.getArkInstancesMap().forEach((value, key) => {
                 this.addArkInstance(key, value);
             });
