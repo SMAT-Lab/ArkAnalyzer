@@ -9,7 +9,7 @@ export class CfgTest {
         // let config = new Config("ThreeAddresStmtTest", "D:\\codes\\tests\\applications_systemui\\common\\src\\main\\ets\\default\\abilitymanager");
         // let config = new Config("ThreeAddresStmtTest", "D:\\codes\\tests\\applications_systemui");
 
-        let config = new Config("ThreeAddresStmtTest", "D:\\codes\\openharmony\\applications\\applications_photos");
+        let config = new Config("ThreeAddresStmtTest", "D:\\codes\\openharmony\\applications\\applications_photos", '');
 
 
         const projectName: string = config.projectName;
@@ -82,4 +82,4 @@ let cfgTest = new CfgTest();
 cfgTest.testThreeAddresStmt();
 // cfgTest.testBlocks();
 
-debugger
+// debugger

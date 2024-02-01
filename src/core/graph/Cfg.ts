@@ -170,16 +170,21 @@ export class Cfg {
                             } else if (op2 instanceof Constant) {
                                 op2Type = op2.getType()
                             }
+                            // TODO: op1Type, op2Type可能都需要解析成数组，将resolveBinaryResultType进行修改，将两个数组中的所有类型进行计算拼接，获取所有可能的结果
                             leftOp.setType(this.resolveBinaryResultType(op1Type!, op2Type!, rightOp.getOperator()));
                         } else if (rightOp instanceof ArkCastExpr) {
 
                         } else if (rightOp instanceof ArkInstanceFieldRef) {
                             // console.log(rightOp)
                             let completeClassName = rightOp.getBase().getType()
+                            // TODO: 这里同CHA, a.b a可能有多个类型，需要全部进行解析再赋值
                             let lastDotIndex = completeClassName.lastIndexOf('.')
                             let targetArkFile = this.getArkFileByName(
                                 completeClassName.substring(0, lastDotIndex), this.declaringClass.getDeclaringArkFile()
                             )
+                            /** TODO: targetArkFile是在classType包含完整文件路径的情况下，获取到类的文件路径，获取对应的文件
+                             *      classInstance需要改为数组
+                             */
                             let classInstance = this.resolveClassInstance(
                                 completeClassName, targetArkFile)
                             if (classInstance != null) {
@@ -206,6 +211,7 @@ export class Cfg {
                             }
                         } else if (rightOp instanceof Local || rightOp instanceof ArkParameterRef) {
                             let rightOpType = rightOp.getType()
+                            // TODO: 多类型解析
                             if (isPrimaryType(rightOpType)) {
                                 leftOp.setType(rightOpType)
                             } else {
@@ -313,6 +319,12 @@ export class Cfg {
                             if (sceneFile.getName() == realImportFileName) {
                                 return this.searchImportClass(sceneFile, realName!);
                             }
+                        }
+                        // file不在scene中，视为外部库
+                        const targetSignature=importInfo.getTargetArkSignature();
+                        const apiMap=scene.apiArkInstancesMap;
+                        if(apiMap!=undefined&&apiMap.get(targetSignature)!=undefined){
+                            return apiMap.get(targetSignature);
                         }
                     }
                 }

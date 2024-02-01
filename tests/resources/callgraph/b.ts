@@ -5,3 +5,9 @@ export function B(){
 export class C {
 
 }
+
+export function invokeParam(a: number, b: string, c: C) {
+    let d = a
+    let e = b
+    let f = c
+}

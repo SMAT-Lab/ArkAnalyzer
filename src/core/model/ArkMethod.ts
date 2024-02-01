@@ -130,6 +130,10 @@ export class ArkMethod {
         return this.modifiers.has('ExportKeyword');
     }
 
+    public isDefaultArkMethod(): boolean {
+        return this.getName() === "_DEFAULT_ARK_METHOD";
+    }
+
     public getParameters() {
         return this.parameters;
     }

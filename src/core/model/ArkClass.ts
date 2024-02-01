@@ -134,6 +134,10 @@ export class ArkClass {
         return this.modifiers.has('ExportKeyword');
     }
 
+    public isDefaultArkClass(): boolean {
+        return this.getName() === "_DEFAULT_ARK_CLASS";
+    }
+    
     public getSignature() {
         return this.classSignature;
     }

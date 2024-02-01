@@ -9,9 +9,8 @@ import { ArkStream } from '../ArkStream';
 import { Printer } from '../Printer';
 
 export class SourcePrinter extends Printer {
-
-    protected printImports(arkFile: ArkFile, streamOut: ArkStream): void {
-        for (let info of arkFile.getImportInfos()) {
+    protected printStart(streamOut: ArkStream): void {
+        for (let info of this.arkFile.getImportInfos()) {
             if (info.getimportType() === 'Identifier') {
                 // import fs from 'fs'
                 streamOut.write('import ' + info.getImportClauseName() + ' from ')
@@ -34,9 +33,8 @@ export class SourcePrinter extends Printer {
             }
         }
     }
-
-    protected printExports(arkFile: ArkFile, streamOut: ArkStream): void {
-        for (let info of arkFile.getExportInfos()) {
+    protected printEnd(streamOut: ArkStream): void {
+        for (let info of this.arkFile.getExportInfos()) {
             if (info.getExportClauseType() !== 'NamespaceExport' && info.getExportClauseType() !== 'NamedExports') {
                 continue;
             }
@@ -80,6 +78,10 @@ export class SourcePrinter extends Printer {
     }
 
     protected printClass(cls: ArkClass, streamOut: ArkStream): void {
+        if (cls.isDefault()) {
+            return this.printMethods(cls, streamOut);
+        }
+
         // print export class name + extends c0 implements x1, x2 {
         for (let m of cls.getModifiers()) {
             streamOut.write(this.resolveKeywordType(m) + ' ');
@@ -100,8 +102,18 @@ export class SourcePrinter extends Printer {
         streamOut.decIndent();
         streamOut.writeLine('}')
     }
+    
+    private printMethods(cls: ArkClass, streamOut: ArkStream): void {
+        for (let method of cls.getMethods()) {
+            if (method.isDefault()) {
+                this.printBody(method.getBody(), streamOut, true);
+            } else {
+                this.printMethod(method, streamOut);
+            }
+        }
+    }
 
-    protected printMethod(method: ArkMethod, streamOut: ArkStream): void {
+    private printMethod(method: ArkMethod, streamOut: ArkStream): void {
         this.printMethodProto(method, streamOut);
         // abstract function no body
         if (method.containsModifier('AbstractKeyword')) {
@@ -118,7 +130,7 @@ export class SourcePrinter extends Printer {
         streamOut.writeLine('}');
     }
 
-    protected printBody(body: ArkBody, streamOut: ArkStream, isDefault: boolean): void {
+    private printBody(body: ArkBody, streamOut: ArkStream, isDefault: boolean): void {
         let blocks = body.getOriginalCfg().getBlocks();
         let visitor = new Set<BasicBlock>();
 

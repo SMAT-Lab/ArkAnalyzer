@@ -163,6 +163,10 @@ export class ArkFile {
         this.projectDir = projectDir;
     }
 
+    public getProjectDir(): string {
+        return this.projectDir;
+    }
+
     public setCode(code: string) {
         this.code = code;
     }

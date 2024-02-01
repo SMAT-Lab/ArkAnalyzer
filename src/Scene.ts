@@ -195,7 +195,7 @@ export class Scene {
 
     public makeCallGraphCHA(entryPoints: MethodSignature[]) {
         this.classHierarchyCallGraph = new ClassHierarchyAnalysisAlgorithm(this);
-        this.classHierarchyCallGraph.loadCallGraph([this.arkFiles[2].getDefaultClass().getMethods()[0].getSignature()])
+        this.classHierarchyCallGraph.loadCallGraph(entryPoints)
         this.classHierarchyCallGraph.printDetails()
     }
 
