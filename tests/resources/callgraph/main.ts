@@ -6,6 +6,7 @@ import {func1} from "./temp/a";
 A();
 C();
 let dog: Cat = new Cat()
+let mee = new Cat()
 // let d: Cat | null = new Cat()
 let c = dog.aaaaaaaaaa
 // let d = c

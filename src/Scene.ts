@@ -224,7 +224,7 @@ export class Scene {
     public makeCallGraphCHA(entryPoints: MethodSignature[]) {
         this.classHierarchyCallGraph = new ClassHierarchyAnalysisAlgorithm(this);
         this.classHierarchyCallGraph.loadCallGraph(entryPoints)
-        this.classHierarchyCallGraph.printDetails()
+        // this.classHierarchyCallGraph.printDetails()
     }
 
     /**

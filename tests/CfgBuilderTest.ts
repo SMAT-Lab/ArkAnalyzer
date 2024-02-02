@@ -5,6 +5,7 @@ import fs from 'fs';
 import { ClassSignature } from "../src/core/model/ArkSignature";
 import { ASTree } from "../src/core/base/Ast";
 import { HotPropertyAccessCheck } from "./checker/HotPropertyAccessCheck";
+import {printCallGraphDetails} from "../src/utils/callGraphUtils";
 
 function run(config: Config) {
     const projectName: string = config.projectName;
@@ -23,17 +24,20 @@ function run(config: Config) {
         entryPoints.push(method.getSignature())
     }
     scene.makeCallGraphCHA(entryPoints)
+    let methods = scene.classHierarchyCallGraph.getMethods()
+    let calls = scene.classHierarchyCallGraph.getCalls()
+    printCallGraphDetails(methods, calls, config.project_dir)
 
     // scene.getMethods()
-    for (let a of scene.arkFiles) {
-        for (let clas of a.getClasses()) {
-            if (clas.getSignature().toString() === "<main.ts>.<_DEFAULT_ARK_CLASS>")
-                for (let method of clas.getMethods()) {
-                    // console.log(method.getName())
-                    // console.log(method.getBody().getLocals())
-                }
-        }
-    }
+    // for (let a of scene.arkFiles) {
+    //     for (let clas of a.getClasses()) {
+    //         if (clas.getSignature().toString() === "<main.ts>.<_DEFAULT_ARK_CLASS>")
+    //             for (let method of clas.getMethods()) {
+    //                 // console.log(method.getName())
+    //                 // console.log(method.getBody().getLocals())
+    //             }
+    //     }
+    // }
     // scene.classHierarchyCallGraph.printDetails()
 }
 
