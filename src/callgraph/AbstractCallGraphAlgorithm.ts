@@ -128,29 +128,12 @@ export abstract class AbstractCallGraphAlgorithm {
         return targetCalls
     }
 
-    public printDetails(): void {
-        // 打印 Methods
-        console.log('Methods:');
-        this.methods.forEach(method => {
-            console.log(`    ${method}`);
-        });
-
-        // 打印 Calls
-        console.log('Calls:');
-        // 计算最长的method名称的长度，加上箭头和空格的长度
-        const longestCallerLength = Array.from(this.calls.keys()).reduce((max, method) => Math.max(max, method.length), 0);
-        const arrow = '->';
-        const spacesAfterArrow = '   ';
-        const prefixLength = longestCallerLength + arrow.length + spacesAfterArrow.length;
-
-        this.calls.forEach((calledMethods, method) => {
-            // 对于每个调用源，只打印一次调用源和第一个目标方法
-            const firstMethod = calledMethods[0];
-            console.log(`    ${method.padEnd(longestCallerLength)}   ${arrow}   ${firstMethod}`);
-
-            for (let i = 1; i < calledMethods.length; i++) {
-                console.log(`       ${' '.repeat(prefixLength)}${calledMethods[i]}`);
-            }
-        });
+    public getCalls() {
+        return this.calls
     }
+
+    public getMethods() {
+        return this.methods
+    }
+
 }

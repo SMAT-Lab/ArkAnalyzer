@@ -1,5 +1,11 @@
 import path from "path";
-import { isPrimaryType } from "../../utils/typeReferenceUtils";
+import {
+    getArkFileByName,
+    isPrimaryType,
+    isPrimaryTypeKeyword, matchClassInFile, resolveBinaryResultType, resolveClassInstance,
+    resolvePrimaryTypeKeyword, searchImportMessage,
+    splitType, transformArrayToString
+} from "../../utils/typeReferenceUtils";
 import { Constant } from "../base/Constant";
 import { DefUseChain } from "../base/DefUseChain";
 import { ArkBinopExpr, ArkCastExpr, ArkInstanceInvokeExpr, ArkNewExpr, ArkStaticInvokeExpr } from "../base/Expr";
@@ -147,9 +153,19 @@ export class Cfg {
                 if(stmt instanceof ArkAssignStmt){
                     const leftOp=stmt.getLeftOp();
                     const rightOp=stmt.getRightOp();
+                    let leftPossibleTypes: string[] = []
                     if(leftOp instanceof Local){
-                        if (rightOp instanceof ArkNewExpr && (leftOp.getType()=="" || leftOp.getType()=="any")) {
-                            leftOp.setType(this.getTypeNewExpr(rightOp));
+                        // console.log(stmt.toString())
+                        // console.log("\t"+leftOp.getName() +": "+ leftOp.getType())
+                        if (rightOp instanceof ArkNewExpr) {
+                            if (leftOp.getType()=="" || leftOp.getType()=="any") {
+                                leftOp.setType(this.getTypeNewExpr(rightOp));
+                            }// else if (leftOp.getType() != ""){
+                            //     let classInstance = resolveClassInstance(leftOp.getType(), this.declaringClass.getDeclaringArkFile())
+                            //     if (classInstance != null) {
+                            //         leftOp.setType(classInstance.getSignature().toString())
+                            //     }
+                            // }
                         } else if (rightOp instanceof ArkBinopExpr){
                             let op1 = rightOp.getOp1()
                             let op2 = rightOp.getOp2()
@@ -170,61 +186,63 @@ export class Cfg {
                             } else if (op2 instanceof Constant) {
                                 op2Type = op2.getType()
                             }
-                            // TODO: op1Type, op2Type可能都需要解析成数组，将resolveBinaryResultType进行修改，将两个数组中的所有类型进行计算拼接，获取所有可能的结果
-                            leftOp.setType(this.resolveBinaryResultType(op1Type!, op2Type!, rightOp.getOperator()));
+                            leftOp.setType(resolveBinaryResultType(op1Type!, op2Type!, rightOp.getOperator()));
                         } else if (rightOp instanceof ArkCastExpr) {
-
+                            // TODO
                         } else if (rightOp instanceof ArkInstanceFieldRef) {
-                            // console.log(rightOp)
-                            let completeClassName = rightOp.getBase().getType()
-                            // TODO: 这里同CHA, a.b a可能有多个类型，需要全部进行解析再赋值
-                            let lastDotIndex = completeClassName.lastIndexOf('.')
-                            let targetArkFile = this.getArkFileByName(
-                                completeClassName.substring(0, lastDotIndex), this.declaringClass.getDeclaringArkFile()
-                            )
-                            /** TODO: targetArkFile是在classType包含完整文件路径的情况下，获取到类的文件路径，获取对应的文件
-                             *      classInstance需要改为数组
-                             */
-                            let classInstance = this.resolveClassInstance(
-                                completeClassName, targetArkFile)
-                            if (classInstance != null) {
-                                for (let field of classInstance.getFields()) {
-                                    // console.log(field.getType())
-                                    if (field.getName() === rightOp.getFieldName()) {
-                                        let fieldType = field.getType()
-                                        if (isPrimaryType(fieldType)) {
-                                            leftOp.setType(fieldType)
-                                        } else {
-                                            let classInstanceFile = this.getArkFileByName(
-                                                classInstance.getSignature().getArkFile(),
-                                                this.declaringClass.getDeclaringArkFile())
-                                            if (classInstanceFile != null) {
-                                                let fieldTypeClassName = this.searchImportClass(
-                                                    classInstanceFile,
-                                                    fieldType
-                                                )
-                                                leftOp.setType(fieldTypeClassName)
+                            let completeClassNames = splitType(rightOp.getBase().getType())
+                            for (let completeClassName of completeClassNames) {
+                                let lastDotIndex = completeClassName.lastIndexOf('.')
+                                let targetArkFile = getArkFileByName(
+                                    completeClassName.substring(0, lastDotIndex), this.declaringClass.getDeclaringArkFile().getScene()
+                                )
+                                let classInstance = resolveClassInstance(
+                                    completeClassName, targetArkFile)
+                                if (classInstance != null) {
+                                    for (let field of classInstance.getFields()) {
+                                        if (field.getName() === rightOp.getFieldName()) {
+                                            let fieldTypes = splitType(field.getType())
+                                            for (let fieldType of fieldTypes) {
+                                                if (isPrimaryTypeKeyword(fieldType)) {
+                                                    leftPossibleTypes.push(resolvePrimaryTypeKeyword(fieldType))
+                                                } else {
+                                                    let classInstanceFile = getArkFileByName(
+                                                        classInstance.getSignature().getArkFile(),
+                                                        this.declaringClass.getDeclaringArkFile().getScene())
+                                                    if (classInstanceFile != null) {
+                                                        let fieldTypeClassName = searchImportMessage(
+                                                            classInstanceFile,
+                                                            fieldType,
+                                                            matchClassInFile
+                                                        )
+                                                        if (fieldTypeClassName === "")
+                                                            continue
+                                                        leftPossibleTypes.push(fieldTypeClassName)
+                                                    }
+                                                }
                                             }
                                         }
                                     }
                                 }
                             }
-                        } else if (rightOp instanceof Local || rightOp instanceof ArkParameterRef) {
-                            let rightOpType = rightOp.getType()
-                            // TODO: 多类型解析
-                            if (isPrimaryType(rightOpType)) {
-                                leftOp.setType(rightOpType)
-                            } else {
-                                // TODO: 对应函数参数的解析,可能会与类属性解析冲突
-                                if (!rightOpType.includes(".")) {
-                                    let completeClassName = this.searchImportClass(
-                                        this.declaringClass.getDeclaringArkFile(),
-                                        rightOpType)
-                                    leftOp.setType(completeClassName)
+                            leftOp.setType(transformArrayToString(leftPossibleTypes))
+                        } else if (rightOp instanceof Local) {
+                            let rightOpTypes = splitType(rightOp.getType())
+                            for (let rightOpType of rightOpTypes) {
+                                if (isPrimaryType(rightOpType)) {
+                                    leftPossibleTypes.push(rightOpType)
                                 } else {
-                                    leftOp.setType(rightOpType)
+                                    if (!rightOpType.includes(".")) {
+                                        let completeClassName = searchImportMessage(
+                                            this.declaringClass.getDeclaringArkFile(),
+                                            rightOpType, matchClassInFile)
+                                        leftPossibleTypes.push(completeClassName)
+                                    } else {
+                                        leftPossibleTypes.push(rightOpType)
+                                    }
                                 }
                             }
+                            leftOp.setType(transformArrayToString(leftPossibleTypes))
                         } else if (rightOp instanceof Constant) {
                             leftOp.setType(rightOp.getType())
                         // } else if (rightOp instanceof ArkStaticInvokeExpr && (leftOp.getType()=="" || leftOp.getType()=="any")){
@@ -251,6 +269,19 @@ export class Cfg {
                             const method=map.get(methodMapSignature);
                             if(method)
                                 leftOp.setType(method.returnType);
+                        } else if (rightOp instanceof ArkParameterRef) {
+                            let rightOpTypes = splitType(rightOp.getType())
+                            for (let rightOpType of rightOpTypes) {
+                                if (isPrimaryTypeKeyword(rightOpType)) {
+                                    leftPossibleTypes.push(resolvePrimaryTypeKeyword(rightOpType))
+                                } else {
+                                    let completeClassName = searchImportMessage(
+                                        this.declaringClass.getDeclaringArkFile(),
+                                        rightOpType, matchClassInFile)
+                                    leftPossibleTypes.push(completeClassName)
+                                }
+                            }
+                            leftOp.setType(transformArrayToString(leftPossibleTypes))
                         }
                     }
                 }
@@ -258,118 +289,10 @@ export class Cfg {
         }
     }
 
-    private resolveBinaryResultType(op1Type: string, op2Type: string, operator: string): string {
-        switch (operator) {
-            case "+":
-                if (op1Type === "string" || op2Type === "string") {
-                    return "string";
-                }
-                if (op1Type === "number" && op2Type === "number") {
-                    return "number";
-                }
-                break;
-            case "-":
-            case "*":
-            case "/":
-            case "%":
-                if (op1Type === "number" && op2Type === "number") {
-                    return "number";
-                }
-                break;
-            case "<":
-            case "<=":
-            case ">":
-            case ">=":
-            case "==":
-            case "!=":
-            case "===":
-            case "!==":
-            case "&&":
-            case "||":
-                return "boolean";
-            case "&":
-            case "|":
-            case "^":
-            case "<<":
-            case ">>":
-            case ">>>":
-                if (op1Type === "number" && op2Type === "number") {
-                    return "number";
-                }
-                break;
-        }
-        return "";
-    }
 
     private getTypeNewExpr(newExpr:ArkNewExpr): string {
         const className = newExpr.getClassSignature();
         const file = this.declaringClass.getDeclaringArkFile();
-        return this.searchImportClass(file, className);
-    }
-
-    private searchImportClass(file: ArkFile, className: string): string {
-        for (let classInFile of file.getClasses()) {
-            if (className == classInFile.getName()) {
-                return classInFile.getSignature().getArkFile() + "." + className;
-            }
-        }
-        for (let importInfo of file.getImportInfos()) {
-            const importFromDir=importInfo.getImportFrom();
-            if (className == importInfo.getImportClauseName() && importFromDir != undefined) {
-                const fileDir = file.getName().split("\\");
-                const importDir = importFromDir.split(/[\/\\]/).filter(item => item !== '.');
-                let realName = importInfo.getNameBeforeAs()?importInfo.getNameBeforeAs():importInfo.getImportClauseName()
-                let parentDirNum = 0;
-                while (importDir[parentDirNum] == "..") {
-                    parentDirNum++;
-                }
-                if (parentDirNum < fileDir.length) {
-                    let realImportFileName = path.dirname("");
-                    for (let i = 0; i < fileDir.length - parentDirNum - 1; i++) {
-                        realImportFileName = path.join(realImportFileName, fileDir[i])
-                    }
-                    for (let i = parentDirNum; i < importDir.length; i++) {
-                        realImportFileName = path.join(realImportFileName, importDir[i])
-                    }
-                    realImportFileName += ".ts";
-                    const scene = file.getScene();
-                    if (scene) {
-                        for (let sceneFile of scene.arkFiles) {
-                            if (sceneFile.getName() == realImportFileName) {
-                                return this.searchImportClass(sceneFile, realName!);
-                            }
-                        }
-                        // file不在scene中，视为外部库
-                        const targetSignature=importInfo.getTargetArkSignature();
-                        const apiMap=scene.arkClassMaps;
-                        if(apiMap!=undefined&&apiMap.get(targetSignature)!=undefined){
-                            return apiMap.get(targetSignature);
-                        }
-                    }
-                }
-            }
-        }
-        return "";
-    }
-    protected resolveClassInstance(classCompleteName: string, file: ArkFile|null) {
-        if (file == null)
-            return null
-        let lastDotIndex = classCompleteName.lastIndexOf('.')
-        let classRealName = classCompleteName.substring(lastDotIndex + 1)
-        for (let arkClass of file.getClasses()) {
-            if (arkClass.getName() === classRealName) {
-                return arkClass
-            }
-        }
-        return null
-    }
-
-    protected getArkFileByName(fileName: string, currentFile: ArkFile) {
-        for (let sceneFile of currentFile.getScene().arkFiles) {
-            if (sceneFile.getName() === fileName) {
-                return sceneFile
-            }
-        }
-        return null
+        return searchImportMessage(file, className, matchClassInFile);
     }
 }

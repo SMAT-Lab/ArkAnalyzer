@@ -1,16 +1,14 @@
 import fs from 'fs';
 import path from 'path';
+import { AbstractCallGraphAlgorithm } from "./callgraph/AbstractCallGraphAlgorithm";
+import { CallGraph } from "./callgraph/CallGraph";
+import { ImportInfo, updateSdkConfigPrefix } from './core/common/ImportBuilder';
 import { ArkClass } from "./core/model/ArkClass";
 import { ArkFile } from "./core/model/ArkFile";
+import { ArkInterface } from './core/model/ArkInterface';
 import { ArkMethod } from "./core/model/ArkMethod";
 import { ArkNamespace } from "./core/model/ArkNamespace";
-import { ClassSignature, MethodSignature, MethodSubSignature, genSignature4ImportClause } from "./core/model/ArkSignature";
-import { CallGraph } from "./callgraph/CallGraph"
-import { ClassHierarchyAnalysis } from "./callgraph/ClassHierarchyAnalysis";
-import { ClassHierarchyAnalysisAlgorithm } from "./callgraph/ClassHierarchyAnalysisAlgorithm";
-import { AbstractCallGraphAlgorithm } from "./callgraph/AbstractCallGraphAlgorithm";
-import { ImportInfo, updateSdkConfigPrefix } from './core/common/ImportBuilder';
-import { ArkInterface } from './core/model/ArkInterface';
+import { ClassSignature, MethodSignature, MethodSubSignature } from "./core/model/ArkSignature";
 import { SceneConfig } from '../tests/Config';
 
 /**
@@ -245,11 +243,12 @@ export class Scene {
         this.callgraph.processFiles(this.projectFiles);
     }
 
-    public makeCallGraphCHA(entryPoints: MethodSignature[]) {
-        this.classHierarchyCallGraph = new ClassHierarchyAnalysisAlgorithm(this);
-        this.classHierarchyCallGraph.loadCallGraph(entryPoints)
-        this.classHierarchyCallGraph.printDetails()
-    }
+
+    // public makeCallGraphCHA(entryPoints: MethodSignature[]) {
+    //     this.classHierarchyCallGraph = new ClassHierarchyAnalysisAlgorithm(this);
+    //     this.classHierarchyCallGraph.loadCallGraph(entryPoints)
+    //     // this.classHierarchyCallGraph.printDetails()
+    // }
 
     /**
      * 对每个method方法体内部进行类型推导，将变量类型填入

@@ -1,7 +1,5 @@
 
 import path from 'path';
-import { ArkClass } from './ArkClass';
-import { ArkFile } from './ArkFile';
 export class MethodSubSignature {
     private methodName: string;
     private parameters: string[] = [];

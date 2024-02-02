@@ -1,4 +1,5 @@
 import { BasicBlock } from "../graph/BasicBlock";
+import { MethodSignature } from "../model/ArkSignature";
 import { Local } from "./Local";
 import { Value } from "./Value";
 
@@ -7,16 +8,16 @@ export abstract class AbstractExpr implements Value {
 }
 
 export abstract class AbstractInvokeExpr extends AbstractExpr {
-    private methodSignature: string;
+    private methodSignature: MethodSignature;
     private args: Value[];
 
-    constructor(methodSignature: string, args: Value[]) {
+    constructor(methodSignature: MethodSignature, args: Value[]) {
         super();
         this.methodSignature = methodSignature;
         this.args = args;
     }
 
-    public getMethodSignature(): string {
+    public getMethodSignature(): MethodSignature {
         return this.methodSignature;
     }
 
@@ -45,7 +46,7 @@ export abstract class AbstractInvokeExpr extends AbstractExpr {
 export class ArkInstanceInvokeExpr extends AbstractInvokeExpr {
     private base: Local;
 
-    constructor(base: Local, methodSignature: string, args: Value[]) {
+    constructor(base: Local, methodSignature: MethodSignature, args: Value[]) {
         super(methodSignature, args);
         this.base = base;
     }
@@ -73,7 +74,7 @@ export class ArkInstanceInvokeExpr extends AbstractInvokeExpr {
         let strs: string[] = [];
         strs.push(this.base.toString());
         strs.push('.');
-        strs.push(this.getMethodSignature());
+        strs.push(this.getMethodSignature().toString());
         strs.push('(');
         if (this.getArgs().length > 0) {
             for (const arg of this.getArgs()) {
@@ -88,14 +89,14 @@ export class ArkInstanceInvokeExpr extends AbstractInvokeExpr {
 }
 
 export class ArkStaticInvokeExpr extends AbstractInvokeExpr {
-    constructor(methodSignature: string, args: Value[]) {
+    constructor(methodSignature: MethodSignature, args: Value[]) {
         super(methodSignature, args);
     }
 
     public toString(): string {
         let strs: string[] = [];
         strs.push('staticinvoke ');
-        strs.push(this.getMethodSignature());
+        strs.push(this.getMethodSignature().toString());
         strs.push('(');
         if (this.getArgs().length > 0) {
             for (const arg of this.getArgs()) {

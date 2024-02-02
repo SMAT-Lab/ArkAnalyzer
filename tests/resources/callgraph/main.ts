@@ -1,13 +1,16 @@
 import {A, Dog as Cat, Main} from './a'
-import {B as C, C as Class, invokeParam} from "./b";
+import {B as C, C as Class, globalNumber, invokeParam} from "./b";
 import {func1} from "./temp/a";
 
 
 A();
 C();
-let dog = new Cat()
+let dog: Cat = new Cat()
+let mee = new Cat()
+// let d: Cat | null = new Cat()
 let c = dog.aaaaaaaaaa
-let d = c
+// let d = c
+// let e = globalNumber
 
 Cat.print()
 dog.sound()
