@@ -1,3 +1,4 @@
+import { ClassSignature } from "../model/ArkSignature";
 import { Local } from "./Local";
 import { Value } from "./Value";
 
@@ -178,3 +179,49 @@ export class ArkCaughtExceptionRef extends AbstractRef {
         return 'caughtexception: ' + this.type;
     }
 }
+
+// for class expression assignment
+export class ArkClassRef extends AbstractRef {
+    private classSignature: ClassSignature;
+
+    constructor(classSignature: ClassSignature) {
+        super();
+        this.classSignature = classSignature;
+    }
+
+    public getClassSignature(): ClassSignature {
+        return this.classSignature;
+    }
+
+    public getUses(): Value[] {
+        let uses: Value[] = [];
+        return uses;
+    }
+
+    public toString(): string {
+        return this.classSignature.toString();
+    }
+}
+
+// for method expression assignment
+// export class ArkMethodRef extends AbstractRef {
+//     private methodSignature: MethodSignature;
+
+//     constructor(methodSignature: MethodSignature) {
+//         super();
+//         this.methodSignature = methodSignature;
+//     }
+
+//     public getMethodSignature(): MethodSignature {
+//         return this.methodSignature;
+//     }
+
+//     public getUses(): Value[] {
+//         let uses: Value[] = [];
+//         return uses;
+//     }
+
+//     public toString(): string {
+//         return this.methodSignature.toString();
+//     }
+// }

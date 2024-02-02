@@ -13,9 +13,9 @@ export class CfgTest {
 
 
         const projectName: string = config.projectName;
-        const input_dir: string = config.input_dir;
+        const project_dir: string = config.project_dir;
 
-        let projectFiles: string[] = utils.getAllFiles(input_dir, ['.ts']);
+        let projectFiles: string[] = utils.getAllFiles(project_dir, ['.ts']);
 
         // let projectFiles = ['D:\\codes\\openharmony\\applications\\applications_photos\\common\\src\\main\\ets\\default\\model\\browser\\AbsDataSource.ts']        
         // projectFiles = ['D:\\codes\\openharmony\\applications\\applications_photos\\common\\src\\main\\ets\\default\\access\\UserFileManagerAccess.ts']

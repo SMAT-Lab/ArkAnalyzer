@@ -11,17 +11,17 @@
 //     }
 // }
 
-function testTryCatch() {
-    try {
-        let i = 0;
-        throw new Error('err');
-    } catch (e) {
-        console.log(e);
-    } finally {
-        console.log('finnaly');
-    }
-    let j = 0;
-}
+// function testTryCatch() {
+//     try {
+//         let i = 0;
+//         throw new Error('err');
+//     } catch (e) {
+//         console.log(e);
+//     } finally {
+//         console.log('finnaly');
+//     }
+//     let j = 0;
+// }
 
 // function testFor() {
 //     for (const i of j) {
@@ -37,3 +37,9 @@ function testTryCatch() {
 //     let a = 'str1';
 //     let b = `template is ${a}`;
 // }
+
+
+function testArrowFunc() {
+    let func = (i, j) => i + j;
+    func(1, 2);
+}
