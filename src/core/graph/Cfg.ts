@@ -155,8 +155,8 @@ export class Cfg {
                     const rightOp=stmt.getRightOp();
                     let leftPossibleTypes: string[] = []
                     if(leftOp instanceof Local){
-                        console.log(stmt.toString())
-                        console.log("\t"+leftOp.getName() +": "+ leftOp.getType())
+                        // console.log(stmt.toString())
+                        // console.log("\t"+leftOp.getName() +": "+ leftOp.getType())
                         if (rightOp instanceof ArkNewExpr) {
                             if (leftOp.getType()=="" || leftOp.getType()=="any") {
                                 leftOp.setType(this.getTypeNewExpr(rightOp));
