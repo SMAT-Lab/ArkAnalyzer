@@ -8,7 +8,7 @@ import { HotPropertyAccessCheck } from "./checker/HotPropertyAccessCheck";
 
 function run(config: Config) {
     const projectName: string = config.projectName;
-    const input_dir: string = config.input_dir;
+    const input_dir: string = config.project_dir;
 
     //(1)get all files under input_dir
     //TODO: add support for using tscconfig to get files
@@ -16,7 +16,7 @@ function run(config: Config) {
     // console.log(projectFiles)
 
     //(2) Fill Scene class
-    let scene: Scene = new Scene(projectName, projectFiles,config.input_dir);
+    let scene: Scene = new Scene(projectName, projectFiles,config.project_dir);
 
     let entryPoints = []
     for (let method of scene.getMethods()) {
@@ -25,16 +25,15 @@ function run(config: Config) {
     scene.makeCallGraphCHA(entryPoints)
 
     // scene.getMethods()
-    // for (let a of scene.arkFiles) {
-    //     a.getMethods()
-    //     for (let clas of a.getClasses()) {
-    //         for (let method of clas.getMethods())
-    //             if (method.getName() == "invokeParam") {
-    //                 console.log(method.getName())
-    //                 console.log(method.getBody().getLocals())
-    //             }
-    //     }
-    // }
+    for (let a of scene.arkFiles) {
+        for (let clas of a.getClasses()) {
+            if (clas.getSignature().toString() === "<main.ts>.<_DEFAULT_ARK_CLASS>")
+                for (let method of clas.getMethods()) {
+                    // console.log(method.getName())
+                    // console.log(method.getBody().getLocals())
+                }
+        }
+    }
     // scene.classHierarchyCallGraph.printDetails()
 }
 

@@ -6,6 +6,8 @@ export class C {
 
 }
 
+export let globalNumber = 1
+
 export function invokeParam(a: number, b: string, c: C) {
     let d = a
     let e = b

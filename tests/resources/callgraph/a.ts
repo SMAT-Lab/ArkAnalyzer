@@ -10,7 +10,7 @@ export abstract class Animal {
 }
 
 export class Dog extends Animal {
-    public aaaaaaaaaa: D
+    public aaaaaaaaaa: D | number
     public sound() {
         console.log("woof")
         let cat = new Cat()

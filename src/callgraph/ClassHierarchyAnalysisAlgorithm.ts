@@ -6,7 +6,7 @@ import { ArkFile } from "../core/model/ArkFile";
 import { ArkMethod } from "../core/model/ArkMethod";
 import { MethodSignature } from "../core/model/ArkSignature";
 import { isItemRegistered } from "../utils/callGraphUtils";
-import { splitType } from "../utils/typeReferenceUtils";
+import {getArkFileByName, matchClassInFile, searchImportMessage, splitType} from "../utils/typeReferenceUtils";
 import { AbstractCallGraphAlgorithm } from "./AbstractCallGraphAlgorithm";
 
 export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm {
@@ -94,7 +94,7 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
          *  D.staticMethod()
          *  在进到cg时的签名只有"D.staticMethod"，因此仍然需要递归分析import，后续待优化
          */
-        let classCompleteName = this.resolveImportClass(file, className)
+        let classCompleteName = searchImportMessage(file, className, matchClassInFile)
         let lastDotIndex = classCompleteName.lastIndexOf('.')
         let fileName = classCompleteName.substring(0, lastDotIndex)
         let classRealName = classCompleteName.substring(lastDotIndex + 1)
@@ -112,46 +112,6 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
     protected preProcessMethod(methodSignature: MethodSignature): void {
         //do nothing
     }
-
-    private resolveImportClass(file: ArkFile, name: string): string {
-        for (let classInFile of file.getClasses()) {
-            if (name == classInFile.getName()) {
-                return classInFile.getSignature().getArkFile() + "." + name;
-            }
-        }
-        for (let importInfo of file.getImportInfos()) {
-            const importFromDir=importInfo.getImportFrom();
-            if (name == importInfo.getImportClauseName() && importFromDir != undefined) {
-                const fileDir = file.getName().split("\\");
-                const importDir = importFromDir.split(/[\/\\]/).filter(item => item !== '.');
-                let parentDirNum = 0;
-                let realName = importInfo.getNameBeforeAs()?importInfo.getNameBeforeAs():importInfo.getImportClauseName()
-                while (importDir[parentDirNum] == "..") {
-                    parentDirNum++;
-                }
-                if (parentDirNum < fileDir.length) {
-                    let realImportFileName = path.dirname("");
-                    for (let i = 0; i < fileDir.length - parentDirNum - 1; i++) {
-                        realImportFileName = path.join(realImportFileName, fileDir[i])
-                    }
-                    for (let i = parentDirNum; i < importDir.length; i++) {
-                        realImportFileName = path.join(realImportFileName, importDir[i])
-                    }
-                    realImportFileName += ".ts";
-                    const scene = file.getScene();
-                    if (scene) {
-                        for (let sceneFile of scene.arkFiles) {
-                            if (sceneFile.getName() == realImportFileName) {
-                                return this.resolveImportClass(sceneFile, realName!);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        return "";
-    }
-
     private resolveFunctionCall(file: ArkFile, name: string): ArkMethod | null {
         for (let functionOfFile of file.getDefaultClass().getMethods()) {
             if (name == functionOfFile.getName()) {
@@ -190,20 +150,10 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
         }
         return null;
     }
-
-    protected getArkFileByName(fileName: string) {
-        for (let sceneFile of this.scene.scene.arkFiles) {
-            if (sceneFile.getName() === fileName) {
-                return sceneFile
-            }
-        }
-        return null
-    }
-
     protected resolveInvokeExpr(invokeExpr: AbstractInvokeExpr,
                                 arkFileName: string,
                                 sourceMethodSignature: MethodSignature) {
-        let arkFile = this.getArkFileByName(arkFileName)
+        let arkFile = getArkFileByName(arkFileName, this.scene.scene)
         let callName = invokeExpr.getMethodSignature()
         let methodName: string = callName
         let classAndArkFileNames: Set<[string, string]> = new Set<[string, string]>()
@@ -218,10 +168,6 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
                 classAndArkFileNames.add([currentClass!.getName(), currentClass!.getDeclaringArkFile().getName()])
             } else {
                 let classCompleteType = invokeExpr.getBase().getType() // a| b |c
-                // let classInstanceDeclareStmtLocal = invokeExpr.getBase().getDeclaringStmt()?.getDef()
-                // if (classInstanceDeclareStmtLocal instanceof Local) {
-                //     classCompleteType = classInstanceDeclareStmtLocal.getType()
-                // }
                 let classAllType = splitType(classCompleteType) // [a, b, c]
                 for (let classSingleType of classAllType) {
                     let lastDotIndex = classSingleType.lastIndexOf('.')
@@ -261,7 +207,7 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
             if (classTuple[0] === "" || classTuple[1] === "") {
                 classAndArkFileNames.delete(classTuple)
             } else {
-                let arkFile = this.getArkFileByName(classTuple[1])
+                let arkFile = getArkFileByName(classTuple[1], this.scene.scene)
                 if (arkFile == null) {
                     classAndArkFileNames.delete(classTuple)
                 } else {
