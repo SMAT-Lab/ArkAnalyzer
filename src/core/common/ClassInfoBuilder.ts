@@ -1,5 +1,5 @@
 import * as ts from "typescript";
-import { buildHeritageClauses, buildModifiers, buildTypeParameters, handleQualifiedName, handleisPropertyAccessExpression } from "../../utils/builderUtils";
+import { buildHeritageClauses, buildModifiers, buildTypeParameters, handleQualifiedName, handlePropertyAccessExpression } from "../../utils/builderUtils";
 
 export class Property {
     private propertyName: string;

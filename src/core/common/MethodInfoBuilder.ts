@@ -1,5 +1,5 @@
 import * as ts from "typescript";
-import { buildModifiers, buildParameters, buildReturnType4Method, buildTypeParameters, handleQualifiedName, handleisPropertyAccessExpression } from "../../utils/builderUtils";
+import { buildModifiers, buildParameters, buildReturnType4Method, buildTypeParameters, handleQualifiedName, handlePropertyAccessExpression } from "../../utils/builderUtils";
 
 export class MethodInfo {
     name: string;
@@ -37,7 +37,7 @@ export function buildMethodInfo4MethodNode(node: ts.FunctionDeclaration | ts.Met
         }
         else if (ts.isComputedPropertyName(node.name)) {
             if (ts.isPropertyAccessExpression(node.name.expression)) {
-                name = handleisPropertyAccessExpression(node.name.expression);
+                name = handlePropertyAccessExpression(node.name.expression);
             }
         }
     }
