@@ -2,12 +2,11 @@ import * as ts from "typescript";
 import path from 'path';
 import { transfer2UnixPath } from "../../utils/pathTransfer";
 
-var sdkConfigPrefix: string;
-var sdkPath: string;
+var sdkPathMap: Map<string, string> = new Map();
+
 
 export function updateSdkConfigPrefix(sdkName: string, sdkRelativePath: string) {
-    sdkConfigPrefix = sdkName;
-    sdkPath = transfer2UnixPath(sdkRelativePath);
+    sdkPathMap.set(sdkName, transfer2UnixPath(sdkRelativePath));
 }
 
 export class ImportInfo {
@@ -19,7 +18,6 @@ export class ImportInfo {
     private declaringSignature: string;
     private arkSignature: string;
     private targetArkSignature: string;
-    //private sdkConfigPrefix = 'ohos|system|kit';
     private declaringFilePath: string;
     private projectPath: string;
 
@@ -28,9 +26,6 @@ export class ImportInfo {
     public build(importClauseName: string, importType: string, importFrom: string, nameBeforeAs?: string) {
         this.setImportClauseName(importClauseName);
         this.setImportType(importType);
-        //if (importFrom) {
-        //    importFrom = this.transfer2UnixPath(importFrom);
-        //}
         this.setImportFrom(importFrom);
         this.setNameBeforeAs(nameBeforeAs);
     }
@@ -50,17 +45,16 @@ export class ImportInfo {
     }
 
     public genTargetArkSignature() {
-        const pathReg1 = new RegExp("^(\\.\\.\\/\|\\.\\/)");
-        const pathReg2 = new RegExp(`@(${sdkConfigPrefix})\\.`);
-        const pathReg3 = new RegExp(`@(${sdkConfigPrefix})\\/`);
-        //const pathReg2 = new RegExp(`@(${this.sdkConfigPrefix})\[\.\|\/\]`);
-
         let tmpSig: string;
+
         // project internal imports
+        const pathReg1 = new RegExp("^(\\.\\.\\/\|\\.\\/)");
         if (pathReg1.test(this.importFrom)) {
-            let tmpTargetPath = path.resolve(path.dirname(this.declaringFilePath), path.dirname(this.importFrom + '.ts'));
-            let tmpSig1 = path.relative(this.projectPath, tmpTargetPath);
-            //tmpSig1 = transfer2UnixPath(tmpSig1).replace(/\//g, '.');
+            //get real target path of importfrom
+            let realTargetPath = path.resolve(path.dirname(this.declaringFilePath), path.dirname(this.importFrom + '.ts'));
+            //get relative path from project dir to real target path of importfrom
+            let tmpSig1 = path.relative(this.projectPath, realTargetPath);
+
             tmpSig1 = transfer2UnixPath(tmpSig1) + '/' + path.basename(this.importFrom + '.ts', ".ts");
             tmpSig1 = tmpSig1.replace(/^\.\//, '');
             tmpSig1 = `<${tmpSig1}>`;
@@ -76,37 +70,51 @@ export class ImportInfo {
             }
             this.setTargetArkSignature(tmpSig);
         }
-        // local sdk related imports, e.g. openharmony sdk
-        else if (pathReg2.test(this.importFrom)) {
-            //console.log("###", this.importFrom, pathReg2);
-            tmpSig = (sdkPath + '/' + this.importFrom).replace(/^\.\//, '');
-            if (this.nameBeforeAs) {
-                //tmpSig = transfer2UnixPath(this.importFrom).replace(/\//g, '.') + '.' + this.nameBeforeAs;
-                //tmpSig = transfer2UnixPath(this.importFrom);
-                tmpSig = `<${tmpSig}>`;
-                tmpSig = tmpSig + '.' + this.nameBeforeAs;
+
+        // external imports, e.g. @ohos., @kit., @System., @ArkAnalyzer/
+        sdkPathMap.forEach((value, key) => {
+            // e.g. @ohos., @kit., @System.
+            if (key == 'ohos' || key == 'kit' || key == 'system') {
+                const pathReg2 = new RegExp(`@(${key})\\.`);
+                if (pathReg2.test(this.importFrom)) {
+                    tmpSig = (value + '/' + this.importFrom).replace(/^\.\//, '');
+                    if (this.nameBeforeAs) {
+                        tmpSig = `<${tmpSig}>`;
+                        tmpSig = tmpSig + '.' + this.nameBeforeAs;
+                    }
+                    else if (this.importType == 'NamespaceImport') {
+                        tmpSig = `<${tmpSig}>`;
+                    }
+                    else {
+                        tmpSig = `<${tmpSig}>`;
+                        tmpSig = tmpSig + '.' + this.importClauseName;
+                    }
+                    this.setTargetArkSignature(tmpSig);
+                }
             }
-            else if (this.importType == 'NamespaceImport') {
-                //tmpSig = transfer2UnixPath(this.importFrom).replace(/\//g, '.');
-                //tmpSig = transfer2UnixPath(this.importFrom);
-                tmpSig = `<${tmpSig}>`;
-            }
+            // e.g. @ArkAnalyzer/
             else {
-                //tmpSig = transfer2UnixPath(this.importFrom).replace(/\//g, '.') + '.' + this.importClauseName;
-                //tmpSig = transfer2UnixPath(this.importFrom);
-                tmpSig = `<${tmpSig}>`;
-                tmpSig = tmpSig + '.' + this.importClauseName;
+                const pathReg3 = new RegExp(`@(${key})\\/`);
+                if (pathReg3.test(this.importFrom)) {
+                    tmpSig = (value + '/' + this.importFrom).replace(/^\.\//, '');
+                    if (this.nameBeforeAs) {
+                        tmpSig = `<${tmpSig}>`;
+                        tmpSig = tmpSig + '.' + this.nameBeforeAs;
+                    }
+                    else if (this.importType == 'NamespaceImport') {
+                        tmpSig = `<${tmpSig}>`;
+                    }
+                    else {
+                        tmpSig = `<${tmpSig}>`;
+                        tmpSig = tmpSig + '.' + this.importClauseName;
+                    }
+                    this.setTargetArkSignature(tmpSig);
+                }
             }
-            this.setTargetArkSignature(tmpSig);
-        }
-        // packages like @ohos/xxx, just a log
-        else if (pathReg3.test(this.importFrom)) {
-            //console.log("######", this.importFrom, pathReg3);
-        }
+        });
+
         //third part npm package
-        else {
-            //TODO
-        }
+        //TODO
     }
 
     public getArkSignature() {

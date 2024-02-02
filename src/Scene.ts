@@ -11,6 +11,7 @@ import { ClassHierarchyAnalysisAlgorithm } from "./callgraph/ClassHierarchyAnaly
 import { AbstractCallGraphAlgorithm } from "./callgraph/AbstractCallGraphAlgorithm";
 import { ImportInfo, updateSdkConfigPrefix } from './core/common/ImportBuilder';
 import { ArkInterface } from './core/model/ArkInterface';
+import { SceneConfig } from '../tests/Config';
 
 /**
  * The Scene class includes everything in the analyzed project.
@@ -22,8 +23,8 @@ export class Scene {
     realProjectDir: string;
     namespaces: ArkNamespace[] = [];
     arkFiles: ArkFile[] = [];
-    callgraph!: CallGraph;
-    classHierarchyCallGraph!: AbstractCallGraphAlgorithm;
+    callgraph: CallGraph;
+    classHierarchyCallGraph: AbstractCallGraphAlgorithm;
     extendedClasses: Map<string, ArkClass[]> = new Map();
     globalImportInfos: ImportInfo[] = [];
 
@@ -34,47 +35,70 @@ export class Scene {
     arkClassMaps: Map<string, any> = new Map<string, any>();
     arkMethodMaps: Map<string, any> = new Map<string, any>();
 
-    sdkName: string | undefined;
-    sdkFiles: string[] | undefined;
-    sdk_dir: string | undefined;
+    private ohosSdkPath: string;
+    private kitSdkPath: string;
+    private systemSdkPath: string;
+
+    private otherSdkMap: Map<string, string>;
+
+    private sdkFiles: string[];
 
     //apiArkInstancesMap: Map<string, any> | undefined;
     //globalInstancesMap: Map<string, any> = new Map<string, any>();
-    constructor(projectName: string, projectFiles: string[], projectDir: string, sdkName?: string, sdkFiles?: string[], sdk_dir?: string) {
-        this.projectName = projectName;
-        this.projectFiles = projectFiles;
-        this.sdkName = sdkName;
-        this.sdkFiles = sdkFiles;
-        this.sdk_dir = sdk_dir;
-        this.realProjectDir = fs.realpathSync(projectDir);
-        //this.apiArkInstancesMap = apiArkInstancesMap;
+    constructor(sceneConfig: SceneConfig) {
+        this.projectName = sceneConfig.getTargetProjectName();
+        this.projectFiles = sceneConfig.getProjectFiles();
+        this.realProjectDir = fs.realpathSync(sceneConfig.getTargetProjectDirectory());
+
+        this.ohosSdkPath = sceneConfig.getOhosSdkPath();
+        this.kitSdkPath = sceneConfig.getKitSdkPath();
+        this.systemSdkPath = sceneConfig.getSystemSdkPath();
+
+        this.otherSdkMap = sceneConfig.getOtherSdkMap();
+
+        this.sdkFiles = sceneConfig.getSdkFiles();
+
+        this.configImportPrefix();
         this.genArkFiles();
+        this.collectArkInstances();
         this.genExtendedClasses();
         this.generateGlobalImportInfos();
         this.typeReference();
     }
 
+    private configImportPrefix() {
+        if (this.ohosSdkPath) {
+            updateSdkConfigPrefix("ohos", path.relative(this.realProjectDir, this.ohosSdkPath));
+        }
+        if (this.kitSdkPath) {
+            updateSdkConfigPrefix("kit", path.relative(this.realProjectDir, this.kitSdkPath));
+        }
+        if (this.systemSdkPath) {
+            updateSdkConfigPrefix("system", path.relative(this.realProjectDir, this.systemSdkPath));
+        }
+        if (this.otherSdkMap) {
+            this.otherSdkMap.forEach((value, key) => {
+                updateSdkConfigPrefix(key, path.relative(this.realProjectDir, value));
+            });
+        }
+    }
+
     private genArkFiles() {
-        if (this.sdkName && this.sdkFiles && this.sdk_dir) {
-            updateSdkConfigPrefix(this.sdkName, path.relative(this.realProjectDir, this.sdk_dir));
+        if (this.sdkFiles) {
             this.sdkFiles.forEach((file) => {
                 let arkFile: ArkFile = new ArkFile();
                 arkFile.buildArkFileFromSourceFile(file, this.realProjectDir);
                 arkFile.setScene(this);
                 this.arkFiles.push(arkFile);
             });
-            this.collectArkInstances(this.arkFiles);
         }
 
-        let tmpArkFiles: ArkFile[] = [];
         this.projectFiles.forEach((file) => {
             let arkFile: ArkFile = new ArkFile();
             arkFile.buildArkFileFromSourceFile(file, this.realProjectDir);
             arkFile.setScene(this);
             this.arkFiles.push(arkFile);
-            tmpArkFiles.push(arkFile);
         });
-        this.collectArkInstances(tmpArkFiles);
     }
 
     public getFile(fileName: string): ArkFile | null {
@@ -243,7 +267,6 @@ export class Scene {
         }
     }
 
-
     private generateGlobalImportInfos() {
         this.arkFiles.forEach((arkFile) => {
             arkFile.getImportInfos().forEach((importInfo) => {
@@ -276,8 +299,8 @@ export class Scene {
         this.arkMethodMaps.set(arkSignature, arkInstance);
     }
 
-    private collectArkInstances(arkFiles: ArkFile[]) {
-        arkFiles.forEach((arkFile) => {
+    private collectArkInstances() {
+        this.arkFiles.forEach((arkFile) => {
             this.addArkInstance(arkFile.getArkSignature(), arkFile);
             this.addArkInstance2FileMap(arkFile.getArkSignature(), arkFile);
             arkFile.getArkInstancesMap().forEach((value, key) => {

@@ -5,13 +5,13 @@ export class NamespaceInfo {
     private name: string;
     private modifiers: Set<string> = new Set<string>();
 
-    constructor() {}
+    constructor() { }
 
     public getName() {
         return this.name;
     }
 
-    public setName(name:string) {
+    public setName(name: string) {
         this.name = name;
     }
 
@@ -33,6 +33,9 @@ export function buildNamespaceInfo4NamespaceNode(node: ts.ModuleDeclaration): Na
     }
     if (ts.isIdentifier(node.name)) {
         namespaceInfo.setName(node.name.escapedText.toString());
+    }
+    else if (ts.isStringLiteral(node.name)) {
+        namespaceInfo.setName(node.name.text);
     }
     return namespaceInfo;
 }

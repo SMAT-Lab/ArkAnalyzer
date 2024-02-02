@@ -140,7 +140,7 @@ export class ArkNamespace {
         this.namespaces.push(namespace);
     }
 
-    public setDeclaringSignature(declaringSignature:string) {
+    public setDeclaringSignature(declaringSignature: string) {
         this.declaringSignature = declaringSignature;
     }
 
