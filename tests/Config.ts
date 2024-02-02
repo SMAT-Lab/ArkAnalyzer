@@ -52,6 +52,7 @@ export class SceneConfig {
 
         if (fs.existsSync(this.configJsonPath)) {
             let configurations = JSON.parse(fs.readFileSync(this.configJsonPath, "utf8"));
+            
 
             this.targetProjectName = configurations.targetProjectName;
             this.targetProjectDirectory = configurations.targetProjectDirectory;
@@ -76,6 +77,8 @@ export class SceneConfig {
     }
 
     private getAllFiles() {
+        console.log(this.targetProjectDirectory);
+        
         if (this.targetProjectDirectory) {
             let tmpFiles: string[] = getFiles(this.targetProjectDirectory, "\\.ts\$");
             this.projectFiles.push(...tmpFiles);

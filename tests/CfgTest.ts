@@ -1,27 +1,11 @@
 import { Scene } from "../src/Scene";
-import * as utils from "../src/utils/getAllFiles";
-import { Config } from "./Config";
+import { SceneConfig } from "./Config";
 const fs = require('fs');
 
 export class CfgTest {
     private buildScene(): Scene {
-        // let config = new Config("ThreeAddresStmtTest", "D:\\codes\\tests\\applications_systemui\\common\\src\\main\\ets\\default");
-        // let config = new Config("ThreeAddresStmtTest", "D:\\codes\\tests\\applications_systemui\\common\\src\\main\\ets\\default\\abilitymanager");
-        // let config = new Config("ThreeAddresStmtTest", "D:\\codes\\tests\\applications_systemui");
-
-        let config = new Config("ThreeAddresStmtTest", "D:\\codes\\openharmony\\applications\\applications_photos", '');
-
-
-        const projectName: string = config.projectName;
-        const project_dir: string = config.project_dir;
-
-        let projectFiles: string[] = utils.getAllFiles(project_dir, ['.ts']);
-
-        // let projectFiles = ['D:\\codes\\openharmony\\applications\\applications_photos\\common\\src\\main\\ets\\default\\model\\browser\\AbsDataSource.ts']        
-        // projectFiles = ['D:\\codes\\openharmony\\applications\\applications_photos\\common\\src\\main\\ets\\default\\access\\UserFileManagerAccess.ts']
-        projectFiles = ['tests\\resources\\cfg\\cfgmain.ts'];
-
-        return new Scene(projectName, projectFiles, 'D:\\Codes\\ark-analyzer-mirror');
+        let config: SceneConfig = new SceneConfig("D:\\Codes\\ark-analyzer-mirror\\tests\\resources\\cfg\\CfgTestConfig.json");
+        return new Scene(config);
     }
 
     public testThreeAddresStmt() {

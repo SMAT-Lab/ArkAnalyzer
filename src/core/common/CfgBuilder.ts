@@ -12,6 +12,7 @@ import { Cfg } from '../graph/Cfg';
 import { ArkClass } from '../model/ArkClass';
 import { ArkMethod } from '../model/ArkMethod';
 import { ClassSignature, MethodSignature, MethodSubSignature } from '../model/ArkSignature';
+import { ClassUtils } from './ClassUtils';
 import { ExportInfo } from './ExportBuilder';
 import { IRUtils } from './IRUtils';
 
@@ -217,6 +218,8 @@ export class CfgBuilder {
     private declaringMethod: ArkMethod;
 
     private locals: Set<Local> = new Set();
+    private thisLocal: Local = new Local('this');
+    private paraLocals: Local[] = [];
 
     constructor(ast: NodeA, name: string, declaringMethod: ArkMethod) {
         this.name = name;
@@ -1848,9 +1851,17 @@ export class CfgBuilder {
             let methodSignature = new MethodSignature();
             methodSignature.setArkClass(classSignature);
             methodSignature.setMethodSubSignature(methodSubSignature);
+
             if (methodValue instanceof ArkInstanceFieldRef) {
-                methodSubSignature.setMethodName(methodValue.getFieldName());
-                value = new ArkInstanceInvokeExpr(methodValue.getBase(), methodSignature, args);
+                let methodName = methodValue.getFieldName();
+                let base = methodValue.getBase()
+                methodSubSignature.setMethodName(methodName);
+
+                if (base == this.thisLocal) {
+                    methodSignature = ClassUtils.getMethodSignatureFromArkClass(this.declaringClass, methodName) as MethodSignature;
+                }
+
+                value = new ArkInstanceInvokeExpr(base, methodSignature, args);
             } else if (methodValue instanceof ArkStaticFieldRef) {
                 methodSubSignature.setMethodName(methodValue.getFieldName());
                 value = new ArkStaticInvokeExpr(methodSignature, args);
@@ -2339,11 +2350,12 @@ export class CfgBuilder {
                 let parameterLocal = this.generateAssignStmt(parameterRef);
                 parameterLocal.setName(paraName);
                 index++;
+                this.paraLocals.push(parameterLocal);
             }
             let thisRef = new ArkThisRef(this.declaringClass.getSignature().toString());
-            let thisLocal = this.generateAssignStmt(thisRef);
-            thisLocal.setName('this');
-            thisLocal.setType(thisRef.getType());
+            this.thisLocal = this.generateAssignStmt(thisRef);
+            this.thisLocal.setName('this');
+            this.thisLocal.setType(thisRef.getType());
         }
 
         for (let blockId = 0; blockId < this.blocks.length; blockId++) {
