@@ -32,35 +32,28 @@
 // }
 
 
-class a{
-  x:number;
-  constructor(){
-    this.x=1;
-  }
-  f():number|null{
-    this.x++;
-    return this.x;
-  }
-  f2(){
-    let t=this.f();
-    function f3(){
-      let x=1;
-    }
-    f3();
-  }
-}
+// class a{
+//   x:number;
+//   constructor(){
+//     this.x=1;
+//   }
+//   f():number|null{
+//     this.x++;
+//     return this.x;
+//   }
+//   f2(){
+//     let t=this.f();
+//     function f3(){
+//       let x=1;
+//     }
+//     f3();
+//   }
+// }
 
+let x=10
+do{
+  console.log(1)
+  x++;
+} while(x<10)
 
-// let a1=new a();
-// let y=a1.f();
-
-// let mySet = new Set([1, 2, 3, 4]);
-
-// // 创建一个新的 Set，其中的元素都加 1
-// let modifiedSet = new Set<number>();
-// mySet.forEach(value => {
-//   modifiedSet.add(value + 1);
-// });
-
-// // 输出新的 Set
-// console.log(modifiedSet);
+console.log(2)
