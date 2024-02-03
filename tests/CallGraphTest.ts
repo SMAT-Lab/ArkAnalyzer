@@ -1,22 +1,19 @@
-import { CallGraph } from "../src/callgraph/CallGraph";
+import { SceneConfig } from "./Config";
+import { Scene } from "../src/Scene";
+import {printCallGraphDetails} from "../src/utils/callGraphUtils";
 
-
-export class CallGraphTest {
-    private loadCallGraph(): CallGraph {
-        let filenames = ['./tests/resources/callgraph/main.ts', './tests/resources/callgraph/a.ts', './tests/resources/callgraph/b.ts',];
-
-        let callgraph = new CallGraph(new Set<string>, new Map<string, string[]>);
-        callgraph.processFiles(filenames);
-        return callgraph;
+//let config: SceneConfig = new SceneConfig("./tests/AppTestConfig.json");
+let config: SceneConfig = new SceneConfig("./tests/callGraphConfigUnix.json");
+function runScene(config: SceneConfig) {
+    let projectScene: Scene = new Scene(config);
+    let entryPoints = []
+    for (let method of projectScene.getMethods()) {
+        entryPoints.push(method.getSignature())
     }
-
-    public testCallGraph() {
-        let callgraph = this.loadCallGraph();
-        callgraph.printCallGraph();
-    }
+    projectScene.makeCallGraphCHA(entryPoints)
+    let methods = projectScene.classHierarchyCallGraph.getMethods()
+    let calls = projectScene.classHierarchyCallGraph.getCalls()
+    // printCallGraphDetails(methods, calls, config.getTargetProjectDirectory())
+    debugger;
 }
-
-
-
-let callGraphTest = new CallGraphTest();
-callGraphTest.testCallGraph();
+runScene(config);

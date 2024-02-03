@@ -15,6 +15,7 @@ import { ClassSignature, MethodSignature, MethodSubSignature } from '../model/Ar
 import { ClassUtils } from './ClassUtils';
 import { ExportInfo } from './ExportBuilder';
 import { IRUtils } from './IRUtils';
+import {transformArrayToString, buildTypeReferenceString} from "../../utils/typeReferenceUtils";
 
 
 class StatementBuilder {
@@ -2082,6 +2083,7 @@ export class CfgBuilder {
         let leftOp = this.astNodeToValue(leftOpNode);
 
         let leftOpType = this.getTypeNode(node)
+        // console.log(leftOpType)
 
         let rightOpNode = new NodeA(undefined, null, [], 'dummy', -1, 'dummy');
         let rightOp: Value;
@@ -2963,34 +2965,54 @@ export class CfgBuilder {
     }
 
     private getTypeNode(node: NodeA): string {
-        let typeNode: NodeA
         for (let child of node.children) {
-            // console.log(child.kind)
-            switch (child.kind) {
-                case "BooleanKeyword":
-                case "NumberKeyword":
-                case "StringKeyword":
-                case "VoidKeyword":
-                case "AnyKeyword":
-                    return this.resolveKeywordType(child)
-                case "ArrayType":
-                    typeNode = child.children[0]
-                    let typeKeyword: string
-                    if (typeNode.kind == "TypeReference") {
-                        typeKeyword = typeNode.children[0].text
-                    } else {
-                        typeKeyword = typeNode.text
-                    }
-                    return typeKeyword + "[]"
-                case "TypeReference":
-                    typeNode = child.children[0]
-                    if (typeNode.kind == "Identifier") {
-                        return typeNode.text
-                    }
-                    return ""
+            let result = this.resolveTypeNode(child)
+            if (result !== null) {
+                return result
             }
         }
         return ""
+    }
+
+    private resolveTypeNode(node: NodeA) {
+        let typeNode: NodeA
+        switch (node.kind) {
+            case "BooleanKeyword":
+            case "NumberKeyword":
+            case "StringKeyword":
+            case "VoidKeyword":
+            case "AnyKeyword":
+                // console.log(this.resolveKeywordType(node))
+                return this.resolveKeywordType(node)
+            case "ArrayType":
+                typeNode = node.children[0]
+                let typeKeyword: string
+                if (typeNode.kind == "TypeReference") {
+                    typeKeyword = typeNode.children[0].text
+                } else {
+                    typeKeyword = typeNode.text
+                }
+                return typeKeyword + "[]"
+            case "TypeReference":
+                typeNode = node.children[0]
+                if (typeNode.kind == "Identifier") {
+                    return typeNode.text
+                }
+                return buildTypeReferenceString(typeNode.children)
+            case "UnionType":
+                typeNode = node.children[0]
+                let result: string[] = []
+                for (let singleTypeNode of typeNode.children) {
+                    if (singleTypeNode.kind != "BarToken") {
+                        let singleResult = this.resolveTypeNode(singleTypeNode)
+                        if (singleResult !== null) {
+                            result.push(singleResult)
+                        }
+                    }
+                }
+                return transformArrayToString(result)
+        }
+        return null
     }
 
     private resolveKeywordType(node: NodeA): string {

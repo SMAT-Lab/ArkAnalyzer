@@ -169,7 +169,7 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
                 classAndArkFileNames.add([currentClass!.getName(), currentClass!.getDeclaringArkFile().getName()])
             } else {
                 let classCompleteType = invokeExpr.getBase().getType() // a| b |c
-                let classAllType = splitType(classCompleteType) // [a, b, c]
+                let classAllType = splitType(classCompleteType, '|') // [a, b, c]
                 for (let classSingleType of classAllType) {
                     let lastDotIndex = classSingleType.lastIndexOf('.')
                     classAndArkFileNames.add([classCompleteType.substring(lastDotIndex + 1),
