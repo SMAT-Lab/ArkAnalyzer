@@ -10,6 +10,7 @@ import { ArkMethod } from "./core/model/ArkMethod";
 import { ArkNamespace } from "./core/model/ArkNamespace";
 import { ClassSignature, MethodSignature, MethodSubSignature } from "./core/model/ArkSignature";
 import { SceneConfig } from '../tests/Config';
+import {ClassHierarchyAnalysisAlgorithm} from "./callgraph/ClassHierarchyAnalysisAlgorithm";
 
 /**
  * The Scene class includes everything in the analyzed project.
@@ -244,11 +245,11 @@ export class Scene {
     }
 
 
-    // public makeCallGraphCHA(entryPoints: MethodSignature[]) {
-    //     this.classHierarchyCallGraph = new ClassHierarchyAnalysisAlgorithm(this);
-    //     this.classHierarchyCallGraph.loadCallGraph(entryPoints)
-    //     // this.classHierarchyCallGraph.printDetails()
-    // }
+    public makeCallGraphCHA(entryPoints: MethodSignature[]) {
+        this.classHierarchyCallGraph = new ClassHierarchyAnalysisAlgorithm(this);
+        this.classHierarchyCallGraph.loadCallGraph(entryPoints)
+        // this.classHierarchyCallGraph.printDetails()
+    }
 
     /**
      * 对每个method方法体内部进行类型推导，将变量类型填入

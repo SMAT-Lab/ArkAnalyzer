@@ -1,0 +1,10 @@
+{
+  "targetProjectName": "SE4OpenHarmony",
+  "targetProjectDirectory": "/Users/yangyizhuo/WebstormProjects/ArkAnalyzer/tests/resources/callgraph",
+
+  "ohosSdkPath": "",
+  "kitSdkPath": "",
+  "systemSdkPath": "",
+
+  "otherSdks": []
+}
