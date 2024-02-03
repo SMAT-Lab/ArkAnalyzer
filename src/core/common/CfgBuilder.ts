@@ -15,7 +15,7 @@ import { ClassSignature, MethodSignature, MethodSubSignature } from '../model/Ar
 import { ClassUtils } from './ClassUtils';
 import { ExportInfo } from './ExportBuilder';
 import { IRUtils } from './IRUtils';
-import {transformArrayToString, buildTypeReferenceString} from "../../utils/typeReferenceUtils";
+import { transformArrayToString, buildTypeReferenceString } from "../../utils/typeReferenceUtils";
 
 
 class StatementBuilder {
@@ -555,7 +555,7 @@ export class CfgBuilder {
                 else {
                     loopstm.nextT = lastStatement.next;
                 }
-                if(loopstm.nextT && loopstm.nextT!=loopstm){
+                if (loopstm.nextT && loopstm.nextT != loopstm) {
                     loopstm.nextT.isDoWhile = true;
                     loopstm.doStatement = loopstm.nextT;
                 }
@@ -1836,7 +1836,10 @@ export class CfgBuilder {
                 methodSubSignature.setMethodName(methodName);
 
                 if (base == this.thisLocal) {
-                    methodSignature = ClassUtils.getMethodSignatureFromArkClass(this.declaringClass, methodName) as MethodSignature;
+                    let methodSignatureFind = ClassUtils.getMethodSignatureFromArkClass(this.declaringClass, methodName);
+                    if (methodSignatureFind != null) {
+                        methodSignature = methodSignatureFind
+                    }
                 }
 
                 value = new ArkInstanceInvokeExpr(base, methodSignature, args);
