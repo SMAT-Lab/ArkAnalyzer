@@ -180,7 +180,7 @@ export class Cfg {
                                 }
                             }
                             leftOp.setType(transformArrayToString(leftPossibleTypes))
-                            console.log(leftOp.getName() + "  "+leftOp.getType())
+                            // continue
                         }
                         if (rightOp instanceof ArkNewExpr) {
                             if (leftOp.getType()=="" || leftOp.getType()=="any") {
