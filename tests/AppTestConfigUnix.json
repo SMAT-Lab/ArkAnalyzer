@@ -1,0 +1,27 @@
+{
+    "targetProjectName": "SE4OpenHarmony",
+    "targetProjectDirectory": "/Users/yifei/Documents/Code/SE4OpenHarmony/Apps/ArkTS2TSRes/ArkTSMusicPlayer",
+    
+    "ohosSdkPath": "/Users/yifei/Documents/Code/openharmony/interface/sdk-js/api",
+    "kitSdkPath": "/Users/yifei/Documents/Code/openharmony/interface/sdk-js/kits",
+    "systemSdkPath": "",
+    
+    "otherSdks": [
+        {
+            "name": "sdk1",
+            "path": ""
+        },
+        {
+            "name": "sdk2",
+            "path": ""
+        },
+        {
+            "name": "",
+            "path": "/opt/yy"
+        },
+        {
+            "name": "",
+            "path": ""
+        }
+    ]
+}

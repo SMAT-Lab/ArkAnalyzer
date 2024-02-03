@@ -53,6 +53,7 @@ export class SceneConfig {
         if (fs.existsSync(this.configJsonPath)) {
             let configurations = JSON.parse(fs.readFileSync(this.configJsonPath, "utf8"));
 
+
             this.targetProjectName = configurations.targetProjectName;
             this.targetProjectDirectory = configurations.targetProjectDirectory;
 

@@ -5,6 +5,7 @@ import { ArkInterface } from "./ArkInterface";
 import { ArkFile } from "./ArkFile";
 import { ExportInfo } from "../common/ExportBuilder";
 import { ClassSignature, classSignatureCompare } from "./ArkSignature";
+import { ArkEnum } from "./ArkEnum";
 
 
 export class ArkNamespace {
@@ -21,6 +22,7 @@ export class ArkNamespace {
     private exportInfos: ExportInfo[] = [];
     //private memberNamespaces: ArkNamespace[] = [];
     private namespaces: ArkNamespace[] = [];
+    private enums: ArkEnum[] = [];
     private arkSignature: string;
     private arkInstancesMap: Map<string, any> = new Map<string, any>();
     private declaringSignature: string;
@@ -131,7 +133,17 @@ export class ArkNamespace {
                 }
             }
             if (child.kind == 'EnumDeclaration') {
-                //TODO
+                let eNum: ArkEnum = new ArkEnum();
+                eNum.setDeclaringSignature(this.arkSignature);
+                eNum.buildFromArkNamespace(child, this);
+                this.addEnum(eNum);
+                this.addArkInstance(eNum.getArkSignature(), eNum);
+                eNum.getArkInstancesMap().forEach((value, key) => {
+                    this.addArkInstance(key, value);
+                });
+                if (eNum.isExported()) {
+                    this.addExportInfo(eNum);
+                }
             }
         }
     }
@@ -166,6 +178,14 @@ export class ArkNamespace {
 
     public setName(name: string) {
         this.name = name;
+    }
+
+    public getEnums(): ArkEnum[] {
+        return this.enums;
+    }
+
+    public addEnum(eNum: ArkEnum) {
+        this.enums.push(eNum);
     }
 
     public setDeclaringType(declaringType: string) {
@@ -309,7 +329,7 @@ export class ArkNamespace {
         this.addArkInstance(exportInfo.getArkSignature(), exportInfo);
     }
 
-    private addExportInfo(arkInstance: ArkMethod | ArkInterface | ArkClass | ArkNamespace) {
+    private addExportInfo(arkInstance: ArkMethod | ArkInterface | ArkClass | ArkNamespace | ArkEnum) {
         let exportClauseName: string = arkInstance.getName();
         let exportClauseType: string;
         if (arkInstance instanceof ArkMethod) {

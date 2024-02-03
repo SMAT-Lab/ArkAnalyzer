@@ -13,14 +13,17 @@ export function handleQualifiedName(node: ts.QualifiedName): string {
     return qualifiedName;
 }
 
-export function handleisPropertyAccessExpression(node: ts.PropertyAccessExpression): string {
+export function handlePropertyAccessExpression(node: ts.PropertyAccessExpression): string {
     let right = (node.name as ts.Identifier).escapedText.toString();
     let left: string = '';
     if (ts.SyntaxKind[node.expression.kind] == 'Identifier') {
         left = (node.expression as ts.Identifier).escapedText.toString();
     }
+    else if (ts.isStringLiteral(node.expression)) {
+        left = node.expression.text;
+    }
     else if (ts.isPropertyAccessExpression(node.expression)) {
-        left = handleisPropertyAccessExpression(node.expression as ts.PropertyAccessExpression);
+        left = handlePropertyAccessExpression(node.expression as ts.PropertyAccessExpression);
     }
     let propertyAccessExpressionName = left + '.' + right;
     return propertyAccessExpressionName;
@@ -62,7 +65,7 @@ export function buildHeritageClauses(node: ts.ClassDeclaration | ts.ClassExpress
                 heritageClauseName = (type.expression as ts.Identifier).escapedText.toString();
             }
             else if (ts.isPropertyAccessExpression(type.expression)) {
-                heritageClauseName = handleisPropertyAccessExpression(type.expression);
+                heritageClauseName = handlePropertyAccessExpression(type.expression);
             }
             heritageClausesMap.set(heritageClauseName, ts.SyntaxKind[heritageClause.token]);
         });

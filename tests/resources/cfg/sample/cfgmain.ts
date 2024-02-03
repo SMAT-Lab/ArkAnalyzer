@@ -39,7 +39,25 @@
 // }
 
 
-function testArrowFunc() {
-    let func = (i, j) => i + j;
-    func(1, 2);
+// function testArrowFunc() {
+//     let func = (i, j) => i + j;
+//     func(1, 2);
+// }
+
+
+// function testDoWhile() {
+//     let i = 0;
+//     do {
+//         i++;
+//     } while (i < 10);
+// }
+
+class Test {
+    public func1(): number {
+        return 0;
+    }
+
+    public testUseMethodOfClass(): void {
+        console.log(this.func1());
+    }
 }

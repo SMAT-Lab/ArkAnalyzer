@@ -12,6 +12,7 @@ import { Cfg } from '../graph/Cfg';
 import { ArkClass } from '../model/ArkClass';
 import { ArkMethod } from '../model/ArkMethod';
 import { ClassSignature, MethodSignature, MethodSubSignature } from '../model/ArkSignature';
+import { ClassUtils } from './ClassUtils';
 import { ExportInfo } from './ExportBuilder';
 import { IRUtils } from './IRUtils';
 
@@ -38,6 +39,7 @@ class StatementBuilder {
     ifExitPass: boolean;
     passTmies: number = 0;
     numOfIdentifier: number = 0;
+    isDoWhile: boolean = false;
 
     constructor(type: string, code: string, astNode: NodeA | null, scopeID: number) {
         this.type = type;
@@ -65,6 +67,7 @@ class ConditionStatementBuilder extends StatementBuilder {
     nextF: StatementBuilder | null;
     loopBlock: Block | null;
     condition: string;
+    doStatement: StatementBuilder | null = null;
     constructor(type: string, code: string, astNode: NodeA, scopeID: number) {
         super(type, code, astNode, scopeID);
         this.nextT = null;
@@ -217,6 +220,8 @@ export class CfgBuilder {
     private declaringMethod: ArkMethod;
 
     private locals: Set<Local> = new Set();
+    private thisLocal: Local = new Local('this');
+    private paraLocals: Local[] = [];
 
     constructor(ast: NodeA, name: string, declaringMethod: ArkMethod) {
         this.name = name;
@@ -549,6 +554,11 @@ export class CfgBuilder {
                 else {
                     loopstm.nextT = lastStatement.next;
                 }
+                if(loopstm.nextT && loopstm.nextT!=loopstm){
+                    loopstm.nextT.isDoWhile = true;
+                    loopstm.doStatement = loopstm.nextT;
+                }
+                // loopstm.nextT?.isDoWhile=true;
                 // if(!expressionCondition){
                 //     for(let loopchild of c.children){
                 //         if(loopchild.kind=="PrefixUnaryExpression"||loopchild.kind=="Identifier"||loopchild.kind=="PropertyAccessExpression"){
@@ -840,7 +850,7 @@ export class CfgBuilder {
                 this.buildBlocks(stm.next, b);
             return;
         }
-        if (stm.type != "loopStatement" && stm.type != "switchStatement" && stm.type != "tryStatement") {
+        if (stm.type != "loopStatement" && stm.type != "switchStatement" && stm.type != "tryStatement" || (stm instanceof ConditionStatementBuilder && stm.doStatement)) {
             block.stms.push(stm);
             stm.block = block;
         }
@@ -850,7 +860,7 @@ export class CfgBuilder {
                 this.errorTest(cstm);
                 return;
             }
-            if (cstm.type == "loopStatement") {
+            if (cstm.type == "loopStatement" && !cstm.doStatement) {
                 let loopBlock = this.buildNewBlock([cstm]);
                 block = loopBlock;
                 cstm.block = block;
@@ -866,17 +876,9 @@ export class CfgBuilder {
             block.stms.push(sstm)
             for (const cas of sstm.cases) {
                 this.buildBlocks(cas.stm, this.buildNewBlock([]));
-                // const caseStmt=new StatementBuilder("statement", cas.value,null,sstm.nexts[0].scopeID);
-                // const gotoStmt=new StatementBuilder("statement", "goto label"+cas.stm.block?.id,null,sstm.nexts[0].scopeID);
-                // block.stms.push(caseStmt);
-                // block.stms.push(gotoStmt);
             }
             if (sstm.default) {
                 this.buildBlocks(sstm.default, this.buildNewBlock([]));
-                // const caseStmt=new StatementBuilder("statement", "default :", null,sstm.nexts[0].scopeID);
-                // const gotoStmt=new StatementBuilder("statement", "goto label"+sstm.default.block?.id,null, sstm.nexts[0].scopeID);
-                // block.stms.push(caseStmt);
-                // block.stms.push(gotoStmt);
             }
 
         }
@@ -984,28 +986,6 @@ export class CfgBuilder {
                 nextBlock.stms.push(returnStatement);
                 returnStatement.block = nextBlock;
             }
-            // if(nextBlock.stms.length>0){
-            //     let goto = new StatementBuilder("gotoStatement", "goto label" + nextBlock.id, null, trystm.tryFirst.scopeID);
-            //     goto.block = finallyBlock;
-            //     if (trystm.finallyStatement) {
-            //         if(trystm.catchStatements.length>0)
-            //             finallyBlock.stms.push(goto);
-            //     }
-            //     else {
-            //         finallyBlock.stms = [goto];
-            //     }
-            // }
-            // else{
-            //     const returnStatement=new StatementBuilder("returnStatement", "return;", null, trystm.tryFirst.scopeID);
-            //     returnStatement.block = finallyBlock;
-            //     if (trystm.finallyStatement) {
-            //         finallyBlock.stms.push(returnStatement);
-            //     }
-            //     else {
-            //         finallyBlock.stms = [returnStatement];
-            //     }
-            // }
-
         }
         else {
             if (stm.next) {
@@ -1020,8 +1000,8 @@ export class CfgBuilder {
                 }
 
                 stm.next.passTmies++;
-                if (stm.next.passTmies == stm.next.lasts.length || stm.next.type == "loopStatement") {
-                    if (stm.next.scopeID != stm.scopeID && !stm.next.type.includes(" exit")) {
+                if (stm.next.passTmies == stm.next.lasts.length || (stm.next.type == "loopStatement") || stm.next.isDoWhile) {
+                    if (stm.next.scopeID != stm.scopeID && !stm.next.type.includes(" exit") && !(stm.next instanceof ConditionStatementBuilder && stm.next.doStatement)) {
                         let b = this.buildNewBlock([]);
                         // block.nexts.push(b);
                         block = b;
@@ -1848,9 +1828,17 @@ export class CfgBuilder {
             let methodSignature = new MethodSignature();
             methodSignature.setArkClass(classSignature);
             methodSignature.setMethodSubSignature(methodSubSignature);
+
             if (methodValue instanceof ArkInstanceFieldRef) {
-                methodSubSignature.setMethodName(methodValue.getFieldName());
-                value = new ArkInstanceInvokeExpr(methodValue.getBase(), methodSignature, args);
+                let methodName = methodValue.getFieldName();
+                let base = methodValue.getBase()
+                methodSubSignature.setMethodName(methodName);
+
+                if (base == this.thisLocal) {
+                    methodSignature = ClassUtils.getMethodSignatureFromArkClass(this.declaringClass, methodName) as MethodSignature;
+                }
+
+                value = new ArkInstanceInvokeExpr(base, methodSignature, args);
             } else if (methodValue instanceof ArkStaticFieldRef) {
                 methodSubSignature.setMethodName(methodValue.getFieldName());
                 value = new ArkStaticInvokeExpr(methodSignature, args);
@@ -2339,11 +2327,12 @@ export class CfgBuilder {
                 let parameterLocal = this.generateAssignStmt(parameterRef);
                 parameterLocal.setName(paraName);
                 index++;
+                this.paraLocals.push(parameterLocal);
             }
             let thisRef = new ArkThisRef(this.declaringClass.getSignature().toString());
-            let thisLocal = this.generateAssignStmt(thisRef);
-            thisLocal.setName('this');
-            thisLocal.setType(thisRef.getType());
+            this.thisLocal = this.generateAssignStmt(thisRef);
+            this.thisLocal.setName('this');
+            this.thisLocal.setType(thisRef.getType());
         }
 
         for (let blockId = 0; blockId < this.blocks.length; blockId++) {
