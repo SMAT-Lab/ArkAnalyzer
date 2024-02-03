@@ -73,7 +73,15 @@ export class Property {
 }
 
 function buildProperty(member: ts.PropertyDeclaration): Property {
-    let propertyName = (member.name as ts.Identifier).escapedText.toString();
+    let propertyName: string = "";
+    if (ts.isComputedPropertyName(member.name)) {
+        if (ts.isIdentifier(member.name.expression)) {
+            propertyName = member.name.expression.escapedText.toString();
+        }
+    }
+    else {
+        propertyName = (member.name as ts.Identifier).escapedText.toString();
+    }
 
     let modifiers: Set<string> = new Set<string>();
     if (member.modifiers) {

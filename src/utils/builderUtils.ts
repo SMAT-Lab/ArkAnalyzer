@@ -34,6 +34,18 @@ export function buildModifiers(modifierArray: ts.NodeArray<ts.ModifierLike>): Se
         if (ts.SyntaxKind[modifier.kind] == 'FirstContextualKeyword') {
             modifiers.add('AbstractKeyword');
         }
+        else if (ts.isDecorator(modifier)) {
+            if (modifier.expression) {
+                if (ts.isIdentifier(modifier.expression)) {
+                    modifiers.add(modifier.expression.escapedText.toString());
+                }
+                else if (ts.isCallExpression(modifier.expression)) {
+                    if (ts.isIdentifier(modifier.expression.expression)) {
+                        modifiers.add(modifier.expression.expression.escapedText.toString());
+                    }
+                }
+            }
+        }
         else {
             modifiers.add(ts.SyntaxKind[modifier.kind]);
         }

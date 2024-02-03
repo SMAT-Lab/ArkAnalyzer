@@ -1,4 +1,4 @@
-import { Config, SceneConfig } from "./Config";
+import { SceneConfig } from "./Config";
 import { Scene } from "../src/Scene";
 
 let config: SceneConfig = new SceneConfig("./tests/AppTestConfig.json");
