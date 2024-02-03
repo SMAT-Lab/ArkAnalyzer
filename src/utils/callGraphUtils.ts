@@ -180,3 +180,12 @@ export function printCallGraphDetails(methods: Set<string>, calls: Map<string, s
         console.log("\n")
     });
 }
+
+export function extractLastBracketContent(input: string): string {
+    // 正则表达式匹配最后一个尖括号内的内容，直到遇到左圆括号
+    const match = input.match(/<([^<>]*)\(\)>$/);
+    if (match && match[1]) {
+        return match[1].trim();
+    }
+    return "";
+}

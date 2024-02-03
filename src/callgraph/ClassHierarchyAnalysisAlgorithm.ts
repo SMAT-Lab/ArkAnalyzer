@@ -5,7 +5,7 @@ import { ArkClass } from "../core/model/ArkClass";
 import { ArkFile } from "../core/model/ArkFile";
 import { ArkMethod } from "../core/model/ArkMethod";
 import { MethodSignature } from "../core/model/ArkSignature";
-import { isItemRegistered } from "../utils/callGraphUtils";
+import {extractLastBracketContent, isItemRegistered} from "../utils/callGraphUtils";
 import {getArkFileByName, matchClassInFile, searchImportMessage, splitType} from "../utils/typeReferenceUtils";
 import { AbstractCallGraphAlgorithm } from "./AbstractCallGraphAlgorithm";
 
@@ -154,14 +154,15 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
                                 arkFileName: string,
                                 sourceMethodSignature: MethodSignature) {
         let arkFile = getArkFileByName(arkFileName, this.scene.scene)
-        let callName = invokeExpr.getMethodSignature()
+        let callName = extractLastBracketContent(invokeExpr.getMethodSignature().toString())
+        // console.log(callName)
         let methodName: string = callName
         let classAndArkFileNames: Set<[string, string]> = new Set<[string, string]>()
         let callMethods: ArkMethod[] = []
 
         // TODO: 对于基本类型的一些固定方法，需要讨论是否可以给这些类创建一个ArkClass等，这样不需要改动这里的内容
         if (invokeExpr instanceof ArkInstanceInvokeExpr) {
-            // console.log("instance:   "+invokeExpr)
+            // console.log("instance:   "+invokeExpr.getMethodSignature().toString())
             if (invokeExpr.getBase().getName() === "this") {
                 // 处理this调用
                 let currentClass = this.scene.getClass(sourceMethodSignature.getArkClass())
@@ -176,7 +177,7 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
                 }
             }
         } else if (invokeExpr instanceof ArkStaticInvokeExpr) {
-            // console.log("static:   "+invokeExpr)
+            // console.log("static:   "+invokeExpr.getMethodSignature().toString())
             if (callName.includes('.')) {
                 // a.b()的静态调用
                 let lastDotIndex = callName.lastIndexOf('.')
