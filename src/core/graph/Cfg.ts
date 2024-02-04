@@ -1,4 +1,3 @@
-import path from "path";
 import {
     getArkFileByName,
     isPrimaryType,
@@ -13,9 +12,8 @@ import { Local } from "../base/Local";
 import { ArkInstanceFieldRef, ArkParameterRef, ArkThisRef } from "../base/Ref";
 import { ArkAssignStmt, Stmt } from "../base/Stmt";
 import { ArkClass } from "../model/ArkClass";
-import { ArkFile } from "../model/ArkFile";
-import { BasicBlock } from "./BasicBlock";
 import { ClassSignature } from "../model/ArkSignature";
+import { BasicBlock } from "./BasicBlock";
 
 export class Cfg {
     private blocks: Set<BasicBlock> = new Set();
@@ -147,15 +145,15 @@ export class Cfg {
         }
     }
 
-    public typeReference(){
-        for(let block of this.blocks){
-            for(let stmt of block.getStmts()){
+    public typeReference() {
+        for (let block of this.blocks) {
+            for (let stmt of block.getStmts()) {
                 // console.log(stmt)
-                if(stmt instanceof ArkAssignStmt){
-                    const leftOp=stmt.getLeftOp();
-                    const rightOp=stmt.getRightOp();
+                if (stmt instanceof ArkAssignStmt) {
+                    const leftOp = stmt.getLeftOp();
+                    const rightOp = stmt.getRightOp();
                     let leftPossibleTypes: string[] = []
-                    if(leftOp instanceof Local){
+                    if (leftOp instanceof Local) {
                         // console.log(stmt.toString())
                         if (leftOp.getType() != "" && leftOp.getType() != "any") {
                             // 若存在变量类型声明，则进行解析
@@ -184,10 +182,10 @@ export class Cfg {
                             // continue
                         }
                         if (rightOp instanceof ArkNewExpr) {
-                            if (leftOp.getType()=="" || leftOp.getType()=="any") {
+                            if (leftOp.getType() == "" || leftOp.getType() == "any") {
                                 leftOp.setType(this.getTypeNewExpr(rightOp));
                             }
-                        } else if (rightOp instanceof ArkBinopExpr){
+                        } else if (rightOp instanceof ArkBinopExpr) {
                             let op1 = rightOp.getOp1()
                             let op2 = rightOp.getOp2()
                             let op1Type: string, op2Type: string
@@ -267,36 +265,36 @@ export class Cfg {
                             leftOp.setType(transformArrayToString(leftPossibleTypes))
                         } else if (rightOp instanceof Constant) {
                             leftOp.setType(rightOp.getType())
-                        // } else if (rightOp instanceof ArkStaticInvokeExpr && (leftOp.getType()=="" || leftOp.getType()=="any")){
+                            // } else if (rightOp instanceof ArkStaticInvokeExpr && (leftOp.getType()=="" || leftOp.getType()=="any")){
                             // const staticInvokeExpr=rightOp as ArkStaticInvokeExpr;
                             // if(staticInvokeExpr.toString().includes("<AnonymousFunc-")){
                             // leftOp.setType("Callable");
                             // }/
-                        } else if (rightOp instanceof ArkInstanceInvokeExpr){
+                        } else if (rightOp instanceof ArkInstanceInvokeExpr) {
                             const classTypeString = rightOp.getBase().getType();
                             const lastDot = classTypeString.lastIndexOf('.');
                             const classSignature = new ClassSignature();
-                            classSignature.setArkFile(classTypeString.substring(0,lastDot));
-                            const classType=rightOp.getBase().getType().replace(/\\\\/g, '.').split('.');
-                            classSignature.setClassType(classType[classType.length-1]);
+                            classSignature.setArkFile(classTypeString.substring(0, lastDot));
+                            const classType = rightOp.getBase().getType().replace(/\\\\/g, '.').split('.');
+                            classSignature.setClassType(classType[classType.length - 1]);
 
 
-                            let classMapSignature="";
-                            for(let i=0;i<classType.length;i++){
-                                if(i==classType.length-2){
+                            let classMapSignature = "";
+                            for (let i = 0; i < classType.length; i++) {
+                                if (i == classType.length - 2) {
                                     continue;
                                 }
-                                else if(i==classType.length-3){
-                                    classMapSignature+='<'+classType[i]+'>.';
+                                else if (i == classType.length - 3) {
+                                    classMapSignature += '<' + classType[i] + '>.';
                                 }
-                                else{
-                                    classMapSignature+=classType[i]+'.';
+                                else {
+                                    classMapSignature += classType[i] + '.';
                                 }
                             }
-                            const methodMapSignature=classMapSignature+rightOp.getMethodSignature();
-                            const map=this.declaringClass.getDeclaringArkFile().getScene().getArkInstancesMap();
-                            const method=map.get(methodMapSignature);
-                            if(method)
+                            const methodMapSignature = classMapSignature + rightOp.getMethodSignature();
+                            const map = this.declaringClass.getDeclaringArkFile().getScene().getArkInstancesMap();
+                            const method = map.get(methodMapSignature);
+                            if (method)
                                 leftOp.setType(method.getReturnType());
                         } else if (rightOp instanceof ArkStaticInvokeExpr) {
 
@@ -323,8 +321,8 @@ export class Cfg {
     }
 
 
-    private getTypeNewExpr(newExpr:ArkNewExpr): string {
-        const className = newExpr.getClassSignature();
+    private getTypeNewExpr(newExpr: ArkNewExpr): string {
+        const className = newExpr.getClassSignature().toString();
         const file = this.declaringClass.getDeclaringArkFile();
         return searchImportMessage(file, className, matchClassInFile);
     }

@@ -1,5 +1,5 @@
 import { BasicBlock } from "../graph/BasicBlock";
-import { MethodSignature } from "../model/ArkSignature";
+import { ClassSignature, MethodSignature } from "../model/ArkSignature";
 import { Local } from "./Local";
 import { Value } from "./Value";
 
@@ -112,14 +112,14 @@ export class ArkStaticInvokeExpr extends AbstractInvokeExpr {
 
 
 export class ArkNewExpr extends AbstractExpr {
-    private classSignature: string;
+    private classSignature: ClassSignature;
 
-    constructor(classSignature: string) {
+    constructor(classSignature: ClassSignature) {
         super();
         this.classSignature = classSignature;
     }
 
-    public getClassSignature(): string {
+    public getClassSignature(): ClassSignature {
         return this.classSignature;
     }
 
