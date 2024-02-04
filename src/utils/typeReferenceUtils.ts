@@ -1,7 +1,8 @@
-import {ArkFile} from "../core/model/ArkFile";
-import {Scene} from "../Scene";
 import path from "path";
-import {NodeA} from "../core/base/Ast";
+import { Scene } from "../Scene";
+import { NodeA } from "../core/base/Ast";
+import { ArkFile } from "../core/model/ArkFile";
+import { ClassSignature } from "../core/model/ArkSignature";
 
 export function isPrimaryType(type: string): boolean {
     switch (type) {
@@ -113,7 +114,7 @@ export function getArkFileByName(fileName: string, scene: Scene) {
     return null
 }
 
-export function resolveClassInstance(classCompleteName: string, file: ArkFile|null) {
+export function resolveClassInstance(classCompleteName: string, file: ArkFile | null) {
     if (file == null)
         return null
     let lastDotIndex = classCompleteName.lastIndexOf('.')
@@ -126,10 +127,10 @@ export function resolveClassInstance(classCompleteName: string, file: ArkFile|nu
     return null
 }
 
-export function resolveClassInstanceField(fieldName: string[], file: ArkFile|null) {
+export function resolveClassInstanceField(fieldName: string[], file: ArkFile | null) {
     if (file == null)
         return null
-    for (let i = 0;i < fieldName.length - 1;i ++) {
+    for (let i = 0; i < fieldName.length - 1; i++) {
         let className = fieldName[i]
         let classInstanceName = searchImportMessage(file, className, matchClassInFile)
         let lastDotIndex = classInstanceName.lastIndexOf('.')
@@ -139,8 +140,8 @@ export function resolveClassInstanceField(fieldName: string[], file: ArkFile|nul
             return null
         }
         for (let field of classInstance.getFields()) {
-            if (field.getName() === fieldName[i+1]) {
-                fieldName[i+1] = field.getType()
+            if (field.getName() === fieldName[i + 1]) {
+                fieldName[i + 1] = field.getType()
                 file = classInstance.getDeclaringArkFile()
                 break
             }
@@ -159,11 +160,11 @@ export function searchImportMessage(file: ArkFile, className: string, searchCall
         return result;
     }
     for (let importInfo of file.getImportInfos()) {
-        const importFromDir=importInfo.getImportFrom();
+        const importFromDir = importInfo.getImportFrom();
         if (className == importInfo.getImportClauseName() && importFromDir != undefined) {
             const fileDir = file.getName().split("\\");
             const importDir = importFromDir.split(/[\/\\]/).filter(item => item !== '.');
-            let realName = importInfo.getNameBeforeAs()?importInfo.getNameBeforeAs():importInfo.getImportClauseName()
+            let realName = importInfo.getNameBeforeAs() ? importInfo.getNameBeforeAs() : importInfo.getImportClauseName()
             let parentDirNum = 0;
             while (importDir[parentDirNum] == "..") {
                 parentDirNum++;
@@ -185,9 +186,9 @@ export function searchImportMessage(file: ArkFile, className: string, searchCall
                         }
                     }
                     // file不在scene中，视为外部库
-                    const targetSignature=importInfo.getTargetArkSignature();
-                    const apiMap=scene.arkClassMaps;
-                    if(apiMap!=undefined&&apiMap.get(targetSignature)!=undefined){
+                    const targetSignature = importInfo.getTargetArkSignature();
+                    const apiMap = scene.arkClassMaps;
+                    if (apiMap != undefined && apiMap.get(targetSignature) != undefined) {
                         return apiMap.get(targetSignature);
                     }
                 }
@@ -195,6 +196,16 @@ export function searchImportMessage(file: ArkFile, className: string, searchCall
         }
     }
     return "";
+}
+
+export function typeStrToClassSignature(typrStr: string): ClassSignature {
+    const lastDot = typrStr.lastIndexOf('.');
+    const classSignature = new ClassSignature();
+    classSignature.setArkFile(typrStr.substring(0, lastDot));
+    const classType = typrStr.replace(/\\\\/g, '.').split('.');
+    classSignature.setClassType(classType[classType.length - 1]);
+
+    return classSignature;
 }
 
 export const matchClassInFile: ClassSearchCallback = (file, className) => {

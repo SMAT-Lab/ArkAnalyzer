@@ -56,13 +56,11 @@
 
 class Test {
     public func1(): number {
-        let i = 0;
-        let j = i + 2;
-        return i;
+        return 0;
     }
 
-    // public testUseMethodOfClass(): void {
-    //     let t = new Test();
-    //     t.func1();
-    // }
+    public testUseMethodOfClass(): void {
+        let t = new Test();
+        let i = t.func1();
+    }
 }

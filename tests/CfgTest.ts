@@ -35,7 +35,7 @@ export class CfgTest {
                         console.log(threeAddresStmt.toString());
                         // console.log(threeAddresStmt.toString(), ', original pos:', threeAddresStmt.getOriginPositionInfo(),
                         //     ', pos:', threeAddresStmt.getPositionInfo());
-                        console.log(threeAddresStmt.getUses());
+                        // console.log(threeAddresStmt.getUses());
                         
                     }
 

@@ -123,6 +123,10 @@ export class ArkNewExpr extends AbstractExpr {
         return this.classSignature;
     }
 
+    public setClassSignature(newClassSignature: ClassSignature): void {
+        this.classSignature = newClassSignature;
+    }
+
     public getUses(): Value[] {
         let uses: Value[] = [];
         return uses;

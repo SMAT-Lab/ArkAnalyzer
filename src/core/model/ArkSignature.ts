@@ -1,7 +1,7 @@
 
 import path from 'path';
 export class MethodSubSignature {
-    private methodName: string;
+    private methodName: string = '';
     private parameters: string[] = [];
     private returnType: string[] = [];
 
@@ -110,9 +110,9 @@ export class FieldSignature {
 }
 
 export class InterfaceSignature {
-    private arkFile: string;
-    private interfaceName: string;
-    private arkFileWithoutExt: string;
+    private arkFile: string = '';
+    private interfaceName: string = '';
+    private arkFileWithoutExt: string = '';
 
     public getArkFile() {
         return this.arkFile;
@@ -144,9 +144,9 @@ export class InterfaceSignature {
 }
 
 export class ClassSignature {
-    private arkFile: string;
-    private classType: string;
-    private arkFileWithoutExt: string;
+    private arkFile: string = '';
+    private classType: string = '';
+    private arkFileWithoutExt: string = '';
 
     public getArkFile() {
         return this.arkFile;

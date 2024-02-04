@@ -3,7 +3,7 @@ import {
     isPrimaryType,
     isPrimaryTypeKeyword, matchClassInFile, resolveBinaryResultType, resolveClassInstance, resolveClassInstanceField,
     resolvePrimaryTypeKeyword, searchImportMessage,
-    splitType, transformArrayToString
+    splitType, transformArrayToString, typeStrToClassSignature
 } from "../../utils/typeReferenceUtils";
 import { Constant } from "../base/Constant";
 import { DefUseChain } from "../base/DefUseChain";
@@ -148,6 +148,22 @@ export class Cfg {
     public typeReference() {
         for (let block of this.blocks) {
             for (let stmt of block.getStmts()) {
+                // complete ClassSignature
+                for (const expr of stmt.getExprs()) {
+                    if (expr instanceof ArkNewExpr) {
+                        const typeStr = this.getTypeNewExpr(expr);
+                        expr.setClassSignature(typeStrToClassSignature(typeStr));
+                    } else if (expr instanceof ArkInstanceInvokeExpr) {
+                        const classSignature = typeStrToClassSignature(expr.getBase().getType());
+                        const className = classSignature.getClassType();
+                        const arkFile = this.declaringClass.getDeclaringArkFile();
+                        const typeStr = searchImportMessage(arkFile, className, matchClassInFile);
+
+                        const methodSignature = expr.getMethodSignature();
+                        methodSignature.setArkClass(typeStrToClassSignature(typeStr));
+                    }
+                }
+
                 // console.log(stmt)
                 if (stmt instanceof ArkAssignStmt) {
                     const leftOp = stmt.getLeftOp();
@@ -322,7 +338,7 @@ export class Cfg {
 
 
     private getTypeNewExpr(newExpr: ArkNewExpr): string {
-        const className = newExpr.getClassSignature().toString();
+        const className = newExpr.getClassSignature().getClassType();
         const file = this.declaringClass.getDeclaringArkFile();
         return searchImportMessage(file, className, matchClassInFile);
     }
