@@ -95,6 +95,7 @@ export class ArkFile {
                 mthd.setDeclaringSignature(this.arkSignature);
                 mthd.buildArkMethodFromAstNode(child, this.defaultClass);
                 this.defaultClass.addMethod(mthd);
+                this.addArkMethod(mthd);
                 this.addArkInstance(mthd.getArkSignature(), mthd);
                 mthd.getArkInstancesMap().forEach((value, key) => {
                     this.addArkInstance(key, value);
