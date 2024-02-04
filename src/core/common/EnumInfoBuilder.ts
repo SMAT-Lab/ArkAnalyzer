@@ -177,7 +177,12 @@ export function buildEnumInfo4EnumNode(node: ts.EnumDeclaration): EnumInfo {
     let enumMembers: EnumMember[] = [];
     node.members.forEach((member) => {
         let enumMember = new EnumMember();
-        enumMember.setMemberName((member.name as ts.Identifier).escapedText.toString());
+        if (ts.isStringLiteral(member.name)) {
+            enumMember.setMemberName(member.name.text);
+        }
+        else {
+            enumMember.setMemberName((member.name as ts.Identifier).escapedText.toString());
+        }
         if (member.initializer) {
             enumMember.setInitializerType(ts.SyntaxKind[member.initializer.kind]);
             if (ts.isBinaryExpression(member.initializer)) {
