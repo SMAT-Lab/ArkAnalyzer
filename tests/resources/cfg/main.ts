@@ -50,10 +50,11 @@
 //   }
 // }
 
-let x=10
-do{
-  console.log(1)
-  x++;
-} while(x<10)
+// let a1=new a();
+// let x=a1.f()
 
-console.log(2)
+function f():number{
+    return 3;
+}
+
+let y=f();

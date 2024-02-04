@@ -8,12 +8,12 @@ file.buildArkFileFromSourceFile('tests\\resources\\cfg\\main.ts',"D:\\11study\\A
 for(let clas of file.getClasses()){
     if(clas.getName()=='_DEFAULT_ARK_CLASS'){
         for(let method of clas.getMethods()){
-            if(method.getName()=='_DEFAULT_ARK_METHOD'){
+            // if(method.getName()=='_DEFAULT_ARK_METHOD'){
                 let body=method.getBody();
                 let cfg=body.getCfg();
-                cfg.typeReference();
+                // cfg.typeReference();
                 console.log(1)
-            }
+            // }
         }
     }
 }

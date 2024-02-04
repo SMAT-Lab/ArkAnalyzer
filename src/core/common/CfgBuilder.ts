@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import { buildTypeReferenceString, transformArrayToString } from "../../utils/typeReferenceUtils";
 import { ASTree, NodeA } from '../base/Ast';
 import { Constant } from '../base/Constant';
 import { AbstractInvokeExpr, ArkBinopExpr, ArkCastExpr, ArkConditionExpr, ArkInstanceInvokeExpr, ArkLengthExpr, ArkNewArrayExpr, ArkNewExpr, ArkStaticInvokeExpr, ArkTypeOfExpr, ArkUnopExpr } from '../base/Expr';
@@ -15,7 +16,6 @@ import { ClassSignature, MethodSignature, MethodSubSignature } from '../model/Ar
 import { ClassUtils } from './ClassUtils';
 import { ExportInfo } from './ExportBuilder';
 import { IRUtils } from './IRUtils';
-import { transformArrayToString, buildTypeReferenceString } from "../../utils/typeReferenceUtils";
 
 
 class StatementBuilder {
@@ -559,16 +559,6 @@ export class CfgBuilder {
                     loopstm.nextT.isDoWhile = true;
                     loopstm.doStatement = loopstm.nextT;
                 }
-                // loopstm.nextT?.isDoWhile=true;
-                // if(!expressionCondition){
-                //     for(let loopchild of c.children){
-                //         if(loopchild.kind=="PrefixUnaryExpression"||loopchild.kind=="Identifier"||loopchild.kind=="PropertyAccessExpression"){
-                //             loopstm.code="while("+loopchild.text+")";
-                //             loopstm.condition=loopchild.text;
-                //             break;
-                //         }
-                //     }
-                // }
                 lastStatement = loopExit;
                 this.loopStack.pop();
             }
@@ -641,10 +631,11 @@ export class CfgBuilder {
                             }
 
                         }
+                        if(lastCaseExit && !lastCaseExit.next){
+                            lastCaseExit.next=switchExit;
+                        }
                     }
                 }
-                // if (switchstm.default == null)
-                //     switchstm.default = switchExit;
                 lastStatement = switchExit;
                 this.switchExitStack.pop();
             }
@@ -1071,8 +1062,11 @@ export class CfgBuilder {
                 notReturnStmts.push(stmt);
             }
         }
+        if(notReturnStmts.length < 1){
+            return;
+        }
         const returnStatement = new StatementBuilder("returnStatement", "return;", null, this.exit.scopeID);
-        if (notReturnStmts.length == 1) {
+        if (notReturnStmts.length == 1 && !(notReturnStmts[0] instanceof ConditionStatementBuilder)) {
             const notReturnStmt = notReturnStmts[0];
             notReturnStmt.next = returnStatement;
             returnStatement.lasts = [notReturnStmt];
@@ -1081,7 +1075,7 @@ export class CfgBuilder {
             notReturnStmt.block?.stms.push(returnStatement);
             returnStatement.block = notReturnStmt.block;
         }
-        else if (notReturnStmts.length > 1) {
+        else {
             let returnBlock = new Block(this.blocks.length, [returnStatement], null);
             returnStatement.block = returnBlock;
             this.blocks.push(returnBlock);
@@ -2051,7 +2045,7 @@ export class CfgBuilder {
             value = resultLocal;
         }
         else {
-            console.log('unsupported expr node type:', node.kind, ', text:', node.text)
+            // console.log('unsupported expr node type:', node.kind, ', text:', node.text)
             value = new Constant(node.text);
         }
         return value;
@@ -2315,7 +2309,7 @@ export class CfgBuilder {
             // threeAddressStmts.push(new ArkNopStmt());
         }
         else {
-            console.log('unsupported stmt node, type:', node.kind, ', text:', node.text);
+            // console.log('unsupported stmt node, type:', node.kind, ', text:', node.text);
         }
 
         this.current3ACstm.threeAddressStmts.push(...threeAddressStmts);
