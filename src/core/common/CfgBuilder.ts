@@ -1072,7 +1072,7 @@ export class CfgBuilder {
             }
         }
         const returnStatement = new StatementBuilder("returnStatement", "return;", null, this.exit.scopeID);
-        if (notReturnStmts.length == 1) {
+        if (notReturnStmts.length == 1 && !(notReturnStmts[0] instanceof ConditionStatementBuilder)) {
             const notReturnStmt = notReturnStmts[0];
             notReturnStmt.next = returnStatement;
             returnStatement.lasts = [notReturnStmt];
@@ -1081,7 +1081,7 @@ export class CfgBuilder {
             notReturnStmt.block?.stms.push(returnStatement);
             returnStatement.block = notReturnStmt.block;
         }
-        else if (notReturnStmts.length > 1) {
+        else {
             let returnBlock = new Block(this.blocks.length, [returnStatement], null);
             returnStatement.block = returnBlock;
             this.blocks.push(returnBlock);
