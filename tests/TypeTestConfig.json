@@ -1,0 +1,27 @@
+{
+    "targetProjectName": "photos",
+    "targetProjectDirectory": "./tests/resources/cfg",
+    
+    "ohosSdkPath": "../openharmony\\interface\\sdk-js\\api",
+    "kitSdkPath": "../openharmony\\interface\\sdk-js\\kits",
+    "systemSdkPath": "",
+    
+    "otherSdks": [
+        {
+            "name": "sdk1",
+            "path": ""
+        },
+        {
+            "name": "sdk2",
+            "path": ""
+        },
+        {
+            "name": "",
+            "path": "/opt/yy"
+        },
+        {
+            "name": "",
+            "path": ""
+        }
+    ]
+}

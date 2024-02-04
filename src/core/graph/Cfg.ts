@@ -268,7 +268,7 @@ export class Cfg {
                             const map=this.declaringClass.getDeclaringArkFile().getScene().getArkInstancesMap();
                             const method=map.get(methodMapSignature);
                             if(method)
-                                leftOp.setType(method.returnType);
+                                leftOp.setType(method.getReturnType());
                         } else if (rightOp instanceof ArkParameterRef) {
                             let rightOpTypes = splitType(rightOp.getType())
                             for (let rightOpType of rightOpTypes) {

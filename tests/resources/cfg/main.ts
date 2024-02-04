@@ -50,10 +50,5 @@
 //   }
 // }
 
-let x=10
-do{
-  console.log(1)
-  x++;
-} while(x<10)
-
-console.log(2)
+let x=[]
+x[1]=1;
