@@ -1,6 +1,7 @@
 import {ArkFile} from "../core/model/ArkFile";
 import {Scene} from "../Scene";
 import path from "path";
+import {NodeA} from "../core/base/Ast";
 
 export function isPrimaryType(type: string): boolean {
     switch (type) {
@@ -41,12 +42,23 @@ export function resolvePrimaryTypeKeyword(keyword: string): string {
     }
 }
 
-export function splitType(typeName: string): string[] {
-    return typeName.split('|').map(type => type.trim()).filter(Boolean);
+export function splitType(typeName: string, separator: string): string[] {
+    return typeName.split(separator).map(type => type.trim()).filter(Boolean);
 }
 
 export function transformArrayToString<T>(array: T[], separator: string = '|'): string {
     return array.join(separator);
+}
+
+export function buildTypeReferenceString(astNodes: NodeA[]): string {
+    return astNodes.map(node => {
+        if (node.kind === 'Identifier') {
+            return node.text;
+        } else if (node.kind === 'DotToken') {
+            return '.';
+        }
+        return '';
+    }).join('');
 }
 
 export function resolveBinaryResultType(op1Type: string, op2Type: string, operator: string): string {
@@ -112,6 +124,29 @@ export function resolveClassInstance(classCompleteName: string, file: ArkFile|nu
         }
     }
     return null
+}
+
+export function resolveClassInstanceField(fieldName: string[], file: ArkFile|null) {
+    if (file == null)
+        return null
+    for (let i = 0;i < fieldName.length - 1;i ++) {
+        let className = fieldName[i]
+        let classInstanceName = searchImportMessage(file, className, matchClassInFile)
+        let lastDotIndex = classInstanceName.lastIndexOf('.')
+        let classInstanceArkFile = getArkFileByName(classInstanceName.substring(0, lastDotIndex), file.getScene())
+        let classInstance = resolveClassInstance(classInstanceName, classInstanceArkFile)
+        if (classInstance == null) {
+            return null
+        }
+        for (let field of classInstance.getFields()) {
+            if (field.getName() === fieldName[i+1]) {
+                fieldName[i+1] = field.getType()
+                file = classInstance.getDeclaringArkFile()
+                break
+            }
+        }
+    }
+    return searchImportMessage(file, fieldName[fieldName.length - 1], matchClassInFile)
 }
 
 // MatchItemFromImport

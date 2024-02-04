@@ -1,9 +1,9 @@
 {
-    "targetProjectName": "CfgTest",
-    "targetProjectDirectory": "D:\\Codes\\ark-analyzer-mirror\\tests\\resources\\cfg\\sample",    
+    "targetProjectName": "SE4OpenHarmony",
+    "targetProjectDirectory": "/Users/yifei/Documents/Code/SE4OpenHarmony/Apps/ArkTS2TSRes/ArkTSMusicPlayer",
     
-    "ohosSdkPath": "",
-    "kitSdkPath": "",
+    "ohosSdkPath": "/Users/yifei/Documents/Code/openharmony/interface/sdk-js/api",
+    "kitSdkPath": "/Users/yifei/Documents/Code/openharmony/interface/sdk-js/kits",
     "systemSdkPath": "",
     
     "otherSdks": [

@@ -1,5 +1,6 @@
 import { NodeA } from "../base/Ast";
 import { BodyBuilder } from "../common/BodyBuilder";
+import { Cfg } from "../graph/Cfg";
 import { ArkBody } from "./ArkBody";
 import { ArkClass } from "./ArkClass";
 import { ArkFile } from "./ArkFile";
@@ -204,11 +205,11 @@ export class ArkMethod {
         this.body = body;
     }
 
-    //public getCfg(): Cfg {
-    //    return this.body.getCfg();
-    //}
+    public getCfg(): Cfg {
+        return this.body.getCfg();
+    }
 
-    //public getOriginalCfg() {
-    //    return this.body.getOriginalCfg();
-    //}
+    public getOriginalCfg() {
+        return this.body.getOriginalCfg();
+    }
 }

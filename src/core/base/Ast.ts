@@ -5,6 +5,7 @@ import { ImportInfo, buildImportInfo4ImportNode } from "../common/ImportBuilder"
 import { ExportInfo, buildExportInfo4ExportNode } from "../common/ExportBuilder";
 import { InterfaceInfo, buildInterfaceInfo4InterfaceNode } from "../common/InterfaceInfoBuilder";
 import { NamespaceInfo, buildNamespaceInfo4NamespaceNode } from "../common/NamespaceInfoBuilder";
+import { EnumInfo, buildEnumInfo4EnumNode } from "../common/EnumInfoBuilder";
 
 /**
  * ast节点类，属性包括父节点，子节点列表，种类，文本内容，开始位置
@@ -21,13 +22,15 @@ export class NodeA {
     exportNodeInfo: ExportInfo[] | undefined;
     interfaceNodeInfo: InterfaceInfo | undefined;
     namespaceNodeInfo: NamespaceInfo | undefined;
+    enumNodeInfo: EnumInfo | undefined;
     instanceMap: Map<string, string> | undefined;
     line: number = -1;
     character: number = -1;
 
     constructor(node: ts.Node | undefined, parent: NodeA | null, children: NodeA[], text: string,
         start: number, kind: string, classNodeInfo?: ClassInfo, methodNodeInfo?: MethodInfo,
-        importNodeInfo?: ImportInfo[], exportNodeInfo?: ExportInfo[], interfaceNodeInfo?: InterfaceInfo, namespaceNodeInfo?: NamespaceInfo) {
+        importNodeInfo?: ImportInfo[], exportNodeInfo?: ExportInfo[], interfaceNodeInfo?: InterfaceInfo,
+        namespaceNodeInfo?: NamespaceInfo, enumNodeInfo?: EnumInfo) {
         this.parent = parent;
         this.children = children;
         this.text = text;
@@ -49,6 +52,7 @@ export class NodeA {
         this.exportNodeInfo = exportNodeInfo;
         this.interfaceNodeInfo = interfaceNodeInfo;
         this.namespaceNodeInfo = namespaceNodeInfo;
+        this.enumNodeInfo = enumNodeInfo;
     }
 
     public putInstanceMap(variableName: string, variableType: string): void {
@@ -118,6 +122,7 @@ export class ASTree {
             let exportNodeInfo: ExportInfo[] | undefined;
             let interfaceNodeInfo: InterfaceInfo | undefined;
             let namespaceNodeInfo: NamespaceInfo | undefined;
+            let enumNodeInfo: EnumInfo | undefined;
 
             if (ts.isClassDeclaration(child) || ts.isClassExpression(child)) {
                 classNodeInfo = buildClassInfo4ClassNode(child);
@@ -138,9 +143,12 @@ export class ASTree {
             if (ts.isModuleDeclaration(child)) {
                 namespaceNodeInfo = buildNamespaceInfo4NamespaceNode(child);
             }
+            if (ts.isEnumDeclaration(child)) {
+                enumNodeInfo = buildEnumInfo4EnumNode(child);
+            }
 
             ca = new NodeA(child, nodea, [], child.getText(this.sourceFile), child.getStart(this.sourceFile), "",
-                classNodeInfo, methodNodeInfo, importNodeInfo, exportNodeInfo, interfaceNodeInfo, namespaceNodeInfo);
+                classNodeInfo, methodNodeInfo, importNodeInfo, exportNodeInfo, interfaceNodeInfo, namespaceNodeInfo, enumNodeInfo);
             const { line, character } = ts.getLineAndCharacterOfPosition(
                 this.sourceFile,
                 child.getStart(this.sourceFile)

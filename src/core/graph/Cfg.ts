@@ -2,7 +2,7 @@ import path from "path";
 import {
     getArkFileByName,
     isPrimaryType,
-    isPrimaryTypeKeyword, matchClassInFile, resolveBinaryResultType, resolveClassInstance,
+    isPrimaryTypeKeyword, matchClassInFile, resolveBinaryResultType, resolveClassInstance, resolveClassInstanceField,
     resolvePrimaryTypeKeyword, searchImportMessage,
     splitType, transformArrayToString
 } from "../../utils/typeReferenceUtils";
@@ -156,16 +156,36 @@ export class Cfg {
                     let leftPossibleTypes: string[] = []
                     if(leftOp instanceof Local){
                         // console.log(stmt.toString())
-                        // console.log("\t"+leftOp.getName() +": "+ leftOp.getType())
+                        if (leftOp.getType() != "" && leftOp.getType() != "any") {
+                            // 若存在变量类型声明，则进行解析
+                            let leftOpTypes = splitType(leftOp.getType(), '|')
+                            for (let leftOpType of leftOpTypes) {
+                                if (isPrimaryType(leftOpType)) {
+                                    leftPossibleTypes.push(leftOpType)
+                                } else {
+                                    if (!leftOpType.includes('.')) {
+                                        //类名解析
+                                        let classInstanceName = searchImportMessage(
+                                            this.declaringClass.getDeclaringArkFile(),
+                                            leftOpType, matchClassInFile);
+                                        leftPossibleTypes.push(classInstanceName)
+                                    } else {
+                                        //类属性解析
+                                        let fieldNames = splitType(leftOpType, '.')
+                                        let fieldArkFile = this.declaringClass.getDeclaringArkFile()
+                                        let resolveResult = resolveClassInstanceField(fieldNames, fieldArkFile)
+                                        if (resolveResult != null)
+                                            leftPossibleTypes.push(resolveResult)
+                                    }
+                                }
+                            }
+                            leftOp.setType(transformArrayToString(leftPossibleTypes))
+                            // continue
+                        }
                         if (rightOp instanceof ArkNewExpr) {
                             if (leftOp.getType()=="" || leftOp.getType()=="any") {
                                 leftOp.setType(this.getTypeNewExpr(rightOp));
-                            }// else if (leftOp.getType() != ""){
-                            //     let classInstance = resolveClassInstance(leftOp.getType(), this.declaringClass.getDeclaringArkFile())
-                            //     if (classInstance != null) {
-                            //         leftOp.setType(classInstance.getSignature().toString())
-                            //     }
-                            // }
+                            }
                         } else if (rightOp instanceof ArkBinopExpr){
                             let op1 = rightOp.getOp1()
                             let op2 = rightOp.getOp2()
@@ -190,18 +210,19 @@ export class Cfg {
                         } else if (rightOp instanceof ArkCastExpr) {
                             // TODO
                         } else if (rightOp instanceof ArkInstanceFieldRef) {
-                            let completeClassNames = splitType(rightOp.getBase().getType())
+                            let completeClassNames = splitType(rightOp.getBase().getType(), '|')
                             for (let completeClassName of completeClassNames) {
                                 let lastDotIndex = completeClassName.lastIndexOf('.')
                                 let targetArkFile = getArkFileByName(
-                                    completeClassName.substring(0, lastDotIndex), this.declaringClass.getDeclaringArkFile().getScene()
+                                    completeClassName.substring(0, lastDotIndex),
+                                    this.declaringClass.getDeclaringArkFile().getScene()
                                 )
                                 let classInstance = resolveClassInstance(
                                     completeClassName, targetArkFile)
                                 if (classInstance != null) {
                                     for (let field of classInstance.getFields()) {
                                         if (field.getName() === rightOp.getFieldName()) {
-                                            let fieldTypes = splitType(field.getType())
+                                            let fieldTypes = splitType(field.getType(), '|')
                                             for (let fieldType of fieldTypes) {
                                                 if (isPrimaryTypeKeyword(fieldType)) {
                                                     leftPossibleTypes.push(resolvePrimaryTypeKeyword(fieldType))
@@ -227,7 +248,7 @@ export class Cfg {
                             }
                             leftOp.setType(transformArrayToString(leftPossibleTypes))
                         } else if (rightOp instanceof Local) {
-                            let rightOpTypes = splitType(rightOp.getType())
+                            let rightOpTypes = splitType(rightOp.getType(), '|')
                             for (let rightOpType of rightOpTypes) {
                                 if (isPrimaryType(rightOpType)) {
                                     leftPossibleTypes.push(rightOpType)
@@ -270,7 +291,7 @@ export class Cfg {
                             if(method)
                                 leftOp.setType(method.getReturnType());
                         } else if (rightOp instanceof ArkParameterRef) {
-                            let rightOpTypes = splitType(rightOp.getType())
+                            let rightOpTypes = splitType(rightOp.getType(), '|')
                             for (let rightOpType of rightOpTypes) {
                                 if (isPrimaryTypeKeyword(rightOpType)) {
                                     leftPossibleTypes.push(resolvePrimaryTypeKeyword(rightOpType))

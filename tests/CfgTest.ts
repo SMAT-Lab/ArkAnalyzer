@@ -4,6 +4,8 @@ const fs = require('fs');
 
 export class CfgTest {
     private buildScene(): Scene {
+        // D:\\Codes\\ark-analyzer-mirror\\tests\\resources\\cfg\\sample
+        // D:\\Codes\\openharmony\\applications\\applications_photos
         let config: SceneConfig = new SceneConfig("D:\\Codes\\ark-analyzer-mirror\\tests\\resources\\cfg\\CfgTestConfig.json");
         return new Scene(config);
     }

@@ -38,3 +38,12 @@ export class Main {
         this.makeAnimalSound(new Dog())
     }
 }
+
+export class FieldA {
+    public field_A: string
+    public field_B: FieldB
+}
+
+export class FieldB {
+    public field_C: number
+}
