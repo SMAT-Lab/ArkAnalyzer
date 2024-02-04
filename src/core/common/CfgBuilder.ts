@@ -1062,6 +1062,9 @@ export class CfgBuilder {
                 notReturnStmts.push(stmt);
             }
         }
+        if(notReturnStmts.length < 1){
+            return;
+        }
         const returnStatement = new StatementBuilder("returnStatement", "return;", null, this.exit.scopeID);
         if (notReturnStmts.length == 1 && !(notReturnStmts[0] instanceof ConditionStatementBuilder)) {
             const notReturnStmt = notReturnStmts[0];

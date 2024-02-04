@@ -10,7 +10,7 @@ import { Constant } from "../base/Constant";
 import { DefUseChain } from "../base/DefUseChain";
 import { ArkBinopExpr, ArkCastExpr, ArkInstanceInvokeExpr, ArkNewExpr, ArkStaticInvokeExpr } from "../base/Expr";
 import { Local } from "../base/Local";
-import { ArkInstanceFieldRef, ArkParameterRef } from "../base/Ref";
+import { ArkInstanceFieldRef, ArkParameterRef, ArkThisRef } from "../base/Ref";
 import { ArkAssignStmt, Stmt } from "../base/Stmt";
 import { ArkClass } from "../model/ArkClass";
 import { ArkFile } from "../model/ArkFile";
@@ -298,6 +298,10 @@ export class Cfg {
                             const method=map.get(methodMapSignature);
                             if(method)
                                 leftOp.setType(method.getReturnType());
+                        } else if (rightOp instanceof ArkStaticInvokeExpr) {
+
+                        } else if (rightOp instanceof ArkThisRef) {
+                            leftOp.setType(rightOp.getType())
                         } else if (rightOp instanceof ArkParameterRef) {
                             let rightOpTypes = splitType(rightOp.getType(), '|')
                             for (let rightOpType of rightOpTypes) {

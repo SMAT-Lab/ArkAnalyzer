@@ -4,16 +4,16 @@ import * as fs from 'fs';
 import { ArkFile } from '../src/core/model/ArkFile';
 
 let file=new ArkFile()
-file.buildArkFileFromSourceFile('tests\\resources\\cfg\\t.ts',"D:\\11study\\ArkAnalyzer")
+file.buildArkFileFromSourceFile('tests\\resources\\cfg\\main.ts',"D:\\11study\\ArkAnalyzer")
 for(let clas of file.getClasses()){
     if(clas.getName()=='_DEFAULT_ARK_CLASS'){
         for(let method of clas.getMethods()){
-            if(method.getName()=='_DEFAULT_ARK_METHOD'){
+            // if(method.getName()=='_DEFAULT_ARK_METHOD'){
                 let body=method.getBody();
                 let cfg=body.getCfg();
-                cfg.typeReference();
+                // cfg.typeReference();
                 console.log(1)
-            }
+            // }
         }
     }
 }

@@ -7,3 +7,9 @@ function runScene(config: SceneConfig) {
     debugger;
 }
 runScene(config);
+
+// "targetProjectName": "photos",
+// "targetProjectDirectory": "./tests/resources/cfg",
+
+// "ohosSdkPath": "../openharmony\\interface\\sdk-js\\api",
+// "kitSdkPath": "../openharmony\\interface\\sdk-js\\kits",
