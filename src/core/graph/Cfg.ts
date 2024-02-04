@@ -287,33 +287,63 @@ export class Cfg {
                             // leftOp.setType("Callable");
                             // }/
                         } else if (rightOp instanceof ArkInstanceInvokeExpr) {
-                            const classTypeString = rightOp.getBase().getType();
-                            const lastDot = classTypeString.lastIndexOf('.');
-                            const classSignature = new ClassSignature();
-                            classSignature.setArkFile(classTypeString.substring(0, lastDot));
-                            const classType = rightOp.getBase().getType().replace(/\\\\/g, '.').split('.');
-                            classSignature.setClassType(classType[classType.length - 1]);
+                            const inputString: string = rightOp.getMethodSignature().toString();
+                            const regex = /<([^>]+)>/g;
+                            const matches: string[] = [];
+                            let match;
+                            while ((match = regex.exec(inputString)) !== null) {
+                                const contentInsideAngleBrackets = match[1]; // 获取匹配的内容（去掉尖括号）
+                                matches.push(contentInsideAngleBrackets);
+                            }
+                            let modefiedList = matches.map(str => str.replace("()",""));
+                            modefiedList = modefiedList.map(str => str.replace(".ts",""));
+                            modefiedList = modefiedList.map(str => str.replace("\\","/"));
 
-
-                            let classMapSignature = "";
-                            for (let i = 0; i < classType.length; i++) {
-                                if (i == classType.length - 2) {
-                                    continue;
+                            let methodMapSignature = "";
+                            for (let i = 0; i < modefiedList.length; i++) {
+                                if (i == 0 && i != modefiedList.length-1) {
+                                    methodMapSignature += '<' + modefiedList[i] + '>.';
                                 }
-                                else if (i == classType.length - 3) {
-                                    classMapSignature += '<' + classType[i] + '>.';
+                                else if(i != modefiedList.length-1) {
+                                    methodMapSignature += modefiedList[i] + '.';
                                 }
-                                else {
-                                    classMapSignature += classType[i] + '.';
+                                else{
+                                    methodMapSignature += modefiedList[i];
                                 }
                             }
-                            const methodMapSignature = classMapSignature + rightOp.getMethodSignature();
                             const map = this.declaringClass.getDeclaringArkFile().getScene().getArkInstancesMap();
                             const method = map.get(methodMapSignature);
-                            if (method)
+                            // if (method)
                                 leftOp.setType(method.getReturnType());
                         } else if (rightOp instanceof ArkStaticInvokeExpr) {
+                            const inputString: string = rightOp.getMethodSignature().toString();
+                            const regex = /<([^>]+)>/g;
+                            const matches: string[] = [];
+                            let match;
+                            while ((match = regex.exec(inputString)) !== null) {
+                                const contentInsideAngleBrackets = match[1]; // 获取匹配的内容（去掉尖括号）
+                                matches.push(contentInsideAngleBrackets);
+                            }
+                            let modefiedList = matches.map(str => str.replace("()",""));
+                            modefiedList = modefiedList.map(str => str.replace(".ts",""));
+                            modefiedList = modefiedList.map(str => str.replace("\\","/"));
 
+                            let methodMapSignature = this.declaringClass.getDeclaringArkFile().getArkSignature()+'.';
+                            for (let i = 0; i < modefiedList.length; i++) {
+                                if (i == 0 && i != modefiedList.length-1) {
+                                    methodMapSignature += '<' + modefiedList[i] + '>.';
+                                }
+                                else if(i != modefiedList.length-1) {
+                                    methodMapSignature += modefiedList[i] + '.';
+                                }
+                                else{
+                                    methodMapSignature += modefiedList[i];
+                                }
+                            }
+                            const map = this.declaringClass.getDeclaringArkFile().getScene().getArkInstancesMap();
+                            const method = map.get(methodMapSignature);
+                            // if (method)
+                                leftOp.setType(method.getReturnType());
                         } else if (rightOp instanceof ArkThisRef) {
                             leftOp.setType(rightOp.getType())
                         } else if (rightOp instanceof ArkParameterRef) {

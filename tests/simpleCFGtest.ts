@@ -11,7 +11,7 @@ for(let clas of file.getClasses()){
             // if(method.getName()=='_DEFAULT_ARK_METHOD'){
                 let body=method.getBody();
                 let cfg=body.getCfg();
-                // cfg.typeReference();
+                cfg.typeReference();
                 console.log(1)
             // }
         }
