@@ -559,16 +559,6 @@ export class CfgBuilder {
                     loopstm.nextT.isDoWhile = true;
                     loopstm.doStatement = loopstm.nextT;
                 }
-                // loopstm.nextT?.isDoWhile=true;
-                // if(!expressionCondition){
-                //     for(let loopchild of c.children){
-                //         if(loopchild.kind=="PrefixUnaryExpression"||loopchild.kind=="Identifier"||loopchild.kind=="PropertyAccessExpression"){
-                //             loopstm.code="while("+loopchild.text+")";
-                //             loopstm.condition=loopchild.text;
-                //             break;
-                //         }
-                //     }
-                // }
                 lastStatement = loopExit;
                 this.loopStack.pop();
             }
@@ -641,10 +631,11 @@ export class CfgBuilder {
                             }
 
                         }
+                        if(lastCaseExit && !lastCaseExit.next){
+                            lastCaseExit.next=switchExit;
+                        }
                     }
                 }
-                // if (switchstm.default == null)
-                //     switchstm.default = switchExit;
                 lastStatement = switchExit;
                 this.switchExitStack.pop();
             }

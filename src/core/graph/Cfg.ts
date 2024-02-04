@@ -15,6 +15,7 @@ import { ArkAssignStmt, Stmt } from "../base/Stmt";
 import { ArkClass } from "../model/ArkClass";
 import { ArkFile } from "../model/ArkFile";
 import { BasicBlock } from "./BasicBlock";
+import { ClassSignature } from "../model/ArkSignature";
 
 export class Cfg {
     private blocks: Set<BasicBlock> = new Set();
@@ -272,7 +273,14 @@ export class Cfg {
                             // leftOp.setType("Callable");
                             // }/
                         } else if (rightOp instanceof ArkInstanceInvokeExpr){
+                            const classTypeString = rightOp.getBase().getType();
+                            const lastDot = classTypeString.lastIndexOf('.');
+                            const classSignature = new ClassSignature();
+                            classSignature.setArkFile(classTypeString.substring(0,lastDot));
                             const classType=rightOp.getBase().getType().replace(/\\\\/g, '.').split('.');
+                            classSignature.setClassType(classType[classType.length-1]);
+
+
                             let classMapSignature="";
                             for(let i=0;i<classType.length;i++){
                                 if(i==classType.length-2){
