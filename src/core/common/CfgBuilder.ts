@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import { buildTypeReferenceString, transformArrayToString } from "../../utils/typeReferenceUtils";
 import { ASTree, NodeA } from '../base/Ast';
 import { Constant } from '../base/Constant';
 import { AbstractInvokeExpr, ArkBinopExpr, ArkCastExpr, ArkConditionExpr, ArkInstanceInvokeExpr, ArkLengthExpr, ArkNewArrayExpr, ArkNewExpr, ArkStaticInvokeExpr, ArkTypeOfExpr, ArkUnopExpr } from '../base/Expr';
@@ -15,7 +16,6 @@ import { ClassSignature, MethodSignature, MethodSubSignature } from '../model/Ar
 import { ClassUtils } from './ClassUtils';
 import { ExportInfo } from './ExportBuilder';
 import { IRUtils } from './IRUtils';
-import { transformArrayToString, buildTypeReferenceString } from "../../utils/typeReferenceUtils";
 
 
 class StatementBuilder {
@@ -2051,7 +2051,7 @@ export class CfgBuilder {
             value = resultLocal;
         }
         else {
-            console.log('unsupported expr node type:', node.kind, ', text:', node.text)
+            // console.log('unsupported expr node type:', node.kind, ', text:', node.text)
             value = new Constant(node.text);
         }
         return value;
@@ -2315,7 +2315,7 @@ export class CfgBuilder {
             // threeAddressStmts.push(new ArkNopStmt());
         }
         else {
-            console.log('unsupported stmt node, type:', node.kind, ', text:', node.text);
+            // console.log('unsupported stmt node, type:', node.kind, ', text:', node.text);
         }
 
         this.current3ACstm.threeAddressStmts.push(...threeAddressStmts);
