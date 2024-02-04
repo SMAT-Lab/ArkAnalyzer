@@ -1,5 +1,5 @@
 import { StmtUseReplacer } from "../common/StmtUseReplacer";
-import { AbstractInvokeExpr, ArkConditionExpr } from "./Expr";
+import { AbstractExpr, AbstractInvokeExpr, ArkConditionExpr } from "./Expr";
 import { AbstractFieldRef, ArkArrayRef } from "./Ref";
 import { Value, ValueTag } from "./Value";
 
@@ -17,7 +17,13 @@ export class Stmt {
 
     /** Return a list of values which are uesd in this statement */
     public getUses(): Value[] {
-        return this.uses;
+        let uses: Value[] = [];
+        for (const use of this.uses) {
+            if (!(use instanceof AbstractExpr)) {
+                uses.push(use);
+            }
+        }
+        return uses;
     }
 
     public addUse(use: Value): void {
@@ -87,6 +93,16 @@ export class Stmt {
             }
         }
         return undefined;
+    }
+
+    public getExprs(): AbstractExpr[] {
+        let exprs: AbstractExpr[] = [];
+        for (const use of this.uses) {
+            if (use instanceof AbstractExpr) {
+                exprs.push(use);
+            }
+        }
+        return exprs;
     }
 
 
@@ -437,7 +453,7 @@ export class ArkThrowStmt extends Stmt {
         this.updateUses();
     }
 
-    public getOp():Value{
+    public getOp(): Value {
         return this.op;
     }
 
