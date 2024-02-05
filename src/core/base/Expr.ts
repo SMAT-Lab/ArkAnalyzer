@@ -21,6 +21,10 @@ export abstract class AbstractInvokeExpr extends AbstractExpr {
         return this.methodSignature;
     }
 
+    public setMethodSignature(newMethodSignature: MethodSignature): void {
+        this.methodSignature = newMethodSignature;
+    }
+
     public getArg(index: number): Value {
         return this.args[index];
     }

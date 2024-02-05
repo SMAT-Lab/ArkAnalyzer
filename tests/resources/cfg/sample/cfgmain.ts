@@ -1,3 +1,5 @@
+
+
 // function testSwitch() {
 //     let expr = 'a';
 //     switch (expr) {
@@ -10,6 +12,10 @@
 //             console.log(`default`);
 //     }
 // }
+
+import { funcAA2 } from "./AA";
+
+
 
 // function testTryCatch() {
 //     try {
@@ -55,12 +61,30 @@
 // let j = 1
 
 class Test {
-    public func1(): number {
-        return 0;
-    }
+    // public func1(): number {
+    //     return 0;
+    // }
 
-    public testUseMethodOfClass(): void {
-        let t = new Test();
-        let i = t.func1();
+    // public testUseMethodOfClass(): void {
+    //     let t = new Test();
+    //     let i = t.func1();
+    // }
+
+    // public testUseMethodOutOfClass(): void {
+    //     let i = outerFunc();
+    // }
+
+    // public testUseMethodOutOfFile(): void {
+    //     let i = funcA1();
+    //     console.log(i);
+    // }
+
+    public testUseMethodWithParaOutOfFile(): void {
+        let i = funcAA2(1);
+        console.log(i);
     }
 }
+
+// function outerFunc(): number {
+//     return 0;
+// }

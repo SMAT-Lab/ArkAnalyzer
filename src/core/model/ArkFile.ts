@@ -1,16 +1,16 @@
 import fs from 'fs';
 import path from 'path';
-import { ArkClass } from "./ArkClass";
-import { ArkMethod, arkMethodNodeKind } from "./ArkMethod";
-import { NodeA, ASTree } from "../base/Ast";
-import { ArkNamespace } from "./ArkNamespace";
-import { ClassSignature, MethodSignature, methodSignatureCompare, classSignatureCompare } from "./ArkSignature";
+import { Scene } from '../../Scene';
+import { transfer2UnixPath } from '../../utils/pathTransfer';
+import { ASTree, NodeA } from "../base/Ast";
 import { ExportInfo } from '../common/ExportBuilder';
 import { ImportInfo } from '../common/ImportBuilder';
-import { Scene } from '../../Scene';
-import { ArkInterface } from './ArkInterface';
-import { transfer2UnixPath } from '../../utils/pathTransfer';
+import { ArkClass } from "./ArkClass";
 import { ArkEnum } from './ArkEnum';
+import { ArkInterface } from './ArkInterface';
+import { ArkMethod, arkMethodNodeKind } from "./ArkMethod";
+import { ArkNamespace } from "./ArkNamespace";
+import { ClassSignature, MethodSignature, classSignatureCompare, methodSignatureCompare } from "./ArkSignature";
 
 /**
  * 
@@ -380,6 +380,6 @@ export class ArkFile {
         exportInfo.build(exportClauseName, exportClauseType);
         exportInfo.setArkSignature(this.arkSignature);
         this.exportInfos.push(exportInfo);
-        this.addArkInstance(exportInfo.getArkSignature(), exportInfo);
+        // this.addArkInstance(exportInfo.getArkSignature(), exportInfo);
     }
 }

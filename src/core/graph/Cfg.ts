@@ -11,8 +11,10 @@ import { ArkBinopExpr, ArkCastExpr, ArkInstanceInvokeExpr, ArkNewExpr, ArkStatic
 import { Local } from "../base/Local";
 import { ArkInstanceFieldRef, ArkParameterRef, ArkThisRef } from "../base/Ref";
 import { ArkAssignStmt, Stmt } from "../base/Stmt";
+import { ImportInfo } from "../common/ImportBuilder";
 import { ArkClass } from "../model/ArkClass";
-import { ClassSignature } from "../model/ArkSignature";
+import { ArkMethod } from "../model/ArkMethod";
+import { MethodSignature } from "../model/ArkSignature";
 import { BasicBlock } from "./BasicBlock";
 
 export class Cfg {
@@ -148,7 +150,7 @@ export class Cfg {
     public typeReference() {
         for (let block of this.blocks) {
             for (let stmt of block.getStmts()) {
-                // complete ClassSignature
+                // complete signature
                 for (const expr of stmt.getExprs()) {
                     if (expr instanceof ArkNewExpr) {
                         const typeStr = this.getTypeNewExpr(expr);
@@ -161,6 +163,25 @@ export class Cfg {
 
                         const methodSignature = expr.getMethodSignature();
                         methodSignature.setArkClass(typeStrToClassSignature(typeStr));
+                    } else if (expr instanceof ArkStaticInvokeExpr) {
+                        const methodSignature = expr.getMethodSignature();
+                        const funcName = methodSignature.getMethodSubSignature().getMethodName();
+                        let methodSignatureKey = this.declaringClass.getDeclaringArkFile().getArkSignature() + '.' + funcName;
+                        const arkInstancesMap = this.declaringClass.getDeclaringArkFile().getScene().getArkInstancesMap();
+                        const method = arkInstancesMap.get(methodSignatureKey);
+
+                        let newMethodSignature = new MethodSignature();
+                        newMethodSignature.setMethodSubSignature(methodSignature.getMethodSubSignature());
+                        if (method instanceof ArkMethod) {
+                            // method is in this file                            
+                            newMethodSignature = method.getSignature();
+                        } else if (method instanceof ImportInfo) {
+                            // method from import
+                            const targetArkSignatureKey = method.getTargetArkSignature();
+                            const arkMethod = arkInstancesMap.get(targetArkSignatureKey) as ArkMethod;
+                            newMethodSignature = arkMethod.getSignature();
+                        }
+                        expr.setMethodSignature(newMethodSignature);
                     }
                 }
 
@@ -295,19 +316,19 @@ export class Cfg {
                                 const contentInsideAngleBrackets = match[1]; // 获取匹配的内容（去掉尖括号）
                                 matches.push(contentInsideAngleBrackets);
                             }
-                            let modefiedList = matches.map(str => str.replace("()",""));
-                            modefiedList = modefiedList.map(str => str.replace(".ts",""));
-                            modefiedList = modefiedList.map(str => str.replace("\\","/"));
+                            let modefiedList = matches.map(str => str.replace("()", ""));
+                            modefiedList = modefiedList.map(str => str.replace(".ts", ""));
+                            modefiedList = modefiedList.map(str => str.replace("\\", "/"));
 
                             let methodMapSignature = "";
                             for (let i = 0; i < modefiedList.length; i++) {
-                                if (i == 0 && i != modefiedList.length-1) {
+                                if (i == 0 && i != modefiedList.length - 1) {
                                     methodMapSignature += '<' + modefiedList[i] + '>.';
                                 }
-                                else if(i != modefiedList.length-1) {
+                                else if (i != modefiedList.length - 1) {
                                     methodMapSignature += modefiedList[i] + '.';
                                 }
-                                else{
+                                else {
                                     methodMapSignature += modefiedList[i];
                                 }
                             }
@@ -324,19 +345,19 @@ export class Cfg {
                                 const contentInsideAngleBrackets = match[1]; // 获取匹配的内容（去掉尖括号）
                                 matches.push(contentInsideAngleBrackets);
                             }
-                            let modefiedList = matches.map(str => str.replace("()",""));
-                            modefiedList = modefiedList.map(str => str.replace(".ts",""));
-                            modefiedList = modefiedList.map(str => str.replace("\\","/"));
+                            let modefiedList = matches.map(str => str.replace("()", ""));
+                            modefiedList = modefiedList.map(str => str.replace(".ts", ""));
+                            modefiedList = modefiedList.map(str => str.replace("\\", "/"));
 
-                            let methodMapSignature = this.declaringClass.getDeclaringArkFile().getArkSignature()+'.';
+                            let methodMapSignature = this.declaringClass.getDeclaringArkFile().getArkSignature() + '.';
                             for (let i = 0; i < modefiedList.length; i++) {
-                                if (i == 0 && i != modefiedList.length-1) {
+                                if (i == 0 && i != modefiedList.length - 1) {
                                     methodMapSignature += '<' + modefiedList[i] + '>.';
                                 }
-                                else if(i != modefiedList.length-1) {
+                                else if (i != modefiedList.length - 1) {
                                     methodMapSignature += modefiedList[i] + '.';
                                 }
-                                else{
+                                else {
                                     methodMapSignature += modefiedList[i];
                                 }
                             }

@@ -8,8 +8,8 @@
     
     "otherSdks": [
         {
-            "name": "sdk1",
-            "path": ""
+            "name": "sdkA",
+            "path": "D:\\Codes\\program_analysis\\static_framework\\ark-analyzer-mirror\\tests\\resources\\cfg\\moduleA"
         },
         {
             "name": "sdk2",

@@ -1,11 +1,10 @@
-import { ArkClass } from "./ArkClass";
-import { ArkMethod, arkMethodNodeKind } from "./ArkMethod";
-import { NodeA, ASTree } from "../base/Ast";
-import { ArkInterface } from "./ArkInterface";
-import { ArkFile } from "./ArkFile";
+import { NodeA } from "../base/Ast";
 import { ExportInfo } from "../common/ExportBuilder";
-import { ClassSignature, classSignatureCompare } from "./ArkSignature";
+import { ArkClass } from "./ArkClass";
 import { ArkEnum } from "./ArkEnum";
+import { ArkFile } from "./ArkFile";
+import { ArkInterface } from "./ArkInterface";
+import { ArkMethod, arkMethodNodeKind } from "./ArkMethod";
 
 
 export class ArkNamespace {
@@ -348,6 +347,6 @@ export class ArkNamespace {
         exportInfo.build(exportClauseName, exportClauseType);
         exportInfo.setArkSignature(this.arkSignature);
         this.exportInfos.push(exportInfo);
-        this.addArkInstance(exportInfo.getArkSignature(), exportInfo);
+        // this.addArkInstance(exportInfo.getArkSignature(), exportInfo);
     }
 }

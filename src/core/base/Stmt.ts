@@ -219,7 +219,9 @@ export class ArkAssignStmt extends Stmt {
     }
 
     public toString(): string {
-        return this.getLeftOp() + " = " + this.getRightOp();
+        const str = this.getLeftOp() + " = " + this.getRightOp();
+        this.setText(str);
+        return str;
     }
 
     private updateUses(): void {
@@ -245,7 +247,9 @@ export class ArkInvokeStmt extends Stmt {
     }
 
     public toString(): string {
-        return this.invokeExpr.toString();
+        const str = this.invokeExpr.toString();
+        this.setText(str);
+        return str;
     }
 
     private updateUses(): void {
@@ -279,7 +283,9 @@ export class ArkIfStmt extends Stmt {
     }
 
     public toString(): string {
-        return 'if ' + this.conditionExpr;
+        const str = 'if ' + this.conditionExpr;
+        this.setText(str);
+        return str;
     }
 
     private updateUses(): void {
@@ -301,7 +307,9 @@ export class ArkGotoStmt extends Stmt {
     }
 
     public toString(): string {
-        return 'goto';
+        const str = 'goto';
+        this.setText(str);
+        return str;
     }
 }
 
@@ -329,7 +337,9 @@ export class ArkReturnStmt extends Stmt {
     }
 
     public toString(): string {
-        return 'return ' + this.op;
+        const str = 'return ' + this.op;
+        this.setText(str);
+        return str;
     }
 
     private updateUses(): void {
@@ -351,7 +361,9 @@ export class ArkReturnVoidStmt extends Stmt {
     }
 
     public toString(): string {
-        return 'return';
+        const str = 'return';
+        this.setText(str);
+        return str;
     }
 }
 
@@ -362,7 +374,9 @@ export class ArkNopStmt extends Stmt {
     }
 
     public toString(): string {
-        return 'nop';
+        const str = 'nop';
+        this.setText(str);
+        return str;
     }
 }
 
@@ -404,7 +418,9 @@ export class ArkSwitchStmt extends Stmt {
         }
 
         strs.push('default : }');
-        return strs.join('');
+        const str = strs.join('');
+        this.setText(str);
+        return str;
     }
 
     private updateUses(): void {
@@ -433,7 +449,9 @@ export class ArkDeleteStmt extends Stmt {
     }
 
     public toString(): string {
-        return 'delete ' + this.field;
+        const str = 'delete ' + this.field;
+        this.setText(str);
+        return str;
     }
 
     private updateUses(): void {
@@ -458,7 +476,9 @@ export class ArkThrowStmt extends Stmt {
     }
 
     public toString(): string {
-        return 'throw ' + this.op;
+        const str = 'throw ' + this.op;
+        this.setText(str);
+        return str;
     }
 
     private updateUses(): void {
