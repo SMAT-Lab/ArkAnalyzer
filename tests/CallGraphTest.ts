@@ -3,7 +3,8 @@ import { Scene } from "../src/Scene";
 import {printCallGraphDetails} from "../src/utils/callGraphUtils";
 
 //let config: SceneConfig = new SceneConfig("./tests/AppTestConfig.json");
-let config: SceneConfig = new SceneConfig("./tests/callGraphConfigUnix.json");
+let config: SceneConfig = new SceneConfig()
+config.buildFromJson("./tests/callGraphConfigUnix.json");
 function runScene(config: SceneConfig) {
     let projectScene: Scene = new Scene(config);
     let entryPoints = []

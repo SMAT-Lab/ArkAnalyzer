@@ -156,13 +156,13 @@ export class Cfg {
                         const typeStr = this.getTypeNewExpr(expr);
                         expr.setClassSignature(typeStrToClassSignature(typeStr));
                     } else if (expr instanceof ArkInstanceInvokeExpr) {
-                        console.log('base type:',expr.getBase().getType());
-                        
+                        // console.log('base type:',expr.getBase().getType());
+
                         const classSignature = typeStrToClassSignature(expr.getBase().getType());
                         const className = classSignature.getClassType();
                         const arkFile = this.declaringClass.getDeclaringArkFile();
                         const typeStr = searchImportMessage(arkFile, className, matchClassInFile);
-                        console.log('typeStr:',typeStr);
+                        // console.log('typeStr:',typeStr);
 
                         const methodSignature = expr.getMethodSignature();
                         methodSignature.setArkClass(typeStrToClassSignature(typeStr));
@@ -176,7 +176,7 @@ export class Cfg {
                         let newMethodSignature = new MethodSignature();
                         newMethodSignature.setMethodSubSignature(methodSignature.getMethodSubSignature());
                         if (method instanceof ArkMethod) {
-                            // method is in this file                            
+                            // method is in this file
                             newMethodSignature = method.getSignature();
                         } else if (method instanceof ImportInfo) {
                             // method from import
@@ -199,6 +199,9 @@ export class Cfg {
                             // 若存在变量类型声明，则进行解析
                             let leftOpTypes = splitType(leftOp.getType(), '|')
                             for (let leftOpType of leftOpTypes) {
+                                // if (this.declaringClass.getDeclaringArkFile().getName() == "main.ts") {
+                                //     console.log(leftOpType)
+                                // }
                                 if (isPrimaryType(leftOpType)) {
                                     leftPossibleTypes.push(leftOpType)
                                 } else {
@@ -219,6 +222,10 @@ export class Cfg {
                                 }
                             }
                             leftOp.setType(transformArrayToString(leftPossibleTypes))
+                            // if (this.declaringClass.getDeclaringArkFile().getName() == "main.ts") {
+                            //     console.log("stmt: " + stmt.toString())
+                            //     console.log("\t" + leftOp.getType())
+                            // }
                             // continue
                         }
                         if (rightOp instanceof ArkNewExpr) {

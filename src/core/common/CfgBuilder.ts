@@ -2080,11 +2080,6 @@ export class CfgBuilder {
 
         if (leftOp instanceof Local) {
             leftOp.setType(leftOpType)
-
-            if (rightOp instanceof Local) {
-                leftOp.setType(rightOp.getType());
-                leftOp.setValueType(rightOp.getValueType());
-            }
         }
 
         // console.log("[astNodeToThreeAddressAssignStmt] left: " + leftOp + " type: " + leftOpType + " right: " + rightOp)
