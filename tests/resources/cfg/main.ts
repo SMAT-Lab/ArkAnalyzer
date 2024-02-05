@@ -32,29 +32,29 @@
 // }
 
 
-// class a{
-//   x:number;
-//   constructor(){
-//     this.x=1;
-//   }
-//   f():number|null{
-//     this.x++;
-//     return this.x;
-//   }
-//   f2(){
-//     let t=this.f();
-//     function f3(){
-//       let x=1;
-//     }
-//     f3();
-//   }
-// }
-
-// let a1=new a();
-// let x=a1.f()
-
-function f():number{
-    return 3;
+class a{
+  x:number;
+  constructor(){
+    this.x=1;
+  }
+  f():number|null{
+    this.x++;
+    return this.x;
+  }
+  f2(){
+    let t=this.f();
+    function f3(){
+      let x=1;
+    }
+    f3();
+  }
 }
 
-let y=f();
+let a1=new a();
+let x=a1.f()
+
+// function f():number{
+//     return 3;
+// }
+
+// let y=f();
