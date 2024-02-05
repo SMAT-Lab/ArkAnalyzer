@@ -230,7 +230,7 @@ export class Cfg {
                         }
                         if (rightOp instanceof ArkNewExpr) {
                             if (leftOp.getType() == "" || leftOp.getType() == "any") {
-                                leftOp.setType(this.getTypeNewExpr(rightOp));
+                                leftOp.setType(rightOp.getClassSignature().toString());
                             }
                         } else if (rightOp instanceof ArkBinopExpr) {
                             let op1 = rightOp.getOp1()
