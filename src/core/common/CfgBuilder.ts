@@ -13,7 +13,6 @@ import { Cfg } from '../graph/Cfg';
 import { ArkClass } from '../model/ArkClass';
 import { ArkMethod } from '../model/ArkMethod';
 import { ClassSignature, MethodSignature, MethodSubSignature } from '../model/ArkSignature';
-import { ClassUtils } from './ClassUtils';
 import { ExportInfo } from './ExportBuilder';
 import { IRUtils } from './IRUtils';
 
@@ -631,8 +630,8 @@ export class CfgBuilder {
                             }
 
                         }
-                        if(lastCaseExit && !lastCaseExit.next){
-                            lastCaseExit.next=switchExit;
+                        if (lastCaseExit && !lastCaseExit.next) {
+                            lastCaseExit.next = switchExit;
                         }
                     }
                 }
@@ -1828,21 +1827,10 @@ export class CfgBuilder {
                 let methodName = methodValue.getFieldName();
                 let base = methodValue.getBase()
                 methodSubSignature.setMethodName(methodName);
-
-                if (base == this.thisLocal) {
-                    let methodSignatureFind = ClassUtils.getMethodSignatureFromArkClass(this.declaringClass, methodName);
-                    if (methodSignatureFind != null) {
-                        methodSignature = methodSignatureFind
-                    }
-                }
-
                 value = new ArkInstanceInvokeExpr(base, methodSignature, args);
             } else if (methodValue instanceof ArkStaticFieldRef) {
                 methodSubSignature.setMethodName(methodValue.getFieldName());
                 value = new ArkStaticInvokeExpr(methodSignature, args);
-            } else if (methodValue instanceof Local && methodValue.getValueType() instanceof FunctionType) {
-                let functionType = methodValue.getValueType() as FunctionType;
-                value = new ArkStaticInvokeExpr(functionType.getRefMethodSignature(), args);
             } else {
                 methodSubSignature.setMethodName(calleeNode.text);
                 value = new ArkStaticInvokeExpr(methodSignature, args);
@@ -1926,11 +1914,12 @@ export class CfgBuilder {
             value = new Constant(cls.getName());
         }
         else if (node.kind == "NewExpression") {
-            let classSignatureText = node.children[1].text;
-            let newExpr = new ArkNewExpr(classSignatureText);
+            let classSignature = new ClassSignature();
+            classSignature.setClassType(node.children[1].text);
+            let newExpr = new ArkNewExpr(classSignature);
             value = this.generateAssignStmt(newExpr);
 
-            let classSignature = new ClassSignature();
+
             let methodSubSignature = new MethodSubSignature();
             methodSubSignature.setMethodName('constructor');
             let methodSignature = new MethodSignature();
@@ -2273,26 +2262,26 @@ export class CfgBuilder {
         else if (node.kind == 'CallExpression') {
             threeAddressStmts.push(new ArkInvokeStmt(this.astNodeToValue(node) as AbstractInvokeExpr));
         }
-        else if (node.kind == 'NewExpression') {
-            let leftOp = this.generateTempValue();
-            let rightOp = this.astNodeToValue(node);
-            threeAddressStmts.push(new ArkAssignStmt(leftOp, rightOp));
+        // else if (node.kind == 'NewExpression') {
+        //     let leftOp = this.generateTempValue();
+        //     let rightOp = this.astNodeToValue(node);
+        //     threeAddressStmts.push(new ArkAssignStmt(leftOp, rightOp));
 
-            let classSignature = new ClassSignature();
-            let methodSubSignature = new MethodSubSignature();
-            methodSubSignature.setMethodName('constructor');
-            let methodSignature = new MethodSignature();
-            methodSignature.setArkClass(classSignature);
-            methodSignature.setMethodSubSignature(methodSubSignature);
+        //     let classSignature = new ClassSignature();
+        //     let methodSubSignature = new MethodSubSignature();
+        //     methodSubSignature.setMethodName('constructor');
+        //     let methodSignature = new MethodSignature();
+        //     methodSignature.setArkClass(classSignature);
+        //     methodSignature.setMethodSubSignature(methodSubSignature);
 
-            let syntaxListNode = node.children[this.findChildIndex(node, 'OpenParenToken') + 1];
-            let argNodes = this.getSyntaxListItems(syntaxListNode);
-            let args: Value[] = [];
-            for (const argNode of argNodes) {
-                args.push(this.astNodeToValue(argNode));
-            }
-            threeAddressStmts.push(new ArkInvokeStmt(new ArkInstanceInvokeExpr(leftOp as Local, methodSignature, args)));
-        }
+        //     let syntaxListNode = node.children[this.findChildIndex(node, 'OpenParenToken') + 1];
+        //     let argNodes = this.getSyntaxListItems(syntaxListNode);
+        //     let args: Value[] = [];
+        //     for (const argNode of argNodes) {
+        //         args.push(this.astNodeToValue(argNode));
+        //     }
+        //     threeAddressStmts.push(new ArkInvokeStmt(new ArkInstanceInvokeExpr(leftOp as Local, methodSignature, args)));
+        // }
         else if (node.kind == "AwaitExpression") {
             let expressionNode = node.children[1];
             this.astNodeToThreeAddressStmt(expressionNode);

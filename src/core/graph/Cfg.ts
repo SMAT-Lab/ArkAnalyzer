@@ -1,10 +1,9 @@
-import path from "path";
 import {
     getArkFileByName,
     isPrimaryType,
     isPrimaryTypeKeyword, matchClassInFile, resolveBinaryResultType, resolveClassInstance, resolveClassInstanceField,
     resolvePrimaryTypeKeyword, searchImportMessage,
-    splitType, transformArrayToString
+    splitType, transformArrayToString, typeStrToClassSignature
 } from "../../utils/typeReferenceUtils";
 import { Constant } from "../base/Constant";
 import { DefUseChain } from "../base/DefUseChain";
@@ -13,9 +12,8 @@ import { Local } from "../base/Local";
 import { ArkInstanceFieldRef, ArkParameterRef, ArkThisRef } from "../base/Ref";
 import { ArkAssignStmt, Stmt } from "../base/Stmt";
 import { ArkClass } from "../model/ArkClass";
-import { ArkFile } from "../model/ArkFile";
-import { BasicBlock } from "./BasicBlock";
 import { ClassSignature } from "../model/ArkSignature";
+import { BasicBlock } from "./BasicBlock";
 
 export class Cfg {
     private blocks: Set<BasicBlock> = new Set();
@@ -147,15 +145,31 @@ export class Cfg {
         }
     }
 
-    public typeReference(){
-        for(let block of this.blocks){
-            for(let stmt of block.getStmts()){
+    public typeReference() {
+        for (let block of this.blocks) {
+            for (let stmt of block.getStmts()) {
+                // complete ClassSignature
+                for (const expr of stmt.getExprs()) {
+                    if (expr instanceof ArkNewExpr) {
+                        const typeStr = this.getTypeNewExpr(expr);
+                        expr.setClassSignature(typeStrToClassSignature(typeStr));
+                    } else if (expr instanceof ArkInstanceInvokeExpr) {
+                        const classSignature = typeStrToClassSignature(expr.getBase().getType());
+                        const className = classSignature.getClassType();
+                        const arkFile = this.declaringClass.getDeclaringArkFile();
+                        const typeStr = searchImportMessage(arkFile, className, matchClassInFile);
+
+                        const methodSignature = expr.getMethodSignature();
+                        methodSignature.setArkClass(typeStrToClassSignature(typeStr));
+                    }
+                }
+
                 // console.log(stmt)
-                if(stmt instanceof ArkAssignStmt){
-                    const leftOp=stmt.getLeftOp();
-                    const rightOp=stmt.getRightOp();
+                if (stmt instanceof ArkAssignStmt) {
+                    const leftOp = stmt.getLeftOp();
+                    const rightOp = stmt.getRightOp();
                     let leftPossibleTypes: string[] = []
-                    if(leftOp instanceof Local){
+                    if (leftOp instanceof Local) {
                         // console.log(stmt.toString())
                         if (leftOp.getType() != "" && leftOp.getType() != "any") {
                             // 若存在变量类型声明，则进行解析
@@ -184,10 +198,10 @@ export class Cfg {
                             // continue
                         }
                         if (rightOp instanceof ArkNewExpr) {
-                            if (leftOp.getType()=="" || leftOp.getType()=="any") {
+                            if (leftOp.getType() == "" || leftOp.getType() == "any") {
                                 leftOp.setType(this.getTypeNewExpr(rightOp));
                             }
-                        } else if (rightOp instanceof ArkBinopExpr){
+                        } else if (rightOp instanceof ArkBinopExpr) {
                             let op1 = rightOp.getOp1()
                             let op2 = rightOp.getOp2()
                             let op1Type: string, op2Type: string
@@ -267,39 +281,69 @@ export class Cfg {
                             leftOp.setType(transformArrayToString(leftPossibleTypes))
                         } else if (rightOp instanceof Constant) {
                             leftOp.setType(rightOp.getType())
-                        // } else if (rightOp instanceof ArkStaticInvokeExpr && (leftOp.getType()=="" || leftOp.getType()=="any")){
+                            // } else if (rightOp instanceof ArkStaticInvokeExpr && (leftOp.getType()=="" || leftOp.getType()=="any")){
                             // const staticInvokeExpr=rightOp as ArkStaticInvokeExpr;
                             // if(staticInvokeExpr.toString().includes("<AnonymousFunc-")){
                             // leftOp.setType("Callable");
                             // }/
-                        } else if (rightOp instanceof ArkInstanceInvokeExpr){
-                            const classTypeString = rightOp.getBase().getType();
-                            const lastDot = classTypeString.lastIndexOf('.');
-                            const classSignature = new ClassSignature();
-                            classSignature.setArkFile(classTypeString.substring(0,lastDot));
-                            const classType=rightOp.getBase().getType().replace(/\\\\/g, '.').split('.');
-                            classSignature.setClassType(classType[classType.length-1]);
+                        } else if (rightOp instanceof ArkInstanceInvokeExpr) {
+                            const inputString: string = rightOp.getMethodSignature().toString();
+                            const regex = /<([^>]+)>/g;
+                            const matches: string[] = [];
+                            let match;
+                            while ((match = regex.exec(inputString)) !== null) {
+                                const contentInsideAngleBrackets = match[1]; // 获取匹配的内容（去掉尖括号）
+                                matches.push(contentInsideAngleBrackets);
+                            }
+                            let modefiedList = matches.map(str => str.replace("()",""));
+                            modefiedList = modefiedList.map(str => str.replace(".ts",""));
+                            modefiedList = modefiedList.map(str => str.replace("\\","/"));
 
-
-                            let classMapSignature="";
-                            for(let i=0;i<classType.length;i++){
-                                if(i==classType.length-2){
-                                    continue;
+                            let methodMapSignature = "";
+                            for (let i = 0; i < modefiedList.length; i++) {
+                                if (i == 0 && i != modefiedList.length-1) {
+                                    methodMapSignature += '<' + modefiedList[i] + '>.';
                                 }
-                                else if(i==classType.length-3){
-                                    classMapSignature+='<'+classType[i]+'>.';
+                                else if(i != modefiedList.length-1) {
+                                    methodMapSignature += modefiedList[i] + '.';
                                 }
                                 else{
-                                    classMapSignature+=classType[i]+'.';
+                                    methodMapSignature += modefiedList[i];
                                 }
                             }
-                            const methodMapSignature=classMapSignature+rightOp.getMethodSignature();
-                            const map=this.declaringClass.getDeclaringArkFile().getScene().getArkInstancesMap();
-                            const method=map.get(methodMapSignature);
-                            if(method)
+                            const map = this.declaringClass.getDeclaringArkFile().getScene().getArkInstancesMap();
+                            const method = map.get(methodMapSignature);
+                            if (method)
                                 leftOp.setType(method.getReturnType());
                         } else if (rightOp instanceof ArkStaticInvokeExpr) {
+                            const inputString: string = rightOp.getMethodSignature().toString();
+                            const regex = /<([^>]+)>/g;
+                            const matches: string[] = [];
+                            let match;
+                            while ((match = regex.exec(inputString)) !== null) {
+                                const contentInsideAngleBrackets = match[1]; // 获取匹配的内容（去掉尖括号）
+                                matches.push(contentInsideAngleBrackets);
+                            }
+                            let modefiedList = matches.map(str => str.replace("()",""));
+                            modefiedList = modefiedList.map(str => str.replace(".ts",""));
+                            modefiedList = modefiedList.map(str => str.replace("\\","/"));
 
+                            let methodMapSignature = this.declaringClass.getDeclaringArkFile().getArkSignature()+'.';
+                            for (let i = 0; i < modefiedList.length; i++) {
+                                if (i == 0 && i != modefiedList.length-1) {
+                                    methodMapSignature += '<' + modefiedList[i] + '>.';
+                                }
+                                else if(i != modefiedList.length-1) {
+                                    methodMapSignature += modefiedList[i] + '.';
+                                }
+                                else{
+                                    methodMapSignature += modefiedList[i];
+                                }
+                            }
+                            const map = this.declaringClass.getDeclaringArkFile().getScene().getArkInstancesMap();
+                            const method = map.get(methodMapSignature);
+                            if (method)
+                                leftOp.setType(method.getReturnType());
                         } else if (rightOp instanceof ArkThisRef) {
                             leftOp.setType(rightOp.getType())
                         } else if (rightOp instanceof ArkParameterRef) {
@@ -323,8 +367,8 @@ export class Cfg {
     }
 
 
-    private getTypeNewExpr(newExpr:ArkNewExpr): string {
-        const className = newExpr.getClassSignature();
+    private getTypeNewExpr(newExpr: ArkNewExpr): string {
+        const className = newExpr.getClassSignature().getClassType();
         const file = this.declaringClass.getDeclaringArkFile();
         return searchImportMessage(file, className, matchClassInFile);
     }

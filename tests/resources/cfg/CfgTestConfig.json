@@ -1,6 +1,6 @@
 {
     "targetProjectName": "CfgTest",
-    "targetProjectDirectory": "D:\\Codes\\ark-analyzer-mirror\\tests\\resources\\cfg\\sample",    
+    "targetProjectDirectory": "D:\\Codes\\program_analysis\\static_framework\\ark-analyzer-mirror\\tests\\resources\\cfg\\sample",    
     
     "ohosSdkPath": "",
     "kitSdkPath": "",

@@ -4,9 +4,9 @@ const fs = require('fs');
 
 export class CfgTest {
     private buildScene(): Scene {
-        // D:\\Codes\\ark-analyzer-mirror\\tests\\resources\\cfg\\sample
+        // D:\\Codes\\program_analysis\\static_framework\\ark-analyzer-mirror\\tests\\resources\\cfg\\sample
         // D:\\Codes\\openharmony\\applications\\applications_photos
-        let config: SceneConfig = new SceneConfig("D:\\Codes\\ark-analyzer-mirror\\tests\\resources\\cfg\\CfgTestConfig.json");
+        let config: SceneConfig = new SceneConfig("D:\\Codes\\program_analysis\\static_framework\\ark-analyzer-mirror\\tests\\resources\\cfg\\CfgTestConfig.json");
         return new Scene(config);
     }
 
@@ -35,6 +35,8 @@ export class CfgTest {
                         console.log(threeAddresStmt.toString());
                         // console.log(threeAddresStmt.toString(), ', original pos:', threeAddresStmt.getOriginPositionInfo(),
                         //     ', pos:', threeAddresStmt.getPositionInfo());
+                        // console.log(threeAddresStmt.getUses());
+                        
                     }
 
                     console.log('-- locals:');
