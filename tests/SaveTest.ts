@@ -2,9 +2,10 @@
 import { SceneConfig } from './Config';
 import { Scene } from '../src/Scene';
 import { PrinterBuilder } from '../src/save/PrinterBuilder';
+import { join } from 'path';
 
 let config: SceneConfig = new SceneConfig();
-config.buildFromJson("./tests/SaveTestConfig.json");
+config.buildFromProjectDir(join(__dirname, 'resources', 'save'));
 
 function run(config: SceneConfig) {
     let scene: Scene = new Scene(config);
@@ -13,6 +14,4 @@ function run(config: SceneConfig) {
         PrinterBuilder.dumpToTs(f);
     }
 }
-
-//let config: Config = new Config('save_test', join(__dirname, 'sample'), '');
 run(config);
