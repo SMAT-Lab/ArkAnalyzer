@@ -2,13 +2,39 @@ import { ArkCompoundStmt} from '../../core/base/Stmt';
 import { BasicBlock } from '../../core/graph/BasicBlock';
 import { ArkBody } from '../../core/model/ArkBody';
 import { ArkClass } from '../../core/model/ArkClass';
-import { ArkFile } from '../../core/model/ArkFile';
 import { ArkInterface } from '../../core/model/ArkInterface';
 import { ArkMethod } from '../../core/model/ArkMethod';
 import { ArkStream } from '../ArkStream';
 import { Printer } from '../Printer';
+import { SourceBody } from './SourceBody';
 
 export class SourcePrinter extends Printer {
+
+    public printOriginalCode(streamOut: ArkStream): void {
+        streamOut.write(this.arkFile.getCode());
+    }
+
+    // defaultClass using OriginalCfg stmts, others using code
+    public printOriginalClass(cls: ArkClass, streamOut: ArkStream): void {
+        if (cls.isDefaultArkClass()) {
+            for (let method of cls.getMethods()) {
+                if (method.isDefaultArkMethod()) {
+                    for (let stmt of method.getBody().getOriginalCfg().getStmts()) {
+                        let code = stmt.toString();
+                        if (!code.startsWith('import') && code !== 'return;') {
+                            streamOut.writeLine(code);
+                        }
+                    }
+                } else {
+                    streamOut.writeLine(method.getCode());
+                }
+            }
+        } else {
+            streamOut.writeLine(cls.getCode());
+        }
+    }
+
+    // print imports
     protected printStart(streamOut: ArkStream): void {
         for (let info of this.arkFile.getImportInfos()) {
             if (info.getImportType() === 'Identifier') {
@@ -33,6 +59,8 @@ export class SourcePrinter extends Printer {
             }
         }
     }
+
+    // print export * from
     protected printEnd(streamOut: ArkStream): void {
         for (let info of this.arkFile.getExportInfos()) {
             if (info.getExportClauseType() !== 'NamespaceExport' && info.getExportClauseType() !== 'NamedExports') {
@@ -61,11 +89,8 @@ export class SourcePrinter extends Printer {
     }
 
     protected printInterface(intf: ArkInterface, streamOut: ArkStream): void {
-        for (let m of intf.getModifiers()) {
-            streamOut.write(this.resolveKeywordType(m) + ' ');
-        }
-        streamOut.write('interface ' + intf.getName() + ' ');
-        streamOut.writeLine('{');
+        streamOut.writeIndent().writeSpace(this.modifiersToString(intf.getModifiers()));
+        streamOut.writeSpace(`interface ${intf.getName()}`).writeLine('{');
         streamOut.incIndent();
         for (let member of intf.getMembers()) {
             let method = member.method as ArkMethod;
@@ -78,20 +103,19 @@ export class SourcePrinter extends Printer {
     }
 
     protected printClass(cls: ArkClass, streamOut: ArkStream): void {
+        // TODO：If there no modifications, use the original code.
+        // this.printOriginalClass(cls, streamOut);
         if (cls.isDefaultArkClass()) {
             return this.printMethods(cls, streamOut);
         }
-
         // print export class name + extends c0 implements x1, x2 {
-        for (let m of cls.getModifiers()) {
-            streamOut.write(this.resolveKeywordType(m) + ' ');
-        }
-        streamOut.write('class ' + cls.getName() + ' ');
+        streamOut.writeSpace(this.modifiersToString(cls.getModifiers()))
+            .writeSpace(`class ${cls.getName()} `);
         if (cls.getSuperClassName()) {
-            streamOut.write('extends ' + cls.getSuperClassName() + ' ');
+            streamOut.write(`extends ${cls.getSuperClassName()} `);
         }
         if (cls.getImplementedInterfaceNames().length > 0) {
-            streamOut.write('implements '+ cls.getImplementedInterfaceNames().join(','));
+            streamOut.write(`implements ${cls.getImplementedInterfaceNames().join(',')}`);
         }
         streamOut.writeLine('{');
         streamOut.incIndent();
@@ -131,23 +155,16 @@ export class SourcePrinter extends Printer {
     }
 
     private printBody(body: ArkBody, streamOut: ArkStream, isDefault: boolean): void {
-        let blocks = body.getOriginalCfg().getBlocks();
-        let visitor = new Set<BasicBlock>();
-
-        for (let block of blocks) {
-            this.printBasicBlock(block, streamOut, visitor);
-        }
+        let src = new SourceBody(body, isDefault);
+        src.dump(streamOut);
+        
     }
 
     private printMethodProto(method: ArkMethod, streamOut: ArkStream): void {
         streamOut.writeIndent();
-        
-        for (let m of method.getModifiers()) {
-            streamOut.write(this.resolveKeywordType(m) + ' ');
-        }
-
+        streamOut.writeSpace(this.modifiersToString(method.getModifiers()));
         if (method.getDeclaringArkClass()?.isDefaultArkClass()) {
-            streamOut.write('function ');
+            streamOut.writeSpace('function');
         }
         let parameters: string[] = [];
         method.getParameters().forEach((parameterType, parameterName) => {
@@ -160,9 +177,9 @@ export class SourcePrinter extends Printer {
             method.getReturnType().forEach((returnType) => {
                 rtnTypes.push(this.resolveKeywordType(returnType));
             });
-            streamOut.write(':[' + rtnTypes.join(',') + '] ');
+            streamOut.write(`: [${rtnTypes.join(',')}]`);
         } else if (method.getReturnType().length == 1) {
-            streamOut.write(': ' + this.resolveKeywordType(method.getReturnType()[0]));
+            streamOut.writeSpace(`: ${this.resolveKeywordType(method.getReturnType()[0])}`);
         }
     }
 
@@ -172,51 +189,43 @@ export class SourcePrinter extends Printer {
     }
 
     private printFields(cls: ArkClass, streamOut: ArkStream): void {
-        for (let field of cls.getFields()) {
-            streamOut.writeIndent();
-            streamOut.writeLine(field.getName() + ':' + this.resolveKeywordType(field.getType()) + ';');
+        for (let property of cls.getProperties()) {
+            streamOut.writeIndent()
+                .writeSpace(this.modifiersToString(property.getModifiers()))
+                .write(property.getPropertyName());
+
+            // property.getInitializer() PropertyAccessExpression ArrowFunction ClassExpression FirstLiteralToken StringLiteral 
+            // TODO: Initializer not ready
+            if (property.getType().length > 0) {
+                streamOut.write(':' + this.resolveKeywordType(property.getType()));
+            }
+            if (property.getInitializer() == 'ClassExpression') {
+                streamOut.writeLine(' = class {');
+                streamOut.writeIndent().writeLine('}');
+            } else if (property.getInitializer() == 'ArrowFunction') {
+                streamOut.writeLine(' = ()=> {');
+                streamOut.writeIndent().writeLine('}');
+            } else {
+                streamOut.writeLine(';');
+            }
         }
     }
 
-    private printBasicBlock(block: BasicBlock, streamOut: ArkStream, visitor: Set<BasicBlock>): void {
-        if (visitor.has(block)) {
-            return;
-        }
+    private modifiersToString(modifiers: Set<string>): string {
+        let modifiersStr: string[] = [];
+        modifiers.forEach((value) => {
+            modifiersStr.push(this.resolveKeywordType(value))
+        });
 
-        for (let stmt of block.getStmts()) {
-            if (stmt instanceof ArkCompoundStmt) {
-                streamOut.writeIndent();
-                streamOut.writeLine(stmt.toString() + '{');
-                streamOut.incIndent();
-                // printBlock
-                for (let sub of block.getSuccessors()) {
-                    this.printBasicBlock(sub, streamOut, visitor);
-                    visitor.add(sub);
-                }
-                block.getSuccessors();
-                streamOut.decIndent();
-                streamOut.writeIndent();
-                streamOut.writeLine('}');
-            } else {
-                streamOut.writeIndent();
-                streamOut.writeLine(stmt.toString());
-            }
-        }
-        visitor.add(block);
+        return modifiersStr.join(' ');
     }
 
     private resolveKeywordType(keywordStr: string): string {
         if (keywordStr.endsWith('Keyword')) {
             return keywordStr.substring(0, keywordStr.length - 'Keyword'.length).toLowerCase();
         }
-        switch (keywordStr) {
-            case 'FirstLiteralToken':
-                return 'number'
-            case 'StringLiteralToken':
-                return 'string'
-            default:
-                return keywordStr;
-        }
+        
+        return keywordStr;
     }
 
     private resolveMethodName(name: string): string {

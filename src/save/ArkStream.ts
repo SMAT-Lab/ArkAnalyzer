@@ -1,9 +1,5 @@
 import fs from 'fs';
 
-export interface ArkDump {
-    dump(streamOut: ArkStream): void;
-}
-
 export class ArkStream {
     streamOut: fs.WriteStream;
     indent: string = '';
@@ -20,6 +16,15 @@ export class ArkStream {
     public writeLine(s: string): this {
         this.write(s);
         this.write('\n');
+        return this;
+    }
+
+    public writeSpace(s: string): this {
+        if (s.length == 0) {
+            return this;
+        }
+        this.write(s);
+        this.write(' ');
         return this;
     }
 

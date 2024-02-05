@@ -8,7 +8,7 @@ import { Printer } from './Printer';
 
 export class PrinterBuilder {    
     public static dumpToDot(arkFile: ArkFile): void {
-        let filename = join(arkFile.getProjectDir(), 'output', arkFile.getName() +'.dot');
+        let filename = join(arkFile.getProjectDir(), '..', 'output', arkFile.getName() +'.dot');
         fs.mkdirSync(dirname(filename), {recursive: true});
         let streamOut = new ArkStream(fs.createWriteStream(filename));
         let printer: Printer = new DotPrinter(arkFile);
@@ -17,7 +17,7 @@ export class PrinterBuilder {
     }
 
     public static dumpToTs(arkFile: ArkFile): void {
-        let filename = join(arkFile.getProjectDir(), 'output', arkFile.getName());
+        let filename = join(arkFile.getProjectDir(), '..', 'output', arkFile.getName());
         fs.mkdirSync(dirname(filename), {recursive: true});
         let streamOut = new ArkStream(fs.createWriteStream(filename));
         let printer: Printer = new SourcePrinter(arkFile);

@@ -184,6 +184,10 @@ export class ArkFile {
         this.code = code;
     }
 
+    public getCode() {
+        return this.code;
+    }
+
     public getAst() {
         return this.ast;
     }

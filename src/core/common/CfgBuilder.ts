@@ -1687,7 +1687,7 @@ export class CfgBuilder {
         return conditionExpr;
 
         function isRelationalOperator(operator: string): boolean {
-            return operator == '<' || operator == '<=' || operator == '>' || operator == '<' ||
+            return operator == '<' || operator == '<=' || operator == '>' || operator == '>=' ||
                 operator == '==' || operator == '===' || operator == '!=' || operator == '!==';
         }
 
