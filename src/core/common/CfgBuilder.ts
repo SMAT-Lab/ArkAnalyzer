@@ -5,7 +5,7 @@ import { Constant } from '../base/Constant';
 import { AbstractInvokeExpr, ArkBinopExpr, ArkCastExpr, ArkConditionExpr, ArkInstanceInvokeExpr, ArkLengthExpr, ArkNewArrayExpr, ArkNewExpr, ArkStaticInvokeExpr, ArkTypeOfExpr, ArkUnopExpr } from '../base/Expr';
 import { Local } from '../base/Local';
 import { AbstractFieldRef, ArkArrayRef, ArkCaughtExceptionRef, ArkInstanceFieldRef, ArkParameterRef, ArkStaticFieldRef, ArkThisRef } from '../base/Ref';
-import { ArkAssignStmt, ArkCompoundStmt, ArkDeleteStmt, ArkGotoStmt, ArkIfStmt, ArkInvokeStmt, ArkReturnStmt, ArkReturnVoidStmt, ArkSwitchStmt, ArkThrowStmt, Stmt } from '../base/Stmt';
+import { ArkAssignStmt, ArkDeleteStmt, ArkGotoStmt, ArkIfStmt, ArkInvokeStmt, ArkReturnStmt, ArkReturnVoidStmt, ArkSwitchStmt, ArkThrowStmt, Stmt } from '../base/Stmt';
 import { FunctionType } from '../base/Type';
 import { Value } from '../base/Value';
 import { BasicBlock } from '../graph/BasicBlock';
@@ -2854,15 +2854,7 @@ export class CfgBuilder {
         for (const blockBuilder of this.blocks) {
             let block = new BasicBlock();
             for (const stmtBuilder of blockBuilder.stms) {
-                let originlStmt: Stmt;
-                // add compound stmt for output next stmts using "{}"
-                if (stmtBuilder instanceof ConditionStatementBuilder ||
-                    stmtBuilder instanceof SwitchStatementBuilder
-                ) {
-                    originlStmt = new ArkCompoundStmt();
-                } else {
-                    originlStmt = new Stmt();
-                }
+                let originlStmt: Stmt = new Stmt();    
                 originlStmt.setText(stmtBuilder.code);
                 block.addStmt(originlStmt);
             }

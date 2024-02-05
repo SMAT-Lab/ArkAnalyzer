@@ -2,11 +2,9 @@ import { Constant } from "../../core/base/Constant";
 import { ArkBinopExpr, ArkInstanceInvokeExpr, ArkNewArrayExpr, ArkNewExpr, ArkStaticInvokeExpr } from "../../core/base/Expr";
 import { Local } from "../../core/base/Local";
 import { ArkInstanceFieldRef, ArkParameterRef } from "../../core/base/Ref";
-import { ArkAssignStmt, ArkGotoStmt, ArkIfStmt, ArkInvokeStmt, ArkReturnStmt, ArkReturnVoidStmt, ArkSwitchStmt, Stmt, ArkCompoundStmt } from '../../core/base/Stmt';
+import { ArkAssignStmt, ArkGotoStmt, ArkIfStmt, ArkInvokeStmt, ArkReturnStmt, ArkReturnVoidStmt, ArkSwitchStmt, Stmt} from '../../core/base/Stmt';
 import { Value } from "../../core/base/Value";
-import {ArkStream } from "../ArkStream";
 import { StmtReader } from './SourceBody';
-import { transfer2UnixPath } from '../../utils/pathTransfer';
 
 
 abstract class SourceStmt extends Stmt {

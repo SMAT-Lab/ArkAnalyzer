@@ -1,5 +1,3 @@
-import { ArkCompoundStmt} from '../../core/base/Stmt';
-import { BasicBlock } from '../../core/graph/BasicBlock';
 import { ArkBody } from '../../core/model/ArkBody';
 import { ArkClass } from '../../core/model/ArkClass';
 import { ArkInterface } from '../../core/model/ArkInterface';
