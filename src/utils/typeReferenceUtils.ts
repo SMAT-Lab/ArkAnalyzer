@@ -9,6 +9,7 @@ export function isPrimaryType(type: string): boolean {
         case "boolean":
         case "number":
         case "string":
+        case "String":
         case "void":
         case "any":
         case "null":
@@ -154,12 +155,13 @@ export function resolveClassInstanceField(fieldName: string[], file: ArkFile | n
 
 type ClassSearchCallback = (file: ArkFile, className: string) => string | null;
 export function searchImportMessage(file: ArkFile, className: string, searchCallback: ClassSearchCallback): string {
-    // 调用回调函数来处理第一个for循环的逻辑
+    // 调用回调函数作为递归结束条件
     const result = searchCallback(file, className);
     if (result) {
         return result;
     }
     for (let importInfo of file.getImportInfos()) {
+        console.log(importInfo.getImportClauseName())
         const importFromDir = importInfo.getImportFrom();
         if (className == importInfo.getImportClauseName() && importFromDir != undefined) {
             const fileDir = file.getName().split("\\");
