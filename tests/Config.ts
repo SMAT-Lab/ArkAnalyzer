@@ -28,23 +28,31 @@ interface otherSdk {
 }
 
 export class SceneConfig {
-    private configJsonPath: string;
+    private configJsonPath: string = "";
 
-    private targetProjectName: string;
-    private targetProjectDirectory: string;
+    private targetProjectName: string = "";
+    private targetProjectDirectory: string = "";
 
-    private ohosSdkPath: string;
-    private kitSdkPath: string;
-    private systemSdkPath: string;
+    private ohosSdkPath: string = "";
+    private kitSdkPath: string = "";
+    private systemSdkPath: string = "";
 
     private otherSdkMap: Map<string, string> = new Map();
 
     private sdkFiles: string[] = [];
     private projectFiles: string[] = [];
 
-    constructor(configJsonPath: string) {
+    constructor() { }
+
+    public buildFromJson(configJsonPath: string) {
         this.configJsonPath = configJsonPath;
         this.genConfig();
+        this.getAllFiles();
+    }
+
+    public buildFromProjectDir(targetProjectDirectory: string) {
+        this.targetProjectDirectory = targetProjectDirectory;
+        this.targetProjectName = path.basename(targetProjectDirectory);
         this.getAllFiles();
     }
 

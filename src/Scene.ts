@@ -10,7 +10,7 @@ import { ArkMethod } from "./core/model/ArkMethod";
 import { ArkNamespace } from "./core/model/ArkNamespace";
 import { ClassSignature, MethodSignature, MethodSubSignature } from "./core/model/ArkSignature";
 import { SceneConfig } from '../tests/Config';
-import {ClassHierarchyAnalysisAlgorithm} from "./callgraph/ClassHierarchyAnalysisAlgorithm";
+import { ClassHierarchyAnalysisAlgorithm } from "./callgraph/ClassHierarchyAnalysisAlgorithm";
 
 /**
  * The Scene class includes everything in the analyzed project.
