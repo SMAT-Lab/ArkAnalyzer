@@ -24,6 +24,7 @@ export function isPrimaryTypeKeyword(keyword: string): boolean {
     switch (keyword) {
         case "NumberKeyword":
         case "StringKeyword":
+        case "String":
         case "NullKeyword":
             return true
         default:
@@ -39,6 +40,8 @@ export function resolvePrimaryTypeKeyword(keyword: string): string {
             return "string"
         case "NullKeyword":
             return "null"
+        case "String":
+            return "String"
         default:
             return ""
     }
@@ -161,7 +164,7 @@ export function searchImportMessage(file: ArkFile, className: string, searchCall
         return result;
     }
     for (let importInfo of file.getImportInfos()) {
-        console.log(importInfo.getImportClauseName())
+        // console.log(importInfo.getImportClauseName())
         const importFromDir = importInfo.getImportFrom();
         if (className == importInfo.getImportClauseName() && importFromDir != undefined) {
             const fileDir = file.getName().split("\\");

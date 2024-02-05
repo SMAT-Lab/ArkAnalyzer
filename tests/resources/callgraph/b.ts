@@ -13,3 +13,7 @@ export function invokeParam(a: number, b: string, c: C) {
     let e = b
     let f = c
 }
+
+function temp(a: String) {
+    let b = a
+}
