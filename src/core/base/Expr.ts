@@ -76,6 +76,7 @@ export class ArkInstanceInvokeExpr extends AbstractInvokeExpr {
 
     public toString(): string {
         let strs: string[] = [];
+        strs.push('instanceinvoke ');
         strs.push(this.base.toString());
         strs.push('.');
         strs.push(this.getMethodSignature().toString());

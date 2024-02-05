@@ -1061,7 +1061,7 @@ export class CfgBuilder {
                 notReturnStmts.push(stmt);
             }
         }
-        if(notReturnStmts.length < 1){
+        if (notReturnStmts.length < 1) {
             return;
         }
         const returnStatement = new StatementBuilder("returnStatement", "return;", null, this.exit.scopeID);
@@ -1592,8 +1592,7 @@ export class CfgBuilder {
 
     private shouldBeConstant(node: NodeA): boolean {
         let nodeKind = node.kind;
-        if (nodeKind == 'FirstTemplateToken' || (nodeKind.includes('Literal') && nodeKind != 'ArrayLiteralExpression')
-            || nodeKind.includes('Keyword')) {
+        if (nodeKind == 'FirstTemplateToken' || (nodeKind.includes('Literal') && nodeKind != 'ArrayLiteralExpression')) {
             return true;
         }
         return false;
@@ -1728,8 +1727,8 @@ export class CfgBuilder {
 
     private astNodeToValue(node: NodeA): Value {
         let value: any;
-        if (node.kind == 'Identifier') {
-            // console.log("[astNodeToValue] Identifier " + node.children[0])
+        if (node.kind == 'Identifier' || node.kind == 'ThisKeyword') {
+            // TODO:识别外部变量
             value = new Local(node.text);
             value = this.getOriginalLocal(value);
         }
@@ -1760,15 +1759,14 @@ export class CfgBuilder {
         }
         // TODO:属性访问需要展开
         else if (node.kind == 'PropertyAccessExpression') {
-            let tempBase = new Local(node.children[0].text);
-            let base = this.getOriginalLocal(tempBase, false);
-            if (base == tempBase) {
-                let fieldSignature = node.text;
-                value = new ArkStaticFieldRef(fieldSignature);
-            } else {
-                let fieldSignature = node.children[2].text;
-                value = new ArkInstanceFieldRef(base, fieldSignature);
+            let baseValue = this.astNodeToValue(node.children[0]);
+            if (IRUtils.moreThanOneAddress(baseValue)) {
+                baseValue = this.generateAssignStmt(baseValue);
             }
+            let base = baseValue as Local;
+
+            let fieldName = node.children[2].text;
+            value = new ArkInstanceFieldRef(base, fieldName);
         }
         else if (node.kind == 'ElementAccessExpression') {
             let baseValue = this.astNodeToValue(node.children[0]);

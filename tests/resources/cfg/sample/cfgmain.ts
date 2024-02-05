@@ -13,7 +13,6 @@
 //     }
 // }
 
-import { funcAA2 } from "./AA";
 
 
 
@@ -61,13 +60,22 @@ import { funcAA2 } from "./AA";
 // let j = 1
 
 class Test {
-    // public func1(): number {
-    //     return 0;
+    public func1(): number {
+        return 0;
+    }
+
+    // public func2(): Test {
+    //     return new Test();
     // }
 
-    // public testUseMethodOfClass(): void {
-    //     let t = new Test();
-    //     let i = t.func1();
+    public testUseMethodOfClass(): void {
+        let t = new Test();
+        let i = t.func1();
+        // console.log(t.func1());
+    }
+
+    // public testContinuousCall(): void {
+    //     let i = this.func2().func1();
     // }
 
     // public testUseMethodOutOfClass(): void {
@@ -79,10 +87,10 @@ class Test {
     //     console.log(i);
     // }
 
-    public testUseMethodWithParaOutOfFile(): void {
-        let i = funcAA2(1);
-        console.log(i);
-    }
+    // public testUseMethodWithParaOutOfFile(): void {
+    //     let i = funcAA2(1);
+    //     console.log(i);
+    // }
 }
 
 // function outerFunc(): number {
