@@ -20,8 +20,8 @@
         // "args": ["tests\\AppTest.ts"]
         // "args": ["tests\\CfgBuilderTest.ts"]
         // "args": ["tests\\simpleCFGtest.ts"]
-        "args": ["tests\\TypeTest.ts"]
-        // "args": ["tests\\Cfgtest.ts"]
+        // "args": ["tests\\TypeTest.ts"]
+        "args": ["tests\\Cfgtest.ts"]
         // "args": ["tests\\SsaTest.ts"]
         // "args": ["tests\\resources\\cfg\\main.ts"]
       }

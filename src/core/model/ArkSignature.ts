@@ -47,8 +47,8 @@ export class MethodSubSignature {
 }
 
 export class MethodSignature {
-    private arkClass: ClassSignature;
-    private methodSubSignature: MethodSubSignature;
+    private arkClass: ClassSignature = new ClassSignature();
+    private methodSubSignature: MethodSubSignature = new MethodSubSignature();
 
     public getArkClass() {
         return this.arkClass;
@@ -79,8 +79,8 @@ export class MethodSignature {
 }
 
 export class FieldSignature {
-    private arkClass: ClassSignature;
-    private fieldName: string;
+    private arkClass: ClassSignature = new ClassSignature();
+    private fieldName: string = '';
 
     public getArkClass() {
         return this.arkClass;
