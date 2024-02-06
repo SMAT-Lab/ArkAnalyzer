@@ -17,7 +17,7 @@ export class ArkInterface {
     //private properties: Property[] = [];
     private methods: ArkMethod[] = [];
     private modifiers: Set<string> = new Set<string>();
-    private members: InterfaceMember[] = [];
+    private members: ArkField[] = [];
     private declaringInstance: ArkFile | ArkNamespace;
     private declaringType: string;
     private arkSignature: string;
@@ -42,38 +42,21 @@ export class ArkInterface {
         if (!interfaceNode.interfaceNodeInfo) {
             throw new Error('Error: There is no interfaceNodeInfo for this interface!');
         }
-        this.setName(interfaceNode.interfaceNodeInfo.interfaceName);
+        this.setName(interfaceNode.interfaceNodeInfo.getClassName());
         this.genArkSignature();
 
-        interfaceNode.interfaceNodeInfo.modifiers.forEach((modifier) => {
+        interfaceNode.interfaceNodeInfo.getmodifiers().forEach((modifier) => {
             this.addModifier(modifier);
         });
 
-        for (let [key, value] of interfaceNode.interfaceNodeInfo.heritageClauses) {
+        for (let [key, value] of interfaceNode.interfaceNodeInfo.getHeritageClauses()) {
             if (value == 'ExtendsKeyword') {
                 this.addExtendsName(key);
             }
         }
 
-        interfaceNode.interfaceNodeInfo.members.forEach((member) => {
+        interfaceNode.interfaceNodeInfo.getMembers().forEach((member) => {
             this.addMember(member);
-            if (member instanceof ArkMethod) {
-                let methodMember = (member as ArkMethod);
-                methodMember.setDeclaringSignature(this.arkSignature);
-                methodMember.setDeclaringArkClass(this.declaringArkFile.getDefaultClass());
-                methodMember.genSignature();
-                this.addArkInstance(methodMember.getArkSignature(), member);
-                methodMember.getArkInstancesMap().forEach((value, key) => {
-                    this.addArkInstance(key, value);
-                });
-            }
-            if (member instanceof InterfaceProperty) {
-                let memberInterfaceProperty = (member as InterfaceProperty);
-                let field = new ArkField();
-                field.buildFromArkInteraface(this, memberInterfaceProperty);
-                this.addField(field);
-                this.addArkInstance(field.getArkSignature(), field);
-            }
         });
     }
 
@@ -81,7 +64,7 @@ export class ArkInterface {
         return this.members;
     }
 
-    public addMember(member: InterfaceMember) {
+    public addMember(member: ArkField) {
         this.members.push(member);
     }
 

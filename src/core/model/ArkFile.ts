@@ -39,6 +39,7 @@ export class ArkFile {
         this.filePath = sourceFilePath;
         this.projectDir = projectDir;
         this.setName(path.relative(projectDir, sourceFilePath));
+        console.log(this.name);
         this.genArkSignature();
         this.setCode(fs.readFileSync(sourceFilePath, 'utf8'));
         this.genAst();

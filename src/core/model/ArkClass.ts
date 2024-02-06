@@ -48,14 +48,14 @@ export class ArkClass {
         if (!clsNode.classNodeInfo) {
             throw new Error('Error: There is no classNodeInfo for this class!');
         }
-        this.setName(clsNode.classNodeInfo.className);
+        this.setName(clsNode.classNodeInfo.getClassName());
         this.genSignature();
 
-        clsNode.classNodeInfo.modifiers.forEach((modifier) => {
+        clsNode.classNodeInfo.getmodifiers().forEach((modifier) => {
             this.addModifier(modifier);
         });
 
-        for (let [key, value] of clsNode.classNodeInfo.heritageClauses) {
+        for (let [key, value] of clsNode.classNodeInfo.getHeritageClauses()) {
             if (value == 'ExtendsKeyword') {
                 this.setSuperClassName(key);
             }
@@ -64,20 +64,23 @@ export class ArkClass {
             }
         }
 
-        clsNode.classNodeInfo.properties.forEach((property) => {
-            this.addProperty(property);
-        });
+        //clsNode.classNodeInfo.properties.forEach((property) => {
+        //    this.addProperty(property);
+        //});
 
-        clsNode.classNodeInfo.typeParameters.forEach((typeParameter) => {
+        clsNode.classNodeInfo.getTypeParameters().forEach((typeParameter) => {
             this.addTypeParameter(typeParameter);
         });
 
-        this.getProperties().forEach((property) => {
-            let field = new ArkField();
-            field.buildFromArkClass(this, property);
-            this.addField(field);
-            this.addArkInstance(field.getArkSignature(), field);
-        });
+        //TODO: add declaring class to arkfield[]
+        //clsNode.classNodeInfo.
+
+        //this.getProperties().forEach((property) => {
+        //    let field = new ArkField();
+        //    field.buildFromArkClass(this, property);
+        //    this.addField(field);
+        //    this.addArkInstance(field.getArkSignature(), field);
+        //});
 
         // generate ArkMethods of this class
         for (let child of clsNode.children) {

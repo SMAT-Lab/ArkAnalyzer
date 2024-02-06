@@ -82,6 +82,9 @@ export function buildTypeParameters(node: ts.ClassDeclaration | ts.ClassExpressi
         if (ts.isIdentifier(typeParameter.name)) {
             typeParameters.push(typeParameter.name.escapedText.toString());
         }
+        else {
+            console.log("Other typeparameter found!!!");
+        }
     });
     return typeParameters;
 }

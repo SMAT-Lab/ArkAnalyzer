@@ -5,13 +5,17 @@ import { ArkInterface } from "./ArkInterface";
 import { FieldSignature } from "./ArkSignature";
 
 export class ArkField {
+    private code: string = "";
     private declaringClass: ArkClass;
     private declaringInterface: ArkInterface;
-    private name: string;
-    private type: string;
+    private name: string = "";
+    private type: string = "";
     private modifiers: Set<string> = new Set<string>();
     private fieldSignature: FieldSignature;
     private arkSignature: string;
+    private questionToken: boolean = false;
+    private exclamationToken: boolean = false;
+    //private initializer 
 
     constructor() { }
 
@@ -61,6 +65,14 @@ export class ArkField {
 
     public setDeclaringInterface(declaringInterface: ArkInterface) {
         this.declaringInterface = declaringInterface;
+    }
+
+    public getCode() {
+        return this.code;
+    }
+
+    public setCode(code: string) {
+        this.code = code;
     }
 
     public getName() {
@@ -135,5 +147,21 @@ export class ArkField {
             return true;
         }
         return false;
+    }
+
+    public setQuestionToken(questionToken:boolean) {
+        this.questionToken = questionToken;
+    }
+
+    public setExclamationToken(exclamationToken:boolean) {
+        this.exclamationToken = exclamationToken;
+    }
+
+    public getQuestionToken() {
+        return this.questionToken;
+    }
+
+    public getExclamationToken() {
+        return this.exclamationToken;
     }
 }

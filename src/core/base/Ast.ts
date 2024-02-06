@@ -1,5 +1,5 @@
 import * as ts from "typescript";
-import { ClassInfo, buildClassInfo4ClassNode } from "../common/ClassInfoBuilder";
+import { ClassInfo, buildClassInfo4ClassNode } from "../common/ClassBuilder";
 import { MethodInfo, buildMethodInfo4MethodNode } from "../common/MethodInfoBuilder";
 import { ImportInfo, buildImportInfo4ImportNode } from "../common/ImportBuilder";
 import { ExportInfo, buildExportInfo4ExportNode } from "../common/ExportBuilder";
@@ -20,17 +20,17 @@ export class NodeA {
     methodNodeInfo: MethodInfo | undefined;
     importNodeInfo: ImportInfo[] | undefined;
     exportNodeInfo: ExportInfo[] | undefined;
-    interfaceNodeInfo: InterfaceInfo | undefined;
+    interfaceNodeInfo: ClassInfo | undefined;
     namespaceNodeInfo: NamespaceInfo | undefined;
-    enumNodeInfo: EnumInfo | undefined;
+    enumNodeInfo: ClassInfo | undefined;
     instanceMap: Map<string, string> | undefined;
     line: number = -1;
     character: number = -1;
 
     constructor(node: ts.Node | undefined, parent: NodeA | null, children: NodeA[], text: string,
         start: number, kind: string, classNodeInfo?: ClassInfo, methodNodeInfo?: MethodInfo,
-        importNodeInfo?: ImportInfo[], exportNodeInfo?: ExportInfo[], interfaceNodeInfo?: InterfaceInfo,
-        namespaceNodeInfo?: NamespaceInfo, enumNodeInfo?: EnumInfo) {
+        importNodeInfo?: ImportInfo[], exportNodeInfo?: ExportInfo[], interfaceNodeInfo?: ClassInfo,
+        namespaceNodeInfo?: NamespaceInfo, enumNodeInfo?: ClassInfo) {
         this.parent = parent;
         this.children = children;
         this.text = text;
@@ -120,9 +120,9 @@ export class ASTree {
             let methodNodeInfo: MethodInfo | undefined;
             let importNodeInfo: ImportInfo[] | undefined;
             let exportNodeInfo: ExportInfo[] | undefined;
-            let interfaceNodeInfo: InterfaceInfo | undefined;
+            let interfaceNodeInfo: ClassInfo | undefined;
             let namespaceNodeInfo: NamespaceInfo | undefined;
-            let enumNodeInfo: EnumInfo | undefined;
+            let enumNodeInfo: ClassInfo | undefined;
 
             if (ts.isClassDeclaration(child) || ts.isClassExpression(child)) {
                 classNodeInfo = buildClassInfo4ClassNode(child);
@@ -138,13 +138,13 @@ export class ASTree {
                 exportNodeInfo = buildExportInfo4ExportNode(child);
             }
             if (ts.isInterfaceDeclaration(child)) {
-                interfaceNodeInfo = buildInterfaceInfo4InterfaceNode(child);
+                interfaceNodeInfo = buildClassInfo4ClassNode(child);
             }
             if (ts.isModuleDeclaration(child)) {
                 namespaceNodeInfo = buildNamespaceInfo4NamespaceNode(child);
             }
             if (ts.isEnumDeclaration(child)) {
-                enumNodeInfo = buildEnumInfo4EnumNode(child);
+                enumNodeInfo = buildClassInfo4ClassNode(child);
             }
 
             ca = new NodeA(child, nodea, [], child.getText(this.sourceFile), child.getStart(this.sourceFile), "",

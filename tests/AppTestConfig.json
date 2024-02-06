@@ -1,6 +1,6 @@
 {
-    "targetProjectName": "photos",
-    "targetProjectDirectory": "C:\\msys64\\home\\Yifei\\code\\applications_photos",
+    "targetProjectName": "SE4OpenHarmony",
+    "targetProjectDirectory": "C:\\msys64\\home\\Yifei\\code\\SE4OpenHarmony\\Apps\\ArkTS2TSRes",
     
     "ohosSdkPath": "C:\\msys64\\home\\Yifei\\code\\openharmony\\interface\\sdk-js\\api",
     "kitSdkPath": "C:\\msys64\\home\\Yifei\\code\\openharmony\\interface\\sdk-js\\kits",
@@ -8,7 +8,7 @@
     
     "otherSdks": [
         {
-            "name": "sdk1",
+            "name": "ArkAnalyzer",
             "path": ""
         },
         {

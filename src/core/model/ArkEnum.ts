@@ -17,7 +17,7 @@ export class ArkEnum {
 
     private methods: ArkMethod[] = [];
     private modifiers: Set<string> = new Set<string>();
-    private members: EnumMember[] = [];
+    private members: ArkField[] = [];
 
     private arkSignature: string;
     private declaringInstance: ArkFile | ArkNamespace;
@@ -47,14 +47,14 @@ export class ArkEnum {
         if (!enumNode.enumNodeInfo) {
             throw new Error('Error: There is no enumNodeInfo for this enum struct!');
         }
-        this.setName(enumNode.enumNodeInfo.enumName);
+        this.setName(enumNode.enumNodeInfo.getClassName());
         this.genArkSignature();
 
-        enumNode.enumNodeInfo.modifiers.forEach((modifier) => {
+        enumNode.enumNodeInfo.getmodifiers().forEach((modifier) => {
             this.addModifier(modifier);
         });
 
-        enumNode.enumNodeInfo.members.forEach((member) => {
+        enumNode.enumNodeInfo.getMembers().forEach((member) => {
             this.addMember(member);
         });
     }
@@ -63,7 +63,7 @@ export class ArkEnum {
         return this.members;
     }
 
-    public addMember(member: EnumMember) {
+    public addMember(member: ArkField) {
         this.members.push(member);
     }
 
@@ -180,3 +180,4 @@ export class ArkEnum {
         this.methods.push(method);
     }
 }
+console.log();
