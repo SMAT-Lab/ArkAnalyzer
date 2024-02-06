@@ -346,7 +346,7 @@ export class Cfg {
                             }
                             const map = this.declaringClass.getDeclaringArkFile().getScene().getArkInstancesMap();
                             const method = map.get(methodMapSignature);
-                            if (method)
+                            if (method && method instanceof ArkMethod)
                                 leftOp.setType(method.getReturnType().join('|'));
                         } else if (rightOp instanceof ArkStaticInvokeExpr) {
                             const inputString: string = rightOp.getMethodSignature().toString();
@@ -375,9 +375,8 @@ export class Cfg {
                             }
                             const map = this.declaringClass.getDeclaringArkFile().getScene().getArkInstancesMap();
                             const method = map.get(methodMapSignature);
-                            if (method) {
-                                // leftOp.setType(method.getReturnType().join('|'));
-                            }
+                            if (method && method instanceof ArkMethod)
+                                leftOp.setType(method.getReturnType().join('|'));
                         } else if (rightOp instanceof ArkThisRef) {
                             leftOp.setType(rightOp.getType())
                         } else if (rightOp instanceof ArkParameterRef) {

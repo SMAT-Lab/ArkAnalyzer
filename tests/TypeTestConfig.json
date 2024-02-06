@@ -1,9 +1,9 @@
 {
-    "targetProjectName": "photos",
-    "targetProjectDirectory": "./tests/resources/cfg",
-    
-    "ohosSdkPath": "",
-    "kitSdkPath": "",
+"targetProjectName": "photos",
+"targetProjectDirectory": "./codeLab/systemui",
+
+"ohosSdkPath": "../openharmony/interface/sdk-js/api",
+"kitSdkPath": "../openharmony/interface/sdk-js/kits",
     
     "systemSdkPath": "",
     
