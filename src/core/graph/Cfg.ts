@@ -181,8 +181,10 @@ export class Cfg {
                         } else if (method instanceof ImportInfo) {
                             // method from import
                             const targetArkSignatureKey = method.getTargetArkSignature();
-                            const arkMethod = arkInstancesMap.get(targetArkSignatureKey) as ArkMethod;
-                            newMethodSignature = arkMethod.getSignature();
+                            const arkMethod = arkInstancesMap.get(targetArkSignatureKey);
+                            if (arkMethod instanceof ArkMethod) {
+                                newMethodSignature = arkMethod.getSignature();
+                            }
                         }
                         expr.setMethodSignature(newMethodSignature);
                     }
@@ -373,8 +375,9 @@ export class Cfg {
                             }
                             const map = this.declaringClass.getDeclaringArkFile().getScene().getArkInstancesMap();
                             const method = map.get(methodMapSignature);
-                            if (method)
-                                leftOp.setType(method.getReturnType().join('|'));
+                            if (method) {
+                                // leftOp.setType(method.getReturnType().join('|'));
+                            }
                         } else if (rightOp instanceof ArkThisRef) {
                             leftOp.setType(rightOp.getType())
                         } else if (rightOp instanceof ArkParameterRef) {

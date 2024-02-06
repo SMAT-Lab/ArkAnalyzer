@@ -1,7 +1,9 @@
 import fs from 'fs';
 import path from 'path';
+import { SceneConfig } from '../tests/Config';
 import { AbstractCallGraphAlgorithm } from "./callgraph/AbstractCallGraphAlgorithm";
 import { CallGraph } from "./callgraph/CallGraph";
+import { ClassHierarchyAnalysisAlgorithm } from "./callgraph/ClassHierarchyAnalysisAlgorithm";
 import { ImportInfo, updateSdkConfigPrefix } from './core/common/ImportBuilder';
 import { ArkClass } from "./core/model/ArkClass";
 import { ArkFile } from "./core/model/ArkFile";
@@ -9,8 +11,6 @@ import { ArkInterface } from './core/model/ArkInterface';
 import { ArkMethod } from "./core/model/ArkMethod";
 import { ArkNamespace } from "./core/model/ArkNamespace";
 import { ClassSignature, MethodSignature, MethodSubSignature } from "./core/model/ArkSignature";
-import { SceneConfig } from '../tests/Config';
-import { ClassHierarchyAnalysisAlgorithm } from "./callgraph/ClassHierarchyAnalysisAlgorithm";
 
 /**
  * The Scene class includes everything in the analyzed project.
@@ -93,6 +93,7 @@ export class Scene {
         }
 
         this.projectFiles.forEach((file) => {
+            console.log('=== parse file:', file);  
             let arkFile: ArkFile = new ArkFile();
             arkFile.buildArkFileFromSourceFile(file, this.realProjectDir);
             arkFile.setScene(this);
@@ -257,8 +258,11 @@ export class Scene {
      */
     private typeReference() {
         for (let arkFile of this.arkFiles) {
+            console.log('=== file:', arkFile.getFilePath());            
             for (let arkClass of arkFile.getClasses()) {
+                console.log('== class:', arkClass.getName());
                 for (let arkMethod of arkClass.getMethods()) {
+                    console.log('= method:', arkMethod.getName());
                     // console.log(arkMethod.getArkSignature())
                     arkMethod.getBody().getCfg().typeReference()
                     // console.log(arkMethod.getBody().getLocals())

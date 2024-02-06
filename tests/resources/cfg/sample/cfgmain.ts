@@ -57,22 +57,55 @@
 //     } while (i < 10);
 // }
 
-// let j = 1
+
+// function outerFunc(): number {
+//     return 0;
+// }
 
 class Test {
-    public func1(): number {
-        return 0;
-    }
+    // public func1(): number {
+    //     return 0;
+    // }
 
     // public func2(): Test {
     //     return new Test();
     // }
 
-    public testUseMethodOfClass(): void {
-        let t = new Test();
-        let i = t.func1();
-        // console.log(t.func1());
+    // public static funcStatic(): number {
+    //     return 0;
+    // }
+
+    // public testJointStr() {
+    //     let i = 'str1', j = 'str2';
+    //     let c = i + j;
+    // }
+
+
+    public testTemplatestrings() {
+        let str1: string = 'hello';
+        let num1: number = 1;
+        let str2: string = `boy, ${str1}, world. ${num1}`;
     }
+
+    // public testBasicType() {
+    //     let flag: boolean = false;
+    // }
+
+    // public testArrayType() {
+    //     let a = [1, 2, 3];
+    // }
+
+
+    // public testUseMethodOfClass(): void {
+    //     let t = new Test();
+    //     let i = t.func1();
+    //     // console.log(t.func1());
+    // }
+
+    // public testUseMethodOfClass(): void {
+    //     let i = Test.funcStatic();
+    //     // console.log(t.func1());
+    // }
 
     // public testContinuousCall(): void {
     //     let i = this.func2().func1();
@@ -92,7 +125,3 @@ class Test {
     //     console.log(i);
     // }
 }
-
-// function outerFunc(): number {
-//     return 0;
-// }
