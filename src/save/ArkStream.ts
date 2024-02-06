@@ -1,15 +1,15 @@
 import fs from 'fs';
 
-export class ArkStream {
-    streamOut: fs.WriteStream;
+export class ArkCodeBuffer {
+    output: string[] = [];
     indent: string = '';
 
-    constructor(streamOut: fs.WriteStream) {
-        this.streamOut = streamOut;
+    constructor(indent: string='') {
+        this.indent = indent;
     }
 
     public write(s: string): this {
-        this.streamOut.write(s);
+        this.output.push(s);
         return this;
     }
 
@@ -29,9 +29,7 @@ export class ArkStream {
     }
 
     public writeStringLiteral(s: string): this {
-        this.write('\'');
-        this.write(s);
-        this.write('\'');
+        this.write(`'${s}'`);
         return this;
     }
 
@@ -41,19 +39,37 @@ export class ArkStream {
     }
 
     public incIndent(): this {
-        this.indent += '    ';
+        this.indent += '  ';
         return this;
     }
 
     public decIndent(): this {
-        if (this.indent.length >= 4) {
-            this.indent = this.indent.substring(0, this.indent.length - 4);
+        if (this.indent.length >= 2) {
+            this.indent = this.indent.substring(0, this.indent.length - 2);
         }
         return this;
     }
 
     public getIndent(): string {
         return this.indent;
+    }
+
+    public toString(): string {
+        return this.output.join('');
+    }
+}
+
+export class ArkStream extends ArkCodeBuffer{
+    streamOut: fs.WriteStream;
+
+    constructor(streamOut: fs.WriteStream) {
+        super('');
+        this.streamOut = streamOut;
+    }
+
+    public write(s: string): this {
+        this.streamOut.write(s);
+        return this;
     }
 
     public close(): void {

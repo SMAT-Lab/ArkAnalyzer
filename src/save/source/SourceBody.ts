@@ -5,27 +5,34 @@ import { BasicBlock } from "../../core/graph/BasicBlock";
 import { DominanceFinder } from "../../core/graph/DominanceFinder";
 import { DominanceTree } from "../../core/graph/DominanceTree";
 import { ArkBody } from "../../core/model/ArkBody";
-import { ArkStream } from "../ArkStream";
+import { ArkCodeBuffer } from "../ArkStream";
 import { SourceAssignStmt, SourceCaseStmt, SourceCompoundEndStmt, SourceElseStmt, SourceForStmt, SourceGotoStmt, SourceIfStmt, SourceInvokeStmt, SourceReturnStmt, SourceReturnVoidStmt, SourceSwitchStmt, SourceWhileStmt } from './SourceStmt';
-import path from 'path';
 
 
 export class SourceBody {
+    printer: ArkCodeBuffer;
     arkBody: ArkBody;
     isDefault: boolean;
     stmts: Stmt[] = [];
     dominanceTree: DominanceTree;
     
-    constructor(arkBody: ArkBody, isDefault: boolean) {
+    public constructor(indent: string, arkBody: ArkBody, isDefault: boolean) {
         this.arkBody = arkBody;
         this.isDefault = isDefault;
+        this.printer = new ArkCodeBuffer(indent);
         this.dominanceTree = new DominanceTree(new DominanceFinder(arkBody.getCfg()));
         this.buildSourceStmt();
     }
 
-    public dump(streamOut: ArkStream): void {
-        this.printLocals(streamOut);
-        this.printStmts(streamOut);
+    public dump(): string {
+        this.printLocals();
+        this.printStmts();
+
+        return this.printer.toString();
+    }
+
+    public dumpOriginalCode(): string {
+        throw new Error("Method not implemented.");
     }
 
     private buildSourceStmt() {
@@ -119,10 +126,10 @@ export class SourceBody {
         }
     }
 
-    private printLocals(streamOut: ArkStream) {
+    private printLocals() {
         for (let local of this.arkBody.getLocals()) {
             // not define this
-            if (local.getName() == 'this') {
+            if (local.getName() == 'this' || local.getName() == 'console') {
                 continue;
             }
 
@@ -133,30 +140,30 @@ export class SourceBody {
                     continue;
                 }
             }
-            streamOut.writeIndent().write(`let ${local.getName()}`);
+            this.printer.writeIndent().write(`let ${local.getName()}`);
             if (local.getType().length > 0) {
-                streamOut.write(`: ${local.getType()}`);
+                this.printer.write(`: ${local.getType()}`);
             }
-            streamOut.writeLine(';');
+            this.printer.writeLine(';');
         }
     }
 
-    private printStmts(streamOut: ArkStream) {
+    private printStmts() {
         for (let stmt of this.stmts) {
             if (stmt instanceof SourceSwitchStmt || stmt instanceof SourceCaseStmt
                 || stmt instanceof SourceIfStmt || stmt instanceof SourceWhileStmt
                 || stmt instanceof SourceForStmt) {
-                streamOut.writeIndent().writeLine(stmt.toString());
-                streamOut.incIndent();
+                this.printer.writeIndent().writeLine(stmt.toString());
+                this.printer.incIndent();
             } else if (stmt instanceof SourceElseStmt) {
-                streamOut.decIndent();
-                streamOut.writeIndent().writeLine(stmt.toString());
-                streamOut.incIndent();
+                this.printer.decIndent();
+                this.printer.writeIndent().writeLine(stmt.toString());
+                this.printer.incIndent();
             } else if (stmt instanceof SourceCompoundEndStmt) {
-                streamOut.decIndent();
-                streamOut.writeIndent().writeLine(stmt.toString());
+                this.printer.decIndent();
+                this.printer.writeIndent().writeLine(stmt.toString());
             } else {
-                streamOut.writeIndent().writeLine(stmt.toString());
+                this.printer.writeIndent().writeLine(stmt.toString());
             }
         }
     }

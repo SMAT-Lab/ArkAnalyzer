@@ -41,7 +41,6 @@ abstract class SourceStmt extends Stmt {
     }
 }
 
-
 export class SourceAssignStmt extends SourceStmt {
     constructor(original: ArkAssignStmt, stmtReader: StmtReader) {
         super(original, stmtReader);
@@ -85,6 +84,11 @@ export class SourceAssignStmt extends SourceStmt {
             return;
         }
 
+        if (rightOp instanceof ArkStaticInvokeExpr) {
+            this.setText(`${leftOp} = ${this.staticInvokeExprToString(rightOp)};`);
+            return;
+        }
+
         // temp1 = new Person
         // temp1.constructor(10)
         if (leftOp instanceof Local && rightOp instanceof ArkNewExpr) {
@@ -96,7 +100,7 @@ export class SourceAssignStmt extends SourceStmt {
                     if ('constructor' == instanceInvokeExpr.getMethodSignature().getMethodSubSignature().getMethodName() && instanceInvokeExpr.getBase().getName() == leftOp.getName()) {
                         let args: string[] = [];
                         instanceInvokeExpr.getArgs().forEach((v)=>{args.push(v.toString())});
-                        this.setText(`${leftOp.toString()} = new ${rightOp.getClassSignature()}(${args.join(',')});`);
+                        this.setText(`${leftOp.toString()} = new ${rightOp.getClassSignature().getClassType()}(${args.join(',')});`);
                         rollback = false;
                     }
                 }
