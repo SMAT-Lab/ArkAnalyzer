@@ -1,12 +1,80 @@
+import { ExportInfo } from '../../core/common/ExportBuilder';
+import { ImportInfo } from '../../core/common/ImportBuilder';
 import { ArkBody } from '../../core/model/ArkBody';
 import { ArkClass } from '../../core/model/ArkClass';
+import { ArkEnum } from '../../core/model/ArkEnum';
 import { ArkInterface } from '../../core/model/ArkInterface';
 import { ArkMethod } from '../../core/model/ArkMethod';
+import { ArkNamespace } from '../../core/model/ArkNamespace';
 import { ArkStream } from '../ArkStream';
 import { Printer } from '../Printer';
 import { SourceBody } from './SourceBody';
 
 export class SourcePrinter extends Printer {
+    protected printImportInfo(info: ImportInfo, streamOut: ArkStream): void {
+        if (info.getImportType() === 'Identifier') {
+            // import fs from 'fs'
+            streamOut.write('import ' + info.getImportClauseName() + ' from ')
+                .writeStringLiteral(info.getImportFrom() as string).writeLine(';');
+        } else if (info.getImportType() === 'NamedImports') {
+            // import {xxx} from './yyy'
+            streamOut.write('import {' + info.getImportClauseName() + '} from ')
+                .writeStringLiteral(info.getImportFrom() as string).writeLine(';');
+        } else if (info.getImportType() === 'NamespaceImport') {
+            // import * as ts from 'typescript'
+            streamOut.write('import * as ' + info.getImportClauseName() + ' from ')
+                .writeStringLiteral(info.getImportFrom() as string).writeLine(';');
+        } else if (info.getImportType() == 'EqualsImport') {
+            // import mmmm = require('./xxx')
+            streamOut.write('import ' + info.getImportClauseName() + ' = require(')
+                .writeStringLiteral(info.getImportFrom() as string).writeLine(');');
+        } else {
+            // import '../xxx'
+            streamOut.write('import ').writeStringLiteral(info.getImportFrom() as string).writeLine(';');
+        }
+    }
+
+    protected printExportInfo(info: ExportInfo, streamOut: ArkStream): void {
+        if (info.getExportClauseType() !== 'NamespaceExport' && info.getExportClauseType() !== 'NamedExports') {
+            return;
+        }
+        if (info.getExportClauseType() === 'NamespaceExport') {
+            // just like: export * as xx from './yy'
+            if (info.getNameBeforeAs()) {
+                streamOut.write('export ' + info.getNameBeforeAs() + ' as ' + info.getExportClauseName());
+            } else {
+                streamOut.write('export ' + info.getExportClauseName());
+            }
+        } else if (info.getExportClauseType() === 'NamedExports') {
+            // just like: export {xxx as x} from './yy'
+            if (info.getNameBeforeAs()) {
+                streamOut.write('export {' + info.getNameBeforeAs() + ' as ' + info.getExportClauseName() + '}');
+            } else {
+                streamOut.write('export {' + info.getExportClauseName() + '}');
+            }
+        }
+        if (info.getExportFrom()) {
+            streamOut.write(' from ').writeStringLiteral(info.getExportFrom() as string);
+        }
+        streamOut.writeLine(';');
+    }
+
+    protected printEnum(eNum: ArkEnum, streamOut: ArkStream): void {
+        streamOut.writeIndent().writeSpace(this.modifiersToString(eNum.getModifiers()))
+            .writeLine(`enum ${eNum.getName()} {`)
+            .incIndent();
+
+        // TODO: initial
+        for (let member of eNum.getMembers()) {
+            streamOut.writeIndent().writeLine(`${member.getMemberName()},`);
+        }
+
+        for (let method of eNum.getMethods()) {
+            this.printMethod(method, streamOut);
+        }
+        
+        streamOut.decIndent().writeIndent().writeLine('}');
+    }
 
     public printOriginalCode(streamOut: ArkStream): void {
         streamOut.write(this.arkFile.getCode());
@@ -32,58 +100,37 @@ export class SourcePrinter extends Printer {
         }
     }
 
-    // print imports
-    protected printStart(streamOut: ArkStream): void {
-        for (let info of this.arkFile.getImportInfos()) {
-            if (info.getImportType() === 'Identifier') {
-                // import fs from 'fs'
-                streamOut.write('import ' + info.getImportClauseName() + ' from ')
-                    .writeStringLiteral(info.getImportFrom() as string).writeLine(';');
-            } else if (info.getImportType() === 'NamedImports') {
-                // import {xxx} from './yyy'
-                streamOut.write('import {' + info.getImportClauseName() + '} from ')
-                    .writeStringLiteral(info.getImportFrom() as string).writeLine(';');
-            } else if (info.getImportType() === 'NamespaceImport') {
-                // import * as ts from 'typescript'
-                streamOut.write('import * as ' + info.getImportClauseName() + ' from ')
-                    .writeStringLiteral(info.getImportFrom() as string).writeLine(';');
-            } else if (info.getImportType() == 'EqualsImport') {
-                // import mmmm = require('./xxx')
-                streamOut.write('import ' + info.getImportClauseName() + ' = require(')
-                    .writeStringLiteral(info.getImportFrom() as string).writeLine(');');
-            } else {
-                // import '../xxx'
-                streamOut.write('import ').writeStringLiteral(info.getImportFrom() as string).writeLine(';');
-            }
+    protected printNamespace(ns: ArkNamespace, streamOut: ArkStream): void {
+        streamOut.writeIndent().writeSpace(this.modifiersToString(ns.getModifiers())).writeLine(`namespace ${ns.getName()} {`);
+        streamOut.incIndent();
+        // print enums
+        for (let eNum of ns.getEnums()) {
+            this.printEnum(eNum, streamOut);
         }
-    }
+        
+        // print interface
+        for (let intf of ns.getInterfaces()) {
+            this.printInterface(intf, streamOut);
+        }
+        
+        // print class 
+        for (let cls of ns.getClasses()) {
+            this.printClass(cls, streamOut);
+        }
 
-    // print export * from
-    protected printEnd(streamOut: ArkStream): void {
-        for (let info of this.arkFile.getExportInfos()) {
-            if (info.getExportClauseType() !== 'NamespaceExport' && info.getExportClauseType() !== 'NamedExports') {
-                continue;
-            }
-            if (info.getExportClauseType() === 'NamespaceExport') {
-                // just like: export * as xx from './yy'
-                if (info.getNameBeforeAs()) {
-                    streamOut.write('export ' + info.getNameBeforeAs() + ' as ' + info.getExportClauseName());
-                } else {
-                    streamOut.write('export ' + info.getExportClauseName());
-                }
-            } else if (info.getExportClauseType() === 'NamedExports') {
-                // just like: export {xxx as x} from './yy'
-                if (info.getNameBeforeAs()) {
-                    streamOut.write('export {' + info.getNameBeforeAs() + ' as ' + info.getExportClauseName() + '}');
-                } else {
-                    streamOut.write('export {' + info.getExportClauseName() + '}');
-                }
-            }
-            if (info.getExportFrom()) {
-                streamOut.write(' from ').writeStringLiteral(info.getExportFrom() as string);
-            }
-            streamOut.writeLine(';');
+        // print namespace
+        for (let childNs of ns.getNamespaces()) {
+            this.printNamespace(childNs, streamOut);
         }
+
+        // print exportInfos
+        for (let exportInfo of ns.getExportInfos()) {
+            this.printExportInfo(exportInfo, streamOut);
+        }
+        //TODO: fields /methods
+
+        streamOut.decIndent();
+        streamOut.writeIndent().writeLine('}');
     }
 
     protected printInterface(intf: ArkInterface, streamOut: ArkStream): void {
@@ -107,7 +154,7 @@ export class SourcePrinter extends Printer {
             return this.printMethods(cls, streamOut);
         }
         // print export class name + extends c0 implements x1, x2 {
-        streamOut.writeSpace(this.modifiersToString(cls.getModifiers()))
+        streamOut.writeIndent().writeSpace(this.modifiersToString(cls.getModifiers()))
             .writeSpace(`class ${cls.getName()} `);
         if (cls.getSuperClassName()) {
             streamOut.write(`extends ${cls.getSuperClassName()} `);
@@ -122,7 +169,7 @@ export class SourcePrinter extends Printer {
         this.printMethods(cls, streamOut);
         
         streamOut.decIndent();
-        streamOut.writeLine('}')
+        streamOut.writeIndent().writeLine('}')
     }
     
     private printMethods(cls: ArkClass, streamOut: ArkStream): void {

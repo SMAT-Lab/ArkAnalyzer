@@ -151,6 +151,10 @@ export class ArkNamespace {
         this.namespaces.push(namespace);
     }
 
+    public getNamespaces(): ArkNamespace[] {
+        return this.namespaces;
+    }
+
     public setDeclaringSignature(declaringSignature: string) {
         this.declaringSignature = declaringSignature;
     }

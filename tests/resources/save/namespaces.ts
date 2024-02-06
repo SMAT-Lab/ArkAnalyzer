@@ -1,10 +1,20 @@
 namespace Validation {
-    export interface StringValidator {
-        isAcceptable(s: string): boolean;
+
+    // TODO: initializer not support
+    enum FileAccess {
+        // constant members
+        None,
+        Read    = 1 << 1,
+        Write   = 1 << 2,
+        ReadWrite  = Read | Write,
+        // computed member
+        G = "123".length,
     }
 
-    const lettersRegexp = /^[A-Za-z]+$/;
-    const numberRegexp = /^[0-9]+$/;
+    export interface StringValidator {
+        // TODO: error - name parse to StringValidator
+        isAcceptable(s: string): boolean;
+    }
 
     export class LettersOnlyValidator implements StringValidator {
         isAcceptable(s: string) {
@@ -17,29 +27,20 @@ namespace Validation {
             return s.length === 5 && numberRegexp.test(s);
         }
     }
+
+    // TODO: Not Support
+    function test(): void {
+        console.log('');
+    }
+
+    // TODO: Not Support
+    const lettersRegexp = /^[A-Za-z]+$/;
+    const numberRegexp = /^[0-9]+$/;
 }
 
 namespace Shapes {
     export namespace Polygons {
         export class Triangle { }
         export class Square { }
-    }
-}
-
-import polygons = Shapes.Polygons;
-let sq = new polygons.Square(); // Same as "new Shapes.Polygons.Square()"
-
-// Some samples to try
-let strings = ["Hello", "98052", "101"];
-
-// Validators to use
-let validators: { [s: string]: Validation.StringValidator; } = {};
-validators["ZIP code"] = new Validation.ZipCodeValidator();
-validators["Letters only"] = new Validation.LettersOnlyValidator();
-
-// Show whether each string passed each validator
-for (let s of strings) {
-    for (let name in validators) {
-        console.log(`"${ s }" - ${ validators[name].isAcceptable(s) ? "matches" : "does not match" } ${ name }`);
     }
 }
