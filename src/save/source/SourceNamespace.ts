@@ -10,7 +10,7 @@ export class SourceNamespace extends SourceBase{
 
     public constructor(indent: string, ns: ArkNamespace) {
         super(indent);
-        this.ns = this.ns;
+        this.ns = ns;
     }
 
     public dump(): string {

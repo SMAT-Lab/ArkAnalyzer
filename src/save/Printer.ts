@@ -1,21 +1,13 @@
-import { ArkClass } from '../core/model/ArkClass';
 import { ArkFile } from '../core/model/ArkFile';
-import { ArkInterface } from '../core/model/ArkInterface';
 import { ArkStream } from './ArkStream';
-import { ArkNamespace } from '../core/model/ArkNamespace';
-import { ArkEnum } from '../core/model/ArkEnum';
-import { ExportInfo } from '../core/common/ExportBuilder';
-import { ImportInfo } from '../core/common/ImportBuilder';
+import fs from 'fs';
+import { dirname, join } from 'path';
+import { SourcePrinter } from './source/SourcePrinter';
 
 export abstract class Printer {
     arkFile: ArkFile;
-
     constructor(arkFile: ArkFile) {
         this.arkFile = arkFile;
     }
-
-    public printTo(streamOut: ArkStream): void {
-
-    }
-
+    public abstract printTo(streamOut: ArkStream): void;
 }
