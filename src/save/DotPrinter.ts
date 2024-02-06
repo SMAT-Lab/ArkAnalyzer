@@ -1,14 +1,26 @@
+import { ExportInfo } from "../core/common/ExportBuilder";
+import { ImportInfo } from "../core/common/ImportBuilder";
 import { BasicBlock } from "../core/graph/BasicBlock";
-import { ArkBody } from "../core/model/ArkBody";
 import { ArkClass } from "../core/model/ArkClass";
-import { ArkFile } from "../core/model/ArkFile";
+import { ArkEnum } from "../core/model/ArkEnum";
 import { ArkInterface } from "../core/model/ArkInterface";
 import { ArkMethod } from "../core/model/ArkMethod";
+import { ArkNamespace } from "../core/model/ArkNamespace";
 import { ArkStream } from "./ArkStream";
 import { Printer } from "./Printer";
 
 
 export class DotPrinter extends Printer {
+    protected printImportInfo(exportInfo: ImportInfo, streamOut: ArkStream): void {
+        
+    }
+    protected printNamespace(ns: ArkNamespace, streamOut: ArkStream): void {
+        
+    }
+    protected printExportInfo(exportInfo: ExportInfo, streamOut: ArkStream): void {
+    }
+    protected printEnum(eNum: ArkEnum, streamOut: ArkStream): void {
+    }
     protected printStart(streamOut: ArkStream): void {
         streamOut.writeLine(`digraph "${this.arkFile.getName()}" {`);
         streamOut.incIndent();

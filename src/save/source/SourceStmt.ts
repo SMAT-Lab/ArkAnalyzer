@@ -25,6 +25,20 @@ abstract class SourceStmt extends Stmt {
         }
         return type;
     }
+
+    protected instanceInvokeExprToString(invokeExpr: ArkInstanceInvokeExpr) {
+        let methodName = invokeExpr.getMethodSignature().getMethodSubSignature().getMethodName();
+        let args: string[] = [];
+        invokeExpr.getArgs().forEach((v)=>{args.push(v.toString())});
+        return `${invokeExpr.getBase().getName()}.${methodName}(${args.join(',')})`;
+    }
+
+    protected staticInvokeExprToString(invokeExpr: ArkStaticInvokeExpr) {
+        let methodName = invokeExpr.getMethodSignature().getMethodSubSignature().getMethodName();
+        let args: string[] = [];
+        invokeExpr.getArgs().forEach((v)=>{args.push(v.toString())});
+        return `${methodName}(${args.join(',')})`;
+    }
 }
 
 
@@ -66,6 +80,11 @@ export class SourceAssignStmt extends SourceStmt {
             return;
         }
 
+        if (rightOp instanceof ArkInstanceInvokeExpr) {
+            this.setText(`${leftOp} = ${this.instanceInvokeExprToString(rightOp)};`);
+            return;
+        }
+
         // temp1 = new Person
         // temp1.constructor(10)
         if (leftOp instanceof Local && rightOp instanceof ArkNewExpr) {
@@ -102,22 +121,14 @@ export class SourceInvokeStmt extends SourceStmt {
     protected transfer2ts(stmtReader: StmtReader): void {
         let invokeExpr = this.original.getInvokeExpr();
         if (invokeExpr instanceof ArkStaticInvokeExpr) {
-            let strs: string[] = [];
-            strs.push(invokeExpr.getMethodSignature().getMethodSubSignature().getMethodName());
-            strs.push('(');
-            if (invokeExpr.getArgs().length > 0) {
-                for (const arg of invokeExpr.getArgs()) {
-                    strs.push(arg.toString());
-                    strs.push(', ');
-                }
-                strs.pop();
-            }
-            strs.push(');');
-            this.setText(strs.join(''));
+            this.setText(`${this.staticInvokeExprToString(invokeExpr)};`);
             return;
+        } else if (invokeExpr instanceof ArkInstanceInvokeExpr) {
+            this.setText(`${this.instanceInvokeExprToString(invokeExpr)};`);
+            return;
+        } else {
+            this.setText(this.original + ';');
         }
-
-        this.setText(this.original + ';');
     }
 }
 
