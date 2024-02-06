@@ -841,7 +841,7 @@ export class CfgBuilder {
                 this.buildBlocks(stm.next, b);
             return;
         }
-        if (stm.type != "loopStatement" && stm.type != "switchStatement" && stm.type != "tryStatement" || (stm instanceof ConditionStatementBuilder && stm.doStatement)) {
+        if (stm.type != "loopStatement" && stm.type != "tryStatement" || (stm instanceof ConditionStatementBuilder && stm.doStatement)) {
             block.stms.push(stm);
             stm.block = block;
         }
@@ -864,7 +864,6 @@ export class CfgBuilder {
         }
         else if (stm.type == "switchStatement") {
             let sstm = stm as SwitchStatementBuilder;
-            block.stms.push(sstm)
             for (const cas of sstm.cases) {
                 this.buildBlocks(cas.stm, this.buildNewBlock([]));
             }
