@@ -11,27 +11,36 @@ import { Printer } from "./Printer";
 
 
 export class DotPrinter extends Printer {
-    protected printImportInfo(exportInfo: ImportInfo, streamOut: ArkStream): void {
-        
-    }
-    protected printNamespace(ns: ArkNamespace, streamOut: ArkStream): void {
-        
-    }
-    protected printExportInfo(exportInfo: ExportInfo, streamOut: ArkStream): void {
-    }
-    protected printEnum(eNum: ArkEnum, streamOut: ArkStream): void {
-    }
-    protected printStart(streamOut: ArkStream): void {
+    public printTo(streamOut: ArkStream): void {
         streamOut.writeLine(`digraph "${this.arkFile.getName()}" {`);
         streamOut.incIndent();
-    }
-    protected printEnd(streamOut: ArkStream): void {
+
+        // print namespace
+        for (let ns of this.arkFile.getNamespaces()) {
+            this.printNamespace(ns, streamOut);
+        }
+
+        // print class 
+        for (let cls of this.arkFile.getClasses()) {
+            this.printClass(cls, streamOut);
+        }
+
         streamOut.decIndent();
         streamOut.writeLine('}');
     }
-    protected printInterface(cls: ArkInterface, streamOut: ArkStream): void {
-        
+
+    protected printNamespace(ns: ArkNamespace, streamOut: ArkStream): void {
+        // print class 
+        for (let cls of ns.getClasses()) {
+            this.printClass(cls, streamOut);
+        }
+
+        // print namespace
+        for (let childNs of ns.getNamespaces()) {
+            this.printNamespace(childNs, streamOut);
+        }
     }
+    
     protected printClass(cls: ArkClass, streamOut: ArkStream): void {
         for (let method of cls.getMethods()) {
             // this.printMethod3ACBlocks(method, streamOut);

@@ -85,6 +85,12 @@ export abstract class SourceBase {
         if (name === '_Constructor') {
             return 'constructor';
         }
+        if (name.startsWith('Get-')) {
+            return name.replace('Get-', 'get ');
+        }
+        if (name.startsWith('Set-')) {
+            return name.replace('Set-', 'set ');
+        }
         return name;
     }
 }

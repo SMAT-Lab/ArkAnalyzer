@@ -9,9 +9,10 @@ config.buildFromProjectDir(join(__dirname, 'resources', 'save'));
 
 function run(config: SceneConfig) {
     let scene: Scene = new Scene(config);
+    let printer: PrinterBuilder = new PrinterBuilder();
     for (let f of scene.arkFiles) {
-        PrinterBuilder.dumpToDot(f);
-        PrinterBuilder.dumpToTs(f);
+        printer.dumpToDot(f);
+        printer.dumpToTs(f);
     }
 }
 run(config);

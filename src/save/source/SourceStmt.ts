@@ -30,7 +30,13 @@ abstract class SourceStmt extends Stmt {
         let methodName = invokeExpr.getMethodSignature().getMethodSubSignature().getMethodName();
         let args: string[] = [];
         invokeExpr.getArgs().forEach((v)=>{args.push(v.toString())});
-        return `${invokeExpr.getBase().getName()}.${methodName}(${args.join(',')})`;
+        if (invokeExpr.getBase() instanceof Local) {
+            return `${invokeExpr.getBase().getName()}.${methodName}(${args.join(',')})`;
+        } else if (invokeExpr.getBase() instanceof Constant) {
+            return `${invokeExpr.getBase().getType()}.${methodName}(${args.join(',')})`;
+        } else {
+            console.log('= SourceStmt.instanceInvokeExprToString: error.', invokeExpr.getBase(), methodName);
+        }
     }
 
     protected staticInvokeExprToString(invokeExpr: ArkStaticInvokeExpr) {
