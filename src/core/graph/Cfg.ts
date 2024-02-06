@@ -181,8 +181,10 @@ export class Cfg {
                         } else if (method instanceof ImportInfo) {
                             // method from import
                             const targetArkSignatureKey = method.getTargetArkSignature();
-                            const arkMethod = arkInstancesMap.get(targetArkSignatureKey) as ArkMethod;
-                            newMethodSignature = arkMethod.getSignature();
+                            const arkMethod = arkInstancesMap.get(targetArkSignatureKey);
+                            if (arkMethod instanceof ArkMethod) {
+                                newMethodSignature = arkMethod.getSignature();
+                            }
                         }
                         expr.setMethodSignature(newMethodSignature);
                     }

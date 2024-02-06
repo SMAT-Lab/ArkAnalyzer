@@ -3,10 +3,11 @@ import { SceneConfig } from "./Config";
 const fs = require('fs');
 
 export class CfgTest {
-    private buildScene(): Scene {
-        // D:\\Codes\\program_analysis\\static_framework\\ark-analyzer-mirror\\tests\\resources\\cfg\\sample
-        // D:\\Codes\\openharmony\\applications\\applications_photos
-        const config_path = "D:\\Codes\\program_analysis\\static_framework\\ark-analyzer-mirror\\tests\\resources\\cfg\\CfgTestConfig.json";
+    public buildScene(): Scene {
+        // D:\\Codes\\program_analysis\\static_framework\\ArkAnalyzer\\tests\\resources\\cfg\\sample
+        // D:\\Codes\\program_analysis\\static_framework\\ArkAnalyzer\\tests\\resources\\cfg\\temp
+        // D:\\Codes\\resources\\SE4OpenHarmony-main
+        const config_path = "D:\\Codes\\program_analysis\\static_framework\\ArkAnalyzer\\tests\\resources\\cfg\\CfgTestConfig.json";
         let config: SceneConfig = new SceneConfig();
         config.buildFromJson(config_path);
         return new Scene(config);
@@ -69,7 +70,8 @@ export class CfgTest {
 
 
 let cfgTest = new CfgTest();
-cfgTest.testThreeAddresStmt();
+cfgTest.buildScene();
+// cfgTest.testThreeAddresStmt();
 // cfgTest.testBlocks();
 
 // debugger

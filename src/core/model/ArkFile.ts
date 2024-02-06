@@ -180,6 +180,10 @@ export class ArkFile {
         return this.projectDir;
     }
 
+    public getFilePath(): string {
+        return this.filePath;
+    }
+
     public setCode(code: string) {
         this.code = code;
     }
