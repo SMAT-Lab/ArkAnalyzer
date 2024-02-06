@@ -2994,7 +2994,7 @@ export class CfgBuilder {
             case "FirstLiteralToken":
                 return "number"
             case "StringKeyword":
-            case "StringLiteralToken":
+            case "StringLiteral":
                 return "string"
             case "VoidKeyword":
                 return "void"
