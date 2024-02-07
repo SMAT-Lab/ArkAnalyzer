@@ -14,34 +14,34 @@ export class SourcePrinter extends Printer {
     public printTo(streamOut: ArkStream): void {
         // print imports
         for (let info of this.arkFile.getImportInfos()) {
-            this.items.push(new SourceImportInfo('', info));
+            this.items.push(new SourceImportInfo('', this.arkFile.getScene(), info));
         }
         // print namespace
         for (let ns of this.arkFile.getNamespaces()) {
-            this.items.push(new SourceNamespace('', ns));
+            this.items.push(new SourceNamespace('', this.arkFile.getScene(), ns));
         }
 
         // print enums
         for (let eNum of this.arkFile.getEnums()) {
-            this.items.push(new SourceEnum('', eNum));
+            this.items.push(new SourceEnum('', this.arkFile.getScene(), eNum));
         }
 
         // print interface
         for (let intf of this.arkFile.getInterfaces()) {
-            this.items.push(new SourceIntf('', intf));
+            this.items.push(new SourceIntf('', this.arkFile.getScene(), intf));
         }
         
         // print class 
         for (let cls of this.arkFile.getClasses()) {
             if (cls.isDefaultArkClass()) {
-                this.items.push(new SourceDefaultClass('', cls));
+                this.items.push(new SourceDefaultClass('', this.arkFile.getScene(), cls));
             } else {
-                this.items.push(new SourceClass('', cls));
+                this.items.push(new SourceClass('', this.arkFile.getScene(), cls));
             }
         }
         // print export
         for (let info of this.arkFile.getExportInfos()) {
-            this.items.push(new SourceExportInfo('', info));
+            this.items.push(new SourceExportInfo('', this.arkFile.getScene(), info));
         }
 
         this.items.sort();

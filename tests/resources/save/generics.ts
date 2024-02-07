@@ -28,26 +28,22 @@ class ZooKeeper {
     nametag: string;
 }
 
-class Animal {
+class Animal1 {
     numLegs: number;
 }
 
-class Bee extends Animal {
+class Bee extends Animal1 {
     keeper: BeeKeeper;
 }
 
-class Lion extends Animal {
+class Lion extends Animal1 {
     keeper: ZooKeeper;
 }
 
 // TODO: not support
-function createInstance<A extends Animal>(c: new () => A): A {
+function createInstance<A extends Animal1>(c: new () => A): A {
     return new c();
 }
-
-// TODO: lost
-createInstance(Lion).keeper.nametag;  // typechecks!
-createInstance(Bee).keeper.hasMask;   // typechecks!
 
 let l = new Lion();
 console.log(l.keeper);

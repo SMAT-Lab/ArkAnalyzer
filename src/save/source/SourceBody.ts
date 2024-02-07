@@ -1,4 +1,5 @@
 
+import { Scene } from '../../Scene';
 import { ArkInstanceInvokeExpr, ArkNewExpr } from '../../core/base/Expr';
 import { Local } from "../../core/base/Local";
 import { ArkParameterRef } from "../../core/base/Ref";
@@ -12,13 +13,15 @@ import { SourceAssignStmt, SourceCaseStmt, SourceCompoundEndStmt, SourceElseStmt
 
 
 export class SourceBody {
-    printer: ArkCodeBuffer;
-    arkBody: ArkBody;
-    isDefault: boolean;
-    stmts: Stmt[] = [];
-    dominanceTree: DominanceTree;
+    private printer: ArkCodeBuffer;
+    private arkBody: ArkBody;
+    private isDefault: boolean;
+    private stmts: Stmt[] = [];
+    private dominanceTree: DominanceTree;
+    private scene: Scene;
     
-    public constructor(indent: string, arkBody: ArkBody, isDefault: boolean) {
+    public constructor(indent: string, scene: Scene, arkBody: ArkBody, isDefault: boolean) {
+        this.scene = scene;
         this.arkBody = arkBody;
         this.isDefault = isDefault;
         this.printer = new ArkCodeBuffer(indent);

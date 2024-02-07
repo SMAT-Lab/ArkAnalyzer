@@ -1,3 +1,4 @@
+import { Scene } from "../../Scene";
 import { ArkNamespace } from "../../core/model/ArkNamespace";
 import { SourceBase } from "./SourceBase";
 import { SourceClass } from "./SourceClass";
@@ -8,8 +9,8 @@ import { SourceExportInfo } from "./SourceModule";
 export class SourceNamespace extends SourceBase{
     ns: ArkNamespace;
 
-    public constructor(indent: string, ns: ArkNamespace) {
-        super(indent);
+    public constructor(indent: string, scene: Scene, ns: ArkNamespace) {
+        super(indent, scene);
         this.ns = ns;
     }
 
@@ -21,27 +22,27 @@ export class SourceNamespace extends SourceBase{
 
         // print enums
         for (let eNum of this.ns.getEnums()) {
-            items.push(new SourceEnum(this.printer.getIndent(), eNum));
+            items.push(new SourceEnum(this.printer.getIndent(), this.scene, eNum));
         }
         
         // print interface
         for (let intf of this.ns.getInterfaces()) {
-            items.push(new SourceIntf(this.printer.getIndent(), intf));
+            items.push(new SourceIntf(this.printer.getIndent(), this.scene, intf));
         }
         
         // print class 
         for (let cls of this.ns.getClasses()) {
-            items.push(new SourceClass(this.printer.getIndent(), cls));
+            items.push(new SourceClass(this.printer.getIndent(), this.scene, cls));
         }
 
         // print namespace
         for (let childNs of this.ns.getNamespaces()) {
-            items.push(new SourceNamespace(this.printer.getIndent(), childNs));
+            items.push(new SourceNamespace(this.printer.getIndent(), this.scene, childNs));
         }
 
         // print exportInfos
         for (let exportInfo of this.ns.getExportInfos()) {
-            items.push(new SourceExportInfo(this.printer.getIndent(), exportInfo));
+            items.push(new SourceExportInfo(this.printer.getIndent(), this.scene, exportInfo));
         }
         //TODO: fields /methods
         //TODO: sort by lineno

@@ -33,7 +33,8 @@ abstract class SourceStmt extends Stmt {
         if (invokeExpr.getBase() instanceof Local) {
             return `${invokeExpr.getBase().getName()}.${methodName}(${args.join(',')})`;
         } else if (invokeExpr.getBase() instanceof Constant) {
-            return `${invokeExpr.getBase().getType()}.${methodName}(${args.join(',')})`;
+            let base: Constant = invokeExpr.getBase() as unknown as Constant;
+            return `${base.getValue()}.${methodName}(${args.join(',')})`;
         } else {
             console.log('= SourceStmt.instanceInvokeExprToString: error.', invokeExpr.getBase(), methodName);
         }
