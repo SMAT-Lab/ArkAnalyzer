@@ -26,6 +26,7 @@ export function isPrimaryTypeKeyword(keyword: string): boolean {
         case "StringKeyword":
         case "String":
         case "NullKeyword":
+        case "BooleanKeyword":
             return true
         default:
             return false
@@ -42,6 +43,8 @@ export function resolvePrimaryTypeKeyword(keyword: string): string {
             return "null"
         case "String":
             return "String"
+        case "BooleanKeyword":
+            return "boolean"
         default:
             return ""
     }
