@@ -188,7 +188,7 @@ export class Cfg {
                     }
                 }
 
-                // console.log(stmt)
+                // console.log(stmt.toString())
                 if (stmt instanceof ArkAssignStmt) {
                     const leftOp = stmt.getLeftOp();
                     const rightOp = stmt.getRightOp();
@@ -199,33 +199,34 @@ export class Cfg {
                             // 若存在变量类型声明，则进行解析
                             let leftOpTypes = splitType(leftOp.getType(), '|')
                             for (let leftOpType of leftOpTypes) {
-                                // if (this.declaringClass.getDeclaringArkFile().getName() == "main.ts") {
-                                //     console.log(leftOpType)
-                                // }
                                 if (isPrimaryType(leftOpType)) {
-                                    leftPossibleTypes.push(leftOpType)
+                                    // leftPossibleTypes.push(leftOpType)
                                 } else {
-                                    if (!leftOpType.includes('.')) {
-                                        //类名解析
-                                        let classInstanceName = searchImportMessage(
-                                            this.declaringClass.getDeclaringArkFile(),
-                                            leftOpType, matchClassInFile);
-                                        leftPossibleTypes.push(classInstanceName)
-                                    } else {
-                                        //类属性解析
-                                        let fieldNames = splitType(leftOpType, '.')
-                                        let fieldArkFile = this.declaringClass.getDeclaringArkFile()
-                                        let resolveResult = resolveClassInstanceField(fieldNames, fieldArkFile)
-                                        if (resolveResult != null)
-                                            leftPossibleTypes.push(resolveResult)
-                                    }
+                                    let classInstanceName = searchImportMessage(
+                                        this.declaringClass.getDeclaringArkFile(),
+                                        leftOpType, matchClassInFile);
+                                    // leftPossibleTypes.push(classInstanceName)
+                                    // if (!leftOpType.includes('.')) {
+                                    //     //类名解析
+                                    //     let classInstanceName = searchImportMessage(
+                                    //         this.declaringClass.getDeclaringArkFile(),
+                                    //         leftOpType, matchClassInFile);
+                                    //     leftPossibleTypes.push(classInstanceName)
+                                    // } else {
+                                    //     //类属性解析
+                                    //     let fieldNames = splitType(leftOpType, '.')
+                                    //     let fieldArkFile = this.declaringClass.getDeclaringArkFile()
+                                    //     let resolveResult = resolveClassInstanceField(fieldNames, fieldArkFile)
+                                    //     if (resolveResult != null)
+                                    //         leftPossibleTypes.push(resolveResult)
+                                    // }
                                 }
                             }
                             leftOp.setType(transformArrayToString(leftPossibleTypes))
-                            // if (this.declaringClass.getDeclaringArkFile().getName() == "main.ts") {
-                            //     console.log("stmt: " + stmt.toString())
-                            //     console.log("\t" + leftOp.getType())
-                            // }
+                            if (this.declaringClass.getDeclaringArkFile().getName() == "main.ts") {
+                                // console.log("stmt: " + stmt.toString())
+                                // console.log("\t" + leftOp.getType())
+                            }
                             // continue
                         }
                         if (rightOp instanceof ArkNewExpr) {
@@ -311,6 +312,7 @@ export class Cfg {
                             }
                             leftOp.setType(transformArrayToString(leftPossibleTypes))
                         } else if (rightOp instanceof Constant) {
+                            // console.log(rightOp)
                             leftOp.setType(rightOp.getType())
                             // } else if (rightOp instanceof ArkStaticInvokeExpr && (leftOp.getType()=="" || leftOp.getType()=="any")){
                             // const staticInvokeExpr=rightOp as ArkStaticInvokeExpr;
