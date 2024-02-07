@@ -1,5 +1,5 @@
 import { Constant } from "../../core/base/Constant";
-import { ArkBinopExpr, ArkInstanceInvokeExpr, ArkNewArrayExpr, ArkNewExpr, ArkStaticInvokeExpr } from "../../core/base/Expr";
+import { ArkBinopExpr, ArkInstanceInvokeExpr, ArkLengthExpr, ArkNewArrayExpr, ArkNewExpr, ArkStaticInvokeExpr } from "../../core/base/Expr";
 import { Local } from "../../core/base/Local";
 import { ArkInstanceFieldRef, ArkParameterRef } from "../../core/base/Ref";
 import { ArkAssignStmt, ArkGotoStmt, ArkIfStmt, ArkInvokeStmt, ArkReturnStmt, ArkReturnVoidStmt, ArkSwitchStmt, Stmt} from '../../core/base/Stmt';
@@ -95,6 +95,11 @@ export class SourceAssignStmt extends SourceStmt {
             return;
         }
 
+        if (rightOp instanceof ArkLengthExpr) {
+            this.setText(`${leftOp} = ${rightOp.getOp()}.length;`);
+            return;
+        }
+
         // temp1 = new Person
         // temp1.constructor(10)
         if (leftOp instanceof Local && rightOp instanceof ArkNewExpr) {
@@ -119,6 +124,7 @@ export class SourceAssignStmt extends SourceStmt {
             }
             return;
         }
+        console.log('SourceAssignStmt->transfer2ts', leftOp, rightOp);
         this.setText(`${this.original};`);
     }
 }
@@ -170,7 +176,7 @@ export class SourceWhileStmt extends SourceStmt {
     }
     
     protected transferOperator(): string {
-        let operator = (this.original as ArkIfStmt).getConditionExprExpr().getOperator();
+        let operator = (this.original as ArkIfStmt).getConditionExprExpr().getOperator().trim();
         if (this.isRelationalOperator(operator)) {
             return this.flipOperator(operator);
         }
@@ -225,8 +231,16 @@ export class SourceForStmt extends SourceWhileStmt {
         let code: string;
         code = `for (; ${(this.original as ArkIfStmt).getConditionExprExpr().getOp1()}`;
         code += ` ${this.transferOperator()} `;
-        code += `${(this.original as ArkIfStmt).getConditionExprExpr().getOp2()}; ${stmtReader.next()}) {`;
+        code += `${(this.original as ArkIfStmt).getConditionExprExpr().getOp2()}; `;
+        while (stmtReader.hasNext()) {
+            code += `${stmtReader.next()}`;
+            if (stmtReader.hasNext()) {
+                code += ', ';
+            }
+        }
+        code += `) {`;
         this.setText(code);
+        console.log('SourceForStmt->transfer2ts:', (this.original as ArkIfStmt).getConditionExprExpr());
     }
 }
 

@@ -1,5 +1,5 @@
 
-import { ArkCodeBuffer, ArkStream } from '../ArkStream';
+import { ArkStream } from '../ArkStream';
 import { Printer } from '../Printer';
 import { SourceBase } from './SourceBase';
 import { SourceClass, SourceDefaultClass } from './SourceClass';

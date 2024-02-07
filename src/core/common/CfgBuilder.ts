@@ -1791,7 +1791,7 @@ export class CfgBuilder {
             }
 
             let baseLocal = baseValue as Local;
-            if (baseLocal.getType() == 'array') {
+            if (baseLocal.getType() == 'array' || baseLocal.getType().endsWith('[]')) {
                 value = new ArkArrayRef(baseLocal as Local, elementValue);
             } else {
                 let fieldSignature = elementValue.toString();

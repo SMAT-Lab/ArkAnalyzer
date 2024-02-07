@@ -1,4 +1,6 @@
 
+import { ArkInstanceInvokeExpr, ArkNewExpr } from '../../core/base/Expr';
+import { Local } from "../../core/base/Local";
 import { ArkParameterRef } from "../../core/base/Ref";
 import { ArkAssignStmt, ArkGotoStmt, ArkIfStmt, ArkInvokeStmt, ArkReturnStmt, ArkReturnVoidStmt, ArkSwitchStmt, Stmt } from '../../core/base/Stmt';
 import { BasicBlock } from "../../core/graph/BasicBlock";
@@ -31,10 +33,6 @@ export class SourceBody {
         return this.printer.toString();
     }
 
-    public dumpOriginalCode(): string {
-        throw new Error("Method not implemented.");
-    }
-
     private buildSourceStmt() {
         let blocks = this.arkBody.getCfg().getBlocks();
         let visitor = new Set<BasicBlock>();
@@ -49,7 +47,7 @@ export class SourceBody {
     }
 
     private buildBasicBlock(block: BasicBlock, visitor: Set<BasicBlock>, parent: Stmt|null): void {
-        let originalStmts: Stmt[] = block.getStmts();
+        let originalStmts: Stmt[] = this.sortStmt(block.getStmts());
         let stmtReader: StmtReader =  new StmtReader(originalStmts);
         while (stmtReader.hasNext()) {
             let stmt = stmtReader.next();
@@ -145,6 +143,7 @@ export class SourceBody {
                 this.printer.write(`: ${local.getType()}`);
             }
             this.printer.writeLine(';');
+            console.log('SourceBody->printLocals:', local);
         }
     }
 
@@ -201,6 +200,51 @@ export class SourceBody {
             }
         }
         return false;
+    }
+
+    /*
+        temp9 = new <>.<>();                            temp10 = new Array<number>(3);
+        temp10 = new Array<number>(3);                  temp10[0] = "Cat";
+        temp10[0] = "Cat";                        ==>   temp10[1] = "Dog";
+        temp10[1] = "Dog";                              temp10[2] = "Hamster";
+        temp10[2] = "Hamster";                          temp9 = new <>.<>();
+        temp9.constructor(temp10);                      temp9.constructor(temp10);
+    */
+    private sortStmt(stmts: Stmt[]): Stmt[] {
+        for (let i = stmts.length -1; i > 0; i--) {
+            if (stmts[i] instanceof ArkInvokeStmt && stmts[i].getInvokeExpr() as ArkInstanceInvokeExpr) {
+                let instanceInvokeExpr = stmts[i].getInvokeExpr() as ArkInstanceInvokeExpr;
+                if ('constructor' == instanceInvokeExpr.getMethodSignature().getMethodSubSignature().getMethodName()) {
+                    let localName = instanceInvokeExpr.getBase().getName();
+                    let newExprIdx = findNewExpr(i, localName);
+                    if (newExprIdx >= 0 && newExprIdx < i -1) {
+                        moveStmt(i, newExprIdx);
+                    }
+                }
+            }
+        }
+        return stmts;
+
+        function findNewExpr(constructorIdx: number, name: string): number {
+            for (let j = constructorIdx - 1; j >= 0; j--) {
+                if (stmts[j] instanceof ArkAssignStmt) {
+                    if ((stmts[j] as ArkAssignStmt).getLeftOp() instanceof Local) {
+                        if (((stmts[j] as ArkAssignStmt).getLeftOp() as Local).getName() == name) {
+                            return j;
+                        }
+                    }
+                }
+            }
+            return -1;
+        }
+
+        function moveStmt(constructorIdx: number, newExprIdx: number): void {
+            let back = stmts[newExprIdx];
+            for (let i = newExprIdx; i < constructorIdx - 1; i++) {
+                stmts[i] = stmts[i + 1];
+            }
+            stmts[constructorIdx - 1] = back;
+        }
     }
 }
 
