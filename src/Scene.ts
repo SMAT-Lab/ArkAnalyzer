@@ -93,7 +93,7 @@ export class Scene {
         }
 
         this.projectFiles.forEach((file) => {
-            console.log('=== parse file:', file);  
+            // console.log('=== parse file:', file);  
             let arkFile: ArkFile = new ArkFile();
             arkFile.buildArkFileFromSourceFile(file, this.realProjectDir);
             arkFile.setScene(this);
@@ -258,11 +258,11 @@ export class Scene {
      */
     private typeReference() {
         for (let arkFile of this.arkFiles) {
-            console.log('=== file:', arkFile.getFilePath());            
+            // console.log('=== file:', arkFile.getFilePath());            
             for (let arkClass of arkFile.getClasses()) {
-                console.log('== class:', arkClass.getName());
+                // console.log('== class:', arkClass.getName());
                 for (let arkMethod of arkClass.getMethods()) {
-                    console.log('= method:', arkMethod.getName());
+                    // console.log('= method:', arkMethod.getName());
                     // console.log(arkMethod.getArkSignature())
                     arkMethod.getBody().getCfg().typeReference()
                     // console.log(arkMethod.getBody().getLocals())

@@ -81,18 +81,33 @@ class Test {
     // }
 
 
-    public testTemplatestrings() {
-        let str1: string = 'hello';
-        let num1: number = 1;
-        let str2: string = `boy, ${str1}, world. ${num1}`;
-    }
-
-    // public testBasicType() {
-    //     let flag: boolean = false;
+    // public testTemplatestrings() {
+    //     let str1: string = 'hello';
+    //     let num1: number = 1;
+    //     let str2: string = `boy, ${str1}, world. ${num1}`;
     // }
 
+    public testBasicType() {
+        let flag: boolean = false;
+        let a:boolean = flag;
+    }
+
     // public testArrayType() {
-    //     let a = [1, 2, 3];
+    //     let a: number[] = [1, 2, 3];
+    // }
+
+    // public testNestIf() {
+    //     let i = 0;
+    //     if (i) {
+    //         // i = 3;
+    //         switch (i) {
+    //             case 1:
+    //                 console.log('1');
+    //                 break;
+    //             case 2:
+    //                 console.log('2');
+    //         }
+    //     }
     // }
 
 

@@ -1591,7 +1591,8 @@ export class CfgBuilder {
 
     private shouldBeConstant(node: NodeA): boolean {
         let nodeKind = node.kind;
-        if (nodeKind == 'FirstTemplateToken' || (nodeKind.includes('Literal') && nodeKind != 'ArrayLiteralExpression')) {
+        if (nodeKind == 'FirstTemplateToken' || (nodeKind.includes('Literal') && nodeKind != 'ArrayLiteralExpression') ||
+            nodeKind == 'NullKeyword' || nodeKind == 'TrueKeyword'|| nodeKind == 'FalseKeyword') {
             return true;
         }
         return false;
@@ -1738,11 +1739,7 @@ export class CfgBuilder {
             value = this.getOriginalLocal(value);
         }
         else if (this.shouldBeConstant(node)) {
-            value = new Constant(node.text);
-            if (value instanceof Constant) {
-                // console.log(node.kind)
-                value.setType(this.resolveKeywordType(node))
-            }
+            value = new Constant(node.text, this.resolveKeywordType(node));
         }
         else if (node.kind == 'BinaryExpression') {
             let op1 = this.astNodeToValue(node.children[0]);
@@ -2987,6 +2984,8 @@ export class CfgBuilder {
 
     private resolveKeywordType(node: NodeA): string {
         switch (node.kind) {
+            case 'TrueKeyword':
+            case 'FalseKeyword':
             case "BooleanKeyword":
                 return "boolean"
             case "NumberKeyword":
@@ -2999,6 +2998,8 @@ export class CfgBuilder {
                 return "void"
             case "AnyKeyword":
                 return "any"
+            case 'NullKeyword':
+                return 'null'
             default:
                 return ""
         }

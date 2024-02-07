@@ -70,8 +70,8 @@ export class CfgTest {
 
 
 let cfgTest = new CfgTest();
-cfgTest.buildScene();
-// cfgTest.testThreeAddresStmt();
+// cfgTest.buildScene();
+cfgTest.testThreeAddresStmt();
 // cfgTest.testBlocks();
 
 // debugger
