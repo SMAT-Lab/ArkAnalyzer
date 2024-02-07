@@ -122,7 +122,7 @@ export function resolveClassInstance(classCompleteName: string, file: ArkFile | 
     if (file == null)
         return null
     let lastDotIndex = classCompleteName.lastIndexOf('.')
-    let classRealName = classCompleteName.substring(lastDotIndex + 1)
+    let classRealName = classCompleteName.substring(lastDotIndex + 1).replace(/<|>/g, '')
     for (let arkClass of file.getClasses()) {
         if (arkClass.getName() === classRealName) {
             return arkClass

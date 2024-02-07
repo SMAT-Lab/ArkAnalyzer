@@ -262,7 +262,7 @@ export class Cfg {
                             for (let completeClassName of completeClassNames) {
                                 let lastDotIndex = completeClassName.lastIndexOf('.')
                                 let targetArkFile = getArkFileByName(
-                                    completeClassName.substring(0, lastDotIndex),
+                                    completeClassName.substring(0, lastDotIndex).replace(/<|>/g, ''),
                                     this.declaringClass.getDeclaringArkFile().getScene()
                                 )
                                 let classInstance = resolveClassInstance(
