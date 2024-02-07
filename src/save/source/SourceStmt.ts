@@ -342,7 +342,7 @@ class SourceBinopExpr {
 
         if (op1 instanceof Constant) {
             if (op1.getType() == 'string') {
-                outStr = `'${op1.getValue()}'`;
+                outStr = `${op1.getValue()}`;
             } else {
                 outStr = op1.getValue();
             }

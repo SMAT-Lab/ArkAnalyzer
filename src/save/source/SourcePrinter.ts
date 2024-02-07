@@ -7,9 +7,9 @@
  *  b) console 等全局函数被定义为local，如何区分？
  * 
  * 2. Method parameter:
- *  a) default value
+ *  a) default value 不支持
  *      source: move(distanceInMeters = 5)  
- *      parsed: move(distanceInMeters: )
+ *      parsed: move(distanceInMeters)
  *  b) map type
  *      source: calculateDistanceFromOrigin(point: {x: number; y: number;})   
  *      parsed: calculateDistanceFromOrigin(point: TypeLiteral)
@@ -20,7 +20,7 @@
  *      parsed: readonly numberOfLegs:number;
  * 
  * 4. Stmt
- *  a) string
+ *  a) Const string ----- fixed
  *      source: console.log('Department name: ' + this.name);
  *      parsed: temp2 = ''Department name: '' + temp1;
  *              console.log(temp2);
@@ -28,9 +28,16 @@
  *  c) of 不支持Set()
  *   
  * 5. Enum
- *  a) 初始化不支持 
- *      source: No = 0,
- *      parsed: No,
+ *  a) 初始化不支持二元操作和函数调用
+ *      enum FileAccess {
+ *          // constant members
+ *          None,
+ *          Read    = 1 << 1,
+ *          Write   = 1 << 2,
+ *          ReadWrite  = Read | Write,
+ *          // computed member
+ *          G = "123".length
+ *   }
  * 
  * 6. namespace
  *  a) 不支持Field定义

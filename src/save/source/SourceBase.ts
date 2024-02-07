@@ -51,7 +51,12 @@ export abstract class SourceBase {
 
         let parameters: string[] = [];
         method.getParameters().forEach((parameterType, parameterName) => {
-            parameters.push(parameterName + ': ' + this.resolveKeywordType(parameterType));
+            parameterType = this.resolveKeywordType(parameterType);
+            if (parameterType.length > 0) {
+                parameters.push(parameterName + ': ' + this.resolveKeywordType(parameterType));
+            } else {
+                parameters.push(parameterName);
+            }
         });
         code.write(`(${parameters.join(',')})`);
         if (method.getReturnType().length > 1) {

@@ -17,7 +17,16 @@ export class SourceEnum extends SourceBase{
 
         // TODO: initial
         for (let member of this.eNum.getMembers()) {
-            this.printer.writeIndent().writeLine(`${member.getMemberName()},`);
+            if (member.getInitializerType() == 'StringLiteral') {
+                this.printer.writeIndent().writeLine(`${member.getMemberName()} = '${member.getInitializer()}',`);
+            } else if(member.getInitializerType() == 'FirstLiteralToken') {
+                this.printer.writeIndent().writeLine(`${member.getMemberName()} = ${member.getInitializer()},`);
+            } else {
+                if (member.getInitializerType()) {
+                    console.log('SourceEnum->dump:', member);
+                }
+                this.printer.writeIndent().writeLine(`${member.getMemberName()},`);
+            }
         }
 
         for (let method of this.eNum.getMethods()) {
