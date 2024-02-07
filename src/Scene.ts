@@ -336,6 +336,7 @@ export class Scene {
     //     }
     // }
 
+
     private collectProjectImportInfos() {
         this.arkFiles.forEach((arkFile) => {
             arkFile.getImportInfos().forEach((importInfo) => {
