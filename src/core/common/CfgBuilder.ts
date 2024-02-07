@@ -1592,7 +1592,7 @@ export class CfgBuilder {
     private shouldBeConstant(node: NodeA): boolean {
         let nodeKind = node.kind;
         if (nodeKind == 'FirstTemplateToken' || (nodeKind.includes('Literal') && nodeKind != 'ArrayLiteralExpression') ||
-            nodeKind == 'NullKeyword' || nodeKind == 'TrueKeyword'|| nodeKind == 'FalseKeyword') {
+            nodeKind == 'NullKeyword' || nodeKind == 'TrueKeyword' || nodeKind == 'FalseKeyword') {
             return true;
         }
         return false;
@@ -1979,7 +1979,8 @@ export class CfgBuilder {
             value = this.astNodeToValue(node.children[1]);
         }
         else if (node.kind == 'ParenthesizedExpression') {
-            value = this.astNodeToValue(node.children[1]);
+            const parenthesizedValue = this.astNodeToValue(node.children[1]);
+            value = this.generateAssignStmt(parenthesizedValue);
         }
         else if (node.kind == 'SpreadElement') {
             value = this.astNodeToValue(node.children[1]);
@@ -2845,7 +2846,7 @@ export class CfgBuilder {
         for (const blockBuilder of this.blocks) {
             let block = new BasicBlock();
             for (const stmtBuilder of blockBuilder.stms) {
-                let originlStmt: Stmt = new Stmt();    
+                let originlStmt: Stmt = new Stmt();
                 originlStmt.setText(stmtBuilder.code);
                 block.addStmt(originlStmt);
             }

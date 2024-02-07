@@ -87,10 +87,10 @@ class Test {
     //     let str2: string = `boy, ${str1}, world. ${num1}`;
     // }
 
-    public testBasicType() {
-        let flag: boolean = false;
-        let a:boolean = flag;
-    }
+    // public testBasicType() {
+    //     let flag: boolean = false;
+    //     let a:boolean = flag;
+    // }
 
     // public testArrayType() {
     //     let a: number[] = [1, 2, 3];
@@ -139,4 +139,10 @@ class Test {
     //     let i = funcAA2(1);
     //     console.log(i);
     // }
+
+
+    handleUpsert() {
+        (this.agcDataBase as Database).collection(Post).upsert(post);
+    }
 }
+
