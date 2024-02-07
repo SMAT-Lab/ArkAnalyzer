@@ -156,13 +156,12 @@ export class Cfg {
                         const typeStr = this.getTypeNewExpr(expr);
                         expr.setClassSignature(typeStrToClassSignature(typeStr));
                     } else if (expr instanceof ArkInstanceInvokeExpr) {
-                        // console.log('base type:',expr.getBase().getType());
+                        // console.log('expr :', expr.toString());
 
                         const classSignature = typeStrToClassSignature(expr.getBase().getType());
                         const className = classSignature.getClassType();
                         const arkFile = this.declaringClass.getDeclaringArkFile();
                         const typeStr = searchImportMessage(arkFile, className, matchClassInFile);
-                        // console.log('typeStr:',typeStr);
 
                         const methodSignature = expr.getMethodSignature();
                         methodSignature.setArkClass(typeStrToClassSignature(typeStr));
