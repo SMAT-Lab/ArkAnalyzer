@@ -1,4 +1,42 @@
-
+/*
+ * TODO:
+ * 1. Local:
+ *  a) type 识别
+ *      let sam: <classes.ts>.<Snake>;  
+ *      let tom: classes.ts.Animal|<classes.ts>.<Horse>;
+ *  b) console 等全局函数被定义为local，如何区分？
+ * 2. Method parameter:
+ *  a) default value
+ *      source: move(distanceInMeters = 5)  parsed: move(distanceInMeters: )
+ *  b) map type
+ *      source: calculateDistanceFromOrigin(point: {x: number; y: number;})   parsed: calculateDistanceFromOrigin(point: TypeLiteral)
+ * 3. Fileld:
+ *  a) default value
+ *      source: readonly numberOfLegs: number = 8; parsed: readonly numberOfLegs:number;
+ * 4. Stmt
+ *  a) string
+ *      source: console.log('Department name: ' + this.name);
+ *      parsed: temp2 = ''Department name: '' + temp1;
+ *              console.log(temp2);
+ *  b) in 解析结果与of相同，与实际语法不同
+ *  c) of 不支持Set()
+ *   
+ * 5. Enum
+ *  a) 初始化不支持 
+ *      source: No = 0,
+ *      parsed: No,
+ * 6. namespace
+ *  a) 不支持Field定义
+ *      namespace Validation {
+ *          const lettersRegexp = /^[A-Za-z]+$/;
+ *      }
+ *  b) 不支持function定义
+ *      namespace Validation {
+ *          function test(): void {
+ *              console.log('');
+ *          }
+ *      }
+ */
 import { ArkStream } from '../ArkStream';
 import { Printer } from '../Printer';
 import { SourceBase } from './SourceBase';
