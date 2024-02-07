@@ -5,14 +5,20 @@
  *      let sam: <classes.ts>.<Snake>;  
  *      let tom: classes.ts.Animal|<classes.ts>.<Horse>;
  *  b) console 等全局函数被定义为local，如何区分？
+ * 
  * 2. Method parameter:
  *  a) default value
- *      source: move(distanceInMeters = 5)  parsed: move(distanceInMeters: )
+ *      source: move(distanceInMeters = 5)  
+ *      parsed: move(distanceInMeters: )
  *  b) map type
- *      source: calculateDistanceFromOrigin(point: {x: number; y: number;})   parsed: calculateDistanceFromOrigin(point: TypeLiteral)
+ *      source: calculateDistanceFromOrigin(point: {x: number; y: number;})   
+ *      parsed: calculateDistanceFromOrigin(point: TypeLiteral)
+ * 
  * 3. Fileld:
  *  a) default value
- *      source: readonly numberOfLegs: number = 8; parsed: readonly numberOfLegs:number;
+ *      source: readonly numberOfLegs: number = 8; 
+ *      parsed: readonly numberOfLegs:number;
+ * 
  * 4. Stmt
  *  a) string
  *      source: console.log('Department name: ' + this.name);
@@ -25,6 +31,7 @@
  *  a) 初始化不支持 
  *      source: No = 0,
  *      parsed: No,
+ * 
  * 6. namespace
  *  a) 不支持Field定义
  *      namespace Validation {
@@ -36,6 +43,16 @@
  *              console.log('');
  *          }
  *      }
+ * 
+ * 7. module
+ *  a) import 导入后类型为空
+ *      source: 
+ *          import * as validator3 from "./classes";
+ *          let myValidator3 = new validator3.ZipCodeValidator();
+ *          import validator4 from "./classes";
+ *          let myValidator4 = new validator4();
+ *      parsed:
+ *          let myValidator1: <>.<>;
  */
 import { ArkStream } from '../ArkStream';
 import { Printer } from '../Printer';
