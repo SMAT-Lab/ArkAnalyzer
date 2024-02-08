@@ -27,30 +27,29 @@ export class ArkMethod {
 
     constructor() { }
 
-    public buildArkMethodFromAstNode(methodNode: NodeA, declaringClass: ArkClass) {
-        this.setCode(methodNode.text);
+    public buildArkMethodFromArkClass(methodNode: NodeA, declaringClass: ArkClass) {
+        
         this.setDeclaringArkClass(declaringClass);
         this.setDeclaringArkFile();
+
         if (arkMethodNodeKind.indexOf(methodNode.kind) > -1) {
             this.buildNormalArkMethodFromAstNode(methodNode);
         }
         else {
-            this.buildDefaultArkMethodFromAstNode(methodNode);
+            this.setName("_DEFAULT_ARK_METHOD");
         }
         this.genSignature();
 
         if (methodNode.kind != "SyntaxList") {
             methodNode = methodNode.children[methodNode.children.length - 1].children[1];
         }
-        let bodyBuilder = new BodyBuilder(this.methodSignature, methodNode, this);
-        this.setBody(bodyBuilder.build());
-    }
-
-    private buildDefaultArkMethodFromAstNode(methodNode: NodeA) {
-        this.setName("_DEFAULT_ARK_METHOD");
+        //let bodyBuilder = new BodyBuilder(this.methodSignature, methodNode, this);
+        //this.setBody(bodyBuilder.build());
     }
 
     private buildNormalArkMethodFromAstNode(methodNode: NodeA) {
+        this.setCode(methodNode.text);
+
         if (!methodNode.methodNodeInfo) {
             throw new Error('Error: There is no methodNodeInfo for this method!');
         }
@@ -59,7 +58,6 @@ export class ArkMethod {
         methodNode.methodNodeInfo.modifiers.forEach((modifier) => {
             this.addModifier(modifier);
         });
-
         methodNode.methodNodeInfo.parameters.forEach((value, key) => {
             this.addParameter(key, value);
         });

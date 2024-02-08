@@ -1,9 +1,8 @@
 import fs from 'fs';
 import path from 'path';
-import { SceneConfig } from '../tests/Config';
+
 import { AbstractCallGraphAlgorithm } from "./callgraph/AbstractCallGraphAlgorithm";
 import { CallGraph } from "./callgraph/CallGraph";
-import { ClassHierarchyAnalysisAlgorithm } from "./callgraph/ClassHierarchyAnalysisAlgorithm";
 import { ImportInfo, updateSdkConfigPrefix } from './core/common/ImportBuilder';
 import { ArkClass } from "./core/model/ArkClass";
 import { ArkFile } from "./core/model/ArkFile";
@@ -11,6 +10,8 @@ import { ArkInterface } from './core/model/ArkInterface';
 import { ArkMethod } from "./core/model/ArkMethod";
 import { ArkNamespace } from "./core/model/ArkNamespace";
 import { ClassSignature, MethodSignature, MethodSubSignature } from "./core/model/ArkSignature";
+import { SceneConfig } from '../tests/Config';
+import { ClassHierarchyAnalysisAlgorithm } from "./callgraph/ClassHierarchyAnalysisAlgorithm";
 
 /**
  * The Scene class includes everything in the analyzed project.
@@ -28,6 +29,7 @@ export class Scene {
     globalImportInfos: ImportInfo[] = [];
 
     arkInstancesMap: Map<string, any> = new Map<string, any>();
+
     arkFileMaps: Map<string, any> = new Map<string, any>();
     arkNamespaceMaps: Map<string, any> = new Map<string, any>();
     arkInterfaceMaps: Map<string, any> = new Map<string, any>();
@@ -42,8 +44,6 @@ export class Scene {
 
     private sdkFiles: string[];
 
-    //apiArkInstancesMap: Map<string, any> | undefined;
-    //globalInstancesMap: Map<string, any> = new Map<string, any>();
     constructor(sceneConfig: SceneConfig) {
         this.projectName = sceneConfig.getTargetProjectName();
         this.projectFiles = sceneConfig.getProjectFiles();
@@ -57,15 +57,19 @@ export class Scene {
 
         this.sdkFiles = sceneConfig.getSdkFiles();
 
-        this.configImportPrefix();
+        // add sdk reative path to Import builder
+        this.configImportSdkPrefix();
+
         this.genArkFiles();
+
+        //post actions
         this.collectArkInstances();
         this.genExtendedClasses();
-        this.generateGlobalImportInfos();
+        this.collectProjectImportInfos();
         this.typeReference();
     }
 
-    private configImportPrefix() {
+    private configImportSdkPrefix() {
         if (this.ohosSdkPath) {
             updateSdkConfigPrefix("ohos", path.relative(this.realProjectDir, this.ohosSdkPath));
         }
@@ -86,16 +90,16 @@ export class Scene {
         if (this.sdkFiles) {
             this.sdkFiles.forEach((file) => {
                 let arkFile: ArkFile = new ArkFile();
-                arkFile.buildArkFileFromSourceFile(file, this.realProjectDir);
+                arkFile.buildArkFileFromFile(file, this.realProjectDir);
                 arkFile.setScene(this);
                 this.arkFiles.push(arkFile);
             });
         }
 
         this.projectFiles.forEach((file) => {
-            console.log('=== parse file:', file);  
+            console.log('=== parse file:', file);
             let arkFile: ArkFile = new ArkFile();
-            arkFile.buildArkFileFromSourceFile(file, this.realProjectDir);
+            arkFile.buildArkFileFromFile(file, this.realProjectDir);
             arkFile.setScene(this);
             this.arkFiles.push(arkFile);
         });
@@ -258,7 +262,7 @@ export class Scene {
      */
     private typeReference() {
         for (let arkFile of this.arkFiles) {
-            console.log('=== file:', arkFile.getFilePath());            
+            console.log('=== file:', arkFile.getFilePath());
             for (let arkClass of arkFile.getClasses()) {
                 console.log('== class:', arkClass.getName());
                 for (let arkMethod of arkClass.getMethods()) {
@@ -271,7 +275,7 @@ export class Scene {
         }
     }
 
-    private generateGlobalImportInfos() {
+    private collectProjectImportInfos() {
         this.arkFiles.forEach((arkFile) => {
             arkFile.getImportInfos().forEach((importInfo) => {
                 this.globalImportInfos.push(importInfo);
