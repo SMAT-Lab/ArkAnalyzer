@@ -1740,7 +1740,6 @@ export class CfgBuilder {
         else if (this.shouldBeConstant(node)) {
             value = new Constant(node.text);
             if (value instanceof Constant) {
-                // console.log(node.kind)
                 value.setType(this.resolveKeywordType(node))
             }
         }
@@ -2988,6 +2987,8 @@ export class CfgBuilder {
     private resolveKeywordType(node: NodeA): string {
         switch (node.kind) {
             case "BooleanKeyword":
+            case "FalseKeyword":
+            case "TrueKeyword":
                 return "boolean"
             case "NumberKeyword":
             case "FirstLiteralToken":
