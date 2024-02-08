@@ -66,10 +66,10 @@ export class ArkFile {
             if (child.kind == 'ModuleDeclaration') {
                 let ns: ArkNamespace = new ArkNamespace();
                 ns.setDeclaringArkFile(this);
-                ns.setDeclaringSignature(this.arkSignature); 
+                ns.setDeclaringSignature(this.arkSignature);
                 ns.build(child, this);
                 this.addNamespace(ns);
-                
+
                 this.addArkInstance(ns.getArkSignature(), ns);
                 ns.getArkInstancesMap().forEach((value, key) => {
                     this.addArkInstance(key, value);
@@ -84,7 +84,7 @@ export class ArkFile {
                 interFace.setDeclaringArkFile(this);
                 interFace.setDeclaringSignature(this.arkSignature);
                 interFace.build(child, this);
-                
+
                 this.addInterface(interFace);
                 this.addArkInstance(interFace.getArkSignature(), interFace);
                 interFace.getArkInstancesMap().forEach((value, key) => {
@@ -166,7 +166,7 @@ export class ArkFile {
                 eNum.getArkInstancesMap().forEach((value, key) => {
                     this.addArkInstance(key, value);
                 });
-                
+
                 if (eNum.isExported()) {
                     this.addExportInfo(eNum);
                 }

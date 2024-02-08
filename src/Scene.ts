@@ -52,10 +52,9 @@ export class Scene {
         this.ohosSdkPath = sceneConfig.getOhosSdkPath();
         this.kitSdkPath = sceneConfig.getKitSdkPath();
         this.systemSdkPath = sceneConfig.getSystemSdkPath();
+        this.sdkFiles = sceneConfig.getSdkFiles();
 
         this.otherSdkMap = sceneConfig.getOtherSdkMap();
-
-        this.sdkFiles = sceneConfig.getSdkFiles();
 
         // add sdk reative path to Import builder
         this.configImportSdkPrefix();
@@ -66,7 +65,7 @@ export class Scene {
         this.collectArkInstances();
         this.genExtendedClasses();
         this.collectProjectImportInfos();
-        this.typeReference();
+        //this.typeReference();
     }
 
     private configImportSdkPrefix() {
@@ -89,6 +88,7 @@ export class Scene {
     private genArkFiles() {
         if (this.sdkFiles) {
             this.sdkFiles.forEach((file) => {
+                console.log('=== parse file:', file);
                 let arkFile: ArkFile = new ArkFile();
                 arkFile.buildArkFileFromFile(file, this.realProjectDir);
                 arkFile.setScene(this);

@@ -28,7 +28,7 @@ export class ArkMethod {
     constructor() { }
 
     public buildArkMethodFromArkClass(methodNode: NodeA, declaringClass: ArkClass) {
-        
+
         this.setDeclaringArkClass(declaringClass);
         this.setDeclaringArkFile();
 
@@ -77,7 +77,7 @@ export class ArkMethod {
         return this.arkInstancesMap;
     }
 
-    public setDeclaringSignature(declaringSignature:string) {
+    public setDeclaringSignature(declaringSignature: string) {
         this.declaringSignature = declaringSignature;
     }
 
@@ -92,7 +92,7 @@ export class ArkMethod {
     public genArkSignature() {
         this.arkSignature = this.declaringSignature + '.' + this.name;
     }
-    
+
     public getName() {
         return this.name;
     }

@@ -39,6 +39,7 @@ export class ArkClass {
 
     public buildDefaultArkClassFromArkNamespace(clsNode: NodeA, arkNamespace: ArkNamespace) {
         this.setDeclaringArkNamespace(arkNamespace);
+        this.setDeclaringArkFile(arkNamespace.getDeclaringArkFile());
         this.buildDefaultArkClass(clsNode);
     }
 
@@ -50,6 +51,7 @@ export class ArkClass {
 
     public buildNormalArkClassFromArkNamespace(clsNode: NodeA, arkNamespace: ArkNamespace) {
         this.setDeclaringArkNamespace(arkNamespace);
+        this.setDeclaringArkFile(arkNamespace.getDeclaringArkFile());
         this.setCode(clsNode.text);
         this.buildNormalArkClass(clsNode);
     }

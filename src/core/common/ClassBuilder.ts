@@ -129,6 +129,9 @@ function buildProperty2ArkField(member: ts.PropertyDeclaration | ts.PropertySign
             let propertyName = member.name.expression.escapedText.toString();
             field.setName(propertyName);
         }
+        else if (ts.isPropertyAccessExpression(member.name.expression)) {
+            field.setName(handlePropertyAccessExpression(member.name.expression));
+        }
         else {
             console.log("Other property expression type found!");
         }

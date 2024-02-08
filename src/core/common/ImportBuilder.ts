@@ -4,7 +4,6 @@ import { transfer2UnixPath } from "../../utils/pathTransfer";
 
 var sdkPathMap: Map<string, string> = new Map();
 
-
 export function updateSdkConfigPrefix(sdkName: string, sdkRelativePath: string) {
     sdkPathMap.set(sdkName, transfer2UnixPath(sdkRelativePath));
 }

@@ -149,11 +149,11 @@ export class ArkField {
         return false;
     }
 
-    public setQuestionToken(questionToken:boolean) {
+    public setQuestionToken(questionToken: boolean) {
         this.questionToken = questionToken;
     }
 
-    public setExclamationToken(exclamationToken:boolean) {
+    public setExclamationToken(exclamationToken: boolean) {
         this.exclamationToken = exclamationToken;
     }
 

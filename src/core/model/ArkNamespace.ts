@@ -23,7 +23,7 @@ export class ArkNamespace {
     private namespaces: ArkNamespace[] = [];
     private enums: ArkEnum[] = [];
     private defaultClass: ArkClass;
-    
+
     private arkSignature: string;
     private arkInstancesMap: Map<string, any> = new Map<string, any>();
     private declaringSignature: string;
@@ -156,7 +156,7 @@ export class ArkNamespace {
                 eNum.getArkInstancesMap().forEach((value, key) => {
                     this.addArkInstance(key, value);
                 });
-                
+
                 if (eNum.isExported()) {
                     this.addExportInfo(eNum);
                 }
