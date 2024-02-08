@@ -1,12 +1,10 @@
 import { NodeA } from "../base/Ast";
-import { Property } from "../common/ClassInfoBuilder";
-import { EnumMember } from "../common/EnumInfoBuilder";
-import { InterfaceMember, InterfaceProperty } from "../common/InterfaceInfoBuilder";
+
 import { ArkField } from "./ArkField";
 import { ArkFile } from "./ArkFile";
-import { ArkMethod, arkMethodNodeKind } from "./ArkMethod";
+import { ArkMethod} from "./ArkMethod";
 import { ArkNamespace } from "./ArkNamespace";
-import { ClassSignature, InterfaceSignature, MethodSubSignature, methodSubSignatureCompare } from "./ArkSignature";
+import { MethodSubSignature, methodSubSignatureCompare } from "./ArkSignature";
 
 export class ArkEnum {
     private name: string;
@@ -44,17 +42,17 @@ export class ArkEnum {
     }
 
     private buildArkEnumFromAstNode(enumNode: NodeA) {
-        if (!enumNode.enumNodeInfo) {
+        if (!enumNode.classNodeInfo) {
             throw new Error('Error: There is no enumNodeInfo for this enum struct!');
         }
-        this.setName(enumNode.enumNodeInfo.getClassName());
+        this.setName(enumNode.classNodeInfo.getClassName());
         this.genArkSignature();
 
-        enumNode.enumNodeInfo.getmodifiers().forEach((modifier) => {
+        enumNode.classNodeInfo.getmodifiers().forEach((modifier) => {
             this.addModifier(modifier);
         });
 
-        enumNode.enumNodeInfo.getMembers().forEach((member) => {
+        enumNode.classNodeInfo.getMembers().forEach((member) => {
             this.addMember(member);
         });
     }

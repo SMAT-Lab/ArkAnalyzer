@@ -1,11 +1,10 @@
 import { NodeA } from "../base/Ast";
 import { Property } from "../common/ClassInfoBuilder";
-import { InterfaceMember, InterfaceProperty } from "../common/InterfaceInfoBuilder";
 import { ArkField } from "./ArkField";
 import { ArkFile } from "./ArkFile";
-import { ArkMethod, arkMethodNodeKind } from "./ArkMethod";
+import { ArkMethod } from "./ArkMethod";
 import { ArkNamespace } from "./ArkNamespace";
-import { ClassSignature, InterfaceSignature, MethodSubSignature, methodSubSignatureCompare } from "./ArkSignature";
+import { MethodSubSignature, methodSubSignatureCompare } from "./ArkSignature";
 
 export class ArkInterface {
     private name: string;
@@ -14,7 +13,6 @@ export class ArkInterface {
     private declaringArkNamespace: ArkNamespace;
     private extendsNames: string[] = [];
     private fields: ArkField[] = [];
-    //private properties: Property[] = [];
     private methods: ArkMethod[] = [];
     private modifiers: Set<string> = new Set<string>();
     private members: ArkField[] = [];
@@ -39,23 +37,23 @@ export class ArkInterface {
     }
 
     private buildArkInterfaceFromAstNode(interfaceNode: NodeA) {
-        if (!interfaceNode.interfaceNodeInfo) {
+        if (!interfaceNode.classNodeInfo) {
             throw new Error('Error: There is no interfaceNodeInfo for this interface!');
         }
-        this.setName(interfaceNode.interfaceNodeInfo.getClassName());
+        this.setName(interfaceNode.classNodeInfo.getClassName());
         this.genArkSignature();
 
-        interfaceNode.interfaceNodeInfo.getmodifiers().forEach((modifier) => {
+        interfaceNode.classNodeInfo.getmodifiers().forEach((modifier) => {
             this.addModifier(modifier);
         });
 
-        for (let [key, value] of interfaceNode.interfaceNodeInfo.getHeritageClauses()) {
+        for (let [key, value] of interfaceNode.classNodeInfo.getHeritageClauses()) {
             if (value == 'ExtendsKeyword') {
                 this.addExtendsName(key);
             }
         }
 
-        interfaceNode.interfaceNodeInfo.getMembers().forEach((member) => {
+        interfaceNode.classNodeInfo.getMembers().forEach((member) => {
             this.addMember(member);
         });
     }

@@ -1,6 +1,6 @@
 {
     "targetProjectName": "SE4OpenHarmony",
-    "targetProjectDirectory": "C:\\msys64\\home\\Yifei\\code\\SE4OpenHarmony\\Apps\\ArkTS2TSRes",
+    "targetProjectDirectory": "C:\\msys64\\home\\Yifei\\code\\SE4OpenHarmony\\Apps\\ArkTS2TSRes\\AppAccountManager",
     
     "ohosSdkPath": "C:\\msys64\\home\\Yifei\\code\\openharmony\\interface\\sdk-js\\api",
     "kitSdkPath": "C:\\msys64\\home\\Yifei\\code\\openharmony\\interface\\sdk-js\\kits",
