@@ -1,6 +1,6 @@
 
 class Animal {
-    protected _name: string;
+    protected _name: string | undefined;
     public constructor(theName: string) {
         this._name = theName; 
     }
@@ -8,11 +8,11 @@ class Animal {
         console.log(`${this._name} moved ${distanceInMeters}m.`);
     }
 
-    get name():string {
+    get name():string| undefined {
         return this._name;
     }
 
-    set name(newName: string) {
+    set name(newName: string | undefined ) {
         this._name = newName;
     }
 

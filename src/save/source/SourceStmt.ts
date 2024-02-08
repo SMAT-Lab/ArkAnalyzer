@@ -264,6 +264,7 @@ export class SourceGotoStmt extends SourceStmt {
     constructor(original: ArkGotoStmt, stmtReader: StmtReader) {
         super(original, stmtReader);
     }
+    // trans 2 break or continue
     protected transfer2ts(stmtReader: StmtReader): void {
         this.setText('// goto;');
     }

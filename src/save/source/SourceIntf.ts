@@ -19,7 +19,11 @@ export class SourceIntf extends SourceBase{
 
     public dump(): string {
         this.printer.writeIndent().writeSpace(this.modifiersToString(this.intf.getModifiers()));
-        this.printer.writeSpace(`interface ${this.intf.getName()}`).writeLine('{');
+        this.printer.writeSpace(`interface ${this.intf.getName()}`)
+        if (this.intf.getExtendsNames().length > 0) {
+            this.printer.writeSpace(`extends ${this.intf.getExtendsNames().join(',')}`);
+        }
+        this.printer.writeLine('{');
         this.printer.incIndent();
         for (let member of this.intf.getMembers()) {
             if (member.getMemberType() == 'MethodSignature') {

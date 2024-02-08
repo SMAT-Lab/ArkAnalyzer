@@ -83,11 +83,20 @@ export abstract class SourceBase {
     }
     
     protected resolveKeywordType(keywordStr: string): string {
-        if (keywordStr.endsWith('Keyword')) {
-            return keywordStr.substring(0, keywordStr.length - 'Keyword'.length).toLowerCase();
+        // 'NumberKeyword | NullKeyword |
+        let types: string[] = [];
+        for (let keyword of keywordStr.split('|')) {
+            keyword = keyword.trim();
+            if (keyword.length == 0) {
+                continue;
+            }
+            if (keyword.endsWith('Keyword')) {
+                keyword = keyword.substring(0, keyword.length - 'Keyword'.length).toLowerCase();
+            }
+            types.push(keyword);
         }
         
-        return keywordStr;
+        return types.join('|');
     }
     
     protected resolveMethodName(name: string): string {

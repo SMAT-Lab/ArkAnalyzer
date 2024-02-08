@@ -13,6 +13,7 @@
  *  b) map type
  *      source: calculateDistanceFromOrigin(point: {x: number; y: number;})   
  *      parsed: calculateDistanceFromOrigin(point: TypeLiteral)
+ *  c) string[] 类型解析为 ArrayType，无法还原
  * 
  * 3. Fileld:
  *  a) default value
@@ -26,6 +27,7 @@
  *              console.log(temp2);
  *  b) in 解析结果与of相同，与实际语法不同
  *  c) of 不支持Set()
+ *  d) continue; break; 不支持
  *   
  * 5. Enum
  *  a) 初始化不支持二元操作和函数调用
@@ -63,6 +65,12 @@
  * 
  * 8. 匿名函数、匿名类
  * 9. ?非空检查未支持
+ * 10. 泛型
+ *  a) field泛型<>类型丢失
+ * class GenericNumber<T> {
+ *     private methods: Set<string>;
+ *     private calls: Map<string, string[]>;
+ * }
  */
 import { ArkStream } from '../ArkStream';
 import { Printer } from '../Printer';

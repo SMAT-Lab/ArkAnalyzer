@@ -9,6 +9,8 @@ let output = identity<string>("myString");
 class GenericNumber<T> {
     zeroValue: T;
     add: (x: T, y: T) => T;
+    private methods: Set<string>;
+    private calls: Map<string, string[]>;
 }
 
 interface Lengthwise {
