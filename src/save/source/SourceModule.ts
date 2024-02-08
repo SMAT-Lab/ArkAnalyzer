@@ -11,6 +11,10 @@ export class SourceExportInfo extends SourceBase{
         this.info = info;
     }
 
+    public getLine(): number {
+        return -1;
+    }
+
     public dump(): string {
         if (this.info.getExportClauseType() !== 'NamespaceExport' && this.info.getExportClauseType() !== 'NamedExports') {
             return '';
@@ -48,6 +52,10 @@ export class SourceImportInfo extends SourceBase{
     public constructor(indent: string, scene: Scene, info: ImportInfo) {
         super(indent, scene);
         this.info = info;
+    }
+
+    public getLine(): number {
+        return -1;
     }
 
     public dump(): string {

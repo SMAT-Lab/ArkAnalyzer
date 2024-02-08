@@ -56,6 +56,7 @@ export class SourceAssignStmt extends SourceStmt {
     protected transfer2ts(stmtReader: StmtReader): void {
         let leftOp = (this.original as ArkAssignStmt).getLeftOp();
         let rightOp = (this.original as ArkAssignStmt).getRightOp();
+        console.log('SourceAssignStmt->transfer2ts', leftOp, rightOp);
         
         // omit this = this: <tests\sample\sample.ts>.<_DEFAULT_ARK_CLASS>
         if (leftOp instanceof Local && leftOp.getName() == 'this') {
@@ -71,7 +72,11 @@ export class SourceAssignStmt extends SourceStmt {
 
         // temp2 = myPerson.<age>
         if (rightOp instanceof ArkInstanceFieldRef) {
-            this.setText(`${leftOp} = ${rightOp.getBase().getName()}.${rightOp.getFieldName()};`);
+            if (rightOp.getBase() instanceof Constant) {
+                this.setText(`${leftOp} = ${(rightOp.getBase() as unknown as Constant).getValue()}.${rightOp.getFieldName()};`);
+            } else {
+                this.setText(`${leftOp} = ${rightOp.getBase().getName()}.${rightOp.getFieldName()};`);
+            }
             return;
         }
 
@@ -125,7 +130,7 @@ export class SourceAssignStmt extends SourceStmt {
             }
             return;
         }
-        console.log('SourceAssignStmt->transfer2ts', leftOp, rightOp);
+        
         this.setText(`${this.original};`);
     }
 }

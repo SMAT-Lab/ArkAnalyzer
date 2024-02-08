@@ -10,6 +10,7 @@ import { ClassSignature, InterfaceSignature, MethodSubSignature, methodSubSignat
 export class ArkInterface {
     private name: string;
     private code: string;
+    private line: number = -1;
     private declaringArkFile: ArkFile;
     private declaringArkNamespace: ArkNamespace;
     private extendsNames: string[] = [];
@@ -35,6 +36,7 @@ export class ArkInterface {
             this.setDeclaringType("ArkNamespace");
         }
         this.setCode(interfaceNode.text);
+        this.setLine(interfaceNode.line);
         this.buildArkInterfaceFromAstNode(interfaceNode);
     }
 
@@ -123,6 +125,14 @@ export class ArkInterface {
 
     public setCode(code: string) {
         this.code = code;
+    }
+
+    public getLine() {
+        return this.line;
+    }
+
+    public setLine(line: number) {
+        this.line = line;
     }
 
     public getDeclaringArkFile() {

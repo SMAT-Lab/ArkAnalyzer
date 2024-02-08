@@ -9,7 +9,8 @@ import { ArkMethod, arkMethodNodeKind } from "./ArkMethod";
 
 export class ArkNamespace {
     private name: string;
-    private code: string
+    private code: string;
+    private line: number = -1;
     private modifiers: Set<string> = new Set<string>();
     private memberMethods: ArkMethod[] = [];
     private memberClasses: ArkClass[] = [];
@@ -45,7 +46,8 @@ export class ArkNamespace {
         nsNode.namespaceNodeInfo.getModifiers().forEach((modifier) => {
             this.addModifier(modifier);
         });
-        this.code = nsNode.text;
+        this.setCode(nsNode.text);
+        this.setLine(nsNode.line);
 
         let tmpNode = this.findIndicatedChild(nsNode, "ModuleBlock");
         if (tmpNode) {
@@ -181,6 +183,22 @@ export class ArkNamespace {
 
     public setName(name: string) {
         this.name = name;
+    }
+
+    public getCode() {
+        return this.code;
+    }
+
+    public setCode(code: string) {
+        this.code = code;
+    }
+
+    public getLine() {
+        return this.line;
+    }
+
+    public setLine(line: number) {
+        this.line = line;
     }
 
     public getEnums(): ArkEnum[] {

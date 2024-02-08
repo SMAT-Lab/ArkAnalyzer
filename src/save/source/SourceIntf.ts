@@ -13,6 +13,10 @@ export class SourceIntf extends SourceBase{
         this.intf = intf;
     }
 
+    public getLine(): number {
+        return this.intf.getLine();
+    }
+
     public dump(): string {
         this.printer.writeIndent().writeSpace(this.modifiersToString(this.intf.getModifiers()));
         this.printer.writeSpace(`interface ${this.intf.getName()}`).writeLine('{');

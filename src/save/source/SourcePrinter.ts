@@ -60,6 +60,9 @@
  *          let myValidator4 = new validator4();
  *      parsed:
  *          let myValidator1: <>.<>;
+ * 
+ * 8. 匿名函数、匿名类
+ * 9. ?非空检查未支持
  */
 import { ArkStream } from '../ArkStream';
 import { Printer } from '../Printer';
@@ -106,8 +109,7 @@ export class SourcePrinter extends Printer {
             this.items.push(new SourceExportInfo('', this.arkFile.getScene(), info));
         }
 
-        this.items.sort();
-        this.items.sort();
+        this.items.sort((a, b) => a.getLine() - b.getLine());
         this.items.forEach((v):void => {
             streamOut.write(v.dump());
         });

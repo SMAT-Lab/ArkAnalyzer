@@ -14,6 +14,10 @@ export class SourceNamespace extends SourceBase{
         this.ns = ns;
     }
 
+    public getLine(): number {
+        return this.ns.getLine();
+    }
+
     public dump(): string {
         this.printer.writeIndent().writeSpace(this.modifiersToString(this.ns.getModifiers())).writeLine(`namespace ${this.ns.getName()} {`);
         this.printer.incIndent();
@@ -46,7 +50,7 @@ export class SourceNamespace extends SourceBase{
         }
         //TODO: fields /methods
         //TODO: sort by lineno
-        items.sort();
+        items.sort((a, b) => a.getLine() - b.getLine());
         items.forEach((v):void => {
             this.printer.write(v.dump());
         });

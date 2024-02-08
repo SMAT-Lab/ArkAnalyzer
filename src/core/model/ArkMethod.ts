@@ -12,6 +12,7 @@ export const arkMethodNodeKind = ['MethodDeclaration', 'Constructor', 'FunctionD
 export class ArkMethod {
     private name: string;
     private code: string;
+    private line: number = -1;
     private declaringArkFile: ArkFile;
     private declaringArkClass: ArkClass;
     private returnType: string[] = [];
@@ -29,6 +30,7 @@ export class ArkMethod {
 
     public buildArkMethodFromAstNode(methodNode: NodeA, declaringClass: ArkClass) {
         this.setCode(methodNode.text);
+        this.setLine(methodNode.line);
         this.setDeclaringArkClass(declaringClass);
         this.setDeclaringArkFile();
         if (arkMethodNodeKind.indexOf(methodNode.kind) > -1) {
@@ -109,6 +111,14 @@ export class ArkMethod {
 
     public setCode(code: string) {
         this.code = code;
+    }
+
+    public getLine() {
+        return this.line;
+    }
+
+    public setLine(line: number) {
+        this.line = line;
     }
 
     public getDeclaringArkClass() {

@@ -10,6 +10,10 @@ export class SourceEnum extends SourceBase{
         this.eNum = eNum;
     }
 
+    public getLine(): number {
+        return this.eNum.getLine();
+    }
+
     public dump(): string {
         this.printer.writeIndent().writeSpace(this.modifiersToString(this.eNum.getModifiers()))
             .writeLine(`enum ${this.eNum.getName()} {`)

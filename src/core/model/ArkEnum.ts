@@ -11,6 +11,7 @@ import { ClassSignature, InterfaceSignature, MethodSubSignature, methodSubSignat
 export class ArkEnum {
     private name: string;
     private code: string;
+    private line: number = -1;
     private declaringArkFile: ArkFile;
     private declaringArkNamespace: ArkNamespace;
     //private fields: ArkField[] = [];
@@ -32,6 +33,7 @@ export class ArkEnum {
         this.setDeclaringInstance(declaringArkFile);
         this.setDeclaringType("ArkFile");
         this.setCode(enumNode.text);
+        this.setLine(enumNode.line);
         this.buildArkEnumFromAstNode(enumNode);
     }
 
@@ -40,6 +42,7 @@ export class ArkEnum {
         this.setDeclaringInstance(declaringNamespace);
         this.setDeclaringType("ArkNamespace");
         this.setCode(enumNode.text);
+        this.setLine(enumNode.line);
         this.buildArkEnumFromAstNode(enumNode);
     }
 
@@ -105,6 +108,14 @@ export class ArkEnum {
 
     public setCode(code: string) {
         this.code = code;
+    }
+
+    public getLine() {
+        return this.line;
+    }
+
+    public setLine(line: number) {
+        this.line = line;
     }
 
     public getDeclaringArkFile() {

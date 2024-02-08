@@ -10,6 +10,7 @@ import { Property } from "../common/ClassInfoBuilder";
 export class ArkClass {
     private name: string;
     private code: string;
+    private line: number = -1;
     private declaringArkFile: ArkFile;
     private classSignature: ClassSignature;
     private superClassName: string = '';
@@ -34,6 +35,7 @@ export class ArkClass {
         }
         else {
             this.setCode(clsNode.text);
+            this.setLine(clsNode.line);
             this.buildNormalArkClassFromAstNode(clsNode);
         }
     }
@@ -120,6 +122,14 @@ export class ArkClass {
 
     public setCode(code: string) {
         this.code = code;
+    }
+
+    public getLine() {
+        return this.line;
+    }
+
+    public setLine(line: number) {
+        this.line = line;
     }
 
     public getDeclaringArkFile() {

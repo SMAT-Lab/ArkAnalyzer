@@ -11,6 +11,10 @@ export class SourceClass extends SourceBase{
         this.cls = cls;
     }
 
+    public getLine(): number {
+        return this.cls.getLine();
+    }
+
     public dump(): string {
         // print export class name<> + extends c0 implements x1, x2 {
         this.printer.writeIndent().writeSpace(this.modifiersToString(this.cls.getModifiers()))

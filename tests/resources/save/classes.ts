@@ -15,6 +15,14 @@ class Animal {
     set name(newName: string) {
         this._name = newName;
     }
+
+    public print(a: Animal[]): number | null {
+        return 0;
+    }
+
+    public testArrayReturn():string[] {
+        return [];
+    }
 }
 
 class Snake extends Animal {

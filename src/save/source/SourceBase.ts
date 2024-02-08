@@ -15,6 +15,7 @@ export abstract class SourceBase {
 
     public abstract dump(): string;
     public abstract dumpOriginalCode(): string;
+    public abstract getLine(): number;
 
     public printMethod(method: ArkMethod): void {
         this.printer.writeIndent().write(this.methodProtoToString(method));
