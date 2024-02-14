@@ -19,26 +19,6 @@ export class ArkField {
 
     constructor() { }
 
-    public buildFromArkInteraface(declaringInterface: ArkInterface, property: InterfaceProperty) {
-        this.setDeclaringInterface(declaringInterface);
-        this.setName(property.getPropertyName())
-        this.setType(property.getType());
-        property.getModifiers().forEach((modifier) => {
-            this.addModifier(modifier);
-        });
-        this.genSignature();
-    }
-
-    public buildFromArkClass(declaringClass: ArkClass, property: Property) {
-        this.setDeclaringClass(declaringClass);
-        this.setName(property.getPropertyName())
-        this.setType(property.getType());
-        property.getModifiers().forEach((modifier) => {
-            this.addModifier(modifier);
-        });
-        this.genSignature();
-    }
-
     public getArkSignature() {
         return this.arkSignature;
     }
@@ -109,8 +89,10 @@ export class ArkField {
 
     public genSignature() {
         let fieldSig = new FieldSignature();
-        fieldSig.build(this.declaringClass.getSignature(), this.getName());
+        fieldSig.setDeclaringClassSignature(this.declaringClass.getSignature());
+        fieldSig.setFieldName(this.name);
         this.setSignature(fieldSig);
+        
         this.arkSignature = this.declaringClass.getArkSignature() + '.' + this.getName();
     }
 

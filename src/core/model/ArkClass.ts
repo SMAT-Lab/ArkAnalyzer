@@ -9,6 +9,7 @@ import { Property } from "../common/ClassInfoBuilder";
 
 export class ArkClass {
     private name: string;
+    private originType: string = "Class";
     private code: string;
 
     private declaringArkFile: ArkFile;
@@ -67,6 +68,7 @@ export class ArkClass {
             throw new Error('Error: There is no classNodeInfo for this ClassDeclaration!');
         }
         this.setName(clsNode.classNodeInfo.getClassName());
+        this.originType = clsNode.classNodeInfo.getOriginType();
         this.genSignature();
 
         clsNode.classNodeInfo.getmodifiers().forEach((modifier) => {
@@ -82,23 +84,15 @@ export class ArkClass {
             }
         }
 
-        //clsNode.classNodeInfo.properties.forEach((property) => {
-        //    this.addProperty(property);
-        //});
+        this.fields = clsNode.classNodeInfo.getMembers();
+        this.fields.forEach((filed) => {
+            filed.setDeclaringClass(this);
+            filed.genSignature();
+        });
 
         clsNode.classNodeInfo.getTypeParameters().forEach((typeParameter) => {
             this.addTypeParameter(typeParameter);
         });
-
-        //TODO: add declaring class to arkfield[]
-        //clsNode.classNodeInfo.
-
-        //this.getProperties().forEach((property) => {
-        //    let field = new ArkField();
-        //    field.buildFromArkClass(this, property);
-        //    this.addField(field);
-        //    this.addArkInstance(field.getArkSignature(), field);
-        //});
 
         // generate ArkMethods of this class
         for (let child of clsNode.children) {
@@ -106,9 +100,12 @@ export class ArkClass {
                 for (let cld of child.children) {
                     if (arkMethodNodeKind.indexOf(cld.kind) > -1) {
                         let mthd: ArkMethod = new ArkMethod();
+                        
                         mthd.setDeclaringSignature(this.arkSignature);
+
                         mthd.buildArkMethodFromArkClass(cld, this);
                         this.addMethod(mthd);
+
                         this.addArkInstance(mthd.getArkSignature(), mthd);
                         mthd.getArkInstancesMap().forEach((value, key) => {
                             this.addArkInstance(key, value);
@@ -177,7 +174,11 @@ export class ArkClass {
 
     public genSignature() {
         let classSig = new ClassSignature();
-        classSig.build(this.declaringArkFile.getName(), this.getName());
+        classSig.setClassName(this.name);
+        classSig.setDeclaringFileSignature(this.declaringArkFile.getFileSignature());
+        if (this.declaringArkNamespace) {
+            classSig.setDeclaringNamespaceSignature(this.declaringArkNamespace.getNamespaceSignature());
+        }
         this.setSignature(classSig);
         this.genArkSignature();
     }

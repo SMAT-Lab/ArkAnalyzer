@@ -1,6 +1,8 @@
 import * as ts from "typescript";
 import path from 'path';
 import { transfer2UnixPath } from "../../utils/pathTransfer";
+import { ArkFile } from "../model/ArkFile";
+import { FileSignature } from "../model/ArkSignature";
 
 var sdkPathMap: Map<string, string> = new Map();
 
@@ -15,8 +17,10 @@ export class ImportInfo {
     private nameBeforeAs: string | undefined;
     private clauseType: string = "";
     private declaringSignature: string;
+    private declaringArkFile: ArkFile;
     private arkSignature: string;
     private targetArkSignature: string;
+    private importFromSignature2Str: string = "";
     private declaringFilePath: string;
     private projectPath: string;
 
@@ -29,12 +33,57 @@ export class ImportInfo {
         this.setNameBeforeAs(nameBeforeAs);
     }
 
+    public getImportFromSignature2Str() {
+        return this.importFromSignature2Str;
+    }
+
     public setDeclaringFilePath(declaringFilePath: string) {
         this.declaringFilePath = declaringFilePath;
+    }
+    
+    public setDeclaringArkFile(declaringArkFile: ArkFile) {
+        this.declaringArkFile = declaringArkFile;
     }
 
     public setProjectPath(projectPath: string) {
         this.projectPath = projectPath;
+    }
+
+    public setImportFromSignature() {
+        let importFromSignature = new FileSignature();
+        // project internal imports
+        const pathReg1 = new RegExp("^(\\.\\.\\/\|\\.\\/)");
+        if (pathReg1.test(this.importFrom)) {
+            //get real target path of importfrom
+            let realImportFromPath = path.resolve(path.dirname(this.declaringFilePath), this.importFrom);
+            //get relative path from project dir to real target path of importfrom
+            let tmpSig1 = path.relative(this.projectPath, realImportFromPath);
+            //tmpSig1 = tmpSig1.replace(/^\.\//, '');
+            importFromSignature.setFileName(tmpSig1);
+            importFromSignature.setProjectName(this.declaringArkFile.getProjectName());
+            this.importFromSignature2Str = importFromSignature.toString();
+        }
+
+        // external imports, e.g. @ohos., @kit., @System., @ArkAnalyzer/
+        sdkPathMap.forEach((value, key) => {
+            // e.g. @ohos., @kit., @System.
+            if (key == 'ohos' || key == 'kit' || key == 'system') {
+                const pathReg2 = new RegExp(`@(${key})\\.`);
+                if (pathReg2.test(this.importFrom)) {
+                    let tmpSig = '@' + key + '/' + this.importFrom + ':';
+                    this.importFromSignature2Str = `<${tmpSig}>`;
+                }
+            }
+            // e.g. @ArkAnalyzer/
+            else {
+                const pathReg3 = new RegExp(`@(${key})\\/`);
+                if (pathReg3.test(this.importFrom)) {
+                    this.importFromSignature2Str = this.importFrom;
+                }
+            }
+        });
+        //third part npm package
+        //TODO
     }
 
     public setArkSignature(declaringSignature: string) {

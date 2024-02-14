@@ -2,7 +2,7 @@ import path from "path";
 import { Scene } from "../Scene";
 import { NodeA } from "../core/base/Ast";
 import { ArkFile } from "../core/model/ArkFile";
-import { ClassSignature } from "../core/model/ArkSignature";
+import { ClassSignature, FileSignature } from "../core/model/ArkSignature";
 
 export function isPrimaryType(type: string): boolean {
     switch (type) {
@@ -209,17 +209,19 @@ export function searchImportMessage(file: ArkFile, className: string, searchCall
 export function typeStrToClassSignature(typrStr: string): ClassSignature {
     const lastDot = typrStr.lastIndexOf('.');
     const classSignature = new ClassSignature();
-    classSignature.setArkFile(typrStr.substring(0, lastDot));
+    const fileSignature = new FileSignature();
+    fileSignature.setFileName(typrStr.substring(0, lastDot));
+    classSignature.setDeclaringFileSignature(fileSignature);
     const classType = typrStr.replace(/\\\\/g, '.').split('.');
-    classSignature.setClassType(classType[classType.length - 1]);
-
+    classSignature.setClassName(classType[classType.length - 1]);
+ 
     return classSignature;
 }
 
 export const matchClassInFile: ClassSearchCallback = (file, className) => {
     for (let classInFile of file.getClasses()) {
         if (className === classInFile.getName()) {
-            return classInFile.getSignature().getArkFile() + "." + className;
+            return classInFile.getSignature().getDeclaringFileSignature().getFileName() + "." + className;
         }
     }
     return null;

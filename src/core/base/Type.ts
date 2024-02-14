@@ -77,13 +77,13 @@ export class UnknownType extends Type {
 // default signature for class "Function"
 function getFunctionClassSignature(): ClassSignature {
     const functionClassSignature = new ClassSignature();
-    functionClassSignature.build('Typescript', 'Function');
+    //functionClassSignature.build('Typescript', 'Function');
     return functionClassSignature;
 }
 
 // default signature for class "Class"
 function getClassClassSignature(): ClassSignature {
     const functionClassSignature = new ClassSignature();
-    functionClassSignature.build('Typescript', 'Class');
+    //functionClassSignature.build('Typescript', 'Class');
     return functionClassSignature;
 }

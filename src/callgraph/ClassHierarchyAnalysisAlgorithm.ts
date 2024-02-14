@@ -18,7 +18,7 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
 
         let methodsFromInvoke = this.resolveInvokeExpr(
             invokeExpressionExpr,
-            sourceMethodSignature.getArkClass().getArkFile(),
+            sourceMethodSignature.getDeclaringClassSignature().getDeclaringFileSignature().getFileName(),
             sourceMethodSignature)
         if (methodsFromInvoke == null) {
             return callTargetMethods
@@ -65,7 +65,7 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
         let targetClasses: ArkClass[];
         let methodSignature: MethodSignature[] = [];
 
-        targetClasses = this.scene.getExtendedClasses(targetMethodSignature.getArkClass())
+        targetClasses = this.scene.getExtendedClasses(targetMethodSignature.getDeclaringClassSignature())
         for (let targetClass of targetClasses) {
             let methods = targetClass.getMethods()
 
@@ -165,7 +165,7 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
             // console.log("instance:   "+invokeExpr.getMethodSignature().toString())
             if (invokeExpr.getBase().getName() === "this") {
                 // 处理this调用
-                let currentClass = this.scene.getClass(sourceMethodSignature.getArkClass())
+                let currentClass = this.scene.getClass(sourceMethodSignature.getDeclaringClassSignature())
                 classAndArkFileNames.add([currentClass!.getName(), currentClass!.getDeclaringArkFile().getName()])
             } else {
                 let classCompleteType = invokeExpr.getBase().getType() // a| b |c
@@ -183,7 +183,7 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
                 let lastDotIndex = callName.lastIndexOf('.')
                 let className = callName.substring(0, lastDotIndex)
                 if (className === "this") {
-                    let currentClass = this.scene.getClass(sourceMethodSignature.getArkClass())
+                    let currentClass = this.scene.getClass(sourceMethodSignature.getDeclaringClassSignature())
                     classAndArkFileNames.add([currentClass!.getName(),
                         currentClass!.getDeclaringArkFile().getName()])
                 } else {

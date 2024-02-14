@@ -5,6 +5,7 @@ import { ArkEnum } from "./ArkEnum";
 import { ArkFile } from "./ArkFile";
 import { ArkInterface } from "./ArkInterface";
 import { ArkMethod, arkMethodNodeKind } from "./ArkMethod";
+import { NamespaceSignature } from "./ArkSignature";
 
 
 export class ArkNamespace {
@@ -15,7 +16,7 @@ export class ArkNamespace {
     private memberClasses: ArkClass[] = [];
     private memberInterafaces: ArkInterface[] = [];
     private declaringArkFile: ArkFile;
-    private declaringArkNamespace: ArkNamespace;
+    private declaringArkNamespace: ArkNamespace | null = null;
     private declaringInstance: ArkFile | ArkNamespace;
     private declaringType: string;
     private exportInfos: ExportInfo[] = [];
@@ -27,6 +28,7 @@ export class ArkNamespace {
     private arkSignature: string;
     private arkInstancesMap: Map<string, any> = new Map<string, any>();
     private declaringSignature: string;
+    private namespaceSignature: NamespaceSignature;
 
     constructor() { }
 
@@ -39,12 +41,16 @@ export class ArkNamespace {
 
         if (declaringInstance instanceof ArkFile) {
             this.setDeclaringType("ArkFile");
+            this.declaringArkFile = declaringInstance;
         }
         else {
             this.setDeclaringType("ArkNamespace");
+            this.declaringArkNamespace = declaringInstance;
+            this.declaringArkFile = this.declaringArkNamespace.getDeclaringArkFile();
         }
         this.setDeclaringInstance(declaringInstance);
         this.genArkSignature();
+        this.genNamespaceSignature();
 
         nsNode.namespaceNodeInfo.getModifiers().forEach((modifier) => {
             this.addModifier(modifier);
@@ -67,7 +73,7 @@ export class ArkNamespace {
         for (let child of nsNode.children) {
             if (child.kind == 'ModuleDeclaration') {
                 let ns: ArkNamespace = new ArkNamespace();
-                ns.setDeclaringArkFile(this.declaringArkFile);
+                //ns.setDeclaringArkFile(this.declaringArkFile);
                 ns.setDeclaringSignature(this.arkSignature);
                 ns.build(child, this);
                 this.addNamespace(ns);
@@ -81,23 +87,7 @@ export class ArkNamespace {
                     this.addExportInfo(ns);
                 }
             }
-            if (child.kind == 'InterfaceDeclaration') {
-                let interFace: ArkInterface = new ArkInterface();
-                interFace.setDeclaringArkFile(this.declaringArkFile);
-                interFace.setDeclaringSignature(this.arkSignature);
-                interFace.build(child, this);
-                this.addInterface(interFace);
-
-                this.addArkInstance(interFace.getArkSignature(), interFace);
-                interFace.getArkInstancesMap().forEach((value, key) => {
-                    this.addArkInstance(key, value);
-                });
-
-                if (interFace.isExported()) {
-                    this.addExportInfo(interFace);
-                }
-            }
-            if (child.kind == 'ClassDeclaration') {
+            if (child.kind == 'ClassDeclaration' || child.kind == 'InterfaceDeclaration' || child.kind == 'EnumDeclaration') {
                 let cls: ArkClass = new ArkClass();
                 cls.setDeclaringSignature(this.arkSignature);
                 cls.buildNormalArkClassFromArkNamespace(child, this);
@@ -146,21 +136,6 @@ export class ArkNamespace {
                     }
                 }
             }
-            if (child.kind == 'EnumDeclaration') {
-                let eNum: ArkEnum = new ArkEnum();
-                eNum.setDeclaringSignature(this.arkSignature);
-                eNum.buildFromArkNamespace(child, this);
-                this.addEnum(eNum);
-
-                this.addArkInstance(eNum.getArkSignature(), eNum);
-                eNum.getArkInstancesMap().forEach((value, key) => {
-                    this.addArkInstance(key, value);
-                });
-
-                if (eNum.isExported()) {
-                    this.addExportInfo(eNum);
-                }
-            }
         }
     }
 
@@ -186,6 +161,20 @@ export class ArkNamespace {
 
     public genArkSignature() {
         this.arkSignature = this.declaringSignature + '.' + this.name;
+    }
+
+    public genNamespaceSignature() {
+        let namespaceSignature = new NamespaceSignature();
+        namespaceSignature.setNamespaceName(this.name);
+        namespaceSignature.setDeclaringFileSignature(this.declaringArkFile.getFileSignature());
+        if (this.declaringArkNamespace) {
+            namespaceSignature.setDeclaringNamespaceSignature(this.declaringArkNamespace.getNamespaceSignature());
+        }
+        this.namespaceSignature = namespaceSignature;
+    }
+
+    public getNamespaceSignature() {
+        return this.namespaceSignature;
     }
 
     public getArkInstancesMap() {

@@ -166,12 +166,17 @@ export class ArkMethod {
     }
 
     public genSignature() {
-        let mtgSubSig = new MethodSubSignature();
-        mtgSubSig.build(this.getName(), this.getParameters(), this.getReturnType());
-        this.setSubSignature(mtgSubSig);
+        let mtdSubSig = new MethodSubSignature();
+        mtdSubSig.setMethodName(this.name);
+        mtdSubSig.setParameters(this.parameters);
+        mtdSubSig.setReturnType(this.returnType);
+        this.setSubSignature(mtdSubSig);
+
         let mtdSig = new MethodSignature();
-        mtdSig.build(this.methodSubSignature, this.getDeclaringArkClass().getSignature());
+        mtdSig.setDeclaringClassSignature(this.declaringArkClass.getSignature());
+        mtdSig.setMethodSubSignature(mtdSubSig);
         this.setSignature(mtdSig);
+
         this.genArkSignature();
     }
 

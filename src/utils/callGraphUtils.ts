@@ -87,9 +87,9 @@ export class SceneManager {
     }
 
     public getClass(arkClass: ClassSignature): ArkClass | null {
-        if (typeof arkClass.getClassType() === "undefined")
+        if (typeof arkClass.getClassName() === "undefined")
             return null
-        return this._scene.getClass(arkClass.getArkFile(), arkClass.getClassType())
+        return this._scene.getClass(arkClass.getDeclaringFileSignature().getFileName(), arkClass.getClassName())
     }
 
     public getExtendedClasses(arkClass: ClassSignature): ArkClass[] {

@@ -9,7 +9,7 @@ import { ArkFile } from "./core/model/ArkFile";
 import { ArkInterface } from './core/model/ArkInterface';
 import { ArkMethod } from "./core/model/ArkMethod";
 import { ArkNamespace } from "./core/model/ArkNamespace";
-import { ClassSignature, MethodSignature, MethodSubSignature } from "./core/model/ArkSignature";
+import { ClassSignature, FileSignature, MethodSignature, MethodSubSignature } from "./core/model/ArkSignature";
 import { SceneConfig } from '../tests/Config';
 import { ClassHierarchyAnalysisAlgorithm } from "./callgraph/ClassHierarchyAnalysisAlgorithm";
 
@@ -43,6 +43,7 @@ export class Scene {
     private otherSdkMap: Map<string, string>;
 
     private sdkFiles: string[];
+    private sdkFilesMap: Map<string[], string> = new Map<string[], string>();
 
     constructor(sceneConfig: SceneConfig) {
         this.projectName = sceneConfig.getTargetProjectName();
@@ -53,6 +54,7 @@ export class Scene {
         this.kitSdkPath = sceneConfig.getKitSdkPath();
         this.systemSdkPath = sceneConfig.getSystemSdkPath();
         this.sdkFiles = sceneConfig.getSdkFiles();
+        this.sdkFilesMap = sceneConfig.getSdkFilesMap();
 
         this.otherSdkMap = sceneConfig.getOtherSdkMap();
 
@@ -86,19 +88,41 @@ export class Scene {
     }
 
     private genArkFiles() {
-        if (this.sdkFiles) {
-            this.sdkFiles.forEach((file) => {
-                console.log('=== parse file:', file);
-                let arkFile: ArkFile = new ArkFile();
-                arkFile.buildArkFileFromFile(file, this.realProjectDir);
-                arkFile.setScene(this);
-                this.arkFiles.push(arkFile);
-            });
-        }
+        this.sdkFilesMap.forEach((value, key) => {
+            if (key.length != 0) {
+                const sdkProjectName = value;
+                let realSdkProjectDir = "";
+                if (sdkProjectName == "ohos") {
+                    realSdkProjectDir = fs.realpathSync(this.ohosSdkPath);
+                }
+                else if (sdkProjectName == "kit") {
+                    realSdkProjectDir = fs.realpathSync(this.kitSdkPath);
+                }
+                else if (sdkProjectName == "system") {
+                    realSdkProjectDir = fs.realpathSync(this.systemSdkPath);
+                }
+                else {
+                    let sdkPath = this.otherSdkMap.get(value);
+                    if (sdkPath) {
+                        realSdkProjectDir = fs.realpathSync(sdkPath);
+                    }
+                }
+
+                key.forEach((file) => {
+                    console.log('=== parse file:', file);
+                    let arkFile: ArkFile = new ArkFile();
+                    arkFile.setProjectName(sdkProjectName);
+                    arkFile.buildArkFileFromFile(file, realSdkProjectDir);
+                    arkFile.setScene(this);
+                    this.arkFiles.push(arkFile);
+                });
+            }
+        });
 
         this.projectFiles.forEach((file) => {
             console.log('=== parse file:', file);
             let arkFile: ArkFile = new ArkFile();
+            arkFile.setProjectName(this.projectName);
             arkFile.buildArkFileFromFile(file, this.realProjectDir);
             arkFile.setScene(this);
             this.arkFiles.push(arkFile);
@@ -173,7 +197,7 @@ export class Scene {
     }
 
     public getFather(classSignature: ClassSignature): ArkClass | null {
-        let thisArkFile = this.getFile(classSignature.getArkFile());
+        let thisArkFile = this.getFile(classSignature.getDeclaringFileSignature().getFileName());
         if (thisArkFile == null) {
             throw new Error('No ArkFile found.');
         }
@@ -230,17 +254,27 @@ export class Scene {
         return [];
     }
 
-    private getMethodSignature(fileName: string, methodName: string, parameters: Map<string, string>, returnType: string[], classType: string): MethodSignature {
+    private getMethodSignature(fileName: string, methodName: string, parameters: Map<string, string>, returnType: string[], className: string): MethodSignature {
         let methodSubSignature = new MethodSubSignature();
-        methodSubSignature.build(methodName, parameters, returnType);
-        let classSignature = this.getClassSignature(fileName, classType);
+        methodSubSignature.setMethodName(methodName);
+        methodSubSignature.setParameters(parameters);
+        methodSubSignature.setReturnType(returnType);
+
+        let classSignature = this.getClassSignature(fileName, className);
+
         let methodSignature = new MethodSignature();
-        methodSignature.build(methodSubSignature, classSignature);
+        methodSignature.setDeclaringClassSignature(classSignature);
+        methodSignature.setMethodSubSignature(methodSubSignature)
+
         return methodSignature;
     }
-    private getClassSignature(arkFile: string, classType: string): ClassSignature {
+    private getClassSignature(fileName: string, className: string): ClassSignature {
         let classSig = new ClassSignature();
-        classSig.build(arkFile, classType);
+        let fileSig = new FileSignature();
+        fileSig.setFileName(fileName);
+        fileSig.setProjectName(this.projectName);
+        classSig.setClassName(className);
+        classSig.setDeclaringFileSignature(fileSig);
         return classSig;
     }
 
