@@ -5,16 +5,19 @@ import { ArkInterface } from "./ArkInterface";
 import { FieldSignature } from "./ArkSignature";
 
 export class ArkField {
+    private name: string = "";
     private code: string = "";
+
     private declaringClass: ArkClass;
     private declaringInterface: ArkInterface;
-    private name: string = "";
+
     private type: string = "";
     private modifiers: Set<string> = new Set<string>();
-    private fieldSignature: FieldSignature;
-    private arkSignature: string;
     private questionToken: boolean = false;
     private exclamationToken: boolean = false;
+
+    private fieldSignature: FieldSignature;
+    private arkSignature: string;
     //private initializer 
 
     constructor() { }
@@ -37,14 +40,6 @@ export class ArkField {
 
     public setDeclaringClass(declaringClass: ArkClass) {
         this.declaringClass = declaringClass;
-    }
-
-    public getDeclaringInterface() {
-        return this.declaringInterface;
-    }
-
-    public setDeclaringInterface(declaringInterface: ArkInterface) {
-        this.declaringInterface = declaringInterface;
     }
 
     public getCode() {
@@ -92,7 +87,7 @@ export class ArkField {
         fieldSig.setDeclaringClassSignature(this.declaringClass.getSignature());
         fieldSig.setFieldName(this.name);
         this.setSignature(fieldSig);
-        
+
         this.arkSignature = this.declaringClass.getArkSignature() + '.' + this.getName();
     }
 

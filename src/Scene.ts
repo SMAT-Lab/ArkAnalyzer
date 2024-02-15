@@ -5,7 +5,7 @@ import { AbstractCallGraphAlgorithm } from "./callgraph/AbstractCallGraphAlgorit
 import { CallGraph } from "./callgraph/CallGraph";
 import { ImportInfo, updateSdkConfigPrefix } from './core/common/ImportBuilder';
 import { ArkClass } from "./core/model/ArkClass";
-import { ArkFile } from "./core/model/ArkFile";
+import { ArkFile, buildArkFileFromFile } from "./core/model/ArkFile";
 import { ArkInterface } from './core/model/ArkInterface';
 import { ArkMethod } from "./core/model/ArkMethod";
 import { ArkNamespace } from "./core/model/ArkNamespace";
@@ -21,8 +21,10 @@ export class Scene {
     projectName: string = '';
     projectFiles: string[] = [];
     realProjectDir: string;
-    namespaces: ArkNamespace[] = [];
+
     arkFiles: ArkFile[] = [];
+    sdkArkFiles: ArkFile[] = [];
+
     callgraph: CallGraph;
     classHierarchyCallGraph: AbstractCallGraphAlgorithm;
     extendedClasses: Map<string, ArkClass[]> = new Map();
@@ -65,7 +67,7 @@ export class Scene {
 
         //post actions
         this.collectArkInstances();
-        this.genExtendedClasses();
+        //this.genExtendedClasses();
         this.collectProjectImportInfos();
         //this.typeReference();
     }
@@ -112,9 +114,9 @@ export class Scene {
                     console.log('=== parse file:', file);
                     let arkFile: ArkFile = new ArkFile();
                     arkFile.setProjectName(sdkProjectName);
-                    arkFile.buildArkFileFromFile(file, realSdkProjectDir);
+                    buildArkFileFromFile(file, realSdkProjectDir, arkFile);
                     arkFile.setScene(this);
-                    this.arkFiles.push(arkFile);
+                    this.sdkArkFiles.push(arkFile);
                 });
             }
         });
@@ -123,7 +125,7 @@ export class Scene {
             console.log('=== parse file:', file);
             let arkFile: ArkFile = new ArkFile();
             arkFile.setProjectName(this.projectName);
-            arkFile.buildArkFileFromFile(file, this.realProjectDir);
+            buildArkFileFromFile(file, this.realProjectDir, arkFile);
             arkFile.setScene(this);
             this.arkFiles.push(arkFile);
         });
@@ -138,6 +140,7 @@ export class Scene {
         return null;
     }
 
+    //TODO: move to type inference
     private genExtendedClasses() {
         let myArkClasses = this.getClasses();
         for (let cls of myArkClasses) {
@@ -154,6 +157,18 @@ export class Scene {
         }
     }
 
+    public getFiles() {
+        return this.arkFiles;
+    }
+
+    public getNamespaces(): ArkNamespace[] {
+        let arkNamespaces: ArkNamespace[] = [];
+        this.arkFiles.forEach((fl) => {
+            arkNamespaces.push(...fl.getNamespaces());
+        });
+        return arkNamespaces;
+    }
+
     public getClasses(): ArkClass[] {
         let arkClasses: ArkClass[] = [];
         for (let fl of this.arkFiles) {
@@ -162,10 +177,23 @@ export class Scene {
         return arkClasses;
     }
 
-    public getClassGlobally(arkClassType: string): ArkClass | null {
+    public getMethods(): ArkMethod[] {
+        let arkMethods: ArkMethod[] = [];
+
+        let arkClasses = this.getClasses();
+        for (let arkClass of arkClasses) {
+            let methods: ArkMethod[] = arkClass.getMethods();
+            arkMethods.push(...methods);
+        }
+
+        return arkMethods;
+    }
+
+    //TODO: move to type inference
+    public getClassGlobally(arkClassName: string): ArkClass | null {
         for (let fl of this.arkFiles) {
             for (let cls of fl.getClasses()) {
-                if (cls.isExported() && cls.getName() == arkClassType) {
+                if (cls.isExported() && cls.getName() == arkClassName) {
                     return cls;
                 }
             }
@@ -182,18 +210,6 @@ export class Scene {
         }
         const claSig = this.getClassSignature(arkFile, arkClassType);
         return fl.getClass(claSig);
-    }
-
-    public getMethods(): ArkMethod[] {
-        let arkMethods: ArkMethod[] = [];
-
-        let arkClasses = this.getClasses();
-        for (let arkClass of arkClasses) {
-            let methods: ArkMethod[] = arkClass.getMethods();
-            arkMethods.push(...methods);
-        }
-
-        return arkMethods;
     }
 
     public getFather(classSignature: ClassSignature): ArkClass | null {
@@ -239,10 +255,6 @@ export class Scene {
         }
 
         return arkMethods;
-    }
-
-    public getNamespaces(): ArkNamespace[] {
-        return [];
     }
 
     public hasMainMethod(): boolean {

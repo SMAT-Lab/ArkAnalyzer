@@ -5,12 +5,12 @@ import { transfer2UnixPath } from '../../utils/pathTransfer';
 import { ASTree, NodeA } from "../base/Ast";
 import { ExportInfo } from '../common/ExportBuilder';
 import { ImportInfo } from '../common/ImportBuilder';
-import { ArkClass } from "./ArkClass";
+import { ArkClass, buildDefaultArkClassFromArkFile, buildNormalArkClassFromArkFile } from "./ArkClass";
 import { ArkEnum } from './ArkEnum';
 import { ArkField } from './ArkField';
 import { ArkInterface } from './ArkInterface';
-import { ArkMethod, arkMethodNodeKind } from "./ArkMethod";
-import { ArkNamespace } from "./ArkNamespace";
+import { ArkMethod, arkMethodNodeKind, buildArkMethodFromArkClass } from "./ArkMethod";
+import { ArkNamespace, buildArkNamespace } from "./ArkNamespace";
 import { ClassSignature, FileSignature, MethodSignature, classSignatureCompare, methodSignatureCompare } from "./ArkSignature";
 
 /**
@@ -22,17 +22,14 @@ export class ArkFile {
     private absoluteFilePath: string;
     private projectDir: string;
     private projectName: string = "";
-
     private code: string;
+
     private ast: ASTree;
 
-    private interfaces: ArkInterface[] = [];
-    private enums: ArkEnum[] = [];
     private defaultClass: ArkClass;
 
     private namespaces: ArkNamespace[] = [];
     private classes: ArkClass[] = [];
-    private fields: ArkField[] = [];
     private methods: ArkMethod[] = [];
 
     private importInfos: ImportInfo[] = [];
@@ -42,108 +39,10 @@ export class ArkFile {
 
     private arkInstancesMap: Map<string, any> = new Map<string, any>();
     private arkSignature: string;
+
     private fileSignature: FileSignature;
 
     constructor() { }
-
-    public buildArkFileFromFile(absoluteFilePath: string, projectDir: string) {
-        this.absoluteFilePath = absoluteFilePath;
-        this.projectDir = projectDir;
-        this.setName(path.relative(projectDir, absoluteFilePath));
-
-        this.genArkSignature();
-        this.genFileSignature();
-
-        this.setCode(fs.readFileSync(absoluteFilePath, 'utf8'));
-        this.genAst();
-
-        this.genDefaultArkClass();
-        this.buildArkFile();
-    }
-
-    private buildArkFile() {
-        let children = this.ast.root?.children;
-        for (let child of children) {
-            if (child.kind == 'ModuleDeclaration') {
-                let ns: ArkNamespace = new ArkNamespace();
-                ns.setDeclaringArkFile(this);
-                ns.setDeclaringSignature(this.arkSignature);
-                ns.build(child, this);
-                this.addNamespace(ns);
-
-                this.addArkInstance(ns.getArkSignature(), ns);
-                ns.getArkInstancesMap().forEach((value, key) => {
-                    this.addArkInstance(key, value);
-                });
-
-                if (ns.isExported()) {
-                    this.addExportInfo(ns);
-                }
-            }
-            if (child.kind == 'ClassDeclaration' || child.kind == 'InterfaceDeclaration' || child.kind == 'EnumDeclaration') {
-                let cls: ArkClass = new ArkClass();
-                cls.setDeclaringSignature(this.arkSignature);
-                cls.buildNormalArkClassFromArkFile(child, this);
-                this.addArkClass(cls);
-
-                this.addArkInstance(cls.getArkSignature(), cls);
-                cls.getArkInstancesMap().forEach((value, key) => {
-                    this.addArkInstance(key, value);
-                });
-
-                if (cls.isExported()) {
-                    this.addExportInfo(cls);
-                }
-            }
-            if (arkMethodNodeKind.indexOf(child.kind) > -1) {
-                let mthd: ArkMethod = new ArkMethod();
-                mthd.setDeclaringSignature(this.arkSignature);
-                mthd.buildArkMethodFromArkClass(child, this.defaultClass);
-                this.defaultClass.addMethod(mthd);
-                this.addArkMethod(mthd);
-
-                this.addArkInstance(mthd.getArkSignature(), mthd);
-                mthd.getArkInstancesMap().forEach((value, key) => {
-                    this.addArkInstance(key, value);
-                });
-
-                if (mthd.isExported()) {
-                    this.addExportInfo(mthd);
-                }
-            }
-            if (child.kind == 'ImportDeclaration' || child.kind == 'ImportEqualsDeclaration') {
-                //this.processImportDeclarationNode(child);
-                child.importNodeInfo?.forEach((element) => {
-                    element.setDeclaringFilePath(this.absoluteFilePath);
-                    element.setProjectPath(this.projectDir);
-                    element.setDeclaringArkFile(this);
-                    element.setArkSignature(this.arkSignature);
-                    element.setImportFromSignature();
-                    this.importInfos.push(element);
-
-                    this.addArkInstance(element.getArkSignature(), element);
-                });
-            }
-            if (child.kind == 'ExportDeclaration' || child.kind == 'ExportAssignment') {
-                //this.processExportDeclarationNode(child);
-                child.exportNodeInfo?.forEach((element) => {
-                    element.setArkSignature(this.arkSignature);
-                    this.exportInfos.push(element);
-
-                    this.addArkInstance(element.getArkSignature(), element);
-                });
-            }
-            if (child.kind == 'VariableStatement' || child.kind == 'FirstStatement') {
-                //check ExportKeyword
-                let childSyntaxNode = this.findIndicatedChild(child, 'SyntaxList');
-                if (childSyntaxNode) {
-                    if (this.findIndicatedChild(childSyntaxNode, 'ExportKeyword')) {
-                        this.processExportValAndFirstNode(child);
-                    }
-                }
-            }
-        }
-    }
 
     public addArkInstance(arkSignature: string, arkInstance: any) {
         this.arkInstancesMap.set(arkSignature, arkInstance);
@@ -181,6 +80,10 @@ export class ArkFile {
         return this.absoluteFilePath;
     }
 
+    public setFilePath(absoluteFilePath: string) {
+        this.absoluteFilePath = absoluteFilePath;
+    }
+
     public setCode(code: string) {
         this.code = code;
     }
@@ -193,17 +96,26 @@ export class ArkFile {
         return this.ast;
     }
 
-    private genAst() {
+    public genAst() {
         this.ast = new ASTree(this.code);
     }
 
-    //TODO: add signature check to update
     public addArkMethod(arkMethod: ArkMethod) {
+        for (let i = 0; i < this.methods.length; i++) {
+            // check whether exits this method
+            if (this.methods[i].getSignature().toString() == arkMethod.getSignature().toString()) {
+                this.methods.slice(i, 1);
+            }
+        }
         this.methods.push(arkMethod);
     }
 
-    //TODO: update
     public updateClass(arkClass: ArkClass) {
+        for (let i = 0; i < this.classes.length; i++) {
+            if (this.classes[i].getSignature().toString() == arkClass.getSignature().toString()) {
+                this.classes.splice(i, 1);
+            }
+        }
         this.classes.push(arkClass);
         arkClass.getMethods().forEach((mtd) => {
             this.addArkMethod(mtd);
@@ -230,14 +142,6 @@ export class ArkFile {
         this.defaultClass = defaultClass;
     }
 
-    public genDefaultArkClass() {
-        let defaultClass = new ArkClass();
-        defaultClass.setDeclaringSignature(this.arkSignature);
-        defaultClass.buildDefaultArkClassFromArkFile(this.ast.root, this);
-        this.setDefaultClass(defaultClass);
-        this.addArkClass(this.defaultClass);
-    }
-
     public getNamespaces(): ArkNamespace[] {
         return this.namespaces;
     }
@@ -256,23 +160,9 @@ export class ArkFile {
         return this.classes;
     }
 
-    public getInterfaces(): ArkInterface[] {
-        return this.interfaces;
-    }
-
-    public addInterface(interFace: ArkInterface) {
-        this.interfaces.push(interFace);
-    }
-
-    public getEnums(): ArkEnum[] {
-        return this.enums;
-    }
-
-    public addEnum(eNum: ArkEnum) {
-        this.enums.push(eNum);
-    }
-
     public addNamespace(namespace: ArkNamespace) {
+        this.classes.push(...namespace.getClasses());
+        this.methods.push(...namespace.getMethods());
         this.namespaces.push(namespace);
     }
 
@@ -353,57 +243,167 @@ export class ArkFile {
         return this.fileSignature;
     }
 
-    private findIndicatedChild(node: NodeA, childType: string): NodeA | null {
-        for (let child of node.children) {
-            if (child.kind == childType) {
-                return child;
+}
+
+export function buildArkFileFromFile(absoluteFilePath: string, projectDir: string, arkFile: ArkFile) {
+    arkFile.setFilePath(absoluteFilePath);
+    arkFile.setProjectDir(projectDir);
+    arkFile.setName(path.relative(projectDir, absoluteFilePath));
+
+
+    arkFile.genArkSignature();
+    arkFile.genFileSignature();
+
+    arkFile.setCode(fs.readFileSync(absoluteFilePath, 'utf8'));
+    arkFile.genAst();
+
+    genDefaultArkClass(arkFile);
+    buildArkFile(arkFile);
+}
+
+function buildArkFile(arkFile: ArkFile) {
+    let children = arkFile.getAst().root?.children;
+    for (let child of children) {
+        if (child.kind == 'ModuleDeclaration') {
+            let ns: ArkNamespace = new ArkNamespace();
+            ns.setDeclaringArkFile(arkFile);
+            ns.setDeclaringSignature(arkFile.getArkSignature());
+            buildArkNamespace(child, arkFile, ns);
+            arkFile.addNamespace(ns);
+
+            arkFile.addArkInstance(ns.getArkSignature(), ns);
+            ns.getArkInstancesMap().forEach((value, key) => {
+                arkFile.addArkInstance(key, value);
+            });
+
+            if (ns.isExported()) {
+                addExportInfo(ns, arkFile);
             }
         }
-        return null;
-    }
+        if (child.kind == 'ClassDeclaration' || child.kind == 'InterfaceDeclaration' || child.kind == 'EnumDeclaration') {
+            let cls: ArkClass = new ArkClass();
+            cls.setDeclaringSignature(arkFile.getArkSignature());
+            buildNormalArkClassFromArkFile(child, arkFile, cls);
+            arkFile.addArkClass(cls);
 
-    private processExportValAndFirstNode(node: NodeA): void {
-        let exportClauseName: string = '';
-        let exportClauseType: string = node.kind;
-        let cld = this.findIndicatedChild(node, 'VariableDeclarationList');
-        if (cld) {
-            let c = this.findIndicatedChild(cld, 'SyntaxList');
-            if (c) {
-                let cc = this.findIndicatedChild(c, 'VariableDeclaration');
-                if (cc) {
-                    let ccc = this.findIndicatedChild(cc, 'Identifier');
-                    if (ccc) {
-                        exportClauseName = ccc.text;
-                    }
+            arkFile.addArkInstance(cls.getArkSignature(), cls);
+            cls.getArkInstancesMap().forEach((value, key) => {
+                arkFile.addArkInstance(key, value);
+            });
+
+            if (cls.isExported()) {
+                addExportInfo(cls, arkFile);
+            }
+        }
+        if (arkMethodNodeKind.indexOf(child.kind) > -1) {
+            let mthd: ArkMethod = new ArkMethod();
+            mthd.setDeclaringSignature(arkFile.getArkSignature());
+            buildArkMethodFromArkClass(child, arkFile.getDefaultClass(), mthd);
+            arkFile.getDefaultClass().addMethod(mthd);
+            arkFile.addArkMethod(mthd);
+
+            arkFile.addArkInstance(mthd.getArkSignature(), mthd);
+            mthd.getArkInstancesMap().forEach((value, key) => {
+                arkFile.addArkInstance(key, value);
+            });
+
+            if (mthd.isExported()) {
+                addExportInfo(mthd, arkFile);
+            }
+        }
+        if (child.kind == 'ImportDeclaration' || child.kind == 'ImportEqualsDeclaration') {
+            //this.processImportDeclarationNode(child);
+            child.importNodeInfo?.forEach((element) => {
+                element.setDeclaringFilePath(arkFile.getFilePath());
+                element.setProjectPath(arkFile.getProjectDir());
+                element.setDeclaringArkFile(arkFile);
+                element.setArkSignature(arkFile.getArkSignature());
+                element.setImportFromSignature();
+                arkFile.addImportInfos(element);
+
+                arkFile.addArkInstance(element.getArkSignature(), element);
+            });
+        }
+        if (child.kind == 'ExportDeclaration' || child.kind == 'ExportAssignment') {
+            //this.processExportDeclarationNode(child);
+            child.exportNodeInfo?.forEach((element) => {
+                element.setArkSignature(arkFile.getArkSignature());
+                arkFile.addExportInfos(element);
+
+                arkFile.addArkInstance(element.getArkSignature(), element);
+            });
+        }
+        if (child.kind == 'VariableStatement' || child.kind == 'FirstStatement') {
+            //check ExportKeyword
+            let childSyntaxNode = findIndicatedChild(child, 'SyntaxList');
+            if (childSyntaxNode) {
+                if (findIndicatedChild(childSyntaxNode, 'ExportKeyword')) {
+                    processExportValAndFirstNode(child, arkFile);
                 }
             }
         }
-        let exportInfo = new ExportInfo();
-        exportInfo.build(exportClauseName, exportClauseType);
-        exportInfo.setArkSignature(this.arkSignature);
-        this.exportInfos.push(exportInfo);
-        this.addArkInstance(exportInfo.getArkSignature(), exportInfo);
     }
+}
 
-    private addExportInfo(arkInstance: ArkMethod | ArkInterface | ArkClass | ArkNamespace | ArkEnum) {
-        let exportClauseName: string = arkInstance.getName();
-        let exportClauseType: string;
-        if (arkInstance instanceof ArkMethod) {
-            exportClauseType = "Method";
+function genDefaultArkClass(arkFile: ArkFile) {
+    let defaultClass = new ArkClass();
+    defaultClass.setDeclaringSignature(arkFile.getArkSignature());
+    buildDefaultArkClassFromArkFile(arkFile.getAst().root, arkFile, defaultClass);
+    arkFile.setDefaultClass(defaultClass);
+    arkFile.addArkClass(defaultClass);
+}
+
+function findIndicatedChild(node: NodeA, childType: string): NodeA | null {
+    for (let child of node.children) {
+        if (child.kind == childType) {
+            return child;
         }
-        else if (arkInstance instanceof ArkClass) {
-            exportClauseType = "Class";
-        }
-        else if (arkInstance instanceof ArkInterface) {
-            exportClauseType = "Interface";
-        }
-        else {
-            exportClauseType = "ArkNamespace";
-        }
-        let exportInfo = new ExportInfo();
-        exportInfo.build(exportClauseName, exportClauseType);
-        //exportInfo.setArkSignature(this.arkSignature);
-        this.exportInfos.push(exportInfo);
-        // this.addArkInstance(exportInfo.getArkSignature(), exportInfo);
     }
+    return null;
+}
+
+function processExportValAndFirstNode(node: NodeA, arkFile: ArkFile): void {
+    let exportClauseName: string = '';
+    let exportClauseType: string = node.kind;
+    let cld = findIndicatedChild(node, 'VariableDeclarationList');
+    if (cld) {
+        let c = findIndicatedChild(cld, 'SyntaxList');
+        if (c) {
+            let cc = findIndicatedChild(c, 'VariableDeclaration');
+            if (cc) {
+                let ccc = findIndicatedChild(cc, 'Identifier');
+                if (ccc) {
+                    exportClauseName = ccc.text;
+                }
+            }
+        }
+    }
+    let exportInfo = new ExportInfo();
+    exportInfo.build(exportClauseName, exportClauseType);
+    exportInfo.setArkSignature(arkFile.getArkSignature());
+    arkFile.addExportInfos(exportInfo);
+    arkFile.addArkInstance(exportInfo.getArkSignature(), exportInfo);
+}
+
+function addExportInfo(arkInstance: ArkMethod | ArkInterface | ArkClass | ArkNamespace |
+    ArkEnum, arkFile: ArkFile) {
+    let exportClauseName: string = arkInstance.getName();
+    let exportClauseType: string;
+    if (arkInstance instanceof ArkMethod) {
+        exportClauseType = "Method";
+    }
+    else if (arkInstance instanceof ArkClass) {
+        exportClauseType = "Class";
+    }
+    else if (arkInstance instanceof ArkInterface) {
+        exportClauseType = "Interface";
+    }
+    else {
+        exportClauseType = "ArkNamespace";
+    }
+    let exportInfo = new ExportInfo();
+    exportInfo.build(exportClauseName, exportClauseType);
+    //exportInfo.setArkSignature(this.arkSignature);
+    arkFile.addExportInfos(exportInfo);
+    // this.addArkInstance(exportInfo.getArkSignature(), exportInfo);
 }
