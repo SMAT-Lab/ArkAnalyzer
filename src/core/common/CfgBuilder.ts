@@ -1832,7 +1832,7 @@ export class CfgBuilder {
         }
 
         else if (node.kind == "ArrowFunction") {
-            let arrowFuncName = 'AnonymousFunc-' + this.name + '-' + this.anonymousFuncIndex;
+            let arrowFuncName = 'AnonymousFunc_' + this.name + '_' + this.anonymousFuncIndex;
             if (node.methodNodeInfo) {
                 node.methodNodeInfo.updateName4anonymousFunc(arrowFuncName);
             }
@@ -1864,7 +1864,7 @@ export class CfgBuilder {
             if (node.children[1].kind != 'OpenParenToken') {
                 funcExprName = node.children[1].text;
             } else {
-                funcExprName = 'AnonymousFunc-' + this.name + '-' + this.anonymousFuncIndex;
+                funcExprName = 'AnonymousFunc_' + this.name + '_' + this.anonymousFuncIndex;
                 this.anonymousFuncIndex++;
             }
 
