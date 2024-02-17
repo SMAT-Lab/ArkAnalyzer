@@ -39,7 +39,7 @@ export class DotPrinter extends Printer {
     
     protected printClass(cls: ArkClass, streamOut: ArkStream): void {
         for (let method of cls.getMethods()) {
-            // this.printMethod3ACBlocks(method, streamOut);
+            this.printMethod3ACBlocks(method, streamOut);
             this.printMethodOriginalBlocks(method, streamOut);        
         }
     }

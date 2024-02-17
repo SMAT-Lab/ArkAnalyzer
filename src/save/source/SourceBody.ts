@@ -1,16 +1,25 @@
 
 import { Scene } from '../../Scene';
-import { ArkInstanceInvokeExpr, ArkNewExpr } from '../../core/base/Expr';
+import { ArkInstanceInvokeExpr } from '../../core/base/Expr';
 import { Local } from "../../core/base/Local";
 import { ArkParameterRef } from "../../core/base/Ref";
 import { ArkAssignStmt, ArkGotoStmt, ArkIfStmt, ArkInvokeStmt, ArkReturnStmt, ArkReturnVoidStmt, ArkSwitchStmt, Stmt } from '../../core/base/Stmt';
-import { BasicBlock } from "../../core/graph/BasicBlock";
+import { BasicBlock } from '../../core/graph/BasicBlock';
 import { DominanceFinder } from "../../core/graph/DominanceFinder";
 import { DominanceTree } from "../../core/graph/DominanceTree";
 import { ArkBody } from "../../core/model/ArkBody";
 import { ArkCodeBuffer } from "../ArkStream";
-import { SourceAssignStmt, SourceCaseStmt, SourceCompoundEndStmt, SourceElseStmt, SourceForStmt, SourceGotoStmt, SourceIfStmt, SourceInvokeStmt, SourceReturnStmt, SourceReturnVoidStmt, SourceSwitchStmt, SourceWhileStmt } from './SourceStmt';
+import { SourceAssignStmt, SourceBreakStmt, SourceCaseStmt, SourceCompoundEndStmt, SourceContinueStmt, SourceElseStmt, SourceForStmt, SourceIfStmt, SourceInvokeStmt, SourceReturnStmt, SourceReturnVoidStmt, SourceSwitchStmt, SourceWhileStmt } from './SourceStmt';
 
+enum BlockType {
+    NORMAL,
+    WHILE,
+    FOR,
+    CONTINUE,
+    BREAK,
+    IF,
+    IF_ELSE
+}
 
 export class SourceBody {
     private printer: ArkCodeBuffer;
@@ -19,6 +28,8 @@ export class SourceBody {
     private stmts: Stmt[] = [];
     private dominanceTree: DominanceTree;
     private scene: Scene;
+    private blockTypes: Map<BasicBlock, BlockType>;
+    private loopPath: Map<BasicBlock, Set<BasicBlock>>;
     
     public constructor(indent: string, scene: Scene, arkBody: ArkBody, isDefault: boolean) {
         this.scene = scene;
@@ -26,6 +37,7 @@ export class SourceBody {
         this.isDefault = isDefault;
         this.printer = new ArkCodeBuffer(indent);
         this.dominanceTree = new DominanceTree(new DominanceFinder(arkBody.getCfg()));
+        this.identifyBlocks();
         this.buildSourceStmt();
     }
 
@@ -34,6 +46,112 @@ export class SourceBody {
         this.printStmts();
 
         return this.printer.toString();
+    }
+
+    private identifyBlocks() {
+        let blocks = this.arkBody.getCfg().getBlocks();
+        let visitor = new Set<BasicBlock>();
+        this.blockTypes = new Map<BasicBlock, BlockType>();
+        this.loopPath = new Map<BasicBlock, Set<BasicBlock>>;
+
+        for (const block of blocks) {
+            if (visitor.has(block)) {
+                continue;
+            }
+            visitor.add(block);
+            if (this.isIfStmtBB(block) && this.isLoopBB(block, visitor)) {
+                let stmts = block.getStmts()
+                // IfStmt is at the end then it's a while loop
+                if (stmts[stmts.length - 1] instanceof ArkIfStmt) {
+                    this.blockTypes.set(block, BlockType.WHILE);
+                } else {
+                    this.blockTypes.set(block, BlockType.FOR);
+                }
+            } else if (this.isIfStmtBB(block)) {
+                if (this.isIfElseBB(block)) {
+                    this.blockTypes.set(block, BlockType.IF_ELSE);
+                } else {
+                    this.blockTypes.set(block, BlockType.IF);
+                }
+            } else if (this.isGotoStmtBB(block)) {
+                if (this.isContinueBB(block, this.blockTypes)) {
+                    this.blockTypes.set(block, BlockType.CONTINUE);
+                } else {
+                    this.blockTypes.set(block, BlockType.BREAK);
+                }
+            } else {
+                this.blockTypes.set(block, BlockType.NORMAL);
+            }
+        }
+    }
+
+    private isIfStmtBB(block: BasicBlock): boolean {
+        let stmtReader: StmtReader =  new StmtReader(block.getStmts());
+        while (stmtReader.hasNext()) {
+            let stmt = stmtReader.next();
+            if (stmt instanceof ArkIfStmt) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private isLoopBB(block: BasicBlock, visitor: Set<BasicBlock>): boolean {
+        let onPath: Set<BasicBlock> = new Set<BasicBlock>();
+        let loop: boolean = false;
+        visitor.delete(block);
+
+        let next = block.getSuccessors()[0];
+        onPath.add(next);
+        dfs(next);
+        
+        visitor.add(block);
+        this.loopPath.set(block, onPath);
+        return loop;
+
+        function dfs(_block: BasicBlock): void {
+            if (_block === block) {
+                loop = true;
+                return;
+            }
+            for (const sub of _block.getSuccessors()) {
+                if (!visitor.has(sub) && !onPath.has(sub) && sub != block.getSuccessors()[1]) {
+                    onPath.add(sub);
+                    dfs(sub);
+                }
+            }
+        }
+    }
+
+    private isGotoStmtBB(block: BasicBlock): boolean {
+        let stmtReader: StmtReader =  new StmtReader(block.getStmts());
+        while (stmtReader.hasNext()) {
+            let stmt = stmtReader.next();
+            if (stmt instanceof ArkGotoStmt) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+
+    private isContinueBB(block: BasicBlock, blockTypes: Map<BasicBlock, BlockType>): boolean {
+        let type = blockTypes.get(block.getSuccessors()[0]);
+        if (type == BlockType.FOR || type == BlockType.WHILE) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private isIfElseBB(block: BasicBlock): boolean {
+        for (const nextBlock of block.getSuccessors()) {
+            // if block dominates successorBlocks[i], than successorBlocks[i] not in branch
+            if (this.hasDominated(block, nextBlock)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private buildSourceStmt() {
@@ -57,18 +175,16 @@ export class SourceBody {
             if (stmt instanceof ArkAssignStmt) {
                 this.stmts.push(new SourceAssignStmt(stmt, stmtReader));
             } else if (stmt instanceof ArkIfStmt) {
-                let onPath: Set<BasicBlock> = new Set<BasicBlock>();
-                let inCycle = this.isInCycle(block, visitor, onPath);
-                if (inCycle) {
-                    if (stmtReader.hasNext()) {
-                        // for (;;) 
-                        this.stmts.push(new SourceForStmt(stmt, stmtReader));
-                    } else {
-                        // while 
-                        this.stmts.push(new SourceWhileStmt(stmt, stmtReader));
-                    }
-                    
-                    for (const sub of onPath) {
+                let isLoop = false;
+                if (this.blockTypes.get(block) == BlockType.FOR) {
+                    this.stmts.push(new SourceForStmt(stmt, stmtReader));
+                    isLoop = true;
+                } else if (this.blockTypes.get(block) == BlockType.WHILE) {
+                    this.stmts.push(new SourceWhileStmt(stmt, stmtReader));
+                    isLoop = true;
+                }
+                if (isLoop) {
+                    for (const sub of this.loopPath.get(block) as Set<BasicBlock>) {
                         if (visitor.has(sub)) {
                             continue;
                         }
@@ -79,12 +195,9 @@ export class SourceBody {
                 } else {
                     this.stmts.push(new SourceIfStmt(stmt, stmtReader));
                     let successorBlocks = block.getSuccessors();
-                    if (successorBlocks.length > 1 && !visitor.has(successorBlocks[1])) {
-                        // if block dominates successorBlocks[1], than successorBlocks[1] not in branch
-                        if (!this.hasDominated(block, successorBlocks[1])) {
-                            visitor.add(successorBlocks[1]);
-                            this.buildBasicBlock(successorBlocks[1], visitor, stmt);
-                        }
+                    if (this.blockTypes.get(block) == BlockType.IF_ELSE) {
+                        visitor.add(successorBlocks[1]);
+                        this.buildBasicBlock(successorBlocks[1], visitor, stmt);
                     }
                     if (successorBlocks.length > 0 && !visitor.has(successorBlocks[0])) {
                         this.stmts.push(new SourceElseStmt(stmt, stmtReader));
@@ -117,7 +230,12 @@ export class SourceBody {
                 if (parent instanceof ArkSwitchStmt) {
                     this.stmts.push(new SourceCompoundEndStmt('    break;'));
                 } else {
-                    this.stmts.push(new SourceGotoStmt(stmt, stmtReader));
+                    if (this.blockTypes.get(block) == BlockType.CONTINUE) {
+                        this.stmts.push(new SourceContinueStmt(stmt, stmtReader));
+                    } else {
+                        this.stmts.push(new SourceBreakStmt(stmt, stmtReader));
+                    }
+                    
                 }
             } else if (stmt instanceof ArkReturnStmt) {
                 this.stmts.push(new SourceReturnStmt(stmt, stmtReader));
@@ -144,6 +262,8 @@ export class SourceBody {
             this.printer.writeIndent().write(`let ${local.getName()}`);
             if (local.getType().length > 0) {
                 this.printer.write(`: ${local.getType()}`);
+            } else {
+                this.printer.write(`: any`);
             }
             this.printer.writeLine(';');
             console.log('SourceBody->printLocals:', local);
@@ -168,32 +288,6 @@ export class SourceBody {
                 this.printer.writeIndent().writeLine(stmt.toString());
             }
         }
-    }
-
-    private isInCycle(block: BasicBlock, visitor: Set<BasicBlock>, onPath: Set<BasicBlock>): boolean {
-        let inCycle: boolean = false;
-        visitor.delete(block);
-        if (block.getSuccessors().length > 0) {
-            let next = block.getSuccessors()[0];
-            onPath.add(next);
-            dfs(next);
-        }
-        
-        function dfs(_block: BasicBlock): void {
-            if (_block === block) {
-                inCycle = true;
-                return;
-            }
-            for (const sub of _block.getSuccessors()) {
-                if (!visitor.has(sub) && !onPath.has(sub)) {
-                    onPath.add(sub);
-                    dfs(sub);
-                }
-            }
-        }
-        visitor.add(block);
-
-        return inCycle;
     }
 
     private hasDominated(srcBlock: BasicBlock, dstBlock: BasicBlock): boolean {

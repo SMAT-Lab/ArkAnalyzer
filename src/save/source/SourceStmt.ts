@@ -260,13 +260,23 @@ export class SourceElseStmt extends SourceStmt {
     }
 }
 
-export class SourceGotoStmt extends SourceStmt {
+export class SourceContinueStmt extends SourceStmt {
     constructor(original: ArkGotoStmt, stmtReader: StmtReader) {
         super(original, stmtReader);
     }
     // trans 2 break or continue
     protected transfer2ts(stmtReader: StmtReader): void {
-        this.setText('// goto;');
+        this.setText('continue;');
+    }
+}
+
+export class SourceBreakStmt extends SourceStmt {
+    constructor(original: ArkGotoStmt, stmtReader: StmtReader) {
+        super(original, stmtReader);
+    }
+    // trans 2 break or continue
+    protected transfer2ts(stmtReader: StmtReader): void {
+        this.setText('break;');
     }
 }
 

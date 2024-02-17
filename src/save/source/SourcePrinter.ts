@@ -27,7 +27,7 @@
  *              console.log(temp2);
  *  b) in 解析结果与of相同，与实际语法不同
  *  c) of 不支持Set()
- *  d) continue; break; 不支持
+ *  d) continue; break; ----- fixed
  *   
  * 5. Enum
  *  a) 初始化不支持二元操作和函数调用
