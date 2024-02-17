@@ -1,16 +1,16 @@
-import { Scene } from "../../Scene";
 import { ArkBody } from "../../core/model/ArkBody";
+import { ArkFile } from "../../core/model/ArkFile";
 import { ArkMethod } from "../../core/model/ArkMethod";
 import { ArkCodeBuffer } from "../ArkStream";
 import { SourceBody } from "./SourceBody";
 
 export abstract class SourceBase {
     protected printer: ArkCodeBuffer;
-    protected scene: Scene;
+    protected arkFile: ArkFile;
 
-    public constructor(indent: string, scene: Scene) {
+    public constructor(indent: string, arkFile: ArkFile) {
         this.printer = new ArkCodeBuffer(indent);
-        this.scene = scene;
+        this.arkFile = arkFile;
     }
 
     public abstract dump(): string;
@@ -35,7 +35,7 @@ export abstract class SourceBase {
     }
 
     public printBody(body: ArkBody, isDefault: boolean): void {
-        let srcBody = new SourceBody(this.printer.getIndent(), this.scene, body, isDefault);
+        let srcBody = new SourceBody(this.printer.getIndent(), this.arkFile, body, isDefault);
         this.printer.write(srcBody.dump());
     }
 

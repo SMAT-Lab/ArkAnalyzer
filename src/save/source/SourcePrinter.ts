@@ -14,6 +14,9 @@
  *      source: calculateDistanceFromOrigin(point: {x: number; y: number;})   
  *      parsed: calculateDistanceFromOrigin(point: TypeLiteral)
  *  c) string[] 类型解析为 ArrayType，无法还原
+ *  d) 构造函数Access Modifiers 不支持
+ *     constructor(public make: string, public model: string) {
+ *     }
  * 
  * 3. Fileld:
  *  a) default value
@@ -87,34 +90,34 @@ export class SourcePrinter extends Printer {
     public printTo(streamOut: ArkStream): void {
         // print imports
         for (let info of this.arkFile.getImportInfos()) {
-            this.items.push(new SourceImportInfo('', this.arkFile.getScene(), info));
+            this.items.push(new SourceImportInfo('', this.arkFile, info));
         }
         // print namespace
         for (let ns of this.arkFile.getNamespaces()) {
-            this.items.push(new SourceNamespace('', this.arkFile.getScene(), ns));
+            this.items.push(new SourceNamespace('', this.arkFile, ns));
         }
 
         // print enums
         for (let eNum of this.arkFile.getEnums()) {
-            this.items.push(new SourceEnum('', this.arkFile.getScene(), eNum));
+            this.items.push(new SourceEnum('', this.arkFile, eNum));
         }
 
         // print interface
         for (let intf of this.arkFile.getInterfaces()) {
-            this.items.push(new SourceIntf('', this.arkFile.getScene(), intf));
+            this.items.push(new SourceIntf('', this.arkFile, intf));
         }
         
         // print class 
         for (let cls of this.arkFile.getClasses()) {
             if (cls.isDefaultArkClass()) {
-                this.items.push(new SourceDefaultClass('', this.arkFile.getScene(), cls));
+                this.items.push(new SourceDefaultClass('', this.arkFile, cls));
             } else {
-                this.items.push(new SourceClass('', this.arkFile.getScene(), cls));
+                this.items.push(new SourceClass('', this.arkFile, cls));
             }
         }
         // print export
         for (let info of this.arkFile.getExportInfos()) {
-            this.items.push(new SourceExportInfo('', this.arkFile.getScene(), info));
+            this.items.push(new SourceExportInfo('', this.arkFile, info));
         }
 
         this.items.sort((a, b) => a.getLine() - b.getLine());

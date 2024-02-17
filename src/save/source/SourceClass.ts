@@ -1,13 +1,13 @@
-import { Scene } from "../../Scene";
 import { ArkClass } from "../../core/model/ArkClass";
+import { ArkFile } from "../../core/model/ArkFile";
 import { SourceBase } from "./SourceBase";
 
 
 export class SourceClass extends SourceBase{
     cls: ArkClass;
 
-    public constructor(indent: string, scene: Scene, cls: ArkClass) {
-        super(indent, scene);
+    public constructor(indent: string, arkFile: ArkFile, cls: ArkClass) {
+        super(indent, arkFile);
         this.cls = cls;
     }
 
@@ -78,8 +78,8 @@ export class SourceClass extends SourceBase{
 }
 
 export class SourceDefaultClass extends SourceClass {
-    public constructor(indent: string, scene: Scene, cls: ArkClass) {
-        super(indent, scene, cls);
+    public constructor(indent: string, arkFile: ArkFile, cls: ArkClass) {
+        super(indent, arkFile, cls);
     }
 
     public dump(): string {

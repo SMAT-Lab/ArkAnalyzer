@@ -310,7 +310,7 @@ export class SourceSwitchStmt extends SourceStmt {
     }
 
     protected transfer2ts(stmtReader: StmtReader): void {
-        this.setText(`'switch (${(this.original as ArkSwitchStmt).getKey()}) {`);
+        this.setText(`switch (${(this.original as ArkSwitchStmt).getKey()}) {`);
     }
 }
 
@@ -357,8 +357,8 @@ class SourceBinopExpr {
         let operator: string = this.binopExpr.getOperator();
 
         if (op1 instanceof Constant) {
-            if (op1.getType() == 'string') {
-                outStr = `${op1.getValue()}`;
+            if (op1.getType() == 'string' && !op1.getValue().startsWith('\'')) {
+                outStr = `'${op1.getValue()}'`;
             } else {
                 outStr = op1.getValue();
             }
@@ -367,7 +367,7 @@ class SourceBinopExpr {
         }
         outStr += ' ' + operator + ' ';
         if (op2 instanceof Constant) {
-            if (op2.getType() == 'string') {
+            if (op2.getType() == 'string' && !op2.getValue().startsWith('\'')) {
                 outStr += `'${op2.getValue()}'`;
             } else {
                 outStr += op2.getValue();

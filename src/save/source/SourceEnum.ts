@@ -1,12 +1,12 @@
-import { Scene } from "../../Scene";
 import { ArkEnum } from "../../core/model/ArkEnum";
+import { ArkFile } from "../../core/model/ArkFile";
 import { SourceBase } from "./SourceBase";
 
 export class SourceEnum extends SourceBase{
     eNum: ArkEnum;
 
-    public constructor(indent: string, scene: Scene, eNum: ArkEnum) {
-        super(indent, scene);
+    public constructor(indent: string, arkFile: ArkFile, eNum: ArkEnum) {
+        super(indent, arkFile);
         this.eNum = eNum;
     }
 

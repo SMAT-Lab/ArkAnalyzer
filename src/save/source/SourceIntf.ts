@@ -1,5 +1,5 @@
-import { Scene } from "../../Scene";
 import { InterfaceProperty } from "../../core/common/InterfaceInfoBuilder";
+import { ArkFile } from "../../core/model/ArkFile";
 import { ArkInterface } from "../../core/model/ArkInterface";
 import { ArkMethod } from "../../core/model/ArkMethod";
 import { SourceBase } from "./SourceBase";
@@ -8,8 +8,8 @@ export class SourceIntf extends SourceBase{
     
     intf: ArkInterface;
 
-    public constructor(indent: string, scene: Scene, intf: ArkInterface) {
-        super(indent, scene);
+    public constructor(indent: string, arkFile: ArkFile, intf: ArkInterface) {
+        super(indent, arkFile);
         this.intf = intf;
     }
 

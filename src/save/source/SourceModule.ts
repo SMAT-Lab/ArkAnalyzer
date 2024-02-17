@@ -1,13 +1,13 @@
-import { Scene } from "../../Scene";
 import { ExportInfo } from "../../core/common/ExportBuilder";
 import { ImportInfo } from "../../core/common/ImportBuilder";
+import { ArkFile } from "../../core/model/ArkFile";
 import { SourceBase } from "./SourceBase";
 
 export class SourceExportInfo extends SourceBase{
     info: ExportInfo;
 
-    public constructor(indent: string, scene: Scene, info: ExportInfo) {
-        super(indent, scene);
+    public constructor(indent: string, arkFile: ArkFile, info: ExportInfo) {
+        super(indent, arkFile);
         this.info = info;
     }
 
@@ -49,8 +49,8 @@ export class SourceExportInfo extends SourceBase{
 export class SourceImportInfo extends SourceBase{
     info: ImportInfo;
 
-    public constructor(indent: string, scene: Scene, info: ImportInfo) {
-        super(indent, scene);
+    public constructor(indent: string, arkFile: ArkFile, info: ImportInfo) {
+        super(indent, arkFile);
         this.info = info;
     }
 

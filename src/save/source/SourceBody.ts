@@ -1,5 +1,4 @@
 
-import { Scene } from '../../Scene';
 import { ArkInstanceInvokeExpr } from '../../core/base/Expr';
 import { Local } from "../../core/base/Local";
 import { ArkParameterRef } from "../../core/base/Ref";
@@ -8,8 +7,10 @@ import { BasicBlock } from '../../core/graph/BasicBlock';
 import { DominanceFinder } from "../../core/graph/DominanceFinder";
 import { DominanceTree } from "../../core/graph/DominanceTree";
 import { ArkBody } from "../../core/model/ArkBody";
+import { ArkFile } from '../../core/model/ArkFile';
 import { ArkCodeBuffer } from "../ArkStream";
 import { SourceAssignStmt, SourceBreakStmt, SourceCaseStmt, SourceCompoundEndStmt, SourceContinueStmt, SourceElseStmt, SourceForStmt, SourceIfStmt, SourceInvokeStmt, SourceReturnStmt, SourceReturnVoidStmt, SourceSwitchStmt, SourceWhileStmt } from './SourceStmt';
+import { Value } from '../../core/base/Value';
 
 enum BlockType {
     NORMAL,
@@ -27,12 +28,12 @@ export class SourceBody {
     private isDefault: boolean;
     private stmts: Stmt[] = [];
     private dominanceTree: DominanceTree;
-    private scene: Scene;
+    private arkFile: ArkFile;
     private blockTypes: Map<BasicBlock, BlockType>;
     private loopPath: Map<BasicBlock, Set<BasicBlock>>;
     
-    public constructor(indent: string, scene: Scene, arkBody: ArkBody, isDefault: boolean) {
-        this.scene = scene;
+    public constructor(indent: string, arkFile: ArkFile, arkBody: ArkBody, isDefault: boolean) {
+        this.arkFile = arkFile;
         this.arkBody = arkBody;
         this.isDefault = isDefault;
         this.printer = new ArkCodeBuffer(indent);
@@ -137,7 +138,25 @@ export class SourceBody {
 
     private isContinueBB(block: BasicBlock, blockTypes: Map<BasicBlock, BlockType>): boolean {
         let type = blockTypes.get(block.getSuccessors()[0]);
+        let toLoop = false;
         if (type == BlockType.FOR || type == BlockType.WHILE) {
+            toLoop = true;
+        }
+
+        if (!toLoop) {
+            return false;
+        }
+
+        let parentLoop: BasicBlock = block;
+        let minSize: number = this.arkBody.getCfg().getBlocks().size;
+        for (let [key, value] of this.loopPath) {
+            if (value.has(block) && value.size < minSize) {
+                minSize = value.size;
+                parentLoop = key;
+            }
+        }
+
+        if (parentLoop == block.getSuccessors()[0]) {
             return true;
         }
 
@@ -251,6 +270,19 @@ export class SourceBody {
             if (local.getName() == 'this' || local.getName() == 'console') {
                 continue;
             }
+            // skip function 
+            if (this.arkFile.getScene().arkMethodMaps.has(this.arkFile.getArkSignature() + '.' + local.getName())) {
+                continue;
+            }
+            let localType = local.getType();
+            // modify type <basic.ts>.<Person> to Person
+            if (localType.startsWith(`<${this.arkFile.getName()}>`)) {
+                localType = localType.replace(`<${this.arkFile.getName()}>.`, '');
+                localType = localType.substring(1, localType.length - 1);
+            } 
+            if (localType.length == 0) {
+                localType = 'any';
+            }
 
             // not define parameter
             if (local.getDeclaringStmt() instanceof ArkAssignStmt) {
@@ -259,13 +291,7 @@ export class SourceBody {
                     continue;
                 }
             }
-            this.printer.writeIndent().write(`let ${local.getName()}`);
-            if (local.getType().length > 0) {
-                this.printer.write(`: ${local.getType()}`);
-            } else {
-                this.printer.write(`: any`);
-            }
-            this.printer.writeLine(';');
+            this.printer.writeIndent().writeLine(`let ${local.getName()}: ${localType};`);
             console.log('SourceBody->printLocals:', local);
         }
     }

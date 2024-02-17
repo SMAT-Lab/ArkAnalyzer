@@ -1,4 +1,4 @@
-import { Scene } from "../../Scene";
+import { ArkFile } from "../../core/model/ArkFile";
 import { ArkNamespace } from "../../core/model/ArkNamespace";
 import { SourceBase } from "./SourceBase";
 import { SourceClass } from "./SourceClass";
@@ -9,8 +9,8 @@ import { SourceExportInfo } from "./SourceModule";
 export class SourceNamespace extends SourceBase{
     ns: ArkNamespace;
 
-    public constructor(indent: string, scene: Scene, ns: ArkNamespace) {
-        super(indent, scene);
+    public constructor(indent: string, arkFile: ArkFile, ns: ArkNamespace) {
+        super(indent, arkFile);
         this.ns = ns;
     }
 
@@ -26,27 +26,27 @@ export class SourceNamespace extends SourceBase{
 
         // print enums
         for (let eNum of this.ns.getEnums()) {
-            items.push(new SourceEnum(this.printer.getIndent(), this.scene, eNum));
+            items.push(new SourceEnum(this.printer.getIndent(), this.arkFile, eNum));
         }
         
         // print interface
         for (let intf of this.ns.getInterfaces()) {
-            items.push(new SourceIntf(this.printer.getIndent(), this.scene, intf));
+            items.push(new SourceIntf(this.printer.getIndent(), this.arkFile, intf));
         }
         
         // print class 
         for (let cls of this.ns.getClasses()) {
-            items.push(new SourceClass(this.printer.getIndent(), this.scene, cls));
+            items.push(new SourceClass(this.printer.getIndent(), this.arkFile, cls));
         }
 
         // print namespace
         for (let childNs of this.ns.getNamespaces()) {
-            items.push(new SourceNamespace(this.printer.getIndent(), this.scene, childNs));
+            items.push(new SourceNamespace(this.printer.getIndent(), this.arkFile, childNs));
         }
 
         // print exportInfos
         for (let exportInfo of this.ns.getExportInfos()) {
-            items.push(new SourceExportInfo(this.printer.getIndent(), this.scene, exportInfo));
+            items.push(new SourceExportInfo(this.printer.getIndent(), this.arkFile, exportInfo));
         }
         //TODO: fields /methods
         //TODO: sort by lineno
