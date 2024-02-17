@@ -62,7 +62,7 @@ export class SourceNamespace extends SourceBase{
     }
 
     public dumpOriginalCode(): string {
-        throw new Error("Method not implemented.");
+        return this.ns.getCode();
     }
 
 }

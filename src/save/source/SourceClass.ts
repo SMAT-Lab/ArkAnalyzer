@@ -40,7 +40,7 @@ export class SourceClass extends SourceBase{
     }
 
     public dumpOriginalCode(): string {
-        return this.cls.getCode();
+        return this.cls.getCode() + '\n';
     }
 
     protected printMethods(): void {

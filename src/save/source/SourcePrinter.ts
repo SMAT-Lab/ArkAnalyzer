@@ -1,7 +1,7 @@
 /*
  * TODO:
  * 1. Local:
- *  a) type 识别
+ *  a) type 识别 ----- fixed
  *      let sam: <classes.ts>.<Snake>;  
  *      let tom: classes.ts.Animal|<classes.ts>.<Horse>;
  *  b) console 等全局函数被定义为local，如何区分？

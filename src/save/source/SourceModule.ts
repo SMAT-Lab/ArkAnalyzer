@@ -42,7 +42,7 @@ export class SourceExportInfo extends SourceBase{
         return this.printer.toString();
     }
     public dumpOriginalCode(): string {
-        throw new Error("Method not implemented.");
+        return this.dump();
     }
 }
 
@@ -78,6 +78,6 @@ export class SourceImportInfo extends SourceBase{
         return this.printer.toString();
     }
     public dumpOriginalCode(): string {
-        throw new Error("Method not implemented.");
+        return this.dump();
     }
 }

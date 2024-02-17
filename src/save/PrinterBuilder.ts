@@ -39,7 +39,8 @@ export class PrinterBuilder {
         }     
         fs.mkdirSync(dirname(filename as string), {recursive: true});
         let streamOut = new ArkStream(fs.createWriteStream(filename as string));
-        let printer: Printer = new SourcePrinter(arkFile);
+        let printer: SourcePrinter = new SourcePrinter(arkFile);
+        // if arkFile not change printOriginalCode()
         printer.printTo(streamOut);
         streamOut.close();
     }
