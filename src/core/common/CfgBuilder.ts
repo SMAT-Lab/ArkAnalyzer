@@ -217,6 +217,8 @@ export class CfgBuilder {
     anonymousFuncIndex: number;
     anonymousFunctions: CfgBuilder[];
 
+    anonymousClassIndex: number;
+
     private declaringMethod: ArkMethod;
 
     private locals: Set<Local> = new Set();
@@ -250,6 +252,7 @@ export class CfgBuilder {
         this.catches = [];
         this.anonymousFuncIndex = 0;
         this.anonymousFunctions = [];
+        this.anonymousClassIndex = 0;
         this.buildCfgBuilder();
     }
 
@@ -1591,7 +1594,8 @@ export class CfgBuilder {
 
     private shouldBeConstant(node: NodeA): boolean {
         let nodeKind = node.kind;
-        if (nodeKind == 'FirstTemplateToken' || (nodeKind.includes('Literal') && nodeKind != 'ArrayLiteralExpression') ||
+        if (nodeKind == 'FirstTemplateToken' ||
+            (nodeKind.includes('Literal') && nodeKind != 'ArrayLiteralExpression' && nodeKind != 'ObjectLiteralExpression') ||
             nodeKind == 'NullKeyword' || nodeKind == 'TrueKeyword' || nodeKind == 'FalseKeyword') {
             return true;
         }
@@ -1631,6 +1635,33 @@ export class CfgBuilder {
         }
         this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(leftOp, rightOp));
         return leftOp;
+    }
+
+    private objectLiteralNodeToLocal(objectLiteralNode: NodeA): Local {
+        let arrowFuncName = 'AnonymousClass_' + this.name + '_' + this.anonymousClassIndex;
+        this.anonymousClassIndex++;
+
+        let arkFile = this.declaringClass.getDeclaringArkFile();
+        let classSignature = new ClassSignature();
+        classSignature.setArkFile(arkFile.getName());
+        classSignature.setClassType(arrowFuncName);
+
+        let cls: ArkClass = new ArkClass();
+        cls.setSignature(classSignature);
+        // TODO: 解析类体
+        arkFile.addArkClass(cls);
+
+        let newExpr = new ArkNewExpr(classSignature);
+        let tempObj = this.generateAssignStmt(newExpr);
+        let methodSubSignature = new MethodSubSignature();
+        methodSubSignature.setMethodName('constructor');
+        let methodSignature = new MethodSignature();
+        methodSignature.setArkClass(classSignature);
+        methodSignature.setMethodSubSignature(methodSubSignature);
+        let args: Value[] = [];
+        this.current3ACstm.threeAddressStmts.push(new ArkInvokeStmt(new ArkInstanceInvokeExpr(tempObj, methodSignature, args)));
+
+        return tempObj;
     }
 
     private templateSpanNodeToValue(templateSpanExprNode: NodeA): Value {
@@ -1906,6 +1937,9 @@ export class CfgBuilder {
             }
             // temp fix for issues/1
             value = new Constant(cls.getName());
+        }
+        else if (node.kind == "ObjectLiteralExpression") {
+            value = this.objectLiteralNodeToLocal(node);
         }
         else if (node.kind == "NewExpression") {
             let classSignature = new ClassSignature();

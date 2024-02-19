@@ -153,8 +153,10 @@ export class Cfg {
                 // complete signature
                 for (const expr of stmt.getExprs()) {
                     if (expr instanceof ArkNewExpr) {
-                        const typeStr = this.getTypeNewExpr(expr);
-                        expr.setClassSignature(typeStrToClassSignature(typeStr));
+                        if (expr.getClassSignature().getArkFile() == '') {
+                            const typeStr = this.getTypeNewExpr(expr);
+                            expr.setClassSignature(typeStrToClassSignature(typeStr));
+                        }
                     } else if (expr instanceof ArkInstanceInvokeExpr) {
                         // console.log('expr :', expr.toString());
 
