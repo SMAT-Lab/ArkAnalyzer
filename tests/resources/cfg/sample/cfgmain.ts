@@ -62,6 +62,7 @@
 //     return 0;
 // }
 
+
 class Test {
     // public func1(): number {
     //     return 0;

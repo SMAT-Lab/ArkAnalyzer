@@ -9,7 +9,7 @@ import { ArrayType, CallableType, ClassType, StringType, Type, UnionType, Unknow
 import { Value } from '../base/Value';
 import { BasicBlock } from '../graph/BasicBlock';
 import { Cfg } from '../graph/Cfg';
-import { ArkClass, buildDefaultArkClassFromArkFile } from '../model/ArkClass';
+import { ArkClass, buildNormalArkClassFromArkFile } from '../model/ArkClass';
 import { ArkMethod, buildNormalArkMethodFromAstNode } from '../model/ArkMethod';
 import { ClassSignature, FieldSignature, MethodSignature, MethodSubSignature } from '../model/ArkSignature';
 import { ExportInfo } from './ExportBuilder';
@@ -217,6 +217,8 @@ export class CfgBuilder {
     anonymousFuncIndex: number;
     anonymousFunctions: CfgBuilder[];
 
+    anonymousClassIndex: number;
+
     private declaringMethod: ArkMethod;
 
     private locals: Set<Local> = new Set();
@@ -250,6 +252,7 @@ export class CfgBuilder {
         this.catches = [];
         this.anonymousFuncIndex = 0;
         this.anonymousFunctions = [];
+        this.anonymousClassIndex = 0;
         this.buildCfgBuilder();
     }
 
@@ -1591,7 +1594,8 @@ export class CfgBuilder {
 
     private shouldBeConstant(node: NodeA): boolean {
         let nodeKind = node.kind;
-        if (nodeKind == 'FirstTemplateToken' || (nodeKind.includes('Literal') && nodeKind != 'ArrayLiteralExpression') ||
+        if (nodeKind == 'FirstTemplateToken' ||
+            (nodeKind.includes('Literal') && nodeKind != 'ArrayLiteralExpression' && nodeKind != 'ObjectLiteralExpression') ||
             nodeKind == 'NullKeyword' || nodeKind == 'TrueKeyword' || nodeKind == 'FalseKeyword') {
             return true;
         }
@@ -1631,6 +1635,33 @@ export class CfgBuilder {
         }
         this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(leftOp, rightOp));
         return leftOp;
+    }
+
+    private objectLiteralNodeToLocal(objectLiteralNode: NodeA): Local {
+        let anonymousClassName = 'AnonymousClass_' + this.name + '_' + this.anonymousClassIndex;
+        this.anonymousClassIndex++;
+
+        // TODO: 解析类体
+        let arkClass: ArkClass = new ArkClass();
+        arkClass.setName(anonymousClassName);
+        let arkFile = this.declaringClass.getDeclaringArkFile();
+        arkClass.setDeclaringArkFile(arkFile);
+        arkClass.genSignature();
+        arkFile.addArkClass(arkClass);
+        const classSignature = arkClass.getSignature();
+        const classType = new ClassType(classSignature);
+
+        let newExpr = new ArkNewExpr(classType);
+        let tempObj = this.generateAssignStmt(newExpr);
+        let methodSubSignature = new MethodSubSignature();
+        methodSubSignature.setMethodName('constructor');
+        let methodSignature = new MethodSignature();
+        methodSignature.setDeclaringClassSignature(classSignature);
+        methodSignature.setMethodSubSignature(methodSubSignature);
+        let args: Value[] = [];
+        this.current3ACstm.threeAddressStmts.push(new ArkInvokeStmt(new ArkInstanceInvokeExpr(tempObj, methodSignature, args)));
+
+        return tempObj;
     }
 
     private templateSpanNodeToValue(templateSpanExprNode: NodeA): Value {
@@ -1900,7 +1931,7 @@ export class CfgBuilder {
         else if (node.kind == "ClassExpression") {
             let cls: ArkClass = new ArkClass();
             let arkFile = this.declaringClass.getDeclaringArkFile();
-            buildDefaultArkClassFromArkFile(node, arkFile, cls);
+            buildNormalArkClassFromArkFile(node, arkFile, cls);
             arkFile.addArkClass(cls);
             if (cls.isExported()) {
                 let exportClauseName: string = cls.getName();
@@ -1911,6 +1942,9 @@ export class CfgBuilder {
             }
 
             value = new Local(cls.getName(), new ClassType(cls.getSignature()));
+        }
+        else if (node.kind == "ObjectLiteralExpression") {
+            value = this.objectLiteralNodeToLocal(node);
         }
         else if (node.kind == "NewExpression") {
             let classSignature = new ClassSignature();

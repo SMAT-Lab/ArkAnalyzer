@@ -18,10 +18,14 @@
 //     // const b = [1];
 // }
 
-function testUnionType(): void {
-    let a: number | string = 1;
-}
+// function testUnionType(): void {
+//     let a: number | string = 1;
+// }
 
 // function testSysLibClassType(): void {
 //     const a = new Array();
 // }
+
+function testObjectLiteralExpression(): void {
+    let obj = { i: 1 }
+}
