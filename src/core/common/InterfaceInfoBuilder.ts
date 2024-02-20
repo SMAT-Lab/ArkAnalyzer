@@ -277,7 +277,7 @@ export function buildInterfaceInfo4InterfaceNode(node: ts.InterfaceDeclaration):
                 });
             }
             // gen name
-            let name = node.name ? node.name.escapedText.toString() : '';
+            let name = member.name ? (member.name as ts.Identifier).escapedText.toString() : '';
             mtdMember.setName(name);
             // gen return type
             buildReturnType4Method(member).forEach((returnType) => {
