@@ -16,9 +16,10 @@ export class ArkClass {
     private declaringArkNamespace: ArkNamespace;
     private classSignature: ClassSignature;
 
+    /* // Deprecated
     private declaringSignature: string;
     private arkInstancesMap: Map<string, any> = new Map<string, any>();
-    private arkSignature: string;
+    private arkSignature: string; */
 
     private superClassName: string = '';
     //private superClass: ArkClass;
@@ -33,13 +34,14 @@ export class ArkClass {
 
     constructor() { }
 
+    /* // Deprecated
     public addArkInstance(arkSignature: string, arkInstance: any) {
         this.arkInstancesMap.set(arkSignature, arkInstance);
     }
 
     public getArkInstancesMap() {
         return this.arkInstancesMap;
-    }
+    } */
 
     public getName() {
         return this.name;
@@ -105,9 +107,12 @@ export class ArkClass {
             classSig.setDeclaringNamespaceSignature(this.declaringArkNamespace.getNamespaceSignature());
         }
         this.setSignature(classSig);
-        this.genArkSignature();
+
+        /* // Deprecated
+        this.genArkSignature(); */
     }
 
+    /* // Deprecated
     public setDeclaringSignature(declaringSignature: string) {
         this.declaringSignature = declaringSignature;
     }
@@ -122,7 +127,7 @@ export class ArkClass {
 
     public genArkSignature() {
         this.arkSignature = this.declaringSignature + '.' + this.name;
-    }
+    } */
 
     public getSuperClassName() {
         return this.superClassName;
@@ -269,15 +274,17 @@ function buildNormalArkClass(clsNode: NodeA, cls: ArkClass) {
                 if (arkMethodNodeKind.indexOf(cld.kind) > -1) {
                     let mthd: ArkMethod = new ArkMethod();
 
-                    mthd.setDeclaringSignature(cls.getArkSignature());
+                    /* // Deprecated
+                    mthd.setDeclaringSignature(cls.getArkSignature()); */
 
                     buildArkMethodFromArkClass(cld, cls, mthd);
                     cls.addMethod(mthd);
 
+                    /* // Deprecated
                     cls.addArkInstance(mthd.getArkSignature(), mthd);
                     mthd.getArkInstancesMap().forEach((value, key) => {
                         cls.addArkInstance(key, value);
-                    });
+                    }); */
                 }
             }
         }

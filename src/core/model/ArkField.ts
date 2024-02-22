@@ -9,7 +9,7 @@ export class ArkField {
     private code: string = "";
 
     private declaringClass: ArkClass;
-    private declaringInterface: ArkInterface;
+    //private declaringInterface: ArkInterface;
 
     private type: string = "";
     private modifiers: Set<string> = new Set<string>();
@@ -17,11 +17,15 @@ export class ArkField {
     private exclamationToken: boolean = false;
 
     private fieldSignature: FieldSignature;
-    private arkSignature: string;
-    //private initializer 
+
+    /* // Deprecated
+    private arkSignature: string; */
+
+    //private initializer
 
     constructor() { }
 
+    /* // Deprecated
     public getArkSignature() {
         return this.arkSignature;
     }
@@ -32,7 +36,7 @@ export class ArkField {
 
     public genArkSignature() {
         this.arkSignature = this.declaringInterface.getArkSignature() + '.' + this.name;
-    }
+    } */
 
     public getDeclaringClass() {
         return this.declaringClass;
@@ -88,7 +92,8 @@ export class ArkField {
         fieldSig.setFieldName(this.name);
         this.setSignature(fieldSig);
 
-        this.arkSignature = this.declaringClass.getArkSignature() + '.' + this.getName();
+        /* // Deprecated
+        this.arkSignature = this.declaringClass.getArkSignature() + '.' + this.getName(); */
     }
 
     public isStatic(): boolean {

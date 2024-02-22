@@ -66,7 +66,10 @@ export class Scene {
         this.genArkFiles();
 
         //post actions
-        this.collectArkInstances();
+
+        /* // Deprecated
+        this.collectArkInstances(); */
+
         //this.genExtendedClasses();
         this.collectProjectImportInfos();
         //this.typeReference();
@@ -353,6 +356,7 @@ export class Scene {
         this.arkMethodMaps.set(arkSignature, arkInstance);
     }
 
+    /* // Deprecated
     private collectArkInstances() {
         this.arkFiles.forEach((arkFile) => {
             this.addArkInstance(arkFile.getArkSignature(), arkFile);
@@ -373,7 +377,7 @@ export class Scene {
                 }
             });
         });
-    }
+    } */
 
     public getArkInstancesMap() {
         return this.arkInstancesMap;

@@ -37,20 +37,22 @@ export class ArkFile {
 
     private scene: Scene;
 
+    /* // Deprecated
     private arkInstancesMap: Map<string, any> = new Map<string, any>();
-    private arkSignature: string;
+    private arkSignature: string; */
 
     private fileSignature: FileSignature;
 
     constructor() { }
 
+    /* // Deprecated
     public addArkInstance(arkSignature: string, arkInstance: any) {
         this.arkInstancesMap.set(arkSignature, arkInstance);
     }
 
     public getArkInstancesMap() {
         return this.arkInstancesMap;
-    }
+    } */
 
     public setName(name: string) {
         this.name = name;
@@ -208,13 +210,14 @@ export class ArkFile {
         this.exportInfos.push(exportInfo);
     }
 
+    /* // Deprecated
     public getArkSignature() {
         return this.arkSignature;
     }
 
     public setArkSignature(arkSignature: string) {
         this.arkSignature = arkSignature;
-    }
+    } */
 
     public setProjectName(projectName: string) {
         this.projectName = projectName;
@@ -224,13 +227,14 @@ export class ArkFile {
         return this.projectName;
     }
 
+    /* // Deprecated
     public genArkSignature() {
         //let tmpSig = transfer2UnixPath(this.name).replace(/\//g, '.');
         let tmpSig = transfer2UnixPath(this.name);
         tmpSig = tmpSig.replace(/\.d\.ts|\.ts$/, '');
         //tmpSig = tmpSig.replace(/\.ts$/, '');
         this.arkSignature = `<${tmpSig}>`;
-    }
+    } */
 
     public genFileSignature() {
         let fileSignature = new FileSignature();
@@ -251,7 +255,9 @@ export function buildArkFileFromFile(absoluteFilePath: string, projectDir: strin
     arkFile.setName(path.relative(projectDir, absoluteFilePath));
 
 
-    arkFile.genArkSignature();
+    /* // Deprecated
+    arkFile.genArkSignature(); */
+
     arkFile.genFileSignature();
 
     arkFile.setCode(fs.readFileSync(absoluteFilePath, 'utf8'));
@@ -267,14 +273,17 @@ function buildArkFile(arkFile: ArkFile) {
         if (child.kind == 'ModuleDeclaration') {
             let ns: ArkNamespace = new ArkNamespace();
             ns.setDeclaringArkFile(arkFile);
-            ns.setDeclaringSignature(arkFile.getArkSignature());
+            /* // Deprecated
+            ns.setDeclaringSignature(arkFile.getArkSignature()); */
+
             buildArkNamespace(child, arkFile, ns);
             arkFile.addNamespace(ns);
 
+            /* // Deprecated
             arkFile.addArkInstance(ns.getArkSignature(), ns);
             ns.getArkInstancesMap().forEach((value, key) => {
                 arkFile.addArkInstance(key, value);
-            });
+            }); */
 
             if (ns.isExported()) {
                 addExportInfo(ns, arkFile);
@@ -282,14 +291,18 @@ function buildArkFile(arkFile: ArkFile) {
         }
         if (child.kind == 'ClassDeclaration' || child.kind == 'InterfaceDeclaration' || child.kind == 'EnumDeclaration') {
             let cls: ArkClass = new ArkClass();
-            cls.setDeclaringSignature(arkFile.getArkSignature());
+
+            /* // Deprecated
+            cls.setDeclaringSignature(arkFile.getArkSignature()); */
+
             buildNormalArkClassFromArkFile(child, arkFile, cls);
             arkFile.addArkClass(cls);
 
+            /* // Deprecated
             arkFile.addArkInstance(cls.getArkSignature(), cls);
             cls.getArkInstancesMap().forEach((value, key) => {
                 arkFile.addArkInstance(key, value);
-            });
+            }); */
 
             if (cls.isExported()) {
                 addExportInfo(cls, arkFile);
@@ -297,15 +310,19 @@ function buildArkFile(arkFile: ArkFile) {
         }
         if (arkMethodNodeKind.indexOf(child.kind) > -1) {
             let mthd: ArkMethod = new ArkMethod();
-            mthd.setDeclaringSignature(arkFile.getArkSignature());
+
+            /* // Deprecated
+            mthd.setDeclaringSignature(arkFile.getArkSignature()); */
+
             buildArkMethodFromArkClass(child, arkFile.getDefaultClass(), mthd);
             arkFile.getDefaultClass().addMethod(mthd);
             arkFile.addArkMethod(mthd);
 
+            /* // Deprecated
             arkFile.addArkInstance(mthd.getArkSignature(), mthd);
             mthd.getArkInstancesMap().forEach((value, key) => {
                 arkFile.addArkInstance(key, value);
-            });
+            }); */
 
             if (mthd.isExported()) {
                 addExportInfo(mthd, arkFile);
@@ -317,20 +334,28 @@ function buildArkFile(arkFile: ArkFile) {
                 element.setDeclaringFilePath(arkFile.getFilePath());
                 element.setProjectPath(arkFile.getProjectDir());
                 element.setDeclaringArkFile(arkFile);
-                element.setArkSignature(arkFile.getArkSignature());
+
+                /* // Deprecated
+                element.setArkSignature(arkFile.getArkSignature()); */
+
                 element.setImportFromSignature();
                 arkFile.addImportInfos(element);
 
-                arkFile.addArkInstance(element.getArkSignature(), element);
+                /* // Deprecated
+                arkFile.addArkInstance(element.getArkSignature(), element); */
             });
         }
         if (child.kind == 'ExportDeclaration' || child.kind == 'ExportAssignment') {
             //this.processExportDeclarationNode(child);
             child.exportNodeInfo?.forEach((element) => {
-                element.setArkSignature(arkFile.getArkSignature());
+
+                /* // Deprecated
+                element.setArkSignature(arkFile.getArkSignature()); */
+
                 arkFile.addExportInfos(element);
 
-                arkFile.addArkInstance(element.getArkSignature(), element);
+                /* // Deprecated
+                arkFile.addArkInstance(element.getArkSignature(), element); */
             });
         }
         if (child.kind == 'VariableStatement' || child.kind == 'FirstStatement') {
@@ -347,7 +372,10 @@ function buildArkFile(arkFile: ArkFile) {
 
 function genDefaultArkClass(arkFile: ArkFile) {
     let defaultClass = new ArkClass();
-    defaultClass.setDeclaringSignature(arkFile.getArkSignature());
+
+    /* // Deprecated
+    defaultClass.setDeclaringSignature(arkFile.getArkSignature()); */
+
     buildDefaultArkClassFromArkFile(arkFile.getAst().root, arkFile, defaultClass);
     arkFile.setDefaultClass(defaultClass);
     arkFile.addArkClass(defaultClass);
@@ -380,9 +408,14 @@ function processExportValAndFirstNode(node: NodeA, arkFile: ArkFile): void {
     }
     let exportInfo = new ExportInfo();
     exportInfo.build(exportClauseName, exportClauseType);
-    exportInfo.setArkSignature(arkFile.getArkSignature());
+
+    /* // Deprecated
+    exportInfo.setArkSignature(arkFile.getArkSignature()); */
+
     arkFile.addExportInfos(exportInfo);
-    arkFile.addArkInstance(exportInfo.getArkSignature(), exportInfo);
+
+    /* // Deprecated
+    arkFile.addArkInstance(exportInfo.getArkSignature(), exportInfo); */
 }
 
 function addExportInfo(arkInstance: ArkMethod | ArkInterface | ArkClass | ArkNamespace |
