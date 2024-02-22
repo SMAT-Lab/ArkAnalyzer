@@ -1,5 +1,5 @@
 import { NodeA } from "../base/Ast";
-import { BodyBuilder } from "../common/BodyBuilder";
+import { Type, UnknownType } from "../base/Type";
 import { Cfg } from "../graph/Cfg";
 import { ArkBody } from "./ArkBody";
 import { ArkClass } from "./ArkClass";
@@ -16,10 +16,10 @@ export class ArkMethod {
     private declaringArkFile: ArkFile;
     private declaringArkClass: ArkClass;
 
-    private returnType: string[] = [];
-    private parameters: Map<string, string> = new Map();
+    private returnType: Type = UnknownType.getInstance();
+    private parameters: Map<string, Type> = new Map();
     private modifiers: Set<string> = new Set<string>();
-    private typeParameters: string[] = [];
+    private typeParameters: Type[] = [];
 
     private methodSignature: MethodSignature;
     private methodSubSignature: MethodSubSignature;
@@ -102,7 +102,7 @@ export class ArkMethod {
         return this.parameters;
     }
 
-    public addParameter(parameterName: string, parameterType: string) {
+    public addParameter(parameterName: string, parameterType: Type) {
         this.parameters.set(parameterName, parameterType);
     }
 
@@ -110,8 +110,8 @@ export class ArkMethod {
         return this.returnType;
     }
 
-    public addReturnType(type: string) {
-        this.returnType.push(type);
+    public setReturnType(type: Type) {
+        this.returnType = type;
     }
 
     public getSignature() {
@@ -158,7 +158,7 @@ export class ArkMethod {
         return this.typeParameters;
     }
 
-    public addTypeParameter(typeParameter: string) {
+    public addTypeParameter(typeParameter: Type) {
         this.typeParameters.push(typeParameter);
     }
 
@@ -217,9 +217,10 @@ function buildNormalArkMethodFromAstNode(methodNode: NodeA, mtd: ArkMethod) {
     methodNode.methodNodeInfo.parameters.forEach((value, key) => {
         mtd.addParameter(key, value);
     });
-    methodNode.methodNodeInfo.returnType.forEach((type) => {
-        mtd.addReturnType(type);
-    });
+
+    mtd.setReturnType(methodNode.methodNodeInfo.returnType);
+
+
     methodNode.methodNodeInfo.typeParameters.forEach((typeParameter) => {
         mtd.addTypeParameter(typeParameter);
     });

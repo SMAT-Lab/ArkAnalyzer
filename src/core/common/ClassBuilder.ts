@@ -1,12 +1,13 @@
 import * as ts from "typescript";
-import { buildHeritageClauses, buildModifiers, buildTypeParameters, handleQualifiedName, handlePropertyAccessExpression } from "../../utils/builderUtils";
+import { buildHeritageClauses, buildModifiers, buildTypeParameters, handlePropertyAccessExpression, handleQualifiedName } from "../../utils/builderUtils";
+import { Type } from "../base/Type";
 import { ArkField } from "../model/ArkField";
 
 export class ClassInfo {
 
     private modifiers: Set<string> = new Set();
     private className: string = "";
-    private typeParameters: string[] = [];
+    private typeParameters: Type[] = [];
     private heritageClauses: Map<string, string> = new Map();
     private originType: string = "";
 
@@ -14,7 +15,7 @@ export class ClassInfo {
 
     constructor() { }
 
-    public build(modifiers: Set<string>, className: string, typeParameters: string[], heritageClauses: Map<string, string>,
+    public build(modifiers: Set<string>, className: string, typeParameters: Type[], heritageClauses: Map<string, string>,
         members: ArkField[], originType: string) {
         this.modifiers = modifiers;
         this.className = className;
@@ -44,7 +45,7 @@ export class ClassInfo {
         return this.typeParameters;
     }
 
-    public setTypeParameters(typeParameters: string[]) {
+    public setTypeParameters(typeParameters: Type[]) {
         this.typeParameters = typeParameters;
     }
 
@@ -93,7 +94,7 @@ export function buildClassInfo4ClassNode(node: ts.ClassDeclaration | ts.ClassExp
 
     let name: string = node.name ? node.name.escapedText.toString() : '';
 
-    let typeParameters: string[] = [];
+    let typeParameters: Type[] = [];
     if (!ts.isEnumDeclaration(node)) {
         typeParameters = buildTypeParameters(node);
     }

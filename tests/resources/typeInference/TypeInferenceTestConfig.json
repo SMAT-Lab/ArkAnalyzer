@@ -1,0 +1,27 @@
+{
+    "targetProjectName": "TypeInferenceTest",
+    "targetProjectDirectory": "D:\\Codes\\program_analysis\\static_framework\\ArkAnalyzer\\tests\\resources\\typeInference\\sample",    
+    
+    "ohosSdkPath": "",
+    "kitSdkPath": "",
+    "systemSdkPath": "",
+    
+    "otherSdks": [
+        {
+            "name": "moduleA",
+            "path": "D:\\Codes\\program_analysis\\static_framework\\ArkAnalyzer\\tests\\resources\\typeInference\\moduleA"
+        },
+        {
+            "name": "sdk2",
+            "path": ""
+        },
+        {
+            "name": "",
+            "path": "/opt/yy"
+        },
+        {
+            "name": "",
+            "path": ""
+        }
+    ]
+}

@@ -214,7 +214,7 @@ export function typeStrToClassSignature(typrStr: string): ClassSignature {
     classSignature.setDeclaringFileSignature(fileSignature);
     const classType = typrStr.replace(/\\\\/g, '.').split('.');
     classSignature.setClassName(classType[classType.length - 1]);
- 
+
     return classSignature;
 }
 

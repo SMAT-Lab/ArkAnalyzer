@@ -1,6 +1,8 @@
 import * as ts from "typescript";
-import { buildHeritageClauses, buildModifiers, buildParameters, buildReturnType4Method, buildTypeParameters, handleQualifiedName, handlePropertyAccessExpression } from "../../utils/builderUtils";
+import { buildHeritageClauses, buildModifiers, buildParameters, buildReturnType4Method, buildTypeParameters, handleQualifiedName } from "../../utils/builderUtils";
+import { Type, UnknownType } from "../base/Type";
 import { ArkMethod } from "../model/ArkMethod";
+import { TypeInference } from "./TypeInference";
 
 export class InterfaceProperty {
     private propertyName: string;
@@ -123,8 +125,8 @@ function buildInterfaceProperty(member: ts.PropertySignature): InterfaceProperty
 
 export class IndexSig {
     modifiers: Set<string>;
-    parameters: Map<string, string>;
-    type: string[] = [];
+    parameters: Map<string, Type>;
+    type: Type = UnknownType.getInstance();
 
     public getModifiers() {
         return this.modifiers;
@@ -138,7 +140,7 @@ export class IndexSig {
         return this.parameters;
     }
 
-    public setParameters(parameters: Map<string, string>) {
+    public setParameters(parameters: Map<string, Type>) {
         this.parameters = parameters;
     }
 
@@ -146,7 +148,7 @@ export class IndexSig {
         return this.type;
     }
 
-    public setType(type: string[]) {
+    public setType(type: Type) {
         this.type = type;
     }
 
@@ -155,8 +157,8 @@ export class IndexSig {
 
 export class InterfaceMember {
     memberType: string;
-    memberParameters: Map<string, string> | undefined;
-    returnType: string[] | undefined;
+    memberParameters: Map<string, Type> | undefined;
+    returnType: Type | undefined;
     property: InterfaceProperty | undefined;
     method: ArkMethod | undefined;
     index: IndexSig | undefined;
@@ -176,7 +178,7 @@ export class InterfaceMember {
         return this.memberParameters;
     }
 
-    public setMemberParameters(memberParameters: Map<string, string>) {
+    public setMemberParameters(memberParameters: Map<string, Type>) {
         this.memberParameters = memberParameters;
     }
 
@@ -184,7 +186,7 @@ export class InterfaceMember {
         return this.returnType;
     }
 
-    public setReturnType(returnType: string[]) {
+    public setReturnType(returnType: Type) {
         this.returnType = returnType;
     }
 
@@ -228,10 +230,10 @@ export class InterfaceInfo {
     heritageClauses: Map<string, string>;
     //properties: InterfaceProperty[];
     members: InterfaceMember[];
-    typeParameters: string[];
+    typeParameters: Type[];
     constructor(interfaceName: string, modifiers: Set<string>,
         heritageClauses: Map<string, string>, members: InterfaceMember[],
-        typeParameters: string[]) {
+        typeParameters: Type[]) {
         this.interfaceName = interfaceName;
         this.modifiers = modifiers;
         this.heritageClauses = heritageClauses;
@@ -280,9 +282,7 @@ export function buildInterfaceInfo4InterfaceNode(node: ts.InterfaceDeclaration):
             let name = node.name ? node.name.escapedText.toString() : '';
             mtdMember.setName(name);
             // gen return type
-            buildReturnType4Method(member).forEach((returnType) => {
-                mtdMember.addReturnType(returnType);
-            });
+            mtdMember.setReturnType(buildReturnType4Method(member));
             // gen type parameters
             buildTypeParameters(member).forEach((typeParameter) => {
                 mtdMember.addTypeParameter(typeParameter);
@@ -299,9 +299,7 @@ export function buildInterfaceInfo4InterfaceNode(node: ts.InterfaceDeclaration):
             let name: string = "_Constructor";
             constructMember.setName(name);
             // gen return type
-            buildReturnType4Method(member).forEach((returnType) => {
-                constructMember.addReturnType(returnType);
-            });
+            constructMember.setReturnType(buildReturnType4Method(member));
             // gen type parameters
             buildTypeParameters(member).forEach((typeParameter) => {
                 //TODO
@@ -325,7 +323,7 @@ export function buildInterfaceInfo4InterfaceNode(node: ts.InterfaceDeclaration):
         interfaceMembers.push(interfaceMember);
     });
 
-    let typeParameters: string[] = buildTypeParameters(node);
+    let typeParameters: Type[] = buildTypeParameters(node);
     return new InterfaceInfo(name, modifiers, heritageClausesMap, interfaceMembers, typeParameters);
 }
 
@@ -373,5 +371,5 @@ function buildReturnType(node: ts.CallSignatureDeclaration | ts.IndexSignatureDe
             returnType.push(ts.SyntaxKind[node.type.kind]);
         }
     }
-    return returnType;
+    return TypeInference.buildTypeFromStr(returnType[0]);
 }

@@ -1,4 +1,6 @@
-import ts, { isClassDeclaration } from "typescript";
+import ts from "typescript";
+import { Type, UnknownType } from "../core/base/Type";
+import { TypeInference } from "../core/common/TypeInference";
 
 export function handleQualifiedName(node: ts.QualifiedName): string {
     let right = (node.right as ts.Identifier).escapedText.toString();
@@ -76,11 +78,12 @@ export function buildHeritageClauses(node: ts.ClassDeclaration | ts.ClassExpress
 export function buildTypeParameters(node: ts.ClassDeclaration | ts.ClassExpression |
     ts.InterfaceDeclaration | ts.FunctionDeclaration | ts.MethodDeclaration |
     ts.ConstructorDeclaration | ts.ArrowFunction | ts.AccessorDeclaration |
-    ts.FunctionExpression | ts.MethodSignature | ts.ConstructSignatureDeclaration): string[] {
-    let typeParameters: string[] = [];
+    ts.FunctionExpression | ts.MethodSignature | ts.ConstructSignatureDeclaration): Type[] {
+    let typeParameters: Type[] = [];
     node.typeParameters?.forEach((typeParameter) => {
         if (ts.isIdentifier(typeParameter.name)) {
-            typeParameters.push(typeParameter.name.escapedText.toString());
+            let parametersTypeStr = typeParameter.name.escapedText.toString();
+            typeParameters.push(TypeInference.buildTypeFromStr(parametersTypeStr));
         }
         else {
             console.log("Other typeparameter found!!!");
@@ -93,7 +96,7 @@ export function buildParameters(node: ts.FunctionDeclaration | ts.MethodDeclarat
     | ts.ConstructorDeclaration | ts.ArrowFunction | ts.AccessorDeclaration |
     ts.FunctionExpression | ts.CallSignatureDeclaration | ts.MethodSignature |
     ts.ConstructSignatureDeclaration | ts.IndexSignatureDeclaration) {
-    let parameterTypes: Map<string, string> = new Map();
+    let parameterTypes: Map<string, Type> = new Map();
     node.parameters.forEach((parameter) => {
         let parameterName = ts.isIdentifier(parameter.name) ? parameter.name.escapedText.toString() : '';
         if (parameter.questionToken) {
@@ -103,10 +106,12 @@ export function buildParameters(node: ts.FunctionDeclaration | ts.MethodDeclarat
             if (ts.isTypeReferenceNode(parameter.type)) {
                 let referenceNodeName = parameter.type.typeName;
                 if (ts.isQualifiedName(referenceNodeName)) {
-                    parameterTypes.set(parameterName, handleQualifiedName(referenceNodeName as ts.QualifiedName));
+                    let parameterTypeStr = handleQualifiedName(referenceNodeName as ts.QualifiedName);
+                    parameterTypes.set(parameterName, TypeInference.buildTypeFromStr(parameterTypeStr));
                 }
                 else if (ts.isIdentifier(referenceNodeName)) {
-                    parameterTypes.set(parameterName, (referenceNodeName as ts.Identifier).escapedText.toString())
+                    let parameterTypeStr = (referenceNodeName as ts.Identifier).escapedText.toString();
+                    parameterTypes.set(parameterName, TypeInference.buildTypeFromStr(parameterTypeStr))
                 }
             }
             else if (ts.isUnionTypeNode(parameter.type)) {
@@ -127,17 +132,17 @@ export function buildParameters(node: ts.FunctionDeclaration | ts.MethodDeclarat
                         parameterType = parameterType + ts.SyntaxKind[tmpType.kind] + ' | ';
                     }
                 });
-                parameterTypes.set(parameterName, parameterType);
+                parameterTypes.set(parameterName, TypeInference.buildTypeFromStr(parameterType));
             }
             else if (ts.isLiteralTypeNode(parameter.type)) {
-                parameterTypes.set(parameterName, ts.SyntaxKind[parameter.type.literal.kind]);
+                parameterTypes.set(parameterName, TypeInference.buildTypeFromStr(ts.SyntaxKind[parameter.type.literal.kind]));
             }
             else {
-                parameterTypes.set(parameterName, ts.SyntaxKind[parameter.type.kind]);
+                parameterTypes.set(parameterName, TypeInference.buildTypeFromStr(ts.SyntaxKind[parameter.type.kind]));
             }
         }
         else {
-            parameterTypes.set(parameterName, '');
+            parameterTypes.set(parameterName, UnknownType.getInstance());
         }
     });
     return parameterTypes;
@@ -192,5 +197,5 @@ export function buildReturnType4Method(node: ts.FunctionDeclaration | ts.MethodD
             returnType.push(ts.SyntaxKind[node.type.kind]);
         }
     }
-    return returnType;
+    return TypeInference.buildTypeFromStr(returnType[0]);
 }

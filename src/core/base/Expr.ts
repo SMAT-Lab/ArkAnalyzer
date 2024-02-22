@@ -1,10 +1,16 @@
 import { BasicBlock } from "../graph/BasicBlock";
 import { ClassSignature, MethodSignature } from "../model/ArkSignature";
 import { Local } from "./Local";
+import { ArrayType, BooleanType, NumberType, Type, UnknownType } from "./Type";
 import { Value } from "./Value";
 
 export abstract class AbstractExpr implements Value {
     abstract getUses(): Value[];
+
+    abstract getType(): Type;
+    // public getType(): Type {
+    //     return UnknownType.getInstance();
+    // }
 }
 
 export abstract class AbstractInvokeExpr extends AbstractExpr {
@@ -35,6 +41,10 @@ export abstract class AbstractInvokeExpr extends AbstractExpr {
 
     public setArgs(newArgs: Value[]): void {
         this.args = newArgs;
+    }
+
+    public getType(): Type {
+        return this.methodSignature.getType();
     }
 
     public getUses(): Value[] {
@@ -137,16 +147,20 @@ export class ArkNewExpr extends AbstractExpr {
         return uses;
     }
 
+    public getType(): Type {
+        return this.classSignature.getType();
+    }
+
     public toString(): string {
         return 'new ' + this.classSignature;
     }
 }
 
 export class ArkNewArrayExpr extends AbstractExpr {
-    private baseType: string;
+    private baseType: Type;
     private size: Value;
 
-    constructor(baseType: string, size: Value) {
+    constructor(baseType: Type, size: Value) {
         super();
         this.baseType = baseType;
         this.size = size;
@@ -160,11 +174,12 @@ export class ArkNewArrayExpr extends AbstractExpr {
         this.size = newSize;
     }
 
-    public getType(): string {
-        return 'array';
+    public getType(): ArrayType {
+        // TODO: support multi-dimension array
+        return new ArrayType(this.baseType, 1);
     }
 
-    public getBaseType(): string {
+    public getBaseType(): Type {
         return this.baseType;
     }
 
@@ -213,6 +228,11 @@ export class ArkBinopExpr extends AbstractExpr {
         return this.operator;
     }
 
+    // TODO:infer the type
+    public getType(): Type {
+        return UnknownType.getInstance();
+    }
+
     public getUses(): Value[] {
         let uses: Value[] = [];
         uses.push(this.op1);
@@ -256,6 +276,10 @@ export class ArkTypeOfExpr extends AbstractExpr {
         return uses;
     }
 
+    public getType(): Type {
+        return this.op.getType();
+    }
+
     public toString(): string {
         return 'typeof ' + this.op;
     }
@@ -278,6 +302,10 @@ export class ArkInstanceOfExpr extends AbstractExpr {
 
     public setOp(newOp: Value): void {
         this.op = newOp;
+    }
+
+    public getType(): Type {
+        return BooleanType.getInstance();
     }
 
     public getUses(): Value[] {
@@ -308,6 +336,10 @@ export class ArkLengthExpr extends AbstractExpr {
         this.op = newOp;
     }
 
+    public getType(): Type {
+        return NumberType.getInstance();
+    }
+
     public getUses(): Value[] {
         let uses: Value[] = [];
         uses.push(this.op);
@@ -323,9 +355,9 @@ export class ArkLengthExpr extends AbstractExpr {
 // 类型转换
 export class ArkCastExpr extends AbstractExpr {
     private op: Value;
-    private type: string;
+    private type: Type;
 
-    constructor(op: Value, type: string) {
+    constructor(op: Value, type: Type) {
         super();
         this.op = op;
         this.type = type;
@@ -346,6 +378,10 @@ export class ArkCastExpr extends AbstractExpr {
         return uses;
     }
 
+    public getType(): Type {
+        return this.type;
+    }
+
     public toString(): string {
         return '<' + this.type + '>' + this.op;
     }
@@ -355,6 +391,8 @@ export class ArkPhiExpr extends AbstractExpr {
     private args: Local[];
     private blockToArg: Map<BasicBlock, Local>;
     private argToBlock: Map<Local, BasicBlock>;
+
+    // private type:Type;
 
     constructor() {
         super();
@@ -383,6 +421,10 @@ export class ArkPhiExpr extends AbstractExpr {
 
     public setArgToBlock(argToBlock: Map<Local, BasicBlock>): void {
         this.argToBlock = argToBlock;
+    }
+
+    public getType(): Type {
+        return this.args[0].getType();
     }
 
     public toString(): string {
@@ -417,6 +459,11 @@ export class ArkUnopExpr extends AbstractExpr {
         uses.push(...this.op.getUses());
         return uses;
     }
+
+    public getType(): Type {
+        return this.op.getType();
+    }
+
 
     public toString(): string {
         return this.operator + this.op;

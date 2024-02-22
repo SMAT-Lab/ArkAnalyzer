@@ -1,10 +1,10 @@
+import { NodeA } from "../base/Ast";
+import { Type } from "../base/Type";
 import { ArkField } from "./ArkField";
 import { ArkFile } from "./ArkFile";
 import { ArkMethod, arkMethodNodeKind, buildArkMethodFromArkClass } from "./ArkMethod";
 import { ArkNamespace } from "./ArkNamespace";
-import { NodeA } from "../base/Ast";
-import { MethodSubSignature, ClassSignature, methodSubSignatureCompare } from "./ArkSignature";
-import { Property } from "../common/ClassInfoBuilder";
+import { ClassSignature, MethodSubSignature, methodSubSignatureCompare } from "./ArkSignature";
 
 
 export class ArkClass {
@@ -25,7 +25,7 @@ export class ArkClass {
     //private superClass: ArkClass;
     private implementedInterfaceNames: string[] = [];
     private modifiers: Set<string> = new Set<string>();
-    private typeParameters: string[] = [];
+    private typeParameters: Type[] = [];
 
     private defaultMethod: ArkMethod;
 
@@ -175,7 +175,7 @@ export class ArkClass {
         return this.typeParameters;
     }
 
-    public addTypeParameter(typeParameter: string) {
+    public addTypeParameter(typeParameter: Type) {
         this.typeParameters.push(typeParameter);
     }
 

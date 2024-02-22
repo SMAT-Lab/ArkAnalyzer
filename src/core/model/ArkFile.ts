@@ -1,13 +1,11 @@
 import fs from 'fs';
 import path from 'path';
 import { Scene } from '../../Scene';
-import { transfer2UnixPath } from '../../utils/pathTransfer';
 import { ASTree, NodeA } from "../base/Ast";
 import { ExportInfo } from '../common/ExportBuilder';
 import { ImportInfo } from '../common/ImportBuilder';
 import { ArkClass, buildDefaultArkClassFromArkFile, buildNormalArkClassFromArkFile } from "./ArkClass";
 import { ArkEnum } from './ArkEnum';
-import { ArkField } from './ArkField';
 import { ArkInterface } from './ArkInterface';
 import { ArkMethod, arkMethodNodeKind, buildArkMethodFromArkClass } from "./ArkMethod";
 import { ArkNamespace, buildArkNamespace } from "./ArkNamespace";

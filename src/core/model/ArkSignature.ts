@@ -1,5 +1,6 @@
 import path from 'path';
 import { transfer2UnixPath } from '../../utils/pathTransfer';
+import { ClassType, Type, UnknownType } from '../base/Type';
 
 export class FileSignature {
     private projectName: string = "";
@@ -105,6 +106,10 @@ export class ClassSignature {
         this.className = className;
     }
 
+    public getType(): ClassType {
+        return new ClassType(this);
+    }
+
     constructor() { }
 
     public toString(): string {
@@ -146,9 +151,9 @@ export class FieldSignature {
 
 export class MethodSubSignature {
     private methodName: string = '';
-    private parameters: Map<string, string> = new Map();
-    private parameterTypes: Set<string> = new Set<string>();
-    private returnType: string[] = [];
+    private parameters: Map<string, Type> = new Map();
+    private parameterTypes: Set<Type> = new Set<Type>();
+    private returnType: Type = UnknownType.getInstance();
 
     public getMethodName() {
         return this.methodName;
@@ -166,7 +171,7 @@ export class MethodSubSignature {
         return this.parameterTypes;
     }
 
-    public setParameters(parameter: Map<string, string>) {
+    public setParameters(parameter: Map<string, Type>) {
         this.parameters = parameter;
         parameter.forEach((value, key) => {
             this.parameterTypes.add(value);
@@ -177,7 +182,7 @@ export class MethodSubSignature {
         return this.returnType;
     }
 
-    public setReturnType(returnType: string[]) {
+    public setReturnType(returnType: Type) {
         this.returnType = returnType;
     }
 
@@ -211,6 +216,10 @@ export class MethodSignature {
 
     public setMethodSubSignature(methodSubSig: MethodSubSignature) {
         this.methodSubSignature = methodSubSig;
+    }
+
+    public getType(): Type {
+        return this.methodSubSignature.getReturnType();
     }
 
     constructor() { }
@@ -273,7 +282,7 @@ export function methodSignatureCompare(leftSig: MethodSignature, rightSig: Metho
 
 export function methodSubSignatureCompare(leftSig: MethodSubSignature, rightSig: MethodSubSignature): boolean {
     if ((leftSig.getMethodName() == rightSig.getMethodName()) && setCompare(leftSig.getParameterTypes(),
-        rightSig.getParameterTypes()) && arrayCompare(leftSig.getReturnType(), rightSig.getReturnType())) {
+        rightSig.getParameterTypes()) && leftSig.getReturnType() == rightSig.getReturnType()) {
         return true;
     }
     return false;
@@ -306,7 +315,7 @@ function arrayCompare(leftArray: any[], rightArray: any[]) {
     return true;
 }
 
-function setCompare(leftSet: Set<string>, rightSet: Set<string>) {
+function setCompare(leftSet: Set<Type>, rightSet: Set<Type>) {
     const arr1 = Array.from(leftSet);
     const arr2 = Array.from(rightSet);
     return arrayCompare(arr1, arr2);

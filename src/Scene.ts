@@ -1,17 +1,16 @@
 import fs from 'fs';
 import path from 'path';
 
+import { SceneConfig } from '../tests/Config';
 import { AbstractCallGraphAlgorithm } from "./callgraph/AbstractCallGraphAlgorithm";
 import { CallGraph } from "./callgraph/CallGraph";
+import { Type } from './core/base/Type';
 import { ImportInfo, updateSdkConfigPrefix } from './core/common/ImportBuilder';
 import { ArkClass } from "./core/model/ArkClass";
 import { ArkFile, buildArkFileFromFile } from "./core/model/ArkFile";
-import { ArkInterface } from './core/model/ArkInterface';
 import { ArkMethod } from "./core/model/ArkMethod";
 import { ArkNamespace } from "./core/model/ArkNamespace";
 import { ClassSignature, FileSignature, MethodSignature, MethodSubSignature } from "./core/model/ArkSignature";
-import { SceneConfig } from '../tests/Config';
-import { ClassHierarchyAnalysisAlgorithm } from "./callgraph/ClassHierarchyAnalysisAlgorithm";
 
 /**
  * The Scene class includes everything in the analyzed project.
@@ -251,7 +250,7 @@ export class Scene {
         return this.getClassGlobally(fatherName);
     }
 
-    public getMethod(arkFile: string, methodName: string, parameters: Map<string, string>, returnType: string[], arkClassType: string): ArkMethod | null {
+    public getMethod(arkFile: string, methodName: string, parameters: Map<string, Type>, returnType: Type, arkClassType: string): ArkMethod | null {
         const fl = this.arkFiles.find((obj) => {
             return obj.getName() === arkFile;
         })
@@ -282,7 +281,7 @@ export class Scene {
         return [];
     }
 
-    private getMethodSignature(fileName: string, methodName: string, parameters: Map<string, string>, returnType: string[], className: string): MethodSignature {
+    private getMethodSignature(fileName: string, methodName: string, parameters: Map<string, Type>, returnType: Type, className: string): MethodSignature {
         let methodSubSignature = new MethodSubSignature();
         methodSubSignature.setMethodName(methodName);
         methodSubSignature.setParameters(parameters);
@@ -312,11 +311,11 @@ export class Scene {
     }
 
 
-    public makeCallGraphCHA(entryPoints: MethodSignature[]) {
-        this.classHierarchyCallGraph = new ClassHierarchyAnalysisAlgorithm(this);
-        this.classHierarchyCallGraph.loadCallGraph(entryPoints)
-        // this.classHierarchyCallGraph.printDetails()
-    }
+    // public makeCallGraphCHA(entryPoints: MethodSignature[]) {
+    //     this.classHierarchyCallGraph = new ClassHierarchyAnalysisAlgorithm(this);
+    //     this.classHierarchyCallGraph.loadCallGraph(entryPoints)
+    //     // this.classHierarchyCallGraph.printDetails()
+    // }
 
     /**
      * 对每个method方法体内部进行类型推导，将变量类型填入
