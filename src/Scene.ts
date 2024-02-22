@@ -23,20 +23,23 @@ export class Scene {
     realProjectDir: string;
 
     arkFiles: ArkFile[] = [];
-    sdkArkFiles: ArkFile[] = [];
+    //sdkArkFiles: ArkFile[] = [];
+    private targetProjectArkFilesMap: Map<string, ArkFile> = new Map<string, ArkFile>();
+    private sdkArkFilestMap: Map<string, ArkFile> = new Map<string, ArkFile>();
 
     callgraph: CallGraph;
     classHierarchyCallGraph: AbstractCallGraphAlgorithm;
     extendedClasses: Map<string, ArkClass[]> = new Map();
     globalImportInfos: ImportInfo[] = [];
 
+    /* // Deprecated
     arkInstancesMap: Map<string, any> = new Map<string, any>();
 
     arkFileMaps: Map<string, any> = new Map<string, any>();
     arkNamespaceMaps: Map<string, any> = new Map<string, any>();
     arkInterfaceMaps: Map<string, any> = new Map<string, any>();
     arkClassMaps: Map<string, any> = new Map<string, any>();
-    arkMethodMaps: Map<string, any> = new Map<string, any>();
+    arkMethodMaps: Map<string, any> = new Map<string, any>(); */
 
     private ohosSdkPath: string;
     private kitSdkPath: string;
@@ -44,8 +47,8 @@ export class Scene {
 
     private otherSdkMap: Map<string, string>;
 
-    private sdkFiles: string[];
-    private sdkFilesMap: Map<string[], string> = new Map<string[], string>();
+    //private sdkFiles: string[];
+    private sdkFilesProjectMap: Map<string[], string> = new Map<string[], string>();
 
     constructor(sceneConfig: SceneConfig) {
         this.projectName = sceneConfig.getTargetProjectName();
@@ -55,8 +58,8 @@ export class Scene {
         this.ohosSdkPath = sceneConfig.getOhosSdkPath();
         this.kitSdkPath = sceneConfig.getKitSdkPath();
         this.systemSdkPath = sceneConfig.getSystemSdkPath();
-        this.sdkFiles = sceneConfig.getSdkFiles();
-        this.sdkFilesMap = sceneConfig.getSdkFilesMap();
+        //this.sdkFiles = sceneConfig.getSdkFiles();
+        this.sdkFilesProjectMap = sceneConfig.getSdkFilesMap();
 
         this.otherSdkMap = sceneConfig.getOtherSdkMap();
 
@@ -93,7 +96,7 @@ export class Scene {
     }
 
     private genArkFiles() {
-        this.sdkFilesMap.forEach((value, key) => {
+        this.sdkFilesProjectMap.forEach((value, key) => {
             if (key.length != 0) {
                 const sdkProjectName = value;
                 let realSdkProjectDir = "";
@@ -119,7 +122,8 @@ export class Scene {
                     arkFile.setProjectName(sdkProjectName);
                     buildArkFileFromFile(file, realSdkProjectDir, arkFile);
                     arkFile.setScene(this);
-                    this.sdkArkFiles.push(arkFile);
+                    //this.sdkArkFiles.push(arkFile);
+                    this.sdkArkFilestMap.set(arkFile.getFileSignature().toString(), arkFile);
                 });
             }
         });
@@ -131,6 +135,7 @@ export class Scene {
             buildArkFileFromFile(file, this.realProjectDir, arkFile);
             arkFile.setScene(this);
             this.arkFiles.push(arkFile);
+            this.targetProjectArkFilesMap.set(arkFile.getFileSignature().toString(), arkFile);
         });
     }
 
@@ -162,6 +167,14 @@ export class Scene {
 
     public getFiles() {
         return this.arkFiles;
+    }
+
+    public getTargetProjectArkFilesMap() {
+        return this.targetProjectArkFilesMap;
+    }
+
+    public getSdkArkFilestMap() {
+        return this.sdkArkFilestMap;
     }
 
     public getNamespaces(): ArkNamespace[] {
@@ -332,6 +345,7 @@ export class Scene {
         });
     }
 
+    /* // Deprecated
     public addArkInstance(arkSignature: string, arkInstance: any) {
         this.arkInstancesMap.set(arkSignature, arkInstance);
     }
@@ -354,7 +368,7 @@ export class Scene {
 
     public addArkInstance2MethodMap(arkSignature: string, arkInstance: any) {
         this.arkMethodMaps.set(arkSignature, arkInstance);
-    }
+    } */
 
     /* // Deprecated
     private collectArkInstances() {
@@ -379,7 +393,8 @@ export class Scene {
         });
     } */
 
+    /* // Deprecated
     public getArkInstancesMap() {
         return this.arkInstancesMap;
-    }
+    } */
 }

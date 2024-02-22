@@ -194,11 +194,11 @@ export function searchImportMessage(file: ArkFile, className: string, searchCall
                         }
                     }
                     // file不在scene中，视为外部库
-                    const targetSignature = importInfo.getTargetArkSignature();
+                    /* const targetSignature = importInfo.getTargetArkSignature();
                     const apiMap = scene.arkClassMaps;
                     if (apiMap != undefined && apiMap.get(targetSignature) != undefined) {
                         return apiMap.get(targetSignature);
-                    }
+                    } */
                 }
             }
         }

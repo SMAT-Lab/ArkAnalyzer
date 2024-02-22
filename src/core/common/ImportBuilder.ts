@@ -16,10 +16,16 @@ export class ImportInfo {
     private importFrom: string;
     private nameBeforeAs: string | undefined;
     private clauseType: string = "";
-    private declaringSignature: string;
+
+    /* // Deprecated
+    private declaringSignature: string; */
+    
     private declaringArkFile: ArkFile;
+    
+    /* // Deprecated
     private arkSignature: string;
-    private targetArkSignature: string;
+    private targetArkSignature: string; */
+    
     private importFromSignature2Str: string = "";
     private declaringFilePath: string;
     private projectPath: string;
@@ -86,12 +92,14 @@ export class ImportInfo {
         //TODO
     }
 
+    /* // Deprecated
     public setArkSignature(declaringSignature: string) {
         this.declaringSignature = declaringSignature;
         this.arkSignature = declaringSignature + '.' + this.importClauseName;
         this.genTargetArkSignature();
-    }
+    } */
 
+    /* // Deprecated
     public genTargetArkSignature() {
         let tmpSig: string;
 
@@ -163,8 +171,9 @@ export class ImportInfo {
 
         //third part npm package
         //TODO
-    }
+    } */
 
+    /* // Deprecated
     public getArkSignature() {
         return this.arkSignature;
     }
@@ -175,7 +184,7 @@ export class ImportInfo {
 
     public setTargetArkSignature(targetArkSignature: string) {
         this.targetArkSignature = targetArkSignature;
-    }
+    } */
 
     public getImportClauseName() {
         return this.importClauseName;
