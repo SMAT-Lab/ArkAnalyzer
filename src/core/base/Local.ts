@@ -11,9 +11,9 @@ export class Local implements Value {
     private declaringStmt: Stmt | null;
     private usedStmts: Stmt[];
 
-    constructor(name: string) {
+    constructor(name: string, type: Type = UnknownType.getInstance()) {
         this.name = name;
-        this.type = UnknownType.getInstance();
+        this.type = type;
 
         this.originalValue = null;
         this.declaringStmt = null;
@@ -36,7 +36,7 @@ export class Local implements Value {
     public setType(newType: Type): void {
         this.type = newType;
     }
-    
+
     public getOriginalValue(): Value | null {
         return this.originalValue;
     }

@@ -8,8 +8,8 @@
     
     "otherSdks": [
         {
-            "name": "moduleA",
-            "path": "D:\\Codes\\program_analysis\\static_framework\\ArkAnalyzer\\tests\\resources\\typeInference\\moduleA"
+            "name": "",
+            "path": ""
         },
         {
             "name": "sdk2",

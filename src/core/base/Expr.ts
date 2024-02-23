@@ -1,16 +1,13 @@
 import { BasicBlock } from "../graph/BasicBlock";
-import { ClassSignature, MethodSignature } from "../model/ArkSignature";
+import { MethodSignature } from "../model/ArkSignature";
 import { Local } from "./Local";
-import { ArrayType, BooleanType, NumberType, Type, UnknownType } from "./Type";
+import { ArrayType, BooleanType, ClassType, NumberType, Type, UnknownType } from "./Type";
 import { Value } from "./Value";
 
 export abstract class AbstractExpr implements Value {
     abstract getUses(): Value[];
 
     abstract getType(): Type;
-    // public getType(): Type {
-    //     return UnknownType.getInstance();
-    // }
 }
 
 export abstract class AbstractInvokeExpr extends AbstractExpr {
@@ -127,19 +124,11 @@ export class ArkStaticInvokeExpr extends AbstractInvokeExpr {
 
 
 export class ArkNewExpr extends AbstractExpr {
-    private classSignature: ClassSignature;
+    private classType: ClassType;
 
-    constructor(classSignature: ClassSignature) {
+    constructor(classType: ClassType) {
         super();
-        this.classSignature = classSignature;
-    }
-
-    public getClassSignature(): ClassSignature {
-        return this.classSignature;
-    }
-
-    public setClassSignature(newClassSignature: ClassSignature): void {
-        this.classSignature = newClassSignature;
+        this.classType = classType;
     }
 
     public getUses(): Value[] {
@@ -148,11 +137,11 @@ export class ArkNewExpr extends AbstractExpr {
     }
 
     public getType(): Type {
-        return this.classSignature.getType();
+        return this.classType;
     }
 
     public toString(): string {
-        return 'new ' + this.classSignature;
+        return 'new ' + this.classType;
     }
 }
 

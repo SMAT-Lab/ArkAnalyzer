@@ -1,8 +1,11 @@
+import { FieldSignature } from "../model/ArkSignature";
 import { Local } from "./Local";
+import { ClassType, Type } from "./Type";
 import { Value } from "./Value";
 
 export abstract class AbstractRef implements Value {
     abstract getUses(): Value[];
+    abstract getType(): Type;
 }
 
 export class ArkArrayRef extends AbstractRef {
@@ -31,6 +34,10 @@ export class ArkArrayRef extends AbstractRef {
         this.index = newIndex;
     }
 
+    public getType(): Type {
+        return this.base.getType();
+    }
+
     public getUses(): Value[] {
         let uses: Value[] = [];
         uses.push(this.base);
@@ -46,28 +53,31 @@ export class ArkArrayRef extends AbstractRef {
 }
 
 export abstract class AbstractFieldRef extends AbstractRef {
-    private fieldName: string;
+    private fieldSignature: FieldSignature;
 
-    constructor(fieldName: string) {
+    constructor(fieldSignature: FieldSignature) {
         super();
-        this.fieldName = fieldName;
+        this.fieldSignature = fieldSignature;
     }
 
     public getFieldName(): string {
-        return this.fieldName;
+        return this.fieldSignature.getFieldName();
     }
 
-    public getFieldSignature(): string {
-        //TODO: add signature generation here.
-        return "";
+    public getFieldSignature(): FieldSignature {
+        return this.fieldSignature;
+    }
+
+    public getType(): Type {
+        return this.fieldSignature.getType();
     }
 }
 
 export class ArkInstanceFieldRef extends AbstractFieldRef {
     private base: Local;       // which obj this field belong to
 
-    constructor(base: Local, fieldName: string) {
-        super(fieldName);
+    constructor(base: Local, fieldSignature: FieldSignature) {
+        super(fieldSignature);
         this.base = base;
     }
 
@@ -87,13 +97,13 @@ export class ArkInstanceFieldRef extends AbstractFieldRef {
     }
 
     public toString(): string {
-        return this.base.toString() + '.' + this.getFieldName();
+        return this.base.toString() + '.' + this.getFieldSignature();
     }
 }
 
 export class ArkStaticFieldRef extends AbstractFieldRef {
-    constructor(fieldName: string) {
-        super(fieldName);
+    constructor(fieldSignature: FieldSignature) {
+        super(fieldSignature);
     }
 
     public getUses(): Value[] {
@@ -102,15 +112,15 @@ export class ArkStaticFieldRef extends AbstractFieldRef {
     }
 
     public toString(): string {
-        return this.getFieldName();
+        return this.getFieldSignature().toString();
     }
 }
 
 export class ArkParameterRef extends AbstractRef {
     private index: number;
-    private paramType: string;
+    private paramType: Type;
 
-    constructor(index: number, paramType: string) {
+    constructor(index: number, paramType: Type) {
         super();
         this.index = index;
         this.paramType = paramType;
@@ -120,7 +130,7 @@ export class ArkParameterRef extends AbstractRef {
         return this.index;
     }
 
-    public getType(): string {
+    public getType(): Type {
         return this.paramType;
     }
 
@@ -136,14 +146,14 @@ export class ArkParameterRef extends AbstractRef {
 
 
 export class ArkThisRef extends AbstractRef {
-    private type: string;
+    private type: ClassType;
 
-    constructor(type: string) {
+    constructor(type: ClassType) {
         super();
         this.type = type;
     }
 
-    public getType(): string {
+    public getType(): Type {
         return this.type;
     }
 
@@ -158,14 +168,14 @@ export class ArkThisRef extends AbstractRef {
 }
 
 export class ArkCaughtExceptionRef extends AbstractRef {
-    private type: string;
+    private type: Type;
 
-    constructor(type: string) {
+    constructor(type: Type) {
         super();
         this.type = type;
     }
 
-    public getType(): string {
+    public getType(): Type {
         return this.type;
     }
 
@@ -178,49 +188,3 @@ export class ArkCaughtExceptionRef extends AbstractRef {
         return 'caughtexception: ' + this.type;
     }
 }
-
-// // for class expression assignment
-// export class ArkClassRef extends AbstractRef {
-//     private classSignature: ClassSignature;
-
-//     constructor(classSignature: ClassSignature) {
-//         super();
-//         this.classSignature = classSignature;
-//     }
-
-//     public getClassSignature(): ClassSignature {
-//         return this.classSignature;
-//     }
-
-//     public getUses(): Value[] {
-//         let uses: Value[] = [];
-//         return uses;
-//     }
-
-//     public toString(): string {
-//         return this.classSignature.toString();
-//     }
-// }
-
-// for method expression assignment
-// export class ArkMethodRef extends AbstractRef {
-//     private methodSignature: MethodSignature;
-
-//     constructor(methodSignature: MethodSignature) {
-//         super();
-//         this.methodSignature = methodSignature;
-//     }
-
-//     public getMethodSignature(): MethodSignature {
-//         return this.methodSignature;
-//     }
-
-//     public getUses(): Value[] {
-//         let uses: Value[] = [];
-//         return uses;
-//     }
-
-//     public toString(): string {
-//         return this.methodSignature.toString();
-//     }
-// }

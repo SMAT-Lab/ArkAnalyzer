@@ -321,20 +321,20 @@ export class Scene {
      * 对每个method方法体内部进行类型推导，将变量类型填入
      * @private
      */
-    private typeReference() {
-        for (let arkFile of this.arkFiles) {
-            console.log('=== file:', arkFile.getFilePath());
-            for (let arkClass of arkFile.getClasses()) {
-                console.log('== class:', arkClass.getName());
-                for (let arkMethod of arkClass.getMethods()) {
-                    console.log('= method:', arkMethod.getName());
-                    // console.log(arkMethod.getArkSignature())
-                    arkMethod.getBody().getCfg().typeReference()
-                    // console.log(arkMethod.getBody().getLocals())
-                }
-            }
-        }
-    }
+    // private typeReference() {
+    //     for (let arkFile of this.arkFiles) {
+    //         console.log('=== file:', arkFile.getFilePath());
+    //         for (let arkClass of arkFile.getClasses()) {
+    //             console.log('== class:', arkClass.getName());
+    //             for (let arkMethod of arkClass.getMethods()) {
+    //                 console.log('= method:', arkMethod.getName());
+    //                 // console.log(arkMethod.getArkSignature())
+    //                 arkMethod.getBody().getCfg().typeReference()
+    //                 // console.log(arkMethod.getBody().getLocals())
+    //             }
+    //         }
+    //     }
+    // }
 
     private collectProjectImportInfos() {
         this.arkFiles.forEach((arkFile) => {

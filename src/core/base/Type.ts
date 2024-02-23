@@ -1,8 +1,6 @@
-import { ClassSignature } from "../model/ArkSignature";
+import { ClassSignature, MethodSignature } from "../model/ArkSignature";
 
-export abstract class Type { 
-    public i:number;
-}
+export abstract class Type { }
 
 
 /** any type */
@@ -190,29 +188,19 @@ export class NeverType extends Type {
 
 /** callable type */
 export class CallableType extends Type {
-    private parametersTypes: Type[];
-    private returnType: Type;
+    private methodSignature: MethodSignature;
 
-    constructor(parametersTypes: Type[], returnType: Type) {
+    constructor(methodSignature: MethodSignature) {
         super();
-        this.parametersTypes = [...parametersTypes];
-        this.returnType = returnType;
+        this.methodSignature = methodSignature;
     }
 
-    public getParameterTypes(): Type[] {
-        return this.parametersTypes;
-    }
-
-    public getReturnType(): Type {
-        return this.returnType;
+    public getMethodSignature(): MethodSignature {
+        return this.methodSignature;
     }
 
     public toString(): string {
-        const strs = [];
-        strs.push('(');
-        strs.push(this.parametersTypes.join());
-        strs.push(')');
-        return strs.join('');
+        return this.methodSignature.toString();
     }
 }
 
@@ -228,6 +216,10 @@ export class ClassType extends Type {
     public getClassSignature(): ClassSignature {
         return this.classSignature;
     }
+
+    public toString(): string {
+        return this.classSignature.toString();
+    }
 }
 
 export class ArrayType extends Type {
@@ -239,8 +231,31 @@ export class ArrayType extends Type {
         this.baseType = baseType;
         this.dimension = dimension;
     }
-    
 }
+
+export class AliasType extends Type {
+    private originalType: Type;
+    constructor(originalType: Type) {
+        super();
+        this.originalType = originalType;
+    }
+
+    public getOriginalType(): Type {
+        return this.originalType;
+    }
+
+    public toString(): string {
+        return 'alias: ' + this.originalType;
+    }
+}
+
+export class ClassAliasType extends AliasType {
+    constructor(classType: ClassType) {
+        super(classType);
+    }
+}
+
+
 
 
 // export class ObjectType extends Type {

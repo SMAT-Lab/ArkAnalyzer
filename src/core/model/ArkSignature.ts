@@ -38,7 +38,7 @@ export class FileSignature {
 
 export class NamespaceSignature {
     private namespaceName: string = "";
-    private declaringFileSignature: FileSignature;
+    private declaringFileSignature: FileSignature = new FileSignature();
     private declaringNamespaceSignature: NamespaceSignature | null = null;
 
     constructor() { }
@@ -78,7 +78,7 @@ export class NamespaceSignature {
 }
 
 export class ClassSignature {
-    private declaringFileSignature: FileSignature;
+    private declaringFileSignature: FileSignature = new FileSignature();
     private declaringNamespaceSignature: NamespaceSignature | null = null;
     private className: string = "";
 
@@ -123,8 +123,9 @@ export class ClassSignature {
 }
 
 export class FieldSignature {
-    private declaringClassSignature: ClassSignature;
+    private declaringClassSignature: ClassSignature = new ClassSignature();
     private fieldName: string = '';
+    private type: Type = UnknownType.getInstance();
 
     public getDeclaringClassSignature() {
         return this.declaringClassSignature;
@@ -140,6 +141,14 @@ export class FieldSignature {
 
     public setFieldName(fieldName: string) {
         this.fieldName = fieldName;
+    }
+
+    public setType(newType: Type): void {
+        this.type = newType;
+    }
+
+    public getType(): Type {
+        return this.type;
     }
 
     constructor() { }

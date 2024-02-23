@@ -1,5 +1,6 @@
 import { NodeA } from "../base/Ast";
 import { Type, UnknownType } from "../base/Type";
+import { BodyBuilder } from "../common/BodyBuilder";
 import { Cfg } from "../graph/Cfg";
 import { ArkBody } from "./ArkBody";
 import { ArkClass } from "./ArkClass";
@@ -199,11 +200,11 @@ export function buildArkMethodFromArkClass(methodNode: NodeA, declaringClass: Ar
     if (methodNode.kind != "SyntaxList") {
         methodNode = methodNode.children[methodNode.children.length - 1].children[1];
     }
-    //let bodyBuilder = new BodyBuilder(this.methodSignature, methodNode, this);
-    //this.setBody(bodyBuilder.build());
+    let bodyBuilder = new BodyBuilder(mtd.getSignature(), methodNode, mtd);
+    mtd.setBody(bodyBuilder.build());
 }
 
-function buildNormalArkMethodFromAstNode(methodNode: NodeA, mtd: ArkMethod) {
+export function buildNormalArkMethodFromAstNode(methodNode: NodeA, mtd: ArkMethod) {
     mtd.setCode(methodNode.text);
 
     if (!methodNode.methodNodeInfo) {
