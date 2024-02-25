@@ -1,4 +1,5 @@
 import { Scene } from "../src/Scene";
+import { TypeInference } from "../src/core/common/TypeInference";
 import { SceneConfig } from "./Config";
 
 export class TypeInferenceTest {
@@ -13,6 +14,7 @@ export class TypeInferenceTest {
 
     public testLocalTypes() {
         let scene = this.buildScene();
+        const typeInference = new TypeInference();
 
         for (const arkFile of scene.arkFiles) {
             console.log('=============== arkFile:', arkFile.getName(), ' ================');
@@ -21,6 +23,8 @@ export class TypeInferenceTest {
                     if (arkMethod.getName() == '_DEFAULT_ARK_METHOD') {
                         continue;
                     }
+                    const body = arkMethod.getBody();
+                    typeInference.inferTypeInBody(body);
 
                     console.log('-- locals:');
                     for (const local of arkMethod.getBody().getLocals()) {

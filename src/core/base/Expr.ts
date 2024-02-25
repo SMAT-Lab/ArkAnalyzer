@@ -1,7 +1,8 @@
+import { TypeInference } from "../common/TypeInference";
 import { BasicBlock } from "../graph/BasicBlock";
 import { MethodSignature } from "../model/ArkSignature";
 import { Local } from "./Local";
-import { ArrayType, BooleanType, ClassType, NumberType, Type, UnknownType } from "./Type";
+import { ArrayType, BooleanType, ClassType, NumberType, Type } from "./Type";
 import { Value } from "./Value";
 
 export abstract class AbstractExpr implements Value {
@@ -217,9 +218,8 @@ export class ArkBinopExpr extends AbstractExpr {
         return this.operator;
     }
 
-    // TODO:infer the type
     public getType(): Type {
-        return UnknownType.getInstance();
+        return TypeInference.inferTypeOfBinopExpr(this);
     }
 
     public getUses(): Value[] {

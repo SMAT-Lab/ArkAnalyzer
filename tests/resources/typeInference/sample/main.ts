@@ -8,5 +8,8 @@
 // }
 
 function testBasicType(): void {
-    let i: number = 1;
+    let i = 1, j = 2;
+    let k = i >>> j;
+
+
 }
