@@ -241,6 +241,10 @@ export class ClassType extends Type {
         return this.classSignature;
     }
 
+    public setClassSignature(newClassSignature: ClassSignature): void {
+        this.classSignature = newClassSignature;
+    }
+
     public toString(): string {
         return this.classSignature.toString();
     }

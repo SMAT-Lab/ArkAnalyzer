@@ -1,5 +1,6 @@
 import * as ts from "typescript";
-import { buildHeritageClauses, buildModifiers, buildTypeParameters, handleQualifiedName, handlePropertyAccessExpression } from "../../utils/builderUtils";
+import { buildHeritageClauses, buildModifiers, buildTypeParameters, handleQualifiedName } from "../../utils/builderUtils";
+import { Type } from "../base/Type";
 
 export class Property {
     private propertyName: string;
@@ -180,6 +181,6 @@ export function buildClassInfo4ClassNode(node: ts.ClassDeclaration | ts.ClassExp
         }
     });
 
-    let typeParameters: string[] = buildTypeParameters(node);
+    let typeParameters: Type[] = buildTypeParameters(node);
     return new ClassInfo(name, modifiers, heritageClausesMap, properties, typeParameters);
 }

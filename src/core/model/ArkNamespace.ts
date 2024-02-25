@@ -38,8 +38,8 @@ export class ArkNamespace {
 
     public addNamespace(namespace: ArkNamespace) {
         this.classes.push(...namespace.getClasses());
-        this.methods.push(...namespace.getMethods());
-        this.namespaces.push(namespace);
+        // this.methods.push(...namespace.getMethods());
+        // this.namespaces.push(namespace);
     }
 
     public getNamespaces(): ArkNamespace[] {
@@ -169,9 +169,9 @@ export class ArkNamespace {
             }
         }
         this.classes.push(arkClass);
-        arkClass.getMethods().forEach((mtd) => {
-            this.addArkMethod(mtd);
-        });
+        // arkClass.getMethods().forEach((mtd) => {
+        //     this.addArkMethod(mtd);
+        // });
     }
 
     public addArkClass(arkClass: ArkClass) {
@@ -180,9 +180,9 @@ export class ArkNamespace {
         }
         else {
             this.classes.push(arkClass);
-            arkClass.getMethods().forEach((mtd) => {
-                this.addArkMethod(mtd);
-            });
+            // arkClass.getMethods().forEach((mtd) => {
+            //     this.addArkMethod(mtd);
+            // });
         }
     }
 
@@ -310,7 +310,7 @@ function buildNamespaceMembers(nsNode: NodeA, namespace: ArkNamespace) {
             //let defaultClass = this.declaringArkFile.getDefaultClass();
             buildArkMethodFromArkClass(child, namespace.getDefaultClass(), mthd);
             namespace.getDefaultClass().addMethod(mthd);
-            namespace.addArkMethod(mthd);
+            // namespace.addArkMethod(mthd);
 
             /* // Deprecated
             namespace.addArkInstance(mthd.getArkSignature(), mthd);

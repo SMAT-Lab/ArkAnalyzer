@@ -117,9 +117,9 @@ export class ArkFile {
             }
         }
         this.classes.push(arkClass);
-        arkClass.getMethods().forEach((mtd) => {
-            this.addArkMethod(mtd);
-        });
+        // arkClass.getMethods().forEach((mtd) => {
+        //     this.addArkMethod(mtd);
+        // });
     }
 
     public addArkClass(arkClass: ArkClass) {
@@ -128,9 +128,9 @@ export class ArkFile {
         }
         else {
             this.classes.push(arkClass);
-            arkClass.getMethods().forEach((mtd) => {
-                this.addArkMethod(mtd);
-            });
+            // arkClass.getMethods().forEach((mtd) => {
+            //     this.addArkMethod(mtd);
+            // });
         }
     }
 
@@ -161,8 +161,8 @@ export class ArkFile {
     }
 
     public addNamespace(namespace: ArkNamespace) {
-        this.classes.push(...namespace.getClasses());
-        this.methods.push(...namespace.getMethods());
+        // this.classes.push(...namespace.getClasses());
+        // this.methods.push(...namespace.getMethods());
         this.namespaces.push(namespace);
     }
 
@@ -314,7 +314,7 @@ function buildArkFile(arkFile: ArkFile) {
 
             buildArkMethodFromArkClass(child, arkFile.getDefaultClass(), mthd);
             arkFile.getDefaultClass().addMethod(mthd);
-            arkFile.addArkMethod(mthd);
+            // arkFile.addArkMethod(mthd);
 
             /* // Deprecated
             arkFile.addArkInstance(mthd.getArkSignature(), mthd);

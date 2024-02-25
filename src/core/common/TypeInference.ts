@@ -1,22 +1,45 @@
-import { ArkBinopExpr } from "../base/Expr";
+import { ArkBinopExpr, ArkInstanceInvokeExpr, ArkNewExpr, ArkStaticInvokeExpr } from "../base/Expr";
 import { Local } from "../base/Local";
+import { ArkInstanceFieldRef } from "../base/Ref";
 import { ArkAssignStmt, Stmt } from "../base/Stmt";
-import { AnyType, BooleanType, NeverType, NullType, NumberType, StringType, Type, UndefinedType, UnknownType, VoidType } from "../base/Type";
-import { ArkBody } from "../model/ArkBody";
+import { AnyType, BooleanType, ClassType, NeverType, NullType, NumberType, StringType, Type, UndefinedType, UnknownType, VoidType } from "../base/Type";
+import { ArkMethod } from "../model/ArkMethod";
+import { ModelUtils } from "./ModelUtils";
 
 export class TypeInference {
-    public inferTypeInBody(body: ArkBody): void {
-        const cfg = body.getCfg();
+    public inferTypeInMethod(arkMethod: ArkMethod): void {
+        const cfg = arkMethod.getBody().getCfg();
         for (const block of cfg.getBlocks()) {
             for (const stmt of block.getStmts()) {
-                this.completeSignatureInStmt(stmt);
+                this.resolveSymbolStmt(stmt, arkMethod);
                 this.inferTypeInStmt(stmt);
             }
         }
     }
 
-    private completeSignatureInStmt(stmt: Stmt): void {
+    private resolveSymbolStmt(stmt: Stmt, arkMethod: ArkMethod): void {
+        const exprs = stmt.getExprs();
+        for (const expr of exprs) {
+            if (expr instanceof ArkNewExpr) {
+                let classType = expr.getType() as ClassType;
+                const className = classType.getClassSignature().getClassName();
+                const arkClass = ModelUtils.getClassWithName(className, arkMethod);
+                if (arkClass) {
+                    classType.setClassSignature(arkClass.getSignature());
+                }
+            } else if (expr instanceof ArkInstanceInvokeExpr) {
+                 
+            } else if (expr instanceof ArkStaticInvokeExpr) {
+            }
 
+
+        }
+
+        for (const ues of stmt.getUses()) {
+            if(ues instanceof ArkInstanceFieldRef){
+
+            }
+        }
     }
 
     private inferTypeInStmt(stmt: Stmt): void {
