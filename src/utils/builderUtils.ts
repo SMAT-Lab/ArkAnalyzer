@@ -1,6 +1,7 @@
 import ts from "typescript";
-import { Type, UnknownType } from "../core/base/Type";
+import { LiteralType, Type, UnclearType, UnionType, UnknownType } from "../core/base/Type";
 import { TypeInference } from "../core/common/TypeInference";
+import { MethodParameter } from "../core/common/MethodInfoBuilder";
 
 export function handleQualifiedName(node: ts.QualifiedName): string {
     let right = (node.right as ts.Identifier).escapedText.toString();
@@ -83,7 +84,7 @@ export function buildTypeParameters(node: ts.ClassDeclaration | ts.ClassExpressi
     node.typeParameters?.forEach((typeParameter) => {
         if (ts.isIdentifier(typeParameter.name)) {
             let parametersTypeStr = typeParameter.name.escapedText.toString();
-            typeParameters.push(TypeInference.buildTypeFromStr(parametersTypeStr));
+            typeParameters.push(buildTypeFromPreStr(parametersTypeStr));
         }
         else {
             console.log("Other typeparameter found!!!");
@@ -96,13 +97,66 @@ export function buildParameters(node: ts.FunctionDeclaration | ts.MethodDeclarat
     | ts.ConstructorDeclaration | ts.ArrowFunction | ts.AccessorDeclaration |
     ts.FunctionExpression | ts.CallSignatureDeclaration | ts.MethodSignature |
     ts.ConstructSignatureDeclaration | ts.IndexSignatureDeclaration) {
-    let parameterTypes: Map<string, Type> = new Map();
+    let parameters: MethodParameter[] = [];
     node.parameters.forEach((parameter) => {
-        let parameterName = ts.isIdentifier(parameter.name) ? parameter.name.escapedText.toString() : '';
+        let methodParameter = new MethodParameter();
+        if (ts.isIdentifier(parameter.name)) {
+            methodParameter.setName(parameter.name.escapedText.toString());
+        }
+        else {
+            console.log("Parameter name is not identifier, please contact developers to support this!");
+        }
         if (parameter.questionToken) {
-            parameterName = parameterName + '?';
+            methodParameter.setOptional(true);
         }
         if (parameter.type) {
+            if (ts.isTypeReferenceNode(parameter.type)) {
+                let referenceNodeName = parameter.type.typeName;
+                if (ts.isQualifiedName(referenceNodeName)) {
+                    let parameterTypeStr = handleQualifiedName(referenceNodeName as ts.QualifiedName);
+                    let parameterType = new UnclearType(parameterTypeStr);
+                    methodParameter.setType(parameterType);
+                }
+                else if (ts.isIdentifier(referenceNodeName)) {
+                    let parameterTypeStr = (referenceNodeName as ts.Identifier).escapedText.toString();
+                    let parameterType = new UnclearType(parameterTypeStr);
+                    methodParameter.setType(parameterType);
+                }
+            }
+            else if (ts.isUnionTypeNode(parameter.type)) {
+                let unionTypePara: Type[] = [];
+                parameter.type.types.forEach((tmpType) => {
+                    if (ts.isTypeReferenceNode(tmpType)) {
+                        let parameterType = "";
+                        if (ts.isQualifiedName(tmpType.typeName)) {
+                            parameterType = handleQualifiedName(tmpType.typeName);
+                        }
+                        else if (ts.isIdentifier(tmpType.typeName)) {
+                            parameterType = tmpType.typeName.escapedText.toString();
+                        }
+                        unionTypePara.push(new UnclearType(parameterType));
+                    }
+                    else if (ts.isLiteralTypeNode(tmpType)) {
+                        unionTypePara.push(buildTypeFromPreStr(ts.SyntaxKind[tmpType.literal.kind]));
+                    }
+                    else {
+                        unionTypePara.push(buildTypeFromPreStr(ts.SyntaxKind[tmpType.kind]));
+                    }
+                });
+                methodParameter.setType(new UnionType(unionTypePara));
+            }
+            else if (ts.isLiteralTypeNode(parameter.type)) {
+                methodParameter.setType(buildTypeFromPreStr(ts.SyntaxKind[parameter.type.literal.kind]));
+            }
+            else {
+                methodParameter.setType(buildTypeFromPreStr(ts.SyntaxKind[parameter.type.kind]));
+            }
+        }
+        else {
+            methodParameter.setType(UnknownType.getInstance());
+        }
+
+        /* if (parameter.type) {
             if (ts.isTypeReferenceNode(parameter.type)) {
                 let referenceNodeName = parameter.type.typeName;
                 if (ts.isQualifiedName(referenceNodeName)) {
@@ -143,35 +197,59 @@ export function buildParameters(node: ts.FunctionDeclaration | ts.MethodDeclarat
         }
         else {
             parameterTypes.set(parameterName, UnknownType.getInstance());
-        }
+        } */
     });
-    return parameterTypes;
+    return parameters;
 }
 
 export function buildReturnType4Method(node: ts.FunctionDeclaration | ts.MethodDeclaration |
     ts.ConstructorDeclaration | ts.ArrowFunction | ts.AccessorDeclaration |
     ts.FunctionExpression | ts.MethodSignature | ts.ConstructSignatureDeclaration) {
-    let returnType: string[] = [];
     if (node.type) {
-        if (node.type.kind == ts.SyntaxKind.TypeLiteral) {
-            for (let member of (node.type as ts.TypeLiteralNode).members) {
+        if (ts.isTypeLiteralNode(node.type)) {
+            console.log("Return type is TypeLiteral, please contact developers to add support for this!");
+            return new UnknownType();
+            /* for (let member of node.type.members) {
                 let memberType = (member as ts.PropertySignature).type;
                 if (memberType) {
                     returnType.push(ts.SyntaxKind[memberType.kind]);
                 }
-            }
+            } */
         }
         else if (ts.isTypeReferenceNode(node.type)) {
             let referenceNodeName = node.type.typeName;
+            let typeName = "";
+            if (ts.isQualifiedName(referenceNodeName)) {
+                typeName = handleQualifiedName(referenceNodeName);
+            }
+            else if (ts.isIdentifier(referenceNodeName)) {
+                typeName = referenceNodeName.escapedText.toString();
+            }
+            return new UnclearType(typeName);
+            /* let referenceNodeName = node.type.typeName;
             if (ts.isQualifiedName(referenceNodeName)) {
                 returnType.push(handleQualifiedName(referenceNodeName));
             }
             else if (ts.isIdentifier(referenceNodeName)) {
                 returnType.push(referenceNodeName.escapedText.toString());
-            }
+            } */
         }
         else if (ts.isUnionTypeNode(node.type)) {
-            let tmpReturnType = '';
+            let unionType: Type[] = [];
+            node.type.types.forEach((tmpType) => {
+                if (ts.isTypeReferenceNode(tmpType)) {
+                    console.log("Union return type contains TypeReference, please contact developers to add support for this!");
+                    return new UnknownType();
+                }
+                else if (ts.isLiteralTypeNode(tmpType)) {
+                    let literalType: LiteralType = new LiteralType(ts.SyntaxKind[tmpType.literal.kind]);
+                    unionType.push(literalType);
+                }
+                else {
+                    unionType.push(buildTypeFromPreStr(ts.SyntaxKind[tmpType.kind]));
+                }
+            });
+            /* let tmpReturnType = '';
             node.type.types.forEach((tmpType) => {
                 if (ts.isTypeReferenceNode(tmpType)) {
                     if (ts.isQualifiedName(tmpType.typeName)) {
@@ -187,15 +265,41 @@ export function buildReturnType4Method(node: ts.FunctionDeclaration | ts.MethodD
                 else {
                     tmpReturnType = tmpReturnType + ts.SyntaxKind[tmpType.kind] + ' | ';
                 }
-            });
-            returnType.push(tmpReturnType);
+            }); */
+            return unionType;
         }
         else if (ts.isLiteralTypeNode(node.type)) {
-            returnType.push(ts.SyntaxKind[node.type.literal.kind]);
+            let literalType: LiteralType = new LiteralType(ts.SyntaxKind[node.type.literal.kind]);
+            return literalType;
         }
         else {
-            returnType.push(ts.SyntaxKind[node.type.kind]);
+            return buildTypeFromPreStr(ts.SyntaxKind[node.type.kind]);
         }
     }
-    return TypeInference.buildTypeFromStr(returnType[0]);
+    return new UnknownType();
+}
+
+export function buildTypeFromPreStr(preStr: string) {
+    let postStr = "";
+    switch (preStr) {
+        case 'BooleanKeyword':
+            postStr = "boolean";
+        case 'NumberKeyword':
+            postStr = "number";
+        case 'StringKeyword':
+            postStr = "string";
+        case 'UndefinedKeyword':
+            postStr = "undefined";
+        case 'NullKeyword':
+            postStr = "null";
+        case 'AnyKeyword':
+            postStr = "any";
+        case 'VoidKeyword':
+            postStr = "void";
+        case 'NeverKeyword':
+            postStr = "never";
+        default:
+            postStr = preStr;
+    }
+    return TypeInference.buildTypeFromStr(postStr);
 }

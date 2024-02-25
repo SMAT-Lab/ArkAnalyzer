@@ -1,6 +1,6 @@
 import * as ts from "typescript";
-import { buildHeritageClauses, buildModifiers, buildTypeParameters, handlePropertyAccessExpression, handleQualifiedName } from "../../utils/builderUtils";
-import { Type } from "../base/Type";
+import { buildHeritageClauses, buildModifiers, buildTypeFromPreStr, buildTypeParameters, handlePropertyAccessExpression, handleQualifiedName } from "../../utils/builderUtils";
+import { Type, UnclearType } from "../base/Type";
 import { ArkField } from "../model/ArkField";
 
 export class ClassInfo {
@@ -109,8 +109,11 @@ export function buildClassInfo4ClassNode(node: ts.ClassDeclaration | ts.ClassExp
         if (ts.isPropertyDeclaration(member) || ts.isPropertySignature(member)) {
             members.push(buildProperty2ArkField(member));
         }
-        if (ts.isIndexSignatureDeclaration(member)) {
+        else if (ts.isIndexSignatureDeclaration(member)) {
             console.log("TODO: Index signature");
+        }
+        else {
+            console.log("Please contact developers to support new arkfield type!");
         }
     });
 
@@ -167,45 +170,47 @@ function buildProperty2ArkField(member: ts.PropertyDeclaration | ts.PropertySign
     return field;
 }
 
-function buildFieldType(fieldType: ts.TypeNode): string {
-    let type: string = '';
-
+function buildFieldType(fieldType: ts.TypeNode): Type {
     if (ts.isUnionTypeNode(fieldType)) {
+        let unionType: Type[] = [];
         fieldType.types.forEach((tmpType) => {
             if (ts.isTypeReferenceNode(tmpType)) {
+                let tmpTypeName = "";
                 if (ts.isQualifiedName(tmpType.typeName)) {
-                    type = type + handleQualifiedName(tmpType.typeName) + ' | ';
+                    tmpTypeName = handleQualifiedName(tmpType.typeName);
                 }
                 else if (ts.isIdentifier(tmpType.typeName)) {
-                    type = type + tmpType.typeName.escapedText.toString() + ' | ';
+                    tmpTypeName = tmpType.typeName.escapedText.toString();
                 }
                 else {
                     console.log("Other property type found!");
                 }
+                unionType.push(new UnclearType(tmpTypeName));
             }
             else if (ts.isLiteralTypeNode(tmpType)) {
-                type = type + ts.SyntaxKind[tmpType.literal.kind] + ' | ';
+                unionType.push(buildTypeFromPreStr(ts.SyntaxKind[tmpType.literal.kind]));
             }
             else {
-                type = type + ts.SyntaxKind[tmpType.kind] + ' | ';
+                unionType.push(buildTypeFromPreStr(ts.SyntaxKind[tmpType.kind]));
             }
         });
+        return unionType;
     }
     else if (ts.isTypeReferenceNode(fieldType)) {
+        let tmpTypeName = "";
         let referenceNodeName = fieldType.typeName;
         if (ts.isQualifiedName(referenceNodeName)) {
-            type = handleQualifiedName(referenceNodeName);
+            tmpTypeName = handleQualifiedName(referenceNodeName);
         }
         else if (ts.isIdentifier(referenceNodeName)) {
-            type = referenceNodeName.escapedText.toString();
+            tmpTypeName = referenceNodeName.escapedText.toString();
         }
+        return new UnclearType(tmpTypeName);
     }
     else if (ts.isLiteralTypeNode(fieldType)) {
-        type = ts.SyntaxKind[fieldType.literal.kind];
+        return buildTypeFromPreStr(ts.SyntaxKind[fieldType.literal.kind]);
     }
     else {
-        type = ts.SyntaxKind[fieldType.kind];
+        return buildTypeFromPreStr(ts.SyntaxKind[fieldType.kind]);
     }
-
-    return type;
 }

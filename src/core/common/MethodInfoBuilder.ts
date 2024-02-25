@@ -2,14 +2,46 @@ import * as ts from "typescript";
 import { buildModifiers, buildParameters, buildReturnType4Method, buildTypeParameters, handlePropertyAccessExpression } from "../../utils/builderUtils";
 import { Type } from "../base/Type";
 
+export class MethodParameter {
+    private name: string = "";
+    private type: Type;
+    private optional: boolean = false;
+
+    constructor() {}
+
+    public getName() {
+        return this.name;
+    }
+
+    public setName(name: string) {
+        this.name = name;
+    }
+
+    public getType() {
+        return this.type;
+    }
+
+    public setType(type: Type) {
+        this.type = type;
+    }
+
+    public isOptional() {
+        return this.optional;
+    }
+
+    public setOptional(optional: boolean) {
+        this.optional = optional;
+    }
+}
+
 export class MethodInfo {
     name: string;
-    parameters: Map<string, Type>;
+    parameters: MethodParameter[];
     modifiers: Set<string>;
     returnType: Type;
     typeParameters: Type[];
 
-    constructor(name: string, parameters: Map<string, Type>, modifiers: Set<string>, returnType: Type, typeParameters: Type[]) {
+    constructor(name: string, parameters: MethodParameter[], modifiers: Set<string>, returnType: Type, typeParameters: Type[]) {
         this.name = name;
         this.parameters = parameters;
         this.modifiers = modifiers;
@@ -40,6 +72,9 @@ export function buildMethodInfo4MethodNode(node: ts.FunctionDeclaration | ts.Met
             if (ts.isPropertyAccessExpression(node.name.expression)) {
                 name = handlePropertyAccessExpression(node.name.expression);
             }
+        }
+        else {
+            console.log("Other method declaration type found!");
         }
     }
     //TODO, hard code

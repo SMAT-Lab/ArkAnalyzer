@@ -41,6 +41,26 @@ export class UnknownType extends Type {
 
 
 
+/** unclear type */
+export class UnclearType extends Type {
+    private name: string;
+
+    constructor(name: string) {
+        super();
+        this.name = name;
+    }
+
+    public getName() {
+        return this.name;
+    }
+
+    public toString() {
+        return this.name;
+    }
+}
+
+
+
 /** primitive type */
 export abstract class PrimitiveType extends Type {
     private name: string;

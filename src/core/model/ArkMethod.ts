@@ -1,6 +1,7 @@
 import { NodeA } from "../base/Ast";
 import { Type, UnknownType } from "../base/Type";
 import { BodyBuilder } from "../common/BodyBuilder";
+import { MethodParameter } from "../common/MethodInfoBuilder";
 import { Cfg } from "../graph/Cfg";
 import { ArkBody } from "./ArkBody";
 import { ArkClass } from "./ArkClass";
@@ -18,7 +19,7 @@ export class ArkMethod {
     private declaringArkClass: ArkClass;
 
     private returnType: Type = UnknownType.getInstance();
-    private parameters: Map<string, Type> = new Map();
+    private parameters: MethodParameter[] = [];
     private modifiers: Set<string> = new Set<string>();
     private typeParameters: Type[] = [];
 
@@ -103,8 +104,8 @@ export class ArkMethod {
         return this.parameters;
     }
 
-    public addParameter(parameterName: string, parameterType: Type) {
-        this.parameters.set(parameterName, parameterType);
+    public addParameter(methodParameter: MethodParameter) {
+        this.parameters.push(methodParameter);
     }
 
     public getReturnType() {
@@ -215,8 +216,8 @@ export function buildNormalArkMethodFromAstNode(methodNode: NodeA, mtd: ArkMetho
     methodNode.methodNodeInfo.modifiers.forEach((modifier) => {
         mtd.addModifier(modifier);
     });
-    methodNode.methodNodeInfo.parameters.forEach((value, key) => {
-        mtd.addParameter(key, value);
+    methodNode.methodNodeInfo.parameters.forEach(methodParameter => {
+        mtd.addParameter(methodParameter);
     });
 
     mtd.setReturnType(methodNode.methodNodeInfo.returnType);

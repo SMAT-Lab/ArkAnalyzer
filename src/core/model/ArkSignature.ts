@@ -1,6 +1,7 @@
 import path from 'path';
 import { transfer2UnixPath } from '../../utils/pathTransfer';
 import { ClassType, Type, UnknownType } from '../base/Type';
+import { MethodParameter } from '../common/MethodInfoBuilder';
 
 export class FileSignature {
     private projectName: string = "";
@@ -160,7 +161,7 @@ export class FieldSignature {
 
 export class MethodSubSignature {
     private methodName: string = '';
-    private parameters: Map<string, Type> = new Map();
+    private parameters: MethodParameter[] = [];
     private parameterTypes: Set<Type> = new Set<Type>();
     private returnType: Type = UnknownType.getInstance();
 
@@ -180,7 +181,7 @@ export class MethodSubSignature {
         return this.parameterTypes;
     }
 
-    public setParameters(parameter: Map<string, Type>) {
+    public setParameters(parameter: MethodParameter[]) {
         this.parameters = parameter;
         parameter.forEach((value, key) => {
             this.parameterTypes.add(value);
