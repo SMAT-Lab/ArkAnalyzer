@@ -198,6 +198,7 @@ export function buildParameters(node: ts.FunctionDeclaration | ts.MethodDeclarat
         else {
             parameterTypes.set(parameterName, UnknownType.getInstance());
         } */
+        parameters.push(methodParameter);
     });
     return parameters;
 }
