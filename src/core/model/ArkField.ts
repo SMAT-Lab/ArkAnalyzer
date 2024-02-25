@@ -1,3 +1,4 @@
+import { Type } from "../base/Type";
 import { Property } from "../common/ClassInfoBuilder";
 import { InterfaceProperty } from "../common/InterfaceInfoBuilder";
 import { ArkClass } from "./ArkClass";
@@ -11,7 +12,7 @@ export class ArkField {
     private declaringClass: ArkClass;
     //private declaringInterface: ArkInterface;
 
-    private type: string = "";
+    private type: Type;
     private modifiers: Set<string> = new Set<string>();
     private questionToken: boolean = false;
     private exclamationToken: boolean = false;
@@ -66,7 +67,7 @@ export class ArkField {
         return this.type;
     }
 
-    public setType(type: string) {
+    public setType(type: Type) {
         this.type = type;
     }
 

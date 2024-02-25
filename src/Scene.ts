@@ -11,6 +11,7 @@ import { ArkFile, buildArkFileFromFile } from "./core/model/ArkFile";
 import { ArkMethod } from "./core/model/ArkMethod";
 import { ArkNamespace } from "./core/model/ArkNamespace";
 import { ClassSignature, FileSignature, MethodSignature, MethodSubSignature } from "./core/model/ArkSignature";
+import { MethodParameter } from './core/common/MethodInfoBuilder';
 
 /**
  * The Scene class includes everything in the analyzed project.
@@ -250,7 +251,7 @@ export class Scene {
         return this.getClassGlobally(fatherName);
     }
 
-    public getMethod(arkFile: string, methodName: string, parameters: Map<string, Type>, returnType: Type, arkClassType: string): ArkMethod | null {
+    public getMethod(arkFile: string, methodName: string, parameters: MethodParameter[], returnType: Type, arkClassType: string): ArkMethod | null {
         const fl = this.arkFiles.find((obj) => {
             return obj.getName() === arkFile;
         })
@@ -281,7 +282,7 @@ export class Scene {
         return [];
     }
 
-    private getMethodSignature(fileName: string, methodName: string, parameters: Map<string, Type>, returnType: Type, className: string): MethodSignature {
+    private getMethodSignature(fileName: string, methodName: string, parameters: MethodParameter[], returnType: Type, className: string): MethodSignature {
         let methodSubSignature = new MethodSubSignature();
         methodSubSignature.setMethodName(methodName);
         methodSubSignature.setParameters(parameters);
