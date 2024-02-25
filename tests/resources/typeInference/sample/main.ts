@@ -36,12 +36,16 @@
 //     }
 // }
 
-class Data {
-    public static testNewObj(): void {
-        // let d = new Data();
-
-        let foo = new Foo();
-    }
+function testParameterOfMethod(i: number): void {
+    let j = i;
 }
 
-class Foo { }
+// class Data {
+//     public static testNewObj(): void {
+//         // let d = new Data();
+
+//         let foo = new Foo();
+//     }
+// }
+
+// class Foo { }

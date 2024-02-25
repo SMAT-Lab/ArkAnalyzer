@@ -1884,10 +1884,10 @@ export class CfgBuilder {
                     args.push(this.astNodeToValue(argNode));
                 }
             }
-            let arrowArkMethod = new ArkMethod();            
+            let arrowArkMethod = new ArkMethod();
             buildArkMethodFromArkClass(node, this.declaringClass, arrowArkMethod);
             arrowArkMethod.genSignature();
-            this.declaringClass.addMethod(arrowArkMethod);            
+            this.declaringClass.addMethod(arrowArkMethod);
 
             let callableType = new CallableType(arrowArkMethod.getSignature());
             value = new Local(arrowFuncName, callableType);
@@ -2347,10 +2347,10 @@ export class CfgBuilder {
         if (this.blocks.length > 0 && this.blocks[0].stms.length > 0) {       // 临时处理默认函数函数体为空的情况
             this.current3ACstm = this.blocks[0].stms[0];
             let index = 0;
-            for (const [paraName, paraType] of this.declaringMethod.getParameters()) {
-                let parameterRef = new ArkParameterRef(index, paraType);
+            for (const methodParameter of this.declaringMethod.getParameters()) {
+                let parameterRef = new ArkParameterRef(index, methodParameter.getType());
                 let parameterLocal = this.generateAssignStmt(parameterRef);
-                parameterLocal.setName(paraName);
+                parameterLocal.setName(methodParameter.getName());
                 index++;
                 this.paraLocals.push(parameterLocal);
             }
