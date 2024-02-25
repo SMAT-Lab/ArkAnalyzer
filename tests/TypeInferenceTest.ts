@@ -1,5 +1,6 @@
 import { Scene } from "../src/Scene";
 import { TypeInference } from "../src/core/common/TypeInference";
+import { ArkBody } from "../src/core/model/ArkBody";
 import { SceneConfig } from "./Config";
 
 export class TypeInferenceTest {
@@ -26,6 +27,8 @@ export class TypeInferenceTest {
                     const body = arkMethod.getBody();
                     typeInference.inferTypeInBody(body);
 
+                    this.printStmts(body);
+
                     console.log('-- locals:');
                     for (const local of arkMethod.getBody().getLocals()) {
                         console.log('name: ' + local.toString() + ', type: ' + local.getType());
@@ -50,6 +53,14 @@ export class TypeInferenceTest {
                     console.log(arkMethod.getSubSignature().toString());
                 }
             }
+        }
+    }
+
+    private printStmts(body: ArkBody): void {
+        console.log('-- threeAddresStmts:');
+        let cfg = body.getCfg();
+        for (const threeAddresStmt of cfg.getStmts()) {
+            console.log(threeAddresStmt.toString());
         }
     }
 }

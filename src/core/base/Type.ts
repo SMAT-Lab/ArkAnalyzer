@@ -170,6 +170,10 @@ export class UnionType extends Type {
     public getTypes(): Type[] {
         return this.types;
     }
+
+    public toString(): string {
+        return this.types.join('|');
+    }
 }
 
 // types for function
@@ -224,7 +228,7 @@ export class CallableType extends Type {
     }
 }
 
-
+/** type of an object */
 export class ClassType extends Type {
     private classSignature: ClassSignature;
 
@@ -251,6 +255,15 @@ export class ArrayType extends Type {
         this.baseType = baseType;
         this.dimension = dimension;
     }
+
+    public toString(): string {
+        const strs: string[] = [];
+        strs.push(this.baseType.toString());
+        for (let i = 0; i < this.dimension; i++) {
+            strs.push('[]');
+        }
+        return strs.join('')
+    }
 }
 
 export class AliasType extends Type {
@@ -269,79 +282,9 @@ export class AliasType extends Type {
     }
 }
 
+/** type of the type alias for the class*/
 export class ClassAliasType extends AliasType {
     constructor(classType: ClassType) {
         super(classType);
     }
 }
-
-
-
-
-// export class ObjectType extends Type {
-//     private classSignature: ClassSignature;
-
-//     public static readonly FUNCTION_CLASS_SIGNATURE = getFunctionClassSignature();
-//     // private static readonly FUNCTION_TYPE_INSTANCE = new ObjectType(ObjectType.FUNCTION_CLASS_SIGNATURE);
-
-//     public static readonly CLASS_CLASS_SIGNATURE = getFunctionClassSignature();
-//     // private static readonly CLASS_TYPE_INSTANCE = new ObjectType(ObjectType.CLASS_CLASS_SIGNATURE);
-
-//     constructor(classSignature: ClassSignature) {
-//         super();
-//         this.classSignature = classSignature;
-//     }
-
-//     // public static getFunctionTypeInstance(): ObjectType {
-//     //     return ObjectType.FUNCTION_TYPE_INSTANCE;
-//     // }
-
-//     // public static getClassTypeInstance(): ObjectType {
-//     //     return ObjectType.CLASS_TYPE_INSTANCE;
-//     // }
-
-//     public getClassSignature(): ClassSignature {
-//         return this.classSignature;
-//     }
-// }
-
-// export class FunctionType extends ObjectType {
-//     private refMethodSignature: MethodSignature;
-
-//     constructor(refMethodSignature: MethodSignature) {
-//         super(ObjectType.FUNCTION_CLASS_SIGNATURE);
-//         this.refMethodSignature = refMethodSignature;
-//     }
-
-//     public getRefMethodSignature(): MethodSignature {
-//         return this.refMethodSignature;
-//     }
-// }
-
-// export class ClassType extends ObjectType {
-//     private refClassSignature: ClassSignature;
-
-//     constructor(refClassSignature: ClassSignature) {
-//         super(ObjectType.CLASS_CLASS_SIGNATURE);
-//         this.refClassSignature = refClassSignature;
-//     }
-
-//     public getRefMethodSignature(): ClassSignature {
-//         return this.refClassSignature;
-//     }
-// }
-
-// // utils
-// // default signature for class "Function"
-// function getFunctionClassSignature(): ClassSignature {
-//     const functionClassSignature = new ClassSignature();
-//     //functionClassSignature.build('Typescript', 'Function');
-//     return functionClassSignature;
-// }
-
-// // default signature for class "Class"
-// function getClassClassSignature(): ClassSignature {
-//     const functionClassSignature = new ClassSignature();
-//     //functionClassSignature.build('Typescript', 'Class');
-//     return functionClassSignature;
-// }
