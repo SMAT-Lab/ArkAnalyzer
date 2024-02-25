@@ -173,6 +173,10 @@ export class ArkNewArrayExpr extends AbstractExpr {
         return this.baseType;
     }
 
+    public setBaseType(newType: Type): void {
+        this.baseType = newType;
+    }
+
     public getUses(): Value[] {
         let uses: Value[] = [this.size];
         uses.push(...this.size.getUses());

@@ -1,12 +1,11 @@
 import * as fs from 'fs';
-import { buildTypeReferenceString, transformArrayToString } from "../../utils/typeReferenceUtils";
 import { ASTree, NodeA } from '../base/Ast';
 import { Constant } from '../base/Constant';
 import { AbstractInvokeExpr, ArkBinopExpr, ArkCastExpr, ArkConditionExpr, ArkInstanceInvokeExpr, ArkLengthExpr, ArkNewArrayExpr, ArkNewExpr, ArkStaticInvokeExpr, ArkTypeOfExpr, ArkUnopExpr } from '../base/Expr';
 import { Local } from '../base/Local';
 import { AbstractFieldRef, ArkArrayRef, ArkCaughtExceptionRef, ArkInstanceFieldRef, ArkParameterRef, ArkStaticFieldRef, ArkThisRef } from '../base/Ref';
 import { ArkAssignStmt, ArkDeleteStmt, ArkGotoStmt, ArkIfStmt, ArkInvokeStmt, ArkReturnStmt, ArkReturnVoidStmt, ArkSwitchStmt, ArkThrowStmt, Stmt } from '../base/Stmt';
-import { ArrayType, CallableType, ClassType, NumberType, StringType, UnknownType } from '../base/Type';
+import { ArrayType, CallableType, ClassType, StringType, Type, UnionType, UnknownType } from '../base/Type';
 import { Value } from '../base/Value';
 import { BasicBlock } from '../graph/BasicBlock';
 import { Cfg } from '../graph/Cfg';
@@ -1944,10 +1943,10 @@ export class CfgBuilder {
                     size += 1;
                 }
             }
-            // TODO:得到准确类型
-            let newArrayExpr = new ArkNewArrayExpr(NumberType.getInstance(), new Constant(size.toString()));
+
+            let newArrayExpr = new ArkNewArrayExpr(UnknownType.getInstance(), new Constant(size.toString()));
             value = this.generateAssignStmt(newArrayExpr);
-            value.setType('array');
+            const itemTypes = new Set<Type>();
 
             let argsNode = node.children[1];
             let index = 0;
@@ -1955,10 +1954,20 @@ export class CfgBuilder {
                 if (argNode.kind != 'CommaToken') {
                     // TODO:数组条目类型
                     let arrayRef = new ArkArrayRef(value as Local, new Constant(index.toString()));
-                    let arrayItem = new Constant(argNode.text);
+                    const itemTypeStr = this.resolveKeywordType(argNode);
+                    const itemType = TypeInference.buildTypeFromStr(itemTypeStr);
+                    const arrayItem = new Constant(argNode.text, itemType);
+                    itemTypes.add(itemType);
+
                     this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(arrayRef, arrayItem));
                     index++;
                 }
+            }
+
+            if (itemTypes.size == 1) {
+                newArrayExpr.setBaseType(itemTypes.keys().next().value);
+            } else if (itemTypes.size > 1) {
+                newArrayExpr.setBaseType(new UnionType(Array.from(itemTypes.keys())));
             }
         }
         else if (node.kind == 'PrefixUnaryExpression') {
@@ -2069,8 +2078,7 @@ export class CfgBuilder {
         let leftOpNode = node.children[0];
         let leftOp = this.astNodeToValue(leftOpNode);
 
-        let leftOpType = TypeInference.buildTypeFromStr(this.getTypeNode(node))
-        // console.log(leftOpType)
+        let leftOpType = this.getTypeNode(node);
 
         let rightOpNode = new NodeA(undefined, null, [], 'dummy', -1, 'dummy');
         let rightOp: Value;
@@ -2938,17 +2946,17 @@ export class CfgBuilder {
         return this.locals;
     }
 
-    private getTypeNode(node: NodeA): string {
+    private getTypeNode(node: NodeA): Type {
         for (let child of node.children) {
             let result = this.resolveTypeNode(child)
-            if (result !== null) {
+            if (result !== UnknownType.getInstance()) {
                 return result
             }
         }
-        return ""
+        return UnknownType.getInstance();
     }
 
-    private resolveTypeNode(node: NodeA) {
+    private resolveTypeNode(node: NodeA): Type {
         let typeNode: NodeA
         switch (node.kind) {
             case "BooleanKeyword":
@@ -2956,37 +2964,29 @@ export class CfgBuilder {
             case "StringKeyword":
             case "VoidKeyword":
             case "AnyKeyword":
-                // console.log(this.resolveKeywordType(node))
-                return this.resolveKeywordType(node)
+                return TypeInference.buildTypeFromStr(this.resolveKeywordType(node));
             case "ArrayType":
-                typeNode = node.children[0]
-                let typeKeyword: string
-                if (typeNode.kind == "TypeReference") {
-                    typeKeyword = typeNode.children[0].text
-                } else {
-                    typeKeyword = typeNode.text
-                }
-                return typeKeyword + "[]"
-            case "TypeReference":
-                typeNode = node.children[0]
-                if (typeNode.kind == "Identifier") {
-                    return typeNode.text
-                }
-                return buildTypeReferenceString(typeNode.children)
+                typeNode = node.children[0];
+                const typeStr = typeNode.text;
+                return new ArrayType(TypeInference.buildTypeFromStr(typeStr), 1);
+            // case "TypeReference":
+            //     typeNode = node.children[0]
+            //     if (typeNode.kind == "Identifier") {
+            //         return typeNode.text
+            //     }
+            //     return buildTypeReferenceString(typeNode.children)
             case "UnionType":
-                typeNode = node.children[0]
-                let result: string[] = []
-                for (let singleTypeNode of typeNode.children) {
+                const types: Type[] = [];
+                typeNode = node.children[0];
+                for (const singleTypeNode of typeNode.children) {
                     if (singleTypeNode.kind != "BarToken") {
-                        let singleResult = this.resolveTypeNode(singleTypeNode)
-                        if (singleResult !== null) {
-                            result.push(singleResult)
-                        }
+                        const singleType = this.resolveTypeNode(singleTypeNode)
+                        types.push(singleType);
                     }
                 }
-                return transformArrayToString(result)
+                return new UnionType(types);
         }
-        return null
+        return UnknownType.getInstance();
     }
 
     private resolveKeywordType(node: NodeA): string {
@@ -2996,21 +2996,21 @@ export class CfgBuilder {
             case "BooleanKeyword":
             case "FalseKeyword":
             case "TrueKeyword":
-                return "boolean"
+                return "boolean";
             case "NumberKeyword":
             case "FirstLiteralToken":
-                return "number"
+                return "number";
             case "StringKeyword":
             case "StringLiteral":
-                return "string"
+                return "string";
             case "VoidKeyword":
-                return "void"
+                return "void";
             case "AnyKeyword":
-                return "any"
+                return "any";
             case 'NullKeyword':
-                return 'null'
+                return 'null';
             default:
-                return ""
+                return "";
         }
     }
 }
