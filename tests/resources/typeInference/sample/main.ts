@@ -26,6 +26,22 @@
 //     const a = new Array();
 // }
 
-function testObjectLiteralExpression(): void {
-    let obj = { i: 1 }
+// function testObjectLiteralExpression(): void {
+//     let obj = { i: 1 }
+// }
+
+// function testArrowFunction(): void {
+//     let sum = (x: number, y: number): number => {
+//         return x + y;
+//     }
+// }
+
+class Data {
+    public static testNewObj(): void {
+        // let d = new Data();
+
+        let foo = new Foo();
+    }
 }
+
+class Foo { }

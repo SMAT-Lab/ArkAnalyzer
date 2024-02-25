@@ -24,16 +24,21 @@ export class TypeInferenceTest {
                     if (arkMethod.getName() == '_DEFAULT_ARK_METHOD') {
                         continue;
                     }
+                    console.log('=== arkMethod: ', arkMethod.getName());
+
                     const body = arkMethod.getBody();
-                    typeInference.inferTypeInBody(body);
 
-                    this.printStmts(body);
+                    if (body) {
+                        typeInference.inferTypeInMethod(arkMethod);
 
-                    console.log('-- locals:');
-                    for (const local of arkMethod.getBody().getLocals()) {
-                        console.log('name: ' + local.toString() + ', type: ' + local.getType());
+                        this.printStmts(body);
+
+                        console.log('-- locals:');
+                        for (const local of arkMethod.getBody().getLocals()) {
+                            console.log('name: ' + local.toString() + ', type: ' + local.getType());
+                        }
+                        console.log();
                     }
-                    console.log();
                 }
             }
         }

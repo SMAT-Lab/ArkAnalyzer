@@ -10,7 +10,7 @@ import { Value } from '../base/Value';
 import { BasicBlock } from '../graph/BasicBlock';
 import { Cfg } from '../graph/Cfg';
 import { ArkClass, buildNormalArkClassFromArkFile } from '../model/ArkClass';
-import { ArkMethod, buildNormalArkMethodFromAstNode } from '../model/ArkMethod';
+import { ArkMethod, buildArkMethodFromArkClass, buildNormalArkMethodFromAstNode } from '../model/ArkMethod';
 import { ClassSignature, FieldSignature, MethodSignature, MethodSubSignature } from '../model/ArkSignature';
 import { ExportInfo } from './ExportBuilder';
 import { IRUtils } from './IRUtils';
@@ -1884,11 +1884,10 @@ export class CfgBuilder {
                     args.push(this.astNodeToValue(argNode));
                 }
             }
-            let arrowArkMethod = new ArkMethod();
-            buildNormalArkMethodFromAstNode(node, arrowArkMethod);
-            this.declaringClass.addMethod(arrowArkMethod);
-            arrowArkMethod.setDeclaringArkClass(this.declaringClass);
-            arrowArkMethod.setDeclaringArkFile();
+            let arrowArkMethod = new ArkMethod();            
+            buildArkMethodFromArkClass(node, this.declaringClass, arrowArkMethod);
+            arrowArkMethod.genSignature();
+            this.declaringClass.addMethod(arrowArkMethod);            
 
             let callableType = new CallableType(arrowArkMethod.getSignature());
             value = new Local(arrowFuncName, callableType);
