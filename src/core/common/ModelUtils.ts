@@ -1,5 +1,6 @@
 import { Scene } from "../../Scene";
 import { ArkClass } from "../model/ArkClass";
+import { ArkField } from "../model/ArkField";
 import { ArkFile } from "../model/ArkFile";
 import { ArkMethod } from "../model/ArkMethod";
 import { ArkNamespace } from "../model/ArkNamespace";
@@ -109,6 +110,16 @@ export class ModelUtils {
         for (const method of arkClass.getMethods()) {
             if (method.getName() == methodName) {
                 return method;
+            }
+        }
+        return null;
+    }
+
+    /** search field within the given class */
+    public static getFieldInClassWithName(fieldName: string, arkClass: ArkClass): ArkField | null {
+        for (const field of arkClass.getFields()) {
+            if (field.getName() == fieldName) {
+                return field;
             }
         }
         return null;

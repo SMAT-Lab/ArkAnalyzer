@@ -61,9 +61,27 @@ export class TypeInference {
 
         }
 
-        for (const ues of stmt.getUses()) {
-            if (ues instanceof ArkInstanceFieldRef) {
+        for (const use of stmt.getUses()) {
+            if (use instanceof ArkInstanceFieldRef) {
+                const base = use.getBase();
+                const type = base.getType();
+                if (!(type instanceof ClassType)) {
+                    console.log('error: type of base must be ClassType');
+                    continue;
+                }
+                const arkClass = ModelUtils.getClassWithClassSignature(type.getClassSignature(), this.scene);
+                if (arkClass == null) {
+                    console.log(`error: class ${type.getClassSignature().getClassName()} does not exist`);
+                    continue;
+                }
 
+                const fieldName = use.getFieldName();
+                const arkField = ModelUtils.getFieldInClassWithName(fieldName, arkClass);
+                if (arkField == null) {
+                    console.log(`error: field ${fieldName} does not exist`);
+                    continue;
+                }
+                use.setFieldSignature(arkField.getSignature());
             }
         }
     }

@@ -68,6 +68,10 @@ export abstract class AbstractFieldRef extends AbstractRef {
         return this.fieldSignature;
     }
 
+    public setFieldSignature(newFieldSignature: FieldSignature): void {
+        this.fieldSignature = newFieldSignature;
+    }
+
     public getType(): Type {
         return this.fieldSignature.getType();
     }

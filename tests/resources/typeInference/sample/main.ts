@@ -66,9 +66,15 @@ class Foo {
     //     let foo = new Foo();
     // }
 
-    public testInstanceInvoke(): void {
+    // public testInstanceInvoke(): void {
+    //     let f = new Foo();
+    //     f.testInstanceInvoke();
+    // }
+
+    private i: number = 0;
+    public testInstanceRef(): void {
         let f = new Foo();
-        f.testInstanceInvoke();
+        let j = f.i;
     }
 }
 
