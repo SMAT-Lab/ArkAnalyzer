@@ -1,5 +1,5 @@
-// import { funcA1 } from "../moduleA/A";
-// import { funcAA1 } from "./AA";
+import { funcA1 } from "../moduleA/A";
+import { funcAA1 } from "./AA";
 
 // function testImportType(i: number, j: number): number {
 //     i = funcA1();
@@ -12,14 +12,17 @@
 //     let str2:string=`${str1} 2`;
 // }
 
-// function testArrayType(): void {
-//     const a: number[] = [1, 2];
-//     // const b = [1];
-// }
+function testArrayType(): void {
+    const a: number[] = [1, 2];
+    const b = [1];
+    const y = b[0]
+    const x = a[y];
+}
 
-// function testUnionType(): void {
-//     let a: number | string = 1;
-// }
+function testUnionType(): void {
+    let a: number | string = 1;
+    let b = a + 1
+}
 
 // function testSysLibClassType(): void {
 //     const a = new Array();
@@ -43,9 +46,9 @@
 //     let obj: object = { i: 1 };
 // }
 
-function testEmptyBody() {
+// function testEmptyBody() {
 
-}
+// }
 
 // class Data {
 //     public static testNewObj(): void {
