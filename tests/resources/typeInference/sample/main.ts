@@ -47,14 +47,37 @@ function testUnionType(): void {
 // }
 
 // function testEmptyBody() {
-
 // }
 
-// class Data {
-//     public static testNewObj(): void {
-//         // let d = new Data();
 
-//         let foo = new Foo();
+// function add(i: number, j: number): number {
+//     return i + j;
+// }
+
+// function testFunctionReturnType() {
+//     let i = 0, j = 0;
+//     let k = add(i, j);
+// }
+
+
+
+
+// class Foo {
+//     // public static testNewObj(): void {
+//     //     // let d = new Data();
+
+//     //     let foo = new Foo();
+//     // }
+
+//     // public testInstanceInvoke(): void {
+//     //     let f = new Foo();
+//     //     f.testInstanceInvoke();
+//     // }
+
+//     private i: number = 0;
+//     public testInstanceRef(): void {
+//         let f = new Foo();
+//         let j = f.i;
 //     }
 // }
 

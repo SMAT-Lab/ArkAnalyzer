@@ -68,6 +68,10 @@ export abstract class AbstractFieldRef extends AbstractRef {
         return this.fieldSignature;
     }
 
+    public setFieldSignature(newFieldSignature: FieldSignature): void {
+        this.fieldSignature = newFieldSignature;
+    }
+
     public getType(): Type {
         return this.fieldSignature.getType();
     }
@@ -97,7 +101,7 @@ export class ArkInstanceFieldRef extends AbstractFieldRef {
     }
 
     public toString(): string {
-        return this.base.toString() + '.{' + this.getFieldSignature() + '}';
+        return this.base.toString() + '.<' + this.getFieldSignature() + '>';
     }
 }
 

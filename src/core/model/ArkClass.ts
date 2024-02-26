@@ -4,7 +4,7 @@ import { ArkField } from "./ArkField";
 import { ArkFile } from "./ArkFile";
 import { ArkMethod, arkMethodNodeKind, buildArkMethodFromArkClass } from "./ArkMethod";
 import { ArkNamespace } from "./ArkNamespace";
-import { ClassSignature, MethodSubSignature, methodSubSignatureCompare } from "./ArkSignature";
+import { ClassSignature, FieldSignature, MethodSubSignature, methodSubSignatureCompare } from "./ArkSignature";
 
 
 export class ArkClass {
@@ -147,6 +147,11 @@ export class ArkClass {
 
     public hasImplementedInterface(interfaceName: string) {
         return (this.implementedInterfaceNames.indexOf(interfaceName) > -1);
+    }
+
+    // YIFEI-TODO: implement
+    public getField(fieldSignature: FieldSignature): ArkField | null {
+        return null;
     }
 
     public getFields() {
