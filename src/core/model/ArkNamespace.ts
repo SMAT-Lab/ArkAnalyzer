@@ -5,7 +5,7 @@ import { ArkEnum } from "./ArkEnum";
 import { ArkFile } from "./ArkFile";
 import { ArkInterface } from "./ArkInterface";
 import { ArkMethod, arkMethodNodeKind, buildArkMethodFromArkClass } from "./ArkMethod";
-import { NamespaceSignature } from "./ArkSignature";
+import { ClassSignature, NamespaceSignature } from "./ArkSignature";
 
 
 export class ArkNamespace {
@@ -40,6 +40,11 @@ export class ArkNamespace {
         this.classes.push(...namespace.getClasses());
         // this.methods.push(...namespace.getMethods());
         // this.namespaces.push(namespace);
+    }
+
+    // YIFEI-TODO: implement
+    public getNamespace(namespaceSignature: NamespaceSignature): ArkNamespace | null {
+        return null;
     }
 
     public getNamespaces(): ArkNamespace[] {
@@ -152,9 +157,9 @@ export class ArkNamespace {
         this.methods.push(arkMethod);
     }
 
-    public getClass(classSignature: string): ArkClass | null {
+    public getClass(classSignature: ClassSignature): ArkClass | null {
         let cls = this.classes.find((obj) => {
-            return (obj.getSignature().toString() == classSignature);
+            return (obj.getSignature().toString() == classSignature.toString());
         })
         if (cls) {
             return cls;
@@ -175,7 +180,7 @@ export class ArkNamespace {
     }
 
     public addArkClass(arkClass: ArkClass) {
-        if (this.getClass(arkClass.getSignature().toString())) {
+        if (this.getClass(arkClass.getSignature())) {
             this.updateClass(arkClass);
         }
         else {

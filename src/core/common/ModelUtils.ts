@@ -1,8 +1,9 @@
+import { Scene } from "../../Scene";
 import { ArkClass } from "../model/ArkClass";
 import { ArkFile } from "../model/ArkFile";
 import { ArkMethod } from "../model/ArkMethod";
 import { ArkNamespace } from "../model/ArkNamespace";
-import { MethodSignature } from "../model/ArkSignature";
+import { ClassSignature, MethodSignature, NamespaceSignature } from "../model/ArkSignature";
 
 export class ModelUtils {
     public static getMethodSignatureFromArkClass(arkClass: ArkClass, methodName: string): MethodSignature | null {
@@ -14,7 +15,31 @@ export class ModelUtils {
         return null
     }
 
+    /** search class iteratively with ClassSignature */
+    public static getClassWithClassSignature(classSignature: ClassSignature, scene: Scene): ArkClass | null {
+        const fileSignature = classSignature.getDeclaringFileSignature();
+        const arkFile = scene.getFile(fileSignature.getFileName());
+        if (arkFile == null) {
+            return null;
+        }
 
+        let namespaceSignature = classSignature.getDeclaringNamespaceSignature();
+        let namespaceSignatures: NamespaceSignature[] = [];
+        while (namespaceSignature != null) {
+            namespaceSignatures.push(namespaceSignature);
+            namespaceSignature = namespaceSignature.getDeclaringNamespaceSignature();
+        }
+        let curr: ArkFile | ArkNamespace | null = arkFile;
+        for (let i = namespaceSignatures.length - 1; i >= 0; i--) {
+            curr = arkFile.getNamespace(namespaceSignatures[i]);
+            if (curr == null) {
+                return null;
+            }
+        }
+        return curr.getClass(classSignature);
+    }
+
+    /** search class within the file that contain the given method */
     public static getClassWithName(className: string, startFrom: ArkMethod): ArkClass | null {
         //TODO:是否支持类表达式
         const thisClass = startFrom.getDeclaringArkClass();
@@ -34,7 +59,8 @@ export class ModelUtils {
         return classSearched;
     }
 
-    private static getClassInNamespaceWithName(className: string, arkNamespace: ArkNamespace): ArkClass | null {
+    /** search class within the given namespace */
+    public static getClassInNamespaceWithName(className: string, arkNamespace: ArkNamespace): ArkClass | null {
         for (const arkClass of arkNamespace.getClasses()) {
             if (arkClass.getName() == className) {
                 return arkClass;
@@ -43,7 +69,8 @@ export class ModelUtils {
         return null;
     }
 
-    private static getClassInFileWithName(className: string, arkFile: ArkFile, arkNamespaceExclude?: ArkNamespace): ArkClass | null {
+    /** search class within the given file */
+    public static getClassInFileWithName(className: string, arkFile: ArkFile, arkNamespaceExclude?: ArkNamespace): ArkClass | null {
         for (const arkClass of arkFile.getClasses()) {
             if (arkClass.getName() == className) {
                 return arkClass;
@@ -61,5 +88,29 @@ export class ModelUtils {
             }
         }
         return classSearched;
+    }
+
+    /** search method within the file that contain the given method */
+    public static getMethodWithName(methodName: string, startFrom: ArkMethod): ArkMethod | null {
+        if (startFrom.getName() == methodName) {
+            return startFrom;
+        }
+
+        const thisClass = startFrom.getDeclaringArkClass();
+        let methodSearched: ArkMethod | null = this.getMethodInClassWithName(methodName, thisClass);
+        if (methodSearched) {
+            return methodSearched;
+        }
+        return null;
+    }
+
+    /** search method within the given class */
+    public static getMethodInClassWithName(methodName: string, arkClass: ArkClass): ArkMethod | null {
+        for (const method of arkClass.getMethods()) {
+            if (method.getName() == methodName) {
+                return method;
+            }
+        }
+        return null;
     }
 }

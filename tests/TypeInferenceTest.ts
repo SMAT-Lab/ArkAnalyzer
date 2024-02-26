@@ -15,7 +15,7 @@ export class TypeInferenceTest {
 
     public testLocalTypes() {
         let scene = this.buildScene();
-        const typeInference = new TypeInference();
+        const typeInference = new TypeInference(scene);
 
         for (const arkFile of scene.arkFiles) {
             console.log('=============== arkFile:', arkFile.getName(), ' ================');
@@ -24,7 +24,7 @@ export class TypeInferenceTest {
                     if (arkMethod.getName() == '_DEFAULT_ARK_METHOD') {
                         continue;
                     }
-                    console.log('=== arkMethod: ', arkMethod.getName());
+                    console.log('*** arkMethod: ', arkMethod.getName());
 
                     const body = arkMethod.getBody();
 

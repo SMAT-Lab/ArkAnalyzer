@@ -9,7 +9,7 @@ import { ArkEnum } from './ArkEnum';
 import { ArkInterface } from './ArkInterface';
 import { ArkMethod, arkMethodNodeKind, buildArkMethodFromArkClass } from "./ArkMethod";
 import { ArkNamespace, buildArkNamespace } from "./ArkNamespace";
-import { ClassSignature, FileSignature, MethodSignature, classSignatureCompare, methodSignatureCompare } from "./ArkSignature";
+import { ClassSignature, FileSignature, MethodSignature, NamespaceSignature, classSignatureCompare, methodSignatureCompare } from "./ArkSignature";
 
 /**
  * 
@@ -140,6 +140,11 @@ export class ArkFile {
 
     public setDefaultClass(defaultClass: ArkClass) {
         this.defaultClass = defaultClass;
+    }
+
+    // YIFEI-TODO: implement
+    public getNamespace(namespaceSignature: NamespaceSignature): ArkNamespace | null {
+        return null;
     }
 
     public getNamespaces(): ArkNamespace[] {

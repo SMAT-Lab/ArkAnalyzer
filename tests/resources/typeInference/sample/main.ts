@@ -43,16 +43,33 @@
 //     let obj: object = { i: 1 };
 // }
 
-function testEmptyBody() {
-
-}
-
-// class Data {
-//     public static testNewObj(): void {
-//         // let d = new Data();
-
-//         let foo = new Foo();
-//     }
+// function testEmptyBody() {
 // }
+
+
+// function add(i: number, j: number): number {
+//     return i + j;
+// }
+
+// function testFunctionReturnType() {
+//     let i = 0, j = 0;
+//     let k = add(i, j);
+// }
+
+
+
+
+class Foo {
+    // public static testNewObj(): void {
+    //     // let d = new Data();
+
+    //     let foo = new Foo();
+    // }
+
+    public testInstanceInvoke(): void {
+        let f = new Foo();
+        f.testInstanceInvoke();
+    }
+}
 
 // class Foo { }

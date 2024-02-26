@@ -1,3 +1,4 @@
+import { Scene } from "../../Scene";
 import { ArkBinopExpr, ArkInstanceInvokeExpr, ArkNewExpr, ArkStaticInvokeExpr } from "../base/Expr";
 import { Local } from "../base/Local";
 import { ArkInstanceFieldRef } from "../base/Ref";
@@ -7,17 +8,24 @@ import { ArkMethod } from "../model/ArkMethod";
 import { ModelUtils } from "./ModelUtils";
 
 export class TypeInference {
+    private scene: Scene;
+    constructor(scene: Scene) {
+        this.scene = scene;
+    }
+
+
     public inferTypeInMethod(arkMethod: ArkMethod): void {
         const cfg = arkMethod.getBody().getCfg();
         for (const block of cfg.getBlocks()) {
             for (const stmt of block.getStmts()) {
-                this.resolveSymbolStmt(stmt, arkMethod);
+                this.resolveSymbolInStmt(stmt, arkMethod);
                 this.inferTypeInStmt(stmt);
             }
         }
     }
 
-    private resolveSymbolStmt(stmt: Stmt, arkMethod: ArkMethod): void {
+    /** resolve symbol that is uncertain when build stmts, such as class' name and function's name */
+    private resolveSymbolInStmt(stmt: Stmt, arkMethod: ArkMethod): void {
         const exprs = stmt.getExprs();
         for (const expr of exprs) {
             if (expr instanceof ArkNewExpr) {
@@ -28,7 +36,25 @@ export class TypeInference {
                     classType.setClassSignature(arkClass.getSignature());
                 }
             } else if (expr instanceof ArkInstanceInvokeExpr) {
-                 
+                const base = expr.getBase();
+                const type = base.getType();
+                if (!(type instanceof ClassType)) {
+                    console.log('error: type of base must be ClassType');
+                    continue;
+                }
+                const arkClass = ModelUtils.getClassWithClassSignature(type.getClassSignature(), this.scene);
+                if (arkClass == null) {
+                    console.log(`error: class ${type.getClassSignature().getClassName()} does not exist`);
+                    continue;
+                }
+                const methodSignature = expr.getMethodSignature();
+                const methodName = methodSignature.getMethodSubSignature().getMethodName();
+                const arkMethod = ModelUtils.getMethodInClassWithName(methodName, arkClass);
+                if (arkMethod == null) {
+                    console.log(`error: method ${methodName} does not exist`);
+                    continue;
+                }
+                expr.setMethodSignature(arkMethod.getSignature());
             } else if (expr instanceof ArkStaticInvokeExpr) {
             }
 
@@ -36,7 +62,7 @@ export class TypeInference {
         }
 
         for (const ues of stmt.getUses()) {
-            if(ues instanceof ArkInstanceFieldRef){
+            if (ues instanceof ArkInstanceFieldRef) {
 
             }
         }
