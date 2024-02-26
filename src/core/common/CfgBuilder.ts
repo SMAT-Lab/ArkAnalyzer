@@ -728,7 +728,7 @@ export class CfgBuilder {
     }
 
     addReturnInEmptyMethod() {
-        if (this.entry.next==this.exit){
+        if (this.entry.next == this.exit) {
             const ret = new StatementBuilder("returnStatement", "return;", null, this.entry.scopeID);
             this.entry.next = ret;
             ret.next = this.exit;
@@ -2010,6 +2010,7 @@ export class CfgBuilder {
             } else if (itemTypes.size > 1) {
                 newArrayExpr.setBaseType(new UnionType(Array.from(itemTypes.keys())));
             }
+            value.setType(new ArrayType(newArrayExpr.getBaseType(), 1));
         }
         else if (node.kind == 'PrefixUnaryExpression') {
             let token = node.children[0].text;
@@ -2132,7 +2133,8 @@ export class CfgBuilder {
         }
 
         if (leftOp instanceof Local) {
-            leftOp.setType(leftOpType)
+            leftOp.setType(leftOpType);
+
         }
 
         // console.log("[astNodeToThreeAddressAssignStmt] left: " + leftOp + " type: " + leftOpType + " right: " + rightOp)
@@ -2141,7 +2143,8 @@ export class CfgBuilder {
         }
 
         let threeAddressAssignStmts: Stmt[] = [];
-        threeAddressAssignStmts.push(new ArkAssignStmt(leftOp, rightOp))
+        threeAddressAssignStmts.push(new ArkAssignStmt(leftOp, rightOp));
+        TypeInference.inferTypeInStmt(threeAddressAssignStmts[0])
 
         if (leftOpNode.kind == 'ArrayBindingPattern' || leftOpNode.kind == 'ObjectBindingPattern') {
             let argNodes = this.getSyntaxListItems(leftOpNode.children[1]);

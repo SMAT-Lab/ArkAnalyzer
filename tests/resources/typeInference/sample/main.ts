@@ -12,10 +12,13 @@
 //     let str2:string=`${str1} 2`;
 // }
 
-// function testArrayType(): void {
-//     const a: number[] = [1, 2];
-//     // const b = [1];
-// }
+function testArrayType(): void {
+    // const a: number[] = [1, 2];
+    const b = [1];
+
+    const c = b[0];
+    // const d = a[0];
+}
 
 // function testUnionType(): void {
 //     let a: number | string = 1;
@@ -59,23 +62,23 @@
 
 
 
-class Foo {
-    // public static testNewObj(): void {
-    //     // let d = new Data();
+// class Foo {
+//     // public static testNewObj(): void {
+//     //     // let d = new Data();
 
-    //     let foo = new Foo();
-    // }
+//     //     let foo = new Foo();
+//     // }
 
-    // public testInstanceInvoke(): void {
-    //     let f = new Foo();
-    //     f.testInstanceInvoke();
-    // }
+//     // public testInstanceInvoke(): void {
+//     //     let f = new Foo();
+//     //     f.testInstanceInvoke();
+//     // }
 
-    private i: number = 0;
-    public testInstanceRef(): void {
-        let f = new Foo();
-        let j = f.i;
-    }
-}
+//     private i: number = 0;
+//     public testInstanceRef(): void {
+//         let f = new Foo();
+//         let j = f.i;
+//     }
+// }
 
 // class Foo { }

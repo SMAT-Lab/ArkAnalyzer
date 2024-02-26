@@ -19,7 +19,7 @@ export class TypeInference {
         for (const block of cfg.getBlocks()) {
             for (const stmt of block.getStmts()) {
                 this.resolveSymbolInStmt(stmt, arkMethod);
-                this.inferTypeInStmt(stmt);
+                TypeInference.inferTypeInStmt(stmt);
             }
         }
     }
@@ -86,7 +86,7 @@ export class TypeInference {
         }
     }
 
-    private inferTypeInStmt(stmt: Stmt): void {
+    public static inferTypeInStmt(stmt: Stmt): void {
         if (stmt instanceof ArkAssignStmt) {
             const leftOp = stmt.getLeftOp();
             if (leftOp instanceof Local) {
