@@ -285,20 +285,28 @@ export function buildTypeFromPreStr(preStr: string) {
     switch (preStr) {
         case 'BooleanKeyword':
             postStr = "boolean";
+            break;
         case 'NumberKeyword':
             postStr = "number";
+            break;
         case 'StringKeyword':
             postStr = "string";
+            break;
         case 'UndefinedKeyword':
             postStr = "undefined";
+            break;
         case 'NullKeyword':
             postStr = "null";
+            break;
         case 'AnyKeyword':
             postStr = "any";
+            break;
         case 'VoidKeyword':
             postStr = "void";
+            break;
         case 'NeverKeyword':
             postStr = "never";
+            break;
         default:
             postStr = preStr;
     }
