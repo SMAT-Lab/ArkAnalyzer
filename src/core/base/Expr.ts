@@ -86,9 +86,9 @@ export class ArkInstanceInvokeExpr extends AbstractInvokeExpr {
         let strs: string[] = [];
         strs.push('instanceinvoke ');
         strs.push(this.base.toString());
-        strs.push('.');
+        strs.push('.{');
         strs.push(this.getMethodSignature().toString());
-        strs.push('(');
+        strs.push('}(');
         if (this.getArgs().length > 0) {
             for (const arg of this.getArgs()) {
                 strs.push(arg.toString());
@@ -108,9 +108,9 @@ export class ArkStaticInvokeExpr extends AbstractInvokeExpr {
 
     public toString(): string {
         let strs: string[] = [];
-        strs.push('staticinvoke ');
+        strs.push('staticinvoke {');
         strs.push(this.getMethodSignature().toString());
-        strs.push('(');
+        strs.push('}(');
         if (this.getArgs().length > 0) {
             for (const arg of this.getArgs()) {
                 strs.push(arg.toString());

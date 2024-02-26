@@ -8,13 +8,12 @@
 // }
 
 // function testBasicType(): void {
-//     let i = 1, j = 2;
-//     let k = i >>> j;
+//     let str1:string='s1';
+//     let str2:string=`${str1} 2`;
 // }
 
 // function testArrayType(): void {
-//     const a: number[] = [];
-
+//     const a: number[] = [1, 2];
 //     // const b = [1];
 // }
 
@@ -36,8 +35,16 @@
 //     }
 // }
 
-function testParameterOfMethod(i: number): void {
-    let j = i;
+// function testParameterOfMethod(i: number): void {
+//     let j = i;
+// }
+
+// function testObjectType() {
+//     let obj: object = { i: 1 };
+// }
+
+function testEmptyBody() {
+
 }
 
 // class Data {

@@ -62,82 +62,85 @@
 //     return 0;
 // }
 
-
-class Test {
-    // public func1(): number {
-    //     return 0;
-    // }
-
-    // public func2(): Test {
-    //     return new Test();
-    // }
-
-    // public static funcStatic(): number {
-    //     return 0;
-    // }
-
-    // public testJointStr() {
-    //     let i = 'str1', j = 'str2';
-    //     let c = i + j;
-    // }
-
-
-    // public testTemplatestrings() {
-    //     let str1: string = 'hello';
-    //     let num1: number = 1;
-    //     let str2: string = `boy, ${str1}, world. ${num1}`;
-    // }
-
-    public testBasicType() {
-        let flag: boolean = false;
-        let a:boolean = flag;
-    }
-
-    // public testArrayType() {
-    //     let a: number[] = [1, 2, 3];
-    // }
-
-    // public testNestIf() {
-    //     let i = 0;
-    //     if (i) {
-    //         // i = 3;
-    //         switch (i) {
-    //             case 1:
-    //                 console.log('1');
-    //                 break;
-    //             case 2:
-    //                 console.log('2');
-    //         }
-    //     }
-    // }
-
-
-    // public testUseMethodOfClass(): void {
-    //     let t = new Test();
-    //     let i = t.func1();
-    //     // console.log(t.func1());
-    // }
-
-    // public testUseMethodOfClass(): void {
-    //     let i = Test.funcStatic();
-    //     // console.log(t.func1());
-    // }
-
-    // public testContinuousCall(): void {
-    //     let i = this.func2().func1();
-    // }
-
-    // public testUseMethodOutOfClass(): void {
-    //     let i = outerFunc();
-    // }
-
-    // public testUseMethodOutOfFile(): void {
-    //     let i = funcA1();
-    //     console.log(i);
-    // }
-
-    // public testUseMethodWithParaOutOfFile(): void {
-    //     let i = funcAA2(1);
-    //     console.log(i);
-    // }
+function testParenthesizedExpression() {
+    (agcDataBase as Database).collection(Post).upsert(post);
 }
+
+// class Test {
+//     // public func1(): number {
+//     //     return 0;
+//     // }
+
+//     // public func2(): Test {
+//     //     return new Test();
+//     // }
+
+//     // public static funcStatic(): number {
+//     //     return 0;
+//     // }
+
+//     // public testJointStr() {
+//     //     let i = 'str1', j = 'str2';
+//     //     let c = i + j;
+//     // }
+
+
+//     // public testTemplatestrings() {
+//     //     let str1: string = 'hello';
+//     //     let num1: number = 1;
+//     //     let str2: string = `boy, ${str1}, world. ${num1}`;
+//     // }
+
+//     public testBasicType() {
+//         let flag: boolean = false;
+//         let a:boolean = flag;
+//     }
+
+//     // public testArrayType() {
+//     //     let a: number[] = [1, 2, 3];
+//     // }
+
+//     // public testNestIf() {
+//     //     let i = 0;
+//     //     if (i) {
+//     //         // i = 3;
+//     //         switch (i) {
+//     //             case 1:
+//     //                 console.log('1');
+//     //                 break;
+//     //             case 2:
+//     //                 console.log('2');
+//     //         }
+//     //     }
+//     // }
+
+
+//     // public testUseMethodOfClass(): void {
+//     //     let t = new Test();
+//     //     let i = t.func1();
+//     //     // console.log(t.func1());
+//     // }
+
+//     // public testUseMethodOfClass(): void {
+//     //     let i = Test.funcStatic();
+//     //     // console.log(t.func1());
+//     // }
+
+//     // public testContinuousCall(): void {
+//     //     let i = this.func2().func1();
+//     // }
+
+//     // public testUseMethodOutOfClass(): void {
+//     //     let i = outerFunc();
+//     // }
+
+//     // public testUseMethodOutOfFile(): void {
+//     //     let i = funcA1();
+//     //     console.log(i);
+//     // }
+
+//     // public testUseMethodWithParaOutOfFile(): void {
+//     //     let i = funcAA2(1);
+//     //     console.log(i);
+//     // }
+// }
