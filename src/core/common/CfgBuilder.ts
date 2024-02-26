@@ -727,6 +727,14 @@ export class CfgBuilder {
         }
     }
 
+    addReturnInEmptyMethod() {
+        if (this.entry.next==this.exit){
+            const ret = new StatementBuilder("returnStatement", "return;", null, this.entry.scopeID);
+            this.entry.next = ret;
+            ret.next = this.exit;
+        }
+    }
+
     deleteExit(stm: StatementBuilder) {
         if (stm.walked)
             return;
@@ -2866,25 +2874,6 @@ export class CfgBuilder {
         }
     }
 
-    buildCfgBuilder() {
-        this.walkAST(this.entry, this.exit, this.astRoot);
-        this.deleteExit(this.entry);
-        this.CfgBuilder2Array(this.entry);
-        this.resetWalked();
-        this.buildLastAndHaveCall(this.entry);
-        this.resetWalked();
-        this.buildBlocks(this.entry, this.entryBlock);
-        this.blocks = this.blocks.filter((b) => b.stms.length != 0);
-        this.buildBlocksNextLast();
-        this.addReturnBlock();
-        this.resetWalked();
-        // this.generateUseDef();
-        // this.resetWalked();
-
-        // this.printBlocks();
-
-        this.transformToThreeAddress();
-    }
 
     // TODO: Add more APIs to the class 'Cfg', and use these to build Cfg
     public buildOriginalCfg(): Cfg {
@@ -3046,5 +3035,26 @@ export class CfgBuilder {
             default:
                 return "";
         }
+    }
+
+    buildCfgBuilder() {
+        this.walkAST(this.entry, this.exit, this.astRoot);
+        this.addReturnInEmptyMethod();
+        this.deleteExit(this.entry);
+        this.CfgBuilder2Array(this.entry);
+        this.resetWalked();
+        this.buildLastAndHaveCall(this.entry);
+        this.resetWalked();
+        this.buildBlocks(this.entry, this.entryBlock);
+        this.blocks = this.blocks.filter((b) => b.stms.length != 0);
+        this.buildBlocksNextLast();
+        this.addReturnBlock();
+        this.resetWalked();
+        // this.generateUseDef();
+        // this.resetWalked();
+
+        // this.printBlocks();
+
+        this.transformToThreeAddress();
     }
 }
