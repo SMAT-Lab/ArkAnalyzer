@@ -33,7 +33,7 @@ export class FileSignature {
         tmpSig = tmpSig.replace(/\.d\.ts|\.ts$/, '');
 
         tmpSig = '@' + this.projectName + '/' + tmpSig + ':';
-        return `<${tmpSig}>`;
+        return tmpSig;
     }
 }
 
@@ -70,10 +70,10 @@ export class NamespaceSignature {
 
     public toString(): string {
         if (this.declaringNamespaceSignature) {
-            return this.declaringNamespaceSignature.toString() + '.' + `<${this.namespaceName}>`;
+            return this.declaringNamespaceSignature.toString() + '.' + this.namespaceName;
         }
         else {
-            return this.declaringFileSignature.toString() + '.' + `<${this.namespaceName}>`;
+            return this.declaringFileSignature.toString() + '.' + this.namespaceName;
         }
     }
 }
@@ -115,10 +115,10 @@ export class ClassSignature {
 
     public toString(): string {
         if (this.declaringNamespaceSignature) {
-            return this.declaringNamespaceSignature.toString() + '.' + `<${this.className}>`;
+            return this.declaringNamespaceSignature.toString() + '.' + this.className;
         }
         else {
-            return this.declaringFileSignature.toString() + '.' + `<${this.className}>`;
+            return this.declaringFileSignature.toString() + '.' + this.className;
         }
     }
 }
@@ -155,7 +155,7 @@ export class FieldSignature {
     constructor() { }
 
     public toString(): string {
-        return this.getDeclaringClassSignature().toString() + '.' + `<${this.getFieldName()}>`;
+        return this.getDeclaringClassSignature().toString() + '.' + this.getFieldName();
     }
 }
 
@@ -204,7 +204,7 @@ export class MethodSubSignature {
             paraStr = paraStr + parameterType + ", ";
         });
         paraStr = paraStr.replace(/, $/, '');
-        return `<${this.getMethodName()}(${paraStr})>`
+        return `${this.getMethodName()}(${paraStr})`;
     }
 }
 
