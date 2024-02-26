@@ -32,7 +32,7 @@ export class FileSignature {
         // remove file ext: '.d.ts' or '.ts'
         tmpSig = tmpSig.replace(/\.d\.ts|\.ts$/, '');
 
-        tmpSig = '@' + this.projectName + '/' + tmpSig + ':';
+        tmpSig = '@' + this.projectName + '/' + tmpSig + ': ';
         return tmpSig;
     }
 }
@@ -73,7 +73,7 @@ export class NamespaceSignature {
             return this.declaringNamespaceSignature.toString() + '.' + this.namespaceName;
         }
         else {
-            return this.declaringFileSignature.toString() + '.' + this.namespaceName;
+            return this.declaringFileSignature.toString() + this.namespaceName;
         }
     }
 }
@@ -118,7 +118,7 @@ export class ClassSignature {
             return this.declaringNamespaceSignature.toString() + '.' + this.className;
         }
         else {
-            return this.declaringFileSignature.toString() + '.' + this.className;
+            return this.declaringFileSignature.toString() + this.className;
         }
     }
 }
