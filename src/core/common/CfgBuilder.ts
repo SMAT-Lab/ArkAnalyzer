@@ -2028,7 +2028,8 @@ export class CfgBuilder {
             value = this.astNodeToValue(node.children[1]);
         }
         else if (node.kind == 'ParenthesizedExpression') {
-            value = this.astNodeToValue(node.children[1]);
+            const parenthesizedValue = this.astNodeToValue(node.children[1]);
+            value = this.generateAssignStmt(parenthesizedValue);
         }
         else if (node.kind == 'SpreadElement') {
             value = this.astNodeToValue(node.children[1]);

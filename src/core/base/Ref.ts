@@ -97,7 +97,7 @@ export class ArkInstanceFieldRef extends AbstractFieldRef {
     }
 
     public toString(): string {
-        return this.base.toString() + '.' + this.getFieldSignature();
+        return this.base.toString() + '.{' + this.getFieldSignature() + '}';
     }
 }
 
