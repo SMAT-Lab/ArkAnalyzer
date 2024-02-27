@@ -159,20 +159,30 @@ export class LiteralType extends PrimitiveType {
     }
 }
 
-/** union types */
+/** union type */
 export class UnionType extends Type {
     private types: Type[];
-    constructor(types: Type[]) {
+    private currType: Type;  // The true type of the value at this time  
+    constructor(types: Type[], currType: Type = UnknownType.getInstance()) {
         super();
         this.types = [...types];
+        this.currType = currType;
     }
 
     public getTypes(): Type[] {
         return this.types;
     }
 
+    public getCurrType(): Type {
+        return this.currType;
+    }
+
+    public setCurrType(newType: Type): void {
+        this.currType = newType;
+    }
+
     public toString(): string {
-        return this.types.join('|');
+        return this.types.join('|') + '-' + this.currType;
     }
 }
 
@@ -258,6 +268,10 @@ export class ArrayType extends Type {
         super();
         this.baseType = baseType;
         this.dimension = dimension;
+    }
+
+    public getBaseType(): Type {
+        return this.baseType;
     }
 
     public toString(): string {

@@ -1,5 +1,3 @@
-import { funcA1 } from "../moduleA/A";
-import { funcAA1 } from "./AA";
 
 // function testImportType(i: number, j: number): number {
 //     i = funcA1();
