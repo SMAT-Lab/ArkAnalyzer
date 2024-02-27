@@ -4,7 +4,7 @@ import {AA} from "./AA";
 import {A} from "../moduleA/A"
 
 function importType(){
-    const a=new n1.c1();
+    const a=new n1.n3.c3();
     const b=new A();
     const c=funcA1();
     const m=new M();
@@ -92,10 +92,10 @@ namespace n2{
 //     a.forEach(function (i) { });
 // }
 
-function testTupleType(): void {
-    let a: [number, string] = [1, '2'];
-    // let b = [1, '2'];
-}
+// function testTupleType(): void {
+//     let a: [number, string] = [1, '2'];
+//     // let b = [1, '2'];
+// }
 
 // class Foo {
 //     // public static testNewObj(): void {

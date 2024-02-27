@@ -118,7 +118,12 @@ export class ModelUtils {
     public static getFileFromImportInfo(importInfo: ImportInfo, scene: Scene): ArkFile | null {
         const signatureStr = importInfo.getImportFromSignature2Str();
         const fileName = signatureStr.substring(signatureStr.indexOf('/')+1).replace('/',"\\").replace(': ','')+'.ts';
-        return scene.getFile(fileName);
+        for (const file of scene.getFiles()){
+            if (file.getName() == fileName){
+                return file
+            }
+        }
+        return null;
     }
 
     /** search method within the file that contain the given method */

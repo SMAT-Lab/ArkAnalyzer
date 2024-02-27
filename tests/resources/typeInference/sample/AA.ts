@@ -12,5 +12,3 @@
 export class AA{
     constructor(){}
 }
-
-import {n1} from "./main"
