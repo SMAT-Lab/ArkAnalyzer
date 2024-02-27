@@ -19,7 +19,7 @@ export class SourceClass extends SourceBase{
     public dump(): string {
         // print export class name<> + extends c0 implements x1, x2 {
         this.printer.writeIndent().writeSpace(this.modifiersToString(this.cls.getModifiers()))
-            .write(`${this.cls.getOriginType().toLowerCase()} ${this.cls.getName()}`);
+            .write(`${this.cls.getOriginType()} ${this.cls.getName()}`);
         if (this.cls.getTypeParameter().length > 0) {
             this.printer.write(`<${this.cls.getTypeParameter().join(',')}>`);
         }
@@ -66,11 +66,7 @@ export class SourceClass extends SourceBase{
             if (field.getType()) {
                 this.printer.write(':' + field.getType());
             }
-            if (field.getFieldType() == 'EnumMember') {
-                this.printer.writeLine(',');
-            } else {
-                this.printer.writeLine(';');
-            }
+            this.printer.writeLine(';');
         }
     }
 }
