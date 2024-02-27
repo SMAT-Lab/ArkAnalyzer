@@ -24,7 +24,7 @@ export class CfgTest {
                         continue;
                     }
                     let arkBody = arkMethod.getBody()
-                    console.log('************ arkMethod:', arkMethod.getSignature().toString(), ' **********');
+                    console.log('*** arkMethod: ', arkMethod.getName());
                     console.log('-- origalstmts:');
 
                     let originalCfg = arkBody.getOriginalCfg();
@@ -38,6 +38,8 @@ export class CfgTest {
                         console.log(threeAddresStmt.toString());
                         // console.log(threeAddresStmt.toString(), ', original pos:', threeAddresStmt.getOriginPositionInfo(),
                         //     ', pos:', threeAddresStmt.getPositionInfo());
+                        // console.log('- use');
+                        
                         // console.log(threeAddresStmt.getUses());
 
                     }

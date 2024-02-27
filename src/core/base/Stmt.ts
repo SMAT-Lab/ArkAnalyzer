@@ -220,6 +220,7 @@ export class ArkAssignStmt extends Stmt {
 
     private updateUses(): void {
         let uses: Value[] = [];
+        uses.push(...this.leftOp.getUses());
         uses.push(this.rightOp);
         uses.push(...this.rightOp.getUses());
         this.replaceUses(uses);

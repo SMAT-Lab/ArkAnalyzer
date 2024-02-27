@@ -1,20 +1,27 @@
-class Greeter {
-    greeting: string;
-    constructor(message: string) {
-        this.greeting = message;
-    }
-    greet() {
-        return "Hello, " + this.greeting;
-    }
-}
-
-let greeter = new Greeter("world");
 
 class Animal {
-    public name: string;
-    public constructor(theName: string) { this.name = theName; }
-    public move(distanceInMeters: number) {
-        console.log(`${this.name} moved ${distanceInMeters}m.`);
+    protected _name: string | undefined;
+    public constructor(theName: string) {
+        this._name = theName; 
+    }
+    public move(distanceInMeters: number = 0) {
+        console.log(`${this._name} moved ${distanceInMeters}m.`);
+    }
+
+    get name():string| undefined {
+        return this._name;
+    }
+
+    set name(newName: string | undefined ) {
+        this._name = newName;
+    }
+
+    public print(a: Animal[]): number | null {
+        return 0;
+    }
+
+    public testArrayReturn():string[] {
+        return [];
     }
 }
 
@@ -36,30 +43,9 @@ class Horse extends Animal {
 
 let sam = new Snake("Sammy the Python");
 let tom: Animal = new Horse("Tommy the Palomino");
-
 sam.move();
 tom.move(34);
 
-class Person {
-    protected name: string;
-    protected constructor(theName: string) { this.name = theName; }
-}
-
-// Employee 能够继承 Person
-class Employee extends Person {
-    private department: string;
-
-    constructor(name: string, department: string) {
-        super(name);
-        this.department = department;
-    }
-
-    public getElevatorPitch() {
-        return `Hello, my name is ${this.name} and I work in ${this.department}.`;
-    }
-}
-
-let howard = new Employee("Howard", "Sales");
 
 class Octopus {
     readonly name: string;
@@ -69,32 +55,7 @@ class Octopus {
     }
 }
 let dad = new Octopus("Man with the 8 strong legs");
-dad.name = "Man with the 3-piece suit"; // 错误! name 是只读的.
-
 let passcode = "secret passcode";
-
-class Employee {
-    private _fullName: string;
-
-    get fullName(): string {
-        return this._fullName;
-    }
-
-    set fullName(newName: string) {
-        if (passcode && passcode == "secret passcode") {
-            this._fullName = newName;
-        }
-        else {
-            console.log("Error: Unauthorized update of employee!");
-        }
-    }
-}
-
-let employee = new Employee();
-employee.fullName = "Bob Smith";
-if (employee.fullName) {
-    alert(employee.fullName);
-}
 
 class Grid {
     static origin = {x: 0, y: 0};
@@ -140,26 +101,9 @@ class AccountingDepartment extends Department {
 }
 
 let department: Department; // 允许创建一个对抽象类型的引用
-department = new Department(); // 错误: 不能创建一个抽象类的实例
 department = new AccountingDepartment(); // 允许对一个抽象子类进行实例化和赋值
 department.printName();
 department.printMeeting();
-department.generateReports(); // 错误: 方法在声明的抽象类中不存在
-
-class Greeter {
-    greeting: string;
-    constructor(message: string) {
-        this.greeting = message;
-    }
-    greet() {
-        return "Hello, " + this.greeting;
-    }
-}
-
-let greeter: Greeter;
-greeter = new Greeter("world");
-console.log(greeter.greet());
-
 
 class Point {
     x: number;
@@ -171,3 +115,23 @@ interface Point3d extends Point {
 }
 
 let point3d: Point3d = {x: 1, y: 2, z: 3};
+
+
+export interface StringValidator {
+    isAcceptable(s: string): boolean;
+}
+export const numberRegexp = /^[0-9]+$/;
+
+export default class ZipCodeValidator implements StringValidator {
+    isAcceptable(s: string) {
+        return s.length === 5 && numberRegexp.test(s);
+    }
+}
+export { ZipCodeValidator };
+export { ZipCodeValidator as mainValidator };
+
+export class ParseIntBasedZipCodeValidator {
+    isAcceptable(s: string) {
+        return s.length === 5 && parseInt(s).toString() === s;
+    }
+}

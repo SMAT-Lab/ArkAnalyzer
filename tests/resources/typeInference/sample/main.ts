@@ -57,11 +57,22 @@
 //     let k = add(i, j);
 // }
 
-function testFunctionType(): void {
-    let a = [1, 2];
-    a.forEach(function (i) { });
-}
+// function print(s: string): void {
 
+// }
+// function testFunctionParaType() {
+//     print('hello');
+// }
+
+// function testFunctionType(): void {
+//     let a = [1, 2];
+//     a.forEach(function (i) { });
+// }
+
+function testTupleType(): void {
+    let a: [number, string] = [1, '2'];
+    // let b = [1, '2'];
+}
 
 // class Foo {
 //     // public static testNewObj(): void {

@@ -181,7 +181,11 @@ export class UnionType extends Type {
     }
 
     public toString(): string {
-        return this.types.join('|') + '-' + this.currType;
+        let typeStr = this.types.join('|');
+        if (!(this.currType instanceof UnknownType)) {
+            typeStr += '-' + this.currType
+        }
+        return typeStr;
     }
 }
 
@@ -275,11 +279,28 @@ export class ArrayType extends Type {
 
     public toString(): string {
         const strs: string[] = [];
-        strs.push(this.baseType.toString());
+        strs.push('(' + this.baseType.toString() + ')');
         for (let i = 0; i < this.dimension; i++) {
             strs.push('[]');
         }
         return strs.join('')
+    }
+}
+
+export class TupleType extends Type {
+    private types: Type[];
+
+    constructor(types: Type[]) {
+        super();
+        this.types = types;
+    }
+
+    public getTypes(): Type[] {
+        return this.types;
+    }
+
+    public toString(): string {
+        return '[' + this.types.join(', ') + ']';
     }
 }
 
