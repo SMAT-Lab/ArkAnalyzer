@@ -1,0 +1,27 @@
+{
+    "targetProjectName": "sample",
+    "targetProjectDirectory": "C:\\msys64\\home\\Yifei\\code\\ArkAnalyzer\\tests\\sample",
+    
+    "ohosSdkPath": "",
+    "kitSdkPath": "",
+    "systemSdkPath": "",
+    
+    "otherSdks": [
+        {
+            "name": "ArkAnalyzer",
+            "path": ""
+        },
+        {
+            "name": "sdk2",
+            "path": ""
+        },
+        {
+            "name": "",
+            "path": "/opt/yy"
+        },
+        {
+            "name": "",
+            "path": ""
+        }
+    ]
+}

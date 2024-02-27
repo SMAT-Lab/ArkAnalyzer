@@ -1,3 +1,4 @@
+import { ArkField } from "../model/ArkField";
 import { ClassSignature, MethodSignature } from "../model/ArkSignature";
 
 export abstract class Type { }
@@ -58,8 +59,6 @@ export class UnclearType extends Type {
         return this.name;
     }
 }
-
-
 
 /** primitive type */
 export abstract class PrimitiveType extends Type {
@@ -291,4 +290,25 @@ export class ClassAliasType extends AliasType {
     constructor(classType: ClassType) {
         super(classType);
     }
+}
+
+export class TypeLiteralType extends Type {
+    private members: ArkField[] = [];
+
+    constructor() {
+        super();
+    }
+
+    public getMembers() {
+        return this.members;
+    }
+
+    public setMembers(members: ArkField[]) {
+        this.members = members;
+    }
+
+    public addMember(member: ArkField) {
+        this.members.push(member);
+    }
+
 }

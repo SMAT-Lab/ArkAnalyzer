@@ -1,6 +1,7 @@
 import { Type } from "../base/Type";
 import { Property } from "../common/ClassInfoBuilder";
 import { InterfaceProperty } from "../common/InterfaceInfoBuilder";
+import { MethodParameter } from "../common/MethodInfoBuilder";
 import { ArkClass } from "./ArkClass";
 import { ArkInterface } from "./ArkInterface";
 import { FieldSignature } from "./ArkSignature";
@@ -8,11 +9,14 @@ import { FieldSignature } from "./ArkSignature";
 export class ArkField {
     private name: string = "";
     private code: string = "";
+    private fieldType: string = "";
 
     private declaringClass: ArkClass;
     //private declaringInterface: ArkInterface;
 
     private type: Type;
+    private parameters: MethodParameter[] = [];
+    private typeParameters: Type[] = [];
     private modifiers: Set<string> = new Set<string>();
     private questionToken: boolean = false;
     private exclamationToken: boolean = false;
@@ -55,6 +59,14 @@ export class ArkField {
         this.code = code;
     }
 
+    public getFieldType() {
+        return this.fieldType;
+    }
+
+    public setFieldType(fieldType: string) {
+        this.fieldType = fieldType;
+    }
+
     public getName() {
         return this.name;
     }
@@ -69,6 +81,30 @@ export class ArkField {
 
     public setType(type: Type) {
         this.type = type;
+    }
+
+    public getParameters() {
+        return this.parameters;
+    }
+
+    public setParameters(parameters: MethodParameter[]) {
+        this.parameters = parameters;
+    }
+
+    public addParameter(parameter: MethodParameter) {
+        this.typeParameters.push(parameter);
+    }
+
+    public getTypeParameters() {
+        return this.typeParameters;
+    }
+
+    public setTypeParameters(typeParameters: Type[]) {
+        this.typeParameters = typeParameters;
+    }
+
+    public addTypeParameters(typeParameter: Type) {
+        this.typeParameters.push(typeParameter);
     }
 
     public getModifiers() {
@@ -89,6 +125,7 @@ export class ArkField {
 
     public genSignature() {
         let fieldSig = new FieldSignature();
+        fieldSig.setType(this.type);
         fieldSig.setDeclaringClassSignature(this.declaringClass.getSignature());
         fieldSig.setFieldName(this.name);
         this.setSignature(fieldSig);
