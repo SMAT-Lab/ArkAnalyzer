@@ -15,7 +15,12 @@ export class TypeInference {
 
 
     public inferTypeInMethod(arkMethod: ArkMethod): void {
-        const cfg = arkMethod.getBody().getCfg();
+        const body = arkMethod.getBody();
+        if (!body) {
+            console.log('error: empty body');
+            return;
+        }
+        const cfg = body.getCfg();
         for (const block of cfg.getBlocks()) {
             for (const stmt of block.getStmts()) {
                 this.resolveSymbolInStmt(stmt, arkMethod);
