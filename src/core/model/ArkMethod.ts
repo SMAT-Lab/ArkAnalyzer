@@ -14,7 +14,7 @@ export const arkMethodNodeKind = ['MethodDeclaration', 'Constructor', 'FunctionD
 export class ArkMethod {
     private name: string;
     private code: string;
-
+    private line: number = -1;
     private declaringArkFile: ArkFile;
     private declaringArkClass: ArkClass;
 
@@ -74,6 +74,14 @@ export class ArkMethod {
 
     public setCode(code: string) {
         this.code = code;
+    }
+
+    public getLine() {
+        return this.line;
+    }
+
+    public setLine(line: number) {
+        this.line = line;
     }
 
     public getDeclaringArkClass() {
@@ -207,6 +215,7 @@ export function buildArkMethodFromArkClass(methodNode: NodeA, declaringClass: Ar
 
 export function buildNormalArkMethodFromAstNode(methodNode: NodeA, mtd: ArkMethod) {
     mtd.setCode(methodNode.text);
+    mtd.setLine(methodNode.line);
 
     if (!methodNode.methodNodeInfo) {
         throw new Error('Error: There is no methodNodeInfo for this method!');
