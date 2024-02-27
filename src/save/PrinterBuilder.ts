@@ -20,27 +20,20 @@ export class PrinterBuilder {
         }
     }
 
-    public dumpToDot(arkFile: ArkFile, output: string|undefined=undefined): void {
-        let filename = output;
-        if (output === undefined) {
-            filename = join(this.getOutputDir(arkFile), arkFile.getName() +'.dot');
-        }     
-        fs.mkdirSync(dirname(filename as string), {recursive: true});
-        let streamOut = new ArkStream(fs.createWriteStream(filename as string));
+    public dumpToDot(arkFile: ArkFile): void {
+        let filename = join(this.getOutputDir(arkFile), arkFile.getName() +'.dot');
+        fs.mkdirSync(dirname(filename), {recursive: true});
+        let streamOut = new ArkStream(fs.createWriteStream(filename));
         let printer: Printer = new DotPrinter(arkFile);
         printer.printTo(streamOut);
         streamOut.close();
     }
 
-    public dumpToTs(arkFile: ArkFile, output: string|undefined=undefined): void {
-        let filename = output;
-        if (output === undefined) {
-            filename = join(this.getOutputDir(arkFile), arkFile.getName()); 
-        }     
-        fs.mkdirSync(dirname(filename as string), {recursive: true});
-        let streamOut = new ArkStream(fs.createWriteStream(filename as string));
-        let printer: SourcePrinter = new SourcePrinter(arkFile);
-        // if arkFile not change printOriginalCode()
+    public dumpToTs(arkFile: ArkFile): void {
+        let filename = join(this.getOutputDir(arkFile), arkFile.getName());        
+        fs.mkdirSync(dirname(filename), {recursive: true});
+        let streamOut = new ArkStream(fs.createWriteStream(filename));
+        let printer: Printer = new SourcePrinter(arkFile);
         printer.printTo(streamOut);
         streamOut.close();
     }

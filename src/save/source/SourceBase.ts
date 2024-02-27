@@ -1,19 +1,68 @@
-import { ArkFile } from "../../core/model/ArkFile";
+import { ArkBody } from "../../core/model/ArkBody";
+import { ArkMethod } from "../../core/model/ArkMethod";
 import { ArkCodeBuffer } from "../ArkStream";
-
+import { SourceBody } from "./SourceBody";
 
 export abstract class SourceBase {
-    protected printer: ArkCodeBuffer;
-    protected arkFile: ArkFile;
+    printer: ArkCodeBuffer;
 
-    public constructor(indent: string, arkFile: ArkFile) {
+    public constructor(indent: string) {
         this.printer = new ArkCodeBuffer(indent);
-        this.arkFile = arkFile;
     }
 
     public abstract dump(): string;
     public abstract dumpOriginalCode(): string;
-    public abstract getLine(): number;
+
+    public printMethod(method: ArkMethod): void {
+        this.printer.writeIndent().write(this.methodProtoToString(method));
+        // abstract function no body
+        if (method.containsModifier('AbstractKeyword')) {
+            this.printer.writeLine(';');
+            return;
+        }
+
+        this.printer.writeLine('{');
+        this.printer.incIndent();
+        this.printBody(method.getBody(), false);
+        this.printer.decIndent();
+
+        this.printer.writeIndent();
+        this.printer.writeLine('}');
+    }
+
+    public printBody(body: ArkBody, isDefault: boolean): void {
+        let srcBody = new SourceBody(this.printer.getIndent(), body, isDefault);
+        this.printer.write(srcBody.dump());
+    }
+
+    protected methodProtoToString(method: ArkMethod): string {
+        let code = new ArkCodeBuffer();
+        code.writeSpace(this.modifiersToString(method.getModifiers()));
+        if (method.getDeclaringArkClass()?.isDefaultArkClass()) {
+            code.writeSpace('function');
+        }
+        code.write(this.resolveMethodName(method.getName()));
+        if (method.getTypeParameter().length > 0) {
+            code.write(`<${method.getTypeParameter().join(',')}>`);
+        }
+
+        let parameters: string[] = [];
+        method.getParameters().forEach((parameterType, parameterName) => {
+            parameters.push(parameterName + ': ' + this.resolveKeywordType(parameterType));
+        });
+        code.write(`(${parameters.join(',')})`);
+        if (method.getReturnType().length > 1) {
+            let rtnTypes: string[] = [];
+            method.getReturnType().forEach((returnType) => {
+                rtnTypes.push(this.resolveKeywordType(returnType));
+            });
+            code.write(`: [${rtnTypes.join(',')}]`);
+        } else if (method.getReturnType().length == 1) {
+            code.writeSpace(`: ${this.resolveKeywordType(method.getReturnType()[0])}`);
+        }
+
+        return code.toString();
+    }
 
     protected modifiersToString(modifiers: Set<string>): string {
         let modifiersStr: string[] = [];
@@ -25,20 +74,11 @@ export abstract class SourceBase {
     }
     
     protected resolveKeywordType(keywordStr: string): string {
-        // 'NumberKeyword | NullKeyword |
-        let types: string[] = [];
-        for (let keyword of keywordStr.split('|')) {
-            keyword = keyword.trim();
-            if (keyword.length == 0) {
-                continue;
-            }
-            if (keyword.endsWith('Keyword')) {
-                keyword = keyword.substring(0, keyword.length - 'Keyword'.length).toLowerCase();
-            }
-            types.push(keyword);
+        if (keywordStr.endsWith('Keyword')) {
+            return keywordStr.substring(0, keywordStr.length - 'Keyword'.length).toLowerCase();
         }
         
-        return types.join('|');
+        return keywordStr;
     }
     
     protected resolveMethodName(name: string): string {

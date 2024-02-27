@@ -1,25 +1,19 @@
 import { ArkClass } from "../../core/model/ArkClass";
-import { ArkFile } from "../../core/model/ArkFile";
 import { SourceBase } from "./SourceBase";
-import { SourceMethod } from "./SourceMethod";
 
 
 export class SourceClass extends SourceBase{
     cls: ArkClass;
 
-    public constructor(indent: string, arkFile: ArkFile, cls: ArkClass) {
-        super(indent, arkFile);
+    public constructor(indent: string, cls: ArkClass) {
+        super(indent);
         this.cls = cls;
-    }
-
-    public getLine(): number {
-        return this.cls.getLine();
     }
 
     public dump(): string {
         // print export class name<> + extends c0 implements x1, x2 {
         this.printer.writeIndent().writeSpace(this.modifiersToString(this.cls.getModifiers()))
-            .write(`${this.cls.getOriginType()} ${this.cls.getName()}`);
+            .write(`class ${this.cls.getName()}`);
         if (this.cls.getTypeParameter().length > 0) {
             this.printer.write(`<${this.cls.getTypeParameter().join(',')}>`);
         }
@@ -41,39 +35,46 @@ export class SourceClass extends SourceBase{
     }
 
     public dumpOriginalCode(): string {
-        return this.cls.getCode() + '\n';
+        return this.cls.getCode();
     }
 
     protected printMethods(): void {
-        let items: SourceBase[] = [];
         for (let method of this.cls.getMethods()) {
-            items.push(new SourceMethod(this.printer.getIndent(), this.arkFile, method));
+            if (method.isDefaultArkMethod()) {
+                this.printBody(method.getBody(), true);
+            } else {
+                this.printMethod(method);
+            }
         }
-        items.sort((a, b) => a.getLine() - b.getLine());
-        items.forEach((v):void => {
-            this.printer.write(v.dump());
-        });
     }
 
     private printFields(): void {
-        for (let field of this.cls.getFields()) {
+        for (let property of this.cls.getProperties()) {
             this.printer.writeIndent()
-                .writeSpace(this.modifiersToString(field.getModifiers()))
-                .write(field.getName());
+                .writeSpace(this.modifiersToString(property.getModifiers()))
+                .write(property.getPropertyName());
 
             // property.getInitializer() PropertyAccessExpression ArrowFunction ClassExpression FirstLiteralToken StringLiteral 
             // TODO: Initializer not ready
-            if (field.getType()) {
-                this.printer.write(':' + field.getType());
+            if (property.getType().length > 0) {
+                this.printer.write(':' + this.resolveKeywordType(property.getType()));
             }
-            this.printer.writeLine(';');
+            if (property.getInitializer() == 'ClassExpression') {
+                this.printer.writeLine(' = class {');
+                this.printer.writeIndent().writeLine('}');
+            } else if (property.getInitializer() == 'ArrowFunction') {
+                this.printer.writeLine(' = ()=> {');
+                this.printer.writeIndent().writeLine('}');
+            } else {
+                this.printer.writeLine(';');
+            }
         }
     }
 }
 
 export class SourceDefaultClass extends SourceClass {
-    public constructor(indent: string, arkFile: ArkFile, cls: ArkClass) {
-        super(indent, arkFile, cls);
+    public constructor(indent: string, cls: ArkClass) {
+        super(indent, cls);
     }
 
     public dump(): string {

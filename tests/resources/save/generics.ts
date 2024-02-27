@@ -9,8 +9,6 @@ let output = identity<string>("myString");
 class GenericNumber<T> {
     zeroValue: T;
     add: (x: T, y: T) => T;
-    private methods: Set<string>;
-    private calls: Map<string, string[]>;
 }
 
 interface Lengthwise {
@@ -30,22 +28,26 @@ class ZooKeeper {
     nametag: string;
 }
 
-class Animal1 {
+class Animal {
     numLegs: number;
 }
 
-class Bee extends Animal1 {
+class Bee extends Animal {
     keeper: BeeKeeper;
 }
 
-class Lion extends Animal1 {
+class Lion extends Animal {
     keeper: ZooKeeper;
 }
 
 // TODO: not support
-function createInstance<A extends Animal1>(c: new () => A): A {
+function createInstance<A extends Animal>(c: new () => A): A {
     return new c();
 }
+
+// TODO: lost
+createInstance(Lion).keeper.nametag;  // typechecks!
+createInstance(Bee).keeper.hasMask;   // typechecks!
 
 let l = new Lion();
 console.log(l.keeper);
