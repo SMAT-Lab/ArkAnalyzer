@@ -79,7 +79,7 @@ export function buildMethodInfo4MethodNode(node: ts.FunctionDeclaration | ts.Met
     }
     //TODO, hard code
     else if (ts.isConstructorDeclaration(node)) {
-        name = '_Constructor';
+        name = 'constructor';
     }
     else if (ts.isGetAccessor(node) && ts.isIdentifier(node.name)) {
         name = 'Get-' + node.name.escapedText.toString();

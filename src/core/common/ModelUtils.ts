@@ -19,7 +19,7 @@ export class ModelUtils {
     /** search class iteratively with ClassSignature */
     public static getClassWithClassSignature(classSignature: ClassSignature, scene: Scene): ArkClass | null {
         const fileSignature = classSignature.getDeclaringFileSignature();
-        const arkFile = scene.getFile(fileSignature.getFileName());
+        const arkFile = scene.getFile(fileSignature);
         if (arkFile == null) {
             return null;
         }
