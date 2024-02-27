@@ -155,15 +155,14 @@ export class ArkFile {
                     return ns;
                 }
             });
-            return null;
         }
         else {
             let declaringNamespace = this.getNamespaceAllTheFile(declaringNamespaceSignature);
             if (declaringNamespace) {
                 return declaringNamespace.getNamespace(namespaceSignature);
             }
-            return null;
         }
+        return null;
     }
 
     public getNamespaces(): ArkNamespace[] {
@@ -192,7 +191,6 @@ export class ArkFile {
             if (namespace) {
                 return namespace.getMethodAllTheNamespace(methodSignature);
             }
-            return null;
         }
         else {
             let classSig = methodSignature.getDeclaringClassSignature();
@@ -200,8 +198,28 @@ export class ArkFile {
             if (cls) {
                 return cls.getMethod(methodSignature);
             }
+        }
+        return null;
+    }
+
+    public getClassAllTheFile(classSignature: ClassSignature): ArkClass | null {
+        let fileSig = classSignature.getDeclaringFileSignature();
+        if (fileSig.toString() != this.fileSignature.toString()) {
             return null;
         }
+        else {
+            let namespaceSig = classSignature.getDeclaringNamespaceSignature();
+            if (namespaceSig) {
+                let ns = this.getNamespaceAllTheFile(namespaceSig);
+                if (ns) {
+                    return ns.getClass(classSignature);
+                }
+            }
+            else {
+                return this.getClass(classSignature);
+            }
+        }
+        return null;
     }
 
     // Deprecated
@@ -285,6 +303,34 @@ export class ArkFile {
         return this.fileSignature;
     }
 
+    public getAllMethodsUnderThisFile(): ArkMethod[] {
+        let methods: ArkMethod[] = [];
+        this.classes.forEach((cls) => {
+            methods.push(...cls.getMethods());
+        });
+        this.namespaces.forEach((ns) => {
+            methods.push(...ns.getAllMethodsUnderThisNamespace());
+        });
+        return methods;
+    }
+
+    public getAllClassesUnderThisFile(): ArkClass[] {
+        let classes: ArkClass[] = [];
+        classes.push(...this.classes);
+        this.namespaces.forEach((ns) => {
+            classes.push(...ns.getAllClassesUnderThisNamespace());
+        });
+        return classes;
+    }
+
+    public getAllNamespacesUnderThisFile(): ArkNamespace[] {
+        let namespaces: ArkNamespace[] = [];
+        namespaces.push(...this.namespaces);
+        this.namespaces.forEach((ns) => {
+            namespaces.push(...ns.getAllNamespacesUnderThisNamespace());
+        });
+        return namespaces;
+    }
 }
 
 export function buildArkFileFromFile(absoluteFilePath: string, projectDir: string, arkFile: ArkFile) {

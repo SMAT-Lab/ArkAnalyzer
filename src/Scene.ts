@@ -140,7 +140,7 @@ export class Scene {
         });
     }
 
-    getFile(fileSignature: FileSignature): ArkFile | null {
+    public getFile(fileSignature: FileSignature): ArkFile | null {
         const foundFile = this.arkFiles.find(fl => fl.getFileSignature().toString() == fileSignature.toString());
         return foundFile || null;
     }
@@ -259,6 +259,16 @@ export class Scene {
         return fl.getMethod(mtdSig);
     } */
 
+    public getClass(classSignature: ClassSignature): ArkClass | null {
+        let fileSig = classSignature.getDeclaringFileSignature();
+        this.arkFiles.forEach((fl) => {
+            if (fl.getFileSignature().toString() == fileSig.toString()) {
+                return fl.getClassAllTheFile(classSignature);
+            }
+        });
+        return null;
+    }
+
     public getMethod(methodSignature: MethodSignature): ArkMethod | null {
         let fileSig = methodSignature.getDeclaringClassSignature().getDeclaringFileSignature();
         this.arkFiles.forEach((fl) => {
@@ -281,6 +291,30 @@ export class Scene {
         return arkMethods;
     } */
 
+    public getAllNamespacesUnderTargetProject(): ArkNamespace[] {
+        let namespaces: ArkNamespace[] = [];
+        this.arkFiles.forEach((fl) => {
+            namespaces.push(...fl.getAllNamespacesUnderThisFile());
+        });
+        return namespaces;
+    }
+
+    public getAllClassesUnderTargetProject(): ArkClass[] {
+        let namespaces: ArkClass[] = [];
+        this.arkFiles.forEach((fl) => {
+            namespaces.push(...fl.getAllClassesUnderThisFile());
+        });
+        return namespaces;
+    }
+
+    public getAllMethodsUnderTargetProject(): ArkMethod[] {
+        let namespaces: ArkMethod[] = [];
+        this.arkFiles.forEach((fl) => {
+            namespaces.push(...fl.getAllMethodsUnderThisFile());
+        });
+        return namespaces;
+    }
+
     public hasMainMethod(): boolean {
         return false;
     }
@@ -290,7 +324,7 @@ export class Scene {
         return [];
     }
 
-    private getMethodSignature(fileName: string, methodName: string, parameters: MethodParameter[], returnType: Type, className: string): MethodSignature {
+    /* private getMethodSignature(fileName: string, methodName: string, parameters: MethodParameter[], returnType: Type, className: string): MethodSignature {
         let methodSubSignature = new MethodSubSignature();
         methodSubSignature.setMethodName(methodName);
         methodSubSignature.setParameters(parameters);
@@ -303,8 +337,9 @@ export class Scene {
         methodSignature.setMethodSubSignature(methodSubSignature)
 
         return methodSignature;
-    }
-    private getClassSignature(fileName: string, className: string): ClassSignature {
+    } */
+
+    /* private getClassSignature(fileName: string, className: string): ClassSignature {
         let classSig = new ClassSignature();
         let fileSig = new FileSignature();
         fileSig.setFileName(fileName);
@@ -312,7 +347,7 @@ export class Scene {
         classSig.setClassName(className);
         classSig.setDeclaringFileSignature(fileSig);
         return classSig;
-    }
+    } */
 
     public makeCallGraph(): void {
         this.callgraph = new CallGraph(new Set<string>, new Map<string, string[]>);
