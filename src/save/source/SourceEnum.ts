@@ -1,17 +1,12 @@
 import { ArkEnum } from "../../core/model/ArkEnum";
-import { ArkFile } from "../../core/model/ArkFile";
 import { SourceBase } from "./SourceBase";
 
 export class SourceEnum extends SourceBase{
     eNum: ArkEnum;
 
-    public constructor(indent: string, arkFile: ArkFile, eNum: ArkEnum) {
-        super(indent, arkFile);
+    public constructor(indent: string, eNum: ArkEnum) {
+        super(indent);
         this.eNum = eNum;
-    }
-
-    public getLine(): number {
-        return this.eNum.getLine();
     }
 
     public dump(): string {
@@ -21,16 +16,7 @@ export class SourceEnum extends SourceBase{
 
         // TODO: initial
         for (let member of this.eNum.getMembers()) {
-            if (member.getInitializerType() == 'StringLiteral') {
-                this.printer.writeIndent().writeLine(`${member.getMemberName()} = '${member.getInitializer()}',`);
-            } else if(member.getInitializerType() == 'FirstLiteralToken') {
-                this.printer.writeIndent().writeLine(`${member.getMemberName()} = ${member.getInitializer()},`);
-            } else {
-                if (member.getInitializerType()) {
-                    console.log('SourceEnum->dump:', member);
-                }
-                this.printer.writeIndent().writeLine(`${member.getMemberName()},`);
-            }
+            this.printer.writeIndent().writeLine(`${member.getMemberName()},`);
         }
 
         for (let method of this.eNum.getMethods()) {

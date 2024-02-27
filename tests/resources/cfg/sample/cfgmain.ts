@@ -62,8 +62,8 @@
 //     return 0;
 // }
 
-function testObjectLiteral() {
-    let obj = { i: 1 }
+function testParenthesizedExpression() {
+    (agcDataBase as Database).collection(Post).upsert(post);
 }
 
 // class Test {
@@ -91,10 +91,10 @@ function testObjectLiteral() {
 //     //     let str2: string = `boy, ${str1}, world. ${num1}`;
 //     // }
 
-//     // public testBasicType() {
-//     //     let flag: boolean = false;
-//     //     let a:boolean = flag;
-//     // }
+//     public testBasicType() {
+//         let flag: boolean = false;
+//         let a:boolean = flag;
+//     }
 
 //     // public testArrayType() {
 //     //     let a: number[] = [1, 2, 3];
@@ -144,4 +144,3 @@ function testObjectLiteral() {
 //     //     console.log(i);
 //     // }
 // }
-

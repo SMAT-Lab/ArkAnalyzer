@@ -6,8 +6,7 @@ export class CfgTest {
     public buildScene(): Scene {
         // D:\\Codes\\program_analysis\\static_framework\\ArkAnalyzer\\tests\\resources\\cfg\\sample
         // D:\\Codes\\program_analysis\\static_framework\\ArkAnalyzer\\tests\\resources\\cfg\\temp
-        // D:\\Codes\\resources\\SE4OpenHarmony-main     
-        //  D:\\Codes\\resources\\SE4OpenHarmony-main\\Apps\\ArkTS2TSRes\\Application   
+        // D:\\Codes\\resources\\SE4OpenHarmony-main
         const config_path = "D:\\Codes\\program_analysis\\static_framework\\ArkAnalyzer\\tests\\resources\\cfg\\CfgTestConfig.json";
         let config: SceneConfig = new SceneConfig();
         config.buildFromJson(config_path);

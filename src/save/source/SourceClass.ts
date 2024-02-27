@@ -1,18 +1,13 @@
 import { ArkClass } from "../../core/model/ArkClass";
-import { ArkFile } from "../../core/model/ArkFile";
 import { SourceBase } from "./SourceBase";
 
 
 export class SourceClass extends SourceBase{
     cls: ArkClass;
 
-    public constructor(indent: string, arkFile: ArkFile, cls: ArkClass) {
-        super(indent, arkFile);
+    public constructor(indent: string, cls: ArkClass) {
+        super(indent);
         this.cls = cls;
-    }
-
-    public getLine(): number {
-        return this.cls.getLine();
     }
 
     public dump(): string {
@@ -40,7 +35,7 @@ export class SourceClass extends SourceBase{
     }
 
     public dumpOriginalCode(): string {
-        return this.cls.getCode() + '\n';
+        return this.cls.getCode();
     }
 
     protected printMethods(): void {
@@ -78,8 +73,8 @@ export class SourceClass extends SourceBase{
 }
 
 export class SourceDefaultClass extends SourceClass {
-    public constructor(indent: string, arkFile: ArkFile, cls: ArkClass) {
-        super(indent, arkFile, cls);
+    public constructor(indent: string, cls: ArkClass) {
+        super(indent, cls);
     }
 
     public dump(): string {

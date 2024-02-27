@@ -1,24 +1,21 @@
 import { NodeA } from "../base/Ast";
 import { Property } from "../common/ClassInfoBuilder";
-import { InterfaceMember, InterfaceProperty } from "../common/InterfaceInfoBuilder";
 import { ArkField } from "./ArkField";
 import { ArkFile } from "./ArkFile";
-import { ArkMethod, arkMethodNodeKind } from "./ArkMethod";
+import { ArkMethod } from "./ArkMethod";
 import { ArkNamespace } from "./ArkNamespace";
-import { ClassSignature, InterfaceSignature, MethodSubSignature, methodSubSignatureCompare } from "./ArkSignature";
+import { MethodSubSignature, methodSubSignatureCompare } from "./ArkSignature";
 
 export class ArkInterface {
     private name: string;
     private code: string;
-    private line: number = -1;
     private declaringArkFile: ArkFile;
     private declaringArkNamespace: ArkNamespace;
     private extendsNames: string[] = [];
     private fields: ArkField[] = [];
-    //private properties: Property[] = [];
     private methods: ArkMethod[] = [];
     private modifiers: Set<string> = new Set<string>();
-    private members: InterfaceMember[] = [];
+    private members: ArkField[] = [];
     private declaringInstance: ArkFile | ArkNamespace;
     private declaringType: string;
     private arkSignature: string;
@@ -36,46 +33,28 @@ export class ArkInterface {
             this.setDeclaringType("ArkNamespace");
         }
         this.setCode(interfaceNode.text);
-        this.setLine(interfaceNode.line);
         this.buildArkInterfaceFromAstNode(interfaceNode);
     }
 
     private buildArkInterfaceFromAstNode(interfaceNode: NodeA) {
-        if (!interfaceNode.interfaceNodeInfo) {
+        if (!interfaceNode.classNodeInfo) {
             throw new Error('Error: There is no interfaceNodeInfo for this interface!');
         }
-        this.setName(interfaceNode.interfaceNodeInfo.interfaceName);
+        this.setName(interfaceNode.classNodeInfo.getClassName());
         this.genArkSignature();
 
-        interfaceNode.interfaceNodeInfo.modifiers.forEach((modifier) => {
+        interfaceNode.classNodeInfo.getmodifiers().forEach((modifier) => {
             this.addModifier(modifier);
         });
 
-        for (let [key, value] of interfaceNode.interfaceNodeInfo.heritageClauses) {
+        for (let [key, value] of interfaceNode.classNodeInfo.getHeritageClauses()) {
             if (value == 'ExtendsKeyword') {
                 this.addExtendsName(key);
             }
         }
 
-        interfaceNode.interfaceNodeInfo.members.forEach((member) => {
+        interfaceNode.classNodeInfo.getMembers().forEach((member) => {
             this.addMember(member);
-            if (member instanceof ArkMethod) {
-                let methodMember = (member as ArkMethod);
-                methodMember.setDeclaringSignature(this.arkSignature);
-                methodMember.setDeclaringArkClass(this.declaringArkFile.getDefaultClass());
-                methodMember.genSignature();
-                this.addArkInstance(methodMember.getArkSignature(), member);
-                methodMember.getArkInstancesMap().forEach((value, key) => {
-                    this.addArkInstance(key, value);
-                });
-            }
-            if (member instanceof InterfaceProperty) {
-                let memberInterfaceProperty = (member as InterfaceProperty);
-                let field = new ArkField();
-                field.buildFromArkInteraface(this, memberInterfaceProperty);
-                this.addField(field);
-                this.addArkInstance(field.getArkSignature(), field);
-            }
         });
     }
 
@@ -83,7 +62,7 @@ export class ArkInterface {
         return this.members;
     }
 
-    public addMember(member: InterfaceMember) {
+    public addMember(member: ArkField) {
         this.members.push(member);
     }
 
@@ -125,14 +104,6 @@ export class ArkInterface {
 
     public setCode(code: string) {
         this.code = code;
-    }
-
-    public getLine() {
-        return this.line;
-    }
-
-    public setLine(line: number) {
-        this.line = line;
     }
 
     public getDeclaringArkFile() {

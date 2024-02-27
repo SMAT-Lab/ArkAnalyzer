@@ -1,11 +1,12 @@
+import { Type, UnknownType } from "./Type";
 import { Value } from "./Value";
 
 
 export class Constant implements Value {
     private value: string;
-    private type: string;
+    private type: Type;
 
-    constructor(value: string, type: string = 'any') {
+    constructor(value: string, type: Type = UnknownType.getInstance()) {
         this.value = value;
         this.type = type;
     }
@@ -22,12 +23,12 @@ export class Constant implements Value {
         return [];
     }
 
-    public getType(): string {
+    public getType(): Type {
         return this.type;
     }
 
-    public setType(type: string): void {
-        this.type = type
+    public setType(newType: Type): void {
+        this.type = newType
     }
 
     public toString(): string {

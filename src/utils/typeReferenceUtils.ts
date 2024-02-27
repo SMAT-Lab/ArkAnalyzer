@@ -2,7 +2,7 @@ import path from "path";
 import { Scene } from "../Scene";
 import { NodeA } from "../core/base/Ast";
 import { ArkFile } from "../core/model/ArkFile";
-import { ClassSignature } from "../core/model/ArkSignature";
+import { ClassSignature, FileSignature } from "../core/model/ArkSignature";
 
 export function isPrimaryType(type: string): boolean {
     switch (type) {
@@ -26,6 +26,7 @@ export function isPrimaryTypeKeyword(keyword: string): boolean {
         case "StringKeyword":
         case "String":
         case "NullKeyword":
+        case "BooleanKeyword":
             return true
         default:
             return false
@@ -42,6 +43,8 @@ export function resolvePrimaryTypeKeyword(keyword: string): string {
             return "null"
         case "String":
             return "String"
+        case "BooleanKeyword":
+            return "boolean"
         default:
             return ""
     }
@@ -122,7 +125,7 @@ export function resolveClassInstance(classCompleteName: string, file: ArkFile | 
     if (file == null)
         return null
     let lastDotIndex = classCompleteName.lastIndexOf('.')
-    let classRealName = classCompleteName.substring(lastDotIndex + 1).replace(/<|>/g, '')
+    let classRealName = classCompleteName.substring(lastDotIndex + 1)
     for (let arkClass of file.getClasses()) {
         if (arkClass.getName() === classRealName) {
             return arkClass
@@ -191,11 +194,11 @@ export function searchImportMessage(file: ArkFile, className: string, searchCall
                         }
                     }
                     // file不在scene中，视为外部库
-                    const targetSignature = importInfo.getTargetArkSignature();
+                    /* const targetSignature = importInfo.getTargetArkSignature();
                     const apiMap = scene.arkClassMaps;
                     if (apiMap != undefined && apiMap.get(targetSignature) != undefined) {
                         return apiMap.get(targetSignature);
-                    }
+                    } */
                 }
             }
         }
@@ -206,9 +209,11 @@ export function searchImportMessage(file: ArkFile, className: string, searchCall
 export function typeStrToClassSignature(typrStr: string): ClassSignature {
     const lastDot = typrStr.lastIndexOf('.');
     const classSignature = new ClassSignature();
-    classSignature.setArkFile(typrStr.substring(0, lastDot));
+    const fileSignature = new FileSignature();
+    fileSignature.setFileName(typrStr.substring(0, lastDot));
+    classSignature.setDeclaringFileSignature(fileSignature);
     const classType = typrStr.replace(/\\\\/g, '.').split('.');
-    classSignature.setClassType(classType[classType.length - 1]);
+    classSignature.setClassName(classType[classType.length - 1]);
 
     return classSignature;
 }
@@ -216,7 +221,7 @@ export function typeStrToClassSignature(typrStr: string): ClassSignature {
 export const matchClassInFile: ClassSearchCallback = (file, className) => {
     for (let classInFile of file.getClasses()) {
         if (className === classInFile.getName()) {
-            return classInFile.getSignature().getArkFile() + "." + className;
+            return classInFile.getSignature().getDeclaringFileSignature().getFileName() + "." + className;
         }
     }
     return null;

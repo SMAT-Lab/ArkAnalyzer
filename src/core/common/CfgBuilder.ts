@@ -1,20 +1,20 @@
 import * as fs from 'fs';
-import { buildTypeReferenceString, transformArrayToString } from "../../utils/typeReferenceUtils";
 import { ASTree, NodeA } from '../base/Ast';
 import { Constant } from '../base/Constant';
 import { AbstractInvokeExpr, ArkBinopExpr, ArkCastExpr, ArkConditionExpr, ArkInstanceInvokeExpr, ArkLengthExpr, ArkNewArrayExpr, ArkNewExpr, ArkStaticInvokeExpr, ArkTypeOfExpr, ArkUnopExpr } from '../base/Expr';
 import { Local } from '../base/Local';
 import { AbstractFieldRef, ArkArrayRef, ArkCaughtExceptionRef, ArkInstanceFieldRef, ArkParameterRef, ArkStaticFieldRef, ArkThisRef } from '../base/Ref';
 import { ArkAssignStmt, ArkDeleteStmt, ArkGotoStmt, ArkIfStmt, ArkInvokeStmt, ArkReturnStmt, ArkReturnVoidStmt, ArkSwitchStmt, ArkThrowStmt, Stmt } from '../base/Stmt';
-import { FunctionType } from '../base/Type';
+import { ArrayType, CallableType, ClassType, StringType, Type, UnionType, UnknownType } from '../base/Type';
 import { Value } from '../base/Value';
 import { BasicBlock } from '../graph/BasicBlock';
 import { Cfg } from '../graph/Cfg';
-import { ArkClass } from '../model/ArkClass';
-import { ArkMethod } from '../model/ArkMethod';
-import { ClassSignature, MethodSignature, MethodSubSignature } from '../model/ArkSignature';
+import { ArkClass, buildNormalArkClassFromArkFile } from '../model/ArkClass';
+import { ArkMethod, buildArkMethodFromArkClass } from '../model/ArkMethod';
+import { ClassSignature, FieldSignature, MethodSignature, MethodSubSignature } from '../model/ArkSignature';
 import { ExportInfo } from './ExportBuilder';
 import { IRUtils } from './IRUtils';
+import { TypeInference } from './TypeInference';
 
 
 class StatementBuilder {
@@ -724,6 +724,14 @@ export class CfgBuilder {
         this.scopeLevel--;
         if (lastStatement.type != "breakStatement" && lastStatement.type != "continueStatement") {
             lastStatement.next = nextStatement;
+        }
+    }
+
+    addReturnInEmptyMethod() {
+        if (this.entry.next == this.exit) {
+            const ret = new StatementBuilder("returnStatement", "return;", null, this.entry.scopeID);
+            this.entry.next = ret;
+            ret.next = this.exit;
         }
     }
 
@@ -1638,25 +1646,25 @@ export class CfgBuilder {
     }
 
     private objectLiteralNodeToLocal(objectLiteralNode: NodeA): Local {
-        let arrowFuncName = 'AnonymousClass_' + this.name + '_' + this.anonymousClassIndex;
+        let anonymousClassName = 'AnonymousClass_' + this.name + '_' + this.anonymousClassIndex;
         this.anonymousClassIndex++;
 
-        let arkFile = this.declaringClass.getDeclaringArkFile();
-        let classSignature = new ClassSignature();
-        classSignature.setArkFile(arkFile.getName());
-        classSignature.setClassType(arrowFuncName);
-
-        let cls: ArkClass = new ArkClass();
-        cls.setSignature(classSignature);
         // TODO: 解析类体
-        arkFile.addArkClass(cls);
+        let arkClass: ArkClass = new ArkClass();
+        arkClass.setName(anonymousClassName);
+        let arkFile = this.declaringClass.getDeclaringArkFile();
+        arkClass.setDeclaringArkFile(arkFile);
+        arkClass.genSignature();
+        arkFile.addArkClass(arkClass);
+        const classSignature = arkClass.getSignature();
+        const classType = new ClassType(classSignature);
 
-        let newExpr = new ArkNewExpr(classSignature);
+        let newExpr = new ArkNewExpr(classType);
         let tempObj = this.generateAssignStmt(newExpr);
         let methodSubSignature = new MethodSubSignature();
         methodSubSignature.setMethodName('constructor');
         let methodSignature = new MethodSignature();
-        methodSignature.setArkClass(classSignature);
+        methodSignature.setDeclaringClassSignature(classSignature);
         methodSignature.setMethodSubSignature(methodSubSignature);
         let args: Value[] = [];
         this.current3ACstm.threeAddressStmts.push(new ArkInvokeStmt(new ArkInstanceInvokeExpr(tempObj, methodSignature, args)));
@@ -1679,7 +1687,7 @@ export class CfgBuilder {
         if (literalText.length == 0) {
             return expr;
         }
-        let combinationExpr = new ArkBinopExpr(expr, new Constant(literalText, 'string'), '+');
+        let combinationExpr = new ArkBinopExpr(expr, new Constant(literalText, StringType.getInstance()), '+');
         return this.generateAssignStmt(combinationExpr);
     }
 
@@ -1687,7 +1695,7 @@ export class CfgBuilder {
         let subValues: Value[] = [];
         let templateHeadNode = templateExprNode.children[0];
         let templateHeadText = templateHeadNode.text;
-        subValues.push(new Constant(templateHeadText.substring(1, templateHeadText.length - 2), 'string'));
+        subValues.push(new Constant(templateHeadText.substring(1, templateHeadText.length - 2), StringType.getInstance()));
 
         let syntaxListNode = templateExprNode.children[1];
         for (const child of syntaxListNode.children) {
@@ -1770,7 +1778,8 @@ export class CfgBuilder {
             value = this.getOriginalLocal(value);
         }
         else if (this.shouldBeConstant(node)) {
-            value = new Constant(node.text, this.resolveKeywordType(node));
+            const typeStr = this.resolveKeywordType(node);
+            value = new Constant(node.text, TypeInference.buildTypeFromStr(typeStr));
         }
         else if (node.kind == 'BinaryExpression') {
             let op1 = this.astNodeToValue(node.children[0]);
@@ -1793,7 +1802,9 @@ export class CfgBuilder {
             let base = baseValue as Local;
 
             let fieldName = node.children[2].text;
-            value = new ArkInstanceFieldRef(base, fieldName);
+            const fieldSignature = new FieldSignature();
+            fieldSignature.setFieldName(fieldName);
+            value = new ArkInstanceFieldRef(base, fieldSignature);
         }
         else if (node.kind == 'ElementAccessExpression') {
             let baseValue = this.astNodeToValue(node.children[0]);
@@ -1819,10 +1830,12 @@ export class CfgBuilder {
             }
 
             let baseLocal = baseValue as Local;
-            if (baseLocal.getType() == 'array' || baseLocal.getType().endsWith('[]')) {
+            if (baseLocal.getType() instanceof ArrayType) {
                 value = new ArkArrayRef(baseLocal as Local, elementValue);
             } else {
-                let fieldSignature = elementValue.toString();
+                let fieldName = elementValue.toString();
+                const fieldSignature = new FieldSignature();
+                fieldSignature.setFieldName(fieldName);
                 value = new ArkInstanceFieldRef(baseLocal, fieldSignature);
             }
         }
@@ -1845,7 +1858,7 @@ export class CfgBuilder {
             let classSignature = new ClassSignature();
             let methodSubSignature = new MethodSubSignature();
             let methodSignature = new MethodSignature();
-            methodSignature.setArkClass(classSignature);
+            methodSignature.setDeclaringClassSignature(classSignature);
             methodSignature.setMethodSubSignature(methodSubSignature);
 
             if (methodValue instanceof ArkInstanceFieldRef) {
@@ -1863,7 +1876,7 @@ export class CfgBuilder {
         }
 
         else if (node.kind == "ArrowFunction") {
-            let arrowFuncName = 'AnonymousFunc_' + this.name + '_' + this.anonymousFuncIndex;
+            let arrowFuncName = 'AnonymousFunc-' + this.name + '-' + this.anonymousFuncIndex;
             if (node.methodNodeInfo) {
                 node.methodNodeInfo.updateName4anonymousFunc(arrowFuncName);
             }
@@ -1880,14 +1893,13 @@ export class CfgBuilder {
                 }
             }
             let arrowArkMethod = new ArkMethod();
-            arrowArkMethod.buildArkMethodFromAstNode(node, this.declaringClass);
+            buildArkMethodFromArkClass(node, this.declaringClass, arrowArkMethod);
+            arrowArkMethod.genSignature();
             this.declaringClass.addMethod(arrowArkMethod);
 
-            let functionType = new FunctionType(arrowArkMethod.getSignature());
-            let functionValue = new Local(arrowFuncName);
-            this.locals.add(functionValue);
-            functionValue.setValueType(functionType);
-            value = functionValue;
+            let callableType = new CallableType(arrowArkMethod.getSignature());
+            value = new Local(arrowFuncName, callableType);
+            this.locals.add(value);
         }
         // TODO:函数表达式视作静态方法还是普通方法
         else if (node.kind == 'FunctionExpression') {
@@ -1895,7 +1907,7 @@ export class CfgBuilder {
             if (node.children[1].kind != 'OpenParenToken') {
                 funcExprName = node.children[1].text;
             } else {
-                funcExprName = 'AnonymousFunc_' + this.name + '_' + this.anonymousFuncIndex;
+                funcExprName = 'AnonymousFunc-' + this.name + '-' + this.anonymousFuncIndex;
                 this.anonymousFuncIndex++;
             }
 
@@ -1914,19 +1926,18 @@ export class CfgBuilder {
                 }
             }
             let exprArkMethod = new ArkMethod();
-            exprArkMethod.buildArkMethodFromAstNode(node, this.declaringClass);
+            buildArkMethodFromArkClass(node, this.declaringClass, exprArkMethod);
+            exprArkMethod.genSignature();
             this.declaringClass.addMethod(exprArkMethod);
 
-            let functionType = new FunctionType(exprArkMethod.getSignature());
-            let functionValue = new Local(funcExprName);
-            this.locals.add(functionValue);
-            functionValue.setValueType(functionType);
-            value = functionValue;
+            let callableType = new CallableType(exprArkMethod.getSignature());
+            value = new Local(funcExprName, callableType);
+            this.locals.add(value);
         }
         else if (node.kind == "ClassExpression") {
             let cls: ArkClass = new ArkClass();
             let arkFile = this.declaringClass.getDeclaringArkFile();
-            cls.buildArkClassFromAstNode(node, arkFile);
+            buildNormalArkClassFromArkFile(node, arkFile, cls);
             arkFile.addArkClass(cls);
             if (cls.isExported()) {
                 let exportClauseName: string = cls.getName();
@@ -1935,23 +1946,24 @@ export class CfgBuilder {
                 exportInfo.build(exportClauseName, exportClauseType);
                 arkFile.addExportInfos(exportInfo);
             }
-            // temp fix for issues/1
-            value = new Constant(cls.getName());
+
+            value = new Local(cls.getName(), new ClassType(cls.getSignature()));
         }
         else if (node.kind == "ObjectLiteralExpression") {
             value = this.objectLiteralNodeToLocal(node);
         }
         else if (node.kind == "NewExpression") {
             let classSignature = new ClassSignature();
-            classSignature.setClassType(node.children[1].text);
-            let newExpr = new ArkNewExpr(classSignature);
+            classSignature.setClassName(node.children[1].text);
+            const classType = new ClassType(classSignature);
+            let newExpr = new ArkNewExpr(classType);
             value = this.generateAssignStmt(newExpr);
 
 
             let methodSubSignature = new MethodSubSignature();
             methodSubSignature.setMethodName('constructor');
             let methodSignature = new MethodSignature();
-            methodSignature.setArkClass(classSignature);
+            methodSignature.setDeclaringClassSignature(classSignature);
             methodSignature.setMethodSubSignature(methodSubSignature);
 
             let syntaxListNode = node.children[this.findChildIndex(node, 'OpenParenToken') + 1];
@@ -1971,10 +1983,10 @@ export class CfgBuilder {
                     size += 1;
                 }
             }
-            // TODO:得到准确类型
-            let newArrayExpr = new ArkNewArrayExpr('int', new Constant(size.toString()));
+
+            let newArrayExpr = new ArkNewArrayExpr(UnknownType.getInstance(), new Constant(size.toString()));
             value = this.generateAssignStmt(newArrayExpr);
-            value.setType('array');
+            const itemTypes = new Set<Type>();
 
             let argsNode = node.children[1];
             let index = 0;
@@ -1982,11 +1994,22 @@ export class CfgBuilder {
                 if (argNode.kind != 'CommaToken') {
                     // TODO:数组条目类型
                     let arrayRef = new ArkArrayRef(value as Local, new Constant(index.toString()));
-                    let arrayItem = new Constant(argNode.text);
+                    const itemTypeStr = this.resolveKeywordType(argNode);
+                    const itemType = TypeInference.buildTypeFromStr(itemTypeStr);
+                    const arrayItem = new Constant(argNode.text, itemType);
+                    itemTypes.add(itemType);
+
                     this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(arrayRef, arrayItem));
                     index++;
                 }
             }
+
+            if (itemTypes.size == 1) {
+                newArrayExpr.setBaseType(itemTypes.keys().next().value);
+            } else if (itemTypes.size > 1) {
+                newArrayExpr.setBaseType(new UnionType(Array.from(itemTypes.keys())));
+            }
+            value.setType(new ArrayType(newArrayExpr.getBaseType(), 1));
         }
         else if (node.kind == 'PrefixUnaryExpression') {
             let token = node.children[0].text;
@@ -2025,13 +2048,13 @@ export class CfgBuilder {
         else if (node.kind == 'AsExpression') {
             let typeName = node.children[2].text;
             let op = this.astNodeToValue(node.children[0]);
-            value = new ArkCastExpr(op, typeName);
+            value = new ArkCastExpr(op, TypeInference.buildTypeFromStr(typeName));
         }
         else if (node.kind == 'TypeAssertionExpression') {
             let typeName = node.children[this.findChildIndex(node, 'FirstBinaryOperator') + 1].text;
             let opNode = node.children[this.findChildIndex(node, 'GreaterThanToken') + 1]
             let op = this.astNodeToValue(opNode);
-            value = new ArkCastExpr(op, typeName);
+            value = new ArkCastExpr(op, TypeInference.buildTypeFromStr(typeName));
         }
         else if (node.kind == 'ArrayBindingPattern' || node.kind == 'ObjectBindingPattern') {
             value = this.generateTempValue();
@@ -2097,8 +2120,7 @@ export class CfgBuilder {
         let leftOpNode = node.children[0];
         let leftOp = this.astNodeToValue(leftOpNode);
 
-        let leftOpType = this.getTypeNode(node)
-        // console.log(leftOpType)
+        let leftOpType = this.getTypeNode(node);
 
         let rightOpNode = new NodeA(undefined, null, [], 'dummy', -1, 'dummy');
         let rightOp: Value;
@@ -2110,7 +2132,8 @@ export class CfgBuilder {
         }
 
         if (leftOp instanceof Local) {
-            leftOp.setType(leftOpType)
+            leftOp.setType(leftOpType);
+
         }
 
         // console.log("[astNodeToThreeAddressAssignStmt] left: " + leftOp + " type: " + leftOpType + " right: " + rightOp)
@@ -2119,7 +2142,8 @@ export class CfgBuilder {
         }
 
         let threeAddressAssignStmts: Stmt[] = [];
-        threeAddressAssignStmts.push(new ArkAssignStmt(leftOp, rightOp))
+        threeAddressAssignStmts.push(new ArkAssignStmt(leftOp, rightOp));
+        TypeInference.inferTypeInStmt(threeAddressAssignStmts[0])
 
         if (leftOpNode.kind == 'ArrayBindingPattern' || leftOpNode.kind == 'ObjectBindingPattern') {
             let argNodes = this.getSyntaxListItems(leftOpNode.children[1]);
@@ -2280,7 +2304,7 @@ export class CfgBuilder {
             let catchedValue = new Local(catchedValueNode.text);
             catchedValue = this.getOriginalLocal(catchedValue);
 
-            let caughtExceptionRef = new ArkCaughtExceptionRef('Error');
+            let caughtExceptionRef = new ArkCaughtExceptionRef(UnknownType.getInstance());
             threeAddressStmts.push(new ArkAssignStmt(catchedValue, caughtExceptionRef));
         }
         else if (node.kind == 'CallExpression') {
@@ -2334,14 +2358,14 @@ export class CfgBuilder {
         if (this.blocks.length > 0 && this.blocks[0].stms.length > 0) {       // 临时处理默认函数函数体为空的情况
             this.current3ACstm = this.blocks[0].stms[0];
             let index = 0;
-            for (const [paraName, paraType] of this.declaringMethod.getParameters()) {
-                let parameterRef = new ArkParameterRef(index, paraType);
+            for (const methodParameter of this.declaringMethod.getParameters()) {
+                let parameterRef = new ArkParameterRef(index, methodParameter.getType());
                 let parameterLocal = this.generateAssignStmt(parameterRef);
-                parameterLocal.setName(paraName);
+                parameterLocal.setName(methodParameter.getName());
                 index++;
                 this.paraLocals.push(parameterLocal);
             }
-            let thisRef = new ArkThisRef(this.declaringClass.getSignature().toString());
+            let thisRef = new ArkThisRef(this.declaringClass.getSignature().getType());
             this.thisLocal = this.generateAssignStmt(thisRef);
             this.thisLocal.setName('this');
             this.thisLocal.setType(thisRef.getType());
@@ -2852,25 +2876,6 @@ export class CfgBuilder {
         }
     }
 
-    buildCfgBuilder() {
-        this.walkAST(this.entry, this.exit, this.astRoot);
-        this.deleteExit(this.entry);
-        this.CfgBuilder2Array(this.entry);
-        this.resetWalked();
-        this.buildLastAndHaveCall(this.entry);
-        this.resetWalked();
-        this.buildBlocks(this.entry, this.entryBlock);
-        this.blocks = this.blocks.filter((b) => b.stms.length != 0);
-        this.buildBlocksNextLast();
-        this.addReturnBlock();
-        this.resetWalked();
-        // this.generateUseDef();
-        // this.resetWalked();
-
-        // this.printBlocks();
-
-        this.transformToThreeAddress();
-    }
 
     // TODO: Add more APIs to the class 'Cfg', and use these to build Cfg
     public buildOriginalCfg(): Cfg {
@@ -2966,17 +2971,17 @@ export class CfgBuilder {
         return this.locals;
     }
 
-    private getTypeNode(node: NodeA): string {
+    private getTypeNode(node: NodeA): Type {
         for (let child of node.children) {
             let result = this.resolveTypeNode(child)
-            if (result !== null) {
+            if (result !== UnknownType.getInstance()) {
                 return result
             }
         }
-        return ""
+        return UnknownType.getInstance();
     }
 
-    private resolveTypeNode(node: NodeA) {
+    private resolveTypeNode(node: NodeA): Type {
         let typeNode: NodeA
         switch (node.kind) {
             case "BooleanKeyword":
@@ -2984,37 +2989,29 @@ export class CfgBuilder {
             case "StringKeyword":
             case "VoidKeyword":
             case "AnyKeyword":
-                // console.log(this.resolveKeywordType(node))
-                return this.resolveKeywordType(node)
+                return TypeInference.buildTypeFromStr(this.resolveKeywordType(node));
             case "ArrayType":
-                typeNode = node.children[0]
-                let typeKeyword: string
-                if (typeNode.kind == "TypeReference") {
-                    typeKeyword = typeNode.children[0].text
-                } else {
-                    typeKeyword = typeNode.text
-                }
-                return typeKeyword + "[]"
-            case "TypeReference":
-                typeNode = node.children[0]
-                if (typeNode.kind == "Identifier") {
-                    return typeNode.text
-                }
-                return buildTypeReferenceString(typeNode.children)
+                typeNode = node.children[0];
+                const typeStr = typeNode.text;
+                return new ArrayType(TypeInference.buildTypeFromStr(typeStr), 1);
+            // case "TypeReference":
+            //     typeNode = node.children[0]
+            //     if (typeNode.kind == "Identifier") {
+            //         return typeNode.text
+            //     }
+            //     return buildTypeReferenceString(typeNode.children)
             case "UnionType":
-                typeNode = node.children[0]
-                let result: string[] = []
-                for (let singleTypeNode of typeNode.children) {
+                const types: Type[] = [];
+                typeNode = node.children[0];
+                for (const singleTypeNode of typeNode.children) {
                     if (singleTypeNode.kind != "BarToken") {
-                        let singleResult = this.resolveTypeNode(singleTypeNode)
-                        if (singleResult !== null) {
-                            result.push(singleResult)
-                        }
+                        const singleType = this.resolveTypeNode(singleTypeNode)
+                        types.push(singleType);
                     }
                 }
-                return transformArrayToString(result)
+                return new UnionType(types);
         }
-        return null
+        return UnknownType.getInstance();
     }
 
     private resolveKeywordType(node: NodeA): string {
@@ -3022,21 +3019,44 @@ export class CfgBuilder {
             case 'TrueKeyword':
             case 'FalseKeyword':
             case "BooleanKeyword":
-                return "boolean"
+            case "FalseKeyword":
+            case "TrueKeyword":
+                return "boolean";
             case "NumberKeyword":
             case "FirstLiteralToken":
-                return "number"
+                return "number";
             case "StringKeyword":
             case "StringLiteral":
-                return "string"
+                return "string";
             case "VoidKeyword":
-                return "void"
+                return "void";
             case "AnyKeyword":
-                return "any"
+                return "any";
             case 'NullKeyword':
-                return 'null'
+                return 'null';
             default:
-                return ""
+                return "";
         }
+    }
+
+    buildCfgBuilder() {
+        this.walkAST(this.entry, this.exit, this.astRoot);
+        this.addReturnInEmptyMethod();
+        this.deleteExit(this.entry);
+        this.CfgBuilder2Array(this.entry);
+        this.resetWalked();
+        this.buildLastAndHaveCall(this.entry);
+        this.resetWalked();
+        this.buildBlocks(this.entry, this.entryBlock);
+        this.blocks = this.blocks.filter((b) => b.stms.length != 0);
+        this.buildBlocksNextLast();
+        this.addReturnBlock();
+        this.resetWalked();
+        // this.generateUseDef();
+        // this.resetWalked();
+
+        // this.printBlocks();
+
+        this.transformToThreeAddress();
     }
 }

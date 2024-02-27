@@ -40,6 +40,7 @@ export class SceneConfig {
     private otherSdkMap: Map<string, string> = new Map();
 
     private sdkFiles: string[] = [];
+    private sdkFilesMap: Map<string[], string> = new Map<string[], string>();
     private projectFiles: string[] = [];
 
     constructor() { }
@@ -95,19 +96,23 @@ export class SceneConfig {
         if (this.ohosSdkPath) {
             let ohosFiles: string[] = getFiles(this.ohosSdkPath, "\\.d\\.ts\$");
             this.sdkFiles.push(...ohosFiles);
+            this.sdkFilesMap.set(ohosFiles, "ohos");
         }
         if (this.kitSdkPath) {
             let kitFiles: string[] = getFiles(this.kitSdkPath, "\\.d\\.ts\$");
             this.sdkFiles.push(...kitFiles);
+            this.sdkFilesMap.set(kitFiles, "kit");
         }
         if (this.systemSdkPath) {
             let systemFiles: string[] = getFiles(this.systemSdkPath, "\\.d\\.ts\$");
             this.sdkFiles.push(...systemFiles);
+            this.sdkFilesMap.set(systemFiles, "system");
         }
         if (this.otherSdkMap.size != 0) {
             this.otherSdkMap.forEach((value, key) => {
                 let otherSdkFiles: string[] = getFiles(value, "\\.d\\.ts\$");
                 this.sdkFiles.push(...otherSdkFiles);
+                this.sdkFilesMap.set(otherSdkFiles, key);
             });
         }
     }
@@ -126,6 +131,10 @@ export class SceneConfig {
 
     public getSdkFiles() {
         return this.sdkFiles;
+    }
+
+    public getSdkFilesMap() {
+        return this.sdkFilesMap;
     }
 
     public getOhosSdkPath() {

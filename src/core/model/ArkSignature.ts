@@ -1,9 +1,169 @@
-
 import path from 'path';
+import { transfer2UnixPath } from '../../utils/pathTransfer';
+import { ClassType, Type, UnknownType } from '../base/Type';
+import { MethodParameter } from '../common/MethodInfoBuilder';
+
+export class FileSignature {
+    private projectName: string = "";
+    private fileName: string = "";
+
+    constructor() { }
+
+    public getProjectName() {
+        return this.projectName;
+    }
+
+    public setProjectName(projectName: string) {
+        this.projectName = projectName;
+    }
+
+    public getFileName() {
+        return this.fileName;
+    }
+
+    public setFileName(fileName: string) {
+        this.fileName = fileName;
+    }
+
+    public toString(): string {
+        //let tmpSig = transfer2UnixPath(this.name).replace(/\//g, '.');
+        let tmpSig = transfer2UnixPath(this.fileName);
+
+        // remove file ext: '.d.ts' or '.ts'
+        tmpSig = tmpSig.replace(/\.d\.ts|\.ts$/, '');
+
+        tmpSig = '@' + this.projectName + '/' + tmpSig + ': ';
+        return tmpSig;
+    }
+}
+
+export class NamespaceSignature {
+    private namespaceName: string = "";
+    private declaringFileSignature: FileSignature = new FileSignature();
+    private declaringNamespaceSignature: NamespaceSignature | null = null;
+
+    constructor() { }
+
+    public getNamespaceName() {
+        return this.namespaceName;
+    }
+
+    public setNamespaceName(namespaceName: string) {
+        this.namespaceName = namespaceName;
+    }
+
+    public getDeclaringFileSignature() {
+        return this.declaringFileSignature;
+    }
+
+    public setDeclaringFileSignature(declaringFileSignature: FileSignature) {
+        this.declaringFileSignature = declaringFileSignature;
+    }
+
+    public getDeclaringNamespaceSignature() {
+        return this.declaringNamespaceSignature;
+    }
+
+    public setDeclaringNamespaceSignature(declaringNamespaceSignature: NamespaceSignature) {
+        this.declaringNamespaceSignature = declaringNamespaceSignature;
+    }
+
+    public toString(): string {
+        if (this.declaringNamespaceSignature) {
+            return this.declaringNamespaceSignature.toString() + '.' + this.namespaceName;
+        }
+        else {
+            return this.declaringFileSignature.toString() + this.namespaceName;
+        }
+    }
+}
+
+export class ClassSignature {
+    private declaringFileSignature: FileSignature = new FileSignature();
+    private declaringNamespaceSignature: NamespaceSignature | null = null;
+    private className: string = "";
+
+    public getDeclaringFileSignature() {
+        return this.declaringFileSignature;
+    }
+
+    public setDeclaringFileSignature(declaringFileSignature: FileSignature) {
+        this.declaringFileSignature = declaringFileSignature;
+    }
+
+    public getDeclaringNamespaceSignature() {
+        return this.declaringNamespaceSignature;
+    }
+
+    public setDeclaringNamespaceSignature(declaringNamespaceSignature: NamespaceSignature) {
+        this.declaringNamespaceSignature = declaringNamespaceSignature;
+    }
+
+    public getClassName() {
+        return this.className;
+    }
+
+    public setClassName(className: string) {
+        this.className = className;
+    }
+
+    public getType(): ClassType {
+        return new ClassType(this);
+    }
+
+    constructor() { }
+
+    public toString(): string {
+        if (this.declaringNamespaceSignature) {
+            return this.declaringNamespaceSignature.toString() + '.' + this.className;
+        }
+        else {
+            return this.declaringFileSignature.toString() + this.className;
+        }
+    }
+}
+
+export class FieldSignature {
+    private declaringClassSignature: ClassSignature = new ClassSignature();
+    private fieldName: string = '';
+    private type: Type = UnknownType.getInstance();
+
+    public getDeclaringClassSignature() {
+        return this.declaringClassSignature;
+    }
+
+    public setDeclaringClassSignature(declaringClassSignature: ClassSignature) {
+        this.declaringClassSignature = declaringClassSignature;
+    }
+
+    public getFieldName() {
+        return this.fieldName;
+    }
+
+    public setFieldName(fieldName: string) {
+        this.fieldName = fieldName;
+    }
+
+    public setType(newType: Type): void {
+        this.type = newType;
+    }
+
+    public getType(): Type {
+        return this.type;
+    }
+
+    constructor() { }
+
+    public toString(): string {
+        return this.getDeclaringClassSignature().toString() + '.' + this.getFieldName();
+    }
+}
+
 export class MethodSubSignature {
     private methodName: string = '';
-    private parameters: string[] = [];
-    private returnType: string[] = [];
+    private parameters: MethodParameter[] = [];
+    private parameterTypes: Set<Type> = new Set<Type>();
+    private returnType: Type = UnknownType.getInstance();
 
     public getMethodName() {
         return this.methodName;
@@ -17,45 +177,47 @@ export class MethodSubSignature {
         return this.parameters;
     }
 
-    public addParameter(Parameter: string) {
-        this.parameters.push(Parameter);
+    public getParameterTypes() {
+        return this.parameterTypes;
+    }
+
+    public setParameters(parameter: MethodParameter[]) {
+        this.parameters = parameter;
+        parameter.forEach((value, key) => {
+            this.parameterTypes.add(value);
+        });
     }
 
     public getReturnType() {
         return this.returnType;
     }
 
-    public addReturnType(type: string) {
-        this.returnType.push(type);
+    public setReturnType(returnType: Type) {
+        this.returnType = returnType;
     }
 
     constructor() { }
 
-    build(methodName: string, parameters: Map<string, string>, returnType: string[]) {
-        this.setMethodName(methodName);
-        parameters.forEach((value, key) => {
-            this.addParameter(key);
-        });
-        returnType.forEach((type) => {
-            this.addReturnType(type);
-        });
-    }
-
     public toString(): string {
-        return `${this.getMethodName()}(${this.getParameters()})`
+        let paraStr = "";
+        this.parameterTypes.forEach((parameterType) => {
+            paraStr = paraStr + parameterType + ", ";
+        });
+        paraStr = paraStr.replace(/, $/, '');
+        return `${this.getMethodName()}(${paraStr})`;
     }
 }
 
 export class MethodSignature {
-    private arkClass: ClassSignature = new ClassSignature();
+    private declaringClassSignature: ClassSignature = new ClassSignature();
     private methodSubSignature: MethodSubSignature = new MethodSubSignature();
 
-    public getArkClass() {
-        return this.arkClass;
+    public getDeclaringClassSignature() {
+        return this.declaringClassSignature;
     }
 
-    public setArkClass(classSig: ClassSignature) {
-        this.arkClass = classSig;
+    public setDeclaringClassSignature(declaringClassSignature: ClassSignature) {
+        this.declaringClassSignature = declaringClassSignature;
     }
 
     public getMethodSubSignature() {
@@ -66,46 +228,14 @@ export class MethodSignature {
         this.methodSubSignature = methodSubSig;
     }
 
-    constructor() { }
-
-    public build(subSignature: MethodSubSignature, arkClass: ClassSignature) {
-        this.setArkClass(arkClass);
-        this.setMethodSubSignature(subSignature);
-    }
-
-    public toString(): string {
-        return `<${this.arkClass.getArkFile()}>.<${this.getArkClass().getClassType()}>.<${this.getMethodSubSignature().getMethodName()}(${this.getMethodSubSignature().getParameters()})>`;
-    }
-}
-
-export class FieldSignature {
-    private arkClass: ClassSignature = new ClassSignature();
-    private fieldName: string = '';
-
-    public getArkClass() {
-        return this.arkClass;
-    }
-
-    public setArkClass(classSig: ClassSignature) {
-        this.arkClass = classSig;
-    }
-
-    public getFieldName() {
-        return this.fieldName;
-    }
-
-    public setFieldName(fieldName: string) {
-        this.fieldName = fieldName;
+    public getType(): Type {
+        return this.methodSubSignature.getReturnType();
     }
 
     constructor() { }
-    public build(arkClass: ClassSignature, fieldName: string) {
-        this.setArkClass(arkClass);
-        this.setFieldName(fieldName);
-    }
 
     public toString(): string {
-        return `<${this.getArkClass().getArkFile()}>.<${this.getArkClass().getClassType()}>.<${this.getFieldName()}>`
+        return this.declaringClassSignature.toString() + '.' + this.methodSubSignature.toString();
     }
 }
 
@@ -143,71 +273,41 @@ export class InterfaceSignature {
     }
 }
 
-export class ClassSignature {
-    private arkFile: string = '';
-    private classType: string = '';
-    private arkFileWithoutExt: string = '';
-
-    public getArkFile() {
-        return this.arkFile;
-    }
-
-    public setArkFile(arkFile: string) {
-        this.arkFile = arkFile;
-    }
-
-    public getClassType() {
-        return this.classType;
-    }
-
-    public setClassType(classType: string) {
-        this.classType = classType;
-    }
-
-    constructor() { }
-
-    public build(arkFile: string, classType: string) {
-        this.setArkFile(arkFile);
-        this.setClassType(classType);
-        this.arkFileWithoutExt = path.dirname(arkFile) + '/' + path.basename(arkFile, path.extname(arkFile));
-    }
-
-    public toString(): string {
-        return `<${this.getArkFile()}>.<${this.getClassType()}>`
-    }
-}
-
 //TODO, reconstruct
 export function fieldSignatureCompare(leftSig: FieldSignature, rightSig: FieldSignature): boolean {
-    if (classSignatureCompare(leftSig.getArkClass(), rightSig.getArkClass()) && (leftSig.getFieldName() == rightSig.getFieldName())) {
+    if (classSignatureCompare(leftSig.getDeclaringClassSignature(), rightSig.getDeclaringClassSignature()) &&
+        (leftSig.getFieldName() == rightSig.getFieldName())) {
         return true;
     }
     return false;
 }
 
 export function methodSignatureCompare(leftSig: MethodSignature, rightSig: MethodSignature): boolean {
-    if (classSignatureCompare(leftSig.getArkClass(), rightSig.getArkClass()) && methodSubSignatureCompare(leftSig.getMethodSubSignature(), rightSig.getMethodSubSignature())) {
+    if (classSignatureCompare(leftSig.getDeclaringClassSignature(), rightSig.getDeclaringClassSignature()) &&
+        methodSubSignatureCompare(leftSig.getMethodSubSignature(), rightSig.getMethodSubSignature())) {
         return true;
     }
     return false;
 }
 
 export function methodSubSignatureCompare(leftSig: MethodSubSignature, rightSig: MethodSubSignature): boolean {
-    if ((leftSig.getMethodName() == rightSig.getMethodName()) && arrayCompare(leftSig.getParameters(), rightSig.getParameters()) && arrayCompare(leftSig.getReturnType(), rightSig.getReturnType())) {
+    if ((leftSig.getMethodName() == rightSig.getMethodName()) && setCompare(leftSig.getParameterTypes(),
+        rightSig.getParameterTypes()) && leftSig.getReturnType() == rightSig.getReturnType()) {
         return true;
     }
     return false;
 }
 
 export function classSignatureCompare(leftSig: ClassSignature, rightSig: ClassSignature): boolean {
-    if ((leftSig.getArkFile() == rightSig.getArkFile()) && (leftSig.getClassType() == rightSig.getClassType())) {
+    if ((fileSignatureCompare(leftSig.getDeclaringFileSignature(), rightSig.getDeclaringFileSignature())) &&
+        (leftSig.getClassName() == rightSig.getClassName())) {
         return true;
     }
     return false;
 }
 
-export function interfaceSignatureCompare(leftSig: InterfaceSignature, rightSig: InterfaceSignature): boolean {
-    if ((leftSig.getArkFile() == rightSig.getArkFile()) && (leftSig.getInterfaceName() == rightSig.getInterfaceName())) {
+export function fileSignatureCompare(leftSig: FileSignature, rightSig: FileSignature): boolean {
+    if ((leftSig.getFileName() == rightSig.getFileName()) && (leftSig.getProjectName() == rightSig.getProjectName())) {
         return true;
     }
     return false;
@@ -223,6 +323,12 @@ function arrayCompare(leftArray: any[], rightArray: any[]) {
         }
     }
     return true;
+}
+
+function setCompare(leftSet: Set<Type>, rightSet: Set<Type>) {
+    const arr1 = Array.from(leftSet);
+    const arr2 = Array.from(rightSet);
+    return arrayCompare(arr1, arr2);
 }
 
 function undateFilePath(filePath: string) {

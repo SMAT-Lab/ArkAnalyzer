@@ -4,24 +4,20 @@ import { Value } from "./Value";
 
 export class Local implements Value {
     private name: string;
-    // TODO:将valueType归一化至type，采用自定义Type类型
-    private type: string;
-    private valueType: Type;
+    private type: Type;
 
     private originalValue: Value | null;
 
     private declaringStmt: Stmt | null;
     private usedStmts: Stmt[];
 
-    constructor(name: string) {
+    constructor(name: string, type: Type = UnknownType.getInstance()) {
         this.name = name;
-        this.type = 'any';
+        this.type = type;
 
         this.originalValue = null;
         this.declaringStmt = null;
         this.usedStmts = [];
-
-        this.valueType = UnknownType.getInstance();
     }
 
     public getName(): string {
@@ -32,21 +28,13 @@ export class Local implements Value {
         this.name = name
     }
 
-    // TODO:归一至getValueType
-    public getType(): string {
+
+    public getType(): Type {
         return this.type;
     }
 
-    public getValueType(): Type {
-        return this.valueType;
-    }
-
-    public setValueType(newType: Type): void {
-        this.valueType = newType;
-    }
-
-    public setType(type: string): void {
-        this.type = type
+    public setType(newType: Type): void {
+        this.type = newType;
     }
 
     public getOriginalValue(): Value | null {

@@ -1,24 +1,21 @@
 import { NodeA } from "../base/Ast";
-import { Property } from "../common/ClassInfoBuilder";
-import { EnumMember } from "../common/EnumInfoBuilder";
-import { InterfaceMember, InterfaceProperty } from "../common/InterfaceInfoBuilder";
+
 import { ArkField } from "./ArkField";
 import { ArkFile } from "./ArkFile";
-import { ArkMethod, arkMethodNodeKind } from "./ArkMethod";
+import { ArkMethod} from "./ArkMethod";
 import { ArkNamespace } from "./ArkNamespace";
-import { ClassSignature, InterfaceSignature, MethodSubSignature, methodSubSignatureCompare } from "./ArkSignature";
+import { MethodSubSignature, methodSubSignatureCompare } from "./ArkSignature";
 
 export class ArkEnum {
     private name: string;
     private code: string;
-    private line: number = -1;
     private declaringArkFile: ArkFile;
     private declaringArkNamespace: ArkNamespace;
     //private fields: ArkField[] = [];
 
     private methods: ArkMethod[] = [];
     private modifiers: Set<string> = new Set<string>();
-    private members: EnumMember[] = [];
+    private members: ArkField[] = [];
 
     private arkSignature: string;
     private declaringInstance: ArkFile | ArkNamespace;
@@ -33,7 +30,6 @@ export class ArkEnum {
         this.setDeclaringInstance(declaringArkFile);
         this.setDeclaringType("ArkFile");
         this.setCode(enumNode.text);
-        this.setLine(enumNode.line);
         this.buildArkEnumFromAstNode(enumNode);
     }
 
@@ -42,22 +38,21 @@ export class ArkEnum {
         this.setDeclaringInstance(declaringNamespace);
         this.setDeclaringType("ArkNamespace");
         this.setCode(enumNode.text);
-        this.setLine(enumNode.line);
         this.buildArkEnumFromAstNode(enumNode);
     }
 
     private buildArkEnumFromAstNode(enumNode: NodeA) {
-        if (!enumNode.enumNodeInfo) {
+        if (!enumNode.classNodeInfo) {
             throw new Error('Error: There is no enumNodeInfo for this enum struct!');
         }
-        this.setName(enumNode.enumNodeInfo.enumName);
+        this.setName(enumNode.classNodeInfo.getClassName());
         this.genArkSignature();
 
-        enumNode.enumNodeInfo.modifiers.forEach((modifier) => {
+        enumNode.classNodeInfo.getmodifiers().forEach((modifier) => {
             this.addModifier(modifier);
         });
 
-        enumNode.enumNodeInfo.members.forEach((member) => {
+        enumNode.classNodeInfo.getMembers().forEach((member) => {
             this.addMember(member);
         });
     }
@@ -66,7 +61,7 @@ export class ArkEnum {
         return this.members;
     }
 
-    public addMember(member: EnumMember) {
+    public addMember(member: ArkField) {
         this.members.push(member);
     }
 
@@ -108,14 +103,6 @@ export class ArkEnum {
 
     public setCode(code: string) {
         this.code = code;
-    }
-
-    public getLine() {
-        return this.line;
-    }
-
-    public setLine(line: number) {
-        this.line = line;
     }
 
     public getDeclaringArkFile() {
@@ -191,3 +178,4 @@ export class ArkEnum {
         this.methods.push(method);
     }
 }
+console.log();

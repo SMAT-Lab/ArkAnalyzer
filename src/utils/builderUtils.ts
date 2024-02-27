@@ -1,4 +1,9 @@
-import ts, { isClassDeclaration } from "typescript";
+import ts from "typescript";
+import { LiteralType, Type, TypeLiteralType, UnclearType, UnionType, UnknownType } from "../core/base/Type";
+import { TypeInference } from "../core/common/TypeInference";
+import { MethodParameter } from "../core/common/MethodInfoBuilder";
+import { buildProperty2ArkField } from "../core/common/ClassBuilder";
+import { ArkField } from "../core/model/ArkField";
 
 export function handleQualifiedName(node: ts.QualifiedName): string {
     let right = (node.right as ts.Identifier).escapedText.toString();
@@ -76,11 +81,16 @@ export function buildHeritageClauses(node: ts.ClassDeclaration | ts.ClassExpress
 export function buildTypeParameters(node: ts.ClassDeclaration | ts.ClassExpression |
     ts.InterfaceDeclaration | ts.FunctionDeclaration | ts.MethodDeclaration |
     ts.ConstructorDeclaration | ts.ArrowFunction | ts.AccessorDeclaration |
-    ts.FunctionExpression | ts.MethodSignature | ts.ConstructSignatureDeclaration): string[] {
-    let typeParameters: string[] = [];
+    ts.FunctionExpression | ts.MethodSignature | ts.ConstructSignatureDeclaration |
+    ts.CallSignatureDeclaration): Type[] {
+    let typeParameters: Type[] = [];
     node.typeParameters?.forEach((typeParameter) => {
         if (ts.isIdentifier(typeParameter.name)) {
-            typeParameters.push(typeParameter.name.escapedText.toString());
+            let parametersTypeStr = typeParameter.name.escapedText.toString();
+            typeParameters.push(buildTypeFromPreStr(parametersTypeStr));
+        }
+        else {
+            console.log("Other typeparameter found!!!");
         }
     });
     return typeParameters;
@@ -90,20 +100,89 @@ export function buildParameters(node: ts.FunctionDeclaration | ts.MethodDeclarat
     | ts.ConstructorDeclaration | ts.ArrowFunction | ts.AccessorDeclaration |
     ts.FunctionExpression | ts.CallSignatureDeclaration | ts.MethodSignature |
     ts.ConstructSignatureDeclaration | ts.IndexSignatureDeclaration) {
-    let parameterTypes: Map<string, string> = new Map();
+    let parameters: MethodParameter[] = [];
     node.parameters.forEach((parameter) => {
-        let parameterName = ts.isIdentifier(parameter.name) ? parameter.name.escapedText.toString() : '';
+        let methodParameter = new MethodParameter();
+        if (ts.isIdentifier(parameter.name)) {
+            methodParameter.setName(parameter.name.escapedText.toString());
+        }
+        else {
+            console.log("Parameter name is not identifier, please contact developers to support this!");
+        }
         if (parameter.questionToken) {
-            parameterName = parameterName + '?';
+            methodParameter.setOptional(true);
         }
         if (parameter.type) {
             if (ts.isTypeReferenceNode(parameter.type)) {
                 let referenceNodeName = parameter.type.typeName;
                 if (ts.isQualifiedName(referenceNodeName)) {
-                    parameterTypes.set(parameterName, handleQualifiedName(referenceNodeName as ts.QualifiedName));
+                    let parameterTypeStr = handleQualifiedName(referenceNodeName as ts.QualifiedName);
+                    let parameterType = new UnclearType(parameterTypeStr);
+                    methodParameter.setType(parameterType);
                 }
                 else if (ts.isIdentifier(referenceNodeName)) {
-                    parameterTypes.set(parameterName, (referenceNodeName as ts.Identifier).escapedText.toString())
+                    let parameterTypeStr = (referenceNodeName as ts.Identifier).escapedText.toString();
+                    let parameterType = new UnclearType(parameterTypeStr);
+                    methodParameter.setType(parameterType);
+                }
+            }
+            else if (ts.isUnionTypeNode(parameter.type)) {
+                let unionTypePara: Type[] = [];
+                parameter.type.types.forEach((tmpType) => {
+                    if (ts.isTypeReferenceNode(tmpType)) {
+                        let parameterType = "";
+                        if (ts.isQualifiedName(tmpType.typeName)) {
+                            parameterType = handleQualifiedName(tmpType.typeName);
+                        }
+                        else if (ts.isIdentifier(tmpType.typeName)) {
+                            parameterType = tmpType.typeName.escapedText.toString();
+                        }
+                        unionTypePara.push(new UnclearType(parameterType));
+                    }
+                    else if (ts.isLiteralTypeNode(tmpType)) {
+                        unionTypePara.push(buildTypeFromPreStr(ts.SyntaxKind[tmpType.literal.kind]));
+                    }
+                    else {
+                        unionTypePara.push(buildTypeFromPreStr(ts.SyntaxKind[tmpType.kind]));
+                    }
+                });
+                methodParameter.setType(new UnionType(unionTypePara));
+            }
+            else if (ts.isLiteralTypeNode(parameter.type)) {
+                methodParameter.setType(buildTypeFromPreStr(ts.SyntaxKind[parameter.type.literal.kind]));
+            }
+            else if (ts.isTypeLiteralNode(parameter.type)) {
+                let members: ArkField[] = [];
+                parameter.type.members.forEach((member) => {
+                    if (ts.isPropertySignature(member)) {
+                        members.push(buildProperty2ArkField(member));
+                    }
+                    else {
+                        console.log("Please contact developers to support new TypeLiteral member!");
+                    }
+                });
+                let type = new TypeLiteralType();
+                type.setMembers(members);
+                methodParameter.setType(type);
+            }
+            else {
+                methodParameter.setType(buildTypeFromPreStr(ts.SyntaxKind[parameter.type.kind]));
+            }
+        }
+        else {
+            methodParameter.setType(UnknownType.getInstance());
+        }
+
+        /* if (parameter.type) {
+            if (ts.isTypeReferenceNode(parameter.type)) {
+                let referenceNodeName = parameter.type.typeName;
+                if (ts.isQualifiedName(referenceNodeName)) {
+                    let parameterTypeStr = handleQualifiedName(referenceNodeName as ts.QualifiedName);
+                    parameterTypes.set(parameterName, TypeInference.buildTypeFromStr(parameterTypeStr));
+                }
+                else if (ts.isIdentifier(referenceNodeName)) {
+                    let parameterTypeStr = (referenceNodeName as ts.Identifier).escapedText.toString();
+                    parameterTypes.set(parameterName, TypeInference.buildTypeFromStr(parameterTypeStr))
                 }
             }
             else if (ts.isUnionTypeNode(parameter.type)) {
@@ -124,46 +203,72 @@ export function buildParameters(node: ts.FunctionDeclaration | ts.MethodDeclarat
                         parameterType = parameterType + ts.SyntaxKind[tmpType.kind] + ' | ';
                     }
                 });
-                parameterTypes.set(parameterName, parameterType);
+                parameterTypes.set(parameterName, TypeInference.buildTypeFromStr(parameterType));
             }
             else if (ts.isLiteralTypeNode(parameter.type)) {
-                parameterTypes.set(parameterName, ts.SyntaxKind[parameter.type.literal.kind]);
+                parameterTypes.set(parameterName, TypeInference.buildTypeFromStr(ts.SyntaxKind[parameter.type.literal.kind]));
             }
             else {
-                parameterTypes.set(parameterName, ts.SyntaxKind[parameter.type.kind]);
+                parameterTypes.set(parameterName, TypeInference.buildTypeFromStr(ts.SyntaxKind[parameter.type.kind]));
             }
         }
         else {
-            parameterTypes.set(parameterName, '');
-        }
+            parameterTypes.set(parameterName, UnknownType.getInstance());
+        } */
+        parameters.push(methodParameter);
     });
-    return parameterTypes;
+    return parameters;
 }
 
 export function buildReturnType4Method(node: ts.FunctionDeclaration | ts.MethodDeclaration |
     ts.ConstructorDeclaration | ts.ArrowFunction | ts.AccessorDeclaration |
-    ts.FunctionExpression | ts.MethodSignature | ts.ConstructSignatureDeclaration) {
-    let returnType: string[] = [];
+    ts.FunctionExpression | ts.MethodSignature | ts.ConstructSignatureDeclaration |
+    ts.CallSignatureDeclaration) {
     if (node.type) {
-        if (node.type.kind == ts.SyntaxKind.TypeLiteral) {
-            for (let member of (node.type as ts.TypeLiteralNode).members) {
+        if (ts.isTypeLiteralNode(node.type)) {
+            console.log("Return type is TypeLiteral, please contact developers to add support for this!");
+            return new UnknownType();
+            /* for (let member of node.type.members) {
                 let memberType = (member as ts.PropertySignature).type;
                 if (memberType) {
                     returnType.push(ts.SyntaxKind[memberType.kind]);
                 }
-            }
+            } */
         }
         else if (ts.isTypeReferenceNode(node.type)) {
             let referenceNodeName = node.type.typeName;
+            let typeName = "";
+            if (ts.isQualifiedName(referenceNodeName)) {
+                typeName = handleQualifiedName(referenceNodeName);
+            }
+            else if (ts.isIdentifier(referenceNodeName)) {
+                typeName = referenceNodeName.escapedText.toString();
+            }
+            return new UnclearType(typeName);
+            /* let referenceNodeName = node.type.typeName;
             if (ts.isQualifiedName(referenceNodeName)) {
                 returnType.push(handleQualifiedName(referenceNodeName));
             }
             else if (ts.isIdentifier(referenceNodeName)) {
                 returnType.push(referenceNodeName.escapedText.toString());
-            }
+            } */
         }
         else if (ts.isUnionTypeNode(node.type)) {
-            let tmpReturnType = '';
+            let unionType: Type[] = [];
+            node.type.types.forEach((tmpType) => {
+                if (ts.isTypeReferenceNode(tmpType)) {
+                    console.log("Union return type contains TypeReference, please contact developers to add support for this!");
+                    return new UnknownType();
+                }
+                else if (ts.isLiteralTypeNode(tmpType)) {
+                    let literalType: LiteralType = new LiteralType(ts.SyntaxKind[tmpType.literal.kind]);
+                    unionType.push(literalType);
+                }
+                else {
+                    unionType.push(buildTypeFromPreStr(ts.SyntaxKind[tmpType.kind]));
+                }
+            });
+            /* let tmpReturnType = '';
             node.type.types.forEach((tmpType) => {
                 if (ts.isTypeReferenceNode(tmpType)) {
                     if (ts.isQualifiedName(tmpType.typeName)) {
@@ -179,15 +284,49 @@ export function buildReturnType4Method(node: ts.FunctionDeclaration | ts.MethodD
                 else {
                     tmpReturnType = tmpReturnType + ts.SyntaxKind[tmpType.kind] + ' | ';
                 }
-            });
-            returnType.push(tmpReturnType);
+            }); */
+            return unionType;
         }
         else if (ts.isLiteralTypeNode(node.type)) {
-            returnType.push(ts.SyntaxKind[node.type.literal.kind]);
+            let literalType: LiteralType = new LiteralType(ts.SyntaxKind[node.type.literal.kind]);
+            return literalType;
         }
         else {
-            returnType.push(ts.SyntaxKind[node.type.kind]);
+            return buildTypeFromPreStr(ts.SyntaxKind[node.type.kind]);
         }
     }
-    return returnType;
+    return new UnknownType();
+}
+
+export function buildTypeFromPreStr(preStr: string) {
+    let postStr = "";
+    switch (preStr) {
+        case 'BooleanKeyword':
+            postStr = "boolean";
+            break;
+        case 'NumberKeyword':
+            postStr = "number";
+            break;
+        case 'StringKeyword':
+            postStr = "string";
+            break;
+        case 'UndefinedKeyword':
+            postStr = "undefined";
+            break;
+        case 'NullKeyword':
+            postStr = "null";
+            break;
+        case 'AnyKeyword':
+            postStr = "any";
+            break;
+        case 'VoidKeyword':
+            postStr = "void";
+            break;
+        case 'NeverKeyword':
+            postStr = "never";
+            break;
+        default:
+            postStr = preStr;
+    }
+    return TypeInference.buildTypeFromStr(postStr);
 }

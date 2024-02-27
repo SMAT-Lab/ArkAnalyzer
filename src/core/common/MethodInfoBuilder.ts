@@ -1,14 +1,47 @@
 import * as ts from "typescript";
-import { buildModifiers, buildParameters, buildReturnType4Method, buildTypeParameters, handleQualifiedName, handlePropertyAccessExpression } from "../../utils/builderUtils";
+import { buildModifiers, buildParameters, buildReturnType4Method, buildTypeParameters, handlePropertyAccessExpression } from "../../utils/builderUtils";
+import { Type } from "../base/Type";
+
+export class MethodParameter {
+    private name: string = "";
+    private type: Type;
+    private optional: boolean = false;
+
+    constructor() {}
+
+    public getName() {
+        return this.name;
+    }
+
+    public setName(name: string) {
+        this.name = name;
+    }
+
+    public getType() {
+        return this.type;
+    }
+
+    public setType(type: Type) {
+        this.type = type;
+    }
+
+    public isOptional() {
+        return this.optional;
+    }
+
+    public setOptional(optional: boolean) {
+        this.optional = optional;
+    }
+}
 
 export class MethodInfo {
     name: string;
-    parameters: Map<string, string>;
+    parameters: MethodParameter[];
     modifiers: Set<string>;
-    returnType: string[];
-    typeParameters: string[];
+    returnType: Type;
+    typeParameters: Type[];
 
-    constructor(name: string, parameters: Map<string, string>, modifiers: Set<string>, returnType: string[], typeParameters: string[]) {
+    constructor(name: string, parameters: MethodParameter[], modifiers: Set<string>, returnType: Type, typeParameters: Type[]) {
         this.name = name;
         this.parameters = parameters;
         this.modifiers = modifiers;
@@ -40,6 +73,9 @@ export function buildMethodInfo4MethodNode(node: ts.FunctionDeclaration | ts.Met
                 name = handlePropertyAccessExpression(node.name.expression);
             }
         }
+        else {
+            console.log("Other method declaration type found!");
+        }
     }
     //TODO, hard code
     else if (ts.isConstructorDeclaration(node)) {
@@ -53,16 +89,16 @@ export function buildMethodInfo4MethodNode(node: ts.FunctionDeclaration | ts.Met
     }
 
     let parameterTypes = buildParameters(node);
-    
+
     //TODO: remember to test abstract method
     let modifiers: Set<string> = new Set<string>();
     if (node.modifiers) {
         modifiers = buildModifiers(node.modifiers);
     }
 
-    let returnType: string[] = buildReturnType4Method(node);
+    let returnType = buildReturnType4Method(node);
 
-    let typeParameters: string[] = buildTypeParameters(node);
-    
+    let typeParameters = buildTypeParameters(node);
+
     return new MethodInfo(name, parameterTypes, modifiers, returnType, typeParameters);
 }

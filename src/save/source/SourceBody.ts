@@ -1,44 +1,26 @@
 
-import { ArkInstanceInvokeExpr } from '../../core/base/Expr';
-import { Local } from "../../core/base/Local";
 import { ArkParameterRef } from "../../core/base/Ref";
 import { ArkAssignStmt, ArkGotoStmt, ArkIfStmt, ArkInvokeStmt, ArkReturnStmt, ArkReturnVoidStmt, ArkSwitchStmt, Stmt } from '../../core/base/Stmt';
-import { BasicBlock } from '../../core/graph/BasicBlock';
+import { BasicBlock } from "../../core/graph/BasicBlock";
 import { DominanceFinder } from "../../core/graph/DominanceFinder";
 import { DominanceTree } from "../../core/graph/DominanceTree";
 import { ArkBody } from "../../core/model/ArkBody";
-import { ArkFile } from '../../core/model/ArkFile';
 import { ArkCodeBuffer } from "../ArkStream";
-import { SourceAssignStmt, SourceBreakStmt, SourceCaseStmt, SourceCompoundEndStmt, SourceContinueStmt, SourceElseStmt, SourceForStmt, SourceIfStmt, SourceInvokeStmt, SourceReturnStmt, SourceReturnVoidStmt, SourceSwitchStmt, SourceWhileStmt } from './SourceStmt';
-import { Value } from '../../core/base/Value';
+import { SourceAssignStmt, SourceCaseStmt, SourceCompoundEndStmt, SourceElseStmt, SourceForStmt, SourceGotoStmt, SourceIfStmt, SourceInvokeStmt, SourceReturnStmt, SourceReturnVoidStmt, SourceSwitchStmt, SourceWhileStmt } from './SourceStmt';
 
-enum BlockType {
-    NORMAL,
-    WHILE,
-    FOR,
-    CONTINUE,
-    BREAK,
-    IF,
-    IF_ELSE
-}
 
 export class SourceBody {
-    private printer: ArkCodeBuffer;
-    private arkBody: ArkBody;
-    private isDefault: boolean;
-    private stmts: Stmt[] = [];
-    private dominanceTree: DominanceTree;
-    private arkFile: ArkFile;
-    private blockTypes: Map<BasicBlock, BlockType>;
-    private loopPath: Map<BasicBlock, Set<BasicBlock>>;
+    printer: ArkCodeBuffer;
+    arkBody: ArkBody;
+    isDefault: boolean;
+    stmts: Stmt[] = [];
+    dominanceTree: DominanceTree;
     
-    public constructor(indent: string, arkFile: ArkFile, arkBody: ArkBody, isDefault: boolean) {
-        this.arkFile = arkFile;
+    public constructor(indent: string, arkBody: ArkBody, isDefault: boolean) {
         this.arkBody = arkBody;
         this.isDefault = isDefault;
         this.printer = new ArkCodeBuffer(indent);
         this.dominanceTree = new DominanceTree(new DominanceFinder(arkBody.getCfg()));
-        this.identifyBlocks();
         this.buildSourceStmt();
     }
 
@@ -49,128 +31,8 @@ export class SourceBody {
         return this.printer.toString();
     }
 
-    private identifyBlocks() {
-        let blocks = this.arkBody.getCfg().getBlocks();
-        let visitor = new Set<BasicBlock>();
-        this.blockTypes = new Map<BasicBlock, BlockType>();
-        this.loopPath = new Map<BasicBlock, Set<BasicBlock>>;
-
-        for (const block of blocks) {
-            if (visitor.has(block)) {
-                continue;
-            }
-            visitor.add(block);
-            if (this.isIfStmtBB(block) && this.isLoopBB(block, visitor)) {
-                let stmts = block.getStmts()
-                // IfStmt is at the end then it's a while loop
-                if (stmts[stmts.length - 1] instanceof ArkIfStmt) {
-                    this.blockTypes.set(block, BlockType.WHILE);
-                } else {
-                    this.blockTypes.set(block, BlockType.FOR);
-                }
-            } else if (this.isIfStmtBB(block)) {
-                if (this.isIfElseBB(block)) {
-                    this.blockTypes.set(block, BlockType.IF_ELSE);
-                } else {
-                    this.blockTypes.set(block, BlockType.IF);
-                }
-            } else if (this.isGotoStmtBB(block)) {
-                if (this.isContinueBB(block, this.blockTypes)) {
-                    this.blockTypes.set(block, BlockType.CONTINUE);
-                } else {
-                    this.blockTypes.set(block, BlockType.BREAK);
-                }
-            } else {
-                this.blockTypes.set(block, BlockType.NORMAL);
-            }
-        }
-    }
-
-    private isIfStmtBB(block: BasicBlock): boolean {
-        let stmtReader: StmtReader =  new StmtReader(block.getStmts());
-        while (stmtReader.hasNext()) {
-            let stmt = stmtReader.next();
-            if (stmt instanceof ArkIfStmt) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private isLoopBB(block: BasicBlock, visitor: Set<BasicBlock>): boolean {
-        let onPath: Set<BasicBlock> = new Set<BasicBlock>();
-        let loop: boolean = false;
-        visitor.delete(block);
-
-        let next = block.getSuccessors()[0];
-        onPath.add(next);
-        dfs(next);
-        
-        visitor.add(block);
-        this.loopPath.set(block, onPath);
-        return loop;
-
-        function dfs(_block: BasicBlock): void {
-            if (_block === block) {
-                loop = true;
-                return;
-            }
-            for (const sub of _block.getSuccessors()) {
-                if (!visitor.has(sub) && !onPath.has(sub) && sub != block.getSuccessors()[1]) {
-                    onPath.add(sub);
-                    dfs(sub);
-                }
-            }
-        }
-    }
-
-    private isGotoStmtBB(block: BasicBlock): boolean {
-        let stmtReader: StmtReader =  new StmtReader(block.getStmts());
-        while (stmtReader.hasNext()) {
-            let stmt = stmtReader.next();
-            if (stmt instanceof ArkGotoStmt) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-
-    private isContinueBB(block: BasicBlock, blockTypes: Map<BasicBlock, BlockType>): boolean {
-        let type = blockTypes.get(block.getSuccessors()[0]);
-        let toLoop = false;
-        if (type == BlockType.FOR || type == BlockType.WHILE) {
-            toLoop = true;
-        }
-
-        if (!toLoop) {
-            return false;
-        }
-
-        let parentLoop: BasicBlock = block;
-        let minSize: number = this.arkBody.getCfg().getBlocks().size;
-        for (let [key, value] of this.loopPath) {
-            if (value.has(block) && value.size < minSize) {
-                minSize = value.size;
-                parentLoop = key;
-            }
-        }
-
-        if (parentLoop == block.getSuccessors()[0]) {
-            return true;
-        }
-
-        return false;
-    }
-
-    private isIfElseBB(block: BasicBlock): boolean {
-        for (const nextBlock of block.getSuccessors()) {
-            // if block dominates successorBlocks[i], than successorBlocks[i] not in branch
-            if (this.hasDominated(block, nextBlock)) {
-                return false;
-            }
-        }
-        return true;
+    public dumpOriginalCode(): string {
+        throw new Error("Method not implemented.");
     }
 
     private buildSourceStmt() {
@@ -187,23 +49,25 @@ export class SourceBody {
     }
 
     private buildBasicBlock(block: BasicBlock, visitor: Set<BasicBlock>, parent: Stmt|null): void {
-        let originalStmts: Stmt[] = this.sortStmt(block.getStmts());
+        let originalStmts: Stmt[] = block.getStmts();
         let stmtReader: StmtReader =  new StmtReader(originalStmts);
         while (stmtReader.hasNext()) {
             let stmt = stmtReader.next();
             if (stmt instanceof ArkAssignStmt) {
                 this.stmts.push(new SourceAssignStmt(stmt, stmtReader));
             } else if (stmt instanceof ArkIfStmt) {
-                let isLoop = false;
-                if (this.blockTypes.get(block) == BlockType.FOR) {
-                    this.stmts.push(new SourceForStmt(stmt, stmtReader));
-                    isLoop = true;
-                } else if (this.blockTypes.get(block) == BlockType.WHILE) {
-                    this.stmts.push(new SourceWhileStmt(stmt, stmtReader));
-                    isLoop = true;
-                }
-                if (isLoop) {
-                    for (const sub of this.loopPath.get(block) as Set<BasicBlock>) {
+                let onPath: Set<BasicBlock> = new Set<BasicBlock>();
+                let inCycle = this.isInCycle(block, visitor, onPath);
+                if (inCycle) {
+                    if (stmtReader.hasNext()) {
+                        // for (;;) 
+                        this.stmts.push(new SourceForStmt(stmt, stmtReader));
+                    } else {
+                        // while 
+                        this.stmts.push(new SourceWhileStmt(stmt, stmtReader));
+                    }
+                    
+                    for (const sub of onPath) {
                         if (visitor.has(sub)) {
                             continue;
                         }
@@ -214,9 +78,12 @@ export class SourceBody {
                 } else {
                     this.stmts.push(new SourceIfStmt(stmt, stmtReader));
                     let successorBlocks = block.getSuccessors();
-                    if (this.blockTypes.get(block) == BlockType.IF_ELSE) {
-                        visitor.add(successorBlocks[1]);
-                        this.buildBasicBlock(successorBlocks[1], visitor, stmt);
+                    if (successorBlocks.length > 1 && !visitor.has(successorBlocks[1])) {
+                        // if block dominates successorBlocks[1], than successorBlocks[1] not in branch
+                        if (!this.hasDominated(block, successorBlocks[1])) {
+                            visitor.add(successorBlocks[1]);
+                            this.buildBasicBlock(successorBlocks[1], visitor, stmt);
+                        }
                     }
                     if (successorBlocks.length > 0 && !visitor.has(successorBlocks[0])) {
                         this.stmts.push(new SourceElseStmt(stmt, stmtReader));
@@ -249,12 +116,7 @@ export class SourceBody {
                 if (parent instanceof ArkSwitchStmt) {
                     this.stmts.push(new SourceCompoundEndStmt('    break;'));
                 } else {
-                    if (this.blockTypes.get(block) == BlockType.CONTINUE) {
-                        this.stmts.push(new SourceContinueStmt(stmt, stmtReader));
-                    } else {
-                        this.stmts.push(new SourceBreakStmt(stmt, stmtReader));
-                    }
-                    
+                    this.stmts.push(new SourceGotoStmt(stmt, stmtReader));
                 }
             } else if (stmt instanceof ArkReturnStmt) {
                 this.stmts.push(new SourceReturnStmt(stmt, stmtReader));
@@ -270,19 +132,6 @@ export class SourceBody {
             if (local.getName() == 'this' || local.getName() == 'console') {
                 continue;
             }
-            // skip function 
-            if (this.arkFile.getScene().arkMethodMaps.has(this.arkFile.getArkSignature() + '.' + local.getName())) {
-                continue;
-            }
-            let localType = local.getType();
-            // modify type <basic.ts>.<Person> to Person
-            if (localType.startsWith(`<${this.arkFile.getName()}>`)) {
-                localType = localType.replace(`<${this.arkFile.getName()}>.`, '');
-                localType = localType.substring(1, localType.length - 1);
-            } 
-            if (localType.length == 0) {
-                localType = 'any';
-            }
 
             // not define parameter
             if (local.getDeclaringStmt() instanceof ArkAssignStmt) {
@@ -291,8 +140,11 @@ export class SourceBody {
                     continue;
                 }
             }
-            this.printer.writeIndent().writeLine(`let ${local.getName()}: ${localType};`);
-            console.log('SourceBody->printLocals:', local);
+            this.printer.writeIndent().write(`let ${local.getName()}`);
+            if (local.getType().length > 0) {
+                this.printer.write(`: ${local.getType()}`);
+            }
+            this.printer.writeLine(';');
         }
     }
 
@@ -316,6 +168,32 @@ export class SourceBody {
         }
     }
 
+    private isInCycle(block: BasicBlock, visitor: Set<BasicBlock>, onPath: Set<BasicBlock>): boolean {
+        let inCycle: boolean = false;
+        visitor.delete(block);
+        if (block.getSuccessors().length > 0) {
+            let next = block.getSuccessors()[0];
+            onPath.add(next);
+            dfs(next);
+        }
+        
+        function dfs(_block: BasicBlock): void {
+            if (_block === block) {
+                inCycle = true;
+                return;
+            }
+            for (const sub of _block.getSuccessors()) {
+                if (!visitor.has(sub) && !onPath.has(sub)) {
+                    onPath.add(sub);
+                    dfs(sub);
+                }
+            }
+        }
+        visitor.add(block);
+
+        return inCycle;
+    }
+
     private hasDominated(srcBlock: BasicBlock, dstBlock: BasicBlock): boolean {
         for (let child of this.dominanceTree.getChildren(srcBlock)) {
             if (child == dstBlock) {
@@ -323,51 +201,6 @@ export class SourceBody {
             }
         }
         return false;
-    }
-
-    /*
-        temp9 = new <>.<>();                            temp10 = new Array<number>(3);
-        temp10 = new Array<number>(3);                  temp10[0] = "Cat";
-        temp10[0] = "Cat";                        ==>   temp10[1] = "Dog";
-        temp10[1] = "Dog";                              temp10[2] = "Hamster";
-        temp10[2] = "Hamster";                          temp9 = new <>.<>();
-        temp9.constructor(temp10);                      temp9.constructor(temp10);
-    */
-    private sortStmt(stmts: Stmt[]): Stmt[] {
-        for (let i = stmts.length -1; i > 0; i--) {
-            if (stmts[i] instanceof ArkInvokeStmt && stmts[i].getInvokeExpr() as ArkInstanceInvokeExpr) {
-                let instanceInvokeExpr = stmts[i].getInvokeExpr() as ArkInstanceInvokeExpr;
-                if ('constructor' == instanceInvokeExpr.getMethodSignature().getMethodSubSignature().getMethodName()) {
-                    let localName = instanceInvokeExpr.getBase().getName();
-                    let newExprIdx = findNewExpr(i, localName);
-                    if (newExprIdx >= 0 && newExprIdx < i -1) {
-                        moveStmt(i, newExprIdx);
-                    }
-                }
-            }
-        }
-        return stmts;
-
-        function findNewExpr(constructorIdx: number, name: string): number {
-            for (let j = constructorIdx - 1; j >= 0; j--) {
-                if (stmts[j] instanceof ArkAssignStmt) {
-                    if ((stmts[j] as ArkAssignStmt).getLeftOp() instanceof Local) {
-                        if (((stmts[j] as ArkAssignStmt).getLeftOp() as Local).getName() == name) {
-                            return j;
-                        }
-                    }
-                }
-            }
-            return -1;
-        }
-
-        function moveStmt(constructorIdx: number, newExprIdx: number): void {
-            let back = stmts[newExprIdx];
-            for (let i = newExprIdx; i < constructorIdx - 1; i++) {
-                stmts[i] = stmts[i + 1];
-            }
-            stmts[constructorIdx - 1] = back;
-        }
     }
 }
 

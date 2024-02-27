@@ -1,5 +1,4 @@
 import { InterfaceProperty } from "../../core/common/InterfaceInfoBuilder";
-import { ArkFile } from "../../core/model/ArkFile";
 import { ArkInterface } from "../../core/model/ArkInterface";
 import { ArkMethod } from "../../core/model/ArkMethod";
 import { SourceBase } from "./SourceBase";
@@ -8,22 +7,14 @@ export class SourceIntf extends SourceBase{
     
     intf: ArkInterface;
 
-    public constructor(indent: string, arkFile: ArkFile, intf: ArkInterface) {
-        super(indent, arkFile);
+    public constructor(indent: string, intf: ArkInterface) {
+        super(indent);
         this.intf = intf;
-    }
-
-    public getLine(): number {
-        return this.intf.getLine();
     }
 
     public dump(): string {
         this.printer.writeIndent().writeSpace(this.modifiersToString(this.intf.getModifiers()));
-        this.printer.writeSpace(`interface ${this.intf.getName()}`)
-        if (this.intf.getExtendsNames().length > 0) {
-            this.printer.writeSpace(`extends ${this.intf.getExtendsNames().join(',')}`);
-        }
-        this.printer.writeLine('{');
+        this.printer.writeSpace(`interface ${this.intf.getName()}`).writeLine('{');
         this.printer.incIndent();
         for (let member of this.intf.getMembers()) {
             if (member.getMemberType() == 'MethodSignature') {

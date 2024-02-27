@@ -1,15 +1,14 @@
 {
-"targetProjectName": "photos",
-"targetProjectDirectory": "./codeLab/systemui",
-
-"ohosSdkPath": "../openharmony/interface/sdk-js/api",
-"kitSdkPath": "../openharmony/interface/sdk-js/kits",
+    "targetProjectName": "sample",
+    "targetProjectDirectory": "C:\\msys64\\home\\Yifei\\code\\ArkAnalyzer\\tests\\sample",
     
+    "ohosSdkPath": "",
+    "kitSdkPath": "",
     "systemSdkPath": "",
     
     "otherSdks": [
         {
-            "name": "sdk1",
+            "name": "ArkAnalyzer",
             "path": ""
         },
         {

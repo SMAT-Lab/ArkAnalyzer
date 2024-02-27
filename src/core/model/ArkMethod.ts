@@ -1,5 +1,7 @@
 import { NodeA } from "../base/Ast";
+import { Type, UnknownType } from "../base/Type";
 import { BodyBuilder } from "../common/BodyBuilder";
+import { MethodParameter } from "../common/MethodInfoBuilder";
 import { Cfg } from "../graph/Cfg";
 import { ArkBody } from "./ArkBody";
 import { ArkClass } from "./ArkClass";
@@ -15,64 +17,25 @@ export class ArkMethod {
     private line: number = -1;
     private declaringArkFile: ArkFile;
     private declaringArkClass: ArkClass;
-    private returnType: string[] = [];
-    private parameters: Map<string, string> = new Map();
+
+    private returnType: Type = UnknownType.getInstance();
+    private parameters: MethodParameter[] = [];
     private modifiers: Set<string> = new Set<string>();
-    private typeParameters: string[] = [];
+    private typeParameters: Type[] = [];
+
     private methodSignature: MethodSignature;
     private methodSubSignature: MethodSubSignature;
+
     private body: ArkBody;
+
+    /* // Deprecated
     private arkSignature: string;
     private declaringSignature: string;
-    private arkInstancesMap: Map<string, any> = new Map<string, any>();
+    private arkInstancesMap: Map<string, any> = new Map<string, any>(); */
 
     constructor() { }
 
-    public buildArkMethodFromAstNode(methodNode: NodeA, declaringClass: ArkClass) {
-        this.setCode(methodNode.text);
-        this.setLine(methodNode.line);
-        this.setDeclaringArkClass(declaringClass);
-        this.setDeclaringArkFile();
-        if (arkMethodNodeKind.indexOf(methodNode.kind) > -1) {
-            this.buildNormalArkMethodFromAstNode(methodNode);
-        }
-        else {
-            this.buildDefaultArkMethodFromAstNode(methodNode);
-        }
-        this.genSignature();
-
-        if (methodNode.kind != "SyntaxList") {
-            methodNode = methodNode.children[methodNode.children.length - 1].children[1];
-        }
-        let bodyBuilder = new BodyBuilder(this.methodSignature, methodNode, this);
-        this.setBody(bodyBuilder.build());
-    }
-
-    private buildDefaultArkMethodFromAstNode(methodNode: NodeA) {
-        this.setName("_DEFAULT_ARK_METHOD");
-    }
-
-    private buildNormalArkMethodFromAstNode(methodNode: NodeA) {
-        if (!methodNode.methodNodeInfo) {
-            throw new Error('Error: There is no methodNodeInfo for this method!');
-        }
-        this.setName(methodNode.methodNodeInfo.name);
-
-        methodNode.methodNodeInfo.modifiers.forEach((modifier) => {
-            this.addModifier(modifier);
-        });
-
-        methodNode.methodNodeInfo.parameters.forEach((value, key) => {
-            this.addParameter(key, value);
-        });
-        methodNode.methodNodeInfo.returnType.forEach((type) => {
-            this.addReturnType(type);
-        });
-        methodNode.methodNodeInfo.typeParameters.forEach((typeParameter) => {
-            this.addTypeParameter(typeParameter);
-        });
-    }
-
+    /* // Deprecated
     public addArkInstance(arkSignature: string, arkInstance: any) {
         this.arkInstancesMap.set(arkSignature, arkInstance);
     }
@@ -81,7 +44,7 @@ export class ArkMethod {
         return this.arkInstancesMap;
     }
 
-    public setDeclaringSignature(declaringSignature:string) {
+    public setDeclaringSignature(declaringSignature: string) {
         this.declaringSignature = declaringSignature;
     }
 
@@ -95,8 +58,8 @@ export class ArkMethod {
 
     public genArkSignature() {
         this.arkSignature = this.declaringSignature + '.' + this.name;
-    }
-    
+    } */
+
     public getName() {
         return this.name;
     }
@@ -149,16 +112,16 @@ export class ArkMethod {
         return this.parameters;
     }
 
-    public addParameter(parameterName: string, parameterType: string) {
-        this.parameters.set(parameterName, parameterType);
+    public addParameter(methodParameter: MethodParameter) {
+        this.parameters.push(methodParameter);
     }
 
     public getReturnType() {
         return this.returnType;
     }
 
-    public addReturnType(type: string) {
-        this.returnType.push(type);
+    public setReturnType(type: Type) {
+        this.returnType = type;
     }
 
     public getSignature() {
@@ -178,13 +141,19 @@ export class ArkMethod {
     }
 
     public genSignature() {
-        let mtgSubSig = new MethodSubSignature();
-        mtgSubSig.build(this.getName(), this.getParameters(), this.getReturnType());
-        this.setSubSignature(mtgSubSig);
+        let mtdSubSig = new MethodSubSignature();
+        mtdSubSig.setMethodName(this.name);
+        mtdSubSig.setParameters(this.parameters);
+        mtdSubSig.setReturnType(this.returnType);
+        this.setSubSignature(mtdSubSig);
+
         let mtdSig = new MethodSignature();
-        mtdSig.build(this.methodSubSignature, this.getDeclaringArkClass().getSignature());
+        mtdSig.setDeclaringClassSignature(this.declaringArkClass.getSignature());
+        mtdSig.setMethodSubSignature(mtdSubSig);
         this.setSignature(mtdSig);
-        this.genArkSignature();
+
+        /* // Deprecated
+        this.genArkSignature(); */
     }
 
     public getModifiers() {
@@ -199,7 +168,7 @@ export class ArkMethod {
         return this.typeParameters;
     }
 
-    public addTypeParameter(typeParameter: string) {
+    public addTypeParameter(typeParameter: Type) {
         this.typeParameters.push(typeParameter);
     }
 
@@ -222,4 +191,48 @@ export class ArkMethod {
     public getOriginalCfg() {
         return this.body.getOriginalCfg();
     }
+}
+
+export function buildArkMethodFromArkClass(methodNode: NodeA, declaringClass: ArkClass, mtd: ArkMethod) {
+
+    mtd.setDeclaringArkClass(declaringClass);
+    mtd.setDeclaringArkFile();
+
+    if (arkMethodNodeKind.indexOf(methodNode.kind) > -1) {
+        buildNormalArkMethodFromAstNode(methodNode, mtd);
+    }
+    else {
+        mtd.setName("_DEFAULT_ARK_METHOD");
+    }
+    mtd.genSignature();
+
+    if (methodNode.kind != "SyntaxList") {
+        methodNode = methodNode.children[methodNode.children.length - 1].children[1];
+    }
+    let bodyBuilder = new BodyBuilder(mtd.getSignature(), methodNode, mtd);
+    mtd.setBody(bodyBuilder.build());
+}
+
+export function buildNormalArkMethodFromAstNode(methodNode: NodeA, mtd: ArkMethod) {
+    mtd.setCode(methodNode.text);
+    mtd.setLine(methodNode.line);
+
+    if (!methodNode.methodNodeInfo) {
+        throw new Error('Error: There is no methodNodeInfo for this method!');
+    }
+    mtd.setName(methodNode.methodNodeInfo.name);
+
+    methodNode.methodNodeInfo.modifiers.forEach((modifier) => {
+        mtd.addModifier(modifier);
+    });
+    methodNode.methodNodeInfo.parameters.forEach(methodParameter => {
+        mtd.addParameter(methodParameter);
+    });
+
+    mtd.setReturnType(methodNode.methodNodeInfo.returnType);
+
+
+    methodNode.methodNodeInfo.typeParameters.forEach((typeParameter) => {
+        mtd.addTypeParameter(typeParameter);
+    });
 }

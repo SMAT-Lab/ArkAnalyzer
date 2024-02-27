@@ -17,8 +17,10 @@ function runScene(config: SceneConfig) {
             let tempMethod = arkFile.getDefaultClass().getMethods()
             for (let func of tempMethod) {
                 // console.log(func.getName())
-                if (func.getName() == "temp")
+                if (func.getName() == "temp") {
                     entryPoints.push(func.getSignature())
+                    // console.log(func.getBody().getLocals())
+                }
             }
         }
     }

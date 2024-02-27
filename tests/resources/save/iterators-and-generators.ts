@@ -14,20 +14,6 @@ for (let i of list) {
     console.log(i); // "4", "5", "6"
 }
 
-list.forEach(i => {
-    console.log(i);
-});
-
-for (let i = 0; i < list.length; i++) {
-    if (i == 0) {
-        continue;
-    }
-    if (i == 2) {
-        break;
-    }
-    console.log(list[i]);
-}
-
 let pets = new Set(["Cat", "Dog", "Hamster"]);
 for (let pet in pets) {
     console.log(pet); // "species"

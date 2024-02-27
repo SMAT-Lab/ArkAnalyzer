@@ -1,21 +1,17 @@
 import { ArkBody } from "../../core/model/ArkBody";
-import { ArkFile } from "../../core/model/ArkFile";
 import { ArkMethod } from "../../core/model/ArkMethod";
 import { ArkCodeBuffer } from "../ArkStream";
 import { SourceBody } from "./SourceBody";
 
 export abstract class SourceBase {
-    protected printer: ArkCodeBuffer;
-    protected arkFile: ArkFile;
+    printer: ArkCodeBuffer;
 
-    public constructor(indent: string, arkFile: ArkFile) {
+    public constructor(indent: string) {
         this.printer = new ArkCodeBuffer(indent);
-        this.arkFile = arkFile;
     }
 
     public abstract dump(): string;
     public abstract dumpOriginalCode(): string;
-    public abstract getLine(): number;
 
     public printMethod(method: ArkMethod): void {
         this.printer.writeIndent().write(this.methodProtoToString(method));
@@ -35,7 +31,7 @@ export abstract class SourceBase {
     }
 
     public printBody(body: ArkBody, isDefault: boolean): void {
-        let srcBody = new SourceBody(this.printer.getIndent(), this.arkFile, body, isDefault);
+        let srcBody = new SourceBody(this.printer.getIndent(), body, isDefault);
         this.printer.write(srcBody.dump());
     }
 
@@ -52,12 +48,7 @@ export abstract class SourceBase {
 
         let parameters: string[] = [];
         method.getParameters().forEach((parameterType, parameterName) => {
-            parameterType = this.resolveKeywordType(parameterType);
-            if (parameterType.length > 0) {
-                parameters.push(parameterName + ': ' + this.resolveKeywordType(parameterType));
-            } else {
-                parameters.push(parameterName);
-            }
+            parameters.push(parameterName + ': ' + this.resolveKeywordType(parameterType));
         });
         code.write(`(${parameters.join(',')})`);
         if (method.getReturnType().length > 1) {
@@ -83,20 +74,11 @@ export abstract class SourceBase {
     }
     
     protected resolveKeywordType(keywordStr: string): string {
-        // 'NumberKeyword | NullKeyword |
-        let types: string[] = [];
-        for (let keyword of keywordStr.split('|')) {
-            keyword = keyword.trim();
-            if (keyword.length == 0) {
-                continue;
-            }
-            if (keyword.endsWith('Keyword')) {
-                keyword = keyword.substring(0, keyword.length - 'Keyword'.length).toLowerCase();
-            }
-            types.push(keyword);
+        if (keywordStr.endsWith('Keyword')) {
+            return keywordStr.substring(0, keywordStr.length - 'Keyword'.length).toLowerCase();
         }
         
-        return types.join('|');
+        return keywordStr;
     }
     
     protected resolveMethodName(name: string): string {

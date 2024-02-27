@@ -1,11 +1,11 @@
 import * as ts from "typescript";
-import { ClassInfo, buildClassInfo4ClassNode } from "../common/ClassInfoBuilder";
+import { ClassInfo, buildClassInfo4ClassNode } from "../common/ClassBuilder";
 import { MethodInfo, buildMethodInfo4MethodNode } from "../common/MethodInfoBuilder";
 import { ImportInfo, buildImportInfo4ImportNode } from "../common/ImportBuilder";
 import { ExportInfo, buildExportInfo4ExportNode } from "../common/ExportBuilder";
-import { InterfaceInfo, buildInterfaceInfo4InterfaceNode } from "../common/InterfaceInfoBuilder";
+//import { InterfaceInfo, buildInterfaceInfo4InterfaceNode } from "../common/InterfaceInfoBuilder";
 import { NamespaceInfo, buildNamespaceInfo4NamespaceNode } from "../common/NamespaceInfoBuilder";
-import { EnumInfo, buildEnumInfo4EnumNode } from "../common/EnumInfoBuilder";
+//import { EnumInfo, buildEnumInfo4EnumNode } from "../common/EnumInfoBuilder";
 
 /**
  * ast节点类，属性包括父节点，子节点列表，种类，文本内容，开始位置
@@ -20,17 +20,14 @@ export class NodeA {
     methodNodeInfo: MethodInfo | undefined;
     importNodeInfo: ImportInfo[] | undefined;
     exportNodeInfo: ExportInfo[] | undefined;
-    interfaceNodeInfo: InterfaceInfo | undefined;
     namespaceNodeInfo: NamespaceInfo | undefined;
-    enumNodeInfo: EnumInfo | undefined;
     instanceMap: Map<string, string> | undefined;
     line: number = -1;
     character: number = -1;
 
     constructor(node: ts.Node | undefined, parent: NodeA | null, children: NodeA[], text: string,
         start: number, kind: string, classNodeInfo?: ClassInfo, methodNodeInfo?: MethodInfo,
-        importNodeInfo?: ImportInfo[], exportNodeInfo?: ExportInfo[], interfaceNodeInfo?: InterfaceInfo,
-        namespaceNodeInfo?: NamespaceInfo, enumNodeInfo?: EnumInfo) {
+        importNodeInfo?: ImportInfo[], exportNodeInfo?: ExportInfo[], namespaceNodeInfo?: NamespaceInfo) {
         this.parent = parent;
         this.children = children;
         this.text = text;
@@ -50,9 +47,7 @@ export class NodeA {
         this.methodNodeInfo = methodNodeInfo;
         this.importNodeInfo = importNodeInfo;
         this.exportNodeInfo = exportNodeInfo;
-        this.interfaceNodeInfo = interfaceNodeInfo;
         this.namespaceNodeInfo = namespaceNodeInfo;
-        this.enumNodeInfo = enumNodeInfo;
     }
 
     public putInstanceMap(variableName: string, variableType: string): void {
@@ -120,11 +115,10 @@ export class ASTree {
             let methodNodeInfo: MethodInfo | undefined;
             let importNodeInfo: ImportInfo[] | undefined;
             let exportNodeInfo: ExportInfo[] | undefined;
-            let interfaceNodeInfo: InterfaceInfo | undefined;
             let namespaceNodeInfo: NamespaceInfo | undefined;
-            let enumNodeInfo: EnumInfo | undefined;
 
-            if (ts.isClassDeclaration(child) || ts.isClassExpression(child)) {
+            if (ts.isClassDeclaration(child) || ts.isClassExpression(child) ||
+                ts.isInterfaceDeclaration(child) || ts.isEnumDeclaration(child)) {
                 classNodeInfo = buildClassInfo4ClassNode(child);
             }
             if (ts.isFunctionDeclaration(child) || ts.isMethodDeclaration(child) || ts.isConstructorDeclaration(child) ||
@@ -137,18 +131,12 @@ export class ASTree {
             if (ts.isExportDeclaration(child) || ts.isExportAssignment(child)) {
                 exportNodeInfo = buildExportInfo4ExportNode(child);
             }
-            if (ts.isInterfaceDeclaration(child)) {
-                interfaceNodeInfo = buildInterfaceInfo4InterfaceNode(child);
-            }
             if (ts.isModuleDeclaration(child)) {
                 namespaceNodeInfo = buildNamespaceInfo4NamespaceNode(child);
             }
-            if (ts.isEnumDeclaration(child)) {
-                enumNodeInfo = buildEnumInfo4EnumNode(child);
-            }
 
             ca = new NodeA(child, nodea, [], child.getText(this.sourceFile), child.getStart(this.sourceFile), "",
-                classNodeInfo, methodNodeInfo, importNodeInfo, exportNodeInfo, interfaceNodeInfo, namespaceNodeInfo, enumNodeInfo);
+                classNodeInfo, methodNodeInfo, importNodeInfo, exportNodeInfo, namespaceNodeInfo);
             const { line, character } = ts.getLineAndCharacterOfPosition(
                 this.sourceFile,
                 child.getStart(this.sourceFile)

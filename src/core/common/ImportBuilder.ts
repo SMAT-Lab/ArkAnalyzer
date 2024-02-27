@@ -1,9 +1,10 @@
 import * as ts from "typescript";
 import path from 'path';
 import { transfer2UnixPath } from "../../utils/pathTransfer";
+import { ArkFile } from "../model/ArkFile";
+import { FileSignature } from "../model/ArkSignature";
 
 var sdkPathMap: Map<string, string> = new Map();
-
 
 export function updateSdkConfigPrefix(sdkName: string, sdkRelativePath: string) {
     sdkPathMap.set(sdkName, transfer2UnixPath(sdkRelativePath));
@@ -15,9 +16,17 @@ export class ImportInfo {
     private importFrom: string;
     private nameBeforeAs: string | undefined;
     private clauseType: string = "";
-    private declaringSignature: string;
+
+    /* // Deprecated
+    private declaringSignature: string; */
+    
+    private declaringArkFile: ArkFile;
+    
+    /* // Deprecated
     private arkSignature: string;
-    private targetArkSignature: string;
+    private targetArkSignature: string; */
+    
+    private importFromSignature2Str: string = "";
     private declaringFilePath: string;
     private projectPath: string;
 
@@ -30,20 +39,67 @@ export class ImportInfo {
         this.setNameBeforeAs(nameBeforeAs);
     }
 
+    public getImportFromSignature2Str() {
+        return this.importFromSignature2Str;
+    }
+
     public setDeclaringFilePath(declaringFilePath: string) {
         this.declaringFilePath = declaringFilePath;
+    }
+    
+    public setDeclaringArkFile(declaringArkFile: ArkFile) {
+        this.declaringArkFile = declaringArkFile;
     }
 
     public setProjectPath(projectPath: string) {
         this.projectPath = projectPath;
     }
 
+    public setImportFromSignature() {
+        let importFromSignature = new FileSignature();
+        // project internal imports
+        const pathReg1 = new RegExp("^(\\.\\.\\/\|\\.\\/)");
+        if (pathReg1.test(this.importFrom)) {
+            //get real target path of importfrom
+            let realImportFromPath = path.resolve(path.dirname(this.declaringFilePath), this.importFrom);
+            //get relative path from project dir to real target path of importfrom
+            let tmpSig1 = path.relative(this.projectPath, realImportFromPath);
+            //tmpSig1 = tmpSig1.replace(/^\.\//, '');
+            importFromSignature.setFileName(tmpSig1);
+            importFromSignature.setProjectName(this.declaringArkFile.getProjectName());
+            this.importFromSignature2Str = importFromSignature.toString();
+        }
+
+        // external imports, e.g. @ohos., @kit., @System., @ArkAnalyzer/
+        sdkPathMap.forEach((value, key) => {
+            // e.g. @ohos., @kit., @System.
+            if (key == 'ohos' || key == 'kit' || key == 'system') {
+                const pathReg2 = new RegExp(`@(${key})\\.`);
+                if (pathReg2.test(this.importFrom)) {
+                    let tmpSig = '@' + key + '/' + this.importFrom + ':';
+                    this.importFromSignature2Str = `<${tmpSig}>`;
+                }
+            }
+            // e.g. @ArkAnalyzer/
+            else {
+                const pathReg3 = new RegExp(`@(${key})\\/`);
+                if (pathReg3.test(this.importFrom)) {
+                    this.importFromSignature2Str = this.importFrom;
+                }
+            }
+        });
+        //third part npm package
+        //TODO
+    }
+
+    /* // Deprecated
     public setArkSignature(declaringSignature: string) {
         this.declaringSignature = declaringSignature;
         this.arkSignature = declaringSignature + '.' + this.importClauseName;
         this.genTargetArkSignature();
-    }
+    } */
 
+    /* // Deprecated
     public genTargetArkSignature() {
         let tmpSig: string;
 
@@ -115,8 +171,9 @@ export class ImportInfo {
 
         //third part npm package
         //TODO
-    }
+    } */
 
+    /* // Deprecated
     public getArkSignature() {
         return this.arkSignature;
     }
@@ -127,7 +184,7 @@ export class ImportInfo {
 
     public setTargetArkSignature(targetArkSignature: string) {
         this.targetArkSignature = targetArkSignature;
-    }
+    } */
 
     public getImportClauseName() {
         return this.importClauseName;
