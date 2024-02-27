@@ -1,7 +1,9 @@
 import ts from "typescript";
-import { LiteralType, Type, UnclearType, UnionType, UnknownType } from "../core/base/Type";
+import { LiteralType, Type, TypeLiteralType, UnclearType, UnionType, UnknownType } from "../core/base/Type";
 import { TypeInference } from "../core/common/TypeInference";
 import { MethodParameter } from "../core/common/MethodInfoBuilder";
+import { buildProperty2ArkField } from "../core/common/ClassBuilder";
+import { ArkField } from "../core/model/ArkField";
 
 export function handleQualifiedName(node: ts.QualifiedName): string {
     let right = (node.right as ts.Identifier).escapedText.toString();
@@ -79,7 +81,8 @@ export function buildHeritageClauses(node: ts.ClassDeclaration | ts.ClassExpress
 export function buildTypeParameters(node: ts.ClassDeclaration | ts.ClassExpression |
     ts.InterfaceDeclaration | ts.FunctionDeclaration | ts.MethodDeclaration |
     ts.ConstructorDeclaration | ts.ArrowFunction | ts.AccessorDeclaration |
-    ts.FunctionExpression | ts.MethodSignature | ts.ConstructSignatureDeclaration): Type[] {
+    ts.FunctionExpression | ts.MethodSignature | ts.ConstructSignatureDeclaration |
+    ts.CallSignatureDeclaration): Type[] {
     let typeParameters: Type[] = [];
     node.typeParameters?.forEach((typeParameter) => {
         if (ts.isIdentifier(typeParameter.name)) {
@@ -148,6 +151,20 @@ export function buildParameters(node: ts.FunctionDeclaration | ts.MethodDeclarat
             else if (ts.isLiteralTypeNode(parameter.type)) {
                 methodParameter.setType(buildTypeFromPreStr(ts.SyntaxKind[parameter.type.literal.kind]));
             }
+            else if (ts.isTypeLiteralNode(parameter.type)) {
+                let members: ArkField[] = [];
+                parameter.type.members.forEach((member) => {
+                    if (ts.isPropertySignature(member)) {
+                        members.push(buildProperty2ArkField(member));
+                    }
+                    else {
+                        console.log("Please contact developers to support new TypeLiteral member!");
+                    }
+                });
+                let type = new TypeLiteralType();
+                type.setMembers(members);
+                methodParameter.setType(type);
+            }
             else {
                 methodParameter.setType(buildTypeFromPreStr(ts.SyntaxKind[parameter.type.kind]));
             }
@@ -205,7 +222,8 @@ export function buildParameters(node: ts.FunctionDeclaration | ts.MethodDeclarat
 
 export function buildReturnType4Method(node: ts.FunctionDeclaration | ts.MethodDeclaration |
     ts.ConstructorDeclaration | ts.ArrowFunction | ts.AccessorDeclaration |
-    ts.FunctionExpression | ts.MethodSignature | ts.ConstructSignatureDeclaration) {
+    ts.FunctionExpression | ts.MethodSignature | ts.ConstructSignatureDeclaration |
+    ts.CallSignatureDeclaration) {
     if (node.type) {
         if (ts.isTypeLiteralNode(node.type)) {
             console.log("Return type is TypeLiteral, please contact developers to add support for this!");

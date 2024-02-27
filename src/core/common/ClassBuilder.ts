@@ -1,5 +1,5 @@
 import * as ts from "typescript";
-import { buildHeritageClauses, buildModifiers, buildTypeFromPreStr, buildTypeParameters, handlePropertyAccessExpression, handleQualifiedName } from "../../utils/builderUtils";
+import { buildHeritageClauses, buildModifiers, buildParameters, buildReturnType4Method, buildTypeFromPreStr, buildTypeParameters, handlePropertyAccessExpression, handleQualifiedName } from "../../utils/builderUtils";
 import { Type, UnclearType } from "../base/Type";
 import { ArkField } from "../model/ArkField";
 
@@ -106,8 +106,11 @@ export function buildClassInfo4ClassNode(node: ts.ClassDeclaration | ts.ClassExp
 
     let members: ArkField[] = [];
     node.members.forEach((member) => {
-        if (ts.isPropertyDeclaration(member) || ts.isPropertySignature(member)) {
+        if (ts.isPropertyDeclaration(member) || ts.isPropertySignature(member) || ts.isEnumMember(member)) {
             members.push(buildProperty2ArkField(member));
+        }
+        else if (ts.isCallSignatureDeclaration(member)) {
+            console.log("TODO: Call signature");
         }
         else if (ts.isIndexSignatureDeclaration(member)) {
             console.log("TODO: Index signature");
@@ -123,8 +126,9 @@ export function buildClassInfo4ClassNode(node: ts.ClassDeclaration | ts.ClassExp
     return classInfo;
 }
 
-function buildProperty2ArkField(member: ts.PropertyDeclaration | ts.PropertySignature | ts.EnumMember): ArkField {
+export function buildProperty2ArkField(member: ts.PropertyDeclaration | ts.PropertySignature | ts.EnumMember): ArkField {
     let field = new ArkField();
+    field.setFieldType(ts.SyntaxKind[member.kind]);
 
     //field.setCode(member.getText().toString());
 
@@ -167,6 +171,19 @@ function buildProperty2ArkField(member: ts.PropertyDeclaration | ts.PropertySign
         field.setExclamationToken(true);
     }
 
+    return field;
+}
+
+// TBD: Deprecated
+function buildCallSignature2ArkField(member: ts.CallSignatureDeclaration): ArkField {
+    let field = new ArkField();
+    field.setFieldType(ts.SyntaxKind[member.kind]);
+    //parameters
+    field.setParameters(buildParameters(member));
+    //typeParamters
+    field.setTypeParameters(buildTypeParameters(member));
+    //type
+    field.setType(buildReturnType4Method(member));
     return field;
 }
 

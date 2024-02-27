@@ -5,12 +5,12 @@ import { AbstractInvokeExpr, ArkBinopExpr, ArkCastExpr, ArkConditionExpr, ArkIns
 import { Local } from '../base/Local';
 import { AbstractFieldRef, ArkArrayRef, ArkCaughtExceptionRef, ArkInstanceFieldRef, ArkParameterRef, ArkStaticFieldRef, ArkThisRef } from '../base/Ref';
 import { ArkAssignStmt, ArkDeleteStmt, ArkGotoStmt, ArkIfStmt, ArkInvokeStmt, ArkReturnStmt, ArkReturnVoidStmt, ArkSwitchStmt, ArkThrowStmt, Stmt } from '../base/Stmt';
-import { ArrayType, CallableType, ClassType, StringType, Type, UnionType, UnknownType } from '../base/Type';
+import { ArrayType, CallableType, ClassType, StringType, TupleType, Type, UnionType, UnknownType } from '../base/Type';
 import { Value } from '../base/Value';
 import { BasicBlock } from '../graph/BasicBlock';
 import { Cfg } from '../graph/Cfg';
 import { ArkClass, buildNormalArkClassFromArkFile } from '../model/ArkClass';
-import { ArkMethod, buildArkMethodFromArkClass, buildNormalArkMethodFromAstNode } from '../model/ArkMethod';
+import { ArkMethod, buildArkMethodFromArkClass } from '../model/ArkMethod';
 import { ClassSignature, FieldSignature, MethodSignature, MethodSubSignature } from '../model/ArkSignature';
 import { ExportInfo } from './ExportBuilder';
 import { IRUtils } from './IRUtils';
@@ -1926,10 +1926,9 @@ export class CfgBuilder {
                 }
             }
             let exprArkMethod = new ArkMethod();
-            buildNormalArkMethodFromAstNode(node, exprArkMethod);
+            buildArkMethodFromArkClass(node, this.declaringClass, exprArkMethod);
+            exprArkMethod.genSignature();
             this.declaringClass.addMethod(exprArkMethod);
-            exprArkMethod.setDeclaringArkClass(this.declaringClass);
-            exprArkMethod.setDeclaringArkFile();
 
             let callableType = new CallableType(exprArkMethod.getSignature());
             value = new Local(funcExprName, callableType);
@@ -3011,6 +3010,16 @@ export class CfgBuilder {
                     }
                 }
                 return new UnionType(types);
+            case 'TupleType':
+                const tupleTypes: Type[] = [];
+                typeNode = node.children[1];
+                for (const singleTypeNode of typeNode.children) {
+                    if (singleTypeNode.kind != "CommaToken") {
+                        const singleType = this.resolveTypeNode(singleTypeNode)
+                        tupleTypes.push(singleType);
+                    }
+                }
+                return new TupleType(tupleTypes);
         }
         return UnknownType.getInstance();
     }

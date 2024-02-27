@@ -1,3 +1,4 @@
+import { ArkField } from "../model/ArkField";
 import { ClassSignature, MethodSignature } from "../model/ArkSignature";
 
 export abstract class Type { }
@@ -58,8 +59,6 @@ export class UnclearType extends Type {
         return this.name;
     }
 }
-
-
 
 /** primitive type */
 export abstract class PrimitiveType extends Type {
@@ -159,20 +158,34 @@ export class LiteralType extends PrimitiveType {
     }
 }
 
-/** union types */
+/** union type */
 export class UnionType extends Type {
     private types: Type[];
-    constructor(types: Type[]) {
+    private currType: Type;  // The true type of the value at this time  
+    constructor(types: Type[], currType: Type = UnknownType.getInstance()) {
         super();
         this.types = [...types];
+        this.currType = currType;
     }
 
     public getTypes(): Type[] {
         return this.types;
     }
 
+    public getCurrType(): Type {
+        return this.currType;
+    }
+
+    public setCurrType(newType: Type): void {
+        this.currType = newType;
+    }
+
     public toString(): string {
-        return this.types.join('|');
+        let typeStr = this.types.join('|');
+        if (!(this.currType instanceof UnknownType)) {
+            typeStr += '-' + this.currType
+        }
+        return typeStr;
     }
 }
 
@@ -260,13 +273,34 @@ export class ArrayType extends Type {
         this.dimension = dimension;
     }
 
+    public getBaseType(): Type {
+        return this.baseType;
+    }
+
     public toString(): string {
         const strs: string[] = [];
-        strs.push(this.baseType.toString());
+        strs.push('(' + this.baseType.toString() + ')');
         for (let i = 0; i < this.dimension; i++) {
             strs.push('[]');
         }
         return strs.join('')
+    }
+}
+
+export class TupleType extends Type {
+    private types: Type[];
+
+    constructor(types: Type[]) {
+        super();
+        this.types = types;
+    }
+
+    public getTypes(): Type[] {
+        return this.types;
+    }
+
+    public toString(): string {
+        return '[' + this.types.join(', ') + ']';
     }
 }
 
@@ -291,4 +325,25 @@ export class ClassAliasType extends AliasType {
     constructor(classType: ClassType) {
         super(classType);
     }
+}
+
+export class TypeLiteralType extends Type {
+    private members: ArkField[] = [];
+
+    constructor() {
+        super();
+    }
+
+    public getMembers() {
+        return this.members;
+    }
+
+    public setMembers(members: ArkField[]) {
+        this.members = members;
+    }
+
+    public addMember(member: ArkField) {
+        this.members.push(member);
+    }
+
 }

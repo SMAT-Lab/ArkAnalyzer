@@ -1,6 +1,6 @@
 import { FieldSignature } from "../model/ArkSignature";
 import { Local } from "./Local";
-import { ClassType, Type } from "./Type";
+import { ArrayType, ClassType, Type, UnknownType } from "./Type";
 import { Value } from "./Value";
 
 export abstract class AbstractRef implements Value {
@@ -35,7 +35,13 @@ export class ArkArrayRef extends AbstractRef {
     }
 
     public getType(): Type {
-        return this.base.getType();
+        const baseType = this.base.getType();
+        if (baseType instanceof ArrayType) {
+            return baseType.getBaseType();
+        } else {
+            console.log(`the type of base in ArrayRef is not ArrayType`);   
+            return UnknownType.getInstance();
+        }
     }
 
     public getUses(): Value[] {

@@ -5,13 +5,13 @@ import { ArkEnum } from "./ArkEnum";
 import { ArkFile } from "./ArkFile";
 import { ArkInterface } from "./ArkInterface";
 import { ArkMethod, arkMethodNodeKind, buildArkMethodFromArkClass } from "./ArkMethod";
-import { ClassSignature, NamespaceSignature } from "./ArkSignature";
+import { ClassSignature, MethodSignature, NamespaceSignature } from "./ArkSignature";
 
 
 export class ArkNamespace {
     private name: string;
     private code: string
-
+    private line: number = -1;
     private declaringArkFile: ArkFile;
     private declaringArkNamespace: ArkNamespace | null = null;
 
@@ -25,7 +25,7 @@ export class ArkNamespace {
 
     private namespaces: ArkNamespace[] = [];
     private classes: ArkClass[] = [];
-    private methods: ArkMethod[] = [];
+    //private methods: ArkMethod[] = [];
 
     /* // Deprecated
     private arkSignature: string;
@@ -36,15 +36,69 @@ export class ArkNamespace {
 
     constructor() { }
 
-    public addNamespace(namespace: ArkNamespace) {
-        this.classes.push(...namespace.getClasses());
-        // this.methods.push(...namespace.getMethods());
-        // this.namespaces.push(namespace);
+    public getMethodAllTheNamespace(methodSignature: MethodSignature): ArkMethod | null {
+        let classSig = methodSignature.getDeclaringClassSignature();
+        let cls = this.getClassAllTheNamespace(classSig);
+        if (cls) {
+            return cls.getMethod(methodSignature);
+        }
+        return null;
     }
 
-    // YIFEI-TODO: implement
+    public getClassAllTheNamespace(classSignature: ClassSignature): ArkClass | null {
+        if (classSignature.getDeclaringFileSignature().toString() != this.getNamespaceSignature().getDeclaringFileSignature().toString()) {
+            return null;
+        }
+        let nsSig = classSignature.getDeclaringNamespaceSignature();
+        if (nsSig) {
+            let ns = this.getNamespaceAllTheNamespace(nsSig);
+            if (ns) {
+                return ns.getClassAllTheNamespace(classSignature);
+            }
+            return null;
+        }
+        else {
+            return null;
+        }
+    }
+
+    public addNamespace(namespace: ArkNamespace) {
+        // this.classes.push(...namespace.getClasses());
+        // this.methods.push(...namespace.getMethods());
+        this.namespaces.push(namespace);
+    }
+
     public getNamespace(namespaceSignature: NamespaceSignature): ArkNamespace | null {
+        this.namespaces.forEach((ns) => {
+            if (ns.getNamespaceSignature().toString() == namespaceSignature.toString()) {
+                return ns;
+            }
+        });
         return null;
+    }
+
+    public getNamespaceAllTheNamespace(namespaceSignature: NamespaceSignature): ArkNamespace | null {
+        let declaringNamespaceSignature = namespaceSignature.getDeclaringNamespaceSignature();
+        
+        if (!declaringNamespaceSignature) {
+            return null;
+        }
+        
+        if (declaringNamespaceSignature.toString() == this.namespaceSignature.toString()) {
+            this.namespaces.forEach((ns) => {
+                if (ns.getNamespaceSignature().toString() == namespaceSignature.toString()) {
+                    return ns;
+                }
+            });
+            return null;
+        }
+        else {
+            let declaringNamespace = this.getNamespaceAllTheNamespace(declaringNamespaceSignature);
+            if (declaringNamespace) {
+                return declaringNamespace.getNamespace(namespaceSignature);
+            }
+            return null;
+        }
     }
 
     public getNamespaces(): ArkNamespace[] {
@@ -102,6 +156,14 @@ export class ArkNamespace {
     public setCode(code: string) {
         this.code = code;
     }
+    
+    public getLine() {
+        return this.line;
+    }
+
+    public setLine(line: number) {
+        this.line = line;
+    }
 
     public setDeclaringType(declaringType: string) {
         this.declaringType = declaringType;
@@ -147,7 +209,7 @@ export class ArkNamespace {
         return this.modifiers.has(name);
     }
 
-    public addArkMethod(arkMethod: ArkMethod) {
+    /* public addArkMethod(arkMethod: ArkMethod) {
         for (let i = 0; i < this.methods.length; i++) {
             // check whether exits this method
             if (this.methods[i].getSignature().toString() == arkMethod.getSignature().toString()) {
@@ -155,16 +217,19 @@ export class ArkNamespace {
             }
         }
         this.methods.push(arkMethod);
-    }
+    } */
 
     public getClass(classSignature: ClassSignature): ArkClass | null {
-        let cls = this.classes.find((obj) => {
-            return (obj.getSignature().toString() == classSignature.toString());
-        })
-        if (cls) {
-            return cls;
-        }
+        this.classes.forEach((cls) => {
+            if (cls.getSignature().toString() == classSignature.toString()) {
+                return cls;
+            }
+        });
         return null;
+    }
+
+    public getClasses(): ArkClass[] {
+        return this.classes;
     }
 
     public updateClass(arkClass: ArkClass) {
@@ -191,13 +256,9 @@ export class ArkNamespace {
         }
     }
 
-    public getClasses(): ArkClass[] {
-        return this.classes;
-    }
-
-    public getMethods(): ArkMethod[] {
+    /* public getMethods(): ArkMethod[] {
         return this.methods;
-    }
+    } */
 
     public isExported(): boolean {
         return this.containsModifier('ExportKeyword');
@@ -253,6 +314,7 @@ export function buildArkNamespace(nsNode: NodeA, declaringInstance: ArkFile | Ar
     });
 
     ns.setCode(nsNode.text);
+    ns.setLine(nsNode.line);
 
     let tmpNode = findIndicatedChild(nsNode, "ModuleBlock");
     if (tmpNode) {

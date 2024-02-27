@@ -4,14 +4,14 @@ import { ArkField } from "./ArkField";
 import { ArkFile } from "./ArkFile";
 import { ArkMethod, arkMethodNodeKind, buildArkMethodFromArkClass } from "./ArkMethod";
 import { ArkNamespace } from "./ArkNamespace";
-import { ClassSignature, FieldSignature, MethodSubSignature, methodSubSignatureCompare } from "./ArkSignature";
+import { ClassSignature, FieldSignature, MethodSignature, MethodSubSignature, methodSubSignatureCompare } from "./ArkSignature";
 
 
 export class ArkClass {
     private name: string;
     private originType: string = "Class";
     private code: string;
-
+    private line: number = -1;
     private declaringArkFile: ArkFile;
     private declaringArkNamespace: ArkNamespace;
     private classSignature: ClassSignature;
@@ -57,6 +57,14 @@ export class ArkClass {
 
     public setCode(code: string) {
         this.code = code;
+    }
+
+    public getLine() {
+        return this.line;
+    }
+
+    public setLine(line: number) {
+        this.line = line;
     }
 
     public getOriginType() {
@@ -149,8 +157,12 @@ export class ArkClass {
         return (this.implementedInterfaceNames.indexOf(interfaceName) > -1);
     }
 
-    // YIFEI-TODO: implement
     public getField(fieldSignature: FieldSignature): ArkField | null {
+        this.getFields().forEach((field) => {
+            if (field.getSignature().toString() == fieldSignature.toString()) {
+                return field
+            }
+        });
         return null;
     }
 
@@ -192,12 +204,12 @@ export class ArkClass {
         return this.methods;
     }
 
-    public getMethod(methodSubSignature: MethodSubSignature): ArkMethod | null {
-        for (let mthd of this.methods) {
-            if (methodSubSignatureCompare(mthd.getSubSignature(), methodSubSignature)) {
-                return mthd;
+    public getMethod(methodSignature: MethodSignature): ArkMethod | null {
+        this.methods.forEach((mtd) => {
+            if (mtd.getSignature().toString() == methodSignature.toString()) {
+                return mtd;
             }
-        }
+        });
         return null;
     }
 
@@ -225,6 +237,7 @@ export function buildDefaultArkClassFromArkNamespace(clsNode: NodeA, arkNamespac
 export function buildNormalArkClassFromArkFile(clsNode: NodeA, arkFile: ArkFile, cls: ArkClass) {
     cls.setDeclaringArkFile(arkFile);
     cls.setCode(clsNode.text);
+    cls.setLine(clsNode.line);
     buildNormalArkClass(clsNode, cls);
 }
 
@@ -232,6 +245,7 @@ export function buildNormalArkClassFromArkNamespace(clsNode: NodeA, arkNamespace
     cls.setDeclaringArkNamespace(arkNamespace);
     cls.setDeclaringArkFile(arkNamespace.getDeclaringArkFile());
     cls.setCode(clsNode.text);
+    cls.setLine(clsNode.line);
     buildNormalArkClass(clsNode, cls);
 }
 
