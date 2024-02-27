@@ -3,7 +3,7 @@ import { ArkBinopExpr, ArkInstanceInvokeExpr, ArkNewExpr, ArkStaticInvokeExpr } 
 import { Local } from "../base/Local";
 import { ArkInstanceFieldRef } from "../base/Ref";
 import { ArkAssignStmt, Stmt } from "../base/Stmt";
-import { AnyType, BooleanType, ClassType, NeverType, NullType, NumberType, StringType, Type, UndefinedType, UnknownType, VoidType } from "../base/Type";
+import { AnyType, BooleanType, ClassType, NeverType, NullType, NumberType, StringType, Type, UndefinedType, UnionType, UnknownType, VoidType } from "../base/Type";
 import { ArkMethod } from "../model/ArkMethod";
 import { ModelUtils } from "./ModelUtils";
 
@@ -15,7 +15,12 @@ export class TypeInference {
 
 
     public inferTypeInMethod(arkMethod: ArkMethod): void {
-        const cfg = arkMethod.getBody().getCfg();
+        const body = arkMethod.getBody();
+        if (!body) {
+            console.log('error: empty body');
+            return;
+        }
+        const cfg = body.getCfg();
         for (const block of cfg.getBlocks()) {
             for (const stmt of block.getStmts()) {
                 this.resolveSymbolInStmt(stmt, arkMethod);
@@ -90,9 +95,13 @@ export class TypeInference {
         if (stmt instanceof ArkAssignStmt) {
             const leftOp = stmt.getLeftOp();
             if (leftOp instanceof Local) {
-                if (leftOp.getType() == UnknownType.getInstance()) {
+                const leftOpType = leftOp.getType();
+                if (leftOpType instanceof UnknownType) {
                     const rightOp = stmt.getRightOp();
                     leftOp.setType(rightOp.getType());
+                } else if (leftOpType instanceof UnionType) {
+                    const rightOp = stmt.getRightOp();
+                    leftOpType.setCurrType(rightOp.getType());
                 }
             }
         }
@@ -124,8 +133,14 @@ export class TypeInference {
 
     public static inferTypeOfBinopExpr(binopExpr: ArkBinopExpr): Type {
         const operator = binopExpr.getOperator();
-        const op1Type = binopExpr.getOp1().getType();
-        const op2Type = binopExpr.getOp2().getType();
+        let op1Type = binopExpr.getOp1().getType();
+        let op2Type = binopExpr.getOp2().getType();
+        if (op1Type instanceof UnionType) {
+            op1Type = op1Type.getCurrType();
+        }
+        if (op2Type instanceof UnionType) {
+            op2Type = op2Type.getCurrType();
+        }
         switch (operator) {
             case "+":
                 if (op1Type === StringType.getInstance() || op2Type === StringType.getInstance()) {

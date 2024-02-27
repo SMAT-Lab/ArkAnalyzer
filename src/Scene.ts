@@ -6,12 +6,13 @@ import { AbstractCallGraphAlgorithm } from "./callgraph/AbstractCallGraphAlgorit
 import { CallGraph } from "./callgraph/CallGraph";
 import { Type } from './core/base/Type';
 import { ImportInfo, updateSdkConfigPrefix } from './core/common/ImportBuilder';
+import { MethodParameter } from './core/common/MethodInfoBuilder';
+import { TypeInference } from './core/common/TypeInference';
 import { ArkClass } from "./core/model/ArkClass";
 import { ArkFile, buildArkFileFromFile } from "./core/model/ArkFile";
 import { ArkMethod } from "./core/model/ArkMethod";
 import { ArkNamespace } from "./core/model/ArkNamespace";
 import { ClassSignature, FileSignature, MethodSignature, MethodSubSignature } from "./core/model/ArkSignature";
-import { MethodParameter } from './core/common/MethodInfoBuilder';
 
 /**
  * The Scene class includes everything in the analyzed project.
@@ -75,7 +76,7 @@ export class Scene {
 
         //this.genExtendedClasses();
         this.collectProjectImportInfos();
-        //this.typeReference();
+        this.inferTypes();
     }
 
     private configImportSdkPrefix() {
@@ -129,7 +130,7 @@ export class Scene {
         });
 
         this.projectFiles.forEach((file) => {
-            console.log('=== parse file:', file);
+            // console.log('=== parse file:', file);
             let arkFile: ArkFile = new ArkFile();
             arkFile.setProjectName(this.projectName);
             buildArkFileFromFile(file, this.realProjectDir, arkFile);
@@ -322,20 +323,19 @@ export class Scene {
      * 对每个method方法体内部进行类型推导，将变量类型填入
      * @private
      */
-    // private typeReference() {
-    //     for (let arkFile of this.arkFiles) {
-    //         console.log('=== file:', arkFile.getFilePath());
-    //         for (let arkClass of arkFile.getClasses()) {
-    //             console.log('== class:', arkClass.getName());
-    //             for (let arkMethod of arkClass.getMethods()) {
-    //                 console.log('= method:', arkMethod.getName());
-    //                 // console.log(arkMethod.getArkSignature())
-    //                 arkMethod.getBody().getCfg().typeReference()
-    //                 // console.log(arkMethod.getBody().getLocals())
-    //             }
-    //         }
-    //     }
-    // }
+    private inferTypes() {
+        const typeInference = new TypeInference(this);
+        for (let arkFile of this.arkFiles) {
+            // console.log('=== file:', arkFile.getFilePath());
+            for (let arkClass of arkFile.getClasses()) {
+                // console.log('== class:', arkClass.getName());
+                for (let arkMethod of arkClass.getMethods()) {
+                    // console.log('= method:', arkMethod.getName());
+                    typeInference.inferTypeInMethod(arkMethod);
+                }
+            }
+        }
+    }
 
 
     private collectProjectImportInfos() {

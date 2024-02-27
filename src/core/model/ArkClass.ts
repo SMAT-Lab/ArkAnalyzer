@@ -11,7 +11,7 @@ export class ArkClass {
     private name: string;
     private originType: string = "Class";
     private code: string;
-
+    private line: number = -1;
     private declaringArkFile: ArkFile;
     private declaringArkNamespace: ArkNamespace;
     private classSignature: ClassSignature;
@@ -57,6 +57,14 @@ export class ArkClass {
 
     public setCode(code: string) {
         this.code = code;
+    }
+
+    public getLine() {
+        return this.line;
+    }
+
+    public setLine(line: number) {
+        this.line = line;
     }
 
     public getOriginType() {
@@ -225,6 +233,7 @@ export function buildDefaultArkClassFromArkNamespace(clsNode: NodeA, arkNamespac
 export function buildNormalArkClassFromArkFile(clsNode: NodeA, arkFile: ArkFile, cls: ArkClass) {
     cls.setDeclaringArkFile(arkFile);
     cls.setCode(clsNode.text);
+    cls.setLine(clsNode.line);
     buildNormalArkClass(clsNode, cls);
 }
 
@@ -232,6 +241,7 @@ export function buildNormalArkClassFromArkNamespace(clsNode: NodeA, arkNamespace
     cls.setDeclaringArkNamespace(arkNamespace);
     cls.setDeclaringArkFile(arkNamespace.getDeclaringArkFile());
     cls.setCode(clsNode.text);
+    cls.setLine(clsNode.line);
     buildNormalArkClass(clsNode, cls);
 }
 

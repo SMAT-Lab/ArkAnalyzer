@@ -11,7 +11,7 @@ import { ClassSignature, NamespaceSignature } from "./ArkSignature";
 export class ArkNamespace {
     private name: string;
     private code: string
-
+    private line: number = -1;
     private declaringArkFile: ArkFile;
     private declaringArkNamespace: ArkNamespace | null = null;
 
@@ -101,6 +101,14 @@ export class ArkNamespace {
 
     public setCode(code: string) {
         this.code = code;
+    }
+    
+    public getLine() {
+        return this.line;
+    }
+
+    public setLine(line: number) {
+        this.line = line;
     }
 
     public setDeclaringType(declaringType: string) {
@@ -253,6 +261,7 @@ export function buildArkNamespace(nsNode: NodeA, declaringInstance: ArkFile | Ar
     });
 
     ns.setCode(nsNode.text);
+    ns.setLine(nsNode.line);
 
     let tmpNode = findIndicatedChild(nsNode, "ModuleBlock");
     if (tmpNode) {
