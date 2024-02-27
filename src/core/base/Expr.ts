@@ -184,7 +184,7 @@ export class ArkNewArrayExpr extends AbstractExpr {
     }
 
     public toString(): string {
-        return 'newarray ' + this.baseType + '[' + this.size + ']';
+        return 'newarray (' + this.baseType + ')[' + this.size + ']';
     }
 }
 

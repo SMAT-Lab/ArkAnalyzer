@@ -69,6 +69,10 @@
 //     a.forEach(function (i) { });
 // }
 
+function testTupleType(): void {
+    let a: [number, string] = [1, '2'];
+    // let b = [1, '2'];
+}
 
 // class Foo {
 //     // public static testNewObj(): void {
