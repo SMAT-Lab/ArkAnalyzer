@@ -57,10 +57,17 @@
 //     let k = add(i, j);
 // }
 
-function testFunctionType(): void {
-    let a = [1, 2];
-    a.forEach(function (i) { });
-}
+// function print(s: string): void {
+
+// }
+// function testFunctionParaType() {
+//     print('hello');
+// }
+
+// function testFunctionType(): void {
+//     let a = [1, 2];
+//     a.forEach(function (i) { });
+// }
 
 
 // class Foo {
