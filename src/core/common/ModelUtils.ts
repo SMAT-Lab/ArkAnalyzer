@@ -33,7 +33,7 @@ export class ModelUtils {
         }
         let curr: ArkFile | ArkNamespace | null = arkFile;
         for (let i = namespaceSignatures.length - 1; i >= 0; i--) {
-            curr = arkFile.getNamespace(namespaceSignatures[i]);
+            curr = curr.getNamespace(namespaceSignatures[i]);
             if (curr == null) {
                 return null;
             }

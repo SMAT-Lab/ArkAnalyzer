@@ -10,7 +10,9 @@ function importType(){
     const m=new M();
 }
 
-class M{}
+class M{
+    constructor(){}
+}
 
 
 

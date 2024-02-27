@@ -140,13 +140,9 @@ export class Scene {
         });
     }
 
-    public getFile(fileSignature: FileSignature): ArkFile | null {
-        this.arkFiles.forEach((fl) => {
-            if (fl.getFileSignature().toString() == fileSignature.toString()) {
-                return fl;
-            }
-        });
-        return null;
+    getFile(fileSignature: FileSignature): ArkFile | null {
+        const foundFile = this.arkFiles.find(fl => fl.getFileSignature().toString() == fileSignature.toString());
+        return foundFile || null;
     }
 
     //TODO: move to type inference

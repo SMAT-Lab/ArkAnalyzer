@@ -12,7 +12,9 @@ export class A{
 
 export namespace n1{
     export namespace n3{
-        export class c3{}
+        export class c3{
+            constructor(){}
+        }
     }
     export class c1{
         constructor(){
