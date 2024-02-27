@@ -10,17 +10,17 @@
 //     let str2:string=`${str1} 2`;
 // }
 
-function testArrayType(): void {
-    const a: number[] = [1, 2];
-    const b = [1];
-    const y = b[0]
-    const x = a[y];
-}
+// function testArrayType(): void {
+//     const a: number[] = [1, 2];
+//     const b = [1];
+//     const y = b[0]
+//     const x = a[y];
+// }
 
-function testUnionType(): void {
-    let a: number | string = 1;
-    let b = a + 1
-}
+// function testUnionType(): void {
+//     let a: number | string = 1;
+//     let b = a + 1
+// }
 
 // function testSysLibClassType(): void {
 //     const a = new Array();
@@ -57,7 +57,10 @@ function testUnionType(): void {
 //     let k = add(i, j);
 // }
 
-
+function testFunctionType(): void {
+    let a = [1, 2];
+    a.forEach(function (i) { });
+}
 
 
 // class Foo {
