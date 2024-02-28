@@ -156,7 +156,7 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
                                 sourceMethodSignature: MethodSignature) {
         let arkFile = getArkFileByName(arkFileName, this.scene.scene)
         let callName = extractLastBracketContent(invokeExpr.getMethodSignature().toString())
-        // console.log(invokeExpr.getMethodSignature().toString())
+        console.log(invokeExpr.getMethodSignature().toString())
         // console.log(callName)
         let methodName: string = callName
         let classAndArkFileNames: Set<[string, string]> = new Set<[string, string]>()

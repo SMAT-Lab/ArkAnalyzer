@@ -375,10 +375,18 @@ export class AnnotationNamespaceType extends AnnotationType {
     constructor(originType: string) {
         super(originType);
     }
+
+    public getOriginType(): string {
+        return super.getOriginType();
+    }
 }
 
 export class AnnotationTypeQueryType extends AnnotationType {
     constructor(originType: string) {
         super(originType);
+    }
+
+    public getOriginType(): string {
+        return super.getOriginType();
     }
 }

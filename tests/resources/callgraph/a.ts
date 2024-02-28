@@ -13,7 +13,7 @@ export abstract class Animal {
 }
 
 export class Dog extends Animal {
-    public aaaaaaaaaa: D | number
+    public aaaaaaaaaa: number
     public static num: FieldB = new FieldB()
     public sound() {
         console.log("woof")

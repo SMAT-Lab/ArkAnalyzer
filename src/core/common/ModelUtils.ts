@@ -1,11 +1,11 @@
-import { Scene } from "../../Scene";
-import { ArkClass } from "../model/ArkClass";
-import { ArkField } from "../model/ArkField";
-import { ArkFile } from "../model/ArkFile";
-import { ArkMethod } from "../model/ArkMethod";
-import { ArkNamespace } from "../model/ArkNamespace";
-import { ClassSignature, MethodSignature, NamespaceSignature } from "../model/ArkSignature";
-import { ImportInfo } from "./ImportBuilder";
+import {Scene} from "../../Scene";
+import {ArkClass} from "../model/ArkClass";
+import {ArkField} from "../model/ArkField";
+import {ArkFile} from "../model/ArkFile";
+import {ArkMethod} from "../model/ArkMethod";
+import {ArkNamespace} from "../model/ArkNamespace";
+import {ClassSignature, MethodSignature, NamespaceSignature} from "../model/ArkSignature";
+import {ImportInfo} from "./ImportBuilder";
 
 export class ModelUtils {
     public static getMethodSignatureFromArkClass(arkClass: ArkClass, methodName: string): MethodSignature | null {
@@ -148,6 +148,7 @@ export class ModelUtils {
     /** search field within the given class */
     public static getFieldInClassWithName(fieldName: string, arkClass: ArkClass): ArkField | null {
         for (const field of arkClass.getFields()) {
+            console.log(field.getName())
             if (field.getName() == fieldName) {
                 return field;
             }
@@ -229,5 +230,31 @@ export class ModelUtils {
             }
         }
         return null;
+    }
+
+    public static resolveTypeAnnotation(annotation: string, arkMethod: ArkMethod) {
+        let namespaces = annotation.split('.')
+        let thisNamespace = null
+        if (namespaces.length == 1) {
+            let classInstance = this.getClassWithName(namespaces[0], arkMethod)
+            if (classInstance == null)
+                return null
+            return classInstance.getSignature()
+        } else {
+            for (let i = 0;i < namespaces.length - 1;i ++) {
+                let namespaceName = namespaces[i]
+                if (thisNamespace === null) {
+                    thisNamespace = this.getNamespaceWithName(namespaceName, arkMethod)
+                } else {
+                    thisNamespace = this.getNamespaceInNamespaceWithName(namespaceName, thisNamespace)
+                }
+            }
+            let className = namespaces[namespaces.length - 1]
+            for (let arkClass of thisNamespace!.getClasses()) {
+                if (arkClass.getName() === className)
+                    return arkClass.getSignature()
+            }
+        }
+        return null
     }
 }
