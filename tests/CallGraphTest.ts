@@ -13,20 +13,24 @@ function runScene(config: SceneConfig) {
     //     entryPoints.push(method.getSignature())
     // }
     for (let arkFile of projectScene.arkFiles) {
-        if (arkFile.getName() === "b.ts") {
+        if (arkFile.getName() === "main.ts") {
             let tempMethod = arkFile.getDefaultClass().getMethods()
-            for (let func of tempMethod) {
-                // console.log(func.getName())
-                if (func.getName() == "temp") {
-                    entryPoints.push(func.getSignature())
-                    // console.log(func.getBody().getLocals())
-                }
-            }
+            entryPoints.push(tempMethod[0].getSignature())
+            // console.log(tempMethod)
         }
     }
+    // for (let arkFile of projectScene.arkFiles) {
+    //     console.log("ArkFile: " + arkFile.getName())
+    //     for (let arkClass of arkFile.getClasses()) {
+    //         console.log("\tArkClass: " + arkClass.getName())
+    //         for (let arkMethod of arkClass.getMethods()) {
+    //             console.log("\t\tArkMethod: " + arkMethod.getName())
+    //         }
+    //     }
+    // }
     projectScene.makeCallGraphCHA(entryPoints)
-    let methods = projectScene.classHierarchyCallGraph.getMethods()
-    let calls = projectScene.classHierarchyCallGraph.getCalls()
+    // let methods = projectScene.classHierarchyCallGraph.getMethods()
+    // let calls = projectScene.classHierarchyCallGraph.getCalls()
     // printCallGraphDetails(methods, calls, config.getTargetProjectDirectory())
     debugger;
 }

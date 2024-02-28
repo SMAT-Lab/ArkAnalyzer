@@ -139,7 +139,7 @@ export class ArkNewExpr extends AbstractExpr {
 
     public getType(): Type {
         return this.classType;
-    }    
+    }
 
     public toString(): string {
         return 'new ' + this.classType;
@@ -455,6 +455,10 @@ export class ArkUnopExpr extends AbstractExpr {
 
     public getType(): Type {
         return this.op.getType();
+    }
+
+    public getOperator(): string {
+        return this.operator;
     }
 
 

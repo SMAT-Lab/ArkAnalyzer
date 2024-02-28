@@ -76,20 +76,15 @@ export class SceneManager {
     }
 
     public getMethod(method: MethodSignature): ArkMethod | null {
-        let methods =  this._scene.getMethodByName(
-            method.getMethodSubSignature().getMethodName()
-        )
-        for (let methodFromScene of methods) {
-            if (method.toString() === methodFromScene.getSignature().toString())
-                return methodFromScene
-        }
-        return null;
+        return this._scene.getMethod(
+            method
+        );
     }
 
     public getClass(arkClass: ClassSignature): ArkClass | null {
         if (typeof arkClass.getClassName() === "undefined")
             return null
-        return this._scene.getClass(arkClass.getDeclaringFileSignature().getFileName(), arkClass.getClassName())
+        return this._scene.getClass(arkClass)
     }
 
     public getExtendedClasses(arkClass: ClassSignature): ArkClass[] {

@@ -4,15 +4,14 @@ import path from 'path';
 import { SceneConfig } from '../tests/Config';
 import { AbstractCallGraphAlgorithm } from "./callgraph/AbstractCallGraphAlgorithm";
 import { CallGraph } from "./callgraph/CallGraph";
-import { Type } from './core/base/Type';
+import { ClassHierarchyAnalysisAlgorithm } from "./callgraph/ClassHierarchyAnalysisAlgorithm";
 import { ImportInfo, updateSdkConfigPrefix } from './core/common/ImportBuilder';
-import { MethodParameter } from './core/common/MethodInfoBuilder';
 import { TypeInference } from './core/common/TypeInference';
 import { ArkClass } from "./core/model/ArkClass";
 import { ArkFile, buildArkFileFromFile } from "./core/model/ArkFile";
 import { ArkMethod } from "./core/model/ArkMethod";
 import { ArkNamespace } from "./core/model/ArkNamespace";
-import { ClassSignature, FileSignature, MethodSignature, MethodSubSignature, NamespaceSignature } from "./core/model/ArkSignature";
+import { ClassSignature, FileSignature, MethodSignature, NamespaceSignature } from "./core/model/ArkSignature";
 
 /**
  * The Scene class includes everything in the analyzed project.
@@ -394,11 +393,11 @@ export class Scene {
     }
 
 
-    // public makeCallGraphCHA(entryPoints: MethodSignature[]) {
-    //     this.classHierarchyCallGraph = new ClassHierarchyAnalysisAlgorithm(this);
-    //     this.classHierarchyCallGraph.loadCallGraph(entryPoints)
-    //     // this.classHierarchyCallGraph.printDetails()
-    // }
+    public makeCallGraphCHA(entryPoints: MethodSignature[]) {
+        this.classHierarchyCallGraph = new ClassHierarchyAnalysisAlgorithm(this);
+        this.classHierarchyCallGraph.loadCallGraph(entryPoints)
+        // this.classHierarchyCallGraph.printDetails()
+    }
 
     /**
      * 对每个method方法体内部进行类型推导，将变量类型填入

@@ -117,13 +117,8 @@ export class ModelUtils {
 
     public static getFileFromImportInfo(importInfo: ImportInfo, scene: Scene): ArkFile | null {
         const signatureStr = importInfo.getImportFromSignature2Str();
-        const fileName = signatureStr.substring(signatureStr.indexOf('/')+1).replace('/',"\\").replace(': ','')+'.ts';
-        for (const file of scene.getFiles()){
-            if (file.getName() == fileName){
-                return file
-            }
-        }
-        return null;
+        const foundFile = scene.getFiles().find(file => file.getFileSignature().toString() == signatureStr);
+        return foundFile || null;
     }
 
     /** search method within the file that contain the given method */
@@ -196,6 +191,40 @@ export class ModelUtils {
                 const importFrom=this.getFileFromImportInfo(importInfo, arkFile.getScene());
                 if (importFrom){
                     return this.getNamespaceInFileWithName(namespaceName, importFrom);
+                }
+            }
+        }
+        return null;
+    }
+
+    public static getStaticMethodWithName(methodName: string, startFrom: ArkMethod): ArkMethod | null {
+        const thisClass = startFrom.getDeclaringArkClass();
+        const thisNamespace = thisClass.getDeclaringArkNamespace();
+        if (thisNamespace) {
+            const defaultClass = thisNamespace.getClasses().find(cls => cls.getName() == '_DEFAULT_ARK_CLASS') || null;
+            if (defaultClass){
+                const method = this.getMethodInClassWithName(methodName, defaultClass);
+                if (method){
+                    return method;
+                }
+            }
+        }
+        return this.getStaticMethodInFileWithName(methodName, startFrom.getDeclaringArkFile());
+    }
+
+    public static getStaticMethodInFileWithName(methodName: string, arkFile: ArkFile): ArkMethod | null {
+        const defaultClass = arkFile.getClasses().find(cls => cls.getName() == '_DEFAULT_ARK_CLASS') || null;
+        if (defaultClass){
+            let method = this.getMethodInClassWithName(methodName, defaultClass);
+            if (method){
+                return method;
+            }
+        }
+        for (const importInfo of arkFile.getImportInfos()){
+            if (importInfo.getImportClauseName() == methodName){
+                const importFrom=this.getFileFromImportInfo(importInfo, arkFile.getScene());
+                if (importFrom){
+                    return this.getStaticMethodInFileWithName(methodName, importFrom);
                 }
             }
         }
