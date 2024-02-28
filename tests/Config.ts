@@ -45,8 +45,11 @@ export class SceneConfig {
 
     constructor() { }
 
+    //----for ArkCiD------
+    //public buildFromJson(configJsonPath: string, targetProjectName:string, targetProjectDirectory:string) {
     public buildFromJson(configJsonPath: string) {
         this.configJsonPath = configJsonPath;
+        //this.genConfig(targetProjectName,targetProjectDirectory);
         this.genConfig();
         this.getAllFiles();
     }
@@ -57,12 +60,14 @@ export class SceneConfig {
         this.getAllFiles();
     }
 
+    //private genConfig(targetProjectName:string, targetProjectDirectory:string) {
     private genConfig() {
 
         if (fs.existsSync(this.configJsonPath)) {
             let configurations = JSON.parse(fs.readFileSync(this.configJsonPath, "utf8"));
 
-
+            // this.targetProjectName = targetProjectName;
+            // this.targetProjectDirectory = targetProjectDirectory;
             this.targetProjectName = configurations.targetProjectName;
             this.targetProjectDirectory = configurations.targetProjectDirectory;
 
