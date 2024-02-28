@@ -1,26 +1,3 @@
-// import { funcAA1 } from "./AA";
-
-// function importType() {
-//     const a = new n1.n3.c3();
-//     const b = new A();
-//     const c = funcA1();
-//     const m = new M();
-// }
-
-// class M {
-//     constructor() { }
-// }
-
-
-
-// namespace n2 {
-//     class c2 {
-//         f2() {
-//             const c = new n1.c1();
-//         }
-//     }
-// }
-
 // function testImportType(i: number, j: number): number {
 //     i = funcA1();
 //     j = funcAA1();
@@ -32,12 +9,10 @@
 //     let str2:string=`${str1} 2`;
 // }
 
-// function testArrayType(): void {
-//     const a: number[][] = [[1, 2]];
-//     const b = [1];
-//     const y = b[0]
-//     const x = a[y];
-// }
+function testArrayType(): void {
+    const arr1:number[] = new Array<number>(2);
+    const arr2 = [1, 2];    
+}
 
 // function testUnionType(): void {
 //     let a: number | string = 1;

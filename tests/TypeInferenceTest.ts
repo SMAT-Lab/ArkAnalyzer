@@ -4,8 +4,9 @@ import { SceneConfig } from "./Config";
 
 export class TypeInferenceTest {
     public buildScene(): Scene {
-        // D:\\Codes\\program_analysis\\static_framework\\ArkAnalyzer\\tests\\resources\\typeInference\\sample
-        // D:\\Codes\\program_analysis\\static_framework\\ArkAnalyzer\\tests\\resources\\typeInference\\moduleA
+        // tests\\resources\\typeInference\\sample
+        // tests\\resources\\typeInference\\moduleA
+        // tests\\resources\\typeInference\\mainModule
         const config_path = "tests\\resources\\typeInference\\TypeInferenceTestConfig.json";
         let config: SceneConfig = new SceneConfig();
         config.buildFromJson(config_path);
