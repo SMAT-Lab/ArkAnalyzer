@@ -287,6 +287,16 @@ export class ArrayType extends Type {
     }
 }
 
+export class ArrayObjectType extends ArrayType {
+    constructor(baseType: Type, dimension: number) {
+        super(baseType, dimension);
+    }
+
+    public toString(): string {
+        return 'Array<' + this.getBaseType() + '>[]';
+    }
+}
+
 export class TupleType extends Type {
     private types: Type[];
 

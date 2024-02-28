@@ -26,6 +26,7 @@ import { ClassSignature, FieldSignature, MethodSignature, MethodSubSignature } f
 import { ExportInfo } from './ExportBuilder';
 import { IRUtils } from './IRUtils';
 import { TypeInference } from './TypeInference';
+import { ValueUtil } from './ValueUtil';
 
 
 class StatementBuilder {
@@ -1637,7 +1638,7 @@ export class CfgBuilder {
 
 
     private generateTempValue(): Local {
-        let tempLeftOpName = "temp" + this.tempVariableNum;
+        let tempLeftOpName = "#temp" + this.tempVariableNum;
         this.tempVariableNum++;
         let tempLeftOp = new Local(tempLeftOpName);
         this.locals.add(tempLeftOp);
@@ -1657,7 +1658,7 @@ export class CfgBuilder {
     }
 
     private objectLiteralNodeToLocal(objectLiteralNode: NodeA): Local {
-        let anonymousClassName = 'AnonymousClass_' + this.name + '_' + this.anonymousClassIndex;
+        let anonymousClassName = 'AnonymousClass#' + this.name + '#' + this.anonymousClassIndex;
         this.anonymousClassIndex++;
 
         // TODO: 解析类体
@@ -1887,7 +1888,7 @@ export class CfgBuilder {
         }
 
         else if (node.kind == "ArrowFunction") {
-            let arrowFuncName = 'AnonymousFunc-' + this.name + '-' + this.anonymousFuncIndex;
+            let arrowFuncName = 'AnonymousFunc#' + this.name + '#' + this.anonymousFuncIndex;
             if (node.methodNodeInfo) {
                 node.methodNodeInfo.updateName4anonymousFunc(arrowFuncName);
             }
@@ -1964,27 +1965,54 @@ export class CfgBuilder {
             value = this.objectLiteralNodeToLocal(node);
         }
         else if (node.kind == "NewExpression") {
-            let classSignature = new ClassSignature();
-            classSignature.setClassName(node.children[1].text);
-            const classType = new ClassType(classSignature);
-            let newExpr = new ArkNewExpr(classType);
-            value = this.generateAssignStmt(newExpr);
+            const className = node.children[1].text;
+            if (className == 'Array') {
+                let baseType: Type = UnknownType.getInstance();
+                if (this.findChildIndex(node, 'FirstBinaryOperator') != -1) {
+                    const baseTypeNode = node.children[this.findChildIndex(node, 'FirstBinaryOperator') + 1];
+                    baseType = this.getTypeNode(baseTypeNode);
+                }
+                let size: number = 0;
+                let sizeSyntaxListNode = node.children[this.findChildIndex(node, 'OpenParenToken') + 1];
+                let sizeNodes = this.getSyntaxListItems(sizeSyntaxListNode);
+                for (const sizeNode of sizeNodes) {
+                    if (sizeNode.kind == 'FirstLiteralToken') {
+                        size = parseInt(sizeNode.text);
+                    }
+                }
+                let newArrayExpr = new ArkNewArrayExpr(baseType, new Constant(size.toString()));
+                value = this.generateAssignStmt(newArrayExpr);
+                value.setType(new ArrayObjectType(baseType, 1));
+
+                for (let index = 0; index < size; index++) {
+                    let arrayRef = new ArkArrayRef(value, new Constant(index.toString()));
+                    const arrayItem = ValueUtil.getDefaultInstance(baseType);
+                    this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(arrayRef, arrayItem));
+                    index++;
+                }
+            } else {
+                let classSignature = new ClassSignature();
+                classSignature.setClassName(className);
+                const classType = new ClassType(classSignature);
+                let newExpr = new ArkNewExpr(classType);
+                value = this.generateAssignStmt(newExpr);
 
 
-            let methodSubSignature = new MethodSubSignature();
-            methodSubSignature.setMethodName('constructor');
-            let methodSignature = new MethodSignature();
-            methodSignature.setDeclaringClassSignature(classSignature);
-            methodSignature.setMethodSubSignature(methodSubSignature);
+                let methodSubSignature = new MethodSubSignature();
+                methodSubSignature.setMethodName('constructor');
+                let methodSignature = new MethodSignature();
+                methodSignature.setDeclaringClassSignature(classSignature);
+                methodSignature.setMethodSubSignature(methodSubSignature);
 
-            let syntaxListNode = node.children[this.findChildIndex(node, 'OpenParenToken') + 1];
-            let argNodes = this.getSyntaxListItems(syntaxListNode);
-            let args: Value[] = [];
-            for (const argNode of argNodes) {
-                args.push(this.astNodeToValue(argNode));
+                let syntaxListNode = node.children[this.findChildIndex(node, 'OpenParenToken') + 1];
+                let argNodes = this.getSyntaxListItems(syntaxListNode);
+                let args: Value[] = [];
+                for (const argNode of argNodes) {
+                    args.push(this.astNodeToValue(argNode));
+                }
+
+                this.current3ACstm.threeAddressStmts.push(new ArkInvokeStmt(new ArkInstanceInvokeExpr(value as Local, methodSignature, args)));
             }
-
-            this.current3ACstm.threeAddressStmts.push(new ArkInvokeStmt(new ArkInstanceInvokeExpr(value as Local, methodSignature, args)));
         }
         else if (node.kind == 'ArrayLiteralExpression') {
             let syntaxListNode = node.children[1];
@@ -2003,7 +2031,6 @@ export class CfgBuilder {
             let index = 0;
             for (let argNode of argsNode.children) {
                 if (argNode.kind != 'CommaToken') {
-                    // TODO:数组条目类型
                     let arrayRef = new ArkArrayRef(value as Local, new Constant(index.toString()));
                     const itemTypeStr = this.resolveKeywordType(argNode);
                     const itemType = TypeInference.buildTypeFromStr(itemTypeStr);
@@ -2143,7 +2170,6 @@ export class CfgBuilder {
         }
 
         if (leftOp instanceof Local) {
-            // console.log(leftOp.getName() + " " +leftOp.getType().toString())
             leftOp.setType(leftOpType);
 
         }
@@ -2995,7 +3021,6 @@ export class CfgBuilder {
 
     private resolveTypeNode(node: NodeA): Type {
         let typeNode: NodeA
-        // console.log(node.kind + " " +node.text)
         switch (node.kind) {
             case "BooleanKeyword":
             case "NumberKeyword":
