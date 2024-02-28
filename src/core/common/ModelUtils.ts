@@ -97,22 +97,15 @@ export class ModelUtils {
             if (importInfo.getImportClauseName() == className){
                 const importFrom=this.getFileFromImportInfo(importInfo, arkFile.getScene());
                 if (importFrom){
+                    const nameBefroreAs = importInfo.getNameBeforeAs();
+                    if (nameBefroreAs != undefined){
+                        className = nameBefroreAs;
+                    }
                     return this.getClassInFileWithName(className, importFrom);
                 }
             }
         }
         return null;
-        // let classSearched: ArkClass | null = null;
-        // for (const arkNamespace of arkFile.getNamespaces()) {
-        //     if (arkNamespaceExclude && arkNamespaceExclude == arkNamespace) {
-        //         continue;
-        //     }
-        //     classSearched = this.getClassInNamespaceWithName(className, arkNamespace);
-        //     if (classSearched) {
-        //         break;
-        //     }
-        // }
-        // return classSearched;
     }
 
     public static getFileFromImportInfo(importInfo: ImportInfo, scene: Scene): ArkFile | null {
@@ -191,6 +184,10 @@ export class ModelUtils {
             if (importInfo.getImportClauseName() == namespaceName){
                 const importFrom=this.getFileFromImportInfo(importInfo, arkFile.getScene());
                 if (importFrom){
+                    const nameBefroreAs = importInfo.getNameBeforeAs();
+                    if (nameBefroreAs != undefined){
+                        namespaceName = nameBefroreAs;
+                    }
                     return this.getNamespaceInFileWithName(namespaceName, importFrom);
                 }
             }
@@ -225,6 +222,10 @@ export class ModelUtils {
             if (importInfo.getImportClauseName() == methodName){
                 const importFrom=this.getFileFromImportInfo(importInfo, arkFile.getScene());
                 if (importFrom){
+                    const nameBefroreAs = importInfo.getNameBeforeAs();
+                    if (nameBefroreAs != undefined){
+                        methodName = nameBefroreAs;
+                    }
                     return this.getStaticMethodInFileWithName(methodName, importFrom);
                 }
             }

@@ -75,7 +75,7 @@ export class Scene {
 
         //this.genExtendedClasses();
         this.collectProjectImportInfos();
-        //this.inferTypes();
+        this.inferTypes();
     }
 
     private configImportSdkPrefix() {

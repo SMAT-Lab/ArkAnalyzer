@@ -128,8 +128,8 @@ export class TypeInference {
                     // console.log(leftOpTypeString)
                     if (leftOpType instanceof AnnotationNamespaceType) {
                         // console.log(2)
-                        let classSignature = ModelUtils.resolveTypeAnnotation(leftOpTypeString, arkMethod)
-                        if (classSignature === null) {
+                        let classSignature = ModelUtils.getClassWithName(leftOpTypeString, arkMethod)?.getSignature()
+                        if (classSignature === undefined) {
                             leftOp.setType(stmt.getRightOp().getType())
                         } else {
                             // console.log(classSignature)
@@ -143,9 +143,8 @@ export class TypeInference {
                         if (rightOp.getType() instanceof UnclearReferenceType) {
                             if (arkMethod == null)
                                 return
-                            let classSignature = ModelUtils.resolveTypeAnnotation(
-                                rightOp.getType().toString(), arkMethod)
-                            if (classSignature === null) {
+                            let classSignature = ModelUtils.getClassWithName(rightOp.getType().toString(), arkMethod)?.getSignature();
+                            if (classSignature === undefined) {
                                 leftOp.setType(stmt.getRightOp().getType())
                             } else {
                                 leftOp.setType(new ClassType(classSignature))
