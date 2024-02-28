@@ -13,7 +13,7 @@ import {
     NullType,
     NumberType,
     StringType,
-    Type, UnclearType,
+    Type, UnclearReferenceType,
     UndefinedType,
     UnionType,
     UnknownType,
@@ -146,7 +146,7 @@ export class TypeInference {
                 } else if (leftOpType instanceof UnionType) {
                     const rightOp = stmt.getRightOp();
                     leftOpType.setCurrType(rightOp.getType());
-                } else if (leftOpType instanceof UnclearType) {
+                } else if (leftOpType instanceof UnclearReferenceType) {
                     // console.log("UnclearType "+leftOpType.toString())
                 }
             }

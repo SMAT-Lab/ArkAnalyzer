@@ -43,7 +43,7 @@ export class UnknownType extends Type {
 
 
 /** unclear type */
-export class UnclearType extends Type {
+export class UnclearReferenceType extends Type {
     private name: string;
 
     constructor(name: string) {

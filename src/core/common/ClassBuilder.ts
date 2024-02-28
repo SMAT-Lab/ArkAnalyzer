@@ -1,6 +1,6 @@
 import * as ts from "typescript";
 import { buildHeritageClauses, buildModifiers, buildParameters, buildReturnType4Method, buildTypeFromPreStr, buildTypeParameters, handlePropertyAccessExpression, handleQualifiedName } from "../../utils/builderUtils";
-import { Type, UnclearType } from "../base/Type";
+import { Type, UnclearReferenceType } from "../base/Type";
 import { ArkField } from "../model/ArkField";
 
 export class ClassInfo {
@@ -110,11 +110,11 @@ export function buildClassInfo4ClassNode(node: ts.ClassDeclaration | ts.ClassExp
             members.push(buildProperty2ArkField(member));
         }
         else if (ts.isIndexSignatureDeclaration(member)) {
-            console.log("TODO: Index signature, low priority.");
+            members.push(buildIndexSignature2ArkField(member));
         }
         else if (ts.isMethodDeclaration(member) || ts.isConstructorDeclaration(member) || ts.isMethodSignature(member) ||
-        ts.isConstructSignatureDeclaration(member) || ts.isAccessor(member) || ts.isCallSignatureDeclaration(member)) {
-            // skip
+            ts.isConstructSignatureDeclaration(member) || ts.isAccessor(member) || ts.isCallSignatureDeclaration(member)) {
+            // skip these members
         }
         else {
             console.log("Please contact developers to support new arkfield type!");
@@ -188,6 +188,22 @@ function buildCallSignature2ArkField(member: ts.CallSignatureDeclaration): ArkFi
     return field;
 }
 
+export function buildIndexSignature2ArkField(member: ts.IndexSignatureDeclaration): ArkField {
+    let field = new ArkField();
+    field.setFieldType(ts.SyntaxKind[member.kind]);
+    //parameters
+    field.setParameters(buildParameters(member));
+    //modifiers
+    if (member.modifiers) {
+        buildModifiers(member.modifiers).forEach((modifier) => {
+            field.addModifier(modifier);
+        });
+    }
+    //type
+    field.setType(buildReturnType4Method(member));
+    return field;
+}
+
 function buildFieldType(fieldType: ts.TypeNode): Type {
     if (ts.isUnionTypeNode(fieldType)) {
         let unionType: Type[] = [];
@@ -203,7 +219,7 @@ function buildFieldType(fieldType: ts.TypeNode): Type {
                 else {
                     console.log("Other property type found!");
                 }
-                unionType.push(new UnclearType(tmpTypeName));
+                unionType.push(new UnclearReferenceType(tmpTypeName));
             }
             else if (ts.isLiteralTypeNode(tmpType)) {
                 unionType.push(buildTypeFromPreStr(ts.SyntaxKind[tmpType.literal.kind]));
@@ -223,7 +239,7 @@ function buildFieldType(fieldType: ts.TypeNode): Type {
         else if (ts.isIdentifier(referenceNodeName)) {
             tmpTypeName = referenceNodeName.escapedText.toString();
         }
-        return new UnclearType(tmpTypeName);
+        return new UnclearReferenceType(tmpTypeName);
     }
     else if (ts.isLiteralTypeNode(fieldType)) {
         return buildTypeFromPreStr(ts.SyntaxKind[fieldType.literal.kind]);
