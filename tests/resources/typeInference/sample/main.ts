@@ -10,6 +10,14 @@ function importType(){
     const m=new M();
 }
 
+function functionType(){
+    const a=t()
+}
+
+function t():number{
+    return 1;
+}
+
 class M{
     constructor(){}
 }
