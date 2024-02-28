@@ -1,7 +1,7 @@
 import { Scene } from "../../Scene";
 import { ArkBinopExpr, ArkInstanceInvokeExpr, ArkNewExpr, ArkStaticInvokeExpr } from "../base/Expr";
 import { Local } from "../base/Local";
-import {ArkInstanceFieldRef, ArkParameterRef} from "../base/Ref";
+import { ArkInstanceFieldRef, ArkParameterRef } from "../base/Ref";
 import { ArkAssignStmt, Stmt } from "../base/Stmt";
 import {
     AnnotationNamespaceType,
@@ -21,7 +21,6 @@ import {
 } from "../base/Type";
 import { ArkMethod } from "../model/ArkMethod";
 import { ModelUtils } from "./ModelUtils";
-import {matchClassInFile, searchImportMessage} from "../../utils/typeReferenceUtils";
 
 export class TypeInference {
     private scene: Scene;
@@ -63,7 +62,7 @@ export class TypeInference {
                 const base = expr.getBase();
                 const type = base.getType();
                 if (!(type instanceof ClassType)) {
-                    console.log('error: type of base must be ClassType' + " " + expr.toString() + " " + type.toString());
+                    console.log(`error: type of base must be ClassType expr: ${expr.toString()}`);
                     continue;
                 }
                 const arkClass = ModelUtils.getClassWithClassSignature(type.getClassSignature(), this.scene);
@@ -73,17 +72,17 @@ export class TypeInference {
                 }
                 const methodSignature = expr.getMethodSignature();
                 const methodName = methodSignature.getMethodSubSignature().getMethodName();
-                const arkMethod = ModelUtils.getMethodInClassWithName(methodName, arkClass);
-                if (arkMethod == null) {
+                const method = ModelUtils.getMethodInClassWithName(methodName, arkClass);
+                if (method == null) {
                     console.log(`error: method ${methodName} does not exist`);
                     continue;
                 }
-                expr.setMethodSignature(arkMethod.getSignature());
+                expr.setMethodSignature(method.getSignature());
             } else if (expr instanceof ArkStaticInvokeExpr) {
                 const methodSignature = expr.getMethodSignature();
                 const methodName = methodSignature.getMethodSubSignature().getMethodName();
                 const method = ModelUtils.getStaticMethodWithName(methodName, arkMethod);
-                if (method == null){
+                if (method == null) {
                     console.log(`error: method ${methodName} does not exist`);
                     continue;
                 }
@@ -91,8 +90,6 @@ export class TypeInference {
             } else if (expr instanceof ArkParameterRef) {
                 // console.log(expr.toString())
             }
-
-
         }
 
         for (const use of stmt.getUses()) {
@@ -142,7 +139,7 @@ export class TypeInference {
                                 leftOp.setType(new ClassType(classSignature.getSignature()))
                             }
                         }
-                     }
+                    }
                 } else if (leftOpType instanceof UnknownType) {
                     const rightOp = stmt.getRightOp();
                     leftOp.setType(rightOp.getType());

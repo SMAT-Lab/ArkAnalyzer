@@ -9,10 +9,10 @@
 //     let str2:string=`${str1} 2`;
 // }
 
-function testArrayType(): void {
-    const arr1:number[] = new Array<number>(2);
-    const arr2 = [1, 2];    
-}
+// function testArrayType(): void {
+//     const arr1:number[] = new Array<number>(2);
+//     const arr2 = [1, 2];    
+// }
 
 // function testUnionType(): void {
 //     let a: number | string = 1;
@@ -94,21 +94,21 @@ function testArrayType(): void {
 //     }
 // }
 
-// class Foo {
-//     // public static testNewObj(): void {
-//     //     // let d = new Data();
+class Foo {
+    // public static testNewObj(): void {
+    //     // let d = new Data();
 
-//     //     let bar: Bar = new Bar();
-//     // }
+    //     let bar: Bar = new Bar();
+    // }
 
-//     public testInstanceInvoke(): void {
-//         let f = new Foo();
-//         f.testInstanceInvoke();
-//     }
+    // public testInstanceInvoke(): void {
+    //     let f = new Foo();
+    //     f.testInstanceInvoke();
+    // }
 
-//     // private i: number = 0;
-//     // public testInstanceRef(): void {
-//     //     let f = new Foo();
-//     //     let j = f.i;
-//     // }
-// }
+    private i = new Map<number, number>();
+    public testInstanceRef(): void {
+        let f = new Foo();
+        let j = f.i;
+    }
+}
