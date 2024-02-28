@@ -9,7 +9,7 @@ import { ArkFile } from "./ArkFile";
 import { MethodSignature, MethodSubSignature } from "./ArkSignature";
 
 export const arkMethodNodeKind = ['MethodDeclaration', 'Constructor', 'FunctionDeclaration', 'GetAccessor',
-    'SetAccessor', 'ArrowFunction', 'FunctionExpression'];
+    'SetAccessor', 'ArrowFunction', 'FunctionExpression', 'MethodSignature', 'ConstructSignature', 'CallSignature'];
 
 export class ArkMethod {
     private name: string;

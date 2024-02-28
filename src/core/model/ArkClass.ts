@@ -158,12 +158,13 @@ export class ArkClass {
     }
 
     public getField(fieldSignature: FieldSignature): ArkField | null {
+        let returnVal: ArkField | null = null;
         this.getFields().forEach((field) => {
             if (field.getSignature().toString() == fieldSignature.toString()) {
-                return field
+                returnVal = field
             }
         });
-        return null;
+        return returnVal;
     }
 
     public getFields() {
@@ -205,12 +206,13 @@ export class ArkClass {
     }
 
     public getMethod(methodSignature: MethodSignature): ArkMethod | null {
+        let returnVal: ArkMethod | null = null;
         this.methods.forEach((mtd) => {
             if (mtd.getSignature().toString() == methodSignature.toString()) {
-                return mtd;
+                returnVal = mtd;
             }
         });
-        return null;
+        return returnVal;
     }
 
     public addMethod(method: ArkMethod) {

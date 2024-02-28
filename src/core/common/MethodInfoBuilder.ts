@@ -2,12 +2,46 @@ import * as ts from "typescript";
 import { buildModifiers, buildParameters, buildReturnType4Method, buildTypeParameters, handlePropertyAccessExpression } from "../../utils/builderUtils";
 import { Type } from "../base/Type";
 
+export class ObjectBindingPatternParameter {
+    private propertyName: string = "";
+    private name: string = "";
+    private optional: boolean = false;
+    private initializer: string = "";
+
+    constructor() {}
+
+    public getName() {
+        return this.name;
+    }
+
+    public setName(name: string) {
+        this.name = name;
+    }
+
+    public getPropertyName() {
+        return this.propertyName;
+    }
+
+    public setPropertyName(propertyName: string) {
+        this.propertyName = propertyName;
+    }
+
+    public isOptional() {
+        return this.optional;
+    }
+
+    public setOptional(optional: boolean) {
+        this.optional = optional;
+    }
+}
+
 export class MethodParameter {
     private name: string = "";
     private type: Type;
     private optional: boolean = false;
+    private elements: ObjectBindingPatternParameter[] = [];
 
-    constructor() {}
+    constructor() { }
 
     public getName() {
         return this.name;
@@ -31,6 +65,18 @@ export class MethodParameter {
 
     public setOptional(optional: boolean) {
         this.optional = optional;
+    }
+
+    public addElement(element: ObjectBindingPatternParameter) {
+        this.elements.push(element);
+    }
+
+    public getElements() {
+        return this.elements;
+    }
+
+    public setElements(elements: ObjectBindingPatternParameter[]) {
+        this.elements = elements;
     }
 }
 
@@ -56,7 +102,8 @@ export class MethodInfo {
 
 //get function name, parameters, return type, etc.
 export function buildMethodInfo4MethodNode(node: ts.FunctionDeclaration | ts.MethodDeclaration | ts.ConstructorDeclaration |
-    ts.ArrowFunction | ts.AccessorDeclaration | ts.FunctionExpression): MethodInfo {
+    ts.ArrowFunction | ts.AccessorDeclaration | ts.FunctionExpression | ts.MethodSignature | ts.ConstructSignatureDeclaration |
+    ts.CallSignatureDeclaration): MethodInfo {
 
     //TODO: consider function without name
     let name: string = '';
@@ -81,6 +128,12 @@ export function buildMethodInfo4MethodNode(node: ts.FunctionDeclaration | ts.Met
     else if (ts.isConstructorDeclaration(node)) {
         name = 'constructor';
     }
+    else if (ts.isConstructSignatureDeclaration(node)) {
+        name = 'construct-signature';
+    }
+    else if (ts.isCallSignatureDeclaration(node)) {
+        name = "call-signature";
+    }
     else if (ts.isGetAccessor(node) && ts.isIdentifier(node.name)) {
         name = 'Get-' + node.name.escapedText.toString();
     }
@@ -92,8 +145,10 @@ export function buildMethodInfo4MethodNode(node: ts.FunctionDeclaration | ts.Met
 
     //TODO: remember to test abstract method
     let modifiers: Set<string> = new Set<string>();
-    if (node.modifiers) {
-        modifiers = buildModifiers(node.modifiers);
+    if ((!ts.isConstructSignatureDeclaration(node)) && (!ts.isCallSignatureDeclaration(node))) {
+        if (node.modifiers) {
+            modifiers = buildModifiers(node.modifiers);
+        }
     }
 
     let returnType = buildReturnType4Method(node);

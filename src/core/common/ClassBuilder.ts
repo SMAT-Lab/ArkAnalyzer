@@ -109,11 +109,12 @@ export function buildClassInfo4ClassNode(node: ts.ClassDeclaration | ts.ClassExp
         if (ts.isPropertyDeclaration(member) || ts.isPropertySignature(member) || ts.isEnumMember(member)) {
             members.push(buildProperty2ArkField(member));
         }
-        else if (ts.isCallSignatureDeclaration(member)) {
-            console.log("TODO: Call signature");
-        }
         else if (ts.isIndexSignatureDeclaration(member)) {
-            console.log("TODO: Index signature");
+            console.log("TODO: Index signature, low priority.");
+        }
+        else if (ts.isMethodDeclaration(member) || ts.isConstructorDeclaration(member) || ts.isMethodSignature(member) ||
+        ts.isConstructSignatureDeclaration(member) || ts.isAccessor(member) || ts.isCallSignatureDeclaration(member)) {
+            // skip
         }
         else {
             console.log("Please contact developers to support new arkfield type!");

@@ -1,7 +1,7 @@
 import ts from "typescript";
 import { LiteralType, Type, TypeLiteralType, UnclearType, UnionType, UnknownType } from "../core/base/Type";
 import { TypeInference } from "../core/common/TypeInference";
-import { MethodParameter } from "../core/common/MethodInfoBuilder";
+import { MethodParameter, ObjectBindingPatternParameter } from "../core/common/MethodInfoBuilder";
 import { buildProperty2ArkField } from "../core/common/ClassBuilder";
 import { ArkField } from "../core/model/ArkField";
 
@@ -105,6 +105,40 @@ export function buildParameters(node: ts.FunctionDeclaration | ts.MethodDeclarat
         let methodParameter = new MethodParameter();
         if (ts.isIdentifier(parameter.name)) {
             methodParameter.setName(parameter.name.escapedText.toString());
+        }
+        else if (ts.isObjectBindingPattern(parameter.name)) {
+            methodParameter.setName("ObjectBindingPattern");
+            let elements:ObjectBindingPatternParameter[] = [];
+            parameter.name.elements.forEach((element) => {
+                let paraElement = new ObjectBindingPatternParameter();
+                if (element.propertyName) {
+                    if (ts.isIdentifier(element.propertyName)) {
+                        paraElement.setPropertyName(element.propertyName.escapedText.toString());
+                    }
+                    else {
+                        console.log("New propertyName of ObjectBindingPattern found, please contact developers to support this!");
+                    }
+                }
+
+                if (element.name) {
+                    if (ts.isIdentifier(element.name)) {
+                        paraElement.setName(element.name.escapedText.toString());
+                    }
+                    else {
+                        console.log("New name of ObjectBindingPattern found, please contact developers to support this!");
+                    }
+                }
+                
+                if (element.initializer) {
+                    console.log("TODO: support ObjectBindingPattern initializer.");
+                }
+
+                if (element.dotDotDotToken) {
+                    paraElement.setOptional(true);
+                }
+                elements.push(paraElement);
+            });
+            methodParameter.setElements(elements);
         }
         else {
             console.log("Parameter name is not identifier, please contact developers to support this!");
@@ -257,7 +291,7 @@ export function buildReturnType4Method(node: ts.FunctionDeclaration | ts.MethodD
             let unionType: Type[] = [];
             node.type.types.forEach((tmpType) => {
                 if (ts.isTypeReferenceNode(tmpType)) {
-                    console.log("Union return type contains TypeReference, please contact developers to add support for this!");
+                    console.log("TODO: Union return type contains TypeReference, please contact developers to add support for this!");
                     return new UnknownType();
                 }
                 else if (ts.isLiteralTypeNode(tmpType)) {

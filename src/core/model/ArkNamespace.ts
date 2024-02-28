@@ -55,11 +55,8 @@ export class ArkNamespace {
             if (ns) {
                 return ns.getClassAllTheNamespace(classSignature);
             }
-            return null;
         }
-        else {
-            return null;
-        }
+        return null;
     }
 
     public addNamespace(namespace: ArkNamespace) {
@@ -74,6 +71,7 @@ export class ArkNamespace {
     }
 
     public getNamespaceAllTheNamespace(namespaceSignature: NamespaceSignature): ArkNamespace | null {
+        let returnVal: ArkNamespace | null = null;
         let declaringNamespaceSignature = namespaceSignature.getDeclaringNamespaceSignature();
 
         if (!declaringNamespaceSignature) {
@@ -83,18 +81,17 @@ export class ArkNamespace {
         if (declaringNamespaceSignature.toString() == this.namespaceSignature.toString()) {
             this.namespaces.forEach((ns) => {
                 if (ns.getNamespaceSignature().toString() == namespaceSignature.toString()) {
-                    return ns;
+                    returnVal = ns;
                 }
             });
-            return null;
         }
         else {
             let declaringNamespace = this.getNamespaceAllTheNamespace(declaringNamespaceSignature);
             if (declaringNamespace) {
-                return declaringNamespace.getNamespace(namespaceSignature);
+                returnVal = declaringNamespace.getNamespace(namespaceSignature);
             }
-            return null;
         }
+        return returnVal;
     }
 
     public getNamespaces(): ArkNamespace[] {

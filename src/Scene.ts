@@ -76,7 +76,7 @@ export class Scene {
 
         //this.genExtendedClasses();
         this.collectProjectImportInfos();
-        this.inferTypes();
+        //this.inferTypes();
     }
 
     private configImportSdkPrefix() {
@@ -130,7 +130,7 @@ export class Scene {
         });
 
         this.projectFiles.forEach((file) => {
-            // console.log('=== parse file:', file);
+            console.log('=== parse file:', file);
             let arkFile: ArkFile = new ArkFile();
             arkFile.setProjectName(this.projectName);
             buildArkFileFromFile(file, this.realProjectDir, arkFile);
@@ -260,61 +260,63 @@ export class Scene {
     } */
 
     public getNamespace(namespaceSignature: NamespaceSignature | string): ArkNamespace | null {
+        let returnVal: ArkNamespace | null = null;
         if (namespaceSignature instanceof NamespaceSignature) {
             let fileSig = namespaceSignature.getDeclaringFileSignature();
             this.arkFiles.forEach((fl) => {
                 if (fl.getFileSignature().toString() == fileSig.toString()) {
-                    return fl.getNamespaceAllTheFile(namespaceSignature);
+                    returnVal = fl.getNamespaceAllTheFile(namespaceSignature);
                 }
             });
         }
         else {
             this.getAllNamespacesUnderTargetProject().forEach((ns) => {
                 if (ns.getNamespaceSignature().toString() == namespaceSignature) {
-                    return ns;
+                    returnVal = ns;
                 }
             });
         }
-        return null;
+        return returnVal;
     }
 
     public getClass(classSignature: ClassSignature | string): ArkClass | null {
+        let returnVal: ArkClass | null = null;
         if (classSignature instanceof ClassSignature) {
             let fileSig = classSignature.getDeclaringFileSignature();
             this.arkFiles.forEach((fl) => {
                 if (fl.getFileSignature().toString() == fileSig.toString()) {
-                    return fl.getClassAllTheFile(classSignature);
+                    returnVal = fl.getClassAllTheFile(classSignature);
                 }
             });
         }
         else {
             this.getAllClassesUnderTargetProject().forEach((cls) => {
                 if (cls.getSignature().toString() == classSignature) {
-                    return cls;
+                    returnVal = cls;
                 }
             });
         }
-        return null;
+        return returnVal;
     }
 
     public getMethod(methodSignature: MethodSignature | string): ArkMethod | null {
+        let returnVal: ArkMethod | null = null;
         if (methodSignature instanceof MethodSignature) {
             let fileSig = methodSignature.getDeclaringClassSignature().getDeclaringFileSignature();
             this.arkFiles.forEach((fl) => {
                 if (fl.getFileSignature().toString() == fileSig.toString()) {
-                    return fl.getMethodAllTheFile(methodSignature);
+                    returnVal = fl.getMethodAllTheFile(methodSignature);
                 }
-                return null;
             });
         }
         else {
             this.getAllMethodsUnderTargetProject().forEach((mtd) => {
                 if (mtd.getSignature().toString() == methodSignature) {
-                    return mtd;
+                    returnVal = mtd;
                 }
             });
         }
-        return null;
+        return returnVal;
     }
 
     /* public getMethodByName(methodName: string): ArkMethod[] {
