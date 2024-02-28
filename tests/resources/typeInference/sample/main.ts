@@ -11,7 +11,10 @@ function importType(){
 }
 
 function functionType(){
-    const a=t()
+    const a=t();
+    const m=new M();
+    const b=m.f1()
+    const c=n2.f2();
 }
 
 function t():number{
@@ -20,11 +23,17 @@ function t():number{
 
 class M{
     constructor(){}
+    f1():number{
+        return 2;
+    }
 }
 
 
 
 namespace n2{
+    export function f2():number{
+        return 2;
+    }
     class c2{
         f2(){
             const c=new n1.c1();

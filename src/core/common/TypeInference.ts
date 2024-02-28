@@ -3,7 +3,7 @@ import { ArkBinopExpr, ArkInstanceInvokeExpr, ArkNewExpr, ArkStaticInvokeExpr } 
 import { Local } from "../base/Local";
 import { ArkInstanceFieldRef } from "../base/Ref";
 import { ArkAssignStmt, Stmt } from "../base/Stmt";
-import { AnyType, BooleanType, ClassType, NeverType, NullType, NumberType, StringType, Type, UndefinedType, UnionType, UnknownType, VoidType } from "../base/Type";
+import { AnyType, BooleanType, CallableType, ClassType, NeverType, NullType, NumberType, StringType, Type, UndefinedType, UnionType, UnknownType, VoidType } from "../base/Type";
 import { ArkMethod } from "../model/ArkMethod";
 import { ModelUtils } from "./ModelUtils";
 
@@ -61,6 +61,14 @@ export class TypeInference {
                 }
                 expr.setMethodSignature(arkMethod.getSignature());
             } else if (expr instanceof ArkStaticInvokeExpr) {
+                const methodSignature = expr.getMethodSignature();
+                const methodName = methodSignature.getMethodSubSignature().getMethodName();
+                const method = ModelUtils.getStaticMethodWithName(methodName, arkMethod);
+                if (method == null){
+                    console.log(`error: method ${methodName} does not exist`);
+                    continue;
+                }
+                expr.setMethodSignature(method.getSignature());
             }
 
 
