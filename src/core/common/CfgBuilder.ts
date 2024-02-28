@@ -7,7 +7,8 @@ import { AbstractFieldRef, ArkArrayRef, ArkCaughtExceptionRef, ArkInstanceFieldR
 import { ArkAssignStmt, ArkDeleteStmt, ArkGotoStmt, ArkIfStmt, ArkInvokeStmt, ArkReturnStmt, ArkReturnVoidStmt, ArkSwitchStmt, ArkThrowStmt, Stmt } from '../base/Stmt';
 import {
     AnnotationNamespaceType,
-    AnnotationType, AnnotationTypeQueryType,
+    AnnotationTypeQueryType,
+    ArrayObjectType,
     ArrayType,
     CallableType,
     ClassType,
