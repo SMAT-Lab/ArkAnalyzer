@@ -12,7 +12,7 @@ import { ArkClass } from "./core/model/ArkClass";
 import { ArkFile, buildArkFileFromFile } from "./core/model/ArkFile";
 import { ArkMethod } from "./core/model/ArkMethod";
 import { ArkNamespace } from "./core/model/ArkNamespace";
-import { ClassSignature, FileSignature, MethodSignature, MethodSubSignature } from "./core/model/ArkSignature";
+import { ClassSignature, FileSignature, MethodSignature, MethodSubSignature, NamespaceSignature } from "./core/model/ArkSignature";
 
 /**
  * The Scene class includes everything in the analyzed project.
@@ -259,24 +259,61 @@ export class Scene {
         return fl.getMethod(mtdSig);
     } */
 
-    public getClass(classSignature: ClassSignature): ArkClass | null {
-        let fileSig = classSignature.getDeclaringFileSignature();
-        this.arkFiles.forEach((fl) => {
-            if (fl.getFileSignature().toString() == fileSig.toString()) {
-                return fl.getClassAllTheFile(classSignature);
-            }
-        });
+    public getNamespace(namespaceSignature: NamespaceSignature | string): ArkNamespace | null {
+        if (namespaceSignature instanceof NamespaceSignature) {
+            let fileSig = namespaceSignature.getDeclaringFileSignature();
+            this.arkFiles.forEach((fl) => {
+                if (fl.getFileSignature().toString() == fileSig.toString()) {
+                    return fl.getNamespaceAllTheFile(namespaceSignature);
+                }
+            });
+        }
+        else {
+            this.getAllNamespacesUnderTargetProject().forEach((ns) => {
+                if (ns.getNamespaceSignature().toString() == namespaceSignature) {
+                    return ns;
+                }
+            });
+        }
         return null;
     }
 
-    public getMethod(methodSignature: MethodSignature): ArkMethod | null {
-        let fileSig = methodSignature.getDeclaringClassSignature().getDeclaringFileSignature();
-        this.arkFiles.forEach((fl) => {
-            if (fl.getFileSignature().toString() == fileSig.toString()) {
-                return fl.getMethodAllTheFile(methodSignature);
-            }
-            return null;
-        });
+    public getClass(classSignature: ClassSignature | string): ArkClass | null {
+        if (classSignature instanceof ClassSignature) {
+            let fileSig = classSignature.getDeclaringFileSignature();
+            this.arkFiles.forEach((fl) => {
+                if (fl.getFileSignature().toString() == fileSig.toString()) {
+                    return fl.getClassAllTheFile(classSignature);
+                }
+            });
+        }
+        else {
+            this.getAllClassesUnderTargetProject().forEach((cls) => {
+                if (cls.getSignature().toString() == classSignature) {
+                    return cls;
+                }
+            });
+        }
+        return null;
+    }
+
+    public getMethod(methodSignature: MethodSignature | string): ArkMethod | null {
+        if (methodSignature instanceof MethodSignature) {
+            let fileSig = methodSignature.getDeclaringClassSignature().getDeclaringFileSignature();
+            this.arkFiles.forEach((fl) => {
+                if (fl.getFileSignature().toString() == fileSig.toString()) {
+                    return fl.getMethodAllTheFile(methodSignature);
+                }
+                return null;
+            });
+        }
+        else {
+            this.getAllMethodsUnderTargetProject().forEach((mtd) => {
+                if (mtd.getSignature().toString() == methodSignature) {
+                    return mtd;
+                }
+            });
+        }
         return null;
     }
 
