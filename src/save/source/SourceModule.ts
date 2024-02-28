@@ -1,13 +1,18 @@
 import { ExportInfo } from "../../core/common/ExportBuilder";
 import { ImportInfo } from "../../core/common/ImportBuilder";
+import { ArkFile } from "../../core/model/ArkFile";
 import { SourceBase } from "./SourceBase";
 
 export class SourceExportInfo extends SourceBase{
     info: ExportInfo;
 
-    public constructor(indent: string, info: ExportInfo) {
-        super(indent);
+    public constructor(indent: string, arkFile: ArkFile, info: ExportInfo) {
+        super(indent, arkFile);
         this.info = info;
+    }
+
+    public getLine(): number {
+        return -1;
     }
 
     public dump(): string {
@@ -37,38 +42,42 @@ export class SourceExportInfo extends SourceBase{
         return this.printer.toString();
     }
     public dumpOriginalCode(): string {
-        throw new Error("Method not implemented.");
+        return this.dump();
     }
 }
 
 export class SourceImportInfo extends SourceBase{
     info: ImportInfo;
 
-    public constructor(indent: string, info: ImportInfo) {
-        super(indent);
+    public constructor(indent: string, arkFile: ArkFile, info: ImportInfo) {
+        super(indent, arkFile);
         this.info = info;
+    }
+
+    public getLine(): number {
+        return -1;
     }
 
     public dump(): string {
         if (this.info.getImportType() === 'Identifier') {
             // import fs from 'fs'
-            this.printer.writeIndent().write(`import ${this.info.getImportClauseName()} from '${this.info.getImportFrom() as string}';`);
+            this.printer.writeIndent().writeLine(`import ${this.info.getImportClauseName()} from '${this.info.getImportFrom() as string}';`);
         } else if (this.info.getImportType() === 'NamedImports') {
             // import {xxx} from './yyy'
-            this.printer.writeIndent().write(`import {${this.info.getImportClauseName()}} from '${this.info.getImportFrom() as string}';`);
+            this.printer.writeIndent().writeLine(`import {${this.info.getImportClauseName()}} from '${this.info.getImportFrom() as string}';`);
         } else if (this.info.getImportType() === 'NamespaceImport') {
             // import * as ts from 'typescript'
-            this.printer.writeIndent().write(`import * as ${this.info.getImportClauseName()} from '${this.info.getImportFrom() as string}';`);
+            this.printer.writeIndent().writeLine(`import * as ${this.info.getImportClauseName()} from '${this.info.getImportFrom() as string}';`);
         } else if (this.info.getImportType() == 'EqualsImport') {
             // import mmmm = require('./xxx')
-            this.printer.writeIndent().write(`import ${this.info.getImportClauseName()} =  require('${this.info.getImportFrom() as string}');`);
+            this.printer.writeIndent().writeLine(`import ${this.info.getImportClauseName()} =  require('${this.info.getImportFrom() as string}');`);
         } else {
             // import '../xxx'
-            this.printer.writeIndent().write(`import '${this.info.getImportFrom() as string}';`);
+            this.printer.writeIndent().writeLine(`import '${this.info.getImportFrom() as string}';`);
         }
         return this.printer.toString();
     }
     public dumpOriginalCode(): string {
-        throw new Error("Method not implemented.");
+        return this.dump();
     }
 }

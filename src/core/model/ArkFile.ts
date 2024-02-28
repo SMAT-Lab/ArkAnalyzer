@@ -28,7 +28,7 @@ export class ArkFile {
 
     private namespaces: ArkNamespace[] = [];
     private classes: ArkClass[] = [];
-    private methods: ArkMethod[] = [];
+    //private methods: ArkMethod[] = [];
 
     private importInfos: ImportInfo[] = [];
     private exportInfos: ExportInfo[] = [];
@@ -100,7 +100,7 @@ export class ArkFile {
         this.ast = new ASTree(this.code);
     }
 
-    public addArkMethod(arkMethod: ArkMethod) {
+    /* public addArkMethod(arkMethod: ArkMethod) {
         for (let i = 0; i < this.methods.length; i++) {
             // check whether exits this method
             if (this.methods[i].getSignature().toString() == arkMethod.getSignature().toString()) {
@@ -108,7 +108,7 @@ export class ArkFile {
             }
         }
         this.methods.push(arkMethod);
-    }
+    } */
 
     public updateClass(arkClass: ArkClass) {
         for (let i = 0; i < this.classes.length; i++) {
@@ -142,8 +142,26 @@ export class ArkFile {
         this.defaultClass = defaultClass;
     }
 
-    // YIFEI-TODO: implement
     public getNamespace(namespaceSignature: NamespaceSignature): ArkNamespace | null {
+        const foundNamespace = this.namespaces.find(ns => ns.getNamespaceSignature().toString() == namespaceSignature.toString());
+        return foundNamespace || null;
+    }
+
+    public getNamespaceAllTheFile(namespaceSignature: NamespaceSignature): ArkNamespace | null {
+        let declaringNamespaceSignature = namespaceSignature.getDeclaringNamespaceSignature();
+        if (!declaringNamespaceSignature) {
+            this.namespaces.forEach((ns) => {
+                if (ns.getNamespaceSignature().toString() == namespaceSignature.toString()) {
+                    return ns;
+                }
+            });
+        }
+        else {
+            let declaringNamespace = this.getNamespaceAllTheFile(declaringNamespaceSignature);
+            if (declaringNamespace) {
+                return declaringNamespace.getNamespace(namespaceSignature);
+            }
+        }
         return null;
     }
 
@@ -152,13 +170,8 @@ export class ArkFile {
     }
 
     public getClass(classSignature: ClassSignature): ArkClass | null {
-        let cls = this.classes.find((obj) => {
-            return classSignatureCompare(obj.getSignature(), classSignature);
-        })
-        if (cls) {
-            return cls;
-        }
-        return null;
+        const foundClass = this.classes.find(cls => cls.getSignature().toString() == classSignature.toString());
+        return foundClass || null;
     }
 
     public getClasses(): ArkClass[] {
@@ -171,12 +184,52 @@ export class ArkFile {
         this.namespaces.push(namespace);
     }
 
-    public getMethods(): ArkMethod[] {
-        return this.methods;
+    public getMethodAllTheFile(methodSignature: MethodSignature): ArkMethod | null {
+        let namespaceSig = methodSignature.getDeclaringClassSignature().getDeclaringNamespaceSignature();
+        if (namespaceSig != null) {
+            let namespace = this.getNamespaceAllTheFile(namespaceSig);
+            if (namespace) {
+                return namespace.getMethodAllTheNamespace(methodSignature);
+            }
+        }
+        else {
+            let classSig = methodSignature.getDeclaringClassSignature();
+            let cls = this.getClass(classSig);
+            if (cls) {
+                return cls.getMethod(methodSignature);
+            }
+        }
+        return null;
     }
 
+    public getClassAllTheFile(classSignature: ClassSignature): ArkClass | null {
+        let fileSig = classSignature.getDeclaringFileSignature();
+        if (fileSig.toString() != this.fileSignature.toString()) {
+            return null;
+        }
+        else {
+            let namespaceSig = classSignature.getDeclaringNamespaceSignature();
+            if (namespaceSig) {
+                let ns = this.getNamespaceAllTheFile(namespaceSig);
+                if (ns) {
+                    return ns.getClass(classSignature);
+                }
+            }
+            else {
+                return this.getClass(classSignature);
+            }
+        }
+        return null;
+    }
+
+    // Deprecated
+    /* public getMethods(): ArkMethod[] {
+        return this.methods;
+    } */
+
     //TODO: err handle
-    public getMethod(methodSignature: MethodSignature): ArkMethod | null {
+    // Deprecated
+    /* public getMethod(methodSignature: MethodSignature): ArkMethod | null {
         if (methodSignature.getDeclaringClassSignature().getClassName()) {
             let arkCls = this.getClass(methodSignature.getDeclaringClassSignature());
             if (arkCls) {
@@ -195,7 +248,7 @@ export class ArkFile {
             }
         }
         return null;
-    }
+    } */
 
     public getImportInfos(): ImportInfo[] {
         return this.importInfos;
@@ -250,6 +303,34 @@ export class ArkFile {
         return this.fileSignature;
     }
 
+    public getAllMethodsUnderThisFile(): ArkMethod[] {
+        let methods: ArkMethod[] = [];
+        this.classes.forEach((cls) => {
+            methods.push(...cls.getMethods());
+        });
+        this.namespaces.forEach((ns) => {
+            methods.push(...ns.getAllMethodsUnderThisNamespace());
+        });
+        return methods;
+    }
+
+    public getAllClassesUnderThisFile(): ArkClass[] {
+        let classes: ArkClass[] = [];
+        classes.push(...this.classes);
+        this.namespaces.forEach((ns) => {
+            classes.push(...ns.getAllClassesUnderThisNamespace());
+        });
+        return classes;
+    }
+
+    public getAllNamespacesUnderThisFile(): ArkNamespace[] {
+        let namespaces: ArkNamespace[] = [];
+        namespaces.push(...this.namespaces);
+        this.namespaces.forEach((ns) => {
+            namespaces.push(...ns.getAllNamespacesUnderThisNamespace());
+        });
+        return namespaces;
+    }
 }
 
 export function buildArkFileFromFile(absoluteFilePath: string, projectDir: string, arkFile: ArkFile) {

@@ -4,15 +4,14 @@ import path from 'path';
 import { SceneConfig } from '../tests/Config';
 import { AbstractCallGraphAlgorithm } from "./callgraph/AbstractCallGraphAlgorithm";
 import { CallGraph } from "./callgraph/CallGraph";
-import { Type } from './core/base/Type';
+import { ClassHierarchyAnalysisAlgorithm } from "./callgraph/ClassHierarchyAnalysisAlgorithm";
 import { ImportInfo, updateSdkConfigPrefix } from './core/common/ImportBuilder';
-import { MethodParameter } from './core/common/MethodInfoBuilder';
 import { TypeInference } from './core/common/TypeInference';
 import { ArkClass } from "./core/model/ArkClass";
 import { ArkFile, buildArkFileFromFile } from "./core/model/ArkFile";
 import { ArkMethod } from "./core/model/ArkMethod";
 import { ArkNamespace } from "./core/model/ArkNamespace";
-import { ClassSignature, FileSignature, MethodSignature, MethodSubSignature } from "./core/model/ArkSignature";
+import { ClassSignature, FileSignature, MethodSignature, NamespaceSignature } from "./core/model/ArkSignature";
 
 /**
  * The Scene class includes everything in the analyzed project.
@@ -140,17 +139,13 @@ export class Scene {
         });
     }
 
-    public getFile(fileName: string): ArkFile | null {
-        for (let arkFile of this.arkFiles) {
-            if (arkFile.getName() == fileName) {
-                return arkFile;
-            }
-        }
-        return null;
+    public getFile(fileSignature: FileSignature): ArkFile | null {
+        const foundFile = this.arkFiles.find(fl => fl.getFileSignature().toString() == fileSignature.toString());
+        return foundFile || null;
     }
 
     //TODO: move to type inference
-    private genExtendedClasses() {
+    /* private genExtendedClasses() {
         let myArkClasses = this.getClasses();
         for (let cls of myArkClasses) {
             let clsFather = this.getFather(cls.getSignature());
@@ -164,7 +159,7 @@ export class Scene {
                 }
             }
         }
-    }
+    } */
 
     public getFiles() {
         return this.arkFiles;
@@ -178,23 +173,23 @@ export class Scene {
         return this.sdkArkFilestMap;
     }
 
-    public getNamespaces(): ArkNamespace[] {
+    /* public getNamespaces(): ArkNamespace[] {
         let arkNamespaces: ArkNamespace[] = [];
         this.arkFiles.forEach((fl) => {
             arkNamespaces.push(...fl.getNamespaces());
         });
         return arkNamespaces;
-    }
+    } */
 
-    public getClasses(): ArkClass[] {
+    /* public getClasses(): ArkClass[] {
         let arkClasses: ArkClass[] = [];
         for (let fl of this.arkFiles) {
             arkClasses.push(...fl.getClasses());
         }
         return arkClasses;
-    }
+    } */
 
-    public getMethods(): ArkMethod[] {
+    /* public getMethods(): ArkMethod[] {
         let arkMethods: ArkMethod[] = [];
 
         let arkClasses = this.getClasses();
@@ -204,10 +199,10 @@ export class Scene {
         }
 
         return arkMethods;
-    }
+    } */
 
     //TODO: move to type inference
-    public getClassGlobally(arkClassName: string): ArkClass | null {
+    /* public getClassGlobally(arkClassName: string): ArkClass | null {
         for (let fl of this.arkFiles) {
             for (let cls of fl.getClasses()) {
                 if (cls.isExported() && cls.getName() == arkClassName) {
@@ -216,9 +211,9 @@ export class Scene {
             }
         }
         return null;
-    }
+    } */
 
-    public getClass(arkFile: string, arkClassType: string): ArkClass | null {
+    /* public getClass(arkFile: string, arkClassType: string): ArkClass | null {
         const fl = this.arkFiles.find((obj) => {
             return obj.getName() === arkFile;
         })
@@ -227,9 +222,9 @@ export class Scene {
         }
         const claSig = this.getClassSignature(arkFile, arkClassType);
         return fl.getClass(claSig);
-    }
+    } */
 
-    public getFather(classSignature: ClassSignature): ArkClass | null {
+    /* public getFather(classSignature: ClassSignature): ArkClass | null {
         let thisArkFile = this.getFile(classSignature.getDeclaringFileSignature().getFileName());
         if (thisArkFile == null) {
             throw new Error('No ArkFile found.');
@@ -250,9 +245,9 @@ export class Scene {
         }
         // get father globally
         return this.getClassGlobally(fatherName);
-    }
+    } */
 
-    public getMethod(arkFile: string, methodName: string, parameters: MethodParameter[], returnType: Type, arkClassType: string): ArkMethod | null {
+    /* public getMethod(arkFile: string, methodName: string, parameters: MethodParameter[], returnType: Type, arkClassType: string): ArkMethod | null {
         const fl = this.arkFiles.find((obj) => {
             return obj.getName() === arkFile;
         })
@@ -261,9 +256,67 @@ export class Scene {
         }
         const mtdSig = this.getMethodSignature(arkFile, methodName, parameters, returnType, arkClassType);
         return fl.getMethod(mtdSig);
+    } */
+
+    public getNamespace(namespaceSignature: NamespaceSignature | string): ArkNamespace | null {
+        if (namespaceSignature instanceof NamespaceSignature) {
+            let fileSig = namespaceSignature.getDeclaringFileSignature();
+            this.arkFiles.forEach((fl) => {
+                if (fl.getFileSignature().toString() == fileSig.toString()) {
+                    return fl.getNamespaceAllTheFile(namespaceSignature);
+                }
+            });
+        }
+        else {
+            this.getAllNamespacesUnderTargetProject().forEach((ns) => {
+                if (ns.getNamespaceSignature().toString() == namespaceSignature) {
+                    return ns;
+                }
+            });
+        }
+        return null;
     }
 
-    public getMethodByName(methodName: string): ArkMethod[] {
+    public getClass(classSignature: ClassSignature | string): ArkClass | null {
+        if (classSignature instanceof ClassSignature) {
+            let fileSig = classSignature.getDeclaringFileSignature();
+            this.arkFiles.forEach((fl) => {
+                if (fl.getFileSignature().toString() == fileSig.toString()) {
+                    return fl.getClassAllTheFile(classSignature);
+                }
+            });
+        }
+        else {
+            this.getAllClassesUnderTargetProject().forEach((cls) => {
+                if (cls.getSignature().toString() == classSignature) {
+                    return cls;
+                }
+            });
+        }
+        return null;
+    }
+
+    public getMethod(methodSignature: MethodSignature | string): ArkMethod | null {
+        if (methodSignature instanceof MethodSignature) {
+            let fileSig = methodSignature.getDeclaringClassSignature().getDeclaringFileSignature();
+            this.arkFiles.forEach((fl) => {
+                if (fl.getFileSignature().toString() == fileSig.toString()) {
+                    return fl.getMethodAllTheFile(methodSignature);
+                }
+                return null;
+            });
+        }
+        else {
+            this.getAllMethodsUnderTargetProject().forEach((mtd) => {
+                if (mtd.getSignature().toString() == methodSignature) {
+                    return mtd;
+                }
+            });
+        }
+        return null;
+    }
+
+    /* public getMethodByName(methodName: string): ArkMethod[] {
         let arkMethods: ArkMethod[] = [];
         for (let method of this.getMethods()) {
             if (method.getSubSignature().getMethodName() == methodName) {
@@ -272,6 +325,30 @@ export class Scene {
         }
 
         return arkMethods;
+    } */
+
+    public getAllNamespacesUnderTargetProject(): ArkNamespace[] {
+        let namespaces: ArkNamespace[] = [];
+        this.arkFiles.forEach((fl) => {
+            namespaces.push(...fl.getAllNamespacesUnderThisFile());
+        });
+        return namespaces;
+    }
+
+    public getAllClassesUnderTargetProject(): ArkClass[] {
+        let namespaces: ArkClass[] = [];
+        this.arkFiles.forEach((fl) => {
+            namespaces.push(...fl.getAllClassesUnderThisFile());
+        });
+        return namespaces;
+    }
+
+    public getAllMethodsUnderTargetProject(): ArkMethod[] {
+        let namespaces: ArkMethod[] = [];
+        this.arkFiles.forEach((fl) => {
+            namespaces.push(...fl.getAllMethodsUnderThisFile());
+        });
+        return namespaces;
     }
 
     public hasMainMethod(): boolean {
@@ -283,7 +360,7 @@ export class Scene {
         return [];
     }
 
-    private getMethodSignature(fileName: string, methodName: string, parameters: MethodParameter[], returnType: Type, className: string): MethodSignature {
+    /* private getMethodSignature(fileName: string, methodName: string, parameters: MethodParameter[], returnType: Type, className: string): MethodSignature {
         let methodSubSignature = new MethodSubSignature();
         methodSubSignature.setMethodName(methodName);
         methodSubSignature.setParameters(parameters);
@@ -296,8 +373,9 @@ export class Scene {
         methodSignature.setMethodSubSignature(methodSubSignature)
 
         return methodSignature;
-    }
-    private getClassSignature(fileName: string, className: string): ClassSignature {
+    } */
+
+    /* private getClassSignature(fileName: string, className: string): ClassSignature {
         let classSig = new ClassSignature();
         let fileSig = new FileSignature();
         fileSig.setFileName(fileName);
@@ -305,7 +383,7 @@ export class Scene {
         classSig.setClassName(className);
         classSig.setDeclaringFileSignature(fileSig);
         return classSig;
-    }
+    } */
 
     public makeCallGraph(): void {
         this.callgraph = new CallGraph(new Set<string>, new Map<string, string[]>);
@@ -313,11 +391,11 @@ export class Scene {
     }
 
 
-    // public makeCallGraphCHA(entryPoints: MethodSignature[]) {
-    //     this.classHierarchyCallGraph = new ClassHierarchyAnalysisAlgorithm(this);
-    //     this.classHierarchyCallGraph.loadCallGraph(entryPoints)
-    //     // this.classHierarchyCallGraph.printDetails()
-    // }
+    public makeCallGraphCHA(entryPoints: MethodSignature[]) {
+        this.classHierarchyCallGraph = new ClassHierarchyAnalysisAlgorithm(this);
+        this.classHierarchyCallGraph.loadCallGraph(entryPoints)
+        // this.classHierarchyCallGraph.printDetails()
+    }
 
     /**
      * 对每个method方法体内部进行类型推导，将变量类型填入
