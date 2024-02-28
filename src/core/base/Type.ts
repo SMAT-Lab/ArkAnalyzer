@@ -287,6 +287,16 @@ export class ArrayType extends Type {
     }
 }
 
+export class ArrayObjectType extends ArrayType {
+    constructor(baseType: Type, dimension: number) {
+        super(baseType, dimension);
+    }
+
+    public toString(): string {
+        return 'Array<' + this.getBaseType() + '>[]';
+    }
+}
+
 export class TupleType extends Type {
     private types: Type[];
 
@@ -346,4 +356,29 @@ export class TypeLiteralType extends Type {
         this.members.push(member);
     }
 
+}
+
+export abstract class AnnotationType extends Type {
+    private originType: string
+
+    protected constructor(originType: string) {
+        super();
+        this.originType = originType
+    }
+
+    public getOriginType(): string {
+        return this.originType
+    }
+}
+
+export class AnnotationNamespaceType extends AnnotationType {
+    constructor(originType: string) {
+        super(originType);
+    }
+}
+
+export class AnnotationTypeQueryType extends AnnotationType {
+    constructor(originType: string) {
+        super(originType);
+    }
 }

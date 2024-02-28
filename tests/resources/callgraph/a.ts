@@ -4,6 +4,9 @@ import {C as D} from "./b"
 export function A(){
     B();
 }
+class FieldB {
+    public field_C: number
+}
 
 export abstract class Animal {
     public sound() {}
@@ -11,6 +14,7 @@ export abstract class Animal {
 
 export class Dog extends Animal {
     public aaaaaaaaaa: D | number
+    public static num: FieldB = new FieldB()
     public sound() {
         console.log("woof")
         let cat = new Cat()
@@ -44,6 +48,6 @@ export class FieldA {
     public field_B: FieldB
 }
 
-export class FieldB {
-    public field_C: number
+export namespace dd {
+
 }
