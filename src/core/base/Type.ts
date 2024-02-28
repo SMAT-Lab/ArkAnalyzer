@@ -347,3 +347,28 @@ export class TypeLiteralType extends Type {
     }
 
 }
+
+export abstract class AnnotationType extends Type {
+    private originType: string
+
+    protected constructor(originType: string) {
+        super();
+        this.originType = originType
+    }
+
+    public getOriginType(): string {
+        return this.originType
+    }
+}
+
+export class AnnotationNamespaceType extends AnnotationType {
+    constructor(originType: string) {
+        super(originType);
+    }
+}
+
+export class AnnotationTypeQueryType extends AnnotationType {
+    constructor(originType: string) {
+        super(originType);
+    }
+}

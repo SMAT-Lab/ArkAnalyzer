@@ -15,6 +15,7 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
         let concreteMethod: ArkMethod;
         let callTargetMethods: MethodSignature[] = [];
         let invokeExpressionExpr = invokeExpression.getInvokeExpr()
+        // console.log(invokeExpression.toString())
 
         let methodsFromInvoke = this.resolveInvokeExpr(
             invokeExpressionExpr,
@@ -155,6 +156,7 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
                                 sourceMethodSignature: MethodSignature) {
         let arkFile = getArkFileByName(arkFileName, this.scene.scene)
         let callName = extractLastBracketContent(invokeExpr.getMethodSignature().toString())
+        // console.log(invokeExpr.getMethodSignature().toString())
         // console.log(callName)
         let methodName: string = callName
         let classAndArkFileNames: Set<[string, string]> = new Set<[string, string]>()
@@ -169,11 +171,11 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
                 classAndArkFileNames.add([currentClass!.getName(), currentClass!.getDeclaringArkFile().getName()])
             } else {
                 let classCompleteType = invokeExpr.getBase().getType() // a| b |c
-                let classAllType = splitType(classCompleteType, '|') // [a, b, c]
+                let classAllType = splitType(classCompleteType.toString(), '|') // [a, b, c]
                 for (let classSingleType of classAllType) {
                     let lastDotIndex = classSingleType.lastIndexOf('.')
-                    classAndArkFileNames.add([classCompleteType.substring(lastDotIndex + 1),
-                        classCompleteType.substring(0, lastDotIndex)])
+                    classAndArkFileNames.add([classCompleteType.toString().substring(lastDotIndex + 1),
+                        classCompleteType.toString().substring(0, lastDotIndex)])
                 }
             }
         } else if (invokeExpr instanceof ArkStaticInvokeExpr) {
@@ -192,6 +194,7 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
                 }
             } else {
                 // 函数调用
+                // console.log(methodName)
                 let callFunction = this.resolveFunctionCall(arkFile!, methodName)
                 if (callFunction != null) {
                     if (!isItemRegistered<ArkMethod>(

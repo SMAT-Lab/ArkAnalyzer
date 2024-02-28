@@ -5,7 +5,18 @@ import { AbstractInvokeExpr, ArkBinopExpr, ArkCastExpr, ArkConditionExpr, ArkIns
 import { Local } from '../base/Local';
 import { AbstractFieldRef, ArkArrayRef, ArkCaughtExceptionRef, ArkInstanceFieldRef, ArkParameterRef, ArkStaticFieldRef, ArkThisRef } from '../base/Ref';
 import { ArkAssignStmt, ArkDeleteStmt, ArkGotoStmt, ArkIfStmt, ArkInvokeStmt, ArkReturnStmt, ArkReturnVoidStmt, ArkSwitchStmt, ArkThrowStmt, Stmt } from '../base/Stmt';
-import { ArrayType, CallableType, ClassType, StringType, TupleType, Type, UnionType, UnknownType } from '../base/Type';
+import {
+    AnnotationNamespaceType,
+    AnnotationType, AnnotationTypeQueryType,
+    ArrayType,
+    CallableType,
+    ClassType,
+    StringType,
+    TupleType,
+    Type,
+    UnionType,
+    UnknownType
+} from '../base/Type';
 import { Value } from '../base/Value';
 import { BasicBlock } from '../graph/BasicBlock';
 import { Cfg } from '../graph/Cfg';
@@ -2132,6 +2143,7 @@ export class CfgBuilder {
         }
 
         if (leftOp instanceof Local) {
+            // console.log(leftOp.getName() + " " +leftOp.getType().toString())
             leftOp.setType(leftOpType);
 
         }
@@ -2143,7 +2155,7 @@ export class CfgBuilder {
 
         let threeAddressAssignStmts: Stmt[] = [];
         threeAddressAssignStmts.push(new ArkAssignStmt(leftOp, rightOp));
-        TypeInference.inferTypeInStmt(threeAddressAssignStmts[0])
+        TypeInference.inferTypeInStmt(threeAddressAssignStmts[0], null)
 
         if (leftOpNode.kind == 'ArrayBindingPattern' || leftOpNode.kind == 'ObjectBindingPattern') {
             let argNodes = this.getSyntaxListItems(leftOpNode.children[1]);
@@ -2983,6 +2995,7 @@ export class CfgBuilder {
 
     private resolveTypeNode(node: NodeA): Type {
         let typeNode: NodeA
+        // console.log(node.kind + " " +node.text)
         switch (node.kind) {
             case "BooleanKeyword":
             case "NumberKeyword":
@@ -2994,12 +3007,8 @@ export class CfgBuilder {
                 typeNode = node.children[0];
                 const typeStr = typeNode.text;
                 return new ArrayType(TypeInference.buildTypeFromStr(typeStr), 1);
-            // case "TypeReference":
-            //     typeNode = node.children[0]
-            //     if (typeNode.kind == "Identifier") {
-            //         return typeNode.text
-            //     }
-            //     return buildTypeReferenceString(typeNode.children)
+            case "TypeReference":
+                return new AnnotationNamespaceType(node.text)
             case "UnionType":
                 const types: Type[] = [];
                 typeNode = node.children[0];
@@ -3020,6 +3029,8 @@ export class CfgBuilder {
                     }
                 }
                 return new TupleType(tupleTypes);
+            case 'TypeQuery':
+                return new AnnotationTypeQueryType(node.children[1].text)
         }
         return UnknownType.getInstance();
     }

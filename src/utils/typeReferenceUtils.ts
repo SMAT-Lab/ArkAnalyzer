@@ -3,6 +3,8 @@ import { Scene } from "../Scene";
 import { NodeA } from "../core/base/Ast";
 import { ArkFile } from "../core/model/ArkFile";
 import { ClassSignature, FileSignature } from "../core/model/ArkSignature";
+import {ArkNamespace} from "../core/model/ArkNamespace";
+import {NumberType, StringType, Type} from "../core/base/Type";
 
 export function isPrimaryType(type: string): boolean {
     switch (type) {
@@ -69,22 +71,22 @@ export function buildTypeReferenceString(astNodes: NodeA[]): string {
     }).join('');
 }
 
-export function resolveBinaryResultType(op1Type: string, op2Type: string, operator: string): string {
+export function resolveBinaryResultType(op1Type: Type, op2Type: Type, operator: string): Type | null {
     switch (operator) {
         case "+":
-            if (op1Type === "string" || op2Type === "string") {
-                return "string";
+            if (op1Type instanceof StringType || op2Type instanceof StringType) {
+                return new StringType();
             }
-            if (op1Type === "number" && op2Type === "number") {
-                return "number";
+            if (op1Type instanceof NumberType && op2Type instanceof NumberType) {
+                return new NumberType();
             }
             break;
         case "-":
         case "*":
         case "/":
         case "%":
-            if (op1Type === "number" && op2Type === "number") {
-                return "number";
+            if (op1Type instanceof NumberType && op2Type instanceof NumberType) {
+                return new NumberType;
             }
             break;
         case "<":
@@ -104,12 +106,12 @@ export function resolveBinaryResultType(op1Type: string, op2Type: string, operat
         case "<<":
         case ">>":
         case ">>>":
-            if (op1Type === "number" && op2Type === "number") {
-                return "number";
+            if (op1Type instanceof NumberType && op2Type instanceof NumberType) {
+                return new NumberType;
             }
             break;
     }
-    return "";
+    return null;
 }
 
 export function getArkFileByName(fileName: string, scene: Scene) {
@@ -134,6 +136,39 @@ export function resolveClassInstance(classCompleteName: string, file: ArkFile | 
     return null
 }
 
+export function resolveNameSpace(nameSpaceNameArray: string[], file: ArkFile | null) {
+    if (file == null)
+        return null
+    let nameSpaceInstance: ArkNamespace | null = null
+    for (let i = 0; i < nameSpaceNameArray.length - 1; i++) {
+        let nameSpaceName = nameSpaceNameArray[i]
+        let nameSpaceSignature = searchImportMessage(file, nameSpaceName, matchNameSpaceInFile)
+        // TODO: ArkNameSpace.getName()是全局唯一吗? 有没有全局找ArkNameSpace的实例的方法?
+        if (nameSpaceInstance === null) {
+            let nameSpaceList = file.getScene().getAllNamespacesUnderTargetProject()
+            for (let nameSpace of nameSpaceList) {
+                if (nameSpace.getNamespaceSignature().toString() === nameSpaceSignature) {
+                    nameSpaceInstance = nameSpace
+                }
+            }
+        } else {
+            let subNameSpace: ArkNamespace[] = nameSpaceInstance.getNamespaces()
+            let checkNameSpace = false
+            for (let nameSpace of subNameSpace) {
+                if (nameSpaceName === nameSpace.getName()) {
+                    nameSpaceInstance = nameSpace
+                    checkNameSpace = true
+                    break
+                }
+            }
+            if (!checkNameSpace) {
+                return null
+            }
+        }
+    }
+    return nameSpaceInstance
+}
+
 export function resolveClassInstanceField(fieldName: string[], file: ArkFile | null) {
     if (file == null)
         return null
@@ -148,7 +183,7 @@ export function resolveClassInstanceField(fieldName: string[], file: ArkFile | n
         }
         for (let field of classInstance.getFields()) {
             if (field.getName() === fieldName[i + 1]) {
-                fieldName[i + 1] = field.getType()
+                fieldName[i + 1] = field.getType().toString()
                 file = classInstance.getDeclaringArkFile()
                 break
             }
@@ -206,17 +241,26 @@ export function searchImportMessage(file: ArkFile, className: string, searchCall
     return "";
 }
 
-export function typeStrToClassSignature(typrStr: string): ClassSignature {
-    const lastDot = typrStr.lastIndexOf('.');
+export function typeStrToClassSignature(typeStr: string): ClassSignature {
+    const lastDot = typeStr.lastIndexOf('.');
     const classSignature = new ClassSignature();
     const fileSignature = new FileSignature();
-    fileSignature.setFileName(typrStr.substring(0, lastDot));
+    fileSignature.setFileName(typeStr.substring(0, lastDot));
     classSignature.setDeclaringFileSignature(fileSignature);
-    const classType = typrStr.replace(/\\\\/g, '.').split('.');
+    const classType = typeStr.replace(/\\\\/g, '.').split('.');
     classSignature.setClassName(classType[classType.length - 1]);
 
     return classSignature;
 }
+
+export const matchNameSpaceInFile: ClassSearchCallback = (file, nameSpaceName) => {
+    for (let nameSpaceInFile of file.getNamespaces()) {
+        if (nameSpaceName === nameSpaceInFile.getName()) {
+            return nameSpaceInFile.getNamespaceSignature().toString();
+        }
+    }
+    return null;
+};
 
 export const matchClassInFile: ClassSearchCallback = (file, className) => {
     for (let classInFile of file.getClasses()) {
