@@ -73,11 +73,14 @@ export class SourceMethod extends SourceBase{
         
         let parameters: string[] = [];
         method.getParameters().forEach((parameter) => {
-            if (!parameter.getType()) {
-                parameters.push(parameter.getName());
-            } else {
-                parameters.push(parameter.getName() + ': ' + SourceUtils.typeToString(parameter.getType()));
+            let str: string = parameter.getName();
+            if (parameter.isOptional()) {
+                str += '?';
             }
+            if (parameter.getType()) {
+                str += ': ' + SourceUtils.typeToString(parameter.getType());
+            } 
+            parameters.push(str);
         });
         code.write(`(${parameters.join(',')})`);
         const returnType = method.getReturnType();

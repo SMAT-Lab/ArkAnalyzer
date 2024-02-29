@@ -33,20 +33,7 @@
  *          G = "123".length
  *   }
  * 
- * 6. namespace
- *  a) 不支持Field定义
- *      namespace Validation {
- *          const lettersRegexp = /^[A-Za-z]+$/;
- *      }
- *  b) 不支持function定义
- *      namespace Validation {
- *          function test(): void {
- *              console.log('');
- *          }
- *      }
- * 
- * 7. ?非空检查未支持
- * 8. 泛型
+ * 6. 泛型
  *  a) field泛型<>类型丢失
  * class GenericNumber<T> {
  *     private methods: Set<string>;

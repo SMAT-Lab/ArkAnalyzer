@@ -2,6 +2,7 @@ import { ArkFile } from "../../core/model/ArkFile";
 import { ArkNamespace } from "../../core/model/ArkNamespace";
 import { SourceBase } from "./SourceBase";
 import { SourceClass } from "./SourceClass";
+import { SourceMethod } from "./SourceMethod";
 import { SourceExportInfo } from "./SourceModule";
 
 export class SourceNamespace extends SourceBase{
@@ -24,7 +25,15 @@ export class SourceNamespace extends SourceBase{
         
         // print class 
         for (let cls of this.ns.getClasses()) {
-            items.push(new SourceClass(this.printer.getIndent(), this.arkFile, cls));
+            if (cls.isDefaultArkClass()) {
+                for (let method of cls.getMethods()) {
+                    if (!method.getName().startsWith('AnonymousFunc$_')) {
+                        items.push(new SourceMethod(this.printer.getIndent(), this.arkFile, method));
+                    }
+                }
+            } else {
+                items.push(new SourceClass(this.printer.getIndent(), this.arkFile, cls));
+            }            
         }
 
         // print namespace
