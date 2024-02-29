@@ -8,10 +8,12 @@ import { ArkAssignStmt, ArkDeleteStmt, ArkGotoStmt, ArkIfStmt, ArkInvokeStmt, Ar
 import {
     AnnotationNamespaceType,
     AnnotationTypeQueryType,
+    AnyType,
     ArrayObjectType,
     ArrayType,
     CallableType,
     ClassType,
+    NumberType,
     StringType,
     TupleType,
     Type,
@@ -27,7 +29,6 @@ import { ClassSignature, FieldSignature, MethodSignature, MethodSubSignature } f
 import { ExportInfo } from './ExportBuilder';
 import { IRUtils } from './IRUtils';
 import { TypeInference } from './TypeInference';
-import { ValueUtil } from './ValueUtil';
 
 
 class StatementBuilder {
@@ -1968,28 +1969,42 @@ export class CfgBuilder {
         else if (node.kind == "NewExpression") {
             const className = node.children[1].text;
             if (className == 'Array') {
-                let baseType: Type = UnknownType.getInstance();
+                let baseType: Type = AnyType.getInstance();
                 if (this.findChildIndex(node, 'FirstBinaryOperator') != -1) {
                     const baseTypeNode = node.children[this.findChildIndex(node, 'FirstBinaryOperator') + 1];
                     baseType = this.getTypeNode(baseTypeNode);
                 }
                 let size: number = 0;
-                let sizeSyntaxListNode = node.children[this.findChildIndex(node, 'OpenParenToken') + 1];
-                let sizeNodes = this.getSyntaxListItems(sizeSyntaxListNode);
-                for (const sizeNode of sizeNodes) {
-                    if (sizeNode.kind == 'FirstLiteralToken') {
-                        size = parseInt(sizeNode.text);
+                let sizeValue: Value | null = null;
+                const argSyntaxListNode = node.children[this.findChildIndex(node, 'OpenParenToken') + 1];
+                const argNodes = this.getSyntaxListItems(argSyntaxListNode);
+                const items: Constant[] = [];
+                if (argNodes.length == 1 && argNodes[0].kind == 'FirstLiteralToken') {
+                    size = parseInt(argNodes[0].text);
+                } else if (argNodes.length == 1 && argNodes[0].kind == 'Identifier') {
+                    size = -1;
+                    sizeValue = this.getOriginalLocal(new Local(argNodes[0].text), false);
+                } else if (argNodes.length >= 1) {
+                    size = argNodes.length;
+                    if (baseType == AnyType.getInstance()) {
+                        baseType = TypeInference.buildTypeFromStr(this.resolveKeywordType(argNodes[0]));
+                    }
+                    for (const sizeNode of argNodes) {
+                        items.push(new Constant(sizeNode.text, baseType));
                     }
                 }
-                let newArrayExpr = new ArkNewArrayExpr(baseType, new Constant(size.toString()));
+
+                if (sizeValue == null) {
+                    sizeValue = new Constant(size.toString(), NumberType.getInstance());
+                }
+                let newArrayExpr = new ArkNewArrayExpr(baseType, sizeValue);
                 value = this.generateAssignStmt(newArrayExpr);
                 value.setType(new ArrayObjectType(baseType, 1));
 
-                for (let index = 0; index < size; index++) {
+                for (let index = 0; index < items.length; index++) {
                     let arrayRef = new ArkArrayRef(value, new Constant(index.toString()));
-                    const arrayItem = ValueUtil.getDefaultInstance(baseType);
+                    const arrayItem = items[index];
                     this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(arrayRef, arrayItem));
-                    index++;
                 }
             } else {
                 let classSignature = new ClassSignature();

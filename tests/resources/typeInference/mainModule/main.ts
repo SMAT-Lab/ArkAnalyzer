@@ -85,6 +85,21 @@
 //     // let b = [1, '2'];
 // }
 
+function testNewArray(): void {
+    // let a = new Array(1, 2, 3);
+    // let b = new Array(1);
+    // let c = new Array('1');
+
+    let d:number[] = new Array(1);
+    let e: number[] = new Array<number>(1);
+    let f: number[] = new Array<number>(1, 2);
+
+    let g = new Array<number>(1, 2);
+
+    let sz = 100;
+    let a = new Array(sz);
+}
+
 // abstract class Animal {
 //     public sound() { };
 // }
@@ -94,21 +109,23 @@
 //     }
 // }
 
-class Foo {
-    // public static testNewObj(): void {
-    //     // let d = new Data();
 
-    //     let bar: Bar = new Bar();
-    // }
 
-    // public testInstanceInvoke(): void {
-    //     let f = new Foo();
-    //     f.testInstanceInvoke();
-    // }
+// class Foo {
+//     // public static testNewObj(): void {
+//     //     // let d = new Data();
 
-    private i = new Map<number, number>();
-    public testInstanceRef(): void {
-        let f = new Foo();
-        let j = f.i;
-    }
-}
+//     //     let bar: Bar = new Bar();
+//     // }
+
+//     // public testInstanceInvoke(): void {
+//     //     let f = new Foo();
+//     //     f.testInstanceInvoke();
+//     // }
+
+//     private i = new Map<number, number>();
+//     public testInstanceRef(): void {
+//         let f = new Foo();
+//         let j = f.i;
+//     }
+// }
