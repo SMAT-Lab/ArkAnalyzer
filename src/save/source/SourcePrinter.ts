@@ -7,9 +7,6 @@
  *  a) default value 不支持
  *      source: move(distanceInMeters = 5)  
  *      parsed: move(distanceInMeters)
- *  b) map type
- *      source: calculateDistanceFromOrigin(point: {x: number; y: number;})   
- *      parsed: calculateDistanceFromOrigin(point: TypeLiteral)
  *  c) string[] 类型解析为 ArrayType，无法还原
  *  d) 构造函数Access Modifiers 不支持
  *     constructor(public make: string, public model: string) {
@@ -48,19 +45,8 @@
  *          }
  *      }
  * 
- * 7. module
- *  a) import 导入后类型为空
- *      source: 
- *          import * as validator3 from "./classes";
- *          let myValidator3 = new validator3.ZipCodeValidator();
- *          import validator4 from "./classes";
- *          let myValidator4 = new validator4();
- *      parsed:
- *          let myValidator1: <>.<>;
- * 
- * 8. 匿名函数、匿名类
- * 9. ?非空检查未支持
- * 10. 泛型
+ * 7. ?非空检查未支持
+ * 8. 泛型
  *  a) field泛型<>类型丢失
  * class GenericNumber<T> {
  *     private methods: Set<string>;
@@ -92,7 +78,9 @@ export class SourcePrinter extends Printer {
         for (let cls of this.arkFile.getClasses()) {
             if (cls.isDefaultArkClass()) {
                 for (let method of cls.getMethods()) {
-                    this.items.push(new SourceMethod('', this.arkFile, method));
+                    if (!method.getName().startsWith('AnonymousFunc$_')) {
+                        this.items.push(new SourceMethod('', this.arkFile, method));
+                    }
                 }
             } else {
                 this.items.push(new SourceClass('', this.arkFile, cls));

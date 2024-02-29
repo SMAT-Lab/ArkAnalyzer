@@ -1,5 +1,4 @@
-import { TypeLiteralType, UnknownType } from "../../core/base/Type";
-import { ArkBody } from "../../core/model/ArkBody";
+import { UnknownType } from "../../core/base/Type";
 import { ArkFile } from "../../core/model/ArkFile";
 import { ArkMethod } from "../../core/model/ArkMethod";
 import { ArkCodeBuffer } from "../ArkStream";
@@ -17,7 +16,7 @@ export class SourceMethod extends SourceBase{
 
     public dump(): string {
         if (this.method.isDefaultArkMethod()) {
-            this.printBody(this.method.getBody());
+            this.printBody(this.method);
         } else {
             this.printMethod(this.method);
         }
@@ -41,36 +40,40 @@ export class SourceMethod extends SourceBase{
 
         this.printer.writeLine('{');
         this.printer.incIndent();
-        this.printBody(method.getBody());
+        this.printBody(method);
         this.printer.decIndent();
 
         this.printer.writeIndent();
         this.printer.writeLine('}');
     }
 
-    public printBody(body: ArkBody): void {
-        let srcBody = new SourceBody(this.printer.getIndent(), this.arkFile, body);
+    public printBody(method: ArkMethod): void {
+        let srcBody = new SourceBody(this.printer.getIndent(), method);
         this.printer.write(srcBody.dump());
     }
 
     protected methodProtoToString(method: ArkMethod): string {
         let code = new ArkCodeBuffer();
         code.writeSpace(this.modifiersToString(method.getModifiers()));
-        if (method.getDeclaringArkClass()?.isDefaultArkClass()) {
-            code.writeSpace('function');
+        if (!method.getName().startsWith('AnonymousFunc$_')) {
+            if (method.getDeclaringArkClass()?.isDefaultArkClass()) {
+                code.writeSpace('function');
+            }
+            code.write(this.resolveMethodName(method.getName()));   
+        } else {
+            
         }
-        code.write(this.resolveMethodName(method.getName()));
         if (method.getTypeParameter().length > 0) {
             let typeParameters: string[] = [];
             method.getTypeParameter().forEach((parameter) => {
                 typeParameters.push(SourceUtils.typeToString(parameter));
             });
             code.write(`<${SourceUtils.typeArrayToString(method.getTypeParameter())}>`);
-        }
-
+        } 
+        
         let parameters: string[] = [];
         method.getParameters().forEach((parameter) => {
-            if (parameter.getType() instanceof UnknownType || !parameter.getType()) {
+            if (!parameter.getType()) {
                 parameters.push(parameter.getName());
             } else {
                 parameters.push(parameter.getName() + ': ' + SourceUtils.typeToString(parameter.getType()));
@@ -80,6 +83,9 @@ export class SourceMethod extends SourceBase{
         const returnType = method.getReturnType();
         if (!(returnType instanceof UnknownType)) {
             code.writeSpace(`: ${SourceUtils.typeToString(returnType)}`);
+        }
+        if (method.getName().startsWith('AnonymousFunc$_')) {
+            code.write(' => ');
         }
         return code.toString();
     }
