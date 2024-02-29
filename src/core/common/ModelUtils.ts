@@ -110,8 +110,14 @@ export class ModelUtils {
 
     public static getFileFromImportInfo(importInfo: ImportInfo, scene: Scene): ArkFile | null {
         const signatureStr = importInfo.getImportFromSignature2Str();
-        const foundFile = scene.getFiles().find(file => file.getFileSignature().toString() == signatureStr);
-        return foundFile || null;
+        let file: ArkFile | null = null;
+        if (importInfo.getImportProjectType() == "TargetProject"){
+            file = scene.getFiles().find(file => file.getFileSignature().toString() == signatureStr) || null;
+        }
+        else if (importInfo.getImportProjectType() == "SDKProject"){
+            file = scene.getSdkArkFilestMap().get(signatureStr) || null;
+        }
+        return file;
     }
 
     /** search method within the file that contain the given method */
