@@ -29,9 +29,9 @@ function runScene(config: SceneConfig) {
     //     }
     // }
     projectScene.makeCallGraphCHA(entryPoints)
-    // let methods = projectScene.classHierarchyCallGraph.getMethods()
-    // let calls = projectScene.classHierarchyCallGraph.getCalls()
-    // printCallGraphDetails(methods, calls, config.getTargetProjectDirectory())
+    let methods = projectScene.classHierarchyCallGraph.getMethods()
+    let calls = projectScene.classHierarchyCallGraph.getCalls()
+    printCallGraphDetails(methods, calls, config.getTargetProjectDirectory())
     debugger;
 }
 runScene(config);
