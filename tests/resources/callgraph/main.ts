@@ -16,10 +16,10 @@ import {func1} from "./temp/a";
 // A();
 // temp()
 // C();
-let dog: Cat = new Cat()
+// let dog: Cat = new Cat()
 // let mee: Mav = new Cat()
 // let d: Cat | null = new Cat()
-let c = dog.aaaaaaaaaa
+// let c = dog.aaaaaaaaaa
 // let d = c
 // let e = globalNumber
 // Cat.print()
