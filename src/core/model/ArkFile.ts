@@ -11,6 +11,9 @@ import { ArkMethod, arkMethodNodeKind, buildArkMethodFromArkClass } from "./ArkM
 import { ArkNamespace, buildArkNamespace } from "./ArkNamespace";
 import { ClassSignature, FileSignature, MethodSignature, NamespaceSignature, classSignatureCompare, methodSignatureCompare } from "./ArkSignature";
 
+export const notStmtOrExprKind = ['ModuleDeclaration', 'ClassDeclaration', 'InterfaceDeclaration', 'EnumDeclaration', 'ExportDeclaration',
+    'ExportAssignment', 'MethodDeclaration', 'Constructor', 'FunctionDeclaration', 'GetAccessor', 'SetAccessor', 'ArrowFunction',
+    'FunctionExpression', 'MethodSignature', 'ConstructSignature', 'CallSignature'];
 /**
  * 
  */
@@ -357,6 +360,9 @@ export function buildArkFileFromFile(absoluteFilePath: string, projectDir: strin
 function buildArkFile(arkFile: ArkFile) {
     let children = arkFile.getAst().root?.children;
     for (let child of children) {
+        if (notStmtOrExprKind.indexOf(child.kind) == -1) {
+            // TODO
+        }
         if (child.kind == 'ModuleDeclaration') {
             let ns: ArkNamespace = new ArkNamespace();
             ns.setDeclaringArkFile(arkFile);
