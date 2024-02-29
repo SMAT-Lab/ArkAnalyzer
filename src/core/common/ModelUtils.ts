@@ -141,7 +141,6 @@ export class ModelUtils {
     /** search field within the given class */
     public static getFieldInClassWithName(fieldName: string, arkClass: ArkClass): ArkField | null {
         for (const field of arkClass.getFields()) {
-            console.log(field.getName())
             if (field.getName() == fieldName) {
                 return field;
             }

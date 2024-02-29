@@ -6,7 +6,7 @@ import {ArkClass} from "../core/model/ArkClass";
 
 export class MethodSignatureManager {
     private _workList: MethodSignature[] = [];
-    private _processedList: string[] = [];
+    private _processedList: MethodSignature[] = [];
 
     get workList(): MethodSignature[] {
         return this._workList;
@@ -16,11 +16,11 @@ export class MethodSignatureManager {
         this._workList = list;
     }
 
-    get processedList(): string[] {
+    get processedList(): MethodSignature[] {
         return this._processedList;
     }
 
-    set processedList(list: string[]) {
+    set processedList(list: MethodSignature[]) {
         this._processedList = list;
     }
 
@@ -29,10 +29,8 @@ export class MethodSignatureManager {
     }
 
     public findInProcessedList(signature: MethodSignature): boolean {
-        let result = this.processedList.find(item => item === signature.toString());
-        if (typeof result === "undefined")
-            return false
-        return true
+        let result = this.processedList.find(item => item.toString() === signature.toString());
+        return typeof result !== "undefined";
     }
 
     public addToWorkList(signature: MethodSignature): void {
@@ -46,12 +44,12 @@ export class MethodSignatureManager {
     }
 
     public addToProcessedList(signature: MethodSignature): void {
-        if (!isItemRegistered<string>(
-            signature.toString(), this.processedList,
+        if (!isItemRegistered<MethodSignature>(
+            signature, this.processedList,
             (a, b) =>
                 a === b
         )) {
-            this.processedList.push(signature.toString());
+            this.processedList.push(signature);
         }
     }
 
@@ -60,7 +58,7 @@ export class MethodSignatureManager {
     }
 
     public removeFromProcessedList(signature: MethodSignature): void {
-        this.processedList = this.processedList.filter(item => item !== signature.toString());
+        this.processedList = this.processedList.filter(item => item.toString() !== signature.toString());
     }
 }
 
@@ -148,7 +146,7 @@ export function splitStringWithRegex(input: string): string[] {
     }
 }
 
-export function printCallGraphDetails(methods: Set<string>, calls: Map<string, string[]>, rootDir: string): void {
+export function printCallGraphDetails(methods: Set<MethodSignature>, calls: Map<MethodSignature, MethodSignature[]>, rootDir: string): void {
     // 打印 Methods
     console.log('Methods:');
     methods.forEach(method => {
@@ -158,18 +156,18 @@ export function printCallGraphDetails(methods: Set<string>, calls: Map<string, s
     // 打印 Calls
     console.log('Calls:');
     // 计算最长的method名称的长度，加上箭头和空格的长度
-    const longestCallerLength = Array.from(calls.keys()).reduce((max, method) => Math.max(max, method.length), 0);
+    const longestCallerLength = Array.from(calls.keys()).reduce((max, method) => Math.max(max, method.toString().length), 0);
     const arrow = '->';
     const spacesAfterArrow = '   ';
     const prefixLength = longestCallerLength + arrow.length + spacesAfterArrow.length;
 
     calls.forEach((calledMethods, method) => {
         // 对于每个调用源，只打印一次调用源和第一个目标方法
-        const modifiedMethodName = `<${rootDir}>.${method}`;
+        const modifiedMethodName = `<${method}`;
         console.log(`    ${modifiedMethodName.padEnd(4)}   ${arrow}`);
 
         for (let i = 0; i < calledMethods.length; i++) {
-            const modifiedCalledMethod = `<${rootDir}>.${calledMethods[i]}`;
+            const modifiedCalledMethod = `<${calledMethods[i]}`;
             console.log(`\t${modifiedCalledMethod}`);
         }
         console.log("\n")

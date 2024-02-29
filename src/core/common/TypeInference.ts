@@ -43,7 +43,6 @@ export class TypeInference {
                 TypeInference.inferTypeInStmt(stmt, arkMethod);
             }
         }
-        // console.log(arkMethod.getBody().getLocals())
     }
 
     /** resolve symbol that is uncertain when build stmts, such as class' name and function's name */
@@ -119,27 +118,22 @@ export class TypeInference {
             const leftOp = stmt.getLeftOp();
             if (leftOp instanceof Local) {
                 const leftOpType = leftOp.getType();
-                // console.log("\t"+leftOpType)
                 if (leftOpType instanceof AnnotationType) {
                     if (arkMethod === null) {
                         return
                     }
                     let leftOpTypeString = leftOpType.getOriginType()
-                    // console.log(leftOpTypeString)
                     if (leftOpType instanceof AnnotationNamespaceType) {
-                        // console.log(2)
                         let classSignature = ModelUtils.getClassWithName(leftOpTypeString, arkMethod)?.getSignature()
                         if (classSignature === undefined) {
                             leftOp.setType(stmt.getRightOp().getType())
                         } else {
-                            // console.log(classSignature)
                             leftOp.setType(new ClassType(classSignature))
                         }
                     }
                 } else if (leftOpType instanceof UnknownType) {
                     const rightOp = stmt.getRightOp();
                     if (rightOp instanceof ArkParameterRef) {
-                        // console.log(rightOp)
                         if (rightOp.getType() instanceof UnclearReferenceType) {
                             if (arkMethod == null)
                                 return
@@ -148,26 +142,29 @@ export class TypeInference {
                                 leftOp.setType(stmt.getRightOp().getType())
                             } else {
                                 leftOp.setType(new ClassType(classSignature))
-                                // console.log(leftOp.getType())
                             }
                         }
                     } else if (rightOp instanceof ArkInstanceFieldRef) {
                         if (arkMethod == null)
                             return;
-                        console.log(1)
+                        if (!(rightOp.getBase().getType() instanceof ClassType)) {
+                            return;
+                        }
                         const classSignature = rightOp.getBase().getType() as ClassType
                         let classInstance = ModelUtils.getClassWithClassSignature(
                             classSignature.getClassSignature(), arkMethod.getDeclaringArkFile().getScene()
                         )
-                        if (classInstance == null)
+                        if (classInstance == null) {
+                            console.log("Get Class Instance error")
                             return
-                        console.log(classInstance)
+                        }
                         let fieldInstance = ModelUtils.getFieldInClassWithName(
                             rightOp.getFieldName(), classInstance
-                            )
-                        if (fieldInstance == null)
+                        )
+                        if (fieldInstance == null) {
+                            console.log("Get Field Instance error")
                             return
-                        console.log(3)
+                        }
                         leftOp.setType(fieldInstance.getType())
                     } else {
                         leftOp.setType(rightOp.getType());
@@ -176,7 +173,6 @@ export class TypeInference {
                     const rightOp = stmt.getRightOp();
                     leftOpType.setCurrType(rightOp.getType());
                 } else if (leftOpType instanceof UnclearReferenceType) {
-                    // console.log("UnclearType "+leftOpType.toString())
                 }
             }
         }

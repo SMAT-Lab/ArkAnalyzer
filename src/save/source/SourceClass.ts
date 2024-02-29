@@ -2,6 +2,7 @@ import { ArkClass } from "../../core/model/ArkClass";
 import { ArkFile } from "../../core/model/ArkFile";
 import { SourceBase } from "./SourceBase";
 import { SourceMethod } from "./SourceMethod";
+import { SourceUtils } from "./SourceUtils";
 
 
 export class SourceClass extends SourceBase{
@@ -21,7 +22,7 @@ export class SourceClass extends SourceBase{
         this.printer.writeIndent().writeSpace(this.modifiersToString(this.cls.getModifiers()))
             .write(`${this.cls.getOriginType().toLowerCase()} ${this.cls.getName()}`);
         if (this.cls.getTypeParameter().length > 0) {
-            this.printer.write(`<${this.cls.getTypeParameter().join(',')}>`);
+            this.printer.write(`<${SourceUtils.typeArrayToString(this.cls.getTypeParameter())}>`);
         }
         if (this.cls.getSuperClassName()) {
             this.printer.write(` extends ${this.cls.getSuperClassName()} `);
@@ -60,11 +61,14 @@ export class SourceClass extends SourceBase{
             this.printer.writeIndent()
                 .writeSpace(this.modifiersToString(field.getModifiers()))
                 .write(field.getName());
+            if (field.getQuestionToken()) {
+                this.printer.write('?');
+            }
 
             // property.getInitializer() PropertyAccessExpression ArrowFunction ClassExpression FirstLiteralToken StringLiteral 
             // TODO: Initializer not ready
             if (field.getType()) {
-                this.printer.write(':' + field.getType());
+                this.printer.write(':' + SourceUtils.typeToString(field.getType()));
             }
             if (field.getFieldType() == 'EnumMember') {
                 this.printer.writeLine(',');

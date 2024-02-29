@@ -182,7 +182,7 @@ export class UnionType extends Type {
 
     public toString(): string {
         let typeStr = this.types.join('|');
-        if (!(this.currType instanceof UnknownType)) {
+        if (!(this.currType instanceof UnknownType) && this.currType != this) {
             typeStr += '-' + this.currType
         }
         return typeStr;
@@ -275,6 +275,10 @@ export class ArrayType extends Type {
 
     public getBaseType(): Type {
         return this.baseType;
+    }
+
+    public getDimension(): number {
+        return this.dimension;
     }
 
     public toString(): string {

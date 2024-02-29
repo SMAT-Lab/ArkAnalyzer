@@ -3,37 +3,31 @@ import { ArkBinopExpr, ArkInstanceInvokeExpr, ArkLengthExpr, ArkNewArrayExpr, Ar
 import { Local } from "../../core/base/Local";
 import { ArkInstanceFieldRef, ArkParameterRef } from "../../core/base/Ref";
 import { ArkAssignStmt, ArkGotoStmt, ArkIfStmt, ArkInvokeStmt, ArkReturnStmt, ArkReturnVoidStmt, ArkSwitchStmt, Stmt} from '../../core/base/Stmt';
-import { ClassType, Type, UnknownType } from "../../core/base/Type";
 import { Value } from "../../core/base/Value";
+import { ArkMethod } from "../../core/model/ArkMethod";
 import { StmtReader } from './SourceBody';
+import { SourceMethod } from "./SourceMethod";
+import { SourceUtils } from "./SourceUtils";
 
 
 abstract class SourceStmt extends Stmt {
     original: Stmt;
+    method: ArkMethod;
 
-    constructor(original: Stmt, stmtReader: StmtReader) {
+    constructor(original: Stmt, stmtReader: StmtReader, method: ArkMethod) {
         super();
         this.original = original;
+        this.method = method;
         this.setPositionInfo(original.getPositionInfo());
         this.transfer2ts(stmtReader);
     }
 
     protected abstract transfer2ts(stmtReader: StmtReader): void;
 
-    protected transferType(type: Type): string {
-        if (type instanceof ClassType) {
-            return type.getClassSignature().getClassName();
-        } else if (type instanceof UnknownType) {
-            return 'any';
-        }
-       
-        return type.toString();
-    }
-
     protected instanceInvokeExprToString(invokeExpr: ArkInstanceInvokeExpr) {
         let methodName = invokeExpr.getMethodSignature().getMethodSubSignature().getMethodName();
         let args: string[] = [];
-        invokeExpr.getArgs().forEach((v)=>{args.push(v.toString())});
+        invokeExpr.getArgs().forEach((v)=>{args.push(this.transferValueToString(v))});
         if (invokeExpr.getBase() instanceof Local) {
             return `${invokeExpr.getBase().getName()}.${methodName}(${args.join(',')})`;
         } else if (invokeExpr.getBase() instanceof Constant) {
@@ -65,7 +59,7 @@ abstract class SourceStmt extends Stmt {
         }
 
         if (value instanceof ArkNewArrayExpr) {
-            return `new Array<${value.getBaseType()}>(${value.getSize()})`;
+            return `new Array<${SourceUtils.typeToString(value.getBaseType())}>(${value.getSize()})`;
         }
 
         if (value instanceof ArkInstanceInvokeExpr) {
@@ -80,13 +74,24 @@ abstract class SourceStmt extends Stmt {
             return `${value.getOp()}.length`;
         }
 
+        if (value instanceof Local) {
+            if (value.getName().startsWith('AnonymousFunc$_')) {
+                for (const anonymousMethod of this.method.getDeclaringArkClass().getMethods()) {
+                    if (anonymousMethod.getName() == value.getName()) {
+                       let _anonymous = new SourceMethod('', this.method.getDeclaringArkFile(), anonymousMethod);
+                       return _anonymous.dump();
+                    }
+                }
+            }
+        }
+
         return `${value}`;
     }
 }
 
 export class SourceAssignStmt extends SourceStmt {
-    constructor(original: ArkAssignStmt, stmtReader: StmtReader) {
-        super(original, stmtReader);
+    constructor(original: ArkAssignStmt, stmtReader: StmtReader, method: ArkMethod) {
+        super(original, stmtReader, method);
     }
 
     protected transfer2ts(stmtReader: StmtReader): void {
@@ -117,16 +122,16 @@ export class SourceAssignStmt extends SourceStmt {
                     if ('constructor' == instanceInvokeExpr.getMethodSignature().getMethodSubSignature().getMethodName() && instanceInvokeExpr.getBase().getName() == leftOp.getName()) {
                         let args: string[] = [];
                         instanceInvokeExpr.getArgs().forEach((v)=>{args.push(v.toString())});
-                        this.setText(`${leftOp.toString()} = new ${this.transferType(rightOp.getType())}(${args.join(',')});`);
+                        this.setText(`${this.transferValueToString(leftOp)} = new ${SourceUtils.typeToString(rightOp.getType())}(${args.join(',')});`);
                         rollback = false;
                     }
                 }
                 if (rollback) {
                     stmtReader.rollback();
-                    this.setText(`${leftOp} = new ${this.transferType(rightOp.getType())}();`);
+                    this.setText(`${this.transferValueToString(leftOp)} = new ${SourceUtils.typeToString(rightOp.getType())}();`);
                 }
             } else {
-                this.setText(`${leftOp} = new ${this.transferType(rightOp.getType())}();`);
+                this.setText(`${this.transferValueToString(leftOp)} = new ${SourceUtils.typeToString(rightOp.getType())}();`);
             }
             return;
         }
@@ -136,8 +141,8 @@ export class SourceAssignStmt extends SourceStmt {
 }
 
 export class SourceInvokeStmt extends SourceStmt {
-    constructor(original: ArkInvokeStmt, stmtReader: StmtReader) {
-        super(original, stmtReader);
+    constructor(original: ArkInvokeStmt, stmtReader: StmtReader, method: ArkMethod) {
+        super(original, stmtReader, method);
     }
 
     protected transfer2ts(stmtReader: StmtReader): void {
@@ -155,8 +160,8 @@ export class SourceInvokeStmt extends SourceStmt {
 }
 
 export class SourceIfStmt extends SourceStmt {
-    constructor(original: ArkIfStmt, stmtReader: StmtReader) {
-        super(original, stmtReader);
+    constructor(original: ArkIfStmt, stmtReader: StmtReader, method: ArkMethod) {
+        super(original, stmtReader, method);
     }
 
     protected transfer2ts(stmtReader: StmtReader): void {
@@ -169,8 +174,8 @@ export class SourceIfStmt extends SourceStmt {
 }
 
 export class SourceWhileStmt extends SourceStmt {
-    constructor(original: ArkIfStmt, stmtReader: StmtReader) {
-        super(original, stmtReader);
+    constructor(original: ArkIfStmt, stmtReader: StmtReader, method: ArkMethod) {
+        super(original, stmtReader, method);
     }
 
     protected transfer2ts(stmtReader: StmtReader): void {
@@ -229,8 +234,8 @@ export class SourceWhileStmt extends SourceStmt {
 }
 
 export class SourceForStmt extends SourceWhileStmt {
-    constructor(original: ArkIfStmt, stmtReader: StmtReader) {
-        super(original, stmtReader);
+    constructor(original: ArkIfStmt, stmtReader: StmtReader, method: ArkMethod) {
+        super(original, stmtReader, method);
     }
 
     protected transfer2ts(stmtReader: StmtReader): void {
@@ -251,8 +256,8 @@ export class SourceForStmt extends SourceWhileStmt {
 }
 
 export class SourceElseStmt extends SourceStmt {
-    constructor(original: ArkIfStmt, stmtReader: StmtReader) {
-        super(original, stmtReader);
+    constructor(original: ArkIfStmt, stmtReader: StmtReader, method: ArkMethod) {
+        super(original, stmtReader, method);
     }
 
     protected transfer2ts(stmtReader: StmtReader): void {
@@ -261,8 +266,8 @@ export class SourceElseStmt extends SourceStmt {
 }
 
 export class SourceContinueStmt extends SourceStmt {
-    constructor(original: ArkGotoStmt, stmtReader: StmtReader) {
-        super(original, stmtReader);
+    constructor(original: ArkGotoStmt, stmtReader: StmtReader, method: ArkMethod) {
+        super(original, stmtReader, method);
     }
     // trans 2 break or continue
     protected transfer2ts(stmtReader: StmtReader): void {
@@ -271,8 +276,8 @@ export class SourceContinueStmt extends SourceStmt {
 }
 
 export class SourceBreakStmt extends SourceStmt {
-    constructor(original: ArkGotoStmt, stmtReader: StmtReader) {
-        super(original, stmtReader);
+    constructor(original: ArkGotoStmt, stmtReader: StmtReader, method: ArkMethod) {
+        super(original, stmtReader, method);
     }
     // trans 2 break or continue
     protected transfer2ts(stmtReader: StmtReader): void {
@@ -281,8 +286,8 @@ export class SourceBreakStmt extends SourceStmt {
 }
 
 export class SourceReturnStmt extends SourceStmt {
-    constructor(original: ArkReturnStmt, stmtReader: StmtReader) {
-        super(original, stmtReader);
+    constructor(original: ArkReturnStmt, stmtReader: StmtReader, method: ArkMethod) {
+        super(original, stmtReader, method);
     }
 
     protected transfer2ts(stmtReader: StmtReader): void {
@@ -291,8 +296,8 @@ export class SourceReturnStmt extends SourceStmt {
 }
 
 export class SourceReturnVoidStmt extends SourceStmt {
-    constructor(original: ArkReturnVoidStmt, stmtReader: StmtReader) {
-        super(original, stmtReader);
+    constructor(original: ArkReturnVoidStmt, stmtReader: StmtReader, method: ArkMethod) {
+        super(original, stmtReader, method);
     }
 
     protected transfer2ts(stmtReader: StmtReader): void {
@@ -305,8 +310,8 @@ export class SourceReturnVoidStmt extends SourceStmt {
 }
 
 export class SourceSwitchStmt extends SourceStmt {
-    constructor(original: ArkSwitchStmt, stmtReader: StmtReader) {
-        super(original, stmtReader);
+    constructor(original: ArkSwitchStmt, stmtReader: StmtReader, method: ArkMethod) {
+        super(original, stmtReader, method);
     }
 
     protected transfer2ts(stmtReader: StmtReader): void {
@@ -316,8 +321,8 @@ export class SourceSwitchStmt extends SourceStmt {
 
 export class SourceCaseStmt extends SourceStmt {
     caseIndex: number;
-    constructor(original: ArkSwitchStmt, stmtReader: StmtReader, index:number) {
-        super(original, stmtReader);
+    constructor(original: ArkSwitchStmt, stmtReader: StmtReader, method: ArkMethod, index:number) {
+        super(original, stmtReader, method);
         this.caseIndex = index;
         this.transfer2ts(stmtReader);
     }
@@ -351,29 +356,25 @@ class SourceBinopExpr {
     }
 
     public toString(): string {
-        let outStr = '';
         let op1: Value = this.binopExpr.getOp1();
         let op2: Value = this.binopExpr.getOp2();
         let operator: string = this.binopExpr.getOperator();
 
-        if (op1 instanceof Constant) {
-            if (op1.getType() == 'string' && !op1.getValue().startsWith('\'')) {
-                outStr = `'${op1.getValue()}'`;
+        return this.opToString(op1) + ' ' + operator + ' ' + this.opToString(op2);
+    }
+
+    private opToString(op: Value): string {
+        let outStr = '';
+        if (op instanceof Constant) {
+            if (op.getType() == 'string' && !op.getValue().startsWith('\'')) {
+                outStr = `'${op.getValue()}'`;
             } else {
-                outStr = op1.getValue();
+                outStr = op.getValue();
             }
+        } else if (op instanceof ArkInstanceFieldRef) {
+            outStr = op.getBase().getName() + '.' + op.getFieldName();
         } else {
-            outStr += op1;
-        }
-        outStr += ' ' + operator + ' ';
-        if (op2 instanceof Constant) {
-            if (op2.getType() == 'string' && !op2.getValue().startsWith('\'')) {
-                outStr += `'${op2.getValue()}'`;
-            } else {
-                outStr += op2.getValue();
-            }
-        } else {
-            outStr += op2;
+            outStr += op;
         }
         return outStr;
     }

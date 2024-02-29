@@ -66,5 +66,6 @@ export class TypeInferenceTest {
 }
 
 let typeInferenceTest = new TypeInferenceTest();
+// typeInferenceTest.buildScene();
 typeInferenceTest.testLocalTypes();
 // typeInferenceTest.testFunctionReturnType();

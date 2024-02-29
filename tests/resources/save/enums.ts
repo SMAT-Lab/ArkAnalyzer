@@ -74,17 +74,11 @@ function f(obj: { X: number }) {
 
 f(E);
 
-enum Enum {
+declare enum Enum {
     A
 }
 let a2 = Enum.A;
 let nameOfA = Enum[a2];
-
-declare enum Enum {
-    A1 = 1,
-    B1,
-    C1 = 2
-}
 
 const enum Directions {
     Up,
