@@ -6,6 +6,7 @@ import { ArkAssignStmt, ArkGotoStmt, ArkIfStmt, ArkInvokeStmt, ArkReturnStmt, Ar
 import { ClassType, Type, UnknownType } from "../../core/base/Type";
 import { Value } from "../../core/base/Value";
 import { StmtReader } from './SourceBody';
+import { SourceUtils } from "./SourceUtils";
 
 
 abstract class SourceStmt extends Stmt {
@@ -19,16 +20,6 @@ abstract class SourceStmt extends Stmt {
     }
 
     protected abstract transfer2ts(stmtReader: StmtReader): void;
-
-    protected transferType(type: Type): string {
-        if (type instanceof ClassType) {
-            return type.getClassSignature().getClassName();
-        } else if (type instanceof UnknownType) {
-            return 'any';
-        }
-       
-        return type.toString();
-    }
 
     protected instanceInvokeExprToString(invokeExpr: ArkInstanceInvokeExpr) {
         let methodName = invokeExpr.getMethodSignature().getMethodSubSignature().getMethodName();
@@ -65,7 +56,7 @@ abstract class SourceStmt extends Stmt {
         }
 
         if (value instanceof ArkNewArrayExpr) {
-            return `new Array<${value.getBaseType()}>(${value.getSize()})`;
+            return `new Array<${SourceUtils.typeToString(value.getBaseType())}>(${value.getSize()})`;
         }
 
         if (value instanceof ArkInstanceInvokeExpr) {
@@ -117,16 +108,16 @@ export class SourceAssignStmt extends SourceStmt {
                     if ('constructor' == instanceInvokeExpr.getMethodSignature().getMethodSubSignature().getMethodName() && instanceInvokeExpr.getBase().getName() == leftOp.getName()) {
                         let args: string[] = [];
                         instanceInvokeExpr.getArgs().forEach((v)=>{args.push(v.toString())});
-                        this.setText(`${leftOp.toString()} = new ${this.transferType(rightOp.getType())}(${args.join(',')});`);
+                        this.setText(`${this.transferValueToString(leftOp)} = new ${SourceUtils.typeToString(rightOp.getType())}(${args.join(',')});`);
                         rollback = false;
                     }
                 }
                 if (rollback) {
                     stmtReader.rollback();
-                    this.setText(`${leftOp} = new ${this.transferType(rightOp.getType())}();`);
+                    this.setText(`${this.transferValueToString(leftOp)} = new ${SourceUtils.typeToString(rightOp.getType())}();`);
                 }
             } else {
-                this.setText(`${leftOp} = new ${this.transferType(rightOp.getType())}();`);
+                this.setText(`${this.transferValueToString(leftOp)} = new ${SourceUtils.typeToString(rightOp.getType())}();`);
             }
             return;
         }
@@ -351,29 +342,25 @@ class SourceBinopExpr {
     }
 
     public toString(): string {
-        let outStr = '';
         let op1: Value = this.binopExpr.getOp1();
         let op2: Value = this.binopExpr.getOp2();
         let operator: string = this.binopExpr.getOperator();
 
-        if (op1 instanceof Constant) {
-            if (op1.getType() == 'string' && !op1.getValue().startsWith('\'')) {
-                outStr = `'${op1.getValue()}'`;
+        return this.opToString(op1) + ' ' + operator + ' ' + this.opToString(op2);
+    }
+
+    private opToString(op: Value): string {
+        let outStr = '';
+        if (op instanceof Constant) {
+            if (op.getType() == 'string' && !op.getValue().startsWith('\'')) {
+                outStr = `'${op.getValue()}'`;
             } else {
-                outStr = op1.getValue();
+                outStr = op.getValue();
             }
+        } else if (op instanceof ArkInstanceFieldRef) {
+            outStr = op.getBase().getName() + '.' + op.getFieldName();
         } else {
-            outStr += op1;
-        }
-        outStr += ' ' + operator + ' ';
-        if (op2 instanceof Constant) {
-            if (op2.getType() == 'string' && !op2.getValue().startsWith('\'')) {
-                outStr += `'${op2.getValue()}'`;
-            } else {
-                outStr += op2.getValue();
-            }
-        } else {
-            outStr += op2;
+            outStr += op;
         }
         return outStr;
     }

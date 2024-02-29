@@ -277,6 +277,10 @@ export class ArrayType extends Type {
         return this.baseType;
     }
 
+    public getDimension(): number {
+        return this.dimension;
+    }
+
     public toString(): string {
         const strs: string[] = [];
         strs.push('(' + this.baseType.toString() + ')');

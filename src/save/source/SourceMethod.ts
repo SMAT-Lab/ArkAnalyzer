@@ -1,10 +1,11 @@
-import { UnknownType } from "../../core/base/Type";
+import { TypeLiteralType, UnknownType } from "../../core/base/Type";
 import { ArkBody } from "../../core/model/ArkBody";
 import { ArkFile } from "../../core/model/ArkFile";
 import { ArkMethod } from "../../core/model/ArkMethod";
 import { ArkCodeBuffer } from "../ArkStream";
 import { SourceBase } from "./SourceBase";
 import { SourceBody } from "./SourceBody";
+import { SourceUtils } from "./SourceUtils";
 
 export class SourceMethod extends SourceBase{
     method: ArkMethod;
@@ -16,7 +17,7 @@ export class SourceMethod extends SourceBase{
 
     public dump(): string {
         if (this.method.isDefaultArkMethod()) {
-            this.printBody(this.method.getBody(), true);
+            this.printBody(this.method.getBody());
         } else {
             this.printMethod(this.method);
         }
@@ -32,22 +33,23 @@ export class SourceMethod extends SourceBase{
     public printMethod(method: ArkMethod): void {
         this.printer.writeIndent().write(this.methodProtoToString(method));
         // abstract function no body
-        if (method.containsModifier('AbstractKeyword')) {
+        if (method.containsModifier('AbstractKeyword') 
+            || method.getDeclaringArkClass().getOriginType().toLowerCase() == 'interface') {
             this.printer.writeLine(';');
             return;
         }
 
         this.printer.writeLine('{');
         this.printer.incIndent();
-        this.printBody(method.getBody(), false);
+        this.printBody(method.getBody());
         this.printer.decIndent();
 
         this.printer.writeIndent();
         this.printer.writeLine('}');
     }
 
-    public printBody(body: ArkBody, isDefault: boolean): void {
-        let srcBody = new SourceBody(this.printer.getIndent(), this.arkFile, body, isDefault);
+    public printBody(body: ArkBody): void {
+        let srcBody = new SourceBody(this.printer.getIndent(), this.arkFile, body);
         this.printer.write(srcBody.dump());
     }
 
@@ -59,20 +61,25 @@ export class SourceMethod extends SourceBase{
         }
         code.write(this.resolveMethodName(method.getName()));
         if (method.getTypeParameter().length > 0) {
-            code.write(`<${method.getTypeParameter().join(',')}>`);
+            let typeParameters: string[] = [];
+            method.getTypeParameter().forEach((parameter) => {
+                typeParameters.push(SourceUtils.typeToString(parameter));
+            });
+            code.write(`<${SourceUtils.typeArrayToString(method.getTypeParameter())}>`);
         }
 
         let parameters: string[] = [];
         method.getParameters().forEach((parameter) => {
-            if (parameter.getType()) {
-                parameters.push(parameter.getName() + ': ' + parameter.getType());
-            } else {
+            if (parameter.getType() instanceof UnknownType || !parameter.getType()) {
                 parameters.push(parameter.getName());
+            } else {
+                parameters.push(parameter.getName() + ': ' + SourceUtils.typeToString(parameter.getType()));
             }
         });
         code.write(`(${parameters.join(',')})`);
-        if (!(method.getReturnType() instanceof UnknownType)) {
-            code.writeSpace(`: ${method.getReturnType()}`);
+        const returnType = method.getReturnType();
+        if (!(returnType instanceof UnknownType)) {
+            code.writeSpace(`: ${SourceUtils.typeToString(returnType)}`);
         }
         return code.toString();
     }

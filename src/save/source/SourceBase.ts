@@ -1,3 +1,4 @@
+import { ArrayType, ClassType, LiteralType, Type, TypeLiteralType, UnknownType } from "../../core/base/Type";
 import { ArkFile } from "../../core/model/ArkFile";
 import { ArkCodeBuffer } from "../ArkStream";
 
@@ -52,6 +53,6 @@ export abstract class SourceBase {
             return name.replace('Set-', 'set ');
         }
         return name;
-    }
+    }   
 }
 
