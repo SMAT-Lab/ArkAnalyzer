@@ -27,6 +27,7 @@ export class ImportInfo {
     private targetArkSignature: string; */
     
     private importFromSignature2Str: string = "";
+    private importProjectType: string = "ThirdPartPackage";
     private declaringFilePath: string;
     private projectPath: string;
 
@@ -41,6 +42,14 @@ export class ImportInfo {
 
     public getImportFromSignature2Str() {
         return this.importFromSignature2Str;
+    }
+
+    public getImportProjectType() {
+        return this.importProjectType;
+    }
+
+    public setImportProjectType(importProjectType: string) {
+        this.importProjectType = importProjectType;
     }
 
     public setDeclaringFilePath(declaringFilePath: string) {
@@ -60,6 +69,7 @@ export class ImportInfo {
         // project internal imports
         const pathReg1 = new RegExp("^(\\.\\.\\/\|\\.\\/)");
         if (pathReg1.test(this.importFrom)) {
+            this.setImportProjectType("TargetProject");
             //get real target path of importfrom
             let realImportFromPath = path.resolve(path.dirname(this.declaringFilePath), this.importFrom);
             //get relative path from project dir to real target path of importfrom
@@ -76,6 +86,7 @@ export class ImportInfo {
             if (key == 'ohos' || key == 'kit' || key == 'system') {
                 const pathReg2 = new RegExp(`@(${key})\\.`);
                 if (pathReg2.test(this.importFrom)) {
+                    this.setImportProjectType("SDKProject");
                     let tmpSig = '@' + key + '/' + this.importFrom + ': ';
                     this.importFromSignature2Str = tmpSig;
                 }
@@ -84,6 +95,7 @@ export class ImportInfo {
             else {
                 const pathReg3 = new RegExp(`@(${key})\\/`);
                 if (pathReg3.test(this.importFrom)) {
+                    this.setImportProjectType("SDKProject");
                     this.importFromSignature2Str = this.importFrom + ': ';
                 }
             }
