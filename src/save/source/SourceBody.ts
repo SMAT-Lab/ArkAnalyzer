@@ -7,10 +7,11 @@ import { BasicBlock } from '../../core/graph/BasicBlock';
 import { DominanceFinder } from "../../core/graph/DominanceFinder";
 import { DominanceTree } from "../../core/graph/DominanceTree";
 import { ArkBody } from "../../core/model/ArkBody";
-import { ArkFile } from '../../core/model/ArkFile';
 import { SourceAssignStmt, SourceBreakStmt, SourceCaseStmt, SourceCompoundEndStmt, SourceContinueStmt, SourceElseStmt, SourceForStmt, SourceIfStmt, SourceInvokeStmt, SourceReturnStmt, SourceReturnVoidStmt, SourceSwitchStmt, SourceWhileStmt } from './SourceStmt';
-import { SourceBase } from './SourceBase';
 import { SourceUtils } from './SourceUtils';
+import { CallableType } from '../../core/base/Type';
+import { ArkMethod } from '../../core/model/ArkMethod';
+import { ArkCodeBuffer } from '../ArkStream';
 
 enum BlockType {
     NORMAL,
@@ -22,27 +23,22 @@ enum BlockType {
     IF_ELSE
 }
 
-export class SourceBody extends SourceBase {
-    
+export class SourceBody {
+    protected printer: ArkCodeBuffer;
     private arkBody: ArkBody;
     private stmts: Stmt[] = [];
     private dominanceTree: DominanceTree;
     private blockTypes: Map<BasicBlock, BlockType>;
     private loopPath: Map<BasicBlock, Set<BasicBlock>>;
+    private method: ArkMethod;
     
-    public constructor(indent: string, arkFile: ArkFile, arkBody: ArkBody) {
-        super(indent, arkFile);
-        this.arkBody = arkBody;
-        this.dominanceTree = new DominanceTree(new DominanceFinder(arkBody.getCfg()));
+    public constructor(indent: string, method: ArkMethod) {
+        this.printer = new ArkCodeBuffer(indent);
+        this.method = method;
+        this.arkBody = method.getBody();
+        this.dominanceTree = new DominanceTree(new DominanceFinder(this.arkBody.getCfg()));
         this.identifyBlocks();
         this.buildSourceStmt();
-    }
-
-    public dumpOriginalCode(): string {
-        throw new Error('Method not implemented.');
-    }
-    public getLine(): number {
-        throw new Error('Method not implemented.');
     }
 
     public dump(): string {
@@ -195,14 +191,14 @@ export class SourceBody extends SourceBase {
         while (stmtReader.hasNext()) {
             let stmt = stmtReader.next();
             if (stmt instanceof ArkAssignStmt) {
-                this.stmts.push(new SourceAssignStmt(stmt, stmtReader));
+                this.stmts.push(new SourceAssignStmt(stmt, stmtReader, this.method));
             } else if (stmt instanceof ArkIfStmt) {
                 let isLoop = false;
                 if (this.blockTypes.get(block) == BlockType.FOR) {
-                    this.stmts.push(new SourceForStmt(stmt, stmtReader));
+                    this.stmts.push(new SourceForStmt(stmt, stmtReader, this.method));
                     isLoop = true;
                 } else if (this.blockTypes.get(block) == BlockType.WHILE) {
-                    this.stmts.push(new SourceWhileStmt(stmt, stmtReader));
+                    this.stmts.push(new SourceWhileStmt(stmt, stmtReader, this.method));
                     isLoop = true;
                 }
                 if (isLoop) {
@@ -215,30 +211,30 @@ export class SourceBody extends SourceBase {
                     }
                     this.stmts.push(new SourceCompoundEndStmt('}'));
                 } else {
-                    this.stmts.push(new SourceIfStmt(stmt, stmtReader));
+                    this.stmts.push(new SourceIfStmt(stmt, stmtReader, this.method));
                     let successorBlocks = block.getSuccessors();
                     if (this.blockTypes.get(block) == BlockType.IF_ELSE) {
                         visitor.add(successorBlocks[1]);
                         this.buildBasicBlock(successorBlocks[1], visitor, stmt);
                     }
                     if (successorBlocks.length > 0 && !visitor.has(successorBlocks[0])) {
-                        this.stmts.push(new SourceElseStmt(stmt, stmtReader));
+                        this.stmts.push(new SourceElseStmt(stmt, stmtReader, this.method));
                         visitor.add(successorBlocks[0]);
                         this.buildBasicBlock(successorBlocks[0], visitor, stmt);
                     }
                     this.stmts.push(new SourceCompoundEndStmt('}'));
                 }
             } else if (stmt instanceof ArkInvokeStmt) {
-                this.stmts.push(new SourceInvokeStmt(stmt, stmtReader));
+                this.stmts.push(new SourceInvokeStmt(stmt, stmtReader, this.method));
             } else if (stmt instanceof ArkReturnVoidStmt) {
-                this.stmts.push(new SourceReturnVoidStmt(stmt, stmtReader));
+                this.stmts.push(new SourceReturnVoidStmt(stmt, stmtReader, this.method));
             } else if (stmt instanceof ArkSwitchStmt) {
-                this.stmts.push(new SourceSwitchStmt(stmt, stmtReader));
+                this.stmts.push(new SourceSwitchStmt(stmt, stmtReader, this.method));
                 let caseIdx = 0;
                 for (const sub of block.getSuccessors()) {
                     if (!visitor.has(sub)) {
                         visitor.add(sub);
-                        let caseStmt = new SourceCaseStmt(stmt, stmtReader, caseIdx);
+                        let caseStmt = new SourceCaseStmt(stmt, stmtReader, this.method, caseIdx);
                         this.stmts.push(caseStmt);
                         this.buildBasicBlock(sub, visitor, stmt);
                         if (caseStmt.isDefault()) {
@@ -253,14 +249,14 @@ export class SourceBody extends SourceBase {
                     this.stmts.push(new SourceCompoundEndStmt('    break;'));
                 } else {
                     if (this.blockTypes.get(block) == BlockType.CONTINUE) {
-                        this.stmts.push(new SourceContinueStmt(stmt, stmtReader));
+                        this.stmts.push(new SourceContinueStmt(stmt, stmtReader, this.method));
                     } else {
-                        this.stmts.push(new SourceBreakStmt(stmt, stmtReader));
+                        this.stmts.push(new SourceBreakStmt(stmt, stmtReader, this.method));
                     }
                     
                 }
             } else if (stmt instanceof ArkReturnStmt) {
-                this.stmts.push(new SourceReturnStmt(stmt, stmtReader));
+                this.stmts.push(new SourceReturnStmt(stmt, stmtReader, this.method));
             } else {
                 this.stmts.push(stmt);
             }
@@ -271,6 +267,14 @@ export class SourceBody extends SourceBase {
         for (let local of this.arkBody.getLocals()) {
             // not define this
             if (local.getName() == 'this' || local.getName() == 'console') {
+                continue;
+            }
+
+            if (local.getType() instanceof CallableType) {
+                continue;
+            }
+
+            if (!local.getDeclaringStmt()) {
                 continue;
             }
                                 

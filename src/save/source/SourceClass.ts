@@ -61,6 +61,9 @@ export class SourceClass extends SourceBase{
             this.printer.writeIndent()
                 .writeSpace(this.modifiersToString(field.getModifiers()))
                 .write(field.getName());
+            if (field.getQuestionToken()) {
+                this.printer.write('?');
+            }
 
             // property.getInitializer() PropertyAccessExpression ArrowFunction ClassExpression FirstLiteralToken StringLiteral 
             // TODO: Initializer not ready

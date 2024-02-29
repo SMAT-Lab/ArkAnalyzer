@@ -66,10 +66,18 @@
 //     (agcDataBase as Database).collection(Post).upsert(post);
 // }
 
-function testArrayUses(): void {
-    let a = [1, 2, 3];
-    a[1] = a[2];
-}
+// function testArrayUses(): void {
+//     let a = [1, 2, 3];
+//     a[1] = a[2];
+// }
+
+// function testNewArray(): void {
+//     // let a = new Array(1, 2, 3);
+//     // let b = new Array(1);
+//     // let c = new Array('1');
+
+//     let d:number[] = new Array(1);
+// }
 
 // class Test {
 //     // public func1(): number {

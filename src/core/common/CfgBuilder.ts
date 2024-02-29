@@ -8,10 +8,12 @@ import { ArkAssignStmt, ArkDeleteStmt, ArkGotoStmt, ArkIfStmt, ArkInvokeStmt, Ar
 import {
     AnnotationNamespaceType,
     AnnotationTypeQueryType,
+    AnyType,
     ArrayObjectType,
     ArrayType,
     CallableType,
     ClassType,
+    NumberType,
     StringType,
     TupleType,
     Type,
@@ -27,7 +29,6 @@ import { ClassSignature, FieldSignature, MethodSignature, MethodSubSignature } f
 import { ExportInfo } from './ExportBuilder';
 import { IRUtils } from './IRUtils';
 import { TypeInference } from './TypeInference';
-import { ValueUtil } from './ValueUtil';
 
 
 class StatementBuilder {
@@ -1968,28 +1969,42 @@ export class CfgBuilder {
         else if (node.kind == "NewExpression") {
             const className = node.children[1].text;
             if (className == 'Array') {
-                let baseType: Type = UnknownType.getInstance();
+                let baseType: Type = AnyType.getInstance();
                 if (this.findChildIndex(node, 'FirstBinaryOperator') != -1) {
                     const baseTypeNode = node.children[this.findChildIndex(node, 'FirstBinaryOperator') + 1];
                     baseType = this.getTypeNode(baseTypeNode);
                 }
                 let size: number = 0;
-                let sizeSyntaxListNode = node.children[this.findChildIndex(node, 'OpenParenToken') + 1];
-                let sizeNodes = this.getSyntaxListItems(sizeSyntaxListNode);
-                for (const sizeNode of sizeNodes) {
-                    if (sizeNode.kind == 'FirstLiteralToken') {
-                        size = parseInt(sizeNode.text);
+                let sizeValue: Value | null = null;
+                const argSyntaxListNode = node.children[this.findChildIndex(node, 'OpenParenToken') + 1];
+                const argNodes = this.getSyntaxListItems(argSyntaxListNode);
+                const items: Constant[] = [];
+                if (argNodes.length == 1 && argNodes[0].kind == 'FirstLiteralToken') {
+                    size = parseInt(argNodes[0].text);
+                } else if (argNodes.length == 1 && argNodes[0].kind == 'Identifier') {
+                    size = -1;
+                    sizeValue = this.getOriginalLocal(new Local(argNodes[0].text), false);
+                } else if (argNodes.length >= 1) {
+                    size = argNodes.length;
+                    if (baseType == AnyType.getInstance()) {
+                        baseType = TypeInference.buildTypeFromStr(this.resolveKeywordType(argNodes[0]));
+                    }
+                    for (const sizeNode of argNodes) {
+                        items.push(new Constant(sizeNode.text, baseType));
                     }
                 }
-                let newArrayExpr = new ArkNewArrayExpr(baseType, new Constant(size.toString()));
+
+                if (sizeValue == null) {
+                    sizeValue = new Constant(size.toString(), NumberType.getInstance());
+                }
+                let newArrayExpr = new ArkNewArrayExpr(baseType, sizeValue);
                 value = this.generateAssignStmt(newArrayExpr);
                 value.setType(new ArrayObjectType(baseType, 1));
 
-                for (let index = 0; index < size; index++) {
+                for (let index = 0; index < items.length; index++) {
                     let arrayRef = new ArkArrayRef(value, new Constant(index.toString()));
-                    const arrayItem = ValueUtil.getDefaultInstance(baseType);
+                    const arrayItem = items[index];
                     this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(arrayRef, arrayItem));
-                    index++;
                 }
             } else {
                 let classSignature = new ClassSignature();
@@ -2246,7 +2261,7 @@ export class CfgBuilder {
                 let incrementorNode = node.children[incrementorIdx];
                 this.astNodeToThreeAddressStmt(incrementorNode);
             }
-        } else if (node.kind == "ForOfStatement" || node.kind == "ForInStatement") {
+        } else if (node.kind == "ForOfStatement") {
             // 暂时只支持数组遍历
             let varIdx = this.findChildIndex(node, 'OpenParenToken') + 1;
             let varNode = node.children[varIdx];
@@ -2258,16 +2273,36 @@ export class CfgBuilder {
             this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(lenghtLocal, new ArkLengthExpr(iterableValue)));
             let indexLocal = this.generateTempValue();
             this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(indexLocal, new Constant('0')));
-
-            let conditionExpr = new ArkConditionExpr(indexLocal, lenghtLocal, ' >= ');
-            this.current3ACstm.threeAddressStmts.push(new ArkIfStmt(conditionExpr));
-
             let varLocal = this.astNodeToValue(varNode);
             let arrayRef = new ArkArrayRef(iterableValue as Local, indexLocal);
             this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(varLocal, arrayRef));
 
+            let conditionExpr = new ArkConditionExpr(indexLocal, lenghtLocal, ' >= ');
+            this.current3ACstm.threeAddressStmts.push(new ArkIfStmt(conditionExpr));
             let incrExpr = new ArkBinopExpr(indexLocal, new Constant('1'), '+');
             this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(indexLocal, incrExpr));
+            this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(varLocal, arrayRef));
+        } else if (node.kind == "ForInStatement") {
+                // 暂时只支持数组遍历
+                let varIdx = this.findChildIndex(node, 'OpenParenToken') + 1;
+                let varNode = node.children[varIdx];
+                let iterableIdx = varIdx + 2;
+                let iterableNode = node.children[iterableIdx];
+    
+                let iterableValue = this.astNodeToValue(iterableNode);
+                let lenghtLocal = this.generateTempValue();
+                this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(lenghtLocal, new ArkLengthExpr(iterableValue)));
+                let indexLocal = this.generateTempValue();
+                this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(indexLocal, new Constant('0')));
+                let varLocal = this.astNodeToValue(varNode);
+                this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(varLocal, indexLocal));
+    
+                let conditionExpr = new ArkConditionExpr(indexLocal, lenghtLocal, ' >= ');
+                this.current3ACstm.threeAddressStmts.push(new ArkIfStmt(conditionExpr));
+
+                let incrExpr = new ArkBinopExpr(indexLocal, new Constant('1'), '+');
+                this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(indexLocal, incrExpr));
+                this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(varLocal, indexLocal));
         } else if (node.kind == "WhileStatement" || node.kind == "DoStatement") {
             let conditionIdx = this.findChildIndex(node, 'OpenParenToken') + 1;
             let conditionExprNode = node.children[conditionIdx];

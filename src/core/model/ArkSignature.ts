@@ -4,8 +4,8 @@ import { ClassType, Type, UnknownType } from '../base/Type';
 import { MethodParameter } from '../common/MethodInfoBuilder';
 
 export class FileSignature {
-    private projectName: string = "";
-    private fileName: string = "";
+    private projectName: string = "_UnkownProjectName";
+    private fileName: string = "_UnkownFileName";
 
     constructor() { }
 

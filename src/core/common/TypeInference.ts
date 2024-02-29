@@ -147,6 +147,9 @@ export class TypeInference {
                     } else if (rightOp instanceof ArkInstanceFieldRef) {
                         if (arkMethod == null)
                             return;
+                        if (!(rightOp.getBase().getType() instanceof ClassType)) {
+                            return;
+                        }
                         const classSignature = rightOp.getBase().getType() as ClassType
                         let classInstance = ModelUtils.getClassWithClassSignature(
                             classSignature.getClassSignature(), arkMethod.getDeclaringArkFile().getScene()
@@ -157,7 +160,7 @@ export class TypeInference {
                         }
                         let fieldInstance = ModelUtils.getFieldInClassWithName(
                             rightOp.getFieldName(), classInstance
-                            )
+                        )
                         if (fieldInstance == null) {
                             console.log("Get Field Instance error")
                             return
