@@ -76,15 +76,15 @@ export class ImportInfo {
             if (key == 'ohos' || key == 'kit' || key == 'system') {
                 const pathReg2 = new RegExp(`@(${key})\\.`);
                 if (pathReg2.test(this.importFrom)) {
-                    let tmpSig = '@' + key + '/' + this.importFrom + ':';
-                    this.importFromSignature2Str = `<${tmpSig}>`;
+                    let tmpSig = '@' + key + '/' + this.importFrom + ': ';
+                    this.importFromSignature2Str = tmpSig;
                 }
             }
             // e.g. @ArkAnalyzer/
             else {
                 const pathReg3 = new RegExp(`@(${key})\\/`);
                 if (pathReg3.test(this.importFrom)) {
-                    this.importFromSignature2Str = this.importFrom;
+                    this.importFromSignature2Str = this.importFrom + ': ';
                 }
             }
         });
