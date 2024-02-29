@@ -52,6 +52,6 @@ export abstract class SourceBase {
             return name.replace('Set-', 'set ');
         }
         return name;
-    }
+    }   
 }
 

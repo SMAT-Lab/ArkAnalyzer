@@ -1,15 +1,12 @@
-// import { funcAA1 } from "./AA";
+import { AA as B,funcAA1 as fb, funcAA2 } from "./AA";
 
-// function importType() {
-//     const a = new n1.n3.c3();
-//     const b = new A();
-//     const c = funcA1();
-//     const m = new M();
-// }
+function importType() {
+    const a = new B();
+}
 
-// class M {
-//     constructor() { }
-// }
+class M {
+    constructor() { }
+}
 
 
 

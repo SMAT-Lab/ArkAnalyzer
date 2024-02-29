@@ -1,8 +1,8 @@
 import ts from "typescript";
-import { LiteralType, Type, TypeLiteralType, UnclearType, UnionType, UnknownType } from "../core/base/Type";
+import { LiteralType, Type, TypeLiteralType, UnclearReferenceType, UnionType, UnknownType } from "../core/base/Type";
 import { TypeInference } from "../core/common/TypeInference";
-import { MethodParameter } from "../core/common/MethodInfoBuilder";
-import { buildProperty2ArkField } from "../core/common/ClassBuilder";
+import { MethodParameter, ObjectBindingPatternParameter } from "../core/common/MethodInfoBuilder";
+import { buildIndexSignature2ArkField, buildProperty2ArkField } from "../core/common/ClassBuilder";
 import { ArkField } from "../core/model/ArkField";
 
 export function handleQualifiedName(node: ts.QualifiedName): string {
@@ -106,6 +106,40 @@ export function buildParameters(node: ts.FunctionDeclaration | ts.MethodDeclarat
         if (ts.isIdentifier(parameter.name)) {
             methodParameter.setName(parameter.name.escapedText.toString());
         }
+        else if (ts.isObjectBindingPattern(parameter.name)) {
+            methodParameter.setName("ObjectBindingPattern");
+            let elements: ObjectBindingPatternParameter[] = [];
+            parameter.name.elements.forEach((element) => {
+                let paraElement = new ObjectBindingPatternParameter();
+                if (element.propertyName) {
+                    if (ts.isIdentifier(element.propertyName)) {
+                        paraElement.setPropertyName(element.propertyName.escapedText.toString());
+                    }
+                    else {
+                        console.log("New propertyName of ObjectBindingPattern found, please contact developers to support this!");
+                    }
+                }
+
+                if (element.name) {
+                    if (ts.isIdentifier(element.name)) {
+                        paraElement.setName(element.name.escapedText.toString());
+                    }
+                    else {
+                        console.log("New name of ObjectBindingPattern found, please contact developers to support this!");
+                    }
+                }
+
+                if (element.initializer) {
+                    console.log("TODO: support ObjectBindingPattern initializer.");
+                }
+
+                if (element.dotDotDotToken) {
+                    paraElement.setOptional(true);
+                }
+                elements.push(paraElement);
+            });
+            methodParameter.setElements(elements);
+        }
         else {
             console.log("Parameter name is not identifier, please contact developers to support this!");
         }
@@ -117,12 +151,12 @@ export function buildParameters(node: ts.FunctionDeclaration | ts.MethodDeclarat
                 let referenceNodeName = parameter.type.typeName;
                 if (ts.isQualifiedName(referenceNodeName)) {
                     let parameterTypeStr = handleQualifiedName(referenceNodeName as ts.QualifiedName);
-                    let parameterType = new UnclearType(parameterTypeStr);
+                    let parameterType = new UnclearReferenceType(parameterTypeStr);
                     methodParameter.setType(parameterType);
                 }
                 else if (ts.isIdentifier(referenceNodeName)) {
                     let parameterTypeStr = (referenceNodeName as ts.Identifier).escapedText.toString();
-                    let parameterType = new UnclearType(parameterTypeStr);
+                    let parameterType = new UnclearReferenceType(parameterTypeStr);
                     methodParameter.setType(parameterType);
                 }
             }
@@ -137,7 +171,7 @@ export function buildParameters(node: ts.FunctionDeclaration | ts.MethodDeclarat
                         else if (ts.isIdentifier(tmpType.typeName)) {
                             parameterType = tmpType.typeName.escapedText.toString();
                         }
-                        unionTypePara.push(new UnclearType(parameterType));
+                        unionTypePara.push(new UnclearReferenceType(parameterType));
                     }
                     else if (ts.isLiteralTypeNode(tmpType)) {
                         unionTypePara.push(buildTypeFromPreStr(ts.SyntaxKind[tmpType.literal.kind]));
@@ -156,6 +190,9 @@ export function buildParameters(node: ts.FunctionDeclaration | ts.MethodDeclarat
                 parameter.type.members.forEach((member) => {
                     if (ts.isPropertySignature(member)) {
                         members.push(buildProperty2ArkField(member));
+                    }
+                    else if (ts.isIndexSignatureDeclaration(member)) {
+                        members.push(buildIndexSignature2ArkField(member));
                     }
                     else {
                         console.log("Please contact developers to support new TypeLiteral member!");
@@ -223,11 +260,24 @@ export function buildParameters(node: ts.FunctionDeclaration | ts.MethodDeclarat
 export function buildReturnType4Method(node: ts.FunctionDeclaration | ts.MethodDeclaration |
     ts.ConstructorDeclaration | ts.ArrowFunction | ts.AccessorDeclaration |
     ts.FunctionExpression | ts.MethodSignature | ts.ConstructSignatureDeclaration |
-    ts.CallSignatureDeclaration) {
+    ts.CallSignatureDeclaration | ts.IndexSignatureDeclaration) {
     if (node.type) {
         if (ts.isTypeLiteralNode(node.type)) {
-            console.log("Return type is TypeLiteral, please contact developers to add support for this!");
-            return new UnknownType();
+            let members: ArkField[] = [];
+            node.type.members.forEach((member) => {
+                if (ts.isPropertySignature(member)) {
+                    members.push(buildProperty2ArkField(member));
+                }
+                else if (ts.isIndexSignatureDeclaration(member)) {
+                    members.push(buildIndexSignature2ArkField(member));
+                }
+                else {
+                    console.log("Please contact developers to support new TypeLiteral member!");
+                }
+            });
+            let type = new TypeLiteralType();
+            type.setMembers(members);
+            return type;
             /* for (let member of node.type.members) {
                 let memberType = (member as ts.PropertySignature).type;
                 if (memberType) {
@@ -244,7 +294,10 @@ export function buildReturnType4Method(node: ts.FunctionDeclaration | ts.MethodD
             else if (ts.isIdentifier(referenceNodeName)) {
                 typeName = referenceNodeName.escapedText.toString();
             }
-            return new UnclearType(typeName);
+            else {
+                console.log("New type of referenceNodeName found! Please contact developers to support this.");
+            }
+            return new UnclearReferenceType(typeName);
             /* let referenceNodeName = node.type.typeName;
             if (ts.isQualifiedName(referenceNodeName)) {
                 returnType.push(handleQualifiedName(referenceNodeName));
@@ -257,8 +310,20 @@ export function buildReturnType4Method(node: ts.FunctionDeclaration | ts.MethodD
             let unionType: Type[] = [];
             node.type.types.forEach((tmpType) => {
                 if (ts.isTypeReferenceNode(tmpType)) {
-                    console.log("Union return type contains TypeReference, please contact developers to add support for this!");
-                    return new UnknownType();
+                    let typeName = "";
+                    if (ts.isIdentifier(tmpType.typeName)) {
+                        typeName = tmpType.typeName.escapedText.toString();
+                    }
+                    else if (ts.isQualifiedName(tmpType.typeName)) {
+                        typeName = handleQualifiedName(tmpType.typeName);
+                    }
+                    else if (ts.isTypeLiteralNode(tmpType.typeName)) {
+                        console.log("Type name is TypeLiteral, please contact developers to add support for this!");
+                    }
+                    else {
+                        console.log("New type name of TypeReference in UnionType.");
+                    }
+                    unionType.push(new UnclearReferenceType(typeName));
                 }
                 else if (ts.isLiteralTypeNode(tmpType)) {
                     let literalType: LiteralType = new LiteralType(ts.SyntaxKind[tmpType.literal.kind]);

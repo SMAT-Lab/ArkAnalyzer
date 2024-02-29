@@ -13,7 +13,7 @@ import {
     NullType,
     NumberType,
     StringType,
-    Type, UnclearType,
+    Type, UnclearReferenceType,
     UndefinedType,
     UnionType,
     UnknownType,
@@ -43,14 +43,12 @@ export class TypeInference {
                 TypeInference.inferTypeInStmt(stmt, arkMethod);
             }
         }
-        // console.log(arkMethod.getBody().getLocals())
     }
 
     /** resolve symbol that is uncertain when build stmts, such as class' name and function's name */
     private resolveSymbolInStmt(stmt: Stmt, arkMethod: ArkMethod): void {
         const exprs = stmt.getExprs();
         for (const expr of exprs) {
-            // console.log("\t"+expr.getType())
             if (expr instanceof ArkNewExpr) {
                 let classType = expr.getType() as ClassType;
                 const className = classType.getClassSignature().getClassName();
@@ -87,8 +85,6 @@ export class TypeInference {
                     continue;
                 }
                 expr.setMethodSignature(method.getSignature());
-            } else if (expr instanceof ArkParameterRef) {
-                // console.log(expr.toString())
             }
         }
 
@@ -122,32 +118,57 @@ export class TypeInference {
             const leftOp = stmt.getLeftOp();
             if (leftOp instanceof Local) {
                 const leftOpType = leftOp.getType();
-                // console.log("\t"+leftOp.getName() + " " +leftOpType.toString())
                 if (leftOpType instanceof AnnotationType) {
                     if (arkMethod === null) {
                         return
                     }
                     let leftOpTypeString = leftOpType.getOriginType()
                     if (leftOpType instanceof AnnotationNamespaceType) {
-                        let namespaces = leftOpTypeString.split('.')
-                        if (namespaces.length === 1) {
-                            let classSignature = ModelUtils
-                                .getClassWithName(namespaces[0], arkMethod)
-                            if (classSignature === null) {
-                                leftOp.setType(stmt.getRightOp().getType())
-                            } else {
-                                leftOp.setType(new ClassType(classSignature.getSignature()))
-                            }
+                        let classSignature = ModelUtils.getClassWithName(leftOpTypeString, arkMethod)?.getSignature()
+                        if (classSignature === undefined) {
+                            leftOp.setType(stmt.getRightOp().getType())
+                        } else {
+                            leftOp.setType(new ClassType(classSignature))
                         }
                     }
                 } else if (leftOpType instanceof UnknownType) {
                     const rightOp = stmt.getRightOp();
-                    leftOp.setType(rightOp.getType());
+                    if (rightOp instanceof ArkParameterRef) {
+                        if (rightOp.getType() instanceof UnclearReferenceType) {
+                            if (arkMethod == null)
+                                return
+                            let classSignature = ModelUtils.getClassWithName(rightOp.getType().toString(), arkMethod)?.getSignature();
+                            if (classSignature === undefined) {
+                                leftOp.setType(stmt.getRightOp().getType())
+                            } else {
+                                leftOp.setType(new ClassType(classSignature))
+                            }
+                        }
+                    } else if (rightOp instanceof ArkInstanceFieldRef) {
+                        if (arkMethod == null)
+                            return;
+                        if (!(rightOp.getBase().getType() instanceof ClassType)) {
+                            return;
+                        }
+                        const classSignature = rightOp.getBase().getType() as ClassType
+                        let classInstance = ModelUtils.getClassWithClassSignature(
+                            classSignature.getClassSignature(), arkMethod.getDeclaringArkFile().getScene()
+                        );
+                        if (classInstance == null)
+                            return
+                        let fieldInstance = ModelUtils.getFieldInClassWithName(
+                            rightOp.getFieldName(), classInstance
+                        )
+                        if (fieldInstance == null)
+                            return
+                        leftOp.setType(fieldInstance.getType())
+                    } else {
+                        leftOp.setType(rightOp.getType());
+                    }
                 } else if (leftOpType instanceof UnionType) {
                     const rightOp = stmt.getRightOp();
                     leftOpType.setCurrType(rightOp.getType());
-                } else if (leftOpType instanceof UnclearType) {
-                    // console.log("UnclearType "+leftOpType.toString())
+                } else if (leftOpType instanceof UnclearReferenceType) {
                 }
             }
         }

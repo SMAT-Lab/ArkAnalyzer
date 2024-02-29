@@ -71,6 +71,7 @@ export abstract class AbstractCallGraphAlgorithm {
      */
     public processMethod(sourceMethodSignature: MethodSignature): MethodSignature[] {
         // let cfg: Cfg = this.scene.getMethod(sourceMethodSignature).getCFG();
+        // console.log("CallGraph SourceMethodSignature: "+sourceMethodSignature.toString())
         let invocationTargets: MethodSignature[] = []
         let cfg: Cfg | undefined = this.scene.getMethod(sourceMethodSignature)?.getBody().getCfg()
         if (typeof cfg == "undefined")

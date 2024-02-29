@@ -155,16 +155,17 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
                                 arkFileName: string,
                                 sourceMethodSignature: MethodSignature) {
         let arkFile = getArkFileByName(arkFileName, this.scene.scene)
-        let callName = extractLastBracketContent(invokeExpr.getMethodSignature().toString())
-        // console.log(invokeExpr.getMethodSignature().toString())
+        let callName = invokeExpr.getMethodSignature().getMethodSubSignature().getMethodName()
+        console.log(invokeExpr.getMethodSignature().toString())
         // console.log(callName)
         let methodName: string = callName
         let classAndArkFileNames: Set<[string, string]> = new Set<[string, string]>()
         let callMethods: ArkMethod[] = []
+        let sourceMethod = this.scene.getMethod(sourceMethodSignature)
 
         // TODO: 对于基本类型的一些固定方法，需要讨论是否可以给这些类创建一个ArkClass等，这样不需要改动这里的内容
         if (invokeExpr instanceof ArkInstanceInvokeExpr) {
-            // console.log("instance:   "+invokeExpr.getMethodSignature().toString())
+            console.log("instanceInvoke:   "+invokeExpr.getMethodSignature().toString())
             if (invokeExpr.getBase().getName() === "this") {
                 // 处理this调用
                 let currentClass = this.scene.getClass(sourceMethodSignature.getDeclaringClassSignature())
@@ -172,6 +173,7 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
             } else {
                 let classCompleteType = invokeExpr.getBase().getType() // a| b |c
                 let classAllType = splitType(classCompleteType.toString(), '|') // [a, b, c]
+                //TODO: 这里多类型修改为UnionType需要进行适配，需要确认是否可以适配getClassWithName()方法
                 for (let classSingleType of classAllType) {
                     let lastDotIndex = classSingleType.lastIndexOf('.')
                     classAndArkFileNames.add([classCompleteType.toString().substring(lastDotIndex + 1),
@@ -194,7 +196,6 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
                 }
             } else {
                 // 函数调用
-                // console.log(methodName)
                 let callFunction = this.resolveFunctionCall(arkFile!, methodName)
                 if (callFunction != null) {
                     if (!isItemRegistered<ArkMethod>(

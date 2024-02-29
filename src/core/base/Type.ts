@@ -43,7 +43,7 @@ export class UnknownType extends Type {
 
 
 /** unclear type */
-export class UnclearType extends Type {
+export class UnclearReferenceType extends Type {
     private name: string;
 
     constructor(name: string) {
@@ -277,6 +277,10 @@ export class ArrayType extends Type {
         return this.baseType;
     }
 
+    public getDimension(): number {
+        return this.dimension;
+    }
+
     public toString(): string {
         const strs: string[] = [];
         strs.push('(' + this.baseType.toString() + ')');
@@ -375,10 +379,18 @@ export class AnnotationNamespaceType extends AnnotationType {
     constructor(originType: string) {
         super(originType);
     }
+
+    public getOriginType(): string {
+        return super.getOriginType();
+    }
 }
 
 export class AnnotationTypeQueryType extends AnnotationType {
     constructor(originType: string) {
         super(originType);
+    }
+
+    public getOriginType(): string {
+        return super.getOriginType();
     }
 }
