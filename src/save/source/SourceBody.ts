@@ -8,10 +8,9 @@ import { DominanceFinder } from "../../core/graph/DominanceFinder";
 import { DominanceTree } from "../../core/graph/DominanceTree";
 import { ArkBody } from "../../core/model/ArkBody";
 import { ArkFile } from '../../core/model/ArkFile';
-import { ArkCodeBuffer } from "../ArkStream";
 import { SourceAssignStmt, SourceBreakStmt, SourceCaseStmt, SourceCompoundEndStmt, SourceContinueStmt, SourceElseStmt, SourceForStmt, SourceIfStmt, SourceInvokeStmt, SourceReturnStmt, SourceReturnVoidStmt, SourceSwitchStmt, SourceWhileStmt } from './SourceStmt';
-import { Value } from '../../core/base/Value';
-import { ClassType, UnknownType } from '../../core/base/Type';
+import { SourceBase } from './SourceBase';
+import { SourceUtils } from './SourceUtils';
 
 enum BlockType {
     NORMAL,
@@ -23,24 +22,27 @@ enum BlockType {
     IF_ELSE
 }
 
-export class SourceBody {
-    private printer: ArkCodeBuffer;
+export class SourceBody extends SourceBase {
+    
     private arkBody: ArkBody;
-    private isDefault: boolean;
     private stmts: Stmt[] = [];
     private dominanceTree: DominanceTree;
-    private arkFile: ArkFile;
     private blockTypes: Map<BasicBlock, BlockType>;
     private loopPath: Map<BasicBlock, Set<BasicBlock>>;
     
-    public constructor(indent: string, arkFile: ArkFile, arkBody: ArkBody, isDefault: boolean) {
-        this.arkFile = arkFile;
+    public constructor(indent: string, arkFile: ArkFile, arkBody: ArkBody) {
+        super(indent, arkFile);
         this.arkBody = arkBody;
-        this.isDefault = isDefault;
-        this.printer = new ArkCodeBuffer(indent);
         this.dominanceTree = new DominanceTree(new DominanceFinder(arkBody.getCfg()));
         this.identifyBlocks();
         this.buildSourceStmt();
+    }
+
+    public dumpOriginalCode(): string {
+        throw new Error('Method not implemented.');
+    }
+    public getLine(): number {
+        throw new Error('Method not implemented.');
     }
 
     public dump(): string {
@@ -271,15 +273,7 @@ export class SourceBody {
             if (local.getName() == 'this' || local.getName() == 'console') {
                 continue;
             }
-                    
-            let localType = local.getType();
-            let typeString = localType.toString();
-            if (localType instanceof ClassType) {
-                typeString = localType.getClassSignature().getClassName();
-            } else if (localType instanceof UnknownType) {
-                typeString = 'any';
-            }
-            
+                                
             // not define parameter
             if (local.getDeclaringStmt() instanceof ArkAssignStmt) {
                 let assignStmt:ArkAssignStmt = local.getDeclaringStmt() as ArkAssignStmt;
@@ -287,7 +281,7 @@ export class SourceBody {
                     continue;
                 }
             }
-            this.printer.writeIndent().writeLine(`let ${local.getName()}: ${typeString};`);
+            this.printer.writeIndent().writeLine(`let ${local.getName()}: ${SourceUtils.typeToString(local.getType())};`);
             console.log('SourceBody->printLocals:', local);
         }
     }
