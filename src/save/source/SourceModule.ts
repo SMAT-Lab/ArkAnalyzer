@@ -64,7 +64,11 @@ export class SourceImportInfo extends SourceBase{
             this.printer.writeIndent().writeLine(`import ${this.info.getImportClauseName()} from '${this.info.getImportFrom() as string}';`);
         } else if (this.info.getImportType() === 'NamedImports') {
             // import {xxx} from './yyy'
-            this.printer.writeIndent().writeLine(`import {${this.info.getImportClauseName()}} from '${this.info.getImportFrom() as string}';`);
+            if (this.info.getNameBeforeAs()) {
+                this.printer.writeIndent().writeLine(`import {${this.info.getNameBeforeAs()} as ${this.info.getImportClauseName()}} from '${this.info.getImportFrom() as string}';`);
+            } else {
+                this.printer.writeIndent().writeLine(`import {${this.info.getImportClauseName()}} from '${this.info.getImportFrom() as string}';`);
+            }
         } else if (this.info.getImportType() === 'NamespaceImport') {
             // import * as ts from 'typescript'
             this.printer.writeIndent().writeLine(`import * as ${this.info.getImportClauseName()} from '${this.info.getImportFrom() as string}';`);
