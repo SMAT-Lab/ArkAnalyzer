@@ -1639,7 +1639,7 @@ export class CfgBuilder {
 
 
     private generateTempValue(): Local {
-        let tempLeftOpName = "#temp" + this.tempVariableNum;
+        let tempLeftOpName = "$temp" + this.tempVariableNum;
         this.tempVariableNum++;
         let tempLeftOp = new Local(tempLeftOpName);
         this.locals.add(tempLeftOp);
@@ -1659,7 +1659,7 @@ export class CfgBuilder {
     }
 
     private objectLiteralNodeToLocal(objectLiteralNode: NodeA): Local {
-        let anonymousClassName = 'AnonymousClass#' + this.name + '#' + this.anonymousClassIndex;
+        let anonymousClassName = 'AnonymousClass$' + this.name + '$' + this.anonymousClassIndex;
         this.anonymousClassIndex++;
 
         // TODO: 解析类体
@@ -1889,7 +1889,7 @@ export class CfgBuilder {
         }
 
         else if (node.kind == "ArrowFunction") {
-            let arrowFuncName = 'AnonymousFunc#' + this.name + '#' + this.anonymousFuncIndex;
+            let arrowFuncName = 'AnonymousFunc$' + this.name + '$' + this.anonymousFuncIndex;
             if (node.methodNodeInfo) {
                 node.methodNodeInfo.updateName4anonymousFunc(arrowFuncName);
             }
