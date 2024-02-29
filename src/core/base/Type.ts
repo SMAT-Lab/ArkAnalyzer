@@ -182,7 +182,7 @@ export class UnionType extends Type {
 
     public toString(): string {
         let typeStr = this.types.join('|');
-        if (!(this.currType instanceof UnknownType)) {
+        if (!(this.currType instanceof UnknownType) && this.currType != this) {
             typeStr += '-' + this.currType
         }
         return typeStr;

@@ -2261,7 +2261,7 @@ export class CfgBuilder {
                 let incrementorNode = node.children[incrementorIdx];
                 this.astNodeToThreeAddressStmt(incrementorNode);
             }
-        } else if (node.kind == "ForOfStatement" || node.kind == "ForInStatement") {
+        } else if (node.kind == "ForOfStatement") {
             // 暂时只支持数组遍历
             let varIdx = this.findChildIndex(node, 'OpenParenToken') + 1;
             let varNode = node.children[varIdx];
@@ -2273,16 +2273,36 @@ export class CfgBuilder {
             this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(lenghtLocal, new ArkLengthExpr(iterableValue)));
             let indexLocal = this.generateTempValue();
             this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(indexLocal, new Constant('0')));
-
-            let conditionExpr = new ArkConditionExpr(indexLocal, lenghtLocal, ' >= ');
-            this.current3ACstm.threeAddressStmts.push(new ArkIfStmt(conditionExpr));
-
             let varLocal = this.astNodeToValue(varNode);
             let arrayRef = new ArkArrayRef(iterableValue as Local, indexLocal);
             this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(varLocal, arrayRef));
 
+            let conditionExpr = new ArkConditionExpr(indexLocal, lenghtLocal, ' >= ');
+            this.current3ACstm.threeAddressStmts.push(new ArkIfStmt(conditionExpr));
             let incrExpr = new ArkBinopExpr(indexLocal, new Constant('1'), '+');
             this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(indexLocal, incrExpr));
+            this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(varLocal, arrayRef));
+        } else if (node.kind == "ForInStatement") {
+                // 暂时只支持数组遍历
+                let varIdx = this.findChildIndex(node, 'OpenParenToken') + 1;
+                let varNode = node.children[varIdx];
+                let iterableIdx = varIdx + 2;
+                let iterableNode = node.children[iterableIdx];
+    
+                let iterableValue = this.astNodeToValue(iterableNode);
+                let lenghtLocal = this.generateTempValue();
+                this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(lenghtLocal, new ArkLengthExpr(iterableValue)));
+                let indexLocal = this.generateTempValue();
+                this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(indexLocal, new Constant('0')));
+                let varLocal = this.astNodeToValue(varNode);
+                this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(varLocal, indexLocal));
+    
+                let conditionExpr = new ArkConditionExpr(indexLocal, lenghtLocal, ' >= ');
+                this.current3ACstm.threeAddressStmts.push(new ArkIfStmt(conditionExpr));
+
+                let incrExpr = new ArkBinopExpr(indexLocal, new Constant('1'), '+');
+                this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(indexLocal, incrExpr));
+                this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(varLocal, indexLocal));
         } else if (node.kind == "WhileStatement" || node.kind == "DoStatement") {
             let conditionIdx = this.findChildIndex(node, 'OpenParenToken') + 1;
             let conditionExprNode = node.children[conditionIdx];
