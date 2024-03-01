@@ -134,10 +134,11 @@ export class TypeInference {
                 } else if (leftOpType instanceof UnknownType) {
                     const rightOp = stmt.getRightOp();
                     if (rightOp instanceof ArkParameterRef) {
-                        if (rightOp.getType() instanceof UnclearReferenceType) {
+                        let rightOpType = rightOp.getType()
+                        if (rightOpType instanceof UnclearReferenceType) {
                             if (arkMethod == null)
                                 return
-                            let classSignature = ModelUtils.getClassWithName(rightOp.getType().toString(), arkMethod)?.getSignature();
+                            let classSignature = ModelUtils.getClassWithName(rightOpType.getName(), arkMethod)?.getSignature();
                             if (classSignature === undefined) {
                                 leftOp.setType(stmt.getRightOp().getType())
                             } else {
