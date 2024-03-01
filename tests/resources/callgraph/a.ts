@@ -19,10 +19,14 @@ export class Dog extends Animal {
         console.log("woof")
         let cat = new Cat()
         cat.sound()
+        this.sleep()
     }
 
     public static print() {
         console.log("waht")
+    }
+
+    public sleep() {
     }
 }
 
