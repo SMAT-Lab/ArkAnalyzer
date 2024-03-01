@@ -79,6 +79,32 @@
 //     let d:number[] = new Array(1);
 // }
 
+// function testConditionalOperator() {
+//     let a = true ? 1 : 0;
+//     let c = new Array(a);
+// }
+
+function testBlocksInOriginalCfg() {
+    let a = 10;
+    if (a < 10) {
+        a += 1;
+    } else {
+        a -= 1;
+    }
+    console.log(a);
+
+}
+
+// function testStmtPos(): void {
+//     let i = 0;
+// }
+
+// class Foo {
+//     public testStmtPosInClass(): void {
+//         let j = 1;
+//     }
+// }
+
 // class Test {
 //     // public func1(): number {
 //     //     return 0;
