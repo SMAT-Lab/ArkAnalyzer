@@ -29,15 +29,15 @@ export class CfgTest {
 
                     let originalCfg = arkBody.getOriginalCfg();
                     for (const origalstmt of originalCfg.getStmts()) {
-                        console.log(origalstmt.toString());
+                        console.log(origalstmt.toString()+', pos: '+origalstmt.getPositionInfo());
                     }
                     console.log();
                     console.log('-- threeAddresStmts:');
                     let cfg = arkBody.getCfg();
                     for (const threeAddresStmt of cfg.getStmts()) {
-                        console.log(threeAddresStmt.toString());
-                        // console.log(threeAddresStmt.toString(), ', original pos:', threeAddresStmt.getOriginPositionInfo(),
-                        //     ', pos:', threeAddresStmt.getPositionInfo());
+                        // console.log(threeAddresStmt.toString());
+                        console.log(threeAddresStmt.toString(), ', original pos:', threeAddresStmt.getOriginPositionInfo(),
+                            ', pos:', threeAddresStmt.getPositionInfo());
                         // console.log('- use');
                         
                         // console.log(threeAddresStmt.getUses());
