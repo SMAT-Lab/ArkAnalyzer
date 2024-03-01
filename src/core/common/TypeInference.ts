@@ -153,14 +153,18 @@ export class TypeInference {
                         const classSignature = rightOp.getBase().getType() as ClassType
                         let classInstance = ModelUtils.getClassWithClassSignature(
                             classSignature.getClassSignature(), arkMethod.getDeclaringArkFile().getScene()
-                        );
-                        if (classInstance == null)
+                        )
+                        if (classInstance == null) {
+                            console.log("Get Class Instance error")
                             return
+                        }
                         let fieldInstance = ModelUtils.getFieldInClassWithName(
                             rightOp.getFieldName(), classInstance
                         )
-                        if (fieldInstance == null)
+                        if (fieldInstance == null) {
+                            console.log("Get Field Instance error")
                             return
+                        }
                         leftOp.setType(fieldInstance.getType())
                     } else {
                         leftOp.setType(rightOp.getType());

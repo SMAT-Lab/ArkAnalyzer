@@ -11,7 +11,7 @@ function run(config: SceneConfig) {
     let scene: Scene = new Scene(config);
     let printer: PrinterBuilder = new PrinterBuilder();
     for (let f of scene.arkFiles) {
-        printer.dumpToDot(f);
+        //printer.dumpToDot(f);
         printer.dumpToTs(f);
     }
 }

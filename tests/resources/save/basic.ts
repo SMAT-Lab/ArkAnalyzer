@@ -172,7 +172,7 @@ export default 123;
 export let x:number = 1;
 export const soo = 123;
 export interface StringValidator {
-    isAcceptable(s: string): boolean;
+    isAcceptable(s?: string): boolean;
     color?: string;
     width?: number;
 }

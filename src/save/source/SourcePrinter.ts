@@ -1,9 +1,7 @@
 /*
  * TODO:
- * 1. Local:
- *  a) console 等全局函数被定义为local，如何区分？
  * 
- * 2. Method parameter:
+ * 1. Method parameter:
  *  a) default value 不支持
  *      source: move(distanceInMeters = 5)  
  *      parsed: move(distanceInMeters)
@@ -12,16 +10,13 @@
  *     constructor(public make: string, public model: string) {
  *     }
  * 
- * 3. Fileld:
+ * 2. Fileld:
  *  a) default value
  *      source: readonly numberOfLegs: number = 8; 
  *      parsed: readonly numberOfLegs:number;
  * 
- * 4. Stmt
- *  a) in 解析结果与of相同，与实际语法不同
- *  b) of 不支持Set()
  *   
- * 5. Enum
+ * 3. Enum
  *  a) 初始化不支持二元操作和函数调用
  *      enum FileAccess {
  *          // constant members
@@ -33,20 +28,7 @@
  *          G = "123".length
  *   }
  * 
- * 6. namespace
- *  a) 不支持Field定义
- *      namespace Validation {
- *          const lettersRegexp = /^[A-Za-z]+$/;
- *      }
- *  b) 不支持function定义
- *      namespace Validation {
- *          function test(): void {
- *              console.log('');
- *          }
- *      }
- * 
- * 7. ?非空检查未支持
- * 8. 泛型
+ * 4. 泛型
  *  a) field泛型<>类型丢失
  * class GenericNumber<T> {
  *     private methods: Set<string>;

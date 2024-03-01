@@ -7,8 +7,7 @@ export class TypeInferenceTest {
         // tests\\resources\\typeInference\\sample
         // tests\\resources\\typeInference\\moduleA
         // tests\\resources\\typeInference\\mainModule
-        // D:\\Codes\\resources\\SE4OpenHarmony-main
-        const config_path = "tests\\resources\\typeInference\\TypeInferenceTestConfig.json";
+        const config_path = "tests\\resources\\typeInference\\ProjectTypeInferenceTestConfig.json";
         let config: SceneConfig = new SceneConfig();
         config.buildFromJson(config_path);
         return new Scene(config);

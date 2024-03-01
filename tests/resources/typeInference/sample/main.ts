@@ -2,6 +2,7 @@ import { AA as B,funcAA1 as fb, funcAA2 } from "./AA";
 
 function importType() {
     const a = new B();
+    let b=fb();
 }
 
 class M {

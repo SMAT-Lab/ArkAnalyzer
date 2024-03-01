@@ -273,6 +273,10 @@ export class SourceBody {
             if (local.getType() instanceof CallableType) {
                 continue;
             }
+
+            if (!local.getDeclaringStmt()) {
+                continue;
+            }
                                 
             // not define parameter
             if (local.getDeclaringStmt() instanceof ArkAssignStmt) {

@@ -5,8 +5,8 @@ import {Cfg} from "../core/graph/Cfg";
 import {ArkInvokeStmt} from "../core/base/Stmt";
 
 export abstract class AbstractCallGraphAlgorithm {
-    private methods: Set<string>;
-    private calls: Map<string, string[]>;
+    private methods: Set<MethodSignature>;
+    private calls: Map<MethodSignature, MethodSignature[]>;
     private _signatureManager: MethodSignatureManager;
 
     get signatureManager(): MethodSignatureManager {
@@ -20,8 +20,8 @@ export abstract class AbstractCallGraphAlgorithm {
     }
 
     constructor(scene: Scene) {
-        this.methods = new Set<string>();
-        this.calls = new Map<string, string[]>();
+        this.methods = new Set<MethodSignature>();
+        this.calls = new Map<MethodSignature, MethodSignature[]>();
         this._signatureManager = new MethodSignatureManager();
         this._scene = new SceneManager();
         this._scene.scene = scene;
@@ -99,31 +99,31 @@ export abstract class AbstractCallGraphAlgorithm {
     protected abstract preProcessMethod(methodSignature: MethodSignature): void;
 
     protected addMethod(method: MethodSignature): void {
-        this.methods.add(method.toString());
+        this.methods.add(method);
     }
 
     protected hasMethod(method: MethodSignature): boolean {
-        return this.methods.has(method.toString());
+        return this.methods.has(method);
     }
 
     protected addCall(source: MethodSignature, target: MethodSignature): void {
-        if (this.calls.has(source.toString())) {
+        if (this.calls.has(source)) {
             // for (let call of this.calls.get())
-            if (!isItemRegistered<string>(
-                target.toString(), this.getCall(source),
+            if (!isItemRegistered<MethodSignature>(
+                target, this.getCall(source),
                 (a, b) =>
-                    a === b
+                    a.toString() === b.toString()
             )) {
                 // @ts-ignore
-                this.calls.get(source.toString()).push(target.toString());
+                this.calls.get(source).push(target);
             }
         } else {
-            this.calls.set(source.toString(), [target.toString()]);
+            this.calls.set(source, [target]);
         }
     }
 
-    protected getCall(source: MethodSignature): string[] {
-        let targetCalls =  this.calls.get(source.toString());
+    protected getCall(source: MethodSignature): MethodSignature[] {
+        let targetCalls =  this.calls.get(source);
         if (typeof targetCalls == "undefined")
             return []
         return targetCalls

@@ -5,7 +5,7 @@ import { ArkClass } from "../core/model/ArkClass";
 import { ArkFile } from "../core/model/ArkFile";
 import { ArkMethod } from "../core/model/ArkMethod";
 import { MethodSignature } from "../core/model/ArkSignature";
-import {extractLastBracketContent, isItemRegistered} from "../utils/callGraphUtils";
+import {isItemRegistered} from "../utils/callGraphUtils";
 import {getArkFileByName, matchClassInFile, searchImportMessage, splitType} from "../utils/typeReferenceUtils";
 import { AbstractCallGraphAlgorithm } from "./AbstractCallGraphAlgorithm";
 
@@ -15,7 +15,6 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
         let concreteMethod: ArkMethod;
         let callTargetMethods: MethodSignature[] = [];
         let invokeExpressionExpr = invokeExpression.getInvokeExpr()
-        // console.log(invokeExpression.toString())
 
         let methodsFromInvoke = this.resolveInvokeExpr(
             invokeExpressionExpr,
