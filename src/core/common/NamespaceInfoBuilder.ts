@@ -37,5 +37,8 @@ export function buildNamespaceInfo4NamespaceNode(node: ts.ModuleDeclaration): Na
     else if (ts.isStringLiteral(node.name)) {
         namespaceInfo.setName(node.name.text);
     }
+    else {
+        console.log("New namespace name type found. Please contact developers to add support for this!")
+    }
     return namespaceInfo;
 }

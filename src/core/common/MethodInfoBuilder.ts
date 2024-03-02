@@ -111,7 +111,6 @@ export function buildMethodInfo4MethodNode(node: ts.FunctionDeclaration | ts.Met
         name = node.name ? node.name.escapedText.toString() : '';
     }
     else if (ts.isMethodDeclaration(node) || ts.isMethodSignature(node)) {
-        //debugger;
         if (ts.isIdentifier(node.name)) {
             name = (node.name as ts.Identifier).escapedText.toString();
         }
