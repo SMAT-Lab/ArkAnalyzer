@@ -164,8 +164,6 @@ export class ArkFile {
     }
 
     public addNamespace(namespace: ArkNamespace) {
-        // this.classes.push(...namespace.getClasses());
-        // this.methods.push(...namespace.getMethods());
         this.namespaces.push(namespace);
     }
 
@@ -360,9 +358,6 @@ export function buildArkFileFromFile(absoluteFilePath: string, projectDir: strin
 function buildArkFile(arkFile: ArkFile) {
     let children = arkFile.getAst().root?.children;
     for (let child of children) {
-        if (notStmtOrExprKind.indexOf(child.kind) == -1) {
-            // TODO
-        }
         if (child.kind == 'ModuleDeclaration') {
             let ns: ArkNamespace = new ArkNamespace();
             ns.setDeclaringArkFile(arkFile);

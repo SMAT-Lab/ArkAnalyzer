@@ -60,8 +60,6 @@ export class ArkNamespace {
     }
 
     public addNamespace(namespace: ArkNamespace) {
-        // this.classes.push(...namespace.getClasses());
-        // this.methods.push(...namespace.getMethods());
         this.namespaces.push(namespace);
     }
 
@@ -432,13 +430,13 @@ function buildNamespaceMembers(nsNode: NodeA, namespace: ArkNamespace) {
     }
 }
 
-function genDefaultArkClass(nsNode: NodeA, ns: ArkNamespace) {
+function genDefaultArkClass(defaultClassNode: NodeA, ns: ArkNamespace) {
     let defaultClass = new ArkClass();
 
     /* // Deprecated
     defaultClass.setDeclaringSignature(ns.getArkSignature()); */
 
-    buildDefaultArkClassFromArkNamespace(nsNode, ns, defaultClass);
+    buildDefaultArkClassFromArkNamespace(defaultClassNode, ns, defaultClass);
     ns.setDefaultClass(defaultClass);
     ns.addArkClass(defaultClass);
 }

@@ -225,15 +225,15 @@ export class ArkClass {
     }
 }
 
-export function buildDefaultArkClassFromArkFile(clsNode: NodeA, arkFile: ArkFile, cls: ArkClass) {
-    cls.setDeclaringArkFile(arkFile);
-    buildDefaultArkClass(clsNode, cls);
+export function buildDefaultArkClassFromArkFile(defaultlassNode: NodeA, arkFile: ArkFile, defaultClass: ArkClass) {
+    defaultClass.setDeclaringArkFile(arkFile);
+    buildDefaultArkClass(defaultlassNode, defaultClass);
 }
 
-export function buildDefaultArkClassFromArkNamespace(clsNode: NodeA, arkNamespace: ArkNamespace, cls: ArkClass) {
-    cls.setDeclaringArkNamespace(arkNamespace);
-    cls.setDeclaringArkFile(arkNamespace.getDeclaringArkFile());
-    buildDefaultArkClass(clsNode, cls);
+export function buildDefaultArkClassFromArkNamespace(defaultClassNode: NodeA, arkNamespace: ArkNamespace, defaultClass: ArkClass) {
+    defaultClass.setDeclaringArkNamespace(arkNamespace);
+    defaultClass.setDeclaringArkFile(arkNamespace.getDeclaringArkFile());
+    buildDefaultArkClass(defaultClassNode, defaultClass);
 }
 
 export function buildNormalArkClassFromArkFile(clsNode: NodeA, arkFile: ArkFile, cls: ArkClass) {
@@ -251,10 +251,10 @@ export function buildNormalArkClassFromArkNamespace(clsNode: NodeA, arkNamespace
     buildNormalArkClass(clsNode, cls);
 }
 
-function buildDefaultArkClass(clsNode: NodeA, cls: ArkClass) {
+function buildDefaultArkClass(defaultClassNode: NodeA, cls: ArkClass) {
     cls.setName("_DEFAULT_ARK_CLASS");
     cls.genSignature();
-    genDefaultArkMethod(clsNode, cls);
+    genDefaultArkMethod(defaultClassNode, cls);
 }
 
 function buildNormalArkClass(clsNode: NodeA, cls: ArkClass) {
@@ -312,8 +312,8 @@ function buildNormalArkClass(clsNode: NodeA, cls: ArkClass) {
     }
 }
 
-function genDefaultArkMethod(clsNode: NodeA, cls: ArkClass) {
+function genDefaultArkMethod(defaultMethodNode: NodeA, cls: ArkClass) {
     let defaultMethod = new ArkMethod();
-    buildArkMethodFromArkClass(clsNode, cls, defaultMethod);
+    buildArkMethodFromArkClass(defaultMethodNode, cls, defaultMethod);
     cls.setDefaultArkMethod(defaultMethod);
 }

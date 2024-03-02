@@ -205,7 +205,6 @@ export function buildArkMethodFromArkClass(methodNode: NodeA, declaringClass: Ar
         mtd.setName("_DEFAULT_ARK_METHOD");
     }
     mtd.genSignature();
-
     if (methodNode.kind != "SyntaxList") {
         methodNode = methodNode.children[methodNode.children.length - 1].children[1];
     }
