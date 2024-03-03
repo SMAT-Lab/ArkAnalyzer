@@ -2,8 +2,8 @@
     "targetProjectName": "TypeInferenceTest",
     "targetProjectDirectory": "tests\\resources\\typeInference\\project",    
     
-    "ohosSdkPath": "codeLab\\interface_sdk-js-master\\api",
-    "kitSdkPath": "codeLab\\interface_sdk-js-master\\kits",
+    "ohosSdkPath": "",
+    "kitSdkPath": "",
     "systemSdkPath": "",
     
     "otherSdks": [

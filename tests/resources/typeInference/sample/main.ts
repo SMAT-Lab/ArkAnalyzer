@@ -5,8 +5,12 @@ function importType() {
     let b=fb();
 }
 
-class M {
+export class M {
     constructor() { }
+}
+
+export class m{
+
 }
 
 
