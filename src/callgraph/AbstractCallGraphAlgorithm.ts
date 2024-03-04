@@ -43,25 +43,22 @@ export abstract class AbstractCallGraphAlgorithm {
         this.signatureManager.workList = entryPoints
         while (this.signatureManager.workList.length != 0) {
             let methodSignature = this.signatureManager.workList.shift();
-            if (typeof methodSignature == "undefined")
+        
+            if (!this.checkMethodForAnalysis(methodSignature))
                 continue
-
-            if (this.signatureManager.findInProcessedList(methodSignature)) {
-                continue
-            }
             // 前处理，主要用于RTA
-            this.preProcessMethod(methodSignature);
+            this.preProcessMethod(methodSignature!);
             // 处理该function, method中的调用目标
-            let invokeTargets = this.processMethod(methodSignature)
+            let invokeTargets = this.processMethod(methodSignature!)
             // 将调用目标加入到workList
             for (let invokeTarget of invokeTargets) {
-                this.signatureManager.addToWorkList(invokeTarget);
+                this.signatureManager.addToWorkList(invokeTarget, this.scene.scene);
                 // console.log(invokeTarget)
-                this.addCall(methodSignature, invokeTarget)
+                this.addCall(methodSignature!, invokeTarget)
             }
             // 当前函数标记为已处理
-            this.signatureManager.addToProcessedList(methodSignature);
-            this.addMethod(methodSignature)
+            this.signatureManager.addToProcessedList(methodSignature!);
+            this.addMethod(methodSignature!)
         }
     }
 
@@ -149,5 +146,19 @@ export abstract class AbstractCallGraphAlgorithm {
             }
         }
         return [];
+    }
+
+    protected checkMethodForAnalysis(method: MethodSignature | undefined): Boolean {
+        if (typeof method == "undefined")
+            return false
+        if (this.signatureManager.findInProcessedList(method))
+            return false
+        for (let arkFile of this.scene.scene.getFiles()) {
+            if (arkFile.getFileSignature().toString ===
+             method.getDeclaringClassSignature().getDeclaringFileSignature().toString) {
+                return true
+             }
+        }
+        return false
     }
 }

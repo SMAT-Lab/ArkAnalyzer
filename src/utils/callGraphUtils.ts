@@ -33,13 +33,18 @@ export class MethodSignatureManager {
         return typeof result !== "undefined";
     }
 
-    public addToWorkList(signature: MethodSignature): void {
+    public addToWorkList(signature: MethodSignature, scene: Scene): void {
         if (!isItemRegistered<MethodSignature>(
             signature, this.workList,
             (a, b) =>
                 a.toString() === b.toString()
         )) {
-            this.workList.push(signature);
+            for (let projectFile of scene.arkFiles) {
+                if (projectFile.getFileSignature().toString() === 
+                signature.getDeclaringClassSignature().getDeclaringFileSignature().toString()) {
+                    this.workList.push(signature);
+                }
+            }
         }
     }
 
