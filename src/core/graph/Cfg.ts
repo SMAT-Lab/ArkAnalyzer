@@ -70,10 +70,10 @@ export class Cfg {
 
     buildDefUseChain() {
         const locals: Set<Local> = new Set();
-        let i=0;
+        // let i=0;
         for (const block of this.blocks) {
-            console.log(i)
-            i++;
+            // console.log(i)
+            // i++;
             for (let stmtIndex = 0; stmtIndex < block.getStmts().length; stmtIndex++) {
                 const stmt = block.getStmts()[stmtIndex];
                 // 填declareStmt
