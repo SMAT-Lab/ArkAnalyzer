@@ -46,17 +46,16 @@ export abstract class AbstractCallGraphAlgorithm {
         
             if (!this.checkMethodForAnalysis(methodSignature))
                 continue
-            // 前处理，主要用于RTA
+            // pre process for RTA only
             this.preProcessMethod(methodSignature!);
-            // 处理该function, method中的调用目标
+            // process the function and get the invoke targets of current function
             let invokeTargets = this.processMethod(methodSignature!)
-            // 将调用目标加入到workList
+            // add invoke targets to workList
             for (let invokeTarget of invokeTargets) {
                 this.signatureManager.addToWorkList(invokeTarget, this.scene.scene);
-                // console.log(invokeTarget)
                 this.addCall(methodSignature!, invokeTarget)
             }
-            // 当前函数标记为已处理
+            // mark the current function as Processed
             this.signatureManager.addToProcessedList(methodSignature!);
             this.addMethod(methodSignature!)
         }
@@ -68,23 +67,21 @@ export abstract class AbstractCallGraphAlgorithm {
      * @param sourceMethodSignature
      */
     public processMethod(sourceMethodSignature: MethodSignature): MethodSignature[] {
-        // let cfg: Cfg = this.scene.getMethod(sourceMethodSignature).getCFG();
-        // console.log("CallGraph SourceMethodSignature: "+sourceMethodSignature.toString())
         let invocationTargets: MethodSignature[] = []
         let cfg: Cfg | undefined = this.scene.getMethod(sourceMethodSignature)?.getBody().getCfg()
-        if (typeof cfg == "undefined")
-            return invocationTargets
-        for (let stmt of cfg.getStmts()) {
-            if (stmt instanceof ArkInvokeStmt) {
-                // Process the invocation statement using CHA (Class Hierarchy Analysis) and RTA (Rapid Type Analysis).
-                let invocationTargetsOfSingleMethod = this.resolveCall(sourceMethodSignature, stmt)
-                for (let invocationTarget of invocationTargetsOfSingleMethod) {
-                    if (!isItemRegistered<MethodSignature>(
-                        invocationTarget, invocationTargets,
-                        (a, b) =>
-                            a.toString() === b.toString()
-                    )) {
-                        invocationTargets.push(invocationTarget)
+        if (typeof cfg !== "undefined") {
+            for (let stmt of cfg.getStmts()) {
+                if (stmt instanceof ArkInvokeStmt) {
+                    // Process the invocation statement using CHA (Class Hierarchy Analysis) and RTA (Rapid Type Analysis).
+                    let invocationTargetsOfSingleMethod = this.resolveCall(sourceMethodSignature, stmt)
+                    for (let invocationTarget of invocationTargetsOfSingleMethod) {
+                        if (!isItemRegistered<MethodSignature>(
+                            invocationTarget, invocationTargets,
+                            (a, b) =>
+                                a.toString() === b.toString()
+                        )) {
+                            invocationTargets.push(invocationTarget)
+                        }
                     }
                 }
             }
@@ -103,7 +100,12 @@ export abstract class AbstractCallGraphAlgorithm {
     }
 
     protected hasMethod(method: MethodSignature): boolean {
-        return this.methods.has(method);
+        for (let methodOfList of this.methods) {
+            if (method.toString() === methodOfList.toString()) {
+                return true
+            }
+        }
+        return false;
     }
 
     protected addCall(source: MethodSignature, target: MethodSignature): void {
