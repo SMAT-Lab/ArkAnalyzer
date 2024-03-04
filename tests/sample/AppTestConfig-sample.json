@@ -1,6 +1,6 @@
 {
     "targetProjectName": "sample",
-    "targetProjectDirectory": "C:\\msys64\\home\\Yifei\\code\\ArkAnalyzer\\tests\\sample",
+    "targetProjectDirectory": "./tests/sample",
     
     "ohosSdkPath": "",
     "kitSdkPath": "",

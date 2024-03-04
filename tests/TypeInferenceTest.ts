@@ -21,9 +21,9 @@ export class TypeInferenceTest {
             console.log('=============== arkFile:', arkFile.getName(), ' ================');
             for (const arkClass of arkFile.getClasses()) {
                 for (const arkMethod of arkClass.getMethods()) {
-                    if (arkMethod.getName() == '_DEFAULT_ARK_METHOD') {
-                        continue;
-                    }
+                    // if (arkMethod.getName() == '_DEFAULT_ARK_METHOD') {
+                    //     continue;
+                    // }
                     console.log('*** arkMethod: ', arkMethod.getName());
 
                     const body = arkMethod.getBody();

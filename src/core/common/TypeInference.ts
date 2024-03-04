@@ -58,7 +58,14 @@ export class TypeInference {
                 }
             } else if (expr instanceof ArkInstanceInvokeExpr) {
                 const base = expr.getBase();
-                const type = base.getType();
+                let type = base.getType();
+                // if (type instanceof UnknownType){
+                //     const arkClass = ModelUtils.getClassWithName(base.getName(), arkMethod);
+                //     if (arkClass){
+                //         type = new ClassType(arkClass.getSignature());
+                //         base.setType(type);
+                //     }
+                // }
                 if (!(type instanceof ClassType)) {
                     console.log(`error: type of base must be ClassType expr: ${expr.toString()}`);
                     continue;
@@ -134,10 +141,11 @@ export class TypeInference {
                 } else if (leftOpType instanceof UnknownType) {
                     const rightOp = stmt.getRightOp();
                     if (rightOp instanceof ArkParameterRef) {
-                        if (rightOp.getType() instanceof UnclearReferenceType) {
+                        let rightOpType = rightOp.getType()
+                        if (rightOpType instanceof UnclearReferenceType) {
                             if (arkMethod == null)
                                 return
-                            let classSignature = ModelUtils.getClassWithName(rightOp.getType().toString(), arkMethod)?.getSignature();
+                            let classSignature = ModelUtils.getClassWithName(rightOpType.getName(), arkMethod)?.getSignature();
                             if (classSignature === undefined) {
                                 leftOp.setType(stmt.getRightOp().getType())
                             } else {

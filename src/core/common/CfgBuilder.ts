@@ -2283,26 +2283,26 @@ export class CfgBuilder {
             this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(indexLocal, incrExpr));
             this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(varLocal, arrayRef));
         } else if (node.kind == "ForInStatement") {
-                // 暂时只支持数组遍历
-                let varIdx = this.findChildIndex(node, 'OpenParenToken') + 1;
-                let varNode = node.children[varIdx];
-                let iterableIdx = varIdx + 2;
-                let iterableNode = node.children[iterableIdx];
-    
-                let iterableValue = this.astNodeToValue(iterableNode);
-                let lenghtLocal = this.generateTempValue();
-                this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(lenghtLocal, new ArkLengthExpr(iterableValue)));
-                let indexLocal = this.generateTempValue();
-                this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(indexLocal, new Constant('0')));
-                let varLocal = this.astNodeToValue(varNode);
-                this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(varLocal, indexLocal));
-    
-                let conditionExpr = new ArkConditionExpr(indexLocal, lenghtLocal, ' >= ');
-                this.current3ACstm.threeAddressStmts.push(new ArkIfStmt(conditionExpr));
+            // 暂时只支持数组遍历
+            let varIdx = this.findChildIndex(node, 'OpenParenToken') + 1;
+            let varNode = node.children[varIdx];
+            let iterableIdx = varIdx + 2;
+            let iterableNode = node.children[iterableIdx];
 
-                let incrExpr = new ArkBinopExpr(indexLocal, new Constant('1'), '+');
-                this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(indexLocal, incrExpr));
-                this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(varLocal, indexLocal));
+            let iterableValue = this.astNodeToValue(iterableNode);
+            let lenghtLocal = this.generateTempValue();
+            this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(lenghtLocal, new ArkLengthExpr(iterableValue)));
+            let indexLocal = this.generateTempValue();
+            this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(indexLocal, new Constant('0')));
+            let varLocal = this.astNodeToValue(varNode);
+            this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(varLocal, indexLocal));
+
+            let conditionExpr = new ArkConditionExpr(indexLocal, lenghtLocal, ' >= ');
+            this.current3ACstm.threeAddressStmts.push(new ArkIfStmt(conditionExpr));
+
+            let incrExpr = new ArkBinopExpr(indexLocal, new Constant('1'), '+');
+            this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(indexLocal, incrExpr));
+            this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(varLocal, indexLocal));
         } else if (node.kind == "WhileStatement" || node.kind == "DoStatement") {
             let conditionIdx = this.findChildIndex(node, 'OpenParenToken') + 1;
             let conditionExprNode = node.children[conditionIdx];
@@ -2955,46 +2955,27 @@ export class CfgBuilder {
     public buildOriginalCfg(): Cfg {
         let originalCfg = new Cfg();
         let blockBuilderToBlock = new Map<Block, BasicBlock>();
-        let blockBuilderToSuccessor = new Map<Block, Block[]>();
         for (const blockBuilder of this.blocks) {
             let block = new BasicBlock();
             for (const stmtBuilder of blockBuilder.stms) {
                 let originlStmt: Stmt = new Stmt();
                 originlStmt.setText(stmtBuilder.code);
+                originlStmt.setPositionInfo(stmtBuilder.line);
+                originlStmt.setOriginPositionInfo(stmtBuilder.line);
                 block.addStmt(originlStmt);
             }
             originalCfg.addBlock(block);
 
             // build the map
             blockBuilderToBlock.set(blockBuilder, block);
-            let successors = new Array<Block>();
-            let tail = blockBuilder.stms[blockBuilder.stms.length - 1];
-            if (tail instanceof ConditionStatementBuilder) {
-                let nextTBlockId = tail.nextT?.block?.id
-                if (nextTBlockId) {
-                    successors.push(this.blocks[nextTBlockId]);
-                }
-                let nextFBlockId = tail.nextF?.block?.id;
-                if (nextFBlockId) {
-                    successors.push(this.blocks[nextFBlockId]);
-                }
-            } else if (tail instanceof SwitchStatementBuilder) {
-                for (const nxt of tail.nexts) {
-                    let nextBlockId = nxt.block?.id;
-                    if (nextBlockId) {
-                        successors.push(this.blocks[nextBlockId]);
-                    }
-                }
-            }
-            blockBuilderToSuccessor.set(blockBuilder, successors);
         }
 
         // link block
         for (const [blockBuilder, block] of blockBuilderToBlock) {
-            let successors = blockBuilderToSuccessor.get(blockBuilder) as Block[];
-            for (let i = 0; i < successors.length; i++) {
-                let successor = successors[i];
-                block.setSuccessorBlock(i, blockBuilderToBlock.get(successor) as BasicBlock);
+            for (const successorBuilder of blockBuilder.nexts) {
+                let successorBlock = blockBuilderToBlock.get(successorBuilder) as BasicBlock;
+                successorBlock.addPredecessorBlock(block);
+                block.addSuccessorBlock(successorBlock);
             }
         }
 

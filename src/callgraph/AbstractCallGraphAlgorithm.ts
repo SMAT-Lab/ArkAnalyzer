@@ -56,6 +56,7 @@ export abstract class AbstractCallGraphAlgorithm {
             // 将调用目标加入到workList
             for (let invokeTarget of invokeTargets) {
                 this.signatureManager.addToWorkList(invokeTarget);
+                // console.log(invokeTarget)
                 this.addCall(methodSignature, invokeTarget)
             }
             // 当前函数标记为已处理
@@ -99,7 +100,9 @@ export abstract class AbstractCallGraphAlgorithm {
     protected abstract preProcessMethod(methodSignature: MethodSignature): void;
 
     protected addMethod(method: MethodSignature): void {
-        this.methods.add(method);
+        if (this.getMethod(method) == null) {
+            this.methods.add(method);
+        }
     }
 
     protected hasMethod(method: MethodSignature): boolean {
@@ -107,8 +110,8 @@ export abstract class AbstractCallGraphAlgorithm {
     }
 
     protected addCall(source: MethodSignature, target: MethodSignature): void {
-        if (this.calls.has(source)) {
-            // for (let call of this.calls.get())
+        let targetMethods = this.getCall(source)
+        if (targetMethods.length > 0) {
             if (!isItemRegistered<MethodSignature>(
                 target, this.getCall(source),
                 (a, b) =>
@@ -122,13 +125,6 @@ export abstract class AbstractCallGraphAlgorithm {
         }
     }
 
-    protected getCall(source: MethodSignature): MethodSignature[] {
-        let targetCalls =  this.calls.get(source);
-        if (typeof targetCalls == "undefined")
-            return []
-        return targetCalls
-    }
-
     public getCalls() {
         return this.calls
     }
@@ -137,4 +133,21 @@ export abstract class AbstractCallGraphAlgorithm {
         return this.methods
     }
 
+    public getMethod(analyzedMethod: MethodSignature): MethodSignature | null {
+        for (const method of this.methods) {
+            if (method.toString() === analyzedMethod.toString()) {
+                return method;
+            }
+        }
+        return null;
+    }
+
+    public getCall(method: MethodSignature): MethodSignature[] {
+        for (const [key, value] of this.calls) {
+            if (key.toString() === method.toString()) {
+                return value;
+            }
+        }
+        return [];
+    }
 }
