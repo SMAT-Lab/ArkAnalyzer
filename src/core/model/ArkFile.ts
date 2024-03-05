@@ -446,6 +446,17 @@ function buildArkFile(arkFile: ArkFile) {
                 if (findIndicatedChild(child, 'DefaultKeyword')) {
                     element.setDefault(true);
                 }
+
+                let elementImportInfo = element.getImportInfo();
+                if (elementImportInfo) {
+                    elementImportInfo.setDeclaringFilePath(arkFile.getFilePath());
+                    elementImportInfo.setProjectPath(arkFile.getProjectDir());
+                    elementImportInfo.setDeclaringArkFile(arkFile);
+
+                    elementImportInfo.setImportFromSignature();
+                    arkFile.addImportInfos(elementImportInfo);
+                }
+                
                 arkFile.addExportInfos(element);
 
                 /* // Deprecated

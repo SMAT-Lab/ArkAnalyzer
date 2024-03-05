@@ -1,4 +1,5 @@
 import * as ts from "typescript";
+import { ImportInfo } from "./ImportBuilder";
 
 export class ExportInfo {
     exportClauseName: string;
@@ -7,6 +8,7 @@ export class ExportInfo {
     nameBeforeAs: string | undefined;
     declaringSignature: string;
     isDefault: boolean = false;
+    importInfo: ImportInfo | undefined;
     //arkSignature: string;
 
     constructor() { }
@@ -16,6 +18,7 @@ export class ExportInfo {
         this.setExportClauseType(exportClauseType);
         this.setExportFrom(exportFrom);
         this.setNameBeforeAs(nameBeforeAs);
+        this.genImportInfo();
     }
 
     public getExportClauseName() {
@@ -56,6 +59,22 @@ export class ExportInfo {
 
     public getDefault() {
         return this.isDefault;
+    }
+
+    public setImportInfo(importInfo: ImportInfo | undefined) {
+        this.importInfo = importInfo;
+    }
+
+    public getImportInfo() {
+        return this.importInfo;
+    }
+
+    private genImportInfo() {
+        if (this.exportFrom != undefined) {
+            let importInfo = new ImportInfo();
+            importInfo.build(this.exportClauseName, this.exportClauseType, this.exportFrom, this.nameBeforeAs);
+            this.setImportInfo(importInfo);
+        }
     }
 
     /* public setArkSignature(declaringSignature:string) {
