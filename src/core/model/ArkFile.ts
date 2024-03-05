@@ -374,7 +374,8 @@ function buildArkFile(arkFile: ArkFile) {
             }); */
 
             if (ns.isExported()) {
-                addExportInfo(ns, arkFile);
+                let isDefault = ns.getModifiers().has("DefaultKeyword");
+                addExportInfo(ns, arkFile, isDefault);
             }
         }
         if (child.kind == 'ClassDeclaration' || child.kind == 'InterfaceDeclaration' || child.kind == 'EnumDeclaration') {
@@ -393,7 +394,8 @@ function buildArkFile(arkFile: ArkFile) {
             }); */
 
             if (cls.isExported()) {
-                addExportInfo(cls, arkFile);
+                let isDefault = cls.getModifiers().has("DefaultKeyword");
+                addExportInfo(cls, arkFile, isDefault);
             }
         }
         if (arkMethodNodeKind.indexOf(child.kind) > -1) {
@@ -413,7 +415,8 @@ function buildArkFile(arkFile: ArkFile) {
             }); */
 
             if (mthd.isExported()) {
-                addExportInfo(mthd, arkFile);
+                let isDefault = mthd.getModifiers().has("DefaultKeyword");
+                addExportInfo(mthd, arkFile, isDefault);
             }
         }
         if (child.kind == 'ImportDeclaration' || child.kind == 'ImportEqualsDeclaration') {
@@ -440,6 +443,9 @@ function buildArkFile(arkFile: ArkFile) {
                 /* // Deprecated
                 element.setArkSignature(arkFile.getArkSignature()); */
 
+                if (findIndicatedChild(child, 'DefaultKeyword')) {
+                    element.setDefault(true);
+                }
                 arkFile.addExportInfos(element);
 
                 /* // Deprecated
@@ -449,9 +455,10 @@ function buildArkFile(arkFile: ArkFile) {
         if (child.kind == 'VariableStatement' || child.kind == 'FirstStatement') {
             //check ExportKeyword
             let childSyntaxNode = findIndicatedChild(child, 'SyntaxList');
+            let isDefault = findIndicatedChild(child, 'DefaultKeyword') ? true : false;
             if (childSyntaxNode) {
                 if (findIndicatedChild(childSyntaxNode, 'ExportKeyword')) {
-                    processExportValAndFirstNode(child, arkFile);
+                    processExportValAndFirstNode(child, arkFile, isDefault);
                 }
             }
         }
@@ -478,7 +485,7 @@ function findIndicatedChild(node: NodeA, childType: string): NodeA | null {
     return null;
 }
 
-function processExportValAndFirstNode(node: NodeA, arkFile: ArkFile): void {
+function processExportValAndFirstNode(node: NodeA, arkFile: ArkFile, isDefault: boolean): void {
     let exportClauseName: string = '';
     let exportClauseType: string = node.kind;
     let cld = findIndicatedChild(node, 'VariableDeclarationList');
@@ -496,6 +503,7 @@ function processExportValAndFirstNode(node: NodeA, arkFile: ArkFile): void {
     }
     let exportInfo = new ExportInfo();
     exportInfo.build(exportClauseName, exportClauseType);
+    exportInfo.setDefault(isDefault);
 
     /* // Deprecated
     exportInfo.setArkSignature(arkFile.getArkSignature()); */
@@ -506,8 +514,7 @@ function processExportValAndFirstNode(node: NodeA, arkFile: ArkFile): void {
     arkFile.addArkInstance(exportInfo.getArkSignature(), exportInfo); */
 }
 
-function addExportInfo(arkInstance: ArkMethod | ArkInterface | ArkClass | ArkNamespace |
-    ArkEnum, arkFile: ArkFile) {
+function addExportInfo(arkInstance: ArkMethod | ArkClass | ArkNamespace, arkFile: ArkFile, isDefault: boolean) {
     let exportClauseName: string = arkInstance.getName();
     let exportClauseType: string;
     if (arkInstance instanceof ArkMethod) {
@@ -516,14 +523,12 @@ function addExportInfo(arkInstance: ArkMethod | ArkInterface | ArkClass | ArkNam
     else if (arkInstance instanceof ArkClass) {
         exportClauseType = "Class";
     }
-    else if (arkInstance instanceof ArkInterface) {
-        exportClauseType = "Interface";
-    }
     else {
         exportClauseType = "ArkNamespace";
     }
     let exportInfo = new ExportInfo();
     exportInfo.build(exportClauseName, exportClauseType);
+    exportInfo.setDefault(isDefault);
     //exportInfo.setArkSignature(this.arkSignature);
     arkFile.addExportInfos(exportInfo);
     // this.addArkInstance(exportInfo.getArkSignature(), exportInfo);
