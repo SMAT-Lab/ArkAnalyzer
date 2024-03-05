@@ -4,11 +4,7 @@ import { SceneConfig } from "./Config";
 
 export class TypeInferenceTest {
     public buildScene(): Scene {
-        // tests\\resources\\typeInference\\sample
-        // tests\\resources\\typeInference\\moduleA
-        // tests\\resources\\typeInference\\mainModule
         const config_path = "tests\\resources\\typeInference\\ProjectTypeInferenceTestConfig.json";
-        // const config_path = "tests\\resources\\typeInference\\TypeInferenceTestConfig.json";
         let config: SceneConfig = new SceneConfig();
         config.buildFromJson(config_path);
         return new Scene(config);
@@ -29,9 +25,10 @@ export class TypeInferenceTest {
                     const body = arkMethod.getBody();
                     this.printStmts(body);
 
-                    console.log('-- locals:');
-                    for (const local of arkMethod.getBody().getLocals()) {
-                        console.log('name: ' + local.toString() + ', type: ' + local.getType());
+                    for(const chain of body.getCfg().getDefUseChains()){
+                        console.log("value:"+chain.value.toString())
+                        console.log("def:"+chain.def.toString())
+                        console.log("use:"+chain.use.toString())
                     }
                     console.log();
 
@@ -40,22 +37,7 @@ export class TypeInferenceTest {
         }
     }
 
-    public testFunctionReturnType() {
-        let scene = this.buildScene();
 
-        for (const arkFile of scene.arkFiles) {
-            console.log('=============== arkFile:', arkFile.getName(), ' ================');
-            for (const arkClass of arkFile.getClasses()) {
-                for (const arkMethod of arkClass.getMethods()) {
-                    if (arkMethod.getName() == '_DEFAULT_ARK_METHOD') {
-                        continue;
-                    }
-
-                    console.log(arkMethod.getSubSignature().toString());
-                }
-            }
-        }
-    }
 
     private printStmts(body: ArkBody): void {
         console.log('-- threeAddresStmts:');

@@ -62,6 +62,10 @@ export class Cfg {
         this.startingStmt = newStartingStmt;
     }
 
+    getDefUseChains(): DefUseChain[] {
+        return this.defUseChains;
+    }
+
     // TODO: 整理成类似jimple的输出
     public toString(): string {
         return 'cfg';
