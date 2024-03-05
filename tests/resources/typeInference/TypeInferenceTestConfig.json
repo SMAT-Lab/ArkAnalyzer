@@ -1,6 +1,6 @@
 {
     "targetProjectName": "TypeInferenceTest",    
-    "targetProjectDirectory": "tests\\resources\\typeInference\\mainModule",
+    "targetProjectDirectory": "tests\\resources\\type",
     
     "ohosSdkPath": "",
     "kitSdkPath": "",
