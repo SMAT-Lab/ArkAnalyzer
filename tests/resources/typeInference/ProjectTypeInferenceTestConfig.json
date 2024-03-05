@@ -1,6 +1,6 @@
 {
     "targetProjectName": "TypeInferenceTest",
-    "targetProjectDirectory": "tests\\resources\\typeInference\\project",    
+    "targetProjectDirectory": "codeLab\\photos",    
     
     "ohosSdkPath": "codeLab\\interface_sdk-js-master\\api",
     "kitSdkPath": "codeLab\\interface_sdk-js-master\\kits",
