@@ -1,7 +1,7 @@
-import {ClassSignature, MethodSignature} from "../core/model/ArkSignature";
-import {Scene} from "../Scene";
-import {ArkMethod} from "../core/model/ArkMethod";
-import {ArkClass} from "../core/model/ArkClass";
+import { ClassSignature, MethodSignature } from "../core/model/ArkSignature";
+import { Scene } from "../Scene";
+import { ArkMethod } from "../core/model/ArkMethod";
+import { ArkClass } from "../core/model/ArkClass";
 
 
 export class MethodSignatureManager {
@@ -33,18 +33,13 @@ export class MethodSignatureManager {
         return typeof result !== "undefined";
     }
 
-    public addToWorkList(signature: MethodSignature, scene: Scene): void {
+    public addToWorkList(signature: MethodSignature): void {
         if (!isItemRegistered<MethodSignature>(
             signature, this.workList,
             (a, b) =>
                 a.toString() === b.toString()
         )) {
-            for (let projectFile of scene.arkFiles) {
-                if (projectFile.getFileSignature().toString() === 
-                signature.getDeclaringClassSignature().getDeclaringFileSignature().toString()) {
-                    this.workList.push(signature);
-                }
-            }
+            this.workList.push(signature);
         }
     }
 

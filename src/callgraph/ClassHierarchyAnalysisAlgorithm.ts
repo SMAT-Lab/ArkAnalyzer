@@ -1,17 +1,14 @@
 import path from "path";
-import { AbstractInvokeExpr, ArkInstanceInvokeExpr, ArkStaticInvokeExpr } from "../core/base/Expr";
+import { ClassType } from "../core/base/Type";
 import { ArkInvokeStmt } from "../core/base/Stmt";
 import { ArkClass } from "../core/model/ArkClass";
-import { ArkFile } from "../core/model/ArkFile";
 import { ArkMethod } from "../core/model/ArkMethod";
-import { ClassSignature, MethodSignature } from "../core/model/ArkSignature";
-import {isItemRegistered} from "../utils/callGraphUtils";
-import {getArkFileByName, matchClassInFile, searchImportMessage, splitType} from "../utils/typeReferenceUtils";
-import { AbstractCallGraphAlgorithm } from "./AbstractCallGraphAlgorithm";
-import { ModelUtils } from "../core/common/ModelUtils";
-import { ClassType } from "../core/base/Type";
+import { MethodSignature } from "../core/model/ArkSignature";
+import { isItemRegistered} from "../utils/callGraphUtils";
+import { AbstractCallGraph } from "./AbstractCallGraphAlgorithm";
+import { AbstractInvokeExpr, ArkInstanceInvokeExpr, ArkStaticInvokeExpr } from "../core/base/Expr";
 
-export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm {
+export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraph {
     protected resolveCall(sourceMethodSignature: MethodSignature, invokeExpression: ArkInvokeStmt): MethodSignature[] {
         let concreteMethodSignature: MethodSignature|null = null;
         let concreteMethod: ArkMethod;
@@ -86,13 +83,9 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
         return methodSignature;
     }
 
-    protected preProcessMethod(methodSignature: MethodSignature): void {
-        //do nothing
-    }
-    
     protected resolveInvokeExpr(invokeExpr: AbstractInvokeExpr,
-                                arkFileName: string,
-                                sourceMethodSignature: MethodSignature) {
+        arkFileName: string,
+        sourceMethodSignature: MethodSignature) {
         let callName = invokeExpr.getMethodSignature().getMethodSubSignature().getMethodName()
         let methodName: string = callName
         let classAndArkFileNames: Set<[string, string]> = new Set<[string, string]>()
@@ -128,7 +121,7 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
                 if (className === "this") {
                     let currentClass = this.scene.getClass(sourceMethodSignature.getDeclaringClassSignature())
                     classAndArkFileNames.add([currentClass!.getName(),
-                        currentClass!.getDeclaringArkFile().getName()])
+                    currentClass!.getDeclaringArkFile().getName()])
                 } else {
                     classAndArkFileNames.add([className, arkFileName])
                     methodName = callName.substring(lastDotIndex + 1)
@@ -148,5 +141,9 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraphAlgorithm 
             }
         }
         return callMethods
+    }
+
+    protected preProcessMethod(methodSignature: MethodSignature): void {
+        //do nothing
     }
 }

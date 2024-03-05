@@ -2,9 +2,9 @@ import fs from 'fs';
 import path from 'path';
 
 import { SceneConfig } from '../tests/Config';
-import { AbstractCallGraphAlgorithm } from "./callgraph/AbstractCallGraphAlgorithm";
-import { CallGraph } from "./callgraph/CallGraph";
+import { AbstractCallGraph } from "./callgraph/AbstractCallGraphAlgorithm";
 import { ClassHierarchyAnalysisAlgorithm } from "./callgraph/ClassHierarchyAnalysisAlgorithm";
+import { RapidTypeAnalysisAlgorithm } from "./callgraph/RapidTypeAnalysisAlgorithm"
 import { ImportInfo, updateSdkConfigPrefix } from './core/common/ImportBuilder';
 import { TypeInference } from './core/common/TypeInference';
 import { ArkClass } from "./core/model/ArkClass";
@@ -27,8 +27,8 @@ export class Scene {
     private targetProjectArkFilesMap: Map<string, ArkFile> = new Map<string, ArkFile>();
     private sdkArkFilestMap: Map<string, ArkFile> = new Map<string, ArkFile>();
 
-    callgraph: CallGraph;
-    classHierarchyCallGraph: AbstractCallGraphAlgorithm;
+    // callgraph: CallGraph;
+    callGraph: AbstractCallGraph;
     extendedClasses: Map<string, ArkClass[]> = new Map();
     globalImportInfos: ImportInfo[] = [];
 
@@ -387,16 +387,21 @@ export class Scene {
         return classSig;
     } */
 
-    public makeCallGraph(): void {
-        this.callgraph = new CallGraph(new Set<string>, new Map<string, string[]>);
-        this.callgraph.processFiles(this.projectFiles);
-    }
+    // public makeCallGraph(): void {
+    //     this.callgraph = new CallGraph(new Set<string>, new Map<string, string[]>);
+    //     this.callgraph.processFiles(this.projectFiles);
+    // }
 
 
     public makeCallGraphCHA(entryPoints: MethodSignature[]) {
-        this.classHierarchyCallGraph = new ClassHierarchyAnalysisAlgorithm(this);
-        this.classHierarchyCallGraph.loadCallGraph(entryPoints)
-        // this.classHierarchyCallGraph.printDetails()
+        this.callGraph = new ClassHierarchyAnalysisAlgorithm(this);
+        this.callGraph.loadCallGraph(entryPoints)
+    }
+
+    public makeCallGraphRTA(entryPoints: MethodSignature[]) {
+        // not actually supported
+        this.callGraph = new RapidTypeAnalysisAlgorithm(this);
+        this.callGraph.loadCallGraph(entryPoints)
     }
 
     /**
