@@ -44,13 +44,18 @@ export abstract class AbstractCallGraph {
         while (this.signatureManager.workList.length != 0) {
             let methodSignature = this.signatureManager.workList.shift();
 
+            // check whether the method need to be analyzed
             if (!this.checkMethodForAnalysis(methodSignature))
                 continue
+
             // pre process for RTA only
             this.preProcessMethod(methodSignature!);
+
             // process the function and get the invoke targets of current function
             let invokeTargets = this.processMethod(methodSignature!)
+
             // add invoke targets to workList
+            // do not need to check the method, it will be filter in 'checkMethodForAnalysis()'
             for (let invokeTarget of invokeTargets) {
                 this.signatureManager.addToWorkList(invokeTarget);
                 this.addCall(methodSignature!, invokeTarget)
@@ -91,6 +96,12 @@ export abstract class AbstractCallGraph {
 
 
 
+    /**
+     * call specific algorithm(CHA, RTA) to resolve a single invoke stmt
+     * 
+     * @param sourceMethodSignature 
+     * @param invokeExpression 
+     */
     protected abstract resolveCall(sourceMethodSignature: MethodSignature, invokeExpression: ArkInvokeStmt): MethodSignature[];
 
     protected abstract preProcessMethod(methodSignature: MethodSignature): void;
@@ -152,6 +163,13 @@ export abstract class AbstractCallGraph {
         return [];
     }
 
+    /**
+     * check whether the method need to be analyzed
+     * method need to be NotAnalyzedBefore, Project-ranged method
+     * 
+     * @param method 
+     * @returns 
+     */
     protected checkMethodForAnalysis(method: MethodSignature | undefined): Boolean {
         if (typeof method == "undefined")
             return false
