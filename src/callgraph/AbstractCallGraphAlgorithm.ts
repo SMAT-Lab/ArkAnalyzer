@@ -1,10 +1,10 @@
-import {MethodSignature} from "../core/model/ArkSignature";
-import {Scene} from "../Scene";
-import {isItemRegistered, MethodSignatureManager, SceneManager} from "../utils/callGraphUtils";
-import {Cfg} from "../core/graph/Cfg";
-import {ArkInvokeStmt} from "../core/base/Stmt";
+import { MethodSignature } from "../core/model/ArkSignature";
+import { Scene } from "../Scene";
+import { isItemRegistered, MethodSignatureManager, SceneManager } from "../utils/callGraphUtils";
+import { Cfg } from "../core/graph/Cfg";
+import { ArkInvokeStmt } from "../core/base/Stmt";
 
-export abstract class AbstractCallGraphAlgorithm {
+export abstract class AbstractCallGraph {
     private methods: Set<MethodSignature>;
     private calls: Map<MethodSignature, MethodSignature[]>;
     private _signatureManager: MethodSignatureManager;
@@ -43,7 +43,7 @@ export abstract class AbstractCallGraphAlgorithm {
         this.signatureManager.workList = entryPoints
         while (this.signatureManager.workList.length != 0) {
             let methodSignature = this.signatureManager.workList.shift();
-        
+
             if (!this.checkMethodForAnalysis(methodSignature))
                 continue
             // pre process for RTA only
@@ -52,7 +52,7 @@ export abstract class AbstractCallGraphAlgorithm {
             let invokeTargets = this.processMethod(methodSignature!)
             // add invoke targets to workList
             for (let invokeTarget of invokeTargets) {
-                this.signatureManager.addToWorkList(invokeTarget, this.scene.scene);
+                this.signatureManager.addToWorkList(invokeTarget);
                 this.addCall(methodSignature!, invokeTarget)
             }
             // mark the current function as Processed
@@ -88,6 +88,8 @@ export abstract class AbstractCallGraphAlgorithm {
         }
         return invocationTargets
     }
+
+
 
     protected abstract resolveCall(sourceMethodSignature: MethodSignature, invokeExpression: ArkInvokeStmt): MethodSignature[];
 
@@ -155,12 +157,10 @@ export abstract class AbstractCallGraphAlgorithm {
             return false
         if (this.signatureManager.findInProcessedList(method))
             return false
-        for (let arkFile of this.scene.scene.getFiles()) {
-            if (arkFile.getFileSignature().toString ===
-             method.getDeclaringClassSignature().getDeclaringFileSignature().toString) {
-                return true
-             }
-        }
-        return false
+        const ifProjectMethod = this.scene.scene.arkFiles.some(arkFile =>
+            arkFile.getFileSignature().toString() ===
+            method.getDeclaringClassSignature().getDeclaringFileSignature().toString()
+        )
+        return ifProjectMethod
     }
 }
