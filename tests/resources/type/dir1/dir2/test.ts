@@ -1,6 +1,6 @@
 import { type3 } from "./type3";
 import { type0 } from "../../type0";
-import { type1,type2 } from "../type1";
+import { type1,t22 } from "../type1";
 import { type4 } from "./dir3/type4";
 
 let t0=new type0();
