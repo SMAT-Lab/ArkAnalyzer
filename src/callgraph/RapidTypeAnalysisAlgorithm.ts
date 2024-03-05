@@ -120,7 +120,7 @@ export class RapidTypeAnalysisAlgorithm extends AbstractCallGraph {
     }
 
     /**
-     * Retrieve the newly created class objects within the method.
+     * Retrieve the newly created class objects within the method.(WIP)
      *
      * @param methodSignature
      * @protected
@@ -182,7 +182,6 @@ export class RapidTypeAnalysisAlgorithm extends AbstractCallGraph {
             // console.log("static:   "+invokeExpr.getMethodSignature().toString())
             if (callName.includes('.')) {
                 // a.b()的静态调用
-                // TODO: 上游信息有误
                 let lastDotIndex = callName.lastIndexOf('.')
                 let className = callName.substring(0, lastDotIndex)
                 if (className === "this") {

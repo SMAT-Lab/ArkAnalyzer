@@ -60,6 +60,14 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraph {
         return callTargetMethods
     }
 
+    /**
+     * get all possible call target
+     * get extended classes corresponding to target class
+     * filter all method under the classes
+     * 
+     * @param targetMethodSignature 
+     * @returns 
+     */
     protected resolveAllCallTargets(targetMethodSignature: MethodSignature): MethodSignature[] {
         let targetClasses: ArkClass[];
         let methodSignature: MethodSignature[] = [];
@@ -83,6 +91,16 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraph {
         return methodSignature;
     }
 
+    /**
+     * resolve expr in the invoke stmt
+     * 
+     * @param invokeExpr 
+     * @param arkFileName 
+     * @param sourceMethodSignature 
+     * @returns 
+     * instance invoke: get base variable class type, return corresponding method under class
+     * static invoke: return normal static method and function invoke
+     */
     protected resolveInvokeExpr(invokeExpr: AbstractInvokeExpr,
         arkFileName: string,
         sourceMethodSignature: MethodSignature) {
@@ -91,7 +109,7 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraph {
         let classAndArkFileNames: Set<[string, string]> = new Set<[string, string]>()
         let callMethods: ArkMethod[] = []
 
-        // TODO: 对于基本类型的固定方法，需要讨论是否可以给这些类创建一个ArkClass
+        // TODO: ts库、常用库未扫描，导致console.log等调用无法识别
         if (invokeExpr instanceof ArkInstanceInvokeExpr) {
             // console.log("instanceInvoke:   "+invokeExpr.getMethodSignature().toString())
             let classCompleteType = invokeExpr.getBase().getType()
@@ -114,7 +132,7 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraph {
         } else if (invokeExpr instanceof ArkStaticInvokeExpr) {
             // console.log("static:   "+invokeExpr.getMethodSignature().toString())
             if (callName.includes('.')) {
-                // a.b()的静态调用
+                // static invoke like a.b()
                 // TODO: 上游信息有误
                 let lastDotIndex = callName.lastIndexOf('.')
                 let className = callName.substring(0, lastDotIndex)
@@ -127,7 +145,7 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraph {
                     methodName = callName.substring(lastDotIndex + 1)
                 }
             } else {
-                // 函数调用
+                // function invoke
                 let callFunction = this.scene.getMethod(invokeExpr.getMethodSignature())
                 if (callFunction != null) {
                     if (!isItemRegistered<ArkMethod>(
