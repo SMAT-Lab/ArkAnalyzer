@@ -6,7 +6,8 @@ export class ExportInfo {
     exportFrom: string | undefined;
     nameBeforeAs: string | undefined;
     declaringSignature: string;
-    arkSignature: string;
+    isDefault: boolean = false;
+    //arkSignature: string;
 
     constructor() { }
 
@@ -49,14 +50,22 @@ export class ExportInfo {
         this.nameBeforeAs = nameBeforeAs;
     }
 
-    public setArkSignature(declaringSignature:string) {
+    public setDefault(isDefault: boolean) {
+        this.isDefault = isDefault;
+    }
+
+    public getDefault() {
+        return this.isDefault;
+    }
+
+    /* public setArkSignature(declaringSignature:string) {
         this.declaringSignature = declaringSignature;
         this.arkSignature = declaringSignature + '.' + this.exportClauseName;
     }
 
     public getArkSignature() {
         return this.arkSignature;
-    }
+    } */
 }
 
 export function buildExportInfo4ExportNode(node: ts.ExportDeclaration | ts.ExportAssignment): ExportInfo[] {

@@ -362,7 +362,8 @@ function buildNamespaceMembers(nsNode: NodeA, namespace: ArkNamespace) {
             }); */
 
             if (ns.isExported()) {
-                addExportInfo(ns, namespace);
+                let isDefault = namespace.getModifiers().has("DefaultKeyword");
+                addExportInfo(ns, namespace, isDefault);
             }
         }
         if (child.kind == 'ClassDeclaration' || child.kind == 'InterfaceDeclaration' || child.kind == 'EnumDeclaration') {
@@ -381,7 +382,8 @@ function buildNamespaceMembers(nsNode: NodeA, namespace: ArkNamespace) {
             }); */
 
             if (cls.isExported()) {
-                addExportInfo(cls, namespace);
+                let isDefault = cls.getModifiers().has("DefaultKeyword");
+                addExportInfo(cls, namespace, isDefault);
             }
         }
         if (arkMethodNodeKind.indexOf(child.kind) > -1) {
@@ -402,7 +404,8 @@ function buildNamespaceMembers(nsNode: NodeA, namespace: ArkNamespace) {
             }); */
 
             if (mthd.isExported()) {
-                addExportInfo(mthd, namespace);
+                let isDefault = mthd.getModifiers().has("DefaultKeyword");
+                addExportInfo(mthd, namespace, isDefault);
             }
         }
         if (child.kind == 'ExportDeclaration' || child.kind == 'ExportAssignment') {
@@ -412,6 +415,9 @@ function buildNamespaceMembers(nsNode: NodeA, namespace: ArkNamespace) {
                 /* // Deprecated
                 element.setArkSignature(namespace.getArkSignature()); */
 
+                if (findIndicatedChild(child, 'DefaultKeyword')) {
+                    element.setDefault(true);
+                }
                 namespace.addExportInfos(element);
 
                 /* // Deprecated
@@ -421,9 +427,10 @@ function buildNamespaceMembers(nsNode: NodeA, namespace: ArkNamespace) {
         if (child.kind == 'VariableStatement' || child.kind == 'FirstStatement') {
             //check ExportKeyword
             let childSyntaxNode = findIndicatedChild(child, 'SyntaxList');
+            let isDefault = findIndicatedChild(child, 'DefaultKeyword') ? true : false;
             if (childSyntaxNode) {
                 if (findIndicatedChild(childSyntaxNode, 'ExportKeyword')) {
-                    processExportValAndFirstNode(child, namespace);
+                    processExportValAndFirstNode(child, namespace, isDefault);
                 }
             }
         }
@@ -450,7 +457,7 @@ function findIndicatedChild(node: NodeA, childType: string): NodeA | null {
     return null;
 }
 
-function processExportValAndFirstNode(node: NodeA, ns: ArkNamespace): void {
+function processExportValAndFirstNode(node: NodeA, ns: ArkNamespace, isDefault:boolean): void {
     let exportClauseName: string = '';
     let exportClauseType: string = node.kind;
     let cld = findIndicatedChild(node, 'VariableDeclarationList');
@@ -468,6 +475,7 @@ function processExportValAndFirstNode(node: NodeA, ns: ArkNamespace): void {
     }
     let exportInfo = new ExportInfo();
     exportInfo.build(exportClauseName, exportClauseType);
+    exportInfo.setDefault(isDefault);
 
     /* // Deprecated
     exportInfo.setArkSignature(ns.getArkSignature()); */
@@ -478,7 +486,7 @@ function processExportValAndFirstNode(node: NodeA, ns: ArkNamespace): void {
     ns.addArkInstance(exportInfo.getArkSignature(), exportInfo); */
 }
 
-function addExportInfo(arkInstance: ArkMethod | ArkInterface | ArkClass | ArkNamespace | ArkEnum, ns: ArkNamespace) {
+function addExportInfo(arkInstance: ArkMethod | ArkClass | ArkNamespace, ns: ArkNamespace, isDefault: boolean) {
     let exportClauseName: string = arkInstance.getName();
     let exportClauseType: string;
     if (arkInstance instanceof ArkMethod) {
@@ -487,15 +495,12 @@ function addExportInfo(arkInstance: ArkMethod | ArkInterface | ArkClass | ArkNam
     else if (arkInstance instanceof ArkClass) {
         exportClauseType = "Class";
     }
-    else if (arkInstance instanceof ArkInterface) {
-        exportClauseType = "Interface";
-    }
     else {
         exportClauseType = "ArkNamespace";
     }
     let exportInfo = new ExportInfo();
     exportInfo.build(exportClauseName, exportClauseType);
-
+    exportInfo.setDefault(isDefault);
     /* // Deprecated
     exportInfo.setArkSignature(ns.getArkSignature()); */
 
