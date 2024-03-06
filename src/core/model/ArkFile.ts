@@ -5,11 +5,9 @@ import { ASTree, NodeA } from "../base/Ast";
 import { ExportInfo } from '../common/ExportBuilder';
 import { ImportInfo } from '../common/ImportBuilder';
 import { ArkClass, buildDefaultArkClassFromArkFile, buildNormalArkClassFromArkFile } from "./ArkClass";
-import { ArkEnum } from './ArkEnum';
-import { ArkInterface } from './ArkInterface';
 import { ArkMethod, arkMethodNodeKind, buildArkMethodFromArkClass } from "./ArkMethod";
 import { ArkNamespace, buildArkNamespace } from "./ArkNamespace";
-import { ClassSignature, FileSignature, MethodSignature, NamespaceSignature, classSignatureCompare, methodSignatureCompare } from "./ArkSignature";
+import { ClassSignature, FileSignature, MethodSignature, NamespaceSignature } from "./ArkSignature";
 
 export const notStmtOrExprKind = ['ModuleDeclaration', 'ClassDeclaration', 'InterfaceDeclaration', 'EnumDeclaration', 'ExportDeclaration',
     'ExportAssignment', 'MethodDeclaration', 'Constructor', 'FunctionDeclaration', 'GetAccessor', 'SetAccessor', 'ArrowFunction',
@@ -456,7 +454,7 @@ function buildArkFile(arkFile: ArkFile) {
                     elementImportInfo.setImportFromSignature();
                     arkFile.addImportInfos(elementImportInfo);
                 }
-                
+
                 arkFile.addExportInfos(element);
 
                 /* // Deprecated
