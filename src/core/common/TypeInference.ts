@@ -173,7 +173,15 @@ export class TypeInference {
                             console.log("Get Field Instance error")
                             return
                         }
-                        leftOp.setType(fieldInstance.getType())
+                        let fieldType = fieldInstance.getType();
+                        if(fieldType instanceof UnclearReferenceType){
+                            const fieldTypeName = fieldType.getName();
+                            const arkClass = ModelUtils.getClassWithName(fieldTypeName,arkMethod);
+                            if (arkClass){
+                                fieldType = new ClassType(arkClass.getSignature());
+                            }
+                        }
+                        leftOp.setType(fieldType)
                     } else {
                         leftOp.setType(rightOp.getType());
                     }
