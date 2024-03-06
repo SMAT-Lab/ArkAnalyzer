@@ -1,9 +1,7 @@
 import { NodeA } from "../base/Ast";
 import { ExportInfo } from "../common/ExportBuilder";
 import { ArkClass, buildDefaultArkClassFromArkNamespace, buildNormalArkClassFromArkNamespace } from "./ArkClass";
-import { ArkEnum } from "./ArkEnum";
 import { ArkFile } from "./ArkFile";
-import { ArkInterface } from "./ArkInterface";
 import { ArkMethod, arkMethodNodeKind, buildArkMethodFromArkClass } from "./ArkMethod";
 import { ClassSignature, MethodSignature, NamespaceSignature } from "./ArkSignature";
 
