@@ -1,9 +1,6 @@
 import { Type } from "../base/Type";
-import { Property } from "../common/ClassInfoBuilder";
-import { InterfaceProperty } from "../common/InterfaceInfoBuilder";
 import { MethodParameter } from "../common/MethodInfoBuilder";
 import { ArkClass } from "./ArkClass";
-import { ArkInterface } from "./ArkInterface";
 import { FieldSignature } from "./ArkSignature";
 
 export class ArkField {
