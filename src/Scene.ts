@@ -4,7 +4,7 @@ import path from 'path';
 import { SceneConfig } from '../tests/Config';
 import { AbstractCallGraph } from "./callgraph/AbstractCallGraphAlgorithm";
 import { ClassHierarchyAnalysisAlgorithm } from "./callgraph/ClassHierarchyAnalysisAlgorithm";
-import { RapidTypeAnalysisAlgorithm } from "./callgraph/RapidTypeAnalysisAlgorithm"
+import { RapidTypeAnalysisAlgorithm } from "./callgraph/RapidTypeAnalysisAlgorithm";
 import { ImportInfo, updateSdkConfigPrefix } from './core/common/ImportBuilder';
 import { TypeInference } from './core/common/TypeInference';
 import { ArkClass } from "./core/model/ArkClass";
@@ -75,7 +75,7 @@ export class Scene {
 
         //this.genExtendedClasses();
         this.collectProjectImportInfos();
-        this.inferTypes();
+        // this.inferTypes();
     }
 
     private configImportSdkPrefix() {
