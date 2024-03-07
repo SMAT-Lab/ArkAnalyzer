@@ -60,6 +60,19 @@ export class SceneConfig {
         this.getAllFiles();
     }
 
+    public buildFromIde(targetProjectName:string, targetProjectDirectory:string, ohosSdkPath?:string) {
+        this.targetProjectName = targetProjectName;
+        this.targetProjectDirectory = targetProjectDirectory;
+        this.ohosSdkPath = ohosSdkPath? ohosSdkPath : '';
+        this.getAllFiles();
+    }
+
+    public buildFromIdeSingle(targetProjectName:string, targetProjectDirectory:string, filePath:string) {
+        this.targetProjectName = targetProjectName;
+        this.targetProjectDirectory = targetProjectDirectory;
+        this.projectFiles.push(filePath);
+    }
+
     //private genConfig(targetProjectName:string, targetProjectDirectory:string) {
     private genConfig() {
 
