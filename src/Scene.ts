@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 
-import { SceneConfig } from '../tests/Config';
+import { SceneConfig } from './Config';
 import { AbstractCallGraph } from "./callgraph/AbstractCallGraphAlgorithm";
 import { ClassHierarchyAnalysisAlgorithm } from "./callgraph/ClassHierarchyAnalysisAlgorithm";
 import { RapidTypeAnalysisAlgorithm } from "./callgraph/RapidTypeAnalysisAlgorithm";

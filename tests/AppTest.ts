@@ -1,4 +1,4 @@
-import { SceneConfig } from "./Config";
+import { SceneConfig } from "../src/Config";
 import { Scene } from "../src/Scene";
 
 let config: SceneConfig = new SceneConfig();
