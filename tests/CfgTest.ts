@@ -1,5 +1,5 @@
+import { SceneConfig } from "../src/Config";
 import { Scene } from "../src/Scene";
-import { SceneConfig } from "./Config";
 const fs = require('fs');
 
 export class CfgTest {
@@ -29,7 +29,8 @@ export class CfgTest {
 
                     let originalCfg = arkBody.getOriginalCfg();
                     for (const origalstmt of originalCfg.getStmts()) {
-                        console.log(origalstmt.toString()+', pos: '+origalstmt.getPositionInfo());
+                        console.log(origalstmt.toString());
+                        // console.log(origalstmt.toString()+', pos: '+origalstmt.getPositionInfo());
                     }
                     console.log();
                     console.log('-- threeAddresStmts:');
@@ -39,7 +40,7 @@ export class CfgTest {
                         // console.log(threeAddresStmt.toString(), ', original pos:', threeAddresStmt.getOriginPositionInfo(),
                         //     ', pos:', threeAddresStmt.getPositionInfo());
                         // console.log('- use');
-                        
+
                         // console.log(threeAddresStmt.getUses());
 
                     }
