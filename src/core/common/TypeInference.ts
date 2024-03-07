@@ -65,6 +65,18 @@ export class TypeInference {
                         type = new ClassType(arkClass.getSignature());
                         base.setType(type);
                     }
+                    else {
+                        const arkNamespace = ModelUtils.getNamespaceWithName(base.getName(), arkMethod);
+                        if (arkNamespace){
+                            const methodName = expr.getMethodSignature().getMethodSubSignature().getMethodName();
+                            const defaultClass = arkNamespace.getClasses().find(cls => cls.getName() == '_DEFAULT_ARK_CLASS') || null;
+                            const foundMethod = ModelUtils.getMethodInClassWithName(methodName, defaultClass!);
+                            if (foundMethod){
+                                expr.setMethodSignature(foundMethod.getSignature());
+                                return;
+                            }
+                        }
+                    }
                 }
                 if (!(type instanceof ClassType)) {
                     console.log(`error: type of base must be ClassType expr: ${expr.toString()}`);
