@@ -1,6 +1,6 @@
 import { Scene } from "../src/Scene";
 import { ArkBody } from "../src/core/model/ArkBody";
-import { SceneConfig } from "./Config";
+import { SceneConfig } from "../src/Config";
 
 export class TypeInferenceTest {
     public buildScene(): Scene {
