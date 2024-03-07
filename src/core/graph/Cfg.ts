@@ -74,10 +74,7 @@ export class Cfg {
 
     buildDefUseChain() {
         const locals: Set<Local> = new Set();
-        // let i=0;
         for (const block of this.blocks) {
-            // console.log(i)
-            // i++;
             for (let stmtIndex = 0; stmtIndex < block.getStmts().length; stmtIndex++) {
                 const stmt = block.getStmts()[stmtIndex];
                 // 填declareStmt
@@ -88,43 +85,23 @@ export class Cfg {
                 }
 
                 for (const value of stmt.getUses()) {
-                    if (value instanceof Constant || value instanceof AbstractExpr){
-                        continue;
-                    }
                     if (value instanceof Local) {
                         const local = value as Local;
                         local.addUsedStmt(stmt)
                     }
                     const name = value.toString();
                     const defStmts: Stmt[] = [];
-                    // 判断本block之前有无对应def或use
+                    // 判断本block之前有无对应def
                     for (let i = stmtIndex - 1; i >= 0; i--) {
                         const beforeStmt = block.getStmts()[i];
                         if (beforeStmt.getDef() && beforeStmt.getDef()?.toString() == name) {
                             defStmts.push(beforeStmt);
                             break;
                         }
-                        else {
-                            const useValue = beforeStmt.getUses().find(use => use.toString() == name) || null;
-                            if (useValue){
-                                let predecessorHasDef = false;
-                                for (const useChain of beforeStmt.getUseChains()){
-                                    if (useChain.value == useValue){
-                                        defStmts.push(useChain.def);
-                                        predecessorHasDef = true;
-                                    }
-                                }
-                                if (predecessorHasDef){
-                                    break;
-                                }
-                            }
-                        }
                     }
-                    // 本block有对应def或use直接结束,否则找所有的前序block
+                    // 本block有对应def直接结束,否则找所有的前序block
                     if (defStmts.length != 0) {
-                        for (const def of defStmts) {
-                            this.addChain(value, def, stmt);
-                        }
+                        this.defUseChains.push(new DefUseChain(value, defStmts[0], stmt));
                     }
                     else {
                         const needWalkBlocks: BasicBlock[] = [];
@@ -146,31 +123,17 @@ export class Cfg {
                                     predecessorHasDef = true;
                                     break;
                                 }
-                                else {
-                                    const useValue = beforeStmt.getUses().find(use => use.toString() == name) || null;
-                                    if (useValue){
-                                        for (const useChain of beforeStmt.getUseChains()){
-                                            if (useChain.value == useValue){
-                                                defStmts.push(useChain.def);
-                                                predecessorHasDef = true;
-                                            }
-                                        }
-                                        if (predecessorHasDef){
-                                            break;
-                                        }
-                                    }
-                                }
                             }
                             if (!predecessorHasDef) {
                                 for (const morePredecessor of predecessor.getPredecessors()) {
-                                    if (!walkedBlocks.has(morePredecessor))
+                                    if (!walkedBlocks.has(morePredecessor)  && !needWalkBlocks.includes(morePredecessor))
                                         needWalkBlocks.unshift(morePredecessor);
                                 }
                             }
                             walkedBlocks.add(predecessor);
                         }
                         for (const def of defStmts) {
-                            this.addChain(value, def, stmt);
+                            this.defUseChains.push(new DefUseChain(value, def, stmt))
                         }
                     }
                 }
@@ -178,12 +141,7 @@ export class Cfg {
         }
     }
 
-    addChain(value: Value, def: Stmt, use: Stmt){
-        const defUseChain = new DefUseChain(value, def, use);
-        this.defUseChains.push(defUseChain);
-        def.addDefChain(defUseChain);
-        use.addUseChain(defUseChain);
-    }
+
 
     // public typeReference() {
     //     for (let block of this.blocks) {

@@ -12,8 +12,6 @@ export class Stmt {
     private position: number = 0;
     private valueVersion = new Map<Value, string>();
     private valueTags = new Map<Value, Set<ValueTag>>;
-    private useChains: DefUseChain[] = [];
-    private defChains: DefUseChain[] = [];
 
     constructor() {
     }
@@ -182,22 +180,6 @@ export class Stmt {
 
     public setText(text: string): void {
         this.text = text;
-    }
-
-    public getUseChains(): DefUseChain[] {
-        return this.useChains;
-    }
-
-    public addUseChain(newUsechain: DefUseChain): void {
-        this.useChains.push(newUsechain);
-    }
-
-    public getDefChains(): DefUseChain[] {
-        return this.defChains;
-    }
-
-    public addDefChain(newDefchain: DefUseChain): void {
-        this.defChains.push(newDefchain);
     }
 }
 
