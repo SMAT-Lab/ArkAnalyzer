@@ -1,9 +1,9 @@
-class Animal {
-    public eat(): void { }
-}
+class Foo {
+    public foo: Foo | undefined;
 
-class Bird extends Animal {
-    public fly(): void {
-        super.eat();
+    public bar(): void {
+        let foo = new Foo();
+        foo!.foo!.foo = new Foo();
     }
 }
+

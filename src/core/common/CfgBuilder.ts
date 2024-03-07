@@ -2139,6 +2139,9 @@ export class CfgBuilder {
             this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(resultLocal, this.astNodeToValue(whenFalseNode)));
             value = resultLocal;
         }
+        else if (node.kind == 'NonNullExpression') {
+            value = this.astNodeToValue(node.children[0]);
+        }
         else {
             // console.log('unsupported expr node type:', node.kind, ', text:', node.text)
             value = new Constant(node.text);
