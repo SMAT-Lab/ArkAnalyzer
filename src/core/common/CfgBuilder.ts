@@ -1780,7 +1780,7 @@ export class CfgBuilder {
 
     private astNodeToValue(node: NodeA): Value {
         let value: any;
-        if (node.kind == 'Identifier' || node.kind == 'ThisKeyword') {
+        if (node.kind == 'Identifier' || node.kind == 'ThisKeyword' || node.kind == 'SuperKeyword') {
             // TODO:识别外部变量
             value = new Local(node.text);
             value = this.getOriginalLocal(value);
