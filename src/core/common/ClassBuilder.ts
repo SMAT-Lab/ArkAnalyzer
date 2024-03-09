@@ -113,7 +113,8 @@ export function buildClassInfo4ClassNode(node: ts.ClassDeclaration | ts.ClassExp
             members.push(buildIndexSignature2ArkField(member));
         }
         else if (ts.isMethodDeclaration(member) || ts.isConstructorDeclaration(member) || ts.isMethodSignature(member) ||
-            ts.isConstructSignatureDeclaration(member) || ts.isAccessor(member) || ts.isCallSignatureDeclaration(member)) {
+            ts.isConstructSignatureDeclaration(member) || ts.isAccessor(member) || ts.isCallSignatureDeclaration(member)
+            || ts.isSemicolonClassElement(member)) {
             // skip these members
         }
         else {

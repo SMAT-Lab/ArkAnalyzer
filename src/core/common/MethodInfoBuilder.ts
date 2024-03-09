@@ -35,11 +35,45 @@ export class ObjectBindingPatternParameter {
     }
 }
 
+export class ArrayBindingPatternParameter {
+    private propertyName: string = "";
+    private name: string = "";
+    private optional: boolean = false;
+    private initializer: string = "";
+
+    constructor() {}
+
+    public getName() {
+        return this.name;
+    }
+
+    public setName(name: string) {
+        this.name = name;
+    }
+
+    public getPropertyName() {
+        return this.propertyName;
+    }
+
+    public setPropertyName(propertyName: string) {
+        this.propertyName = propertyName;
+    }
+
+    public isOptional() {
+        return this.optional;
+    }
+
+    public setOptional(optional: boolean) {
+        this.optional = optional;
+    }
+}
+
 export class MethodParameter {
     private name: string = "";
     private type: Type;
     private optional: boolean = false;
-    private elements: ObjectBindingPatternParameter[] = [];
+    private objElements: ObjectBindingPatternParameter[] = [];
+    private arrayElements: ArrayBindingPatternParameter[] = [];
 
     constructor() { }
 
@@ -67,16 +101,28 @@ export class MethodParameter {
         this.optional = optional;
     }
 
-    public addElement(element: ObjectBindingPatternParameter) {
-        this.elements.push(element);
+    public addObjElement(element: ObjectBindingPatternParameter) {
+        this.objElements.push(element);
     }
 
-    public getElements() {
-        return this.elements;
+    public getObjElements() {
+        return this.objElements;
     }
 
-    public setElements(elements: ObjectBindingPatternParameter[]) {
-        this.elements = elements;
+    public setObjElements(objElements: ObjectBindingPatternParameter[]) {
+        this.objElements = objElements;
+    }
+
+    public addArrayElement(element: ArrayBindingPatternParameter) {
+        this.arrayElements.push(element);
+    }
+
+    public getArrayElements() {
+        return this.arrayElements;
+    }
+
+    public setArrayElements(arrayElements: ArrayBindingPatternParameter[]) {
+        this.arrayElements = arrayElements;
     }
 }
 

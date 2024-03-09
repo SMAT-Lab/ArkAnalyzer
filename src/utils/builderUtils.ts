@@ -1,7 +1,7 @@
 import ts from "typescript";
 import { LiteralType, Type, TypeLiteralType, UnclearReferenceType, UnionType, UnknownType } from "../core/base/Type";
 import { TypeInference } from "../core/common/TypeInference";
-import { MethodParameter, ObjectBindingPatternParameter } from "../core/common/MethodInfoBuilder";
+import { ArrayBindingPatternParameter, MethodParameter, ObjectBindingPatternParameter } from "../core/common/MethodInfoBuilder";
 import { ArkField } from "../core/model/ArkField";
 
 export function handleQualifiedName(node: ts.QualifiedName): string {
@@ -137,7 +137,46 @@ export function buildParameters(node: ts.FunctionDeclaration | ts.MethodDeclarat
                 }
                 elements.push(paraElement);
             });
-            methodParameter.setElements(elements);
+            methodParameter.setObjElements(elements);
+        }
+        else if (ts.isArrayBindingPattern(parameter.name)) {
+            methodParameter.setName("ArrayBindingPattern");
+            let elements: ArrayBindingPatternParameter[] = [];
+            parameter.name.elements.forEach((element) => {
+                let paraElement = new ArrayBindingPatternParameter();
+                if (ts.isBindingElement(element)) {
+                    if (element.propertyName) {
+                        if (ts.isIdentifier(element.propertyName)) {
+                            paraElement.setPropertyName(element.propertyName.escapedText.toString());
+                        }
+                        else {
+                            console.log("New propertyName of ArrayBindingPattern found, please contact developers to support this!");
+                        }
+                    }
+
+                    if (element.name) {
+                        if (ts.isIdentifier(element.name)) {
+                            paraElement.setName(element.name.escapedText.toString());
+                        }
+                        else {
+                            console.log("New name of ArrayBindingPattern found, please contact developers to support this!");
+                        }
+                    }
+
+                    if (element.initializer) {
+                        console.log("TODO: support ArrayBindingPattern initializer.");
+                    }
+
+                    if (element.dotDotDotToken) {
+                        paraElement.setOptional(true);
+                    }
+                }
+                else if (ts.isOmittedExpression(element)) {
+                    console.log("TODO: support OmittedExpression for ArrayBindingPattern parameter name.");
+                }
+                elements.push(paraElement);
+            });
+            methodParameter.setArrayElements(elements);
         }
         else {
             console.log("Parameter name is not identifier, please contact developers to support this!");
@@ -192,6 +231,14 @@ export function buildParameters(node: ts.FunctionDeclaration | ts.MethodDeclarat
                     }
                     else if (ts.isIndexSignatureDeclaration(member)) {
                         members.push(buildIndexSignature2ArkField(member));
+                    }
+                    else if (ts.isConstructSignatureDeclaration(member)) {
+                        //Bug, To be fixed
+                        //members.push(buildMethodInfo4MethodNode(member));
+                    }
+                    else if (ts.isCallSignatureDeclaration(member)) {
+                        //Bug, To be fixed
+                        //members.push(buildMethodInfo4MethodNode(member));
                     }
                     else {
                         console.log("Please contact developers to support new TypeLiteral member!");
