@@ -4,7 +4,7 @@ import { ArkField } from "./ArkField";
 import { ArkFile } from "./ArkFile";
 import { ArkMethod, arkMethodNodeKind, buildArkMethodFromArkClass } from "./ArkMethod";
 import { ArkNamespace } from "./ArkNamespace";
-import { ClassSignature, FieldSignature, MethodSignature, MethodSubSignature, methodSubSignatureCompare } from "./ArkSignature";
+import { ClassSignature, FieldSignature, MethodSignature } from "./ArkSignature";
 
 
 export class ArkClass {
@@ -27,7 +27,7 @@ export class ArkClass {
     private modifiers: Set<string> = new Set<string>();
     private typeParameters: Type[] = [];
 
-    private defaultMethod: ArkMethod;
+    private defaultMethod: ArkMethod | null = null;
 
     private methods: ArkMethod[] = [];
     private fields: ArkField[] = [];
@@ -222,6 +222,10 @@ export class ArkClass {
     public setDefaultArkMethod(defaultMethod: ArkMethod) {
         this.defaultMethod = defaultMethod;
         this.addMethod(defaultMethod);
+    }
+
+    public getDefaultArkMethod(): ArkMethod | null {
+        return this.defaultMethod;
     }
 }
 
