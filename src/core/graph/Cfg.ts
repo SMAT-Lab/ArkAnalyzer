@@ -1,11 +1,8 @@
 import { DefUseChain } from "../base/DefUseChain";
 import { Local } from "../base/Local";
-import { Constant } from "../base/Constant";
 import { Stmt } from "../base/Stmt";
 import { ArkClass } from "../model/ArkClass";
 import { BasicBlock } from "./BasicBlock";
-import { Value } from "../base/Value";
-import { AbstractExpr } from "../base/Expr";
 
 export class Cfg {
     private blocks: Set<BasicBlock> = new Set();

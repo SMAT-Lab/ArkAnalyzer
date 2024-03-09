@@ -7,6 +7,7 @@ import { ClassHierarchyAnalysisAlgorithm } from "./callgraph/ClassHierarchyAnaly
 import { RapidTypeAnalysisAlgorithm } from "./callgraph/RapidTypeAnalysisAlgorithm";
 import { ImportInfo, updateSdkConfigPrefix } from './core/common/ImportBuilder';
 import { TypeInference } from './core/common/TypeInference';
+import { VisibleValue } from './core/common/VisibleValue';
 import { ArkClass } from "./core/model/ArkClass";
 import { ArkFile, buildArkFileFromFile } from "./core/model/ArkFile";
 import { ArkMethod } from "./core/model/ArkMethod";
@@ -49,6 +50,9 @@ export class Scene {
 
     //private sdkFiles: string[];
     private sdkFilesProjectMap: Map<string[], string> = new Map<string[], string>();
+
+    // values that are visible in curr scope
+    private visibleValue: VisibleValue = new VisibleValue();
 
     constructor(sceneConfig: SceneConfig) {
         this.projectName = sceneConfig.getTargetProjectName();
@@ -360,6 +364,11 @@ export class Scene {
     //Get the set of entry points that are used to build the call graph.
     public getEntryPoints() {
         return [];
+    }
+
+    /** get values that is visible in curr scope */
+    public getVisibleValue(): VisibleValue {
+        return this.visibleValue;
     }
 
     /* private getMethodSignature(fileName: string, methodName: string, parameters: MethodParameter[], returnType: Type, className: string): MethodSignature {

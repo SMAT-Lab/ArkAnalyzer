@@ -72,4 +72,12 @@ export class BasicBlock {
     public addSuccessorBlock(block: BasicBlock): void {
         this.successorBlocks.push(block);
     }
+
+    public toString(): string {
+        let strs: string[] = [];
+        for (const stmt of this.stmts) {
+            strs.push(stmt.toString() + '\n');
+        }
+        return strs.join('');
+    }
 }
