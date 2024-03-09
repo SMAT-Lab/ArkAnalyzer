@@ -10,6 +10,7 @@ export class Stmt {
     private uses: Value[] = [];
     private originPosition: number = 0;
     private position: number = 0;
+    private etsPosition: number = 0;
     private valueVersion = new Map<Value, string>();
     private valueTags = new Map<Value, Set<ValueTag>>;
 
@@ -172,6 +173,14 @@ export class Stmt {
 
     public getOriginPositionInfo(): number {
         return this.originPosition;
+    }
+
+    public setEtsPositionInfo(position: number) {
+        this.etsPosition = position;
+    }
+
+    public getEtsPositionInfo(): number {
+        return this.etsPosition;
     }
 
     public toString(): string {

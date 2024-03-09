@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import sourceMap from 'source-map';
 import { Scene } from '../../Scene';
 import { ASTree, NodeA } from "../base/Ast";
 import { ExportInfo } from '../common/ExportBuilder';
@@ -41,6 +42,8 @@ export class ArkFile {
     private arkSignature: string; */
 
     private fileSignature: FileSignature;
+
+    private sourceMap: sourceMap.SourceMapConsumer;
 
     constructor() { }
 
@@ -332,6 +335,24 @@ export class ArkFile {
             namespaces.push(...ns.getAllNamespacesUnderThisNamespace());
         });
         return namespaces;
+    }
+
+    public async getEtsOriginalPositionFor(position:{line: number, column:number}): Promise<{line: number, column:number}> {
+        if (position.line < 1) {
+            return {line: 0, column: 0};
+        }
+        if (!this.sourceMap) {
+            let mapFilePath:string = this.getFilePath() + '.map';
+            if (!fs.existsSync(mapFilePath)) {
+                return {line: 0, column: 0};
+            }
+            this.sourceMap = await new sourceMap.SourceMapConsumer(fs.readFileSync(mapFilePath, 'utf-8'));
+        }
+        let result = this.sourceMap?.originalPositionFor({line:position.line, column: position.column, bias: sourceMap.SourceMapConsumer.LEAST_UPPER_BOUND});
+        if (result.line) {
+            return {line: result.line, column: result.column as number};
+        }
+        return {line: 0, column: 0};
     }
 }
 
