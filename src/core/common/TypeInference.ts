@@ -39,7 +39,6 @@ export class TypeInference {
         const cfg = body.getCfg();
         for (const block of cfg.getBlocks()) {
             for (const stmt of block.getStmts()) {
-                // console.log(stmt.toString())
                 this.resolveSymbolInStmt(stmt, arkMethod);
                 TypeInference.inferTypeInStmt(stmt, arkMethod);
             }
@@ -174,24 +173,21 @@ export class TypeInference {
                             }
                         }
                     } else if (rightOp instanceof ArkInstanceFieldRef) {
-                        if (arkMethod == null)
+                        if (arkMethod == null || (!(rightOp.getBase().getType() instanceof ClassType)))
                             return;
-                        if (!(rightOp.getBase().getType() instanceof ClassType)) {
-                            return;
-                        }
                         const classSignature = rightOp.getBase().getType() as ClassType
                         let classInstance = ModelUtils.getClassWithClassSignature(
                             classSignature.getClassSignature(), arkMethod.getDeclaringArkFile().getScene()
                         )
                         if (classInstance == null) {
-                            console.log("Get Class Instance error")
+                            console.log("Error getting Class Instance: "+rightOp.getBase().getName())
                             return
                         }
                         let fieldInstance = ModelUtils.getFieldInClassWithName(
                             rightOp.getFieldName(), classInstance
                         )
                         if (fieldInstance == null) {
-                            console.log("Get Field Instance error")
+                            console.log("Error getting Field Instance error: "+rightOp.getFieldName())
                             return
                         }
                         let fieldType = fieldInstance.getType();
@@ -211,6 +207,9 @@ export class TypeInference {
                     leftOpType.setCurrType(rightOp.getType());
                 } else if (leftOpType instanceof UnclearReferenceType) {
                 }
+            } else if (leftOp instanceof ArkInstanceFieldRef) {
+                // console.log("leftOp instance field: "+leftOp.getBase().getName()+"."+leftOp.getFieldName())
+                // 对应赋值语句左值进行了取属性操作
             }
         }
     }

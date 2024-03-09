@@ -14,6 +14,7 @@ function runScene(config: SceneConfig) {
     // }
     for (let arkFile of projectScene.arkFiles) {
         if (arkFile.getName() === "main.ts") {
+            // console.log("filepath: "+arkFile.getFilePath())
             let tempMethod = arkFile.getDefaultClass().getMethods()
             entryPoints.push(tempMethod[0].getSignature())
             // console.log(tempMethod)
@@ -28,10 +29,10 @@ function runScene(config: SceneConfig) {
     //         }
     //     }
     // }
-    projectScene.makeCallGraphCHA(entryPoints)
-    let methods = projectScene.callGraph.getMethods()
-    let calls = projectScene.callGraph.getCalls()
-    printCallGraphDetails(methods, calls, config.getTargetProjectDirectory())
+    let callGraph = projectScene.makeCallGraphCHA(entryPoints)
+    let methods = callGraph.getMethods()
+    let calls = callGraph.getCalls()
+    // printCallGraphDetails(methods, calls, config.getTargetProjectDirectory())
     debugger;
 }
 runScene(config);

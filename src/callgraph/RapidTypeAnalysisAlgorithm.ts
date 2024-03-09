@@ -6,7 +6,7 @@ import { ArkMethod } from "../core/model/ArkMethod";
 import { ArkClass } from "../core/model/ArkClass";
 import { ArkInvokeStmt } from "../core/base/Stmt";
 import { isItemRegistered } from "../utils/callGraphUtils";
-import { AbstractInvokeExpr, ArkInstanceInvokeExpr, ArkStaticInvokeExpr } from "../core/base/Expr";
+import { AbstractInvokeExpr, ArkInstanceInvokeExpr, ArkNewExpr, ArkStaticInvokeExpr } from "../core/base/Expr";
 
 type Tuple = [MethodSignature, MethodSignature];
 export class RapidTypeAnalysisAlgorithm extends AbstractCallGraph {
@@ -131,23 +131,22 @@ export class RapidTypeAnalysisAlgorithm extends AbstractCallGraph {
         let cfg: Cfg = this.scene.getMethod(methodSignature)!.getCfg()
         let newInstancedClass: ClassSignature[]
         newInstancedClass = []
-        // for (let stmt of cfg.statementArray) {
-        //     // TODO: 判断语句类型，如果是赋值语句且创建了新的实例，则获取类签名
-        //     if (stmt.type == "JAssignStmt") {
-        //         // Soot中JAssignStmt代表赋值操作，如果赋值操作中右操作数是new语句，则获取类签名
-        //         let classSignature: ClassSignature;
-        //         if (!this.instancedClasses.has(classSignature.toString())) {
-        //             if (!isItemRegistered<ClassSignature>(
-        //                 classSignature, newInstancedClass,
-        //                 (a, b) =>
-        //                     a.toString() === b.toString()
-        //             )) {
-        //                 newInstancedClass.push(classSignature)
-        //             }
-        //             this.instancedClasses.add(classSignature.toString())
-        //         }
-        //     }
-        // }
+        for (let stmt of cfg.getStmts()) {
+            // TODO: 判断语句类型，如果是赋值语句且创建了新的实例，则获取类签名
+            let stmtExpr = stmt.getExprs()[0]
+            if (stmtExpr instanceof ArkNewExpr) {
+                let classSignature: ClassSignature = (stmtExpr.getType() as ClassType).getClassSignature()
+                if (classSignature != null) {
+                    if (!isItemRegistered<ClassSignature>(
+                        classSignature, newInstancedClass, (a, b) =>
+                        a.toString() === b.toString()
+                    )) {
+                        newInstancedClass.push(classSignature)
+                    }
+                    this.instancedClasses.add(classSignature)
+                }
+            }
+        }
         return newInstancedClass
     }
 
