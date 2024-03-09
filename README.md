@@ -9,6 +9,10 @@ npm install -g typescript
 ```shell
 npm install -D ts-node
 ```
+5. 安装依赖库
+```shell
+npm install source-map
+```
 
 # ArkAnalyzer 代码上库
 1. 本地代码提交

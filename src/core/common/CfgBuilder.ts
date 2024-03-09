@@ -41,6 +41,7 @@ class StatementBuilder {
     index: number;
     // TODO:以下两个属性需要获取    
     line: number;//行号//ast节点存了一个start值为这段代码的起始地址，可以从start开始往回查原文有几个换行符确定行号    
+    column: number; // 列  
     astNode: NodeA | null;//ast节点对象
     use: Set<Variable>;
     def: Set<Variable>;
@@ -1132,6 +1133,7 @@ export class CfgBuilder {
         if (stm.astNode) {
             stm.haveCall = this.nodeHaveCall(stm.astNode);
             stm.line = stm.astNode.line + 1; // ast的行号是从0开始
+            stm.column = stm.astNode.character;
         }
 
         if (stm.type == "ifStatement" || stm.type == "loopStatement" || stm.type == "catchOrNot") {
@@ -2966,6 +2968,10 @@ export class CfgBuilder {
                 originlStmt.setText(stmtBuilder.code);
                 originlStmt.setPositionInfo(stmtBuilder.line);
                 originlStmt.setOriginPositionInfo(stmtBuilder.line);
+                let file = this.declaringClass.getDeclaringArkFile();
+                file.getEtsOriginalPositionFor({line: stmtBuilder.line, column: stmtBuilder.column}).then((etsPosition) => {
+                    originlStmt.setEtsPositionInfo(etsPosition.line);
+                });
                 block.addStmt(originlStmt);
             }
             originalCfg.addBlock(block);
