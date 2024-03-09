@@ -28,8 +28,6 @@ export class Scene {
     private targetProjectArkFilesMap: Map<string, ArkFile> = new Map<string, ArkFile>();
     private sdkArkFilestMap: Map<string, ArkFile> = new Map<string, ArkFile>();
 
-    // callgraph: CallGraph;
-    callGraph: AbstractCallGraph;
     extendedClasses: Map<string, ArkClass[]> = new Map();
     globalImportInfos: ImportInfo[] = [];
 
@@ -401,15 +399,19 @@ export class Scene {
     // }
 
 
-    public makeCallGraphCHA(entryPoints: MethodSignature[]) {
-        this.callGraph = new ClassHierarchyAnalysisAlgorithm(this);
-        this.callGraph.loadCallGraph(entryPoints)
+    public makeCallGraphCHA(entryPoints: MethodSignature[]): AbstractCallGraph {
+        let callGraphCHA: AbstractCallGraph
+        callGraphCHA = new ClassHierarchyAnalysisAlgorithm(this);
+        callGraphCHA.loadCallGraph(entryPoints)
+        return callGraphCHA
     }
 
-    public makeCallGraphRTA(entryPoints: MethodSignature[]) {
-        // not actually supported
-        this.callGraph = new RapidTypeAnalysisAlgorithm(this);
-        this.callGraph.loadCallGraph(entryPoints)
+    public makeCallGraphRTA(entryPoints: MethodSignature[]): AbstractCallGraph {
+        // WIP
+        let callGraphRTA: AbstractCallGraph
+        callGraphRTA = new RapidTypeAnalysisAlgorithm(this);
+        callGraphRTA.loadCallGraph(entryPoints)
+        return callGraphRTA
     }
 
     /**
