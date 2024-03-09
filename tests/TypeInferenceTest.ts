@@ -1,29 +1,30 @@
+import { SceneConfig } from "../src/Config";
 import { Scene } from "../src/Scene";
 import { ArkBody } from "../src/core/model/ArkBody";
-import { SceneConfig } from "../src/Config";
 
 export class TypeInferenceTest {
     public buildScene(): Scene {
         // tests\\resources\\typeInference\\sample
         // tests\\resources\\typeInference\\moduleA
         // tests\\resources\\typeInference\\mainModule
-        const config_path = "tests\\resources\\typeInference\\ProjectTypeInferenceTestConfig.json";
-        // const config_path = "tests\\resources\\typeInference\\TypeInferenceTestConfig.json";
+        // const config_path = "tests\\resources\\typeInference\\ProjectTypeInferenceTestConfig.json";
+        const config_path = "tests\\resources\\typeInference\\TypeInferenceTestConfig.json";
         let config: SceneConfig = new SceneConfig();
         config.buildFromJson(config_path);
         return new Scene(config);
     }
 
     public testLocalTypes() {
-        let scene = this.buildScene();        
+        let scene = this.buildScene();
+        scene.inferTypes();   
 
         for (const arkFile of scene.arkFiles) {
             console.log('=============== arkFile:', arkFile.getName(), ' ================');
             for (const arkClass of arkFile.getClasses()) {
                 for (const arkMethod of arkClass.getMethods()) {
-                    // if (arkMethod.getName() == '_DEFAULT_ARK_METHOD') {
-                    //     continue;
-                    // }
+                    if (arkMethod.getName() == '_DEFAULT_ARK_METHOD') {
+                        continue;
+                    }
                     console.log('*** arkMethod: ', arkMethod.getName());
 
                     const body = arkMethod.getBody();
@@ -34,7 +35,6 @@ export class TypeInferenceTest {
                         console.log('name: ' + local.toString() + ', type: ' + local.getType());
                     }
                     console.log();
-
                 }
             }
         }
