@@ -19,8 +19,8 @@ import {
     UnknownType,
     VoidType
 } from "../base/Type";
-import { Value } from "../base/Value";
 import { ArkMethod } from "../model/ArkMethod";
+import { ClassSignature } from "../model/ArkSignature";
 import { ModelUtils } from "./ModelUtils";
 
 export class TypeInference {
@@ -60,19 +60,19 @@ export class TypeInference {
             } else if (expr instanceof ArkInstanceInvokeExpr) {
                 const base = expr.getBase();
                 let type = base.getType();
-                if (type instanceof UnknownType){
+                if (type instanceof UnknownType) {
                     const arkClass = ModelUtils.getClassWithName(base.getName(), arkMethod);
-                    if (arkClass){
+                    if (arkClass) {
                         type = new ClassType(arkClass.getSignature());
                         base.setType(type);
                     }
                     else {
                         const arkNamespace = ModelUtils.getNamespaceWithName(base.getName(), arkMethod);
-                        if (arkNamespace){
+                        if (arkNamespace) {
                             const methodName = expr.getMethodSignature().getMethodSubSignature().getMethodName();
                             const defaultClass = arkNamespace.getClasses().find(cls => cls.getName() == '_DEFAULT_ARK_CLASS') || null;
                             const foundMethod = ModelUtils.getMethodInClassWithName(methodName, defaultClass!);
-                            if (foundMethod){
+                            if (foundMethod) {
                                 expr.setMethodSignature(foundMethod.getSignature());
                                 return;
                             }
@@ -114,12 +114,12 @@ export class TypeInference {
             }
         }
         const stmtDef = stmt.getDef()
-        if (stmtDef && stmtDef instanceof ArkInstanceFieldRef){
+        if (stmtDef && stmtDef instanceof ArkInstanceFieldRef) {
             this.handleClassField(stmtDef);
         }
     }
 
-    private handleClassField(field: ArkInstanceFieldRef){
+    private handleClassField(field: ArkInstanceFieldRef) {
         const base = field.getBase();
         const type = base.getType();
         if (!(type instanceof ClassType)) {
@@ -195,10 +195,10 @@ export class TypeInference {
                             return
                         }
                         let fieldType = fieldInstance.getType();
-                        if(fieldType instanceof UnclearReferenceType){
+                        if (fieldType instanceof UnclearReferenceType) {
                             const fieldTypeName = fieldType.getName();
-                            const arkClass = ModelUtils.getClassWithName(fieldTypeName,arkMethod);
-                            if (arkClass){
+                            const arkClass = ModelUtils.getClassWithName(fieldTypeName, arkMethod);
+                            if (arkClass) {
                                 fieldType = new ClassType(arkClass.getSignature());
                             }
                         }
@@ -234,6 +234,10 @@ export class TypeInference {
                 return VoidType.getInstance();
             case 'never':
                 return NeverType.getInstance();
+            case 'RegularExpression':
+                const classSignature = new ClassSignature();
+                classSignature.setClassName('RegExp');
+                return new ClassType(classSignature);
             default:
                 return UnknownType.getInstance();
         }

@@ -1793,7 +1793,8 @@ export class CfgBuilder {
         }
         else if (this.shouldBeConstant(node)) {
             const typeStr = this.resolveKeywordType(node);
-            value = new Constant(node.text, TypeInference.buildTypeFromStr(typeStr));
+            let constant = new Constant(node.text, TypeInference.buildTypeFromStr(typeStr));
+            value = this.generateAssignStmt(constant);
         }
         else if (node.kind == 'BinaryExpression') {
             let op1 = this.astNodeToValue(node.children[0]);
@@ -3100,6 +3101,8 @@ export class CfgBuilder {
                 return "any";
             case 'NullKeyword':
                 return 'null';
+            case 'RegularExpressionLiteral':
+                return 'RegularExpression';
             default:
                 return "";
         }
