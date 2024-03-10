@@ -1,4 +1,4 @@
-import { SceneConfig } from "./Config";
+import { SceneConfig } from "../src/Config";
 import { Scene } from "../src/Scene";
 import {printCallGraphDetails} from "../src/utils/callGraphUtils";
 import {MethodSignature} from "../src/core/model/ArkSignature";
@@ -29,10 +29,12 @@ function runScene(config: SceneConfig) {
     //         }
     //     }
     // }
-    let callGraph = projectScene.makeCallGraphCHA(entryPoints)
+    // let callGraph = projectScene.makeCallGraphCHA(entryPoints)
+    projectScene.inferTypes()
+    let callGraph = projectScene.makeCallGraphRTA(entryPoints)
     let methods = callGraph.getMethods()
     let calls = callGraph.getCalls()
-    // printCallGraphDetails(methods, calls, config.getTargetProjectDirectory())
+    printCallGraphDetails(methods, calls, config.getTargetProjectDirectory())
     debugger;
 }
 runScene(config);

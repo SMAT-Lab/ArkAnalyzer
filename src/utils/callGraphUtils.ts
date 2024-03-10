@@ -155,7 +155,7 @@ export function printCallGraphDetails(methods: Set<MethodSignature>, calls: Map<
     });
 
     // 打印 Calls
-    console.log('\tCalls:');
+    console.log('\n\tCalls:');
     // 计算最长的method名称的长度，加上箭头和空格的长度
     const longestCallerLength = Array.from(calls.keys()).reduce((max, method) => Math.max(max, method.toString().length), 0);
     const arrow = '->';
