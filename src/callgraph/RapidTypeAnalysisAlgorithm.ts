@@ -10,8 +10,8 @@ import { AbstractInvokeExpr, ArkInstanceInvokeExpr, ArkNewExpr, ArkStaticInvokeE
 
 type Tuple = [MethodSignature, MethodSignature];
 export class RapidTypeAnalysisAlgorithm extends AbstractCallGraph {
-    private instancedClasses: Set<ClassSignature>
-    private ignoredCalls: Map<ClassSignature, Tuple[]>
+    private instancedClasses: Set<ClassSignature> = new Set<ClassSignature>()
+    private ignoredCalls: Map<ClassSignature, Tuple[]> = new Map<ClassSignature, Tuple[]>()
     protected resolveCall(sourceMethodSignature: MethodSignature, invokeExpression: ArkInvokeStmt): MethodSignature[] {
         let concreteMethodSignature: MethodSignature;
         let concreteMethod: ArkMethod;
@@ -102,7 +102,8 @@ export class RapidTypeAnalysisAlgorithm extends AbstractCallGraph {
      */
     protected preProcessMethod(methodSignature: MethodSignature): void {
         // 获取当前函数中新实例化的类
-        let newlyInstancedClasses = this.collectInstantiatedClassesInMethod(methodSignature)
+        let instancedClasses = this.collectInstantiatedClassesInMethod(methodSignature)
+        const newlyInstancedClasses = instancedClasses.filter(item => !(this.getInstancedClass(item)!= null))
         for (let newInstancedClass of newlyInstancedClasses) {
             // Soot中前处理没看明白，先写个简单版本
             // Check from the ignoredCalls collection whether there are edges that need to be reactivated.
@@ -110,9 +111,7 @@ export class RapidTypeAnalysisAlgorithm extends AbstractCallGraph {
             if (ignoredCallsOfSpecificClass.length != 0) {
                 for (let edge of ignoredCallsOfSpecificClass) {
                     this.addCall(edge[0], edge[1])
-                    if (!this.checkMethodForAnalysis(edge[1])) {
-                        this.signatureManager.addToWorkList(edge[1])
-                    }
+                    this.signatureManager.addToWorkList(edge[1])
                 }
                 this.ignoredCalls.delete(newInstancedClass)
             }
@@ -143,7 +142,7 @@ export class RapidTypeAnalysisAlgorithm extends AbstractCallGraph {
                     )) {
                         newInstancedClass.push(classSignature)
                     }
-                    this.instancedClasses.add(classSignature)
+                    this.addInstancedClass(classSignature)
                 }
             }
         }
@@ -243,6 +242,15 @@ export class RapidTypeAnalysisAlgorithm extends AbstractCallGraph {
                 this.ignoredCalls.delete(keyClassSignature)
             }
         }
+    }
+
+    protected addInstancedClass(classSignature: ClassSignature) {
+        for (let instanceClass of this.instancedClasses) {
+            if (instanceClass.toString() === classSignature.toString()) {
+                return
+            }
+        }
+        this.instancedClasses.add(classSignature)
     }
 
     protected getInstancedClass(classSignature: ClassSignature): ClassSignature | null {
