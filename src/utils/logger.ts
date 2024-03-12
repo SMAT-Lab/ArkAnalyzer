@@ -52,7 +52,7 @@ export default class ConsoleLogger {
         return getLogger('codelinter');
     }
 
-    public static serLogLevel(level: LOG_LEVEL): void {
+    public static setLogLevel(level: LOG_LEVEL): void {
         getLogger('codelinter').level = level;
     }
 }
