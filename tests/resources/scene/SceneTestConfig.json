@@ -1,6 +1,8 @@
 {
     "targetProjectName": "SceneTest",    
     "targetProjectDirectory": "tests\\resources\\scene\\mainModule",
+
+    "logPath": "out\\log.txt",
     
     "ohosSdkPath": "",
     "kitSdkPath": "",
