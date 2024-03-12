@@ -1,11 +1,13 @@
 import { Stmt } from "../base/Stmt";
+import { Value } from "../base/Value";
+import { ArkMethod } from "../model/ArkMethod";
 import { DataflowResult } from "./DataflowResult";
 import { Edge } from "./Edge";
-import { Fact } from "./Fact";
 
 
-export abstract class DataflowProblem {
- 
+export abstract class DataflowProblem<D> {
+
+
     public transferEdge(srcStmt: Stmt, tgtStmt: Stmt) {
         let edgeKind: number = Edge.getKind(srcStmt, tgtStmt);
 
@@ -32,4 +34,20 @@ export abstract class DataflowProblem {
     abstract transferCallEdge(srcStmt: Stmt, tgtStmt: Stmt, result: DataflowResult): boolean;
 
     abstract transferReturnEdge(srcStmt: Stmt, tgtStmt: Stmt, result: DataflowResult): boolean;
+
+    abstract getNormalFlowFunction(srcStmt:Stmt, tgtStmt:Stmt) : FlowFunction<D>;
+
+    abstract getCallFlowFunction(srcStmt:Stmt, method:ArkMethod) : FlowFunction<D>;
+
+    abstract getExitToReturnFlowFunction(srcStmt:Stmt, tgtStmt:Stmt) : FlowFunction<D>;
+
+    abstract getCallToReturnFlowFunction(srcStmt:Stmt, tgtStmt:Stmt) : FlowFunction<D>;
+
+    abstract createZeroValue() : D;
+
+    abstract getEntryPoint() : Stmt;
+}
+
+export interface FlowFunction<D>  {
+    getDataFacts(d:D) : Set<D>
 }
