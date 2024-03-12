@@ -1,6 +1,8 @@
 {
     "targetProjectName": "TypeInferenceTest",    
     "targetProjectDirectory": "D:\\Codes\\resources\\SE4OpenHarmony-main\\Apps\\OHApps\\Audio",
+
+    "logPath": "out\\log.txt",
     
     "ohosSdkPath": "",
     "kitSdkPath": "",
