@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import Logger from "./utils/logger";
+import Logger, { LOG_LEVEL } from "./utils/logger";
 
 const logger = Logger.getLogger();
 
@@ -42,7 +42,7 @@ export class SceneConfig {
     private sdkFiles: string[] = [];
     private sdkFilesMap: Map<string[], string> = new Map<string[], string>();
     private projectFiles: string[] = [];
-    private logPath: string = "./log/ArkAnalyzer.log";
+    private logPath: string = "./out/ArkAnalyzer.log";
 
     constructor() { }
 
@@ -56,6 +56,7 @@ export class SceneConfig {
     public buildFromProjectDir(targetProjectDirectory: string) {
         this.targetProjectDirectory = targetProjectDirectory;
         this.targetProjectName = path.basename(targetProjectDirectory);
+        Logger.configure(this.logPath, LOG_LEVEL.TRACE);
         this.getAllFiles();
     }
 
@@ -63,6 +64,7 @@ export class SceneConfig {
         this.targetProjectName = targetProjectName;
         this.targetProjectDirectory = targetProjectDirectory;
         this.ohosSdkPath = ohosSdkPath ? ohosSdkPath : '';
+        Logger.configure(this.logPath, LOG_LEVEL.TRACE);
         this.getAllFiles();
     }
 
@@ -71,6 +73,7 @@ export class SceneConfig {
         this.targetProjectDirectory = targetProjectDirectory;
         this.projectFiles.push(filePath);
         this.logPath = logPath;
+        Logger.configure(this.logPath, LOG_LEVEL.TRACE);
     }
 
     private genConfig() {
@@ -80,6 +83,7 @@ export class SceneConfig {
             this.targetProjectName = configurations.targetProjectName;
             this.targetProjectDirectory = configurations.targetProjectDirectory;
             this.logPath = configurations.logPath;
+            Logger.configure(this.logPath, LOG_LEVEL.TRACE);
 
             this.ohosSdkPath = configurations.ohosSdkPath;
             this.kitSdkPath = configurations.kitSdkPath;
@@ -96,7 +100,7 @@ export class SceneConfig {
             });
         }
         else {
-            logger.info("Your configJsonPath: <", this.configJsonPath, "> is not exist.");
+            throw new Error(`Your configJsonPath: "${this.configJsonPath}" is not exist.`);
         }
     }
 

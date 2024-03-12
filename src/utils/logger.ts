@@ -10,7 +10,7 @@ export enum LOG_LEVEL {
 }
 
 export default class ConsoleLogger {
-    public static configure(logFilePath: string = 'out\\log.txt', level: LOG_LEVEL = LOG_LEVEL.INFO): void {
+    public static configure(logFilePath: string, level: LOG_LEVEL): void {
         configure({
             appenders: {
                 file: {
@@ -22,11 +22,15 @@ export default class ConsoleLogger {
                     encoding: 'utf-8',
                     layout: {
                         type: 'pattern',
-                        pattern: '[%d] [%p] [%z] - %m%n',
+                        pattern: '[%d] [%p] [%z] [ArkAnalyzer] - %m%n',
                     },
                 },
                 console: {
                     type: 'console',
+                    layout: {
+                        type: 'pattern',
+                        pattern: '[%d] [%p] [%z] [ArkAnalyzer] - %m%n',
+                    },
                 },
             },
             categories: {
@@ -45,7 +49,7 @@ export default class ConsoleLogger {
     }
 
     public static getLogger(): Logger {
-        return getLogger('default');
+        return getLogger('codelinter');
     }
 
     public static serLogLevel(level: LOG_LEVEL): void {
