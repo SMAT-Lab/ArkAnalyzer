@@ -1,7 +1,7 @@
 import { SceneConfig } from "../src/Config";
 import { Scene } from "../src/Scene";
 import { ArkBody } from "../src/core/model/ArkBody";
-import Logger from "../src/utils/logger";
+import Logger, { LOG_LEVEL } from "../src/utils/logger";
 
 const logger = Logger.getLogger();
 
@@ -14,6 +14,7 @@ export class TypeInferenceTest {
         const config_path = "tests\\resources\\typeInference\\TypeInferenceTestConfig.json";
         let config: SceneConfig = new SceneConfig();
         config.buildFromJson(config_path);
+        Logger.setLogLevel(LOG_LEVEL.INFO);
         return new Scene(config);
     }
 
