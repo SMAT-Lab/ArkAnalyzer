@@ -56,7 +56,7 @@ export class SceneConfig {
     public buildFromProjectDir(targetProjectDirectory: string) {
         this.targetProjectDirectory = targetProjectDirectory;
         this.targetProjectName = path.basename(targetProjectDirectory);
-        Logger.configure(this.logPath, LOG_LEVEL.TRACE);
+        Logger.configure(this.logPath, LOG_LEVEL.ERROR);
         this.getAllFiles();
     }
 
@@ -64,7 +64,7 @@ export class SceneConfig {
         this.targetProjectName = targetProjectName;
         this.targetProjectDirectory = targetProjectDirectory;
         this.ohosSdkPath = ohosSdkPath ? ohosSdkPath : '';
-        Logger.configure(this.logPath, LOG_LEVEL.TRACE);
+        Logger.configure(this.logPath, LOG_LEVEL.ERROR);
         this.getAllFiles();
     }
 
@@ -73,7 +73,7 @@ export class SceneConfig {
         this.targetProjectDirectory = targetProjectDirectory;
         this.projectFiles.push(filePath);
         this.logPath = logPath;
-        Logger.configure(this.logPath, LOG_LEVEL.TRACE);
+        Logger.configure(this.logPath, LOG_LEVEL.ERROR);
     }
 
     private genConfig() {
@@ -83,7 +83,7 @@ export class SceneConfig {
             this.targetProjectName = configurations.targetProjectName;
             this.targetProjectDirectory = configurations.targetProjectDirectory;
             this.logPath = configurations.logPath;
-            Logger.configure(this.logPath, LOG_LEVEL.TRACE);
+            Logger.configure(this.logPath, LOG_LEVEL.ERROR);
 
             this.ohosSdkPath = configurations.ohosSdkPath;
             this.kitSdkPath = configurations.kitSdkPath;

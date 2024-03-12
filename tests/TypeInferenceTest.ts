@@ -4,7 +4,6 @@ import { ArkBody } from "../src/core/model/ArkBody";
 import Logger from "../src/utils/logger";
 
 const logger = Logger.getLogger();
-Logger.configure();
 
 export class TypeInferenceTest {
     public buildScene(): Scene {
