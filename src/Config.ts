@@ -14,9 +14,6 @@ export class Config {
     sdkName?: string;
     sdk_dir?: string;
 
-    //functionTransformer: FunctionTransformer | null = null;
-    //sceneTransformer: SceneTransformer | null = null;
-
     constructor(projectName: string, project_dir: string, sdkName?: string, sdk_dir?: string) {
         this.projectName = projectName;
         this.project_dir = project_dir;
@@ -45,6 +42,7 @@ export class SceneConfig {
     private sdkFiles: string[] = [];
     private sdkFilesMap: Map<string[], string> = new Map<string[], string>();
     private projectFiles: string[] = [];
+    private logPath: string = "./log/ArkAnalyzer.log";
 
     constructor() { }
 
@@ -61,17 +59,18 @@ export class SceneConfig {
         this.getAllFiles();
     }
 
-    public buildFromIde(targetProjectName:string, targetProjectDirectory:string, ohosSdkPath?:string) {
+    public buildFromIde(targetProjectName: string, targetProjectDirectory: string, ohosSdkPath?: string) {
         this.targetProjectName = targetProjectName;
         this.targetProjectDirectory = targetProjectDirectory;
-        this.ohosSdkPath = ohosSdkPath? ohosSdkPath : '';
+        this.ohosSdkPath = ohosSdkPath ? ohosSdkPath : '';
         this.getAllFiles();
     }
 
-    public buildFromIdeSingle(targetProjectName:string, targetProjectDirectory:string, filePath:string) {
+    public buildFromIdeSingle(targetProjectName: string, targetProjectDirectory: string, filePath: string, logPath: string) {
         this.targetProjectName = targetProjectName;
         this.targetProjectDirectory = targetProjectDirectory;
         this.projectFiles.push(filePath);
+        this.logPath = logPath;
     }
 
     private genConfig() {
@@ -80,6 +79,7 @@ export class SceneConfig {
             let configurations = JSON.parse(fs.readFileSync(this.configJsonPath, "utf8"));
             this.targetProjectName = configurations.targetProjectName;
             this.targetProjectDirectory = configurations.targetProjectDirectory;
+            this.logPath = configurations.logPath;
 
             this.ohosSdkPath = configurations.ohosSdkPath;
             this.kitSdkPath = configurations.kitSdkPath;

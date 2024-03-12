@@ -1,6 +1,8 @@
 {
     "targetProjectName": "sample",
     "targetProjectDirectory": "./tests/sample",
+
+    "logPath": "./log/ArkAnalyzer.log",
     
     "ohosSdkPath": "",
     "kitSdkPath": "",
