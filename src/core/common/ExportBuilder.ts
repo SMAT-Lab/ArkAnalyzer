@@ -9,7 +9,6 @@ export class ExportInfo {
     declaringSignature: string;
     isDefault: boolean = false;
     importInfo: ImportInfo | undefined;
-    //arkSignature: string;
 
     constructor() { }
 
@@ -76,15 +75,6 @@ export class ExportInfo {
             this.setImportInfo(importInfo);
         }
     }
-
-    /* public setArkSignature(declaringSignature:string) {
-        this.declaringSignature = declaringSignature;
-        this.arkSignature = declaringSignature + '.' + this.exportClauseName;
-    }
-
-    public getArkSignature() {
-        return this.arkSignature;
-    } */
 }
 
 export function buildExportInfo4ExportNode(node: ts.ExportDeclaration | ts.ExportAssignment): ExportInfo[] {

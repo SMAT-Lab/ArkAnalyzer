@@ -16,15 +16,8 @@ export class ImportInfo {
     private importFrom: string;
     private nameBeforeAs: string | undefined;
     private clauseType: string = "";
-
-    /* // Deprecated
-    private declaringSignature: string; */
     
     private declaringArkFile: ArkFile;
-    
-    /* // Deprecated
-    private arkSignature: string;
-    private targetArkSignature: string; */
     
     private importFromSignature2Str: string = "";
     private importProjectType: string = "ThirdPartPackage";
@@ -103,100 +96,6 @@ export class ImportInfo {
         //third part npm package
         //TODO
     }
-
-    /* // Deprecated
-    public setArkSignature(declaringSignature: string) {
-        this.declaringSignature = declaringSignature;
-        this.arkSignature = declaringSignature + '.' + this.importClauseName;
-        this.genTargetArkSignature();
-    } */
-
-    /* // Deprecated
-    public genTargetArkSignature() {
-        let tmpSig: string;
-
-        // project internal imports
-        const pathReg1 = new RegExp("^(\\.\\.\\/\|\\.\\/)");
-        if (pathReg1.test(this.importFrom)) {
-            //get real target path of importfrom
-            let realTargetPath = path.resolve(path.dirname(this.declaringFilePath), path.dirname(this.importFrom + '.ts'));
-            //get relative path from project dir to real target path of importfrom
-            let tmpSig1 = path.relative(this.projectPath, realTargetPath);
-
-            tmpSig1 = transfer2UnixPath(tmpSig1) + '/' + path.basename(this.importFrom + '.ts', ".ts");
-            tmpSig1 = tmpSig1.replace(/^\.\//, '');
-            tmpSig1 = `<${tmpSig1}>`;
-
-            if (this.nameBeforeAs) {
-                tmpSig = tmpSig1 + '.' + this.nameBeforeAs;
-            }
-            else if (this.importType == 'NamespaceImport') {
-                tmpSig = tmpSig1;
-            }
-            else {
-                tmpSig = tmpSig1 + '.' + this.importClauseName;
-            }
-            this.setTargetArkSignature(tmpSig);
-        }
-
-        // external imports, e.g. @ohos., @kit., @System., @ArkAnalyzer/
-        sdkPathMap.forEach((value, key) => {
-            // e.g. @ohos., @kit., @System.
-            if (key == 'ohos' || key == 'kit' || key == 'system') {
-                const pathReg2 = new RegExp(`@(${key})\\.`);
-                if (pathReg2.test(this.importFrom)) {
-                    tmpSig = (value + '/' + this.importFrom).replace(/^\.\//, '');
-                    if (this.nameBeforeAs) {
-                        tmpSig = `<${tmpSig}>`;
-                        tmpSig = tmpSig + '.' + this.nameBeforeAs;
-                    }
-                    else if (this.importType == 'NamespaceImport') {
-                        tmpSig = `<${tmpSig}>`;
-                    }
-                    else {
-                        tmpSig = `<${tmpSig}>`;
-                        tmpSig = tmpSig + '.' + this.importClauseName;
-                    }
-                    this.setTargetArkSignature(tmpSig);
-                }
-            }
-            // e.g. @ArkAnalyzer/
-            else {
-                const pathReg3 = new RegExp(`@(${key})\\/`);
-                if (pathReg3.test(this.importFrom)) {
-                    tmpSig = (value + '/' + this.importFrom).replace(/^\.\//, '');
-                    if (this.nameBeforeAs) {
-                        tmpSig = `<${tmpSig}>`;
-                        tmpSig = tmpSig + '.' + this.nameBeforeAs;
-                    }
-                    else if (this.importType == 'NamespaceImport') {
-                        tmpSig = `<${tmpSig}>`;
-                    }
-                    else {
-                        tmpSig = `<${tmpSig}>`;
-                        tmpSig = tmpSig + '.' + this.importClauseName;
-                    }
-                    this.setTargetArkSignature(tmpSig);
-                }
-            }
-        });
-
-        //third part npm package
-        //TODO
-    } */
-
-    /* // Deprecated
-    public getArkSignature() {
-        return this.arkSignature;
-    }
-
-    public getTargetArkSignature() {
-        return this.targetArkSignature;
-    }
-
-    public setTargetArkSignature(targetArkSignature: string) {
-        this.targetArkSignature = targetArkSignature;
-    } */
 
     public getImportClauseName() {
         return this.importClauseName;

@@ -26,7 +26,6 @@ export class FileSignature {
     }
 
     public toString(): string {
-        //let tmpSig = transfer2UnixPath(this.name).replace(/\//g, '.');
         let tmpSig = transfer2UnixPath(this.fileName);
 
         // remove file ext: '.d.ts' or '.ts'

@@ -259,7 +259,6 @@ export class CfgBuilder {
         this.current3ACstm = this.entry;
         this.blocks = [];
         this.entryBlock = new Block(this.blocks.length, [this.entry], null);
-        // this.blocks.push(this.entryBlock);
         this.exitBlock = new Block(-1, [this.entry], null);
         this.currentDeclarationKeyword = "";
         this.variables = [];
@@ -350,60 +349,6 @@ export class CfgBuilder {
                 let s = new StatementBuilder("statement", c.text, c, scope.id);
                 judgeLastType(s);
                 lastStatement = s;
-                // let block = checkBlock(c);
-                // if (block == null) {
-                //     let s = new StatementBuilder("statement", c.text, c, scope.id);
-                //     judgeLastType(s);
-                //     lastStatement = s;
-                // }
-                // else {
-                //     let anonymous = getAnonymous(c);
-                //     if (anonymous) {
-                //         let block = anonymous.children[this.findChildIndex(anonymous, "Block")];
-                //         let syntaxList = block.children[this.findChildIndex(block, "SyntaxList")];
-                //         let anoFuc = new CfgBuilder(syntaxList, "anonymous" + (this.anonymousFunctions.length + 1), this.declaringClass);
-                //         this.anonymousFunctions.push(anoFuc);
-
-                //         let tempText = "anonymous" + this.anonymousFunctions.length;
-                //         let OpenParenTokenIndex = this.findChildIndex(anonymous, "OpenParenToken");
-                //         let ColonTokenIndex = this.findChildIndex(anonymous, "ColonToken");
-                //         let end = 0;
-                //         if (ColonTokenIndex > 0) {
-                //             end = ColonTokenIndex + 1;
-                //         }
-                //         else {
-                //             end = this.findChildIndex(anonymous, "CloseParenToken");
-                //         }
-                //         let start = OpenParenTokenIndex;
-                //         while (start <= end) {
-                //             tempText += anonymous.children[start].text;
-                //             start++;
-                //         }
-                //         anonymous.text = tempText;
-                //         let p = anonymous.parent;
-                //         while (p && p != c) {
-                //             p.text = "";
-                //             for (let pc of p.children) {
-                //                 p.text += pc.text;
-                //                 if (pc.kind.includes("Keyword")) {
-                //                     p.text += ' ';
-                //                 }
-                //             }
-                //             p = p.parent;
-                //         }
-                //         c.text = "";
-                //         for (let cc of c.children) {
-                //             c.text += cc.text;
-                //             if (cc.kind.includes("Keyword")) {
-                //                 c.text += ' ';
-                //             }
-                //         }
-
-                //         let s = new StatementBuilder("statement", c.text, c, scope.id);
-                //         judgeLastType(s);
-                //         lastStatement = s;
-                //     }
-                // }
             }
             if (c.kind == "ImportDeclaration") {
                 let stm = new StatementBuilder("statement", c.text, c, scope.id);
@@ -435,10 +380,6 @@ export class CfgBuilder {
                     }
                     p = p.parent;
                 }
-                // if(this.breakin=="loop")
-                //     brstm.next=this.loopStack[this.loopStack.length-1].nextF;
-                // if(this.breakin=="switch")
-                //     brstm.next=this.switchExitStack[this.switchExitStack.length-1];
                 lastStatement = brstm;
             }
             if (c.kind == "ContinueStatement") {
@@ -452,7 +393,6 @@ export class CfgBuilder {
                 judgeLastType(ifstm);
                 let ifexit: StatementBuilder = new StatementBuilder("ifExit", "", c, scope.id);
                 let elsed: boolean = false;
-                // let expressionCondition=false;
                 for (let j = 0; j < c.children.length; j++) {
                     let ifchild = c.children[j];
                     if (ifchild.kind == "OpenParenToken") {
@@ -490,7 +430,6 @@ export class CfgBuilder {
                 judgeLastType(loopstm);
                 let loopExit = new StatementBuilder("loopExit", "", c, scope.id);
                 loopstm.nextF = loopExit;
-                // let expressionCondition=false;
                 for (let j = 0; j < c.children.length; j++) {
                     let loopchild = c.children[j];
                     if (loopchild.kind == "OpenParenToken") {
@@ -692,10 +631,6 @@ export class CfgBuilder {
                         if (!catchOrNot.nextT) {
                             catchOrNot.nextT = catchExit;
                         }
-                        // lastStatement=catchExit;
-
-                        // trystm.catchStatements.push(catchOrNot.nextT);
-                        // catchOrNot.scopeID=catchOrNot.nextT.scopeID;
                         const catchStatement = new StatementBuilder("statement", catchOrNot.code, trychild, catchOrNot.nextT.scopeID);
                         catchStatement.next = catchOrNot.nextT;
                         trystm.catchStatement = catchStatement;
@@ -725,10 +660,8 @@ export class CfgBuilder {
                 }
                 if (finalBlock && finalBlock.children[1].children.length > 0) {
                     let final = new StatementBuilder("statement", "finally", c, scope.id);
-                    // judgeLastType(final);
                     let finalExit = new StatementBuilder("finally exit", "", c, scope.id);
                     this.walkAST(final, finalExit, finalBlock.children[1]);
-                    // lastStatement=finalExit;
 
                     trystm.finallyStatement = final.next;
                 }
@@ -802,13 +735,6 @@ export class CfgBuilder {
                 }
                 this.deleteExit(sstm.nexts[j]);
             }
-            // if (sstm.default?.type.includes("Exit")) {
-            //     let p = sstm.default;
-            //     while (p.type.includes("Exit") && p.next) {
-            //         p = p.next;
-            //     }
-            //     sstm.default = p;
-            // }
         }
         else if (stm.type == "tryStatement") {
             let trystm = stm as TryStatementBuilder;
@@ -885,7 +811,6 @@ export class CfgBuilder {
             let b1 = this.buildNewBlock([]);
             this.buildBlocks(cstm.nextT, b1);
             let b2 = this.buildNewBlock([]);
-            // block.nexts.push(b2);
             this.buildBlocks(cstm.nextF, b2);
         }
         else if (stm.type == "switchStatement") {
@@ -926,8 +851,6 @@ export class CfgBuilder {
             if (trystm.finallyStatement) {
                 this.buildBlocks(trystm.finallyStatement, finallyBlock);
                 lastFinallyBlock = this.blocks[this.blocks.length - 1];
-                // let stm=new StatementBuilder("gotoStatement","goto label"+finallyBlock.id,null,tryFirstBlock.stms[0].scopeID);
-                // tryFirstBlock.stms.push(stm);
             }
             else {
                 let stm = new StatementBuilder("tmp", "", null, -1);
@@ -937,7 +860,6 @@ export class CfgBuilder {
                 lastBlockInTry.nexts.add(finallyBlock);
                 finallyBlock.lasts.add(lastBlockInTry);
             }
-            // let catchBlocks:Block[]=[];
             if (trystm.catchStatement) {
                 let catchBlock = this.buildNewBlock([]);
                 this.buildBlocks(trystm.catchStatement, catchBlock);
@@ -950,38 +872,10 @@ export class CfgBuilder {
                 finallyBlock.lasts.add(catchBlock);
                 this.catches.push(new Catch(trystm.catchError, tryFirstBlock.id, finallyBlock.id, catchBlock.id));
             }
-            // if (trystm.finallyStatement) {
-            //     this.resetWalkedPartial(trystm.finallyStatement);
-            //     let errorFinallyBlock = this.buildNewBlock([]);
-            //     for (let lastBlockInTry of lastBlocksInTry) {
-            //         lastBlockInTry.nexts.add(errorFinallyBlock);
-            //         errorFinallyBlock.lasts.add(lastBlockInTry);
-            //     }
-
-            //     for (let stm of finallyBlock.stms) {
-            //         errorFinallyBlock.stms.push(stm);
-            //     }
-            //     let stm = new StatementBuilder("statement", "throw Error", null, trystm.finallyStatement.scopeID);
-            //     errorFinallyBlock.stms.push(stm);
-            //     this.catches.push(new Catch("Error", tryFirstBlock.id, finallyBlock.id, errorFinallyBlock.id));
-            //     for (let i = 0; i < trystm.catchStatements.length; i++) {
-            //         let block = trystm.catchStatements[i].block
-            //         if (!block) {
-            //             console.log("catch without block");
-            //             process.exit();
-            //         }
-            //         this.catches.push(new Catch(trystm.catchErrors[i], block.id, finallyBlock.id, errorFinallyBlock.id));
-            //         let goto = new StatementBuilder("gotoStatement", "goto label" + finallyBlock.id, null, finallyBlock.stms[0].scopeID);
-            //         block.stms.push(goto);
-            //         block.nexts.add(errorFinallyBlock);
-            //         errorFinallyBlock.lasts.add(block);
-            //     }
-            // }
             let nextBlock = this.buildNewBlock([]);
             if (lastFinallyBlock) {
                 finallyBlock = lastFinallyBlock;
             }
-            // block.nexts.push(nextBlock);
             if (trystm.next)
                 this.buildBlocks(trystm.next, nextBlock);
             let goto = new StatementBuilder("gotoStatement", "goto label" + nextBlock.id, null, trystm.tryFirst.scopeID);
@@ -1006,11 +900,9 @@ export class CfgBuilder {
         else {
             if (stm.next) {
                 if (stm.type == "continueStatement" && stm.next.block) {
-                    // block.nexts.push(stm.next.block);
                     return;
                 }
                 if (stm.next.type == "loopStatement" && stm.next.block) {
-                    // block.nexts.push(stm.next.block);
                     block = stm.next.block;
                     return;
                 }
@@ -1019,7 +911,6 @@ export class CfgBuilder {
                 if (stm.next.passTmies == stm.next.lasts.length || (stm.next.type == "loopStatement") || stm.next.isDoWhile) {
                     if (stm.next.scopeID != stm.scopeID && !stm.next.type.includes(" exit") && !(stm.next instanceof ConditionStatementBuilder && stm.next.doStatement)) {
                         let b = this.buildNewBlock([]);
-                        // block.nexts.push(b);
                         block = b;
                     }
                     this.buildBlocks(stm.next, block);
@@ -1059,13 +950,6 @@ export class CfgBuilder {
                             next.lasts.add(block);
                         }
                     }
-                    // for (let nextStatement of originStatement.nexts) {
-                    //     let next = nextStatement.block;
-                    //     if (next && (lastStatement || next != block) && !nextStatement.type.includes(" exit")) {
-                    //         block.nexts.add(next);
-                    //         next.lasts.add(block);
-                    //     }
-                    // }
                 }
                 else {
                     let next = originStatement.next?.block;
@@ -1181,9 +1065,6 @@ export class CfgBuilder {
         }
     }
     resetWalkedPartial(stm: StatementBuilder) {
-        // for(let stm of this.statementArray){
-        //     stm.walked=false;
-        // }
         if (!stm.walked)
             return;
         stm.walked = false;
@@ -1263,29 +1144,6 @@ export class CfgBuilder {
         }
     }
 
-    // buildBlocks2(){
-    //     for(let stm of this.statementArray){
-    //         if(stm.type.includes("Exit")){
-    //             this.statementArray.splice(this.statementArray.indexOf(stm),1);
-    //         }
-    //         if(stm.type=="SwitchStatementBuilder"){
-    //             let sstm=stm as SwitchStatementBuilder;
-    //             if(sstm.default?.type.includes("Exit")){
-    //                 let p=sstm.default;
-    //                 while(p.type.includes("Exit")){
-    //                     if(p.next)
-    //                         p=p.next;
-    //                     else{
-    //                         console.log("exit error");
-    //                         process.exit();
-    //                     }
-    //                 }
-    //                 sstm.default=p;
-    //             }
-    //         }
-    //     }
-    // }
-
     getDotEdges(stm: StatementBuilder) {
         if (this.statementArray.length == 0)
             this.CfgBuilder2Array(this.entry);
@@ -1298,11 +1156,9 @@ export class CfgBuilder {
                 this.errorTest(cstm);
                 return;
             }
-            // let edge="Node"+cstm.index+" -> "+"Node"+cstm.nextF.index;
             let edge = [cstm.index, cstm.nextF.index];
             this.dotEdges.push(edge);
             edge = [cstm.index, cstm.nextT.index];
-            // edge="Node"+cstm.index+" -> "+"Node"+cstm.nextT.index;
             this.dotEdges.push(edge);
             this.getDotEdges(cstm.nextF);
             this.getDotEdges(cstm.nextT);
@@ -1310,7 +1166,6 @@ export class CfgBuilder {
         else if (stm.type == "switchStatement") {
             let sstm = stm as SwitchStatementBuilder;
             for (let ss of sstm.nexts) {
-                // let edge="Node"+sstm.index+" -> "+"Node"+ss.index;
                 let edge = [sstm.index, ss.index];
                 this.dotEdges.push(edge);
                 this.getDotEdges(ss);
@@ -1318,7 +1173,6 @@ export class CfgBuilder {
         }
         else {
             if (stm.next != null) {
-                // let edge="Node"+stm.index+" -> "+"Node"+stm.next.index;
                 let edge = [stm.index, stm.next.index];
                 this.dotEdges.push(edge);
                 this.getDotEdges(stm.next);
@@ -1350,18 +1204,6 @@ export class CfgBuilder {
             }
         });
 
-        // const dotCommand = "dot -Tpng "+filename+" -o "+this.name+".png";
-        // exec(dotCommand, (error, stdout, stderr) => {
-        // if (error) {
-        //     console.error(`Error: ${error.message}`);
-        //     return;
-        // }
-        // if (stderr) {
-        //     console.error(`stderr: ${stderr}`);
-        //     return;
-        // }
-        // });
-
     }
 
     dfsUseDef(stm: StatementBuilder, node: NodeA, mode: string) {
@@ -1390,7 +1232,6 @@ export class CfgBuilder {
             }
         }
         if (node.kind == "PropertyAccessExpression") {
-            // this.dfsUseDef(stm,node.children[0],mode);
             for (let v of this.variables) {
                 if (v.name == node.children[0].text) {
                     if (mode == "use") {
@@ -1479,8 +1320,6 @@ export class CfgBuilder {
         return -1;
     }
     generateUseDef() {
-        // if(stm.walked)return;
-        // stm.walked = true;
         for (let stm of this.statementArray) {
             if (stm.astNode == null) continue;
             let node: NodeA = stm.astNode;
@@ -2146,7 +1985,6 @@ export class CfgBuilder {
             value = this.astNodeToValue(node.children[0]);
         }
         else {
-            // console.log('unsupported expr node type:', node.kind, ', text:', node.text)
             value = new Constant(node.text);
         }
         return value;
@@ -2196,7 +2034,6 @@ export class CfgBuilder {
 
         }
 
-        // console.log("[astNodeToThreeAddressAssignStmt] left: " + leftOp + " type: " + leftOpType + " right: " + rightOp)
         if (IRUtils.moreThanOneAddress(leftOp) && IRUtils.moreThanOneAddress(rightOp)) {
             rightOp = this.generateAssignStmt(rightOp);
         }
@@ -2390,26 +2227,6 @@ export class CfgBuilder {
         else if (node.kind == 'CallExpression') {
             threeAddressStmts.push(new ArkInvokeStmt(this.astNodeToValue(node) as AbstractInvokeExpr));
         }
-        // else if (node.kind == 'NewExpression') {
-        //     let leftOp = this.generateTempValue();
-        //     let rightOp = this.astNodeToValue(node);
-        //     threeAddressStmts.push(new ArkAssignStmt(leftOp, rightOp));
-
-        //     let classSignature = new ClassSignature();
-        //     let methodSubSignature = new MethodSubSignature();
-        //     methodSubSignature.setMethodName('constructor');
-        //     let methodSignature = new MethodSignature();
-        //     methodSignature.setArkClass(classSignature);
-        //     methodSignature.setMethodSubSignature(methodSubSignature);
-
-        //     let syntaxListNode = node.children[this.findChildIndex(node, 'OpenParenToken') + 1];
-        //     let argNodes = this.getSyntaxListItems(syntaxListNode);
-        //     let args: Value[] = [];
-        //     for (const argNode of argNodes) {
-        //         args.push(this.astNodeToValue(argNode));
-        //     }
-        //     threeAddressStmts.push(new ArkInvokeStmt(new ArkInstanceInvokeExpr(leftOp as Local, methodSignature, args)));
-        // }
         else if (node.kind == "AwaitExpression") {
             let expressionNode = node.children[1];
             this.astNodeToThreeAddressStmt(expressionNode);
@@ -2518,14 +2335,6 @@ export class CfgBuilder {
         stmAST.parent = parent;
         this.updateParentText(parent);
         return stmAST;
-
-        // let insertStm=new StatementBuilder("StatementBuilder",text,insertAST.root.children[0],stm.scopeID);
-        // insertStm.next=stm.next;
-        // insertStm.lasts.push(stm);
-        // stm.next=insertStm;
-        // if(!insertStm.next)
-        //     return;
-        // insertStm.next.lasts[insertStm.next.lasts.indexOf(stm)]=insertStm;
     }
 
     public insertStatementBefore(stm: StatementBuilder, text: string): NodeA {
@@ -2550,33 +2359,6 @@ export class CfgBuilder {
         stmAST.parent = parent;
         this.updateParentText(parent);
         return stmAST;
-
-        // let insertStm=new StatementBuilder("StatementBuilder",text,insertAST.root.children[0],stm.scopeID);
-        // insertStm.next=stm;
-        // insertStm.lasts=stm.lasts;
-        // for(let l of stm.lasts){
-        //     if(l.type=="ifStatement"||l.type=="loopStatement"||l.type=="catchOrNot"){
-        //         let cstm=l as ConditionStatementBuilder;
-        //         if(cstm.nextT==stm)
-        //             cstm.nextT=insertStm;
-        //         if(cstm.nextF==stm)
-        //             cstm.nextF=insertStm;
-        //     }
-        //     else if(l.type=="SwitchStatementBuilder"){
-        //         let sstm=stm as SwitchStatementBuilder;
-        //         for(let j in sstm.nexts){
-        //             if(sstm.nexts[j]==stm){
-        //                 sstm.nexts[j]=insertStm;
-        //                 break;
-        //             }
-        //         }
-        //     }
-        //     else{
-        //         if(l.next!=null)
-        //             l.next=insertStm;
-        //     }
-        // }
-        // stm.lasts=[insertStm];
     }
 
     removeStatement(stm: StatementBuilder) {
@@ -2586,16 +2368,6 @@ export class CfgBuilder {
             this.updateParentText(astNode.parent);
         }
     }
-
-    // forOfIn2For(stm:ConditionStatementBuilder){
-    //     if(!stm.astNode)
-    //         return;
-    //     let node=stm.astNode;
-    //     let VariableDeclarationList=node.children[this.findChildIndex(node,"VariableDeclarationList")];
-    //     let SyntaxList=VariableDeclarationList.children[this.findChildIndex(VariableDeclarationList,"SyntaxList")];
-    //     let decl=SyntaxList.children[0].children[0].text;
-    //     let array=node.children[this.findChildIndex(node,"Identifier")];
-    // }
 
     getStatementByText(text: string) {
         const ret: StatementBuilder[] = [];
@@ -2636,37 +2408,10 @@ export class CfgBuilder {
         }
     }
 
-    // simplifyByStm(stm:StatementBuilder){
-    //     if(stm.walked)
-    //         return;
-    //     stm.walked=true;
-    //     this.stm23AC(stm)
-    //     if(stm.type=="ifStatement"||stm.type=="loopStatement"||stm.type=="catchOrNot"){
-    //         let cstm=stm as ConditionStatementBuilder;
-    //         if(cstm.nextT==null||cstm.nextF==null){
-    //             this.errorTest(cstm);
-    //             return;
-    //         }
-    //         this.simplifyByStm(cstm.nextF);
-    //         this.simplifyByStm(cstm.nextT);
-    //     }
-    //     else if(stm.type=="SwitchStatementBuilder"){
-    //         let sstm=stm as SwitchStatementBuilder;
-    //         for(let j in sstm.nexts){
-    //             this.simplifyByStm(sstm.nexts[j]);
-    //         }
-    //     }
-    //     else{
-    //         if(stm.next!=null)
-    //             this.simplifyByStm(stm.next);
-    //     }
-    // }
-
     simplify() {
         for (let stm of this.statementArray) {
             this.stm23AC(stm)
         }
-        // this.simplifyByStm(this.entry);
     }
 
     printBlocks() {
@@ -2692,13 +2437,11 @@ export class CfgBuilder {
                         return;
                     }
                     stm.code = "if !(" + cstm.condition + ") goto label" + cstm.nextF.block.id
-                    // text+="    if !("+cstm.condition+") goto label"+cstm.nextF.block.id+'\n';
                     if (i == length - 1 && bi + 1 < this.blocks.length && this.blocks[bi + 1].id != cstm.nextT.block.id) {
                         let gotoStm = new StatementBuilder("gotoStatement", "goto label" + cstm.nextT.block.id, null, block.stms[0].scopeID);
                         block.stms.push(gotoStm);
                         length++;
                     }
-                    // text+="    goto label"+cstm.nextT.block.id+'\n'
                 }
                 else if (stm.type == "breakStatement" || stm.type == "continueStatement") {
                     if (!stm.next?.block) {
@@ -2708,15 +2451,12 @@ export class CfgBuilder {
                     stm.code = "goto label" + stm.next?.block.id;
                 }
                 else {
-                    // text+="    "+block.stms[i].code+'\n';
                     if (i == length - 1 && stm.next?.block && (bi + 1 < this.blocks.length && this.blocks[bi + 1].id != stm.next.block.id || bi + 1 == this.blocks.length)) {
                         let gotoStm = new StatementBuilder("StatementBuilder", "goto label" + stm.next?.block.id, null, block.stms[0].scopeID);
                         block.stms.push(gotoStm);
                         length++;
                     }
-                    // text+="    goto label"+stm.next?.block.id+'\n';
                 }
-                // text+="    "+stm.code+"\n";
                 if (stm.addressCode3.length == 0) {
                     text += "    " + stm.code + "\n";
                 }
@@ -2735,15 +2475,6 @@ export class CfgBuilder {
                             text += "    " + ac + "\n";
                     }
                 }
-                // if (stm.type == "switchStatement") {
-                //     let sstm = stm as SwitchStatementBuilder;
-                //     for (let cas of sstm.cases) {
-                //         if (cas.stm.block)
-                //             text += "        " + cas.value + "goto label" + cas.stm.block.id + '\n';
-                //     }
-                //     if (sstm.default?.block)
-                //         text += "        default : goto label" + sstm.default?.block.id + '\n';
-                // }
             }
 
         }
@@ -2751,8 +2482,6 @@ export class CfgBuilder {
             text += "catch " + cat.errorName + " from label " + cat.from + " to label " + cat.to + " with label" + cat.withLabel + "\n";
         }
         console.log(text);
-        // text+='\n\n';
-        // fs.appendFileSync('ac3texts.txt', text);
     }
 
     private addFirstBlock() {
@@ -2802,10 +2531,8 @@ export class CfgBuilder {
                 if (originStmt.type == 'ifStatement') {
                     currStmtStrs.push(...ifStmtToString(originStmt));
                 } else if (originStmt.type == 'loopStatement') {
-                    // console.log('loopStatement');
                     currStmtStrs.push(...iterationStmtToString(originStmt));
                 } else if (originStmt.type == 'switchStatement') {
-                    // console.log('switchStatement');
                     currStmtStrs.push(...switchStmtToString(originStmt));
                 } else if (originStmt.type == 'breakStatement' || originStmt.type == 'continueStatement') {
                     currStmtStrs.push(...jumpStmtToString(originStmt));
@@ -2933,7 +2660,6 @@ export class CfgBuilder {
     }
 
     public printThreeAddressStrsAndStmts() {
-        // console.log('#### printThreeAddressStrsAndStmts ####');
         for (const stmt of this.statementArray) {
             if (stmt.astNode && stmt.code) {
                 console.log('----- origin stmt: ', stmt.code);
@@ -2969,7 +2695,7 @@ export class CfgBuilder {
                 originlStmt.setPositionInfo(stmtBuilder.line);
                 originlStmt.setOriginPositionInfo(stmtBuilder.line);
                 let file = this.declaringClass.getDeclaringArkFile();
-                file.getEtsOriginalPositionFor({line: stmtBuilder.line, column: stmtBuilder.column}).then((etsPosition) => {
+                file.getEtsOriginalPositionFor({ line: stmtBuilder.line, column: stmtBuilder.column }).then((etsPosition) => {
                     originlStmt.setEtsPositionInfo(etsPosition.line);
                 });
                 block.addStmt(originlStmt);

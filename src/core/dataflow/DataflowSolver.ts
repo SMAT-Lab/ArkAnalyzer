@@ -29,14 +29,6 @@ export abstract class DataflowSolver {
         
         while (this.workList.length != 0) {
             let stmt = this.workList.pop();
-
-            //nextStmts: Stmt[] = getChildren(stmt);
-            //for (nextStmt of nextStmts) 
-            //keepPropagation: boolean = this.problem.transferEdge(stmt, nextStmt)
-            //keepPropagation equals false means that this edge is not useful for the problem, we don't need to add it to the queue for further analysis
-            //if (keepPropagation) {
-            //  workList.add(nextStmt);
-            //}
         }
     }
 }

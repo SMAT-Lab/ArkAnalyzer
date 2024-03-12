@@ -208,7 +208,6 @@ export class TypeInference {
                 } else if (leftOpType instanceof UnclearReferenceType) {
                 }
             } else if (leftOp instanceof ArkInstanceFieldRef) {
-                // console.log("leftOp instance field: "+leftOp.getBase().getName()+"."+leftOp.getFieldName())
                 // 对应赋值语句左值进行了取属性操作
             }
         }
