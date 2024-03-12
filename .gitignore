@@ -1,7 +1,6 @@
 node_modules
 .vscode/*
 package-lock.json
-package.json
 t.ts
 main.dot
 q.md
