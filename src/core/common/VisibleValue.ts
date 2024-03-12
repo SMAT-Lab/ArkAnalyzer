@@ -1,3 +1,4 @@
+import Logger from "../../utils/logger";
 import { Local } from "../base/Local";
 import { ArkInstanceFieldRef, ArkStaticFieldRef } from "../base/Ref";
 import { ArkAssignStmt } from "../base/Stmt";
@@ -8,6 +9,8 @@ import { ArkClass } from "../model/ArkClass";
 import { ArkFile } from "../model/ArkFile";
 import { ArkMethod } from "../model/ArkMethod";
 import { ArkNamespace } from "../model/ArkNamespace";
+
+const logger = Logger.getLogger();
 
 export class VisibleValue {
     private scopeChain: Scope[]; // 不包含currScope
@@ -34,7 +37,7 @@ export class VisibleValue {
         } else {
             name = model.getName();
         }
-        console.log('---- into scope:{', name, '}');
+        logger.info('---- into scope:{', name, '}');
 
 
         // get values in this scope
@@ -64,7 +67,7 @@ export class VisibleValue {
         } else {
             name = currModel.getName();
         }
-        console.log('---- out scope:{', name, '}');
+        logger.info('---- out scope:{', name, '}');
 
         let targetDepth = this.currScope.depth;
         if (currModel instanceof BasicBlock) {

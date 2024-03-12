@@ -1,7 +1,10 @@
+import Logger from "../../utils/logger";
 import { FieldSignature } from "../model/ArkSignature";
 import { Local } from "./Local";
 import { ArrayType, ClassType, Type, UnknownType } from "./Type";
 import { Value } from "./Value";
+
+const logger = Logger.getLogger();
 
 export abstract class AbstractRef implements Value {
     abstract getUses(): Value[];
@@ -39,7 +42,7 @@ export class ArkArrayRef extends AbstractRef {
         if (baseType instanceof ArrayType) {
             return baseType.getBaseType();
         } else {
-            console.log(`the type of base in ArrayRef is not ArrayType`);   
+            logger.info(`the type of base in ArrayRef is not ArrayType`);   
             return UnknownType.getInstance();
         }
     }

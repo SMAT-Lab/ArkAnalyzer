@@ -1,12 +1,11 @@
-import path from "path";
-import { ClassType } from "../core/base/Type";
+import { AbstractInvokeExpr, ArkInstanceInvokeExpr, ArkStaticInvokeExpr } from "../core/base/Expr";
 import { ArkInvokeStmt } from "../core/base/Stmt";
+import { ClassType } from "../core/base/Type";
 import { ArkClass } from "../core/model/ArkClass";
 import { ArkMethod } from "../core/model/ArkMethod";
 import { MethodSignature } from "../core/model/ArkSignature";
-import { isItemRegistered} from "../utils/callGraphUtils";
+import { isItemRegistered } from "../utils/callGraphUtils";
 import { AbstractCallGraph } from "./AbstractCallGraphAlgorithm";
-import { AbstractInvokeExpr, ArkInstanceInvokeExpr, ArkStaticInvokeExpr } from "../core/base/Expr";
 
 export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraph {
     protected resolveCall(sourceMethodSignature: MethodSignature, invokeExpression: ArkInvokeStmt): MethodSignature[] {
@@ -111,7 +110,7 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraph {
 
         // TODO: ts库、常用库未扫描，导致console.log等调用无法识别
         if (invokeExpr instanceof ArkInstanceInvokeExpr) {
-            // console.log("instanceInvoke:   "+invokeExpr.getMethodSignature().toString())
+            // logger.info("instanceInvoke:   "+invokeExpr.getMethodSignature().toString())
             let classCompleteType = invokeExpr.getBase().getType()
             if (classCompleteType instanceof ClassType) {
                 let extendedClasses = this.scene.getExtendedClasses(classCompleteType.getClassSignature())

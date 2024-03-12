@@ -15,7 +15,7 @@ class Time {
 }
 
 function test1_1(globalThis: GlobalThis) {
-    console.log(globalThis.ability.propertyA + globalThis.ability.propertyB);
+    logger.info(globalThis.ability.propertyA + globalThis.ability.propertyB);
 }
 
 function test1_2(year: number): number {

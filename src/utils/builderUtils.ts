@@ -1,8 +1,11 @@
 import ts from "typescript";
 import { LiteralType, Type, TypeLiteralType, UnclearReferenceType, UnionType, UnknownType } from "../core/base/Type";
-import { TypeInference } from "../core/common/TypeInference";
 import { ArrayBindingPatternParameter, MethodParameter, ObjectBindingPatternParameter } from "../core/common/MethodInfoBuilder";
+import { TypeInference } from "../core/common/TypeInference";
 import { ArkField } from "../core/model/ArkField";
+import Logger from "./logger";
+
+const logger = Logger.getLogger();
 
 export function handleQualifiedName(node: ts.QualifiedName): string {
     let right = (node.right as ts.Identifier).escapedText.toString();
@@ -88,7 +91,7 @@ export function buildTypeParameters(node: ts.ClassDeclaration | ts.ClassExpressi
             typeParameters.push(buildTypeFromPreStr(parametersTypeStr));
         }
         else {
-            console.log("Other typeparameter found!!!");
+            logger.info("Other typeparameter found!!!");
         }
     });
     return typeParameters;
@@ -114,7 +117,7 @@ export function buildParameters(node: ts.FunctionDeclaration | ts.MethodDeclarat
                         paraElement.setPropertyName(element.propertyName.escapedText.toString());
                     }
                     else {
-                        console.log("New propertyName of ObjectBindingPattern found, please contact developers to support this!");
+                        logger.info("New propertyName of ObjectBindingPattern found, please contact developers to support this!");
                     }
                 }
 
@@ -123,12 +126,12 @@ export function buildParameters(node: ts.FunctionDeclaration | ts.MethodDeclarat
                         paraElement.setName(element.name.escapedText.toString());
                     }
                     else {
-                        console.log("New name of ObjectBindingPattern found, please contact developers to support this!");
+                        logger.info("New name of ObjectBindingPattern found, please contact developers to support this!");
                     }
                 }
 
                 if (element.initializer) {
-                    console.log("TODO: support ObjectBindingPattern initializer.");
+                    logger.info("TODO: support ObjectBindingPattern initializer.");
                 }
 
                 if (element.dotDotDotToken) {
@@ -149,7 +152,7 @@ export function buildParameters(node: ts.FunctionDeclaration | ts.MethodDeclarat
                             paraElement.setPropertyName(element.propertyName.escapedText.toString());
                         }
                         else {
-                            console.log("New propertyName of ArrayBindingPattern found, please contact developers to support this!");
+                            logger.info("New propertyName of ArrayBindingPattern found, please contact developers to support this!");
                         }
                     }
 
@@ -158,12 +161,12 @@ export function buildParameters(node: ts.FunctionDeclaration | ts.MethodDeclarat
                             paraElement.setName(element.name.escapedText.toString());
                         }
                         else {
-                            console.log("New name of ArrayBindingPattern found, please contact developers to support this!");
+                            logger.info("New name of ArrayBindingPattern found, please contact developers to support this!");
                         }
                     }
 
                     if (element.initializer) {
-                        console.log("TODO: support ArrayBindingPattern initializer.");
+                        logger.info("TODO: support ArrayBindingPattern initializer.");
                     }
 
                     if (element.dotDotDotToken) {
@@ -171,14 +174,14 @@ export function buildParameters(node: ts.FunctionDeclaration | ts.MethodDeclarat
                     }
                 }
                 else if (ts.isOmittedExpression(element)) {
-                    console.log("TODO: support OmittedExpression for ArrayBindingPattern parameter name.");
+                    logger.info("TODO: support OmittedExpression for ArrayBindingPattern parameter name.");
                 }
                 elements.push(paraElement);
             });
             methodParameter.setArrayElements(elements);
         }
         else {
-            console.log("Parameter name is not identifier, please contact developers to support this!");
+            logger.info("Parameter name is not identifier, please contact developers to support this!");
         }
         if (parameter.questionToken) {
             methodParameter.setOptional(true);
@@ -240,7 +243,7 @@ export function buildParameters(node: ts.FunctionDeclaration | ts.MethodDeclarat
                         //members.push(buildMethodInfo4MethodNode(member));
                     }
                     else {
-                        console.log("Please contact developers to support new TypeLiteral member!");
+                        logger.info("Please contact developers to support new TypeLiteral member!");
                     }
                 });
                 let type = new TypeLiteralType();
@@ -275,7 +278,7 @@ export function buildReturnType4Method(node: ts.FunctionDeclaration | ts.MethodD
                     members.push(buildIndexSignature2ArkField(member));
                 }
                 else {
-                    console.log("Please contact developers to support new TypeLiteral member!");
+                    logger.info("Please contact developers to support new TypeLiteral member!");
                 }
             });
             let type = new TypeLiteralType();
@@ -292,7 +295,7 @@ export function buildReturnType4Method(node: ts.FunctionDeclaration | ts.MethodD
                 typeName = referenceNodeName.escapedText.toString();
             }
             else {
-                console.log("New type of referenceNodeName found! Please contact developers to support this.");
+                logger.info("New type of referenceNodeName found! Please contact developers to support this.");
             }
             return new UnclearReferenceType(typeName);
         }
@@ -308,10 +311,10 @@ export function buildReturnType4Method(node: ts.FunctionDeclaration | ts.MethodD
                         typeName = handleQualifiedName(tmpType.typeName);
                     }
                     else if (ts.isTypeLiteralNode(tmpType.typeName)) {
-                        console.log("Type name is TypeLiteral, please contact developers to add support for this!");
+                        logger.info("Type name is TypeLiteral, please contact developers to add support for this!");
                     }
                     else {
-                        console.log("New type name of TypeReference in UnionType.");
+                        logger.info("New type name of TypeReference in UnionType.");
                     }
                     unionType.push(new UnclearReferenceType(typeName));
                 }
@@ -382,7 +385,7 @@ export function buildProperty2ArkField(member: ts.PropertyDeclaration | ts.Prope
             field.setName(handlePropertyAccessExpression(member.name.expression));
         }
         else {
-            console.log("Other property expression type found!");
+            logger.info("Other property expression type found!");
         }
     }
     else if (ts.isIdentifier(member.name)) {
@@ -390,7 +393,7 @@ export function buildProperty2ArkField(member: ts.PropertyDeclaration | ts.Prope
         field.setName(propertyName);
     }
     else {
-        console.log("Other property type found!");
+        logger.info("Other property type found!");
     }
 
     if (!ts.isEnumMember(member) && member.modifiers) {
@@ -457,7 +460,7 @@ function buildFieldType(fieldType: ts.TypeNode): Type {
                     tmpTypeName = tmpType.typeName.escapedText.toString();
                 }
                 else {
-                    console.log("Other property type found!");
+                    logger.info("Other property type found!");
                 }
                 unionType.push(new UnclearReferenceType(tmpTypeName));
             }

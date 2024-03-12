@@ -1,13 +1,10 @@
 import { SceneConfig } from "../src/Config";
 import { Scene } from "../src/Scene";
 import { ArkBody } from "../src/core/model/ArkBody";
-import Logger, { LOG_LEVEL } from "../src/utils/logger";
+import Logger from "../src/utils/logger";
 
 const logger = Logger.getLogger();
-
-const logFilePath = 'D:\\Codes\\program_analysis\\static_framework\\ArkAnalyzer\\out\\a.txt';
-const level = LOG_LEVEL.ERROR;
-Logger.configure(logFilePath, level);
+Logger.configure();
 
 export class TypeInferenceTest {
     public buildScene(): Scene {
@@ -26,22 +23,21 @@ export class TypeInferenceTest {
         scene.inferTypes();
 
         for (const arkFile of scene.arkFiles) {
-            console.log('=============== arkFile:', arkFile.getName(), ' ================');
+            logger.info('=============== arkFile:', arkFile.getName(), ' ================');
             for (const arkClass of arkFile.getClasses()) {
                 for (const arkMethod of arkClass.getMethods()) {
                     if (arkMethod.getName() == '_DEFAULT_ARK_METHOD') {
                         continue;
                     }
-                    console.log('*** arkMethod: ', arkMethod.getName());
+                    logger.info('*** arkMethod: ', arkMethod.getName());
 
                     const body = arkMethod.getBody();
                     this.printStmts(body);
 
-                    console.log('-- locals:');
+                    logger.info('-- locals:');
                     for (const local of arkMethod.getBody().getLocals()) {
-                        console.log('name: ' + local.toString() + ', type: ' + local.getType());
-                    }
-                    console.log();
+                        logger.info('name: ' + local.toString() + ', type: ' + local.getType());
+                    }                    
                 }
             }
         }
@@ -51,35 +47,29 @@ export class TypeInferenceTest {
         let scene = this.buildScene();
 
         for (const arkFile of scene.arkFiles) {
-            console.log('=============== arkFile:', arkFile.getName(), ' ================');
+            logger.info('=============== arkFile:', arkFile.getName(), ' ================');
             for (const arkClass of arkFile.getClasses()) {
                 for (const arkMethod of arkClass.getMethods()) {
                     if (arkMethod.getName() == '_DEFAULT_ARK_METHOD') {
                         continue;
                     }
 
-                    console.log(arkMethod.getSubSignature().toString());
+                    logger.info(arkMethod.getSubSignature().toString());
                 }
             }
         }
     }
 
     private printStmts(body: ArkBody): void {
-        console.log('-- threeAddresStmts:');
+        logger.info('-- threeAddresStmts:');
         let cfg = body.getCfg();
         for (const threeAddresStmt of cfg.getStmts()) {
-            console.log(threeAddresStmt.toString());
+            logger.info(threeAddresStmt.toString());
         }
     }
 }
 
-// let typeInferenceTest = new TypeInferenceTest();
+let typeInferenceTest = new TypeInferenceTest();
 // // typeInferenceTest.buildScene();
-// typeInferenceTest.testLocalTypes();
+typeInferenceTest.testLocalTypes();
 // typeInferenceTest.testFunctionReturnType();
-
-
-
-let i = 10;
-// console.log(i);
-logger.info(i);

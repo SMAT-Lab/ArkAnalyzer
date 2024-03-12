@@ -11,7 +11,7 @@ async function func() {
     };
 
     const originalPosition = consumer.originalPositionFor(compressedPosition);
-    console.log(originalPosition); 
+    logger.info(originalPosition); 
 }
 
 func()
@@ -31,7 +31,7 @@ func()
 //     const originalPosition = consumer.originalPositionFor(transformedPosition);
 
 //     // 输出原始位置信息
-//     console.log(`Original Position: ${originalPosition.line}:${originalPosition.column}`);
+//     logger.info(`Original Position: ${originalPosition.line}:${originalPosition.column}`);
 //     });
 // }
 

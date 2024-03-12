@@ -10,7 +10,7 @@ export enum LOG_LEVEL {
 }
 
 export default class ConsoleLogger {
-    public static configure(logFilePath: string, level: LOG_LEVEL): void {
+    public static configure(logFilePath: string = 'out\\log.txt', level: LOG_LEVEL = LOG_LEVEL.INFO): void {
         configure({
             appenders: {
                 file: {

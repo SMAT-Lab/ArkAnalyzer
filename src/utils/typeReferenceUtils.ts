@@ -1,10 +1,10 @@
 import path from "path";
 import { Scene } from "../Scene";
 import { NodeA } from "../core/base/Ast";
+import { NumberType, StringType, Type } from "../core/base/Type";
 import { ArkFile } from "../core/model/ArkFile";
+import { ArkNamespace } from "../core/model/ArkNamespace";
 import { ClassSignature, FileSignature } from "../core/model/ArkSignature";
-import {ArkNamespace} from "../core/model/ArkNamespace";
-import {NumberType, StringType, Type} from "../core/base/Type";
 
 export function isPrimaryType(type: string): boolean {
     switch (type) {

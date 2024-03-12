@@ -14,23 +14,23 @@ export class TypeInferenceTest {
         let scene = this.buildScene();        
 
         for (const arkFile of scene.arkFiles) {
-            console.log('=============== arkFile:', arkFile.getName(), ' ================');
+            logger.info('=============== arkFile:', arkFile.getName(), ' ================');
             for (const arkClass of arkFile.getClasses()) {
                 for (const arkMethod of arkClass.getMethods()) {
                     // if (arkMethod.getName() == '_DEFAULT_ARK_METHOD') {
                     //     continue;
                     // }
-                    console.log('*** arkMethod: ', arkMethod.getName());
+                    logger.info('*** arkMethod: ', arkMethod.getName());
 
                     const body = arkMethod.getBody();
                     this.printStmts(body);
 
                     for(const chain of body.getCfg().getDefUseChains()){
-                        console.log("value:"+chain.value.toString())
-                        console.log("def:"+chain.def.toString())
-                        console.log("use:"+chain.use.toString())
+                        logger.info("value:"+chain.value.toString())
+                        logger.info("def:"+chain.def.toString())
+                        logger.info("use:"+chain.use.toString())
                     }
-                    console.log();
+                    logger.info();
 
                 }
             }
@@ -40,10 +40,10 @@ export class TypeInferenceTest {
 
 
     private printStmts(body: ArkBody): void {
-        console.log('-- threeAddresStmts:');
+        logger.info('-- threeAddresStmts:');
         let cfg = body.getCfg();
         for (const threeAddresStmt of cfg.getStmts()) {
-            console.log(threeAddresStmt.toString());
+            logger.info(threeAddresStmt.toString());
         }
     }
 }

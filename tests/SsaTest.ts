@@ -20,29 +20,29 @@ export class SsaTest {
         let scene = new Scene(projectName, projectFiles, 'D:\\Codes\\ark-analyzer-mirror');
         let staticSingleAssignmentFormer = new StaticSingleAssignmentFormer();
         for (const arkFile of scene.arkFiles) {
-            console.log('=============== arkFile:', arkFile.name, ' ================');
+            logger.info('=============== arkFile:', arkFile.name, ' ================');
             for (const arkClass of arkFile.getClasses()) {
                 for (const arkMethod of arkClass.getMethods()) {
                     if (arkMethod.name == '_DEFAULT_ARK_METHOD') {
                         continue;
                     }
-                    console.log('************ arkMethod:', arkMethod.name, ' **********');
-                    console.log('-- before ssa:');
+                    logger.info('************ arkMethod:', arkMethod.name, ' **********');
+                    logger.info('-- before ssa:');
                     for (const threeAddresStmt of arkMethod.getCfg().getStmts()) {
-                        console.log(threeAddresStmt.toString());
+                        logger.info(threeAddresStmt.toString());
                     }
 
                     let body = arkMethod.getBody();
                     staticSingleAssignmentFormer.transformBody(body);
 
-                    console.log('-- after ssa:');
+                    logger.info('-- after ssa:');
                     for (const threeAddresStmt of arkMethod.getCfg().getStmts()) {
-                        console.log(threeAddresStmt.toString());
+                        logger.info(threeAddresStmt.toString());
                     }
 
-                    console.log('-- locals');
+                    logger.info('-- locals');
                     for (const local of arkMethod.getBody().getLocals()) {
-                        console.log('ssa form:' + local.toString() + ', original form: ' + local.getOriginalValue()?.toString());
+                        logger.info('ssa form:' + local.toString() + ', original form: ' + local.getOriginalValue()?.toString());
                     }
                 }
             }

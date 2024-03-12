@@ -1,8 +1,10 @@
 import * as ts from "typescript";
 import { buildHeritageClauses, buildIndexSignature2ArkField, buildModifiers, buildProperty2ArkField, buildTypeParameters } from "../../utils/builderUtils";
+import Logger from "../../utils/logger";
 import { Type } from "../base/Type";
 import { ArkField } from "../model/ArkField";
 
+const logger = Logger.getLogger();
 export class ClassInfo {
 
     private modifiers: Set<string> = new Set();
@@ -118,7 +120,7 @@ export function buildClassInfo4ClassNode(node: ts.ClassDeclaration | ts.ClassExp
             // skip these members
         }
         else {
-            console.log("Please contact developers to support new arkfield type!");
+            logger.info("Please contact developers to support new arkfield type!");
         }
     });
 

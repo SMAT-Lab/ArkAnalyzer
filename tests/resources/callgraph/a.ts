@@ -1,5 +1,4 @@
 import { B } from "./b";
-import {C as D} from "./b"
 
 export function A(){
     B();
@@ -16,14 +15,14 @@ export class Dog extends Animal {
     public aaaaaaaaaa: number
     public static num: FieldB = new FieldB()
     public sound() {
-        console.log("woof")
+        logger.info("woof")
         let cat = new Cat()
         cat.sound()
         this.sleep()
     }
 
     public static print() {
-        console.log("waht")
+        logger.info("waht")
     }
 
     public sleep() {
@@ -32,7 +31,7 @@ export class Dog extends Animal {
 
 export class Cat extends Animal {
     public sound() {
-        console.log("meewo")
+        logger.info("meewo")
     }
 }
 

@@ -1,6 +1,8 @@
-import path from 'path';
 import fs from 'fs';
+import path from 'path';
+import Logger from "./logger";
 
+const logger = Logger.getLogger();
 /**
  * 从指定目录中提取指定后缀名的所有文件
  * @param srcPath string 要提取文件的项目入口，相对或绝对路径都可
@@ -15,7 +17,7 @@ export function getAllFiles(
 ): string[] {
   // 如果源目录不存在，直接结束程序
   if (!fs.existsSync(srcPath)) {
-    console.log(`Input directory is not exist, please check!`);
+    logger.info(`Input directory is not exist, please check!`);
     return filenameArr;
   }
 

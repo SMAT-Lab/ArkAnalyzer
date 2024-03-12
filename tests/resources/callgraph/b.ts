@@ -1,5 +1,5 @@
 export function B(){
-    console.log('this is B');
+    logger.info('this is B');
 }
 
 export class C {

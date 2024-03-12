@@ -1,5 +1,8 @@
 import fs from "fs";
 import path from "path";
+import Logger from "./utils/logger";
+
+const logger = Logger.getLogger();
 
 /**
  * This class is used to manage all the configurations set up for the analyzer.
@@ -93,7 +96,7 @@ export class SceneConfig {
             });
         }
         else {
-            console.log("Your configJsonPath: <", this.configJsonPath, "> is not exist.");
+            logger.info("Your configJsonPath: <", this.configJsonPath, "> is not exist.");
         }
     }
 
@@ -171,7 +174,7 @@ function getFiles(srcPath: string, fileExt: string, tmpFiles: string[] = []) {
     let extReg = new RegExp(fileExt);
 
     if (!fs.existsSync(srcPath)) {
-        console.log("Input directory is not exist: ", srcPath);
+        logger.info("Input directory is not exist: ", srcPath);
         return tmpFiles;
     }
 
