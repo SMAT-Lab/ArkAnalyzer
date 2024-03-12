@@ -1,10 +1,6 @@
-import { Config } from "./Config";
 import { Scene } from "../src/Scene";
 import * as utils from "../src/utils/getAllFiles";
-import fs from 'fs';
-import { ClassSignature } from "../src/core/model/ArkSignature";
-import { ASTree } from "../src/core/base/Ast";
-import { HotPropertyAccessCheck } from "./checker/HotPropertyAccessCheck";
+import { Config } from "./Config";
 
 function run(config: Config) {
     const projectName: string = config.projectName;
@@ -21,8 +17,8 @@ function run(config: Config) {
     //const fl = 'C:\\msys64\\home\\Yifei\\code\\ArkAnalyzer\\tests\\sample\\sample.ts';
     //const fl = '/Users/yifei/Documents/Code/ArkAnalyzer/tests/sample/sample.ts';
     //let mtd = scene.getMethod(fl, '_DEFAULT_ARK_METHOD', [], [], '_DEFAULT_ARK_CLASS');
-    //console.log(mtd);
-    //console.log(mtd?.cfg);
+    //logger.info(mtd);
+    //logger.info(mtd?.cfg);
     debugger;
 
     //let code = 'let age = myPerson.age + i;';

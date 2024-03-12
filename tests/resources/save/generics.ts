@@ -18,7 +18,7 @@ interface Lengthwise {
 }
 
 function loggingIdentity<T extends Lengthwise>(arg: T): T {
-    console.log(arg.length);  // Now we know it has a .length property, so no more error
+    logger.info(arg.length);  // Now we know it has a .length property, so no more error
     return arg;
 }
 
@@ -48,6 +48,6 @@ function createInstance<A extends Animal1>(c: new () => A): A {
 }
 
 let l = new Lion();
-console.log(l.keeper);
+logger.info(l.keeper);
 
 

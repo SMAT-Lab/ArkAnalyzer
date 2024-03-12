@@ -1,9 +1,12 @@
 import * as ts from "typescript";
+import Logger from "../../utils/logger";
 import { ClassInfo, buildClassInfo4ClassNode } from "../common/ClassBuilder";
-import { MethodInfo, buildMethodInfo4MethodNode } from "../common/MethodInfoBuilder";
-import { ImportInfo, buildImportInfo4ImportNode } from "../common/ImportBuilder";
 import { ExportInfo, buildExportInfo4ExportNode } from "../common/ExportBuilder";
+import { ImportInfo, buildImportInfo4ImportNode } from "../common/ImportBuilder";
+import { MethodInfo, buildMethodInfo4MethodNode } from "../common/MethodInfoBuilder";
 import { NamespaceInfo, buildNamespaceInfo4NamespaceNode } from "../common/NamespaceInfoBuilder";
+
+const logger = Logger.getLogger();
 
 /**
  * ast节点类，属性包括父节点，子节点列表，种类，文本内容，开始位置
@@ -168,8 +171,8 @@ export class ASTree {
     }
 
     singlePrintAST(node: NodeA, i: number) {
-        console.log('   '.repeat(i) + node.kind)
-        // console.log(' '.repeat(i) + node.kind + ":" + node.text)
+        logger.info('   '.repeat(i) + node.kind)
+        // logger.info(' '.repeat(i) + node.kind + ":" + node.text)
         if (node.children == null)
             return;
         for (let c of node.children) {
@@ -179,7 +182,7 @@ export class ASTree {
 
     printAST() {
         if (this.root == null) {
-            console.log("no root")
+            logger.info("no root")
         }
         this.singlePrintAST(this.root, 0)
     }
@@ -203,7 +206,7 @@ export class ASTree {
         block.parent = whileStatement;
         whileStatement.children = [whileKeyword, open, condition, close, block];
         if (!node.parent) {
-            console.log("for without parent");
+            logger.info("for without parent");
             process.exit();
         }
         node.parent.children[node.parent.children.indexOf(node)] = whileStatement;

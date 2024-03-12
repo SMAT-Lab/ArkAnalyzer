@@ -1,11 +1,7 @@
-import { Config } from "./Config";
 import { Scene } from "../src/Scene";
+import { printCallGraphDetails } from "../src/utils/callGraphUtils";
 import * as utils from "../src/utils/getAllFiles";
-import fs from 'fs';
-import { ClassSignature } from "../src/core/model/ArkSignature";
-import { ASTree } from "../src/core/base/Ast";
-import { HotPropertyAccessCheck } from "./checker/HotPropertyAccessCheck";
-import {printCallGraphDetails} from "../src/utils/callGraphUtils";
+import { Config } from "./Config";
 
 function run(config: Config) {
     const projectName: string = config.projectName;
@@ -14,7 +10,7 @@ function run(config: Config) {
     //(1)get all files under input_dir
     //TODO: add support for using tscconfig to get files
     const projectFiles: string[] = utils.getAllFiles(input_dir, ['.ts']);
-    // console.log(projectFiles)
+    // logger.info(projectFiles)
 
     //(2) Fill Scene class
     let scene: Scene = new Scene(projectName, projectFiles,config.project_dir);
@@ -33,8 +29,8 @@ function run(config: Config) {
     //     for (let clas of a.getClasses()) {
     //         if (clas.getSignature().toString() === "<main.ts>.<_DEFAULT_ARK_CLASS>")
     //             for (let method of clas.getMethods()) {
-    //                 // console.log(method.getName())
-    //                 // console.log(method.getBody().getLocals())
+    //                 // logger.info(method.getName())
+    //                 // logger.info(method.getBody().getLocals())
     //             }
     //     }
     // }

@@ -13,6 +13,9 @@ import { ArkFile, buildArkFileFromFile } from "./core/model/ArkFile";
 import { ArkMethod } from "./core/model/ArkMethod";
 import { ArkNamespace } from "./core/model/ArkNamespace";
 import { ClassSignature, FileSignature, MethodSignature, NamespaceSignature } from "./core/model/ArkSignature";
+import Logger from "./utils/logger";
+
+const logger = Logger.getLogger();
 
 /**
  * The Scene class includes everything in the analyzed project.
@@ -103,7 +106,7 @@ export class Scene {
                 }
 
                 key.forEach((file) => {
-                    console.log('=== parse file:', file);
+                    logger.info('=== parse file:', file);
                     let arkFile: ArkFile = new ArkFile();
                     arkFile.setProjectName(sdkProjectName);
                     buildArkFileFromFile(file, realSdkProjectDir, arkFile);
@@ -114,7 +117,7 @@ export class Scene {
         });
 
         this.projectFiles.forEach((file) => {
-            console.log('=== parse file:', file);
+            logger.info('=== parse file:', file);
             let arkFile: ArkFile = new ArkFile();
             arkFile.setProjectName(this.projectName);
             buildArkFileFromFile(file, this.realProjectDir, arkFile);

@@ -16,7 +16,7 @@ export class VisibleValueTest {
         const visibleValue = scene.getVisibleValue();
 
         for (const arkFile of scene.arkFiles) {
-            // console.log('=============== arkFile:', arkFile.getName(), '================');
+            // logger.info('=============== arkFile:', arkFile.getName(), '================');
             visibleValue.updateIntoScope(arkFile);
             this.printVisibleValues(visibleValue.getCurrVisibleValues());
             for (const arkClass of arkFile.getClasses()) {
@@ -24,17 +24,17 @@ export class VisibleValueTest {
                     continue;
                 }
 
-                // console.log('======== arkClass:', arkClass.getName(), '========');
+                // logger.info('======== arkClass:', arkClass.getName(), '========');
                 visibleValue.updateIntoScope(arkClass);
                 this.printVisibleValues(visibleValue.getCurrVisibleValues());
                 for (const arkMethod of arkClass.getMethods()) {
-                    // console.log('==== arkMethod:', arkMethod.getName(), '====');
+                    // logger.info('==== arkMethod:', arkMethod.getName(), '====');
                     visibleValue.updateIntoScope(arkMethod);
                     this.printVisibleValues(visibleValue.getCurrVisibleValues());
 
                     const cfg = arkMethod.getBody().getCfg();
                     for (const block of cfg.getBlocks()) {
-                        // console.log('==== block{', block.toString(), '}');
+                        // logger.info('==== block{', block.toString(), '}');
                         visibleValue.updateIntoScope(block);
                         this.printVisibleValues(visibleValue.getCurrVisibleValues());
 
@@ -54,9 +54,9 @@ export class VisibleValueTest {
     }
 
     private printVisibleValues(values: Value[]): void {
-        console.log('*** visible values ***');
+        logger.info('*** visible values ***');
         for (const value of values) {
-            console.log(value.toString());
+            logger.info(value.toString());
         }
     }
 }

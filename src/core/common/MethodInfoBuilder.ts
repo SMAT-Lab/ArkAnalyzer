@@ -1,6 +1,9 @@
 import * as ts from "typescript";
 import { buildModifiers, buildParameters, buildReturnType4Method, buildTypeParameters, handlePropertyAccessExpression } from "../../utils/builderUtils";
+import Logger from "../../utils/logger";
 import { Type } from "../base/Type";
+
+const logger = Logger.getLogger();
 
 export class ObjectBindingPatternParameter {
     private propertyName: string = "";
@@ -166,7 +169,7 @@ export function buildMethodInfo4MethodNode(node: ts.FunctionDeclaration | ts.Met
             }
         }
         else {
-            console.log("Other method declaration type found!");
+            logger.info("Other method declaration type found!");
         }
     }
     //TODO, hard code

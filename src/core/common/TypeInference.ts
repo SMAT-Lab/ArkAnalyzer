@@ -1,4 +1,5 @@
 import { Scene } from "../../Scene";
+import Logger from "../../utils/logger";
 import { ArkBinopExpr, ArkInstanceInvokeExpr, ArkNewExpr, ArkStaticInvokeExpr } from "../base/Expr";
 import { Local } from "../base/Local";
 import { ArkInstanceFieldRef, ArkParameterRef } from "../base/Ref";
@@ -23,6 +24,8 @@ import { ArkMethod } from "../model/ArkMethod";
 import { ClassSignature } from "../model/ArkSignature";
 import { ModelUtils } from "./ModelUtils";
 
+const logger = Logger.getLogger();
+
 export class TypeInference {
     private scene: Scene;
     constructor(scene: Scene) {
@@ -33,7 +36,7 @@ export class TypeInference {
     public inferTypeInMethod(arkMethod: ArkMethod): void {
         const body = arkMethod.getBody();
         if (!body) {
-            console.log('error: empty body');
+            logger.warn('empty body');
             return;
         }
         const cfg = body.getCfg();
@@ -79,19 +82,19 @@ export class TypeInference {
                     }
                 }
                 if (!(type instanceof ClassType)) {
-                    console.log(`error: type of base must be ClassType expr: ${expr.toString()}`);
+                    logger.warn(`type of base must be ClassType expr: ${expr.toString()}`);
                     continue;
                 }
                 const arkClass = ModelUtils.getClassWithClassSignature(type.getClassSignature(), this.scene);
                 if (arkClass == null) {
-                    console.log(`error: class ${type.getClassSignature().getClassName()} does not exist`);
+                    logger.warn(`class ${type.getClassSignature().getClassName()} does not exist`);
                     continue;
                 }
                 const methodSignature = expr.getMethodSignature();
                 const methodName = methodSignature.getMethodSubSignature().getMethodName();
                 const method = ModelUtils.getMethodInClassWithName(methodName, arkClass);
                 if (method == null) {
-                    console.log(`error: method ${methodName} does not exist`);
+                    logger.warn(`method ${methodName} does not exist`);
                     continue;
                 }
                 expr.setMethodSignature(method.getSignature());
@@ -100,7 +103,7 @@ export class TypeInference {
                 const methodName = methodSignature.getMethodSubSignature().getMethodName();
                 const method = ModelUtils.getStaticMethodWithName(methodName, arkMethod);
                 if (method == null) {
-                    console.log(`error: method ${methodName} does not exist`);
+                    logger.warn(`method ${methodName} does not exist`);
                     continue;
                 }
                 expr.setMethodSignature(method.getSignature());
@@ -122,19 +125,19 @@ export class TypeInference {
         const base = field.getBase();
         const type = base.getType();
         if (!(type instanceof ClassType)) {
-            console.log('error: type of base must be ClassType');
+            logger.warn('type of base must be ClassType');
             return;
         }
         const arkClass = ModelUtils.getClassWithClassSignature(type.getClassSignature(), this.scene);
         if (arkClass == null) {
-            console.log(`error: class ${type.getClassSignature().getClassName()} does not exist`);
+            logger.warn(`class ${type.getClassSignature().getClassName()} does not exist`);
             return;
         }
 
         const fieldName = field.getFieldName();
         const arkField = ModelUtils.getFieldInClassWithName(fieldName, arkClass);
         if (arkField == null) {
-            console.log(`error: field ${fieldName} does not exist`);
+            logger.warn(`field ${fieldName} does not exist`);
             return;
         }
         field.setFieldSignature(arkField.getSignature());
@@ -180,14 +183,14 @@ export class TypeInference {
                             classSignature.getClassSignature(), arkMethod.getDeclaringArkFile().getScene()
                         )
                         if (classInstance == null) {
-                            console.log("Error getting Class Instance: "+rightOp.getBase().getName())
+                            logger.warn("getting Class Instance: " + rightOp.getBase().getName())
                             return
                         }
                         let fieldInstance = ModelUtils.getFieldInClassWithName(
                             rightOp.getFieldName(), classInstance
                         )
                         if (fieldInstance == null) {
-                            console.log("Error getting Field Instance error: "+rightOp.getFieldName())
+                            logger.warn("getting Field Instance error: " + rightOp.getFieldName())
                             return
                         }
                         let fieldType = fieldInstance.getType();

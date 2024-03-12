@@ -5,7 +5,7 @@ class Animal {
         this._name = theName; 
     }
     public move(distanceInMeters: number = 0) {
-        console.log(`${this._name} moved ${distanceInMeters}m.`);
+        logger.info(`${this._name} moved ${distanceInMeters}m.`);
     }
 
     get name():string| undefined {
@@ -28,7 +28,7 @@ class Animal {
 class Snake extends Animal {
     constructor(name: string) { super(name); }
     move(distanceInMeters = 5) {
-        console.log("Slithering...");
+        logger.info("Slithering...");
         super.move(distanceInMeters);
     }
 }
@@ -36,7 +36,7 @@ class Snake extends Animal {
 class Horse extends Animal {
     constructor(name: string) { super(name); }
     move(distanceInMeters = 45) {
-        console.log("Galloping...");
+        logger.info("Galloping...");
         super.move(distanceInMeters);
     }
 }
@@ -70,8 +70,8 @@ class Grid {
 let grid1 = new Grid(1.0);  // 1x scale
 let grid2 = new Grid(5.0);  // 5x scale
 
-console.log(grid1.calculateDistanceFromOrigin({x: 10, y: 10}));
-console.log(grid2.calculateDistanceFromOrigin({x: 10, y: 10}));
+logger.info(grid1.calculateDistanceFromOrigin({x: 10, y: 10}));
+logger.info(grid2.calculateDistanceFromOrigin({x: 10, y: 10}));
 
 abstract class Department {
 
@@ -79,7 +79,7 @@ abstract class Department {
     }
 
     printName(): void {
-        console.log('Department name: ' + this.name);
+        logger.info('Department name: ' + this.name);
     }
 
     abstract printMeeting(): void; // 必须在派生类中实现
@@ -92,11 +92,11 @@ class AccountingDepartment extends Department {
     }
 
     printMeeting(): void {
-        console.log('The Accounting Department meets each Monday at 10am.');
+        logger.info('The Accounting Department meets each Monday at 10am.');
     }
 
     generateReports(): void {
-        console.log('Generating accounting reports...');
+        logger.info('Generating accounting reports...');
     }
 }
 
@@ -127,8 +127,7 @@ export default class ZipCodeValidator implements StringValidator {
         return s!.length === 5 && numberRegexp.test(s!);
     }
 }
-export { ZipCodeValidator };
-export { ZipCodeValidator as mainValidator };
+export { ZipCodeValidator, ZipCodeValidator as mainValidator };
 
 export class ParseIntBasedZipCodeValidator {
     isAcceptable(s: string) {

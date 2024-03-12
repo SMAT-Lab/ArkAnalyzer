@@ -1,12 +1,12 @@
+import { AbstractInvokeExpr, ArkInstanceInvokeExpr, ArkNewExpr, ArkStaticInvokeExpr } from "../core/base/Expr";
+import { ArkInvokeStmt } from "../core/base/Stmt";
 import { ClassType } from "../core/base/Type";
 import { Cfg } from "../core/graph/Cfg";
-import { AbstractCallGraph } from "./AbstractCallGraphAlgorithm";
-import { ClassSignature, MethodSignature, MethodSubSignature } from "../core/model/ArkSignature";
-import { ArkMethod } from "../core/model/ArkMethod";
 import { ArkClass } from "../core/model/ArkClass";
-import { ArkInvokeStmt } from "../core/base/Stmt";
+import { ArkMethod } from "../core/model/ArkMethod";
+import { ClassSignature, MethodSignature } from "../core/model/ArkSignature";
 import { isItemRegistered } from "../utils/callGraphUtils";
-import { AbstractInvokeExpr, ArkInstanceInvokeExpr, ArkNewExpr, ArkStaticInvokeExpr } from "../core/base/Expr";
+import { AbstractCallGraph } from "./AbstractCallGraphAlgorithm";
 
 type Tuple = [MethodSignature, MethodSignature];
 export class RapidTypeAnalysisAlgorithm extends AbstractCallGraph {
@@ -158,7 +158,7 @@ export class RapidTypeAnalysisAlgorithm extends AbstractCallGraph {
         let callMethods: ArkMethod[] = []
 
         if (invokeExpr instanceof ArkInstanceInvokeExpr) {
-            // console.log("instanceInvoke:   "+invokeExpr.getMethodSignature().toString())
+            // logger.info("instanceInvoke:   "+invokeExpr.getMethodSignature().toString())
             let classCompleteType = invokeExpr.getBase().getType()
             if (classCompleteType instanceof ClassType) {
                 let extendedClasses = this.scene.getExtendedClasses(classCompleteType.getClassSignature())
@@ -177,7 +177,7 @@ export class RapidTypeAnalysisAlgorithm extends AbstractCallGraph {
                 }
             }
         } else if (invokeExpr instanceof ArkStaticInvokeExpr) {
-            // console.log("static:   "+invokeExpr.getMethodSignature().toString())
+            // logger.info("static:   "+invokeExpr.getMethodSignature().toString())
             if (callName.includes('.')) {
                 // a.b()的静态调用
                 let lastDotIndex = callName.lastIndexOf('.')

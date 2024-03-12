@@ -1,12 +1,7 @@
-import { Config } from "./Config";
-import { Scene } from "../src/Scene";
-import { ArkClass } from "../src/core/model/ArkClass";
-import { ArkMethod } from "../src/core/model/ArkMethod";
-import { ArkFile } from "../src/core/model/ArkFile";
-import * as utils from "../src/utils/getAllFiles";
 import * as ts from "typescript";
-import fs from 'fs';
-import { ClassSignature } from "../src/core/model/ArkSignature";
+import { Scene } from "../src/Scene";
+import * as utils from "../src/utils/getAllFiles";
+import { Config } from "./Config";
 
 function run(config: Config) {
     const projectName: string = config.projectName;
@@ -20,11 +15,11 @@ function run(config: Config) {
     let scene: Scene = new Scene(projectName, projectFiles);
     const fl = '/Users/yifei/Documents/Code/ArkAnalyzer/sample/sample.ts';
     let mtd = scene.getMethod(fl, 'foo', ['NumberKeyword'], ['NumberKeyword']);
-    //console.log(mtd);
-    //console.log(mtd?.cfg);
+    //logger.info(mtd);
+    //logger.info(mtd?.cfg);
     
     //let clsSig = new ClassSignature(fl, "SecurityDoor");
-    //console.log(scene.getFather(clsSig));
+    //logger.info(scene.getFather(clsSig));
 
     //(3) Conduct Code Transformation
     //if (null != config.sceneTransformer) {
@@ -50,8 +45,8 @@ const x = {
 `;
 
 function codeGen() {
-    console.log(code);
-    console.log("#################");
+    logger.info(code);
+    logger.info("#################");
     const sourceFile = ts.createSourceFile(
         filename, code, ts.ScriptTarget.Latest
     );
@@ -83,7 +78,7 @@ function codeGen() {
     );
 
     const transformedSourceFile = transformationResult.transformed[0];
-    console.log(transformedSourceFile);
+    logger.info(transformedSourceFile);
 
     const printer = ts.createPrinter();
 
@@ -95,7 +90,7 @@ function codeGen() {
         sourceFile
     );
 
-    console.log(result);
+    logger.info(result);
 }
 
 codeGen();

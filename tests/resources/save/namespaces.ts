@@ -30,7 +30,7 @@ namespace Validation {
 
     // TODO: Not Support
     function test(): void {
-        console.log('');
+        logger.info('');
     }
 
     // TODO: Not Support

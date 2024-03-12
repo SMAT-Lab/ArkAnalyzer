@@ -2,13 +2,15 @@ import { Constant } from "../../core/base/Constant";
 import { ArkBinopExpr, ArkInstanceInvokeExpr, ArkLengthExpr, ArkNewArrayExpr, ArkNewExpr, ArkStaticInvokeExpr } from "../../core/base/Expr";
 import { Local } from "../../core/base/Local";
 import { ArkInstanceFieldRef, ArkParameterRef } from "../../core/base/Ref";
-import { ArkAssignStmt, ArkGotoStmt, ArkIfStmt, ArkInvokeStmt, ArkReturnStmt, ArkReturnVoidStmt, ArkSwitchStmt, Stmt} from '../../core/base/Stmt';
+import { ArkAssignStmt, ArkGotoStmt, ArkIfStmt, ArkInvokeStmt, ArkReturnStmt, ArkReturnVoidStmt, ArkSwitchStmt, Stmt } from '../../core/base/Stmt';
 import { Value } from "../../core/base/Value";
 import { ArkMethod } from "../../core/model/ArkMethod";
+import Logger from "../../utils/logger";
 import { StmtReader } from './SourceBody';
 import { SourceMethod } from "./SourceMethod";
 import { SourceUtils } from "./SourceUtils";
 
+const logger = Logger.getLogger();
 
 abstract class SourceStmt extends Stmt {
     original: Stmt;
@@ -34,7 +36,7 @@ abstract class SourceStmt extends Stmt {
             let base: Constant = invokeExpr.getBase() as unknown as Constant;
             return `${base.getValue()}.${methodName}(${args.join(',')})`;
         } else {
-            console.log('= SourceStmt.instanceInvokeExprToString: error.', invokeExpr.getBase(), methodName);
+            logger.info('= SourceStmt.instanceInvokeExprToString: error.', invokeExpr.getBase(), methodName);
         }
     }
 
@@ -97,7 +99,7 @@ export class SourceAssignStmt extends SourceStmt {
     protected transfer2ts(stmtReader: StmtReader): void {
         let leftOp = (this.original as ArkAssignStmt).getLeftOp();
         let rightOp = (this.original as ArkAssignStmt).getRightOp();
-        console.log('SourceAssignStmt->transfer2ts', leftOp, rightOp);
+        logger.info('SourceAssignStmt->transfer2ts', leftOp, rightOp);
         
         // omit this = this: <tests\sample\sample.ts>.<_DEFAULT_ARK_CLASS>
         if (leftOp instanceof Local && leftOp.getName() == 'this') {
@@ -251,7 +253,7 @@ export class SourceForStmt extends SourceWhileStmt {
         }
         code += `) {`;
         this.setText(code);
-        console.log('SourceForStmt->transfer2ts:', (this.original as ArkIfStmt).getConditionExprExpr());
+        logger.info('SourceForStmt->transfer2ts:', (this.original as ArkIfStmt).getConditionExprExpr());
     }
 }
 

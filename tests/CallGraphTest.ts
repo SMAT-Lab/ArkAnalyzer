@@ -1,7 +1,7 @@
 import { SceneConfig } from "../src/Config";
 import { Scene } from "../src/Scene";
-import {printCallGraphDetails} from "../src/utils/callGraphUtils";
-import {MethodSignature} from "../src/core/model/ArkSignature";
+import { MethodSignature } from "../src/core/model/ArkSignature";
+import { printCallGraphDetails } from "../src/utils/callGraphUtils";
 
 //let config: SceneConfig = new SceneConfig("./tests/AppTestConfig.json");
 let config: SceneConfig = new SceneConfig()
@@ -14,18 +14,18 @@ function runScene(config: SceneConfig) {
     // }
     for (let arkFile of projectScene.arkFiles) {
         if (arkFile.getName() === "main.ts") {
-            // console.log("filepath: "+arkFile.getFilePath())
+            // logger.info("filepath: "+arkFile.getFilePath())
             let tempMethod = arkFile.getDefaultClass().getMethods()
             entryPoints.push(tempMethod[0].getSignature())
-            // console.log(tempMethod)
+            // logger.info(tempMethod)
         }
     }
     // for (let arkFile of projectScene.arkFiles) {
-    //     console.log("ArkFile: " + arkFile.getName())
+    //     logger.info("ArkFile: " + arkFile.getName())
     //     for (let arkClass of arkFile.getClasses()) {
-    //         console.log("\tArkClass: " + arkClass.getName())
+    //         logger.info("\tArkClass: " + arkClass.getName())
     //         for (let arkMethod of arkClass.getMethods()) {
-    //             console.log("\t\tArkMethod: " + arkMethod.getName())
+    //             logger.info("\t\tArkMethod: " + arkMethod.getName())
     //         }
     //     }
     // }

@@ -1,8 +1,10 @@
-import { ClassSignature, MethodSignature } from "../core/model/ArkSignature";
 import { Scene } from "../Scene";
-import { ArkMethod } from "../core/model/ArkMethod";
 import { ArkClass } from "../core/model/ArkClass";
+import { ArkMethod } from "../core/model/ArkMethod";
+import { ClassSignature, MethodSignature } from "../core/model/ArkSignature";
+import Logger from "./logger";
 
+const logger = Logger.getLogger();
 
 export class MethodSignatureManager {
     private _workList: MethodSignature[] = [];
@@ -148,14 +150,14 @@ export function splitStringWithRegex(input: string): string[] {
 
 export function printCallGraphDetails(methods: Set<MethodSignature>, calls: Map<MethodSignature, MethodSignature[]>, rootDir: string): void {
     // 打印 Methods
-    console.log("\nCall Graph:\n")
-    console.log('\tMethods:');
+    logger.info("\nCall Graph:\n")
+    logger.info('\tMethods:');
     methods.forEach(method => {
-        console.log(`\t\t${method}`);
+        logger.info(`\t\t${method}`);
     });
 
     // 打印 Calls
-    console.log('\n\tCalls:');
+    logger.info('\n\tCalls:');
     // 计算最长的method名称的长度，加上箭头和空格的长度
     const longestCallerLength = Array.from(calls.keys()).reduce((max, method) => Math.max(max, method.toString().length), 0);
     const arrow = '->';
@@ -165,13 +167,13 @@ export function printCallGraphDetails(methods: Set<MethodSignature>, calls: Map<
     calls.forEach((calledMethods, method) => {
         // 对于每个调用源，只打印一次调用源和第一个目标方法
         const modifiedMethodName = `<${method}`;
-        console.log(`\t\t${modifiedMethodName.padEnd(4)}   ${arrow}`);
+        logger.info(`\t\t${modifiedMethodName.padEnd(4)}   ${arrow}`);
 
         for (let i = 0; i < calledMethods.length; i++) {
             const modifiedCalledMethod = `\t\t<${calledMethods[i]}`;
-            console.log(`\t\t${modifiedCalledMethod}`);
+            logger.info(`\t\t${modifiedCalledMethod}`);
         }
-        console.log("\n")
+        logger.info("\n")
     });
 }
 

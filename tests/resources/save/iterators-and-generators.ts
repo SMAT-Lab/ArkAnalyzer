@@ -1,21 +1,21 @@
 let someArray = [1, "string", false];
 
 for (let entry of someArray) {
-    console.log(entry); // 1, "string", false
+    logger.info(entry); // 1, "string", false
 }
 
 let list = [4, 5, 6];
 
 for (let i in list) {
-    console.log(i); // "0", "1", "2",
+    logger.info(i); // "0", "1", "2",
 }
 
 for (let i of list) {
-    console.log(i); // "4", "5", "6"
+    logger.info(i); // "4", "5", "6"
 }
 
 list.forEach(i => {
-    console.log(i);
+    logger.info(i);
 });
 
 for (let i = 0; i < list.length; i++) {
@@ -25,14 +25,14 @@ for (let i = 0; i < list.length; i++) {
     if (i == 2) {
         break;
     }
-    console.log(list[i]);
+    logger.info(list[i]);
 }
 
 let pets = new Set(["Cat", "Dog", "Hamster"]);
 for (let pet in pets) {
-    console.log(pet); // "species"
+    logger.info(pet); // "species"
 }
 
 for (let pet of pets) {
-    console.log(pet); // "Cat", "Dog", "Hamster"
+    logger.info(pet); // "Cat", "Dog", "Hamster"
 }

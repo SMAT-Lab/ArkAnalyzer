@@ -3,15 +3,18 @@ import { ArkInstanceInvokeExpr } from '../../core/base/Expr';
 import { Local } from "../../core/base/Local";
 import { ArkParameterRef } from "../../core/base/Ref";
 import { ArkAssignStmt, ArkGotoStmt, ArkIfStmt, ArkInvokeStmt, ArkReturnStmt, ArkReturnVoidStmt, ArkSwitchStmt, Stmt } from '../../core/base/Stmt';
+import { CallableType } from '../../core/base/Type';
 import { BasicBlock } from '../../core/graph/BasicBlock';
 import { DominanceFinder } from "../../core/graph/DominanceFinder";
 import { DominanceTree } from "../../core/graph/DominanceTree";
 import { ArkBody } from "../../core/model/ArkBody";
+import { ArkMethod } from '../../core/model/ArkMethod';
+import Logger from "../../utils/logger";
+import { ArkCodeBuffer } from '../ArkStream';
 import { SourceAssignStmt, SourceBreakStmt, SourceCaseStmt, SourceCompoundEndStmt, SourceContinueStmt, SourceElseStmt, SourceForStmt, SourceIfStmt, SourceInvokeStmt, SourceReturnStmt, SourceReturnVoidStmt, SourceSwitchStmt, SourceWhileStmt } from './SourceStmt';
 import { SourceUtils } from './SourceUtils';
-import { CallableType } from '../../core/base/Type';
-import { ArkMethod } from '../../core/model/ArkMethod';
-import { ArkCodeBuffer } from '../ArkStream';
+
+const logger = Logger.getLogger();
 
 enum BlockType {
     NORMAL,
@@ -286,7 +289,7 @@ export class SourceBody {
                 }
             }
             this.printer.writeIndent().writeLine(`let ${local.getName()}: ${SourceUtils.typeToString(local.getType())};`);
-            console.log('SourceBody->printLocals:', local);
+            logger.info('SourceBody->printLocals:', local);
         }
     }
 

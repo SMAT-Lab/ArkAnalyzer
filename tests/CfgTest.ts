@@ -17,39 +17,39 @@ export class CfgTest {
         let scene = this.buildScene();
 
         for (const arkFile of scene.arkFiles) {
-            console.log('=============== arkFile:', arkFile.getName(), ' ================');
+            logger.info('=============== arkFile:', arkFile.getName(), ' ================');
             for (const arkClass of arkFile.getClasses()) {
                 for (const arkMethod of arkClass.getMethods()) {
                     if (arkMethod.getName() == '_DEFAULT_ARK_METHOD') {
                         continue;
                     }
                     let arkBody = arkMethod.getBody()
-                    console.log('*** arkMethod: ', arkMethod.getName());
-                    console.log('-- origalstmts:');
+                    logger.info('*** arkMethod: ', arkMethod.getName());
+                    logger.info('-- origalstmts:');
 
                     let originalCfg = arkBody.getOriginalCfg();
                     for (const origalstmt of originalCfg.getStmts()) {
-                        console.log(origalstmt.toString());
-                        // console.log(origalstmt.toString()+', pos: '+origalstmt.getPositionInfo());
+                        logger.info(origalstmt.toString());
+                        // logger.info(origalstmt.toString()+', pos: '+origalstmt.getPositionInfo());
                     }
-                    console.log();
-                    console.log('-- threeAddresStmts:');
+                    logger.info();
+                    logger.info('-- threeAddresStmts:');
                     let cfg = arkBody.getCfg();
                     for (const threeAddresStmt of cfg.getStmts()) {
-                        console.log(threeAddresStmt.toString());
-                        // console.log(threeAddresStmt.toString(), ', original pos:', threeAddresStmt.getOriginPositionInfo(),
+                        logger.info(threeAddresStmt.toString());
+                        // logger.info(threeAddresStmt.toString(), ', original pos:', threeAddresStmt.getOriginPositionInfo(),
                         //     ', pos:', threeAddresStmt.getPositionInfo());
-                        // console.log('- use');
+                        // logger.info('- use');
 
-                        // console.log(threeAddresStmt.getUses());
+                        // logger.info(threeAddresStmt.getUses());
 
                     }
 
-                    console.log('-- locals:');
+                    logger.info('-- locals:');
                     for (const local of arkMethod.getBody().getLocals()) {
-                        console.log(local.toString());
+                        logger.info(local.toString());
                     }
-                    console.log();
+                    logger.info();
                 }
             }
         }
@@ -62,8 +62,8 @@ export class CfgTest {
         for (const arkFile of scene.arkFiles) {
             for (const arkClass of arkFile.getClasses()) {
                 for (const arkMethod of arkClass.getMethods()) {
-                    console.log('************ arkMethod:', arkMethod.getSignature().toString(), ' **********');
-                    console.log('StartingBlock:', arkMethod.getBody().getCfg().getStartingBlock());
+                    logger.info('************ arkMethod:', arkMethod.getSignature().toString(), ' **********');
+                    logger.info('StartingBlock:', arkMethod.getBody().getCfg().getStartingBlock());
                 }
             }
         }

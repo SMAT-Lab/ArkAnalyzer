@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import Logger from "../../utils/logger";
 import { ASTree, NodeA } from '../base/Ast';
 import { Constant } from '../base/Constant';
 import { AbstractInvokeExpr, ArkBinopExpr, ArkCastExpr, ArkConditionExpr, ArkInstanceInvokeExpr, ArkLengthExpr, ArkNewArrayExpr, ArkNewExpr, ArkStaticInvokeExpr, ArkTypeOfExpr, ArkUnopExpr } from '../base/Expr';
@@ -30,6 +31,7 @@ import { ExportInfo } from './ExportBuilder';
 import { IRUtils } from './IRUtils';
 import { TypeInference } from './TypeInference';
 
+const logger = Logger.getLogger();
 
 class StatementBuilder {
     type: string;
@@ -324,7 +326,7 @@ export class CfgBuilder {
             return null;
         }
 
-        // console.log(node.text)
+        // logger.info(node.text)
 
         this.scopeLevel++;
         let scope = new Scope(this.scopes.length, new Set(), this.scopeLevel);
@@ -545,7 +547,7 @@ export class CfgBuilder {
                                 }
                             }
                             if (syntaxList == null) {
-                                console.log("caseClause without syntaxList");
+                                logger.info("caseClause without syntaxList");
                                 process.exit();
                             }
                             if (syntaxList.children.length == 0) {
@@ -693,7 +695,7 @@ export class CfgBuilder {
                 let p = cstm.nextT;
                 while (p.type.includes("Exit")) {
                     if (p.next == null) {
-                        console.log("exit error");
+                        logger.info("exit error");
                         process.exit();
                     }
                     p = p.next;
@@ -704,7 +706,7 @@ export class CfgBuilder {
                 let p = cstm.nextF;
                 while (p.type.includes("Exit")) {
                     if (p.next == null) {
-                        console.log("exit error");
+                        logger.info("exit error");
                         process.exit();
                     }
                     p = p.next;
@@ -726,7 +728,7 @@ export class CfgBuilder {
                     let p = caseClause;
                     while (p.type.includes("Exit")) {
                         if (p.next == null) {
-                            console.log("exit error");
+                            logger.info("exit error");
                             process.exit();
                         }
                         p = p.next;
@@ -753,7 +755,7 @@ export class CfgBuilder {
                 let p = stm.next;
                 while (p.type.includes("Exit")) {
                     if (p.next == null) {
-                        console.log("error exit");
+                        logger.info("error exit");
                         process.exit();
                     }
                     p = p.next;
@@ -826,7 +828,7 @@ export class CfgBuilder {
         else if (stm.type == "tryStatement") {
             let trystm = stm as TryStatementBuilder;
             if (!trystm.tryFirst) {
-                console.log("try without tryFirst");
+                logger.info("try without tryFirst");
                 process.exit();
             }
             let tryFirstBlock = this.buildNewBlock([]);
@@ -2243,7 +2245,7 @@ export class CfgBuilder {
             // threeAddressStmts.push(new ArkNopStmt());
         }
         else {
-            // console.log('unsupported stmt node, type:', node.kind, ', text:', node.text);
+            // logger.info('unsupported stmt node, type:', node.kind, ', text:', node.text);
         }
 
         this.current3ACstm.threeAddressStmts.push(...threeAddressStmts);
@@ -2320,7 +2322,7 @@ export class CfgBuilder {
             parent = stm.astNode.parent;
         else {
             if (!this.entry.astNode) {
-                console.log("entry without astNode");
+                logger.info("entry without astNode");
                 process.exit();
             }
             parent = this.entry.astNode;
@@ -2344,7 +2346,7 @@ export class CfgBuilder {
             parent = stm.astNode.parent;
         else {
             if (!this.entry.astNode) {
-                console.log("entry without astNode");
+                logger.info("entry without astNode");
                 process.exit();
             }
             parent = this.entry.astNode;
@@ -2389,7 +2391,7 @@ export class CfgBuilder {
                     last3AC = temp;
                 }
                 if (!stm.astNode) {
-                    console.log("stm without ast");
+                    logger.info("stm without ast");
                     process.exit();
                 }
                 let block = stm.astNode.children[this.findChildIndex(stm.astNode, "Block")];
@@ -2480,8 +2482,7 @@ export class CfgBuilder {
         }
         for (let cat of this.catches) {
             text += "catch " + cat.errorName + " from label " + cat.from + " to label " + cat.to + " with label" + cat.withLabel + "\n";
-        }
-        console.log(text);
+        }        
     }
 
     private addFirstBlock() {
@@ -2568,7 +2569,7 @@ export class CfgBuilder {
         }
 
         functionBodyStr += '}\n';
-        console.log(functionBodyStr);
+        logger.info(functionBodyStr);
 
         function ifStmtToString(originStmt: StatementBuilder): string[] {
             let ifStmt = originStmt as ConditionStatementBuilder;
@@ -2650,11 +2651,11 @@ export class CfgBuilder {
     }
 
     public printThreeAddressStrs() {
-        console.log('#### printThreeAddressStrs ####');
+        logger.info('#### printThreeAddressStrs ####');
         for (const stmt of this.statementArray) {
-            console.log('------ origin stmt: ', stmt.code);
+            logger.info('------ origin stmt: ', stmt.code);
             for (const threeAddressstr of stmt.addressCode3) {
-                console.log(threeAddressstr);
+                logger.info(threeAddressstr);
             }
         }
     }
@@ -2662,23 +2663,23 @@ export class CfgBuilder {
     public printThreeAddressStrsAndStmts() {
         for (const stmt of this.statementArray) {
             if (stmt.astNode && stmt.code) {
-                console.log('----- origin stmt: ', stmt.code);
-                console.log('-- threeAddressStrs:');
+                logger.info('----- origin stmt: ', stmt.code);
+                logger.info('-- threeAddressStrs:');
                 for (const threeAddressstr of stmt.addressCode3) {
-                    console.log(threeAddressstr);
+                    logger.info(threeAddressstr);
                 }
-                console.log('-- threeAddressStmts:');
+                logger.info('-- threeAddressStmts:');
                 for (const threeAddressStmt of stmt.threeAddressStmts) {
-                    console.log(threeAddressStmt);
+                    logger.info(threeAddressStmt);
                 }
             }
         }
     }
 
     public printOriginStmts() {
-        console.log('#### printOriginStmts ####');
+        logger.info('#### printOriginStmts ####');
         for (const stmt of this.statementArray) {
-            console.log(stmt);
+            logger.info(stmt);
         }
     }
 

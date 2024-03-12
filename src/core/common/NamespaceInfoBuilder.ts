@@ -1,6 +1,8 @@
 import ts from 'typescript';
 import { buildModifiers } from '../../utils/builderUtils';
+import Logger from "../../utils/logger";
 
+const logger = Logger.getLogger();
 export class NamespaceInfo {
     private name: string;
     private modifiers: Set<string> = new Set<string>();
@@ -38,7 +40,7 @@ export function buildNamespaceInfo4NamespaceNode(node: ts.ModuleDeclaration): Na
         namespaceInfo.setName(node.name.text);
     }
     else {
-        console.log("New namespace name type found. Please contact developers to add support for this!")
+        logger.info("New namespace name type found. Please contact developers to add support for this!")
     }
     return namespaceInfo;
 }

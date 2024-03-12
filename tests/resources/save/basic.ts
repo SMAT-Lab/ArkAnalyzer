@@ -1,10 +1,9 @@
-import fs from 'fs';
 
 function forLoopTest() {
     let myPerson = new Person(10);
     for (let i = 0; i < 10; i++) {
         let newAge = myPerson.age + i;
-        console.log(newAge);
+        logger.info(newAge);
     }
 }
 
@@ -14,30 +13,30 @@ function test() {
     for (let i = 0; i < sampleData.length; i++) {
         // 使用 if 判断
         if (sampleData[i] % 2 === 0) {
-            console.log(`${sampleData[i]} 是偶数`);
+            logger.info(`${sampleData[i]} 是偶数`);
         } else {
-            console.log(`${sampleData[i]} 是奇数`);
+            logger.info(`${sampleData[i]} 是奇数`);
         }
 
         // 使用 switch 判断
         switch (sampleData[i] % 3) {
             case 0:
-                console.log(`${sampleData[i]} 可被 3 整除`);
+                logger.info(`${sampleData[i]} 可被 3 整除`);
                 break;
             case 1:
-                console.log(`${sampleData[i]} 除以 3 余 1`);
+                logger.info(`${sampleData[i]} 除以 3 余 1`);
                 break;
             case 2:
-                console.log(`${sampleData[i]} 除以 3 余 2`);
+                logger.info(`${sampleData[i]} 除以 3 余 2`);
                 break;
             default:
-                console.log("无法判断");
+                logger.info("无法判断");
         }
 
         // 使用 while 循环
         let count = 0;
         while (count < sampleData[i]) {
-            console.log(`当前计数: ${count}`);
+            logger.info(`当前计数: ${count}`);
             count++;
         }
 
@@ -46,13 +45,13 @@ function test() {
             if (j === 2) {
                 continue; // 跳过本次循环的剩余代码，进入下一次循环
             }
-            console.log(`当前内层循环计数: ${j}`);
+            logger.info(`当前内层循环计数: ${j}`);
         }
 
         // 使用 break 终止循环
         for (let k = 0; k < 3; k++) {
-            console.log(`外层循环计数: ${k}`);
-            console.log('Department name: ' + k);
+            logger.info(`外层循环计数: ${k}`);
+            logger.info('Department name: ' + k);
             if (k === 1) {
                 break; // 终止整个循环
             }
@@ -75,7 +74,7 @@ class Person {
     }
 
     static wooooof() {
-        console.log("not a person sound")
+        logger.info("not a person sound")
     }
 }
 
@@ -133,22 +132,22 @@ export class SecurityDoor extends Door implements Alarm, Alarm2 {
     x: number = 0;
     y: string = '';
     alert(): void {
-        console.log("SecurityDoor alert");
+        logger.info("SecurityDoor alert");
     }
     alert2(): void {
-        console.log("SecurityDoor alert2");
+        logger.info("SecurityDoor alert2");
     }
     public Members = class {
 
     }
     public fooo() {
-        console.log("This is fooo!");
+        logger.info("This is fooo!");
     }
     constructor(x: number, y: string) {
         super();
         this.x = x;
         this.y = y;
-        console.log("This is a constrctor!");
+        logger.info("This is a constrctor!");
     }
 }
 
@@ -176,8 +175,7 @@ export interface StringValidator {
     color?: string;
     width?: number;
 }
-export { ExtendedAdder };
-export { ExtendedAdder as ExtAdder};
+export { ExtendedAdder as ExtAdder, ExtendedAdder };
 
 forLoopTest();
 test();
