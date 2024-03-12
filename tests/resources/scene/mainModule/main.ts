@@ -1,9 +1,9 @@
-// class Animal {
-//     public eat(): void { }
-// }
+class Animal {
+    public eat(): void { }
+}
 
-// class Bird extends Animal {
-//     public fly(): void {
-//         super.eat();
-//     }
-// }
+class Bird extends Animal {
+    public fly(): void {
+        super.eat();
+    }
+}
