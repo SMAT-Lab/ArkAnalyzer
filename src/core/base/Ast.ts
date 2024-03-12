@@ -3,9 +3,7 @@ import { ClassInfo, buildClassInfo4ClassNode } from "../common/ClassBuilder";
 import { MethodInfo, buildMethodInfo4MethodNode } from "../common/MethodInfoBuilder";
 import { ImportInfo, buildImportInfo4ImportNode } from "../common/ImportBuilder";
 import { ExportInfo, buildExportInfo4ExportNode } from "../common/ExportBuilder";
-//import { InterfaceInfo, buildInterfaceInfo4InterfaceNode } from "../common/InterfaceInfoBuilder";
 import { NamespaceInfo, buildNamespaceInfo4NamespaceNode } from "../common/NamespaceInfoBuilder";
-//import { EnumInfo, buildEnumInfo4EnumNode } from "../common/EnumInfoBuilder";
 
 /**
  * ast节点类，属性包括父节点，子节点列表，种类，文本内容，开始位置

@@ -75,15 +75,6 @@ export class VisibleValue {
             }
         }
         this.deleteScope(targetDepth);
-
-        // if ((currModel instanceof BasicBlock) && (currModel.getSuccessors().length > 1)) {
-        //     return;
-        // }
-
-        // const totalValuesCnt = this.currVisibleValues.length;
-        // let popScopeValuesCnt = this.currScope.values.length;
-        // this.currScope = this.scopeChain.pop() as Scope;
-        // this.currVisibleValues.splice(totalValuesCnt - popScopeValuesCnt, popScopeValuesCnt);
     }
 
 
@@ -130,14 +121,6 @@ export class VisibleValue {
             } else {
                 targetDepth = prevDepth;
             }
-
-
-            // const predecessorsCnt = model.getPredecessors().length;
-            // if (predecessorsCnt <= 1) {
-            //     targetDepth = prevDepth + 1;  // goto inner scope
-            // } else {
-            //     targetDepth = prevDepth - predecessorsCnt + 1;  // goto outer scope
-            // }
         } else if ((model instanceof ArkFile) && (prevModel instanceof ArkFile)) {
             targetDepth = prevDepth;
         } else if ((model instanceof ArkNamespace) && (prevModel instanceof ArkNamespace)) {
@@ -152,13 +135,6 @@ export class VisibleValue {
 
     private getVisibleValuesIntoFileOrNameSpace(fileOrNameSpace: ArkFile | ArkNamespace): Value[] {
         let values: Value[] = [];
-        // const defaultMethod = fileOrNameSpace.getDefaultClass().getDefaultArkMethod();
-        // if (defaultMethod != null) {
-        //     const firstBlock = defaultMethod.getBody().getCfg().getStartingBlock();
-        //     if (firstBlock != undefined) {
-        //         values = this.getVisibleValuesIntoBasicBlock(firstBlock);
-        //     }
-        // }
         return values;
     }
 

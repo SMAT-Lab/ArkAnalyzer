@@ -298,18 +298,8 @@ function buildNormalArkClass(clsNode: NodeA, cls: ArkClass) {
             for (let cld of child.children) {
                 if (arkMethodNodeKind.indexOf(cld.kind) > -1) {
                     let mthd: ArkMethod = new ArkMethod();
-
-                    /* // Deprecated
-                    mthd.setDeclaringSignature(cls.getArkSignature()); */
-
                     buildArkMethodFromArkClass(cld, cls, mthd);
                     cls.addMethod(mthd);
-
-                    /* // Deprecated
-                    cls.addArkInstance(mthd.getArkSignature(), mthd);
-                    mthd.getArkInstancesMap().forEach((value, key) => {
-                        cls.addArkInstance(key, value);
-                    }); */
                 }
             }
         }

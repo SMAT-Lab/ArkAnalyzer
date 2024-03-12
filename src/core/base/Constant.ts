@@ -32,10 +32,6 @@ export class Constant implements Value {
     }
 
     public toString(): string {
-        // let outStr = this.value;
-        // if (this.type == 'string') {
-        //     outStr = '\'' + outStr + '\'';
-        // }
         return this.value;
     }
 }

@@ -31,22 +31,12 @@ export class Scene {
     extendedClasses: Map<string, ArkClass[]> = new Map();
     globalImportInfos: ImportInfo[] = [];
 
-    /* // Deprecated
-    arkInstancesMap: Map<string, any> = new Map<string, any>();
-
-    arkFileMaps: Map<string, any> = new Map<string, any>();
-    arkNamespaceMaps: Map<string, any> = new Map<string, any>();
-    arkInterfaceMaps: Map<string, any> = new Map<string, any>();
-    arkClassMaps: Map<string, any> = new Map<string, any>();
-    arkMethodMaps: Map<string, any> = new Map<string, any>(); */
-
     private ohosSdkPath: string;
     private kitSdkPath: string;
     private systemSdkPath: string;
 
     private otherSdkMap: Map<string, string>;
 
-    //private sdkFiles: string[];
     private sdkFilesProjectMap: Map<string[], string> = new Map<string[], string>();
 
     // values that are visible in curr scope
@@ -60,7 +50,6 @@ export class Scene {
         this.ohosSdkPath = sceneConfig.getOhosSdkPath();
         this.kitSdkPath = sceneConfig.getKitSdkPath();
         this.systemSdkPath = sceneConfig.getSystemSdkPath();
-        //this.sdkFiles = sceneConfig.getSdkFiles();
         this.sdkFilesProjectMap = sceneConfig.getSdkFilesMap();
 
         this.otherSdkMap = sceneConfig.getOtherSdkMap();
@@ -72,10 +61,6 @@ export class Scene {
 
         //post actions
 
-        /* // Deprecated
-        this.collectArkInstances(); */
-
-        //this.genExtendedClasses();
         this.collectProjectImportInfos();        
     }
 
@@ -123,7 +108,6 @@ export class Scene {
                     arkFile.setProjectName(sdkProjectName);
                     buildArkFileFromFile(file, realSdkProjectDir, arkFile);
                     arkFile.setScene(this);
-                    //this.sdkArkFiles.push(arkFile);
                     this.sdkArkFilestMap.set(arkFile.getFileSignature().toString(), arkFile);
                 });
             }
@@ -145,23 +129,6 @@ export class Scene {
         return foundFile || null;
     }
 
-    //TODO: move to type inference
-    /* private genExtendedClasses() {
-        let myArkClasses = this.getClasses();
-        for (let cls of myArkClasses) {
-            let clsFather = this.getFather(cls.getSignature());
-            if (clsFather) {
-                let sig = clsFather.getSignature().toString();
-                if (this.extendedClasses.has(sig)) {
-                    this.extendedClasses.get(sig)!.push(cls);
-                }
-                else {
-                    this.extendedClasses.set(sig, [cls]);
-                }
-            }
-        }
-    } */
-
     public getFiles() {
         return this.arkFiles;
     }
@@ -173,91 +140,6 @@ export class Scene {
     public getSdkArkFilestMap() {
         return this.sdkArkFilestMap;
     }
-
-    /* public getNamespaces(): ArkNamespace[] {
-        let arkNamespaces: ArkNamespace[] = [];
-        this.arkFiles.forEach((fl) => {
-            arkNamespaces.push(...fl.getNamespaces());
-        });
-        return arkNamespaces;
-    } */
-
-    /* public getClasses(): ArkClass[] {
-        let arkClasses: ArkClass[] = [];
-        for (let fl of this.arkFiles) {
-            arkClasses.push(...fl.getClasses());
-        }
-        return arkClasses;
-    } */
-
-    /* public getMethods(): ArkMethod[] {
-        let arkMethods: ArkMethod[] = [];
-
-        let arkClasses = this.getClasses();
-        for (let arkClass of arkClasses) {
-            let methods: ArkMethod[] = arkClass.getMethods();
-            arkMethods.push(...methods);
-        }
-
-        return arkMethods;
-    } */
-
-    //TODO: move to type inference
-    /* public getClassGlobally(arkClassName: string): ArkClass | null {
-        for (let fl of this.arkFiles) {
-            for (let cls of fl.getClasses()) {
-                if (cls.isExported() && cls.getName() == arkClassName) {
-                    return cls;
-                }
-            }
-        }
-        return null;
-    } */
-
-    /* public getClass(arkFile: string, arkClassType: string): ArkClass | null {
-        const fl = this.arkFiles.find((obj) => {
-            return obj.getName() === arkFile;
-        })
-        if (!fl) {
-            return null;
-        }
-        const claSig = this.getClassSignature(arkFile, arkClassType);
-        return fl.getClass(claSig);
-    } */
-
-    /* public getFather(classSignature: ClassSignature): ArkClass | null {
-        let thisArkFile = this.getFile(classSignature.getDeclaringFileSignature().getFileName());
-        if (thisArkFile == null) {
-            throw new Error('No ArkFile found.');
-        }
-        let thisArkClass = thisArkFile.getClass(classSignature);
-        if (thisArkClass == null) {
-            throw new Error('No ArkClass found.');
-        }
-        let fatherName = thisArkClass?.getSuperClassName();
-        if (!fatherName) {
-            return null;
-        }
-        // get father locally
-        for (let cls of thisArkFile.getClasses()) {
-            if (cls.getName() == fatherName) {
-                return cls;
-            }
-        }
-        // get father globally
-        return this.getClassGlobally(fatherName);
-    } */
-
-    /* public getMethod(arkFile: string, methodName: string, parameters: MethodParameter[], returnType: Type, arkClassType: string): ArkMethod | null {
-        const fl = this.arkFiles.find((obj) => {
-            return obj.getName() === arkFile;
-        })
-        if (!fl) {
-            return null;
-        }
-        const mtdSig = this.getMethodSignature(arkFile, methodName, parameters, returnType, arkClassType);
-        return fl.getMethod(mtdSig);
-    } */
 
     public getNamespace(namespaceSignature: NamespaceSignature | string): ArkNamespace | null {
         let returnVal: ArkNamespace | null = null;
@@ -319,17 +201,6 @@ export class Scene {
         return returnVal;
     }
 
-    /* public getMethodByName(methodName: string): ArkMethod[] {
-        let arkMethods: ArkMethod[] = [];
-        for (let method of this.getMethods()) {
-            if (method.getSubSignature().getMethodName() == methodName) {
-                arkMethods.push(method);
-            }
-        }
-
-        return arkMethods;
-    } */
-
     public getAllNamespacesUnderTargetProject(): ArkNamespace[] {
         let namespaces: ArkNamespace[] = [];
         this.arkFiles.forEach((fl) => {
@@ -368,37 +239,6 @@ export class Scene {
         return this.visibleValue;
     }
 
-    /* private getMethodSignature(fileName: string, methodName: string, parameters: MethodParameter[], returnType: Type, className: string): MethodSignature {
-        let methodSubSignature = new MethodSubSignature();
-        methodSubSignature.setMethodName(methodName);
-        methodSubSignature.setParameters(parameters);
-        methodSubSignature.setReturnType(returnType);
-
-        let classSignature = this.getClassSignature(fileName, className);
-
-        let methodSignature = new MethodSignature();
-        methodSignature.setDeclaringClassSignature(classSignature);
-        methodSignature.setMethodSubSignature(methodSubSignature)
-
-        return methodSignature;
-    } */
-
-    /* private getClassSignature(fileName: string, className: string): ClassSignature {
-        let classSig = new ClassSignature();
-        let fileSig = new FileSignature();
-        fileSig.setFileName(fileName);
-        fileSig.setProjectName(this.projectName);
-        classSig.setClassName(className);
-        classSig.setDeclaringFileSignature(fileSig);
-        return classSig;
-    } */
-
-    // public makeCallGraph(): void {
-    //     this.callgraph = new CallGraph(new Set<string>, new Map<string, string[]>);
-    //     this.callgraph.processFiles(this.projectFiles);
-    // }
-
-
     public makeCallGraphCHA(entryPoints: MethodSignature[]): AbstractCallGraph {
         let callGraphCHA: AbstractCallGraph
         callGraphCHA = new ClassHierarchyAnalysisAlgorithm(this);
@@ -420,11 +260,8 @@ export class Scene {
     public inferTypes() {
         const typeInference = new TypeInference(this);
         for (let arkFile of this.arkFiles) {
-            // console.log('=== file:', arkFile.getFilePath());
             for (let arkClass of arkFile.getClasses()) {
-                // console.log('== class:', arkClass.getName());
                 for (let arkMethod of arkClass.getMethods()) {
-                    // console.log('= method:', arkMethod.getName());
                     typeInference.inferTypeInMethod(arkMethod);
                 }
             }
@@ -439,57 +276,4 @@ export class Scene {
             });
         });
     }
-
-    /* // Deprecated
-    public addArkInstance(arkSignature: string, arkInstance: any) {
-        this.arkInstancesMap.set(arkSignature, arkInstance);
-    }
-
-    public addArkInstance2FileMap(arkSignature: string, arkInstance: any) {
-        this.arkFileMaps.set(arkSignature, arkInstance);
-    }
-
-    public addArkInstance2NamespaceMap(arkSignature: string, arkInstance: any) {
-        this.arkNamespaceMaps.set(arkSignature, arkInstance);
-    }
-
-    public addArkInstance2ClassMap(arkSignature: string, arkInstance: any) {
-        this.arkClassMaps.set(arkSignature, arkInstance);
-    }
-
-    public addArkInstance2InterfaceMap(arkSignature: string, arkInstance: any) {
-        this.arkInterfaceMaps.set(arkSignature, arkInstance);
-    }
-
-    public addArkInstance2MethodMap(arkSignature: string, arkInstance: any) {
-        this.arkMethodMaps.set(arkSignature, arkInstance);
-    } */
-
-    /* // Deprecated
-    private collectArkInstances() {
-        this.arkFiles.forEach((arkFile) => {
-            this.addArkInstance(arkFile.getArkSignature(), arkFile);
-            this.addArkInstance2FileMap(arkFile.getArkSignature(), arkFile);
-            arkFile.getArkInstancesMap().forEach((value, key) => {
-                this.addArkInstance(key, value);
-                if (value instanceof ArkNamespace) {
-                    this.addArkInstance2NamespaceMap(key, value);
-                }
-                else if (value instanceof ArkInterface) {
-                    this.addArkInstance2InterfaceMap(key, value);
-                }
-                else if (value instanceof ArkClass) {
-                    this.addArkInstance2ClassMap(key, value);
-                }
-                else if (value instanceof ArkMethod) {
-                    this.addArkInstance2MethodMap(key, value);
-                }
-            });
-        });
-    } */
-
-    /* // Deprecated
-    public getArkInstancesMap() {
-        return this.arkInstancesMap;
-    } */
 }

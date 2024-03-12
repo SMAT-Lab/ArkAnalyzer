@@ -130,7 +130,6 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraph {
                 }
             }
         } else if (invokeExpr instanceof ArkStaticInvokeExpr) {
-            // console.log("static:   "+invokeExpr.getMethodSignature().toString())
             if (callName.includes('.')) {
                 // static invoke like a.b()
                 // TODO: 上游信息有误

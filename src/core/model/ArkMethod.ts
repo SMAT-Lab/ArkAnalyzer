@@ -28,37 +28,7 @@ export class ArkMethod {
 
     private body: ArkBody;
 
-    /* // Deprecated
-    private arkSignature: string;
-    private declaringSignature: string;
-    private arkInstancesMap: Map<string, any> = new Map<string, any>(); */
-
     constructor() { }
-
-    /* // Deprecated
-    public addArkInstance(arkSignature: string, arkInstance: any) {
-        this.arkInstancesMap.set(arkSignature, arkInstance);
-    }
-
-    public getArkInstancesMap() {
-        return this.arkInstancesMap;
-    }
-
-    public setDeclaringSignature(declaringSignature: string) {
-        this.declaringSignature = declaringSignature;
-    }
-
-    public getArkSignature() {
-        return this.arkSignature;
-    }
-
-    public setArkSignature(arkSignature: string) {
-        this.arkSignature = arkSignature;
-    }
-
-    public genArkSignature() {
-        this.arkSignature = this.declaringSignature + '.' + this.name;
-    } */
 
     public getName() {
         return this.name;
@@ -151,9 +121,6 @@ export class ArkMethod {
         mtdSig.setDeclaringClassSignature(this.declaringArkClass.getSignature());
         mtdSig.setMethodSubSignature(mtdSubSig);
         this.setSignature(mtdSig);
-
-        /* // Deprecated
-        this.genArkSignature(); */
     }
 
     public getModifiers() {
