@@ -1,6 +1,13 @@
 import { SceneConfig } from "../src/Config";
 import { Scene } from "../src/Scene";
 import { ArkBody } from "../src/core/model/ArkBody";
+import Logger, { LOG_LEVEL } from "../src/utils/logger";
+
+const logger = Logger.getLogger();
+
+const logFilePath = 'D:\\Codes\\program_analysis\\static_framework\\ArkAnalyzer\\out\\a.txt';
+const level = LOG_LEVEL.ERROR;
+Logger.configure(logFilePath, level);
 
 export class TypeInferenceTest {
     public buildScene(): Scene {
@@ -16,7 +23,7 @@ export class TypeInferenceTest {
 
     public testLocalTypes() {
         let scene = this.buildScene();
-        scene.inferTypes();   
+        scene.inferTypes();
 
         for (const arkFile of scene.arkFiles) {
             console.log('=============== arkFile:', arkFile.getName(), ' ================');
@@ -66,7 +73,13 @@ export class TypeInferenceTest {
     }
 }
 
-let typeInferenceTest = new TypeInferenceTest();
-// typeInferenceTest.buildScene();
-typeInferenceTest.testLocalTypes();
+// let typeInferenceTest = new TypeInferenceTest();
+// // typeInferenceTest.buildScene();
+// typeInferenceTest.testLocalTypes();
 // typeInferenceTest.testFunctionReturnType();
+
+
+
+let i = 10;
+// console.log(i);
+logger.info(i);
