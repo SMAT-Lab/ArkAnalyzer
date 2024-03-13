@@ -1,6 +1,9 @@
 import { SceneConfig } from "../src/Config";
 import { Scene } from "../src/Scene";
 import { Value } from "../src/core/base/Value";
+import Logger, { LOG_LEVEL } from "../src/utils/logger";
+
+const logger = Logger.getLogger();
 
 export class VisibleValueTest {
     public buildScene(): Scene {
@@ -8,6 +11,7 @@ export class VisibleValueTest {
         const config_path = "tests\\resources\\visiblevalue\\VisibleValueTestTestConfig.json";
         let config: SceneConfig = new SceneConfig();
         config.buildFromJson(config_path);
+        Logger.setLogLevel(LOG_LEVEL.INFO);
         return new Scene(config);
     }
 
@@ -59,11 +63,24 @@ export class VisibleValueTest {
             logger.info(value.toString());
         }
     }
+
+    public testScopeChain(): void {
+        const scene = visibleValueTest.buildScene();
+        const visibleValue = scene.getVisibleValue();
+
+        for (const arkFile of scene.arkFiles) {
+            logger.info('=============== arkFile:', arkFile.getName(), '================');
+            visibleValue.updateIntoScope(arkFile);
+            let scopeChain = visibleValue.getScopeChain();
+            logger.info(scopeChain[0].depth);
+        }
+    }
 }
 
 const visibleValueTest = new VisibleValueTest();
 // const scene = visibleValueTest.buildScene();
-visibleValueTest.testSimpleVisibleValue();
+// visibleValueTest.testSimpleVisibleValue();
+visibleValueTest.testScopeChain();
 
 
 
