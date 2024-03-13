@@ -46,6 +46,8 @@ export abstract class DataflowProblem<D> {
     abstract createZeroValue() : D;
 
     abstract getEntryPoint() : Stmt;
+
+    abstract getEntryMethod() : ArkMethod;
 }
 
 export interface FlowFunction<D>  {

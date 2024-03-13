@@ -1,7 +1,10 @@
+import { Scene } from "../../Scene";
+import { ClassHierarchyAnalysisAlgorithm } from "../../callgraph/ClassHierarchyAnalysisAlgorithm";
 import { StmtReader } from "../../save/source/SourceBody";
 import { ArkInvokeStmt, ArkReturnStmt, ArkReturnVoidStmt, Stmt } from "../base/Stmt";
 import { Type } from "../base/Type";
 import { Value } from "../base/Value";
+import { ModelUtils } from "../common/ModelUtils";
 import { ArkMethod } from "../model/ArkMethod";
 import { DataflowProblem, FlowFunction } from "./DataflowProblem";
 import { DataflowResult } from "./DataflowResult";
@@ -26,6 +29,8 @@ export abstract class DataflowSolver<D> {
     private inComing:Map<PathEdgePoint<D>,Set<PathEdgePoint<D>>>;
     private endSummary:Map<PathEdgePoint<D>,Set<PathEdgePoint<D>>>;
     private summaryEdge:Set<CallToReturnCacheEdge<D>>;
+    private scene:Scene;
+    private CHA:ClassHierarchyAnalysisAlgorithm;
 
     constructor(problem: DataflowProblem<D>) {
         this.problem = problem;
@@ -53,8 +58,7 @@ export abstract class DataflowSolver<D> {
     }
 
     protected getChildren(stmt:Stmt) : Stmt[] {
-        // TODO : get next statements of current one.
-        return [];
+        return Array.from(stmt.getNexts());
     }
 
     protected init() {
@@ -62,12 +66,22 @@ export abstract class DataflowSolver<D> {
         let edge : PathEdge<D> = new PathEdge<D>(edgePoint, edgePoint);
         this.workList.push(edge);
         this.pathEdgeSet.add(edge);
+
+        // build CHA
+        this.CHA = this.scene.makeCallGraphCHA([]) as ClassHierarchyAnalysisAlgorithm;
         return;
     }
 
-    protected getAllCalleeMethods(callNode:Stmt) : Set<ArkMethod> {
-        //TODO 
-        return new Set<ArkMethod>;
+    protected getAllCalleeMethods(callNode:ArkInvokeStmt) : Set<ArkMethod> {
+        const methodSignatures = this.CHA.resolveCall(this.problem.getEntryMethod().getSignature(),callNode);
+        const methods:Set<ArkMethod> = new Set();
+        for (const methodSignature of methodSignatures){
+            const method = ModelUtils.getMethodWithMethodSignature(methodSignature,this.scene);
+            if (method){
+                methods.add(method);
+            }
+        }
+        return methods;
     }
 
     protected getReturnSiteOfCall(call:Stmt) : Stmt {
@@ -90,10 +104,12 @@ export abstract class DataflowSolver<D> {
     protected processExitNode(edge:PathEdge<D>) {
         let startEdgePoint : PathEdgePoint<D> = edge.edgeStart;
         let exitEdgePoint: PathEdgePoint<D> = edge.edgeEnd;
-        // confrim it!
         this.endSummary.get(startEdgePoint)?.add(exitEdgePoint);
-        // confirm it！
-        for (let callEdgePoint of this.inComing.get(startEdgePoint)!) {
+        const callEdgePoints = this.inComing.get(startEdgePoint);
+        if (callEdgePoints == undefined){
+            return;
+        }
+        for (let callEdgePoint of callEdgePoints) {
             let returnSite : Stmt = this.getReturnSiteOfCall(callEdgePoint.node);
             let returnFlowFunc : FlowFunction<D> = this.problem.getExitToReturnFlowFunction(exitEdgePoint.node,returnSite);
             for (let fact of returnFlowFunc.getDataFacts(exitEdgePoint.fact)) {
@@ -103,7 +119,7 @@ export abstract class DataflowSolver<D> {
                 if (!this.summaryEdge.has(cacheEdge)) {
                     // confirm it！
                     this.summaryEdge.add(cacheEdge);
-                    let  startOfCaller : Stmt = this.getStartOfCallerMethod(callEdgePoint.node);
+                    let startOfCaller : Stmt = this.getStartOfCallerMethod(callEdgePoint.node);
                     for (let pathEdge of this.pathEdgeSet) {
                         if (pathEdge.edgeStart.node == startOfCaller && pathEdge.edgeEnd == callEdgePoint) {
                             this.propagate(new PathEdge<D>(pathEdge.edgeStart, returnSitePoint));
@@ -131,7 +147,7 @@ export abstract class DataflowSolver<D> {
     protected processCallNode(edge:PathEdge<D>) {
         let start:PathEdgePoint<D>= edge.edgeStart;
         let callEdgePoint:PathEdgePoint<D> = edge.edgeEnd;
-        let callees:Set<ArkMethod> = this.getAllCalleeMethods(callEdgePoint.node);
+        let callees:Set<ArkMethod> = this.getAllCalleeMethods(callEdgePoint.node as ArkInvokeStmt);
         let callNode: Stmt = edge.edgeEnd.node;
         for (let callee of callees) {
             let callFlowFunc:FlowFunction<D> = this.problem.getCallFlowFunction(callNode, callee);
@@ -144,6 +160,7 @@ export abstract class DataflowSolver<D> {
                 this.propagate(new PathEdge<D>(startEdgePoint,startEdgePoint));
                 this.inComing.get(startEdgePoint)?.add(callEdgePoint);
                 // confirm it!
+                // 接下来这段，callEdge后才刚进来callee，有哪些exit还没处理？ifds中summaryEdge的处理在ExitEdge部分
                 for (let exitEdgePoint of this.endSummary.get(startEdgePoint)!) {
                    let returnFlowFunc = this.problem.getExitToReturnFlowFunction(exitEdgePoint.node, returnSite);
                    for (let returnFact of returnFlowFunc.getDataFacts(exitEdgePoint.fact)) {
@@ -156,6 +173,7 @@ export abstract class DataflowSolver<D> {
             for (let fact of set) {
                 this.propagate(new PathEdge<D>(start, new PathEdgePoint<D>(returnSite, fact)));
             }
+            // 看不懂
             for (let cacheEdge of this.summaryEdge) {
                 if (cacheEdge.edgeStart == edge.edgeEnd && cacheEdge.edgeEnd.node == returnSite) {
                     this.propagate(new PathEdge<D>(start, cacheEdge.edgeEnd));
@@ -179,13 +197,11 @@ export abstract class DataflowSolver<D> {
     }
 
    protected isCallStatement(stmt:Stmt) : boolean {
-      // TODO check if stmt is a call stmt: call() or ret=call()
-      return false;
+       return stmt instanceof ArkInvokeStmt;
    }
 
    protected isExitStatement(stmt:Stmt) : boolean {
-       // TODO check if stmt is a exit stmt: return or throw 
-       return false;
+       return stmt instanceof ArkReturnStmt;
    }
 }
 
