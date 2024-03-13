@@ -20,7 +20,8 @@ export class TypeInferenceTest {
 
     public testLocalTypes() {
         let scene = this.buildScene();
-        scene.inferTypes();
+        // scene.inferTypes();
+        scene.inferSimpleTypes();
 
         for (const arkFile of scene.arkFiles) {
             logger.info('=============== arkFile:', arkFile.getName(), ' ================');
