@@ -8,7 +8,7 @@ import { isItemRegistered } from "../utils/callGraphUtils";
 import { AbstractCallGraph } from "./AbstractCallGraphAlgorithm";
 
 export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraph {
-    protected resolveCall(sourceMethodSignature: MethodSignature, invokeExpression: ArkInvokeStmt): MethodSignature[] {
+    public resolveCall(sourceMethodSignature: MethodSignature, invokeExpression: ArkInvokeStmt): MethodSignature[] {
         let concreteMethodSignature: MethodSignature|null = null;
         let concreteMethod: ArkMethod;
         let callTargetMethods: MethodSignature[] = [];

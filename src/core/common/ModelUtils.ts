@@ -45,6 +45,11 @@ export class ModelUtils {
         return curr.getClass(classSignature);
     }
 
+    public static getMethodWithMethodSignature(methodSignature: MethodSignature, scene: Scene): ArkMethod | null {
+        const arkClass = this.getClassWithClassSignature(methodSignature.getDeclaringClassSignature(),scene);
+        return arkClass!.getMethod(methodSignature);
+    }
+
     /** search class within the file that contain the given method */
     public static getClassWithName(className: string, startFrom: ArkMethod): ArkClass | null {
         //TODO:是否支持类表达式

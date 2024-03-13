@@ -68,8 +68,24 @@ export class Cfg {
         return 'cfg';
     }
 
+    public buildStmtMap() {
+        for (const block of this.blocks){
+            const stmts = block.getStmts()
+            for (let stmtIndex = 0; stmtIndex < stmts.length; stmtIndex++) {
+                const stmt = stmts[stmtIndex];
+                if (stmtIndex != stmts.length - 1){
+                    stmt.addNext(stmts[stmtIndex + 1])
+                }
+                else {
+                    for (const successor of block.getSuccessors()){
+                        stmt.addNext(successor.getStmts()[1]);
+                    }
+                }
+            }
+        }
+    }
 
-    buildDefUseChain() {
+    public buildDefUseChain() {
         const locals: Set<Local> = new Set();
         for (const block of this.blocks) {
             for (let stmtIndex = 0; stmtIndex < block.getStmts().length; stmtIndex++) {

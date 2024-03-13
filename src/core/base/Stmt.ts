@@ -13,6 +13,7 @@ export class Stmt {
     private etsPosition: number = 0;
     private valueVersion = new Map<Value, string>();
     private valueTags = new Map<Value, Set<ValueTag>>;
+    private nexts: Set<Stmt> = new Set();
 
     constructor() {
     }
@@ -64,6 +65,14 @@ export class Stmt {
 
     public setValueTag(value: Value, valueTag: ValueTag): void {
         this.valueTags.get(value)?.add(valueTag);
+    }
+
+    public getNexts(): Set<Stmt> {
+        return this.nexts;
+    }
+
+    public addNext(next: Stmt): void {
+        this.nexts.add(next);
     }
 
     /** 

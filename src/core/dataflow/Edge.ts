@@ -10,8 +10,13 @@ export class Edge {
 }
 
 export class PathEdgePoint<D> {
-    public Node:Stmt;
+    public node:Stmt;
     public fact:D;
+
+    constructor(node:Stmt, fact:D){
+        this.node = node;
+        this.fact = fact;
+    }
 }
 
 export class PathEdge<D> {
