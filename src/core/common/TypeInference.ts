@@ -42,8 +42,7 @@ export class TypeInference {
         const cfg = body.getCfg();
         for (const block of cfg.getBlocks()) {
             for (const stmt of block.getStmts()) {
-                this.resolveSymbolInStmt(stmt, arkMethod);
-                TypeInference.inferTypeInStmt(stmt, arkMethod);
+                TypeInference.inferSimpleTypeInStmt(stmt);
             }
         }
     }
@@ -212,6 +211,19 @@ export class TypeInference {
                 }
             } else if (leftOp instanceof ArkInstanceFieldRef) {
                 // 对应赋值语句左值进行了取属性操作
+            }
+        }
+    }
+
+    public static inferSimpleTypeInStmt(stmt: Stmt): void {
+        if (stmt instanceof ArkAssignStmt) {
+            const leftOp = stmt.getLeftOp();
+            if (leftOp instanceof Local) {
+                const leftOpType = leftOp.getType();
+                if (leftOpType instanceof UnknownType) {
+                    const rightOp = stmt.getRightOp();
+                    leftOp.setType(rightOp.getType());
+                }
             }
         }
     }
