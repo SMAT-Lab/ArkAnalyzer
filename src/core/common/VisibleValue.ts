@@ -181,7 +181,7 @@ export class VisibleValue {
 
 type ArkModel = ArkFile | ArkNamespace | ArkClass | ArkMethod | BasicBlock;
 
-class Scope {
+export class Scope {
     public values: Value[];
     public depth: number;
     public arkModel: ArkModel | null;

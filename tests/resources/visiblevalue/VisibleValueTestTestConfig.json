@@ -2,6 +2,8 @@
     "targetProjectName": "TypeInferenceTest",    
     "targetProjectDirectory": "tests\\resources\\visiblevalue\\mainModule",
     
+    "logPath": "out\\log.txt",
+    
     "ohosSdkPath": "",
     "kitSdkPath": "",
     "systemSdkPath": "",
