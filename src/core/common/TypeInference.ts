@@ -32,8 +32,22 @@ export class TypeInference {
         this.scene = scene;
     }
 
-
     public inferTypeInMethod(arkMethod: ArkMethod): void {
+        const body = arkMethod.getBody();
+        if (!body) {
+            logger.warn('empty body');
+            return;
+        }
+        const cfg = body.getCfg();
+        for (const block of cfg.getBlocks()) {
+            for (const stmt of block.getStmts()) {
+                this.resolveSymbolInStmt(stmt, arkMethod);
+                TypeInference.inferTypeInStmt(stmt, arkMethod);
+            }
+        }
+    }
+
+    public inferSimpleTypeInMethod(arkMethod: ArkMethod): void {
         const body = arkMethod.getBody();
         if (!body) {
             logger.warn('empty body');

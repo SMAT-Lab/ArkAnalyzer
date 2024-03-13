@@ -64,7 +64,7 @@ export class Scene {
 
         //post actions
 
-        this.collectProjectImportInfos();        
+        this.collectProjectImportInfos();
     }
 
     private configImportSdkPrefix() {
@@ -271,6 +271,16 @@ export class Scene {
         }
     }
 
+    public inferSimpleTypes() {
+        const typeInference = new TypeInference(this);
+        for (let arkFile of this.arkFiles) {
+            for (let arkClass of arkFile.getClasses()) {
+                for (let arkMethod of arkClass.getMethods()) {
+                    typeInference.inferSimpleTypeInMethod(arkMethod);
+                }
+            }
+        }
+    }
 
     private collectProjectImportInfos() {
         this.arkFiles.forEach((arkFile) => {
