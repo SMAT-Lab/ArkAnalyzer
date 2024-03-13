@@ -29,6 +29,10 @@ export class VisibleValue {
         return this.currVisibleValues;
     }
 
+    public getScopeChain(): Scope[] {
+        return this.scopeChain;
+    }
+
     /** udpate visible values after entered a scope, only support step by step */
     public updateIntoScope(model: ArkModel): void {
         let name = '';
