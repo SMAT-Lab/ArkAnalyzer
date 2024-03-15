@@ -2696,10 +2696,6 @@ export class CfgBuilder {
                 originlStmt.setText(stmtBuilder.code);
                 originlStmt.setPositionInfo(stmtBuilder.line);
                 originlStmt.setOriginPositionInfo(stmtBuilder.line);
-                let file = this.declaringClass.getDeclaringArkFile();
-                file.getEtsOriginalPositionFor({ line: stmtBuilder.line, column: stmtBuilder.column }).then((etsPosition) => {
-                    originlStmt.setEtsPositionInfo(etsPosition.line);
-                });
                 block.addStmt(originlStmt);
             }
             originalCfg.addBlock(block);

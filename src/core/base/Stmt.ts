@@ -1,5 +1,5 @@
 import { StmtUseReplacer } from "../common/StmtUseReplacer";
-import { DefUseChain } from "./DefUseChain";
+import { ArkFile } from "../model/ArkFile";
 import { AbstractExpr, AbstractInvokeExpr, ArkConditionExpr } from "./Expr";
 import { AbstractFieldRef, ArkArrayRef } from "./Ref";
 import { Value, ValueTag } from "./Value";
@@ -10,7 +10,7 @@ export class Stmt {
     private uses: Value[] = [];
     private originPosition: number = 0;
     private position: number = 0;
-    private etsPosition: number = 0;
+    private etsPosition: number = -1;
     private valueVersion = new Map<Value, string>();
     private valueTags = new Map<Value, Set<ValueTag>>;
     private nexts: Set<Stmt> = new Set();
@@ -188,7 +188,12 @@ export class Stmt {
         this.etsPosition = position;
     }
 
-    public getEtsPositionInfo(): number {
+    public getEtsPositionInfo(arkFile: ArkFile): number {
+        if (this.etsPosition == -1) {
+            arkFile.getEtsOriginalPositionFor({ line: this.originPosition, column: 0 }).then((etsPosition) => {
+                this.etsPosition = etsPosition.line;
+            });
+        }
         return this.etsPosition;
     }
 
