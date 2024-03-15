@@ -20,8 +20,8 @@ export class TypeInferenceTest {
 
     public testLocalTypes() {
         let scene = this.buildScene();
-        // scene.inferTypes();
-        scene.inferSimpleTypes();
+        scene.inferTypes();
+        // scene.inferSimpleTypes();
 
         for (const arkFile of scene.arkFiles) {
             logger.info('=============== arkFile:', arkFile.getName(), ' ================');
@@ -38,7 +38,9 @@ export class TypeInferenceTest {
                     logger.info('-- locals:');
                     for (const local of arkMethod.getBody().getLocals()) {
                         logger.info('name: ' + local.toString() + ', type: ' + local.getType());
-                    }                    
+                    }
+                    logger.info('*** end of arkMethod')
+                                      
                 }
             }
         }

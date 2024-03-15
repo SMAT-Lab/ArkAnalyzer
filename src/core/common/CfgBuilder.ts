@@ -18,6 +18,7 @@ import {
     StringType,
     TupleType,
     Type,
+    UndefinedType,
     UnionType,
     UnknownType
 } from '../base/Type';
@@ -1578,7 +1579,7 @@ export class CfgBuilder {
             if (IRUtils.moreThanOneAddress(conditionValue)) {
                 conditionValue = this.generateAssignStmt(conditionValue);
             }
-            conditionExpr = new ArkConditionExpr(conditionValue, new Constant('0'), '==');
+            conditionExpr = new ArkConditionExpr(conditionValue, new Constant('0', NumberType.getInstance()), '==');
         }
         return conditionExpr;
 
@@ -1846,7 +1847,7 @@ export class CfgBuilder {
                 value.setType(new ArrayObjectType(baseType, 1));
 
                 for (let index = 0; index < items.length; index++) {
-                    let arrayRef = new ArkArrayRef(value, new Constant(index.toString()));
+                    let arrayRef = new ArkArrayRef(value, new Constant(index.toString(), NumberType.getInstance()));
                     const arrayItem = items[index];
                     this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(arrayRef, arrayItem));
                 }
@@ -1883,7 +1884,7 @@ export class CfgBuilder {
                 }
             }
 
-            let newArrayExpr = new ArkNewArrayExpr(UnknownType.getInstance(), new Constant(size.toString()));
+            let newArrayExpr = new ArkNewArrayExpr(UnknownType.getInstance(), new Constant(size.toString(), NumberType.getInstance()));
             value = this.generateAssignStmt(newArrayExpr);
             const itemTypes = new Set<Type>();
 
@@ -1891,7 +1892,7 @@ export class CfgBuilder {
             let index = 0;
             for (let argNode of argsNode.children) {
                 if (argNode.kind != 'CommaToken') {
-                    let arrayRef = new ArkArrayRef(value as Local, new Constant(index.toString()));
+                    let arrayRef = new ArkArrayRef(value as Local, new Constant(index.toString(), NumberType.getInstance()));
                     const itemTypeStr = this.resolveKeywordType(argNode);
                     const itemType = TypeInference.buildTypeFromStr(itemTypeStr);
                     const arrayItem = new Constant(argNode.text, itemType);
@@ -1913,7 +1914,7 @@ export class CfgBuilder {
             let token = node.children[0].text;
             if (token == '++' || token == '--') {
                 value = this.astNodeToValue(node.children[1]);
-                let binopExpr = new ArkBinopExpr(value, new Constant('1'), token[0]);
+                let binopExpr = new ArkBinopExpr(value, new Constant('1', NumberType.getInstance()), token[0]);
                 this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(value, binopExpr));
             } else {
                 let op = this.astNodeToValue(node.children[1]);
@@ -1924,7 +1925,7 @@ export class CfgBuilder {
         else if (node.kind == 'PostfixUnaryExpression') {
             let token = node.children[1].text;
             value = this.astNodeToValue(node.children[0]);
-            let binopExpr = new ArkBinopExpr(value, new Constant('1'), token[0]);
+            let binopExpr = new ArkBinopExpr(value, new Constant('1', NumberType.getInstance()), token[0]);
             this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(value, binopExpr));
         }
         else if (node.kind == 'TemplateExpression') {
@@ -1959,7 +1960,7 @@ export class CfgBuilder {
         }
         else if (node.kind == 'VoidExpression') {
             this.astNodeToThreeAddressStmt(node.children[1]);
-            value = new Constant('undefined');
+            value = new Constant('undefined', UndefinedType.getInstance());
         }
         else if (node.kind == 'VariableDeclarationList') {
             let declsNode = node.children[this.findChildIndex(node, "SyntaxList")];
@@ -2028,7 +2029,7 @@ export class CfgBuilder {
             rightOpNode = node.children[this.findChildIndex(node, 'FirstAssignment') + 1];
             rightOp = this.astNodeToValue(rightOpNode);
         } else {
-            rightOp = new Constant('undefined');
+            rightOp = new Constant('undefined', UndefinedType.getInstance());
         }
 
         if (leftOp instanceof Local) {
@@ -2049,7 +2050,7 @@ export class CfgBuilder {
             let index = 0;
             for (const argNode of argNodes) {
                 // TODO:数组条目类型
-                let arrayRef = new ArkArrayRef(leftOp as Local, new Constant(index.toString()));
+                let arrayRef = new ArkArrayRef(leftOp as Local, new Constant(index.toString(), NumberType.getInstance()));
                 let arrayItem = new Constant(argNode.text);
                 threeAddressAssignStmts.push(new ArkAssignStmt(arrayItem, arrayRef));
                 index++;
@@ -2117,14 +2118,14 @@ export class CfgBuilder {
             let lenghtLocal = this.generateTempValue();
             this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(lenghtLocal, new ArkLengthExpr(iterableValue)));
             let indexLocal = this.generateTempValue();
-            this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(indexLocal, new Constant('0')));
+            this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(indexLocal, new Constant('0', NumberType.getInstance())));
             let varLocal = this.astNodeToValue(varNode);
             let arrayRef = new ArkArrayRef(iterableValue as Local, indexLocal);
             this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(varLocal, arrayRef));
 
             let conditionExpr = new ArkConditionExpr(indexLocal, lenghtLocal, ' >= ');
             this.current3ACstm.threeAddressStmts.push(new ArkIfStmt(conditionExpr));
-            let incrExpr = new ArkBinopExpr(indexLocal, new Constant('1'), '+');
+            let incrExpr = new ArkBinopExpr(indexLocal, new Constant('1', NumberType.getInstance()), '+');
             this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(indexLocal, incrExpr));
             this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(varLocal, arrayRef));
         } else if (node.kind == "ForInStatement") {
@@ -2138,14 +2139,14 @@ export class CfgBuilder {
             let lenghtLocal = this.generateTempValue();
             this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(lenghtLocal, new ArkLengthExpr(iterableValue)));
             let indexLocal = this.generateTempValue();
-            this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(indexLocal, new Constant('0')));
+            this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(indexLocal, new Constant('0', NumberType.getInstance())));
             let varLocal = this.astNodeToValue(varNode);
             this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(varLocal, indexLocal));
 
             let conditionExpr = new ArkConditionExpr(indexLocal, lenghtLocal, ' >= ');
             this.current3ACstm.threeAddressStmts.push(new ArkIfStmt(conditionExpr));
 
-            let incrExpr = new ArkBinopExpr(indexLocal, new Constant('1'), '+');
+            let incrExpr = new ArkBinopExpr(indexLocal, new Constant('1', NumberType.getInstance()), '+');
             this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(indexLocal, incrExpr));
             this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(varLocal, indexLocal));
         } else if (node.kind == "WhileStatement" || node.kind == "DoStatement") {
@@ -2482,7 +2483,7 @@ export class CfgBuilder {
         }
         for (let cat of this.catches) {
             text += "catch " + cat.errorName + " from label " + cat.from + " to label " + cat.to + " with label" + cat.withLabel + "\n";
-        }        
+        }
     }
 
     private addFirstBlock() {
