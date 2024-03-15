@@ -4,17 +4,19 @@ import { ArkBody } from "../src/core/model/ArkBody";
 import Logger, { LOG_LEVEL } from "../src/utils/logger";
 
 const logger = Logger.getLogger();
+Logger.configure('out\\log.txt', LOG_LEVEL.ERROR);
 
 export class TypeInferenceTest {
     public buildScene(): Scene {
         // tests\\resources\\typeInference\\sample
         // tests\\resources\\typeInference\\moduleA
         // tests\\resources\\typeInference\\mainModule
+        // D:\\Codes\\resources\\selected_apps
         // const config_path = "tests\\resources\\typeInference\\ProjectTypeInferenceTestConfig.json";
         const config_path = "tests\\resources\\typeInference\\TypeInferenceTestConfig.json";
         let config: SceneConfig = new SceneConfig();
         config.buildFromJson(config_path);
-        Logger.setLogLevel(LOG_LEVEL.INFO);
+        // Logger.setLogLevel(LOG_LEVEL.INFO);
         return new Scene(config);
     }
 
@@ -40,7 +42,6 @@ export class TypeInferenceTest {
                         logger.info('name: ' + local.toString() + ', type: ' + local.getType());
                     }
                     logger.info('*** end of arkMethod')
-                                      
                 }
             }
         }
@@ -70,9 +71,17 @@ export class TypeInferenceTest {
             logger.info(threeAddresStmt.toString());
         }
     }
+
+    public testTypeInference(): void {
+        let scene = this.buildScene();
+        scene.inferTypes();
+    }
 }
 
+logger.error('type inference test start');
 let typeInferenceTest = new TypeInferenceTest();
-// // typeInferenceTest.buildScene();
-typeInferenceTest.testLocalTypes();
+typeInferenceTest.buildScene();
+// typeInferenceTest.testLocalTypes();
+// typeInferenceTest.testTypeInference();
 // typeInferenceTest.testFunctionReturnType();
+logger.error('type inference test end');

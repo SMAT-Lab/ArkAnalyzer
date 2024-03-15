@@ -1,6 +1,6 @@
 {
     "targetProjectName": "TypeInferenceTest",    
-    "targetProjectDirectory": "tests\\resources\\typeInference\\mainModule",
+    "targetProjectDirectory": "D:\\Codes\\resources\\selected_apps",
 
     "logPath": "out\\log.txt",
     
