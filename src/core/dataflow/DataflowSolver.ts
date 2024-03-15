@@ -85,13 +85,11 @@ export abstract class DataflowSolver<D> {
     }
 
     protected getReturnSiteOfCall(call:Stmt) : Stmt {
-        // TODO 
-        return new Stmt();
+        return [...call.getNexts()][0];
     }
 
     protected getStartOfCallerMethod(call:Stmt) : Stmt {
-        // TODO get the first stmt of the method which contains the call stmt.
-        return new Stmt();
+        return [...call.getCfg()!.getBlocks()][0].getStmts()[0];
     }
 
     protected propagate(edge : PathEdge<D>) {
@@ -114,10 +112,15 @@ export abstract class DataflowSolver<D> {
             let returnFlowFunc : FlowFunction<D> = this.problem.getExitToReturnFlowFunction(exitEdgePoint.node,returnSite);
             for (let fact of returnFlowFunc.getDataFacts(exitEdgePoint.fact)) {
                 let returnSitePoint: PathEdgePoint<D> = new PathEdgePoint<D>(returnSite, fact);
-                // confirm it！
                 let cacheEdge : CallToReturnCacheEdge<D> = new PathEdge<D>(callEdgePoint, returnSitePoint);
-                if (!this.summaryEdge.has(cacheEdge)) {
-                    // confirm it！
+                let summaryEdgeHasCacheEdge = false;
+                for (const sEdge of this.summaryEdge){
+                    if (sEdge.edgeStart == callEdgePoint && sEdge.edgeEnd.node == returnSite && sEdge.edgeEnd.fact == fact){
+                        summaryEdgeHasCacheEdge = true;
+                        break;
+                    }
+                }
+                if (!summaryEdgeHasCacheEdge) {
                     this.summaryEdge.add(cacheEdge);
                     let startOfCaller : Stmt = this.getStartOfCallerMethod(callEdgePoint.node);
                     for (let pathEdge of this.pathEdgeSet) {
@@ -159,13 +162,17 @@ export abstract class DataflowSolver<D> {
                 let startEdgePoint:PathEdgePoint<D>  = new PathEdgePoint(firstStmt, fact);
                 this.propagate(new PathEdge<D>(startEdgePoint,startEdgePoint));
                 this.inComing.get(startEdgePoint)?.add(callEdgePoint);
-                // confirm it!
-                // 接下来这段，callEdge后才刚进来callee，有哪些exit还没处理？ifds中summaryEdge的处理在ExitEdge部分
-                for (let exitEdgePoint of this.endSummary.get(startEdgePoint)!) {
-                   let returnFlowFunc = this.problem.getExitToReturnFlowFunction(exitEdgePoint.node, returnSite);
-                   for (let returnFact of returnFlowFunc.getDataFacts(exitEdgePoint.fact)) {
-                    this.summaryEdge.add(new PathEdge<D>(edge.edgeEnd, new PathEdgePoint<D>(returnSite, returnFact)));
-                   }
+                let exitEdgePoints:Set<PathEdgePoint<D>> = new Set();
+                for (const end of Array.from(this.endSummary.keys())){
+                    if (end.fact == fact && end.node == firstStmt){
+                        exitEdgePoints = this.endSummary.get(end)!;
+                    }
+                }
+                for (let exitEdgePoint of exitEdgePoints) {
+                    let returnFlowFunc = this.problem.getExitToReturnFlowFunction(exitEdgePoint.node, returnSite);
+                    for (let returnFact of returnFlowFunc.getDataFacts(exitEdgePoint.fact)) {
+                        this.summaryEdge.add(new PathEdge<D>(edge.edgeEnd, new PathEdgePoint<D>(returnSite, returnFact)));
+                    }
                 }
             }
             let callToReturnflowFunc:FlowFunction<D> = this.problem.getCallToReturnFlowFunction(edge.edgeEnd.node, returnSite);
@@ -173,7 +180,6 @@ export abstract class DataflowSolver<D> {
             for (let fact of set) {
                 this.propagate(new PathEdge<D>(start, new PathEdgePoint<D>(returnSite, fact)));
             }
-            // 看不懂
             for (let cacheEdge of this.summaryEdge) {
                 if (cacheEdge.edgeStart == edge.edgeEnd && cacheEdge.edgeEnd.node == returnSite) {
                     this.propagate(new PathEdge<D>(start, cacheEdge.edgeEnd));

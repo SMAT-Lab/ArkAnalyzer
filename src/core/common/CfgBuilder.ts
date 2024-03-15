@@ -2736,6 +2736,7 @@ export class CfgBuilder {
                     stmtPos++;
                     block.addStmt(threeAddressStmt);
 
+                    threeAddressStmt.setCfg(cfg);
                 }
             }
             cfg.addBlock(block);

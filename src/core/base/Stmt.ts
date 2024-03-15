@@ -1,4 +1,5 @@
 import { StmtUseReplacer } from "../common/StmtUseReplacer";
+import { Cfg } from "../graph/Cfg";
 import { ArkFile } from "../model/ArkFile";
 import { AbstractExpr, AbstractInvokeExpr, ArkConditionExpr } from "./Expr";
 import { AbstractFieldRef, ArkArrayRef } from "./Ref";
@@ -14,6 +15,7 @@ export class Stmt {
     private valueVersion = new Map<Value, string>();
     private valueTags = new Map<Value, Set<ValueTag>>;
     private nexts: Set<Stmt> = new Set();
+    private cfg: Cfg | null = null;
 
     constructor() {
     }
@@ -73,6 +75,14 @@ export class Stmt {
 
     public addNext(next: Stmt): void {
         this.nexts.add(next);
+    }
+
+    public getCfg(): Cfg | null {
+        return this.cfg;
+    }
+
+    public setCfg(cfg: Cfg): void {
+        this.cfg = cfg
     }
 
     /** 
