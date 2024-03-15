@@ -11,9 +11,8 @@ export class TypeInferenceTest {
         // tests\\resources\\typeInference\\sample
         // tests\\resources\\typeInference\\moduleA
         // tests\\resources\\typeInference\\mainModule
-        // D:\\Codes\\resources\\selected_apps
-        // const config_path = "tests\\resources\\typeInference\\ProjectTypeInferenceTestConfig.json";
-        const config_path = "tests\\resources\\typeInference\\TypeInferenceTestConfig.json";
+        const config_path = "tests\\resources\\typeInference\\ProjectTypeInferenceTestConfig.json";
+        // const config_path = "tests\\resources\\typeInference\\TypeInferenceTestConfig.json";
         let config: SceneConfig = new SceneConfig();
         config.buildFromJson(config_path);
         // Logger.setLogLevel(LOG_LEVEL.INFO);
@@ -22,7 +21,7 @@ export class TypeInferenceTest {
 
     public testLocalTypes() {
         let scene = this.buildScene();
-        scene.inferTypes();
+        // scene.inferTypes();
         // scene.inferSimpleTypes();
 
         for (const arkFile of scene.arkFiles) {

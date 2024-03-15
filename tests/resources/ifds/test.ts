@@ -1,16 +1,29 @@
-function f1():number{
-    console.log(1)
-    return 1
+class t{
+    a:number;
+    b:number;
+    constructor(a:number,b:number){
+        this.a=a;
+        this.b=b
+    }
 }
 
-function f2(x:number){
-    console.log(x)
-}
+let t1=new t(1,2);
+let t2=new t(1,2);
+// console.log(t1==t2);
+// let set:Set<t>=new Set();
+// set.add(t1);
+// set.add(t2);
+// console.log(set)
 
-function f3(){
-    let x=f1();
-    f2(1);
+let map:Map<t,Set<number>>=new Map()
+map.set(t1,new Set([1,2]));
+let set:Set<number>=new Set();
+for(const tt of Array.from(map.keys())){
+    if(tt.a==t2.a&&tt.b==t2.b){
+        set=map.get(tt)!
+    }
 }
+console.log(set)
 
 // let m:Map<number,number[]>=new Map()
 // m.set(1,[2])
