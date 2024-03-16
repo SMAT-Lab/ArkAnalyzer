@@ -1,12 +1,12 @@
-import {Scene} from "../../Scene";
-import {ArkClass} from "../model/ArkClass";
-import {ArkField} from "../model/ArkField";
-import {ArkFile} from "../model/ArkFile";
-import {ArkMethod} from "../model/ArkMethod";
-import {ArkNamespace} from "../model/ArkNamespace";
-import {ClassSignature, MethodSignature, NamespaceSignature} from "../model/ArkSignature";
+import { Scene } from "../../Scene";
+import { ArkClass } from "../model/ArkClass";
+import { ArkField } from "../model/ArkField";
+import { ArkFile } from "../model/ArkFile";
+import { ArkMethod } from "../model/ArkMethod";
+import { ArkNamespace } from "../model/ArkNamespace";
+import { ClassSignature, MethodSignature, NamespaceSignature } from "../model/ArkSignature";
 import { ExportInfo } from "./ExportBuilder";
-import {ImportInfo} from "./ImportBuilder";
+import { ImportInfo } from "./ImportBuilder";
 
 export class ModelUtils {
     public static getMethodSignatureFromArkClass(arkClass: ArkClass, methodName: string): MethodSignature | null {
@@ -22,7 +22,7 @@ export class ModelUtils {
     public static getClassWithClassSignature(classSignature: ClassSignature, scene: Scene): ArkClass | null {
         const fileSignature = classSignature.getDeclaringFileSignature();
         let arkFile = scene.getFile(fileSignature);
-        if (!arkFile){
+        if (!arkFile) {
             arkFile = scene.getSdkArkFilestMap().get(fileSignature.toString()) || null;
         }
         if (arkFile == null) {
@@ -46,14 +46,56 @@ export class ModelUtils {
     }
 
     public static getMethodWithMethodSignature(methodSignature: MethodSignature, scene: Scene): ArkMethod | null {
-        const arkClass = this.getClassWithClassSignature(methodSignature.getDeclaringClassSignature(),scene);
+        const arkClass = this.getClassWithClassSignature(methodSignature.getDeclaringClassSignature(), scene);
         return arkClass!.getMethod(methodSignature);
+    }
+
+    public static getClassWithNameInNamespaceRecursively(className: string, ns: ArkNamespace): ArkClass | null {
+        if (className == '') {
+            return null;
+        }
+        let res: ArkClass | null = null;
+        res = this.getClassInNamespaceWithName(className, ns);
+        if (res == null) {
+            let declaringNs = ns.getDeclaringArkNamespace();
+            if (declaringNs != null) {
+                res = this.getClassWithNameInNamespaceRecursively(className, declaringNs);
+            }
+            else {
+                res = this.getClassInFileWithName(className, ns.getDeclaringArkFile());
+            }
+        }
+        return res;
+    }
+
+    public static getClassWithNameFromClass(className: string, startFrom: ArkClass): ArkClass | null {
+        if (!className.includes(".")) {
+            let res: ArkClass | null = null;
+            if (startFrom.getDeclaringArkNamespace() != null) {
+                res = this.getClassWithNameInNamespaceRecursively(className, startFrom.getDeclaringArkNamespace());
+            }
+            else {
+                res = this.getClassInFileWithName(className, startFrom.getDeclaringArkFile());
+            }
+        }
+        else {
+            const names = className.split('.');
+            let nameSpace = this.getNamespaceWithNameFromClass(names[0], startFrom);
+            for (let i = 1; i < names.length - 1; i++) {
+                if (nameSpace)
+                    nameSpace = this.getNamespaceInNamespaceWithName(names[i], nameSpace);
+            }
+            if (nameSpace) {
+                return this.getClassInNamespaceWithName(names[names.length - 1], nameSpace);
+            }
+        }
+        return null;
     }
 
     /** search class within the file that contain the given method */
     public static getClassWithName(className: string, startFrom: ArkMethod): ArkClass | null {
         //TODO:是否支持类表达式
-        if (!className.includes(".")){
+        if (!className.includes(".")) {
             const thisClass = startFrom.getDeclaringArkClass();
             if (thisClass.getName() == className) {
                 return thisClass;
@@ -73,12 +115,12 @@ export class ModelUtils {
         else {
             const names = className.split('.');
             let nameSpace = this.getNamespaceWithName(names[0], startFrom);
-            for (let i = 1; i < names.length - 1; i++){
+            for (let i = 1; i < names.length - 1; i++) {
                 if (nameSpace)
                     nameSpace = this.getNamespaceInNamespaceWithName(names[i], nameSpace);
             }
-            if(nameSpace){
-                return this.getClassInNamespaceWithName(names[names.length-1], nameSpace);
+            if (nameSpace) {
+                return this.getClassInNamespaceWithName(names[names.length - 1], nameSpace);
             }
         }
         return null;
@@ -106,12 +148,12 @@ export class ModelUtils {
     }
 
     public static getClassInImportInfoWithName(className: string, arkFile: ArkFile): ArkClass | null {
-        for (const importInfo of arkFile.getImportInfos()){
-            if (importInfo.getImportClauseName() == className){
-                const importFrom=this.getFileFromImportInfo(importInfo, arkFile.getScene());
-                if (importFrom){
+        for (const importInfo of arkFile.getImportInfos()) {
+            if (importInfo.getImportClauseName() == className) {
+                const importFrom = this.getFileFromImportInfo(importInfo, arkFile.getScene());
+                if (importFrom) {
                     const nameBefroreAs = importInfo.getNameBeforeAs();
-                    if (nameBefroreAs != undefined){
+                    if (nameBefroreAs != undefined) {
                         className = nameBefroreAs;
                     }
                     return this.getClassInImportFileWithName(className, importFrom);
@@ -123,10 +165,10 @@ export class ModelUtils {
 
     public static getClassInImportFileWithName(className: string, arkFile: ArkFile): ArkClass | null {
         let defaultExport: ExportInfo | null = null;
-        for (const exportInfo of arkFile.getExportInfos()){
-            if (exportInfo.getExportClauseName() == className){
+        for (const exportInfo of arkFile.getExportInfos()) {
+            if (exportInfo.getExportClauseName() == className) {
                 const nameBefroreAs = exportInfo.getNameBeforeAs();
-                if (nameBefroreAs != undefined){
+                if (nameBefroreAs != undefined) {
                     className = nameBefroreAs;
                 }
                 for (const arkClass of arkFile.getClasses()) {
@@ -136,11 +178,11 @@ export class ModelUtils {
                 }
                 return this.getClassInImportInfoWithName(className, arkFile);
             }
-            else if (exportInfo.getDefault()){
+            else if (exportInfo.getDefault()) {
                 defaultExport = exportInfo;
             }
         }
-        if (defaultExport){
+        if (defaultExport) {
             className = defaultExport.getExportClauseName()
             for (const arkClass of arkFile.getClasses()) {
                 if (arkClass.getName() == className) {
@@ -155,10 +197,10 @@ export class ModelUtils {
     public static getFileFromImportInfo(importInfo: ImportInfo, scene: Scene): ArkFile | null {
         const signatureStr = importInfo.getImportFromSignature2Str();
         let file: ArkFile | null = null;
-        if (importInfo.getImportProjectType() == "TargetProject"){
+        if (importInfo.getImportProjectType() == "TargetProject") {
             file = scene.getFiles().find(file => file.getFileSignature().toString() == signatureStr) || null;
         }
-        else if (importInfo.getImportProjectType() == "SDKProject"){
+        else if (importInfo.getImportProjectType() == "SDKProject") {
             file = scene.getSdkArkFilestMap().get(signatureStr) || null;
         }
         return file;
@@ -198,6 +240,20 @@ export class ModelUtils {
         return null;
     }
 
+    public static getNamespaceWithNameFromClass(namespaceName: string, startFrom: ArkClass): ArkNamespace | null {
+        const thisNamespace = startFrom.getDeclaringArkNamespace();
+        let namespaceSearched: ArkNamespace | null = null;
+        if (thisNamespace) {
+            namespaceSearched = this.getNamespaceInNamespaceWithName(namespaceName, thisNamespace);
+            if (namespaceSearched) {
+                return namespaceSearched;
+            }
+        }
+        const thisFile = startFrom.getDeclaringArkFile();
+        namespaceSearched = this.getNamespaceInFileWithName(namespaceName, thisFile);
+        return namespaceSearched;
+    }
+
     public static getNamespaceWithName(namespaceName: string, startFrom: ArkMethod): ArkNamespace | null {
         const thisClass = startFrom.getDeclaringArkClass();
         const thisNamespace = thisClass.getDeclaringArkNamespace();
@@ -233,12 +289,12 @@ export class ModelUtils {
     }
 
     public static getNamespaceInImportInfoWithName(namespaceName: string, arkFile: ArkFile): ArkNamespace | null {
-        for (const importInfo of arkFile.getImportInfos()){
-            if (importInfo.getImportClauseName() == namespaceName){
-                const importFrom=this.getFileFromImportInfo(importInfo, arkFile.getScene());
-                if (importFrom){
+        for (const importInfo of arkFile.getImportInfos()) {
+            if (importInfo.getImportClauseName() == namespaceName) {
+                const importFrom = this.getFileFromImportInfo(importInfo, arkFile.getScene());
+                if (importFrom) {
                     const nameBefroreAs = importInfo.getNameBeforeAs();
-                    if (nameBefroreAs != undefined){
+                    if (nameBefroreAs != undefined) {
                         namespaceName = nameBefroreAs;
                     }
                     return this.getNamespaceInImportFileWithName(namespaceName, importFrom);
@@ -250,10 +306,10 @@ export class ModelUtils {
 
     public static getNamespaceInImportFileWithName(namespaceName: string, arkFile: ArkFile): ArkNamespace | null {
         let defaultExport: ExportInfo | null = null;
-        for (const exportInfo of arkFile.getExportInfos()){
-            if (exportInfo.getExportClauseName() == namespaceName){
+        for (const exportInfo of arkFile.getExportInfos()) {
+            if (exportInfo.getExportClauseName() == namespaceName) {
                 const nameBefroreAs = exportInfo.getNameBeforeAs();
-                if (nameBefroreAs != undefined){
+                if (nameBefroreAs != undefined) {
                     namespaceName = nameBefroreAs;
                 }
                 for (const arkNamespace of arkFile.getNamespaces()) {
@@ -263,11 +319,11 @@ export class ModelUtils {
                 }
                 return this.getNamespaceInImportInfoWithName(namespaceName, arkFile);
             }
-            else if (exportInfo.getDefault()){
+            else if (exportInfo.getDefault()) {
                 defaultExport = exportInfo;
             }
         }
-        if (defaultExport){
+        if (defaultExport) {
             namespaceName = defaultExport.getExportClauseName()
             for (const arkNamespace of arkFile.getNamespaces()) {
                 if (arkNamespace.getName() == namespaceName) {
@@ -284,9 +340,9 @@ export class ModelUtils {
         const thisNamespace = thisClass.getDeclaringArkNamespace();
         if (thisNamespace) {
             const defaultClass = thisNamespace.getClasses().find(cls => cls.getName() == '_DEFAULT_ARK_CLASS') || null;
-            if (defaultClass){
+            if (defaultClass) {
                 const method = this.getMethodInClassWithName(methodName, defaultClass);
-                if (method){
+                if (method) {
                     return method;
                 }
             }
@@ -296,9 +352,9 @@ export class ModelUtils {
 
     public static getStaticMethodInFileWithName(methodName: string, arkFile: ArkFile): ArkMethod | null {
         const defaultClass = arkFile.getClasses().find(cls => cls.getName() == '_DEFAULT_ARK_CLASS') || null;
-        if (defaultClass){
+        if (defaultClass) {
             let method = this.getMethodInClassWithName(methodName, defaultClass);
-            if (method){
+            if (method) {
                 return method;
             }
         }
@@ -306,12 +362,12 @@ export class ModelUtils {
     }
 
     public static getStaticMethodInImportInfoWithName(methodName: string, arkFile: ArkFile): ArkMethod | null {
-        for (const importInfo of arkFile.getImportInfos()){
-            if (importInfo.getImportClauseName() == methodName){
-                const importFrom=this.getFileFromImportInfo(importInfo, arkFile.getScene());
-                if (importFrom){
+        for (const importInfo of arkFile.getImportInfos()) {
+            if (importInfo.getImportClauseName() == methodName) {
+                const importFrom = this.getFileFromImportInfo(importInfo, arkFile.getScene());
+                if (importFrom) {
                     const nameBefroreAs = importInfo.getNameBeforeAs();
-                    if (nameBefroreAs != undefined){
+                    if (nameBefroreAs != undefined) {
                         methodName = nameBefroreAs;
                     }
                     return this.getStaticMethodInImportFileWithName(methodName, importFrom);
@@ -323,12 +379,12 @@ export class ModelUtils {
 
     public static getStaticMethodInImportFileWithName(methodName: string, arkFile: ArkFile): ArkMethod | null {
         let defaultExport: ExportInfo | null = null;
-        for (const exportInfo of arkFile.getExportInfos()){
-            if (exportInfo.getExportClauseName() == methodName){
+        for (const exportInfo of arkFile.getExportInfos()) {
+            if (exportInfo.getExportClauseName() == methodName) {
                 const defaultClass = arkFile.getClasses().find(cls => cls.getName() == '_DEFAULT_ARK_CLASS') || null;
-                if (defaultClass){
+                if (defaultClass) {
                     const nameBefroreAs = exportInfo.getNameBeforeAs();
-                    if (nameBefroreAs != undefined){
+                    if (nameBefroreAs != undefined) {
                         methodName = nameBefroreAs;
                     }
                     for (const arkMethod of defaultClass.getMethods()) {
@@ -338,16 +394,16 @@ export class ModelUtils {
                     }
                     return this.getStaticMethodInImportInfoWithName(methodName, arkFile);
                 }
-                
+
             }
-            else if (exportInfo.getDefault()){
+            else if (exportInfo.getDefault()) {
                 defaultExport = exportInfo;
             }
         }
-        if (defaultExport){
+        if (defaultExport) {
             methodName = defaultExport.getExportClauseName()
             const defaultClass = arkFile.getClasses().find(cls => cls.getName() == '_DEFAULT_ARK_CLASS') || null;
-            if (defaultClass){
+            if (defaultClass) {
                 for (const arkMethod of defaultClass.getMethods()) {
                     if (arkMethod.getName() == methodName) {
                         return arkMethod;
