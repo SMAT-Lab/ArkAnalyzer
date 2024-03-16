@@ -22,7 +22,8 @@ export class ArkClass {
     private arkSignature: string; */
 
     private superClassName: string = '';
-    //private superClass: ArkClass;
+    private superClass: ArkClass;
+    private extendedClasses: ArkClass[] = [];
     private implementedInterfaceNames: string[] = [];
     private modifiers: Set<string> = new Set<string>();
     private typeParameters: Type[] = [];
@@ -115,27 +116,7 @@ export class ArkClass {
             classSig.setDeclaringNamespaceSignature(this.declaringArkNamespace.getNamespaceSignature());
         }
         this.setSignature(classSig);
-
-        /* // Deprecated
-        this.genArkSignature(); */
     }
-
-    /* // Deprecated
-    public setDeclaringSignature(declaringSignature: string) {
-        this.declaringSignature = declaringSignature;
-    }
-
-    public getArkSignature() {
-        return this.arkSignature;
-    }
-
-    public setArkSignature(arkSignature: string) {
-        this.arkSignature = arkSignature;
-    }
-
-    public genArkSignature() {
-        this.arkSignature = this.declaringSignature + '.' + this.name;
-    } */
 
     public getSuperClassName() {
         return this.superClassName;
@@ -143,6 +124,22 @@ export class ArkClass {
 
     public setSuperClassName(superClassName: string) {
         this.superClassName = superClassName;
+    }
+
+    public getSuperClass() {
+        return this.superClass;
+    }
+
+    public setSuperClass(superClass: ArkClass) {
+        this.superClass = superClass;
+    }
+
+    public getExtendedClasses() {
+        return this.extendedClasses;
+    }
+
+    public addExtendedClass(extendedClass: ArkClass) {
+        this.extendedClasses.push(extendedClass);
     }
 
     public getImplementedInterfaceNames() {

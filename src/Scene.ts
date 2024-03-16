@@ -14,6 +14,7 @@ import { ArkMethod } from "./core/model/ArkMethod";
 import { ArkNamespace } from "./core/model/ArkNamespace";
 import { ClassSignature, FileSignature, MethodSignature, NamespaceSignature } from "./core/model/ArkSignature";
 import Logger from "./utils/logger";
+import { ModelUtils } from './core/common/ModelUtils';
 
 const logger = Logger.getLogger();
 
@@ -213,19 +214,19 @@ export class Scene {
     }
 
     public getAllClassesUnderTargetProject(): ArkClass[] {
-        let namespaces: ArkClass[] = [];
+        let classes: ArkClass[] = [];
         this.arkFiles.forEach((fl) => {
-            namespaces.push(...fl.getAllClassesUnderThisFile());
+            classes.push(...fl.getAllClassesUnderThisFile());
         });
-        return namespaces;
+        return classes;
     }
 
     public getAllMethodsUnderTargetProject(): ArkMethod[] {
-        let namespaces: ArkMethod[] = [];
+        let methods: ArkMethod[] = [];
         this.arkFiles.forEach((fl) => {
-            namespaces.push(...fl.getAllMethodsUnderThisFile());
+            methods.push(...fl.getAllMethodsUnderThisFile());
         });
-        return namespaces;
+        return methods;
     }
 
     public hasMainMethod(): boolean {
@@ -287,6 +288,21 @@ export class Scene {
             arkFile.getImportInfos().forEach((importInfo) => {
                 this.globalImportInfos.push(importInfo);
             });
+        });
+    }
+
+    private genExtendedClasses() {
+        let allClasses = this.getAllClassesUnderTargetProject();
+        allClasses.forEach((cls) => {
+            let superClassName = cls.getSuperClassName();
+            let superClass: ArkClass | null = null;
+
+            superClass = ModelUtils.getClassWithNameFromClass(superClassName, cls);
+
+            if (superClass != null) {
+                cls.setSuperClass(superClass);
+                superClass.addExtendedClass(cls);
+            }
         });
     }
 }

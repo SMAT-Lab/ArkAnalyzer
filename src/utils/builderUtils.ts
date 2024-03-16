@@ -73,6 +73,9 @@ export function buildHeritageClauses(node: ts.ClassDeclaration | ts.ClassExpress
             else if (ts.isPropertyAccessExpression(type.expression)) {
                 heritageClauseName = handlePropertyAccessExpression(type.expression);
             }
+            else {
+                logger.info("Other type expression found!!!");
+            }
             heritageClausesMap.set(heritageClauseName, ts.SyntaxKind[heritageClause.token]);
         });
     });
