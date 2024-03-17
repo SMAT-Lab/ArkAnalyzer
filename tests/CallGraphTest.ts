@@ -5,7 +5,7 @@ import { printCallGraphDetails } from "../src/utils/callGraphUtils";
 
 //let config: SceneConfig = new SceneConfig("./tests/AppTestConfig.json");
 let config: SceneConfig = new SceneConfig()
-config.buildFromJson("./tests/callGraphConfigUnix.json");
+config.buildFromJson("./tests/resources/callgraph/callGraphConfigUnix.json");
 function runScene(config: SceneConfig) {
     let projectScene: Scene = new Scene(config);
     let entryPoints: MethodSignature[] = []
@@ -29,9 +29,9 @@ function runScene(config: SceneConfig) {
     //         }
     //     }
     // }
-    // let callGraph = projectScene.makeCallGraphCHA(entryPoints)
     projectScene.inferTypes()
-    let callGraph = projectScene.makeCallGraphRTA(entryPoints)
+    let callGraph = projectScene.makeCallGraphCHA(entryPoints)
+    // let callGraph = projectScene.makeCallGraphRTA(entryPoints)
     let methods = callGraph.getMethods()
     let calls = callGraph.getCalls()
     printCallGraphDetails(methods, calls, config.getTargetProjectDirectory())

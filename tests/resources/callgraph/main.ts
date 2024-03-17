@@ -13,18 +13,18 @@ import {func1} from "./temp/a";
 // // function temp(a: number | string) {
 // //     return a
 // // }
-A();
+// A();
 // // temp()
-C();
-let dog: Cat = new Cat()
+// C();
+// let dog: Cat = new Cat()
 // // let mee: Mav = new Cat()
 // // let d: Cat | null = new Cat()
 // // let c = dog.aaaaaaaaaa
 // // let d = c
 // // let e = globalNumber
 // // Cat.print()
-dog.sound()
-// Main.main()
+// dog.sound()
+Main.main()
 // // func1(1)
 // // invokeParam(1, "b", new Class())
 // // let a: Cat.num = 1

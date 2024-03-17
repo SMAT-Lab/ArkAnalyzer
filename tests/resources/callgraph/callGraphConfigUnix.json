@@ -2,10 +2,11 @@
   "targetProjectName": "SE4OpenHarmony",
   "targetProjectDirectory": "/Users/yangyizhuo/WebstormProjects/ArkAnalyzer/tests/resources/callgraph",
 
-  "ohosSdkPath": "/Users/yangyizhuo/sdk/openharmony/interface_sdk-js/api",
+  "ohosSdkPath": "",
   "kitSdkPath": "",
   "systemSdkPath": "",
   "temp": "/Users/yangyizhuo/sdk/openharmony/interface_sdk-js/api",
+  "logPath": "/Users/yangyizhuo/WebstormProjects/ArkAnalyzer/tests/resources/callgraph/out/log.txt",
 
   "otherSdks": []
 }
