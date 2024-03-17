@@ -271,6 +271,10 @@ export class ArkInvokeStmt extends Stmt {
         this.updateUses();
     }
 
+    public replaceInvokeExpr(newExpr: AbstractInvokeExpr) {
+        this.invokeExpr = newExpr
+    }
+
     public getInvokeExpr() {
         return this.invokeExpr;
     }

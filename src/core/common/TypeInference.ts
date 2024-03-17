@@ -3,7 +3,7 @@ import Logger from "../../utils/logger";
 import { ArkBinopExpr, ArkInstanceInvokeExpr, ArkNewExpr, ArkStaticInvokeExpr } from "../base/Expr";
 import { Local } from "../base/Local";
 import { ArkInstanceFieldRef, ArkParameterRef } from "../base/Ref";
-import { ArkAssignStmt, Stmt } from "../base/Stmt";
+import { ArkAssignStmt, ArkInvokeStmt, Stmt } from "../base/Stmt";
 import {
     AnnotationNamespaceType,
     AnnotationType,
@@ -111,6 +111,13 @@ export class TypeInference {
                     continue;
                 }
                 expr.setMethodSignature(method.getSignature());
+                if (method.getModifiers().has("StaticKeyword")) {
+                    let replaceStaticInvokeExpr = new ArkStaticInvokeExpr(method.getSignature(), expr.getArgs())
+                    if (stmt instanceof ArkInvokeStmt) {
+                        stmt.replaceInvokeExpr(replaceStaticInvokeExpr)
+                        stmt.setText(stmt.toString().replace(/^instanceInvoke/, "staticinvoke"))
+                    }
+                }
             } else if (expr instanceof ArkStaticInvokeExpr) {
                 const methodSignature = expr.getMethodSignature();
                 const methodName = methodSignature.getMethodSubSignature().getMethodName();

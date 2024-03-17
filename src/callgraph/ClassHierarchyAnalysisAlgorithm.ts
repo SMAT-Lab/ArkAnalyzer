@@ -129,30 +129,14 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraph {
                 }
             }
         } else if (invokeExpr instanceof ArkStaticInvokeExpr) {
-            if (callName.includes('.')) {
-                // static invoke like a.b()
-                // TODO: 上游信息有误
-                let lastDotIndex = callName.lastIndexOf('.')
-                let className = callName.substring(0, lastDotIndex)
-                if (className === "this") {
-                    let currentClass = this.scene.getClass(sourceMethodSignature.getDeclaringClassSignature())
-                    classAndArkFileNames.add([currentClass!.getName(),
-                    currentClass!.getDeclaringArkFile().getName()])
-                } else {
-                    classAndArkFileNames.add([className, arkFileName])
-                    methodName = callName.substring(lastDotIndex + 1)
-                }
-            } else {
-                // function invoke
-                let callFunction = this.scene.getMethod(invokeExpr.getMethodSignature())
-                if (callFunction != null) {
-                    if (!isItemRegistered<ArkMethod>(
-                        callFunction, callMethods,
-                        (a, b) =>
-                            a.getSignature().toString() === b.getSignature().toString()
-                    )) {
-                        callMethods.push(callFunction)
-                    }
+            let callFunction = this.scene.getMethod(invokeExpr.getMethodSignature())
+            if (callFunction != null) {
+                if (!isItemRegistered<ArkMethod>(
+                    callFunction, callMethods,
+                    (a, b) =>
+                        a.getSignature().toString() === b.getSignature().toString()
+                )) {
+                    callMethods.push(callFunction)
                 }
             }
         }
