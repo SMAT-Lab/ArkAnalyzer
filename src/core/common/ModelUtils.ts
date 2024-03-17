@@ -77,6 +77,7 @@ export class ModelUtils {
             else {
                 res = this.getClassInFileWithName(className, startFrom.getDeclaringArkFile());
             }
+            return res
         }
         else {
             const names = className.split('.');

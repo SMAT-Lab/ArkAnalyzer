@@ -2,10 +2,14 @@ import { SceneConfig } from "../src/Config";
 import { Scene } from "../src/Scene";
 import { MethodSignature } from "../src/core/model/ArkSignature";
 import { printCallGraphDetails } from "../src/utils/callGraphUtils";
+import Logger, { LOG_LEVEL } from "../src/utils/logger";
+
+const logger = Logger.getLogger();
 
 //let config: SceneConfig = new SceneConfig("./tests/AppTestConfig.json");
 let config: SceneConfig = new SceneConfig()
 config.buildFromJson("./tests/resources/callgraph/callGraphConfigUnix.json");
+Logger.setLogLevel(LOG_LEVEL.INFO)
 function runScene(config: SceneConfig) {
     let projectScene: Scene = new Scene(config);
     let entryPoints: MethodSignature[] = []

@@ -44,7 +44,8 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraph {
                     if (targetMethod == null) {
                         continue
                     }
-                    if (!targetMethod.getModifiers().has("AbstractKeyword")) {
+                    if (!targetMethod.getDeclaringArkClass().getModifiers().has("AbstractKeyword") && 
+                    !targetMethod.getModifiers().has("AbstractKeyword")) {
                         if (!isItemRegistered<MethodSignature>(
                             targetMethod.getSignature(), callTargetMethods,
                             (a, b) =>

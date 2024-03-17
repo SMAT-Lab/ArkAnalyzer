@@ -96,8 +96,7 @@ export class SceneManager {
             let tempClass = classList.shift()
             if (tempClass == null)
                 continue
-            let firstLevelSubclasses = this.scene.extendedClasses.get(
-                tempClass.getSignature().toString())
+            let firstLevelSubclasses: ArkClass[] = tempClass.getExtendedClasses()
 
             if (firstLevelSubclasses) {
                 for (let subclass of firstLevelSubclasses) {

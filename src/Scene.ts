@@ -270,6 +270,9 @@ export class Scene {
                 }
             }
         }
+
+        // get class hierarchy
+        this.genExtendedClasses()
     }
 
     public inferSimpleTypes() {
