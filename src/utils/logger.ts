@@ -22,14 +22,14 @@ export default class ConsoleLogger {
                     encoding: 'utf-8',
                     layout: {
                         type: 'pattern',
-                        pattern: '[%d] [%p] [%z] [ArkAnalyzer] - %m%n',
+                        pattern: '[%d] [%p] [%z] [ArkAnalyzer] - %m',
                     },
                 },
                 console: {
                     type: 'console',
                     layout: {
                         type: 'pattern',
-                        pattern: '[%d] [%p] [%z] [ArkAnalyzer] - %m%n',
+                        pattern: '[%d] [%p] [%z] [ArkAnalyzer] - %m',
                     },
                 },
             },
