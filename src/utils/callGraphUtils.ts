@@ -84,7 +84,20 @@ export class SceneManager {
     public getClass(arkClass: ClassSignature): ArkClass | null {
         if (typeof arkClass.getClassName() === "undefined")
             return null
-        return this._scene.getClass(arkClass)
+        let classInstance = this._scene.getClass(arkClass)
+        if (classInstance == null) {
+            let sdkOrTargetProjectFile = this._scene.getSdkArkFilestMap()
+                .get(arkClass.getDeclaringFileSignature().toString())
+            // TODO: support get sdk class, targetProject class waiting to be supported
+            if (sdkOrTargetProjectFile != null) {
+                for (let classUnderFile of sdkOrTargetProjectFile.getAllClassesUnderThisFile()) {
+                    if (classUnderFile.getSignature().toString() === arkClass.toString()) {
+                        return classUnderFile
+                    }
+                }
+            }
+        }
+        return classInstance
     }
 
     public getExtendedClasses(arkClass: ClassSignature): ArkClass[] {
