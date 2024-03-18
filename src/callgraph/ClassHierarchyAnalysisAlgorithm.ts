@@ -111,7 +111,6 @@ export class ClassHierarchyAnalysisAlgorithm extends AbstractCallGraph {
 
         // TODO: ts库、常用库未扫描，导致console.log等调用无法识别
         if (invokeExpr instanceof ArkInstanceInvokeExpr) {
-            // logger.info("instanceInvoke:   "+invokeExpr.getMethodSignature().toString())
             let classCompleteType = invokeExpr.getBase().getType()
             if (classCompleteType instanceof ClassType) {
                 let extendedClasses = this.scene.getExtendedClasses(classCompleteType.getClassSignature())

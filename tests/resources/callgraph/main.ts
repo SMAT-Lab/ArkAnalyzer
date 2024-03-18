@@ -1,14 +1,14 @@
 import {A, Dog as Cat, Main} from './a'
 import {B as C, C as Class, invokeParam} from "./b";
 import {func1} from "./temp/a";
-// // import taskpool from '@ohos.taskpool';
+import taskpool from '@ohos.taskpool';
 // // namespace temp_temp {
 // //     export class A {
 // //         public word: string
 // //     }
 // // }
 
-// // let task: taskpool.Task = new taskpool.Task(10, 100); // 100: test number
+let task: taskpool.Task = new taskpool.Task(10, 100); // 100: test number
 
 // // function temp(a: number | string) {
 // //     return a
@@ -24,7 +24,7 @@ import {func1} from "./temp/a";
 // // let e = globalNumber
 // // Cat.print()
 // dog.sound()
-Main.main()
+// Main.main()
 // // func1(1)
 // // invokeParam(1, "b", new Class())
 // // let a: Cat.num = 1
