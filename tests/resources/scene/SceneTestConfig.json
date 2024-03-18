@@ -1,6 +1,6 @@
 {
     "targetProjectName": "SceneTest",    
-    "targetProjectDirectory": "tests\\resources\\scene\\mainModule",
+    "targetProjectDirectory": "D:\\Codes\\resources\\selected_apps",
 
     "logPath": "out\\log.txt",
     
