@@ -1,50 +1,105 @@
 import { SceneConfig } from "../src/Config";
 import { Scene } from "../src/Scene";
 import { ArkBody } from "../src/core/model/ArkBody";
+import {DataflowProblem, FlowFunction} from "../src/core/dataflow/DataflowProblem"
+import {Local} from "../src/core/base/Local"
+import {ArkAssignStmt, ArkInvokeStmt, Stmt} from "../src/core/base/Stmt"
+import { ArkMethod } from "../src/core/model/ArkMethod";
 
+class PossibleDivZeroChecker extends DataflowProblem<Local> {
+    zeroValue : Local = new Local("zeroValue");
 
-export class TypeInferenceTest {
-    public buildScene(): Scene {
-        const config_path = "tests\\resources\\ifds\\ifdsTestConfig.json";
-        let config: SceneConfig = new SceneConfig();
-        config.buildFromJson(config_path);
-        return new Scene(config);
+    getEntryPoint() : Stmt {
+        // TODO
+        return new Stmt();
     }
 
-    public testLocalTypes() {
-        let scene = this.buildScene();
-        scene.inferTypes();
+    getEntryMethod() : ArkMethod {
+        // TODO
+        return new ArkMethod();
+    }
 
-        for (const arkFile of scene.arkFiles) {
-            console.log('=============== arkFile:', arkFile.getName(), ' ================');
-            for (const arkClass of arkFile.getClasses()) {
-                for (const arkMethod of arkClass.getMethods()) {
-                    if (arkMethod.getName() == '_DEFAULT_ARK_METHOD') {
-                        continue;
-                    }
-                    console.log('*** arkMethod: ', arkMethod.getName());
 
-                    const body = arkMethod.getBody();
-                    this.printStmts(body);
-
-                    
+    getNormalFlowFunction(srcStmt:Stmt, tgtStmt:Stmt) : FlowFunction<Local> {
+            let checkerInstance: PossibleDivZeroChecker = this;
+            return new class implements FlowFunction<Local> {
+                isPrameter (d: Local) : boolean{
+                    // TODO
+                    return false;
                 }
-            }
+
+                getDataFacts(dataFact: Local): Set<Local> {
+                    let ret: Set<Local> = new Set<Local>();
+                    if (checkerInstance.getEntryPoint() == srcStmt && checkerInstance.getZeroValue() == dataFact) {
+                        // handle zero fact and entry point case
+                        let entryMethod = checkerInstance.getEntryMethod();
+                        let body : ArkBody = entryMethod.getBody();
+                        let locals :Set<Local> = body.getLocals();
+                        //TODO add all parameters to the ret;
+                        /*
+                        if (local is Prameter) {
+                            ret.add(local)
+                        }
+                        */
+                    }
+                    
+                    if (srcStmt instanceof ArkAssignStmt) {
+                        let ass : ArkAssignStmt = (srcStmt as ArkAssignStmt);
+                        // case : a = b and b = 0;= d
+                        if (checkerInstance.getEntryPoint() == srcStmt && checkerInstance.getZeroValue() == dataFact) {
+                            for (let local in ret) {
+                                /*
+                                if (ass.getRightOp() == local && ass.getLeftOp() instanceof Local) {
+                                    ret.add((ass.getLeftOp() as Local));
+                                }
+                                */
+                            } 
+                        } else if (ass.getRightOp() == dataFact && ass.getLeftOp() instanceof Local) {
+                            ret.add((ass.getLeftOp() as Local));
+                        }
+                    }
+
+                    // handle 0->0 reachability case
+                    if (checkerInstance.getZeroValue() == dataFact) {
+                        ret.add(checkerInstance.getZeroValue());
+                    }
+                    return ret;
+                }
         }
     }
 
+    getCallFlowFunction(srcStmt:Stmt, method:ArkMethod) : FlowFunction<Local> {
+        return new class implements FlowFunction<Local> {
+            getDataFacts(d: Local): Set<Local> {
+                throw new Error("Method not implemented.");
+            }
 
-
-    private printStmts(body: ArkBody): void {
-        console.log('-- threeAddresStmts:');
-        let cfg = body.getCfg();
-        for (const threeAddresStmt of cfg.getStmts()) {
-            console.log(threeAddresStmt.toString());
         }
+    }
+
+    getExitToReturnFlowFunction(srcStmt:Stmt, tgtStmt:Stmt) : FlowFunction<Local> {
+        return new class implements FlowFunction<Local> {
+            getDataFacts(d: Local): Set<Local> {
+                throw new Error("Method not implemented.");
+            }
+
+        }
+    }
+
+    getCallToReturnFlowFunction(srcStmt:Stmt, tgtStmt:Stmt) : FlowFunction<Local> {
+        return new class implements FlowFunction<Local> {
+            getDataFacts(d: Local): Set<Local> {
+                throw new Error("Method not implemented.");
+            }
+
+        }
+    }
+
+    createZeroValue() : Local {
+        return this.zeroValue;
+    }
+
+    getZeroValue() : Local {
+        return this.zeroValue;
     }
 }
-
-let typeInferenceTest = new TypeInferenceTest();
-// // typeInferenceTest.buildScene();
-typeInferenceTest.testLocalTypes();
-// typeInferenceTest.testFunctionReturnType();

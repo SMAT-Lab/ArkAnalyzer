@@ -27,6 +27,7 @@ export abstract class DataflowProblem<D> {
      * 
      * Return true if keeping progagation (i.e., tgtStmt will be added to the WorkList for further analysis)
      */
+    /*
     abstract transferNormalEdge(srcStmt: Stmt, tgtStmt: Stmt, result: DataflowResult): boolean;
     
     abstract transferCallToReturnEdge(srcStmt: Stmt, tgtStmt: Stmt, result: DataflowResult): boolean;
@@ -34,6 +35,7 @@ export abstract class DataflowProblem<D> {
     abstract transferCallEdge(srcStmt: Stmt, tgtStmt: Stmt, result: DataflowResult): boolean;
 
     abstract transferReturnEdge(srcStmt: Stmt, tgtStmt: Stmt, result: DataflowResult): boolean;
+    */
 
     abstract getNormalFlowFunction(srcStmt:Stmt, tgtStmt:Stmt) : FlowFunction<D>;
 
@@ -51,5 +53,5 @@ export abstract class DataflowProblem<D> {
 }
 
 export interface FlowFunction<D>  {
-    getDataFacts(d:D) : Set<D>
+    getDataFacts(d:D) : Set<D>;
 }
