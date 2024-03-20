@@ -68,23 +68,29 @@ export class Cfg {
         return 'cfg';
     }
 
-    public buildDefUseChain() {
-        const locals: Set<Local> = new Set();
-        for (const block of this.blocks) {
-            for (let stmtIndex = 0; stmtIndex < block.getStmts().length; stmtIndex++) {
-                const stmt = block.getStmts()[stmtIndex];
-                // 填declareStmt
-                const defValue = stmt.getDef()
-                if (defValue && defValue instanceof Local && !locals.has(defValue)) {
+    public buildDefUseStmt() {
+        for (const block of this.blocks){
+            for (const stmt of block.getStmts()){
+                const defValue = stmt.getDef();
+                if (defValue && defValue instanceof Local){
                     defValue.setDeclaringStmt(stmt);
-                    locals.add(defValue);
                 }
-
                 for (const value of stmt.getUses()) {
                     if (value instanceof Local) {
                         const local = value as Local;
                         local.addUsedStmt(stmt)
                     }
+                }
+            }
+        }
+    }
+
+    public buildDefUseChain() {
+        for (const block of this.blocks) {
+            for (let stmtIndex = 0; stmtIndex < block.getStmts().length; stmtIndex++) {
+                const stmt = block.getStmts()[stmtIndex];
+
+                for (const value of stmt.getUses()) {
                     const name = value.toString();
                     const defStmts: Stmt[] = [];
                     // 判断本block之前有无对应def
