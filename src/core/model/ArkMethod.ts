@@ -3,6 +3,7 @@ import { Type, UnknownType } from "../base/Type";
 import { BodyBuilder } from "../common/BodyBuilder";
 import { MethodParameter } from "../common/MethodInfoBuilder";
 import { Cfg } from "../graph/Cfg";
+import { ViewTree } from "../graph/ViewTree";
 import { ArkBody } from "./ArkBody";
 import { ArkClass } from "./ArkClass";
 import { ArkFile } from "./ArkFile";
@@ -177,6 +178,9 @@ export function buildArkMethodFromArkClass(methodNode: NodeA, declaringClass: Ar
     }
     let bodyBuilder = new BodyBuilder(mtd.getSignature(), methodNode, mtd);
     mtd.setBody(bodyBuilder.build());
+    if (mtd.getName() == 'render' && declaringClass.getSuperClassName() == 'View') {
+        declaringClass.setViewTree(new ViewTree(mtd));
+    }
 }
 
 export function buildNormalArkMethodFromAstNode(methodNode: NodeA, mtd: ArkMethod) {

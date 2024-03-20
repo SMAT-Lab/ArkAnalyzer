@@ -1,5 +1,6 @@
 import { NodeA } from "../base/Ast";
 import { Type } from "../base/Type";
+import { ViewTree } from "../graph/ViewTree";
 import { ArkField } from "./ArkField";
 import { ArkFile } from "./ArkFile";
 import { ArkMethod, arkMethodNodeKind, buildArkMethodFromArkClass } from "./ArkMethod";
@@ -32,6 +33,8 @@ export class ArkClass {
 
     private methods: ArkMethod[] = [];
     private fields: ArkField[] = [];
+
+    private viewTree: ViewTree;
 
     constructor() { }
 
@@ -223,6 +226,21 @@ export class ArkClass {
 
     public getDefaultArkMethod(): ArkMethod | null {
         return this.defaultMethod;
+    }
+
+    public setViewTree(viewTree: ViewTree) {
+        this.viewTree = viewTree;
+    }
+
+    public getViewTree(): ViewTree {
+        if (this.hasViewTree() && this.viewTree.isInitialized()) {
+            this.viewTree.buildViewTree();
+        }
+        return this.viewTree;
+    }
+
+    public hasViewTree(): boolean {
+        return this.viewTree != null;
     }
 }
 
