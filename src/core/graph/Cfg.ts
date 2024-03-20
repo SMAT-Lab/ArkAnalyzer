@@ -69,10 +69,10 @@ export class Cfg {
     }
 
     public buildDefUseStmt() {
-        for (const block of this.blocks){
-            for (const stmt of block.getStmts()){
+        for (const block of this.blocks) {
+            for (const stmt of block.getStmts()) {
                 const defValue = stmt.getDef();
-                if (defValue && defValue instanceof Local){
+                if (defValue && defValue instanceof Local) {
                     defValue.setDeclaringStmt(stmt);
                 }
                 for (const value of stmt.getUses()) {
@@ -128,7 +128,7 @@ export class Cfg {
                             }
                             if (!predecessorHasDef) {
                                 for (const morePredecessor of predecessor.getPredecessors()) {
-                                    if (!walkedBlocks.has(morePredecessor)  && !needWalkBlocks.includes(morePredecessor))
+                                    if (!walkedBlocks.has(morePredecessor) && !needWalkBlocks.includes(morePredecessor))
                                         needWalkBlocks.unshift(morePredecessor);
                                 }
                             }
