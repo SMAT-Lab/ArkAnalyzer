@@ -71,7 +71,7 @@ export abstract class DataflowSolver<D> {
 
         // build CHA
         this.CHA = this.scene.makeCallGraphCHA([]) as ClassHierarchyAnalysisAlgorithm;
-
+        this.buildStmtMap()
 
         return;
     }
