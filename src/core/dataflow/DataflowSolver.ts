@@ -5,6 +5,7 @@ import { ArkInvokeStmt, ArkReturnStmt, ArkReturnVoidStmt, Stmt } from "../base/S
 import { Type } from "../base/Type";
 import { Value } from "../base/Value";
 import { ModelUtils } from "../common/ModelUtils";
+import { ArkClass } from "../model/ArkClass";
 import { ArkMethod } from "../model/ArkMethod";
 import { DataflowProblem, FlowFunction } from "./DataflowProblem";
 import { DataflowResult } from "./DataflowResult";
@@ -31,6 +32,7 @@ export abstract class DataflowSolver<D> {
     private summaryEdge:Set<CallToReturnCacheEdge<D>>;
     private scene:Scene;
     private CHA:ClassHierarchyAnalysisAlgorithm;
+    private stmtNexts:Map<Stmt,Set<Stmt>>;
 
     constructor(problem: DataflowProblem<D>) {
         this.problem = problem;
@@ -58,7 +60,7 @@ export abstract class DataflowSolver<D> {
     }
 
     protected getChildren(stmt:Stmt) : Stmt[] {
-        return Array.from(stmt.getNexts());
+        return Array.from(this.stmtNexts.get(stmt) || []);
     }
 
     protected init() {
@@ -69,7 +71,44 @@ export abstract class DataflowSolver<D> {
 
         // build CHA
         this.CHA = this.scene.makeCallGraphCHA([]) as ClassHierarchyAnalysisAlgorithm;
+
+
         return;
+    }
+
+    private buildStmtMapInClass(clas: ArkClass){
+        for (const method of clas.getMethods()){
+            for (const block of method.getCfg().getBlocks()){
+                const stmts = block.getStmts()
+                for (let stmtIndex = 0; stmtIndex < stmts.length; stmtIndex++) {
+                    const stmt = stmts[stmtIndex];
+                    if (stmtIndex != stmts.length - 1){
+                        this.stmtNexts.set(stmt, new Set([stmts[stmtIndex + 1]]));
+                    }
+                    else {
+                        const set:Set<Stmt> = new Set();
+                        for (const successor of block.getSuccessors()){
+                            set.add(successor.getStmts()[0]);
+                        }
+                        this.stmtNexts.set(stmt, set);
+                    }
+                }
+            }
+        }
+    }
+    
+    private buildStmtMap() {
+        for (const file of this.scene.getFiles()){
+            for (const ns of file.getNamespaces()){
+                for (const clas of ns.getClasses()){
+                    this.buildStmtMapInClass(clas);
+                }
+            }
+            for (const clas of file.getClasses()){
+                this.buildStmtMapInClass(clas);
+            }
+        }
+
     }
 
     protected getAllCalleeMethods(callNode:ArkInvokeStmt) : Set<ArkMethod> {
@@ -85,7 +124,7 @@ export abstract class DataflowSolver<D> {
     }
 
     protected getReturnSiteOfCall(call:Stmt) : Stmt {
-        return [...call.getNexts()][0];
+        return [...this.stmtNexts.get(call)!][0];
     }
 
     protected getStartOfCallerMethod(call:Stmt) : Stmt {
