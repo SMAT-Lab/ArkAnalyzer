@@ -3,7 +3,7 @@ import { Scene } from "../src/Scene";
 import Logger, { LOG_LEVEL } from "../src/utils/logger";
 
 const logger = Logger.getLogger();
-Logger.configure('out\\log.txt', LOG_LEVEL.ERROR);
+Logger.configure('out\\SceneTest.log', LOG_LEVEL.ERROR);
 class SceneTest {
     public buildScene(): Scene {
         // tests\\resources\\scene\\mainModule
@@ -23,14 +23,41 @@ class SceneTest {
     }
 
     public testwholePipline(): void {
+        logger.error('testwholePipline start');
         let scene = this.buildScene();
-        // scene.inferTypes();
+        scene.inferTypes();
+    }
+
+    private sleep(time: number) {
+        return new Promise((resolve) => setTimeout(resolve, time));
+    }
+
+    public async testFileScene() {
+        logger.error('testFileScene start');
+        const configPath = "tests\\resources\\scene\\SceneTestConfig.json";
+        const config = new SceneConfig();
+        config.buildFromJson(configPath);
+
+        const projectName = config.getTargetProjectName();
+        const projectDirectory = config.getTargetProjectDirectory();
+        const logPath = config.getLogPath();
+        logger.error('projectFiles cnt:', config.getProjectFiles().length);
+
+        for (const filePath of config.getProjectFiles()) {
+            const fileConfig = new SceneConfig();
+            fileConfig.buildFromIdeSingle(projectName, projectDirectory, filePath, logPath);
+            const scene = new Scene(fileConfig);
+            scene.inferTypes();
+            
+            // await this.sleep(300);
+        }
+        logger.error('testFileScene end');
     }
 }
 
-logger.error('scene test start');
+// logger.error('scene test start');
 let sceneTest = new SceneTest();
 // sceneTest.buildScene();
-// sceneTest.testLogger();
-sceneTest.testwholePipline();
-logger.error('scene test end');
+// sceneTest.testwholePipline();
+sceneTest.testFileScene();
+// logger.error('scene test end');

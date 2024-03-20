@@ -171,6 +171,10 @@ export class SceneConfig {
     public getOtherSdkMap() {
         return this.otherSdkMap;
     }
+
+    public getLogPath(): string {
+        return this.logPath;
+    }
 }
 
 function getFiles(srcPath: string, fileExt: string, tmpFiles: string[] = []) {

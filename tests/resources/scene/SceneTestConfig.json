@@ -2,7 +2,7 @@
     "targetProjectName": "SceneTest",    
     "targetProjectDirectory": "D:\\Codes\\resources\\selected_apps",
 
-    "logPath": "out\\log.txt",
+    "logPath": "out\\SceneTest.log",
     
     "ohosSdkPath": "",
     "kitSdkPath": "",
