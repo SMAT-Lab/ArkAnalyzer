@@ -47,12 +47,10 @@ class PossibleDivZeroChecker extends DataflowProblem<Local> {
                         let ass : ArkAssignStmt = (srcStmt as ArkAssignStmt);
                         // case : a = b and b = 0;= d
                         if (checkerInstance.getEntryPoint() == srcStmt && checkerInstance.getZeroValue() == dataFact) {
-                            for (let local in ret) {
-                                /*
+                            for (let local of ret) {
                                 if (ass.getRightOp() == local && ass.getLeftOp() instanceof Local) {
                                     ret.add((ass.getLeftOp() as Local));
                                 }
-                                */
                             } 
                         } else if (ass.getRightOp() == dataFact && ass.getLeftOp() instanceof Local) {
                             ret.add((ass.getLeftOp() as Local));
@@ -69,9 +67,23 @@ class PossibleDivZeroChecker extends DataflowProblem<Local> {
     }
 
     getCallFlowFunction(srcStmt:Stmt, method:ArkMethod) : FlowFunction<Local> {
+        let checkerInstance: PossibleDivZeroChecker = this;
         return new class implements FlowFunction<Local> {
-            getDataFacts(d: Local): Set<Local> {
-                throw new Error("Method not implemented.");
+            getDataFacts(dataFact: Local): Set<Local> {
+                const ret:Set<Local> = new Set();
+                if (checkerInstance.getZeroValue() == dataFact) {
+                    ret.add(checkerInstance.getZeroValue());
+                }
+                const callStmt = srcStmt as ArkInvokeStmt;
+                const args = callStmt.getInvokeExpr().getArgs();
+                for (let i = 0; i < args.length; i++){
+                    if (args[i] == dataFact){
+                        // arkmethod的参数类型为ArkParameterRef，不是local，只能通过第一个block的对应位置找到真正参数的定义获取local
+                        const realParameter = method.getCfg().getBlocks()[0].getStmts()[i].getDef();
+                        ret.add(realParameter)
+                    }
+                }
+                return ret;
             }
 
         }
@@ -87,9 +99,18 @@ class PossibleDivZeroChecker extends DataflowProblem<Local> {
     }
 
     getCallToReturnFlowFunction(srcStmt:Stmt, tgtStmt:Stmt) : FlowFunction<Local> {
+        let checkerInstance: PossibleDivZeroChecker = this;
         return new class implements FlowFunction<Local> {
-            getDataFacts(d: Local): Set<Local> {
-                throw new Error("Method not implemented.");
+            getDataFacts(dataFact: Local): Set<Local> {
+                const ret:Set<Local> = new Set();
+                if (checkerInstance.getZeroValue() == dataFact) {
+                    ret.add(checkerInstance.getZeroValue());
+                }
+                const defValue = srcStmt.getDef();
+                if (!(defValue && defValue ==dataFact)){
+                    ret.add(dataFact);
+                }
+                return ret;
             }
 
         }
