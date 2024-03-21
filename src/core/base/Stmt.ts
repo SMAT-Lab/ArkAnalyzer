@@ -189,11 +189,10 @@ export class Stmt {
         this.etsPosition = position;
     }
 
-    public getEtsPositionInfo(arkFile: ArkFile): number {
+    public async getEtsPositionInfo(arkFile: ArkFile): Promise<number> {
         if (this.etsPosition == -1) {
-            arkFile.getEtsOriginalPositionFor({ line: this.originPosition, column: 0 }).then((etsPosition) => {
-                this.etsPosition = etsPosition.line;
-            });
+            const etsPosition = await arkFile.getEtsOriginalPositionFor({ line: this.originPosition, column: 0 });
+            this.etsPosition = etsPosition.line;
         }
         return this.etsPosition;
     }
