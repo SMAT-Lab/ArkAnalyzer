@@ -233,7 +233,7 @@ export class ArkClass {
     }
 
     public getViewTree(): ViewTree {
-        if (this.hasViewTree() && this.viewTree.isInitialized()) {
+        if (this.hasViewTree() && !this.viewTree.isInitialized()) {
             this.viewTree.buildViewTree();
         }
         return this.viewTree;

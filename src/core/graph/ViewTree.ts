@@ -62,6 +62,10 @@ export class ViewTree {
         return this.root != null;
     }
 
+    public getRoot(): ViewTreeNode {
+        return this.root;
+    }
+
     private parseForEachAnonymousFunc(treeStack: ViewTreeNode[], methodSignature: MethodSignature) {
         let method = this.render.getDeclaringArkClass().getMethod(methodSignature);
         if (method) {
