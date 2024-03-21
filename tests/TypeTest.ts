@@ -1,16 +1,85 @@
-import { Config, SceneConfig } from "./Config";
+import { SceneConfig } from "../src/Config";
 import { Scene } from "../src/Scene";
+import { ArkBody } from "../src/core/model/ArkBody";
+import Logger, { LOG_LEVEL } from "../src/utils/logger";
 
-let config: SceneConfig = new SceneConfig();
-config.buildFromJson("./tests/TypeTestConfig.json")
-function runScene(config: SceneConfig) {
-    let projectScene: Scene = new Scene(config);
-    debugger;
+const logger = Logger.getLogger();
+Logger.configure('out\\log.txt', LOG_LEVEL.ERROR);
+
+export class TypeInferenceTest {
+    public buildScene(): Scene {
+        // tests\\resources\\typeInference\\sample
+        // tests\\resources\\typeInference\\moduleA
+        // tests\\resources\\typeInference\\mainModule
+        const config_path = "tests\\resources\\ifds\\ifdsTestConfig.json";
+        // const config_path = "tests\\resources\\typeInference\\TypeInferenceTestConfig.json";
+        let config: SceneConfig = new SceneConfig();
+        config.buildFromJson(config_path);
+        // Logger.setLogLevel(LOG_LEVEL.INFO);
+        return new Scene(config);
+    }
+
+    public testLocalTypes() {
+        let scene = this.buildScene();
+        // scene.inferTypes();
+        // scene.inferSimpleTypes();
+
+        for (const arkFile of scene.arkFiles) {
+            logger.info('=============== arkFile:', arkFile.getName(), ' ================');
+            for (const arkClass of arkFile.getClasses()) {
+                for (const arkMethod of arkClass.getMethods()) {
+                    if (arkMethod.getName() == '_DEFAULT_ARK_METHOD') {
+                        continue;
+                    }
+                    logger.info('*** arkMethod: ', arkMethod.getName());
+
+                    const body = arkMethod.getBody();
+                    this.printStmts(body);
+
+                    logger.info('-- locals:');
+                    for (const local of arkMethod.getBody().getLocals()) {
+                        logger.info('name: ' + local.toString() + ', type: ' + local.getType());
+                    }
+                    logger.info('*** end of arkMethod')
+                }
+            }
+        }
+    }
+
+    public testFunctionReturnType() {
+        let scene = this.buildScene();
+
+        for (const arkFile of scene.arkFiles) {
+            logger.info('=============== arkFile:', arkFile.getName(), ' ================');
+            for (const arkClass of arkFile.getClasses()) {
+                for (const arkMethod of arkClass.getMethods()) {
+                    if (arkMethod.getName() == '_DEFAULT_ARK_METHOD') {
+                        continue;
+                    }
+
+                    logger.info(arkMethod.getSubSignature().toString());
+                }
+            }
+        }
+    }
+
+    private printStmts(body: ArkBody): void {
+        logger.info('-- threeAddresStmts:');
+        let cfg = body.getCfg();
+        for (const threeAddresStmt of cfg.getStmts()) {
+            logger.info(threeAddresStmt.toString());
+        }
+    }
+
+    public testTypeInference(): void {
+        let scene = this.buildScene();
+        scene.inferTypes();
+    }
 }
-runScene(config);
 
-// "targetProjectName": "photos",
-// "targetProjectDirectory": "./tests/resources/cfg",
-
-// "ohosSdkPath": "../openharmony\\interface\\sdk-js\\api",
-// "kitSdkPath": "../openharmony\\interface\\sdk-js\\kits",
+let typeInferenceTest = new TypeInferenceTest();
+typeInferenceTest.buildScene();
+typeInferenceTest.testLocalTypes();
+// typeInferenceTest.testTypeInference();
+// typeInferenceTest.testFunctionReturnType();
+logger.error('type inference test end');
