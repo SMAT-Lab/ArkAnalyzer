@@ -3,9 +3,19 @@ import { Scene } from "../src/Scene";
 import { ArkBody } from "../src/core/model/ArkBody";
 import {DataflowProblem, FlowFunction} from "../src/core/dataflow/DataflowProblem"
 import {Local} from "../src/core/base/Local"
-import {ArkAssignStmt, ArkInvokeStmt, Stmt} from "../src/core/base/Stmt"
+import {Value} from "../src/core/base/Value"
+import {NumberType, Type} from "../src/core/base/Type"
+import {ArkAssignStmt, ArkInvokeStmt, ArkReturnStmt, Stmt} from "../src/core/base/Stmt"
 import { ArkMethod } from "../src/core/model/ArkMethod";
+import { LiteralType } from "../src/core/base/Type";
+import {ValueUtil} from "../src/core/common/ValueUtil"
+import {Constant} from "../src/core/base/Constant"
+import { ArkParameterRef } from "../src/core/base/Ref";
 
+/*
+the only statement form in this test case is a = b or a = literal
+which a or b is variable
+*/
 class PossibleDivZeroChecker extends DataflowProblem<Local> {
     zeroValue : Local = new Local("zeroValue");
 
@@ -23,37 +33,40 @@ class PossibleDivZeroChecker extends DataflowProblem<Local> {
     getNormalFlowFunction(srcStmt:Stmt, tgtStmt:Stmt) : FlowFunction<Local> {
             let checkerInstance: PossibleDivZeroChecker = this;
             return new class implements FlowFunction<Local> {
-                isPrameter (d: Local) : boolean{
-                    // TODO
-                    return false;
-                }
-
                 getDataFacts(dataFact: Local): Set<Local> {
-                    let ret: Set<Local> = new Set<Local>();
+                    let ret: Set<Local> = new Set();
                     if (checkerInstance.getEntryPoint() == srcStmt && checkerInstance.getZeroValue() == dataFact) {
                         // handle zero fact and entry point case
                         let entryMethod = checkerInstance.getEntryMethod();
                         let body : ArkBody = entryMethod.getBody();
-                        let locals :Set<Local> = body.getLocals();
-                        //TODO add all parameters to the ret;
-                        /*
-                        if (local is Prameter) {
-                            ret.add(local)
+                        const parameters =  entryMethod.getCfg().getBlocks()[0].getStmts();
+                        for (let i = 0;i<parameters.length;i++) {
+                            const para  = parameters[i].getDef();
+                            ret.add(para);
                         }
-                        */
                     }
                     
                     if (srcStmt instanceof ArkAssignStmt) {
-                        let ass : ArkAssignStmt = (srcStmt as ArkAssignStmt);
-                        // case : a = b and b = 0;= d
-                        if (checkerInstance.getEntryPoint() == srcStmt && checkerInstance.getZeroValue() == dataFact) {
-                            for (let local of ret) {
-                                if (ass.getRightOp() == local && ass.getLeftOp() instanceof Local) {
-                                    ret.add((ass.getLeftOp() as Local));
+                        let ass: ArkAssignStmt = (srcStmt as ArkAssignStmt);
+                        if (!(ass.getLeftOp() instanceof Local))  {
+                            return ret;
+                        }
+                        let assigned : Local = ass.getLeftOp() as Local;
+                        if (checkerInstance.getZeroValue() == dataFact) {
+                            if (ass.getRightOp() == ValueUtil.getNumberTypeDefaultValue()) {
+                                // case : a = 0
+                                ret.add(assigned);
+                            } else if (srcStmt == checkerInstance.getEntryPoint())  {
+                                // case : a = b
+                                for (let local of ret) {
+                                    if (local == ass.getRightOp()) {
+                                        ret.add(ass.getRightOp() as Local);
+                                    }
                                 }
-                            } 
-                        } else if (ass.getRightOp() == dataFact && ass.getLeftOp() instanceof Local) {
-                            ret.add((ass.getLeftOp() as Local));
+                            }
+                        } else if (ass.getRightOp() == dataFact) {
+                            // case : a = dataFact
+                            ret.add(assigned);
                         }
                     }
 
@@ -82,6 +95,10 @@ class PossibleDivZeroChecker extends DataflowProblem<Local> {
                         const realParameter = method.getCfg().getBlocks()[0].getStmts()[i].getDef();
                         ret.add(realParameter)
                     }
+                    if (args[i] == ValueUtil.getNumberTypeDefaultValue() && checkerInstance.getZeroValue() == dataFact) {
+                        const realParameter = method.getCfg().getBlocks()[0].getStmts()[i].getDef();
+                        ret.add(realParameter)
+                    }
                 }
                 return ret;
             }
@@ -89,10 +106,28 @@ class PossibleDivZeroChecker extends DataflowProblem<Local> {
         }
     }
 
-    getExitToReturnFlowFunction(srcStmt:Stmt, tgtStmt:Stmt) : FlowFunction<Local> {
+    getExitToReturnFlowFunction(srcStmt:Stmt, tgtStmt:Stmt, callStmt:Stmt) : FlowFunction<Local> {
+        let checkerInstance: PossibleDivZeroChecker = this;
         return new class implements FlowFunction<Local> {
             getDataFacts(d: Local): Set<Local> {
-                throw new Error("Method not implemented.");
+                let ret : Set<Local> = new Set<Local>();
+                if (!(callStmt instanceof ArkAssignStmt)) {
+                    return ret;
+                }
+                if (srcStmt instanceof ArkReturnStmt) {
+                    let ass: ArkAssignStmt = callStmt as ArkAssignStmt;
+                    let leftOp: Local = ass.getLeftOp() as Local;
+                    let retVal: Value = (srcStmt as ArkReturnStmt).getOp();
+                    if (d == checkerInstance.getZeroValue()) {
+                        ret.add(checkerInstance.getZeroValue());
+                        if (retVal == ValueUtil.getNumberTypeDefaultValue()) {
+                            ret.add(leftOp);
+                        }
+                    } else if (retVal == d) {
+                        ret.add(leftOp);
+                    }
+                }
+                return ret;
             }
 
         }
