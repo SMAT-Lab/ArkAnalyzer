@@ -114,3 +114,35 @@ class CountDownComponent extends View {
     }
 }
 loadDocument(new ParentComponent("1", undefined, {}));
+
+
+class Test extends View {
+    constructor(compilerAssignedUniqueChildId, parent, params, localStorage) {
+        super(compilerAssignedUniqueChildId, parent, localStorage);
+        this.data = new MyDataSource();
+        this.updateWithValueParams(params);
+    }
+    updateWithValueParams(params: Test_Params) {
+        if (params.data !== undefined) {
+            this.data = params.data;
+        }
+    }
+    aboutToBeDeleted() {
+        SubscriberManager.Get().delete(this.id());
+    }
+    private data: MyDataSource;
+    render() {
+        Grid.create();
+        LazyForEach.create("4", this, ObservedObject.GetRawObject(this.data), (row) => {
+            this.isRenderingInProgress = true;
+            GridItem.create();
+            Text.create(row);
+            Text.pop();
+            GridItem.pop();
+            this.isRenderingInProgress = false;
+        }, row => row);
+        LazyForEach.pop();
+        Grid.pop();
+    }
+}
+loadDocument(new Test("1", undefined, {}));

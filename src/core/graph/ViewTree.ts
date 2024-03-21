@@ -1,9 +1,9 @@
-import { ArkInstanceInvokeExpr } from "../base/Expr";
+import { ArkInstanceInvokeExpr, ArkNewExpr } from "../base/Expr";
 import { Local } from "../base/Local";
-import { ArkInvokeStmt, Stmt } from '../base/Stmt';
-import { CallableType } from "../base/Type";
+import { ArkAssignStmt, ArkInvokeStmt, Stmt } from '../base/Stmt';
+import { CallableType, ClassType } from "../base/Type";
 import { ArkMethod } from "../model/ArkMethod";
-import { MethodSignature } from "../model/ArkSignature";
+import { ClassSignature, MethodSignature } from "../model/ArkSignature";
 import { Cfg } from "./Cfg";
 
 
@@ -66,11 +66,32 @@ export class ViewTree {
         return this.root;
     }
 
-    private parseForEachAnonymousFunc(treeStack: ViewTreeNode[], methodSignature: MethodSignature) {
-        let method = this.render.getDeclaringArkClass().getMethod(methodSignature);
+    private parseForEachAnonymousFunc(treeStack: ViewTreeNode[], expr: ArkInstanceInvokeExpr) {
+        let arg = expr.getArg(3) as Local;
+        let type = arg.getType() as CallableType;
+        let method = this.render.getDeclaringArkClass().getMethod(type.getMethodSignature());
         if (method) {
             this.parseCfg(method.getCfg(), treeStack);
         }
+    }
+
+    private parseComponentView(view: ViewTreeNode, expr: ArkInstanceInvokeExpr): boolean {
+        let arg = expr.getArg(0) as Local;
+        let assignStmt = arg.getDeclaringStmt() as ArkAssignStmt;
+        let classSignature: ClassSignature;
+        let rightOp = assignStmt.getRightOp();
+        if (rightOp instanceof ArkNewExpr) {
+            classSignature = (rightOp.getType() as ClassType).getClassSignature();
+        } else {
+            return false ;
+        }
+
+        let componentCls = this.render.getDeclaringArkFile().getScene().getClass(classSignature);
+        let componentViewTree = componentCls?.getViewTree();
+        if (componentViewTree) {
+            view.children.push(componentViewTree.getRoot());
+        }
+        return true;
     }
 
     private parseCfg(cfg: Cfg, treeStack: ViewTreeNode[]) {
@@ -94,17 +115,17 @@ export class ViewTree {
                 if (this.isCreateFunc(methodName)) {
                     let parent = this.getParent(treeStack);
                     let node = new ViewTreeNode(name, stmt, parent);
+                    if (name == 'View' && !this.parseComponentView(node, expr)) {
+                        continue;
+                    }
                     if (parent == null) {
                         this.root = node;
                     } else {
                         parent.children.push(node);
                     }
                     treeStack.push(node);
-                    if (name == 'ForEach') {
-                        let arg = expr.getArg(3) as Local;
-                        let type = arg.getType() as CallableType;
-                        
-                        this.parseForEachAnonymousFunc(treeStack, type.getMethodSignature());
+                    if (name == 'ForEach' || name == 'LazyForEach') {
+                        this.parseForEachAnonymousFunc(treeStack, expr);
                     }
                     continue;
                 } 
