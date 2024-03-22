@@ -11,6 +11,8 @@ import { LiteralType } from "../src/core/base/Type";
 import {ValueUtil} from "../src/core/common/ValueUtil"
 import {Constant} from "../src/core/base/Constant"
 import { ArkParameterRef } from "../src/core/base/Ref";
+import { ModelUtils } from "../src/core/common/ModelUtils";
+import { DataflowSolver } from "../src/core/dataflow/DataflowSolver"
 
 /*
 the only statement form in this test case is a = b or a = literal
@@ -18,15 +20,20 @@ which a or b is variable
 */
 class PossibleDivZeroChecker extends DataflowProblem<Local> {
     zeroValue : Local = new Local("zeroValue");
+    entryPoint: Stmt;
+    entryMethod: ArkMethod;
+    constructor(stmt: Stmt, method: ArkMethod){
+        super();
+        this.entryPoint=stmt;
+        this.entryMethod=method;
+    }
 
     getEntryPoint() : Stmt {
-        // TODO
-        return new Stmt();
+        return this.entryPoint;
     }
 
     getEntryMethod() : ArkMethod {
-        // TODO
-        return new ArkMethod();
+        return this.entryMethod;
     }
 
 
@@ -39,10 +46,11 @@ class PossibleDivZeroChecker extends DataflowProblem<Local> {
                         // handle zero fact and entry point case
                         let entryMethod = checkerInstance.getEntryMethod();
                         let body : ArkBody = entryMethod.getBody();
-                        const parameters =  entryMethod.getCfg().getBlocks()[0].getStmts();
-                        for (let i = 0;i<parameters.length;i++) {
+                        const parameters =  [...entryMethod.getCfg().getBlocks()][0].getStmts().slice(0,entryMethod.getParameters().length);
+                        for (let i = 0;i < parameters.length;i++) {
                             const para  = parameters[i].getDef();
-                            ret.add(para);
+                            if (para instanceof Local)
+                                ret.add(para);
                         }
                     }
                     
@@ -92,12 +100,14 @@ class PossibleDivZeroChecker extends DataflowProblem<Local> {
                 for (let i = 0; i < args.length; i++){
                     if (args[i] == dataFact){
                         // arkmethod的参数类型为ArkParameterRef，不是local，只能通过第一个block的对应位置找到真正参数的定义获取local
-                        const realParameter = method.getCfg().getBlocks()[0].getStmts()[i].getDef();
-                        ret.add(realParameter)
+                        const realParameter = [...method.getCfg().getBlocks()][0].getStmts()[i].getDef();
+                        if (realParameter instanceof Local)
+                            ret.add(realParameter)
                     }
                     if (args[i] == ValueUtil.getNumberTypeDefaultValue() && checkerInstance.getZeroValue() == dataFact) {
-                        const realParameter = method.getCfg().getBlocks()[0].getStmts()[i].getDef();
-                        ret.add(realParameter)
+                        const realParameter = [...method.getCfg().getBlocks()][0].getStmts()[i].getDef();
+                        if (realParameter instanceof Local)
+                            ret.add(realParameter)
                     }
                 }
                 return ret;
@@ -158,4 +168,23 @@ class PossibleDivZeroChecker extends DataflowProblem<Local> {
     getZeroValue() : Local {
         return this.zeroValue;
     }
+}
+
+class instanceSolver extends DataflowSolver<Local> {
+    constructor(problem: PossibleDivZeroChecker){
+        super(problem);
+    }
+}
+
+
+const config_path = "tests\\resources\\ifds\\ifdsTestConfig.json";
+let config: SceneConfig = new SceneConfig();
+config.buildFromJson(config_path);
+const scene = new Scene(config);
+const defaultMethod = scene.getFiles()[0].getDefaultClass().getDefaultArkMethod();
+const method = ModelUtils.getMethodWithName("",defaultMethod!);
+if(method){
+    const problem = new PossibleDivZeroChecker(method.getCfg().getStartingStmt(),method);
+    const solver = new instanceSolver(problem);
+    solver.solve();
 }

@@ -45,7 +45,7 @@ export abstract class DataflowSolver<D> {
     }
 
 
-    protected solve() {
+    public solve() {
         this.init();
         this.doSolve();
     }
@@ -128,7 +128,9 @@ export abstract class DataflowSolver<D> {
     }
 
     protected getStartOfCallerMethod(call:Stmt) : Stmt {
-        return [...call.getCfg()!.getBlocks()][0].getStmts()[0];
+        const cfg = call.getCfg()!;
+        const paraNum = cfg.getDeclaringMethod().getParameters().length
+        return [...cfg.getBlocks()][0].getStmts()[paraNum];
     }
 
     protected propagate(edge : PathEdge<D>) {
@@ -148,7 +150,7 @@ export abstract class DataflowSolver<D> {
         }
         for (let callEdgePoint of callEdgePoints) {
             let returnSite : Stmt = this.getReturnSiteOfCall(callEdgePoint.node);
-            let returnFlowFunc : FlowFunction<D> = this.problem.getExitToReturnFlowFunction(exitEdgePoint.node,returnSite);
+            let returnFlowFunc : FlowFunction<D> = this.problem.getExitToReturnFlowFunction(exitEdgePoint.node, returnSite, callEdgePoint.node);
             for (let fact of returnFlowFunc.getDataFacts(exitEdgePoint.fact)) {
                 let returnSitePoint: PathEdgePoint<D> = new PathEdgePoint<D>(returnSite, fact);
                 let cacheEdge : CallToReturnCacheEdge<D> = new PathEdge<D>(callEdgePoint, returnSitePoint);
@@ -193,7 +195,7 @@ export abstract class DataflowSolver<D> {
         let callNode: Stmt = edge.edgeEnd.node;
         for (let callee of callees) {
             let callFlowFunc:FlowFunction<D> = this.problem.getCallFlowFunction(callNode, callee);
-            let firstStmt:Stmt = callee.getCfg().getStartingStmt();
+            let firstStmt:Stmt = [...callee.getCfg().getBlocks()][0].getStmts()[callee.getParameters().length];
             let facts:Set<D> = callFlowFunc.getDataFacts(callEdgePoint.fact);
             let returnSite: Stmt = this.getReturnSiteOfCall(callEdgePoint.node);
             for (let fact of facts) {
@@ -208,7 +210,7 @@ export abstract class DataflowSolver<D> {
                     }
                 }
                 for (let exitEdgePoint of exitEdgePoints) {
-                    let returnFlowFunc = this.problem.getExitToReturnFlowFunction(exitEdgePoint.node, returnSite);
+                    let returnFlowFunc = this.problem.getExitToReturnFlowFunction(exitEdgePoint.node, returnSite, callEdgePoint.node);
                     for (let returnFact of returnFlowFunc.getDataFacts(exitEdgePoint.fact)) {
                         this.summaryEdge.add(new PathEdge<D>(edge.edgeEnd, new PathEdgePoint<D>(returnSite, returnFact)));
                     }

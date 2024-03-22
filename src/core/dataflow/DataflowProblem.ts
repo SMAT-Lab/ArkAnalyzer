@@ -41,7 +41,7 @@ export abstract class DataflowProblem<D> {
 
     abstract getCallFlowFunction(srcStmt:Stmt, method:ArkMethod) : FlowFunction<D>;
 
-    abstract getExitToReturnFlowFunction(srcStmt:Stmt, tgtStmt:Stmt) : FlowFunction<D>;
+    abstract getExitToReturnFlowFunction(srcStmt:Stmt, tgtStmt:Stmt, callStmt:Stmt) : FlowFunction<D>;
 
     abstract getCallToReturnFlowFunction(srcStmt:Stmt, tgtStmt:Stmt) : FlowFunction<D>;
 
