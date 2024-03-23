@@ -37,6 +37,7 @@ export abstract class DataflowSolver<D> {
     constructor(problem: DataflowProblem<D>, scene: Scene) {
         this.problem = problem;
         this.scene = scene;
+        scene.inferTypes();
         this.zeroFact = problem.createZeroValue();
         this.workList = new Array<PathEdge<D>>();
         this.pathEdgeSet = new Set<PathEdge<D>>();
@@ -147,10 +148,6 @@ export abstract class DataflowSolver<D> {
 
     protected propagate(edge : PathEdge<D>) {
         if (!this.pathEdgeSetHasEdge(edge)) {
-            console.log("work")
-            console.log(this.workList.length)
-            console.log("path")
-            console.log(this.pathEdgeSet.size)
             this.workList.push(edge);
             this.pathEdgeSet.add(edge);
         }
