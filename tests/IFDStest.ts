@@ -22,10 +22,12 @@ class PossibleDivZeroChecker extends DataflowProblem<Local> {
     zeroValue : Local = new Local("zeroValue");
     entryPoint: Stmt;
     entryMethod: ArkMethod;
+    scene: Scene;
     constructor(stmt: Stmt, method: ArkMethod){
         super();
-        this.entryPoint=stmt;
-        this.entryMethod=method;
+        this.entryPoint = stmt;
+        this.entryMethod = method;
+        this.scene = method.getDeclaringArkFile().getScene();
     }
 
     getEntryPoint() : Stmt {
@@ -171,8 +173,8 @@ class PossibleDivZeroChecker extends DataflowProblem<Local> {
 }
 
 class instanceSolver extends DataflowSolver<Local> {
-    constructor(problem: PossibleDivZeroChecker){
-        super(problem);
+    constructor(problem: PossibleDivZeroChecker, scene: Scene){
+        super(problem, scene);
     }
 }
 
@@ -182,9 +184,11 @@ let config: SceneConfig = new SceneConfig();
 config.buildFromJson(config_path);
 const scene = new Scene(config);
 const defaultMethod = scene.getFiles()[0].getDefaultClass().getDefaultArkMethod();
-const method = ModelUtils.getMethodWithName("",defaultMethod!);
+const method = ModelUtils.getMethodWithName("main",defaultMethod!);
 if(method){
-    const problem = new PossibleDivZeroChecker(method.getCfg().getStartingStmt(),method);
-    const solver = new instanceSolver(problem);
+    const problem = new PossibleDivZeroChecker([...method.getCfg().getBlocks()][0].getStmts()[method.getParameters().length],method);
+    const cha = scene.makeCallGraphCHA([problem.getEntryMethod().getSignature()])
+    const solver = new instanceSolver(problem, scene);
     solver.solve();
+    debugger
 }
