@@ -2,7 +2,7 @@ import { MethodSignature } from "../core/model/ArkSignature";
 import { Scene } from "../Scene";
 import { isItemRegistered, MethodSignatureManager, SceneManager } from "../utils/callGraphUtils";
 import { Cfg } from "../core/graph/Cfg";
-import { ArkInvokeStmt } from "../core/base/Stmt";
+import { Stmt } from "../core/base/Stmt";
 
 export abstract class AbstractCallGraph {
     private methods: Set<MethodSignature>;
@@ -76,7 +76,7 @@ export abstract class AbstractCallGraph {
         let cfg: Cfg | undefined = this.scene.getMethod(sourceMethodSignature)?.getBody().getCfg()
         if (typeof cfg !== "undefined") {
             for (let stmt of cfg.getStmts()) {
-                if (stmt instanceof ArkInvokeStmt) {
+                if (stmt.containsInvokeExpr()) {
                     // Process the invocation statement using CHA (Class Hierarchy Analysis) and RTA (Rapid Type Analysis).
                     let invocationTargetsOfSingleMethod = this.resolveCall(sourceMethodSignature, stmt)
                     for (let invocationTarget of invocationTargetsOfSingleMethod) {
@@ -102,7 +102,7 @@ export abstract class AbstractCallGraph {
      * @param sourceMethodSignature 
      * @param invokeExpression 
      */
-    protected abstract resolveCall(sourceMethodSignature: MethodSignature, invokeExpression: ArkInvokeStmt): MethodSignature[];
+    protected abstract resolveCall(sourceMethodSignature: MethodSignature, invokeStmt: Stmt): MethodSignature[];
 
     protected abstract preProcessMethod(methodSignature: MethodSignature): void;
 
