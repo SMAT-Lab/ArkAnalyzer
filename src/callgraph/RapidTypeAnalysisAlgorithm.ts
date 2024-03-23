@@ -1,5 +1,5 @@
 import { AbstractInvokeExpr, ArkInstanceInvokeExpr, ArkNewExpr, ArkStaticInvokeExpr } from "../core/base/Expr";
-import { ArkInvokeStmt } from "../core/base/Stmt";
+import { Stmt } from "../core/base/Stmt";
 import { ClassType } from "../core/base/Type";
 import { Cfg } from "../core/graph/Cfg";
 import { ArkClass } from "../core/model/ArkClass";
@@ -12,11 +12,14 @@ type Tuple = [MethodSignature, MethodSignature];
 export class RapidTypeAnalysisAlgorithm extends AbstractCallGraph {
     private instancedClasses: Set<ClassSignature> = new Set<ClassSignature>()
     private ignoredCalls: Map<ClassSignature, Tuple[]> = new Map<ClassSignature, Tuple[]>()
-    protected resolveCall(sourceMethodSignature: MethodSignature, invokeExpression: ArkInvokeStmt): MethodSignature[] {
+    protected resolveCall(sourceMethodSignature: MethodSignature, invokeStmt: Stmt): MethodSignature[] {
         let concreteMethodSignature: MethodSignature;
         let concreteMethod: ArkMethod;
         let callTargetMethods: MethodSignature[] = [];
-        let invokeExpressionExpr = invokeExpression.getInvokeExpr()
+        let invokeExpressionExpr = invokeStmt.getInvokeExpr()
+        if (invokeExpressionExpr === undefined) {
+            return []
+        }
 
         let methodsFromInvoke = this.resolveInvokeExpr(
             invokeExpressionExpr,

@@ -162,14 +162,14 @@ export function splitStringWithRegex(input: string): string[] {
 
 export function printCallGraphDetails(methods: Set<MethodSignature>, calls: Map<MethodSignature, MethodSignature[]>, rootDir: string): void {
     // 打印 Methods
-    logger.info("\nCall Graph:\n")
+    logger.info("Call Graph:\n")
     logger.info('\tMethods:');
     methods.forEach(method => {
         logger.info(`\t\t${method}`);
     });
 
     // 打印 Calls
-    logger.info('\n\tCalls:');
+    logger.info('\tCalls:');
     // 计算最长的method名称的长度，加上箭头和空格的长度
     const longestCallerLength = Array.from(calls.keys()).reduce((max, method) => Math.max(max, method.toString().length), 0);
     const arrow = '->';
