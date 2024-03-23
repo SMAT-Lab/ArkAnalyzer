@@ -187,7 +187,6 @@ const defaultMethod = scene.getFiles()[0].getDefaultClass().getDefaultArkMethod(
 const method = ModelUtils.getMethodWithName("main",defaultMethod!);
 if(method){
     const problem = new PossibleDivZeroChecker([...method.getCfg().getBlocks()][0].getStmts()[method.getParameters().length],method);
-    const cha = scene.makeCallGraphCHA([problem.getEntryMethod().getSignature()])
     const solver = new instanceSolver(problem, scene);
     solver.solve();
     debugger
