@@ -34,14 +34,16 @@ export abstract class DataflowSolver<D> {
     private CHA:ClassHierarchyAnalysisAlgorithm;
     private stmtNexts:Map<Stmt,Set<Stmt>>;
 
-    constructor(problem: DataflowProblem<D>) {
+    constructor(problem: DataflowProblem<D>, scene: Scene) {
         this.problem = problem;
+        this.scene = scene;
         this.zeroFact = problem.createZeroValue();
         this.workList = new Array<PathEdge<D>>();
         this.pathEdgeSet = new Set<PathEdge<D>>();
         this.inComing = new Map<PathEdgePoint<D>,Set<PathEdgePoint<D>>>();
-        this.endSummary= new Map<PathEdgePoint<D>,Set<PathEdgePoint<D>>>();
-        this.summaryEdge= new Set<CallToReturnCacheEdge<D>>();
+        this.endSummary = new Map<PathEdgePoint<D>,Set<PathEdgePoint<D>>>();
+        this.summaryEdge = new Set<CallToReturnCacheEdge<D>>();
+        this.stmtNexts = new Map();
     }
 
 
@@ -70,7 +72,7 @@ export abstract class DataflowSolver<D> {
         this.pathEdgeSet.add(edge);
 
         // build CHA
-        this.CHA = this.scene.makeCallGraphCHA([]) as ClassHierarchyAnalysisAlgorithm;
+        this.CHA = this.scene.makeCallGraphCHA([this.problem.getEntryMethod().getSignature()]) as ClassHierarchyAnalysisAlgorithm;
         this.buildStmtMap()
 
         return;
@@ -133,8 +135,22 @@ export abstract class DataflowSolver<D> {
         return [...cfg.getBlocks()][0].getStmts()[paraNum];
     }
 
+    protected pathEdgeSetHasEdge(edge :PathEdge<D>) {
+        for (const path of this.pathEdgeSet){
+            if (path.edgeEnd.node == edge.edgeEnd.node && path.edgeEnd.fact == edge.edgeEnd.fact &&
+                 path.edgeStart.node == path.edgeStart.node && path.edgeStart.fact == edge.edgeStart.fact){
+                    return true;
+                 }
+        }
+        return false;
+    }
+
     protected propagate(edge : PathEdge<D>) {
-        if (!this.pathEdgeSet.has(edge)) {
+        if (!this.pathEdgeSetHasEdge(edge)) {
+            console.log("work")
+            console.log(this.workList.length)
+            console.log("path")
+            console.log(this.pathEdgeSet.size)
             this.workList.push(edge);
             this.pathEdgeSet.add(edge);
         }
@@ -176,7 +192,7 @@ export abstract class DataflowSolver<D> {
 
     protected processNormalNode(edge:PathEdge<D>) {
         let start : PathEdgePoint<D> =  edge.edgeStart;
-        let end : PathEdgePoint<D> =  edge.edgeStart;
+        let end : PathEdgePoint<D> =  edge.edgeEnd;
         let stmts : Stmt[] = this.getChildren(end.node);
         for (let stmt of stmts) {
             let flowFunction : FlowFunction<D> = this.problem.getNormalFlowFunction(end.node, stmt);
@@ -244,7 +260,7 @@ export abstract class DataflowSolver<D> {
     }
 
    protected isCallStatement(stmt:Stmt) : boolean {
-       return stmt instanceof ArkInvokeStmt;
+       return stmt.containsInvokeExpr();
    }
 
    protected isExitStatement(stmt:Stmt) : boolean {
