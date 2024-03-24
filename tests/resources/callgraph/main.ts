@@ -13,29 +13,31 @@ import {func1} from "./temp/a";
 // // function temp(a: number | string) {
 // //     return a
 // // }
-A();
+// A();
 // temp()
-C();
+// C();
 let dog: Cat = new Cat()
+let notDog = dog
 // let mee: Mav = new Cat()
 // let d: Cat | null = new Cat()
-let c = dog.aaaaaaaaaa
-let d = c
+// let c = dog.aaaaaaaaaa
+// dog.aaaaaaaaaa = 1
+// let d = c
 // let e = globalNumber
-Cat.print()
-dog.sound()
-Main.main()
-func1(1)
+// Cat.print()
+// dog.sound()
+// Main.main()
+// func1(1)
 // // invokeParam(1, "b", new Class())
 // // let a: Cat.num = 1
 // // let a: temp_temp.A = new temp_temp.A()
 
 
-// // let a = 3
+// let a = 3
 // // let b = 5
 // // let c = a
 // // let d = c + a
-// // let e = a
+// let e = a
 // import animator,{ AnimatorResult }from'@ohos.animator';
 
 // let backAnimator: AnimatorResult= animator.createAnimator({})

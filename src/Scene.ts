@@ -5,6 +5,7 @@ import { SceneConfig } from './Config';
 import { AbstractCallGraph } from "./callgraph/AbstractCallGraphAlgorithm";
 import { ClassHierarchyAnalysisAlgorithm } from "./callgraph/ClassHierarchyAnalysisAlgorithm";
 import { RapidTypeAnalysisAlgorithm } from "./callgraph/RapidTypeAnalysisAlgorithm";
+import { VariablePointerAnalysisAlogorithm } from './callgraph/VariablePointerAnalysisAlgorithm';
 import { ImportInfo, updateSdkConfigPrefix } from './core/common/ImportBuilder';
 import { ModelUtils } from './core/common/ModelUtils';
 import { TypeInference } from './core/common/TypeInference';
@@ -257,11 +258,18 @@ export class Scene {
     }
 
     public makeCallGraphRTA(entryPoints: MethodSignature[]): AbstractCallGraph {
-        // WIP
         let callGraphRTA: AbstractCallGraph
         callGraphRTA = new RapidTypeAnalysisAlgorithm(this);
         callGraphRTA.loadCallGraph(entryPoints)
         return callGraphRTA
+    }
+
+    public makeCallGraphVPA(entryPoints: MethodSignature[]): AbstractCallGraph {
+        // WIP
+        let callGraphVPA: AbstractCallGraph
+        callGraphVPA = new VariablePointerAnalysisAlogorithm(this);
+        callGraphVPA.loadCallGraph(entryPoints)
+        return callGraphVPA
     }
 
     /**
