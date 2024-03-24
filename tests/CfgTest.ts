@@ -172,7 +172,7 @@ export class CfgTest {
                 const calleeMethodSignature = invokeExpr.getMethodSignature();
                 // console.log(`calleeMethodSignature is ${calleeMethodSignature.toString()}`)
 
-                if (invokeExpr.toString().includes('hilog')) {
+                if (invokeExpr.toString().includes('hilog') || invokeExpr.toString().includes('console')) {
                     callChain.push(invokeExpr);
                     return true;
                 }
