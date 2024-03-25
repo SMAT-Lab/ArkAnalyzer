@@ -1,9 +1,11 @@
+import { Constant } from "../base/Constant";
 import { ArkInstanceInvokeExpr, ArkNewExpr } from "../base/Expr";
 import { Local } from "../base/Local";
+import { ArkInstanceFieldRef } from "../base/Ref";
 import { ArkAssignStmt, ArkInvokeStmt, Stmt } from '../base/Stmt';
 import { CallableType, ClassType } from "../base/Type";
 import { ArkMethod } from "../model/ArkMethod";
-import { ClassSignature, MethodSignature } from "../model/ArkSignature";
+import { ClassSignature } from "../model/ArkSignature";
 import { Cfg } from "./Cfg";
 
 
@@ -25,19 +27,43 @@ const COMPONENT_CREATE_FUNCTION: Set<string> = new Set(['create', 'createWithChi
 
 export class ViewTreeNode {
     name: string;
-    stmts: Stmt[];
+    stmts: Map<string, [Stmt, (Constant|ArkInstanceFieldRef)[]]>;
     parent: ViewTreeNode | null;
     children: ViewTreeNode[];
 
-    constructor(name: string, stmt: Stmt, parent: ViewTreeNode | null) {
+    constructor(name: string, stmt: Stmt, expr: ArkInstanceInvokeExpr, parent: ViewTreeNode | null) {
         this.name = name;
-        this.stmts = [stmt];
+        this.stmts = new Map();
         this.parent = parent;
         this.children = [];
+        this.addStmt(stmt, expr);
     }
 
-    public addStmt(stmt: Stmt) {
-        this.stmts.push(stmt);
+    public addStmt(stmt: Stmt, expr: ArkInstanceInvokeExpr) {
+        let key = expr.getMethodSignature().getMethodSubSignature().getMethodName();
+        let relationValues: (Constant|ArkInstanceFieldRef)[] = [];
+        for (let arg of expr.getArgs()) {
+            if (arg instanceof Local) {
+                this.getBindValues(arg, relationValues);
+            }
+        }
+        this.stmts.set(key, [stmt, relationValues]);
+    }
+
+    private getBindValues(local: Local, relationValues: (Constant|ArkInstanceFieldRef) []) {
+        let stmt = local.getDeclaringStmt();
+        if (!stmt) {
+            return;
+        }
+        for (let v of stmt.getUses()) {
+            if (v instanceof Constant) {
+                relationValues.push(v);
+            } else if (v instanceof ArkInstanceFieldRef) {
+                relationValues.push(v);
+            } else if (v instanceof Local) {
+                this.getBindValues(v, relationValues);
+            }
+        }
     }
 }
 
@@ -95,7 +121,7 @@ export class ViewTree {
     }
 
     private parseCfg(cfg: Cfg, treeStack: ViewTreeNode[]) {
-        let blocks = cfg.getBlocks();
+        let blocks = cfg.getBlocks();        
         for (const block of blocks) {
             for (const stmt of block.getStmts()) {
                 if (!(stmt instanceof ArkInvokeStmt)) {
@@ -114,7 +140,7 @@ export class ViewTree {
                 }
                 if (this.isCreateFunc(methodName)) {
                     let parent = this.getParent(treeStack);
-                    let node = new ViewTreeNode(name, stmt, parent);
+                    let node = new ViewTreeNode(name, stmt, expr, parent);
                     if (name == 'View' && !this.parseComponentView(node, expr)) {
                         continue;
                     }
@@ -130,7 +156,7 @@ export class ViewTree {
                     continue;
                 } 
                 if (name == currentNode?.name) {
-                    currentNode.addStmt(stmt);
+                    currentNode.addStmt(stmt, expr);
                     if (methodName == 'pop') {
                         treeStack.pop();
                     }
