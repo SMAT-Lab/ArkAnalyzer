@@ -156,10 +156,16 @@ export abstract class DataflowSolver<D> {
     protected processExitNode(edge:PathEdge<D>) {
         let startEdgePoint : PathEdgePoint<D> = edge.edgeStart;
         let exitEdgePoint: PathEdgePoint<D> = edge.edgeEnd;
-        this.endSummary.get(startEdgePoint)?.add(exitEdgePoint);
+        const summary = this.endSummary.get(startEdgePoint);
+        if (summary == undefined){
+            this.endSummary.set(startEdgePoint, new Set([exitEdgePoint]));
+        }
+        else {
+            summary.add(exitEdgePoint);
+        }
         const callEdgePoints = this.inComing.get(startEdgePoint);
         if (callEdgePoints == undefined){
-            return;
+            throw new Error("incoming does not have "+startEdgePoint.node.getCfg()?.getDeclaringMethod().toString());
         }
         for (let callEdgePoint of callEdgePoints) {
             let returnSite : Stmt = this.getReturnSiteOfCall(callEdgePoint.node);
@@ -215,7 +221,14 @@ export abstract class DataflowSolver<D> {
                 // method start loop path edge
                 let startEdgePoint:PathEdgePoint<D>  = new PathEdgePoint(firstStmt, fact);
                 this.propagate(new PathEdge<D>(startEdgePoint,startEdgePoint));
-                this.inComing.get(startEdgePoint)?.add(callEdgePoint);
+                //add callEdgePoint in inComing.get(startEdgePoint)
+                const coming = this.inComing.get(startEdgePoint);
+                if (coming == undefined){
+                    this.inComing.set(startEdgePoint, new Set([callEdgePoint]));
+                }
+                else {
+                    coming.add(callEdgePoint);
+                }
                 let exitEdgePoints:Set<PathEdgePoint<D>> = new Set();
                 for (const end of Array.from(this.endSummary.keys())){
                     if (end.fact == fact && end.node == firstStmt){
