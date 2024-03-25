@@ -1,6 +1,8 @@
 {
     "targetProjectName": "CfgTest",
-    "targetProjectDirectory": "tests\\resources\\cfg\\sample",    
+    "targetProjectDirectory": "tests\\resources\\cfg",
+
+    "logPath": "out\\CfgTest.log",
     
     "ohosSdkPath": "",
     "kitSdkPath": "",

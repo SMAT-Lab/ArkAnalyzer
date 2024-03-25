@@ -5,7 +5,9 @@ import { SceneConfig } from './Config';
 import { AbstractCallGraph } from "./callgraph/AbstractCallGraphAlgorithm";
 import { ClassHierarchyAnalysisAlgorithm } from "./callgraph/ClassHierarchyAnalysisAlgorithm";
 import { RapidTypeAnalysisAlgorithm } from "./callgraph/RapidTypeAnalysisAlgorithm";
+import { VariablePointerAnalysisAlogorithm } from './callgraph/VariablePointerAnalysisAlgorithm';
 import { ImportInfo, updateSdkConfigPrefix } from './core/common/ImportBuilder';
+import { ModelUtils } from './core/common/ModelUtils';
 import { TypeInference } from './core/common/TypeInference';
 import { VisibleValue } from './core/common/VisibleValue';
 import { ArkClass } from "./core/model/ArkClass";
@@ -14,7 +16,6 @@ import { ArkMethod } from "./core/model/ArkMethod";
 import { ArkNamespace } from "./core/model/ArkNamespace";
 import { ClassSignature, FileSignature, MethodSignature, NamespaceSignature } from "./core/model/ArkSignature";
 import Logger from "./utils/logger";
-import { ModelUtils } from './core/common/ModelUtils';
 
 const logger = Logger.getLogger();
 
@@ -45,6 +46,10 @@ export class Scene {
 
     // values that are visible in curr scope
     private visibleValue: VisibleValue = new VisibleValue();
+
+    // all classes and methods, just for demo
+    private allClasses: ArkClass[] = [];
+    private allMethods: ArkMethod[] = [];
 
     constructor(sceneConfig: SceneConfig) {
         this.projectName = sceneConfig.getTargetProjectName();
@@ -214,19 +219,21 @@ export class Scene {
     }
 
     public getAllClassesUnderTargetProject(): ArkClass[] {
-        let classes: ArkClass[] = [];
-        this.arkFiles.forEach((fl) => {
-            classes.push(...fl.getAllClassesUnderThisFile());
-        });
-        return classes;
+        if (this.allClasses.length == 0) {
+            this.arkFiles.forEach((fl) => {
+                this.allClasses.push(...fl.getAllClassesUnderThisFile());
+            });
+        }
+        return this.allClasses;
     }
 
     public getAllMethodsUnderTargetProject(): ArkMethod[] {
-        let methods: ArkMethod[] = [];
-        this.arkFiles.forEach((fl) => {
-            methods.push(...fl.getAllMethodsUnderThisFile());
-        });
-        return methods;
+        if (this.allMethods.length == 0) {
+            this.arkFiles.forEach((fl) => {
+                this.allMethods.push(...fl.getAllMethodsUnderThisFile());
+            });
+        }
+        return this.allMethods;
     }
 
     public hasMainMethod(): boolean {
@@ -251,11 +258,18 @@ export class Scene {
     }
 
     public makeCallGraphRTA(entryPoints: MethodSignature[]): AbstractCallGraph {
-        // WIP
         let callGraphRTA: AbstractCallGraph
         callGraphRTA = new RapidTypeAnalysisAlgorithm(this);
         callGraphRTA.loadCallGraph(entryPoints)
         return callGraphRTA
+    }
+
+    public makeCallGraphVPA(entryPoints: MethodSignature[]): AbstractCallGraph {
+        // WIP
+        let callGraphVPA: AbstractCallGraph
+        callGraphVPA = new VariablePointerAnalysisAlogorithm(this);
+        callGraphVPA.loadCallGraph(entryPoints)
+        return callGraphVPA
     }
 
     /**
