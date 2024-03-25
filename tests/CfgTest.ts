@@ -3,6 +3,8 @@ import { Scene } from "../src/Scene";
 const fs = require('fs');
 
 export class CfgTest {
+    private scene: Scene | null = null;
+
     public buildScene(): Scene {
         // tests\\resources\\cfg\\sample
         // tests\\resources\\cfg\\temp
@@ -15,41 +17,42 @@ export class CfgTest {
 
     public testThreeAddresStmt() {
         let scene = this.buildScene();
+        scene.inferTypes();
 
         for (const arkFile of scene.arkFiles) {
-            logger.info('=============== arkFile:', arkFile.getName(), ' ================');
+            console.log('=============== arkFile:', arkFile.getName(), ' ================');
             for (const arkClass of arkFile.getClasses()) {
                 for (const arkMethod of arkClass.getMethods()) {
                     if (arkMethod.getName() == '_DEFAULT_ARK_METHOD') {
                         continue;
                     }
                     let arkBody = arkMethod.getBody()
-                    logger.info('*** arkMethod: ', arkMethod.getName());
-                    logger.info('-- origalstmts:');
+                    console.log('*** arkMethod: ', arkMethod.getName());
+                    console.log('-- origalstmts:');
 
                     let originalCfg = arkBody.getOriginalCfg();
                     for (const origalstmt of originalCfg.getStmts()) {
-                        logger.info(origalstmt.toString());
-                        // logger.info(origalstmt.toString()+', pos: '+origalstmt.getPositionInfo());
+                        // console.log(origalstmt.toString());
+                        console.log(`'${origalstmt.toString()}' line: ${origalstmt.getPositionInfo()}, column: ${origalstmt.getColumn()}`);
                     }
-                    logger.info();
-                    logger.info('-- threeAddresStmts:');
-                    let cfg = arkBody.getCfg();
-                    for (const threeAddresStmt of cfg.getStmts()) {
-                        logger.info(threeAddresStmt.toString());
-                        // logger.info(threeAddresStmt.toString(), ', original pos:', threeAddresStmt.getOriginPositionInfo(),
-                        //     ', pos:', threeAddresStmt.getPositionInfo());
-                        // logger.info('- use');
+                    // console.log();
+                    // console.log('-- threeAddresStmts:');
+                    // let cfg = arkBody.getCfg();
+                    // for (const threeAddresStmt of cfg.getStmts()) {
+                    //     console.log(threeAddresStmt.toString());
+                    //     // console.log(threeAddresStmt.toString(), ', original pos:', threeAddresStmt.getOriginPositionInfo(),
+                    //     //     ', pos:', threeAddresStmt.getPositionInfo());
+                    //     // console.log('- use');
 
-                        // logger.info(threeAddresStmt.getUses());
+                    //     // console.log(threeAddresStmt.getUses());
 
-                    }
+                    // }
 
-                    logger.info('-- locals:');
-                    for (const local of arkMethod.getBody().getLocals()) {
-                        logger.info(local.toString());
-                    }
-                    logger.info();
+                    // console.log('-- locals:');
+                    // for (const local of arkMethod.getBody().getLocals()) {
+                    //     console.log(local.toString());
+                    // }
+                    // console.log();
                 }
             }
         }
@@ -62,12 +65,14 @@ export class CfgTest {
         for (const arkFile of scene.arkFiles) {
             for (const arkClass of arkFile.getClasses()) {
                 for (const arkMethod of arkClass.getMethods()) {
-                    logger.info('************ arkMethod:', arkMethod.getSignature().toString(), ' **********');
-                    logger.info('StartingBlock:', arkMethod.getBody().getCfg().getStartingBlock());
+                    console.log('************ arkMethod:', arkMethod.getSignature().toString(), ' **********');
+                    console.log('StartingBlock:', arkMethod.getBody().getCfg().getStartingBlock());
                 }
             }
         }
     }
+
+
 }
 
 
@@ -77,4 +82,4 @@ let cfgTest = new CfgTest();
 cfgTest.testThreeAddresStmt();
 // cfgTest.testBlocks();
 
-// debugger
+debugger

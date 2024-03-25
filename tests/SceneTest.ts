@@ -26,6 +26,7 @@ class SceneTest {
         logger.error('testwholePipline start');
         let scene = this.buildScene();
         scene.inferTypes();
+        logger.error('testwholePipline end');
     }
 
     private sleep(time: number) {
@@ -58,6 +59,6 @@ class SceneTest {
 // logger.error('scene test start');
 let sceneTest = new SceneTest();
 // sceneTest.buildScene();
-// sceneTest.testwholePipline();
-sceneTest.testFileScene();
+sceneTest.testwholePipline();
+// sceneTest.testFileScene();
 // logger.error('scene test end');
