@@ -16,6 +16,10 @@ export class Stmt {
     private valueTags = new Map<Value, Set<ValueTag>>;
     private cfg: Cfg | null = null;
 
+    private originColumn: number = -1;
+    private column: number = -1;
+    private etsColumn: number = -1;
+
     constructor() {
     }
 
@@ -195,6 +199,34 @@ export class Stmt {
             this.etsPosition = etsPosition.line;
         }
         return this.etsPosition;
+    }
+
+    public setColumn(nweColumn: number) {
+        this.column = nweColumn;
+    }
+
+    public getColumn(): number {
+        return this.column;
+    }
+
+    public setOriginColumn(newOriginColumn: number): void {
+        this.originColumn = newOriginColumn;
+    }
+
+    public getOriginColumn(): number {
+        return this.originColumn;
+    }
+
+    public setEtsColumn(newEtsColumn: number) {
+        this.etsColumn = newEtsColumn;
+    }
+
+    public async getEtsColumn(arkFile: ArkFile): Promise<number> {
+        if (this.etsColumn == -1) {
+            const etsPosition = await arkFile.getEtsOriginalPositionFor({ line: this.originPosition, column: this.column });
+            this.etsColumn = etsPosition.column;
+        }
+        return this.etsColumn;
     }
 
     public toString(): string {

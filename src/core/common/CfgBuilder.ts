@@ -1020,7 +1020,7 @@ export class CfgBuilder {
         if (stm.astNode) {
             stm.haveCall = this.nodeHaveCall(stm.astNode);
             stm.line = stm.astNode.line + 1; // ast的行号是从0开始
-            stm.column = stm.astNode.character;
+            stm.column = stm.astNode.character + 1;
         }
 
         if (stm.type == "ifStatement" || stm.type == "loopStatement" || stm.type == "catchOrNot") {
@@ -2692,10 +2692,15 @@ export class CfgBuilder {
         for (const blockBuilder of this.blocks) {
             let block = new BasicBlock();
             for (const stmtBuilder of blockBuilder.stms) {
+                if (stmtBuilder.astNode == null) {
+                    continue;
+                }
                 let originlStmt: Stmt = new Stmt();
                 originlStmt.setText(stmtBuilder.code);
                 originlStmt.setPositionInfo(stmtBuilder.line);
                 originlStmt.setOriginPositionInfo(stmtBuilder.line);
+                originlStmt.setColumn(stmtBuilder.column);
+                originlStmt.setOriginColumn(stmtBuilder.column);
                 block.addStmt(originlStmt);
             }
             originalCfg.addBlock(block);
