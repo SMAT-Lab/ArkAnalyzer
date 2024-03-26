@@ -38,6 +38,15 @@ class PossibleDivZeroChecker extends DataflowProblem<Local> {
         return this.entryMethod;
     }
 
+    private isLiteralZero(val : Value) : boolean {
+        if (val instanceof Constant) {
+            let constant : Constant = val as Constant;
+            if (constant.getType() instanceof NumberType && val.getValue() == '0') {
+                return true;
+            } 
+        }
+        return false;
+    }
 
     getNormalFlowFunction(srcStmt:Stmt, tgtStmt:Stmt) : FlowFunction<Local> {
             let checkerInstance: PossibleDivZeroChecker = this;
@@ -63,7 +72,7 @@ class PossibleDivZeroChecker extends DataflowProblem<Local> {
                         }
                         let assigned : Local = ass.getLeftOp() as Local;
                         if (checkerInstance.getZeroValue() == dataFact) {
-                            if (ass.getRightOp() == ValueUtil.getNumberTypeDefaultValue()) {
+                            if (checkerInstance.isLiteralZero(ass.getRightOp())) {
                                 // case : a = 0
                                 ret.add(assigned);
                             } else if (srcStmt == checkerInstance.getEntryPoint())  {
@@ -106,7 +115,7 @@ class PossibleDivZeroChecker extends DataflowProblem<Local> {
                         if (realParameter instanceof Local)
                             ret.add(realParameter)
                     }
-                    if (args[i] == ValueUtil.getNumberTypeDefaultValue() && checkerInstance.getZeroValue() == dataFact) {
+                    if (checkerInstance.isLiteralZero(args[i])  && checkerInstance.getZeroValue() == dataFact) {
                         const realParameter = [...method.getCfg().getBlocks()][0].getStmts()[i].getDef();
                         if (realParameter instanceof Local)
                             ret.add(realParameter)
