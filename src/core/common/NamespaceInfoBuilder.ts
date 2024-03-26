@@ -34,7 +34,7 @@ export function buildNamespaceInfo4NamespaceNode(node: ts.ModuleDeclaration): Na
         });
     }
     if (ts.isIdentifier(node.name)) {
-        namespaceInfo.setName(node.name.escapedText.toString());
+        namespaceInfo.setName(node.name.text);
     }
     else if (ts.isStringLiteral(node.name)) {
         namespaceInfo.setName(node.name.text);

@@ -8,10 +8,10 @@ import Logger from "./logger";
 const logger = Logger.getLogger();
 
 export function handleQualifiedName(node: ts.QualifiedName): string {
-    let right = (node.right as ts.Identifier).escapedText.toString();
+    let right = (node.right as ts.Identifier).text;
     let left: string = '';
     if (ts.SyntaxKind[node.left.kind] == 'Identifier') {
-        left = (node.left as ts.Identifier).escapedText.toString();
+        left = (node.left as ts.Identifier).text;
     }
     else if (ts.SyntaxKind[node.left.kind] == 'QualifiedName') {
         left = handleQualifiedName(node.left as ts.QualifiedName);
@@ -21,10 +21,10 @@ export function handleQualifiedName(node: ts.QualifiedName): string {
 }
 
 export function handlePropertyAccessExpression(node: ts.PropertyAccessExpression): string {
-    let right = (node.name as ts.Identifier).escapedText.toString();
+    let right = (node.name as ts.Identifier).text;
     let left: string = '';
     if (ts.SyntaxKind[node.expression.kind] == 'Identifier') {
-        left = (node.expression as ts.Identifier).escapedText.toString();
+        left = (node.expression as ts.Identifier).text;
     }
     else if (ts.isStringLiteral(node.expression)) {
         left = node.expression.text;
@@ -46,11 +46,11 @@ export function buildModifiers(modifierArray: ts.NodeArray<ts.ModifierLike>): Se
         else if (ts.isDecorator(modifier)) {
             if (modifier.expression) {
                 if (ts.isIdentifier(modifier.expression)) {
-                    modifiers.add(modifier.expression.escapedText.toString());
+                    modifiers.add(modifier.expression.text);
                 }
                 else if (ts.isCallExpression(modifier.expression)) {
                     if (ts.isIdentifier(modifier.expression.expression)) {
-                        modifiers.add(modifier.expression.expression.escapedText.toString());
+                        modifiers.add(modifier.expression.expression.text);
                     }
                 }
             }
@@ -68,7 +68,7 @@ export function buildHeritageClauses(node: ts.ClassDeclaration | ts.ClassExpress
         heritageClause.types.forEach((type) => {
             let heritageClauseName: string = '';
             if (ts.isIdentifier(type.expression)) {
-                heritageClauseName = (type.expression as ts.Identifier).escapedText.toString();
+                heritageClauseName = (type.expression as ts.Identifier).text;
             }
             else if (ts.isPropertyAccessExpression(type.expression)) {
                 heritageClauseName = handlePropertyAccessExpression(type.expression);
@@ -90,7 +90,7 @@ export function buildTypeParameters(node: ts.ClassDeclaration | ts.ClassExpressi
     let typeParameters: Type[] = [];
     node.typeParameters?.forEach((typeParameter) => {
         if (ts.isIdentifier(typeParameter.name)) {
-            let parametersTypeStr = typeParameter.name.escapedText.toString();
+            let parametersTypeStr = typeParameter.name.text;
             typeParameters.push(buildTypeFromPreStr(parametersTypeStr));
         }
         else {
@@ -108,7 +108,7 @@ export function buildParameters(node: ts.FunctionDeclaration | ts.MethodDeclarat
     node.parameters.forEach((parameter) => {
         let methodParameter = new MethodParameter();
         if (ts.isIdentifier(parameter.name)) {
-            methodParameter.setName(parameter.name.escapedText.toString());
+            methodParameter.setName(parameter.name.text);
         }
         else if (ts.isObjectBindingPattern(parameter.name)) {
             methodParameter.setName("ObjectBindingPattern");
@@ -117,7 +117,7 @@ export function buildParameters(node: ts.FunctionDeclaration | ts.MethodDeclarat
                 let paraElement = new ObjectBindingPatternParameter();
                 if (element.propertyName) {
                     if (ts.isIdentifier(element.propertyName)) {
-                        paraElement.setPropertyName(element.propertyName.escapedText.toString());
+                        paraElement.setPropertyName(element.propertyName.text);
                     }
                     else {
                         logger.info("New propertyName of ObjectBindingPattern found, please contact developers to support this!");
@@ -126,7 +126,7 @@ export function buildParameters(node: ts.FunctionDeclaration | ts.MethodDeclarat
 
                 if (element.name) {
                     if (ts.isIdentifier(element.name)) {
-                        paraElement.setName(element.name.escapedText.toString());
+                        paraElement.setName(element.name.text);
                     }
                     else {
                         logger.info("New name of ObjectBindingPattern found, please contact developers to support this!");
@@ -152,7 +152,7 @@ export function buildParameters(node: ts.FunctionDeclaration | ts.MethodDeclarat
                 if (ts.isBindingElement(element)) {
                     if (element.propertyName) {
                         if (ts.isIdentifier(element.propertyName)) {
-                            paraElement.setPropertyName(element.propertyName.escapedText.toString());
+                            paraElement.setPropertyName(element.propertyName.text);
                         }
                         else {
                             logger.info("New propertyName of ArrayBindingPattern found, please contact developers to support this!");
@@ -161,7 +161,7 @@ export function buildParameters(node: ts.FunctionDeclaration | ts.MethodDeclarat
 
                     if (element.name) {
                         if (ts.isIdentifier(element.name)) {
-                            paraElement.setName(element.name.escapedText.toString());
+                            paraElement.setName(element.name.text);
                         }
                         else {
                             logger.info("New name of ArrayBindingPattern found, please contact developers to support this!");
@@ -198,7 +198,7 @@ export function buildParameters(node: ts.FunctionDeclaration | ts.MethodDeclarat
                     methodParameter.setType(parameterType);
                 }
                 else if (ts.isIdentifier(referenceNodeName)) {
-                    let parameterTypeStr = (referenceNodeName as ts.Identifier).escapedText.toString();
+                    let parameterTypeStr = (referenceNodeName as ts.Identifier).text;
                     let parameterType = new UnclearReferenceType(parameterTypeStr);
                     methodParameter.setType(parameterType);
                 }
@@ -212,7 +212,7 @@ export function buildParameters(node: ts.FunctionDeclaration | ts.MethodDeclarat
                             parameterType = handleQualifiedName(tmpType.typeName);
                         }
                         else if (ts.isIdentifier(tmpType.typeName)) {
-                            parameterType = tmpType.typeName.escapedText.toString();
+                            parameterType = tmpType.typeName.text;
                         }
                         unionTypePara.push(new UnclearReferenceType(parameterType));
                     }
@@ -295,7 +295,7 @@ export function buildReturnType4Method(node: ts.FunctionDeclaration | ts.MethodD
                 typeName = handleQualifiedName(referenceNodeName);
             }
             else if (ts.isIdentifier(referenceNodeName)) {
-                typeName = referenceNodeName.escapedText.toString();
+                typeName = referenceNodeName.text;
             }
             else {
                 logger.info("New type of referenceNodeName found! Please contact developers to support this.");
@@ -308,7 +308,7 @@ export function buildReturnType4Method(node: ts.FunctionDeclaration | ts.MethodD
                 if (ts.isTypeReferenceNode(tmpType)) {
                     let typeName = "";
                     if (ts.isIdentifier(tmpType.typeName)) {
-                        typeName = tmpType.typeName.escapedText.toString();
+                        typeName = tmpType.typeName.text;
                     }
                     else if (ts.isQualifiedName(tmpType.typeName)) {
                         typeName = handleQualifiedName(tmpType.typeName);
@@ -381,7 +381,7 @@ export function buildProperty2ArkField(member: ts.PropertyDeclaration | ts.Prope
 
     if (ts.isComputedPropertyName(member.name)) {
         if (ts.isIdentifier(member.name.expression)) {
-            let propertyName = member.name.expression.escapedText.toString();
+            let propertyName = member.name.expression.text;
             field.setName(propertyName);
         }
         else if (ts.isPropertyAccessExpression(member.name.expression)) {
@@ -392,7 +392,7 @@ export function buildProperty2ArkField(member: ts.PropertyDeclaration | ts.Prope
         }
     }
     else if (ts.isIdentifier(member.name)) {
-        let propertyName = member.name.escapedText.toString();
+        let propertyName = member.name.text;
         field.setName(propertyName);
     }
     else {
@@ -460,7 +460,7 @@ function buildFieldType(fieldType: ts.TypeNode): Type {
                     tmpTypeName = handleQualifiedName(tmpType.typeName);
                 }
                 else if (ts.isIdentifier(tmpType.typeName)) {
-                    tmpTypeName = tmpType.typeName.escapedText.toString();
+                    tmpTypeName = tmpType.typeName.text;
                 }
                 else {
                     logger.info("Other property type found!");
@@ -483,7 +483,7 @@ function buildFieldType(fieldType: ts.TypeNode): Type {
             tmpTypeName = handleQualifiedName(referenceNodeName);
         }
         else if (ts.isIdentifier(referenceNodeName)) {
-            tmpTypeName = referenceNodeName.escapedText.toString();
+            tmpTypeName = referenceNodeName.text;
         }
         return new UnclearReferenceType(tmpTypeName);
     }

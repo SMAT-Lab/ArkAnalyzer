@@ -97,10 +97,10 @@ function buildExportDeclarationNode(node: ts.ExportDeclaration): ExportInfo[] {
     if (node.exportClause && ts.isNamedExports(node.exportClause) && node.exportClause.elements) {
         let exportClauseType = "NamedExports";
         node.exportClause.elements.forEach((element) => {
-            let exportClauseName = element.name.escapedText.toString();
+            let exportClauseName = element.name.text;
             if (element.propertyName && ts.isIdentifier(element.propertyName)) {
                 let exportInfo = new ExportInfo();
-                exportInfo.build(exportClauseName, exportClauseType, exportFrom, element.propertyName.escapedText.toString());
+                exportInfo.build(exportClauseName, exportClauseType, exportFrom, element.propertyName.text);
                 exportInfos.push(exportInfo);
             }
             else {
@@ -114,7 +114,7 @@ function buildExportDeclarationNode(node: ts.ExportDeclaration): ExportInfo[] {
     if (node.exportClause && ts.isNamespaceExport(node.exportClause)) {
         let exportClauseType = "NamespaceExport";
         if (ts.isIdentifier(node.exportClause.name)) {
-            let exportClauseName = node.exportClause.name.escapedText.toString();
+            let exportClauseName = node.exportClause.name.text;
             let nameBeforeAs = '*';
             let exportInfo = new ExportInfo();
             exportInfo.build(exportClauseName, exportClauseType, exportFrom, nameBeforeAs);
@@ -141,7 +141,7 @@ function buildExportAssignmentNode(node: ts.ExportAssignment): ExportInfo[] {
     if (node.expression) {
         if (ts.isIdentifier(node.expression)) {
             let exportClauseType = "default";
-            let exportClauseName = node.expression.escapedText.toString();
+            let exportClauseName = node.expression.text;
             let exportInfo = new ExportInfo();
             exportInfo.build(exportClauseName, exportClauseType);
             exportInfos.push(exportInfo);
@@ -150,7 +150,7 @@ function buildExportAssignmentNode(node: ts.ExportAssignment): ExportInfo[] {
             let exportClauseType = "default-Obj";
             node.expression.properties.forEach((property) => {
                 if (property.name && ts.isIdentifier(property.name)) {
-                    let exportClauseName = property.name.escapedText.toString();
+                    let exportClauseName = property.name.text;
                     let exportInfo = new ExportInfo();
                     exportInfo.build(exportClauseName, exportClauseType);
                     exportInfos.push(exportInfo);
