@@ -157,11 +157,11 @@ export function buildMethodInfo4MethodNode(node: ts.FunctionDeclaration | ts.Met
     //TODO: consider function without name
     let name: string = '';
     if (ts.isFunctionDeclaration(node)) {
-        name = node.name ? node.name.escapedText.toString() : '';
+        name = node.name ? node.name.text : '';
     }
     else if (ts.isMethodDeclaration(node) || ts.isMethodSignature(node)) {
         if (ts.isIdentifier(node.name)) {
-            name = (node.name as ts.Identifier).escapedText.toString();
+            name = (node.name as ts.Identifier).text;
         }
         else if (ts.isComputedPropertyName(node.name)) {
             if (ts.isPropertyAccessExpression(node.name.expression)) {
@@ -183,10 +183,10 @@ export function buildMethodInfo4MethodNode(node: ts.FunctionDeclaration | ts.Met
         name = "call-signature";
     }
     else if (ts.isGetAccessor(node) && ts.isIdentifier(node.name)) {
-        name = 'Get-' + node.name.escapedText.toString();
+        name = 'Get-' + node.name.text;
     }
     else if (ts.isSetAccessor(node) && ts.isIdentifier(node.name)) {
-        name = 'Set-' + node.name.escapedText.toString();
+        name = 'Set-' + node.name.text;
     }
 
     let parameterTypes = buildParameters(node);

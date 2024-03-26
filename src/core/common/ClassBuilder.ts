@@ -94,7 +94,7 @@ export function buildClassInfo4ClassNode(node: ts.ClassDeclaration | ts.ClassExp
         modifiers = buildModifiers(node.modifiers);
     }
 
-    let name: string = node.name ? node.name.escapedText.toString() : '';
+    let name: string = node.name ? node.name.text : '';
 
     let typeParameters: Type[] = [];
     if (!ts.isEnumDeclaration(node)) {
