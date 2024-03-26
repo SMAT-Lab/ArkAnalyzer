@@ -234,6 +234,8 @@ export class ArkClass {
 
     public getViewTree(): ViewTree {
         if (this.hasViewTree() && !this.viewTree.isInitialized()) {
+            // deps inferTypes
+            this.getDeclaringArkFile().getScene().inferTypes();
             this.viewTree.buildViewTree();
         }
         return this.viewTree;
