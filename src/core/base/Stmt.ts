@@ -2,6 +2,7 @@ import { StmtUseReplacer } from "../common/StmtUseReplacer";
 import { Cfg } from "../graph/Cfg";
 import { ArkFile } from "../model/ArkFile";
 import { AbstractExpr, AbstractInvokeExpr, ArkConditionExpr } from "./Expr";
+import { LineColPosition } from "./Position";
 import { AbstractFieldRef, ArkArrayRef } from "./Ref";
 import { Value, ValueTag } from "./Value";
 
@@ -11,14 +12,13 @@ export class Stmt {
     private uses: Value[] = [];
     private originPosition: number = 0;
     private position: number = 0;
-    private etsPosition: number = -1;
+    private etsPosition: LineColPosition;
     private valueVersion = new Map<Value, string>();
     private valueTags = new Map<Value, Set<ValueTag>>;
     private cfg: Cfg | null = null;
 
     private originColumn: number = -1;
     private column: number = -1;
-    private etsColumn: number = -1;
 
     constructor() {
     }
@@ -189,14 +189,14 @@ export class Stmt {
         return this.originPosition;
     }
 
-    public setEtsPositionInfo(position: number) {
+    public setEtsPositionInfo(position: LineColPosition) {
         this.etsPosition = position;
     }
 
-    public async getEtsPositionInfo(arkFile: ArkFile): Promise<number> {
-        if (this.etsPosition == -1) {
-            const etsPosition = await arkFile.getEtsOriginalPositionFor({ line: this.originPosition, column: 0 });
-            this.etsPosition = etsPosition.line;
+    public async getEtsPositionInfo(arkFile: ArkFile): Promise<LineColPosition> {
+        if (!this.etsPosition) {
+            const etsPosition = await arkFile.getEtsOriginalPositionFor(new LineColPosition(this.originPosition, this.originColumn));
+            this.setEtsPositionInfo(etsPosition);
         }
         return this.etsPosition;
     }
@@ -215,18 +215,6 @@ export class Stmt {
 
     public getOriginColumn(): number {
         return this.originColumn;
-    }
-
-    public setEtsColumn(newEtsColumn: number) {
-        this.etsColumn = newEtsColumn;
-    }
-
-    public async getEtsColumn(arkFile: ArkFile): Promise<number> {
-        if (this.etsColumn == -1) {
-            const etsPosition = await arkFile.getEtsOriginalPositionFor({ line: this.originPosition, column: this.column });
-            this.etsColumn = etsPosition.column;
-        }
-        return this.etsColumn;
     }
 
     public toString(): string {

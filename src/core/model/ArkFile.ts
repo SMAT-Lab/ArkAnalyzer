@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import sourceMap from 'source-map';
+import sourceMap, { BasicSourceMapConsumer } from 'source-map';
 import { Scene } from '../../Scene';
 import { ASTree, NodeA } from "../base/Ast";
 import { ExportInfo } from '../common/ExportBuilder';
@@ -9,6 +9,7 @@ import { ArkClass, buildDefaultArkClassFromArkFile, buildNormalArkClassFromArkFi
 import { ArkMethod, arkMethodNodeKind, buildArkMethodFromArkClass } from "./ArkMethod";
 import { ArkNamespace, buildArkNamespace } from "./ArkNamespace";
 import { ClassSignature, FileSignature, MethodSignature, NamespaceSignature } from "./ArkSignature";
+import { LineColPosition } from '../base/Position';
 
 export const notStmtOrExprKind = ['ModuleDeclaration', 'ClassDeclaration', 'InterfaceDeclaration', 'EnumDeclaration', 'ExportDeclaration',
     'ExportAssignment', 'MethodDeclaration', 'Constructor', 'FunctionDeclaration', 'GetAccessor', 'SetAccessor', 'ArrowFunction',
@@ -261,22 +262,38 @@ export class ArkFile {
         return namespaces;
     }
 
-    public async getEtsOriginalPositionFor(position:{line: number, column:number}): Promise<{line: number, column:number}> {
-        if (position.line < 1) {
-            return {line: 0, column: 0};
-        }
+    private async initSourceMap() {
         if (!this.sourceMap) {
             let mapFilePath:string = this.getFilePath() + '.map';
             if (!fs.existsSync(mapFilePath)) {
-                return {line: 0, column: 0};
+                return new LineColPosition(0, 0);
             }
             this.sourceMap = await new sourceMap.SourceMapConsumer(fs.readFileSync(mapFilePath, 'utf-8'));
         }
-        let result = this.sourceMap?.originalPositionFor({line:position.line, column: position.column, bias: sourceMap.SourceMapConsumer.LEAST_UPPER_BOUND});
-        if (result.line) {
-            return {line: result.line, column: result.column as number};
+    }
+
+    public async getEtsOriginalPositionFor(position: LineColPosition): Promise<LineColPosition> {
+        if (position.getColNo() < 0 || position.getLineNo() < 1) {
+            return new LineColPosition(0, 0);
         }
-        return {line: 0, column: 0};
+        await this.initSourceMap();
+        let result = this.sourceMap?.originalPositionFor({line:position.getLineNo(), column: position.getColNo(), bias: sourceMap.SourceMapConsumer.LEAST_UPPER_BOUND});
+        if (result.line) {
+            return new LineColPosition(result.line, result.column as number);
+        }
+        return new LineColPosition(0, 0);
+    }
+
+    public async getEtsSource(line: number): Promise<string> {
+        if (line < 1) {
+            return '';
+        }
+        await this.initSourceMap();
+        let lines = fs.readFileSync((this.sourceMap as BasicSourceMapConsumer).sources[0], 'utf8').split('\n');
+        if (lines.length < line) {
+            return '';
+        }
+        return lines[line - 1];
     }
 }
 

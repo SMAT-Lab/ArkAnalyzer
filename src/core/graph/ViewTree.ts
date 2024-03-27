@@ -1,25 +1,25 @@
-import { Constant } from "../base/Constant";
-import { ArkInstanceInvokeExpr, ArkNewExpr } from "../base/Expr";
-import { Local } from "../base/Local";
-import { ArkInstanceFieldRef } from "../base/Ref";
+import { Constant } from '../base/Constant';
+import { ArkInstanceInvokeExpr, ArkNewExpr } from '../base/Expr';
+import { Local } from '../base/Local';
+import { ArkInstanceFieldRef } from '../base/Ref';
 import { ArkAssignStmt, ArkInvokeStmt, Stmt } from '../base/Stmt';
-import { CallableType, ClassType } from "../base/Type";
-import { ArkMethod } from "../model/ArkMethod";
-import { ClassSignature } from "../model/ArkSignature";
-import { Cfg } from "./Cfg";
+import { CallableType, ClassType, UnclearReferenceType } from '../base/Type';
+import { ArkMethod } from '../model/ArkMethod';
+import { ClassSignature } from '../model/ArkSignature';
+import { Cfg } from './Cfg';
 
 
 export const BUILDIN_CONTAINER_COMPONENT: Set<string> = new Set([
-    "Badge", "Button", "Calendar", "Canvas", "Checkbox", "CheckboxGroup", "ColorPicker", "ColorPickerDialog", 
-    "Column", "ColumnSplit", "ContainerSpan", "Counter", "DataPanel", "DatePicker", "EffectComponent", "Flex", 
-    "FlowItem", "FolderStack", "FormLink", "Gauge", "Grid", "GridItem", "GridCol", "GridContainer", "GridRow", 
-    "Hyperlink", "List", "ListItem", "ListItemGroup", "Menu", "MenuItem", "MenuItemGroup", "Navigation", 
-    "Navigator", "NavDestination", "NavRouter", "Option", "Panel", "Piece", "PluginComponent", "QRCode", 
-    "Rating", "Refresh", "RelativeContainer", "RootScene", "Row", "RowSplit", "Screen", "Scroll", "ScrollBar", 
-    "Section", "Select", "Shape", "Sheet", "SideBarContainer", "Stack", "Stepper", "StepperItem", "Swiper", 
-    "Tabs", "TabContent", "Text", "TextPicker", "TextTimer", "TextClock", "TimePicker", "Toggle", "WaterFlow", 
-    "WindowScene", "XComponent", 
-    "ForEach", "LazyForEach", "If" 
+    'Badge', 'Button', 'Calendar', 'Canvas', 'Checkbox', 'CheckboxGroup', 'ColorPicker', 'ColorPickerDialog', 
+    'Column', 'ColumnSplit', 'ContainerSpan', 'Counter', 'DataPanel', 'DatePicker', 'EffectComponent', 'Flex', 
+    'FlowItem', 'FolderStack', 'FormLink', 'Gauge', 'Grid', 'GridItem', 'GridCol', 'GridContainer', 'GridRow', 
+    'Hyperlink', 'List', 'ListItem', 'ListItemGroup', 'Menu', 'MenuItem', 'MenuItemGroup', 'Navigation', 
+    'Navigator', 'NavDestination', 'NavRouter', 'Option', 'Panel', 'Piece', 'PluginComponent', 'QRCode', 
+    'Rating', 'Refresh', 'RelativeContainer', 'RootScene', 'Row', 'RowSplit', 'Screen', 'Scroll', 'ScrollBar', 
+    'Section', 'Select', 'Shape', 'Sheet', 'SideBarContainer', 'Stack', 'Stepper', 'StepperItem', 'Swiper', 
+    'Tabs', 'TabContent', 'Text', 'TextPicker', 'TextTimer', 'TextClock', 'TimePicker', 'Toggle', 'WaterFlow', 
+    'WindowScene', 'XComponent', 
+    'ForEach', 'LazyForEach', 'If' 
     ]);
 
 const COMPONENT_CREATE_FUNCTION: Set<string> = new Set(['create', 'createWithChild', 'createWithLabel']);
@@ -30,19 +30,21 @@ export class ViewTreeNode {
     stmts: Map<string, [Stmt, (Constant|ArkInstanceFieldRef)[]]>;
     parent: ViewTreeNode | null;
     children: ViewTreeNode[];
+    private tree: ViewTree;
 
-    constructor(name: string, stmt: Stmt, expr: ArkInstanceInvokeExpr, parent: ViewTreeNode | null) {
+    constructor(name: string, stmt: Stmt, expr: ArkInstanceInvokeExpr, parent: ViewTreeNode | null, tree: ViewTree) {
         this.name = name;
         this.stmts = new Map();
         this.parent = parent;
         this.children = [];
+        this.tree = tree;
         this.addStmt(stmt, expr);
     }
 
     public addStmt(stmt: Stmt, expr: ArkInstanceInvokeExpr) {
         let key = expr.getMethodSignature().getMethodSubSignature().getMethodName();
         let relationValues: (Constant|ArkInstanceFieldRef)[] = [];
-        for (let arg of expr.getArgs()) {
+        for (const arg of expr.getArgs()) {
             if (arg instanceof Local) {
                 this.getBindValues(arg, relationValues);
             }
@@ -51,15 +53,17 @@ export class ViewTreeNode {
     }
 
     private getBindValues(local: Local, relationValues: (Constant|ArkInstanceFieldRef) []) {
-        let stmt = local.getDeclaringStmt();
+        const stmt = local.getDeclaringStmt();
         if (!stmt) {
             return;
         }
-        for (let v of stmt.getUses()) {
+        for (const v of stmt.getUses()) {
             if (v instanceof Constant) {
                 relationValues.push(v);
             } else if (v instanceof ArkInstanceFieldRef) {
-                relationValues.push(v);
+                if (this.tree.isClassField(v.getFieldName())) {
+                    relationValues.push(v);
+                }
             } else if (v instanceof Local) {
                 this.getBindValues(v, relationValues);
             }
@@ -70,18 +74,21 @@ export class ViewTreeNode {
 export class ViewTree {
     private root: ViewTreeNode;
     private render: ArkMethod;
+    private fieldTypes: Map<string, string>;
 
     constructor(render: ArkMethod) {
         this.render = render;
+        this.fieldTypes = new Map();
     }
 
-    public buildViewTree() {
+    public async buildViewTree() {
         if (!this.render || this.isInitialized()) {
             return;
         }
-
+        
+        await this.loadClasssFieldTypes();
         let treeStack: ViewTreeNode[] = [];
-        this.parseCfg(this.render.getCfg(), treeStack);
+        await this.parseCfg(this.render.getCfg(), treeStack);
     }
 
     public isInitialized(): boolean {
@@ -101,7 +108,7 @@ export class ViewTree {
         }
     }
 
-    private parseComponentView(view: ViewTreeNode, expr: ArkInstanceInvokeExpr): boolean {
+    private async parseComponentView(view: ViewTreeNode, expr: ArkInstanceInvokeExpr): Promise<boolean> {
         let arg = expr.getArg(0) as Local;
         let assignStmt = arg.getDeclaringStmt() as ArkAssignStmt;
         let classSignature: ClassSignature;
@@ -109,18 +116,18 @@ export class ViewTree {
         if (rightOp instanceof ArkNewExpr) {
             classSignature = (rightOp.getType() as ClassType).getClassSignature();
         } else {
-            return false ;
+            return false;
         }
 
         let componentCls = this.render.getDeclaringArkFile().getScene().getClass(classSignature);
-        let componentViewTree = componentCls?.getViewTree();
+        let componentViewTree = await componentCls?.getViewTree();
         if (componentViewTree) {
             view.children.push(componentViewTree.getRoot());
         }
         return true;
     }
 
-    private parseCfg(cfg: Cfg, treeStack: ViewTreeNode[]) {
+    private async parseCfg(cfg: Cfg, treeStack: ViewTreeNode[]) {
         let blocks = cfg.getBlocks();        
         for (const block of blocks) {
             for (const stmt of block.getStmts()) {
@@ -140,8 +147,8 @@ export class ViewTree {
                 }
                 if (this.isCreateFunc(methodName)) {
                     let parent = this.getParent(treeStack);
-                    let node = new ViewTreeNode(name, stmt, expr, parent);
-                    if (name == 'View' && !this.parseComponentView(node, expr)) {
+                    let node = new ViewTreeNode(name, stmt, expr, parent, this);
+                    if (name == 'View' && !await this.parseComponentView(node, expr)) {
                         continue;
                     }
                     if (parent == null) {
@@ -194,6 +201,41 @@ export class ViewTree {
 
     private isCreateFunc(name: string): boolean {
         return COMPONENT_CREATE_FUNCTION.has(name);
+    }
+
+    private async loadClasssFieldTypes() {
+        let arkFile = this.render.getDeclaringArkFile();
+        for (const field of this.render.getDeclaringArkClass().getFields()) {
+            let type = field.getSignature().getType();
+            if (type instanceof UnclearReferenceType) {
+                let position = await arkFile.getEtsOriginalPositionFor(field.getOriginPosition());
+                let line = await arkFile.getEtsSource(position.getLineNo());
+                if (line.length < position.getColNo()) {
+                    this.fieldTypes.set(field.getName(), type.getName());
+                } else {
+                    let state = line.slice(position.getColNo());
+                    this.fieldTypes.set(field.getName(), state.split(' ')[0]);
+                }
+            }
+        }
+
+        for (const method of this.render.getDeclaringArkClass().getMethods()) {
+            let name = method.getName();
+            if (name.startsWith('Set-')) {
+                name = name.replace('Set-', '');
+                if (this.fieldTypes.has('__' + name)) {
+                    this.fieldTypes.set(name, this.fieldTypes.get('__' + name) as string);
+                }
+            }
+        }
+    }
+
+    public isClassField(name: string) {
+        return this.fieldTypes.has(name);
+    }
+
+    public getClassFieldType(name: string): string | undefined {
+        return this.fieldTypes.get(name);
     }
 
 }
