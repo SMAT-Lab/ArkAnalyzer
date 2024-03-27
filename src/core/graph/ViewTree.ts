@@ -5,7 +5,7 @@ import { ArkInstanceFieldRef } from '../base/Ref';
 import { ArkAssignStmt, ArkInvokeStmt, Stmt } from '../base/Stmt';
 import { CallableType, ClassType, UnclearReferenceType } from '../base/Type';
 import { ArkMethod } from '../model/ArkMethod';
-import { ClassSignature } from '../model/ArkSignature';
+import { ClassSignature, MethodSignature } from '../model/ArkSignature';
 import { Cfg } from './Cfg';
 
 
@@ -27,7 +27,7 @@ const COMPONENT_CREATE_FUNCTION: Set<string> = new Set(['create', 'createWithChi
 
 export class ViewTreeNode {
     name: string;
-    stmts: Map<string, [Stmt, (Constant|ArkInstanceFieldRef)[]]>;
+    stmts: Map<string, [Stmt, (Constant|ArkInstanceFieldRef|MethodSignature)[]]>;
     parent: ViewTreeNode | null;
     children: ViewTreeNode[];
     private tree: ViewTree;
@@ -43,7 +43,7 @@ export class ViewTreeNode {
 
     public addStmt(stmt: Stmt, expr: ArkInstanceInvokeExpr) {
         let key = expr.getMethodSignature().getMethodSubSignature().getMethodName();
-        let relationValues: (Constant|ArkInstanceFieldRef)[] = [];
+        let relationValues: (Constant|ArkInstanceFieldRef|MethodSignature)[] = [];
         for (const arg of expr.getArgs()) {
             if (arg instanceof Local) {
                 this.getBindValues(arg, relationValues);
@@ -52,9 +52,13 @@ export class ViewTreeNode {
         this.stmts.set(key, [stmt, relationValues]);
     }
 
-    private getBindValues(local: Local, relationValues: (Constant|ArkInstanceFieldRef) []) {
+    private getBindValues(local: Local, relationValues: (Constant|ArkInstanceFieldRef|MethodSignature) []) {
         const stmt = local.getDeclaringStmt();
         if (!stmt) {
+            let type = local.getType();
+            if (type instanceof CallableType) {
+                relationValues.push(type.getMethodSignature());
+            }
             return;
         }
         for (const v of stmt.getUses()) {
@@ -139,6 +143,9 @@ export class ViewTree {
                     continue;
                 }
                 let name = expr.getBase().getName();
+                if (name.startsWith('$temp')) {
+                    continue;
+                }
                 let methodName = expr.getMethodSignature().getMethodSubSignature().getMethodName();
                 this.popAutomicComponent(name, treeStack);
                 let currentNode = treeStack.length > 0? treeStack[treeStack.length - 1]: null;
