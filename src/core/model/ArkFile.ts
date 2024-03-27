@@ -263,11 +263,11 @@ export class ArkFile {
     }
 
     private async initSourceMap() {
-        if (!this.sourceMap) {
-            let mapFilePath:string = this.getFilePath() + '.map';
-            if (!fs.existsSync(mapFilePath)) {
-                return new LineColPosition(0, 0);
-            }
+        if (this.sourceMap) {
+            return;
+        }
+        let mapFilePath:string = this.getFilePath() + '.map';
+        if (fs.existsSync(mapFilePath)) {
             this.sourceMap = await new sourceMap.SourceMapConsumer(fs.readFileSync(mapFilePath, 'utf-8'));
         }
     }
@@ -278,7 +278,7 @@ export class ArkFile {
         }
         await this.initSourceMap();
         let result = this.sourceMap?.originalPositionFor({line:position.getLineNo(), column: position.getColNo(), bias: sourceMap.SourceMapConsumer.LEAST_UPPER_BOUND});
-        if (result.line) {
+        if (result && result.line) {
             return new LineColPosition(result.line, result.column as number);
         }
         return new LineColPosition(0, 0);
