@@ -91,6 +91,7 @@ class PossibleDivZeroChecker extends DataflowProblem<Local> {
                               if (divisor == dataFact || checkerInstance.isLiteralZero(divisor)) {
                                 console.log("divison isntruction with zero divisor is detected！")
                                 console.log(srcStmt.toString());
+                                console.log(srcStmt.getOriginPositionInfo());
                               } else if (dividend == dataFact) {
                                 ret.add(assigned);
                               } else if (dataFact == checkerInstance.getZeroValue() && checkerInstance.isLiteralZero(dividend)) {
@@ -139,6 +140,9 @@ class PossibleDivZeroChecker extends DataflowProblem<Local> {
         return new class implements FlowFunction<Local> {
             getDataFacts(d: Local): Set<Local> {
                 let ret : Set<Local> = new Set<Local>();
+                if (d == checkerInstance.getZeroValue()) {
+                    ret.add(checkerInstance.getZeroValue());
+                }
                 if (!(callStmt instanceof ArkAssignStmt)) {
                     return ret;
                 }
@@ -147,7 +151,6 @@ class PossibleDivZeroChecker extends DataflowProblem<Local> {
                     let leftOp: Local = ass.getLeftOp() as Local;
                     let retVal: Value = (srcStmt as ArkReturnStmt).getOp();
                     if (d == checkerInstance.getZeroValue()) {
-                        ret.add(checkerInstance.getZeroValue());
                         if (checkerInstance.isLiteralZero(retVal)) {
                             ret.add(leftOp);
                         }
