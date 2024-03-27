@@ -13,6 +13,7 @@ import {Constant} from "../src/core/base/Constant"
 import { ArkParameterRef } from "../src/core/base/Ref";
 import { ModelUtils } from "../src/core/common/ModelUtils";
 import { DataflowSolver } from "../src/core/dataflow/DataflowSolver"
+import { ArkBinopExpr } from "../src/core/base/Expr";
 
 /*
 the only statement form in this test case is a = b or a = literal
@@ -63,36 +64,42 @@ class PossibleDivZeroChecker extends DataflowProblem<Local> {
                             if (para instanceof Local)
                                 ret.add(para);
                         }
-                    }
-                    
-                    if (srcStmt instanceof ArkAssignStmt) {
+                        ret.add(checkerInstance.getZeroValue());
+                        return ret;
+                    } 
+                    if (srcStmt.getDef() != dataFact) {
+                        // identity or 0->0 case
+                        ret.add(dataFact);
+                    } 
+                    if (srcStmt instanceof ArkAssignStmt ) {
                         let ass: ArkAssignStmt = (srcStmt as ArkAssignStmt);
-                        if (!(ass.getLeftOp() instanceof Local))  {
-                            return ret;
-                        }
                         let assigned : Local = ass.getLeftOp() as Local;
+                        let rightOp : Value = ass.getRightOp();
                         if (checkerInstance.getZeroValue() == dataFact) {
-                            if (checkerInstance.isLiteralZero(ass.getRightOp())) {
+                            if (checkerInstance.isLiteralZero(rightOp)) {
                                 // case : a = 0
                                 ret.add(assigned);
-                            } else if (srcStmt == checkerInstance.getEntryPoint())  {
-                                // case : a = b
-                                for (let local of ret) {
-                                    if (local == ass.getRightOp()) {
-                                        ret.add(ass.getRightOp() as Local);
-                                    }
-                                }
                             }
-                        } else if (ass.getRightOp() == dataFact) {
+                        } else if (rightOp == dataFact) {
                             // case : a = dataFact
                             ret.add(assigned);
+                        } else if (rightOp instanceof ArkBinopExpr) {
+                            let binaryOp : ArkBinopExpr =rightOp as ArkBinopExpr
+                            if (binaryOp.getOperator() == '/') {
+                              let divisor : Value = binaryOp.getOp2();
+                              let dividend : Value = binaryOp.getOp1();
+                              if (divisor == dataFact || checkerInstance.isLiteralZero(divisor)) {
+                                console.log("divison isntruction with zero divisor is detected！")
+                                console.log(srcStmt.toString());
+                              } else if (dividend == dataFact) {
+                                ret.add(assigned);
+                              } else if (dataFact == checkerInstance.getZeroValue() && checkerInstance.isLiteralZero(dividend)) {
+                                ret.add(assigned);
+                              }
+                            }
                         }
                     }
 
-                    // handle 0->0 reachability case
-                    if (checkerInstance.getZeroValue() == dataFact) {
-                        ret.add(checkerInstance.getZeroValue());
-                    }
                     return ret;
                 }
         }
@@ -141,7 +148,7 @@ class PossibleDivZeroChecker extends DataflowProblem<Local> {
                     let retVal: Value = (srcStmt as ArkReturnStmt).getOp();
                     if (d == checkerInstance.getZeroValue()) {
                         ret.add(checkerInstance.getZeroValue());
-                        if (retVal == ValueUtil.getNumberTypeDefaultValue()) {
+                        if (checkerInstance.isLiteralZero(retVal)) {
                             ret.add(leftOp);
                         }
                     } else if (retVal == d) {

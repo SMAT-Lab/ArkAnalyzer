@@ -16,10 +16,12 @@ function  main(x:number, y:number) {
     x = nonZero();
     y = 3;
     y = zero();
+    let c = y/y;
     if (x==0) {
         x = nonZero();
     } else {
         x = 3;
     }
     x = identity(y);
+    x = 3/x;
 }
