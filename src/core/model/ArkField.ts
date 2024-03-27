@@ -1,3 +1,4 @@
+import { LineColPosition } from "../base/Position";
 import { Type } from "../base/Type";
 import { MethodParameter } from "../common/MethodInfoBuilder";
 import { ArkClass } from "./ArkClass";
@@ -18,6 +19,7 @@ export class ArkField {
     private exclamationToken: boolean = false;
 
     private fieldSignature: FieldSignature;
+    private originPosition: LineColPosition;
 
     //private initializer, TODO
 
@@ -161,4 +163,13 @@ export class ArkField {
     public getExclamationToken() {
         return this.exclamationToken;
     }
+
+    public setOriginPosition(position: LineColPosition) {
+        this.originPosition = position;
+    }
+
+    public getOriginPosition(): LineColPosition {
+        return this.originPosition;
+    }
+
 }

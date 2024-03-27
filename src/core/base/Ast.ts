@@ -120,13 +120,13 @@ export class ASTree {
 
             if (ts.isClassDeclaration(child) || ts.isClassExpression(child) ||
                 ts.isInterfaceDeclaration(child) || ts.isEnumDeclaration(child)) {
-                classNodeInfo = buildClassInfo4ClassNode(child);
+                classNodeInfo = buildClassInfo4ClassNode(child, this.sourceFile);
             }
             if (ts.isFunctionDeclaration(child) || ts.isMethodDeclaration(child) || ts.isConstructorDeclaration(child) ||
                 ts.isArrowFunction(child) || ts.isFunctionExpression(child) || ts.isAccessor(child) ||
                 ts.isMethodSignature(child) || ts.isConstructSignatureDeclaration(child) ||
                 ts.isCallSignatureDeclaration(child)) {
-                methodNodeInfo = buildMethodInfo4MethodNode(child);
+                methodNodeInfo = buildMethodInfo4MethodNode(child, this.sourceFile);
             }
             if (ts.isImportDeclaration(child) || ts.isImportEqualsDeclaration(child)) {
                 importNodeInfo = buildImportInfo4ImportNode(child);

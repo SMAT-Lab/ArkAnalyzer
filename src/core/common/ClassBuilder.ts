@@ -3,6 +3,7 @@ import { buildHeritageClauses, buildIndexSignature2ArkField, buildModifiers, bui
 import Logger from "../../utils/logger";
 import { Type } from "../base/Type";
 import { ArkField } from "../model/ArkField";
+import { LineColPosition } from "../base/Position";
 
 const logger = Logger.getLogger();
 export class ClassInfo {
@@ -76,7 +77,7 @@ export class ClassInfo {
     }
 }
 
-export function buildClassInfo4ClassNode(node: ts.ClassDeclaration | ts.ClassExpression | ts.InterfaceDeclaration | ts.EnumDeclaration): ClassInfo {
+export function buildClassInfo4ClassNode(node: ts.ClassDeclaration | ts.ClassExpression | ts.InterfaceDeclaration | ts.EnumDeclaration, sourceFile: ts.SourceFile): ClassInfo {
 
     let originType: string = "";
     if (ts.isClassDeclaration(node) || ts.isClassExpression(node)) {
@@ -109,10 +110,10 @@ export function buildClassInfo4ClassNode(node: ts.ClassDeclaration | ts.ClassExp
     let members: ArkField[] = [];
     node.members.forEach((member) => {
         if (ts.isPropertyDeclaration(member) || ts.isPropertySignature(member) || ts.isEnumMember(member)) {
-            members.push(buildProperty2ArkField(member));
+            members.push(buildProperty2ArkField(member, sourceFile));
         }
         else if (ts.isIndexSignatureDeclaration(member)) {
-            members.push(buildIndexSignature2ArkField(member));
+            members.push(buildIndexSignature2ArkField(member, sourceFile));
         }
         else if (ts.isMethodDeclaration(member) || ts.isConstructorDeclaration(member) || ts.isMethodSignature(member) ||
             ts.isConstructSignatureDeclaration(member) || ts.isAccessor(member) || ts.isCallSignatureDeclaration(member)

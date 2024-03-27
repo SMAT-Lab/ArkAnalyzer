@@ -4,6 +4,7 @@ import { ArrayBindingPatternParameter, MethodParameter, ObjectBindingPatternPara
 import { TypeInference } from "../core/common/TypeInference";
 import { ArkField } from "../core/model/ArkField";
 import Logger from "./logger";
+import { LineColPosition } from "../core/base/Position";
 
 const logger = Logger.getLogger();
 
@@ -103,7 +104,7 @@ export function buildTypeParameters(node: ts.ClassDeclaration | ts.ClassExpressi
 export function buildParameters(node: ts.FunctionDeclaration | ts.MethodDeclaration
     | ts.ConstructorDeclaration | ts.ArrowFunction | ts.AccessorDeclaration |
     ts.FunctionExpression | ts.CallSignatureDeclaration | ts.MethodSignature |
-    ts.ConstructSignatureDeclaration | ts.IndexSignatureDeclaration) {
+    ts.ConstructSignatureDeclaration | ts.IndexSignatureDeclaration, sourceFile: ts.SourceFile) {
     let parameters: MethodParameter[] = [];
     node.parameters.forEach((parameter) => {
         let methodParameter = new MethodParameter();
@@ -232,10 +233,10 @@ export function buildParameters(node: ts.FunctionDeclaration | ts.MethodDeclarat
                 let members: ArkField[] = [];
                 parameter.type.members.forEach((member) => {
                     if (ts.isPropertySignature(member)) {
-                        members.push(buildProperty2ArkField(member));
+                        members.push(buildProperty2ArkField(member, sourceFile));
                     }
                     else if (ts.isIndexSignatureDeclaration(member)) {
-                        members.push(buildIndexSignature2ArkField(member));
+                        members.push(buildIndexSignature2ArkField(member, sourceFile));
                     }
                     else if (ts.isConstructSignatureDeclaration(member)) {
                         //Bug, To be fixed
@@ -269,16 +270,16 @@ export function buildParameters(node: ts.FunctionDeclaration | ts.MethodDeclarat
 export function buildReturnType4Method(node: ts.FunctionDeclaration | ts.MethodDeclaration |
     ts.ConstructorDeclaration | ts.ArrowFunction | ts.AccessorDeclaration |
     ts.FunctionExpression | ts.MethodSignature | ts.ConstructSignatureDeclaration |
-    ts.CallSignatureDeclaration | ts.IndexSignatureDeclaration) {
+    ts.CallSignatureDeclaration | ts.IndexSignatureDeclaration, sourceFile: ts.SourceFile) {
     if (node.type) {
         if (ts.isTypeLiteralNode(node.type)) {
             let members: ArkField[] = [];
             node.type.members.forEach((member) => {
                 if (ts.isPropertySignature(member)) {
-                    members.push(buildProperty2ArkField(member));
+                    members.push(buildProperty2ArkField(member, sourceFile));
                 }
                 else if (ts.isIndexSignatureDeclaration(member)) {
-                    members.push(buildIndexSignature2ArkField(member));
+                    members.push(buildIndexSignature2ArkField(member, sourceFile));
                 }
                 else {
                     logger.info("Please contact developers to support new TypeLiteral member!");
@@ -375,10 +376,11 @@ export function buildTypeFromPreStr(preStr: string) {
     return TypeInference.buildTypeFromStr(postStr);
 }
 
-export function buildProperty2ArkField(member: ts.PropertyDeclaration | ts.PropertySignature | ts.EnumMember): ArkField {
+export function buildProperty2ArkField(member: ts.PropertyDeclaration | ts.PropertySignature | ts.EnumMember, sourceFile: ts.SourceFile): ArkField {
     let field = new ArkField();
     field.setFieldType(ts.SyntaxKind[member.kind]);
-
+    field.setOriginPosition(LineColPosition.buildFromNode(member, sourceFile));
+    
     if (ts.isComputedPropertyName(member.name)) {
         if (ts.isIdentifier(member.name.expression)) {
             let propertyName = member.name.expression.text;
@@ -421,24 +423,12 @@ export function buildProperty2ArkField(member: ts.PropertyDeclaration | ts.Prope
     return field;
 }
 
-// TBD: Deprecated
-function buildCallSignature2ArkField(member: ts.CallSignatureDeclaration): ArkField {
+export function buildIndexSignature2ArkField(member: ts.IndexSignatureDeclaration, sourceFile: ts.SourceFile): ArkField {
     let field = new ArkField();
     field.setFieldType(ts.SyntaxKind[member.kind]);
     //parameters
-    field.setParameters(buildParameters(member));
-    //typeParamters
-    field.setTypeParameters(buildTypeParameters(member));
-    //type
-    field.setType(buildReturnType4Method(member));
-    return field;
-}
-
-export function buildIndexSignature2ArkField(member: ts.IndexSignatureDeclaration): ArkField {
-    let field = new ArkField();
-    field.setFieldType(ts.SyntaxKind[member.kind]);
-    //parameters
-    field.setParameters(buildParameters(member));
+    field.setParameters(buildParameters(member, sourceFile));
+    field.setOriginPosition(LineColPosition.buildFromNode(member, sourceFile));
     //modifiers
     if (member.modifiers) {
         buildModifiers(member.modifiers).forEach((modifier) => {
@@ -446,7 +436,7 @@ export function buildIndexSignature2ArkField(member: ts.IndexSignatureDeclaratio
         });
     }
     //type
-    field.setType(buildReturnType4Method(member));
+    field.setType(buildReturnType4Method(member, sourceFile));
     return field;
 }
 
