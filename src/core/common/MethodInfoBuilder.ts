@@ -152,7 +152,7 @@ export class MethodInfo {
 //get function name, parameters, return type, etc.
 export function buildMethodInfo4MethodNode(node: ts.FunctionDeclaration | ts.MethodDeclaration | ts.ConstructorDeclaration |
     ts.ArrowFunction | ts.AccessorDeclaration | ts.FunctionExpression | ts.MethodSignature | ts.ConstructSignatureDeclaration |
-    ts.CallSignatureDeclaration): MethodInfo {
+    ts.CallSignatureDeclaration, sourceFile: ts.SourceFile): MethodInfo {
 
     //TODO: consider function without name
     let name: string = '';
@@ -189,7 +189,7 @@ export function buildMethodInfo4MethodNode(node: ts.FunctionDeclaration | ts.Met
         name = 'Set-' + node.name.text;
     }
 
-    let parameterTypes = buildParameters(node);
+    let parameterTypes = buildParameters(node, sourceFile);
 
     //TODO: remember to test abstract method
     let modifiers: Set<string> = new Set<string>();
@@ -199,7 +199,7 @@ export function buildMethodInfo4MethodNode(node: ts.FunctionDeclaration | ts.Met
         }
     }
 
-    let returnType = buildReturnType4Method(node);
+    let returnType = buildReturnType4Method(node, sourceFile);
 
     let typeParameters = buildTypeParameters(node);
 

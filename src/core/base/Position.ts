@@ -1,3 +1,5 @@
+import ts from "typescript";
+
 export abstract class Position {
     public abstract getFirstLine(): number;
 
@@ -17,5 +19,32 @@ export class LinePosition {
 
     public getLineNo(): number {
         return this.lineNo;
+    }
+}
+
+export class LineColPosition {
+    private readonly lineNo: number;
+    private readonly colNo: number;
+
+    constructor(lineNo: number, colNo: number) {
+        this.lineNo = lineNo;
+        this.colNo = colNo;
+    }
+
+    public getLineNo(): number {
+        return this.lineNo;
+    }
+
+    public getColNo(): number {
+        return this.colNo;
+    }
+
+    public static buildFromNode(node: ts.Node, sourceFile: ts.SourceFile) {
+        let { line, character } = ts.getLineAndCharacterOfPosition(
+            sourceFile,
+            node.getStart(sourceFile)
+        );
+        // line start from 1.
+        return new LineColPosition(line + 1, character);
     }
 }
