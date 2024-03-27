@@ -232,11 +232,11 @@ export class ArkClass {
         this.viewTree = viewTree;
     }
 
-    public getViewTree(): ViewTree {
+    public async getViewTree(): Promise<ViewTree> {
         if (this.hasViewTree() && !this.viewTree.isInitialized()) {
             // deps inferTypes
             this.getDeclaringArkFile().getScene().inferTypes();
-            this.viewTree.buildViewTree();
+            await this.viewTree.buildViewTree();
         }
         return this.viewTree;
     }
