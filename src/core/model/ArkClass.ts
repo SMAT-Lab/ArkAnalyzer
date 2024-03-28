@@ -242,7 +242,7 @@ export class ArkClass {
     }
 
     public hasViewTree(): boolean {
-        return this.viewTree != null;
+        return this.viewTree != undefined;
     }
 }
 

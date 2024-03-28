@@ -12,7 +12,8 @@ async function run(config: SceneConfig) {
     for (let f of scene.arkFiles) {
         for (let cls of f.getClasses()) {
             if (cls.hasViewTree()) {
-                let viewTree = cls.getViewTree();
+                let viewTree = await cls.getViewTree();
+                console.log(viewTree);
             }
         }
         //printer.dumpToDot(f);
