@@ -212,11 +212,11 @@ export abstract class DataflowSolver<D> {
         let callEdgePoint:PathEdgePoint<D> = edge.edgeEnd;
         let callees:Set<ArkMethod> = this.getAllCalleeMethods(callEdgePoint.node as ArkInvokeStmt);
         let callNode: Stmt = edge.edgeEnd.node;
+        let returnSite: Stmt = this.getReturnSiteOfCall(callEdgePoint.node);
         for (let callee of callees) {
             let callFlowFunc:FlowFunction<D> = this.problem.getCallFlowFunction(callNode, callee);
             let firstStmt:Stmt = [...callee.getCfg().getBlocks()][0].getStmts()[callee.getParameters().length];
             let facts:Set<D> = callFlowFunc.getDataFacts(callEdgePoint.fact);
-            let returnSite: Stmt = this.getReturnSiteOfCall(callEdgePoint.node);
             for (let fact of facts) {
                 // method start loop path edge
                 let startEdgePoint:PathEdgePoint<D>  = new PathEdgePoint(firstStmt, fact);
@@ -242,17 +242,18 @@ export abstract class DataflowSolver<D> {
                     }
                 }
             }
-            let callToReturnflowFunc:FlowFunction<D> = this.problem.getCallToReturnFlowFunction(edge.edgeEnd.node, returnSite);
-            let set : Set<D> = callToReturnflowFunc.getDataFacts(callEdgePoint.fact);
-            for (let fact of set) {
-                this.propagate(new PathEdge<D>(start, new PathEdgePoint<D>(returnSite, fact)));
-            }
-            for (let cacheEdge of this.summaryEdge) {
-                if (cacheEdge.edgeStart == edge.edgeEnd && cacheEdge.edgeEnd.node == returnSite) {
-                    this.propagate(new PathEdge<D>(start, cacheEdge.edgeEnd));
-                }
+        }
+        let callToReturnflowFunc:FlowFunction<D> = this.problem.getCallToReturnFlowFunction(edge.edgeEnd.node, returnSite);
+        let set : Set<D> = callToReturnflowFunc.getDataFacts(callEdgePoint.fact);
+        for (let fact of set) {
+            this.propagate(new PathEdge<D>(start, new PathEdgePoint<D>(returnSite, fact)));
+        }
+        for (let cacheEdge of this.summaryEdge) {
+            if (cacheEdge.edgeStart == edge.edgeEnd && cacheEdge.edgeEnd.node == returnSite) {
+                this.propagate(new PathEdge<D>(start, cacheEdge.edgeEnd));
             }
         }
+        
     }
 
     protected doSolve() {
