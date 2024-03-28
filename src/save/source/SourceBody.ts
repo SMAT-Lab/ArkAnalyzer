@@ -5,7 +5,6 @@ import { ArkParameterRef } from "../../core/base/Ref";
 import { ArkAssignStmt, ArkGotoStmt, ArkIfStmt, ArkInvokeStmt, ArkReturnStmt, ArkReturnVoidStmt, ArkSwitchStmt, Stmt } from '../../core/base/Stmt';
 import { CallableType } from '../../core/base/Type';
 import { BasicBlock } from '../../core/graph/BasicBlock';
-import { DominanceFinder } from "../../core/graph/DominanceFinder";
 import { DominanceTree } from "../../core/graph/DominanceTree";
 import { ArkBody } from "../../core/model/ArkBody";
 import { ArkMethod } from '../../core/model/ArkMethod';
@@ -39,7 +38,6 @@ export class SourceBody {
         this.printer = new ArkCodeBuffer(indent);
         this.method = method;
         this.arkBody = method.getBody();
-        this.dominanceTree = new DominanceTree(new DominanceFinder(this.arkBody.getCfg()));
         this.identifyBlocks();
         this.buildSourceStmt();
     }
@@ -104,12 +102,19 @@ export class SourceBody {
         let loop: boolean = false;
         visitor.delete(block);
 
+        if (block.getSuccessors().length == 0) {
+            return loop;
+        }
+
         let next = block.getSuccessors()[0];
         onPath.add(next);
         dfs(next);
         
         visitor.add(block);
-        this.loopPath.set(block, onPath);
+        if (loop) {
+            this.loopPath.set(block, onPath);
+        }
+        
         return loop;
 
         function dfs(_block: BasicBlock): void {
@@ -167,9 +172,16 @@ export class SourceBody {
 
     private isIfElseBB(block: BasicBlock): boolean {
         for (const nextBlock of block.getSuccessors()) {
-            // if block dominates successorBlocks[i], than successorBlocks[i] not in branch
-            if (this.hasDominated(block, nextBlock)) {
-                return false;
+            for (const otherBlock of block.getSuccessors()) {
+                if (nextBlock == otherBlock) {
+                    continue;
+                }
+
+                for (const successor of nextBlock.getSuccessors()) {
+                    if (successor == otherBlock) {
+                        return false;
+                    }
+                }
             }
         }
         return true;
@@ -216,14 +228,19 @@ export class SourceBody {
                 } else {
                     this.stmts.push(new SourceIfStmt(stmt, stmtReader, this.method));
                     let successorBlocks = block.getSuccessors();
-                    if (this.blockTypes.get(block) == BlockType.IF_ELSE) {
-                        visitor.add(successorBlocks[1]);
-                        this.buildBasicBlock(successorBlocks[1], visitor, stmt);
+                    if (successorBlocks.length>= 2 && this.blockTypes.get(block) == BlockType.IF_ELSE) {
+                        if (!visitor.has(successorBlocks[1])) {
+                            visitor.add(successorBlocks[1]);
+                            this.buildBasicBlock(successorBlocks[1], visitor, stmt);
+                        }
                     }
+
                     if (successorBlocks.length > 0 && !visitor.has(successorBlocks[0])) {
-                        this.stmts.push(new SourceElseStmt(stmt, stmtReader, this.method));
-                        visitor.add(successorBlocks[0]);
-                        this.buildBasicBlock(successorBlocks[0], visitor, stmt);
+                        if (!visitor.has(successorBlocks[0])) {
+                            this.stmts.push(new SourceElseStmt(stmt, stmtReader, this.method));
+                            visitor.add(successorBlocks[0]);
+                            this.buildBasicBlock(successorBlocks[0], visitor, stmt);
+                        }
                     }
                     this.stmts.push(new SourceCompoundEndStmt('}'));
                 }
