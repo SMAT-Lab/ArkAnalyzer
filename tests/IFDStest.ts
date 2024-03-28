@@ -203,7 +203,7 @@ let config: SceneConfig = new SceneConfig();
 config.buildFromJson(config_path);
 const scene = new Scene(config);
 const defaultMethod = scene.getFiles()[0].getDefaultClass().getDefaultArkMethod();
-const method = ModelUtils.getMethodWithName("main",defaultMethod!);
+const method = ModelUtils.getMethodWithName("main2",defaultMethod!);
 if(method){
     const problem = new PossibleDivZeroChecker([...method.getCfg().getBlocks()][0].getStmts()[method.getParameters().length],method);
     const solver = new instanceSolver(problem, scene);

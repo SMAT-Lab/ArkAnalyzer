@@ -269,13 +269,17 @@ export abstract class DataflowSolver<D> {
         }
     }
 
-   protected isCallStatement(stmt:Stmt) : boolean {
-       return stmt.containsInvokeExpr();
-   }
+    protected isCallStatement(stmt:Stmt) : boolean {
+        return stmt.containsInvokeExpr();
+    }
 
-   protected isExitStatement(stmt:Stmt) : boolean {
-       return stmt instanceof ArkReturnStmt;
-   }
+    protected isExitStatement(stmt:Stmt) : boolean {
+        return stmt instanceof ArkReturnStmt;
+    }
+
+    public getPathEdgeSet(): Set<PathEdge<D> >{
+        return this.pathEdgeSet;
+    }
 }
 
 
