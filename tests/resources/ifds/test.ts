@@ -64,3 +64,10 @@ function main2() {
     x = new one().get();
     x = new Zero().get();
 }
+
+function func3(){}
+
+function main3(){
+    let x = 0;
+    func3();
+}
