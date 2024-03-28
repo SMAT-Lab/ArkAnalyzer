@@ -32,6 +32,8 @@ export class SourceUtils {
             } else {
                 return type.toString();
             }
+        } else if (!type) {
+            return 'any';
         } else {
             return type.toString();
         }
