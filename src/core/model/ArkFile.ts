@@ -289,7 +289,11 @@ export class ArkFile {
             return '';
         }
         await this.initSourceMap();
-        let lines = fs.readFileSync((this.sourceMap as BasicSourceMapConsumer).sources[0], 'utf8').split('\n');
+        let map = (this.sourceMap as BasicSourceMapConsumer).sources[0];
+        if (!fs.existsSync(map)) {
+            return '';
+        }
+        let lines = fs.readFileSync(map, 'utf8').split('\n');
         if (lines.length < line) {
             return '';
         }
