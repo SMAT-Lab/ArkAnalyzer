@@ -401,7 +401,7 @@ export class CfgBuilder {
                     if (ifchild.kind == "OpenParenToken") {
                         ifstm.condition = c.children[j + 1].text;
                         // expressionCondition=true;
-                        ifstm.code = "if(" + ifstm.condition + ")";
+                        ifstm.code = "if (" + ifstm.condition + ")";
                     }
                     if ((ifchild.kind == "CloseParenToken" || ifchild.kind == "ElseKeyword") && c.children[j + 1].kind != "Block") {
                         let tempBlock = new NodeA(undefined, c, [], "undefined", 0, "Block");
@@ -438,7 +438,7 @@ export class CfgBuilder {
                     if (loopchild.kind == "OpenParenToken") {
                         // expressionCondition=true;
                         loopstm.condition = c.children[j + 1].text;
-                        loopstm.code = "while(" + loopstm.condition + ")";
+                        loopstm.code = "while (" + loopstm.condition + ")";
                     }
                     if ((loopchild.kind == "CloseParenToken") && c.children[j + 1].kind != "Block") {
                         let tempBlock = new NodeA(undefined, c, [], "undefined", 0, "Block");
@@ -472,7 +472,11 @@ export class CfgBuilder {
                 let code: string = "";
                 for (let loopchild of c.children) {
                     if (loopchild.kind != "Block") {
-                        code += loopchild.text + ' ';
+                        code += loopchild.text;
+                        const nextChild = c.children[c.children.indexOf(loopchild) + 1];
+                        if (nextChild && loopchild.text != "(" && nextChild.text != ")" && nextChild.text != ";"){
+                            code += ' ';
+                        }
                     }
                     else {
                         loopstm.code = code;
@@ -500,7 +504,7 @@ export class CfgBuilder {
                     if (loopchild.kind == "OpenParenToken") {
                         // expressionCondition=true;
                         loopstm.condition = c.children[j + 1].text;
-                        loopstm.code = "while(" + loopstm.condition + ")";
+                        loopstm.code = "while (" + loopstm.condition + ")";
                     }
                     if (loopchild.kind == "Block") {
                         this.walkAST(lastStatement, loopstm, loopchild.children[1]);
