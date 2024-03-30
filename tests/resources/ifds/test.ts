@@ -16,14 +16,28 @@ function  main(x:number, y:number) {
     x = nonZero();
     y = 3;
     y = zero();
-    let c = y/y;
+    let c = y/y;  // zero division
     if (x==0) {
         x = nonZero();
     } else {
         x = 3;
     }
+    x = x/x;
     x = identity(y);
-    x = 3/x;
+    x = 3/x;  // zero division
+    if (x==0) {
+        x = 3;
+    } else {
+        x = 0;
+    }
+    x = x/x; // zero division
+
+    if (x==0) {
+        x = 3;
+    } else {
+        x = zero();
+    }
+    x = x/x; // zero division
 }
 
 function func1(a:number,b:number){
@@ -42,6 +56,7 @@ function main1(){
 }
 
 class num {
+    constructor() {}
     get():number {
         return -1;
     }
@@ -59,10 +74,19 @@ class Zero extends num {
     }
 }
 
-function main2() {
-    let x = new num().get();
-    x = new one().get();
-    x = new Zero().get();
+function main2(a:Zero, b:num, c:one) {
+    let x = c.get();
+    x = x/x;
+    x = b.get();
+    x = x/x;
+    x = 1;
+    x = x/x;
+    x = a.get();
+    x = x/x;
+    let n : num = new num();
+    let y = n.get();
+    y = y/y;
+    
 }
 
 function func3(){}
