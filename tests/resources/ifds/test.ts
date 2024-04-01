@@ -8,36 +8,39 @@ function nonZero() : number {
 }
 
 function zero() : number {
+    let z = nonZero()
     return 0;
 }
 
+function fun(x:number){
+    console.log(x)
+}
 
-function  main(x:number, y:number) {
-    x = nonZero();
-    y = 3;
-    y = zero();
-    let c = y/y;  // zero division
-    if (x==0) {
-        x = nonZero();
-    } else {
-        x = 3;
-    }
-    x = x/x;
-    x = identity(y);
-    x = 3/x;  // zero division
-    if (x==0) {
-        x = 3;
-    } else {
-        x = 0;
-    }
-    x = x/x; // zero division
+function  main(x:number) {
+    fun(0);
+    fun(0);
+    // let c = y/y;  // zero division
+    // if (x==0) {
+    //     x = nonZero();
+    // } else {
+    //     x = 3;
+    // }
+    // x = x/x;
+    // x = identity(y);
+    // x = 3/x;  // zero division
+    // if (x==0) {
+    //     x = 3;
+    // } else {
+    //     x = 0;
+    // }
+    // x = x/x; // zero division
 
-    if (x==0) {
-        x = 3;
-    } else {
-        x = zero();
-    }
-    x = x/x; // zero division
+    // if (x==0) {
+    //     x = 3;
+    // } else {
+    //     x = zero();
+    // }
+    // x = x/x; // zero division
 }
 
 function func1(a:number,b:number){
