@@ -165,6 +165,9 @@ export abstract class DataflowSolver<D> {
         }
         const callEdgePoints = this.inComing.get(startEdgePoint);
         if (callEdgePoints == undefined){
+            if (startEdgePoint.node.getCfg()!.getDeclaringMethod() == this.problem.getEntryMethod()){
+                return;
+            }
             throw new Error("incoming does not have "+startEdgePoint.node.getCfg()?.getDeclaringMethod().toString());
         }
         for (let callEdgePoint of callEdgePoints) {
@@ -222,7 +225,13 @@ export abstract class DataflowSolver<D> {
                 let startEdgePoint:PathEdgePoint<D>  = new PathEdgePoint(firstStmt, fact);
                 this.propagate(new PathEdge<D>(startEdgePoint,startEdgePoint));
                 //add callEdgePoint in inComing.get(startEdgePoint)
-                const coming = this.inComing.get(startEdgePoint);
+                let coming: Set<PathEdgePoint<D>> | undefined = undefined;
+                for (const incoming of this.inComing.keys()){
+                    if (incoming.fact == startEdgePoint.fact && incoming.node == startEdgePoint.node) {
+                        coming = this.inComing.get(incoming);
+                        break;
+                    }
+                }
                 if (coming == undefined){
                     this.inComing.set(startEdgePoint, new Set([callEdgePoint]));
                 }
@@ -250,7 +259,7 @@ export abstract class DataflowSolver<D> {
         }
         for (let cacheEdge of this.summaryEdge) {
             if (cacheEdge.edgeStart == edge.edgeEnd && cacheEdge.edgeEnd.node == returnSite) {
-                this.propagate(new PathEdge<D>(start, cacheEdge.edgeEnd));
+                this.propagate(new PathEdge<D>(start, cacheEdge.edgeEnd));//什么时候执行
             }
         }
         
@@ -275,7 +284,7 @@ export abstract class DataflowSolver<D> {
     }
 
     protected isExitStatement(stmt:Stmt) : boolean {
-        return stmt instanceof ArkReturnStmt;
+        return stmt instanceof ArkReturnStmt || stmt instanceof ArkReturnVoidStmt;
     }
 
     public getPathEdgeSet(): Set<PathEdge<D> >{

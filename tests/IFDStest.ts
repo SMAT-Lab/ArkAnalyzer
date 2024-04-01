@@ -39,7 +39,7 @@ class PossibleDivZeroChecker extends DataflowProblem<Local> {
         return this.entryMethod;
     }
 
-    private isLiteralZero(val : Value) : boolean {
+    public isLiteralZero(val : Value) : boolean {
         if (val instanceof Constant) {
             let constant : Constant = val as Constant;
             if (constant.getType() instanceof NumberType && val.getValue() == '0') {
@@ -86,17 +86,17 @@ class PossibleDivZeroChecker extends DataflowProblem<Local> {
                         } else if (rightOp instanceof ArkBinopExpr) {
                             let binaryOp : ArkBinopExpr =rightOp as ArkBinopExpr
                             if (binaryOp.getOperator() == '/') {
-                              let divisor : Value = binaryOp.getOp2();
-                              let dividend : Value = binaryOp.getOp1();
-                              if (divisor == dataFact || checkerInstance.isLiteralZero(divisor)) {
-                                console.log("divison isntruction with zero divisor is detected！")
-                                console.log(srcStmt.toString());
-                                console.log(srcStmt.getOriginPositionInfo());
-                              } else if (dividend == dataFact) {
-                                ret.add(assigned);
-                              } else if (dataFact == checkerInstance.getZeroValue() && checkerInstance.isLiteralZero(dividend)) {
-                                ret.add(assigned);
-                              }
+                                let divisor : Value = binaryOp.getOp2();
+                                let dividend : Value = binaryOp.getOp1();
+                                if (divisor == dataFact || checkerInstance.isLiteralZero(divisor)) {
+                                    console.log("divison isntruction with zero divisor is detected！")
+                                    console.log(srcStmt.toString());
+                                    console.log(srcStmt.getOriginPositionInfo());
+                                } else if (dividend == dataFact) {
+                                    ret.add(assigned);
+                                } else if (dataFact == checkerInstance.getZeroValue() && checkerInstance.isLiteralZero(dividend)) {
+                                    ret.add(assigned);
+                                }
                             }
                         }
                     }
@@ -203,7 +203,7 @@ let config: SceneConfig = new SceneConfig();
 config.buildFromJson(config_path);
 const scene = new Scene(config);
 const defaultMethod = scene.getFiles()[0].getDefaultClass().getDefaultArkMethod();
-const method = ModelUtils.getMethodWithName("main3",defaultMethod!);
+const method = ModelUtils.getMethodWithName("main",defaultMethod!);
 if(method){
     const problem = new PossibleDivZeroChecker([...method.getCfg().getBlocks()][0].getStmts()[method.getParameters().length],method);
     const solver = new instanceSolver(problem, scene);
