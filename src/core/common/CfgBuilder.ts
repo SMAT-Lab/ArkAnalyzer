@@ -1516,6 +1516,7 @@ export class CfgBuilder {
         arkClass.setName(anonymousClassName);
         let arkFile = this.declaringClass.getDeclaringArkFile();
         arkClass.setDeclaringArkFile(arkFile);
+        arkClass.setLine(objectLiteralNode.line + 1);
         arkClass.genSignature();
         arkFile.addArkClass(arkClass);
         const classSignature = arkClass.getSignature();
