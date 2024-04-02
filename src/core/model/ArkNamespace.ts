@@ -272,7 +272,7 @@ export function buildArkNamespace(nsNode: NodeA, declaringInstance: ArkFile | Ar
     });
 
     ns.setCode(nsNode.text);
-    ns.setLine(nsNode.line);
+    ns.setLine(nsNode.line + 1);
 
     let tmpNode = findIndicatedChild(nsNode, "ModuleBlock");
     if (tmpNode) {

@@ -260,7 +260,7 @@ export function buildDefaultArkClassFromArkNamespace(defaultClassNode: NodeA, ar
 export function buildNormalArkClassFromArkFile(clsNode: NodeA, arkFile: ArkFile, cls: ArkClass) {
     cls.setDeclaringArkFile(arkFile);
     cls.setCode(clsNode.text);
-    cls.setLine(clsNode.line);
+    cls.setLine(clsNode.line + 1);
     buildNormalArkClass(clsNode, cls);
 }
 

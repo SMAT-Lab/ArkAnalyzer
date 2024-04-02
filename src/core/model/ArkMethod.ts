@@ -186,7 +186,7 @@ export function buildArkMethodFromArkClass(methodNode: NodeA, declaringClass: Ar
 
 export function buildNormalArkMethodFromAstNode(methodNode: NodeA, mtd: ArkMethod) {
     mtd.setCode(methodNode.text);
-    mtd.setLine(methodNode.line);
+    mtd.setLine(methodNode.line + 1);
 
     if (!methodNode.methodNodeInfo) {
         throw new Error('Error: There is no methodNodeInfo for this method!');
