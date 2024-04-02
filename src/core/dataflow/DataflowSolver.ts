@@ -267,7 +267,7 @@ export abstract class DataflowSolver<D> {
 
     protected doSolve() {
         while (this.workList.length != 0) {
-            let pathEdge:PathEdge<D> = this.workList.pop()!;
+            let pathEdge:PathEdge<D> = this.workList.shift()!;
             let targetStmt : Stmt = pathEdge.edgeEnd.node;
             if (this.isCallStatement(targetStmt)) {
                 this.processCallNode(pathEdge)
