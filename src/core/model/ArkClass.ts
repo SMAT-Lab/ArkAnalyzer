@@ -350,7 +350,7 @@ function buildNormalArkClass(clsNode: NodeA, cls: ArkClass) {
                     if (cld.kind == 'GetAccessor') {
                         let getAccessorName = cld.methodNodeInfo?.getAccessorName;
                         if (!getAccessorName) {
-                            logger.info("Cannot get GetAccessorName for method: ", mthd.getSignature().toString());
+                            logger.warn("Cannot get GetAccessorName for method: ", mthd.getSignature().toString());
                         }
                         else {
                             cls.getFields().forEach((field) => {

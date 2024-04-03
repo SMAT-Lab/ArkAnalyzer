@@ -552,7 +552,7 @@ export class CfgBuilder {
                                 }
                             }
                             if (syntaxList == null) {
-                                logger.info("caseClause without syntaxList");
+                                logger.warn("caseClause without syntaxList");
                                 process.exit();
                             }
                             if (syntaxList.children.length == 0) {
@@ -700,7 +700,7 @@ export class CfgBuilder {
                 let p = cstm.nextT;
                 while (p.type.includes("Exit")) {
                     if (p.next == null) {
-                        logger.info("exit error");
+                        logger.error("exit error");
                         process.exit();
                     }
                     p = p.next;
@@ -711,7 +711,7 @@ export class CfgBuilder {
                 let p = cstm.nextF;
                 while (p.type.includes("Exit")) {
                     if (p.next == null) {
-                        logger.info("exit error");
+                        logger.error("exit error");
                         process.exit();
                     }
                     p = p.next;
@@ -733,7 +733,7 @@ export class CfgBuilder {
                     let p = caseClause;
                     while (p.type.includes("Exit")) {
                         if (p.next == null) {
-                            logger.info("exit error");
+                            logger.error("exit error");
                             process.exit();
                         }
                         p = p.next;
@@ -760,7 +760,7 @@ export class CfgBuilder {
                 let p = stm.next;
                 while (p.type.includes("Exit")) {
                     if (p.next == null) {
-                        logger.info("error exit");
+                        logger.error("error exit");
                         process.exit();
                     }
                     p = p.next;
@@ -833,7 +833,7 @@ export class CfgBuilder {
         else if (stm.type == "tryStatement") {
             let trystm = stm as TryStatementBuilder;
             if (!trystm.tryFirst) {
-                logger.info("try without tryFirst");
+                logger.error("try without tryFirst");
                 process.exit();
             }
             let tryFirstBlock = this.buildNewBlock([]);
@@ -2329,7 +2329,7 @@ export class CfgBuilder {
             parent = stm.astNode.parent;
         else {
             if (!this.entry.astNode) {
-                logger.info("entry without astNode");
+                logger.error("entry without astNode");
                 process.exit();
             }
             parent = this.entry.astNode;
@@ -2353,7 +2353,7 @@ export class CfgBuilder {
             parent = stm.astNode.parent;
         else {
             if (!this.entry.astNode) {
-                logger.info("entry without astNode");
+                logger.error("entry without astNode");
                 process.exit();
             }
             parent = this.entry.astNode;
@@ -2398,7 +2398,7 @@ export class CfgBuilder {
                     last3AC = temp;
                 }
                 if (!stm.astNode) {
-                    logger.info("stm without ast");
+                    logger.error("stm without ast");
                     process.exit();
                 }
                 let block = stm.astNode.children[this.findChildIndex(stm.astNode, "Block")];

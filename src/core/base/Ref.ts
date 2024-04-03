@@ -42,7 +42,7 @@ export class ArkArrayRef extends AbstractRef {
         if (baseType instanceof ArrayType) {
             return baseType.getBaseType();
         } else {
-            logger.info(`the type of base in ArrayRef is not ArrayType`);   
+            logger.warn(`the type of base in ArrayRef is not ArrayType`);   
             return UnknownType.getInstance();
         }
     }

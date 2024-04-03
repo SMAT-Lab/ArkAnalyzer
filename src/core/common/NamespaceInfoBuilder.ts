@@ -40,7 +40,7 @@ export function buildNamespaceInfo4NamespaceNode(node: ts.ModuleDeclaration): Na
         namespaceInfo.setName(node.name.text);
     }
     else {
-        logger.info("New namespace name type found. Please contact developers to add support for this!")
+        logger.warn("New namespace name type found. Please contact developers to add support for this!")
     }
     return namespaceInfo;
 }
