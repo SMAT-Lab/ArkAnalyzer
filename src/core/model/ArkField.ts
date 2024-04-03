@@ -20,6 +20,7 @@ export class ArkField {
 
     private fieldSignature: FieldSignature;
     private originPosition: LineColPosition;
+    private etsPosition: LineColPosition;
 
     private arkMethodSignature: MethodSignature;
 
@@ -172,6 +173,19 @@ export class ArkField {
 
     public getOriginPosition(): LineColPosition {
         return this.originPosition;
+    }
+
+    public setEtsPositionInfo(position: LineColPosition) {
+        this.etsPosition = position;
+    }
+
+    public async getEtsPositionInfo(): Promise<LineColPosition> {
+        if (!this.etsPosition) {
+            let arkFile = this.declaringClass.getDeclaringArkFile();
+            const etsPosition = await arkFile.getEtsOriginalPositionFor(this.originPosition);
+            this.setEtsPositionInfo(etsPosition);
+        }
+        return this.etsPosition;
     }
 
     public setArkMethodSignature(methodSignature: MethodSignature) {

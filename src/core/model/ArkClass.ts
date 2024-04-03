@@ -7,6 +7,7 @@ import { ArkMethod, arkMethodNodeKind, buildArkMethodFromArkClass } from "./ArkM
 import { ArkNamespace } from "./ArkNamespace";
 import { ClassSignature, FieldSignature, MethodSignature } from "./ArkSignature";
 import Logger, { LOG_LEVEL } from "../../utils/logger";
+import { LineColPosition } from "../base/Position";
 
 const logger = Logger.getLogger();
 
@@ -15,6 +16,10 @@ export class ArkClass {
     private originType: string = "Class";
     private code: string;
     private line: number = -1;
+    private column: number = -1;
+
+    private etsPosition: LineColPosition;
+
     private declaringArkFile: ArkFile;
     private declaringArkNamespace: ArkNamespace;
     private classSignature: ClassSignature;
@@ -71,6 +76,27 @@ export class ArkClass {
 
     public setLine(line: number) {
         this.line = line;
+    }
+
+    public getColumn() {
+        return this.column;
+    }
+
+    public setColumn(column: number) {
+        this.column = column;
+    }
+
+    public setEtsPositionInfo(position: LineColPosition) {
+        this.etsPosition = position;
+    }
+
+    public async getEtsPositionInfo(): Promise<LineColPosition> {
+        if (!this.etsPosition) {
+            let arkFile = this.declaringArkFile;
+            const etsPosition = await arkFile.getEtsOriginalPositionFor(new LineColPosition(this.line, this.column));
+            this.setEtsPositionInfo(etsPosition);
+        }
+        return this.etsPosition;
     }
 
     public getOriginType() {
@@ -263,6 +289,7 @@ export function buildNormalArkClassFromArkFile(clsNode: NodeA, arkFile: ArkFile,
     cls.setDeclaringArkFile(arkFile);
     cls.setCode(clsNode.text);
     cls.setLine(clsNode.line + 1);
+    cls.setColumn(clsNode.character + 1);
     buildNormalArkClass(clsNode, cls);
 }
 
@@ -270,7 +297,8 @@ export function buildNormalArkClassFromArkNamespace(clsNode: NodeA, arkNamespace
     cls.setDeclaringArkNamespace(arkNamespace);
     cls.setDeclaringArkFile(arkNamespace.getDeclaringArkFile());
     cls.setCode(clsNode.text);
-    cls.setLine(clsNode.line);
+    cls.setLine(clsNode.line + 1);
+    cls.setColumn(clsNode.character + 1);
     buildNormalArkClass(clsNode, cls);
 }
 

@@ -1,4 +1,5 @@
 import { NodeA } from "../base/Ast";
+import { LineColPosition } from "../base/Position";
 import { Type, UnknownType } from "../base/Type";
 import { BodyBuilder } from "../common/BodyBuilder";
 import { MethodParameter } from "../common/MethodInfoBuilder";
@@ -16,6 +17,10 @@ export class ArkMethod {
     private name: string;
     private code: string;
     private line: number = -1;
+    private column: number = -1;
+
+    private etsPosition: LineColPosition;
+
     private declaringArkFile: ArkFile;
     private declaringArkClass: ArkClass;
 
@@ -53,6 +58,27 @@ export class ArkMethod {
 
     public setLine(line: number) {
         this.line = line;
+    }
+
+    public getColumn() {
+        return this.column;
+    }
+
+    public setColumn(column: number) {
+        this.column = column;
+    }
+
+    public setEtsPositionInfo(position: LineColPosition) {
+        this.etsPosition = position;
+    }
+
+    public async getEtsPositionInfo(): Promise<LineColPosition> {
+        if (!this.etsPosition) {
+            let arkFile = this.declaringArkFile;
+            const etsPosition = await arkFile.getEtsOriginalPositionFor(new LineColPosition(this.line, this.column));
+            this.setEtsPositionInfo(etsPosition);
+        }
+        return this.etsPosition;
     }
 
     public getDeclaringArkClass() {
@@ -187,6 +213,7 @@ export function buildArkMethodFromArkClass(methodNode: NodeA, declaringClass: Ar
 export function buildNormalArkMethodFromAstNode(methodNode: NodeA, mtd: ArkMethod) {
     mtd.setCode(methodNode.text);
     mtd.setLine(methodNode.line + 1);
+    mtd.setColumn(methodNode.character + 1);
 
     if (!methodNode.methodNodeInfo) {
         throw new Error('Error: There is no methodNodeInfo for this method!');
