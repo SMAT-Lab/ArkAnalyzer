@@ -6,7 +6,9 @@ import { ArkFile } from "./ArkFile";
 import { ArkMethod, arkMethodNodeKind, buildArkMethodFromArkClass } from "./ArkMethod";
 import { ArkNamespace } from "./ArkNamespace";
 import { ClassSignature, FieldSignature, MethodSignature } from "./ArkSignature";
+import Logger, { LOG_LEVEL } from "../../utils/logger";
 
+const logger = Logger.getLogger();
 
 export class ArkClass {
     private name: string;
@@ -317,6 +319,22 @@ function buildNormalArkClass(clsNode: NodeA, cls: ArkClass) {
                     let mthd: ArkMethod = new ArkMethod();
                     buildArkMethodFromArkClass(cld, cls, mthd);
                     cls.addMethod(mthd);
+                    if (cld.kind == 'GetAccessor') {
+                        let getAccessorName = cld.methodNodeInfo?.getAccessorName;
+                        if (!getAccessorName) {
+                            logger.info("Cannot get GetAccessorName for method: ", mthd.getSignature().toString());
+                        }
+                        else {
+                            cls.getFields().forEach((field) => {
+                                if (field.getName() === getAccessorName) {
+                                    field.setParameters(mthd.getParameters());
+                                    field.setType(mthd.getReturnType());
+                                    field.setTypeParameters(mthd.getTypeParameter());
+                                    field.setArkMethodSignature(mthd.getSignature());
+                                }
+                            });
+                        }
+                    }
                 }
             }
         }

@@ -2,7 +2,7 @@ import { LineColPosition } from "../base/Position";
 import { Type } from "../base/Type";
 import { MethodParameter } from "../common/MethodInfoBuilder";
 import { ArkClass } from "./ArkClass";
-import { FieldSignature } from "./ArkSignature";
+import { FieldSignature, MethodSignature } from "./ArkSignature";
 
 export class ArkField {
     private name: string = "";
@@ -20,6 +20,8 @@ export class ArkField {
 
     private fieldSignature: FieldSignature;
     private originPosition: LineColPosition;
+
+    private arkMethodSignature: MethodSignature;
 
     //private initializer, TODO
 
@@ -170,6 +172,14 @@ export class ArkField {
 
     public getOriginPosition(): LineColPosition {
         return this.originPosition;
+    }
+
+    public setArkMethodSignature(methodSignature: MethodSignature) {
+        this.arkMethodSignature = methodSignature;
+    }
+
+    public getArkMethodSignature() {
+        return this.arkMethodSignature;
     }
 
 }

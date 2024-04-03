@@ -1,5 +1,5 @@
 import * as ts from "typescript";
-import { buildHeritageClauses, buildIndexSignature2ArkField, buildModifiers, buildProperty2ArkField, buildTypeParameters } from "../../utils/builderUtils";
+import { buildGetAccessor2ArkField, buildHeritageClauses, buildIndexSignature2ArkField, buildModifiers, buildProperty2ArkField, buildTypeParameters } from "../../utils/builderUtils";
 import Logger from "../../utils/logger";
 import { Type } from "../base/Type";
 import { ArkField } from "../model/ArkField";
@@ -115,8 +115,11 @@ export function buildClassInfo4ClassNode(node: ts.ClassDeclaration | ts.ClassExp
         else if (ts.isIndexSignatureDeclaration(member)) {
             members.push(buildIndexSignature2ArkField(member, sourceFile));
         }
+        else if (ts.isGetAccessor(member)) {
+            members.push(buildGetAccessor2ArkField(member, sourceFile));
+        }
         else if (ts.isMethodDeclaration(member) || ts.isConstructorDeclaration(member) || ts.isMethodSignature(member) ||
-            ts.isConstructSignatureDeclaration(member) || ts.isAccessor(member) || ts.isCallSignatureDeclaration(member)
+            ts.isConstructSignatureDeclaration(member) || ts.isSetAccessor(member) || ts.isCallSignatureDeclaration(member)
             || ts.isSemicolonClassElement(member)) {
             // skip these members
         }

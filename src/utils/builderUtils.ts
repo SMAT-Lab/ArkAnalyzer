@@ -380,7 +380,7 @@ export function buildProperty2ArkField(member: ts.PropertyDeclaration | ts.Prope
     let field = new ArkField();
     field.setFieldType(ts.SyntaxKind[member.kind]);
     field.setOriginPosition(LineColPosition.buildFromNode(member, sourceFile));
-    
+
     if (ts.isComputedPropertyName(member.name)) {
         if (ts.isIdentifier(member.name.expression)) {
             let propertyName = member.name.expression.text;
@@ -437,6 +437,20 @@ export function buildIndexSignature2ArkField(member: ts.IndexSignatureDeclaratio
     }
     //type
     field.setType(buildReturnType4Method(member, sourceFile));
+    return field;
+}
+
+export function buildGetAccessor2ArkField(member: ts.GetAccessorDeclaration, sourceFile: ts.SourceFile): ArkField {
+    let field = new ArkField();
+    if (ts.isIdentifier(member.name)) {
+        field.setName(member.name.text);
+    }
+    else {
+        logger.info("Please contact developers to support new type of GetAccessor name!");
+        field.setName('');
+    }
+    field.setFieldType(ts.SyntaxKind[member.kind]);
+    field.setOriginPosition(LineColPosition.buildFromNode(member, sourceFile));
     return field;
 }
 
