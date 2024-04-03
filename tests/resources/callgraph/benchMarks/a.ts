@@ -1,5 +1,5 @@
 import { B } from "./b";
-import Logger from "../../../src/utils/logger";
+import Logger from "../../../../src/utils/logger";
 let logger = Logger.getLogger()
 
 export function A(){
@@ -17,7 +17,7 @@ export class Dog extends Animal {
     public aaaaaaaaaa: number
     public static num: FieldB = new FieldB()
     public sound() {
-        logger.info("woof")
+        // logger.info("woof")
         let cat = new Cat()
         cat.sound()
         this.sleep()
@@ -35,11 +35,15 @@ export class Cat extends Animal {
     public sound() {
         logger.info("meewo")
     }
+
+    public testWithParams(a: Dog) {
+        // logger.info(a)
+        this.sound()
+    }
 }
 
 export class Main {
     public static makeAnimalSound(animal: Animal) {
-        // let b = 1
         animal.sound()
     }
 

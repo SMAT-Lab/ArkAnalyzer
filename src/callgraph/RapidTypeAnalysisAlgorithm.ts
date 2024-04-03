@@ -52,7 +52,8 @@ export class RapidTypeAnalysisAlgorithm extends AbstractCallGraph {
                     if (targetMethod == null) {
                         continue
                     }
-                    if (!targetMethod.getModifiers().has("AbstractKeyword")) {
+                    if (!targetMethod.getDeclaringArkClass().getModifiers().has("AbstractKeyword") &&
+                    !targetMethod.getModifiers().has("AbstractKeyword")) {
                         if (this.getInstancedClass(targetMethod.getDeclaringArkClass().getSignature()) !== null) {
                             if (!isItemRegistered<MethodSignature>(
                                 targetMethod.getSignature(), callTargetMethods,
@@ -118,6 +119,7 @@ export class RapidTypeAnalysisAlgorithm extends AbstractCallGraph {
                 }
                 this.ignoredCalls.delete(newInstancedClass)
             }
+            this.addInstancedClass(newInstancedClass)
         }
     }
 
@@ -145,7 +147,6 @@ export class RapidTypeAnalysisAlgorithm extends AbstractCallGraph {
                     )) {
                         newInstancedClass.push(classSignature)
                     }
-                    this.addInstancedClass(classSignature)
                 }
             }
         }
@@ -210,9 +211,9 @@ export class RapidTypeAnalysisAlgorithm extends AbstractCallGraph {
     }
 
     protected saveIgnoredCalls(sourceMethodSignature: MethodSignature, targetMethodSignature: MethodSignature): void {
-        let notInstancedClass: ClassSignature = targetMethodSignature.getDeclaringClassSignature()
+        let notInstancedClassSignature: ClassSignature = targetMethodSignature.getDeclaringClassSignature()
         // notice: 是被调用函数的类没有实例化才会被加入边，且调用关系会以被调用函数类作为key
-        let ignoredCallsOfSpecificClass: Tuple[] = this.getIgnoredCalls(notInstancedClass)
+        let ignoredCallsOfSpecificClass: Tuple[] = this.getIgnoredCalls(notInstancedClassSignature)
 
         const callExists = ignoredCallsOfSpecificClass.some(ignoredCall =>
             ignoredCall[0].toString() === sourceMethodSignature.toString() &&
@@ -226,7 +227,7 @@ export class RapidTypeAnalysisAlgorithm extends AbstractCallGraph {
             // 当前集合中已经存在该类被忽略的边
             ignoredCallsOfSpecificClass.push([sourceMethodSignature, targetMethodSignature])
         } else {
-            this.ignoredCalls.set(notInstancedClass, [[sourceMethodSignature, targetMethodSignature]])
+            this.ignoredCalls.set(notInstancedClassSignature, [[sourceMethodSignature, targetMethodSignature]])
         }
     }
 

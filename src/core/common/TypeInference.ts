@@ -88,7 +88,15 @@ export class TypeInference {
                             const defaultClass = arkNamespace.getClasses().find(cls => cls.getName() == '_DEFAULT_ARK_CLASS') || null;
                             const foundMethod = ModelUtils.getMethodInClassWithName(methodName, defaultClass!);
                             if (foundMethod) {
-                                expr.setMethodSignature(foundMethod.getSignature());
+                                let replaceStaticInvokeExpr = new ArkStaticInvokeExpr(foundMethod.getSignature(), expr.getArgs())
+                                if (stmt.containsInvokeExpr()) {
+                                    if (stmt instanceof ArkAssignStmt && stmt.getRightOp() instanceof ArkInstanceInvokeExpr) {
+                                        stmt.setRightOp(replaceStaticInvokeExpr)
+                                    } else if (stmt instanceof ArkInvokeStmt) {
+                                        stmt.replaceInvokeExpr(replaceStaticInvokeExpr)
+                                    }
+                                    stmt.setText(stmt.toString().replace(/^instanceInvoke/, "staticinvoke"))
+                                }
                                 return;
                             }
                         }
@@ -113,8 +121,13 @@ export class TypeInference {
                 expr.setMethodSignature(method.getSignature());
                 if (method.getModifiers().has("StaticKeyword")) {
                     let replaceStaticInvokeExpr = new ArkStaticInvokeExpr(method.getSignature(), expr.getArgs())
-                    if (stmt instanceof ArkInvokeStmt) {
+                    if (stmt.containsInvokeExpr()) {
                         stmt.replaceInvokeExpr(replaceStaticInvokeExpr)
+                        if (stmt instanceof ArkAssignStmt && stmt.getRightOp() instanceof ArkInstanceInvokeExpr) {
+                            stmt.setRightOp(replaceStaticInvokeExpr)
+                        } else if (stmt instanceof ArkInvokeStmt) {
+                            stmt.replaceInvokeExpr(replaceStaticInvokeExpr)
+                        }
                         stmt.setText(stmt.toString().replace(/^instanceInvoke/, "staticinvoke"))
                     }
                 }

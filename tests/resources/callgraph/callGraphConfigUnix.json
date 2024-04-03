@@ -1,6 +1,6 @@
 {
-  "targetProjectName": "SE4OpenHarmony",
-  "targetProjectDirectory": "/Users/yangyizhuo/WebstormProjects/ArkAnalyzer/tests/resources/callgraph",
+  "targetProjectName": "Media",
+  "targetProjectDirectory": "/Users/yangyizhuo/WebstormProjects/ArkAnalyzer/tests/resources/callgraph/benchMarks",
 
   "ohosSdkPath": "",
   "kitSdkPath": "",

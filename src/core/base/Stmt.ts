@@ -102,6 +102,15 @@ export class Stmt {
         return false;
     }
 
+    public replaceInvokeExpr(newInvokeExpr: AbstractInvokeExpr) {
+        for (let i = 0; i < this.uses.length; i++) {
+            if (this.uses[i] instanceof AbstractInvokeExpr) {
+                this.uses[i] = newInvokeExpr;
+            }
+        }
+
+    }
+
     public getInvokeExpr(): AbstractInvokeExpr | undefined {
         for (const use of this.uses) {
             if (use instanceof AbstractInvokeExpr) {
@@ -283,6 +292,7 @@ export class ArkInvokeStmt extends Stmt {
 
     public replaceInvokeExpr(newExpr: AbstractInvokeExpr) {
         this.invokeExpr = newExpr
+        this.updateUses()
     }
 
     public getInvokeExpr() {
