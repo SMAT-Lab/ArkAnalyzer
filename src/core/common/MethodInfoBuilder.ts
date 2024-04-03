@@ -11,7 +11,7 @@ export class ObjectBindingPatternParameter {
     private optional: boolean = false;
     private initializer: string = "";
 
-    constructor() {}
+    constructor() { }
 
     public getName() {
         return this.name;
@@ -44,7 +44,7 @@ export class ArrayBindingPatternParameter {
     private optional: boolean = false;
     private initializer: string = "";
 
-    constructor() {}
+    constructor() { }
 
     public getName() {
         return this.name;
@@ -135,13 +135,15 @@ export class MethodInfo {
     modifiers: Set<string>;
     returnType: Type;
     typeParameters: Type[];
+    getAccessorName: string | undefined = undefined;
 
-    constructor(name: string, parameters: MethodParameter[], modifiers: Set<string>, returnType: Type, typeParameters: Type[]) {
+    constructor(name: string, parameters: MethodParameter[], modifiers: Set<string>, returnType: Type, typeParameters: Type[], getAccessorName?: string) {
         this.name = name;
         this.parameters = parameters;
         this.modifiers = modifiers;
         this.returnType = returnType;
         this.typeParameters = typeParameters;
+        this.getAccessorName = getAccessorName;
     }
 
     public updateName4anonymousFunc(newName: string) {
@@ -156,6 +158,7 @@ export function buildMethodInfo4MethodNode(node: ts.FunctionDeclaration | ts.Met
 
     //TODO: consider function without name
     let name: string = '';
+    let getAccessorName: string | undefined = undefined;
     if (ts.isFunctionDeclaration(node)) {
         name = node.name ? node.name.text : '';
     }
@@ -184,6 +187,7 @@ export function buildMethodInfo4MethodNode(node: ts.FunctionDeclaration | ts.Met
     }
     else if (ts.isGetAccessor(node) && ts.isIdentifier(node.name)) {
         name = 'Get-' + node.name.text;
+        getAccessorName = node.name.text;
     }
     else if (ts.isSetAccessor(node) && ts.isIdentifier(node.name)) {
         name = 'Set-' + node.name.text;
@@ -203,5 +207,5 @@ export function buildMethodInfo4MethodNode(node: ts.FunctionDeclaration | ts.Met
 
     let typeParameters = buildTypeParameters(node);
 
-    return new MethodInfo(name, parameterTypes, modifiers, returnType, typeParameters);
+    return new MethodInfo(name, parameterTypes, modifiers, returnType, typeParameters, getAccessorName);
 }
