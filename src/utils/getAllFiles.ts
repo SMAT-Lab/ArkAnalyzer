@@ -17,7 +17,7 @@ export function getAllFiles(
 ): string[] {
   // 如果源目录不存在，直接结束程序
   if (!fs.existsSync(srcPath)) {
-    logger.info(`Input directory is not exist, please check!`);
+    logger.error(`Input directory is not exist, please check!`);
     return filenameArr;
   }
 

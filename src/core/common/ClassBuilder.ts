@@ -124,7 +124,7 @@ export function buildClassInfo4ClassNode(node: ts.ClassDeclaration | ts.ClassExp
             // skip these members
         }
         else {
-            logger.info("Please contact developers to support new arkfield type!");
+            logger.warn("Please contact developers to support new arkfield type!");
         }
     });
 

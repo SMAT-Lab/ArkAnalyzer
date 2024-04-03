@@ -172,7 +172,7 @@ export function buildMethodInfo4MethodNode(node: ts.FunctionDeclaration | ts.Met
             }
         }
         else {
-            logger.info("Other method declaration type found!");
+            logger.warn("Other method declaration type found!");
         }
     }
     //TODO, hard code

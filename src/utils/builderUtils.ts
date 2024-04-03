@@ -75,7 +75,7 @@ export function buildHeritageClauses(node: ts.ClassDeclaration | ts.ClassExpress
                 heritageClauseName = handlePropertyAccessExpression(type.expression);
             }
             else {
-                logger.info("Other type expression found!!!");
+                logger.warn("Other type expression found!!!");
             }
             heritageClausesMap.set(heritageClauseName, ts.SyntaxKind[heritageClause.token]);
         });
@@ -95,7 +95,7 @@ export function buildTypeParameters(node: ts.ClassDeclaration | ts.ClassExpressi
             typeParameters.push(buildTypeFromPreStr(parametersTypeStr));
         }
         else {
-            logger.info("Other typeparameter found!!!");
+            logger.warn("Other typeparameter found!!!");
         }
     });
     return typeParameters;
@@ -121,7 +121,7 @@ export function buildParameters(node: ts.FunctionDeclaration | ts.MethodDeclarat
                         paraElement.setPropertyName(element.propertyName.text);
                     }
                     else {
-                        logger.info("New propertyName of ObjectBindingPattern found, please contact developers to support this!");
+                        logger.warn("New propertyName of ObjectBindingPattern found, please contact developers to support this!");
                     }
                 }
 
@@ -130,12 +130,12 @@ export function buildParameters(node: ts.FunctionDeclaration | ts.MethodDeclarat
                         paraElement.setName(element.name.text);
                     }
                     else {
-                        logger.info("New name of ObjectBindingPattern found, please contact developers to support this!");
+                        logger.warn("New name of ObjectBindingPattern found, please contact developers to support this!");
                     }
                 }
 
                 if (element.initializer) {
-                    logger.info("TODO: support ObjectBindingPattern initializer.");
+                    logger.warn("TODO: support ObjectBindingPattern initializer.");
                 }
 
                 if (element.dotDotDotToken) {
@@ -156,7 +156,7 @@ export function buildParameters(node: ts.FunctionDeclaration | ts.MethodDeclarat
                             paraElement.setPropertyName(element.propertyName.text);
                         }
                         else {
-                            logger.info("New propertyName of ArrayBindingPattern found, please contact developers to support this!");
+                            logger.warn("New propertyName of ArrayBindingPattern found, please contact developers to support this!");
                         }
                     }
 
@@ -165,12 +165,12 @@ export function buildParameters(node: ts.FunctionDeclaration | ts.MethodDeclarat
                             paraElement.setName(element.name.text);
                         }
                         else {
-                            logger.info("New name of ArrayBindingPattern found, please contact developers to support this!");
+                            logger.warn("New name of ArrayBindingPattern found, please contact developers to support this!");
                         }
                     }
 
                     if (element.initializer) {
-                        logger.info("TODO: support ArrayBindingPattern initializer.");
+                        logger.warn("TODO: support ArrayBindingPattern initializer.");
                     }
 
                     if (element.dotDotDotToken) {
@@ -178,14 +178,14 @@ export function buildParameters(node: ts.FunctionDeclaration | ts.MethodDeclarat
                     }
                 }
                 else if (ts.isOmittedExpression(element)) {
-                    logger.info("TODO: support OmittedExpression for ArrayBindingPattern parameter name.");
+                    logger.warn("TODO: support OmittedExpression for ArrayBindingPattern parameter name.");
                 }
                 elements.push(paraElement);
             });
             methodParameter.setArrayElements(elements);
         }
         else {
-            logger.info("Parameter name is not identifier, please contact developers to support this!");
+            logger.warn("Parameter name is not identifier, please contact developers to support this!");
         }
         if (parameter.questionToken) {
             methodParameter.setOptional(true);
@@ -247,7 +247,7 @@ export function buildParameters(node: ts.FunctionDeclaration | ts.MethodDeclarat
                         //members.push(buildMethodInfo4MethodNode(member));
                     }
                     else {
-                        logger.info("Please contact developers to support new TypeLiteral member!");
+                        logger.warn("Please contact developers to support new TypeLiteral member!");
                     }
                 });
                 let type = new TypeLiteralType();
@@ -282,7 +282,7 @@ export function buildReturnType4Method(node: ts.FunctionDeclaration | ts.MethodD
                     members.push(buildIndexSignature2ArkField(member, sourceFile));
                 }
                 else {
-                    logger.info("Please contact developers to support new TypeLiteral member!");
+                    logger.warn("Please contact developers to support new TypeLiteral member!");
                 }
             });
             let type = new TypeLiteralType();
@@ -299,7 +299,7 @@ export function buildReturnType4Method(node: ts.FunctionDeclaration | ts.MethodD
                 typeName = referenceNodeName.text;
             }
             else {
-                logger.info("New type of referenceNodeName found! Please contact developers to support this.");
+                logger.warn("New type of referenceNodeName found! Please contact developers to support this.");
             }
             return new UnclearReferenceType(typeName);
         }
@@ -315,10 +315,10 @@ export function buildReturnType4Method(node: ts.FunctionDeclaration | ts.MethodD
                         typeName = handleQualifiedName(tmpType.typeName);
                     }
                     else if (ts.isTypeLiteralNode(tmpType.typeName)) {
-                        logger.info("Type name is TypeLiteral, please contact developers to add support for this!");
+                        logger.warn("Type name is TypeLiteral, please contact developers to add support for this!");
                     }
                     else {
-                        logger.info("New type name of TypeReference in UnionType.");
+                        logger.warn("New type name of TypeReference in UnionType.");
                     }
                     unionType.push(new UnclearReferenceType(typeName));
                 }
@@ -390,7 +390,7 @@ export function buildProperty2ArkField(member: ts.PropertyDeclaration | ts.Prope
             field.setName(handlePropertyAccessExpression(member.name.expression));
         }
         else {
-            logger.info("Other property expression type found!");
+            logger.warn("Other property expression type found!");
         }
     }
     else if (ts.isIdentifier(member.name)) {
@@ -398,7 +398,7 @@ export function buildProperty2ArkField(member: ts.PropertyDeclaration | ts.Prope
         field.setName(propertyName);
     }
     else {
-        logger.info("Other property type found!");
+        logger.warn("Other property type found!");
     }
 
     if (!ts.isEnumMember(member) && member.modifiers) {
@@ -446,7 +446,7 @@ export function buildGetAccessor2ArkField(member: ts.GetAccessorDeclaration, sou
         field.setName(member.name.text);
     }
     else {
-        logger.info("Please contact developers to support new type of GetAccessor name!");
+        logger.warn("Please contact developers to support new type of GetAccessor name!");
         field.setName('');
     }
     field.setFieldType(ts.SyntaxKind[member.kind]);
@@ -467,7 +467,7 @@ function buildFieldType(fieldType: ts.TypeNode): Type {
                     tmpTypeName = tmpType.typeName.text;
                 }
                 else {
-                    logger.info("Other property type found!");
+                    logger.warn("Other property type found!");
                 }
                 unionType.push(new UnclearReferenceType(tmpTypeName));
             }

@@ -182,7 +182,7 @@ export class ASTree {
 
     printAST() {
         if (this.root == null) {
-            logger.info("no root")
+            logger.warn("no root")
         }
         this.singlePrintAST(this.root, 0)
     }
@@ -206,7 +206,7 @@ export class ASTree {
         block.parent = whileStatement;
         whileStatement.children = [whileKeyword, open, condition, close, block];
         if (!node.parent) {
-            logger.info("for without parent");
+            logger.error("for without parent");
             process.exit();
         }
         node.parent.children[node.parent.children.indexOf(node)] = whileStatement;
