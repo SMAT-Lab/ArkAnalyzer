@@ -474,7 +474,7 @@ export class CfgBuilder {
                     if (loopchild.kind != "Block") {
                         code += loopchild.text;
                         const nextChild = c.children[c.children.indexOf(loopchild) + 1];
-                        if (nextChild && loopchild.text != "(" && nextChild.text != ")" && nextChild.text != ";"){
+                        if (nextChild && loopchild.text != "(" && nextChild.text != ")" && nextChild.text != ";") {
                             code += ' ';
                         }
                     }
@@ -1517,6 +1517,7 @@ export class CfgBuilder {
         let arkFile = this.declaringClass.getDeclaringArkFile();
         arkClass.setDeclaringArkFile(arkFile);
         arkClass.setLine(objectLiteralNode.line + 1);
+        arkClass.setColumn(objectLiteralNode.character + 1);
         arkClass.genSignature();
         arkFile.addArkClass(arkClass);
         const classSignature = arkClass.getSignature();
