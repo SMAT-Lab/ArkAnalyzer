@@ -19,8 +19,14 @@ function runScene(config: SceneConfig) {
     for (let arkFile of projectScene.arkFiles) {
         if (arkFile.getName() === "main.ts") {
             // logger.info("filepath: "+arkFile.getFilePath())
-            let tempMethod = arkFile.getDefaultClass().getMethods()
-            entryPoints.push(tempMethod[0].getSignature())
+            let tempMethod = arkFile.getDefaultClass().getDefaultArkMethod()
+            entryPoints.push(tempMethod!.getSignature())
+            // let cla = arkFile.getClasses()[2]
+            // for (let method of cla.getMethods()) {
+            //     if (method.getName() == "onRun") {
+            //         entryPoints.push(method.getSignature())
+            //     }
+            // }
             // logger.info(tempMethod)
         }
     }
@@ -35,8 +41,8 @@ function runScene(config: SceneConfig) {
     // }
     projectScene.inferTypes()
     // let callGraph = projectScene.makeCallGraphCHA(entryPoints)
-    // let callGraph = projectScene.makeCallGraphRTA(entryPoints)
-    let callGraph = projectScene.makeCallGraphVPA(entryPoints)
+    let callGraph = projectScene.makeCallGraphRTA(entryPoints)
+    // let callGraph = projectScene.makeCallGraphVPA(entryPoints)
     let methods = callGraph.getMethods()
     let calls = callGraph.getCalls()
     printCallGraphDetails(methods, calls, config.getTargetProjectDirectory())

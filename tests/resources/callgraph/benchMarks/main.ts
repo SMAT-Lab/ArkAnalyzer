@@ -1,6 +1,6 @@
-import {A, Dog as Cat, Main} from './a'
+import {A, Dog as Cat, Main, Cat as NotCat} from './a'
 import {B as C, C as Class, invokeParam} from "./b";
-import {func1} from "./temp/a";
+// import {func1} from "./temp/a";
 // import taskpool from '@ohos.taskpool';
 // // namespace temp_temp {
 // //     export class A {
@@ -16,8 +16,9 @@ import {func1} from "./temp/a";
 // A();
 // temp()
 // C();
-let dog: Cat = new Cat()
-let notDog = dog
+// let dog: Cat = new Cat()
+// let notDog = dog
+// notDog.sleep()
 // let mee: Mav = new Cat()
 // let d: Cat | null = new Cat()
 // let c = dog.aaaaaaaaaa
@@ -26,11 +27,14 @@ let notDog = dog
 // let e = globalNumber
 // Cat.print()
 // dog.sound()
-// Main.main()
+Main.main()
 // func1(1)
-// // invokeParam(1, "b", new Class())
+// invokeParam(1, "b", new Class())
 // // let a: Cat.num = 1
 // // let a: temp_temp.A = new temp_temp.A()
+
+// let cat = new NotCat()
+// cat.testWithParams(dog)
 
 
 // let a = 3

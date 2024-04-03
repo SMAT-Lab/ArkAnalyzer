@@ -76,9 +76,24 @@ export class SceneManager {
     }
 
     public getMethod(method: MethodSignature): ArkMethod | null {
-        return this._scene.getMethod(
-            method
-        );
+        let targetMethod =  this._scene.getMethod(method);
+        if (targetMethod == null) {
+            // 支持SDK调用解析
+            let sdkMap = this.scene.getSdkArkFilestMap()
+            for (let file of sdkMap.values()) {
+                if (file.getFileSignature().toString() ==
+                method.getDeclaringClassSignature().getDeclaringFileSignature().toString()) {
+                    const methods = file.getAllMethodsUnderThisFile()
+                    for (let methodUnderFile of methods) {
+                        if (method.toString() == 
+                        methodUnderFile.getSignature().toString()) {
+                            return methodUnderFile
+                        }
+                    }
+                }
+            }
+        }
+        return targetMethod
     }
 
     public getClass(arkClass: ClassSignature): ArkClass | null {

@@ -1,6 +1,9 @@
 import { NodeA } from "../base/Ast";
+import { ArkParameterRef, ArkThisRef } from "../base/Ref";
+import { ArkAssignStmt, ArkReturnStmt } from "../base/Stmt";
 import { LineColPosition } from "../base/Position";
 import { Type, UnknownType } from "../base/Type";
+import { Value } from "../base/Value";
 import { BodyBuilder } from "../common/BodyBuilder";
 import { MethodParameter } from "../common/MethodInfoBuilder";
 import { Cfg } from "../graph/Cfg";
@@ -184,6 +187,49 @@ export class ArkMethod {
 
     public getOriginalCfg() {
         return this.body.getOriginalCfg();
+    }
+
+    public getParameterInstances(): Value[] {
+        // 获取方法体中参数Local实例
+        let stmts = this.getCfg().getStmts()
+        let results: Value[] = []
+        for (let stmt of stmts) {
+            if (stmt instanceof ArkAssignStmt) {
+                if (stmt.getRightOp() instanceof ArkParameterRef) {
+                    results.push((stmt as ArkAssignStmt).getLeftOp())
+                }
+            }
+            if (results.length == this.getParameters().length) {
+                return results
+            }
+        }
+        return results
+    }
+
+    public getThisInstance(): Value | null {
+        // 获取方法体中This实例
+        let stmts = this.getCfg().getStmts()
+        let results: Value[] = []
+        for (let stmt of stmts) {
+            if (stmt instanceof ArkAssignStmt) {
+                if (stmt.getRightOp() instanceof ArkThisRef) {
+                    return stmt.getLeftOp()
+                }
+            }
+        }
+        return null
+    }
+
+    public getReturnValues(): Value[] {
+        // 获取方法体中return值实例
+        let resultValues: Value[] = []
+        let stmts = this.getCfg().getStmts()
+        for (let stmt of stmts) {
+            if (stmt instanceof ArkReturnStmt) {
+                resultValues.push(stmt.getOp())
+            }
+        }
+        return resultValues
     }
 }
 
