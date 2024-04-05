@@ -39,6 +39,11 @@ export class Cat extends Animal {
     public testWithParams(a: Dog) {
         // logger.info(a)
         this.sound()
+        a.sleep()
+    }
+
+    public getCat(): Cat {
+        return this
     }
 }
 

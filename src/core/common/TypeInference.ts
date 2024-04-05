@@ -1,6 +1,6 @@
-import { Scene } from "../../Scene";
+import { Scene } from './../../Scene';
 import Logger from "../../utils/logger";
-import { ArkBinopExpr, ArkInstanceInvokeExpr, ArkNewExpr, ArkStaticInvokeExpr } from "../base/Expr";
+import { AbstractInvokeExpr, ArkBinopExpr, ArkInstanceInvokeExpr, ArkNewExpr, ArkStaticInvokeExpr } from "../base/Expr";
 import { Local } from "../base/Local";
 import { ArkInstanceFieldRef, ArkParameterRef } from "../base/Ref";
 import { ArkAssignStmt, ArkInvokeStmt, Stmt } from "../base/Stmt";
@@ -235,6 +235,39 @@ export class TypeInference {
                             }
                         }
                         leftOp.setType(fieldType)
+                    } else if (rightOp instanceof AbstractInvokeExpr) {
+                        // 函数调用返回值解析
+                        if (arkMethod === null) {
+                            return
+                        }
+                        let invokeExpr = stmt.getInvokeExpr()!
+                        let methodSignature = invokeExpr.getMethodSignature()
+                        const arkClass = ModelUtils.getClassWithClassSignature(
+                            methodSignature.getDeclaringClassSignature(), 
+                            arkMethod.getDeclaringArkFile().getScene());
+                        if (arkClass == null) {
+                            return
+                        }
+                        const method = ModelUtils.getMethodInClassWithName(
+                            methodSignature?.getMethodSubSignature().getMethodName()!,
+                            arkClass);
+                        if (method == null) {
+                            return
+                        }
+                        let methodReturnType = method.getReturnType()
+                        if (methodReturnType instanceof UnclearReferenceType) {
+                            let returnType = ModelUtils.getClassWithName(
+                                methodReturnType.getName(),
+                                method)
+                            if (returnType == null) {
+                                logger.error("can not get method return value type: "+
+                                method.getSignature().toString()+": "+methodReturnType.getName())
+                                return
+                            }
+                            leftOp.setType(new ClassType(returnType.getSignature()))
+                        } else {
+                            leftOp.setType(methodReturnType)
+                        }
                     } else {
                         leftOp.setType(rightOp.getType());
                     }
@@ -242,6 +275,8 @@ export class TypeInference {
                     const rightOp = stmt.getRightOp();
                     leftOpType.setCurrType(rightOp.getType());
                 } else if (leftOpType instanceof UnclearReferenceType) {
+                    if (stmt.containsInvokeExpr()) {
+                    }
                 }
             } else if (leftOp instanceof ArkInstanceFieldRef) {
                 // 对应赋值语句左值进行了取属性操作

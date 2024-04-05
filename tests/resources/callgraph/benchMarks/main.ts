@@ -27,13 +27,15 @@ import {B as C, C as Class, invokeParam} from "./b";
 // let e = globalNumber
 // Cat.print()
 // dog.sound()
-Main.main()
+// Main.main()
 // func1(1)
 // invokeParam(1, "b", new Class())
 // // let a: Cat.num = 1
 // // let a: temp_temp.A = new temp_temp.A()
 
-// let cat = new NotCat()
+let cat = new NotCat()
+let thisCat = cat.getCat()
+thisCat.sound()
 // cat.testWithParams(dog)
 
 
