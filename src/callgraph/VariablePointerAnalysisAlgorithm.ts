@@ -146,22 +146,12 @@ export class VariablePointerAnalysisAlogorithm extends AbstractCallGraph {
                     continue
                 }
                 let sourceMethod: ArkMethod = stmt.getCfg()?.getDeclaringMethod()!
-                let possibleCallTargets: MethodSignature[] = this.CHAtool.resolveCall(
-                    sourceMethod.getSignature()!,
-                    stmt
-                )
-                // 对CHA结果进行过滤
-                let specificCallTarget: MethodSignature | null = this.getSpecificCallTarget(possibleCallTargets, pointer)
-                if (specificCallTarget == null) {
-                    continue
-                }
-                logger.info("\t[processInvokeStmt] get specific call target: "+specificCallTarget.toString()+", from stmt: "+stmt.toString())
-
-                // 根据过滤后结果获取到ArkMethod
-                let targetMethod: ArkMethod | null = this.scene.getMethod(specificCallTarget)
+                let targetMethod: ArkMethod | null = this.getSpecificCallTarget(expr, pointer)
                 if (targetMethod == null) {
                     continue
                 }
+                let specificCallTarget = targetMethod.getSignature()
+                logger.info("\t[processInvokeStmt] get specific call target: "+specificCallTarget.toString()+", from stmt: "+stmt.toString())
 
                 let targetMethodThisInstance: Value | null = targetMethod.getThisInstance()
                 if (targetMethodThisInstance == null) {
@@ -230,16 +220,20 @@ export class VariablePointerAnalysisAlogorithm extends AbstractCallGraph {
         }
     }
 
-    protected getSpecificCallTarget(possibleCallTargets: MethodSignature[], pointerTarget: PointerTarget): MethodSignature | null {
+    protected getSpecificCallTarget(expr: AbstractInvokeExpr, pointerTarget: PointerTarget): ArkMethod | null {
         let type = pointerTarget.getType()
         if (!(type instanceof ClassType)) {
             return null
         }
- 
-        for (let possibleTarget of possibleCallTargets) {
-            if (possibleTarget.getDeclaringClassSignature().toString() == 
-            type.getClassSignature().toString()) {
-                return possibleTarget
+        let arkClassInstance = this.scene.getClass(type.getClassSignature())
+        if (arkClassInstance == null) {
+            logger.error("can not resolve classtype: "+type.toString())
+            return null
+        }
+        const methodInstances = arkClassInstance.getMethods()
+        for (let method of methodInstances) {
+            if (method.getSignature().toString() === expr.getMethodSignature().toString()) {
+                return method
             }
         }
         return null
