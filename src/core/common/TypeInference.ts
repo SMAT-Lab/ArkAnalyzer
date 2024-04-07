@@ -259,7 +259,7 @@ export class TypeInference {
                                 methodReturnType.getName(),
                                 method)
                             if (returnType == null) {
-                                logger.error("can not get method return value type: " +
+                                logger.warn("can not get method return value type: " +
                                     method.getSignature().toString() + ": " + methodReturnType.getName())
                                 return
                             }
