@@ -8,6 +8,8 @@ import {B as C, C as Class, invokeParam} from "./b";
 // //     }
 // // }
 
+// let name = taskpool.Task.name
+
 // let task: taskpool.Task = new taskpool.Task(10, 100); // 100: test number
 
 // // function temp(a: number | string) {
@@ -27,16 +29,17 @@ import {B as C, C as Class, invokeParam} from "./b";
 // let e = globalNumber
 // Cat.print()
 // dog.sound()
-// Main.main()
+Main.main()
 // func1(1)
 // invokeParam(1, "b", new Class())
 // // let a: Cat.num = 1
 // // let a: temp_temp.A = new temp_temp.A()
 
-let cat = new NotCat()
-let thisCat = cat.getCat()
-thisCat.sound()
-// cat.testWithParams(dog)
+// let dog: Cat = new Cat() // Dog
+// let cat = new NotCat() // Cat
+// let thisCat = cat.getCat() // Cat
+// thisCat.sound() // Cat.sound()
+// cat.testWithParams(dog) 
 
 
 // let a = 3
@@ -44,7 +47,7 @@ thisCat.sound()
 // // let c = a
 // // let d = c + a
 // let e = a
-// import animator,{ AnimatorResult }from'@ohos.animator';
+// import animator,{ AnimatorResult }from'/Users/yangyizhuo/sdk/openharmony/interface_sdk-js/api/@ohos.animator';
 
 // let backAnimator: AnimatorResult= animator.createAnimator({})
 

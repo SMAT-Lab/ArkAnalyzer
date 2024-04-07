@@ -2,7 +2,7 @@ import {Scene} from './../../Scene';
 import Logger from "../../utils/logger";
 import {AbstractInvokeExpr, ArkBinopExpr, ArkInstanceInvokeExpr, ArkNewExpr, ArkStaticInvokeExpr} from "../base/Expr";
 import {Local} from "../base/Local";
-import {ArkInstanceFieldRef, ArkParameterRef} from "../base/Ref";
+import { AbstractFieldRef,ArkInstanceFieldRef, ArkParameterRef, ArkStaticFieldRef} from "../base/Ref";
 import {ArkAssignStmt, ArkInvokeStmt, Stmt} from "../base/Stmt";
 import {
     AnnotationNamespaceType,
@@ -139,6 +139,12 @@ export class TypeInference {
                     continue;
                 }
                 expr.setMethodSignature(method.getSignature());
+            } else if (expr instanceof AbstractFieldRef) {
+                if (expr instanceof ArkInstanceFieldRef) {
+                    
+                } else if (expr instanceof ArkStaticFieldRef) {
+
+                }
             }
         }
 
