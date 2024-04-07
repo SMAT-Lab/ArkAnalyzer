@@ -12,6 +12,7 @@ class SceneTest {
         let config: SceneConfig = new SceneConfig();
         config.buildFromJson(config_path);
         // Logger.setLogLevel(LOG_LEVEL.INFO);
+        logger.error('projectFiles cnt:', config.getProjectFiles().length);
         return new Scene(config);
     }
 

@@ -35,24 +35,24 @@ export class CfgTest {
                         // console.log(origalstmt.toString());
                         console.log(`'${origalstmt.toString()}' line: ${origalstmt.getPositionInfo()}, column: ${origalstmt.getColumn()}`);
                     }
-                    // console.log();
-                    // console.log('-- threeAddresStmts:');
-                    // let cfg = arkBody.getCfg();
-                    // for (const threeAddresStmt of cfg.getStmts()) {
-                    //     console.log(threeAddresStmt.toString());
-                    //     // console.log(threeAddresStmt.toString(), ', original pos:', threeAddresStmt.getOriginPositionInfo(),
-                    //     //     ', pos:', threeAddresStmt.getPositionInfo());
-                    //     // console.log('- use');
 
-                    //     // console.log(threeAddresStmt.getUses());
+                    console.log('\n-- threeAddresStmts:');
+                    let cfg = arkBody.getCfg();
+                    for (const threeAddresStmt of cfg.getStmts()) {
+                        console.log(threeAddresStmt.toString());
+                        // console.log(threeAddresStmt.toString(), ', original pos:', threeAddresStmt.getOriginPositionInfo(),
+                        //     ', pos:', threeAddresStmt.getPositionInfo());
+                        // console.log('- use');
 
-                    // }
+                        // console.log(threeAddresStmt.getUses());
 
-                    // console.log('-- locals:');
-                    // for (const local of arkMethod.getBody().getLocals()) {
-                    //     console.log(local.toString());
-                    // }
-                    // console.log();
+                    }
+
+                    console.log('\n-- locals:');
+                    for (const local of arkMethod.getBody().getLocals()) {
+                        console.log(`local: ${local}, type: ${local.getType()}`);
+                    }
+                    console.log();
                 }
             }
         }
