@@ -1,10 +1,10 @@
-import { StmtUseReplacer } from "../common/StmtUseReplacer";
-import { Cfg } from "../graph/Cfg";
-import { ArkFile } from "../model/ArkFile";
-import { AbstractExpr, AbstractInvokeExpr, ArkConditionExpr } from "./Expr";
-import { LineColPosition } from "./Position";
-import { AbstractFieldRef, ArkArrayRef } from "./Ref";
-import { Value, ValueTag } from "./Value";
+import {StmtUseReplacer} from "../common/StmtUseReplacer";
+import {Cfg} from "../graph/Cfg";
+import {ArkFile} from "../model/ArkFile";
+import {AbstractExpr, AbstractInvokeExpr, ArkConditionExpr} from "./Expr";
+import {LineColPosition} from "./Position";
+import {AbstractFieldRef, ArkArrayRef} from "./Ref";
+import {Value, ValueTag} from "./Value";
 
 export class Stmt {
     private text: string = '';
@@ -80,7 +80,7 @@ export class Stmt {
         this.cfg = cfg
     }
 
-    /** 
+    /**
      * Return true if the following statement may not execute after this statement.
      * The ArkIfStmt and ArkGotoStmt will return true.
      */
@@ -233,6 +233,10 @@ export class Stmt {
     public setText(text: string): void {
         this.text = text;
     }
+
+    public updateText(): void {
+        this.text = this.toString();
+    }
 }
 
 export class ArkAssignStmt extends Stmt {
@@ -245,6 +249,7 @@ export class ArkAssignStmt extends Stmt {
         this.rightOp = rightOp;
         this.setDef(leftOp);
         this.updateUses();
+        this.updateText();
     }
 
     public getLeftOp(): Value {
@@ -254,6 +259,7 @@ export class ArkAssignStmt extends Stmt {
     public setLeftOp(newLeftOp: Value): void {
         this.leftOp = newLeftOp;
         this.setDef(newLeftOp);
+        this.updateText();
     }
 
     public getRightOp(): Value {
@@ -263,6 +269,7 @@ export class ArkAssignStmt extends Stmt {
     public setRightOp(rightOp: Value): void {
         this.rightOp = rightOp;
         this.updateUses();
+        this.updateText();
     }
 
     public toString(): string {
@@ -288,11 +295,13 @@ export class ArkInvokeStmt extends Stmt {
         super();
         this.invokeExpr = invokeExpr;
         this.updateUses();
+        this.updateText();
     }
 
     public replaceInvokeExpr(newExpr: AbstractInvokeExpr) {
         this.invokeExpr = newExpr
         this.updateUses()
+        this.updateText();
     }
 
     public getInvokeExpr() {
@@ -321,6 +330,7 @@ export class ArkIfStmt extends Stmt {
         super();
         this.conditionExpr = conditionExpr;
         this.updateUses();
+        this.updateText();
     }
 
     public getConditionExprExpr() {
@@ -353,6 +363,7 @@ export class ArkIfStmt extends Stmt {
 export class ArkGotoStmt extends Stmt {
     constructor() {
         super();
+        this.updateText();
     }
 
     public isBranch(): boolean {
@@ -374,6 +385,7 @@ export class ArkReturnStmt extends Stmt {
         super();
         this.op = op;
         this.updateUses();
+        this.updateText();
     }
 
     public getExpectedSuccessorCount(): number {
@@ -387,6 +399,7 @@ export class ArkReturnStmt extends Stmt {
     public setReturnValue(returnValue: Value): void {
         this.op = returnValue;
         this.updateUses();
+        this.updateText();
     }
 
     public toString(): string {
@@ -407,6 +420,7 @@ export class ArkReturnStmt extends Stmt {
 export class ArkReturnVoidStmt extends Stmt {
     constructor() {
         super();
+        this.updateText();
     }
 
     public getExpectedSuccessorCount(): number {
@@ -424,6 +438,7 @@ export class ArkReturnVoidStmt extends Stmt {
 export class ArkNopStmt extends Stmt {
     constructor() {
         super();
+        this.updateText();
     }
 
     public toString(): string {
@@ -442,6 +457,7 @@ export class ArkSwitchStmt extends Stmt {
         this.key = key;
         this.cases = cases;
         this.updateUses();
+        this.updateText();
     }
 
     public getKey(): Value {
@@ -491,6 +507,7 @@ export class ArkDeleteStmt extends Stmt {
         super();
         this.field = field;
         this.updateUses();
+        this.updateText();
     }
 
     public getField(): AbstractFieldRef {
@@ -522,6 +539,7 @@ export class ArkThrowStmt extends Stmt {
         super();
         this.op = op;
         this.updateUses();
+        this.updateText();
     }
 
     public getOp(): Value {

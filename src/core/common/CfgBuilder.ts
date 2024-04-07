@@ -2741,7 +2741,6 @@ export class CfgBuilder {
                         stmtPos = stmtBuilder.line;
                         cfg.setStartingStmt(threeAddressStmt);
                     }
-                    threeAddressStmt.setText(threeAddressStmt.toString());
                     threeAddressStmt.setOriginPositionInfo(stmtBuilder.line);
                     threeAddressStmt.setPositionInfo(stmtPos);
                     stmtPos++;

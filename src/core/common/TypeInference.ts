@@ -1,9 +1,9 @@
-import { Scene } from './../../Scene';
+import {Scene} from './../../Scene';
 import Logger from "../../utils/logger";
-import { AbstractInvokeExpr, ArkBinopExpr, ArkInstanceInvokeExpr, ArkNewExpr, ArkStaticInvokeExpr } from "../base/Expr";
-import { Local } from "../base/Local";
-import { ArkInstanceFieldRef, ArkParameterRef } from "../base/Ref";
-import { ArkAssignStmt, ArkInvokeStmt, Stmt } from "../base/Stmt";
+import {AbstractInvokeExpr, ArkBinopExpr, ArkInstanceInvokeExpr, ArkNewExpr, ArkStaticInvokeExpr} from "../base/Expr";
+import {Local} from "../base/Local";
+import {ArkInstanceFieldRef, ArkParameterRef} from "../base/Ref";
+import {ArkAssignStmt, ArkInvokeStmt, Stmt} from "../base/Stmt";
 import {
     AnnotationNamespaceType,
     AnnotationType,
@@ -20,14 +20,15 @@ import {
     UnknownType,
     VoidType
 } from "../base/Type";
-import { ArkMethod } from "../model/ArkMethod";
-import { ClassSignature } from "../model/ArkSignature";
-import { ModelUtils } from "./ModelUtils";
+import {ArkMethod} from "../model/ArkMethod";
+import {ClassSignature} from "../model/ArkSignature";
+import {ModelUtils} from "./ModelUtils";
 
 const logger = Logger.getLogger();
 
 export class TypeInference {
     private scene: Scene;
+
     constructor(scene: Scene) {
         this.scene = scene;
     }
@@ -80,8 +81,7 @@ export class TypeInference {
                     if (arkClass) {
                         type = new ClassType(arkClass.getSignature());
                         base.setType(type);
-                    }
-                    else {
+                    } else {
                         const arkNamespace = ModelUtils.getNamespaceWithName(base.getName(), arkMethod);
                         if (arkNamespace) {
                             const methodName = expr.getMethodSignature().getMethodSubSignature().getMethodName();
@@ -128,7 +128,6 @@ export class TypeInference {
                         } else if (stmt instanceof ArkInvokeStmt) {
                             stmt.replaceInvokeExpr(replaceStaticInvokeExpr)
                         }
-                        stmt.setText(stmt.toString().replace(/^instanceInvoke/, "staticinvoke"))
                     }
                 }
             } else if (expr instanceof ArkStaticInvokeExpr) {
@@ -243,7 +242,7 @@ export class TypeInference {
                         let invokeExpr = stmt.getInvokeExpr()!
                         let methodSignature = invokeExpr.getMethodSignature()
                         const arkClass = ModelUtils.getClassWithClassSignature(
-                            methodSignature.getDeclaringClassSignature(), 
+                            methodSignature.getDeclaringClassSignature(),
                             arkMethod.getDeclaringArkFile().getScene());
                         if (arkClass == null) {
                             return
@@ -260,8 +259,8 @@ export class TypeInference {
                                 methodReturnType.getName(),
                                 method)
                             if (returnType == null) {
-                                logger.error("can not get method return value type: "+
-                                method.getSignature().toString()+": "+methodReturnType.getName())
+                                logger.error("can not get method return value type: " +
+                                    method.getSignature().toString() + ": " + methodReturnType.getName())
                                 return
                             }
                             leftOp.setType(new ClassType(returnType.getSignature()))
