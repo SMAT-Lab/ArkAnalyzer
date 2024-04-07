@@ -232,7 +232,7 @@ export class VariablePointerAnalysisAlogorithm extends AbstractCallGraph {
         }
         const methodInstances = arkClassInstance.getMethods()
         for (let method of methodInstances) {
-            if (method.getSignature().toString() === expr.getMethodSignature().toString()) {
+            if (method.getSignature().getMethodSubSignature().toString() === expr.getMethodSignature().getMethodSubSignature().toString()) {
                 return method
             }
         }
