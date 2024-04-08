@@ -18,12 +18,13 @@ import {B as C, C as Class, invokeParam} from "./b";
 // A();
 // temp()
 // C();
-// let dog: Cat = new Cat()
+let dog: Cat = new Cat()
 // let notDog = dog
 // notDog.sleep()
 // let mee: Mav = new Cat()
 // let d: Cat | null = new Cat()
-// let c = dog.aaaaaaaaaa
+let c = dog.aaaaaaaaaa
+let d = Cat.num
 // dog.aaaaaaaaaa = 1
 // let d = c
 // let e = globalNumber
@@ -53,6 +54,6 @@ import {B as C, C as Class, invokeParam} from "./b";
 
 // backAnimator.onrepeat =()=>{console.info('backAnimator repeat');};
 
-import taskpool from '/Users/yangyizhuo/sdk/openharmony/interface_sdk-js/api/@ohos.taskpool';
+// import taskpool from '/Users/yangyizhuo/sdk/openharmony/interface_sdk-js/api/@ohos.taskpool';
 
-let name = taskpool.Task.name
+// let name = taskpool.Task.name
