@@ -29,7 +29,7 @@ import {B as C, C as Class, invokeParam} from "./b";
 // let e = globalNumber
 // Cat.print()
 // dog.sound()
-Main.main()
+// Main.main()
 // func1(1)
 // invokeParam(1, "b", new Class())
 // // let a: Cat.num = 1
@@ -52,3 +52,7 @@ Main.main()
 // let backAnimator: AnimatorResult= animator.createAnimator({})
 
 // backAnimator.onrepeat =()=>{console.info('backAnimator repeat');};
+
+import taskpool from '/Users/yangyizhuo/sdk/openharmony/interface_sdk-js/api/@ohos.taskpool';
+
+let name = taskpool.Task.name
