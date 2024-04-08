@@ -27,6 +27,7 @@ const COMPONENT_CREATE_FUNCTION: Set<string> = new Set(['create', 'createWithChi
 
 export class ViewTreeNode {
     name: string;
+    classSignature: ClassSignature|null;
     stmts: Map<string, [Stmt, (Constant|ArkInstanceFieldRef|MethodSignature)[]]>;
     parent: ViewTreeNode | null;
     children: ViewTreeNode[];
@@ -119,6 +120,7 @@ export class ViewTree {
         let rightOp = assignStmt.getRightOp();
         if (rightOp instanceof ArkNewExpr) {
             classSignature = (rightOp.getType() as ClassType).getClassSignature();
+            view.classSignature = classSignature;
         } else {
             return false;
         }
