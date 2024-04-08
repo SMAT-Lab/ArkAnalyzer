@@ -214,8 +214,17 @@ export class TypeInference {
                             }
                         }
                     } else if (rightOp instanceof ArkInstanceFieldRef) {
-                        if (arkMethod == null || (!(rightOp.getBase().getType() instanceof ClassType)))
+                        if (arkMethod == null)
                             return;
+                        if (!(rightOp.getBase().getType() instanceof ClassType)){
+                            // namespace.class
+                            const baseName = rightOp.getBase().getName();
+                            const nameSpace = ModelUtils.getNamespaceWithName(baseName, arkMethod)!;
+                            const clas = ModelUtils.getClassInNamespaceWithName(rightOp.getFieldSignature().getFieldName(),nameSpace)!;
+                            leftOp.setType(new ClassType(clas.getSignature()));
+                            return;
+                        }
+                            
                         const classSignature = rightOp.getBase().getType() as ClassType
                         let classInstance = ModelUtils.getClassWithClassSignature(
                             classSignature.getClassSignature(), arkMethod.getDeclaringArkFile().getScene()
