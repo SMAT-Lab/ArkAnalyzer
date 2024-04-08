@@ -15,7 +15,7 @@ export abstract class Animal {
 
 export class Dog extends Animal {
     public aaaaaaaaaa: number
-    public static num: FieldB = new FieldB()
+    public static num = 1
     public sound() {
         // logger.info("woof")
         let cat = new Cat()
