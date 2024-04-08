@@ -45,8 +45,6 @@ export class VariablePointerAnalysisAlogorithm extends AbstractCallGraph {
             let pointer = workElement!.getPointer(), pointerTarget = workElement!.getPointerTarget()
             let identifier = pointer.getIdentifier()
 
-            logger.info("[processWorkList] process work item: "+(identifier as Local).getName()+" -> "+pointerTarget.getType())
-            logger.info("\t"+pointerTarget.getLocation() + " "+pointerTarget.getType())
             let pointerSet = this.pointerFlowGraph.getPointerSetElement(identifier)
 
             if (!(pointerSet.getPointerTarget(pointerTarget) == null)) {
@@ -57,6 +55,7 @@ export class VariablePointerAnalysisAlogorithm extends AbstractCallGraph {
                 this.workList.push(newWorkLisItem)
             }
             if (identifier instanceof Local) {
+                this.processFieldReferenceStmt(identifier, pointerTarget)
                 // TODO: 取、存属性的指针操作待支持
                 this.processInstanceInvokeStmt(identifier, pointerTarget)
             }
@@ -96,11 +95,11 @@ export class VariablePointerAnalysisAlogorithm extends AbstractCallGraph {
                         let classType = rightOp.getType() as ClassType
                         let pointer = new PointerTarget(classType, PointerTarget.genLocation(method, stmt))
 
-                        logger.info("\t[addReachable] find new expr in method, add workList: "+(leftOp as Local).getName()+" -> "+pointer.getType())
+                        // logger.info("\t[addReachable] find new expr in method, add workList: "+(leftOp as Local).getName()+" -> "+pointer.getType())
                         this.workList.push(
                             new PointerTargetPair(this.pointerFlowGraph.getPointerSetElement(leftOp), pointer))
                     } else if (rightOp instanceof Local) {
-                        logger.info("\t[addReachable] find assign expr in method, add pointer flow edge: "+(rightOp as Local).getName()+" -> "+(leftOp as Local).getType())
+                        // logger.info("\t[addReachable] find assign expr in method, add pointer flow edge: "+(rightOp as Local).getName()+" -> "+(leftOp as Local).getType())
                         this.addEdgeIntoPointerFlowGraph(
                             this.pointerFlowGraph.getPointerSetElement(rightOp),
                             this.pointerFlowGraph.getPointerSetElement(leftOp)
@@ -129,7 +128,7 @@ export class VariablePointerAnalysisAlogorithm extends AbstractCallGraph {
     }
 
     protected processInstanceInvokeStmt(identifier: Value, pointer: PointerTarget) {
-        logger.info("[processInvokeStmt] process identifier: "+(identifier as Local).getName())
+        // logger.info("[processInvokeStmt] process identifier: "+(identifier as Local).getName())
         for (let stmt of this.reachableStmts) {
             if (stmt.containsInvokeExpr()) {
                 let expr = stmt.getInvokeExpr()
@@ -151,19 +150,33 @@ export class VariablePointerAnalysisAlogorithm extends AbstractCallGraph {
                     continue
                 }
                 let specificCallTarget = targetMethod.getSignature()
-                logger.info("\t[processInvokeStmt] get specific call target: "+specificCallTarget.toString()+", from stmt: "+stmt.toString())
+                // logger.info("\t[processInvokeStmt] get specific call target: "+specificCallTarget.toString()+", from stmt: "+stmt.toString())
 
                 let targetMethodThisInstance: Value | null = targetMethod.getThisInstance()
                 if (targetMethodThisInstance == null) {
                     continue
                 }
 
-                logger.info("\t[processInvokeStmt] add pointer to call target this instance: "+pointer.getType())
+                // logger.info("\t[processInvokeStmt] add pointer to call target this instance: "+pointer.getType())
                 this.workList.push(new PointerTargetPair(
                     this.pointerFlowGraph.getPointerSetElement(targetMethodThisInstance),
                     pointer))
 
                 this.processInvokePointerFlow(sourceMethod, targetMethod, stmt)
+            }
+        }
+    }
+
+    protected processFieldReferenceStmt (identifier: Value, pointerTarget: PointerTarget) {
+        // 将field的存与取操作合并
+        for (let stmt of this.reachableStmts) {
+            let fieldRef = stmt.getFieldRef()
+            // TODO: 对namespace中取field会拆分为两条语句，需要进行区分
+            // 前置：可能需要修一下静态属性调用的问题
+            if (fieldRef) {
+
+            } else if (1){
+
             }
         }
     }
@@ -190,7 +203,7 @@ export class VariablePointerAnalysisAlogorithm extends AbstractCallGraph {
 
         let parameters = expr.getArgs()
         let methodParameterInstances = targetMethod.getParameterInstances()
-        logger.info("[processInvokeStmt] add pointer flow edges for invoke stmt parameter")
+        // logger.info("[processInvokeStmt] add pointer flow edges for invoke stmt parameter")
         for (let i = 0;i < parameters.length;i ++) {
             // 参数指针传递
             this.addEdgeIntoPointerFlowGraph(
