@@ -1,3 +1,4 @@
-import taskpool from '@ohos.taskpool';
-
-let name = taskpool.Task.name
+class A {
+    static num:number = 0;
+}
+console.log(A.num)
