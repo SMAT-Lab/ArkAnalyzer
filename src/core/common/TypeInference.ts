@@ -216,16 +216,26 @@ export class TypeInference {
                     } else if (rightOp instanceof ArkInstanceFieldRef) {
                         if (arkMethod == null)
                             return;
+                        const baseName = rightOp.getBase().getName();
+                        const baseClass = ModelUtils.getClassWithName(baseName, arkMethod);
                         if (!(rightOp.getBase().getType() instanceof ClassType)){
-                            // namespace.class
-                            const baseName = rightOp.getBase().getName();
-                            const nameSpace = ModelUtils.getNamespaceWithName(baseName, arkMethod)!;
-                            const clas = ModelUtils.getClassInNamespaceWithName(rightOp.getFieldSignature().getFieldName(),nameSpace)!;
-                            leftOp.setType(new ClassType(clas.getSignature()));
-                            return;
+                            if (!baseClass){
+                                // namespace.class
+                                const nameSpace = ModelUtils.getNamespaceWithName(baseName, arkMethod)!;
+                                const clas = ModelUtils.getClassInNamespaceWithName(rightOp.getFieldSignature().getFieldName(),nameSpace)!;
+                                leftOp.setType(new ClassType(clas.getSignature()));
+                                return;
+                            }
                         }
-                            
-                        const classSignature = rightOp.getBase().getType() as ClassType
+                        
+                        let classSignature: ClassType;
+                        if (baseClass){
+                            classSignature = new ClassType(baseClass.getSignature());
+                        }
+                        else {
+                            classSignature = rightOp.getBase().getType() as ClassType
+                        }
+                        
                         let classInstance = ModelUtils.getClassWithClassSignature(
                             classSignature.getClassSignature(), arkMethod.getDeclaringArkFile().getScene()
                         )
