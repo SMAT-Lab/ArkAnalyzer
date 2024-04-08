@@ -45,6 +45,6 @@ export class LineColPosition {
             node.getStart(sourceFile)
         );
         // line start from 1.
-        return new LineColPosition(line + 1, character);
+        return new LineColPosition(line + 1, character + 1);
     }
 }
