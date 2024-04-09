@@ -1,20 +1,20 @@
 import fs from 'fs';
 import path from 'path';
 
-import { SceneConfig } from './Config';
-import { AbstractCallGraph } from "./callgraph/AbstractCallGraphAlgorithm";
-import { ClassHierarchyAnalysisAlgorithm } from "./callgraph/ClassHierarchyAnalysisAlgorithm";
-import { RapidTypeAnalysisAlgorithm } from "./callgraph/RapidTypeAnalysisAlgorithm";
-import { VariablePointerAnalysisAlogorithm } from './callgraph/VariablePointerAnalysisAlgorithm';
-import { ImportInfo, updateSdkConfigPrefix } from './core/common/ImportBuilder';
-import { ModelUtils } from './core/common/ModelUtils';
-import { TypeInference } from './core/common/TypeInference';
-import { VisibleValue } from './core/common/VisibleValue';
-import { ArkClass } from "./core/model/ArkClass";
-import { ArkFile, buildArkFileFromFile } from "./core/model/ArkFile";
-import { ArkMethod } from "./core/model/ArkMethod";
-import { ArkNamespace } from "./core/model/ArkNamespace";
-import { ClassSignature, FileSignature, MethodSignature, NamespaceSignature } from "./core/model/ArkSignature";
+import {SceneConfig} from './Config';
+import {AbstractCallGraph} from "./callgraph/AbstractCallGraphAlgorithm";
+import {ClassHierarchyAnalysisAlgorithm} from "./callgraph/ClassHierarchyAnalysisAlgorithm";
+import {RapidTypeAnalysisAlgorithm} from "./callgraph/RapidTypeAnalysisAlgorithm";
+import {VariablePointerAnalysisAlogorithm} from './callgraph/VariablePointerAnalysisAlgorithm';
+import {ImportInfo, updateSdkConfigPrefix} from './core/common/ImportBuilder';
+import {ModelUtils} from './core/common/ModelUtils';
+import {TypeInference} from './core/common/TypeInference';
+import {VisibleValue} from './core/common/VisibleValue';
+import {ArkClass} from "./core/model/ArkClass";
+import {ArkFile, buildArkFileFromFile} from "./core/model/ArkFile";
+import {ArkMethod} from "./core/model/ArkMethod";
+import {ArkNamespace} from "./core/model/ArkNamespace";
+import {ClassSignature, FileSignature, MethodSignature, NamespaceSignature} from "./core/model/ArkSignature";
 import Logger from "./utils/logger";
 
 const logger = Logger.getLogger();
@@ -50,6 +50,7 @@ export class Scene {
     // all classes and methods, just for demo
     private allClasses: ArkClass[] = [];
     private allMethods: ArkMethod[] = [];
+    private classCached: Map<ClassSignature, ArkClass | null> = new Map();
 
     // inferTypes invoke flag
     private inferTypesDone: boolean = false;
@@ -100,14 +101,11 @@ export class Scene {
                 let realSdkProjectDir = "";
                 if (sdkProjectName == "ohos") {
                     realSdkProjectDir = fs.realpathSync(this.ohosSdkPath);
-                }
-                else if (sdkProjectName == "kit") {
+                } else if (sdkProjectName == "kit") {
                     realSdkProjectDir = fs.realpathSync(this.kitSdkPath);
-                }
-                else if (sdkProjectName == "system") {
+                } else if (sdkProjectName == "system") {
                     realSdkProjectDir = fs.realpathSync(this.systemSdkPath);
-                }
-                else {
+                } else {
                     let sdkPath = this.otherSdkMap.get(value);
                     if (sdkPath) {
                         realSdkProjectDir = fs.realpathSync(sdkPath);
@@ -162,8 +160,7 @@ export class Scene {
                     returnVal = fl.getNamespaceAllTheFile(namespaceSignature);
                 }
             });
-        }
-        else {
+        } else {
             this.getAllNamespacesUnderTargetProject().forEach((ns) => {
                 if (ns.getNamespaceSignature().toString() == namespaceSignature) {
                     returnVal = ns;
@@ -176,14 +173,18 @@ export class Scene {
     public getClass(classSignature: ClassSignature | string): ArkClass | null {
         let returnVal: ArkClass | null = null;
         if (classSignature instanceof ClassSignature) {
-            let fileSig = classSignature.getDeclaringFileSignature();
-            this.arkFiles.forEach((fl) => {
-                if (fl.getFileSignature().toString() == fileSig.toString()) {
-                    returnVal = fl.getClassAllTheFile(classSignature);
-                }
-            });
-        }
-        else {
+            if (this.classCached.get(classSignature)) {
+                returnVal = this.classCached.get(classSignature) || null;
+            } else {
+                let fileSig = classSignature.getDeclaringFileSignature();
+                this.arkFiles.forEach((fl) => {
+                    if (fl.getFileSignature().toString() == fileSig.toString()) {
+                        returnVal = fl.getClassAllTheFile(classSignature);
+                    }
+                });
+                this.classCached.set(classSignature, returnVal);
+            }
+        } else {
             this.getAllClassesUnderTargetProject().forEach((cls) => {
                 if (cls.getSignature().toString() == classSignature) {
                     returnVal = cls;
@@ -202,8 +203,7 @@ export class Scene {
                     returnVal = fl.getMethodAllTheFile(methodSignature);
                 }
             });
-        }
-        else {
+        } else {
             this.getAllMethodsUnderTargetProject().forEach((mtd) => {
                 if (mtd.getSignature().toString() == methodSignature) {
                     returnVal = mtd;

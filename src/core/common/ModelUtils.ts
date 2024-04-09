@@ -1,12 +1,12 @@
-import { Scene } from "../../Scene";
-import { ArkClass } from "../model/ArkClass";
-import { ArkField } from "../model/ArkField";
-import { ArkFile } from "../model/ArkFile";
-import { ArkMethod } from "../model/ArkMethod";
-import { ArkNamespace } from "../model/ArkNamespace";
-import { ClassSignature, MethodSignature, NamespaceSignature } from "../model/ArkSignature";
-import { ExportInfo } from "./ExportBuilder";
-import { ImportInfo } from "./ImportBuilder";
+import {Scene} from "../../Scene";
+import {ArkClass} from "../model/ArkClass";
+import {ArkField} from "../model/ArkField";
+import {ArkFile} from "../model/ArkFile";
+import {ArkMethod} from "../model/ArkMethod";
+import {ArkNamespace} from "../model/ArkNamespace";
+import {ClassSignature, MethodSignature, NamespaceSignature} from "../model/ArkSignature";
+import {ExportInfo} from "./ExportBuilder";
+import {ImportInfo} from "./ImportBuilder";
 
 export class ModelUtils {
     public static getMethodSignatureFromArkClass(arkClass: ArkClass, methodName: string): MethodSignature | null {
@@ -20,29 +20,7 @@ export class ModelUtils {
 
     /** search class iteratively with ClassSignature */
     public static getClassWithClassSignature(classSignature: ClassSignature, scene: Scene): ArkClass | null {
-        const fileSignature = classSignature.getDeclaringFileSignature();
-        let arkFile = scene.getFile(fileSignature);
-        if (!arkFile) {
-            arkFile = scene.getSdkArkFilestMap().get(fileSignature.toString()) || null;
-        }
-        if (arkFile == null) {
-            return null;
-        }
-
-        let namespaceSignature = classSignature.getDeclaringNamespaceSignature();
-        let namespaceSignatures: NamespaceSignature[] = [];
-        while (namespaceSignature != null) {
-            namespaceSignatures.push(namespaceSignature);
-            namespaceSignature = namespaceSignature.getDeclaringNamespaceSignature();
-        }
-        let curr: ArkFile | ArkNamespace | null = arkFile;
-        for (let i = namespaceSignatures.length - 1; i >= 0; i--) {
-            curr = curr.getNamespace(namespaceSignatures[i]);
-            if (curr == null) {
-                return null;
-            }
-        }
-        return curr.getClass(classSignature);
+        return scene.getClass(classSignature);
     }
 
     public static getMethodWithMethodSignature(methodSignature: MethodSignature, scene: Scene): ArkMethod | null {
@@ -60,8 +38,7 @@ export class ModelUtils {
             let declaringNs = ns.getDeclaringArkNamespace();
             if (declaringNs != null) {
                 res = this.getClassWithNameInNamespaceRecursively(className, declaringNs);
-            }
-            else {
+            } else {
                 res = this.getClassInFileWithName(className, ns.getDeclaringArkFile());
             }
         }
@@ -73,13 +50,11 @@ export class ModelUtils {
             let res: ArkClass | null = null;
             if (startFrom.getDeclaringArkNamespace() != null) {
                 res = this.getClassWithNameInNamespaceRecursively(className, startFrom.getDeclaringArkNamespace());
-            }
-            else {
+            } else {
                 res = this.getClassInFileWithName(className, startFrom.getDeclaringArkFile());
             }
             return res
-        }
-        else {
+        } else {
             const names = className.split('.');
             let nameSpace = this.getNamespaceWithNameFromClass(names[0], startFrom);
             for (let i = 1; i < names.length - 1; i++) {
@@ -112,8 +87,7 @@ export class ModelUtils {
             const thisFile = thisClass.getDeclaringArkFile();
             classSearched = this.getClassInFileWithName(className, thisFile);
             return classSearched;
-        }
-        else {
+        } else {
             const names = className.split('.');
             let nameSpace = this.getNamespaceWithName(names[0], startFrom);
             for (let i = 1; i < names.length - 1; i++) {
@@ -178,8 +152,7 @@ export class ModelUtils {
                     }
                 }
                 return this.getClassInImportInfoWithName(className, arkFile);
-            }
-            else if (exportInfo.getDefault()) {
+            } else if (exportInfo.getDefault()) {
                 defaultExport = exportInfo;
             }
         }
@@ -200,8 +173,7 @@ export class ModelUtils {
         let file: ArkFile | null = null;
         if (importInfo.getImportProjectType() == "TargetProject") {
             file = scene.getFiles().find(file => file.getFileSignature().toString() == signatureStr) || null;
-        }
-        else if (importInfo.getImportProjectType() == "SDKProject") {
+        } else if (importInfo.getImportProjectType() == "SDKProject") {
             file = scene.getSdkArkFilestMap().get(signatureStr) || null;
         }
         return file;
@@ -319,8 +291,7 @@ export class ModelUtils {
                     }
                 }
                 return this.getNamespaceInImportInfoWithName(namespaceName, arkFile);
-            }
-            else if (exportInfo.getDefault()) {
+            } else if (exportInfo.getDefault()) {
                 defaultExport = exportInfo;
             }
         }
@@ -396,8 +367,7 @@ export class ModelUtils {
                     return this.getStaticMethodInImportInfoWithName(methodName, arkFile);
                 }
 
-            }
-            else if (exportInfo.getDefault()) {
+            } else if (exportInfo.getDefault()) {
                 defaultExport = exportInfo;
             }
         }

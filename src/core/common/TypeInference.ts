@@ -2,7 +2,7 @@ import {Scene} from './../../Scene';
 import Logger from "../../utils/logger";
 import {AbstractInvokeExpr, ArkBinopExpr, ArkInstanceInvokeExpr, ArkNewExpr, ArkStaticInvokeExpr} from "../base/Expr";
 import {Local} from "../base/Local";
-import { AbstractFieldRef,ArkInstanceFieldRef, ArkParameterRef, ArkStaticFieldRef} from "../base/Ref";
+import {AbstractFieldRef, ArkInstanceFieldRef, ArkParameterRef, ArkStaticFieldRef} from "../base/Ref";
 import {ArkAssignStmt, ArkInvokeStmt, Stmt} from "../base/Stmt";
 import {
     AnnotationNamespaceType,
@@ -141,7 +141,7 @@ export class TypeInference {
                 expr.setMethodSignature(method.getSignature());
             } else if (expr instanceof AbstractFieldRef) {
                 if (expr instanceof ArkInstanceFieldRef) {
-                    
+
                 } else if (expr instanceof ArkStaticFieldRef) {
 
                 }
@@ -213,52 +213,6 @@ export class TypeInference {
                                 leftOp.setType(new ClassType(classSignature))
                             }
                         }
-                    } else if (rightOp instanceof ArkInstanceFieldRef) {
-                        if (arkMethod == null)
-                            return;
-                        const baseName = rightOp.getBase().getName();
-                        const baseClass = ModelUtils.getClassWithName(baseName, arkMethod);
-                        if (!(rightOp.getBase().getType() instanceof ClassType)){
-                            if (!baseClass){
-                                // namespace.class
-                                const nameSpace = ModelUtils.getNamespaceWithName(baseName, arkMethod)!;
-                                const clas = ModelUtils.getClassInNamespaceWithName(rightOp.getFieldSignature().getFieldName(),nameSpace)!;
-                                leftOp.setType(new ClassType(clas.getSignature()));
-                                return;
-                            }
-                        }
-                        
-                        let classSignature: ClassType;
-                        if (baseClass){
-                            classSignature = new ClassType(baseClass.getSignature());
-                        }
-                        else {
-                            classSignature = rightOp.getBase().getType() as ClassType
-                        }
-                        
-                        let classInstance = ModelUtils.getClassWithClassSignature(
-                            classSignature.getClassSignature(), arkMethod.getDeclaringArkFile().getScene()
-                        )
-                        if (classInstance == null) {
-                            logger.warn("getting Class Instance: " + rightOp.getBase().getName())
-                            return
-                        }
-                        let fieldInstance = ModelUtils.getFieldInClassWithName(
-                            rightOp.getFieldName(), classInstance
-                        )
-                        if (fieldInstance == null) {
-                            logger.warn("getting Field Instance error: " + rightOp.getFieldName())
-                            return
-                        }
-                        let fieldType = fieldInstance.getType();
-                        if (fieldType instanceof UnclearReferenceType) {
-                            const fieldTypeName = fieldType.getName();
-                            const arkClass = ModelUtils.getClassWithName(fieldTypeName, arkMethod);
-                            if (arkClass) {
-                                fieldType = new ClassType(arkClass.getSignature());
-                            }
-                        }
-                        leftOp.setType(fieldType)
                     } else if (rightOp instanceof AbstractInvokeExpr) {
                         // 函数调用返回值解析
                         if (arkMethod === null) {
