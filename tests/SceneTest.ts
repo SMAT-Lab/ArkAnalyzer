@@ -1,9 +1,10 @@
-import { SceneConfig } from "../src/Config";
-import { Scene } from "../src/Scene";
-import Logger, { LOG_LEVEL } from "../src/utils/logger";
+import {SceneConfig} from "../src/Config";
+import {Scene} from "../src/Scene";
+import Logger, {LOG_LEVEL} from "../src/utils/logger";
 
 const logger = Logger.getLogger();
 Logger.configure('out\\SceneTest.log', LOG_LEVEL.ERROR);
+
 class SceneTest {
     public buildScene(): Scene {
         // tests\\resources\\scene\\mainModule
@@ -25,8 +26,13 @@ class SceneTest {
 
     public testwholePipline(): void {
         logger.error('testwholePipline start');
+        const buildSceneStartTime = new Date().getTime();
         let scene = this.buildScene();
+        const buildSceneEndTime = new Date().getTime();
+        logger.error(`buildScene took ${(buildSceneEndTime - buildSceneStartTime) / 1000} s`);
         scene.inferTypes();
+        const inferTypesEndTime = new Date().getTime();
+        logger.error(`inferTypes took ${(inferTypesEndTime - buildSceneEndTime) / 1000} s`);
         logger.error('testwholePipline end');
     }
 
@@ -50,7 +56,7 @@ class SceneTest {
             fileConfig.buildFromIdeSingle(projectName, projectDirectory, filePath, logPath);
             const scene = new Scene(fileConfig);
             scene.inferTypes();
-            
+
             // await this.sleep(300);
         }
         logger.error('testFileScene end');
