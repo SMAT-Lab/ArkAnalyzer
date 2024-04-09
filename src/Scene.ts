@@ -173,7 +173,7 @@ export class Scene {
     public getClass(classSignature: ClassSignature | string): ArkClass | null {
         let returnVal: ArkClass | null = null;
         if (classSignature instanceof ClassSignature) {
-            if (this.classCached.get(classSignature)) {
+            if (this.classCached.has(classSignature)) {
                 returnVal = this.classCached.get(classSignature) || null;
             } else {
                 let fileSig = classSignature.getDeclaringFileSignature();
