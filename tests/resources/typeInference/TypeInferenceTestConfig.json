@@ -1,8 +1,8 @@
 {
     "targetProjectName": "TypeInferenceTest",    
-    "targetProjectDirectory": "D:\\Codes\\resources\\selected_apps",
+    "targetProjectDirectory": "tests/resources/typeInference/multi_module",
 
-    "logPath": "out\\log.txt",
+    "logPath": "out/TypeInferenceTest.log",
     
     "ohosSdkPath": "",
     "kitSdkPath": "",

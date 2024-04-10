@@ -118,6 +118,21 @@ export class TypeInference {
                     logger.warn(`method ${methodName} does not exist`);
                     continue;
                 }
+
+                // infer return type
+                let methodReturnType = method.getReturnType()
+                if (methodReturnType instanceof UnclearReferenceType) {
+                    let returnInstance = ModelUtils.getClassWithName(
+                        methodReturnType.getName(),
+                        method)
+                    if (returnInstance == null) {
+                        logger.warn("can not get method return value type: " +
+                            method.getSignature().toString() + ": " + methodReturnType.getName());
+                    } else {
+                        method.setReturnType(new ClassType(returnInstance.getSignature()));
+                    }
+                }
+
                 expr.setMethodSignature(method.getSignature());
                 if (method.getModifiers().has("StaticKeyword")) {
                     let replaceStaticInvokeExpr = new ArkStaticInvokeExpr(method.getSignature(), expr.getArgs())
@@ -212,39 +227,6 @@ export class TypeInference {
                             } else {
                                 leftOp.setType(new ClassType(classSignature))
                             }
-                        }
-                    } else if (rightOp instanceof AbstractInvokeExpr) {
-                        // 函数调用返回值解析
-                        if (arkMethod === null) {
-                            return
-                        }
-                        let invokeExpr = stmt.getInvokeExpr()!
-                        let methodSignature = invokeExpr.getMethodSignature()
-                        const arkClass = ModelUtils.getClassWithClassSignature(
-                            methodSignature.getDeclaringClassSignature(),
-                            arkMethod.getDeclaringArkFile().getScene());
-                        if (arkClass == null) {
-                            return
-                        }
-                        const method = ModelUtils.getMethodInClassWithName(
-                            methodSignature?.getMethodSubSignature().getMethodName()!,
-                            arkClass);
-                        if (method == null) {
-                            return
-                        }
-                        let methodReturnType = method.getReturnType()
-                        if (methodReturnType instanceof UnclearReferenceType) {
-                            let returnType = ModelUtils.getClassWithName(
-                                methodReturnType.getName(),
-                                method)
-                            if (returnType == null) {
-                                logger.warn("can not get method return value type: " +
-                                    method.getSignature().toString() + ": " + methodReturnType.getName())
-                                return
-                            }
-                            leftOp.setType(new ClassType(returnType.getSignature()))
-                        } else {
-                            leftOp.setType(methodReturnType)
                         }
                     } else {
                         leftOp.setType(rightOp.getType());
