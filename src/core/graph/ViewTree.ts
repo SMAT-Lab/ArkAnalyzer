@@ -19,10 +19,10 @@ export const BUILDIN_CONTAINER_COMPONENT: Set<string> = new Set([
     'Section', 'Select', 'Shape', 'Sheet', 'SideBarContainer', 'Stack', 'Stepper', 'StepperItem', 'Swiper', 
     'Tabs', 'TabContent', 'Text', 'TextPicker', 'TextTimer', 'TextClock', 'TimePicker', 'Toggle', 'WaterFlow', 
     'WindowScene', 'XComponent', 
-    'ForEach', 'LazyForEach', 'If' 
+    'ForEach', 'LazyForEach', 'If', 'IfBranch' 
     ]);
 
-const COMPONENT_CREATE_FUNCTION: Set<string> = new Set(['create', 'createWithChild', 'createWithLabel']);
+const COMPONENT_CREATE_FUNCTION: Set<string> = new Set(['create', 'createWithChild', 'createWithLabel', 'branchId']);
 
 
 export class ViewTreeNode {
@@ -152,7 +152,8 @@ export class ViewTree {
                 this.popAutomicComponent(name, treeStack);
                 let currentNode = treeStack.length > 0? treeStack[treeStack.length - 1]: null;
                 if (name == 'If' && methodName == 'branchId') {
-                    continue;
+                    name = 'IfBranch';
+                    treeStack = this.popComponentExpect('If', treeStack);
                 }
                 if (this.isCreateFunc(methodName)) {
                     let parent = this.getParent(treeStack);
@@ -176,6 +177,9 @@ export class ViewTree {
                     if (methodName == 'pop') {
                         treeStack.pop();
                     }
+                } else if (name == 'If' && methodName == 'pop') {
+                    treeStack = this.popComponentExpect(name, treeStack);
+                    treeStack.pop();
                 }
             }
         }
@@ -190,6 +194,15 @@ export class ViewTree {
         if (name != node.name && !this.isContainer(node.name)) {
             treeStack.pop();
         }
+    }
+
+    private popComponentExpect(name: string, treeStack: ViewTreeNode[]): ViewTreeNode[] {
+        for (let i = treeStack.length - 1; i >= 0; i--) {
+            if (treeStack[i].name == name) {
+                return treeStack.slice(0, i + 1);
+            }
+        }
+        return [];
     }
 
     private getParent(treeStack: ViewTreeNode[]): ViewTreeNode|null {
