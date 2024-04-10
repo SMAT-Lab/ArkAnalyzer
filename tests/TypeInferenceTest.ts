@@ -21,12 +21,9 @@ export class TypeInferenceTest {
 
     public testLocalTypes() {
         let scene = this.buildScene();
-        logger.error(`before inferTypes`);
-        this.printScene(scene);
         scene.inferTypes();
         logger.error(`after inferTypes`);
         this.printScene(scene);
-
     }
 
     public testFunctionReturnType() {

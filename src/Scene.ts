@@ -171,27 +171,26 @@ export class Scene {
     }
 
     public getClass(classSignature: ClassSignature | string): ArkClass | null {
-        let returnVal: ArkClass | null = null;
+        let classSearched: ArkClass | null = null;
         if (classSignature instanceof ClassSignature) {
             if (this.classCached.has(classSignature)) {
-                returnVal = this.classCached.get(classSignature) || null;
+                classSearched = this.classCached.get(classSignature) || null;
             } else {
-                let fileSig = classSignature.getDeclaringFileSignature();
-                this.arkFiles.forEach((fl) => {
-                    if (fl.getFileSignature().toString() == fileSig.toString()) {
-                        returnVal = fl.getClassAllTheFile(classSignature);
-                    }
-                });
-                this.classCached.set(classSignature, returnVal);
+                const fileSig = classSignature.getDeclaringFileSignature().toString();
+                const arkFile = this.targetProjectArkFilesMap.get(fileSig);
+                if (arkFile) {
+                    classSearched = arkFile.getClassAllTheFile(classSignature);
+                }
+                this.classCached.set(classSignature, classSearched);
             }
         } else {
             this.getAllClassesUnderTargetProject().forEach((cls) => {
                 if (cls.getSignature().toString() == classSignature) {
-                    returnVal = cls;
+                    classSearched = cls;
                 }
             });
         }
-        return returnVal;
+        return classSearched;
     }
 
     public getMethod(methodSignature: MethodSignature | string): ArkMethod | null {
