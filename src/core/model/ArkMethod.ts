@@ -1,17 +1,17 @@
-import { NodeA } from "../base/Ast";
-import { ArkParameterRef, ArkThisRef } from "../base/Ref";
-import { ArkAssignStmt, ArkReturnStmt } from "../base/Stmt";
-import { LineColPosition } from "../base/Position";
-import { Type, UnknownType } from "../base/Type";
-import { Value } from "../base/Value";
-import { BodyBuilder } from "../common/BodyBuilder";
-import { MethodParameter } from "../common/MethodInfoBuilder";
-import { Cfg } from "../graph/Cfg";
-import { ViewTree } from "../graph/ViewTree";
-import { ArkBody } from "./ArkBody";
-import { ArkClass } from "./ArkClass";
-import { ArkFile } from "./ArkFile";
-import { MethodSignature, MethodSubSignature } from "./ArkSignature";
+import {NodeA} from "../base/Ast";
+import {ArkParameterRef, ArkThisRef} from "../base/Ref";
+import {ArkAssignStmt, ArkReturnStmt} from "../base/Stmt";
+import {LineColPosition} from "../base/Position";
+import {Type, UnknownType} from "../base/Type";
+import {Value} from "../base/Value";
+import {BodyBuilder} from "../common/BodyBuilder";
+import {MethodParameter} from "../common/MethodInfoBuilder";
+import {Cfg} from "../graph/Cfg";
+import {ViewTree} from "../graph/ViewTree";
+import {ArkBody} from "./ArkBody";
+import {ArkClass} from "./ArkClass";
+import {ArkFile} from "./ArkFile";
+import {MethodSignature, MethodSubSignature} from "./ArkSignature";
 
 export const arkMethodNodeKind = ['MethodDeclaration', 'Constructor', 'FunctionDeclaration', 'GetAccessor',
     'SetAccessor', 'ArrowFunction', 'FunctionExpression', 'MethodSignature', 'ConstructSignature', 'CallSignature'];
@@ -37,7 +37,8 @@ export class ArkMethod {
 
     private body: ArkBody;
 
-    constructor() { }
+    constructor() {
+    }
 
     public getName() {
         return this.name;
@@ -122,6 +123,9 @@ export class ArkMethod {
 
     public setReturnType(type: Type) {
         this.returnType = type;
+        if (this.methodSubSignature) {
+            this.methodSubSignature.setReturnType(type);
+        }
     }
 
     public getSignature() {
@@ -240,8 +244,7 @@ export function buildArkMethodFromArkClass(methodNode: NodeA, declaringClass: Ar
 
     if (arkMethodNodeKind.indexOf(methodNode.kind) > -1) {
         buildNormalArkMethodFromAstNode(methodNode, mtd);
-    }
-    else {
+    } else {
         mtd.setName("_DEFAULT_ARK_METHOD");
     }
     mtd.genSignature();
