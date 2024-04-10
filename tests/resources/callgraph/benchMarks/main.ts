@@ -1,5 +1,6 @@
 import {A, Dog as Cat, Main, Cat as NotCat} from './a'
 import {B as C, C as Class, invokeParam} from "./b";
+import { MacDonlad, fxxkkkkk } from './c';
 // import {func1} from "./temp/a";
 // import taskpool from '@ohos.taskpool';
 // // namespace temp_temp {
@@ -18,13 +19,16 @@ import {B as C, C as Class, invokeParam} from "./b";
 // A();
 // temp()
 // C();
-let dog: Cat = new Cat()
+// let dog: Cat = new Cat()
+// let d = fxxkkkkk.c.aaaaaaaaaa
+// let e = fxxkkkkk.kfc.d
+// let k = fxxkkkkk.c
 // let notDog = dog
 // notDog.sleep()
 // let mee: Mav = new Cat()
 // let d: Cat | null = new Cat()
-let c = dog.aaaaaaaaaa
-let d = Cat.num
+// let c = dog.aaaaaaaaaa
+// let d = Cat.num
 // dog.aaaaaaaaaa = 1
 // let d = c
 // let e = globalNumber
@@ -57,3 +61,10 @@ let d = Cat.num
 // import taskpool from '/Users/yangyizhuo/sdk/openharmony/interface_sdk-js/api/@ohos.taskpool';
 
 // let name = taskpool.Task.name
+
+
+// field pointer test
+let mm = new MacDonlad()
+// let dogggg = mm.dog
+MacDonlad.num = new Cat()
+let num = MacDonlad.num

@@ -267,7 +267,7 @@ export class Scene {
     }
 
     public makeCallGraphVPA(entryPoints: MethodSignature[]): AbstractCallGraph {
-        // WIP
+        // WIP context-insensitive 上下文不敏感
         let callGraphVPA: AbstractCallGraph
         callGraphVPA = new VariablePointerAnalysisAlogorithm(this);
         callGraphVPA.loadCallGraph(entryPoints)

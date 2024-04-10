@@ -9,9 +9,10 @@ import { MethodSignature } from "../core/model/ArkSignature";
 import { isItemRegistered } from "../utils/callGraphUtils";
 import { AbstractCallGraph } from "./AbstractCallGraphAlgorithm";
 import { ClassHierarchyAnalysisAlgorithm } from "./ClassHierarchyAnalysisAlgorithm";
-import { Pointer, PointerTargetPair, PointerTarget } from "./PointerAnalysis/Pointer";
+import { LocalPointer, PointerTargetPair, PointerTarget, InstanceFieldPointer, StaticFieldPointer, Pointer } from "./PointerAnalysis/Pointer";
 import { PointerFlowGraph } from "./PointerAnalysis/PointerFlowGraph";
 import Logger, { LOG_LEVEL } from "../utils/logger";
+import { AbstractFieldRef, ArkInstanceFieldRef, ArkStaticFieldRef } from "../core/base/Ref";
 
 const logger = Logger.getLogger();
 
@@ -41,23 +42,34 @@ export class VariablePointerAnalysisAlogorithm extends AbstractCallGraph {
         this.addReachable(entryPoints)
         while (this.workList.length != 0) {
             let workElement = this.workList.shift()
+            let pointerSet: Pointer, identifier: Value | PointerTarget
             // workList的结构是[指针，指向目标]
             let pointer = workElement!.getPointer(), pointerTarget = workElement!.getPointerTarget()
-            let identifier = pointer.getIdentifier()
+            if (pointer instanceof LocalPointer) {
+                identifier = pointer.getIdentifier()
+                pointerSet = this.pointerFlowGraph.getPointerSetElement(identifier, null, null)
 
-            let pointerSet = this.pointerFlowGraph.getPointerSetElement(identifier)
+            } else if (pointer instanceof InstanceFieldPointer) {
+                identifier = pointer.getBasePointerTarget()
+                pointerSet = this.pointerFlowGraph.getPointerSetElement(null, identifier, pointer.getFieldSignature())
 
-            if (!(pointerSet.getPointerTarget(pointerTarget) == null)) {
+            } else if (pointer instanceof StaticFieldPointer) {
+                pointerSet = this.pointerFlowGraph.getPointerSetElement(null, null, pointer.getFieldSignature())
+            }
+
+            // 检查当前指针是否已经存在于对应指针集中
+            if (!(pointerSet!.getPointerTarget(pointerTarget) == null)) {
                 continue
             }
-            let newWorkListItems = this.pointerFlowGraph.proPagate(identifier, pointerTarget)
+
+            let newWorkListItems = this.pointerFlowGraph.proPagate(pointerSet!, pointerTarget)
             for (let newWorkLisItem of newWorkListItems) {
                 this.workList.push(newWorkLisItem)
             }
-            if (identifier instanceof Local) {
-                this.processFieldReferenceStmt(identifier, pointerTarget)
-                // TODO: 取、存属性的指针操作待支持
-                this.processInstanceInvokeStmt(identifier, pointerTarget)
+            if (identifier! instanceof Local) {
+                this.processFieldReferenceStmt(identifier!, pointerTarget)
+                
+                this.processInstanceInvokeStmt(identifier!, pointerTarget)
             }
         }
     }
@@ -72,7 +84,7 @@ export class VariablePointerAnalysisAlogorithm extends AbstractCallGraph {
 
     protected addReachable(entryPoints: MethodSignature[]) {
         for (let method of entryPoints) {
-            logger.info("[addReachable] processing method: "+method.toString())
+            // logger.info("[addReachable] processing method: "+method.toString())
             if (isItemRegistered<MethodSignature>(
                 method, this.reachableMethods,
                 (a, b) => a.toString() === b.toString()
@@ -90,19 +102,21 @@ export class VariablePointerAnalysisAlogorithm extends AbstractCallGraph {
             for (let stmt of stmts) {
                 if (stmt instanceof ArkAssignStmt) {
                     let leftOp = stmt.getLeftOp(), rightOp = stmt.getRightOp()
-
+                    if (!(leftOp instanceof Local)) {
+                        continue
+                    }
                     if (rightOp instanceof ArkNewExpr) {
                         let classType = rightOp.getType() as ClassType
                         let pointer = new PointerTarget(classType, PointerTarget.genLocation(method, stmt))
 
                         // logger.info("\t[addReachable] find new expr in method, add workList: "+(leftOp as Local).getName()+" -> "+pointer.getType())
                         this.workList.push(
-                            new PointerTargetPair(this.pointerFlowGraph.getPointerSetElement(leftOp), pointer))
+                            new PointerTargetPair(this.pointerFlowGraph.getPointerSetElement(leftOp, null, null), pointer))
                     } else if (rightOp instanceof Local) {
                         // logger.info("\t[addReachable] find assign expr in method, add pointer flow edge: "+(rightOp as Local).getName()+" -> "+(leftOp as Local).getType())
                         this.addEdgeIntoPointerFlowGraph(
-                            this.pointerFlowGraph.getPointerSetElement(rightOp),
-                            this.pointerFlowGraph.getPointerSetElement(leftOp)
+                            this.pointerFlowGraph.getPointerSetElement(rightOp, null, null),
+                            this.pointerFlowGraph.getPointerSetElement(leftOp, null, null)
                         )
                     } else if (rightOp instanceof ArkStaticInvokeExpr) {
                         let targetMethod = this.scene.getMethod(rightOp.getMethodSignature())
@@ -159,7 +173,7 @@ export class VariablePointerAnalysisAlogorithm extends AbstractCallGraph {
 
                 // logger.info("\t[processInvokeStmt] add pointer to call target this instance: "+pointer.getType())
                 this.workList.push(new PointerTargetPair(
-                    this.pointerFlowGraph.getPointerSetElement(targetMethodThisInstance),
+                    this.pointerFlowGraph.getPointerSetElement(targetMethodThisInstance, null, null),
                     pointer))
 
                 this.processInvokePointerFlow(sourceMethod, targetMethod, stmt)
@@ -170,13 +184,44 @@ export class VariablePointerAnalysisAlogorithm extends AbstractCallGraph {
     protected processFieldReferenceStmt (identifier: Value, pointerTarget: PointerTarget) {
         // 将field的存与取操作合并
         for (let stmt of this.reachableStmts) {
-            let fieldRef = stmt.getFieldRef()
-            // TODO: 对namespace中取field会拆分为两条语句，需要进行区分
-            // 前置：可能需要修一下静态属性调用的问题
-            if (fieldRef) {
-
-            } else if (1){
-
+            // TODO: getFieldRef接口可能包含了左值
+            if (stmt instanceof ArkAssignStmt && stmt.containsFieldRef()) {
+                // TODO: 对namespace中取field会拆分为两条语句，需要进行区分
+                let fieldRef
+                if ((fieldRef = this.getFieldRefFromUse(stmt)) != undefined) {
+                    // 取属性
+                    let fieldSignature = fieldRef.getFieldSignature()
+                    if (fieldRef instanceof ArkInstanceFieldRef) {
+                        let fieldBase = fieldRef.getBase()
+                        if (fieldBase !== identifier) {
+                            continue
+                        }
+                        this.addEdgeIntoPointerFlowGraph(
+                            this.pointerFlowGraph.getPointerSetElement(null, pointerTarget, fieldSignature),
+                            this.pointerFlowGraph.getPointerSetElement(stmt.getLeftOp(), null, null)
+                        )
+                    } else if (fieldRef instanceof ArkStaticFieldRef) {
+                        this.addEdgeIntoPointerFlowGraph(
+                            this.pointerFlowGraph.getPointerSetElement(null, null, fieldSignature),
+                            this.pointerFlowGraph.getPointerSetElement(stmt.getLeftOp(), null, null)
+                        )
+                    }
+                } else if ((fieldRef = this.getFieldFromDef(stmt)) != undefined) {
+                    // 存属性
+                    let fieldSignature = fieldRef.getFieldSignature()
+                    if (fieldRef instanceof ArkInstanceFieldRef) {
+                        let fieldBase = fieldRef.getBase()
+                        if (fieldBase !== identifier) {
+                            continue
+                        }                        
+                        this.addEdgeIntoPointerFlowGraph(
+                            this.pointerFlowGraph.getPointerSetElement(stmt.getRightOp(), null, null),
+                            this.pointerFlowGraph.getPointerSetElement(null, pointerTarget, fieldSignature)
+                        )
+                    } else if (fieldRef instanceof ArkStaticFieldRef) {
+                        console.log("static field not supported")
+                    }
+                }
             }
         }
     }
@@ -207,8 +252,8 @@ export class VariablePointerAnalysisAlogorithm extends AbstractCallGraph {
         for (let i = 0;i < parameters.length;i ++) {
             // 参数指针传递
             this.addEdgeIntoPointerFlowGraph(
-                this.pointerFlowGraph.getPointerSetElement(parameters[i]),
-                this.pointerFlowGraph.getPointerSetElement(methodParameterInstances[i])
+                this.pointerFlowGraph.getPointerSetElement(parameters[i], null, null),
+                this.pointerFlowGraph.getPointerSetElement(methodParameterInstances[i], null, null)
             )
         }
 
@@ -216,8 +261,8 @@ export class VariablePointerAnalysisAlogorithm extends AbstractCallGraph {
             let returnValues = targetMethod.getReturnValues()
             for (let returnValue of returnValues) {
                 this.addEdgeIntoPointerFlowGraph(
-                    this.pointerFlowGraph.getPointerSetElement(returnValue),
-                    this.pointerFlowGraph.getPointerSetElement(stmt.getLeftOp())
+                    this.pointerFlowGraph.getPointerSetElement(returnValue, null, null),
+                    this.pointerFlowGraph.getPointerSetElement(stmt.getLeftOp(), null, null)
                 )
             }
         }
@@ -250,5 +295,20 @@ export class VariablePointerAnalysisAlogorithm extends AbstractCallGraph {
             }
         }
         return null
+    }
+
+    protected getFieldRefFromUse(stmt: Stmt) {
+        for (let use of stmt.getUses()) {
+            if (use instanceof AbstractFieldRef) {
+                return use as AbstractFieldRef;
+            }
+        }
+    }
+
+    protected getFieldFromDef(stmt: Stmt) {
+        let def = stmt.getDef()
+        if (def instanceof AbstractFieldRef) {
+            return def as AbstractFieldRef;
+        }
     }
 }

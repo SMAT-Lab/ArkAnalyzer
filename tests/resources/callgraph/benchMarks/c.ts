@@ -1,6 +1,18 @@
-import { Cat } from "./a";
+import { Cat, Dog } from "./a";
 
-let cat = new Cat()
-let newCat = cat
-let thisCat = newCat.getCat()
-thisCat.sound()
+export namespace fxxkkkkk {
+    export let c = new Dog()
+
+    export class kfc {
+        static d: Dog = new Dog()
+    }
+}
+
+export class MacDonlad {
+    // public dog: Dog
+    public static num: Dog
+
+    constructor() {
+        // this.dog = new Dog()
+    }
+}
