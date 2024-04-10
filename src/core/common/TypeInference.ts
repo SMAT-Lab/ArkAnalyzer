@@ -23,6 +23,8 @@ import {
 import {ArkMethod} from "../model/ArkMethod";
 import {ClassSignature} from "../model/ArkSignature";
 import {ModelUtils} from "./ModelUtils";
+import { ArkField } from '../model/ArkField';
+import { ArkClass } from '../model/ArkClass';
 
 const logger = Logger.getLogger();
 
@@ -165,35 +167,60 @@ export class TypeInference {
 
         for (const use of stmt.getUses()) {
             if (use instanceof ArkInstanceFieldRef) {
-                this.handleClassField(use);
+                let fieldType = this.handleClassField(use, arkMethod);
+                if (stmt instanceof ArkAssignStmt && stmt.getLeftOp() instanceof Local && fieldType != undefined) {
+                    if (fieldType instanceof ArkField) {
+                        if (fieldType.getModifiers().has("StaticKeyword")) {
+                            stmt.setRightOp(new ArkStaticFieldRef(fieldType.getSignature()))
+                        }
+                        (stmt.getLeftOp() as Local).setType(fieldType.getType())
+                    } else if (fieldType instanceof ArkClass) {
+                        (stmt.getLeftOp() as Local).setType(fieldType.getSignature())
+                    }
+                }
             }
         }
         const stmtDef = stmt.getDef()
         if (stmtDef && stmtDef instanceof ArkInstanceFieldRef) {
-            this.handleClassField(stmtDef);
+            this.handleClassField(stmtDef, arkMethod);
         }
     }
 
-    private handleClassField(field: ArkInstanceFieldRef) {
-        const base = field.getBase();
+    private handleClassField(field: ArkInstanceFieldRef, arkMethod: ArkMethod): ArkClass | ArkField | undefined {
+        const base = field.getBase(), baseName = base.getName()
         const type = base.getType();
+        const fieldName = field.getFieldName();
+        let arkClass
         if (!(type instanceof ClassType)) {
-            logger.warn('type of base must be ClassType');
-            return;
-        }
-        const arkClass = ModelUtils.getClassWithClassSignature(type.getClassSignature(), this.scene);
-        if (arkClass == null) {
-            logger.warn(`class ${type.getClassSignature().getClassName()} does not exist`);
-            return;
+            arkClass = ModelUtils.getClassWithName(baseName, arkMethod);
+            if (!arkClass) {
+                const nameSpace = ModelUtils.getNamespaceWithName(baseName, arkMethod)!;
+                const clas = ModelUtils.getClassInNamespaceWithName(fieldName, nameSpace)!;
+                return clas
+            }
+        } else {
+            arkClass = ModelUtils.getClassWithClassSignature(type.getClassSignature(), this.scene);
+            if (arkClass == null) {
+                logger.warn(`class ${type.getClassSignature().getClassName()} does not exist`);
+                return;
+            }
         }
 
-        const fieldName = field.getFieldName();
         const arkField = ModelUtils.getFieldInClassWithName(fieldName, arkClass);
         if (arkField == null) {
             logger.warn(`field ${fieldName} does not exist`);
             return;
         }
-        field.setFieldSignature(arkField.getSignature());
+        let fieldType = arkField.getType();
+        if (fieldType instanceof UnclearReferenceType) {
+            const fieldTypeName = fieldType.getName();
+            const fieldTypeClass = ModelUtils.getClassWithName(fieldTypeName, arkMethod);
+            if (fieldTypeClass) {
+                fieldType = new ClassType(fieldTypeClass.getSignature());
+            }
+            arkField.setType(fieldType)
+        }
+        return arkField
     }
 
     public static inferTypeInStmt(stmt: Stmt, arkMethod: ArkMethod | null): void {

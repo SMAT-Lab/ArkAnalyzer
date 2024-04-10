@@ -2,7 +2,7 @@ import { Local } from "../../core/base/Local";
 import { Stmt } from "../../core/base/Stmt";
 import { Type } from "../../core/base/Type";
 import { Value } from "../../core/base/Value";
-import { MethodSignature } from "../../core/model/ArkSignature";
+import { FieldSignature, MethodSignature } from "../../core/model/ArkSignature";
 
 // TODO: 对指向目标进行细分，后续PointerTarget将作为抽象类
 export class PointerTarget {
@@ -31,13 +31,11 @@ export class PointerTarget {
 /**
  * 指针需要全局唯一，需要根据语句信息确定唯一位置
  */
-export class Pointer {
-    private pointerTargetSet: Set<PointerTarget>
-    private identifier: Value // 用于表示指针集的唯一归属
-    // private fields: PointerSet[]
 
-    constructor(identifier: Value) {
-        this.identifier = identifier
+export abstract class Pointer {
+    private pointerTargetSet: Set<PointerTarget>
+
+    constructor() {
         this.pointerTargetSet = new Set()
     }
 
@@ -48,10 +46,6 @@ export class Pointer {
             }
         }
         this.pointerTargetSet.add(newPointerTarget)
-    }
-
-    public getIdentifier(): Value {
-        return this.identifier
     }
 
     public getPointerTarget(specificPointerTarget: PointerTarget): PointerTarget | null {
@@ -70,26 +64,85 @@ export class Pointer {
         }
         return results
     }
+}
 
-    public static comparePointerTargetSet(a: Pointer, b: Pointer): boolean {
-        // TODO: 比较规则涉及到Value接口的不同实现
-        return a.identifier === b.identifier
+export class LocalPointer extends Pointer{
+    private identifier: Value // 用于表示指针集的唯一归属
+
+    constructor(identifier: Value) {
+        super()
+        this.identifier = identifier
     }
 
-    public static calculateDifference(targetSet: Set<PointerTarget>, sourceSet: Set<PointerTarget>): Set<PointerTarget> {
-        let difference = new Set(targetSet);
-        for (let elem of sourceSet) {
-            difference.delete(elem);
-        }
-        return difference;
+    public getIdentifier(): Value {
+        return this.identifier
     }
 
     public toString() {
-        let resultString = ""
-        if (this.identifier instanceof Local) {
-            resultString = (this.identifier as Local).getName()+" pointer: {"
+        let resultString = "[LocalPointer] "
+        resultString += (this.getIdentifier() as Local).getName()+" pointer: {"
+        const pointerTargets = this.getAllPointerTargets()
+        for (let pointerTarget of pointerTargets) {
+            resultString += " "+pointerTarget.getType()+"."+pointerTarget.getLocation()
         }
-        for (let pointerTarget of this.pointerTargetSet) {
+        return resultString + "}"
+    }
+}
+
+ /**
+  * TODO: 需要考虑在调用类的属性的时候如何将同一个类的不同实例区分开
+  * 目前想法是让InstanceFieldPointer的标识符属性改成LocalPointer，这样能够区分具体构造位置
+  */
+
+export class InstanceFieldPointer extends Pointer {
+    // private identifier: Value // 用于表示指针集的唯一归属
+    private basePointerTarget: PointerTarget
+    private fieldSignature: FieldSignature
+
+    constructor(basePointerTarget: PointerTarget, field: FieldSignature) {
+        super()
+        this.basePointerTarget = basePointerTarget
+        this.fieldSignature = field
+    }
+
+    public getBasePointerTarget() {
+        return this.basePointerTarget
+    }
+
+    public getFieldSignature() {
+        return this.fieldSignature
+    }
+
+    public toString() {
+        let resultString = "[InstanceFieldPointer] "
+        resultString += this.getBasePointerTarget().getType()
+            +"."+this.fieldSignature.getFieldName()+" pointer: {"
+        const pointerTargets = this.getAllPointerTargets()
+        for (let pointerTarget of pointerTargets) {
+            resultString += " "+pointerTarget.getType()+"."+pointerTarget.getLocation()
+        }
+        return resultString + "}"
+    }
+}
+
+export class StaticFieldPointer extends Pointer {
+    private fieldSignature: FieldSignature
+
+    constructor(field: FieldSignature) {
+        super()
+        this.fieldSignature = field
+    }
+
+    public getFieldSignature() {
+        return this.fieldSignature
+    }
+
+    public toString() {
+        let resultString = "[StaticFieldPointer] "
+        resultString += this.fieldSignature.getDeclaringClassSignature().getClassName()+"."
+            +this.fieldSignature.getFieldName()+" pointer: {"
+        const pointerTargets = this.getAllPointerTargets()
+        for (let pointerTarget of pointerTargets) {
             resultString += " "+pointerTarget.getType()+"."+pointerTarget.getLocation()
         }
         return resultString + "}"
