@@ -104,12 +104,12 @@ export class ViewTree {
         return this.root;
     }
 
-    private parseForEachAnonymousFunc(treeStack: ViewTreeNode[], expr: ArkInstanceInvokeExpr) {
+    private async parseForEachAnonymousFunc(treeStack: ViewTreeNode[], expr: ArkInstanceInvokeExpr) {
         let arg = expr.getArg(3) as Local;
         let type = arg.getType() as CallableType;
         let method = this.render.getDeclaringArkClass().getMethod(type.getMethodSignature());
         if (method) {
-            this.parseCfg(method.getCfg(), treeStack);
+            await this.parseCfg(method.getCfg(), treeStack);
         }
     }
 
@@ -167,7 +167,7 @@ export class ViewTree {
                     }
                     treeStack.push(node);
                     if (name == 'ForEach' || name == 'LazyForEach') {
-                        this.parseForEachAnonymousFunc(treeStack, expr);
+                        await this.parseForEachAnonymousFunc(treeStack, expr);
                     }
                     continue;
                 } 
