@@ -1,5 +1,6 @@
 import { LineColPosition } from "../base/Position";
 import { Type } from "../base/Type";
+import { Value } from "../base/Value";
 import { MethodParameter } from "../common/MethodInfoBuilder";
 import { ArkClass } from "./ArkClass";
 import { FieldSignature, MethodSignature } from "./ArkSignature";
@@ -25,6 +26,7 @@ export class ArkField {
     private arkMethodSignature: MethodSignature;
 
     //private initializer, TODO
+    private initializer: Value;
 
     constructor() { }
 
@@ -114,6 +116,14 @@ export class ArkField {
         fieldSig.setDeclaringClassSignature(this.declaringClass.getSignature());
         fieldSig.setFieldName(this.name);
         this.setSignature(fieldSig);
+    }
+
+    public getInitializer() {
+        return this.initializer;
+    }
+
+    public setInitializer(initializer: Value) {
+        this.initializer = initializer;
     }
 
     public isStatic(): boolean {
