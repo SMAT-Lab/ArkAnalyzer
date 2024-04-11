@@ -198,7 +198,7 @@ class instanceSolver extends DataflowSolver<Local> {
 }
 
 
-const config_path = "tests\\resources\\ifds\\ifdsTestConfig.json";
+const config_path = "tests\\resources\\ifds\\Div0\\ifdsTestConfig.json";
 let config: SceneConfig = new SceneConfig();
 config.buildFromJson(config_path);
 const scene = new Scene(config);

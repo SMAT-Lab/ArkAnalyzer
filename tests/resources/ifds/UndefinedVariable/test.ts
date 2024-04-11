@@ -5,12 +5,9 @@ class t{
 
     }
 
-    add(){
-        this.a++;
-    }
 }
 
-function main(){
+function mainU(){
     let t1: t;
     if (true){
         t1 = new t();
@@ -18,3 +15,7 @@ function main(){
     }
     console.log(t1.s);
 }
+
+// function f(this: { t: string }) {
+//     console.log(this.t);
+// }

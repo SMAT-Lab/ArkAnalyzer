@@ -16,9 +16,10 @@ function fun(x:number){
     console.log(x)
 }
 
-function  main(x:number) {
-    fun(0);
-    fun(0);
+function  main(x:number,y:number) {
+    let n = new num();
+    n.n=1;
+    x = n.get();
     // let c = y/y;  // zero division
     // if (x==0) {
     //     x = nonZero();
@@ -59,7 +60,10 @@ function main1(){
 }
 
 class num {
-    constructor() {}
+    n:number = 0;
+    constructor() {
+        this.n=1;
+    }
     get():number {
         return -1;
     }

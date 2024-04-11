@@ -4,17 +4,18 @@ import { ArkBody } from "../src/core/model/ArkBody";
 import {DataflowProblem, FlowFunction} from "../src/core/dataflow/DataflowProblem"
 import {Local} from "../src/core/base/Local"
 import {Value} from "../src/core/base/Value"
-import {NumberType, Type} from "../src/core/base/Type"
+import {ClassType, NumberType, Type} from "../src/core/base/Type"
 import {ArkAssignStmt, ArkInvokeStmt, ArkReturnStmt, Stmt} from "../src/core/base/Stmt"
 import { ArkMethod } from "../src/core/model/ArkMethod";
 import { LiteralType } from "../src/core/base/Type";
 import {ValueUtil} from "../src/core/common/ValueUtil"
 import {Constant} from "../src/core/base/Constant"
-import { ArkInstanceFieldRef, ArkParameterRef } from "../src/core/base/Ref";
+import { AbstractFieldRef, ArkInstanceFieldRef, ArkParameterRef } from "../src/core/base/Ref";
 import { ModelUtils } from "../src/core/common/ModelUtils";
 import { DataflowSolver } from "../src/core/dataflow/DataflowSolver"
 import { ArkBinopExpr, ArkInstanceInvokeExpr } from "../src/core/base/Expr";
 import { UndefinedType } from "../src/core/base/Type";
+import { FieldSignature, fieldSignatureCompare } from "../src/core/model/ArkSignature";
 
 
 class UndefinedVariableChecker extends DataflowProblem<Value> {
@@ -105,8 +106,19 @@ class UndefinedVariableChecker extends DataflowProblem<Value> {
                         }
                         
                         const callExpr = srcStmt.getExprs()[0];
-                        if (callExpr instanceof ArkInstanceInvokeExpr && dataFact instanceof ArkInstanceFieldRef && callExpr.getBase() == dataFact.getBase()){
+                        if (callExpr instanceof ArkInstanceInvokeExpr && dataFact instanceof ArkInstanceFieldRef && callExpr.getBase().getName() == dataFact.getBase().getName()){
                             // todo:base转this
+                            const baseType = callExpr.getBase().getType() as ClassType;
+                            const arkClass = checkerInstance.scene.getClass(baseType.getClassSignature());
+                            const constructor = ModelUtils.getMethodInClassWithName("constructor", arkClass!);
+                            const block = [...constructor!.getCfg().getBlocks()][0];
+                            for (const stmt of block.getStmts()){
+                                const def = stmt.getDef()
+                                if (def && def instanceof ArkInstanceFieldRef && def.getBase().getName() == "this" && def.getFieldName() == dataFact.getFieldName()){
+                                    ret.add(def);
+                                    break;
+                                }
+                            }
                         }
                 }
                 const callStmt = srcStmt as ArkInvokeStmt;
@@ -151,7 +163,12 @@ class UndefinedVariableChecker extends DataflowProblem<Value> {
                     }
                 }
                 if (dataFact instanceof ArkInstanceFieldRef && dataFact.getBase().getName() == "this"){
-                    // todo:this转base。不能new一个t.a的ref，考虑去pathSet拿
+                    // todo:this转base。
+                    const expr = callStmt.getExprs()[0];
+                    if (expr instanceof ArkInstanceInvokeExpr){
+                        const fieldRef = new ArkInstanceFieldRef(expr.getBase(),dataFact.getFieldSignature());
+                        ret.add(fieldRef);
+                    }
                 }
                 return ret;
             }
@@ -192,6 +209,17 @@ class instanceSolver extends DataflowSolver<Value> {
     }
 }
 
+
+// class A{
+//     t:number = 0;
+//     a(){
+//         function f(){
+//             console.log(this.t)
+//         }
+//         f();
+//     }
+// }
+// (new A()).a();
 
 const config_path = "tests\\resources\\ifds\\UndefinedVariable\\ifdsTestConfig.json";
 let config: SceneConfig = new SceneConfig();
