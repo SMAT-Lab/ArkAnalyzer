@@ -1,5 +1,6 @@
 import { TypeInference } from "../common/TypeInference";
 import { BasicBlock } from "../graph/BasicBlock";
+import { ArkClass } from "../model/ArkClass";
 import { MethodSignature } from "../model/ArkSignature";
 import { Local } from "./Local";
 import { ArrayType, BooleanType, ClassType, NumberType, Type } from "./Type";
@@ -464,5 +465,57 @@ export class ArkUnopExpr extends AbstractExpr {
 
     public toString(): string {
         return this.operator + this.op;
+    }
+}
+
+export class ArrayLiteralExpr extends AbstractExpr {
+    private elements: Value[] = [];
+    private type: Type;
+    constructor(elements: Value[], type: Type) {
+        super();
+        this.elements = elements;
+        this.type = type;
+    }
+
+    public getUses(): Value[] {
+        let uses: Value[] = [];
+        uses.push();
+        return uses;
+    }
+
+    public getType(): Type {
+        return this.type;
+    }
+
+    public toString(): string {
+        //TODO
+        return '';
+    }
+}
+
+export class ObjectLiteralExpr extends AbstractExpr {
+    private anonymousClass: ArkClass;
+    private type: Type;
+    constructor(anonymousClass: ArkClass, type: Type = ClassType) {
+        super();
+        this.anonymousClass = anonymousClass;
+    }
+
+    public getAnonymousClass() {
+        return this.anonymousClass;
+    }
+
+    public getUses(): Value[] {
+        let uses: Value[] = [];
+        uses.push();
+        return uses;
+    }
+
+    public getType(): Type {
+        return this.type;
+    }
+
+    public toString(): string {
+        return this.anonymousClass.getSignature().toString();
     }
 }

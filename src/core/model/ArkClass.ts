@@ -8,6 +8,7 @@ import { ArkNamespace } from "./ArkNamespace";
 import { ClassSignature, FieldSignature, MethodSignature } from "./ArkSignature";
 import Logger, { LOG_LEVEL } from "../../utils/logger";
 import { LineColPosition } from "../base/Position";
+import { ObjectLiteralExpr } from "../base/Expr";
 
 const logger = Logger.getLogger();
 
@@ -330,9 +331,29 @@ function buildNormalArkClass(clsNode: NodeA, cls: ArkClass) {
     }
 
     cls.addFields(clsNode.classNodeInfo.getMembers());
-    cls.getFields().forEach((filed) => {
-        filed.setDeclaringClass(cls);
-        filed.genSignature();
+    cls.getFields().forEach((field) => {
+        field.setDeclaringClass(cls);
+        field.genSignature();
+        let initializer = field.getInitializer();
+        if (initializer instanceof ObjectLiteralExpr) {
+            let anonymousClass = initializer.getAnonymousClass();
+            let newName = 'AnonymousClass-' + cls.getName() + '-' + field.getName();
+            anonymousClass.setName(newName);
+            anonymousClass.setDeclaringArkNamespace(cls.getDeclaringArkNamespace());
+            anonymousClass.setDeclaringArkFile(cls.getDeclaringArkFile());
+            anonymousClass.genSignature();
+            anonymousClass.getMethods().forEach((mtd) => {
+                mtd.setDeclaringArkClass(anonymousClass);
+                mtd.setDeclaringArkFile();
+                mtd.genSignature();
+            });
+            if (cls.getDeclaringArkNamespace()) {
+                cls.getDeclaringArkNamespace().addArkClass(anonymousClass);
+            }
+            else {
+                cls.getDeclaringArkFile().addArkClass(anonymousClass);
+            }
+        }
     });
 
     clsNode.classNodeInfo.getTypeParameters().forEach((typeParameter) => {

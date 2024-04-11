@@ -1,17 +1,17 @@
-import {NodeA} from "../base/Ast";
-import {ArkParameterRef, ArkThisRef} from "../base/Ref";
-import {ArkAssignStmt, ArkReturnStmt} from "../base/Stmt";
-import {LineColPosition} from "../base/Position";
-import {Type, UnknownType} from "../base/Type";
-import {Value} from "../base/Value";
-import {BodyBuilder} from "../common/BodyBuilder";
-import {MethodParameter} from "../common/MethodInfoBuilder";
-import {Cfg} from "../graph/Cfg";
-import {ViewTree} from "../graph/ViewTree";
-import {ArkBody} from "./ArkBody";
-import {ArkClass} from "./ArkClass";
-import {ArkFile} from "./ArkFile";
-import {MethodSignature, MethodSubSignature} from "./ArkSignature";
+import { NodeA } from "../base/Ast";
+import { ArkParameterRef, ArkThisRef } from "../base/Ref";
+import { ArkAssignStmt, ArkReturnStmt } from "../base/Stmt";
+import { LineColPosition } from "../base/Position";
+import { Type, UnknownType } from "../base/Type";
+import { Value } from "../base/Value";
+import { BodyBuilder } from "../common/BodyBuilder";
+import { MethodInfo, MethodParameter } from "../common/MethodInfoBuilder";
+import { Cfg } from "../graph/Cfg";
+import { ViewTree } from "../graph/ViewTree";
+import { ArkBody } from "./ArkBody";
+import { ArkClass } from "./ArkClass";
+import { ArkFile } from "./ArkFile";
+import { MethodSignature, MethodSubSignature } from "./ArkSignature";
 
 export const arkMethodNodeKind = ['MethodDeclaration', 'Constructor', 'FunctionDeclaration', 'GetAccessor',
     'SetAccessor', 'ArrowFunction', 'FunctionExpression', 'MethodSignature', 'ConstructSignature', 'CallSignature'];
@@ -280,6 +280,24 @@ export function buildNormalArkMethodFromAstNode(methodNode: NodeA, mtd: ArkMetho
 
 
     methodNode.methodNodeInfo.typeParameters.forEach((typeParameter) => {
+        mtd.addTypeParameter(typeParameter);
+    });
+}
+
+export function buildNormalArkMethodFromMethodInfo(methodInfo: MethodInfo, mtd: ArkMethod) {
+    mtd.setName(methodInfo.name);
+
+    methodInfo.modifiers.forEach((modifier) => {
+        mtd.addModifier(modifier);
+    });
+    methodInfo.parameters.forEach(methodParameter => {
+        mtd.addParameter(methodParameter);
+    });
+
+    mtd.setReturnType(methodInfo.returnType);
+
+
+    methodInfo.typeParameters.forEach((typeParameter) => {
         mtd.addTypeParameter(typeParameter);
     });
 }
