@@ -1,6 +1,6 @@
 {
     "targetProjectName": "ifdsTest",    
-    "targetProjectDirectory": "tests\\resources\\ifds",
+    "targetProjectDirectory": "tests\\resources\\ifds\\Div0",
 
     "logPath": "out\\log.txt",
     
