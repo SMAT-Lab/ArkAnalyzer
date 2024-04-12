@@ -9,10 +9,10 @@ export namespace fxxkkkkk {
 }
 
 export class MacDonlad {
-    // public dog: Dog
+    public dog: Dog
     public static num: Dog
 
     constructor() {
-        // this.dog = new Dog()
+        this.dog = new Dog()
     }
 }
