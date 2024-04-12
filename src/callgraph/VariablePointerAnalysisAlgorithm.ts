@@ -219,7 +219,10 @@ export class VariablePointerAnalysisAlogorithm extends AbstractCallGraph {
                             this.pointerFlowGraph.getPointerSetElement(null, pointerTarget, fieldSignature)
                         )
                     } else if (fieldRef instanceof ArkStaticFieldRef) {
-                        console.log("static field not supported")
+                        this.addEdgeIntoPointerFlowGraph(
+                            this.pointerFlowGraph.getPointerSetElement(stmt.getRightOp(), null, null),
+                            this.pointerFlowGraph.getPointerSetElement(null, null, fieldRef.getFieldSignature())
+                        )
                     }
                 }
             }

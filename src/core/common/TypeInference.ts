@@ -185,7 +185,16 @@ export class TypeInference {
         }
         const stmtDef = stmt.getDef()
         if (stmtDef && stmtDef instanceof ArkInstanceFieldRef) {
-            this.handleClassField(stmtDef, arkMethod);
+            let fieldType = this.handleClassField(stmtDef, arkMethod);
+            if (fieldType instanceof ArkField) {
+                if (fieldType.getModifiers().has("StaticKeyword")) {
+                    stmt.setDef(new ArkStaticFieldRef(fieldType.getSignature()))
+                } else {
+                    stmt.setDef(new ArkInstanceFieldRef(stmtDef.getBase(), fieldType.getSignature()));
+                }
+            } else if (fieldType instanceof ArkClass) {
+                // not sure what to do
+            }
         }
     }
 
