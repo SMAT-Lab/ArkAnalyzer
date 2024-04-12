@@ -64,7 +64,9 @@ import { MacDonlad, fxxkkkkk } from './c';
 
 
 // field pointer test
-let mm = new MacDonlad()
+// let mm = new MacDonlad()
 // let dogggg = mm.dog
-MacDonlad.num = new Cat()
-let num = MacDonlad.num
+let bar = new Bar()
+bar.useFoo()
+// MacDonlad.num = new Cat()
+// let num = MacDonlad.num

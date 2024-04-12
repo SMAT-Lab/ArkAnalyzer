@@ -172,6 +172,9 @@ export class TypeInference {
                     if (fieldType instanceof ArkField) {
                         if (fieldType.getModifiers().has("StaticKeyword")) {
                             stmt.setRightOp(new ArkStaticFieldRef(fieldType.getSignature()))
+                        } else {
+                            // stmt.setRightOp(new ArkInstanceFieldRef(fieldType.getSignature()))
+                            stmt.setRightOp(new ArkInstanceFieldRef(use.getBase(), fieldType.getSignature()));
                         }
                         (stmt.getLeftOp() as Local).setType(fieldType.getType())
                     } else if (fieldType instanceof ArkClass) {
