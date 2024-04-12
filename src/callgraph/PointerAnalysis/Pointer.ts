@@ -41,7 +41,7 @@ export abstract class Pointer {
 
     public addPointerTarget(newPointerTarget: PointerTarget) {
         for (let pointerTarget of this.pointerTargetSet) {
-            if (pointerTarget.getLocation() == pointerTarget.getLocation()) {
+            if (pointerTarget.getLocation() == newPointerTarget.getLocation()) {
                 return
             }
         }
