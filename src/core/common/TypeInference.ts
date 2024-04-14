@@ -208,7 +208,7 @@ export class TypeInference {
             if (!arkClass) {
                 const nameSpace = ModelUtils.getNamespaceWithName(baseName, arkMethod);
                 if (!nameSpace){
-                    console.log("Unclear Base");
+                    logger.warn("Unclear Base");
                     return;
                 }
                 const clas = ModelUtils.getClassInNamespaceWithName(fieldName, nameSpace)!;
