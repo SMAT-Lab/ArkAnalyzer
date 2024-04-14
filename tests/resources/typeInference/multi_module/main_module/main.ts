@@ -1,4 +1,7 @@
 class Foo {
+    public i: number = 0;
+    public static j: number = 0;
+
     public static newFoo(): Foo {
         return new Foo();
     }
@@ -13,6 +16,9 @@ class Foo {
 class Bar {
     public useFoo(): void {
         let foo = Foo.newFoo();
-        let i = foo.getNumber();
+        let n = foo.getNumber();
+
+        let ii = foo.i;
+        let jj = Foo.j;
     }
 }
