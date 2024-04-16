@@ -24,7 +24,7 @@ export class TypeInferenceTest {
         logger.error(`before inferTypes`);
         this.printScene(scene);
         scene.inferTypes();
-        logger.error(`\n`);
+        logger.error(``);
         logger.error(`after inferTypes`);
         this.printScene(scene);
     }
@@ -90,4 +90,4 @@ let typeInferenceTest = new TypeInferenceTest();
 typeInferenceTest.testLocalTypes();
 // typeInferenceTest.testTypeInference();
 // typeInferenceTest.testFunctionReturnType();
-logger.error('type inference test end');
+logger.error('type inference test end\n');
