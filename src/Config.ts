@@ -64,9 +64,10 @@ export class SceneConfig {
         this.getAllFiles();
     }
 
-    public buildFromIde(targetProjectName: string, targetProjectDirectory: string, hosBasePath: string, hosSdkVersion: number) {
+    public buildFromIde(targetProjectName: string, targetProjectOriginDirectory: string, targetProjectDirectory: string, hosBasePath: string, hosSdkVersion: number) {
         this.targetProjectName = targetProjectName;
-        this.targetProjectOriginDirectory = targetProjectDirectory;
+        this.targetProjectOriginDirectory = targetProjectOriginDirectory;
+        this.targetProjectDirectory = targetProjectDirectory;
         this.ohosSdkPath = path.join(hosBasePath, './ets/api');
         this.kitSdkPath = path.join(hosBasePath, './ets/kits');
         this.hosEtsLoaderPath = path.join(hosBasePath, './ets/build-tools/ets-loader');
