@@ -1,17 +1,22 @@
 import * as path from 'path';
 import * as fs from 'fs';
 
+async function dynamicImportModule<T>(modulePath: string): Promise<T> {
+    const module = await import(modulePath);
+    return module.default as T;
+}
+
 /**
  *  let ets2ts = new Ets2ts();
  *  await ets2ts.init(etsLoaderPath, projectPath, output);
  *  await ets2ts.compileProject();
  */
-class Ets2ts {
+export class Ets2ts {
     processUIModule: any;
     tsModule: any;
     utilsModule: any;
     validateUIModule: any;
-    preProcessModule: any;
+    preProcessModule: Function;
 
     compilerOptions: any;
     projectConfig: any;
@@ -22,7 +27,7 @@ class Ets2ts {
         this.processUIModule = await import(path.join(etsLoaderPath, 'lib/process_ui_syntax'));
         this.utilsModule = await import(path.join(etsLoaderPath, 'lib/utils'));
         this.validateUIModule = await import(path.join(etsLoaderPath, 'lib/validate_ui_syntax'));
-        this.preProcessModule = await import(path.join(etsLoaderPath, 'lib/pre_process.js'));
+        this.preProcessModule = await dynamicImportModule<Function>(path.join(etsLoaderPath, 'lib/pre_process.js'));
 
         this.compilerOptions = this.tsModule.readConfigFile(
             path.resolve(etsLoaderPath, 'tsconfig.json'), this.tsModule.sys.readFile).config.compilerOptions;
@@ -62,9 +67,8 @@ class Ets2ts {
     private compileEts(file: string) {
         let fileContent = fs.readFileSync(file, 'utf8');
         this.resourcePath = file;
-        let newContent = this.preProcessModule(fileContent);
-        // source map不准确
-        this.tsModule.transpileModule(newContent, {
+        this.preProcessModule(fileContent);
+        this.tsModule.transpileModule(fileContent, {
             compilerOptions: this.compilerOptions,
             fileName: `${file}`,
             transformers: { before: [this.processUIModule.processUISyntax(null, false), this.getDumpSourceTransformer(this)] }
