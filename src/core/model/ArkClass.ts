@@ -347,12 +347,6 @@ function buildNormalArkClass(clsNode: NodeA, cls: ArkClass) {
                 mtd.setDeclaringArkFile();
                 mtd.genSignature();
             });
-            if (cls.getDeclaringArkNamespace()) {
-                cls.getDeclaringArkNamespace().addArkClass(anonymousClass);
-            }
-            else {
-                cls.getDeclaringArkFile().addArkClass(anonymousClass);
-            }
         }
     });
 
