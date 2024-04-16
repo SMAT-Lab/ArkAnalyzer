@@ -73,7 +73,7 @@ export class SceneConfig {
         this.hosEtsLoaderPath = path.join(hosBasePath, './ets/build-tools/ets-loader');
         Logger.configure(this.logPath, LOG_LEVEL.ERROR);
         let ets2ts = new Ets2ts();
-        ets2ts.init(this.hosEtsLoaderPath, this.targetProjectOriginDirectory, this.targetProjectDirectory);
+        ets2ts.init(this.hosEtsLoaderPath, this.targetProjectOriginDirectory, this.targetProjectDirectory, this.targetProjectName);
         this.getAllFiles();
     }
 

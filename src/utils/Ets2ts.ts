@@ -22,7 +22,7 @@ export class Ets2ts {
     projectConfig: any;
     resourcePath: string;
 
-    public async init(etsLoaderPath: string, projectPath: string, output: string) {
+    public async init(etsLoaderPath: string, projectPath: string, output: string, projectName: string) {
         this.tsModule = await import(path.join(etsLoaderPath, 'node_modules/typescript'));
         this.processUIModule = await import(path.join(etsLoaderPath, 'lib/process_ui_syntax'));
         this.utilsModule = await import(path.join(etsLoaderPath, 'lib/utils'));
@@ -36,7 +36,7 @@ export class Ets2ts {
         this.projectConfig = module.projectConfig;
 
         this.projectConfig.projectPath = path.resolve(projectPath);
-        this.projectConfig.saveTsPath = path.resolve(output, 'resultTsDir');
+        this.projectConfig.saveTsPath = path.resolve(output, projectName);
         this.projectConfig.buildMode = "release";
         this.projectConfig.projectRootPath = ".";
     }
