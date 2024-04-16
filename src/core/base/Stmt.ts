@@ -13,8 +13,6 @@ export class Stmt {
     private originPosition: number = 0;
     private position: number = 0;
     private etsPosition: LineColPosition;
-    private valueVersion = new Map<Value, string>();
-    private valueTags = new Map<Value, Set<ValueTag>>;
     private cfg: Cfg | null = null;
 
     private originColumn: number = -1;
@@ -54,22 +52,6 @@ export class Stmt {
 
     public setDef(def: Value): void {
         this.def = def;
-    }
-
-    public getValueVersion(value: Value): string | undefined {
-        return this.valueVersion.get(value);
-    }
-
-    public setValueVersion(value: Value, version: string): void {
-
-    }
-
-    public getValueTags(value: Value): Set<ValueTag> | undefined {
-        return this.valueTags.get(value);
-    }
-
-    public setValueTag(value: Value, valueTag: ValueTag): void {
-        this.valueTags.get(value)?.add(valueTag);
     }
 
     public getCfg(): Cfg | null {
