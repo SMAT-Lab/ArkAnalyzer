@@ -1,21 +1,22 @@
 import fs from 'fs';
 import path from 'path';
-import sourceMap, { BasicSourceMapConsumer } from 'source-map';
-import { Scene } from '../../Scene';
-import { ASTree, NodeA } from "../base/Ast";
-import { ExportInfo } from '../common/ExportBuilder';
-import { ImportInfo } from '../common/ImportBuilder';
-import { ArkClass, buildDefaultArkClassFromArkFile, buildNormalArkClassFromArkFile } from "./ArkClass";
-import { ArkMethod, arkMethodNodeKind, buildArkMethodFromArkClass } from "./ArkMethod";
-import { ArkNamespace, buildArkNamespace } from "./ArkNamespace";
-import { ClassSignature, FileSignature, MethodSignature, NamespaceSignature } from "./ArkSignature";
-import { LineColPosition } from '../base/Position';
+import sourceMap, {BasicSourceMapConsumer} from 'source-map';
+import {Scene} from '../../Scene';
+import {ASTree, NodeA} from "../base/Ast";
+import {ExportInfo} from '../common/ExportBuilder';
+import {ImportInfo} from '../common/ImportBuilder';
+import {ArkClass, buildDefaultArkClassFromArkFile, buildNormalArkClassFromArkFile} from "./ArkClass";
+import {ArkMethod, arkMethodNodeKind, buildArkMethodFromArkClass} from "./ArkMethod";
+import {ArkNamespace, buildArkNamespace} from "./ArkNamespace";
+import {ClassSignature, FileSignature, MethodSignature, NamespaceSignature} from "./ArkSignature";
+import {LineColPosition} from '../base/Position';
 
 export const notStmtOrExprKind = ['ModuleDeclaration', 'ClassDeclaration', 'InterfaceDeclaration', 'EnumDeclaration', 'ExportDeclaration',
     'ExportAssignment', 'MethodDeclaration', 'Constructor', 'FunctionDeclaration', 'GetAccessor', 'SetAccessor', 'ArrowFunction',
     'FunctionExpression', 'MethodSignature', 'ConstructSignature', 'CallSignature'];
+
 /**
- * 
+ *
  */
 export class ArkFile {
 
@@ -24,8 +25,6 @@ export class ArkFile {
     private projectDir: string;
     private projectName: string = "";
     private code: string;
-
-    private ast: ASTree;
 
     private defaultClass: ArkClass;
 
@@ -41,7 +40,8 @@ export class ArkFile {
 
     private sourceMap: sourceMap.SourceMapConsumer;
 
-    constructor() { }
+    constructor() {
+    }
 
     public setName(name: string) {
         this.name = name;
@@ -83,14 +83,6 @@ export class ArkFile {
         return this.code;
     }
 
-    public getAst() {
-        return this.ast;
-    }
-
-    public genAst() {
-        this.ast = new ASTree(this.code);
-    }
-
     public updateClass(arkClass: ArkClass) {
         for (let i = 0; i < this.classes.length; i++) {
             if (this.classes[i].getSignature().toString() == arkClass.getSignature().toString()) {
@@ -103,8 +95,7 @@ export class ArkFile {
     public addArkClass(arkClass: ArkClass) {
         if (this.getClass(arkClass.getSignature())) {
             this.updateClass(arkClass);
-        }
-        else {
+        } else {
             this.classes.push(arkClass);
         }
     }
@@ -147,8 +138,7 @@ export class ArkFile {
             if (namespace) {
                 returnVal = namespace.getMethodAllTheNamespace(methodSignature);
             }
-        }
-        else {
+        } else {
             let classSig = methodSignature.getDeclaringClassSignature();
             let cls = this.getClass(classSig);
             if (cls) {
@@ -163,16 +153,14 @@ export class ArkFile {
         let fileSig = classSignature.getDeclaringFileSignature();
         if (fileSig.toString() != this.fileSignature.toString()) {
             return null;
-        }
-        else {
+        } else {
             let namespaceSig = classSignature.getDeclaringNamespaceSignature();
             if (namespaceSig) {
                 let ns = this.getNamespaceAllTheFile(namespaceSig);
                 if (ns) {
                     returnVal = ns.getClass(classSignature);
                 }
-            }
-            else {
+            } else {
                 returnVal = this.getClass(classSignature);
             }
         }
@@ -188,8 +176,7 @@ export class ArkFile {
                     returnVal = ns;
                 }
             });
-        }
-        else {
+        } else {
             let declaringNamespace = this.getNamespaceAllTheFile(declaringNamespaceSignature);
             if (declaringNamespace) {
                 returnVal = declaringNamespace.getNamespace(namespaceSignature);
@@ -266,7 +253,7 @@ export class ArkFile {
         if (this.sourceMap) {
             return;
         }
-        let mapFilePath:string = this.getFilePath() + '.map';
+        let mapFilePath: string = this.getFilePath() + '.map';
         if (fs.existsSync(mapFilePath)) {
             this.sourceMap = await new sourceMap.SourceMapConsumer(fs.readFileSync(mapFilePath, 'utf-8'));
         }
@@ -277,7 +264,11 @@ export class ArkFile {
             return new LineColPosition(0, 0);
         }
         await this.initSourceMap();
-        let result = this.sourceMap?.originalPositionFor({line:position.getLineNo(), column: position.getColNo(), bias: sourceMap.SourceMapConsumer.LEAST_UPPER_BOUND});
+        let result = this.sourceMap?.originalPositionFor({
+            line: position.getLineNo(),
+            column: position.getColNo(),
+            bias: sourceMap.SourceMapConsumer.LEAST_UPPER_BOUND
+        });
         if (result && result.line) {
             return new LineColPosition(result.line, result.column as number);
         }
@@ -309,14 +300,14 @@ export function buildArkFileFromFile(absoluteFilePath: string, projectDir: strin
     arkFile.genFileSignature();
 
     arkFile.setCode(fs.readFileSync(absoluteFilePath, 'utf8'));
-    arkFile.genAst();
+    const astTree = new ASTree(arkFile.getCode());
 
-    genDefaultArkClass(arkFile);
-    buildArkFile(arkFile);
+    genDefaultArkClass(arkFile, astTree);
+    buildArkFile(arkFile, astTree);
 }
 
-function buildArkFile(arkFile: ArkFile) {
-    let children = arkFile.getAst().root?.children;
+function buildArkFile(arkFile: ArkFile, astTree: ASTree) {
+    let children = astTree.root?.children;
     for (let child of children) {
         if (child.kind == 'ModuleDeclaration') {
             let ns: ArkNamespace = new ArkNamespace();
@@ -395,10 +386,10 @@ function buildArkFile(arkFile: ArkFile) {
     }
 }
 
-function genDefaultArkClass(arkFile: ArkFile) {
+function genDefaultArkClass(arkFile: ArkFile, astTree: ASTree) {
     let defaultClass = new ArkClass();
 
-    buildDefaultArkClassFromArkFile(arkFile.getAst().root, arkFile, defaultClass);
+    buildDefaultArkClassFromArkFile(astTree.root, arkFile, defaultClass);
     arkFile.setDefaultClass(defaultClass);
     arkFile.addArkClass(defaultClass);
 }
@@ -440,11 +431,9 @@ function addExportInfo(arkInstance: ArkMethod | ArkClass | ArkNamespace, arkFile
     let exportClauseType: string;
     if (arkInstance instanceof ArkMethod) {
         exportClauseType = "Method";
-    }
-    else if (arkInstance instanceof ArkClass) {
+    } else if (arkInstance instanceof ArkClass) {
         exportClauseType = "Class";
-    }
-    else {
+    } else {
         exportClauseType = "ArkNamespace";
     }
     let exportInfo = new ExportInfo();
