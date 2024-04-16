@@ -67,7 +67,7 @@ export class SceneConfig {
     public async buildFromIde(targetProjectName: string, targetProjectOriginDirectory: string, targetProjectDirectory: string, hosBasePath: string, hosSdkVersion: number, logPath: string) {
         this.targetProjectName = targetProjectName;
         this.targetProjectOriginDirectory = targetProjectOriginDirectory;
-        this.targetProjectDirectory = targetProjectDirectory;
+        this.targetProjectDirectory = path.join(targetProjectDirectory, targetProjectName);
         this.ohosSdkPath = path.join(hosBasePath, './ets/api');
         this.kitSdkPath = path.join(hosBasePath, './ets/kits');
         this.hosEtsLoaderPath = path.join(hosBasePath, './ets/build-tools/ets-loader');
@@ -75,7 +75,7 @@ export class SceneConfig {
 
         Logger.configure(this.logPath, LOG_LEVEL.ERROR);
         let ets2ts = new Ets2ts();
-        await ets2ts.init(this.hosEtsLoaderPath, this.targetProjectOriginDirectory, this.targetProjectDirectory, this.targetProjectName);
+        await ets2ts.init(this.hosEtsLoaderPath, this.targetProjectOriginDirectory, targetProjectDirectory, this.targetProjectName);
         await ets2ts.compileProject();
         this.getAllFiles();
     }
