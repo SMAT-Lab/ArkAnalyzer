@@ -10,6 +10,8 @@ export abstract class AbstractExpr implements Value {
     abstract getUses(): Value[];
 
     abstract getType(): Type;
+
+    abstract toString():string;
 }
 
 export abstract class AbstractInvokeExpr extends AbstractExpr {

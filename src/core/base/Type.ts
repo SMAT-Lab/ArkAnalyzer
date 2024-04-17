@@ -1,7 +1,9 @@
 import { ArkField } from "../model/ArkField";
 import { ClassSignature, MethodSignature } from "../model/ArkSignature";
 
-export abstract class Type { }
+export abstract class Type {
+    abstract toString():string;
+}
 
 
 /** any type */
@@ -360,6 +362,14 @@ export class TypeLiteralType extends Type {
         this.members.push(member);
     }
 
+    public toString() {
+        let strMembers:string[] = [];
+        this.members.forEach((member) => {
+            strMembers.push(member.getName().toString());
+        });
+        return '[' + strMembers.join(', ') + ']';
+    }
+
 }
 
 export abstract class AnnotationType extends Type {
@@ -372,6 +382,10 @@ export abstract class AnnotationType extends Type {
 
     public getOriginType(): string {
         return this.originType
+    }
+
+    public toString() {
+        return this.originType;
     }
 }
 
@@ -388,9 +402,5 @@ export class AnnotationNamespaceType extends AnnotationType {
 export class AnnotationTypeQueryType extends AnnotationType {
     constructor(originType: string) {
         super(originType);
-    }
-
-    public getOriginType(): string {
-        return super.getOriginType();
     }
 }
