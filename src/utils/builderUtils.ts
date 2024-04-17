@@ -265,6 +265,7 @@ export function buildParameters(node: ts.FunctionDeclaration | ts.MethodDeclarat
             else if (ts.isFunctionTypeNode(parameter.type)) {
                 //Bug, To be fixed
                 //members.push(buildMethodInfo4MethodNode(member));
+                methodParameter.setType(buildTypeFromPreStr(ts.SyntaxKind[parameter.type.kind]));
             }
             else {
                 methodParameter.setType(buildTypeFromPreStr(ts.SyntaxKind[parameter.type.kind]));
