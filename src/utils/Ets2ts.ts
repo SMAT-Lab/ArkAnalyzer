@@ -88,12 +88,8 @@ export class Ets2ts {
         let relativePath = path.relative(this.projectConfig.projectPath, fileName);
         let resultPath = path.join(this.projectConfig.saveTsPath, relativePath);
         let resultDirPath = path.dirname(resultPath);
-        fs.mkdir(resultDirPath, { recursive: true }, (err) => {
-            if (err) {
-                return console.error('ERROR: Failed to create result TS directory: ', resultDirPath);
-            }
-            fs.cpSync(fileName, resultPath);
-        });
+        fs.mkdirSync(resultDirPath, { recursive: true });
+        fs.cpSync(fileName, resultPath);
     }
 
     private getAllEts(srcPath: string, ets: string[] = []) {
