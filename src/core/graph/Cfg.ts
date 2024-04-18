@@ -1,7 +1,11 @@
+import { Constant } from "../base/Constant";
 import { DefUseChain } from "../base/DefUseChain";
 import { Local } from "../base/Local";
-import { Stmt } from "../base/Stmt";
+import { AbstractFieldRef, ArkInstanceFieldRef, ArkStaticFieldRef, ArkThisRef } from "../base/Ref";
+import { ArkAssignStmt, Stmt } from "../base/Stmt";
+import { UndefinedType } from "../base/Type";
 import { ArkClass } from "../model/ArkClass";
+import { ArkField } from "../model/ArkField";
 import { ArkMethod } from "../model/ArkMethod";
 import { BasicBlock } from "./BasicBlock";
 
@@ -69,8 +73,31 @@ export class Cfg {
         this.declaringMethod = method;
     }
 
-    getDefUseChains(): DefUseChain[] {
+    public getDefUseChains(): DefUseChain[] {
         return this.defUseChains;
+    }
+
+    public constructorAddInit(arkMethod: ArkMethod): void {
+        const stmts = [...this.blocks][0].getStmts();
+        let index = arkMethod.getParameters().length;
+        // let cThis: 
+        const cThis = stmts[index].getDef()!;
+        for (const field of arkMethod.getDeclaringArkClass().getFields()){
+            let init = field.getInitializer();
+            if (init == undefined){
+                init = new Constant('undefined', UndefinedType.getInstance());
+            }
+            let leftOp: AbstractFieldRef;
+            if (field.isStatic()){
+                leftOp = new ArkStaticFieldRef(field.getSignature());
+            }
+            else {
+                leftOp = new ArkInstanceFieldRef(cThis as Local, field.getSignature());
+            }
+            const assignStmt = new ArkAssignStmt(leftOp, init);
+            index++;
+            stmts.splice(index,0,assignStmt);
+        }
     }
 
     // TODO: 整理成类似jimple的输出

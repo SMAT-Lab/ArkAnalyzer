@@ -254,6 +254,9 @@ export function buildArkMethodFromArkClass(methodNode: NodeA, declaringClass: Ar
     let bodyBuilder = new BodyBuilder(mtd.getSignature(), methodNode, mtd);
     mtd.setBody(bodyBuilder.build());
     mtd.getCfg().setDeclaringMethod(mtd);
+    if (mtd.getName() == 'constructor' && mtd.getDeclaringArkClass()) {
+        mtd.getCfg().constructorAddInit(mtd);
+    }
     if (mtd.getName() == 'render' && declaringClass.getSuperClassName() == 'View') {
         declaringClass.setViewTree(new ViewTree(mtd));
     }

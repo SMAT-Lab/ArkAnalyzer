@@ -1,7 +1,7 @@
 import { Scene } from "../../Scene";
 import { ClassHierarchyAnalysisAlgorithm } from "../../callgraph/ClassHierarchyAnalysisAlgorithm";
 import { StmtReader } from "../../save/source/SourceBody";
-import { AbstractFieldRef } from "../base/Ref";
+import { AbstractFieldRef, ArkInstanceFieldRef, ArkStaticFieldRef } from "../base/Ref";
 import { ArkInvokeStmt, ArkReturnStmt, ArkReturnVoidStmt, Stmt } from "../base/Stmt";
 import { Type } from "../base/Type";
 import { Value } from "../base/Value";
@@ -137,17 +137,12 @@ export abstract class DataflowSolver<D> {
         return [...cfg.getBlocks()][0].getStmts()[paraNum];
     }
 
-    protected factEqual(fact1: D, fact2: D): boolean {
-        if (fact1 instanceof AbstractFieldRef && fact2 instanceof AbstractFieldRef){
-            return fact1.getFieldSignature() == fact2.getFieldSignature();
-        }
-        return fact1 == fact2;
-    }
+
 
     protected pathEdgeSetHasEdge(edge :PathEdge<D>) {
         for (const path of this.pathEdgeSet){
-            if (path.edgeEnd.node == edge.edgeEnd.node && this.factEqual(path.edgeEnd.fact, edge.edgeEnd.fact) &&
-                 path.edgeStart.node == edge.edgeStart.node && this.factEqual(path.edgeStart.fact, edge.edgeStart.fact)){
+            if (path.edgeEnd.node == edge.edgeEnd.node && factEqual(path.edgeEnd.fact, edge.edgeEnd.fact) &&
+                 path.edgeStart.node == edge.edgeStart.node && factEqual(path.edgeStart.fact, edge.edgeStart.fact)){
                     return true;
                  }
         }
@@ -296,4 +291,13 @@ export abstract class DataflowSolver<D> {
     public getPathEdgeSet(): Set<PathEdge<D>> {
         return this.pathEdgeSet;
     }
+}
+
+export function factEqual<D>(fact1: D, fact2: D): boolean {
+    if (fact1 instanceof ArkInstanceFieldRef && fact2 instanceof ArkInstanceFieldRef){
+        return fact1.getFieldSignature().getFieldName() == fact2.getFieldSignature().getFieldName() && fact1.getBase().getName() == fact2.getBase().getName();
+    } else if (fact1 instanceof ArkStaticFieldRef && fact2 instanceof ArkStaticFieldRef) {
+        return fact1.getFieldSignature() == fact2.getFieldSignature()
+    }
+    return fact1 == fact2;
 }
