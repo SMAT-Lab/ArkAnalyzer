@@ -314,4 +314,8 @@ export class VariablePointerAnalysisAlogorithm extends AbstractCallGraph {
             return def as AbstractFieldRef;
         }
     }
+
+    public updateVariableType() {
+        
+    }
 }

@@ -99,6 +99,13 @@ export class TypeInference {
                                     }
                                     stmt.setText(stmt.toString().replace(/^instanceInvoke/, "staticinvoke"))
                                 }
+                                this.inferMethodReturnType(foundMethod)
+                                if (stmt instanceof ArkAssignStmt) {
+                                    const leftOp = stmt.getLeftOp()
+                                    if (leftOp instanceof Local) {
+                                        leftOp.setType(foundMethod.getReturnType)
+                                    }
+                                }
                                 return;
                             }
                         }
@@ -122,16 +129,11 @@ export class TypeInference {
                 }
 
                 // infer return type
-                let methodReturnType = method.getReturnType()
-                if (methodReturnType instanceof UnclearReferenceType) {
-                    let returnInstance = ModelUtils.getClassWithName(
-                        methodReturnType.getName(),
-                        method)
-                    if (returnInstance == null) {
-                        logger.warn("can not get method return value type: " +
-                            method.getSignature().toString() + ": " + methodReturnType.getName());
-                    } else {
-                        method.setReturnType(new ClassType(returnInstance.getSignature()));
+                this.inferMethodReturnType(method)
+                if (stmt instanceof ArkAssignStmt) {
+                    const leftOp = stmt.getLeftOp()
+                    if (leftOp instanceof Local) {
+                        leftOp.setType(method.getReturnType)
                     }
                 }
 
@@ -156,12 +158,6 @@ export class TypeInference {
                     continue;
                 }
                 expr.setMethodSignature(method.getSignature());
-            } else if (expr instanceof AbstractFieldRef) {
-                if (expr instanceof ArkInstanceFieldRef) {
-
-                } else if (expr instanceof ArkStaticFieldRef) {
-
-                }
             }
         }
 
@@ -187,10 +183,15 @@ export class TypeInference {
         if (stmtDef && stmtDef instanceof ArkInstanceFieldRef) {
             let fieldType = this.handleClassField(stmtDef, arkMethod);
             if (fieldType instanceof ArkField) {
+                let fieldRef: AbstractFieldRef
                 if (fieldType.getModifiers().has("StaticKeyword")) {
-                    stmt.setDef(new ArkStaticFieldRef(fieldType.getSignature()))
+                    fieldRef = new ArkStaticFieldRef(fieldType.getSignature())
                 } else {
-                    stmt.setDef(new ArkInstanceFieldRef(stmtDef.getBase(), fieldType.getSignature()));
+                    fieldRef = new ArkInstanceFieldRef(stmtDef.getBase(), fieldType.getSignature())
+                }
+                stmt.setDef(fieldRef)
+                if (stmt instanceof ArkAssignStmt) {
+                    stmt.setLeftOp(fieldRef)
                 }
             } else if (fieldType instanceof ArkClass) {
                 // not sure what to do
@@ -378,5 +379,20 @@ export class TypeInference {
                 break;
         }
         return UnknownType.getInstance();
+    }
+
+    public inferMethodReturnType(method: ArkMethod) {
+        let methodReturnType = method.getReturnType()
+        if (methodReturnType instanceof UnclearReferenceType) {
+            let returnInstance = ModelUtils.getClassWithName(
+                methodReturnType.getName(),
+                method)
+            if (returnInstance == null) {
+                logger.warn("can not get method return value type: " +
+                    method.getSignature().toString() + ": " + methodReturnType.getName());
+            } else {
+                method.setReturnType(new ClassType(returnInstance.getSignature()));
+            }
+        }
     }
 }
