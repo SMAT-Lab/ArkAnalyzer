@@ -191,10 +191,11 @@ export class TypeInference {
                 }
                 stmt.setDef(fieldRef)
                 if (stmt instanceof ArkAssignStmt) {
+                    // not sure
                     stmt.setLeftOp(fieldRef)
                 }
             } else if (fieldType instanceof ArkClass) {
-                // not sure what to do
+                // nothing to do?
             }
         }
     }
