@@ -27,6 +27,7 @@ export class Scene {
     projectName: string = '';
     projectFiles: string[] = [];
     realProjectDir: string;
+    realProjectOriginDir: string;
 
     arkFiles: ArkFile[] = [];
     //sdkArkFiles: ArkFile[] = [];
@@ -59,6 +60,7 @@ export class Scene {
         this.projectName = sceneConfig.getTargetProjectName();
         this.projectFiles = sceneConfig.getProjectFiles();
         this.realProjectDir = fs.realpathSync(sceneConfig.getTargetProjectDirectory());
+        this.realProjectOriginDir = fs.realpathSync(sceneConfig.getTargetProjectOriginDirectory());
 
         this.ohosSdkPath = sceneConfig.getOhosSdkPath();
         this.kitSdkPath = sceneConfig.getKitSdkPath();
@@ -327,5 +329,18 @@ export class Scene {
                 superClass.addExtendedClass(cls);
             }
         });
+    }
+
+    public findOriginPathFromTransformedPath(tsPath: string) {
+        let relativePath = path.relative(this.realProjectDir, tsPath);
+        let relativePathWithoutExt = relativePath.replace(/\.ts$/, '');
+        let resPath = '';
+        if (fs.existsSync(tsPath + '.map')) {
+            resPath = path.join(this.realProjectOriginDir, relativePathWithoutExt) + '.ets';
+        }
+        else {
+            resPath = path.join(this.realProjectOriginDir, relativePath);
+        }
+        return resPath;
     }
 }
