@@ -8,7 +8,7 @@ import { Scene } from "../../src/Scene";
 let config: SceneConfig = new SceneConfig();
 config.buildFromProjectDir(path.join(__dirname, "../resources/save"));
 let scece = new Scene(config);
-let arkfile = getArkFileByName("classes.ts", scece);
+let arkfile = getArkFileByName("basic.ts", scece);
 describe("AnalysisAlgorithm Test", () => {
     if (arkfile == null) {
         assert.isNotNull(arkfile);
