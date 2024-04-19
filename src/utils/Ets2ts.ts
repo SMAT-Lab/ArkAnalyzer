@@ -22,8 +22,6 @@ enum FileType {
 export class Ets2ts {
     processUIModule: any;
     tsModule: any;
-    utilsModule: any;
-    validateUIModule: any;
     preProcessModule: Function;
 
     compilerOptions: any;
@@ -35,8 +33,6 @@ export class Ets2ts {
     public async init(etsLoaderPath: string, projectPath: string, output: string, projectName: string) {
         this.tsModule = await import(path.join(etsLoaderPath, 'node_modules/typescript'));
         this.processUIModule = await import(path.join(etsLoaderPath, 'lib/process_ui_syntax'));
-        this.utilsModule = await import(path.join(etsLoaderPath, 'lib/utils'));
-        this.validateUIModule = await import(path.join(etsLoaderPath, 'lib/validate_ui_syntax'));
         this.preProcessModule = await dynamicImportModule<Function>(path.join(etsLoaderPath, 'lib/pre_process.js'));
 
         this.compilerOptions = this.tsModule.readConfigFile(
@@ -171,10 +167,8 @@ export class Ets2ts {
                     // @ts-ignore
                     ets2ts.tsModule.getNewLineCharacter({ newLine: ets2ts.tsModule.NewLineKind.LineFeed, removeComments: false }));
                 printer['writeFile'](node, writer, sourceMapGenerator);
-                let content: string = writer.getText();
-
                 return {
-                    content: content,
+                    content: writer.getText(),
                     sourceMapJson: sourceMapGenerator.toJSON()
                 };
             }
@@ -188,7 +182,11 @@ export class Ets2ts {
                 }
                 fs.writeFileSync(etsFileName, obj.content);
                 fs.writeFileSync(etsFileName + '.map', JSON.stringify(obj.sourceMapJson));
+                
+                // Memory optimization
                 node.statements = [];
+                node.text = '';
+                node.original = undefined;
                 return node;
             }
         }
