@@ -58,7 +58,8 @@ export class Ets2ts {
         process.env.compileMode = 'moduleJson';
         process.env.compiler = 'on';
         logger.info('Ets2ts-getAllEts start');
-        let sources = this.getAllEts(this.projectConfig.projectPath);
+        let sources: Array<string> = [];
+        this.getAllEts(this.projectConfig.projectPath, sources);
         logger.info('Ets2ts-getAllEts done');
         for (let src of sources) {
             if (src.endsWith('.ets')) {
@@ -96,40 +97,45 @@ export class Ets2ts {
         this.statistics[FileType.ETS][1] += end - start;
     }
 
+    private mkOutputPath(filePath: string) {
+        let resultPath = this.getOutputPath(filePath);
+        fs.mkdirSync(resultPath, { recursive: true });
+    }
+
     private getOutputPath(fileName: string): string {
         let relativePath = path.relative(this.projectConfig.projectPath, fileName);
-        let resultPath = path.join(this.projectConfig.saveTsPath, relativePath);
-        let resultDirPath = path.dirname(resultPath);
-        fs.mkdirSync(resultDirPath, { recursive: true });
-
-        return resultPath;
+        return path.join(this.projectConfig.saveTsPath, relativePath);
     }
 
     private ts2output(fileName: string) {
         let start = new Date().getTime();
-        let relativePath = path.relative(this.projectConfig.projectPath, fileName);
-        let resultPath = path.join(this.projectConfig.saveTsPath, relativePath);
-        let resultDirPath = path.dirname(resultPath);
-        fs.mkdirSync(resultDirPath, { recursive: true });
+
+        let resultPath = this.getOutputPath(fileName);
         fs.cpSync(fileName, resultPath);
+        
         let end = new Date().getTime();
         this.statistics[FileType.TS][0]++;
         this.statistics[FileType.TS][1] += end - start;
     }
 
-    private getAllEts(srcPath: string, ets: string[] = []) {
+    private getAllEts(srcPath: string, ets: string[] = []): boolean {
         const ignore = ['.git', '.preview', '.hvigor', '.idea'];
+        let hasFile = false;
         fs.readdirSync(srcPath, {withFileTypes: true}).forEach(file => {
             const realFile = path.resolve(srcPath, file.name);
             if (file.isDirectory() && (!ignore.includes(file.name))) {
-                this.getAllEts(realFile, ets);
+                if (this.getAllEts(realFile, ets)) {
+                    hasFile = true;
+                    this.mkOutputPath(realFile);
+                }
             } else {
                 if (path.basename(realFile).endsWith('.ets') || path.basename(realFile).endsWith('.ts')) {
                     ets.push(realFile);
+                    hasFile = true;
                 }
             }
         });
-        return ets;
+        return hasFile;
     }
 
     getDumpSourceTransformer(ets2ts: Ets2ts): Function {
