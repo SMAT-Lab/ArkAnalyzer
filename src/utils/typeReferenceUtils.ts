@@ -1,7 +1,7 @@
 import path from "path";
 import { Scene } from "../Scene";
 import { NodeA } from "../core/base/Ast";
-import { NumberType, StringType, Type } from "../core/base/Type";
+import { BooleanType, NumberType, StringType, Type } from "../core/base/Type";
 import { ArkFile } from "../core/model/ArkFile";
 import { ArkNamespace } from "../core/model/ArkNamespace";
 import { ClassSignature, FileSignature } from "../core/model/ArkSignature";
@@ -75,10 +75,10 @@ export function resolveBinaryResultType(op1Type: Type, op2Type: Type, operator: 
     switch (operator) {
         case "+":
             if (op1Type instanceof StringType || op2Type instanceof StringType) {
-                return new StringType();
+                return StringType.getInstance();
             }
             if (op1Type instanceof NumberType && op2Type instanceof NumberType) {
-                return new NumberType();
+                return NumberType.getInstance();
             }
             break;
         case "-":
@@ -86,7 +86,7 @@ export function resolveBinaryResultType(op1Type: Type, op2Type: Type, operator: 
         case "/":
         case "%":
             if (op1Type instanceof NumberType && op2Type instanceof NumberType) {
-                return new NumberType;
+                return NumberType.getInstance();
             }
             break;
         case "<":
@@ -99,7 +99,7 @@ export function resolveBinaryResultType(op1Type: Type, op2Type: Type, operator: 
         case "!==":
         case "&&":
         case "||":
-            return "boolean";
+            return BooleanType.getInstance();
         case "&":
         case "|":
         case "^":
@@ -107,7 +107,7 @@ export function resolveBinaryResultType(op1Type: Type, op2Type: Type, operator: 
         case ">>":
         case ">>>":
             if (op1Type instanceof NumberType && op2Type instanceof NumberType) {
-                return new NumberType;
+                return NumberType.getInstance();
             }
             break;
     }
