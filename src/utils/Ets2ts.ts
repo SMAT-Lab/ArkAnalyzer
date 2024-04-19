@@ -1,9 +1,17 @@
 import * as path from 'path';
 import * as fs from 'fs';
+import Logger from "./logger";
+
+const logger = Logger.getLogger();
 
 async function dynamicImportModule<T>(modulePath: string): Promise<T> {
     const module = await import(modulePath);
     return module.default as T;
+}
+
+enum FileType {
+    ETS = 0,
+    TS = 1
 }
 
 /**
@@ -22,6 +30,8 @@ export class Ets2ts {
     projectConfig: any;
     resourcePath: string;
 
+    statistics: Array<Array<number>> = [[0, 0], [0, 0]];
+
     public async init(etsLoaderPath: string, projectPath: string, output: string, projectName: string) {
         this.tsModule = await import(path.join(etsLoaderPath, 'node_modules/typescript'));
         this.processUIModule = await import(path.join(etsLoaderPath, 'lib/process_ui_syntax'));
@@ -31,7 +41,9 @@ export class Ets2ts {
 
         this.compilerOptions = this.tsModule.readConfigFile(
             path.resolve(etsLoaderPath, 'tsconfig.json'), this.tsModule.sys.readFile).config.compilerOptions;
-
+        this.compilerOptions.target = 'ESNext';
+        this.compilerOptions.sourceMap = false;
+            
         let module = await import(path.join(etsLoaderPath, 'main'));
         this.projectConfig = module.projectConfig;
 
@@ -45,8 +57,9 @@ export class Ets2ts {
         process.env.rawFileResource = './';
         process.env.compileMode = 'moduleJson';
         process.env.compiler = 'on';
-
+        logger.info('Ets2ts-getAllEts start');
         let sources = this.getAllEts(this.projectConfig.projectPath);
+        logger.info('Ets2ts-getAllEts done');
         for (let src of sources) {
             if (src.endsWith('.ets')) {
                 this.compileEts(src);
@@ -54,6 +67,9 @@ export class Ets2ts {
                 this.ts2output(src);
             }
         }
+
+        logger.info(`Ets2ts-compileEtsTime: ${this.statistics[0][1]/1000}s ${this.statistics[0][0]} avg time ${this.statistics[0][1]/this.statistics[0][0]}ms`);
+        logger.info(`Ets2ts-copyTsTime: ${this.statistics[1][1]/1000}s ${this.statistics[1][0]} avg time ${this.statistics[1][1]/this.statistics[1][0]}ms`);
     }
 
     public emitWarning(msg: string) {
@@ -65,7 +81,8 @@ export class Ets2ts {
     }
 
     private compileEts(file: string) {
-        let fileContent = fs.readFileSync(file, 'utf8');
+        let start = new Date().getTime();
+        let fileContent: string | undefined = fs.readFileSync(file, 'utf8');
         this.resourcePath = file;
         this.preProcessModule(fileContent);
         this.tsModule.transpileModule(fileContent, {
@@ -73,6 +90,10 @@ export class Ets2ts {
             fileName: `${file}`,
             transformers: { before: [this.processUIModule.processUISyntax(null, false), this.getDumpSourceTransformer(this)] }
         });
+        fileContent = undefined;
+        let end = new Date().getTime();
+        this.statistics[FileType.ETS][0]++;
+        this.statistics[FileType.ETS][1] += end - start;
     }
 
     private getOutputPath(fileName: string): string {
@@ -85,24 +106,22 @@ export class Ets2ts {
     }
 
     private ts2output(fileName: string) {
+        let start = new Date().getTime();
         let relativePath = path.relative(this.projectConfig.projectPath, fileName);
         let resultPath = path.join(this.projectConfig.saveTsPath, relativePath);
         let resultDirPath = path.dirname(resultPath);
         fs.mkdirSync(resultDirPath, { recursive: true });
         fs.cpSync(fileName, resultPath);
+        let end = new Date().getTime();
+        this.statistics[FileType.TS][0]++;
+        this.statistics[FileType.TS][1] += end - start;
     }
 
     private getAllEts(srcPath: string, ets: string[] = []) {
-        if (!fs.existsSync(srcPath)) {
-            console.log(`Input directory is not exist, please check!`);
-            return ets;
-        }
-
-        const realSrc = fs.realpathSync(srcPath);
-
-        fs.readdirSync(realSrc).forEach(filename => {
-            const realFile = path.resolve(realSrc, filename);
-            if (fs.statSync(realFile).isDirectory()) {
+        const ignore = ['.git', '.preview', '.hvigor', '.idea'];
+        fs.readdirSync(srcPath, {withFileTypes: true}).forEach(file => {
+            const realFile = path.resolve(srcPath, file.name);
+            if (file.isDirectory() && (!ignore.includes(file.name))) {
                 this.getAllEts(realFile, ets);
             } else {
                 if (path.basename(realFile).endsWith('.ets') || path.basename(realFile).endsWith('.ts')) {
@@ -163,6 +182,7 @@ export class Ets2ts {
                 }
                 fs.writeFileSync(etsFileName, obj.content);
                 fs.writeFileSync(etsFileName + '.map', JSON.stringify(obj.sourceMapJson));
+                node.statements = [];
                 return node;
             }
         }
