@@ -8,3 +8,5 @@ codeLab
 .DS_Store
 out/
 .idea
+tests/resources/output
+coverage
