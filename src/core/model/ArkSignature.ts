@@ -182,8 +182,8 @@ export class MethodSubSignature {
 
     public setParameters(parameter: MethodParameter[]) {
         this.parameters = parameter;
-        parameter.forEach((value, key) => {
-            this.parameterTypes.add(value);
+        parameter.forEach((value) => {
+            this.parameterTypes.add(value.getType());
         });
     }
 
@@ -200,7 +200,7 @@ export class MethodSubSignature {
     public toString(): string {
         let paraStr = "";
         this.parameterTypes.forEach((parameterType) => {
-            paraStr = paraStr + parameterType + ", ";
+            paraStr += parameterType.toString() + ", ";
         });
         paraStr = paraStr.replace(/, $/, '');
         return `${this.getMethodName()}(${paraStr})`;

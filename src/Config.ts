@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import Logger, { LOG_LEVEL } from "./utils/logger";
+import { Ets2ts } from "./utils/Ets2ts";
 
 const logger = Logger.getLogger();
 
@@ -32,6 +33,7 @@ export class SceneConfig {
 
     private targetProjectName: string = "";
     private targetProjectDirectory: string = "";
+    private targetProjectOriginDirectory: string = '';
 
     private ohosSdkPath: string = "";
     private kitSdkPath: string = "";
@@ -43,6 +45,8 @@ export class SceneConfig {
     private sdkFilesMap: Map<string[], string> = new Map<string[], string>();
     private projectFiles: string[] = [];
     private logPath: string = "./out/ArkAnalyzer.log";
+
+    private hosEtsLoaderPath: string = '';
 
     constructor() { }
 
@@ -60,20 +64,20 @@ export class SceneConfig {
         this.getAllFiles();
     }
 
-    public buildFromIde(targetProjectName: string, targetProjectDirectory: string, ohosSdkPath?: string) {
+    public async buildFromIde(targetProjectName: string, targetProjectOriginDirectory: string, targetProjectDirectory: string, hosBasePath: string, hosSdkVersion: number, logPath: string) {
         this.targetProjectName = targetProjectName;
-        this.targetProjectDirectory = targetProjectDirectory;
-        this.ohosSdkPath = ohosSdkPath ? ohosSdkPath : '';
-        Logger.configure(this.logPath, LOG_LEVEL.ERROR);
-        this.getAllFiles();
-    }
-
-    public buildFromIdeSingle(targetProjectName: string, targetProjectDirectory: string, filePath: string, logPath: string) {
-        this.targetProjectName = targetProjectName;
-        this.targetProjectDirectory = targetProjectDirectory;
-        this.projectFiles.push(filePath);
+        this.targetProjectOriginDirectory = targetProjectOriginDirectory;
+        this.targetProjectDirectory = path.join(targetProjectDirectory, targetProjectName);
+        this.ohosSdkPath = path.join(hosBasePath, './ets/api');
+        this.kitSdkPath = path.join(hosBasePath, './ets/kits');
+        this.hosEtsLoaderPath = path.join(hosBasePath, './ets/build-tools/ets-loader');
         this.logPath = logPath;
+
         Logger.configure(this.logPath, LOG_LEVEL.ERROR);
+        let ets2ts = new Ets2ts();
+        await ets2ts.init(this.hosEtsLoaderPath, this.targetProjectOriginDirectory, targetProjectDirectory, this.targetProjectName);
+        await ets2ts.compileProject();
+        this.getAllFiles();
     }
 
     private genConfig() {
@@ -142,6 +146,10 @@ export class SceneConfig {
 
     public getTargetProjectDirectory() {
         return this.targetProjectDirectory;
+    }
+
+    public getTargetProjectOriginDirectory() {
+        return this.targetProjectOriginDirectory;
     }
 
     public getProjectFiles() {

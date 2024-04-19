@@ -17,32 +17,23 @@ function runScene(config: SceneConfig) {
     //     entryPoints.push(method.getSignature())
     // }
     for (let arkFile of projectScene.arkFiles) {
-        if (arkFile.getName() === "main.ts") {
-            // logger.info("filepath: "+arkFile.getFilePath())
-            let tempMethod = arkFile.getDefaultClass().getDefaultArkMethod()
-            entryPoints.push(tempMethod!.getSignature())
-            // let cla = arkFile.getClasses()[2]
-            // for (let method of cla.getMethods()) {
-            //     if (method.getName() == "onRun") {
-            //         entryPoints.push(method.getSignature())
-            //     }
-            // }
-            // logger.info(tempMethod)
+        if (arkFile.getName() === "OpenHarmonyTestRunner1.ts") {
+            for (let arkClass of arkFile.getAllClassesUnderThisFile()) {
+                if (arkClass.getName() === "OpenHarmonyTestRunner") {
+                    for (let arkMethod of arkClass.getMethods()) {
+                        if (arkMethod.getName() === "onRun") {
+                            entryPoints.push(arkMethod.getSignature())
+                        }
+                    }
+                }
+            }
         }
     }
-    // for (let arkFile of projectScene.arkFiles) {
-    //     logger.info("ArkFile: " + arkFile.getName())
-    //     for (let arkClass of arkFile.getClasses()) {
-    //         logger.info("\tArkClass: " + arkClass.getName())
-    //         for (let arkMethod of arkClass.getMethods()) {
-    //             logger.info("\t\tArkMethod: " + arkMethod.getName())
-    //         }
-    //     }
-    // }
+    
     projectScene.inferTypes()
-    // let callGraph = projectScene.makeCallGraphCHA(entryPoints)
+    let callGraph = projectScene.makeCallGraphCHA(entryPoints)
     // let callGraph = projectScene.makeCallGraphRTA(entryPoints)
-    let callGraph = projectScene.makeCallGraphVPA(entryPoints)
+    // let callGraph = projectScene.makeCallGraphVPA(entryPoints)
     let methods = callGraph.getMethods()
     let calls = callGraph.getCalls()
     printCallGraphDetails(methods, calls, config.getTargetProjectDirectory())
