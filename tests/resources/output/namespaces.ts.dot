@@ -1,0 +1,90 @@
+digraph "namespaces.ts" {
+  subgraph "cluster_@save/namespaces: Validation._DEFAULT_ARK_CLASS._DEFAULT_ARK_METHOD()" {
+    label="@save/namespaces: Validation._DEFAULT_ARK_CLASS._DEFAULT_ARK_METHOD()";
+    Node57670 [label="this = this: @save/namespaces: Validation._DEFAULT_ARK_CLASS
+        $temp1 = /^[A-Za-z]+$/
+        lettersRegexp = $temp1
+        $temp2 = /^[0-9]+$/
+        numberRegexp = $temp2
+        return"];
+  }
+  subgraph "cluster_Original_@save/namespaces: Validation._DEFAULT_ARK_CLASS._DEFAULT_ARK_METHOD()" {
+    label="@save/namespaces: Validation._DEFAULT_ARK_CLASS._DEFAULT_ARK_METHOD()_original";
+    NodeOriginal57670 [label="const lettersRegexp = /^[A-Za-z]+$/;
+        const numberRegexp = /^[0-9]+$/;"];
+  }
+  subgraph "cluster_@save/namespaces: Validation._DEFAULT_ARK_CLASS.test()" {
+    label="@save/namespaces: Validation._DEFAULT_ARK_CLASS.test()";
+    Node47420 [label="this = this: @save/namespaces: Validation._DEFAULT_ARK_CLASS
+        $temp1 = ''
+        instanceinvoke logger.<@_UnkownProjectName/_UnkownFileName: .info()>($temp1)
+        return"];
+  }
+  subgraph "cluster_Original_@save/namespaces: Validation._DEFAULT_ARK_CLASS.test()" {
+    label="@save/namespaces: Validation._DEFAULT_ARK_CLASS.test()_original";
+    NodeOriginal47420 [label="logger.info('');"];
+  }
+  subgraph "cluster_@save/namespaces: Validation.StringValidator.isAcceptable([object Object])" {
+    label="@save/namespaces: Validation.StringValidator.isAcceptable([object Object])";
+    Node71230 [label="s = parameter0: string
+        this = this: @save/namespaces: Validation.StringValidator
+        return"];
+  }
+  subgraph "cluster_Original_@save/namespaces: Validation.StringValidator.isAcceptable([object Object])" {
+    label="@save/namespaces: Validation.StringValidator.isAcceptable([object Object])_original";
+    NodeOriginal71230 [label=""];
+  }
+  subgraph "cluster_@save/namespaces: Validation.LettersOnlyValidator.isAcceptable([object Object])" {
+    label="@save/namespaces: Validation.LettersOnlyValidator.isAcceptable([object Object])";
+    Node76490 [label="s = parameter0: string
+        this = this: @save/namespaces: Validation.LettersOnlyValidator
+        $temp2 = instanceinvoke lettersRegexp.<@_UnkownProjectName/_UnkownFileName: .test()>(s)
+        return $temp2"];
+  }
+  subgraph "cluster_Original_@save/namespaces: Validation.LettersOnlyValidator.isAcceptable([object Object])" {
+    label="@save/namespaces: Validation.LettersOnlyValidator.isAcceptable([object Object])_original";
+    NodeOriginal76490 [label="return lettersRegexp.test(s);"];
+  }
+  subgraph "cluster_@save/namespaces: Validation.ZipCodeValidator.isAcceptable([object Object])" {
+    label="@save/namespaces: Validation.ZipCodeValidator.isAcceptable([object Object])";
+    Node71780 [label="s = parameter0: string
+        this = this: @save/namespaces: Validation.ZipCodeValidator
+        $temp2 = 5
+        $temp3 = s.<@_UnkownProjectName/_UnkownFileName: .length>
+        $temp4 = $temp3 === $temp2
+        $temp5 = instanceinvoke numberRegexp.<@_UnkownProjectName/_UnkownFileName: .test()>(s)
+        $temp6 = $temp4 && $temp5
+        return $temp6"];
+  }
+  subgraph "cluster_Original_@save/namespaces: Validation.ZipCodeValidator.isAcceptable([object Object])" {
+    label="@save/namespaces: Validation.ZipCodeValidator.isAcceptable([object Object])_original";
+    NodeOriginal71780 [label="return s.length === 5 && numberRegexp.test(s);"];
+  }
+  subgraph "cluster_@save/namespaces: Shapes._DEFAULT_ARK_CLASS._DEFAULT_ARK_METHOD()" {
+    label="@save/namespaces: Shapes._DEFAULT_ARK_CLASS._DEFAULT_ARK_METHOD()";
+    Node53440 [label="this = this: @save/namespaces: Shapes._DEFAULT_ARK_CLASS
+        return"];
+  }
+  subgraph "cluster_Original_@save/namespaces: Shapes._DEFAULT_ARK_CLASS._DEFAULT_ARK_METHOD()" {
+    label="@save/namespaces: Shapes._DEFAULT_ARK_CLASS._DEFAULT_ARK_METHOD()_original";
+    NodeOriginal53440 [label=""];
+  }
+  subgraph "cluster_@save/namespaces: Shapes.Polygons._DEFAULT_ARK_CLASS._DEFAULT_ARK_METHOD()" {
+    label="@save/namespaces: Shapes.Polygons._DEFAULT_ARK_CLASS._DEFAULT_ARK_METHOD()";
+    Node62490 [label="this = this: @save/namespaces: Shapes.Polygons._DEFAULT_ARK_CLASS
+        return"];
+  }
+  subgraph "cluster_Original_@save/namespaces: Shapes.Polygons._DEFAULT_ARK_CLASS._DEFAULT_ARK_METHOD()" {
+    label="@save/namespaces: Shapes.Polygons._DEFAULT_ARK_CLASS._DEFAULT_ARK_METHOD()_original";
+    NodeOriginal62490 [label=""];
+  }
+  subgraph "cluster_@save/namespaces: _DEFAULT_ARK_CLASS._DEFAULT_ARK_METHOD()" {
+    label="@save/namespaces: _DEFAULT_ARK_CLASS._DEFAULT_ARK_METHOD()";
+    Node46860 [label="this = this: @save/namespaces: _DEFAULT_ARK_CLASS
+        return"];
+  }
+  subgraph "cluster_Original_@save/namespaces: _DEFAULT_ARK_CLASS._DEFAULT_ARK_METHOD()" {
+    label="@save/namespaces: _DEFAULT_ARK_CLASS._DEFAULT_ARK_METHOD()_original";
+    NodeOriginal46860 [label=""];
+  }
+}
