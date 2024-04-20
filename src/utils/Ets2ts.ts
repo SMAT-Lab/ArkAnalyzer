@@ -39,7 +39,7 @@ export class Ets2ts {
             path.resolve(etsLoaderPath, 'tsconfig.json'), this.tsModule.sys.readFile).config.compilerOptions;
         this.compilerOptions.target = 'ESNext';
         this.compilerOptions.sourceMap = false;
-            
+
         let module = await import(path.join(etsLoaderPath, 'main'));
         this.projectConfig = module.projectConfig;
 
@@ -65,8 +65,8 @@ export class Ets2ts {
             }
         }
 
-        logger.info(`Ets2ts-compileEtsTime: ${this.statistics[0][1]/1000}s ${this.statistics[0][0]} avg time ${this.statistics[0][1]/this.statistics[0][0]}ms`);
-        logger.info(`Ets2ts-copyTsTime: ${this.statistics[1][1]/1000}s ${this.statistics[1][0]} avg time ${this.statistics[1][1]/this.statistics[1][0]}ms`);
+        logger.info(`Ets2ts-compileEtsTime: ${this.statistics[0][1] / 1000}s, cnt: ${this.statistics[0][0]}, avg time: ${this.statistics[0][1] / this.statistics[0][0]}ms`);
+        logger.info(`Ets2ts-copyTsTime: ${this.statistics[1][1] / 1000}s, cnt: ${this.statistics[1][0]}, avg time: ${this.statistics[1][1] / this.statistics[1][0]}ms`);
     }
 
     public emitWarning(msg: string) {
@@ -85,7 +85,7 @@ export class Ets2ts {
         this.tsModule.transpileModule(fileContent, {
             compilerOptions: this.compilerOptions,
             fileName: `${file}`,
-            transformers: { before: [this.processUIModule.processUISyntax(null, false), this.getDumpSourceTransformer(this)] }
+            transformers: {before: [this.processUIModule.processUISyntax(null, false), this.getDumpSourceTransformer(this)]}
         });
         fileContent = undefined;
         let end = new Date().getTime();
@@ -95,7 +95,7 @@ export class Ets2ts {
 
     private mkOutputPath(filePath: string) {
         let resultPath = this.getOutputPath(filePath);
-        fs.mkdirSync(resultPath, { recursive: true });
+        fs.mkdirSync(resultPath, {recursive: true});
     }
 
     private getOutputPath(fileName: string): string {
@@ -108,7 +108,7 @@ export class Ets2ts {
 
         let resultPath = this.getOutputPath(fileName);
         fs.cpSync(fileName, resultPath);
-        
+
         let end = new Date().getTime();
         this.statistics[FileType.TS][0]++;
         this.statistics[FileType.TS][1] += end - start;
@@ -139,7 +139,7 @@ export class Ets2ts {
         return (context) => {
             // @ts-ignore
             function genContentAndSourceMapInfo(node): { content: string, sourceMapJson: string } {
-                const printer = ets2ts.tsModule.createPrinter({ newLine: ets2ts.tsModule.NewLineKind.LineFeed });
+                const printer = ets2ts.tsModule.createPrinter({newLine: ets2ts.tsModule.NewLineKind.LineFeed});
                 const options = {
                     sourceMap: true
                 };
@@ -165,13 +165,17 @@ export class Ets2ts {
                 // @ts-ignore
                 const writer: ts.EmitTextWriter = ets2ts.tsModule.createTextWriter(
                     // @ts-ignore
-                    ets2ts.tsModule.getNewLineCharacter({ newLine: ets2ts.tsModule.NewLineKind.LineFeed, removeComments: false }));
+                    ets2ts.tsModule.getNewLineCharacter({
+                        newLine: ets2ts.tsModule.NewLineKind.LineFeed,
+                        removeComments: false
+                    }));
                 printer['writeFile'](node, writer, sourceMapGenerator);
                 return {
                     content: writer.getText(),
                     sourceMapJson: sourceMapGenerator.toJSON()
                 };
             }
+
             // @ts-ignore
             return (node) => {
                 let obj = genContentAndSourceMapInfo(node);
@@ -182,7 +186,7 @@ export class Ets2ts {
                 }
                 fs.writeFileSync(etsFileName, obj.content);
                 fs.writeFileSync(etsFileName + '.map', JSON.stringify(obj.sourceMapJson));
-                
+
                 // Memory optimization
                 node.statements = [];
                 node.text = '';
