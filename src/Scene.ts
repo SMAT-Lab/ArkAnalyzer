@@ -53,9 +53,6 @@ export class Scene {
     private allMethods: ArkMethod[] = [];
     private classCached: Map<ClassSignature, ArkClass | null> = new Map();
 
-    // inferTypes invoke flag
-    private inferTypesDone: boolean = false;
-
     constructor(sceneConfig: SceneConfig) {
         this.projectName = sceneConfig.getTargetProjectName();
         this.projectFiles = sceneConfig.getProjectFiles();
@@ -280,9 +277,6 @@ export class Scene {
      * 对每个method方法体内部进行类型推导，将变量类型填入
      */
     public inferTypes() {
-        if (this.inferTypesDone) {
-            return;
-        }
         const typeInference = new TypeInference(this);
         for (let arkFile of this.arkFiles) {
             for (let arkClass of arkFile.getClasses()) {
@@ -294,7 +288,6 @@ export class Scene {
 
         // get class hierarchy
         this.genExtendedClasses()
-        this.inferTypesDone = true;
     }
 
     public inferSimpleTypes() {

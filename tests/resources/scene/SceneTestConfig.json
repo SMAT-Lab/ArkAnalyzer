@@ -1,6 +1,6 @@
 {
     "targetProjectName": "SceneTest",    
-    "targetProjectDirectory": "D:\\Codes\\resources\\selected_apps",
+    "targetProjectDirectory": "out/ets2ts/applications_photos",
 
     "logPath": "out\\SceneTest.log",
     
