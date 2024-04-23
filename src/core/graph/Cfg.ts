@@ -78,6 +78,7 @@ export class Cfg {
     }
 
     public constructorAddInit(arkMethod: ArkMethod): void {
+        
         const stmts = [...this.blocks][0].getStmts();
         let index = arkMethod.getParameters().length;
         // let cThis: 

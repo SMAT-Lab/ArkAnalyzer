@@ -8,8 +8,9 @@ class t{
     constructor(){
     }
     static sm(){
-        console.log(this.s)
-        console.log(t.s)
+        // this.s = new property()
+        console.log(this.s.pp)
+        console.log(t.s.pp)
     }
     method(){
         console.log(t.s)
@@ -36,14 +37,13 @@ function print(tp:t){
 }
 
 function U4(){
-    t.s = new property()
+    // t.s = new property()
     console.log(t.s.pp)
 }
 
 function U5(){
     t.sm()
 }
-
 // function U(){
 //     let t1: t;
 //     if (true){
