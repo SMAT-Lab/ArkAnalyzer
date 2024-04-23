@@ -13,7 +13,7 @@ import {Constant} from "../src/core/base/Constant"
 import { AbstractFieldRef, ArkInstanceFieldRef, ArkParameterRef, ArkStaticFieldRef } from "../src/core/base/Ref";
 import { ModelUtils } from "../src/core/common/ModelUtils";
 import { DataflowSolver } from "../src/core/dataflow/DataflowSolver"
-import { ArkBinopExpr, ArkInstanceInvokeExpr } from "../src/core/base/Expr";
+import { ArkBinopExpr, ArkInstanceInvokeExpr, ArkStaticInvokeExpr } from "../src/core/base/Expr";
 import { UndefinedType } from "../src/core/base/Type";
 import { FieldSignature, fieldSignatureCompare } from "../src/core/model/ArkSignature";
 import { factEqual } from "../src/core/dataflow/DataflowSolver";
@@ -159,6 +159,8 @@ class UndefinedVariableChecker extends DataflowProblem<Value> {
                                 break;
                             }
                         }
+                    } else if (callExpr instanceof ArkStaticInvokeExpr && dataFact instanceof ArkStaticFieldRef && callExpr.getMethodSignature().getDeclaringClassSignature() == dataFact.getFieldSignature().getDeclaringClassSignature()){
+                        ret.add(dataFact);
                     }
                 }
                 const callStmt = srcStmt as ArkInvokeStmt;
@@ -258,12 +260,13 @@ class instanceSolver extends DataflowSolver<Value> {
 
 
 
-const config_path = "tests\\resources\\ifds\\UndefinedVariable\\ifdsTestConfig.json";
+// const config_path = "tests\\resources\\ifds\\UndefinedVariable\\ifdsTestConfig.json";
+const config_path = "tests\\resources\\ifds\\project\\ifdsProjectConfig.json";
 let config: SceneConfig = new SceneConfig();
 config.buildFromJson(config_path);
 const scene = new Scene(config);
 const defaultMethod = scene.getFiles()[0].getDefaultClass().getDefaultArkMethod();
-const method = ModelUtils.getMethodWithName("U4",defaultMethod!);
+const method = ModelUtils.getMethodWithName("U5",defaultMethod!);
 if(method){
     const problem = new UndefinedVariableChecker([...method.getCfg().getBlocks()][0].getStmts()[method.getParameters().length],method);
     const solver = new instanceSolver(problem, scene);
