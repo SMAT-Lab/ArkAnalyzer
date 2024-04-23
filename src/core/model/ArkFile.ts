@@ -282,8 +282,13 @@ export class ArkFile {
         await this.initSourceMap();
         let map = (this.sourceMap as BasicSourceMapConsumer).sources[0];
         if (!fs.existsSync(map)) {
+            map = path.join(path.dirname(this.absoluteFilePath), map);
+        }
+
+        if (!fs.existsSync(map)) {
             return '';
         }
+
         let lines = fs.readFileSync(map, 'utf8').split('\n');
         if (lines.length < line) {
             return '';

@@ -101,6 +101,7 @@ class CountDownComponent extends View {
             If.branchId(1);
             Text.create("Game over!");
             Text.pop();
+            Image.create('');
         }
         If.pop();
         Button.createWithChild();
@@ -109,7 +110,9 @@ class CountDownComponent extends View {
         });
         Text.create("Try again");
         Text.pop();
+        Image.create('');
         Button.pop();
+        Image.create('');
         Column.pop();
     }
 }

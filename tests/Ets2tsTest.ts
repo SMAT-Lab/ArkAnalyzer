@@ -4,9 +4,9 @@ import Logger from "../src/utils/logger";
 const logger = Logger.getLogger();
 logger.level = 'ALL';
 
-let projectPath = '/mnt/d/code/oh/OpenHarmony/applications/standard/systemui';
-let output = '/mnt/d/code/oh/OpenHarmony/applications/ets2ts';
-let etsLoaderPath = '/mnt/d/Programs/Huawei/sdk/openharmony/9/ets/build-tools/ets-loader';
+let projectPath = 'tests/resources/viewtree';
+let output = 'tests/resources/viewtree';
+let etsLoaderPath = '/home/sunbo/ArkTS2TS';
 async function run() {
     let startTime = new Date().getTime();
     logger.info('run.');
