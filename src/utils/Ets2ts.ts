@@ -55,7 +55,9 @@ export class Ets2ts {
         process.env.compiler = 'on';
         logger.info('Ets2ts-getAllEts start');
         let sources: Array<string> = [];
-        this.getAllEts(this.projectConfig.projectPath, sources);
+        if (this.getAllEts(this.projectConfig.projectPath, sources)) {
+            this.mkOutputPath(this.projectConfig.projectPath);
+        }
         logger.info('Ets2ts-getAllEts done');
         for (let src of sources) {
             if (src.endsWith('.ets')) {
