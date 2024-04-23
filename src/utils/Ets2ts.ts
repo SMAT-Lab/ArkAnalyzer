@@ -85,7 +85,7 @@ export class Ets2ts {
         this.tsModule.transpileModule(fileContent, {
             compilerOptions: this.compilerOptions,
             fileName: `${file}`,
-            transformers: {before: [this.processUIModule.processUISyntax(null, false), this.getDumpSourceTransformer(this)]}
+            transformers: { before: [this.processUIModule.processUISyntax(null, false), this.getDumpSourceTransformer(this)] }
         });
         fileContent = undefined;
         let end = new Date().getTime();
@@ -95,7 +95,7 @@ export class Ets2ts {
 
     private mkOutputPath(filePath: string) {
         let resultPath = this.getOutputPath(filePath);
-        fs.mkdirSync(resultPath, {recursive: true});
+        fs.mkdirSync(resultPath, { recursive: true });
     }
 
     private getOutputPath(fileName: string): string {
@@ -117,7 +117,7 @@ export class Ets2ts {
     private getAllEts(srcPath: string, ets: string[] = []): boolean {
         const ignore = ['.git', '.preview', '.hvigor', '.idea'];
         let hasFile = false;
-        fs.readdirSync(srcPath, {withFileTypes: true}).forEach(file => {
+        fs.readdirSync(srcPath, { withFileTypes: true }).forEach(file => {
             const realFile = path.resolve(srcPath, file.name);
             if (file.isDirectory() && (!ignore.includes(file.name))) {
                 if (this.getAllEts(realFile, ets)) {
@@ -139,7 +139,7 @@ export class Ets2ts {
         return (context) => {
             // @ts-ignore
             function genContentAndSourceMapInfo(node): { content: string, sourceMapJson: string } {
-                const printer = ets2ts.tsModule.createPrinter({newLine: ets2ts.tsModule.NewLineKind.LineFeed});
+                const printer = ets2ts.tsModule.createPrinter({ newLine: ets2ts.tsModule.NewLineKind.LineFeed });
                 const options = {
                     sourceMap: true
                 };
@@ -198,7 +198,11 @@ export class Ets2ts {
 
 }
 
-
+export async function runEts2Ts(hosEtsLoaderPath: string, targetProjectOriginDirectory: string, targetProjectDirectory: string, targetProjectName: string) {
+    let ets2ts = new Ets2ts();
+    await ets2ts.init(hosEtsLoaderPath, targetProjectOriginDirectory, targetProjectDirectory, targetProjectName);
+    await ets2ts.compileProject();
+}
 
 
 

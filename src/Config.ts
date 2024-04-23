@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import Logger, { LOG_LEVEL } from "./utils/logger";
-import { Ets2ts } from "./utils/Ets2ts";
+import { Ets2ts, runEts2Ts } from "./utils/Ets2ts";
 
 const logger = Logger.getLogger();
 
@@ -74,9 +74,7 @@ export class SceneConfig {
         this.logPath = logPath;
 
         Logger.configure(this.logPath, LOG_LEVEL.ERROR);
-        let ets2ts = new Ets2ts();
-        await ets2ts.init(this.hosEtsLoaderPath, this.targetProjectOriginDirectory, targetProjectDirectory, this.targetProjectName);
-        await ets2ts.compileProject();
+        runEts2Ts(this.hosEtsLoaderPath, this.targetProjectOriginDirectory, targetProjectDirectory, this.targetProjectName);
         this.getAllFiles();
     }
 
