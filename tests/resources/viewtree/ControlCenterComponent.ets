@@ -34,9 +34,10 @@ var mUniform;
 export default struct ControlCenterComponent {
   private touchMoveCallback: Function;
   private modeChangeCallback: Function;
-  @State mSimpleToggleColumnCount: number = Constants.DEFAULT_SIMPLE_TOGGLE_COLUMN_COUNT;
-  private mControlCenterComponentConfig: ControlCenterConfig;
-  @State mIsEditSimpleToggleLayout: boolean = false;
+  @State 
+  mSimpleToggleColumnCount: number = Constants.DEFAULT_SIMPLE_TOGGLE_COLUMN_COUNT;
+  private mControlCenterComponentConfig: ControlCenterConfig;@State 
+  mIsEditSimpleToggleLayout: boolean = false;
   @State style: ControlCenterComponentStyle = StyleConfiguration.getControlCenterComponentStyle();
   private mWidthPx: number = 0;
   private mDisplayingSimpleToggles: string[] = [];

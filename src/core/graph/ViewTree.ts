@@ -231,16 +231,20 @@ export class ViewTree {
             let type = field.getSignature().getType();
             if (type instanceof UnclearReferenceType) {
                 let position = await arkFile.getEtsOriginalPositionFor(field.getOriginPosition());
-                let line = await arkFile.getEtsSource(position.getLineNo());
-                if (position.getColNo() < line.length) {
-                    let state = line.slice(0, position.getColNo());
-                    let regex = /@[\w]*/gi;
-                    let match = state.match(regex);
-                    if (match) {
-                        this.fieldTypes.set(field.getName(), match[0]);
-                    }
+                let content = await arkFile.getEtsSource(position.getLineNo());
+                let regex;
+                if (field.getName().startsWith('__')) {
+                    regex = new RegExp('@[\\w]*[\\s]*' +field.getName().slice(2), 'gi');
+                } else {
+                    regex = new RegExp('@[\\w]*[\\s]*' +field.getName(), 'gi');
+                }
+                
+                let match = content.match(regex);
+                if (match) {
+                this.fieldTypes.set(field.getName(), match[0].split(/[\s]/)[0]);
                     continue;
                 }
+                    
                 this.fieldTypes.set(field.getName(), type.getName());
             }
         }
