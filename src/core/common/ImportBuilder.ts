@@ -204,7 +204,8 @@ function buildImportDeclarationNode(node: ts.ImportDeclaration): ImportInfo[] {
         if (node.importClause.namedBindings.name && ts.isIdentifier(node.importClause.namedBindings.name)) {
             let importClauseName = node.importClause.namedBindings.name.text;
             let importInfo = new ImportInfo();
-            importInfo.build(importClauseName, importType, importFrom);
+            let nameBeforeAs = '*';
+            importInfo.build(importClauseName, importType, importFrom, nameBeforeAs);
             importInfos.push(importInfo);
         }
     }
