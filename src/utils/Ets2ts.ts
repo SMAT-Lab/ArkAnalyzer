@@ -22,7 +22,9 @@ enum FileType {
 export class Ets2ts {
     processUIModule: any;
     tsModule: any;
+    validateUISyntaxModule: any;
     preProcessModule: Function;
+    utilsModule: any;
 
     compilerOptions: any;
     projectConfig: any;
@@ -34,6 +36,8 @@ export class Ets2ts {
         this.tsModule = await import(path.join(etsLoaderPath, 'node_modules/typescript'));
         this.processUIModule = await import(path.join(etsLoaderPath, 'lib/process_ui_syntax'));
         this.preProcessModule = await dynamicImportModule<Function>(path.join(etsLoaderPath, 'lib/pre_process.js'));
+        this.validateUISyntaxModule = await import(path.join(etsLoaderPath, 'lib/validate_ui_syntax.js'));
+        this.utilsModule = await import(path.join(etsLoaderPath, 'lib/utils.js'));
 
         this.compilerOptions = this.tsModule.readConfigFile(
             path.resolve(etsLoaderPath, 'tsconfig.json'), this.tsModule.sys.readFile).config.compilerOptions;
@@ -90,6 +94,8 @@ export class Ets2ts {
             transformers: {before: [this.processUIModule.processUISyntax(null, false), this.getDumpSourceTransformer(this)]}
         });
         fileContent = undefined;
+        let fileInfo = this.utilsModule.getStoredFileInfo().getCurrentArkTsFile();
+        logger.info(file, fileInfo.hasEntry);
         let end = new Date().getTime();
         this.statistics[FileType.ETS][0]++;
         this.statistics[FileType.ETS][1] += end - start;

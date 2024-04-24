@@ -293,7 +293,7 @@ export class ArkFile {
         if (lines.length < line) {
             return '';
         }
-        return lines[line - 1];
+        return lines.slice(0, line).join('\n');
     }
 }
 
