@@ -64,13 +64,14 @@ export class SceneConfig {
         this.getAllFiles();
     }
 
-    public async buildFromIde(targetProjectName: string, targetProjectOriginDirectory: string, targetProjectDirectory: string, hosBasePath: string, hosSdkVersion: number, logPath: string) {
+    public async buildFromIde(targetProjectName: string, targetProjectOriginDirectory: string, targetProjectDirectory: string,
+        sdkEtsPath: string, logPath: string) {
         this.targetProjectName = targetProjectName;
         this.targetProjectOriginDirectory = targetProjectOriginDirectory;
         this.targetProjectDirectory = path.join(targetProjectDirectory, targetProjectName);
-        this.ohosSdkPath = path.join(hosBasePath, './ets/api');
-        this.kitSdkPath = path.join(hosBasePath, './ets/kits');
-        this.hosEtsLoaderPath = path.join(hosBasePath, './ets/build-tools/ets-loader');
+        this.ohosSdkPath = path.join(sdkEtsPath, './api');
+        this.kitSdkPath = path.join(sdkEtsPath, './kits');
+        this.hosEtsLoaderPath = path.join(sdkEtsPath, './build-tools/ets-loader');
         this.logPath = logPath;
 
         Logger.configure(this.logPath, LOG_LEVEL.ERROR);
