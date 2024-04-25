@@ -195,8 +195,12 @@ function getFiles(srcPath: string, fileExt: string, tmpFiles: string[] = []) {
 
     const realSrc = fs.realpathSync(srcPath);
 
-    fs.readdirSync(realSrc).forEach(filename => {
-        const realFile = path.resolve(realSrc, filename);
+    let files2Do: string[] = fs.readdirSync(realSrc);
+    for (let fileName of files2Do) {
+        if (fileName == 'oh_modules' || fileName == 'node_modules') {
+            continue;
+        }
+        const realFile = path.resolve(realSrc, fileName);
 
         if (fs.statSync(realFile).isDirectory()) {
             getFiles(realFile, fileExt, tmpFiles);
@@ -205,7 +209,7 @@ function getFiles(srcPath: string, fileExt: string, tmpFiles: string[] = []) {
                 tmpFiles.push(realFile);
             }
         }
-    })
+    }
 
     return tmpFiles;
 }
