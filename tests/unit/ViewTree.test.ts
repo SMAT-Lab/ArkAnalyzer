@@ -10,7 +10,7 @@ let scece = new Scene(config);
 
 
 describe("ViewTree Test", () => {
-    it('test state', async () => {
+    it('test @State', async () => {
         let arkFile = tr.getArkFileByName("ControlCenterComponent.ts", scece);
         let arkClass = tr.resolveClassInstance("ControlCenterComponent.ts.ControlCenterComponent", arkFile);
         if (arkClass == null) {
@@ -27,7 +27,7 @@ describe("ViewTree Test", () => {
         expect(root.children[0].children[0].children[0].children[1].children[0].children[0].children[0].name).equals('Grid');
     })
 
-    it('test if', async () => {
+    it('test If', async () => {
         let arkFile = tr.getArkFileByName("ParentComponent.ts", scece);
         let arkClass = tr.resolveClassInstance("ParentComponent.ts.ParentComponent", arkFile);
         if (arkClass == null) {
@@ -36,10 +36,25 @@ describe("ViewTree Test", () => {
         }
         let vt = await arkClass.getViewTree();
         let type = vt.getClassFieldType('countDownStartValue');
-        expect(type).equals('ObservedPropertySimple');
+        expect(type?.toString()).equals('ObservedPropertySimple');
 
         let root = vt.getRoot();
         expect(root.name).equals('Column');
         expect(root.children[3].children[0].children[0].children[0].name).equals('IfBranch');
+    })
+
+    it('test @Builder', async () => {
+        let arkFile = tr.getArkFileByName("SwipeLayout.ts", scece);
+        let arkClass = tr.resolveClassInstance("SwipeLayout.ts.SwipeLayout", arkFile);
+        if (arkClass == null) {
+            assert.isNotNull(arkClass);
+            return;
+        }
+        let vt = await arkClass.getViewTree();
+        let type = vt.getClassFieldType('__SurfaceComponent');
+        expect(type).equals('@BuilderParam');
+        let root = vt.getRoot();
+        expect(root.children[0].children[0].children[0].name).equals('@BuilderParam');
+        expect(root.children[0].children[0].children[0].buildParam).equals('SurfaceComponent');
     })
 })

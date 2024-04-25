@@ -3,7 +3,7 @@ import { ArkInstanceInvokeExpr, ArkNewExpr } from '../base/Expr';
 import { Local } from '../base/Local';
 import { ArkInstanceFieldRef } from '../base/Ref';
 import { ArkAssignStmt, ArkInvokeStmt, Stmt } from '../base/Stmt';
-import { CallableType, ClassType, UnclearReferenceType } from '../base/Type';
+import { AnyType, CallableType, ClassType, PrimitiveType, Type, UnclearReferenceType } from '../base/Type';
 import { ArkMethod } from '../model/ArkMethod';
 import { ClassSignature, MethodSignature } from '../model/ArkSignature';
 import { Cfg } from './Cfg';
@@ -28,15 +28,16 @@ const COMPONENT_CREATE_FUNCTION: Set<string> = new Set(['create', 'createWithChi
 export class ViewTreeNode {
     name: string;
     classSignature: ClassSignature|null;
+    buildParam: string;
     stmts: Map<string, [Stmt, (Constant|ArkInstanceFieldRef|MethodSignature)[]]>;
     parent: ViewTreeNode | null;
     children: ViewTreeNode[];
     private tree: ViewTree;
 
-    constructor(name: string, stmt: Stmt, expr: ArkInstanceInvokeExpr, parent: ViewTreeNode | null, tree: ViewTree) {
+    constructor(name: string, stmt: Stmt, expr: ArkInstanceInvokeExpr, tree: ViewTree) {
         this.name = name;
         this.stmts = new Map();
-        this.parent = parent;
+        this.parent = null;
         this.children = [];
         this.tree = tree;
         this.addStmt(stmt, expr);
@@ -76,10 +77,80 @@ export class ViewTreeNode {
     }
 }
 
+class TreeNodeStack {
+    root: ViewTreeNode;
+    stack: ViewTreeNode[];
+
+    constructor() {
+        this.stack = [];
+    }
+
+    public push(node: ViewTreeNode) {
+        let parent = this.getParent();
+        node.parent = parent;
+        this.stack.push(node);
+        if (parent == null) {
+            this.root = node;
+        } else {
+            parent.children.push(node);
+        }
+    }
+
+    public pop() {
+        this.stack.pop();
+    }
+
+    public top(): ViewTreeNode | null {
+        return this.isEmpty() ? null: this.stack[this.stack.length - 1];
+    }
+
+    public isEmpty(): boolean {
+        return this.stack.length == 0;
+    }
+
+    public popAutomicComponent(name: string): void {
+        if (this.isEmpty()) {
+            return;
+        }
+
+        let node = this.stack[this.stack.length - 1];
+        if (name != node.name && !this.isContainer(node.name)) {
+            this.stack.pop();
+        }
+    }
+
+    public popComponentExpect(name: string): TreeNodeStack {
+        for (let i = this.stack.length - 1; i >= 0; i--) {
+            if (this.stack[i].name != name) {
+                this.stack.pop();
+            } else {
+                break;
+            }
+        }
+        return this;
+    }
+
+    private getParent(): ViewTreeNode|null {
+        if (this.stack.length == 0) {
+            return null;
+        }
+
+        let node = this.stack[this.stack.length - 1];
+        if (!this.isContainer(node.name)) {
+            this.stack.pop();
+        }
+        return this.stack[this.stack.length - 1];
+    }
+
+    private isContainer(name: string): boolean {
+        return BUILDIN_CONTAINER_COMPONENT.has(name);
+    }
+}
+
 export class ViewTree {
     private root: ViewTreeNode;
     private render: ArkMethod;
-    private fieldTypes: Map<string, string>;
+    private fieldTypes: Map<string, string|Type>;
 
     constructor(render: ArkMethod) {
         this.render = render;
@@ -92,8 +163,9 @@ export class ViewTree {
         }
         
         await this.loadClasssFieldTypes();
-        let treeStack: ViewTreeNode[] = [];
+        let treeStack: TreeNodeStack = new TreeNodeStack();
         await this.parseCfg(this.render.getCfg(), treeStack);
+        this.root = treeStack.root;
     }
 
     public isInitialized(): boolean {
@@ -104,7 +176,7 @@ export class ViewTree {
         return this.root;
     }
 
-    private async parseForEachAnonymousFunc(treeStack: ViewTreeNode[], expr: ArkInstanceInvokeExpr) {
+    private async parseForEachAnonymousFunc(treeStack: TreeNodeStack, expr: ArkInstanceInvokeExpr) {
         let arg = expr.getArg(3) as Local;
         let type = arg.getType() as CallableType;
         let method = this.render.getDeclaringArkClass().getMethod(type.getMethodSignature());
@@ -133,7 +205,7 @@ export class ViewTree {
         return true;
     }
 
-    private async parseCfg(cfg: Cfg, treeStack: ViewTreeNode[]) {
+    private async parseCfg(cfg: Cfg, treeStack: TreeNodeStack) {
         let blocks = cfg.getBlocks();        
         for (const block of blocks) {
             for (const stmt of block.getStmts()) {
@@ -149,22 +221,22 @@ export class ViewTree {
                     continue;
                 }
                 let methodName = expr.getMethodSignature().getMethodSubSignature().getMethodName();
-                this.popAutomicComponent(name, treeStack);
-                let currentNode = treeStack.length > 0? treeStack[treeStack.length - 1]: null;
+                if (name == 'this' && this.getClassFieldType('__' + methodName) == '@BuilderParam') {
+                    let node = new ViewTreeNode(`@BuilderParam`, stmt, expr, this);
+                    node.buildParam = methodName;
+                    treeStack.push(node);
+                    continue;
+                } 
+                treeStack.popAutomicComponent(name);
+                let currentNode = treeStack.top();
                 if (name == 'If' && methodName == 'branchId') {
                     name = 'IfBranch';
-                    treeStack = this.popComponentExpect('If', treeStack);
+                    treeStack.popComponentExpect('If');
                 }
                 if (this.isCreateFunc(methodName)) {
-                    let parent = this.getParent(treeStack);
-                    let node = new ViewTreeNode(name, stmt, expr, parent, this);
+                    let node = new ViewTreeNode(name, stmt, expr, this);
                     if (name == 'View' && !await this.parseComponentView(node, expr)) {
                         continue;
-                    }
-                    if (parent == null) {
-                        this.root = node;
-                    } else {
-                        parent.children.push(node);
                     }
                     treeStack.push(node);
                     if (name == 'ForEach' || name == 'LazyForEach') {
@@ -178,47 +250,11 @@ export class ViewTree {
                         treeStack.pop();
                     }
                 } else if (name == 'If' && methodName == 'pop') {
-                    treeStack = this.popComponentExpect(name, treeStack);
+                    treeStack.popComponentExpect('If');
                     treeStack.pop();
                 }
             }
         }
-    }
-
-    private popAutomicComponent(name: string, treeStack: ViewTreeNode[]): void {
-        if (treeStack.length == 0) {
-            return;
-        }
-
-        let node = treeStack[treeStack.length - 1];
-        if (name != node.name && !this.isContainer(node.name)) {
-            treeStack.pop();
-        }
-    }
-
-    private popComponentExpect(name: string, treeStack: ViewTreeNode[]): ViewTreeNode[] {
-        for (let i = treeStack.length - 1; i >= 0; i--) {
-            if (treeStack[i].name == name) {
-                return treeStack.slice(0, i + 1);
-            }
-        }
-        return [];
-    }
-
-    private getParent(treeStack: ViewTreeNode[]): ViewTreeNode|null {
-        if (treeStack.length == 0) {
-            return null;
-        }
-
-        let node = treeStack[treeStack.length - 1];
-        if (!this.isContainer(node.name)) {
-            treeStack.pop();
-        }
-        return treeStack[treeStack.length - 1];
-    }
-
-    private isContainer(name: string): boolean {
-        return BUILDIN_CONTAINER_COMPONENT.has(name);
     }
 
     private isCreateFunc(name: string): boolean {
@@ -228,25 +264,21 @@ export class ViewTree {
     private async loadClasssFieldTypes() {
         let arkFile = this.render.getDeclaringArkFile();
         for (const field of this.render.getDeclaringArkClass().getFields()) {
-            let type = field.getSignature().getType();
-            if (type instanceof UnclearReferenceType) {
-                let position = await arkFile.getEtsOriginalPositionFor(field.getOriginPosition());
-                let content = await arkFile.getEtsSource(position.getLineNo());
-                let regex;
-                if (field.getName().startsWith('__')) {
-                    regex = new RegExp('@[\\w]*[\\s]*' +field.getName().slice(2), 'gi');
-                } else {
-                    regex = new RegExp('@[\\w]*[\\s]*' +field.getName(), 'gi');
-                }
-                
-                let match = content.match(regex);
-                if (match) {
-                this.fieldTypes.set(field.getName(), match[0].split(/[\s]/)[0]);
-                    continue;
-                }
-                    
-                this.fieldTypes.set(field.getName(), type.getName());
+            let position = await arkFile.getEtsOriginalPositionFor(field.getOriginPosition());
+            let content = await arkFile.getEtsSource(position.getLineNo());
+            let regex;
+            if (field.getName().startsWith('__')) {
+                regex = new RegExp('@[\\w]*[\\s]*' +field.getName().slice(2), 'gi');
+            } else {
+                regex = new RegExp('@[\\w]*[\\s]*' +field.getName(), 'gi');
             }
+            
+            let match = content.match(regex);
+            if (match) {
+                this.fieldTypes.set(field.getName(), match[0].split(/[\s]/)[0]);
+                continue;
+            }
+            this.fieldTypes.set(field.getName(), field.getSignature().getType());
         }
 
         for (const method of this.render.getDeclaringArkClass().getMethods()) {
@@ -264,7 +296,7 @@ export class ViewTree {
         return this.fieldTypes.has(name);
     }
 
-    public getClassFieldType(name: string): string | undefined {
+    public getClassFieldType(name: string): string | Type | undefined {
         return this.fieldTypes.get(name);
     }
 
