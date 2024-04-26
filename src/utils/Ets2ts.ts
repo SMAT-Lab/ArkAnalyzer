@@ -126,7 +126,8 @@ export class Ets2ts {
                     this.mkOutputPath(realFile);
                 }
             } else {
-                if (path.basename(realFile).endsWith('.ets') || path.basename(realFile).endsWith('.ts')) {
+                if ((path.basename(realFile).endsWith('.ets') || path.basename(realFile).endsWith('.ts')) 
+                    && (!path.basename(realFile).endsWith('.d.ets'))) {
                     ets.push(realFile);
                     hasFile = true;
                 }
