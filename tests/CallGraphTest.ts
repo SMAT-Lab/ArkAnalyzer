@@ -17,12 +17,12 @@ function runScene(config: SceneConfig) {
     //     entryPoints.push(method.getSignature())
     // }
     for (let arkFile of projectScene.arkFiles) {
-        if (arkFile.getName() === "OpenHarmonyTestRunner1.ts") {
+        if (arkFile.getName() === "test2.ts") {
             for (let arkClass of arkFile.getAllClassesUnderThisFile()) {
-                if (arkClass.getName() === "OpenHarmonyTestRunner") {
+                if (arkClass.getName() === "_DEFAULT_ARK_CLASS") {
                     for (let arkMethod of arkClass.getMethods()) {
-                        if (arkMethod.getName() === "onRun") {
-                            entryPoints.push(arkMethod.getSignature())
+                        if (arkMethod.getName() === "_DEFAULT_ARK_METHOD") {
+                            // entryPoints.push(arkMethod.getSignature())
                         }
                     }
                 }
@@ -31,12 +31,27 @@ function runScene(config: SceneConfig) {
     }
     
     projectScene.inferTypes()
-    let callGraph = projectScene.makeCallGraphCHA(entryPoints)
+    for (let arkFile of projectScene.arkFiles) {
+        if (arkFile.getName() === "testcase_5_method_call.ts") {
+            for (let arkClass of arkFile.getAllClassesUnderThisFile()) {
+                if (arkClass.getName() === "_DEFAULT_ARK_CLASS") {
+                    for (let arkMethod of arkClass.getMethods()) {
+                        if (arkMethod.getName() === "_DEFAULT_ARK_METHOD") {
+                            for (let local of arkMethod.getBody().getLocals()) {
+                                console.log(local.getName() + ": "+local.getType().toString())
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    // let callGraph = projectScene.makeCallGraphCHA(entryPoints)
     // let callGraph = projectScene.makeCallGraphRTA(entryPoints)
     // let callGraph = projectScene.makeCallGraphVPA(entryPoints)
-    let methods = callGraph.getMethods()
-    let calls = callGraph.getCalls()
-    printCallGraphDetails(methods, calls, config.getTargetProjectDirectory())
+    // let methods = callGraph.getMethods()
+    // let calls = callGraph.getCalls()
+    // printCallGraphDetails(methods, calls, config.getTargetProjectDirectory())
     debugger;
 }
 runScene(config);

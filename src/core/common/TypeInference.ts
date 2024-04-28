@@ -133,7 +133,7 @@ export class TypeInference {
                 if (stmt instanceof ArkAssignStmt) {
                     const leftOp = stmt.getLeftOp()
                     if (leftOp instanceof Local) {
-                        leftOp.setType(method.getReturnType)
+                        leftOp.setType(method.getReturnType())
                     }
                 }
 
