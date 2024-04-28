@@ -111,7 +111,7 @@ export class Ets2ts {
     }
 
     private getAllEts(srcPath: string, ets: string[] = []): boolean {
-        const ignore = ['.git', '.preview', '.hvigor', '.idea'];
+        const ignore = ['.git', '.preview', '.hvigor', '.idea', 'test', 'ohosTest'];
         let hasFile = false;
         fs.readdirSync(srcPath, { withFileTypes: true }).forEach(file => {
             const realFile = path.resolve(srcPath, file.name);
