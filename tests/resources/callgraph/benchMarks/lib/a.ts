@@ -1,5 +1,5 @@
 import { B } from "./b";
-import Logger from "../../../../src/utils/logger";
+import Logger from "../../../../../src/utils/logger";
 let logger = Logger.getLogger()
 
 export function A(){
@@ -28,6 +28,14 @@ export class Dog extends Animal {
     }
 
     public sleep() {
+    }
+
+    public getDog(): Dog {
+        return this
+    }
+
+    public returnStr(str: string): string {
+        return str + "3"
     }
 }
 

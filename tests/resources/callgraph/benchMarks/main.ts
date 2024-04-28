@@ -1,6 +1,6 @@
-import {A, Dog as Cat, Main, Cat as NotCat} from './a'
-import {B as C, C as Class, invokeParam} from "./b";
-import { MacDonlad, fxxkkkkk } from './c';
+import {A, Dog as Cat, Main, Cat as NotCat} from './lib/a'
+import {B as C, C as Class, invokeParam} from "./lib/b";
+import { MacDonlad, fxxkkkkk } from './lib/c';
 // import {func1} from "./temp/a";
 // import taskpool from '@ohos.taskpool';
 // // namespace temp_temp {
@@ -64,10 +64,10 @@ import { MacDonlad, fxxkkkkk } from './c';
 
 
 // field pointer test
-let mm = new MacDonlad()
-let dogggg = mm.dog
-let bar = new Bar()
-bar.useFoo()
-MacDonlad.num = new Cat()
-MacDonlad.num = new Cat()
-let num = MacDonlad.num
+// let mm = new MacDonlad()
+// let dogggg = mm.dog
+// let bar = new Bar()
+// bar.useFoo()
+// MacDonlad.num = new Cat()
+// MacDonlad.num = new Cat()
+// let num = MacDonlad.num
