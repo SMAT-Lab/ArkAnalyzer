@@ -34,6 +34,7 @@ class SceneTest {
         logger.error(`memoryUsage before buildConfig in bytes:`);
         logger.error(process.memoryUsage());
 
+        // build config
         const configPath = "tests\\resources\\scene\\SceneTestConfig.json";
         let sceneConfig: SceneConfig = new SceneConfig();
         sceneConfig.buildFromJson(configPath);
@@ -44,18 +45,33 @@ class SceneTest {
         logger.error('projectFiles cnt:', sceneConfig.getProjectFiles().length);
         logger.error(`buildConfig took ${(buildConfigEndTime - buildConfigStartTime) / 1000} s`);
 
+        // build scene
         let scene = new Scene(sceneConfig);
         logger.error(`memoryUsage after buildScene in bytes:`);
         logger.error(process.memoryUsage());
         const buildSceneEndTime = new Date().getTime();
         logger.error(`buildScene took ${(buildSceneEndTime - buildConfigEndTime) / 1000} s`);
 
+        // infer types
         scene.inferTypes();
         logger.error(`memoryUsage after inferTypes in bytes:`);
         logger.error(process.memoryUsage());
         const inferTypesEndTime = new Date().getTime();
         logger.error(`inferTypes took ${(inferTypesEndTime - buildSceneEndTime) / 1000} s`);
         logger.error('testTsWholePipline end');
+
+        // get viewTree
+        for (const arkFile of scene.getFiles()) {
+            for (const arkClass of arkFile.getClasses()) {
+                arkClass.getViewTree();
+            }
+        }
+        logger.error(`memoryUsage after get viewTree in bytes:`);
+        logger.error(process.memoryUsage());
+        const getViewTreeEndTime = new Date().getTime();
+        logger.error(`get viewTree took ${(inferTypesEndTime - buildSceneEndTime) / 1000} s`);
+
+        logger.error('testTsWholePipline end\n');
     }
 
     public async testEts2ts() {
@@ -88,15 +104,14 @@ class SceneTest {
 
         const etsProjectPath = 'D:\\Codes\\openharmony\\applications\\applications_photos';
         const outputPath = 'out/ets2ts';
-        const hosBasePath = 'C:\\Users\\kubrick\\AppData\\Local\\Huawei\\Sdk\\openharmony\\9';
-        const hosSdkVersion = 9;
+        const sdkEtsPath = 'C:\\Users\\kubrick\\AppData\\Local\\Huawei\\Sdk\\openharmony\\9\\ets';
         const projectName = 'applications_photos';
 
         logger.info(`memoryUsage before EtsConfig in bytes:`);
         logger.info(process.memoryUsage());
 
         const sceneConfig: SceneConfig = new SceneConfig();
-        await sceneConfig.buildFromIde(projectName, etsProjectPath, outputPath, hosBasePath, hosSdkVersion, logPath);
+        await sceneConfig.buildFromIde(projectName, etsProjectPath, outputPath, sdkEtsPath, logPath);
 
         logger.info(`memoryUsage after EtsConfig in bytes:`);
         logger.info(process.memoryUsage());
