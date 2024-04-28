@@ -263,8 +263,6 @@ export class ArkClass {
 
     public async getViewTree(): Promise<ViewTree> {
         if (this.hasViewTree() && !this.viewTree.isInitialized()) {
-            // deps inferTypes
-            this.getDeclaringArkFile().getScene().inferTypes();
             await this.viewTree.buildViewTree();
         }
         return this.viewTree;
