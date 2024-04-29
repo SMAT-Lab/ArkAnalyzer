@@ -1,7 +1,7 @@
 import {SceneConfig} from "../src/Config";
 import {Scene} from "../src/Scene";
 import Logger, {LOG_LEVEL} from "../src/utils/logger";
-import {Ets2ts} from "../src/utils/Ets2ts";
+// import {Ets2ts} from "../src/utils/Ets2ts";
 import * as ts from "typescript";
 import convertCompilerOptions = ts.server.convertCompilerOptions;
 
@@ -74,29 +74,29 @@ class SceneTest {
         logger.error('testTsWholePipline end\n');
     }
 
-    public async testEts2ts() {
-        logger.info('testEts2ts start');
-        let ets2tsStartTime = new Date().getTime();
-
-        const etsProjectPath = 'D:\\Codes\\openharmony\\applications\\applications_photos';
-        const outputPath = 'out/ets2ts';
-        const etsLoaderPath = 'C:\\Users\\kubrick\\AppData\\Local\\Huawei\\Sdk\\openharmony\\9\\ets\\build-tools\\ets-loader';
-        const projectName = 'applications_photos';
-
-        logger.info(`memoryUsage before Ets2ts in bytes:`);
-        logger.info(process.memoryUsage());
-
-        let ets2ts = new Ets2ts();
-        await ets2ts.init(etsLoaderPath, etsProjectPath, outputPath, projectName);
-        await ets2ts.compileProject();
-
-        logger.info(`memoryUsage after Ets2ts in bytes:`);
-        logger.info(process.memoryUsage());
-
-        let ets2tsEndTime = new Date().getTime();
-        logger.info(`ets2ts took ${(ets2tsEndTime - ets2tsStartTime) / 1000} s`);
-        logger.info('testEts2ts end\n');
-    }
+    // public async testEts2ts() {
+    //     logger.info('testEts2ts start');
+    //     let ets2tsStartTime = new Date().getTime();
+    //
+    //     const etsProjectPath = 'D:\\Codes\\openharmony\\applications\\applications_photos';
+    //     const outputPath = 'out/ets2ts';
+    //     const etsLoaderPath = 'C:\\Users\\kubrick\\AppData\\Local\\Huawei\\Sdk\\openharmony\\9\\ets\\build-tools\\ets-loader';
+    //     const projectName = 'applications_photos';
+    //
+    //     logger.info(`memoryUsage before Ets2ts in bytes:`);
+    //     logger.info(process.memoryUsage());
+    //
+    //     let ets2ts = new Ets2ts();
+    //     await ets2ts.init(etsLoaderPath, etsProjectPath, outputPath, projectName);
+    //     await ets2ts.compileProject();
+    //
+    //     logger.info(`memoryUsage after Ets2ts in bytes:`);
+    //     logger.info(process.memoryUsage());
+    //
+    //     let ets2tsEndTime = new Date().getTime();
+    //     logger.info(`ets2ts took ${(ets2tsEndTime - ets2tsStartTime) / 1000} s`);
+    //     logger.info('testEts2ts end\n');
+    // }
 
     public async testEtsConfig() {
         logger.info('testEtsConfig start');

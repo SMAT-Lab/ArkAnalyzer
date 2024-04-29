@@ -1,10 +1,10 @@
-import { NodeA } from "../base/Ast";
-import { LineColPosition } from "../base/Position";
-import { ExportInfo } from "../common/ExportBuilder";
-import { ArkClass, buildDefaultArkClassFromArkNamespace, buildNormalArkClassFromArkNamespace } from "./ArkClass";
-import { ArkFile } from "./ArkFile";
-import { ArkMethod, arkMethodNodeKind, buildArkMethodFromArkClass } from "./ArkMethod";
-import { ClassSignature, MethodSignature, NamespaceSignature } from "./ArkSignature";
+import {NodeA} from "../base/Ast";
+import {LineColPosition} from "../base/Position";
+import {ExportInfo} from "../common/ExportBuilder";
+import {ArkClass, buildDefaultArkClassFromArkNamespace, buildNormalArkClassFromArkNamespace} from "./ArkClass";
+import {ArkFile} from "./ArkFile";
+import {ArkMethod, arkMethodNodeKind, buildArkMethodFromArkClass} from "./ArkMethod";
+import {ClassSignature, MethodSignature, NamespaceSignature} from "./ArkSignature";
 
 
 export class ArkNamespace {
@@ -26,71 +26,30 @@ export class ArkNamespace {
 
     private defaultClass: ArkClass;
 
-    private namespaces: ArkNamespace[] = [];
-    private classes: ArkClass[] = [];
+    // name to model
+    private namespaces: Map<string, ArkNamespace> = new Map<string, ArkNamespace>(); // don't contain nested namespace
+    private classes: Map<string, ArkClass> = new Map<string, ArkClass>();
 
     private namespaceSignature: NamespaceSignature;
 
-    constructor() { }
-
-    public getMethodAllTheNamespace(methodSignature: MethodSignature): ArkMethod | null {
-        let classSig = methodSignature.getDeclaringClassSignature();
-        let cls = this.getClassAllTheNamespace(classSig);
-        if (cls) {
-            return cls.getMethod(methodSignature);
-        }
-        return null;
-    }
-
-    public getClassAllTheNamespace(classSignature: ClassSignature): ArkClass | null {
-        if (classSignature.getDeclaringFileSignature().toString() != this.getNamespaceSignature().getDeclaringFileSignature().toString()) {
-            return null;
-        }
-        let nsSig = classSignature.getDeclaringNamespaceSignature();
-        if (nsSig) {
-            let ns = this.getNamespaceAllTheNamespace(nsSig);
-            if (ns) {
-                return ns.getClassAllTheNamespace(classSignature);
-            }
-        }
-        return null;
+    constructor() {
     }
 
     public addNamespace(namespace: ArkNamespace) {
-        this.namespaces.push(namespace);
+        this.namespaces.set(namespace.getName(), namespace);
     }
 
     public getNamespace(namespaceSignature: NamespaceSignature): ArkNamespace | null {
-        const foundNamespace = this.namespaces.find(ns => ns.getNamespaceSignature().toString() == namespaceSignature.toString());
-        return foundNamespace || null;
+        const namespaceName = namespaceSignature.getNamespaceName();
+        return this.getNamespaceWithName(namespaceName);
     }
 
-    public getNamespaceAllTheNamespace(namespaceSignature: NamespaceSignature): ArkNamespace | null {
-        let returnVal: ArkNamespace | null = null;
-        let declaringNamespaceSignature = namespaceSignature.getDeclaringNamespaceSignature();
-
-        if (!declaringNamespaceSignature) {
-            return null;
-        }
-
-        if (declaringNamespaceSignature.toString() == this.namespaceSignature.toString()) {
-            this.namespaces.forEach((ns) => {
-                if (ns.getNamespaceSignature().toString() == namespaceSignature.toString()) {
-                    returnVal = ns;
-                }
-            });
-        }
-        else {
-            let declaringNamespace = this.getNamespaceAllTheNamespace(declaringNamespaceSignature);
-            if (declaringNamespace) {
-                returnVal = declaringNamespace.getNamespace(namespaceSignature);
-            }
-        }
-        return returnVal;
+    public getNamespaceWithName(namespaceName: string): ArkNamespace | null {
+        return this.namespaces.get(namespaceName) || null;
     }
 
     public getNamespaces(): ArkNamespace[] {
-        return this.namespaces;
+        return Array.from(this.namespaces.values());
     }
 
     public genNamespaceSignature() {
@@ -197,30 +156,20 @@ export class ArkNamespace {
     }
 
     public getClass(classSignature: ClassSignature): ArkClass | null {
-        const foundClass = this.classes.find(cls => cls.getSignature().toString() == classSignature.toString());
-        return foundClass || null;
+        const className = classSignature.getClassName();
+        return this.getClassWithName(className);
+    }
+
+    public getClassWithName(Class: string): ArkClass | null {
+        return this.classes.get(Class) || null;
     }
 
     public getClasses(): ArkClass[] {
-        return this.classes;
-    }
-
-    public updateClass(arkClass: ArkClass) {
-        for (let i = 0; i < this.classes.length; i++) {
-            if (this.classes[i].getSignature().toString() == arkClass.getSignature().toString()) {
-                this.classes.splice(i, 1);
-            }
-        }
-        this.classes.push(arkClass);
+        return Array.from(this.classes.values());
     }
 
     public addArkClass(arkClass: ArkClass) {
-        if (this.getClass(arkClass.getSignature())) {
-            this.updateClass(arkClass);
-        }
-        else {
-            this.classes.push(arkClass);
-        }
+        this.classes.set(arkClass.getName(), arkClass);
     }
 
     public isExported(): boolean {
@@ -256,7 +205,7 @@ export class ArkNamespace {
 
     public getAllClassesUnderThisNamespace(): ArkClass[] {
         let classes: ArkClass[] = [];
-        classes.push(...this.classes);
+        classes.push(...this.classes.values());
         this.namespaces.forEach((ns) => {
             classes.push(...ns.getAllClassesUnderThisNamespace());
         });
@@ -265,7 +214,7 @@ export class ArkNamespace {
 
     public getAllNamespacesUnderThisNamespace(): ArkNamespace[] {
         let namespaces: ArkNamespace[] = [];
-        namespaces.push(...this.namespaces);
+        namespaces.push(...this.namespaces.values());
         this.namespaces.forEach((ns) => {
             namespaces.push(...ns.getAllNamespacesUnderThisNamespace());
         });
@@ -283,8 +232,7 @@ export function buildArkNamespace(nsNode: NodeA, declaringInstance: ArkFile | Ar
     if (declaringInstance instanceof ArkFile) {
         ns.setDeclaringType("ArkFile");
         ns.setDeclaringArkFile(declaringInstance);
-    }
-    else {
+    } else {
         ns.setDeclaringType("ArkNamespace");
         ns.setDeclaringArkNamespace(declaringInstance);
         ns.setDeclaringArkFile(declaringInstance.getDeclaringArkFile());
@@ -413,11 +361,9 @@ function addExportInfo(arkInstance: ArkMethod | ArkClass | ArkNamespace, ns: Ark
     let exportClauseType: string;
     if (arkInstance instanceof ArkMethod) {
         exportClauseType = "Method";
-    }
-    else if (arkInstance instanceof ArkClass) {
+    } else if (arkInstance instanceof ArkClass) {
         exportClauseType = "Class";
-    }
-    else {
+    } else {
         exportClauseType = "ArkNamespace";
     }
     let exportInfo = new ExportInfo();

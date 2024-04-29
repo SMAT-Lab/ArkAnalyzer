@@ -4,7 +4,7 @@ import {ArkField} from "../model/ArkField";
 import {ArkFile} from "../model/ArkFile";
 import {ArkMethod} from "../model/ArkMethod";
 import {ArkNamespace} from "../model/ArkNamespace";
-import {ClassSignature, MethodSignature, NamespaceSignature} from "../model/ArkSignature";
+import {ClassSignature, FileSignature, MethodSignature, NamespaceSignature} from "../model/ArkSignature";
 import {ExportInfo} from "./ExportBuilder";
 import {ImportInfo} from "./ImportBuilder";
 
@@ -18,22 +18,12 @@ export class ModelUtils {
         return null
     }
 
-    /** search class iteratively with ClassSignature */
-    public static getClassWithClassSignature(classSignature: ClassSignature, scene: Scene): ArkClass | null {
-        return scene.getClass(classSignature);
-    }
-
-    public static getMethodWithMethodSignature(methodSignature: MethodSignature, scene: Scene): ArkMethod | null {
-        const arkClass = this.getClassWithClassSignature(methodSignature.getDeclaringClassSignature(), scene);
-        return arkClass!.getMethod(methodSignature);
-    }
-
     public static getClassWithNameInNamespaceRecursively(className: string, ns: ArkNamespace): ArkClass | null {
         if (className == '') {
             return null;
         }
         let res: ArkClass | null = null;
-        res = this.getClassInNamespaceWithName(className, ns);
+        res = ns.getClassWithName(className);
         if (res == null) {
             let declaringNs = ns.getDeclaringArkNamespace();
             if (declaringNs != null) {
@@ -59,10 +49,10 @@ export class ModelUtils {
             let nameSpace = this.getNamespaceWithNameFromClass(names[0], startFrom);
             for (let i = 1; i < names.length - 1; i++) {
                 if (nameSpace)
-                    nameSpace = this.getNamespaceInNamespaceWithName(names[i], nameSpace);
+                    nameSpace = nameSpace.getNamespaceWithName(names[i]);
             }
             if (nameSpace) {
-                return this.getClassInNamespaceWithName(names[names.length - 1], nameSpace);
+                return nameSpace.getClassWithName(names[names.length - 1]);
             }
         }
         return null;
@@ -79,7 +69,7 @@ export class ModelUtils {
             const thisNamespace = thisClass.getDeclaringArkNamespace();
             let classSearched: ArkClass | null = null;
             if (thisNamespace) {
-                classSearched = this.getClassInNamespaceWithName(className, thisNamespace);
+                classSearched = thisNamespace.getClassWithName(className);
                 if (classSearched) {
                     return classSearched;
                 }
@@ -92,31 +82,30 @@ export class ModelUtils {
             let nameSpace = this.getNamespaceWithName(names[0], startFrom);
             for (let i = 1; i < names.length - 1; i++) {
                 if (nameSpace)
-                    nameSpace = this.getNamespaceInNamespaceWithName(names[i], nameSpace);
+                    nameSpace = nameSpace.getNamespaceWithName(names[i]);
             }
             if (nameSpace) {
-                return this.getClassInNamespaceWithName(names[names.length - 1], nameSpace);
+                return nameSpace.getClassWithName(names[names.length - 1]);
             }
         }
         return null;
     }
 
-    /** search class within the given namespace */
-    public static getClassInNamespaceWithName(className: string, arkNamespace: ArkNamespace): ArkClass | null {
-        for (const arkClass of arkNamespace.getClasses()) {
-            if (arkClass.getName() == className) {
-                return arkClass;
-            }
-        }
-        return null;
-    }
+    // /** search class within the given namespace */
+    // public static getClassInNamespaceWithName(className: string, arkNamespace: ArkNamespace): ArkClass | null {
+    //     for (const arkClass of arkNamespace.getClasses()) {
+    //         if (arkClass.getName() == className) {
+    //             return arkClass;
+    //         }
+    //     }
+    //     return null;
+    // }
 
     /** search class within the given file */
     public static getClassInFileWithName(className: string, arkFile: ArkFile): ArkClass | null {
-        for (const arkClass of arkFile.getClasses()) {
-            if (arkClass.getName() == className) {
-                return arkClass;
-            }
+        let classSearched = arkFile.getClassWithName(className);
+        if (classSearched != null) {
+            return classSearched;
         }
 
         return this.getClassInImportInfoWithName(className, arkFile);
@@ -146,11 +135,11 @@ export class ModelUtils {
                 if (nameBefroreAs != undefined) {
                     className = nameBefroreAs;
                 }
-                for (const arkClass of arkFile.getClasses()) {
-                    if (arkClass.getName() == className) {
-                        return arkClass;
-                    }
+                let classSearched = arkFile.getClassWithName(className);
+                if (classSearched != null) {
+                    return classSearched;
                 }
+
                 return this.getClassInImportInfoWithName(className, arkFile);
             } else if (exportInfo.getDefault()) {
                 defaultExport = exportInfo;
@@ -158,10 +147,9 @@ export class ModelUtils {
         }
         if (defaultExport) {
             className = defaultExport.getExportClauseName()
-            for (const arkClass of arkFile.getClasses()) {
-                if (arkClass.getName() == className) {
-                    return arkClass;
-                }
+            let classSearched = arkFile.getClassWithName(className);
+            if (classSearched != null) {
+                return classSearched;
             }
             return this.getClassInImportInfoWithName(className, arkFile);
         }
@@ -169,12 +157,12 @@ export class ModelUtils {
     }
 
     public static getFileFromImportInfo(importInfo: ImportInfo, scene: Scene): ArkFile | null {
-        const signatureStr = importInfo.getImportFromSignature2Str();
+        const importFromSignature = importInfo.getImportFromSignature();
         let file: ArkFile | null = null;
         if (importInfo.getImportProjectType() == "TargetProject") {
-            file = scene.getFiles().find(file => file.getFileSignature().toString() == signatureStr) || null;
+            file = scene.getFile(importFromSignature as FileSignature);
         } else if (importInfo.getImportProjectType() == "SDKProject") {
-            file = scene.getSdkArkFilestMap().get(signatureStr) || null;
+            file = scene.getSdkArkFilestMap().get(importFromSignature as string) || null;
         }
         return file;
     }
@@ -186,38 +174,38 @@ export class ModelUtils {
         }
 
         const thisClass = startFrom.getDeclaringArkClass();
-        let methodSearched: ArkMethod | null = this.getMethodInClassWithName(methodName, thisClass);
+        let methodSearched: ArkMethod | null = thisClass.getMethodWithName(methodName);
         if (methodSearched) {
             return methodSearched;
         }
         return null;
     }
 
-    /** search method within the given class */
-    public static getMethodInClassWithName(methodName: string, arkClass: ArkClass): ArkMethod | null {
-        for (const method of arkClass.getMethods()) {
-            if (method.getName() == methodName) {
-                return method;
-            }
-        }
-        return null;
-    }
+    // /** search method within the given class */
+    // public static getMethodInClassWithName(methodName: string, arkClass: ArkClass): ArkMethod | null {
+    //     for (const method of arkClass.getMethods()) {
+    //         if (method.getName() == methodName) {
+    //             return method;
+    //         }
+    //     }
+    //     return null;
+    // }
 
-    /** search field within the given class */
-    public static getFieldInClassWithName(fieldName: string, arkClass: ArkClass): ArkField | null {
-        for (const field of arkClass.getFields()) {
-            if (field.getName() == fieldName) {
-                return field;
-            }
-        }
-        return null;
-    }
+    // /** search field within the given class */
+    // public static getFieldInClassWithName(fieldName: string, arkClass: ArkClass): ArkField | null {
+    //     for (const field of arkClass.getFields()) {
+    //         if (field.getName() == fieldName) {
+    //             return field;
+    //         }
+    //     }
+    //     return null;
+    // }
 
     public static getNamespaceWithNameFromClass(namespaceName: string, startFrom: ArkClass): ArkNamespace | null {
         const thisNamespace = startFrom.getDeclaringArkNamespace();
         let namespaceSearched: ArkNamespace | null = null;
         if (thisNamespace) {
-            namespaceSearched = this.getNamespaceInNamespaceWithName(namespaceName, thisNamespace);
+            namespaceSearched = thisNamespace.getNamespaceWithName(namespaceName);
             if (namespaceSearched) {
                 return namespaceSearched;
             }
@@ -232,7 +220,7 @@ export class ModelUtils {
         const thisNamespace = thisClass.getDeclaringArkNamespace();
         let namespaceSearched: ArkNamespace | null = null;
         if (thisNamespace) {
-            namespaceSearched = this.getNamespaceInNamespaceWithName(namespaceName, thisNamespace);
+            namespaceSearched = thisNamespace.getNamespaceWithName(namespaceName);
             if (namespaceSearched) {
                 return namespaceSearched;
             }
@@ -242,20 +230,19 @@ export class ModelUtils {
         return namespaceSearched;
     }
 
-    public static getNamespaceInNamespaceWithName(namespaceName: string, arkNamespace: ArkNamespace): ArkNamespace | null {
-        for (const namespace of arkNamespace.getNamespaces()) {
-            if (namespace.getName() == namespaceName) {
-                return namespace;
-            }
-        }
-        return null;
-    }
+    // public static getNamespaceInNamespaceWithName(namespaceName: string, arkNamespace: ArkNamespace): ArkNamespace | null {
+    //     for (const namespace of arkNamespace.getNamespaces()) {
+    //         if (namespace.getName() == namespaceName) {
+    //             return namespace;
+    //         }
+    //     }
+    //     return null;
+    // }
 
     public static getNamespaceInFileWithName(namespaceName: string, arkFile: ArkFile): ArkNamespace | null {
-        for (const namespace of arkFile.getNamespaces()) {
-            if (namespace.getName() == namespaceName) {
-                return namespace;
-            }
+        let namespaceSearched = arkFile.getNamespaceWithName(namespaceName);
+        if (namespaceSearched) {
+            return namespaceSearched;
         }
 
         return this.getNamespaceInImportInfoWithName(namespaceName, arkFile);
@@ -285,10 +272,9 @@ export class ModelUtils {
                 if (nameBefroreAs != undefined) {
                     namespaceName = nameBefroreAs;
                 }
-                for (const arkNamespace of arkFile.getNamespaces()) {
-                    if (arkNamespace.getName() == namespaceName) {
-                        return arkNamespace;
-                    }
+                let namespaceSearched = arkFile.getNamespaceWithName(namespaceName);
+                if (namespaceSearched) {
+                    return namespaceSearched;
                 }
                 return this.getNamespaceInImportInfoWithName(namespaceName, arkFile);
             } else if (exportInfo.getDefault()) {
@@ -297,10 +283,9 @@ export class ModelUtils {
         }
         if (defaultExport) {
             namespaceName = defaultExport.getExportClauseName()
-            for (const arkNamespace of arkFile.getNamespaces()) {
-                if (arkNamespace.getName() == namespaceName) {
-                    return arkNamespace;
-                }
+            let namespaceSearched = arkFile.getNamespaceWithName(namespaceName);
+            if (namespaceSearched) {
+                return namespaceSearched;
             }
             return this.getNamespaceInImportInfoWithName(namespaceName, arkFile);
         }
@@ -311,9 +296,9 @@ export class ModelUtils {
         const thisClass = startFrom.getDeclaringArkClass();
         const thisNamespace = thisClass.getDeclaringArkNamespace();
         if (thisNamespace) {
-            const defaultClass = thisNamespace.getClasses().find(cls => cls.getName() == '_DEFAULT_ARK_CLASS') || null;
+            const defaultClass = thisNamespace.getClassWithName('_DEFAULT_ARK_CLASS');
             if (defaultClass) {
-                const method = this.getMethodInClassWithName(methodName, defaultClass);
+                const method = defaultClass.getMethodWithName(methodName);
                 if (method) {
                     return method;
                 }
@@ -325,7 +310,7 @@ export class ModelUtils {
     public static getStaticMethodInFileWithName(methodName: string, arkFile: ArkFile): ArkMethod | null {
         const defaultClass = arkFile.getClasses().find(cls => cls.getName() == '_DEFAULT_ARK_CLASS') || null;
         if (defaultClass) {
-            let method = this.getMethodInClassWithName(methodName, defaultClass);
+            let method = defaultClass.getMethodWithName(methodName);
             if (method) {
                 return method;
             }
@@ -353,16 +338,15 @@ export class ModelUtils {
         let defaultExport: ExportInfo | null = null;
         for (const exportInfo of arkFile.getExportInfos()) {
             if (exportInfo.getExportClauseName() == methodName) {
-                const defaultClass = arkFile.getClasses().find(cls => cls.getName() == '_DEFAULT_ARK_CLASS') || null;
+                const defaultClass = arkFile.getClassWithName('_DEFAULT_ARK_CLASS');
                 if (defaultClass) {
                     const nameBefroreAs = exportInfo.getNameBeforeAs();
                     if (nameBefroreAs != undefined) {
                         methodName = nameBefroreAs;
                     }
-                    for (const arkMethod of defaultClass.getMethods()) {
-                        if (arkMethod.getName() == methodName) {
-                            return arkMethod;
-                        }
+                    let method = defaultClass.getMethodWithName(methodName);
+                    if (method) {
+                        return method;
                     }
                     return this.getStaticMethodInImportInfoWithName(methodName, arkFile);
                 }
@@ -372,8 +356,8 @@ export class ModelUtils {
             }
         }
         if (defaultExport) {
-            methodName = defaultExport.getExportClauseName()
-            const defaultClass = arkFile.getClasses().find(cls => cls.getName() == '_DEFAULT_ARK_CLASS') || null;
+            methodName = defaultExport.getExportClauseName();
+            const defaultClass = arkFile.getClassWithName('_DEFAULT_ARK_CLASS');
             if (defaultClass) {
                 for (const arkMethod of defaultClass.getMethods()) {
                     if (arkMethod.getName() == methodName) {
@@ -386,4 +370,36 @@ export class ModelUtils {
         return null;
     }
 
+    /* get nested namespaces in a file */
+    public static getAllNamespacesInFile(arkFile: ArkFile): ArkNamespace[] {
+        const arkNamespaces: ArkNamespace[] = arkFile.getNamespaces();
+        for (const arkNamespace of arkFile.getNamespaces()) {
+            this.getAllNamespacesInNamespace(arkNamespace, arkNamespaces);
+        }
+        return arkNamespaces;
+    }
+
+    /* get nested namespaces in a namespace */
+    public static getAllNamespacesInNamespace(arkNamespace: ArkNamespace, allNamespaces: ArkNamespace[]): void {
+        allNamespaces.push(...arkNamespace.getNamespaces());
+        for (const nestedNamespace of arkNamespace.getNamespaces()) {
+            this.getAllNamespacesInNamespace(nestedNamespace, allNamespaces);
+        }
+    }
+
+    public static getAllClassesInFile(arkFile: ArkFile): ArkClass[] {
+        const allClasses = arkFile.getClasses();
+        this.getAllNamespacesInFile(arkFile).forEach((namespace) => {
+            allClasses.push(...namespace.getClasses());
+        })
+        return allClasses;
+    }
+
+    public static getAllMethodsInFile(arkFile: ArkFile): ArkMethod[] {
+        const allMethods: ArkMethod[] = [];
+        this.getAllClassesInFile(arkFile).forEach((cls) => {
+            allMethods.push(...cls.getMethods());
+        })
+        return allMethods;
+    }
 }

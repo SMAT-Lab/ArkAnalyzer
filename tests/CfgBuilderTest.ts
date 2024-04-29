@@ -1,6 +1,5 @@
-import { SceneConfig } from "../src/Config";
-import { Scene } from "../src/Scene";
-import { ArkBody } from "../src/core/model/ArkBody";
+import {SceneConfig} from "../src/Config";
+import {Scene} from "../src/Scene";
 
 
 export class Test {
@@ -15,7 +14,7 @@ export class Test {
         let scene = this.buildScene();
         scene.inferTypes();
 
-        for (const arkFile of scene.arkFiles) {
+        for (const arkFile of scene.getFiles()) {
             for (const arkClass of arkFile.getClasses()) {
                 for (const arkMethod of arkClass.getMethods()) {
                     if (arkMethod.getName() == '_DEFAULT_ARK_METHOD') {
@@ -25,26 +24,25 @@ export class Test {
 
                     const body = arkMethod.getBody();
                     const blocks = [...body.getOriginalCfg().getBlocks()]
-                    for (let i = 0; i < blocks.length; i++){
+                    for (let i = 0; i < blocks.length; i++) {
 
                         const block = blocks[i]
-                        console.log("block"+i)
-                        for (const stmt of block.getStmts()){
+                        console.log("block" + i)
+                        for (const stmt of block.getStmts()) {
                             console.log("  " + stmt.toString())
                         }
                         let text = "next:"
-                        for (const next of block.getSuccessors()){
+                        for (const next of block.getSuccessors()) {
                             text += blocks.indexOf(next) + ' ';
                         }
                         console.log(text);
                     }
-                    
-                    
+
+
                 }
             }
         }
     }
-
 
 
     public testTypeInference(): void {

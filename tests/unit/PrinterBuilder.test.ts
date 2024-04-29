@@ -1,18 +1,17 @@
-import { SceneConfig } from "../../src/Config";
-import { PrinterBuilder } from "../../src/save/PrinterBuilder";
-import { assert, describe, expect, it, vi } from "vitest";
-import { getArkFileByName } from "../../src/utils/typeReferenceUtils";
-import { Scene } from "../../src/Scene";
+import {SceneConfig} from "../../src/Config";
+import {PrinterBuilder} from "../../src/save/PrinterBuilder";
+import {assert, describe, expect, it, vi} from "vitest";
+import {Scene} from "../../src/Scene";
 import path from "path";
 import fs from "fs";
-import { SourcePrinter } from "../../src/save/source/SourcePrinter";
-import { ArkStream } from "../../src/save/ArkStream";
-import { SourceDefaultClass } from "../../src/save/source/SourceClass";
+import {SourcePrinter} from "../../src/save/source/SourcePrinter";
+import {ArkStream} from "../../src/save/ArkStream";
+import {SourceDefaultClass} from "../../src/save/source/SourceClass";
 
 let config: SceneConfig = new SceneConfig();
 config.buildFromProjectDir(path.join(__dirname, "../resources/save"));
-let scece = new Scene(config);
-let arkfile = getArkFileByName("namespaces.ts", scece);
+let scene = new Scene(config);
+let arkfile = scene.getFiles().find(file => file.getName() == 'namespaces.ts');
 
 describe("PrinterBuilder Test", () => {
     let outputDir = "tests/resources/output";
@@ -48,7 +47,7 @@ describe("PrinterBuilder Test", () => {
         setTimeout(() => fs.access(file, fs.constants.F_OK, (err) => assert.isNull(err)), 100);
     })
     it('dumpToTs case 2', () => {
-        arkfile = getArkFileByName("modules.ts", scece);
+        arkfile = scene.getFiles().find(file => file.getName() == 'modules.ts');
         if (arkfile == null) {
             assert.isNotNull(arkfile);
             return;
@@ -61,7 +60,7 @@ describe("PrinterBuilder Test", () => {
     it('dumpToTs case 3', () => {
         let printer = new PrinterBuilder();
         const spy = vi.spyOn(printer, "dumpToTs");
-        for (let f of scece.arkFiles) {
+        for (let f of scene.getFiles()) {
             for (let cls of f.getClasses()) {
                 if (cls.hasViewTree()) {
                     cls.getViewTree();
@@ -69,11 +68,11 @@ describe("PrinterBuilder Test", () => {
             }
             printer.dumpToTs(f);
         }
-        expect(spy).toHaveBeenCalledTimes(scece.arkFiles.length);
+        expect(spy).toHaveBeenCalledTimes(scene.getFiles().length);
     })
 
     it('printOriginalCode case', () => {
-        let arkfile = getArkFileByName("basic.ts", scece);
+        let arkfile = scene.getFiles().find(file => file.getName() == 'basic.ts');
         if (arkfile == null) {
             assert.isNotNull(arkfile);
             return;
@@ -88,7 +87,7 @@ describe("PrinterBuilder Test", () => {
         let config: SceneConfig = new SceneConfig();
         config.buildFromProjectDir(path.join(__dirname, "../../src/core/base"));
         let scece = new Scene(config);
-        let arkfile = getArkFileByName("Local.ts", scece);
+        let arkfile = scene.getFiles().find(file => file.getName() == 'Local.ts');
         if (arkfile == null) {
             assert.isNotNull(arkfile);
             return;

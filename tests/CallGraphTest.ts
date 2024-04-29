@@ -16,9 +16,9 @@ function runScene(config: SceneConfig) {
     // for (let method of projectScene.getMethods()) {
     //     entryPoints.push(method.getSignature())
     // }
-    for (let arkFile of projectScene.arkFiles) {
+    for (let arkFile of projectScene.getFiles()) {
         if (arkFile.getName() === "test2.ts") {
-            for (let arkClass of arkFile.getAllClassesUnderThisFile()) {
+            for (let arkClass of arkFile.getClasses()) {
                 if (arkClass.getName() === "_DEFAULT_ARK_CLASS") {
                     for (let arkMethod of arkClass.getMethods()) {
                         if (arkMethod.getName() === "_DEFAULT_ARK_METHOD") {
@@ -31,9 +31,9 @@ function runScene(config: SceneConfig) {
     }
     
     projectScene.inferTypes()
-    for (let arkFile of projectScene.arkFiles) {
+    for (let arkFile of projectScene.getFiles()) {
         if (arkFile.getName() === "testcase_5_method_call.ts") {
-            for (let arkClass of arkFile.getAllClassesUnderThisFile()) {
+            for (let arkClass of arkFile.getClasses()) {
                 if (arkClass.getName() === "_DEFAULT_ARK_CLASS") {
                     for (let arkMethod of arkClass.getMethods()) {
                         if (arkMethod.getName() === "_DEFAULT_ARK_METHOD") {
