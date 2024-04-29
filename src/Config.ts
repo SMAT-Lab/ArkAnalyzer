@@ -1,7 +1,8 @@
 import fs from "fs";
 import path from "path";
+import {spawnSync} from 'child_process';
 import Logger, { LOG_LEVEL } from "./utils/logger";
-import { Ets2ts, runEts2Ts } from "./utils/Ets2ts";
+
 
 const logger = Logger.getLogger();
 
@@ -75,7 +76,8 @@ export class SceneConfig {
         this.logPath = logPath;
 
         Logger.configure(this.logPath, LOG_LEVEL.ERROR);
-        runEts2Ts(this.hosEtsLoaderPath, this.targetProjectOriginDirectory, targetProjectDirectory, this.targetProjectName);
+
+        await spawnSync('node', [path.join(__dirname, 'ets2ts.js'), this.hosEtsLoaderPath, this.targetProjectOriginDirectory, targetProjectDirectory, this.targetProjectName, this.logPath]);
         this.getAllFiles();
     }
 

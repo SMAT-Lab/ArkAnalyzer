@@ -18,7 +18,7 @@ export default () => [
             }),
             esbuild({
                 target: 'node18',
-                minify: false
+                minify: true
             })
         ]
     }
