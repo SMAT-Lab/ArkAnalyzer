@@ -17,18 +17,22 @@ import { ArkBinopExpr, ArkInstanceInvokeExpr, ArkStaticInvokeExpr } from "../src
 import { UndefinedType } from "../src/core/base/Type";
 import { FieldSignature, fieldSignatureCompare } from "../src/core/model/ArkSignature";
 import { factEqual } from "../src/core/dataflow/DataflowSolver";
-
+import { FileSignature } from "../src/core/model/ArkSignature";
+import { NamespaceSignature } from "../src/core/model/ArkSignature";
+import { ArkClass } from "../src/core/model/ArkClass";
 
 class UndefinedVariableChecker extends DataflowProblem<Value> {
     zeroValue : Constant = new Constant('undefined', UndefinedType.getInstance());
     entryPoint: Stmt;
     entryMethod: ArkMethod;
     scene: Scene;
+    classMap: Map<FileSignature | NamespaceSignature, ArkClass[]>;
     constructor(stmt: Stmt, method: ArkMethod){
         super();
         this.entryPoint = stmt;
         this.entryMethod = method;
         this.scene = method.getDeclaringArkFile().getScene();
+        this.classMap = this.scene.getClassMap()
     }
 
     getEntryPoint() : Stmt {
@@ -66,42 +70,48 @@ class UndefinedVariableChecker extends DataflowProblem<Value> {
                         ret.add(checkerInstance.getZeroValue());
 
                         // 加入所有的全局变量和静态属性（may analysis）
-                        const file = entryMethod.getDeclaringArkFile();
-                        const classes = file.getClasses();
-                        for (const importInfo of file.getImportInfos()){
-                            const importClass = ModelUtils.getClassWithName(importInfo.getImportClauseName(), entryMethod);
-                            if (importClass && !classes.includes(importClass)) {
-                                classes.push(importClass);
+                        const staticFields = entryMethod.getDeclaringArkClass().getStaticFields(checkerInstance.classMap);
+                        for (const field of staticFields) {
+                            if (field.getInitializer() == undefined) {
+                                ret.add(new ArkStaticFieldRef(field.getSignature()));
                             }
                         }
-                        const nameSpaces = file.getNamespaces();
-                        for (const importInfo of file.getImportInfos()){
-                            const importNameSpace = ModelUtils.getClassWithName(importInfo.getImportClauseName(), entryMethod);
-                            if (importNameSpace && !classes.includes(importNameSpace)) {
-                                classes.push(importNameSpace);
-                            }
-                        }
-                        while (nameSpaces.length > 0) {
-                            const nameSpace = nameSpaces.pop()!;
-                            for (const exportInfo of nameSpace.getExportInfos()) {
-                                const clas = ModelUtils.getClassInNamespaceWithName(exportInfo.getExportClauseName(), nameSpace);
-                                if (clas && !classes.includes(clas)) {
-                                    classes.push(clas);
-                                    continue;
-                                }
-                                const ns = ModelUtils.getNamespaceInNamespaceWithName(exportInfo.getExportClauseName(), nameSpace);
-                                if (ns && !nameSpaces.includes(ns)) {
-                                    nameSpaces.push(ns);
-                                }
-                            }
-                        }
-                        for (const arkClass of classes) {
-                            for (const field of arkClass.getFields()) {
-                                if (field.isStatic() && field.getInitializer() == undefined) {
-                                    ret.add(new ArkStaticFieldRef(field.getSignature()));
-                                }
-                            }
-                        }
+                        // const file = entryMethod.getDeclaringArkFile();
+                        // const classes = file.getClasses();
+                        // for (const importInfo of file.getImportInfos()){
+                        //     const importClass = ModelUtils.getClassWithName(importInfo.getImportClauseName(), entryMethod);
+                        //     if (importClass && !classes.includes(importClass)) {
+                        //         classes.push(importClass);
+                        //     }
+                        // }
+                        // const nameSpaces = file.getNamespaces();
+                        // for (const importInfo of file.getImportInfos()){
+                        //     const importNameSpace = ModelUtils.getClassWithName(importInfo.getImportClauseName(), entryMethod);
+                        //     if (importNameSpace && !classes.includes(importNameSpace)) {
+                        //         classes.push(importNameSpace);
+                        //     }
+                        // }
+                        // while (nameSpaces.length > 0) {
+                        //     const nameSpace = nameSpaces.pop()!;
+                        //     for (const exportInfo of nameSpace.getExportInfos()) {
+                        //         const clas = ModelUtils.getClassInNamespaceWithName(exportInfo.getExportClauseName(), nameSpace);
+                        //         if (clas && !classes.includes(clas)) {
+                        //             classes.push(clas);
+                        //             continue;
+                        //         }
+                        //         const ns = ModelUtils.getNamespaceInNamespaceWithName(exportInfo.getExportClauseName(), nameSpace);
+                        //         if (ns && !nameSpaces.includes(ns)) {
+                        //             nameSpaces.push(ns);
+                        //         }
+                        //     }
+                        // }
+                        // for (const arkClass of classes) {
+                        //     for (const field of arkClass.getFields()) {
+                        //         if (field.isStatic() && field.getInitializer() == undefined) {
+                        //             ret.add(new ArkStaticFieldRef(field.getSignature()));
+                        //         }
+                        //     }
+                        // }
 
                         return ret;
                     } 
@@ -143,6 +153,12 @@ class UndefinedVariableChecker extends DataflowProblem<Value> {
                 const ret:Set<Value> = new Set();
                 if (checkerInstance.getZeroValue() == dataFact) {
                     ret.add(checkerInstance.getZeroValue());
+                    // 加上调用函数能访问到的所有静态变量，如果不考虑多线程，加上所有变量，考虑则要统计之前已经处理过的变量并排除
+                    for (const field of method.getDeclaringArkClass().getStaticFields(checkerInstance.classMap)) {
+                        if (field.getInitializer() == undefined) {
+                            ret.add(new ArkStaticFieldRef(field.getSignature()));
+                        }
+                    }
                 }
                 else {
                     const callExpr = srcStmt.getExprs()[0];
@@ -260,13 +276,15 @@ class instanceSolver extends DataflowSolver<Value> {
 
 
 
-// const config_path = "tests\\resources\\ifds\\UndefinedVariable\\ifdsTestConfig.json";
-const config_path = "tests\\resources\\ifds\\project\\ifdsProjectConfig.json";
+const config_path = "tests\\resources\\ifds\\UndefinedVariable\\ifdsTestConfig.json";
+// const config_path = "tests\\resources\\cfg\\CfgTestConfig.json";
+// const config_path = "tests\\resources\\ifds\\project\\ifdsProjectConfig.json";
 let config: SceneConfig = new SceneConfig();
 config.buildFromJson(config_path);
 const scene = new Scene(config);
+const classMap = scene.getClassMap();
 const defaultMethod = scene.getFiles()[0].getDefaultClass().getDefaultArkMethod();
-const method = ModelUtils.getMethodWithName("U5",defaultMethod!);
+const method = ModelUtils.getMethodWithName("U2",defaultMethod!);
 if(method){
     const problem = new UndefinedVariableChecker([...method.getCfg().getBlocks()][0].getStmts()[method.getParameters().length],method);
     const solver = new instanceSolver(problem, scene);

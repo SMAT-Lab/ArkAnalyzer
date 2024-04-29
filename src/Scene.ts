@@ -313,4 +313,102 @@ export class Scene {
         }
         return transfer2UnixPath(resPath);
     }
+
+    public getClassMap(): Map<FileSignature | NamespaceSignature, ArkClass[]> {
+        const classMap: Map<FileSignature | NamespaceSignature, ArkClass[]> = new Map();
+        for (const file of this.arkFiles){
+            const fileClass: ArkClass[] = [];
+            const namespaceStack: ArkNamespace[] = [];
+            const parentMap: Map<ArkNamespace, ArkNamespace | ArkFile> = new Map();
+            const finalNamespaces: ArkNamespace[] = [];
+            for (const arkClass of file.getClasses()) {
+                fileClass.push(arkClass);
+            }
+            for (const ns of file.getNamespaces()) {
+                namespaceStack.push(ns);
+                parentMap.set(ns, file);
+            }
+
+            classMap.set(file.getFileSignature(), fileClass);
+            const stack = [...namespaceStack];
+            // 第一轮遍历，加上每个namespace自己的class
+            while (namespaceStack.length > 0) {
+                const ns = namespaceStack.shift()!;
+                const nsClass: ArkClass[] = [];
+                for (const arkClass of ns.getClasses()) {
+                    nsClass.push(arkClass)
+                }
+                classMap.set(ns.getNamespaceSignature(), nsClass);
+                if (ns.getNamespaces().length == 0) {
+                    finalNamespaces.push(ns);
+                }
+                else {
+                    for (const nsns of ns.getNamespaces()) {
+                        namespaceStack.push(nsns);
+                        parentMap.set(nsns, ns);
+                    }
+                }
+            }
+            // 第二轮遍历，父节点加上子节点的export的class
+            while (finalNamespaces.length > 0) {
+                const finalNS = finalNamespaces.shift()!;
+                const exportClass = [];
+                for (const arkClass of finalNS.getClasses()) {
+                    if (arkClass.isExported()) {
+                        exportClass.push(arkClass);
+                    }
+                }
+                let p = finalNS;
+                while (p.isExported()) {
+                    const parent = parentMap.get(p)!;
+                    if (parent instanceof ArkNamespace) {
+                        classMap.get(parent.getNamespaceSignature())?.push(...exportClass);
+                        p = parent;
+                    } else if (parent instanceof ArkFile) {
+                        classMap.get(parent.getFileSignature())?.push(...exportClass);
+                        break;
+                    }
+                }
+                const parent = parentMap.get(finalNS)!;
+                if (parent instanceof ArkNamespace && !finalNamespaces.includes(parent)) {
+                    finalNamespaces.push(parent);
+                }
+            }
+        }
+        
+        for (const file of this.arkFiles) {
+            // 文件加上import的class，包括ns的
+            const importClasses: ArkClass[] = [];
+            const importNameSpaces: ArkNamespace[] = [];
+            for (const importInfo of file.getImportInfos()){
+                const importClass = ModelUtils.getClassInImportInfoWithName(importInfo.getImportClauseName(), file);
+                if (importClass && !importClasses.includes(importClass)) {
+                    importClasses.push(importClass);
+                }
+                const importNameSpace = ModelUtils.getNamespaceInImportInfoWithName(importInfo.getImportClauseName(),file);
+                if (importNameSpace && !importNameSpaces.includes(importNameSpace)) {
+                    const importNameSpaceClasses = classMap.get(importNameSpace.getNamespaceSignature())!;
+                    importClasses.push(...importNameSpaceClasses.filter(c => !importClasses.includes(c) && c.getName() != '_DEFAULT_ARK_CLASS'));
+                }
+            }
+            const fileClasses = classMap.get(file.getFileSignature())!;
+            fileClasses.push(...importClasses.filter(c => !fileClasses.includes(c)));
+            // 子节点加上父节点的class
+            const namespaceStack = [...file.getNamespaces()];
+            for (const ns of namespaceStack) {
+                const nsClasses = classMap.get(ns.getNamespaceSignature())!;
+                nsClasses.push(...fileClasses.filter(c => !nsClasses.includes(c) && c.getName() != '_DEFAULT_ARK_CLASS'));
+            }
+            while (namespaceStack.length > 0) {
+                const ns = namespaceStack.shift()!;
+                const nsClasses = classMap.get(ns.getNamespaceSignature())!;
+                for (const nsns of ns.getNamespaces()) {
+                    const nsnsClasses = classMap.get(nsns.getNamespaceSignature())!;
+                    nsnsClasses.push(...nsClasses.filter(c => !nsnsClasses.includes(c) && c.getName() != '_DEFAULT_ARK_CLASS'));
+                    namespaceStack.push(nsns);
+                }
+            }
+        }
+        return classMap;
+    }
 }

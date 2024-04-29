@@ -1,11 +1,11 @@
 {
     "targetProjectName": "TypeInferenceTest",
-    "targetProjectDirectory": "tests\\resources\\ssa",    
+    "targetProjectDirectory": "tests\\resources\\desugaring",    
     
     "logPath": "out\\log.txt",
     
-    "ohosSdkPath": "codeLab\\interface_sdk-js-master\\api",
-    "kitSdkPath": "codeLab\\interface_sdk-js-master\\kits",
+    "ohosSdkPath": "",
+    "kitSdkPath": "",
     "systemSdkPath": "",
     
     "otherSdks": [
