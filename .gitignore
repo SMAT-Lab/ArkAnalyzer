@@ -11,3 +11,7 @@ out/
 tests/resources/output
 coverage
 src/ets2ts.js
+index.ts
+src/exportAll.ts
+exportRollup.config.mjs
+dist/
