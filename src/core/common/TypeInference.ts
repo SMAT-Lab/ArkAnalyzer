@@ -23,8 +23,8 @@ import {
 import {ArkMethod} from "../model/ArkMethod";
 import {ClassSignature} from "../model/ArkSignature";
 import {ModelUtils} from "./ModelUtils";
-import { ArkField } from '../model/ArkField';
-import { ArkClass } from '../model/ArkClass';
+import {ArkField} from '../model/ArkField';
+import {ArkClass} from '../model/ArkClass';
 
 const logger = Logger.getLogger();
 
@@ -87,8 +87,8 @@ export class TypeInference {
                         const arkNamespace = ModelUtils.getNamespaceWithName(base.getName(), arkMethod);
                         if (arkNamespace) {
                             const methodName = expr.getMethodSignature().getMethodSubSignature().getMethodName();
-                            const defaultClass = arkNamespace.getClasses().find(cls => cls.getName() == '_DEFAULT_ARK_CLASS') || null;
-                            const foundMethod = ModelUtils.getMethodInClassWithName(methodName, defaultClass!);
+                            const defaultClass = arkNamespace.getClassWithName('_DEFAULT_ARK_CLASS');
+                            const foundMethod = defaultClass?.getMethodWithName(methodName);
                             if (foundMethod) {
                                 let replaceStaticInvokeExpr = new ArkStaticInvokeExpr(foundMethod.getSignature(), expr.getArgs())
                                 if (stmt.containsInvokeExpr()) {
@@ -115,14 +115,14 @@ export class TypeInference {
                     logger.warn(`type of base must be ClassType expr: ${expr.toString()}`);
                     continue;
                 }
-                const arkClass = ModelUtils.getClassWithClassSignature(type.getClassSignature(), this.scene);
+                const arkClass = this.scene.getClass(type.getClassSignature());
                 if (arkClass == null) {
                     logger.warn(`class ${type.getClassSignature().getClassName()} does not exist`);
                     continue;
                 }
                 const methodSignature = expr.getMethodSignature();
                 const methodName = methodSignature.getMethodSubSignature().getMethodName();
-                const method = ModelUtils.getMethodInClassWithName(methodName, arkClass);
+                const method = arkClass.getMethodWithName(methodName);
                 if (method == null) {
                     logger.warn(`method ${methodName} does not exist`);
                     continue;
@@ -200,7 +200,7 @@ export class TypeInference {
         }
     }
 
-    private handleClassField(field: ArkInstanceFieldRef, arkMethod: ArkMethod): ArkClass | ArkField | undefined {
+    private handleClassField(field: ArkInstanceFieldRef, arkMethod: ArkMethod): ArkClass | ArkField | null {
         const base = field.getBase(), baseName = base.getName()
         const type = base.getType();
         const fieldName = field.getFieldName();
@@ -209,25 +209,25 @@ export class TypeInference {
             arkClass = ModelUtils.getClassWithName(baseName, arkMethod);
             if (!arkClass) {
                 const nameSpace = ModelUtils.getNamespaceWithName(baseName, arkMethod);
-                if (!nameSpace){
+                if (!nameSpace) {
                     logger.warn("Unclear Base");
-                    return;
+                    return null;
                 }
-                const clas = ModelUtils.getClassInNamespaceWithName(fieldName, nameSpace)!;
+                const clas = nameSpace.getClassWithName(fieldName);
                 return clas
             }
         } else {
-            arkClass = ModelUtils.getClassWithClassSignature(type.getClassSignature(), this.scene);
+            arkClass = this.scene.getClass(type.getClassSignature());
             if (arkClass == null) {
                 logger.warn(`class ${type.getClassSignature().getClassName()} does not exist`);
-                return;
+                return null;
             }
         }
 
-        const arkField = ModelUtils.getFieldInClassWithName(fieldName, arkClass);
+        const arkField = arkClass.getFieldWithName(fieldName);
         if (arkField == null) {
             logger.warn(`field ${fieldName} does not exist`);
-            return;
+            return null;
         }
         let fieldType = arkField.getType();
         if (fieldType instanceof UnclearReferenceType) {
@@ -387,7 +387,7 @@ export class TypeInference {
         if (methodReturnType instanceof UnclearReferenceType) {
             let returnInstance = ModelUtils.getClassWithName(
                 methodReturnType.getName(),
-                method)
+                method);
             if (returnInstance == null) {
                 logger.warn("can not get method return value type: " +
                     method.getSignature().toString() + ": " + methodReturnType.getName());

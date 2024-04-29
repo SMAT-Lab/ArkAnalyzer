@@ -1,19 +1,18 @@
 import { SceneConfig } from "../../src/Config";
 import { assert, describe, it, vi,expect } from "vitest";
-import * as tr from "../../src/utils/typeReferenceUtils";
 import { Scene } from "../../src/Scene";
 import path from "path";
 
 let config: SceneConfig = new SceneConfig();
 config.buildFromProjectDir(path.join(__dirname, "../../tests/resources/viewtree"));
-let scece = new Scene(config);
-scece.inferTypes();
+let scene = new Scene(config);
+scene.inferTypes();
 
 
 describe("ViewTree Test", () => {
     it('test @State', async () => {
-        let arkFile = tr.getArkFileByName("ControlCenterComponent.ts", scece);
-        let arkClass = tr.resolveClassInstance("ControlCenterComponent.ts.ControlCenterComponent", arkFile);
+        let arkFile =  scene.getFiles().find(file => file.getName() == 'ControlCenterComponent.ts');
+        let arkClass = arkFile?.getClassWithName('ControlCenterComponent');
         if (arkClass == null) {
             assert.isNotNull(arkClass);
             return;
@@ -29,8 +28,8 @@ describe("ViewTree Test", () => {
     })
 
     it('test If', async () => {
-        let arkFile = tr.getArkFileByName("ParentComponent.ts", scece);
-        let arkClass = tr.resolveClassInstance("ParentComponent.ts.ParentComponent", arkFile);
+        let arkFile =  scene.getFiles().find(file => file.getName() == 'ParentComponent.ts');
+        let arkClass = arkFile?.getClassWithName('ParentComponent');
         if (arkClass == null) {
             assert.isNotNull(arkClass);
             return;
@@ -45,8 +44,8 @@ describe("ViewTree Test", () => {
     })
 
     it('test @Builder', async () => {
-        let arkFile = tr.getArkFileByName("SwipeLayout.ts", scece);
-        let arkClass = tr.resolveClassInstance("SwipeLayout.ts.SwipeLayout", arkFile);
+        let arkFile =  scene.getFiles().find(file => file.getName() == 'SwipeLayout.ts');
+        let arkClass = arkFile?.getClassWithName('SwipeLayout');
         if (arkClass == null) {
             assert.isNotNull(arkClass);
             return;

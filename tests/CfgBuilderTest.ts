@@ -35,6 +35,7 @@ function run(config: Config) {
     //     }
     // }
     // scene.classHierarchyCallGraph.printDetails()
+
 }
 
 //let config: Config = new Config("app_photo", "/Users/yifei/Documents/Code/applications_photos/common/src/main/ets");

@@ -1,18 +1,16 @@
-import { SceneConfig } from "../../src/Config";
+import {SceneConfig} from "../../src/Config";
 import * as ty from "../../src/core/base/Type";
-import { assert, describe, it } from "vitest";
-import { getArkFileByName, resolveClassInstance } from "../../src/utils/typeReferenceUtils";
-import { Scene } from "../../src/Scene";
+import {assert, describe, it} from "vitest";
+import {Scene} from "../../src/Scene";
 import path from "path";
-import { SourceUtils } from "../../src/save/source/SourceUtils";
-
+import {SourceUtils} from "../../src/save/source/SourceUtils";
 
 
 describe("SourceUtils.typeToString Test", () => {
     let config: SceneConfig = new SceneConfig();
     config.buildFromProjectDir(path.join(__dirname, "../resources/save"));
-    let scece = new Scene(config);
-    let arkClass = resolveClassInstance("classes.ts.Animal", getArkFileByName("classes.ts", scece));
+    let scene = new Scene(config);
+    let arkClass = scene.getClasses().find(cls => cls.getName() == 'Animal');
 
     it('TypeLiteralType case', () => {
         if (arkClass == null) {

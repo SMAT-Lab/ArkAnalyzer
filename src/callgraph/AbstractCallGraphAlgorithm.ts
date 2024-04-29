@@ -175,7 +175,7 @@ export abstract class AbstractCallGraph {
             return false
         if (this.signatureManager.findInProcessedList(method))
             return false
-        const ifProjectMethod = this.scene.scene.arkFiles.some(arkFile =>
+        const ifProjectMethod = this.scene.scene.getFiles().some(arkFile =>
             arkFile.getFileSignature().toString() ===
             method.getDeclaringClassSignature().getDeclaringFileSignature().toString()
         )

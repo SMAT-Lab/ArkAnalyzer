@@ -1,8 +1,8 @@
 import * as ts from "typescript";
 import path from 'path';
-import { transfer2UnixPath } from "../../utils/pathTransfer";
-import { ArkFile } from "../model/ArkFile";
-import { FileSignature } from "../model/ArkSignature";
+import {transfer2UnixPath} from "../../utils/pathTransfer";
+import {ArkFile} from "../model/ArkFile";
+import {FieldSignature, FileSignature} from "../model/ArkSignature";
 
 var sdkPathMap: Map<string, string> = new Map();
 
@@ -16,15 +16,16 @@ export class ImportInfo {
     private importFrom: string;
     private nameBeforeAs: string | undefined;
     private clauseType: string = "";
-    
+
     private declaringArkFile: ArkFile;
-    
-    private importFromSignature2Str: string = "";
+
+    private importFromSignature: string | FileSignature = "";
     private importProjectType: string = "ThirdPartPackage";
     private declaringFilePath: string;
     private projectPath: string;
 
-    constructor() { }
+    constructor() {
+    }
 
     public build(importClauseName: string, importType: string, importFrom: string, nameBeforeAs?: string) {
         this.setImportClauseName(importClauseName);
@@ -33,8 +34,8 @@ export class ImportInfo {
         this.setNameBeforeAs(nameBeforeAs);
     }
 
-    public getImportFromSignature2Str() {
-        return this.importFromSignature2Str;
+    public getImportFromSignature() {
+        return this.importFromSignature;
     }
 
     public getImportProjectType() {
@@ -48,7 +49,7 @@ export class ImportInfo {
     public setDeclaringFilePath(declaringFilePath: string) {
         this.declaringFilePath = declaringFilePath;
     }
-    
+
     public setDeclaringArkFile(declaringArkFile: ArkFile) {
         this.declaringArkFile = declaringArkFile;
     }
@@ -70,7 +71,7 @@ export class ImportInfo {
             //tmpSig1 = tmpSig1.replace(/^\.\//, '');
             importFromSignature.setFileName(tmpSig1);
             importFromSignature.setProjectName(this.declaringArkFile.getProjectName());
-            this.importFromSignature2Str = importFromSignature.toString();
+            this.importFromSignature = importFromSignature;
         }
 
         // external imports, e.g. @ohos., @kit., @System., @ArkAnalyzer/
@@ -81,7 +82,7 @@ export class ImportInfo {
                 if (pathReg2.test(this.importFrom)) {
                     this.setImportProjectType("SDKProject");
                     let tmpSig = '@' + key + '/' + this.importFrom + ': ';
-                    this.importFromSignature2Str = tmpSig;
+                    this.importFromSignature = tmpSig;
                 }
             }
             // e.g. @ArkAnalyzer/
@@ -89,7 +90,7 @@ export class ImportInfo {
                 const pathReg3 = new RegExp(`@(${key})\\/`);
                 if (pathReg3.test(this.importFrom)) {
                     this.setImportProjectType("SDKProject");
-                    this.importFromSignature2Str = this.importFrom + ': ';
+                    this.importFromSignature = this.importFrom + ': ';
                 }
             }
         });
@@ -145,8 +146,7 @@ export class ImportInfo {
 export function buildImportInfo4ImportNode(node: ts.ImportDeclaration | ts.ImportEqualsDeclaration): ImportInfo[] {
     if (ts.isImportDeclaration(node)) {
         return buildImportDeclarationNode(node);
-    }
-    else {
+    } else {
         return buildImportEqualsDeclarationNode(node);
     }
 }
@@ -187,8 +187,7 @@ function buildImportDeclarationNode(node: ts.ImportDeclaration): ImportInfo[] {
                         let importInfo = new ImportInfo();
                         importInfo.build(importClauseName, importType, importFrom, element.propertyName.text);
                         importInfos.push(importInfo);
-                    }
-                    else {
+                    } else {
                         let importInfo = new ImportInfo();
                         importInfo.build(importClauseName, importType, importFrom)
                         importInfos.push(importInfo);

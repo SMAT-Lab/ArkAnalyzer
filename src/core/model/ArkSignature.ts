@@ -1,13 +1,16 @@
 import path from 'path';
-import { transfer2UnixPath } from '../../utils/pathTransfer';
-import { ClassType, Type, UnknownType } from '../base/Type';
-import { MethodParameter } from '../common/MethodInfoBuilder';
+import {transfer2UnixPath} from '../../utils/pathTransfer';
+import {ClassType, Type, UnknownType} from '../base/Type';
+import {MethodParameter} from '../common/MethodInfoBuilder';
+
+export type Signature = FileSignature | NamespaceSignature | ClassSignature | MethodSignature | FieldSignature;
 
 export class FileSignature {
     private projectName: string = "_UnkownProjectName";
     private fileName: string = "_UnkownFileName";
 
-    constructor() { }
+    constructor() {
+    }
 
     public getProjectName() {
         return this.projectName;
@@ -41,7 +44,8 @@ export class NamespaceSignature {
     private declaringFileSignature: FileSignature = new FileSignature();
     private declaringNamespaceSignature: NamespaceSignature | null = null;
 
-    constructor() { }
+    constructor() {
+    }
 
     public getNamespaceName() {
         return this.namespaceName;
@@ -70,8 +74,7 @@ export class NamespaceSignature {
     public toString(): string {
         if (this.declaringNamespaceSignature) {
             return this.declaringNamespaceSignature.toString() + '.' + this.namespaceName;
-        }
-        else {
+        } else {
             return this.declaringFileSignature.toString() + this.namespaceName;
         }
     }
@@ -110,13 +113,13 @@ export class ClassSignature {
         return new ClassType(this);
     }
 
-    constructor() { }
+    constructor() {
+    }
 
     public toString(): string {
         if (this.declaringNamespaceSignature) {
             return this.declaringNamespaceSignature.toString() + '.' + this.className;
-        }
-        else {
+        } else {
             return this.declaringFileSignature.toString() + this.className;
         }
     }
@@ -151,7 +154,8 @@ export class FieldSignature {
         return this.type;
     }
 
-    constructor() { }
+    constructor() {
+    }
 
     public toString(): string {
         return this.getDeclaringClassSignature().toString() + '.' + this.getFieldName();
@@ -195,7 +199,8 @@ export class MethodSubSignature {
         this.returnType = returnType;
     }
 
-    constructor() { }
+    constructor() {
+    }
 
     public toString(): string {
         let paraStr = "";
@@ -231,7 +236,8 @@ export class MethodSignature {
         return this.methodSubSignature.getReturnType();
     }
 
-    constructor() { }
+    constructor() {
+    }
 
     public toString(): string {
         return this.declaringClassSignature.toString() + '.' + this.methodSubSignature.toString();
@@ -259,7 +265,8 @@ export class InterfaceSignature {
         this.interfaceName = interfaceName;
     }
 
-    constructor() { }
+    constructor() {
+    }
 
     public build(arkFile: string, interfaceName: string) {
         this.setArkFile(arkFile);

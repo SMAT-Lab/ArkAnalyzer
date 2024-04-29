@@ -25,35 +25,24 @@ export class ArkClass {
     private declaringArkNamespace: ArkNamespace;
     private classSignature: ClassSignature;
 
-    /* // Deprecated
-    private declaringSignature: string;
-    private arkInstancesMap: Map<string, any> = new Map<string, any>();
-    private arkSignature: string; */
-
     private superClassName: string = '';
     private superClass: ArkClass;
-    private extendedClasses: ArkClass[] = [];
+    // private extendedClasses: ArkClass[] = [];
     private implementedInterfaceNames: string[] = [];
     private modifiers: Set<string> = new Set<string>();
     private typeParameters: Type[] = [];
 
     private defaultMethod: ArkMethod | null = null;
 
-    private methods: ArkMethod[] = [];
-    private fields: ArkField[] = [];
+    // name to model
+    private methods: Map<string, ArkMethod> = new Map<string, ArkMethod>();
+    private fields: Map<string, ArkField> = new Map<string, ArkField>();
+    private extendedClasses: Map<string, ArkClass> = new Map<string, ArkClass>();
 
     private viewTree: ViewTree;
 
-    constructor() { }
-
-    /* // Deprecated
-    public addArkInstance(arkSignature: string, arkInstance: any) {
-        this.arkInstancesMap.set(arkSignature, arkInstance);
+    constructor() {
     }
-
-    public getArkInstancesMap() {
-        return this.arkInstancesMap;
-    } */
 
     public getName() {
         return this.name;
@@ -158,7 +147,7 @@ export class ArkClass {
         this.superClassName = superClassName;
     }
 
-    public getSuperClass() {
+    public getSuperClass(): ArkClass {
         return this.superClass;
     }
 
@@ -166,12 +155,12 @@ export class ArkClass {
         this.superClass = superClass;
     }
 
-    public getExtendedClasses() {
+    public getExtendedClasses(): Map<string, ArkClass> {
         return this.extendedClasses;
     }
 
     public addExtendedClass(extendedClass: ArkClass) {
-        this.extendedClasses.push(extendedClass);
+        this.extendedClasses.set(extendedClass.getName(), extendedClass);
     }
 
     public getImplementedInterfaceNames() {
@@ -187,21 +176,20 @@ export class ArkClass {
     }
 
     public getField(fieldSignature: FieldSignature): ArkField | null {
-        let returnVal: ArkField | null = null;
-        this.getFields().forEach((field) => {
-            if (field.getSignature().toString() == fieldSignature.toString()) {
-                returnVal = field
-            }
-        });
-        return returnVal;
+        const fieldName = fieldSignature.getFieldName();
+        return this.getFieldWithName(fieldName);
     }
 
-    public getFields() {
-        return this.fields;
+    public getFieldWithName(fieldName: string): ArkField | null {
+        return this.fields.get(fieldName) || null;
+    }
+
+    public getFields(): ArkField[] {
+        return Array.from(this.fields.values());
     }
 
     public addField(field: ArkField) {
-        this.fields.push(field);
+        this.fields.set(field.getName(), field);
     }
 
     public addFields(fields: ArkField[]) {
@@ -230,22 +218,21 @@ export class ArkClass {
         return this.modifiers.has(name);
     }
 
-    public getMethods() {
-        return this.methods;
+    public getMethods(): ArkMethod[] {
+        return Array.from(this.methods.values());
     }
 
     public getMethod(methodSignature: MethodSignature): ArkMethod | null {
-        let returnVal: ArkMethod | null = null;
-        this.methods.forEach((mtd) => {
-            if (mtd.getSignature().toString() == methodSignature.toString()) {
-                returnVal = mtd;
-            }
-        });
-        return returnVal;
+        const methodName = methodSignature.getMethodSubSignature().getMethodName();
+        return this.getMethodWithName(methodName);
+    }
+
+    public getMethodWithName(methodName: string): ArkMethod | null {
+        return this.methods.get(methodName) || null;
     }
 
     public addMethod(method: ArkMethod) {
-        this.methods.push(method);
+        this.methods.set(method.getName(), method);
     }
 
     public setDefaultArkMethod(defaultMethod: ArkMethod) {
@@ -322,8 +309,7 @@ function buildNormalArkClass(clsNode: NodeA, cls: ArkClass) {
     for (let [key, value] of clsNode.classNodeInfo.getHeritageClauses()) {
         if (value == 'ExtendsKeyword') {
             cls.setSuperClassName(key);
-        }
-        else {
+        } else {
             cls.addImplementedInterfaceName(key);
         }
     }
@@ -364,8 +350,7 @@ function buildNormalArkClass(clsNode: NodeA, cls: ArkClass) {
                         let getAccessorName = cld.methodNodeInfo?.getAccessorName;
                         if (!getAccessorName) {
                             logger.warn("Cannot get GetAccessorName for method: ", mthd.getSignature().toString());
-                        }
-                        else {
+                        } else {
                             cls.getFields().forEach((field) => {
                                 if (field.getName() === getAccessorName) {
                                     field.setParameters(mthd.getParameters());

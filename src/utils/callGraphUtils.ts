@@ -1,8 +1,9 @@
-import { Scene } from "../Scene";
-import { ArkClass } from "../core/model/ArkClass";
-import { ArkMethod } from "../core/model/ArkMethod";
-import { ClassSignature, MethodSignature } from "../core/model/ArkSignature";
+import {Scene} from "../Scene";
+import {ArkClass} from "../core/model/ArkClass";
+import {ArkMethod} from "../core/model/ArkMethod";
+import {ClassSignature, MethodSignature} from "../core/model/ArkSignature";
 import Logger from "./logger";
+import {ModelUtils} from "../core/common/ModelUtils";
 
 const logger = Logger.getLogger();
 
@@ -76,18 +77,16 @@ export class SceneManager {
     }
 
     public getMethod(method: MethodSignature): ArkMethod | null {
-        let targetMethod =  this._scene.getMethod(method);
+        let targetMethod = this._scene.getMethod(method);
         if (targetMethod == null) {
             // 支持SDK调用解析
             let sdkMap = this.scene.getSdkArkFilestMap()
             for (let file of sdkMap.values()) {
-                if (file.getFileSignature().toString() ==
-                method.getDeclaringClassSignature().getDeclaringFileSignature().toString()) {
-                    const methods = file.getAllMethodsUnderThisFile()
+                if (file.getFileSignature().toString() == method.getDeclaringClassSignature().getDeclaringFileSignature().toString()) {
+                    const methods = ModelUtils.getAllMethodsInFile(file);
                     for (let methodUnderFile of methods) {
-                        if (method.toString() == 
-                        methodUnderFile.getSignature().toString()) {
-                            return methodUnderFile
+                        if (method.toString() == methodUnderFile.getSignature().toString()) {
+                            return methodUnderFile;
                         }
                     }
                 }
@@ -105,7 +104,7 @@ export class SceneManager {
                 .get(arkClass.getDeclaringFileSignature().toString())
             // TODO: support get sdk class, targetProject class waiting to be supported
             if (sdkOrTargetProjectFile != null) {
-                for (let classUnderFile of sdkOrTargetProjectFile.getAllClassesUnderThisFile()) {
+                for (let classUnderFile of ModelUtils.getAllClassesInFile(sdkOrTargetProjectFile)) {
                     if (classUnderFile.getSignature().toString() === arkClass.toString()) {
                         return classUnderFile
                     }
@@ -124,7 +123,7 @@ export class SceneManager {
             let tempClass = classList.shift()
             if (tempClass == null)
                 continue
-            let firstLevelSubclasses: ArkClass[] = tempClass.getExtendedClasses()
+            let firstLevelSubclasses: ArkClass[] = Array.from(tempClass.getExtendedClasses().values());
 
             if (firstLevelSubclasses) {
                 for (let subclass of firstLevelSubclasses) {
