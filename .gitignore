@@ -10,3 +10,7 @@ out/
 .idea
 tests/resources/output
 coverage
+index.ts
+src/exportAll.ts
+exportRollup.config.mjs
+dist/

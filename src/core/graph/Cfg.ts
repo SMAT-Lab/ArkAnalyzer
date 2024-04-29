@@ -95,9 +95,16 @@ export class Cfg {
             else {
                 leftOp = new ArkInstanceFieldRef(cThis as Local, field.getSignature());
             }
-            const assignStmt = new ArkAssignStmt(leftOp, init);
-            index++;
-            stmts.splice(index,0,assignStmt);
+            if (init instanceof ArkClass)
+                continue;
+            try{
+                const assignStmt = new ArkAssignStmt(leftOp, init);
+                index++;
+                stmts.splice(index,0,assignStmt);
+            } catch{
+                console.log(init);
+            }
+            
         }
     }
 

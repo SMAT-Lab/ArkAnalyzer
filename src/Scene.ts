@@ -411,8 +411,14 @@ export class Scene {
                 }
                 const importNameSpace = ModelUtils.getNamespaceInImportInfoWithName(importInfo.getImportClauseName(),file);
                 if (importNameSpace && !importNameSpaces.includes(importNameSpace)) {
-                    const importNameSpaceClasses = classMap.get(importNameSpace.getNamespaceSignature())!;
-                    importClasses.push(...importNameSpaceClasses.filter(c => !importClasses.includes(c) && c.getName() != '_DEFAULT_ARK_CLASS'));
+                    try{
+                        // 遗留问题：只统计了项目文件，没统计sdk文件内部的引入
+                        const importNameSpaceClasses = classMap.get(importNameSpace.getNamespaceSignature())!;
+                        importClasses.push(...importNameSpaceClasses.filter(c => !importClasses.includes(c) && c.getName() != '_DEFAULT_ARK_CLASS'));
+                    } catch {
+                        // console.log(importNameSpace)
+                    }
+                    
                 }
             }
             const fileClasses = classMap.get(file.getFileSignature())!;

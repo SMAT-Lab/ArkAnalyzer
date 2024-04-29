@@ -1,27 +1,24 @@
-import { SceneConfig } from "../src/Config";
-import { Scene } from "../src/Scene";
-import { ArkBody } from "../src/core/model/ArkBody";
-import {DataflowProblem, FlowFunction} from "../src/core/dataflow/DataflowProblem"
-import {Local} from "../src/core/base/Local"
-import {Value} from "../src/core/base/Value"
-import {ClassType, NumberType, Type} from "../src/core/base/Type"
-import {ArkAssignStmt, ArkInvokeStmt, ArkReturnStmt, Stmt} from "../src/core/base/Stmt"
-import { ArkMethod } from "../src/core/model/ArkMethod";
-import { LiteralType } from "../src/core/base/Type";
-import {ValueUtil} from "../src/core/common/ValueUtil"
-import {Constant} from "../src/core/base/Constant"
-import { AbstractFieldRef, ArkInstanceFieldRef, ArkParameterRef, ArkStaticFieldRef } from "../src/core/base/Ref";
-import { ModelUtils } from "../src/core/common/ModelUtils";
-import { DataflowSolver } from "../src/core/dataflow/DataflowSolver"
-import { ArkBinopExpr, ArkInstanceInvokeExpr, ArkStaticInvokeExpr } from "../src/core/base/Expr";
-import { UndefinedType } from "../src/core/base/Type";
-import { FieldSignature, fieldSignatureCompare } from "../src/core/model/ArkSignature";
-import { factEqual } from "../src/core/dataflow/DataflowSolver";
-import { FileSignature } from "../src/core/model/ArkSignature";
-import { NamespaceSignature } from "../src/core/model/ArkSignature";
-import { ArkClass } from "../src/core/model/ArkClass";
+import { SceneConfig } from "../../Config";
+import { Scene } from "../../Scene";
+import { ArkBody } from "../model/ArkBody";
+import {DataflowProblem, FlowFunction} from "./DataflowProblem"
+import {Local} from "../base/Local"
+import {Value} from "../base/Value"
+import {ClassType, NumberType, Type} from "../base/Type"
+import {ArkAssignStmt, ArkInvokeStmt, ArkReturnStmt, Stmt} from "../base/Stmt"
+import { ArkMethod } from "../model/ArkMethod";
+import {Constant} from "../base/Constant"
+import { AbstractFieldRef, ArkInstanceFieldRef, ArkParameterRef, ArkStaticFieldRef } from "../base/Ref";
+import { ModelUtils } from "../common/ModelUtils";
+import { DataflowSolver } from "./DataflowSolver"
+import { ArkBinopExpr, ArkInstanceInvokeExpr, ArkStaticInvokeExpr } from "../base/Expr";
+import { UndefinedType } from "../base/Type";
+import { factEqual } from "../dataflow/DataflowSolver";
+import { FileSignature } from "../model/ArkSignature";
+import { NamespaceSignature } from "../model/ArkSignature";
+import { ArkClass } from "../model/ArkClass";
 
-class UndefinedVariableChecker extends DataflowProblem<Value> {
+export class UndefinedVariableChecker extends DataflowProblem<Value> {
     zeroValue : Constant = new Constant('undefined', UndefinedType.getInstance());
     entryPoint: Stmt;
     entryMethod: ArkMethod;
@@ -268,26 +265,9 @@ class UndefinedVariableChecker extends DataflowProblem<Value> {
     }
 }
 
-class instanceSolver extends DataflowSolver<Value> {
+export class UndefinedVariableSolver extends DataflowSolver<Value> {
     constructor(problem: UndefinedVariableChecker, scene: Scene){
         super(problem, scene);
     }
 }
 
-
-
-const config_path = "tests\\resources\\ifds\\UndefinedVariable\\ifdsTestConfig.json";
-// const config_path = "tests\\resources\\cfg\\CfgTestConfig.json";
-// const config_path = "tests\\resources\\ifds\\project\\ifdsProjectConfig.json";
-let config: SceneConfig = new SceneConfig();
-config.buildFromJson(config_path);
-const scene = new Scene(config);
-const classMap = scene.getClassMap();
-const defaultMethod = scene.getFiles()[0].getDefaultClass().getDefaultArkMethod();
-const method = ModelUtils.getMethodWithName("U2",defaultMethod!);
-if(method){
-    const problem = new UndefinedVariableChecker([...method.getCfg().getBlocks()][0].getStmts()[method.getParameters().length],method);
-    const solver = new instanceSolver(problem, scene);
-    solver.solve();
-    debugger
-}
