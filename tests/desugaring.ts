@@ -5,7 +5,7 @@ import { ArkBody } from "../src/core/model/ArkBody";
 
 export class Test {
     public buildScene(): Scene {
-        const config_path = "tests\\resources\\cfg\\CfgTestConfig.json";
+        const config_path = "tests\\resources\\desugaring\\desugaring.json";
         let config: SceneConfig = new SceneConfig();
         config.buildFromJson(config_path);
         return new Scene(config);
@@ -24,19 +24,8 @@ export class Test {
                     console.log('*** arkMethod: ', arkMethod.getName());
 
                     const body = arkMethod.getBody();
-                    const blocks = [...body.getCfg().getBlocks()]
-                    for (let i = 0; i < blocks.length; i++){
-
-                        const block = blocks[i]
-                        console.log("block"+i)
-                        for (const stmt of block.getStmts()){
-                            console.log("  " + stmt.toString())
-                        }
-                        let text = "next:"
-                        for (const next of block.getSuccessors()){
-                            text += blocks.indexOf(next) + ' ';
-                        }
-                        console.log(text);
+                    for (const stmt of body.getCfg().getStmts()){
+                        console.log(stmt.toString())
                     }
                     
                     

@@ -9,6 +9,7 @@ import { ClassSignature, FieldSignature, MethodSignature } from "./ArkSignature"
 import Logger, { LOG_LEVEL } from "../../utils/logger";
 import { LineColPosition } from "../base/Position";
 import { ObjectLiteralExpr } from "../base/Expr";
+import { FileSignature,NamespaceSignature } from "./ArkSignature";
 
 const logger = Logger.getLogger();
 
@@ -270,6 +271,24 @@ export class ArkClass {
 
     public hasViewTree(): boolean {
         return this.viewTree != undefined;
+    }
+
+    public getStaticFields(classMap: Map<FileSignature | NamespaceSignature, ArkClass[]>): ArkField[] {
+        const fields: ArkField[] = [];
+        let classes: ArkClass[] = [];
+        if (this.declaringArkNamespace) {
+            classes = classMap.get(this.declaringArkNamespace.getNamespaceSignature())!;
+        } else {
+            classes = classMap.get(this.declaringArkFile.getFileSignature())!;
+        }
+        for (const arkClass of classes) {
+            for (const field of arkClass.getFields()) {
+                if (field.isStatic()) {
+                    fields.push(field);
+                }
+            }
+        }
+        return fields;
     }
 }
 

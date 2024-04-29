@@ -1,4 +1,5 @@
-class property{
+import { im } from "./test2";
+export class property{
     pp=1;
 }
 
@@ -14,12 +15,17 @@ class t{
     }
     method(){
         console.log(t.s)
+        x=3
+        console.log(x)
     }
     print(){
         console.log(this.p.pp)
     }
 }
-
+declare let y;
+const tt = new t()
+tt.method()
+let x=1;
 function U2(){
     let t1 = new t();
     // t1.p = new property() 
@@ -43,6 +49,10 @@ function U4(){
 
 function U5(){
     t.sm()
+}
+
+function U6() {
+    im();
 }
 // function U(){
 //     let t1: t;

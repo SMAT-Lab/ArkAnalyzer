@@ -1,15 +1,16 @@
 {
-"targetProjectName": "photos",
-"targetProjectDirectory": "./codeLab/systemui",
-
-"ohosSdkPath": "../openharmony/interface/sdk-js/api",
-"kitSdkPath": "../openharmony/interface/sdk-js/kits",
+    "targetProjectName": "TypeInferenceTest",
+    "targetProjectDirectory": "tests\\resources\\defUseChain",    
     
+    "logPath": "out\\log.txt",
+    
+    "ohosSdkPath": "",
+    "kitSdkPath": "",
     "systemSdkPath": "",
     
     "otherSdks": [
         {
-            "name": "sdk1",
+            "name": "",
             "path": ""
         },
         {

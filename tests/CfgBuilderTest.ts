@@ -1,46 +1,57 @@
+import { SceneConfig } from "../src/Config";
 import { Scene } from "../src/Scene";
-import { printCallGraphDetails } from "../src/utils/callGraphUtils";
-import * as utils from "../src/utils/getAllFiles";
-import { Config } from "./Config";
+import { ArkBody } from "../src/core/model/ArkBody";
 
-function run(config: Config) {
-    const projectName: string = config.projectName;
-    const input_dir: string = config.project_dir;
 
-    //(1)get all files under input_dir
-    //TODO: add support for using tscconfig to get files
-    const projectFiles: string[] = utils.getAllFiles(input_dir, ['.ts']);
-    // logger.info(projectFiles)
-
-    //(2) Fill Scene class
-    let scene: Scene = new Scene(projectName, projectFiles,config.project_dir);
-
-    let entryPoints = []
-    for (let method of scene.getMethods()) {
-        entryPoints.push(method.getSignature())
+export class Test {
+    public buildScene(): Scene {
+        const config_path = "tests\\resources\\originalCfg\\originalCfg.json";
+        let config: SceneConfig = new SceneConfig();
+        config.buildFromJson(config_path);
+        return new Scene(config);
     }
-    scene.makeCallGraphCHA(entryPoints)
-    let methods = scene.classHierarchyCallGraph.getMethods()
-    let calls = scene.classHierarchyCallGraph.getCalls()
-    printCallGraphDetails(methods, calls, config.project_dir)
 
-    // scene.getMethods()
-    // for (let a of scene.arkFiles) {
-    //     for (let clas of a.getClasses()) {
-    //         if (clas.getSignature().toString() === "<main.ts>.<_DEFAULT_ARK_CLASS>")
-    //             for (let method of clas.getMethods()) {
-    //                 // logger.info(method.getName())
-    //                 // logger.info(method.getBody().getLocals())
-    //             }
-    //     }
-    // }
-    // scene.classHierarchyCallGraph.printDetails()
+    public test() {
+        let scene = this.buildScene();
+        scene.inferTypes();
+
+        for (const arkFile of scene.arkFiles) {
+            for (const arkClass of arkFile.getClasses()) {
+                for (const arkMethod of arkClass.getMethods()) {
+                    if (arkMethod.getName() == '_DEFAULT_ARK_METHOD') {
+                        continue;
+                    }
+                    console.log('*** arkMethod: ', arkMethod.getName());
+
+                    const body = arkMethod.getBody();
+                    const blocks = [...body.getOriginalCfg().getBlocks()]
+                    for (let i = 0; i < blocks.length; i++){
+
+                        const block = blocks[i]
+                        console.log("block"+i)
+                        for (const stmt of block.getStmts()){
+                            console.log("  " + stmt.toString())
+                        }
+                        let text = "next:"
+                        for (const next of block.getSuccessors()){
+                            text += blocks.indexOf(next) + ' ';
+                        }
+                        console.log(text);
+                    }
+                    
+                    
+                }
+            }
+        }
+    }
+
+
+
+    public testTypeInference(): void {
+        let scene = this.buildScene();
+        scene.inferTypes();
+    }
 }
 
-//let config: Config = new Config("app_photo", "/Users/yifei/Documents/Code/applications_photos/common/src/main/ets");
-//let config: Config = new Config("app_photo", "/Users/yifei/Documents/Code/applications_systemui");
-// let config: Config = new Config("systemui", "./codeLab/codelabs2/NetworkManagement/NewsDataArkTS");
-// let config: Config = new Config("systemui", "./codeLab/interface_sdk-js-master/");
-// let config: Config = new Config("systemui", "/Users/yangyizhuo/WebstormProjects/ArkAnalyzer/tests/resources/type");
-let config: Config = new Config("systemui", "/Users/yangyizhuo/WebstormProjects/ArkAnalyzer/tests/resources/callgraph", "");
-run(config);
+let t = new Test();
+t.test();
