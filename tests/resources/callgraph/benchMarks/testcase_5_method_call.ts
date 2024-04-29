@@ -1,4 +1,9 @@
-// test case for method call 1
+/**
+ * test case for method call 1
+ * 6/6
+ * 3/3
+ * testcase_5_method_call.ts
+ */
 
 import { Dog } from "./lib/a";
 

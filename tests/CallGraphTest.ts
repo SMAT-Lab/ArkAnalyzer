@@ -17,12 +17,12 @@ function runScene(config: SceneConfig) {
     //     entryPoints.push(method.getSignature())
     // }
     for (let arkFile of projectScene.getFiles()) {
-        if (arkFile.getName() === "test2.ts") {
+        if (arkFile.getName() === "example.ts") {
             for (let arkClass of arkFile.getClasses()) {
                 if (arkClass.getName() === "_DEFAULT_ARK_CLASS") {
                     for (let arkMethod of arkClass.getMethods()) {
-                        if (arkMethod.getName() === "_DEFAULT_ARK_METHOD") {
-                            // entryPoints.push(arkMethod.getSignature())
+                        if (arkMethod.getName() === "main") {
+                            entryPoints.push(arkMethod.getSignature())
                         }
                     }
                 }
@@ -31,27 +31,33 @@ function runScene(config: SceneConfig) {
     }
     
     projectScene.inferTypes()
-    for (let arkFile of projectScene.getFiles()) {
-        if (arkFile.getName() === "testcase_5_method_call.ts") {
-            for (let arkClass of arkFile.getClasses()) {
-                if (arkClass.getName() === "_DEFAULT_ARK_CLASS") {
-                    for (let arkMethod of arkClass.getMethods()) {
-                        if (arkMethod.getName() === "_DEFAULT_ARK_METHOD") {
-                            for (let local of arkMethod.getBody().getLocals()) {
-                                console.log(local.getName() + ": "+local.getType().toString())
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
+    // for (let arkFile of projectScene.arkFiles) {
+    //     if (arkFile.getName() === "testcase_5_method_call.ts") {
+    //         for (let arkClass of arkFile.getAllClassesUnderThisFile()) {
+    //             if (arkClass.getName() === "_DEFAULT_ARK_CLASS") {
+    //                 for (let arkMethod of arkClass.getMethods()) {
+    //                     if (arkMethod.getName() === "_DEFAULT_ARK_METHOD") {
+    //                         for (let local of arkMethod.getBody().getLocals()) {
+    //                             console.log(local.getName() + ": "+local.getType().toString())
+    //                         }
+    //                         console.log("\nmethod signature:\n")
+    //                         for (let stmt of arkMethod.getBody().getCfg().getStmts()) {
+    //                             if (stmt.containsInvokeExpr()) {
+    //                                 console.log(stmt.getInvokeExpr()?.getMethodSignature().toString())
+    //                             }
+    //                         }
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
     // let callGraph = projectScene.makeCallGraphCHA(entryPoints)
-    // let callGraph = projectScene.makeCallGraphRTA(entryPoints)
+    let callGraph = projectScene.makeCallGraphRTA(entryPoints)
     // let callGraph = projectScene.makeCallGraphVPA(entryPoints)
-    // let methods = callGraph.getMethods()
-    // let calls = callGraph.getCalls()
-    // printCallGraphDetails(methods, calls, config.getTargetProjectDirectory())
+    let methods = callGraph.getMethods()
+    let calls = callGraph.getCalls()
+    printCallGraphDetails(methods, calls, config.getTargetProjectDirectory())
     debugger;
 }
 runScene(config);

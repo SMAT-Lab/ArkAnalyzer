@@ -44,7 +44,7 @@ export class Cat extends Animal {
         logger.info("meewo")
     }
 
-    public testWithParams(a: Dog) {
+    public testWithParams(a: Dog): void {
         // logger.info(a)
         this.sound()
         a.sleep()
@@ -52,6 +52,10 @@ export class Cat extends Animal {
 
     public getCat(): Cat {
         return this
+    }
+
+    public static getNum(): number {
+        return 1 + 2
     }
 }
 
@@ -62,6 +66,15 @@ export class Main {
 
     public static main() {
         this.makeAnimalSound(new Dog())
+    }
+
+    public getMain(): Main {
+        return this
+    }
+
+    public static printNumber(num: number): string {
+        console.log(num)
+        return "success"
     }
 }
 
