@@ -2,7 +2,8 @@ import fs from "fs";
 import path from "path";
 import {spawnSync} from 'child_process';
 import Logger, { LOG_LEVEL } from "./utils/logger";
-
+import {removeSync} from "fs-extra";
+import { transfer2UnixPath } from "./utils/pathTransfer";
 
 const logger = Logger.getLogger();
 
@@ -77,6 +78,7 @@ export class SceneConfig {
 
         Logger.configure(this.logPath, LOG_LEVEL.ERROR);
 
+        removeSync(transfer2UnixPath(targetProjectDirectory + '/' + this.targetProjectName));
         await spawnSync('node', [path.join(__dirname, 'ets2ts.js'), this.hosEtsLoaderPath, this.targetProjectOriginDirectory, targetProjectDirectory, this.targetProjectName, this.logPath]);
         this.getAllFiles();
     }
