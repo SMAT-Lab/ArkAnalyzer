@@ -7,6 +7,7 @@ import path from "path";
 let config: SceneConfig = new SceneConfig();
 config.buildFromProjectDir(path.join(__dirname, "../../tests/resources/viewtree"));
 let scece = new Scene(config);
+scece.inferTypes();
 
 
 describe("ViewTree Test", () => {

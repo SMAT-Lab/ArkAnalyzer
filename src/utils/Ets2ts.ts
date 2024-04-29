@@ -1,13 +1,8 @@
 import * as path from 'path';
 import * as fs from 'fs';
-import Logger from "./logger";
+import Logger, { LOG_LEVEL } from "./logger";
 
 const logger = Logger.getLogger();
-
-async function dynamicImportModule<T>(modulePath: string): Promise<T> {
-    const module = await import(modulePath);
-    return module.default as T;
-}
 
 enum FileType {
     ETS = 0,
@@ -31,15 +26,15 @@ export class Ets2ts {
     statistics: Array<Array<number>> = [[0, 0], [0, 0]];
 
     public async init(etsLoaderPath: string, projectPath: string, output: string, projectName: string) {
-        this.tsModule = await import(path.join(etsLoaderPath, 'node_modules/typescript'));
-        this.processUIModule = await import(path.join(etsLoaderPath, 'lib/process_ui_syntax'));
-        this.preProcessModule = await dynamicImportModule<Function>(path.join(etsLoaderPath, 'lib/pre_process.js'));
+        this.tsModule = await require(path.join(etsLoaderPath, 'node_modules/typescript'));
+        this.processUIModule = await require(path.join(etsLoaderPath, 'lib/process_ui_syntax'));
+        this.preProcessModule = await require(path.join(etsLoaderPath, 'lib/pre_process.js'));
         this.compilerOptions = this.tsModule.readConfigFile(
             path.resolve(etsLoaderPath, 'tsconfig.json'), this.tsModule.sys.readFile).config.compilerOptions;
         this.compilerOptions.target = 'ESNext';
         this.compilerOptions.sourceMap = false;
 
-        let module = await import(path.join(etsLoaderPath, 'main'));
+        let module = await require(path.join(etsLoaderPath, 'main'));
         this.projectConfig = module.projectConfig;
 
         this.projectConfig.projectPath = path.resolve(projectPath);
@@ -201,6 +196,15 @@ export class Ets2ts {
 }
 
 
+
+(async function () {
+    Logger.configure(process.argv[6], LOG_LEVEL.TRACE);
+    logger.info('start ets2ts ', process.argv);
+    const startTime = new Date().getTime();
+    runEts2Ts(process.argv[2], process.argv[3], process.argv[4], process.argv[5]);
+    const endTime = new Date().getTime();
+    logger.info(`ets2ts took: ${(endTime - startTime) / 1000}s`);
+})();
 
 
 
