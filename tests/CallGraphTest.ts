@@ -52,8 +52,8 @@ function runScene(config: SceneConfig) {
     //         }
     //     }
     // }
-    // let callGraph = projectScene.makeCallGraphCHA(entryPoints)
-    let callGraph = projectScene.makeCallGraphRTA(entryPoints)
+    let callGraph = projectScene.makeCallGraphCHA(entryPoints)
+    // let callGraph = projectScene.makeCallGraphRTA(entryPoints)
     // let callGraph = projectScene.makeCallGraphVPA(entryPoints)
     let methods = callGraph.getMethods()
     let calls = callGraph.getCalls()
