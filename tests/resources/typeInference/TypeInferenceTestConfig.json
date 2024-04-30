@@ -1,6 +1,6 @@
 {
     "targetProjectName": "TypeInferenceTest",    
-    "targetProjectDirectory": "tests/resources/typeInference/multi_module",
+    "targetProjectDirectory": "out/ets2ts/applications_photos/common/src/main/ets/default/model/browser/photo",
 
     "logPath": "out/TypeInferenceTest.log",
     

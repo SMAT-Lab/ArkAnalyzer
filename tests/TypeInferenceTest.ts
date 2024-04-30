@@ -8,10 +8,8 @@ Logger.configure('out/TypeInferenceTest.log', LOG_LEVEL.WARN);
 
 export class TypeInferenceTest {
     public buildScene(): Scene {
-        // tests\\resources\\typeInference\\sample
-        // tests\\resources\\typeInference\\moduleA
-        // tests\\resources\\typeInference\\mainModule
-        // const config_path = "tests\\resources\\typeInference\\ProjectTypeInferenceTestConfig.json";
+        // tests/resources/typeInference/multi_module/main_module
+        // out/ets2ts/applications_photos/common/src/main/ets/default/model/browser/photo
         const config_path = "tests\\resources\\typeInference\\TypeInferenceTestConfig.json";
         let config: SceneConfig = new SceneConfig();
         config.buildFromJson(config_path);
@@ -22,17 +20,33 @@ export class TypeInferenceTest {
     public testLocalTypes() {
         let scene = this.buildScene();
         logger.error(`before inferTypes`);
-        this.printScene(scene);
+        this.printLocalTypes(scene);
         scene.inferTypes();
         logger.error(``);
         logger.error(`after inferTypes`);
-        this.printScene(scene);
+        this.printLocalTypes(scene);
+    }
+
+
+    public printLocalTypes(scene:Scene){
+        for (const arkFile of scene.getFiles()) {
+            logger.error('=============== arkFile:', arkFile.getName(), ' ================');
+            for (const arkClass of arkFile.getClasses()) {
+                logger.error('========= arkClass:', arkClass.getName(), ' =======');
+                for (const arkMethod of arkClass.getMethods()) {
+                    logger.error('***** arkMethod: ', arkMethod.getName());
+                    for (const local of arkMethod.getBody().getLocals()) {
+                        logger.error('name: ' + local.toString() + ', type: ' + local.getType());
+                    }
+                }
+            }
+        }
     }
 
     public testFunctionReturnType() {
         let scene = this.buildScene();
 
-        for (const arkFile of scene.arkFiles) {
+        for (const arkFile of scene.getFiles()) {
             logger.error('=============== arkFile:', arkFile.getName(), ' ================');
             for (const arkClass of arkFile.getClasses()) {
                 for (const arkMethod of arkClass.getMethods()) {
@@ -55,16 +69,12 @@ export class TypeInferenceTest {
     }
 
     private printScene(scene: Scene): void {
-        for (const arkFile of scene.arkFiles) {
-            logger.error('=============== arkFile:', arkFile.getName(), ' ================');
+        for (const arkFile of scene.getFiles()) {
+            logger.error('+++++++++++++ arkFile:', arkFile.getFilePath(), ' +++++++++++++');
             for (const arkClass of arkFile.getClasses()) {
                 logger.error('========= arkClass:', arkClass.getName(), ' =======');
                 for (const arkMethod of arkClass.getMethods()) {
-                    if (arkMethod.getName() == '_DEFAULT_ARK_METHOD') {
-                        continue;
-                    }
                     logger.error('***** arkMethod: ', arkMethod.getName());
-
                     const body = arkMethod.getBody();
                     this.printStmts(body);
 
@@ -72,7 +82,6 @@ export class TypeInferenceTest {
                     for (const local of arkMethod.getBody().getLocals()) {
                         logger.error('name: ' + local.toString() + ', type: ' + local.getType());
                     }
-                    logger.error('***** end of arkMethod')
                 }
             }
         }
@@ -81,13 +90,14 @@ export class TypeInferenceTest {
     public testTypeInference(): void {
         let scene = this.buildScene();
         scene.inferTypes();
+        this.printScene(scene);
     }
 }
 
 logger.error('type inference test start');
 let typeInferenceTest = new TypeInferenceTest();
 // typeInferenceTest.buildScene();
-typeInferenceTest.testLocalTypes();
-// typeInferenceTest.testTypeInference();
+// typeInferenceTest.testLocalTypes();
+typeInferenceTest.testTypeInference();
 // typeInferenceTest.testFunctionReturnType();
 logger.error('type inference test end\n');
