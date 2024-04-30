@@ -9,6 +9,11 @@ enum FileType {
     TS = 1
 }
 
+const CONFIG = {
+    ignores:  ['.git', '.preview', '.hvigor', '.idea', 'test', 'ohosTest'],
+    include: /(?<!\.d)\.(ets|ts|json5)$/
+}
+
 /**
  *  let ets2ts = new Ets2ts();
  *  await ets2ts.init(etsLoaderPath, projectPath, output);
@@ -57,7 +62,7 @@ export class Ets2ts {
             if (src.endsWith('.ets')) {
                 this.compileEts(src);
             } else {
-                this.ts2output(src);
+                this.cp2output(src);
             }
         }
 
@@ -99,7 +104,7 @@ export class Ets2ts {
         return path.join(this.projectConfig.saveTsPath, relativePath);
     }
 
-    private ts2output(fileName: string) {
+    private cp2output(fileName: string) {
         let start = new Date().getTime();
 
         let resultPath = this.getOutputPath(fileName);
@@ -111,18 +116,16 @@ export class Ets2ts {
     }
 
     private getAllEts(srcPath: string, ets: string[] = []): boolean {
-        const ignore = ['.git', '.preview', '.hvigor', '.idea', 'test', 'ohosTest'];
         let hasFile = false;
         fs.readdirSync(srcPath, { withFileTypes: true }).forEach(file => {
             const realFile = path.resolve(srcPath, file.name);
-            if (file.isDirectory() && (!ignore.includes(file.name))) {
+            if (file.isDirectory() && (!CONFIG.ignores.includes(file.name))) {
                 if (this.getAllEts(realFile, ets)) {
                     hasFile = true;
                     this.mkOutputPath(realFile);
                 }
             } else {
-                if ((path.basename(realFile).endsWith('.ets') || path.basename(realFile).endsWith('.ts')) 
-                    && (!path.basename(realFile).endsWith('.d.ets'))) {
+                if ((path.basename(realFile).match(CONFIG.include))) {
                     ets.push(realFile);
                     hasFile = true;
                 }
