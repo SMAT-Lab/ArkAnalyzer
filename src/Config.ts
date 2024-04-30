@@ -45,7 +45,7 @@ export class SceneConfig {
 
     private sdkFiles: string[] = [];
     private sdkFilesMap: Map<string[], string> = new Map<string[], string>();
-    private projectFiles: string[] = [];
+    private projectFiles: Map<string, string> = new Map<string, string>();
     private logPath: string = "./out/ArkAnalyzer.log";
 
     private hosEtsLoaderPath: string = '';
@@ -113,8 +113,8 @@ export class SceneConfig {
 
     private getAllFiles() {
         if (this.targetProjectDirectory) {
-            let tmpFiles: string[] = getFiles(this.targetProjectDirectory, "\\.ts\$");
-            this.projectFiles.push(...tmpFiles);
+            let tmpMap: Map<string, string> = getFiles2PkgMap(this.targetProjectDirectory, '', "\\.ts\$");
+            this.projectFiles = tmpMap;
         }
         else {
             throw new Error('TargetProjectDirectory is wrong.');
@@ -216,4 +216,41 @@ function getFiles(srcPath: string, fileExt: string, tmpFiles: string[] = []) {
     }
 
     return tmpFiles;
+}
+
+function getFiles2PkgMap(srcPath: string, json5Path: string, fileExt: string, tmpMap: Map<string, string> = new Map()) {
+
+    let extReg = new RegExp(fileExt);
+    //let tmpFiles: string[] = [];
+
+    if (!fs.existsSync(srcPath)) {
+        logger.info("Input directory is not exist: ", srcPath);
+        return tmpMap;
+    }
+
+    let dirJson5: string = json5Path;
+    const realSrc = fs.realpathSync(srcPath);
+
+    let files2Do: string[] = fs.readdirSync(realSrc);
+    files2Do.forEach((fl) => {
+        if (fl == 'ohpackage.json5') {
+            dirJson5 = path.resolve(realSrc, 'ohpackage.json5');
+        }
+    });
+    for (let fileName of files2Do) {
+        if (fileName == 'oh_modules' || fileName == 'node_modules') {
+            continue;
+        }
+        const realFile = path.resolve(realSrc, fileName);
+
+        if (fs.statSync(realFile).isDirectory()) {
+            getFiles2PkgMap(realFile, dirJson5, fileExt, tmpMap);
+        } else {
+            if (extReg.test(realFile)) {
+                tmpMap.set(realFile, dirJson5);
+            }
+        }
+    }
+
+    return tmpMap;
 }
