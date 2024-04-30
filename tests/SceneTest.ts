@@ -1,7 +1,6 @@
 import {SceneConfig} from "../src/Config";
 import {Scene} from "../src/Scene";
 import Logger, {LOG_LEVEL} from "../src/utils/logger";
-// import {Ets2ts} from "../src/utils/Ets2ts";
 import * as ts from "typescript";
 import convertCompilerOptions = ts.server.convertCompilerOptions;
 
@@ -10,24 +9,6 @@ const logger = Logger.getLogger();
 Logger.configure(logPath, LOG_LEVEL.INFO);
 
 class SceneTest {
-    public buildScene(): Scene {
-        // tests\\resources\\scene\\mainModule
-        // D:\\Codes\\resources\\selected_apps
-        const config_path = "tests\\resources\\scene\\SceneTestConfig.json";
-        let config: SceneConfig = new SceneConfig();
-        config.buildFromJson(config_path);
-        // Logger.setLogLevel(LOG_LEVEL.INFO);
-        logger.error('projectFiles cnt:', config.getProjectFiles().length);
-        return new Scene(config);
-    }
-
-    public testLogger(): void {
-        let scene = this.buildScene();
-        logger.info('info');
-        logger.warn('info');
-        logger.error('error');
-    }
-
     public testTsWholePipline(): void {
         logger.error('testTsWholePipline start');
         const buildConfigStartTime = new Date().getTime();
@@ -42,7 +23,7 @@ class SceneTest {
         logger.error(`memoryUsage after buildConfig in bytes:`);
         logger.error(process.memoryUsage());
         const buildConfigEndTime = new Date().getTime();
-        logger.error('projectFiles cnt:', sceneConfig.getProjectFiles().length);
+        logger.error('projectFiles cnt:', sceneConfig.getProjectFiles().size);
         logger.error(`buildConfig took ${(buildConfigEndTime - buildConfigStartTime) / 1000} s`);
 
         // build scene
@@ -58,7 +39,6 @@ class SceneTest {
         logger.error(process.memoryUsage());
         const inferTypesEndTime = new Date().getTime();
         logger.error(`inferTypes took ${(inferTypesEndTime - buildSceneEndTime) / 1000} s`);
-        logger.error('testTsWholePipline end');
 
         // get viewTree
         for (const arkFile of scene.getFiles()) {
@@ -69,34 +49,61 @@ class SceneTest {
         logger.error(`memoryUsage after get viewTree in bytes:`);
         logger.error(process.memoryUsage());
         const getViewTreeEndTime = new Date().getTime();
-        logger.error(`get viewTree took ${(inferTypesEndTime - buildSceneEndTime) / 1000} s`);
+        logger.error(`get viewTree took ${(getViewTreeEndTime - inferTypesEndTime) / 1000} s`);
 
         logger.error('testTsWholePipline end\n');
     }
 
-    // public async testEts2ts() {
-    //     logger.info('testEts2ts start');
-    //     let ets2tsStartTime = new Date().getTime();
-    //
-    //     const etsProjectPath = 'D:\\Codes\\openharmony\\applications\\applications_photos';
-    //     const outputPath = 'out/ets2ts';
-    //     const etsLoaderPath = 'C:\\Users\\kubrick\\AppData\\Local\\Huawei\\Sdk\\openharmony\\9\\ets\\build-tools\\ets-loader';
-    //     const projectName = 'applications_photos';
-    //
-    //     logger.info(`memoryUsage before Ets2ts in bytes:`);
-    //     logger.info(process.memoryUsage());
-    //
-    //     let ets2ts = new Ets2ts();
-    //     await ets2ts.init(etsLoaderPath, etsProjectPath, outputPath, projectName);
-    //     await ets2ts.compileProject();
-    //
-    //     logger.info(`memoryUsage after Ets2ts in bytes:`);
-    //     logger.info(process.memoryUsage());
-    //
-    //     let ets2tsEndTime = new Date().getTime();
-    //     logger.info(`ets2ts took ${(ets2tsEndTime - ets2tsStartTime) / 1000} s`);
-    //     logger.info('testEts2ts end\n');
-    // }
+    public async testETsWholePipline() {
+        logger.error('testETsWholePipline start');
+        // build config
+        const etsProjectPath = 'D:\\Codes\\openharmony\\applications\\applications_photos';
+        const outputPath = 'out/ets2ts';
+        const sdkEtsPath = 'C:\\Users\\kubrick\\AppData\\Local\\Huawei\\Sdk\\openharmony\\9\\ets';
+        const projectName = 'applications_photos';
+        const buildConfigStartTime = new Date().getTime();
+        logger.info(`memoryUsage before EtsConfig in bytes:`);
+        logger.info(process.memoryUsage());
+
+        const sceneConfig: SceneConfig = new SceneConfig();
+        await sceneConfig.buildFromIde(projectName, etsProjectPath, outputPath, sdkEtsPath, logPath);
+
+        logger.info(`memoryUsage after EtsConfig in bytes:`);
+        logger.info(process.memoryUsage());
+
+        logger.error(`memoryUsage after buildConfig in bytes:`);
+        logger.error(process.memoryUsage());
+        const buildConfigEndTime = new Date().getTime();
+        logger.error('projectFiles cnt:', sceneConfig.getProjectFiles().size);
+        logger.error(`buildConfig took ${(buildConfigEndTime - buildConfigStartTime) / 1000} s`);
+
+        // build scene
+        let scene = new Scene(sceneConfig);
+        logger.error(`memoryUsage after buildScene in bytes:`);
+        logger.error(process.memoryUsage());
+        const buildSceneEndTime = new Date().getTime();
+        logger.error(`buildScene took ${(buildSceneEndTime - buildConfigEndTime) / 1000} s`);
+
+        // infer types
+        scene.inferTypes();
+        logger.error(`memoryUsage after inferTypes in bytes:`);
+        logger.error(process.memoryUsage());
+        const inferTypesEndTime = new Date().getTime();
+        logger.error(`inferTypes took ${(inferTypesEndTime - buildSceneEndTime) / 1000} s`);
+
+        // get viewTree
+        for (const arkFile of scene.getFiles()) {
+            for (const arkClass of arkFile.getClasses()) {
+                arkClass.getViewTree();
+            }
+        }
+        logger.error(`memoryUsage after get viewTree in bytes:`);
+        logger.error(process.memoryUsage());
+        const getViewTreeEndTime = new Date().getTime();
+        logger.error(`get viewTree took ${(getViewTreeEndTime - inferTypesEndTime) / 1000} s`);
+
+        logger.error('testETsWholePipline end\n');
+    }
 
     public async testEtsConfig() {
         logger.info('testEtsConfig start');
@@ -116,7 +123,7 @@ class SceneTest {
         logger.info(`memoryUsage after EtsConfig in bytes:`);
         logger.info(process.memoryUsage());
 
-        logger.info('projectFiles cnt:', sceneConfig.getProjectFiles().length);
+        logger.info('projectFiles cnt:', sceneConfig.getProjectFiles().size);
 
         let etsConfigEndTime = new Date().getTime();
         logger.info(`etsConfig took ${(etsConfigEndTime - etsConfigStartTime) / 1000} s`);
@@ -125,7 +132,6 @@ class SceneTest {
 }
 
 let sceneTest = new SceneTest();
-// sceneTest.buildScene();
-sceneTest.testTsWholePipline();
-// sceneTest.testEts2ts();
+sceneTest.testETsWholePipline();
+// sceneTest.testTsWholePipline();
 // sceneTest.testEtsConfig();
