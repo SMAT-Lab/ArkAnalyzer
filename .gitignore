@@ -10,3 +10,4 @@ out/
 .idea
 tests/resources/output
 coverage
+src/ets2ts.js
