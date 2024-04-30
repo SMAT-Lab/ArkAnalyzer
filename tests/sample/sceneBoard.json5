@@ -1,0 +1,13 @@
+{
+    "devDependencies":{},
+    "ohosSdkPath": "",
+    "kitSdkPath": "",
+    "systemSdkPath": "",
+    "dependencies":{
+        "@ohos/plugincomponnent":"../../feature/systemstatus/plugincomponnent",
+        "@ohos/from":"../../feature/desktop/from",
+        "@ohos/aod":"../../feature/aod",
+        "@hw-hmos/abxconvertor":"1.0.1",
+        "@ohos/huaweisharetogglecomponnent":"file:../../feature/systemcontrol/huaweisharetogglecomponnent",
+    }
+}
