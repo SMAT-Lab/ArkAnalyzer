@@ -49,11 +49,11 @@ export class Scene {
     // values that are visible in curr scope
     private visibleValue: VisibleValue = new VisibleValue();
 
-    // signature to model
-    private filesMap: Map<FileSignature, ArkFile> = new Map();
-    private namespacesMap: Map<NamespaceSignature, ArkNamespace> = new Map();
-    private classesMap: Map<ClassSignature, ArkClass> = new Map();
-    private methodsMap: Map<MethodSignature, ArkMethod> = new Map();
+    // signature string to model
+    private filesMap: Map<string, ArkFile> = new Map();
+    private namespacesMap: Map<string, ArkNamespace> = new Map();
+    private classesMap: Map<string, ArkClass> = new Map();
+    private methodsMap: Map<string, ArkMethod> = new Map();
 
     constructor(sceneConfig: SceneConfig) {
         this.projectName = sceneConfig.getTargetProjectName();
@@ -138,12 +138,12 @@ export class Scene {
             arkFile.setProjectName(this.projectName);
             buildArkFileFromFile(file, this.realProjectDir, arkFile);
             arkFile.setScene(this);
-            this.filesMap.set(arkFile.getFileSignature(), arkFile);
+            this.filesMap.set(arkFile.getFileSignature().toString(), arkFile);
         });
     }
 
     public getFile(fileSignature: FileSignature): ArkFile | null {
-        return this.filesMap.get(fileSignature) || null;
+        return this.filesMap.get(fileSignature.toString()) || null;
     }
 
     public getFiles(): ArkFile[] {
@@ -155,14 +155,14 @@ export class Scene {
     }
 
     public getNamespace(namespaceSignature: NamespaceSignature): ArkNamespace | null {
-        return this.getNamespacesMap().get(namespaceSignature) || null;
+        return this.getNamespacesMap().get(namespaceSignature.toString()) || null;
     }
 
-    private getNamespacesMap(): Map<NamespaceSignature, ArkNamespace> {
+    private getNamespacesMap(): Map<string, ArkNamespace> {
         if (this.namespacesMap.size == 0) {
             for (const file of this.getFiles()) {
                 ModelUtils.getAllNamespacesInFile(file).forEach((namespace) => {
-                    this.namespacesMap.set(namespace.getNamespaceSignature(), namespace);
+                    this.namespacesMap.set(namespace.getNamespaceSignature().toString(), namespace);
                 })
             }
         }
@@ -174,19 +174,19 @@ export class Scene {
     }
 
     public getClass(classSignature: ClassSignature): ArkClass | null {
-        return this.getClassesMap().get(classSignature) || null;
+        return this.getClassesMap().get(classSignature.toString()) || null;
     }
 
-    private getClassesMap(): Map<ClassSignature, ArkClass> {
+    private getClassesMap(): Map<string, ArkClass> {
         if (this.classesMap.size == 0) {
             for (const file of this.getFiles()) {
                 for (const cls of file.getClasses()) {
-                    this.classesMap.set(cls.getSignature(), cls);
+                    this.classesMap.set(cls.getSignature().toString(), cls);
                 }
             }
             for (const namespace of this.getNamespacesMap().values()) {
                 for (const cls of namespace.getClasses()) {
-                    this.classesMap.set(cls.getSignature(), cls);
+                    this.classesMap.set(cls.getSignature().toString(), cls);
                 }
             }
         }
@@ -198,14 +198,14 @@ export class Scene {
     }
 
     public getMethod(methodSignature: MethodSignature): ArkMethod | null {
-        return this.getMethodsMap().get(methodSignature) || null;
+        return this.getMethodsMap().get(methodSignature.toString()) || null;
     }
 
-    private getMethodsMap(): Map<MethodSignature, ArkMethod> {
+    private getMethodsMap(): Map<string, ArkMethod> {
         if (this.methodsMap.size == 0) {
             for (const cls of this.getClassesMap().values()) {
                 for (const method of cls.getMethods()) {
-                    this.methodsMap.set(method.getSignature(), method);
+                    this.methodsMap.set(method.getSignature().toString(), method);
                 }
             }
         }

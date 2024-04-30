@@ -60,7 +60,6 @@ export class ModelUtils {
 
     /** search class within the file that contain the given method */
     public static getClassWithName(className: string, startFrom: ArkMethod): ArkClass | null {
-        //TODO:是否支持类表达式
         if (!className.includes(".")) {
             const thisClass = startFrom.getDeclaringArkClass();
             if (thisClass.getName() == className) {
