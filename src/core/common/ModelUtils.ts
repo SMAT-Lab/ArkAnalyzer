@@ -91,16 +91,6 @@ export class ModelUtils {
         return null;
     }
 
-    // /** search class within the given namespace */
-    // public static getClassInNamespaceWithName(className: string, arkNamespace: ArkNamespace): ArkClass | null {
-    //     for (const arkClass of arkNamespace.getClasses()) {
-    //         if (arkClass.getName() == className) {
-    //             return arkClass;
-    //         }
-    //     }
-    //     return null;
-    // }
-
     /** search class within the given file */
     public static getClassInFileWithName(className: string, arkFile: ArkFile): ArkClass | null {
         let classSearched = arkFile.getClassWithName(className);
@@ -181,26 +171,6 @@ export class ModelUtils {
         return null;
     }
 
-    // /** search method within the given class */
-    // public static getMethodInClassWithName(methodName: string, arkClass: ArkClass): ArkMethod | null {
-    //     for (const method of arkClass.getMethods()) {
-    //         if (method.getName() == methodName) {
-    //             return method;
-    //         }
-    //     }
-    //     return null;
-    // }
-
-    // /** search field within the given class */
-    // public static getFieldInClassWithName(fieldName: string, arkClass: ArkClass): ArkField | null {
-    //     for (const field of arkClass.getFields()) {
-    //         if (field.getName() == fieldName) {
-    //             return field;
-    //         }
-    //     }
-    //     return null;
-    // }
-
     public static getNamespaceWithNameFromClass(namespaceName: string, startFrom: ArkClass): ArkNamespace | null {
         const thisNamespace = startFrom.getDeclaringArkNamespace();
         let namespaceSearched: ArkNamespace | null = null;
@@ -229,15 +199,6 @@ export class ModelUtils {
         namespaceSearched = this.getNamespaceInFileWithName(namespaceName, thisFile);
         return namespaceSearched;
     }
-
-    // public static getNamespaceInNamespaceWithName(namespaceName: string, arkNamespace: ArkNamespace): ArkNamespace | null {
-    //     for (const namespace of arkNamespace.getNamespaces()) {
-    //         if (namespace.getName() == namespaceName) {
-    //             return namespace;
-    //         }
-    //     }
-    //     return null;
-    // }
 
     public static getNamespaceInFileWithName(namespaceName: string, arkFile: ArkFile): ArkNamespace | null {
         let namespaceSearched = arkFile.getNamespaceWithName(namespaceName);

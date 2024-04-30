@@ -28,7 +28,6 @@ export class ArkClass {
 
     private superClassName: string = '';
     private superClass: ArkClass;
-    // private extendedClasses: ArkClass[] = [];
     private implementedInterfaceNames: string[] = [];
     private modifiers: Set<string> = new Set<string>();
     private typeParameters: Type[] = [];

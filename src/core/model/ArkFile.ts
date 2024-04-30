@@ -28,9 +28,6 @@ export class ArkFile {
 
     private defaultClass: ArkClass;
 
-    // private namespaces: ArkNamespace[] = [];
-    // private classes: ArkClass[] = [];
-
     // name to model
     private namespaces: Map<string, ArkNamespace> = new Map<string, ArkNamespace>(); // don't contain nested namespaces
     private classes: Map<string, ArkClass> = new Map<string, ArkClass>(); // don't contain class in namespace

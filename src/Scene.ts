@@ -32,8 +32,6 @@ export class Scene {
     private realProjectDir: string;
     private realProjectOriginDir: string;
 
-    // private arkFiles: ArkFile[] = [];
-    // private targetProjectArkFilesMap: Map<string, ArkFile> = new Map<string, ArkFile>();
     // TODO: type of key should be signature object
     private sdkArkFilestMap: Map<string, ArkFile> = new Map<string, ArkFile>();
 
@@ -51,18 +49,11 @@ export class Scene {
     // values that are visible in curr scope
     private visibleValue: VisibleValue = new VisibleValue();
 
-    // // all classes and methods, just for demo
-    // private allClasses: ArkClass[] = [];
-    // private allMethods: ArkMethod[] = [];
-    // private classCached: Map<ClassSignature, ArkClass | null> = new Map();
-
     // signature to model
     private filesMap: Map<FileSignature, ArkFile> = new Map();
     private namespacesMap: Map<NamespaceSignature, ArkNamespace> = new Map();
     private classesMap: Map<ClassSignature, ArkClass> = new Map();
     private methodsMap: Map<MethodSignature, ArkMethod> = new Map();
-
-    // private methods: Map<MethodSignature, ArkMethod> = new Map();
 
     constructor(sceneConfig: SceneConfig) {
         this.projectName = sceneConfig.getTargetProjectName();
@@ -85,6 +76,10 @@ export class Scene {
         //post actions
 
         this.collectProjectImportInfos();
+    }
+
+    public getRealProjectDir(): string {
+        return this.realProjectDir;
     }
 
     private configImportSdkPrefix() {
@@ -317,7 +312,7 @@ export class Scene {
 
     public getClassMap(): Map<FileSignature | NamespaceSignature, ArkClass[]> {
         const classMap: Map<FileSignature | NamespaceSignature, ArkClass[]> = new Map();
-        for (const file of this.getFiles()){
+        for (const file of this.getFiles()) {
             const fileClass: ArkClass[] = [];
             const namespaceStack: ArkNamespace[] = [];
             const parentMap: Map<ArkNamespace, ArkNamespace | ArkFile> = new Map();
@@ -342,8 +337,7 @@ export class Scene {
                 classMap.set(ns.getNamespaceSignature(), nsClass);
                 if (ns.getNamespaces().length == 0) {
                     finalNamespaces.push(ns);
-                }
-                else {
+                } else {
                     for (const nsns of ns.getNamespaces()) {
                         namespaceStack.push(nsns);
                         parentMap.set(nsns, ns);
@@ -376,26 +370,26 @@ export class Scene {
                 }
             }
         }
-        
+
         for (const file of this.getFiles()) {
             // 文件加上import的class，包括ns的
             const importClasses: ArkClass[] = [];
             const importNameSpaces: ArkNamespace[] = [];
-            for (const importInfo of file.getImportInfos()){
+            for (const importInfo of file.getImportInfos()) {
                 const importClass = ModelUtils.getClassInImportInfoWithName(importInfo.getImportClauseName(), file);
                 if (importClass && !importClasses.includes(importClass)) {
                     importClasses.push(importClass);
                 }
-                const importNameSpace = ModelUtils.getNamespaceInImportInfoWithName(importInfo.getImportClauseName(),file);
+                const importNameSpace = ModelUtils.getNamespaceInImportInfoWithName(importInfo.getImportClauseName(), file);
                 if (importNameSpace && !importNameSpaces.includes(importNameSpace)) {
-                    try{
+                    try {
                         // 遗留问题：只统计了项目文件，没统计sdk文件内部的引入
                         const importNameSpaceClasses = classMap.get(importNameSpace.getNamespaceSignature())!;
                         importClasses.push(...importNameSpaceClasses.filter(c => !importClasses.includes(c) && c.getName() != '_DEFAULT_ARK_CLASS'));
                     } catch {
                         // console.log(importNameSpace)
                     }
-                    
+
                 }
             }
             const fileClasses = classMap.get(file.getFileSignature())!;
