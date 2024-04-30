@@ -28,7 +28,7 @@ const logger = Logger.getLogger();
  */
 export class Scene {
     private projectName: string = '';
-    private projectFiles: string[] = [];
+    private projectFiles: Map<string, string> = new Map<string, string>();
     private realProjectDir: string;
     private realProjectOriginDir: string;
 
@@ -132,11 +132,12 @@ export class Scene {
             }
         });
 
-        this.projectFiles.forEach((file) => {
-            logger.info('=== parse file:', file);
+        this.projectFiles.forEach((value, key) => {
+            logger.info('=== parse file:', key);
             let arkFile: ArkFile = new ArkFile();
             arkFile.setProjectName(this.projectName);
-            buildArkFileFromFile(file, this.realProjectDir, arkFile);
+            arkFile.setOhPackageJson5Path(value);
+            buildArkFileFromFile(key, this.realProjectDir, arkFile);
             arkFile.setScene(this);
             this.filesMap.set(arkFile.getFileSignature().toString(), arkFile);
         });

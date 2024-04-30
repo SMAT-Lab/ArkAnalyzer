@@ -41,6 +41,8 @@ export class ArkFile {
 
     private sourceMap: sourceMap.SourceMapConsumer;
 
+    private ohPackageJson5Path: string = '';
+
     constructor() {
     }
 
@@ -148,6 +150,14 @@ export class ArkFile {
 
     public getProjectName() {
         return this.projectName;
+    }
+
+    public setOhPackageJson5Path(ohPackageJson5Path: string) {
+        this.ohPackageJson5Path = ohPackageJson5Path;
+    }
+
+    public getOhPackageJson5Path() {
+        return this.ohPackageJson5Path;
     }
 
     public genFileSignature() {
