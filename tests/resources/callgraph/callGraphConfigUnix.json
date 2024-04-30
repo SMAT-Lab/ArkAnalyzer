@@ -1,8 +1,8 @@
 {
-  "targetProjectName": "Media",
-  "targetProjectDirectory": "/Users/yangyizhuo/WebstormProjects/ArkAnalyzer/tests/resources/callgraph/benchMarks",
+  "targetProjectName": "project",
+  "targetProjectDirectory": "/Users/yangyizhuo/WebstormProjects/ArkAnalyzer/tests/resources/callgraph/projectTest/applications_photos",
 
-  "ohosSdkPath": "",
+  "ohosSdkPath": "/Users/yangyizhuo/sdk/openharmony/interface_sdk-js/api",
   "kitSdkPath": "",
   "systemSdkPath": "",
   "temp": "/Users/yangyizhuo/sdk/openharmony/interface_sdk-js/api",

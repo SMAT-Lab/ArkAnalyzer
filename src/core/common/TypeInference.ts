@@ -77,6 +77,10 @@ export class TypeInference {
                 }
             } else if (expr instanceof ArkInstanceInvokeExpr) {
                 const base = expr.getBase();
+                if (!(base instanceof Local)) {
+                    logger.error("invoke expr base is not local")
+                    continue
+                }
                 let type = base.getType();
                 if (type instanceof UnknownType) {
                     const arkClass = ModelUtils.getClassWithName(base.getName(), arkMethod);
@@ -201,7 +205,12 @@ export class TypeInference {
     }
 
     private handleClassField(field: ArkInstanceFieldRef, arkMethod: ArkMethod): ArkClass | ArkField | null {
-        const base = field.getBase(), baseName = base.getName()
+        const base = field.getBase()
+        if (!(base instanceof Local)) {
+            logger.error("field ref base is not local")
+            return
+        }
+        const baseName = base.getName()
         const type = base.getType();
         const fieldName = field.getFieldName();
         let arkClass
