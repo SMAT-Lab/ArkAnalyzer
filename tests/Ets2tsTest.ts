@@ -1,4 +1,5 @@
-import { Ets2ts } from '../src/utils/Ets2ts';
+import { spawnSync } from 'child_process';
+import * as path from 'path';
 import Logger from "../src/utils/logger";
 
 const logger = Logger.getLogger();
@@ -10,12 +11,7 @@ let etsLoaderPath = '/home/sunbo/ArkTS2TS';
 async function run() {
     let startTime = new Date().getTime();
     logger.info('run.');
-    let ets2ts: Ets2ts | undefined = new Ets2ts();
-    logger.info('init.');
-    await ets2ts.init(etsLoaderPath, projectPath, output, 'projectName');
-    logger.info('compile project start.');
-    await ets2ts.compileProject();
-    logger.info('compile project down.');
+    await spawnSync('node', ['-r', 'ts-node/register', path.join(__dirname, '../src/utils/Ets2ts.ts'), etsLoaderPath, projectPath, output, 'projectName', 'ets2ts.log']);
     let endTime = new Date().getTime();
     logger.info(`used time ${(endTime - startTime)/1000} s`);
 }
