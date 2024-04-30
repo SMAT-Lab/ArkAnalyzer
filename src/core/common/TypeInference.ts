@@ -208,7 +208,7 @@ export class TypeInference {
         const base = field.getBase()
         if (!(base instanceof Local)) {
             logger.error("field ref base is not local")
-            return
+            return null
         }
         const baseName = base.getName()
         const type = base.getType();
