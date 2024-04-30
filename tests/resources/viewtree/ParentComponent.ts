@@ -102,6 +102,7 @@ class CountDownComponent extends View {
             Text.create("Game over!");
             Text.pop();
             Image.create('');
+            View.create(new CountDownComponent("2", this, { count: 0, costOfOneAttempt: 2 }));
         }
         If.pop();
         Button.createWithChild();
