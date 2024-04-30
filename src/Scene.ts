@@ -55,8 +55,6 @@ export class Scene {
     private classesMap: Map<ClassSignature, ArkClass> = new Map();
     private methodsMap: Map<MethodSignature, ArkMethod> = new Map();
 
-    // private methods: Map<MethodSignature, ArkMethod> = new Map();
-
     constructor(sceneConfig: SceneConfig) {
         this.projectName = sceneConfig.getTargetProjectName();
         this.projectFiles = sceneConfig.getProjectFiles();
@@ -78,6 +76,10 @@ export class Scene {
         //post actions
 
         this.collectProjectImportInfos();
+    }
+
+    public getRealProjectDir(): string {
+        return this.realProjectDir;
     }
 
     private configImportSdkPrefix() {
