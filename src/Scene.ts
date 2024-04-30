@@ -82,6 +82,10 @@ export class Scene {
         return this.realProjectDir;
     }
 
+    public getProjectName(): string {
+        return this.projectName;
+    }
+
     private configImportSdkPrefix() {
         if (this.ohosSdkPath) {
             updateSdkConfigPrefix("ohos", path.relative(this.realProjectDir, this.ohosSdkPath));
