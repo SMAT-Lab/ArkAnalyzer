@@ -225,6 +225,7 @@ export class ViewTree {
                     let node = new ViewTreeNode(`@BuilderParam`, stmt, expr, this);
                     node.buildParam = methodName;
                     treeStack.push(node);
+                    this.root = treeStack.root;
                     continue;
                 } 
                 treeStack.popAutomicComponent(name);
@@ -239,6 +240,7 @@ export class ViewTree {
                         continue;
                     }
                     treeStack.push(node);
+                    this.root = treeStack.root;
                     if (name == 'ForEach' || name == 'LazyForEach') {
                         await this.parseForEachAnonymousFunc(treeStack, expr);
                     }
