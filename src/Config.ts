@@ -113,8 +113,7 @@ export class SceneConfig {
 
     private getAllFiles() {
         if (this.targetProjectDirectory) {
-            let tmpMap: Map<string, string> = getFiles2PkgMap(this.targetProjectDirectory, '', "\\.ts\$");
-            this.projectFiles = tmpMap;
+            this.projectFiles = getFiles2PkgMap(this.targetProjectDirectory, '', "\\.ts\$");
         }
         else {
             throw new Error('TargetProjectDirectory is wrong.');
@@ -233,8 +232,8 @@ function getFiles2PkgMap(srcPath: string, json5Path: string, fileExt: string, tm
 
     let files2Do: string[] = fs.readdirSync(realSrc);
     files2Do.forEach((fl) => {
-        if (fl == 'ohpackage.json5') {
-            dirJson5 = path.resolve(realSrc, 'ohpackage.json5');
+        if (fl == 'oh-package.json5') {
+            dirJson5 = path.resolve(realSrc, 'oh-package.json5');
         }
     });
     for (let fileName of files2Do) {
