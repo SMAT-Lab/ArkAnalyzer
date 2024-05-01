@@ -451,6 +451,7 @@ export function buildProperty2ArkField(member: ts.PropertyDeclaration | ts.Prope
         modifiers.forEach((modifier) => {
             field.addModifier(modifier);
         });
+        handleAtTypeDecorator(field, member.modifiers, sourceFile);
     }
 
     if ((ts.isPropertyDeclaration(member) || ts.isPropertySignature(member)) && member.type) {
@@ -716,4 +717,28 @@ function tsNode2Value(node: ts.Node, sourceFile: ts.SourceFile): Value {
         logger.warn("Other type found for ts node.");
     }
     return new Constant('', UnknownType.getInstance())
+}
+
+function handleAtTypeDecorator(field: ArkField, modifiers: ts.NodeArray<ts.ModifierLike>, sourceFile: ts.SourceFile) {
+    // const fieldModifiers = [...field.getModifiers()]
+    // for (let i = 0; i < fieldModifiers.length; i++) {
+    //     const fieldModifier = fieldModifiers[i];
+    //     if (fieldModifier == "Type") {
+    //         const memberModifier = member.modifiers![i];
+    //         if (ts.isDecorator(memberModifier) && memberModifier.expression)
+    //             field.setAtTypeDecorator(memberModifier.expression.arguments[0].body.text)
+    //     }
+    // }
+    modifiers.forEach((modifier) => {
+        if (ts.isDecorator(modifier)) {
+            if (modifier.expression) {
+                if (ts.isCallExpression(modifier.expression)) {
+                    const func = modifier.expression.arguments[0] as ts.ArrowFunction;
+                    const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed });
+                    const bodyText = printer.printNode(ts.EmitHint.Unspecified, func.body, sourceFile);
+                    field.setAtTypeDecorator(bodyText);
+                }
+            }
+        }
+    });
 }
