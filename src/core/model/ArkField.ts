@@ -28,6 +28,8 @@ export class ArkField {
     //private initializer, TODO
     private initializer: Value;
 
+    private atTypeDecorator: string = "";
+
     constructor() { }
 
     public getDeclaringClass() {
@@ -204,6 +206,14 @@ export class ArkField {
 
     public getArkMethodSignature() {
         return this.arkMethodSignature;
+    }
+
+    public getAtTypeDecorator(): string {
+        return this.atTypeDecorator;
+    }
+
+    public setAtTypeDecorator(type: string) {
+        this.atTypeDecorator = type;
     }
 
 }

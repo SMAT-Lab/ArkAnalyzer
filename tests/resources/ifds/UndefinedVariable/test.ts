@@ -1,5 +1,6 @@
 import { im } from "./test2";
 export class property{
+    @Type(() => t)
     pp=1;
 }
 
