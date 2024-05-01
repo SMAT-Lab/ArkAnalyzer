@@ -1,0 +1,11 @@
+{
+    "targetProjectName": "transformer",
+    "targetProjectDirectory": "/Users/yangyizhuo/WebstormProjects/ArkAnalyzer/tests/resources/classTransformer/project",
+  
+    "ohosSdkPath": "",
+    "kitSdkPath": "",
+    "systemSdkPath": "",
+    "logPath": "/Users/yangyizhuo/WebstormProjects/ArkAnalyzer/tests/resources/classTransformer/out/log.txt",
+  
+    "otherSdks": []
+  }
