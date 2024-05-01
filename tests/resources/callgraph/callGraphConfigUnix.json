@@ -1,6 +1,6 @@
 {
   "targetProjectName": "project",
-  "targetProjectDirectory": "/Users/yangyizhuo/WebstormProjects/ArkAnalyzer/tests/resources/callgraph/projectTest/applications_photos",
+  "targetProjectDirectory": "/Users/yangyizhuo/WebstormProjects/ArkAnalyzer/tests/resources/callgraph/benchMarks",
 
   "ohosSdkPath": "/Users/yangyizhuo/sdk/openharmony/interface_sdk-js/api",
   "kitSdkPath": "",

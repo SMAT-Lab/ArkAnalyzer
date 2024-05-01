@@ -1,3 +1,9 @@
 class Car {
-    private a: number
+    a: number
+    
+    @Type(() => Bus)
+    b: Bus
+}
+
+class Bus {
 }
