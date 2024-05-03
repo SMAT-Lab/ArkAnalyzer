@@ -17,11 +17,11 @@ function runScene(config: SceneConfig) {
     //     entryPoints.push(method.getSignature())
     // }
     for (let arkFile of projectScene.getFiles()) {
-        if (arkFile.getName() === "example.ts") {
+        if (arkFile.getName() === "testcase_10_method_call.ts") {
             for (let arkClass of arkFile.getClasses()) {
                 if (arkClass.getName() === "_DEFAULT_ARK_CLASS") {
                     for (let arkMethod of arkClass.getMethods()) {
-                        if (arkMethod.getName() === "main") {
+                        if (arkMethod.getName() === "_DEFAULT_ARK_METHOD") {
                             entryPoints.push(arkMethod.getSignature())
                         }
                     }
