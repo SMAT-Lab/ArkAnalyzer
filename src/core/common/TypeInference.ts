@@ -119,6 +119,7 @@ export class TypeInference {
                     logger.warn(`type of base must be ClassType expr: ${expr.toString()}`);
                     continue;
                 }
+                // TODO: 对于taskpool.Task.constructor(), 其base类型为Task类，但是查询为空，导致函数签名无法解析
                 const arkClass = this.scene.getClass(type.getClassSignature());
                 if (arkClass == null) {
                     logger.warn(`class ${type.getClassSignature().getClassName()} does not exist`);
