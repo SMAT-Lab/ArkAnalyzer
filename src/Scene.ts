@@ -316,7 +316,7 @@ export class Scene {
 
     public getClassMap(): Map<FileSignature | NamespaceSignature, ArkClass[]> {
         const classMap: Map<FileSignature | NamespaceSignature, ArkClass[]> = new Map();
-        for (const file of this.arkFiles){
+        for (const file of this.getFiles()){
             const fileClass: ArkClass[] = [];
             const namespaceStack: ArkNamespace[] = [];
             const parentMap: Map<ArkNamespace, ArkNamespace | ArkFile> = new Map();
@@ -376,7 +376,7 @@ export class Scene {
             }
         }
         
-        for (const file of this.arkFiles) {
+        for (const file of this.getFiles()) {
             // 文件加上import的class，包括ns的
             const importClasses: ArkClass[] = [];
             const importNameSpaces: ArkNamespace[] = [];
