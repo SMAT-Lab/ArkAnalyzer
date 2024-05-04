@@ -25,7 +25,7 @@ class ClassTransformer {
 
             fs.writeFile(`${directory}${className}Creator.ts`, content, err => {
                 // TODO: 接入日志
-                console.log(`file ${className}.ts has been created successfully!`);
+                console.log(`file ${className}Creator.ts has been created successfully!`);
             });
         })
     }
