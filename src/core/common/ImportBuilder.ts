@@ -280,7 +280,7 @@ function ohPkgMatch(dependencies: unknown, importFrom: string, ohFilePath: strin
                         if (info != undefined) {
                             let fileName = info.main;
                             if (typeof (fileName) === 'string') {
-                                ohFilePath = path.join(ohFilePath, fileName);
+                                originPath = path.join(originPath, fileName);
                             }
                         }
                     }
