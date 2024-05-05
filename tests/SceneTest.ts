@@ -132,6 +132,6 @@ class SceneTest {
 }
 
 let sceneTest = new SceneTest();
-// sceneTest.testETsWholePipline();
-sceneTest.testTsWholePipline();
+sceneTest.testETsWholePipline();
+// sceneTest.testTsWholePipline();
 // sceneTest.testEtsConfig();
