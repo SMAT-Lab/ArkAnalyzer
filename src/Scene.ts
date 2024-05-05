@@ -1,22 +1,22 @@
 import fs from 'fs';
 import path from 'path';
 
-import {SceneConfig} from './Config';
-import {AbstractCallGraph} from "./callgraph/AbstractCallGraphAlgorithm";
-import {ClassHierarchyAnalysisAlgorithm} from "./callgraph/ClassHierarchyAnalysisAlgorithm";
-import {RapidTypeAnalysisAlgorithm} from "./callgraph/RapidTypeAnalysisAlgorithm";
-import {VariablePointerAnalysisAlogorithm} from './callgraph/VariablePointerAnalysisAlgorithm';
-import {ImportInfo, updateSdkConfigPrefix} from './core/common/ImportBuilder';
-import {ModelUtils} from './core/common/ModelUtils';
-import {TypeInference} from './core/common/TypeInference';
-import {VisibleValue} from './core/common/VisibleValue';
-import {ArkClass} from "./core/model/ArkClass";
-import {ArkFile, buildArkFileFromFile} from "./core/model/ArkFile";
-import {ArkMethod} from "./core/model/ArkMethod";
-import {ArkNamespace} from "./core/model/ArkNamespace";
-import {ClassSignature, FileSignature, MethodSignature, NamespaceSignature} from "./core/model/ArkSignature";
+import { SceneConfig } from './Config';
+import { AbstractCallGraph } from "./callgraph/AbstractCallGraphAlgorithm";
+import { ClassHierarchyAnalysisAlgorithm } from "./callgraph/ClassHierarchyAnalysisAlgorithm";
+import { RapidTypeAnalysisAlgorithm } from "./callgraph/RapidTypeAnalysisAlgorithm";
+import { VariablePointerAnalysisAlogorithm } from './callgraph/VariablePointerAnalysisAlgorithm';
+import { ImportInfo, updateSdkConfigPrefix } from './core/common/ImportBuilder';
+import { ModelUtils } from './core/common/ModelUtils';
+import { TypeInference } from './core/common/TypeInference';
+import { VisibleValue } from './core/common/VisibleValue';
+import { ArkClass } from "./core/model/ArkClass";
+import { ArkFile, buildArkFileFromFile } from "./core/model/ArkFile";
+import { ArkMethod } from "./core/model/ArkMethod";
+import { ArkNamespace } from "./core/model/ArkNamespace";
+import { ClassSignature, FileSignature, MethodSignature, NamespaceSignature } from "./core/model/ArkSignature";
 import Logger from "./utils/logger";
-import {transfer2UnixPath} from './utils/pathTransfer';
+import { transfer2UnixPath } from './utils/pathTransfer';
 import ts from "typescript";
 import nullTypingsInstaller = ts.server.nullTypingsInstaller;
 
@@ -28,7 +28,7 @@ const logger = Logger.getLogger();
  */
 export class Scene {
     private projectName: string = '';
-    private projectFiles: Map<string, string> = new Map<string, string>();
+    private projectFiles: Map<string, string[]> = new Map<string, string[]>();
     private realProjectDir: string;
     private realProjectOriginDir: string;
 
@@ -55,6 +55,8 @@ export class Scene {
     private classesMap: Map<string, ArkClass> = new Map();
     private methodsMap: Map<string, ArkMethod> = new Map();
 
+    private ohPkgContentMap: Map<string, { [k: string]: unknown }> = new Map<string, { [k: string]: unknown }>();
+
     constructor(sceneConfig: SceneConfig) {
         this.projectName = sceneConfig.getTargetProjectName();
         this.projectFiles = sceneConfig.getProjectFiles();
@@ -67,6 +69,7 @@ export class Scene {
         this.sdkFilesProjectMap = sceneConfig.getSdkFilesMap();
 
         this.otherSdkMap = sceneConfig.getOtherSdkMap();
+        this.ohPkgContentMap = sceneConfig.getOhPkgContentMap();
 
         // add sdk reative path to Import builder
         this.configImportSdkPrefix();
@@ -80,6 +83,9 @@ export class Scene {
 
     public getRealProjectDir(): string {
         return this.realProjectDir;
+    }
+    public getRealProjectOriginDir(): string {
+        return this.realProjectOriginDir;
     }
 
     public getProjectName(): string {
@@ -124,9 +130,9 @@ export class Scene {
                 key.forEach((file) => {
                     logger.info('=== parse file:', file);
                     let arkFile: ArkFile = new ArkFile();
+                    arkFile.setScene(this);
                     arkFile.setProjectName(sdkProjectName);
                     buildArkFileFromFile(file, realSdkProjectDir, arkFile);
-                    arkFile.setScene(this);
                     this.sdkArkFilestMap.set(arkFile.getFileSignature().toString(), arkFile);
                 });
             }
@@ -135,10 +141,10 @@ export class Scene {
         this.projectFiles.forEach((value, key) => {
             logger.info('=== parse file:', key);
             let arkFile: ArkFile = new ArkFile();
+            arkFile.setScene(this);
             arkFile.setProjectName(this.projectName);
             arkFile.setOhPackageJson5Path(value);
             buildArkFileFromFile(key, this.realProjectDir, arkFile);
-            arkFile.setScene(this);
             this.filesMap.set(arkFile.getFileSignature().toString(), arkFile);
         });
     }
@@ -229,6 +235,10 @@ export class Scene {
     /** get values that is visible in curr scope */
     public getVisibleValue(): VisibleValue {
         return this.visibleValue;
+    }
+
+    public getOhPkgContentMap(): Map<string, { [k: string]: unknown }> {
+        return this.ohPkgContentMap;
     }
 
     public makeCallGraphCHA(entryPoints: MethodSignature[]): AbstractCallGraph {

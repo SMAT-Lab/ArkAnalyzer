@@ -1,9 +1,10 @@
 import fs from "fs";
 import path from "path";
-import {spawnSync} from 'child_process';
+import { spawnSync } from 'child_process';
 import Logger, { LOG_LEVEL } from "./utils/logger";
-import {removeSync} from "fs-extra";
+import { removeSync } from "fs-extra";
 import { transfer2UnixPath } from "./utils/pathTransfer";
+import { fetchDependenciesFromFile } from "./utils/json5parser";
 
 const logger = Logger.getLogger();
 
@@ -45,10 +46,11 @@ export class SceneConfig {
 
     private sdkFiles: string[] = [];
     private sdkFilesMap: Map<string[], string> = new Map<string[], string>();
-    private projectFiles: Map<string, string> = new Map<string, string>();
+    private projectFiles: Map<string, string[]> = new Map<string, string[]>();
     private logPath: string = "./out/ArkAnalyzer.log";
 
     private hosEtsLoaderPath: string = '';
+    private ohPkgContentMap: Map<string, { [k: string]: unknown }> = new Map<string, { [k: string]: unknown }>();
 
     constructor() { }
 
@@ -113,7 +115,7 @@ export class SceneConfig {
 
     private getAllFiles() {
         if (this.targetProjectDirectory) {
-            this.projectFiles = getFiles2PkgMap(this.targetProjectDirectory, '', "\\.ts\$");
+            this.projectFiles = getFiles2PkgMap(this.targetProjectDirectory, new Array<string>(), this.ohPkgContentMap);
         }
         else {
             throw new Error('TargetProjectDirectory is wrong.');
@@ -185,6 +187,10 @@ export class SceneConfig {
     public getLogPath(): string {
         return this.logPath;
     }
+
+    public getOhPkgContentMap(): Map<string, { [k: string]: unknown }> {
+        return this.ohPkgContentMap;
+    }
 }
 
 function getFiles(srcPath: string, fileExt: string, tmpFiles: string[] = []) {
@@ -217,23 +223,23 @@ function getFiles(srcPath: string, fileExt: string, tmpFiles: string[] = []) {
     return tmpFiles;
 }
 
-function getFiles2PkgMap(srcPath: string, json5Path: string, fileExt: string, tmpMap: Map<string, string> = new Map()) {
-
-    let extReg = new RegExp(fileExt);
-    //let tmpFiles: string[] = [];
+function getFiles2PkgMap(srcPath: string, ohPkgFiles: string[], ohPkgContentMap: Map<string, { [k: string]: unknown }>, tmpMap: Map<string, string[]> = new Map()) {
 
     if (!fs.existsSync(srcPath)) {
         logger.info("Input directory is not exist: ", srcPath);
         return tmpMap;
     }
 
-    let dirJson5: string = json5Path;
     const realSrc = fs.realpathSync(srcPath);
 
     let files2Do: string[] = fs.readdirSync(realSrc);
+    let ohPkgFilesOfThisDir: string[] = [];
+    ohPkgFilesOfThisDir.push(...ohPkgFiles);
     files2Do.forEach((fl) => {
         if (fl == 'oh-package.json5') {
-            dirJson5 = path.resolve(realSrc, 'oh-package.json5');
+            let dirJson5 = path.resolve(realSrc, 'oh-package.json5');
+            ohPkgFilesOfThisDir.push(dirJson5);
+            ohPkgContentMap.set(dirJson5, fetchDependenciesFromFile(dirJson5));
         }
     });
     for (let fileName of files2Do) {
@@ -243,10 +249,11 @@ function getFiles2PkgMap(srcPath: string, json5Path: string, fileExt: string, tm
         const realFile = path.resolve(realSrc, fileName);
 
         if (fs.statSync(realFile).isDirectory()) {
-            getFiles2PkgMap(realFile, dirJson5, fileExt, tmpMap);
+            getFiles2PkgMap(realFile, ohPkgFilesOfThisDir, ohPkgContentMap, tmpMap);
         } else {
+            const extReg = new RegExp("\\.ts\$");
             if (extReg.test(realFile)) {
-                tmpMap.set(realFile, dirJson5);
+                tmpMap.set(realFile, ohPkgFilesOfThisDir);
             }
         }
     }

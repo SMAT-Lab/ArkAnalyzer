@@ -1,15 +1,15 @@
 import fs from 'fs';
 import path from 'path';
-import sourceMap, {BasicSourceMapConsumer} from 'source-map';
-import {Scene} from '../../Scene';
-import {ASTree, NodeA} from "../base/Ast";
-import {ExportInfo} from '../common/ExportBuilder';
-import {ImportInfo} from '../common/ImportBuilder';
-import {ArkClass, buildDefaultArkClassFromArkFile, buildNormalArkClassFromArkFile} from "./ArkClass";
-import {ArkMethod, arkMethodNodeKind, buildArkMethodFromArkClass} from "./ArkMethod";
-import {ArkNamespace, buildArkNamespace} from "./ArkNamespace";
-import {ClassSignature, FileSignature, MethodSignature, NamespaceSignature} from "./ArkSignature";
-import {LineColPosition} from '../base/Position';
+import sourceMap, { BasicSourceMapConsumer } from 'source-map';
+import { Scene } from '../../Scene';
+import { ASTree, NodeA } from "../base/Ast";
+import { ExportInfo } from '../common/ExportBuilder';
+import { ImportInfo } from '../common/ImportBuilder';
+import { ArkClass, buildDefaultArkClassFromArkFile, buildNormalArkClassFromArkFile } from "./ArkClass";
+import { ArkMethod, arkMethodNodeKind, buildArkMethodFromArkClass } from "./ArkMethod";
+import { ArkNamespace, buildArkNamespace } from "./ArkNamespace";
+import { ClassSignature, FileSignature, MethodSignature, NamespaceSignature } from "./ArkSignature";
+import { LineColPosition } from '../base/Position';
 
 export const notStmtOrExprKind = ['ModuleDeclaration', 'ClassDeclaration', 'InterfaceDeclaration', 'EnumDeclaration', 'ExportDeclaration',
     'ExportAssignment', 'MethodDeclaration', 'Constructor', 'FunctionDeclaration', 'GetAccessor', 'SetAccessor', 'ArrowFunction',
@@ -41,7 +41,7 @@ export class ArkFile {
 
     private sourceMap: sourceMap.SourceMapConsumer;
 
-    private ohPackageJson5Path: string = '';
+    private ohPackageJson5Path: string[] = [];
 
     constructor() {
     }
@@ -152,7 +152,7 @@ export class ArkFile {
         return this.projectName;
     }
 
-    public setOhPackageJson5Path(ohPackageJson5Path: string) {
+    public setOhPackageJson5Path(ohPackageJson5Path: string[]) {
         this.ohPackageJson5Path = ohPackageJson5Path;
     }
 

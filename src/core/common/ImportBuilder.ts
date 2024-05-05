@@ -1,8 +1,10 @@
 import * as ts from "typescript";
 import path from 'path';
-import {transfer2UnixPath} from "../../utils/pathTransfer";
-import {ArkFile} from "../model/ArkFile";
-import {FieldSignature, FileSignature} from "../model/ArkSignature";
+import fs from 'fs';
+import { transfer2UnixPath } from "../../utils/pathTransfer";
+import { ArkFile } from "../model/ArkFile";
+import { FieldSignature, FileSignature } from "../model/ArkSignature";
+import { Scene } from "../../Scene";
 
 var sdkPathMap: Map<string, string> = new Map();
 
@@ -72,6 +74,7 @@ export class ImportInfo {
             importFromSignature.setFileName(tmpSig1);
             importFromSignature.setProjectName(this.declaringArkFile.getProjectName());
             this.importFromSignature = importFromSignature;
+            return;
         }
 
         // external imports, e.g. @ohos., @kit., @System., @ArkAnalyzer/
@@ -83,6 +86,7 @@ export class ImportInfo {
                     this.setImportProjectType("SDKProject");
                     let tmpSig = '@' + key + '/' + this.importFrom + ': ';
                     this.importFromSignature = tmpSig;
+                    return;
                 }
             }
             // e.g. @ArkAnalyzer/
@@ -91,11 +95,24 @@ export class ImportInfo {
                 if (pathReg3.test(this.importFrom)) {
                     this.setImportProjectType("SDKProject");
                     this.importFromSignature = this.importFrom + ': ';
+                    return;
                 }
             }
         });
-        //third part npm package
-        //TODO
+        // path map
+        // start with '@', but not in sdk, defined in oh-package.json5
+        const ohPkgReg = new RegExp('^@');
+        if (ohPkgReg.test(this.importFrom)) {
+            let originImportPath: string = getOriginPath(this.importFrom, this.declaringArkFile);
+            if (originImportPath != '') {
+                this.setImportProjectType("TargetProject");
+                const relativeImportPath: string = path.relative(this.projectPath, originImportPath);
+                importFromSignature.setFileName(relativeImportPath);
+                importFromSignature.setProjectName(this.declaringArkFile.getProjectName());
+                this.importFromSignature = importFromSignature.toString();
+                return;
+            }
+        }
     }
 
     public getImportClauseName() {
@@ -224,4 +241,55 @@ function buildImportEqualsDeclarationNode(node: ts.ImportEqualsDeclaration): Imp
         importInfos.push(importInfo);
     }
     return importInfos;
+}
+
+function getOriginPath(importFrom: string, arkFile: ArkFile) {
+    let res = '';
+    const scene: Scene = arkFile.getScene();
+    const ohPkgFiles: string[] = arkFile.getOhPackageJson5Path();
+    for (let i = ohPkgFiles.length - 1; i >= 0; i--) {
+        let ohPkgContentMap = scene.getOhPkgContentMap();
+        let info = ohPkgContentMap.get(ohPkgFiles[i]);
+        if (info != undefined) {
+            return ohPkgMatch(info.dependencies, importFrom, ohPkgFiles[i], ohPkgContentMap);
+        }
+    }
+    return res;
+}
+
+function ohPkgMatch(dependencies: unknown, importFrom: string, ohFilePath: string,
+    ohPkgContentMap: Map<string, { [k: string]: unknown }>): string {
+    let originPath = '';
+    if (!fs.statSync(ohFilePath).isDirectory()) {
+        ohFilePath = path.dirname(ohFilePath);
+    }
+    if (dependencies instanceof Object) {
+        Object.entries(dependencies).forEach(([k, v]) => {
+            if (importFrom.startsWith(k)) {
+                const pattern = new RegExp("^(\\.\\.\\/\|\\.\\/)");
+                if (typeof (v) === 'string') {
+                    if (pattern.test(v)) {
+                        originPath = path.join(ohFilePath, v);
+                    }
+                    else if (v.startsWith('file:')) {
+                        originPath = path.join(ohFilePath, v.replace(/^file:/, ''));
+                    }
+                    // check originPath: file? dir? hap? etc.
+                    if ((originPath != '') && (fs.statSync(originPath).isDirectory())) {
+                        let info = ohPkgContentMap.get(path.join(originPath, 'oh-package.json5'));
+                        if (info != undefined) {
+                            let fileName = info.main;
+                            if (typeof (fileName) === 'string') {
+                                ohFilePath = path.join(ohFilePath, fileName);
+                            }
+                        }
+                    }
+                    else if (path.extname(originPath) == '.hap') {
+                        originPath = '';
+                    }
+                }
+            }
+        });
+    }
+    return originPath;
 }
