@@ -78,7 +78,7 @@ export class TypeInference {
             } else if (expr instanceof ArkInstanceInvokeExpr) {
                 const base = expr.getBase();
                 if (!(base instanceof Local)) {
-                    logger.error("invoke expr base is not local")
+                    logger.warn("invoke expr base is not local")
                     continue
                 }
                 let type = base.getType();
@@ -207,7 +207,7 @@ export class TypeInference {
     private handleClassField(field: ArkInstanceFieldRef, arkMethod: ArkMethod): ArkClass | ArkField | null {
         const base = field.getBase()
         if (!(base instanceof Local)) {
-            logger.error("field ref base is not local")
+            logger.warn("field ref base is not local")
             return null
         }
         const baseName = base.getName()
