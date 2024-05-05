@@ -4,22 +4,12 @@ import path from 'path';
 import Logger from './logger';
 const logger = Logger.getLogger();
 
-export function fetchDependenciesFromFile(filePath: string): Map<string, string> {
-    const map: Map<string, string> = new Map();
+export function fetchDependenciesFromFile(filePath: string): { [k: string]: unknown } {
     if (!fs.existsSync(filePath)) {
-        return map;
+        return {};
     }
-    const dependencies = parseJsonText(fs.readFileSync(filePath, 'utf-8')).dependencies;
-    if (dependencies instanceof Object) {
-        Object.entries(dependencies).forEach(([key, value]) => {
-            const item: string = (value as string);
-            const start: number = item.indexOf('..');
-            if (start > -1) {
-                map.set(key, path.resolve(filePath, item.substring(start)))
-            }
-        });
-    }
-    return map;
+    const file = parseJsonText(fs.readFileSync(filePath, 'utf-8'));
+    return file;
 }
 
 export function parseJsonText(text: string): { [k: string]: unknown } {
