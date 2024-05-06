@@ -57,4 +57,19 @@ describe("ViewTree Test", () => {
         expect(root.children[0].children[0].children[0].name).equals('@BuilderParam');
         expect(root.children[0].children[0].children[0].buildParam).equals('SurfaceComponent');
     })
+
+    it('test __Common__', async () => {
+        let arkFile =  scene.getFiles().find(file => file.getName() == 'ControlCenterComponent.ts');
+        let arkClass = arkFile?.getClassWithName('OutComponent');
+        if (arkClass == null) {
+            assert.isNotNull(arkClass);
+            return;
+        }
+        let vt = await arkClass.getViewTree();
+        vt.buildViewTree();
+      
+        let root = vt.getRoot();
+        expect(root.name).equals('__Common__');
+        expect(root.children[0].name).equals('View');
+    })
 })
