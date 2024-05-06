@@ -10,6 +10,7 @@ import Logger, { LOG_LEVEL } from "../../utils/logger";
 import { LineColPosition } from "../base/Position";
 import { ObjectLiteralExpr } from "../base/Expr";
 import { FileSignature,NamespaceSignature } from "./ArkSignature";
+import { Local } from "../base";
 
 const logger = Logger.getLogger();
 
@@ -275,6 +276,14 @@ export class ArkClass {
             }
         }
         return fields;
+    }
+
+    public getGlobalVariable(globalMap: Map<FileSignature | NamespaceSignature, Local[]>): Local[] {
+        let locals: Local[] = [];
+        if (this.declaringArkNamespace) {
+            return globalMap.get(this.declaringArkNamespace.getNamespaceSignature())!;
+        }
+        return globalMap.get(this.declaringArkFile.getFileSignature())!;
     }
 }
 

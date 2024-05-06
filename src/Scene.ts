@@ -18,6 +18,7 @@ import { ClassSignature, FileSignature, MethodSignature, NamespaceSignature } fr
 import Logger from "./utils/logger";
 import { transfer2UnixPath } from './utils/pathTransfer';
 import ts from "typescript";
+import { Local } from './core/base';
 import nullTypingsInstaller = ts.server.nullTypingsInstaller;
 
 const logger = Logger.getLogger();
@@ -426,5 +427,45 @@ export class Scene {
             }
         }
         return classMap;
+    }
+
+    public getGlobalVariableMap(): Map<FileSignature | NamespaceSignature, Local[]> {
+        const globalVariableMap: Map<FileSignature | NamespaceSignature, Local[]> = new Map();
+        for (const file of this.getFiles()) {
+            const globalLocals: Local[] = [];
+            for (const local of file.getDefaultClass().getDefaultArkMethod()!.getBody().getLocals()) {
+                if (local.getName() != "this" && local.getName()[0] != "$") {
+                    globalLocals.push(local);
+                }
+            }
+            globalVariableMap.set(file.getFileSignature(), globalLocals);
+        }
+        for (const file of this.getFiles()) {
+            for (const ns of file.getNamespaces()) {
+                const globalLocals: Local[] = [];
+                for (const local of ns.getDefaultClass().getDefaultArkMethod()!.getBody().getLocals()) {
+                    if (local.getName() != "this" && local.getName()[0] != "$") {
+                        globalLocals.push(local);
+                    }
+                }
+                globalLocals.push(...globalVariableMap.get(file.getFileSignature())!);
+                globalVariableMap.set(ns.getNamespaceSignature(), globalLocals);
+            }
+            const namespaceStack = [...file.getNamespaces()];
+            while (namespaceStack.length > 0) {
+                const ns = namespaceStack.shift()!;
+                for (const nsns of ns.getNamespaces()) {
+                    const globalLocals: Local[] = [];
+                    for (const local of nsns.getDefaultClass().getDefaultArkMethod()!.getBody().getLocals()) {
+                        if (local.getName() != "this" && local.getName()[0] != "$") {
+                            globalLocals.push(local);
+                        }
+                    }
+                    globalLocals.push(...globalVariableMap.get(ns.getNamespaceSignature())!);
+                    globalVariableMap.set(ns.getNamespaceSignature(), globalLocals);
+                }
+            }
+        }
+        return globalVariableMap;
     }
 }

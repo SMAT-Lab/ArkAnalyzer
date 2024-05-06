@@ -24,12 +24,14 @@ export class UndefinedVariableChecker extends DataflowProblem<Value> {
     entryMethod: ArkMethod;
     scene: Scene;
     classMap: Map<FileSignature | NamespaceSignature, ArkClass[]>;
+    globalVariableMap: Map<FileSignature | NamespaceSignature, Local[]>;
     constructor(stmt: Stmt, method: ArkMethod){
         super();
         this.entryPoint = stmt;
         this.entryMethod = method;
         this.scene = method.getDeclaringArkFile().getScene();
-        this.classMap = this.scene.getClassMap()
+        this.classMap = this.scene.getClassMap();
+        this.globalVariableMap = this.scene.getGlobalVariableMap();
     }
 
     getEntryPoint() : Stmt {
@@ -73,47 +75,14 @@ export class UndefinedVariableChecker extends DataflowProblem<Value> {
                                 ret.add(new ArkStaticFieldRef(field.getSignature()));
                             }
                         }
-                        // const file = entryMethod.getDeclaringArkFile();
-                        // const classes = file.getClasses();
-                        // for (const importInfo of file.getImportInfos()){
-                        //     const importClass = ModelUtils.getClassWithName(importInfo.getImportClauseName(), entryMethod);
-                        //     if (importClass && !classes.includes(importClass)) {
-                        //         classes.push(importClass);
-                        //     }
-                        // }
-                        // const nameSpaces = file.getNamespaces();
-                        // for (const importInfo of file.getImportInfos()){
-                        //     const importNameSpace = ModelUtils.getClassWithName(importInfo.getImportClauseName(), entryMethod);
-                        //     if (importNameSpace && !classes.includes(importNameSpace)) {
-                        //         classes.push(importNameSpace);
-                        //     }
-                        // }
-                        // while (nameSpaces.length > 0) {
-                        //     const nameSpace = nameSpaces.pop()!;
-                        //     for (const exportInfo of nameSpace.getExportInfos()) {
-                        //         const clas = ModelUtils.getClassInNamespaceWithName(exportInfo.getExportClauseName(), nameSpace);
-                        //         if (clas && !classes.includes(clas)) {
-                        //             classes.push(clas);
-                        //             continue;
-                        //         }
-                        //         const ns = ModelUtils.getNamespaceInNamespaceWithName(exportInfo.getExportClauseName(), nameSpace);
-                        //         if (ns && !nameSpaces.includes(ns)) {
-                        //             nameSpaces.push(ns);
-                        //         }
-                        //     }
-                        // }
-                        // for (const arkClass of classes) {
-                        //     for (const field of arkClass.getFields()) {
-                        //         if (field.isStatic() && field.getInitializer() == undefined) {
-                        //             ret.add(new ArkStaticFieldRef(field.getSignature()));
-                        //         }
-                        //     }
-                        // }
-
+                        for (const local of entryMethod.getDeclaringArkClass().getGlobalVariable(checkerInstance.globalVariableMap)) {
+                            ret.add(local);
+                        }
                         return ret;
                     } 
                     if (!factEqual(srcStmt.getDef(), dataFact)) {
-                        ret.add(dataFact);
+                        if (!(dataFact instanceof Local && dataFact.getName() == srcStmt.getDef()!.toString()))
+                            ret.add(dataFact);
                     } 
                     if (srcStmt instanceof ArkAssignStmt ) {
                         let ass: ArkAssignStmt = (srcStmt as ArkAssignStmt);
@@ -127,7 +96,7 @@ export class UndefinedVariableChecker extends DataflowProblem<Value> {
                             ret.add(assigned);
                         } else if (rightOp instanceof ArkInstanceFieldRef) {
                             const base = rightOp.getBase();
-                            if (base == dataFact){
+                            if (base == dataFact || !base.getDeclaringStmt()){
                                 console.log("undefined base")
                                 console.log(srcStmt.toString());
                                 console.log(srcStmt.getOriginPositionInfo());
@@ -156,6 +125,9 @@ export class UndefinedVariableChecker extends DataflowProblem<Value> {
                             ret.add(new ArkStaticFieldRef(field.getSignature()));
                         }
                     }
+                    for (const local of method.getDeclaringArkClass().getGlobalVariable(checkerInstance.globalVariableMap)) {
+                        ret.add(local);
+                    }
                 }
                 else {
                     const callExpr = srcStmt.getExprs()[0];
@@ -163,7 +135,7 @@ export class UndefinedVariableChecker extends DataflowProblem<Value> {
                         // todo:base转this
                         const baseType = callExpr.getBase().getType() as ClassType;
                         const arkClass = checkerInstance.scene.getClass(baseType.getClassSignature());
-                        const constructor = ModelUtils.getMethodInClassWithName("constructor", arkClass!);
+                        const constructor = arkClass?.getMethodWithName("constructor");
                         const block = [...constructor!.getCfg().getBlocks()][0];
                         for (const stmt of block.getStmts()){
                             const def = stmt.getDef()
