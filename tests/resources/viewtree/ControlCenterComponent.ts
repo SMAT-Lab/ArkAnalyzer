@@ -1,3 +1,7 @@
+interface OutComponent_Params {
+}
+interface SubComponent_Params {
+}
 interface ControlCenterSimpleToggleLayout_Params {
     mColumnCount?: number;
     mSimpleToggleLayout?: string[];
@@ -421,5 +425,50 @@ class ControlCenterSimpleToggleLayout extends View {
             rowsTemplate += ' 1fr';
         }
         return rowsTemplate;
+    }
+}
+class SubComponent extends View {
+    constructor(compilerAssignedUniqueChildId, parent, params, localStorage) {
+        super(compilerAssignedUniqueChildId, parent, localStorage);
+        this.updateWithValueParams(params);
+    }
+    updateWithValueParams(params: SubComponent_Params) {
+    }
+    aboutToBeDeleted() {
+        SubscriberManager.Get().delete(this.id());
+    }
+    render() {
+        Column.create();
+        Text.create('Inner Text');
+        Text.pop();
+        Column.pop();
+    }
+}
+class OutComponent extends View {
+    constructor(compilerAssignedUniqueChildId, parent, params, localStorage) {
+        super(compilerAssignedUniqueChildId, parent, localStorage);
+        this.updateWithValueParams(params);
+    }
+    updateWithValueParams(params: OutComponent_Params) {
+    }
+    aboutToBeDeleted() {
+        SubscriberManager.Get().delete(this.id());
+    }
+    render() {
+        __Common__.create();
+        __Common__.width(100);
+        __Common__.height(200);
+        let earlierCreatedChild_6: SubComponent = (this && this.findChildById) ? this.findChildById("6") as SubComponent : undefined;
+        if (earlierCreatedChild_6 == undefined) {
+            View.create(new SubComponent("6", this, {}));
+        }
+        else {
+            earlierCreatedChild_6.updateWithValueParams({});
+            if (!earlierCreatedChild_6.needsUpdate()) {
+                earlierCreatedChild_6.markStatic();
+            }
+            View.create(earlierCreatedChild_6);
+        }
+        __Common__.pop();
     }
 }

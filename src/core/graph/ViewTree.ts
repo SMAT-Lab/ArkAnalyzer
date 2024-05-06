@@ -3,7 +3,7 @@ import { ArkInstanceInvokeExpr, ArkNewExpr } from '../base/Expr';
 import { Local } from '../base/Local';
 import { ArkInstanceFieldRef } from '../base/Ref';
 import { ArkAssignStmt, ArkInvokeStmt, Stmt } from '../base/Stmt';
-import { AnyType, CallableType, ClassType, PrimitiveType, Type, UnclearReferenceType } from '../base/Type';
+import { CallableType, ClassType, Type } from '../base/Type';
 import { ArkMethod } from '../model/ArkMethod';
 import { ClassSignature, MethodSignature } from '../model/ArkSignature';
 import { Cfg } from './Cfg';
@@ -19,7 +19,7 @@ export const BUILDIN_CONTAINER_COMPONENT: Set<string> = new Set([
     'Section', 'Select', 'Shape', 'Sheet', 'SideBarContainer', 'Stack', 'Stepper', 'StepperItem', 'Swiper', 
     'Tabs', 'TabContent', 'Text', 'TextPicker', 'TextTimer', 'TextClock', 'TimePicker', 'Toggle', 'WaterFlow', 
     'WindowScene', 'XComponent', 
-    'ForEach', 'LazyForEach', 'If', 'IfBranch' 
+    'ForEach', 'LazyForEach', 'If', 'IfBranch', '__Common__'
     ]);
 
 const COMPONENT_CREATE_FUNCTION: Set<string> = new Set(['create', 'createWithChild', 'createWithLabel', 'branchId']);
