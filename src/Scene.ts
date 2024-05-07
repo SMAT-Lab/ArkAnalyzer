@@ -90,7 +90,7 @@ export class Scene {
 
     private configImportSdkPrefix() {
         if (this.etsSdkPath) {
-            updateSdkConfigPrefix("ohos", path.relative(this.realProjectDir, this.etsSdkPath));
+            updateSdkConfigPrefix("etsSdk", path.relative(this.realProjectDir, this.etsSdkPath));
         }
         if (this.otherSdkMap) {
             this.otherSdkMap.forEach((value, key) => {
