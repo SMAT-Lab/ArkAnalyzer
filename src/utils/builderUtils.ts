@@ -411,18 +411,15 @@ export function buildProperty2ArkField(member: ts.PropertyDeclaration | ts.Prope
     field.setOriginPosition(LineColPosition.buildFromNode(member, sourceFile));
 
     // construct initializer
-    if (ts.isPropertyDeclaration(member) || ts.isEnumMember(member)) {
+    if (ts.isPropertyDeclaration(member) || ts.isPropertyAssignment(member) || ts.isEnumMember(member)) {
         if (member.initializer) {
             field.setInitializer(tsNode2Value(member.initializer, sourceFile));
         }
-    }
-
-    if (ts.isShorthandPropertyAssignment(member)) {
+    } else if (ts.isShorthandPropertyAssignment(member)) {
         if (member.objectAssignmentInitializer) {
             field.setInitializer(tsNode2Value(member.objectAssignmentInitializer, sourceFile));
         }
-    }
-    if (ts.isSpreadAssignment(member)) {
+    } else if (ts.isSpreadAssignment(member)) {
         field.setInitializer(tsNode2Value(member.expression, sourceFile));
     }
 
@@ -712,7 +709,7 @@ function tsNode2Value(node: ts.Node, sourceFile: ts.SourceFile): Value {
         arkMethods.forEach((mtd) => {
             arkClass.addMethod(mtd);
         });
-
+        arkClass.addFields(arkFields);
         return new ObjectLiteralExpr(arkClass, classType);
     }
     else {

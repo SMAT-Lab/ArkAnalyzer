@@ -19,7 +19,7 @@ describe("SourceUtils.typeToString Test", () => {
         }
         let type = new ty.TypeLiteralType();
         type.setMembers(arkClass.getFields());
-        assert.equal(SourceUtils.typeToString(type), "{_name:string,undefined,name:string,undefined}");
+        assert.equal(SourceUtils.typeToString(type), "{name:undefined}");
     })
 
     it('Array case', () => {
