@@ -4,9 +4,7 @@
 
     "logPath": "./log/ArkAnalyzer.log",
     
-    "ohosSdkPath": "",
-    "kitSdkPath": "",
-    "systemSdkPath": "",
+    "etsSdkPath": "",
     
     "otherSdks": [
         {

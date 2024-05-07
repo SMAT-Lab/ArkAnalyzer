@@ -4,9 +4,7 @@
 
     "logPath": "C:\\msys64\\home\\Yifei\\log\\ArkAnalyzer.log",
     
-    "ohosSdkPath": "C:\\msys64\\home\\Yifei\\code\\openharmony\\interface\\sdk-js\\api",
-    "kitSdkPath": "C:\\msys64\\home\\Yifei\\code\\openharmony\\interface\\sdk-js\\kits",
-    "systemSdkPath": "",
+    "etsSdkPath": "C:\\msys64\\home\\Yifei\\code\\openharmony\\interface\\sdk-js\\",
     
     "otherSdks": [
         {

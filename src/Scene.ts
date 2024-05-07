@@ -39,10 +39,7 @@ export class Scene {
     private extendedClasses: Map<string, ArkClass[]> = new Map();
     private globalImportInfos: ImportInfo[] = [];
 
-    private ohosSdkPath: string;
-    private kitSdkPath: string;
-    private systemSdkPath: string;
-
+    private etsSdkPath: string;
     private otherSdkMap: Map<string, string>;
 
     private sdkFilesProjectMap: Map<string[], string> = new Map<string[], string>();
@@ -64,9 +61,7 @@ export class Scene {
         this.realProjectDir = fs.realpathSync(sceneConfig.getTargetProjectDirectory());
         this.realProjectOriginDir = fs.realpathSync(sceneConfig.getTargetProjectOriginDirectory());
 
-        this.ohosSdkPath = sceneConfig.getOhosSdkPath();
-        this.kitSdkPath = sceneConfig.getKitSdkPath();
-        this.systemSdkPath = sceneConfig.getSystemSdkPath();
+        this.etsSdkPath = sceneConfig.getEtsSdkPath();
         this.sdkFilesProjectMap = sceneConfig.getSdkFilesMap();
 
         this.otherSdkMap = sceneConfig.getOtherSdkMap();
@@ -94,14 +89,8 @@ export class Scene {
     }
 
     private configImportSdkPrefix() {
-        if (this.ohosSdkPath) {
-            updateSdkConfigPrefix("ohos", path.relative(this.realProjectDir, this.ohosSdkPath));
-        }
-        if (this.kitSdkPath) {
-            updateSdkConfigPrefix("kit", path.relative(this.realProjectDir, this.kitSdkPath));
-        }
-        if (this.systemSdkPath) {
-            updateSdkConfigPrefix("system", path.relative(this.realProjectDir, this.systemSdkPath));
+        if (this.etsSdkPath) {
+            updateSdkConfigPrefix("ohos", path.relative(this.realProjectDir, this.etsSdkPath));
         }
         if (this.otherSdkMap) {
             this.otherSdkMap.forEach((value, key) => {
@@ -115,12 +104,8 @@ export class Scene {
             if (key.length != 0) {
                 const sdkProjectName = value;
                 let realSdkProjectDir = "";
-                if (sdkProjectName == "ohos") {
-                    realSdkProjectDir = fs.realpathSync(this.ohosSdkPath);
-                } else if (sdkProjectName == "kit") {
-                    realSdkProjectDir = fs.realpathSync(this.kitSdkPath);
-                } else if (sdkProjectName == "system") {
-                    realSdkProjectDir = fs.realpathSync(this.systemSdkPath);
+                if (sdkProjectName == "etsSdk") {
+                    realSdkProjectDir = fs.realpathSync(this.etsSdkPath);
                 } else {
                     let sdkPath = this.otherSdkMap.get(value);
                     if (sdkPath) {
