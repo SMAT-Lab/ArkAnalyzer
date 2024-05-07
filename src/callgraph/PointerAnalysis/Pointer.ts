@@ -66,7 +66,7 @@ export abstract class Pointer {
     }
 }
 
-export class LocalPointer extends Pointer{
+export class LocalPointer extends Pointer {
     private identifier: Value // 用于表示指针集的唯一归属
 
     constructor(identifier: Value) {
@@ -80,19 +80,19 @@ export class LocalPointer extends Pointer{
 
     public toString() {
         let resultString = "[LocalPointer] "
-        resultString += (this.getIdentifier() as Local).getName()+" pointer: {"
+        resultString += this.getIdentifier().toString() + " pointer: {"
         const pointerTargets = this.getAllPointerTargets()
         for (let pointerTarget of pointerTargets) {
-            resultString += " "+pointerTarget.getType()+"."+pointerTarget.getLocation()
+            resultString += " " + pointerTarget.getType() + "." + pointerTarget.getLocation()
         }
         return resultString + "}"
     }
 }
 
- /**
-  * TODO: 需要考虑在调用类的属性的时候如何将同一个类的不同实例区分开
-  * 目前想法是让InstanceFieldPointer的标识符属性改成LocalPointer，这样能够区分具体构造位置
-  */
+/**
+ * TODO: 需要考虑在调用类的属性的时候如何将同一个类的不同实例区分开
+ * 目前想法是让InstanceFieldPointer的标识符属性改成LocalPointer，这样能够区分具体构造位置
+ */
 
 export class InstanceFieldPointer extends Pointer {
     // private identifier: Value // 用于表示指针集的唯一归属
@@ -116,10 +116,10 @@ export class InstanceFieldPointer extends Pointer {
     public toString() {
         let resultString = "[InstanceFieldPointer] "
         resultString += this.getBasePointerTarget().getType()
-            +"."+this.fieldSignature.getFieldName()+" pointer: {"
+            + "." + this.fieldSignature.getFieldName() + " pointer: {"
         const pointerTargets = this.getAllPointerTargets()
         for (let pointerTarget of pointerTargets) {
-            resultString += " "+pointerTarget.getType()+"."+pointerTarget.getLocation()
+            resultString += " " + pointerTarget.getType() + "." + pointerTarget.getLocation()
         }
         return resultString + "}"
     }
@@ -139,11 +139,11 @@ export class StaticFieldPointer extends Pointer {
 
     public toString() {
         let resultString = "[StaticFieldPointer] "
-        resultString += this.fieldSignature.getDeclaringClassSignature().getClassName()+"."
-            +this.fieldSignature.getFieldName()+" pointer: {"
+        resultString += this.fieldSignature.getDeclaringClassSignature().getClassName() + "."
+            + this.fieldSignature.getFieldName() + " pointer: {"
         const pointerTargets = this.getAllPointerTargets()
         for (let pointerTarget of pointerTargets) {
-            resultString += " "+pointerTarget.getType()+"."+pointerTarget.getLocation()
+            resultString += " " + pointerTarget.getType() + "." + pointerTarget.getLocation()
         }
         return resultString + "}"
     }

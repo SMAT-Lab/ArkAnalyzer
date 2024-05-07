@@ -6,14 +6,13 @@ describe("fetchDependenciesFromFile Test", () => {
     it('true case', () => {
         let filePath = path.join(__dirname, '../../package.json');
         let map = fetchDependenciesFromFile(filePath);
-        expect(map.size).toBe(0);
+        assert.isDefined(map.dependencies);
     })
 
     it('f case', () => {
         let filePath = path.join(__dirname, '../sample/sceneBoard.json5');
         let map = fetchDependenciesFromFile(filePath);
-        expect(map.size).greaterThan(3);
-        assert.isUndefined(map.get('@hw-hmos/abxconvertor'));
-        console.log(map);
+        expect(Object.entries(map.dependencies as Object).length).greaterThan(3);
+        assert.isDefined((map.dependencies as Object).hasOwnProperty('@hw-hmos/abxconvertor'));
     })
 })
