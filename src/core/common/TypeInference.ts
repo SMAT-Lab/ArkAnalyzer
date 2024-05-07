@@ -282,6 +282,8 @@ export class TypeInference {
                             } else {
                                 leftOp.setType(new ClassType(classSignature))
                             }
+                        } else {
+                            leftOp.setType(rightOpType)
                         }
                     } else {
                         leftOp.setType(rightOp.getType());

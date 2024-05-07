@@ -31,25 +31,32 @@ function runScene(config: SceneConfig) {
     }
     
     projectScene.inferTypes()
-    // for (let arkFile of projectScene.arkFiles) {
-    //     if (arkFile.getName() === "testcase_5_method_call.ts") {
-    //         for (let arkClass of arkFile.getAllClassesUnderThisFile()) {
-    //             if (arkClass.getName() === "_DEFAULT_ARK_CLASS") {
+    // for (let arkFile of projectScene.getFiles()) {
+    //     if (arkFile.getName() === "testcase_24_import.ts") {
+    //         let locals = 0, methods = 0
+    //         for (let arkClass of arkFile.getClasses()) {
+    //             // if (arkClass.getName() === "_DEFAULT_ARK_CLASS") {
     //                 for (let arkMethod of arkClass.getMethods()) {
-    //                     if (arkMethod.getName() === "_DEFAULT_ARK_METHOD") {
+    //                     console.log("=========method========: "+arkMethod.getName())
+    //                     // if (arkMethod.getName() === "main") {
+    //                         console.log("\nLocals:")
     //                         for (let local of arkMethod.getBody().getLocals()) {
     //                             console.log(local.getName() + ": "+local.getType().toString())
+    //                             locals ++
     //                         }
-    //                         console.log("\nmethod signature:\n")
+    //                         console.log("\nmethod signature:")
     //                         for (let stmt of arkMethod.getBody().getCfg().getStmts()) {
     //                             if (stmt.containsInvokeExpr()) {
     //                                 console.log(stmt.getInvokeExpr()?.getMethodSignature().toString())
+    //                                 methods ++
     //                             }
     //                         }
-    //                     }
+    //                     // }
     //                 }
-    //             }
+    //             // }
     //         }
+    //         console.log("locals: "+locals)
+    //         console.log("methods: "+methods)
     //     }
     // }
     let callGraph = projectScene.makeCallGraphCHA(entryPoints)

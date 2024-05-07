@@ -2,8 +2,10 @@
 // 8/8
 // 4/4
 // testcase_6_method_call.ts
+// 6(0)/6
 
 import { Cat, Dog } from "./lib/a";
+console.log("Default_Method")
 
 let num = Cat.getNum()
 let cat = new Cat()

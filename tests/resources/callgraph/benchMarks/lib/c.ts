@@ -13,6 +13,8 @@ export class MacDonlad {
     public static num: Dog
 
     constructor() {
+        console.log("MacDonlad.constructor(){")
         this.dog = new Dog()
+        console.log("}")
     }
 }
