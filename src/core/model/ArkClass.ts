@@ -10,7 +10,7 @@ import Logger, { LOG_LEVEL } from "../../utils/logger";
 import { LineColPosition } from "../base/Position";
 import { ObjectLiteralExpr } from "../base/Expr";
 import { FileSignature,NamespaceSignature } from "./ArkSignature";
-import { Local } from "../base";
+import { Local } from "../base/Local";
 
 const logger = Logger.getLogger();
 

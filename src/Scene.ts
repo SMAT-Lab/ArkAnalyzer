@@ -18,8 +18,8 @@ import { ClassSignature, FileSignature, MethodSignature, NamespaceSignature } fr
 import Logger from "./utils/logger";
 import { transfer2UnixPath } from './utils/pathTransfer';
 import ts from "typescript";
-import { Local } from './core/base';
 import nullTypingsInstaller = ts.server.nullTypingsInstaller;
+import { Local } from './core/base/Local';
 
 const logger = Logger.getLogger();
 
