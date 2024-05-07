@@ -38,10 +38,7 @@ export class SceneConfig {
     private targetProjectDirectory: string = "";
     private targetProjectOriginDirectory: string = '';
 
-    private ohosSdkPath: string = "";
-    private kitSdkPath: string = "";
-    private systemSdkPath: string = "";
-
+    private etsSdkPath: string = "";
     private otherSdkMap: Map<string, string> = new Map();
 
     private sdkFiles: string[] = [];
@@ -73,8 +70,7 @@ export class SceneConfig {
         this.targetProjectName = targetProjectName;
         this.targetProjectOriginDirectory = targetProjectOriginDirectory;
         this.targetProjectDirectory = path.join(targetProjectDirectory, targetProjectName);
-        this.ohosSdkPath = path.join(sdkEtsPath, './api');
-        this.kitSdkPath = path.join(sdkEtsPath, './kits');
+        this.etsSdkPath = sdkEtsPath;
         this.hosEtsLoaderPath = path.join(sdkEtsPath, './build-tools/ets-loader');
         this.logPath = logPath;
 
@@ -94,9 +90,7 @@ export class SceneConfig {
             this.logPath = configurations.logPath;
             Logger.configure(this.logPath, LOG_LEVEL.ERROR);
 
-            this.ohosSdkPath = configurations.ohosSdkPath;
-            this.kitSdkPath = configurations.kitSdkPath;
-            this.systemSdkPath = configurations.systemSdkPath;
+            this.etsSdkPath = configurations.etsSdkPath;
 
             let otherSdks: otherSdk[] = [];
             for (let sdk of configurations.otherSdks) {
@@ -120,20 +114,10 @@ export class SceneConfig {
         else {
             throw new Error('TargetProjectDirectory is wrong.');
         }
-        if (this.ohosSdkPath) {
-            let ohosFiles: string[] = getFiles(this.ohosSdkPath, "\\.d\\.ts\$");
-            this.sdkFiles.push(...ohosFiles);
-            this.sdkFilesMap.set(ohosFiles, "ohos");
-        }
-        if (this.kitSdkPath) {
-            let kitFiles: string[] = getFiles(this.kitSdkPath, "\\.d\\.ts\$");
-            this.sdkFiles.push(...kitFiles);
-            this.sdkFilesMap.set(kitFiles, "kit");
-        }
-        if (this.systemSdkPath) {
-            let systemFiles: string[] = getFiles(this.systemSdkPath, "\\.d\\.ts\$");
-            this.sdkFiles.push(...systemFiles);
-            this.sdkFilesMap.set(systemFiles, "system");
+        if (this.etsSdkPath) {
+            let etsFiles: string[] = getFiles(this.etsSdkPath, "\\.d\\.ts\$");
+            this.sdkFiles.push(...etsFiles);
+            this.sdkFilesMap.set(etsFiles, "etsSdk");
         }
         if (this.otherSdkMap.size != 0) {
             this.otherSdkMap.forEach((value, key) => {
@@ -168,16 +152,8 @@ export class SceneConfig {
         return this.sdkFilesMap;
     }
 
-    public getOhosSdkPath() {
-        return this.ohosSdkPath;
-    }
-
-    public getKitSdkPath() {
-        return this.kitSdkPath;
-    }
-
-    public getSystemSdkPath() {
-        return this.systemSdkPath;
+    public getEtsSdkPath() {
+        return this.etsSdkPath;
     }
 
     public getOtherSdkMap() {
@@ -206,7 +182,9 @@ function getFiles(srcPath: string, fileExt: string, tmpFiles: string[] = []) {
 
     let files2Do: string[] = fs.readdirSync(realSrc);
     for (let fileName of files2Do) {
-        if (fileName == 'oh_modules' || fileName == 'node_modules') {
+        if (fileName == 'oh_modules' ||
+            fileName == 'node_modules' ||
+            fileName == 'ets-loader') {
             continue;
         }
         const realFile = path.resolve(realSrc, fileName);
@@ -243,7 +221,9 @@ function getFiles2PkgMap(srcPath: string, ohPkgFiles: string[], ohPkgContentMap:
         }
     });
     for (let fileName of files2Do) {
-        if (fileName == 'oh_modules' || fileName == 'node_modules') {
+        if (fileName == 'oh_modules' ||
+            fileName == 'node_modules' ||
+            fileName == 'hvigorfile.ts') {
             continue;
         }
         const realFile = path.resolve(realSrc, fileName);

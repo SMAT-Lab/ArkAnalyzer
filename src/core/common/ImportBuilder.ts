@@ -3,7 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import { transfer2UnixPath } from "../../utils/pathTransfer";
 import { ArkFile } from "../model/ArkFile";
-import { FieldSignature, FileSignature } from "../model/ArkSignature";
+import { FileSignature } from "../model/ArkSignature";
 import { Scene } from "../../Scene";
 
 var sdkPathMap: Map<string, string> = new Map();
@@ -77,22 +77,26 @@ export class ImportInfo {
             return;
         }
 
-        // external imports, e.g. @ohos., @kit., @System., @ArkAnalyzer/
+        // external imports, e.g. @ohos., @kit.
         sdkPathMap.forEach((value, key) => {
-            // e.g. @ohos., @kit., @System.
-            if (key == 'ohos' || key == 'kit' || key == 'system') {
-                const pathReg2 = new RegExp(`@(${key})\\.`);
+            // e.g. @ohos., @kit.
+            if (key == 'etsSdk') {
+                const pathReg2 = new RegExp(`@ohos\\.`);
+                const pathReg3 = new RegExp(`@kit\\.`);
+                let tmpSig = '';
                 if (pathReg2.test(this.importFrom)) {
-                    this.setImportProjectType("SDKProject");
-                    let tmpSig = '@' + key + '/' + this.importFrom + ': ';
-                    this.importFromSignature = tmpSig;
-                    return;
+                    tmpSig = '@etsSdk/api/' + this.importFrom + ': ';
                 }
+                else if (pathReg3.test(this.importFrom)) {
+                    tmpSig = '@etsSdk/kits/' + this.importFrom + ': ';
+                }
+                this.setImportProjectType("SDKProject");
+                this.importFromSignature = tmpSig;
+                return;
             }
-            // e.g. @ArkAnalyzer/
             else {
-                const pathReg3 = new RegExp(`@(${key})\\/`);
-                if (pathReg3.test(this.importFrom)) {
+                const pathReg4 = new RegExp(`@(${key})\\/`);
+                if (pathReg4.test(this.importFrom)) {
                     this.setImportProjectType("SDKProject");
                     this.importFromSignature = this.importFrom + ': ';
                     return;
