@@ -2,46 +2,31 @@ import { SceneConfig } from "../src/Config";
 import { Scene } from "../src/Scene";
 import { ArkBody } from "../src/core/model/ArkBody";
 import { StaticSingleAssignmentFormer } from "../src/transformer/StaticSingleAssignmentFormer";
+import { PrinterBuilder } from "../src/save/PrinterBuilder"
 
 export class TypeInferenceTest {
     public buildScene(): Scene {
-        // tests\\resources\\typeInference\\sample
-        // tests\\resources\\typeInference\\moduleA
-        // tests\\resources\\typeInference\\mainModule
-        const config_path = "tests\\resources\\type\\TypeTestConfig.json";
-        // const config_path = "tests\\resources\\typeInference\\TypeInferenceTestConfig.json";
+        const config_path = "tests\\resources\\cfg\\CfgTestConfig.json";
         let config: SceneConfig = new SceneConfig();
         config.buildFromJson(config_path);
-        // Logger.setLogLevel(LOG_LEVEL.INFO);
         return new Scene(config);
     }
 
     public testLocalTypes() {
         let scene = this.buildScene();
         scene.inferTypes();
-        // scene.inferSimpleTypes();
         let staticSingleAssignmentFormer = new StaticSingleAssignmentFormer();
+        let num = 0;
         for (const arkFile of scene.getFiles()) {
-            console.log('=============== arkFile:', arkFile.getName(), ' ================');
             for (const arkClass of arkFile.getClasses()) {
                 for (const arkMethod of arkClass.getMethods()) {
-                    console.log('*** arkMethod: ', arkMethod.getName());
-
-                    const body = arkMethod.getBody();
-                    console.log("*****before ssa")
-                    this.printStmts(body);
-                    console.log("*****after ssa")
-                    staticSingleAssignmentFormer.transformBody(body);
-                    this.printStmts(body);
-
-                    
-                    // console.log('-- locals:');
-                    // for (const local of arkMethod.getBody().getLocals()) {
-                    //     console.log('name: ' + local.toString() + ', type: ' + local.getType());
-                    // }
+                    if (arkMethod.getModifiers().has("PublicKeyword")) {
+                        num++
+                    }
                 }
             }
         }
+        console.log(num)
     }
 
     public testFunctionReturnType() {

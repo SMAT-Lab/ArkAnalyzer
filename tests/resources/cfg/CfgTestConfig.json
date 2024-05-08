@@ -1,6 +1,6 @@
 {
     "targetProjectName": "CfgTest",
-    "targetProjectDirectory": "tests\\resources\\cfg\\for",
+    "targetProjectDirectory": "src",
 
     "logPath": "out\\CfgTest.log",
     

@@ -1,3 +1,4 @@
+import { Decorator } from "../base/Decorator";
 import { LineColPosition } from "../base/Position";
 import { Type } from "../base/Type";
 import { Value } from "../base/Value";
@@ -28,7 +29,7 @@ export class ArkField {
     //private initializer, TODO
     private initializer: Value;
 
-    private atTypeDecorator: string = "";
+    private decorators: Decorator[] = [];
 
     constructor() { }
 
@@ -208,12 +209,12 @@ export class ArkField {
         return this.arkMethodSignature;
     }
 
-    public getAtTypeDecorator(): string {
-        return this.atTypeDecorator;
+    public getDecorators(): Decorator[] {
+        return this.decorators;
     }
 
-    public setAtTypeDecorator(type: string) {
-        this.atTypeDecorator = type;
+    public setDecorators(decorators: Decorator[]) {
+        this.decorators = decorators;
     }
 
 }
