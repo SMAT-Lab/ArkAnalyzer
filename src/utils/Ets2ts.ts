@@ -1,6 +1,6 @@
 import * as path from 'path';
 import * as fs from 'fs';
-import Logger, { LOG_LEVEL } from "./logger";
+import Logger, {LOG_LEVEL} from "./logger";
 
 const logger = Logger.getLogger();
 
@@ -10,7 +10,7 @@ enum FileType {
 }
 
 const CONFIG = {
-    ignores:  ['.git', '.preview', '.hvigor', '.idea', 'test', 'ohosTest'],
+    ignores: ['.git', '.preview', '.hvigor', '.idea', 'test', 'ohosTest'],
     include: /(?<!\.d)\.(ets|ts|json5)$/
 }
 
@@ -86,7 +86,7 @@ export class Ets2ts {
         this.tsModule.transpileModule(fileContent, {
             compilerOptions: this.compilerOptions,
             fileName: `${file}`,
-            transformers: { before: [this.processUIModule.processUISyntax(null, false), this.getDumpSourceTransformer(this)] }
+            transformers: {before: [this.processUIModule.processUISyntax(null, false), this.getDumpSourceTransformer(this)]}
         });
         fileContent = undefined;
         let end = new Date().getTime();
@@ -96,7 +96,7 @@ export class Ets2ts {
 
     private mkOutputPath(filePath: string) {
         let resultPath = this.getOutputPath(filePath);
-        fs.mkdirSync(resultPath, { recursive: true });
+        fs.mkdirSync(resultPath, {recursive: true});
     }
 
     private getOutputPath(fileName: string): string {
@@ -117,7 +117,7 @@ export class Ets2ts {
 
     private getAllEts(srcPath: string, ets: string[] = []): boolean {
         let hasFile = false;
-        fs.readdirSync(srcPath, { withFileTypes: true }).forEach(file => {
+        fs.readdirSync(srcPath, {withFileTypes: true}).forEach(file => {
             const realFile = path.resolve(srcPath, file.name);
             if (file.isDirectory() && (!CONFIG.ignores.includes(file.name))) {
                 if (this.getAllEts(realFile, ets)) {
@@ -139,7 +139,7 @@ export class Ets2ts {
         return (context) => {
             // @ts-ignore
             function genContentAndSourceMapInfo(node): { content: string, sourceMapJson: string } {
-                const printer = ets2ts.tsModule.createPrinter({ newLine: ets2ts.tsModule.NewLineKind.LineFeed });
+                const printer = ets2ts.tsModule.createPrinter({newLine: ets2ts.tsModule.NewLineKind.LineFeed});
                 const options = {
                     sourceMap: true
                 };
@@ -208,7 +208,7 @@ export async function runEts2Ts(hosEtsLoaderPath: string, targetProjectOriginDir
     Logger.configure(process.argv[6], LOG_LEVEL.TRACE);
     logger.info('start ets2ts ', process.argv);
     const startTime = new Date().getTime();
-    runEts2Ts(process.argv[2], process.argv[3], process.argv[4], process.argv[5]);
+    await runEts2Ts(process.argv[2], process.argv[3], process.argv[4], process.argv[5]);
     const endTime = new Date().getTime();
     logger.info(`ets2ts took: ${(endTime - startTime) / 1000}s`);
 })();

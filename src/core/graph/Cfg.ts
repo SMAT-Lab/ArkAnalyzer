@@ -8,6 +8,9 @@ import { ArkClass } from "../model/ArkClass";
 import { ArkField } from "../model/ArkField";
 import { ArkMethod } from "../model/ArkMethod";
 import { BasicBlock } from "./BasicBlock";
+import Logger from "../../utils/logger";
+
+const logger = Logger.getLogger();
 
 export class Cfg {
     private blocks: Set<BasicBlock> = new Set();
@@ -78,7 +81,7 @@ export class Cfg {
     }
 
     public constructorAddInit(arkMethod: ArkMethod): void {
-        
+
         const stmts = [...this.blocks][0].getStmts();
         let index = arkMethod.getParameters().length;
         // let cThis: 
@@ -102,9 +105,9 @@ export class Cfg {
                 index++;
                 stmts.splice(index,0,assignStmt);
             } catch{
-                console.log(init);
+                // logger.log(init.toString());
             }
-            
+
         }
     }
 

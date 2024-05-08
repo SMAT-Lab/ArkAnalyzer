@@ -1207,7 +1207,7 @@ export class CfgBuilder {
         fileContent += "}";
         fs.writeFile(filename, fileContent, (err) => {
             if (err) {
-                console.error(`Error writing to file: ${err.message}`);
+                logger.error(`Error writing to file: ${err.message}`);
             }
         });
 

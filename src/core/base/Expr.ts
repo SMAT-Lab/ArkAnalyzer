@@ -1,17 +1,17 @@
-import { TypeInference } from "../common/TypeInference";
-import { BasicBlock } from "../graph/BasicBlock";
-import { ArkClass } from "../model/ArkClass";
-import { MethodSignature } from "../model/ArkSignature";
-import { Local } from "./Local";
-import { ArrayType, BooleanType, ClassType, NumberType, Type } from "./Type";
-import { Value } from "./Value";
+import {TypeInference} from "../common/TypeInference";
+import {BasicBlock} from "../graph/BasicBlock";
+import {ArkClass} from "../model/ArkClass";
+import {MethodSignature} from "../model/ArkSignature";
+import {Local} from "./Local";
+import {ArrayType, BooleanType, ClassType, NumberType, Type} from "./Type";
+import {Value} from "./Value";
 
 export abstract class AbstractExpr implements Value {
     abstract getUses(): Value[];
 
     abstract getType(): Type;
 
-    abstract toString():string;
+    abstract toString(): string;
 }
 
 export abstract class AbstractInvokeExpr extends AbstractExpr {
@@ -473,6 +473,7 @@ export class ArkUnopExpr extends AbstractExpr {
 export class ArrayLiteralExpr extends AbstractExpr {
     private elements: Value[] = [];
     private type: Type;
+
     constructor(elements: Value[], type: Type) {
         super();
         this.elements = elements;
@@ -498,6 +499,7 @@ export class ArrayLiteralExpr extends AbstractExpr {
 export class ObjectLiteralExpr extends AbstractExpr {
     private anonymousClass: ArkClass;
     private type: Type;
+
     constructor(anonymousClass: ArkClass, type: Type = ClassType) {
         super();
         this.anonymousClass = anonymousClass;
@@ -518,6 +520,7 @@ export class ObjectLiteralExpr extends AbstractExpr {
     }
 
     public toString(): string {
-        return this.anonymousClass.getSignature().toString();
+        //TODO: Fixed the bug where getSignature() return undefined
+        return this.anonymousClass.getSignature()?.toString();
     }
 }

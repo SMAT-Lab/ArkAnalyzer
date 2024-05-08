@@ -17,6 +17,9 @@ import { factEqual } from "../dataflow/DataflowSolver";
 import { FileSignature } from "../model/ArkSignature";
 import { NamespaceSignature } from "../model/ArkSignature";
 import { ArkClass } from "../model/ArkClass";
+import Logger from "../../utils/logger";
+
+const logger = Logger.getLogger();
 
 export class UndefinedVariableChecker extends DataflowProblem<Value> {
     zeroValue : Constant = new Constant('undefined', UndefinedType.getInstance());
@@ -97,9 +100,9 @@ export class UndefinedVariableChecker extends DataflowProblem<Value> {
                         } else if (rightOp instanceof ArkInstanceFieldRef) {
                             const base = rightOp.getBase();
                             if (base == dataFact || !base.getDeclaringStmt()){
-                                console.log("undefined base")
-                                console.log(srcStmt.toString());
-                                console.log(srcStmt.getOriginPositionInfo());
+                                logger.log("undefined base")
+                                logger.log(srcStmt.toString());
+                                logger.log(srcStmt.getOriginPositionInfo().toString());
                             }
                         } else if (dataFact instanceof ArkInstanceFieldRef && rightOp == dataFact.getBase()) {
                             const field = new ArkInstanceFieldRef(srcStmt.getLeftOp() as Local, dataFact.getFieldSignature());

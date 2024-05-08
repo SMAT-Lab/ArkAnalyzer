@@ -388,7 +388,7 @@ export class Scene {
                         const importNameSpaceClasses = classMap.get(importNameSpace.getNamespaceSignature())!;
                         importClasses.push(...importNameSpaceClasses.filter(c => !importClasses.includes(c) && c.getName() != '_DEFAULT_ARK_CLASS'));
                     } catch {
-                        // console.log(importNameSpace)
+                        // logger.log(importNameSpace)
                     }
 
                 }
