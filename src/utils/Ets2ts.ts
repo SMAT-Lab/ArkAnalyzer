@@ -1,6 +1,8 @@
 import * as path from 'path';
 import * as fs from 'fs';
-import Logger, {LOG_LEVEL} from "./logger";
+import * as url from 'url';
+import Logger, { LOG_LEVEL } from "./logger";
+import { fetchDependenciesFromFile } from './json5parser';
 
 const logger = Logger.getLogger();
 
@@ -27,6 +29,7 @@ export class Ets2ts {
     compilerOptions: any;
     projectConfig: any;
     resourcePath: string;
+    ohPkgContentMap: Map<string, Object>;
 
     statistics: Array<Array<number>> = [[0, 0], [0, 0]];
 
@@ -40,12 +43,15 @@ export class Ets2ts {
         this.compilerOptions.sourceMap = false;
 
         let module = await require(path.join(etsLoaderPath, 'main'));
+        // module.partialUpdateConfig.partialUpdateMode = true;
         this.projectConfig = module.projectConfig;
+        // this.projectConfig.compileMode = 'esmodule';
 
         this.projectConfig.projectPath = path.resolve(projectPath);
         this.projectConfig.saveTsPath = path.resolve(output, projectName);
         this.projectConfig.buildMode = "release";
         this.projectConfig.projectRootPath = ".";
+        this.ohPkgContentMap = new Map();
     }
 
     public async compileProject() {
@@ -53,37 +59,65 @@ export class Ets2ts {
         process.env.compileMode = 'moduleJson';
         process.env.compiler = 'on';
         logger.info('Ets2ts-getAllEts start');
-        let sources: Array<string> = [];
+        let sources: Map<string, string[]> = new Map();
         if (this.getAllEts(this.projectConfig.projectPath, sources)) {
             this.mkOutputPath(this.projectConfig.projectPath);
         }
         logger.info('Ets2ts-getAllEts done');
-        for (let src of sources) {
-            if (src.endsWith('.ets')) {
-                this.compileEts(src);
+        sources.forEach((value, key) => {
+            if (key.endsWith('.ets')) {
+                this.compileEts(key, value);
             } else {
-                this.cp2output(src);
+                this.cp2output(key);
             }
-        }
+        })
 
         logger.info(`Ets2ts-compileEtsTime: ${this.statistics[0][1] / 1000}s, cnt: ${this.statistics[0][0]}, avg time: ${this.statistics[0][1] / this.statistics[0][0]}ms`);
         logger.info(`Ets2ts-copyTsTime: ${this.statistics[1][1] / 1000}s, cnt: ${this.statistics[1][0]}, avg time: ${this.statistics[1][1] / this.statistics[1][0]}ms`);
     }
 
     public emitWarning(msg: string) {
-
+        logger.warn(msg);
     }
 
     public emitError(msg: string) {
-
+        logger.error(msg);
     }
 
-    private compileEts(file: string) {
-        let start = new Date().getTime();
-        let fileContent: string | undefined = fs.readFileSync(file, 'utf8');
+    private compileEts(file: string, ohPkgFiles: string[]) {
         this.resourcePath = file;
-        this.preProcessModule(fileContent);
-        this.tsModule.transpileModule(fileContent, {
+        let start = new Date().getTime();
+
+        let dependenciesMap: Map<string, string> = new Map();
+        for (let pkgFile of ohPkgFiles) {
+            if (!this.ohPkgContentMap.has(pkgFile)) {
+                this.ohPkgContentMap.set(pkgFile, fetchDependenciesFromFile(pkgFile));
+            }
+            let pkg = this.ohPkgContentMap.get(pkgFile);
+            if (pkg && pkg.hasOwnProperty('dependencies')) {
+                // @ts-ignore
+                let dependencies = pkg.dependencies;
+                Object.entries(dependencies).forEach((k, v) => {
+                    let relativePath = url.parse(k[1] as string).path;
+                    if (relativePath) {
+                        dependenciesMap.set(k[0], path.resolve(path.join(path.dirname(pkgFile), relativePath)));
+                    }                    
+                });
+            }
+        }
+        let fileContent: string | undefined = fs.readFileSync(file, 'utf8');
+        const REG_IMPORT_DECL: RegExp = /(import|export)\s+(?:(.+)|\{([\s\S]+)\})\s+from\s+['"](\S+)['"]|import\s+(.+)\s*=\s*require\(\s*['"](\S+)['"]\s*\)/g;
+        let content: string = fileContent.replace(REG_IMPORT_DECL, (substring: string, ...args: any[]) => {
+            for (let key of dependenciesMap.keys()) {
+                if (args[3].startsWith(key)) {
+                    return substring.replace(key, dependenciesMap.get(key) as string);
+                }
+            }
+            return substring;
+        });
+
+        this.preProcessModule(content);
+        this.tsModule.transpileModule(content, {
             compilerOptions: this.compilerOptions,
             fileName: `${file}`,
             transformers: {before: [this.processUIModule.processUISyntax(null, false), this.getDumpSourceTransformer(this)]}
@@ -115,18 +149,31 @@ export class Ets2ts {
         this.statistics[FileType.TS][1] += end - start;
     }
 
-    private getAllEts(srcPath: string, ets: string[] = []): boolean {
+    private getAllEts(srcPath: string, ets: Map<string, string[]>, ohPkgFiles: string[] = []): boolean {
         let hasFile = false;
-        fs.readdirSync(srcPath, {withFileTypes: true}).forEach(file => {
+
+        let files = fs.readdirSync(srcPath, { withFileTypes: true });
+
+        let ohPkgFilesOfThisDir: string[] = [];
+        ohPkgFilesOfThisDir.push(...ohPkgFiles);
+
+        for (let file of files) {
+            if (file.name == 'oh-package.json5') {
+                ohPkgFilesOfThisDir.push(path.resolve(srcPath, file.name));
+                break;
+            }
+        }
+
+        files.forEach(file => {
             const realFile = path.resolve(srcPath, file.name);
             if (file.isDirectory() && (!CONFIG.ignores.includes(file.name))) {
-                if (this.getAllEts(realFile, ets)) {
+                if (this.getAllEts(realFile, ets, ohPkgFilesOfThisDir)) {
                     hasFile = true;
                     this.mkOutputPath(realFile);
                 }
             } else {
                 if ((path.basename(realFile).match(CONFIG.include))) {
-                    ets.push(realFile);
+                    ets.set(realFile, ohPkgFilesOfThisDir);
                     hasFile = true;
                 }
             }
