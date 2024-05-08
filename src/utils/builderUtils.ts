@@ -1,5 +1,5 @@
 import ts from "typescript";
-import { AnyType, ClassType, LiteralType, NumberType, Type, TypeLiteralType, UnclearReferenceType, UnionType, UnknownType } from "../core/base/Type";
+import { AnyType, ArrayType, ClassType, LiteralType, NumberType, Type, TypeLiteralType, UnclearReferenceType, UnionType, UnknownType } from "../core/base/Type";
 import { ArrayBindingPatternParameter, MethodParameter, ObjectBindingPatternParameter, buildMethodInfo4MethodNode } from "../core/common/MethodInfoBuilder";
 import { TypeInference } from "../core/common/TypeInference";
 import { ArkField } from "../core/model/ArkField";
@@ -534,6 +534,26 @@ function buildFieldType(fieldType: ts.TypeNode): Type {
             tmpTypeName = referenceNodeName.text;
         }
         return new UnclearReferenceType(tmpTypeName);
+    }
+    else if (ts.isArrayTypeNode(fieldType)) {
+        let tmpTypeName = "";
+        if (ts.isTypeReferenceNode(fieldType.elementType)) {
+            if (ts.isQualifiedName(fieldType.elementType.typeName)) {
+                tmpTypeName = handleQualifiedName(fieldType.elementType.typeName);
+            }
+            else if (ts.isIdentifier(fieldType.elementType.typeName)) {
+                tmpTypeName = fieldType.elementType.typeName.text;
+            }
+            else {
+                logger.warn("Other property type found!");
+            }
+            let elementType = new UnclearReferenceType(tmpTypeName);
+            return new ArrayType(elementType, 0);
+        }
+        else {
+            let elementType = buildTypeFromPreStr(ts.SyntaxKind[fieldType.elementType.kind]);
+            return new ArrayType(elementType, 0);
+        }
     }
     else if (ts.isLiteralTypeNode(fieldType)) {
         return buildTypeFromPreStr(ts.SyntaxKind[fieldType.literal.kind]);
