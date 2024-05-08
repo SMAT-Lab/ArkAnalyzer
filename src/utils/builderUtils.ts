@@ -13,6 +13,7 @@ import { Local } from "../core/base/Local";
 import { ArkInstanceFieldRef, ArkStaticFieldRef } from "../core/base/Ref";
 import { ArkClass } from "../core/model/ArkClass";
 import { ArkMethod, buildNormalArkMethodFromMethodInfo } from "../core/model/ArkMethod";
+import { Decorator, TypeDecorator } from "../core/base/Decorator";
 
 const logger = Logger.getLogger();
 
@@ -447,10 +448,8 @@ export function buildProperty2ArkField(member: ts.PropertyDeclaration | ts.Prope
         let modifiers = buildModifiers(member.modifiers);
         modifiers.forEach((modifier) => {
             field.addModifier(modifier);
-            if (modifier == "Type") {
-                handleAtTypeDecorator(field, member.modifiers!, sourceFile);
-            }
         });
+        field.setDecorators(buildDecorators(member.modifiers));
     }
 
     if ((ts.isPropertyDeclaration(member) || ts.isPropertySignature(member)) && member.type) {
@@ -718,20 +717,33 @@ function tsNode2Value(node: ts.Node, sourceFile: ts.SourceFile): Value {
     return new Constant('', UnknownType.getInstance())
 }
 
-function handleAtTypeDecorator(field: ArkField, modifiers: ts.NodeArray<ts.ModifierLike>, sourceFile: ts.SourceFile) {
-    modifiers.forEach((modifier) => {
+export function buildDecorators(modifierArray: ts.NodeArray<ts.ModifierLike>): Decorator[] {
+    let decorators: Decorator[] = [];
+    modifierArray.forEach((modifier) => {
         if (ts.isDecorator(modifier)) {
             if (modifier.expression) {
-                if (ts.isCallExpression(modifier.expression) && ts.isIdentifier(modifier.expression.expression) && modifier.expression.expression.text == "Type") {
-                    const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed });
-                    const func = modifier.expression.arguments[0] as ts.ArrowFunction;
-                    if (func){
-                        const bodyText = printer.printNode(ts.EmitHint.Unspecified, func.body, sourceFile);
-                        field.setAtTypeDecorator(bodyText);
+                let kind = ""
+                if (ts.isIdentifier(modifier.expression)) {
+                    kind = modifier.expression.text;
+                }
+                else if (ts.isCallExpression(modifier.expression)) {
+                    if (ts.isIdentifier(modifier.expression.expression)) {
+                        kind = modifier.expression.expression.text;
                     }
-                    
+                }
+                if (kind != "Type") {
+                    decorators.push(new Decorator(kind));
+                } else {
+                    const content = (modifier.expression as ts.CallExpression).arguments[0];
+                    const body = (content as ts.ArrowFunction).body;
+                    if (ts.isIdentifier(body)) {
+                        const typeDecorator = new TypeDecorator();
+                        typeDecorator.setType(body.text);
+                        decorators.push(typeDecorator);
+                    }
                 }
             }
         }
     });
+    return decorators;
 }

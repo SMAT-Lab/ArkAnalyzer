@@ -5,6 +5,7 @@ export class property{
 }
 
 class t{
+    @Type(()=>a)
     static s:property;
     p:property;
     constructor(){
