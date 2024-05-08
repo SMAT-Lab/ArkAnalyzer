@@ -23,7 +23,7 @@ class SceneTest {
         logger.error(`memoryUsage after buildConfig in bytes:`);
         logger.error(process.memoryUsage());
         const buildConfigEndTime = new Date().getTime();
-        logger.error('projectFiles cnt:', sceneConfig.getProjectFiles().length);
+        logger.error('projectFiles cnt:', sceneConfig.getProjectFiles().size);
         logger.error(`buildConfig took ${(buildConfigEndTime - buildConfigStartTime) / 1000} s`);
 
         // build scene
@@ -74,7 +74,7 @@ class SceneTest {
         logger.error(`memoryUsage after buildConfig in bytes:`);
         logger.error(process.memoryUsage());
         const buildConfigEndTime = new Date().getTime();
-        logger.error('projectFiles cnt:', sceneConfig.getProjectFiles().length);
+        logger.error('projectFiles cnt:', sceneConfig.getProjectFiles().size);
         logger.error(`buildConfig took ${(buildConfigEndTime - buildConfigStartTime) / 1000} s`);
 
         // build scene
@@ -123,7 +123,7 @@ class SceneTest {
         logger.info(`memoryUsage after EtsConfig in bytes:`);
         logger.info(process.memoryUsage());
 
-        logger.info('projectFiles cnt:', sceneConfig.getProjectFiles().length);
+        logger.info('projectFiles cnt:', sceneConfig.getProjectFiles().size);
 
         let etsConfigEndTime = new Date().getTime();
         logger.info(`etsConfig took ${(etsConfigEndTime - etsConfigStartTime) / 1000} s`);
@@ -132,6 +132,6 @@ class SceneTest {
 }
 
 let sceneTest = new SceneTest();
-sceneTest.testETsWholePipline();
-// sceneTest.testTsWholePipline();
+// sceneTest.testETsWholePipline();
+sceneTest.testTsWholePipline();
 // sceneTest.testEtsConfig();

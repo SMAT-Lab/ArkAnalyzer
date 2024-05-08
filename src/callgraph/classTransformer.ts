@@ -1,5 +1,8 @@
 import * as fs from 'fs';
 import { ArkClass } from "../core/model/ArkClass";
+import Logger from "../utils/logger";
+
+const logger = Logger.getLogger();
 
 class ClassTransformer {
 
@@ -19,13 +22,13 @@ class ClassTransformer {
         // TODO: 创建文件位置修改
         fs.mkdir(directory, { recursive: true }, (err) => {
             if (err) {
-                console.error('Error creating directory:', err);
+                logger.error('Error creating directory:', err);
                 return;
             }
 
             fs.writeFile(`${directory}${className}Creator.ts`, content, err => {
                 // TODO: 接入日志
-                console.log(`file ${className}Creator.ts has been created successfully!`);
+                logger.log(`file ${className}Creator.ts has been created successfully!`);
             });
         })
     }
