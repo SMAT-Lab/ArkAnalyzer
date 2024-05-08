@@ -20,7 +20,6 @@ import { transfer2UnixPath } from './utils/pathTransfer';
 import ts from "typescript";
 import { Local } from './core/base/Local';
 import nullTypingsInstaller = ts.server.nullTypingsInstaller;
-import { Local } from './core/base/Local';
 
 const logger = Logger.getLogger();
 
