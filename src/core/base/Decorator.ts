@@ -3,6 +3,9 @@ export class Decorator {
     constructor(name: string) {
         this.kind = name;
     }
+    public getKind(): string {
+        return this.kind;
+    }
 }
 
 export class TypeDecorator extends Decorator {
