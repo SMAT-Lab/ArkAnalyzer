@@ -2,7 +2,7 @@
   "targetProjectName": "project",
   "targetProjectDirectory": "/Users/yangyizhuo/WebstormProjects/ArkAnalyzer/tests/resources/callgraph/benchMarks",
 
-  "ohosSdkPath": "/Users/yangyizhuo/sdk/openharmony/interface_sdk-js/api",
+  "ohosSdkPath": "",
   "kitSdkPath": "",
   "systemSdkPath": "",
   "temp": "/Users/yangyizhuo/sdk/openharmony/interface_sdk-js/api",

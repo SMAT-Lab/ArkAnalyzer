@@ -16,19 +16,19 @@ function runScene(config: SceneConfig) {
     // for (let method of projectScene.getMethods()) {
     //     entryPoints.push(method.getSignature())
     // }
-    for (let arkFile of projectScene.getFiles()) {
-        if (arkFile.getName() === "testcase_10_method_call.ts") {
-            for (let arkClass of arkFile.getClasses()) {
-                if (arkClass.getName() === "_DEFAULT_ARK_CLASS") {
-                    for (let arkMethod of arkClass.getMethods()) {
-                        if (arkMethod.getName() === "_DEFAULT_ARK_METHOD") {
-                            entryPoints.push(arkMethod.getSignature())
-                        }
-                    }
-                }
-            }
-        }
-    }
+    // for (let arkFile of projectScene.getFiles()) {
+    //     if (arkFile.getName() === "sendableTest.ts") {
+    //         for (let arkClass of arkFile.getClasses()) {
+    //             if (arkClass.getName() === "OpenHarmonyTestRunner") {
+    //                 for (let arkMethod of arkClass.getMethods()) {
+    //                     if (arkMethod.getName() === "onRun") {
+    //                         entryPoints.push(arkMethod.getSignature())
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
     
     projectScene.inferTypes()
     // for (let arkFile of projectScene.getFiles()) {
