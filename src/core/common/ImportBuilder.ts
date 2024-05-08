@@ -279,7 +279,7 @@ function ohPkgMatch(dependencies: unknown, importFrom: string, ohFilePath: strin
                         originPath = path.join(ohFilePath, v.replace(/^file:/, ''));
                     }
                     // check originPath: file? dir? hap? etc.
-                    if ((originPath != '') && (fs.statSync(originPath).isDirectory())) {
+                    if ((fs.existsSync(originPath)) && (fs.statSync(originPath).isDirectory())) {
                         let info = ohPkgContentMap.get(path.join(originPath, 'oh-package.json5'));
                         if (info != undefined) {
                             let fileName = info.main;
@@ -287,9 +287,6 @@ function ohPkgMatch(dependencies: unknown, importFrom: string, ohFilePath: strin
                                 originPath = path.join(originPath, fileName);
                             }
                         }
-                    }
-                    else if (path.extname(originPath) == '.hap') {
-                        originPath = '';
                     }
                 }
             }
