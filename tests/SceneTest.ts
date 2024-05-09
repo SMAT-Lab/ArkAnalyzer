@@ -101,7 +101,7 @@ class SceneTest {
         logger.error(process.memoryUsage());
         const getViewTreeEndTime = new Date().getTime();
         logger.error(`get viewTree took ${(getViewTreeEndTime - inferTypesEndTime) / 1000} s`);
-
+        logger.error(`eTsWholePipline took ${(getViewTreeEndTime - buildConfigStartTime) / 1000} s`);
         logger.error('testETsWholePipline end\n');
     }
 
@@ -132,6 +132,6 @@ class SceneTest {
 }
 
 let sceneTest = new SceneTest();
-// sceneTest.testETsWholePipline();
-sceneTest.testTsWholePipline();
+sceneTest.testETsWholePipline();
+// sceneTest.testTsWholePipline();
 // sceneTest.testEtsConfig();

@@ -1,5 +1,12 @@
-import {Foo} from "./Foo";
+class Foo {
+    public foo() {
+    }
+}
 
-function test() {
-    let foo = new Foo();
+class Bar {
+    private foos: Foo[];
+
+    public bar() {
+        this.foos.forEach(foo => foo.foo());
+    }
 }

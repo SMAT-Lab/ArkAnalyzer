@@ -147,6 +147,10 @@ export class ArkParameterRef extends AbstractRef {
         return this.paramType;
     }
 
+    public setType(newType: Type): void {
+        this.paramType = newType;
+    }
+
     public getUses(): Value[] {
         let uses: Value[] = [];
         return uses;
