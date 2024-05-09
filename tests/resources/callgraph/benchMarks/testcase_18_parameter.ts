@@ -2,6 +2,7 @@
  * 22/39
  * 6/7
  * testcase_18_parameter.ts
+ * 6(0)/6
  */
 function withParamArray(param: number[]) {
     let num = param.length

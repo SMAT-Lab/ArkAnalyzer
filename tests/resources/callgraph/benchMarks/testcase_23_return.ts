@@ -2,6 +2,7 @@
  * 23/26
  * 5/5
  * testcase_23_return.ts
+ * 5(0)/5
  */
 class Return {
     public num: number

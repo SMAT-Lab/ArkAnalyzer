@@ -2,6 +2,7 @@
  * 16/17
  * 5/5
  * testcase_17_parameter.ts
+ * 5(0)/5
  */
 class Word {
     public word: string

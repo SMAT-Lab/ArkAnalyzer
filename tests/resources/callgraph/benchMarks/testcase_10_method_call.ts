@@ -1,6 +1,6 @@
 // test case for method call 1
 // 5/6
-// 0/1
+// 1/1
 // testcase_10_method_call.ts
 
 import taskpool from '@ohos.taskpool';

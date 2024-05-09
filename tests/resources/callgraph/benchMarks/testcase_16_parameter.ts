@@ -2,6 +2,7 @@
  * 11/11
  * 3/3
  * testcase_16_parameter.ts
+ * 3(0)/3
  */
 
 function withParamString(param: string) {
