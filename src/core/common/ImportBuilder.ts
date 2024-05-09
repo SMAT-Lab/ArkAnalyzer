@@ -1,10 +1,11 @@
 import * as ts from "typescript";
 import path from 'path';
 import fs from 'fs';
-import { transfer2UnixPath } from "../../utils/pathTransfer";
-import { ArkFile } from "../model/ArkFile";
-import { FileSignature } from "../model/ArkSignature";
-import { Scene } from "../../Scene";
+import {transfer2UnixPath} from "../../utils/pathTransfer";
+import {ArkFile} from "../model/ArkFile";
+import {FileSignature} from "../model/ArkSignature";
+import {Scene} from "../../Scene";
+import {LineColPosition} from "../base/Position";
 
 var sdkPathMap: Map<string, string> = new Map();
 
@@ -26,13 +27,16 @@ export class ImportInfo {
     private declaringFilePath: string;
     private projectPath: string;
 
+    private originTsPosition: LineColPosition;
+
     constructor() {
     }
 
-    public build(importClauseName: string, importType: string, importFrom: string, nameBeforeAs?: string) {
+    public build(importClauseName: string, importType: string, importFrom: string, originTsPosition: LineColPosition, nameBeforeAs?: string) {
         this.setImportClauseName(importClauseName);
         this.setImportType(importType);
         this.setImportFrom(importFrom);
+        this.setOriginTsPosition(originTsPosition);
         this.setNameBeforeAs(nameBeforeAs);
     }
 
@@ -86,15 +90,13 @@ export class ImportInfo {
                 let tmpSig = '';
                 if (pathReg2.test(this.importFrom)) {
                     tmpSig = '@etsSdk/api/' + this.importFrom + ': ';
-                }
-                else if (pathReg3.test(this.importFrom)) {
+                } else if (pathReg3.test(this.importFrom)) {
                     tmpSig = '@etsSdk/kits/' + this.importFrom + ': ';
                 }
                 this.setImportProjectType("SDKProject");
                 this.importFromSignature = tmpSig;
                 return;
-            }
-            else {
+            } else {
                 const pathReg4 = new RegExp(`@(${key})\\/`);
                 if (pathReg4.test(this.importFrom)) {
                     this.setImportProjectType("SDKProject");
@@ -162,17 +164,27 @@ export class ImportInfo {
     private transfer2UnixPath(path2Do: string) {
         return path.posix.join(...path2Do.split(/\\/));
     }
-}
 
-export function buildImportInfo4ImportNode(node: ts.ImportDeclaration | ts.ImportEqualsDeclaration): ImportInfo[] {
-    if (ts.isImportDeclaration(node)) {
-        return buildImportDeclarationNode(node);
-    } else {
-        return buildImportEqualsDeclarationNode(node);
+    public setOriginTsPosition(originTsPosition: LineColPosition): void {
+        this.originTsPosition = originTsPosition;
+    }
+
+    public getOriginTsPosition(): LineColPosition {
+        return this.originTsPosition;
     }
 }
 
-function buildImportDeclarationNode(node: ts.ImportDeclaration): ImportInfo[] {
+export function buildImportInfo4ImportNode(node: ts.ImportDeclaration | ts.ImportEqualsDeclaration, sourceFile: ts.SourceFile): ImportInfo[] {
+    if (ts.isImportDeclaration(node)) {
+        return buildImportDeclarationNode(node, sourceFile);
+    } else {
+        return buildImportEqualsDeclarationNode(node, sourceFile);
+    }
+}
+
+function buildImportDeclarationNode(node: ts.ImportDeclaration, sourceFile: ts.SourceFile): ImportInfo[] {
+    const originTsPosition = LineColPosition.buildFromNode(node, sourceFile);
+
     let importInfos: ImportInfo[] = [];
     let importFrom: string = '';
     if (ts.isStringLiteral(node.moduleSpecifier)) {
@@ -184,7 +196,7 @@ function buildImportDeclarationNode(node: ts.ImportDeclaration): ImportInfo[] {
         let importClauseName = '';
         let importType = '';
         let importInfo = new ImportInfo();
-        importInfo.build(importClauseName, importType, importFrom);
+        importInfo.build(importClauseName, importType, importFrom, originTsPosition);
         importInfos.push(importInfo);
     }
 
@@ -193,7 +205,7 @@ function buildImportDeclarationNode(node: ts.ImportDeclaration): ImportInfo[] {
         let importClauseName = node.importClause.name.text;
         let importType = "Identifier";
         let importInfo = new ImportInfo();
-        importInfo.build(importClauseName, importType, importFrom);
+        importInfo.build(importClauseName, importType, importFrom, originTsPosition);
         importInfos.push(importInfo);
     }
 
@@ -206,11 +218,11 @@ function buildImportDeclarationNode(node: ts.ImportDeclaration): ImportInfo[] {
                     let importClauseName = element.name.text;
                     if (element.propertyName && ts.isIdentifier(element.propertyName)) {
                         let importInfo = new ImportInfo();
-                        importInfo.build(importClauseName, importType, importFrom, element.propertyName.text);
+                        importInfo.build(importClauseName, importType, importFrom, originTsPosition, element.propertyName.text);
                         importInfos.push(importInfo);
                     } else {
                         let importInfo = new ImportInfo();
-                        importInfo.build(importClauseName, importType, importFrom)
+                        importInfo.build(importClauseName, importType, importFrom, originTsPosition)
                         importInfos.push(importInfo);
                     }
                 }
@@ -225,7 +237,7 @@ function buildImportDeclarationNode(node: ts.ImportDeclaration): ImportInfo[] {
             let importClauseName = node.importClause.namedBindings.name.text;
             let importInfo = new ImportInfo();
             let nameBeforeAs = '*';
-            importInfo.build(importClauseName, importType, importFrom, nameBeforeAs);
+            importInfo.build(importClauseName, importType, importFrom, originTsPosition, nameBeforeAs);
             importInfos.push(importInfo);
         }
     }
@@ -233,7 +245,9 @@ function buildImportDeclarationNode(node: ts.ImportDeclaration): ImportInfo[] {
     return importInfos;
 }
 
-function buildImportEqualsDeclarationNode(node: ts.ImportEqualsDeclaration): ImportInfo[] {
+function buildImportEqualsDeclarationNode(node: ts.ImportEqualsDeclaration, sourceFile: ts.SourceFile): ImportInfo[] {
+    const originTsPosition = LineColPosition.buildFromNode(node, sourceFile);
+
     let importInfos: ImportInfo[] = [];
     let importType = "EqualsImport";
     if (node.moduleReference && ts.isExternalModuleReference(node.moduleReference) &&
@@ -241,7 +255,7 @@ function buildImportEqualsDeclarationNode(node: ts.ImportEqualsDeclaration): Imp
         let importFrom = node.moduleReference.expression.text;
         let importClauseName = node.name.text;
         let importInfo = new ImportInfo()
-        importInfo.build(importClauseName, importType, importFrom);
+        importInfo.build(importClauseName, importType, importFrom, originTsPosition);
         importInfos.push(importInfo);
     }
     return importInfos;
@@ -262,7 +276,7 @@ function getOriginPath(importFrom: string, arkFile: ArkFile) {
 }
 
 function ohPkgMatch(dependencies: unknown, importFrom: string, ohFilePath: string,
-    ohPkgContentMap: Map<string, { [k: string]: unknown }>): string {
+                    ohPkgContentMap: Map<string, { [k: string]: unknown }>): string {
     let originPath = '';
     if (!fs.statSync(ohFilePath).isDirectory()) {
         ohFilePath = path.dirname(ohFilePath);
@@ -274,8 +288,7 @@ function ohPkgMatch(dependencies: unknown, importFrom: string, ohFilePath: strin
                 if (typeof (v) === 'string') {
                     if (pattern.test(v)) {
                         originPath = path.join(ohFilePath, v);
-                    }
-                    else if (v.startsWith('file:')) {
+                    } else if (v.startsWith('file:')) {
                         originPath = path.join(ohFilePath, v.replace(/^file:/, ''));
                     }
                     // check originPath: file? dir? hap? etc.

@@ -356,7 +356,7 @@ function processExportValAndFirstNode(node: NodeA, arkFile: ArkFile, isDefault: 
         }
     }
     let exportInfo = new ExportInfo();
-    exportInfo.build(exportClauseName, exportClauseType);
+    exportInfo.build(exportClauseName, exportClauseType, new LineColPosition(-1, -1));
     exportInfo.setDefault(isDefault);
 
     arkFile.addExportInfos(exportInfo);
@@ -373,7 +373,7 @@ function addExportInfo(arkInstance: ArkMethod | ArkClass | ArkNamespace, arkFile
         exportClauseType = "ArkNamespace";
     }
     let exportInfo = new ExportInfo();
-    exportInfo.build(exportClauseName, exportClauseType);
+    exportInfo.build(exportClauseName, exportClauseType, new LineColPosition(-1, -1));
     exportInfo.setDefault(isDefault);
     arkFile.addExportInfos(exportInfo);
 }
