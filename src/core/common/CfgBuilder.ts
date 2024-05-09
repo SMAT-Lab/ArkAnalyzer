@@ -2049,7 +2049,6 @@ export class CfgBuilder {
 
         let threeAddressAssignStmts: Stmt[] = [];
         threeAddressAssignStmts.push(new ArkAssignStmt(leftOp, rightOp));
-        TypeInference.inferTypeInStmt(threeAddressAssignStmts[0], null)
 
         if (leftOpNode.kind == 'ArrayBindingPattern' || leftOpNode.kind == 'ObjectBindingPattern') {
             let argNodes = this.getSyntaxListItems(leftOpNode.children[1]);

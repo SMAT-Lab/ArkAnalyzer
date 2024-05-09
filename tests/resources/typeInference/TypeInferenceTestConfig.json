@@ -1,12 +1,10 @@
 {
     "targetProjectName": "TypeInferenceTest",    
-    "targetProjectDirectory": "out/ets2ts/applications_photos/common/src/main/ets/default/model/browser/photo",
+    "targetProjectDirectory": "tests/resources/typeInference/multi_module/main_module",
 
     "logPath": "out/TypeInferenceTest.log",
-    
-    "ohosSdkPath": "",
-    "kitSdkPath": "",
-    "systemSdkPath": "",
+
+    "etsSdkPath": "",
     
     "otherSdks": [
         {

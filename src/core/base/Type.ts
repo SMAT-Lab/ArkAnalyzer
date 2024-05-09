@@ -1,8 +1,8 @@
-import { ArkField } from "../model/ArkField";
-import { ClassSignature, MethodSignature } from "../model/ArkSignature";
+import {ArkField} from "../model/ArkField";
+import {ClassSignature, MethodSignature} from "../model/ArkSignature";
 
 export abstract class Type {
-    abstract toString():string;
+    abstract toString(): string;
 }
 
 
@@ -24,7 +24,6 @@ export class AnyType extends Type {
 }
 
 
-
 /** unknown type */
 export class UnknownType extends Type {
     private static readonly INSTANCE = new UnknownType();
@@ -41,7 +40,6 @@ export class UnknownType extends Type {
         return 'unknown'
     }
 }
-
 
 
 /** unclear type */
@@ -279,6 +277,10 @@ export class ArrayType extends Type {
         return this.baseType;
     }
 
+    public setBaseType(newType: Type): void {
+        this.baseType = newType;
+    }
+
     public getDimension(): number {
         return this.dimension;
     }
@@ -322,6 +324,7 @@ export class TupleType extends Type {
 
 export class AliasType extends Type {
     private originalType: Type;
+
     constructor(originalType: Type) {
         super();
         this.originalType = originalType;
@@ -363,7 +366,7 @@ export class TypeLiteralType extends Type {
     }
 
     public toString() {
-        let strMembers:string[] = [];
+        let strMembers: string[] = [];
         this.members.forEach((member) => {
             strMembers.push(member.getName().toString());
         });
