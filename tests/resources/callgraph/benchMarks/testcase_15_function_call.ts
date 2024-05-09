@@ -3,6 +3,7 @@
  * 3/4
  * 
  * testcase_15_function_call.ts
+ * 2(0)/2
  */
 
 function identity(x: number) : number {

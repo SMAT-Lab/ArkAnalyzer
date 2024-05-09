@@ -1,8 +1,10 @@
+import { PrinterBuilder } from './../src/save/PrinterBuilder';
 import { SceneConfig } from "../src/Config";
 import { Scene } from "../src/Scene";
 import { MethodSignature } from "../src/core/model/ArkSignature";
 import { printCallGraphDetails } from "../src/utils/callGraphUtils";
 import Logger, { LOG_LEVEL } from "../src/utils/logger";
+import { ArkFile } from '../src/core/model/ArkFile';
 
 const logger = Logger.getLogger();
 
@@ -16,19 +18,19 @@ function runScene(config: SceneConfig) {
     // for (let method of projectScene.getMethods()) {
     //     entryPoints.push(method.getSignature())
     // }
-    // for (let arkFile of projectScene.getFiles()) {
-    //     if (arkFile.getName() === "sendableTest.ts") {
-    //         for (let arkClass of arkFile.getClasses()) {
-    //             if (arkClass.getName() === "OpenHarmonyTestRunner") {
-    //                 for (let arkMethod of arkClass.getMethods()) {
-    //                     if (arkMethod.getName() === "onRun") {
-    //                         entryPoints.push(arkMethod.getSignature())
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
+    for (let arkFile of projectScene.getFiles()) {
+        if (arkFile.getName() === "testcase_24_import.ts") {
+            for (let arkClass of arkFile.getClasses()) {
+                if (arkClass.getName() === "_DEFAULT_ARK_CLASS") {
+                    for (let arkMethod of arkClass.getMethods()) {
+                        if (arkMethod.getName() === "_DEFAULT_ARK_METHOD") {
+                            entryPoints.push(arkMethod.getSignature())
+                        }
+                    }
+                }
+            }
+        }
+    }
     
     projectScene.inferTypes()
     // for (let arkFile of projectScene.getFiles()) {
@@ -59,12 +61,20 @@ function runScene(config: SceneConfig) {
     //         console.log("methods: "+methods)
     //     }
     // }
-    let callGraph = projectScene.makeCallGraphCHA(entryPoints)
+    // let callGraph = projectScene.makeCallGraphCHA(entryPoints)
     // let callGraph = projectScene.makeCallGraphRTA(entryPoints)
     // let callGraph = projectScene.makeCallGraphVPA(entryPoints)
-    let methods = callGraph.getMethods()
-    let calls = callGraph.getCalls()
-    printCallGraphDetails(methods, calls, config.getTargetProjectDirectory())
+    // let methods = callGraph.getMethods()
+    // let calls = callGraph.getCalls()
+    // printCallGraphDetails(methods, calls, config.getTargetProjectDirectory())
+    let printBuilder = new PrinterBuilder()
+    let tempFile: ArkFile
+    projectScene.getFiles().forEach((file) => {
+        if (file.getName() == "temp.ts") {
+            tempFile = file
+        }
+    })
+    printBuilder.dumpToTs(tempFile!)
     debugger;
 }
 runScene(config);

@@ -2,6 +2,7 @@
  * 18/22
  * 4/7
  * testcase_22_return.ts
+ * 3(0)/3
  */
 // 定义一个自定义的测试类
 class FunctionTester {

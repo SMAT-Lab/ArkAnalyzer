@@ -3,6 +3,7 @@
  * 3/3
  * 
  * testcase_11_function_call.ts
+ * 3(2)/3
  */
 
 function main(x:number,y:number) {

@@ -1,10 +1,9 @@
 {
   "targetProjectName": "project",
-  "targetProjectDirectory": "/Users/yangyizhuo/WebstormProjects/ArkAnalyzer/tests/resources/callgraph/benchMarks",
+  "targetProjectDirectory": "/Users/yangyizhuo/WebstormProjects/ArkAnalyzer/tests/resources/callgraph/sendableTest",
 
-  "ohosSdkPath": "",
-  "kitSdkPath": "",
-  "systemSdkPath": "",
+  "etsSdkPath": "/Users/yangyizhuo/sdk/openharmony/interface_sdk-js/api",
+
   "temp": "/Users/yangyizhuo/sdk/openharmony/interface_sdk-js/api",
   "logPath": "/Users/yangyizhuo/WebstormProjects/ArkAnalyzer/tests/resources/callgraph/out/log.txt",
 
