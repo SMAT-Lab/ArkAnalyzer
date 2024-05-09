@@ -2,6 +2,7 @@ import * as ts from "typescript";
 import { buildModifiers, buildParameters, buildReturnType4Method, buildTypeParameters, handlePropertyAccessExpression } from "../../utils/builderUtils";
 import Logger from "../../utils/logger";
 import { Type } from "../base/Type";
+import { Decorator } from "../base/Decorator";
 
 const logger = Logger.getLogger();
 
@@ -132,12 +133,12 @@ export class MethodParameter {
 export class MethodInfo {
     name: string;
     parameters: MethodParameter[];
-    modifiers: Set<string>;
+    modifiers: Set<string | Decorator>;
     returnType: Type;
     typeParameters: Type[];
     getAccessorName: string | undefined = undefined;
 
-    constructor(name: string, parameters: MethodParameter[], modifiers: Set<string>, returnType: Type, typeParameters: Type[], getAccessorName?: string) {
+    constructor(name: string, parameters: MethodParameter[], modifiers: Set<string | Decorator>, returnType: Type, typeParameters: Type[], getAccessorName?: string) {
         this.name = name;
         this.parameters = parameters;
         this.modifiers = modifiers;
@@ -196,10 +197,10 @@ export function buildMethodInfo4MethodNode(node: ts.FunctionDeclaration | ts.Met
     let parameterTypes = buildParameters(node, sourceFile);
 
     //TODO: remember to test abstract method
-    let modifiers: Set<string> = new Set<string>();
+    let modifiers: Set<string | Decorator> = new Set<string | Decorator>();
     if ((!ts.isConstructSignatureDeclaration(node)) && (!ts.isCallSignatureDeclaration(node))) {
         if (node.modifiers) {
-            modifiers = buildModifiers(node.modifiers);
+            modifiers = buildModifiers(node.modifiers, sourceFile);
         }
     }
 

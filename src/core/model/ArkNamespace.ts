@@ -1,4 +1,5 @@
 import {NodeA} from "../base/Ast";
+import { Decorator } from "../base/Decorator";
 import {LineColPosition} from "../base/Position";
 import {ExportInfo} from "../common/ExportBuilder";
 import {ArkClass, buildDefaultArkClassFromArkNamespace, buildNormalArkClassFromArkNamespace} from "./ArkClass";
@@ -21,7 +22,7 @@ export class ArkNamespace {
     private declaringInstance: ArkFile | ArkNamespace;
     private declaringType: string;
 
-    private modifiers: Set<string> = new Set<string>();
+    private modifiers: Set<string | Decorator> = new Set<string | Decorator>();
     private exportInfos: ExportInfo[] = [];
 
     private defaultClass: ArkClass;
@@ -147,7 +148,7 @@ export class ArkNamespace {
         return this.modifiers;
     }
 
-    public addModifier(name: string) {
+    public addModifier(name: string | Decorator) {
         this.modifiers.add(name);
     }
 

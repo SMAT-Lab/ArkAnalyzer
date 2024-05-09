@@ -11,6 +11,7 @@ import { LineColPosition } from "../base/Position";
 import { ObjectLiteralExpr } from "../base/Expr";
 import { FileSignature,NamespaceSignature } from "./ArkSignature";
 import { Local } from "../base/Local";
+import { Decorator } from "../base/Decorator";
 
 const logger = Logger.getLogger();
 
@@ -30,7 +31,7 @@ export class ArkClass {
     private superClassName: string = '';
     private superClass: ArkClass;
     private implementedInterfaceNames: string[] = [];
-    private modifiers: Set<string> = new Set<string>();
+    private modifiers: Set<string | Decorator> = new Set<string | Decorator>();
     private typeParameters: Type[] = [];
 
     private defaultMethod: ArkMethod | null = null;
@@ -203,7 +204,7 @@ export class ArkClass {
         return this.modifiers;
     }
 
-    public addModifier(name: string) {
+    public addModifier(name: string | Decorator) {
         this.modifiers.add(name);
     }
 

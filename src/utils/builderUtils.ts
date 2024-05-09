@@ -46,21 +46,38 @@ export function handlePropertyAccessExpression(node: ts.PropertyAccessExpression
     return propertyAccessExpressionName;
 }
 
-export function buildModifiers(modifierArray: ts.NodeArray<ts.ModifierLike>): Set<string> {
-    let modifiers: Set<string> = new Set<string>();
+export function buildModifiers(modifierArray: ts.NodeArray<ts.ModifierLike>, sourceFile: ts.SourceFile): Set<string | Decorator> {
+    let modifiers: Set<string | Decorator> = new Set<string | Decorator>();
     modifierArray.forEach((modifier) => {
         //TODO: find reason!!
         if (ts.SyntaxKind[modifier.kind] == 'FirstContextualKeyword') {
             modifiers.add('AbstractKeyword');
         }
         else if (ts.isDecorator(modifier)) {
-            if (modifier.expression) {
-                if (ts.isIdentifier(modifier.expression)) {
-                    modifiers.add(modifier.expression.text);
-                }
-                else if (ts.isCallExpression(modifier.expression)) {
-                    if (ts.isIdentifier(modifier.expression.expression)) {
-                        modifiers.add(modifier.expression.expression.text);
+            if (ts.isDecorator(modifier)) {
+                if (modifier.expression) {
+                    let kind = "";
+                    if (ts.isIdentifier(modifier.expression)) {
+                        kind = modifier.expression.text;
+                    }
+                    else if (ts.isCallExpression(modifier.expression)) {
+                        if (ts.isIdentifier(modifier.expression.expression)) {
+                            kind = modifier.expression.expression.text;
+                        }
+                    }
+                    if (kind != "Type") {
+                        const decorator = new Decorator(kind);
+                        decorator.setContent(modifier.expression.getText(sourceFile));
+                        modifiers.add(decorator);
+                    } else {
+                        const arg = (modifier.expression as ts.CallExpression).arguments[0];
+                        const body = (arg as ts.ArrowFunction).body;
+                        if (ts.isIdentifier(body)) {
+                            const typeDecorator = new TypeDecorator();
+                            typeDecorator.setType(body.text);
+                            typeDecorator.setContent(modifier.expression.getText(sourceFile));
+                            modifiers.add(typeDecorator);
+                        }
                     }
                 }
             }
@@ -445,11 +462,10 @@ export function buildProperty2ArkField(member: ts.PropertyDeclaration | ts.Prope
     }
 
     if ((ts.isPropertyDeclaration(member) || ts.isPropertySignature(member)) && member.modifiers) {
-        let modifiers = buildModifiers(member.modifiers);
+        let modifiers = buildModifiers(member.modifiers, sourceFile);
         modifiers.forEach((modifier) => {
             field.addModifier(modifier);
         });
-        field.setDecorators(buildDecorators(member.modifiers));
     }
 
     if ((ts.isPropertyDeclaration(member) || ts.isPropertySignature(member)) && member.type) {
@@ -475,7 +491,7 @@ export function buildIndexSignature2ArkField(member: ts.IndexSignatureDeclaratio
     field.setOriginPosition(LineColPosition.buildFromNode(member, sourceFile));
     //modifiers
     if (member.modifiers) {
-        buildModifiers(member.modifiers).forEach((modifier) => {
+        buildModifiers(member.modifiers, sourceFile).forEach((modifier) => {
             field.addModifier(modifier);
         });
     }
@@ -735,35 +751,4 @@ function tsNode2Value(node: ts.Node, sourceFile: ts.SourceFile): Value {
         logger.warn("Other type found for ts node.");
     }
     return new Constant('', UnknownType.getInstance())
-}
-
-export function buildDecorators(modifierArray: ts.NodeArray<ts.ModifierLike>): Decorator[] {
-    let decorators: Decorator[] = [];
-    modifierArray.forEach((modifier) => {
-        if (ts.isDecorator(modifier)) {
-            if (modifier.expression) {
-                let kind = ""
-                if (ts.isIdentifier(modifier.expression)) {
-                    kind = modifier.expression.text;
-                }
-                else if (ts.isCallExpression(modifier.expression)) {
-                    if (ts.isIdentifier(modifier.expression.expression)) {
-                        kind = modifier.expression.expression.text;
-                    }
-                }
-                if (kind != "Type") {
-                    decorators.push(new Decorator(kind));
-                } else {
-                    const content = (modifier.expression as ts.CallExpression).arguments[0];
-                    const body = (content as ts.ArrowFunction).body;
-                    if (ts.isIdentifier(body)) {
-                        const typeDecorator = new TypeDecorator();
-                        typeDecorator.setType(body.text);
-                        decorators.push(typeDecorator);
-                    }
-                }
-            }
-        }
-    });
-    return decorators;
 }

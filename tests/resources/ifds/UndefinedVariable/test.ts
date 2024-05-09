@@ -3,7 +3,7 @@ export class property{
     // @Type(() => t)
     pp=1;
 }
-
+@A
 class t{
     @Type(()=>a)
     static s:property;
@@ -58,6 +58,12 @@ function U7() {
 }
 let x:property;
 U7();
+
+namespace n{
+    x = new property();
+    export let y = 1;
+}
+console.log(n.y);
 // function U(){
 //     let t1: t;
 //     if (true){

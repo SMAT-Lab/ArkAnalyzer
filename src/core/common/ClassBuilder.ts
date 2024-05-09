@@ -3,12 +3,12 @@ import { buildGetAccessor2ArkField, buildHeritageClauses, buildIndexSignature2Ar
 import Logger from "../../utils/logger";
 import { Type } from "../base/Type";
 import { ArkField } from "../model/ArkField";
-import { LineColPosition } from "../base/Position";
+import { Decorator } from "../base/Decorator";
 
 const logger = Logger.getLogger();
 export class ClassInfo {
 
-    private modifiers: Set<string> = new Set();
+    private modifiers: Set<string | Decorator> = new Set();
     private className: string = "";
     private typeParameters: Type[] = [];
     private heritageClauses: Map<string, string> = new Map();
@@ -18,7 +18,7 @@ export class ClassInfo {
 
     constructor() { }
 
-    public build(modifiers: Set<string>, className: string, typeParameters: Type[], heritageClauses: Map<string, string>,
+    public build(modifiers: Set<string | Decorator>, className: string, typeParameters: Type[], heritageClauses: Map<string, string>,
         members: ArkField[], originType: string) {
         this.modifiers = modifiers;
         this.className = className;
@@ -90,9 +90,9 @@ export function buildClassInfo4ClassNode(node: ts.ClassDeclaration | ts.ClassExp
         originType = "Enum";
     }
 
-    let modifiers: Set<string> = new Set<string>();
+    let modifiers: Set<string | Decorator> = new Set<string | Decorator>();
     if (node.modifiers) {
-        modifiers = buildModifiers(node.modifiers);
+        modifiers = buildModifiers(node.modifiers, sourceFile);
     }
 
     let name: string = node.name ? node.name.text : '';
