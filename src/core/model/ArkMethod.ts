@@ -12,6 +12,7 @@ import { ArkBody } from "./ArkBody";
 import { ArkClass } from "./ArkClass";
 import { ArkFile } from "./ArkFile";
 import { MethodSignature, MethodSubSignature } from "./ArkSignature";
+import { Decorator } from "../base/Decorator";
 
 export const arkMethodNodeKind = ['MethodDeclaration', 'Constructor', 'FunctionDeclaration', 'GetAccessor',
     'SetAccessor', 'ArrowFunction', 'FunctionExpression', 'MethodSignature', 'ConstructSignature', 'CallSignature'];
@@ -29,7 +30,7 @@ export class ArkMethod {
 
     private returnType: Type = UnknownType.getInstance();
     private parameters: MethodParameter[] = [];
-    private modifiers: Set<string> = new Set<string>();
+    private modifiers: Set<string | Decorator> = new Set<string | Decorator>();
     private typeParameters: Type[] = [];
 
     private methodSignature: MethodSignature;
@@ -161,7 +162,7 @@ export class ArkMethod {
         return this.modifiers;
     }
 
-    public addModifier(name: string) {
+    public addModifier(name: string | Decorator) {
         this.modifiers.add(name);
     }
 

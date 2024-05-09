@@ -99,10 +99,10 @@ export class UndefinedVariableChecker extends DataflowProblem<Value> {
                             ret.add(assigned);
                         } else if (rightOp instanceof ArkInstanceFieldRef) {
                             const base = rightOp.getBase();
-                            if (base == dataFact || !base.getDeclaringStmt()){
-                                logger.log("undefined base")
-                                logger.log(srcStmt.toString());
-                                logger.log(srcStmt.getOriginPositionInfo().toString());
+                            if (base == dataFact || !base.getDeclaringStmt() && base.getName() == dataFact.toString()){
+                                console.log("undefined base")
+                                console.log(srcStmt.toString());
+                                console.log(srcStmt.getOriginPositionInfo().toString());
                             }
                         } else if (dataFact instanceof ArkInstanceFieldRef && rightOp == dataFact.getBase()) {
                             const field = new ArkInstanceFieldRef(srcStmt.getLeftOp() as Local, dataFact.getFieldSignature());

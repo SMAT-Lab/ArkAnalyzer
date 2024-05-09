@@ -10,8 +10,8 @@ let config: SceneConfig = new SceneConfig();
 config.buildFromJson(config_path);
 const scene = new Scene(config);
 const defaultMethod = scene.getFiles()[0].getDefaultClass().getDefaultArkMethod();
-const method = ModelUtils.getMethodWithName("U2",defaultMethod!);
-// const method = defaultMethod;
+let method = ModelUtils.getMethodWithName("U2",defaultMethod!);
+method = defaultMethod;
 if(method){
     const problem = new UndefinedVariableChecker([...method.getCfg().getBlocks()][0].getStmts()[method.getParameters().length],method);
     const solver = new UndefinedVariableSolver(problem, scene);

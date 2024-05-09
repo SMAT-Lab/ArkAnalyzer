@@ -16,7 +16,7 @@ export class ArkField {
     private type: Type;
     private parameters: MethodParameter[] = [];
     private typeParameters: Type[] = [];
-    private modifiers: Set<string> = new Set<string>();
+    private modifiers: Set<string | Decorator> = new Set<string | Decorator>();
     private questionToken: boolean = false;
     private exclamationToken: boolean = false;
 
@@ -101,7 +101,7 @@ export class ArkField {
         return this.modifiers;
     }
 
-    public addModifier(modifier: string) {
+    public addModifier(modifier: string | Decorator) {
         this.modifiers.add(modifier);
     }
 

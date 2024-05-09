@@ -1,11 +1,12 @@
 import ts from 'typescript';
 import { buildModifiers } from '../../utils/builderUtils';
 import Logger from "../../utils/logger";
+import { Decorator } from '../base/Decorator';
 
 const logger = Logger.getLogger();
 export class NamespaceInfo {
     private name: string;
-    private modifiers: Set<string> = new Set<string>();
+    private modifiers: Set<string | Decorator> = new Set<string | Decorator>();
 
     constructor() { }
 
@@ -21,15 +22,15 @@ export class NamespaceInfo {
         return this.modifiers;
     }
 
-    public addModifier(modifier: string) {
+    public addModifier(modifier: string | Decorator) {
         this.modifiers.add(modifier);
     }
 }
 
-export function buildNamespaceInfo4NamespaceNode(node: ts.ModuleDeclaration): NamespaceInfo {
+export function buildNamespaceInfo4NamespaceNode(node: ts.ModuleDeclaration, sourceFile: ts.SourceFile): NamespaceInfo {
     let namespaceInfo = new NamespaceInfo();
     if (node.modifiers) {
-        buildModifiers(node.modifiers).forEach((modifier) => {
+        buildModifiers(node.modifiers, sourceFile).forEach((modifier) => {
             namespaceInfo.addModifier(modifier);
         });
     }

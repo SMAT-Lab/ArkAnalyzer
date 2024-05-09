@@ -1,10 +1,17 @@
 export class Decorator {
     kind: string;
+    content: string;
     constructor(name: string) {
         this.kind = name;
     }
     public getKind(): string {
         return this.kind;
+    }
+    public setContent(content: string) {
+        this.content = content;
+    }
+    public getContent(): string {
+        return this.content;
     }
 }
 

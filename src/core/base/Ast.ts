@@ -135,7 +135,7 @@ export class ASTree {
                 exportNodeInfo = buildExportInfo4ExportNode(child, this.sourceFile);
             }
             if (ts.isModuleDeclaration(child)) {
-                namespaceNodeInfo = buildNamespaceInfo4NamespaceNode(child);
+                namespaceNodeInfo = buildNamespaceInfo4NamespaceNode(child, this.sourceFile);
             }
 
             ca = new NodeA(child, nodea, [], child.getText(this.sourceFile), child.getStart(this.sourceFile), "",
