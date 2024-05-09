@@ -1,11 +1,42 @@
 import * as fs from 'fs';
 import Logger from "../../utils/logger";
-import { ASTree, NodeA } from '../base/Ast';
-import { Constant } from '../base/Constant';
-import { AbstractInvokeExpr, ArkBinopExpr, ArkCastExpr, ArkConditionExpr, ArkInstanceInvokeExpr, ArkLengthExpr, ArkNewArrayExpr, ArkNewExpr, ArkStaticInvokeExpr, ArkTypeOfExpr, ArkUnopExpr } from '../base/Expr';
-import { Local } from '../base/Local';
-import { AbstractFieldRef, ArkArrayRef, ArkCaughtExceptionRef, ArkInstanceFieldRef, ArkParameterRef, ArkStaticFieldRef, ArkThisRef } from '../base/Ref';
-import { ArkAssignStmt, ArkDeleteStmt, ArkGotoStmt, ArkIfStmt, ArkInvokeStmt, ArkReturnStmt, ArkReturnVoidStmt, ArkSwitchStmt, ArkThrowStmt, Stmt } from '../base/Stmt';
+import {ASTree, NodeA} from '../base/Ast';
+import {Constant} from '../base/Constant';
+import {
+    AbstractInvokeExpr,
+    ArkBinopExpr,
+    ArkCastExpr,
+    ArkConditionExpr,
+    ArkInstanceInvokeExpr,
+    ArkLengthExpr,
+    ArkNewArrayExpr,
+    ArkNewExpr,
+    ArkStaticInvokeExpr,
+    ArkTypeOfExpr,
+    ArkUnopExpr
+} from '../base/Expr';
+import {Local} from '../base/Local';
+import {
+    AbstractFieldRef,
+    ArkArrayRef,
+    ArkCaughtExceptionRef,
+    ArkInstanceFieldRef,
+    ArkParameterRef,
+    ArkStaticFieldRef,
+    ArkThisRef
+} from '../base/Ref';
+import {
+    ArkAssignStmt,
+    ArkDeleteStmt,
+    ArkGotoStmt,
+    ArkIfStmt,
+    ArkInvokeStmt,
+    ArkReturnStmt,
+    ArkReturnVoidStmt,
+    ArkSwitchStmt,
+    ArkThrowStmt,
+    Stmt
+} from '../base/Stmt';
 import {
     AnnotationNamespaceType,
     AnnotationTypeQueryType,
@@ -22,15 +53,16 @@ import {
     UnionType,
     UnknownType
 } from '../base/Type';
-import { Value } from '../base/Value';
-import { BasicBlock } from '../graph/BasicBlock';
-import { Cfg } from '../graph/Cfg';
-import { ArkClass, buildNormalArkClassFromArkFile } from '../model/ArkClass';
-import { ArkMethod, buildArkMethodFromArkClass } from '../model/ArkMethod';
-import { ClassSignature, FieldSignature, MethodSignature, MethodSubSignature } from '../model/ArkSignature';
-import { ExportInfo } from './ExportBuilder';
-import { IRUtils } from './IRUtils';
-import { TypeInference } from './TypeInference';
+import {Value} from '../base/Value';
+import {BasicBlock} from '../graph/BasicBlock';
+import {Cfg} from '../graph/Cfg';
+import {ArkClass, buildNormalArkClassFromArkFile} from '../model/ArkClass';
+import {ArkMethod, buildArkMethodFromArkClass} from '../model/ArkMethod';
+import {ClassSignature, FieldSignature, MethodSignature, MethodSubSignature} from '../model/ArkSignature';
+import {ExportInfo} from './ExportBuilder';
+import {IRUtils} from './IRUtils';
+import {TypeInference} from './TypeInference';
+import {LineColPosition} from "../base/Position";
 
 const logger = Logger.getLogger();
 
@@ -86,6 +118,7 @@ class ConditionStatementBuilder extends StatementBuilder {
     loopBlock: Block | null;
     condition: string;
     doStatement: StatementBuilder | null = null;
+
     constructor(type: string, code: string, astNode: NodeA, scopeID: number) {
         super(type, code, astNode, scopeID);
         this.nextT = null;
@@ -99,6 +132,7 @@ class SwitchStatementBuilder extends StatementBuilder {
     nexts: StatementBuilder[];
     cases: Case[] = [];
     default: StatementBuilder | null = null;
+
     constructor(type: string, code: string, astNode: NodeA, scopeID: number) {
         super(type, code, astNode, scopeID);
         this.nexts = [];
@@ -111,6 +145,7 @@ class TryStatementBuilder extends StatementBuilder {
     catchStatement: StatementBuilder | null = null;
     catchError: string = "";
     finallyStatement: StatementBuilder | null = null;
+
     constructor(type: string, code: string, astNode: NodeA, scopeID: number) {
         super(type, code, astNode, scopeID);
     }
@@ -119,6 +154,7 @@ class TryStatementBuilder extends StatementBuilder {
 class Case {
     value: string;
     stm: StatementBuilder;
+
     constructor(value: string, stm: StatementBuilder) {
         this.value = value;
         this.stm = stm;
@@ -128,6 +164,7 @@ class Case {
 class DefUseChain {
     def: StatementBuilder;
     use: StatementBuilder;
+
     constructor(def: StatementBuilder, use: StatementBuilder) {
         this.def = def;
         this.use = use;
@@ -140,6 +177,7 @@ class Variable {
     defUse: DefUseChain[];
     properties: Variable[] = [];
     propOf: Variable | null = null;
+
     constructor(name: string, lastDef: StatementBuilder) {
         this.name = name;
         this.lastDef = lastDef;
@@ -152,6 +190,7 @@ class Scope {
     variable: Set<String>;
     level: number;
     parent: Scope | null;
+
     constructor(id: number, variable: Set<String>, level: number) {
         this.id = id;
         this.variable = variable;
@@ -167,6 +206,7 @@ class Block {
     lasts: Set<Block>;
     walked: boolean = false;
     loopStmt: StatementBuilder | null;
+
     constructor(id: number, stms: StatementBuilder[], loopStmt: StatementBuilder | null) {
         this.id = id;
         this.stms = stms;
@@ -181,6 +221,7 @@ class Catch {
     from: number;
     to: number;
     withLabel: number;
+
     constructor(errorName: string, from: number, to: number, withLabel: number) {
         this.errorName = errorName;
         this.from = from;
@@ -279,24 +320,21 @@ export class CfgBuilder {
                 let lastIf = lastStatement as ConditionStatementBuilder;
                 if (lastIf.nextT == null) {
                     lastIf.nextT = s;
-                }
-                else {
+                } else {
                     lastIf.nextF = s;
                 }
-            }
-            else if (lastStatement.type == "loopStatement") {
+            } else if (lastStatement.type == "loopStatement") {
                 let lastLoop = lastStatement as ConditionStatementBuilder;
                 lastLoop.nextT = s;
-            }
-            else if (lastStatement.type == "catchOrNot") {
+            } else if (lastStatement.type == "catchOrNot") {
                 let lastLoop = lastStatement as ConditionStatementBuilder;
                 lastLoop.nextT = s;
-            }
-            else {
+            } else {
                 lastStatement.next = s;
             }
 
         }
+
         function checkBlock(node: NodeA): NodeA | null {
             if (node.kind == "Block")
                 return node;
@@ -308,6 +346,7 @@ export class CfgBuilder {
                 return ret;
             }
         }
+
         function getAnonymous(node: NodeA): NodeA | null {
             const stack: NodeA[] = [];
             stack.push(node);
@@ -477,8 +516,7 @@ export class CfgBuilder {
                         if (nextChild && loopchild.text != "(" && nextChild.text != ")" && nextChild.text != ";") {
                             code += ' ';
                         }
-                    }
-                    else {
+                    } else {
                         loopstm.code = code;
                         this.walkAST(loopstm, loopstm, loopchild.children[1]);
                     }
@@ -514,8 +552,7 @@ export class CfgBuilder {
                 if (lastType == "ifStatement" || lastType == "loopStatement") {
                     let lastCondition = lastStatement as ConditionStatementBuilder;
                     loopstm.nextT = lastCondition.nextT;
-                }
-                else {
+                } else {
                     loopstm.nextT = lastStatement.next;
                 }
                 if (loopstm.nextT && loopstm.nextT != loopstm) {
@@ -534,8 +571,7 @@ export class CfgBuilder {
                 for (let schild of c.children) {
                     if (schild.kind != "CaseBlock") {
                         switchstm.code += schild.text;
-                    }
-                    else {
+                    } else {
                         let lastCaseExit: StatementBuilder | null = null;
                         let preCases: string[] = [];
                         for (let j = 0; j < schild.children[1].children.length; j++) {
@@ -546,8 +582,7 @@ export class CfgBuilder {
                                 if (caseChild.kind == "SyntaxList") {
                                     syntaxList = caseChild;
                                     break;
-                                }
-                                else {
+                                } else {
                                     caseWords += caseChild.text + " ";
                                 }
                             }
@@ -557,8 +592,7 @@ export class CfgBuilder {
                             }
                             if (syntaxList.children.length == 0) {
                                 preCases.push(caseWords);
-                            }
-                            else {
+                            } else {
                                 let thisCase = caseWords;
                                 for (let w of preCases) {
                                     caseWords += w + " ";
@@ -577,8 +611,7 @@ export class CfgBuilder {
                                     if (caseClause.kind == "CaseClause") {
                                         let cas = new Case(thisCase, casestm.next);
                                         switchstm.cases.push(cas);
-                                    }
-                                    else
+                                    } else
                                         switchstm.default = casestm.next;
                                 }
                                 if (lastCaseExit) {
@@ -586,8 +619,7 @@ export class CfgBuilder {
                                 }
                                 if (j == schild.children[1].children.length - 1) {
                                     caseExit.next = switchExit;
-                                }
-                                else {
+                                } else {
                                     lastCaseExit = caseExit;
                                 }
                                 preCases = [];
@@ -645,19 +677,16 @@ export class CfgBuilder {
                         if (VD) {
                             if (VD.children[0].kind == "Identifier") {
                                 trystm.catchError = VD.children[0].text;
-                            }
-                            else {
+                            } else {
                                 let error = VD.children[this.findChildIndex(VD, "TypeReference")];
                                 if (error) {
                                     trystm.catchError = error.text;
-                                }
-                                else {
+                                } else {
                                     trystm.catchError = "Error";
                                 }
                             }
 
-                        }
-                        else {
+                        } else {
                             trystm.catchError = "Error";
                         }
                     }
@@ -724,8 +753,7 @@ export class CfgBuilder {
             }
             this.deleteExit(cstm.nextT);
             this.deleteExit(cstm.nextF);
-        }
-        else if (stm.type == "switchStatement") {
+        } else if (stm.type == "switchStatement") {
             let sstm = stm as SwitchStatementBuilder;
             for (let j in sstm.nexts) {
                 let caseClause = sstm.nexts[j];
@@ -742,8 +770,7 @@ export class CfgBuilder {
                 }
                 this.deleteExit(sstm.nexts[j]);
             }
-        }
-        else if (stm.type == "tryStatement") {
+        } else if (stm.type == "tryStatement") {
             let trystm = stm as TryStatementBuilder;
             if (trystm.tryFirst) {
                 this.deleteExit(trystm.tryFirst);
@@ -754,8 +781,7 @@ export class CfgBuilder {
             if (trystm.finallyStatement) {
                 this.deleteExit(trystm.finallyStatement);
             }
-        }
-        else {
+        } else {
             if (stm.next?.type.includes("Exit")) {
                 let p = stm.next;
                 while (p.type.includes("Exit")) {
@@ -777,8 +803,7 @@ export class CfgBuilder {
         if (this.blocks.length > 0 && this.blocks[this.blocks.length - 1].stms.length == 0) {
             block = this.blocks[this.blocks.length - 1];
             block.stms = stms;
-        }
-        else {
+        } else {
             block = new Block(this.blocks.length, stms, null);
             this.blocks.push(block);
         }
@@ -819,8 +844,7 @@ export class CfgBuilder {
             this.buildBlocks(cstm.nextT, b1);
             let b2 = this.buildNewBlock([]);
             this.buildBlocks(cstm.nextF, b2);
-        }
-        else if (stm.type == "switchStatement") {
+        } else if (stm.type == "switchStatement") {
             let sstm = stm as SwitchStatementBuilder;
             for (const cas of sstm.cases) {
                 this.buildBlocks(cas.stm, this.buildNewBlock([]));
@@ -829,8 +853,7 @@ export class CfgBuilder {
                 this.buildBlocks(sstm.default, this.buildNewBlock([]));
             }
 
-        }
-        else if (stm.type == "tryStatement") {
+        } else if (stm.type == "tryStatement") {
             let trystm = stm as TryStatementBuilder;
             if (!trystm.tryFirst) {
                 logger.error("try without tryFirst");
@@ -858,8 +881,7 @@ export class CfgBuilder {
             if (trystm.finallyStatement) {
                 this.buildBlocks(trystm.finallyStatement, finallyBlock);
                 lastFinallyBlock = this.blocks[this.blocks.length - 1];
-            }
-            else {
+            } else {
                 let stm = new StatementBuilder("tmp", "", null, -1);
                 finallyBlock.stms = [stm];
             }
@@ -890,8 +912,7 @@ export class CfgBuilder {
             if (trystm.finallyStatement) {
                 if (trystm.catchStatement)
                     finallyBlock.stms.push(goto);
-            }
-            else {
+            } else {
                 finallyBlock.stms = [goto];
             }
             finallyBlock.nexts.add(nextBlock);
@@ -903,8 +924,7 @@ export class CfgBuilder {
                 nextBlock.stms.push(returnStatement);
                 returnStatement.block = nextBlock;
             }
-        }
-        else {
+        } else {
             if (stm.next) {
                 if (stm.type == "continueStatement" && stm.next.block) {
                     return;
@@ -941,8 +961,7 @@ export class CfgBuilder {
                         block.nexts.add(nextF);
                         nextF.lasts.add(block);
                     }
-                }
-                else if (originStatement instanceof SwitchStatementBuilder) {
+                } else if (originStatement instanceof SwitchStatementBuilder) {
                     for (const cas of originStatement.cases) {
                         const next = cas.stm.block;
                         if (next && (lastStatement || next != block) && !cas.stm.type.includes(" exit")) {
@@ -957,8 +976,7 @@ export class CfgBuilder {
                             next.lasts.add(block);
                         }
                     }
-                }
-                else {
+                } else {
                     let next = originStatement.next?.block;
                     if (next && (lastStatement || next != block) && !originStatement.next?.type.includes(" exit")) {
                         block.nexts.add(next);
@@ -989,8 +1007,7 @@ export class CfgBuilder {
             this.exit.lasts[this.exit.lasts.indexOf(notReturnStmt)] = returnStatement;
             notReturnStmt.block?.stms.push(returnStatement);
             returnStatement.block = notReturnStmt.block;
-        }
-        else {
+        } else {
             let returnBlock = new Block(this.blocks.length, [returnStatement], null);
             returnStatement.block = returnBlock;
             this.blocks.push(returnBlock);
@@ -1037,15 +1054,13 @@ export class CfgBuilder {
             cstm.nextF.lasts.push(cstm);
             this.buildLastAndHaveCall(cstm.nextT);
             this.buildLastAndHaveCall(cstm.nextF);
-        }
-        else if (stm.type == "switchStatement") {
+        } else if (stm.type == "switchStatement") {
             let sstm = stm as SwitchStatementBuilder;
             for (let s of sstm.nexts) {
                 s.lasts.push(sstm);
                 this.buildLastAndHaveCall(s);
             }
-        }
-        else if (stm.type == "tryStatement") {
+        } else if (stm.type == "tryStatement") {
             let trystm = stm as TryStatementBuilder;
             if (trystm.tryFirst) {
                 this.buildLastAndHaveCall(trystm.tryFirst);
@@ -1056,8 +1071,7 @@ export class CfgBuilder {
             if (trystm.finallyStatement) {
                 this.buildLastAndHaveCall(trystm.finallyStatement);
             }
-        }
-        else {
+        } else {
             if (stm.next) {
                 stm.next?.lasts.push(stm);
                 this.buildLastAndHaveCall(stm.next);
@@ -1071,6 +1085,7 @@ export class CfgBuilder {
             stm.walked = false;
         }
     }
+
     resetWalkedPartial(stm: StatementBuilder) {
         if (!stm.walked)
             return;
@@ -1083,14 +1098,12 @@ export class CfgBuilder {
             }
             this.resetWalkedPartial(cstm.nextF);
             this.resetWalkedPartial(cstm.nextT);
-        }
-        else if (stm.type == "switchStatement") {
+        } else if (stm.type == "switchStatement") {
             let sstm = stm as SwitchStatementBuilder;
             for (let j in sstm.nexts) {
                 this.resetWalkedPartial(sstm.nexts[j]);
             }
-        }
-        else if (stm.type == "tryStatement") {
+        } else if (stm.type == "tryStatement") {
             let trystm = stm as TryStatementBuilder;
             if (trystm.tryFirst) {
                 this.resetWalkedPartial(trystm.tryFirst);
@@ -1101,8 +1114,7 @@ export class CfgBuilder {
             if (trystm.finallyStatement) {
                 this.resetWalkedPartial(trystm.finallyStatement);
             }
-        }
-        else {
+        } else {
             if (stm.next != null)
                 this.resetWalkedPartial(stm.next);
         }
@@ -1126,14 +1138,12 @@ export class CfgBuilder {
             }
             this.CfgBuilder2Array(cstm.nextF);
             this.CfgBuilder2Array(cstm.nextT);
-        }
-        else if (stm.type == "switchStatement") {
+        } else if (stm.type == "switchStatement") {
             let sstm = stm as SwitchStatementBuilder;
             for (let ss of sstm.nexts) {
                 this.CfgBuilder2Array(ss);
             }
-        }
-        else if (stm.type == "tryStatement") {
+        } else if (stm.type == "tryStatement") {
             let trystm = stm as TryStatementBuilder;
             if (trystm.tryFirst) {
                 this.CfgBuilder2Array(trystm.tryFirst);
@@ -1144,8 +1154,7 @@ export class CfgBuilder {
             if (trystm.finallyStatement) {
                 this.CfgBuilder2Array(trystm.finallyStatement);
             }
-        }
-        else {
+        } else {
             if (stm.next != null)
                 this.CfgBuilder2Array(stm.next);
         }
@@ -1169,16 +1178,14 @@ export class CfgBuilder {
             this.dotEdges.push(edge);
             this.getDotEdges(cstm.nextF);
             this.getDotEdges(cstm.nextT);
-        }
-        else if (stm.type == "switchStatement") {
+        } else if (stm.type == "switchStatement") {
             let sstm = stm as SwitchStatementBuilder;
             for (let ss of sstm.nexts) {
                 let edge = [sstm.index, ss.index];
                 this.dotEdges.push(edge);
                 this.getDotEdges(ss);
             }
-        }
-        else {
+        } else {
             if (stm.next != null) {
                 let edge = [stm.index, stm.next.index];
                 this.dotEdges.push(edge);
@@ -1227,8 +1234,7 @@ export class CfgBuilder {
                     if (mode == "use") {
                         let chain = new DefUseChain(v.lastDef, stm);
                         v.defUse.push(chain);
-                    }
-                    else {
+                    } else {
                         v.lastDef = stm;
                         for (let p of v.properties) {
                             p.lastDef = stm;
@@ -1258,8 +1264,7 @@ export class CfgBuilder {
                         set.add(v);
                         let chain = new DefUseChain(v.lastDef, stm);
                         v.defUse.push(chain);
-                    }
-                    else {
+                    } else {
                         for (let v of this.variables) {
                             if (v.name == node.text) {
                                 v.lastDef = stm;
@@ -1302,16 +1307,14 @@ export class CfgBuilder {
                 if (i >= 2 && node.children[i - 2].kind == "ColonToken") {
                     indexOfDef = i - 3;
                     this.dfsUseDef(stm, node.children[indexOfDef], "def");
-                }
-                else {
+                } else {
                     indexOfDef = i - 1;
                     this.dfsUseDef(stm, node.children[indexOfDef], "def");
                 }
             }
             if (child.kind.includes("EqualsToken") && child.kind != "EqualsEqualsToken") {
                 this.dfsUseDef(stm, node.children[i - 1], "def");
-            }
-            else if (child.kind == "PlusPlusToken" || child.kind == "MinusMinusToken") {
+            } else if (child.kind == "PlusPlusToken" || child.kind == "MinusMinusToken") {
                 if (i == 0)
                     this.dfsUseDef(stm, node.children[i + 1], "def");
                 else
@@ -1319,6 +1322,7 @@ export class CfgBuilder {
             }
         }
     }
+
     findChildIndex(node: NodeA, kind: string): number {
         for (let i = 0; i < node.children.length; i++) {
             if (node.children[i].kind == kind)
@@ -1326,6 +1330,7 @@ export class CfgBuilder {
         }
         return -1;
     }
+
     generateUseDef() {
         for (let stm of this.statementArray) {
             if (stm.astNode == null) continue;
@@ -1356,8 +1361,7 @@ export class CfgBuilder {
                             this.variables.push(v);
                             stm.def.add(v);
                         }
-                    }
-                    else if (nameImport.kind == "NamespaceImport") {
+                    } else if (nameImport.kind == "NamespaceImport") {
                         let identifier = nameImport.children[this.findChildIndex(nameImport, "Identifier")];
                         const v = new Variable(identifier.text, stm);
                         this.variables.push(v);
@@ -1373,8 +1377,7 @@ export class CfgBuilder {
                                 if (v.name == child.text)
                                     stm.use.add(v);
                             }
-                        }
-                        else if (child.kind == "BinaryExpression") {
+                        } else if (child.kind == "BinaryExpression") {
                             this.dfsUseDef(stm, child, "use");
                         }
                     }
@@ -1484,6 +1487,7 @@ export class CfgBuilder {
         }
         return local;
     }
+
     // utils end
 
 
@@ -1634,19 +1638,16 @@ export class CfgBuilder {
             // TODO:识别外部变量
             value = new Local(node.text);
             value = this.getOriginalLocal(value);
-        }
-        else if (node.kind == 'Parameter') {
+        } else if (node.kind == 'Parameter') {
             let identifierNode = node.children[0];
             let typeNode = node.children[2];
             value = new Local(identifierNode.text);
             value = this.getOriginalLocal(value);
-        }
-        else if (this.shouldBeConstant(node)) {
+        } else if (this.shouldBeConstant(node)) {
             const typeStr = this.resolveKeywordType(node);
             let constant = new Constant(node.text, TypeInference.buildTypeFromStr(typeStr));
             value = this.generateAssignStmt(constant);
-        }
-        else if (node.kind == 'BinaryExpression') {
+        } else if (node.kind == 'BinaryExpression') {
             let op1 = this.astNodeToValue(node.children[0]);
             let operator = node.children[1].text;
             let op2 = this.astNodeToValue(node.children[2]);
@@ -1670,8 +1671,7 @@ export class CfgBuilder {
             const fieldSignature = new FieldSignature();
             fieldSignature.setFieldName(fieldName);
             value = new ArkInstanceFieldRef(base, fieldSignature);
-        }
-        else if (node.kind == 'ElementAccessExpression') {
+        } else if (node.kind == 'ElementAccessExpression') {
             let baseValue = this.astNodeToValue(node.children[0]);
             if (!(baseValue instanceof Local)) {
                 baseValue = this.generateAssignStmt(baseValue);
@@ -1703,8 +1703,7 @@ export class CfgBuilder {
                 fieldSignature.setFieldName(fieldName);
                 value = new ArkInstanceFieldRef(baseLocal, fieldSignature);
             }
-        }
-        else if (node.kind == "CallExpression") {
+        } else if (node.kind == "CallExpression") {
             let syntaxListNode = node.children[this.findChildIndex(node, 'OpenParenToken') + 1];
             let argNodes = this.getSyntaxListItems(syntaxListNode);
             let args: Value[] = [];
@@ -1738,14 +1737,11 @@ export class CfgBuilder {
                 methodSubSignature.setMethodName(calleeNode.text);
                 value = new ArkStaticInvokeExpr(methodSignature, args);
             }
-        }
-
-        else if (node.kind == "ArrowFunction") {
+        } else if (node.kind == "ArrowFunction") {
             let arrowFuncName = 'AnonymousFunc$' + this.name + '$' + this.anonymousFuncIndex;
             if (node.methodNodeInfo) {
                 node.methodNodeInfo.updateName4anonymousFunc(arrowFuncName);
-            }
-            else {
+            } else {
                 throw new Error('No MethodNodeInfo found for ArrowFunction node. Please check.');
             }
             this.anonymousFuncIndex++;
@@ -1778,8 +1774,7 @@ export class CfgBuilder {
 
             if (node.methodNodeInfo) {
                 node.methodNodeInfo.updateName4anonymousFunc(funcExprName);
-            }
-            else {
+            } else {
                 throw new Error('No MethodNodeInfo found for ArrowFunction node. Please check.');
             }
 
@@ -1798,8 +1793,7 @@ export class CfgBuilder {
             let callableType = new CallableType(exprArkMethod.getSignature());
             value = new Local(funcExprName, callableType);
             this.locals.add(value);
-        }
-        else if (node.kind == "ClassExpression") {
+        } else if (node.kind == "ClassExpression") {
             let cls: ArkClass = new ArkClass();
             let arkFile = this.declaringClass.getDeclaringArkFile();
             buildNormalArkClassFromArkFile(node, arkFile, cls);
@@ -1808,16 +1802,14 @@ export class CfgBuilder {
                 let exportClauseName: string = cls.getName();
                 let exportClauseType: string = "Class";
                 let exportInfo = new ExportInfo();
-                exportInfo.build(exportClauseName, exportClauseType);
+                exportInfo.build(exportClauseName, exportClauseType, new LineColPosition(-1, -1));
                 arkFile.addExportInfos(exportInfo);
             }
 
             value = new Local(cls.getName(), new ClassType(cls.getSignature()));
-        }
-        else if (node.kind == "ObjectLiteralExpression") {
+        } else if (node.kind == "ObjectLiteralExpression") {
             value = this.objectLiteralNodeToLocal(node);
-        }
-        else if (node.kind == "NewExpression") {
+        } else if (node.kind == "NewExpression") {
             const className = node.children[1].text;
             if (className == 'Array') {
                 let baseType: Type = AnyType.getInstance();
@@ -1880,8 +1872,7 @@ export class CfgBuilder {
 
                 this.current3ACstm.threeAddressStmts.push(new ArkInvokeStmt(new ArkInstanceInvokeExpr(value as Local, methodSignature, args)));
             }
-        }
-        else if (node.kind == 'ArrayLiteralExpression') {
+        } else if (node.kind == 'ArrayLiteralExpression') {
             let syntaxListNode = node.children[1];
             let size = 0;
             for (const syntaxNode of syntaxListNode.children) {
@@ -1915,8 +1906,7 @@ export class CfgBuilder {
                 newArrayExpr.setBaseType(new UnionType(Array.from(itemTypes.keys())));
             }
             value.setType(new ArrayType(newArrayExpr.getBaseType(), 1));
-        }
-        else if (node.kind == 'PrefixUnaryExpression') {
+        } else if (node.kind == 'PrefixUnaryExpression') {
             let token = node.children[0].text;
             if (token == '++' || token == '--') {
                 value = this.astNodeToValue(node.children[1]);
@@ -1927,54 +1917,42 @@ export class CfgBuilder {
                 let arkUnopExpr = new ArkUnopExpr(op, token);
                 value = this.generateAssignStmt(arkUnopExpr);
             }
-        }
-        else if (node.kind == 'PostfixUnaryExpression') {
+        } else if (node.kind == 'PostfixUnaryExpression') {
             let token = node.children[1].text;
             value = this.astNodeToValue(node.children[0]);
             let binopExpr = new ArkBinopExpr(value, new Constant('1', NumberType.getInstance()), token[0]);
             this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(value, binopExpr));
-        }
-        else if (node.kind == 'TemplateExpression') {
+        } else if (node.kind == 'TemplateExpression') {
             value = this.astNodeToTemplateExpr(node);
-        }
-        else if (node.kind == 'AwaitExpression') {
+        } else if (node.kind == 'AwaitExpression') {
             value = this.astNodeToValue(node.children[1]);
-        }
-        else if (node.kind == 'ParenthesizedExpression') {
+        } else if (node.kind == 'ParenthesizedExpression') {
             const parenthesizedValue = this.astNodeToValue(node.children[1]);
             value = this.generateAssignStmt(parenthesizedValue);
-        }
-        else if (node.kind == 'SpreadElement') {
+        } else if (node.kind == 'SpreadElement') {
             value = this.astNodeToValue(node.children[1]);
-        }
-        else if (node.kind == 'TypeOfExpression') {
+        } else if (node.kind == 'TypeOfExpression') {
             value = new ArkTypeOfExpr(this.astNodeToValue(node.children[1]));
-        }
-        else if (node.kind == 'AsExpression') {
+        } else if (node.kind == 'AsExpression') {
             let typeName = node.children[2].text;
             let op = this.astNodeToValue(node.children[0]);
             value = new ArkCastExpr(op, TypeInference.buildTypeFromStr(typeName));
-        }
-        else if (node.kind == 'TypeAssertionExpression') {
+        } else if (node.kind == 'TypeAssertionExpression') {
             let typeName = node.children[this.findChildIndex(node, 'FirstBinaryOperator') + 1].text;
             let opNode = node.children[this.findChildIndex(node, 'GreaterThanToken') + 1]
             let op = this.astNodeToValue(opNode);
             value = new ArkCastExpr(op, TypeInference.buildTypeFromStr(typeName));
-        }
-        else if (node.kind == 'ArrayBindingPattern' || node.kind == 'ObjectBindingPattern') {
+        } else if (node.kind == 'ArrayBindingPattern' || node.kind == 'ObjectBindingPattern') {
             value = this.generateTempValue();
-        }
-        else if (node.kind == 'VoidExpression') {
+        } else if (node.kind == 'VoidExpression') {
             this.astNodeToThreeAddressStmt(node.children[1]);
             value = new Constant('undefined', UndefinedType.getInstance());
-        }
-        else if (node.kind == 'VariableDeclarationList') {
+        } else if (node.kind == 'VariableDeclarationList') {
             let declsNode = node.children[this.findChildIndex(node, "SyntaxList")];
             let syntaxListItems = this.getSyntaxListItems(declsNode);
             value = new Local(syntaxListItems[0].text);
             value = this.getOriginalLocal(value);
-        }
-        else if (node.kind == 'ConditionalExpression') {
+        } else if (node.kind == 'ConditionalExpression') {
             // TODO:新增block
             let conditionIdx = this.findChildIndex(node, 'QuestionToken') - 1;
             let conditionExprNode = node.children[conditionIdx];
@@ -1989,11 +1967,9 @@ export class CfgBuilder {
             let whenFalseNode = node.children[whenFalseIdx];
             this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(resultLocal, this.astNodeToValue(whenFalseNode)));
             value = resultLocal;
-        }
-        else if (node.kind == 'NonNullExpression') {
+        } else if (node.kind == 'NonNullExpression') {
             value = this.astNodeToValue(node.children[0]);
-        }
-        else {
+        } else {
             value = new Constant(node.text);
         }
         return value;
@@ -2175,8 +2151,7 @@ export class CfgBuilder {
             } else {
                 threeAddressStmts.push(new ArkReturnVoidStmt());
             }
-        }
-        else if (node.kind == "FirstStatement" || node.kind == "VariableDeclarationList") {
+        } else if (node.kind == "FirstStatement" || node.kind == "VariableDeclarationList") {
             let declListNode = node;
             if (node.kind == 'FirstStatement') {
                 declListNode = node.children[this.findChildIndex(node, "VariableDeclarationList")];
@@ -2186,12 +2161,10 @@ export class CfgBuilder {
             for (let declNode of syntaxListItems) {
                 this.astNodeToThreeAddressStmt(declNode);
             }
-        }
-        else if ((node.kind == 'BinaryExpression' && node.children[1].kind == 'FirstAssignment')
+        } else if ((node.kind == 'BinaryExpression' && node.children[1].kind == 'FirstAssignment')
             || (node.kind == 'VariableDeclaration')) {
             threeAddressStmts.push(...this.astNodeToThreeAddressAssignStmt(node));
-        }
-        else if ((node.kind == 'BinaryExpression')) {
+        } else if ((node.kind == 'BinaryExpression')) {
             threeAddressStmts.push(...this.astNodeToCompoundAssignment(node));
         } else if (node.kind == "ExpressionStatement") {
             let expressionNodeIdx = 0;
@@ -2206,51 +2179,40 @@ export class CfgBuilder {
             threeAddressStmts.push(new ArkIfStmt(conditionExpr));
         } else if (node.kind == 'PostfixUnaryExpression' || node.kind == 'PrefixUnaryExpression') {
             this.astNodeToValue(node);
-        }
-        else if (node.kind == 'ForStatement' || node.kind == 'ForOfStatement' || node.kind == 'ForInStatement'
+        } else if (node.kind == 'ForStatement' || node.kind == 'ForOfStatement' || node.kind == 'ForInStatement'
             || node.kind == 'WhileStatement' || node.kind == 'DoStatement') {
             this.astNodeToThreeAddressIterationStatement(node);
-        }
-        else if (node.kind == 'BreakStatement' || node.kind == 'ContinueStatement') {
+        } else if (node.kind == 'BreakStatement' || node.kind == 'ContinueStatement') {
             threeAddressStmts.push(new ArkGotoStmt());
-        }
-        else if (node.kind == 'SwitchStatement') {
+        } else if (node.kind == 'SwitchStatement') {
             this.astNodeToThreeAddressSwitchStatement(node);
-        }
-        else if (node.kind == 'ThrowStatement') {
+        } else if (node.kind == 'ThrowStatement') {
             let op = this.astNodeToValue(node.children[1]);
             if (IRUtils.moreThanOneAddress(op)) {
                 op = this.generateAssignStmt(op);
             }
             threeAddressStmts.push(new ArkThrowStmt(op));
-        }
-        else if (node.kind == 'CatchClause') {
+        } else if (node.kind == 'CatchClause') {
             let catchedValueNode = node.children[this.findChildIndex(node, 'OpenParenToken') + 1];
             let catchedValue = new Local(catchedValueNode.text);
             catchedValue = this.getOriginalLocal(catchedValue);
 
             let caughtExceptionRef = new ArkCaughtExceptionRef(UnknownType.getInstance());
             threeAddressStmts.push(new ArkAssignStmt(catchedValue, caughtExceptionRef));
-        }
-        else if (node.kind == 'CallExpression') {
+        } else if (node.kind == 'CallExpression') {
             threeAddressStmts.push(new ArkInvokeStmt(this.astNodeToValue(node) as AbstractInvokeExpr));
-        }
-        else if (node.kind == "AwaitExpression") {
+        } else if (node.kind == "AwaitExpression") {
             let expressionNode = node.children[1];
             this.astNodeToThreeAddressStmt(expressionNode);
-        }
-        else if (node.kind == 'VoidExpression') {
+        } else if (node.kind == 'VoidExpression') {
             this.astNodeToThreeAddressStmt(node.children[1]);
-        }
-        else if (node.kind == 'DeleteExpression') {
+        } else if (node.kind == 'DeleteExpression') {
             let popertyAccessExprNode = node.children[1];
             let popertyAccessExpr = this.astNodeToValue(popertyAccessExprNode) as AbstractFieldRef;
             threeAddressStmts.push(new ArkDeleteStmt(popertyAccessExpr));
-        }
-        else if (this.nopStmt(node)) {
+        } else if (this.nopStmt(node)) {
             // threeAddressStmts.push(new ArkNopStmt());
-        }
-        else {
+        } else {
             // logger.info('unsupported stmt node, type:', node.kind, ', text:', node.text);
         }
 
@@ -2298,8 +2260,7 @@ export class CfgBuilder {
         let mes = "";
         if (this.declaringClass?.getDeclaringArkFile()) {
             mes = this.declaringClass?.getDeclaringArkFile().getName() + "." + this.declaringClass.getName() + "." + this.name;
-        }
-        else {
+        } else {
             mes = "ifnext error"
         }
         mes += "\n" + stm.code;
@@ -2405,8 +2366,7 @@ export class CfgBuilder {
                 last3AC.children[last3AC.children.length - 1] = block;
                 this.updateParentText(last3AC);
                 this.removeStatement(stm);
-            }
-            else {
+            } else {
                 for (let i = 0; i < stm.addressCode3.length; i++) {
                     let ac = stm.addressCode3[i]
                     this.insertStatementBefore(stm, ac);
@@ -2450,15 +2410,13 @@ export class CfgBuilder {
                         block.stms.push(gotoStm);
                         length++;
                     }
-                }
-                else if (stm.type == "breakStatement" || stm.type == "continueStatement") {
+                } else if (stm.type == "breakStatement" || stm.type == "continueStatement") {
                     if (!stm.next?.block) {
                         this.errorTest(stm);
                         return;
                     }
                     stm.code = "goto label" + stm.next?.block.id;
-                }
-                else {
+                } else {
                     if (i == length - 1 && stm.next?.block && (bi + 1 < this.blocks.length && this.blocks[bi + 1].id != stm.next.block.id || bi + 1 == this.blocks.length)) {
                         let gotoStm = new StatementBuilder("StatementBuilder", "goto label" + stm.next?.block.id, null, block.stms[0].scopeID);
                         block.stms.push(gotoStm);
@@ -2467,8 +2425,7 @@ export class CfgBuilder {
                 }
                 if (stm.addressCode3.length == 0) {
                     text += "    " + stm.code + "\n";
-                }
-                else {
+                } else {
                     for (let ac of stm.addressCode3) {
                         if (ac.startsWith("if") || ac.startsWith("while")) {
                             let cstm = stm as ConditionStatementBuilder;
@@ -2478,8 +2435,7 @@ export class CfgBuilder {
                                 goto = "if !" + condition + " goto label" + cstm.nextF?.block.id;
                             stm.addressCode3[stm.addressCode3.indexOf(ac)] = goto;
                             text += "    " + goto + "\n";
-                        }
-                        else
+                        } else
                             text += "    " + ac + "\n";
                     }
                 }
@@ -2543,8 +2499,7 @@ export class CfgBuilder {
                     currStmtStrs.push(...switchStmtToString(originStmt));
                 } else if (originStmt.type == 'breakStatement' || originStmt.type == 'continueStatement') {
                     currStmtStrs.push(...jumpStmtToString(originStmt));
-                }
-                else {
+                } else {
                     for (const threeAddressStmt of originStmt.threeAddressStmts) {
                         currStmtStrs.push(threeAddressStmt.toString());
                     }

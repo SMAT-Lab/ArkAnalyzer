@@ -1,5 +1,6 @@
 import * as ts from "typescript";
-import { ImportInfo } from "./ImportBuilder";
+import {ImportInfo} from "./ImportBuilder";
+import {LineColPosition} from "../base/Position";
 
 export class ExportInfo {
     exportClauseName: string;
@@ -10,13 +11,17 @@ export class ExportInfo {
     isDefault: boolean = false;
     importInfo: ImportInfo | undefined;
 
-    constructor() { }
+    private originTsPosition: LineColPosition;
 
-    public build(exportClauseName: string, exportClauseType: string, exportFrom?: string, nameBeforeAs?: string) {
+    constructor() {
+    }
+
+    public build(exportClauseName: string, exportClauseType: string, originTsPosition: LineColPosition, exportFrom?: string, nameBeforeAs?: string) {
         this.setExportClauseName(exportClauseName);
         this.setExportClauseType(exportClauseType);
         this.setExportFrom(exportFrom);
         this.setNameBeforeAs(nameBeforeAs);
+        this.setOriginTsPosition(originTsPosition);
         this.genImportInfo();
     }
 
@@ -71,22 +76,31 @@ export class ExportInfo {
     private genImportInfo() {
         if (this.exportFrom != undefined) {
             let importInfo = new ImportInfo();
-            importInfo.build(this.exportClauseName, this.exportClauseType, this.exportFrom, this.nameBeforeAs);
+            importInfo.build(this.exportClauseName, this.exportClauseType, this.exportFrom, this.originTsPosition, this.nameBeforeAs);
             this.setImportInfo(importInfo);
         }
     }
+
+    public setOriginTsPosition(originTsPosition: LineColPosition): void {
+        this.originTsPosition = originTsPosition;
+    }
+
+    public getOriginTsPosition(): LineColPosition {
+        return this.originTsPosition;
+    }
 }
 
-export function buildExportInfo4ExportNode(node: ts.ExportDeclaration | ts.ExportAssignment): ExportInfo[] {
+export function buildExportInfo4ExportNode(node: ts.ExportDeclaration | ts.ExportAssignment, sourceFile: ts.SourceFile): ExportInfo[] {
     if (ts.isExportDeclaration(node)) {
-        return buildExportDeclarationNode(node);
-    }
-    else {
-        return buildExportAssignmentNode(node);
+        return buildExportDeclarationNode(node, sourceFile);
+    } else {
+        return buildExportAssignmentNode(node, sourceFile);
     }
 }
 
-function buildExportDeclarationNode(node: ts.ExportDeclaration): ExportInfo[] {
+function buildExportDeclarationNode(node: ts.ExportDeclaration, sourceFile: ts.SourceFile): ExportInfo[] {
+    const originTsPosition = LineColPosition.buildFromNode(node, sourceFile);
+
     let exportInfos: ExportInfo[] = [];
     let exportFrom: string | undefined;
     if (node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
@@ -100,12 +114,11 @@ function buildExportDeclarationNode(node: ts.ExportDeclaration): ExportInfo[] {
             let exportClauseName = element.name.text;
             if (element.propertyName && ts.isIdentifier(element.propertyName)) {
                 let exportInfo = new ExportInfo();
-                exportInfo.build(exportClauseName, exportClauseType, exportFrom, element.propertyName.text);
+                exportInfo.build(exportClauseName, exportClauseType, originTsPosition, exportFrom, element.propertyName.text);
                 exportInfos.push(exportInfo);
-            }
-            else {
+            } else {
                 let exportInfo = new ExportInfo();
-                exportInfo.build(exportClauseName, exportClauseType, exportFrom);
+                exportInfo.build(exportClauseName, exportClauseType, originTsPosition, exportFrom);
                 exportInfos.push(exportInfo);
             }
         });
@@ -117,7 +130,7 @@ function buildExportDeclarationNode(node: ts.ExportDeclaration): ExportInfo[] {
             let exportClauseName = node.exportClause.name.text;
             let nameBeforeAs = '*';
             let exportInfo = new ExportInfo();
-            exportInfo.build(exportClauseName, exportClauseType, exportFrom, nameBeforeAs);
+            exportInfo.build(exportClauseName, exportClauseType, originTsPosition, exportFrom, nameBeforeAs);
             exportInfos.push(exportInfo);
         }
 
@@ -129,30 +142,31 @@ function buildExportDeclarationNode(node: ts.ExportDeclaration): ExportInfo[] {
         let exportClauseType = "NamespaceExport";
         let exportClauseName = '*';
         let exportInfo = new ExportInfo();
-        exportInfo.build(exportClauseName, exportClauseType, exportFrom);
+        exportInfo.build(exportClauseName, exportClauseType, originTsPosition, exportFrom);
         exportInfos.push(exportInfo);
     }
 
     return exportInfos;
 }
 
-function buildExportAssignmentNode(node: ts.ExportAssignment): ExportInfo[] {
+function buildExportAssignmentNode(node: ts.ExportAssignment, sourceFile: ts.SourceFile): ExportInfo[] {
+    const originTsPosition = LineColPosition.buildFromNode(node, sourceFile);
+
     let exportInfos: ExportInfo[] = [];
     if (node.expression) {
         if (ts.isIdentifier(node.expression)) {
             let exportClauseType = "default";
             let exportClauseName = node.expression.text;
             let exportInfo = new ExportInfo();
-            exportInfo.build(exportClauseName, exportClauseType);
+            exportInfo.build(exportClauseName, exportClauseType, originTsPosition);
             exportInfos.push(exportInfo);
-        }
-        else if (ts.isObjectLiteralExpression(node.expression) && node.expression.properties) {
+        } else if (ts.isObjectLiteralExpression(node.expression) && node.expression.properties) {
             let exportClauseType = "default-Obj";
             node.expression.properties.forEach((property) => {
                 if (property.name && ts.isIdentifier(property.name)) {
                     let exportClauseName = property.name.text;
                     let exportInfo = new ExportInfo();
-                    exportInfo.build(exportClauseName, exportClauseType);
+                    exportInfo.build(exportClauseName, exportClauseType, originTsPosition);
                     exportInfos.push(exportInfo);
                 }
             });

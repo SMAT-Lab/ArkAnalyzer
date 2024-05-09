@@ -129,10 +129,10 @@ export class ASTree {
                 methodNodeInfo = buildMethodInfo4MethodNode(child, this.sourceFile);
             }
             if (ts.isImportDeclaration(child) || ts.isImportEqualsDeclaration(child)) {
-                importNodeInfo = buildImportInfo4ImportNode(child);
+                importNodeInfo = buildImportInfo4ImportNode(child, this.sourceFile);
             }
             if (ts.isExportDeclaration(child) || ts.isExportAssignment(child)) {
-                exportNodeInfo = buildExportInfo4ExportNode(child);
+                exportNodeInfo = buildExportInfo4ExportNode(child, this.sourceFile);
             }
             if (ts.isModuleDeclaration(child)) {
                 namespaceNodeInfo = buildNamespaceInfo4NamespaceNode(child);
