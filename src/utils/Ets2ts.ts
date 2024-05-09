@@ -87,6 +87,7 @@ export class Ets2ts {
     private compileEts(file: string, ohPkgFiles: string[]) {
         this.resourcePath = file;
         let start = new Date().getTime();
+        let alias: string = '';
 
         let dependenciesMap: Map<string, string> = new Map();
         for (let pkgFile of ohPkgFiles) {
@@ -100,19 +101,22 @@ export class Ets2ts {
                 Object.entries(dependencies).forEach((k, v) => {
                     let relativePath = url.parse(k[1] as string).path;
                     if (relativePath) {
-                        let resolvePath = path.resolve(path.join(path.dirname(pkgFile), relativePath));
-                        dependenciesMap.set(k[0], path.relative(path.dirname(file), resolvePath).replace(new RegExp('\\' + path.sep, 'g'), '/'));
+                        let resolvePath = path.resolve(path.join(path.dirname(pkgFile), relativePath)).replace(new RegExp('\\' + path.sep, 'g'), '/');
+                        dependenciesMap.set(k[0], resolvePath);
+                        if (alias == '') {
+                            alias = k[0];
+                        } else {
+                            alias += '|' + k[0];
+                        }
                     }                    
                 });
             }
         }
         let fileContent: string | undefined = fs.readFileSync(file, 'utf8');
-        const REG_IMPORT_DECL: RegExp = /(import|export)\s+(?:(.+)|\{([\s\S]+)\})\s+from\s+['"](\S+)['"]|import\s+(.+)\s*=\s*require\(\s*['"](\S+)['"]\s*\)/g;
+        const REG_IMPORT_DECL: RegExp = new RegExp('(import)\\s+(?:(.+)|\\{([\\s\\S]+)\\})\\s+from\\s+[\'\"]('+ alias +')(\\S+)[\'\"]', 'g');
         let content: string = fileContent.replace(REG_IMPORT_DECL, (substring: string, ...args: any[]) => {
-            for (let key of dependenciesMap.keys()) {
-                if (args[3].startsWith(key)) {
-                    return substring.replace(key, dependenciesMap.get(key) as string);
-                }
+            if (dependenciesMap.has(args[3])) {
+                return substring.replace(args[3], dependenciesMap.get(args[3]) as string);
             }
             return substring;
         });
@@ -121,7 +125,7 @@ export class Ets2ts {
         this.tsModule.transpileModule(content, {
             compilerOptions: this.compilerOptions,
             fileName: `${file}`,
-            transformers: {before: [this.processUIModule.processUISyntax(null, false), this.getDumpSourceTransformer(this)]}
+            transformers: {before: [this.processUIModule.processUISyntax(null, false), this.getDumpSourceTransformer(this, dependenciesMap)]}
         });
         fileContent = undefined;
         let end = new Date().getTime();
@@ -182,7 +186,7 @@ export class Ets2ts {
         return hasFile;
     }
 
-    getDumpSourceTransformer(ets2ts: Ets2ts): Function {
+    getDumpSourceTransformer(ets2ts: Ets2ts, dependenciesMap: Map<string, string>): Function {
         // @ts-ignore
         return (context) => {
             // @ts-ignore
@@ -232,7 +236,23 @@ export class Ets2ts {
                 if (etsFileName.endsWith('.ets')) {
                     etsFileName = etsFileName.replace(/\.ets$/, '.ts');
                 }
-                fs.writeFileSync(etsFileName, obj.content);
+
+                let alias = '';
+                dependenciesMap.forEach((value: string) => {
+                    if (alias == '') {
+                        alias = value;
+                    } else {
+                        alias += '|' + value;
+                    }
+                });
+
+                const REG_IMPORT_DECL: RegExp = new RegExp('(import)\\s+(?:(.+)|\\{([\\s\\S]+)\\})\\s+from\\s+[\'\"]('+ alias +')(\\S+)[\'\"]', 'g');
+                let content: string = obj.content.replace(REG_IMPORT_DECL, (substring: string, ...args: any[]) => {
+                    let relativePath = path.relative(path.dirname(node.fileName), args[3]).replace(new RegExp('\\' + path.sep, 'g'), '/');
+                    return substring.replace(args[3], relativePath);
+                });
+
+                fs.writeFileSync(etsFileName, content);
                 fs.writeFileSync(etsFileName + '.map', JSON.stringify(obj.sourceMapJson));
 
                 // Memory optimization
