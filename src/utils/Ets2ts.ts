@@ -100,7 +100,8 @@ export class Ets2ts {
                 Object.entries(dependencies).forEach((k, v) => {
                     let relativePath = url.parse(k[1] as string).path;
                     if (relativePath) {
-                        dependenciesMap.set(k[0], path.resolve(path.join(path.dirname(pkgFile), relativePath)));
+                        let resolvePath = path.resolve(path.join(path.dirname(pkgFile), relativePath));
+                        dependenciesMap.set(k[0], path.relative(path.dirname(file), resolvePath).replace(new RegExp('\\' + path.sep, 'g'), '/'));
                     }                    
                 });
             }
