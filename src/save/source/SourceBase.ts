@@ -1,3 +1,4 @@
+import { Decorator } from "../../core/base/Decorator";
 import { ArkFile } from "../../core/model/ArkFile";
 import { ArkCodeBuffer } from "../ArkStream";
 
@@ -15,10 +16,14 @@ export abstract class SourceBase {
     public abstract dumpOriginalCode(): string;
     public abstract getLine(): number;
 
-    protected modifiersToString(modifiers: Set<string>): string {
+    protected modifiersToString(modifiers: Set<string | Decorator>): string {
         let modifiersStr: string[] = [];
         modifiers.forEach((value) => {
-            modifiersStr.push(this.resolveKeywordType(value))
+            if (value instanceof Decorator) {
+                // TODO
+            } else {
+                modifiersStr.push(this.resolveKeywordType(value))
+            }
         });
     
         return modifiersStr.join(' ');
