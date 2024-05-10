@@ -2016,7 +2016,9 @@ export class CfgBuilder {
 
         if (leftOp instanceof Local) {
             leftOp.setType(leftOpType);
-
+            if (!(rightOp.getType() instanceof UnknownType)) {
+                leftOp.setType(rightOp.getType());
+            }
         }
 
         if (IRUtils.moreThanOneAddress(leftOp) && IRUtils.moreThanOneAddress(rightOp)) {

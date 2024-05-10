@@ -1,12 +1,4 @@
-class Foo {
-    public foo() {
-    }
-}
-
-class Bar {
-    private foos: Foo[];
-
-    public bar() {
-        this.foos.forEach(foo => foo.foo());
-    }
+function test() {
+    const arr = new Array<number>(1, 2, 3);
+    const i = arr[0] + arr[2];
 }
