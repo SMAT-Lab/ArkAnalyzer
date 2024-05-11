@@ -12,6 +12,7 @@ export class ExportInfo {
     importInfo: ImportInfo | undefined;
 
     private originTsPosition: LineColPosition;
+    private tsSourceCode: string;
 
     constructor() {
     }
@@ -88,6 +89,14 @@ export class ExportInfo {
     public getOriginTsPosition(): LineColPosition {
         return this.originTsPosition;
     }
+
+    public setTsSourceCode(tsSourceCode: string): void {
+        this.tsSourceCode = tsSourceCode;
+    }
+
+    public getTsSourceCode(): string {
+        return this.tsSourceCode;
+    }
 }
 
 export function buildExportInfo4ExportNode(node: ts.ExportDeclaration | ts.ExportAssignment, sourceFile: ts.SourceFile): ExportInfo[] {
@@ -100,6 +109,7 @@ export function buildExportInfo4ExportNode(node: ts.ExportDeclaration | ts.Expor
 
 function buildExportDeclarationNode(node: ts.ExportDeclaration, sourceFile: ts.SourceFile): ExportInfo[] {
     const originTsPosition = LineColPosition.buildFromNode(node, sourceFile);
+    const tsSourceCode = node.getText(sourceFile);
 
     let exportInfos: ExportInfo[] = [];
     let exportFrom: string | undefined;
@@ -115,10 +125,12 @@ function buildExportDeclarationNode(node: ts.ExportDeclaration, sourceFile: ts.S
             if (element.propertyName && ts.isIdentifier(element.propertyName)) {
                 let exportInfo = new ExportInfo();
                 exportInfo.build(exportClauseName, exportClauseType, originTsPosition, exportFrom, element.propertyName.text);
+                exportInfo.setTsSourceCode(tsSourceCode);
                 exportInfos.push(exportInfo);
             } else {
                 let exportInfo = new ExportInfo();
                 exportInfo.build(exportClauseName, exportClauseType, originTsPosition, exportFrom);
+                exportInfo.setTsSourceCode(tsSourceCode);
                 exportInfos.push(exportInfo);
             }
         });
@@ -131,6 +143,7 @@ function buildExportDeclarationNode(node: ts.ExportDeclaration, sourceFile: ts.S
             let nameBeforeAs = '*';
             let exportInfo = new ExportInfo();
             exportInfo.build(exportClauseName, exportClauseType, originTsPosition, exportFrom, nameBeforeAs);
+            exportInfo.setTsSourceCode(tsSourceCode);
             exportInfos.push(exportInfo);
         }
 
@@ -143,6 +156,7 @@ function buildExportDeclarationNode(node: ts.ExportDeclaration, sourceFile: ts.S
         let exportClauseName = '*';
         let exportInfo = new ExportInfo();
         exportInfo.build(exportClauseName, exportClauseType, originTsPosition, exportFrom);
+        exportInfo.setTsSourceCode(tsSourceCode);
         exportInfos.push(exportInfo);
     }
 
@@ -151,6 +165,7 @@ function buildExportDeclarationNode(node: ts.ExportDeclaration, sourceFile: ts.S
 
 function buildExportAssignmentNode(node: ts.ExportAssignment, sourceFile: ts.SourceFile): ExportInfo[] {
     const originTsPosition = LineColPosition.buildFromNode(node, sourceFile);
+    const tsSourceCode = node.getText(sourceFile);
 
     let exportInfos: ExportInfo[] = [];
     if (node.expression) {
@@ -159,6 +174,7 @@ function buildExportAssignmentNode(node: ts.ExportAssignment, sourceFile: ts.Sou
             let exportClauseName = node.expression.text;
             let exportInfo = new ExportInfo();
             exportInfo.build(exportClauseName, exportClauseType, originTsPosition);
+            exportInfo.setTsSourceCode(tsSourceCode);
             exportInfos.push(exportInfo);
         } else if (ts.isObjectLiteralExpression(node.expression) && node.expression.properties) {
             let exportClauseType = "default-Obj";
@@ -167,6 +183,7 @@ function buildExportAssignmentNode(node: ts.ExportAssignment, sourceFile: ts.Sou
                     let exportClauseName = property.name.text;
                     let exportInfo = new ExportInfo();
                     exportInfo.build(exportClauseName, exportClauseType, originTsPosition);
+                    exportInfo.setTsSourceCode(tsSourceCode);
                     exportInfos.push(exportInfo);
                 }
             });

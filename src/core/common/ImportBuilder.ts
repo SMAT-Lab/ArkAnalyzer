@@ -28,6 +28,7 @@ export class ImportInfo {
     private projectPath: string;
 
     private originTsPosition: LineColPosition;
+    private tsSourceCode: string;
 
     constructor() {
     }
@@ -172,6 +173,14 @@ export class ImportInfo {
     public getOriginTsPosition(): LineColPosition {
         return this.originTsPosition;
     }
+
+    public setTsSourceCode(tsSourceCode: string): void {
+        this.tsSourceCode = tsSourceCode;
+    }
+
+    public getTsSourceCode(): string {
+        return this.tsSourceCode;
+    }
 }
 
 export function buildImportInfo4ImportNode(node: ts.ImportDeclaration | ts.ImportEqualsDeclaration, sourceFile: ts.SourceFile): ImportInfo[] {
@@ -184,6 +193,7 @@ export function buildImportInfo4ImportNode(node: ts.ImportDeclaration | ts.Impor
 
 function buildImportDeclarationNode(node: ts.ImportDeclaration, sourceFile: ts.SourceFile): ImportInfo[] {
     const originTsPosition = LineColPosition.buildFromNode(node, sourceFile);
+    const tsSourceCode = node.getText(sourceFile);
 
     let importInfos: ImportInfo[] = [];
     let importFrom: string = '';
@@ -197,6 +207,7 @@ function buildImportDeclarationNode(node: ts.ImportDeclaration, sourceFile: ts.S
         let importType = '';
         let importInfo = new ImportInfo();
         importInfo.build(importClauseName, importType, importFrom, originTsPosition);
+        importInfo.setTsSourceCode(tsSourceCode);
         importInfos.push(importInfo);
     }
 
@@ -206,6 +217,7 @@ function buildImportDeclarationNode(node: ts.ImportDeclaration, sourceFile: ts.S
         let importType = "Identifier";
         let importInfo = new ImportInfo();
         importInfo.build(importClauseName, importType, importFrom, originTsPosition);
+        importInfo.setTsSourceCode(tsSourceCode);
         importInfos.push(importInfo);
     }
 
@@ -219,10 +231,12 @@ function buildImportDeclarationNode(node: ts.ImportDeclaration, sourceFile: ts.S
                     if (element.propertyName && ts.isIdentifier(element.propertyName)) {
                         let importInfo = new ImportInfo();
                         importInfo.build(importClauseName, importType, importFrom, originTsPosition, element.propertyName.text);
+                        importInfo.setTsSourceCode(tsSourceCode);
                         importInfos.push(importInfo);
                     } else {
                         let importInfo = new ImportInfo();
-                        importInfo.build(importClauseName, importType, importFrom, originTsPosition)
+                        importInfo.build(importClauseName, importType, importFrom, originTsPosition);
+                        importInfo.setTsSourceCode(tsSourceCode);
                         importInfos.push(importInfo);
                     }
                 }
@@ -238,6 +252,7 @@ function buildImportDeclarationNode(node: ts.ImportDeclaration, sourceFile: ts.S
             let importInfo = new ImportInfo();
             let nameBeforeAs = '*';
             importInfo.build(importClauseName, importType, importFrom, originTsPosition, nameBeforeAs);
+            importInfo.setTsSourceCode(tsSourceCode);
             importInfos.push(importInfo);
         }
     }
@@ -247,6 +262,7 @@ function buildImportDeclarationNode(node: ts.ImportDeclaration, sourceFile: ts.S
 
 function buildImportEqualsDeclarationNode(node: ts.ImportEqualsDeclaration, sourceFile: ts.SourceFile): ImportInfo[] {
     const originTsPosition = LineColPosition.buildFromNode(node, sourceFile);
+    const tsSourceCode = node.getText(sourceFile);
 
     let importInfos: ImportInfo[] = [];
     let importType = "EqualsImport";
@@ -256,6 +272,7 @@ function buildImportEqualsDeclarationNode(node: ts.ImportEqualsDeclaration, sour
         let importClauseName = node.name.text;
         let importInfo = new ImportInfo()
         importInfo.build(importClauseName, importType, importFrom, originTsPosition);
+        importInfo.setTsSourceCode(tsSourceCode);
         importInfos.push(importInfo);
     }
     return importInfos;
