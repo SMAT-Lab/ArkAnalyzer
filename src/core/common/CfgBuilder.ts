@@ -2016,7 +2016,7 @@ export class CfgBuilder {
 
         if (leftOp instanceof Local) {
             leftOp.setType(leftOpType);
-            if (!(rightOp.getType() instanceof UnknownType)) {
+            if ((leftOpType instanceof UnknownType) && !(rightOp.getType() instanceof UnknownType)) {
                 leftOp.setType(rightOp.getType());
             }
         }
