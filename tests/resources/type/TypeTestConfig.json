@@ -1,6 +1,6 @@
 {
     "targetProjectName": "TypeInferenceTest",
-    "targetProjectDirectory": "tests\\resources\\ssa",    
+    "targetProjectDirectory": "tests\\resources\\type",    
     
     "logPath": "out\\log.txt",
     
