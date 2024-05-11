@@ -63,6 +63,9 @@ namespace n{
     x = new property();
     export let y = 1;
 }
+namespace n2{
+    n.y=4;
+}
 console.log(n.y);
 // function U(){
 //     let t1: t;
