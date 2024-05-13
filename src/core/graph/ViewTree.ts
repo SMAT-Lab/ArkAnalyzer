@@ -150,18 +150,20 @@ class TreeNodeStack {
 export class ViewTree {
     private root: ViewTreeNode;
     private render: ArkMethod;
+    private buildViewStatus: boolean;
     private fieldTypes: Map<string, string|Type>;
 
     constructor(render: ArkMethod) {
         this.render = render;
         this.fieldTypes = new Map();
+        this.buildViewStatus = false;
     }
 
     public async buildViewTree() {
         if (!this.render || this.isInitialized()) {
             return;
         }
-        
+        this.buildViewStatus = true;
         await this.loadClasssFieldTypes();
         let treeStack: TreeNodeStack = new TreeNodeStack();
         await this.parseCfg(this.render.getCfg(), treeStack);
@@ -169,7 +171,7 @@ export class ViewTree {
     }
 
     public isInitialized(): boolean {
-        return this.root != null;
+        return this.root != null || this.buildViewStatus;
     }
 
     public getRoot(): ViewTreeNode {

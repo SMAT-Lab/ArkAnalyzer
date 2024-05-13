@@ -258,7 +258,7 @@ export function buildArkMethodFromArkClass(methodNode: NodeA, declaringClass: Ar
     if (mtd.getName() == 'constructor' && mtd.getDeclaringArkClass()) {
         mtd.getCfg().constructorAddInit(mtd);
     }
-    if (mtd.getName() == 'render' && declaringClass.getSuperClassName() == 'View') {
+    if (mtd.getSubSignature().toString() == 'render()' && !mtd.containsModifier('StaticKeyword') && declaringClass.getSuperClassName() == 'View') {
         declaringClass.setViewTree(new ViewTree(mtd));
     }
 }
