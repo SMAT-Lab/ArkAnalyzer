@@ -22,7 +22,8 @@ async function runScene4Ide() {
         "D:/code/scene_xxx",
         "C:/msys64/home/xxx/code/yyyy",
         "D:/code/deveco-studio/sdk/xxx",
-        "C:/mysys64/home/xxx/code/log/xx.log"
+        "C:/mysys64/home/xxx/code/log/xx.log",
+        "C:/mysys64/bin/node.exe"
     );
 }
 

@@ -1,11 +1,11 @@
 import * as ts from "typescript";
 import path from 'path';
 import fs from 'fs';
-import {transfer2UnixPath} from "../../utils/pathTransfer";
-import {ArkFile} from "../model/ArkFile";
-import {FileSignature} from "../model/ArkSignature";
-import {Scene} from "../../Scene";
-import {LineColPosition} from "../base/Position";
+import { transfer2UnixPath } from "../../utils/pathTransfer";
+import { ArkFile } from "../model/ArkFile";
+import { FileSignature } from "../model/ArkSignature";
+import { Scene } from "../../Scene";
+import { LineColPosition } from "../base/Position";
 
 var sdkPathMap: Map<string, string> = new Map();
 
@@ -106,20 +106,19 @@ export class ImportInfo {
                 }
             }
         });
-        // path map
-        // start with '@', but not in sdk, defined in oh-package.json5
-        const ohPkgReg = new RegExp('^@');
-        if (ohPkgReg.test(this.importFrom)) {
-            let originImportPath: string = getOriginPath(this.importFrom, this.declaringArkFile);
-            if (originImportPath != '') {
-                this.setImportProjectType("TargetProject");
-                const relativeImportPath: string = path.relative(this.projectPath, originImportPath);
-                importFromSignature.setFileName(relativeImportPath);
-                importFromSignature.setProjectName(this.declaringArkFile.getProjectName());
-                this.importFromSignature = importFromSignature.toString();
-                return;
-            }
+        // path map defined in oh-package.json5
+        // const ohPkgReg = new RegExp('^@');
+        //if (ohPkgReg.test(this.importFrom)) {
+        let originImportPath: string = getOriginPath(this.importFrom, this.declaringArkFile);
+        if (originImportPath != '') {
+            this.setImportProjectType("TargetProject");
+            const relativeImportPath: string = path.relative(this.projectPath, originImportPath);
+            importFromSignature.setFileName(relativeImportPath);
+            importFromSignature.setProjectName(this.declaringArkFile.getProjectName());
+            this.importFromSignature = importFromSignature.toString();
+            return;
         }
+        //}
     }
 
     public getImportClauseName() {
@@ -293,7 +292,7 @@ function getOriginPath(importFrom: string, arkFile: ArkFile) {
 }
 
 function ohPkgMatch(dependencies: unknown, importFrom: string, ohFilePath: string,
-                    ohPkgContentMap: Map<string, { [k: string]: unknown }>): string {
+    ohPkgContentMap: Map<string, { [k: string]: unknown }>): string {
     let originPath = '';
     if (!fs.statSync(ohFilePath).isDirectory()) {
         ohFilePath = path.dirname(ohFilePath);
