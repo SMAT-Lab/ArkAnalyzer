@@ -43,15 +43,15 @@ function generateId(): string {
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import UpTitle from './UpTitle';
-import MyBrightness from '../../../../../../../brightnesscomponent/src/main/ets/default/pages/brightnessComponent';
-import Log from '../../../../../../../../common/src/main/ets/default/Log';
-import Constants, { ControlCenterConfig } from '../common/Constants';
-import StyleConfiguration, { ControlCenterComponentStyle, ControlCenterComplexToggleLayoutStyle, ControlCenterSimpleToggleLayoutStyle } from '../common/StyleConfiguration';
-import ViewModel from '../viewmodel/ControlCenterVM';
-import ComplexToggleLoadComponent from './ComplexToggleLoadComponent';
-import SimpleToggleLoadComponent from './SimpleToggleLoadComponent';
-import SimpleToggleLayoutEditComponent from './SimpleToggleLayoutEditComponent';
+../../..import UpTitle from './UpTitle';
+../../..import MyBrightness from '../../../../../../../brightnesscomponent/src/main/ets/default/pages/brightnessComponent';
+../../..import Log from '../../../../../../../../common/src/main/ets/default/Log';
+../../..import Constants, { ControlCenterConfig } from '../common/Constants';
+../../..import StyleConfiguration, { ControlCenterComponentStyle, ControlCenterComplexToggleLayoutStyle, ControlCenterSimpleToggleLayoutStyle } from '../common/StyleConfiguration';
+../../..import ViewModel from '../viewmodel/ControlCenterVM';
+../../..import ComplexToggleLoadComponent from './ComplexToggleLoadComponent';
+../../..import SimpleToggleLoadComponent from './SimpleToggleLoadComponent';
+../../..import SimpleToggleLayoutEditComponent from './SimpleToggleLayoutEditComponent';
 const TAG = 'Control-ControlCenter';
 const TAG_ControlCenterComplexToggleLayout = 'Control-ControlCenterComplexToggleLayout';
 const TAG_ControlCenterSimpleToggleLayout = 'Control-ControlCenterSimpleToggleLayout';
@@ -426,6 +426,18 @@ class ControlCenterSimpleToggleLayout extends View {
         }
         return rowsTemplate;
     }
+    static render(count: number, parent = null) {
+        let earlierCreatedChild_6: ControlCenterSimpleToggleLayout = ((parent ? parent : this) && (parent ? parent : this).findChildById) ? (parent ? parent : this).findChildById(generateId()) as ControlCenterSimpleToggleLayout : undefined;
+        if (earlierCreatedChild_6 == undefined) {
+            View.create(new ControlCenterSimpleToggleLayout("ControlCenterComponent_" + __generate__Id, parent ? parent : this, { mColumnCount: count }));
+        }
+        else {
+            earlierCreatedChild_6.updateWithValueParams({
+                mColumnCount: count
+            });
+            View.create(earlierCreatedChild_6);
+        }
+    }
 }
 class SubComponent extends View {
     constructor(compilerAssignedUniqueChildId, parent, params, localStorage) {
@@ -458,16 +470,16 @@ class OutComponent extends View {
         __Common__.create();
         __Common__.width(100);
         __Common__.height(200);
-        let earlierCreatedChild_6: SubComponent = (this && this.findChildById) ? this.findChildById("6") as SubComponent : undefined;
-        if (earlierCreatedChild_6 == undefined) {
-            View.create(new SubComponent("6", this, {}));
+        let earlierCreatedChild_7: SubComponent = (this && this.findChildById) ? this.findChildById("7") as SubComponent : undefined;
+        if (earlierCreatedChild_7 == undefined) {
+            View.create(new SubComponent("7", this, {}));
         }
         else {
-            earlierCreatedChild_6.updateWithValueParams({});
-            if (!earlierCreatedChild_6.needsUpdate()) {
-                earlierCreatedChild_6.markStatic();
+            earlierCreatedChild_7.updateWithValueParams({});
+            if (!earlierCreatedChild_7.needsUpdate()) {
+                earlierCreatedChild_7.markStatic();
             }
-            View.create(earlierCreatedChild_6);
+            View.create(earlierCreatedChild_7);
         }
         __Common__.pop();
     }

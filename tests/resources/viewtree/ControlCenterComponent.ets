@@ -278,6 +278,11 @@ struct ControlCenterSimpleToggleLayout {
     }
     return rowsTemplate;
   }
+
+  @Builder
+  static render(count: number) {
+    ControlCenterSimpleToggleLayout({mColumnCount: count});
+  }
 }
 
 @Component
