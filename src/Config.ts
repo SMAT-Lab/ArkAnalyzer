@@ -66,7 +66,7 @@ export class SceneConfig {
     }
 
     public async buildFromIde(targetProjectName: string, targetProjectOriginDirectory: string, targetProjectDirectory: string,
-        sdkEtsPath: string, logPath: string) {
+        sdkEtsPath: string, logPath: string, nodePath: string) {
         this.targetProjectName = targetProjectName;
         this.targetProjectOriginDirectory = targetProjectOriginDirectory;
         this.targetProjectDirectory = path.join(targetProjectDirectory, targetProjectName);
@@ -75,9 +75,17 @@ export class SceneConfig {
         this.logPath = logPath;
 
         Logger.configure(this.logPath, LOG_LEVEL.ERROR);
+        logger.info("Path of Node is: ", nodePath);
+        if (nodePath != '') {
+            let nodeVersion = spawnSync(nodePath, ['-v']).stdout.toString();
+            logger.info('Node version is: ', nodeVersion);
+        }
+        else {
+            logger.error('nodePath is empty!');
+        }
 
         removeSync(transfer2UnixPath(targetProjectDirectory + '/' + this.targetProjectName));
-        spawnSync('node', [path.join(__dirname, 'ets2ts.js'), this.hosEtsLoaderPath, this.targetProjectOriginDirectory, targetProjectDirectory, this.targetProjectName, this.logPath]);
+        spawnSync(nodePath, [path.join(__dirname, 'ets2ts.js'), this.hosEtsLoaderPath, this.targetProjectOriginDirectory, targetProjectDirectory, this.targetProjectName, this.logPath]);
         this.getAllFiles();
     }
 
