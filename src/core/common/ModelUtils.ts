@@ -1,10 +1,9 @@
 import {Scene} from "../../Scene";
 import {ArkClass} from "../model/ArkClass";
-import {ArkField} from "../model/ArkField";
 import {ArkFile} from "../model/ArkFile";
 import {ArkMethod} from "../model/ArkMethod";
 import {ArkNamespace} from "../model/ArkNamespace";
-import {ClassSignature, FileSignature, MethodSignature, NamespaceSignature} from "../model/ArkSignature";
+import {FileSignature, MethodSignature} from "../model/ArkSignature";
 import {ExportInfo} from "./ExportBuilder";
 import {ImportInfo} from "./ImportBuilder";
 
@@ -164,10 +163,10 @@ export class ModelUtils {
 
         const thisClass = startFrom.getDeclaringArkClass();
         let methodSearched: ArkMethod | null = thisClass.getMethodWithName(methodName);
-        if (methodSearched) {
-            return methodSearched;
+        if (!methodSearched) {
+            methodSearched = thisClass.getStaticMethodWithName(methodName);
         }
-        return null;
+        return methodSearched;
     }
 
     public static getNamespaceWithNameFromClass(namespaceName: string, startFrom: ArkClass): ArkNamespace | null {
@@ -258,7 +257,7 @@ export class ModelUtils {
         if (thisNamespace) {
             const defaultClass = thisNamespace.getClassWithName('_DEFAULT_ARK_CLASS');
             if (defaultClass) {
-                const method = defaultClass.getMethodWithName(methodName);
+                const method = defaultClass.getStaticMethodWithName(methodName);
                 if (method) {
                     return method;
                 }
@@ -270,7 +269,7 @@ export class ModelUtils {
     public static getStaticMethodInFileWithName(methodName: string, arkFile: ArkFile): ArkMethod | null {
         const defaultClass = arkFile.getClasses().find(cls => cls.getName() == '_DEFAULT_ARK_CLASS') || null;
         if (defaultClass) {
-            let method = defaultClass.getMethodWithName(methodName);
+            let method = defaultClass.getStaticMethodWithName(methodName);
             if (method) {
                 return method;
             }
@@ -304,7 +303,7 @@ export class ModelUtils {
                     if (nameBefroreAs != undefined) {
                         methodName = nameBefroreAs;
                     }
-                    let method = defaultClass.getMethodWithName(methodName);
+                    let method = defaultClass.getStaticMethodWithName(methodName);
                     if (method) {
                         return method;
                     }

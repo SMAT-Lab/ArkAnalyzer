@@ -1,17 +1,17 @@
-import { NodeA } from "../base/Ast";
-import { Type } from "../base/Type";
-import { ViewTree } from "../graph/ViewTree";
-import { ArkField } from "./ArkField";
-import { ArkFile } from "./ArkFile";
-import { ArkMethod, arkMethodNodeKind, buildArkMethodFromArkClass } from "./ArkMethod";
-import { ArkNamespace } from "./ArkNamespace";
-import { ClassSignature, FieldSignature, MethodSignature } from "./ArkSignature";
-import Logger, { LOG_LEVEL } from "../../utils/logger";
-import { LineColPosition } from "../base/Position";
-import { ObjectLiteralExpr } from "../base/Expr";
-import { FileSignature,NamespaceSignature } from "./ArkSignature";
-import { Local } from "../base/Local";
-import { Decorator } from "../base/Decorator";
+import {NodeA} from "../base/Ast";
+import {Type} from "../base/Type";
+import {ViewTree} from "../graph/ViewTree";
+import {ArkField} from "./ArkField";
+import {ArkFile} from "./ArkFile";
+import {ArkMethod, arkMethodNodeKind, buildArkMethodFromArkClass} from "./ArkMethod";
+import {ArkNamespace} from "./ArkNamespace";
+import {ClassSignature, FieldSignature, MethodSignature} from "./ArkSignature";
+import Logger from "../../utils/logger";
+import {LineColPosition} from "../base/Position";
+import {ObjectLiteralExpr} from "../base/Expr";
+import {FileSignature, NamespaceSignature} from "./ArkSignature";
+import {Local} from "../base/Local";
+import {Decorator} from "../base/Decorator";
 
 const logger = Logger.getLogger();
 
@@ -40,6 +40,8 @@ export class ArkClass {
     private methods: Map<string, ArkMethod> = new Map<string, ArkMethod>();
     private fields: Map<string, ArkField> = new Map<string, ArkField>();
     private extendedClasses: Map<string, ArkClass> = new Map<string, ArkClass>();
+    private staticMethods: Map<string, ArkMethod> = new Map<string, ArkMethod>();
+    private staticFields: Map<string, ArkField> = new Map<string, ArkField>();
 
     private viewTree: ViewTree;
 
@@ -179,19 +181,33 @@ export class ArkClass {
 
     public getField(fieldSignature: FieldSignature): ArkField | null {
         const fieldName = fieldSignature.getFieldName();
-        return this.getFieldWithName(fieldName);
+        let fieldSearched: ArkField | null = this.getFieldWithName(fieldName);
+        if (!fieldSearched) {
+            fieldSearched = this.getStaticFieldWithName(fieldName);
+        }
+        return fieldSearched;
     }
 
     public getFieldWithName(fieldName: string): ArkField | null {
         return this.fields.get(fieldName) || null;
     }
 
+    public getStaticFieldWithName(fieldName: string): ArkField | null {
+        return this.staticFields.get(fieldName) || null;
+    }
+
     public getFields(): ArkField[] {
-        return Array.from(this.fields.values());
+        const allFields: ArkField[] = Array.from(this.fields.values());
+        allFields.push(...this.staticFields.values());
+        return allFields;
     }
 
     public addField(field: ArkField) {
-        this.fields.set(field.getName(), field);
+        if (field.isStatic()) {
+            this.staticFields.set(field.getName(), field);
+        } else {
+            this.fields.set(field.getName(), field);
+        }
     }
 
     public addFields(fields: ArkField[]) {
@@ -221,20 +237,35 @@ export class ArkClass {
     }
 
     public getMethods(): ArkMethod[] {
-        return Array.from(this.methods.values());
+        const allMethods = Array.from(this.methods.values());
+        allMethods.push(...this.staticMethods.values());
+        return allMethods;
     }
 
     public getMethod(methodSignature: MethodSignature): ArkMethod | null {
         const methodName = methodSignature.getMethodSubSignature().getMethodName();
-        return this.getMethodWithName(methodName);
+        let methodSearched: ArkMethod | null = this.getMethodWithName(methodName);
+        if (!methodSearched) {
+            methodSearched = this.getStaticMethodWithName(methodName);
+        }
+        return methodSearched;
     }
 
     public getMethodWithName(methodName: string): ArkMethod | null {
         return this.methods.get(methodName) || null;
     }
 
+    public getStaticMethodWithName(methodName: string): ArkMethod | null {
+        return this.staticMethods.get(methodName) || null;
+    }
+
+
     public addMethod(method: ArkMethod) {
-        this.methods.set(method.getName(), method);
+        if (method.getModifiers().has('StaticKeyword')) {
+            this.staticMethods.set(method.getName(), method);
+        } else {
+            this.methods.set(method.getName(), method);
+        }
     }
 
     public setDefaultArkMethod(defaultMethod: ArkMethod) {
