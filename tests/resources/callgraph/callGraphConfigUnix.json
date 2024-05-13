@@ -1,8 +1,8 @@
 {
   "targetProjectName": "project",
-  "targetProjectDirectory": "/Users/yangyizhuo/WebstormProjects/ArkAnalyzer/tests/resources/callgraph/sendableTest",
+  "targetProjectDirectory": "/Users/yangyizhuo/WebstormProjects/ArkAnalyzer/tests/resources/callgraph/projectTest/openharmony/Camera",
 
-  "etsSdkPath": "/Users/yangyizhuo/sdk/openharmony/interface_sdk-js/api",
+  "etsSdkPath": "/Users/yangyizhuo/sdk/openharmony/interface_sdk-js",
 
   "temp": "/Users/yangyizhuo/sdk/openharmony/interface_sdk-js/api",
   "logPath": "/Users/yangyizhuo/WebstormProjects/ArkAnalyzer/tests/resources/callgraph/out/log.txt",

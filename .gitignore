@@ -9,6 +9,7 @@ codeLab
 out/
 .idea
 tests/resources/output
+tests/resources/callgraph/projectTest/*
 coverage
 src/ets2ts.js
 index.ts

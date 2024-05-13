@@ -19,7 +19,7 @@ function runScene(config: SceneConfig) {
     //     entryPoints.push(method.getSignature())
     // }
     for (let arkFile of projectScene.getFiles()) {
-        if (arkFile.getName() === "testcase_24_import.ts") {
+        if (arkFile.getName() === "test_case_3.ts") {
             for (let arkClass of arkFile.getClasses()) {
                 if (arkClass.getName() === "_DEFAULT_ARK_CLASS") {
                     for (let arkMethod of arkClass.getMethods()) {
@@ -63,18 +63,10 @@ function runScene(config: SceneConfig) {
     // }
     // let callGraph = projectScene.makeCallGraphCHA(entryPoints)
     // let callGraph = projectScene.makeCallGraphRTA(entryPoints)
-    // let callGraph = projectScene.makeCallGraphVPA(entryPoints)
-    // let methods = callGraph.getMethods()
-    // let calls = callGraph.getCalls()
-    // printCallGraphDetails(methods, calls, config.getTargetProjectDirectory())
-    let printBuilder = new PrinterBuilder()
-    let tempFile: ArkFile
-    projectScene.getFiles().forEach((file) => {
-        if (file.getName() == "temp.ts") {
-            tempFile = file
-        }
-    })
-    printBuilder.dumpToTs(tempFile!)
-    debugger;
+    let callGraph = projectScene.makeCallGraphVPA(entryPoints)
+    let methods = callGraph.getMethods()
+    let calls = callGraph.getCalls()
+    printCallGraphDetails(methods, calls, config.getTargetProjectDirectory())
+    // debugger;
 }
 runScene(config);
