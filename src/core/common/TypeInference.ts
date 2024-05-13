@@ -1,11 +1,9 @@
 import {Scene} from './../../Scene';
 import Logger from "../../utils/logger";
 import {
-    AbstractInvokeExpr,
     ArkBinopExpr,
     ArkInstanceInvokeExpr,
     ArkNewExpr,
-    ArkPhiExpr,
     ArkStaticInvokeExpr
 } from "../base/Expr";
 import {Local} from "../base/Local";
@@ -32,7 +30,6 @@ import {ClassSignature} from "../model/ArkSignature";
 import {ModelUtils} from "./ModelUtils";
 import {ArkField} from '../model/ArkField';
 import {ArkClass} from '../model/ArkClass';
-import {it} from "vitest";
 
 const logger = Logger.getLogger();
 
@@ -100,7 +97,10 @@ export class TypeInference {
                         if (arkNamespace) {
                             const methodName = expr.getMethodSignature().getMethodSubSignature().getMethodName();
                             const defaultClass = arkNamespace.getClassWithName('_DEFAULT_ARK_CLASS');
-                            const foundMethod = defaultClass?.getMethodWithName(methodName);
+                            let foundMethod = defaultClass?.getMethodWithName(methodName);
+                            if (!foundMethod) {
+                                foundMethod = defaultClass?.getStaticMethodWithName(methodName);
+                            }
                             if (foundMethod) {
                                 let replaceStaticInvokeExpr = new ArkStaticInvokeExpr(foundMethod.getSignature(), expr.getArgs())
                                 if (stmt.containsInvokeExpr()) {
@@ -157,10 +157,13 @@ export class TypeInference {
                     continue;
                 }
 
-                const method = arkClass.getMethodWithName(methodName);
+                let method = arkClass.getMethodWithName(methodName);
                 if (method == null) {
-                    logger.warn(`method ${methodName} does not exist`);
-                    continue;
+                    method = arkClass.getStaticMethodWithName(methodName);
+                    if (method == null) {
+                        logger.warn(`method ${methodName} does not exist`);
+                        continue;
+                    }
                 }
 
                 // infer return type
@@ -264,10 +267,13 @@ export class TypeInference {
             }
         }
 
-        const arkField = arkClass.getFieldWithName(fieldName);
+        let arkField = arkClass.getFieldWithName(fieldName);
         if (arkField == null) {
-            logger.warn(`field ${fieldName} does not exist`);
-            return null;
+            arkField = arkClass.getStaticFieldWithName(fieldName);
+            if (arkField == null) {
+                logger.warn(`field ${fieldName} does not exist`);
+                return null;
+            }
         }
         let fieldType = arkField.getType();
         if (fieldType instanceof UnclearReferenceType) {
