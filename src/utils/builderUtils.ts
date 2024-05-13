@@ -538,7 +538,7 @@ function buildFieldType(fieldType: ts.TypeNode): Type {
                 unionType.push(buildTypeFromPreStr(ts.SyntaxKind[tmpType.kind]));
             }
         });
-        return unionType;
+        return new UnionType(unionType)
     }
     else if (ts.isTypeReferenceNode(fieldType)) {
         let tmpTypeName = "";
