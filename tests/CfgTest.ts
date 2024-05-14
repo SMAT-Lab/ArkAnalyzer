@@ -14,8 +14,9 @@ export class Test {
     public test() {
         let scene = this.buildScene();
         scene.inferTypes();
+        const classMap = scene.getClassMap();
 
-        for (const arkFile of scene.arkFiles) {
+        for (const arkFile of scene.getFiles()) {
             for (const arkClass of arkFile.getClasses()) {
                 for (const arkMethod of arkClass.getMethods()) {
                     if (arkMethod.getName() == '_DEFAULT_ARK_METHOD') {

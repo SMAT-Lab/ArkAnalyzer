@@ -56,13 +56,18 @@ function U6() {
 function U7() {
     console.log(x.pp);
 }
-let x:property;
+export let x:property;
 U7();
 
 namespace n{
     x = new property();
     export let y = 1;
+    namespace nn{
+        export let xnn=1;
+    }
+    nn.xnn
 }
+
 namespace n2{
     n.y=4;
 }
