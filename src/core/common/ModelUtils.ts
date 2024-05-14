@@ -1,4 +1,5 @@
 import {Scene} from "../../Scene";
+import { Local } from "../base";
 import {ArkClass} from "../model/ArkClass";
 import {ArkFile} from "../model/ArkFile";
 import {ArkMethod} from "../model/ArkMethod";
@@ -328,6 +329,41 @@ export class ModelUtils {
         }
         return null;
     }
+
+    public static getLocalInImportInfoWithName(localName: string, arkFile: ArkFile): Local | null {
+        for (const importInfo of arkFile.getImportInfos()) {
+            if (importInfo.getImportClauseName() == localName) {
+                const importFrom = this.getFileFromImportInfo(importInfo, arkFile.getScene());
+                if (importFrom) {
+                    const nameBefroreAs = importInfo.getNameBeforeAs();
+                    if (nameBefroreAs != undefined) {
+                        localName = nameBefroreAs;
+                    }
+                    return this.getLocalInImportFileWithName(localName, importFrom);
+                }
+            }
+        }
+        return null;
+    }
+
+    public static getLocalInImportFileWithName(localName: string, arkFile: ArkFile): Local | null {
+        for (const exportInfo of arkFile.getExportInfos()) {
+            if (exportInfo.getExportClauseName() == localName) {
+                const nameBefroreAs = exportInfo.getNameBeforeAs();
+                if (nameBefroreAs != undefined) {
+                    localName = nameBefroreAs;
+                }
+                for (const local of arkFile.getDefaultClass().getDefaultArkMethod()!.getBody().getLocals()) {
+                    if (local.getName() == localName) {
+                        return local;
+                    }
+                }
+                return this.getLocalInImportInfoWithName(localName, arkFile);
+            }
+        }
+        return null;
+    }
+
 
     /* get nested namespaces in a file */
     public static getAllNamespacesInFile(arkFile: ArkFile): ArkNamespace[] {

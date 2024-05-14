@@ -354,18 +354,23 @@ export class Scene {
                         exportClass.push(arkClass);
                     }
                 }
+                const parent = parentMap.get(finalNS)!;
+                if (parent instanceof ArkNamespace) {
+                    classMap.get(parent.getNamespaceSignature())?.push(...exportClass);
+                } else if (parent instanceof ArkFile) {
+                    classMap.get(parent.getFileSignature())?.push(...exportClass);
+                }
                 let p = finalNS;
-                while (p.isExported()) {
-                    const parent = parentMap.get(p)!;
-                    if (parent instanceof ArkNamespace) {
-                        classMap.get(parent.getNamespaceSignature())?.push(...exportClass);
-                        p = parent;
-                    } else if (parent instanceof ArkFile) {
-                        classMap.get(parent.getFileSignature())?.push(...exportClass);
+                while (!(parentMap.get(p) instanceof ArkFile) && p.isExported()) {
+                    const grandParent = parentMap.get(parentMap.get(p)! as ArkNamespace);
+                    if (grandParent instanceof ArkNamespace) {
+                        classMap.get(grandParent.getNamespaceSignature())?.push(...exportClass);
+                        p = parentMap.get(p)! as ArkNamespace;
+                    } else if (grandParent instanceof ArkFile) {
+                        classMap.get(grandParent.getFileSignature())?.push(...exportClass);
                         break;
                     }
                 }
-                const parent = parentMap.get(finalNS)!;
                 if (parent instanceof ArkNamespace && !finalNamespaces.includes(parent)) {
                     finalNamespaces.push(parent);
                 }
@@ -384,7 +389,7 @@ export class Scene {
                 const importNameSpace = ModelUtils.getNamespaceInImportInfoWithName(importInfo.getImportClauseName(), file);
                 if (importNameSpace && !importNameSpaces.includes(importNameSpace)) {
                     try {
-                        // 遗留问题：只统计了项目文件，没统计sdk文件内部的引入
+                        // 遗留问题：只统计了项目文件的namespace，没统计sdk文件内部的引入
                         const importNameSpaceClasses = classMap.get(importNameSpace.getNamespaceSignature())!;
                         importClasses.push(...importNameSpaceClasses.filter(c => !importClasses.includes(c) && c.getName() != '_DEFAULT_ARK_CLASS'));
                     } catch {
@@ -414,12 +419,135 @@ export class Scene {
         return classMap;
     }
 
+    public getGlobalVariableMap(): Map<FileSignature | NamespaceSignature, Local[]> {
+        const globalVariableMap: Map<FileSignature | NamespaceSignature, Local[]> = new Map();
+        for (const file of this.getFiles()) {
+            const namespaceStack: ArkNamespace[] = [];
+            const parentMap: Map<ArkNamespace, ArkNamespace | ArkFile> = new Map();
+            const finalNamespaces: ArkNamespace[] = [];
+            const globalLocals: Local[] = [];
+            for (const local of file.getDefaultClass().getDefaultArkMethod()!.getBody().getLocals()) {
+                if (local.getDeclaringStmt() && local.getName() != "this" && local.getName()[0] != "$") {
+                    globalLocals.push(local);
+                }
+            }
+            globalVariableMap.set(file.getFileSignature(), globalLocals);
+            for (const ns of file.getNamespaces()) {
+                namespaceStack.push(ns);
+                parentMap.set(ns, file);
+            }
+            const stack = [...namespaceStack];
+            // 第一轮遍历，加上每个namespace自己的local
+            while (namespaceStack.length > 0) {
+                const ns = namespaceStack.shift()!;
+                const nsGlobalLocals: Local[] = [];
+                for (const local of ns.getDefaultClass().getDefaultArkMethod()!.getBody().getLocals()) {
+                    if (local.getDeclaringStmt() && local.getName() != "this" && local.getName()[0] != "$") {
+                        nsGlobalLocals.push(local);
+                    }
+                }
+                globalVariableMap.set(ns.getNamespaceSignature(), nsGlobalLocals);
+                if (ns.getNamespaces().length == 0) {
+                    finalNamespaces.push(ns);
+                } else {
+                    for (const nsns of ns.getNamespaces()) {
+                        namespaceStack.push(nsns);
+                        parentMap.set(nsns, ns);
+                    }
+                }
+            }
+            // 第二轮遍历，父节点加上子节点的export的local
+            while (finalNamespaces.length > 0) {
+                const finalNS = finalNamespaces.shift()!;
+                const exportLocal = [];
+                for (const exportInfo of finalNS.getExportInfos()) {
+                    if (exportInfo.getExportClauseType() == 'FirstStatement') {
+                        for (const local of finalNS.getDefaultClass().getDefaultArkMethod()!.getBody().getLocals()) {
+                            if (local.getName() == exportInfo.getExportClauseName()) {
+                                exportLocal.push(local);
+                                break;
+                            }
+                        }
+                    }
+                }
+                const parent = parentMap.get(finalNS)!;
+                if (parent instanceof ArkNamespace) {
+                    globalVariableMap.get(parent.getNamespaceSignature())?.push(...exportLocal);
+                } else if (parent instanceof ArkFile) {
+                    globalVariableMap.get(parent.getFileSignature())?.push(...exportLocal);
+                }
+                let p = finalNS;
+                while (!(parentMap.get(p) instanceof ArkFile) && p.isExported()) {
+                    const grandParent = parentMap.get(parentMap.get(p)! as ArkNamespace);
+                    if (grandParent instanceof ArkNamespace) {
+                        globalVariableMap.get(grandParent.getNamespaceSignature())?.push(...exportLocal);
+                        p = parentMap.get(p)! as ArkNamespace;
+                    } else if (grandParent instanceof ArkFile) {
+                        globalVariableMap.get(grandParent.getFileSignature())?.push(...exportLocal);
+                        break;
+                    }
+                }
+                if (parent instanceof ArkNamespace && !finalNamespaces.includes(parent)) {
+                    finalNamespaces.push(parent);
+                }
+            }
+        }
+
+        for (const file of this.getFiles()) {
+            // 文件加上import的local，包括ns的
+            const importLocals: Local[] = [];
+            const importNameSpaces: ArkNamespace[] = [];
+            for (const importInfo of file.getImportInfos()) {
+                const importLocal = ModelUtils.getLocalInImportInfoWithName(importInfo.getImportClauseName(), file);
+                if (importLocal && !importLocals.includes(importLocal)) {
+                    importLocals.push(importLocal);
+                }
+                const importNameSpace = ModelUtils.getNamespaceInImportInfoWithName(importInfo.getImportClauseName(), file);
+                if (importNameSpace && !importNameSpaces.includes(importNameSpace)) {
+                    try {
+                        // 遗留问题：只统计了项目文件，没统计sdk文件内部的引入
+                        const importNameSpaceClasses = globalVariableMap.get(importNameSpace.getNamespaceSignature())!;
+                        importLocals.push(...importNameSpaceClasses.filter(c => !importLocals.includes(c) && c.getName() != '_DEFAULT_ARK_CLASS'));
+                    } catch {
+                        // logger.log(importNameSpace)
+                    }
+
+                }
+            }
+            const fileLocals = globalVariableMap.get(file.getFileSignature())!;
+            fileLocals.push(...importLocals.filter(c => !fileLocals.includes(c)));
+            // 子节点加上父节点的local
+            const namespaceStack = [...file.getNamespaces()];
+            for (const ns of namespaceStack) {
+                const nsLocals = globalVariableMap.get(ns.getNamespaceSignature())!;
+                const nsLocalNameSet = new Set<string>(nsLocals.map(item => item.getName()));
+                for (const local of fileLocals) {
+                    if (!nsLocalNameSet.has(local.getName())) {
+                        nsLocals.push(local);
+                    }
+                }
+            }
+            while (namespaceStack.length > 0) {
+                const ns = namespaceStack.shift()!;
+                const nsLocals = globalVariableMap.get(ns.getNamespaceSignature())!;
+                for (const nsns of ns.getNamespaces()) {
+                    const nsnsLocals = globalVariableMap.get(nsns.getNamespaceSignature())!;
+                    const nsnsLocalNameSet = new Set<string>(nsnsLocals.map(item => item.getName()));
+                    for (const local of nsLocals) {
+                        if (!nsnsLocalNameSet.has(local.getName())) {
+                            nsnsLocals.push(local);
+                        }
+                    }
+                    namespaceStack.push(nsns);
+                }
+            }
+        }
+        return globalVariableMap;
+    }
+
     // public getGlobalVariableMap(): Map<FileSignature | NamespaceSignature, Local[]> {
     //     const globalVariableMap: Map<FileSignature | NamespaceSignature, Local[]> = new Map();
     //     for (const file of this.getFiles()) {
-    //         const namespaceStack: ArkNamespace[] = [];
-    //         const parentMap: Map<ArkNamespace, ArkNamespace | ArkFile> = new Map();
-    //         const finalNamespaces: ArkNamespace[] = [];
     //         const globalLocals: Local[] = [];
     //         for (const local of file.getDefaultClass().getDefaultArkMethod()!.getBody().getLocals()) {
     //             if (local.getName() != "this" && local.getName()[0] != "$") {
@@ -427,136 +555,33 @@ export class Scene {
     //             }
     //         }
     //         globalVariableMap.set(file.getFileSignature(), globalLocals);
+    //     }
+    //     for (const file of this.getFiles()) {
     //         for (const ns of file.getNamespaces()) {
-    //             namespaceStack.push(ns);
-    //             parentMap.set(ns, file);
-    //         }
-    //         const stack = [...namespaceStack];
-    //         // 第一轮遍历，加上每个namespace自己的local
-    //         while (namespaceStack.length > 0) {
-    //             const ns = namespaceStack.shift()!;
-    //             const nsGlobalLocals: Local[] = [];
+    //             const globalLocals: Local[] = [];
     //             for (const local of ns.getDefaultClass().getDefaultArkMethod()!.getBody().getLocals()) {
     //                 if (local.getName() != "this" && local.getName()[0] != "$") {
-    //                     nsGlobalLocals.push(local);
+    //                     globalLocals.push(local);
     //                 }
     //             }
-    //             globalVariableMap.set(ns.getNamespaceSignature(), nsGlobalLocals);
-    //             if (ns.getNamespaces().length == 0) {
-    //                 finalNamespaces.push(ns);
-    //             } else {
-    //                 for (const nsns of ns.getNamespaces()) {
-    //                     namespaceStack.push(nsns);
-    //                     parentMap.set(nsns, ns);
-    //                 }
-    //             }
+    //             globalLocals.push(...globalVariableMap.get(file.getFileSignature())!);
+    //             globalVariableMap.set(ns.getNamespaceSignature(), globalLocals);
     //         }
-    //         // 第二轮遍历，父节点加上子节点的export的local
-    //         while (finalNamespaces.length > 0) {
-    //             const finalNS = finalNamespaces.shift()!;
-    //             const exportLocal = [];
-    //             for (const arkClass of finalNS.getClasses()) {
-    //                 if (arkClass.isExported()) {
-    //                     exportClass.push(arkClass);
-    //                 }
-    //             }
-    //             let p = finalNS;
-    //             while (p.isExported()) {
-    //                 const parent = parentMap.get(p)!;
-    //                 if (parent instanceof ArkNamespace) {
-    //                     classMap.get(parent.getNamespaceSignature())?.push(...exportClass);
-    //                     p = parent;
-    //                 } else if (parent instanceof ArkFile) {
-    //                     classMap.get(parent.getFileSignature())?.push(...exportClass);
-    //                     break;
-    //                 }
-    //             }
-    //             const parent = parentMap.get(finalNS)!;
-    //             if (parent instanceof ArkNamespace && !finalNamespaces.includes(parent)) {
-    //                 finalNamespaces.push(parent);
-    //             }
-    //         }
-    //     }
-
-    //     for (const file of this.getFiles()) {
-    //         // 文件加上import的class，包括ns的
-    //         const importClasses: ArkClass[] = [];
-    //         const importNameSpaces: ArkNamespace[] = [];
-    //         for (const importInfo of file.getImportInfos()) {
-    //             const importClass = ModelUtils.getClassInImportInfoWithName(importInfo.getImportClauseName(), file);
-    //             if (importClass && !importClasses.includes(importClass)) {
-    //                 importClasses.push(importClass);
-    //             }
-    //             const importNameSpace = ModelUtils.getNamespaceInImportInfoWithName(importInfo.getImportClauseName(), file);
-    //             if (importNameSpace && !importNameSpaces.includes(importNameSpace)) {
-    //                 try {
-    //                     // 遗留问题：只统计了项目文件，没统计sdk文件内部的引入
-    //                     const importNameSpaceClasses = classMap.get(importNameSpace.getNamespaceSignature())!;
-    //                     importClasses.push(...importNameSpaceClasses.filter(c => !importClasses.includes(c) && c.getName() != '_DEFAULT_ARK_CLASS'));
-    //                 } catch {
-    //                     // logger.log(importNameSpace)
-    //                 }
-
-    //             }
-    //         }
-    //         const fileClasses = classMap.get(file.getFileSignature())!;
-    //         fileClasses.push(...importClasses.filter(c => !fileClasses.includes(c)));
-    //         // 子节点加上父节点的class
     //         const namespaceStack = [...file.getNamespaces()];
-    //         for (const ns of namespaceStack) {
-    //             const nsClasses = classMap.get(ns.getNamespaceSignature())!;
-    //             nsClasses.push(...fileClasses.filter(c => !nsClasses.includes(c) && c.getName() != '_DEFAULT_ARK_CLASS'));
-    //         }
     //         while (namespaceStack.length > 0) {
     //             const ns = namespaceStack.shift()!;
-    //             const nsClasses = classMap.get(ns.getNamespaceSignature())!;
     //             for (const nsns of ns.getNamespaces()) {
-    //                 const nsnsClasses = classMap.get(nsns.getNamespaceSignature())!;
-    //                 nsnsClasses.push(...nsClasses.filter(c => !nsnsClasses.includes(c) && c.getName() != '_DEFAULT_ARK_CLASS'));
-    //                 namespaceStack.push(nsns);
+    //                 const globalLocals: Local[] = [];
+    //                 for (const local of nsns.getDefaultClass().getDefaultArkMethod()!.getBody().getLocals()) {
+    //                     if (local.getName() != "this" && local.getName()[0] != "$") {
+    //                         globalLocals.push(local);
+    //                     }
+    //                 }
+    //                 globalLocals.push(...globalVariableMap.get(ns.getNamespaceSignature())!);
+    //                 globalVariableMap.set(ns.getNamespaceSignature(), globalLocals);
     //             }
     //         }
     //     }
-    //     return classMap;
+    //     return globalVariableMap;
     // }
-
-    public getGlobalVariableMap(): Map<FileSignature | NamespaceSignature, Local[]> {
-        const globalVariableMap: Map<FileSignature | NamespaceSignature, Local[]> = new Map();
-        for (const file of this.getFiles()) {
-            const globalLocals: Local[] = [];
-            for (const local of file.getDefaultClass().getDefaultArkMethod()!.getBody().getLocals()) {
-                if (local.getName() != "this" && local.getName()[0] != "$") {
-                    globalLocals.push(local);
-                }
-            }
-            globalVariableMap.set(file.getFileSignature(), globalLocals);
-        }
-        for (const file of this.getFiles()) {
-            for (const ns of file.getNamespaces()) {
-                const globalLocals: Local[] = [];
-                for (const local of ns.getDefaultClass().getDefaultArkMethod()!.getBody().getLocals()) {
-                    if (local.getName() != "this" && local.getName()[0] != "$") {
-                        globalLocals.push(local);
-                    }
-                }
-                globalLocals.push(...globalVariableMap.get(file.getFileSignature())!);
-                globalVariableMap.set(ns.getNamespaceSignature(), globalLocals);
-            }
-            const namespaceStack = [...file.getNamespaces()];
-            while (namespaceStack.length > 0) {
-                const ns = namespaceStack.shift()!;
-                for (const nsns of ns.getNamespaces()) {
-                    const globalLocals: Local[] = [];
-                    for (const local of nsns.getDefaultClass().getDefaultArkMethod()!.getBody().getLocals()) {
-                        if (local.getName() != "this" && local.getName()[0] != "$") {
-                            globalLocals.push(local);
-                        }
-                    }
-                    globalLocals.push(...globalVariableMap.get(ns.getNamespaceSignature())!);
-                    globalVariableMap.set(ns.getNamespaceSignature(), globalLocals);
-                }
-            }
-        }
-        return globalVariableMap;
-    }
 }

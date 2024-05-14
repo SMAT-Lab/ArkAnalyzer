@@ -26,12 +26,12 @@ function tac(){
     console.log((a.b.c.d + x) % y - z);
 }
 
-export namespace t{
+namespace t{
     export namespace t1{
         export class t1c {
             static n=1;
         }
-        export namespace t11{
+        namespace t11{
             export class t11c {
                 static n=1;
             }
@@ -39,7 +39,6 @@ export namespace t{
     }
     
     namespace t2{
-        let x = t1.t11.t11c.n,y=C2.n
         export class t2c{
             static n=1;
         }
@@ -49,4 +48,5 @@ export namespace t{
             }
         }
     }
+    
 }
