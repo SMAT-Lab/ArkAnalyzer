@@ -113,16 +113,18 @@ export class Ets2ts {
             }
         }
         let fileContent: string | undefined = fs.readFileSync(file, 'utf8');
-        const REG_IMPORT_DECL: RegExp = new RegExp('(import)\\s+(?:(.+)|\\{([\\s\\S]+)\\})\\s+from\\s+[\'\"]('+ alias +')(\\S+)[\'\"]', 'g');
-        let content: string = fileContent.replace(REG_IMPORT_DECL, (substring: string, ...args: any[]) => {
-            if (dependenciesMap.has(args[3])) {
-                return substring.replace(args[3], dependenciesMap.get(args[3]) as string);
-            }
-            return substring;
-        });
+        if (alias.length > 0) {
+            const REG_IMPORT_DECL: RegExp = new RegExp('(import)\\s+(?:(.+)|\\{([\\s\\S]+)\\})\\s+from\\s+[\'\"]('+ alias +')(\\S+)[\'\"]', 'g');
+            fileContent = fileContent.replace(REG_IMPORT_DECL, (substring: string, ...args: any[]) => {
+                if (dependenciesMap.has(args[3])) {
+                    return substring.replace(args[3], dependenciesMap.get(args[3]) as string);
+                }
+                return substring;
+            });
+        }
 
-        this.preProcessModule(content);
-        this.tsModule.transpileModule(content, {
+        this.preProcessModule(fileContent);
+        this.tsModule.transpileModule(fileContent, {
             compilerOptions: this.compilerOptions,
             fileName: `${file}`,
             transformers: {before: [this.processUIModule.processUISyntax(null, false), this.getDumpSourceTransformer(this, dependenciesMap)]}
@@ -246,13 +248,15 @@ export class Ets2ts {
                     }
                 });
 
-                const REG_IMPORT_DECL: RegExp = new RegExp('(import)\\s+(?:(.+)|\\{([\\s\\S]+)\\})\\s+from\\s+[\'\"]('+ alias +')(\\S+)[\'\"]', 'g');
-                let content: string = obj.content.replace(REG_IMPORT_DECL, (substring: string, ...args: any[]) => {
-                    let relativePath = path.relative(path.dirname(node.fileName), args[3]).replace(new RegExp('\\' + path.sep, 'g'), '/');
-                    return substring.replace(args[3], relativePath);
-                });
+                if (alias.length > 0) {
+                    const REG_IMPORT_DECL: RegExp = new RegExp('(import)\\s+(?:(.+)|\\{([\\s\\S]+)\\})\\s+from\\s+[\'\"]('+ alias +')(\\S+)[\'\"]', 'g');
+                    obj.content = obj.content.replace(REG_IMPORT_DECL, (substring: string, ...args: any[]) => {
+                        let relativePath = path.relative(path.dirname(node.fileName), args[3]).replace(new RegExp('\\' + path.sep, 'g'), '/');
+                        return substring.replace(args[3], relativePath);
+                    });
+                }
 
-                fs.writeFileSync(etsFileName, content);
+                fs.writeFileSync(etsFileName, obj.content);
                 fs.writeFileSync(etsFileName + '.map', JSON.stringify(obj.sourceMapJson));
 
                 // Memory optimization
