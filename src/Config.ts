@@ -85,7 +85,14 @@ export class SceneConfig {
         }
 
         removeSync(transfer2UnixPath(targetProjectDirectory + '/' + this.targetProjectName));
-        spawnSync(nodePath, [path.join(__dirname, 'ets2ts.js'), this.hosEtsLoaderPath, this.targetProjectOriginDirectory, targetProjectDirectory, this.targetProjectName, this.logPath]);
+        let output = spawnSync(nodePath, 
+            [path.join(__dirname, 'ets2ts.js'), this.hosEtsLoaderPath, this.targetProjectOriginDirectory, targetProjectDirectory, this.targetProjectName, this.logPath],
+            {encoding: 'utf-8'}
+        );
+        if (output.status != 0) {
+            logger.error('ets2ts err is: ', output.stderr);
+        }
+
         this.getAllFiles();
     }
 
