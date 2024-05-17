@@ -1184,135 +1184,6 @@ export class CfgBuilder {
         }
     }
 
-    generateDot() {
-        this.resetWalked();
-        this.getDotEdges(this.entry);
-        const filename = this.name + ".dot";
-
-
-        let fileContent = "digraph G {\n";
-
-        for (let stm of this.statementArray) {
-            if (stm.type == "entry" || stm.type == "exit")
-                fileContent += "Node" + stm.index + " [label=\"" + stm.type.replace(/"/g, '\\"') + "\"];\n";
-            else
-                fileContent += "Node" + stm.index + " [label=\"" + stm.code.replace(/"/g, '\\"') + "\"];\n";
-        }
-        for (let edge of this.dotEdges) {
-            fileContent += "Node" + edge[0] + " -> " + "Node" + edge[1] + ";\n";
-        }
-        fileContent += "}";
-        fs.writeFile(filename, fileContent, (err) => {
-            if (err) {
-                logger.error(`Error writing to file: ${err.message}`);
-            }
-        });
-
-    }
-
-    // dfsUseDef(stm: StatementBuilder, node: ts.Node, mode: string) {
-    //     let set: Set<Variable> = new Set();
-    //     if (mode == "use")
-    //         set = stm.use;
-    //     else if (mode == "def")
-    //         set = stm.def;
-
-    //     if (ts.SyntaxKind[node.kind] == "Identifier") {
-    //         for (let v of this.variables) {
-    //             if (v.name == node.getText(this.sourceFile)) {
-    //                 set.add(v);
-    //                 if (mode == "use") {
-    //                     let chain = new DefUseChain(v.lastDef, stm);
-    //                     v.defUse.push(chain);
-    //                 } else {
-    //                     v.lastDef = stm;
-    //                     for (let p of v.properties) {
-    //                         p.lastDef = stm;
-    //                     }
-    //                 }
-    //                 return;
-    //             }
-    //         }
-    //     }
-    //     if (ts.SyntaxKind[node.kind] == "PropertyAccessExpression") {
-    //         for (let v of this.variables) {
-    //             if (v.name == node.getChildren(this.sourceFile)[0].getText(this.sourceFile)) {
-    //                 if (mode == "use") {
-    //                     for (let prop of this.variables) {
-    //                         if (prop.name == node.getText(this.sourceFile)) {
-    //                             set.add(prop);
-    //                             let chain = new DefUseChain(prop.lastDef, stm);
-    //                             prop.defUse.push(chain);
-    //                             if (prop.lastDef == v.lastDef) {
-    //                                 set.add(v);
-    //                                 chain = new DefUseChain(v.lastDef, stm);
-    //                                 v.defUse.push(chain);
-    //                             }
-    //                             return;
-    //                         }
-    //                     }
-    //                     set.add(v);
-    //                     let chain = new DefUseChain(v.lastDef, stm);
-    //                     v.defUse.push(chain);
-    //                 } else {
-    //                     for (let v of this.variables) {
-    //                         if (v.name == node.getText(this.sourceFile)) {
-    //                             v.lastDef = stm;
-    //                             return;
-    //                         }
-    //                     }
-    //                     const property = new Variable(node.getText(this.sourceFile), stm);
-    //                     this.variables.push(property);
-    //                     for (let v of this.variables) {
-    //                         if (v.name == node.getChildren(this.sourceFile)[0].getText(this.sourceFile)) {
-    //                             v.properties.push(property);
-    //                             property.propOf = v;
-    //                         }
-    //                     }
-    //                 }
-    //                 return;
-    //             }
-    //         }
-    //     }
-    //     let indexOfDef = -1;
-    //     if (ts.SyntaxKind[node.kind] == "VariableDeclaration") {
-    //         indexOfDef = 0;
-    //         this.dfsUseDef(stm, node.getChildren(this.sourceFile)[indexOfDef], "def");
-    //     }
-    //     if (ts.SyntaxKind[node.kind] == "BinaryExpression" && ts.SyntaxKind[node.getChildren(this.sourceFile)[1].kind] == "FirstAssignment") {
-    //         indexOfDef = 0;
-    //     }
-    //     if (ts.SyntaxKind[node.kind] == "BinaryExpression" && ts.SyntaxKind[node.getChildren(this.sourceFile)[1].kind] == "FirstAssignment") {
-    //         indexOfDef = 0;
-    //     }
-    //     for (let i = 0; i < node.getChildren(this.sourceFile).length; i++) {
-    //         if (i == indexOfDef)
-    //             continue;
-    //         let child = node.getChildren(this.sourceFile)[i];
-    //         this.dfsUseDef(stm, child, mode);
-    //     }
-    //     for (let i = 0; i < node.getChildren(this.sourceFile).length; i++) {
-    //         let child = node.getChildren(this.sourceFile)[i];
-    //         if (ts.SyntaxKind[child.kind] == "FirstAssignment") {
-    //             if (i >= 2 && ts.SyntaxKind[node.getChildren(this.sourceFile)[i - 2].kind] == "ColonToken") {
-    //                 indexOfDef = i - 3;
-    //                 this.dfsUseDef(stm, node.getChildren(this.sourceFile)[indexOfDef], "def");
-    //             } else {
-    //                 indexOfDef = i - 1;
-    //                 this.dfsUseDef(stm, node.getChildren(this.sourceFile)[indexOfDef], "def");
-    //             }
-    //         }
-    //         if (ts.SyntaxKind[child.kind].includes("EqualsToken") && ts.SyntaxKind[child.kind] != "EqualsEqualsToken") {
-    //             this.dfsUseDef(stm, node.getChildren(this.sourceFile)[i - 1], "def");
-    //         } else if (ts.SyntaxKind[child.kind] == "PlusPlusToken" || ts.SyntaxKind[child.kind] == "MinusMinusToken") {
-    //             if (i == 0)
-    //                 this.dfsUseDef(stm, node.getChildren(this.sourceFile)[i + 1], "def");
-    //             else
-    //                 this.dfsUseDef(stm, node.getChildren(this.sourceFile)[i - 1], "def");
-    //         }
-    //     }
-    // }
-
     findChildIndex(node: ts.Node, kind: string): number {
         for (let i = 0; i < node.getChildren(this.sourceFile).length; i++) {
             if (ts.SyntaxKind[node.getChildren(this.sourceFile)[i].kind] == kind)
@@ -1400,14 +1271,9 @@ export class CfgBuilder {
         return tempLeftOp;
     }
 
-    private generateAssignStmt(node: ts.Node | Value): Local {
+    private generateAssignStmtForValue(value: Value): Local {
         let leftOp = this.generateTempValue();
-        let rightOp: any;
-        if (node instanceof ts.Node) {
-            rightOp = this.astNodeToValue(node);
-        } else {
-            rightOp = node;
-        }
+        let rightOp = value;
         this.current3ACstm.threeAddressStmts.push(new ArkAssignStmt(leftOp, rightOp));
         return leftOp;
     }
@@ -1421,15 +1287,19 @@ export class CfgBuilder {
         arkClass.setName(anonymousClassName);
         let arkFile = this.declaringClass.getDeclaringArkFile();
         arkClass.setDeclaringArkFile(arkFile);
-        arkClass.setLine(objectLiteralNode.line + 1);
-        arkClass.setColumn(objectLiteralNode.character + 1);
+        const {line, character} = ts.getLineAndCharacterOfPosition(
+            this.sourceFile,
+            objectLiteralNode.getStart(this.sourceFile)
+        );
+        arkClass.setLine(line + 1);
+        arkClass.setColumn(character + 1);
         arkClass.genSignature();
         arkFile.addArkClass(arkClass);
         const classSignature = arkClass.getSignature();
         const classType = new ClassType(classSignature);
 
         let newExpr = new ArkNewExpr(classType);
-        let tempObj = this.generateAssignStmt(newExpr);
+        let tempObj = this.generateAssignStmtForValue(newExpr);
         let methodSubSignature = new MethodSubSignature();
         methodSubSignature.setMethodName('constructor');
         let methodSignature = new MethodSignature();
@@ -1457,7 +1327,7 @@ export class CfgBuilder {
             return expr;
         }
         let combinationExpr = new ArkBinopExpr(expr, new Constant(literalText, StringType.getInstance()), '+');
-        return this.generateAssignStmt(combinationExpr);
+        return this.generateAssignStmtForValue(combinationExpr);
     }
 
     private astNodeToTemplateExpr(templateExprNode: ts.Node): Value {
@@ -1472,10 +1342,10 @@ export class CfgBuilder {
         }
 
         let combinationExpr = new ArkBinopExpr(subValues[0], subValues[1], '+');
-        let prevCombination = this.generateAssignStmt(combinationExpr);
+        let prevCombination = this.generateAssignStmtForValue(combinationExpr);
         for (let i = 2; i < subValues.length; i++) {
             combinationExpr = new ArkBinopExpr(prevCombination, subValues[i], '+');
-            prevCombination = this.generateAssignStmt(combinationExpr);
+            prevCombination = this.generateAssignStmtForValue(combinationExpr);
         }
         return prevCombination;
     }
@@ -1488,7 +1358,7 @@ export class CfgBuilder {
             conditionExpr = new ArkConditionExpr(conditionValue.getOp1(), conditionValue.getOp2(), flipOperator(conditionValue.getOperator()));
         } else {
             if (IRUtils.moreThanOneAddress(conditionValue)) {
-                conditionValue = this.generateAssignStmt(conditionValue);
+                conditionValue = this.generateAssignStmtForValue(conditionValue);
             }
             conditionExpr = new ArkConditionExpr(conditionValue, new Constant('0', NumberType.getInstance()), '==');
         }
@@ -1547,16 +1417,16 @@ export class CfgBuilder {
         } else if (this.shouldBeConstant(node)) {
             const typeStr = this.resolveKeywordType(node);
             let constant = new Constant(node.getText(this.sourceFile), TypeInference.buildTypeFromStr(typeStr));
-            value = this.generateAssignStmt(constant);
+            value = this.generateAssignStmtForValue(constant);
         } else if (ts.SyntaxKind[node.kind] == 'BinaryExpression') {
             let op1 = this.astNodeToValue(node.getChildren(this.sourceFile)[0]);
             let operator = node.getChildren(this.sourceFile)[1].getText(this.sourceFile);
             let op2 = this.astNodeToValue(node.getChildren(this.sourceFile)[2]);
             if (IRUtils.moreThanOneAddress(op1)) {
-                op1 = this.generateAssignStmt(op1);
+                op1 = this.generateAssignStmtForValue(op1);
             }
             if (IRUtils.moreThanOneAddress(op2)) {
-                op2 = this.generateAssignStmt(op2);
+                op2 = this.generateAssignStmtForValue(op2);
             }
             value = new ArkBinopExpr(op1, op2, operator);
         }
@@ -1564,7 +1434,7 @@ export class CfgBuilder {
         else if (ts.SyntaxKind[node.kind] == 'PropertyAccessExpression') {
             let baseValue = this.astNodeToValue(node.getChildren(this.sourceFile)[0]);
             if (IRUtils.moreThanOneAddress(baseValue)) {
-                baseValue = this.generateAssignStmt(baseValue);
+                baseValue = this.generateAssignStmtForValue(baseValue);
             }
             let base = baseValue as Local;
 
@@ -1575,13 +1445,13 @@ export class CfgBuilder {
         } else if (ts.SyntaxKind[node.kind] == 'ElementAccessExpression') {
             let baseValue = this.astNodeToValue(node.getChildren(this.sourceFile)[0]);
             if (!(baseValue instanceof Local)) {
-                baseValue = this.generateAssignStmt(baseValue);
+                baseValue = this.generateAssignStmtForValue(baseValue);
             }
 
             let elementNodeIdx = this.findChildIndex(node, 'OpenBracketToken') + 1;
             let elementValue = this.astNodeToValue(node.getChildren(this.sourceFile)[elementNodeIdx]);
             if (IRUtils.moreThanOneAddress(elementValue)) {
-                elementValue = this.generateAssignStmt(elementValue);
+                elementValue = this.generateAssignStmtForValue(elementValue);
             }
 
             // temp
@@ -1611,7 +1481,7 @@ export class CfgBuilder {
             for (const argNode of argNodes) {
                 let argValue = this.astNodeToValue(argNode);
                 if (IRUtils.moreThanOneAddress(argValue)) {
-                    argValue = this.generateAssignStmt(argValue);
+                    argValue = this.generateAssignStmtForValue(argValue);
                 }
 
                 args.push(argValue);
@@ -1742,7 +1612,7 @@ export class CfgBuilder {
                     sizeValue = new Constant(size.toString(), NumberType.getInstance());
                 }
                 let newArrayExpr = new ArkNewArrayExpr(baseType, sizeValue);
-                value = this.generateAssignStmt(newArrayExpr);
+                value = this.generateAssignStmtForValue(newArrayExpr);
                 value.setType(new ArrayObjectType(baseType, 1));
 
                 for (let index = 0; index < items.length; index++) {
@@ -1755,7 +1625,7 @@ export class CfgBuilder {
                 classSignature.setClassName(className);
                 const classType = new ClassType(classSignature);
                 let newExpr = new ArkNewExpr(classType);
-                value = this.generateAssignStmt(newExpr);
+                value = this.generateAssignStmtForValue(newExpr);
 
 
                 let methodSubSignature = new MethodSubSignature();
@@ -1783,7 +1653,7 @@ export class CfgBuilder {
             }
 
             let newArrayExpr = new ArkNewArrayExpr(UnknownType.getInstance(), new Constant(size.toString(), NumberType.getInstance()));
-            value = this.generateAssignStmt(newArrayExpr);
+            value = this.generateAssignStmtForValue(newArrayExpr);
             const itemTypes = new Set<Type>();
 
             let argsNode = node.getChildren(this.sourceFile)[1];
@@ -1816,7 +1686,7 @@ export class CfgBuilder {
             } else {
                 let op = this.astNodeToValue(node.getChildren(this.sourceFile)[1]);
                 let arkUnopExpr = new ArkUnopExpr(op, token);
-                value = this.generateAssignStmt(arkUnopExpr);
+                value = this.generateAssignStmtForValue(arkUnopExpr);
             }
         } else if (ts.SyntaxKind[node.kind] == 'PostfixUnaryExpression') {
             let token = node.getChildren(this.sourceFile)[1].getText(this.sourceFile);
@@ -1829,7 +1699,7 @@ export class CfgBuilder {
             value = this.astNodeToValue(node.getChildren(this.sourceFile)[1]);
         } else if (ts.SyntaxKind[node.kind] == 'ParenthesizedExpression') {
             const parenthesizedValue = this.astNodeToValue(node.getChildren(this.sourceFile)[1]);
-            value = this.generateAssignStmt(parenthesizedValue);
+            value = this.generateAssignStmtForValue(parenthesizedValue);
         } else if (ts.SyntaxKind[node.kind] == 'SpreadElement') {
             value = this.astNodeToValue(node.getChildren(this.sourceFile)[1]);
         } else if (ts.SyntaxKind[node.kind] == 'TypeOfExpression') {
@@ -1888,7 +1758,7 @@ export class CfgBuilder {
         let rightOpNode = node.getChildren(this.sourceFile)[2];
         let rightOp = this.astNodeToValue(rightOpNode);
         if (IRUtils.moreThanOneAddress(leftOp) && IRUtils.moreThanOneAddress(rightOp)) {
-            rightOp = this.generateAssignStmt(rightOp);
+            rightOp = this.generateAssignStmtForValue(rightOp);
         }
         stmts.push(new ArkAssignStmt(leftOp, new ArkBinopExpr(leftOp, rightOp, operator.substring(0, operator.length - 1))));
         return stmts;
@@ -1906,7 +1776,7 @@ export class CfgBuilder {
 
         let leftOpType = this.getTypeNode(node);
 
-        let rightOpNode = new ts.Node(undefined, null, [], 'dummy', -1, 'dummy');
+        let rightOpNode: ts.Node;
         let rightOp: Value;
         if (this.findChildIndex(node, 'FirstAssignment') != -1) {
             rightOpNode = node.getChildren(this.sourceFile)[this.findChildIndex(node, 'FirstAssignment') + 1];
@@ -1923,7 +1793,7 @@ export class CfgBuilder {
         }
 
         if (IRUtils.moreThanOneAddress(leftOp) && IRUtils.moreThanOneAddress(rightOp)) {
-            rightOp = this.generateAssignStmt(rightOp);
+            rightOp = this.generateAssignStmtForValue(rightOp);
         }
 
         let threeAddressAssignStmts: Stmt[] = [];
@@ -1947,7 +1817,7 @@ export class CfgBuilder {
         let exprNode = switchAstNode.getChildren(this.sourceFile)[this.findChildIndex(switchAstNode, 'OpenParenToken') + 1];
         let exprValue = this.astNodeToValue(exprNode);
         if (IRUtils.moreThanOneAddress(exprValue)) {
-            exprValue = this.generateAssignStmt(exprValue);
+            exprValue = this.generateAssignStmtForValue(exprValue);
         }
 
         let caseBlockNode = switchAstNode.getChildren(this.sourceFile)[this.findChildIndex(switchAstNode, 'CloseParenToken') + 1];
@@ -1960,7 +1830,7 @@ export class CfgBuilder {
             let caseExprNode = caseNode.getChildren(this.sourceFile)[1];
             let caseExprValue = this.astNodeToValue(caseExprNode);
             if (IRUtils.moreThanOneAddress(caseExprValue)) {
-                caseExprValue = this.generateAssignStmt(caseExprValue);
+                caseExprValue = this.generateAssignStmtForValue(caseExprValue);
             }
             caseValues.push(caseExprValue);
         }
@@ -2048,7 +1918,7 @@ export class CfgBuilder {
             if (childCnt > 1 && ts.SyntaxKind[node.getChildren(this.sourceFile)[1].kind] != 'SemicolonToken') {
                 let op = this.astNodeToValue(node.getChildren(this.sourceFile)[1]);
                 if (IRUtils.moreThanOneAddress(op)) {
-                    op = this.generateAssignStmt(op);
+                    op = this.generateAssignStmtForValue(op);
                 }
                 threeAddressStmts.push(new ArkReturnStmt(op));
             } else {
@@ -2092,7 +1962,7 @@ export class CfgBuilder {
         } else if (ts.SyntaxKind[node.kind] == 'ThrowStatement') {
             let op = this.astNodeToValue(node.getChildren(this.sourceFile)[1]);
             if (IRUtils.moreThanOneAddress(op)) {
-                op = this.generateAssignStmt(op);
+                op = this.generateAssignStmtForValue(op);
             }
             threeAddressStmts.push(new ArkThrowStmt(op));
         } else if (ts.SyntaxKind[node.kind] == 'CatchClause') {
@@ -2130,13 +2000,13 @@ export class CfgBuilder {
             let index = 0;
             for (const methodParameter of this.declaringMethod.getParameters()) {
                 let parameterRef = new ArkParameterRef(index, methodParameter.getType());
-                let parameterLocal = this.generateAssignStmt(parameterRef);
+                let parameterLocal = this.generateAssignStmtForValue(parameterRef);
                 parameterLocal.setName(methodParameter.getName());
                 index++;
                 this.paraLocals.push(parameterLocal);
             }
             let thisRef = new ArkThisRef(this.declaringClass.getSignature().getType());
-            this.thisLocal = this.generateAssignStmt(thisRef);
+            this.thisLocal = this.generateAssignStmtForValue(thisRef);
             this.thisLocal.setName('this');
             this.thisLocal.setType(thisRef.getType());
         }
@@ -2328,7 +2198,7 @@ export class CfgBuilder {
                 } else if (originStmt.type == 'loopStatement') {
                     currStmtStrs.push(...iterationStmtToString(originStmt));
                 } else if (originStmt.type == 'switchStatement') {
-                    currStmtStrs.push(...switchStmtToString(originStmt));
+                    currStmtStrs.push(...switchStmtToString(originStmt, this.sourceFile));
                 } else if (originStmt.type == 'breakStatement' || originStmt.type == 'continueStatement') {
                     currStmtStrs.push(...jumpStmtToString(originStmt));
                 } else {
@@ -2417,7 +2287,7 @@ export class CfgBuilder {
         }
 
         // TODO:参考soot还是sootup处理switch
-        function switchStmtToString(originStmt: StatementBuilder): string[] {
+        function switchStmtToString(originStmt: StatementBuilder, sourceFile: ts.SourceFile): string[] {
             let switchStmt = originStmt as SwitchStatementBuilder;
 
 
