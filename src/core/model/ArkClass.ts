@@ -317,6 +317,12 @@ export class ArkClass {
         }
         return globalMap.get(this.declaringArkFile.getFileSignature())!;
     }
+
+    public getDecorators(): Decorator[] {
+        return Array.from(this.modifiers).filter((item) => {
+            return item instanceof Decorator;
+        }) as Decorator[];
+    }
 }
 
 export function buildDefaultArkClassFromArkFile(defaultlassNode: NodeA, arkFile: ArkFile, defaultClass: ArkClass) {
