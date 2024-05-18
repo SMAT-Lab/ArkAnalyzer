@@ -29,8 +29,6 @@ export class ArkField {
     //private initializer, TODO
     private initializer: Value;
 
-    private decorators: Decorator[] = [];
-
     constructor() { }
 
     public getDeclaringClass() {
@@ -210,11 +208,8 @@ export class ArkField {
     }
 
     public getDecorators(): Decorator[] {
-        return this.decorators;
+        return Array.from(this.modifiers).filter((item) => {
+            return item instanceof Decorator;
+        }) as Decorator[];
     }
-
-    public setDecorators(decorators: Decorator[]) {
-        this.decorators = decorators;
-    }
-
 }
