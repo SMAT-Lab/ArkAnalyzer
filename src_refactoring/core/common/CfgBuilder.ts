@@ -188,13 +188,11 @@ class Variable {
 
 class Scope {
     id: number;
-    variable: Set<String>;
     level: number;
     parent: Scope | null;
 
     constructor(id: number, variable: Set<String>, level: number) {
         this.id = id;
-        this.variable = variable;
         this.level = level;
         this.parent = null;
     }
@@ -382,34 +380,17 @@ export class CfgBuilder {
 
         for (let i = 0; i < nodes.length; i++) {
             let c = nodes[i];
-            if (ts.SyntaxKind[c.kind] == "FirstStatement" || ts.SyntaxKind[c.kind] == "VariableStatement" || ts.SyntaxKind[c.kind] == "ExpressionStatement" || ts.SyntaxKind[c.kind] == "ThrowStatement") {
-                if (ts.SyntaxKind[c.kind] == "FirstStatement" || ts.SyntaxKind[c.kind] == "VariableStatement") {
-                    let declList = c.getChildren(this.sourceFile)[this.findChildIndex(c, "VariableDeclarationList")];
-                    declList = declList.getChildren(this.sourceFile)[this.findChildIndex(declList, "SyntaxList")];
-                    for (let decl of declList.getChildren(this.sourceFile)) {
-                        scope.variable.add(decl.getChildren(this.sourceFile)[0]?.getText(this.sourceFile));
-                    }
-                }
+            if (ts.isVariableStatement(c) || ts.isExpressionStatement(c) || ts.isThrowStatement(c)) {
                 let s = new StatementBuilder("statement", c.getText(this.sourceFile), c, scope.id);
                 judgeLastType(s);
                 lastStatement = s;
-            }
-            if (ts.SyntaxKind[c.kind] == "ImportDeclaration") {
-                let stm = new StatementBuilder("statement", c.getText(this.sourceFile), c, scope.id);
-                judgeLastType(stm);
-                lastStatement = stm;
-                stm.astNode = c;
-                let indexPath = this.findChildIndex(c, "FromKeyword") + 1;
-                this.importFromPath.push(c.getChildren(this.sourceFile)[indexPath].getText(this.sourceFile));
-            }
-            if (ts.SyntaxKind[c.kind] == "ReturnStatement") {
+            } else if (ts.isReturnStatement(c)) {
                 let s = new StatementBuilder("returnStatement", c.getText(this.sourceFile), c, scope.id);
                 judgeLastType(s);
                 s.astNode = c;
                 lastStatement = s;
                 break;
-            }
-            if (ts.SyntaxKind[c.kind] == "BreakStatement") {
+            } else if (ts.isBreakStatement(c)) {
                 let brstm = new StatementBuilder("breakStatement", "break;", c, scope.id);
                 judgeLastType(brstm);
                 let p: ts.Node | null = c;
@@ -425,60 +406,43 @@ export class CfgBuilder {
                     p = p.parent;
                 }
                 lastStatement = brstm;
-            }
-            if (ts.SyntaxKind[c.kind] == "ContinueStatement") {
+            } else if (ts.isContinueStatement(c)) {
                 let constm = new StatementBuilder("continueStatement", "continue;", c, scope.id);
                 judgeLastType(constm);
                 constm.next = this.loopStack[this.loopStack.length - 1];
                 lastStatement = constm;
-            }
-            if (ts.SyntaxKind[c.kind] == "IfStatement") {
+            } else if (ts.isIfStatement(c)) {
                 let ifstm: ConditionStatementBuilder = new ConditionStatementBuilder("ifStatement", "", c, scope.id);
                 judgeLastType(ifstm);
                 let ifexit: StatementBuilder = new StatementBuilder("ifExit", "", c, scope.id);
-                let elsed: boolean = false;
-                for (let j = 0; j < c.getChildren(this.sourceFile).length; j++) {
-                    let ifchild = c.getChildren(this.sourceFile)[j];
-                    if (ts.SyntaxKind[ifchild.kind] == "OpenParenToken") {
-                        ifstm.condition = c.getChildren(this.sourceFile)[j + 1].getText(this.sourceFile);
-                        // expressionCondition=true;
-                        ifstm.code = "if (" + ifstm.condition + ")";
-                    } else if ((ts.SyntaxKind[ifchild.kind] == "CloseParenToken" || ts.SyntaxKind[ifchild.kind] == "ElseKeyword") && ts.SyntaxKind[c.getChildren(this.sourceFile)[j + 1].kind] != "Block") {
-                        this.walkAST(ifstm, ifexit, [c.getChildren(this.sourceFile)[j + 1]])
-                    } else if (ts.SyntaxKind[ifchild.kind] == "ElseKeyword") {
-                        elsed = true;
-                    } else if (ts.SyntaxKind[ifchild.kind] == "Block") {
-                        this.walkAST(ifstm, ifexit, ifchild.getChildren(this.sourceFile)[1].getChildren(this.sourceFile))
+                ifstm.condition = c.expression.getText(this.sourceFile);
+                ifstm.code = "if (" + ifstm.condition + ")";
+                if (ts.isBlock(c.thenStatement)) {
+                    this.walkAST(ifstm, ifexit, [...c.thenStatement.statements]);
+                } else {
+                    this.walkAST(ifstm, ifexit, [c.thenStatement]);
+                }
+                if (c.elseStatement) {
+                    if (ts.isBlock(c.elseStatement)) {
+                        this.walkAST(ifstm, ifexit, [...c.elseStatement.statements]);
+                    } else {
+                        this.walkAST(ifstm, ifexit, [c.elseStatement]);
                     }
-                }
-                if (!elsed || !ifstm.nextF) {
-                    ifstm.nextF = ifexit;
-                }
-                if (!ifstm.nextT) {
-                    ifstm.nextT = ifexit;
                 }
                 lastStatement = ifexit;
-            }
-            if (ts.SyntaxKind[c.kind] == "WhileStatement") {
+            } else if (ts.isWhileStatement(c)) {
                 this.breakin = "loop";
                 let loopstm = new ConditionStatementBuilder("loopStatement", "", c, scope.id);
                 this.loopStack.push(loopstm);
                 judgeLastType(loopstm);
                 let loopExit = new StatementBuilder("loopExit", "", c, scope.id);
                 loopstm.nextF = loopExit;
-                for (let j = 0; j < c.getChildren(this.sourceFile).length; j++) {
-                    let loopchild = c.getChildren(this.sourceFile)[j];
-                    if (ts.SyntaxKind[loopchild.kind] == "OpenParenToken") {
-                        // expressionCondition=true;
-                        loopstm.condition = c.getChildren(this.sourceFile)[j + 1].getText(this.sourceFile);
-                        loopstm.code = "while (" + loopstm.condition + ")";
-                    }
-                    if ((ts.SyntaxKind[loopchild.kind] == "CloseParenToken") && ts.SyntaxKind[c.getChildren(this.sourceFile)[j + 1].kind] != "Block") {
-                        this.walkAST(loopstm, loopExit, [c.getChildren(this.sourceFile)[j + 1]])
-                    }
-                    if (ts.SyntaxKind[loopchild.kind] == "Block") {
-                        this.walkAST(loopstm, loopstm, loopchild.getChildren(this.sourceFile)[1].getChildren(this.sourceFile));
-                    }
+                loopstm.condition = c.expression.getText(this.sourceFile);
+                loopstm.code = "if (" + loopstm.condition + ")";
+                if (ts.isBlock(c.statement)) {
+                    this.walkAST(loopstm, loopExit, [...c.statement.statements]);
+                } else {
+                    this.walkAST(loopstm, loopExit, [c.statement]);
                 }
                 if (!loopstm.nextF) {
                     loopstm.nextF = loopExit;
@@ -489,25 +453,24 @@ export class CfgBuilder {
                 lastStatement = loopExit;
                 this.loopStack.pop();
             }
-            if (ts.SyntaxKind[c.kind] == "ForStatement" || ts.SyntaxKind[c.kind] == "ForInStatement" || ts.SyntaxKind[c.kind] == "ForOfStatement") {
+            if (ts.isForStatement(c) || ts.isForInStatement(c) || ts.isForOfStatement(c)) {
                 this.breakin = "loop";
                 let loopstm = new ConditionStatementBuilder("loopStatement", "", c, scope.id);
                 this.loopStack.push(loopstm);
                 judgeLastType(loopstm);
                 let loopExit = new StatementBuilder("loopExit", "", c, scope.id);
                 loopstm.nextF = loopExit;
-                let code: string = "";
-                for (let loopchild of c.getChildren(this.sourceFile)) {
-                    if (ts.SyntaxKind[loopchild.kind] != "Block") {
-                        code += loopchild.getText(this.sourceFile);
-                        const nextChild = c.getChildren(this.sourceFile)[c.getChildren(this.sourceFile).indexOf(loopchild) + 1];
-                        if (nextChild && loopchild.getText(this.sourceFile) != "(" && nextChild.getText(this.sourceFile) != ")" && nextChild.getText(this.sourceFile) != ";") {
-                            code += ' ';
-                        }
-                    } else {
-                        loopstm.code = code;
-                        this.walkAST(loopstm, loopstm, loopchild.getChildren(this.sourceFile)[1].getChildren(this.sourceFile));
-                    }
+                if (ts.isForStatement(c)) {
+                    loopstm.code = c.initializer?.getText(this.sourceFile) + "; " + c.condition?.getText(this.sourceFile) + "; " + c.incrementor?.getText(this.sourceFile);
+                } else if(ts.isForOfStatement(c)) {
+                    loopExit.code = c.initializer?.getText(this.sourceFile)+" of "+c.expression.getText(this.sourceFile);
+                } else {
+                    loopExit.code = c.initializer?.getText(this.sourceFile)+" in "+c.expression.getText(this.sourceFile);
+                }
+                if (ts.isBlock(c.statement)) {
+                    this.walkAST(loopstm, loopExit, [...c.statement.statements]);
+                } else {
+                    this.walkAST(loopstm, loopExit, [c.statement]);
                 }
                 if (!loopstm.nextF) {
                     loopstm.nextF = loopExit;
@@ -517,24 +480,18 @@ export class CfgBuilder {
                 }
                 lastStatement = loopExit;
                 this.loopStack.pop();
-            }
-            if (ts.SyntaxKind[c.kind] == "DoStatement") {
+            } else if (ts.isDoStatement(c)) {
                 this.breakin = "loop";
                 let loopstm = new ConditionStatementBuilder("loopStatement", "", c, scope.id);
                 this.loopStack.push(loopstm);
                 let loopExit = new StatementBuilder("loopExit", "", c, scope.id);
                 loopstm.nextF = loopExit;
-                // let expressionCondition=false;
-                for (let j = 0; j < c.getChildren(this.sourceFile).length; j++) {
-                    let loopchild = c.getChildren(this.sourceFile)[j]
-                    if (ts.SyntaxKind[loopchild.kind] == "OpenParenToken") {
-                        // expressionCondition=true;
-                        loopstm.condition = c.getChildren(this.sourceFile)[j + 1].getText(this.sourceFile);
-                        loopstm.code = "while (" + loopstm.condition + ")";
-                    }
-                    if (ts.SyntaxKind[loopchild.kind] == "Block") {
-                        this.walkAST(lastStatement, loopstm, loopchild.getChildren(this.sourceFile)[1].getChildren(this.sourceFile));
-                    }
+                loopstm.condition = c.expression.getText(this.sourceFile);
+                loopstm.code = "while (" + loopstm.condition + ")";
+                if (ts.isBlock(c.statement)) {
+                    this.walkAST(loopstm, loopExit, [...c.statement.statements]);
+                } else {
+                    this.walkAST(loopstm, loopExit, [c.statement]);
                 }
                 let lastType = lastStatement.type;
                 if (lastType == "ifStatement" || lastType == "loopStatement") {
@@ -549,144 +506,81 @@ export class CfgBuilder {
                 }
                 lastStatement = loopExit;
                 this.loopStack.pop();
-            }
-            if (ts.SyntaxKind[c.kind] == "SwitchStatement") {
+            } else if (ts.isSwitchStatement(c)) {
                 this.breakin = "switch";
                 let switchstm = new SwitchStatementBuilder("switchStatement", "", c, scope.id);
                 judgeLastType(switchstm);
                 let switchExit = new StatementBuilder("switchExit", "", null, scope.id);
                 this.switchExitStack.push(switchExit);
-                for (let schild of c.getChildren(this.sourceFile)) {
-                    if (ts.SyntaxKind[schild.kind] != "CaseBlock") {
-                        switchstm.code += schild.getText(this.sourceFile);
+                switchExit.code = "switch (" + c.expression + ")";
+                let lastCaseExit: StatementBuilder | null = null;
+                for (let i = 0; i < c.caseBlock.clauses.length; i++) {
+                    const clause= c.caseBlock.clauses[i];
+                    let casestm: StatementBuilder;
+                    if (ts.isCaseClause(clause)) {
+                        casestm = new StatementBuilder("statement", "case " + clause.expression + ":", clause, scope.id);
                     } else {
-                        let lastCaseExit: StatementBuilder | null = null;
-                        let preCases: string[] = [];
-                        for (let j = 0; j < schild.getChildren(this.sourceFile)[1].getChildren(this.sourceFile).length; j++) {
-                            let caseClause = schild.getChildren(this.sourceFile)[1].getChildren(this.sourceFile)[j];
-                            let syntaxList: ts.Node | null = null;
-                            let caseWords = "";
-                            for (let caseChild of caseClause.getChildren(this.sourceFile)) {
-                                if (ts.SyntaxKind[caseChild.kind] == "SyntaxList") {
-                                    syntaxList = caseChild;
-                                    break;
-                                } else {
-                                    caseWords += caseChild.getText(this.sourceFile) + " ";
-                                }
-                            }
-                            if (syntaxList == null) {
-                                logger.warn("caseClause without syntaxList");
-                                process.exit();
-                            }
-                            if (syntaxList.getChildren(this.sourceFile).length == 0) {
-                                preCases.push(caseWords);
-                            } else {
-                                let thisCase = caseWords;
-                                for (let w of preCases) {
-                                    caseWords += w + " ";
-                                }
-                                let casestm = new StatementBuilder("statement", caseWords, caseClause, scope.id);
-                                switchstm.nexts.push(casestm);
-                                let caseExit = new StatementBuilder("caseExit", "", null, scope.id);
-                                this.walkAST(casestm, caseExit, syntaxList.getChildren(this.sourceFile));
-                                for (let w of preCases) {
-                                    if (casestm.next) {
-                                        let cas = new Case(w, casestm.next);
-                                        switchstm.cases.push(cas);
-                                    }
-                                }
-                                if (casestm.next) {
-                                    if (ts.SyntaxKind[caseClause.kind] == "CaseClause") {
-                                        let cas = new Case(thisCase, casestm.next);
-                                        switchstm.cases.push(cas);
-                                    } else
-                                        switchstm.default = casestm.next;
-                                }
-                                if (lastCaseExit) {
-                                    lastCaseExit.next = casestm.next;
-                                }
-                                if (j == schild.getChildren(this.sourceFile)[1].getChildren(this.sourceFile).length - 1) {
-                                    caseExit.next = switchExit;
-                                } else {
-                                    lastCaseExit = caseExit;
-                                }
-                                preCases = [];
-                            }
-
-                        }
-                        if (lastCaseExit && !lastCaseExit.next) {
-                            lastCaseExit.next = switchExit;
-                        }
+                        casestm = new StatementBuilder("statement", "default:", clause, scope.id);
+                    }
+                    
+                    switchstm.nexts.push(casestm);
+                    let caseExit = new StatementBuilder("caseExit", "", null, scope.id);
+                    this.walkAST(casestm, caseExit, [...clause.statements]);
+                    if (ts.isCaseClause(clause)) {
+                        const cas = new Case(casestm.code, casestm.next!);
+                        switchstm.cases.push(cas);
+                    } else {
+                        switchstm.default = casestm.next;
+                    }
+                    
+                    if (lastCaseExit) {
+                        lastCaseExit.next = casestm.next;
+                    }
+                    lastCaseExit = caseExit;
+                    if (i == c.caseBlock.clauses.length - 1) {
+                        caseExit.next = switchExit;
                     }
                 }
+                
                 lastStatement = switchExit;
                 this.switchExitStack.pop();
-            }
-            if (ts.SyntaxKind[c.kind] == "Block") {
+            }else if (ts.isBlock(c)) {
                 let blockExit = new StatementBuilder("blockExit", "", c, scope.id);
                 this.walkAST(lastStatement, blockExit, c.getChildren(this.sourceFile)[1].getChildren(this.sourceFile));
                 lastStatement = blockExit;
-            }
-            if (ts.SyntaxKind[c.kind] == "TryStatement") {
+            }else if (ts.isTryStatement(c)) {
                 let trystm = new TryStatementBuilder("tryStatement", "try", c, scope.id);
                 judgeLastType(trystm);
                 let tryExit = new StatementBuilder("try exit", "", c, scope.id);
                 trystm.tryExit = tryExit;
-                this.walkAST(trystm, tryExit, c.getChildren(this.sourceFile)[1].getChildren(this.sourceFile)[1].getChildren(this.sourceFile));
+                this.walkAST(trystm, tryExit, [...c.tryBlock.statements]);
                 trystm.tryFirst = trystm.next;
-                // lastStatement=tryExit;
-                let catchClause: ts.Node | null = null;
-                let finalBlock: ts.Node | null = null;
-                let haveFinal = false;
-                for (let trychild of c.getChildren(this.sourceFile)) {
-                    if (haveFinal) {
-                        finalBlock = trychild;
-                        break;
+                if (c.catchClause) {
+                    let text = "catch";
+                    if (c.catchClause.variableDeclaration) {
+                        text += "(" + c.catchClause.variableDeclaration.getText(this.sourceFile) + ")";
                     }
-                    if (ts.SyntaxKind[trychild.kind] == "CatchClause") {
-                        catchClause = trychild;
-                        let text = "catch";
-                        if (catchClause.getChildren(this.sourceFile).length > 2) {
-                            text = catchClause.getChildren(this.sourceFile)[0].getText(this.sourceFile) + catchClause.getChildren(this.sourceFile)[1].getText(this.sourceFile) + catchClause.getChildren(this.sourceFile)[2].getText(this.sourceFile) + catchClause.getChildren(this.sourceFile)[3].getText(this.sourceFile)
-                        }
-                        let catchOrNot = new ConditionStatementBuilder("catchOrNot", text, c, scope.id);
-                        // judgeLastType(catchOrNot);
-                        let catchExit = new StatementBuilder("catch exit", "", c, scope.id);
-                        catchOrNot.nextF = catchExit;
-                        let block = catchClause.getChildren(this.sourceFile)[this.findChildIndex(catchClause, "Block")];
-                        this.walkAST(catchOrNot, catchExit, block.getChildren(this.sourceFile)[1].getChildren(this.sourceFile));
-                        if (!catchOrNot.nextT) {
-                            catchOrNot.nextT = catchExit;
-                        }
-                        const catchStatement = new StatementBuilder("statement", catchOrNot.code, trychild, catchOrNot.nextT.scopeID);
-                        catchStatement.next = catchOrNot.nextT;
-                        trystm.catchStatement = catchStatement;
-                        let VD = catchClause.getChildren(this.sourceFile)[this.findChildIndex(catchClause, "VariableDeclaration")];
-                        if (VD) {
-                            if (ts.SyntaxKind[VD.getChildren(this.sourceFile)[0].kind] == "Identifier") {
-                                trystm.catchError = VD.getChildren(this.sourceFile)[0].getText(this.sourceFile);
-                            } else {
-                                let error = VD.getChildren(this.sourceFile)[this.findChildIndex(VD, "TypeReference")];
-                                if (error) {
-                                    trystm.catchError = error.getText(this.sourceFile);
-                                } else {
-                                    trystm.catchError = "Error";
-                                }
-                            }
-
-                        } else {
-                            trystm.catchError = "Error";
-                        }
+                    let catchOrNot = new ConditionStatementBuilder("catchOrNot", text, c, scope.id);
+                    let catchExit = new StatementBuilder("catch exit", "", c, scope.id);
+                    catchOrNot.nextF = catchExit;
+                    this.walkAST(catchOrNot, catchExit, [...c.catchClause.block.statements]);
+                    if (!catchOrNot.nextT) {
+                        catchOrNot.nextT = catchExit;
                     }
-                    if (ts.SyntaxKind[trychild.kind] == "FinallyKeyword") {
-                        haveFinal = true;
+                    const catchStatement = new StatementBuilder("statement", catchOrNot.code, c.catchClause, catchOrNot.nextT.scopeID);
+                    catchStatement.next = catchOrNot.nextT;
+                    trystm.catchStatement = catchStatement;
+                    if (c.catchClause.variableDeclaration) {
+                        trystm.catchError = c.catchClause.variableDeclaration.getText(this.sourceFile);
+                    } else {
+                        trystm.catchError = "Error";
                     }
+                    
                 }
-                if (finalBlock && finalBlock.getChildren(this.sourceFile)[1].getChildren(this.sourceFile).length > 0) {
+                if (c.finallyBlock && c.finallyBlock.statements.length > 0) {
                     let final = new StatementBuilder("statement", "finally", c, scope.id);
                     let finalExit = new StatementBuilder("finally exit", "", c, scope.id);
-                    this.walkAST(final, finalExit, finalBlock.getChildren(this.sourceFile)[1].getChildren(this.sourceFile));
-
+                    this.walkAST(final, finalExit, [...c.finallyBlock.statements]);
                     trystm.finallyStatement = final.next;
                 }
                 lastStatement = trystm;
@@ -1515,7 +1409,7 @@ export class CfgBuilder {
             } else {
                 throw new Error('No MethodNodeInfo found for ArrowFunction node. Please check.');
             }
-            this.anonymousFuncIndex++;
+            this. nFuncIndex++;
 
             let argsNode = node.getChildren(this.sourceFile)[1];
             let args: Value[] = [];
