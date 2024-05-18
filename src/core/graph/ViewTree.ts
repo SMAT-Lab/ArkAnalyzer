@@ -1,4 +1,5 @@
 import { Constant } from '../base/Constant';
+import { Decorator } from '../base/Decorator';
 import { ArkInstanceInvokeExpr, ArkNewExpr } from '../base/Expr';
 import { Local } from '../base/Local';
 import { ArkInstanceFieldRef } from '../base/Ref';
@@ -151,7 +152,7 @@ export class ViewTree {
     private root: ViewTreeNode;
     private render: ArkMethod;
     private buildViewStatus: boolean;
-    private fieldTypes: Map<string, string|Type>;
+    private fieldTypes: Map<string, Decorator|Type>;
 
     constructor(render: ArkMethod) {
         this.render = render;
@@ -223,7 +224,8 @@ export class ViewTree {
                     continue;
                 }
                 let methodName = expr.getMethodSignature().getMethodSubSignature().getMethodName();
-                if (name == 'this' && this.getClassFieldType('__' + methodName) == '@BuilderParam') {
+                let methodDecorator = this.getClassFieldType('__' + methodName);
+                if (name == 'this' && methodDecorator instanceof Decorator && methodDecorator.getKind() == 'BuilderParam') {
                     let node = new ViewTreeNode(`@BuilderParam`, stmt, expr, this);
                     node.buildParam = methodName;
                     treeStack.push(node);
@@ -269,29 +271,50 @@ export class ViewTree {
         let arkFile = this.render.getDeclaringArkFile();
         for (const field of this.render.getDeclaringArkClass().getFields()) {
             let position = await arkFile.getEtsOriginalPositionFor(field.getOriginPosition());
-            let content = await arkFile.getEtsSource(position.getLineNo());
+            let content = await arkFile.getEtsSource(position.getLineNo() + 1);
             let regex;
             if (field.getName().startsWith('__')) {
-                regex = new RegExp('@[\\w]*[\\s]*' +field.getName().slice(2), 'gi');
+                regex = new RegExp('@([\\w]*)[\\s]*' +field.getName().slice(2), 'gi');
             } else {
-                regex = new RegExp('@[\\w]*[\\s]*' +field.getName(), 'gi');
+                regex = new RegExp('@([\\w]*)[\\s]*' +field.getName(), 'gi');
             }
             
-            let match = content.match(regex);
+            let match = regex.exec(content);
             if (match) {
-                this.fieldTypes.set(field.getName(), match[0].split(/[\s]/)[0]);
+                let decorator = new Decorator(match[1]);
+                decorator.setContent(match[1]);
+                field.addModifier(decorator);
+                this.fieldTypes.set(field.getName(), decorator);
                 continue;
             }
             this.fieldTypes.set(field.getName(), field.getSignature().getType());
         }
 
         for (const method of this.render.getDeclaringArkClass().getMethods()) {
-            let name = method.getName();
-            if (name.startsWith('Set-')) {
-                name = name.replace('Set-', '');
-                if (this.fieldTypes.has('__' + name)) {
-                    this.fieldTypes.set(name, this.fieldTypes.get('__' + name) as string);
+            // set/get method associated to the field decorator
+            const name = method.getName();
+            if (name.startsWith('Set-') || name.startsWith('Get-')) {
+                let fieldName = name.substring('Set-'.length);
+                let associatedName = '__' + name.substring('Set-'.length);
+                if (this.fieldTypes.has(associatedName)) {
+                    let decorator = this.fieldTypes.get(associatedName);
+                    if (decorator) {
+                        this.fieldTypes.set(fieldName, decorator);
+                    }
+                    if (decorator instanceof Decorator) {
+                        method.addModifier(decorator);
+                    }
                 }
+            }
+
+            let position = await method.getEtsPositionInfo();
+            let content = await arkFile.getEtsSource(position.getLineNo() + 1);
+            let regex = new RegExp('@([\\w]*)[\\s]*' + name, 'gi');
+            let match = regex.exec(content);
+            if (match) {
+                let decorator = new Decorator(match[1]);
+                decorator.setContent(match[1]);
+                method.addModifier(decorator)
             }
         }
     }
@@ -300,7 +323,7 @@ export class ViewTree {
         return this.fieldTypes.has(name);
     }
 
-    public getClassFieldType(name: string): string | Type | undefined {
+    public getClassFieldType(name: string): Decorator | Type | undefined {
         return this.fieldTypes.get(name);
     }
 

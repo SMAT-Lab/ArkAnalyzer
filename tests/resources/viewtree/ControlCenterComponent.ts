@@ -43,19 +43,20 @@ function generateId(): string {
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-../../..import UpTitle from './UpTitle';
-../../..import MyBrightness from '../../../../../../../brightnesscomponent/src/main/ets/default/pages/brightnessComponent';
-../../..import Log from '../../../../../../../../common/src/main/ets/default/Log';
-../../..import Constants, { ControlCenterConfig } from '../common/Constants';
-../../..import StyleConfiguration, { ControlCenterComponentStyle, ControlCenterComplexToggleLayoutStyle, ControlCenterSimpleToggleLayoutStyle } from '../common/StyleConfiguration';
-../../..import ViewModel from '../viewmodel/ControlCenterVM';
-../../..import ComplexToggleLoadComponent from './ComplexToggleLoadComponent';
-../../..import SimpleToggleLoadComponent from './SimpleToggleLoadComponent';
-../../..import SimpleToggleLayoutEditComponent from './SimpleToggleLayoutEditComponent';
+import UpTitle from './UpTitle';
+import MyBrightness from '../../../../../../../brightnesscomponent/src/main/ets/default/pages/brightnessComponent';
+import Log from '../../../../../../../../common/src/main/ets/default/Log';
+import Constants, { ControlCenterConfig } from '../common/Constants';
+import StyleConfiguration, { ControlCenterComponentStyle, ControlCenterComplexToggleLayoutStyle, ControlCenterSimpleToggleLayoutStyle } from '../common/StyleConfiguration';
+import ViewModel from '../viewmodel/ControlCenterVM';
+import ComplexToggleLoadComponent from './ComplexToggleLoadComponent';
+import SimpleToggleLoadComponent from './SimpleToggleLoadComponent';
+import SimpleToggleLayoutEditComponent from './SimpleToggleLayoutEditComponent';
 const TAG = 'Control-ControlCenter';
 const TAG_ControlCenterComplexToggleLayout = 'Control-ControlCenterComplexToggleLayout';
 const TAG_ControlCenterSimpleToggleLayout = 'Control-ControlCenterSimpleToggleLayout';
 var mUniform;
+@Component
 export default class ControlCenterComponent extends View {
     constructor(compilerAssignedUniqueChildId, parent, params, localStorage) {
         super(compilerAssignedUniqueChildId, parent, localStorage);
@@ -119,6 +120,7 @@ export default class ControlCenterComponent extends View {
     }
     private touchMoveCallback: Function;
     private modeChangeCallback: Function;
+    @State
     private __mSimpleToggleColumnCount: ObservedPropertySimple<number>;
     get mSimpleToggleColumnCount() {
         return this.__mSimpleToggleColumnCount.get();
@@ -127,6 +129,7 @@ export default class ControlCenterComponent extends View {
         this.__mSimpleToggleColumnCount.set(newValue);
     }
     private mControlCenterComponentConfig: ControlCenterConfig;
+    @State
     private __mIsEditSimpleToggleLayout: ObservedPropertySimple<boolean>;
     get mIsEditSimpleToggleLayout() {
         return this.__mIsEditSimpleToggleLayout.get();
@@ -134,6 +137,7 @@ export default class ControlCenterComponent extends View {
     set mIsEditSimpleToggleLayout(newValue: boolean) {
         this.__mIsEditSimpleToggleLayout.set(newValue);
     }
+    @State
     private __style: ObservedPropertyObject<ControlCenterComponentStyle>;
     get style() {
         return this.__style.get();
@@ -262,6 +266,7 @@ export default class ControlCenterComponent extends View {
         Column.pop();
     }
 }
+@Component
 class ControlCenterComplexToggleLayout extends View {
     constructor(compilerAssignedUniqueChildId, parent, params, localStorage) {
         super(compilerAssignedUniqueChildId, parent, localStorage);
@@ -279,6 +284,7 @@ class ControlCenterComplexToggleLayout extends View {
         this.__style.aboutToBeDeleted();
         SubscriberManager.Get().delete(this.id());
     }
+    @StorageLink('ControlCenterComplexToggleLayout')
     private __mComplexToggleLayout: ObservedPropertyAbstract<string[]>;
     get mComplexToggleLayout() {
         return this.__mComplexToggleLayout.get();
@@ -286,6 +292,7 @@ class ControlCenterComplexToggleLayout extends View {
     set mComplexToggleLayout(newValue: string[]) {
         this.__mComplexToggleLayout.set(newValue);
     }
+    @State
     private __style: ObservedPropertyObject<ControlCenterComplexToggleLayoutStyle>;
     get style() {
         return this.__style.get();
@@ -336,6 +343,7 @@ class ControlCenterComplexToggleLayout extends View {
         return rowsTemplate;
     }
 }
+@Component
 class ControlCenterSimpleToggleLayout extends View {
     constructor(compilerAssignedUniqueChildId, parent, params, localStorage) {
         super(compilerAssignedUniqueChildId, parent, localStorage);
@@ -356,6 +364,7 @@ class ControlCenterSimpleToggleLayout extends View {
         this.__style.aboutToBeDeleted();
         SubscriberManager.Get().delete(this.id());
     }
+    @Prop
     private __mColumnCount: SynchedPropertySimpleOneWay<number>;
     get mColumnCount() {
         return this.__mColumnCount.get();
@@ -363,6 +372,7 @@ class ControlCenterSimpleToggleLayout extends View {
     set mColumnCount(newValue: number) {
         this.__mColumnCount.set(newValue);
     }
+    @StorageLink('ControlCenterSimpleToggleLayout')
     private __mSimpleToggleLayout: ObservedPropertyAbstract<string[]>;
     get mSimpleToggleLayout() {
         return this.__mSimpleToggleLayout.get();
@@ -370,6 +380,7 @@ class ControlCenterSimpleToggleLayout extends View {
     set mSimpleToggleLayout(newValue: string[]) {
         this.__mSimpleToggleLayout.set(newValue);
     }
+    @State
     private __style: ObservedPropertyObject<ControlCenterSimpleToggleLayoutStyle>;
     get style() {
         return this.__style.get();
@@ -426,6 +437,7 @@ class ControlCenterSimpleToggleLayout extends View {
         }
         return rowsTemplate;
     }
+    @Builder
     static render(count: number, parent = null) {
         let earlierCreatedChild_6: ControlCenterSimpleToggleLayout = ((parent ? parent : this) && (parent ? parent : this).findChildById) ? (parent ? parent : this).findChildById(generateId()) as ControlCenterSimpleToggleLayout : undefined;
         if (earlierCreatedChild_6 == undefined) {
@@ -439,6 +451,7 @@ class ControlCenterSimpleToggleLayout extends View {
         }
     }
 }
+@Component
 class SubComponent extends View {
     constructor(compilerAssignedUniqueChildId, parent, params, localStorage) {
         super(compilerAssignedUniqueChildId, parent, localStorage);
@@ -456,6 +469,7 @@ class SubComponent extends View {
         Column.pop();
     }
 }
+@Component
 class OutComponent extends View {
     constructor(compilerAssignedUniqueChildId, parent, params, localStorage) {
         super(compilerAssignedUniqueChildId, parent, localStorage);
@@ -482,5 +496,12 @@ class OutComponent extends View {
             View.create(earlierCreatedChild_7);
         }
         __Common__.pop();
+    }
+    @Builder
+    builderTest(parent = null) {
+        Column.create();
+        Text.create('@Builder Test Text');
+        Text.pop();
+        Column.pop();
     }
 }

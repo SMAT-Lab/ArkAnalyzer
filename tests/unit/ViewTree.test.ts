@@ -2,6 +2,7 @@ import { SceneConfig } from "../../src/Config";
 import { assert, describe, it, vi,expect } from "vitest";
 import { Scene } from "../../src/Scene";
 import path from "path";
+import { Decorator } from "../../src/core/base/Decorator";
 
 let config: SceneConfig = new SceneConfig();
 config.buildFromProjectDir(path.join(__dirname, "../../tests/resources/viewtree"));
@@ -18,9 +19,10 @@ describe("ViewTree Test", () => {
             return;
         }
         let vt = await arkClass.getViewTree();
-        vt.buildViewTree();
+        vt.buildViewTree();   
+
         let type = vt.getClassFieldType('mSimpleToggleColumnCount');
-        expect(type).equals('@State');
+        expect((type as Decorator).getKind()).equals('State');
 
         let root = vt.getRoot();
         expect(root.name).equals('Column');
@@ -36,7 +38,7 @@ describe("ViewTree Test", () => {
         }
         let vt = await arkClass.getViewTree();
         let type = vt.getClassFieldType('countDownStartValue');
-        expect(type?.toString()).equals('ObservedPropertySimple');
+        expect(type?.toString()).equals('ObservedPropertySimple'); 
 
         let root = vt.getRoot();
         expect(root.name).equals('Column');
@@ -44,6 +46,28 @@ describe("ViewTree Test", () => {
     })
 
     it('test @Builder', async () => {
+        let arkFile =  scene.getFiles().find(file => file.getName() == 'ControlCenterComponent.ts');
+        let arkClass = arkFile?.getClassWithName('OutComponent');
+        if (arkClass == null) {
+            assert.isNotNull(arkClass);
+            return;
+        }
+        let vt = await arkClass.getViewTree();
+        let method = arkClass.getMethodWithName('builderTest');
+        if (method) {
+            let hasBuilder = false;
+            for (let decorator of method.getModifiers()) {
+                if (decorator instanceof Decorator) {
+                    if (decorator.getKind() == 'Builder') {
+                        hasBuilder = true;
+                    }
+                }
+            }
+            expect(hasBuilder).eq(true);
+        }
+    })
+
+    it('test @BuilderParam', async () => {
         let arkFile =  scene.getFiles().find(file => file.getName() == 'SwipeLayout.ts');
         let arkClass = arkFile?.getClassWithName('SwipeLayout');
         if (arkClass == null) {
@@ -52,7 +76,7 @@ describe("ViewTree Test", () => {
         }
         let vt = await arkClass.getViewTree();
         let type = vt.getClassFieldType('__SurfaceComponent');
-        expect(type).equals('@BuilderParam');
+        expect((type as Decorator).getKind()).equals('BuilderParam');
         let root = vt.getRoot();
         expect(root.children[0].children[0].children[0].name).equals('@BuilderParam');
         expect(root.children[0].children[0].children[0].buildParam).equals('SurfaceComponent');
