@@ -301,4 +301,11 @@ struct OutComponent {
       .width(100)
       .height(200)
   }
+
+  @Builder
+  builderTest() {
+    Column() {
+      Text('@Builder Test Text')
+    }
+  }
 }
