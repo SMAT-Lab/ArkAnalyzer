@@ -6,12 +6,12 @@ import { AbstractCallGraph } from "./callgraph/AbstractCallGraphAlgorithm";
 import { ClassHierarchyAnalysisAlgorithm } from "./callgraph/ClassHierarchyAnalysisAlgorithm";
 import { RapidTypeAnalysisAlgorithm } from "./callgraph/RapidTypeAnalysisAlgorithm";
 import { VariablePointerAnalysisAlogorithm } from './callgraph/VariablePointerAnalysisAlgorithm';
-import { ImportInfo, updateSdkConfigPrefix } from './core/common/ImportBuilder';
+import { ImportInfo, updateSdkConfigPrefix } from './core/model/ArkImport';
 import { ModelUtils } from './core/common/ModelUtils';
 import { TypeInference } from './core/common/TypeInference';
 import { VisibleValue } from './core/common/VisibleValue';
 import { ArkClass } from "./core/model/ArkClass";
-import { ArkFile, buildArkFileFromFile } from "./core/model/ArkFile";
+import { ArkFile } from "./core/model/ArkFile";
 import { ArkMethod } from "./core/model/ArkMethod";
 import { ArkNamespace } from "./core/model/ArkNamespace";
 import { ClassSignature, FileSignature, MethodSignature, NamespaceSignature } from "./core/model/ArkSignature";
@@ -20,6 +20,7 @@ import { transfer2UnixPath } from './utils/pathTransfer';
 import ts from "typescript";
 import { Local } from './core/base/Local';
 import nullTypingsInstaller = ts.server.nullTypingsInstaller;
+import { buildArkFileFromFile } from './core/model/builder/arkFileBuilder';
 
 const logger = Logger.getLogger();
 
