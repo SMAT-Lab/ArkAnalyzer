@@ -1,11 +1,10 @@
-import {NodeA} from "../base/Ast";
 import { Decorator } from "../base/Decorator";
-import {LineColPosition} from "../base/Position";
-import {ExportInfo} from "../common/ExportBuilder";
-import {ArkClass, buildDefaultArkClassFromArkNamespace, buildNormalArkClassFromArkNamespace} from "./ArkClass";
-import {ArkFile} from "./ArkFile";
-import {ArkMethod, arkMethodNodeKind, buildArkMethodFromArkClass} from "./ArkMethod";
-import {ClassSignature, MethodSignature, NamespaceSignature} from "./ArkSignature";
+import { LineColPosition } from "../base/Position";
+import { ExportInfo } from "./ArkExport";
+import { ArkClass } from "./ArkClass";
+import { ArkFile } from "./ArkFile";
+import { ArkMethod } from "./ArkMethod";
+import { ClassSignature, NamespaceSignature } from "./ArkSignature";
 
 
 export class ArkNamespace {
@@ -181,7 +180,7 @@ export class ArkNamespace {
         return this.exportInfos;
     }
 
-    public addExportInfos(exportInfo: ExportInfo) {
+    public addExportInfo(exportInfo: ExportInfo) {
         this.exportInfos.push(exportInfo);
     }
 
@@ -223,153 +222,3 @@ export class ArkNamespace {
     }
 }
 
-export function buildArkNamespace(nsNode: NodeA, declaringInstance: ArkFile | ArkNamespace, ns: ArkNamespace) {
-    if (!nsNode.namespaceNodeInfo) {
-        throw new Error('Error: There is no namespaceNodeInfo for this ModuleDeclaration!');
-    }
-
-    ns.setName(nsNode.namespaceNodeInfo.getName());
-
-    if (declaringInstance instanceof ArkFile) {
-        ns.setDeclaringType("ArkFile");
-        ns.setDeclaringArkFile(declaringInstance);
-    } else {
-        ns.setDeclaringType("ArkNamespace");
-        ns.setDeclaringArkNamespace(declaringInstance);
-        ns.setDeclaringArkFile(declaringInstance.getDeclaringArkFile());
-    }
-    ns.setDeclaringInstance(declaringInstance);
-
-    ns.genNamespaceSignature();
-
-    nsNode.namespaceNodeInfo.getModifiers().forEach((modifier) => {
-        ns.addModifier(modifier);
-    });
-
-    ns.setCode(nsNode.text);
-    ns.setLine(nsNode.line + 1);
-    ns.setColumn(nsNode.character + 1);
-
-    let tmpNode = findIndicatedChild(nsNode, "ModuleBlock");
-    if (tmpNode) {
-        tmpNode = findIndicatedChild(tmpNode, "SyntaxList");
-    }
-    if (tmpNode) {
-        genDefaultArkClass(tmpNode, ns);
-        buildNamespaceMembers(tmpNode, ns);
-    }
-}
-
-// TODO: check and update
-function buildNamespaceMembers(nsNode: NodeA, namespace: ArkNamespace) {
-    for (let child of nsNode.children) {
-        if (child.kind == 'ModuleDeclaration') {
-            let ns: ArkNamespace = new ArkNamespace();
-
-            buildArkNamespace(child, namespace, ns);
-            namespace.addNamespace(ns);
-
-            if (ns.isExported()) {
-                let isDefault = namespace.getModifiers().has("DefaultKeyword");
-                addExportInfo(ns, namespace, isDefault);
-            }
-        }
-        if (child.kind == 'ClassDeclaration' || child.kind == 'InterfaceDeclaration' || child.kind == 'EnumDeclaration') {
-            let cls: ArkClass = new ArkClass();
-
-            buildNormalArkClassFromArkNamespace(child, namespace, cls);
-            namespace.addArkClass(cls);
-
-            if (cls.isExported()) {
-                let isDefault = cls.getModifiers().has("DefaultKeyword");
-                addExportInfo(cls, namespace, isDefault);
-            }
-        }
-        if (arkMethodNodeKind.indexOf(child.kind) > -1) {
-            let mthd: ArkMethod = new ArkMethod();
-            buildArkMethodFromArkClass(child, namespace.getDefaultClass(), mthd);
-            namespace.getDefaultClass().addMethod(mthd);
-
-            if (mthd.isExported()) {
-                let isDefault = mthd.getModifiers().has("DefaultKeyword");
-                addExportInfo(mthd, namespace, isDefault);
-            }
-        }
-        if (child.kind == 'ExportDeclaration' || child.kind == 'ExportAssignment') {
-            child.exportNodeInfo?.forEach((element) => {
-
-                if (findIndicatedChild(child, 'DefaultKeyword')) {
-                    element.setDefault(true);
-                }
-                namespace.addExportInfos(element);
-            });
-        }
-        if (child.kind == 'VariableStatement' || child.kind == 'FirstStatement') {
-            //check ExportKeyword
-            let childSyntaxNode = findIndicatedChild(child, 'SyntaxList');
-            let isDefault = findIndicatedChild(child, 'DefaultKeyword') ? true : false;
-            if (childSyntaxNode) {
-                if (findIndicatedChild(childSyntaxNode, 'ExportKeyword')) {
-                    processExportValAndFirstNode(child, namespace, isDefault);
-                }
-            }
-        }
-    }
-}
-
-function genDefaultArkClass(defaultClassNode: NodeA, ns: ArkNamespace) {
-    let defaultClass = new ArkClass();
-
-    buildDefaultArkClassFromArkNamespace(defaultClassNode, ns, defaultClass);
-    ns.setDefaultClass(defaultClass);
-    ns.addArkClass(defaultClass);
-}
-
-function findIndicatedChild(node: NodeA, childType: string): NodeA | null {
-    for (let child of node.children) {
-        if (child.kind == childType) {
-            return child;
-        }
-    }
-    return null;
-}
-
-function processExportValAndFirstNode(node: NodeA, ns: ArkNamespace, isDefault: boolean): void {
-    let exportClauseName: string = '';
-    let exportClauseType: string = node.kind;
-    let cld = findIndicatedChild(node, 'VariableDeclarationList');
-    if (cld) {
-        let c = findIndicatedChild(cld, 'SyntaxList');
-        if (c) {
-            let cc = findIndicatedChild(c, 'VariableDeclaration');
-            if (cc) {
-                let ccc = findIndicatedChild(cc, 'Identifier');
-                if (ccc) {
-                    exportClauseName = ccc.text;
-                }
-            }
-        }
-    }
-    let exportInfo = new ExportInfo();
-    exportInfo.build(exportClauseName, exportClauseType, new LineColPosition(-1, -1));
-    exportInfo.setDefault(isDefault);
-
-    ns.addExportInfos(exportInfo);
-}
-
-function addExportInfo(arkInstance: ArkMethod | ArkClass | ArkNamespace, ns: ArkNamespace, isDefault: boolean) {
-    let exportClauseName: string = arkInstance.getName();
-    let exportClauseType: string;
-    if (arkInstance instanceof ArkMethod) {
-        exportClauseType = "Method";
-    } else if (arkInstance instanceof ArkClass) {
-        exportClauseType = "Class";
-    } else {
-        exportClauseType = "ArkNamespace";
-    }
-    let exportInfo = new ExportInfo();
-    exportInfo.build(exportClauseName, exportClauseType, new LineColPosition(-1, -1));
-    exportInfo.setDefault(isDefault);
-
-    ns.addExportInfos(exportInfo);
-}

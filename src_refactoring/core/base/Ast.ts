@@ -1,8 +1,8 @@
 import * as ts from "typescript";
 import Logger from "../../utils/logger";
 import { ClassInfo, buildClassInfo4ClassNode } from "../common/ClassBuilder";
-import { ExportInfo, buildExportInfo4ExportNode } from "../common/ExportBuilder";
-import { ImportInfo, buildImportInfo4ImportNode } from "../common/ImportBuilder";
+import { ExportInfo, buildExportInfo4ExportNode } from "../model/ArkExport";
+import { ImportInfo, buildImportInfo4ImportNode } from "../model/ArkImport";
 import { MethodInfo, buildMethodInfo4MethodNode } from "../common/MethodInfoBuilder";
 import { NamespaceInfo, buildNamespaceInfo4NamespaceNode } from "../common/NamespaceInfoBuilder";
 

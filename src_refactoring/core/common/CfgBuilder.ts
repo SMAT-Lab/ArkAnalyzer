@@ -60,7 +60,7 @@ import {Cfg} from '../graph/Cfg';
 import {ArkClass, buildNormalArkClassFromArkFile} from '../model/ArkClass';
 import {ArkMethod, buildArkMethodFromArkClass} from '../model/ArkMethod';
 import {ClassSignature, FieldSignature, MethodSignature, MethodSubSignature} from '../model/ArkSignature';
-import {ExportInfo} from './ExportBuilder';
+import {ExportInfo} from '../model/ArkExport';
 import {IRUtils} from './IRUtils';
 import {TypeInference} from './TypeInference';
 import {LineColPosition} from "../base/Position";

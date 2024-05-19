@@ -1,5 +1,5 @@
 import ts from 'typescript';
-import { buildModifiers } from '../../utils/builderUtils';
+import { buildModifiers } from '../model/builder/builderUtils';
 import Logger from "../../utils/logger";
 import { Decorator } from '../base/Decorator';
 

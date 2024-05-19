@@ -1,5 +1,5 @@
 import * as ts from "typescript";
-import { buildModifiers, buildParameters, buildReturnType4Method, buildTypeParameters, handlePropertyAccessExpression } from "../../utils/builderUtils";
+import { buildModifiers, buildParameters, buildReturnType4Method, buildTypeParameters, handlePropertyAccessExpression } from "../model/builder/builderUtils";
 import Logger from "../../utils/logger";
 import { Type } from "../base/Type";
 import { Decorator } from "../base/Decorator";

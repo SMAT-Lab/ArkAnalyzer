@@ -1,5 +1,5 @@
 import * as ts from "typescript";
-import { buildGetAccessor2ArkField, buildHeritageClauses, buildIndexSignature2ArkField, buildModifiers, buildProperty2ArkField, buildTypeParameters } from "../../utils/builderUtils";
+import { buildGetAccessor2ArkField, buildHeritageClauses, buildIndexSignature2ArkField, buildModifiers, buildProperty2ArkField, buildTypeParameters } from "../model/builder/builderUtils";
 import Logger from "../../utils/logger";
 import { Type } from "../base/Type";
 import { ArkField } from "../model/ArkField";

@@ -5,8 +5,8 @@ import {ArkFile} from "../model/ArkFile";
 import {ArkMethod} from "../model/ArkMethod";
 import {ArkNamespace} from "../model/ArkNamespace";
 import {FileSignature, MethodSignature} from "../model/ArkSignature";
-import {ExportInfo} from "./ExportBuilder";
-import {ImportInfo} from "./ImportBuilder";
+import {ExportInfo} from "../model/ArkExport";
+import {ImportInfo} from "../model/ArkImport";
 
 export class ModelUtils {
     public static getMethodSignatureFromArkClass(arkClass: ArkClass, methodName: string): MethodSignature | null {
