@@ -1,5 +1,5 @@
 import {Scene} from "../../Scene";
-import { Local } from "../base";
+import { Local } from "../base/Local";
 import {ArkClass} from "../model/ArkClass";
 import {ArkFile} from "../model/ArkFile";
 import {ArkMethod} from "../model/ArkMethod";
@@ -258,7 +258,7 @@ export class ModelUtils {
         if (thisNamespace) {
             const defaultClass = thisNamespace.getClassWithName('_DEFAULT_ARK_CLASS');
             if (defaultClass) {
-                const method = defaultClass.getStaticMethodWithName(methodName);
+                const method = defaultClass.getMethodWithName(methodName);
                 if (method) {
                     return method;
                 }
@@ -270,7 +270,7 @@ export class ModelUtils {
     public static getStaticMethodInFileWithName(methodName: string, arkFile: ArkFile): ArkMethod | null {
         const defaultClass = arkFile.getClasses().find(cls => cls.getName() == '_DEFAULT_ARK_CLASS') || null;
         if (defaultClass) {
-            let method = defaultClass.getStaticMethodWithName(methodName);
+            let method = defaultClass.getMethodWithName(methodName);
             if (method) {
                 return method;
             }
@@ -304,7 +304,7 @@ export class ModelUtils {
                     if (nameBefroreAs != undefined) {
                         methodName = nameBefroreAs;
                     }
-                    let method = defaultClass.getStaticMethodWithName(methodName);
+                    let method = defaultClass.getMethodWithName(methodName);
                     if (method) {
                         return method;
                     }
