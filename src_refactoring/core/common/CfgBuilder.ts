@@ -57,13 +57,15 @@ import {
 import {Value} from '../base/Value';
 import {BasicBlock} from '../graph/BasicBlock';
 import {Cfg} from '../graph/Cfg';
-import {ArkClass, buildNormalArkClassFromArkFile} from '../model/ArkClass';
-import {ArkMethod, buildArkMethodFromArkClass} from '../model/ArkMethod';
+import {ArkClass} from '../model/ArkClass';
+import {ArkMethod} from '../model/ArkMethod';
 import {ClassSignature, FieldSignature, MethodSignature, MethodSubSignature} from '../model/ArkSignature';
 import {ExportInfo} from '../model/ArkExport';
 import {IRUtils} from './IRUtils';
 import {TypeInference} from './TypeInference';
 import {LineColPosition} from "../base/Position";
+import {buildArkMethodFromArkClass} from "../model/builder/ArkMethodBuilder";
+import {buildNormalArkClassFromArkFile} from "../model/builder/ArkClassBuilder";
 
 const logger = Logger.getLogger();
 
@@ -462,10 +464,10 @@ export class CfgBuilder {
                 loopstm.nextF = loopExit;
                 if (ts.isForStatement(c)) {
                     loopstm.code = c.initializer?.getText(this.sourceFile) + "; " + c.condition?.getText(this.sourceFile) + "; " + c.incrementor?.getText(this.sourceFile);
-                } else if(ts.isForOfStatement(c)) {
-                    loopExit.code = c.initializer?.getText(this.sourceFile)+" of "+c.expression.getText(this.sourceFile);
+                } else if (ts.isForOfStatement(c)) {
+                    loopExit.code = c.initializer?.getText(this.sourceFile) + " of " + c.expression.getText(this.sourceFile);
                 } else {
-                    loopExit.code = c.initializer?.getText(this.sourceFile)+" in "+c.expression.getText(this.sourceFile);
+                    loopExit.code = c.initializer?.getText(this.sourceFile) + " in " + c.expression.getText(this.sourceFile);
                 }
                 if (ts.isBlock(c.statement)) {
                     this.walkAST(loopstm, loopExit, [...c.statement.statements]);
@@ -515,14 +517,14 @@ export class CfgBuilder {
                 switchExit.code = "switch (" + c.expression + ")";
                 let lastCaseExit: StatementBuilder | null = null;
                 for (let i = 0; i < c.caseBlock.clauses.length; i++) {
-                    const clause= c.caseBlock.clauses[i];
+                    const clause = c.caseBlock.clauses[i];
                     let casestm: StatementBuilder;
                     if (ts.isCaseClause(clause)) {
                         casestm = new StatementBuilder("statement", "case " + clause.expression + ":", clause, scope.id);
                     } else {
                         casestm = new StatementBuilder("statement", "default:", clause, scope.id);
                     }
-                    
+
                     switchstm.nexts.push(casestm);
                     let caseExit = new StatementBuilder("caseExit", "", null, scope.id);
                     this.walkAST(casestm, caseExit, [...clause.statements]);
@@ -532,7 +534,7 @@ export class CfgBuilder {
                     } else {
                         switchstm.default = casestm.next;
                     }
-                    
+
                     if (lastCaseExit) {
                         lastCaseExit.next = casestm.next;
                     }
@@ -541,14 +543,14 @@ export class CfgBuilder {
                         caseExit.next = switchExit;
                     }
                 }
-                
+
                 lastStatement = switchExit;
                 this.switchExitStack.pop();
-            }else if (ts.isBlock(c)) {
+            } else if (ts.isBlock(c)) {
                 let blockExit = new StatementBuilder("blockExit", "", c, scope.id);
                 this.walkAST(lastStatement, blockExit, c.getChildren(this.sourceFile)[1].getChildren(this.sourceFile));
                 lastStatement = blockExit;
-            }else if (ts.isTryStatement(c)) {
+            } else if (ts.isTryStatement(c)) {
                 let trystm = new TryStatementBuilder("tryStatement", "try", c, scope.id);
                 judgeLastType(trystm);
                 let tryExit = new StatementBuilder("try exit", "", c, scope.id);
@@ -575,7 +577,7 @@ export class CfgBuilder {
                     } else {
                         trystm.catchError = "Error";
                     }
-                    
+
                 }
                 if (c.finallyBlock && c.finallyBlock.statements.length > 0) {
                     let final = new StatementBuilder("statement", "finally", c, scope.id);
@@ -1404,12 +1406,7 @@ export class CfgBuilder {
             }
         } else if (ts.SyntaxKind[node.kind] == "ArrowFunction") {
             let arrowFuncName = 'AnonymousFunc$' + this.name + '$' + this.anonymousFuncIndex;
-            if (node.methodNodeInfo) {
-                node.methodNodeInfo.updateName4anonymousFunc(arrowFuncName);
-            } else {
-                throw new Error('No MethodNodeInfo found for ArrowFunction node. Please check.');
-            }
-            this. nFuncIndex++;
+            this.anonymousFuncIndex++;
 
             let argsNode = node.getChildren(this.sourceFile)[1];
             let args: Value[] = [];
@@ -1419,7 +1416,7 @@ export class CfgBuilder {
                 }
             }
             let arrowArkMethod = new ArkMethod();
-            buildArkMethodFromArkClass(node, this.declaringClass, arrowArkMethod);
+            buildArkMethodFromArkClass(node as ts.ArrowFunction, this.declaringClass, arrowArkMethod, this.sourceFile);
             arrowArkMethod.genSignature();
             this.declaringClass.addMethod(arrowArkMethod);
 
@@ -1437,12 +1434,6 @@ export class CfgBuilder {
                 this.anonymousFuncIndex++;
             }
 
-            if (node.methodNodeInfo) {
-                node.methodNodeInfo.updateName4anonymousFunc(funcExprName);
-            } else {
-                throw new Error('No MethodNodeInfo found for ArrowFunction node. Please check.');
-            }
-
             let argsNode = this.getChild(node, 'SyntaxList') as ts.Node;
             let args: Value[] = [];
             for (let argNode of argsNode.getChildren(this.sourceFile)) {
@@ -1451,7 +1442,7 @@ export class CfgBuilder {
                 }
             }
             let exprArkMethod = new ArkMethod();
-            buildArkMethodFromArkClass(node, this.declaringClass, exprArkMethod);
+            buildArkMethodFromArkClass(node as ts.FunctionExpression, this.declaringClass, exprArkMethod, this.sourceFile);
             exprArkMethod.genSignature();
             this.declaringClass.addMethod(exprArkMethod);
 
@@ -1461,15 +1452,15 @@ export class CfgBuilder {
         } else if (ts.SyntaxKind[node.kind] == "ClassExpression") {
             let cls: ArkClass = new ArkClass();
             let arkFile = this.declaringClass.getDeclaringArkFile();
-            buildNormalArkClassFromArkFile(node, arkFile, cls);
+            buildNormalArkClassFromArkFile(node as ts.ClassExpression, arkFile, cls, this.sourceFile);
             arkFile.addArkClass(cls);
-            if (cls.isExported()) {
-                let exportClauseName: string = cls.getName();
-                let exportClauseType: string = "Class";
-                let exportInfo = new ExportInfo();
-                exportInfo.build(exportClauseName, exportClauseType, new LineColPosition(-1, -1));
-                arkFile.addExportInfos(exportInfo);
-            }
+            // if (cls.isExported()) {
+            //     let exportClauseName: string = cls.getName();
+            //     let exportClauseType: string = "Class";
+            //     let exportInfo = new ExportInfo();
+            //     exportInfo.build(exportClauseName, exportClauseType, new LineColPosition(-1, -1));
+            //     arkFile.addExportInfos(exportInfo);
+            // }
 
             value = new Local(cls.getName(), new ClassType(cls.getSignature()));
         } else if (ts.SyntaxKind[node.kind] == "ObjectLiteralExpression") {

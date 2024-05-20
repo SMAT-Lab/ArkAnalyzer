@@ -83,7 +83,7 @@ export function buildArkMethodFromArkClass(methodNode: MethodLikeNode, declaring
 
     mtd.genSignature();
 
-    let bodyBuilder = new BodyBuilder(mtd.getSignature(), methodNode, mtd);
+    let bodyBuilder = new BodyBuilder(mtd.getSignature(), methodNode, mtd, sourceFile);
     mtd.setBody(bodyBuilder.build());
     mtd.getCfg().setDeclaringMethod(mtd);
     if (mtd.getName() == 'constructor' && mtd.getDeclaringArkClass()) {

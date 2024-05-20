@@ -20,6 +20,12 @@ import { buildGetAccessor2ArkField, buildIndexSignature2ArkField, buildProperty2
 
 const logger = Logger.getLogger();
 
+export type ClassLikeNode =
+    ts.ClassDeclaration |
+    ts.InterfaceDeclaration |
+    ts.EnumDeclaration |
+    ts.ClassExpression;
+
 export function buildDefaultArkClassFromArkFile(arkFile: ArkFile, defaultClass: ArkClass) {
     defaultClass.setDeclaringArkFile(arkFile);
     buildDefaultArkClass(defaultClass);
@@ -31,7 +37,7 @@ export function buildDefaultArkClassFromArkNamespace(arkNamespace: ArkNamespace,
     buildDefaultArkClass(defaultClass);
 }
 
-export function buildNormalArkClassFromArkFile(clsNode: ts.ClassDeclaration | ts.InterfaceDeclaration | ts.EnumDeclaration,
+export function buildNormalArkClassFromArkFile(clsNode: ClassLikeNode,
     arkFile: ArkFile, cls: ArkClass, sourceFile: ts.SourceFile) {
     cls.setDeclaringArkFile(arkFile);
     cls.setCode(clsNode.getText(sourceFile));
@@ -44,7 +50,7 @@ export function buildNormalArkClassFromArkFile(clsNode: ts.ClassDeclaration | ts
     buildNormalArkClass(clsNode, cls, sourceFile);
 }
 
-export function buildNormalArkClassFromArkNamespace(clsNode: ts.ClassDeclaration | ts.InterfaceDeclaration | ts.EnumDeclaration,
+export function buildNormalArkClassFromArkNamespace(clsNode: ClassLikeNode,
     arkNamespace: ArkNamespace, cls: ArkClass, sourceFile: ts.SourceFile) {
     cls.setDeclaringArkNamespace(arkNamespace);
     cls.setDeclaringArkFile(arkNamespace.getDeclaringArkFile());
