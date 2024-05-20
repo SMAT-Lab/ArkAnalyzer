@@ -49,8 +49,7 @@ export function buildArkNamespace(node: ts.ModuleDeclaration, declaringInstance:
     ns.setLine(line + 1);
     ns.setColumn(character + 1);
 
-    // TODO
-    genDefaultArkClass(ns);
+    genDefaultArkClass(ns, node, sourceFile);
 
     // build ns member
     if (node.body) {
@@ -173,10 +172,10 @@ function buildNamespaceMembers(node: ts.ModuleBlock, namespace: ArkNamespace, so
     });
 }
 
-function genDefaultArkClass(ns: ArkNamespace) {
+function genDefaultArkClass(ns: ArkNamespace, node: ts.ModuleDeclaration, sourceFile: ts.SourceFile) {
     let defaultClass = new ArkClass();
 
-    buildDefaultArkClassFromArkNamespace(ns, defaultClass);
+    buildDefaultArkClassFromArkNamespace(ns, defaultClass, node, sourceFile);
     ns.setDefaultClass(defaultClass);
     ns.addArkClass(defaultClass);
 }

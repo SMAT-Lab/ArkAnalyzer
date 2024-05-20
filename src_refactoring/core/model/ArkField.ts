@@ -26,7 +26,6 @@ export class ArkField {
 
     private arkMethodSignature: MethodSignature;
 
-    //private initializer, TODO
     private initializer: Value;
 
     private decorators: Decorator[] = [];
