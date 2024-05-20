@@ -34,13 +34,18 @@ export type MethodLikeNode =
     ts.ConstructSignatureDeclaration |
     ts.CallSignatureDeclaration;
 
-export function buildDefaultArkMethodFromArkClass(declaringClass: ArkClass, mtd: ArkMethod) {
+export function buildDefaultArkMethodFromArkClass(declaringClass: ArkClass, mtd: ArkMethod,
+    sourceFile: ts.SourceFile, node?: ts.ModuleDeclaration) {
     mtd.setDeclaringArkClass(declaringClass);
     mtd.setDeclaringArkFile();
     mtd.setName("_DEFAULT_ARK_METHOD");
     mtd.genSignature();
 
-    // TODO: build cfg for default method
+    const defaultMethodNode = node ? node : sourceFile;
+
+    let bodyBuilder = new BodyBuilder(mtd.getSignature(), defaultMethodNode, mtd, sourceFile);
+    mtd.setBody(bodyBuilder.build());
+    mtd.getCfg().setDeclaringMethod(mtd);
 }
 
 export function buildArkMethodFromArkClass(methodNode: MethodLikeNode, declaringClass: ArkClass, mtd: ArkMethod, sourceFile: ts.SourceFile) {
@@ -74,7 +79,7 @@ export function buildArkMethodFromArkClass(methodNode: MethodLikeNode, declaring
     if (methodNode.type) {
         mtd.setReturnType(buildReturnType(methodNode.type, sourceFile));
     }
-    
+
     if (methodNode.typeParameters) {
         buildTypeParameters(methodNode.typeParameters).forEach((typeParameter) => {
             mtd.addTypeParameter(typeParameter);

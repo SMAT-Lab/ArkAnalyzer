@@ -26,15 +26,16 @@ export type ClassLikeNode =
     ts.EnumDeclaration |
     ts.ClassExpression;
 
-export function buildDefaultArkClassFromArkFile(arkFile: ArkFile, defaultClass: ArkClass) {
+export function buildDefaultArkClassFromArkFile(arkFile: ArkFile, defaultClass: ArkClass, astRoot: ts.SourceFile) {
     defaultClass.setDeclaringArkFile(arkFile);
-    buildDefaultArkClass(defaultClass);
+    buildDefaultArkClass(defaultClass, astRoot);
 }
 
-export function buildDefaultArkClassFromArkNamespace(arkNamespace: ArkNamespace, defaultClass: ArkClass) {
+export function buildDefaultArkClassFromArkNamespace(arkNamespace: ArkNamespace, defaultClass: ArkClass,
+    nsNode: ts.ModuleDeclaration, sourceFile: ts.SourceFile) {
     defaultClass.setDeclaringArkNamespace(arkNamespace);
     defaultClass.setDeclaringArkFile(arkNamespace.getDeclaringArkFile());
-    buildDefaultArkClass(defaultClass);
+    buildDefaultArkClass(defaultClass, sourceFile, nsNode);
 }
 
 export function buildNormalArkClassFromArkFile(clsNode: ClassLikeNode,
@@ -65,15 +66,16 @@ export function buildNormalArkClassFromArkNamespace(clsNode: ClassLikeNode,
     buildNormalArkClass(clsNode, cls, sourceFile);
 }
 
-function buildDefaultArkClass(cls: ArkClass) {
+function buildDefaultArkClass(cls: ArkClass, sourceFile: ts.SourceFile, node?: ts.ModuleDeclaration) {
     cls.setName("_DEFAULT_ARK_CLASS");
     cls.genSignature();
-    genDefaultArkMethod(cls);
+
+    genDefaultArkMethod(cls, sourceFile, node);
 }
 
-function genDefaultArkMethod(cls: ArkClass) {
+function genDefaultArkMethod(cls: ArkClass, sourceFile: ts.SourceFile, node?: ts.ModuleDeclaration) {
     let defaultMethod = new ArkMethod();
-    buildDefaultArkMethodFromArkClass(cls, defaultMethod);
+    buildDefaultArkMethodFromArkClass(cls, defaultMethod, sourceFile, node);
     cls.setDefaultArkMethod(defaultMethod);
 }
 

@@ -171,10 +171,10 @@ function buildArkFile(arkFile: ArkFile, astRoot: ts.SourceFile) {
     // }
 }
 
-function genDefaultArkClass(arkFile: ArkFile, astRoot: ts.Node) {
+function genDefaultArkClass(arkFile: ArkFile, astRoot: ts.SourceFile) {
     let defaultClass = new ArkClass();
 
-    buildDefaultArkClassFromArkFile(arkFile, defaultClass);
+    buildDefaultArkClassFromArkFile(arkFile, defaultClass, astRoot);
     arkFile.setDefaultClass(defaultClass);
     arkFile.addArkClass(defaultClass);
 }
