@@ -51,11 +51,32 @@ export class SceneConfig {
 
     constructor() { }
 
-    //----for ArkCiD------
-    public buildFromJson(configJsonPath: string) {
-        this.configJsonPath = configJsonPath;
-        this.genConfig();
-        this.getAllFiles();
+    public async buildFromJson(configJsonPath: string) {
+        if (fs.existsSync(configJsonPath)) {
+            const configurations = JSON.parse(fs.readFileSync(configJsonPath, "utf8"));
+
+            let otherSdks: otherSdk[] = [];
+            for (let sdk of configurations.otherSdks) {
+                otherSdks.push(JSON.parse(JSON.stringify(sdk)));
+            }
+            otherSdks.forEach((sdk) => {
+                if (sdk.name && sdk.path) {
+                    this.otherSdkMap.set(sdk.name, sdk.path);
+                }
+            });
+
+            await this.buildConfig(
+                configurations.targetProjectName,
+                configurations.targetProjectOriginDirectory,
+                configurations.targetProjectDirectory,
+                configurations.etsSdkPath,
+                configurations.logPath,
+                configurations.nodePath
+            )
+        }
+        else {
+            throw new Error(`Your configJsonPath: "${configJsonPath}" is not exist.`);
+        }
     }
 
     public buildFromProjectDir(targetProjectDirectory: string) {
@@ -65,7 +86,7 @@ export class SceneConfig {
         this.getAllFiles();
     }
 
-    public async buildFromIde(targetProjectName: string, targetProjectOriginDirectory: string, targetProjectDirectory: string,
+    public async buildConfig(targetProjectName: string, targetProjectOriginDirectory: string, targetProjectDirectory: string,
         sdkEtsPath: string, logPath: string, nodePath: string) {
         this.targetProjectName = targetProjectName;
         this.targetProjectOriginDirectory = targetProjectOriginDirectory;
@@ -85,41 +106,15 @@ export class SceneConfig {
         }
 
         removeSync(transfer2UnixPath(targetProjectDirectory + '/' + this.targetProjectName));
-        let output = spawnSync(nodePath, 
+        let output = spawnSync(nodePath,
             [path.join(__dirname, 'ets2ts.js'), this.hosEtsLoaderPath, this.targetProjectOriginDirectory, targetProjectDirectory, this.targetProjectName, this.logPath],
-            {encoding: 'utf-8'}
+            { encoding: 'utf-8' }
         );
         if (output.status != 0) {
             logger.error('ets2ts err is: ', output.stderr);
         }
 
         this.getAllFiles();
-    }
-
-    private genConfig() {
-
-        if (fs.existsSync(this.configJsonPath)) {
-            let configurations = JSON.parse(fs.readFileSync(this.configJsonPath, "utf8"));
-            this.targetProjectName = configurations.targetProjectName;
-            this.targetProjectDirectory = configurations.targetProjectDirectory;
-            this.logPath = configurations.logPath;
-            Logger.configure(this.logPath, LOG_LEVEL.ERROR);
-
-            this.etsSdkPath = configurations.etsSdkPath;
-
-            let otherSdks: otherSdk[] = [];
-            for (let sdk of configurations.otherSdks) {
-                otherSdks.push(JSON.parse(JSON.stringify(sdk)));
-            }
-            otherSdks.forEach((sdk) => {
-                if (sdk.name && sdk.path) {
-                    this.otherSdkMap.set(sdk.name, sdk.path);
-                }
-            });
-        }
-        else {
-            throw new Error(`Your configJsonPath: "${this.configJsonPath}" is not exist.`);
-        }
     }
 
     private getAllFiles() {
