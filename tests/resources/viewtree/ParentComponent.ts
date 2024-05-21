@@ -5,148 +5,221 @@ interface CountDownComponent_Params {
 interface ParentComponent_Params {
     countDownStartValue?: number;
 }
-let __generate__Id: number = 0;
-function generateId(): string {
-    return "propSimpleModel_" + ++__generate__Id;
-}
-class ParentComponent extends View {
-    constructor(compilerAssignedUniqueChildId, parent, params, localStorage) {
-        super(compilerAssignedUniqueChildId, parent, localStorage);
-        this.__countDownStartValue = new ObservedPropertySimple(10, this, "countDownStartValue");
-        this.updateWithValueParams(params);
+class ParentComponent extends ViewPU {
+    constructor(parent, params, __localStorage, elmtId = -1) {
+        super(parent, __localStorage, elmtId);
+        this.__countDownStartValue = new ObservedPropertySimplePU(10 // 10 Nuggets default start value in a Game
+        , this, "countDownStartValue");
+        this.setInitiallyProvidedValue(params);
     }
-    updateWithValueParams(params: ParentComponent_Params) {
+    setInitiallyProvidedValue(params: ParentComponent_Params) {
         if (params.countDownStartValue !== undefined) {
             this.countDownStartValue = params.countDownStartValue;
         }
     }
+    updateStateVars(params: ParentComponent_Params) {
+    }
+    purgeVariableDependenciesOnElmtId(rmElmtId) {
+        this.__countDownStartValue.purgeDependencyOnElmtId(rmElmtId);
+    }
     aboutToBeDeleted() {
         this.__countDownStartValue.aboutToBeDeleted();
-        SubscriberManager.Get().delete(this.id());
+        SubscriberManager.Get().delete(this.id__());
+        this.aboutToBeDeletedInternal();
     }
-    private __countDownStartValue: ObservedPropertySimple<number>; // 10 Nuggets default start value in a Game
+    private __countDownStartValue: ObservedPropertySimplePU<number>; // 10 Nuggets default start value in a Game
     get countDownStartValue() {
         return this.__countDownStartValue.get();
     }
     set countDownStartValue(newValue: number) {
         this.__countDownStartValue.set(newValue);
     }
-    render() {
-        Column.create();
-        Text.create(`Grant ${this.countDownStartValue} nuggets to play.`);
-        Text.pop();
-        Button.createWithChild();
-        Button.onClick(() => {
-            this.countDownStartValue += 1;
+    initialRender() {
+        this.observeComponentCreation((elmtId, isInitialRender) => {
+            ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+            Column.create();
+            if (!isInitialRender) {
+                Column.pop();
+            }
+            ViewStackProcessor.StopGetAccessRecording();
         });
-        Text.create("+1 - Nuggets in New Game");
-        Text.pop();
-        Button.pop();
-        Button.createWithChild();
-        Button.onClick(() => {
-            this.countDownStartValue -= 1;
+        this.observeComponentCreation((elmtId, isInitialRender) => {
+            ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+            Text.create(`Grant ${this.countDownStartValue} nuggets to play.`);
+            if (!isInitialRender) {
+                Text.pop();
+            }
+            ViewStackProcessor.StopGetAccessRecording();
         });
-        Text.create("-1  - Nuggets in New Game");
         Text.pop();
-        Button.pop();
-        let earlierCreatedChild_2: CountDownComponent = (this && this.findChildById) ? this.findChildById("2") as CountDownComponent : undefined;
-        if (earlierCreatedChild_2 == undefined) {
-            // when creatng ChildComponent, the initial value of its @Prop variable must be supplied in a named constructor parameter
-            // also regular costOfOneAttempt (non-Prop) variable is initialied
-            View.create(new CountDownComponent("2", this, { count: this.countDownStartValue, costOfOneAttempt: 2 }));
-        }
-        else {
-            earlierCreatedChild_2.updateWithValueParams({
-                count: this.countDownStartValue, costOfOneAttempt: 2
+        this.observeComponentCreation((elmtId, isInitialRender) => {
+            ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+            Button.createWithChild();
+            Button.onClick(() => {
+                this.countDownStartValue += 1;
             });
-            View.create(earlierCreatedChild_2);
+            if (!isInitialRender) {
+                Button.pop();
+            }
+            ViewStackProcessor.StopGetAccessRecording();
+        });
+        this.observeComponentCreation((elmtId, isInitialRender) => {
+            ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+            Text.create('+1 - Nuggets in New Game');
+            if (!isInitialRender) {
+                Text.pop();
+            }
+            ViewStackProcessor.StopGetAccessRecording();
+        });
+        Text.pop();
+        Button.pop();
+        this.observeComponentCreation((elmtId, isInitialRender) => {
+            ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+            Button.createWithChild();
+            Button.onClick(() => {
+                this.countDownStartValue -= 1;
+            });
+            if (!isInitialRender) {
+                Button.pop();
+            }
+            ViewStackProcessor.StopGetAccessRecording();
+        });
+        this.observeComponentCreation((elmtId, isInitialRender) => {
+            ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+            Text.create('-1  - Nuggets in New Game');
+            if (!isInitialRender) {
+                Text.pop();
+            }
+            ViewStackProcessor.StopGetAccessRecording();
+        });
+        Text.pop();
+        Button.pop();
+        {
+            this.observeComponentCreation((elmtId, isInitialRender) => {
+                ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+                if (isInitialRender) {
+                    ViewPU.create(new 
+                    // when creatng ChildComponent, the initial value of its @Prop variable must be supplied
+                    // in a named constructor parameter
+                    // also regular costOfOneAttempt (non-Prop) variable is initialied
+                    CountDownComponent(this, { count: this.countDownStartValue, costOfOneAttempt: 2 }, undefined, elmtId));
+                }
+                else {
+                    this.updateStateVarsOfChildByElmtId(elmtId, {
+                        count: this.countDownStartValue
+                    });
+                }
+                ViewStackProcessor.StopGetAccessRecording();
+            });
         }
         Column.pop();
     }
-}
-class CountDownComponent extends View {
-    constructor(compilerAssignedUniqueChildId, parent, params, localStorage) {
-        super(compilerAssignedUniqueChildId, parent, localStorage);
-        this.__count = new SynchedPropertySimpleOneWay(params.count, this, "count");
-        this.costOfOneAttempt = undefined;
-        this.updateWithValueParams(params);
+    rerender() {
+        this.updateDirtyElements();
     }
-    updateWithValueParams(params: CountDownComponent_Params) {
-        this.count = params.count;
+}
+class CountDownComponent extends ViewPU {
+    constructor(parent, params, __localStorage, elmtId = -1) {
+        super(parent, __localStorage, elmtId);
+        this.__count = new SynchedPropertySimpleOneWayPU(params.count, this, "count");
+        this.costOfOneAttempt = undefined;
+        this.setInitiallyProvidedValue(params);
+    }
+    setInitiallyProvidedValue(params: CountDownComponent_Params) {
         if (params.costOfOneAttempt !== undefined) {
             this.costOfOneAttempt = params.costOfOneAttempt;
         }
     }
+    updateStateVars(params: CountDownComponent_Params) {
+        this.__count.reset(params.count);
+    }
+    purgeVariableDependenciesOnElmtId(rmElmtId) {
+        this.__count.purgeDependencyOnElmtId(rmElmtId);
+    }
     aboutToBeDeleted() {
         this.__count.aboutToBeDeleted();
-        SubscriberManager.Get().delete(this.id());
+        SubscriberManager.Get().delete(this.id__());
+        this.aboutToBeDeletedInternal();
     }
-    private __count: SynchedPropertySimpleOneWay<number>;
+    private __count: SynchedPropertySimpleOneWayPU<number>;
     get count() {
         return this.__count.get();
     }
     set count(newValue: number) {
         this.__count.set(newValue);
     }
-    private costOfOneAttempt?: number;
-    render() {
-        Column.create();
-        If.create();
-        if (this.count > 0) {
-            If.branchId(0);
-            Text.create(`You have ${this.count} Nuggets left`);
-            Text.pop();
-        }
-        else {
-            If.branchId(1);
-            Text.create("Game over!");
-            Text.pop();
-            Image.create('');
-            View.create(new CountDownComponent("2", this, { count: 0, costOfOneAttempt: 2 }));
-        }
-        If.pop();
-        Button.createWithChild();
-        Button.onClick(() => {
-            this.count -= this.costOfOneAttempt;
+    private costOfOneAttempt: number;
+    initialRender() {
+        this.observeComponentCreation((elmtId, isInitialRender) => {
+            ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+            Column.create();
+            if (!isInitialRender) {
+                Column.pop();
+            }
+            ViewStackProcessor.StopGetAccessRecording();
         });
-        Text.create("Try again");
+        this.observeComponentCreation((elmtId, isInitialRender) => {
+            ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+            If.create();
+            if (this.count > 0) {
+                this.ifElseBranchUpdateFunction(0, () => {
+                    this.observeComponentCreation((elmtId, isInitialRender) => {
+                        ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+                        Text.create(`You have ${this.count} Nuggets left`);
+                        if (!isInitialRender) {
+                            Text.pop();
+                        }
+                        ViewStackProcessor.StopGetAccessRecording();
+                    });
+                    Text.pop();
+                });
+            }
+            else {
+                this.ifElseBranchUpdateFunction(1, () => {
+                    this.observeComponentCreation((elmtId, isInitialRender) => {
+                        ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+                        Text.create('Game over!');
+                        if (!isInitialRender) {
+                            Text.pop();
+                        }
+                        ViewStackProcessor.StopGetAccessRecording();
+                    });
+                    Text.pop();
+                });
+            }
+            if (!isInitialRender) {
+                If.pop();
+            }
+            ViewStackProcessor.StopGetAccessRecording();
+        });
+        If.pop();
+        this.observeComponentCreation((elmtId, isInitialRender) => {
+            ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+            Button.createWithChild();
+            Button.onClick(() => {
+                this.count -= this.costOfOneAttempt;
+            });
+            if (!isInitialRender) {
+                Button.pop();
+            }
+            ViewStackProcessor.StopGetAccessRecording();
+        });
+        this.observeComponentCreation((elmtId, isInitialRender) => {
+            ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+            Text.create('Try again');
+            if (!isInitialRender) {
+                Text.pop();
+            }
+            ViewStackProcessor.StopGetAccessRecording();
+        });
         Text.pop();
-        Image.create('');
         Button.pop();
-        Image.create('');
         Column.pop();
     }
-}
-loadDocument(new ParentComponent("1", undefined, {}));
-
-
-class Test extends View {
-    constructor(compilerAssignedUniqueChildId, parent, params, localStorage) {
-        super(compilerAssignedUniqueChildId, parent, localStorage);
-        this.data = new MyDataSource();
-        this.updateWithValueParams(params);
-    }
-    updateWithValueParams(params: Test_Params) {
-        if (params.data !== undefined) {
-            this.data = params.data;
-        }
-    }
-    aboutToBeDeleted() {
-        SubscriberManager.Get().delete(this.id());
-    }
-    private data: MyDataSource;
-    render() {
-        Grid.create();
-        LazyForEach.create("4", this, ObservedObject.GetRawObject(this.data), (row) => {
-            this.isRenderingInProgress = true;
-            GridItem.create();
-            Text.create(row);
-            Text.pop();
-            GridItem.pop();
-            this.isRenderingInProgress = false;
-        }, row => row);
-        LazyForEach.pop();
-        Grid.pop();
+    rerender() {
+        this.updateDirtyElements();
     }
 }
-loadDocument(new Test("1", undefined, {}));
+ViewStackProcessor.StartGetAccessRecordingFor(ViewStackProcessor.AllocateNewElmetIdForNextComponent());
+loadDocument(new ParentComponent(undefined, {}));
+ViewStackProcessor.StopGetAccessRecording();

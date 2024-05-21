@@ -25,10 +25,6 @@ interface ControlCenterComponent_Params {
     titleDisplayInside?: boolean;
     moduleName?: string;
 }
-let __generate__Id: number = 0;
-function generateId(): string {
-    return "ControlCenterComponent_" + ++__generate__Id;
-}
 /*
  * Copyright (c) 2021-2022 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -56,25 +52,24 @@ const TAG = 'Control-ControlCenter';
 const TAG_ControlCenterComplexToggleLayout = 'Control-ControlCenterComplexToggleLayout';
 const TAG_ControlCenterSimpleToggleLayout = 'Control-ControlCenterSimpleToggleLayout';
 var mUniform;
-@Component
-export default class ControlCenterComponent extends View {
-    constructor(compilerAssignedUniqueChildId, parent, params, localStorage) {
-        super(compilerAssignedUniqueChildId, parent, localStorage);
+export default class ControlCenterComponent extends ViewPU {
+    constructor(parent, params, __localStorage, elmtId = -1) {
+        super(parent, __localStorage, elmtId);
         this.touchMoveCallback = undefined;
         this.modeChangeCallback = undefined;
-        this.__mSimpleToggleColumnCount = new ObservedPropertySimple(Constants.DEFAULT_SIMPLE_TOGGLE_COLUMN_COUNT, this, "mSimpleToggleColumnCount");
+        this.__mSimpleToggleColumnCount = new ObservedPropertySimplePU(Constants.DEFAULT_SIMPLE_TOGGLE_COLUMN_COUNT, this, "mSimpleToggleColumnCount");
         this.mControlCenterComponentConfig = undefined;
-        this.__mIsEditSimpleToggleLayout = new ObservedPropertySimple(false, this, "mIsEditSimpleToggleLayout");
-        this.__style = new ObservedPropertyObject(StyleConfiguration.getControlCenterComponentStyle(), this, "style");
+        this.__mIsEditSimpleToggleLayout = new ObservedPropertySimplePU(false, this, "mIsEditSimpleToggleLayout");
+        this.__style = new ObservedPropertyObjectPU(StyleConfiguration.getControlCenterComponentStyle(), this, "style");
         this.mWidthPx = 0;
         this.mDisplayingSimpleToggles = [];
         this.mHidingSimpleToggles = [];
         this.mDefaultDisplaySimpleToggles = [];
         this.titleDisplayInside = false;
         this.moduleName = '';
-        this.updateWithValueParams(params);
+        this.setInitiallyProvidedValue(params);
     }
-    updateWithValueParams(params: ControlCenterComponent_Params) {
+    setInitiallyProvidedValue(params: ControlCenterComponent_Params) {
         if (params.touchMoveCallback !== undefined) {
             this.touchMoveCallback = params.touchMoveCallback;
         }
@@ -112,16 +107,23 @@ export default class ControlCenterComponent extends View {
             this.moduleName = params.moduleName;
         }
     }
+    updateStateVars(params: ControlCenterComponent_Params) {
+    }
+    purgeVariableDependenciesOnElmtId(rmElmtId) {
+        this.__mSimpleToggleColumnCount.purgeDependencyOnElmtId(rmElmtId);
+        this.__mIsEditSimpleToggleLayout.purgeDependencyOnElmtId(rmElmtId);
+        this.__style.purgeDependencyOnElmtId(rmElmtId);
+    }
     aboutToBeDeleted() {
         this.__mSimpleToggleColumnCount.aboutToBeDeleted();
         this.__mIsEditSimpleToggleLayout.aboutToBeDeleted();
         this.__style.aboutToBeDeleted();
-        SubscriberManager.Get().delete(this.id());
+        SubscriberManager.Get().delete(this.id__());
+        this.aboutToBeDeletedInternal();
     }
     private touchMoveCallback: Function;
     private modeChangeCallback: Function;
-    @State
-    private __mSimpleToggleColumnCount: ObservedPropertySimple<number>;
+    private __mSimpleToggleColumnCount: ObservedPropertySimplePU<number>;
     get mSimpleToggleColumnCount() {
         return this.__mSimpleToggleColumnCount.get();
     }
@@ -129,16 +131,14 @@ export default class ControlCenterComponent extends View {
         this.__mSimpleToggleColumnCount.set(newValue);
     }
     private mControlCenterComponentConfig: ControlCenterConfig;
-    @State
-    private __mIsEditSimpleToggleLayout: ObservedPropertySimple<boolean>;
+    private __mIsEditSimpleToggleLayout: ObservedPropertySimplePU<boolean>;
     get mIsEditSimpleToggleLayout() {
         return this.__mIsEditSimpleToggleLayout.get();
     }
     set mIsEditSimpleToggleLayout(newValue: boolean) {
         this.__mIsEditSimpleToggleLayout.set(newValue);
     }
-    @State
-    private __style: ObservedPropertyObject<ControlCenterComponentStyle>;
+    private __style: ObservedPropertyObjectPU<ControlCenterComponentStyle>;
     get style() {
         return this.__style.get();
     }
@@ -194,106 +194,185 @@ export default class ControlCenterComponent extends View {
         Log.showDebug(TAG, `onSaveDisplayingToggles, toggles: ${JSON.stringify(toggles)}`);
         ViewModel.saveSimpleToggleLayout(toggles);
     }
-    render() {
-        Column.create();
-        Column.height('100%');
-        Column.width('100%');
-        Column.onAreaChange((e, e2) => {
-            Log.showInfo(TAG, `onAreaChange, e: ${JSON.stringify(e)} e2: ${JSON.stringify(e2)}`);
-            this.mWidthPx = vp2px(Number(e2.width));
+    initialRender() {
+        this.observeComponentCreation((elmtId, isInitialRender) => {
+            ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+            Column.create();
+            Column.height('100%');
+            Column.width('100%');
+            Column.onAreaChange((e, e2) => {
+                Log.showInfo(TAG, `onAreaChange, e: ${JSON.stringify(e)} e2: ${JSON.stringify(e2)}`);
+                this.mWidthPx = vp2px(Number(e2.width));
+            });
+            if (!isInitialRender) {
+                Column.pop();
+            }
+            ViewStackProcessor.StopGetAccessRecording();
         });
-        If.create();
-        if (!this.mIsEditSimpleToggleLayout) {
-            If.branchId(0);
-            Column.create();
-            Column.width('100%');
-            Column.transition({ type: TransitionType.Insert, opacity: 0, translate: { x: (-this.mWidthPx * 0.8) + 'px' } });
-            Column.transition({ type: TransitionType.Delete, opacity: 0 });
-            Column.create();
-            Column.width('100%');
-            Column.height(this.style.upTitleHeight);
-            Column.margin({ top: 5 });
-            Column.pop();
-            Row.create();
-            Row.width('100%');
-            Column.create();
-            Column.padding({ left: this.style.marginLeft, right: this.style.marginRight });
-            let earlierCreatedChild_2: ControlCenterComplexToggleLayout = (this && this.findChildById) ? this.findChildById("2") as ControlCenterComplexToggleLayout : undefined;
-            if (earlierCreatedChild_2 == undefined) {
-                View.create(new ControlCenterComplexToggleLayout("2", this, {}));
-            }
-            else {
-                earlierCreatedChild_2.updateWithValueParams({});
-                View.create(earlierCreatedChild_2);
-            }
-            Column.create();
-            Column.width('100%');
-            Column.margin({ top: this.style.toggleAreaGap });
-            Column.padding({ top: this.style.simpleToggleLayoutMarginTop, bottom: this.style.brightnessMarginBottom });
-            Column.borderRadius(this.style.componentBorderRadius);
-            Column.clip(true);
-            Column.backgroundColor(this.style.componentBackgroundColor);
-            let earlierCreatedChild_3: ControlCenterSimpleToggleLayout = (this && this.findChildById) ? this.findChildById("3") as ControlCenterSimpleToggleLayout : undefined;
-            if (earlierCreatedChild_3 == undefined) {
-                View.create(new ControlCenterSimpleToggleLayout("3", this, {
-                    mColumnCount: this.mSimpleToggleColumnCount
-                }));
-            }
-            else {
-                earlierCreatedChild_3.updateWithValueParams({
-                    mColumnCount: this.mSimpleToggleColumnCount
+        this.observeComponentCreation((elmtId, isInitialRender) => {
+            ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+            If.create();
+            if (!this.mIsEditSimpleToggleLayout) {
+                this.ifElseBranchUpdateFunction(0, () => {
+                    this.observeComponentCreation((elmtId, isInitialRender) => {
+                        ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+                        Column.create();
+                        Column.width('100%');
+                        Column.transition({ type: TransitionType.Insert, opacity: 0, translate: { x: (-this.mWidthPx * 0.8) + 'px' } });
+                        Column.transition({ type: TransitionType.Delete, opacity: 0 });
+                        if (!isInitialRender) {
+                            Column.pop();
+                        }
+                        ViewStackProcessor.StopGetAccessRecording();
+                    });
+                    this.observeComponentCreation((elmtId, isInitialRender) => {
+                        ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+                        Column.create();
+                        Column.width('100%');
+                        Column.height(this.style.upTitleHeight);
+                        Column.margin({ top: 5 });
+                        if (!isInitialRender) {
+                            Column.pop();
+                        }
+                        ViewStackProcessor.StopGetAccessRecording();
+                    });
+                    Column.pop();
+                    this.observeComponentCreation((elmtId, isInitialRender) => {
+                        ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+                        Row.create();
+                        Row.width('100%');
+                        if (!isInitialRender) {
+                            Row.pop();
+                        }
+                        ViewStackProcessor.StopGetAccessRecording();
+                    });
+                    this.observeComponentCreation((elmtId, isInitialRender) => {
+                        ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+                        Column.create();
+                        Column.padding({ left: this.style.marginLeft, right: this.style.marginRight });
+                        if (!isInitialRender) {
+                            Column.pop();
+                        }
+                        ViewStackProcessor.StopGetAccessRecording();
+                    });
+                    {
+                        this.observeComponentCreation((elmtId, isInitialRender) => {
+                            ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+                            if (isInitialRender) {
+                                ViewPU.create(new ControlCenterComplexToggleLayout(this, {}, undefined, elmtId));
+                            }
+                            else {
+                                this.updateStateVarsOfChildByElmtId(elmtId, {});
+                            }
+                            ViewStackProcessor.StopGetAccessRecording();
+                        });
+                    }
+                    this.observeComponentCreation((elmtId, isInitialRender) => {
+                        ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+                        Column.create();
+                        Column.width('100%');
+                        Column.margin({ top: this.style.toggleAreaGap });
+                        Column.padding({ top: this.style.simpleToggleLayoutMarginTop, bottom: this.style.brightnessMarginBottom });
+                        Column.borderRadius(this.style.componentBorderRadius);
+                        Column.clip(true);
+                        Column.backgroundColor(this.style.componentBackgroundColor);
+                        if (!isInitialRender) {
+                            Column.pop();
+                        }
+                        ViewStackProcessor.StopGetAccessRecording();
+                    });
+                    {
+                        this.observeComponentCreation((elmtId, isInitialRender) => {
+                            ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+                            if (isInitialRender) {
+                                ViewPU.create(new ControlCenterSimpleToggleLayout(this, {
+                                    mColumnCount: this.mSimpleToggleColumnCount
+                                }, undefined, elmtId));
+                            }
+                            else {
+                                this.updateStateVarsOfChildByElmtId(elmtId, {
+                                    mColumnCount: this.mSimpleToggleColumnCount
+                                });
+                            }
+                            ViewStackProcessor.StopGetAccessRecording();
+                        });
+                    }
+                    this.observeComponentCreation((elmtId, isInitialRender) => {
+                        ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+                        Column.create();
+                        Column.width('100%');
+                        Column.height(this.style.simpleToggleLayoutMarginBottom);
+                        if (!isInitialRender) {
+                            Column.pop();
+                        }
+                        ViewStackProcessor.StopGetAccessRecording();
+                    });
+                    Column.pop();
+                    Column.pop();
+                    Column.pop();
+                    Row.pop();
+                    Column.pop();
                 });
-                View.create(earlierCreatedChild_3);
             }
-            Column.create();
-            Column.width('100%');
-            Column.height(this.style.simpleToggleLayoutMarginBottom);
-            Column.pop();
-            Column.pop();
-            Column.pop();
-            Row.pop();
-            Column.pop();
-        }
-        else {
-            If.branchId(1);
-            Column.create();
-            Column.width('100%');
-            Column.transition({ type: TransitionType.Insert, opacity: 0, translate: { x: this.mWidthPx * 0.8 + 'px' } });
-            Column.transition({ type: TransitionType.Delete, opacity: 0 });
-            Column.pop();
-        }
+            else {
+                this.ifElseBranchUpdateFunction(1, () => {
+                    this.observeComponentCreation((elmtId, isInitialRender) => {
+                        ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+                        Column.create();
+                        Column.width('100%');
+                        Column.transition({ type: TransitionType.Insert, opacity: 0, translate: { x: this.mWidthPx * 0.8 + 'px' } });
+                        Column.transition({ type: TransitionType.Delete, opacity: 0 });
+                        if (!isInitialRender) {
+                            Column.pop();
+                        }
+                        ViewStackProcessor.StopGetAccessRecording();
+                    });
+                    Column.pop();
+                });
+            }
+            if (!isInitialRender) {
+                If.pop();
+            }
+            ViewStackProcessor.StopGetAccessRecording();
+        });
         If.pop();
         Column.pop();
     }
-}
-@Component
-class ControlCenterComplexToggleLayout extends View {
-    constructor(compilerAssignedUniqueChildId, parent, params, localStorage) {
-        super(compilerAssignedUniqueChildId, parent, localStorage);
-        this.__mComplexToggleLayout = AppStorage.SetAndLink('ControlCenterComplexToggleLayout', [], this, "mComplexToggleLayout");
-        this.__style = new ObservedPropertyObject(StyleConfiguration.getControlCenterComplexToggleLayoutStyle(), this, "style");
-        this.updateWithValueParams(params);
+    rerender() {
+        this.updateDirtyElements();
     }
-    updateWithValueParams(params: ControlCenterComplexToggleLayout_Params) {
+}
+class ControlCenterComplexToggleLayout extends ViewPU {
+    constructor(parent, params, __localStorage, elmtId = -1) {
+        super(parent, __localStorage, elmtId);
+        this.__mComplexToggleLayout = this.createStorageLink('ControlCenterComplexToggleLayout', [], "mComplexToggleLayout");
+        this.__style = new ObservedPropertyObjectPU(StyleConfiguration.getControlCenterComplexToggleLayoutStyle(), this, "style");
+        this.setInitiallyProvidedValue(params);
+    }
+    setInitiallyProvidedValue(params: ControlCenterComplexToggleLayout_Params) {
         if (params.style !== undefined) {
             this.style = params.style;
         }
     }
+    updateStateVars(params: ControlCenterComplexToggleLayout_Params) {
+    }
+    purgeVariableDependenciesOnElmtId(rmElmtId) {
+        this.__style.purgeDependencyOnElmtId(rmElmtId);
+    }
     aboutToBeDeleted() {
         this.__mComplexToggleLayout.aboutToBeDeleted();
         this.__style.aboutToBeDeleted();
-        SubscriberManager.Get().delete(this.id());
+        SubscriberManager.Get().delete(this.id__());
+        this.aboutToBeDeletedInternal();
     }
-    @StorageLink('ControlCenterComplexToggleLayout')
-    private __mComplexToggleLayout: ObservedPropertyAbstract<string[]>;
+    private __mComplexToggleLayout: ObservedPropertyAbstractPU<string[]>;
     get mComplexToggleLayout() {
         return this.__mComplexToggleLayout.get();
     }
     set mComplexToggleLayout(newValue: string[]) {
         this.__mComplexToggleLayout.set(newValue);
     }
-    @State
-    private __style: ObservedPropertyObject<ControlCenterComplexToggleLayoutStyle>;
+    private __style: ObservedPropertyObjectPU<ControlCenterComplexToggleLayoutStyle>;
     get style() {
         return this.__style.get();
     }
@@ -306,20 +385,65 @@ class ControlCenterComplexToggleLayout extends View {
     aboutToDisappear() {
         Log.showInfo(TAG_ControlCenterComplexToggleLayout, `aboutToDisAppear`);
     }
-    render() {
-        Grid.create();
-        Grid.width('100%');
-        Grid.height(this.calcGridHeight(Math.ceil(this.mComplexToggleLayout.length / 2), this.style.rowHeight, this.style.rowGap));
-        Grid.columnsTemplate('1fr 1fr');
-        Grid.rowsTemplate(this.generateRowsTemplate(Math.ceil(this.mComplexToggleLayout.length / 2)));
-        Grid.rowsGap(this.style.rowGap + 'px');
-        Grid.columnsGap(this.style.columnGap);
-        ForEach.create("4", this, ObservedObject.GetRawObject(this.mComplexToggleLayout), (componentName) => {
-            GridItem.create();
-            GridItem.width('100%');
-            GridItem.height('100%');
-            GridItem.pop();
-        }, (componentName) => componentName);
+    initialRender() {
+        this.observeComponentCreation((elmtId, isInitialRender) => {
+            ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+            Grid.create();
+            Grid.width('100%');
+            Grid.height(this.calcGridHeight(Math.ceil(this.mComplexToggleLayout.length / 2), this.style.rowHeight, this.style.rowGap));
+            Grid.columnsTemplate('1fr 1fr');
+            Grid.rowsTemplate(this.generateRowsTemplate(Math.ceil(this.mComplexToggleLayout.length / 2)));
+            Grid.rowsGap(this.style.rowGap + 'px');
+            Grid.columnsGap(this.style.columnGap);
+            if (!isInitialRender) {
+                Grid.pop();
+            }
+            ViewStackProcessor.StopGetAccessRecording();
+        });
+        this.observeComponentCreation((elmtId, isInitialRender) => {
+            ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+            ForEach.create();
+            const forEachItemGenFunction = _item => {
+                const componentName = _item;
+                {
+                    const isLazyCreate = true && (Grid.willUseProxy() === true);
+                    const itemCreation = (elmtId, isInitialRender) => {
+                        ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+                        GridItem.create(deepRenderFunction, isLazyCreate);
+                        GridItem.width('100%');
+                        GridItem.height('100%');
+                        if (!isInitialRender) {
+                            GridItem.pop();
+                        }
+                        ViewStackProcessor.StopGetAccessRecording();
+                    };
+                    const observedShallowRender = () => {
+                        this.observeComponentCreation(itemCreation);
+                        GridItem.pop();
+                    };
+                    const observedDeepRender = () => {
+                        this.observeComponentCreation(itemCreation);
+                        GridItem.pop();
+                    };
+                    const deepRenderFunction = (elmtId, isInitialRender) => {
+                        itemCreation(elmtId, isInitialRender);
+                        this.updateFuncByElmtId.set(elmtId, itemCreation);
+                        GridItem.pop();
+                    };
+                    if (isLazyCreate) {
+                        observedShallowRender();
+                    }
+                    else {
+                        observedDeepRender();
+                    }
+                }
+            };
+            this.forEachUpdateFunction(elmtId, this.mComplexToggleLayout, forEachItemGenFunction, (componentName) => componentName, false, false);
+            if (!isInitialRender) {
+                ForEach.pop();
+            }
+            ViewStackProcessor.StopGetAccessRecording();
+        });
         ForEach.pop();
         Grid.pop();
     }
@@ -342,46 +466,52 @@ class ControlCenterComplexToggleLayout extends View {
         ;
         return rowsTemplate;
     }
-}
-@Component
-class ControlCenterSimpleToggleLayout extends View {
-    constructor(compilerAssignedUniqueChildId, parent, params, localStorage) {
-        super(compilerAssignedUniqueChildId, parent, localStorage);
-        this.__mColumnCount = new SynchedPropertySimpleOneWay(params.mColumnCount, this, "mColumnCount");
-        this.__mSimpleToggleLayout = AppStorage.SetAndLink('ControlCenterSimpleToggleLayout', [], this, "mSimpleToggleLayout");
-        this.__style = new ObservedPropertyObject(StyleConfiguration.getControlCenterSimpleToggleLayoutStyle(), this, "style");
-        this.updateWithValueParams(params);
+    rerender() {
+        this.updateDirtyElements();
     }
-    updateWithValueParams(params: ControlCenterSimpleToggleLayout_Params) {
-        this.mColumnCount = params.mColumnCount;
+}
+class ControlCenterSimpleToggleLayout extends ViewPU {
+    constructor(parent, params, __localStorage, elmtId = -1) {
+        super(parent, __localStorage, elmtId);
+        this.__mColumnCount = new SynchedPropertySimpleOneWayPU(params.mColumnCount, this, "mColumnCount");
+        this.__mSimpleToggleLayout = this.createStorageLink('ControlCenterSimpleToggleLayout', [], "mSimpleToggleLayout");
+        this.__style = new ObservedPropertyObjectPU(StyleConfiguration.getControlCenterSimpleToggleLayoutStyle(), this, "style");
+        this.setInitiallyProvidedValue(params);
+    }
+    setInitiallyProvidedValue(params: ControlCenterSimpleToggleLayout_Params) {
         if (params.style !== undefined) {
             this.style = params.style;
         }
+    }
+    updateStateVars(params: ControlCenterSimpleToggleLayout_Params) {
+        this.__mColumnCount.reset(params.mColumnCount);
+    }
+    purgeVariableDependenciesOnElmtId(rmElmtId) {
+        this.__mColumnCount.purgeDependencyOnElmtId(rmElmtId);
+        this.__style.purgeDependencyOnElmtId(rmElmtId);
     }
     aboutToBeDeleted() {
         this.__mColumnCount.aboutToBeDeleted();
         this.__mSimpleToggleLayout.aboutToBeDeleted();
         this.__style.aboutToBeDeleted();
-        SubscriberManager.Get().delete(this.id());
+        SubscriberManager.Get().delete(this.id__());
+        this.aboutToBeDeletedInternal();
     }
-    @Prop
-    private __mColumnCount: SynchedPropertySimpleOneWay<number>;
+    private __mColumnCount: SynchedPropertySimpleOneWayPU<number>;
     get mColumnCount() {
         return this.__mColumnCount.get();
     }
     set mColumnCount(newValue: number) {
         this.__mColumnCount.set(newValue);
     }
-    @StorageLink('ControlCenterSimpleToggleLayout')
-    private __mSimpleToggleLayout: ObservedPropertyAbstract<string[]>;
+    private __mSimpleToggleLayout: ObservedPropertyAbstractPU<string[]>;
     get mSimpleToggleLayout() {
         return this.__mSimpleToggleLayout.get();
     }
     set mSimpleToggleLayout(newValue: string[]) {
         this.__mSimpleToggleLayout.set(newValue);
     }
-    @State
-    private __style: ObservedPropertyObject<ControlCenterSimpleToggleLayoutStyle>;
+    private __style: ObservedPropertyObjectPU<ControlCenterSimpleToggleLayoutStyle>;
     get style() {
         return this.__style.get();
     }
@@ -394,21 +524,66 @@ class ControlCenterSimpleToggleLayout extends View {
     aboutToDisappear() {
         Log.showInfo(TAG_ControlCenterSimpleToggleLayout, `aboutToDisAppear`);
     }
-    render() {
-        Grid.create();
-        Grid.width('100%');
-        Grid.height(this.calcGridHeight(Math.ceil(this.mSimpleToggleLayout.length / this.mColumnCount), this.style.rowHeight, this.style.rowGap));
-        Grid.margin({ left: this.style.marginLeft, right: this.style.marginRight });
-        Grid.columnsTemplate(this.generateColumnsTemplate(this.mColumnCount));
-        Grid.rowsTemplate(this.generateRowsTemplate(Math.ceil(this.mSimpleToggleLayout.length / this.mColumnCount)));
-        Grid.rowsGap(this.style.rowGap + 'px');
-        Grid.columnsGap(this.style.columnGap);
-        ForEach.create("5", this, ObservedObject.GetRawObject(this.mSimpleToggleLayout), (componentName) => {
-            GridItem.create();
-            GridItem.width('100%');
-            GridItem.height('100%');
-            GridItem.pop();
-        }, (componentName) => componentName);
+    initialRender() {
+        this.observeComponentCreation((elmtId, isInitialRender) => {
+            ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+            Grid.create();
+            Grid.width('100%');
+            Grid.height(this.calcGridHeight(Math.ceil(this.mSimpleToggleLayout.length / this.mColumnCount), this.style.rowHeight, this.style.rowGap));
+            Grid.margin({ left: this.style.marginLeft, right: this.style.marginRight });
+            Grid.columnsTemplate(this.generateColumnsTemplate(this.mColumnCount));
+            Grid.rowsTemplate(this.generateRowsTemplate(Math.ceil(this.mSimpleToggleLayout.length / this.mColumnCount)));
+            Grid.rowsGap(this.style.rowGap + 'px');
+            Grid.columnsGap(this.style.columnGap);
+            if (!isInitialRender) {
+                Grid.pop();
+            }
+            ViewStackProcessor.StopGetAccessRecording();
+        });
+        this.observeComponentCreation((elmtId, isInitialRender) => {
+            ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+            ForEach.create();
+            const forEachItemGenFunction = _item => {
+                const componentName = _item;
+                {
+                    const isLazyCreate = true && (Grid.willUseProxy() === true);
+                    const itemCreation = (elmtId, isInitialRender) => {
+                        ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+                        GridItem.create(deepRenderFunction, isLazyCreate);
+                        GridItem.width('100%');
+                        GridItem.height('100%');
+                        if (!isInitialRender) {
+                            GridItem.pop();
+                        }
+                        ViewStackProcessor.StopGetAccessRecording();
+                    };
+                    const observedShallowRender = () => {
+                        this.observeComponentCreation(itemCreation);
+                        GridItem.pop();
+                    };
+                    const observedDeepRender = () => {
+                        this.observeComponentCreation(itemCreation);
+                        GridItem.pop();
+                    };
+                    const deepRenderFunction = (elmtId, isInitialRender) => {
+                        itemCreation(elmtId, isInitialRender);
+                        this.updateFuncByElmtId.set(elmtId, itemCreation);
+                        GridItem.pop();
+                    };
+                    if (isLazyCreate) {
+                        observedShallowRender();
+                    }
+                    else {
+                        observedDeepRender();
+                    }
+                }
+            };
+            this.forEachUpdateFunction(elmtId, this.mSimpleToggleLayout, forEachItemGenFunction, (componentName) => componentName, false, false);
+            if (!isInitialRender) {
+                ForEach.pop();
+            }
+            ViewStackProcessor.StopGetAccessRecording();
+        });
         ForEach.pop();
         Grid.pop();
     }
@@ -437,71 +612,126 @@ class ControlCenterSimpleToggleLayout extends View {
         }
         return rowsTemplate;
     }
-    @Builder
     static render(count: number, parent = null) {
-        let earlierCreatedChild_6: ControlCenterSimpleToggleLayout = ((parent ? parent : this) && (parent ? parent : this).findChildById) ? (parent ? parent : this).findChildById(generateId()) as ControlCenterSimpleToggleLayout : undefined;
-        if (earlierCreatedChild_6 == undefined) {
-            View.create(new ControlCenterSimpleToggleLayout("ControlCenterComponent_" + __generate__Id, parent ? parent : this, { mColumnCount: count }));
-        }
-        else {
-            earlierCreatedChild_6.updateWithValueParams({
-                mColumnCount: count
+        {
+            this.observeComponentCreation((elmtId, isInitialRender) => {
+                ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+                if (isInitialRender) {
+                    ViewPU.create(new ControlCenterSimpleToggleLayout(this, { mColumnCount: count }, undefined, elmtId));
+                }
+                else {
+                    this.updateStateVarsOfChildByElmtId(elmtId, {
+                        mColumnCount: count
+                    });
+                }
+                ViewStackProcessor.StopGetAccessRecording();
             });
-            View.create(earlierCreatedChild_6);
         }
+    }
+    rerender() {
+        this.updateDirtyElements();
     }
 }
-@Component
-class SubComponent extends View {
-    constructor(compilerAssignedUniqueChildId, parent, params, localStorage) {
-        super(compilerAssignedUniqueChildId, parent, localStorage);
-        this.updateWithValueParams(params);
+class SubComponent extends ViewPU {
+    constructor(parent, params, __localStorage, elmtId = -1) {
+        super(parent, __localStorage, elmtId);
+        this.setInitiallyProvidedValue(params);
     }
-    updateWithValueParams(params: SubComponent_Params) {
+    setInitiallyProvidedValue(params: SubComponent_Params) {
+    }
+    updateStateVars(params: SubComponent_Params) {
+    }
+    purgeVariableDependenciesOnElmtId(rmElmtId) {
     }
     aboutToBeDeleted() {
-        SubscriberManager.Get().delete(this.id());
+        SubscriberManager.Get().delete(this.id__());
+        this.aboutToBeDeletedInternal();
     }
-    render() {
-        Column.create();
-        Text.create('Inner Text');
+    initialRender() {
+        this.observeComponentCreation((elmtId, isInitialRender) => {
+            ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+            Column.create();
+            if (!isInitialRender) {
+                Column.pop();
+            }
+            ViewStackProcessor.StopGetAccessRecording();
+        });
+        this.observeComponentCreation((elmtId, isInitialRender) => {
+            ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+            Text.create('Inner Text');
+            if (!isInitialRender) {
+                Text.pop();
+            }
+            ViewStackProcessor.StopGetAccessRecording();
+        });
         Text.pop();
         Column.pop();
     }
-}
-@Component
-class OutComponent extends View {
-    constructor(compilerAssignedUniqueChildId, parent, params, localStorage) {
-        super(compilerAssignedUniqueChildId, parent, localStorage);
-        this.updateWithValueParams(params);
+    rerender() {
+        this.updateDirtyElements();
     }
-    updateWithValueParams(params: OutComponent_Params) {
+}
+class OutComponent extends ViewPU {
+    constructor(parent, params, __localStorage, elmtId = -1) {
+        super(parent, __localStorage, elmtId);
+        this.setInitiallyProvidedValue(params);
+    }
+    setInitiallyProvidedValue(params: OutComponent_Params) {
+    }
+    updateStateVars(params: OutComponent_Params) {
+    }
+    purgeVariableDependenciesOnElmtId(rmElmtId) {
     }
     aboutToBeDeleted() {
-        SubscriberManager.Get().delete(this.id());
+        SubscriberManager.Get().delete(this.id__());
+        this.aboutToBeDeletedInternal();
     }
-    render() {
-        __Common__.create();
-        __Common__.width(100);
-        __Common__.height(200);
-        let earlierCreatedChild_7: SubComponent = (this && this.findChildById) ? this.findChildById("7") as SubComponent : undefined;
-        if (earlierCreatedChild_7 == undefined) {
-            View.create(new SubComponent("7", this, {}));
-        }
-        else {
-            earlierCreatedChild_7.updateWithValueParams({});
-            if (!earlierCreatedChild_7.needsUpdate()) {
-                earlierCreatedChild_7.markStatic();
+    initialRender() {
+        this.observeComponentCreation((elmtId, isInitialRender) => {
+            ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+            __Common__.create();
+            __Common__.width(100);
+            __Common__.height(200);
+            if (!isInitialRender) {
+                __Common__.pop();
             }
-            View.create(earlierCreatedChild_7);
+            ViewStackProcessor.StopGetAccessRecording();
+        });
+        {
+            this.observeComponentCreation((elmtId, isInitialRender) => {
+                ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+                if (isInitialRender) {
+                    ViewPU.create(new SubComponent(this, {}, undefined, elmtId));
+                }
+                else {
+                    this.updateStateVarsOfChildByElmtId(elmtId, {});
+                }
+                ViewStackProcessor.StopGetAccessRecording();
+            });
         }
         __Common__.pop();
     }
-    @Builder
     builderTest(parent = null) {
-        Column.create();
-        Text.create('@Builder Test Text');
+        this.observeComponentCreation((elmtId, isInitialRender) => {
+            ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+            Column.create();
+            if (!isInitialRender) {
+                Column.pop();
+            }
+            ViewStackProcessor.StopGetAccessRecording();
+        });
+        this.observeComponentCreation((elmtId, isInitialRender) => {
+            ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+            Text.create('@Builder Test Text');
+            if (!isInitialRender) {
+                Text.pop();
+            }
+            ViewStackProcessor.StopGetAccessRecording();
+        });
         Text.pop();
         Column.pop();
+    }
+    rerender() {
+        this.updateDirtyElements();
     }
 }

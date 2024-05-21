@@ -1,12 +1,14 @@
+import { CfgUitls } from '../../utils/CfgUtils';
 import { Constant } from '../base/Constant';
 import { Decorator } from '../base/Decorator';
-import { ArkInstanceInvokeExpr, ArkNewExpr } from '../base/Expr';
+import { ArkInstanceInvokeExpr, ArkNewExpr, ArkStaticInvokeExpr } from '../base/Expr';
 import { Local } from '../base/Local';
 import { ArkInstanceFieldRef } from '../base/Ref';
-import { ArkAssignStmt, ArkInvokeStmt, Stmt } from '../base/Stmt';
+import { ArkAssignStmt, ArkIfStmt, ArkInvokeStmt, Stmt } from '../base/Stmt';
 import { CallableType, ClassType, Type } from '../base/Type';
 import { ArkMethod } from '../model/ArkMethod';
 import { ClassSignature, MethodSignature } from '../model/ArkSignature';
+import { BasicBlock } from './BasicBlock';
 import { Cfg } from './Cfg';
 
 
@@ -153,11 +155,14 @@ export class ViewTree {
     private render: ArkMethod;
     private buildViewStatus: boolean;
     private fieldTypes: Map<string, Decorator|Type>;
+    private parsers: Map<string, Function>;
 
     constructor(render: ArkMethod) {
         this.render = render;
         this.fieldTypes = new Map();
         this.buildViewStatus = false;
+        this.parsers = new Map();
+        this.registeParser();
     }
 
     public async buildViewTree() {
@@ -180,6 +185,9 @@ export class ViewTree {
     }
 
     private async parseForEachAnonymousFunc(treeStack: TreeNodeStack, expr: ArkInstanceInvokeExpr) {
+        if (expr.getArgs().length < 4) {
+            return;
+        }
         let arg = expr.getArg(3) as Local;
         let type = arg.getType() as CallableType;
         let method = this.render.getDeclaringArkClass().getMethod(type.getMethodSignature());
@@ -208,22 +216,47 @@ export class ViewTree {
         return true;
     }
 
-    private async parseCfg(cfg: Cfg, treeStack: TreeNodeStack) {
-        let blocks = cfg.getBlocks();        
+    private async parseCfg(cfg: Cfg, treeStack: TreeNodeStack, scope: Map<string, Local> = new Map()) {
+        let blocks = cfg.getBlocks();
+        let visitor = new Set<BasicBlock>();
+        let cfgUtils = new CfgUitls(cfg);        
         for (const block of blocks) {
+            if (visitor.has(block)) {
+                continue;
+            }
+            visitor.add(block);
             for (const stmt of block.getStmts()) {
-                if (!(stmt instanceof ArkInvokeStmt)) {
+                if (!(stmt instanceof ArkInvokeStmt || stmt instanceof ArkIfStmt)) {
                     continue;
                 }
+
+                if (stmt instanceof ArkIfStmt) {
+                    let values = cfgUtils.getStmtBindValues(stmt);
+                    values.forEach((v) => {
+                        if (v instanceof Local) {
+                            if (v.getName() == 'isInitialRender' && cfgUtils.isIfBlock(block)) {
+                                visitor.add(block.getSuccessors()[0]);
+                            }
+                        }
+                    })
+                    continue;
+                }
+
                 let expr = stmt.getInvokeExpr();
                 if (!(expr instanceof ArkInstanceInvokeExpr)) {
                     continue;
                 }
+
                 let name = expr.getBase().getName();
+                let methodName = expr.getMethodSignature().getMethodSubSignature().getMethodName();
+                let parserFn = this.parsers.get(`${name}.${methodName}`);
+                if (parserFn) {
+                    await parserFn(this, treeStack, stmt, expr, scope);
+                    continue;
+                }
                 if (name.startsWith('$temp')) {
                     continue;
                 }
-                let methodName = expr.getMethodSignature().getMethodSubSignature().getMethodName();
                 let methodDecorator = this.getClassFieldType('__' + methodName);
                 if (name == 'this' && methodDecorator instanceof Decorator && methodDecorator.getKind() == 'BuilderParam') {
                     let node = new ViewTreeNode(`@BuilderParam`, stmt, expr, this);
@@ -240,7 +273,7 @@ export class ViewTree {
                 }
                 if (this.isCreateFunc(methodName)) {
                     let node = new ViewTreeNode(name, stmt, expr, this);
-                    if (name == 'View' && !await this.parseComponentView(node, expr)) {
+                    if ((name == 'View' || name == 'ViewPU') && !await this.parseComponentView(node, expr)) {
                         continue;
                     }
                     treeStack.push(node);
@@ -325,6 +358,65 @@ export class ViewTree {
 
     public getClassFieldType(name: string): Decorator | Type | undefined {
         return this.fieldTypes.get(name);
+    }
+
+    private registeParser() {
+        this.parsers.set('this.observeComponentCreation', ViewTree.observeComponentCreationParser);
+        this.parsers.set('this.ifElseBranchUpdateFunction', ViewTree.ifElseBranchUpdateFunctionParser);
+        this.parsers.set('this.forEachUpdateFunction', ViewTree.forEachUpdateFunction);
+    }
+
+    private static async observeComponentCreationParser(viewtree:ViewTree, treeStack: TreeNodeStack, stmt: Stmt, expr: ArkInstanceInvokeExpr, scope: Map<string, Local>) {
+        await ViewTree.anonymousFuncParser(viewtree, treeStack, expr.getArg(0) as Local, scope);
+    }
+
+    private static async ifElseBranchUpdateFunctionParser(viewtree:ViewTree, treeStack: TreeNodeStack, stmt: Stmt, expr: ArkInstanceInvokeExpr, scope: Map<string, Local>) {
+        viewtree.createTreeNode(treeStack, 'IfBranch', stmt, expr);
+        await ViewTree.anonymousFuncParser(viewtree, treeStack, expr.getArg(1) as Local, scope);
+        treeStack.popComponentExpect('If');
+    }
+
+    private static async forEachUpdateFunction(viewtree:ViewTree, treeStack: TreeNodeStack, stmt: Stmt, expr: ArkInstanceInvokeExpr, scope: Map<string, Local>) {
+        let type = (expr.getArg(2) as Local).getType() as CallableType;
+        let method = viewtree.render.getDeclaringArkClass().getMethod(type.getMethodSignature());
+        if (method) {
+            for (let stmt of method.getCfg().getStmts()) {
+                if (stmt instanceof ArkAssignStmt) {
+                    let leftOp = stmt.getLeftOp();
+                    let rightOp = stmt.getRightOp();
+                    if (leftOp instanceof Local && rightOp instanceof Local) {
+                        scope.set(leftOp.getName(), rightOp);
+                    }
+                }
+            }
+            let observedDeepRender = scope.get('observedDeepRender');
+            if (observedDeepRender) {
+                await ViewTree.anonymousFuncParser(viewtree, treeStack, observedDeepRender, scope);
+            }
+        }
+        
+    }
+
+    private static async anonymousFuncParser(viewtree:ViewTree, treeStack: TreeNodeStack, arg: Local, scope: Map<string, Local> ) {
+        let type = arg.getType();
+        if (!(arg.getType() instanceof CallableType)) {
+            let anonyFunc = scope.get(arg.getName());
+            if (anonyFunc) {
+                type = anonyFunc.getType();
+            }
+        }
+        if (type instanceof CallableType) {
+            let method = viewtree.render.getDeclaringArkClass().getMethod((type as CallableType).getMethodSignature());
+            if (method) {
+                await viewtree.parseCfg(method.getCfg(), treeStack, scope);
+            }
+        }
+    }
+
+    private createTreeNode(treeStack: TreeNodeStack, name: string, stmt: Stmt, expr: ArkInstanceInvokeExpr) {
+        let node = new ViewTreeNode(name, stmt, expr, this);
+        treeStack.push(node);
+        this.root = treeStack.root;
     }
 
 }
