@@ -11,10 +11,6 @@ interface NotificationItem_Params {
     isSubItem?: boolean;
     registerEventCapture?: (id: string) => boolean;
 }
-let __generate__Id: number = 0;
-function generateId(): string {
-    return "notificationItem_" + ++__generate__Id;
-}
 /*
  * Copyright (c) 2021-2022 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -42,17 +38,17 @@ import SwipeLayout from './SwipeLayout';
 import { getId } from '../../model/SwipeLayoutUtils';
 const TAG = 'NoticeItem-NotificationItem';
 const deviceTypeInfo = deviceInfo.deviceType;
-export default class NotificationItem extends View {
-    constructor(compilerAssignedUniqueChildId, parent, params, localStorage) {
-        super(compilerAssignedUniqueChildId, parent, localStorage);
-        this.__mIconAlpha = new ObservedPropertySimple(0, this, "mIconAlpha");
-        this.__itemWidth = new ObservedPropertySimple('100%', this, "itemWidth");
+export default class NotificationItem extends ViewPU {
+    constructor(parent, params, __localStorage, elmtId = -1) {
+        super(parent, __localStorage, elmtId);
+        this.__mIconAlpha = new ObservedPropertySimplePU(0, this, "mIconAlpha");
+        this.__itemWidth = new ObservedPropertySimplePU('100%', this, "itemWidth");
         this.itemData = {};
         this.isSubItem = false;
         this.registerEventCapture = null;
-        this.updateWithValueParams(params);
+        this.setInitiallyProvidedValue(params);
     }
-    updateWithValueParams(params: NotificationItem_Params) {
+    setInitiallyProvidedValue(params: NotificationItem_Params) {
         if (params.mIconAlpha !== undefined) {
             this.mIconAlpha = params.mIconAlpha;
         }
@@ -69,19 +65,26 @@ export default class NotificationItem extends View {
             this.registerEventCapture = params.registerEventCapture;
         }
     }
+    updateStateVars(params: NotificationItem_Params) {
+    }
+    purgeVariableDependenciesOnElmtId(rmElmtId) {
+        this.__mIconAlpha.purgeDependencyOnElmtId(rmElmtId);
+        this.__itemWidth.purgeDependencyOnElmtId(rmElmtId);
+    }
     aboutToBeDeleted() {
         this.__mIconAlpha.aboutToBeDeleted();
         this.__itemWidth.aboutToBeDeleted();
-        SubscriberManager.Get().delete(this.id());
+        SubscriberManager.Get().delete(this.id__());
+        this.aboutToBeDeletedInternal();
     }
-    private __mIconAlpha: ObservedPropertySimple<number>;
+    private __mIconAlpha: ObservedPropertySimplePU<number>;
     get mIconAlpha() {
         return this.__mIconAlpha.get();
     }
     set mIconAlpha(newValue: number) {
         this.__mIconAlpha.set(newValue);
     }
-    private __itemWidth: ObservedPropertySimple<string>;
+    private __itemWidth: ObservedPropertySimplePU<string>;
     get itemWidth() {
         return this.__itemWidth.get();
     }
@@ -103,79 +106,88 @@ export default class NotificationItem extends View {
         NotificationViewModel.removeNotificationItem(this.itemData, true);
     }
     SurfaceComponent(parent = null) {
-        Column.create();
-        Column.width(this.itemWidth);
-        Column.borderRadius(!this.isSubItem ? $r("sys.float.ohos_id_corner_radius_default_l") : 0);
-        Column.clip(!this.isSubItem);
-        let earlierCreatedChild_10: FrontItem = ((parent ? parent : this) && (parent ? parent : this).findChildById) ? (parent ? parent : this).findChildById(generateId()) as FrontItem : undefined;
-        if (earlierCreatedChild_10 == undefined) {
-            View.create(new FrontItem("notificationItem_" + __generate__Id, parent ? parent : this, { itemData: this.itemData, isSubItem: this.isSubItem }));
-        }
-        else {
-            earlierCreatedChild_10.updateWithValueParams({
-                itemData: this.itemData, isSubItem: this.isSubItem
-            });
-            if (!earlierCreatedChild_10.needsUpdate()) {
-                earlierCreatedChild_10.markStatic();
+        this.observeComponentCreation((elmtId, isInitialRender) => {
+            ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+            Column.create();
+            Column.width(this.itemWidth);
+            Column.borderRadius(!this.isSubItem ? { "id": 125829719, "type": 10002, params: [] } : 0);
+            Column.clip(!this.isSubItem);
+            if (!isInitialRender) {
+                Column.pop();
             }
-            View.create(earlierCreatedChild_10);
+            ViewStackProcessor.StopGetAccessRecording();
+        });
+        {
+            this.observeComponentCreation((elmtId, isInitialRender) => {
+                ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+                if (isInitialRender) {
+                    ViewPU.create(new FrontItem(this, { itemData: this.itemData, isSubItem: this.isSubItem }, undefined, elmtId));
+                }
+                else {
+                    this.updateStateVarsOfChildByElmtId(elmtId, {});
+                }
+                ViewStackProcessor.StopGetAccessRecording();
+            });
         }
         Column.pop();
     }
     BottomLeftComponent(parent = null) {
-        let earlierCreatedChild_11: BottomLeftItem = ((parent ? parent : this) && (parent ? parent : this).findChildById) ? (parent ? parent : this).findChildById(generateId()) as BottomLeftItem : undefined;
-        if (earlierCreatedChild_11 == undefined) {
-            View.create(new BottomLeftItem("notificationItem_" + __generate__Id, parent ? parent : this, { itemData: this.itemData, bottomLeftItemHeight: 92 }));
-        }
-        else {
-            earlierCreatedChild_11.updateWithValueParams({
-                itemData: this.itemData, bottomLeftItemHeight: 92
+        {
+            this.observeComponentCreation((elmtId, isInitialRender) => {
+                ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+                if (isInitialRender) {
+                    ViewPU.create(new BottomLeftItem(this, { itemData: this.itemData, bottomLeftItemHeight: 92 }, undefined, elmtId));
+                }
+                else {
+                    this.updateStateVarsOfChildByElmtId(elmtId, {});
+                }
+                ViewStackProcessor.StopGetAccessRecording();
             });
-            if (!earlierCreatedChild_11.needsUpdate()) {
-                earlierCreatedChild_11.markStatic();
-            }
-            View.create(earlierCreatedChild_11);
         }
     }
-    render() {
-        Column.create();
-        Column.width(this.itemWidth);
-        Column.borderRadius(!this.isSubItem ? $r("sys.float.ohos_id_corner_radius_default_l") : 0);
-        Column.clip(!this.isSubItem);
-        let earlierCreatedChild_12: SwipeLayout = (this && this.findChildById) ? this.findChildById("12") as SwipeLayout : undefined;
-        if (earlierCreatedChild_12 == undefined) {
-            View.create(new SwipeLayout("12", this, {
-                swipeLayoutId: getId(this.itemData, false),
-                bottomLeftWidth: 80,
-                bottomRightWidth: 60,
-                leftThreshold: 100,
-                bottomHeight: 92,
-                deleteButtonCallback: this.deleteButtonCallback.bind(this),
-                SurfaceComponent: this.SurfaceComponent.bind(this),
-                BottomLeftComponent: this.BottomLeftComponent.bind(this),
-                registerEventCapture: this.registerNotificationItemEventCapture.bind(this)
-            }));
-        }
-        else {
-            earlierCreatedChild_12.updateWithValueParams({
-                swipeLayoutId: getId(this.itemData, false),
-                bottomLeftWidth: 80,
-                bottomRightWidth: 60,
-                leftThreshold: 100,
-                bottomHeight: 92,
-                deleteButtonCallback: this.deleteButtonCallback.bind(this),
-                SurfaceComponent: this.SurfaceComponent.bind(this),
-                BottomLeftComponent: this.BottomLeftComponent.bind(this),
-                registerEventCapture: this.registerNotificationItemEventCapture.bind(this)
+    initialRender() {
+        this.observeComponentCreation((elmtId, isInitialRender) => {
+            ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+            Column.create();
+            Column.width(this.itemWidth);
+            Column.borderRadius(!this.isSubItem ? { "id": 125829719, "type": 10002, params: [] } : 0);
+            Column.clip(!this.isSubItem);
+            if (!isInitialRender) {
+                Column.pop();
+            }
+            ViewStackProcessor.StopGetAccessRecording();
+        });
+        {
+            this.observeComponentCreation((elmtId, isInitialRender) => {
+                ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+                if (isInitialRender) {
+                    ViewPU.create(new SwipeLayout(this, {
+                        swipeLayoutId: getId(this.itemData, false),
+                        bottomLeftWidth: 80,
+                        bottomRightWidth: 60,
+                        leftThreshold: 100,
+                        bottomHeight: 92,
+                        deleteButtonCallback: this.deleteButtonCallback.bind(this),
+                        SurfaceComponent: this.SurfaceComponent.bind(this),
+                        BottomLeftComponent: this.BottomLeftComponent.bind(this),
+                        registerEventCapture: this.registerNotificationItemEventCapture.bind(this)
+                    }, undefined, elmtId));
+                }
+                else {
+                    this.updateStateVarsOfChildByElmtId(elmtId, {});
+                }
+                ViewStackProcessor.StopGetAccessRecording();
             });
-            View.create(earlierCreatedChild_12);
         }
         Column.pop();
     }
+    rerender() {
+        this.updateDirtyElements();
+    }
 }
-class FrontItem extends View {
-    constructor(compilerAssignedUniqueChildId, parent, params, localStorage) {
-        super(compilerAssignedUniqueChildId, parent, localStorage);
+class FrontItem extends ViewPU {
+    constructor(parent, params, __localStorage, elmtId = -1) {
+        super(parent, __localStorage, elmtId);
         this.itemData = {};
         this.nowWant = undefined;
         this.isSubItem = false;
@@ -186,9 +198,9 @@ class FrontItem extends View {
             autoCancel: false,
             offset: { dx: 0, dy: 200 }
         }, this);
-        this.updateWithValueParams(params);
+        this.setInitiallyProvidedValue(params);
     }
-    updateWithValueParams(params: FrontItem_Params) {
+    setInitiallyProvidedValue(params: FrontItem_Params) {
         if (params.itemData !== undefined) {
             this.itemData = params.itemData;
         }
@@ -202,8 +214,13 @@ class FrontItem extends View {
             this.devicesDialogController = params.devicesDialogController;
         }
     }
+    updateStateVars(params: FrontItem_Params) {
+    }
+    purgeVariableDependenciesOnElmtId(rmElmtId) {
+    }
     aboutToBeDeleted() {
-        SubscriberManager.Get().delete(this.id());
+        SubscriberManager.Get().delete(this.id__());
+        this.aboutToBeDeletedInternal();
     }
     private itemData: any;
     private nowWant: any;
@@ -214,18 +231,34 @@ class FrontItem extends View {
         this.devicesDialogController = undefined;
         Log.showInfo(TAG, 'FrontItem -> aboutToDisappear');
     }
-    render() {
-        Column.create();
-        Column.width('100%');
-        Column.borderRadius(!this.isSubItem ? $r("sys.float.ohos_id_corner_radius_default_l") : 0);
-        Column.backgroundColor($r('app.color.notificationitem_background'));
-        If.create();
-        if (this.itemData.template?.name) {
-            If.branchId(0);
-        }
-        else {
-            If.branchId(1);
-        }
+    initialRender() {
+        this.observeComponentCreation((elmtId, isInitialRender) => {
+            ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+            Column.create();
+            Column.width('100%');
+            Column.borderRadius(!this.isSubItem ? { "id": 125829719, "type": 10002, params: [] } : 0);
+            Column.backgroundColor($r('app.color.notificationitem_background'));
+            if (!isInitialRender) {
+                Column.pop();
+            }
+            ViewStackProcessor.StopGetAccessRecording();
+        });
+        this.observeComponentCreation((elmtId, isInitialRender) => {
+            ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+            If.create();
+            if (this.itemData.template?.name) {
+                this.ifElseBranchUpdateFunction(0, () => {
+                });
+            }
+            else {
+                this.ifElseBranchUpdateFunction(1, () => {
+                });
+            }
+            if (!isInitialRender) {
+                If.pop();
+            }
+            ViewStackProcessor.StopGetAccessRecording();
+        });
         If.pop();
         Column.pop();
     }
@@ -263,4 +296,10 @@ class FrontItem extends View {
         };
         NotificationViewModel.clickDistributionItem(this.itemData, triggerInfo);
     }
+    rerender() {
+        this.updateDirtyElements();
+    }
 }
+ViewStackProcessor.StartGetAccessRecordingFor(ViewStackProcessor.AllocateNewElmetIdForNextComponent());
+loadDocument(new ParentComponent(undefined, {}));
+ViewStackProcessor.StopGetAccessRecording();

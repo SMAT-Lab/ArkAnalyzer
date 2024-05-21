@@ -264,7 +264,8 @@ export function buildArkMethodFromArkClass(methodNode: NodeA, declaringClass: Ar
     if (mtd.getName() == 'constructor' && mtd.getDeclaringArkClass()) {
         mtd.getCfg().constructorAddInit(mtd);
     }
-    if (mtd.getSubSignature().toString() == 'render()' && !mtd.containsModifier('StaticKeyword') && declaringClass.getSuperClassName() == 'View') {
+    if ((mtd.getSubSignature().toString() == 'render()' && !mtd.containsModifier('StaticKeyword') && declaringClass.getSuperClassName() == 'View')
+        || (mtd.getSubSignature().toString() == 'initialRender()' && !mtd.containsModifier('StaticKeyword') && declaringClass.getSuperClassName() == 'ViewPU')) {
         declaringClass.setViewTree(new ViewTree(mtd));
     }
 }

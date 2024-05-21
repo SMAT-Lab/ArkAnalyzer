@@ -12,10 +12,6 @@ interface IconListComponent_Params {
     confirmDialogController?: CustomDialogController;
     iconConfigs?: IconData[];
 }
-let __generate__Id: number = 0;
-function generateId(): string {
-    return "iconListComponent_" + ++__generate__Id;
-}
 /*
  * Copyright (c) 2021-2022 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -50,12 +46,12 @@ export function getIconListSize(list?: IconData[]) {
     let listSize = list?.length ?? iconSize;
     return listSize * (Layout.BUTTON_SIZE + 2 * Layout.ICON_MARGIN) + Layout.ICON_MARGIN;
 }
-export default class IconListComponent extends View {
-    constructor(compilerAssignedUniqueChildId, parent, params, localStorage) {
-        super(compilerAssignedUniqueChildId, parent, localStorage);
+export default class IconListComponent extends ViewPU {
+    constructor(parent, params, __localStorage, elmtId = -1) {
+        super(parent, __localStorage, elmtId);
         this.itemData = {};
         this.isGroup = false;
-        this.__iconAlpha = new SynchedPropertySimpleOneWay(params.iconAlpha, this, "iconAlpha");
+        this.__iconAlpha = new SynchedPropertySimpleOneWayPU(params.iconAlpha, this, "iconAlpha");
         this.settingDialogController = new CustomDialogController({
             builder: SettingDialog({
                 itemData: this.itemData,
@@ -98,16 +94,15 @@ export default class IconListComponent extends View {
                 }
             }
         ];
-        this.updateWithValueParams(params);
+        this.setInitiallyProvidedValue(params);
     }
-    updateWithValueParams(params: IconListComponent_Params) {
+    setInitiallyProvidedValue(params: IconListComponent_Params) {
         if (params.itemData !== undefined) {
             this.itemData = params.itemData;
         }
         if (params.isGroup !== undefined) {
             this.isGroup = params.isGroup;
         }
-        this.iconAlpha = params.iconAlpha;
         if (params.settingDialogController !== undefined) {
             this.settingDialogController = params.settingDialogController;
         }
@@ -118,13 +113,20 @@ export default class IconListComponent extends View {
             this.iconConfigs = params.iconConfigs;
         }
     }
+    updateStateVars(params: IconListComponent_Params) {
+        this.__iconAlpha.reset(params.iconAlpha);
+    }
+    purgeVariableDependenciesOnElmtId(rmElmtId) {
+        this.__iconAlpha.purgeDependencyOnElmtId(rmElmtId);
+    }
     aboutToBeDeleted() {
         this.__iconAlpha.aboutToBeDeleted();
-        SubscriberManager.Get().delete(this.id());
+        SubscriberManager.Get().delete(this.id__());
+        this.aboutToBeDeletedInternal();
     }
     private itemData: any;
     private isGroup: boolean;
-    private __iconAlpha: SynchedPropertySimpleOneWay<number>;
+    private __iconAlpha: SynchedPropertySimpleOneWayPU<number>;
     get iconAlpha() {
         return this.__iconAlpha.get();
     }
@@ -145,36 +147,81 @@ export default class IconListComponent extends View {
         this.confirmDialogController = undefined;
         Log.showInfo(TAG, 'aboutToDisappear');
     }
-    render() {
-        Flex.create({ direction: FlexDirection.Row, alignItems: ItemAlign.End, justifyContent: FlexAlign.End });
-        Flex.margin({ left: Layout.ICON_MARGIN });
-        ForEach.create("8", this, ObservedObject.GetRawObject(this.iconConfigs), (item) => {
-            Button.createWithChild({ type: ButtonType.Circle, stateEffect: true });
-            Button.width(Layout.BUTTON_SIZE);
-            Button.height(Layout.BUTTON_SIZE);
-            Button.opacity(this.iconAlpha);
-            Button.backgroundColor($r("app.color.button_background"));
-            Button.margin({ left: Layout.ICON_MARGIN, right: Layout.ICON_MARGIN });
-            Button.onClick(() => item.callback && item.callback());
-            If.create();
-            if (item.src) {
-                If.branchId(0);
-                Image.create(item.src);
-                Image.objectFit(ImageFit.Contain);
-                Image.fillColor($r("sys.color.ohos_id_color_primary_contrary"));
-                Image.width(Layout.ICON_SIZE);
-                Image.height(Layout.ICON_SIZE);
+    initialRender() {
+        this.observeComponentCreation((elmtId, isInitialRender) => {
+            ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+            Flex.create({ direction: FlexDirection.Row, alignItems: ItemAlign.End, justifyContent: FlexAlign.End });
+            Flex.margin({ left: Layout.ICON_MARGIN });
+            if (!isInitialRender) {
+                Flex.pop();
             }
-            If.pop();
-            Button.pop();
+            ViewStackProcessor.StopGetAccessRecording();
+        });
+        this.observeComponentCreation((elmtId, isInitialRender) => {
+            ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+            ForEach.create();
+            const forEachItemGenFunction = _item => {
+                const item = _item;
+                this.observeComponentCreation((elmtId, isInitialRender) => {
+                    ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+                    Button.createWithChild({ type: ButtonType.Circle, stateEffect: true });
+                    Button.width(Layout.BUTTON_SIZE);
+                    Button.height(Layout.BUTTON_SIZE);
+                    Button.opacity(this.iconAlpha);
+                    Button.backgroundColor($r("app.color.button_background"));
+                    Button.margin({ left: Layout.ICON_MARGIN, right: Layout.ICON_MARGIN });
+                    Button.onClick(() => item.callback && item.callback());
+                    if (!isInitialRender) {
+                        Button.pop();
+                    }
+                    ViewStackProcessor.StopGetAccessRecording();
+                });
+                this.observeComponentCreation((elmtId, isInitialRender) => {
+                    ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+                    If.create();
+                    if (item.src) {
+                        this.ifElseBranchUpdateFunction(0, () => {
+                            this.observeComponentCreation((elmtId, isInitialRender) => {
+                                ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+                                Image.create(item.src);
+                                Image.objectFit(ImageFit.Contain);
+                                Image.fillColor({ "id": 125829189, "type": 10001, params: [] });
+                                Image.width(Layout.ICON_SIZE);
+                                Image.height(Layout.ICON_SIZE);
+                                if (!isInitialRender) {
+                                    Image.pop();
+                                }
+                                ViewStackProcessor.StopGetAccessRecording();
+                            });
+                        });
+                    }
+                    else {
+                        If.branchId(1);
+                    }
+                    if (!isInitialRender) {
+                        If.pop();
+                    }
+                    ViewStackProcessor.StopGetAccessRecording();
+                });
+                If.pop();
+                Button.pop();
+            };
+            this.forEachUpdateFunction(elmtId, this.iconConfigs, forEachItemGenFunction);
+            if (!isInitialRender) {
+                ForEach.pop();
+            }
+            ViewStackProcessor.StopGetAccessRecording();
         });
         ForEach.pop();
         Flex.pop();
     }
+    rerender() {
+        this.updateDirtyElements();
+    }
 }
-export class BottomLeftItem extends View {
-    constructor(compilerAssignedUniqueChildId, parent, params, localStorage) {
-        super(compilerAssignedUniqueChildId, parent, localStorage);
+export class BottomLeftItem extends ViewPU {
+    constructor(parent, params, __localStorage, elmtId = -1) {
+        super(parent, __localStorage, elmtId);
         this.itemData = {};
         this.bottomLeftItemHeight = 92;
         this.settingDialogController = new CustomDialogController({
@@ -198,9 +245,9 @@ export class BottomLeftItem extends View {
             offset: { dx: 0, dy: $r('app.float.confirm_dialog_dy') },
             customStyle: true
         }, this);
-        this.updateWithValueParams(params);
+        this.setInitiallyProvidedValue(params);
     }
-    updateWithValueParams(params: BottomLeftItem_Params) {
+    setInitiallyProvidedValue(params: BottomLeftItem_Params) {
         if (params.itemData !== undefined) {
             this.itemData = params.itemData;
         }
@@ -214,8 +261,13 @@ export class BottomLeftItem extends View {
             this.confirmDialogController = params.confirmDialogController;
         }
     }
+    updateStateVars(params: BottomLeftItem_Params) {
+    }
+    purgeVariableDependenciesOnElmtId(rmElmtId) {
+    }
     aboutToBeDeleted() {
-        SubscriberManager.Get().delete(this.id());
+        SubscriberManager.Get().delete(this.id__());
+        this.aboutToBeDeletedInternal();
     }
     private itemData: any;
     private bottomLeftItemHeight: number;
@@ -228,22 +280,49 @@ export class BottomLeftItem extends View {
         this.confirmDialogController = undefined;
         Log.showInfo(TAG, 'BottomLeftItem -> aboutToDisappear');
     }
-    render() {
-        Row.create();
-        Row.height(this.bottomLeftItemHeight);
-        Row.justifyContent(FlexAlign.SpaceEvenly);
-        Row.alignItems(VerticalAlign.Center);
-        Button.createWithChild({ type: ButtonType.Circle, stateEffect: true });
-        Button.backgroundColor($r("app.color.button_background"));
-        Button.onClick(() => this.settingDialogController.open());
-        Button.width(Layout.BUTTON_SIZE);
-        Button.height(Layout.BUTTON_SIZE);
-        Image.create($r("app.media.ic_public_settings_filled"));
-        Image.objectFit(ImageFit.Contain);
-        Image.fillColor($r("sys.color.ohos_id_color_primary_contrary"));
-        Image.width(Layout.ICON_SIZE);
-        Image.height(Layout.ICON_SIZE);
+    initialRender() {
+        this.observeComponentCreation((elmtId, isInitialRender) => {
+            ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+            Row.create();
+            Row.height(this.bottomLeftItemHeight);
+            Row.justifyContent(FlexAlign.SpaceEvenly);
+            Row.alignItems(VerticalAlign.Center);
+            if (!isInitialRender) {
+                Row.pop();
+            }
+            ViewStackProcessor.StopGetAccessRecording();
+        });
+        this.observeComponentCreation((elmtId, isInitialRender) => {
+            ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+            Button.createWithChild({ type: ButtonType.Circle, stateEffect: true });
+            Button.backgroundColor($r("app.color.button_background"));
+            Button.onClick(() => this.settingDialogController.open());
+            Button.width(Layout.BUTTON_SIZE);
+            Button.height(Layout.BUTTON_SIZE);
+            if (!isInitialRender) {
+                Button.pop();
+            }
+            ViewStackProcessor.StopGetAccessRecording();
+        });
+        this.observeComponentCreation((elmtId, isInitialRender) => {
+            ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+            Image.create($r("app.media.ic_public_settings_filled"));
+            Image.objectFit(ImageFit.Contain);
+            Image.fillColor({ "id": 125829189, "type": 10001, params: [] });
+            Image.width(Layout.ICON_SIZE);
+            Image.height(Layout.ICON_SIZE);
+            if (!isInitialRender) {
+                Image.pop();
+            }
+            ViewStackProcessor.StopGetAccessRecording();
+        });
         Button.pop();
         Row.pop();
     }
+    rerender() {
+        this.updateDirtyElements();
+    }
 }
+ViewStackProcessor.StartGetAccessRecordingFor(ViewStackProcessor.AllocateNewElmetIdForNextComponent());
+loadDocument(new ParentComponent(undefined, {}));
+ViewStackProcessor.StopGetAccessRecording();
