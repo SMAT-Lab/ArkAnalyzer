@@ -1,6 +1,7 @@
 {
     "targetProjectName": "sample",
-    "targetProjectDirectory": "./tests/sample",
+    "targetProjectOriginDirectory": "./tests/sample",
+    "targetProjectDirectory": "./tests/ets2ts",
 
     "logPath": "./log/ArkAnalyzer.log",
     

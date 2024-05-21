@@ -1,6 +1,7 @@
 {
     "targetProjectName": "SE4OpenHarmony",
-    "targetProjectDirectory": "C:\\msys64\\home\\Yifei\\code\\SE4OpenHarmony\\Apps\\ArkTS2TSRes\\AppAccountManager",
+    "targetProjectOriginDirectory": "C:\\msys64\\home\\Yifei\\code\\SE4OpenHarmony\\Apps\\ArkTS2TSRes\\AppAccountManager",
+    "targetProjectDirectory": "C:\\msys64\\home\\Yifei\\code\\SE4OpenHarmony\\Apps\\ArkTS2TSRes\\ets2ts",
 
     "logPath": "C:\\msys64\\home\\Yifei\\log\\ArkAnalyzer.log",
     
