@@ -1,5 +1,5 @@
 import {Scene} from "../../Scene";
-import { Local } from "../base";
+import { Local } from "../base/Local";
 import {ArkClass} from "../model/ArkClass";
 import {ArkFile} from "../model/ArkFile";
 import {ArkMethod} from "../model/ArkMethod";

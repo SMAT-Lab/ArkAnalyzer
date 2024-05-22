@@ -197,17 +197,13 @@ export class ViewTree {
     }
 
     private async parseComponentView(view: ViewTreeNode, expr: ArkInstanceInvokeExpr): Promise<boolean> {
-        let arg = expr.getArg(0) as Local;
-        let assignStmt = arg.getDeclaringStmt() as ArkAssignStmt;
-        let classSignature: ClassSignature;
-        let rightOp = assignStmt.getRightOp();
-        if (rightOp instanceof ArkNewExpr) {
-            classSignature = (rightOp.getType() as ClassType).getClassSignature();
-            view.classSignature = classSignature;
-        } else {
+        let initValue = CfgUitls.backtraceLocalInitValue(expr.getArg(0) as Local)
+        if (!(initValue instanceof ArkNewExpr)) {
             return false;
         }
 
+        let classSignature:ClassSignature = (initValue.getType() as ClassType).getClassSignature();
+        view.classSignature = classSignature;
         let componentCls = this.render.getDeclaringArkFile().getScene().getClass(classSignature);
         let componentViewTree = await componentCls?.getViewTree();
         if (componentViewTree) {
@@ -231,7 +227,7 @@ export class ViewTree {
                 }
 
                 if (stmt instanceof ArkIfStmt) {
-                    let values = cfgUtils.getStmtBindValues(stmt);
+                    let values = CfgUitls.getStmtBindValues(stmt);
                     values.forEach((v) => {
                         if (v instanceof Local) {
                             if (v.getName() == 'isInitialRender' && cfgUtils.isIfBlock(block)) {
@@ -362,6 +358,7 @@ export class ViewTree {
 
     private registeParser() {
         this.parsers.set('this.observeComponentCreation', ViewTree.observeComponentCreationParser);
+        this.parsers.set('this.observeComponentCreation2', ViewTree.observeComponentCreationParser);
         this.parsers.set('this.ifElseBranchUpdateFunction', ViewTree.ifElseBranchUpdateFunctionParser);
         this.parsers.set('this.forEachUpdateFunction', ViewTree.forEachUpdateFunction);
     }
