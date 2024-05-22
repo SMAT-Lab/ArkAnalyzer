@@ -1,7 +1,8 @@
 import { Constant } from "../core/base/Constant";
 import { Local } from "../core/base/Local";
 import { ArkInstanceFieldRef } from "../core/base/Ref";
-import { ArkGotoStmt, ArkIfStmt, Stmt } from "../core/base/Stmt";
+import { ArkAssignStmt, ArkGotoStmt, ArkIfStmt, Stmt } from "../core/base/Stmt";
+import { Value } from "../core/base/Value";
 import { BasicBlock } from "../core/graph/BasicBlock";
 import { Cfg } from "../core/graph/Cfg";
 
@@ -25,11 +26,23 @@ export class CfgUitls {
         this.identifyBlocks(cfg);
     }
 
-    public getStmtBindValues(stmt: Stmt): Set<Local | Constant | ArkInstanceFieldRef> {
+    public static backtraceLocalInitValue(value: Local): Local | Value {
+        let stmt = value.getDeclaringStmt();
+        if (stmt instanceof ArkAssignStmt) {
+            let rightOp = stmt.getRightOp(); 
+            if (rightOp instanceof Local) {
+                return CfgUitls.backtraceLocalInitValue(rightOp);
+            }
+            return rightOp;
+        }
+        return value;
+    }
+
+    public static getStmtBindValues(stmt: Stmt): Set<Local | Constant | ArkInstanceFieldRef> {
         let values: Set<Local | Constant | ArkInstanceFieldRef> = new Set();
         for (const v of stmt.getUses()) {
             if (v instanceof Local) {
-                let localBindValues = this.getLocalBindValues(v);
+                let localBindValues = CfgUitls.getLocalBindValues(v);
                 localBindValues.forEach((value) => {
                     values.add(value);
                 })
@@ -39,7 +52,7 @@ export class CfgUitls {
         return values;
     }
 
-    public getLocalBindValues(local: Local): Set<Local | Constant | ArkInstanceFieldRef> {
+    public static getLocalBindValues(local: Local): Set<Local | Constant | ArkInstanceFieldRef> {
         let values: Set<Local | Constant | ArkInstanceFieldRef> = new Set();
         values.add(local);
         const stmt = local.getDeclaringStmt();
@@ -53,7 +66,7 @@ export class CfgUitls {
             } else if (v instanceof ArkInstanceFieldRef) {
                 values.add(v);
             } else if (v instanceof Local) {
-                this.getLocalBindValues(v).forEach((v1) => {
+                CfgUitls.getLocalBindValues(v).forEach((v1) => {
                     values.add(v1);
                 });
             }
