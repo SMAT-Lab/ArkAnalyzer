@@ -4,15 +4,13 @@ import { ArkAssignStmt, ArkReturnStmt } from "../base/Stmt";
 import { LineColPosition } from "../base/Position";
 import { Type, UnknownType } from "../base/Type";
 import { Value } from "../base/Value";
-import { BodyBuilder } from "../common/BodyBuilder";
-import { MethodInfo, MethodParameter } from "../common/MethodInfoBuilder";
 import { Cfg } from "../graph/Cfg";
-import { ViewTree } from "../graph/ViewTree";
 import { ArkBody } from "./ArkBody";
 import { ArkClass } from "./ArkClass";
 import { ArkFile } from "./ArkFile";
 import { MethodSignature, MethodSubSignature } from "./ArkSignature";
 import { Decorator } from "../base/Decorator";
+import { MethodParameter } from "./builder/ArkMethodBuilder";
 
 export const arkMethodNodeKind = ['MethodDeclaration', 'Constructor', 'FunctionDeclaration', 'GetAccessor',
     'SetAccessor', 'ArrowFunction', 'FunctionExpression', 'MethodSignature', 'ConstructSignature', 'CallSignature'];
