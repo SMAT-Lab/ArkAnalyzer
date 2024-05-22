@@ -1,9 +1,8 @@
 import { SceneConfig } from "../../src/Config";
-import { assert, describe, it, vi,expect } from "vitest";
+import { assert, describe, it, expect } from "vitest";
 import { Scene } from "../../src/Scene";
 import path from "path";
 import { Decorator } from "../../src/core/base/Decorator";
-
 
 describe("ViewTree Test API12", () => {
     let config: SceneConfig = new SceneConfig();
@@ -77,13 +76,16 @@ describe("ViewTree Test API12", () => {
     })
 
     it('test @Builder', async () => {
-        let arkFile =  scene.getFiles().find(file => file.getName() == 'ControlCenterComponent.ts');
-        let arkClass = arkFile?.getClassWithName('OutComponent');
+        let arkFile =  scene.getFiles().find(file => file.getName() == 'Builder.ts');
+        let arkClass = arkFile?.getClassWithName('BuilderTest');
         if (arkClass == null) {
             assert.isNotNull(arkClass);
             return;
         }
         let vt = await arkClass.getViewTree();
+        let root = vt.getRoot();
+        expect(root.children[0].name).eq('Column');
+        expect(root.children[0].children[0].name).eq('Text');
         let method = arkClass.getMethodWithName('builderTest');
         if (method) {
             let hasBuilder = false;
@@ -95,6 +97,7 @@ describe("ViewTree Test API12", () => {
                 }
             }
             expect(hasBuilder).eq(true);
+
         }
     })
 
@@ -106,17 +109,12 @@ describe("ViewTree Test API12", () => {
             return;
         }
         let vt = await arkClass.getViewTree();
-
         let type = vt.getClassFieldType('__SurfaceComponent');
         expect((type as Decorator).getKind()).equals('BuilderParam');
         let root = vt.getRoot();
-        // expect(root.children[0].children[0].children[0].name).equals('@BuilderParam');
-        // expect(root.children[0].children[0].children[0].buildParam).equals('SurfaceComponent');
+        expect(root.children[0].children[0].children[0].name).equals('BuilderParam');
+        expect(root.children[0].children[0].children[0].buildParam).equals('SurfaceComponent');
     })
-
-    
-
-
 })
 
 
@@ -225,8 +223,8 @@ describe("ViewTree Test API9", () => {
         let type = vt.getClassFieldType('__SurfaceComponent');
         expect((type as Decorator).getKind()).equals('BuilderParam');
         let root = vt.getRoot();
-        // expect(root.children[0].children[0].children[0].name).equals('@BuilderParam');
-        // expect(root.children[0].children[0].children[0].buildParam).equals('SurfaceComponent');
+        expect(root.children[0].children[0].children[0].name).equals('BuilderParam');
+        expect(root.children[0].children[0].children[0].buildParam).equals('SurfaceComponent');
     })
 
     
