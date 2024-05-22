@@ -172,7 +172,7 @@ export class ViewTree {
         this.buildViewStatus = true;
         await this.loadClasssFieldTypes();
         let treeStack: TreeNodeStack = new TreeNodeStack();
-        await this.parseCfg(this.render.getCfg(), treeStack);
+        await this.parseCfg(this.render.getCfg(), this.render.getBody().getLocals(), treeStack);
         this.root = treeStack.root;
     }
 
@@ -182,18 +182,6 @@ export class ViewTree {
 
     public getRoot(): ViewTreeNode {
         return this.root;
-    }
-
-    private async parseForEachAnonymousFunc(treeStack: TreeNodeStack, expr: ArkInstanceInvokeExpr) {
-        if (expr.getArgs().length < 4) {
-            return;
-        }
-        let arg = expr.getArg(3) as Local;
-        let type = arg.getType() as CallableType;
-        let method = this.render.getDeclaringArkClass().getMethod(type.getMethodSignature());
-        if (method) {
-            await this.parseCfg(method.getCfg(), treeStack);
-        }
     }
 
     private async parseComponentView(view: ViewTreeNode, expr: ArkInstanceInvokeExpr): Promise<boolean> {
@@ -212,7 +200,7 @@ export class ViewTree {
         return true;
     }
 
-    private async parseCfg(cfg: Cfg, treeStack: TreeNodeStack, scope: Map<string, Local> = new Map()) {
+    private async parseCfg(cfg: Cfg, locals: Set<Local>, treeStack: TreeNodeStack, scope: Map<string, Local> = new Map()) {
         let blocks = cfg.getBlocks();
         let visitor = new Set<BasicBlock>();
         let cfgUtils = new CfgUitls(cfg);        
@@ -239,34 +227,25 @@ export class ViewTree {
                 }
 
                 let expr = stmt.getInvokeExpr();
+                let methodName = expr.getMethodSignature().getMethodSubSignature().getMethodName();
                 if (!(expr instanceof ArkInstanceInvokeExpr)) {
+                    await this.parseBuilderStmt(methodName, locals, treeStack, scope);
                     continue;
                 }
 
                 let name = expr.getBase().getName();
-                let methodName = expr.getMethodSignature().getMethodSubSignature().getMethodName();
                 let parserFn = this.parsers.get(`${name}.${methodName}`);
                 if (parserFn) {
                     await parserFn(this, treeStack, stmt, expr, scope);
                     continue;
                 }
+
                 if (name.startsWith('$temp')) {
                     continue;
                 }
-                let methodDecorator = this.getClassFieldType('__' + methodName);
-                if (name == 'this' && methodDecorator instanceof Decorator && methodDecorator.getKind() == 'BuilderParam') {
-                    let node = new ViewTreeNode(`@BuilderParam`, stmt, expr, this);
-                    node.buildParam = methodName;
-                    treeStack.push(node);
-                    this.root = treeStack.root;
-                    continue;
-                } 
+
                 treeStack.popAutomicComponent(name);
                 let currentNode = treeStack.top();
-                if (name == 'If' && methodName == 'branchId') {
-                    name = 'IfBranch';
-                    treeStack.popComponentExpect('If');
-                }
                 if (this.isCreateFunc(methodName)) {
                     let node = new ViewTreeNode(name, stmt, expr, this);
                     if ((name == 'View' || name == 'ViewPU') && !await this.parseComponentView(node, expr)) {
@@ -274,9 +253,6 @@ export class ViewTree {
                     }
                     treeStack.push(node);
                     this.root = treeStack.root;
-                    if (name == 'ForEach' || name == 'LazyForEach') {
-                        await this.parseForEachAnonymousFunc(treeStack, expr);
-                    }
                     continue;
                 } 
                 if (name == currentNode?.name) {
@@ -289,6 +265,61 @@ export class ViewTree {
                     treeStack.pop();
                 }
             }
+        }
+    }
+
+    private async parseBuilderStmt(methodName: string, locals: Set<Local>, treeStack: TreeNodeStack, scope: Map<string, Local> = new Map()) {
+        let tempFn: Local|undefined;
+        locals.forEach((v) => {
+            if (v.getName() == methodName) {
+                tempFn = v;
+            }
+        })
+
+        if (!tempFn) {
+            return;
+        }
+        let assignStmt = tempFn.getDeclaringStmt();
+        if (!(assignStmt instanceof ArkAssignStmt)) {
+            return;
+        }
+        let rightOp = assignStmt.getRightOp();
+        if (!(rightOp instanceof ArkInstanceInvokeExpr)) {
+            return;
+        }
+        if (rightOp.getMethodSignature().getMethodSubSignature().getMethodName() !== 'bind') {
+            return;
+        }
+        let field = CfgUitls.backtraceLocalInitValue(rightOp.getBase());
+        if (!(field instanceof ArkInstanceFieldRef)) {
+            return;
+        }
+        
+        // BuilderParam
+        let buildParam = this.getClassFieldType(`__${field.getFieldName()}`);
+        if (buildParam) {
+            let node = this.createTreeNode(treeStack, `BuilderParam`, assignStmt, rightOp);
+            node.buildParam = field.getFieldName();
+            return;
+        }
+        
+        // Builder
+        let method = this.render.getDeclaringArkClass().getMethodWithName(field.getFieldName());
+        if (!method) {
+            return;
+        }
+        let decorators = method.getDecorators();
+        if (!decorators) {
+            return;
+        }
+        let isBuilder = false;
+        decorators.forEach((decorator) => {
+            if (decorator.getKind() == 'Builder') {
+                isBuilder = true;
+            }
+        })
+        if (isBuilder) {
+            await this.parseCfg(method.getCfg(), method.getBody().getLocals(), treeStack, scope);
         }
     }
 
@@ -390,8 +421,7 @@ export class ViewTree {
             if (observedDeepRender) {
                 await ViewTree.anonymousFuncParser(viewtree, treeStack, observedDeepRender, scope);
             }
-        }
-        
+        }   
     }
 
     private static async anonymousFuncParser(viewtree:ViewTree, treeStack: TreeNodeStack, arg: Local, scope: Map<string, Local> ) {
@@ -405,15 +435,16 @@ export class ViewTree {
         if (type instanceof CallableType) {
             let method = viewtree.render.getDeclaringArkClass().getMethod((type as CallableType).getMethodSignature());
             if (method) {
-                await viewtree.parseCfg(method.getCfg(), treeStack, scope);
+                await viewtree.parseCfg(method.getCfg(), method.getBody().getLocals(), treeStack, scope);
             }
         }
     }
 
-    private createTreeNode(treeStack: TreeNodeStack, name: string, stmt: Stmt, expr: ArkInstanceInvokeExpr) {
+    private createTreeNode(treeStack: TreeNodeStack, name: string, stmt: Stmt, expr: ArkInstanceInvokeExpr): ViewTreeNode {
         let node = new ViewTreeNode(name, stmt, expr, this);
         treeStack.push(node);
         this.root = treeStack.root;
+        return node;
     }
 
 }
