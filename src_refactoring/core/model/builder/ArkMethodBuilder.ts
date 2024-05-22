@@ -5,13 +5,10 @@ import { LineColPosition } from "../../base/Position";
 import { Type, UnknownType } from "../../base/Type";
 import { Value } from "../../base/Value";
 import { BodyBuilder } from "../../common/BodyBuilder";
-import { MethodInfo, MethodParameter } from "../../common/MethodInfoBuilder";
 import { Cfg } from "../../graph/Cfg";
 import { ViewTree } from "../../graph/ViewTree";
 import { ArkBody } from "../ArkBody";
 import { ArkClass } from "../ArkClass";
-import { ArkFile } from "../ArkFile";
-import { MethodSignature, MethodSubSignature } from "../ArkSignature";
 import { Decorator } from "../../base/Decorator";
 import { ArkMethod } from "../ArkMethod";
 import ts from "typescript";
@@ -99,23 +96,23 @@ export function buildArkMethodFromArkClass(methodNode: MethodLikeNode, declaring
     }
 }
 
-export function buildNormalArkMethodFromMethodInfo(methodInfo: MethodInfo, mtd: ArkMethod) {
-    mtd.setName(methodInfo.name);
+// export function buildNormalArkMethodFromMethodInfo(methodInfo: MethodInfo, mtd: ArkMethod) {
+//     mtd.setName(methodInfo.name);
 
-    methodInfo.modifiers.forEach((modifier) => {
-        mtd.addModifier(modifier);
-    });
-    methodInfo.parameters.forEach(methodParameter => {
-        mtd.addParameter(methodParameter);
-    });
+//     methodInfo.modifiers.forEach((modifier) => {
+//         mtd.addModifier(modifier);
+//     });
+//     methodInfo.parameters.forEach(methodParameter => {
+//         mtd.addParameter(methodParameter);
+//     });
 
-    mtd.setReturnType(methodInfo.returnType);
+//     mtd.setReturnType(methodInfo.returnType);
 
 
-    methodInfo.typeParameters.forEach((typeParameter) => {
-        mtd.addTypeParameter(typeParameter);
-    });
-}
+//     methodInfo.typeParameters.forEach((typeParameter) => {
+//         mtd.addTypeParameter(typeParameter);
+//     });
+// }
 
 function buildMethodName(node: MethodLikeNode): string {
     //TODO: consider function without name
@@ -155,4 +152,128 @@ function buildMethodName(node: MethodLikeNode): string {
         name = 'Set-' + node.name.text;
     }
     return name;
+}
+
+export class ObjectBindingPatternParameter {
+    private propertyName: string = "";
+    private name: string = "";
+    private optional: boolean = false;
+    private initializer: string = "";
+
+    constructor() { }
+
+    public getName() {
+        return this.name;
+    }
+
+    public setName(name: string) {
+        this.name = name;
+    }
+
+    public getPropertyName() {
+        return this.propertyName;
+    }
+
+    public setPropertyName(propertyName: string) {
+        this.propertyName = propertyName;
+    }
+
+    public isOptional() {
+        return this.optional;
+    }
+
+    public setOptional(optional: boolean) {
+        this.optional = optional;
+    }
+}
+
+export class ArrayBindingPatternParameter {
+    private propertyName: string = "";
+    private name: string = "";
+    private optional: boolean = false;
+    private initializer: string = "";
+
+    constructor() { }
+
+    public getName() {
+        return this.name;
+    }
+
+    public setName(name: string) {
+        this.name = name;
+    }
+
+    public getPropertyName() {
+        return this.propertyName;
+    }
+
+    public setPropertyName(propertyName: string) {
+        this.propertyName = propertyName;
+    }
+
+    public isOptional() {
+        return this.optional;
+    }
+
+    public setOptional(optional: boolean) {
+        this.optional = optional;
+    }
+}
+
+export class MethodParameter {
+    private name: string = "";
+    private type: Type;
+    private optional: boolean = false;
+    private objElements: ObjectBindingPatternParameter[] = [];
+    private arrayElements: ArrayBindingPatternParameter[] = [];
+
+    constructor() { }
+
+    public getName() {
+        return this.name;
+    }
+
+    public setName(name: string) {
+        this.name = name;
+    }
+
+    public getType() {
+        return this.type;
+    }
+
+    public setType(type: Type) {
+        this.type = type;
+    }
+
+    public isOptional() {
+        return this.optional;
+    }
+
+    public setOptional(optional: boolean) {
+        this.optional = optional;
+    }
+
+    public addObjElement(element: ObjectBindingPatternParameter) {
+        this.objElements.push(element);
+    }
+
+    public getObjElements() {
+        return this.objElements;
+    }
+
+    public setObjElements(objElements: ObjectBindingPatternParameter[]) {
+        this.objElements = objElements;
+    }
+
+    public addArrayElement(element: ArrayBindingPatternParameter) {
+        this.arrayElements.push(element);
+    }
+
+    public getArrayElements() {
+        return this.arrayElements;
+    }
+
+    public setArrayElements(arrayElements: ArrayBindingPatternParameter[]) {
+        this.arrayElements = arrayElements;
+    }
 }

@@ -1,19 +1,10 @@
-import ts, { HeritageClause, TypeParameterDeclaration } from "typescript";
-import { AnyType, ArrayType, ClassType, LiteralType, NumberType, Type, TypeLiteralType, UnclearReferenceType, UnionType, UnknownType } from "../../base/Type";
-import { ArrayBindingPatternParameter, MethodParameter, ObjectBindingPatternParameter, buildMethodInfo4MethodNode } from "../../common/MethodInfoBuilder";
-import { TypeInference } from "../../common/TypeInference";
+import ts from "typescript";
+import { ArrayType, Type, UnclearReferenceType, UnionType } from "../../base/Type";
 import { ArkField } from "../ArkField";
 import Logger from "../../../utils/logger";
 import { LineColPosition } from "../../base/Position";
-import { Value } from "../../base/Value";
-import { Constant } from "../../base/Constant";
-import { ArkBinopExpr, ArkInstanceInvokeExpr, ArkNewArrayExpr, ArkNewExpr, ArkStaticInvokeExpr, ArkUnopExpr, ArrayLiteralExpr, ObjectLiteralExpr } from "../../base/Expr";
-import { ClassSignature, FieldSignature, MethodSignature, MethodSubSignature } from "../ArkSignature";
-import { Local } from "../../base/Local";
-import { ArkInstanceFieldRef, ArkStaticFieldRef } from "../../base/Ref";
 import { ArkClass } from "../ArkClass";
 import { ArkMethod } from "../ArkMethod";
-import { Decorator, TypeDecorator } from "../../base/Decorator";
 import { buildModifiers, buildParameters, buildReturnType, buildTypeFromPreStr, handlePropertyAccessExpression, handleQualifiedName, tsNode2Value } from "./builderUtils";
 
 const logger = Logger.getLogger();

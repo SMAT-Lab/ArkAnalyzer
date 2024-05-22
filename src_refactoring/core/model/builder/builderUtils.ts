@@ -1,6 +1,5 @@
 import ts, { HeritageClause, ParameterDeclaration, TypeNode, TypeParameterDeclaration } from "typescript";
 import { AnyType, ArrayType, ClassType, LiteralType, NumberType, Type, TypeLiteralType, UnclearReferenceType, UnionType, UnknownType } from "../../base/Type";
-import { ArrayBindingPatternParameter, MethodParameter, ObjectBindingPatternParameter, buildMethodInfo4MethodNode } from "../../common/MethodInfoBuilder";
 import { TypeInference } from "../../common/TypeInference";
 import { ArkField } from "../ArkField";
 import Logger from "../../../utils/logger";
@@ -14,8 +13,8 @@ import { ArkInstanceFieldRef, ArkStaticFieldRef } from "../../base/Ref";
 import { ArkClass } from "../ArkClass";
 import { ArkMethod} from "../ArkMethod";
 import { Decorator, TypeDecorator } from "../../base/Decorator";
-import { buildNormalArkMethodFromMethodInfo } from "./ArkMethodBuilder";
 import { buildIndexSignature2ArkField, buildProperty2ArkField } from "./ArkFieldBuilder";
+import { ArrayBindingPatternParameter, MethodParameter, ObjectBindingPatternParameter, buildArkMethodFromArkClass } from "./ArkMethodBuilder";
 
 const logger = Logger.getLogger();
 
@@ -118,6 +117,9 @@ export function buildTypeParameters(typeParameters: ts.NodeArray<TypeParameterDe
             let parametersTypeStr = typeParameter.name.text;
             typeParams.push(buildTypeFromPreStr(parametersTypeStr));
         }
+        else {
+            logger.warn("This typeparameter name is not an Identifier.");
+        }
         if (typeParameter.modifiers) {
             logger.warn("This typeparameter has modifiers.");
         }
@@ -126,6 +128,13 @@ export function buildTypeParameters(typeParameters: ts.NodeArray<TypeParameterDe
         }
     });
     return typeParams;
+}
+
+export function buildParametersNew(params: ts.NodeArray<ParameterDeclaration>, sourceFile: ts.SourceFile) {
+    let paramTypes: Type = UnknownType;
+    params.forEach((param) => {
+        //tsNode2Type(param)
+    });
 }
 
 export function buildParameters(params: ts.NodeArray<ParameterDeclaration>, sourceFile: ts.SourceFile) {
@@ -723,17 +732,19 @@ export function tsNode2Value(node: ts.Node, sourceFile: ts.SourceFile): Value {
                 arkFields.push(buildProperty2ArkField(property, sourceFile, arkClass));
             }
             else {
-                let methodInfo = buildMethodInfo4MethodNode(property, sourceFile);
-                let arkMethod = new ArkMethod();
-                const { line, character } = ts.getLineAndCharacterOfPosition(
-                    sourceFile,
-                    property.getStart(sourceFile)
-                );
-                arkMethod.setLine(line + 1);
-                arkMethod.setColumn(character + 1);
+                // let methodInfo = buildMethodInfo4MethodNode(property, sourceFile);
+                // let arkMethod = new ArkMethod();
+                // const { line, character } = ts.getLineAndCharacterOfPosition(
+                //     sourceFile,
+                //     property.getStart(sourceFile)
+                // );
+                // arkMethod.setLine(line + 1);
+                // arkMethod.setColumn(character + 1);
 
-                buildNormalArkMethodFromMethodInfo(methodInfo, arkMethod);
-                arkMethods.push(arkMethod);
+                // buildNormalArkMethodFromMethodInfo(methodInfo, arkMethod);
+                // arkMethods.push(arkMethod);
+                let arkMethod = new ArkMethod();
+                buildArkMethodFromArkClass(property, arkClass, arkMethod, sourceFile);
             }
         });
         arkMethods.forEach((mtd) => {

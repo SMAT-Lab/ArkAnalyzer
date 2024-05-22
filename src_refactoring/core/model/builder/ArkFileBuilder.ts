@@ -36,7 +36,7 @@ export function buildArkFileFromFile(absoluteFilePath: string, projectDir: strin
     arkFile.setCode(fs.readFileSync(arkFile.getFilePath(), 'utf8'));
     const sourceFile = ts.createSourceFile(
         "example.ts",
-        this.text,
+        arkFile.getCode(),
         ts.ScriptTarget.Latest
     );
     genDefaultArkClass(arkFile, sourceFile);
