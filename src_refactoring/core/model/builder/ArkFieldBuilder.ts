@@ -69,11 +69,11 @@ export function buildProperty2ArkField(member: ts.PropertyDeclaration | ts.Prope
         field.setExclamationToken(true);
     }
 
-    field.genSignature();
     if (cls) {
         cls.addField(field);
         field.setDeclaringClass(cls);
     }
+    field.genSignature();
     return field;
 }
 
@@ -93,11 +93,11 @@ export function buildIndexSignature2ArkField(member: ts.IndexSignatureDeclaratio
     //type
     field.setType(buildReturnType(member.type, sourceFile));
 
-    field.genSignature();
     if (cls) {
         field.setDeclaringClass(cls);
         cls.addField(field);
     }
+    field.genSignature();
     return field;
 }
 
