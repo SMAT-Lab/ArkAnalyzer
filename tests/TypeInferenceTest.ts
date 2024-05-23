@@ -1,7 +1,7 @@
-import { SceneConfig } from "../src/Config";
-import { Scene } from "../src/Scene";
-import { ArkBody } from "../src/core/model/ArkBody";
-import Logger, { LOG_LEVEL } from "../src/utils/logger";
+import { SceneConfig } from "../src_refactoring/Config";
+import { Scene } from "../src_refactoring/Scene";
+import { ArkBody } from "../src_refactoring/core/model/ArkBody";
+import Logger, { LOG_LEVEL } from "../src_refactoring/utils/logger";
 
 const logger = Logger.getLogger();
 Logger.configure('out/TypeInferenceTest.log', LOG_LEVEL.WARN);
@@ -10,9 +10,9 @@ export class TypeInferenceTest {
     public buildScene(): Scene {
         // tests/resources/typeInference/multi_module/main_module
         // out/ets2ts/applications_photos/common/src/main/ets/default/model/browser/photo
-        const config_path = "tests/resources/typeInference/TypeInferenceTestConfig.json";
+        const config_path = "tests\\resources\\ifds\\project\\ETS2TS.json";
         let config: SceneConfig = new SceneConfig();
-        config.buildFromJson(config_path);
+        config.buildFromJson2(config_path);
         // Logger.setLogLevel(LOG_LEVEL.INFO);
         return new Scene(config);
     }
