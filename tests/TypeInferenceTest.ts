@@ -11,6 +11,7 @@ export class TypeInferenceTest {
         // tests/resources/typeInference/multi_module/main_module
         // out/ets2ts/applications_photos/common/src/main/ets/default/model/browser/photo
         const config_path = "tests\\resources\\ifds\\project\\ETS2TS.json";
+        // const config_path = "tests\\resources\\type\\TypeTestConfig.json";
         let config: SceneConfig = new SceneConfig();
         config.buildFromJson2(config_path);
         // Logger.setLogLevel(LOG_LEVEL.INFO);

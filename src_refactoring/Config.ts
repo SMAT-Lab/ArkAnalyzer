@@ -64,7 +64,7 @@ export class SceneConfig {
             this.targetProjectName = configurations.targetProjectName;
             this.targetProjectDirectory = configurations.targetProjectDirectory;
             this.logPath = configurations.logPath;
-            Logger.configure(this.logPath, LOG_LEVEL.ERROR);
+            Logger.configure(this.logPath, LOG_LEVEL.INFO);
 
             this.etsSdkPath = configurations.etsSdkPath;
 

@@ -64,7 +64,7 @@ import {ExportInfo} from '../model/ArkExport';
 import {IRUtils} from './IRUtils';
 import {TypeInference} from './TypeInference';
 import {LineColPosition} from "../base/Position";
-import {buildArkMethodFromArkClass} from "../model/builder/ArkMethodBuilder";
+import {MethodLikeNode, buildArkMethodFromArkClass} from "../model/builder/ArkMethodBuilder";
 import {buildNormalArkClassFromArkFile} from "../model/builder/ArkClassBuilder";
 
 const logger = Logger.getLogger();
@@ -430,6 +430,12 @@ export class CfgBuilder {
                     } else {
                         this.walkAST(ifstm, ifexit, [c.elseStatement]);
                     }
+                }
+                if (!ifstm.nextT) {
+                    ifstm.nextT = ifexit;
+                }
+                if (!ifstm.nextF) {
+                    ifstm.nextF = ifexit;
                 }
                 lastStatement = ifexit;
             } else if (ts.isWhileStatement(c)) {
@@ -1915,13 +1921,12 @@ export class CfgBuilder {
 
 
     errorTest(stm: StatementBuilder) {
-        let mes = "";
+        let mes = "ifnext error    ";
         if (this.declaringClass?.getDeclaringArkFile()) {
-            mes = this.declaringClass?.getDeclaringArkFile().getName() + "." + this.declaringClass.getName() + "." + this.name;
-        } else {
-            mes = "ifnext error"
+            mes += this.declaringClass?.getDeclaringArkFile().getName() + "." + this.declaringClass.getName() + "." + this.name;
         }
         mes += "\n" + stm.code;
+        // console.log(mes)
         throw new textError(mes);
     }
 
@@ -2391,7 +2396,15 @@ export class CfgBuilder {
     }
 
     buildCfgBuilder() {
-        this.walkAST(this.entry, this.exit, this.astRoot.getChildren(this.sourceFile));
+        let stmts: ts.Node[] = [];
+        if (ts.isSourceFile(this.astRoot)) {
+            stmts = [...this.astRoot.statements];
+        } else if (ts.isFunctionDeclaration(this.astRoot) || ts.isMethodDeclaration(this.astRoot) || ts.isConstructorDeclaration(this.astRoot) || ts.isGetAccessor(this.astRoot)) {
+            if (this.astRoot.body) {
+                stmts = [...this.astRoot.body.statements];
+            }
+        }
+        this.walkAST(this.entry, this.exit, stmts);
         this.addReturnInEmptyMethod();
         this.deleteExit(this.entry);
         this.CfgBuilder2Array(this.entry);
