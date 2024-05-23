@@ -209,6 +209,9 @@ export class ArkFile {
             return '';
         }
         await this.initSourceMap();
+        if (!this.sourceMap) {
+            return '';
+        }
         let map = (this.sourceMap as BasicSourceMapConsumer).sources[0];
         if (!fs.existsSync(map)) {
             map = path.join(path.dirname(this.absoluteFilePath), map);
