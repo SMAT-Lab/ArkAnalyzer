@@ -30,11 +30,12 @@ const COMPONENT_CREATE_FUNCTION: Set<string> = new Set(['create', 'createWithChi
 
 export class ViewTreeNode {
     name: string;
-    classSignature: ClassSignature|null;
-    buildParam: string;
     stmts: Map<string, [Stmt, (Constant|ArkInstanceFieldRef|MethodSignature)[]]>;
     parent: ViewTreeNode | null;
     children: ViewTreeNode[];
+    classSignature?: ClassSignature|null;
+    builderParam?: string;
+
     private tree: ViewTree;
 
     constructor(name: string, stmt: Stmt, expr: ArkInstanceInvokeExpr, tree: ViewTree) {
@@ -299,7 +300,7 @@ export class ViewTree {
         let buildParam = this.getClassFieldType(`__${field.getFieldName()}`);
         if (buildParam) {
             let node = this.createTreeNode(treeStack, `BuilderParam`, assignStmt, rightOp);
-            node.buildParam = field.getFieldName();
+            node.builderParam = field.getFieldName();
             return;
         }
         

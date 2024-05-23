@@ -220,5 +220,11 @@ export class ArkNamespace {
         });
         return namespaces;
     }
+
+    public getDecorators(): Decorator[] {
+        return Array.from(this.modifiers).filter((item) => {
+            return item instanceof Decorator;
+        }) as Decorator[];
+    }
 }
 

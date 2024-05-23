@@ -1,8 +1,8 @@
-import { SceneConfig } from "../../src/Config";
+import { SceneConfig } from "../../src_refactoring/Config";
 import { assert, describe, it, expect } from "vitest";
-import { Scene } from "../../src/Scene";
+import { Scene } from "../../src_refactoring/Scene";
 import path from "path";
-import { Decorator } from "../../src/core/base/Decorator";
+import { Decorator } from "../../src_refactoring/core/base/Decorator";
 
 describe("ViewTree Test API12", () => {
     let config: SceneConfig = new SceneConfig();
@@ -113,7 +113,7 @@ describe("ViewTree Test API12", () => {
         expect((type as Decorator).getKind()).equals('BuilderParam');
         let root = vt.getRoot();
         expect(root.children[0].children[0].children[0].name).equals('BuilderParam');
-        expect(root.children[0].children[0].children[0].buildParam).equals('SurfaceComponent');
+        expect(root.children[0].children[0].children[0].builderParam).equals('SurfaceComponent');
     })
 })
 
@@ -224,7 +224,7 @@ describe("ViewTree Test API9", () => {
         expect((type as Decorator).getKind()).equals('BuilderParam');
         let root = vt.getRoot();
         expect(root.children[0].children[0].children[0].name).equals('BuilderParam');
-        expect(root.children[0].children[0].children[0].buildParam).equals('SurfaceComponent');
+        expect(root.children[0].children[0].children[0].builderParam).equals('SurfaceComponent');
     })
 
     
