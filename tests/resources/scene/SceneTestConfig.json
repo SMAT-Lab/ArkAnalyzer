@@ -1,10 +1,12 @@
 {
-    "targetProjectName": "SceneTest",    
-    "targetProjectDirectory": "D:\\Codes\\resources\\SE4OpenHarmony-main\\Apps\\ArkTS2TSRes",
+    "targetProjectName": "SceneTest",
+    "targetProjectOriginDirectory": "",
+    "targetProjectDirectory": "D:\\Codes\\resources\\SE4OpenHarmony-main\\Apps\\ArkTS2TSRes\\0_show_case",
 
     "logPath": "out/SceneTest.log",
 
-    "etsSdkPath": "C:\\Users\\kubrick\\AppData\\Local\\Huawei\\Sdk\\openharmony\\9\\ets",
+    "etsSdkPath": "",
+    "nodePath": "",
     
     "otherSdks": [
         {
