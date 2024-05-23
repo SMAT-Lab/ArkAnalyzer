@@ -2,7 +2,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as url from 'url';
 import Logger, { LOG_LEVEL } from "./logger";
-import { fetchDependenciesFromFile } from './json5parser';
+import { fetchDependenciesFromFile, parseJsonText } from './json5parser';
 
 const logger = Logger.getLogger();
 
@@ -24,6 +24,7 @@ const CONFIG = {
 export class Ets2ts {
     processUIModule: any;
     tsModule: any;
+    etsCheckerModule: any;
     preProcessModule: Function;
 
     compilerOptions: any;
@@ -37,20 +38,32 @@ export class Ets2ts {
         this.tsModule = await require(path.join(etsLoaderPath, 'node_modules/typescript'));
         this.processUIModule = await require(path.join(etsLoaderPath, 'lib/process_ui_syntax'));
         this.preProcessModule = await require(path.join(etsLoaderPath, 'lib/pre_process.js'));
+        this.etsCheckerModule =  await require(path.join(etsLoaderPath, 'lib/ets_checker'));
         this.compilerOptions = this.tsModule.readConfigFile(
             path.resolve(etsLoaderPath, 'tsconfig.json'), this.tsModule.sys.readFile).config.compilerOptions;
         this.compilerOptions.target = 'ESNext';
         this.compilerOptions.sourceMap = false;
 
-        let module = await require(path.join(etsLoaderPath, 'main'));
-        // module.partialUpdateConfig.partialUpdateMode = true;
-        this.projectConfig = module.projectConfig;
-        // this.projectConfig.compileMode = 'esmodule';
-
+        let mainModule = await require(path.join(etsLoaderPath, 'main'));
+        mainModule.partialUpdateConfig.partialUpdateMode = true;
+        this.projectConfig = mainModule.projectConfig;
         this.projectConfig.projectPath = path.resolve(projectPath);
+        this.projectConfig.cachePath = path.resolve(output, '.cache');
         this.projectConfig.saveTsPath = path.resolve(output, projectName);
         this.projectConfig.buildMode = "release";
         this.projectConfig.projectRootPath = ".";
+        this.resolveSdkApi();
+        
+        let languageService = this.etsCheckerModule.createLanguageService([]);
+        if (languageService.getBuilderProgram) {
+            mainModule.globalProgram.builderProgram = languageService.getBuilderProgram(/*withLinterProgram*/ true);
+            mainModule.globalProgram.program = mainModule.globalProgram.builderProgram.getProgram();
+            mainModule.globalProgram.checker = mainModule.globalProgram.program.getTypeChecker();
+        } else {
+            mainModule.globalProgram.program = languageService.getProgram();
+            mainModule.globalProgram.checker = mainModule.globalProgram.program.getTypeChecker();
+        }
+
         this.ohPkgContentMap = new Map();
     }
 
@@ -268,6 +281,29 @@ export class Ets2ts {
         }
     }
 
+    private resolveSdkApi() {
+        let buildProfile = path.join(this.projectConfig.projectPath, 'build-profile.json5');
+        if (fs.existsSync(buildProfile)) {
+            let profile = parseJsonText(fs.readFileSync(buildProfile, 'utf-8'));
+            let compileSdkVersion = (profile.app as any)?.compileSdkVersion || (profile.app as any)?.products[0]?.compileSdkVersion;
+            let compatibleSdkVersion = (profile.app as any)?.compatibleSdkVersion || (profile.app as any)?.products[0]?.compatibleSdkVersion;
+            this.projectConfig.minAPIVersion = this.parseApiVersion(compatibleSdkVersion || compileSdkVersion);
+        }
+    }
+
+    private parseApiVersion(version: string|number): number{
+        if (typeof version === 'number') {
+            return version;
+        }
+
+        const match = /\s*([1-9].[0-9].[0-9])\s*\(\s*(\d+)\s*\)\s*$/g.exec(version);
+        if (match) {
+            return parseInt(match[2]);
+        }
+
+        return 9;
+    }
+
 }
 
 export async function runEts2Ts(hosEtsLoaderPath: string, targetProjectOriginDirectory: string, targetProjectDirectory: string, targetProjectName: string) {
@@ -284,7 +320,3 @@ export async function runEts2Ts(hosEtsLoaderPath: string, targetProjectOriginDir
     const endTime = new Date().getTime();
     logger.info(`ets2ts took: ${(endTime - startTime) / 1000}s`);
 })();
-
-
-
-

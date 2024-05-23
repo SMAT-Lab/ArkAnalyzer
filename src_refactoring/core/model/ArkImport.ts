@@ -6,7 +6,7 @@ import { ArkFile } from "./ArkFile";
 import { FileSignature } from "./ArkSignature";
 import { Scene } from "../../Scene";
 import { LineColPosition } from "../base/Position";
-import { getOriginPath } from "./builder/arkImportBuilder";
+import { getOriginPath } from "./builder/ArkImportBuilder";
 import { Decorator } from "../base/Decorator";
 
 var sdkPathMap: Map<string, string> = new Map();

@@ -6,7 +6,7 @@ import { ArkNamespace } from '../ArkNamespace';
 import Logger from "../../../utils/logger";
 import { buildDefaultArkClassFromArkFile, buildNormalArkClassFromArkFile } from './ArkClassBuilder';
 import { buildArkMethodFromArkClass } from './ArkMethodBuilder';
-import { buildImportInfo } from './arkImportBuilder';
+import { buildImportInfo } from './ArkImportBuilder';
 import { buildExportInfo } from './ArkExportBuilder';
 import { buildArkNamespace } from './ArkNamespaceBuilder';
 import { ArkClass } from '../ArkClass';
