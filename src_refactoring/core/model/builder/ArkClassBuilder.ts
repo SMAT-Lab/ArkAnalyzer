@@ -48,6 +48,7 @@ export function buildNormalArkClassFromArkFile(clsNode: ClassLikeNode,
     );
     cls.setLine(line + 1);
     cls.setColumn(character + 1);
+    cls.genSignature();
     buildNormalArkClass(clsNode, cls, sourceFile);
 }
 

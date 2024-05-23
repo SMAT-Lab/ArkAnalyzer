@@ -1,15 +1,13 @@
-import {SceneConfig} from "../src/Config";
-import {Scene} from "../src/Scene";
-import Logger, {LOG_LEVEL} from "../src/utils/logger";
-import * as ts from "typescript";
-import convertCompilerOptions = ts.server.convertCompilerOptions;
+import {SceneConfig} from "../src_refactoring/Config";
+import {Scene} from "../src_refactoring/Scene";
+import Logger, {LOG_LEVEL} from "../src_refactoring/utils/logger";
 
 const logPath = 'out\\SceneTest.log';
 const logger = Logger.getLogger();
 Logger.configure(logPath, LOG_LEVEL.INFO);
 
 class SceneTest {
-    public testTsWholePipline(): void {
+    public async testTsWholePipline() {
         logger.error('testTsWholePipline start');
         const buildConfigStartTime = new Date().getTime();
         logger.error(`memoryUsage before buildConfig in bytes:`);
@@ -18,7 +16,7 @@ class SceneTest {
         // build config
         const configPath = "tests\\resources\\scene\\SceneTestConfig.json";
         let sceneConfig: SceneConfig = new SceneConfig();
-        sceneConfig.buildFromJson(configPath);
+        await sceneConfig.buildFromJson(configPath);
 
         logger.error(`memoryUsage after buildConfig in bytes:`);
         logger.error(process.memoryUsage());
@@ -61,12 +59,13 @@ class SceneTest {
         const outputPath = 'out/ets2ts';
         const sdkEtsPath = 'C:\\Users\\kubrick\\AppData\\Local\\Huawei\\Sdk\\openharmony\\9\\ets';
         const projectName = 'applications_photos';
+        const nodePath = 'node';
         const buildConfigStartTime = new Date().getTime();
         logger.info(`memoryUsage before EtsConfig in bytes:`);
         logger.info(process.memoryUsage());
 
         const sceneConfig: SceneConfig = new SceneConfig();
-        await sceneConfig.buildFromIde(projectName, etsProjectPath, outputPath, sdkEtsPath, logPath);
+        await sceneConfig.buildConfig(projectName, etsProjectPath, outputPath, sdkEtsPath, logPath, nodePath);
 
         logger.info(`memoryUsage after EtsConfig in bytes:`);
         logger.info(process.memoryUsage());
@@ -118,7 +117,7 @@ class SceneTest {
         logger.info(process.memoryUsage());
 
         const sceneConfig: SceneConfig = new SceneConfig();
-        await sceneConfig.buildFromIde(projectName, etsProjectPath, outputPath, sdkEtsPath, logPath);
+        // await sceneConfig.buildFromIde(projectName, etsProjectPath, outputPath, sdkEtsPath, logPath);
 
         logger.info(`memoryUsage after EtsConfig in bytes:`);
         logger.info(process.memoryUsage());
@@ -132,6 +131,6 @@ class SceneTest {
 }
 
 let sceneTest = new SceneTest();
-sceneTest.testETsWholePipline();
-// sceneTest.testTsWholePipline();
+// sceneTest.testETsWholePipline();
+sceneTest.testTsWholePipline();
 // sceneTest.testEtsConfig();
