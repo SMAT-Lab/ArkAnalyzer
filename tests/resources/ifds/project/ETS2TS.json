@@ -4,7 +4,7 @@
 
     "logPath": "out\\log.txt",
     
-    "etsSdkPath": "codeLab\\interface_sdk-js-master",
+    "etsSdkPath": "",
     
     "otherSdks": [
         {
