@@ -139,6 +139,7 @@ function buildNormalArkClass(clsNode: ts.ClassDeclaration | ts.ClassExpression |
         ) {
             let mthd: ArkMethod = new ArkMethod();
             buildArkMethodFromArkClass(member, cls, mthd, sourceFile);
+            cls.addMethod(mthd);
             if (ts.isGetAccessor(member)) {
                 let field = buildGetAccessor2ArkField(member, mthd, sourceFile);
                 checkInitializer(field, cls);

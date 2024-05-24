@@ -1,5 +1,5 @@
-import { ExportInfo } from "../../core/common/ExportBuilder";
-import { ImportInfo } from "../../core/common/ImportBuilder";
+import { ExportInfo } from "../../core/model/ArkExport";
+import { ImportInfo } from "../../core/model/ArkImport";
 import { ArkFile } from "../../core/model/ArkFile";
 import { SourceBase } from "./SourceBase";
 
