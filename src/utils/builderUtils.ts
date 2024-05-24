@@ -426,6 +426,7 @@ export function buildProperty2ArkField(member: ts.PropertyDeclaration | ts.Prope
     | ts.SpreadAssignment | ts.PropertySignature | ts.EnumMember, sourceFile: ts.SourceFile): ArkField {
     let field = new ArkField();
     field.setFieldType(ts.SyntaxKind[member.kind]);
+    field.setCode(member.getText(sourceFile));
     field.setOriginPosition(LineColPosition.buildFromNode(member, sourceFile));
 
     // construct initializer
@@ -486,6 +487,7 @@ export function buildProperty2ArkField(member: ts.PropertyDeclaration | ts.Prope
 export function buildIndexSignature2ArkField(member: ts.IndexSignatureDeclaration, sourceFile: ts.SourceFile): ArkField {
     let field = new ArkField();
     field.setFieldType(ts.SyntaxKind[member.kind]);
+    field.setCode(member.getText(sourceFile));
     //parameters
     field.setParameters(buildParameters(member, sourceFile));
     field.setOriginPosition(LineColPosition.buildFromNode(member, sourceFile));
@@ -502,6 +504,7 @@ export function buildIndexSignature2ArkField(member: ts.IndexSignatureDeclaratio
 
 export function buildGetAccessor2ArkField(member: ts.GetAccessorDeclaration, sourceFile: ts.SourceFile): ArkField {
     let field = new ArkField();
+    field.setCode(member.getText(sourceFile));
     if (ts.isIdentifier(member.name)) {
         field.setName(member.name.text);
     }
