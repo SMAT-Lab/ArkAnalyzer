@@ -11,10 +11,11 @@ import { ClassSignature, FieldSignature, MethodSignature, MethodSubSignature } f
 import { Local } from "../../base/Local";
 import { ArkInstanceFieldRef, ArkStaticFieldRef } from "../../base/Ref";
 import { ArkClass } from "../ArkClass";
-import { ArkMethod} from "../ArkMethod";
+import { ArkMethod } from "../ArkMethod";
 import { Decorator, TypeDecorator } from "../../base/Decorator";
-import { buildIndexSignature2ArkField, buildProperty2ArkField } from "./ArkFieldBuilder";
+import { buildProperty2ArkField } from "./ArkFieldBuilder";
 import { ArrayBindingPatternParameter, MethodParameter, ObjectBindingPatternParameter, buildArkMethodFromArkClass } from "./ArkMethodBuilder";
+import { buildNormalArkClassFromArkMethod } from "./ArkClassBuilder";
 
 const logger = Logger.getLogger();
 
@@ -110,19 +111,16 @@ export function buildHeritageClauses(heritageClauses: ts.NodeArray<HeritageClaus
     return heritageClausesMap;
 }
 
-export function buildTypeParameters(typeParameters: ts.NodeArray<TypeParameterDeclaration>): Type[] {
+export function buildTypeParameters(typeParameters: ts.NodeArray<TypeParameterDeclaration>,
+    sourceFile: ts.SourceFile, arkInstance: ArkMethod | ArkClass): Type[] {
     let typeParams: Type[] = [];
     typeParameters.forEach((typeParameter) => {
-        if (ts.isIdentifier(typeParameter.name)) {
-            let parametersTypeStr = typeParameter.name.text;
-            typeParams.push(buildTypeFromPreStr(parametersTypeStr));
-        }
-        else {
-            logger.warn("This typeparameter name is not an Identifier.");
-        }
+        tsNode2Type(typeParameter, sourceFile, arkInstance);
+
         if (typeParameter.modifiers) {
             logger.warn("This typeparameter has modifiers.");
         }
+
         if (typeParameter.expression) {
             logger.warn("This typeparameter has expression.");
         }
@@ -130,17 +128,12 @@ export function buildTypeParameters(typeParameters: ts.NodeArray<TypeParameterDe
     return typeParams;
 }
 
-export function buildParametersNew(params: ts.NodeArray<ParameterDeclaration>, sourceFile: ts.SourceFile) {
-    let paramTypes: Type = UnknownType;
-    params.forEach((param) => {
-        //tsNode2Type(param)
-    });
-}
-
-export function buildParameters(params: ts.NodeArray<ParameterDeclaration>, sourceFile: ts.SourceFile) {
+export function buildParameters(params: ts.NodeArray<ParameterDeclaration>, arkMethod: ArkMethod, sourceFile: ts.SourceFile) {
     let parameters: MethodParameter[] = [];
     params.forEach((parameter) => {
         let methodParameter = new MethodParameter();
+
+        // name
         if (ts.isIdentifier(parameter.name)) {
             methodParameter.setName(parameter.name.text);
         }
@@ -218,86 +211,35 @@ export function buildParameters(params: ts.NodeArray<ParameterDeclaration>, sour
             methodParameter.setArrayElements(elements);
         }
         else {
-            logger.warn("Parameter name is not identifier, please contact developers to support this!");
+            logger.warn("Parameter name is not identifier, ObjectBindingPattern nor ArrayBindingPattern, please contact developers to support this!");
         }
+
+        // questionToken
         if (parameter.questionToken) {
             methodParameter.setOptional(true);
         }
+
+        // type
         if (parameter.type) {
-            if (ts.isTypeReferenceNode(parameter.type)) {
-                let referenceNodeName = parameter.type.typeName;
-                if (ts.isQualifiedName(referenceNodeName)) {
-                    let parameterTypeStr = handleQualifiedName(referenceNodeName as ts.QualifiedName);
-                    let parameterType = new UnclearReferenceType(parameterTypeStr);
-                    methodParameter.setType(parameterType);
-                }
-                else if (ts.isIdentifier(referenceNodeName)) {
-                    let parameterTypeStr = (referenceNodeName as ts.Identifier).text;
-                    let parameterType = new UnclearReferenceType(parameterTypeStr);
-                    methodParameter.setType(parameterType);
-                }
-            }
-            else if (ts.isUnionTypeNode(parameter.type)) {
-                let unionTypePara: Type[] = [];
-                parameter.type.types.forEach((tmpType) => {
-                    if (ts.isTypeReferenceNode(tmpType)) {
-                        let parameterType = "";
-                        if (ts.isQualifiedName(tmpType.typeName)) {
-                            parameterType = handleQualifiedName(tmpType.typeName);
-                        }
-                        else if (ts.isIdentifier(tmpType.typeName)) {
-                            parameterType = tmpType.typeName.text;
-                        }
-                        unionTypePara.push(new UnclearReferenceType(parameterType));
-                    }
-                    else if (ts.isLiteralTypeNode(tmpType)) {
-                        unionTypePara.push(buildTypeFromPreStr(ts.SyntaxKind[tmpType.literal.kind]));
-                    }
-                    else {
-                        unionTypePara.push(buildTypeFromPreStr(ts.SyntaxKind[tmpType.kind]));
-                    }
-                });
-                methodParameter.setType(new UnionType(unionTypePara));
-            }
-            else if (ts.isLiteralTypeNode(parameter.type)) {
-                methodParameter.setType(buildTypeFromPreStr(ts.SyntaxKind[parameter.type.literal.kind]));
-            }
-            else if (ts.isTypeLiteralNode(parameter.type)) {
-                let members: ArkField[] = [];
-                parameter.type.members.forEach((member) => {
-                    if (ts.isPropertySignature(member)) {
-                        members.push(buildProperty2ArkField(member, sourceFile));
-                    }
-                    else if (ts.isIndexSignatureDeclaration(member)) {
-                        members.push(buildIndexSignature2ArkField(member, sourceFile));
-                    }
-                    else if (ts.isConstructSignatureDeclaration(member)) {
-                        //Bug, To be fixed
-                        //members.push(buildMethodInfo4MethodNode(member));
-                    }
-                    else if (ts.isCallSignatureDeclaration(member)) {
-                        //Bug, To be fixed
-                        //members.push(buildMethodInfo4MethodNode(member));
-                    }
-                    else {
-                        logger.warn("Please contact developers to support new TypeLiteral member!");
-                    }
-                });
-                let type = new TypeLiteralType();
-                type.setMembers(members);
-                methodParameter.setType(type);
-            }
-            else if (ts.isFunctionTypeNode(parameter.type)) {
-                //Bug, To be fixed
-                //members.push(buildMethodInfo4MethodNode(member));
-                methodParameter.setType(buildTypeFromPreStr(ts.SyntaxKind[parameter.type.kind]));
-            }
-            else {
-                methodParameter.setType(buildTypeFromPreStr(ts.SyntaxKind[parameter.type.kind]));
-            }
+            methodParameter.setType(tsNode2Type(parameter.type, sourceFile, arkMethod));
         }
         else {
             methodParameter.setType(UnknownType.getInstance());
+        }
+
+        // initializer
+        if (parameter.initializer) {
+            //
+        }
+
+        // dotDotDotToken
+        if (parameter.dotDotDotToken) {
+            //
+        }
+
+        // modifiers
+        if (parameter.modifiers) {
+            //
         }
 
         parameters.push(methodParameter);
@@ -305,77 +247,72 @@ export function buildParameters(params: ts.NodeArray<ParameterDeclaration>, sour
     return parameters;
 }
 
-export function buildReturnType(node: TypeNode, sourceFile: ts.SourceFile) {
+export function buildReturnType(node: TypeNode, sourceFile: ts.SourceFile, method: ArkMethod) {
     if (node) {
-        if (ts.isTypeLiteralNode(node)) {
-            let members: ArkField[] = [];
-            node.members.forEach((member) => {
-                if (ts.isPropertySignature(member)) {
-                    members.push(buildProperty2ArkField(member, sourceFile));
-                }
-                else if (ts.isIndexSignatureDeclaration(member)) {
-                    members.push(buildIndexSignature2ArkField(member, sourceFile));
-                }
-                else {
-                    logger.warn("Please contact developers to support new TypeLiteral member!");
-                }
-            });
-            let type = new TypeLiteralType();
-            type.setMembers(members);
-            return type;
-        }
-        else if (ts.isTypeReferenceNode(node)) {
-            let referenceNodeName = node.typeName;
-            let typeName = "";
-            if (ts.isQualifiedName(referenceNodeName)) {
-                typeName = handleQualifiedName(referenceNodeName);
-            }
-            else if (ts.isIdentifier(referenceNodeName)) {
-                typeName = referenceNodeName.text;
-            }
-            else {
-                logger.warn("New type of referenceNodeName found! Please contact developers to support this.");
-            }
-            return new UnclearReferenceType(typeName);
-        }
-        else if (ts.isUnionTypeNode(node)) {
-            let unionType: Type[] = [];
-            node.types.forEach((tmpType) => {
-                if (ts.isTypeReferenceNode(tmpType)) {
-                    let typeName = "";
-                    if (ts.isIdentifier(tmpType.typeName)) {
-                        typeName = tmpType.typeName.text;
-                    }
-                    else if (ts.isQualifiedName(tmpType.typeName)) {
-                        typeName = handleQualifiedName(tmpType.typeName);
-                    }
-                    else if (ts.isTypeLiteralNode(tmpType.typeName)) {
-                        logger.warn("Type name is TypeLiteral, please contact developers to add support for this!");
-                    }
-                    else {
-                        logger.warn("New type name of TypeReference in UnionType.");
-                    }
-                    unionType.push(new UnclearReferenceType(typeName));
-                }
-                else if (ts.isLiteralTypeNode(tmpType)) {
-                    let literalType: LiteralType = new LiteralType(ts.SyntaxKind[tmpType.literal.kind]);
-                    unionType.push(literalType);
-                }
-                else {
-                    unionType.push(buildTypeFromPreStr(ts.SyntaxKind[tmpType.kind]));
-                }
-            });
-            return unionType;
-        }
-        else if (ts.isLiteralTypeNode(node)) {
-            let literalType: LiteralType = new LiteralType(ts.SyntaxKind[node.literal.kind]);
-            return literalType;
+        return tsNode2Type(node, sourceFile, method);
+    }
+    else {
+        return new UnknownType();
+    }
+}
+
+export function tsNode2Type(typeNode: ts.TypeNode | ts.TypeParameterDeclaration, sourceFile: ts.SourceFile,
+    arkInstance: ArkMethod | ArkClass | ArkField) {
+    if (ts.isTypeReferenceNode(typeNode)) {
+        let referenceNodeName = typeNode.typeName;
+        if (ts.isQualifiedName(referenceNodeName)) {
+            let parameterTypeStr = handleQualifiedName(referenceNodeName as ts.QualifiedName);
+            return new UnclearReferenceType(parameterTypeStr);
         }
         else {
-            return buildTypeFromPreStr(ts.SyntaxKind[node.kind]);
+            let parameterTypeStr = referenceNodeName.text;
+            return new UnclearReferenceType(parameterTypeStr);
         }
     }
-    return new UnknownType();
+    else if (ts.isUnionTypeNode(typeNode)) {
+        let unionTypePara: Type[] = [];
+        typeNode.types.forEach((tmpType) => {
+            unionTypePara.push(tsNode2Type(tmpType, sourceFile, arkInstance));
+        });
+        return new UnionType(unionTypePara);
+    }
+    else if (ts.isLiteralTypeNode(typeNode)) {
+        return buildTypeFromPreStr(ts.SyntaxKind[typeNode.literal.kind]);
+    }
+    else if (ts.isTypeLiteralNode(typeNode)) {
+        let cls: ArkClass = new ArkClass();
+        if (arkInstance) {
+            if (arkInstance instanceof ArkMethod) {
+                let declaringClass = arkInstance.getDeclaringArkClass();
+                if (declaringClass.getDeclaringArkNamespace()) {
+                    cls.setDeclaringArkNamespace(declaringClass.getDeclaringArkNamespace());
+                    cls.setDeclaringArkFile(declaringClass.getDeclaringArkFile());
+                }
+                else {
+                    cls.setDeclaringArkFile(declaringClass.getDeclaringArkFile());
+                }
+                buildNormalArkClassFromArkMethod(typeNode, cls, sourceFile);
+            }
+            else if (arkInstance instanceof ArkClass) {
+                //
+            }
+            else if (arkInstance instanceof ArkField) {
+                //
+            }
+        }
+        
+        return new ClassType(cls.getSignature());
+    }
+    else if (ts.isFunctionTypeNode(typeNode)) {
+        debugger;
+        // let mtd: ArkMethod = new ArkMethod();
+        // buildArkMethodFromArkClass(typeNode, arkMethod.getDeclaringArkClass(), mtd, sourceFile);
+        // return buildTypeFromPreStr(ts.SyntaxKind[typeNode.kind]);
+    }
+    else {
+        return buildTypeFromPreStr(ts.SyntaxKind[typeNode.kind]);
+    }
+    return UnknownType.getInstance();;
 }
 
 export function buildTypeFromPreStr(preStr: string) {
@@ -758,3 +695,7 @@ export function tsNode2Value(node: ts.Node, sourceFile: ts.SourceFile): Value {
     }
     return new Constant('', UnknownType.getInstance())
 }
+function buildTypeLiteralNode2ArkClassBak(typeNode: ts.TypeLiteralNode) {
+    throw new Error("Function not implemented.");
+}
+

@@ -24,7 +24,8 @@ export type ClassLikeNode =
     ts.ClassDeclaration |
     ts.InterfaceDeclaration |
     ts.EnumDeclaration |
-    ts.ClassExpression;
+    ts.ClassExpression |
+    ts.TypeLiteralNode;
 
 export function buildDefaultArkClassFromArkFile(arkFile: ArkFile, defaultClass: ArkClass, astRoot: ts.SourceFile) {
     defaultClass.setDeclaringArkFile(arkFile);
@@ -38,6 +39,16 @@ export function buildDefaultArkClassFromArkNamespace(arkNamespace: ArkNamespace,
     buildDefaultArkClass(defaultClass, sourceFile, nsNode);
 }
 
+export function buildNormalArkClassFromArkMethod(clsNode: ts.TypeLiteralNode,
+    cls: ArkClass, sourceFile: ts.SourceFile) {
+    if (cls.getDeclaringArkNamespace()) {
+        buildNormalArkClassFromArkNamespace(clsNode, cls.getDeclaringArkNamespace(), cls, sourceFile);
+    }
+    else {
+        buildNormalArkClassFromArkFile(clsNode, cls.getDeclaringArkFile(), cls, sourceFile);
+    }
+}
+
 export function buildNormalArkClassFromArkFile(clsNode: ClassLikeNode,
     arkFile: ArkFile, cls: ArkClass, sourceFile: ts.SourceFile) {
     cls.setDeclaringArkFile(arkFile);
@@ -48,7 +59,10 @@ export function buildNormalArkClassFromArkFile(clsNode: ClassLikeNode,
     );
     cls.setLine(line + 1);
     cls.setColumn(character + 1);
-    cls.genSignature();
+    if (ts.isTypeLiteralNode(clsNode)) {
+        const clsName = 'AnonymousClass-' + arkFile.getName() + '-' + arkFile.getAnonymousClassNumber();
+        cls.setName(clsName);
+    }
     buildNormalArkClass(clsNode, cls, sourceFile);
 }
 
@@ -63,7 +77,10 @@ export function buildNormalArkClassFromArkNamespace(clsNode: ClassLikeNode,
     );
     cls.setLine(line + 1);
     cls.setColumn(character + 1);
-    cls.genSignature();
+    if (ts.isTypeLiteralNode(clsNode)) {
+        const clsName = 'AnonymousClass-' + arkNamespace.getName() + '-' + arkNamespace.getAnonymousClassNumber();
+        cls.setName(clsName);
+    }
     buildNormalArkClass(clsNode, cls, sourceFile);
 }
 
@@ -80,15 +97,17 @@ function genDefaultArkMethod(cls: ArkClass, sourceFile: ts.SourceFile, node?: ts
     cls.setDefaultArkMethod(defaultMethod);
 }
 
-function buildNormalArkClass(clsNode: ts.ClassDeclaration | ts.ClassExpression | ts.InterfaceDeclaration | ts.EnumDeclaration,
+export function buildNormalArkClass(clsNode: ClassLikeNode,
     cls: ArkClass, sourceFile: ts.SourceFile) {
-    if (clsNode.name) {
+    if (!ts.isTypeLiteralNode(clsNode) && clsNode.name) {
         cls.setName(clsNode.name.text);
     }
 
-    if (!ts.isEnumDeclaration(clsNode)) {
+    cls.genSignature();
+
+    if ((!ts.isEnumDeclaration(clsNode)) && (!ts.isTypeLiteralNode(clsNode))) {
         if (clsNode.typeParameters) {
-            buildTypeParameters(clsNode.typeParameters).forEach((typeParameter) => {
+            buildTypeParameters(clsNode.typeParameters, sourceFile, cls).forEach((typeParameter) => {
                 cls.addTypeParameter(typeParameter);
             });
         }
@@ -104,7 +123,7 @@ function buildNormalArkClass(clsNode: ts.ClassDeclaration | ts.ClassExpression |
         }
     }
 
-    if (clsNode.modifiers) {
+    if (!ts.isTypeLiteralNode(clsNode) && clsNode.modifiers) {
         buildModifiers(clsNode.modifiers, sourceFile).forEach((modifier) => {
             cls.addModifier(modifier);
         });
@@ -116,8 +135,11 @@ function buildNormalArkClass(clsNode: ts.ClassDeclaration | ts.ClassExpression |
     else if (ts.isInterfaceDeclaration(clsNode)) {
         cls.setOriginType("Interface");
     }
-    else {
+    else if (ts.isEnumDeclaration(clsNode)) {
         cls.setOriginType("Enum");
+    }
+    else {
+        cls.setOriginType("TypeLiteral");
     }
 
     clsNode.members.forEach((member) => {

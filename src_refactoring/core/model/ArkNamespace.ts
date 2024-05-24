@@ -32,6 +32,9 @@ export class ArkNamespace {
 
     private namespaceSignature: NamespaceSignature;
 
+    private anonymousClassNumber: number = 0;
+    private anonymousMethodNumber: number = 0;
+
     constructor() {
     }
 
@@ -225,6 +228,14 @@ export class ArkNamespace {
         return Array.from(this.modifiers).filter((item) => {
             return item instanceof Decorator;
         }) as Decorator[];
+    }
+
+    public getAnonymousClassNumber() {
+        return this.anonymousClassNumber++;
+    }
+
+    public getAnonymousMethodNumber() {
+        return this.anonymousMethodNumber++;
     }
 }
 
