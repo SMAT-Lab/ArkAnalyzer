@@ -1,13 +1,6 @@
-import { NodeA } from "../../base/Ast";
-import { ArkParameterRef, ArkThisRef } from "../../base/Ref";
-import { ArkAssignStmt, ArkReturnStmt } from "../../base/Stmt";
-import { LineColPosition } from "../../base/Position";
-import { Type, UnknownType } from "../../base/Type";
-import { Value } from "../../base/Value";
+import { Type } from "../../base/Type";
 import { BodyBuilder } from "../../common/BodyBuilder";
-import { Cfg } from "../../graph/Cfg";
 import { ViewTree } from "../../graph/ViewTree";
-import { ArkBody } from "../ArkBody";
 import { ArkClass } from "../ArkClass";
 import { Decorator } from "../../base/Decorator";
 import { ArkMethod } from "../ArkMethod";
@@ -58,9 +51,11 @@ export function buildArkMethodFromArkClass(methodNode: MethodLikeNode, declaring
     mtd.setLine(line + 1);
     mtd.setColumn(character + 1);
 
-    let methodName = buildMethodName(methodNode);
-    mtd.setName(methodName);
-
+    if (!ts.isArrowFunction(methodNode)) {
+        let methodName = buildMethodName(methodNode);
+        mtd.setName(methodName);
+    }
+    
     buildParameters(methodNode.parameters, sourceFile).forEach((parameter) => {
         mtd.addParameter(parameter);
     });

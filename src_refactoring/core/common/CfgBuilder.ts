@@ -1422,8 +1422,10 @@ export class CfgBuilder {
                 }
             }
             let arrowArkMethod = new ArkMethod();
+            arrowArkMethod.setName(arrowFuncName);
             buildArkMethodFromArkClass(node as ts.ArrowFunction, this.declaringClass, arrowArkMethod, this.sourceFile);
             arrowArkMethod.genSignature();
+            
             this.declaringClass.addMethod(arrowArkMethod);
 
             let callableType = new CallableType(arrowArkMethod.getSignature());
