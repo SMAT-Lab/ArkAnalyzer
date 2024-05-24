@@ -2401,10 +2401,13 @@ export class CfgBuilder {
         let stmts: ts.Node[] = [];
         if (ts.isSourceFile(this.astRoot)) {
             stmts = [...this.astRoot.statements];
-        } else if (ts.isFunctionDeclaration(this.astRoot) || ts.isMethodDeclaration(this.astRoot) || ts.isConstructorDeclaration(this.astRoot) || ts.isGetAccessor(this.astRoot)) {
+        } else if (ts.isFunctionDeclaration(this.astRoot) || ts.isMethodDeclaration(this.astRoot) || ts.isConstructorDeclaration(this.astRoot) 
+              || ts.isGetAccessor(this.astRoot) || ts.isGetAccessorDeclaration(this.astRoot) || ts.isFunctionExpression(this.astRoot)) {
             if (this.astRoot.body) {
                 stmts = [...this.astRoot.body.statements];
             }
+        } else if (ts.isArrowFunction(this.astRoot) && ts.isBlock(this.astRoot.body)) {
+            stmts = [...this.astRoot.body.statements];
         }
         this.walkAST(this.entry, this.exit, stmts);
         this.addReturnInEmptyMethod();
