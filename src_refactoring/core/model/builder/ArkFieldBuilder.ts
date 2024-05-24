@@ -5,7 +5,7 @@ import Logger from "../../../utils/logger";
 import { LineColPosition } from "../../base/Position";
 import { ArkClass } from "../ArkClass";
 import { ArkMethod } from "../ArkMethod";
-import { buildModifiers, buildParameters, buildReturnType, buildTypeFromPreStr, handlePropertyAccessExpression, handleQualifiedName, tsNode2Value } from "./builderUtils";
+import { buildModifiers, buildParameters, buildReturnType, buildTypeFromPreStr, handlePropertyAccessExpression, handleQualifiedName, tsNode2Type, tsNode2Value } from "./builderUtils";
 
 const logger = Logger.getLogger();
 
@@ -15,7 +15,12 @@ export function buildProperty2ArkField(member: ts.PropertyDeclaration | ts.Prope
     | ts.SpreadAssignment | ts.PropertySignature | ts.EnumMember, sourceFile: ts.SourceFile, cls?: ArkClass): ArkField {
     let field = new ArkField();
     field.setFieldType(ts.SyntaxKind[member.kind]);
+    field.setCode(member.getText(sourceFile));
     field.setOriginPosition(LineColPosition.buildFromNode(member, sourceFile));
+    if (cls) {
+        cls.addField(field);
+        field.setDeclaringClass(cls);
+    }
 
     // construct initializer
     if (ts.isPropertyDeclaration(member) || ts.isPropertyAssignment(member) || ts.isEnumMember(member)) {
@@ -58,7 +63,7 @@ export function buildProperty2ArkField(member: ts.PropertyDeclaration | ts.Prope
     }
 
     if ((ts.isPropertyDeclaration(member) || ts.isPropertySignature(member)) && member.type) {
-        field.setType(buildFieldType(member.type));
+        field.setType(tsNode2Type(member.type, sourceFile, field));
     }
 
     if ((ts.isPropertyDeclaration(member) || ts.isPropertySignature(member)) && member.questionToken) {
@@ -69,29 +74,28 @@ export function buildProperty2ArkField(member: ts.PropertyDeclaration | ts.Prope
         field.setExclamationToken(true);
     }
 
-    if (cls) {
-        cls.addField(field);
-        field.setDeclaringClass(cls);
-    }
     field.genSignature();
     return field;
 }
 
 export function buildIndexSignature2ArkField(member: ts.IndexSignatureDeclaration, sourceFile: ts.SourceFile, cls?: ArkClass): ArkField {
     let field = new ArkField();
+    field.setCode(member.getText(sourceFile));
     field.setFieldType(ts.SyntaxKind[member.kind]);
 
-    //parameters
-    field.setParameters(buildParameters(member.parameters, sourceFile));
+    //TODO: parameters
+    //field.setParameters(buildParameters(member.parameters, sourceFile));
     field.setOriginPosition(LineColPosition.buildFromNode(member, sourceFile));
+
     //modifiers
     if (member.modifiers) {
         buildModifiers(member.modifiers, sourceFile).forEach((modifier) => {
             field.addModifier(modifier);
         });
     }
+
     //type
-    field.setType(buildReturnType(member.type, sourceFile));
+    field.setType(tsNode2Type(member.type, sourceFile, field));
 
     if (cls) {
         field.setDeclaringClass(cls);
@@ -103,6 +107,7 @@ export function buildIndexSignature2ArkField(member: ts.IndexSignatureDeclaratio
 
 export function buildGetAccessor2ArkField(member: ts.GetAccessorDeclaration, mthd: ArkMethod, sourceFile: ts.SourceFile): ArkField {
     let field = new ArkField();
+    field.setCode(member.getText(sourceFile));
     if (ts.isIdentifier(member.name)) {
         field.setName(member.name.text);
     }
@@ -121,69 +126,4 @@ export function buildGetAccessor2ArkField(member: ts.GetAccessorDeclaration, mth
     field.genSignature();
     cls.addField(field);
     return field;
-}
-
-function buildFieldType(fieldType: ts.TypeNode): Type {
-    if (ts.isUnionTypeNode(fieldType)) {
-        let unionType: Type[] = [];
-        fieldType.types.forEach((tmpType) => {
-            if (ts.isTypeReferenceNode(tmpType)) {
-                let tmpTypeName = "";
-                if (ts.isQualifiedName(tmpType.typeName)) {
-                    tmpTypeName = handleQualifiedName(tmpType.typeName);
-                }
-                else if (ts.isIdentifier(tmpType.typeName)) {
-                    tmpTypeName = tmpType.typeName.text;
-                }
-                else {
-                    logger.warn("Other property type found!");
-                }
-                unionType.push(new UnclearReferenceType(tmpTypeName));
-            }
-            else if (ts.isLiteralTypeNode(tmpType)) {
-                unionType.push(buildTypeFromPreStr(ts.SyntaxKind[tmpType.literal.kind]));
-            }
-            else {
-                unionType.push(buildTypeFromPreStr(ts.SyntaxKind[tmpType.kind]));
-            }
-        });
-        return new UnionType(unionType)
-    }
-    else if (ts.isTypeReferenceNode(fieldType)) {
-        let tmpTypeName = "";
-        let referenceNodeName = fieldType.typeName;
-        if (ts.isQualifiedName(referenceNodeName)) {
-            tmpTypeName = handleQualifiedName(referenceNodeName);
-        }
-        else if (ts.isIdentifier(referenceNodeName)) {
-            tmpTypeName = referenceNodeName.text;
-        }
-        return new UnclearReferenceType(tmpTypeName);
-    }
-    else if (ts.isArrayTypeNode(fieldType)) {
-        let tmpTypeName = "";
-        if (ts.isTypeReferenceNode(fieldType.elementType)) {
-            if (ts.isQualifiedName(fieldType.elementType.typeName)) {
-                tmpTypeName = handleQualifiedName(fieldType.elementType.typeName);
-            }
-            else if (ts.isIdentifier(fieldType.elementType.typeName)) {
-                tmpTypeName = fieldType.elementType.typeName.text;
-            }
-            else {
-                logger.warn("Other property type found!");
-            }
-            let elementType = new UnclearReferenceType(tmpTypeName);
-            return new ArrayType(elementType, 0);
-        }
-        else {
-            let elementType = buildTypeFromPreStr(ts.SyntaxKind[fieldType.elementType.kind]);
-            return new ArrayType(elementType, 0);
-        }
-    }
-    else if (ts.isLiteralTypeNode(fieldType)) {
-        return buildTypeFromPreStr(ts.SyntaxKind[fieldType.literal.kind]);
-    }
-    else {
-        return buildTypeFromPreStr(ts.SyntaxKind[fieldType.kind]);
-    }
 }

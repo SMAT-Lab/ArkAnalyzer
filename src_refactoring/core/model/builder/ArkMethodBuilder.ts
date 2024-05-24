@@ -22,7 +22,8 @@ export type MethodLikeNode =
     ts.FunctionExpression |
     ts.MethodSignature |
     ts.ConstructSignatureDeclaration |
-    ts.CallSignatureDeclaration;
+    ts.CallSignatureDeclaration |
+    ts.FunctionTypeNode;
 
 export function buildDefaultArkMethodFromArkClass(declaringClass: ArkClass, mtd: ArkMethod,
     sourceFile: ts.SourceFile, node?: ts.ModuleDeclaration) {
@@ -51,29 +52,31 @@ export function buildArkMethodFromArkClass(methodNode: MethodLikeNode, declaring
     mtd.setLine(line + 1);
     mtd.setColumn(character + 1);
 
-    if (!ts.isArrowFunction(methodNode)) {
-        let methodName = buildMethodName(methodNode);
-        mtd.setName(methodName);
-    }
-    
-    buildParameters(methodNode.parameters, sourceFile).forEach((parameter) => {
+    let methodName = buildMethodName(methodNode, declaringClass);
+    mtd.setName(methodName);
+
+    buildParameters(methodNode.parameters, mtd, sourceFile).forEach((parameter) => {
         mtd.addParameter(parameter);
     });
 
     //TODO: remember to test abstract method
     let modifiers: Set<string | Decorator> = new Set<string | Decorator>();
-    if ((!ts.isConstructSignatureDeclaration(methodNode)) && (!ts.isCallSignatureDeclaration(methodNode))) {
+    if (
+        (!ts.isConstructSignatureDeclaration(methodNode)) &&
+        (!ts.isCallSignatureDeclaration(methodNode)) &&
+        (!ts.isFunctionTypeNode(methodNode))
+    ) {
         if (methodNode.modifiers) {
             modifiers = buildModifiers(methodNode.modifiers, sourceFile);
         }
     }
 
     if (methodNode.type) {
-        mtd.setReturnType(buildReturnType(methodNode.type, sourceFile));
+        mtd.setReturnType(buildReturnType(methodNode.type, sourceFile, mtd));
     }
 
     if (methodNode.typeParameters) {
-        buildTypeParameters(methodNode.typeParameters).forEach((typeParameter) => {
+        buildTypeParameters(methodNode.typeParameters, sourceFile, mtd).forEach((typeParameter) => {
             mtd.addTypeParameter(typeParameter);
         });
     }
@@ -110,12 +113,11 @@ export function buildArkMethodFromArkClass(methodNode: MethodLikeNode, declaring
 //     });
 // }
 
-function buildMethodName(node: MethodLikeNode): string {
-    //TODO: consider function without name
+function buildMethodName(node: MethodLikeNode, declaringClass: ArkClass): string {
     let name: string = '';
     let getAccessorName: string | undefined = undefined;
-    if (ts.isFunctionDeclaration(node)) {
-        name = node.name ? node.name.text : '';
+    if (ts.isFunctionDeclaration(node) || ts.isFunctionTypeNode(node)) {
+        //
     }
     else if (ts.isMethodDeclaration(node) || ts.isMethodSignature(node)) {
         if (ts.isIdentifier(node.name)) {
@@ -146,6 +148,9 @@ function buildMethodName(node: MethodLikeNode): string {
     }
     else if (ts.isSetAccessor(node) && ts.isIdentifier(node.name)) {
         name = 'Set-' + node.name.text;
+    }
+    else if (ts.isArrowFunction(node)) {
+        //TODO
     }
     return name;
 }

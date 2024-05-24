@@ -41,6 +41,9 @@ export class ArkFile {
 
     private ohPackageJson5Path: string[] = [];
 
+    private anonymousClassNumber: number = 0;
+    private anonymousMethodNumber: number = 0;
+
     constructor() {
     }
 
@@ -226,6 +229,14 @@ export class ArkFile {
             return '';
         }
         return lines.slice(0, line).join('\n');
+    }
+
+    public getAnonymousClassNumber() {
+        return this.anonymousClassNumber++;
+    }
+
+    public getAnonymousMethodNumber() {
+        return this.anonymousMethodNumber++;
     }
 }
 
