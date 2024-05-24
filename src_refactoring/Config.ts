@@ -51,38 +51,7 @@ export class SceneConfig {
 
     constructor() { }
 
-    public buildFromJson2(configJsonPath: string) {
-        this.configJsonPath = configJsonPath;
-        this.genConfig();
-        this.getAllFiles();
-    }
-
-    private genConfig() {
-
-        if (fs.existsSync(this.configJsonPath)) {
-            let configurations = JSON.parse(fs.readFileSync(this.configJsonPath, "utf8"));
-            this.targetProjectName = configurations.targetProjectName;
-            this.targetProjectDirectory = configurations.targetProjectDirectory;
-            this.logPath = configurations.logPath;
-            Logger.configure(this.logPath, LOG_LEVEL.INFO);
-
-            this.etsSdkPath = configurations.etsSdkPath;
-
-            let otherSdks: otherSdk[] = [];
-            for (let sdk of configurations.otherSdks) {
-                otherSdks.push(JSON.parse(JSON.stringify(sdk)));
-            }
-            otherSdks.forEach((sdk) => {
-                if (sdk.name && sdk.path) {
-                    this.otherSdkMap.set(sdk.name, sdk.path);
-                }
-            });
-        }
-        else {
-            throw new Error(`Your configJsonPath: "${this.configJsonPath}" is not exist.`);
-        }
-    }
-
+    
 
     public async buildFromJson(configJsonPath: string) {
         if (fs.existsSync(configJsonPath)) {
