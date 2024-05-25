@@ -430,7 +430,7 @@ export async function runEts2Ts(hosEtsLoaderPath: string, targetProjectOriginDir
 }
 
 (async function () {
-    Logger.configure(process.argv[6], LOG_LEVEL.TRACE);
+    Logger.configure(process.argv[6], LOG_LEVEL.INFO);
     logger.info('start ets2ts ', process.argv);
     const startTime = new Date().getTime();
     await runEts2Ts(process.argv[2], process.argv[3], process.argv[4], process.argv[5]);
