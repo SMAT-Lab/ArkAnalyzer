@@ -3,7 +3,7 @@ import { Constant } from '../base/Constant';
 import { Decorator } from '../base/Decorator';
 import { ArkInstanceInvokeExpr, ArkNewExpr } from '../base/Expr';
 import { Local } from '../base/Local';
-import { ArkInstanceFieldRef } from '../base/Ref';
+import { ArkInstanceFieldRef, ArkThisRef } from '../base/Ref';
 import { ArkAssignStmt, ArkIfStmt, ArkInvokeStmt, Stmt } from '../base/Stmt';
 import { CallableType, ClassType, Type } from '../base/Type';
 import { ArkClass } from '../model/ArkClass';
@@ -15,17 +15,17 @@ import { Cfg } from './Cfg';
 
 
 export const BUILDIN_CONTAINER_COMPONENT: Set<string> = new Set([
-    'Badge', 'Button', 'Calendar', 'Canvas', 'Checkbox', 'CheckboxGroup', 'ColorPicker', 'ColorPickerDialog', 
-    'Column', 'ColumnSplit', 'ContainerSpan', 'Counter', 'DataPanel', 'DatePicker', 'EffectComponent', 'Flex', 
-    'FlowItem', 'FolderStack', 'FormLink', 'Gauge', 'Grid', 'GridItem', 'GridCol', 'GridContainer', 'GridRow', 
-    'Hyperlink', 'List', 'ListItem', 'ListItemGroup', 'Menu', 'MenuItem', 'MenuItemGroup', 'Navigation', 
-    'Navigator', 'NavDestination', 'NavRouter', 'Option', 'Panel', 'Piece', 'PluginComponent', 'QRCode', 
-    'Rating', 'Refresh', 'RelativeContainer', 'RootScene', 'Row', 'RowSplit', 'Screen', 'Scroll', 'ScrollBar', 
-    'Section', 'Select', 'Shape', 'Sheet', 'SideBarContainer', 'Stack', 'Stepper', 'StepperItem', 'Swiper', 
-    'Tabs', 'TabContent', 'Text', 'TextPicker', 'TextTimer', 'TextClock', 'TimePicker', 'Toggle', 'WaterFlow', 
-    'WindowScene', 'XComponent', 
+    'Badge', 'Button', 'Calendar', 'Canvas', 'Checkbox', 'CheckboxGroup', 'ColorPicker', 'ColorPickerDialog',
+    'Column', 'ColumnSplit', 'ContainerSpan', 'Counter', 'DataPanel', 'DatePicker', 'EffectComponent', 'Flex',
+    'FlowItem', 'FolderStack', 'FormLink', 'Gauge', 'Grid', 'GridItem', 'GridCol', 'GridContainer', 'GridRow',
+    'Hyperlink', 'List', 'ListItem', 'ListItemGroup', 'Menu', 'MenuItem', 'MenuItemGroup', 'Navigation',
+    'Navigator', 'NavDestination', 'NavRouter', 'Option', 'Panel', 'Piece', 'PluginComponent', 'QRCode',
+    'Rating', 'Refresh', 'RelativeContainer', 'RootScene', 'Row', 'RowSplit', 'Screen', 'Scroll', 'ScrollBar',
+    'Section', 'Select', 'Shape', 'Sheet', 'SideBarContainer', 'Stack', 'Stepper', 'StepperItem', 'Swiper',
+    'Tabs', 'TabContent', 'Text', 'TextPicker', 'TextTimer', 'TextClock', 'TimePicker', 'Toggle', 'WaterFlow',
+    'WindowScene', 'XComponent',
     'ForEach', 'LazyForEach', 'If', 'IfBranch', '__Common__'
-    ]);
+]);
 
 const COMPONENT_CREATE_FUNCTION: Set<string> = new Set(['create', 'createWithChild', 'createWithLabel', 'branchId']);
 
@@ -39,7 +39,7 @@ class StateValuesUtils {
     public static getInstance(declaringArkClass: ArkClass): StateValuesUtils {
         return new StateValuesUtils(declaringArkClass);
     }
-    
+
     private async parseMethodUsesStateValues(methodSignature: MethodSignature, uses: Set<ArkField>, visitor: Set<MethodSignature> = new Set()) {
         if (visitor.has(methodSignature)) {
             return;
@@ -55,7 +55,7 @@ class StateValuesUtils {
         }
     }
 
-    public async parseStmtUsesStateValues(stmt: Stmt| null, uses: Set<ArkField> = new Set(), wholeMethod: boolean = false, visitor: Set<MethodSignature> = new Set() ) {
+    public async parseStmtUsesStateValues(stmt: Stmt | null, uses: Set<ArkField> = new Set(), wholeMethod: boolean = false, visitor: Set<MethodSignature> = new Set()) {
         if (!stmt) {
             return uses;
         }
@@ -66,7 +66,7 @@ class StateValuesUtils {
                 if (field && decorators && decorators.length > 0) {
                     uses.add(field);
                 }
-            } else if(v instanceof Local) {
+            } else if (v instanceof Local) {
                 let type = v.getType();
                 if (type instanceof CallableType) {
                     await this.parseMethodUsesStateValues(type.getMethodSignature(), uses, visitor);
@@ -85,11 +85,11 @@ class StateValuesUtils {
 
 export class ViewTreeNode {
     name: string;
-    stmts: Map<string, [Stmt, (Constant|ArkInstanceFieldRef|MethodSignature)[]]>;
+    stmts: Map<string, [Stmt, (Constant | ArkInstanceFieldRef | MethodSignature)[]]>;
     stateValues: Set<ArkField>;
     parent: ViewTreeNode | null;
     children: ViewTreeNode[];
-    classSignature?: ClassSignature|null;
+    classSignature?: ClassSignature | null;
     builderParam?: string;
 
     private tree: ViewTree;
@@ -105,7 +105,7 @@ export class ViewTreeNode {
 
     public async addStmt(stmt: Stmt, expr: ArkInstanceInvokeExpr) {
         let key = expr.getMethodSignature().getMethodSubSignature().getMethodName();
-        let relationValues: (Constant|ArkInstanceFieldRef|MethodSignature)[] = [];
+        let relationValues: (Constant | ArkInstanceFieldRef | MethodSignature)[] = [];
         for (const arg of expr.getArgs()) {
             if (arg instanceof Local) {
                 this.getBindValues(arg, relationValues);
@@ -113,13 +113,13 @@ export class ViewTreeNode {
         }
         this.stmts.set(key, [stmt, relationValues]);
         let stateValues: Set<ArkField> = await StateValuesUtils.getInstance(this.tree.getDeclaringArkClass()).parseStmtUsesStateValues(stmt);
-        stateValues.forEach((field)=> {
+        stateValues.forEach((field) => {
             this.stateValues.add(field);
             this.tree.addStateValue(field, this);
         }, this);
     }
 
-    private getBindValues(local: Local, relationValues: (Constant|ArkInstanceFieldRef|MethodSignature) []) {
+    private getBindValues(local: Local, relationValues: (Constant | ArkInstanceFieldRef | MethodSignature)[]) {
         const stmt = local.getDeclaringStmt();
         if (!stmt) {
             let type = local.getType();
@@ -166,7 +166,7 @@ class TreeNodeStack {
     }
 
     public top(): ViewTreeNode | null {
-        return this.isEmpty() ? null: this.stack[this.stack.length - 1];
+        return this.isEmpty() ? null : this.stack[this.stack.length - 1];
     }
 
     public isEmpty(): boolean {
@@ -195,7 +195,7 @@ class TreeNodeStack {
         return this;
     }
 
-    private getParent(): ViewTreeNode|null {
+    private getParent(): ViewTreeNode | null {
         if (this.stack.length == 0) {
             return null;
         }
@@ -217,7 +217,7 @@ export class ViewTree {
     private render: ArkMethod;
     private buildViewStatus: boolean;
     private stateValues: Map<ArkField, Set<ViewTreeNode>>;
-    private fieldTypes: Map<string, Decorator|Type>;
+    private fieldTypes: Map<string, Decorator | Type>;
     private parsers: Map<string, Function>;
 
     constructor(render: ArkMethod) {
@@ -266,7 +266,7 @@ export class ViewTree {
             return false;
         }
 
-        let classSignature:ClassSignature = (initValue.getType() as ClassType).getClassSignature();
+        let classSignature: ClassSignature = (initValue.getType() as ClassType).getClassSignature();
         view.classSignature = classSignature;
         let componentCls = this.render.getDeclaringArkFile().getScene().getClass(classSignature);
         let componentViewTree = await componentCls?.getViewTree();
@@ -279,7 +279,7 @@ export class ViewTree {
     private async parseCfg(cfg: Cfg, locals: Set<Local>, treeStack: TreeNodeStack, scope: Map<string, Local> = new Map()) {
         let blocks = cfg.getBlocks();
         let visitor = new Set<BasicBlock>();
-        let cfgUtils = new CfgUitls(cfg);        
+        let cfgUtils = new CfgUitls(cfg);
         for (const block of blocks) {
             if (visitor.has(block)) {
                 continue;
@@ -319,6 +319,12 @@ export class ViewTree {
                 }
 
                 let name = expr.getBase().getName();
+                if (name.startsWith('$temp')) {
+                    let initValue = CfgUitls.backtraceLocalInitValue(expr.getBase());
+                    if (initValue instanceof ArkThisRef) {
+                        name = 'this';
+                    }
+                }
                 let parserFn = this.parsers.get(`${name}.${methodName}`);
                 if (parserFn) {
                     await parserFn(this, treeStack, stmt, expr, scope);
@@ -340,7 +346,7 @@ export class ViewTree {
                     treeStack.push(node);
                     this.root = treeStack.root;
                     continue;
-                } 
+                }
                 if (name == currentNode?.name) {
                     currentNode.addStmt(stmt, expr);
                     if (methodName == 'pop') {
@@ -355,7 +361,7 @@ export class ViewTree {
     }
 
     private async parseBuilderStmt(methodName: string, locals: Set<Local>, treeStack: TreeNodeStack, scope: Map<string, Local> = new Map()) {
-        let tempFn: Local|undefined;
+        let tempFn: Local | undefined;
         locals.forEach((v) => {
             if (v.getName() == methodName) {
                 tempFn = v;
@@ -377,31 +383,37 @@ export class ViewTree {
             return;
         }
         let field = CfgUitls.backtraceLocalInitValue(rightOp.getBase());
-        if (!(field instanceof ArkInstanceFieldRef)) {
-            return;
+        if (field instanceof ArkInstanceFieldRef) {
+            // BuilderParam
+            let buildParam = this.getClassFieldType(`__${field.getFieldName()}`);
+            if (buildParam) {
+                let node = await this.createTreeNode(treeStack, `BuilderParam`, assignStmt, rightOp);
+                node.builderParam = field.getFieldName();
+                return;
+            }
+
+            // Builder
+            let method = this.render.getDeclaringArkClass().getMethodWithName(field.getFieldName());
+            await this.addBuilderNode(method, treeStack);
+
+        } else {
+            let method = this.getDeclaringArkClass().getDeclaringArkFile().getDefaultClass().getMethodWithName(rightOp.getBase().getName());
+            await this.addBuilderNode(method, treeStack);
         }
-        
-        // BuilderParam
-        let buildParam = this.getClassFieldType(`__${field.getFieldName()}`);
-        if (buildParam) {
-            let node = await this.createTreeNode(treeStack, `BuilderParam`, assignStmt, rightOp);
-            node.builderParam = field.getFieldName();
-            return;
-        }
-        
-        // Builder
-        let method = this.render.getDeclaringArkClass().getMethodWithName(field.getFieldName());
+    }
+
+    private async addBuilderNode(method: ArkMethod | null, treeStack: TreeNodeStack) {
         if (!method) {
             return;
         }
-        
+
         if (!await method.hasBuilderDecorator()) {
             return;
         }
 
         let builderViewTree = await method.getViewTree();
         if (builderViewTree) {
-            let node = await this.createTreeNode(treeStack, `Builder`, assignStmt, rightOp);
+            let node = await this.createTreeNode(treeStack, `Builder`);
             node.children.push(builderViewTree.getRoot());
             treeStack.pop();
         }
@@ -445,17 +457,17 @@ export class ViewTree {
         this.parsers.set('this.forEachUpdateFunction', ViewTree.forEachUpdateFunction);
     }
 
-    private static async observeComponentCreationParser(viewtree:ViewTree, treeStack: TreeNodeStack, stmt: Stmt, expr: ArkInstanceInvokeExpr, scope: Map<string, Local>) {
+    private static async observeComponentCreationParser(viewtree: ViewTree, treeStack: TreeNodeStack, stmt: Stmt, expr: ArkInstanceInvokeExpr, scope: Map<string, Local>) {
         await ViewTree.anonymousFuncParser(viewtree, treeStack, expr.getArg(0) as Local, scope);
     }
 
-    private static async ifElseBranchUpdateFunctionParser(viewtree:ViewTree, treeStack: TreeNodeStack, stmt: Stmt, expr: ArkInstanceInvokeExpr, scope: Map<string, Local>) {
+    private static async ifElseBranchUpdateFunctionParser(viewtree: ViewTree, treeStack: TreeNodeStack, stmt: Stmt, expr: ArkInstanceInvokeExpr, scope: Map<string, Local>) {
         await viewtree.createTreeNode(treeStack, 'IfBranch');
         await ViewTree.anonymousFuncParser(viewtree, treeStack, expr.getArg(1) as Local, scope);
         treeStack.popComponentExpect('If');
     }
 
-    private static async forEachUpdateFunction(viewtree:ViewTree, treeStack: TreeNodeStack, stmt: Stmt, expr: ArkInstanceInvokeExpr, scope: Map<string, Local>) {
+    private static async forEachUpdateFunction(viewtree: ViewTree, treeStack: TreeNodeStack, stmt: Stmt, expr: ArkInstanceInvokeExpr, scope: Map<string, Local>) {
         let values = expr.getArg(1) as Local;
         if (values?.getDeclaringStmt()) {
             let stateValues = await StateValuesUtils.getInstance(viewtree.getDeclaringArkClass()).parseStmtUsesStateValues(values.getDeclaringStmt());
@@ -483,10 +495,10 @@ export class ViewTree {
             if (observedDeepRender) {
                 await ViewTree.anonymousFuncParser(viewtree, treeStack, observedDeepRender, scope);
             }
-        }   
+        }
     }
 
-    private static async anonymousFuncParser(viewtree:ViewTree, treeStack: TreeNodeStack, arg: Local, scope: Map<string, Local> ) {
+    private static async anonymousFuncParser(viewtree: ViewTree, treeStack: TreeNodeStack, arg: Local, scope: Map<string, Local>) {
         let type = arg.getType();
         if (!(arg.getType() instanceof CallableType)) {
             let anonyFunc = scope.get(arg.getName());
