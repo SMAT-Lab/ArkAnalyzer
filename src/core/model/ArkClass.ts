@@ -44,6 +44,7 @@ export class ArkClass {
     private staticFields: Map<string, ArkField> = new Map<string, ArkField>();
 
     private viewTree: ViewTree;
+    private loadEntryDecorator: boolean = false;
 
     constructor() {
     }
@@ -318,10 +319,35 @@ export class ArkClass {
         return globalMap.get(this.declaringArkFile.getFileSignature())!;
     }
 
-    public getDecorators(): Decorator[] {
+    public async getDecorators(): Promise<Decorator[]> {
+        await this.loadEntryDecoratorFromEts();
         return Array.from(this.modifiers).filter((item) => {
             return item instanceof Decorator;
         }) as Decorator[];
+    }
+
+    public async hasEntryDecorator(): Promise<boolean> {
+        let decorators = await this.getDecorators();
+        return decorators.filter((value) => {
+            return value.getKind() == 'Entry';
+        }).length != 0;
+    }
+
+    private async loadEntryDecoratorFromEts() {
+        if (this.loadEntryDecorator) {
+            return;
+        }
+
+        let position = await this.getEtsPositionInfo();
+        let content = await this.getDeclaringArkFile().getEtsSource(position.getLineNo() + 1);
+        let regex = new RegExp(`@Entry[@[\\w]*]*[export|default|class|public|static|private\\s]*$${this.getName()}`, 'gi');
+        let match = regex.exec(content);
+        if (match) {
+            let decorator = new Decorator(match[1]);
+            decorator.setContent(match[1]);
+            this.addModifier(decorator);
+        }
+        this.loadEntryDecorator = true;
     }
 }
 
