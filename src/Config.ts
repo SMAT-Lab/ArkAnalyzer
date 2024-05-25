@@ -84,8 +84,7 @@ export class SceneConfig {
             logger.error('nodePath is empty!');
         }
 
-        removeSync(transfer2UnixPath(targetProjectDirectory + '/' + this.targetProjectName));
-        let output = spawnSync(nodePath, 
+        let output = spawnSync(nodePath,
             [path.join(__dirname, 'ets2ts.js'), this.hosEtsLoaderPath, this.targetProjectOriginDirectory, targetProjectDirectory, this.targetProjectName, this.logPath],
             {encoding: 'utf-8'}
         );
