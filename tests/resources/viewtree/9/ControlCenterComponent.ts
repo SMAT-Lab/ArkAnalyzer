@@ -735,3 +735,6 @@ class OutComponent extends ViewPU {
         this.updateDirtyElements();
     }
 }
+ViewStackProcessor.StartGetAccessRecordingFor(ViewStackProcessor.AllocateNewElmetIdForNextComponent());
+loadDocument(new CustomContainerUser(undefined, {}));
+ViewStackProcessor.StopGetAccessRecording();

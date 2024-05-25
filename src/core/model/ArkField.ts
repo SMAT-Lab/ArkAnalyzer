@@ -6,6 +6,12 @@ import { MethodParameter } from "../common/MethodInfoBuilder";
 import { ArkClass } from "./ArkClass";
 import { FieldSignature, MethodSignature } from "./ArkSignature";
 
+const COMPONENT_MEMBER_DECORATORS: Set<string> = new Set([
+    'State', 'Prop', 'Link', 'StorageProp', 'StorageLink',
+    'Provide', 'Consume', 'ObjectLink', 'BuilderParam',
+    'LocalStorageLink', 'LocalStorageProp'
+])
+
 export class ArkField {
     private name: string = "";
     private code: string = "";
@@ -28,6 +34,7 @@ export class ArkField {
 
     //private initializer, TODO
     private initializer: Value;
+    private loadStateDecorators: boolean = false;
 
     constructor() { }
 
@@ -211,5 +218,36 @@ export class ArkField {
         return Array.from(this.modifiers).filter((item) => {
             return item instanceof Decorator;
         }) as Decorator[];
+    }
+
+    public async getStateDecorators(): Promise<Decorator[]> {
+        await this.loadStateDecoratorFromEts();
+        return Array.from(this.modifiers).filter((item) => {
+            return (item instanceof Decorator) && (COMPONENT_MEMBER_DECORATORS.has(item.getKind()));
+        }) as Decorator[];
+    }
+
+    private async loadStateDecoratorFromEts() {
+        if (this.loadStateDecorators) {
+            return;
+        }
+
+        let position = await this.getEtsPositionInfo();
+        let content = await this.getDeclaringClass().getDeclaringArkFile().getEtsSource(position.getLineNo() + 1);
+        let regex;
+        if (this.getName().startsWith('__')) {
+            regex = new RegExp('@([\\w]*)\\(?[\\w\']*\\)?[\\s]*' +this.getName().slice(2), 'gi');
+        } else {
+            regex = new RegExp('@([\\w]*)\\(?[\\w\']*\\)?[\\s]*' +this.getName(), 'gi');
+        }
+
+
+        let match = regex.exec(content);
+        if (match) {
+            let decorator = new Decorator(match[1]);
+            decorator.setContent(match[1]);
+            this.addModifier(decorator);
+        }
+        this.loadStateDecorators = true;
     }
 }

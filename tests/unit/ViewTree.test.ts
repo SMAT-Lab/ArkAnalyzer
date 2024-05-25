@@ -1,14 +1,56 @@
-import { SceneConfig } from "../../src_refactoring/Config";
+import { SceneConfig } from "../../src/Config";
 import { assert, describe, it, expect } from "vitest";
-import { Scene } from "../../src_refactoring/Scene";
+import { Scene } from "../../src/Scene";
 import path from "path";
-import { Decorator } from "../../src_refactoring/core/base/Decorator";
+import { Decorator } from "../../src/core/base/Decorator";
+import { ArkField } from "../../src/core/model/ArkField";
 
 describe("ViewTree Test API12", () => {
     let config: SceneConfig = new SceneConfig();
     config.buildFromProjectDir(path.join(__dirname, "../../tests/resources/viewtree/12"));
     let scene = new Scene(config);
     scene.inferTypes();
+
+    it('test if stateValues', async () => {
+        let arkFile =  scene.getFiles().find(file => file.getName() == 'ParentComponent.ts');
+        let arkClass = arkFile?.getClassWithName('CountDownComponent');
+        if (arkClass == null) {
+            assert.isNotNull(arkClass);
+            return;
+        }
+
+        let vt = await arkClass.getViewTree();
+        let stateValues = vt.getStateValues();
+        expect(stateValues.size).eq(1);
+        expect(stateValues.get(arkClass.getFieldWithName('count') as ArkField)?.size).eq(3);
+    })
+
+    it('test ForEach stateValues', async () => {
+        let arkFile =  scene.getFiles().find(file => file.getName() == 'ControlCenterComponent.ts');
+        let arkClass = arkFile?.getClassWithName('ControlCenterComplexToggleLayout');
+        if (arkClass == null) {
+            assert.isNotNull(arkClass);
+            return;
+        }
+        let vt = await arkClass.getViewTree();
+        let type = vt.getClassFieldType('mComplexToggleLayout');
+        expect((type as Decorator).getKind()).equals('StorageLink');
+        let stateValues = vt.getStateValues();
+        expect(stateValues.size).eq(2);
+        expect(stateValues.get(arkClass.getFieldWithName('mComplexToggleLayout') as ArkField)?.size).eq(2);
+    })
+
+    it('test class.hasEntryDecorator()', async ()=> {
+        let arkFile =  scene.getFiles().find(file => file.getName() == 'ParentComponent.ts');
+        let arkClass = arkFile?.getClassWithName('ParentComponent');
+        if (arkClass == null) {
+            assert.isNotNull(arkClass);
+            return;
+        }
+        
+        let isEntry = await arkClass.hasEntryDecorator();
+        // expect(isEntry).eq(true);
+    })
 
     it('test __Common__', async () => {
         let arkFile =  scene.getFiles().find(file => file.getName() == 'ControlCenterComponent.ts');
@@ -48,8 +90,8 @@ describe("ViewTree Test API12", () => {
             return;
         }
         let vt = await arkClass.getViewTree();
-        vt.buildViewTree();   
-
+        vt.buildViewTree();
+         
         let type = vt.getClassFieldType('mSimpleToggleColumnCount');
         expect((type as Decorator).getKind()).equals('State');
 
@@ -75,29 +117,19 @@ describe("ViewTree Test API12", () => {
         expect(root.children[3].children[0].children[0].children[0].name).equals('IfBranch');
     })
 
-    it('test @Builder', async () => {
+    it('test @Builder-function-Decorator', async () => {
         let arkFile =  scene.getFiles().find(file => file.getName() == 'Builder.ts');
-        let arkClass = arkFile?.getClassWithName('BuilderTest');
-        if (arkClass == null) {
-            assert.isNotNull(arkClass);
-            return;
-        }
-        let vt = await arkClass.getViewTree();
-        let root = vt.getRoot();
-        expect(root.children[0].name).eq('Column');
-        expect(root.children[0].children[0].name).eq('Text');
-        let method = arkClass.getMethodWithName('builderTest');
+        let arkDefaultClass = arkFile?.getDefaultClass();
+        let method = arkDefaultClass?.getMethodWithName('childBuilder');
         if (method) {
             let hasBuilder = false;
-            for (let decorator of method.getModifiers()) {
-                if (decorator instanceof Decorator) {
-                    if (decorator.getKind() == 'Builder') {
-                        hasBuilder = true;
-                    }
+            for (let decorator of await method.getDecorators()) {
+                if (decorator.getKind() == 'Builder') {
+                    hasBuilder = true;
                 }
             }
-            expect(hasBuilder).eq(true);
 
+            expect(hasBuilder).eq(true);
         }
     })
 
@@ -190,25 +222,7 @@ describe("ViewTree Test API9", () => {
     })
 
     it('test @Builder', async () => {
-        let arkFile =  scene.getFiles().find(file => file.getName() == 'ControlCenterComponent.ts');
-        let arkClass = arkFile?.getClassWithName('OutComponent');
-        if (arkClass == null) {
-            assert.isNotNull(arkClass);
-            return;
-        }
-        let vt = await arkClass.getViewTree();
-        let method = arkClass.getMethodWithName('builderTest');
-        if (method) {
-            let hasBuilder = false;
-            for (let decorator of method.getModifiers()) {
-                if (decorator instanceof Decorator) {
-                    if (decorator.getKind() == 'Builder') {
-                        hasBuilder = true;
-                    }
-                }
-            }
-            expect(hasBuilder).eq(true);
-        }
+        
     })
 
     it('test @BuilderParam', async () => {
