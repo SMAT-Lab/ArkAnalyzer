@@ -133,6 +133,34 @@ describe("ViewTree Test API12", () => {
         }
     })
 
+    it('test @Builder', async () => {
+        let arkFile =  scene.getFiles().find(file => file.getName() == 'Builder.ts');
+        let arkClass = arkFile?.getClassWithName('Parent');
+        if (arkClass == null) {
+            assert.isNotNull(arkClass);
+            return;
+        }
+
+        let arkDefaultClass = arkFile?.getDefaultClass();
+        let method = arkDefaultClass?.getMethodWithName('grandsonBuilder');
+        if (!method) {
+            assert.isNotNull(method);
+            return;
+        }
+
+        let vt = await method.getViewTree();
+        expect(vt.getRoot().name).eq('Row');
+        
+        vt = await arkClass.getViewTree();
+        let root = vt.getRoot();
+        let parentBuilder = root.children[0];
+        let childBuilder = parentBuilder.children[0].children[0].children[2];
+        let grandsonBuilder = childBuilder.children[0].children[0].children[2];
+        expect(parentBuilder.name).eq('Builder');
+        expect(childBuilder.name).eq('Builder');
+        expect(grandsonBuilder.name).eq('Builder');
+    })
+
     it('test @BuilderParam', async () => {
         let arkFile =  scene.getFiles().find(file => file.getName() == 'SwipeLayout.ts');
         let arkClass = arkFile?.getClassWithName('SwipeLayout');
