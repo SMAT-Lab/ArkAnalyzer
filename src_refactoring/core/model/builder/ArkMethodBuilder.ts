@@ -1,9 +1,9 @@
-import {Type} from "../../base/Type";
-import {BodyBuilder} from "../../common/BodyBuilder";
-import {ViewTree} from "../../graph/ViewTree";
-import {ArkClass} from "../ArkClass";
-import {Decorator} from "../../base/Decorator";
-import {ArkMethod} from "../ArkMethod";
+import { Type } from "../../base/Type";
+import { BodyBuilder } from "../../common/BodyBuilder";
+import { ViewTree } from "../../graph/ViewTree";
+import { ArkClass } from "../ArkClass";
+import { Decorator } from "../../base/Decorator";
+import { ArkMethod } from "../ArkMethod";
 import ts from "typescript";
 import {
     buildModifiers,
@@ -32,7 +32,7 @@ export type MethodLikeNode =
     ts.FunctionTypeNode;
 
 export function buildDefaultArkMethodFromArkClass(declaringClass: ArkClass, mtd: ArkMethod,
-                                                  sourceFile: ts.SourceFile, node?: ts.ModuleDeclaration) {
+    sourceFile: ts.SourceFile, node?: ts.ModuleDeclaration) {
     mtd.setDeclaringArkClass(declaringClass);
     mtd.setDeclaringArkFile();
     mtd.setName("_DEFAULT_ARK_METHOD");
@@ -51,17 +51,17 @@ export function buildArkMethodFromArkClass(methodNode: MethodLikeNode, declaring
     mtd.setDeclaringArkFile();
 
     mtd.setCode(methodNode.getText(sourceFile));
-    const {line, character} = ts.getLineAndCharacterOfPosition(
+    const { line, character } = ts.getLineAndCharacterOfPosition(
         sourceFile,
         methodNode.getStart(sourceFile)
     );
     mtd.setLine(line + 1);
     mtd.setColumn(character + 1);
 
-    if (mtd.getName() == undefined) {
-        let methodName = buildMethodName(methodNode, declaringClass);
-        mtd.setName(methodName);
-    }
+
+    const methodName = buildMethodName(methodNode, declaringClass, sourceFile);
+    mtd.setName(methodName);
+
 
 
     buildParameters(methodNode.parameters, mtd, sourceFile).forEach((parameter) => {
@@ -122,21 +122,35 @@ export function buildArkMethodFromArkClass(methodNode: MethodLikeNode, declaring
 //     });
 // }
 
-function buildMethodName(node: MethodLikeNode, declaringClass: ArkClass): string {
+function buildMethodName(node: MethodLikeNode, declaringClass: ArkClass, sourceFile: ts.SourceFile): string {
     let name: string = '';
     let getAccessorName: string | undefined = undefined;
     if (ts.isFunctionDeclaration(node)) {
         if (node.name) {
             name = node.name.text;
         }
+        else {
+            name = buildAnonymousMethodName(node, declaringClass);
+        }
     } else if (ts.isFunctionTypeNode(node)) {
-
+        if (node.name) {
+            //TODO: check name type
+            name = node.name.getText(sourceFile);
+        }
+        else {
+            name = buildAnonymousMethodName(node, declaringClass);
+        }
+        debugger;
     } else if (ts.isMethodDeclaration(node) || ts.isMethodSignature(node)) {
         if (ts.isIdentifier(node.name)) {
             name = (node.name as ts.Identifier).text;
         } else if (ts.isComputedPropertyName(node.name)) {
             if (ts.isPropertyAccessExpression(node.name.expression)) {
                 name = handlePropertyAccessExpression(node.name.expression);
+            }
+            else {
+                debugger;
+                logger.warn("Other method ComputedPropertyName found!");
             }
         } else {
             logger.warn("Other method declaration type found!");
@@ -155,9 +169,14 @@ function buildMethodName(node: MethodLikeNode, declaringClass: ArkClass): string
     } else if (ts.isSetAccessor(node) && ts.isIdentifier(node.name)) {
         name = 'Set-' + node.name.text;
     } else if (ts.isArrowFunction(node)) {
-        //TODO
+        name = buildAnonymousMethodName(node, declaringClass);
     }
     return name;
+}
+
+function buildAnonymousMethodName(node: MethodLikeNode, arkClass: ArkClass) {
+    const mtdName = 'AnonymousMethod-' + arkClass.getName() + '-' + arkClass.getAnonymousMethodNumber();
+    return mtdName;
 }
 
 export class ObjectBindingPatternParameter {

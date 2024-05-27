@@ -59,7 +59,7 @@ export function buildNormalArkClassFromArkFile(clsNode: ClassLikeNode,
     );
     cls.setLine(line + 1);
     cls.setColumn(character + 1);
-    if (ts.isTypeLiteralNode(clsNode)) {
+    if (ts.isTypeLiteralNode(clsNode) || ts.isClassExpression(clsNode)) {
         const clsName = 'AnonymousClass-' + arkFile.getName() + '-' + arkFile.getAnonymousClassNumber();
         cls.setName(clsName);
     }
@@ -77,7 +77,7 @@ export function buildNormalArkClassFromArkNamespace(clsNode: ClassLikeNode,
     );
     cls.setLine(line + 1);
     cls.setColumn(character + 1);
-    if (ts.isTypeLiteralNode(clsNode)) {
+    if (ts.isTypeLiteralNode(clsNode) || ts.isClassExpression(clsNode)) {
         const clsName = 'AnonymousClass-' + arkNamespace.getName() + '-' + arkNamespace.getAnonymousClassNumber();
         cls.setName(clsName);
     }

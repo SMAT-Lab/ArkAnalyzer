@@ -229,7 +229,7 @@ export function buildParameters(params: ts.NodeArray<ParameterDeclaration>, arkM
 
         // initializer
         if (parameter.initializer) {
-            //
+            //TODO?
         }
 
         // dotDotDotToken
@@ -300,7 +300,7 @@ export function tsNode2Type(typeNode: ts.TypeNode | ts.TypeParameterDeclaration,
                 //
             }
         }
-        
+
         return new ClassType(cls.getSignature());
     }
     else if (ts.isFunctionTypeNode(typeNode)) {
@@ -520,7 +520,7 @@ export function buildTypeFromPreStr(preStr: string) {
 //     }
 // }
 
-export function tsNode2Value(node: ts.Node, sourceFile: ts.SourceFile,  cls: ArkClass): Value {
+export function tsNode2Value(node: ts.Node, sourceFile: ts.SourceFile, cls: ArkClass): Value {
     let nodeKind = ts.SyntaxKind[node.kind];
     if (nodeKind == 'NumericLiteral' ||
         nodeKind == 'StringLiteral' ||
