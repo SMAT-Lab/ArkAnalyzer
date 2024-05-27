@@ -33,7 +33,6 @@ export class ArkNamespace {
     private namespaceSignature: NamespaceSignature;
 
     private anonymousClassNumber: number = 0;
-    private anonymousMethodNumber: number = 0;
 
     constructor() {
     }
@@ -232,10 +231,6 @@ export class ArkNamespace {
 
     public getAnonymousClassNumber() {
         return this.anonymousClassNumber++;
-    }
-
-    public getAnonymousMethodNumber() {
-        return this.anonymousMethodNumber++;
     }
 }
 

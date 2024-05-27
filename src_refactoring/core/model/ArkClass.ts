@@ -41,6 +41,8 @@ export class ArkClass {
     private staticMethods: Map<string, ArkMethod> = new Map<string, ArkMethod>();
     private staticFields: Map<string, ArkField> = new Map<string, ArkField>();
 
+    private anonymousMethodNumber: number = 0;
+
     private viewTree: ViewTree;
 
     constructor() {
@@ -320,5 +322,9 @@ export class ArkClass {
         return Array.from(this.modifiers).filter((item) => {
             return item instanceof Decorator;
         }) as Decorator[];
+    }
+
+    public getAnonymousMethodNumber() {
+        return this.anonymousMethodNumber++;
     }
 }
