@@ -1,6 +1,6 @@
-import {SceneConfig} from "../src/Config";
-import {Scene} from "../src/Scene";
-import Logger, {LOG_LEVEL} from "../src/utils/logger";
+import {SceneConfig} from "../src_refactoring/Config";
+import {Scene} from "../src_refactoring/Scene";
+import Logger, {LOG_LEVEL} from "../src_refactoring/utils/logger";
 
 const logPath = 'out\\SceneTest.log';
 const logger = Logger.getLogger();
@@ -14,6 +14,9 @@ class SceneTest {
         logger.error(process.memoryUsage());
 
         // build config
+        // D:/Codes/resources/SE4OpenHarmony-main/Apps/ArkTS2TSRes/ohos-beacon-library_
+        // D:/Codes/resources/SE4OpenHarmony-main/Apps/ArkTS2TSRes/HarmonyTranslator_
+        // tests/resources/scene/mainModule
         const configPath = "tests\\resources\\scene\\SceneTestConfig.json";
         let sceneConfig: SceneConfig = new SceneConfig();
         await sceneConfig.buildFromJson(configPath);
@@ -65,7 +68,7 @@ class SceneTest {
         logger.info(process.memoryUsage());
 
         const sceneConfig: SceneConfig = new SceneConfig();
-        // await sceneConfig.buildConfig(projectName, etsProjectPath, outputPath, sdkEtsPath, logPath, nodePath);
+        await sceneConfig.buildConfig(projectName, etsProjectPath, outputPath, sdkEtsPath, logPath, nodePath);
 
         logger.info(`memoryUsage after EtsConfig in bytes:`);
         logger.info(process.memoryUsage());
@@ -118,7 +121,7 @@ class SceneTest {
         logger.info(process.memoryUsage());
 
         const sceneConfig: SceneConfig = new SceneConfig();
-        await sceneConfig.buildFromIde(projectName, etsProjectPath, outputPath, sdkEtsPath, logPath, nodePath);
+        // await sceneConfig.buildFromIde(projectName, etsProjectPath, outputPath, sdkEtsPath, logPath, nodePath);
 
         logger.info(`memoryUsage after EtsConfig in bytes:`);
         logger.info(process.memoryUsage());
@@ -133,5 +136,5 @@ class SceneTest {
 
 let sceneTest = new SceneTest();
 // sceneTest.testETsWholePipline();
-// sceneTest.testTsWholePipline();
-sceneTest.testEtsConfig();
+sceneTest.testTsWholePipline();
+// sceneTest.testEtsConfig();

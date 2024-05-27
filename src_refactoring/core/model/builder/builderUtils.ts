@@ -520,7 +520,7 @@ export function buildTypeFromPreStr(preStr: string) {
 //     }
 // }
 
-export function tsNode2Value(node: ts.Node, sourceFile: ts.SourceFile): Value {
+export function tsNode2Value(node: ts.Node, sourceFile: ts.SourceFile,  cls: ArkClass): Value {
     let nodeKind = ts.SyntaxKind[node.kind];
     if (nodeKind == 'NumericLiteral' ||
         nodeKind == 'StringLiteral' ||
@@ -578,7 +578,7 @@ export function tsNode2Value(node: ts.Node, sourceFile: ts.SourceFile): Value {
     else if (ts.isArrayLiteralExpression(node)) {
         let elements: Value[] = [];
         node.elements.forEach((element) => {
-            let value = tsNode2Value(element, sourceFile);
+            let value = tsNode2Value(element, sourceFile, cls);
             if (value == undefined) {
                 elements.push(new Constant('', buildTypeFromPreStr('UndefinedKeyword')));
             }
@@ -594,14 +594,14 @@ export function tsNode2Value(node: ts.Node, sourceFile: ts.SourceFile): Value {
         return new ArrayLiteralExpr(elements, type);;
     }
     else if (ts.isBinaryExpression(node)) {
-        let leftOp = tsNode2Value(node.left, sourceFile);
-        let rightOp = tsNode2Value(node.right, sourceFile);
+        let leftOp = tsNode2Value(node.left, sourceFile, cls);
+        let rightOp = tsNode2Value(node.right, sourceFile, cls);
         let op = ts.SyntaxKind[node.operatorToken.kind];
         return new ArkBinopExpr(leftOp, rightOp, op);
     }
     else if (ts.isPrefixUnaryExpression(node)) {
         let op = ts.SyntaxKind[node.operator];
-        let value = tsNode2Value(node.operand, sourceFile);
+        let value = tsNode2Value(node.operand, sourceFile, cls);
         return new ArkUnopExpr(value, op);
     }
     else if (ts.isIdentifier(node)) {
@@ -612,15 +612,15 @@ export function tsNode2Value(node: ts.Node, sourceFile: ts.SourceFile): Value {
         let fieldName = node.name.escapedText.toString();
         const fieldSignature = new FieldSignature();
         fieldSignature.setFieldName(fieldName);
-        let base = tsNode2Value(node.expression, sourceFile);
+        let base = tsNode2Value(node.expression, sourceFile, cls);
         //TODO: support question token?
         return new ArkInstanceFieldRef(base as Local, fieldSignature);
     }
     else if (ts.isCallExpression(node)) {
-        let exprValue = tsNode2Value(node.expression, sourceFile);
+        let exprValue = tsNode2Value(node.expression, sourceFile, cls);
         let argumentParas: Value[] = [];
         node.arguments.forEach((argument) => {
-            argumentParas.push(tsNode2Value(argument, sourceFile));
+            argumentParas.push(tsNode2Value(argument, sourceFile, cls));
         });
         //TODO: support typeArguments
 
@@ -656,6 +656,8 @@ export function tsNode2Value(node: ts.Node, sourceFile: ts.SourceFile): Value {
         );
         arkClass.setLine(line + 1);
         arkClass.setColumn(character + 1);
+        arkClass.setDeclaringArkFile(cls.getDeclaringArkFile());
+        arkClass.genSignature();
 
         let classSig = new ClassSignature();
         classSig.setClassName(arkClass.getName());
@@ -681,6 +683,8 @@ export function tsNode2Value(node: ts.Node, sourceFile: ts.SourceFile): Value {
                 // buildNormalArkMethodFromMethodInfo(methodInfo, arkMethod);
                 // arkMethods.push(arkMethod);
                 let arkMethod = new ArkMethod();
+                arkMethod.setDeclaringArkClass(arkClass);
+                arkMethod.setDeclaringArkFile();
                 buildArkMethodFromArkClass(property, arkClass, arkMethod, sourceFile);
             }
         });
