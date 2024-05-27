@@ -497,9 +497,9 @@ export class CfgBuilder {
                 loopstm.condition = c.expression.getText(this.sourceFile);
                 loopstm.code = "while (" + loopstm.condition + ")";
                 if (ts.isBlock(c.statement)) {
-                    this.walkAST(loopstm, loopExit, [...c.statement.statements]);
+                    this.walkAST(lastStatement, loopstm, [...c.statement.statements]);
                 } else {
-                    this.walkAST(loopstm, loopExit, [c.statement]);
+                    this.walkAST(lastStatement, loopstm, [c.statement]);
                 }
                 let lastType = lastStatement.type;
                 if (lastType == "ifStatement" || lastType == "loopStatement") {
