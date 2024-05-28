@@ -65,7 +65,7 @@ import {IRUtils} from './IRUtils';
 import {TypeInference} from './TypeInference';
 import {LineColPosition} from "../base/Position";
 import {MethodLikeNode, buildArkMethodFromArkClass} from "../model/builder/ArkMethodBuilder";
-import {buildNormalArkClassFromArkFile} from "../model/builder/ArkClassBuilder";
+import {buildNormalArkClassFromArkFile, buildNormalArkClassFromArkNamespace} from "../model/builder/ArkClassBuilder";
 
 const logger = Logger.getLogger();
 
@@ -1425,7 +1425,7 @@ export class CfgBuilder {
             arrowArkMethod.setName(arrowFuncName);
             buildArkMethodFromArkClass(node as ts.ArrowFunction, this.declaringClass, arrowArkMethod, this.sourceFile);
             arrowArkMethod.genSignature();
-            
+
             this.declaringClass.addMethod(arrowArkMethod);
 
             let callableType = new CallableType(arrowArkMethod.getSignature());
@@ -1459,9 +1459,16 @@ export class CfgBuilder {
             this.locals.add(value);
         } else if (ts.SyntaxKind[node.kind] == "ClassExpression") {
             let cls: ArkClass = new ArkClass();
-            let arkFile = this.declaringClass.getDeclaringArkFile();
-            buildNormalArkClassFromArkFile(node as ts.ClassExpression, arkFile, cls, this.sourceFile);
-            arkFile.addArkClass(cls);
+            const declaringArkNamespace = cls.getDeclaringArkNamespace();
+            if (declaringArkNamespace) {
+                buildNormalArkClassFromArkNamespace(node as ts.ClassExpression, declaringArkNamespace, cls, this.sourceFile);
+                declaringArkNamespace.addArkClass(cls);
+            } else {
+                let arkFile = this.declaringClass.getDeclaringArkFile();
+                buildNormalArkClassFromArkFile(node as ts.ClassExpression, arkFile, cls, this.sourceFile);
+                arkFile.addArkClass(cls);
+            }
+
             // if (cls.isExported()) {
             //     let exportClauseName: string = cls.getName();
             //     let exportClauseType: string = "Class";
@@ -2401,8 +2408,8 @@ export class CfgBuilder {
         let stmts: ts.Node[] = [];
         if (ts.isSourceFile(this.astRoot)) {
             stmts = [...this.astRoot.statements];
-        } else if (ts.isFunctionDeclaration(this.astRoot) || ts.isMethodDeclaration(this.astRoot) || ts.isConstructorDeclaration(this.astRoot) 
-              || ts.isGetAccessor(this.astRoot) || ts.isGetAccessorDeclaration(this.astRoot) || ts.isFunctionExpression(this.astRoot)) {
+        } else if (ts.isFunctionDeclaration(this.astRoot) || ts.isMethodDeclaration(this.astRoot) || ts.isConstructorDeclaration(this.astRoot)
+            || ts.isGetAccessor(this.astRoot) || ts.isGetAccessorDeclaration(this.astRoot) || ts.isFunctionExpression(this.astRoot)) {
             if (this.astRoot.body) {
                 stmts = [...this.astRoot.body.statements];
             }
