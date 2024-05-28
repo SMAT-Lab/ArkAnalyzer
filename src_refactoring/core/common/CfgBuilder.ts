@@ -1,7 +1,5 @@
 import * as ts from 'typescript';
-import * as fs from 'fs';
 import Logger from "../../utils/logger";
-import {ASTree} from '../base/Ast';
 import {Constant} from '../base/Constant';
 import {
     AbstractInvokeExpr,

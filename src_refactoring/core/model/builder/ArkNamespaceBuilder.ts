@@ -1,4 +1,3 @@
-import { NodeA } from "../../base/Ast";
 import { LineColPosition } from "../../base/Position";
 import { ExportInfo } from "../ArkExport";
 import { buildDefaultArkClassFromArkNamespace, buildNormalArkClassFromArkNamespace } from "./ArkClassBuilder";
@@ -11,7 +10,6 @@ import Logger from "../../../utils/logger";
 import { buildExportInfo } from "./ArkExportBuilder";
 import { ArkClass } from "../ArkClass";
 import { ArkMethod } from "../ArkMethod";
-import { Decorator } from "../../base/Decorator";
 
 const logger = Logger.getLogger();
 
