@@ -1,8 +1,8 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import * as url from 'url';
-import Logger, { LOG_LEVEL } from "./logger";
-import { fetchDependenciesFromFile, parseJsonText } from './json5parser';
+import Logger, {LOG_LEVEL} from "./logger";
+import {fetchDependenciesFromFile, parseJsonText} from './json5parser';
 
 const logger = Logger.getLogger();
 
@@ -38,7 +38,7 @@ export class Ets2ts {
         this.tsModule = await require(path.join(etsLoaderPath, 'node_modules/typescript'));
         this.processUIModule = await require(path.join(etsLoaderPath, 'lib/process_ui_syntax'));
         this.preProcessModule = await require(path.join(etsLoaderPath, 'lib/pre_process.js'));
-        this.etsCheckerModule =  await require(path.join(etsLoaderPath, 'lib/ets_checker'));
+        this.etsCheckerModule = await require(path.join(etsLoaderPath, 'lib/ets_checker'));
         this.compilerOptions = this.tsModule.readConfigFile(
             path.resolve(etsLoaderPath, 'tsconfig.json'), this.tsModule.sys.readFile).config.compilerOptions;
         this.compilerOptions.target = 'ESNext';
@@ -53,7 +53,7 @@ export class Ets2ts {
         this.projectConfig.buildMode = "release";
         this.projectConfig.projectRootPath = ".";
         this.resolveSdkApi();
-        
+
         let languageService = this.etsCheckerModule.createLanguageService([]);
         if (languageService.getBuilderProgram) {
             mainModule.globalProgram.builderProgram = languageService.getBuilderProgram(/*withLinterProgram*/ true);
@@ -84,6 +84,8 @@ export class Ets2ts {
                 this.cp2output(key);
             }
         })
+
+        this.synchronizeDelete();
 
         logger.info(`Ets2ts-compileEtsTime: ${this.statistics[0][1] / 1000}s, cnt: ${this.statistics[0][0]}, avg time: ${this.statistics[0][1] / this.statistics[0][0]}ms`);
         logger.info(`Ets2ts-copyTsTime: ${this.statistics[1][1] / 1000}s, cnt: ${this.statistics[1][0]}, avg time: ${this.statistics[1][1] / this.statistics[1][0]}ms`);
@@ -121,13 +123,13 @@ export class Ets2ts {
                         } else {
                             alias += '|' + k[0];
                         }
-                    }                    
+                    }
                 });
             }
         }
         let fileContent: string | undefined = fs.readFileSync(file, 'utf8');
         if (alias.length > 0) {
-            const REG_IMPORT_DECL: RegExp = new RegExp('(import)\\s+(?:(.+)|\\{([\\s\\S]+)\\})\\s+from\\s+[\'\"]('+ alias +')(\\S+)[\'\"]', 'g');
+            const REG_IMPORT_DECL: RegExp = new RegExp('(import)\\s+(?:(.+)|\\{([\\s\\S]+)\\})\\s+from\\s+[\'\"](' + alias + ')(\\S+)[\'\"]', 'g');
             fileContent = fileContent.replace(REG_IMPORT_DECL, (substring: string, ...args: any[]) => {
                 if (dependenciesMap.has(args[3])) {
                     return substring.replace(args[3], dependenciesMap.get(args[3]) as string);
@@ -172,7 +174,7 @@ export class Ets2ts {
     private getAllEts(srcPath: string, ets: Map<string, string[]>, ohPkgFiles: string[] = []): boolean {
         let hasFile = false;
 
-        let files = fs.readdirSync(srcPath, { withFileTypes: true });
+        let files = fs.readdirSync(srcPath, {withFileTypes: true});
 
         let ohPkgFilesOfThisDir: string[] = [];
         ohPkgFilesOfThisDir.push(...ohPkgFiles);
@@ -199,6 +201,21 @@ export class Ets2ts {
             }
         });
         return hasFile;
+    }
+
+    private synchronizeDelete() {
+        const cachedFiles: Map<string, string[]> = new Map();
+        const cachedDir = this.projectConfig.saveTsPath;
+        this.getAllEts(cachedDir, cachedFiles);
+
+        const originalDir = this.projectConfig.projectPath;
+        for (const [cachedFilePath, _] of cachedFiles) {
+            const relativePath = path.relative(cachedDir, cachedFilePath);
+            const originalPath = path.join(originalDir, relativePath.replace(/\.ts$/, 'ets'));
+            if (!fs.existsSync(originalPath)) {
+                fs.unlinkSync(cachedFilePath);
+            }
+        }
     }
 
     getDumpSourceTransformer(ets2ts: Ets2ts, dependenciesMap: Map<string, string>): Function {
@@ -262,7 +279,7 @@ export class Ets2ts {
                 });
 
                 if (alias.length > 0) {
-                    const REG_IMPORT_DECL: RegExp = new RegExp('(import)\\s+(?:(.+)|\\{([\\s\\S]+)\\})\\s+from\\s+[\'\"]('+ alias +')(\\S+)[\'\"]', 'g');
+                    const REG_IMPORT_DECL: RegExp = new RegExp('(import)\\s+(?:(.+)|\\{([\\s\\S]+)\\})\\s+from\\s+[\'\"](' + alias + ')(\\S+)[\'\"]', 'g');
                     obj.content = obj.content.replace(REG_IMPORT_DECL, (substring: string, ...args: any[]) => {
                         let relativePath = path.relative(path.dirname(node.fileName), args[3]).replace(new RegExp('\\' + path.sep, 'g'), '/');
                         return substring.replace(args[3], relativePath);
@@ -291,7 +308,7 @@ export class Ets2ts {
         }
     }
 
-    private parseApiVersion(version: string|number): number{
+    private parseApiVersion(version: string | number): number {
         if (typeof version === 'number') {
             return version;
         }

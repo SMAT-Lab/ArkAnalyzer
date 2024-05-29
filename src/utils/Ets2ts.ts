@@ -202,6 +202,8 @@ export class Ets2ts {
         })
         this.cache.saveCache();
 
+        this.synchronizeDelete();
+
         logger.info(`Ets2ts-compileEtsTime: ${this.statistics[0][1] / 1000}s, cnt: ${this.statistics[0][0]}, avg time: ${this.statistics[0][1] / this.statistics[0][0]}ms`);
         logger.info(`Ets2ts-copyTsTime: ${this.statistics[1][1] / 1000}s, cnt: ${this.statistics[1][0]}, avg time: ${this.statistics[1][1] / this.statistics[1][0]}ms`);
     }
@@ -316,6 +318,21 @@ export class Ets2ts {
             }
         });
         return hasFile;
+    }
+
+    private synchronizeDelete() {
+        const cachedFiles: Map<string, string[]> = new Map();
+        const cachedDir = this.projectConfig.saveTsPath;
+        this.getAllEts(cachedDir, cachedFiles);
+
+        const originalDir = this.projectConfig.projectPath;
+        for (const [cachedFilePath, _] of cachedFiles) {
+            const relativePath = path.relative(cachedDir, cachedFilePath);
+            const originalPath = path.join(originalDir, relativePath.replace(/\.ts$/, 'ets'));
+            if (!fs.existsSync(originalPath)) {
+                fs.unlinkSync(cachedFilePath);
+            }
+        }
     }
 
     getDumpSourceTransformer(ets2ts: Ets2ts, dependenciesMap: Map<string, string>): Function {
