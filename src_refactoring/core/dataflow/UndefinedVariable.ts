@@ -1,4 +1,3 @@
-import { SceneConfig } from "../../Config";
 import { Scene } from "../../Scene";
 import { ArkBody } from "../model/ArkBody";
 import {DataflowProblem, FlowFunction} from "./DataflowProblem"
@@ -8,10 +7,9 @@ import {ClassType, NumberType, Type} from "../base/Type"
 import {ArkAssignStmt, ArkInvokeStmt, ArkReturnStmt, Stmt} from "../base/Stmt"
 import { ArkMethod } from "../model/ArkMethod";
 import {Constant} from "../base/Constant"
-import { AbstractFieldRef, ArkInstanceFieldRef, ArkParameterRef, ArkStaticFieldRef } from "../base/Ref";
-import { ModelUtils } from "../common/ModelUtils";
+import { ArkInstanceFieldRef, ArkStaticFieldRef } from "../base/Ref";
 import { DataflowSolver } from "./DataflowSolver"
-import { ArkBinopExpr, ArkInstanceInvokeExpr, ArkStaticInvokeExpr } from "../base/Expr";
+import { ArkInstanceInvokeExpr, ArkStaticInvokeExpr } from "../base/Expr";
 import { UndefinedType } from "../base/Type";
 import { factEqual } from "../dataflow/DataflowSolver";
 import { FileSignature } from "../model/ArkSignature";
@@ -50,7 +48,7 @@ export class UndefinedVariableChecker extends DataflowProblem<Value> {
             let constant : Constant = val as Constant;
             if (constant.getType() instanceof UndefinedType) {
                 return true;
-            } 
+            }
         }
         return false;
     }
@@ -82,11 +80,11 @@ export class UndefinedVariableChecker extends DataflowProblem<Value> {
                             ret.add(local);
                         }
                         return ret;
-                    } 
+                    }
                     if (!factEqual(srcStmt.getDef(), dataFact)) {
                         if (!(dataFact instanceof Local && dataFact.getName() == srcStmt.getDef()!.toString()))
                             ret.add(dataFact);
-                    } 
+                    }
                     if (srcStmt instanceof ArkAssignStmt ) {
                         let ass: ArkAssignStmt = (srcStmt as ArkAssignStmt);
                         let assigned : Value = ass.getLeftOp();

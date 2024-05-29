@@ -1,7 +1,7 @@
 import { CfgUitls } from '../../utils/CfgUtils';
 import { Constant } from '../base/Constant';
 import { Decorator } from '../base/Decorator';
-import { ArkInstanceInvokeExpr, ArkNewExpr, ArkStaticInvokeExpr } from '../base/Expr';
+import { ArkInstanceInvokeExpr, ArkNewExpr } from '../base/Expr';
 import { Local } from '../base/Local';
 import { ArkInstanceFieldRef } from '../base/Ref';
 import { ArkAssignStmt, ArkIfStmt, ArkInvokeStmt, Stmt } from '../base/Stmt';

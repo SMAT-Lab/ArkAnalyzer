@@ -1,8 +1,7 @@
 import { Value } from "../../core/base/Value";
 import { LocalPointer, PointerTargetPair, PointerTarget, InstanceFieldPointer, Pointer, StaticFieldPointer } from "./Pointer";
-import Logger, { LOG_LEVEL } from "../../utils/logger";
+import Logger from "../../utils/logger";
 import { FieldSignature } from "../../core/model/ArkSignature";
-import { Local } from "../../core/base/Local";
 
 const logger = Logger.getLogger();
 

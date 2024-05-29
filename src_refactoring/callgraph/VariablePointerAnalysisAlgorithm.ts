@@ -11,7 +11,7 @@ import { AbstractCallGraph } from "./AbstractCallGraphAlgorithm";
 import { ClassHierarchyAnalysisAlgorithm } from "./ClassHierarchyAnalysisAlgorithm";
 import { LocalPointer, PointerTargetPair, PointerTarget, InstanceFieldPointer, StaticFieldPointer, Pointer } from "./PointerAnalysis/Pointer";
 import { PointerFlowGraph } from "./PointerAnalysis/PointerFlowGraph";
-import Logger, { LOG_LEVEL } from "../utils/logger";
+import Logger from "../utils/logger";
 import { AbstractFieldRef, ArkInstanceFieldRef, ArkStaticFieldRef } from "../core/base/Ref";
 
 const logger = Logger.getLogger();

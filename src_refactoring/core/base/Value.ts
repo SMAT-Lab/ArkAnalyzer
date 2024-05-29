@@ -1,6 +1,5 @@
 import { Type } from "./Type";
 
-
 export interface Value {
     /** Return a list of values which are contained in this value */
     getUses(): Value[];

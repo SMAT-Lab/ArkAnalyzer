@@ -4,7 +4,7 @@ import {ArkFile} from "../model/ArkFile";
 import {AbstractExpr, AbstractInvokeExpr, ArkConditionExpr} from "./Expr";
 import {LineColPosition} from "./Position";
 import {AbstractFieldRef, ArkArrayRef} from "./Ref";
-import {Value, ValueTag} from "./Value";
+import {Value} from "./Value";
 
 export class Stmt {
     private text: string = '';

@@ -1,11 +1,10 @@
 import { Constant } from "../base/Constant";
 import { DefUseChain } from "../base/DefUseChain";
 import { Local } from "../base/Local";
-import { AbstractFieldRef, ArkInstanceFieldRef, ArkStaticFieldRef, ArkThisRef } from "../base/Ref";
+import { AbstractFieldRef, ArkInstanceFieldRef, ArkStaticFieldRef } from "../base/Ref";
 import { ArkAssignStmt, Stmt } from "../base/Stmt";
 import { UndefinedType } from "../base/Type";
 import { ArkClass } from "../model/ArkClass";
-import { ArkField } from "../model/ArkField";
 import { ArkMethod } from "../model/ArkMethod";
 import { BasicBlock } from "./BasicBlock";
 import Logger from "../../utils/logger";

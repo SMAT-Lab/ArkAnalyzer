@@ -1,4 +1,4 @@
-import {Scene} from './../../Scene';
+import {Scene} from '../../Scene';
 import Logger from "../../utils/logger";
 import {
     ArkBinopExpr,

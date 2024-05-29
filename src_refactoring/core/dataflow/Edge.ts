@@ -1,5 +1,4 @@
 import { Stmt } from "../base/Stmt";
-import {Fact} from "../dataflow/Fact"
 
 export class Edge {
     kind: number;
