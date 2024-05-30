@@ -669,6 +669,9 @@ export class CfgBuilder {
             if (trystm.finallyStatement) {
                 this.deleteExit(trystm.finallyStatement);
             }
+            if (trystm.next) {
+                this.deleteExit(trystm.next);
+            }
         } else {
             if (stm.next?.type.includes("Exit")) {
                 let p = stm.next;
@@ -961,6 +964,9 @@ export class CfgBuilder {
             if (trystm.finallyStatement) {
                 this.buildLastAndHaveCall(trystm.finallyStatement);
             }
+            if (trystm.next) {
+                this.buildLastAndHaveCall(trystm.next);
+            }
         } else {
             if (stm.next) {
                 stm.next?.lasts.push(stm);
@@ -975,42 +981,6 @@ export class CfgBuilder {
             stm.walked = false;
         }
     }
-
-    resetWalkedPartial(stm: StatementBuilder) {
-        if (!stm.walked)
-            return;
-        stm.walked = false;
-        if (stm.type == "ifStatement" || stm.type == "loopStatement" || stm.type == "catchOrNot") {
-            let cstm = stm as ConditionStatementBuilder;
-            if (cstm.nextT == null || cstm.nextF == null) {
-                this.errorTest(cstm);
-                return;
-            }
-            this.resetWalkedPartial(cstm.nextF);
-            this.resetWalkedPartial(cstm.nextT);
-        } else if (stm.type == "switchStatement") {
-            let sstm = stm as SwitchStatementBuilder;
-            for (let j in sstm.nexts) {
-                this.resetWalkedPartial(sstm.nexts[j]);
-            }
-        } else if (stm.type == "tryStatement") {
-            let trystm = stm as TryStatementBuilder;
-            if (trystm.tryFirst) {
-                this.resetWalkedPartial(trystm.tryFirst);
-            }
-            if (trystm.catchStatement) {
-                this.resetWalkedPartial(trystm.catchStatement);
-            }
-            if (trystm.finallyStatement) {
-                this.resetWalkedPartial(trystm.finallyStatement);
-            }
-        } else {
-            if (stm.next != null)
-                this.resetWalkedPartial(stm.next);
-        }
-
-    }
-
 
     CfgBuilder2Array(stm: StatementBuilder) {
 
@@ -1043,6 +1013,9 @@ export class CfgBuilder {
             }
             if (trystm.finallyStatement) {
                 this.CfgBuilder2Array(trystm.finallyStatement);
+            }
+            if (trystm.next) {
+                this.CfgBuilder2Array(trystm.next);
             }
         } else {
             if (stm.next != null)

@@ -1,10 +1,11 @@
 {
     "targetProjectName": "ifdsTest",    
-    "targetProjectDirectory": "tests\\resources\\ifds\\project",
+    "targetProjectDirectory": "tests\\resources\\ifds\\TiantAnalysis",
 
     "logPath": "out\\log.txt",
     
-    "etsSdkPath": "codeLab\\interface_sdk-js-master",
+    "ohosSdkPath": "",
+    "kitSdkPath": "",
     "systemSdkPath": "",
     
     "otherSdks": [

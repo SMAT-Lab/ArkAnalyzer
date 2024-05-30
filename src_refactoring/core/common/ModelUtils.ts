@@ -158,16 +158,29 @@ export class ModelUtils {
 
     /** search method within the file that contain the given method */
     public static getMethodWithName(methodName: string, startFrom: ArkMethod): ArkMethod | null {
-        if (startFrom.getName() == methodName) {
-            return startFrom;
-        }
+        if (!methodName.includes('.')) {
+            if (startFrom.getName() == methodName) {
+                return startFrom;
+            }
 
-        const thisClass = startFrom.getDeclaringArkClass();
-        let methodSearched: ArkMethod | null = thisClass.getMethodWithName(methodName);
-        if (!methodSearched) {
-            methodSearched = thisClass.getStaticMethodWithName(methodName);
+            const thisClass = startFrom.getDeclaringArkClass();
+            let methodSearched: ArkMethod | null = thisClass.getMethodWithName(methodName);
+            if (!methodSearched) {
+                methodSearched = thisClass.getStaticMethodWithName(methodName);
+            }
+            return methodSearched;
+        } else {
+            const names = methodName.split('.');
+            let nameSpace = this.getNamespaceWithName(names[0], startFrom);
+            for (let i = 1; i < names.length - 1; i++) {
+                if (nameSpace)
+                    nameSpace = nameSpace.getNamespaceWithName(names[i]);
+            }
+            if (nameSpace) {
+                return nameSpace.getDefaultClass().getMethodWithName(names[names.length - 1]);
+            }
         }
-        return methodSearched;
+        return null;
     }
 
     public static getNamespaceWithNameFromClass(namespaceName: string, startFrom: ArkClass): ArkNamespace | null {

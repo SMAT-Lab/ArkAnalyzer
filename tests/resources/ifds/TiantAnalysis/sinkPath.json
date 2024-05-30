@@ -1,0 +1,8 @@
+[
+    {
+        "file": "@etsSdk/api/@ohos.taskpool: ",
+        "namespace": "taskpool",
+        "class": "_DEFAULT_ARK_CLASS",
+        "method": "cancel"
+    }
+]

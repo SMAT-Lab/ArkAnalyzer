@@ -26,7 +26,7 @@ export abstract class DataflowSolver<D> {
     private zeroFact: D;
     private inComing: Map<PathEdgePoint<D>, Set<PathEdgePoint<D>>>;
     private endSummary: Map<PathEdgePoint<D>, Set<PathEdgePoint<D>>>;
-    private summaryEdge: Set<CallToReturnCacheEdge<D>>;
+    private summaryEdge: Set<CallToReturnCacheEdge<D>>; // summaryEdge不是加速一个函数内多次调用同一个函数，而是加速多次调用同一个函数f时，f内的函数调用
     private scene: Scene;
     private CHA: ClassHierarchyAnalysisAlgorithm;
     private stmtNexts: Map<Stmt, Set<Stmt>>;
@@ -254,7 +254,7 @@ export abstract class DataflowSolver<D> {
         }
         for (let cacheEdge of this.summaryEdge) {
             if (cacheEdge.edgeStart == edge.edgeEnd && cacheEdge.edgeEnd.node == returnSite) {
-                this.propagate(new PathEdge<D>(start, cacheEdge.edgeEnd));//什么时候执行
+                this.propagate(new PathEdge<D>(start, cacheEdge.edgeEnd));
             }
         }
 
