@@ -2,8 +2,8 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as url from 'url';
 import * as crypto from 'crypto';
-import Logger, { LOG_LEVEL } from "./logger";
-import { fetchDependenciesFromFile, parseJsonText } from './json5parser';
+import Logger, {LOG_LEVEL} from "./logger";
+import {fetchDependenciesFromFile, parseJsonText} from './json5parser';
 
 const logger = Logger.getLogger();
 
@@ -34,7 +34,7 @@ class Ets2tsCache {
     cache: CacheFile;
     hashCache: Map<string, string> = new Map();
 
-    constructor(projectPath:string, saveTsPath: string, cachePath: string) {
+    constructor(projectPath: string, saveTsPath: string, cachePath: string) {
         this.cacheFilePath = path.join(cachePath, this.sha256(`${projectPath}:${saveTsPath}`));
         if (!fs.existsSync(cachePath)) {
             fs.mkdirSync(cachePath, {recursive: true});
@@ -73,7 +73,15 @@ class Ets2tsCache {
     }
 
     public updateCache(srcFile: string, dstFile: string) {
-        this.cache.files.set(srcFile, {srcHash: this.shaFile(srcFile), dstFile: dstFile, dstHash: this.shaFile(dstFile)});
+        this.cache.files.set(srcFile, {
+            srcHash: this.shaFile(srcFile),
+            dstFile: dstFile,
+            dstHash: this.shaFile(dstFile)
+        });
+    }
+
+    public deleteCache(srcFile: string) {
+        this.cache.files.delete(srcFile);
     }
 
     public saveCache() {
@@ -141,7 +149,7 @@ export class Ets2ts {
         this.tsModule = await require(path.join(etsLoaderPath, 'node_modules/typescript'));
         this.processUIModule = await require(path.join(etsLoaderPath, 'lib/process_ui_syntax'));
         this.preProcessModule = await require(path.join(etsLoaderPath, 'lib/pre_process.js'));
-        this.etsCheckerModule =  await require(path.join(etsLoaderPath, 'lib/ets_checker'));
+        this.etsCheckerModule = await require(path.join(etsLoaderPath, 'lib/ets_checker'));
         this.compilerOptions = this.tsModule.readConfigFile(
             path.resolve(etsLoaderPath, 'tsconfig.json'), this.tsModule.sys.readFile).config.compilerOptions;
         this.compilerOptions.target = 'ESNext';
@@ -156,7 +164,7 @@ export class Ets2ts {
         this.projectConfig.buildMode = "release";
         this.projectConfig.projectRootPath = ".";
         this.resolveSdkApi();
-        
+
         let languageService = this.etsCheckerModule.createLanguageService([]);
         if (languageService.getBuilderProgram) {
             mainModule.globalProgram.builderProgram = languageService.getBuilderProgram(/*withLinterProgram*/ true);
@@ -194,15 +202,14 @@ export class Ets2ts {
                     logger.info(`compile ${key}`);
                 }
             } else {
-                if (this.cache.oneFileHasModify(key) ) {
+                if (this.cache.oneFileHasModify(key)) {
                     this.cp2output(key);
                     this.cache.updateCache(key, dstFile);
                 }
             }
         })
-        this.cache.saveCache();
-
         this.synchronizeDelete();
+        this.cache.saveCache();
 
         logger.info(`Ets2ts-compileEtsTime: ${this.statistics[0][1] / 1000}s, cnt: ${this.statistics[0][0]}, avg time: ${this.statistics[0][1] / this.statistics[0][0]}ms`);
         logger.info(`Ets2ts-copyTsTime: ${this.statistics[1][1] / 1000}s, cnt: ${this.statistics[1][0]}, avg time: ${this.statistics[1][1] / this.statistics[1][0]}ms`);
@@ -240,13 +247,13 @@ export class Ets2ts {
                         } else {
                             alias += '|' + k[0];
                         }
-                    }                    
+                    }
                 });
             }
         }
         let fileContent: string | undefined = fs.readFileSync(file, 'utf8');
         if (alias.length > 0) {
-            const REG_IMPORT_DECL: RegExp = new RegExp('(import)\\s+(?:(.+)|\\{([\\s\\S]+)\\})\\s+from\\s+[\'\"]('+ alias +')(\\S+)[\'\"]', 'g');
+            const REG_IMPORT_DECL: RegExp = new RegExp('(import)\\s+(?:(.+)|\\{([\\s\\S]+)\\})\\s+from\\s+[\'\"](' + alias + ')(\\S+)[\'\"]', 'g');
             fileContent = fileContent.replace(REG_IMPORT_DECL, (substring: string, ...args: any[]) => {
                 if (dependenciesMap.has(args[3])) {
                     return substring.replace(args[3], dependenciesMap.get(args[3]) as string);
@@ -279,7 +286,7 @@ export class Ets2ts {
 
     private cp2output(fileName: string) {
         let start = new Date().getTime();
-
+        logger.info(`cp2output, source file path: ${fileName}`);
         let resultPath = this.getOutputPath(fileName);
         fs.cpSync(fileName, resultPath);
 
@@ -291,7 +298,7 @@ export class Ets2ts {
     private getAllEts(srcPath: string, ets: Map<string, string[]>, ohPkgFiles: string[] = []): boolean {
         let hasFile = false;
 
-        let files = fs.readdirSync(srcPath, { withFileTypes: true });
+        let files = fs.readdirSync(srcPath, {withFileTypes: true});
 
         let ohPkgFilesOfThisDir: string[] = [];
         ohPkgFilesOfThisDir.push(...ohPkgFiles);
@@ -328,9 +335,23 @@ export class Ets2ts {
         const originalDir = this.projectConfig.projectPath;
         for (const [cachedFilePath, _] of cachedFiles) {
             const relativePath = path.relative(cachedDir, cachedFilePath);
-            const originalPath = path.join(originalDir, relativePath.replace(/\.ts$/, 'ets'));
-            if (!fs.existsSync(originalPath)) {
-                fs.unlinkSync(cachedFilePath);
+            const mayCachedTsMapFilePath = cachedFilePath + '.map';
+            if (relativePath.endsWith('.ts') && fs.existsSync(mayCachedTsMapFilePath)) {
+                const originalEtsPath = path.join(originalDir, relativePath.replace(/\.ts$/, '.ets'));
+                if (!fs.existsSync(originalEtsPath)) {
+                    fs.unlinkSync(cachedFilePath);
+                    this.cache.deleteCache(originalEtsPath);
+                    logger.info(`${cachedFilePath} deleted`);
+                    fs.unlinkSync(mayCachedTsMapFilePath);
+                    logger.info(`${mayCachedTsMapFilePath} deleted`);
+                }
+            } else {
+                const originalPath = path.join(originalDir, relativePath);
+                if (!fs.existsSync(originalPath)) {
+                    fs.unlinkSync(cachedFilePath);
+                    this.cache.deleteCache(originalPath);
+                    logger.info(`${cachedFilePath} deleted`);
+                }
             }
         }
     }
@@ -396,7 +417,7 @@ export class Ets2ts {
                 });
 
                 if (alias.length > 0) {
-                    const REG_IMPORT_DECL: RegExp = new RegExp('(import)\\s+(?:(.+)|\\{([\\s\\S]+)\\})\\s+from\\s+[\'\"]('+ alias +')(\\S+)[\'\"]', 'g');
+                    const REG_IMPORT_DECL: RegExp = new RegExp('(import)\\s+(?:(.+)|\\{([\\s\\S]+)\\})\\s+from\\s+[\'\"](' + alias + ')(\\S+)[\'\"]', 'g');
                     obj.content = obj.content.replace(REG_IMPORT_DECL, (substring: string, ...args: any[]) => {
                         let relativePath = path.relative(path.dirname(node.fileName), args[3]).replace(new RegExp('\\' + path.sep, 'g'), '/');
                         return substring.replace(args[3], relativePath);
@@ -425,7 +446,7 @@ export class Ets2ts {
         }
     }
 
-    private parseApiVersion(version: string|number): number{
+    private parseApiVersion(version: string | number): number {
         if (typeof version === 'number') {
             return version;
         }
