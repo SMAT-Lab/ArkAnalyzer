@@ -4,6 +4,7 @@ import * as url from 'url';
 import * as crypto from 'crypto';
 import Logger, {LOG_LEVEL} from "./logger";
 import {fetchDependenciesFromFile, parseJsonText} from './json5parser';
+import {FileUtils} from "./FileUtils";
 
 const logger = Logger.getLogger();
 
@@ -199,7 +200,7 @@ export class Ets2ts {
                 if (this.cache.oneFileHasModify(key) || this.cache.filesHasModify(value)) {
                     this.compileEts(key, value);
                     this.cache.updateCache(key, dstFile);
-                    logger.info(`compile ${key}`);
+                    logger.debug(`compile ${key}`);
                 }
             } else {
                 if (this.cache.oneFileHasModify(key)) {
@@ -286,7 +287,7 @@ export class Ets2ts {
 
     private cp2output(fileName: string) {
         let start = new Date().getTime();
-        logger.info(`cp2output, source file path: ${fileName}`);
+        logger.debug(`cp2output, source file path: ${fileName}`);
         let resultPath = this.getOutputPath(fileName);
         fs.cpSync(fileName, resultPath);
 
@@ -328,12 +329,12 @@ export class Ets2ts {
     }
 
     private synchronizeDelete() {
-        const cachedFiles: Map<string, string[]> = new Map();
+        const cachedFiles: string[] = [];
         const cachedDir = this.projectConfig.saveTsPath;
-        this.getAllEts(cachedDir, cachedFiles);
+        FileUtils.getFilesRecursively(cachedDir, cachedFiles);
 
         const originalDir = this.projectConfig.projectPath;
-        for (const [cachedFilePath, _] of cachedFiles) {
+        for (const cachedFilePath of cachedFiles) {
             const relativePath = path.relative(cachedDir, cachedFilePath);
             const mayCachedTsMapFilePath = cachedFilePath + '.map';
             if (relativePath.endsWith('.ts') && fs.existsSync(mayCachedTsMapFilePath)) {
