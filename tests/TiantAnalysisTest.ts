@@ -24,6 +24,8 @@ if(method){
     const problem = new TiantAnalysisChecker([...method.getCfg().getBlocks()][0].getStmts()[method.getParameters().length],method);
     problem.setSinks([sink!]);
     problem.setSources([source!]);
+    // problem.addSinksFromJson("tests/resources/ifds/TiantAnalysis/sinkPath.json");
+    // problem.addSourcesFromJson("tests/resources/ifds/TiantAnalysis/sourcePath.json");
     const solver = new TiantAnalysisSolver(problem, scene);
     solver.solve();
     debugger

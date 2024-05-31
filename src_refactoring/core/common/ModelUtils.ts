@@ -173,8 +173,9 @@ export class ModelUtils {
             const names = methodName.split('.');
             let nameSpace = this.getNamespaceWithName(names[0], startFrom);
             for (let i = 1; i < names.length - 1; i++) {
-                if (nameSpace)
+                if (nameSpace) {
                     nameSpace = nameSpace.getNamespaceWithName(names[i]);
+                }
             }
             if (nameSpace) {
                 return nameSpace.getDefaultClass().getMethodWithName(names[names.length - 1]);
