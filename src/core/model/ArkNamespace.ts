@@ -22,6 +22,7 @@ import { ALL } from '../common/TSConst';
 import { getColNo, getLineNo, LineCol, setCol, setLine, setLineCol } from '../base/Position';
 import { ArkBaseModel } from './ArkBaseModel';
 import { ArkError } from '../common/ArkError';
+import { NAME_DELIMITER } from '../common/Const';
 
 /**
  * @category core/model
@@ -183,11 +184,19 @@ export class ArkNamespace extends ArkBaseModel implements ArkExport {
     }
 
     public getClasses(): ArkClass[] {
-        return Array.from(this.classes.values());
+        return Array.from(new Set(this.classes.values()));
     }
 
-    public addArkClass(arkClass: ArkClass): void {
-        this.classes.set(arkClass.getName(), arkClass);
+    public addArkClass(arkClass: ArkClass, originName?: string): void {
+        const name = originName ?? arkClass.getName();
+        this.classes.set(name, arkClass);
+        if (!originName && !arkClass.isAnonymousClass()) {
+            const index = name.indexOf(NAME_DELIMITER);
+            if (index > 0) {
+                const originName = name.substring(0, index);
+                this.addArkClass(arkClass, originName);
+            }
+        }
     }
 
     public getExportInfos(): ExportInfo[] {

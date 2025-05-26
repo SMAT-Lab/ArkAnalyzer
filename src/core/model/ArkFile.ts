@@ -20,6 +20,7 @@ import { ArkClass } from './ArkClass';
 import { ArkNamespace } from './ArkNamespace';
 import { AliasClassSignature, ClassSignature, FileSignature, NamespaceSignature } from './ArkSignature';
 import { ALL } from '../common/TSConst';
+import { NAME_DELIMITER } from '../common/Const';
 
 export const notStmtOrExprKind = [
     'ModuleDeclaration',
@@ -158,8 +159,16 @@ export class ArkFile {
         return this.code;
     }
 
-    public addArkClass(arkClass: ArkClass): void {
-        this.classes.set(arkClass.getName(), arkClass);
+    public addArkClass(arkClass: ArkClass, originName?: string): void {
+        const name = originName ?? arkClass.getName();
+        this.classes.set(name, arkClass);
+        if (!originName && !arkClass.isAnonymousClass()) {
+            const index = name.indexOf(NAME_DELIMITER);
+            if (index > 0) {
+                const originName = name.substring(0, index);
+                this.addArkClass(arkClass, originName);
+            }
+        }
     }
 
     public getDefaultClass(): ArkClass {
@@ -198,7 +207,7 @@ export class ArkFile {
     }
 
     public getClasses(): ArkClass[] {
-        return Array.from(this.classes.values());
+        return Array.from(new Set(this.classes.values()));
     }
 
     public addNamespace(namespace: ArkNamespace): void {

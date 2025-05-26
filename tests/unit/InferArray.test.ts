@@ -163,6 +163,16 @@ describe("Infer Array Test", () => {
         }
     })
 
+    it('embed class case', () => {
+        const fileId = new FileSignature(projectScene.getProjectName(), 'inferSample.ts');
+        const file = projectScene.getFile(fileId);
+        const embedClassType = file?.getDefaultClass().getMethodWithName('foo')?.getBody()?.getLocals().get('t')?.getType();
+        assert.isDefined(embedClassType);
+        if (embedClassType) {
+            assert.equal(embedClassType.toString(), '@inferType/inferSample.ts: Test$%dflt.foo');
+        }
+    })
+
     it('supperClass Test case', () => {
         const fileId = new FileSignature(projectScene.getProjectName(), 'B.ets');
         const classB = projectScene.getFile(fileId)?.getClassWithName('ClassB');
