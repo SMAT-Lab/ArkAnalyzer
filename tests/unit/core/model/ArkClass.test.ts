@@ -36,6 +36,18 @@ import {
 import { ArkIRClassPrinter } from '../../../../src/save/arkir/ArkIRClassPrinter';
 import { ArkIRMethodPrinter } from '../../../../src/save/arkir/ArkIRMethodPrinter';
 
+function checkAllMethodsStmtsCfg(arkClass: ArkClass): void {
+    for (const method of arkClass.getMethods(true)) {
+        const stmts = method.getCfg()?.getStmts();
+        if (stmts === undefined) {
+            continue;
+        }
+        for (const stmt of stmts) {
+            assert.isDefined(stmt.getCfg());
+        }
+    }
+}
+
 describe('ArkClass Test', () => {
     const scene = buildScene(path.join(__dirname, '../../../resources/model/class'));
 
@@ -102,6 +114,15 @@ describe('ArkClass Test', () => {
         const classCase3Expect = Class_With_Static_Init_Block_Expect.Case3;
         assertStaticBlockEqual(classCase3 as ArkClass, classCase3Expect);
     });
+
+    it('stmt cfg', async () => {
+        const arkFile = scene.getFiles().find((file) => file.getName() === 'class.ts');
+        const arkClass = arkFile?.getClassWithName('TestClass');
+
+        assert.isDefined(arkClass);
+        assert.isNotNull(arkClass);
+        checkAllMethodsStmtsCfg(arkClass!);
+    });
 });
 
 describe('ArkClass Constructor and Init Method Test', () => {
@@ -116,6 +137,8 @@ describe('ArkClass Constructor and Init Method Test', () => {
         let ir = printer.dump();
         assert.equal(ir, ClassWithGeneratedConstructor);
         assert.isTrue(arkClass?.getMethodWithName('test')?.isPublic());
+
+        checkAllMethodsStmtsCfg(arkClass!);
     });
 
     it('class with field and constructor', async () => {
@@ -126,6 +149,7 @@ describe('ArkClass Constructor and Init Method Test', () => {
         let ir = printer.dump();
         assert.equal(ir, ClassWithFieldAndConstructor);
         assert.isTrue(arkClass?.getFieldWithName('a')?.isPublic());
+        checkAllMethodsStmtsCfg(arkClass!);
     });
 
     it('class with static field and constructor has params', async () => {
@@ -136,6 +160,7 @@ describe('ArkClass Constructor and Init Method Test', () => {
         let ir = printer.dump();
         assert.equal(ir, ClassWithFieldAndParamConstructor);
         assert.isTrue(arkClass?.getStaticFieldWithName('a')?.isPublic());
+        checkAllMethodsStmtsCfg(arkClass!);
     });
 
     it('class with super constructor', async () => {
@@ -146,6 +171,7 @@ describe('ArkClass Constructor and Init Method Test', () => {
         let ir = printer.dump();
         assert.equal(ir, ClassWithSuperConstructor);
         assert.isTrue(arkClass?.getFieldWithName('c')?.isPublic());
+        checkAllMethodsStmtsCfg(arkClass!);
     });
 
     it('class with param property', async () => {
@@ -155,6 +181,7 @@ describe('ArkClass Constructor and Init Method Test', () => {
         let printer = new ArkIRClassPrinter(arkClass!);
         let ir = printer.dump();
         assert.equal(ir, ClassWithParamProperty);
+        checkAllMethodsStmtsCfg(arkClass!);
     });
 });
 
@@ -169,6 +196,7 @@ describe('ArkClass with Other Category Test', () => {
         let printer = new ArkIRClassPrinter(arkClass!);
         let ir = printer.dump();
         assert.equal(ir, InterfaceClass);
+        checkAllMethodsStmtsCfg(arkClass!);
     });
 
     it('enum class', async () => {
@@ -178,6 +206,7 @@ describe('ArkClass with Other Category Test', () => {
         let printer = new ArkIRClassPrinter(arkClass!);
         let ir = printer.dump();
         assert.equal(ir, EnumClass);
+        checkAllMethodsStmtsCfg(arkClass!);
     });
 
     it('type literal class', async () => {
@@ -193,6 +222,7 @@ describe('ArkClass with Other Category Test', () => {
         let printer = new ArkIRClassPrinter(literalClass!);
         let ir = printer.dump();
         assert.equal(ir, TypeLiteralClass);
+        checkAllMethodsStmtsCfg(literalClass!);
 
         const subLiteralClassType = literalClass?.getFieldWithName('b')?.getType();
         assert.isDefined(subLiteralClassType);
@@ -204,6 +234,7 @@ describe('ArkClass with Other Category Test', () => {
         let subClassPrinter = new ArkIRClassPrinter(subLiteralClass!);
         let subIr = subClassPrinter.dump();
         assert.equal(subIr, SubTypeLiteralClass);
+        checkAllMethodsStmtsCfg(subLiteralClass!);
     });
 
     it('object class', async () => {
@@ -218,6 +249,7 @@ describe('ArkClass with Other Category Test', () => {
         let printer = new ArkIRClassPrinter(objClass!);
         let ir = printer.dump();
         assert.equal(ir, ObjClass);
+        checkAllMethodsStmtsCfg(objClass!);
 
         const subObjClassType = objClass?.getFieldWithName('b')?.getType();
         assert.isDefined(subObjClassType);
@@ -229,6 +261,7 @@ describe('ArkClass with Other Category Test', () => {
         let subClassPrinter = new ArkIRClassPrinter(subObjClass!);
         let subIr = subClassPrinter.dump();
         assert.equal(subIr, SubObjClass);
+        checkAllMethodsStmtsCfg(subObjClass!);
     });
 });
 
@@ -243,6 +276,7 @@ describe('ArkClass with Heritage Class Test', () => {
         const extendedClass = arkClass!.getExtendedClasses().get('B');
         assert.isDefined(extendedClass);
         assert.equal(extendedClass!.getSignature().toString(), '@class/ClassWithHeritage.ts: B');
+        checkAllMethodsStmtsCfg(arkClass!);
     });
 
     it('extended class with constructor', async () => {
@@ -252,6 +286,7 @@ describe('ArkClass with Heritage Class Test', () => {
         const extendedClass = arkClass!.getExtendedClasses().get('Q');
         assert.isDefined(extendedClass);
         assert.equal(extendedClass!.getSignature().toString(), '@class/ClassWithHeritage.ts: Q');
+        checkAllMethodsStmtsCfg(arkClass!);
     });
 });
 

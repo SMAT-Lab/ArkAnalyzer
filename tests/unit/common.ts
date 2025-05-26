@@ -123,6 +123,7 @@ export function assertStmtsEqual(stmts: Stmt[], expectStmts: any[], assertPos: b
     expect(stmts.length).toEqual(expectStmts.length);
     for (let i = 0; i < stmts.length; i++) {
         expect(stmts[i].toString()).toEqual(expectStmts[i].text);
+        assert.isDefined(stmts[i].getCfg());
 
         if (expectStmts[i].operandOriginalPositions === undefined) {
             continue;

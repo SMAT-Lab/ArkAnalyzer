@@ -571,6 +571,7 @@ export class BodyBuilder {
         const closuresLocal = new Local(closuresParam.getName(), lexicalEnv);
         body.addLocal(closuresLocal.getName(), closuresLocal);
         let assignStmt = new ArkAssignStmt(closuresLocal, parameterRef);
+        assignStmt.setCfg(body.getCfg());
         stmts.splice(index, 0, assignStmt);
         closuresLocal.setDeclaringStmt(assignStmt);
 
@@ -590,6 +591,7 @@ export class BodyBuilder {
             index++;
             const closureFieldRef = new ClosureFieldRef(closuresParam, closure.getName(), closure.getType());
             let assignStmt = new ArkAssignStmt(local, closureFieldRef);
+            assignStmt.setCfg(body.getCfg());
             stmts.splice(index, 0, assignStmt);
             local.setDeclaringStmt(assignStmt);
             closuresLocal.addUsedStmt(assignStmt);

@@ -58,7 +58,7 @@ describe('Nested Method with Function Declaration Statement', () => {
        const stmts = method?.getBody()?.getCfg().getStmts();
        assert.isDefined(stmts);
        expect((stmts as Stmt[])[1].toString()).toEqual('instanceinvoke console.<@%unk/%unk: .log()>(\'This is nested function with function declaration.\')');
-        expect((stmts as Stmt[])[2].toString()).toEqual('staticinvoke <@method/method.ts: %dflt.%innerInnerFunction1$%innerFunction1$outerFunction1()>()');
+       expect((stmts as Stmt[])[2].toString()).toEqual('staticinvoke <@method/method.ts: %dflt.%innerInnerFunction1$%innerFunction1$outerFunction1()>()');
 
        const global = method!.getBody()?.getUsedGlobals()?.get('innerInnerFunction1');
        assert.isDefined(global);
