@@ -48,6 +48,24 @@ class ArkIRTransformerTest {
         logger.info('testStmtsOfSimpleProject end\n');
     }
 
+    public testBuildSceneWithJsonFile(): void {
+        logger.info('testBuildSceneWithJsonFile start');
+
+        const configPath = 'tests/resources/arkIRTransformer/ArkIRTransformerTestConfig.json';
+        const sceneConfig: SceneConfig = new SceneConfig();
+        sceneConfig.buildFromJson(configPath);
+
+        const scene = new Scene();
+        scene.buildSceneFromProjectDir(sceneConfig);
+        logger.info('before inferTypes');
+        this.printScene(scene);
+        scene.inferTypes();
+        logger.info('after inferTypes');
+        this.printScene(scene);
+
+        logger.info('testBuildSceneWithJsonFile end\n');
+    }
+
     public testStmtsOfEtsProject() {
         logger.info('testStmtsOfEtsProject start\n');
 
@@ -171,4 +189,6 @@ class ArkIRTransformerTest {
 
 const arkIRTransformerTest = new ArkIRTransformerTest();
 arkIRTransformerTest.testStmtsOfSimpleProject();
+arkIRTransformerTest.testStmtsOfEtsProject();
+arkIRTransformerTest.testBuildSceneWithJsonFile();
 

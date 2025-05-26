@@ -86,6 +86,7 @@ export class SceneConfig {
     public buildConfig(targetProjectName: string, targetProjectDirectory: string, sdks: Sdk[], fullFilePath?: string[]): void {
         this.targetProjectName = targetProjectName;
         this.targetProjectDirectory = targetProjectDirectory;
+        this.projectFiles = getAllFiles(targetProjectDirectory, this.options.supportFileExts!, this.options.ignoreFileNames);
         this.sdksObj = sdks;
         if (fullFilePath) {
             this.projectFiles.push(...fullFilePath);
