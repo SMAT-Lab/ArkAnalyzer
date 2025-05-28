@@ -1,0 +1,21 @@
+[**ArkAnalyzer**](../../../../README.md)
+
+***
+
+[ArkAnalyzer](../../../../globals.md) / [ts](../README.md) / getPackageJsonByPMType
+
+# Function: getPackageJsonByPMType()
+
+> **getPackageJsonByPMType**(`packageManagerType`): `string`
+
+Defined in: node\_modules/ohos-typescript/lib/typescript.d.ts:5430
+
+## Parameters
+
+### packageManagerType
+
+`undefined` | `string`
+
+## Returns
+
+`string`

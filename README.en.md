@@ -84,7 +84,7 @@ npm run gendoc
 
 ## Docmentations
 
-1. ArkAnalyzer API docmentations，refer to the [link](https://gitcode.com/openharmony-sig/arkanalyzer/wiki/globals.md).
+1. ArkAnalyzer API docmentations，refer to the [link](docs/api_docs/globals.md).
 
 ## Commit codes
 Follow the code repository standards of Openharmony-Sig, refer to the [link](docs/HowToCreatePR.md#english)

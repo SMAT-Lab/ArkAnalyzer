@@ -16,6 +16,7 @@
     ],
     "excludeInternal": true,
     "useTsLinkResolution": true,
+    "plugin": "typedoc-plugin-markdown",
     "out": "docs/api_docs",
     "readme": "./README.en.md"
 }

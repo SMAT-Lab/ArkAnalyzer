@@ -1,0 +1,30 @@
+[**ArkAnalyzer**](../../../../../../../README.md)
+
+***
+
+[ArkAnalyzer](../../../../../../../globals.md) / [ts](../../../../README.md) / [ArkTSLinter\_1\_1](../../README.md) / LibraryTypeCallDiagnosticCheckerNamespace
+
+# LibraryTypeCallDiagnosticCheckerNamespace
+
+## Enumerations
+
+- [ErrorType](enumerations/ErrorType.md)
+
+## Classes
+
+- [LibraryTypeCallDiagnosticChecker](classes/LibraryTypeCallDiagnosticChecker.md)
+
+## Variables
+
+- [ARGUMENT\_OF\_TYPE](variables/ARGUMENT_OF_TYPE.md)
+- [ARGUMENT\_OF\_TYPE\_0\_IS\_NOT\_ASSIGNABLE\_TO\_PARAMETER\_OF\_TYPE\_1\_ERROR\_CODE](variables/ARGUMENT_OF_TYPE_0_IS_NOT_ASSIGNABLE_TO_PARAMETER_OF_TYPE_1_ERROR_CODE.md)
+- [ARGUMENT\_OF\_TYPE\_NULL\_IS\_NOT\_ASSIGNABLE\_TO\_PARAMETER\_OF\_TYPE\_1\_RE](variables/ARGUMENT_OF_TYPE_NULL_IS_NOT_ASSIGNABLE_TO_PARAMETER_OF_TYPE_1_RE.md)
+- [ARGUMENT\_OF\_TYPE\_UNDEFINED\_IS\_NOT\_ASSIGNABLE\_TO\_PARAMETER\_OF\_TYPE\_1\_RE](variables/ARGUMENT_OF_TYPE_UNDEFINED_IS_NOT_ASSIGNABLE_TO_PARAMETER_OF_TYPE_1_RE.md)
+- [IS\_NOT\_ASSIGNABLE\_TO\_PARAMETER\_OF\_TYPE](variables/IS_NOT_ASSIGNABLE_TO_PARAMETER_OF_TYPE.md)
+- [IS\_NOT\_ASSIGNABLE\_TO\_TYPE](variables/IS_NOT_ASSIGNABLE_TO_TYPE.md)
+- [NO\_OVERLOAD\_MATCHES\_THIS\_CALL\_ERROR\_CODE](variables/NO_OVERLOAD_MATCHES_THIS_CALL_ERROR_CODE.md)
+- [TYPE](variables/TYPE.md)
+- [TYPE\_0\_IS\_NOT\_ASSIGNABLE\_TO\_TYPE\_1\_ERROR\_CODE](variables/TYPE_0_IS_NOT_ASSIGNABLE_TO_TYPE_1_ERROR_CODE.md)
+- [TYPE\_NULL\_IS\_NOT\_ASSIGNABLE\_TO\_TYPE\_1\_RE](variables/TYPE_NULL_IS_NOT_ASSIGNABLE_TO_TYPE_1_RE.md)
+- [TYPE\_UNDEFINED\_IS\_NOT\_ASSIGNABLE\_TO\_TYPE\_1\_RE](variables/TYPE_UNDEFINED_IS_NOT_ASSIGNABLE_TO_TYPE_1_RE.md)
+- [TYPE\_UNKNOWN\_IS\_NOT\_ASSIGNABLE\_TO\_TYPE\_1\_RE](variables/TYPE_UNKNOWN_IS_NOT_ASSIGNABLE_TO_TYPE_1_RE.md)

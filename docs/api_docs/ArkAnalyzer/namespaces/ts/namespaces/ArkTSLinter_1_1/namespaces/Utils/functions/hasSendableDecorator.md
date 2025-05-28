@@ -1,0 +1,21 @@
+[**ArkAnalyzer**](../../../../../../../../README.md)
+
+***
+
+[ArkAnalyzer](../../../../../../../../globals.md) / [ts](../../../../../README.md) / [ArkTSLinter\_1\_1](../../../README.md) / [Utils](../README.md) / hasSendableDecorator
+
+# Function: hasSendableDecorator()
+
+> **hasSendableDecorator**(`decl`): `boolean`
+
+Defined in: node\_modules/ohos-typescript/lib/typescript.d.ts:9459
+
+## Parameters
+
+### decl
+
+[`ClassDeclaration`](../../../../../interfaces/ClassDeclaration.md) | [`TypeAliasDeclaration`](../../../../../interfaces/TypeAliasDeclaration.md) | [`FunctionDeclaration`](../../../../../interfaces/FunctionDeclaration.md)
+
+## Returns
+
+`boolean`

@@ -1,0 +1,41 @@
+[**ArkAnalyzer**](../../../../README.md)
+
+***
+
+[ArkAnalyzer](../../../../globals.md) / [ts](../README.md) / WriteFileCallback
+
+# Type Alias: WriteFileCallback()
+
+> **WriteFileCallback** = (`fileName`, `text`, `writeByteOrderMark`, `onError?`, `sourceFiles?`, `data?`) => `void`
+
+Defined in: node\_modules/ohos-typescript/lib/typescript.d.ts:2257
+
+## Parameters
+
+### fileName
+
+`string`
+
+### text
+
+`string`
+
+### writeByteOrderMark
+
+`boolean`
+
+### onError?
+
+(`message`) => `void`
+
+### sourceFiles?
+
+readonly [`SourceFile`](../interfaces/SourceFile.md)[]
+
+### data?
+
+[`WriteFileCallbackData`](../interfaces/WriteFileCallbackData.md)
+
+## Returns
+
+`void`

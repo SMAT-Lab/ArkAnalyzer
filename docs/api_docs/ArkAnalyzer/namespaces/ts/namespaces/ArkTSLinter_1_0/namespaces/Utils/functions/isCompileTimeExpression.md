@@ -1,0 +1,21 @@
+[**ArkAnalyzer**](../../../../../../../../README.md)
+
+***
+
+[ArkAnalyzer](../../../../../../../../globals.md) / [ts](../../../../../README.md) / [ArkTSLinter\_1\_0](../../../README.md) / [Utils](../README.md) / isCompileTimeExpression
+
+# Function: isCompileTimeExpression()
+
+> **isCompileTimeExpression**(`tsExpr`): `boolean`
+
+Defined in: node\_modules/ohos-typescript/lib/typescript.d.ts:8694
+
+## Parameters
+
+### tsExpr
+
+[`Expression`](../../../../../interfaces/Expression.md)
+
+## Returns
+
+`boolean`

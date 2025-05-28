@@ -1,0 +1,21 @@
+[**ArkAnalyzer**](../../../../README.md)
+
+***
+
+[ArkAnalyzer](../../../../globals.md) / [ts](../README.md) / isTargetModulesDerectory
+
+# Function: isTargetModulesDerectory()
+
+> **isTargetModulesDerectory**(`dirPath`): `boolean`
+
+Defined in: node\_modules/ohos-typescript/lib/typescript.d.ts:5432
+
+## Parameters
+
+### dirPath
+
+[`Path`](../type-aliases/Path.md)
+
+## Returns
+
+`boolean`
