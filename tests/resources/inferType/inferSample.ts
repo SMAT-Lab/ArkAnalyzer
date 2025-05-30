@@ -100,3 +100,12 @@ function test1(): number {
     let a = new ClassA();
     let x = a.y + out;
 }
+
+function foo(): void {
+    class Test {
+        name: string = 'test';
+    }
+
+    let t = new Test();
+    console.info(t.name);
+}
