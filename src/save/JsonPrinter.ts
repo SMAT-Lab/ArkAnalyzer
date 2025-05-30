@@ -28,6 +28,7 @@ import {
     BigIntType,
     BooleanType,
     ClassType,
+    EnumValueType,
     FunctionType,
     GenericType,
     IntersectionType,
@@ -314,6 +315,12 @@ export class JsonPrinter extends Printer {
             return {
                 _: 'AnnotationTypeQueryType',
                 originType: type.getOriginType(),
+            };
+        } else if (type instanceof EnumValueType) {
+            return {
+                _: 'EnumValueType',
+                signature: type.getFieldSignature(),
+                constant: type.getConstant(),
             };
         } else {
             console.warn(`Unhandled Type: ${type.constructor.name} (${type.toString()})`);
