@@ -317,11 +317,10 @@ export class JsonPrinter extends Printer {
                 originType: type.getOriginType(),
             };
         } else if (type instanceof EnumValueType) {
-            const c = type.getConstant();
             return {
                 _: 'EnumValueType',
-                signature: this.serializeFieldSignature(type.getFieldSignature()),
-                constant: c && this.serializeValue(c),
+                signature: type.getFieldSignature(),
+                constant: type.getConstant(),
             };
         } else {
             console.warn(`Unhandled Type: ${type.constructor.name} (${type.toString()})`);
