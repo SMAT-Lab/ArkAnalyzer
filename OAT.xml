@@ -19,6 +19,7 @@
         <filefilterlist>
             <filefilter name="binaryFileTypePolicyFilter" desc="Filters for binary file policies">
                 <filteritem type="filepath" name="docs/quickstart.pdf" desc="pdf文档"/>
+                <filteritem type="filename" name="*.png" desc="png图片格式文件,用于展示示例"/>
             </filefilter>
         </filefilterlist>
     </oatconfig>
