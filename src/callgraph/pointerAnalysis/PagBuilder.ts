@@ -683,6 +683,7 @@ export class PagBuilder {
                  */
                 this.handleFunctionBind(staticCS, cid, baseClassPTNode, srcNodes);
                 break;
+            default:
         }
 
         return srcNodes;

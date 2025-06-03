@@ -712,9 +712,13 @@ export abstract class AbstractBinopExpr extends AbstractExpr {
             case '^':
             case '<<':
             case '>>':
+                if (op1Type === NumberType.getInstance() && op2Type === NumberType.getInstance()) {
+                    type = NumberType.getInstance();
+                }
                 if (op1Type === BigIntType.getInstance() && op2Type === BigIntType.getInstance()) {
                     type = BigIntType.getInstance();
                 }
+                break;
             case '>>>':
                 if (op1Type === NumberType.getInstance() && op2Type === NumberType.getInstance()) {
                     type = NumberType.getInstance();

@@ -51,6 +51,7 @@ export function getBuiltInApiType(method: MethodSignature): BuiltApiType {
                     return BuiltApiType.FunctionApply;
                 case 'bind':
                     return BuiltApiType.FunctionBind;
+                default:
             }
         }
     }
