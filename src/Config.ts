@@ -67,7 +67,7 @@ export class SceneConfig {
     private options: SceneOptions;
 
     constructor(options?: SceneOptions) {
-        this.options = { supportFileExts: ['.ets', '.ts'] };
+        this.options = { supportFileExts: ['.ets', '.ts', '.cpp', '.c', '.h'] };
         this.loadDefaultConfig(options);
     }
 
