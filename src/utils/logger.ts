@@ -32,19 +32,12 @@ export enum LOG_MODULE_TYPE {
 }
 
 export default class ConsoleLogger {
-    public static configure(
-        logFilePath: string,
-        arkanalyzer_level: LOG_LEVEL = LOG_LEVEL.ERROR,
-        tool_level: LOG_LEVEL = LOG_LEVEL.INFO,
-        use_console: boolean = false
+    private static isConfigure: boolean = false;
+    public static configure(logFilePath: string = "out/arkAnalyzer.log",
+                            app_level: LOG_LEVEL = LOG_LEVEL.INFO,
+                            tool_level: LOG_LEVEL = LOG_LEVEL.INFO
     ): void {
-        let appendersTypes: string[] = [];
-        if (logFilePath) {
-            appendersTypes.push('file');
-        }
-        if (!appendersTypes.length || use_console) {
-            appendersTypes.push('console');
-        }
+        this.isConfigure = true;
         configure({
             appenders: {
                 file: {
@@ -74,12 +67,17 @@ export default class ConsoleLogger {
                     enableCallStack: false,
                 },
                 ArkAnalyzer: {
-                    appenders: appendersTypes,
-                    level: arkanalyzer_level,
+                    appenders: ['file'],
+                    level: app_level,
+                    enableCallStack: true,
+                },
+                HomeCheck: {
+                    appenders: ['file'],
+                    level: app_level,
                     enableCallStack: true,
                 },
                 Tool: {
-                    appenders: appendersTypes,
+                    appenders: ['file'],
                     level: tool_level,
                     enableCallStack: true,
                 },
@@ -88,12 +86,10 @@ export default class ConsoleLogger {
     }
 
     public static getLogger(log_type: LOG_MODULE_TYPE, tag: string = '-'): Logger {
-        let logger;
-        if (log_type === LOG_MODULE_TYPE.DEFAULT || log_type === LOG_MODULE_TYPE.ARKANALYZER) {
-            logger = getLogger(log_type);
-        } else {
-            logger = getLogger(LOG_MODULE_TYPE.TOOL);
+        if (!this.isConfigure){
+            this.configure();
         }
+        let logger = getLogger(log_type);
         logger.addContext('module', log_type);
         logger.addContext('tag', tag);
         return logger;
