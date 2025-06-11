@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import { BigIntType, BooleanType, NullType, NumberType, StringType, Type, UndefinedType } from './Type';
+import { BigIntType, BooleanType, NullType, NumberType, StringType, Type, UndefinedType, NullPtrType } from './Type';
 import { Value } from './Value';
-import { NULL_KEYWORD, UNDEFINED_KEYWORD } from '../common/TSConst';
+import { NULL_KEYWORD, UNDEFINED_KEYWORD, NULL_POINTER } from '../common/TSConst';
 
 /**
  * @category core/base
@@ -72,8 +72,12 @@ export class BooleanConstant extends Constant {
         super(value.toString(), BooleanType.getInstance());
     }
 
-    public static getInstance(value: boolean): NullConstant {
-        return value ? this.TRUE : this.FALSE;
+    public static getInstance(value: boolean|string): BooleanConstant {
+        if (value.toString() === 'true') {
+            return this.TRUE;
+        } else if (value.toString() === 'false') {
+            return this.FALSE;
+        }
     }
 }
 
@@ -115,6 +119,18 @@ export class UndefinedConstant extends Constant {
     }
 
     public static getInstance(): UndefinedConstant {
+        return this.INSTANCE;
+    }
+}
+
+export class NullPtrConstant extends Constant {
+    private static readonly INSTANCE = new NullPtrConstant();
+
+    constructor() {
+        super(NULL_POINTER, NullPtrType.getInstance());
+    }
+
+    public static getInstance(): NullPtrConstant {
         return this.INSTANCE;
     }
 }

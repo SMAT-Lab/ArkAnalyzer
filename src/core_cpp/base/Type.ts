@@ -27,6 +27,7 @@ import {
     UNDEFINED_KEYWORD,
     UNKNOWN_KEYWORD,
     VOID_KEYWORD,
+    NULL_POINTER
 } from '../common/TSConst';
 import { Local } from './Local';
 import { Constant } from './Constant';
@@ -199,6 +200,22 @@ export class NullType extends PrimitiveType {
 
     private constructor() {
         super(NULL_KEYWORD);
+    }
+}
+
+/**
+ * nullptr type
+ * @category core/base/type
+ */
+export class NullPtrType extends PrimitiveType {
+    private static readonly INSTANCE = new NullPtrType();
+
+    public static getInstance(): NullPtrType {
+        return this.INSTANCE;
+    }
+
+    private constructor() {
+        super(NULL_POINTER);
     }
 }
 
@@ -413,11 +430,21 @@ export class ClosureType extends FunctionType {
 export class ClassType extends Type {
     private classSignature: ClassSignature;
     private realGenericTypes?: Type[];
+    private applyType: string; // 应用类型*和&
 
-    constructor(classSignature: ClassSignature, realGenericTypes?: Type[]) {
+    constructor(classSignature: ClassSignature, realGenericTypes?: Type[], applyType: string = '') {
         super();
         this.classSignature = classSignature;
         this.realGenericTypes = realGenericTypes;
+        this.applyType = applyType;
+    }
+
+    public getApplyType(): string {
+        return  this.applyType;
+    }
+
+    public setApplyType(applyType: string) {
+        this.applyType = applyType;
     }
 
     public getClassSignature(): ClassSignature {
@@ -814,5 +841,82 @@ export class EnumValueType extends Type {
 
     public getTypeString(): string {
         return this.signature.toString();
+    }
+}
+
+/* CPP的指针类型 */
+export class PointerType extends Type {
+    private baseType: Type; // 基础类型，如int *中的int
+    private level: number; // 代表几级指针
+
+    constructor(baseType: Type, level: number) {
+        super();
+        this.baseType = baseType;
+        this.level = level;
+    }
+
+    public getBaseType(): Type {
+        return this.baseType;
+    }
+
+    public setBaseType(newBaseType: Type) {
+        this.baseType = newBaseType;
+    }
+
+    public getLevel(): number {
+        return this.level;
+    }
+
+    public getTypeString(): string {
+        const strs: string[] = [];
+        if (this.baseType instanceof UnionType) {
+            strs.push('(' +this.baseType.toString() + ')');
+        } else if (this.baseType) {
+            strs.push(this.baseType.toString());
+        }
+        for (let i = 0; i < this.level; i++) {
+            strs.push('*');
+        }
+        return strs.join('');
+    }
+}
+
+export enum ReferCategory{
+    LVALUE_REF = 'LVALUE_REF',
+    RVALUE_REF = 'RVALUE_REF'
+}
+
+export class ReferenceType extends Type {
+    private baseType: Type;
+    private category: ReferCategory;
+
+    constructor(bassType: Type, category: ReferCategory) {
+        super();
+        this.baseType = bassType;
+        this.category = category;
+    }
+
+    public getBaseType(): Type {
+        return this.baseType;
+    }
+
+    public getCategory(): ReferCategory {
+        return this.category;
+    }
+
+    public getTypeString(): string {
+        // 实现抽象方法，返回类型字符串
+        const strs: string[] = [];
+        if (this.baseType instanceof UnionType) {
+            strs.push('(' + this.baseType.toString() + ')');
+        } else if (this.baseType) {
+            strs.push(this.baseType.toString());
+        }
+        if (this.category === ReferCategory.LVALUE_REF) {
+            strs.push('&');
+        } else {
+            strs.push('&&');
+        }
+        return strs.join('');
     }
 }
