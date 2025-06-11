@@ -94,10 +94,14 @@ export class LineColPosition {
         return getColNo(this.lineCol);
     }
 
-    public static buildFromNode(node: ts.Node, sourceFile: ts.SourceFile): LineColPosition {
-        let { line, character } = ts.getLineAndCharacterOfPosition(sourceFile, node.getStart(sourceFile));
-        // line start from 1.
-        return new LineColPosition(line + 1, character + 1);
+    public static buildFromNode(node: any, sourceFile: ts.SourceFile) {
+        let line = 0;
+        let character = 0;
+        if (node.range.begin && node.range.begin.line) {
+            line = node.range.begin.line;
+            character = node.range.begin.col;
+        }
+        return new LineColPosition(line, character);
     }
 }
 
@@ -128,12 +132,18 @@ export class FullPosition {
         return getColNo(this.last);
     }
 
-    public static buildFromNode(node: ts.Node, sourceFile: ts.SourceFile): FullPosition {
-        const { line: startLine, character: startCharacter } = ts.getLineAndCharacterOfPosition(sourceFile, node.getStart(sourceFile));
-        const { line: endLine, character: endCharacter } = ts.getLineAndCharacterOfPosition(sourceFile, node.getEnd());
-
-        // line start from 1
-        return new FullPosition(startLine + 1, startCharacter + 1, endLine + 1, endCharacter + 1);
+    public static buildFromNode(node: any, sourceFile: any): FullPosition {
+        let startLine = 0;
+        let startCharacter = 0;
+        let endLine = 0;
+        let endCharacter = 0;
+        if (node.range && node.range.begin && node.range.begin.line) {
+            startLine = node.range.begin.line;
+            startCharacter = node.range.begin.col;
+            endLine = node.range.begin.line;
+            endCharacter = startLine + node.range.begin.tokLen;
+        }
+        return new FullPosition(startLine, startCharacter, endLine, endCharacter);
     }
 
     public static merge(leftMostPosition: FullPosition, rightMostPosition: FullPosition): FullPosition {

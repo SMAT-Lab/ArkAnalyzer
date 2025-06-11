@@ -426,18 +426,18 @@ export class ArkNewArrayExpr extends AbstractExpr {
 }
 
 export class ArkDeleteExpr extends AbstractExpr {
-    private field: AbstractFieldRef;
+    private field: AbstractFieldRef | Value;
 
-    constructor(field: AbstractFieldRef) {
+    constructor(field: AbstractFieldRef | Value) {
         super();
         this.field = field;
     }
 
-    public getField(): AbstractFieldRef {
+    public getField(): AbstractFieldRef | Value {
         return this.field;
     }
 
-    public setField(newField: AbstractFieldRef): void {
+    public setField(newField: AbstractFieldRef | Value): void {
         this.field = newField;
     }
 
@@ -571,6 +571,19 @@ export enum RelationalBinaryOperator {
     StrictEquality = '===',
     StrictInequality = '!==',
     isPropertyOf = 'in',
+}
+
+export enum CompoundBinaryOperator {
+    AdditionEquals = '+=',
+    SubtractionEquals = '-=',
+    MultiplicationEquals = '*=',
+    DivisionEquals = '/=',
+    RemainderEquals = '%=',
+    LeftShiftEquals = '<<=',
+    RightShiftEquals = '>>=',
+    BitwiseAndEquals = '&=',
+    BitwiseOrEquals = '|=',
+    BitwiseXorEquals = '^=',
 }
 
 export type BinaryOperator = NormalBinaryOperator | RelationalBinaryOperator;
@@ -963,6 +976,8 @@ export enum UnaryOperator {
     Neg = '-',
     BitwiseNot = '~',
     LogicalNot = '!',
+    Addr = '&',
+    Deref = '*'
 }
 
 // unary operation expression
