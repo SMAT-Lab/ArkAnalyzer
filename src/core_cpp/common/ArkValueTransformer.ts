@@ -262,7 +262,7 @@ export class ArkValueTransformer {
         } else if (node.kind === 'ArraySubscriptExpr') {
             return this.elementAccessExpressionToValueAndStmts(node);
         } else if (node.kind === 'StringLiteral' || node.kind === 'CXXBoolLiteralExpr' ||
-            node.kind === 'CharacterLiteral' || node.kind === 'FlatingLiteral' || node.kind === 'CXXNullPtrLiteralExpr') {
+            node.kind === 'CharacterLiteral' || node.kind === 'FloatingLiteral' || node.kind === 'CXXNullPtrLiteralExpr') {
             return this.literalNodeToValueAndStmts(node) as ValueAndStmts;
         } else if (node.kind === 'CompoundAssignOperator') {
             return this.compoundAssignmentToValueAndStmts(node);
@@ -351,7 +351,7 @@ export class ArkValueTransformer {
         return this.generateInvokeValueAndStmts(cxxNoexceptCallNode, argus, stmts, CXXNoexceptExpr);
     }
 
-    private cxxScalarValueInitToValueAndStmts(CXXScalarValueInitExpr: any): ValueAndStmts | null{
+    private cxxScalarValueInitToValueAndStmts(CXXScalarValueInitExpr: any): ValueAndStmts{
         const initType = CXXScalarValueInitExpr.type.qualType;
         let constant: Constant | null = null;
         switch (initType) {
@@ -373,7 +373,7 @@ export class ArkValueTransformer {
         }
         return {
             value: constant,
-            valueOriginalPosition: [FullPosition.buildFromNode(CXXScalarValueInitExpr, this.sourceFile)],
+            valueOriginalPositions: [FullPosition.buildFromNode(CXXScalarValueInitExpr, this.sourceFile)],
             stmts: []
         };
     }
@@ -663,7 +663,7 @@ export class ArkValueTransformer {
         }
         let {value: baseValue, valueOriginalPositions: basePositions, stmts: baseStmts} = this.tsNodeToValueAndStmts(memberExpression.inner[0]);
         if (memberExpression.inner[0].kind === 'MemberExpr') {
-            ({value: baseValue, valueOriginalPositions: basePositions, stmts: baseStmts} = this.arkIRTransformer.this.generateAssignStmtForValue(baseValue, basePositions));
+            ({value: baseValue, valueOriginalPositions: basePositions, stmts: baseStmts} = this.arkIRTransformer.generateAssignStmtForValue(baseValue, basePositions));
         }
         stmts.push(...baseStmts);
         //获取域的签名
@@ -911,11 +911,11 @@ export class ArkValueTransformer {
         let invokeValue: Value;
         let invokeValuePositions: FullPosition[] = [FullPosition.buildFromNode(callExpression, this.sourceFile)];
         if (callerValue instanceof  ArkInstanceFieldRef) {
-            const methodSignature = ArkSignatureBuilder.buidMethodSignatureFromMethodName(callerValue.getFieldName());
+            const methodSignature = ArkSignatureBuilder.buildMethodSignatureFromMethodName(callerValue.getFieldName());
             invokeValue = new ArkInstanceInvokeExpr(callerValue.getBase(), methodSignature, args, realGenericTypes);
             invokeValuePositions.push(...callerPositions.slice(1), ...argPositionsAllFlat);
         } else if (callerValue instanceof ArkStaticFieldRef) {
-            const methodSignature = ArkSignatureBuilder.buidMethodSignatureFromMethodName(callerValue.getFieldName());
+            const methodSignature = ArkSignatureBuilder.buildMethodSignatureFromMethodName(callerValue.getFieldName());
             invokeValue = new ArkStaticInvokeExpr(methodSignature, args, realGenericTypes);
             invokeValuePositions.push(...argPositionsAllFlat);
         } else if (callerValue instanceof Local) {
