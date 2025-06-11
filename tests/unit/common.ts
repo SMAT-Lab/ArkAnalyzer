@@ -84,6 +84,32 @@ export function testBlocks(scene: Scene, filePath: string, methodName: string, e
     assertBlocksEqual(blocks, expectBlocks);
 }
 
+export function showCfgStmt(blocks: Set<BasicBlock>, expectBlocks: any[]): void {
+    const blockMap = new Map<number, BasicBlock>();
+    for (const block of blocks) {
+        blockMap.set(block.getId(), block);
+    }
+    blockMap.forEach((value:BasicBlock, key) => {
+       const block = blockMap.get(key);
+       const stmts: string[] = [];
+       for (const stmt of block.getStmts()) {
+            stmts.push(stmt.toString());
+       }
+       console.log('this id is ', key);
+       console.log('stmts', stmts);
+       const preds: number[] = [];
+       block.getPredecessors().forEach(predBlock => {
+            preds.push(predBlock.getId());
+        });
+       console.log('preds', preds);
+        const succes: number[] = [];
+        block.getSuccessors().forEach(succBlock => {
+            succes.push(succBlock.getId());
+        });
+        console.log('succes', succes);
+    });
+}
+
 export function assertBlocksEqual(blocks: Set<BasicBlock>, expectBlocks: any[]): void {
     expect(blocks.size).toEqual(expectBlocks.length);
 

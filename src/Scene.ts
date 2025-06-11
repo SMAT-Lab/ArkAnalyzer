@@ -20,6 +20,7 @@ import { SceneConfig, SceneOptions, Sdk, TsConfig } from './Config';
 import { initModulePathMap, ModelUtils } from './core/common/ModelUtils';
 import { TypeInference } from './core/common/TypeInference';
 import { VisibleValue } from './core/common/VisibleValue';
+
 import { ArkClass } from './core/model/ArkClass';
 import { ArkFile, Language } from './core/model/ArkFile';
 import { ArkMethod } from './core/model/ArkMethod';
@@ -36,6 +37,11 @@ import { addInitInConstructor, buildDefaultConstructor } from './core/model/buil
 import { DEFAULT_ARK_CLASS_NAME, STATIC_INIT_METHOD_NAME } from './core/common/Const';
 import { CallGraph } from './callgraph/model/CallGraph';
 import { CallGraphBuilder } from './callgraph/model/builder/CallGraphBuilder';
+
+import { CoreFactory } from './CoreFactory';
+
+
+
 import { IRInference } from './core/common/IRInference';
 import { ImportInfo } from './core/model/ArkImport';
 import { ALL, CONSTRUCTOR_NAME, TSCONFIG_JSON } from './core/common/TSConst';

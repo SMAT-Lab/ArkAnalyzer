@@ -14,14 +14,14 @@
  */
 
 import { Scene } from '../../Scene';
-import { AbstractInvokeExpr } from '../../core/base/Expr';
-import { Stmt } from '../../core/base/Stmt';
-import { FunctionType } from '../../core/base/Type';
-import { ArkClass } from '../../core/model/ArkClass';
-import { ArkMethod } from '../../core/model/ArkMethod';
-import { MethodSignature } from '../../core/model/ArkSignature';
+import { AbstractInvokeExpr } from '../../core_cpp/base/Expr';
+import { Stmt } from '../../core_cpp/base/Stmt';
+import { FunctionType } from '../../core_cpp/base/Type';
+import { ArkClass } from '../../core_cpp/model/ArkClass';
+import { ArkMethod } from '../../core_cpp/model/ArkMethod';
+import { MethodSignature } from '../../core_cpp/model/ArkSignature';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
-import { NodeID } from '../../core/graph/BaseExplicitGraph';
+import { NodeID } from '../../core_cpp/graph/BaseExplicitGraph';
 import { CallGraph, FuncID, CallSite, CallGraphNode } from '../model/CallGraph';
 import { CallGraphBuilder } from '../model/builder/CallGraphBuilder';
 import { createPtsCollectionCtor, IPtsCollection, PtsCollectionType } from '../pointerAnalysis/PtsDS';

@@ -13,16 +13,16 @@
  * limitations under the License.
  */
 
-import { ArkNewExpr, ArkStaticInvokeExpr } from '../../core/base/Expr';
+import { ArkNewExpr, ArkStaticInvokeExpr } from '../../core_cpp/base/Expr';
 import { Scene } from '../../Scene';
-import { Stmt } from '../../core/base/Stmt';
-import { ArkClass } from '../../core/model/ArkClass';
-import { ClassSignature } from '../../core/model/ArkSignature';
-import { NodeID } from '../../core/graph/BaseExplicitGraph';
+import { Stmt } from '../../core_cpp/base/Stmt';
+import { ArkClass } from '../../core_cpp/model/ArkClass';
+import { ClassSignature } from '../../core_cpp/model/ArkSignature';
+import { NodeID } from '../../core_cpp/graph/BaseExplicitGraph';
 import { CallGraph, CallSite, FuncID } from '../model/CallGraph';
 import { AbstractAnalysis } from './AbstractAnalysis';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
-import { ClassType } from '../../core/base/Type';
+import { ClassType } from '../../core_cpp/base/Type';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'RTA');
 

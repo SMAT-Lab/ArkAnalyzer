@@ -15,7 +15,7 @@
 
 import { CallGraph, CallGraphNode, CallGraphNodeKind, CallSite, DynCallSite, FuncID, ICallSite } from '../model/CallGraph';
 import { Scene } from '../../Scene';
-import { ArkAssignStmt, ArkInvokeStmt, ArkReturnStmt, Stmt } from '../../core/base/Stmt';
+import { ArkAssignStmt, ArkInvokeStmt, ArkReturnStmt, Stmt } from '../../core_cpp/base/Stmt';
 import {
     AbstractExpr,
     AbstractInvokeExpr,
@@ -25,16 +25,16 @@ import {
     ArkPtrInvokeExpr,
     ArkStaticInvokeExpr,
 } from '../../core/base/Expr';
-import { AbstractFieldRef, ArkArrayRef, ArkInstanceFieldRef, ArkParameterRef, ArkStaticFieldRef, ArkThisRef } from '../../core/base/Ref';
-import { Value } from '../../core/base/Value';
-import { ArkMethod } from '../../core/model/ArkMethod';
+import { AbstractFieldRef, ArkArrayRef, ArkInstanceFieldRef, ArkParameterRef, ArkStaticFieldRef, ArkThisRef } from '../../core_cpp/base/Ref';
+import { Value } from '../../core_cpp/base/Value';
+import { ArkMethod } from '../../core_cpp/model/ArkMethod';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
-import { Local } from '../../core/base/Local';
-import { NodeID } from '../../core/graph/BaseExplicitGraph';
-import { ClassSignature } from '../../core/model/ArkSignature';
-import { ArkClass } from '../../core/model/ArkClass';
-import { ArrayType, ClassType, FunctionType, StringType } from '../../core/base/Type';
-import { Constant, NullConstant } from '../../core/base/Constant';
+import { Local } from '../../core_cpp/base/Local';
+import { NodeID } from '../../core_cpp/graph/BaseExplicitGraph';
+import { ClassSignature } from '../../core_cpp/model/ArkSignature';
+import { ArkClass } from '../../core_cpp/model/ArkClass';
+import { ArrayType, ClassType, FunctionType, StringType } from '../../core_cpp/base/Type';
+import { Constant, NullConstant } from '../../core_cpp/base/Constant';
 import { PAGStat } from '../common/Statistics';
 import { ContextID, DUMMY_CID, KLimitedContextSensitive } from './Context';
 import {
@@ -54,7 +54,7 @@ import {
     StorageLinkEdgeType,
     StorageType,
 } from './Pag';
-import { GLOBAL_THIS_NAME } from '../../core/common/TSConst';
+import { GLOBAL_THIS_NAME } from '../../core_cpp/common/TSConst';
 import { IPtsCollection } from './PtsDS';
 import { BuiltApiType, getBuiltInApiType } from './PTAUtils';
 import { PointerAnalysisConfig, PtaAnalysisScale } from './PointerAnalysisConfig';

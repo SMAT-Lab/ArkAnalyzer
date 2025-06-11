@@ -15,11 +15,11 @@
 
 import { CallGraph, CallGraphNode, CallGraphNodeKind, Method } from '../CallGraph';
 import { Scene } from '../../../Scene';
-import { AbstractInvokeExpr, ArkInstanceInvokeExpr, ArkStaticInvokeExpr } from '../../../core/base/Expr';
-import { NodeID } from '../../../core/graph/BaseExplicitGraph';
+import { AbstractInvokeExpr, ArkInstanceInvokeExpr, ArkStaticInvokeExpr } from '../../../core_cpp/base/Expr';
+import { NodeID } from '../../../core_cpp/graph/BaseExplicitGraph';
 import { ClassHierarchyAnalysis } from '../../algorithm/ClassHierarchyAnalysis';
 import { RapidTypeAnalysis } from '../../algorithm/RapidTypeAnalysis';
-import { ArkMethod } from '../../../core/model/ArkMethod';
+import { ArkMethod } from '../../../core_cpp/model/ArkMethod';
 
 export class CallGraphBuilder {
     private cg: CallGraph;

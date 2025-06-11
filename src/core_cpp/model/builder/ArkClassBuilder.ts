@@ -32,7 +32,7 @@ import {
     buildHeritageClauses,
     buildModifiers,
     buildTypeParameters,
-    tsNode2Type,
+    cppNode2Type,
 } from './builderUtils';
 import { buildGetAccessor2ArkField, buildIndexSignature2ArkField, buildProperty2ArkField } from './ArkFieldBuilder';
 import { ArkIRTransformer } from '../../common/ArkIRTransformer';

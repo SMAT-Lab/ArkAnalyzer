@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { ClassSignature, MethodSignature } from '../../core/model/ArkSignature';
+import { ClassSignature, MethodSignature } from '../../core_cpp/model/ArkSignature';
 
 export function IsCollectionClass(classSignature: ClassSignature): boolean {
     if (classSignature.toString().endsWith('lib.es2015.collection.d.ts: Set') || classSignature.toString().endsWith('lib.es2015.collection.d.ts: Map')) {

@@ -71,7 +71,7 @@ import { Builtin } from './Builtin';
 import { Constant } from '../base/Constant';
 import { TEMP_LOCAL_PREFIX } from './Const';
 import { ArkIRTransformer, DummyStmt, ValueAndStmts } from './ArkIRTransformer';
-import {buildTypeFromPreStr, cppNode2Type, isCXXSTLConstainer } from '../../core/model/builder/builderUtils';
+import {buildTypeFromPreStr, cppNode2Type, isCXXSTLConstainer } from '../../core_cpp/model/builder/builderUtils';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 
 

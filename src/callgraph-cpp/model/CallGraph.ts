@@ -13,15 +13,15 @@
  * limitations under the License.
  */
 
-import { MethodSignature } from '../../core/model/ArkSignature';
-import { Stmt } from '../../core/base/Stmt';
+import { MethodSignature } from '../../core_cpp/model/ArkSignature';
+import { Stmt } from '../../core_cpp/base/Stmt';
 import { Scene } from '../../Scene';
-import { ArkMethod } from '../../core/model/ArkMethod';
+import { ArkMethod } from '../../core_cpp/model/ArkMethod';
 import { GraphPrinter } from '../../save/GraphPrinter';
 import { PrinterBuilder } from '../../save/PrinterBuilder';
-import { BaseEdge, BaseNode, BaseExplicitGraph, NodeID } from '../../core/graph/BaseExplicitGraph';
+import { BaseEdge, BaseNode, BaseExplicitGraph, NodeID } from '../../core_cpp/graph/BaseExplicitGraph';
 import { CGStat } from '../common/Statistics';
-import { UNKNOWN_FILE_NAME } from '../../core/common/Const';
+import { UNKNOWN_FILE_NAME } from '../../core_cpp/common/Const';
 import { CallSite, CallSiteID, DynCallSite, ICallSite } from './CallSite';
 
 export type Method = MethodSignature;
