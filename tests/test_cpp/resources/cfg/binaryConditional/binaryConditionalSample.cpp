@@ -1,0 +1,62 @@
+/*
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+int case1()
+{
+    int i = 0;
+    int j = 0;
+    int k = 1;
+    j = -i ?: k;
+    return j;
+}
+
+int case2()
+{
+    int a = 0;
+    int b = 1;
+    int c = 2;
+    int y = a > b ?: c;
+    return y;
+}
+
+int case3()
+{
+    int x = 0;
+    int y = 1;
+    y = ++x ?: 3;
+    return y;
+}
+
+int case4()
+{
+    int x = 0;
+    int y = 1;
+    y = x++ ?: 3;
+    return y;
+}
+
+int case5()
+{
+    int i = 8;
+    int j = i < 0 ?: i > 1 ? : 4;
+    return j;
+}
+int case6()
+{
+    int i = 0;
+    int j = 0;
+    int k = 1;
+    j = i + j + k + 1 ?: k;
+    return j;
+}
