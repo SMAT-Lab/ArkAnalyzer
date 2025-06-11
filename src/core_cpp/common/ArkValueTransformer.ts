@@ -19,47 +19,36 @@ import { FullPosition } from '../base/Position';
 import { ArkAliasTypeDefineStmt, ArkAssignStmt, ArkIfStmt, ArkInvokeStmt, Stmt } from '../base/Stmt';
 import {
     AbstractBinopExpr,
-    ArkAwaitExpr,
     ArkCastExpr,
     ArkConditionExpr,
     ArkDeleteExpr,
     ArkInstanceInvokeExpr,
-    ArkInstanceOfExpr,
     ArkNewArrayExpr,
     ArkNewExpr,
     ArkNormalBinopExpr,
     ArkPtrInvokeExpr,
     ArkStaticInvokeExpr,
-    ArkTypeOfExpr,
     ArkUnopExpr,
-    ArkYieldExpr,
     BinaryOperator,
     NormalBinaryOperator,
     RelationalBinaryOperator,
+    CompoundBinaryOperator
 } from '../base/Expr';
-import { ArkClass } from '../model/ArkClass';
-import { buildNormalArkClassFromArkFile, buildNormalArkClassFromArkNamespace } from '../model/builder/ArkClassBuilder';
 import {
     AliasType,
     AnyType,
     ArrayType,
-    BigIntType,
-    BooleanType,
     ClassType,
     FunctionType,
-    IntersectionType,
     LiteralType,
-    NeverType,
     NullType,
     NumberType,
-    StringType,
-    TupleType,
     Type,
     UnclearReferenceType,
     UndefinedType,
-    UnionType,
     UnknownType,
-    VoidType,
+    PointerType,
+    ReferenceType
 } from '../base/Type';
 import { ArkSignatureBuilder } from '../model/builder/ArkSignatureBuilder';
 import { CONSTRUCTOR_NAME, THIS_NAME } from './TSConst';
@@ -71,11 +60,10 @@ import {
     COMPONENT_FOR_EACH,
     COMPONENT_LAZY_FOR_EACH,
     COMPONENT_POP_FUNCTION,
-    isEtsSystemComponent,
 } from './EtsConst';
 import { ValueUtil } from './ValueUtil';
 import { IRUtils } from './IRUtils';
-import { AbstractFieldRef, ArkArrayRef, ArkInstanceFieldRef, ArkStaticFieldRef, GlobalRef } from '../base/Ref';
+import { AbstractFieldRef, ArkArrayRef, ArkInstanceFieldRef, ArkStaticFieldRef, GlobalRef, CXXArkInstanceFieldRef } from '../base/Ref';
 import { ModelUtils } from './ModelUtils';
 import { ArkMethod } from '../model/ArkMethod';
 import { buildArkMethodFromArkClass } from '../model/builder/ArkMethodBuilder';
@@ -83,11 +71,20 @@ import { Builtin } from './Builtin';
 import { Constant } from '../base/Constant';
 import { TEMP_LOCAL_PREFIX } from './Const';
 import { ArkIRTransformer, DummyStmt, ValueAndStmts } from './ArkIRTransformer';
+import {buildTypeFromPreStr, cppNode2Type, isCXXSTLConstainer } from '../../core/model/builder/builderUtils';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
-import { TypeInference } from './TypeInference';
-import { KeyofTypeExpr, TypeQueryExpr } from '../base/TypeExpr';
+
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkValueTransformer');
+
+function nodeInnerNode(node: any): any {
+    if (node.inner && node.inner instanceof Array && !(node.inner.length === 1 && node.inner[0].kind === 'TypeRef')) {
+        return node.inner[node.inner.length - 1];
+    }
+    logger.info('unsupported node !');
+    const obj = {kind: 'unsupported kind', node};
+    return obj;
+}
 
 export class ArkValueTransformer {
     private conditionalOperatorNo: number = 0;
@@ -138,71 +135,272 @@ export class ArkValueTransformer {
         return globalRef;
     }
 
-    public tsNodeToValueAndStmts(node: ts.Node): ValueAndStmts {
-        if (ts.isBinaryExpression(node)) {
-            return this.binaryExpressionToValueAndStmts(node);
-        } else if (ts.isCallExpression(node)) {
-            return this.callExpressionToValueAndStmts(node);
-        } else if (ts.isVariableDeclarationList(node)) {
-            return this.variableDeclarationListToValueAndStmts(node);
-        } else if (ts.isIdentifier(node)) {
-            return this.identifierToValueAndStmts(node);
-        } else if (ts.isPropertyAccessExpression(node)) {
-            return this.propertyAccessExpressionToValue(node);
-        } else if (ts.isPrefixUnaryExpression(node)) {
-            return this.prefixUnaryExpressionToValueAndStmts(node);
-        } else if (ts.isPostfixUnaryExpression(node)) {
-            return this.postfixUnaryExpressionToValueAndStmts(node);
-        } else if (ts.isTemplateExpression(node)) {
-            return this.templateExpressionToValueAndStmts(node);
-        } else if (ts.isTaggedTemplateExpression(node)) {
-            return this.taggedTemplateExpressionToValueAndStmts(node);
-        } else if (ts.isAwaitExpression(node)) {
-            return this.awaitExpressionToValueAndStmts(node);
-        } else if (ts.isYieldExpression(node)) {
-            return this.yieldExpressionToValueAndStmts(node);
-        } else if (ts.isDeleteExpression(node)) {
-            return this.deleteExpressionToValueAndStmts(node);
-        } else if (ts.isVoidExpression(node)) {
-            return this.voidExpressionToValueAndStmts(node);
-        } else if (ts.isElementAccessExpression(node)) {
-            return this.elementAccessExpressionToValueAndStmts(node);
-        } else if (ts.isNewExpression(node)) {
+    private thisExpressionToValueAndStmts(thisExpression: any): ValueAndStmts {
+        return {
+            value: this.getThisLocal(),
+            valueOriginalPositions: [FullPosition.buildFromNode(thisExpression,  this.sourceFile)],
+            stmts: []
+        }
+    }
+
+    // 判断当前节点是否与CPP的lambda函数相关
+    private isNodeRelatedToCXXLambdaFunc(node: any): boolean {
+        return node.type.qualType && node.type.qualType.startsWith('(lambda at');
+    }
+
+    private isNodeRelatedToImplicitNode(node: any): boolean {
+        if (node.inner && node.inner instanceof Array) {
+            return node.inner.length !== 0 && node.inner[0].kind === 'ImplicitCastExpr' &&
+                (node.name === '_tree_const_iterator' || node.name === 'basic_string');
+        }
+        return false;
+    }
+
+    // 判断当前节点的子节点是否是优化后的临时变量
+    private isNodeRelatedToMaterialize(node: any): boolean {
+        return node.inner.length !== 0 && node.inner[0].kind === 'MaterializeTemporaryExpr';
+    }
+
+    // 判断当前节点的子节点是否是成员函数调用
+    private isNodeRelatedToCXXMember(node: any): boolean {
+        return node.inner.length !== 0 && node.inner[0].kind === 'CXXMemberCallExpr' ||
+            (node.inner[0].kind === 'ImplicitCastExpr' && node.inner[0].inner[0] && node.inner[0].inner[0].kind === 'CXXMemberCallExpr');
+    }
+
+    // std::pair类型的构造
+    private isPairConstructExpr(node: any): boolean {
+        return node.type.qualType.includes('std::pair');
+    }
+
+    // 多层std::pair构造
+    private isNodeRelatedToTemporary(node: any): boolean {
+        return node.inner.length !== 0 && node.inner[0].kind === 'CXXBindTemporaryExpr' && node.code === node.inner[0].code;
+    }
+
+    // 不是new语句的表达式（排除构造函数作为参数）
+    private isNotNewExpression(newExpression: any): boolean {
+        return newExpression.inner.length && (
+            newExpression.inner[0].kind === 'IntegerLiteral' || newExpression.inner[0].kind === 'InitListExpr' ||
+            (newExpression.inner[0].kind === 'ImplicitCastExpr' && !newExpression.inner[0].code.includes('(')) ||
+            newExpression.inner[0].kind === 'CompoundLiteralExpr'
+        );
+    }
+
+    private isNodeRelatedToCXXFuncCast(node: any): boolean {
+        return node.inner.length !== 0 && node.inner[0].kind === 'CXXFunctionalCastExpr';
+    }
+
+    public tsNodeToValueAndStmts(node: any): ValueAndStmts {
+        if(node.kind === 'CXXConstructExpr') {
+            if ((!this.isPairConstructExpr((node)) && (this.isNodeRelatedToCXXLambdaFunc(node) ||
+                this.isNodeRelatedToMaterialize(node) || this.isNodeRelatedToImplicitNode(node)))) {
+                return this.tsNodeToValueAndStmts(node.inner[0]);
+            }
             return this.newExpressionToValueAndStmts(node);
-        } else if (ts.isParenthesizedExpression(node)) {
-            return this.parenthesizedExpressionToValueAndStmts(node);
-        } else if (ts.isAsExpression(node)) {
-            return this.asExpressionToValueAndStmts(node);
-        } else if (ts.isNonNullExpression(node)) {
-            return this.nonNullExpressionToValueAndStmts(node);
-        } else if (ts.isTypeAssertionExpression(node)) {
-            return this.typeAssertionToValueAndStmts(node);
-        } else if (ts.isTypeOfExpression(node)) {
-            return this.typeOfExpressionToValueAndStmts(node);
-        } else if (ts.isArrayLiteralExpression(node)) {
-            return this.arrayLiteralExpressionToValueAndStmts(node);
-        } else if (this.isLiteralNode(node)) {
+        } else if (node.kind === 'CallExpr' || node.kind === 'AtomicCallExpr') {
+            return this.callExpressionToValueAndStmts(node);
+        } else if (node.kind === 'CXXNoexceptExpr') {
+            return this.cxxNoexceptExprToValueAndStmts(node);
+        } else if (node.kind === 'CXXOperatorCallExpr') {
+            return this.cxxOperatorExpressionToValueAndStmts(node);
+        } else if (node.kind === 'RecoveryExpr') {
+            return this.RecoverExpressionToValueAndStmts(node);
+        } else if (node.kind === 'ConstantExpr' || node.kind === 'ExprWithCleanups' ||
+            node.kind === 'CXXStdInitializerListExpr' || node.kind === 'ParenExpr' ||
+            node.kind === 'CXXBindTemporaryExpr' || node.kind === 'VarDecl' || node.kind === 'UnexposedExpr') { // 处理隐式节点、变量节点
+            if (node.inner.length !== 0) {
+                return this.tsNodeToValueAndStmts(node.inner[0]);
+            }
+        } else if (node.kind === 'ImplicitCastExpr') {
+            if (node.inner.length !== 0) {
+                return this.tsNodeToValueAndStmts(node.inner[0]);
+            }
+            // 把当前ImplicitCastExpr节点当作declRefExpr
+            node.kind = 'DeclRefExpr';
+            node.name = node.code;
+            return this.tsNodeToValueAndStmts(node);
+        } else if (node.kind === 'DeclRefExpr') {
+            if (!node.type) {
+                return this.tsNodeToValueAndStmts(node.inner[0]);
+            }
+            return this.identifierToValueAndStmts(node);
+        } else if (node.kind === 'UnresolvedLookupExpr') {
+            return this.identifierToValueAndStmts(node);
+        } else if (node.kind === 'CXXMemberCallExpr') {
+            return this.cxxMemberCallExpressionToValueAndStmts(node);
+        } else if (node.kind === 'MemberExpr') {
+            return this.memberExpressionToValueAndStmts(node);
+        } else if (node.kind === 'CXXNewExpr') {
+            return this.newExpressionToValueAndStmts(node);
+        } else if (node.kind === 'BinaryOperator') {
+            return this.binaryExpressionToValueAndStmts(node);
+        } else if (node.kind === 'MaterializeTemporaryExpr') {
+            if (this.isNotNewExpression(node) || this.isNodeRelatedToCXXLambdaFunc(node) || this.isNodeRelatedToCXXMember(node) ||
+                this.isNodeRelatedToTemporary(node) || this.isNodeRelatedToCXXFuncCast(node)) {
+                return this.tsNodeToValueAndStmts(node.inner[0]);
+            }
+            return this.newExpressionToValueAndStmts(node);
+        } else if (node.kind === 'CXThisExpr') {
+            return this.thisExpressionToValueAndStmts(node);
+        } else if (node.kind === 'IntegerLiteral') {
             return this.literalNodeToValueAndStmts(node) as ValueAndStmts;
-        } else if (ts.isArrowFunction(node) || ts.isFunctionExpression(node)) {
-            return this.callableNodeToValueAndStmts(node);
-        } else if (ts.isClassExpression(node)) {
-            return this.classExpressionToValueAndStmts(node);
-        } else if (ts.isEtsComponentExpression(node)) {
-            return this.etsComponentExpressionToValueAndStmts(node);
-        } else if (ts.isObjectLiteralExpression(node)) {
-            return this.objectLiteralExpresionToValueAndStmts(node);
-        } else if (node.kind === ts.SyntaxKind.ThisKeyword) {
-            return this.thisExpressionToValueAndStmts(node as ts.ThisExpression);
-        } else if (ts.isConditionalExpression(node)) {
+        } else if (node.kind === 'InitListExpr') {
+            // 数组和结构体都可以用{}初始化，此处需要做区分
+            if (this.resolveTypeNode(node.type.qualType) instanceof ClassType) {
+                // 结构体初始化则调用构造函数去初始化
+                return this.newExpressionToValueAndStmts(node);
+            }
+            return this.arrayLiteralExpressionToValueAndStmts(node);
+        } else if (node.kind === 'DeclStmt') {
+            return this.variableDeclarationListToValueAndStmts(node);
+        } else if (node.kind === 'UnaryOperator') {
+            if (node.isPostfix) {
+                return this.postfixUnaryExpressionToValueAndStmts(node);
+            } else {
+                return this.prefixUnaryExpressionToValueAndStmts(node);
+            }
+        } else if (node.kind === 'ArraySubscriptExpr') {
+            return this.elementAccessExpressionToValueAndStmts(node);
+        } else if (node.kind === 'StringLiteral' || node.kind === 'CXXBoolLiteralExpr' ||
+            node.kind === 'CharacterLiteral' || node.kind === 'FlatingLiteral' || node.kind === 'CXXNullPtrLiteralExpr') {
+            return this.literalNodeToValueAndStmts(node) as ValueAndStmts;
+        } else if (node.kind === 'CompoundAssignOperator') {
+            return this.compoundAssignmentToValueAndStmts(node);
+        } else if (node.kind === 'CompoundLiteralExpr') {
+            return this.tsNodeToValueAndStmts(node.inner[0]);
+        } else if (node.kind === 'ConditionalOperator' || node.kind === 'BinaryConditionalOperator') {
             return this.conditionalExpressionToValueAndStmts(node);
+        } else if (node.kind === 'LambdaExpr') {
+            return this.callableNodeToValueAndStmts(node);
+        } else if (node.kind === 'CXXStaticCastExpr' || node.kind === 'CStyleCastExpr' || node.kind === 'CXXConstCastExpr' ||
+            node.kind === 'CXXDynamicCastExpr' || node.kind === 'CXXReinterpretCastExpr' || node.kind === 'CXXFunctionalCastExpr') {
+            return this.castExpressionToValueAndStmts(node);
+        } else if (node.kind === 'CXXDeleteExpr') {
+            return this.deleteExpressionToValueAndStmts(node);
+        } else if (node.kind === 'CXXScalarValueInitExpr') {
+            return this.cxxScalarValueInitToValueAndStmts(node);
+        } else if (node.kind === 'CXXTypeidExpr') {
+            return this.cxxTypeidExprToValueAndStmts(node);
+        } else if (node.kind === 'ArrayTypeTraitExpr') {
+            return this.arrayTypeTraitExprToValueAndStmts(node);
         }
 
+        logger.warn(`ArkValueTransformer-tsNodeToValueAndStmts: node '${node.kind}' is not specially processed.`);
         return {
-            value: new Local(node.getText(this.sourceFile)),
+            value: new Local(node.code),
             valueOriginalPositions: [FullPosition.buildFromNode(node, this.sourceFile)],
             stmts: [],
         };
     }
+
+    // ArrayTypeTraitExpr按照函数调用处理
+    private arrayTypeTraitExprToValueAndStmts(ArrayTypeTraitExpr: any): ValueAndStmts {
+        const stmts: Stmt[] = [];
+        let innerNode = ArrayTypeTraitExpr;
+        while (innerNode.inner instanceof Array && innerNode.inner.length !== 0) {
+            innerNode = innerNode.inner[0];
+            if(innerNode.kind !== 'ArrayTypeTraitExpr') {
+                break;
+            }
+        }
+        const callArgs = [{
+            kind: 'StringLiteral',
+            value: innerNode.type.qualType.toString()
+        }];
+        if(ArrayTypeTraitExpr.traitFunc === '__array_extent') {
+            const traitArgs = ArrayTypeTraitExpr.traitArgs.split(',');
+            const numArg = traitArgs[traitArgs.length - 1].trim();
+            callArgs.push({
+                kind: 'IntegerLiteral',
+                value: numArg,
+            });
+        }
+        const callNode = JSON.parse(JSON.stringify(ArrayTypeTraitExpr));
+        callNode.kind = 'DeclRefExpr';
+        callNode.name = ArrayTypeTraitExpr.traitFunc;
+        const args = this.parseArgumentsOfCallExpression(stmts, callArgs);
+        return this.generateInvokeValueAndStmts(callNode, args, stmts, ArrayTypeTraitExpr);
+    }
+
+    // CXXTypeidExpr按照函数调用处理
+    private cxxTypeidExprToValueAndStmts(CXXTypeidExpr: any): ValueAndStmts {
+        const stmts: Stmt[] = [];
+        let typeArgs = CXXTypeidExpr.typeArg.toString();
+        let typeidCallArgs = CXXTypeidExpr.inner;
+        // [1.typeid的inner.length为0，则传入的是类型名； 2.std::Type引用命名空间中的类型] ==> 参数函数调用去构造类型对应字符串入参
+        if (CXXTypeidExpr.inner.length === 0 || (CXXTypeidExpr.inner.length === 2 && CXXTypeidExpr.inner[1].kind === 'TypeRef')) {
+            typeidCallArgs = [{
+                kind: 'StringLiteral',
+                value: typeArgs
+            }];
+        }
+        // 构造节点作为函数名节点
+        let typeidCallNode = JSON.parse(JSON.stringify(CXXTypeidExpr));
+        typeidCallNode.kind = 'DeclRefExpr';
+        typeidCallNode.name = 'typeid';
+        const argus = this.parseArgumentsOfCallExpression(stmts, typeidCallArgs);
+        return this.generateInvokeValueAndStmts(typeidCallNode, argus, stmts, CXXTypeidExpr);
+    }
+
+    private cxxNoexceptExprToValueAndStmts(CXXNoexceptExpr: any): ValueAndStmts {
+        const stmts: Stmt[] = [];
+        let cxxNoexceptCallNode = JSON.parse(JSON.stringify(CXXNoexceptExpr));
+        cxxNoexceptCallNode.kind = 'DeclRefExpr';
+        cxxNoexceptCallNode.name = 'CXXNoexceptExpr';
+        const argus = this.parseArgumentsOfCallExpression(stmts, CXXNoexceptExpr.inner);
+        return this.generateInvokeValueAndStmts(cxxNoexceptCallNode, argus, stmts, CXXNoexceptExpr);
+    }
+
+    private cxxScalarValueInitToValueAndStmts(CXXScalarValueInitExpr: any): ValueAndStmts | null{
+        const initType = CXXScalarValueInitExpr.type.qualType;
+        let constant: Constant | null = null;
+        switch (initType) {
+            case 'int':
+                constant = ValueUtil.getOrCreateNumberConst(parseFloat('0'));
+                break;
+            case 'float':
+            case 'double':
+                constant = ValueUtil.getOrCreateNumberConst(parseFloat('0.0'));
+                break;
+            case 'char':
+                constant = ValueUtil.createStringConst('');
+                break;
+            default:
+                logger.warn(`The initType of ast node "CXXScalarValueInitExpr" is ${initType}, maybe it is not literalNode or is not processed`);
+        }
+        if (constant === null) {
+            return null;
+        }
+        return {
+            value: constant,
+            valueOriginalPosition: [FullPosition.buildFromNode(CXXScalarValueInitExpr, this.sourceFile)],
+            stmts: []
+        };
+    }
+
+    private deleteExpressionToValueAndStmts(deleteExpression: any): ValueAndStmts {
+        const { value: exprValue, valueOriginalPositions: exprPositions, stmts: stmts } =
+            this.tsNodeToValueAndStmts(deleteExpression.inner[0]);
+        const deleteExpr = new ArkDeleteExpr(exprValue);
+        const deleteExprPosition = [FullPosition.buildFromNode(deleteExpression, this.sourceFile), ...exprPositions];
+        return {value: deleteExpr, valueOriginalPositions: deleteExprPosition, stmts: stmts};
+    }
+
+    private castExpressionToValueAndStmts(castExpression: any): ValueAndStmts {
+        const stmts: Stmt[] = [];
+        let {value: exprValue, valueOriginalPositions: exprPositions, stmts: exprStmts} = this.tsNodeToValueAndStmts(castExpression.inner[castExpression.inner.length - 1]);
+        exprStmts.forEach((stmt: Stmt) => stmts.push(stmt));
+        if (IRUtils.moreThanOneAddress(exprValue)) {
+            ({value: exprValue, valueOriginalPositions: exprPositions, stmts: exprStmts} = this.arkIRTransformer.generateAssignStmtForValue(exprValue, exprPositions));
+            exprStmts.forEach((stmt: Stmt) => stmts.push(stmt));
+        }
+        const castExpr = new ArkCastExpr(exprValue, this.resolveTypeNode(castExpression.type.qualType));
+        const castExprPosition = [FullPosition.buildFromNode(castExpression, this.sourceFile), ...exprPositions];
+        return {value: castExpr, valueOriginalPositions: castExprPosition, stmts: stmts};
+    }
+
+
+
 
     private tsNodeToSingleAddressValueAndStmts(node: ts.Node): ValueAndStmts {
         const allStmts: Stmt[] = [];
@@ -215,33 +413,31 @@ export class ArkValueTransformer {
         return { value, valueOriginalPositions, stmts: allStmts };
     }
 
-    private thisExpressionToValueAndStmts(thisExpression: ts.ThisExpression): ValueAndStmts {
-        return {
-            value: this.getThisLocal(),
-            valueOriginalPositions: [FullPosition.buildFromNode(thisExpression, this.sourceFile)],
-            stmts: [],
-        };
-    }
-
-    private conditionalExpressionToValueAndStmts(conditionalExpression: ts.ConditionalExpression): ValueAndStmts {
+    private conditionalExpressionToValueAndStmts(conditionalExpression: any): ValueAndStmts {
+        let InnerIdx = 0;
         const stmts: Stmt[] = [];
         const currConditionalOperatorIndex = this.conditionalOperatorNo++;
         const {
             value: conditionValue,
             valueOriginalPositions: conditionPositions,
             stmts: conditionStmts,
-        } = this.conditionToValueAndStmts(conditionalExpression.condition);
+        } = this.conditionToValueAndStmts(conditionalExpression.inner[InnerIdx]);
         conditionStmts.forEach(stmt => stmts.push(stmt));
         const ifStmt = new ArkIfStmt(conditionValue as ArkConditionExpr);
         ifStmt.setOperandOriginalPositions(conditionPositions);
         stmts.push(ifStmt);
 
         stmts.push(new DummyStmt(ArkIRTransformer.DUMMY_CONDITIONAL_OPERATOR_IF_TRUE_STMT + currConditionalOperatorIndex));
+        if (conditionalExpression.inner.length === 3) {
+            InnerIdx = 1;
+        } else if (conditionalExpression.inner.length === 4) {
+            InnerIdx = 0;
+        }
         const {
             value: whenTrueValue,
             valueOriginalPositions: whenTruePositions,
             stmts: whenTrueStmts,
-        } = this.tsNodeToValueAndStmts(conditionalExpression.whenTrue);
+        } = this.tsNodeToValueAndStmts(conditionalExpression.inner[InnerIdx]);
         whenTrueStmts.forEach(stmt => stmts.push(stmt));
         const resultLocal = this.generateTempLocal();
         const assignStmtWhenTrue = new ArkAssignStmt(resultLocal, whenTrueValue);
@@ -250,11 +446,16 @@ export class ArkValueTransformer {
         stmts.push(assignStmtWhenTrue);
 
         stmts.push(new DummyStmt(ArkIRTransformer.DUMMY_CONDITIONAL_OPERATOR_IF_FALSE_STMT + currConditionalOperatorIndex));
+        if (conditionalExpression.inner.length === 3) {
+            InnerIdx = 2;
+        } else if (conditionalExpression.inner.length === 4) {
+            InnerIdx = 3;
+        }
         const {
             value: whenFalseValue,
             valueOriginalPositions: whenFalsePositions,
             stmts: whenFalseStmts,
-        } = this.tsNodeToValueAndStmts(conditionalExpression.whenFalse);
+        } = this.tsNodeToValueAndStmts(conditionalExpression.inner[InnerIdx]);
         whenFalseStmts.forEach(stmt => stmts.push(stmt));
         const assignStmt = new ArkAssignStmt(resultLocal, whenFalseValue);
         assignStmt.setOperandOriginalPositions([...resultLocalPosition, ...whenFalsePositions]);
@@ -267,44 +468,58 @@ export class ArkValueTransformer {
         };
     }
 
-    private objectLiteralExpresionToValueAndStmts(objectLiteralExpression: ts.ObjectLiteralExpression): ValueAndStmts {
-        const declaringArkClass = this.declaringMethod.getDeclaringArkClass();
-        const declaringArkNamespace = declaringArkClass.getDeclaringArkNamespace();
-        const anonymousClass = new ArkClass();
-        if (declaringArkNamespace) {
-            buildNormalArkClassFromArkNamespace(objectLiteralExpression, declaringArkNamespace, anonymousClass, this.sourceFile, this.declaringMethod);
-            declaringArkNamespace.addArkClass(anonymousClass);
-        } else {
-            const declaringArkFile = declaringArkClass.getDeclaringArkFile();
-            buildNormalArkClassFromArkFile(objectLiteralExpression, declaringArkFile, anonymousClass, this.sourceFile, this.declaringMethod);
-            declaringArkFile.addArkClass(anonymousClass);
+    public getArgumentNodeForRecover(innerAsNodes: any): any {
+        let callNode = {};
+        let argumentNodes: any[] = [];
+        for (let i = 0; i < innerAsNodes.length; i++) {
+            if (i == 0) {
+                callNode = innerAsNodes[i];
+            } else {
+                argumentNodes.push(innerAsNodes[i]);
+            }
         }
+        return [callNode, argumentNodes];
+    }
 
-        const objectLiteralExpressionPosition = FullPosition.buildFromNode(objectLiteralExpression, this.sourceFile);
-        const stmts: Stmt[] = [];
-        const anonymousClassSignature = anonymousClass.getSignature();
-        const anonymousClassType = new ClassType(anonymousClassSignature);
-        const newExpr = new ArkNewExpr(anonymousClassType);
-        const {
-            value: newExprLocal,
-            valueOriginalPositions: newExprLocalPositions,
-            stmts: newExprStmts,
-        } = this.arkIRTransformer.generateAssignStmtForValue(newExpr, [objectLiteralExpressionPosition]);
-        newExprStmts.forEach(stmt => stmts.push(stmt));
+    public getArgumentNode(innerAstNodes: any): any {
+        let callNode = {};
+        let argumentNodes: any[] = [];
+        // 此时innerAstNode为单独的点
+        if (innerAstNodes.hasOwnProperty('id')) {
+            callNode = this.getDeclRef(innerAstNodes.inner[0]);
+            if (innerAstNodes.inner.length > 1) {
+                for (let i = 1; i < innerAstNodes.inner.length; i++) {
+                    argumentNodes.push(this.getDeclRef(innerAstNodes.inner[i]));
+                }
+            }
+            return [callNode, argumentNodes];
+        }
+        for (let i = 0; i < innerAstNodes.length; i++) {
+            if (i == 0 && innerAstNodes[i].inner) {
+                let firstNode = innerAstNodes[i].inner[0];
+                while (firstNode.kind.toString() === 'ImplicitCastExpr') {
+                    firstNode = firstNode.inner[0];
+                }
+                // kind = MemberExpr为了处理多层Field结构
+                if (firstNode.kind.toString() === 'DeclRefExpr' || firstNode.kind.toString() === 'MemberExpr' || firstNode.kind.toString() === 'OverloadedDeclRef') {
+                    callNode = firstNode;
+                } else {
+                    argumentNodes.push(firstNode);
+                }
+            }else {
+                argumentNodes.push(innerAstNodes[i]);
+            }
+        }
+        return [callNode, argumentNodes];
+    }
 
-        const constructorMethodSubSignature = ArkSignatureBuilder.buildMethodSubSignatureFromMethodName(CONSTRUCTOR_NAME);
-        const constructorMethodSignature = new MethodSignature(anonymousClassSignature, constructorMethodSubSignature);
-        const constructorInvokeExpr = new ArkInstanceInvokeExpr(newExprLocal as Local, constructorMethodSignature, []);
-
-        const assignStmt = new ArkAssignStmt(newExprLocal, constructorInvokeExpr);
-        const assignStmtPositions = [newExprLocalPositions[0], newExprLocalPositions[0], ...newExprLocalPositions];
-        assignStmt.setOperandOriginalPositions(assignStmtPositions);
-        stmts.push(assignStmt);
-        return {
-            value: newExprLocal,
-            valueOriginalPositions: assignStmtPositions,
-            stmts: stmts,
-        };
+    private getDeclRef(astNode: any): any {
+        while (astNode.inner) {
+            astNode = astNode.inner[0];
+            if (astNode.kind === 'DeclRefExpr') {
+                return astNode;
+            }
+        }
     }
 
     private generateSystemComponentStmt(
@@ -357,18 +572,14 @@ export class ArkValueTransformer {
         const constructorMethodSubSignature = ArkSignatureBuilder.buildMethodSubSignatureFromMethodName(CONSTRUCTOR_NAME);
         const constructorMethodSignature = new MethodSignature(classSignature, constructorMethodSubSignature);
         const instanceInvokeExpr = new ArkInstanceInvokeExpr(newExprLocal as Local, constructorMethodSignature, args);
-        const assignStmt = new ArkAssignStmt(newExprLocal, instanceInvokeExpr);
-        const assignStmtPositions = [componentExpressionPosition, componentExpressionPosition, ...newExprPositions, ...argPositionsAllFlat];
-        assignStmt.setOperandOriginalPositions(assignStmtPositions);
-        stmts.push(assignStmt);
+        const instanceInvokeExprPositions = [componentExpressionPosition, ...newExprPositions, ...argPositionsAllFlat];
+        const instanceInvokeStmt = new ArkInvokeStmt(instanceInvokeExpr);
+        instanceInvokeStmt.setOperandOriginalPositions(instanceInvokeExprPositions);
+        stmts.push(instanceInvokeStmt);
         const createViewArgs: Value[] = [newExprLocal];
         const createViewArgPositionsAll = [newExprPositions];
         if (ts.isEtsComponentExpression(componentExpression) && componentExpression.body) {
             const anonymous = ts.factory.createArrowFunction([], [], [], undefined, undefined, componentExpression.body);
-            // @ts-expect-error: add pos info for the created ArrowFunction
-            anonymous.pos = componentExpression.body.pos;
-            // @ts-expect-error: add end info for the created ArrowFunction
-            anonymous.end = componentExpression.body.end;
             const { value: builderMethod, valueOriginalPositions: builderMethodPositions } = this.callableNodeToValueAndStmts(anonymous);
             createViewArgs.push(builderMethod);
             createViewArgPositionsAll.push(builderMethodPositions);
@@ -417,257 +628,22 @@ export class ArkValueTransformer {
         return popInvokeStmt;
     }
 
-    private etsComponentExpressionToValueAndStmts(etsComponentExpression: ts.EtsComponentExpression): ValueAndStmts {
-        const stmts: Stmt[] = [];
-        const componentName = (etsComponentExpression.expression as ts.Identifier).text;
-        const { args: args, argPositions: argPositions } = this.parseArguments(stmts, etsComponentExpression.arguments);
-        if (isEtsSystemComponent(componentName)) {
-            return this.generateSystemComponentStmt(componentName, args, argPositions, etsComponentExpression, stmts);
-        }
-        return this.generateCustomViewStmt(componentName, args, argPositions, etsComponentExpression, stmts);
-    }
-
-    private classExpressionToValueAndStmts(classExpression: ts.ClassExpression): ValueAndStmts {
-        const declaringArkClass = this.declaringMethod.getDeclaringArkClass();
-        const declaringArkNamespace = declaringArkClass.getDeclaringArkNamespace();
-        const newClass = new ArkClass();
-        if (declaringArkNamespace) {
-            buildNormalArkClassFromArkNamespace(classExpression, declaringArkNamespace, newClass, this.sourceFile, this.declaringMethod);
-            declaringArkNamespace.addArkClass(newClass);
-        } else {
-            const declaringArkFile = declaringArkClass.getDeclaringArkFile();
-            buildNormalArkClassFromArkFile(classExpression, declaringArkFile, newClass, this.sourceFile, this.declaringMethod);
-            declaringArkFile.addArkClass(newClass);
-        }
-        const classValue = this.addNewLocal(newClass.getName(), new ClassType(newClass.getSignature()));
-        return {
-            value: classValue,
-            valueOriginalPositions: [FullPosition.buildFromNode(classExpression, this.sourceFile)],
-            stmts: [],
-        };
-    }
-
-    private templateExpressionToValueAndStmts(templateExpression: ts.TemplateExpression): ValueAndStmts {
-        const { stmts, stringTextValues, placeholderValues, stringTextPositions, placeholderPositions } = this.collectTemplateValues(templateExpression);
-
-        const { placeholderStringLocals, placeholderStringLocalPositions, newStmts } = this.processTemplatePlaceholders(
-            placeholderValues,
-            placeholderPositions,
-            stmts
-        );
-
-        return this.combineTemplateParts(stringTextValues, stringTextPositions, placeholderStringLocals, placeholderStringLocalPositions, newStmts);
-    }
-
-    private processTemplatePlaceholders(
-        placeholderValues: Value[],
-        placeholderPositions: FullPosition[],
-        currStmts: Stmt[]
-    ): {
-        placeholderStringLocals: Local[];
-        placeholderStringLocalPositions: FullPosition[];
-        newStmts: Stmt[];
-    } {
-        const placeholderStringLocals: Local[] = [];
-        const placeholderStringLocalPositions: FullPosition[] = [];
-        const newStmts: Stmt[] = [...currStmts];
-
-        for (let i = 0; i < placeholderValues.length; i++) {
-            let placeholderValue = placeholderValues[i];
-            let placeholderPosition: FullPosition[] = [placeholderPositions[i]];
-            let placeholderStmts: Stmt[] = [];
-
-            if (!(placeholderValue instanceof Local)) {
-                ({
-                    value: placeholderValue,
-                    valueOriginalPositions: placeholderPosition,
-                    stmts: placeholderStmts,
-                } = this.arkIRTransformer.generateAssignStmtForValue(placeholderValue, placeholderPosition));
-            }
-
-            placeholderStmts.forEach(stmt => newStmts.push(stmt));
-            const toStringExpr = new ArkInstanceInvokeExpr(placeholderValue as Local, Builtin.TO_STRING_METHOD_SIGNATURE, []);
-            const toStringExprPosition: FullPosition[] = [placeholderPosition[0], placeholderPosition[0]];
-            const {
-                value: placeholderStringLocal,
-                valueOriginalPositions: placeholderStringPositions,
-                stmts: toStringStmts,
-            } = this.arkIRTransformer.generateAssignStmtForValue(toStringExpr, toStringExprPosition);
-            placeholderStringLocals.push(placeholderStringLocal as Local);
-            placeholderStringLocalPositions.push(placeholderStringPositions[0]);
-            toStringStmts.forEach(stmt => newStmts.push(stmt));
-        }
-
-        return {
-            placeholderStringLocals,
-            placeholderStringLocalPositions,
-            newStmts,
-        };
-    }
-
-    private combineTemplateParts(
-        stringTextValues: Value[],
-        stringTextPositions: FullPosition[],
-        placeholderStringLocals: Local[],
-        placeholderStringLocalPositions: FullPosition[],
-        currStmts: Stmt[]
-    ): ValueAndStmts {
-        const templateParts: Value[] = [];
-        const templatePartPositions: FullPosition[] = [];
-
-        for (let i = 0; i < placeholderStringLocals.length; i++) {
-            if (stringTextValues[i] !== ValueUtil.EMPTY_STRING_CONSTANT) {
-                templateParts.push(stringTextValues[i]);
-                templatePartPositions.push(stringTextPositions[i]);
-            }
-            templateParts.push(placeholderStringLocals[i]);
-            templatePartPositions.push(placeholderStringLocalPositions[i]);
-        }
-
-        if (stringTextValues[stringTextValues.length - 1] !== ValueUtil.EMPTY_STRING_CONSTANT) {
-            templateParts.push(stringTextValues[stringTextValues.length - 1]);
-            templatePartPositions.push(stringTextPositions[stringTextPositions.length - 1]);
-        }
-
-        let currTemplateResult: Value = templateParts[0];
-        let currTemplateResultPosition: FullPosition = templatePartPositions[0];
-        const finalStmts: Stmt[] = [...currStmts];
-
-        for (let i = 1; i < templateParts.length; i++) {
-            const nextTemplatePartPosition = templatePartPositions[i];
-            const normalBinopExpr = new ArkNormalBinopExpr(currTemplateResult, templateParts[i], NormalBinaryOperator.Addition);
-            const normalBinopExprPositions = [
-                FullPosition.merge(currTemplateResultPosition, nextTemplatePartPosition),
-                currTemplateResultPosition,
-                nextTemplatePartPosition,
-            ];
-            const {
-                value: combinationValue,
-                valueOriginalPositions: combinationValuePositions,
-                stmts: combinationStmts,
-            } = this.arkIRTransformer.generateAssignStmtForValue(normalBinopExpr, normalBinopExprPositions);
-            combinationStmts.forEach(stmt => finalStmts.push(stmt));
-            currTemplateResult = combinationValue;
-            currTemplateResultPosition = combinationValuePositions[0];
-        }
-
-        return {
-            value: currTemplateResult,
-            valueOriginalPositions: [currTemplateResultPosition],
-            stmts: finalStmts,
-        };
-    }
-
-    private taggedTemplateExpressionToValueAndStmts(taggedTemplateExpression: ts.TaggedTemplateExpression): ValueAndStmts {
-        const { stmts, stringTextValues, placeholderValues, stringTextPositions, placeholderPositions } = this.collectTemplateValues(
-            taggedTemplateExpression.template
-        );
-        const stringTextBaseType = StringType.getInstance();
-        const stringTextArrayLen = stringTextValues.length;
-        const stringTextArrayLenValue = ValueUtil.getOrCreateNumberConst(stringTextArrayLen);
-        const stringTextArrayLenPosition = FullPosition.DEFAULT;
-        const {
-            value: templateObjectLocal,
-            valueOriginalPositions: templateObjectLocalPositions,
-            stmts: templateObjectStmts,
-        } = this.generateArrayExprAndStmts(
-            stringTextBaseType,
-            stringTextArrayLenValue,
-            stringTextArrayLenPosition,
-            stringTextArrayLen,
-            stringTextValues,
-            stringTextPositions,
-            stmts,
-            FullPosition.DEFAULT,
-            true
-        );
-
-        const placeholderBaseType = AnyType.getInstance();
-        const placeholdersArrayLen = placeholderValues.length;
-        const placeholdersArrayLenValue = ValueUtil.getOrCreateNumberConst(placeholdersArrayLen);
-        const placeholdersArrayLenPosition = FullPosition.DEFAULT;
-        const {
-            value: placeholdersLocal,
-            valueOriginalPositions: placeholdersLocalPositions,
-            stmts: placeholdersStmts,
-        } = this.generateArrayExprAndStmts(
-            placeholderBaseType,
-            placeholdersArrayLenValue,
-            placeholdersArrayLenPosition,
-            placeholdersArrayLen,
-            placeholderValues,
-            placeholderPositions,
-            templateObjectStmts,
-            FullPosition.DEFAULT,
-            true
-        );
-
-        const taggedFuncArgus = {
-            realGenericTypes: undefined,
-            args: [templateObjectLocal, placeholdersLocal],
-            argPositions: [templateObjectLocalPositions[0], placeholdersLocalPositions[0]],
-        };
-        return this.generateInvokeValueAndStmts(taggedTemplateExpression.tag, taggedFuncArgus, placeholdersStmts, taggedTemplateExpression);
-    }
-
-    private collectTemplateValues(templateLiteral: ts.TemplateLiteral): {
-        stmts: Stmt[];
-        stringTextValues: Value[];
-        placeholderValues: Value[];
-        stringTextPositions: FullPosition[];
-        placeholderPositions: FullPosition[];
-    } {
-        const stmts: Stmt[] = [];
-        if (ts.isNoSubstitutionTemplateLiteral(templateLiteral)) {
-            const templateLiteralString = templateLiteral.getText(this.sourceFile);
-            return {
-                stmts: [],
-                stringTextValues: [ValueUtil.createStringConst(templateLiteralString)],
-                placeholderValues: [],
-                stringTextPositions: [FullPosition.buildFromNode(templateLiteral, this.sourceFile)],
-                placeholderPositions: [],
-            };
-        }
-        const head = templateLiteral.head;
-        const stringTextValues: Value[] = [ValueUtil.createStringConst(head.rawText || '')];
-        const placeholderValues: Value[] = [];
-        const stringTextPositions: FullPosition[] = [FullPosition.buildFromNode(head, this.sourceFile)];
-        const placeholderPositions: FullPosition[] = [];
-        for (const templateSpan of templateLiteral.templateSpans) {
-            let { value: exprValue, valueOriginalPositions: exprPositions, stmts: exprStmts } = this.tsNodeToValueAndStmts(templateSpan.expression);
-            exprStmts.forEach(stmt => stmts.push(stmt));
-            if (IRUtils.moreThanOneAddress(exprValue)) {
-                ({
-                    value: exprValue,
-                    valueOriginalPositions: exprPositions,
-                    stmts: exprStmts,
-                } = this.arkIRTransformer.generateAssignStmtForValue(exprValue, exprPositions));
-                exprStmts.forEach(stmt => stmts.push(stmt));
-            }
-            placeholderValues.push(exprValue);
-            placeholderPositions.push(exprPositions[0]);
-            stringTextPositions.push(FullPosition.buildFromNode(templateSpan.literal, this.sourceFile));
-            stringTextValues.push(ValueUtil.createStringConst(templateSpan.literal.rawText || ''));
-        }
-        return {
-            stmts,
-            stringTextValues,
-            placeholderValues,
-            stringTextPositions,
-            placeholderPositions,
-        };
-    }
-
-    private identifierToValueAndStmts(identifier: ts.Identifier, variableDefFlag: boolean = false): ValueAndStmts {
+    private identifierToValueAndStmts(identifier: any, variableDefFlag: boolean = false): ValueAndStmts {
         let identifierValue: Value;
         let identifierPositions = [FullPosition.buildFromNode(identifier, this.sourceFile)];
-        if (identifier.text === UndefinedType.getInstance().getName()) {
+        let varNode: any;
+        if (identifier.referencedDecl) {
+            varNode = identifier.referencedDecl;
+        } else {
+            varNode = identifier;
+        }
+        if (varNode.name === UndefinedType.getInstance().getName()) {
             identifierValue = ValueUtil.getUndefinedConst();
         } else {
             if (variableDefFlag) {
-                identifierValue = this.addNewLocal(identifier.text);
+                identifierValue = this.addNewLocal(varNode.name);
             } else {
-                identifierValue = this.getOrCreateLocal(identifier.text);
+                identifierValue = this.getOrCreateLocal(varNode.name);
             }
         }
         return {
@@ -677,68 +653,45 @@ export class ArkValueTransformer {
         };
     }
 
-    private propertyAccessExpressionToValue(propertyAccessExpression: ts.PropertyAccessExpression): ValueAndStmts {
+    private memberExpressionToValueAndStmts(memberExpression: any): ValueAndStmts {
         const stmts: Stmt[] = [];
-        let { value: baseValue, valueOriginalPositions: basePositions, stmts: baseStmts } = this.tsNodeToValueAndStmts(propertyAccessExpression.expression);
-        baseStmts.forEach(stmt => stmts.push(stmt));
-        if (IRUtils.moreThanOneAddress(baseValue)) {
-            ({
-                value: baseValue,
-                valueOriginalPositions: basePositions,
-                stmts: baseStmts,
-            } = this.arkIRTransformer.generateAssignStmtForValue(baseValue, basePositions));
-            baseStmts.forEach(stmt => stmts.push(stmt));
+        // 当返回成员变量memberExpr需构建cxxThisExpr
+        if (memberExpression.kind === 'MemberExpr' && memberExpression.inner[0] === undefined) {
+            let node = memberExpression;
+            node.kind = 'CXXThisExpr';
+            memberExpression.inner[0] = node;
         }
-        if (!(baseValue instanceof Local)) {
-            ({
-                value: baseValue,
-                valueOriginalPositions: basePositions,
-                stmts: baseStmts,
-            } = this.arkIRTransformer.generateAssignStmtForValue(baseValue, basePositions));
-            baseStmts.forEach(stmt => stmts.push(stmt));
+        let {value: baseValue, valueOriginalPositions: basePositions, stmts: baseStmts} = this.tsNodeToValueAndStmts(memberExpression.inner[0]);
+        if (memberExpression.inner[0].kind === 'MemberExpr') {
+            ({value: baseValue, valueOriginalPositions: basePositions, stmts: baseStmts} = this.arkIRTransformer.this.generateAssignStmtForValue(baseValue, basePositions));
         }
-
-        const fieldRefPositions = [FullPosition.buildFromNode(propertyAccessExpression, this.sourceFile), ...basePositions];
-
-        // this if for the case: const obj: Object = Object.create(Object.prototype);
-        if (baseValue instanceof Local && baseValue.getName() === Builtin.OBJECT) {
-            this.locals.delete(baseValue.getName());
-            const fieldSignature = new FieldSignature(
-                propertyAccessExpression.name.getText(this.sourceFile),
-                Builtin.OBJECT_CLASS_SIGNATURE,
-                UnknownType.getInstance(),
-                true
-            );
-            const fieldRef = new ArkStaticFieldRef(fieldSignature);
-            return {
-                value: fieldRef,
-                valueOriginalPositions: fieldRefPositions,
-                stmts: stmts,
-            };
-        }
-
+        stmts.push(...baseStmts);
+        //获取域的签名
         let fieldSignature: FieldSignature;
-        if (baseValue instanceof Local && baseValue.getType() instanceof ClassType) {
-            fieldSignature = new FieldSignature(
-                propertyAccessExpression.name.getText(this.sourceFile),
-                (baseValue.getType() as ClassType).getClassSignature(),
-                UnknownType.getInstance()
-            );
-        } else {
-            fieldSignature = ArkSignatureBuilder.buildFieldSignatureFromFieldName(propertyAccessExpression.name.getText(this.sourceFile));
+        let baseType = baseValue.getType();
+        let baseClassType: ClassType | null = null;
+        if (baseType instanceof ClassType) {
+            baseClassType = baseType as ClassType;
+        } else if (baseType instanceof PointerType && (baseType as PointerType).getBaseType() instanceof ClassType) {
+            baseClassType = (baseType as PointerType).getBaseType() as ClassType;
+        } else if (baseType instanceof ReferenceType && (baseType as ReferenceType).getBaseType() instanceof ClassType) {
+            baseClassType = (baseType as ReferenceType).getBaseType() as ClassType;
         }
-        const fieldRef = new ArkInstanceFieldRef(baseValue as Local, fieldSignature);
-
-        return {
-            value: fieldRef,
-            valueOriginalPositions: fieldRefPositions,
-            stmts: stmts,
-        };
+        if (baseValue instanceof Local && baseClassType !== null) {
+            fieldSignature = new FieldSignature(
+                memberExpression.name, baseClassType.getClassSignature(), UnknownType.getInstance()
+            );
+        }else {
+            fieldSignature = ArkSignatureBuilder.buildFieldSignatureFromFieldName(memberExpression.name);
+        }
+        fieldSignature.setType(this.resolveTypeNode(memberExpression.type.qualType));
+        const fieldRef = new CXXArkInstanceFieldRef(baseValue as Local, memberExpression.isArrow, fieldSignature);
+        const fieldRefPositions = [FullPosition.buildFromNode(memberExpression, this.sourceFile), ...basePositions];
+        return {value: fieldRef, valueOriginalPositions: fieldRefPositions, stmts: stmts};
     }
-
-    private elementAccessExpressionToValueAndStmts(elementAccessExpression: ts.ElementAccessExpression): ValueAndStmts {
+    private elementAccessExpressionToValueAndStmts(elementAccessExpression: any): ValueAndStmts {
         const stmts: Stmt[] = [];
-        let { value: baseValue, valueOriginalPositions: basePositions, stmts: baseStmts } = this.tsNodeToValueAndStmts(elementAccessExpression.expression);
+        let { value: baseValue, valueOriginalPositions: basePositions, stmts: baseStmts } = this.tsNodeToValueAndStmts(elementAccessExpression.inner[0]);
         baseStmts.forEach(stmt => stmts.push(stmt));
         if (!(baseValue instanceof Local)) {
             ({
@@ -752,7 +705,7 @@ export class ArkValueTransformer {
             value: argumentValue,
             valueOriginalPositions: arguPositions,
             stmts: argumentStmts,
-        } = this.tsNodeToValueAndStmts(elementAccessExpression.argumentExpression);
+        } = this.tsNodeToValueAndStmts(elementAccessExpression.inner[1]);
         argumentStmts.forEach(stmt => stmts.push(stmt));
         if (IRUtils.moreThanOneAddress(argumentValue)) {
             ({
@@ -780,21 +733,115 @@ export class ArkValueTransformer {
         };
     }
 
-    private callExpressionToValueAndStmts(callExpression: ts.CallExpression): ValueAndStmts {
+    private callExpressionToValueAndStmts(callExpression: any): ValueAndStmts {
         const stmts: Stmt[] = [];
-        const argus = this.parseArgumentsOfCallExpression(stmts, callExpression);
-        return this.generateInvokeValueAndStmts(callExpression.expression, argus, stmts, callExpression);
+        const [callNode, argumentNodes] = this.getArgumentNode(callExpression.inner);
+        const argus = this.parseArgumentsOfCallExpression(stmts, argumentNodes);
+        return this.generateInvokeValueAndStmts(callNode, argus, stmts, callExpression);
     }
 
+    public CXXOperatorExpressionCoutToValueAndStmts(callExpression: any, callArgus: any[]): any {
+        const stmts: Stmt[] = [];
+        // 因为inner是依次提取最后面的参数，所以倒序遍历最后面的参数
+        for(let i = callExpression.inner.length - 1; i >= 0; i--) {
+            let innerNode = callExpression.inner[i];
+            if (!innerNode.code.includes('cout') && !innerNode.code.includes('<<') && !innerNode.code.includes('endl') && !callExpression.code.startsWith(innerNode.code)) {
+                callArgus.push(innerNode);
+            }
+            if (innerNode.kind === 'CXXOperatorCallExpr') {
+                // 递归调用处理CXXOperatorCallExpr
+                return this.CXXOperatorExpressionCoutToValueAndStmts(innerNode, callArgus);
+            }
+            while (innerNode.kind === 'ImplicitCastExpr' && innerNode.valueCategory === 'lvalue') {
+                innerNode = innerNode.inner[0];
+            }
+            if (innerNode.kind === 'DeclRefExpr') {
+                // 获取DeclRefExpr及其后面的节点
+                const callNode = innerNode;
+                const argus = this.parseArgumentsOfCallExpression(stmts, callArgus.reverse());
+                return this.generateInvokeValueAndStmts(callNode, argus, stmts, callExpression);
+            }
+        }
+    }
+
+    public CXXOperatorExpressionToBinaryOperator(expression: any): any {
+        let operatorExpression = Object.assign({}, expression);
+        operatorExpression['opcode'] = expression.inner[0].code;
+        operatorExpression['inner'] = [expression.inner[1], expression.inner[2]];
+        return this.binaryExpressionToValueAndStmts(operatorExpression);
+    }
+
+    public CXXOperatorExpressionToUnaryOperator(expression: any): any {
+        let operatorExpression = Object.assign({}, expression);
+        operatorExpression['opcode'] = expression.inner[0].code;
+        operatorExpression['inner'] = [expression.inner[1]];
+        if (expression.code.indexOf(expression.inner[0].cdoe) == 0) {
+            return this.prefixUnaryExpressionToValueAndStmts(operatorExpression);
+        }
+        return this.postfixUnaryExpressionToValueAndStmts(operatorExpression);
+    }
+
+    public cxxOperatorExpressionToValueAndStmts(callExpression: any, layer: boolean = true): any {
+        if ((callExpression.inner[0].kind === 'ImplicitCastExpr' && callExpression.inner[0].code.includes('<<') ||
+            (callExpression.inner[1]?.type.qualType.toString().includes('(lambda at')))) {
+            return this.CXXOperatorExpressionCoutToValueAndStmts(callExpression, []);
+        }
+        //cxxOperatorCallExpr实际是而二元操作，或者重载赋值运算符operator=
+        if (callExpression.inner[0].kind === 'ImplicitCastExpr' && (ArkValueTransformer.isRelationalBinaryOperator(callExpression.inner[0].code) ||
+            callExpression.name === 'operator=')) {
+            return this.CXXOperatorExpressionToBinaryOperator(callExpression);
+        }
+        // cxxOperatorCallExpr实际是一元操作符（++，--）
+        if (callExpression.inner[0].kind === 'ImplicitCastExpr' && ['++', '--'].includes(callExpression.inner[0].code)) {
+            return this.CXXOperatorExpressionToUnaryOperator(callExpression);
+        }
+        // 迭代时->操作符的使用场景
+        if (callExpression.inner[0].kind === 'ImplicitCastExpr' && callExpression.inner[0].code === '->') {
+            return this.tsNodeToValueAndStmts(callExpression.inner[1]);
+        }
+        const innerStmts: ValueAndStmts[] = [];
+        const stmts: Stmt[] = [];
+        for (let innerNode of callExpression.inner) {
+            if (innerNode.kind === 'CXXOperatorCallExpr' || innerNode.kind === 'MaterializeTemporaryExpr' || innerNode.kind === 'CXXBindTemporaryExpr' ||
+                innerNode.kind === 'CXXConstructExpr' || (innerNode.kind === 'ImplicitCastExpr' && innerNode.kind === 'FunctionToPointerDecay')) {
+                innerStmts.push(...this.cxxOperatorExpressionToValueAndStmts(innerNode, false));
+            } else if (innerNode.kind === 'DeclRefExpr') {
+                innerStmts.push(this.identifierToValueAndStmts(innerNode));
+            } else if (innerNode.kind === 'IntegerLiteral' || innerNode.kind === 'StringLiteral') {
+                let integerNode = this.literalNodeToValueAndStmts(innerNode);
+                if (integerNode) {
+                    innerStmts.push(integerNode);
+                }
+            }
+        }
+        if (!layer) { // 只在递归的第一层处理结果，其他层都直接返回
+            return innerStmts;
+        }
+        const exprPositions = [FullPosition.buildFromNode(callExpression, this.sourceFile), ...innerStmts[0].valueOriginalPositions,
+            ...innerStmts[1].valueOriginalPositions];
+        let elementAccessExpr = new ArkArrayRef(innerStmts[0].value as Local, innerStmts[1].value);
+        innerStmts[0].stmts.forEach(stmt => stmts.push(stmt));
+        innerStmts[1].stmts.forEach(stmt => stmts.push(stmt));
+        return {value: elementAccessExpr, valueOriginalPositions: exprPositions, stmts: stmts};
+     }
+
+     public RecoverExpressionToValueAndStmts(callExpression: any): ValueAndStmts {
+        const stmts: Stmt[] = [];
+        const [callNode, argumentNodes] = this.getArgumentNodeForRecover(callExpression.inner);
+        const argus = this.parseArgumentsOfCallExpression(stmts, argumentNodes);
+        return this.generateInvokeValueAndStmts(callNode, argus, stmts, callExpression);
+     }
+
+
     private generateInvokeValueAndStmts(
-        functionNameNode: ts.LeftHandSideExpression,
+        functionNameNode: any,
         argus: {
             realGenericTypes: Type[] | undefined;
             args: Value[];
             argPositions: FullPosition[];
         },
         currStmts: Stmt[],
-        callExpression: ts.CallExpression | ts.TaggedTemplateExpression
+        callExpression: any
     ): ValueAndStmts {
         const stmts: Stmt[] = [...currStmts];
         let { value: callerValue, valueOriginalPositions: callerPositions, stmts: callerStmts } = this.tsNodeToValueAndStmts(functionNameNode);
@@ -821,7 +868,7 @@ export class ArkValueTransformer {
             const callerName = callerValue.getName();
             let classSignature = ArkSignatureBuilder.buildClassSignatureFromClassName(callerName);
             let cls = ModelUtils.getClass(this.declaringMethod, classSignature);
-            if (cls?.hasComponentDecorator() && ts.isCallExpression(callExpression)) {
+            if (cls?.hasComponentDecorator() && ['CallExpr', 'CXXOperatorCallExpr'].includes(callExpression)) {
                 return this.generateCustomViewStmt(callerName, args, argPositions, callExpression, stmts);
             } else if ((callerName === COMPONENT_FOR_EACH || callerName === COMPONENT_LAZY_FOR_EACH) && ts.isCallExpression(callExpression)) {
                 // foreach/lazyforeach will be parsed as ts.callExpression
@@ -851,9 +898,64 @@ export class ArkValueTransformer {
         };
     }
 
+    private cxxMemberCallExpressionToValueAndStmts(callExpression: any): ValueAndStmts {
+        let realGenericTypes: Type[] | undefined;
+        const stmts: Stmt[] = [];
+        const [leftNode, rightNode] = this.getArgumentNode(callExpression.inner);
+        leftNode;
+        const {args: args, argPositions: argPositionsAll} = this.parseArguments(stmts, rightNode);
+        const argPositionsAllFlat = argPositionsAll.flat();
+        let { value: callerValue, valueOriginalPositions: callerPositions, stmts: callerStmts } = this.tsNodeToValueAndStmts(callExpression.inner[0]);
+        stmts.push(...callerStmts);
+
+        let invokeValue: Value;
+        let invokeValuePositions: FullPosition[] = [FullPosition.buildFromNode(callExpression, this.sourceFile)];
+        if (callerValue instanceof  ArkInstanceFieldRef) {
+            const methodSignature = ArkSignatureBuilder.buidMethodSignatureFromMethodName(callerValue.getFieldName());
+            invokeValue = new ArkInstanceInvokeExpr(callerValue.getBase(), methodSignature, args, realGenericTypes);
+            invokeValuePositions.push(...callerPositions.slice(1), ...argPositionsAllFlat);
+        } else if (callerValue instanceof ArkStaticFieldRef) {
+            const methodSignature = ArkSignatureBuilder.buidMethodSignatureFromMethodName(callerValue.getFieldName());
+            invokeValue = new ArkStaticInvokeExpr(methodSignature, args, realGenericTypes);
+            invokeValuePositions.push(...argPositionsAllFlat);
+        } else if (callerValue instanceof Local) {
+            const callerName = callerValue.getName();
+            const methodSignature = ArkSignatureBuilder.buildMethodSignatureFromMethodName(callerName);
+            if (callerValue.getType() instanceof FunctionType) {
+                invokeValue = new ArkPtrInvokeExpr(methodSignature, callerValue, args, realGenericTypes);
+            } else {
+                invokeValue = new ArkStaticInvokeExpr(methodSignature, args, realGenericTypes);
+            }
+            invokeValuePositions.push(...argPositionsAllFlat);
+        } else {
+            ({
+                value: callerValue,
+                valueOriginalPositions: callerPositions,
+                stmts: callerStmts,
+            } = this.generateAssignStmtForValue(callerValue, callerPositions));
+            stmts.push(...callerStmts);
+            const methodSignature = ArkSignatureBuilder.buildMethodSignatureFromMethodName((callerValue as Local).getName());
+            invokeValue = new ArkStaticInvokeExpr(methodSignature, args, realGenericTypes);
+            invokeValuePositions.push(...argPositionsAllFlat);
+        }
+        return {
+            value: invokeValue,
+            valueOriginalPositions: invokeValuePositions,
+            stmts: stmts,
+        };
+    }
+
+    public generateAssignStmtForValue(value: Value, valueOriginalPositions: FullPosition[]): ValueAndStmts {
+        const leftOp = this.generateTempLocal(value.getType());
+        const leftOpPosition = valueOriginalPositions[0];
+        const assignStmt = new ArkAssignStmt(leftOp, value);
+        assignStmt.setOperandOriginalPositions([leftOpPosition, ...valueOriginalPositions]);
+        return {value: leftOp, valueOriginalPositions:  [leftOpPosition], stmts: [assignStmt]};
+    }
+
     private parseArgumentsOfCallExpression(
         currStmts: Stmt[],
-        callExpression: ts.CallExpression
+        callExpression: any
     ): {
         realGenericTypes: Type[] | undefined;
         args: Value[];
@@ -894,6 +996,9 @@ export class ArkValueTransformer {
         const argPositions: FullPosition[] = [];
         if (argumentNodes) {
             for (let i = 0; i < argumentNodes.length; i++) {
+                if (argumentNodes[i].kind.toString() === 'CXXDefaultArgExpr') {
+                    continue;
+                }
                 const argument = argumentNodes[i];
                 const prevBuilderMethodContextFlag = this.builderMethodContextFlag;
                 if (builderMethodIndexes?.has(i)) {
@@ -936,14 +1041,10 @@ export class ArkValueTransformer {
         };
     }
 
-    private newExpressionToValueAndStmts(newExpression: ts.NewExpression): ValueAndStmts {
-        let className = '';
-        if (ts.isClassExpression(newExpression.expression) && newExpression.expression.name) {
-            className = newExpression.expression.name.text;
-        } else {
-            className = newExpression.expression.getText(this.sourceFile);
-        }
-        if (className === Builtin.ARRAY) {
+    private newExpressionToValueAndStmts(newExpression: any): ValueAndStmts {
+        let className = this.getNewExpressionClassName(newExpression);
+        //新增处理动态数组创建： int *arr = new int[10]
+        if (className === Builtin.ARRAY || newExpression.isArray) {
             return this.newArrayExpressionToValueAndStmts(newExpression);
         }
 
@@ -956,7 +1057,8 @@ export class ArkValueTransformer {
             });
         }
 
-        let classSignature = ArkSignatureBuilder.buildClassSignatureFromClassName(className);
+        let curClass = this.declaringMethod.getDeclaringArkFile().getClassWithName(className);
+        let classSignature = (curClass ? curClass.getSignature() : ArkSignatureBuilder.buildClassSignatureFromClassName(className));
         let classType = new ClassType(classSignature, realGenericTypes);
         if (className === Builtin.OBJECT) {
             classSignature = Builtin.OBJECT_CLASS_SIGNATURE;
@@ -973,28 +1075,66 @@ export class ArkValueTransformer {
 
         const constructorMethodSubSignature = ArkSignatureBuilder.buildMethodSubSignatureFromMethodName(CONSTRUCTOR_NAME);
         const constructorMethodSignature = new MethodSignature(classSignature, constructorMethodSubSignature);
+        // 区分new class 和 C++ STL容器
+        let constructArgs = newExpression.inner;
+        if ((newExpression.kind === 'CXXNewExpr' && newExpression.inner[1]?.kind === 'CXXConstructExpr')) {
+            constructArgs = [...newExpression.inner[1].inner];
+        } else if (newExpression.kind === 'CompoundLiteralExpr') {
+            constructArgs = [...constructArgs.inner[0].inner];
+        } else if (newExpression.kind === 'CXXConstructExpr' && newExpression.type.qualType.startsWith('struct') &&
+            constructArgs && constructArgs[0].inner[0]?.kind === 'CompoundLiteralExpr') {
+            constructArgs = this.getConstructArgs(constructArgs[0].inner[0].inner);
+        }
 
-        const { args: argValues, argPositions: argPositions } = this.parseArguments(stmts, newExpression.arguments);
+        const { args: argValues, argPositions: argPositions } = this.parseArguments(stmts, constructArgs);
         const instanceInvokeExpr = new ArkInstanceInvokeExpr(newLocal as Local, constructorMethodSignature, argValues);
 
-        const assignStmt = new ArkAssignStmt(newLocal, instanceInvokeExpr);
-        const assignStmtPositions = [newLocalPositions[0], newLocalPositions[0], ...newLocalPositions, ...argPositions];
-        assignStmt.setOperandOriginalPositions(assignStmtPositions);
-        stmts.push(assignStmt);
-        return { value: newLocal, valueOriginalPositions: assignStmtPositions, stmts: stmts };
+        const invokeStmt = new ArkInvokeStmt(instanceInvokeExpr);
+        const instanceInvokeExprPositions = [newLocalPositions[0], ...newLocalPositions, ...argPositions];
+        invokeStmt.setOperandOriginalPositions(instanceInvokeExprPositions);
+        stmts.push(invokeStmt);
+        return { value: newLocal, valueOriginalPositions: newLocalPositions, stmts: stmts };
     }
 
-    private newArrayExpressionToValueAndStmts(newArrayExpression: ts.NewExpression): ValueAndStmts {
+    private getConstructArgs(constructArgs: Array<any>): Array<any> {
+        if (constructArgs[1]?.kind === 'InitListExpr') {
+            constructArgs = constructArgs[1].inner;
+        }
+        let newConstructArgs = [];
+        for (let i =0; i < constructArgs.length; i++) {
+            if (constructArgs[1].kind.toString() === 'ImplicitCastExpr') {
+                newConstructArgs.push(constructArgs[i].inner[1]);
+            }
+        }
+        return newConstructArgs;
+    }
+
+    private getNewExpressionClassName(newExpression: any): string {
+        let oriType = '';
+        if (newExpression.type.desugaredQualType) {
+            oriType = newExpression.type.desugaredQualType;
+        } else if (newExpression.type.qualType) {
+            oriType = newExpression.type.qualType;
+        } else if (newExpression.code) {
+            oriType = newExpression.code;
+        }
+        if (isCXXSTLConstainer(oriType)) {
+            return oriType;
+        }
+        return oriType.replace(/[\(\)]/g, '').replace(' *', '');
+    }
+
+    private newArrayExpressionToValueAndStmts(newArrayExpression: any): ValueAndStmts {
         let baseType: Type = UnknownType.getInstance();
-        if (newArrayExpression.typeArguments && newArrayExpression.typeArguments.length > 0) {
-            const argumentType = this.resolveTypeNode(newArrayExpression.typeArguments[0]);
+        if (newArrayExpression.type.qualType) {
+            const argumentType = this.resolveTypeNode(newArrayExpression.type.qualType.replace('*', ''));
             if (!(argumentType instanceof AnyType || argumentType instanceof UnknownType)) {
                 baseType = argumentType;
             }
         }
         const stmts: Stmt[] = [];
-        const { args: argumentValues, argPositions: argPositions } = this.parseArguments(stmts, newArrayExpression.arguments);
-        let argumentsLength = newArrayExpression.arguments ? newArrayExpression.arguments.length : 0;
+        const { args: argumentValues, argPositions: argPositions } = this.parseArguments(stmts, newArrayExpression.inner);
+        let argumentsLength = newArrayExpression.inner ? newArrayExpression.inner.length : 0;
         let arrayLengthValue: Value;
         let arrayLength = -1;
         let arrayLengthPosition = FullPosition.DEFAULT;
@@ -1026,12 +1166,33 @@ export class ArkValueTransformer {
         );
     }
 
-    private arrayLiteralExpressionToValueAndStmts(arrayLiteralExpression: ts.ArrayLiteralExpression): ValueAndStmts {
+    private arrayLiteralExpressionToValueAndStmts(arrayLiteralExpression: any): ValueAndStmts {
         const stmts: Stmt[] = [];
         const elementTypes: Set<Type> = new Set();
         const elementValues: Value[] = [];
         const elementPositions: FullPosition[] = [];
         const arrayLength = arrayLiteralExpression.elements.length;
+        this.getArrayLiteralExpression(arrayLiteralExpression, stmts, elementTypes, elementValues, elementPositions);
+        let baseType: Type = this.resolveTypeNode(arrayLiteralExpression.type.qualType);
+        if (baseType === UnknownType.getInstance()) {
+            // 如果类型不确定，当作未知引用类型
+            return this.newExpressionToValueAndStmts(arrayLiteralExpression);
+        }
+        const newArrayExprPosition = FullPosition.buildFromNode(arrayLiteralExpression, this.sourceFile);
+        return this.generateArrayExprAndStmts(
+            baseType,
+            ValueUtil.getOrCreateNumberConst(arrayLength),
+            FullPosition.DEFAULT,
+            arrayLength,
+            elementValues,
+            elementPositions,
+            stmts,
+            newArrayExprPosition,
+            true
+        );
+    }
+
+    private getArrayLiteralExpression(arrayLiteralExpression: any, stmts: Stmt[], elementTypes: Set<Type>, elementValues: Value[], elementPositions: FullPosition[]) {
         for (const element of arrayLiteralExpression.elements) {
             let { value: elementValue, valueOriginalPositions: elementPosition, stmts: elementStmts } = this.tsNodeToValueAndStmts(element);
             elementStmts.forEach(stmt => stmts.push(stmt));
@@ -1047,25 +1208,6 @@ export class ArkValueTransformer {
             elementTypes.add(elementValue.getType());
             elementPositions.push(elementPosition[0]);
         }
-
-        let baseType: Type = AnyType.getInstance();
-        if (elementTypes.size === 1) {
-            baseType = elementTypes.keys().next().value as Type;
-        } else if (elementTypes.size > 1) {
-            baseType = new UnionType(Array.from(elementTypes));
-        }
-        const newArrayExprPosition = FullPosition.buildFromNode(arrayLiteralExpression, this.sourceFile);
-        return this.generateArrayExprAndStmts(
-            baseType,
-            ValueUtil.getOrCreateNumberConst(arrayLength),
-            FullPosition.DEFAULT,
-            arrayLength,
-            elementValues,
-            elementPositions,
-            stmts,
-            newArrayExprPosition,
-            true
-        );
     }
 
     private generateArrayExprAndStmts(
@@ -1103,9 +1245,9 @@ export class ArkValueTransformer {
         };
     }
 
-    private prefixUnaryExpressionToValueAndStmts(prefixUnaryExpression: ts.PrefixUnaryExpression): ValueAndStmts {
+    private prefixUnaryExpressionToValueAndStmts(prefixUnaryExpression: any): ValueAndStmts {
         const stmts: Stmt[] = [];
-        let { value: operandValue, valueOriginalPositions: operandPositions, stmts: operandStmts } = this.tsNodeToValueAndStmts(prefixUnaryExpression.operand);
+        let { value: operandValue, valueOriginalPositions: operandPositions, stmts: operandStmts } = this.tsNodeToValueAndStmts(prefixUnaryExpression.inner[0]);
         operandStmts.forEach(stmt => stmts.push(stmt));
         if (IRUtils.moreThanOneAddress(operandValue)) {
             ({
@@ -1116,10 +1258,10 @@ export class ArkValueTransformer {
             operandStmts.forEach(stmt => stmts.push(stmt));
         }
 
-        const operatorToken = prefixUnaryExpression.operator;
+        const operatorToken = prefixUnaryExpression.opcode;
         let exprPositions = [FullPosition.buildFromNode(prefixUnaryExpression, this.sourceFile)];
-        if (operatorToken === ts.SyntaxKind.PlusPlusToken || operatorToken === ts.SyntaxKind.MinusMinusToken) {
-            const binaryOperator = operatorToken === ts.SyntaxKind.PlusPlusToken ? NormalBinaryOperator.Addition : NormalBinaryOperator.Subtraction;
+        if (operatorToken === '++' || operatorToken === '--') {
+            const binaryOperator = operatorToken === '++' ? NormalBinaryOperator.Addition : NormalBinaryOperator.Subtraction;
             const binopExpr = new ArkNormalBinopExpr(operandValue, ValueUtil.getOrCreateNumberConst(1), binaryOperator);
             exprPositions.push(...operandPositions, FullPosition.DEFAULT);
             const assignStmt = new ArkAssignStmt(operandValue, binopExpr);
@@ -1130,7 +1272,7 @@ export class ArkValueTransformer {
                 valueOriginalPositions: operandPositions,
                 stmts: stmts,
             };
-        } else if (operatorToken === ts.SyntaxKind.PlusToken) {
+        } else if (operatorToken === '+') {
             return {
                 value: operandValue,
                 valueOriginalPositions: operandPositions,
@@ -1154,9 +1296,9 @@ export class ArkValueTransformer {
         }
     }
 
-    private postfixUnaryExpressionToValueAndStmts(postfixUnaryExpression: ts.PostfixUnaryExpression): ValueAndStmts {
+    private postfixUnaryExpressionToValueAndStmts(postfixUnaryExpression: any): ValueAndStmts {
         const stmts: Stmt[] = [];
-        let { value: operandValue, valueOriginalPositions: operandPositions, stmts: exprStmts } = this.tsNodeToValueAndStmts(postfixUnaryExpression.operand);
+        let { value: operandValue, valueOriginalPositions: operandPositions, stmts: exprStmts } = this.tsNodeToValueAndStmts(postfixUnaryExpression.inner[0]);
         exprStmts.forEach(stmt => stmts.push(stmt));
         if (IRUtils.moreThanOneAddress(operandValue)) {
             ({
@@ -1169,9 +1311,9 @@ export class ArkValueTransformer {
 
         let value: Value;
         let exprPositions = [FullPosition.buildFromNode(postfixUnaryExpression, this.sourceFile)];
-        const operatorToken = postfixUnaryExpression.operator;
-        if (operatorToken === ts.SyntaxKind.PlusPlusToken || operatorToken === ts.SyntaxKind.MinusMinusToken) {
-            const binaryOperator = operatorToken === ts.SyntaxKind.PlusPlusToken ? NormalBinaryOperator.Addition : NormalBinaryOperator.Subtraction;
+        const operatorToken = postfixUnaryExpression.opcode;
+        if (operatorToken === '++' || operatorToken === '--') {
+            const binaryOperator = operatorToken === '++' ? NormalBinaryOperator.Addition : NormalBinaryOperator.Subtraction;
             const binopExpr = new ArkNormalBinopExpr(operandValue, ValueUtil.getOrCreateNumberConst(1), binaryOperator);
             exprPositions.push(...operandPositions, FullPosition.DEFAULT);
             const assignStmt = new ArkAssignStmt(operandValue, binopExpr);
@@ -1189,122 +1331,10 @@ export class ArkValueTransformer {
             stmts: stmts,
         };
     }
-
-    private awaitExpressionToValueAndStmts(awaitExpression: ts.AwaitExpression): ValueAndStmts {
+    public variableDeclarationListToValueAndStmts(variableDeclarationList: any): ValueAndStmts {
         const stmts: Stmt[] = [];
-        let { value: promiseValue, valueOriginalPositions: promisePositions, stmts: promiseStmts } = this.tsNodeToValueAndStmts(awaitExpression.expression);
-        promiseStmts.forEach(stmt => stmts.push(stmt));
-        if (IRUtils.moreThanOneAddress(promiseValue)) {
-            ({
-                value: promiseValue,
-                valueOriginalPositions: promisePositions,
-                stmts: promiseStmts,
-            } = this.arkIRTransformer.generateAssignStmtForValue(promiseValue, promisePositions));
-            promiseStmts.forEach(stmt => stmts.push(stmt));
-        }
-        const awaitExpr = new ArkAwaitExpr(promiseValue);
-        const awaitExprPositions = [FullPosition.buildFromNode(awaitExpression, this.sourceFile), ...promisePositions];
-        return {
-            value: awaitExpr,
-            valueOriginalPositions: awaitExprPositions,
-            stmts: stmts,
-        };
-    }
-
-    private yieldExpressionToValueAndStmts(yieldExpression: ts.YieldExpression): ValueAndStmts {
-        let yieldValue: Value = ValueUtil.getUndefinedConst();
-        let yieldPositions = [FullPosition.DEFAULT];
-        let stmts: Stmt[] = [];
-        if (yieldExpression.expression) {
-            ({ value: yieldValue, valueOriginalPositions: yieldPositions, stmts: stmts } = this.tsNodeToValueAndStmts(yieldExpression.expression));
-        }
-
-        const yieldExpr = new ArkYieldExpr(yieldValue);
-        const yieldExprPositions = [FullPosition.buildFromNode(yieldExpression, this.sourceFile), ...yieldPositions];
-        return {
-            value: yieldExpr,
-            valueOriginalPositions: yieldExprPositions,
-            stmts: stmts,
-        };
-    }
-
-    private deleteExpressionToValueAndStmts(deleteExpression: ts.DeleteExpression): ValueAndStmts {
-        const { value: exprValue, valueOriginalPositions: exprPositions, stmts: stmts } = this.tsNodeToValueAndStmts(deleteExpression.expression);
-        const deleteExpr = new ArkDeleteExpr(exprValue as AbstractFieldRef);
-        const deleteExprPositions = [FullPosition.buildFromNode(deleteExpression, this.sourceFile), ...exprPositions];
-        return {
-            value: deleteExpr,
-            valueOriginalPositions: deleteExprPositions,
-            stmts: stmts,
-        };
-    }
-
-    private voidExpressionToValueAndStmts(voidExpression: ts.VoidExpression): ValueAndStmts {
-        const { value: exprValue, valueOriginalPositions: exprPositions, stmts: stmts } = this.tsNodeToValueAndStmts(voidExpression.expression);
-        const { stmts: exprStmts } = this.arkIRTransformer.generateAssignStmtForValue(exprValue, exprPositions);
-        exprStmts.forEach(stmt => stmts.push(stmt));
-        return {
-            value: ValueUtil.getUndefinedConst(),
-            valueOriginalPositions: [FullPosition.DEFAULT],
-            stmts: stmts,
-        };
-    }
-
-    private nonNullExpressionToValueAndStmts(nonNullExpression: ts.NonNullExpression): ValueAndStmts {
-        return this.tsNodeToValueAndStmts(nonNullExpression.expression);
-    }
-
-    private parenthesizedExpressionToValueAndStmts(parenthesizedExpression: ts.ParenthesizedExpression): ValueAndStmts {
-        return this.tsNodeToValueAndStmts(parenthesizedExpression.expression);
-    }
-
-    private typeOfExpressionToValueAndStmts(typeOfExpression: ts.TypeOfExpression): ValueAndStmts {
-        const { value: exprValue, valueOriginalPositions: exprPositions, stmts: exprStmts } = this.tsNodeToValueAndStmts(typeOfExpression.expression);
-        const typeOfExpr = new ArkTypeOfExpr(exprValue);
-        const typeOfExprPositions = [FullPosition.buildFromNode(typeOfExpression, this.sourceFile), ...exprPositions];
-        return {
-            value: typeOfExpr,
-            valueOriginalPositions: typeOfExprPositions,
-            stmts: exprStmts,
-        };
-    }
-
-    private asExpressionToValueAndStmts(asExpression: ts.AsExpression): ValueAndStmts {
-        const stmts: Stmt[] = [];
-        let { value: exprValue, valueOriginalPositions: exprPositions, stmts: exprStmts } = this.tsNodeToValueAndStmts(asExpression.expression);
-        exprStmts.forEach(stmt => stmts.push(stmt));
-        if (IRUtils.moreThanOneAddress(exprValue)) {
-            ({
-                value: exprValue,
-                valueOriginalPositions: exprPositions,
-                stmts: exprStmts,
-            } = this.arkIRTransformer.generateAssignStmtForValue(exprValue, exprPositions));
-            exprStmts.forEach(stmt => stmts.push(stmt));
-        }
-        const castExpr = new ArkCastExpr(exprValue, this.resolveTypeNode(asExpression.type));
-        const castExprPositions = [FullPosition.buildFromNode(asExpression, this.sourceFile), ...exprPositions];
-        return {
-            value: castExpr,
-            valueOriginalPositions: castExprPositions,
-            stmts: stmts,
-        };
-    }
-
-    private typeAssertionToValueAndStmts(typeAssertion: ts.TypeAssertion): ValueAndStmts {
-        const { value: exprValue, valueOriginalPositions: exprPositions, stmts: exprStmts } = this.tsNodeToValueAndStmts(typeAssertion.expression);
-        const castExpr = new ArkCastExpr(exprValue, this.resolveTypeNode(typeAssertion.type));
-        const castExprPositions = [FullPosition.buildFromNode(typeAssertion, this.sourceFile), ...exprPositions];
-        return {
-            value: castExpr,
-            valueOriginalPositions: castExprPositions,
-            stmts: exprStmts,
-        };
-    }
-
-    public variableDeclarationListToValueAndStmts(variableDeclarationList: ts.VariableDeclarationList): ValueAndStmts {
-        const stmts: Stmt[] = [];
-        const isConst = (variableDeclarationList.flags & ts.NodeFlags.Const) !== 0;
-        for (const declaration of variableDeclarationList.declarations) {
+        for (const declaration of variableDeclarationList.inner) {
+            let isConst = declaration.type!.qualType.toString().startsWith('const ');
             const { stmts: declaredStmts } = this.variableDeclarationToValueAndStmts(declaration, isConst);
             declaredStmts.forEach(s => stmts.push(s));
         }
@@ -1315,28 +1345,27 @@ export class ArkValueTransformer {
         };
     }
 
-    public variableDeclarationToValueAndStmts(variableDeclaration: ts.VariableDeclaration, isConst: boolean, needRightOp: boolean = true): ValueAndStmts {
-        const leftOpNode = variableDeclaration.name;
-        const rightOpNode = variableDeclaration.initializer;
-        const declarationType = variableDeclaration.type ? this.resolveTypeNode(variableDeclaration.type) : UnknownType.getInstance();
+    public variableDeclarationToValueAndStmts(variableDeclaration: any, isConst: boolean, needRightOp: boolean = true): ValueAndStmts {
+        const leftOpNode = variableDeclaration;
+        let rightOpNode = null;
+        if (variableDeclaration.inner !== null) {
+            rightOpNode = nodeInnerNode(variableDeclaration);
+        }
+        const declarationType = variableDeclaration.type ? this.resolveTypeNode(variableDeclaration.type.qualType) : UnknownType.getInstance();
         return this.assignmentToValueAndStmts(leftOpNode, rightOpNode, true, isConst, declarationType, needRightOp);
     }
 
     private assignmentToValueAndStmts(
-        leftOpNode: ts.Node,
-        rightOpNode: ts.Node | undefined,
+        leftOpNode: any,
+        rightOpNode: any | undefined,
         variableDefFlag: boolean,
         isConst: boolean,
         declarationType: Type,
         needRightOp: boolean = true
     ): ValueAndStmts {
         let leftValueAndStmts: ValueAndStmts;
-        if (ts.isIdentifier(leftOpNode)) {
+        if (leftOpNode.kind.toString() === 'VarDecl') {
             leftValueAndStmts = this.identifierToValueAndStmts(leftOpNode, variableDefFlag);
-        } else if (ts.isArrayBindingPattern(leftOpNode) || ts.isArrayLiteralExpression(leftOpNode)) {
-            leftValueAndStmts = this.arrayDestructuringToValueAndStmts(leftOpNode, isConst);
-        } else if (ts.isObjectBindingPattern(leftOpNode) || ts.isObjectLiteralExpression(leftOpNode)) {
-            leftValueAndStmts = this.objectDestructuringToValueAndStmts(leftOpNode, isConst);
         } else {
             leftValueAndStmts = this.tsNodeToValueAndStmts(leftOpNode);
         }
@@ -1364,12 +1393,7 @@ export class ArkValueTransformer {
             }
             const assignStmt = new ArkAssignStmt(leftValue, rightValue);
             assignStmt.setOperandOriginalPositions([...leftPositions, ...rightPositions]);
-            if (
-                ts.isArrayBindingPattern(leftOpNode) ||
-                ts.isArrayLiteralExpression(leftOpNode) ||
-                ts.isObjectBindingPattern(leftOpNode) ||
-                ts.isObjectLiteralExpression(leftOpNode)
-            ) {
+            if (ts.isArrayBindingPattern(leftOpNode) || leftOpNode.kind === 'InitListExpr' || ts.isObjectBindingPattern(leftOpNode)) {
                 rightStmts.forEach(stmt => stmts.push(stmt));
                 stmts.push(assignStmt);
                 leftStmts.forEach(stmt => stmts.push(stmt));
@@ -1416,119 +1440,31 @@ export class ArkValueTransformer {
     }
 
     // In assignment patterns, the left operand will be an array literal expression
-    private arrayDestructuringToValueAndStmts(arrayDestructuring: ts.ArrayBindingPattern | ts.ArrayLiteralExpression, isConst: boolean = false): ValueAndStmts {
-        const stmts: Stmt[] = [];
-        const arrayTempLocal = this.generateTempLocal();
-        const leftOriginalPosition = FullPosition.buildFromNode(arrayDestructuring, this.sourceFile);
-        const elements = arrayDestructuring.elements;
-        const isArrayBindingPattern = ts.isArrayBindingPattern(arrayDestructuring);
-        let index = 0;
-        for (const element of elements) {
-            const arrayRef = new ArkArrayRef(arrayTempLocal, ValueUtil.getOrCreateNumberConst(index));
-            const arrayRefPositions = [leftOriginalPosition, leftOriginalPosition, FullPosition.DEFAULT];
-            const itemName = element.getText(this.sourceFile);
-            const targetLocal = isArrayBindingPattern ? this.addNewLocal(itemName) : this.getOrCreateLocal(itemName);
-            const targetLocalPosition = FullPosition.buildFromNode(element, this.sourceFile);
-            isArrayBindingPattern && targetLocal.setConstFlag(isConst);
-            const assignStmt = new ArkAssignStmt(targetLocal, arrayRef);
-            assignStmt.setOperandOriginalPositions([targetLocalPosition, ...arrayRefPositions]);
-            stmts.push(assignStmt);
-            index++;
-        }
-        return {
-            value: arrayTempLocal,
-            valueOriginalPositions: [leftOriginalPosition],
-            stmts: stmts,
-        };
-    }
-
-    // In assignment patterns, the left operand will be an object literal expression
-    private objectDestructuringToValueAndStmts(
-        objectDestructuring: ts.ObjectBindingPattern | ts.ObjectLiteralExpression,
-        isConst: boolean = false
-    ): ValueAndStmts {
-        const stmts: Stmt[] = [];
-        const objectTempLocal = this.generateTempLocal();
-        const leftOriginalPosition = FullPosition.buildFromNode(objectDestructuring, this.sourceFile);
-        const isObjectBindingPattern = ts.isObjectBindingPattern(objectDestructuring);
-        const elements = isObjectBindingPattern ? objectDestructuring.elements : objectDestructuring.properties;
-        for (const element of elements) {
-            let fieldName = '';
-            let targetName = '';
-            if (ts.isBindingElement(element)) {
-                fieldName = element.propertyName ? element.propertyName.getText(this.sourceFile) : element.name.getText(this.sourceFile);
-                targetName = element.name.getText(this.sourceFile);
-            } else if (ts.isPropertyAssignment(element)) {
-                fieldName = element.name.getText(this.sourceFile);
-                targetName = element.initializer.getText(this.sourceFile);
-            } else if (ts.isShorthandPropertyAssignment(element)) {
-                fieldName = element.name.getText(this.sourceFile);
-                targetName = fieldName;
-            } else {
-                continue;
-            }
-
-            const fieldSignature = ArkSignatureBuilder.buildFieldSignatureFromFieldName(fieldName);
-            const fieldRef = new ArkInstanceFieldRef(objectTempLocal, fieldSignature);
-            const fieldRefPositions = [leftOriginalPosition, leftOriginalPosition];
-            const targetLocal = isObjectBindingPattern ? this.addNewLocal(targetName) : this.getOrCreateLocal(targetName);
-            isObjectBindingPattern && targetLocal.setConstFlag(isConst);
-            const targetLocalPosition = FullPosition.buildFromNode(element, this.sourceFile);
-            const assignStmt = new ArkAssignStmt(targetLocal, fieldRef);
-            assignStmt.setOperandOriginalPositions([targetLocalPosition, ...fieldRefPositions]);
-            stmts.push(assignStmt);
-        }
-        return {
-            value: objectTempLocal,
-            valueOriginalPositions: [leftOriginalPosition],
-            stmts: stmts,
-        };
-    }
-
-    private binaryExpressionToValueAndStmts(binaryExpression: ts.BinaryExpression): ValueAndStmts {
-        const operatorToken = binaryExpression.operatorToken;
-        if (operatorToken.kind === ts.SyntaxKind.FirstAssignment) {
-            const leftOpNode = binaryExpression.left;
-            const rightOpNode = binaryExpression.right;
-            const declarationType = UnknownType.getInstance();
-            return this.assignmentToValueAndStmts(leftOpNode, rightOpNode, false, false, declarationType, true);
-        } else if (ArkValueTransformer.isCompoundAssignmentOperator(operatorToken.kind)) {
-            return this.compoundAssignmentToValueAndStmts(binaryExpression);
+// In assignment patterns, the left operand will be an object literal expression
+    private binaryExpressionToValueAndStmts(binaryExpression: any): ValueAndStmts {
+        const operatorToken = binaryExpression.opcode;
+        const binaryExpressionLeft = binaryExpression.inner[0];
+        const binaryExpressionRight = binaryExpression.inner[1];
+        if (operatorToken === '=') {
+            return this.assignmentToValueAndStmts(binaryExpressionLeft, binaryExpressionRight, false, false,
+                UnknownType.getInstance(), true);
         }
         const stmts: Stmt[] = [];
         const binaryExpressionPosition = FullPosition.buildFromNode(binaryExpression, this.sourceFile);
-        const { value: opValue1, valueOriginalPositions: opPositions1, stmts: opStmts1 } = this.tsNodeToSingleAddressValueAndStmts(binaryExpression.left);
+        const { value: opValue1, valueOriginalPositions: opPositions1, stmts: opStmts1 } = this.tsNodeToSingleAddressValueAndStmts(binaryExpressionLeft);
         opStmts1.forEach(stmt => stmts.push(stmt));
-
-        if (operatorToken.kind === ts.SyntaxKind.InstanceOfKeyword) {
-            const instanceOfExpr = new ArkInstanceOfExpr(opValue1, new UnclearReferenceType(binaryExpression.right.getText(this.sourceFile)));
-            const instanceOfExprPositions = [binaryExpressionPosition, ...opPositions1];
-            const {
-                value: instanceofRes,
-                valueOriginalPositions: instanceofPos,
-                stmts: instanceofStmt,
-            } = this.arkIRTransformer.generateAssignStmtForValue(instanceOfExpr, instanceOfExprPositions);
-            instanceofStmt.forEach(stmt => stmts.push(stmt));
-            return {
-                value: instanceofRes,
-                valueOriginalPositions: instanceofPos,
-                stmts: stmts,
-            };
-        }
-
-        const { value: opValue2, valueOriginalPositions: opPositions2, stmts: opStmts2 } = this.tsNodeToSingleAddressValueAndStmts(binaryExpression.right);
+        const { value: opValue2, valueOriginalPositions: opPositions2, stmts: opStmts2 } = this.tsNodeToSingleAddressValueAndStmts(binaryExpressionRight);
         opStmts2.forEach(stmt => stmts.push(stmt));
         let exprValue: Value;
         let exprValuePositions = [binaryExpressionPosition];
-        if (operatorToken.kind === ts.SyntaxKind.CommaToken) {
+        if (operatorToken.kind === ',') {
             exprValue = opValue2;
         } else {
-            const operator = ArkIRTransformer.tokenToBinaryOperator(operatorToken.kind);
-            if (operator) {
-                if (this.isRelationalOperator(operator)) {
-                    exprValue = new ArkConditionExpr(opValue1, opValue2, operator as RelationalBinaryOperator);
+            if (operatorToken) {
+                if (this.isRelationalOperator(operatorToken)) {
+                    exprValue = new ArkConditionExpr(opValue1, opValue2, operatorToken as RelationalBinaryOperator);
                 } else {
-                    exprValue = new ArkNormalBinopExpr(opValue1, opValue2, operator as NormalBinaryOperator);
+                    exprValue = new ArkNormalBinopExpr(opValue1, opValue2, operatorToken as NormalBinaryOperator);
                 }
                 exprValuePositions.push(...opPositions1, ...opPositions2);
             } else {
@@ -1543,11 +1479,11 @@ export class ArkValueTransformer {
         };
     }
 
-    private compoundAssignmentToValueAndStmts(binaryExpression: ts.BinaryExpression): ValueAndStmts {
+    private compoundAssignmentToValueAndStmts(binaryExpression: any): ValueAndStmts {
         const stmts: Stmt[] = [];
-        let { value: leftValue, valueOriginalPositions: leftPositions, stmts: leftStmts } = this.tsNodeToValueAndStmts(binaryExpression.left);
+        let { value: leftValue, valueOriginalPositions: leftPositions, stmts: leftStmts } = this.tsNodeToValueAndStmts(binaryExpression.inner[0]);
         leftStmts.forEach(stmt => stmts.push(stmt));
-        let { value: rightValue, valueOriginalPositions: rightPositions, stmts: rightStmts } = this.tsNodeToValueAndStmts(binaryExpression.right);
+        let { value: rightValue, valueOriginalPositions: rightPositions, stmts: rightStmts } = this.tsNodeToValueAndStmts(binaryExpression.inner[1]);
         rightStmts.forEach(stmt => stmts.push(stmt));
         if (IRUtils.moreThanOneAddress(leftValue) && IRUtils.moreThanOneAddress(rightValue)) {
             const {
@@ -1562,7 +1498,7 @@ export class ArkValueTransformer {
 
         let leftOpValue: Value;
         let leftOpPositions: FullPosition[];
-        const operator = this.compoundAssignmentTokenToBinaryOperator(binaryExpression.operatorToken.kind);
+        const operator = this.compoundAssignmentTokenToBinaryOperator(binaryExpression.opcode);
         if (operator) {
             const exprValue = new ArkNormalBinopExpr(leftValue, rightValue, operator);
             const exprValuePosition = FullPosition.buildFromNode(binaryExpression, this.sourceFile);
@@ -1582,44 +1518,34 @@ export class ArkValueTransformer {
         };
     }
 
-    private compoundAssignmentTokenToBinaryOperator(token: ts.SyntaxKind): NormalBinaryOperator | null {
+    private compoundAssignmentTokenToBinaryOperator(token: string): NormalBinaryOperator | null {
         switch (token) {
-            case ts.SyntaxKind.QuestionQuestionEqualsToken:
-                return NormalBinaryOperator.NullishCoalescing;
-            case ts.SyntaxKind.AsteriskAsteriskEqualsToken:
-                return NormalBinaryOperator.Exponentiation;
-            case ts.SyntaxKind.SlashEqualsToken:
-                return NormalBinaryOperator.Division;
-            case ts.SyntaxKind.PlusEqualsToken:
+            case CompoundBinaryOperator.AdditionEquals:
                 return NormalBinaryOperator.Addition;
-            case ts.SyntaxKind.MinusEqualsToken:
+            case CompoundBinaryOperator.SubtractionEquals:
                 return NormalBinaryOperator.Subtraction;
-            case ts.SyntaxKind.AsteriskEqualsToken:
+            case CompoundBinaryOperator.MultiplicationEquals:
                 return NormalBinaryOperator.Multiplication;
-            case ts.SyntaxKind.PercentEqualsToken:
+            case CompoundBinaryOperator.DivisionEquals:
+                return NormalBinaryOperator.Division;
+            case CompoundBinaryOperator.RemainderEquals:
                 return NormalBinaryOperator.Remainder;
-            case ts.SyntaxKind.LessThanLessThanEqualsToken:
+            case CompoundBinaryOperator.LeftShiftEquals:
                 return NormalBinaryOperator.LeftShift;
-            case ts.SyntaxKind.GreaterThanGreaterThanEqualsToken:
+            case CompoundBinaryOperator.RightShiftEquals:
                 return NormalBinaryOperator.RightShift;
-            case ts.SyntaxKind.GreaterThanGreaterThanGreaterThanEqualsToken:
-                return NormalBinaryOperator.UnsignedRightShift;
-            case ts.SyntaxKind.AmpersandEqualsToken:
+            case CompoundBinaryOperator.BitwiseAndEquals:
                 return NormalBinaryOperator.BitwiseAnd;
-            case ts.SyntaxKind.BarEqualsToken:
+            case CompoundBinaryOperator.BitwiseOrEquals:
                 return NormalBinaryOperator.BitwiseOr;
-            case ts.SyntaxKind.CaretEqualsToken:
+            case CompoundBinaryOperator.BitwiseXorEquals:
                 return NormalBinaryOperator.BitwiseXor;
-            case ts.SyntaxKind.AmpersandAmpersandEqualsToken:
-                return NormalBinaryOperator.LogicalAnd;
-            case ts.SyntaxKind.BarBarEqualsToken:
-                return NormalBinaryOperator.LogicalOr;
             default:
         }
         return null;
     }
 
-    public conditionToValueAndStmts(condition: ts.Expression): ValueAndStmts {
+    public conditionToValueAndStmts(condition: any): ValueAndStmts {
         const stmts: Stmt[] = [];
         let { value: conditionValue, valueOriginalPositions: conditionPositions, stmts: conditionStmts } = this.tsNodeToValueAndStmts(condition);
         conditionStmts.forEach(stmt => stmts.push(stmt));
@@ -1646,39 +1572,30 @@ export class ArkValueTransformer {
         };
     }
 
-    private literalNodeToValueAndStmts(literalNode: ts.Node): ValueAndStmts | null {
+    private literalNodeToValueAndStmts(literalNode: any): ValueAndStmts | null {
         const syntaxKind = literalNode.kind;
         let constant: Constant | null = null;
         switch (syntaxKind) {
-            case ts.SyntaxKind.NumericLiteral:
-                constant = ValueUtil.getOrCreateNumberConst(parseFloat((literalNode as ts.NumericLiteral).text));
+            case 'IntegerLiteral':
+                constant = ValueUtil.getOrCreateNumberConst(parseFloat(literalNode.value));
                 break;
-            case ts.SyntaxKind.BigIntLiteral:
-                constant = ValueUtil.createBigIntConst(BigInt((literalNode as ts.BigIntLiteral).text.slice(0, -1)));
+            case 'StringLiteral':
+                constant = ValueUtil.createBigIntConst(literalNode.value);
                 break;
-            case ts.SyntaxKind.StringLiteral:
-                constant = ValueUtil.createStringConst((literalNode as ts.StringLiteral).text);
+            case 'CXXBoolLiteralExpr':
+                constant = ValueUtil.createStringConst(literalNode.value);
                 break;
-            case ts.SyntaxKind.RegularExpressionLiteral:
-                constant = new Constant((literalNode as ts.RegularExpressionLiteral).text, Builtin.REGEXP_CLASS_TYPE);
+            case 'CharacterLiteral':
+                constant = ValueUtil.createStringConst(literalNode.value);
                 break;
-            case ts.SyntaxKind.NoSubstitutionTemplateLiteral:
-                constant = ValueUtil.createStringConst((literalNode as ts.NoSubstitutionTemplateLiteral).text);
+            case 'FloatingLiteral':
+                constant = ValueUtil.getOrCreateNumberConst(parseFloat(literalNode.code))
                 break;
-            case ts.SyntaxKind.NullKeyword:
-                constant = ValueUtil.getNullConstant();
-                break;
-            case ts.SyntaxKind.UndefinedKeyword:
-                constant = ValueUtil.getUndefinedConst();
-                break;
-            case ts.SyntaxKind.TrueKeyword:
-                constant = ValueUtil.getBooleanConstant(true);
-                break;
-            case ts.SyntaxKind.FalseKeyword:
-                constant = ValueUtil.getBooleanConstant(false);
+            case 'CXXNullPtrLiteralExpr':
+                constant = ValueUtil.getNullPtrConstant();
                 break;
             default:
-                logger.warn(`ast node's syntaxKind is ${ts.SyntaxKind[literalNode.kind]}, not literalNode`);
+                logger.warn(`ast node's syntaxKind is ${syntaxKind}, not literalNode`);
         }
 
         if (constant === null) {
@@ -1721,139 +1638,33 @@ export class ArkValueTransformer {
             operator === RelationalBinaryOperator.StrictInequality
         );
     }
-
-    private isLiteralNode(node: ts.Node): boolean {
-        if (
-            ts.isStringLiteral(node) ||
-            ts.isNumericLiteral(node) ||
-            ts.isBigIntLiteral(node) ||
-            ts.isRegularExpressionLiteral(node) ||
-            ts.isNoSubstitutionTemplateLiteral(node) ||
-            node.kind === ts.SyntaxKind.NullKeyword ||
-            node.kind === ts.SyntaxKind.TrueKeyword ||
-            node.kind === ts.SyntaxKind.FalseKeyword ||
-            node.kind === ts.SyntaxKind.UndefinedKeyword
-        ) {
-            return true;
-        }
-        return false;
-    }
-
-    public resolveTypeNode(type: ts.TypeNode): Type {
-        const kind = type.kind;
-        switch (kind) {
-            case ts.SyntaxKind.BooleanKeyword:
-                return BooleanType.getInstance();
-            case ts.SyntaxKind.NumberKeyword:
-                return NumberType.getInstance();
-            case ts.SyntaxKind.StringKeyword:
-                return StringType.getInstance();
-            case ts.SyntaxKind.UndefinedKeyword:
-                return UndefinedType.getInstance();
-            case ts.SyntaxKind.AnyKeyword:
-                return AnyType.getInstance();
-            case ts.SyntaxKind.VoidKeyword:
-                return VoidType.getInstance();
-            case ts.SyntaxKind.NeverKeyword:
-                return NeverType.getInstance();
-            case ts.SyntaxKind.BigIntKeyword:
-                return BigIntType.getInstance();
-            case ts.SyntaxKind.TypeReference:
-                return this.resolveTypeReferenceNode(type as ts.TypeReferenceNode);
-            case ts.SyntaxKind.ArrayType:
-                return new ArrayType(this.resolveTypeNode((type as ts.ArrayTypeNode).elementType), 1);
-            case ts.SyntaxKind.UnionType: {
-                const mayTypes: Type[] = [];
-                (type as ts.UnionTypeNode).types.forEach(t => mayTypes.push(this.resolveTypeNode(t)));
-                return new UnionType(mayTypes);
-            }
-            case ts.SyntaxKind.IntersectionType: {
-                const intersectionTypes: Type[] = [];
-                (type as ts.IntersectionTypeNode).types.forEach(t => intersectionTypes.push(this.resolveTypeNode(t)));
-                return new IntersectionType(intersectionTypes);
-            }
-            case ts.SyntaxKind.TupleType: {
-                const types: Type[] = [];
-                (type as ts.TupleTypeNode).elements.forEach(element => {
-                    types.push(this.resolveTypeNode(element));
-                });
-                return new TupleType(types);
-            }
-            case ts.SyntaxKind.NamedTupleMember:
-                return this.resolveTypeNode((type as ts.NamedTupleMember).type);
-            case ts.SyntaxKind.LiteralType:
-                return ArkValueTransformer.resolveLiteralTypeNode(type as ts.LiteralTypeNode, this.sourceFile);
-            case ts.SyntaxKind.TemplateLiteralType:
-                return this.resolveTemplateLiteralTypeNode(type as ts.TemplateLiteralTypeNode);
-            case ts.SyntaxKind.TypeLiteral:
-                return this.resolveTypeLiteralNode(type as ts.TypeLiteralNode);
-            case ts.SyntaxKind.FunctionType:
-                return this.resolveFunctionTypeNode(type as ts.FunctionTypeNode);
-            case ts.SyntaxKind.ImportType:
-                return UnknownType.getInstance();
-            case ts.SyntaxKind.TypeQuery:
-                return this.resolveTypeQueryNode(type as ts.TypeQueryNode);
-            case ts.SyntaxKind.ParenthesizedType:
-                return this.resolveTypeNode((type as ts.ParenthesizedTypeNode).type);
-            case ts.SyntaxKind.TypeOperator:
-                return this.resolveTypeOperatorNode(type as ts.TypeOperatorNode);
-            default:
-                return UnknownType.getInstance();
-        }
-    }
-
-    private resolveTypeQueryNode(typeQueryNode: ts.TypeQueryNode): Type {
-        const genericTypes: Type[] = [];
-        if (typeQueryNode.typeArguments) {
-            for (const typeArgument of typeQueryNode.typeArguments) {
-                genericTypes.push(this.resolveTypeNode(typeArgument));
-            }
-        }
-
-        const exprNameNode = typeQueryNode.exprName;
-        let opValue: Value;
-        if (ts.isQualifiedName(exprNameNode)) {
-            if (exprNameNode.left.getText(this.sourceFile) === THIS_NAME) {
-                const fieldName = exprNameNode.right.getText(this.sourceFile);
-                const fieldSignature =
-                    this.declaringMethod.getDeclaringArkClass().getFieldWithName(fieldName)?.getSignature() ??
-                    ArkSignatureBuilder.buildFieldSignatureFromFieldName(fieldName);
-                const baseLocal =
-                    this.locals.get(THIS_NAME) ?? new Local(THIS_NAME, new ClassType(this.declaringMethod.getDeclaringArkClass().getSignature(), genericTypes));
-                opValue = new ArkInstanceFieldRef(baseLocal, fieldSignature);
+    public resolveTypeNode(qualType: string): Type {
+        if (qualType.includes('[') && qualType.includes(']')) {
+            const matches = qualType.match('/\[/g');
+            const count = matches ? matches.length : 0;
+            if (qualType.includes('int')) {
+                return new ArrayType(NumberType.getInstance(), count);
             } else {
-                const exprName = exprNameNode.getText(this.sourceFile);
-                opValue = new Local(exprName, UnknownType.getInstance());
+                return new ArrayType(new UnclearReferenceType(qualType.slice(0, qualType.lastIndexOf('['))), count);
             }
-        } else {
-            const exprName = exprNameNode.escapedText.toString();
-            opValue = this.locals.get(exprName) ?? this.globals?.get(exprName) ?? new Local(exprName, UnknownType.getInstance());
+        } else if (qualType.includes('vector')) {
+            let dimension = 0;
+            let dataType = this.resolveVectorType(qualType, dimension);
+            return new ArrayType(buildTypeFromPreStr(dataType), dimension);
         }
-
-        return new TypeQueryExpr(opValue, genericTypes);
+        let nodeType = cppNode2Type(qualType, null, this.declaringMethod);
+        return (nodeType instanceof UnclearReferenceType ? UnknownType.getInstance() : nodeType);
     }
 
-    private resolveTypeOperatorNode(typeOperatorNode: ts.TypeOperatorNode): Type {
-        let type = this.resolveTypeNode(typeOperatorNode.type);
-
-        switch (typeOperatorNode.operator) {
-            case ts.SyntaxKind.ReadonlyKeyword: {
-                if (type instanceof ArrayType || type instanceof TupleType) {
-                    type.setReadonlyFlag(true);
-                }
-                return type;
-            }
-            case ts.SyntaxKind.KeyOfKeyword: {
-                return new KeyofTypeExpr(type);
-            }
-            case ts.SyntaxKind.UniqueKeyword: {
-                return UnknownType.getInstance();
-            }
-            default:
-                return UnknownType.getInstance();
+    public resolveVectorType(kind: string, dimension: number) {
+        if (!kind.includes('vector')) {
+            return kind;
         }
+        let lowDimension = kind.substring(kind.indexOf('vector<') + 7, kind.lastIndexOf('>'));
+        dimension++;
+        lowDimension = this.resolveVectorType(lowDimension, dimension);
+        return lowDimension;
     }
-
     public static resolveLiteralTypeNode(literalTypeNode: ts.LiteralTypeNode, sourceFile: ts.SourceFile): Type {
         const literal = literalTypeNode.literal;
         const kind = literal.kind;
@@ -1872,126 +1683,11 @@ export class ArkValueTransformer {
         }
         return new LiteralType(literal.getText(sourceFile));
     }
-
-    private resolveTemplateLiteralTypeNode(templateLiteralTypeNode: ts.TemplateLiteralTypeNode): Type {
-        let stringLiterals: string[] = [''];
-        const headString = templateLiteralTypeNode.head.rawText || '';
-        let newStringLiterals: string[] = [];
-        for (const stringLiteral of stringLiterals) {
-            newStringLiterals.push(stringLiteral + headString);
-        }
-        stringLiterals = newStringLiterals;
-        newStringLiterals = [];
-
-        for (const templateSpan of templateLiteralTypeNode.templateSpans) {
-            const templateType = this.resolveTypeNode(templateSpan.type);
-            const unfoldTemplateTypes: Type[] = [];
-            if (templateType instanceof UnionType) {
-                unfoldTemplateTypes.push(...templateType.getTypes());
-            } else {
-                unfoldTemplateTypes.push(templateType);
-            }
-            const unfoldTemplateTypeStrs: string[] = [];
-            for (const unfoldTemplateType of unfoldTemplateTypes) {
-                unfoldTemplateTypeStrs.push(
-                    unfoldTemplateType instanceof AliasType ? unfoldTemplateType.getOriginalType().toString() : unfoldTemplateType.toString()
-                );
-            }
-
-            const templateSpanString = templateSpan.literal.rawText || '';
-            for (const stringLiteral of stringLiterals) {
-                for (const unfoldTemplateTypeStr of unfoldTemplateTypeStrs) {
-                    newStringLiterals.push(stringLiteral + unfoldTemplateTypeStr + templateSpanString);
-                }
-            }
-            stringLiterals = newStringLiterals;
-            newStringLiterals = [];
-        }
-
-        const templateTypes: Type[] = [];
-        for (const stringLiteral of stringLiterals) {
-            templateTypes.push(new LiteralType(stringLiteral));
-        }
-        if (templateTypes.length > 0) {
-            return new UnionType(templateTypes);
-        }
-        return templateTypes[0];
+    public static isCompoundAssignmentOperator(operator: any): boolean {
+        return Object.values(CompoundBinaryOperator).includes(operator);
     }
 
-    private resolveTypeReferenceNode(typeReferenceNode: ts.TypeReferenceNode): Type {
-        const typeReferenceFullName = typeReferenceNode.typeName.getText(this.sourceFile);
-        if (typeReferenceFullName === Builtin.OBJECT) {
-            return Builtin.OBJECT_CLASS_TYPE;
-        }
-        const aliasTypeAndStmt = this.aliasTypeMap.get(typeReferenceFullName);
-
-        const genericTypes: Type[] = [];
-        if (typeReferenceNode.typeArguments) {
-            for (const typeArgument of typeReferenceNode.typeArguments) {
-                genericTypes.push(this.resolveTypeNode(typeArgument));
-            }
-        }
-
-        if (!aliasTypeAndStmt) {
-            const typeName = typeReferenceNode.typeName.getText(this.sourceFile);
-            const local = this.locals.get(typeName);
-            if (local !== undefined) {
-                return local.getType();
-            }
-            return new UnclearReferenceType(typeName, genericTypes);
-        } else {
-            if (genericTypes.length > 0) {
-                const oldAlias = aliasTypeAndStmt[0];
-                let alias = new AliasType(
-                    oldAlias.getName(),
-                    TypeInference.replaceTypeWithReal(oldAlias.getOriginalType(), genericTypes),
-                    oldAlias.getSignature(),
-                    oldAlias.getGenericTypes()
-                );
-                alias.setRealGenericTypes(genericTypes);
-                return alias;
-            }
-            return aliasTypeAndStmt[0];
-        }
-    }
-
-    private resolveTypeLiteralNode(typeLiteralNode: ts.TypeLiteralNode): Type {
-        const anonymousClass = new ArkClass();
-        const declaringClass = this.declaringMethod.getDeclaringArkClass();
-        const declaringNamespace = declaringClass.getDeclaringArkNamespace();
-        if (declaringNamespace) {
-            buildNormalArkClassFromArkNamespace(typeLiteralNode, declaringNamespace, anonymousClass, this.sourceFile);
-        } else {
-            buildNormalArkClassFromArkFile(typeLiteralNode, declaringClass.getDeclaringArkFile(), anonymousClass, this.sourceFile);
-        }
-        return new ClassType(anonymousClass.getSignature());
-    }
-
-    private resolveFunctionTypeNode(functionTypeNode: ts.FunctionTypeNode): Type {
-        const anonymousMethod = new ArkMethod();
-        const declaringClass = this.declaringMethod.getDeclaringArkClass();
-        buildArkMethodFromArkClass(functionTypeNode, declaringClass, anonymousMethod, this.sourceFile);
-        return new FunctionType(anonymousMethod.getSignature());
-    }
-
-    public static isCompoundAssignmentOperator(operator: ts.SyntaxKind): boolean {
-        const compoundAssignmentOperators = [
-            ts.SyntaxKind.PlusEqualsToken,
-            ts.SyntaxKind.MinusEqualsToken,
-            ts.SyntaxKind.AsteriskAsteriskEqualsToken,
-            ts.SyntaxKind.AsteriskEqualsToken,
-            ts.SyntaxKind.SlashEqualsToken,
-            ts.SyntaxKind.PercentEqualsToken,
-            ts.SyntaxKind.AmpersandEqualsToken,
-            ts.SyntaxKind.BarEqualsToken,
-            ts.SyntaxKind.CaretEqualsToken,
-            ts.SyntaxKind.LessThanLessThanEqualsToken,
-            ts.SyntaxKind.GreaterThanGreaterThanGreaterThanEqualsToken,
-            ts.SyntaxKind.GreaterThanGreaterThanEqualsToken,
-            ts.SyntaxKind.BarBarEqualsToken,
-            ts.SyntaxKind.AmpersandAmpersandEqualsToken,
-            ts.SyntaxKind.QuestionQuestionEqualsToken,
-        ];
-        return compoundAssignmentOperators.includes(operator);
+    public static isRelationalBinaryOperator(operator: any): boolean {
+        return Object.values(RelationalBinaryOperator).includes(operator);
     }
 }
