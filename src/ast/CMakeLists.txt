@@ -1,0 +1,21 @@
+cmake_minimum_required(VERSION 3.10)
+project(print_ast LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+if(WIN32)
+  include(cmake/toolchains/windows.cmake)
+elseif(UNIX)
+  include(cmake/toolchains/linux.cmake)
+endif()
+
+add_executable(print_ast print_ast.cpp)
+
+target_include_directories(print_ast PRIVATE ${CLANG_INCLUDE_DIRS})
+target_link_libraries(print_ast PRIVATE ${CLANG_LIBRARIES})
+
+if(MSVC)
+  target_compile_definitions(print_ast PRIVATE /utf-8)
+  target_compile_definitions(print_ast PRIVATE _SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING)
+endif()
