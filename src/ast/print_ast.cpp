@@ -342,6 +342,25 @@ void patchGotoTarget(json &node, const std::map<std::string, int> &labelMap){
     }
 }
 
+void patchPseudoDestructorExpr(json &node){
+    // 检查当前是否是MemberExpr + TypeRef组合 并且包含 ~ 推断为伪析构
+    if (node.contains("kind") && node["kind"] == "MemberExpr"
+        && node.contains("code") && node["code"].is_string() && node["code"].get<std::string>().find("~") != std::string::npos
+        && node.contains("inner") && node["inner"].is_array()
+        && node["inner"].size() == 2
+        && node["inner"][1].contains("kind")
+        && node["inner"][1]["kind"] == "TypeRef"){
+            node["kind"] = "CXXPseudoDestructorExpr";
+            node["pseudoDestructorType"] = node["inner"][1]["type"]["qualType"];
+    }
+    // 递归对子节点处理
+    if (node.contains("inner") && node["inner"].is_array()){
+        for (auto &child:node["inner"]){
+            patchPseudoDestructorExpr(child);
+        }
+    }
+}
+
 void filterVarDeclArrayDims(json &node){
     if (node.contains("kind") && node["kind"] == "VarDecl" &&
         node.contains("type") && node["type"].contains("qualType")){
@@ -382,7 +401,7 @@ std::unordered_map<std::string, std::string> collectAllScopeVarTypeMap(const jso
 }
 
 void fixImplicitCastExprAndDeclRef(json &node, const std::unordered_map<std::string, std::string> &varTypeMap){
-    if (node.contains("kind") && node["kind"] == "ImplicitCastExpr" 
+    if (node.contains("kind") && node["kind"] == "ImplicitCastExpr"
        && node.contains("code") && varTypeMap.count(node["code"])){
         if (node.contains("type") && node["type"].contains("qualType"))
             node["type"]["qualType"] = varTypeMap.at(node["code"]);
@@ -432,7 +451,7 @@ void relateMemberType(std::string typeStr, json &children){
                 childInner.push_back(children[i]);
                 constructNode["inner"] = childInner;
                 children[i] = constructNode;
-            } 
+            }
         }
     }
 }
@@ -498,7 +517,7 @@ json buildTemplateDefaultType(std::string codeStr){
 json buildASTJson(CXCursor cursor){
     CXSourceLocation loc = clang_getCursorLocation(cursor);
     CXCursorKind kind_cursor = clang_getCursorKind(cursor);
-    if ((kind_cursor != CXCursor_TranslationUnit && !clang_Location_isFromMainFile(loc)) || 
+    if ((kind_cursor != CXCursor_TranslationUnit && !clang_Location_isFromMainFile(loc)) ||
         kind_cursor == CXCursor_LinkageSpec){
         return json();
     }
@@ -526,11 +545,11 @@ json buildASTJson(CXCursor cursor){
         node["code"] = content["code"];
     std::string codeStr = content["code"];
 
-    if (kind_cursor == CXCursor_IntegerLiteral || 
+    if (kind_cursor == CXCursor_IntegerLiteral ||
         kind_cursor == CXCursor_StringLiteral ||
         kind_cursor == CXCursor_CXXBoolLiteralExpr)
         node["value"] = node["code"];
-    
+
     if (kind_cursor == CXCursor_ClassDecl){
         node["kind"] = "CXXRecordDecl";
         node["tagUsed"] = "class";
@@ -603,7 +622,7 @@ json buildASTJson(CXCursor cursor){
             json childAst = buildASTJson(child);
             CXCursorKind parent_kind = clang_getCursorKind(parent);
             if (!childAst.is_null() && !(parent_kind == CXCursor_Constructor && (childAst["kind"] == "MemberRef" ||
-                                                                                 childAst["kind"] == 
+                                                                                 childAst["kind"] ==
                                                                                 "ImplicitCastExpr"))){
                 list->push_back(childAst);
             }
@@ -742,7 +761,7 @@ int main(int argc, char **argv){
     std::vector<const char *> args_with_null = args;
     CXTranslationUnit unit = clang_parseTranslationUnit(
             index, input_file.c_str(), args_with_null.data(), args_with_null.size() - 1, nullptr, 0,
-            CXTranslationUnit_None); 
+            CXTranslationUnit_None);
     if (!unit){
         std::cerr << "Parse error \n";
         clang_disposeIndex(index);
@@ -750,6 +769,7 @@ int main(int argc, char **argv){
     }
     json ast = buildASTJson(clang_getTranslationUnitCursor(unit));
     std::map<std::string, int> labelNameToId;
+    patchPseudoDestructorExpr(ast);
     fixAllVarRefTypes(ast);
     filterVarDeclArrayDims(ast);
     collectLabelStmt(ast, labelNameToId);
