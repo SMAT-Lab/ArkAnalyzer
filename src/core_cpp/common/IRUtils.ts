@@ -16,7 +16,7 @@
 import { AbstractBinopExpr, AbstractInvokeExpr, ArkCastExpr, ArkUnopExpr } from '../base/Expr';
 import { AbstractFieldRef, AbstractRef, ArkArrayRef, ArkInstanceFieldRef, ArkStaticFieldRef } from '../base/Ref';
 import { Value } from '../base/Value';
-import { Scene } from '../../Scene';
+import { Scene } from '../../Scene_cpp';
 import ts from 'ohos-typescript';
 import { SceneOptions } from '../../Config';
 import { ArkMetadataKind, CommentItem, CommentsMetadata } from '../model/ArkMetadata';

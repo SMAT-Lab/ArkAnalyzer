@@ -467,7 +467,7 @@ export class CfgBuilder {
         this.exits.push(switchExit);
         this.switchExitStack.push(switchExit);
         switchExit.lasts.add(switchstm);
-        switchstm.code = 'switch (' + c.expression + ')';
+        switchstm.code = 'switch (' + c.inner[0].code + ')';
         let lastCaseExit: StatementBuilder | null = null;
         c.inner[1].inner = this.getCaseDefClauseAsts(c);
 
@@ -503,7 +503,7 @@ export class CfgBuilder {
                 casestm.next?.lasts.add(lastCaseExit);
             }
             lastCaseExit = caseExit;
-            if (i === c.caseBlock.clauses.length - 1) {
+            if (i === c.inner[1].inner.length - 1) {
                 caseExit.next = switchExit;
                 switchExit.lasts.add(caseExit);
             }
@@ -699,7 +699,7 @@ export class CfgBuilder {
             let innerNode = nodes[i];
             let nodeKind = innerNode.kind.toString();
             if (nodeKind === 'ReturnStmt') {
-                let s = new StatementBuilder('returnStatement', ;innerNode.code, innerNode, scope.id);
+                let s = new StatementBuilder('returnStatement', innerNode.code, innerNode, scope.id);
                 this.judgeLastType(s, lastStatement);
                 lastStatement = s;
                 break;
@@ -1047,9 +1047,16 @@ export class CfgBuilder {
     addStmtBuilderPosition(): void {
         for (const stmt of this.statementArray) {
             if (stmt.astNode) {
-                const { line, character } = ts.getLineAndCharacterOfPosition(this.sourceFile, stmt.astNode.getStart(this.sourceFile));
-                stmt.line = line + 1;
-                stmt.column = character + 1;
+                if(stmt.astNode.loc && stmt.astNode.loc.line) {
+                    stmt.line = stmt.astNode.loc.line;
+                } else {
+                    stmt.line = 0;
+                }
+                if(stmt.astNode.loc && stmt.astNode.loc.col) {
+                    stmt.column = stmt.astNode.loc.col;
+                } else {
+                    stmt.column = 0;
+                }
             }
         }
     }

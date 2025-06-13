@@ -52,7 +52,7 @@ import { Cfg } from '../Cfg';
 import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
 import { ViewTree, ViewTreeNode } from '../ViewTree';
 import { ModelUtils } from '../../common/ModelUtils';
-import { Scene } from '../../../Scene';
+import { Scene } from '../../../Scene_cpp';
 import { TEMP_LOCAL_PREFIX } from '../../common/Const';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ViewTreeBuilder');

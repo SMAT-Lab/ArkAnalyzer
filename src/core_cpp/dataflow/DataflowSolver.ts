@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { Scene } from '../../Scene';
+import { Scene } from '../../Scene_cpp';
 import { AbstractInvokeExpr } from '../base/Expr';
 import { ArkInvokeStmt, ArkReturnStmt, ArkReturnVoidStmt, Stmt } from '../base/Stmt';
 import { ArkMethod } from '../model/ArkMethod';

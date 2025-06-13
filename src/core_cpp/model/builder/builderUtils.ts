@@ -35,7 +35,7 @@ import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
 import { ArkClass } from '../ArkClass';
 import { ArkMethod } from '../ArkMethod';
 import { Decorator } from '../../base/Decorator';
-import { ArrayBindingPatternParameter, MethodParameter, ObjectBindingPatternParameter } from './ArkMethodBuilder';
+import { MethodParameter, ObjectBindingPatternParameter } from './ArkMethodBuilder';
 import { modifierKind2Enum } from '../ArkBaseModel';
 
 
@@ -104,7 +104,7 @@ function parseDecorator(node: ts.Decorator): Decorator | undefined {
     return decorator;
 }
 
-function extractCommonModifiers(node:any, nodeType: string):number{
+function extractCommonModifiers(node:any):number{
     let modifiers: number = 0;
     const nodeType: string = node?.type?.qualType ?? "";
 
@@ -125,8 +125,7 @@ function hasOvverrideAttr(inner: any[] |undefined):boolean{
     return inner.some(child => child.kind === "OverrideAttr");
 }
 export function buildModifiers(node: any): number {
-    const nodeType: string = node?.type?.qualType ?? "";
-    let modifiers = extractCommonModifiers(node, nodeType);
+    let modifiers = extractCommonModifiers(node);
 
     if (node.kind === 'CXXMethodDecl'){
         if (node.virtual){
@@ -226,48 +225,6 @@ function buildObjectBindingPatternParam(methodParameter: MethodParameter, paramN
     });
     methodParameter.setObjElements(elements);
 }
-
-function buildBindingElementOfBindingPatternParam(element: ts.BindingElement, paraElement: ArrayBindingPatternParameter): void {
-    if (element.propertyName) {
-        if (ts.isIdentifier(element.propertyName)) {
-            paraElement.setPropertyName(element.propertyName.text);
-        } else {
-            logger.warn('New propertyName of ArrayBindingPattern found, please contact developers to support this!');
-        }
-    }
-
-    if (element.name) {
-        if (ts.isIdentifier(element.name)) {
-            paraElement.setName(element.name.text);
-        } else {
-            logger.warn('New name of ArrayBindingPattern found, please contact developers to support this!');
-        }
-    }
-
-    if (element.initializer) {
-        logger.warn('TODO: support ArrayBindingPattern initializer.');
-    }
-
-    if (element.dotDotDotToken) {
-        paraElement.setOptional(true);
-    }
-}
-
-function buildArrayBindingPatternParam(methodParameter: MethodParameter, paramNameNode: ts.ArrayBindingPattern): void {
-    methodParameter.setName('ArrayBindingPattern');
-    let elements: ArrayBindingPatternParameter[] = [];
-    paramNameNode.elements.forEach(element => {
-        let paraElement = new ArrayBindingPatternParameter();
-        if (ts.isBindingElement(element)) {
-            buildBindingElementOfBindingPatternParam(element, paraElement);
-        } else if (ts.isOmittedExpression(element)) {
-            logger.warn('TODO: support OmittedExpression for ArrayBindingPattern parameter name.');
-        }
-        elements.push(paraElement);
-    });
-    methodParameter.setArrayElements(elements);
-}
-
 export function buildParameters(params: any, arkInstance: ArkMethod | ArkField, sourceFile: any): MethodParameter[] {
     let parameters: MethodParameter[] = []
     if (!params || params.length === 0) {
@@ -377,11 +334,6 @@ export function cppNode2Type(
     if (nodeQualType === 'void () const'){
         return buildTypeFromPreStr('VoidKeyword')
     }
-    if (nodeQualType === 'const char *'){
-        return new UnclearReferenceType(
-            nodeQualType.text ?? nodeQualType.toString(), []
-        );
-    }
     // 处理泛型类型
     if (arkInstance instanceof ArkMethod){
         const templateTypes = arkInstance.getGenericTypes?.();
@@ -411,7 +363,7 @@ export function buildTypeFromPreStr(preStr: string, arkInstance: any = null): Ty
     const postStr = convertDataType(preStr);
     const baseType = (postStr === 'unsupported')
         ? buildTypeFromDerivedType(preStr, arkInstance)
-        : TypeInference.buildTypeFromStr(postStr);
+        : TypeInference.buildTypeFromStr(postStr, preStr);
     // 4. 包装指针和引用
     if (referenceCount > 0){
         const referCategory = (referenceCount % 2 === 1)

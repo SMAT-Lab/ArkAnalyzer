@@ -686,13 +686,13 @@ export abstract class AbstractBinopExpr extends AbstractExpr {
         let type = UnknownType.getInstance();
         switch (this.operator) {
             case '+':
-                if (op1Type === StringType.getInstance() || op2Type === StringType.getInstance()) {
+                if (op1Type instanceof StringType || op2Type instanceof StringType) {
                     type = StringType.getInstance();
                 }
-                if (op1Type === NumberType.getInstance() && op2Type === NumberType.getInstance()) {
+                if (op1Type instanceof NumberType && op2Type instanceof NumberType) {
                     type = NumberType.getInstance();
                 }
-                if (op1Type === BigIntType.getInstance() && op2Type === BigIntType.getInstance()) {
+                if (op1Type instanceof BigIntType && op2Type instanceof BigIntType) {
                     type = BigIntType.getInstance();
                 }
                 break;
@@ -700,10 +700,10 @@ export abstract class AbstractBinopExpr extends AbstractExpr {
             case '*':
             case '/':
             case '%':
-                if (op1Type === NumberType.getInstance() && op2Type === NumberType.getInstance()) {
+                if (op1Type instanceof NumberType && op2Type instanceof NumberType) {
                     type = NumberType.getInstance();
                 }
-                if (op1Type === BigIntType.getInstance() && op2Type === BigIntType.getInstance()) {
+                if (op1Type instanceof BigIntType && op2Type instanceof BigIntType) {
                     type = BigIntType.getInstance();
                 }
                 break;
@@ -725,15 +725,15 @@ export abstract class AbstractBinopExpr extends AbstractExpr {
             case '^':
             case '<<':
             case '>>':
-                if (op1Type === NumberType.getInstance() && op2Type === NumberType.getInstance()) {
+                if (op1Type instanceof NumberType && op2Type instanceof NumberType) {
                     type = NumberType.getInstance();
                 }
-                if (op1Type === BigIntType.getInstance() && op2Type === BigIntType.getInstance()) {
+                if (op1Type instanceof BigIntType && op2Type instanceof BigIntType) {
                     type = BigIntType.getInstance();
                 }
                 break;
             case '>>>':
-                if (op1Type === NumberType.getInstance() && op2Type === NumberType.getInstance()) {
+                if (op1Type instanceof NumberType && op2Type instanceof NumberType) {
                     type = NumberType.getInstance();
                 }
                 break;

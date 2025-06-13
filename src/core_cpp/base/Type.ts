@@ -150,12 +150,37 @@ export class BooleanType extends PrimitiveType {
 export class NumberType extends PrimitiveType {
     private static readonly INSTANCE = new NumberType();
 
-    private constructor() {
+    protected constructor() {
         super(NUMBER_KEYWORD);
     }
 
     public static getInstance(): NumberType {
         return this.INSTANCE;
+    }
+}
+
+// cpp的number有多种整型、浮点型的区分，因此派生一个cpp的number类型
+export class CXXNumberType extends NumberType {
+    private readonly cxxType: string;
+
+    private constructor(cxxType: string) {
+        super();
+        this.cxxType = cxxType;
+    }
+
+    public static getInstance(cxxType?: string) {
+        if (cxxType) {
+            return new CXXNumberType(cxxType);
+        }
+        return NumberType.getInstance();
+    }
+
+    public getCxxType(): string {
+        return this.cxxType;
+    }
+
+    public getTypeString(): string {
+        return this.cxxType;
     }
 }
 
@@ -178,12 +203,37 @@ export class BigIntType extends PrimitiveType {
 export class StringType extends PrimitiveType {
     private static readonly INSTANCE = new StringType();
 
-    private constructor() {
+    protected constructor() {
         super(STRING_KEYWORD);
     }
 
     public static getInstance(): StringType {
         return this.INSTANCE;
+    }
+}
+
+// cpp的string有不同字符类型区分，因此派生一个cpp的string类型
+export class CXXStringType extends StringType {
+    private readonly cxxType: string;
+
+    private constructor(cxxType: string) {
+        super();
+        this.cxxType = cxxType;
+    }
+
+    public static getInstance(cxxType?: string) {
+        if (cxxType) {
+            return new CXXStringType(cxxType);
+        }
+        return StringType.getInstance();
+    }
+
+    public getCxxType(): string {
+        return this.cxxType;
+    }
+
+    public getTypeString(): string {
+        return this.cxxType.toString();
     }
 }
 

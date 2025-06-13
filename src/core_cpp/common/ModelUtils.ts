@@ -45,7 +45,7 @@ import {
     UnclearReferenceType,
     UnknownType
 } from '../base/Type';
-import { Scene } from '../../Scene';
+import { Scene } from '../../Scene_cpp';
 import { DEFAULT_ARK_CLASS_NAME, DEFAULT_ARK_METHOD_NAME, NAME_DELIMITER, TEMP_LOCAL_PREFIX } from './Const';
 import { EMPTY_STRING } from './ValueUtil';
 import { ArkBaseModel } from '../model/ArkBaseModel';
