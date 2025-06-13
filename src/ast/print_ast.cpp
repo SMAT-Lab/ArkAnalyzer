@@ -123,7 +123,7 @@ json getSourceContent(CXSourceRange range){
 
 }
 
-void filleUnaryOperatorInfo(json &node, CXCursor cursor){
+void fillUnaryOperatorInfo(json &node, CXCursor cursor){
     auto opKind = clang_getCursorUnaryOperatorKind(cursor);
     node["opcode"] = cx2str(clang_getUnaryOperatorKindSpelling(opKind));
     node["isPostfix"] = (opKind == CXUnaryOperator_PostInc || opKind == CXUnaryOperator_PostDec);
@@ -361,47 +361,6 @@ void patchPseudoDestructorExpr(json &node){
     }
 }
 
-void patchCastExprWithParent(json &node, const std::string &parent_code = "") {
-    // 获取当前节点 code
-    std::string self_code = node.value("code", "");
-    std::string merged_code = parent_code.empty() ? self_code : parent_code;
-
-    // 需要处理的 C++ cast 类型
-    struct CastInfo {
-        const char* keyword;
-        const char* kind;
-    } cast_types[] = {
-        {"reinterpret_cast", "CXXReinterpretCastExpr"},
-        {"static_cast",      "CXXStaticCastExpr"},
-        {"const_cast",       "CXXConstCastExpr"},
-        {"dynamic_cast",     "CXXDynamicCastExpr"},
-    };
-    // 检查并修正类型
-    if (node.value("kind", "") == "ImplicitCastExpr") {
-        for (const auto& cast : cast_types) {
-            std::string kw = std::string(cast.keyword) + "<";
-            auto lpos = merged_code.find(kw);
-            if (lpos != std::string::npos) {
-                node["kind"] = cast.kind;
-                auto rpos = merged_code.find('>', lpos);
-                if (rpos != std::string::npos && rpos > lpos) {
-                    node["castType"] = merged_code.substr(lpos + kw.length(), rpos - (lpos + kw.length()));
-                }
-                break;
-            }
-        }
-    }
-    // 递归处理子节点
-    if (node.contains("inner") && node["inner"].is_array()) {
-        std::string next_code = self_code.empty() ? parent_code : self_code;
-        for (auto& child : node["inner"]) {
-            patchCastExprWithParent(child, next_code);
-        }
-    }
-}
-
-
-
 void filterVarDeclArrayDims(json &node){
     if (node.contains("kind") && node["kind"] == "VarDecl" &&
         node.contains("type") && node["type"].contains("qualType")){
@@ -575,6 +534,8 @@ json buildASTJson(CXCursor cursor){
     json content = getSourceContent(range);
     if (kind_cursor == CXCursor_TranslationUnit){
         node["fileName"] = file ? cx2str(clang_getFileName(file)) : displayName;
+    } else if (kind_cursor == CXCursor_UnaryOperator){
+        fillUnaryOperatorInfo(node, cursor);
     } else if (kind_cursor == CXCursor_BinaryOperator || kind_cursor == CXCursor_CompoundAssignOperator){
         node["opcode"] = cx2str(clang_Cursor_getBinaryOpcodeStr(clang_Cursor_getBinaryOpcode(cursor)));
     } else {
