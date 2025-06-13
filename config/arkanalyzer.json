@@ -4,7 +4,10 @@
     ".ts",
     ".js",
     ".d.ets",
-    ".d.ts"
+    ".d.ts",
+    ".cpp",
+    ".c",
+    ".h"
   ],
   "enableLeadingComments": false,
   "ignoreFileNames": [

@@ -15,25 +15,16 @@
 
 import fs from 'fs';
 import path from 'path';
-import ts from 'ohos-typescript';
-import { ArkFile, Language } from '../ArkFile';
+import { ArkFile } from '../ArkFile';
 import { ArkNamespace } from '../ArkNamespace';
 import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
 import { buildDefaultArkClassFromArkFile, buildNormalArkClassFromArkFile } from './ArkClassBuilder';
 import { buildArkMethodFromArkClass } from './ArkMethodBuilder';
-import { buildImportInfo } from './ArkImportBuilder';
-import {
-    buildExportAssignment,
-    buildExportDeclaration,
-    buildExportInfo,
-    buildExportTypeAliasDeclaration,
-    buildExportVariableStatement,
-    isExported,
-} from './ArkExportBuilder';
+
 import { buildArkNamespace, mergeNameSpaces } from './ArkNamespaceBuilder';
 import { ArkClass } from '../ArkClass';
 import { ArkMethod } from '../ArkMethod';
-import {AstUtils} from "../../../ast/astUitls"
+import {AstUtils} from "../../../ast/astUtils"
 import { LineColPosition } from '../../base/Position';
 import { ETS_COMPILER_OPTIONS } from '../../common/EtsConst';
 import { FileSignature } from '../ArkSignature';

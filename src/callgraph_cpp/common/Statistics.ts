@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { ArkAssignStmt, Stmt } from '../../core/base/Stmt';
-import { UnknownType } from '../../core/base/Type';
+import { ArkAssignStmt, Stmt } from '../../core_cpp/base/Stmt';
+import { UnknownType } from '../../core_cpp/base/Type';
 import { CallGraphNode, CallGraphNodeKind } from '../model/CallGraph';
 import { PointerAnalysis } from '../pointerAnalysis/PointerAnalysis';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';

@@ -13,15 +13,15 @@
  * limitations under the License.
  */
 
-import { MethodSignature } from '../../core/model/ArkSignature';
-import { Stmt } from '../../core/base/Stmt';
-import { Scene } from '../../Scene';
-import { ArkMethod } from '../../core/model/ArkMethod';
+import { MethodSignature } from '../../core_cpp/model/ArkSignature';
+import { Stmt } from '../../core_cpp/base/Stmt';
+import { Scene } from '../../Scene_cpp';
+import { ArkMethod } from '../../core_cpp/model/ArkMethod';
 import { GraphPrinter } from '../../save/GraphPrinter';
 import { PrinterBuilder } from '../../save/PrinterBuilder';
-import { BaseEdge, BaseNode, BaseExplicitGraph, NodeID } from '../../core/graph/BaseExplicitGraph';
+import { BaseEdge, BaseNode, BaseExplicitGraph, NodeID } from '../../core_cpp/graph/BaseExplicitGraph';
 import { CGStat } from '../common/Statistics';
-import { UNKNOWN_FILE_NAME } from '../../core/common/Const';
+import { UNKNOWN_FILE_NAME } from '../../core_cpp/common/Const';
 import { CallSite, CallSiteID, DynCallSite, ICallSite } from './CallSite';
 
 export type Method = MethodSignature;
@@ -120,7 +120,7 @@ export class CallGraphNode extends BaseNode {
 }
 
 export class CallGraph extends BaseExplicitGraph {
-    private scene: Scene;
+    private scene:Scene;
     private idToCallSiteMap: Map<CallSiteID, CallSite> = new Map();
     private callSiteToIdMap: Map<CallSite, CallSiteID> = new Map();
     private stmtToCallSitemap: Map<Stmt, CallSite[]> = new Map();
@@ -133,7 +133,7 @@ export class CallGraph extends BaseExplicitGraph {
     private cgStat: CGStat;
     private dummyMainMethodID: FuncID | undefined;
 
-    constructor(s: Scene) {
+    constructor(s:Scene) {
         super();
         this.scene = s;
         this.cgStat = new CGStat();

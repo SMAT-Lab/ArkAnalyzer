@@ -15,7 +15,7 @@
 
 import * as fs from 'fs';
 import { createPtsCollectionCtor, IPtsCollection, PtsCollectionType } from './PtsDS';
-import { NodeID } from '../../core/graph/BaseExplicitGraph';
+import { NodeID } from '../../core_cpp/graph/GraphTraits';
 
 export enum PtaAnalysisScale {
     WholeProgram = 0,

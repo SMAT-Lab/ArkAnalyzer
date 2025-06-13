@@ -30,7 +30,6 @@ import {
     AnnotationNamespaceType,
     AnyType,
     ArrayType,
-    BigIntType,
     BooleanType,
     ClassType,
     EnumValueType,
@@ -39,7 +38,6 @@ import {
     IntersectionType,
     NeverType,
     NullType,
-    NumberType,
     StringType,
     TupleType,
     Type,
@@ -48,6 +46,8 @@ import {
     UnionType,
     UnknownType,
     VoidType,
+    CXXStringType,
+    CXXNumberType
 } from '../base/Type';
 import { ArkMethod } from '../model/ArkMethod';
 import { ArkExport } from '../model/ArkExport';
@@ -58,20 +58,11 @@ import { Constant } from '../base/Constant';
 import { ArkNamespace } from '../model/ArkNamespace';
 import {
     ALL,
-    ANY_KEYWORD,
-    BIGINT_KEYWORD,
-    BOOLEAN_KEYWORD,
     CONSTRUCTOR_NAME, DEFAULT,
     GLOBAL_THIS_NAME,
-    NEVER_KEYWORD,
-    NULL_KEYWORD,
-    NUMBER_KEYWORD,
     PROMISE,
-    STRING_KEYWORD,
     SUPER_NAME,
     THIS_NAME,
-    UNDEFINED_KEYWORD,
-    VOID_KEYWORD,
 } from './TSConst';
 import { ModelUtils } from './ModelUtils';
 import { Builtin } from './Builtin';
@@ -466,32 +457,30 @@ export class TypeInference {
     }
 
     // Deal only with simple situations
-    public static buildTypeFromStr(typeStr: string): Type {
-        switch (typeStr) {
-            case BOOLEAN_KEYWORD:
+    public static buildTypeFromStr(tsTypeStr: string, cxxTypeStr: string): Type {
+        switch (tsTypeStr) {
+            case 'boolean':
                 return BooleanType.getInstance();
-            case NUMBER_KEYWORD:
-                return NumberType.getInstance();
-            case STRING_KEYWORD:
-                return StringType.getInstance();
-            case UNDEFINED_KEYWORD:
+            case 'number':
+                return CXXNumberType.getInstance(cxxTypeStr);
+            case 'string':
+                return CXXStringType.getInstance(cxxTypeStr);
+            case 'undefined':
                 return UndefinedType.getInstance();
-            case NULL_KEYWORD:
+            case 'null':
                 return NullType.getInstance();
-            case ANY_KEYWORD:
+            case 'any':
                 return AnyType.getInstance();
-            case VOID_KEYWORD:
+            case 'void':
                 return VoidType.getInstance();
-            case NEVER_KEYWORD:
+            case 'never':
                 return NeverType.getInstance();
-            case BIGINT_KEYWORD:
-                return BigIntType.getInstance();
             case 'RegularExpression': {
                 const classSignature = Builtin.REGEXP_CLASS_SIGNATURE;
                 return new ClassType(classSignature);
             }
             default:
-                return new UnclearReferenceType(typeStr);
+                return new UnclearReferenceType(tsTypeStr);
         }
     }
 
@@ -714,7 +703,7 @@ export class TypeInference {
         if (property instanceof ArkField) {
             if (arkClass.getCategory() === ClassCategory.ENUM) {
                 let constant;
-                const lastStmt = property.getInitializer().at(-1);
+                const lastStmt = property.getInitializer()[-1];
                 if (lastStmt instanceof ArkAssignStmt && lastStmt.getRightOp() instanceof Constant) {
                     constant = lastStmt.getRightOp() as Constant;
                 }

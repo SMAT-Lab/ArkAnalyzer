@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { ModuleScene, Scene } from '../../Scene';
+import { ModuleScene, Scene } from '../../Scene_cpp';
 import { ArkExport, ExportInfo } from './ArkExport';
 import { ImportInfo } from './ArkImport';
 import { ArkClass } from './ArkClass';

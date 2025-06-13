@@ -13,25 +13,25 @@
  * limitations under the License.
  */
 
-import { Scene } from '../../Scene';
-import { Value } from '../../core/base/Value';
-import { NodeID } from '../../core/graph/BaseExplicitGraph';
+import { Scene } from '../../Scene_cpp';
+import { Value } from '../../core_cpp/base/Value';
+import { NodeID } from '../../core_cpp/graph/GraphTraits';
 import path from 'path';
 import * as fs from 'fs';
 import { CallGraph, CallGraphNode, CallSite, DynCallSite, FuncID } from '../model/CallGraph';
 import { AbstractAnalysis } from '../algorithm/AbstractAnalysis';
-import { ClassType, Type, UnknownType } from '../../core/base/Type';
+import { ClassType, Type, UnknownType } from '../../core_cpp/base/Type';
 import { CallGraphBuilder } from '../model/builder/CallGraphBuilder';
-import { Stmt } from '../../core/base/Stmt';
+import { Stmt } from '../../core_cpp/base/Stmt';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
-import { DummyMainCreater } from '../../core/common/DummyMainCreater';
+import { DummyMainCreater } from '../../core_cpp/common/DummyMainCreater';
 import { PTAStat } from '../common/Statistics';
 import { Pag, PagNode, PagEdgeKind, PagEdge, PagLocalNode, PagGlobalThisNode, PagArrayNode } from './Pag';
 import { PagBuilder } from './PagBuilder';
 import { PointerAnalysisConfig, PtaAnalysisScale } from './PointerAnalysisConfig';
 import { DiffPTData, IPtsCollection } from './PtsDS';
-import { Local } from '../../core/base/Local';
-import { ArkMethod } from '../../core/model/ArkMethod';
+import { Local } from '../../core_cpp/base/Local';
+import { ArkMethod } from '../../core_cpp/model/ArkMethod';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'PTA');
 
@@ -46,7 +46,7 @@ export class PointerAnalysis extends AbstractAnalysis {
     private typeDiffMap!: Map<Value, Set<Type>>;
     private config: PointerAnalysisConfig;
 
-    constructor(p: Pag, cg: CallGraph, s: Scene, config: PointerAnalysisConfig) {
+    constructor(p: Pag, cg: CallGraph, s:Scene, config: PointerAnalysisConfig) {
         super(s, cg);
         this.pag = p;
         this.ptd = new DiffPTData<NodeID, NodeID, IPtsCollection<NodeID>>(config.ptsCollectionCtor);
@@ -56,7 +56,7 @@ export class PointerAnalysis extends AbstractAnalysis {
         this.config = config;
     }
 
-    static pointerAnalysisForWholeProject(projectScene: Scene, config?: PointerAnalysisConfig): PointerAnalysis {
+    static pointerAnalysisForWholeProject(projectScene:Scene, config?: PointerAnalysisConfig): PointerAnalysis {
         let cg = new CallGraph(projectScene);
         let cgBuilder = new CallGraphBuilder(cg, projectScene);
         cgBuilder.buildDirectCallGraphForScene();
@@ -79,7 +79,7 @@ export class PointerAnalysis extends AbstractAnalysis {
         return pta;
     }
 
-    static pointerAnalysisForMethod(s: Scene, method: ArkMethod, config?: PointerAnalysisConfig): PointerAnalysis {
+    static pointerAnalysisForMethod(s:Scene, method: ArkMethod, config?: PointerAnalysisConfig): PointerAnalysis {
         let cg = new CallGraph(s);
         let cgBuilder = new CallGraphBuilder(cg, s);
         cgBuilder.buildDirectCallGraphForScene();

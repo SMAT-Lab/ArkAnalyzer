@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { Scene } from '../../Scene';
+import { Scene } from '../../Scene_cpp';
 import { COMPONENT_LIFECYCLE_METHOD_NAME, getCallbackMethodFromStmt, LIFECYCLE_METHOD_NAME } from '../../utils/entryMethodUtils';
 import { Constant } from '../base/Constant';
 import { AbstractInvokeExpr, ArkConditionExpr, ArkInstanceInvokeExpr, ArkNewExpr, ArkStaticInvokeExpr, RelationalBinaryOperator } from '../base/Expr';

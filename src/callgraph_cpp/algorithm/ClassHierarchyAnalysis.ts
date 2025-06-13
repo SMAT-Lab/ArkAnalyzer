@@ -13,17 +13,17 @@
  * limitations under the License.
  */
 
-import { ArkStaticInvokeExpr } from '../../core/base/Expr';
-import { Scene } from '../../Scene';
-import { Stmt } from '../../core/base/Stmt';
-import { ArkClass } from '../../core/model/ArkClass';
-import { NodeID } from '../../core/graph/BaseExplicitGraph';
+import { ArkStaticInvokeExpr } from '../../core_cpp/base/Expr';
+import { Scene } from '../../Scene_cpp';
+import { Stmt } from '../../core_cpp/base/Stmt';
+import { ArkClass } from '../../core_cpp/model/ArkClass';
+import { NodeID } from '../../core_cpp/graph/GraphTraits';
 import { CallGraph, CallSite } from '../model/CallGraph';
 import { AbstractAnalysis } from './AbstractAnalysis';
 import { CallGraphBuilder } from '../model/builder/CallGraphBuilder';
 
 export class ClassHierarchyAnalysis extends AbstractAnalysis {
-    constructor(scene: Scene, cg: CallGraph, cb: CallGraphBuilder) {
+    constructor(scene:Scene, cg: CallGraph, cb: CallGraphBuilder) {
         super(scene, cg);
         this.cgBuilder = cb;
     }

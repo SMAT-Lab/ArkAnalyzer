@@ -22,6 +22,7 @@ import {
     SceneConfig,
     Stmt,
 } from '../../src';
+// import {Scene} from '../../src/Scene_cpp';
 import { assert, expect } from 'vitest';
 
 export function buildScene(projectPath: string, needInferTypes: boolean = true) {
@@ -41,6 +42,7 @@ export function testFileStmts(scene: Scene, filePath: string, expectFileStmts: a
         assert.isDefined(arkFile);
         return;
     }
+    // @ts-ignore
     const methods = ModelUtils.getAllMethodsInFile(arkFile);
     for (const expectMethod of expectFileStmts.methods) {
         const expectMethodName = expectMethod.name;
@@ -69,6 +71,7 @@ export function testMethodStmts(scene: Scene, fileName: string, expectStmts: any
         assert.isDefined(stmts);
         return;
     }
+    // @ts-ignore
     assertStmtsEqual(stmts, expectStmts, assertPos);
 }
 
@@ -81,7 +84,50 @@ export function testBlocks(scene: Scene, filePath: string, methodName: string, e
         assert.isDefined(blocks);
         return;
     }
+    // @ts-ignore
     assertBlocksEqual(blocks, expectBlocks);
+}
+
+export function showTestBlocks(scene: Scene, filePath: string, methodName: string, expectBlocks: any[]): void {
+    const arkFile = scene.getFiles().find((file) => file.getName().endsWith(filePath));
+    const arkMethod = arkFile?.getDefaultClass().getMethods()
+        .find((method) => (method.getName() === methodName));
+    const blocks = arkMethod?.getCfg()?.getBlocks();
+    if (!blocks) {
+        assert.isDefined(blocks);
+        return;
+    }
+    // @ts-ignore
+    showCfgStmt(blocks, expectBlocks);
+}
+
+export function showCfgStmt(blocks: Set<BasicBlock>, expectBlocks: any[]): void {
+    const blockMap = new Map<number, BasicBlock>();
+    for (const block of blocks) {
+        blockMap.set(block.getId(), block);
+    }
+    blockMap.forEach((value:BasicBlock, key) => {
+       const block = blockMap.get(key);
+       const stmts: string[] = [];
+       // @ts-ignore
+        for (const stmt of block.getStmts()) {
+            stmts.push(stmt.toString());
+       }
+       console.log('this id is ', key);
+       console.log('stmts', stmts);
+       const preds: number[] = [];
+       // @ts-ignore
+        block.getPredecessors().forEach(predBlock => {
+            preds.push(predBlock.getId());
+        });
+       console.log('preds', preds);
+        const succes: number[] = [];
+        // @ts-ignore
+        block.getSuccessors().forEach(succBlock => {
+            succes.push(succBlock.getId());
+        });
+        console.log('succes', succes);
+    });
 }
 
 export function assertBlocksEqual(blocks: Set<BasicBlock>, expectBlocks: any[]): void {
@@ -117,6 +163,25 @@ export function assertBlocksEqual(blocks: Set<BasicBlock>, expectBlocks: any[]):
         });
         expect(succes).toEqual(expectBlocks[i].succes);
     }
+}
+
+export function assertClassBlocksEqual(method: any, expectBlocks: any[]) {
+    const blocks: Set<BasicBlock> = method?.getCfg()?.getBlocks();
+    if (!blocks) {
+        assert.isDefined(blocks);
+        return;
+    }
+    assertBlocksEqual(blocks, expectBlocks);
+}
+
+export function showClassBlocksEqual(method: any, expectBlocks: any[]) {
+    const blocks: Set<BasicBlock> = method?.getCfg()?.getBlocks();
+    if (!blocks) {
+        assert.isDefined(blocks);
+        return;
+    }
+    console.log('===============', method.getName(), '================');
+    showCfgStmt(blocks, expectBlocks);
 }
 
 export function assertStmtsEqual(stmts: Stmt[], expectStmts: any[], assertPos: boolean = true): void {

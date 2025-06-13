@@ -40,7 +40,7 @@ import {
     ArkStaticInvokeExpr
 } from '../base/Expr';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
-import { Scene } from '../../Scene';
+import { Scene } from '../../Scene_cpp';
 import { ArkClass } from '../model/ArkClass';
 import { findArkExport, ModelUtils } from './ModelUtils';
 import { ArkField, FieldCategory } from '../model/ArkField';

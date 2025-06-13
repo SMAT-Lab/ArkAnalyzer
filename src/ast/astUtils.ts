@@ -1,15 +1,14 @@
 import {spawnSync} from 'child_process';
 import * as fs from 'fs';
-import * path from "path";
+import * as path from "path";
 import * as os from "os";
 
-import Logger, {Logger_MODULE_TYPE} from '../utils/logger'
+import Logger, {LOG_MODULE_TYPE} from '../utils/logger'
 import {ClangPath} from "./const";
-import { de, en } from 'typedoc-plugin-markdown/dist/internationalization';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'astUtils');
 
-export class AstUitls{
+export class AstUtils {
     private static currentAccess:String = "public";
 
     public static parse(sourceFile: string): JSON | null{
@@ -17,12 +16,13 @@ export class AstUitls{
             logger.warn("parse file is not exists");
             return null;
         }
-        let clangPath: string = this.getPlatformClang();
+        let clangPath: string = this.getPlatformClang().toString();
         if (clangPath === ""){
             logger.warn("can not find clang path");
             return null;
         }
         let astPath = this.getAstOutputPath(sourceFile);
+
         let parseArguments: string[] = [sourceFile, '-o', astPath];
         this.ensureOutputDir(path.dirname(astPath));
 
@@ -134,7 +134,7 @@ export class AstUitls{
         }
     }
 
-    private static getPlatformClang(sourceFile:string): String{
+    private static getPlatformClang(): String{
         let platform = os.platform();
         switch (platform) {
             case "win32":

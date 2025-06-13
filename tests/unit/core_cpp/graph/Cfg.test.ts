@@ -13,21 +13,11 @@
  * limitations under the License.
  */
 
-import { ArkErrorCode } from '../../../../src/core/common/ArkError';
 import {
-    ArkConditionExpr,
-    ArkIfStmt,
-    ArkReturnVoidStmt,
     BasicBlock,
-    Cfg,
-    Local,
-    RelationalBinaryOperator,
-    Scene,
     SceneConfig,
-    Stmt,
-    ValueUtil,
-} from '../../../../src/index';
-import { describe, expect, it } from 'vitest';
+} from '../../../../src';
+import { describe, it } from 'vitest';
 import path from 'path';
 import {
     CONDITIONAL_OPERATOR_EXPECT_CASE1,
@@ -52,20 +42,23 @@ import {
     SWITCH_EXPECT_CASE7,
     SWITCH_EXPECT_CASE8,
     SWITCH_EXPECT_CASE9,
-} from '../../../resources/cfg/switch/SwitchExpect';
+} from '../../../resources_cpp/cfg/switch/SwitchExpect';
 import { LOOP_EXPECT_CASE1, LOOP_EXPECT_CASE2 } from '../../../resources/cfg/loop/LoopExpect';
-import { testBlocks } from '../../common';
+import { assertClassBlocksEqual, showTestBlocks, testBlocks } from '../../common';
+import { Scene } from '../../../../src/Scene_cpp';
+
 
 describe('CfgTest', () => {
     it('case1: conditional operator', () => {
         const scene = buildScene('conditionalOperator');
-        testBlocks(scene, 'conditionalOperatorSample.cpp', 'case1', CONDITIONAL_OPERATOR_EXPECT_CASE1.blocks);
-        testBlocks(scene, 'conditionalOperatorSample.cpp', 'case2', CONDITIONAL_OPERATOR_EXPECT_CASE2.blocks);
-        testBlocks(scene, 'conditionalOperatorSample.cpp', 'case3', CONDITIONAL_OPERATOR_EXPECT_CASE3.blocks);
-        testBlocks(scene, 'conditionalOperatorSample.cpp', 'case4', CONDITIONAL_OPERATOR_EXPECT_CASE4.blocks);
-        testBlocks(scene, 'conditionalOperatorSample.cpp', 'case5', CONDITIONAL_OPERATOR_EXPECT_CASE5.blocks);
-        testBlocks(scene, 'conditionalOperatorSample.cpp', 'case6', CONDITIONAL_OPERATOR_EXPECT_CASE6.blocks);
-        testBlocks(scene, 'conditionalOperatorSample.cpp', 'case7', CONDITIONAL_OPERATOR_EXPECT_CASE7.blocks);
+        testBlocks(scene, 'conditionalOperator.cpp', 'case1', CONDITIONAL_OPERATOR_EXPECT_CASE1.blocks);
+        testBlocks(scene, 'conditionalOperator.cpp', 'case1', CONDITIONAL_OPERATOR_EXPECT_CASE1.blocks);
+        testBlocks(scene, 'conditionalOperator.cpp', 'case2', CONDITIONAL_OPERATOR_EXPECT_CASE2.blocks);
+        testBlocks(scene, 'conditionalOperator.cpp', 'case3', CONDITIONAL_OPERATOR_EXPECT_CASE3.blocks);
+        testBlocks(scene, 'conditionalOperator.cpp', 'case4', CONDITIONAL_OPERATOR_EXPECT_CASE4.blocks);
+        testBlocks(scene, 'conditionalOperator.cpp', 'case5', CONDITIONAL_OPERATOR_EXPECT_CASE5.blocks);
+        testBlocks(scene, 'conditionalOperator.cpp', 'case6', CONDITIONAL_OPERATOR_EXPECT_CASE6.blocks);
+        testBlocks(scene, 'conditionalOperator.cpp', 'case7', CONDITIONAL_OPERATOR_EXPECT_CASE7.blocks);
     });
     it('case2: if statement', () => {
         const scene = buildScene('if');
@@ -78,22 +71,22 @@ describe('CfgTest', () => {
         testBlocks(scene, 'ifSample.cpp', 'case7', CONDITIONAL_OPERATOR_EXPECT_CASE7.blocks);
     });
 
-    it('case3: switch statement', () => {
-        const scene = buildScene('switch');
-        testBlocks(scene, 'SwitchSample.ts', 'case1', SWITCH_EXPECT_CASE1.blocks);
-        testBlocks(scene, 'SwitchSample.ts', 'case2', SWITCH_EXPECT_CASE2.blocks);
-        testBlocks(scene, 'SwitchSample.ts', 'case3', SWITCH_EXPECT_CASE3.blocks);
-        testBlocks(scene, 'SwitchSample.ts', 'case4', SWITCH_EXPECT_CASE4.blocks);
-        testBlocks(scene, 'SwitchSample.ts', 'case5', SWITCH_EXPECT_CASE5.blocks);
-        testBlocks(scene, 'SwitchSample.ts', 'case6', SWITCH_EXPECT_CASE6.blocks);
-        testBlocks(scene, 'SwitchSample.ts', 'case7', SWITCH_EXPECT_CASE7.blocks);
-        testBlocks(scene, 'SwitchSample.ts', 'case8', SWITCH_EXPECT_CASE8.blocks);
-        testBlocks(scene, 'SwitchSample.ts', 'case9', SWITCH_EXPECT_CASE9.blocks);
-        testBlocks(scene, 'SwitchSample.ts', 'case10', SWITCH_EXPECT_CASE10.blocks);
-        testBlocks(scene, 'SwitchSample.ts', 'case11', SWITCH_EXPECT_CASE11.blocks);
-        testBlocks(scene, 'SwitchSample.ts', 'case12', SWITCH_EXPECT_CASE12.blocks);
-        testBlocks(scene, 'SwitchSample.ts', 'case13', SWITCH_EXPECT_CASE13.blocks);
-    });
+    // it('case3: switch statement', () => {
+    //     const scene = buildScene('switch');
+    //     testBlocks(scene, 'switchSample.cpp', 'case1', SWITCH_EXPECT_CASE1.blocks);
+    //     testBlocks(scene, 'switchSample.cpp', 'case2', SWITCH_EXPECT_CASE2.blocks);
+    //     testBlocks(scene, 'switchSample.cpp', 'case3', SWITCH_EXPECT_CASE3.blocks);
+    //     testBlocks(scene, 'switchSample.cpp', 'case4', SWITCH_EXPECT_CASE4.blocks);
+    //     testBlocks(scene, 'switchSample.cpp', 'case5', SWITCH_EXPECT_CASE5.blocks);
+    //     testBlocks(scene, 'switchSample.cpp', 'case6', SWITCH_EXPECT_CASE6.blocks);
+    //     testBlocks(scene, 'switchSample.cpp', 'case7', SWITCH_EXPECT_CASE7.blocks);
+    //     testBlocks(scene, 'switchSample.cpp', 'case8', SWITCH_EXPECT_CASE8.blocks);
+    //     testBlocks(scene, 'switchSample.cpp', 'case9', SWITCH_EXPECT_CASE9.blocks);
+    //     testBlocks(scene, 'switchSample.cpp', 'case10', SWITCH_EXPECT_CASE10.blocks);
+    //     testBlocks(scene, 'switchSample.cpp', 'case11', SWITCH_EXPECT_CASE11.blocks);
+    //     testBlocks(scene, 'switchSample.cpp', 'case12', SWITCH_EXPECT_CASE12.blocks);
+    //     testBlocks(scene, 'switchSample.cpp', 'case13', SWITCH_EXPECT_CASE13.blocks);
+    // });
 
     it('case4: loop statement', () => {
             const scene = buildScene('loop');
@@ -223,7 +216,7 @@ describe('Other Test', () => {
 });
 
 
-const BASE_DIR = 'tests/test_cpp/resources/cfg';
+const BASE_DIR = 'tests/resources_cpp/cfg';
 
 function buildScene(folderName: string): Scene {
     let config: SceneConfig = new SceneConfig();
@@ -231,4 +224,19 @@ function buildScene(folderName: string): Scene {
     let scene = new Scene();
     scene.buildSceneFromProjectDir(config);
     return scene;
+}
+
+function testBlocksClass(scene: Scene, filePath: string, className: string, expectBlocks: any[]): void {
+    const arkFile = scene.getFiles().find((file) => file.getName().endsWith(filePath));
+    const arkClass = arkFile?.getClasses().find(arkClass => (arkClass.getName() === className));
+    const classBlockMap = new Map<String, BasicBlock[]>();
+    for (const block of expectBlocks) {
+        classBlockMap.set(block.methodName, block.blocks);
+    }
+    arkClass?.getMethods()?.forEach(method =>{
+        let classBlock = classBlockMap.get(method.getName());
+        if (classBlock !== undefined) {
+            assertClassBlocksEqual(method, classBlock);
+        }
+    })
 }

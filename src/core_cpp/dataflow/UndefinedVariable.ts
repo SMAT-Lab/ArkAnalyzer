@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { Scene } from '../../Scene';
+import { Scene } from '../../Scene_cpp';
 import { DataflowProblem, FlowFunction } from './DataflowProblem';
 import { Local } from '../base/Local';
 import { Value } from '../base/Value';

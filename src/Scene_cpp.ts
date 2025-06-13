@@ -17,36 +17,30 @@ import fs from 'fs';
 import path from 'path';
 
 import { SceneConfig, SceneOptions, Sdk, TsConfig } from './Config';
-import { initModulePathMap, ModelUtils } from './core/common/ModelUtils';
-import { TypeInference } from './core/common/TypeInference';
-import { VisibleValue } from './core/common/VisibleValue';
-
-import { ArkClass } from './core/model/ArkClass';
-import { ArkFile, Language } from './core/model/ArkFile';
-import { ArkMethod } from './core/model/ArkMethod';
-import { ArkNamespace } from './core/model/ArkNamespace';
-import { ClassSignature, FileSignature, MethodSignature, NamespaceSignature } from './core/model/ArkSignature';
+import { initModulePathMap, ModelUtils } from './core_cpp/common/ModelUtils';
+import { TypeInference } from './core_cpp/common/TypeInference';
+import { VisibleValue } from './core_cpp/common/VisibleValue';
+import { ArkClass } from './core_cpp/model/ArkClass';
+import { ArkFile, Language } from './core_cpp/model/ArkFile';
+import { ArkMethod } from './core_cpp/model/ArkMethod';
+import { ArkNamespace } from './core_cpp/model/ArkNamespace';
+import { ClassSignature, FileSignature, MethodSignature, NamespaceSignature } from './core_cpp/model/ArkSignature';
 import Logger, { LOG_MODULE_TYPE } from './utils/logger';
-import { Local } from './core/base/Local';
-import { buildArkFileFromFile } from './core/model/builder/ArkFileBuilder';
+import { Local } from './core_cpp/base/Local';
+import { buildArkFileFromFile } from './core_cpp/model/builder/ArkFileBuilder';
 import { fetchDependenciesFromFile, parseJsonText } from './utils/json5parser';
 import { getAllFiles } from './utils/getAllFiles';
 import { FileUtils, getFileRecursively } from './utils/FileUtils';
-import { ArkExport, ExportInfo, ExportType } from './core/model/ArkExport';
-import { addInitInConstructor, buildDefaultConstructor } from './core/model/builder/ArkMethodBuilder';
-import { DEFAULT_ARK_CLASS_NAME, STATIC_INIT_METHOD_NAME } from './core/common/Const';
-import { CallGraph } from './callgraph/model/CallGraph';
-import { CallGraphBuilder } from './callgraph/model/builder/CallGraphBuilder';
-
-import { CoreFactory } from './CoreFactory';
-
-
-
-import { IRInference } from './core/common/IRInference';
-import { ImportInfo } from './core/model/ArkImport';
-import { ALL, CONSTRUCTOR_NAME, TSCONFIG_JSON } from './core/common/TSConst';
-import { BUILD_PROFILE_JSON5, OH_PACKAGE_JSON5 } from './core/common/EtsConst';
-import { SdkUtils } from './core/common/SdkUtils';
+import { ArkExport, ExportInfo, ExportType } from './core_cpp/model/ArkExport';
+import { addInitInConstructor, buildDefaultConstructor } from './core_cpp/model/builder/ArkMethodBuilder';
+import { DEFAULT_ARK_CLASS_NAME, STATIC_INIT_METHOD_NAME } from './core_cpp/common/Const';
+import { CallGraph } from './callgraph_cpp/model/CallGraph';
+import { CallGraphBuilder } from './callgraph_cpp/model/builder/CallGraphBuilder';
+import { IRInference } from './core_cpp/common/IRInference';
+import { ImportInfo } from './core_cpp/model/ArkImport';
+import { ALL, CONSTRUCTOR_NAME, TSCONFIG_JSON } from './core_cpp/common/TSConst';
+import { BUILD_PROFILE_JSON5, OH_PACKAGE_JSON5 } from './core_cpp/common/EtsConst';
+import { SdkUtils } from './core_cpp/common/SdkUtils';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'Scene');
 
@@ -1480,4 +1474,11 @@ export class ModuleScene {
             }
         });
     }
+}
+
+// 获取CPP的scene结构
+export function buildCPPScene(config: SceneConfig): Scene {
+    let scene = new Scene();
+    scene.buildSceneFromProjectDir(config);
+    return scene;
 }
