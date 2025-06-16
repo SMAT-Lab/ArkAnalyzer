@@ -796,6 +796,7 @@ int main(int argc, char **argv){
     filterVarDeclArrayDims(ast);
     collectLabelStmt(ast, labelNameToId);
     patchGotoTarget(ast, labelNameToId);
+    fixCallExprChildKind(ast);
     std::cout<< "AST built successfully\n";
     std::ofstream(output_file) << ast.dump(-1, ' ', false, json::error_handler_t::replace);
     std::cout << "AST written to: "<< output_file << std::endl;
