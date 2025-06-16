@@ -10,6 +10,7 @@
 #include <vector>
 #include <set>
 #include <algorithm>
+$include <regex>
 
 using json = nlohmann::json;
 namespace fs = std::filesystem;
@@ -388,6 +389,34 @@ void patchPseudoDestructorExpr(json &node){
     }
 }
 
+void patchFoldExpr(json &node){
+    if (node.contains("inner") && node["inner"].is_array()){
+        for (auto &child: node["inner"]){
+            patchFoldExpr(child);
+        }
+    }
+    if (node.contains("code") && node.contains("kind") && node["kind"] == "ImplicitCaseExpr") {
+        std::string code = node["code"];
+        // 只判断常见的 "(... <op> ars)"
+        std::smatch m;
+        static std::regex fold_regex(R"(\(\.\.\.\s*([+\-*/&|^])\s*([a-zA-Z0-9_]+)\))");
+        if (std::regex_match(code, m, fold_regex)){
+            std::string op = m[1];
+            std::string var = m[2];
+            json foldExpr;
+            foldExpr["kind"] = "CXXFoldExpr";
+            foldExpr["op"] = op;
+            foldExpr["pattern"] = "left";
+            foldExpr["code"] = code;
+            foldExpr["inner"] = node["inner"];
+            foldExpr["range"] = node["range"];
+            foldExpr["type"] = node["type"];
+            fold["valueCategory"] = node.value("valueCategory", "prvalue");
+            node = foldExpr;
+        }
+    }
+}
+
 void filterVarDeclArrayDims(json &node){
     if (node.contains("kind") && node["kind"] == "VarDecl" &&
         node.contains("type") && node["type"].contains("qualType")){
@@ -616,6 +645,17 @@ json buildASTJson(CXCursor cursor){
         } else {
             node["kind"] = kindSpelling;
         }
+    } else if (kind_cursor == CXCursor_CXXMethod){
+              node["kind"] = "CXXMethodDecl";
+              node["mangledName"] = getMemberInClassName(cursor);
+          } else if (kind_cursor == CXCursor_Constructor){
+              node["kind"] = "CXXConstructorDecl";
+              node["mangledName"] = getMemberInClassName(cursor);
+          } else if (kind_cursor == CXCursor_Destructor){
+              node["kind"] = "CXXDestructorDecl";
+              node["mangledName"] = getMemberInClassName(cursor);
+          } else {
+              node["kind"] = kindSpelling;
     }
 
     if (kind_cursor == CXCursor_VarDecl){
@@ -797,6 +837,7 @@ int main(int argc, char **argv){
     collectLabelStmt(ast, labelNameToId);
     patchGotoTarget(ast, labelNameToId);
     fixCallExprChildKind(ast);
+    patchFoldExpr(ast);
     std::cout<< "AST built successfully\n";
     std::ofstream(output_file) << ast.dump(-1, ' ', false, json::error_handler_t::replace);
     std::cout << "AST written to: "<< output_file << std::endl;
