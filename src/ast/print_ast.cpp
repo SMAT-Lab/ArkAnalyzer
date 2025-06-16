@@ -196,10 +196,37 @@ bool constructCallExpr(std::string codeStr, std::string typeStr){
 }
 
 bool templateConstructCallExpr(std::string nameStr, std::string typeStr){
+    if (nameStr.empty()) return false;
     if (typeStr.find(nameStr) == 0 && typeStr.find('<') != std::string::npos && typeStr.find('>') != std::string::npos){
         return true;
     }
     return false;
+}
+
+void fixCallExprChildKind(json &node){
+    if (node.contains("inner") && node["inner"].is_array()) {
+        for (auto &child : node["inner"]){
+        fixCallExprChildKind(child);
+        }
+    }
+    if (node.is_object() && node.contains("kind") && node["kind"] == "CallExpr" && node.contains("inner") &&
+    node["inner"].is_array() && !node["inner"].empty()){
+        auto &child = node["inner"][0];
+        std::string code  = child.value("code", "");
+        if (!child.contains("kind") || child["kind"].is_null() || child["kind"] == "") {
+            if (child.contains("referencedDecl") && child["referencedDecl"].contains("kind") &&
+            !child["referencedDecl"]["kind"].is_null()){
+                child["kind"] = child["referencedDecl"]["kind"];
+            } else if (code.find('.') != std::string::npos || code.find("->") != std::string::npos) {
+                child["kind"] = "MemberExpr";
+            } else if (child.contains("referencedDecl") && child["referencedDecl"].contains("kind") &&
+            child["referencedDecl"]["kind"] == "OverloadedDeclRef") {
+                child["kind"] = "OverloadedDeclRef";
+            } else {
+                child["kind"] = "DeclRefExpr";
+            }
+        }
+    }
 }
 
 void changeChildNodeType(json &children){
@@ -469,9 +496,14 @@ bool isConstructorByNameStr(std::string nameStr){
 }
 
 bool isConstructorByCodeStr(std::string codeStr, std::string nameStr, std::string typeStr){
-    return typeStr == nameStr || (typeStr == "iterator" && codeStr.find(".find") != std::string::npos) ||
-    (codeStr.find("]") != std::string::npos && nameStr == "basic_string") || codeStr.find("std::string") == 0 ||
-    constructCallExpr(codeStr,typeStr) || templateConstructCallExpr(nameStr, typeStr);
+        bool cond1 = (typeStr == nameStr);
+        bool cond2 = (typeStr == "iterator" && codeStr.find(".find") != std::string::npos);
+        bool cond3 = (codeStr.find("]") != std::string::npos && nameStr == "basic_string");
+        bool cond4 = (codeStr.find("std::string") == 0);
+        bool cond5 = constructCallExpr(codeStr, typeStr);
+        bool cond6 = templateConstructCallExpr(nameStr, typeStr);
+        bool result = cond1 || cond2 || cond3 || cond4 || cond5 || cond6;
+        return result;
 }
 
 std::vector<CXCursorKind> locCursorKind = {CXCursor_FunctionDecl, CXCursor_ClassDecl, CXCursor_Destructor, CXCursor_TemplateTypeParameter,
@@ -573,29 +605,17 @@ json buildASTJson(CXCursor cursor){
         node["kind"] = "MemberExpr";
         fillMemberName(node, displayName);
     } else if (kind_cursor == CXCursor_CallExpr){
-        if (typeStr.find("basic_ostream") == 0 ||
-            nameStr.find("operator") != std::string::npos){
+        if (typeStr.find("basic_ostream") == 0 || nameStr.find("operator") != std::string::npos){
             node["kind"] = "CXXOperatorCallExpr";
+        } else if (isConstructorByTypeStr(typeStr) || isConstructorByNameStr(nameStr) ||
+                       isConstructorByCodeStr(codeStr, nameStr, typeStr)){
+            node["kind"] = "CXXConstructExpr";
         } else if ((codeStr.find(".") != std::string::npos || codeStr.find("->") != std::string::npos) &&
                     nameStr.find("operator") == std::string::npos && codeStr.find(nameStr)!=0){
-                        node["kind"] = "CXXMemberCallExpr";
-        } else if (isConstructorByTypeStr(typeStr) || isConstructorByNameStr(nameStr) ||
-        isConstructorByCodeStr(codeStr, nameStr, typeStr)){
-            node["kind"] = "CXXConstructExpr";
+                    node["kind"] = "CXXMemberCallExpr";
         } else {
             node["kind"] = kindSpelling;
         }
-    } else if (kind_cursor == CXCursor_CXXMethod){
-        node["kind"] = "CXXMethodDecl";
-        node["mangledName"] = getMemberInClassName(cursor);
-    } else if (kind_cursor == CXCursor_Constructor){
-        node["kind"] = "CXXConstructorDecl";
-        node["mangledName"] = getMemberInClassName(cursor);
-    } else if (kind_cursor == CXCursor_Destructor){
-        node["kind"] = "CXXDestructorDecl";
-        node["mangledName"] = getMemberInClassName(cursor);
-    } else {
-        node["kind"] = kindSpelling;
     }
 
     if (kind_cursor == CXCursor_VarDecl){
