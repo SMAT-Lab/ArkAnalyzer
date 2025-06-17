@@ -10,7 +10,7 @@
 #include <vector>
 #include <set>
 #include <algorithm>
-$include <regex>
+#include <regex>
 
 using json = nlohmann::json;
 namespace fs = std::filesystem;
