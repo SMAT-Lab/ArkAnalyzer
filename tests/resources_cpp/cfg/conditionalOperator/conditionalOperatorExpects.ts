@@ -29,7 +29,7 @@ export const CONDITIONAL_OPERATOR_EXPECT_CASE2 = {
             preds: [],
             succes: [ 1, 2 ]
         },
-        { id: 1, stmts: [ 'j = k = i' ], preds: [ 0 ], succes: [ 3 ] },
+        { id: 1, stmts: [ 'k = i', 'j = k' ], preds: [ 0 ], succes: [ 3 ] },
         { id: 2, stmts: [ 'j = -i' ], preds: [ 0 ], succes: [ 3 ] },
         { id: 3, stmts: [ 'return j' ], preds: [ 1, 2 ], succes: [] }
     ]

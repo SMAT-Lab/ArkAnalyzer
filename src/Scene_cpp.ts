@@ -32,7 +32,11 @@ import { fetchDependenciesFromFile, parseJsonText } from './utils/json5parser';
 import { getAllFiles } from './utils/getAllFiles';
 import { FileUtils, getFileRecursively } from './utils/FileUtils';
 import { ArkExport, ExportInfo, ExportType } from './core_cpp/model/ArkExport';
-import { addInitInConstructor, buildDefaultConstructor } from './core_cpp/model/builder/ArkMethodBuilder';
+import {
+    addInitInConstructor,
+    addInitInConstructorByArkClass,
+    buildDefaultConstructor,
+} from './core_cpp/model/builder/ArkMethodBuilder';
 import { DEFAULT_ARK_CLASS_NAME, STATIC_INIT_METHOD_NAME } from './core_cpp/common/Const';
 import { CallGraph } from './callgraph_cpp/model/CallGraph';
 import { CallGraphBuilder } from './callgraph_cpp/model/builder/CallGraphBuilder';
@@ -288,7 +292,7 @@ export class Scene {
                 buildDefaultConstructor(cls);
                 const constructor = cls.getMethodWithName(CONSTRUCTOR_NAME);
                 if (constructor !== null) {
-                    addInitInConstructor(constructor);
+                    addInitInConstructorByArkClass(cls);
                 }
             }
         }
@@ -296,29 +300,20 @@ export class Scene {
 
     private buildAllMethodBody(): void {
         this.buildStage = SceneBuildStage.CLASS_DONE;
-        const methods: ArkMethod[] = [];
         for (const file of this.getFiles()) {
             for (const cls of file.getClasses()) {
                 for (const method of cls.getMethods(true)) {
-                    methods.push(method);
+                    method.buildBody();
+                    method.freeBodyBuilder();
                 }
             }
         }
         for (const namespace of this.getNamespacesMap().values()) {
             for (const cls of namespace.getClasses()) {
                 for (const method of cls.getMethods(true)) {
-                    methods.push(method);
+                    method.buildBody();
+                    method.freeBodyBuilder();
                 }
-            }
-        }
-
-        for (const method of methods) {
-            try {
-                method.buildBody();
-            } catch (error) {
-                logger.error('Error building body:', method.getSignature(), error);
-            } finally {
-                method.freeBodyBuilder();
             }
         }
 

@@ -456,6 +456,28 @@ export function buildInitMethod(initMethod: ArkMethod, fieldInitializerStmts: St
     initMethod.setBody(new ArkBody(locals, cfg));
 }
 
+export function addInitInConstructorByArkClass(arkClass: ArkClass): void {
+    for (const method of arkClass.getMethods(true)) {
+        if (method.getName() === CONSTRUCTOR_NAME) {
+            const thisLocal = method.getBody()?.getLocals().get(THIS_NAME);
+            if (!thisLocal) {
+                continue;
+            }
+            const initInvokeStmt = new ArkInvokeStmt(new ArkInstanceInvokeExpr(thisLocal, arkClass.getInstanceInitMethod().getSignature(), []));
+            const blocks = method.getCfg()?.getBlocks();
+            if (!blocks){
+                continue;
+            }
+            const firstBlockStmts = [...blocks][0].getStmts();
+            let index = 0;
+            if (firstBlockStmts[0].getDef() instanceof Local && (firstBlockStmts[0].getDef() as Local).getName() === THIS_NAME) {
+                index = 1;
+            }
+            firstBlockStmts.splice(index, 0, initInvokeStmt);
+        }
+    }
+}
+
 export function addInitInConstructor(constructor: ArkMethod): void {
     const thisLocal = constructor.getBody()?.getLocals().get(THIS_NAME);
     if (!thisLocal) {

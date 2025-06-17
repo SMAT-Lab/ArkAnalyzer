@@ -18,7 +18,7 @@ export function findProjectRoot(startDIr: string = __dirname): string {
 const projectRoot = findProjectRoot(__dirname);
 
 function getPrintAstExePath():string {
-    let printAstExePath = path.join(projectRoot, 'src','ast','print_ast.exe');
+    let printAstExePath = path.join('D:\\arkanalyzer\\ast\\build\\Release','print_ast.exe');
     if (!fs.existsSync(printAstExePath)) {
         printAstExePath = path.join(projectRoot, 'lib','ast','print_ast.exe');
     }

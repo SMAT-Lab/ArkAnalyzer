@@ -99,8 +99,9 @@ l2:
     j = 2;
     goto exit;
 exit:
-    return 0;
+    return j;
 }
+
 int case6()
 {
     int num = 1;

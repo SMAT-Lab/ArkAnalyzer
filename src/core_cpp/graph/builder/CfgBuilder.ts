@@ -100,8 +100,8 @@ export class SwitchStatementBuilder extends StatementBuilder {
 export class TryStatementBuilder extends StatementBuilder {
     tryFirst: StatementBuilder | null = null;
     tryExit: StatementBuilder | null = null;
-    catchStatement: any[] = null;
-    catchError: any[] = '';
+    catchStatement: any[] = [];
+    catchError: any[] = [];
     finallyStatement: StatementBuilder | null = null;
     afterFinal: StatementBuilder | null = null;
 
@@ -424,7 +424,7 @@ export class CfgBuilder {
         }
         if (node.kind === 'CaseStmt') {
             for (let i = 0; i < node.inner.length; i++) {
-                let isCaseOrDefault = node.inner[i].kine === 'CaseStmt' || node.inner[i].kine === 'DefaultStmt';
+                let isCaseOrDefault = node.inner[i].kind === 'CaseStmt' || node.inner[i].kind === 'DefaultStmt';
                 if (isCaseOrDefault) {
                     let caseClause = JSON.parse(JSON.stringify(node));
                     caseClause.inner = caseClause.inner.slice(0, i);
@@ -656,7 +656,7 @@ export class CfgBuilder {
             if (catchBlock.inner && catchBlock.inner[0].id === '0x0') {
                 catchBlock.inner[0].kind = 'catch_all_exception';
             }
-            this.walkAST(catchOrNot, catchExit, [catchBlock.inner]);
+            this.walkAST(catchOrNot, catchExit, catchBlock.inner);
             if (!catchOrNot.nextT) {
                 catchOrNot.nextT = catchExit;
                 catchExit.lasts.add(catchOrNot);
@@ -1150,15 +1150,6 @@ export class CfgBuilder {
         mes += '\n' + stmt.code;
         throw new TextError(mes);
     }
-
-    buildStatementBuilder4ArrowFunction(stmt: ts.Node): void {
-        let s = new StatementBuilder('statement', stmt.getText(this.sourceFile), stmt, 0);
-        this.entry.next = s;
-        s.lasts = new Set([this.entry]);
-        s.next = this.exit;
-        this.exit.lasts = new Set([s]);
-    }
-
     getFuncBodyStmt() {
         let stmts: ts.Node[] = [];
         if (this.astRoot.inner) {
@@ -1176,7 +1167,7 @@ export class CfgBuilder {
         let stmts: ts.Node[] = [];
         if (this.astRoot.kind.toString() === 'TranslationUnit') {
             stmts = [...this.astRoot.inner];
-        } else if (['FunctionDecl', 'CXXMethodDecl', 'CXXConstructorDecl', 'LambdaExpr'].includes(this.astRoot.kind.toString())) {
+        } else if (['FunctionDecl', 'CXXMethodDecl', 'CXXConstructorDecl', 'LambdaExpr', 'FunctionTemplate'].includes(this.astRoot.kind.toString())) {
             stmts = this.getFuncBodyStmt();
         }
         if (!ModelUtils.isArkUIBuilderMethod(this.declaringMethod)) {
@@ -1218,7 +1209,7 @@ export class CfgBuilder {
         aliasTypeMap: Map<string, [AliasType, ArkAliasTypeDefineStmt]>;
         traps: Trap[];
     } {
-        if (this.astRoot.kind.toString() === 'LambdaExpr' && this.astRoot.inner[this.astRoot.inner.length - 1].kind.toString() === 'CompoundStmt') {
+        if (this.astRoot.kind.toString() === 'LambdaExpr' && this.astRoot.inner[this.astRoot.inner.length - 1].kind.toString() !== 'CompoundStmt') {
             return this.buildCfgForSimpleArrowFunction();
         }
 
