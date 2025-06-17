@@ -112,6 +112,16 @@ int queueTest()
     return 0;
 }
 
+// deque
+int dequeTest() {
+    deque<int> dq;
+    dq.push_back(1);
+    dq.push_front(2);
+    cout<< dq.front();
+    dq.pop_front();
+    return 0;
+}
+
 // stack
 int stackTest()
 {

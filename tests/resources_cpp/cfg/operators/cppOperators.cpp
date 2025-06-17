@@ -16,7 +16,7 @@ int arithmeticOperator()
 }
 
 // 关系运算符和逻辑运算符
-int relationAndLogicOperator()
+int relationOperator()
 {
     int a = -1;
     int b = 1;
@@ -44,7 +44,7 @@ int relationAndLogicOperator()
 }
 
 // 复合赋值运算符
-void compoentOperator()
+void componentOperator()
 {
     int a = -1;
     a += 1;

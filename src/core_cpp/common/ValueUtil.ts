@@ -13,11 +13,20 @@
  * limitations under the License.
  */
 
-import { BigIntConstant, BooleanConstant, Constant, NullConstant, NumberConstant, StringConstant, UndefinedConstant } from '../base/Constant';
+import {
+    BigIntConstant,
+    BooleanConstant,
+    Constant,
+    NullConstant,
+    NullPtrConstant,
+    NumberConstant,
+    StringConstant,
+    UndefinedConstant,
+} from '../base/Constant';
 
 export const EMPTY_STRING = '';
 
-const charPrefixType = ["L\"","L\'","u\"","u\'","U\"","U\'", ]
+const charPrefixType = ["L\"","L\'","u\"","u\'","U\"","U\'"]
 
 export class ValueUtil {
     private static readonly NumberConstantCache: Map<number, Constant> = new Map();
@@ -70,6 +79,6 @@ export class ValueUtil {
     }
 
     public static getNullPtrConstant():Constant {
-        return NullConstant.getInstance();
+        return NullPtrConstant.getInstance();
     }
 }

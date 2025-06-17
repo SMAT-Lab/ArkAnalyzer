@@ -33,7 +33,7 @@ int case2()
 int case3()
 {
     int x = 0;
-    int y = 1;
+    int y = 0;
     y = ++x ?: 3;
     return y;
 }
@@ -41,7 +41,7 @@ int case3()
 int case4()
 {
     int x = 0;
-    int y = 1;
+    int y = 0;
     y = x++ ?: 3;
     return y;
 }

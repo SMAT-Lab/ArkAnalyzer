@@ -240,7 +240,7 @@ export class ArkValueTransformer {
                 return this.tsNodeToValueAndStmts(node.inner[0]);
             }
             return this.newExpressionToValueAndStmts(node);
-        } else if (node.kind === 'CXThisExpr') {
+        } else if (node.kind === 'CXXThisExpr') {
             return this.thisExpressionToValueAndStmts(node);
         } else if (node.kind === 'IntegerLiteral') {
             return this.literalNodeToValueAndStmts(node) as ValueAndStmts;
@@ -803,7 +803,7 @@ export class ArkValueTransformer {
         const stmts: Stmt[] = [];
         for (let innerNode of callExpression.inner) {
             if (innerNode.kind === 'CXXOperatorCallExpr' || innerNode.kind === 'MaterializeTemporaryExpr' || innerNode.kind === 'CXXBindTemporaryExpr' ||
-                innerNode.kind === 'CXXConstructExpr' || (innerNode.kind === 'ImplicitCastExpr' && innerNode.kind === 'FunctionToPointerDecay')) {
+                innerNode.kind === 'CXXConstructExpr' || (innerNode.kind === 'ImplicitCastExpr' && innerNode.castKind !== 'FunctionToPointerDecay')) {
                 innerStmts.push(...this.cxxOperatorExpressionToValueAndStmts(innerNode, false));
             } else if (innerNode.kind === 'DeclRefExpr') {
                 innerStmts.push(this.identifierToValueAndStmts(innerNode));
@@ -1161,7 +1161,7 @@ export class ArkValueTransformer {
         const elementTypes: Set<Type> = new Set();
         const elementValues: Value[] = [];
         const elementPositions: FullPosition[] = [];
-        const arrayLength = arrayLiteralExpression.elements.length;
+        const arrayLength = arrayLiteralExpression.inner.length;
         this.getArrayLiteralExpression(arrayLiteralExpression, stmts, elementTypes, elementValues, elementPositions);
         let baseType: Type = this.resolveTypeNode(arrayLiteralExpression.type.qualType);
         if (baseType === UnknownType.getInstance()) {
@@ -1183,7 +1183,7 @@ export class ArkValueTransformer {
     }
 
     private getArrayLiteralExpression(arrayLiteralExpression: any, stmts: Stmt[], elementTypes: Set<Type>, elementValues: Value[], elementPositions: FullPosition[]) {
-        for (const element of arrayLiteralExpression.elements) {
+        for (const element of arrayLiteralExpression.inner) {
             let { value: elementValue, valueOriginalPositions: elementPosition, stmts: elementStmts } = this.tsNodeToValueAndStmts(element);
             elementStmts.forEach(stmt => stmts.push(stmt));
             if (IRUtils.moreThanOneAddress(elementValue)) {
@@ -1570,13 +1570,13 @@ export class ArkValueTransformer {
                 constant = ValueUtil.getOrCreateNumberConst(parseFloat(literalNode.value));
                 break;
             case 'StringLiteral':
-                constant = ValueUtil.createBigIntConst(literalNode.value);
+                constant = ValueUtil.createStringConst(literalNode.value);
                 break;
             case 'CXXBoolLiteralExpr':
-                constant = ValueUtil.createStringConst(literalNode.value);
+                constant = ValueUtil.getBooleanConstant(literalNode.value);
                 break;
             case 'CharacterLiteral':
-                constant = ValueUtil.createStringConst(literalNode.value);
+                constant = ValueUtil.createStringConst(literalNode.code);
                 break;
             case 'FloatingLiteral':
                 constant = ValueUtil.getOrCreateNumberConst(parseFloat(literalNode.code))
@@ -1630,7 +1630,7 @@ export class ArkValueTransformer {
     }
     public resolveTypeNode(qualType: string): Type {
         if (qualType.includes('[') && qualType.includes(']')) {
-            const matches = qualType.match('/\[/g');
+            const matches = qualType.match(/\[/g);
             const count = matches ? matches.length : 0;
             let baseType = cppNode2Type(qualType.slice(0, qualType.indexOf('[')), null, this.declaringMethod);
             if (baseType instanceof UnclearReferenceType) {

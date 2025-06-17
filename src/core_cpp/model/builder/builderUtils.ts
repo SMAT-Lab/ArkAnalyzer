@@ -241,7 +241,7 @@ export function buildParameters(params: any, arkInstance: ArkMethod | ArkField, 
         }
         // type
         if (parameter.type) {
-            methodParameter.setType(buildGenericType(cppNode2Type(parameter.type, sourceFile, arkInstance), arkInstance));
+            methodParameter.setType(buildGenericType(cppNode2Type(parameter.type.qualType, sourceFile, arkInstance), arkInstance));
         } else {
             methodParameter.setType(UnknownType.getInstance());
         }

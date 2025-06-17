@@ -109,7 +109,7 @@ export function buildNormalArkClassFromArkFile(
     cls.setDeclaringArkFile(arkFile);
     cls.setCode(clsNode.code);
     if (clsNode.range.begin){
-        cls.setLine(clsNode.range.begin,line);
+        cls.setLine(clsNode.range.begin.line);
         cls.setColumn(clsNode.range.begin.col);
     }
     buildNormalArkClass(clsNode, cls, sourceFile, declaringMethod);
@@ -262,26 +262,39 @@ function genAnonymousClassName(clsNode: ClassLikeNode, cls:ArkClass, declaringMe
     return anonymousClassName;
 }
 
-function buildClass2ArkClass(clsNode: ts.ClassDeclaration | ts.ClassExpression, cls: ArkClass, sourceFile: ts.SourceFile, declaringMethod?: ArkMethod): void {
-    const className = genClassName(clsNode.name ? clsNode.name.text : '', cls, declaringMethod);
+function buildClass2ArkClass(clsNode: any, cls: ArkClass, sourceFile: any, declaringMethod?: ArkMethod): void {
+    const className = clsNode.name ? clsNode.name : '';
     const classSignature = new ClassSignature(className, cls.getDeclaringArkFile().getFileSignature(), cls.getDeclaringArkNamespace()?.getSignature() || null);
     cls.setSignature(classSignature);
 
-    if (clsNode.typeParameters) {
-        buildTypeParameters(clsNode.typeParameters, sourceFile, cls).forEach(typeParameter => {
-            cls.addGenericType(typeParameter);
-        });
+    if (clsNode.inner) {
+        processCXXConstructor(clsNode, cls);
     }
 
-    initHeritage(buildHeritageClauses(clsNode.heritageClauses), cls);
-
-    cls.setModifiers(buildModifiers(clsNode));
-    cls.setDecorators(buildDecorators(clsNode, sourceFile));
+    if (clsNode.bases) {
+        let key = clsNode.bases[0].type.qualType;
+        cls.addHeritageClassName(key);
+    }
 
     cls.setCategory(ClassCategory.CLASS);
     init4InstanceInitMethod(cls);
     init4StaticInitMethod(cls);
     buildArkClassMembers(clsNode, cls, sourceFile);
+}
+
+function processCXXConstructor(claNode: any, cls: ArkClass) {
+    for (let i = 0; i< claNode.inner.length; i++) {
+        if (claNode.inner[i].kind === 'CXXConstructorDecl' && claNode.inner[i].inner) {
+            let innerList = claNode.inner[i].inner;
+            for (let j = 0; j< innerList.length; j++) {
+                if (innerList[j].kind === 'CXXConstructorDecl' && innerList[j].baseIniat && innerList[j].baseInit.qualType) {
+                    let superClassName = innerList[j].baseInit.qualType;
+                    cls.addHeritageClassName(superClassName);
+                    return;
+                }
+            }
+        }
+    }
 }
 
 function initHeritage(heritageClauses: Map<string, string>, cls: ArkClass): void {
@@ -350,38 +363,24 @@ function genClassName(declaringName: string, cls: ArkClass, declaringMethod?: Ar
     return declaringName + suffix;
 }
 
-function buildArkClassMembers(clsNode: ClassLikeNode, cls: ArkClass, sourceFile: ts.SourceFile): void {
-    if (ts.isObjectLiteralExpression(clsNode)) {
-        return;
-    }
+function buildArkClassMembers(clsNode: any, cls: ArkClass, sourceFile: any): void {
     buildMethodsForClass(clsNode, cls, sourceFile);
-    const staticBlockMethodSignatures = buildStaticBlocksForClass(clsNode, cls, sourceFile);
     let instanceIRTransformer: ArkIRTransformer;
     let staticIRTransformer: ArkIRTransformer;
-    if (ts.isClassDeclaration(clsNode) || ts.isClassExpression(clsNode) || ts.isStructDeclaration(clsNode)) {
+    if (clsNode.tagUsed.toString() === 'class' || clsNode.tagUsed.toString() === 'struct' || clsNode.tagUsed.toString() === 'union') {
         instanceIRTransformer = new ArkIRTransformer(sourceFile, cls.getInstanceInitMethod());
         staticIRTransformer = new ArkIRTransformer(sourceFile, cls.getStaticInitMethod());
     }
-    if (ts.isEnumDeclaration(clsNode)) {
+    if (clsNode.tagUsed.toString() === 'enum') {
         staticIRTransformer = new ArkIRTransformer(sourceFile, cls.getStaticInitMethod());
     }
     const staticInitStmts: Stmt[] = [];
     const instanceInitStmts: Stmt[] = [];
     let staticBlockId = 0;
-    clsNode.members.forEach(member => {
-        if (
-          ts.isMethodDeclaration(member) ||
-          ts.isConstructorDeclaration(member) ||
-          ts.isMethodSignature(member) ||
-          ts.isConstructSignatureDeclaration(member) ||
-          ts.isAccessor(member) ||
-          ts.isCallSignatureDeclaration(member)
-        ) {
-            // these node types have been handled at the beginning of this function by calling buildMethodsForClass
-            return;
-        } else if (ts.isPropertyDeclaration(member) || ts.isPropertySignature(member)) {
+    clsNode.inner.forEach((member: any) => {
+        if (member.kind === 'FieldDecl' || member.kind === 'VarDecl') {
             const arkField = buildProperty2ArkField(member, sourceFile, cls);
-            if (ts.isClassDeclaration(clsNode) || ts.isClassExpression(clsNode) || ts.isStructDeclaration(clsNode)) {
+            if (clsNode.kind === 'CXXRecordDecl' && (clsNode.tagUsed === 'class' || clsNode.tagUsed === 'struct')) {
                 if (arkField.isStatic()) {
                     getInitStmts(staticIRTransformer, arkField, member.initializer);
                     arkField.getInitializer().forEach(stmt => staticInitStmts.push(stmt));
@@ -393,20 +392,18 @@ function buildArkClassMembers(clsNode: ClassLikeNode, cls: ArkClass, sourceFile:
                     arkField.getInitializer().forEach(stmt => instanceInitStmts.push(stmt));
                 }
             }
-        } else if (ts.isEnumMember(member)) {
+        } else if (member.kind === 'VarDecl') {
+            const arkField = buildProperty2ArkField(member, sourceFile, cls);
+            if (arkField.isStatic()) {
+                getInitStmts(staticIRTransformer, arkField, member.initializer);
+                arkField.getInitializer().forEach(stmt => staticInitStmts.push(stmt));
+            }
+        } else if (member.kind === 'EnumConstantDecl') {
             const arkField = buildProperty2ArkField(member, sourceFile, cls);
             getInitStmts(staticIRTransformer, arkField, member.initializer);
             arkField.getInitializer().forEach(stmt => staticInitStmts.push(stmt));
-        } else if (ts.isIndexSignatureDeclaration(member)) {
-            buildIndexSignature2ArkField(member, sourceFile, cls);
-        } else if (ts.isClassStaticBlockDeclaration(member)) {
-            const currStaticBlockMethodSig = staticBlockMethodSignatures[staticBlockId++];
-            const staticBlockInvokeExpr = new ArkStaticInvokeExpr(currStaticBlockMethodSig, []);
-            staticInitStmts.push(new ArkInvokeStmt(staticBlockInvokeExpr));
-        } else if (ts.isSemicolonClassElement(member)) {
-            logger.trace('Skip these members.');
         } else {
-            logger.warn(`Please contact developers to support new member in class: ${cls.getSignature().toString()}, member: ${member.getText()}!`);
+            logger.warn('Please contact developers to support new member type!');
         }
     });
     if (ts.isClassDeclaration(clsNode) || ts.isClassExpression(clsNode) || ts.isStructDeclaration(clsNode)) {
@@ -418,55 +415,14 @@ function buildArkClassMembers(clsNode: ClassLikeNode, cls: ArkClass, sourceFile:
     }
 }
 
-function buildMethodsForClass(clsNode: ClassLikeNodeWithMethod, cls: ArkClass, sourceFile: ts.SourceFile): void {
-    clsNode.members.forEach(member => {
-        if (
-            ts.isMethodDeclaration(member) ||
-            ts.isConstructorDeclaration(member) ||
-            ts.isMethodSignature(member) ||
-            ts.isConstructSignatureDeclaration(member) ||
-            ts.isAccessor(member) ||
-            ts.isCallSignatureDeclaration(member)
-        ) {
-            let mthd: ArkMethod = new ArkMethod();
-            buildArkMethodFromArkClass(member, cls, mthd, sourceFile);
-            if (ts.isGetAccessor(member)) {
-                buildGetAccessor2ArkField(member, mthd, sourceFile);
-            } else if (ts.isConstructorDeclaration(member)) {
-                buildParameterProperty2ArkField(member.parameters, cls, sourceFile);
-            }
+function buildMethodsForClass(clsNode: any, cls: ArkClass, sourceFile: any): void {
+    clsNode.inner.forEach((member: any) => {
+        if (member.kind.toString() === 'CXXMethodDecl' || member.kind.toString() === 'CXXConstructorDecl' ||
+            member.kind.toString() === 'CXXDestructorDecl' || member.kind.toString() === 'FriendDecl') {
+            let method: ArkMethod = new ArkMethod();
+            buildArkMethodFromArkClass(member, cls, method, sourceFile);
         }
-    });
-}
-
-// params of constructor method may have modifiers such as public or private to directly define class properties with constructor
-function buildParameterProperty2ArkField(params: ts.NodeArray<ParameterDeclaration>, cls: ArkClass, sourceFile: ts.SourceFile): void {
-    if (params.length === 0) {
-        return;
-    }
-    params.forEach(parameter => {
-        if (parameter.modifiers === undefined || !ts.isIdentifier(parameter.name)) {
-            return;
-        }
-        let field = new ArkField();
-        field.setDeclaringArkClass(cls);
-
-        field.setCode(parameter.getText(sourceFile));
-        field.setCategory(FieldCategory.PARAMETER_PROPERTY);
-        field.setOriginPosition(LineColPosition.buildFromNode(parameter, sourceFile));
-
-        let fieldName = parameter.name.text;
-        let fieldType: Type;
-        if (parameter.type) {
-            fieldType = buildGenericType(tsNode2Type(parameter.type, sourceFile, field), field);
-        } else {
-            fieldType = UnknownType.getInstance();
-        }
-        const fieldSignature = new FieldSignature(fieldName, cls.getSignature(), fieldType, false);
-        field.setSignature(fieldSignature);
-        field.setModifiers(buildModifiers(parameter));
-        cls.addField(field);
-    });
+    })
 }
 
 function buildStaticBlocksForClass(clsNode: ClassLikeNodeWithMethod, cls: ArkClass, sourceFile: ts.SourceFile): MethodSignature[] {

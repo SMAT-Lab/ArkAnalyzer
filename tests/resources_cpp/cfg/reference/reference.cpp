@@ -34,14 +34,14 @@ void baseRightRefer()
 }
 
 // 基本类型指针
-void pointRefer(double *b)
+void pointRefer()
 {
     int *ptr = nullptr;
     int *&ref_to_ptr = ptr; //  引用
 }
 
 // 自定义类型的引用
-void myClassRefer(MyClass &b)
+void myClassRefer()
 {
     MyClass a(5);
     MyClass &b = a;

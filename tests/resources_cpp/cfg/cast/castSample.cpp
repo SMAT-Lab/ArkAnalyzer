@@ -49,6 +49,11 @@ void CXXDynamicCastTest()
     }
 }
 
+void CXXReinterpretCastTest() {
+    int* pi = new int(42);
+    double* pd = reinterpret_cast<double*>(pi); // 指针的表示
+}
+
 // CXXFunctionalCastExpr
 class Widget
 {

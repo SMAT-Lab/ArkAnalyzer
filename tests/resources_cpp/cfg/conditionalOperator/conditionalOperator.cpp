@@ -2,7 +2,7 @@
 int case1()
 {
     int i = 0;
-    int j = i > 0 ? i : -1;
+    int j = i > 0 ? i : -i;
     return j;
 }
 
@@ -10,15 +10,14 @@ int case2()
 {
     int i = 0;
     int k = 0;
-    int j = i > 0 ? k = i : -1;
+    int j = i > 0 ? k = i : -i;
     return j;
 }
 
 int case3()
 {
     int i = 0;
-    int j = i < 0 ? i < -1 ? 1 : 2 : i > 1 ? 3
-                                           : 4;
+    int j = i < 0 ? i < -1 ? 1 : 2 : i > 1 ? 3 : 4;
     return j;
 }
 

@@ -1,0 +1,366 @@
+export const DATA_STRUCT_EXPECT_VECTOR = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @dataStruct/dataStruct.cpp: %dflt',
+                '%0 = new @%unk/%unk: std::vector<int>',
+                '%1 = newarray (int[])[5]',
+                '%1[0] = 1',
+                '%1[1] = 2',
+                '%1[2] = 3',
+                '%1[3] = 4',
+                '%1[4] = 5',
+                'instanceinvoke %0.<@%unk/%unk: std::vector<int>.constructor()>(%1)',
+                'vec1 = %0',
+                'men = vec1[2]',
+                `staticinvoke <@%unk/%unk: .cout()>('"vec1[2]"', men)`,
+                'vec1[2] = 6',
+                '%2 = vec1[2]',
+                'staticinvoke <@%unk/%unk: .cout()>(%2)',
+                '%3 = instanceinvoke vec1.<@%unk/%unk: .back()>()',
+                'staticinvoke <@%unk/%unk: .cout()>(%3)',
+                '%4 = new @%unk/%unk: std::vector<int>',
+                'instanceinvoke %4.<@%unk/%unk: std::vector<int>.constructor()>()',
+                'vec2 = %4',
+                'instanceinvoke vec2.<@%unk/%unk: .push_back()>(10)',
+                'instanceinvoke vec2.<@%unk/%unk: .push_back()>(20)',
+                'instanceinvoke vec2.<@%unk/%unk: .push_back()>(30)',
+                '%5 = instanceinvoke vec2.<@%unk/%unk: .size()>()',
+                `staticinvoke <@%unk/%unk: .cout()>('"size is"', %5, '"success"')`,
+                'instanceinvoke vec2.<@%unk/%unk: .pop_back()>()',
+                '%6 = instanceinvoke vec2.<@%unk/%unk: .size()>()',
+                'staticinvoke <@%unk/%unk: .cout()>(%6)',
+                '%7 = new @%unk/%unk: std::vector<int>',
+                'instanceinvoke %7.<@%unk/%unk: std::vector<int>.constructor()>()',
+                'vec3 = %7',
+                'instanceinvoke vec3.<@%unk/%unk: .reserve()>(10)',
+                'i = 0'
+            ],
+            preds: [],
+            succes: [ 1 ]
+        },
+        { id: 1, stmts: [ 'if i < 10' ], preds: [ 0, 2 ], succes: [ 2, 3 ] },
+        {
+            id: 2,
+            stmts: [
+                'instanceinvoke vec3.<@%unk/%unk: .push_back()>(i)',
+                '%8 = instanceinvoke vec3.<@%unk/%unk: .capacity()>()',
+                'staticinvoke <@%unk/%unk: .cout()>(%8)',
+                'i = i + 1'
+            ],
+            preds: [ 1 ],
+            succes: [ 1 ]
+        },
+        { id: 3, stmts: [ 'return' ], preds: [ 1 ], succes: [] },
+    ]
+};
+
+export const DATA_STRUCT_EXPECT_SET = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @dataStruct/dataStruct.cpp: %dflt',
+                '%0 = new @%unk/%unk: std::set<int>',
+                'instanceinvoke %0.<@%unk/%unk: std::set<int>.constructor()>()',
+                'set1 = %0',
+                'instanceinvoke set1.<@%unk/%unk: std::set<int>.insert()>(1)',
+                'instanceinvoke set1.<@%unk/%unk: std::set<int>.insert()>(2)',
+                'instanceinvoke set1.<@%unk/%unk: std::set<int>.insert()>(3)',
+                '%1 = new @%unk/%unk: std::set<int>',
+                '%2 = instanceinvoke set1.<@%unk/%unk: std::set<int>.begin()>()',
+                '%3 = instanceinvoke set1.<@%unk/%unk: std::set<int>.end()>()',
+                'instanceinvoke %1.<@%unk/%unk: std::set<int>.constructor()>(%2, %3)',
+                'set2 = %1',
+                'a = instanceinvoke set2.<@%unk/%unk: std::set<int>.find()>(2)',
+                '%4 = new @%unk/%unk: const_iterator',
+                'instanceinvoke %4.<@%unk/%unk: const_iterator.constructor()>(a)',
+                'instanceinvoke set2.<@%unk/%unk: std::set<int>.erase()>(%4)',
+                '%5 = new @%unk/%unk: std::set<int>',
+                'instanceinvoke %5.<@%unk/%unk: std::set<int>.constructor()>(set1)',
+                'set3 = %5',
+                '%6 = instanceinvoke set3.<@%unk/%unk: std::set<int>.count()>(3)',
+                'staticinvoke <@%unk/%unk: .cout()>(%6)',
+                'instanceinvoke set1.<@%unk/%unk: std::set<int>.clear()>()',
+                'return'
+            ],
+            preds: [],
+            succes: []
+        },
+    ]
+};
+
+export const DATA_STRUCT_EXPECT_MAP = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @dataStruct/dataStruct.cpp: %dflt',
+                '%0 = new @%unk/%unk: std::map<int, std::basic_string<char>>',
+                '%1 = new @%unk/%unk: const std::pair<const int, std::basic_string<char>>',
+                `instanceinvoke %1.<@%unk/%unk: const std::pair<const int, std::basic_string<char>>.constructor()>(1, '"one"')`,
+                '%2 = new @%unk/%unk: const std::pair<const int, std::basic_string<char>>',
+                `instanceinvoke %2.<@%unk/%unk: const std::pair<const int, std::basic_string<char>>.constructor()>(2, '"two"')`,
+                '%3 = new @%unk/%unk: const std::pair<const int, std::basic_string<char>>',
+                `instanceinvoke %3.<@%unk/%unk: const std::pair<const int, std::basic_string<char>>.constructor()>(3, '"three"')`,
+                '%4 = newarray (const std::pair<const int, std::basic_string<char>>[])[3]',
+                '%4[0] = %1',
+                '%4[1] = %2',
+                '%4[2] = %3',
+                'instanceinvoke %0.<@%unk/%unk: std::map<int, std::basic_string<char>>.constructor()>(%4)',
+                'map1 = %0',
+                'value1 = map1[1]',
+                '%5 = instanceinvoke map1.<@%unk/%unk: std::map<int, std::basic_string<char>>.find()>(1)',
+                '%6 = instanceinvoke map1.<@%unk/%unk: std::map<int, std::basic_string<char>>.end()>()',
+                'if %5 != %6',
+                'it = instanceinvoke map1.<@%unk/%unk: std::map<int, std::basic_string<char>>.begin()>()'
+            ],
+            preds: [],
+            succes: [ 1, 2 ]
+        },
+        {
+            id: 1,
+            stmts: [ '%7 = map1[3]', 'staticinvoke <@%unk/%unk: .cout()>(%7)' ],
+            preds: [ 0 ],
+            succes: [ 2 ]
+        },
+        {
+            id: 2,
+            stmts: [
+                '%8 = instanceinvoke map1.<@%unk/%unk: std::map<int, std::basic_string<char>>.end()>()',
+                'if it != %8'
+            ],
+            preds: [ 0, 1, 3 ],
+            succes: [ 3, 4 ]
+        },
+        {
+            id: 3,
+            stmts: [
+                '%9 = it-><@%unk/%unk: .second>',
+                'staticinvoke <@%unk/%unk: .cout()>(%9)',
+                'it = it + 1'
+            ],
+            preds: [ 2 ],
+            succes: [ 2 ]
+        },
+        {
+            id: 4,
+            stmts: [
+                '%10 = new @%unk/%unk: std::map<std::basic_string<char>, int>',
+                'instanceinvoke %10.<@%unk/%unk: std::map<std::basic_string<char>, int>.constructor()>()',
+                'map2 = %10',
+                `map2['"Alice"'] = 30`,
+                `map2['"Bob"'] = 25`,
+                `map2['"Charlie"'] = 35`,
+                'return'
+            ],
+            preds: [ 2 ],
+            succes: []
+        },
+    ]
+};
+
+export const DATA_STRUCT_EXPECT_MAP2 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @dataStruct/dataStruct.cpp: %dflt',
+                '%0 = new @%unk/%unk: std::unordered_map<std::basic_string<char>, int>',
+                'instanceinvoke %0.<@%unk/%unk: std::unordered_map<std::basic_string<char>, int>.constructor()>()',
+                'myMap = %0',
+                `myMap['"apple"'] = 10`,
+                '%1 = new @%unk/%unk: std::pair<const char *, int>',
+                `%2 = staticinvoke <@%unk/%unk: .make_pair()>('"banana"', 20)`,
+                'instanceinvoke %1.<@%unk/%unk: std::pair<const char *, int>.constructor()>(%2)',
+                'instanceinvoke myMap.<@%unk/%unk: std::unordered_map<std::basic_string<char>, int>.insert()>(%1)',
+                `%3 = myMap['"apple"']`,
+                'staticinvoke <@%unk/%unk: .cout()>(%3)',
+                `%4 = instanceinvoke myMap.<@%unk/%unk: std::unordered_map<std::basic_string<char>, int>.at()>('"banana"')`,
+                'staticinvoke <@%unk/%unk: .cout()>(%4)',
+                `%5 = instanceinvoke myMap.<@%unk/%unk: std::unordered_map<std::basic_string<char>, int>.find()>('"orange"')`,
+                '%6 = instanceinvoke myMap.<@%unk/%unk: std::unordered_map<std::basic_string<char>, int>.end()>()',
+                'if %5 != %6'
+            ],
+            preds: [],
+            succes: [ 1 ]
+        },
+        {
+            id: 1,
+            stmts: [
+                `instanceinvoke myMap.<@%unk/%unk: std::unordered_map<std::basic_string<char>, int>.erase()>('"apple"')`,
+                'return 0'
+            ],
+            preds: [ 0 ],
+            succes: []
+        },
+    ]
+};
+
+export const DATA_STRUCT_EXPECT_QUEUE = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @dataStruct/dataStruct.cpp: %dflt',
+                '%0 = new @%unk/%unk: std::queue<int>',
+                'instanceinvoke %0.<@%unk/%unk: std::queue<int>.constructor()>()',
+                'q = %0',
+                'instanceinvoke q.<@%unk/%unk: std::queue<int>.push()>(10)',
+                'instanceinvoke q.<@%unk/%unk: std::queue<int>.push()>(20)',
+                'instanceinvoke q.<@%unk/%unk: std::queue<int>.push()>(30)',
+                '%1 = instanceinvoke q.<@%unk/%unk: std::queue<int>.empty()>()',
+                'if %1 != 0'
+            ],
+            preds: [],
+            succes: [ 1, 2 ]
+        },
+        {
+            id: 1,
+            stmts: [ `staticinvoke <@%unk/%unk: .cout()>('"empty"')` ],
+            preds: [ 0 ],
+            succes: [ 2 ]
+        },
+        {
+            id: 2,
+            stmts: [
+                '%2 = new @%unk/%unk: std::vector<int>',
+                'instanceinvoke %2.<@%unk/%unk: std::vector<int>.constructor()>()',
+                'v = %2'
+            ],
+            preds: [ 0, 1 ],
+            succes: [ 3 ]
+        },
+        {
+            id: 3,
+            stmts: [
+                '%3 = instanceinvoke q.<@%unk/%unk: std::queue<int>.empty()>()',
+                '%4 = !%3',
+                'if %4 != 0'
+            ],
+            preds: [ 2, 4 ],
+            succes: [ 4, 5 ]
+        },
+        {
+            id: 4,
+            stmts: [
+                '%5 = instanceinvoke q.<@%unk/%unk: std::queue<int>.front()>()',
+                'instanceinvoke v.<@%unk/%unk: .push_back()>(%5)',
+                'instanceinvoke q.<@%unk/%unk: std::queue<int>.pop()>()'
+            ],
+            preds: [ 3 ],
+            succes: [ 3 ]
+        },
+        {
+            id: 5,
+            stmts: [
+                'instanceinvoke q.<@%unk/%unk: std::queue<int>.pop()>()',
+                '%6 = instanceinvoke q.<@%unk/%unk: std::queue<int>.front()>()',
+                'staticinvoke <@%unk/%unk: .cout()>(%6)',
+                'return 0'
+            ],
+            preds: [ 3 ],
+            succes: []
+        },
+    ]
+};
+
+export const DATA_STRUCT_EXPECT_DEQUE = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @dataStruct/dataStruct.cpp: %dflt',
+                '%0 = new @%unk/%unk: std::deque<int>',
+                'instanceinvoke %0.<@%unk/%unk: std::deque<int>.constructor()>()',
+                'dq = %0',
+                'instanceinvoke dq.<@%unk/%unk: std::deque<int>.push_back()>(1)',
+                'instanceinvoke dq.<@%unk/%unk: std::deque<int>.push_front()>(2)',
+                '%1 = instanceinvoke dq.<@%unk/%unk: std::deque<int>.front()>()',
+                'staticinvoke <@%unk/%unk: .cout()>(%1)',
+                'instanceinvoke dq.<@%unk/%unk: std::deque<int>.pop_front()>()',
+                'return 0'
+            ],
+            preds: [],
+            succes: []
+        },
+    ]
+};
+
+export const DATA_STRUCT_EXPECT_STACK = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @dataStruct/dataStruct.cpp: %dflt',
+                '%0 = new @%unk/%unk: std::stack<int>',
+                'instanceinvoke %0.<@%unk/%unk: std::stack<int>.constructor()>()',
+                'myStack = %0',
+                'instanceinvoke myStack.<@%unk/%unk: std::stack<int>.push()>(10)',
+                'instanceinvoke myStack.<@%unk/%unk: std::stack<int>.push()>(20)',
+                'instanceinvoke myStack.<@%unk/%unk: std::stack<int>.push()>(30)',
+                '%1 = instanceinvoke myStack.<@%unk/%unk: std::stack<int>.top()>()',
+                'staticinvoke <@%unk/%unk: .cout()>(%1)',
+                'instanceinvoke myStack.<@%unk/%unk: std::stack<int>.pop()>()',
+                '%2 = instanceinvoke myStack.<@%unk/%unk: std::stack<int>.empty()>()',
+                'if %2 != 0'
+            ],
+            preds: [],
+            succes: [ 1, 2 ]
+        },
+        {
+            id: 1,
+            stmts: [ `staticinvoke <@%unk/%unk: .cout()>('"Stack is empty"')` ],
+            preds: [ 0 ],
+            succes: [ 3 ]
+        },
+        {
+            id: 2,
+            stmts: [
+                '%3 = instanceinvoke myStack.<@%unk/%unk: std::stack<int>.size()>()',
+                'staticinvoke <@%unk/%unk: .cout()>(%3)'
+            ],
+            preds: [ 0 ],
+            succes: [ 3 ]
+        },
+        { id: 3, stmts: [ 'return 0' ], preds: [ 1, 2 ], succes: [] },
+    ]
+};
+
+export const DATA_STRUCT_EXPECT_LIST = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @dataStruct/dataStruct.cpp: %dflt',
+                '%0 = new @%unk/%unk: std::list<int>',
+                'instanceinvoke %0.<@%unk/%unk: std::list<int>.constructor()>(5)',
+                'list1 = %0',
+                '%1 = new @%unk/%unk: std::list<int>',
+                'instanceinvoke %1.<@%unk/%unk: std::list<int>.constructor()>(5, 10)',
+                'list2 = %1',
+                '%2 = new @%unk/%unk: std::list<int>',
+                '%3 = newarray (int[])[4]',
+                '%3[0] = 1',
+                '%3[1] = 2',
+                '%3[2] = 3',
+                '%3[3] = 4',
+                'instanceinvoke %2.<@%unk/%unk: std::list<int>.constructor()>(%3)',
+                'list3 = %2',
+                '%4 = new @%unk/%unk: std::list<int>',
+                'instanceinvoke %4.<@%unk/%unk: std::list<int>.constructor()>()',
+                'list4 = %4',
+                'instanceinvoke list4.<@%unk/%unk: std::list<int>.push_back()>(10)',
+                'instanceinvoke list4.<@%unk/%unk: std::list<int>.push_back()>(20)',
+                'instanceinvoke list4.<@%unk/%unk: std::list<int>.push_back()>(30)',
+                '%5 = instanceinvoke list4.<@%unk/%unk: std::list<int>.front()>()',
+                'staticinvoke <@%unk/%unk: .cout()>(%5)',
+                'instanceinvoke list4.<@%unk/%unk: std::list<int>.pop_back()>()',
+                'return 0'
+            ],
+            preds: [],
+            succes: []
+        },
+    ]
+};

@@ -10,6 +10,7 @@
 #include <vector>
 #include <set>
 #include <algorithm>
+#include <regex>
 
 using json = nlohmann::json;
 namespace fs = std::filesystem;
@@ -25,7 +26,7 @@ inline std::string cx2str(const CXString &s){
     return r;
 }
 
-inline std::string 
+inline std::string
 extractParentContent(const std::string &code, size_t lpos = std::string::npos, char open = '(', char close = ')'){
     if (lpos == std::string::npos) lpos = code.find(open);
     size_t rpos = code.rfind(close);
@@ -72,7 +73,7 @@ inline bool fillKindBycode(json &node, const std::string &codeStr,
                            const std::string &argField = ""){
     size_t pos = codeStr.find(prefix + "(");
     if (pos != std::string::npos && pos == 0){
-        node["kind"] == kind;
+        node["kind"] = kind;
         if (!argField.empty()) node[argField] = extractParentContent(codeStr, codeStr.find('(', pos));
         return true;
     }
@@ -123,7 +124,7 @@ json getSourceContent(CXSourceRange range){
 
 }
 
-void filleUnaryOperatorInfo(json &node, CXCursor cursor){
+void fillUnaryOperatorInfo(json &node, CXCursor cursor){
     auto opKind = clang_getCursorUnaryOperatorKind(cursor);
     node["opcode"] = cx2str(clang_getUnaryOperatorKindSpelling(opKind));
     node["isPostfix"] = (opKind == CXUnaryOperator_PostInc || opKind == CXUnaryOperator_PostDec);
@@ -138,21 +139,21 @@ std::string handleUnexposedExpr(json node){
         } else if (codeStr.find("?") != std::string::npos){
             return "BinaryConditionalOperator";
         } else if (codeStr.find(".push_back") != std::string::npos || codeStr.find(".insert") != std::string::npos ||
-                   codeStr.find(".push") != std::string::npos || typeStr.find("basic_ostream") != std::string::npos || typeStr == "bool" || 
+                   codeStr.find(".push") != std::string::npos || typeStr.find("basic_ostream") != std::string::npos || typeStr == "bool" ||
                    typeStr == "mapped_type" || codeStr.find(".erase") != std::string::npos){
             return "ExprWithCleanups";
         }else if (codeStr.find("std::make_pair") != std::string::npos){
              return "MaterializeTemporaryExpr";
         }
     }
-    return "ImplicitCaseExpr";
+    return "ImplicitCastExpr";
 }
 
 void extractArraySizes(const json &node, std::vector<std::string> &arraySizes){
     if (node.contains("kind")){
         if (node["kind"] == "IntegerLiteral" && node.contains("value")){
             arraySizes.push_back(node["value"]);
-        } else if (node["kind"] == "ImplicitCaseExpr" && node.contains("inner")){
+        } else if (node["kind"] == "ImplicitCastExpr" && node.contains("inner")){
             for (const auto &gchild:node["inner"]){
                 extractArraySizes(gchild, arraySizes);
             }
@@ -196,10 +197,37 @@ bool constructCallExpr(std::string codeStr, std::string typeStr){
 }
 
 bool templateConstructCallExpr(std::string nameStr, std::string typeStr){
+    if (nameStr.empty()) return false;
     if (typeStr.find(nameStr) == 0 && typeStr.find('<') != std::string::npos && typeStr.find('>') != std::string::npos){
         return true;
     }
     return false;
+}
+
+void fixCallExprChildKind(json &node){
+    if (node.contains("inner") && node["inner"].is_array()) {
+        for (auto &child : node["inner"]){
+        fixCallExprChildKind(child);
+        }
+    }
+    if (node.is_object() && node.contains("kind") && node["kind"] == "CallExpr" && node.contains("inner") &&
+    node["inner"].is_array() && !node["inner"].empty()){
+        auto &child = node["inner"][0];
+        std::string code  = child.value("code", "");
+        if (!child.contains("kind") || child["kind"].is_null() || child["kind"] == "") {
+            if (child.contains("referencedDecl") && child["referencedDecl"].contains("kind") &&
+            !child["referencedDecl"]["kind"].is_null()){
+                child["kind"] = child["referencedDecl"]["kind"];
+            } else if (code.find('.') != std::string::npos || code.find("->") != std::string::npos) {
+                child["kind"] = "MemberExpr";
+            } else if (child.contains("referencedDecl") && child["referencedDecl"].contains("kind") &&
+            child["referencedDecl"]["kind"] == "OverloadedDeclRef") {
+                child["kind"] = "OverloadedDeclRef";
+            } else {
+                child["kind"] = "DeclRefExpr";
+            }
+        }
+    }
 }
 
 void changeChildNodeType(json &children){
@@ -289,7 +317,7 @@ void postprocessCallExpr(json &node){
                 node["name"] = child.value("name", "");
                 if ((node["name"] == "" || node["name"].is_null()) && child.contains("referencedDecl"))
                    node["name"] = child["referencedDecl"].value("name", "");
-                break;   
+                break;
             }
             if (child.contains("inner")){
                 for(const auto &grandchild: child["inner"]){
@@ -361,46 +389,33 @@ void patchPseudoDestructorExpr(json &node){
     }
 }
 
-void patchCastExprWithParent(json &node, const std::string &parent_code = "") {
-    // 获取当前节点 code
-    std::string self_code = node.value("code", "");
-    std::string merged_code = parent_code.empty() ? self_code : parent_code;
-
-    // 需要处理的 C++ cast 类型
-    struct CastInfo {
-        const char* keyword;
-        const char* kind;
-    } cast_types[] = {
-        {"reinterpret_cast", "CXXReinterpretCastExpr"},
-        {"static_cast",      "CXXStaticCastExpr"},
-        {"const_cast",       "CXXConstCastExpr"},
-        {"dynamic_cast",     "CXXDynamicCastExpr"},
-    };
-    // 检查并修正类型
-    if (node.value("kind", "") == "ImplicitCastExpr") {
-        for (const auto& cast : cast_types) {
-            std::string kw = std::string(cast.keyword) + "<";
-            auto lpos = merged_code.find(kw);
-            if (lpos != std::string::npos) {
-                node["kind"] = cast.kind;
-                auto rpos = merged_code.find('>', lpos);
-                if (rpos != std::string::npos && rpos > lpos) {
-                    node["castType"] = merged_code.substr(lpos + kw.length(), rpos - (lpos + kw.length()));
-                }
-                break;
-            }
+void patchFoldExpr(json &node){
+    if (node.contains("inner") && node["inner"].is_array()){
+        for (auto &child: node["inner"]){
+            patchFoldExpr(child);
         }
     }
-    // 递归处理子节点
-    if (node.contains("inner") && node["inner"].is_array()) {
-        std::string next_code = self_code.empty() ? parent_code : self_code;
-        for (auto& child : node["inner"]) {
-            patchCastExprWithParent(child, next_code);
+    if (node.contains("code") && node.contains("kind") && node["kind"] == "ImplicitCaseExpr") {
+        std::string code = node["code"];
+        // 只判断常见的 "(... <op> ars)"
+        std::smatch m;
+        static std::regex fold_regex(R"(\(\.\.\.\s*([+\-*/&|^])\s*([a-zA-Z0-9_]+)\))");
+        if (std::regex_match(code, m, fold_regex)){
+            std::string op = m[1];
+            std::string var = m[2];
+            json foldExpr;
+            foldExpr["kind"] = "CXXFoldExpr";
+            foldExpr["op"] = op;
+            foldExpr["pattern"] = "left";
+            foldExpr["code"] = code;
+            foldExpr["inner"] = node["inner"];
+            foldExpr["range"] = node["range"];
+            foldExpr["type"] = node["type"];
+            foldExpr["valueCategory"] = node.value("valueCategory", "prvalue");
+            node = foldExpr;
         }
     }
 }
-
-
 
 void filterVarDeclArrayDims(json &node){
     if (node.contains("kind") && node["kind"] == "VarDecl" &&
@@ -480,7 +495,7 @@ void relateMemberType(std::string typeStr, json &children){
     json classNode = derivedDataTypeMap[typeStr];
     if (!classNode.is_null() && children.size() == classNode["inner"].size()){
         for (int i =0; i< children.size(); i++){
-            if (children[i]["type"]["qualTYpe"] != classNode["inner"][i]["type"]["qualType"]){
+            if (children[i]["type"]["qualType"] != classNode["inner"][i]["type"]["qualType"]){
                 json constructNode;
                 constructNode["id"] = children[i]["id"];
                 constructNode["code"] = children[i]["code"];
@@ -510,9 +525,14 @@ bool isConstructorByNameStr(std::string nameStr){
 }
 
 bool isConstructorByCodeStr(std::string codeStr, std::string nameStr, std::string typeStr){
-    return typeStr == nameStr || (typeStr == "iterator" && codeStr.find(".find") != std::string::npos) ||
-    (codeStr.find("]") != std::string::npos && nameStr == "basic_string") || codeStr.find("std::string") == 0 ||
-    constructCallExpr(codeStr,typeStr) || templateConstructCallExpr(nameStr, typeStr);
+        bool cond1 = (typeStr == nameStr);
+        bool cond2 = (typeStr == "iterator" && codeStr.find(".find") != std::string::npos);
+        bool cond3 = (codeStr.find("]") != std::string::npos && nameStr == "basic_string");
+        bool cond4 = (codeStr.find("std::string") == 0);
+        bool cond5 = constructCallExpr(codeStr, typeStr);
+        bool cond6 = templateConstructCallExpr(nameStr, typeStr);
+        bool result = cond1 || cond2 || cond3 || cond4 || cond5 || cond6;
+        return result;
 }
 
 std::vector<CXCursorKind> locCursorKind = {CXCursor_FunctionDecl, CXCursor_ClassDecl, CXCursor_Destructor, CXCursor_TemplateTypeParameter,
@@ -575,6 +595,8 @@ json buildASTJson(CXCursor cursor){
     json content = getSourceContent(range);
     if (kind_cursor == CXCursor_TranslationUnit){
         node["fileName"] = file ? cx2str(clang_getFileName(file)) : displayName;
+    } else if (kind_cursor == CXCursor_UnaryOperator){
+        fillUnaryOperatorInfo(node, cursor);
     } else if (kind_cursor == CXCursor_BinaryOperator || kind_cursor == CXCursor_CompoundAssignOperator){
         node["opcode"] = cx2str(clang_Cursor_getBinaryOpcodeStr(clang_Cursor_getBinaryOpcode(cursor)));
     } else {
@@ -608,33 +630,32 @@ json buildASTJson(CXCursor cursor){
     } else if (kind_cursor == CXCursor_UsingDirective){
         node["kind"] = "UsingDirectiveDecl";
         node["isImplicit"] = true;
-    } else if (kind_cursor == CXCursor_MemberRef){
+    } else if (kind_cursor == CXCursor_MemberRefExpr){
         node["kind"] = "MemberExpr";
         fillMemberName(node, displayName);
     } else if (kind_cursor == CXCursor_CallExpr){
-        if (typeStr.find("basic_ostream") == 0 ||
-            nameStr.find("operator") != std::string::npos){
+        if (typeStr.find("basic_ostream") == 0 || nameStr.find("operator") != std::string::npos){
             node["kind"] = "CXXOperatorCallExpr";
+        } else if (isConstructorByTypeStr(typeStr) || isConstructorByNameStr(nameStr) ||
+                       isConstructorByCodeStr(codeStr, nameStr, typeStr)){
+            node["kind"] = "CXXConstructExpr";
         } else if ((codeStr.find(".") != std::string::npos || codeStr.find("->") != std::string::npos) &&
                     nameStr.find("operator") == std::string::npos && codeStr.find(nameStr)!=0){
-                        node["kind"] = "CXXMemberCallExpr";
-        } else if (isConstructorByTypeStr(typeStr) || isConstructorByNameStr(nameStr) ||
-        isConstructorByCodeStr(codeStr, nameStr, typeStr)){
-            node["kind"] = "CXXConstructExpr";
+                    node["kind"] = "CXXMemberCallExpr";
         } else {
             node["kind"] = kindSpelling;
         }
     } else if (kind_cursor == CXCursor_CXXMethod){
-        node["kind"] = "CXXMethodDecl";
-        node["mangledName"] = getMemberInClassName(cursor);
-    } else if (kind_cursor == CXCursor_Constructor){
-        node["kind"] = "CXXConstructorDecl";
-        node["mangledName"] = getMemberInClassName(cursor);
-    } else if (kind_cursor == CXCursor_Destructor){
-        node["kind"] = "CXXDestructorDecl";
-        node["mangledName"] = getMemberInClassName(cursor);
-    } else {
-        node["kind"] = kindSpelling;
+              node["kind"] = "CXXMethodDecl";
+              node["mangledName"] = getMemberInClassName(cursor);
+          } else if (kind_cursor == CXCursor_Constructor){
+              node["kind"] = "CXXConstructorDecl";
+              node["mangledName"] = getMemberInClassName(cursor);
+          } else if (kind_cursor == CXCursor_Destructor){
+              node["kind"] = "CXXDestructorDecl";
+              node["mangledName"] = getMemberInClassName(cursor);
+          } else {
+              node["kind"] = kindSpelling;
     }
 
     if (kind_cursor == CXCursor_VarDecl){
@@ -684,7 +705,11 @@ json buildASTJson(CXCursor cursor){
         }
         if (children.size() == 3) children[1]["valueCategory"] = "lvalue";
     } else if (node["kind"] == "CXXConstructExpr"){
-        changeChildNodeType(children);
+        if (children.size() > 0 && children[0]["kind"] == "MemberExpr") {
+            node["kind"] = "CXXMemberCallExpr";
+        }else {
+            changeChildNodeType(children);
+        }
     }
     if (node["kind"] == "InitListExpr") relateMemberType(typeStr, children);
 
@@ -815,6 +840,8 @@ int main(int argc, char **argv){
     filterVarDeclArrayDims(ast);
     collectLabelStmt(ast, labelNameToId);
     patchGotoTarget(ast, labelNameToId);
+    fixCallExprChildKind(ast);
+    patchFoldExpr(ast);
     std::cout<< "AST built successfully\n";
     std::ofstream(output_file) << ast.dump(-1, ' ', false, json::error_handler_t::replace);
     std::cout << "AST written to: "<< output_file << std::endl;
