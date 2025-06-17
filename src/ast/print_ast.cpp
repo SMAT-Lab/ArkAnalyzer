@@ -26,7 +26,7 @@ inline std::string cx2str(const CXString &s){
     return r;
 }
 
-inline std::string 
+inline std::string
 extractParentContent(const std::string &code, size_t lpos = std::string::npos, char open = '(', char close = ')'){
     if (lpos == std::string::npos) lpos = code.find(open);
     size_t rpos = code.rfind(close);
@@ -73,7 +73,7 @@ inline bool fillKindBycode(json &node, const std::string &codeStr,
                            const std::string &argField = ""){
     size_t pos = codeStr.find(prefix + "(");
     if (pos != std::string::npos && pos == 0){
-        node["kind"] == kind;
+        node["kind"] = kind;
         if (!argField.empty()) node[argField] = extractParentContent(codeStr, codeStr.find('(', pos));
         return true;
     }
@@ -139,21 +139,21 @@ std::string handleUnexposedExpr(json node){
         } else if (codeStr.find("?") != std::string::npos){
             return "BinaryConditionalOperator";
         } else if (codeStr.find(".push_back") != std::string::npos || codeStr.find(".insert") != std::string::npos ||
-                   codeStr.find(".push") != std::string::npos || typeStr.find("basic_ostream") != std::string::npos || typeStr == "bool" || 
+                   codeStr.find(".push") != std::string::npos || typeStr.find("basic_ostream") != std::string::npos || typeStr == "bool" ||
                    typeStr == "mapped_type" || codeStr.find(".erase") != std::string::npos){
             return "ExprWithCleanups";
         }else if (codeStr.find("std::make_pair") != std::string::npos){
              return "MaterializeTemporaryExpr";
         }
     }
-    return "ImplicitCaseExpr";
+    return "ImplicitCastExpr";
 }
 
 void extractArraySizes(const json &node, std::vector<std::string> &arraySizes){
     if (node.contains("kind")){
         if (node["kind"] == "IntegerLiteral" && node.contains("value")){
             arraySizes.push_back(node["value"]);
-        } else if (node["kind"] == "ImplicitCaseExpr" && node.contains("inner")){
+        } else if (node["kind"] == "ImplicitCastExpr" && node.contains("inner")){
             for (const auto &gchild:node["inner"]){
                 extractArraySizes(gchild, arraySizes);
             }
@@ -317,7 +317,7 @@ void postprocessCallExpr(json &node){
                 node["name"] = child.value("name", "");
                 if ((node["name"] == "" || node["name"].is_null()) && child.contains("referencedDecl"))
                    node["name"] = child["referencedDecl"].value("name", "");
-                break;   
+                break;
             }
             if (child.contains("inner")){
                 for(const auto &grandchild: child["inner"]){
@@ -411,7 +411,7 @@ void patchFoldExpr(json &node){
             foldExpr["inner"] = node["inner"];
             foldExpr["range"] = node["range"];
             foldExpr["type"] = node["type"];
-            fold["valueCategory"] = node.value("valueCategory", "prvalue");
+            foldExpr["valueCategory"] = node.value("valueCategory", "prvalue");
             node = foldExpr;
         }
     }
@@ -495,7 +495,7 @@ void relateMemberType(std::string typeStr, json &children){
     json classNode = derivedDataTypeMap[typeStr];
     if (!classNode.is_null() && children.size() == classNode["inner"].size()){
         for (int i =0; i< children.size(); i++){
-            if (children[i]["type"]["qualTYpe"] != classNode["inner"][i]["type"]["qualType"]){
+            if (children[i]["type"]["qualType"] != classNode["inner"][i]["type"]["qualType"]){
                 json constructNode;
                 constructNode["id"] = children[i]["id"];
                 constructNode["code"] = children[i]["code"];
@@ -630,7 +630,7 @@ json buildASTJson(CXCursor cursor){
     } else if (kind_cursor == CXCursor_UsingDirective){
         node["kind"] = "UsingDirectiveDecl";
         node["isImplicit"] = true;
-    } else if (kind_cursor == CXCursor_MemberRef){
+    } else if (kind_cursor == CXCursor_MemberRefExpr){
         node["kind"] = "MemberExpr";
         fillMemberName(node, displayName);
     } else if (kind_cursor == CXCursor_CallExpr){
@@ -705,7 +705,11 @@ json buildASTJson(CXCursor cursor){
         }
         if (children.size() == 3) children[1]["valueCategory"] = "lvalue";
     } else if (node["kind"] == "CXXConstructExpr"){
-        changeChildNodeType(children);
+        if (children.size() > 0 && children[0]["kind"] == "MemberExpr") {
+            node["kind"] = "CXXMemberCallExpr";
+        }else {
+            changeChildNodeType(children);
+        }
     }
     if (node["kind"] == "InitListExpr") relateMemberType(typeStr, children);
 
