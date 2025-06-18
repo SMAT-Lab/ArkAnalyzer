@@ -65,7 +65,7 @@ export function buildArkFileFromFile(absoluteFilePath: string, projectDir: strin
     arkFile.setFileSignature(fileSignature);
 
     arkFile.setCode(fs.readFileSync(arkFile.getFilePath(), 'utf8'));
-    const jsonObject = AstUtils.parse(absoluteFilePath);
+    const jsonObject = AstUtils.parse(absoluteFilePath, null, null);
     genDefaultArkClass(arkFile, jsonObject);
     buildArkFile(arkFile, jsonObject);
 }
