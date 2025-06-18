@@ -15,22 +15,16 @@
 
 import fs from 'fs';
 import path from 'path';
-import { ArkFile } from '../ArkFile';
-import { ArkNamespace } from '../ArkNamespace';
-import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
+import { ArkFile } from '../../../core/model/ArkFile';
+import { ArkNamespace } from '../../../core/model/ArkNamespace';
 import { buildDefaultArkClassFromArkFile, buildNormalArkClassFromArkFile } from './ArkClassBuilder';
 import { buildArkMethodFromArkClass } from './ArkMethodBuilder';
 
-import { buildArkNamespace, mergeNameSpaces } from './ArkNamespaceBuilder';
-import { ArkClass } from '../ArkClass';
-import { ArkMethod } from '../ArkMethod';
+import { buildArkNamespace } from './ArkNamespaceBuilder';
+import { ArkClass } from '../../../core/model/ArkClass';
+import { ArkMethod } from '../../../core/model/ArkMethod';
 import {AstUtils} from "../../../ast/astUtils"
-import { LineColPosition } from '../../base/Position';
-import { ETS_COMPILER_OPTIONS } from '../../common/EtsConst';
-import { FileSignature } from '../ArkSignature';
-import { ARKTS_STATIC_MARK } from '../../common/Const';
-
-const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkFileBuilder');
+import { FileSignature } from '../../../core/model/ArkSignature';
 
 export const notStmtOrExprKind = [
     'ModuleDeclaration',
@@ -65,7 +59,7 @@ export function buildArkFileFromFile(absoluteFilePath: string, projectDir: strin
     arkFile.setFileSignature(fileSignature);
 
     arkFile.setCode(fs.readFileSync(arkFile.getFilePath(), 'utf8'));
-    const jsonObject = AstUtils.parse(absoluteFilePath, null, null);
+    const jsonObject = AstUtils.parse(absoluteFilePath);
     genDefaultArkClass(arkFile, jsonObject);
     buildArkFile(arkFile, jsonObject);
 }
@@ -100,6 +94,7 @@ function buildArkFile(arkFile: ArkFile, astRoot: any): void {
             let className: string = child.mangledName;
             let arkClass = arkFile.getClasses().find(arkClass => (arkClass.getName() == className));
             let mthd: ArkMethod = new ArkMethod();
+            // @ts-ignore
             buildArkMethodFromArkClass(child, arkClass, mthd, astRoot);
         } else if (child.kind === 'TypedefDecl') {
             let cls: ArkClass = new ArkClass();

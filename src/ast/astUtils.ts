@@ -9,9 +9,9 @@ import {ClangPath} from "./const";
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'astUtils');
 
 export class AstUtils {
-    private static currentAccess:String = "public";
+    private static currentAccess:string = "public";
 
-    public static parse(sourceFile: string, ccJsonPath: string | null, includeDirs: string[] | null): JSON | null{
+    public static parse(sourceFile: string): JSON | null{
         if (!fs.existsSync(sourceFile)){
             logger.warn("parse file is not exists");
             return null;
@@ -21,10 +21,9 @@ export class AstUtils {
             logger.warn("can not find clang path");
             return null;
         }
-        let astPath = this.getAstOutputPath(sourceFile);
-        let includeArgs = constructParseArguments(ccJsonPath, includeDirs)
+        let astPath:string = this.getAstOutputPath(sourceFile);
+
         let parseArguments: string[] = [sourceFile, '-o', astPath];
-        parseArguments = [...parseArguments, ...includeArgs];
         this.ensureOutputDir(path.dirname(astPath));
 
         let parseResult = spawnSync(clangPath, parseArguments, {stdio:['inherit','pipe'], encoding: 'utf-8'});
@@ -124,7 +123,7 @@ export class AstUtils {
         }
     }
 
-    private static getAstOutputPath(sourceFile:string): String {
+    private static getAstOutputPath(sourceFile:string): string {
         const fileName = `${path.parse(path.basename(sourceFile)).name}_AST.json`;
         return path.join(ClangPath.protectRoot, "src", "ast","out", fileName);
     }
@@ -135,7 +134,7 @@ export class AstUtils {
         }
     }
 
-    private static getPlatformClang(): String{
+    private static getPlatformClang(): string{
         let platform = os.platform();
         switch (platform) {
             case "win32":
@@ -148,29 +147,11 @@ export class AstUtils {
     }
 }
 
-async function deleteFIle(filePath:String){
+async function deleteFIle(filePath:string){
     try {
         await fs.promises.unlink(filePath);
         logger.info("delete file ok:", filePath);
     } catch (err){
         logger.warn("delete file is not ok:", filePath);
     }
-}
-
-function constructParseArguments(ccJsonPath: string | null, includeDirs: string[] | null): string[] {
-    const args: string[] = [];
-
-    // 如果提供了 compile_commands.json 路径，则添加 -c 参数
-    if (ccJsonPath) {
-        args.push("-c", ccJsonPath);
-    }
-
-    // 如果提供了 include 目录列表，则为每个目录添加 -i 参数
-    if (includeDirs && includeDirs.length > 0) {
-        includeDirs.forEach(dir => {
-            args.push("-i", `"${dir}"`);
-        });
-    }
-
-    return args;
 }

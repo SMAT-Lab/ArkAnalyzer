@@ -45,6 +45,7 @@ import { ImportInfo } from './core/model/ArkImport';
 import { ALL, CONSTRUCTOR_NAME, TSCONFIG_JSON } from './core/common/TSConst';
 import { BUILD_PROFILE_JSON5, OH_PACKAGE_JSON5 } from './core/common/EtsConst';
 import { SdkUtils } from './core/common/SdkUtils';
+import { addInitInConstructorByArkClass } from './core_cpp/model/builder/ArkMethodBuilder';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'Scene');
 
@@ -303,6 +304,15 @@ export class Scene {
         }
     }
 
+    private addDefaultConstructorsCpp(): void {
+        for (const file of this.getFiles()) {
+            for (const cls of ModelUtils.getAllClassesInFile(file)) {
+                buildDefaultConstructor(cls);
+                addInitInConstructorByArkClass(cls);
+            }
+        }
+    }
+
     private buildAllMethodBody(): void {
         this.buildStage = SceneBuildStage.CLASS_DONE;
         const methods: ArkMethod[] = [];
@@ -389,7 +399,7 @@ export class Scene {
             }
         });
         this.buildAllMethodBodyCpp();
-        this.addDefaultConstructors();
+        this.addDefaultConstructorsCpp();
     }
 
     private getFilesOrderByDependency(): void {
