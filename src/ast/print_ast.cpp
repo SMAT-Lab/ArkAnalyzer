@@ -14,6 +14,7 @@
 
 using json = nlohmann::json;
 namespace fs = std::filesystem;
+std::vector<std::string> g_user_include_dirs;
 
 inline void trim(std::string &s){
     s.erase(0, s.find_first_not_of(" \t\r\n"));
@@ -574,16 +575,30 @@ json buildTemplateDefaultType(std::string codeStr){
     return defaultNode;
 }
 
+bool isInUserInclude(const std::string& fileName){
+    for (const auto& dir: g_user_include_dirs){
+        std::string prefix = dir;
+        if (!prefix.empty() && prefix.back() != '/' && prefix.back() != '\\')
+            prefix += '/';
+        if (fileName.find(prefix) == 0) return true;
+    }
+    return false;
+}
+
 
 json buildASTJson(CXCursor cursor){
     CXSourceLocation loc = clang_getCursorLocation(cursor);
     CXCursorKind kind_cursor = clang_getCursorKind(cursor);
-    if ((kind_cursor != CXCursor_TranslationUnit && !clang_Location_isFromMainFile(loc)) ||
-        kind_cursor == CXCursor_LinkageSpec){
-        return json();
-    }
+
     CXFile file;
     clang_getSpellingLocation(loc, &file, nullptr, nullptr, nullptr);
+    std::string fileName = file ? cx2str(clang_getFileName(file)) : "";
+
+    if ((kind_cursor != CXCursor_TranslationUnit && !clang_Location_isFromMainFile(loc) && !isInUserInclude(fileName))
+        || kind_cursor == CXCursor_LinkageSpec){
+        return json();
+    }
+
     json node;
     std::string kindSpelling = cx2str(clang_getCursorKindSpelling(kind_cursor));
     std::string displayName = cx2str(clang_getCursorSpelling(cursor));
@@ -603,10 +618,10 @@ json buildASTJson(CXCursor cursor){
         node["name"] = displayName;
     }
     std::string nameStr = node["name"].is_null() ? "" : node["name"];
-
+    std::string codeStr = content.contains("code") &&
+    content["code"].is_string() ? content["code"].get<std::string>() : "";
     if (content != "" && kind_cursor != CXCursor_TranslationUnit)
-        node["code"] = content["code"];
-    std::string codeStr = content["code"];
+        node["code"] = codeStr;
 
     if (kind_cursor == CXCursor_IntegerLiteral ||
         kind_cursor == CXCursor_StringLiteral ||
@@ -796,43 +811,83 @@ CompileArgs load_compile_commands(const std::string &compile_commands_path, cons
     return result;
 }
 
-int main(int argc, char **argv){
-    if (argc < 2){
-        std::cerr << "Usage: "<< argv[0] << "<file.cpp> [-o <ouput.json>] [-c <compile_commands.json>]\n";
-        return 1;
-    }
-    std::string input_file, output_file, compile_commands_file;
-    for (int i = 1; i< argc; ++i){
-        std::string arg = argv[i];
-        if (arg == "-o" && i + 1 <argc) output_file = argv[++i];
-        else if (arg == "-c" && i + 1 < argc) compile_commands_file = argv[++i];
-        else if (input_file.empty()) input_file = arg;
-    }
-    if (input_file.empty()){
-        std::cerr << "Error: No input file provided. \n";
-        return 1;
-    }
-    if (output_file.empty()) output_file = get_default_output_path(input_file);
+struct CommandLineOptions {
+    std::string input_file;
+    std::string output_file;
+    std::string compile_commands_file;
+    std::vector<std::string> user_include_dirs;
+};
 
-    CXIndex index = clang_createIndex(0,0);
-    std::vector<const char *> args;
+CommandLineOptions parseCommandLineArgs(int argc, char** argv){
+    CommandLineOptions opts;
+    for(int i = 1; i< argc; ++i){
+        std::string arg = argv[i];
+        if (arg == "-o" && i + 1 <argc){
+            opts.output_file = argv[++i];
+        } else if (arg == "-c" && i + 1 < argc){
+            opts.compile_commands_file = argv[++i];
+        } else if (arg == "-i" && i + 1 < argc){
+            opts.user_include_dirs.push_back(argv[++i]);
+        } else if (opts.input_file.empty()){
+            opts.input_file = arg;
+        }
+    }
+    return opts;
+}
+
+
+
+int main(int argc, char** argv) {
+    if (argc < 2) {
+        std::cerr << "Usage: " << argv[0]
+                  << " <file.cpp> [-o <output.json>] [-c <compile_commands.json>] [-i <include_dir> ...]\n";
+        return 1;
+    }
+    auto opts = parseCommandLineArgs(argc, argv);
+
+    if (opts.input_file.empty()) {
+        std::cerr << "Error: No input file provided.\n";
+        return 1;
+    }
+    if (opts.output_file.empty()) opts.output_file = get_default_output_path(opts.input_file);
+
+    for (const auto& dir : opts.user_include_dirs) {
+        std::cout << "user -i param: " << dir << std::endl;
+    }
+
+    std::vector<std::string> extra_include_args;
+    for (const auto& dir : opts.user_include_dirs) {
+        extra_include_args.push_back("-I" + dir);
+    }
+    std::vector<const char*> extra_include_args_cstr;
+    for (const auto& arg : extra_include_args) {
+        extra_include_args_cstr.push_back(arg.c_str());
+    }
+
+    CXIndex index = clang_createIndex(0, 0);
+    std::vector<const char*> args;
     CompileArgs compile_args;
-    if (!compile_commands_file.empty()){
-        compile_args = load_compile_commands(compile_commands_file, input_file);
+    if (!opts.compile_commands_file.empty()) {
+        compile_args = load_compile_commands(opts.compile_commands_file, opts.input_file);
         args = compile_args.cstr_args;
     } else {
         args.push_back("-std=c++17");
     }
-    std::cout << std::endl;
-    std::vector<const char *> args_with_null = args;
+    args.insert(args.end(), extra_include_args_cstr.begin(), extra_include_args_cstr.end());
+
+    g_user_include_dirs = opts.user_include_dirs;
+
     CXTranslationUnit unit = clang_parseTranslationUnit(
-            index, input_file.c_str(), args_with_null.data(), args_with_null.size() - 1, nullptr, 0,
-            CXTranslationUnit_None);
-    if (!unit){
-        std::cerr << "Parse error \n";
+        index, opts.input_file.c_str(), args.data(), args.size(), nullptr, 0,
+        CXTranslationUnit_None);
+
+    // ---- 后续部分不用变 ----
+    if (!unit) {
+        std::cerr << "Parse error\n";
         clang_disposeIndex(index);
         return 2;
     }
+
     json ast = buildASTJson(clang_getTranslationUnitCursor(unit));
     std::map<std::string, int> labelNameToId;
     patchPseudoDestructorExpr(ast);
@@ -842,11 +897,11 @@ int main(int argc, char **argv){
     patchGotoTarget(ast, labelNameToId);
     fixCallExprChildKind(ast);
     patchFoldExpr(ast);
-    std::cout<< "AST built successfully\n";
-    std::ofstream(output_file) << ast.dump(-1, ' ', false, json::error_handler_t::replace);
-    std::cout << "AST written to: "<< output_file << std::endl;
+    std::cout << "AST built successfully\n";
+    std::ofstream(opts.output_file) << ast.dump(-1, ' ', false, json::error_handler_t::replace);
+    std::cout << "AST written to: " << opts.output_file << std::endl;
+
     clang_disposeTranslationUnit(unit);
     clang_disposeIndex(index);
     return 0;
-
 }
