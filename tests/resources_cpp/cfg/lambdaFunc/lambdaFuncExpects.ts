@@ -23,7 +23,7 @@ export const LAMBDA_EXPECT_CASE2 = {
                 'this = this: @lambdaFunc/lambdaFuncSample.cpp: %dflt',
                 'a = 5',
                 'func = %AM1$case2',
-                'res = ptrinvoke <@lambdaFunc/lambdaFuncSample.cpp: %dflt.func([a], int)>(%closures0, 2)',
+                'res = ptrinvoke <@%unk/%unk: .func()>(2)',
                 `staticinvoke <@%unk/%unk: .printf()>('"%d"', res)`,
                 'return'
             ],

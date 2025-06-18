@@ -28,15 +28,15 @@ import {
     PointerType,
     ReferenceType,
     ReferCategory
-} from '../../base/Type';
+} from '../../../core/base/Type';
 import { TypeInference } from '../../common/TypeInference';
-import { ArkField } from '../ArkField';
+import { ArkField } from '../../../core/model/ArkField';
 import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
-import { ArkClass } from '../ArkClass';
-import { ArkMethod } from '../ArkMethod';
-import { Decorator } from '../../base/Decorator';
-import { MethodParameter, ObjectBindingPatternParameter } from './ArkMethodBuilder';
-import { modifierKind2Enum } from '../ArkBaseModel';
+import { ArkClass } from '../../../core/model/ArkClass';
+import { ArkMethod } from '../../../core/model/ArkMethod';
+import { Decorator } from '../../../core/base/Decorator';
+import { MethodParameter } from './ArkMethodBuilder';
+import { modifierKind2Enum, modifierKind2EnumCpp } from '../../../core/model/ArkBaseModel';
 
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'builderUtils');
@@ -115,7 +115,7 @@ function extractCommonModifiers(node:any):number{
         modifiers |= modifierKind2Enum(node.storageClass);
     }
     if (nodeType.includes("const")){
-        modifiers |= modifierKind2Enum("const");
+        modifiers |= modifierKind2EnumCpp("const");
     }
     return modifiers;
 }
@@ -129,14 +129,14 @@ export function buildModifiers(node: any): number {
 
     if (node.kind === 'CXXMethodDecl'){
         if (node.virtual){
-            modifiers |= modifierKind2Enum("virtual");
+            modifiers |= modifierKind2EnumCpp("virtual");
         }
         if (hasOvverrideAttr(node.inner)){
-            modifiers |= modifierKind2Enum("override");
+            modifiers |= modifierKind2EnumCpp("override");
         }
     }
     if (node.kind === "FriendDecl"){
-        modifiers |= modifierKind2Enum("friend");
+        modifiers |= modifierKind2EnumCpp("friend");
     }
 
     return modifiers;
@@ -193,38 +193,6 @@ export function buildTypeParameters(
     return genericTypes;
 }
 
-function buildObjectBindingPatternParam(methodParameter: MethodParameter, paramNameNode: ts.ObjectBindingPattern): void {
-    methodParameter.setName('ObjectBindingPattern');
-    let elements: ObjectBindingPatternParameter[] = [];
-    paramNameNode.elements.forEach(element => {
-        let paraElement = new ObjectBindingPatternParameter();
-        if (element.propertyName) {
-            if (ts.isIdentifier(element.propertyName)) {
-                paraElement.setPropertyName(element.propertyName.text);
-            } else {
-                logger.warn('New propertyName of ObjectBindingPattern found, please contact developers to support this!');
-            }
-        }
-
-        if (element.name) {
-            if (ts.isIdentifier(element.name)) {
-                paraElement.setName(element.name.text);
-            } else {
-                logger.warn('New name of ObjectBindingPattern found, please contact developers to support this!');
-            }
-        }
-
-        if (element.initializer) {
-            logger.warn('TODO: support ObjectBindingPattern initializer.');
-        }
-
-        if (element.dotDotDotToken) {
-            paraElement.setOptional(true);
-        }
-        elements.push(paraElement);
-    });
-    methodParameter.setObjElements(elements);
-}
 export function buildParameters(params: any, arkInstance: ArkMethod | ArkField, sourceFile: any): MethodParameter[] {
     let parameters: MethodParameter[] = []
     if (!params || params.length === 0) {

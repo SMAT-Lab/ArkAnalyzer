@@ -24,11 +24,11 @@ import {
     NormalBinaryOperator,
     RelationalBinaryOperator,
     UnaryOperator,
-} from '../base/Expr';
-import { ArkCaughtExceptionRef, ArkInstanceFieldRef, ArkParameterRef, ArkThisRef, GlobalRef } from '../base/Ref';
-import { Value } from '../base/Value';
+} from '../../core/base/Expr';
+import { ArkCaughtExceptionRef, ArkInstanceFieldRef, ArkParameterRef, ArkThisRef, GlobalRef } from '../../core/base/Ref';
+import { Value } from '../../core/base/Value';
 import * as ts from 'ohos-typescript';
-import { Local } from '../base/Local';
+import { Local } from '../../core/base/Local';
 import {
     ArkAliasTypeDefineStmt,
     ArkAssignStmt,
@@ -38,11 +38,11 @@ import {
     ArkReturnVoidStmt,
     ArkThrowStmt,
     Stmt,
-} from '../base/Stmt';
-import { AliasType, BooleanType, ClassType, UnknownType } from '../base/Type';
+} from '../../core/base/Stmt';
+import { AliasType, BooleanType, ClassType, UnknownType } from '../../core/base/Type';
 import { ValueUtil } from './ValueUtil';
 import { IRUtils } from './IRUtils';
-import { ArkMethod } from '../model/ArkMethod';
+import { ArkMethod } from '../../core/model/ArkMethod';
 import {
     COMPONENT_BRANCH_FUNCTION,
     COMPONENT_CREATE_FUNCTION,
@@ -50,7 +50,7 @@ import {
     COMPONENT_POP_FUNCTION,
     COMPONENT_REPEAT,
 } from './EtsConst';
-import { FullPosition, LineColPosition } from '../base/Position';
+import { FullPosition, LineColPosition } from '../../core/base/Position';
 import { ModelUtils } from './ModelUtils';
 import { ArkValueTransformer } from './ArkValueTransformer';
 import {
@@ -58,7 +58,7 @@ import {
     FieldSignature,
     MethodSignature,
     MethodSubSignature,
-} from '../model/ArkSignature';
+} from '../../core/model/ArkSignature';
 import { Builtin } from './Builtin';
 import { ArkSignatureBuilder } from '../model/builder/ArkSignatureBuilder';
 
@@ -657,7 +657,7 @@ export class ArkIRTransformer {
             if (ifStatement.inner.length > 2) {
                 const branchElseMethodSignature = ArkSignatureBuilder.buildMethodSignatureFromClassNameAndMethodName(COMPONENT_IF, COMPONENT_BRANCH_FUNCTION);
                 const branchElseInvokeExpr = new ArkStaticInvokeExpr(branchElseMethodSignature, [ValueUtil.getOrCreateNumberConst(1)]);
-                const branchElseInvokeExprPositions = [FullPosition.buildFromNode(ifStatement.inner[2], this.sourceFile), FullPosition.DEFAULT];
+                const branchElseInvokeExprPositions = [FullPosition.buildFromNodeCpp(ifStatement.inner[2], this.sourceFile), FullPosition.DEFAULT];
                 const branchElseInvokeStmt = new ArkInvokeStmt(branchElseInvokeExpr);
                 branchElseInvokeStmt.setOperandOriginalPositions(branchElseInvokeExprPositions);
                 stmts.push(branchElseInvokeStmt);
@@ -704,7 +704,7 @@ export class ArkIRTransformer {
         for (const stmt of stmts) {
             if (!this.stmtsHaveOriginalText.has(stmt)) {
                 this.stmtsHaveOriginalText.add(stmt);
-                stmt.setOriginPositionInfo(LineColPosition.buildFromNode(node, this.sourceFile));
+                stmt.setOriginPositionInfo(LineColPosition.buildFromNodeCpp(node, this.sourceFile));
                 stmt.setOriginalText(node.code);
             }
         }

@@ -13,18 +13,18 @@
  * limitations under the License.
  */
 
-import { ArkBody } from '../ArkBody';
-import { ArkMethod } from '../ArkMethod';
-import { FieldSignature, MethodSignature, methodSignatureCompare, MethodSubSignature } from '../ArkSignature';
+import { ArkBody } from '../../../core/model/ArkBody';
+import { ArkMethod } from '../../../core/model/ArkMethod';
+import { FieldSignature, MethodSignature, methodSignatureCompare, MethodSubSignature } from '../../../core/model/ArkSignature';
 import { CfgBuilder } from '../../graph/builder/CfgBuilder';
 import * as ts from 'ohos-typescript';
-import { Local } from '../../base/Local';
+import { Local } from '../../../core/base/Local';
 import { MethodParameter } from './ArkMethodBuilder';
 import { LEXICAL_ENV_NAME_PREFIX, NAME_DELIMITER, NAME_PREFIX } from '../../common/Const';
-import { ArkParameterRef, ArkStaticFieldRef, ClosureFieldRef, GlobalRef } from '../../base/Ref';
-import { ArkAliasTypeDefineStmt, ArkAssignStmt, ArkInvokeStmt, ArkReturnStmt } from '../../base/Stmt';
-import { AliasType, ArrayType, ClosureType, FunctionType, LexicalEnvType, Type, UnclearReferenceType, UnionType } from '../../base/Type';
-import { AbstractInvokeExpr, ArkPtrInvokeExpr } from '../../base/Expr';
+import { ArkParameterRef, ArkStaticFieldRef, ClosureFieldRef, GlobalRef } from '../../../core/base/Ref';
+import { ArkAliasTypeDefineStmt, ArkAssignStmt, ArkInvokeStmt, ArkReturnStmt } from '../../../core/base/Stmt';
+import { AliasType, ArrayType, ClosureType, FunctionType, LexicalEnvType, Type, UnclearReferenceType, UnionType } from '../../../core/base/Type';
+import { AbstractInvokeExpr, ArkPtrInvokeExpr } from '../../../core/base/Expr';
 
 type NestedMethodChain = {
     parent: ArkMethod;
@@ -516,6 +516,7 @@ export class BodyBuilder {
         const closuresParam = new MethodParameter();
         closuresParam.setName(closuresLocal.getName());
         closuresParam.setType(closuresLocal.getType());
+        // @ts-ignore
         params.unshift(closuresParam);
         let newSubSignature = new MethodSubSignature(oldSubSignature.getMethodName(), params, oldSubSignature.getReturnType(), oldSubSignature.isStatic());
         return new MethodSignature(oldSignature.getDeclaringClassSignature(), newSubSignature);

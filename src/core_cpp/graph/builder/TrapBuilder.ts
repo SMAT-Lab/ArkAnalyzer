@@ -13,12 +13,12 @@
  * limitations under the License.
  */
 
-import { BasicBlock } from '../BasicBlock';
+import { BasicBlock } from '../../../core/graph/BasicBlock';
 import { ArkIRTransformer } from '../../common/ArkIRTransformer';
-import { Trap } from '../../base/Trap';
-import { ArkCaughtExceptionRef } from '../../base/Ref';
-import { UnknownType } from '../../base/Type';
-import { FullPosition } from '../../base/Position';
+import { Trap } from '../../../core/base/Trap';
+import { ArkCaughtExceptionRef } from '../../../core/base/Ref';
+import { UnknownType } from '../../../core/base/Type';
+import { FullPosition } from '../../../core/base/Position';
 import {
     ArkAssignStmt,
     ArkIfStmt,
@@ -27,7 +27,7 @@ import {
     ArkReturnVoidStmt,
     ArkThrowStmt,
     Stmt,
-} from '../../base/Stmt';
+} from '../../../core/base/Stmt';
 import { BlockBuilder, TryStatementBuilder } from './CfgBuilder';
 import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
 
@@ -64,9 +64,10 @@ export class TrapBuilder {
             );
             let catchBfsBlocks: BasicBlock[] = [];
             let catchTailBlocks: BasicBlock[] = [];
-            const catchBlockBuilder = tryStmtBuilder.catchStatement?.block;
-            if (catchBlockBuilder) {
-                ({ bfsBlocks: catchBfsBlocks, tailBlocks: catchTailBlocks } = this.getAllBlocksBFS(blockBuilderToCfgBlock, catchBlockBuilder));
+            for (let catchStatement of tryStmtBuilder.catchStatement) {
+                const {bfsBlocks, tailBlocks} = this.getAllBlocksBFS(blockBuilderToCfgBlock, catchStatement.block);
+                catchBfsBlocks = [...catchBfsBlocks, ...bfsBlocks];
+                catchTailBlocks = [...catchTailBlocks, ...tailBlocks];
             }
             const finallyStmts = finallyBlockBuilder.stmts;
             const blockBuilderAfterFinally = tryStmtBuilder.afterFinal?.block;

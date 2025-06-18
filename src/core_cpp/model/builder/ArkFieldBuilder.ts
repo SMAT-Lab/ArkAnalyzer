@@ -14,20 +14,20 @@
  */
 
 import ts from 'ohos-typescript';
-import { ArkField, FieldCategory } from '../ArkField';
+import { ArkField, FieldCategory } from '../../../core/model/ArkField';
 import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
-import { ArkClass } from '../ArkClass';
-import { ArkMethod } from '../ArkMethod';
+import { ArkClass } from '../../../core/model/ArkClass';
+import { ArkMethod } from '../../../core/model/ArkMethod';
 import {
     buildGenericType,
     buildModifiers,
     handlePropertyAccessExpression,
     cppNode2Type,
 } from './builderUtils';
-import { FieldSignature } from '../ArkSignature';
-import { ClassType, Type, UnknownType } from '../../base/Type';
-import { LineColPosition } from '../../base/Position';
-import { ModifierType } from '../ArkBaseModel';
+import { FieldSignature } from '../../../core/model/ArkSignature';
+import { ClassType, Type, UnknownType } from '../../../core/base/Type';
+import { LineColPosition } from '../../../core/base/Position';
+import { ModifierType } from '../../../core/model/ArkBaseModel';
 import { IRUtils } from '../../common/IRUtils';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkFieldBuilder');
@@ -43,7 +43,7 @@ export function buildProperty2ArkField(
     field.setCategory(mapSyntaxKindToFieldOriginType(member.kind) as FieldCategory);
     field.setCode(member.code);
     field.setDeclaringArkClass(cls);
-    field.setOriginPosition(LineColPosition.buildFromNode(member, sourceFile));
+    field.setOriginPosition(LineColPosition.buildFromNodeCpp(member, sourceFile));
 
     let fieldName = member.name;
     field.addModifier(buildModifiers(member));
@@ -70,7 +70,7 @@ export function buildIndexSignature2ArkField(member: any, sourceFile: any, cls: 
     field.setCategory(mapSyntaxKindToFieldOriginType(member.kind.toString()) as FieldCategory);
     field.setDeclaringArkClass(cls);
 
-    field.setOriginPosition(LineColPosition.buildFromNode(member, sourceFile));
+    field.setOriginPosition(LineColPosition.buildFromNodeCpp(member, sourceFile));
 
     if (member.modifiers) {
         let modifier = buildModifiers(member);
@@ -92,7 +92,7 @@ export function buildGetAccessor2ArkField(member: ts.GetAccessorDeclaration, mth
 
     field.setCode(member.getText(sourceFile));
     field.setCategory(mapSyntaxKindToFieldOriginType(member.kind.toString()) as FieldCategory);
-    field.setOriginPosition(LineColPosition.buildFromNode(member, sourceFile));
+    field.setOriginPosition(LineColPosition.buildFromNodeCpp(member, sourceFile));
 
     let fieldName = member.getText(sourceFile);
     if (ts.isIdentifier(member.name) || ts.isLiteralExpression(member.name)) {

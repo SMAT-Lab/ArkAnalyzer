@@ -16,7 +16,7 @@
 import path from 'path';
 import fs from 'fs';
 import { describe, expect, it } from 'vitest';
-import { ArkFile, Scene, SceneConfig } from '../../../src/index';
+import { ArkFile, Scene, SceneConfig } from '../../../src';
 import { JsonPrinter } from '../../../src/save/JsonPrinter';
 
 describe('JsonPrinterTest', () => {

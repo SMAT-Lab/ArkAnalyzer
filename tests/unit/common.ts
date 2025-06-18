@@ -22,7 +22,6 @@ import {
     SceneConfig,
     Stmt,
 } from '../../src';
-// import {Scene} from '../../src/Scene_cpp';
 import { assert, expect } from 'vitest';
 
 export function buildScene(projectPath: string, needInferTypes: boolean = true) {

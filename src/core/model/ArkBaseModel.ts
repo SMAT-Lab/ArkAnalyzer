@@ -55,6 +55,10 @@ export enum ModifierType {
     OUT = 1 << 12,
     OVERRIDE = 1 << 13,
     DECLARE = 1 << 14,
+    AUTO = 1 << 15,
+    EXTERN = 1 << 16,
+    FRIEND = 1 << 17,
+    VIRTUAL = 1 << 18,
 }
 
 export const MODIFIER_TYPE_MASK = 0xffff;
@@ -77,6 +81,18 @@ const MODIFIER_TYPE_STRINGS = [
     'declare',
 ];
 
+const MODIFIER_KIND_2_ENUM_CPP = new Map<string, ModifierType>([
+    ["virtual", ModifierType.VIRTUAL],
+    ["const", ModifierType.CONST],
+    ["private", ModifierType.PRIVATE],
+    ["protected", ModifierType.PROTECTED],
+    ["public", ModifierType.PUBLIC],
+    ["extern", ModifierType.EXTERN],
+    ["friend", ModifierType.FRIEND],
+    ["override", ModifierType.OVERRIDE],
+    ["static", ModifierType.STATIC],
+]);
+
 const MODIFIER_KIND_2_ENUM = new Map<ts.SyntaxKind, ModifierType>([
     [ts.SyntaxKind.AbstractKeyword, ModifierType.ABSTRACT],
     [ts.SyntaxKind.AccessorKeyword, ModifierType.ACCESSOR],
@@ -97,6 +113,10 @@ const MODIFIER_KIND_2_ENUM = new Map<ts.SyntaxKind, ModifierType>([
 
 export function modifierKind2Enum(kind: ts.SyntaxKind): ModifierType {
     return MODIFIER_KIND_2_ENUM.get(kind)!;
+}
+
+export function modifierKind2EnumCpp(kind: string): ModifierType {
+    return MODIFIER_KIND_2_ENUM_CPP.get(kind)!;
 }
 
 export function modifiers2stringArray(modifiers: number): string[] {

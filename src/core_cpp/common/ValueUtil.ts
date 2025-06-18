@@ -22,7 +22,7 @@ import {
     NumberConstant,
     StringConstant,
     UndefinedConstant,
-} from '../base/Constant';
+} from '../../core/base/Constant';
 
 export const EMPTY_STRING = '';
 
@@ -49,7 +49,7 @@ export class ValueUtil {
         if (str === EMPTY_STRING) {
             return this.EMPTY_STRING_CONSTANT;
         }
-        let preStr: String = str.substring(0, 2); //获取前缀处理长字符类型
+        let preStr: string = str.substring(0, 2); //获取前缀处理长字符类型
         if (charPrefixType.includes(preStr)) {
             str = str.substring(2, str.length-1).replace("\\", "");
         } else if (str.charAt(0) === "'"){

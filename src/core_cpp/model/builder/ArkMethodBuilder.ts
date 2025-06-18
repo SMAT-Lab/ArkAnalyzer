@@ -13,52 +13,32 @@
  * limitations under the License.
  */
 
-import { ClassType, GenericType, Type, UnknownType } from '../../base/Type';
+import { ClassType, GenericType, Type, UnknownType } from '../../../core/base/Type';
 import { BodyBuilder } from './BodyBuilder';
 import { buildViewTree } from '../../graph/builder/ViewTreeBuilder';
-import { ArkClass, ClassCategory } from '../ArkClass';
-import { ArkMethod } from '../ArkMethod';
-import ts from 'ohos-typescript';
+import { ArkClass, ClassCategory } from '../../../core/model/ArkClass';
+import { ArkMethod } from '../../../core/model/ArkMethod';
 import {
-    buildDecorators,
     buildGenericType,
     buildModifiers,
     buildParameters,
     buildReturnType,
-    buildTypeParameters,
-    handlePropertyAccessExpression,
     cppNode2Type,
 } from './builderUtils';
-import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
-import { ArkParameterRef, ArkThisRef, ClosureFieldRef } from '../../base/Ref';
-import { ArkBody } from '../ArkBody';
-import { Cfg } from '../../graph/Cfg';
-import { ArkInstanceInvokeExpr, ArkStaticInvokeExpr } from '../../base/Expr';
-import { MethodSignature, MethodSubSignature } from '../ArkSignature';
-import { ArkAssignStmt, ArkInvokeStmt, ArkReturnStmt, ArkReturnVoidStmt, Stmt } from '../../base/Stmt';
-import { BasicBlock } from '../../graph/BasicBlock';
-import { Local } from '../../base/Local';
-import { Value } from '../../base/Value';
+import { ArkParameterRef, ArkThisRef, ClosureFieldRef } from '../../../core/base/Ref';
+import { ArkBody } from '../../../core/model/ArkBody';
+import { Cfg } from '../../../core/graph/Cfg';
+import { ArkInstanceInvokeExpr, ArkStaticInvokeExpr } from '../../../core/base/Expr';
+import { MethodSignature, MethodSubSignature } from '../../../core/model/ArkSignature';
+import { ArkAssignStmt, ArkInvokeStmt, ArkReturnStmt, ArkReturnVoidStmt, Stmt } from '../../../core/base/Stmt';
+import { BasicBlock } from '../../../core/graph/BasicBlock';
+import { Local } from '../../../core/base/Local';
+import { Value } from '../../../core/base/Value';
 import { CONSTRUCTOR_NAME, SUPER_NAME, THIS_NAME } from '../../common/TSConst';
-import { ANONYMOUS_METHOD_PREFIX, CALL_SIGNATURE_NAME, DEFAULT_ARK_CLASS_NAME, DEFAULT_ARK_METHOD_NAME, NAME_DELIMITER, NAME_PREFIX } from '../../common/Const';
+import { ANONYMOUS_METHOD_PREFIX, DEFAULT_ARK_CLASS_NAME, DEFAULT_ARK_METHOD_NAME, NAME_DELIMITER, NAME_PREFIX } from '../../common/Const';
 import { ArkSignatureBuilder } from './ArkSignatureBuilder';
 import { IRUtils } from '../../common/IRUtils';
 import { ArkErrorCode } from '../../common/ArkError';
-import { de } from 'typedoc-plugin-markdown/dist/internationalization';
-
-const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkMethodBuilder');
-
-export type MethodLikeNode =
-    | ts.FunctionDeclaration
-    | ts.MethodDeclaration
-    | ts.ConstructorDeclaration
-    | ts.ArrowFunction
-    | ts.AccessorDeclaration
-    | ts.FunctionExpression
-    | ts.MethodSignature
-    | ts.ConstructSignatureDeclaration
-    | ts.CallSignatureDeclaration
-    | ts.FunctionTypeNode;
 
 export function buildDefaultArkMethodFromArkClass(declaringClass: ArkClass, mtd: ArkMethod, sourceFile: any, node?:any): void {
     mtd.setDeclaringArkClass(declaringClass);
@@ -71,7 +51,7 @@ export function buildDefaultArkMethodFromArkClass(declaringClass: ArkClass, mtd:
     const defaultMethodNode = node ? node : sourceFile;
 
     let bodyBuilder = new BodyBuilder(mtd.getSignature(), defaultMethodNode, mtd, sourceFile);
-    mtd.setBodyBuilder(bodyBuilder);
+    mtd.setBodyBuilderCpp(bodyBuilder);
 }
 
 function getSpecificNodes(methodNode:any, targetNode:string): any[]{
@@ -152,6 +132,7 @@ export function buildArkMethodFromArkClass(
     if (methodNode.type) {
         returnType = buildGenericType(buildReturnType(methodNode, sourceFile, mtd), mtd);
     }
+    // @ts-ignore
     const methodSubSignature = new MethodSubSignature(methodName, methodParameters, returnType, mtd.isStatic());
     const methodSignature = new MethodSignature(mtd.getDeclaringArkClass().getSignature(), methodSubSignature);
     const line = methodNode.loc?methodNode.loc.line : methodNode.range.begin.line;
@@ -166,7 +147,7 @@ export function buildArkMethodFromArkClass(
     }
 
     let bodyBuilder = new BodyBuilder(mtd.getSignature(), methodNode, mtd, sourceFile);
-    mtd.setBodyBuilder(bodyBuilder);
+    mtd.setBodyBuilderCpp(bodyBuilder);
 
     if (mtd.hasBuilderDecorator()) {
         mtd.setViewTree(buildViewTree(mtd));
@@ -393,6 +374,7 @@ export function buildDefaultConstructor(arkClass: ArkClass): boolean {
     let parameterArgs: Value[] = [];
     const superConstructor = arkClass.getSuperClass()?.getMethodWithName(CONSTRUCTOR_NAME);
     if (superConstructor) {
+        // @ts-ignore
         parameters = superConstructor.getParameters();
 
         for (let index = 0; index < parameters.length; index++) {
@@ -408,12 +390,14 @@ export function buildDefaultConstructor(arkClass: ArkClass): boolean {
     basicBlock.addStmt(new ArkAssignStmt(thisLocal, new ArkThisRef(new ClassType(arkClass.getSignature()))));
 
     if (superConstructor) {
+        // @ts-ignore
         const superMethodSubSignature = new MethodSubSignature(SUPER_NAME, parameters, superConstructor.getReturnType());
         const superMethodSignature = new MethodSignature(arkClass.getSignature(), superMethodSubSignature);
         const superInvokeExpr = new ArkStaticInvokeExpr(superMethodSignature, parameterArgs);
         basicBlock.addStmt(new ArkInvokeStmt(superInvokeExpr));
     }
 
+    // @ts-ignore
     const methodSubSignature = new MethodSubSignature(CONSTRUCTOR_NAME, parameters, thisLocal.getType(), defaultConstructor.isStatic());
     defaultConstructor.setImplementationSignature(new MethodSignature(arkClass.getSignature(), methodSubSignature));
     basicBlock.addStmt(new ArkReturnStmt(thisLocal));

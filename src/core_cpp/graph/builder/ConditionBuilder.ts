@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-import { BasicBlock } from '../BasicBlock';
+import { BasicBlock } from '../../../core/graph/BasicBlock';
 import { ArkIRTransformer, DummyStmt } from '../../common/ArkIRTransformer';
-import { ArkAssignStmt, Stmt } from '../../base/Stmt';
-import { Local } from '../../base/Local';
+import { ArkAssignStmt, Stmt } from '../../../core/base/Stmt';
+import { Local } from '../../../core/base/Local';
 import { IRUtils } from '../../common/IRUtils';
 
 /**

@@ -426,18 +426,18 @@ export class ArkNewArrayExpr extends AbstractExpr {
 }
 
 export class ArkDeleteExpr extends AbstractExpr {
-    private field: AbstractFieldRef;
+    private field: AbstractFieldRef | Value;
 
-    constructor(field: AbstractFieldRef) {
+    constructor(field: AbstractFieldRef | Value) {
         super();
         this.field = field;
     }
 
-    public getField(): AbstractFieldRef {
+    public getField(): AbstractFieldRef | Value {
         return this.field;
     }
 
-    public setField(newField: AbstractFieldRef): void {
+    public setField(newField: AbstractFieldRef | Value): void {
         this.field = newField;
     }
 
@@ -573,6 +573,19 @@ export enum RelationalBinaryOperator {
     isPropertyOf = 'in',
 }
 
+export enum CompoundBinaryOperator {
+    AdditionEquals = '+=',
+    SubtractionEquals = '-=',
+    MultiplicationEquals = '*=',
+    DivisionEquals = '/=',
+    RemainderEquals = '%=',
+    LeftShiftEquals = '<<=',
+    RightShiftEquals = '>>=',
+    BitwiseAndEquals = '&=',
+    BitwiseOrEquals = '|=',
+    BitwiseXorEquals = '^=',
+}
+
 export type BinaryOperator = NormalBinaryOperator | RelationalBinaryOperator;
 
 // 二元运算表达式
@@ -673,13 +686,13 @@ export abstract class AbstractBinopExpr extends AbstractExpr {
         let type = UnknownType.getInstance();
         switch (this.operator) {
             case '+':
-                if (op1Type === StringType.getInstance() || op2Type === StringType.getInstance()) {
+                if (op1Type instanceof StringType || op2Type instanceof StringType) {
                     type = StringType.getInstance();
                 }
-                if (op1Type === NumberType.getInstance() && op2Type === NumberType.getInstance()) {
+                if (op1Type instanceof NumberType && op2Type instanceof NumberType) {
                     type = NumberType.getInstance();
                 }
-                if (op1Type === BigIntType.getInstance() && op2Type === BigIntType.getInstance()) {
+                if (op1Type instanceof BigIntType && op2Type instanceof BigIntType) {
                     type = BigIntType.getInstance();
                 }
                 break;
@@ -687,10 +700,10 @@ export abstract class AbstractBinopExpr extends AbstractExpr {
             case '*':
             case '/':
             case '%':
-                if (op1Type === NumberType.getInstance() && op2Type === NumberType.getInstance()) {
+                if (op1Type instanceof NumberType && op2Type instanceof NumberType) {
                     type = NumberType.getInstance();
                 }
-                if (op1Type === BigIntType.getInstance() && op2Type === BigIntType.getInstance()) {
+                if (op1Type instanceof BigIntType && op2Type instanceof BigIntType) {
                     type = BigIntType.getInstance();
                 }
                 break;
@@ -712,15 +725,15 @@ export abstract class AbstractBinopExpr extends AbstractExpr {
             case '^':
             case '<<':
             case '>>':
-                if (op1Type === NumberType.getInstance() && op2Type === NumberType.getInstance()) {
+                if (op1Type instanceof NumberType && op2Type instanceof NumberType) {
                     type = NumberType.getInstance();
                 }
-                if (op1Type === BigIntType.getInstance() && op2Type === BigIntType.getInstance()) {
+                if (op1Type instanceof BigIntType && op2Type instanceof BigIntType) {
                     type = BigIntType.getInstance();
                 }
                 break;
             case '>>>':
-                if (op1Type === NumberType.getInstance() && op2Type === NumberType.getInstance()) {
+                if (op1Type instanceof NumberType && op2Type instanceof NumberType) {
                     type = NumberType.getInstance();
                 }
                 break;
@@ -963,6 +976,8 @@ export enum UnaryOperator {
     Neg = '-',
     BitwiseNot = '~',
     LogicalNot = '!',
+    Addr = '&',
+    Deref = '*'
 }
 
 // unary operation expression

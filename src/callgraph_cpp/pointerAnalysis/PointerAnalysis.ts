@@ -13,16 +13,16 @@
  * limitations under the License.
  */
 
-import { Scene } from '../../Scene_cpp';
-import { Value } from '../../core_cpp/base/Value';
+import { Scene } from '../../Scene';
+import { Value } from '../../core/base/Value';
 import { NodeID } from '../../core_cpp/graph/GraphTraits';
 import path from 'path';
 import * as fs from 'fs';
 import { CallGraph, CallGraphNode, CallSite, DynCallSite, FuncID } from '../model/CallGraph';
 import { AbstractAnalysis } from '../algorithm/AbstractAnalysis';
-import { ClassType, Type, UnknownType } from '../../core_cpp/base/Type';
+import { ClassType, Type, UnknownType } from '../../core/base/Type';
 import { CallGraphBuilder } from '../model/builder/CallGraphBuilder';
-import { Stmt } from '../../core_cpp/base/Stmt';
+import { Stmt } from '../../core/base/Stmt';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { DummyMainCreater } from '../../core_cpp/common/DummyMainCreater';
 import { PTAStat } from '../common/Statistics';
@@ -30,7 +30,7 @@ import { Pag, PagNode, PagEdgeKind, PagEdge, PagLocalNode, PagGlobalThisNode, Pa
 import { PagBuilder } from './PagBuilder';
 import { PointerAnalysisConfig, PtaAnalysisScale } from './PointerAnalysisConfig';
 import { DiffPTData, IPtsCollection } from './PtsDS';
-import { Local } from '../../core_cpp/base/Local';
+import { Local } from '../../core/base/Local';
 import { ArkMethod } from '../../core_cpp/model/ArkMethod';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'PTA');

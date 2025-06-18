@@ -15,15 +15,15 @@
 
 import { NodeID, BaseEdge, BaseExplicitGraph, BaseNode, Kind } from '../../core_cpp/graph/BaseExplicitGraph';
 import { CallGraph, CallSite, DynCallSite } from '../model/CallGraph';
-import { Value } from '../../core_cpp/base/Value';
-import { ArkAssignStmt, ArkReturnStmt, Stmt } from '../../core_cpp/base/Stmt';
-import { AbstractExpr, ArkNewArrayExpr, ArkNewExpr } from '../../core_cpp/base/Expr';
-import { AbstractFieldRef, ArkArrayRef, ArkInstanceFieldRef, ArkParameterRef, ArkStaticFieldRef, ArkThisRef } from '../../core_cpp/base/Ref';
-import { Local } from '../../core_cpp/base/Local';
+import { Value } from '../../core/base/Value';
+import { ArkAssignStmt, ArkReturnStmt, Stmt } from '../../core/base/Stmt';
+import { AbstractExpr, ArkNewArrayExpr, ArkNewExpr } from '../../core/base/Expr';
+import { AbstractFieldRef, ArkArrayRef, ArkInstanceFieldRef, ArkParameterRef, ArkStaticFieldRef, ArkThisRef } from '../../core/base/Ref';
+import { Local } from '../../core/base/Local';
 import { GraphPrinter } from '../../save/GraphPrinter';
 import { PrinterBuilder } from '../../save/PrinterBuilder';
-import { Constant } from '../../core_cpp/base/Constant';
-import { FunctionType, UnclearReferenceType } from '../../core_cpp/base/Type';
+import { Constant } from '../../core/base/Constant';
+import { FunctionType, UnclearReferenceType } from '../../core/base/Type';
 import { ClassSignature, FieldSignature, FileSignature, MethodSignature } from '../../core_cpp/model/ArkSignature';
 import { ContextID } from './Context';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';

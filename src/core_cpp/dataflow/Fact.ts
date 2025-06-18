@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { Value } from '../base/Value';
-import { Stmt } from '../base/Stmt';
+import { Value } from '../../core/base/Value';
+import { Stmt } from '../../core/base/Stmt';
 
 export class Fact {
     values: Set<Value> = new Set<Value>();

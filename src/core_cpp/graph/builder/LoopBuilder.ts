@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import { BasicBlock } from '../BasicBlock';
-import { ArkAssignStmt, ArkIfStmt, Stmt } from '../../base/Stmt';
-import { AbstractInvokeExpr } from '../../base/Expr';
+import { BasicBlock } from '../../../core/graph/BasicBlock';
+import { ArkAssignStmt, ArkIfStmt, Stmt } from '../../../core/base/Stmt';
+import { AbstractInvokeExpr } from '../../../core/base/Expr';
 import { Builtin } from '../../common/Builtin';
 import { ArkIRTransformer } from '../../common/ArkIRTransformer';
 import { BlockBuilder } from './CfgBuilder';

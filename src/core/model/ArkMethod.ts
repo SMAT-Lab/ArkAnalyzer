@@ -44,6 +44,8 @@ import { ArkFile, Language } from './ArkFile';
 import { CONSTRUCTOR_NAME } from '../common/TSConst';
 import { MethodParameter } from './builder/ArkMethodBuilder';
 import { TypeInference } from '../common/TypeInference';
+import { StatementBuilder } from '../../core_cpp/graph/builder/CfgBuilder';
+import { BodyBuilder as BodyBuilderCpp } from '../../core_cpp/model/builder/BodyBuilder';
 
 export const arkMethodNodeKind = [
     'MethodDeclaration',
@@ -79,13 +81,17 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
     private viewTree?: ViewTree;
 
     private bodyBuilder?: BodyBuilder;
+    private bodyBuilderCpp?: BodyBuilderCpp;
 
     private isGeneratedFlag: boolean = false;
     private asteriskToken: boolean = false;
     private questionToken: boolean = false;
 
+    public gotoStmtMap: Map<string, StatementBuilder[]>;
+
     constructor() {
         super();
+        this.gotoStmtMap = new Map();
     }
 
     /**
@@ -556,8 +562,19 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
         }
     }
 
+    public setBodyBuilderCpp(bodyBuilder: BodyBuilderCpp): void {
+        this.bodyBuilderCpp = bodyBuilder;
+        if (this.getDeclaringArkFile().getScene().buildClassDone()) {
+            this.buildBody();
+        }
+    }
+
     public freeBodyBuilder(): void {
         this.bodyBuilder = undefined;
+    }
+
+    public freeBodyBuilderCpp(): void {
+        this.bodyBuilderCpp = undefined;
     }
 
     public buildBody(): void {
@@ -568,6 +585,19 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
                 arkBody.getCfg().setDeclaringMethod(this);
                 if (this.getOuterMethod() === undefined) {
                     this.bodyBuilder.handleGlobalAndClosure();
+                }
+            }
+        }
+    }
+
+    public buildBodyCpp(): void {
+        if (this.bodyBuilderCpp) {
+            const arkBody: ArkBody | null = this.bodyBuilderCpp.build();
+            if (arkBody) {
+                this.setBody(arkBody);
+                arkBody.getCfg().setDeclaringMethod(this);
+                if (this.getOuterMethod() === undefined) {
+                    this.bodyBuilderCpp.handleGlobalAndClosure();
                 }
             }
         }

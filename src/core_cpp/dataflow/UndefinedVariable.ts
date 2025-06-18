@@ -13,22 +13,22 @@
  * limitations under the License.
  */
 
-import { Scene } from '../../Scene_cpp';
+import { Scene } from '../../Scene';
 import { DataflowProblem, FlowFunction } from './DataflowProblem';
-import { Local } from '../base/Local';
-import { Value } from '../base/Value';
-import { ClassType, UndefinedType } from '../base/Type';
-import { ArkAssignStmt, ArkInvokeStmt, Stmt } from '../base/Stmt';
-import { ArkMethod } from '../model/ArkMethod';
-import { Constant } from '../base/Constant';
-import { AbstractRef, ArkInstanceFieldRef, ArkStaticFieldRef } from '../base/Ref';
+import { Local } from '../../core/base/Local';
+import { Value } from '../../core/base/Value';
+import { ClassType, UndefinedType } from '../../core/base/Type';
+import { ArkAssignStmt, ArkInvokeStmt, Stmt } from '../../core/base/Stmt';
+import { ArkMethod } from '../../core/model/ArkMethod';
+import { Constant } from '../../core/base/Constant';
+import { AbstractRef, ArkInstanceFieldRef, ArkStaticFieldRef } from '../../core/base/Ref';
 import { DataflowSolver } from './DataflowSolver';
-import { ArkInstanceInvokeExpr, ArkStaticInvokeExpr } from '../base/Expr';
-import { FileSignature, NamespaceSignature } from '../model/ArkSignature';
-import { ArkClass } from '../model/ArkClass';
+import { ArkInstanceInvokeExpr, ArkStaticInvokeExpr } from '../../core/base/Expr';
+import { FileSignature, NamespaceSignature } from '../../core/model/ArkSignature';
+import { ArkClass } from '../../core/model/ArkClass';
 import { LocalEqual, RefEqual } from './Util';
 import { INSTANCE_INIT_METHOD_NAME, STATIC_INIT_METHOD_NAME } from '../common/Const';
-import { ArkField } from '../model/ArkField';
+import { ArkField } from '../../core/model/ArkField';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'Scene');

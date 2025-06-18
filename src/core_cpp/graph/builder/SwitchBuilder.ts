@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import { BasicBlock } from '../BasicBlock';
+import { BasicBlock } from '../../../core/graph/BasicBlock';
 import { ArkIRTransformer, ValueAndStmts } from '../../common/ArkIRTransformer';
-import { Stmt } from '../../base/Stmt';
+import { Stmt } from '../../../core/base/Stmt';
 import { BlockBuilder, SwitchStatementBuilder } from './CfgBuilder';
 import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
 

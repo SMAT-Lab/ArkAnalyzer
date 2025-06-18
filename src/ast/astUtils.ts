@@ -9,7 +9,7 @@ import {ClangPath} from "./const";
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'astUtils');
 
 export class AstUtils {
-    private static currentAccess:String = "public";
+    private static currentAccess:string = "public";
 
     public static parse(sourceFile: string): JSON | null{
         if (!fs.existsSync(sourceFile)){
@@ -21,7 +21,7 @@ export class AstUtils {
             logger.warn("can not find clang path");
             return null;
         }
-        let astPath = this.getAstOutputPath(sourceFile);
+        let astPath:string = this.getAstOutputPath(sourceFile);
 
         let parseArguments: string[] = [sourceFile, '-o', astPath];
         this.ensureOutputDir(path.dirname(astPath));
@@ -123,7 +123,7 @@ export class AstUtils {
         }
     }
 
-    private static getAstOutputPath(sourceFile:string): String {
+    private static getAstOutputPath(sourceFile:string): string {
         const fileName = `${path.parse(path.basename(sourceFile)).name}_AST.json`;
         return path.join(ClangPath.protectRoot, "src", "ast","out", fileName);
     }
@@ -134,7 +134,7 @@ export class AstUtils {
         }
     }
 
-    private static getPlatformClang(): String{
+    private static getPlatformClang(): string{
         let platform = os.platform();
         switch (platform) {
             case "win32":
@@ -147,7 +147,7 @@ export class AstUtils {
     }
 }
 
-async function deleteFIle(filePath:String){
+async function deleteFIle(filePath:string){
     try {
         await fs.promises.unlink(filePath);
         logger.info("delete file ok:", filePath);

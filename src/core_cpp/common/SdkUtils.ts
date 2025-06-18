@@ -13,20 +13,20 @@
  * limitations under the License.
  */
 
-import { ArkFile } from '../model/ArkFile';
-import { ArkExport, ExportInfo } from '../model/ArkExport';
+import { ArkFile } from '../../core/model/ArkFile';
+import { ArkExport, ExportInfo } from '../../core/model/ArkExport';
 import { COMPONENT_ATTRIBUTE } from './EtsConst';
 import { GLOBAL_THIS_NAME, THIS_NAME } from './TSConst';
 import { TEMP_LOCAL_PREFIX } from './Const';
-import { ArkClass, ClassCategory } from '../model/ArkClass';
-import { LocalSignature } from '../model/ArkSignature';
+import { ArkClass, ClassCategory } from '../../core/model/ArkClass';
+import { LocalSignature } from '../../core/model/ArkSignature';
 import { ModelUtils } from './ModelUtils';
-import { Local } from '../base/Local';
-import { ArkMethod } from '../model/ArkMethod';
+import { Local } from '../../core/base/Local';
+import { ArkMethod } from '../../core/model/ArkMethod';
 import path from 'path';
-import { ClassType } from '../base/Type';
-import { AbstractFieldRef } from '../base/Ref';
-import { ArkNamespace } from '../model/ArkNamespace';
+import { ClassType } from '../../core/base/Type';
+import { AbstractFieldRef } from '../../core/base/Ref';
+import { ArkNamespace } from '../../core/model/ArkNamespace';
 import { TypeInference } from './TypeInference';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 

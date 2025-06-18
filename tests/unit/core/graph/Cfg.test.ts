@@ -26,7 +26,7 @@ import {
     SceneConfig,
     Stmt,
     ValueUtil,
-} from '../../../../src/index';
+} from '../../../../src';
 import { describe, expect, it } from 'vitest';
 import path from 'path';
 import {
