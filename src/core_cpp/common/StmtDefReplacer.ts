@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { Value } from '../base/Value';
-import { ArkAssignStmt, Stmt } from '../base/Stmt';
+import { Value } from '../../core/base/Value';
+import { ArkAssignStmt, Stmt } from '../../core/base/Stmt';
 import { IRUtils } from './IRUtils';
 
 /**

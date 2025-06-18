@@ -13,17 +13,17 @@
  * limitations under the License.
  */
 
-import { AbstractBinopExpr, AbstractInvokeExpr, ArkCastExpr, ArkUnopExpr } from '../base/Expr';
-import { AbstractFieldRef, AbstractRef, ArkArrayRef, ArkInstanceFieldRef, ArkStaticFieldRef } from '../base/Ref';
-import { Value } from '../base/Value';
-import { Scene } from '../../Scene_cpp';
+import { AbstractBinopExpr, AbstractInvokeExpr, ArkCastExpr, ArkUnopExpr } from '../../core/base/Expr';
+import { AbstractFieldRef, AbstractRef, ArkArrayRef, ArkInstanceFieldRef, ArkStaticFieldRef } from '../../core/base/Ref';
+import { Value } from '../../core/base/Value';
+import { Scene } from '../../Scene';
 import ts from 'ohos-typescript';
 import { SceneOptions } from '../../Config';
-import { ArkMetadataKind, CommentItem, CommentsMetadata } from '../model/ArkMetadata';
-import { Stmt } from '../base/Stmt';
-import { ArkBaseModel } from '../model/ArkBaseModel';
-import { FullPosition } from '../base/Position';
-import { Local } from '../base/Local';
+import { ArkMetadataKind, CommentItem, CommentsMetadata } from '../../core/model/ArkMetadata';
+import { Stmt } from '../../core/base/Stmt';
+import { ArkBaseModel } from '../../core/model/ArkBaseModel';
+import { FullPosition } from '../../core/base/Position';
+import { Local } from '../../core/base/Local';
 import { NAME_PREFIX } from './Const';
 
 export class IRUtils {

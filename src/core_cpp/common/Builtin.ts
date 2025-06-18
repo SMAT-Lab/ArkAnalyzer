@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { ClassSignature, FileSignature, MethodSignature, MethodSubSignature } from '../model/ArkSignature';
-import { ClassType, GenericType, StringType } from '../base/Type';
+import { ClassSignature, FileSignature, MethodSignature, MethodSubSignature } from '../../core/model/ArkSignature';
+import { ClassType, GenericType, StringType } from '../../core/base/Type';
 
 export class Builtin {
     // built-in classes

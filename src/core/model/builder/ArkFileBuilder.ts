@@ -73,6 +73,7 @@ export function buildArkFileFromFile(absoluteFilePath: string, projectDir: strin
     arkFile.setFileSignature(fileSignature);
 
     arkFile.setCode(fs.readFileSync(arkFile.getFilePath(), 'utf8'));
+    // @ts-ignore
     const sourceFile = ts.createSourceFile(arkFile.getName(), arkFile.getCode(), ts.ScriptTarget.Latest, true, undefined, ETS_COMPILER_OPTIONS);
     genDefaultArkClass(arkFile, sourceFile);
     buildArkFile(arkFile, sourceFile);

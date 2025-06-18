@@ -13,19 +13,16 @@
  * limitations under the License.
  */
 
-import { LineColPosition } from '../../base/Position';
 import { buildDefaultArkClassFromArkNamespace, buildNormalArkClassFromArkNamespace } from './ArkClassBuilder';
-import { ArkFile } from '../ArkFile';
+import { ArkFile } from '../../../core/model/ArkFile';
 import { buildArkMethodFromArkClass } from './ArkMethodBuilder';
 import ts from 'ohos-typescript';
-import { ArkNamespace } from '../ArkNamespace';
+import { ArkNamespace } from '../../../core/model/ArkNamespace';
 import { buildDecorators, buildModifiers } from './builderUtils';
 import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
-import { buildExportAssignment, buildExportDeclaration, buildExportInfo, buildExportVariableStatement, isExported } from './ArkExportBuilder';
-import { ArkClass } from '../ArkClass';
-import { ArkMethod } from '../ArkMethod';
-import { NamespaceSignature } from '../ArkSignature';
-import { IRUtils } from '../../common/IRUtils';
+import { ArkClass } from '../../../core/model/ArkClass';
+import { ArkMethod } from '../../../core/model/ArkMethod';
+import { NamespaceSignature } from '../../../core/model/ArkSignature';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkNamespaceBuilder');
 

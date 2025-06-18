@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { Stmt } from '../../core_cpp/base/Stmt';
-import { Value } from '../../core_cpp/base/Value';
+import { Stmt } from '../../core/base/Stmt';
+import { Value } from '../../core/base/Value';
 import { ContextID } from '../pointerAnalysis/Context';
 import { FuncID } from './CallGraph';
 

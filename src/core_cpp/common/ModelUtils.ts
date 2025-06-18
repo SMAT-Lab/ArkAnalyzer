@@ -13,11 +13,11 @@
  * limitations under the License.
  */
 
-import { Local } from '../base/Local';
-import { ArkClass } from '../model/ArkClass';
-import { ArkFile } from '../model/ArkFile';
-import { ArkMethod } from '../model/ArkMethod';
-import { ArkNamespace } from '../model/ArkNamespace';
+import { Local } from '../../core/base/Local';
+import { ArkClass } from '../../core/model/ArkClass';
+import { ArkFile } from '../../core/model/ArkFile';
+import { ArkMethod } from '../../core/model/ArkMethod';
+import { ArkNamespace } from '../../core/model/ArkNamespace';
 import {
     AliasTypeSignature,
     ClassSignature,
@@ -28,9 +28,9 @@ import {
     MethodSignature,
     NamespaceSignature,
     Signature,
-} from '../model/ArkSignature';
-import { ArkExport, ExportInfo, ExportType, FromInfo } from '../model/ArkExport';
-import { ArkField } from '../model/ArkField';
+} from '../../core/model/ArkSignature';
+import { ArkExport, ExportInfo, ExportType, FromInfo } from '../../core/model/ArkExport';
+import { ArkField } from '../../core/model/ArkField';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { FileUtils, ModulePath } from '../../utils/FileUtils';
 import path from 'path';
@@ -44,13 +44,13 @@ import {
     Type,
     UnclearReferenceType,
     UnknownType
-} from '../base/Type';
-import { Scene } from '../../Scene_cpp';
+} from '../../core/base/Type';
+import { Scene } from '../../Scene';
 import { DEFAULT_ARK_CLASS_NAME, DEFAULT_ARK_METHOD_NAME, NAME_DELIMITER, TEMP_LOCAL_PREFIX } from './Const';
 import { EMPTY_STRING } from './ValueUtil';
-import { ArkBaseModel } from '../model/ArkBaseModel';
-import { ArkAssignStmt } from '../base/Stmt';
-import { ClosureFieldRef } from '../base/Ref';
+import { ArkBaseModel } from '../../core/model/ArkBaseModel';
+import { ArkAssignStmt } from '../../core/base/Stmt';
+import { ClosureFieldRef } from '../../core/base/Ref';
 import { SdkUtils } from './SdkUtils';
 
 export class ModelUtils {

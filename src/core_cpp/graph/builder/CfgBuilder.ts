@@ -14,24 +14,24 @@
  */
 
 import * as ts from 'ohos-typescript';
-import { Local } from '../../base/Local';
-import { ArkAliasTypeDefineStmt, ArkReturnStmt, ArkReturnVoidStmt, Stmt } from '../../base/Stmt';
-import { BasicBlock } from '../BasicBlock';
-import { Cfg } from '../Cfg';
-import { ArkClass } from '../../model/ArkClass';
-import { ArkMethod } from '../../model/ArkMethod';
+import { Local } from '../../../core/base/Local';
+import { ArkAliasTypeDefineStmt, ArkReturnStmt, ArkReturnVoidStmt, Stmt } from '../../../core/base/Stmt';
+import { BasicBlock } from '../../../core/graph/BasicBlock';
+import { Cfg } from '../../../core/graph/Cfg';
+import { ArkClass } from '../../../core/model/ArkClass';
+import { ArkMethod } from '../../../core/model/ArkMethod';
 import { ArkIRTransformer, ValueAndStmts } from '../../common/ArkIRTransformer';
 import { ModelUtils } from '../../common/ModelUtils';
 import { IRUtils } from '../../common/IRUtils';
-import { AliasType, ClassType, UnclearReferenceType, UnknownType, VoidType } from '../../base/Type';
-import { Trap } from '../../base/Trap';
-import { GlobalRef } from '../../base/Ref';
+import { AliasType, ClassType, UnclearReferenceType, UnknownType, VoidType } from '../../../core/base/Type';
+import { Trap } from '../../../core/base/Trap';
+import { GlobalRef } from '../../../core/base/Ref';
 import { LoopBuilder } from './LoopBuilder';
 import { SwitchBuilder } from './SwitchBuilder';
 import { ConditionBuilder } from './ConditionBuilder';
 import { TrapBuilder } from './TrapBuilder';
 import { CONSTRUCTOR_NAME, PROMISE } from '../../common/TSConst';
-import { ModifierType } from '../../model/ArkBaseModel';
+import { ModifierType } from '../../../core/model/ArkBaseModel';
 
 export class StatementBuilder {
     type: string;
@@ -192,7 +192,7 @@ class TextError extends Error {
 
 export class CfgBuilder {
     name: string;
-    astRoot: ts.Node;
+    astRoot: any;
     entry: StatementBuilder;
     exit: StatementBuilder;
     loopStack: ConditionStatementBuilder[];
@@ -214,10 +214,10 @@ export class CfgBuilder {
     emptyBody: boolean = false;
     arrowFunctionWithoutBlock: boolean = false;
 
-    private sourceFile: ts.SourceFile;
+    private sourceFile: any;
     private declaringMethod: ArkMethod;
 
-    constructor(ast: any, name: string, declaringMethod: ArkMethod, sourceFile: ts.SourceFile) {
+    constructor(ast: any, name: string, declaringMethod: ArkMethod, sourceFile: any) {
         this.name = name;
         this.astRoot = ast;
         this.declaringMethod = declaringMethod;

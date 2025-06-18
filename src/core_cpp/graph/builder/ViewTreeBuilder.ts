@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { Constant } from '../../base/Constant';
-import { Decorator } from '../../base/Decorator';
+import { Constant } from '../../../core/base/Constant';
+import { Decorator } from '../../../core/base/Decorator';
 import {
     AbstractInvokeExpr,
     ArkConditionExpr,
@@ -23,12 +23,12 @@ import {
     ArkNormalBinopExpr,
     ArkPtrInvokeExpr,
     ArkStaticInvokeExpr,
-} from '../../base/Expr';
-import { Local } from '../../base/Local';
-import { ArkArrayRef, ArkInstanceFieldRef, ArkThisRef } from '../../base/Ref';
-import { ArkAssignStmt, ArkInvokeStmt, Stmt } from '../../base/Stmt';
-import { ClassType, FunctionType, Type } from '../../base/Type';
-import { Value } from '../../base/Value';
+} from '../../../core/base/Expr';
+import { Local } from '../../../core/base/Local';
+import { ArkArrayRef, ArkInstanceFieldRef, ArkThisRef } from '../../../core/base/Ref';
+import { ArkAssignStmt, ArkInvokeStmt, Stmt } from '../../../core/base/Stmt';
+import { ClassType, FunctionType, Type } from '../../../core/base/Type';
+import { Value } from '../../../core/base/Value';
 import {
     BUILDER_DECORATOR,
     BUILDER_PARAM_DECORATOR,
@@ -44,15 +44,15 @@ import {
     isEtsContainerComponent,
     SPECIAL_CONTAINER_COMPONENT,
 } from '../../common/EtsConst';
-import { ArkClass, ClassCategory } from '../../model/ArkClass';
-import { ArkField } from '../../model/ArkField';
-import { ArkMethod } from '../../model/ArkMethod';
-import { ClassSignature, MethodSignature } from '../../model/ArkSignature';
-import { Cfg } from '../Cfg';
+import { ArkClass, ClassCategory } from '../../../core/model/ArkClass';
+import { ArkField } from '../../../core/model/ArkField';
+import { ArkMethod } from '../../../core/model/ArkMethod';
+import { ClassSignature, MethodSignature } from '../../../core/model/ArkSignature';
+import { Cfg } from '../../../core/graph/Cfg';
 import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
-import { ViewTree, ViewTreeNode } from '../ViewTree';
+import { ViewTree, ViewTreeNode } from '../../../core/graph/ViewTree';
 import { ModelUtils } from '../../common/ModelUtils';
-import { Scene } from '../../../Scene_cpp';
+import { Scene } from '../../../Scene';
 import { TEMP_LOCAL_PREFIX } from '../../common/Const';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ViewTreeBuilder');

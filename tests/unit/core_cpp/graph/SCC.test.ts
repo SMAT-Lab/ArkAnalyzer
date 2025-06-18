@@ -19,7 +19,7 @@ import {
     Scene,
     CallGraph,
     CallGraphBuilder
-} from '../../../../src/index';
+} from '../../../../src';
 import { describe, expect, it } from 'vitest';
 
 describe('SCCTest', () => {

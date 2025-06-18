@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { Stmt } from '../base/Stmt';
-import { ArkMethod } from '../model/ArkMethod';
+import { Stmt } from '../../core/base/Stmt';
+import { ArkMethod } from '../../core/model/ArkMethod';
 
 export abstract class DataflowProblem<D> {
     /**

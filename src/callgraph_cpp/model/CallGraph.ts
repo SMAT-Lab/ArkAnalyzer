@@ -13,13 +13,13 @@
  * limitations under the License.
  */
 
-import { MethodSignature } from '../../core_cpp/model/ArkSignature';
-import { Stmt } from '../../core_cpp/base/Stmt';
-import { Scene } from '../../Scene_cpp';
-import { ArkMethod } from '../../core_cpp/model/ArkMethod';
+import { MethodSignature } from '../../core/model/ArkSignature';
+import { Stmt } from '../../core/base/Stmt';
+import { Scene } from '../../Scene';
+import { ArkMethod } from '../../core/model/ArkMethod';
 import { GraphPrinter } from '../../save/GraphPrinter';
 import { PrinterBuilder } from '../../save/PrinterBuilder';
-import { BaseEdge, BaseNode, BaseExplicitGraph, NodeID } from '../../core_cpp/graph/BaseExplicitGraph';
+import { BaseEdge, BaseNode, BaseExplicitGraph, NodeID } from '../../core/graph/BaseExplicitGraph';
 import { CGStat } from '../common/Statistics';
 import { UNKNOWN_FILE_NAME } from '../../core_cpp/common/Const';
 import { CallSite, CallSiteID, DynCallSite, ICallSite } from './CallSite';
@@ -83,6 +83,7 @@ export class CallGraphEdge extends BaseEdge {
 export class CallGraphNode extends BaseNode {
     private method: Method;
     private ifSdkMethod: boolean = false;
+    private isBlank: boolean = false;
 
     constructor(id: number, m: Method, k: CallGraphNodeKind = CallGraphNodeKind.real) {
         super(id, k);
@@ -102,7 +103,11 @@ export class CallGraphNode extends BaseNode {
     }
 
     public get isBlankMethod(): boolean {
-        return this.kind === CallGraphNodeKind.blank;
+        return this.isBlank;
+    }
+
+    public set isBlackMethod(is: boolean) {
+        this.isBlank = is;
     }
 
     public getDotAttr(): string {
@@ -153,6 +158,11 @@ export class CallGraph extends BaseExplicitGraph {
         let cgNode = new CallGraphNode(id, method, kind);
         // check if sdk method
         cgNode.setSdkMethod(this.scene.hasSdkFile(method.getDeclaringClassSignature().getDeclaringFileSignature()));
+
+        let arkMethod = this.scene.getMethod(method);
+        if (!arkMethod || !arkMethod.getCfg()) {
+            cgNode.isBlackMethod = true;
+        }
 
         this.addNode(cgNode);
         this.methodToCGNodeMap.set(method.toString(), cgNode.getID());
@@ -349,6 +359,7 @@ export class CallGraph extends BaseExplicitGraph {
     }
 
     public dump(name: string, entry?: FuncID): void {
+        // @ts-ignore
         let printer = new GraphPrinter<this>(this);
         if (entry) {
             printer.setStartID(entry);

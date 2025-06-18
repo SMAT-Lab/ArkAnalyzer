@@ -99,6 +99,15 @@ export class LineColPosition {
         // line start from 1.
         return new LineColPosition(line + 1, character + 1);
     }
+    public static buildFromNodeCpp(node: any, sourceFile: any) {
+        let line = 0;
+        let character = 0;
+        if (node.range.begin && node.range.begin.line) {
+            line = node.range.begin.line;
+            character = node.range.begin.col;
+        }
+        return new LineColPosition(line, character);
+    }
 }
 
 export class FullPosition {
@@ -134,6 +143,20 @@ export class FullPosition {
 
         // line start from 1
         return new FullPosition(startLine + 1, startCharacter + 1, endLine + 1, endCharacter + 1);
+    }
+
+    public static buildFromNodeCpp(node: any, sourceFile: any): FullPosition {
+        let startLine = 0;
+        let startCharacter = 0;
+        let endLine = 0;
+        let endCharacter = 0;
+        if (node.range && node.range.begin && node.range.begin.line) {
+            startLine = node.range.begin.line;
+            startCharacter = node.range.begin.col;
+            endLine = node.range.begin.line;
+            endCharacter = startLine + node.range.begin.tokLen;
+        }
+        return new FullPosition(startLine, startCharacter, endLine, endCharacter);
     }
 
     public static merge(leftMostPosition: FullPosition, rightMostPosition: FullPosition): FullPosition {

@@ -178,7 +178,7 @@ import {NULLPTR_EXPECT_CASE1} from '../../../resources_cpp/cfg/nullPtr/nullPtrSa
 import { BASE_DATA_TYPE_EXPECT_MAIN } from '../../../resources_cpp/cfg/baseDataType/baseDataTypeExpects';
 import {WHILE_CONTINUE_EXPECT_MAIN} from '../../../resources_cpp/cfg/whileContinue/whileContinueSampleExpects';
 import { assertClassBlocksEqual, testBlocks } from '../../common';
-import { Scene } from '../../../../src/Scene_cpp';
+import { Scene } from '../../../../src';
 
 
 describe('CfgTest', () => {
@@ -427,7 +427,7 @@ function buildScene(folderName: string): Scene {
     let config: SceneConfig = new SceneConfig();
     config.buildFromProjectDir(path.join(BASE_DIR, folderName));
     let scene = new Scene();
-    scene.buildSceneFromProjectDir(config);
+    scene.buildSceneFromProjectDirCpp(config);
     return scene;
 }
 

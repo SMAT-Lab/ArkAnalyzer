@@ -218,6 +218,24 @@ export class ArkInstanceFieldRef extends AbstractFieldRef {
     }
 }
 
+// CPP的成员访问实现，因为需区分p.f和p->f且不对原arkIR做侵入式修改，这里设计派生类
+export class CXXArkInstanceFieldRef extends ArkInstanceFieldRef {
+    private isArrow: boolean;
+
+    constructor(base: Local, isArrow: boolean, fieldSignature: FieldSignature) {
+        super(base, fieldSignature);
+        this.isArrow = isArrow;
+    }
+
+    public isArrowAccess(): boolean {
+        return this.isArrow;
+    }
+
+    public toString(): string {
+        return this.getBase().toString() + (this.isArrow ? '->' : '.') + '<' + this.getFieldSignature() + '>';
+    }
+}
+
 export class ArkStaticFieldRef extends AbstractFieldRef {
     constructor(fieldSignature: FieldSignature) {
         super(fieldSignature);

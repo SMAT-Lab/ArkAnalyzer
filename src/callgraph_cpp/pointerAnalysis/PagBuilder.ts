@@ -14,8 +14,8 @@
  */
 
 import { CallGraph, CallGraphNode, CallGraphNodeKind, CallSite, DynCallSite, FuncID, ICallSite } from '../model/CallGraph';
-import { Scene } from '../../Scene_cpp';
-import { ArkAssignStmt, ArkInvokeStmt, ArkReturnStmt, Stmt } from '../../core_cpp/base/Stmt';
+import { Scene } from '../../Scene';
+import { ArkAssignStmt, ArkInvokeStmt, ArkReturnStmt, Stmt } from '../../core/base/Stmt';
 import {
     AbstractExpr,
     AbstractInvokeExpr,
@@ -25,16 +25,16 @@ import {
     ArkPtrInvokeExpr,
     ArkStaticInvokeExpr,
 } from '../../core/base/Expr';
-import { AbstractFieldRef, ArkArrayRef, ArkInstanceFieldRef, ArkParameterRef, ArkStaticFieldRef, ArkThisRef } from '../../core_cpp/base/Ref';
-import { Value } from '../../core_cpp/base/Value';
+import { AbstractFieldRef, ArkArrayRef, ArkInstanceFieldRef, ArkParameterRef, ArkStaticFieldRef, ArkThisRef } from '../../core/base/Ref';
+import { Value } from '../../core/base/Value';
 import { ArkMethod } from '../../core_cpp/model/ArkMethod';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
-import { Local } from '../../core_cpp/base/Local';
+import { Local } from '../../core/base/Local';
 import { NodeID } from '../../core_cpp/graph/GraphTraits';
 import { ClassSignature } from '../../core_cpp/model/ArkSignature';
 import { ArkClass } from '../../core_cpp/model/ArkClass';
-import { ArrayType, ClassType, FunctionType, StringType } from '../../core_cpp/base/Type';
-import { Constant, NullConstant } from '../../core_cpp/base/Constant';
+import { ArrayType, ClassType, FunctionType, StringType } from '../../core/base/Type';
+import { Constant, NullConstant } from '../../core/base/Constant';
 import { PAGStat } from '../common/Statistics';
 import { ContextID, DUMMY_CID, KLimitedContextSensitive } from './Context';
 import {

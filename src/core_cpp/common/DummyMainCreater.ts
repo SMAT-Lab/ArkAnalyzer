@@ -13,23 +13,23 @@
  * limitations under the License.
  */
 
-import { Scene } from '../../Scene_cpp';
+import { Scene } from '../../Scene';
 import { COMPONENT_LIFECYCLE_METHOD_NAME, getCallbackMethodFromStmt, LIFECYCLE_METHOD_NAME } from '../../utils/entryMethodUtils';
-import { Constant } from '../base/Constant';
-import { AbstractInvokeExpr, ArkConditionExpr, ArkInstanceInvokeExpr, ArkNewExpr, ArkStaticInvokeExpr, RelationalBinaryOperator } from '../base/Expr';
-import { Local } from '../base/Local';
-import { ArkAssignStmt, ArkIfStmt, ArkInvokeStmt, ArkReturnVoidStmt } from '../base/Stmt';
-import { ClassType, NumberType, Type } from '../base/Type';
-import { BasicBlock } from '../graph/BasicBlock';
-import { Cfg } from '../graph/Cfg';
-import { ArkBody } from '../model/ArkBody';
-import { ArkClass } from '../model/ArkClass';
-import { ArkFile, Language } from '../model/ArkFile';
-import { ArkMethod } from '../model/ArkMethod';
-import { ClassSignature, FileSignature, MethodSignature } from '../model/ArkSignature';
+import { Constant } from '../../core/base/Constant';
+import { AbstractInvokeExpr, ArkConditionExpr, ArkInstanceInvokeExpr, ArkNewExpr, ArkStaticInvokeExpr, RelationalBinaryOperator } from '../../core/base/Expr';
+import { Local } from '../../core/base/Local';
+import { ArkAssignStmt, ArkIfStmt, ArkInvokeStmt, ArkReturnVoidStmt } from '../../core/base/Stmt';
+import { ClassType, NumberType, Type } from '../../core/base/Type';
+import { BasicBlock } from '../../core/graph/BasicBlock';
+import { Cfg } from '../../core/graph/Cfg';
+import { ArkBody } from '../../core/model/ArkBody';
+import { ArkClass } from '../../core/model/ArkClass';
+import { ArkFile, Language } from '../../core/model/ArkFile';
+import { ArkMethod } from '../../core/model/ArkMethod';
+import { ClassSignature, FileSignature, MethodSignature } from '../../core/model/ArkSignature';
 import { ArkSignatureBuilder } from '../model/builder/ArkSignatureBuilder';
 import { CONSTRUCTOR_NAME } from './TSConst';
-import { checkAndUpdateMethod } from '../model/builder/ArkMethodBuilder';
+import { checkAndUpdateMethod } from '../../core/model/builder/ArkMethodBuilder';
 import { ValueUtil } from './ValueUtil';
 
 /**
@@ -288,7 +288,7 @@ export class DummyMainCreater {
                 return false;
             })
             .forEach(cls => {
-                methods.push(...cls.getMethods().filter(mtd => COMPONENT_LIFECYCLE_METHOD_NAME.includes(mtd.getName())));
+                methods.push(...cls.getMethods().filter((mtd: any) => COMPONENT_LIFECYCLE_METHOD_NAME.includes(mtd.getName())));
             });
         return methods;
     }
@@ -314,7 +314,7 @@ export class DummyMainCreater {
             .getClasses()
             .filter(cls => this.classInheritsAbility(cls))
             .forEach(cls => {
-                methods.push(...cls.getMethods().filter(mtd => LIFECYCLE_METHOD_NAME.includes(mtd.getName())));
+                methods.push(...cls.getMethods().filter((mtd: any) => LIFECYCLE_METHOD_NAME.includes(mtd.getName())));
             });
         return methods;
     }
@@ -328,7 +328,7 @@ export class DummyMainCreater {
             method
                 .getCfg()!
                 .getStmts()
-                .forEach(stmt => {
+                .forEach((stmt: any) => {
                     const cbMethod = getCallbackMethodFromStmt(stmt, this.scene);
                     if (cbMethod && !callbackMethods.includes(cbMethod)) {
                         callbackMethods.push(cbMethod);

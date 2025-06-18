@@ -27,10 +27,9 @@ import {
     ArkTypeOfExpr,
     ArkUnopExpr,
     ArkYieldExpr,
-} from '../base/Expr';
-import { Local } from '../base/Local';
-import { Value } from '../base/Value';
-import { AbstractFieldRef } from '../base/Ref';
+} from '../../core/base/Expr';
+import { Local } from '../../core/base/Local';
+import { Value } from '../../core/base/Value';
 
 /**
  * Replace old use of a Expr inplace

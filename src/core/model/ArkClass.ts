@@ -35,6 +35,7 @@ export enum ClassCategory {
     ENUM = 3,
     TYPE_LITERAL = 4,
     OBJECT = 5,
+    UNION = 6
 }
 
 /**

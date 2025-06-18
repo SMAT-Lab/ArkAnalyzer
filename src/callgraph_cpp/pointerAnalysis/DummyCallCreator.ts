@@ -13,12 +13,12 @@
  * limitations under the License.
  */
 
-import { ArkInstanceInvokeExpr } from '../../core_cpp/base/Expr';
-import { Local } from '../../core_cpp/base/Local';
-import { Stmt, ArkInvokeStmt } from '../../core_cpp/base/Stmt';
+import { ArkInstanceInvokeExpr } from '../../core/base/Expr';
+import { Local } from '../../core/base/Local';
+import { Stmt, ArkInvokeStmt } from '../../core/base/Stmt';
 import { ArkMethod } from '../../core_cpp/model/ArkMethod';
 import { ClassSignature } from '../../core_cpp/model/ArkSignature';
-import { Scene } from '../../Scene_cpp';
+import { Scene } from '../../Scene';
 import { COMPONENT_LIFECYCLE_METHOD_NAME } from '../../utils/entryMethodUtils';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 

@@ -36,13 +36,13 @@
  *
  */
 
-import { ArkAssignStmt, Stmt } from '../base/Stmt';
-import { Value } from '../base/Value';
-import { BaseImplicitGraph, NodeID } from '../graph/BaseImplicitGraph';
-import { ArkMethod } from '../model/ArkMethod';
+import { ArkAssignStmt, Stmt } from '../../core/base/Stmt';
+import { Value } from '../../core/base/Value';
+import { BaseImplicitGraph, NodeID } from '../../core/graph/BaseImplicitGraph';
+import { ArkMethod } from '../../core/model/ArkMethod';
 import { DataFlowProblem, TransferFunction, FlowGraph } from './GenericDataFlow';
 import { SparseBitVector } from '../../utils/SparseBitVector';
-import { Cfg } from '../graph/Cfg';
+import { Cfg } from '../../core/graph/Cfg';
 
 type RDNode = Stmt;
 type DFNodeCollection = SparseBitVector;

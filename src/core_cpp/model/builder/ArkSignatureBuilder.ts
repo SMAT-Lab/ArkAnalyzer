@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { ClassSignature, FieldSignature, FileSignature, MethodSignature, MethodSubSignature } from '../ArkSignature';
-import { UnknownType } from '../../base/Type';
+import { ClassSignature, FieldSignature, FileSignature, MethodSignature, MethodSubSignature } from '../../../core/model/ArkSignature';
+import { UnknownType } from '../../../core/base/Type';
 
 export class ArkSignatureBuilder {
     public static buildMethodSignatureFromClassNameAndMethodName(className: string, methodName: string, staticFlag: boolean = false): MethodSignature {

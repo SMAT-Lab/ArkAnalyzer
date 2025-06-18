@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-import { AbstractExpr, AbstractInvokeExpr, ArkConditionExpr } from '../base/Expr';
-import { AbstractRef } from '../base/Ref';
-import { ArkAssignStmt, ArkIfStmt, ArkInvokeStmt, ArkReturnStmt, ArkThrowStmt, Stmt } from '../base/Stmt';
-import { Value } from '../base/Value';
+import { AbstractExpr, AbstractInvokeExpr, ArkConditionExpr } from '../../core/base/Expr';
+import { AbstractRef } from '../../core/base/Ref';
+import { ArkAssignStmt, ArkIfStmt, ArkInvokeStmt, ArkReturnStmt, ArkThrowStmt, Stmt } from '../../core/base/Stmt';
+import { Value } from '../../core/base/Value';
 import { ExprUseReplacer } from './ExprUseReplacer';
 import { RefUseReplacer } from './RefUseReplacer';
 import { IRUtils } from './IRUtils';

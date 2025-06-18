@@ -13,15 +13,15 @@
  * limitations under the License.
  */
 
-import { Scene } from '../../Scene_cpp';
-import { AbstractInvokeExpr } from '../../core_cpp/base/Expr';
-import { Stmt } from '../../core_cpp/base/Stmt';
-import { FunctionType } from '../../core_cpp/base/Type';
-import { ArkClass } from '../../core_cpp/model/ArkClass';
-import { ArkMethod } from '../../core_cpp/model/ArkMethod';
-import { MethodSignature } from '../../core_cpp/model/ArkSignature';
+import { Scene } from '../../Scene';
+import { AbstractInvokeExpr } from '../../core/base/Expr';
+import { Stmt } from '../../core/base/Stmt';
+import { FunctionType } from '../../core/base/Type';
+import { ArkClass } from '../../core/model/ArkClass';
+import { ArkMethod } from '../../core/model/ArkMethod';
+import { MethodSignature } from '../../core/model/ArkSignature';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
-import { NodeID } from '../../core_cpp/graph/GraphTraits';
+import { NodeID } from '../../core/graph/GraphTraits';
 import { CallGraph, FuncID, CallSite, CallGraphNode } from '../model/CallGraph';
 import { CallGraphBuilder } from '../model/builder/CallGraphBuilder';
 import { createPtsCollectionCtor, IPtsCollection, PtsCollectionType } from '../pointerAnalysis/PtsDS';
@@ -157,7 +157,7 @@ export abstract class AbstractAnalysis {
         if (!cfg) {
             return [];
         }
-        cfg.getStmts().forEach(stmt => {
+        cfg.getStmts().forEach((stmt: any) => {
             if (stmt.containsInvokeExpr()) {
                 this.resolveCall(cgNode.getID(), stmt).forEach(callSite => {
                     calleeMethods.push(callSite);

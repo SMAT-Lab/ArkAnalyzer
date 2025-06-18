@@ -37,9 +37,7 @@ import { addInitInConstructor, buildDefaultConstructor } from './core/model/buil
 import { DEFAULT_ARK_CLASS_NAME, STATIC_INIT_METHOD_NAME } from './core/common/Const';
 import { CallGraph } from './callgraph/model/CallGraph';
 import { CallGraphBuilder } from './callgraph/model/builder/CallGraphBuilder';
-
-import { CoreFactory } from './CoreFactory';
-
+import { buildArkFileFromFile as buildArkFileFromFileCpp } from './core_cpp/model/builder/ArkFileBuilder';
 
 
 import { IRInference } from './core/common/IRInference';
@@ -163,6 +161,11 @@ export class Scene {
     public buildSceneFromProjectDir(sceneConfig: SceneConfig): void {
         this.buildBasicInfo(sceneConfig);
         this.genArkFiles();
+    }
+
+    public buildSceneFromProjectDirCpp(sceneConfig: SceneConfig): void {
+        this.buildBasicInfo(sceneConfig);
+        this.genArkFilesCpp();
     }
 
     public buildSceneFromFiles(sceneConfig: SceneConfig): void {
@@ -331,6 +334,28 @@ export class Scene {
         this.buildStage = SceneBuildStage.METHOD_DONE;
     }
 
+    private buildAllMethodBodyCpp(): void {
+        this.buildStage = SceneBuildStage.CLASS_DONE;
+        for (const file of this.getFiles()) {
+            for (const cls of file.getClasses()) {
+                for (const method of cls.getMethods(true)) {
+                    method.buildBodyCpp();
+                    method.freeBodyBuilderCpp();
+                }
+            }
+        }
+        for (const namespace of this.getNamespacesMap().values()) {
+            for (const cls of namespace.getClasses()) {
+                for (const method of cls.getMethods(true)) {
+                    method.buildBodyCpp();
+                    method.freeBodyBuilderCpp();
+                }
+            }
+        }
+
+        this.buildStage = SceneBuildStage.METHOD_DONE;
+    }
+
     private genArkFiles(): void {
         this.projectFiles.forEach(file => {
             logger.trace('=== parse file:', file);
@@ -346,6 +371,24 @@ export class Scene {
             }
         });
         this.buildAllMethodBody();
+        this.addDefaultConstructors();
+    }
+
+    private genArkFilesCpp(): void {
+        this.projectFiles.forEach(file => {
+            logger.trace('=== parse file:', file);
+            try {
+                const arkFile: ArkFile = new ArkFile(FileUtils.getFileLanguage(file, this.fileLanguages));
+                arkFile.setScene(this);
+                buildArkFileFromFileCpp(file, this.realProjectDir, arkFile, this.projectName);
+                this.filesMap.set(arkFile.getFileSignature().toMapKey(), arkFile);
+            } catch (error) {
+                logger.error('Error parsing file:', file, error);
+                this.unhandledFilePaths.push(file);
+                return;
+            }
+        });
+        this.buildAllMethodBodyCpp();
         this.addDefaultConstructors();
     }
 
@@ -685,7 +728,7 @@ export class Scene {
      * @example
      * 1. get real project directory, such as:
      ```typescript
-     let projectDir = projectScene.getRealProjectDir(); 
+     let projectDir = projectScene.getRealProjectDir();
      ```
      */
     public getRealProjectDir(): string {

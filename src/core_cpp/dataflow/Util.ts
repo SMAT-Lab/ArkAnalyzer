@@ -13,11 +13,11 @@
  * limitations under the License.
  */
 
-import { ArkInvokeStmt } from '../base/Stmt';
-import { FunctionType } from '../base/Type';
-import { ArkMethod } from '../model/ArkMethod';
-import { Local } from '../base/Local';
-import { AbstractRef, ArkStaticFieldRef, ArkInstanceFieldRef } from '../base/Ref';
+import { ArkInvokeStmt } from '../../core/base/Stmt';
+import { FunctionType } from '../../core/base/Type';
+import { ArkMethod } from '../../core/model/ArkMethod';
+import { Local } from '../../core/base/Local';
+import { AbstractRef, ArkStaticFieldRef, ArkInstanceFieldRef } from '../../core/base/Ref';
 
 export const INTERNAL_PARAMETER_SOURCE: string[] = ['@ohos.app.ability.Want.d.ts: Want'];
 

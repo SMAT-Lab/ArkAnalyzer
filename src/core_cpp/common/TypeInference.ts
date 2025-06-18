@@ -14,8 +14,8 @@
  */
 
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
-import { AbstractExpr, ArkInstanceInvokeExpr, ArkPtrInvokeExpr, ArkStaticInvokeExpr } from '../base/Expr';
-import { Local } from '../base/Local';
+import { AbstractExpr, ArkInstanceInvokeExpr, ArkPtrInvokeExpr, ArkStaticInvokeExpr } from '../../core/base/Expr';
+import { Local } from '../../core/base/Local';
 import {
     AbstractFieldRef,
     AbstractRef,
@@ -23,8 +23,8 @@ import {
     ArkInstanceFieldRef,
     ArkParameterRef,
     ArkStaticFieldRef, GlobalRef
-} from '../base/Ref';
-import { ArkAliasTypeDefineStmt, ArkAssignStmt, ArkReturnStmt, Stmt } from '../base/Stmt';
+} from '../../core/base/Ref';
+import { ArkAliasTypeDefineStmt, ArkAssignStmt, ArkReturnStmt, Stmt } from '../../core/base/Stmt';
 import {
     AliasType,
     AnnotationNamespaceType,
@@ -48,14 +48,14 @@ import {
     VoidType,
     CXXStringType,
     CXXNumberType
-} from '../base/Type';
-import { ArkMethod } from '../model/ArkMethod';
-import { ArkExport } from '../model/ArkExport';
-import { ArkClass, ClassCategory } from '../model/ArkClass';
-import { ArkField } from '../model/ArkField';
-import { Value } from '../base/Value';
-import { Constant } from '../base/Constant';
-import { ArkNamespace } from '../model/ArkNamespace';
+} from '../../core/base/Type';
+import { ArkMethod } from '../../core/model/ArkMethod';
+import { ArkExport } from '../../core/model/ArkExport';
+import { ArkClass, ClassCategory } from '../../core/model/ArkClass';
+import { ArkField } from '../../core/model/ArkField';
+import { Value } from '../../core/base/Value';
+import { Constant } from '../../core/base/Constant';
+import { ArkNamespace } from '../../core/model/ArkNamespace';
 import {
     ALL,
     CONSTRUCTOR_NAME, DEFAULT,
@@ -66,15 +66,15 @@ import {
 } from './TSConst';
 import { ModelUtils } from './ModelUtils';
 import { Builtin } from './Builtin';
-import { MethodSignature, MethodSubSignature, NamespaceSignature } from '../model/ArkSignature';
+import { MethodSignature, MethodSubSignature, NamespaceSignature } from '../../core/model/ArkSignature';
 import { INSTANCE_INIT_METHOD_NAME, LEXICAL_ENV_NAME_PREFIX, UNKNOWN_FILE_NAME } from './Const';
 import { EMPTY_STRING } from './ValueUtil';
-import { ImportInfo } from '../model/ArkImport';
-import { MethodParameter } from '../model/builder/ArkMethodBuilder';
+import { ImportInfo } from '../../core/model/ArkImport';
+import { MethodParameter } from '../../core/model/builder/ArkMethodBuilder';
 import { IRInference } from './IRInference';
-import { AbstractTypeExpr, KeyofTypeExpr, TypeQueryExpr } from '../base/TypeExpr';
+import { AbstractTypeExpr, KeyofTypeExpr, TypeQueryExpr } from '../../core/base/TypeExpr';
 import { SdkUtils } from './SdkUtils';
-import { ModifierType } from '../model/ArkBaseModel';
+import { ModifierType } from '../../core/model/ArkBaseModel';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'TypeInference');
 
@@ -457,7 +457,7 @@ export class TypeInference {
     }
 
     // Deal only with simple situations
-    public static buildTypeFromStr(tsTypeStr: string, cxxTypeStr: string): Type {
+    public static buildTypeFromStr(tsTypeStr: string, cxxTypeStr?: string): Type {
         switch (tsTypeStr) {
             case 'boolean':
                 return BooleanType.getInstance();

@@ -13,18 +13,20 @@
  * limitations under the License.
  */
 import {
-    Scene,
-    SceneConfig
-} from "../../../../../src";
+    SceneConfig,
+} from '../../../../src';
+import {Scene} from '../../../../src';
 import {describe, it} from 'vitest';
 import path from 'path';
 
-import {ArkAssignStmt, ArkInvokeStmt, Stmt, AbstactInvokeExpr} from '../../../../../src';
-import {testBlocks} from "../../../../unit/common";
+import {ArkAssignStmt, ArkInvokeStmt, Stmt} from '../../../../src';
+import {AbstractInvokeExpr} from '../../../../src';
+// @ts-ignore
+import {testBlocks} from '../../common';
 
 describe('check func parm', () => {
     it('case1: check func parm', () => {
-            const scene = buildScence('func');
+            const scene = buildScene('func');
             testBlocks(scene, 'Tests.cpp', 'main', []);
         },
     );
@@ -33,7 +35,7 @@ describe('check func parm', () => {
 
 const BASE_DIR = 'tests/resources/check';
 
-function buildScence(folderName: string): Scene {
+function buildScene(folderName: string): Scene {
     let config: SceneConfig = new SceneConfig();
     config.buildFromProjectDir(path.join(BASE_DIR + folderName));
     let scene = new Scene();
@@ -41,7 +43,7 @@ function buildScence(folderName: string): Scene {
     return scene;
 }
 
-function getInvokeExprFromStmt(stmt: Stmt): AbstactInvokeExpr | null {
+function getInvokeExprFromStmt(stmt: Stmt): AbstractInvokeExpr | null {
     if (stmt instanceof ArkInvokeStmt) {
         return stmt.getInvokeExpr();
     } else if (stmt instanceof ArkAssignStmt) {
@@ -57,14 +59,14 @@ function testBlocks(scene: Scene, filePath: string, methodName: string, expectBl
     const arkfile = scene.getFiles().find((file) => file.getName().endsWith(filePath));
     const arkMethod = arkfile?.getDefaultClass().getMethods()
         .find((method) => method.getName() === methodName);
-    const stmts = arkMethod.getBody()?.getCfg().getStmts() ?? [];
+    const stmts = arkMethod?.getBody()?.getCfg().getStmts() ?? [];
     for (const stmt of stmts) {
         const invokeExpr = getInvokeExprFromStmt(stmt);
         if (!invokeExpr) {
             continue;
         }
         const methodSign = invokeExpr.getMethodSignature();
-        const methodName = methodSign.getMethodSignature().getMethodName();
+        const methodName = methodSign.getMethodSubSignature().getMethodName();
         const argsNum = invokeExpr.getArgs().length;
         if (methodName === 'sumFourNumber' && argsNum > 3) {
             console.log('Func', methodName, 'has', argsNum, 'args');

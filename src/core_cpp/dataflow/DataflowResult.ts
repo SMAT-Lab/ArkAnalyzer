@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { Stmt } from '../base/Stmt';
+import { Stmt } from '../../core/base/Stmt';
 import { Fact } from './Fact';
 
 export class DataflowResult {

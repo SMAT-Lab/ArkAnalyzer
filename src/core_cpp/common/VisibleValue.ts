@@ -14,16 +14,16 @@
  */
 
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
-import { Local } from '../base/Local';
-import { ArkInstanceFieldRef, ArkStaticFieldRef } from '../base/Ref';
-import { ArkAssignStmt } from '../base/Stmt';
-import { ClassType } from '../base/Type';
-import { Value } from '../base/Value';
-import { BasicBlock } from '../graph/BasicBlock';
-import { ArkClass } from '../model/ArkClass';
-import { ArkFile } from '../model/ArkFile';
-import { ArkMethod } from '../model/ArkMethod';
-import { ArkNamespace } from '../model/ArkNamespace';
+import { Local } from '../../core/base/Local';
+import { ArkInstanceFieldRef, ArkStaticFieldRef } from '../../core/base/Ref';
+import { ArkAssignStmt } from '../../core/base/Stmt';
+import { ClassType } from '../../core/base/Type';
+import { Value } from '../../core/base/Value';
+import { BasicBlock } from '../../core/graph/BasicBlock';
+import { ArkClass } from '../../core/model/ArkClass';
+import { ArkFile } from '../../core/model/ArkFile';
+import { ArkMethod } from '../../core/model/ArkMethod';
+import { ArkNamespace } from '../../core/model/ArkNamespace';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'VisibleValue');
 
