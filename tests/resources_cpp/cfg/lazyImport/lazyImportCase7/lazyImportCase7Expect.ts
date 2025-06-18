@@ -1,0 +1,139 @@
+export const ModifyObject_EXPECT = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'env = parameter0: int',
+                'info = parameter1: int',
+                'this = this: @lazyImportCase7/lazyImportCase7.cpp: %dflt',
+                'argc = 1',
+                '%0 = newarray (void)[1]',
+                '%0[0] = nullptr',
+                'args = %0',
+                '%1 = &argc',
+                'staticinvoke <@%unk/%unk: .napi_get_cb_info()>(env, info, %1, args, nullptr, nullptr)',
+                'obj = args[0]',
+                'obj1 = undefined',
+                'hello1 = undefined',
+                'arr1 = undefined',
+                'typedArray1 = undefined',
+                '%2 = &obj1',
+                `staticinvoke <@%unk/%unk: .napi_get_named_property()>(env, obj, '"obj"', %2)`,
+                `buf = '"this is modified"'`,
+                'str1 = undefined',
+                `staticinvoke <@%unk/%unk: .napi_set_named_property()>(env, obj1, '"str"', str1)`,
+                `staticinvoke <@%unk/%unk: .napi_set_named_property()>(env, obj, '"obj"', obj1)`,
+                `staticinvoke <@%unk/%unk: .napi_set_named_property()>(env, obj, '"hello"', hello1)`,
+                '%3 = &arr1',
+                `staticinvoke <@%unk/%unk: .napi_get_named_property()>(env, obj, '"arr"', %3)`,
+                'arrLen = undefined',
+                '%4 = &arrLen',
+                'staticinvoke <@%unk/%unk: .napi_get_array_length()>(env, arr1, %4)',
+                'i = 0'
+            ],
+            preds: [],
+            succes: [1]
+        },
+        {
+            id: 1,
+            stmts: [
+                'if i < arrLen'
+            ],
+            preds: [0, 2],
+            succes: [2, 3]
+        },
+        {
+            id: 2,
+            stmts: [
+                'tmp = undefined',
+                '%5 = &tmp',
+                'staticinvoke <@%unk/%unk: .napi_create_uint32()>(env, i, %5)',
+                'staticinvoke <@%unk/%unk: .napi_set_element()>(env, arr1, i, tmp)',
+                'i = i + 1'
+            ],
+            preds: [1],
+            succes: [1]
+        },
+        {
+            id: 3,
+            stmts: [
+                'staticinvoke <@%unk/%unk: .napi_delete_element()>(env, arr1, 2, nullptr)',
+                '%6 = &typedArray1',
+                `staticinvoke <@%unk/%unk: .napi_get_named_property()>(env, obj, '"typedArray"', %6)`,
+                'is_typedArray = undefined',
+                'if napi_ok != napi_is_typedarray(env, typedArray1, &is_typedArray) != 0'
+            ],
+            preds: [1],
+            succes: [4, 5]
+        },
+        {
+            id: 4,
+            stmts: [
+                'return nullptr'
+            ],
+            preds: [3],
+            succes: []
+        },
+        {
+            id: 5,
+            stmts: [
+                'type = undefined',
+                'input_buffer = undefined',
+                'length = undefined',
+                'byte_offset = undefined',
+                '%7 = &type',
+                '%8 = &length',
+                '%9 = &input_buffer',
+                '%10 = &byte_offset',
+                'staticinvoke <@%unk/%unk: .napi_get_typedarray_info()>(env, typedArray1, %7, %8, nullptr, %9, %10)',
+                'data = undefined',
+                'byte_length = undefined',
+                '%11 = &data',
+                '%12 = &byte_length',
+                'staticinvoke <@%unk/%unk: .napi_get_arraybuffer_info()>(env, input_buffer, %11, %12)',
+                'output_buffer = undefined',
+                'output_prt = nullptr',
+                '%13 = &output_prt',
+                '%14 = &output_buffer',
+                'staticinvoke <@%unk/%unk: .napi_create_arraybuffer()>(env, byte_length, %13, %14)',
+                'output_array = undefined',
+                '%15 = &output_array',
+                'staticinvoke <@%unk/%unk: .napi_create_typedarray()>(env, type, length, output_buffer, byte_offset, %15)',
+                '%16 = <uint8_t*>data',
+                'input_bytes = %16 + byte_offset',
+                'output_bytes = <uint8_t*>output_prt',
+                'i = 0'
+            ],
+            preds: [3],
+            succes: [6]
+        },
+        {
+            id: 6,
+            stmts: [
+                'if i < length'
+            ],
+            preds: [5, 7],
+            succes: [7, 8]
+        },
+        {
+            id: 7,
+            stmts: [
+                '%17 = input_bytes[i]',
+                '%18 = %17 * 2',
+                'output_bytes[i] = %18',
+                'i = i + 1'
+            ],
+            preds: [ 6 ],
+            succes: [ 6 ]
+        },
+        {
+            id: 8,
+            stmts: [
+                `staticinvoke <@%unk/%unk: .napi_set_named_property()>(env, obj, '"typedArray"', output_array)`,
+                'return obj'
+            ],
+            preds: [ 6 ],
+            succes: []
+        }
+    ]
+};

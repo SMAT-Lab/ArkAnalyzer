@@ -191,6 +191,15 @@ export class ArkValueTransformer {
     }
 
     public tsNodeToValueAndStmts(node: any): ValueAndStmts {
+        if (node === undefined) {
+            logger.error('ArkValueTransformer-TSNodeToValueAndStmts: node is undefined. Method signature is : ',
+                this.declaringMethod?.getDeclareSignatures()?.toString());
+            return {
+                value: new Local('undefined'),
+                valueOriginalPositions: [new FullPosition(0, 0, 0, 0)],
+                stmts: [],
+            };
+        }
         if(node.kind === 'CXXConstructExpr') {
             if ((!this.isPairConstructExpr((node)) && (this.isNodeRelatedToCXXLambdaFunc(node) ||
                 this.isNodeRelatedToMaterialize(node) || this.isNodeRelatedToImplicitNode(node)))) {
@@ -495,7 +504,7 @@ export class ArkValueTransformer {
             return [callNode, argumentNodes];
         }
         for (let i = 0; i < innerAstNodes.length; i++) {
-            if (i == 0 && innerAstNodes[i].inner) {
+            if (i == 0 && innerAstNodes[i].inner?.length !== 0) {
                 let firstNode = innerAstNodes[i].inner[0];
                 while (firstNode.kind.toString() === 'ImplicitCastExpr') {
                     firstNode = firstNode.inner[0];

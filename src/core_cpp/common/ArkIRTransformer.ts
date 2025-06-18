@@ -147,7 +147,8 @@ export class ArkIRTransformer {
             ArkValueTransformer.isCompoundAssignmentOperator(expression.opcode) ||
             expression.kind.toString() === 'CXXNewExpr' || expression.kind.toString() === 'CallExpr' ||
             (expression.kind.toString() === 'UnaryOperator' && (expression.opcode === '++' || expression.opcode === '--')) ||
-            (expression.kind.toString() === 'CXXOperatorCallExpr' && expression.name === 'operator=')) {
+            (expression.kind.toString() === 'CXXOperatorCallExpr' && expression.name === 'operator=') ||
+            expression.kind.toString() === 'CXXConstructExpr') {
             return false;
         }
         return true;
@@ -173,6 +174,9 @@ export class ArkIRTransformer {
                 break;
             case 'ContinueStmt':
                 stmts = this.gotoStatementToStmts(node);
+                break;
+            case 'CXXConstructExpr':
+                stmts = this.expressionStatementToStmts(node);
                 break;
             case 'CXXOperatorCallExpr':
                 stmts = this.expressionStatementToStmts(node);

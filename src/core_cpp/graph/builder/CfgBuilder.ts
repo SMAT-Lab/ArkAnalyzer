@@ -711,7 +711,8 @@ export class CfgBuilder {
                 let s = new StatementBuilder('statement', 'ExprWithCleanups', innerNode, scope.id);
                 this.judgeLastType(s, lastStatement);
                 lastStatement = s;
-            } else if (['CallExpr', 'CXXOperatorCallExpr', 'BinaryOperator', 'UnaryOperator', 'CompoundAssignOperator', 'AtomicCallExpr'].includes(nodeKind)) {
+            } else if (['CallExpr', 'CXXOperatorCallExpr', 'BinaryOperator', 'UnaryOperator', 'CompoundAssignOperator',
+                'AtomicCallExpr', 'CXXConstructExpr'].includes(nodeKind)) {
                 let s = new StatementBuilder('statement', innerNode.code, innerNode, scope.id);
                 this.judgeLastType(s, lastStatement);
                 lastStatement = s;
@@ -1151,11 +1152,14 @@ export class CfgBuilder {
         throw new TextError(mes);
     }
     getFuncBodyStmt() {
-        let stmts: ts.Node[] = [];
+        let stmts: any[] = [];
         if (this.astRoot.inner) {
             for(let i = 0; i< this.astRoot.inner.length; i++) {
+                if (this.astRoot.kind === 'CXXConstructorDecl' && this.astRoot.inner[i].kind === 'CXXConstructExpr') {
+                    stmts.push(this.astRoot.inner[i]);
+                }
                 if (this.astRoot.inner[i].kind === 'CompoundStmt') {
-                    stmts = [...this.astRoot.inner[i].inner];
+                    stmts.push(...this.astRoot.inner[i].inner);
                     break;
                 }
             }

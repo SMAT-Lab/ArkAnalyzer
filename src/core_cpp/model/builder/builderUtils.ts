@@ -397,6 +397,14 @@ const typeMap: Record<string, string> = {
     'float': 'number',
     'double': 'number',
     'long double': 'number',
+    'uint8_t': 'number',
+    'uint16_t': 'number',
+    'uint32_t': 'number',
+    'uint64_t': 'number',
+    'int8_t': 'number',
+    'int16_t': 'number',
+    'int32_t': 'number',
+    'int64_t': 'number',
     // void
     'void': 'void',
 };

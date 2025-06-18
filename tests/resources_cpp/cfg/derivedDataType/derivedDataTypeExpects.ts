@@ -1,4 +1,10 @@
 export const DERIVED_DATA_TYPE_EXPECT_CLASS = {
+    fields: [
+        'height',
+        'name',
+        'age',
+    ],
+    heritageClasses: [],
     blocks: [
         {
             methodName: '~MyClass',
@@ -82,6 +88,11 @@ export const DERIVED_DATA_TYPE_EXPECT_CLASS = {
 };
 
 export const DERIVED_DATA_TYPE_EXPECT_CLASS2 = {
+    fields: [
+        'name',
+        'age',
+    ],
+    heritageClasses: [],
     blocks: [
         {
             methodName: 'constructor',
@@ -102,6 +113,13 @@ export const DERIVED_DATA_TYPE_EXPECT_CLASS2 = {
 };
 
 export const DERIVED_DATA_TYPE_EXPECT_STRUCT = {
+    fields: [
+        'title',
+        'author',
+        'subjecrt',
+        'book_id'
+    ],
+    heritageClasses: [],
     blocks: [
         {
             methodName: 'constructor',

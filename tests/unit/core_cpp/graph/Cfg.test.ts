@@ -17,7 +17,7 @@ import {
     BasicBlock,
     SceneConfig,
 } from '../../../../src';
-import { describe, it } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import path from 'path';
 import {
     CONDITIONAL_OPERATOR_EXPECT_CASE1,
@@ -179,6 +179,26 @@ import { BASE_DATA_TYPE_EXPECT_MAIN } from '../../../resources_cpp/cfg/baseDataT
 import {WHILE_CONTINUE_EXPECT_MAIN} from '../../../resources_cpp/cfg/whileContinue/whileContinueSampleExpects';
 import { assertClassBlocksEqual, testBlocks } from '../../common';
 import { Scene } from '../../../../src';
+import {
+    BASE_CLASS_EXPECT,
+    DERIVED_CLASS_EXPECT,
+    LEFT_CLASS_EXPECT, MAIN_EXPECT,
+    RIGHT_CLASS_EXPECT,
+} from '../../../resources_cpp/cfg/class/classExpect';
+import { LAZY_IMPORT_CASE1_CLASS } from '../../../resources_cpp/cfg/lazyImport/lazyImportCase1/lazyImportCase1Expect';
+import {
+    CALL_OBJECT_EXPECT,
+    DEFINE_OBJECT_EXPECT,
+} from '../../../resources_cpp/cfg/lazyImport/lazyImportCase2/lazyImportCase2Expect';
+import { MapDemo_EXPECT } from '../../../resources_cpp/cfg/lazyImport/lazyImportCase3/lazyImportCase3Expect';
+import { NativeCallArkTS_EXPECT } from '../../../resources_cpp/cfg/lazyImport/lazyImportCase4/lazyImportCase4Expect';
+import {
+    CallbackToArkTS_EXPECT,
+    Napi_AddPropertyInt32_EXPECT,
+} from '../../../resources_cpp/cfg/lazyImport/lazyImportCase5/lazyImportCase5Expect';
+import { CallFunction_EXPECT } from '../../../resources_cpp/cfg/lazyImport/lazyImportCase6/lazyImportCase6Expect';
+import { ModifyObject_EXPECT } from '../../../resources_cpp/cfg/lazyImport/lazyImportCase7/lazyImportCase7Expect';
+import { NativeCallArkTS8_EXPECT } from '../../../resources_cpp/cfg/lazyImport/lazyImportCase8/lazyImportCase8Expect';
 
 
 describe('CfgTest', () => {
@@ -288,9 +308,9 @@ describe('Type Test', () => {
     );
     it('case4: Derived Class', () => {
             const scene = buildScene('derivedDataType');
-            testBlocksClass(scene, 'derivedDataType.cpp', 'MyClass', DERIVED_DATA_TYPE_EXPECT_CLASS.blocks);
-            testBlocksClass(scene, 'derivedDataType.cpp', 'DefaultClass', DERIVED_DATA_TYPE_EXPECT_CLASS2.blocks);
-            testBlocksClass(scene, 'derivedDataType.cpp', 'MyStruct', DERIVED_DATA_TYPE_EXPECT_STRUCT.blocks);
+            testBlocksClass(scene, 'derivedDataType.cpp', 'MyClass', DERIVED_DATA_TYPE_EXPECT_CLASS);
+            testBlocksClass(scene, 'derivedDataType.cpp', 'DefaultClass', DERIVED_DATA_TYPE_EXPECT_CLASS2);
+            testBlocksClass(scene, 'derivedDataType.cpp', 'MyStruct', DERIVED_DATA_TYPE_EXPECT_STRUCT);
         },
     );
     it('case5: DataStruct Test', () => {
@@ -327,6 +347,15 @@ describe('Type Test', () => {
         testBlocks(scene, 'template.cpp', 'printPair', TEMPLATE_EXPECT_CASE3.blocks);
         },
     );
+
+    it('case9: class Test', () => {
+        const scene = buildScene('class');
+        testBlocksClass(scene, 'classSample.cpp', 'Base', BASE_CLASS_EXPECT);
+        testBlocksClass(scene, 'classSample.cpp', 'Left', LEFT_CLASS_EXPECT);
+        testBlocksClass(scene, 'classSample.cpp', 'Right', RIGHT_CLASS_EXPECT);
+        testBlocksClass(scene, 'classSample.cpp', 'Derived', DERIVED_CLASS_EXPECT);
+        testBlocks(scene, 'classSample.cpp', 'main', MAIN_EXPECT.blocks);
+    });
 
 
 
@@ -421,6 +450,52 @@ describe('Other Test', () => {
 });
 
 
+describe('Lazy Import Test', () => {
+    it('case1: lazy import case1', () => {
+            const scene = buildScene('lazyImport/lazyImportCase1');
+        testBlocksClass(scene, 'lazyImportCase1.cpp', 'GlobalConfig', LAZY_IMPORT_CASE1_CLASS);
+        },
+    );
+    it('case2: lazy import case2', () => {
+            const scene = buildScene('lazyImport/lazyImportCase2');
+            testBlocks(scene, 'lazyImportCase2.cpp', 'DefineObject', DEFINE_OBJECT_EXPECT.blocks);
+            testBlocks(scene, 'lazyImportCase2.cpp', 'CallObject', CALL_OBJECT_EXPECT.blocks);
+        },
+    );
+    it('case3: lazy import case3', () => {
+            const scene = buildScene('lazyImport/lazyImportCase3');
+            testBlocks(scene, 'lazyImportCase3.cpp', 'MapDemo', MapDemo_EXPECT.blocks);
+        },
+    );
+    it('case4: lazy import case4', () => {
+            const scene = buildScene('lazyImport/lazyImportCase4');
+            testBlocks(scene, 'lazyImportCase4.cpp', 'NativeCallArkTS', NativeCallArkTS_EXPECT.blocks);
+        },
+    );
+    it('case5: lazy import case5', () => {
+            const scene = buildScene('lazyImport/lazyImportCase5');
+            testBlocks(scene, 'lazyImportCase5.cpp', 'Napi_AddPropertyInt32', Napi_AddPropertyInt32_EXPECT.blocks);
+            testBlocks(scene, 'lazyImportCase5.cpp', 'CallbackToArkTS', CallbackToArkTS_EXPECT.blocks);
+        },
+    );
+    it('case6: lazy import case6', () => {
+            const scene = buildScene('lazyImport/lazyImportCase6');
+            testBlocks(scene, 'lazyImportCase6.cpp', 'CallFunction', CallFunction_EXPECT.blocks);
+        },
+    );
+    it('case7: lazy import case7', () => {
+            const scene = buildScene('lazyImport/lazyImportCase7');
+            testBlocks(scene, 'lazyImportCase7.cpp', 'ModifyObject', ModifyObject_EXPECT.blocks);
+        },
+    );
+    it('case8: lazy import case8', () => {
+            const scene = buildScene('lazyImport/lazyImportCase8');
+            testBlocks(scene, 'lazyImportCase8.cpp', 'NativeCallArkTS', NativeCallArkTS8_EXPECT.blocks);
+        },
+    );
+});
+
+
 const BASE_DIR = 'tests/resources_cpp/cfg';
 
 function buildScene(folderName: string): Scene {
@@ -431,16 +506,29 @@ function buildScene(folderName: string): Scene {
     return scene;
 }
 
-function testBlocksClass(scene: Scene, filePath: string, className: string, expectBlocks: any[]): void {
+function testBlocksClass(scene: Scene, filePath: string, className: string, expectBlocks: any): void {
     const arkFile = scene.getFiles().find((file) => file.getName().endsWith(filePath));
     const arkClass = arkFile?.getClasses().find(arkClass => (arkClass.getName() === className));
     const classBlockMap = new Map<String, BasicBlock[]>();
-    for (const block of expectBlocks) {
+    for (const block of expectBlocks.blocks) {
         classBlockMap.set(block.methodName, block.blocks);
     }
+    // 1.判断类的继承
+    const heritageClasses = new Set();
+    arkClass?.getAllHeritageClasses()?.forEach(heritageClass => {
+        heritageClasses.add(heritageClass.getName());
+    })
+    expect(heritageClasses).toEqual(new Set(expectBlocks.heritageClasses));
+    // 2.判断类的域成员
+    const fieldOfClass = new Set();
+    arkClass?.getFields()?.forEach(field => {
+        fieldOfClass.add(field.getName());
+    })
+    expect(fieldOfClass).toEqual(new Set(expectBlocks.fields));
+    // 3.判断类的成员函数
     arkClass?.getMethods()?.forEach(method =>{
-        let classBlock = classBlockMap.get(method.getName());
-        if (classBlock !== undefined) {
+        const classBlock = classBlockMap.get(method.getName());
+        if (classBlock) {
             assertClassBlocksEqual(method, classBlock);
         }
     })
