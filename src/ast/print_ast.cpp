@@ -1,5 +1,3 @@
-#pragma execution_character_set("utf-8")
-
 #include <filesystem>
 #include <sstream>
 #include <clang-c/Index.h>
@@ -623,7 +621,15 @@ json buildASTJson(CXCursor cursor){
     if (content != "" && kind_cursor != CXCursor_TranslationUnit)
         node["code"] = codeStr;
 
-    if (kind_cursor == CXCursor_IntegerLiteral ||
+    if (kind_cursor == CXCursor_InclusionDirective) {
+        node["kind"] = "InclusionDirective";
+        node["fileName"] = cx2str(clang_getIncludedFile(cursor) ?
+        clang_getFileName(clang_getIncludedFile(cursor)) : clang_getCursorSpelling(cursor));
+        node["name"] = displayName;
+        node["code"] = content.contains("code") && content["code"].is_string() ? content["code"].get<std::string>() : "";
+        node["loc"] = content.contains("begin") ? content["begin"] : json();
+        node["range"] = {{"begin", content["begin"]}, {"end", content["end"]}};
+    } else if (kind_cursor == CXCursor_IntegerLiteral ||
         kind_cursor == CXCursor_StringLiteral ||
         kind_cursor == CXCursor_CXXBoolLiteralExpr)
         node["value"] = node["code"];
@@ -879,9 +885,7 @@ int main(int argc, char** argv) {
 
     CXTranslationUnit unit = clang_parseTranslationUnit(
         index, opts.input_file.c_str(), args.data(), args.size(), nullptr, 0,
-        CXTranslationUnit_None);
-
-    // ---- 后续部分不用变 ----
+        CXTranslationUnit_DetailedPreprocessingRecord);
     if (!unit) {
         std::cerr << "Parse error\n";
         clang_disposeIndex(index);
