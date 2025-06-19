@@ -215,13 +215,9 @@ function buildStruct2ArkClass(clsNode: any, cls: ArkClass, sourceFile: any, decl
     const classSignature = new ClassSignature(className, cls.getDeclaringArkFile().getFileSignature(), cls.getDeclaringArkNamespace()?.getSignature() || null, ClassCategory.STRUCT);
     cls.setSignature(classSignature);
 
-    // if (clsNode.typeParameters) {
-    //     buildTypeParameters(clsNode.typeParameters, sourceFile, cls).forEach(typeParameter => {
-    //         cls.addGenericType(typeParameter);
-    //     });
-    // }
-
-    initHeritage(buildHeritageClauses(clsNode.heritageClauses), cls);
+    if (clsNode.inner) {
+        processCXXHeritage(clsNode, cls);
+    }
 
     cls.setModifiers(buildModifiers(clsNode));
     cls.setDecorators(buildDecorators(clsNode, sourceFile));
@@ -254,12 +250,7 @@ function buildClass2ArkClass(clsNode: any, cls: ArkClass, sourceFile: any, decla
     cls.setSignature(classSignature);
 
     if (clsNode.inner) {
-        processCXXConstructor(clsNode, cls);
-    }
-
-    if (clsNode.bases) {
-        let key = clsNode.bases[0].type.qualType;
-        cls.addHeritageClassName(key);
+        processCXXHeritage(clsNode, cls);
     }
 
     cls.setCategory(ClassCategory.CLASS);
@@ -268,17 +259,10 @@ function buildClass2ArkClass(clsNode: any, cls: ArkClass, sourceFile: any, decla
     buildArkClassMembers(clsNode, cls, sourceFile);
 }
 
-function processCXXConstructor(claNode: any, cls: ArkClass) {
-    for (let i = 0; i< claNode.inner.length; i++) {
-        if (claNode.inner[i].kind === 'CXXConstructorDecl' && claNode.inner[i].inner) {
-            let innerList = claNode.inner[i].inner;
-            for (let j = 0; j< innerList.length; j++) {
-                if (innerList[j].kind === 'CXXConstructorDecl' && innerList[j].baseIniat && innerList[j].baseInit.qualType) {
-                    let superClassName = innerList[j].baseInit.qualType;
-                    cls.addHeritageClassName(superClassName);
-                    return;
-                }
-            }
+function processCXXHeritage(clsNode: any, cls: ArkClass) {
+    for (let i = 0; i< clsNode.inner.length; i++) {
+        if (clsNode.inner[i].kind === 'C++ base class specifier') {
+            cls.addHeritageClassName(clsNode.inner[i].type.qualType);
         }
     }
 }
@@ -345,18 +329,12 @@ function buildArkClassMembers(clsNode: any, cls: ArkClass, sourceFile: any): voi
                     arkField.getInitializer().forEach(stmt => instanceInitStmts.push(stmt));
                 }
             }
-        } else if (member.kind === 'VarDecl') {
-            const arkField = buildProperty2ArkField(member, sourceFile, cls);
-            if (arkField.isStatic()) {
-                getInitStmts(staticIRTransformer, arkField, member.initializer);
-                arkField.getInitializer().forEach(stmt => staticInitStmts.push(stmt));
-            }
         } else if (member.kind === 'EnumConstantDecl') {
             const arkField = buildProperty2ArkField(member, sourceFile, cls);
             getInitStmts(staticIRTransformer, arkField, member.initializer);
             arkField.getInitializer().forEach(stmt => staticInitStmts.push(stmt));
         } else {
-            logger.warn('Please contact developers to support new member type!');
+            logger.warn('Please contact developers to support new member type: ', member.kind);
         }
     });
     if (ts.isClassDeclaration(clsNode) || ts.isClassExpression(clsNode) || ts.isStructDeclaration(clsNode)) {
@@ -369,7 +347,12 @@ function buildArkClassMembers(clsNode: any, cls: ArkClass, sourceFile: any): voi
 }
 
 function buildMethodsForClass(clsNode: any, cls: ArkClass, sourceFile: any): void {
+    let cxxAccessModifier = 'private';
     clsNode.inner.forEach((member: any) => {
+        if (member.kind.toString() === 'CXXAccessSpecifier') {
+            cxxAccessModifier = member.code.split(':')[0];
+        }
+        member.access = cxxAccessModifier;
         if (member.kind.toString() === 'CXXMethodDecl' || member.kind.toString() === 'CXXConstructorDecl' ||
             member.kind.toString() === 'CXXDestructorDecl' || member.kind.toString() === 'FriendDecl') {
             let method: ArkMethod = new ArkMethod();
