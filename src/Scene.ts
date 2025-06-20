@@ -34,6 +34,7 @@ import { getAllFiles } from './utils/getAllFiles';
 import { FileUtils, getFileRecursively } from './utils/FileUtils';
 import { ArkExport, ExportInfo, ExportType } from './core/model/ArkExport';
 import { addInitInConstructor, buildDefaultConstructor } from './core/model/builder/ArkMethodBuilder';
+import { buildDefaultConstructor as buildDefaultConstructorCpp } from './core_cpp/model/builder/ArkMethodBuilder';
 import { DEFAULT_ARK_CLASS_NAME, STATIC_INIT_METHOD_NAME } from './core/common/Const';
 import { CallGraph } from './callgraph/model/CallGraph';
 import { CallGraphBuilder } from './callgraph/model/builder/CallGraphBuilder';
@@ -307,7 +308,7 @@ export class Scene {
     private addDefaultConstructorsCpp(): void {
         for (const file of this.getFiles()) {
             for (const cls of ModelUtils.getAllClassesInFile(file)) {
-                buildDefaultConstructor(cls);
+                buildDefaultConstructorCpp(cls);
                 addInitInConstructorByArkClass(cls);
             }
         }
@@ -967,6 +968,14 @@ export class Scene {
         return arkMethod || null;
     }
 
+    public getMethodCpp(methodSignature: MethodSignature, refresh?: boolean): ArkMethod | null {
+        if (this.projectName === methodSignature.getDeclaringClassSignature().getDeclaringFileSignature().getProjectName()) {
+            return this.getMethodsMapCpp(refresh).get(methodSignature.toMapKey()) || null;
+        } else {
+            return this.getClass(methodSignature.getDeclaringClassSignature())?.getMethod(methodSignature) || null;
+        }
+    }
+
     private getMethodsMap(refresh?: boolean): Map<string, ArkMethod> {
         if (refresh || (this.buildStage >= SceneBuildStage.METHOD_DONE && this.buildStage < SceneBuildStage.METHOD_COLLECTED)) {
             this.methodsMap.clear();
@@ -977,6 +986,18 @@ export class Scene {
             }
             if (this.buildStage < SceneBuildStage.METHOD_COLLECTED) {
                 this.buildStage = SceneBuildStage.METHOD_COLLECTED;
+            }
+        }
+        return this.methodsMap;
+    }
+
+    private getMethodsMapCpp(refresh?: boolean): Map<string, ArkMethod> {
+        if (refresh || (this.methodsMap.size === 0) && this.buildStage >= SceneBuildStage.METHOD_DONE) {
+            this.methodsMap.clear();
+            for (const cls of this.getClassesMap().values()) {
+                for (const method of cls.getMethods(true)) {
+                    this.methodsMap.set(method.getSignature().toMapKey(), method);
+                }
             }
         }
         return this.methodsMap;
@@ -1103,6 +1124,18 @@ export class Scene {
         });
         if (this.buildStage < SceneBuildStage.TYPE_INFERRED) {
             this.getMethodsMap(true);
+            this.buildStage = SceneBuildStage.TYPE_INFERRED;
+        }
+    }
+
+    public inferTypesCpp() {
+        if (this.buildStage < SceneBuildStage.SDK_INFERRED) {
+            this.sdkArkFilesMap.forEach(file => IRInference.inferFile(file));
+            this.buildStage = SceneBuildStage.SDK_INFERRED;
+        }
+        this.filesMap.forEach((file) => {IRInference.inferFile(file);});
+        if (this.buildStage < SceneBuildStage.TYPE_INFERRED) {
+            this.getMethodsMapCpp(true);
             this.buildStage = SceneBuildStage.TYPE_INFERRED;
         }
     }

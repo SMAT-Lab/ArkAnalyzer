@@ -221,8 +221,10 @@ export class ArkValueTransformer {
                 return this.tsNodeToValueAndStmts(node.inner[0]);
             }
         } else if (node.kind === 'ImplicitCastExpr') {
-            if (node.inner.length !== 0) {
+            if (node.inner.length === 1) {
                 return this.tsNodeToValueAndStmts(node.inner[0]);
+            } else if (node.inner.length === 2) {
+                return this.tsNodeToValueAndStmts(node.inner[1]);
             }
             // 把当前ImplicitCastExpr节点当作declRefExpr
             node.kind = 'DeclRefExpr';
@@ -276,7 +278,7 @@ export class ArkValueTransformer {
         } else if (node.kind === 'CompoundAssignOperator') {
             return this.compoundAssignmentToValueAndStmts(node);
         } else if (node.kind === 'CompoundLiteralExpr') {
-            return this.tsNodeToValueAndStmts(node.inner[0]);
+            return this.tsNodeToValueAndStmts(node.inner[0].kind === 'TypeRef' ? node.inner[1] : node.inner[0]);
         } else if (node.kind === 'ConditionalOperator' || node.kind === 'BinaryConditionalOperator') {
             return this.conditionalExpressionToValueAndStmts(node);
         } else if (node.kind === 'LambdaExpr') {
@@ -506,8 +508,11 @@ export class ArkValueTransformer {
         for (let i = 0; i < innerAstNodes.length; i++) {
             if (i == 0 && innerAstNodes[i].inner?.length !== 0) {
                 let firstNode = innerAstNodes[i].inner[0];
-                while (firstNode.kind.toString() === 'ImplicitCastExpr') {
+                while (firstNode && firstNode.kind.toString() === 'ImplicitCastExpr') {
                     firstNode = firstNode.inner[0];
+                }
+                if (!firstNode) {
+                    continue;
                 }
                 // kind = MemberExpr为了处理多层Field结构
                 if (firstNode.kind.toString() === 'DeclRefExpr' || firstNode.kind.toString() === 'MemberExpr' || firstNode.kind.toString() === 'OverloadedDeclRef') {

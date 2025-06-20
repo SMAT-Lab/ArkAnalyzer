@@ -628,6 +628,7 @@ json buildASTJson(CXCursor cursor){
         node["name"] = displayName;
         node["code"] = content.contains("code") && content["code"].is_string() ? content["code"].get<std::string>() : "";
         node["loc"] = content.contains("begin") ? content["begin"] : json();
+        node["loc"]["file"] = node["fileName"];
         node["range"] = {{"begin", content["begin"]}, {"end", content["end"]}};
     } else if (kind_cursor == CXCursor_IntegerLiteral ||
         kind_cursor == CXCursor_StringLiteral ||
@@ -691,7 +692,8 @@ json buildASTJson(CXCursor cursor){
     node["id"] = content["id"];
     json begin = content["begin"];
     node["range"] = {{"begin", begin}, {"end", content["end"]}};
-    if (file && std::find(locCursorKind.begin(), locCursorKind.end(), kind_cursor) != locCursorKind.end()){
+    if ((file && std::find(locCursorKind.begin(), locCursorKind.end(), kind_cursor) != locCursorKind.end())
+        || kind_cursor == CXCursor_MacroExpansion || kind_cursor == CXCursor_MacroDefinition){
         begin["file"] = cx2str(clang_getFileName(file));
         node["loc"] = begin;
     }
@@ -730,6 +732,10 @@ json buildASTJson(CXCursor cursor){
             node["kind"] = "CXXMemberCallExpr";
         }else {
             changeChildNodeType(children);
+        }
+    } else if (node["kind"] == "ImplicitCastExpr") {
+        if (children.size() > 0 && children[0]["kind"] == "CallExpr") {
+            node["kind"] = "ExprWithCleanups";
         }
     }
     if (node["kind"] == "InitListExpr") relateMemberType(typeStr, children);

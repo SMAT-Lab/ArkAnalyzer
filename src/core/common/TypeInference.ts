@@ -186,6 +186,7 @@ export class TypeInference {
                 .forEach(p => {
                     this.inferParameterType(p, arkMethod);
                 });
+            this.inferSignatureReturnType(s, arkMethod);
         });
         const body = arkMethod.getBody();
         if (!body) {

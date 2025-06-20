@@ -28,9 +28,9 @@ function runScene(config: SceneConfig, fileName: string) {
     let callGraph = new CallGraph(projectScene);
     let callGraphBuilder = new CallGraphBuilder(callGraph, projectScene);
     callGraphBuilder.buildClassHierarchyCallGraph(entryPoints, false);
-    callGraph.dump("out/cg/cg.dot");
-    const content1 = fs.readFileSync('out/cg/cg.dot', 'utf-8').replace(/\s+/g, '');
-    const content2 = fs.readFileSync('graph_expect/cg.dot', 'utf-8').replace(/\s+/g, '');
+    callGraph.dump('../out/Tests.dot');
+    const content1 = fs.readFileSync('../out/Tests.dot', 'utf-8').replace(/\s+/g, '');
+    const content2 = fs.readFileSync('cg/Tests.dot', 'utf-8').replace(/\s+/g, '');
     console.log('Are the files equal?', content1 === content2);
 }
 
