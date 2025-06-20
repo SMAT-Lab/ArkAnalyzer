@@ -75,8 +75,11 @@ function buildArkFile(arkFile: ArkFile, astRoot: any): void {
     const statements = astRoot.inner;
     let recordMap = new Map; //记录派生类
     statements.forEach((child: any) => {
-        if (child.kind === 'CXXRecordDecl') {
+        if (child.kind === 'CXXRecordDecl' || child.kind === 'ClassTemplate') {
             let cls: ArkClass = new ArkClass();
+            if (child.kind === 'ClassTemplate') {
+                child.tagUsed = 'class';
+            }
             buildNormalArkClassFromArkFile(child, arkFile, cls, astRoot);
             arkFile.addArkClass(cls);
             recordMap.set(child.id, cls);

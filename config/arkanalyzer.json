@@ -1,7 +1,7 @@
 {
   "supportFileExts": [
     ".ets",
-    ".ts",
+//    ".ts",
     ".js",
     ".d.ets",
     ".d.ts",

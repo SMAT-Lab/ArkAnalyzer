@@ -163,33 +163,28 @@ export function buildHeritageClauses(heritageClauses?: ts.NodeArray<HeritageClau
 }
 
 export function buildTypeParameters(
-    typeParameters: ts.NodeArray<TypeParameterDeclaration>,
+    clsNode: any,
     sourceFile: ts.SourceFile,
     arkInstance: ArkMethod | ArkClass
 ): GenericType[] {
     const genericTypes: GenericType[] = [];
-    let index = 0;
-    if (arkInstance instanceof ArkMethod) {
-        const len = arkInstance.getDeclaringArkClass().getGenericsTypes()?.length;
-        if (len) {
-            index = len;
+    for(const innerNode of clsNode.inner) {
+        if(innerNode.kind !== 'TemplateTypeParameter'){
+            continue;
         }
+        let typename = innerNode.name;
+        let defaultType;
+        if(innerNode.inner && innerNode.inner.length > 0){
+            innerNode.default = innerNode.inner[0].type.qualType;
+        }
+        if(innerNode.default){
+            defaultType = cppNode2Type(innerNode.default,sourceFile,arkInstance);
+        }
+        let templateType = new GenericType(typename,defaultType);
+        let index = -1;
+        templateType.setIndex(++index);
+        genericTypes.push(templateType);
     }
-    typeParameters.forEach(typeParameter => {
-        const genericType = cppNode2Type(typeParameter, sourceFile, arkInstance);
-        if (genericType instanceof GenericType) {
-            genericType.setIndex(index++);
-            genericTypes.push(genericType);
-        }
-
-        if (typeParameter.modifiers) {
-            logger.warn('This typeparameter has modifiers.');
-        }
-
-        if (typeParameter.expression) {
-            logger.warn('This typeparameter has expression.');
-        }
-    });
     return genericTypes;
 }
 
@@ -310,6 +305,22 @@ export function cppNode2Type(
                 if (nodeQualType === t.getName()) return t;
             }
         }
+        const classTemplateTypes = arkInstance.getDeclaringArkClass().getGenericsTypes?.();
+        if (classTemplateTypes){
+            for (const t of classTemplateTypes){
+                if (nodeQualType === t.getName()){
+                    return t;
+                }
+            }
+        }
+    }
+    if (arkInstance instanceof ArkClass){
+        const templateTypes = arkInstance.getGenericsTypes?.();
+        if (templateTypes){
+            for (const t of templateTypes){
+                if (nodeQualType === t.getName()) return t;
+            }
+        }
     }
     // 默认处理
     return buildTypeFromPreStr(nodeQualType, arkInstance);
@@ -357,19 +368,24 @@ export function isCXXSTLContainer(qualType: string){
 export function buildTypeFromDerivedType(
     preStr: string,
     arkInstance: ArkMethod | ArkClass | ArkField,
-): Type{
-    const typeStr = preStr.trim().split(' ')[0];
-    const isPtr = preStr.includes(' *');
-    const isRef = preStr.includes(' &');
+): Type {
+    const outerPartMatch = preStr.match(/^([^<]+)/);
+    const outerPart = outerPartMatch ? outerPartMatch[1] : null;
+    const typeStr = outerPart === null ? preStr.trim().split(' ')[0] : outerPart.trim().split(' ')[0];
+    const isPtr = outerPart === null ? preStr.includes(' *') : outerPart.includes(' *');
+    const isRef = outerPart === null ? preStr.includes(' &') : outerPart.includes(' &');
+    const innerPartMatch = preStr.match(/<([^>]+)>/);
+    const innerPart = innerPartMatch ? innerPartMatch[1] : null;
+    let innerType = innerPart === null ? [] : [buildTypeFromPreStr(innerPart, null)];
 
     let arkClass: ArkClass | null = null;
     if (arkInstance instanceof ArkMethod || arkInstance instanceof ArkClass) {
         const file = arkInstance.getDeclaringArkFile?.();
         arkClass = file?.getClassWithName?.(typeStr) ?? null;
     }
-    if (arkClass){
+    if (arkClass) {
         const suffix = isPtr ? '*' : isRef ? '&' : undefined;
-        return new ClassType(arkClass.getSignature(), [], suffix);
+        return new ClassType(arkClass.getSignature(), innerType, suffix);
     }
     return TypeInference.buildTypeFromStr('unsupported');
 }

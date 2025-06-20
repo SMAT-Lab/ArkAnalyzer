@@ -206,6 +206,8 @@ export class ArkValueTransformer {
                 return this.tsNodeToValueAndStmts(node.inner[0]);
             }
             return this.newExpressionToValueAndStmts(node);
+        } else if (node.kind === 'CallExpr' || node.kind === 'CXXPseudoDestructorExpression') {
+            return this.callExpressionToValueAndStmts(node.inner[0]);
         } else if (node.kind === 'CallExpr' || node.kind === 'AtomicCallExpr') {
             return this.callExpressionToValueAndStmts(node);
         } else if (node.kind === 'CXXNoexceptExpr') {
@@ -228,7 +230,7 @@ export class ArkValueTransformer {
             node.kind = 'DeclRefExpr';
             node.name = node.code;
             return this.tsNodeToValueAndStmts(node);
-        } else if (node.kind === 'DeclRefExpr') {
+        } else if (node.kind === 'DeclRefExpr' || node.kind === 'typeRef') {
             if (!node.type) {
                 return this.tsNodeToValueAndStmts(node.inner[0]);
             }

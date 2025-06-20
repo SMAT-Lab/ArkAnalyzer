@@ -114,7 +114,8 @@ import {
 import {
     TEMPLATE_EXPECT_CASE1,
     TEMPLATE_EXPECT_CASE2,
-    TEMPLATE_EXPECT_CASE3
+    TEMPLATE_EXPECT_CASE3, TEMPLATE_EXPECT_CASE4,
+    TEMPLATE_MYCONTAINER_CLASS,
 } from '../../../resources_cpp/cfg/template/templateExpects';
 import {
     OPERATOR_EXPECT_RETURN,
@@ -345,6 +346,8 @@ describe('Type Test', () => {
         testBlocks(scene, 'template.cpp', 'max1', TEMPLATE_EXPECT_CASE1.blocks);
         testBlocks(scene, 'template.cpp', 'max2', TEMPLATE_EXPECT_CASE2.blocks);
         testBlocks(scene, 'template.cpp', 'printPair', TEMPLATE_EXPECT_CASE3.blocks);
+        testBlocksClass(scene, 'template.cpp', 'MyContainer', TEMPLATE_MYCONTAINER_CLASS);
+        testBlocks(scene, 'template.cpp', 'main', TEMPLATE_EXPECT_CASE4.blocks);
         },
     );
 

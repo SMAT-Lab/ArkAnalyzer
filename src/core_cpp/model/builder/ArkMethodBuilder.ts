@@ -91,6 +91,8 @@ export function handleFunctionTemplate(methodNode:any, mtd:ArkMethod, sourceFile
             defaultType = cppNode2Type(innerNode.default, sourceFile, mtd);
         }
         let templateType = new GenericType(typename, defaultType);
+        let index = -1;
+        templateType.setIndex(++index);
         templateTypesArray.push(templateType);
     }
     mtd.setGenericTypes(templateTypesArray);
