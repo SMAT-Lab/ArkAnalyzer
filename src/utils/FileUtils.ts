@@ -65,12 +65,18 @@ export class FileUtils {
                 if (moduleMap.get(name)) {
                     return;
                 }
-                const modulePath = path.resolve(path.dirname(filePath), value.replace('file:', ''));
-                const key = path.resolve(modulePath, OH_PACKAGE_JSON5);
-                const target = ohPkgContentMap.get(key);
-                if (target) {
-                    moduleMap.set(name, new ModulePath(modulePath, target.main ? path.resolve(modulePath, target.main as string) : ''));
+                const dir = path.dirname(filePath);
+                let modulePath = path.resolve(dir, value.replace('file:', ''));
+                let main = '';
+                if (this.isDirectory(modulePath)) {
+                    const target = ohPkgContentMap.get(path.resolve(modulePath, OH_PACKAGE_JSON5));
+                    if (target?.main) {
+                        main = path.resolve(modulePath, target.main as string);
+                    }
+                } else {
+                    path.resolve(dir, 'oh_modules', name);
                 }
+                moduleMap.set(name, new ModulePath(modulePath, main));
             });
         });
         return moduleMap;
@@ -100,7 +106,7 @@ export class ModulePath {
 
     constructor(path: string, main: string) {
         this.path = transfer2UnixPath(path);
-        this.main = transfer2UnixPath(main);
+        this.main = main ? transfer2UnixPath(main) : main;
     }
 }
 
