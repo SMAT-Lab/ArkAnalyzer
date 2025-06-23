@@ -278,7 +278,7 @@ export class ArkValueTransformer {
         } else if (node.kind === 'CompoundAssignOperator') {
             return this.compoundAssignmentToValueAndStmts(node);
         } else if (node.kind === 'CompoundLiteralExpr') {
-            return this.tsNodeToValueAndStmts(node.inner[0]);
+            return this.newExpressionToValueAndStmts(node);
         } else if (node.kind === 'ConditionalOperator' || node.kind === 'BinaryConditionalOperator') {
             return this.conditionalExpressionToValueAndStmts(node);
         } else if (node.kind === 'LambdaExpr') {
@@ -1081,7 +1081,7 @@ export class ArkValueTransformer {
         if ((newExpression.kind === 'CXXNewExpr' && newExpression.inner[1]?.kind === 'CXXConstructExpr')) {
             constructArgs = [...newExpression.inner[1].inner];
         } else if (newExpression.kind === 'CompoundLiteralExpr') {
-            constructArgs = [...constructArgs.inner[0].inner];
+            constructArgs = this.getConstructArgs(constructArgs);
         } else if (newExpression.kind === 'CXXConstructExpr' && newExpression.type.qualType.startsWith('struct') &&
             constructArgs && constructArgs[0].inner[0]?.kind === 'CompoundLiteralExpr') {
             constructArgs = this.getConstructArgs(constructArgs[0].inner[0].inner);
