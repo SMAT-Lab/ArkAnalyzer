@@ -168,6 +168,7 @@ export function buildTypeParameters(
     arkInstance: ArkMethod | ArkClass
 ): GenericType[] {
     const genericTypes: GenericType[] = [];
+    let index = -1;
     for(const innerNode of clsNode.inner) {
         if(innerNode.kind !== 'TemplateTypeParameter'){
             continue;
@@ -181,7 +182,6 @@ export function buildTypeParameters(
             defaultType = cppNode2Type(innerNode.default,sourceFile,arkInstance);
         }
         let templateType = new GenericType(typename,defaultType);
-        let index = -1;
         templateType.setIndex(++index);
         genericTypes.push(templateType);
     }
@@ -291,35 +291,22 @@ export function buildReturnType(mtdNode: any, sourceFile: any, method: ArkMethod
 export function cppNode2Type(
     nodeQualType: any,
     sourceFile: any,
-    arkInstance: ArkMethod | ArkClass | ArkField
+    arkInstance: ArkMethod | ArkClass | ArkField,
 ): Type {
     // 处理特殊类型
-    if (nodeQualType === 'void () const'){
-        return buildTypeFromPreStr('VoidKeyword')
+    if (nodeQualType === 'void () const') {
+        return buildTypeFromPreStr('VoidKeyword');
     }
     // 处理泛型类型
-    if (arkInstance instanceof ArkMethod){
-        const templateTypes = arkInstance.getGenericTypes?.();
-        if (templateTypes){
-            for (const t of templateTypes){
-                if (nodeQualType === t.getName()) return t;
-            }
-        }
-        const classTemplateTypes = arkInstance.getDeclaringArkClass().getGenericsTypes?.();
-        if (classTemplateTypes){
-            for (const t of classTemplateTypes){
-                if (nodeQualType === t.getName()){
-                    return t;
-                }
-            }
-        }
+    let templateTypes: GenericType[] | undefined;
+    if (arkInstance instanceof ArkMethod) {
+        templateTypes = arkInstance.getGenericTypes() ?? arkInstance.getDeclaringArkClass()?.getGenericsTypes();
+    } else if (arkInstance instanceof ArkClass) {
+        templateTypes = arkInstance.getGenericsTypes();
     }
-    if (arkInstance instanceof ArkClass){
-        const templateTypes = arkInstance.getGenericsTypes?.();
-        if (templateTypes){
-            for (const t of templateTypes){
-                if (nodeQualType === t.getName()) return t;
-            }
+    if (templateTypes) {
+        for (const t of templateTypes) {
+            if (nodeQualType === t.getName()) return t;
         }
     }
     // 默认处理
@@ -371,9 +358,16 @@ export function buildTypeFromDerivedType(
 ): Type {
     const outerPartMatch = preStr.match(/^([^<]+)/);
     const outerPart = outerPartMatch ? outerPartMatch[1] : null;
-    const typeStr = outerPart === null ? preStr.trim().split(' ')[0] : outerPart.trim().split(' ')[0];
-    const isPtr = outerPart === null ? preStr.includes(' *') : outerPart.includes(' *');
-    const isRef = outerPart === null ? preStr.includes(' &') : outerPart.includes(' &');
+    let typeStr: string,isPtr:boolean,isRef:boolean;
+    if(outerPart === null){
+        typeStr = preStr.trim().split(' ')[0];
+        isPtr = preStr.includes(' *');
+        isRef = preStr.includes(' &');
+    } else {
+        typeStr = outerPart.trim().split(' ')[0];
+        isPtr = outerPart.includes(' *');
+        isRef = outerPart.includes(' &');
+    }
     const innerPartMatch = preStr.match(/<([^>]+)>/);
     const innerPart = innerPartMatch ? innerPartMatch[1] : null;
     let innerType = innerPart === null ? [] : [buildTypeFromPreStr(innerPart, null)];
