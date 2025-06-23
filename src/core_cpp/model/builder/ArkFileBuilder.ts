@@ -90,7 +90,7 @@ function buildArkFile(arkFile: ArkFile, astRoot: any): void {
             ns.setDeclaringArkFile(arkFile);
             buildArkNamespace(child, arkFile, ns, astRoot);
             arkFile.addNamespace(ns);
-        } else if (child.kind === 'CXXMethodDecl' || child.kind === 'CXXConstructorDecl') {
+        } else if (child.kind === 'CXXMethodDecl' || child.kind === 'CXXConstructorDecl' || child.kind === 'CXXDestructorDecl') {
             let className: string = child.mangledName;
             let arkClass = arkFile.getClasses().find(arkClass => (arkClass.getName() == className));
             let mthd: ArkMethod = new ArkMethod();
