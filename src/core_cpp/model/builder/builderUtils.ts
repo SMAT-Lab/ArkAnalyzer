@@ -358,8 +358,8 @@ export function buildTypeFromDerivedType(
 ): Type {
     const outerPartMatch = preStr.match(/^([^<]+)/);
     const outerPart = outerPartMatch ? outerPartMatch[1] : null;
-    let typeStr: string,isPtr:boolean,isRef:boolean;
-    if(outerPart === null){
+    let typeStr: string, isPtr: boolean, isRef: boolean;
+    if (outerPart === null) {
         typeStr = preStr.trim().split(' ')[0];
         isPtr = preStr.includes(' *');
         isRef = preStr.includes(' &');
