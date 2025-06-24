@@ -31,7 +31,7 @@ import {
 } from '../../../core/base/Type';
 import { TypeInference } from '../../common/TypeInference';
 import { ArkField } from '../../../core/model/ArkField';
-import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
+// import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
 import { ArkClass } from '../../../core/model/ArkClass';
 import { ArkMethod } from '../../../core/model/ArkMethod';
 import { Decorator } from '../../../core/base/Decorator';
@@ -39,7 +39,7 @@ import { MethodParameter } from './ArkMethodBuilder';
 import { modifierKind2Enum, modifierKind2EnumCpp } from '../../../core/model/ArkBaseModel';
 
 
-const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'builderUtils');
+// const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'builderUtils');
 
 export function handleQualifiedName(node: ts.QualifiedName): string {
     let right = (node.right as ts.Identifier).text;
