@@ -47,6 +47,18 @@ export class AstUtils {
             }
             let fileName = "";
             let loc = entry.loc;
+            if (!loc) {
+                if (entry.kind === 'inclusion directive') {
+                    entry.loc = {
+                        'file': sourceFile,
+                    };
+                    newInner.push(entry);
+                    firstOccurrenceOfMainFile = true;
+                } else {
+                    logger.warn('Node skipped due to missing "loc", kind of node: ', entry.kind);
+                }
+                return;
+            }
             if (Object.prototype.hasOwnProperty.call(loc, "file")){
                 fileName = loc.file;
             }

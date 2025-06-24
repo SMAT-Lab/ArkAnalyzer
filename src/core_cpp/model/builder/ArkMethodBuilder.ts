@@ -508,7 +508,7 @@ export function isMethodImplementation(node: any): boolean {
         if (node.inner && node.inner.length > 0){
             return true;
         }
-    } else if (node.kind.toString() == 'CXXConstructorDecl'){
+    } else if (node.kind.toString() === 'CXXConstructorDecl' || node.kind.toString() === 'CXXDestructorDecl'){
         if (node.inner.find((inn:any) => inn.kind.toString() === 'CompoundStmt')){
             return true;
         }
