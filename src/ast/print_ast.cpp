@@ -394,7 +394,7 @@ void patchFoldExpr(json &node){
             patchFoldExpr(child);
         }
     }
-    if (node.contains("code") && node.contains("kind") && node["kind"] == "ImplicitCaseExpr") {
+    if (node.contains("code") && node.contains("kind") && node["kind"] == "ImplicitCastExpr") {
         std::string code = node["code"];
         // 只判断常见的 "(... <op> ars)"
         std::smatch m;
