@@ -68,6 +68,7 @@ export class Scene {
     private projectName: string = '';
     private projectFiles: string[] = [];
     private realProjectDir: string = '';
+    private includeDirs: string[] = [];
 
     private moduleScenesMap: Map<string, ModuleScene> = new Map();
     private modulePath2NameMap: Map<string, string> = new Map<string, string>();
@@ -187,6 +188,7 @@ export class Scene {
         this.projectName = sceneConfig.getTargetProjectName();
         this.realProjectDir = fs.realpathSync(sceneConfig.getTargetProjectDirectory());
         this.projectFiles = sceneConfig.getProjectFiles();
+        this.includeDirs = sceneConfig.getIncludeDirs();
 
         this.parseBuildProfile();
 
@@ -391,7 +393,7 @@ export class Scene {
             try {
                 const arkFile: ArkFile = new ArkFile(FileUtils.getFileLanguage(file, this.fileLanguages));
                 arkFile.setScene(this);
-                buildArkFileFromFileCpp(file, this.realProjectDir, arkFile, this.projectName);
+                buildArkFileFromFileCpp(file, this.realProjectDir, arkFile, this.projectName, this.includeDirs);
                 this.filesMap.set(arkFile.getFileSignature().toMapKey(), arkFile);
             } catch (error) {
                 logger.error('Error parsing file:', file, error);

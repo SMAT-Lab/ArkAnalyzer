@@ -573,11 +573,20 @@ json buildTemplateDefaultType(std::string codeStr){
     return defaultNode;
 }
 
+// 根据系统添加分隔符
+std::string getPathSeparator() {
+#ifdef _WIN32
+    return "\\";
+#else
+    return "/";
+#endif
+}
+
 bool isInUserInclude(const std::string& fileName){
     for (const auto& dir: g_user_include_dirs){
         std::string prefix = dir;
         if (!prefix.empty() && prefix.back() != '/' && prefix.back() != '\\')
-            prefix += '/';
+            prefix += getPathSeparator();
         if (fileName.find(prefix) == 0) return true;
     }
     return false;
@@ -592,7 +601,8 @@ json buildASTJson(CXCursor cursor){
     clang_getSpellingLocation(loc, &file, nullptr, nullptr, nullptr);
     std::string fileName = file ? cx2str(clang_getFileName(file)) : "";
 
-    if ((kind_cursor != CXCursor_TranslationUnit && !clang_Location_isFromMainFile(loc) && !isInUserInclude(fileName))
+    bool isInclude = isInUserInclude(fileName);
+    if ((kind_cursor != CXCursor_TranslationUnit && !clang_Location_isFromMainFile(loc) && !isInclude)
         || kind_cursor == CXCursor_LinkageSpec){
         return json();
     }
@@ -601,6 +611,9 @@ json buildASTJson(CXCursor cursor){
     std::string kindSpelling = cx2str(clang_getCursorKindSpelling(kind_cursor));
     std::string displayName = cx2str(clang_getCursorSpelling(cursor));
     CXSourceRange range = clang_getCursorExtent(cursor);
+    if (isInclude) {
+        node["include"] = true;
+    }
 
     node["type"] = {{"qualType", unifyTypeStr(clang_getTypeSpelling(clang_getCursorType(cursor)))}};
     std::string typeStr = node["type"]["qualType"];

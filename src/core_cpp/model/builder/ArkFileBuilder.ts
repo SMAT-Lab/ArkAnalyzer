@@ -51,7 +51,7 @@ export const notStmtOrExprKind = [
  * @param arkFile
  * @returns
  */
-export function buildArkFileFromFile(absoluteFilePath: string, projectDir: string, arkFile: ArkFile, projectName: string): void {
+export function buildArkFileFromFile(absoluteFilePath: string, projectDir: string, arkFile: ArkFile, projectName: string, includeDirs: string[] = []): void {
     arkFile.setFilePath(absoluteFilePath);
     arkFile.setProjectDir(projectDir);
 
@@ -59,7 +59,7 @@ export function buildArkFileFromFile(absoluteFilePath: string, projectDir: strin
     arkFile.setFileSignature(fileSignature);
 
     arkFile.setCode(fs.readFileSync(arkFile.getFilePath(), 'utf8'));
-    const jsonObject = AstUtils.parse(absoluteFilePath);
+    const jsonObject = AstUtils.parse(absoluteFilePath, null, includeDirs);
     genDefaultArkClass(arkFile, jsonObject);
     buildArkFile(arkFile, jsonObject);
 }
