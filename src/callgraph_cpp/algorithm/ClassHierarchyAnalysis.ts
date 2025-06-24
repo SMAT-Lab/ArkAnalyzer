@@ -16,7 +16,6 @@
 import { ArkStaticInvokeExpr } from '../../core/base/Expr';
 import { Scene } from '../../Scene';
 import { Stmt } from '../../core/base/Stmt';
-import { ArkClass } from '../../core/model/ArkClass';
 import { NodeID } from '../../core/graph/GraphTraits';
 import { CallGraph, CallSite } from '../model/CallGraph';
 import { AbstractAnalysis } from './AbstractAnalysis';
@@ -50,29 +49,17 @@ export class ClassHierarchyAnalysis extends AbstractAnalysis {
             resolveResult.push(new CallSite(invokeStmt, undefined, this.cg.getCallGraphNodeByMethod(calleeMethod!.getSignature()).getID(), callerMethod!));
         } else {
             let declareClass = calleeMethod.getDeclaringArkClass();
-            // TODO: super class method should be placed at the end
-            this.getClassHierarchy(declareClass).forEach((arkClass: ArkClass) => {
-                if (arkClass.isAbstract()) {
-                    return resolveResult;
-                }
+            if (declareClass.isAbstract()) {
+                return resolveResult;
+            }
 
-                let possibleCalleeMethod = arkClass.getMethodWithName(calleeMethod!.getName());
+            let possibleCalleeMethod = declareClass.getMethodWithName(calleeMethod!.getName());
 
-                if (
-                    possibleCalleeMethod &&
-                    possibleCalleeMethod.isGenerated() &&
-                    arkClass.getSignature().toString() !== declareClass.getSignature().toString()
-                ) {
-                    // remove the generated method in extended classes
-                    return resolveResult;
-                }
-
-                if (possibleCalleeMethod && !possibleCalleeMethod.isAbstract()) {
-                    resolveResult.push(
-                        new CallSite(invokeStmt, undefined, this.cg.getCallGraphNodeByMethod(possibleCalleeMethod.getSignature()).getID(), callerMethod)
-                    );
-                }
-            });
+            if (possibleCalleeMethod && !possibleCalleeMethod.isAbstract()) {
+                resolveResult.push(
+                    new CallSite(invokeStmt, undefined, this.cg.getCallGraphNodeByMethod(possibleCalleeMethod.getSignature()).getID(), callerMethod)
+                );
+            }
         }
 
         return resolveResult;

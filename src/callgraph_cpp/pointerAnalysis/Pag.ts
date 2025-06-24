@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { NodeID, BaseEdge, BaseExplicitGraph, BaseNode, Kind } from '../../core_cpp/graph/BaseExplicitGraph';
+import { NodeID, BaseEdge, BaseExplicitGraph, BaseNode, Kind } from '../../core/graph/BaseExplicitGraph';
 import { CallGraph, CallSite, DynCallSite } from '../model/CallGraph';
 import { Value } from '../../core/base/Value';
 import { ArkAssignStmt, ArkReturnStmt, Stmt } from '../../core/base/Stmt';
@@ -24,11 +24,11 @@ import { GraphPrinter } from '../../save/GraphPrinter';
 import { PrinterBuilder } from '../../save/PrinterBuilder';
 import { Constant } from '../../core/base/Constant';
 import { FunctionType, UnclearReferenceType } from '../../core/base/Type';
-import { ClassSignature, FieldSignature, FileSignature, MethodSignature } from '../../core_cpp/model/ArkSignature';
+import { ClassSignature, FieldSignature, FileSignature, MethodSignature } from '../../core/model/ArkSignature';
 import { ContextID } from './Context';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { GLOBAL_THIS_NAME } from '../../core_cpp/common/TSConst';
-import { ExportInfo } from '../../core_cpp/model/ArkExport';
+import { ExportInfo } from '../../core/model/ArkExport';
 import { BuiltApiType, getBuiltInApiType, IsCollectionClass } from './PTAUtils';
 import { IPtsCollection } from './PtsDS';
 import { PointerAnalysisConfig } from './PointerAnalysisConfig';

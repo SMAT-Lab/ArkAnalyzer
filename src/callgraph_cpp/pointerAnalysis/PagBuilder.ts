@@ -27,12 +27,12 @@ import {
 } from '../../core/base/Expr';
 import { AbstractFieldRef, ArkArrayRef, ArkInstanceFieldRef, ArkParameterRef, ArkStaticFieldRef, ArkThisRef } from '../../core/base/Ref';
 import { Value } from '../../core/base/Value';
-import { ArkMethod } from '../../core_cpp/model/ArkMethod';
+import { ArkMethod } from '../../core/model/ArkMethod';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { Local } from '../../core/base/Local';
-import { NodeID } from '../../core_cpp/graph/GraphTraits';
-import { ClassSignature } from '../../core_cpp/model/ArkSignature';
-import { ArkClass } from '../../core_cpp/model/ArkClass';
+import { NodeID } from '../../core/graph/GraphTraits';
+import { ClassSignature } from '../../core/model/ArkSignature';
+import { ArkClass } from '../../core/model/ArkClass';
 import { ArrayType, ClassType, FunctionType, StringType } from '../../core/base/Type';
 import { Constant, NullConstant } from '../../core/base/Constant';
 import { PAGStat } from '../common/Statistics';

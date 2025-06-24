@@ -13,6 +13,7 @@ export const DERIVED_DATA_TYPE_EXPECT_CLASS = {
                     id: 0,
                     stmts: [
                         'this = this: @derivedDataType/derivedDataType.cpp: MyClass',
+                        'staticinvoke <@%unk/%unk: .cout()>(\'"delete"\')',
                         'return'
                     ],
                     preds: [],

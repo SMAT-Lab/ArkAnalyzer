@@ -18,7 +18,6 @@ import { Scene } from '../../../Scene';
 import { AbstractInvokeExpr, ArkInstanceInvokeExpr, ArkStaticInvokeExpr } from '../../../core/base/Expr';
 import { NodeID } from '../../../core/graph/GraphTraits';
 import { ClassHierarchyAnalysis } from '../../algorithm/ClassHierarchyAnalysis';
-import { RapidTypeAnalysis } from '../../algorithm/RapidTypeAnalysis';
 import { ArkMethod } from '../../../core/model/ArkMethod';
 
 export class CallGraphBuilder {
@@ -99,24 +98,7 @@ export class CallGraphBuilder {
         let classHierarchyAnalysis: ClassHierarchyAnalysis = new ClassHierarchyAnalysis(this.scene, this.cg, this);
         classHierarchyAnalysis.start(displayGeneratedMethod);
     }
-
-    public buildCHA4WholeProject(displayGeneratedMethod: boolean = false): void {
-        let classHierarchyAnalysis: ClassHierarchyAnalysis = new ClassHierarchyAnalysis(this.scene, this.cg, this);
-        classHierarchyAnalysis.projectStart(displayGeneratedMethod);
-    }
-
-    public buildRapidTypeCallGraph(entries: Method[], displayGeneratedMethod: boolean = false): void {
-        let cgEntries: NodeID[] = [];
-        entries.forEach((entry: Method) => {
-            cgEntries.push(this.cg.getCallGraphNodeByMethod(entry).getID());
-        });
-        this.cg.setEntries(cgEntries);
-
-        let rapidTypeAnalysis: RapidTypeAnalysis = new RapidTypeAnalysis(this.scene, this.cg);
-        rapidTypeAnalysis.start(displayGeneratedMethod);
-    }
-
-    /// Get direct call callee
+/// Get direct call callee
     private getDCCallee(invokeExpr: AbstractInvokeExpr): Method | undefined {
         return invokeExpr.getMethodSignature();
     }

@@ -4,16 +4,16 @@ import { SceneConfig } from '../../../../src';
 import { DEFAULT_ARK_CLASS_NAME } from '../../../../src/core_cpp/common/Const';
 import { CallGraph } from '../../../../src/callgraph_cpp/model/CallGraph';
 import { CallGraphBuilder } from '../../../../src/callgraph_cpp/model/builder/CallGraphBuilder';
-import { SceneCpp } from '../../../../src/Scene_cpp';
-import { MethodSignature } from '../../../../src/core_cpp/model/ArkSignature';
+import { Scene } from '../../../../src';
+import { MethodSignature } from '../../../../src';
 
 let config: SceneConfig = new SceneConfig();
-config.buildFromProjectDir('resources_cpp/callTest/');
+config.buildFromProjectDir('../../../resources_cpp/call_graph/');
 
 function runScene(config: SceneConfig, fileName: string) {
-    let projectScene: SceneCpp = new SceneCpp();
-    projectScene.buildSceneFromProjectDir(config);
-    projectScene.inferTypes();
+    let projectScene: Scene = new Scene();
+    projectScene.buildSceneFromProjectDirCpp(config);
+    projectScene.inferTypesCpp();
 
     let entryPoints: MethodSignature[] = [];
     // @ts-ignore
@@ -29,9 +29,9 @@ function runScene(config: SceneConfig, fileName: string) {
     let callGraph = new CallGraph(projectScene);
     let callGraphBuilder = new CallGraphBuilder(callGraph, projectScene);
     callGraphBuilder.buildClassHierarchyCallGraph(entryPoints, false);
-    callGraph.dump("out/cg/cg.dot");
-    const content1 = fs.readFileSync('out/cg/cg.dot', 'utf-8').replace(/\s+/g, '');
-    const content2 = fs.readFileSync('graph_expect/cg.dot', 'utf-8').replace(/\s+/g, '');
+    callGraph.dump('../out/callTest.dot');
+    const content1 = fs.readFileSync('../out/callTest.dot', 'utf-8').replace(/\s+/g, '');
+    const content2 = fs.readFileSync('cg/callTest.dot', 'utf-8').replace(/\s+/g, '');
     console.log('Are the files equal?', content1 === content2);
 }
 
