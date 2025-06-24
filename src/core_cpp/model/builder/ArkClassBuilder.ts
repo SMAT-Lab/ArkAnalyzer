@@ -29,6 +29,7 @@ import {
 import {
     buildDecorators,
     buildModifiers,
+    buildTypeParameters
 } from './builderUtils';
 import { buildProperty2ArkField } from './ArkFieldBuilder';
 import { ArkIRTransformer } from '../../common/ArkIRTransformer';
@@ -250,6 +251,11 @@ function buildClass2ArkClass(clsNode: any, cls: ArkClass, sourceFile: any, decla
         processCXXHeritage(clsNode, cls);
     }
 
+    if (clsNode.kind ==='ClassTemplate'){
+        buildTypeParameters(clsNode,sourceFile, cls).forEach(typeParameter => {
+            cls.addGenericType(typeParameter);
+        })
+    }
     cls.setCategory(ClassCategory.CLASS);
     init4InstanceInitMethod(cls);
     init4StaticInitMethod(cls);
