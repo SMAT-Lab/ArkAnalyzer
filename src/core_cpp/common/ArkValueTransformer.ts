@@ -206,7 +206,9 @@ export class ArkValueTransformer {
                 return this.tsNodeToValueAndStmts(node.inner[0]);
             }
             return this.newExpressionToValueAndStmts(node);
-        } else if (node.kind === 'CallExpr' || node.kind === 'AtomicCallExpr') {
+        } else if (node.kind === 'CallExpr' || node.kind === 'CXXPseudoDestructorExpression') {
+            return this.callExpressionToValueAndStmts(node.inner[0]);
+        } else if (node.kind === 'CallExpr' || node.kind === 'AtomicCallExpr' || node.kind === 'CXXFoldExpr') {
             return this.callExpressionToValueAndStmts(node);
         } else if (node.kind === 'CXXNoexceptExpr') {
             return this.cxxNoexceptExprToValueAndStmts(node);
@@ -230,7 +232,7 @@ export class ArkValueTransformer {
             node.kind = 'DeclRefExpr';
             node.name = node.code;
             return this.tsNodeToValueAndStmts(node);
-        } else if (node.kind === 'DeclRefExpr') {
+        } else if (node.kind === 'DeclRefExpr' || node.kind === 'typeRef') {
             if (!node.type) {
                 return this.tsNodeToValueAndStmts(node.inner[0]);
             }
@@ -1084,7 +1086,7 @@ export class ArkValueTransformer {
         if ((newExpression.kind === 'CXXNewExpr' && newExpression.inner[1]?.kind === 'CXXConstructExpr')) {
             constructArgs = [...newExpression.inner[1].inner];
         } else if (newExpression.kind === 'CompoundLiteralExpr') {
-            constructArgs = [...constructArgs.inner[0].inner];
+            constructArgs = this.getConstructArgs(constructArgs);
         } else if (newExpression.kind === 'CXXConstructExpr' && newExpression.type.qualType.startsWith('struct') &&
             constructArgs && constructArgs[0].inner[0]?.kind === 'CompoundLiteralExpr') {
             constructArgs = this.getConstructArgs(constructArgs[0].inner[0].inner);

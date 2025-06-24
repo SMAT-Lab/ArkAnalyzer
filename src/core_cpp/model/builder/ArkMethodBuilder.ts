@@ -78,11 +78,16 @@ export function handleFunctionTemplate(methodNode:any, mtd:ArkMethod, sourceFile
     }
     mtd.isGenericsMethod();
     let templateTypesArray = [];
+    let index = -1;
     for (const innerNode of methodNode.inner){
         if (innerNode.kind !== 'TemplateTypeParameter'){
             continue;
         }
         let typename = innerNode.name;
+        // 处理参数折叠的模板
+        if (innerNode.code.includes('...')){
+            typename = typename + '...';
+        }
         let defaultType;
         if (innerNode.inner && innerNode.inner.length > 0){
             innerNode.default = innerNode.inner[0].type.qualType;
@@ -91,6 +96,7 @@ export function handleFunctionTemplate(methodNode:any, mtd:ArkMethod, sourceFile
             defaultType = cppNode2Type(innerNode.default, sourceFile, mtd);
         }
         let templateType = new GenericType(typename, defaultType);
+        templateType.setIndex(++index);
         templateTypesArray.push(templateType);
     }
     mtd.setGenericTypes(templateTypesArray);

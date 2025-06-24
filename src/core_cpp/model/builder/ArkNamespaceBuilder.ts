@@ -81,7 +81,7 @@ function buildNamespaceMembers(node: any, namespace: ArkNamespace, sourceFile: a
 
             buildArkNamespace(child, namespace, childNs, sourceFile);
             namespace.addNamespace(childNs);
-        } else if ( child.kind === 'CXXRecordDecl') {
+        } else if ( child.kind === 'CXXRecordDecl' || child.kind === 'ClassTemplate') {
             let cls: ArkClass = new ArkClass();
 
             buildNormalArkClassFromArkNamespace(child, namespace, cls, sourceFile);
