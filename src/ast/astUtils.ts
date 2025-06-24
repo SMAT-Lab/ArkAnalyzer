@@ -11,7 +11,7 @@ const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'astUtils');
 export class AstUtils {
     private static currentAccess:string = "public";
 
-    public static parse(sourceFile: string): JSON | null{
+    public static parse(sourceFile: string, ccJsonPath: string | null, includeDirs: string[] | null): JSON | null{
         if (!fs.existsSync(sourceFile)){
             logger.warn("parse file is not exists");
             return null;
@@ -22,8 +22,9 @@ export class AstUtils {
             return null;
         }
         let astPath:string = this.getAstOutputPath(sourceFile);
-
+        let includeArgs = constructParseArguments(ccJsonPath, includeDirs);
         let parseArguments: string[] = [sourceFile, '-o', astPath];
+        parseArguments = [...parseArguments, ...includeArgs];
         this.ensureOutputDir(path.dirname(astPath));
 
         let parseResult = spawnSync(clangPath, parseArguments, {stdio:['inherit','pipe'], encoding: 'utf-8'});
@@ -53,6 +54,10 @@ export class AstUtils {
                 if (Object.prototype.hasOwnProperty.call(loc.expansionLoc, "file")){
                     fileName = loc.expansionLoc.file;
                 }
+            }
+            if (Object.prototype.hasOwnProperty.call(entry, "include") && entry.include && entry.kind !== 'inclusion directive'){
+                newInner.push(entry);
+                return;
             }
             if (fileName !== sourceFile){
                 return;
@@ -154,4 +159,18 @@ async function deleteFIle(filePath:string){
     } catch (err){
         logger.warn("delete file is not ok:", filePath);
     }
+}
+
+function constructParseArguments(ccJsonPath: string | null, includeDirs: string[] | null): string[] {
+    const args: string[] = [];
+
+    if (ccJsonPath) {
+        args.push('-c', ccJsonPath);
+    }
+    if (includeDirs && includeDirs.length > 0) {
+        includeDirs.forEach(dir => {
+            args.push('-i', `${dir}`);
+        })
+    }
+    return args;
 }

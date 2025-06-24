@@ -62,6 +62,7 @@ export class SceneConfig {
     private sdkFilesMap: Map<string[], string> = new Map<string[], string>();
 
     private projectFiles: string[] = [];
+    private includeDirs: string[] = [];
     private fileLanguages: Map<string, Language> = new Map();
 
     private options: SceneOptions;
@@ -106,8 +107,9 @@ export class SceneConfig {
     sceneConfig.buildFromProjectDir(projectDir);
     ```
      */
-    public buildFromProjectDir(targetProjectDirectory: string): void {
+    public buildFromProjectDir(targetProjectDirectory: string, includeDirs: string[] = []): void {
         this.targetProjectDirectory = targetProjectDirectory;
+        this.includeDirs = includeDirs;
         this.targetProjectName = path.basename(targetProjectDirectory);
         this.projectFiles = getAllFiles(targetProjectDirectory, this.options.supportFileExts!, this.options.ignoreFileNames);
     }
@@ -211,6 +213,10 @@ export class SceneConfig {
 
     public getProjectFiles(): string[] {
         return this.projectFiles;
+    }
+
+    public getIncludeDirs(): string[] {
+        return this.includeDirs;
     }
 
     public getFileLanguages(): Map<string, Language> {
