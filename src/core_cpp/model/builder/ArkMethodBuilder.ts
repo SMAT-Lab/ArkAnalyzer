@@ -84,6 +84,10 @@ export function handleFunctionTemplate(methodNode:any, mtd:ArkMethod, sourceFile
             continue;
         }
         let typename = innerNode.name;
+        // 处理参数折叠的模板
+        if (innerNode.code.includes('...')){
+            typename = typename + '...';
+        }
         let defaultType;
         if (innerNode.inner && innerNode.inner.length > 0){
             innerNode.default = innerNode.inner[0].type.qualType;

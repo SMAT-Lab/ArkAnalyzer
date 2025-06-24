@@ -72,6 +72,37 @@ export const TEMPLATE_EXPECT_CASE4 = {
     ]
 };
 
+export const TEMPLATE_EXPECT_CASE5 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'args = parameter0: Args...',
+                'this = this: @template/template.cpp: %dflt',
+                '%0 = staticinvoke <@%unk/%unk: .undefined()>(args)',
+                'return %0'
+            ],
+            preds: [],
+            succes: []
+        },
+    ]
+};
+
+export const TEMPLATE_EXPECT_CASE6 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @template/template.cpp: %dflt',
+                'z = staticinvoke <@%unk/%unk: .undefined()>(sum)',
+                'return 0'
+            ],
+            preds: [],
+            succes: []
+        },
+    ]
+};
+
 export const TEMPLATE_MYCONTAINER_CLASS = {
     fields: [
         'data1',

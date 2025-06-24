@@ -67,3 +67,13 @@ int main(){
     destroy_ptr(&d);
     return 0;
 }
+
+// clang::CXXFoldExpr
+template <typename... Args>
+auto sum(Args... args){
+    return (... + args);
+}
+int instantiation3(){
+    int z = sum(1, 2, 3, 4, 5, 6);
+    return 0;
+}
