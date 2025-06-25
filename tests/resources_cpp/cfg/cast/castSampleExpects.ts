@@ -96,7 +96,7 @@ export const CAST_EXPECT_CASE6 = {
             stmts: [
                 'this = this: @cast/castSample.cpp: %dflt',
                 'x = <int>3.14',
-                `y = <std::basic_string<char>>'"hello"'`,
+                `y = <std::basic_string<char>>'hello'`,
                 '%0 = new @cast/castSample.cpp: Widget',
                 'instanceinvoke %0.<@cast/castSample.cpp: Widget.constructor()>(42)',
                 'w = <@cast/castSample.cpp: Widget>%0',

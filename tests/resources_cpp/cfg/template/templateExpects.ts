@@ -44,9 +44,9 @@ export const TEMPLATE_EXPECT_CASE3 = {
                 'a = parameter0: T1',
                 'b = parameter1: T2',
                 'this = this: @template/template.cpp: %dflt',
-                `%0 = staticinvoke <@%unk/%unk: .cout()>('"First:"')`,
+                `%0 = staticinvoke <@%unk/%unk: .cout()>('First:')`,
                 '%1 = %0 << a',
-                `%2 = %1 << '", Second"'`,
+                `%2 = %1 << ', Second'`,
                 '%3 = %2 << b',
                 '%4 = %3 << endl',
                 'return'

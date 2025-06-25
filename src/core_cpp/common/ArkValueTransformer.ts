@@ -1204,6 +1204,7 @@ export class ArkValueTransformer {
     // 记录cpp函数与ts函数的映射关系（有napi_property_descriptor标识符时）
     private setTs2CppFuncMapOfClass(elementValues: Value[]): void {
         const curArkClass = this.declaringMethod.getDeclaringArkClass();
+        const dfltArkClass = this.declaringMethod.getDeclaringArkFile().getDefaultClass();
         if (!(curArkClass && elementValues[0] instanceof StringConstant)) {
             return;
         }
@@ -1219,7 +1220,7 @@ export class ArkValueTransformer {
                 }
             }
         });
-        curArkClass.addTs2CppFuncMapElement((elementValues[0] as StringConstant).getValue(), cppFunc);
+        dfltArkClass.addTs2CppFuncMapElement((elementValues[0] as StringConstant).getValue(), cppFunc);
     }
 
     private getArrayLiteralExpression(arrayLiteralExpression: any, stmts: Stmt[], elementTypes: Set<Type>, elementValues: Value[], elementPositions: FullPosition[]) {

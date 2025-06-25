@@ -13,7 +13,7 @@ export const DERIVED_DATA_TYPE_EXPECT_CLASS = {
                     id: 0,
                     stmts: [
                         'this = this: @derivedDataType/derivedDataType.cpp: MyClass',
-                        'staticinvoke <@%unk/%unk: .cout()>(\'"delete"\')',
+                        'staticinvoke <@%unk/%unk: .cout()>(\'delete\')',
                         'return'
                     ],
                     preds: [],
@@ -149,7 +149,7 @@ export const DERIVED_DATA_TYPE_EXPECT_STRUCT = {
                     stmts: [
                         'this = this: @derivedDataType/derivedDataType.cpp: MyStruct',
                         '%0 = this.<@derivedDataType/derivedDataType.cpp: MyStruct.title>',
-                        `staticinvoke <@%unk/%unk: .cout()>('"title of the book is :"', %0)`,
+                        `staticinvoke <@%unk/%unk: .cout()>('title of the book is :', %0)`,
                         'return'
                     ],
                     preds: [],
