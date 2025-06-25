@@ -1204,7 +1204,7 @@ export class ArkValueTransformer {
     // 记录cpp函数与ts函数的映射关系（有napi_property_descriptor标识符时）
     private setTs2CppFuncMapOfClass(elementValues: Value[]): void {
         const curArkClass = this.declaringMethod.getDeclaringArkClass();
-        if (!curArkClass) {
+        if (!(curArkClass && elementValues[0] instanceof StringConstant)) {
             return;
         }
         // 获取napi_property_descriptor内函数设置的字段
