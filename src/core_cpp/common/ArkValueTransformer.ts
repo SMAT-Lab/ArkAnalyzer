@@ -68,12 +68,11 @@ import { ModelUtils } from './ModelUtils';
 import { ArkMethod } from '../../core/model/ArkMethod';
 import { buildArkMethodFromArkClass } from '../model/builder/ArkMethodBuilder';
 import { Builtin } from './Builtin';
-import { Constant } from '../../core/base/Constant';
+import { Constant, StringConstant } from '../../core/base/Constant';
 import { TEMP_LOCAL_PREFIX } from './Const';
 import { ArkIRTransformer, DummyStmt, ValueAndStmts } from './ArkIRTransformer';
 import {buildTypeFromPreStr, cppNode2Type, isCXXSTLContainer } from '../model/builder/builderUtils';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
-import { StringConstant } from '../../../lib/core/base/Constant';
 
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkValueTransformer');
