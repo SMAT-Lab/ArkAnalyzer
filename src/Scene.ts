@@ -295,13 +295,23 @@ export class Scene {
         }
     }
 
+    private isCppFile(file: string): boolean {
+        return file.endsWith('.cpp');
+    }
+
     private addDefaultConstructors(): void {
         for (const file of this.getFiles()) {
+            const isCppFile = this.isCppFile(file.getFilePath());
             for (const cls of ModelUtils.getAllClassesInFile(file)) {
-                buildDefaultConstructor(cls);
-                const constructor = cls.getMethodWithName(CONSTRUCTOR_NAME);
-                if (constructor !== null) {
-                    addInitInConstructor(constructor);
+                if (isCppFile) {
+                    buildDefaultConstructorCpp(cls);
+                    addInitInConstructorByArkClass(cls);
+                } else {
+                    buildDefaultConstructor(cls);
+                    const constructor = cls.getMethodWithName(CONSTRUCTOR_NAME);
+                    if (constructor !== null) {
+                        addInitInConstructor(constructor);
+                    }
                 }
             }
         }
@@ -335,12 +345,21 @@ export class Scene {
         }
 
         for (const method of methods) {
+            const isCppFile = this.isCppFile(method.getDeclaringArkFile()?.getFilePath());
             try {
-                method.buildBody();
+                if (isCppFile) {
+                    method.buildBodyCpp();
+                } else {
+                    method.buildBody();
+                }
             } catch (error) {
                 logger.error('Error building body:', method.getSignature(), error);
             } finally {
-                method.freeBodyBuilder();
+                if (isCppFile) {
+                    method.freeBodyBuilderCpp();
+                } else {
+                    method.freeBodyBuilder();
+                }
             }
         }
 
@@ -375,7 +394,11 @@ export class Scene {
             try {
                 const arkFile: ArkFile = new ArkFile(FileUtils.getFileLanguage(file, this.fileLanguages));
                 arkFile.setScene(this);
-                buildArkFileFromFile(file, this.realProjectDir, arkFile, this.projectName);
+                if (this.isCppFile(file)) {
+                    buildArkFileFromFileCpp(file, this.realProjectDir, arkFile, this.projectName, this.includeDirs);
+                } else {
+                    buildArkFileFromFile(file, this.realProjectDir, arkFile, this.projectName);
+                }
                 this.filesMap.set(arkFile.getFileSignature().toMapKey(), arkFile);
             } catch (error) {
                 logger.error('Error parsing file:', file, error);
