@@ -61,10 +61,11 @@ export const TEMPLATE_EXPECT_CASE4 = {
         {
             id: 0,
             stmts: [
-                'this = this: @template/template.cpp: %dflt',
-                'd = 2.718',
-                'staticinvoke <@%unk/%unk: .undefined()>(destroy_ptr)',
-                'return 0'
+                "this = this: @template/template.cpp: %dflt",
+                "d = 2.718",
+                "%0 = &d",
+                "staticinvoke <@%unk/%unk: .destroy_ptr()>(%0)",
+                "return 0",
             ],
             preds: [],
             succes: []
@@ -93,9 +94,9 @@ export const TEMPLATE_EXPECT_CASE6 = {
         {
             id: 0,
             stmts: [
-                'this = this: @template/template.cpp: %dflt',
-                'z = staticinvoke <@%unk/%unk: .undefined()>(sum)',
-                'return 0'
+                "this = this: @template/template.cpp: %dflt",
+                "z = staticinvoke <@%unk/%unk: .sum()>(1, 2, 3, 4, 5, 6)",
+                "return 0",
             ],
             preds: [],
             succes: []
