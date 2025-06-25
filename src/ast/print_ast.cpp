@@ -494,7 +494,7 @@ void relateMemberType(std::string typeStr, json &children){
     json classNode = derivedDataTypeMap[typeStr];
     if (!classNode.is_null() && children.size() == classNode["inner"].size()){
         for (int i =0; i< children.size(); i++){
-            if (children[i]["type"]["qualType"] != classNode["inner"][i]["type"]["qualType"]){
+            if (children[i]["type"]["qualType"] != classNode["inner"][i]["type"]["qualType"] && derivedDataTypeMap.count(children[i]["type"]["qualType"]) != 0){
                 json constructNode;
                 constructNode["id"] = children[i]["id"];
                 constructNode["code"] = children[i]["code"];
