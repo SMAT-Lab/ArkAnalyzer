@@ -494,7 +494,8 @@ void relateMemberType(std::string typeStr, json &children){
     json classNode = derivedDataTypeMap[typeStr];
     if (!classNode.is_null() && children.size() == classNode["inner"].size()){
         for (int i =0; i< children.size(); i++){
-            if (children[i]["type"]["qualType"] != classNode["inner"][i]["type"]["qualType"] && derivedDataTypeMap.count(children[i]["type"]["qualType"]) != 0){
+            if (children[i]["type"]["qualType"] != classNode["inner"][i]["type"]["qualType"] &&
+            derivedDataTypeMap.count(children[i]["type"]["qualType"]) != 0){
                 json constructNode;
                 constructNode["id"] = children[i]["id"];
                 constructNode["code"] = children[i]["code"];
@@ -592,6 +593,69 @@ bool isInUserInclude(const std::string& fileName){
     return false;
 }
 
+inline bool isRemovable(const json& j){
+    return j.is_null() || (j.is_object() && j.empty()) || (j.is_array() && j.empty());
+}
+
+void cleanJson(json& node){
+    if (node.is_array()){
+        for (auto& elem: node){
+            cleanJson(elem);
+        }
+        node.erase(std::remove_if(node.begin(), node.end(), isRemovable), node.end()
+        );
+    } else if (node.is_object()) {
+        for (auto it = node.begin(); it != node.end(); ) {
+            cleanJson(it.value());
+            if (isRemovable(it.value())) {
+                it = node.erase(it);
+            } else {
+                ++it;
+            }
+        }
+    }
+}
+
+void filterToMainFileOnly(json& node, const std::string& mainFileName, std::string parentFileName = ""){
+    if (node.is_array()){
+        for (auto& elem: node){
+            filterToMainFileOnly(elem, mainFileName, parentFileName);
+        }
+        return;
+    }
+    if (!node.is_object()) return;
+    std::string fileName = node.value("fileName", "");
+    if (node.contains("loc") && node["loc"].contains("file"))
+        fileName = node["loc"]["file"];
+    if (fileName.empty())
+        fileName = parentFileName;
+    if (!fileName.empty()) {
+        try {
+            fileName = std::filesystem::weakly_canonical(fileName).string();
+        } catch (...) {}
+    }
+    std::string normMainFileName = mainFileName;
+    try {
+        normMainFileName = std::filesystem::weakly_canonical(mainFileName).string();
+    } catch (...) {}
+    if (node.value("kind", "") == "TranslationUnitDecl") {
+        // 根节点保留
+    } else if (fileName != normMainFileName){
+        node = json();
+        return;
+    }
+    if (node.contains("inner") && node["inner"].is_array()) {
+        json filtered = json::array();
+        for(size_t i = 0; i < node["inner"].size(); ++i) {
+            auto child = node["inner"][i];
+            filterToMainFileOnly(child, mainFileName, fileName);
+            if (!child.is_null() && !child.empty())
+                filtered.push_back(child);
+        }
+        node["inner"] = filtered;
+    }
+}
+
 
 json buildASTJson(CXCursor cursor){
     CXSourceLocation loc = clang_getCursorLocation(cursor);
@@ -602,11 +666,26 @@ json buildASTJson(CXCursor cursor){
     std::string fileName = file ? cx2str(clang_getFileName(file)) : "";
 
     bool isInclude = isInUserInclude(fileName);
-    if ((kind_cursor != CXCursor_TranslationUnit && !clang_Location_isFromMainFile(loc) && !isInclude)
-        || kind_cursor == CXCursor_LinkageSpec){
-        return json();
-    }
 
+    if (kind_cursor != CXCursor_TranslationUnit && !clang_Location_isFromMainFile(loc) && !isInclude){
+            return json();
+    }
+    if (kind_cursor == CXCursor_LinkageSpec){
+        json children = json::array();
+        clang_visitChildren(
+            cursor,
+            [](CXCursor child, CXCursor parent, CXClientData client_data) {
+                json *list = static_cast<json *>(client_data);
+                json childAst = buildASTJson(child);
+                if (!childAst.is_null()) list->push_back(childAst);
+                return CXChildVisit_Continue;
+            },
+            &children
+        );
+        if (children.size() == 1) return children[0];
+        if (children.empty()) return json();
+        return children;
+    }
     json node;
     std::string kindSpelling = cx2str(clang_getCursorKindSpelling(kind_cursor));
     std::string displayName = cx2str(clang_getCursorSpelling(cursor));
@@ -910,8 +989,12 @@ int main(int argc, char** argv) {
         clang_disposeIndex(index);
         return 2;
     }
-
     json ast = buildASTJson(clang_getTranslationUnitCursor(unit));
+    std::cout<< "[STEP1] buildASTJson finished\n";
+    std::string mainFileName = fs::canonical(opts.input_file).string(); // 标准化路径
+    filterToMainFileOnly(ast, mainFileName);
+    cleanJson(ast);
+    std::cout<< "[STEP2] filterToMainFileOnly finished\n";
     std::map<std::string, int> labelNameToId;
     patchPseudoDestructorExpr(ast);
     fixAllVarRefTypes(ast);
@@ -920,9 +1003,9 @@ int main(int argc, char** argv) {
     patchGotoTarget(ast, labelNameToId);
     fixCallExprChildKind(ast);
     patchFoldExpr(ast);
-    std::cout << "AST built successfully\n";
+    std::cout << "[STEP3] AST built successfully\n";
     std::ofstream(opts.output_file) << ast.dump(-1, ' ', false, json::error_handler_t::replace);
-    std::cout << "AST written to: " << opts.output_file << std::endl;
+    std::cout << "[STEP4] AST written to: " << opts.output_file << std::endl;
 
     clang_disposeTranslationUnit(unit);
     clang_disposeIndex(index);
