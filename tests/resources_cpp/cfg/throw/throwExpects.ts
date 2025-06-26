@@ -13,7 +13,7 @@ export const THROW_EXPECT_CASE1 = {
         },
         {
             id: 1,
-            stmts: [ `throw '"Division by zero condition!"'` ],
+            stmts: [ `throw 'Division by zero condition!'` ],
             preds: [ 0 ],
             succes: [ 2 ]
         },

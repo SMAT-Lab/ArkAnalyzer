@@ -32,7 +32,7 @@ export const POINTER_EXPECT_CASE2 = {
                 '*p = 2',
                 'p = p + 1',
                 's-><@pointer/pointerExpr.cpp: MyStruct.id> = 0',
-                `s-><@pointer/pointerExpr.cpp: MyStruct.name> = '"example"'`,
+                `s-><@pointer/pointerExpr.cpp: MyStruct.name> = 'example'`,
                 'id = s1.<@pointer/pointerExpr.cpp: MyStruct.id>',
                 'return'
             ],
@@ -82,7 +82,7 @@ export const POINTER_EXPECT_CASE3 = {
                 'ss = &s',
                 '*ss-><@%unk/%unk: .id> = 3',
                 '%9 = *ss',
-                `*%9.<@%unk/%unk: .name> = '"example"'`,
+                `*%9.<@%unk/%unk: .name> = 'example'`,
                 '%10 = new @%unk/%unk: char',
                 'instanceinvoke %10.<@%unk/%unk: char.constructor()>()',
                 's-><@pointer/pointerExpr.cpp: MyStruct.size> = %10',

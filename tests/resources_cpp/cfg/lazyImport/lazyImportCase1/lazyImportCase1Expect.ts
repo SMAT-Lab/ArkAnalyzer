@@ -20,7 +20,7 @@ export const LAZY_IMPORT_CASE1_CLASS = {
                         'cons = undefined',
                         '%0 = &g_ref',
                         'staticinvoke <@%unk/%unk: .napi_create_reference()>(env, cons, 1, %0)',
-                        `staticinvoke <@%unk/%unk: .napi_set_named_property()>(env, exports, '"GlobalConfig"', cons)`,
+                        `staticinvoke <@%unk/%unk: .napi_set_named_property()>(env, exports, 'GlobalConfig', cons)`,
                         'return exports'
                     ],
                     preds: [],
