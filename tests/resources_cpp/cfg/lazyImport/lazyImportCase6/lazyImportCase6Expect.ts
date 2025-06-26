@@ -15,7 +15,7 @@ export const CallFunction_EXPECT = {
                 'onCall = undefined',
                 '%2 = args[0]',
                 '%3 = &onCall',
-                `staticinvoke <@%unk/%unk: .napi_get_named_property()>(env, %2, '"onCall"', %3)`,
+                `staticinvoke <@%unk/%unk: .napi_get_named_property()>(env, %2, 'onCall', %3)`,
                 'res = undefined',
                 '%4 = args[0]',
                 '%5 = &res',

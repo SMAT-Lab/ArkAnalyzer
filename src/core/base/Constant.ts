@@ -97,6 +97,9 @@ export class BigIntConstant extends Constant {
 
 export class StringConstant extends Constant {
     constructor(value: string) {
+        if (value.startsWith('"') && value.startsWith('"')) {
+            value = value.slice(1, -1);  // 去除多余双引号
+        }
         super(value.toString(), StringType.getInstance());
     }
 }

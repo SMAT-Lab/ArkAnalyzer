@@ -6,7 +6,7 @@ export const LAMBDA_EXPECT_CASE1 = {
                 'this = this: @lambdaFunc/lambdaFuncSample.cpp: %dflt',
                 'func = %AM0$case1',
                 'res = ptrinvoke <@%unk/%unk: .func()>(1)',
-                `staticinvoke <@%unk/%unk: .printf()>('"%d"', res)`,
+                `staticinvoke <@%unk/%unk: .printf()>('%d', res)`,
                 'return'
             ],
             preds: [],
@@ -24,7 +24,7 @@ export const LAMBDA_EXPECT_CASE2 = {
                 'a = 5',
                 'func = %AM1$case2',
                 'res = ptrinvoke <@%unk/%unk: .func()>(2)',
-                `staticinvoke <@%unk/%unk: .printf()>('"%d"', res)`,
+                `staticinvoke <@%unk/%unk: .printf()>('%d', res)`,
                 'return'
             ],
             preds: [],
@@ -41,7 +41,7 @@ export const LAMBDA_EXPECT_CASE3 = {
                 'this = this: @lambdaFunc/lambdaFuncSample.cpp: %dflt',
                 'func = %AM2$case3',
                 'res = ptrinvoke <@%unk/%unk: .func()>(3)',
-                `staticinvoke <@%unk/%unk: .printf()>('"%d"', res)`,
+                `staticinvoke <@%unk/%unk: .printf()>('%d', res)`,
                 'return'
             ],
             preds: [],

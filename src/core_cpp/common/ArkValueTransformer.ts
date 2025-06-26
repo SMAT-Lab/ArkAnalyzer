@@ -68,7 +68,7 @@ import { ModelUtils } from './ModelUtils';
 import { ArkMethod } from '../../core/model/ArkMethod';
 import { buildArkMethodFromArkClass } from '../model/builder/ArkMethodBuilder';
 import { Builtin } from './Builtin';
-import { Constant } from '../../core/base/Constant';
+import { Constant, StringConstant } from '../../core/base/Constant';
 import { TEMP_LOCAL_PREFIX } from './Const';
 import { ArkIRTransformer, DummyStmt, ValueAndStmts } from './ArkIRTransformer';
 import {buildTypeFromPreStr, cppNode2Type, isCXXSTLContainer } from '../model/builder/builderUtils';
@@ -206,7 +206,7 @@ export class ArkValueTransformer {
                 return this.tsNodeToValueAndStmts(node.inner[0]);
             }
             return this.newExpressionToValueAndStmts(node);
-        } else if (node.kind === 'CallExpr' || node.kind === 'CXXPseudoDestructorExpression') {
+        } else if (node.kind === 'CallExpr' && node.inner[0].kind === 'CXXPseudoDestructorExpression') {
             return this.callExpressionToValueAndStmts(node.inner[0]);
         } else if (node.kind === 'CallExpr' || node.kind === 'AtomicCallExpr' || node.kind === 'CXXFoldExpr') {
             return this.callExpressionToValueAndStmts(node);
@@ -1180,6 +1180,9 @@ export class ArkValueTransformer {
         const arrayLength = arrayLiteralExpression.inner.length;
         this.getArrayLiteralExpression(arrayLiteralExpression, stmts, elementTypes, elementValues, elementPositions);
         let baseType: Type = this.resolveTypeNode(arrayLiteralExpression.type.qualType);
+        if (arrayLiteralExpression.type.qualType === 'napi_property_descriptor') {
+            this.setTs2CppFuncMapOfClass(elementValues);
+        }
         if (baseType === UnknownType.getInstance()) {
             // 如果类型不确定，当作未知引用类型
             return this.newExpressionToValueAndStmts(arrayLiteralExpression);
@@ -1196,6 +1199,28 @@ export class ArkValueTransformer {
             newArrayExprPosition,
             true
         );
+    }
+
+    // 记录cpp函数与ts函数的映射关系（有napi_property_descriptor标识符时）
+    private setTs2CppFuncMapOfClass(elementValues: Value[]): void {
+        const curArkClass = this.declaringMethod.getDeclaringArkClass();
+        const dfltArkClass = this.declaringMethod.getDeclaringArkFile().getDefaultClass();
+        if (!(curArkClass && elementValues[0] instanceof StringConstant)) {
+            return;
+        }
+        // 获取napi_property_descriptor内函数设置的字段
+        const funcElements = elementValues.length > 5 ? elementValues.slice(2, 5) : [];
+        const cppFunc: ArkMethod[] = [];
+        funcElements.forEach((element, idx) => {
+            // 当前只在类中寻找匹配的函数，只处理local的情况，完整的类型推导在inferType
+            if (element instanceof Local) {
+                const mtdsInClass = curArkClass.getMethodWithName((element as Local).getName());
+                if (mtdsInClass) {
+                    cppFunc.push(mtdsInClass);
+                }
+            }
+        });
+        dfltArkClass.addTs2CppFuncMapElement((elementValues[0] as StringConstant).getValue(), cppFunc);
     }
 
     private getArrayLiteralExpression(arrayLiteralExpression: any, stmts: Stmt[], elementTypes: Set<Type>, elementValues: Value[], elementPositions: FullPosition[]) {

@@ -18,14 +18,14 @@ export const ModifyObject_EXPECT = {
                 'arr1 = undefined',
                 'typedArray1 = undefined',
                 '%2 = &obj1',
-                `staticinvoke <@%unk/%unk: .napi_get_named_property()>(env, obj, '"obj"', %2)`,
-                `buf = '"this is modified"'`,
+                `staticinvoke <@%unk/%unk: .napi_get_named_property()>(env, obj, 'obj', %2)`,
+                `buf = 'this is modified'`,
                 'str1 = undefined',
-                `staticinvoke <@%unk/%unk: .napi_set_named_property()>(env, obj1, '"str"', str1)`,
-                `staticinvoke <@%unk/%unk: .napi_set_named_property()>(env, obj, '"obj"', obj1)`,
-                `staticinvoke <@%unk/%unk: .napi_set_named_property()>(env, obj, '"hello"', hello1)`,
+                `staticinvoke <@%unk/%unk: .napi_set_named_property()>(env, obj1, 'str', str1)`,
+                `staticinvoke <@%unk/%unk: .napi_set_named_property()>(env, obj, 'obj', obj1)`,
+                `staticinvoke <@%unk/%unk: .napi_set_named_property()>(env, obj, 'hello', hello1)`,
                 '%3 = &arr1',
-                `staticinvoke <@%unk/%unk: .napi_get_named_property()>(env, obj, '"arr"', %3)`,
+                `staticinvoke <@%unk/%unk: .napi_get_named_property()>(env, obj, 'arr', %3)`,
                 'arrLen = undefined',
                 '%4 = &arrLen',
                 'staticinvoke <@%unk/%unk: .napi_get_array_length()>(env, arr1, %4)',
@@ -59,7 +59,7 @@ export const ModifyObject_EXPECT = {
             stmts: [
                 'staticinvoke <@%unk/%unk: .napi_delete_element()>(env, arr1, 2, nullptr)',
                 '%6 = &typedArray1',
-                `staticinvoke <@%unk/%unk: .napi_get_named_property()>(env, obj, '"typedArray"', %6)`,
+                `staticinvoke <@%unk/%unk: .napi_get_named_property()>(env, obj, 'typedArray', %6)`,
                 'is_typedArray = undefined',
                 'if napi_ok != napi_is_typedarray(env, typedArray1, &is_typedArray) != 0'
             ],
@@ -129,7 +129,7 @@ export const ModifyObject_EXPECT = {
         {
             id: 8,
             stmts: [
-                `staticinvoke <@%unk/%unk: .napi_set_named_property()>(env, obj, '"typedArray"', output_array)`,
+                `staticinvoke <@%unk/%unk: .napi_set_named_property()>(env, obj, 'typedArray', output_array)`,
                 'return obj'
             ],
             preds: [ 6 ],

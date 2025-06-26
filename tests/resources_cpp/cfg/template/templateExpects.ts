@@ -44,9 +44,9 @@ export const TEMPLATE_EXPECT_CASE3 = {
                 'a = parameter0: T1',
                 'b = parameter1: T2',
                 'this = this: @template/template.cpp: %dflt',
-                `%0 = staticinvoke <@%unk/%unk: .cout()>('"First:"')`,
+                `%0 = staticinvoke <@%unk/%unk: .cout()>('First:')`,
                 '%1 = %0 << a',
-                `%2 = %1 << '", Second"'`,
+                `%2 = %1 << ', Second'`,
                 '%3 = %2 << b',
                 '%4 = %3 << endl',
                 'return'
@@ -61,10 +61,11 @@ export const TEMPLATE_EXPECT_CASE4 = {
         {
             id: 0,
             stmts: [
-                'this = this: @template/template.cpp: %dflt',
-                'd = 2.718',
-                'staticinvoke <@%unk/%unk: .undefined()>(destroy_ptr)',
-                'return 0'
+                "this = this: @template/template.cpp: %dflt",
+                "d = 2.718",
+                "%0 = &d",
+                "staticinvoke <@%unk/%unk: .destroy_ptr()>(%0)",
+                "return 0",
             ],
             preds: [],
             succes: []
@@ -93,9 +94,9 @@ export const TEMPLATE_EXPECT_CASE6 = {
         {
             id: 0,
             stmts: [
-                'this = this: @template/template.cpp: %dflt',
-                'z = staticinvoke <@%unk/%unk: .undefined()>(sum)',
-                'return 0'
+                "this = this: @template/template.cpp: %dflt",
+                "z = staticinvoke <@%unk/%unk: .sum()>(1, 2, 3, 4, 5, 6)",
+                "return 0",
             ],
             preds: [],
             succes: []

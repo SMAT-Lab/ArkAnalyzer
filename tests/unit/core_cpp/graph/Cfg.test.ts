@@ -507,7 +507,7 @@ function buildScene(folderName: string): Scene {
     let config: SceneConfig = new SceneConfig();
     config.buildFromProjectDir(path.join(BASE_DIR, folderName));
     let scene = new Scene();
-    scene.buildSceneFromProjectDirCpp(config);
+    scene.buildSceneFromProjectDir(config);
     return scene;
 }
 
