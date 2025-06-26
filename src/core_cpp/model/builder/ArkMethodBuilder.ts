@@ -78,11 +78,16 @@ export function handleFunctionTemplate(methodNode:any, mtd:ArkMethod, sourceFile
     }
     mtd.isGenericsMethod();
     let templateTypesArray = [];
+    let index = -1;
     for (const innerNode of methodNode.inner){
         if (innerNode.kind !== 'TemplateTypeParameter'){
             continue;
         }
         let typename = innerNode.name;
+        // 处理参数折叠的模板
+        if (innerNode.code.includes('...')){
+            typename = typename + '...';
+        }
         let defaultType;
         if (innerNode.inner && innerNode.inner.length > 0){
             innerNode.default = innerNode.inner[0].type.qualType;
@@ -91,6 +96,7 @@ export function handleFunctionTemplate(methodNode:any, mtd:ArkMethod, sourceFile
             defaultType = cppNode2Type(innerNode.default, sourceFile, mtd);
         }
         let templateType = new GenericType(typename, defaultType);
+        templateType.setIndex(++index);
         templateTypesArray.push(templateType);
     }
     mtd.setGenericTypes(templateTypesArray);
@@ -105,7 +111,9 @@ export function buildArkMethodFromArkClass(
     declaringMethod?: ArkMethod
 ): void {
     mtd.setDeclaringArkClass(declaringClass);
-    declaringMethod !== undefined && mtd.setOuterMethod(declaringMethod);
+    if(declaringMethod !== undefined) {
+        mtd.setOuterMethod(declaringMethod);
+    }
     // 判断是否是生产器式函数
     if (methodNode.kind === 'FunctionDecl' || methodNode.kind === 'FunctionTemplate'){
         mtd.setAsteriskToken(false);
@@ -361,9 +369,8 @@ export function buildDefaultConstructor(arkClass: ArkClass): boolean {
 
     const defaultConstructor: ArkMethod = new ArkMethod();
     defaultConstructor.setDeclaringArkClass(arkClass);
-    defaultConstructor.setCode('');
-    defaultConstructor.setIsGeneratedFlag(true);
-    defaultConstructor.setLineCol(0);
+    defaultConstructor.setCode(arkClass.getName());
+    defaultConstructor.setIsGeneratedFlag(false);
 
     const thisLocal = new Local(THIS_NAME, new ClassType(arkClass.getSignature()));
     const locals: Set<Local> = new Set([thisLocal]);
@@ -501,7 +508,7 @@ export function isMethodImplementation(node: any): boolean {
         if (node.inner && node.inner.length > 0){
             return true;
         }
-    } else if (node.kind.toString() == 'CXXConstructorDecl'){
+    } else if (node.kind.toString() === 'CXXConstructorDecl' || node.kind.toString() === 'CXXDestructorDecl'){
         if (node.inner.find((inn:any) => inn.kind.toString() === 'CompoundStmt')){
             return true;
         }

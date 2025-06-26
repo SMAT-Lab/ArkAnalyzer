@@ -1,5 +1,3 @@
-#pragma execution_character_set("utf-8")
-
 #include <filesystem>
 #include <sstream>
 #include <clang-c/Index.h>
@@ -396,7 +394,7 @@ void patchFoldExpr(json &node){
             patchFoldExpr(child);
         }
     }
-    if (node.contains("code") && node.contains("kind") && node["kind"] == "ImplicitCaseExpr") {
+    if (node.contains("code") && node.contains("kind") && node["kind"] == "ImplicitCastExpr") {
         std::string code = node["code"];
         // 只判断常见的 "(... <op> ars)"
         std::smatch m;
@@ -575,11 +573,20 @@ json buildTemplateDefaultType(std::string codeStr){
     return defaultNode;
 }
 
+// 根据系统添加分隔符
+std::string getPathSeparator() {
+#ifdef _WIN32
+    return "\\";
+#else
+    return "/";
+#endif
+}
+
 bool isInUserInclude(const std::string& fileName){
     for (const auto& dir: g_user_include_dirs){
         std::string prefix = dir;
         if (!prefix.empty() && prefix.back() != '/' && prefix.back() != '\\')
-            prefix += '/';
+            prefix += getPathSeparator();
         if (fileName.find(prefix) == 0) return true;
     }
     return false;
@@ -594,7 +601,8 @@ json buildASTJson(CXCursor cursor){
     clang_getSpellingLocation(loc, &file, nullptr, nullptr, nullptr);
     std::string fileName = file ? cx2str(clang_getFileName(file)) : "";
 
-    if ((kind_cursor != CXCursor_TranslationUnit && !clang_Location_isFromMainFile(loc) && !isInUserInclude(fileName))
+    bool isInclude = isInUserInclude(fileName);
+    if ((kind_cursor != CXCursor_TranslationUnit && !clang_Location_isFromMainFile(loc) && !isInclude)
         || kind_cursor == CXCursor_LinkageSpec){
         return json();
     }
@@ -603,6 +611,9 @@ json buildASTJson(CXCursor cursor){
     std::string kindSpelling = cx2str(clang_getCursorKindSpelling(kind_cursor));
     std::string displayName = cx2str(clang_getCursorSpelling(cursor));
     CXSourceRange range = clang_getCursorExtent(cursor);
+    if (isInclude) {
+        node["include"] = true;
+    }
 
     node["type"] = {{"qualType", unifyTypeStr(clang_getTypeSpelling(clang_getCursorType(cursor)))}};
     std::string typeStr = node["type"]["qualType"];
@@ -623,7 +634,16 @@ json buildASTJson(CXCursor cursor){
     if (content != "" && kind_cursor != CXCursor_TranslationUnit)
         node["code"] = codeStr;
 
-    if (kind_cursor == CXCursor_IntegerLiteral ||
+    if (kind_cursor == CXCursor_InclusionDirective) {
+        node["kind"] = "InclusionDirective";
+        node["fileName"] = cx2str(clang_getIncludedFile(cursor) ?
+        clang_getFileName(clang_getIncludedFile(cursor)) : clang_getCursorSpelling(cursor));
+        node["name"] = displayName;
+        node["code"] = content.contains("code") && content["code"].is_string() ? content["code"].get<std::string>() : "";
+        node["loc"] = content.contains("begin") ? content["begin"] : json();
+        node["loc"]["file"] = node["fileName"];
+        node["range"] = {{"begin", content["begin"]}, {"end", content["end"]}};
+    } else if (kind_cursor == CXCursor_IntegerLiteral ||
         kind_cursor == CXCursor_StringLiteral ||
         kind_cursor == CXCursor_CXXBoolLiteralExpr)
         node["value"] = node["code"];
@@ -685,7 +705,8 @@ json buildASTJson(CXCursor cursor){
     node["id"] = content["id"];
     json begin = content["begin"];
     node["range"] = {{"begin", begin}, {"end", content["end"]}};
-    if (file && std::find(locCursorKind.begin(), locCursorKind.end(), kind_cursor) != locCursorKind.end()){
+    if ((file && std::find(locCursorKind.begin(), locCursorKind.end(), kind_cursor) != locCursorKind.end())
+        || kind_cursor == CXCursor_MacroExpansion || kind_cursor == CXCursor_MacroDefinition){
         begin["file"] = cx2str(clang_getFileName(file));
         node["loc"] = begin;
     }
@@ -724,6 +745,10 @@ json buildASTJson(CXCursor cursor){
             node["kind"] = "CXXMemberCallExpr";
         }else {
             changeChildNodeType(children);
+        }
+    } else if (node["kind"] == "ImplicitCastExpr") {
+        if (children.size() > 0 && children[0]["kind"] == "CallExpr") {
+            node["kind"] = "ExprWithCleanups";
         }
     }
     if (node["kind"] == "InitListExpr") relateMemberType(typeStr, children);
@@ -879,9 +904,7 @@ int main(int argc, char** argv) {
 
     CXTranslationUnit unit = clang_parseTranslationUnit(
         index, opts.input_file.c_str(), args.data(), args.size(), nullptr, 0,
-        CXTranslationUnit_None);
-
-    // ---- 后续部分不用变 ----
+        CXTranslationUnit_DetailedPreprocessingRecord);
     if (!unit) {
         std::cerr << "Parse error\n";
         clang_disposeIndex(index);

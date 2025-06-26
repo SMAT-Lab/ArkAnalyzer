@@ -23,6 +23,7 @@ import {
     GenericType,
     LexicalEnvType,
     NullType,
+    PointerType,
     Type,
     UnclearReferenceType,
     UndefinedType,
@@ -422,6 +423,8 @@ export class IRInference {
         }
         if (baseType instanceof ClassType) {
             return this.inferInvokeExprWithDeclaredClass(expr, baseType, methodName, scene);
+        } else if (baseType instanceof PointerType) {
+            return this.inferInvokeExprWithDeclaredClass(expr, baseType.getBaseType() as ClassType, methodName, scene);
         } else if (baseType instanceof AnnotationNamespaceType) {
             const namespace = scene.getNamespace(baseType.getNamespaceSignature());
             if (namespace) {

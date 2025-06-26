@@ -56,3 +56,109 @@ export const TEMPLATE_EXPECT_CASE3 = {
         },
     ]
 };
+export const TEMPLATE_EXPECT_CASE4 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @template/template.cpp: %dflt',
+                'd = 2.718',
+                'staticinvoke <@%unk/%unk: .undefined()>(destroy_ptr)',
+                'return 0'
+            ],
+            preds: [],
+            succes: []
+        },
+    ]
+};
+
+export const TEMPLATE_EXPECT_CASE5 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'args = parameter0: Args...',
+                'this = this: @template/template.cpp: %dflt',
+                '%0 = staticinvoke <@%unk/%unk: .undefined()>(args)',
+                'return %0'
+            ],
+            preds: [],
+            succes: []
+        },
+    ]
+};
+
+export const TEMPLATE_EXPECT_CASE6 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @template/template.cpp: %dflt',
+                'z = staticinvoke <@%unk/%unk: .undefined()>(sum)',
+                'return 0'
+            ],
+            preds: [],
+            succes: []
+        },
+    ]
+};
+
+export const TEMPLATE_MYCONTAINER_CLASS = {
+    fields: [
+        'data1',
+        'data2',
+    ],
+    heritageClasses: [],
+    blocks: [
+        {
+            methodName: 'constructor',
+            blocks: [
+                {
+                    id: 0,
+                    stmts: [
+                        'instanceinvoke this.<@template/template.cpp: MyContainer.%instInit()>()',
+                        'value1 = parameter0: T',
+                        'value2 = parameter1: T',
+                        'this = this: @template/template.cpp: MyContainer',
+                        'return this'
+                    ],
+                    preds: [],
+                    succes: []
+                }
+            ]
+        },
+        {
+            methodName: 'print',
+            blocks: [
+                {
+                    id: 0,
+                    stmts: [
+                        'this = this: @template/template.cpp: MyContainer',
+                        '%0 = this.<@template/template.cpp: MyContainer.data1>',
+                        '%1 = cout << %0',
+                        'return'
+                    ],
+                    preds: [],
+                    succes: []
+                }
+            ]
+        },
+        {
+            methodName: 'sum',
+            blocks: [
+                {
+                    id: 0,
+                    stmts: [
+                        'this = this: @template/template.cpp: MyContainer',
+                        '%0 = this.<@template/template.cpp: MyContainer.data1>',
+                        '%1 = this.<@template/template.cpp: MyContainer.data2>',
+                        '%2 = %0 + %1',
+                        'return %2'
+                    ],
+                    preds: [],
+                    succes: []
+                }
+            ]
+        }
+    ]
+};

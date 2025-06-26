@@ -206,7 +206,9 @@ export class ArkValueTransformer {
                 return this.tsNodeToValueAndStmts(node.inner[0]);
             }
             return this.newExpressionToValueAndStmts(node);
-        } else if (node.kind === 'CallExpr' || node.kind === 'AtomicCallExpr') {
+        } else if (node.kind === 'CallExpr' || node.kind === 'CXXPseudoDestructorExpression') {
+            return this.callExpressionToValueAndStmts(node.inner[0]);
+        } else if (node.kind === 'CallExpr' || node.kind === 'AtomicCallExpr' || node.kind === 'CXXFoldExpr') {
             return this.callExpressionToValueAndStmts(node);
         } else if (node.kind === 'CXXNoexceptExpr') {
             return this.cxxNoexceptExprToValueAndStmts(node);
@@ -221,14 +223,16 @@ export class ArkValueTransformer {
                 return this.tsNodeToValueAndStmts(node.inner[0]);
             }
         } else if (node.kind === 'ImplicitCastExpr') {
-            if (node.inner.length !== 0) {
+            if (node.inner.length === 1) {
                 return this.tsNodeToValueAndStmts(node.inner[0]);
+            } else if (node.inner.length === 2) {
+                return this.tsNodeToValueAndStmts(node.inner[1]);
             }
             // 把当前ImplicitCastExpr节点当作declRefExpr
             node.kind = 'DeclRefExpr';
             node.name = node.code;
             return this.tsNodeToValueAndStmts(node);
-        } else if (node.kind === 'DeclRefExpr') {
+        } else if (node.kind === 'DeclRefExpr' || node.kind === 'typeRef') {
             if (!node.type) {
                 return this.tsNodeToValueAndStmts(node.inner[0]);
             }
@@ -276,7 +280,7 @@ export class ArkValueTransformer {
         } else if (node.kind === 'CompoundAssignOperator') {
             return this.compoundAssignmentToValueAndStmts(node);
         } else if (node.kind === 'CompoundLiteralExpr') {
-            return this.tsNodeToValueAndStmts(node.inner[0]);
+            return this.tsNodeToValueAndStmts(node.inner[0].kind === 'TypeRef' ? node.inner[1] : node.inner[0]);
         } else if (node.kind === 'ConditionalOperator' || node.kind === 'BinaryConditionalOperator') {
             return this.conditionalExpressionToValueAndStmts(node);
         } else if (node.kind === 'LambdaExpr') {
@@ -506,8 +510,11 @@ export class ArkValueTransformer {
         for (let i = 0; i < innerAstNodes.length; i++) {
             if (i == 0 && innerAstNodes[i].inner?.length !== 0) {
                 let firstNode = innerAstNodes[i].inner[0];
-                while (firstNode.kind.toString() === 'ImplicitCastExpr') {
+                while (firstNode && firstNode.kind.toString() === 'ImplicitCastExpr') {
                     firstNode = firstNode.inner[0];
+                }
+                if (!firstNode) {
+                    continue;
                 }
                 // kind = MemberExpr为了处理多层Field结构
                 if (firstNode.kind.toString() === 'DeclRefExpr' || firstNode.kind.toString() === 'MemberExpr' || firstNode.kind.toString() === 'OverloadedDeclRef') {
@@ -1079,7 +1086,7 @@ export class ArkValueTransformer {
         if ((newExpression.kind === 'CXXNewExpr' && newExpression.inner[1]?.kind === 'CXXConstructExpr')) {
             constructArgs = [...newExpression.inner[1].inner];
         } else if (newExpression.kind === 'CompoundLiteralExpr') {
-            constructArgs = [...constructArgs.inner[0].inner];
+            constructArgs = this.getConstructArgs(constructArgs);
         } else if (newExpression.kind === 'CXXConstructExpr' && newExpression.type.qualType.startsWith('struct') &&
             constructArgs && constructArgs[0].inner[0]?.kind === 'CompoundLiteralExpr') {
             constructArgs = this.getConstructArgs(constructArgs[0].inner[0].inner);

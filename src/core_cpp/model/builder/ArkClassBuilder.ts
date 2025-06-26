@@ -28,8 +28,8 @@ import {
 } from './ArkMethodBuilder';
 import {
     buildDecorators,
-    buildHeritageClauses,
     buildModifiers,
+    buildTypeParameters
 } from './builderUtils';
 import { buildProperty2ArkField } from './ArkFieldBuilder';
 import { ArkIRTransformer } from '../../common/ArkIRTransformer';
@@ -93,11 +93,9 @@ export function buildNormalArkClassFromArkFile(
     declaringMethod?: ArkMethod
 ): void {
     cls.setDeclaringArkFile(arkFile);
-    cls.setCode(clsNode.code);
-    if (clsNode.range.begin){
-        cls.setLine(clsNode.range.begin.line);
-        cls.setColumn(clsNode.range.begin.col);
-    }
+    cls.setCode(clsNode.name);
+    cls.setLine(clsNode.loc.line);
+    cls.setColumn(clsNode.loc.col);
     buildNormalArkClass(clsNode, cls, sourceFile, declaringMethod);
     arkFile.addArkClass(cls);
 }
@@ -253,6 +251,11 @@ function buildClass2ArkClass(clsNode: any, cls: ArkClass, sourceFile: any, decla
         processCXXHeritage(clsNode, cls);
     }
 
+    if (clsNode.kind ==='ClassTemplate'){
+        buildTypeParameters(clsNode,sourceFile, cls).forEach(typeParameter => {
+            cls.addGenericType(typeParameter);
+        })
+    }
     cls.setCategory(ClassCategory.CLASS);
     init4InstanceInitMethod(cls);
     init4StaticInitMethod(cls);
@@ -264,20 +267,6 @@ function processCXXHeritage(clsNode: any, cls: ArkClass) {
         if (clsNode.inner[i].kind === 'C++ base class specifier') {
             cls.addHeritageClassName(clsNode.inner[i].type.qualType);
         }
-    }
-}
-
-function initHeritage(heritageClauses: Map<string, string>, cls: ArkClass): void {
-    let superName = '';
-    for (let [key, value] of heritageClauses) {
-        if (value === ts.SyntaxKind[ts.SyntaxKind.ExtendsKeyword]) {
-            superName = key;
-            break;
-        }
-    }
-    cls.addHeritageClassName(superName);
-    for (let key of heritageClauses.keys()) {
-        cls.addHeritageClassName(key);
     }
 }
 
@@ -337,11 +326,11 @@ function buildArkClassMembers(clsNode: any, cls: ArkClass, sourceFile: any): voi
             logger.warn('Please contact developers to support new member type: ', member.kind);
         }
     });
-    if (ts.isClassDeclaration(clsNode) || ts.isClassExpression(clsNode) || ts.isStructDeclaration(clsNode)) {
+    if (clsNode.tagUsed.toString() === 'class') {
         buildInitMethod(cls.getInstanceInitMethod(), instanceInitStmts, instanceIRTransformer!.getThisLocal());
         buildInitMethod(cls.getStaticInitMethod(), staticInitStmts, staticIRTransformer!.getThisLocal());
     }
-    if (ts.isEnumDeclaration(clsNode)) {
+    if (clsNode.tagUsed.toString() === 'enum') {
         buildInitMethod(cls.getStaticInitMethod(), staticInitStmts, staticIRTransformer!.getThisLocal());
     }
 }

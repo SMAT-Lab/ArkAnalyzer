@@ -25,12 +25,12 @@ public:
     void sound() const override{}
 };
 
-void makeSound(Animal& animal)
+void makeSound(const Animal& animal)
 {
     animal.sound();
 }
 int main(){
     Cat cat;
-    makeSound(Dog())
+    makeSound(Dog());
     return 0;
 }

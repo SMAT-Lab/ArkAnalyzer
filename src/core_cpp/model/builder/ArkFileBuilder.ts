@@ -51,7 +51,7 @@ export const notStmtOrExprKind = [
  * @param arkFile
  * @returns
  */
-export function buildArkFileFromFile(absoluteFilePath: string, projectDir: string, arkFile: ArkFile, projectName: string): void {
+export function buildArkFileFromFile(absoluteFilePath: string, projectDir: string, arkFile: ArkFile, projectName: string, includeDirs: string[] = []): void {
     arkFile.setFilePath(absoluteFilePath);
     arkFile.setProjectDir(projectDir);
 
@@ -59,7 +59,7 @@ export function buildArkFileFromFile(absoluteFilePath: string, projectDir: strin
     arkFile.setFileSignature(fileSignature);
 
     arkFile.setCode(fs.readFileSync(arkFile.getFilePath(), 'utf8'));
-    const jsonObject = AstUtils.parse(absoluteFilePath);
+    const jsonObject = AstUtils.parse(absoluteFilePath, null, includeDirs);
     genDefaultArkClass(arkFile, jsonObject);
     buildArkFile(arkFile, jsonObject);
 }
@@ -75,8 +75,11 @@ function buildArkFile(arkFile: ArkFile, astRoot: any): void {
     const statements = astRoot.inner;
     let recordMap = new Map; //记录派生类
     statements.forEach((child: any) => {
-        if (child.kind === 'CXXRecordDecl') {
+        if (child.kind === 'CXXRecordDecl' || child.kind === 'ClassTemplate') {
             let cls: ArkClass = new ArkClass();
+            if (child.kind === 'ClassTemplate') {
+                child.tagUsed = 'class';
+            }
             buildNormalArkClassFromArkFile(child, arkFile, cls, astRoot);
             arkFile.addArkClass(cls);
             recordMap.set(child.id, cls);
@@ -90,7 +93,7 @@ function buildArkFile(arkFile: ArkFile, astRoot: any): void {
             ns.setDeclaringArkFile(arkFile);
             buildArkNamespace(child, arkFile, ns, astRoot);
             arkFile.addNamespace(ns);
-        } else if (child.kind === 'CXXMethodDecl' || child.kind === 'CXXConstructorDecl') {
+        } else if (child.kind === 'CXXMethodDecl' || child.kind === 'CXXConstructorDecl' || child.kind === 'CXXDestructorDecl') {
             let className: string = child.mangledName;
             let arkClass = arkFile.getClasses().find(arkClass => (arkClass.getName() == className));
             let mthd: ArkMethod = new ArkMethod();

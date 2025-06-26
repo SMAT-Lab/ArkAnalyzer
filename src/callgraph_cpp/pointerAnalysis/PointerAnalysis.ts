@@ -15,7 +15,7 @@
 
 import { Scene } from '../../Scene';
 import { Value } from '../../core/base/Value';
-import { NodeID } from '../../core_cpp/graph/GraphTraits';
+import { NodeID } from '../../core/graph/GraphTraits';
 import path from 'path';
 import * as fs from 'fs';
 import { CallGraph, CallGraphNode, CallSite, DynCallSite, FuncID } from '../model/CallGraph';
@@ -31,7 +31,7 @@ import { PagBuilder } from './PagBuilder';
 import { PointerAnalysisConfig, PtaAnalysisScale } from './PointerAnalysisConfig';
 import { DiffPTData, IPtsCollection } from './PtsDS';
 import { Local } from '../../core/base/Local';
-import { ArkMethod } from '../../core_cpp/model/ArkMethod';
+import { ArkMethod } from '../../core/model/ArkMethod';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'PTA');
 

@@ -31,7 +31,7 @@ import {
 } from '../../../core/base/Type';
 import { TypeInference } from '../../common/TypeInference';
 import { ArkField } from '../../../core/model/ArkField';
-import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
+// import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
 import { ArkClass } from '../../../core/model/ArkClass';
 import { ArkMethod } from '../../../core/model/ArkMethod';
 import { Decorator } from '../../../core/base/Decorator';
@@ -39,7 +39,7 @@ import { MethodParameter } from './ArkMethodBuilder';
 import { modifierKind2Enum, modifierKind2EnumCpp } from '../../../core/model/ArkBaseModel';
 
 
-const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'builderUtils');
+// const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'builderUtils');
 
 export function handleQualifiedName(node: ts.QualifiedName): string {
     let right = (node.right as ts.Identifier).text;
@@ -163,33 +163,28 @@ export function buildHeritageClauses(heritageClauses?: ts.NodeArray<HeritageClau
 }
 
 export function buildTypeParameters(
-    typeParameters: ts.NodeArray<TypeParameterDeclaration>,
+    clsNode: any,
     sourceFile: ts.SourceFile,
     arkInstance: ArkMethod | ArkClass
 ): GenericType[] {
     const genericTypes: GenericType[] = [];
-    let index = 0;
-    if (arkInstance instanceof ArkMethod) {
-        const len = arkInstance.getDeclaringArkClass().getGenericsTypes()?.length;
-        if (len) {
-            index = len;
+    let index = -1;
+    for(const innerNode of clsNode.inner) {
+        if(innerNode.kind !== 'TemplateTypeParameter'){
+            continue;
         }
+        let typename = innerNode.name;
+        let defaultType;
+        if(innerNode.inner && innerNode.inner.length > 0){
+            innerNode.default = innerNode.inner[0].type.qualType;
+        }
+        if(innerNode.default){
+            defaultType = cppNode2Type(innerNode.default,sourceFile,arkInstance);
+        }
+        let templateType = new GenericType(typename,defaultType);
+        templateType.setIndex(++index);
+        genericTypes.push(templateType);
     }
-    typeParameters.forEach(typeParameter => {
-        const genericType = cppNode2Type(typeParameter, sourceFile, arkInstance);
-        if (genericType instanceof GenericType) {
-            genericType.setIndex(index++);
-            genericTypes.push(genericType);
-        }
-
-        if (typeParameter.modifiers) {
-            logger.warn('This typeparameter has modifiers.');
-        }
-
-        if (typeParameter.expression) {
-            logger.warn('This typeparameter has expression.');
-        }
-    });
     return genericTypes;
 }
 
@@ -296,19 +291,22 @@ export function buildReturnType(mtdNode: any, sourceFile: any, method: ArkMethod
 export function cppNode2Type(
     nodeQualType: any,
     sourceFile: any,
-    arkInstance: ArkMethod | ArkClass | ArkField
+    arkInstance: ArkMethod | ArkClass | ArkField,
 ): Type {
     // 处理特殊类型
-    if (nodeQualType === 'void () const'){
-        return buildTypeFromPreStr('VoidKeyword')
+    if (nodeQualType === 'void () const') {
+        return buildTypeFromPreStr('VoidKeyword');
     }
     // 处理泛型类型
-    if (arkInstance instanceof ArkMethod){
-        const templateTypes = arkInstance.getGenericTypes?.();
-        if (templateTypes){
-            for (const t of templateTypes){
-                if (nodeQualType === t.getName()) return t;
-            }
+    let templateTypes: GenericType[] | undefined;
+    if (arkInstance instanceof ArkMethod) {
+        templateTypes = arkInstance.getGenericTypes() ?? arkInstance.getDeclaringArkClass()?.getGenericsTypes();
+    } else if (arkInstance instanceof ArkClass) {
+        templateTypes = arkInstance.getGenericsTypes();
+    }
+    if (templateTypes) {
+        for (const t of templateTypes) {
+            if (nodeQualType === t.getName()) return t;
         }
     }
     // 默认处理
@@ -357,19 +355,31 @@ export function isCXXSTLContainer(qualType: string){
 export function buildTypeFromDerivedType(
     preStr: string,
     arkInstance: ArkMethod | ArkClass | ArkField,
-): Type{
-    const typeStr = preStr.trim().split(' ')[0];
-    const isPtr = preStr.includes(' *');
-    const isRef = preStr.includes(' &');
+): Type {
+    const outerPartMatch = preStr.match(/^([^<]+)/);
+    const outerPart = outerPartMatch ? outerPartMatch[1] : null;
+    let typeStr: string, isPtr: boolean, isRef: boolean;
+    if (outerPart === null) {
+        typeStr = preStr.trim().split(' ')[0];
+        isPtr = preStr.includes(' *');
+        isRef = preStr.includes(' &');
+    } else {
+        typeStr = outerPart.trim().split(' ')[0];
+        isPtr = outerPart.includes(' *');
+        isRef = outerPart.includes(' &');
+    }
+    const innerPartMatch = preStr.match(/<([^>]+)>/);
+    const innerPart = innerPartMatch ? innerPartMatch[1] : null;
+    let innerType = innerPart === null ? [] : [buildTypeFromPreStr(innerPart, null)];
 
     let arkClass: ArkClass | null = null;
     if (arkInstance instanceof ArkMethod || arkInstance instanceof ArkClass) {
         const file = arkInstance.getDeclaringArkFile?.();
         arkClass = file?.getClassWithName?.(typeStr) ?? null;
     }
-    if (arkClass){
+    if (arkClass) {
         const suffix = isPtr ? '*' : isRef ? '&' : undefined;
-        return new ClassType(arkClass.getSignature(), [], suffix);
+        return new ClassType(arkClass.getSignature(), innerType, suffix);
     }
     return TypeInference.buildTypeFromStr('unsupported');
 }
