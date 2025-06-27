@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import ts, { HeritageClause, TypeParameterDeclaration } from 'ohos-typescript';
+import ts, { HeritageClause } from 'ohos-typescript';
 import {
     AliasType,
     ArrayType,

@@ -9,7 +9,7 @@
   "main": "lib/index.js",
   "scripts": {
     "build": "tsc",
-    "prepack": "tsc -p ./tsconfig.prod.json",
+    "prepack": "tsc -p ./tsconfig.prod.json && npx copyfiles -f src/ast/print_ast.exe lib/ast/",
     "test": "npm run copyCollectionDefintion && vitest",
     "testonce": "npm run copyCollectionDefintion && vitest --no-color run",
     "coverage": "npm run copyCollectionDefintion && vitest run --coverage",
