@@ -753,6 +753,9 @@ export class ArkValueTransformer {
         const stmts: Stmt[] = [];
         const [callNode, argumentNodes] = this.getArgumentNode(callExpression.inner);
         const argus = this.parseArgumentsOfCallExpression(stmts, argumentNodes);
+        if (callExpression.name === 'napi_define_class') {
+            this.setTs2CppFuncMapOfClass(argus.args, true);
+        }
         return this.generateInvokeValueAndStmts(callNode, argus, stmts, callExpression);
     }
 
@@ -1181,7 +1184,7 @@ export class ArkValueTransformer {
         this.getArrayLiteralExpression(arrayLiteralExpression, stmts, elementTypes, elementValues, elementPositions);
         let baseType: Type = this.resolveTypeNode(arrayLiteralExpression.type.qualType);
         if (arrayLiteralExpression.type.qualType === 'napi_property_descriptor') {
-            this.setTs2CppFuncMapOfClass(elementValues);
+            this.setTs2CppFuncMapOfClass(elementValues, false);
         }
         if (baseType === UnknownType.getInstance()) {
             // 如果类型不确定，当作未知引用类型
@@ -1201,26 +1204,37 @@ export class ArkValueTransformer {
         );
     }
 
-    // 记录cpp函数与ts函数的映射关系（有napi_property_descriptor标识符时）
-    private setTs2CppFuncMapOfClass(elementValues: Value[]): void {
+    // 记录cpp函数与ts函数的映射关系（有napi_property_descriptor、napi_define_class标识符时）
+    private setTs2CppFuncMapOfClass(elementValues: Value[], isDefineClass: boolean): void {
         const curArkClass = this.declaringMethod.getDeclaringArkClass();
         const dfltArkClass = this.declaringMethod.getDeclaringArkFile().getDefaultClass();
-        if (!(curArkClass && elementValues[0] instanceof StringConstant)) {
+        if (!(curArkClass && dfltArkClass)) {
             return;
         }
-        // 获取napi_property_descriptor内函数设置的字段
-        const funcElements = elementValues.length > 5 ? elementValues.slice(2, 5) : [];
         const cppFunc: ArkMethod[] = [];
+        let funcElements: Value[];
+        let tsFuncNameIdx: number;
+        if (isDefineClass) {
+            // napi_define_class设置对外暴露的类的构造函数
+            funcElements = elementValues.length > 4 ? [elementValues[3]] : [];
+            tsFuncNameIdx = 1;
+        } else {
+            // napi_property_descriptor内函数设置的字段
+            funcElements = elementValues.length > 5 ? elementValues.slice(2, 5) : [];
+            tsFuncNameIdx = 0;
+        }
         funcElements.forEach((element, idx) => {
             // 当前只在类中寻找匹配的函数，只处理local的情况，完整的类型推导在inferType
             if (element instanceof Local) {
-                const mtdsInClass = curArkClass.getMethodWithName((element as Local).getName());
-                if (mtdsInClass) {
-                    cppFunc.push(mtdsInClass);
+                const mtdInClass = curArkClass.getMethodWithName((element as Local).getName());
+                if (mtdInClass) {
+                    cppFunc.push(mtdInClass);
                 }
             }
         });
-        dfltArkClass.addTs2CppFuncMapElement((elementValues[0] as StringConstant).getValue(), cppFunc);
+        if (elementValues[tsFuncNameIdx] instanceof StringConstant) {
+            dfltArkClass.addTs2CppFuncMapElement((elementValues[tsFuncNameIdx] as StringConstant).getValue(), cppFunc);
+        }
     }
 
     private getArrayLiteralExpression(arrayLiteralExpression: any, stmts: Stmt[], elementTypes: Set<Type>, elementValues: Value[], elementPositions: FullPosition[]) {
