@@ -128,13 +128,31 @@ export class AstUtils {
         }
     }
 
+    static extractCppModifier(code: string):string | null {
+        const cppModifiers = [
+            'static', 'public', 'private', 'protected', 'const', 'virtual', 'inline', 'mutable', 'explicit',
+            'friend', 'constexpr', 'volatile', 'extern', 'register', 'thread_local', 'typedef',
+
+        ];
+        // 构造正则表达式, \b 保证是单词匹配
+        const pattern = new RegExp(`\\b(${cppModifiers.join('|')})\\b`, 'g');
+        const match = pattern.exec(code);
+        if (match) {
+            return match[1];
+        }
+        return null;
+    }
+
     private static processAccess(cursor:any){
         if (cursor.kind === "AccessSpecDecl"){
             this.currentAccess = cursor.access;
         }
         if (cursor.kind === "CXXMethodDecl" || cursor.kind === "FieldDecl" ||
             cursor.kind === "VarDecl" || cursor.kind === "FriendDecl"){
-            if (!cursor.isImplicit){
+            let codeModifier = this.extractCppModifier(cursor.code);
+            if (codeModifier !== null){
+                cursor.access = codeModifier;
+            } else if (!cursor.isImplicit){
                 cursor.access = this.currentAccess;
             }
         }
