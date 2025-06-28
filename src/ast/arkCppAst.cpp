@@ -731,6 +731,34 @@ void filterToMainFileOnly(json& node, const std::string& mainFileName, std::stri
     }
 }
 
+// 添加构造函数的变量初始化节点
+json addCXXCtorInitializer(json &children) {
+
+    json newChildren = json::array();
+    json member = nullptr;
+    for (int i = 0; i < children.size(); i++) {
+        if (children[i]["kind"] == "MemberRef") {
+            member = children[i];
+            continue;
+        }
+        if (children[i]["kind"] == "ImplicitCastExpr") {
+            if (!member.is_null()) {
+                json CXXCtor = json::object();
+                CXXCtor["kind"] = "CXXCtorInitializer";
+                CXXCtor["anyInit"] = {{"kind", "FieldDecl"}, {"name", member["name"]}, {"type", member["type"]}};
+                json inner = json::array();
+                inner.push_back(children[i]);
+                CXXCtor["inner"] = inner;
+                newChildren.push_back(CXXCtor);
+                member = nullptr;
+            }
+            continue;
+        }
+        newChildren.push_back(children[i]);
+    }
+    return newChildren;
+}
+
 
 
 // ==========================buildASTJson 主体========================
@@ -879,9 +907,7 @@ json buildASTJson(CXCursor cursor){
             json *list = static_cast<json *>(client_data);
             json childAst = buildASTJson(child);
             CXCursorKind parent_kind = clang_getCursorKind(parent);
-            if (!childAst.is_null() && !(parent_kind == CXCursor_Constructor && (childAst["kind"] == "MemberRef" ||
-                                                                                 childAst["kind"] ==
-                                                                                "ImplicitCastExpr"))){
+            if (!childAst.is_null()){
                 list->push_back(childAst);
             }
             return CXChildVisit_Continue;
@@ -910,6 +936,8 @@ json buildASTJson(CXCursor cursor){
         if (children.size() > 0 && children[0]["kind"] == "CallExpr") {
             node["kind"] = "ExprWithCleanups";
         }
+    } else if (node["kind"] == "CXXConstructorDecl") {
+        children = addCXXCtorInitializer(children);
     }
 
     if (node["kind"] == "InitListExpr") relateMemberType(typeStr, children);
