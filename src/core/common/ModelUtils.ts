@@ -43,7 +43,7 @@ import {
     FunctionType,
     Type,
     UnclearReferenceType,
-    UnknownType
+    UnknownType,
 } from '../base/Type';
 import { Scene } from '../../Scene';
 import { DEFAULT_ARK_CLASS_NAME, DEFAULT_ARK_METHOD_NAME, NAME_DELIMITER, TEMP_LOCAL_PREFIX } from './Const';
@@ -52,6 +52,7 @@ import { ArkBaseModel } from '../model/ArkBaseModel';
 import { ArkAssignStmt } from '../base/Stmt';
 import { ClosureFieldRef } from '../base/Ref';
 import { SdkUtils } from './SdkUtils';
+import { CppSceneUtils } from '../../utils/CppSceneUtils';
 
 export class ModelUtils {
     public static implicitArkUIBuilderMethods: Set<ArkMethod> = new Set();
@@ -540,7 +541,7 @@ export function getArkFile(im: FromInfo): ArkFile | null | undefined {
         const parentPath = /^\.{1,2}\//.test(from) ? path.dirname(im.getDeclaringArkFile().getFilePath()) : im.getDeclaringArkFile().getProjectDir();
         const originPath = path.resolve(parentPath, from);
         return getArkFileFromScene(im, originPath);
-    } else if (/^@[a-z|\-]+?\//.test(from)) {
+    } else if (moduleMap?.get(from) || /^@[a-z|\-]+?\//.test(from)) {
         //module path
         const arkFile = getArkFileFromOtherModule(im);
         if (arkFile) {
@@ -747,6 +748,9 @@ function getArkFileFromOtherModule(fromInfo: FromInfo): ArkFile | undefined {
     //find file in module path Index.ts
     if (!file && FileUtils.isDirectory(modulePath.path)) {
         file = findFileInModule(fromInfo, modulePath, FileUtils.getIndexFileName(modulePath.path));
+        if (from.endsWith('.so') && file) {
+            CppSceneUtils.puncture(modulePath.path, file);
+        }
     }
     //find file in module path/src/main/ets/TsIndex.ts
     if (!file) {

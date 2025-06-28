@@ -34,7 +34,10 @@ import { getAllFiles } from './utils/getAllFiles';
 import { FileUtils, getFileRecursively } from './utils/FileUtils';
 import { ArkExport, ExportInfo, ExportType } from './core/model/ArkExport';
 import { addInitInConstructor, buildDefaultConstructor } from './core/model/builder/ArkMethodBuilder';
-import { buildDefaultConstructor as buildDefaultConstructorCpp } from './core_cpp/model/builder/ArkMethodBuilder';
+import {
+    addInitInConstructorByArkClass,
+    buildDefaultConstructor as buildDefaultConstructorCpp
+} from './core_cpp/model/builder/ArkMethodBuilder';
 import { DEFAULT_ARK_CLASS_NAME, STATIC_INIT_METHOD_NAME } from './core/common/Const';
 import { CallGraph } from './callgraph/model/CallGraph';
 import { CallGraphBuilder } from './callgraph/model/builder/CallGraphBuilder';
@@ -46,7 +49,6 @@ import { ImportInfo } from './core/model/ArkImport';
 import { ALL, CONSTRUCTOR_NAME, TSCONFIG_JSON } from './core/common/TSConst';
 import { BUILD_PROFILE_JSON5, OH_PACKAGE_JSON5 } from './core/common/EtsConst';
 import { SdkUtils } from './core/common/SdkUtils';
-import { addInitInConstructorByArkClass } from './core_cpp/model/builder/ArkMethodBuilder';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'Scene');
 
@@ -447,7 +449,11 @@ export class Scene {
         try {
             const arkFile = new ArkFile(FileUtils.getFileLanguage(projectFile, this.fileLanguages));
             arkFile.setScene(this);
-            buildArkFileFromFile(projectFile, this.getRealProjectDir(), arkFile, this.getProjectName());
+            if (arkFile.getLanguage() === Language.CPLUS) {
+                buildArkFileFromFileCpp(projectFile, this.realProjectDir, arkFile, this.projectName, this.includeDirs);
+            } else {
+                buildArkFileFromFile(projectFile, this.realProjectDir, arkFile, this.projectName);
+            }
             for (const [modulePath, moduleName] of this.modulePath2NameMap) {
                 if (arkFile.getFilePath().startsWith(modulePath)) {
                     this.addArkFile2ModuleScene(modulePath, moduleName, arkFile);

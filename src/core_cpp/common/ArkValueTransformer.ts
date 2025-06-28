@@ -78,13 +78,22 @@ import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkValueTransformer');
 
 function nodeInnerNode(node: any): any {
-    if (node.inner && node.inner instanceof Array && !(node.inner.length === 1 && node.inner[0].kind === 'TypeRef')) {
-        return node.inner[node.inner.length - 1];
+    if (Array.isArray(node?.inner) && node.inner.length > 0) {
+        const last = node.inner[node.inner.length - 1];
+
+        // 优先返回 InitListExpr
+        if (last?.kind === 'InitListExpr') {
+            return last;
+        }
+        // 只包含一个 TypeRef 节点的数组不返回
+        if (!(node.inner.length === 1 && node.inner[0]?.kind === 'TypeRef')) {
+            return last;
+        }
     }
-    logger.info('unsupported node !');
-    const obj = {kind: 'unsupported kind', node};
-    return obj;
+    logger.info(`unsupported node! kind: ${node?.kind ?? ''}, node:`, node);
+    return { kind: 'unsupported kind', node };
 }
+
 
 export class ArkValueTransformer {
     private conditionalOperatorNo: number = 0;
@@ -226,6 +235,11 @@ export class ArkValueTransformer {
             if (node.inner.length === 1) {
                 return this.tsNodeToValueAndStmts(node.inner[0]);
             } else if (node.inner.length === 2) {
+                if (node.code.includes("=")){
+                    let operatorExpression = Object.assign({}, node);
+                    operatorExpression['opcode'] = "=";
+                    return this.binaryExpressionToValueAndStmts(operatorExpression);
+                }
                 return this.tsNodeToValueAndStmts(node.inner[1]);
             }
             // 把当前ImplicitCastExpr节点当作declRefExpr
@@ -1182,7 +1196,7 @@ export class ArkValueTransformer {
         const elementPositions: FullPosition[] = [];
         const arrayLength = arrayLiteralExpression.inner.length;
         this.getArrayLiteralExpression(arrayLiteralExpression, stmts, elementTypes, elementValues, elementPositions);
-        let baseType: Type = this.resolveTypeNode(arrayLiteralExpression.type.qualType);
+        let baseType: Type = this.resolveTypeNode(arrayLiteralExpression.type.qualType, arrayLiteralExpression);
         if (arrayLiteralExpression.type.qualType === 'napi_property_descriptor') {
             this.setTs2CppFuncMapOfClass(elementValues, false);
         }
@@ -1683,7 +1697,7 @@ export class ArkValueTransformer {
             operator === RelationalBinaryOperator.StrictInequality
         );
     }
-    public resolveTypeNode(qualType: string): Type {
+    public resolveTypeNode(qualType: string, nodeKind ?: any): Type {
         if (qualType.includes('[') && qualType.includes(']')) {
             const matches = qualType.match(/\[/g);
             const count = matches ? matches.length : 0;
@@ -1696,6 +1710,9 @@ export class ArkValueTransformer {
             let dimension = 0;
             let dataType = this.resolveVectorType(qualType, dimension);
             return new ArrayType(buildTypeFromPreStr(dataType), dimension);
+        } else if (nodeKind && 'kind' in nodeKind && nodeKind.kind === "InitListExpr"){
+            let dimension = nodeKind.inner.length;
+            return new ArrayType(new UnclearReferenceType(qualType), dimension);
         }
         let nodeType = cppNode2Type(qualType, null, this.declaringMethod);
         return (nodeType instanceof UnclearReferenceType ? UnknownType.getInstance() : nodeType);

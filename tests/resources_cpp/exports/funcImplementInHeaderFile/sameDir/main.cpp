@@ -1,0 +1,9 @@
+#include <iostream>
+#include "myHeader.h"
+
+using namespace std;
+
+int main() {
+    int res = funcDoSomething(1, 2);
+    cout << "result is : " << res << endl;
+}
