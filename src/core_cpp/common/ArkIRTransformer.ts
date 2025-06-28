@@ -219,6 +219,9 @@ export class ArkIRTransformer {
                 break;
             case 'unsupported kind':
                 break;
+            case 'VarDecl':
+                stmts = this.variableStatementToStmts(node);
+                break;
             case 'WhileStmt':
                 stmts = this.whileStatementToStmts(node);
                 break;

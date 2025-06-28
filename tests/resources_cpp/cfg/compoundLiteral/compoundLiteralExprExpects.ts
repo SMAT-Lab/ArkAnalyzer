@@ -3,11 +3,16 @@ export const COMPOUND_LITERAL_EXPECT_CASE1 = {
         {
             id: 0,
             stmts: [
-                'this = this: @compoundLiteral/compoundLiteralExpr.cpp: %dflt',
-                '%0 = new @compoundLiteral/compoundLiteralExpr.cpp: Point',
-                "instanceinvoke %0.<@compoundLiteral/compoundLiteralExpr.cpp: Point.constructor()>(5, 8, 'c')",
-                'q = %0',
-                'return'
+                "this = this: @compoundLiteral/compoundLiteralExpr.cpp: %dflt",
+                "x = 5",
+                "y = 8",
+                "name = 'c'",
+                "%0 = newarray (struct Point[][][])[3]",
+                "%0[0] = x",
+                "%0[1] = y",
+                "%0[2] = name",
+                "q = %0",
+                "return",
             ],
             preds: [],
             succes: []
@@ -20,11 +25,13 @@ export const COMPOUND_LITERAL_EXPECT_CASE2 = {
         {
             id: 0,
             stmts: [
-                'this = this: @compoundLiteral/compoundLiteralExpr.cpp: %dflt',
-                '%0 = new @compoundLiteral/compoundLiteralExpr.cpp: Color',
-                'instanceinvoke %0.<@compoundLiteral/compoundLiteralExpr.cpp: Color.constructor()>(255, 128, 0)',
-                'c1 = %0',
-                'return'
+                "this = this: @compoundLiteral/compoundLiteralExpr.cpp: %dflt",
+                "%0 = newarray (struct Color[][][])[3]",
+                "%0[0] = 255",
+                "%0[1] = 128",
+                "%0[2] = 0",
+                "c1 = %0",
+                "return",
             ],
             preds: [],
             succes: []

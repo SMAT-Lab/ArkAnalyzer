@@ -457,7 +457,7 @@ describe('Other Test', () => {
 
 describe('Lazy Import Test', () => {
     it('case1: lazy import case1', () => {
-            const scene = buildScene('lazyImport/lazyImportCase1');
+        const scene = buildScene('lazyImport/lazyImportCase1');
         testBlocksClass(scene, 'lazyImportCase1.cpp', 'GlobalConfig', LAZY_IMPORT_CASE1_CLASS);
         },
     );
