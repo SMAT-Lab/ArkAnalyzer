@@ -687,9 +687,12 @@ void cleanJson(json& node){
 }
 
 
-void filterToMainFileOnly(json& node, const std::string& mainFileName, std::string parentFileName = ""){
-    if (node.is_array()){
-        for (auto& elem: node){
+// 全局变量暂存头文件AST
+std::vector<json> headerUnits;
+
+void filterToMainFileOnly(json& node, const std::string& mainFileName, std::string parentFileName = "") {
+    if (node.is_array()) {
+        for (auto& elem : node) {
             filterToMainFileOnly(elem, mainFileName, parentFileName);
         }
         return;
@@ -701,6 +704,7 @@ void filterToMainFileOnly(json& node, const std::string& mainFileName, std::stri
     if (fileName.empty())
         fileName = parentFileName;
 
+    // 规范化路径
     if (!fileName.empty()) {
         try {
             fileName = std::filesystem::weakly_canonical(fileName).string();
@@ -711,17 +715,23 @@ void filterToMainFileOnly(json& node, const std::string& mainFileName, std::stri
         normMainFileName = std::filesystem::weakly_canonical(mainFileName).string();
     } catch (...) {}
 
+    // 仅主文件节点和TranslationUnitDecl挂inner，头文件节点聚合到headerUnits
     if (node.value("kind", "") == "TranslationUnitDecl") {
-        // 根节点保留
-    } else if (fileName != normMainFileName){
-        node = json();
-        return;
-    }
+            // 根节点保留
+        } else if (fileName != normMainFileName) {
+            if (isInUserInclude(fileName)) {
+                std::cout << "[DEBUG][headerUnits] Save user-header node: kind=" << node.value("kind", "")
+                    << " file=" << fileName << std::endl;
+                headerUnits.push_back(node); // 收集到headerUnits
+            }
+            node = json(); // 移除AST中的节点（不在main的inner里）
+            return;
+        }
 
-    // 处理子节点
+    // 递归处理子节点
     if (node.contains("inner") && node["inner"].is_array()) {
         json filtered = json::array();
-        for(size_t i = 0; i < node["inner"].size(); ++i) {
+        for (size_t i = 0; i < node["inner"].size(); ++i) {
             auto child = node["inner"][i];
             filterToMainFileOnly(child, mainFileName, fileName);
             if (!child.is_null() && !child.empty())
@@ -995,8 +1005,6 @@ CompileArgs load_compile_commands(const std::string &compile_commands_path, cons
         std::cerr << "无法打开 compile_commands.json \n";
         return result;
     }
-
-
     json compile_commands_json;
     try {file >> compile_commands_json;}
     catch (const json::exception &e){
@@ -1060,67 +1068,81 @@ CommandLineOptions parseCommandLineArgs(int argc, char** argv){
     return opts;
 }
 
-
-
-// ===================主程序入口==================
-int main(int argc, char** argv) {
-    if (argc < 2) {
-        std::cerr << "Usage: " << argv[0]
-                  << " <file.cpp> [-o <output.json>] [-c <compile_commands.json>] [-i <include_dir> ...]\n";
-        return 1;
+// 自动将 main.cpp 同级目录加入 -i 参数
+void addMainFileDirToInclude(CommandLineOptions& opts) {
+    if (opts.input_file.empty()) return;
+    std::string main_dir = std::filesystem::absolute(opts.input_file).parent_path().string();
+    bool found = false;
+    for (const auto& dir : opts.user_include_dirs) {
+        if (std::filesystem::equivalent(
+                std::filesystem::absolute(dir),
+                std::filesystem::absolute(main_dir))) {
+            found = true;
+            break;
+        }
     }
-    auto opts = parseCommandLineArgs(argc, argv);
+    if (!found) {
+        opts.user_include_dirs.push_back(main_dir);
+    }
+}
 
+void printUsage(const char* progName) {
+    std::cerr << "Usage: " << progName
+              << " <file.cpp> [-o <output.json>] [-c <compile_commands.json>] [-i <include_dir> ...]\n";
+}
+
+bool validateInput(CommandLineOptions& opts) {
     if (opts.input_file.empty()) {
         std::cerr << "Error: No input file provided.\n";
-        return 1;
+        return false;
     }
-    if (opts.output_file.empty()) opts.output_file = get_default_output_path(opts.input_file);
-
-    for (const auto& dir : opts.user_include_dirs) {
-        std::cout << "user -i param: " << dir << std::endl;
+    if (opts.output_file.empty()) {
+        opts.output_file = get_default_output_path(opts.input_file);
     }
+    return true;
+}
 
-    // 组装 clang 参数
+std::vector<const char*> prepareClangArgs(const CommandLineOptions& opts) {
     std::vector<std::string> extra_include_args;
     for (const auto& dir : opts.user_include_dirs) {
         extra_include_args.push_back("-I" + dir);
     }
-    // libClang要求所有命令行参数必须是const char * 数组 因此需要转换
     std::vector<const char*> extra_include_args_cstr;
     for (const auto& arg : extra_include_args) {
         extra_include_args_cstr.push_back(arg.c_str());
     }
 
-    CXIndex index = clang_createIndex(0, 0);
     std::vector<const char*> args;
-    CompileArgs compile_args;
     if (!opts.compile_commands_file.empty()) {
-        compile_args = load_compile_commands(opts.compile_commands_file, opts.input_file);
+        CompileArgs compile_args = load_compile_commands(opts.compile_commands_file, opts.input_file);
         args = compile_args.cstr_args;
     } else {
         args.push_back("-std=c++17");
     }
     args.insert(args.end(), extra_include_args_cstr.begin(), extra_include_args_cstr.end());
+    return args;
+}
 
-
-    g_user_include_dirs = opts.user_include_dirs;
-
+CXTranslationUnit createTranslationUnit(CXIndex index,
+                                        const CommandLineOptions& opts,
+                                        const std::vector<const char*>& args) {
     CXTranslationUnit unit = clang_parseTranslationUnit(
         index, opts.input_file.c_str(), args.data(), args.size(), nullptr, 0,
         CXTranslationUnit_DetailedPreprocessingRecord);
+    return unit;
+}
 
-    if (!unit) {
-        std::cerr << "Parse error\n";
-        clang_disposeIndex(index);
-        return 2;
-    }
+json buildAndProcessAST(CXTranslationUnit unit, const CommandLineOptions& opts) {
     json ast = buildASTJson(clang_getTranslationUnitCursor(unit));
-    std::cout<< "[STEP1] buildASTJson finished\n";
-    std::string mainFileName = fs::canonical(opts.input_file).string(); // 标准化路径
+    std::cout << "[STEP1] buildASTJson finished\n";
+    std::string mainFileName = fs::canonical(opts.input_file).string();
     filterToMainFileOnly(ast, mainFileName);
+    if (!headerUnits.empty() && ast.contains("kind")) {
+        ast["headerUnits"] = headerUnits;
+        headerUnits.clear();
+    }
     cleanJson(ast);
-    std::cout<< "[STEP2] filterToMainFileOnly finished\n";
+    std::cout << "[STEP2] filterToMainFileOnly finished\n";
     std::map<std::string, int> labelNameToId;
     patchPseudoDestructorExpr(ast);
     fixAllVarRefTypes(ast);
@@ -1130,8 +1152,39 @@ int main(int argc, char** argv) {
     fixCallExprChildKind(ast);
     patchFoldExpr(ast);
     std::cout << "[STEP3] AST built successfully\n";
-    std::ofstream(opts.output_file) << ast.dump(-1, ' ', false, json::error_handler_t::replace);
-    std::cout << "[STEP4] AST written to: " << opts.output_file << std::endl;
+    return ast;
+}
+
+void saveASTToFile(const json& ast, const std::string& output_file) {
+    std::ofstream(output_file) << ast.dump(-1, ' ', false, json::error_handler_t::replace);
+    std::cout << "[STEP4] AST written to: " << output_file << std::endl;
+}
+
+
+// ===================主程序入口==================
+int main(int argc, char** argv) {
+    if (argc < 2) {
+        printUsage(argv[0]);
+        return 1;
+    }
+
+    auto opts = parseCommandLineArgs(argc, argv);
+    addMainFileDirToInclude(opts);
+
+    if (!validateInput(opts)) return 1;
+
+    auto clang_args = prepareClangArgs(opts);
+    g_user_include_dirs = opts.user_include_dirs;
+    CXIndex index = clang_createIndex(0, 0);
+    CXTranslationUnit unit = createTranslationUnit(index, opts, clang_args);
+    if (!unit) {
+        std::cerr << "Parse error\n";
+        return 2;
+    }
+
+    json ast = buildAndProcessAST(unit, opts);
+
+    saveASTToFile(ast, opts.output_file);
 
     clang_disposeTranslationUnit(unit);
     clang_disposeIndex(index);
