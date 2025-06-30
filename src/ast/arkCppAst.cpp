@@ -1102,6 +1102,13 @@ bool validateInput(CommandLineOptions& opts) {
     return true;
 }
 
+bool hasSuffix(const std::string& str, const std::string& suffix) {
+    if (suffix.size() > str.size()) {
+        return false;
+    }
+    return str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
+}
+
 std::vector<const char*> prepareClangArgs(const CommandLineOptions& opts) {
     std::vector<std::string> extra_include_args;
     for (const auto& dir : opts.user_include_dirs) {
@@ -1116,6 +1123,8 @@ std::vector<const char*> prepareClangArgs(const CommandLineOptions& opts) {
     if (!opts.compile_commands_file.empty()) {
         CompileArgs compile_args = load_compile_commands(opts.compile_commands_file, opts.input_file);
         args = compile_args.cstr_args;
+    } else if (hasSuffix(opts.input_file, ".c") || hasSuffix(opts.input_file, ".h")) {
+        args.push_back("-std=c99");
     } else {
         args.push_back("-std=c++17");
     }
@@ -1137,6 +1146,7 @@ json buildAndProcessAST(CXTranslationUnit unit, const CommandLineOptions& opts) 
     std::cout << "[STEP1] buildASTJson finished\n";
     std::string mainFileName = fs::canonical(opts.input_file).string();
     filterToMainFileOnly(ast, mainFileName);
+    ast["headerUnits"] = {};
     if (!headerUnits.empty() && ast.contains("kind")) {
         ast["headerUnits"] = headerUnits;
         headerUnits.clear();
@@ -1169,7 +1179,6 @@ int main(int argc, char** argv) {
     }
 
     auto opts = parseCommandLineArgs(argc, argv);
-    addMainFileDirToInclude(opts);
 
     if (!validateInput(opts)) return 1;
 
