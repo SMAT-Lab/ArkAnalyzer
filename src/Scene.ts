@@ -298,7 +298,8 @@ export class Scene {
     }
 
     private isCppFile(file: string): boolean {
-        return file.endsWith('.cpp');
+        const cppSuffixes = [".cpp", "h", ".c",]
+        return cppSuffixes.some(suffix => file.endsWith(suffix));
     }
 
     private addDefaultConstructors(): void {

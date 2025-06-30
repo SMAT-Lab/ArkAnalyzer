@@ -19,12 +19,13 @@ import { ArkFile } from '../../../core/model/ArkFile';
 import { ArkNamespace } from '../../../core/model/ArkNamespace';
 import { buildDefaultArkClassFromArkFile, buildNormalArkClassFromArkFile } from './ArkClassBuilder';
 import { buildArkMethodFromArkClass } from './ArkMethodBuilder';
-
+import {buildExportInfo} from './ArkExportBuilder'
 import { buildArkNamespace } from './ArkNamespaceBuilder';
 import { ArkClass } from '../../../core/model/ArkClass';
 import { ArkMethod } from '../../../core/model/ArkMethod';
 import {AstUtils} from "../../../ast/astUtils"
 import { FileSignature } from '../../../core/model/ArkSignature';
+import { LineColPosition } from '../../../core/base/Position';
 
 export const notStmtOrExprKind = [
     'ModuleDeclaration',
@@ -64,6 +65,16 @@ export function buildArkFileFromFile(absoluteFilePath: string, projectDir: strin
     buildArkFile(arkFile, jsonObject);
 }
 
+function isChildLocFileHeader(child: any): boolean {
+    return (
+        child.hasOwnProperty('loc') &&
+        child.loc &&
+        child.loc.hasOwnProperty('file') &&
+        typeof child.loc.file === 'string' &&
+        child.loc.file.endsWith('.h')
+    );
+}
+
 /**
  * Building ArkFile instance
  *
@@ -83,32 +94,50 @@ function buildArkFile(arkFile: ArkFile, astRoot: any): void {
             buildNormalArkClassFromArkFile(child, arkFile, cls, astRoot);
             arkFile.addArkClass(cls);
             recordMap.set(child.id, cls);
+            if (isChildLocFileHeader(child)) {
+                arkFile.addExportInfo(buildExportInfo(cls, arkFile, LineColPosition.buildFromNodeCpp(child, astRoot)))
+            }
 
         } else if (child.kind === 'FunctionDecl' || child.kind === 'FriendDecl' || child.kind === 'FunctionTemplate') {
             let mthd: ArkMethod = new ArkMethod();
 
             buildArkMethodFromArkClass(child, arkFile.getDefaultClass(), mthd, astRoot);
+            if (isChildLocFileHeader(child)) {
+                arkFile.addExportInfo(buildExportInfo(mthd, arkFile, LineColPosition.buildFromNodeCpp(child, astRoot)))
+            }
         } else if (child.kind === 'NamespaceDecl') {
             let ns: ArkNamespace = new ArkNamespace();
             ns.setDeclaringArkFile(arkFile);
             buildArkNamespace(child, arkFile, ns, astRoot);
             arkFile.addNamespace(ns);
+            if (isChildLocFileHeader(child)) {
+                arkFile.addExportInfo(buildExportInfo(ns, arkFile, LineColPosition.buildFromNodeCpp(child, astRoot)))
+            }
         } else if (child.kind === 'CXXMethodDecl' || child.kind === 'CXXConstructorDecl' || child.kind === 'CXXDestructorDecl') {
             let className: string = child.mangledName;
             let arkClass = arkFile.getClasses().find(arkClass => (arkClass.getName() == className));
             let mthd: ArkMethod = new ArkMethod();
             // @ts-ignore
             buildArkMethodFromArkClass(child, arkClass, mthd, astRoot);
+            if (isChildLocFileHeader(child)) {
+                arkFile.addExportInfo(buildExportInfo(mthd, arkFile, LineColPosition.buildFromNodeCpp(child, astRoot)))
+            }
         } else if (child.kind === 'TypedefDecl') {
             let cls: ArkClass = new ArkClass();
             buildNormalArkClassFromArkFile(child.inner[0], arkFile, cls, astRoot);
             arkFile.addArkClass(cls);
             recordMap.set(child.id, cls);
+            if (isChildLocFileHeader(child)) {
+                arkFile.addExportInfo(buildExportInfo(cls, arkFile, LineColPosition.buildFromNodeCpp(child, astRoot)))
+            }
         } else if (child.kind === 'EnumDecl') {
             child = { ...child, 'tagUsed': 'enum' };
             let cls: ArkClass = new ArkClass();
             buildNormalArkClassFromArkFile(child, arkFile, cls, astRoot);
             recordMap.set(child.id, cls);
+            if (isChildLocFileHeader(child)) {
+                arkFile.addExportInfo(buildExportInfo(cls, arkFile, LineColPosition.buildFromNodeCpp(child, astRoot)))
+            }
         }
 
     });
