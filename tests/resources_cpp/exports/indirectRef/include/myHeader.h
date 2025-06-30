@@ -3,14 +3,6 @@
 
 #include "castSample.h"
 
-int funcDoSomething(int i, int j)
-{
-    if (i > 0) {
-        j = i;
-    } else {
-        j = -i;
-    }
-    return CXXStaticCast(j);
-}
+int funcDoSomething(int i, int j);
 
 #endif

@@ -1,3 +1,4 @@
+#include <iostream>
 #include "../include/test.h"
 
 int funcDoSomething(int i, int j)
@@ -8,4 +9,18 @@ int funcDoSomething(int i, int j)
         j = -i;
     }
     return j;
+}
+
+// 类方法实现
+double Circle::calculateArea() const {
+    return PI * radius * radius;
+}
+
+void Circle::printInfo() const {
+    std::cout << "Circle at (" << center.x << ", " << center.y
+              << ") with radius " << radius << std::endl;
+}
+
+bool Circle::isLarger(const Circle& c1, const Circle& c2) {
+    return c1.radius > c2.radius;
 }
