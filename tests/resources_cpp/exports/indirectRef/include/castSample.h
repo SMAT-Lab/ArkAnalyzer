@@ -2,9 +2,6 @@
 #define MY_HEADER_H
 
 // CXXStaticCastTest
-double CXXStaticCast(int d)
-{
-    return static_cast<double>(d);
-}
+double CXXStaticCast(int d);
 
 #endif

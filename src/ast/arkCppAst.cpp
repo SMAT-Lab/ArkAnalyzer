@@ -945,6 +945,9 @@ json buildASTJson(CXCursor cursor){
     } else if (node["kind"] == "ImplicitCastExpr") {
         if (children.size() > 0 && children[0]["kind"] == "CallExpr") {
             node["kind"] = "ExprWithCleanups";
+        } else if (children.size() > 0 && children[0]["kind"] == "DeclRefExpr" &&
+            codeStr.find(children[0]["code"]) == 0 && codeStr.find("(") != std::string::npos) {
+            node["kind"] = "RecoveryExpr";
         }
     } else if (node["kind"] == "CXXConstructorDecl") {
         children = addCXXCtorInitializer(children);
@@ -1102,6 +1105,13 @@ bool validateInput(CommandLineOptions& opts) {
     return true;
 }
 
+bool hasSuffix(const std::string& str, const std::string& suffix) {
+    if (suffix.size() > str.size()) {
+        return false;
+    }
+    return str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
+}
+
 std::vector<const char*> prepareClangArgs(const CommandLineOptions& opts) {
     std::vector<std::string> extra_include_args;
     for (const auto& dir : opts.user_include_dirs) {
@@ -1116,6 +1126,8 @@ std::vector<const char*> prepareClangArgs(const CommandLineOptions& opts) {
     if (!opts.compile_commands_file.empty()) {
         CompileArgs compile_args = load_compile_commands(opts.compile_commands_file, opts.input_file);
         args = compile_args.cstr_args;
+    } else if (hasSuffix(opts.input_file, ".c") || hasSuffix(opts.input_file, ".h")) {
+        args.push_back("-std=c99");
     } else {
         args.push_back("-std=c++17");
     }
@@ -1142,6 +1154,9 @@ json buildAndProcessAST(CXTranslationUnit unit, const CommandLineOptions& opts) 
         headerUnits.clear();
     }
     cleanJson(ast);
+    if (!ast.contains("headerUnits")) {
+        ast["headerUnits"] = json::array();
+    }
     std::cout << "[STEP2] filterToMainFileOnly finished\n";
     std::map<std::string, int> labelNameToId;
     patchPseudoDestructorExpr(ast);
@@ -1169,19 +1184,18 @@ int main(int argc, char** argv) {
     }
 
     auto opts = parseCommandLineArgs(argc, argv);
-    addMainFileDirToInclude(opts);
 
     if (!validateInput(opts)) return 1;
 
     auto clang_args = prepareClangArgs(opts);
-    g_user_include_dirs = opts.user_include_dirs;
     CXIndex index = clang_createIndex(0, 0);
     CXTranslationUnit unit = createTranslationUnit(index, opts, clang_args);
     if (!unit) {
         std::cerr << "Parse error\n";
         return 2;
     }
-
+    addMainFileDirToInclude(opts);
+    g_user_include_dirs = opts.user_include_dirs;
     json ast = buildAndProcessAST(unit, opts);
 
     saveASTToFile(ast, opts.output_file);
