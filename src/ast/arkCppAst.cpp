@@ -945,6 +945,9 @@ json buildASTJson(CXCursor cursor){
     } else if (node["kind"] == "ImplicitCastExpr") {
         if (children.size() > 0 && children[0]["kind"] == "CallExpr") {
             node["kind"] = "ExprWithCleanups";
+        } else if (children.size() > 0 && children[0]["kind"] == "DeclRefExpr" &&
+            codeStr.find(children[0]["code"]) == 0 && codeStr.find("(") != std::string::npos) {
+            node["kind"] = "RecoveryExpr";
         }
     } else if (node["kind"] == "CXXConstructorDecl") {
         children = addCXXCtorInitializer(children);
@@ -1146,12 +1149,14 @@ json buildAndProcessAST(CXTranslationUnit unit, const CommandLineOptions& opts) 
     std::cout << "[STEP1] buildASTJson finished\n";
     std::string mainFileName = fs::canonical(opts.input_file).string();
     filterToMainFileOnly(ast, mainFileName);
-    ast["headerUnits"] = {};
     if (!headerUnits.empty() && ast.contains("kind")) {
         ast["headerUnits"] = headerUnits;
         headerUnits.clear();
     }
     cleanJson(ast);
+    if (!ast.contains("headerUnits")) {
+        ast["headerUnits"] = json::array();
+    }
     std::cout << "[STEP2] filterToMainFileOnly finished\n";
     std::map<std::string, int> labelNameToId;
     patchPseudoDestructorExpr(ast);
@@ -1183,14 +1188,14 @@ int main(int argc, char** argv) {
     if (!validateInput(opts)) return 1;
 
     auto clang_args = prepareClangArgs(opts);
-    g_user_include_dirs = opts.user_include_dirs;
     CXIndex index = clang_createIndex(0, 0);
     CXTranslationUnit unit = createTranslationUnit(index, opts, clang_args);
     if (!unit) {
         std::cerr << "Parse error\n";
         return 2;
     }
-
+    addMainFileDirToInclude(opts);
+    g_user_include_dirs = opts.user_include_dirs;
     json ast = buildAndProcessAST(unit, opts);
 
     saveASTToFile(ast, opts.output_file);
