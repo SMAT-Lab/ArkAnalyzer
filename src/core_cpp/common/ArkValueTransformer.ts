@@ -295,7 +295,6 @@ export class ArkValueTransformer {
             return this.compoundAssignmentToValueAndStmts(node);
         } else if (node.kind === 'CompoundLiteralExpr') {
             return this.newExpressionToValueAndStmts(node);
-            // return this.tsNodeToValueAndStmts(node.inner[0].kind === 'TypeRef' ? node.inner[1] : node.inner[0]);
         } else if (node.kind === 'ConditionalOperator' || node.kind === 'BinaryConditionalOperator') {
             return this.conditionalExpressionToValueAndStmts(node);
         } else if (node.kind === 'LambdaExpr') {
