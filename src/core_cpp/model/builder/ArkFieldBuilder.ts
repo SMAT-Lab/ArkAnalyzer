@@ -25,7 +25,7 @@ import {
     cppNode2Type,
 } from './builderUtils';
 import { FieldSignature } from '../../../core/model/ArkSignature';
-import { ClassType, Type, UnknownType } from '../../../core/base/Type';
+import { ArrayType, ClassType, Type, UnclearReferenceType, UnknownType } from '../../../core/base/Type';
 import { LineColPosition } from '../../../core/base/Position';
 import { ModifierType } from '../../../core/model/ArkBaseModel';
 import { IRUtils } from '../../common/IRUtils';
@@ -56,7 +56,15 @@ export function buildProperty2ArkField(
         field.addModifier(ModifierType.STATIC);
         fieldType = new ClassType(cls.getSignature());
     }
-
+    if (member.type.qualType.includes('[') && member.type.qualType.includes(']')) {
+        const matches = member.type.qualType.match(/\[/g);
+        const count = matches ? matches.length : 0;
+        let baseType = cppNode2Type(member.type.qualType.slice(0, member.type.qualType.indexOf('[')), sourceFile, cls);
+        if (baseType instanceof UnclearReferenceType) {
+            fieldType = new ArrayType(new UnclearReferenceType(member.type.qualType.slice(0, member.type.qualType.indexOf('['))), count);
+        }
+        fieldType = new ArrayType(baseType, count);
+    }
     field.setSignature(new FieldSignature(fieldName, cls.getSignature(), fieldType, field.isStatic()));
 
     IRUtils.setComments(field, member, sourceFile, cls.getDeclaringArkFile().getScene().getOptions());

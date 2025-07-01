@@ -273,7 +273,7 @@ export class ArkValueTransformer {
             return this.literalNodeToValueAndStmts(node) as ValueAndStmts;
         } else if (node.kind === 'InitListExpr') {
             // 数组和结构体都可以用{}初始化，此处需要做区分
-            if (this.resolveTypeNode(node.type.qualType) instanceof ClassType) {
+            if (node.type.qualType.includes("struct") || node.type.qualType.includes("union") || this.resolveTypeNode(node.type.qualType) instanceof ClassType) {
                 // 结构体初始化则调用构造函数去初始化
                 return this.newExpressionToValueAndStmts(node);
             }
@@ -294,7 +294,7 @@ export class ArkValueTransformer {
         } else if (node.kind === 'CompoundAssignOperator') {
             return this.compoundAssignmentToValueAndStmts(node);
         } else if (node.kind === 'CompoundLiteralExpr') {
-            return this.tsNodeToValueAndStmts(node.inner[0].kind === 'TypeRef' ? node.inner[1] : node.inner[0]);
+            return this.newExpressionToValueAndStmts(node);
         } else if (node.kind === 'ConditionalOperator' || node.kind === 'BinaryConditionalOperator') {
             return this.conditionalExpressionToValueAndStmts(node);
         } else if (node.kind === 'LambdaExpr') {
@@ -1107,6 +1107,8 @@ export class ArkValueTransformer {
         } else if (newExpression.kind === 'CXXConstructExpr' && newExpression.type.qualType.startsWith('struct') &&
             constructArgs && constructArgs[0].inner[0]?.kind === 'CompoundLiteralExpr') {
             constructArgs = this.getConstructArgs(constructArgs[0].inner[0].inner);
+        } else if (newExpression.kind ==='InitListExpr') {
+            constructArgs = this.getConstructArgs(newExpression);
         }
 
         const { args: argValues, argPositions: argPositions } = this.parseArguments(stmts, constructArgs);
@@ -1116,6 +1118,14 @@ export class ArkValueTransformer {
         const instanceInvokeExprPositions = [newLocalPositions[0], ...newLocalPositions, ...argPositions];
         invokeStmt.setOperandOriginalPositions(instanceInvokeExprPositions);
         stmts.push(invokeStmt);
+        if (newExpression.kind === 'CompoundLiteralExpr' && newExpression.inner[1].kind === 'InitListExpr') {
+            const tempValueAndStmts = this.arrayLiteralExpressionToValueAndStmts(newExpression.inner[1]);
+            tempValueAndStmts.stmts.forEach(stmt => stmts.push(stmt));
+        } else if (newExpression.kind === 'InitListExpr') {
+            const tempValueAndStmts = this.arrayLiteralExpressionToValueAndStmts(newExpression);
+            tempValueAndStmts.stmts.forEach(stmt => stmts.push(stmt));
+        }
+
         return { value: newLocal, valueOriginalPositions: newLocalPositions, stmts: stmts };
     }
 
@@ -1190,7 +1200,7 @@ export class ArkValueTransformer {
     }
 
     private arrayLiteralExpressionToValueAndStmts(arrayLiteralExpression: any): ValueAndStmts {
-        const stmts: Stmt[] = [];
+        const stmts: Stmt[]=[];
         const elementTypes: Set<Type> = new Set();
         const elementValues: Value[] = [];
         const elementPositions: FullPosition[] = [];

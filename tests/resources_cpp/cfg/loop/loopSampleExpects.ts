@@ -42,16 +42,22 @@ export const LOOP_EXPECT_CASE2 = {
         {
             id: 0,
             stmts: [
-                'this = this: @loop/loopSample.cpp: %dflt',
-                '%0 = new @loop/loopSample.cpp: Data',
-                'instanceinvoke %0.<@loop/loopSample.cpp: Data.constructor()>(1, 2)',
-                '%1 = new @loop/loopSample.cpp: Data',
-                'instanceinvoke %1.<@loop/loopSample.cpp: Data.constructor()>(3, 4)',
-                '%2 = newarray (@loop/loopSample.cpp: Data[])[2]',
-                '%2[0] = %0',
-                '%2[1] = %1',
-                'arr = %2',
-                'i = 0'
+                "this = this: @loop/loopSample.cpp: %dflt",
+                "%0 = new @loop/loopSample.cpp: Data",
+                "instanceinvoke %0.<@loop/loopSample.cpp: Data.constructor()>()",
+                "%1 = newarray (Data[][])[2]",
+                "%1[0] = 1",
+                "%1[1] = 2",
+                "%2 = new @loop/loopSample.cpp: Data",
+                "instanceinvoke %2.<@loop/loopSample.cpp: Data.constructor()>()",
+                "%3 = newarray (Data[][])[2]",
+                "%3[0] = 3",
+                "%3[1] = 4",
+                "%4 = newarray (@loop/loopSample.cpp: Data[])[2]",
+                "%4[0] = %0",
+                "%4[1] = %2",
+                "arr = %4",
+                "i = 0",
             ],
             preds: [],
             succes: [ 1 ]
@@ -60,10 +66,10 @@ export const LOOP_EXPECT_CASE2 = {
         {
             id: 2,
             stmts: [
-                '%3 = arr[i].<@%unk/%unk: .a>',
-                '%4 = arr[i].<@%unk/%unk: .b>',
-                'staticinvoke <@%unk/%unk: .printf()>(\'%d %d\\n\', %3, %4)',
-                'i = i + 1'
+                "%5 = arr[i].<@%unk/%unk: .a>",
+                "%6 = arr[i].<@%unk/%unk: .b>",
+                "staticinvoke <@%unk/%unk: .printf()>('%d %d\\n', %5, %6)",
+                "i = i + 1",
             ],
             preds: [ 1 ],
             succes: [ 1 ]
