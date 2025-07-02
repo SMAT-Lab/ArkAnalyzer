@@ -722,8 +722,8 @@ void filterToMainFileOnly(json& node, const std::string& mainFileName, std::stri
     if (node.value("kind", "") == "TranslationUnitDecl") {
             // 根节点保留
     } else if (fileName != normMainFileName) {
-        if ((isInUserInclude(fileName) || isInUserInclude(node.value("included", ""))) &&
-            node.value("code", "").find("<") == std::string::npos && node.value("code", "").find(">") == std::string::npos) {
+        if (isInUserInclude(fileName) || (isInUserInclude(node.value("included", "")) &&
+            node.value("code", "").find("<") == std::string::npos && node.value("code", "").find(">") == std::string::npos)) {
             std::cout << "[DEBUG][headerUnits] Save user-header node: kind=" << node.value("kind", "")
                 << " file=" << fileName << std::endl;
             headerUnits.push_back(node); // 收集到headerUnits
