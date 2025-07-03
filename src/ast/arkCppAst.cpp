@@ -1132,9 +1132,10 @@ std::vector<const char*> prepareClangArgs(const CommandLineOptions& opts) {
     if (!opts.compile_commands_file.empty()) {
         CompileArgs compile_args = load_compile_commands(opts.compile_commands_file, opts.input_file);
         args = compile_args.cstr_args;
-    } else if (hasSuffix(opts.input_file, ".c") || hasSuffix(opts.input_file, ".h")) {
+    } else if (hasSuffix(opts.input_file, ".c")) {
         args.push_back("-std=c99");
     } else {
+        args.push_back("-xc++");
         args.push_back("-std=c++17");
     }
     args.insert(args.end(), extra_include_args_cstr.begin(), extra_include_args_cstr.end());
