@@ -1118,29 +1118,38 @@ bool hasSuffix(const std::string& str, const std::string& suffix) {
     return str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
 }
 
-std::vector<const char*> prepareClangArgs(const CommandLineOptions& opts) {
-    std::vector<std::string> extra_include_args;
-    for (const auto& dir : opts.user_include_dirs) {
-        extra_include_args.push_back("-I" + dir);
-    }
-    std::vector<const char*> extra_include_args_cstr;
-    for (const auto& arg : extra_include_args) {
-        extra_include_args_cstr.push_back(arg.c_str());
+struct ClangArgs {
+    std::vector<std::string> str_args;   // 字符串本体
+    std::vector<const char*> cstr_args;  // 指针
+};
+
+
+ClangArgs prepareClangArgs(const CommandLineOptions& opts) {
+    ClangArgs res;
+
+    // 选择标准
+    if (hasSuffix(opts.input_file, ".c")) {
+        res.str_args.push_back("-std=c99");
+    } else {
+        res.str_args.push_back("-xc++");
+        res.str_args.push_back("-std=c++17");
     }
 
-    std::vector<const char*> args;
-    if (!opts.compile_commands_file.empty()) {
-        CompileArgs compile_args = load_compile_commands(opts.compile_commands_file, opts.input_file);
-        args = compile_args.cstr_args;
-    } else if (hasSuffix(opts.input_file, ".c")) {
-        args.push_back("-std=c99");
-    } else {
-        args.push_back("-xc++");
-        args.push_back("-std=c++17");
+    // 添加用户 include
+    for (const auto& dir : opts.user_include_dirs) {
+        res.str_args.push_back("-I" + dir);
     }
-    args.insert(args.end(), extra_include_args_cstr.begin(), extra_include_args_cstr.end());
-    return args;
+
+    // 将 string 转换为 c_str 指针
+    for (const auto& arg : res.str_args) {
+        res.cstr_args.push_back(arg.c_str());
+    }
+
+    // 打印检查
+    std::cout << "[DEBUG][prepareClangArgs] Final args:" << std::endl;
+    return res;
 }
+
 
 CXTranslationUnit createTranslationUnit(CXIndex index,
                                         const CommandLineOptions& opts,
@@ -1191,18 +1200,20 @@ int main(int argc, char** argv) {
     }
 
     auto opts = parseCommandLineArgs(argc, argv);
+    addMainFileDirToInclude(opts);
 
     if (!validateInput(opts)) return 1;
-
-    auto clang_args = prepareClangArgs(opts);
+    ClangArgs clang_args = prepareClangArgs(opts);
+    g_user_include_dirs = opts.user_include_dirs;
     CXIndex index = clang_createIndex(0, 0);
-    CXTranslationUnit unit = createTranslationUnit(index, opts, clang_args);
+    CXTranslationUnit unit = createTranslationUnit(index, opts, clang_args.cstr_args);
     if (!unit) {
-        std::cerr << "Parse error\n";
+        std::cerr << "[ERROR] clang_parseTranslationUnit failed!" << std::endl;
+        for (size_t i = 0; i < clang_args.cstr_args.size(); ++i) {
+             std::cerr << clang_args.cstr_args[i] << std::endl;
+        }
         return 2;
     }
-    addMainFileDirToInclude(opts);
-    g_user_include_dirs = opts.user_include_dirs;
     json ast = buildAndProcessAST(unit, opts);
 
     saveASTToFile(ast, opts.output_file);
