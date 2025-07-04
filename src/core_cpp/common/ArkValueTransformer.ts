@@ -683,7 +683,7 @@ export class ArkValueTransformer {
         };
     }
 
-    private memberExpressionToValueAndStmts(memberExpression: any): ValueAndStmts {
+    private memberExpressionToValueAndStmts(memberExpression: any, localValue?: Value): ValueAndStmts {
         const stmts: Stmt[] = [];
         // 当返回成员变量memberExpr需构建cxxThisExpr
         if ((memberExpression.kind === 'MemberExpr' || memberExpression.kind === 'MemberRef') && memberExpression.inner[0] === undefined) {
@@ -694,6 +694,9 @@ export class ArkValueTransformer {
         let {value: baseValue, valueOriginalPositions: basePositions, stmts: baseStmts} = this.tsNodeToValueAndStmts(memberExpression.inner[0]);
         if (memberExpression.inner[0].kind === 'MemberExpr' || memberExpression.kind === 'MemberRef') {
             ({value: baseValue, valueOriginalPositions: basePositions, stmts: baseStmts} = this.arkIRTransformer.generateAssignStmtForValue(baseValue, basePositions));
+        }
+        if (localValue !== undefined && localValue !== null) {
+            baseValue = localValue;
         }
         stmts.push(...baseStmts);
         //获取域的签名
@@ -1121,29 +1124,12 @@ export class ArkValueTransformer {
         if ((newExpression.kind === 'CompoundLiteralExpr' && newExpression.inner[1].kind === 'InitListExpr')) {
             const newExpr = newExpression.kind === 'InitListExpr' ? newExpression : newExpression.inner[1];
             for (const element of newExpr.inner) {
-                let fieldSignature: FieldSignature;
-                let baseType = newLocal.getType();
-                let baseClassType: ClassType | null = null;
-                if (baseType instanceof ClassType) {
-                    baseClassType = baseType as ClassType;
-                } else if (baseType instanceof PointerType && (baseType as PointerType).getBaseType() instanceof ClassType) {
-                    baseClassType = (baseType as PointerType).getBaseType() as ClassType;
-                } else if (baseType instanceof ReferenceType && (baseType as ReferenceType).getBaseType() instanceof ClassType) {
-                    baseClassType = (baseType as ReferenceType).getBaseType() as ClassType;
-                }
-                if (newLocal instanceof Local && baseClassType !== null) {
-                    fieldSignature = new FieldSignature(
-                        element.inner[0].name, baseClassType.getClassSignature(), UnknownType.getInstance(),
-                    );
-                } else {
-                    fieldSignature = ArkSignatureBuilder.buildFieldSignatureFromFieldName(element.inner[0].name);
-                }
-                fieldSignature.setType(this.resolveTypeNode(element.inner[0].type.qualType));
-                const fieldRef = new CXXArkInstanceFieldRef(newLocal as Local, element.inner[0].isArrow, fieldSignature);
+                const memberValueAndStmts = this.memberExpressionToValueAndStmts(element.inner[0],newLocal);
+                const fieldRef = memberValueAndStmts.value;
                 const rightOpNode = element.inner[1];
                 const rightValueAndStmts = this.assignmentRightOpToValueAndStmts(rightOpNode, fieldRef);
                 const assignStmt = new ArkAssignStmt(fieldRef, rightValueAndStmts.value);
-                let leftPositions = [FullPosition.buildFromNodeCpp(element.inner[0], this.sourceFile)];
+                let leftPositions = memberValueAndStmts.valueOriginalPositions;
                 let rightPositions = rightValueAndStmts.valueOriginalPositions;
                 assignStmt.setOperandOriginalPositions([...leftPositions, ...rightPositions]);
                 stmts.push(assignStmt);
