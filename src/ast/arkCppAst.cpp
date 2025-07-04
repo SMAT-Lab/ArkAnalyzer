@@ -942,7 +942,7 @@ json buildASTJson(CXCursor cursor){
             if (childName0.find("operator") != std::string::npos) children[0]["castKind"] = "FunctionToPointerDecay";
         }
         if (children.size() == 3) children[1]["valueCategory"] = "lvalue";
-    } else if (node["kind"] == "CXXConstructExpr"){
+    } else if (node["kind"] == "CXXConstructExpr" || node["kind"] == "CallExpr"){
         if (children.size() > 0 && children[0]["kind"] == "MemberExpr") {
             node["kind"] = "CXXMemberCallExpr";
         }else {
