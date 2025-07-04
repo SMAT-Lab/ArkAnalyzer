@@ -25,6 +25,9 @@ inline void trim(std::string &s){
 inline std::string cx2str(const CXString &s){
     std::string r = clang_getCString(s) ? clang_getCString(s) : "" ;
     clang_disposeString(s);
+    if (r.find("\\../") != std::string::npos) { // 规范化获取的路径，存在\../的情况
+       return std::filesystem::canonical(r).string();
+    }
     return r;
 }
 
@@ -718,15 +721,14 @@ void filterToMainFileOnly(json& node, const std::string& mainFileName, std::stri
     // 仅主文件节点和TranslationUnitDecl挂inner，头文件节点聚合到headerUnits
     if (node.value("kind", "") == "TranslationUnitDecl") {
             // 根节点保留
-        } else if (fileName != normMainFileName) {
-            if (isInUserInclude(fileName)) {
-                std::cout << "[DEBUG][headerUnits] Save user-header node: kind=" << node.value("kind", "")
-                    << " file=" << fileName << std::endl;
-                headerUnits.push_back(node); // 收集到headerUnits
-            }
-            node = json(); // 移除AST中的节点（不在main的inner里）
-            return;
+    } else if (fileName != normMainFileName) {
+        if (isInUserInclude(fileName) || (isInUserInclude(node.value("included", "")) &&
+            node.value("code", "").find("<") == std::string::npos && node.value("code", "").find(">") == std::string::npos)) {
+            headerUnits.push_back(node); // 收集到headerUnits
         }
+        node = json(); // 移除AST中的节点（不在main的inner里）
+        return;
+    }
 
     // 递归处理子节点
     if (node.contains("inner") && node["inner"].is_array()) {
@@ -813,10 +815,11 @@ json buildASTJson(CXCursor cursor){
 
     node["type"] = {{"qualType", unifyTypeStr(clang_getTypeSpelling(clang_getCursorType(cursor)))}};
     std::string typeStr = node["type"]["qualType"];
+    std::string fileStr = fileName != "" ? fileName : displayName;
 
     json content = getSourceContent(range);
     if (kind_cursor == CXCursor_TranslationUnit){
-        node["fileName"] = file ? cx2str(clang_getFileName(file)) : displayName;
+        node["fileName"] = fileStr;
     } else if (kind_cursor == CXCursor_UnaryOperator){
         fillUnaryOperatorInfo(node, cursor);
     } else if (kind_cursor == CXCursor_BinaryOperator || kind_cursor == CXCursor_CompoundAssignOperator){
@@ -839,6 +842,7 @@ json buildASTJson(CXCursor cursor){
         node["loc"] = content.contains("begin") ? content["begin"] : json();
         node["loc"]["file"] = node["fileName"];
         node["range"] = {{"begin", content["begin"]}, {"end", content["end"]}};
+        node["included"] = fileStr;
     } else if (kind_cursor == CXCursor_IntegerLiteral ||
         kind_cursor == CXCursor_StringLiteral ||
         kind_cursor == CXCursor_CXXBoolLiteralExpr)
@@ -936,7 +940,7 @@ json buildASTJson(CXCursor cursor){
             if (childName0.find("operator") != std::string::npos) children[0]["castKind"] = "FunctionToPointerDecay";
         }
         if (children.size() == 3) children[1]["valueCategory"] = "lvalue";
-    } else if (node["kind"] == "CXXConstructExpr"){
+    } else if (node["kind"] == "CXXConstructExpr" || node["kind"] == "CallExpr"){
         if (children.size() > 0 && children[0]["kind"] == "MemberExpr") {
             node["kind"] = "CXXMemberCallExpr";
         }else {
@@ -1112,28 +1116,37 @@ bool hasSuffix(const std::string& str, const std::string& suffix) {
     return str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
 }
 
-std::vector<const char*> prepareClangArgs(const CommandLineOptions& opts) {
-    std::vector<std::string> extra_include_args;
-    for (const auto& dir : opts.user_include_dirs) {
-        extra_include_args.push_back("-I" + dir);
-    }
-    std::vector<const char*> extra_include_args_cstr;
-    for (const auto& arg : extra_include_args) {
-        extra_include_args_cstr.push_back(arg.c_str());
+struct ClangArgs {
+    std::vector<std::string> str_args;   // 字符串本体
+    std::vector<const char*> cstr_args;  // 指针
+};
+
+
+ClangArgs prepareClangArgs(const CommandLineOptions& opts) {
+    ClangArgs res;
+
+    // 选择标准
+    if (hasSuffix(opts.input_file, ".c")) {
+        res.str_args.push_back("-std=c99");
+    } else {
+        res.str_args.push_back("-xc++");
+        res.str_args.push_back("-std=c++17");
     }
 
-    std::vector<const char*> args;
-    if (!opts.compile_commands_file.empty()) {
-        CompileArgs compile_args = load_compile_commands(opts.compile_commands_file, opts.input_file);
-        args = compile_args.cstr_args;
-    } else if (hasSuffix(opts.input_file, ".c") || hasSuffix(opts.input_file, ".h")) {
-        args.push_back("-std=c99");
-    } else {
-        args.push_back("-std=c++17");
+    // 添加用户 include
+    for (const auto& dir : opts.user_include_dirs) {
+        res.str_args.push_back("-I" + dir);
     }
-    args.insert(args.end(), extra_include_args_cstr.begin(), extra_include_args_cstr.end());
-    return args;
+
+    // 将 string 转换为 c_str 指针
+    for (const auto& arg : res.str_args) {
+        res.cstr_args.push_back(arg.c_str());
+    }
+
+    // 打印检查
+    return res;
 }
+
 
 CXTranslationUnit createTranslationUnit(CXIndex index,
                                         const CommandLineOptions& opts,
@@ -1184,18 +1197,20 @@ int main(int argc, char** argv) {
     }
 
     auto opts = parseCommandLineArgs(argc, argv);
+    addMainFileDirToInclude(opts);
 
     if (!validateInput(opts)) return 1;
-
-    auto clang_args = prepareClangArgs(opts);
+    ClangArgs clang_args = prepareClangArgs(opts);
+    g_user_include_dirs = opts.user_include_dirs;
     CXIndex index = clang_createIndex(0, 0);
-    CXTranslationUnit unit = createTranslationUnit(index, opts, clang_args);
+    CXTranslationUnit unit = createTranslationUnit(index, opts, clang_args.cstr_args);
     if (!unit) {
-        std::cerr << "Parse error\n";
+        std::cerr << "[ERROR] clang_parseTranslationUnit failed!" << std::endl;
+        for (size_t i = 0; i < clang_args.cstr_args.size(); ++i) {
+             std::cerr << clang_args.cstr_args[i] << std::endl;
+        }
         return 2;
     }
-    addMainFileDirToInclude(opts);
-    g_user_include_dirs = opts.user_include_dirs;
     json ast = buildAndProcessAST(unit, opts);
 
     saveASTToFile(ast, opts.output_file);
