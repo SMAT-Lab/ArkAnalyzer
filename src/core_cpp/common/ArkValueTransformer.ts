@@ -255,7 +255,7 @@ export class ArkValueTransformer {
             return this.identifierToValueAndStmts(node);
         } else if (node.kind === 'CXXMemberCallExpr') {
             return this.cxxMemberCallExpressionToValueAndStmts(node);
-        } else if (node.kind === 'MemberExpr') {
+        } else if (node.kind === 'MemberExpr' || node.kind === 'MemberRef' ) {
             return this.memberExpressionToValueAndStmts(node);
         } else if (node.kind === 'CXXNewExpr') {
             return this.newExpressionToValueAndStmts(node);
@@ -686,13 +686,13 @@ export class ArkValueTransformer {
     private memberExpressionToValueAndStmts(memberExpression: any): ValueAndStmts {
         const stmts: Stmt[] = [];
         // 当返回成员变量memberExpr需构建cxxThisExpr
-        if (memberExpression.kind === 'MemberExpr' && memberExpression.inner[0] === undefined) {
+        if ((memberExpression.kind === 'MemberExpr' || memberExpression.kind === 'MemberRef') && memberExpression.inner[0] === undefined) {
             let node = memberExpression;
             node.kind = 'CXXThisExpr';
             memberExpression.inner[0] = node;
         }
         let {value: baseValue, valueOriginalPositions: basePositions, stmts: baseStmts} = this.tsNodeToValueAndStmts(memberExpression.inner[0]);
-        if (memberExpression.inner[0].kind === 'MemberExpr') {
+        if (memberExpression.inner[0].kind === 'MemberExpr' || memberExpression.kind === 'MemberRef') {
             ({value: baseValue, valueOriginalPositions: basePositions, stmts: baseStmts} = this.arkIRTransformer.generateAssignStmtForValue(baseValue, basePositions));
         }
         stmts.push(...baseStmts);
@@ -1107,7 +1107,7 @@ export class ArkValueTransformer {
         } else if (newExpression.kind === 'CXXConstructExpr' && newExpression.type.qualType.startsWith('struct') &&
             constructArgs && constructArgs[0].inner[0]?.kind === 'CompoundLiteralExpr') {
             constructArgs = this.getConstructArgs(constructArgs[0].inner[0].inner);
-        } else if (newExpression.kind ==='InitListExpr') {
+        } else if (newExpression.kind === 'InitListExpr') {
             constructArgs = this.getConstructArgs(newExpression);
         }
 
@@ -1118,25 +1118,54 @@ export class ArkValueTransformer {
         const instanceInvokeExprPositions = [newLocalPositions[0], ...newLocalPositions, ...argPositions];
         invokeStmt.setOperandOriginalPositions(instanceInvokeExprPositions);
         stmts.push(invokeStmt);
-        if (newExpression.kind === 'CompoundLiteralExpr' && newExpression.inner[1].kind === 'InitListExpr') {
-            const tempValueAndStmts = this.arrayLiteralExpressionToValueAndStmts(newExpression.inner[1]);
-            tempValueAndStmts.stmts.forEach(stmt => stmts.push(stmt));
-        } else if (newExpression.kind === 'InitListExpr') {
-            const tempValueAndStmts = this.arrayLiteralExpressionToValueAndStmts(newExpression);
-            tempValueAndStmts.stmts.forEach(stmt => stmts.push(stmt));
+        if ((newExpression.kind === 'CompoundLiteralExpr' && newExpression.inner[1].kind === 'InitListExpr')) {
+            const newExpr = newExpression.kind === 'InitListExpr' ? newExpression : newExpression.inner[1];
+            for (const element of newExpr.inner) {
+                let fieldSignature: FieldSignature;
+                let baseType = newLocal.getType();
+                let baseClassType: ClassType | null = null;
+                if (baseType instanceof ClassType) {
+                    baseClassType = baseType as ClassType;
+                } else if (baseType instanceof PointerType && (baseType as PointerType).getBaseType() instanceof ClassType) {
+                    baseClassType = (baseType as PointerType).getBaseType() as ClassType;
+                } else if (baseType instanceof ReferenceType && (baseType as ReferenceType).getBaseType() instanceof ClassType) {
+                    baseClassType = (baseType as ReferenceType).getBaseType() as ClassType;
+                }
+                if (newLocal instanceof Local && baseClassType !== null) {
+                    fieldSignature = new FieldSignature(
+                        element.inner[0].name, baseClassType.getClassSignature(), UnknownType.getInstance(),
+                    );
+                } else {
+                    fieldSignature = ArkSignatureBuilder.buildFieldSignatureFromFieldName(element.inner[0].name);
+                }
+                fieldSignature.setType(this.resolveTypeNode(element.inner[0].type.qualType));
+                const fieldRef = new CXXArkInstanceFieldRef(newLocal as Local, element.inner[0].isArrow, fieldSignature);
+                const rightOpNode = element.inner[1];
+                const rightValueAndStmts = this.assignmentRightOpToValueAndStmts(rightOpNode, fieldRef);
+                const assignStmt = new ArkAssignStmt(fieldRef, rightValueAndStmts.value);
+                let leftPositions = [FullPosition.buildFromNodeCpp(element.inner[0], this.sourceFile)];
+                let rightPositions = rightValueAndStmts.valueOriginalPositions;
+                assignStmt.setOperandOriginalPositions([...leftPositions, ...rightPositions]);
+                stmts.push(assignStmt);
+            }
         }
 
         return { value: newLocal, valueOriginalPositions: newLocalPositions, stmts: stmts };
     }
 
-    private getConstructArgs(constructArgs: Array<any>): Array<any> {
+    private getConstructArgs(constructArgs: any): Array<any> {
+        if (constructArgs.kind === 'InitListExpr') {
+            constructArgs = constructArgs.inner;
+        }
         if (constructArgs[1]?.kind === 'InitListExpr') {
             constructArgs = constructArgs[1].inner;
         }
         let newConstructArgs = [];
-        for (let i =0; i < constructArgs.length; i++) {
+        for (let i = 0; i < constructArgs.length; i++) {
             if (constructArgs[1].kind.toString() === 'ImplicitCastExpr') {
                 newConstructArgs.push(constructArgs[i].inner[1]);
+            } else {
+                newConstructArgs.push(constructArgs[i]);
             }
         }
         return newConstructArgs;
