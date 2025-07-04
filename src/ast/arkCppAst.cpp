@@ -25,7 +25,7 @@ inline void trim(std::string &s){
 inline std::string cx2str(const CXString &s){
     std::string r = clang_getCString(s) ? clang_getCString(s) : "" ;
     clang_disposeString(s);
-    if (r.find("\\../") != std::string::npos) {
+    if (r.find("\\../") != std::string::npos) { // 规范化获取的路径，存在\../的情况
        return std::filesystem::canonical(r).string();
     }
     return r;
@@ -724,8 +724,6 @@ void filterToMainFileOnly(json& node, const std::string& mainFileName, std::stri
     } else if (fileName != normMainFileName) {
         if (isInUserInclude(fileName) || (isInUserInclude(node.value("included", "")) &&
             node.value("code", "").find("<") == std::string::npos && node.value("code", "").find(">") == std::string::npos)) {
-            std::cout << "[DEBUG][headerUnits] Save user-header node: kind=" << node.value("kind", "")
-                << " file=" << fileName << std::endl;
             headerUnits.push_back(node); // 收集到headerUnits
         }
         node = json(); // 移除AST中的节点（不在main的inner里）
@@ -1146,7 +1144,6 @@ ClangArgs prepareClangArgs(const CommandLineOptions& opts) {
     }
 
     // 打印检查
-    std::cout << "[DEBUG][prepareClangArgs] Final args:" << std::endl;
     return res;
 }
 
