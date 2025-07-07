@@ -1161,15 +1161,7 @@ export class Scene {
     }
 
     public inferTypesCpp() {
-        if (this.buildStage < SceneBuildStage.SDK_INFERRED) {
-            this.sdkArkFilesMap.forEach(file => IRInference.inferFile(file));
-            this.buildStage = SceneBuildStage.SDK_INFERRED;
-        }
         this.filesMap.forEach((file) => {IRInference.inferFile(file);});
-        if (this.buildStage < SceneBuildStage.TYPE_INFERRED) {
-            this.getMethodsMapCpp(true);
-            this.buildStage = SceneBuildStage.TYPE_INFERRED;
-        }
     }
 
     /**
