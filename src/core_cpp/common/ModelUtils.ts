@@ -32,7 +32,7 @@ import {
 import { ArkExport, ExportInfo, ExportType, FromInfo } from '../../core/model/ArkExport';
 import { ArkField } from '../../core/model/ArkField';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
-import { FileUtils, ModulePath } from '../../utils/FileUtils';
+import { FileUtils, getFileAbsPath, ModulePath } from '../../utils/FileUtils';
 import path from 'path';
 import { Sdk } from '../../Config';
 import { ALL, DEFAULT, THIS_NAME } from './TSConst';
@@ -51,7 +51,7 @@ import { EMPTY_STRING } from './ValueUtil';
 import { ArkBaseModel } from '../../core/model/ArkBaseModel';
 import { ArkAssignStmt } from '../../core/base/Stmt';
 import { ClosureFieldRef } from '../../core/base/Ref';
-import { SdkUtils } from './SdkUtils';
+import { ImportInfo } from '../../core/model/ArkImport';
 
 export class ModelUtils {
     public static implicitArkUIBuilderMethods: Set<ArkMethod> = new Set();
@@ -525,45 +525,26 @@ let moduleMap: Map<string, ModulePath> | undefined;
 
 /**
  * find arkFile by from info
- * export xx from '../xx'
- * import xx from '@ohos/xx'
- * import xx from '@ohos.xx'
+ * #include "xx/xx.h"
  * @param im importInfo or exportInfo
  */
 export function getArkFile(im: FromInfo): ArkFile | null | undefined {
-    const from = im.getFrom();
+    let from = im.getFrom();
     if (!from) {
         return null;
     }
-    if (/^([^@]*\/)([^\/]*)$/.test(from)) {
-        //relative path
-        const parentPath = /^\.{1,2}\//.test(from) ? path.dirname(im.getDeclaringArkFile().getFilePath()) : im.getDeclaringArkFile().getProjectDir();
-        const originPath = path.resolve(parentPath, from);
-        return getArkFileFromScene(im, originPath);
-    } else if (/^@[a-z|\-]+?\//.test(from)) {
-        //module path
-        const arkFile = getArkFileFromOtherModule(im);
-        if (arkFile) {
-            return arkFile;
-        }
+    if (!path.isAbsolute(from)) {
+        from = getFileAbsPath(im.getDeclaringArkFile().getFilePath(), from);
     }
-
-    //sdk path
-    const file = SdkUtils.getImportSdkFile(from);
-    if (file) {
-        return file;
+    if (!from) {
+        return null;
     }
     const scene = im.getDeclaringArkFile().getScene();
-    for (const sdk of scene.getProjectSdkMap().values()) {
-        const arkFile = getArkFileFormMap(sdk.name, processSdkPath(sdk, from), scene);
-        if (arkFile) {
-            return arkFile;
-        }
-    }
-    return null;
+    return scene.getFile(new FileSignature(scene.getProjectName(), path.relative(scene.getRealProjectDir(), from)));
 }
 
 /**
+ * #include "xx/xx.h"==>预编译直接展开==>相当于导入文件的全部内容==>头文件直接获取exportInfo
  * find from info's export
  * @param fromInfo importInfo or exportInfo
  */
@@ -582,12 +563,52 @@ export function findExportInfo(fromInfo: FromInfo): ExportInfo | null {
         }
         return null;
     }
-    let exportInfo = findExportInfoInfile(fromInfo, file) || null;
-    if (exportInfo === null) {
-        logger.warn('export info not found, ' + fromInfo.getFrom() + ' in file: ' + fromInfo.getDeclaringArkFile().getFileSignature().toString());
+    if (fromInfo instanceof ImportInfo && (fromInfo as ImportInfo).getImportClauseName().startsWith('#include')) {
+        return processIncludeRef(fromInfo, file);
+    }
+    return processHeaderExportInfos(fromInfo, file);
+}
+
+/* 处理#include "xx/xx.h"的头文件引用 */
+function processIncludeRef(fromInfo: FromInfo, headerFile: ArkFile): ExportInfo {
+    // 1.构造#include "xxx/xx"该头文件引用的exportInfo为该头文件的DefaultClass
+    const includeExportInfo = new ExportInfo.Builder()
+        .exportClauseType(ExportType.CLASS)
+        .exportClauseName(`#include "${fromInfo.getFrom()}"`)
+        .declaringArkFile(headerFile)
+        .arkExport(headerFile.getDefaultClass())
+        .build();
+    // 2.将头文件的exportInfo添加到当前文件的importInfoMaps里，并设置好lazyImportInfo
+    const declFile = fromInfo.getDeclaringArkFile();
+    let includeClauseName =  (fromInfo as ImportInfo).getImportClauseName();
+    for (const exportInfo of headerFile.getExportInfos()) {
+        let headerRealIm = new ImportInfo();
+        headerRealIm.build(exportInfo.getExportClauseName(), 'NamedImports', headerFile.getFilePath(),
+            exportInfo.getOriginTsPosition(), 0);
+        headerRealIm.setTsSourceCode(includeClauseName);
+        headerRealIm.setDeclaringArkFile(declFile);
+        declFile.addImportInfo(headerRealIm);
+        headerRealIm.getLazyExportInfo();  // 会递归findExportInfo函数
+    }
+    // 3.将头文件的importInfos添加到当前文件的importInfoMaps里，并设置好lazyImportInfo
+    for (const im of headerFile.getImportInfos()) {
+        if (declFile.getImportInfoBy(im.getImportClauseName())) {
+            continue;
+        }
+        declFile.addImportInfo(im);
+        im.getLazyExportInfo();
+    }
+    return includeExportInfo;
+}
+
+/* 处理头文件的exportInfo（当作当前文件named importInfo) */
+function processHeaderExportInfos(fromInfo: FromInfo, headerFile: ArkFile): ExportInfo | null {
+    const exportName = fromInfo.getOriginName();
+    let exportInfo = headerFile.getExportInfoBy(exportName);
+    if (!exportInfo) {
         return null;
     }
-    const arkExport = findArkExport(exportInfo);
+    let arkExport = exportInfo.getArkExport() || null;
     exportInfo.setArkExport(arkExport);
     if (arkExport) {
         exportInfo.setExportClauseType(arkExport.getExportType());

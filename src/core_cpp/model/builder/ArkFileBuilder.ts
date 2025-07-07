@@ -24,8 +24,9 @@ import { buildArkNamespace } from './ArkNamespaceBuilder';
 import { ArkClass } from '../../../core/model/ArkClass';
 import { ArkMethod } from '../../../core/model/ArkMethod';
 import {AstUtils} from "../../../ast/astUtils"
-import { FileSignature } from '../../../core/model/ArkSignature';
+import { FileSignature, ClassSignature } from '../../../core/model/ArkSignature';
 import { LineColPosition } from '../../../core/base/Position';
+import { buildImportInfo } from './ArkImportBuilder';
 
 export const notStmtOrExprKind = [
     'ModuleDeclaration',
@@ -83,7 +84,9 @@ function isChildLocFileHeader(child: any): boolean {
  * @returns
  */
 function buildArkFile(arkFile: ArkFile, astRoot: any): void {
-    const statements = astRoot.inner;
+    const includeNodes = astRoot.headerUnits?.filter(
+        (item): item is Object => item?.kind === 'inclusion directive') ?? [];
+    const statements = [...includeNodes, ...astRoot.inner]
     let recordMap = new Map; //记录派生类
     statements.forEach((child: any) => {
         if (child.kind === 'CXXRecordDecl' || child.kind === 'ClassTemplate') {
@@ -114,8 +117,7 @@ function buildArkFile(arkFile: ArkFile, astRoot: any): void {
                 arkFile.addExportInfo(buildExportInfo(ns, arkFile, LineColPosition.buildFromNodeCpp(child, astRoot)))
             }
         } else if (child.kind === 'CXXMethodDecl' || child.kind === 'CXXConstructorDecl' || child.kind === 'CXXDestructorDecl') {
-            let className: string = child.mangledName;
-            let arkClass = arkFile.getClasses().find(arkClass => (arkClass.getName() == className));
+            const arkClass = getDeclaringArkClassOfMethod(child, arkFile);
             let mthd: ArkMethod = new ArkMethod();
             // @ts-ignore
             buildArkMethodFromArkClass(child, arkClass, mthd, astRoot);
@@ -138,12 +140,30 @@ function buildArkFile(arkFile: ArkFile, astRoot: any): void {
             if (isChildLocFileHeader(child)) {
                 arkFile.addExportInfo(buildExportInfo(cls, arkFile, LineColPosition.buildFromNodeCpp(child, astRoot)))
             }
+        } else if (child.kind === 'inclusion directive') {
+            let importInfos = buildImportInfo(child, astRoot, arkFile);
+            importInfos?.forEach(element => {
+                element.setDeclaringArkFile(arkFile);
+                arkFile.addImportInfo(element);
+            });
         }
 
     });
 }
 
-
+// Get ArkClass of 'CXXMethodDecl'/'CXXConstructorDecl'/'CXXDestructorDecl'
+function getDeclaringArkClassOfMethod(mtd: any, arkFile: ArkFile): ArkClass {
+    const className: string = mtd.mangledName;
+    let arkClass = arkFile.getClasses().find(arkClass => (arkClass.getName() == className));
+    if (!arkClass) {
+        arkClass = new ArkClass();
+        const classSignature = new ClassSignature(className, arkFile.getFileSignature());
+        arkClass.setSignature(classSignature);
+        arkClass.setDeclaringArkFile(arkFile);
+        arkFile.addArkClass(arkClass);
+    }
+    return arkClass;
+}
 
 function genDefaultArkClass(arkFile: ArkFile, astRoot: any): void {
     let defaultClass = new ArkClass();
