@@ -1148,7 +1148,7 @@ export class ArkValueTransformer {
         }
         let newConstructArgs = [];
         for (let i = 0; i < constructArgs.length; i++) {
-            if (constructArgs[1].kind.toString() === 'ImplicitCastExpr') {
+            if (constructArgs[1]?.kind.toString() === 'ImplicitCastExpr') {
                 newConstructArgs.push(constructArgs[i].inner[1]);
             } else {
                 newConstructArgs.push(constructArgs[i]);
