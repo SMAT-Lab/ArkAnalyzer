@@ -1,7 +1,7 @@
 # arkCppAstDumper工具使用
 
 ## 简介
-arkCppAstDumper是基于libclang开发的工具，对C/C++生成简洁的抽象语法树并输出到json文件。基于libclang是该工具需要应用到IDE，需要考虑到工具的大小、性能、依赖环境等要求。libclang相比clang的依赖环境更简单、工具更小，生成的抽象语法树也基本能满足在IDE上的需求。
+arkCppAstDumper是基于libclang开发的工具，对C/C++生成简洁的抽象语法树并输出到json文件。基于libclang是因为该工具需要应用到IDE，需要考虑到工具的大小、性能、依赖环境等要求。libclang相比clang的依赖环境更简单、工具更小，生成的抽象语法树也基本能满足在IDE上的需求。
 
 |         | libclang插件                                             | clang插件                |
 |---------|--------------------------------------------------------|------------------------|
@@ -98,14 +98,14 @@ arkCppAstDumper是基于libclang开发的工具，对C/C++生成简洁的抽象�
 
 ## 工具使用示例
 
-### 对单个文件生成抽象语法树到文件.cpp同级路径下（默认路径）
+### 对单个文件生成抽象语法树并输出到文件.cpp同级路径下（默认路径）
     ./arkCppAstDumper.exe <文件.cpp>
 
-### 对单个文件生成抽象语法树到指定路径
+### 对单个文件生成抽象语法树并输出到指定路径
     ./arkCppAstDumper.exe <文件.cpp> -o <json文件指定路径>
 
 ### 对单个文件生成抽象语法树并提供编译数据库文件
-    ./arkCppAstDumper.exe <文件.cpp> -o <json文件指定路径> -c <j编译数据库文件路径>
+    ./arkCppAstDumper.exe <文件.cpp> -o <json文件指定路径> -c <编译数据库文件路径>
 
 ### 对单个文件生成抽象语法树并提供多个-I编译参数
     ./arkCppAstDumper.exe <文件.cpp> -o <json文件指定路径> -i <头文件路径> -i <头文件路径> ...
