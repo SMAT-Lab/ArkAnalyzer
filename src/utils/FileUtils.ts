@@ -14,7 +14,7 @@
  */
 
 import fs from 'fs';
-import path from 'path';
+import path, { normalize, sep } from 'path';
 import Logger, { LOG_MODULE_TYPE } from './logger';
 import { transfer2UnixPath } from './pathTransfer';
 import { OH_PACKAGE_JSON5 } from '../core/common/EtsConst';
@@ -140,4 +140,28 @@ export function getFileRecursively(srcDir: string, fileName: string, visited: Se
         return res;
     });
     return res;
+}
+
+export function getFileAbsPath(srcPath: string, relativePath: string): string {
+    const normalizedRelPath = normalize(relativePath);
+    const sepRegex = sep === '\\' ? '\\\\' : sep;
+    const regex = new RegExp(`^(\\.\\.${sepRegex})+(.*)$`);
+    const match = normalizedRelPath.match(regex);
+    let upLevel: string;
+    let remainingPath: string;
+    if (match) {
+        upLevel = match[1];
+        remainingPath = match[2];
+    } else {
+        upLevel = '';
+        remainingPath = normalizedRelPath;
+    }
+    const { dirname } = path;
+    const srcDir = dirname(normalize(srcPath));
+    const tmpDir = path.resolve(srcDir, upLevel);
+    const realPath = path.join(tmpDir, remainingPath);
+    if (fs.existsSync(realPath)) {
+        return realPath;
+    }
+    return '';
 }

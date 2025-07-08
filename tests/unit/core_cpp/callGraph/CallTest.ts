@@ -13,7 +13,7 @@ config.buildFromProjectDir('../../../resources_cpp/call_graph/');
 function runScene(config: SceneConfig, fileName: string) {
     let projectScene: Scene = new Scene();
     projectScene.buildSceneFromProjectDirCpp(config);
-    projectScene.inferTypesCpp();
+    projectScene.inferTypes();
 
     let entryPoints: MethodSignature[] = [];
     // @ts-ignore

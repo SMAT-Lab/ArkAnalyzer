@@ -13,7 +13,7 @@ int funcDoSomething(int i, int j)
 
 // 类方法实现
 double Circle::calculateArea() const {
-    return PI * radius * radius;
+    return 3.14 * radius * radius;
 }
 
 void Circle::printInfo() const {
