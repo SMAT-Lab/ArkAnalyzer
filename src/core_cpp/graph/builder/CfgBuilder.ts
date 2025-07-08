@@ -518,7 +518,7 @@ export class CfgBuilder {
         if (innerNode && innerNode.inner[0].kind === 'MemberExpr') {
             let childInner = innerNode.inner[0];
             callee = '.' + childInner.name;
-            while (childInner.inner) {
+            while (childInner.inner.length !== 0) {
                 let innerType = childInner.inner[0].kind.toString();
                 if (innerType === 'DeclRefExpr') {
                     caller = childInner.inner[0].referencedDecl.name;
