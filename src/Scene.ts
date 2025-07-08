@@ -1124,6 +1124,10 @@ export class Scene {
         return callGraph;
     }
 
+    public getCppFuncMap(): Map<string, Map<string, ArkMethod>> {
+        return this.cppFuncMap;
+    }
+
     /**
      * Infer type for each non-default method. It infers the type of each field/local/reference.
      * For example, the statement `let b = 5;`, the type of local `b` is `NumberType`; and for the statement `let s =
