@@ -1181,25 +1181,31 @@ export class Scene {
             if (!headerArkFile) {
                 continue;
             }
-            const sortRefFiles = this.sortRefFiles(headerPath, refFiles);
+            const sortedRefFiles = this.sortRefFiles(headerPath, refFiles);
             for (const cls of headerArkFile.getClasses()) {
                 for (const mtd of cls.getMethods(true)) {
-                    const isFuncDef = mtd.getCode() ? (/^.*\{.*\}$/s.test(mtd.getCode() ?? '')) : false;
-                    if (isFuncDef || mtd.isDefaultArkMethod() || mtd.getName() === INSTANCE_INIT_METHOD_NAME ||
-                        mtd.getName() === STATIC_INIT_METHOD_NAME) {
-                        continue;
-                    }
-                    if (!this.cppFuncMap.has(headerPath)) {
-                        this.cppFuncMap.set(headerPath, new Map<string, ArkMethod>());
-                    }
-                    this.mapHeaderToSource(mtd, headerPath, sortRefFiles);
+                    this.findMtdImpl(mtd, headerPath, sortedRefFiles);
                 }
             }
         }
     }
 
+    private findMtdImpl(mtd: ArkMethod, headerPath: string, sortedRefFiles: string[]): void {
+        const mtdCode = mtd.getCode();
+        // Check if there are function body braces in the function code.
+        const isFuncDef = mtdCode ? (/^.*\{.*\}$/s.test(mtdCode)) : false;
+        if (isFuncDef || mtd.isDefaultArkMethod() || mtd.getName() === INSTANCE_INIT_METHOD_NAME ||
+            mtd.getName() === STATIC_INIT_METHOD_NAME) {
+            return;
+        }
+        if (!this.cppFuncMap.has(headerPath)) {
+            this.cppFuncMap.set(headerPath, new Map<string, ArkMethod>());
+        }
+        this.mapHeaderToSource(mtd, headerPath, sortedRefFiles);
+    }
+
     private getCppHeaderFileRefMap(): Map<string, string[]> {
-        let headerFileRefMap = new Map<string, string[]>();
+        const headerFileRefMap = new Map<string, string[]>();
         const cppSuffixes = ['.cpp', '.c', '.cxx'];
         this.filesMap.forEach(file => {
             const filePath = normalize(file.getFilePath());
@@ -1209,22 +1215,29 @@ export class Scene {
             }
             const importInfos = file.getImportInfos();
             importInfos.forEach(im => {
-                let imFrom = im.getFrom();
-                if (!imFrom) {
-                    return;
-                }
-                if (!fs.existsSync(imFrom)) {
-                    // Processing relative Path
-                    imFrom = getFileAbsPath(filePath, imFrom);
-                    if (!imFrom) {
-                        return;
-                    }
-                }
-                headerFileRefMap.set(imFrom, [...(headerFileRefMap.get(imFrom) ?? []), filePath]);
+                this.processImportInfo(im, filePath, headerFileRefMap);
             });
         });
 
         return headerFileRefMap;
+    }
+
+    private processImportInfo(im: ImportInfo, filePath: string, headerFileRefMap: Map<string, string[]>) {
+        let imFrom = im.getFrom();
+        if (!imFrom) {
+            return;
+        }
+        if (!fs.existsSync(imFrom)) {
+            // Processing relative Path
+            imFrom = getFileAbsPath(filePath, imFrom);
+            if (!imFrom) {
+                return;
+            }
+        }
+        if (!headerFileRefMap.has(imFrom)) {
+            headerFileRefMap.set(imFrom, []);
+        }
+        headerFileRefMap.get(imFrom)!.push(filePath);
     }
 
     private sortRefFiles(headerFilePath: string, refFiles: string[]): string[] {
