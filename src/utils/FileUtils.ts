@@ -14,7 +14,7 @@
  */
 
 import fs from 'fs';
-import path, { normalize, sep } from 'path';
+import path from 'path';
 import Logger, { LOG_MODULE_TYPE } from './logger';
 import { transfer2UnixPath } from './pathTransfer';
 import { OH_PACKAGE_JSON5 } from '../core/common/EtsConst';
