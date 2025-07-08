@@ -1242,8 +1242,15 @@ export class Scene {
 
     private sortRefFiles(headerFilePath: string, refFiles: string[]): string[] {
         const targetFileName = path.parse(headerFilePath).name;
-        const prioritized = refFiles.filter(fp => path.parse(fp).name === targetFileName);
-        const others = refFiles.filter(fp => path.parse(fp).name !== targetFileName);
+        const prioritized: string[] = [];
+        const others: string[] = [];
+        for (const refFile of refFiles) {
+            if(path.parse(refFile).name === targetFileName) {
+                prioritized.push(refFile);
+            } else {
+                others.push(refFile);
+            }
+        }
         return [...prioritized, ...others];
     }
 
