@@ -85,7 +85,7 @@ function isChildLocFileHeader(child: any): boolean {
  */
 function buildArkFile(arkFile: ArkFile, astRoot: any): void {
     const includeNodes = astRoot.headerUnits?.filter(
-        (item): item is Object => item?.kind === 'inclusion directive') ?? [];
+        (item: any): item is Object => item?.kind === 'inclusion directive') ?? [];
     const statements = [...includeNodes, ...astRoot.inner]
     let recordMap = new Map; //记录派生类
     statements.forEach((child: any) => {

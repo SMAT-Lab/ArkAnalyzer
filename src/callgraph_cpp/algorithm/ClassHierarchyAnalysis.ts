@@ -20,6 +20,7 @@ import { NodeID } from '../../core/graph/GraphTraits';
 import { CallGraph, CallSite } from '../model/CallGraph';
 import { AbstractAnalysis } from './AbstractAnalysis';
 import { CallGraphBuilder } from '../model/builder/CallGraphBuilder';
+import { ArkClass } from '../../core/model/ArkClass';
 
 export class ClassHierarchyAnalysis extends AbstractAnalysis {
     constructor(scene:Scene, cg: CallGraph, cb: CallGraphBuilder) {
@@ -49,17 +50,28 @@ export class ClassHierarchyAnalysis extends AbstractAnalysis {
             resolveResult.push(new CallSite(invokeStmt, undefined, this.cg.getCallGraphNodeByMethod(calleeMethod!.getSignature()).getID(), callerMethod!));
         } else {
             let declareClass = calleeMethod.getDeclaringArkClass();
-            if (declareClass.isAbstract()) {
-                return resolveResult;
-            }
+            this.getClassHierarchy(declareClass).forEach((arkClass: ArkClass) => {
+                if (arkClass.isAbstract()) {
+                    return;
+                }
 
-            let possibleCalleeMethod = declareClass.getMethodWithName(calleeMethod!.getName());
+                let possibleCalleeMethod = arkClass.getMethodWithName(calleeMethod!.getName());
 
-            if (possibleCalleeMethod && !possibleCalleeMethod.isAbstract()) {
-                resolveResult.push(
-                    new CallSite(invokeStmt, undefined, this.cg.getCallGraphNodeByMethod(possibleCalleeMethod.getSignature()).getID(), callerMethod)
-                );
-            }
+                if (
+                    possibleCalleeMethod &&
+                    possibleCalleeMethod.isGenerated() &&
+                    arkClass.getSignature().toString() !== declareClass.getSignature().toString()
+                ) {
+                    // remove the generated method in extended classes
+                    return;
+                }
+
+                if (possibleCalleeMethod && !possibleCalleeMethod.isAbstract()) {
+                    resolveResult.push(
+                        new CallSite(invokeStmt, undefined, this.cg.getCallGraphNodeByMethod(possibleCalleeMethod.getSignature()).getID(), callerMethod)
+                    );
+                }
+            });
         }
 
         return resolveResult;
