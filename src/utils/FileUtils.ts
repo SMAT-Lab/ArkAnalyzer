@@ -141,3 +141,15 @@ export function getFileRecursively(srcDir: string, fileName: string, visited: Se
     });
     return res;
 }
+
+export function getFileAbsPath(srcPath: string, relativePath: string): string {
+    if (!srcPath || !relativePath) {
+        return '';
+    }
+    const srcDir = path.dirname(path.resolve(srcPath));
+    const absPath = path.resolve(srcDir, relativePath);
+    if (fs.existsSync(absPath)) {
+        return absPath;
+    }
+    return '';
+}

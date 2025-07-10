@@ -14,7 +14,7 @@
  */
 
 import fs from 'fs';
-import path from 'path';
+import path, { normalize } from 'path';
 
 import { SceneConfig, SceneOptions, Sdk, TsConfig } from './Config';
 import { initModulePathMap, ModelUtils } from './core/common/ModelUtils';
@@ -31,17 +31,17 @@ import { Local } from './core/base/Local';
 import { buildArkFileFromFile } from './core/model/builder/ArkFileBuilder';
 import { fetchDependenciesFromFile, parseJsonText } from './utils/json5parser';
 import { getAllFiles } from './utils/getAllFiles';
-import { FileUtils, getFileRecursively } from './utils/FileUtils';
+import { FileUtils, getFileRecursively, getFileAbsPath } from './utils/FileUtils';
 import { ArkExport, ExportInfo, ExportType } from './core/model/ArkExport';
 import { addInitInConstructor, buildDefaultConstructor } from './core/model/builder/ArkMethodBuilder';
 import {
     addInitInConstructorByArkClass,
     buildDefaultConstructor as buildDefaultConstructorCpp
-} from './core_cpp/model/builder/ArkMethodBuilder';
-import { DEFAULT_ARK_CLASS_NAME, STATIC_INIT_METHOD_NAME } from './core/common/Const';
+} from './jingwei_cpp_frontend/model/builder/ArkMethodBuilder';
+import { DEFAULT_ARK_CLASS_NAME, INSTANCE_INIT_METHOD_NAME, STATIC_INIT_METHOD_NAME } from './core/common/Const';
 import { CallGraph } from './callgraph/model/CallGraph';
 import { CallGraphBuilder } from './callgraph/model/builder/CallGraphBuilder';
-import { buildArkFileFromFile as buildArkFileFromFileCpp } from './core_cpp/model/builder/ArkFileBuilder';
+import { buildArkFileFromFile as buildArkFileFromFileCpp } from './jingwei_cpp_frontend/model/builder/ArkFileBuilder';
 
 
 import { IRInference } from './core/common/IRInference';
@@ -105,6 +105,9 @@ export class Scene {
 
     private unhandledFilePaths: string[] = [];
     private unhandledSdkFilePaths: string[] = [];
+    // Map<path_to_headerFile, Map<func_sub_signature, ArkMethod of function definition>>
+    // e.g. <path_to_h, <"retType clsName::funcSubSig", ArkMethod>>
+    private cppFuncMap: Map<string, Map<string, ArkMethod>> = new Map();
 
     constructor() {}
 
@@ -138,6 +141,7 @@ export class Scene {
         this.sdkGlobalMap.clear();
         this.ohPkgContentMap.clear();
         this.ohPkgContent = {};
+        this.cppFuncMap.clear();
     }
 
     public getStage(): SceneBuildStage {
@@ -297,14 +301,9 @@ export class Scene {
         }
     }
 
-    private isCppFile(file: string): boolean {
-        const cppSuffixes = [".cpp", "h", ".c",]
-        return cppSuffixes.some(suffix => file.endsWith(suffix));
-    }
-
     private addDefaultConstructors(): void {
         for (const file of this.getFiles()) {
-            const isCppFile = this.isCppFile(file.getFilePath());
+            const isCppFile = file.getLanguage() === Language.CPLUS;
             for (const cls of ModelUtils.getAllClassesInFile(file)) {
                 if (isCppFile) {
                     buildDefaultConstructorCpp(cls);
@@ -348,7 +347,7 @@ export class Scene {
         }
 
         for (const method of methods) {
-            const isCppFile = this.isCppFile(method.getDeclaringArkFile()?.getFilePath());
+            const isCppFile = method.getDeclaringArkFile()?.getLanguage() === Language.CPLUS;
             try {
                 if (isCppFile) {
                     method.buildBodyCpp();
@@ -397,7 +396,7 @@ export class Scene {
             try {
                 const arkFile: ArkFile = new ArkFile(FileUtils.getFileLanguage(file, this.fileLanguages));
                 arkFile.setScene(this);
-                if (this.isCppFile(file)) {
+                if (arkFile.getLanguage() === Language.CPLUS) {
                     buildArkFileFromFileCpp(file, this.realProjectDir, arkFile, this.projectName, this.includeDirs);
                 } else {
                     buildArkFileFromFile(file, this.realProjectDir, arkFile, this.projectName);
@@ -1124,6 +1123,10 @@ export class Scene {
         return callGraph;
     }
 
+    public getCppFuncMap(): Map<string, Map<string, ArkMethod>> {
+        return this.cppFuncMap;
+    }
+
     /**
      * Infer type for each non-default method. It infers the type of each field/local/reference.
      * For example, the statement `let b = 5;`, the type of local `b` is `NumberType`; and for the statement `let s =
@@ -1147,6 +1150,7 @@ export class Scene {
             });
             this.buildStage = SceneBuildStage.SDK_INFERRED;
         }
+        this.buildFuncMapForCpp();
         this.filesMap.forEach(file => {
             try {
                 IRInference.inferFile(file);
@@ -1160,15 +1164,110 @@ export class Scene {
         }
     }
 
-    public inferTypesCpp() {
-        if (this.buildStage < SceneBuildStage.SDK_INFERRED) {
-            this.sdkArkFilesMap.forEach(file => IRInference.inferFile(file));
-            this.buildStage = SceneBuildStage.SDK_INFERRED;
+    private buildFuncMapForCpp(): void {
+        const headerFileRefMap = this.getCppHeaderFileRefMap();
+        for (const [headerPath, refFiles] of headerFileRefMap) {
+            const headerArkFile = this.getFile(new FileSignature(
+                this.projectName, path.relative(this.realProjectDir, headerPath)));
+            if (!headerArkFile) {
+                continue;
+            }
+            const sortedRefFiles = this.sortRefFiles(headerPath, refFiles);
+            for (const cls of headerArkFile.getClasses()) {
+                for (const mtd of cls.getMethods(true)) {
+                    this.findMtdImpl(mtd, headerPath, sortedRefFiles);
+                }
+            }
         }
-        this.filesMap.forEach((file) => {IRInference.inferFile(file);});
-        if (this.buildStage < SceneBuildStage.TYPE_INFERRED) {
-            this.getMethodsMapCpp(true);
-            this.buildStage = SceneBuildStage.TYPE_INFERRED;
+    }
+
+    private findMtdImpl(mtd: ArkMethod, headerPath: string, sortedRefFiles: string[]): void {
+        const mtdCode = mtd.getCode();
+        // Check if there are function body braces in the function code.
+        const isFuncDef = mtdCode ? (/^.*\{.*\}$/s.test(mtdCode)) : false;
+        if (isFuncDef || mtd.isDefaultArkMethod() || mtd.getName() === INSTANCE_INIT_METHOD_NAME ||
+            mtd.getName() === STATIC_INIT_METHOD_NAME) {
+            return;
+        }
+        if (!this.cppFuncMap.has(headerPath)) {
+            this.cppFuncMap.set(headerPath, new Map<string, ArkMethod>());
+        }
+        this.mapHeaderToSource(mtd, headerPath, sortedRefFiles);
+    }
+
+    private getCppHeaderFileRefMap(): Map<string, string[]> {
+        const headerFileRefMap = new Map<string, string[]>();
+        const cppSuffixes = ['.cpp', '.c', '.cxx'];
+        this.filesMap.forEach(file => {
+            const filePath = normalize(file.getFilePath());
+            const extension = path.extname(filePath).toLowerCase();
+            if (!cppSuffixes.some(suffix => extension === suffix)) {
+                return;
+            }
+            const importInfos = file.getImportInfos();
+            importInfos.forEach(im => {
+                this.processImportInfo(im, filePath, headerFileRefMap);
+            });
+        });
+
+        return headerFileRefMap;
+    }
+
+    private processImportInfo(im: ImportInfo, filePath: string, headerFileRefMap: Map<string, string[]>) {
+        let imFrom = im.getFrom();
+        if (!imFrom) {
+            return;
+        }
+        if (!fs.existsSync(imFrom)) {
+            // Processing relative Path
+            imFrom = getFileAbsPath(filePath, imFrom);
+            if (!imFrom) {
+                return;
+            }
+        }
+        if (!headerFileRefMap.has(imFrom)) {
+            headerFileRefMap.set(imFrom, []);
+        }
+        headerFileRefMap.get(imFrom)!.push(filePath);
+    }
+
+    private sortRefFiles(headerFilePath: string, refFiles: string[]): string[] {
+        const targetFileName = path.parse(headerFilePath).name;
+        const prioritized: string[] = [];
+        const others: string[] = [];
+        for (const refFile of refFiles) {
+            if(path.parse(refFile).name === targetFileName) {
+                prioritized.push(refFile);
+            } else {
+                others.push(refFile);
+            }
+        }
+        return [...prioritized, ...others];
+    }
+
+    private mapHeaderToSource(mtdDecl: ArkMethod, headerFile: string, refFiles: string[]): void {
+        const tgtClsName = mtdDecl.getDeclaringArkClass().getName();
+        const tgtMtdSubSig = mtdDecl.getSubSignature();
+        const matchKey = `${tgtMtdSubSig.getReturnType().toString()} ${tgtClsName}::${tgtMtdSubSig.toString()}`;
+        for (const refFile of refFiles) {
+            const refArkFile = this.getFile(new FileSignature(
+                this.projectName, path.relative(this.realProjectDir, refFile)));
+            if (!refArkFile) {
+                continue;
+            }
+            const refArkClass = refArkFile.getClassWithName(tgtClsName);
+            if (!refArkClass) {
+                continue;
+            }
+            const nameMatchingMtd = refArkClass.getMethodWithName(mtdDecl.getName());  // 注意这里只返回单个，后续要考虑函数重载的情况
+            if (nameMatchingMtd) {
+                const nameMatchingMtdSubSig = nameMatchingMtd.getSubSignature();
+                const mtdSubSigStr = `${nameMatchingMtdSubSig.getReturnType().toString()} ${tgtClsName}::${nameMatchingMtdSubSig.toString()}`;
+                if (mtdSubSigStr === matchKey) {
+                    this.cppFuncMap.get(headerFile)!.set(matchKey, nameMatchingMtd);
+                    return;
+                }
+            }
         }
     }
 

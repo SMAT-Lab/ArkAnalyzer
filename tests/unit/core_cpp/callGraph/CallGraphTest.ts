@@ -1,8 +1,8 @@
 import fs from 'fs';
 import { SceneConfig } from '../../../../src';
-import { DEFAULT_ARK_CLASS_NAME } from '../../../../src/core_cpp/common/Const';
-import { CallGraph } from '../../../../src/callgraph_cpp/model/CallGraph';
-import { CallGraphBuilder } from '../../../../src/callgraph_cpp/model/builder/CallGraphBuilder';
+import { DEFAULT_ARK_CLASS_NAME } from '../../../../src';
+import { CallGraph } from '../../../../src';
+import { CallGraphBuilder } from '../../../../src';
 import { Scene } from '../../../../src';
 import { MethodSignature } from '../../../../src';
 
@@ -28,8 +28,8 @@ function runScene(config: SceneConfig, fileName: string) {
     let callGraph = new CallGraph(projectScene);
     let callGraphBuilder = new CallGraphBuilder(callGraph, projectScene);
     callGraphBuilder.buildClassHierarchyCallGraph(entryPoints, false);
-    callGraph.dump('../out/Tests.dot');
-    const content1 = fs.readFileSync('../out/Tests.dot', 'utf-8').replace(/\s+/g, '');
+    callGraph.dump('../cg_out/Tests.dot');
+    const content1 = fs.readFileSync('../cg_out/Tests.dot', 'utf-8').replace(/\s+/g, '');
     const content2 = fs.readFileSync('cg/Tests.dot', 'utf-8').replace(/\s+/g, '');
     console.log('Are the files equal?', content1 === content2);
 }

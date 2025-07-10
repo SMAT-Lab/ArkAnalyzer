@@ -6,14 +6,18 @@ export const TEMPLATE_EXPECT_CASE1 = {
                 'a = parameter0: T = int',
                 'b = parameter1: T = int',
                 'this = this: @template/template.cpp: %dflt',
-                'if a > b'
+                'if a > b',
+                'ConditionalOperatorIfTrue0',
+                '%0 = a',
+                'ConditionalOperatorIfFalse0',
+                '%0 = b',
+                'ConditionalOperatorEnd0',
+                'temp = %0',
+                'return temp'
             ],
             preds: [],
-            succes: [ 1, 2 ]
+            succes: []
         },
-        { id: 1, stmts: [ 'temp = a' ], preds: [ 0 ], succes: [ 3 ] },
-        { id: 2, stmts: [ 'temp = b' ], preds: [ 0 ], succes: [ 3 ] },
-        { id: 3, stmts: [ 'return temp' ], preds: [ 1, 2 ], succes: [] },
     ]
 };
 
@@ -25,14 +29,18 @@ export const TEMPLATE_EXPECT_CASE2 = {
                 'a = parameter0: Q',
                 'b = parameter1: Q',
                 'this = this: @template/template.cpp: %dflt',
-                'if a > b'
+                'if a > b',
+                'ConditionalOperatorIfTrue0',
+                '%0 = a',
+                'ConditionalOperatorIfFalse0',
+                '%0 = b',
+                'ConditionalOperatorEnd0',
+                'temp = %0',
+                'return 2'
             ],
             preds: [],
-            succes: [ 1, 2 ]
+            succes: []
         },
-        { id: 1, stmts: [ 'temp = a' ], preds: [ 0 ], succes: [ 3 ] },
-        { id: 2, stmts: [ 'temp = b' ], preds: [ 0 ], succes: [ 3 ] },
-        { id: 3, stmts: [ 'return 2' ], preds: [ 1, 2 ], succes: [] },
     ]
 };
 

@@ -17,6 +17,7 @@ import { ArkFile, Language } from './ArkFile';
 import { LineColPosition } from '../base/Position';
 import { ExportInfo, FromInfo } from './ArkExport';
 import { findExportInfo } from '../common/ModelUtils';
+import { findExportInfo as findExportInfoCpp} from '../../jingwei_cpp_frontend/common/ModelUtils';
 import { ArkBaseModel } from './ArkBaseModel';
 import { ArkError } from '../common/ArkError';
 
@@ -73,7 +74,11 @@ export class ImportInfo extends ArkBaseModel implements FromInfo {
      */
     public getLazyExportInfo(): ExportInfo | null {
         if (this.lazyExportInfo === undefined && this.declaringArkFile.getScene().getStage() >= 2) {
-            this.lazyExportInfo = findExportInfo(this);
+            if (this.declaringArkFile.getLanguage() === Language.CPLUS) {
+                this.lazyExportInfo = findExportInfoCpp(this);
+            } else {
+                this.lazyExportInfo = findExportInfo(this);
+            }
         }
         return this.lazyExportInfo || null;
     }
