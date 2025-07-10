@@ -41,8 +41,8 @@ import {
     DEFAULT_ARK_CLASS_NAME,
     INSTANCE_INIT_METHOD_NAME,
     STATIC_INIT_METHOD_NAME,
-} from '../../common/Const';
-import { IRUtils } from '../../common/IRUtils';
+} from '../../../core/common/Const';
+import { IRUtils } from '../../../core/common/IRUtils';
 import { ClassSignature, MethodSignature } from '../../../core/model/ArkSignature';
 import { ArkSignatureBuilder } from './ArkSignatureBuilder';
 import { FullPosition } from '../../../core/base/Position';

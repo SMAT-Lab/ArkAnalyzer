@@ -60,16 +60,16 @@ import {
     COMPONENT_FOR_EACH,
     COMPONENT_LAZY_FOR_EACH,
     COMPONENT_POP_FUNCTION,
-} from './EtsConst';
+} from '../../core/common/EtsConst';
 import { ValueUtil } from './ValueUtil';
-import { IRUtils } from './IRUtils';
+import { IRUtils } from '../../core/common/IRUtils';
 import { AbstractFieldRef, ArkArrayRef, ArkInstanceFieldRef, GlobalRef, CXXArkInstanceFieldRef } from '../../core/base/Ref';
 import { ModelUtils } from './ModelUtils';
 import { ArkMethod } from '../../core/model/ArkMethod';
 import { buildArkMethodFromArkClass } from '../model/builder/ArkMethodBuilder';
-import { Builtin } from './Builtin';
+import { Builtin } from '../../core/common/Builtin';
 import { Constant, StringConstant } from '../../core/base/Constant';
-import { TEMP_LOCAL_PREFIX } from './Const';
+import { TEMP_LOCAL_PREFIX } from '../../core/common/Const';
 import { ArkIRTransformer, DummyStmt, ValueAndStmts } from './ArkIRTransformer';
 import {buildTypeFromPreStr, cppNode2Type, isCXXSTLContainer } from '../model/builder/builderUtils';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';

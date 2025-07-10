@@ -16,7 +16,7 @@
 import { BasicBlock } from '../../../core/graph/BasicBlock';
 import { ArkAssignStmt, ArkIfStmt, Stmt } from '../../../core/base/Stmt';
 import { AbstractInvokeExpr } from '../../../core/base/Expr';
-import { Builtin } from '../../common/Builtin';
+import { Builtin } from '../../../core/common/Builtin';
 import { ArkIRTransformer } from '../../common/ArkIRTransformer';
 import { BlockBuilder } from './CfgBuilder';
 

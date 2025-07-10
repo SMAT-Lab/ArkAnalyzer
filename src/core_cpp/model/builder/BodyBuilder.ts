@@ -20,7 +20,7 @@ import { CfgBuilder } from '../../graph/builder/CfgBuilder';
 import * as ts from 'ohos-typescript';
 import { Local } from '../../../core/base/Local';
 import { MethodParameter } from './ArkMethodBuilder';
-import { LEXICAL_ENV_NAME_PREFIX, NAME_DELIMITER, NAME_PREFIX } from '../../common/Const';
+import { LEXICAL_ENV_NAME_PREFIX, NAME_DELIMITER, NAME_PREFIX } from '../../../core/common/Const';
 import { ArkParameterRef, ArkStaticFieldRef, ClosureFieldRef, GlobalRef } from '../../../core/base/Ref';
 import { ArkAliasTypeDefineStmt, ArkAssignStmt, ArkInvokeStmt, ArkReturnStmt } from '../../../core/base/Stmt';
 import { AliasType, ArrayType, ClosureType, FunctionType, LexicalEnvType, Type, UnclearReferenceType, UnionType } from '../../../core/base/Type';

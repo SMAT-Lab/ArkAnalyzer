@@ -35,10 +35,10 @@ import { BasicBlock } from '../../../core/graph/BasicBlock';
 import { Local } from '../../../core/base/Local';
 import { Value } from '../../../core/base/Value';
 import { CONSTRUCTOR_NAME, SUPER_NAME, THIS_NAME } from '../../common/TSConst';
-import { ANONYMOUS_METHOD_PREFIX, DEFAULT_ARK_CLASS_NAME, DEFAULT_ARK_METHOD_NAME, NAME_DELIMITER, NAME_PREFIX } from '../../common/Const';
+import { ANONYMOUS_METHOD_PREFIX, DEFAULT_ARK_CLASS_NAME, DEFAULT_ARK_METHOD_NAME, NAME_DELIMITER, NAME_PREFIX } from '../../../core/common/Const';
 import { ArkSignatureBuilder } from './ArkSignatureBuilder';
-import { IRUtils } from '../../common/IRUtils';
-import { ArkErrorCode } from '../../common/ArkError';
+import { IRUtils } from '../../../core/common/IRUtils';
+import { ArkErrorCode } from '../../../core/common/ArkError';
 
 export function buildDefaultArkMethodFromArkClass(declaringClass: ArkClass, mtd: ArkMethod, sourceFile: any, node?:any): void {
     mtd.setDeclaringArkClass(declaringClass);

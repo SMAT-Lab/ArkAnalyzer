@@ -41,7 +41,7 @@ import {
 } from '../../core/base/Stmt';
 import { AliasType, BooleanType, ClassType, UnknownType } from '../../core/base/Type';
 import { ValueUtil } from './ValueUtil';
-import { IRUtils } from './IRUtils';
+import { IRUtils } from '../../core/common/IRUtils';
 import { ArkMethod } from '../../core/model/ArkMethod';
 import {
     COMPONENT_BRANCH_FUNCTION,
@@ -49,7 +49,7 @@ import {
     COMPONENT_IF,
     COMPONENT_POP_FUNCTION,
     COMPONENT_REPEAT,
-} from './EtsConst';
+} from '../../core/common/EtsConst';
 import { FullPosition, LineColPosition } from '../../core/base/Position';
 import { ModelUtils } from './ModelUtils';
 import { ArkValueTransformer } from './ArkValueTransformer';
@@ -59,7 +59,7 @@ import {
     MethodSignature,
     MethodSubSignature,
 } from '../../core/model/ArkSignature';
-import { Builtin } from './Builtin';
+import { Builtin } from '../../core/common/Builtin';
 import { ArkSignatureBuilder } from '../model/builder/ArkSignatureBuilder';
 
 export type ValueAndStmts = {

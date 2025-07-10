@@ -43,7 +43,7 @@ import {
     COMPONENT_REPEAT,
     isEtsContainerComponent,
     SPECIAL_CONTAINER_COMPONENT,
-} from '../../common/EtsConst';
+} from '../../../core/common/EtsConst';
 import { ArkClass, ClassCategory } from '../../../core/model/ArkClass';
 import { ArkField } from '../../../core/model/ArkField';
 import { ArkMethod } from '../../../core/model/ArkMethod';
@@ -53,7 +53,7 @@ import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
 import { ViewTree, ViewTreeNode } from '../../../core/graph/ViewTree';
 import { ModelUtils } from '../../common/ModelUtils';
 import { Scene } from '../../../Scene';
-import { TEMP_LOCAL_PREFIX } from '../../common/Const';
+import { TEMP_LOCAL_PREFIX } from '../../../core/common/Const';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ViewTreeBuilder');
 const COMPONENT_CREATE_FUNCTIONS: Set<string> = new Set([COMPONENT_CREATE_FUNCTION, COMPONENT_BRANCH_FUNCTION]);

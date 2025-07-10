@@ -17,7 +17,7 @@ import { BasicBlock } from '../../../core/graph/BasicBlock';
 import { ArkIRTransformer, DummyStmt } from '../../common/ArkIRTransformer';
 import { ArkAssignStmt, Stmt } from '../../../core/base/Stmt';
 import { Local } from '../../../core/base/Local';
-import { IRUtils } from '../../common/IRUtils';
+import { IRUtils } from '../../../core/common/IRUtils';
 
 /**
  * Builder for condition in CFG

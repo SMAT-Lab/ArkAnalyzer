@@ -15,7 +15,7 @@
 
 import { LineColPosition } from '../../../core/base/Position';
 import { ImportInfo } from '../../../core/model/ArkImport';
-import { IRUtils } from '../../common/IRUtils';
+import { IRUtils } from '../../../core/common/IRUtils';
 import { ArkFile } from '../../../core/model/ArkFile';
 import { normalize } from 'path';
 

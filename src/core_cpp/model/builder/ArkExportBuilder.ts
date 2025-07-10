@@ -20,7 +20,7 @@ import { buildModifiers } from './builderUtils';
 import { ArkFile } from '../../../core/model/ArkFile';
 import { ALL, DEFAULT } from '../../common/TSConst';
 import { ArkBaseModel, ModifierType } from '../../../core/model/ArkBaseModel';
-import { IRUtils } from '../../common/IRUtils';
+import { IRUtils } from '../../../core/common/IRUtils';
 import { ArkClass } from '../../../core/model/ArkClass';
 import { buildNormalArkClassFromArkFile } from './ArkClassBuilder';
 import { ArkNamespace } from '../../../core/model/ArkNamespace';

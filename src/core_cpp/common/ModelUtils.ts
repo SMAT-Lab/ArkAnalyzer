@@ -44,7 +44,7 @@ import {
     UnknownType
 } from '../../core/base/Type';
 import { Scene } from '../../Scene';
-import { DEFAULT_ARK_CLASS_NAME, DEFAULT_ARK_METHOD_NAME, NAME_DELIMITER, TEMP_LOCAL_PREFIX } from './Const';
+import { DEFAULT_ARK_CLASS_NAME, DEFAULT_ARK_METHOD_NAME, NAME_DELIMITER, TEMP_LOCAL_PREFIX } from '../../core/common/Const';
 import { EMPTY_STRING } from './ValueUtil';
 import { ArkBaseModel } from '../../core/model/ArkBaseModel';
 import { ArkAssignStmt } from '../../core/base/Stmt';

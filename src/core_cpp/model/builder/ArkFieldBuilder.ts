@@ -28,7 +28,7 @@ import { FieldSignature } from '../../../core/model/ArkSignature';
 import { ArrayType, ClassType, Type, UnclearReferenceType, UnknownType } from '../../../core/base/Type';
 import { LineColPosition } from '../../../core/base/Position';
 import { ModifierType } from '../../../core/model/ArkBaseModel';
-import { IRUtils } from '../../common/IRUtils';
+import { IRUtils } from '../../../core/common/IRUtils';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkFieldBuilder');
 

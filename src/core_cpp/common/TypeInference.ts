@@ -65,15 +65,15 @@ import {
     THIS_NAME,
 } from './TSConst';
 import { ModelUtils } from './ModelUtils';
-import { Builtin } from './Builtin';
+import { Builtin } from '../../core/common/Builtin';
 import { MethodSignature, MethodSubSignature, NamespaceSignature } from '../../core/model/ArkSignature';
-import { INSTANCE_INIT_METHOD_NAME, LEXICAL_ENV_NAME_PREFIX, UNKNOWN_FILE_NAME } from './Const';
+import { INSTANCE_INIT_METHOD_NAME, LEXICAL_ENV_NAME_PREFIX, UNKNOWN_FILE_NAME } from '../../core/common/Const';
 import { EMPTY_STRING } from './ValueUtil';
 import { ImportInfo } from '../../core/model/ArkImport';
 import { MethodParameter } from '../../core/model/builder/ArkMethodBuilder';
-import { IRInference } from './IRInference';
+import { IRInference } from '../../core/common/IRInference';
 import { AbstractTypeExpr, KeyofTypeExpr, TypeQueryExpr } from '../../core/base/TypeExpr';
-import { SdkUtils } from './SdkUtils';
+import { SdkUtils } from '../../core/common/SdkUtils';
 import { ModifierType } from '../../core/model/ArkBaseModel';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'TypeInference');
