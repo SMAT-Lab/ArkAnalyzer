@@ -2,8 +2,8 @@
 import fs from 'fs';
 import { SceneConfig } from '../../../../src';
 import { DEFAULT_ARK_CLASS_NAME } from '../../../../src/core_cpp/common/Const';
-import { CallGraph } from '../../../../src/callgraph_cpp/model/CallGraph';
-import { CallGraphBuilder } from '../../../../src/callgraph_cpp/model/builder/CallGraphBuilder';
+import { CallGraph } from '../../../../src/callgraph/model/CallGraph';
+import { CallGraphBuilder } from '../../../../src/callgraph/model/builder/CallGraphBuilder';
 import { Scene } from '../../../../src';
 import { MethodSignature } from '../../../../src';
 

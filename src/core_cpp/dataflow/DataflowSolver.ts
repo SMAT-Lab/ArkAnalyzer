@@ -20,11 +20,11 @@ import { ArkMethod } from '../../core/model/ArkMethod';
 import { DataflowProblem, FlowFunction } from './DataflowProblem';
 import { PathEdge, PathEdgePoint } from './Edge';
 import { BasicBlock } from '../../core/graph/BasicBlock';
-import { CallGraph } from '../../callgraph_cpp/model/CallGraph';
-import { ClassHierarchyAnalysis } from '../../callgraph_cpp/algorithm/ClassHierarchyAnalysis';
+import { CallGraph } from '../../callgraph/model/CallGraph';
+import { ClassHierarchyAnalysis } from '../../callgraph/algorithm/ClassHierarchyAnalysis';
 import { addCfg2Stmt } from '../../utils/entryMethodUtils';
 import { getRecallMethodInParam } from './Util';
-import { CallGraphBuilder } from '../../callgraph_cpp/model/builder/CallGraphBuilder';
+import { CallGraphBuilder } from '../../callgraph/model/builder/CallGraphBuilder';
 
 /*
 this program is roughly an implementation of the paper: Practical Extensions to the IFDS Algorithm.
