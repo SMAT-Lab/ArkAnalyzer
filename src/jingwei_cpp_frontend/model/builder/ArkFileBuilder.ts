@@ -19,7 +19,7 @@ import { ArkFile } from '../../../core/model/ArkFile';
 import { ArkNamespace } from '../../../core/model/ArkNamespace';
 import { buildDefaultArkClassFromArkFile, buildNormalArkClassFromArkFile } from './ArkClassBuilder';
 import { buildArkMethodFromArkClass } from './ArkMethodBuilder';
-import {buildExportInfo} from './ArkExportBuilder'
+import {buildExportInfo} from '../../../core/model/builder/ArkExportBuilder'
 import { buildArkNamespace } from './ArkNamespaceBuilder';
 import { ArkClass } from '../../../core/model/ArkClass';
 import { ArkMethod } from '../../../core/model/ArkMethod';

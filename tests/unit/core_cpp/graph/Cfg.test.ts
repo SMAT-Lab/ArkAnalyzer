@@ -274,7 +274,7 @@ describe('CfgTest', () => {
         },
     );
     it('case7: binaryCondition', () => {
-            const scene = buildScene('binaryConditional');
+        const scene = buildScene('binaryConditional');
         testBlocks(scene, 'binaryConditionalSample.cpp', 'case1', BINARY_CONDITIONAL_EXPECT_CASE1.blocks);
         testBlocks(scene, 'binaryConditionalSample.cpp', 'case2', BINARY_CONDITIONAL_EXPECT_CASE2.blocks);
         testBlocks(scene, 'binaryConditionalSample.cpp', 'case3', BINARY_CONDITIONAL_EXPECT_CASE3.blocks);

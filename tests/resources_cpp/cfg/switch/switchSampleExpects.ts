@@ -210,24 +210,28 @@ export const SWITCH_EXPECT_CASE11 = {
 
 export const SWITCH_EXPECT_CASE12 = {
     blocks: [
-        { id: 0, stmts: [ 'b = 2' ], preds: [ 8 ], succes: [ 3 ] },
-        { id: 1, stmts: [ 'b = 3' ], preds: [ 4 ], succes: [ 3 ] },
-        { id: 2, stmts: [ 'b = 10' ], preds: [ 4 ], succes: [ 3 ] },
-        { id: 3, stmts: [ 'return' ], preds: [ 0, 1, 2 ], succes: [] },
-        { id: 4, stmts: [ 'if a == 3' ], preds: [ 8 ], succes: [ 1, 2 ] },
         {
-            id: 5,
+            id: 0,
             stmts: [
                 'this = this: @switch/switchSample.cpp: %dflt',
                 'a = 0',
-                'if a > 1'
+                'if a > 1',
+                'ConditionalOperatorIfTrue0',
+                '%0 = 12',
+                'ConditionalOperatorIfFalse0',
+                '%0 = 13',
+                'ConditionalOperatorEnd0',
+                'b = %0',
+                'if a == 2'
             ],
             preds: [],
-            succes: [ 6, 7 ]
+            succes: [ 1, 5 ]
         },
-        { id: 6, stmts: [ 'b = 12' ], preds: [ 5 ], succes: [ 8 ] },
-        { id: 7, stmts: [ 'b = 13' ], preds: [ 5 ], succes: [ 8 ] },
-        { id: 8, stmts: [ 'if a == 2' ], preds: [ 6, 7 ], succes: [ 0, 4 ] },
+        { id: 1, stmts: [ 'b = 2' ], preds: [ 0 ], succes: [ 4 ] },
+        { id: 2, stmts: [ 'b = 3' ], preds: [ 5 ], succes: [ 4 ] },
+        { id: 3, stmts: [ 'b = 10' ], preds: [ 5 ], succes: [ 4 ] },
+        { id: 4, stmts: [ 'return' ], preds: [ 1, 2, 3 ], succes: [] },
+        { id: 5, stmts: [ 'if a == 3' ], preds: [ 0 ], succes: [ 2, 3 ] }
     ]
 };
 

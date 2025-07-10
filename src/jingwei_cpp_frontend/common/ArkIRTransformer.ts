@@ -60,7 +60,7 @@ import {
     MethodSubSignature,
 } from '../../core/model/ArkSignature';
 import { Builtin } from '../../core/common/Builtin';
-import { ArkSignatureBuilder } from '../model/builder/ArkSignatureBuilder';
+import { ArkSignatureBuilder } from '../../core/model/builder/ArkSignatureBuilder';
 
 export type ValueAndStmts = {
     value: Value;

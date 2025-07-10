@@ -15,7 +15,7 @@
 
 import { ClassType, GenericType, Type, UnknownType } from '../../../core/base/Type';
 import { BodyBuilder } from './BodyBuilder';
-import { buildViewTree } from '../../graph/builder/ViewTreeBuilder';
+import { buildViewTree } from '../../../core/graph/builder/ViewTreeBuilder';
 import { ArkClass, ClassCategory } from '../../../core/model/ArkClass';
 import { ArkMethod } from '../../../core/model/ArkMethod';
 import {
@@ -36,7 +36,7 @@ import { Local } from '../../../core/base/Local';
 import { Value } from '../../../core/base/Value';
 import { CONSTRUCTOR_NAME, SUPER_NAME, THIS_NAME } from '../../common/TSConst';
 import { ANONYMOUS_METHOD_PREFIX, DEFAULT_ARK_CLASS_NAME, DEFAULT_ARK_METHOD_NAME, NAME_DELIMITER, NAME_PREFIX } from '../../../core/common/Const';
-import { ArkSignatureBuilder } from './ArkSignatureBuilder';
+import { ArkSignatureBuilder } from '../../../core/model/builder/ArkSignatureBuilder';
 import { IRUtils } from '../../../core/common/IRUtils';
 import { ArkErrorCode } from '../../../core/common/ArkError';
 

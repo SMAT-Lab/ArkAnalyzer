@@ -44,7 +44,7 @@ import {
 } from '../../../core/common/Const';
 import { IRUtils } from '../../../core/common/IRUtils';
 import { ClassSignature, MethodSignature } from '../../../core/model/ArkSignature';
-import { ArkSignatureBuilder } from './ArkSignatureBuilder';
+import { ArkSignatureBuilder } from '../../../core/model/builder/ArkSignatureBuilder';
 import { FullPosition } from '../../../core/base/Position';
 import { UnknownType, VoidType } from '../../../core/base/Type';
 

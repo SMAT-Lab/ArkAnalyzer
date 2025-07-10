@@ -50,7 +50,7 @@ import {
     PointerType,
     ReferenceType
 } from '../../core/base/Type';
-import { ArkSignatureBuilder } from '../model/builder/ArkSignatureBuilder';
+import { ArkSignatureBuilder } from '../../core/model/builder/ArkSignatureBuilder';
 import { CONSTRUCTOR_NAME, THIS_NAME } from './TSConst';
 import { ClassSignature, FieldSignature, MethodSignature } from '../../core/model/ArkSignature';
 import { Value } from '../../core/base/Value';

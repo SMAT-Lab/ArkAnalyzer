@@ -30,7 +30,7 @@ import {
 } from '../common/TSConst';
 import { Local } from './Local';
 import { Constant } from './Constant';
-import { NULL_POINTER } from '../../core_cpp/common/TSConst';
+import { NULL_POINTER } from '../../jingwei_cpp_frontend/common/TSConst';
 
 /**
  * @category core/base/type
