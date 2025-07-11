@@ -200,6 +200,10 @@ import {
 import { CallFunction_EXPECT } from '../../../resources_cpp/cfg/lazyImport/lazyImportCase6/lazyImportCase6Expect';
 import { ModifyObject_EXPECT } from '../../../resources_cpp/cfg/lazyImport/lazyImportCase7/lazyImportCase7Expect';
 import { NativeCallArkTS8_EXPECT } from '../../../resources_cpp/cfg/lazyImport/lazyImportCase8/lazyImportCase8Expect';
+import {
+    ADDRLABEL_EXPECT_CASE1,
+    ADDRLABEL_EXPECT_CASE2, ADDRLABEL_EXPECT_CASE3,
+} from '../../../resources_cpp/cfg/addrLabelExpr/addrLabelExprExpect';
 
 
 describe('CfgTest', () => {
@@ -281,6 +285,13 @@ describe('CfgTest', () => {
         testBlocks(scene, 'binaryConditionalSample.cpp', 'case4', BINARY_CONDITIONAL_EXPECT_CASE4.blocks);
         testBlocks(scene, 'binaryConditionalSample.cpp', 'case5', BINARY_CONDITIONAL_EXPECT_CASE5.blocks);
         testBlocks(scene, 'binaryConditionalSample.cpp', 'case6', BINARY_CONDITIONAL_EXPECT_CASE6.blocks);
+        },
+    );
+    it('case8: addrLabelExpr', () => {
+            const scene = buildScene('addrLabelExpr');
+            testBlocks(scene, 'addrLabelExpr.cpp', 'foo1', ADDRLABEL_EXPECT_CASE1.blocks);
+            testBlocks(scene, 'addrLabelExpr.cpp', 'foo2', ADDRLABEL_EXPECT_CASE2.blocks);
+            testBlocks(scene, 'addrLabelExpr.cpp', 'foo3', ADDRLABEL_EXPECT_CASE3.blocks);
         },
     );
 });

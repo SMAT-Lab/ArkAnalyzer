@@ -289,7 +289,8 @@ export class ArkValueTransformer {
         } else if (node.kind === 'ArraySubscriptExpr') {
             return this.elementAccessExpressionToValueAndStmts(node);
         } else if (node.kind === 'StringLiteral' || node.kind === 'CXXBoolLiteralExpr' ||
-            node.kind === 'CharacterLiteral' || node.kind === 'FloatingLiteral' || node.kind === 'CXXNullPtrLiteralExpr') {
+            node.kind === 'CharacterLiteral' || node.kind === 'FloatingLiteral' || node.kind === 'CXXNullPtrLiteralExpr'
+            || node.kind === 'AddrLabelExpr') {
             return this.literalNodeToValueAndStmts(node) as ValueAndStmts;
         } else if (node.kind === 'CompoundAssignOperator') {
             return this.compoundAssignmentToValueAndStmts(node);
@@ -1677,6 +1678,17 @@ export class ArkValueTransformer {
                 break;
             case 'CXXNullPtrLiteralExpr':
                 constant = ValueUtil.getNullPtrConstant();
+                break;
+            case 'AddrLabelExpr':
+                // 在AddrLabelExpr结构下包含LabelRef节点，处于inner[0]的位置
+                constant = ValueUtil.getLabelPtrConstant(literalNode.inner[0].code);
+                let p = literalNode.parent ? literalNode.parent : literalNode.getParent();
+                const point = p.code.match(/void\s*([^=]+)=/)[1].trim();
+                for (const [key, gotoStmts] of this.declaringMethod.gotoStmtMap) {
+                    if (key === literalNode.inner[0].code) {
+                        this.declaringMethod.gotoStmtMap.set(point, gotoStmts);
+                    }
+                }
                 break;
             default:
                 logger.warn(`ast node's syntaxKind is ${syntaxKind}, not literalNode`);
