@@ -577,9 +577,6 @@ export class ArrayType extends Type {
         } else if (this.baseType) {
             strs.push(this.baseType.toString());
         }
-        for (let i = 0; i < this.dimension; i++) {
-            strs.push('[]');
-        }
         return strs.join('');
     }
 }
