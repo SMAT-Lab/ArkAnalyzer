@@ -537,3 +537,40 @@ export function checkAndUpdateMethod(method: ArkMethod, cls: ArkClass): void {
         return;
     }
 }
+
+export function replaceSuper2Constructor(constructor: ArkMethod): void {
+    if (constructor.getName() !== CONSTRUCTOR_NAME) {
+        return;
+    }
+    const superClass = constructor.getDeclaringArkClass().getSuperClass();
+    if (superClass === null) {
+        return;
+    }
+    const superConstructor = superClass.getMethodWithName(CONSTRUCTOR_NAME);
+    if (superConstructor === null) {
+        logger.error(`Can not find constructor method for class ${superClass.getSignature().toString()}`);
+        return;
+    }
+    const startingBlock = constructor.getBody()?.getCfg().getStartingBlock();
+    if (startingBlock === undefined) {
+        return;
+    }
+    for (const stmt of startingBlock.getStmts()) {
+        if (stmt instanceof ArkInvokeStmt) {
+            let invokeExpr = stmt.getInvokeExpr();
+            const methodSignature = invokeExpr.getMethodSignature();
+            if (methodSignature.getMethodSubSignature().getMethodName() !== SUPER_NAME) {
+                continue;
+            }
+            let base = constructor.getBody()?.getLocals().get(THIS_NAME);
+            if (base === undefined) {
+                logger.error(`Can not find local this in constructor method ${constructor.getSignature().toString()}`);
+                return;
+            }
+
+            const newInvokeExpr = new ArkInstanceInvokeExpr(base, superConstructor.getSignature(), invokeExpr.getArgs());
+            stmt.replaceInvokeExpr(newInvokeExpr);
+            return;
+        }
+    }
+}

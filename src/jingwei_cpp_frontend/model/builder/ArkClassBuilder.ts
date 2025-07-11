@@ -29,7 +29,8 @@ import {
 import {
     buildDecorators,
     buildModifiers,
-    buildTypeParameters
+    buildTypeParameters,
+    buildModifiersForCxxCls
 } from './builderUtils';
 import { buildProperty2ArkField } from './ArkFieldBuilder';
 import { ArkIRTransformer } from '../../common/ArkIRTransformer';
@@ -260,6 +261,7 @@ function buildClass2ArkClass(clsNode: any, cls: ArkClass, sourceFile: any, decla
     init4InstanceInitMethod(cls);
     init4StaticInitMethod(cls);
     buildArkClassMembers(clsNode, cls, sourceFile);
+    cls.setModifiers(buildModifiersForCxxCls(cls));
 }
 
 function processCXXHeritage(clsNode: any, cls: ArkClass) {

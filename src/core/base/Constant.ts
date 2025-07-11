@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-import { BigIntType, BooleanType, NullType, NumberType, StringType, Type, UndefinedType } from './Type';
+
+import { BigIntType, BooleanType, LabelType, NullType, NumberType, StringType, Type, UndefinedType } from './Type';
 import { Value } from './Value';
 import { NULL_KEYWORD, UNDEFINED_KEYWORD } from '../common/TSConst';
 import { NULL_POINTER } from '../../jingwei_cpp_frontend/common/TSConst';
@@ -139,3 +140,14 @@ export class NullPtrConstant extends Constant {
         return this.INSTANCE;
     }
 }
+
+export class LabelConstant extends Constant {
+    constructor(value: string) {
+        if (value.startsWith('"') && value.startsWith('"')) {
+            value = value.slice(1, -1);  // 去除多余双引号
+        }
+        super(value, LabelType.getInstance());
+    }
+}
+
+

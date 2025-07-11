@@ -577,9 +577,6 @@ export class ArrayType extends Type {
         } else if (this.baseType) {
             strs.push(this.baseType.toString());
         }
-        for (let i = 0; i < this.dimension; i++) {
-            strs.push('[]');
-        }
         return strs.join('');
     }
 }
@@ -964,5 +961,17 @@ export class ReferenceType extends Type {
             strs.push('&&');
         }
         return strs.join('');
+    }
+}
+
+export class LabelType extends PointerType {
+    private static readonly INSTANCE = new LabelType();
+
+    protected constructor() {
+        super(VoidType.getInstance(),1);
+    }
+
+    public static getInstance(): LabelType {
+        return this.INSTANCE;
     }
 }

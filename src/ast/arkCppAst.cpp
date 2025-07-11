@@ -771,7 +771,38 @@ json addCXXCtorInitializer(json &children) {
     return newChildren;
 }
 
+// 遍历构建typedef的子节点
+void buildTypedefChild(CXType& type, json& newChildren, json& children) {
+    CXString cxType = clang_getTypeSpelling(type);
+    std::string typeStr = clang_getCString(cxType);
+    json node = json::object();
+    node["code"] = typeStr;
+    node["name"] = typeStr;
+    clang_disposeString(cxType);
+    json inner = json::array();
+    if(type.kind == CXType_Pointer) {
+        node["kind"] = "PointerType";
+        CXType pointee = clang_getPointeeType(type);
+        buildTypedefChild(pointee, inner, children);
+    } else if (type.kind == CXType_FunctionProto) {
+        node["kind"] = "FunctionProtoType";
+        CXType result = clang_getResultType(type);
+        buildTypedefChild(result, inner, children);
 
+        size_t numArgs = children.size();
+        for (size_t i = 0; i < numArgs; i++) {
+            inner.push_back(children[i]);
+        }
+    } else if (type.kind == CXType_Int || type.kind == CXType_Float|| type.kind == CXType_Void) {
+        node["type"]["qualType"] = typeStr;
+        node["kind"] = "BuiltinType";
+    } else {
+        node["type"]["qualType"] = typeStr;
+        node["kind"] = "TypedefType";
+    }
+    node["inner"] = inner;
+    newChildren.push_back(node);
+}
 
 // ==========================buildASTJson 主体========================
 
@@ -955,6 +986,11 @@ json buildASTJson(CXCursor cursor){
         }
     } else if (node["kind"] == "CXXConstructorDecl") {
         children = addCXXCtorInitializer(children);
+    } else if (node["kind"] == "TypedefDecl" && (children.size() == 0 || children[0]["kind"] != "CXXRecordDecl")) {
+        json newChildren = json::array();
+        CXType typedefType = clang_getTypedefDeclUnderlyingType(cursor);
+        buildTypedefChild(typedefType, newChildren, children);
+        children = newChildren;
     }
 
     if (node["kind"] == "InitListExpr") relateMemberType(typeStr, children);

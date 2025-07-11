@@ -350,13 +350,16 @@ function needDefaultConstructorInClass(arkClass: ArkClass): boolean {
     );
 }
 
-function recursivelyCheckAndBuildSuperConstructor(arkClass: ArkClass): void {
-    let superClass: ArkClass | null = arkClass.getSuperClass();
-    while (superClass !== null) {
+export function recursivelyCheckAndBuildSuperConstructor(arkClass: ArkClass): void {
+    const superClasses: ArkClass[] = arkClass.getAllHeritageClasses();
+    if (!superClasses) {
+        return;
+    }
+    for (const superClass of superClasses) {
         if (superClass.getMethodWithName(CONSTRUCTOR_NAME) === null) {
             buildDefaultConstructor(superClass);
         }
-        superClass = superClass.getSuperClass();
+        recursivelyCheckAndBuildSuperConstructor(superClass);
     }
 }
 
@@ -447,28 +450,6 @@ export function buildInitMethod(initMethod: ArkMethod, fieldInitializerStmts: St
     initMethod.setBody(new ArkBody(locals, cfg));
 }
 
-export function addInitInConstructorByArkClass(arkClass: ArkClass): void {
-    for (const method of arkClass.getMethods(true)) {
-        if (method.getName() === CONSTRUCTOR_NAME) {
-            const thisLocal = method.getBody()?.getLocals().get(THIS_NAME);
-            if (!thisLocal) {
-                continue;
-            }
-            const initInvokeStmt = new ArkInvokeStmt(new ArkInstanceInvokeExpr(thisLocal, arkClass.getInstanceInitMethod().getSignature(), []));
-            const blocks = method.getCfg()?.getBlocks();
-            if (!blocks){
-                continue;
-            }
-            const firstBlockStmts = [...blocks][0].getStmts();
-            let index = 0;
-            if (firstBlockStmts[0].getDef() instanceof Local && (firstBlockStmts[0].getDef() as Local).getName() === THIS_NAME) {
-                index = 1;
-            }
-            firstBlockStmts.splice(index, 0, initInvokeStmt);
-        }
-    }
-}
-
 export function addInitInConstructor(constructor: ArkMethod): void {
     const thisLocal = constructor.getBody()?.getLocals().get(THIS_NAME);
     if (!thisLocal) {
@@ -478,27 +459,22 @@ export function addInitInConstructor(constructor: ArkMethod): void {
     if (cfg === undefined) {
         return;
     }
-    const blocks = cfg.getBlocks();
+    const blocks = constructor.getCfg()?.getBlocks();
+    if (!blocks){
+        return;
+    }
     const firstBlockStmts = [...blocks][0].getStmts();
     let index = 0;
     for (let i = 0; i < firstBlockStmts.length; i++) {
         const stmt = firstBlockStmts[i];
-        if (stmt instanceof ArkInvokeStmt && stmt.getInvokeExpr().getMethodSignature().getMethodSubSignature().getMethodName() === SUPER_NAME) {
-            index++;
-            continue;
+        if ((stmt.getDef() instanceof Local && (stmt.getDef() as Local).getName() === THIS_NAME) ||
+            (stmt instanceof ArkInvokeStmt &&
+             stmt.getInvokeExpr().getMethodSignature().getMethodSubSignature().getMethodName() === CONSTRUCTOR_NAME)) {
+            index = i + 1;
         }
-        if (stmt instanceof ArkAssignStmt) {
-            const rightOp = stmt.getRightOp();
-            if (rightOp instanceof ArkParameterRef || rightOp instanceof ArkThisRef || rightOp instanceof ClosureFieldRef) {
-                index++;
-                continue;
-            }
-        }
-        break;
     }
-    const initInvokeStmt = new ArkInvokeStmt(
-        new ArkInstanceInvokeExpr(thisLocal, constructor.getDeclaringArkClass().getInstanceInitMethod().getSignature(), [])
-    );
+    const initInvokeStmt = new ArkInvokeStmt(new ArkInstanceInvokeExpr(thisLocal,
+        constructor.getDeclaringArkClass().getInstanceInitMethod().getSignature(), []));
     initInvokeStmt.setCfg(cfg);
     firstBlockStmts.splice(index, 0, initInvokeStmt);
 }

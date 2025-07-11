@@ -66,7 +66,7 @@ import { IRUtils } from '../../core/common/IRUtils';
 import { AbstractFieldRef, ArkArrayRef, ArkInstanceFieldRef, GlobalRef, CXXArkInstanceFieldRef } from '../../core/base/Ref';
 import { ModelUtils } from './ModelUtils';
 import { ArkMethod } from '../../core/model/ArkMethod';
-import { buildArkMethodFromArkClass } from '../model/builder/ArkMethodBuilder';
+import { buildArkMethodFromArkClass, buildDefaultConstructor } from '../model/builder/ArkMethodBuilder';
 import { Builtin } from '../../core/common/Builtin';
 import { Constant, StringConstant } from '../../core/base/Constant';
 import { TEMP_LOCAL_PREFIX } from '../../core/common/Const';
@@ -210,6 +210,10 @@ export class ArkValueTransformer {
             };
         }
         if(node.kind === 'CXXConstructExpr') {
+            let parent = node.getParent();
+            if (parent && parent.kind === 'CXXConstructorDecl') {
+                return this.superExpressionToValueAndStmts(node);
+            }
             if ((!this.isPairConstructExpr((node)) && (this.isNodeRelatedToCXXLambdaFunc(node) ||
                 this.isNodeRelatedToMaterialize(node) || this.isNodeRelatedToImplicitNode(node)))) {
                 return this.tsNodeToValueAndStmts(node.inner[0]);
@@ -289,7 +293,8 @@ export class ArkValueTransformer {
         } else if (node.kind === 'ArraySubscriptExpr') {
             return this.elementAccessExpressionToValueAndStmts(node);
         } else if (node.kind === 'StringLiteral' || node.kind === 'CXXBoolLiteralExpr' ||
-            node.kind === 'CharacterLiteral' || node.kind === 'FloatingLiteral' || node.kind === 'CXXNullPtrLiteralExpr') {
+            node.kind === 'CharacterLiteral' || node.kind === 'FloatingLiteral' || node.kind === 'CXXNullPtrLiteralExpr'
+            || node.kind === 'AddrLabelExpr') {
             return this.literalNodeToValueAndStmts(node) as ValueAndStmts;
         } else if (node.kind === 'CompoundAssignOperator') {
             return this.compoundAssignmentToValueAndStmts(node);
@@ -318,6 +323,39 @@ export class ArkValueTransformer {
             valueOriginalPositions: [FullPosition.buildFromNodeCpp(node, this.sourceFile)],
             stmts: [],
         };
+    }
+
+    // C++中子类调用父类构造函数进行初始化，类似ts的super(xx)。比如Left(const char& name, int power) : Base(name) { ... }
+    private superExpressionToValueAndStmts(cxxConstructExpr: any): ValueAndStmts {
+        const cls = this.declaringMethod.getDeclaringArkClass();
+        if (!cls) {
+            return this.newExpressionToValueAndStmts(cxxConstructExpr);
+        }
+        const clsInitMtd = cls.getInstanceInitMethod();
+        if (!clsInitMtd) {
+            return this.newExpressionToValueAndStmts(cxxConstructExpr);
+        }
+        const stmts: Stmt[] = [];
+        const { args: argValues } = this.parseArguments(stmts, cxxConstructExpr.inner);
+        const superClass = cls.getHeritageClass(cxxConstructExpr.name);
+        if (!superClass) {
+            return this.newExpressionToValueAndStmts(cxxConstructExpr);
+        }
+        buildDefaultConstructor(superClass);
+        const superConstructor = superClass.getMethodWithName(CONSTRUCTOR_NAME);
+        if (superConstructor !== null) {
+            let base = clsInitMtd.getBody()?.getLocals().get(THIS_NAME);
+            if (base === undefined) {
+                return this.newExpressionToValueAndStmts(cxxConstructExpr);
+            }
+            const newSuperInvokeExpr = new ArkInstanceInvokeExpr(base, superConstructor.getSignature(), argValues);
+            return {
+                value: newSuperInvokeExpr,
+                valueOriginalPositions: [FullPosition.buildFromNodeCpp(cxxConstructExpr, this.sourceFile)],
+                stmts: [],
+            };
+        }
+        return this.newExpressionToValueAndStmts(cxxConstructExpr);
     }
 
     // ArrayTypeTraitExpr按照函数调用处理
@@ -1677,6 +1715,17 @@ export class ArkValueTransformer {
                 break;
             case 'CXXNullPtrLiteralExpr':
                 constant = ValueUtil.getNullPtrConstant();
+                break;
+            case 'AddrLabelExpr':
+                // 在AddrLabelExpr结构下包含LabelRef节点，处于inner[0]的位置
+                constant = ValueUtil.getLabelPtrConstant(literalNode.inner[0].code);
+                let p = literalNode.parent ? literalNode.parent : literalNode.getParent();
+                const point = p.code.match(/void\s*([^=]+)=/)[1].trim();
+                for (const [key, gotoStmts] of this.declaringMethod.gotoStmtMap) {
+                    if (key === literalNode.inner[0].code) {
+                        this.declaringMethod.gotoStmtMap.set(point, gotoStmts);
+                    }
+                }
                 break;
             default:
                 logger.warn(`ast node's syntaxKind is ${syntaxKind}, not literalNode`);

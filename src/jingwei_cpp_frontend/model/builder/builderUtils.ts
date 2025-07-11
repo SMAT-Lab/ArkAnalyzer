@@ -108,10 +108,10 @@ function extractCommonModifiers(node:any):number{
     let modifiers: number = 0;
     const nodeType: string = node?.type?.qualType ?? "";
 
-    if (node.hasOwnProperty("access")){
+    if (Object.prototype.hasOwnProperty.call(node, "access")){
         modifiers |= modifierKind2Enum(node.access);
     }
-    if (node.hasOwnProperty("storageClass")){
+    if (Object.prototype.hasOwnProperty.call(node, "storageClass")){
         modifiers |= modifierKind2Enum(node.storageClass);
     }
     if (nodeType.includes("const")){
@@ -122,24 +122,45 @@ function extractCommonModifiers(node:any):number{
 
 function hasOvverrideAttr(inner: any[] |undefined):boolean{
     if (!inner) return false;
-    return inner.some(child => child.kind === "OverrideAttr");
+    return inner.some(child => child.kind === "attribute(override)");
 }
+
+function getMtdModifier(node: any, modifiers: number) {
+    if (node.code.startsWith('virtual ')) {
+        modifiers |= modifierKind2EnumCpp('virtual');
+        // 纯虚函数的定义：virtual func() = 0 / virtual func() =0
+        if (node.code.endsWith('= 0') || node.code.endsWith('=0')) {
+            modifiers |= modifierKind2EnumCpp('pure virtual');
+        }
+    }
+    if (hasOvverrideAttr(node.inner)) {
+        modifiers |= modifierKind2EnumCpp('override');
+    }
+    return modifiers;
+}
+
 export function buildModifiers(node: any): number {
     let modifiers = extractCommonModifiers(node);
 
     if (node.kind === 'CXXMethodDecl'){
-        if (node.virtual){
-            modifiers |= modifierKind2EnumCpp("virtual");
-        }
-        if (hasOvverrideAttr(node.inner)){
-            modifiers |= modifierKind2EnumCpp("override");
-        }
+        modifiers = getMtdModifier(node, modifiers);
     }
     if (node.kind === "FriendDecl"){
         modifiers |= modifierKind2EnumCpp("friend");
     }
 
     return modifiers;
+}
+
+export function buildModifiersForCxxCls(cls: ArkClass): number {
+    const mtds = cls.getMethods();
+    for (const mtd of mtds) {
+        // 如果类内有纯虚的成员函数，则该类是抽象类
+        if (mtd.isPureVirtual()) {
+            return modifierKind2EnumCpp("abstract");
+        }
+    }
+    return 0;
 }
 
 export function buildHeritageClauses(heritageClauses?: ts.NodeArray<HeritageClause>): Map<string, string> {

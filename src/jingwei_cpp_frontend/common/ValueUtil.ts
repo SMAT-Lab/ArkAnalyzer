@@ -16,7 +16,7 @@
 import {
     BigIntConstant,
     BooleanConstant,
-    Constant,
+    Constant, LabelConstant,
     NullConstant,
     NullPtrConstant,
     NumberConstant,
@@ -45,16 +45,21 @@ export class ValueUtil {
         return new BigIntConstant(bigInt);
     }
 
-    public static createStringConst(str: string): Constant {
-        if (str === EMPTY_STRING) {
-            return this.EMPTY_STRING_CONSTANT;
-        }
+    public static normalizeString(str: string): string {
         let preStr: string = str.substring(0, 2); //获取前缀处理长字符类型
         if (charPrefixType.includes(preStr)) {
             str = str.substring(2, str.length-1).replace("\\", "");
         } else if (str.charAt(0) === "'"){
             str = str.substring(1, str.length-1);
         }
+        return str;
+    }
+
+    public static createStringConst(str: string): Constant {
+        if (str === EMPTY_STRING) {
+            return this.EMPTY_STRING_CONSTANT;
+        }
+        str = this.normalizeString(str);
         return new StringConstant(str);
     }
 
@@ -80,5 +85,10 @@ export class ValueUtil {
 
     public static getNullPtrConstant():Constant {
         return NullPtrConstant.getInstance();
+    }
+
+    public static getLabelPtrConstant(label: string): Constant {
+        label = this.normalizeString(label);
+        return new LabelConstant(label);
     }
 }

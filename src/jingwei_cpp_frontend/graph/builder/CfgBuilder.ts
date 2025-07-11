@@ -27,7 +27,7 @@ import { AliasType, ClassType, UnclearReferenceType, UnknownType, VoidType } fro
 import { Trap } from '../../../core/base/Trap';
 import { GlobalRef } from '../../../core/base/Ref';
 import { LoopBuilder } from '../../../core/graph/builder/LoopBuilder';
-import { SwitchBuilder } from '../../../core/graph/builder/SwitchBuilder';
+import { SwitchBuilder } from '../../graph/builder/SwitchBuilder';
 import { ConditionBuilder } from '../../../core/graph/builder/ConditionBuilder';
 import { TrapBuilder } from './TrapBuilder';
 import { CONSTRUCTOR_NAME, PROMISE } from '../../common/TSConst';
@@ -576,15 +576,23 @@ export class CfgBuilder {
         let labelStmt = new StatementBuilder('statement', 'goto label:' + innerNode.name, innerNode, scopeID);
         // 处理goto语句与label语句的前后关系
         let label: string = innerNode.code.substr(0, innerNode.code.indexOf(':'));
+        let matched = false;
         for (const [key, gotoStmts] of this.declaringMethod.gotoStmtMap) {
-            if (key === label){
-                for (const gotoStmt of gotoStmts) {
-                    for (const lastStmt of [...gotoStmt.lasts]) {
-                        this.judgeLastStmtForLabel(labelStmt, lastStmt, gotoStmt);
-                    }
+            if (key !== label) {
+                continue;
+            }
+            for (const gotoStmt of gotoStmts) {
+                for (const lastStmt of [...gotoStmt.lasts]) {
+                    this.judgeLastStmtForLabel(labelStmt, lastStmt, gotoStmt);
+                    matched = true;
                 }
             }
         }
+        if (!matched) {
+            let s = new StatementBuilder('gotoStatement', innerNode.code, innerNode, scopeID);
+            this.declaringMethod.gotoStmtMap.set(label, [s]);
+        }
+
         // 处理label语句和前一句的前后关系
         this.judgeLastStmtForLabel(labelStmt, lastStatement, undefined);
         // labelStmt内节点的处理
@@ -751,7 +759,7 @@ export class CfgBuilder {
                 lastStatement = s;
             } else if (nodeKind === 'CXXTryStmt') {
                 lastStatement = this.ASTNodeTryStatement(innerNode, lastStatement, scope.id);
-            } else if (nodeKind === 'GotoStmt') {
+            } else if (nodeKind === 'GotoStmt' || nodeKind === 'IndirectGotoStmt') {
                 this.ASTNodeGotoStatement(innerNode, lastStatement, scope.id);
                 let p = innerNode;
                 while (p && p.id !== this.astRoot.id) {

@@ -212,7 +212,7 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
         return null;
     }
 
-    private getHeritageClass(heritageClassName: string): ArkClass | null {
+    public getHeritageClass(heritageClassName: string): ArkClass | null {
         if (!heritageClassName) {
             return null;
         }
