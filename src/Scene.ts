@@ -33,10 +33,9 @@ import { fetchDependenciesFromFile, parseJsonText } from './utils/json5parser';
 import { getAllFiles } from './utils/getAllFiles';
 import { FileUtils, getFileRecursively, getFileAbsPath } from './utils/FileUtils';
 import { ArkExport, ExportInfo, ExportType } from './core/model/ArkExport';
-import { addInitInConstructor, buildDefaultConstructor } from './core/model/builder/ArkMethodBuilder';
+import { addInitInConstructor, buildDefaultConstructor, replaceSuper2Constructor } from './core/model/builder/ArkMethodBuilder';
 import {
-    addInitInConstructorByArkClass,
-    buildDefaultConstructor as buildDefaultConstructorCpp
+    addInitInConstructor as addInitInConstructorCpp
 } from './jingwei_cpp_frontend/model/builder/ArkMethodBuilder';
 import { DEFAULT_ARK_CLASS_NAME, INSTANCE_INIT_METHOD_NAME, STATIC_INIT_METHOD_NAME } from './core/common/Const';
 import { CallGraph } from './callgraph/model/CallGraph';
@@ -172,11 +171,6 @@ export class Scene {
         this.genArkFiles();
     }
 
-    public buildSceneFromProjectDirCpp(sceneConfig: SceneConfig): void {
-        this.buildBasicInfo(sceneConfig);
-        this.genArkFilesCpp();
-    }
-
     public buildSceneFromFiles(sceneConfig: SceneConfig): void {
         this.buildBasicInfo(sceneConfig);
         this.buildOhPkgContentMap();
@@ -305,25 +299,17 @@ export class Scene {
         for (const file of this.getFiles()) {
             const isCppFile = file.getLanguage() === Language.CPLUS;
             for (const cls of ModelUtils.getAllClassesInFile(file)) {
-                if (isCppFile) {
-                    buildDefaultConstructorCpp(cls);
-                    addInitInConstructorByArkClass(cls);
-                } else {
-                    buildDefaultConstructor(cls);
-                    const constructor = cls.getMethodWithName(CONSTRUCTOR_NAME);
-                    if (constructor !== null) {
-                        addInitInConstructor(constructor);
-                    }
+                buildDefaultConstructor(cls);
+                const constructor = cls.getMethodWithName(CONSTRUCTOR_NAME);
+                if (constructor === null) {
+                    continue;
                 }
-            }
-        }
-    }
-
-    private addDefaultConstructorsCpp(): void {
-        for (const file of this.getFiles()) {
-            for (const cls of ModelUtils.getAllClassesInFile(file)) {
-                buildDefaultConstructorCpp(cls);
-                addInitInConstructorByArkClass(cls);
+                replaceSuper2Constructor(constructor);
+                if (isCppFile) {
+                    addInitInConstructorCpp(constructor);
+                } else {
+                    addInitInConstructor(constructor);
+                }
             }
         }
     }
@@ -368,28 +354,6 @@ export class Scene {
         this.buildStage = SceneBuildStage.METHOD_DONE;
     }
 
-    private buildAllMethodBodyCpp(): void {
-        this.buildStage = SceneBuildStage.CLASS_DONE;
-        for (const file of this.getFiles()) {
-            for (const cls of file.getClasses()) {
-                for (const method of cls.getMethods(true)) {
-                    method.buildBodyCpp();
-                    method.freeBodyBuilderCpp();
-                }
-            }
-        }
-        for (const namespace of this.getNamespacesMap().values()) {
-            for (const cls of namespace.getClasses()) {
-                for (const method of cls.getMethods(true)) {
-                    method.buildBodyCpp();
-                    method.freeBodyBuilderCpp();
-                }
-            }
-        }
-
-        this.buildStage = SceneBuildStage.METHOD_DONE;
-    }
-
     private genArkFiles(): void {
         this.projectFiles.forEach(file => {
             logger.trace('=== parse file:', file);
@@ -410,24 +374,6 @@ export class Scene {
         });
         this.buildAllMethodBody();
         this.addDefaultConstructors();
-    }
-
-    private genArkFilesCpp(): void {
-        this.projectFiles.forEach(file => {
-            logger.trace('=== parse file:', file);
-            try {
-                const arkFile: ArkFile = new ArkFile(FileUtils.getFileLanguage(file, this.fileLanguages));
-                arkFile.setScene(this);
-                buildArkFileFromFileCpp(file, this.realProjectDir, arkFile, this.projectName, this.includeDirs);
-                this.filesMap.set(arkFile.getFileSignature().toMapKey(), arkFile);
-            } catch (error) {
-                logger.error('Error parsing file:', file, error);
-                this.unhandledFilePaths.push(file);
-                return;
-            }
-        });
-        this.buildAllMethodBodyCpp();
-        this.addDefaultConstructorsCpp();
     }
 
     private getFilesOrderByDependency(): void {

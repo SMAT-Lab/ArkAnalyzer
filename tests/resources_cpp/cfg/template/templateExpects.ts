@@ -125,10 +125,10 @@ export const TEMPLATE_MYCONTAINER_CLASS = {
                 {
                     id: 0,
                     stmts: [
-                        'instanceinvoke this.<@template/template.cpp: MyContainer.%instInit()>()',
                         'value1 = parameter0: T',
                         'value2 = parameter1: T',
                         'this = this: @template/template.cpp: MyContainer',
+                        'instanceinvoke this.<@template/template.cpp: MyContainer.%instInit()>()',
                         'return this'
                     ],
                     preds: [],

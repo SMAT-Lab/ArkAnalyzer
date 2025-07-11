@@ -9,7 +9,7 @@ private:
     char name;  // *string做类型时解析this->name节点为CXXMemberCallExpr
 
 public:
-    Base(const char& name) : name(pname) {
+    Base(const char& pname) : name(pname) {
         cout << "Base constructor called with name: " << name << endl;
     }
 
@@ -73,8 +73,46 @@ public:
     }
 };
 
+// *** 类的多态 ***
+class Animal
+{
+public:
+    virtual void sound() const = 0;  // 纯虚函数（virtual + =0) -》 抽象类（不能实例化），该函数必须被子类重写
+};
+
+class Dog : public Animal
+{
+public:
+    void sound() const override {
+            std::cout << "wo wo wo!" <<  std::endl;
+    }
+};
+
+class Cat : public Animal
+{
+public:
+    void sound() const override {
+        std::cout << "meow meow mewo!" <<  std::endl;
+    }
+};
+
+class Pig : public Animal
+{
+public:
+    void sound() const override {
+        std::cout << "Aooooooowooooo!" <<  std::endl;
+    }
+};
+
+void makeSound(const Animal* animal)
+{
+    animal->sound();
+}
+
+
 int main() {
     Derived d('X', 101, 75, 3.6);
     d.introduce();
+    makeSound(new Dog());
     return 0;
 }

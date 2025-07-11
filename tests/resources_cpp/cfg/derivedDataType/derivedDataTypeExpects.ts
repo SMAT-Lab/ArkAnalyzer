@@ -13,7 +13,7 @@ export const DERIVED_DATA_TYPE_EXPECT_CLASS = {
                     id: 0,
                     stmts: [
                         'this = this: @derivedDataType/derivedDataType.cpp: MyClass',
-                        'staticinvoke <@%unk/%unk: .cout()>(\'delete\')',
+                        "staticinvoke <@%unk/%unk: .cout()>('delete')",
                         'return'
                     ],
                     preds: [],
@@ -27,10 +27,10 @@ export const DERIVED_DATA_TYPE_EXPECT_CLASS = {
                 {
                     id: 0,
                     stmts: [
-                        'instanceinvoke this.<@derivedDataType/derivedDataType.cpp: MyClass.%instInit()>()',
                         'name = parameter0: char',
                         'age = parameter1: int',
                         'this = this: @derivedDataType/derivedDataType.cpp: MyClass',
+                        'instanceinvoke this.<@derivedDataType/derivedDataType.cpp: MyClass.%instInit()>()',
                         'this-><@derivedDataType/derivedDataType.cpp: MyClass.name> = name',
                         'this-><@derivedDataType/derivedDataType.cpp: MyClass.age> = age',
                         'return this'
@@ -128,12 +128,12 @@ export const DERIVED_DATA_TYPE_EXPECT_STRUCT = {
                 {
                     id: 0,
                     stmts: [
-                        'instanceinvoke this.<@derivedDataType/derivedDataType.cpp: MyStruct.%instInit()>()',
                         't = parameter0: string',
                         'a = parameter1: string',
                         's = parameter2: string',
                         'id = parameter3: int',
                         'this = this: @derivedDataType/derivedDataType.cpp: MyStruct',
+                        'instanceinvoke this.<@derivedDataType/derivedDataType.cpp: MyStruct.%instInit()>()',
                         'return this'
                     ],
                     preds: [],

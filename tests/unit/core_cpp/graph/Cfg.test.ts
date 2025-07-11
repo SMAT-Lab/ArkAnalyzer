@@ -181,9 +181,10 @@ import {WHILE_CONTINUE_EXPECT_MAIN} from '../../../resources_cpp/cfg/whileContin
 import { assertClassBlocksEqual, testBlocks } from '../../common';
 import { Scene } from '../../../../src';
 import {
-    BASE_CLASS_EXPECT,
-    DERIVED_CLASS_EXPECT,
-    LEFT_CLASS_EXPECT, MAIN_EXPECT,
+    ANIMAL_CLASS_EXPECT,
+    BASE_CLASS_EXPECT, CAT_CLASS_EXPECT,
+    DERIVED_CLASS_EXPECT, DOG_CLASS_EXPECT,
+    LEFT_CLASS_EXPECT, MAIN_EXPECT, PIG_CLASS_EXPECT,
     RIGHT_CLASS_EXPECT,
 } from '../../../resources_cpp/cfg/class/classExpect';
 import { LAZY_IMPORT_CASE1_CLASS } from '../../../resources_cpp/cfg/lazyImport/lazyImportCase1/lazyImportCase1Expect';
@@ -370,6 +371,10 @@ describe('Type Test', () => {
         testBlocksClass(scene, 'classSample.cpp', 'Left', LEFT_CLASS_EXPECT);
         testBlocksClass(scene, 'classSample.cpp', 'Right', RIGHT_CLASS_EXPECT);
         testBlocksClass(scene, 'classSample.cpp', 'Derived', DERIVED_CLASS_EXPECT);
+        testBlocksClass(scene, 'classSample.cpp', 'Animal', ANIMAL_CLASS_EXPECT);
+        testBlocksClass(scene, 'classSample.cpp', 'Cat', CAT_CLASS_EXPECT);
+        testBlocksClass(scene, 'classSample.cpp', 'Dog', DOG_CLASS_EXPECT);
+        testBlocksClass(scene, 'classSample.cpp', 'Pig', PIG_CLASS_EXPECT);
         testBlocks(scene, 'classSample.cpp', 'main', MAIN_EXPECT.blocks);
     });
 

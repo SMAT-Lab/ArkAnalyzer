@@ -59,6 +59,7 @@ export enum ModifierType {
     EXTERN = 1 << 16,
     FRIEND = 1 << 17,
     VIRTUAL = 1 << 18,
+    PURE_VIRTUAL = 1 << 19,
 }
 
 export const MODIFIER_TYPE_MASK = 0xffff;
@@ -91,6 +92,8 @@ const MODIFIER_KIND_2_ENUM_CPP = new Map<string, ModifierType>([
     ["friend", ModifierType.FRIEND],
     ["override", ModifierType.OVERRIDE],
     ["static", ModifierType.STATIC],
+    ["pure virtual", ModifierType.PURE_VIRTUAL],
+    ["abstract", ModifierType.ABSTRACT],  // C++纯虚函数所在类为抽象类，此设置一个修饰符对标ts中的抽象类
 ]);
 
 const MODIFIER_KIND_2_ENUM = new Map<ts.SyntaxKind, ModifierType>([
@@ -200,6 +203,10 @@ export abstract class ArkBaseModel {
 
     public isDefault(): boolean {
         return this.containsModifier(ModifierType.DEFAULT);
+    }
+
+    public isPureVirtual(): boolean {
+        return this.containsModifier(ModifierType.PURE_VIRTUAL);
     }
 
     /** @deprecated Use {@link isExport} instead. */
