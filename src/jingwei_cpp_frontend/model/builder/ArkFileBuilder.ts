@@ -125,12 +125,14 @@ function buildArkFile(arkFile: ArkFile, astRoot: any): void {
                 arkFile.addExportInfo(buildExportInfo(mthd, arkFile, LineColPosition.buildFromNodeCpp(child, astRoot)))
             }
         } else if (child.kind === 'TypedefDecl') {
-            let cls: ArkClass = new ArkClass();
-            buildNormalArkClassFromArkFile(child.inner[0], arkFile, cls, astRoot);
-            arkFile.addArkClass(cls);
-            recordMap.set(child.id, cls);
-            if (isChildLocFileHeader(child)) {
-                arkFile.addExportInfo(buildExportInfo(cls, arkFile, LineColPosition.buildFromNodeCpp(child, astRoot)))
+            if (child.inner[0]["kind"] == "CXXRecordDecl") {
+                let cls: ArkClass = new ArkClass();
+                buildNormalArkClassFromArkFile(child.inner[0], arkFile, cls, astRoot);
+                arkFile.addArkClass(cls);
+                recordMap.set(child.id, cls);
+                if (isChildLocFileHeader(child)) {
+                    arkFile.addExportInfo(buildExportInfo(cls, arkFile, LineColPosition.buildFromNodeCpp(child, astRoot)))
+                }
             }
         } else if (child.kind === 'EnumDecl') {
             child = { ...child, 'tagUsed': 'enum' };
