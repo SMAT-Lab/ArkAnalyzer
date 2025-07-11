@@ -125,7 +125,7 @@ function buildArkFile(arkFile: ArkFile, astRoot: any): void {
                 arkFile.addExportInfo(buildExportInfo(mthd, arkFile, LineColPosition.buildFromNodeCpp(child, astRoot)))
             }
         } else if (child.kind === 'TypedefDecl') {
-            if (child.inner[0]["kind"] == "CXXRecordDecl") {
+            if (child.inner[0].kind === "CXXRecordDecl") {
                 let cls: ArkClass = new ArkClass();
                 buildNormalArkClassFromArkFile(child.inner[0], arkFile, cls, astRoot);
                 arkFile.addArkClass(cls);
