@@ -27,7 +27,7 @@ public:
     void setName(char name);
 };
 
-MyClass::MyClass(char name, int age) : name(name), age(age)
+MyClass::MyClass(char name, int age)
 {
     this->name = name;
     this->age = age;
@@ -63,10 +63,10 @@ struct MyStruct
 {
     string title;
     string author;
-    string subjecrt;
+    string subject;
     int book_id;
 
-    MyStruct(string t, string a, string s, int id) : title(t), author(a), subjecrt(s), book_id(id) {}
+    MyStruct(string t, string a, string s, int id) : title(t), author(a), subject(s), book_id(id) {}
     void printInfo()
     {
         cout << "title of the book is :" << title << endl;

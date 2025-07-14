@@ -129,6 +129,8 @@ export const TEMPLATE_MYCONTAINER_CLASS = {
                         'value2 = parameter1: T',
                         'this = this: @template/template.cpp: MyContainer',
                         'instanceinvoke this.<@template/template.cpp: MyContainer.%instInit()>()',
+                        "this.<@template/template.cpp: MyContainer.data1> = value1",
+                        "this.<@template/template.cpp: MyContainer.data2> = value2",
                         'return this'
                     ],
                     preds: [],

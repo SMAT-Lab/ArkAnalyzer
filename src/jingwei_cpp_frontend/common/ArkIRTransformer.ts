@@ -148,7 +148,7 @@ export class ArkIRTransformer {
             expression.kind.toString() === 'CXXNewExpr' || expression.kind.toString() === 'CallExpr' ||
             (expression.kind.toString() === 'UnaryOperator' && (expression.opcode === '++' || expression.opcode === '--')) ||
             (expression.kind.toString() === 'CXXOperatorCallExpr' && expression.name === 'operator=') ||
-            expression.kind.toString() === 'CXXConstructExpr') {
+            expression.kind.toString() === 'CXXConstructExpr' || expression.kind.toString() === 'CXXCtorInitializer') {
             return false;
         }
         return true;
@@ -232,6 +232,9 @@ export class ArkIRTransformer {
                 stmts = this.expressionStatementToStmts(node);
                 break;
             case 'AtomicCallExpr':
+                stmts = this.expressionStatementToStmts(node);
+                break;
+            case 'CXXCtorInitializer':
                 stmts = this.expressionStatementToStmts(node);
                 break;
         }

@@ -720,7 +720,7 @@ export class CfgBuilder {
                 this.judgeLastType(s, lastStatement);
                 lastStatement = s;
             } else if (['CallExpr', 'CXXOperatorCallExpr', 'BinaryOperator', 'UnaryOperator', 'CompoundAssignOperator',
-                'AtomicCallExpr', 'CXXConstructExpr'].includes(nodeKind)) {
+                'AtomicCallExpr', 'CXXConstructExpr', 'CXXCtorInitializer'].includes(nodeKind)) {
                 let s = new StatementBuilder('statement', innerNode.code, innerNode, scope.id);
                 this.judgeLastType(s, lastStatement);
                 lastStatement = s;
@@ -1159,11 +1159,13 @@ export class CfgBuilder {
         mes += '\n' + stmt.code;
         throw new TextError(mes);
     }
+
     getFuncBodyStmt() {
         let stmts: any[] = [];
         if (this.astRoot.inner) {
             for(let i = 0; i< this.astRoot.inner.length; i++) {
-                if (this.astRoot.kind === 'CXXConstructorDecl' && this.astRoot.inner[i].kind === 'CXXConstructExpr') {
+                if (this.astRoot.kind === 'CXXConstructorDecl' &&
+                    ['CXXConstructExpr', 'CXXCtorInitializer'].includes(this.astRoot.inner[i].kind)) {
                     stmts.push(this.astRoot.inner[i]);
                 }
                 if (this.astRoot.inner[i].kind === 'CompoundStmt') {

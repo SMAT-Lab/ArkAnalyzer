@@ -102,7 +102,7 @@ export class LineColPosition {
     public static buildFromNodeCpp(node: any, sourceFile: any) {
         let line = 0;
         let character = 0;
-        if (node.range.begin && node.range.begin.line) {
+        if (node.range?.begin && node.range.begin.line) {
             line = node.range.begin.line;
             character = node.range.begin.col;
         }
