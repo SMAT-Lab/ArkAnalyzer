@@ -49,8 +49,9 @@ export const THROW_EXPECT_CASE2 = {
             id: 2,
             stmts: [ 'msg = caughtexception: unknown' ],
             preds: [],
-            succes: [ 3 ]
+            succes: []
         },
-        { id: 3, stmts: [ 'return 0' ], preds: [ 1, 2 ], succes: [] }
+        { id: 3, stmts: [], preds: [ 1 ], succes: [ 4 ] },
+        { id: 4, stmts: [ 'return 0' ], preds: [ 3 ], succes: [] }
     ]
 };

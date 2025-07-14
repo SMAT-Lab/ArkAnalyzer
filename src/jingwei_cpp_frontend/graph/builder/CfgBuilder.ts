@@ -29,7 +29,7 @@ import { GlobalRef } from '../../../core/base/Ref';
 import { LoopBuilder } from '../../../core/graph/builder/LoopBuilder';
 import { SwitchBuilder } from '../../graph/builder/SwitchBuilder';
 import { ConditionBuilder } from '../../../core/graph/builder/ConditionBuilder';
-import { TrapBuilder } from './TrapBuilder';
+import { TrapBuilder } from '../../../core/graph/builder/TrapBuilder';
 import { CONSTRUCTOR_NAME, PROMISE } from '../../common/TSConst';
 import { ModifierType } from '../../../core/model/ArkBaseModel';
 
