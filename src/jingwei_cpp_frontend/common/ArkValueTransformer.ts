@@ -1721,10 +1721,14 @@ export class ArkValueTransformer {
                 constant = ValueUtil.getLabelPtrConstant(literalNode.inner[0].code);
                 let p = literalNode.parent ? literalNode.parent : literalNode.getParent();
                 const point = p.code.match(/void\s*([^=]+)=/)[1].trim();
+                let stored = false;
                 for (const [key, gotoStmts] of this.declaringMethod.gotoStmtMap) {
                     if (key === literalNode.inner[0].code) {
                         this.declaringMethod.gotoStmtMap.set(point, gotoStmts);
                     }
+                }
+                if(!stored) {
+                    this.declaringMethod.gotoStmtMap.set(point, []);
                 }
                 break;
             default:

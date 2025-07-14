@@ -539,7 +539,7 @@ export class CfgBuilder {
     ASTNodeGotoStatement(innerNode: any, lastStatement: StatementBuilder, scopeID: number) {
         let s = new StatementBuilder('gotoStatement', innerNode.code, innerNode, scopeID);
         this.judgeLastType(s, lastStatement);
-        let label: string = innerNode.code.substr(innerNode.code.indexOf('goto ') + 5);
+        let label: string = innerNode.code.substring(innerNode.code.indexOf('goto ') + 5);
         let gotoStmtsOfLabel = this.declaringMethod.gotoStmtMap.get(label);
         if (gotoStmtsOfLabel === undefined) {
             this.declaringMethod.gotoStmtMap.set(label, [s]);
@@ -575,22 +575,22 @@ export class CfgBuilder {
     ASTNodeLabelStatement(innerNode: any, lastStatement: StatementBuilder, scopeID: number) {
         let labelStmt = new StatementBuilder('statement', 'goto label:' + innerNode.name, innerNode, scopeID);
         // 处理goto语句与label语句的前后关系
-        let label: string = innerNode.code.substr(0, innerNode.code.indexOf(':'));
-        let matched = false;
-        for (const [key, gotoStmts] of this.declaringMethod.gotoStmtMap) {
-            if (key !== label) {
-                continue;
-            }
+
+        const idx = innerNode.code.indexOf(':');
+        if (idx === -1) {
+            return new StatementBuilder('gotoStatement', innerNode.code, innerNode, scopeID);
+        }
+        const label = innerNode.code.substring(0,idx);
+        const gotoStmts = this.declaringMethod.gotoStmtMap.get(label);
+        if(!gotoStmts) {
+            let s = new StatementBuilder('gotoStatement', innerNode.code, innerNode, scopeID);
+            this.declaringMethod.gotoStmtMap.set(label, [s]);
+        } else {
             for (const gotoStmt of gotoStmts) {
                 for (const lastStmt of [...gotoStmt.lasts]) {
                     this.judgeLastStmtForLabel(labelStmt, lastStmt, gotoStmt);
-                    matched = true;
                 }
             }
-        }
-        if (!matched) {
-            let s = new StatementBuilder('gotoStatement', innerNode.code, innerNode, scopeID);
-            this.declaringMethod.gotoStmtMap.set(label, [s]);
         }
 
         // 处理label语句和前一句的前后关系
