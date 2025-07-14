@@ -315,6 +315,8 @@ export class ArkValueTransformer {
             return this.cxxTypeidExprToValueAndStmts(node);
         } else if (node.kind === 'ArrayTypeTraitExpr') {
             return this.arrayTypeTraitExprToValueAndStmts(node);
+        } else if (node.kind === 'CXXCtorInitializer') {
+            return this.cxxCtorInitializerToValueAndStmts(node);
         }
 
         logger.warn(`ArkValueTransformer-tsNodeToValueAndStmts: node '${node.kind}' is not specially processed.`);
@@ -323,6 +325,24 @@ export class ArkValueTransformer {
             valueOriginalPositions: [FullPosition.buildFromNodeCpp(node, this.sourceFile)],
             stmts: [],
         };
+    }
+
+    /* c++类使用初始化列表对成员变量的初始化：Base(const char pname) : name(pname) {...}中的name(pname)，
+     最终效果类似this->name = pname，此处也处理成赋值的形式 */
+    private cxxCtorInitializerToValueAndStmts(cxxCtorInitializer: any): ValueAndStmts {
+        const assignRight = cxxCtorInitializer.inner[0];
+        const CtorInit2ThisMemberExpr = {
+            kind: 'MemberExpr',
+            name: cxxCtorInitializer.anyInit.name,
+            inner: [
+                {
+                    kind : 'CXXThisExpr',
+                }
+            ],
+            type: cxxCtorInitializer.anyInit.type
+        }
+        return this.assignmentToValueAndStmts(CtorInit2ThisMemberExpr, assignRight, false, false,
+                UnknownType.getInstance(), true);
     }
 
     // C++中子类调用父类构造函数进行初始化，类似ts的super(xx)。比如Left(const char& name, int power) : Base(name) { ... }
@@ -1721,10 +1741,14 @@ export class ArkValueTransformer {
                 constant = ValueUtil.getLabelPtrConstant(literalNode.inner[0].code);
                 let p = literalNode.parent ? literalNode.parent : literalNode.getParent();
                 const point = p.code.match(/void\s*([^=]+)=/)[1].trim();
+                let stored = false;
                 for (const [key, gotoStmts] of this.declaringMethod.gotoStmtMap) {
                     if (key === literalNode.inner[0].code) {
                         this.declaringMethod.gotoStmtMap.set(point, gotoStmts);
                     }
+                }
+                if(!stored) {
+                    this.declaringMethod.gotoStmtMap.set(point, []);
                 }
                 break;
             default:

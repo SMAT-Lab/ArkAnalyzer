@@ -13,6 +13,7 @@ export const BASE_CLASS_EXPECT = {
                         'pname = parameter0: char&',
                         'this = this: @class/classSample.cpp: Base',
                         'instanceinvoke this.<@class/classSample.cpp: Base.%instInit()>()',
+                        'this.<@class/classSample.cpp: Base.name> = pname',
                         "%0 = this.<@class/classSample.cpp: Base.name>",
                         "staticinvoke <@%unk/%unk: .cout()>('Base constructor called with name: ', %0)",
                         'return this'
@@ -59,6 +60,7 @@ export const LEFT_CLASS_EXPECT = {
                         'this = this: @class/classSample.cpp: Left',
                         'instanceinvoke this.<@class/classSample.cpp: Base.constructor(char&)>(name)',
                         'instanceinvoke this.<@class/classSample.cpp: Left.%instInit()>()',
+                        'this.<@class/classSample.cpp: Left.leftPower> = power',
                         '%0 = this.<@class/classSample.cpp: Left.leftPower>',
                         "staticinvoke <@%unk/%unk: .cout()>('Left constructor called with power: ', %0)",
                         'return this'
@@ -105,6 +107,7 @@ export const RIGHT_CLASS_EXPECT = {
                         'this = this: @class/classSample.cpp: Right',
                         'instanceinvoke this.<@class/classSample.cpp: Base.constructor(char&)>(name)',
                         'instanceinvoke this.<@class/classSample.cpp: Right.%instInit()>()',
+                        'this.<@class/classSample.cpp: Right.rightSpeed> = speed',
                         '%0 = this.<@class/classSample.cpp: Right.rightSpeed>',
                         "staticinvoke <@%unk/%unk: .cout()>('Right constructor called with speed: ', %0)",
                         'return this'
@@ -157,6 +160,7 @@ export const DERIVED_CLASS_EXPECT = {
                         'instanceinvoke this.<@class/classSample.cpp: Left.constructor(char&, int)>(name, power)',
                         'instanceinvoke this.<@class/classSample.cpp: Right.constructor(char&, double)>(name, speed)',
                         'instanceinvoke this.<@class/classSample.cpp: Derived.%instInit()>()',
+                        'this.<@class/classSample.cpp: Derived.robotId> = id',
                         '%0 = this.<@class/classSample.cpp: Derived.robotId>',
                         "staticinvoke <@%unk/%unk: .cout()>('Derived constructor called with id: ', %0)",
                         'return this'
