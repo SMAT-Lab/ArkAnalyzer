@@ -14,6 +14,26 @@ using json = nlohmann::json;
 namespace fs = std::filesystem;
 std::vector<std::string> g_user_include_dirs;
 //===================工具函数区===================
+template<typename F>
+void forEachChild(json& node, F&& f) {
+    if (node.contains("inner") && node["inner"].is_array())
+        for (auto& child : node["inner"]) f(child);
+}
+
+json buildASTJson(CXCursor cursor);
+
+inline void visitAllChildren(CXCursor cursor, json& children) {
+    clang_visitChildren(
+        cursor,
+        [](CXCursor child, CXCursor parent, CXClientData client_data) {
+            json* list = static_cast<json*>(client_data);
+            json childAst = buildASTJson(child);
+            if (!childAst.is_null()) list->push_back(childAst);
+            return CXChildVisit_Continue;
+        },
+        &children
+    );
+}
 
 // 去除首尾空白
 inline void trim(std::string &s){
@@ -96,8 +116,7 @@ std::map<std::string, std::string> fileContents;
 void loadFileContent(const std::string &filename){
     std::ifstream file(filename, std::ios::in | std::ios::binary);
     if (!file) return;
-    std::string content((std::istreambuf_iterator<char>(file)),
-                         std::istreambuf_iterator<char>());
+    std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
     fileContents[filename] = std::move(content);
 }
 
@@ -127,8 +146,7 @@ json getSourceContent(CXSourceRange range){
     if (startOffset >= content.size() || endOffset > content.size()) return json();
     unsigned tokLen = endOffset > startOffset ? (endOffset - startOffset) : 0;
     return {
-        {"id", startOffset + endOffset},
-        {"code", content.substr(startOffset, endOffset - startOffset)},
+        {"id", startOffset + endOffset}, {"code", content.substr(startOffset, endOffset - startOffset)},
         {"begin", {{"line", startLine}, {"col", startColumn}, {"offset", startOffset}, {"tokLen", tokLen}}},
         {"end", {{"line", endLine}, {"col", endColumn}, {"offset", endOffset}}}
     };
@@ -150,9 +168,8 @@ std::string handleUnexposedExpr(json node){
         } else if (codeStr.find("?") != std::string::npos){
             return "BinaryConditionalOperator";
         } else if (codeStr.find(".push_back") != std::string::npos || codeStr.find(".insert") != std::string::npos ||
-                   codeStr.find(".push") != std::string::npos ||
-                   typeStr.find("basic_ostream") != std::string::npos || typeStr == "bool" ||
-                   typeStr == "mapped_type" || codeStr.find(".erase") != std::string::npos){
+                   codeStr.find(".push") != std::string::npos || typeStr.find("basic_ostream") != std::string::npos ||
+                   typeStr == "bool" || typeStr == "mapped_type" || codeStr.find(".erase") != std::string::npos){
             return "ExprWithCleanups";
         }else if (codeStr.find("std::make_pair") != std::string::npos){
              return "MaterializeTemporaryExpr";
@@ -167,9 +184,7 @@ void extractArraySizes(const json &node, std::vector<std::string> &arraySizes){
         if (node["kind"] == "IntegerLiteral" && node.contains("value")){
             arraySizes.push_back(node["value"]);
         } else if (node["kind"] == "ImplicitCastExpr" && node.contains("inner")){
-            for (const auto &gchild:node["inner"]){
-                extractArraySizes(gchild, arraySizes);
-            }
+            forEachChild(const_cast<json&>(node), [&](json &gchild){ extractArraySizes(gchild, arraySizes); });
         }
     }
 }
@@ -220,40 +235,29 @@ bool templateConstructCallExpr(std::string nameStr, std::string typeStr){
     return false;
 }
 
-void fixCallExprChildKind(json &node){
-    // 递归处理所有子节点
-    if (node.contains("inner") && node["inner"].is_array()) {
-        for (auto &child : node["inner"]){
-            fixCallExprChildKind(child);
-        }
-    }
-    // 补全CallExpr第一个子节点kind
-    if (node.is_object() && node.contains("kind") && node["kind"] == "CallExpr"
-        && node.contains("inner") && node["inner"].is_array() && !node["inner"].empty()){
+// 递归修正 CallExpr 节点的第一个子节点 kind，补全缺失类型
+void fixCallExprChildKind(json &node) {
+    forEachChild(node, [&](json &child) { fixCallExprChildKind(child); });
+
+    // 补全 CallExpr 的第一个子节点 kind
+    if (node.is_object() && node.value("kind", "") == "CallExpr"
+        && node.contains("inner") && node["inner"].is_array() && !node["inner"].empty()) {
         auto &child = node["inner"][0];
-        std::string code  = child.value("code", "");
+        // 如果子节点 kind 缺失
         if (!child.contains("kind") || child["kind"].is_null() || child["kind"] == "") {
-            // 优先referencedDecl
-            if (child.contains("referencedDecl") && child["referencedDecl"].contains("kind") && !child["referencedDecl"]["kind"].is_null()){
+            const std::string code = child.value("code", "");
+            // 优先使用 referencedDecl 中的 kind
+            if (child.contains("referencedDecl") && child["referencedDecl"].contains("kind") && !child["referencedDecl"]["kind"].is_null())
                 child["kind"] = child["referencedDecl"]["kind"];
-            }
-            // 成员调用
-            else if (code.find('.') != std::string::npos || code.find("->") != std::string::npos) {
+            else if (code.find('.') != std::string::npos || code.find("->") != std::string::npos)
                 child["kind"] = "MemberExpr";
-            }
-            // 可能是重载（模板）声明
-            else if (child.contains("referencedDecl") && child["referencedDecl"].contains("kind")
-                    &&child["referencedDecl"]["kind"] == "OverloadedDeclRef") {
+            else if (child.contains("referencedDecl") && child["referencedDecl"].value("kind", "") == "OverloadedDeclRef")
                 child["kind"] = "OverloadedDeclRef";
-            }
-            // 普通函数调用
-            else {
+            else
                 child["kind"] = "DeclRefExpr";
-            }
         }
     }
 }
-
 
 // 修改CXXConstructExpr节点下子节点类型
 void changeChildNodeType(json &children){
@@ -365,7 +369,6 @@ void postprocessCallExpr(json &node){
             }
         }
     }
-
     // 自动补全 AtomicCallExpr
     static const std::vector<std::string> atomicFuncs = {
         "atomic_fetch_add", "atomic_fetch_sub", "atomic_fetch_and", "atomic_fetch_or", "atomic_fetch_xor",
@@ -387,12 +390,7 @@ std::map<std::string, int> labelNameToId;
 void collectLabelStmt(const json &node, std::map<std::string, int> &labelMap){
     if (node.contains("kind") && node["kind"] == "LabelStmt" && node.contains("name"))
         labelMap[node["name"]] = node["id"];
-
-    if (node.contains("inner")){
-        for (const auto &child: node["inner"]){
-            collectLabelStmt(child, labelMap);
-        }
-    }
+    forEachChild(const_cast<json&>(node), [&](json &child) { collectLabelStmt(child, labelMap); });
 }
 
 // 为goto语句补充targetlabelId
@@ -404,74 +402,42 @@ void patchGotoTarget(json &node, const std::map<std::string, int> &labelMap){
             if (!labelName.empty() && labelMap.count(labelName)) node["targetLabelId"] = labelMap.at(labelName);
         }
     }
-    if (node.contains("inner")){
-        for (auto & child:node["inner"]){
-            patchGotoTarget(child, labelMap);
-        }
-    }
+    forEachChild(node, [&](json &child) { patchGotoTarget(child, labelMap); });
 }
 
 void patchPseudoDestructorExpr(json &node){
     // 检查当前是否是MemberExpr + TypeRef组合 并且包含 ~ 推断为伪析构
-    if (node.contains("kind") && node["kind"] == "MemberExpr"
-        && node.contains("code") && node["code"].is_string() && node["code"].get<std::string>().find("~") != std::string::npos
-        && node.contains("inner") && node["inner"].is_array()
-        && node["inner"].size() == 2
-        && node["inner"][1].contains("kind")
-        && node["inner"][1]["kind"] == "TypeRef"){
+    if (node.contains("kind") && node["kind"] == "MemberExpr" && node.contains("code")
+        && node["code"].is_string() && node["code"].get<std::string>().find("~") != std::string::npos
+        && node.contains("inner") && node["inner"].is_array() && node["inner"].size() == 2
+        && node["inner"][1].contains("kind") && node["inner"][1]["kind"] == "TypeRef"){
             node["kind"] = "CXXPseudoDestructorExpr";
             node["pseudoDestructorType"] = node["inner"][1]["type"]["qualType"];
     }
-    // 递归对子节点处理
-    if (node.contains("inner") && node["inner"].is_array()){
-        for (auto &child:node["inner"]){
-            patchPseudoDestructorExpr(child);
-        }
-    }
+    forEachChild(node, [&](json &child){ patchPseudoDestructorExpr(child); });
 }
 
-void patchFoldExpr(json &node){
-    // 处理子节点
-    if (node.contains("inner") && node["inner"].is_array()){
-        for (auto &child: node["inner"]){
-            patchFoldExpr(child);
-        }
-    }
-    // 检查是否为需要伪造CXXFoldExpr的节点
+void patchFoldExpr(json &node) {
+    // 递归处理所有子节点
+    forEachChild(node, [&](json &child) { patchFoldExpr(child); });
+    // 判断是否为折叠表达式并伪造CXXFoldExpr节点 只判断常见的 "(... <op> ars)
     if (node.contains("code") && node.contains("kind") && node["kind"] == "ImplicitCastExpr") {
-        std::string code = node["code"];
-        // 判断是否为折叠表达式
-        // 只判断常见的 "(... <op> ars)"
-        std::smatch m;
         static std::regex fold_regex(R"(\(\.\.\.\s*([+\-*/&|^])\s*([a-zA-Z0-9_]+)\))");
-        if (std::regex_match(code, m, fold_regex)){
-            // 匹配左折叠
-            std::string op = m[1];
-            std::string var = m[2];
-            // 构造一个新的CXXFoldExpr节点
-            json foldExpr;
-            foldExpr["kind"] = "CXXFoldExpr";
-            foldExpr["op"] = op;
-            foldExpr["pattern"] = "left";
-            foldExpr["code"] = code;
-            foldExpr["inner"] = node["inner"];
-            foldExpr["range"] = node["range"];
-            foldExpr["type"] = node["type"];
-            foldExpr["valueCategory"] = node.value("valueCategory", "prvalue");
-            // 用CXXFoldExpr替代原始节点
-            node = foldExpr;
-        }
-        // 可扩展右折叠
+        std::smatch m;
+        std::string code = node["code"];
+        if (std::regex_match(code, m, fold_regex)) node = {
+            {"kind", "CXXFoldExpr"}, {"op", m[1]},  // 匹配左折叠
+            {"pattern", "left"}, {"code", code},
+            {"inner", node["inner"]}, {"range", node["range"]},
+            {"type", node["type"]}, {"valueCategory", node.value("valueCategory", "prvalue")}
+        };
     }
 }
-
-
 
 // 将VarDecl下IntegerLiteral 类型子节点移除
 void filterVarDeclArrayDims(json &node){
     // 只处理VarDecl且是数组类型
-    if (node.contains("kind") && node["kind"] == "VarDecl" &&
-        node.contains("type") && node["type"].contains("qualType")){
+    if (node.contains("kind") && node["kind"] == "VarDecl" && node.contains("type") && node["type"].contains("qualType")){
             std::string qualType = node["type"]["qualType"];
             if (qualType.find('[') != std::string::npos && qualType.find(']') != std::string::npos){
                 if (node.contains("inner") && node["inner"].is_array()){
@@ -485,16 +451,11 @@ void filterVarDeclArrayDims(json &node){
                 }
             }
         }
-
-    if (node.contains("inner") && node["inner"].is_array()){
-        for (auto &child: node["inner"]){
-            filterVarDeclArrayDims(child);
-        }
-    }
+    forEachChild(node, [&](json &child){ filterVarDeclArrayDims(child); });
 }
 
 
-// 手机当前作用域所有参数/变量声明， 返回名到类型的映射
+// 收集当前作用域所有参数/变量声明， 返回名到类型的映射
 std::unordered_map<std::string, std::string> collectAllScopeVarTypeMap(const json &node){
     std::unordered_map<std::string, std::string> varTypeMap;
     if (node.contains("inner") && node["inner"].is_array()){
@@ -519,57 +480,41 @@ void fixImplicitCastExprAndDeclRef(json &node, const std::unordered_map<std::str
         // 修正类型
         if (node.contains("type") && node["type"].contains("qualType"))
             node["type"]["qualType"] = varTypeMap.at(node["code"]);
-
         // 如果inner为空则转为DeclRefExpr
         if (node.contains("inner") && node["inner"].is_array() && node["inner"].empty()){
             node["kind"] = "DeclRefExpr";
             node["name"] = node["code"];
         }
     }
-    // 递归处理所有子节点
-    if (node.contains("inner") && node["inner"].is_array()){
-        for (auto &child: node["inner"]){
-            fixImplicitCastExprAndDeclRef(child, varTypeMap);
-        }
-    }
+    forEachChild(node, [&](json &child){ fixImplicitCastExprAndDeclRef(child, varTypeMap); });
 }
 
 void fixAllVarRefTypes(json &node){
     // 只处理函数相关节点
-    if (node.contains("kind") && (
-        node["kind"] == "FunctionDecl" ||
-        node["kind"] == "CXXMethodDecl" ||
+    if (node.contains("kind") && ( node["kind"] == "FunctionDecl" || node["kind"] == "CXXMethodDecl" ||
         node["kind"] == "CXXConstructorDecl")){
             auto typeMap = collectAllScopeVarTypeMap(node);
             fixImplicitCastExprAndDeclRef(node, typeMap);
         }
-    if (node.contains("inner") && node["inner"].is_array()){
-        for (auto &child: node["inner"]){
-            fixAllVarRefTypes(child);
-        }
-    }
+    forEachChild(node, [&](json &child){ fixAllVarRefTypes(child); });
 }
 
 // 缓存所有的类, 结构体
 std::map<std::string, json> derivedDataTypeMap;
 
 // 关联构造函数初始化时的对象参数
-void relateMemberType(std::string typeStr, json &children){
-    json classNode = derivedDataTypeMap[typeStr];
-    if (!classNode.is_null() && children.size() == classNode["inner"].size()){
-        for (int i =0; i< children.size(); i++){
-            if (children[i]["type"]["qualType"] != classNode["inner"][i]["type"]["qualType"] && derivedDataTypeMap.count(children[i]["type"]["qualType"]) != 0){
-                json constructNode;
-                constructNode["id"] = children[i]["id"];
-                constructNode["code"] = children[i]["code"];
-                constructNode["name"] = children[i]["name"];
-                constructNode["range"] = children[i]["range"];
-                constructNode["type"] = classNode["inner"][i]["type"];
-                constructNode["kind"] = "CXXConstructExpr";
-                json childInner = json::array();
-                childInner.push_back(children[i]);
-                constructNode["inner"] = childInner;
-                children[i] = constructNode;
+void relateMemberType(const std::string& typeStr, json& children) {
+    const auto& classNode = derivedDataTypeMap[typeStr];
+    if (!classNode.is_null() && children.size() == classNode["inner"].size()) {
+        for (int i = 0; i < children.size(); ++i) {
+            const auto& memberType = classNode["inner"][i]["type"]["qualType"];
+            auto& child = children[i];
+            if (child["type"]["qualType"] != memberType && derivedDataTypeMap.count(child["type"]["qualType"])) {
+                child = {
+                    {"id", child["id"]}, {"code", child["code"]}, {"name", child["name"]},
+                    {"range", child["range"]}, {"type", classNode["inner"][i]["type"]},
+                    {"kind", "CXXConstructExpr"}, {"inner", json::array({child})}
+                };
             }
         }
     }
@@ -614,31 +559,16 @@ bool isBuiltInType(std::string& type){
 }
 
 // 构造模板函数的默认类型节点
-json buildTemplateDefaultType(std::string codeStr){
-    size_t ind = codeStr.find("=");
-    std::string typeStr = codeStr.substr(ind + 1, codeStr.length() - ind);
+json buildTemplateDefaultType(const std::string& codeStr) {
+    auto eq = codeStr.find('=');
+    std::string typeStr = eq == std::string::npos ? "" : codeStr.substr(eq + 1);
     typeStr.erase(std::remove(typeStr.begin(), typeStr.end(), ' '), typeStr.end());
-    json defaultNode = json::object();
-    if (isBuiltInType(typeStr)){
-        defaultNode["kind"] = "BuildInType";
-        defaultNode["type"] = {{"qualType", typeStr}};
-        defaultNode["inner"] = json::array();
-    } else {
-        json recordNode = json::object();
-        recordNode["kind"] = "RecordType";
-        recordNode["type"] = {{"qualType", typeStr}};
+    if (isBuiltInType(typeStr))
+        return {{"kind", "BuildInType"}, {"type", {{"qualType", typeStr}}}, {"inner", json::array()}};
 
-        json elaboratedNode = json::object();
-        elaboratedNode["kind"] = "ElaboratedType";
-        elaboratedNode["type"] = {{"qualType", typeStr}};
-        elaboratedNode["inner"] = json::array({recordNode});
-
-        defaultNode["kind"] = "TemplateArgument";
-        defaultNode["type"] = {{"qualType", typeStr}};
-        defaultNode["inner"] = json::array({elaboratedNode});
-    }
-
-    return defaultNode;
+    json recordNode = {{"kind", "RecordType"}, {"type", {{"qualType", typeStr}}}};
+    json elaboratedNode = {{"kind", "ElaboratedType"}, {"type", {{"qualType", typeStr}}}, {"inner", {recordNode}}};
+    return {{"kind", "TemplateArgument"}, {"type", {{"qualType", typeStr}}}, {"inner", {elaboratedNode}}};
 }
 
 // 根据系统添加分隔符
@@ -663,9 +593,7 @@ bool isInUserInclude(const std::string& fileName){
 }
 
 inline bool isRemovable(const json& j){
-    return j.is_null() ||
-            (j.is_object() && j.empty()) ||
-            (j.is_array() && j.empty());
+    return j.is_null() || (j.is_object() && j.empty()) || (j.is_array() && j.empty());
 }
 
 void cleanJson(json& node){
@@ -673,10 +601,7 @@ void cleanJson(json& node){
         for (auto& elem: node) {
             cleanJson(elem);
         }
-        node.erase(
-            std::remove_if(node.begin(), node.end(), isRemovable),
-                           node.end()
-        );
+        node.erase(std::remove_if(node.begin(), node.end(), isRemovable),node.end());
     } else if (node.is_object()) {
         for (auto it = node.begin(); it != node.end(); ) {
             cleanJson(it.value());
@@ -745,7 +670,6 @@ void filterToMainFileOnly(json& node, const std::string& mainFileName, std::stri
 
 // 添加构造函数的变量初始化节点
 json addCXXCtorInitializer(json &children) {
-
     json newChildren = json::array();
     json member = nullptr;
     for (int i = 0; i < children.size(); i++) {
@@ -820,21 +744,11 @@ json buildASTJson(CXCursor cursor){
     }
     if (kind_cursor == CXCursor_LinkageSpec){
         json children = json::array();
-        clang_visitChildren(
-            cursor,
-            [](CXCursor child, CXCursor parent, CXClientData client_data) {
-                json *list = static_cast<json *>(client_data);
-                json childAst = buildASTJson(child);
-                if (!childAst.is_null()) list->push_back(childAst);
-                return CXChildVisit_Continue;
-            },
-            &children
-        );
+        visitAllChildren(cursor, children);
         if (children.size() == 1) return children[0];
         if (children.empty()) return json();
         return children;
     }
-
 
     json node;
     std::string kindSpelling = cx2str(clang_getCursorKindSpelling(kind_cursor));
@@ -946,19 +860,7 @@ json buildASTJson(CXCursor cursor){
 
     // 子节点递归
     json children = json::array();
-    clang_visitChildren(
-        cursor,
-        [](CXCursor child, CXCursor parent, CXClientData client_data){
-            json *list = static_cast<json *>(client_data);
-            json childAst = buildASTJson(child);
-            CXCursorKind parent_kind = clang_getCursorKind(parent);
-            if (!childAst.is_null()){
-                list->push_back(childAst);
-            }
-            return CXChildVisit_Continue;
-        },
-        &children
-    );
+    visitAllChildren(cursor, children);
 
     if (node["kind"] == "InitListExpr" && typeStr.find("std::pair") != std::string::npos){
         fixMapPairInitListChildren(children, typeStr);
@@ -972,15 +874,15 @@ json buildASTJson(CXCursor cursor){
         }
         if (children.size() == 3) children[1]["valueCategory"] = "lvalue";
     } else if (node["kind"] == "CXXConstructExpr" || node["kind"] == "CallExpr"){
-        if (children.size() > 0 && children[0]["kind"] == "MemberExpr") {
+        if (!children.empty() && children[0]["kind"] == "MemberExpr") {
             node["kind"] = "CXXMemberCallExpr";
         }else {
             changeChildNodeType(children);
         }
     } else if (node["kind"] == "ImplicitCastExpr") {
-        if (children.size() > 0 && children[0]["kind"] == "CallExpr") {
+        if (!children.empty() && children[0]["kind"] == "CallExpr") {
             node["kind"] = "ExprWithCleanups";
-        } else if (children.size() > 0 && children[0]["kind"] == "DeclRefExpr" &&
+        } else if (!children.empty() && children[0]["kind"] == "DeclRefExpr" &&
             codeStr.find(children[0]["code"]) == 0 && codeStr.find("(") != std::string::npos) {
             node["kind"] = "RecoveryExpr";
         }
@@ -988,8 +890,7 @@ json buildASTJson(CXCursor cursor){
         children = addCXXCtorInitializer(children);
     } else if (node["kind"] == "TypedefDecl" && (children.size() == 0 || children[0]["kind"] != "CXXRecordDecl")) {
         json newChildren = json::array();
-        CXType typedefType = clang_getTypedefDeclUnderlyingType(cursor);
-        buildTypedefChild(typedefType, newChildren, children);
+        buildTypedefChild(clang_getTypedefDeclUnderlyingType(cursor), newChildren, children);
         children = newChildren;
     }
 
@@ -1011,10 +912,8 @@ json buildASTJson(CXCursor cursor){
     } else if (kind_cursor == CXCursor_CallExpr){
         postprocessCallExpr(node);
     }
-
     // 特殊表达式类型自动判断兜底
     detectAndFillSpecialKind(node);
-
     return node;
 }
 
@@ -1030,7 +929,6 @@ bool isSameFile(const std::string &pathA, const std::string &pathB){
     try{
         return std::filesystem::path(pathA).filename() == std::filesystem::path(pathB).filename();
     } catch (const std::filesystem::filesystem_error &e) {
-
         return false;
     }
 }
@@ -1157,10 +1055,8 @@ struct ClangArgs {
     std::vector<const char*> cstr_args;  // 指针
 };
 
-
 ClangArgs prepareClangArgs(const CommandLineOptions& opts) {
     ClangArgs res;
-
     // 选择标准
     if (hasSuffix(opts.input_file, ".c")) {
         res.str_args.push_back("-std=c99");
@@ -1168,18 +1064,14 @@ ClangArgs prepareClangArgs(const CommandLineOptions& opts) {
         res.str_args.push_back("-xc++");
         res.str_args.push_back("-std=c++17");
     }
-
     // 添加用户 include
     for (const auto& dir : opts.user_include_dirs) {
         res.str_args.push_back("-I" + dir);
     }
-
     // 将 string 转换为 c_str 指针
     for (const auto& arg : res.str_args) {
         res.cstr_args.push_back(arg.c_str());
     }
-
-    // 打印检查
     return res;
 }
 
