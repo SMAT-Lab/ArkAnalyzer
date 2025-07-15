@@ -1,6 +1,7 @@
 #include <filesystem>
 #include <sstream>
 #include <clang-c/Index.h>
+#include "utils_string.h"
 #include "json.hpp"
 #include <fstream>
 #include <iostream>
@@ -33,47 +34,6 @@ inline void visitAllChildren(CXCursor cursor, json& children) {
         },
         &children
     );
-}
-
-// 去除首尾空白
-inline void trim(std::string &s){
-    s.erase(0, s.find_first_not_of(" \t\r\n"));
-    s.erase(s.find_last_not_of(" \t\r\n") + 1);
-}
-
-// CXString 转std::string + 自动释放
-inline std::string cx2str(const CXString &s){
-    std::string r = clang_getCString(s) ? clang_getCString(s) : "" ;
-    clang_disposeString(s);
-    if (r.find("\\../") != std::string::npos) { // 规范化获取的路径，存在\../的情况
-       return std::filesystem::canonical(r).string();
-    }
-    return r;
-}
-
-// 提取括号中的内容
-inline std::string
-extractParentContent(const std::string &code, size_t lpos = std::string::npos, char open = '(', char close = ')'){
-    if (lpos == std::string::npos) lpos = code.find(open);
-    size_t rpos = code.rfind(close);
-    if (lpos != std::string::npos && rpos != std::string::npos && rpos > lpos +1){
-        std::string inside = code.substr(lpos + 1, rpos - lpos -1);
-        trim(inside);
-        return inside;
-    }
-    return std::string();
-}
-
-// 字符串分割
-inline std::vector<std::string> split(const std::string &s, char delimiter){
-    std::vector<std::string> tokens;
-    std::istringstream iss(s);
-    std::string token;
-    while (getline(iss, token, delimiter)){
-        trim(token);
-        tokens.push_back(token);
-    }
-    return tokens;
 }
 
 // 赋成员名
@@ -331,10 +291,8 @@ void detectAndFillSpecialKind(json &node){
     std::string codeStr = node["code"];
     // __arra_rank/extent
     static const std::vector<std::pair<std::string, std::string>> traitFuncs = {
-        {"__array_rank", "ArrayTypeTraitExpr"},
-        {"__array_extent", "ArrayTypeTraitExpr"},
-        {"__array_rank_u", "ArrayTypeTraitExpr"},
-        {"__array_extent_u", "ArrayTypeTraitExpr"}
+        {"__array_rank", "ArrayTypeTraitExpr"}, {"__array_extent", "ArrayTypeTraitExpr"},
+        {"__array_rank_u", "ArrayTypeTraitExpr"}, {"__array_extent_u", "ArrayTypeTraitExpr"}
     };
     for (const auto &[func, kind]: traitFuncs) {
         if (fillKindBycode(node, codeStr, func, kind, "traitArgs")) {
@@ -349,8 +307,7 @@ void detectAndFillSpecialKind(json &node){
 }
 
 void postprocessCallExpr(json &node){
-    // 子节点推到 name
-    // 自动不全name字段
+    // 子节点推到 name 自动补全name字段
     if((node["name"].is_null() || node["name"] == "") && node.contains("inner") &&!node["inner"].empty()){
         for (const auto &child:node["inner"]){
             if (child["kind"] == "DeclRefExpr" || child["kind"] == "OverloadedDeclRef"){
@@ -576,15 +533,6 @@ json buildTemplateDefaultType(const std::string& codeStr) {
     return {{"kind", "TemplateArgument"}, {"type", {{"qualType", typeStr}}}, {"inner", {elaboratedNode}}};
 }
 
-// 根据系统添加分隔符
-std::string getPathSeparator() {
-#ifdef _WIN32
-    return "\\";
-#else
-    return "/";
-#endif
-}
-
 // 判断文件名是否在-i目录下
 bool isInUserInclude(const std::string& fileName){
     for (const auto& dir: g_user_include_dirs){
@@ -738,7 +686,6 @@ void buildTypedefChild(CXType& type, json& newChildren, json& children) {
         node["kind"] = "FunctionProtoType";
         CXType result = clang_getResultType(type);
         buildTypedefChild(result, inner, children);
-
         size_t numArgs = children.size();
         for (size_t i = 0; i < numArgs; i++) {
             inner.push_back(children[i]);
@@ -754,140 +701,127 @@ void buildTypedefChild(CXType& type, json& newChildren, json& children) {
     newChildren.push_back(node);
 }
 
-// ==========================buildASTJson 主体========================
-
-json buildASTJson(CXCursor cursor){
-    CXSourceLocation loc = clang_getCursorLocation(cursor);
-    CXCursorKind kind_cursor = clang_getCursorKind(cursor);
-
-    CXFile file;
-    clang_getSpellingLocation(loc, &file, nullptr, nullptr, nullptr);
-    std::string fileName = file ? cx2str(clang_getFileName(file)) : "";
-
-    bool isInclude = isInUserInclude(fileName);
-    if (kind_cursor != CXCursor_TranslationUnit && !clang_Location_isFromMainFile(loc) && !isInclude){
-            return json();
-    }
-    if (kind_cursor == CXCursor_LinkageSpec){
-        json children = json::array();
-        visitAllChildren(cursor, children);
-        if (children.size() == 1) return children[0];
-        if (children.empty()) return json();
-        return children;
-    }
-
-    json node;
-    std::string kindSpelling = cx2str(clang_getCursorKindSpelling(kind_cursor));
-    std::string displayName = cx2str(clang_getCursorSpelling(cursor));
-    CXSourceRange range = clang_getCursorExtent(cursor);
-    if (isInclude) {
-        node["include"] = true;
-    }
-
-    node["type"] = {{"qualType", unifyTypeStr(clang_getTypeSpelling(clang_getCursorType(cursor)))}};
+void fillNodeKindTag(json& node, CXCursor cursor, CXCursorKind kind_cursor, const std::string& kindSpelling) {
+    std::string nameStr = node.value("name", "");
+    std::string codeStr = node.value("code", "");
     std::string typeStr = node["type"]["qualType"];
-    std::string fileStr = fileName != "" ? fileName : displayName;
+    switch (kind_cursor) {
+        case CXCursor_ClassDecl: node["kind"] = "CXXRecordDecl"; node["tagUsed"] = "class";   return;
+        case CXCursor_StructDecl: node["kind"] = "CXXRecordDecl"; node["tagUsed"] = "struct";  return;
+        case CXCursor_EnumDecl: node["kind"] = "EnumDecl";      node["tagUsed"] = "enum";    return;
+        case CXCursor_UnionDecl: node["kind"] = "CXXRecordDecl"; node["tagUsed"] = "union";   return;
+        case CXCursor_UnexposedExpr: node["kind"] = handleUnexposedExpr(node); return;
+        case CXCursor_UsingDirective: node["kind"] = "UsingDirectiveDecl"; node["isImplicit"] = true; return;
+        case CXCursor_MemberRefExpr: node["kind"] = "MemberExpr"; fillMemberName(node, nameStr); return;
+        default: break;
+    }
+    if (kind_cursor == CXCursor_CallExpr) {
+        if (typeStr.find("basic_ostream") == 0 || nameStr.find("operator") != std::string::npos)
+            node["kind"] = "CXXOperatorCallExpr";
+        else if (isConstructorByTypeStr(typeStr) || isConstructorByNameStr(nameStr) ||
+                 isConstructorByCodeStr(codeStr, nameStr, typeStr))
+            node["kind"] = "CXXConstructExpr";
+        else if ((codeStr.find(".") != std::string::npos || codeStr.find("->") != std::string::npos) &&
+                 nameStr.find("operator") == std::string::npos && codeStr.find(nameStr) != 0)
+            node["kind"] = "CXXMemberCallExpr";
+        else
+            node["kind"] = kindSpelling;
+        return;
+    }
+    if (kind_cursor == CXCursor_CXXMethod) {
+        node["kind"] = "CXXMethodDecl"; node["mangledName"] = getMemberInClassName(cursor);
+    } else if (kind_cursor == CXCursor_Constructor || (kind_cursor == CXCursor_UsingDeclaration && isUsingDecl(codeStr))) {
+        node["kind"] = "CXXConstructorDecl"; node["mangledName"] = getMemberInClassName(cursor);
+    } else if (kind_cursor == CXCursor_Destructor) {
+        node["kind"] = "CXXDestructorDecl"; node["mangledName"] = getMemberInClassName(cursor);
+    } else {
+        node["kind"] = kindSpelling;
+    }
+}
 
-    json content = getSourceContent(range);
-    if (kind_cursor == CXCursor_TranslationUnit){
+// content: getSourceContent() 的返回
+void fillNodeSourceContent(
+    json& node, const json& content, CXCursorKind kind_cursor, CXCursor cursor,
+    CXFile file, const std::string& displayName, const std::string& fileStr
+) {
+    if (kind_cursor == CXCursor_TranslationUnit) {
         node["fileName"] = fileStr;
-    } else if (kind_cursor == CXCursor_UnaryOperator){
+        return;
+    }
+
+    if (kind_cursor == CXCursor_UnaryOperator) {
         fillUnaryOperatorInfo(node, cursor);
-    } else if (kind_cursor == CXCursor_BinaryOperator || kind_cursor == CXCursor_CompoundAssignOperator){
+    } else if (kind_cursor == CXCursor_BinaryOperator || kind_cursor == CXCursor_CompoundAssignOperator) {
         node["opcode"] = cx2str(clang_Cursor_getBinaryOpcodeStr(clang_Cursor_getBinaryOpcode(cursor)));
     } else {
         node["name"] = displayName;
     }
-    std::string nameStr = node["name"].is_null() ? "" : node["name"];
-    std::string codeStr = content.contains("code") &&
-    content["code"].is_string() ? content["code"].get<std::string>() : "";
-    if (content != "" && kind_cursor != CXCursor_TranslationUnit)
+
+    // 填充 code 字段
+    std::string codeStr = (content.contains("code") && content["code"].is_string())
+                          ? content["code"].get<std::string>() : "";
+    if (!content.is_null() && kind_cursor != CXCursor_TranslationUnit)
         node["code"] = codeStr;
 
+    // InclusionDirective 特殊处理
     if (kind_cursor == CXCursor_InclusionDirective) {
         node["kind"] = "InclusionDirective";
         node["fileName"] = cx2str(clang_getIncludedFile(cursor) ?
-        clang_getFileName(clang_getIncludedFile(cursor)) : clang_getCursorSpelling(cursor));
+                                  clang_getFileName(clang_getIncludedFile(cursor)) :
+                                  clang_getCursorSpelling(cursor));
         node["name"] = displayName;
-        node["code"] = content.contains("code") && content["code"].is_string() ? content["code"].get<std::string>() : "";
+        node["code"] = codeStr;
         node["loc"] = content.contains("begin") ? content["begin"] : json();
         node["loc"]["file"] = node["fileName"];
         node["range"] = {{"begin", content["begin"]}, {"end", content["end"]}};
         node["included"] = fileStr;
-    } else if (kind_cursor == CXCursor_IntegerLiteral ||
+        return;
+    }
+
+    // 字面量节点 value 字段
+    if (kind_cursor == CXCursor_IntegerLiteral ||
         kind_cursor == CXCursor_StringLiteral ||
-        kind_cursor == CXCursor_CXXBoolLiteralExpr)
-        node["value"] = node["code"];
-
-    if (kind_cursor == CXCursor_ClassDecl){
-        node["kind"] = "CXXRecordDecl";
-        node["tagUsed"] = "class";
-    } else if (kind_cursor == CXCursor_StructDecl){
-        node["kind"] = "CXXRecordDecl";
-        node["tagUsed"] = "struct";
-    } else if (kind_cursor == CXCursor_EnumDecl){
-        node["kind"] = "EnumDecl";
-        node["tagUsed"] = "enum";
-    } else if (kind_cursor == CXCursor_UnionDecl){
-        node["kind"] = "CXXRecordDecl";
-        node["tagUsed"] = "union";
-    } else if (kind_cursor == CXCursor_UnexposedExpr){
-        node["kind"] = handleUnexposedExpr(node);
-    } else if (kind_cursor == CXCursor_UsingDirective){
-        node["kind"] = "UsingDirectiveDecl";
-        node["isImplicit"] = true;
-    } else if (kind_cursor == CXCursor_MemberRefExpr){
-        node["kind"] = "MemberExpr";
-        fillMemberName(node, displayName);
-    } else if (kind_cursor == CXCursor_CallExpr){
-        if (typeStr.find("basic_ostream") == 0 || nameStr.find("operator") != std::string::npos){
-            node["kind"] = "CXXOperatorCallExpr";
-        } else if (isConstructorByTypeStr(typeStr) || isConstructorByNameStr(nameStr) ||
-                       isConstructorByCodeStr(codeStr, nameStr, typeStr)){
-            node["kind"] = "CXXConstructExpr";
-        } else if ((codeStr.find(".") != std::string::npos || codeStr.find("->") != std::string::npos) &&
-                    nameStr.find("operator") == std::string::npos && codeStr.find(nameStr)!=0){
-                    node["kind"] = "CXXMemberCallExpr";
-        } else {
-            node["kind"] = kindSpelling;
-        }} else if (kind_cursor == CXCursor_CXXMethod){
-              node["kind"] = "CXXMethodDecl";
-              node["mangledName"] = getMemberInClassName(cursor);
-          } else if (kind_cursor == CXCursor_Constructor || (kind_cursor == CXCursor_UsingDeclaration && isUsingDecl(codeStr))){
-              node["kind"] = "CXXConstructorDecl";
-              node["mangledName"] = getMemberInClassName(cursor);
-          } else if (kind_cursor == CXCursor_Destructor){
-              node["kind"] = "CXXDestructorDecl";
-              node["mangledName"] = getMemberInClassName(cursor);
-          } else {
-              node["kind"] = kindSpelling;
-    }
-
-    if (kind_cursor == CXCursor_VarDecl){
-        CXCursor parent = clang_getCursorSemanticParent(cursor);
-        if (clang_getCursorKind(parent) == CXCursor_ClassDecl || clang_getCursorKind(parent) == CXCursor_StructDecl){
-            node["storageClass"] = "static";
+        kind_cursor == CXCursor_CXXBoolLiteralExpr) {
+        node["value"] = node.value("code", "");
         }
-    }
+}
 
+void fillVarDeclStorageClass(json& node, CXCursor cursor, CXCursorKind kind_cursor) {
+    if (kind_cursor == CXCursor_VarDecl) {
+        CXCursor parent = clang_getCursorSemanticParent(cursor);
+        if (clang_getCursorKind(parent) == CXCursor_ClassDecl ||
+            clang_getCursorKind(parent) == CXCursor_StructDecl) {
+            node["storageClass"] = "static";
+            }
+    }
+}
+
+void fillDeclRefInfo(json& node, CXCursor cursor, CXCursorKind kind_cursor) {
     if (kind_cursor == CXCursor_DeclRefExpr)
         node["referencedDecl"] = getReferenceDecl(cursor, kind_cursor);
+}
 
+void fillNodeIdRangeLoc(json& node, const json& content, CXCursorKind kind_cursor,
+                        CXFile file, const std::string& displayName) {
     node["id"] = content["id"];
     json begin = content["begin"];
     node["range"] = {{"begin", begin}, {"end", content["end"]}};
     if ((file && std::find(locCursorKind.begin(), locCursorKind.end(), kind_cursor) != locCursorKind.end())
-        || kind_cursor == CXCursor_MacroExpansion || kind_cursor == CXCursor_MacroDefinition){
-        begin["file"] = cx2str(clang_getFileName(file));
+        || kind_cursor == CXCursor_MacroExpansion || kind_cursor == CXCursor_MacroDefinition) {
+        begin["file"] = file ? cx2str(clang_getFileName(file)) : "";
         node["loc"] = begin;
-    }
-
+        }
     node["valueCategory"] = (kind_cursor == CXCursor_EnumConstantDecl) ? displayName : "prvalue";
+}
 
-    // 子节点递归
-    json children = json::array();
-    visitAllChildren(cursor, children);
-
+void nodePostprocess(
+    json& node,
+    CXCursor cursor,
+    CXCursorKind kind_cursor,
+    json& children
+) {
+    std::string codeStr = node.value("code", "");
+    std::string typeStr = node["type"]["qualType"];
     if (node["kind"] == "InitListExpr" && typeStr.find("std::pair") != std::string::npos){
         fixMapPairInitListChildren(children, typeStr);
     } else if (node["kind"] == "CXXOperatorCallExpr"){
@@ -940,6 +874,49 @@ json buildASTJson(CXCursor cursor){
     }
     // 特殊表达式类型自动判断兜底
     detectAndFillSpecialKind(node);
+}
+// ==========================buildASTJson 主体========================
+
+json buildASTJson(CXCursor cursor){
+    CXSourceLocation loc = clang_getCursorLocation(cursor);
+    CXCursorKind kind_cursor = clang_getCursorKind(cursor);
+
+    CXFile file;
+    clang_getSpellingLocation(loc, &file, nullptr, nullptr, nullptr);
+    std::string fileName = file ? cx2str(clang_getFileName(file)) : "";
+
+    bool isInclude = isInUserInclude(fileName);
+    if (kind_cursor != CXCursor_TranslationUnit && !clang_Location_isFromMainFile(loc) && !isInclude){
+            return json();
+    }
+    if (kind_cursor == CXCursor_LinkageSpec){ // extern "C" { ... }
+        json children = json::array();
+        visitAllChildren(cursor, children);
+        if (children.size() == 1) return children[0];
+        if (children.empty()) return json();
+        return children;
+    }
+
+    json node;
+    std::string kindSpelling = cx2str(clang_getCursorKindSpelling(kind_cursor));
+    std::string displayName = cx2str(clang_getCursorSpelling(cursor));
+    CXSourceRange range = clang_getCursorExtent(cursor);
+    if (isInclude) {
+        node["include"] = true;
+    }
+
+    node["type"] = {{"qualType", unifyTypeStr(clang_getTypeSpelling(clang_getCursorType(cursor)))}};
+    std::string fileStr = fileName != "" ? fileName : displayName;
+    json content = getSourceContent(range);
+    fillNodeSourceContent(node, content, kind_cursor, cursor, file, displayName, fileStr);
+    fillNodeKindTag(node, cursor, kind_cursor, kindSpelling);
+    fillVarDeclStorageClass(node, cursor, kind_cursor);
+    fillDeclRefInfo(node, cursor, kind_cursor);
+    fillNodeIdRangeLoc(node, content, kind_cursor, file, displayName);
+
+    json children = json::array();
+    visitAllChildren(cursor, children); // 子节点递归
+    nodePostprocess(node, cursor, kind_cursor, children);
     return node;
 }
 
@@ -950,15 +927,6 @@ std::string get_default_output_path(const std::string &input_path){
     std::string filename = (last_dot != std::string::npos) ? input_path.substr(0, last_dot) : input_path;
     return filename + ".json";
 }
-
-bool isSameFile(const std::string &pathA, const std::string &pathB){
-    try{
-        return std::filesystem::path(pathA).filename() == std::filesystem::path(pathB).filename();
-    } catch (const std::filesystem::filesystem_error &e) {
-        return false;
-    }
-}
-
 
 struct CompileArgs{
     std::vector<std::string> string_args;
@@ -1067,13 +1035,6 @@ bool validateInput(CommandLineOptions& opts) {
         opts.output_file = get_default_output_path(opts.input_file);
     }
     return true;
-}
-
-bool hasSuffix(const std::string& str, const std::string& suffix) {
-    if (suffix.size() > str.size()) {
-        return false;
-    }
-    return str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
 }
 
 struct ClangArgs {

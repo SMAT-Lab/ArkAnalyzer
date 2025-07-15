@@ -10,9 +10,18 @@ elseif(UNIX)
   include(cmake/toolchains/linux.cmake)
 endif()
 
-add_executable(arkCppAstDumper arkCppAst.cpp)
 
-target_include_directories(arkCppAstDumper PRIVATE ${CLANG_INCLUDE_DIRS})
+add_executable(arkCppAstDumper
+        arkCppAst.cpp
+        utils/utils_string.cpp
+)
+
+
+target_include_directories(arkCppAstDumper PRIVATE
+        ${CLANG_INCLUDE_DIRS}
+        ${CMAKE_CURRENT_SOURCE_DIR}/utils
+)
+
 target_link_libraries(arkCppAstDumper PRIVATE ${CLANG_LIBRARIES})
 
 if(MSVC)
