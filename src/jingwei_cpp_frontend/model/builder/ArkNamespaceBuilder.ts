@@ -23,7 +23,7 @@ import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
 import { ArkClass } from '../../../core/model/ArkClass';
 import { ArkMethod } from '../../../core/model/ArkMethod';
 import { NamespaceSignature } from '../../../core/model/ArkSignature';
-import { buildDefaultArkClassFromArkNamespace } from '../../../core/model/builder/ArkClassBuilder';
+import { genDefaultArkClass } from '../../../core/model/builder/ArkNamespaceBuilder';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkNamespaceBuilder');
 
@@ -99,42 +99,4 @@ function buildNamespaceMembers(node: any, namespace: ArkNamespace, sourceFile: a
             // join default method
         }
     });
-}
-
-function genDefaultArkClass(ns: ArkNamespace, node: ts.ModuleDeclaration, sourceFile: ts.SourceFile): void {
-    let defaultClass = new ArkClass();
-
-    buildDefaultArkClassFromArkNamespace(ns, defaultClass, node, sourceFile);
-    ns.setDefaultClass(defaultClass);
-    ns.addArkClass(defaultClass);
-}
-
-export function mergeNameSpaces(arkNamespaces: ArkNamespace[]): ArkNamespace[] {
-    const namespaceMap = new Map<string, ArkNamespace>();
-    for (let i = 0; i < arkNamespaces.length; i++) {
-        const currNamespace = arkNamespaces[i];
-        const currName = currNamespace.getName();
-        if (namespaceMap.has(currName)) {
-            const prevNamespace = namespaceMap.get(currName)!;
-            const nestedPrevNamespaces = prevNamespace.getNamespaces();
-            const nestedCurrNamespaces = currNamespace.getNamespaces();
-            const nestedMergedNameSpaces = mergeNameSpaces([...nestedPrevNamespaces, ...nestedCurrNamespaces]);
-            nestedMergedNameSpaces.forEach(nestedNameSpace => {
-                prevNamespace.addNamespace(nestedNameSpace);
-            });
-            const classes = currNamespace.getClasses();
-            classes.forEach(cls => {
-                prevNamespace.addArkClass(cls);
-            });
-            const preSourceCodes = prevNamespace.getCodes();
-            const currSourceCodes = currNamespace.getCodes();
-            prevNamespace.setCodes([...preSourceCodes, ...currSourceCodes]);
-            const prevLineColPairs = prevNamespace.getLineColPairs();
-            const currLineColPairs = currNamespace.getLineColPairs();
-            prevNamespace.setLineCols([...prevLineColPairs, ...currLineColPairs]);
-        } else {
-            namespaceMap.set(currName, currNamespace);
-        }
-    }
-    return [...namespaceMap.values()];
 }
