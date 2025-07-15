@@ -14,6 +14,8 @@ endif()
 add_executable(arkCppAstDumper
         arkCppAst.cpp
         utils/utils_string.cpp
+        utils/utils_file.cpp
+        utils/cli_util.cpp
 )
 
 

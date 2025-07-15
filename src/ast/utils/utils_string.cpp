@@ -49,14 +49,6 @@ std::vector<std::string> split(const std::string &s, char delimiter){
     return tokens;
 }
 
-// 判断结尾
-bool hasSuffix(const std::string& str, const std::string& suffix) {
-    if (suffix.size() > str.size()) {
-        return false;
-    }
-    return str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
-}
-
 // 路径分隔符
 std::string getPathSeparator() {
 #ifdef _WIN32

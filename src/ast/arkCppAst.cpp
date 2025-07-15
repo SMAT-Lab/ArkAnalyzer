@@ -2,6 +2,8 @@
 #include <sstream>
 #include <clang-c/Index.h>
 #include "utils_string.h"
+#include "utils_file.h"
+#include "cli_util.h"
 #include "json.hpp"
 #include <fstream>
 #include <iostream>
@@ -67,17 +69,6 @@ inline bool fillKindBycode(json &node, const std::string &codeStr,
         return true;
     }
     return false;
-}
-
-// ====================源码缓存相关===================
-
-std::map<std::string, std::string> fileContents;
-
-void loadFileContent(const std::string &filename){
-    std::ifstream file(filename, std::ios::in | std::ios::binary);
-    if (!file) return;
-    std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-    fileContents[filename] = std::move(content);
 }
 
 // ========================AST 属性辅助 ======================
@@ -739,7 +730,6 @@ void fillNodeKindTag(json& node, CXCursor cursor, CXCursorKind kind_cursor, cons
     }
 }
 
-// content: getSourceContent() 的返回
 void fillNodeSourceContent(
     json& node, const json& content, CXCursorKind kind_cursor, CXCursor cursor,
     CXFile file, const std::string& displayName, const std::string& fileStr
@@ -922,12 +912,6 @@ json buildASTJson(CXCursor cursor){
 
 // ======================工程辅助代码==========================
 
-std::string get_default_output_path(const std::string &input_path){
-    size_t last_dot = input_path.find_last_of('.');
-    std::string filename = (last_dot != std::string::npos) ? input_path.substr(0, last_dot) : input_path;
-    return filename + ".json";
-}
-
 struct CompileArgs{
     std::vector<std::string> string_args;
     std::vector<const char *> cstr_args;
@@ -979,90 +963,6 @@ CompileArgs load_compile_commands(const std::string &compile_commands_path, cons
     return result;
 }
 
-struct CommandLineOptions {
-    std::string input_file;
-    std::string output_file;
-    std::string compile_commands_file;
-    std::vector<std::string> user_include_dirs;
-};
-
-CommandLineOptions parseCommandLineArgs(int argc, char** argv){
-    CommandLineOptions opts;
-    for(int i = 1; i< argc; ++i){
-        std::string arg = argv[i];
-        if (arg == "-o" && i + 1 <argc){
-            opts.output_file = argv[++i];
-        } else if (arg == "-c" && i + 1 < argc){
-            opts.compile_commands_file = argv[++i];
-        } else if (arg == "-i" && i + 1 < argc){
-            opts.user_include_dirs.push_back(argv[++i]);
-        } else if (opts.input_file.empty()){
-            opts.input_file = arg;
-        }
-    }
-    return opts;
-}
-
-// 自动将 main.cpp 同级目录加入 -i 参数
-void addMainFileDirToInclude(CommandLineOptions& opts) {
-    if (opts.input_file.empty()) return;
-    std::string main_dir = std::filesystem::absolute(opts.input_file).parent_path().string();
-    bool found = false;
-    for (const auto& dir : opts.user_include_dirs) {
-        if (std::filesystem::equivalent(
-                std::filesystem::absolute(dir),
-                std::filesystem::absolute(main_dir))) {
-            found = true;
-            break;
-        }
-    }
-    if (!found) {
-        opts.user_include_dirs.push_back(main_dir);
-    }
-}
-
-void printUsage(const char* progName) {
-    std::cerr << "Usage: " << progName
-              << " <file.cpp> [-o <output.json>] [-c <compile_commands.json>] [-i <include_dir> ...]\n";
-}
-
-bool validateInput(CommandLineOptions& opts) {
-    if (opts.input_file.empty()) {
-        std::cerr << "Error: No input file provided.\n";
-        return false;
-    }
-    if (opts.output_file.empty()) {
-        opts.output_file = get_default_output_path(opts.input_file);
-    }
-    return true;
-}
-
-struct ClangArgs {
-    std::vector<std::string> str_args;   // 字符串本体
-    std::vector<const char*> cstr_args;  // 指针
-};
-
-ClangArgs prepareClangArgs(const CommandLineOptions& opts) {
-    ClangArgs res;
-    // 选择标准
-    if (hasSuffix(opts.input_file, ".c")) {
-        res.str_args.push_back("-std=c99");
-    } else {
-        res.str_args.push_back("-xc++");
-        res.str_args.push_back("-std=c++17");
-    }
-    // 添加用户 include
-    for (const auto& dir : opts.user_include_dirs) {
-        res.str_args.push_back("-I" + dir);
-    }
-    // 将 string 转换为 c_str 指针
-    for (const auto& arg : res.str_args) {
-        res.cstr_args.push_back(arg.c_str());
-    }
-    return res;
-}
-
-
 CXTranslationUnit createTranslationUnit(CXIndex index,
                                         const CommandLineOptions& opts,
                                         const std::vector<const char*>& args) {
@@ -1098,24 +998,18 @@ json buildAndProcessAST(CXTranslationUnit unit, const CommandLineOptions& opts) 
     return ast;
 }
 
-void saveASTToFile(const json& ast, const std::string& output_file) {
-    std::ofstream(output_file) << ast.dump(-1, ' ', false, json::error_handler_t::replace);
-    std::cout << "[STEP4] AST written to: " << output_file << std::endl;
-}
-
-
 // ===================主程序入口==================
 int main(int argc, char** argv) {
     if (argc < 2) {
-        printUsage(argv[0]);
+        cliutil::printUsage(argv[0]);
         return 1;
     }
 
-    auto opts = parseCommandLineArgs(argc, argv);
-    addMainFileDirToInclude(opts);
+    auto opts = cliutil::parseCommandLineArgs(argc, argv);
+    cliutil::addMainFileDirToInclude(opts);
 
-    if (!validateInput(opts)) return 1;
-    ClangArgs clang_args = prepareClangArgs(opts);
+    if (!cliutil::validateInput(opts)) return 1;
+    ClangArgs clang_args = cliutil::prepareClangArgs(opts);
     g_user_include_dirs = opts.user_include_dirs;
     CXIndex index = clang_createIndex(0, 0);
     CXTranslationUnit unit = createTranslationUnit(index, opts, clang_args.cstr_args);

@@ -1,0 +1,85 @@
+#include "cli_util.h"
+#include "json.hpp"
+#include <fstream>
+#include <iostream>
+#include <filesystem>
+#include <sstream>
+
+CommandLineOptions cliutil::parseCommandLineArgs(int argc, char** argv) {
+    CommandLineOptions opts;
+    for(int i = 1; i< argc; ++i){
+        std::string arg = argv[i];
+        if (arg == "-o" && i + 1 <argc){
+            opts.output_file = argv[++i];
+        } else if (arg == "-c" && i + 1 < argc){
+            opts.compile_commands_file = argv[++i];
+        } else if (arg == "-i" && i + 1 < argc){
+            opts.user_include_dirs.push_back(argv[++i]);
+        } else if (opts.input_file.empty()){
+            opts.input_file = arg;
+        }
+    }
+    return opts;
+}
+
+void cliutil::addMainFileDirToInclude(CommandLineOptions& opts) {
+    if (opts.input_file.empty()) return;
+    std::string main_dir = std::filesystem::absolute(opts.input_file).parent_path().string();
+    bool found = false;
+    for (const auto& dir : opts.user_include_dirs) {
+        if (std::filesystem::equivalent(
+                std::filesystem::absolute(dir),
+                std::filesystem::absolute(main_dir))) {
+            found = true;
+            break;
+        }
+    }
+    if (!found) {
+        opts.user_include_dirs.push_back(main_dir);
+    }
+}
+
+bool cliutil::validateInput(CommandLineOptions& opts) {
+    if (opts.input_file.empty()) {
+        std::cerr << "Error: No input file provided.\n";
+        return false;
+    }
+    if (opts.output_file.empty()) {
+        size_t last_dot = opts.input_file.find_last_of('.');
+        std::string filename = (last_dot != std::string::npos) ? opts.input_file.substr(0, last_dot) : opts.input_file;
+        opts.output_file = filename + ".json";
+    }
+    return true;
+}
+
+void cliutil::printUsage(const char* progName) {
+    std::cerr << "Usage: " << progName
+              << " <file.cpp> [-o <output.json>] [-c <compile_commands.json>] [-i <include_dir> ...]\n";
+}
+
+bool cliutil::hasSuffix(const std::string& str, const std::string& suffix) {
+    if (suffix.size() > str.size()) {
+        return false;
+    }
+    return str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
+}
+
+ClangArgs cliutil::prepareClangArgs(const CommandLineOptions& opts) {
+    ClangArgs res;
+    // 选择标准
+    if (hasSuffix(opts.input_file, ".c")) {
+        res.str_args.push_back("-std=c99");
+    } else {
+        res.str_args.push_back("-xc++");
+        res.str_args.push_back("-std=c++17");
+    }
+    // 添加用户 include
+    for (const auto& dir : opts.user_include_dirs) {
+        res.str_args.push_back("-I" + dir);
+    }
+    // 将 string 转换为 c_str 指针
+    for (const auto& arg : res.str_args) {
+        res.cstr_args.push_back(arg.c_str());
+    }
+    return res;
+}
