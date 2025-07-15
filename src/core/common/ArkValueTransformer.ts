@@ -90,16 +90,16 @@ import { KeyofTypeExpr, TypeQueryExpr } from '../base/TypeExpr';
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkValueTransformer');
 
 export class ArkValueTransformer {
-    private conditionalOperatorNo: number = 0;
-    private tempLocalNo: number = 0;
-    private sourceFile: ts.SourceFile;
-    private locals: Map<string, Local> = new Map();
-    private globals?: Map<string, GlobalRef>;
-    private thisLocal: Local;
-    private declaringMethod: ArkMethod;
-    private arkIRTransformer: ArkIRTransformer;
-    private aliasTypeMap: Map<string, [AliasType, ArkAliasTypeDefineStmt]> = new Map();
-    private builderMethodContextFlag = false;
+    protected conditionalOperatorNo: number = 0;
+    protected tempLocalNo: number = 0;
+    protected sourceFile: ts.SourceFile;
+    protected locals: Map<string, Local> = new Map();
+    protected globals?: Map<string, GlobalRef>;
+    protected thisLocal: Local;
+    protected declaringMethod: ArkMethod;
+    protected arkIRTransformer: ArkIRTransformer;
+    protected aliasTypeMap: Map<string, [AliasType, ArkAliasTypeDefineStmt]> = new Map();
+    protected builderMethodContextFlag = false;
 
     constructor(arkIRTransformer: ArkIRTransformer, sourceFile: ts.SourceFile, declaringMethod: ArkMethod) {
         this.arkIRTransformer = arkIRTransformer;
@@ -131,7 +131,7 @@ export class ArkValueTransformer {
         return this.globals ?? null;
     }
 
-    private addNewGlobal(name: string, ref?: Value): GlobalRef {
+    public addNewGlobal(name: string, ref?: Value): GlobalRef {
         let globalRef = new GlobalRef(name, ref);
         this.globals = this.globals ?? new Map();
         this.globals.set(name, globalRef);
@@ -204,7 +204,7 @@ export class ArkValueTransformer {
         };
     }
 
-    private tsNodeToSingleAddressValueAndStmts(node: ts.Node): ValueAndStmts {
+    public tsNodeToSingleAddressValueAndStmts(node: ts.Node): ValueAndStmts {
         const allStmts: Stmt[] = [];
         let { value, valueOriginalPositions, stmts } = this.tsNodeToValueAndStmts(node);
         stmts.forEach(stmt => allStmts.push(stmt));
@@ -408,7 +408,7 @@ export class ArkValueTransformer {
         };
     }
 
-    private generateComponentPopStmts(componentName: string, componentExpressionPosition: FullPosition): Stmt {
+    public generateComponentPopStmts(componentName: string, componentExpressionPosition: FullPosition): Stmt {
         const popMethodSignature = ArkSignatureBuilder.buildMethodSignatureFromClassNameAndMethodName(componentName, COMPONENT_POP_FUNCTION);
         const popInvokeExpr = new ArkStaticInvokeExpr(popMethodSignature, []);
         const popInvokeExprPositions = [componentExpressionPosition];
@@ -919,7 +919,7 @@ export class ArkValueTransformer {
         return { args: args, argPositions: argPositions };
     }
 
-    private callableNodeToValueAndStmts(callableNode: ts.ArrowFunction | ts.FunctionExpression): ValueAndStmts {
+    public callableNodeToValueAndStmts(callableNode: ts.ArrowFunction | ts.FunctionExpression): ValueAndStmts {
         const declaringClass = this.declaringMethod.getDeclaringArkClass();
         const arrowArkMethod = new ArkMethod();
         if (this.builderMethodContextFlag) {
@@ -1691,7 +1691,7 @@ export class ArkValueTransformer {
         };
     }
 
-    private getOrCreateLocal(localName: string, localType: Type = UnknownType.getInstance()): Local {
+    public getOrCreateLocal(localName: string, localType: Type = UnknownType.getInstance()): Local {
         let local = this.locals.get(localName);
         if (local !== undefined) {
             return local;
@@ -1709,7 +1709,7 @@ export class ArkValueTransformer {
         return tempLocal;
     }
 
-    private isRelationalOperator(operator: BinaryOperator): boolean {
+    public isRelationalOperator(operator: BinaryOperator): boolean {
         return (
             operator === RelationalBinaryOperator.LessThan ||
             operator === RelationalBinaryOperator.LessThanOrEqual ||

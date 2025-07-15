@@ -17,11 +17,12 @@ import fs from 'fs';
 import path from 'path';
 import { ArkFile } from '../../../core/model/ArkFile';
 import { ArkNamespace } from '../../../core/model/ArkNamespace';
-import { buildDefaultArkClassFromArkFile, buildNormalArkClassFromArkFile } from './ArkClassBuilder';
+import { buildNormalArkClassFromArkFile } from './ArkClassBuilder';
 import { buildArkMethodFromArkClass } from './ArkMethodBuilder';
 import {buildExportInfo} from '../../../core/model/builder/ArkExportBuilder'
 import { buildArkNamespace } from './ArkNamespaceBuilder';
 import { ArkClass } from '../../../core/model/ArkClass';
+import { buildDefaultArkClassFromArkFile } from '../../../core/model/builder/ArkClassBuilder';
 import { ArkMethod } from '../../../core/model/ArkMethod';
 import {AstUtils} from "../../../ast/astUtils"
 import { FileSignature, ClassSignature } from '../../../core/model/ArkSignature';

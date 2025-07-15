@@ -25,7 +25,7 @@ import {
     buildReturnType,
     cppNode2Type,
 } from './builderUtils';
-import { ArkParameterRef, ArkThisRef, ClosureFieldRef } from '../../../core/base/Ref';
+import { ArkParameterRef, ArkThisRef } from '../../../core/base/Ref';
 import { ArkBody } from '../../../core/model/ArkBody';
 import { Cfg } from '../../../core/graph/Cfg';
 import { ArkInstanceInvokeExpr, ArkStaticInvokeExpr } from '../../../core/base/Expr';

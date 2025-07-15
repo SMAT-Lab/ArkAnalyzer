@@ -27,10 +27,10 @@ import { ArkClass } from '../../core/model/ArkClass';
 import { ArkFile, Language } from '../../core/model/ArkFile';
 import { ArkMethod } from '../../core/model/ArkMethod';
 import { ClassSignature, FileSignature, MethodSignature } from '../../core/model/ArkSignature';
-import { ArkSignatureBuilder } from '../model/builder/ArkSignatureBuilder';
 import { CONSTRUCTOR_NAME } from './TSConst';
 import { checkAndUpdateMethod } from '../../core/model/builder/ArkMethodBuilder';
 import { ValueUtil } from './ValueUtil';
+import { ArkSignatureBuilder } from '../../core/model/builder/ArkSignatureBuilder';
 
 /**
 收集所有的onCreate，onStart等函数，构造一个虚拟函数，具体为：
