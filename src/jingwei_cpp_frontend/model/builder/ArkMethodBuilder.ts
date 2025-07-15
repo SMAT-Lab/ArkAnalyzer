@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { ClassType, GenericType, UnknownType } from '../../../core/base/Type';
+import { ClassType, GenericType, UnknownType, VoidType } from '../../../core/base/Type';
 import { BodyBuilder } from './BodyBuilder';
 import { buildViewTree } from '../../../core/graph/builder/ViewTreeBuilder';
 import { ArkClass } from '../../../core/model/ArkClass';
@@ -129,6 +129,10 @@ export function buildArkMethodFromArkClass(
     if (methodNode.type) {
         returnType = buildGenericType(buildReturnType(methodNode, sourceFile, mtd), mtd);
     }
+    if (isRelatedToCXXInheritedCtorInitExpr(methodNode)) {
+        addParamsToCXXInheritedCtorInitExpr(methodNode, mtd, methodParameters);
+        returnType = VoidType.getInstance();
+    }
     // @ts-ignore
     const methodSubSignature = new MethodSubSignature(methodName, methodParameters, returnType, mtd.isStatic());
     const methodSignature = new MethodSignature(mtd.getDeclaringArkClass().getSignature(), methodSubSignature);
@@ -154,6 +158,48 @@ export function buildArkMethodFromArkClass(
     checkAndUpdateMethod(mtd, declaringClass);
     declaringClass.addMethod(mtd);
     IRUtils.setComments(mtd, methodNode, sourceFile, mtd.getDeclaringArkFile().getScene().getOptions());
+}
+
+function isRelatedToCXXInheritedCtorInitExpr(node: any): boolean {
+    if (!node) {
+        return false;
+    }
+    let innerNodes = node.inner;
+    while (innerNodes) {
+        if (innerNodes.length === 0) {
+            return false;
+        }
+        if (innerNodes[0].kind === 'CXXInheritedCtorInitExpr') {
+            return true;
+        }
+        innerNodes = innerNodes[0]!.inner;
+    }
+    return false;
+}
+
+function addParamsToCXXInheritedCtorInitExpr(mtdNode: any, mtd: ArkMethod, methodParameters: MethodParameter[]): void {
+    const cls = mtd.getDeclaringArkClass();
+    const superClassName = mtdNode.inner?.[0]?.baseInit?.qualType;
+    if (!superClassName) {
+        return;
+    }
+    let superClass = cls.getHeritageClass(superClassName);
+    if (!superClass) {
+        cls.addHeritageClassName(superClassName);
+        superClass = cls.getDeclaringArkFile().getClassWithName(superClassName);
+        if (!superClass) {
+            return;
+        }
+    }
+    buildDefaultConstructor(superClass);
+    const superConstructor = superClass.getMethodWithName(CONSTRUCTOR_NAME);
+    if (!superConstructor) {
+        return;
+    }
+    superConstructor.getParameters().forEach(param => {
+        buildGenericType(param.getType(), mtd);
+        methodParameters.push(param);
+    });
 }
 
 function buildMethodName(node: any, declaringClass: ArkClass, sourceFile: any, declaringMethod?: ArkMethod): string {
