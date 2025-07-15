@@ -17,11 +17,12 @@ import fs from 'fs';
 import path from 'path';
 import { ArkFile } from '../../../core/model/ArkFile';
 import { ArkNamespace } from '../../../core/model/ArkNamespace';
-import { buildDefaultArkClassFromArkFile, buildNormalArkClassFromArkFile } from './ArkClassBuilder';
+import { buildNormalArkClassFromArkFile } from './ArkClassBuilder';
 import { buildArkMethodFromArkClass } from './ArkMethodBuilder';
 import {buildExportInfo} from '../../../core/model/builder/ArkExportBuilder'
 import { buildArkNamespace } from './ArkNamespaceBuilder';
 import { ArkClass } from '../../../core/model/ArkClass';
+import { buildDefaultArkClassFromArkFile } from '../../../core/model/builder/ArkClassBuilder';
 import { ArkMethod } from '../../../core/model/ArkMethod';
 import {AstUtils} from "../../../ast/astUtils"
 import { FileSignature, ClassSignature } from '../../../core/model/ArkSignature';
@@ -125,7 +126,7 @@ function buildArkFile(arkFile: ArkFile, astRoot: any): void {
                 arkFile.addExportInfo(buildExportInfo(mthd, arkFile, LineColPosition.buildFromNodeCpp(child, astRoot)))
             }
         } else if (child.kind === 'TypedefDecl') {
-            if (child.inner[0]["kind"] == "CXXRecordDecl") {
+            if (child.inner[0].kind === "CXXRecordDecl") {
                 let cls: ArkClass = new ArkClass();
                 buildNormalArkClassFromArkFile(child.inner[0], arkFile, cls, astRoot);
                 arkFile.addArkClass(cls);

@@ -55,6 +55,7 @@ export const LAZY_IMPORT_CASE1_CLASS = {
                         'value = parameter0: double',
                         'this = this: @lazyImportCase1/lazyImportCase1.cpp: GlobalConfig',
                         'instanceinvoke this.<@lazyImportCase1/lazyImportCase1.cpp: GlobalConfig.%instInit()>()',
+                        "this.<@lazyImportCase1/lazyImportCase1.cpp: GlobalConfig.value_> = value",
                         'return this'
                     ],
                     preds: [],

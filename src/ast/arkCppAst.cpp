@@ -1,6 +1,9 @@
 #include <filesystem>
 #include <sstream>
 #include <clang-c/Index.h>
+#include "utils_string.h"
+#include "utils_file.h"
+#include "cli_util.h"
 #include "json.hpp"
 #include <fstream>
 #include <iostream>
@@ -14,46 +17,25 @@ using json = nlohmann::json;
 namespace fs = std::filesystem;
 std::vector<std::string> g_user_include_dirs;
 //===================工具函数区===================
-
-// 去除首尾空白
-inline void trim(std::string &s){
-    s.erase(0, s.find_first_not_of(" \t\r\n"));
-    s.erase(s.find_last_not_of(" \t\r\n") + 1);
+template<typename F>
+void forEachChild(json& node, F&& f) {
+    if (node.contains("inner") && node["inner"].is_array())
+        for (auto& child : node["inner"]) f(child);
 }
 
-// CXString 转std::string + 自动释放
-inline std::string cx2str(const CXString &s){
-    std::string r = clang_getCString(s) ? clang_getCString(s) : "" ;
-    clang_disposeString(s);
-    if (r.find("\\../") != std::string::npos) { // 规范化获取的路径，存在\../的情况
-       return std::filesystem::canonical(r).string();
-    }
-    return r;
-}
+json buildASTJson(CXCursor cursor);
 
-// 提取括号中的内容
-inline std::string
-extractParentContent(const std::string &code, size_t lpos = std::string::npos, char open = '(', char close = ')'){
-    if (lpos == std::string::npos) lpos = code.find(open);
-    size_t rpos = code.rfind(close);
-    if (lpos != std::string::npos && rpos != std::string::npos && rpos > lpos +1){
-        std::string inside = code.substr(lpos + 1, rpos - lpos -1);
-        trim(inside);
-        return inside;
-    }
-    return std::string();
-}
-
-// 字符串分割
-inline std::vector<std::string> split(const std::string &s, char delimiter){
-    std::vector<std::string> tokens;
-    std::istringstream iss(s);
-    std::string token;
-    while (getline(iss, token, delimiter)){
-        trim(token);
-        tokens.push_back(token);
-    }
-    return tokens;
+inline void visitAllChildren(CXCursor cursor, json& children) {
+    clang_visitChildren(
+        cursor,
+        [](CXCursor child, CXCursor parent, CXClientData client_data) {
+            json* list = static_cast<json*>(client_data);
+            json childAst = buildASTJson(child);
+            if (!childAst.is_null()) list->push_back(childAst);
+            return CXChildVisit_Continue;
+        },
+        &children
+    );
 }
 
 // 赋成员名
@@ -89,18 +71,6 @@ inline bool fillKindBycode(json &node, const std::string &codeStr,
     return false;
 }
 
-// ====================源码缓存相关===================
-
-std::map<std::string, std::string> fileContents;
-
-void loadFileContent(const std::string &filename){
-    std::ifstream file(filename, std::ios::in | std::ios::binary);
-    if (!file) return;
-    std::string content((std::istreambuf_iterator<char>(file)),
-                         std::istreambuf_iterator<char>());
-    fileContents[filename] = std::move(content);
-}
-
 // ========================AST 属性辅助 ======================
 
 json getSourceContent(CXSourceRange range){
@@ -127,8 +97,7 @@ json getSourceContent(CXSourceRange range){
     if (startOffset >= content.size() || endOffset > content.size()) return json();
     unsigned tokLen = endOffset > startOffset ? (endOffset - startOffset) : 0;
     return {
-        {"id", startOffset + endOffset},
-        {"code", content.substr(startOffset, endOffset - startOffset)},
+        {"id", startOffset + endOffset}, {"code", content.substr(startOffset, endOffset - startOffset)},
         {"begin", {{"line", startLine}, {"col", startColumn}, {"offset", startOffset}, {"tokLen", tokLen}}},
         {"end", {{"line", endLine}, {"col", endColumn}, {"offset", endOffset}}}
     };
@@ -150,9 +119,8 @@ std::string handleUnexposedExpr(json node){
         } else if (codeStr.find("?") != std::string::npos){
             return "BinaryConditionalOperator";
         } else if (codeStr.find(".push_back") != std::string::npos || codeStr.find(".insert") != std::string::npos ||
-                   codeStr.find(".push") != std::string::npos ||
-                   typeStr.find("basic_ostream") != std::string::npos || typeStr == "bool" ||
-                   typeStr == "mapped_type" || codeStr.find(".erase") != std::string::npos){
+                   codeStr.find(".push") != std::string::npos || typeStr.find("basic_ostream") != std::string::npos ||
+                   typeStr == "bool" || typeStr == "mapped_type" || codeStr.find(".erase") != std::string::npos){
             return "ExprWithCleanups";
         }else if (codeStr.find("std::make_pair") != std::string::npos){
              return "MaterializeTemporaryExpr";
@@ -167,9 +135,7 @@ void extractArraySizes(const json &node, std::vector<std::string> &arraySizes){
         if (node["kind"] == "IntegerLiteral" && node.contains("value")){
             arraySizes.push_back(node["value"]);
         } else if (node["kind"] == "ImplicitCastExpr" && node.contains("inner")){
-            for (const auto &gchild:node["inner"]){
-                extractArraySizes(gchild, arraySizes);
-            }
+            forEachChild(const_cast<json&>(node), [&](json &gchild){ extractArraySizes(gchild, arraySizes); });
         }
     }
 }
@@ -220,40 +186,29 @@ bool templateConstructCallExpr(std::string nameStr, std::string typeStr){
     return false;
 }
 
-void fixCallExprChildKind(json &node){
-    // 递归处理所有子节点
-    if (node.contains("inner") && node["inner"].is_array()) {
-        for (auto &child : node["inner"]){
-            fixCallExprChildKind(child);
-        }
-    }
-    // 补全CallExpr第一个子节点kind
-    if (node.is_object() && node.contains("kind") && node["kind"] == "CallExpr"
-        && node.contains("inner") && node["inner"].is_array() && !node["inner"].empty()){
+// 递归修正 CallExpr 节点的第一个子节点 kind，补全缺失类型
+void fixCallExprChildKind(json &node) {
+    forEachChild(node, [&](json &child) { fixCallExprChildKind(child); });
+
+    // 补全 CallExpr 的第一个子节点 kind
+    if (node.is_object() && node.value("kind", "") == "CallExpr"
+        && node.contains("inner") && node["inner"].is_array() && !node["inner"].empty()) {
         auto &child = node["inner"][0];
-        std::string code  = child.value("code", "");
+        // 如果子节点 kind 缺失
         if (!child.contains("kind") || child["kind"].is_null() || child["kind"] == "") {
-            // 优先referencedDecl
-            if (child.contains("referencedDecl") && child["referencedDecl"].contains("kind") && !child["referencedDecl"]["kind"].is_null()){
+            const std::string code = child.value("code", "");
+            // 优先使用 referencedDecl 中的 kind
+            if (child.contains("referencedDecl") && child["referencedDecl"].contains("kind") && !child["referencedDecl"]["kind"].is_null())
                 child["kind"] = child["referencedDecl"]["kind"];
-            }
-            // 成员调用
-            else if (code.find('.') != std::string::npos || code.find("->") != std::string::npos) {
+            else if (code.find('.') != std::string::npos || code.find("->") != std::string::npos)
                 child["kind"] = "MemberExpr";
-            }
-            // 可能是重载（模板）声明
-            else if (child.contains("referencedDecl") && child["referencedDecl"].contains("kind")
-                    &&child["referencedDecl"]["kind"] == "OverloadedDeclRef") {
+            else if (child.contains("referencedDecl") && child["referencedDecl"].value("kind", "") == "OverloadedDeclRef")
                 child["kind"] = "OverloadedDeclRef";
-            }
-            // 普通函数调用
-            else {
+            else
                 child["kind"] = "DeclRefExpr";
-            }
         }
     }
 }
-
 
 // 修改CXXConstructExpr节点下子节点类型
 void changeChildNodeType(json &children){
@@ -327,10 +282,8 @@ void detectAndFillSpecialKind(json &node){
     std::string codeStr = node["code"];
     // __arra_rank/extent
     static const std::vector<std::pair<std::string, std::string>> traitFuncs = {
-        {"__array_rank", "ArrayTypeTraitExpr"},
-        {"__array_extent", "ArrayTypeTraitExpr"},
-        {"__array_rank_u", "ArrayTypeTraitExpr"},
-        {"__array_extent_u", "ArrayTypeTraitExpr"}
+        {"__array_rank", "ArrayTypeTraitExpr"}, {"__array_extent", "ArrayTypeTraitExpr"},
+        {"__array_rank_u", "ArrayTypeTraitExpr"}, {"__array_extent_u", "ArrayTypeTraitExpr"}
     };
     for (const auto &[func, kind]: traitFuncs) {
         if (fillKindBycode(node, codeStr, func, kind, "traitArgs")) {
@@ -345,8 +298,7 @@ void detectAndFillSpecialKind(json &node){
 }
 
 void postprocessCallExpr(json &node){
-    // 子节点推到 name
-    // 自动不全name字段
+    // 子节点推到 name 自动补全name字段
     if((node["name"].is_null() || node["name"] == "") && node.contains("inner") &&!node["inner"].empty()){
         for (const auto &child:node["inner"]){
             if (child["kind"] == "DeclRefExpr" || child["kind"] == "OverloadedDeclRef"){
@@ -365,7 +317,6 @@ void postprocessCallExpr(json &node){
             }
         }
     }
-
     // 自动补全 AtomicCallExpr
     static const std::vector<std::string> atomicFuncs = {
         "atomic_fetch_add", "atomic_fetch_sub", "atomic_fetch_and", "atomic_fetch_or", "atomic_fetch_xor",
@@ -387,12 +338,7 @@ std::map<std::string, int> labelNameToId;
 void collectLabelStmt(const json &node, std::map<std::string, int> &labelMap){
     if (node.contains("kind") && node["kind"] == "LabelStmt" && node.contains("name"))
         labelMap[node["name"]] = node["id"];
-
-    if (node.contains("inner")){
-        for (const auto &child: node["inner"]){
-            collectLabelStmt(child, labelMap);
-        }
-    }
+    forEachChild(const_cast<json&>(node), [&](json &child) { collectLabelStmt(child, labelMap); });
 }
 
 // 为goto语句补充targetlabelId
@@ -404,74 +350,42 @@ void patchGotoTarget(json &node, const std::map<std::string, int> &labelMap){
             if (!labelName.empty() && labelMap.count(labelName)) node["targetLabelId"] = labelMap.at(labelName);
         }
     }
-    if (node.contains("inner")){
-        for (auto & child:node["inner"]){
-            patchGotoTarget(child, labelMap);
-        }
-    }
+    forEachChild(node, [&](json &child) { patchGotoTarget(child, labelMap); });
 }
 
 void patchPseudoDestructorExpr(json &node){
     // 检查当前是否是MemberExpr + TypeRef组合 并且包含 ~ 推断为伪析构
-    if (node.contains("kind") && node["kind"] == "MemberExpr"
-        && node.contains("code") && node["code"].is_string() && node["code"].get<std::string>().find("~") != std::string::npos
-        && node.contains("inner") && node["inner"].is_array()
-        && node["inner"].size() == 2
-        && node["inner"][1].contains("kind")
-        && node["inner"][1]["kind"] == "TypeRef"){
+    if (node.contains("kind") && node["kind"] == "MemberExpr" && node.contains("code")
+        && node["code"].is_string() && node["code"].get<std::string>().find("~") != std::string::npos
+        && node.contains("inner") && node["inner"].is_array() && node["inner"].size() == 2
+        && node["inner"][1].contains("kind") && node["inner"][1]["kind"] == "TypeRef"){
             node["kind"] = "CXXPseudoDestructorExpr";
             node["pseudoDestructorType"] = node["inner"][1]["type"]["qualType"];
     }
-    // 递归对子节点处理
-    if (node.contains("inner") && node["inner"].is_array()){
-        for (auto &child:node["inner"]){
-            patchPseudoDestructorExpr(child);
-        }
-    }
+    forEachChild(node, [&](json &child){ patchPseudoDestructorExpr(child); });
 }
 
-void patchFoldExpr(json &node){
-    // 处理子节点
-    if (node.contains("inner") && node["inner"].is_array()){
-        for (auto &child: node["inner"]){
-            patchFoldExpr(child);
-        }
-    }
-    // 检查是否为需要伪造CXXFoldExpr的节点
+void patchFoldExpr(json &node) {
+    // 递归处理所有子节点
+    forEachChild(node, [&](json &child) { patchFoldExpr(child); });
+    // 判断是否为折叠表达式并伪造CXXFoldExpr节点 只判断常见的 "(... <op> ars)
     if (node.contains("code") && node.contains("kind") && node["kind"] == "ImplicitCastExpr") {
-        std::string code = node["code"];
-        // 判断是否为折叠表达式
-        // 只判断常见的 "(... <op> ars)"
-        std::smatch m;
         static std::regex fold_regex(R"(\(\.\.\.\s*([+\-*/&|^])\s*([a-zA-Z0-9_]+)\))");
-        if (std::regex_match(code, m, fold_regex)){
-            // 匹配左折叠
-            std::string op = m[1];
-            std::string var = m[2];
-            // 构造一个新的CXXFoldExpr节点
-            json foldExpr;
-            foldExpr["kind"] = "CXXFoldExpr";
-            foldExpr["op"] = op;
-            foldExpr["pattern"] = "left";
-            foldExpr["code"] = code;
-            foldExpr["inner"] = node["inner"];
-            foldExpr["range"] = node["range"];
-            foldExpr["type"] = node["type"];
-            foldExpr["valueCategory"] = node.value("valueCategory", "prvalue");
-            // 用CXXFoldExpr替代原始节点
-            node = foldExpr;
-        }
-        // 可扩展右折叠
+        std::smatch m;
+        std::string code = node["code"];
+        if (std::regex_match(code, m, fold_regex)) node = {
+            {"kind", "CXXFoldExpr"}, {"op", m[1]},  // 匹配左折叠
+            {"pattern", "left"}, {"code", code},
+            {"inner", node["inner"]}, {"range", node["range"]},
+            {"type", node["type"]}, {"valueCategory", node.value("valueCategory", "prvalue")}
+        };
     }
 }
-
-
 
 // 将VarDecl下IntegerLiteral 类型子节点移除
 void filterVarDeclArrayDims(json &node){
     // 只处理VarDecl且是数组类型
-    if (node.contains("kind") && node["kind"] == "VarDecl" &&
-        node.contains("type") && node["type"].contains("qualType")){
+    if (node.contains("kind") && node["kind"] == "VarDecl" && node.contains("type") && node["type"].contains("qualType")){
             std::string qualType = node["type"]["qualType"];
             if (qualType.find('[') != std::string::npos && qualType.find(']') != std::string::npos){
                 if (node.contains("inner") && node["inner"].is_array()){
@@ -485,16 +399,11 @@ void filterVarDeclArrayDims(json &node){
                 }
             }
         }
-
-    if (node.contains("inner") && node["inner"].is_array()){
-        for (auto &child: node["inner"]){
-            filterVarDeclArrayDims(child);
-        }
-    }
+    forEachChild(node, [&](json &child){ filterVarDeclArrayDims(child); });
 }
 
 
-// 手机当前作用域所有参数/变量声明， 返回名到类型的映射
+// 收集当前作用域所有参数/变量声明， 返回名到类型的映射
 std::unordered_map<std::string, std::string> collectAllScopeVarTypeMap(const json &node){
     std::unordered_map<std::string, std::string> varTypeMap;
     if (node.contains("inner") && node["inner"].is_array()){
@@ -519,57 +428,41 @@ void fixImplicitCastExprAndDeclRef(json &node, const std::unordered_map<std::str
         // 修正类型
         if (node.contains("type") && node["type"].contains("qualType"))
             node["type"]["qualType"] = varTypeMap.at(node["code"]);
-
         // 如果inner为空则转为DeclRefExpr
         if (node.contains("inner") && node["inner"].is_array() && node["inner"].empty()){
             node["kind"] = "DeclRefExpr";
             node["name"] = node["code"];
         }
     }
-    // 递归处理所有子节点
-    if (node.contains("inner") && node["inner"].is_array()){
-        for (auto &child: node["inner"]){
-            fixImplicitCastExprAndDeclRef(child, varTypeMap);
-        }
-    }
+    forEachChild(node, [&](json &child){ fixImplicitCastExprAndDeclRef(child, varTypeMap); });
 }
 
 void fixAllVarRefTypes(json &node){
     // 只处理函数相关节点
-    if (node.contains("kind") && (
-        node["kind"] == "FunctionDecl" ||
-        node["kind"] == "CXXMethodDecl" ||
+    if (node.contains("kind") && ( node["kind"] == "FunctionDecl" || node["kind"] == "CXXMethodDecl" ||
         node["kind"] == "CXXConstructorDecl")){
             auto typeMap = collectAllScopeVarTypeMap(node);
             fixImplicitCastExprAndDeclRef(node, typeMap);
         }
-    if (node.contains("inner") && node["inner"].is_array()){
-        for (auto &child: node["inner"]){
-            fixAllVarRefTypes(child);
-        }
-    }
+    forEachChild(node, [&](json &child){ fixAllVarRefTypes(child); });
 }
 
 // 缓存所有的类, 结构体
 std::map<std::string, json> derivedDataTypeMap;
 
 // 关联构造函数初始化时的对象参数
-void relateMemberType(std::string typeStr, json &children){
-    json classNode = derivedDataTypeMap[typeStr];
-    if (!classNode.is_null() && children.size() == classNode["inner"].size()){
-        for (int i =0; i< children.size(); i++){
-            if (children[i]["type"]["qualType"] != classNode["inner"][i]["type"]["qualType"] && derivedDataTypeMap.count(children[i]["type"]["qualType"]) != 0){
-                json constructNode;
-                constructNode["id"] = children[i]["id"];
-                constructNode["code"] = children[i]["code"];
-                constructNode["name"] = children[i]["name"];
-                constructNode["range"] = children[i]["range"];
-                constructNode["type"] = classNode["inner"][i]["type"];
-                constructNode["kind"] = "CXXConstructExpr";
-                json childInner = json::array();
-                childInner.push_back(children[i]);
-                constructNode["inner"] = childInner;
-                children[i] = constructNode;
+void relateMemberType(const std::string& typeStr, json& children) {
+    const auto& classNode = derivedDataTypeMap[typeStr];
+    if (!classNode.is_null() && children.size() == classNode["inner"].size()) {
+        for (int i = 0; i < children.size(); ++i) {
+            const auto& memberType = classNode["inner"][i]["type"]["qualType"];
+            auto& child = children[i];
+            if (child["type"]["qualType"] != memberType && derivedDataTypeMap.count(child["type"]["qualType"])) {
+                child = {
+                    {"id", child["id"]}, {"code", child["code"]}, {"name", child["name"]},
+                    {"range", child["range"]}, {"type", classNode["inner"][i]["type"]},
+                    {"kind", "CXXConstructExpr"}, {"inner", json::array({child})}
+                };
             }
         }
     }
@@ -585,6 +478,11 @@ bool isConstructorByTypeStr(std::string typeStr){
 bool isConstructorByNameStr(std::string nameStr){
     return nameStr == "vector" || nameStr == "_Tree_const_iterator" || nameStr == "set" || nameStr == "queue" ||
     nameStr == "deque" || nameStr == "stack" || nameStr == "list";
+}
+
+// 判断是否为继承父类的构造函数
+bool isUsingDecl(std::string codeStr){
+    return codeStr.find("using") != std::string::npos && codeStr.find("::") != std::string::npos;
 }
 
 bool isConstructorByCodeStr(std::string codeStr, std::string nameStr, std::string typeStr){
@@ -614,40 +512,16 @@ bool isBuiltInType(std::string& type){
 }
 
 // 构造模板函数的默认类型节点
-json buildTemplateDefaultType(std::string codeStr){
-    size_t ind = codeStr.find("=");
-    std::string typeStr = codeStr.substr(ind + 1, codeStr.length() - ind);
+json buildTemplateDefaultType(const std::string& codeStr) {
+    auto eq = codeStr.find('=');
+    std::string typeStr = eq == std::string::npos ? "" : codeStr.substr(eq + 1);
     typeStr.erase(std::remove(typeStr.begin(), typeStr.end(), ' '), typeStr.end());
-    json defaultNode = json::object();
-    if (isBuiltInType(typeStr)){
-        defaultNode["kind"] = "BuildInType";
-        defaultNode["type"] = {{"qualType", typeStr}};
-        defaultNode["inner"] = json::array();
-    } else {
-        json recordNode = json::object();
-        recordNode["kind"] = "RecordType";
-        recordNode["type"] = {{"qualType", typeStr}};
+    if (isBuiltInType(typeStr))
+        return {{"kind", "BuildInType"}, {"type", {{"qualType", typeStr}}}, {"inner", json::array()}};
 
-        json elaboratedNode = json::object();
-        elaboratedNode["kind"] = "ElaboratedType";
-        elaboratedNode["type"] = {{"qualType", typeStr}};
-        elaboratedNode["inner"] = json::array({recordNode});
-
-        defaultNode["kind"] = "TemplateArgument";
-        defaultNode["type"] = {{"qualType", typeStr}};
-        defaultNode["inner"] = json::array({elaboratedNode});
-    }
-
-    return defaultNode;
-}
-
-// 根据系统添加分隔符
-std::string getPathSeparator() {
-#ifdef _WIN32
-    return "\\";
-#else
-    return "/";
-#endif
+    json recordNode = {{"kind", "RecordType"}, {"type", {{"qualType", typeStr}}}};
+    json elaboratedNode = {{"kind", "ElaboratedType"}, {"type", {{"qualType", typeStr}}}, {"inner", {recordNode}}};
+    return {{"kind", "TemplateArgument"}, {"type", {{"qualType", typeStr}}}, {"inner", {elaboratedNode}}};
 }
 
 // 判断文件名是否在-i目录下
@@ -663,9 +537,7 @@ bool isInUserInclude(const std::string& fileName){
 }
 
 inline bool isRemovable(const json& j){
-    return j.is_null() ||
-            (j.is_object() && j.empty()) ||
-            (j.is_array() && j.empty());
+    return j.is_null() || (j.is_object() && j.empty()) || (j.is_array() && j.empty());
 }
 
 void cleanJson(json& node){
@@ -673,10 +545,7 @@ void cleanJson(json& node){
         for (auto& elem: node) {
             cleanJson(elem);
         }
-        node.erase(
-            std::remove_if(node.begin(), node.end(), isRemovable),
-                           node.end()
-        );
+        node.erase(std::remove_if(node.begin(), node.end(), isRemovable),node.end());
     } else if (node.is_object()) {
         for (auto it = node.begin(); it != node.end(); ) {
             cleanJson(it.value());
@@ -745,13 +614,15 @@ void filterToMainFileOnly(json& node, const std::string& mainFileName, std::stri
 
 // 添加构造函数的变量初始化节点
 json addCXXCtorInitializer(json &children) {
-
     json newChildren = json::array();
     json member = nullptr;
     for (int i = 0; i < children.size(); i++) {
-        if (children[i]["kind"] == "MemberRef") {
+        if (children[i]["kind"] == "MemberRef" || children[i]["kind"] == "TypeRef") {
             member = children[i];
             continue;
+        }
+        if (children[i]["kind"] == "CallExpr" && children[i]["inner"][0]["kind"] == "ImplicitCastExpr") {
+            children[i] = children[i]["inner"][0];
         }
         if (children[i]["kind"] == "ImplicitCastExpr") {
             if (!member.is_null()) {
@@ -761,10 +632,28 @@ json addCXXCtorInitializer(json &children) {
                 json inner = json::array();
                 inner.push_back(children[i]);
                 CXXCtor["inner"] = inner;
+                std::string child = children[i]["code"];
+                std::string ctor = member["code"];
+                CXXCtor["code"] = ctor + "(" + child + ")";
                 newChildren.push_back(CXXCtor);
                 member = nullptr;
             }
             continue;
+        }
+        if (children[i]["kind"] == "OverloadedDeclRef") {
+           if (!member.is_null()) {
+              children[i]["kind"] = "CXXInheritedCtorInitExpr";
+              children[i]["type"] = member["type"];
+              json CXXCtor = json::object();
+              CXXCtor["kind"] = "CXXCtorInitializer";
+              CXXCtor["baseInit"] = member["type"];
+              json inner = json::array();
+              inner.push_back(children[i]);
+              CXXCtor["inner"] = inner;
+              newChildren.push_back(CXXCtor);
+              member = nullptr;
+           }
+           continue;
         }
         newChildren.push_back(children[i]);
     }
@@ -788,7 +677,6 @@ void buildTypedefChild(CXType& type, json& newChildren, json& children) {
         node["kind"] = "FunctionProtoType";
         CXType result = clang_getResultType(type);
         buildTypedefChild(result, inner, children);
-
         size_t numArgs = children.size();
         for (size_t i = 0; i < numArgs; i++) {
             inner.push_back(children[i]);
@@ -804,162 +692,126 @@ void buildTypedefChild(CXType& type, json& newChildren, json& children) {
     newChildren.push_back(node);
 }
 
-// ==========================buildASTJson 主体========================
-
-json buildASTJson(CXCursor cursor){
-    CXSourceLocation loc = clang_getCursorLocation(cursor);
-    CXCursorKind kind_cursor = clang_getCursorKind(cursor);
-
-    CXFile file;
-    clang_getSpellingLocation(loc, &file, nullptr, nullptr, nullptr);
-    std::string fileName = file ? cx2str(clang_getFileName(file)) : "";
-
-    bool isInclude = isInUserInclude(fileName);
-    if (kind_cursor != CXCursor_TranslationUnit && !clang_Location_isFromMainFile(loc) && !isInclude){
-            return json();
-    }
-    if (kind_cursor == CXCursor_LinkageSpec){
-        json children = json::array();
-        clang_visitChildren(
-            cursor,
-            [](CXCursor child, CXCursor parent, CXClientData client_data) {
-                json *list = static_cast<json *>(client_data);
-                json childAst = buildASTJson(child);
-                if (!childAst.is_null()) list->push_back(childAst);
-                return CXChildVisit_Continue;
-            },
-            &children
-        );
-        if (children.size() == 1) return children[0];
-        if (children.empty()) return json();
-        return children;
-    }
-
-
-    json node;
-    std::string kindSpelling = cx2str(clang_getCursorKindSpelling(kind_cursor));
-    std::string displayName = cx2str(clang_getCursorSpelling(cursor));
-    CXSourceRange range = clang_getCursorExtent(cursor);
-    if (isInclude) {
-        node["include"] = true;
-    }
-
-    node["type"] = {{"qualType", unifyTypeStr(clang_getTypeSpelling(clang_getCursorType(cursor)))}};
+void fillNodeKindTag(json& node, CXCursor cursor, CXCursorKind kind_cursor, const std::string& kindSpelling) {
+    std::string nameStr = node.value("name", "");
+    std::string codeStr = node.value("code", "");
     std::string typeStr = node["type"]["qualType"];
-    std::string fileStr = fileName != "" ? fileName : displayName;
+    switch (kind_cursor) {
+        case CXCursor_ClassDecl: node["kind"] = "CXXRecordDecl"; node["tagUsed"] = "class";   return;
+        case CXCursor_StructDecl: node["kind"] = "CXXRecordDecl"; node["tagUsed"] = "struct";  return;
+        case CXCursor_EnumDecl: node["kind"] = "EnumDecl";      node["tagUsed"] = "enum";    return;
+        case CXCursor_UnionDecl: node["kind"] = "CXXRecordDecl"; node["tagUsed"] = "union";   return;
+        case CXCursor_UnexposedExpr: node["kind"] = handleUnexposedExpr(node); return;
+        case CXCursor_UsingDirective: node["kind"] = "UsingDirectiveDecl"; node["isImplicit"] = true; return;
+        case CXCursor_MemberRefExpr: node["kind"] = "MemberExpr"; fillMemberName(node, nameStr); return;
+        default: break;
+    }
+    if (kind_cursor == CXCursor_CallExpr) {
+        if (typeStr.find("basic_ostream") == 0 || nameStr.find("operator") != std::string::npos)
+            node["kind"] = "CXXOperatorCallExpr";
+        else if (isConstructorByTypeStr(typeStr) || isConstructorByNameStr(nameStr) ||
+                 isConstructorByCodeStr(codeStr, nameStr, typeStr))
+            node["kind"] = "CXXConstructExpr";
+        else if ((codeStr.find(".") != std::string::npos || codeStr.find("->") != std::string::npos) &&
+                 nameStr.find("operator") == std::string::npos && codeStr.find(nameStr) != 0)
+            node["kind"] = "CXXMemberCallExpr";
+        else
+            node["kind"] = kindSpelling;
+        return;
+    }
+    if (kind_cursor == CXCursor_CXXMethod) {
+        node["kind"] = "CXXMethodDecl"; node["mangledName"] = getMemberInClassName(cursor);
+    } else if (kind_cursor == CXCursor_Constructor || (kind_cursor == CXCursor_UsingDeclaration && isUsingDecl(codeStr))) {
+        node["kind"] = "CXXConstructorDecl"; node["mangledName"] = getMemberInClassName(cursor);
+    } else if (kind_cursor == CXCursor_Destructor) {
+        node["kind"] = "CXXDestructorDecl"; node["mangledName"] = getMemberInClassName(cursor);
+    } else {
+        node["kind"] = kindSpelling;
+    }
+}
 
-    json content = getSourceContent(range);
-    if (kind_cursor == CXCursor_TranslationUnit){
+void fillNodeSourceContent(
+    json& node, const json& content, CXCursorKind kind_cursor, CXCursor cursor,
+    CXFile file, const std::string& displayName, const std::string& fileStr
+) {
+    if (kind_cursor == CXCursor_TranslationUnit) {
         node["fileName"] = fileStr;
-    } else if (kind_cursor == CXCursor_UnaryOperator){
+        return;
+    }
+
+    if (kind_cursor == CXCursor_UnaryOperator) {
         fillUnaryOperatorInfo(node, cursor);
-    } else if (kind_cursor == CXCursor_BinaryOperator || kind_cursor == CXCursor_CompoundAssignOperator){
+    } else if (kind_cursor == CXCursor_BinaryOperator || kind_cursor == CXCursor_CompoundAssignOperator) {
         node["opcode"] = cx2str(clang_Cursor_getBinaryOpcodeStr(clang_Cursor_getBinaryOpcode(cursor)));
     } else {
         node["name"] = displayName;
     }
-    std::string nameStr = node["name"].is_null() ? "" : node["name"];
-    std::string codeStr = content.contains("code") &&
-    content["code"].is_string() ? content["code"].get<std::string>() : "";
-    if (content != "" && kind_cursor != CXCursor_TranslationUnit)
+
+    // 填充 code 字段
+    std::string codeStr = (content.contains("code") && content["code"].is_string())
+                          ? content["code"].get<std::string>() : "";
+    if (!content.is_null() && kind_cursor != CXCursor_TranslationUnit)
         node["code"] = codeStr;
 
+    // InclusionDirective 特殊处理
     if (kind_cursor == CXCursor_InclusionDirective) {
         node["kind"] = "InclusionDirective";
         node["fileName"] = cx2str(clang_getIncludedFile(cursor) ?
-        clang_getFileName(clang_getIncludedFile(cursor)) : clang_getCursorSpelling(cursor));
+                                  clang_getFileName(clang_getIncludedFile(cursor)) :
+                                  clang_getCursorSpelling(cursor));
         node["name"] = displayName;
-        node["code"] = content.contains("code") && content["code"].is_string() ? content["code"].get<std::string>() : "";
+        node["code"] = codeStr;
         node["loc"] = content.contains("begin") ? content["begin"] : json();
         node["loc"]["file"] = node["fileName"];
         node["range"] = {{"begin", content["begin"]}, {"end", content["end"]}};
         node["included"] = fileStr;
-    } else if (kind_cursor == CXCursor_IntegerLiteral ||
+        return;
+    }
+
+    // 字面量节点 value 字段
+    if (kind_cursor == CXCursor_IntegerLiteral ||
         kind_cursor == CXCursor_StringLiteral ||
-        kind_cursor == CXCursor_CXXBoolLiteralExpr)
-        node["value"] = node["code"];
-
-    if (kind_cursor == CXCursor_ClassDecl){
-        node["kind"] = "CXXRecordDecl";
-        node["tagUsed"] = "class";
-    } else if (kind_cursor == CXCursor_StructDecl){
-        node["kind"] = "CXXRecordDecl";
-        node["tagUsed"] = "struct";
-    } else if (kind_cursor == CXCursor_EnumDecl){
-        node["kind"] = "EnumDecl";
-        node["tagUsed"] = "enum";
-    } else if (kind_cursor == CXCursor_UnionDecl){
-        node["kind"] = "CXXRecordDecl";
-        node["tagUsed"] = "union";
-    } else if (kind_cursor == CXCursor_UnexposedExpr){
-        node["kind"] = handleUnexposedExpr(node);
-    } else if (kind_cursor == CXCursor_UsingDirective){
-        node["kind"] = "UsingDirectiveDecl";
-        node["isImplicit"] = true;
-    } else if (kind_cursor == CXCursor_MemberRefExpr){
-        node["kind"] = "MemberExpr";
-        fillMemberName(node, displayName);
-    } else if (kind_cursor == CXCursor_CallExpr){
-        if (typeStr.find("basic_ostream") == 0 || nameStr.find("operator") != std::string::npos){
-            node["kind"] = "CXXOperatorCallExpr";
-        } else if (isConstructorByTypeStr(typeStr) || isConstructorByNameStr(nameStr) ||
-                       isConstructorByCodeStr(codeStr, nameStr, typeStr)){
-            node["kind"] = "CXXConstructExpr";
-        } else if ((codeStr.find(".") != std::string::npos || codeStr.find("->") != std::string::npos) &&
-                    nameStr.find("operator") == std::string::npos && codeStr.find(nameStr)!=0){
-                    node["kind"] = "CXXMemberCallExpr";
-        } else {
-            node["kind"] = kindSpelling;
-        }} else if (kind_cursor == CXCursor_CXXMethod){
-              node["kind"] = "CXXMethodDecl";
-              node["mangledName"] = getMemberInClassName(cursor);
-          } else if (kind_cursor == CXCursor_Constructor){
-              node["kind"] = "CXXConstructorDecl";
-              node["mangledName"] = getMemberInClassName(cursor);
-          } else if (kind_cursor == CXCursor_Destructor){
-              node["kind"] = "CXXDestructorDecl";
-              node["mangledName"] = getMemberInClassName(cursor);
-          } else {
-              node["kind"] = kindSpelling;
-    }
-
-    if (kind_cursor == CXCursor_VarDecl){
-        CXCursor parent = clang_getCursorSemanticParent(cursor);
-        if (clang_getCursorKind(parent) == CXCursor_ClassDecl || clang_getCursorKind(parent) == CXCursor_StructDecl){
-            node["storageClass"] = "static";
+        kind_cursor == CXCursor_CXXBoolLiteralExpr) {
+        node["value"] = node.value("code", "");
         }
-    }
+}
 
+void fillVarDeclStorageClass(json& node, CXCursor cursor, CXCursorKind kind_cursor) {
+    if (kind_cursor == CXCursor_VarDecl) {
+        CXCursor parent = clang_getCursorSemanticParent(cursor);
+        if (clang_getCursorKind(parent) == CXCursor_ClassDecl ||
+            clang_getCursorKind(parent) == CXCursor_StructDecl) {
+            node["storageClass"] = "static";
+            }
+    }
+}
+
+void fillDeclRefInfo(json& node, CXCursor cursor, CXCursorKind kind_cursor) {
     if (kind_cursor == CXCursor_DeclRefExpr)
         node["referencedDecl"] = getReferenceDecl(cursor, kind_cursor);
+}
 
+void fillNodeIdRangeLoc(json& node, const json& content, CXCursorKind kind_cursor,
+                        CXFile file, const std::string& displayName) {
     node["id"] = content["id"];
     json begin = content["begin"];
     node["range"] = {{"begin", begin}, {"end", content["end"]}};
     if ((file && std::find(locCursorKind.begin(), locCursorKind.end(), kind_cursor) != locCursorKind.end())
-        || kind_cursor == CXCursor_MacroExpansion || kind_cursor == CXCursor_MacroDefinition){
-        begin["file"] = cx2str(clang_getFileName(file));
+        || kind_cursor == CXCursor_MacroExpansion || kind_cursor == CXCursor_MacroDefinition) {
+        begin["file"] = file ? cx2str(clang_getFileName(file)) : "";
         node["loc"] = begin;
-    }
-
+        }
     node["valueCategory"] = (kind_cursor == CXCursor_EnumConstantDecl) ? displayName : "prvalue";
+}
 
-    // 子节点递归
-    json children = json::array();
-    clang_visitChildren(
-        cursor,
-        [](CXCursor child, CXCursor parent, CXClientData client_data){
-            json *list = static_cast<json *>(client_data);
-            json childAst = buildASTJson(child);
-            CXCursorKind parent_kind = clang_getCursorKind(parent);
-            if (!childAst.is_null()){
-                list->push_back(childAst);
-            }
-            return CXChildVisit_Continue;
-        },
-        &children
-    );
-
+void nodePostprocess(
+    json& node,
+    CXCursor cursor,
+    CXCursorKind kind_cursor,
+    json& children
+) {
+    std::string codeStr = node.value("code", "");
+    std::string typeStr = node["type"]["qualType"];
     if (node["kind"] == "InitListExpr" && typeStr.find("std::pair") != std::string::npos){
         fixMapPairInitListChildren(children, typeStr);
     } else if (node["kind"] == "CXXOperatorCallExpr"){
@@ -972,15 +824,15 @@ json buildASTJson(CXCursor cursor){
         }
         if (children.size() == 3) children[1]["valueCategory"] = "lvalue";
     } else if (node["kind"] == "CXXConstructExpr" || node["kind"] == "CallExpr"){
-        if (children.size() > 0 && children[0]["kind"] == "MemberExpr") {
+        if (!children.empty() && children[0]["kind"] == "MemberExpr") {
             node["kind"] = "CXXMemberCallExpr";
         }else {
             changeChildNodeType(children);
         }
     } else if (node["kind"] == "ImplicitCastExpr") {
-        if (children.size() > 0 && children[0]["kind"] == "CallExpr") {
+        if (!children.empty() && children[0]["kind"] == "CallExpr") {
             node["kind"] = "ExprWithCleanups";
-        } else if (children.size() > 0 && children[0]["kind"] == "DeclRefExpr" &&
+        } else if (!children.empty() && children[0]["kind"] == "DeclRefExpr" &&
             codeStr.find(children[0]["code"]) == 0 && codeStr.find("(") != std::string::npos) {
             node["kind"] = "RecoveryExpr";
         }
@@ -988,8 +840,7 @@ json buildASTJson(CXCursor cursor){
         children = addCXXCtorInitializer(children);
     } else if (node["kind"] == "TypedefDecl" && (children.size() == 0 || children[0]["kind"] != "CXXRecordDecl")) {
         json newChildren = json::array();
-        CXType typedefType = clang_getTypedefDeclUnderlyingType(cursor);
-        buildTypedefChild(typedefType, newChildren, children);
+        buildTypedefChild(clang_getTypedefDeclUnderlyingType(cursor), newChildren, children);
         children = newChildren;
     }
 
@@ -1011,30 +862,55 @@ json buildASTJson(CXCursor cursor){
     } else if (kind_cursor == CXCursor_CallExpr){
         postprocessCallExpr(node);
     }
-
     // 特殊表达式类型自动判断兜底
     detectAndFillSpecialKind(node);
+}
+// ==========================buildASTJson 主体========================
 
+json buildASTJson(CXCursor cursor){
+    CXSourceLocation loc = clang_getCursorLocation(cursor);
+    CXCursorKind kind_cursor = clang_getCursorKind(cursor);
+
+    CXFile file;
+    clang_getSpellingLocation(loc, &file, nullptr, nullptr, nullptr);
+    std::string fileName = file ? cx2str(clang_getFileName(file)) : "";
+
+    bool isInclude = isInUserInclude(fileName);
+    if (kind_cursor != CXCursor_TranslationUnit && !clang_Location_isFromMainFile(loc) && !isInclude){
+            return json();
+    }
+    if (kind_cursor == CXCursor_LinkageSpec){ // extern "C" { ... }
+        json children = json::array();
+        visitAllChildren(cursor, children);
+        if (children.size() == 1) return children[0];
+        if (children.empty()) return json();
+        return children;
+    }
+
+    json node;
+    std::string kindSpelling = cx2str(clang_getCursorKindSpelling(kind_cursor));
+    std::string displayName = cx2str(clang_getCursorSpelling(cursor));
+    CXSourceRange range = clang_getCursorExtent(cursor);
+    if (isInclude) {
+        node["include"] = true;
+    }
+
+    node["type"] = {{"qualType", unifyTypeStr(clang_getTypeSpelling(clang_getCursorType(cursor)))}};
+    std::string fileStr = fileName != "" ? fileName : displayName;
+    json content = getSourceContent(range);
+    fillNodeSourceContent(node, content, kind_cursor, cursor, file, displayName, fileStr);
+    fillNodeKindTag(node, cursor, kind_cursor, kindSpelling);
+    fillVarDeclStorageClass(node, cursor, kind_cursor);
+    fillDeclRefInfo(node, cursor, kind_cursor);
+    fillNodeIdRangeLoc(node, content, kind_cursor, file, displayName);
+
+    json children = json::array();
+    visitAllChildren(cursor, children); // 子节点递归
+    nodePostprocess(node, cursor, kind_cursor, children);
     return node;
 }
 
 // ======================工程辅助代码==========================
-
-std::string get_default_output_path(const std::string &input_path){
-    size_t last_dot = input_path.find_last_of('.');
-    std::string filename = (last_dot != std::string::npos) ? input_path.substr(0, last_dot) : input_path;
-    return filename + ".json";
-}
-
-bool isSameFile(const std::string &pathA, const std::string &pathB){
-    try{
-        return std::filesystem::path(pathA).filename() == std::filesystem::path(pathB).filename();
-    } catch (const std::filesystem::filesystem_error &e) {
-
-        return false;
-    }
-}
-
 
 struct CompileArgs{
     std::vector<std::string> string_args;
@@ -1087,103 +963,6 @@ CompileArgs load_compile_commands(const std::string &compile_commands_path, cons
     return result;
 }
 
-struct CommandLineOptions {
-    std::string input_file;
-    std::string output_file;
-    std::string compile_commands_file;
-    std::vector<std::string> user_include_dirs;
-};
-
-CommandLineOptions parseCommandLineArgs(int argc, char** argv){
-    CommandLineOptions opts;
-    for(int i = 1; i< argc; ++i){
-        std::string arg = argv[i];
-        if (arg == "-o" && i + 1 <argc){
-            opts.output_file = argv[++i];
-        } else if (arg == "-c" && i + 1 < argc){
-            opts.compile_commands_file = argv[++i];
-        } else if (arg == "-i" && i + 1 < argc){
-            opts.user_include_dirs.push_back(argv[++i]);
-        } else if (opts.input_file.empty()){
-            opts.input_file = arg;
-        }
-    }
-    return opts;
-}
-
-// 自动将 main.cpp 同级目录加入 -i 参数
-void addMainFileDirToInclude(CommandLineOptions& opts) {
-    if (opts.input_file.empty()) return;
-    std::string main_dir = std::filesystem::absolute(opts.input_file).parent_path().string();
-    bool found = false;
-    for (const auto& dir : opts.user_include_dirs) {
-        if (std::filesystem::equivalent(
-                std::filesystem::absolute(dir),
-                std::filesystem::absolute(main_dir))) {
-            found = true;
-            break;
-        }
-    }
-    if (!found) {
-        opts.user_include_dirs.push_back(main_dir);
-    }
-}
-
-void printUsage(const char* progName) {
-    std::cerr << "Usage: " << progName
-              << " <file.cpp> [-o <output.json>] [-c <compile_commands.json>] [-i <include_dir> ...]\n";
-}
-
-bool validateInput(CommandLineOptions& opts) {
-    if (opts.input_file.empty()) {
-        std::cerr << "Error: No input file provided.\n";
-        return false;
-    }
-    if (opts.output_file.empty()) {
-        opts.output_file = get_default_output_path(opts.input_file);
-    }
-    return true;
-}
-
-bool hasSuffix(const std::string& str, const std::string& suffix) {
-    if (suffix.size() > str.size()) {
-        return false;
-    }
-    return str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
-}
-
-struct ClangArgs {
-    std::vector<std::string> str_args;   // 字符串本体
-    std::vector<const char*> cstr_args;  // 指针
-};
-
-
-ClangArgs prepareClangArgs(const CommandLineOptions& opts) {
-    ClangArgs res;
-
-    // 选择标准
-    if (hasSuffix(opts.input_file, ".c")) {
-        res.str_args.push_back("-std=c99");
-    } else {
-        res.str_args.push_back("-xc++");
-        res.str_args.push_back("-std=c++17");
-    }
-
-    // 添加用户 include
-    for (const auto& dir : opts.user_include_dirs) {
-        res.str_args.push_back("-I" + dir);
-    }
-
-    // 将 string 转换为 c_str 指针
-    for (const auto& arg : res.str_args) {
-        res.cstr_args.push_back(arg.c_str());
-    }
-
-    // 打印检查
-    return res;
-}
-
-
 CXTranslationUnit createTranslationUnit(CXIndex index,
                                         const CommandLineOptions& opts,
                                         const std::vector<const char*>& args) {
@@ -1219,24 +998,18 @@ json buildAndProcessAST(CXTranslationUnit unit, const CommandLineOptions& opts) 
     return ast;
 }
 
-void saveASTToFile(const json& ast, const std::string& output_file) {
-    std::ofstream(output_file) << ast.dump(-1, ' ', false, json::error_handler_t::replace);
-    std::cout << "[STEP4] AST written to: " << output_file << std::endl;
-}
-
-
 // ===================主程序入口==================
 int main(int argc, char** argv) {
     if (argc < 2) {
-        printUsage(argv[0]);
+        cliutil::printUsage(argv[0]);
         return 1;
     }
 
-    auto opts = parseCommandLineArgs(argc, argv);
-    addMainFileDirToInclude(opts);
+    auto opts = cliutil::parseCommandLineArgs(argc, argv);
+    cliutil::addMainFileDirToInclude(opts);
 
-    if (!validateInput(opts)) return 1;
-    ClangArgs clang_args = prepareClangArgs(opts);
+    if (!cliutil::validateInput(opts)) return 1;
+    ClangArgs clang_args = cliutil::prepareClangArgs(opts);
     g_user_include_dirs = opts.user_include_dirs;
     CXIndex index = clang_createIndex(0, 0);
     CXTranslationUnit unit = createTranslationUnit(index, opts, clang_args.cstr_args);

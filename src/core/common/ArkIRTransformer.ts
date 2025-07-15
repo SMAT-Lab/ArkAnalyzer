@@ -75,12 +75,12 @@ export class ArkIRTransformer {
     public static readonly DUMMY_CONDITIONAL_OPERATOR_IF_FALSE_STMT = ArkIRTransformer.DUMMY_CONDITIONAL_OPERATOR + 'IfFalse';
     public static readonly DUMMY_CONDITIONAL_OPERATOR_END_STMT = ArkIRTransformer.DUMMY_CONDITIONAL_OPERATOR + 'End';
 
-    private sourceFile: ts.SourceFile;
-    private declaringMethod: ArkMethod;
-    private inBuilderMethod = false;
-    private builderMethodContextFlag = false;
-    private stmtsHaveOriginalText: Set<Stmt> = new Set();
-    private arkValueTransformer: ArkValueTransformer;
+    protected sourceFile: ts.SourceFile;
+    protected declaringMethod: ArkMethod;
+    protected inBuilderMethod = false;
+    protected builderMethodContextFlag = false;
+    protected stmtsHaveOriginalText: Set<Stmt> = new Set();
+    protected arkValueTransformer: ArkValueTransformer;
 
     constructor(sourceFile: ts.SourceFile, declaringMethod: ArkMethod) {
         this.sourceFile = sourceFile;

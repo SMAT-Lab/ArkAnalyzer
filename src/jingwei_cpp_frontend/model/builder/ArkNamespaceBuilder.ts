@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { buildDefaultArkClassFromArkNamespace, buildNormalArkClassFromArkNamespace } from './ArkClassBuilder';
+import { buildNormalArkClassFromArkNamespace } from './ArkClassBuilder';
 import { ArkFile } from '../../../core/model/ArkFile';
 import { buildArkMethodFromArkClass } from './ArkMethodBuilder';
 import ts from 'ohos-typescript';
@@ -23,6 +23,7 @@ import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
 import { ArkClass } from '../../../core/model/ArkClass';
 import { ArkMethod } from '../../../core/model/ArkMethod';
 import { NamespaceSignature } from '../../../core/model/ArkSignature';
+import { buildDefaultArkClassFromArkNamespace } from '../../../core/model/builder/ArkClassBuilder';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkNamespaceBuilder');
 

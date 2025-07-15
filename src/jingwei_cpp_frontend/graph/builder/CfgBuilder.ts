@@ -20,16 +20,16 @@ import { BasicBlock } from '../../../core/graph/BasicBlock';
 import { Cfg } from '../../../core/graph/Cfg';
 import { ArkClass } from '../../../core/model/ArkClass';
 import { ArkMethod } from '../../../core/model/ArkMethod';
-import { ArkIRTransformer, ValueAndStmts } from '../../common/ArkIRTransformer';
+import { ArkIRTransformerCpp, ValueAndStmts } from '../../common/ArkIRTransformer';
 import { ModelUtils } from '../../common/ModelUtils';
 import { IRUtils } from '../../../core/common/IRUtils';
 import { AliasType, ClassType, UnclearReferenceType, UnknownType, VoidType } from '../../../core/base/Type';
 import { Trap } from '../../../core/base/Trap';
 import { GlobalRef } from '../../../core/base/Ref';
 import { LoopBuilder } from '../../../core/graph/builder/LoopBuilder';
-import { SwitchBuilder } from '../../graph/builder/SwitchBuilder';
+import { SwitchBuilder } from './SwitchBuilder';
 import { ConditionBuilder } from '../../../core/graph/builder/ConditionBuilder';
-import { TrapBuilder } from './TrapBuilder';
+import { TrapBuilder } from '../../../core/graph/builder/TrapBuilder';
 import { CONSTRUCTOR_NAME, PROMISE } from '../../common/TSConst';
 import { ModifierType } from '../../../core/model/ArkBaseModel';
 
@@ -539,7 +539,7 @@ export class CfgBuilder {
     ASTNodeGotoStatement(innerNode: any, lastStatement: StatementBuilder, scopeID: number) {
         let s = new StatementBuilder('gotoStatement', innerNode.code, innerNode, scopeID);
         this.judgeLastType(s, lastStatement);
-        let label: string = innerNode.code.substr(innerNode.code.indexOf('goto ') + 5);
+        let label: string = innerNode.code.substring(innerNode.code.indexOf('goto ') + 5);
         let gotoStmtsOfLabel = this.declaringMethod.gotoStmtMap.get(label);
         if (gotoStmtsOfLabel === undefined) {
             this.declaringMethod.gotoStmtMap.set(label, [s]);
@@ -575,22 +575,22 @@ export class CfgBuilder {
     ASTNodeLabelStatement(innerNode: any, lastStatement: StatementBuilder, scopeID: number) {
         let labelStmt = new StatementBuilder('statement', 'goto label:' + innerNode.name, innerNode, scopeID);
         // 处理goto语句与label语句的前后关系
-        let label: string = innerNode.code.substr(0, innerNode.code.indexOf(':'));
-        let matched = false;
-        for (const [key, gotoStmts] of this.declaringMethod.gotoStmtMap) {
-            if (key !== label) {
-                continue;
-            }
+
+        const idx = innerNode.code.indexOf(':');
+        if (idx === -1) {
+            return new StatementBuilder('gotoStatement', innerNode.code, innerNode, scopeID);
+        }
+        const label = innerNode.code.substring(0,idx);
+        const gotoStmts = this.declaringMethod.gotoStmtMap.get(label);
+        if(!gotoStmts) {
+            let s = new StatementBuilder('gotoStatement', innerNode.code, innerNode, scopeID);
+            this.declaringMethod.gotoStmtMap.set(label, [s]);
+        } else {
             for (const gotoStmt of gotoStmts) {
                 for (const lastStmt of [...gotoStmt.lasts]) {
                     this.judgeLastStmtForLabel(labelStmt, lastStmt, gotoStmt);
-                    matched = true;
                 }
             }
-        }
-        if (!matched) {
-            let s = new StatementBuilder('gotoStatement', innerNode.code, innerNode, scopeID);
-            this.declaringMethod.gotoStmtMap.set(label, [s]);
         }
 
         // 处理label语句和前一句的前后关系
@@ -720,7 +720,7 @@ export class CfgBuilder {
                 this.judgeLastType(s, lastStatement);
                 lastStatement = s;
             } else if (['CallExpr', 'CXXOperatorCallExpr', 'BinaryOperator', 'UnaryOperator', 'CompoundAssignOperator',
-                'AtomicCallExpr', 'CXXConstructExpr'].includes(nodeKind)) {
+                'AtomicCallExpr', 'CXXConstructExpr', 'CXXCtorInitializer'].includes(nodeKind)) {
                 let s = new StatementBuilder('statement', innerNode.code, innerNode, scope.id);
                 this.judgeLastType(s, lastStatement);
                 lastStatement = s;
@@ -1159,11 +1159,13 @@ export class CfgBuilder {
         mes += '\n' + stmt.code;
         throw new TextError(mes);
     }
+
     getFuncBodyStmt() {
         let stmts: any[] = [];
         if (this.astRoot.inner) {
             for(let i = 0; i< this.astRoot.inner.length; i++) {
-                if (this.astRoot.kind === 'CXXConstructorDecl' && this.astRoot.inner[i].kind === 'CXXConstructExpr') {
+                if (this.astRoot.kind === 'CXXConstructorDecl' &&
+                    ['CXXConstructExpr', 'CXXCtorInitializer'].includes(this.astRoot.inner[i].kind)) {
                     stmts.push(this.astRoot.inner[i]);
                 }
                 if (this.astRoot.inner[i].kind === 'CompoundStmt') {
@@ -1236,7 +1238,7 @@ export class CfgBuilder {
         traps: Trap[];
     } {
         const stmts: Stmt[] = [];
-        const arkIRTransformer = new ArkIRTransformer(this.sourceFile, this.declaringMethod);
+        const arkIRTransformer = new ArkIRTransformerCpp(this.sourceFile, this.declaringMethod);
         arkIRTransformer.prebuildStmts().forEach(stmt => stmts.push(stmt));
         const expressionBodyNode = (this.astRoot as ts.ArrowFunction).body as ts.Expression;
         const expressionBodyStmts: Stmt[] = [];
@@ -1318,18 +1320,18 @@ export class CfgBuilder {
     private initializeBuild(): {
         blockBuilderToCfgBlock: Map<BlockBuilder, BasicBlock>;
         basicBlockSet: Set<BasicBlock>;
-        arkIRTransformer: ArkIRTransformer;
+        arkIRTransformer: ArkIRTransformerCpp;
     } {
         const blockBuilderToCfgBlock = new Map<BlockBuilder, BasicBlock>();
         const basicBlockSet = new Set<BasicBlock>();
-        const arkIRTransformer = new ArkIRTransformer(this.sourceFile, this.declaringMethod);
+        const arkIRTransformer = new ArkIRTransformerCpp(this.sourceFile, this.declaringMethod);
         return { blockBuilderToCfgBlock, basicBlockSet, arkIRTransformer };
     }
 
     private processBlocks(
         blockBuilderToCfgBlock: Map<BlockBuilder, BasicBlock>,
         basicBlockSet: Set<BasicBlock>,
-        arkIRTransformer: ArkIRTransformer
+        arkIRTransformer: ArkIRTransformerCpp
     ): {
         blocksContainLoopCondition: Set<BlockBuilder>;
         blockBuildersBeforeTry: Set<BlockBuilder>;
@@ -1380,7 +1382,7 @@ export class CfgBuilder {
         };
     }
 
-    private generateReturnStmt(arkIRTransformer: ArkIRTransformer): Stmt {
+    private generateReturnStmt(arkIRTransformer: ArkIRTransformerCpp): Stmt {
         if (this.name === CONSTRUCTOR_NAME) {
             this.declaringMethod.getSubSignature().setReturnType(arkIRTransformer.getThisLocal().getType());
             return new ArkReturnStmt(arkIRTransformer.getThisLocal());
@@ -1406,7 +1408,7 @@ export class CfgBuilder {
         basicBlockSet: Set<BasicBlock>,
         blockBuildersContainSwitch: BlockBuilder[],
         valueAndStmtsOfSwitchAndCasesAll: ValueAndStmts[][],
-        arkIRTransformer: ArkIRTransformer
+        arkIRTransformer: ArkIRTransformerCpp
     ): void {
         const loopBuilder = new LoopBuilder();
         loopBuilder.rebuildBlocksInLoop(blockBuilderToCfgBlock, blocksContainLoopCondition, basicBlockSet, this.blocks);
