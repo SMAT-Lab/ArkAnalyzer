@@ -134,7 +134,10 @@ export const DERIVED_DATA_TYPE_EXPECT_STRUCT = {
                         'id = parameter3: int',
                         'this = this: @derivedDataType/derivedDataType.cpp: MyStruct',
                         'instanceinvoke this.<@derivedDataType/derivedDataType.cpp: MyStruct.%instInit()>()',
-                        "this.<@derivedDataType/derivedDataType.cpp: MyStruct.book_id> = id",
+                        'this.<@derivedDataType/derivedDataType.cpp: MyStruct.title> = t',
+                        'this.<@derivedDataType/derivedDataType.cpp: MyStruct.author> = a',
+                        'this.<@derivedDataType/derivedDataType.cpp: MyStruct.subject> = s',
+                        'this.<@derivedDataType/derivedDataType.cpp: MyStruct.book_id> = id',
                         'return this'
                     ],
                     preds: [],

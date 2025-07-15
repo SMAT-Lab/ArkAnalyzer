@@ -14,7 +14,7 @@
  */
 
 
-import { ArkIRTransformer, ValueAndStmts } from '../../common/ArkIRTransformer';
+import { ArkIRTransformerCpp, ValueAndStmts } from '../../common/ArkIRTransformer';
 import { BlockBuilder, SwitchStatementBuilder } from './CfgBuilder';
 import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
 import { BasicBlock } from '../../../core/graph/BasicBlock';
@@ -30,7 +30,7 @@ export class SwitchBuilder {
         blockBuilderToCfgBlock: Map<BlockBuilder, BasicBlock>,
         blockBuildersContainSwitch: BlockBuilder[],
         valueAndStmtsOfSwitchAndCasesAll: ValueAndStmts[][],
-        arkIRTransformer: ArkIRTransformer,
+        arkIRTransformer: ArkIRTransformerCpp,
         basicBlockSet: Set<BasicBlock>
     ): void {
         for (let i = 0; i < blockBuildersContainSwitch.length; i++) {
@@ -79,7 +79,7 @@ export class SwitchBuilder {
         caseCnt: number,
         blockContainSwitch: BasicBlock,
         basicBlockSet: Set<BasicBlock>,
-        arkIRTransformer: ArkIRTransformer
+        arkIRTransformer: ArkIRTransformerCpp
     ): BasicBlock[] {
         const valueAndStmtsOfSwitch = valueAndStmtsOfSwitchAndCases[0];
         const valueOfSwitch = valueAndStmtsOfSwitch.value;

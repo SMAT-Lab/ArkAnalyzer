@@ -167,7 +167,7 @@ export function buildNormalArkClass(clsNode: ClassLikeNode, cls: ArkClass, sourc
     IRUtils.setComments(cls, clsNode, sourceFile, cls.getDeclaringArkFile().getScene().getOptions());
 }
 
-function init4InstanceInitMethod(cls: ArkClass): void {
+export function init4InstanceInitMethod(cls: ArkClass): void {
     const instanceInit = new ArkMethod();
     instanceInit.setDeclaringArkClass(cls);
     instanceInit.setIsGeneratedFlag(true);
@@ -182,7 +182,7 @@ function init4InstanceInitMethod(cls: ArkClass): void {
     cls.setInstanceInitMethod(instanceInit);
 }
 
-function init4StaticInitMethod(cls: ArkClass): void {
+export function init4StaticInitMethod(cls: ArkClass): void {
     const staticInit = new ArkMethod();
     staticInit.setDeclaringArkClass(cls);
     staticInit.setIsGeneratedFlag(true);
@@ -497,7 +497,7 @@ function buildStaticBlocksForClass(clsNode: ClassLikeNodeWithMethod, cls: ArkCla
     return staticBlockMethodSignatures;
 }
 
-function getInitStmts(transformer: ArkIRTransformer, field: ArkField, initNode?: ts.Node): void {
+export function getInitStmts(transformer: ArkIRTransformer, field: ArkField, initNode?: ts.Node): void {
     if (initNode) {
         const stmts: Stmt[] = [];
         let { value: initValue, valueOriginalPositions: initPositions, stmts: initStmts } = transformer.tsNodeToValueAndStmts(initNode);

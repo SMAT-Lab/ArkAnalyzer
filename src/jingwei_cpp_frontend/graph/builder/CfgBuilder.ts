@@ -20,14 +20,14 @@ import { BasicBlock } from '../../../core/graph/BasicBlock';
 import { Cfg } from '../../../core/graph/Cfg';
 import { ArkClass } from '../../../core/model/ArkClass';
 import { ArkMethod } from '../../../core/model/ArkMethod';
-import { ArkIRTransformer, ValueAndStmts } from '../../common/ArkIRTransformer';
+import { ArkIRTransformerCpp, ValueAndStmts } from '../../common/ArkIRTransformer';
 import { ModelUtils } from '../../common/ModelUtils';
 import { IRUtils } from '../../../core/common/IRUtils';
 import { AliasType, ClassType, UnclearReferenceType, UnknownType, VoidType } from '../../../core/base/Type';
 import { Trap } from '../../../core/base/Trap';
 import { GlobalRef } from '../../../core/base/Ref';
 import { LoopBuilder } from '../../../core/graph/builder/LoopBuilder';
-import { SwitchBuilder } from '../../graph/builder/SwitchBuilder';
+import { SwitchBuilder } from './SwitchBuilder';
 import { ConditionBuilder } from '../../../core/graph/builder/ConditionBuilder';
 import { TrapBuilder } from '../../../core/graph/builder/TrapBuilder';
 import { CONSTRUCTOR_NAME, PROMISE } from '../../common/TSConst';
@@ -1238,7 +1238,7 @@ export class CfgBuilder {
         traps: Trap[];
     } {
         const stmts: Stmt[] = [];
-        const arkIRTransformer = new ArkIRTransformer(this.sourceFile, this.declaringMethod);
+        const arkIRTransformer = new ArkIRTransformerCpp(this.sourceFile, this.declaringMethod);
         arkIRTransformer.prebuildStmts().forEach(stmt => stmts.push(stmt));
         const expressionBodyNode = (this.astRoot as ts.ArrowFunction).body as ts.Expression;
         const expressionBodyStmts: Stmt[] = [];
@@ -1320,18 +1320,18 @@ export class CfgBuilder {
     private initializeBuild(): {
         blockBuilderToCfgBlock: Map<BlockBuilder, BasicBlock>;
         basicBlockSet: Set<BasicBlock>;
-        arkIRTransformer: ArkIRTransformer;
+        arkIRTransformer: ArkIRTransformerCpp;
     } {
         const blockBuilderToCfgBlock = new Map<BlockBuilder, BasicBlock>();
         const basicBlockSet = new Set<BasicBlock>();
-        const arkIRTransformer = new ArkIRTransformer(this.sourceFile, this.declaringMethod);
+        const arkIRTransformer = new ArkIRTransformerCpp(this.sourceFile, this.declaringMethod);
         return { blockBuilderToCfgBlock, basicBlockSet, arkIRTransformer };
     }
 
     private processBlocks(
         blockBuilderToCfgBlock: Map<BlockBuilder, BasicBlock>,
         basicBlockSet: Set<BasicBlock>,
-        arkIRTransformer: ArkIRTransformer
+        arkIRTransformer: ArkIRTransformerCpp
     ): {
         blocksContainLoopCondition: Set<BlockBuilder>;
         blockBuildersBeforeTry: Set<BlockBuilder>;
@@ -1382,7 +1382,7 @@ export class CfgBuilder {
         };
     }
 
-    private generateReturnStmt(arkIRTransformer: ArkIRTransformer): Stmt {
+    private generateReturnStmt(arkIRTransformer: ArkIRTransformerCpp): Stmt {
         if (this.name === CONSTRUCTOR_NAME) {
             this.declaringMethod.getSubSignature().setReturnType(arkIRTransformer.getThisLocal().getType());
             return new ArkReturnStmt(arkIRTransformer.getThisLocal());
@@ -1408,7 +1408,7 @@ export class CfgBuilder {
         basicBlockSet: Set<BasicBlock>,
         blockBuildersContainSwitch: BlockBuilder[],
         valueAndStmtsOfSwitchAndCasesAll: ValueAndStmts[][],
-        arkIRTransformer: ArkIRTransformer
+        arkIRTransformer: ArkIRTransformerCpp
     ): void {
         const loopBuilder = new LoopBuilder();
         loopBuilder.rebuildBlocksInLoop(blockBuilderToCfgBlock, blocksContainLoopCondition, basicBlockSet, this.blocks);
