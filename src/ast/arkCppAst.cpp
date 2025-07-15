@@ -532,6 +532,11 @@ bool isConstructorByNameStr(std::string nameStr){
     nameStr == "deque" || nameStr == "stack" || nameStr == "list";
 }
 
+// 判断是否为继承父类的构造函数
+bool isUsingDecl(std::string codeStr){
+    return codeStr.find("using") != std::string::npos && codeStr.find("::") != std::string::npos;
+}
+
 bool isConstructorByCodeStr(std::string codeStr, std::string nameStr, std::string typeStr){
         bool cond1 = (typeStr == nameStr);
         bool cond2 = (typeStr == "iterator" && codeStr.find(".find") != std::string::npos);
@@ -673,9 +678,12 @@ json addCXXCtorInitializer(json &children) {
     json newChildren = json::array();
     json member = nullptr;
     for (int i = 0; i < children.size(); i++) {
-        if (children[i]["kind"] == "MemberRef") {
+        if (children[i]["kind"] == "MemberRef" || children[i]["kind"] == "TypeRef") {
             member = children[i];
             continue;
+        }
+        if (children[i]["kind"] == "CallExpr" && children[i]["inner"][0]["kind"] == "ImplicitCastExpr") {
+            children[i] = children[i]["inner"][0];
         }
         if (children[i]["kind"] == "ImplicitCastExpr") {
             if (!member.is_null()) {
@@ -685,10 +693,28 @@ json addCXXCtorInitializer(json &children) {
                 json inner = json::array();
                 inner.push_back(children[i]);
                 CXXCtor["inner"] = inner;
+                std::string child = children[i]["code"];
+                std::string ctor = member["code"];
+                CXXCtor["code"] = ctor + "(" + child + ")";
                 newChildren.push_back(CXXCtor);
                 member = nullptr;
             }
             continue;
+        }
+        if (children[i]["kind"] == "OverloadedDeclRef") {
+           if (!member.is_null()) {
+              children[i]["kind"] = "CXXInheritedCtorInitExpr";
+              children[i]["type"] = member["type"];
+              json CXXCtor = json::object();
+              CXXCtor["kind"] = "CXXCtorInitializer";
+              CXXCtor["baseInit"] = member["type"];
+              json inner = json::array();
+              inner.push_back(children[i]);
+              CXXCtor["inner"] = inner;
+              newChildren.push_back(CXXCtor);
+              member = nullptr;
+           }
+           continue;
         }
         newChildren.push_back(children[i]);
     }
@@ -827,7 +853,7 @@ json buildASTJson(CXCursor cursor){
         }} else if (kind_cursor == CXCursor_CXXMethod){
               node["kind"] = "CXXMethodDecl";
               node["mangledName"] = getMemberInClassName(cursor);
-          } else if (kind_cursor == CXCursor_Constructor){
+          } else if (kind_cursor == CXCursor_Constructor || (kind_cursor == CXCursor_UsingDeclaration && isUsingDecl(codeStr))){
               node["kind"] = "CXXConstructorDecl";
               node["mangledName"] = getMemberInClassName(cursor);
           } else if (kind_cursor == CXCursor_Destructor){
