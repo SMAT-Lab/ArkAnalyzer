@@ -20,8 +20,6 @@ import {
     ArkConditionExpr,
     ArkInstanceInvokeExpr,
     ArkStaticInvokeExpr,
-    BinaryOperator,
-    NormalBinaryOperator,
     RelationalBinaryOperator,
     UnaryOperator,
 } from '../../core/base/Expr';
@@ -131,15 +129,13 @@ export class ArkIRTransformerCpp extends ArkIRTransformer{
         if (expression.kind.toString() === 'ParentExpr') {
             return this.shouldGenerateExtraAssignStmtCpp(expression.inner[0]);
         }
-        if ((expression.kind.toString() === 'BinaryOperator' && (expression.opcode === '=')) ||
+        return !((expression.kind.toString() === 'BinaryOperator' && (expression.opcode === '=')) ||
             ArkValueTransformerCpp.isCompoundAssignmentOperator(expression.opcode) ||
             expression.kind.toString() === 'CXXNewExpr' || expression.kind.toString() === 'CallExpr' ||
             (expression.kind.toString() === 'UnaryOperator' && (expression.opcode === '++' || expression.opcode === '--')) ||
             (expression.kind.toString() === 'CXXOperatorCallExpr' && expression.name === 'operator=') ||
-            expression.kind.toString() === 'CXXConstructExpr' || expression.kind.toString() === 'CXXCtorInitializer') {
-            return false;
-        }
-        return true;
+            expression.kind.toString() === 'CXXConstructExpr' || expression.kind.toString() === 'CXXCtorInitializer');
+
     }
 
     public tsNodeToStmts(node: any): Stmt[] {
@@ -148,7 +144,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer{
             case 'BreakStmt':
             case 'ContinueStmt':
             case 'GotoStmt':
-                stmts = this.gotoStatementToStmtsCpp(node);
+                stmts = [];
                 break;
             case 'BinaryOperator':
             case 'CallExpr':
@@ -656,10 +652,6 @@ export class ArkIRTransformerCpp extends ArkIRTransformer{
         return stmts;
     }
 
-    private gotoStatementToStmtsCpp(gotoStatement: ts.BreakStatement | ts.ContinueStatement): Stmt[] {
-        return [];
-    }
-
     private throwStatementToStmtsCpp(throwStatement: any): Stmt[] {
         const stmts: Stmt[] = [];
         const {
@@ -697,60 +689,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer{
             case '*':
                 return UnaryOperator.Deref;
             default:
-                ;
-        }
-        return null;
-    }
 
-    public static tokenToBinaryOperator(token: ts.SyntaxKind): BinaryOperator | null {
-        switch (token) {
-            case ts.SyntaxKind.QuestionQuestionToken:
-                return NormalBinaryOperator.NullishCoalescing;
-            case ts.SyntaxKind.AsteriskAsteriskToken:
-                return NormalBinaryOperator.Exponentiation;
-            case ts.SyntaxKind.SlashToken:
-                return NormalBinaryOperator.Division;
-            case ts.SyntaxKind.PlusToken:
-                return NormalBinaryOperator.Addition;
-            case ts.SyntaxKind.MinusToken:
-                return NormalBinaryOperator.Subtraction;
-            case ts.SyntaxKind.AsteriskToken:
-                return NormalBinaryOperator.Multiplication;
-            case ts.SyntaxKind.PercentToken:
-                return NormalBinaryOperator.Remainder;
-            case ts.SyntaxKind.LessThanLessThanToken:
-                return NormalBinaryOperator.LeftShift;
-            case ts.SyntaxKind.GreaterThanGreaterThanToken:
-                return NormalBinaryOperator.RightShift;
-            case ts.SyntaxKind.GreaterThanGreaterThanGreaterThanToken:
-                return NormalBinaryOperator.UnsignedRightShift;
-            case ts.SyntaxKind.AmpersandToken:
-                return NormalBinaryOperator.BitwiseAnd;
-            case ts.SyntaxKind.BarToken:
-                return NormalBinaryOperator.BitwiseOr;
-            case ts.SyntaxKind.CaretToken:
-                return NormalBinaryOperator.BitwiseXor;
-            case ts.SyntaxKind.AmpersandAmpersandToken:
-                return NormalBinaryOperator.LogicalAnd;
-            case ts.SyntaxKind.BarBarToken:
-                return NormalBinaryOperator.LogicalOr;
-            case ts.SyntaxKind.LessThanToken:
-                return RelationalBinaryOperator.LessThan;
-            case ts.SyntaxKind.LessThanEqualsToken:
-                return RelationalBinaryOperator.LessThanOrEqual;
-            case ts.SyntaxKind.GreaterThanToken:
-                return RelationalBinaryOperator.GreaterThan;
-            case ts.SyntaxKind.GreaterThanEqualsToken:
-                return RelationalBinaryOperator.GreaterThanOrEqual;
-            case ts.SyntaxKind.EqualsEqualsToken:
-                return RelationalBinaryOperator.Equality;
-            case ts.SyntaxKind.ExclamationEqualsToken:
-                return RelationalBinaryOperator.InEquality;
-            case ts.SyntaxKind.EqualsEqualsEqualsToken:
-                return RelationalBinaryOperator.StrictEquality;
-            case ts.SyntaxKind.ExclamationEqualsEqualsToken:
-                return RelationalBinaryOperator.StrictInequality;
-            default:
         }
         return null;
     }

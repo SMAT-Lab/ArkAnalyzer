@@ -522,6 +522,7 @@ const BASE_DIR = 'tests/resources_cpp/cfg';
 
 function buildScene(folderName: string): Scene {
     let config: SceneConfig = new SceneConfig();
+    config.setOptions(['.c', '.cpp', '.h', '.hpp']);
     config.buildFromProjectDir(path.join(BASE_DIR, folderName));
     let scene = new Scene();
     scene.buildSceneFromProjectDir(config);

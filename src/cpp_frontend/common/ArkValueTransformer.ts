@@ -215,7 +215,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         } else if (node.kind === 'UnresolvedLookupExpr') {
             return this.identifierToValueAndStmtsCpp(node);
         } else if (node.kind === 'CXXMemberCallExpr') {
-            return this.cxxMembercallExpressionToValueAndStmtsCpp(node);
+            return this.cxxMemberCallExpressionToValueAndStmtsCpp(node);
         } else if (node.kind === 'MemberExpr' || node.kind === 'MemberRef' ) {
             return this.memberExpressionToValueAndStmts(node);
         } else if (node.kind === 'CXXNewExpr') {
@@ -959,7 +959,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         };
     }
 
-    private cxxMembercallExpressionToValueAndStmtsCpp(callExpression: any): ValueAndStmts {
+    private cxxMemberCallExpressionToValueAndStmtsCpp(callExpression: any): ValueAndStmts {
         let realGenericTypes: Type[] | undefined;
         const stmts: Stmt[] = [];
         const [leftNode, rightNode] = this.getArgumentNode(callExpression.inner);
@@ -976,11 +976,6 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         } else if (callerValue instanceof Local) {
             invokeValue = this.buildInvokeValueForLocal(callerValue, args, realGenericTypes);
         } else {
-            ({
-                value: callerValue,
-                valueOriginalPositions: callerPositions,
-                stmts: callerStmts,
-            } = this.generateAssignStmtForValue(callerValue, callerPositions));
             stmts.push(...callerStmts);
             const methodSignature = ArkSignatureBuilder.buildMethodSignatureFromMethodName((callerValue as Local).getName());
             invokeValue = new ArkStaticInvokeExpr(methodSignature, args, realGenericTypes);
@@ -1206,7 +1201,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         if (isCXXSTLContainer(oriType)) {
             return oriType;
         }
-        return oriType.replace(/[\(\)]/g, '').replace(' *', '');
+        return oriType.replace(/[()]/g, '').replace(' *', '');
     }
 
     private newArrayExpressionToValueAndStmtsCpp(newArrayExpression: any): ValueAndStmts {
@@ -1299,7 +1294,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
             funcElements = elementValues.length > 5 ? elementValues.slice(2, 5) : [];
             tsFuncNameIdx = 0;
         }
-        funcElements.forEach((element, idx) => {
+        funcElements.forEach((element) => {
             // 当前只在类中寻找匹配的函数，只处理local的情况，完整的类型推导在inferType
             if (element instanceof Local) {
                 const mtdInClass = curArkClass.getMethodWithName((element as Local).getName());

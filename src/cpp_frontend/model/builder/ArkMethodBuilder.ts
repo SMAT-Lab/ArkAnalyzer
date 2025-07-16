@@ -61,7 +61,7 @@ function getSpecificNodes(methodNode:any, targetNode:string): any[]{
     return result.length>0?result:[];
 }
 
-export function handleFunctionTemplate(methodNode:any, mtd:ArkMethod, sourceFile:any, node?:any){
+export function handleFunctionTemplate(methodNode:any, mtd:ArkMethod, sourceFile:any){
     if (methodNode.kind !== 'FunctionTemplate'){
         return;
     }
