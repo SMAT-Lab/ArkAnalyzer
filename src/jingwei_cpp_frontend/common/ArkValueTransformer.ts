@@ -291,6 +291,9 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
     /* 1. c++使用初始化列表对类成员变量的初始化：Base(char pname) : name(pname) {...}，最终效果类似this->name = pname，此处也处理成赋值的形式
     *  2. using parent::parent，子类的构造函数调用从父类继承的构造函数; */
     private cxxCtorInitializerToValueAndStmts(cxxCtorInitializer: any): ValueAndStmts {
+        if (!cxxCtorInitializer.inner || cxxCtorInitializer.inner.length === 0) {
+            return this.unprocessedNodeToValueAndStmts(cxxCtorInitializer);
+        }
         if (cxxCtorInitializer.inner[0].kind === 'CXXInheritedCtorInitExpr') {
             // 处理using parent::parent的情况
             return this.cxxInheritedCtorInitExprToValueAndStmts(cxxCtorInitializer.inner[0]);
