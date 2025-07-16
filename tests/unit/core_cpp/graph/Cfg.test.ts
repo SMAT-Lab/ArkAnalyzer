@@ -134,7 +134,8 @@ import {
 } from '../../../resources_cpp/cfg/lambdaFunc/lambdaFuncExpects';
 import {
     THROW_EXPECT_CASE1,
-    THROW_EXPECT_CASE2
+    THROW_EXPECT_CASE2,
+    THROW_EXPECT_CASE3
 } from '../../../resources_cpp/cfg/throw/throwExpects';
 import {
     CAST_EXPECT_CASE1,
@@ -429,6 +430,7 @@ describe('Other Test', () => {
             const scene = buildScene('throw');
         testBlocks(scene, 'throwSample.cpp', 'division', THROW_EXPECT_CASE1.blocks);
         testBlocks(scene, 'throwSample.cpp', 'main', THROW_EXPECT_CASE2.blocks);
+        testBlocks(scene, 'throwSample.cpp', 'try_throw_case', THROW_EXPECT_CASE3.blocks);
         },
     );
     it('case3: iostream', () => {
