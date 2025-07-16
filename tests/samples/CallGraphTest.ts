@@ -17,7 +17,7 @@ import { SceneConfig, Scene, DEFAULT_ARK_CLASS_NAME, CallGraph, CallGraphBuilder
 
 let config: SceneConfig = new SceneConfig();
 function runDir(): void {
-    config.buildFromProjectDir('../resources/callgraph/cha_rta_test');
+    config.buildFromProjectDir('tests/resources/callgraph/cha_rta_test');
     let projectScene: Scene = new Scene();
     projectScene.buildSceneFromProjectDir(config);
     projectScene.inferTypes();

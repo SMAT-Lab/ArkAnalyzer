@@ -18,7 +18,7 @@ export function findProjectRoot(startDIr: string = __dirname): string {
 const projectRoot = findProjectRoot(__dirname);
 
 function getPrintAstExePath():string {
-    let printAstExePath = path.join('D:\\arkanalyzer\\arkanalyzer_zhangge\\arkanalyzer\\src\\ast\\build\\Release','arkCppAstDumper.exe');
+    let printAstExePath = path.join(projectRoot, 'src','ast','arkCppAstDumper.exe');
     if (!fs.existsSync(printAstExePath)) {
         printAstExePath = path.join(projectRoot, 'lib','ast','arkCppAstDumper.exe');
     }
