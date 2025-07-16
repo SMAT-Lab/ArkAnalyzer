@@ -16,8 +16,7 @@
 
 import { BigIntType, BooleanType, LabelType, NullType, NumberType, StringType, Type, UndefinedType } from './Type';
 import { Value } from './Value';
-import { NULL_KEYWORD, UNDEFINED_KEYWORD } from '../common/TSConst';
-import { NULL_POINTER } from '../../jingwei_cpp_frontend/common/TSConst';
+import { NULL_KEYWORD, UNDEFINED_KEYWORD, NULL_POINTER } from '../common/TSConst';
 import { NullPtrType } from './Type';
 
 /**

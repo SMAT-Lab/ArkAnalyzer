@@ -21,7 +21,7 @@ import {
     BIGINT_KEYWORD,
     BOOLEAN_KEYWORD,
     NEVER_KEYWORD,
-    NULL_KEYWORD,
+    NULL_KEYWORD, NULL_POINTER,
     NUMBER_KEYWORD,
     STRING_KEYWORD,
     UNDEFINED_KEYWORD,
@@ -30,7 +30,6 @@ import {
 } from '../common/TSConst';
 import { Local } from './Local';
 import { Constant } from './Constant';
-import { NULL_POINTER } from '../../jingwei_cpp_frontend/common/TSConst';
 
 /**
  * @category core/base/type

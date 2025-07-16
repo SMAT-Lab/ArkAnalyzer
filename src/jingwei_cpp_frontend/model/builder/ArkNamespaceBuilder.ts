@@ -18,12 +18,13 @@ import { ArkFile } from '../../../core/model/ArkFile';
 import { buildArkMethodFromArkClass } from './ArkMethodBuilder';
 import ts from 'ohos-typescript';
 import { ArkNamespace } from '../../../core/model/ArkNamespace';
-import { buildDecorators, buildModifiers } from './builderUtils';
+import { buildModifiers } from './builderUtils';
 import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
 import { ArkClass } from '../../../core/model/ArkClass';
 import { ArkMethod } from '../../../core/model/ArkMethod';
 import { NamespaceSignature } from '../../../core/model/ArkSignature';
 import { genDefaultArkClass } from '../../../core/model/builder/ArkNamespaceBuilder';
+import { buildDecorators } from '../../../core/model/builder/builderUtils';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkNamespaceBuilder');
 

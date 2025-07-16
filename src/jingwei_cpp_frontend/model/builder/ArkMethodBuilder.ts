@@ -14,12 +14,11 @@
  */
 
 import { ClassType, GenericType, UnknownType, VoidType } from '../../../core/base/Type';
-import { BodyBuilder } from './BodyBuilder';
+import { BodyBuilderCpp } from './BodyBuilder';
 import { buildViewTree } from '../../../core/graph/builder/ViewTreeBuilder';
 import { ArkClass } from '../../../core/model/ArkClass';
 import { ArkMethod } from '../../../core/model/ArkMethod';
 import {
-    buildGenericType,
     buildModifiers,
     buildParameters,
     buildReturnType,
@@ -34,7 +33,6 @@ import { ArkAssignStmt, ArkInvokeStmt, ArkReturnStmt, ArkReturnVoidStmt, Stmt } 
 import { BasicBlock } from '../../../core/graph/BasicBlock';
 import { Local } from '../../../core/base/Local';
 import { Value } from '../../../core/base/Value';
-import { CONSTRUCTOR_NAME, SUPER_NAME, THIS_NAME } from '../../common/TSConst';
 import { ANONYMOUS_METHOD_PREFIX } from '../../../core/common/Const';
 import { IRUtils } from '../../../core/common/IRUtils';
 import {
@@ -43,6 +41,8 @@ import {
     MethodParameter,
     needDefaultConstructorInClass,
 } from '../../../core/model/builder/ArkMethodBuilder';
+import { buildGenericType } from '../../../core/model/builder/builderUtils';
+import { CONSTRUCTOR_NAME, THIS_NAME } from '../../../core/common/TSConst';
 function getSpecificNodes(methodNode:any, targetNode:string): any[]{
     if (!methodNode || !methodNode.inner){
         return [];
@@ -147,7 +147,7 @@ export function buildArkMethodFromArkClass(
         mtd.setDeclareLinesAndCols([line + 1], [character + 1]);
     }
 
-    let bodyBuilder = new BodyBuilder(mtd.getSignature(), methodNode, mtd, sourceFile);
+    let bodyBuilder = new BodyBuilderCpp(mtd.getSignature(), methodNode, mtd, sourceFile);
     mtd.setBodyBuilderCpp(bodyBuilder);
 
     if (mtd.hasBuilderDecorator()) {
