@@ -109,10 +109,15 @@ void makeSound(const Animal* animal)
     animal->sound();
 }
 
+// clang::CXXInheritedCtorInitExpr节点
+class D : public Base {
+    using Base::Base;   // 此处产生CXXInheritedCtorInitExpr节点：子类构造函数调用了从父类继承的构造函数，编译器生成D(int x) : B(x) {}
+}
 
 int main() {
     Derived d('X', 101, 75, 3.6);
     d.introduce();
     makeSound(new Dog());
+    D d1(100);
     return 0;
 }

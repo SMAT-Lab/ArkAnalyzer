@@ -15,13 +15,10 @@
 
 import ts from 'ohos-typescript';
 import { ArkField, FieldCategory } from '../../../core/model/ArkField';
-import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
 import { ArkClass } from '../../../core/model/ArkClass';
-import { ArkMethod } from '../../../core/model/ArkMethod';
 import {
     buildGenericType,
     buildModifiers,
-    handlePropertyAccessExpression,
     cppNode2Type,
 } from './builderUtils';
 import { FieldSignature } from '../../../core/model/ArkSignature';
@@ -29,10 +26,6 @@ import { ArrayType, ClassType, Type, UnclearReferenceType, UnknownType } from '.
 import { LineColPosition } from '../../../core/base/Position';
 import { ModifierType } from '../../../core/model/ArkBaseModel';
 import { IRUtils } from '../../../core/common/IRUtils';
-
-const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkFieldBuilder');
-
-export type PropertyLike = ts.PropertyDeclaration | ts.PropertyAssignment;
 
 export function buildProperty2ArkField(
     member: any,
@@ -70,60 +63,6 @@ export function buildProperty2ArkField(
     IRUtils.setComments(field, member, sourceFile, cls.getDeclaringArkFile().getScene().getOptions());
     cls.addField(field);
     return field;
-}
-
-export function buildIndexSignature2ArkField(member: any, sourceFile: any, cls: ArkClass): void {
-    const field = new ArkField();
-    field.setCode(member.code);
-    field.setCategory(mapSyntaxKindToFieldOriginType(member.kind.toString()) as FieldCategory);
-    field.setDeclaringArkClass(cls);
-
-    field.setOriginPosition(LineColPosition.buildFromNodeCpp(member, sourceFile));
-
-    if (member.modifiers) {
-        let modifier = buildModifiers(member);
-        field.addModifier(modifier);
-    }
-
-    const fieldName = '[' + member.parameters[0].getText(sourceFile) + ']';
-    const fieldType = buildGenericType(cppNode2Type(member.type.qualType, sourceFile, field), field);
-    const fieldSignature = new FieldSignature(fieldName, cls.getSignature(), fieldType, true);
-    field.setSignature(fieldSignature);
-    IRUtils.setComments(field, member, sourceFile, cls.getDeclaringArkFile().getScene().getOptions());
-    cls.addField(field);
-}
-
-export function buildGetAccessor2ArkField(member: ts.GetAccessorDeclaration, mthd: ArkMethod, sourceFile: ts.SourceFile): void {
-    let cls = mthd.getDeclaringArkClass();
-    let field = new ArkField();
-    field.setDeclaringArkClass(cls);
-
-    field.setCode(member.getText(sourceFile));
-    field.setCategory(mapSyntaxKindToFieldOriginType(member.kind.toString()) as FieldCategory);
-    field.setOriginPosition(LineColPosition.buildFromNodeCpp(member, sourceFile));
-
-    let fieldName = member.getText(sourceFile);
-    if (ts.isIdentifier(member.name) || ts.isLiteralExpression(member.name)) {
-        fieldName = member.name.text;
-    } else if (ts.isComputedPropertyName(member.name)) {
-        if (ts.isIdentifier(member.name.expression)) {
-            let propertyName = member.name.expression.text;
-            fieldName = propertyName;
-        } else if (ts.isPropertyAccessExpression(member.name.expression)) {
-            fieldName = handlePropertyAccessExpression(member.name.expression);
-        } else if (ts.isLiteralExpression(member.name.expression)) {
-            fieldName = member.name.expression.text;
-        } else {
-            logger.warn('Other type of computed property name found!');
-        }
-    } else {
-        logger.warn('Please contact developers to support new type of GetAccessor name!');
-    }
-
-    const fieldType = mthd.getReturnType();
-    const fieldSignature = new FieldSignature(fieldName, cls.getSignature(), fieldType, false);
-    field.setSignature(fieldSignature);
-    cls.addField(field);
 }
 
 function mapSyntaxKindToFieldOriginType(syntaxKind: String): FieldCategory | null {

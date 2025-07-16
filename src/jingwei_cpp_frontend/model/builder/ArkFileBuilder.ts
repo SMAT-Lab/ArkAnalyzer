@@ -28,30 +28,14 @@ import {AstUtils} from "../../../ast/astUtils"
 import { FileSignature, ClassSignature } from '../../../core/model/ArkSignature';
 import { LineColPosition } from '../../../core/base/Position';
 import { buildImportInfo } from './ArkImportBuilder';
-
-export const notStmtOrExprKind = [
-    'ModuleDeclaration',
-    'ClassDeclaration',
-    'InterfaceDeclaration',
-    'EnumDeclaration',
-    'ExportDeclaration',
-    'ExportAssignment',
-    'MethodDeclaration',
-    'Constructor',
-    'FunctionDeclaration',
-    'GetAccessor',
-    'SetAccessor',
-    'ArrowFunction',
-    'FunctionExpression',
-    'MethodSignature',
-    'ConstructSignature',
-    'CallSignature',
-];
-
 /**
  * Entry of building ArkFile instance
  *
+ * @param absoluteFilePath
+ * @param projectDir
  * @param arkFile
+ * @param projectName
+ * @param includeDirs
  * @returns
  */
 export function buildArkFileFromFile(absoluteFilePath: string, projectDir: string, arkFile: ArkFile, projectName: string, includeDirs: string[] = []): void {

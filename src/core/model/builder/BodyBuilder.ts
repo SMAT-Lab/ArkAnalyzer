@@ -26,7 +26,7 @@ import { ArkAliasTypeDefineStmt, ArkAssignStmt, ArkInvokeStmt, ArkReturnStmt } f
 import { AliasType, ArrayType, ClosureType, FunctionType, LexicalEnvType, Type, UnclearReferenceType, UnionType } from '../../base/Type';
 import { AbstractInvokeExpr, ArkPtrInvokeExpr } from '../../base/Expr';
 
-type NestedMethodChain = {
+export type NestedMethodChain = {
     parent: ArkMethod;
     children: NestedMethodChain[] | null;
 };

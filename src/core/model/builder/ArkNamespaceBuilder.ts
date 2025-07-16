@@ -146,7 +146,7 @@ function buildNamespaceMembers(node: ts.ModuleBlock, namespace: ArkNamespace, so
     });
 }
 
-function genDefaultArkClass(ns: ArkNamespace, node: ts.ModuleDeclaration, sourceFile: ts.SourceFile): void {
+export function genDefaultArkClass(ns: ArkNamespace, node: ts.ModuleDeclaration, sourceFile: ts.SourceFile): void {
     let defaultClass = new ArkClass();
 
     buildDefaultArkClassFromArkNamespace(ns, defaultClass, node, sourceFile);

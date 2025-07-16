@@ -370,6 +370,32 @@ export const PIG_CLASS_EXPECT = {
     ]
 };
 
+export const D_CLASS_EXPECT = {
+    fields: [],
+    heritageClasses: [
+        'Base'
+    ],
+    blocks: [
+        {
+            methodName: 'constructor',
+            blocks: [
+                {
+                    id: 0,
+                    stmts: [
+                        'pname = parameter0: char&',
+                        'this = this: @class/classSample.cpp: D',
+                        'instanceinvoke this.<@class/classSample.cpp: Base.constructor(char&)>(pname)',
+                        'instanceinvoke this.<@class/classSample.cpp: D.%instInit()>()',
+                        'return this'
+                    ],
+                    preds: [],
+                    succes: []
+                }
+            ]
+        },
+    ]
+};
+
 export const MAIN_EXPECT = {
     blocks: [
         {
@@ -383,6 +409,7 @@ export const MAIN_EXPECT = {
                 '%1 = new @class/classSample.cpp: Dog',
                 'instanceinvoke %1.<@class/classSample.cpp: Dog.constructor()>()',
                 'staticinvoke <@%unk/%unk: .makeSound()>(%1)',
+                'd1 = staticinvoke <@%unk/%unk: .undefined()>(100)',
                 'return 0'
             ],
             preds: [],

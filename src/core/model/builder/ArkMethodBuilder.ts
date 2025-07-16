@@ -178,7 +178,7 @@ function buildAnonymousMethodName(node: MethodLikeNode, declaringClass: ArkClass
     return `${ANONYMOUS_METHOD_PREFIX}${declaringClass.getAnonymousMethodNumber()}`;
 }
 
-function buildNestedMethodName(originName: string, declaringMethodName: string): string {
+export function buildNestedMethodName(originName: string, declaringMethodName: string): string {
     if (originName.startsWith(NAME_PREFIX)) {
         return `${originName}${NAME_DELIMITER}${declaringMethodName}`;
     }
@@ -320,7 +320,7 @@ export class MethodParameter implements Value {
     }
 }
 
-function needDefaultConstructorInClass(arkClass: ArkClass): boolean {
+export function needDefaultConstructorInClass(arkClass: ArkClass): boolean {
     const originClassType = arkClass.getCategory();
     return (
         arkClass.getMethodWithName(CONSTRUCTOR_NAME) === null &&

@@ -277,6 +277,10 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         }
 
         logger.warn(`ArkValueTransformer-tsNodeToValueAndStmts: node '${node.kind}' is not specially processed.`);
+        return this.unprocessedNodeToValueAndStmts(node);
+    }
+
+    private unprocessedNodeToValueAndStmts(node: any): ValueAndStmts {
         return {
             value: new Local(node.code),
             valueOriginalPositions: [FullPosition.buildFromNodeCpp(node, this.sourceFile)],
@@ -284,9 +288,16 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         };
     }
 
-    /* c++类使用初始化列表对成员变量的初始化：Base(const char pname) : name(pname) {...}中的name(pname)，
-     最终效果类似this->name = pname，此处也处理成赋值的形式 */
+    /* 1. c++使用初始化列表对类成员变量的初始化：Base(char pname) : name(pname) {...}，最终效果类似this->name = pname，此处也处理成赋值的形式
+    *  2. using parent::parent，子类的构造函数调用从父类继承的构造函数; */
     private cxxCtorInitializerToValueAndStmts(cxxCtorInitializer: any): ValueAndStmts {
+        if (!cxxCtorInitializer.inner || cxxCtorInitializer.inner.length === 0) {
+            return this.unprocessedNodeToValueAndStmts(cxxCtorInitializer);
+        }
+        if (cxxCtorInitializer.inner[0].kind === 'CXXInheritedCtorInitExpr') {
+            // 处理using parent::parent的情况
+            return this.cxxInheritedCtorInitExprToValueAndStmts(cxxCtorInitializer.inner[0]);
+        }
         const assignRight = cxxCtorInitializer.inner[0];
         const CtorInit2ThisMemberExpr = {
             kind: 'MemberExpr',
@@ -300,6 +311,40 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         }
         return this.assignmentToValueAndStmtsCpp(CtorInit2ThisMemberExpr, assignRight, false, false,
                 UnknownType.getInstance(), true);
+    }
+
+    // using parent::parent==》子类的构造函数调用从父类继承的构造函数==》等同直接调用父类构造函数
+    private cxxInheritedCtorInitExprToValueAndStmts(cxxInheritedCtorInitExpr: any): ValueAndStmts {
+        cxxInheritedCtorInitExpr.code = `using ${cxxInheritedCtorInitExpr.code}::${cxxInheritedCtorInitExpr.code}`;
+        const cls = this.declaringMethod.getDeclaringArkClass();
+        const clsInitMtd = cls.getInstanceInitMethod();
+        if (!clsInitMtd) {
+            return this.unprocessedNodeToValueAndStmts(cxxInheritedCtorInitExpr);
+        }
+        const superClass = cls.getHeritageClass(cxxInheritedCtorInitExpr.type.qualType);
+        if (!superClass) {
+            return this.unprocessedNodeToValueAndStmts(cxxInheritedCtorInitExpr);
+        }
+        buildDefaultConstructor(superClass);
+        const superConstructor = superClass.getMethodWithName(CONSTRUCTOR_NAME);
+        if (!superConstructor) {
+            return this.unprocessedNodeToValueAndStmts(cxxInheritedCtorInitExpr);
+        }
+        let base = clsInitMtd.getBody()?.getLocals().get(THIS_NAME);
+        if (base === undefined) {
+            return this.unprocessedNodeToValueAndStmts(cxxInheritedCtorInitExpr);
+        }
+        const params = this.declaringMethod.getParameters();
+        const argValues: Value[] = [];
+        params.forEach((param) => {
+            argValues.push(this.getOrCreateLocal(param.getName()));
+        })
+        const newSuperInvokeExpr = new ArkInstanceInvokeExpr(base, superConstructor.getSignature(), argValues);
+        return {
+            value: newSuperInvokeExpr,
+            valueOriginalPositions: [FullPosition.buildFromNodeCpp(cxxInheritedCtorInitExpr, this.sourceFile)],
+            stmts: [],
+        };
     }
 
     // C++中子类调用父类构造函数进行初始化，类似ts的super(xx)。比如Left(const char& name, int power) : Base(name) { ... }

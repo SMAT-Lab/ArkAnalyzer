@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-import { ClassType, GenericType, Type, UnknownType } from '../../../core/base/Type';
+import { ClassType, GenericType, UnknownType, VoidType } from '../../../core/base/Type';
 import { BodyBuilder } from './BodyBuilder';
 import { buildViewTree } from '../../../core/graph/builder/ViewTreeBuilder';
-import { ArkClass, ClassCategory } from '../../../core/model/ArkClass';
+import { ArkClass } from '../../../core/model/ArkClass';
 import { ArkMethod } from '../../../core/model/ArkMethod';
 import {
     buildGenericType,
@@ -35,25 +35,14 @@ import { BasicBlock } from '../../../core/graph/BasicBlock';
 import { Local } from '../../../core/base/Local';
 import { Value } from '../../../core/base/Value';
 import { CONSTRUCTOR_NAME, SUPER_NAME, THIS_NAME } from '../../common/TSConst';
-import { ANONYMOUS_METHOD_PREFIX, DEFAULT_ARK_CLASS_NAME, DEFAULT_ARK_METHOD_NAME, NAME_DELIMITER, NAME_PREFIX } from '../../../core/common/Const';
-import { ArkSignatureBuilder } from '../../../core/model/builder/ArkSignatureBuilder';
+import { ANONYMOUS_METHOD_PREFIX } from '../../../core/common/Const';
 import { IRUtils } from '../../../core/common/IRUtils';
-import { ArkErrorCode } from '../../../core/common/ArkError';
-
-export function buildDefaultArkMethodFromArkClass(declaringClass: ArkClass, mtd: ArkMethod, sourceFile: any, node?:any): void {
-    mtd.setDeclaringArkClass(declaringClass);
-
-    const methodSubSignature = ArkSignatureBuilder.buildMethodSubSignatureFromMethodName(DEFAULT_ARK_METHOD_NAME, true);
-    const methodSignature = new MethodSignature(mtd.getDeclaringArkClass().getSignature(), methodSubSignature);
-    mtd.setImplementationSignature(methodSignature);
-    mtd.setLineCol(0);
-
-    const defaultMethodNode = node ? node : sourceFile;
-
-    let bodyBuilder = new BodyBuilder(mtd.getSignature(), defaultMethodNode, mtd, sourceFile);
-    mtd.setBodyBuilderCpp(bodyBuilder);
-}
-
+import {
+    buildNestedMethodName,
+    checkAndUpdateMethod,
+    MethodParameter,
+    needDefaultConstructorInClass,
+} from '../../../core/model/builder/ArkMethodBuilder';
 function getSpecificNodes(methodNode:any, targetNode:string): any[]{
     if (!methodNode || !methodNode.inner){
         return [];
@@ -140,6 +129,10 @@ export function buildArkMethodFromArkClass(
     if (methodNode.type) {
         returnType = buildGenericType(buildReturnType(methodNode, sourceFile, mtd), mtd);
     }
+    if (isRelatedToCXXInheritedCtorInitExpr(methodNode)) {
+        addParamsToCXXInheritedCtorInitExpr(methodNode, mtd, methodParameters);
+        returnType = VoidType.getInstance();
+    }
     // @ts-ignore
     const methodSubSignature = new MethodSubSignature(methodName, methodParameters, returnType, mtd.isStatic());
     const methodSignature = new MethodSignature(mtd.getDeclaringArkClass().getSignature(), methodSubSignature);
@@ -165,6 +158,48 @@ export function buildArkMethodFromArkClass(
     checkAndUpdateMethod(mtd, declaringClass);
     declaringClass.addMethod(mtd);
     IRUtils.setComments(mtd, methodNode, sourceFile, mtd.getDeclaringArkFile().getScene().getOptions());
+}
+
+function isRelatedToCXXInheritedCtorInitExpr(node: any): boolean {
+    if (!node) {
+        return false;
+    }
+    let innerNodes = node.inner;
+    while (innerNodes) {
+        if (innerNodes.length === 0) {
+            return false;
+        }
+        if (innerNodes[0].kind === 'CXXInheritedCtorInitExpr') {
+            return true;
+        }
+        innerNodes = innerNodes[0]!.inner;
+    }
+    return false;
+}
+
+function addParamsToCXXInheritedCtorInitExpr(mtdNode: any, mtd: ArkMethod, methodParameters: MethodParameter[]): void {
+    const cls = mtd.getDeclaringArkClass();
+    const superClassName = mtdNode.inner?.[0]?.baseInit?.qualType;
+    if (!superClassName) {
+        return;
+    }
+    let superClass = cls.getHeritageClass(superClassName);
+    if (!superClass) {
+        cls.addHeritageClassName(superClassName);
+        superClass = cls.getDeclaringArkFile().getClassWithName(superClassName);
+        if (!superClass) {
+            return;
+        }
+    }
+    buildDefaultConstructor(superClass);
+    const superConstructor = superClass.getMethodWithName(CONSTRUCTOR_NAME);
+    if (!superConstructor) {
+        return;
+    }
+    superConstructor.getParameters().forEach(param => {
+        buildGenericType(param.getType(), mtd);
+        methodParameters.push(param);
+    });
 }
 
 function buildMethodName(node: any, declaringClass: ArkClass, sourceFile: any, declaringMethod?: ArkMethod): string {
@@ -196,158 +231,6 @@ function buildMethodName(node: any, declaringClass: ArkClass, sourceFile: any, d
 
 function buildAnonymousMethodName(node: any, declaringClass: ArkClass): string {
     return `${ANONYMOUS_METHOD_PREFIX}${declaringClass.getAnonymousMethodNumber()}`;
-}
-
-function buildNestedMethodName(originName: string, declaringMethodName: string): string {
-    if (originName.startsWith(NAME_PREFIX)) {
-        return `${originName}${NAME_DELIMITER}${declaringMethodName}`;
-    }
-    return `${NAME_PREFIX}${originName}${NAME_DELIMITER}${declaringMethodName}`;
-}
-
-export class ObjectBindingPatternParameter {
-    private propertyName: string = '';
-    private name: string = '';
-    private optional: boolean = false;
-
-    constructor() {}
-
-    public getName(): string {
-        return this.name;
-    }
-
-    public setName(name: string): void {
-        this.name = name;
-    }
-
-    public getPropertyName(): string {
-        return this.propertyName;
-    }
-
-    public setPropertyName(propertyName: string): void {
-        this.propertyName = propertyName;
-    }
-
-    public isOptional(): boolean {
-        return this.optional;
-    }
-
-    public setOptional(optional: boolean): void {
-        this.optional = optional;
-    }
-}
-
-export class ArrayBindingPatternParameter {
-    private propertyName: string = '';
-    private name: string = '';
-    private optional: boolean = false;
-
-    constructor() {}
-
-    public getName(): string {
-        return this.name;
-    }
-
-    public setName(name: string): void {
-        this.name = name;
-    }
-
-    public getPropertyName(): string {
-        return this.propertyName;
-    }
-
-    public setPropertyName(propertyName: string): void {
-        this.propertyName = propertyName;
-    }
-
-    public isOptional(): boolean {
-        return this.optional;
-    }
-
-    public setOptional(optional: boolean): void {
-        this.optional = optional;
-    }
-}
-
-export class MethodParameter implements Value {
-    private name: string = '';
-    private type!: Type;
-    private optional: boolean = false;
-    private dotDotDotToken: boolean = false;
-    private objElements: ObjectBindingPatternParameter[] = [];
-    private arrayElements: ArrayBindingPatternParameter[] = [];
-
-    constructor() {}
-
-    public getName(): string {
-        return this.name;
-    }
-
-    public setName(name: string): void {
-        this.name = name;
-    }
-
-    public getType(): Type {
-        return this.type;
-    }
-
-    public setType(type: Type): void {
-        this.type = type;
-    }
-
-    public isOptional(): boolean {
-        return this.optional;
-    }
-
-    public setOptional(optional: boolean): void {
-        this.optional = optional;
-    }
-
-    public hasDotDotDotToken(): boolean {
-        return this.dotDotDotToken;
-    }
-
-    public setDotDotDotToken(dotDotDotToken: boolean): void {
-        this.dotDotDotToken = dotDotDotToken;
-    }
-
-    public addObjElement(element: ObjectBindingPatternParameter): void {
-        this.objElements.push(element);
-    }
-
-    public getObjElements(): ObjectBindingPatternParameter[] {
-        return this.objElements;
-    }
-
-    public setObjElements(objElements: ObjectBindingPatternParameter[]): void {
-        this.objElements = objElements;
-    }
-
-    public addArrayElement(element: ArrayBindingPatternParameter): void {
-        this.arrayElements.push(element);
-    }
-
-    public getArrayElements(): ArrayBindingPatternParameter[] {
-        return this.arrayElements;
-    }
-
-    public setArrayElements(arrayElements: ArrayBindingPatternParameter[]): void {
-        this.arrayElements = arrayElements;
-    }
-
-    public getUses(): Value[] {
-        return [];
-    }
-}
-
-function needDefaultConstructorInClass(arkClass: ArkClass): boolean {
-    const originClassType = arkClass.getCategory();
-    return (
-        arkClass.getMethodWithName(CONSTRUCTOR_NAME) === null &&
-        (originClassType === ClassCategory.CLASS || originClassType === ClassCategory.OBJECT) &&
-        arkClass.getName() !== DEFAULT_ARK_CLASS_NAME &&
-        !arkClass.isDeclare()
-    );
 }
 
 export function recursivelyCheckAndBuildSuperConstructor(arkClass: ArkClass): void {
@@ -490,44 +373,4 @@ export function isMethodImplementation(node: any): boolean {
         }
     }
     return false;
-}
-
-export function checkAndUpdateMethod(method: ArkMethod, cls: ArkClass): void {
-    let presentMethod: ArkMethod | null;
-    if (method.isStatic()) {
-        presentMethod = cls.getStaticMethodWithName(method.getName());
-    } else {
-        presentMethod = cls.getMethodWithName(method.getName());
-    }
-    if (presentMethod === null) {
-        return;
-    }
-
-    if (method.validate().errCode !== ArkErrorCode.OK || presentMethod.validate().errCode !== ArkErrorCode.OK) {
-        return;
-    }
-    const presentDeclareSignatures = presentMethod.getDeclareSignatures();
-    const presentDeclareLineCols = presentMethod.getDeclareLineCols();
-    const presentImplSignature = presentMethod.getImplementationSignature();
-    const newDeclareSignature = method.getDeclareSignatures();
-    const newDeclareLineCols = method.getDeclareLineCols();
-    const newImplSignature = method.getImplementationSignature();
-
-    if (presentDeclareSignatures !== null && presentImplSignature === null) {
-        if (newDeclareSignature === null || presentMethod.getDeclareSignatureIndex(newDeclareSignature[0]) >= 0) {
-            method.setDeclareSignatures(presentDeclareSignatures);
-            method.setDeclareLineCols(presentDeclareLineCols as number[]);
-        } else {
-            method.setDeclareSignatures(presentDeclareSignatures.concat(newDeclareSignature));
-            method.setDeclareLineCols((presentDeclareLineCols as number[]).concat(newDeclareLineCols as number[]));
-        }
-        return;
-    }
-    if (presentDeclareSignatures === null && presentImplSignature !== null) {
-        if (newImplSignature === null) {
-            method.setImplementationSignature(presentImplSignature);
-            method.setLineCol(presentMethod.getLineCol() as number);
-        }
-        return;
-    }
 }
