@@ -40,7 +40,7 @@ import {
     Stmt,
 } from '../../core/base/Stmt';
 import { AliasType, BooleanType, ClassType, UnknownType } from '../../core/base/Type';
-import { ValueUtil } from './ValueUtil';
+import { CppValueUtil } from './ValueUtil';
 import { IRUtils } from '../../core/common/IRUtils';
 import { ArkMethod } from '../../core/model/ArkMethod';
 import {
@@ -146,28 +146,28 @@ export class ArkIRTransformerCpp extends ArkIRTransformer{
         let stmts: Stmt[] = [];
         switch (node.kind) {
             case 'BreakStmt':
+            case 'ContinueStmt':
+            case 'GotoStmt':
                 stmts = this.gotoStatementToStmtsCpp(node);
                 break;
             case 'BinaryOperator':
+            case 'CallExpr':
+            case 'CompoundAssignOperator':
+            case 'CXXConstructExpr':
+            case 'CXXOperatorCallExpr':
+            case 'UnaryOperator':
+            case 'RecoveryExpr':
+            case 'CXXDeleteExpr':
+            case 'AtomicCallExpr':
+            case 'CXXCtorInitializer':
                 stmts = this.expressionStatementToStmtsCpp(node);
                 break;
-            case 'CallExpr':
-                stmts = this.expressionStatementToStmtsCpp(node);
+            case 'DeclStmt':
+            case 'VarDecl':
+                stmts = this.variableStatementToStmtsCpp(node);
                 break;
             case 'CompoundStmt':
                 stmts = this.compoundToStmts(node);
-                break;
-            case 'CompoundAssignOperator':
-                stmts = this.expressionStatementToStmtsCpp(node);
-                break;
-            case 'ContinueStmt':
-                stmts = this.gotoStatementToStmtsCpp(node);
-                break;
-            case 'CXXConstructExpr':
-                stmts = this.expressionStatementToStmtsCpp(node);
-                break;
-            case 'CXXOperatorCallExpr':
-                stmts = this.expressionStatementToStmtsCpp(node);
                 break;
             case 'CXXMemberCallExpr':
                 stmts = this.memberCallExprToStmts(node);
@@ -178,9 +178,6 @@ export class ArkIRTransformerCpp extends ArkIRTransformer{
             case 'CXXThrowExpr':
                 stmts = this.throwStatementToStmtsCpp(node);
                 break;
-            case 'DeclStmt':
-                stmts = this.variableStatementToStmtsCpp(node);
-                break;
             case 'DoStmt':
                 stmts = this.doStatementToStmtsCpp(node);
                 break;
@@ -190,25 +187,11 @@ export class ArkIRTransformerCpp extends ArkIRTransformer{
             case 'ForStmt':
                 stmts = this.forStatementToStmtsCpp(node);
                 break;
-            case 'GotoStmt':
-                stmts = this.gotoStatementToStmtsCpp(node);
-                break;
             case 'IfStmt':
                 stmts = this.ifStatementToStmtsCpp(node);
                 break;
             case 'ReturnStmt':
                 stmts = this.returnStatementToStmtsCpp(node);
-                break;
-            case 'RecoveryExpr':
-                stmts = this.expressionStatementToStmtsCpp(node);
-                break;
-            case 'UnaryOperator':
-                stmts = this.expressionStatementToStmtsCpp(node);
-                break;
-            case 'unsupported kind':
-                break;
-            case 'VarDecl':
-                stmts = this.variableStatementToStmtsCpp(node);
                 break;
             case 'WhileStmt':
                 stmts = this.whileStatementToStmtsCpp(node);
@@ -216,14 +199,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer{
             case 'CXXForRangeStmt':
                 stmts = this.forRangeStatementToStmts(node);
                 break;
-            case 'CXXDeleteExpr':
-                stmts = this.expressionStatementToStmtsCpp(node);
-                break;
-            case 'AtomicCallExpr':
-                stmts = this.expressionStatementToStmtsCpp(node);
-                break;
-            case 'CXXCtorInitializer':
-                stmts = this.expressionStatementToStmtsCpp(node);
+            case 'unsupported kind':
                 break;
         }
         this.mapStmtsToTsStmt(stmts, node);
@@ -287,7 +263,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer{
         } = this.generateAssignStmtForValue(doneFieldRef, doneFieldRefPositions);
         doneFlagStmts.forEach(stmt => stmts.push(stmt));
         (doneFlag as Local).setType(BooleanType.getInstance());
-        const conditionExpr = new ArkConditionExpr(doneFlag, ValueUtil.getBooleanConstant(true), RelationalBinaryOperator.Equality);
+        const conditionExpr = new ArkConditionExpr(doneFlag, CppValueUtil.getBooleanConstant(true), RelationalBinaryOperator.Equality);
         const conditionExprPositions = [doneFlagPositions[0], ...doneFlagPositions, FullPosition.DEFAULT];
         const ifStmt = new ArkIfStmt(conditionExpr);
         ifStmt.setOperandOriginalPositions(conditionExprPositions);
@@ -498,7 +474,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer{
             stmts.push(new ArkIfStmt(conditionValue as ArkConditionExpr));
         } else {
             // The omitted condition always evaluates to true.
-            const trueConstant = ValueUtil.getBooleanConstant(true);
+            const trueConstant = CppValueUtil.getBooleanConstant(true);
             const conditionExpr = new ArkConditionExpr(trueConstant, trueConstant, RelationalBinaryOperator.Equality);
             stmts.push(new ArkIfStmt(conditionExpr));
         }
@@ -646,7 +622,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer{
             const { stmts: createStmts } = this.generateAssignStmtForValue(createInvokeExpr, createInvokeExprPositions);
             createStmts.forEach(stmt => stmts.push(stmt));
             const branchMethodSignature = ArkSignatureBuilder.buildMethodSignatureFromClassNameAndMethodName(COMPONENT_IF, COMPONENT_BRANCH_FUNCTION);
-            const branchInvokeExpr = new ArkStaticInvokeExpr(branchMethodSignature, [ValueUtil.getOrCreateNumberConst(0)]);
+            const branchInvokeExpr = new ArkStaticInvokeExpr(branchMethodSignature, [CppValueUtil.getOrCreateNumberConst(0)]);
             const branchInvokeExprPositions = [conditionLocalPositions[0], FullPosition.DEFAULT];
             const branchInvokeStmt = new ArkInvokeStmt(branchInvokeExpr);
             branchInvokeStmt.setOperandOriginalPositions(branchInvokeExprPositions);
@@ -654,7 +630,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer{
             this.tsNodeToStmts(ifStatement.inner[1]).forEach(stmt => stmts.push(stmt));
             if (ifStatement.inner.length > 2) {
                 const branchElseMethodSignature = ArkSignatureBuilder.buildMethodSignatureFromClassNameAndMethodName(COMPONENT_IF, COMPONENT_BRANCH_FUNCTION);
-                const branchElseInvokeExpr = new ArkStaticInvokeExpr(branchElseMethodSignature, [ValueUtil.getOrCreateNumberConst(1)]);
+                const branchElseInvokeExpr = new ArkStaticInvokeExpr(branchElseMethodSignature, [CppValueUtil.getOrCreateNumberConst(1)]);
                 const branchElseInvokeExprPositions = [FullPosition.buildFromNodeCpp(ifStatement.inner[2], this.sourceFile), FullPosition.DEFAULT];
                 const branchElseInvokeStmt = new ArkInvokeStmt(branchElseInvokeExpr);
                 branchElseInvokeStmt.setOperandOriginalPositions(branchElseInvokeExprPositions);

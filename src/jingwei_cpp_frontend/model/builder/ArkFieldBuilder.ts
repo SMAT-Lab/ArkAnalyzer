@@ -17,7 +17,6 @@ import ts from 'ohos-typescript';
 import { ArkField, FieldCategory } from '../../../core/model/ArkField';
 import { ArkClass } from '../../../core/model/ArkClass';
 import {
-    buildGenericType,
     buildModifiers,
     cppNode2Type,
 } from './builderUtils';
@@ -26,6 +25,7 @@ import { ArrayType, ClassType, Type, UnclearReferenceType, UnknownType } from '.
 import { LineColPosition } from '../../../core/base/Position';
 import { ModifierType } from '../../../core/model/ArkBaseModel';
 import { IRUtils } from '../../../core/common/IRUtils';
+import { buildGenericType } from '../../../core/model/builder/builderUtils';
 
 export function buildProperty2ArkField(
     member: any,

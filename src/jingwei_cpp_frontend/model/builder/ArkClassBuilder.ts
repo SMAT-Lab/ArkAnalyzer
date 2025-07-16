@@ -23,7 +23,6 @@ import {
     buildInitMethod,
 } from './ArkMethodBuilder';
 import {
-    buildDecorators,
     buildModifiers,
     buildTypeParameters,
     buildModifiersForCxxCls
@@ -42,6 +41,7 @@ import {
     init4StaticInitMethod,
 } from '../../../core/model/builder/ArkClassBuilder';
 import { ArkIRTransformerCpp } from '../../common/ArkIRTransformer';
+import { buildDecorators } from '../../../core/model/builder/builderUtils';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkClassBuilder');
 

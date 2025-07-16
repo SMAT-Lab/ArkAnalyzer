@@ -45,7 +45,7 @@ import { CONSTRUCTOR_NAME } from '../common/TSConst';
 import { MethodParameter } from './builder/ArkMethodBuilder';
 import { TypeInference } from '../common/TypeInference';
 import { StatementBuilder } from '../../jingwei_cpp_frontend/graph/builder/CfgBuilder';
-import { BodyBuilder as BodyBuilderCpp } from '../../jingwei_cpp_frontend/model/builder/BodyBuilder';
+import { BodyBuilderCpp } from '../../jingwei_cpp_frontend/model/builder/BodyBuilder';
 
 export const arkMethodNodeKind = [
     'MethodDeclaration',
