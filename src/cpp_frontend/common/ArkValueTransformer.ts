@@ -234,7 +234,9 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
             return this.literalNodeToValueAndStmtsCpp(node) as ValueAndStmts;
         } else if (node.kind === 'InitListExpr') {
             // 数组和结构体都可以用{}初始化，此处需要做区分
-            if (node.type.qualType.includes("struct") || node.type.qualType.includes("union") || this.resolveTypeNodeCpp(node.type.qualType) instanceof ClassType) {
+            if (node.type.qualType.includes("struct") || node.type.qualType.includes("union") ||
+                this.resolveTypeNodeCpp(node.type.qualType ||
+                !(node.type.qualType.includes("[") && node.type.qualType.includes("]"))) instanceof ClassType) {
                 // 结构体初始化则调用构造函数去初始化
                 return this.newExpressionToValueAndStmtsCpp(node);
             }
