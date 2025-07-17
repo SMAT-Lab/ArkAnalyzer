@@ -233,7 +233,8 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         } else if (node.kind === 'IntegerLiteral') {
             return this.literalNodeToValueAndStmtsCpp(node) as ValueAndStmts;
         } else if (node.kind === 'InitListExpr') {
-            if (node.type.qualType.includes("[") && node.type.qualType.includes("]")) {
+            if (node.type.qualType.includes("[") && node.type.qualType.includes("]")||
+                node.type.qualType === 'void') {
                 // 结构体初始化则调用构造函数去初始化
                 return this.arrayLiteralExpressionToValueAndStmtsCpp(node);
             }
