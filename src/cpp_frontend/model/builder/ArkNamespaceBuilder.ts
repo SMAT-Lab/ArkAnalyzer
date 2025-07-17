@@ -54,8 +54,8 @@ export function buildArkNamespace(node: any, declaringInstance: ArkFile | ArkNam
     ns.setCode(node.code);
 
     // set line and column
-    if (node.loc){
-        ns.setLine(node.loc.line);
+    if (node.range?.begin){
+        ns.setLine(node.range.begin.line);
     } else {
         ns.setLine(-1);
         ns.setColumn(-1)

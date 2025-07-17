@@ -3,21 +3,15 @@ digraph "CG" {
 	label="CG";
 
 	Node0 [shape=recode,shape=box,label="ID: 0\n@call_graph/callTest.cpp: %dflt.main()"];
-	Node0 -> Node1[color=red]
-	Node0 -> Node2[color=red]
 	Node0 -> Node3[color=red]
 	Node0 -> Node4[color=red]
 	Node0 -> Node5[color=red]
-	Node0 -> Node6[color=red]
 	Node1 [shape=recode,shape=box,label="ID: 1\n@call_graph/callTest.cpp: Dummy.constructor()"];
 	Node2 [shape=recode,shape=box,label="ID: 2\n@call_graph/callTest.cpp: Circle.constructor()"];
 	Node3 [shape=recode,shape=box,label="ID: 3\n@call_graph/callTest.cpp: Circle.draw(@call_graph/callTest.cpp: Dummy*)"];
-	Node3 -> Node9[color=red]
+	Node3 -> Node6[color=red]
 	Node4 [shape=recode,shape=box,label="ID: 4\n@call_graph/callTest.cpp: %dflt.id(@call_graph/callTest.cpp: Shape*)"];
-	Node5 [shape=recode,shape=box,label="ID: 5\n@call_graph/callTest.cpp: Shape.draw(@call_graph/callTest.cpp: Dummy*)"];
-	Node6 [shape=recode,shape=box,label="ID: 6\n@call_graph/callTest.cpp: Rectangle.draw(@call_graph/callTest.cpp: Dummy*)"];
-	Node7 [shape=recode,shape=box,label="ID: 7\n@call_graph/callTest.cpp: Dummy.%instInit()"];
-	Node8 [shape=recode,shape=box,label="ID: 8\n@call_graph/callTest.cpp: Circle.%instInit()"];
-	Node9 [shape=recode,shape=box,label="ID: 9\n@call_graph/callTest.cpp: %dflt.log()"];
+	Node5 [shape=recode,shape=box,label="ID: 5\n@call_graph/callTest.cpp: Rectangle.draw(@call_graph/callTest.cpp: Dummy*)"];
+	Node6 [shape=recode,shape=box,label="ID: 6\n@call_graph/callTest.cpp: %dflt.log()"];
 }
 

@@ -53,11 +53,10 @@ export function buildArkFileFromFile(absoluteFilePath: string, projectDir: strin
 
 function isChildLocFileHeader(child: any): boolean {
     return (
-        child.hasOwnProperty('loc') &&
-        child.loc &&
-        child.loc.hasOwnProperty('file') &&
-        typeof child.loc.file === 'string' &&
-        child.loc.file.endsWith('.h')
+        child.hasOwnProperty('locFile') &&
+        child.locFile &&
+        typeof child.locFile === 'string' &&
+        child.locFile.endsWith('.h')
     );
 }
 

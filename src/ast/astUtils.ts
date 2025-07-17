@@ -46,26 +46,18 @@ export class AstUtils {
                 return;
             }
             let fileName = "";
-            let loc = entry.loc;
+            let loc = entry.locFile;
             if (!loc) {
                 if (entry.kind === 'inclusion directive') {
-                    entry.loc = {
-                        'file': sourceFile,
-                    };
+                    entry.locFile = sourceFile;
                     newInner.push(entry);
-                    firstOccurrenceOfMainFile = true;
                 } else {
-                    logger.warn('Node skipped due to missing "loc", kind of node: ', entry.kind);
+                    logger.warn('Node skipped due to missing "locFile", kind of node: ', entry.kind);
                 }
                 return;
             }
-            if (Object.prototype.hasOwnProperty.call(loc, "file")){
-                fileName = loc.file;
-            }
-            if (Object.prototype.hasOwnProperty.call(loc, "expansionLoc")){
-                if (Object.prototype.hasOwnProperty.call(loc.expansionLoc, "file")){
-                    fileName = loc.expansionLoc.file;
-                }
+            if (entry.locFile){
+                fileName = entry.locFile;
             }
             if (Object.prototype.hasOwnProperty.call(entry, "include") && entry.include && entry.kind !== 'inclusion directive'){
                 newInner.push(entry);
@@ -74,7 +66,6 @@ export class AstUtils {
             if (fileName !== sourceFile){
                 return;
             }
-            firstOccurrenceOfMainFile = true;
         }
         newInner.push(entry);
 

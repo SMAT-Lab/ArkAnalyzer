@@ -85,7 +85,7 @@ json getSourceContent(CXSourceRange range){
     unsigned endLine, endColumn, endOffset;
     clang_getSpellingLocation(end, &endFile, &endLine, &endColumn, &endOffset);
 
-    if (startFile != endFile || startOffset >= endOffset) return json();
+    if (startFile == endFile && startOffset >= endOffset) return json();
 
     CXString fileName = clang_getFileName(startFile);
     const char *cFileName = clang_getCString(fileName);
@@ -94,7 +94,7 @@ json getSourceContent(CXSourceRange range){
     if (filename.empty() || fileContents.find(filename) == fileContents.end()) loadFileContent(filename);
 
     const std::string &content = fileContents[filename];
-    if (startOffset >= content.size() || endOffset > content.size()) return json();
+    if ((startFile != endFile && startOffset >= content.size()) || (startFile == endFile && endOffset > content.size())) return json();
     unsigned tokLen = endOffset > startOffset ? (endOffset - startOffset) : 0;
     return {
         {"id", startOffset + endOffset}, {"code", content.substr(startOffset, endOffset - startOffset)},
@@ -498,7 +498,8 @@ bool isConstructorByCodeStr(std::string codeStr, std::string nameStr, std::strin
 
 std::vector<CXCursorKind> locCursorKind = {CXCursor_FunctionDecl, CXCursor_ClassDecl, CXCursor_Destructor, CXCursor_TemplateTypeParameter,
                                            CXCursor_StructDecl, CXCursor_UnionDecl, CXCursor_VarDecl, CXCursor_EnumDecl, CXCursor_ClassTemplate,
-                                           CXCursor_Constructor, CXCursor_CXXMethod, CXCursor_TypedefDecl, CXCursor_FunctionTemplate};
+                                           CXCursor_Constructor, CXCursor_CXXMethod, CXCursor_TypedefDecl, CXCursor_FunctionTemplate,
+                                           CXCursor_MacroExpansion, CXCursor_MacroDefinition, CXCursor_UsingDirective, CXCursor_Namespace};
 
 // 判断是否为内置数据类型
 bool isBuiltInType(std::string& type){
@@ -571,8 +572,8 @@ void filterToMainFileOnly(json& node, const std::string& mainFileName, std::stri
     }
     if (!node.is_object()) return;
     std::string fileName = node.value("fileName", "");
-    if (node.contains("loc") && node["loc"].contains("file"))
-        fileName = node["loc"]["file"];
+    if (node.contains("locFile"))
+        fileName = node["locFile"];
     if (fileName.empty())
         fileName = parentFileName;
 
@@ -761,8 +762,7 @@ void fillNodeSourceContent(
                                   clang_getCursorSpelling(cursor));
         node["name"] = displayName;
         node["code"] = codeStr;
-        node["loc"] = content.contains("begin") ? content["begin"] : json();
-        node["loc"]["file"] = node["fileName"];
+        node["locFile"] = node["fileName"];
         node["range"] = {{"begin", content["begin"]}, {"end", content["end"]}};
         node["included"] = fileStr;
         return;
@@ -796,11 +796,9 @@ void fillNodeIdRangeLoc(json& node, const json& content, CXCursorKind kind_curso
     node["id"] = content["id"];
     json begin = content["begin"];
     node["range"] = {{"begin", begin}, {"end", content["end"]}};
-    if ((file && std::find(locCursorKind.begin(), locCursorKind.end(), kind_cursor) != locCursorKind.end())
-        || kind_cursor == CXCursor_MacroExpansion || kind_cursor == CXCursor_MacroDefinition) {
-        begin["file"] = file ? cx2str(clang_getFileName(file)) : "";
-        node["loc"] = begin;
-        }
+    if (file && std::find(locCursorKind.begin(), locCursorKind.end(), kind_cursor) != locCursorKind.end()) {
+        node["locFile"] = file ? cx2str(clang_getFileName(file)) : "";
+    }
     node["valueCategory"] = (kind_cursor == CXCursor_EnumConstantDecl) ? displayName : "prvalue";
 }
 
