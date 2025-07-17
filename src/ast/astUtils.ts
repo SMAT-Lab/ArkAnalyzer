@@ -107,20 +107,22 @@ export class AstUtils {
         return filteredChildren;
     }
 
-    private static fullInfo(cursor:any){
+    private static fullInfo(cursor: any) {
         cursor.inner = this.filterChildren(cursor);
-        for (let index in cursor.inner){
-            if (Object.prototype.hasOwnProperty.call(cursor.inner, index)){
+        for (let index in cursor.inner) {
+            if (Object.prototype.hasOwnProperty.call(cursor.inner, index)) {
                 let currentCursor = cursor.inner[index];
                 type GetParentCallBack = any & {
-                    getParent:() => any;
+                    getParent: (isNeedInner?: boolean) => any;
                 };
                 currentCursor = Object.assign(currentCursor, {
-                    getParent:() => {
-                        let parentCursor = {...cursor}
-                        delete parentCursor.inner;
+                    getParent: (isNeedinner: boolean = false) => {
+                        let parentCursor = { ...cursor };
+                        if (!isNeedinner) {
+                            delete parentCursor.inner;
+                        }
                         return parentCursor;
-                    }
+                    },
                 }) as GetParentCallBack;
                 this.processAccess(currentCursor);
                 this.fullInfo(cursor.inner[index]);
