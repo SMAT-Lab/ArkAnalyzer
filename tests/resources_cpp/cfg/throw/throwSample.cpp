@@ -1,3 +1,17 @@
+#include <iostream>
+using namespace std;
+
+void try_throw_case() {
+    try {
+        cout << "before throw" << endl;
+        throw 42; //抛出一个整数异常
+        cout << "after throw" << endl;
+    } catch (int e) {
+        cout << "Caught exception: " << e << endl;
+    }
+}
+
+
 double division(int a, int b)
 {
     if (b == 0)

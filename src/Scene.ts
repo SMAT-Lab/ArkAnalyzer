@@ -36,11 +36,11 @@ import { ArkExport, ExportInfo, ExportType } from './core/model/ArkExport';
 import { addInitInConstructor, buildDefaultConstructor, replaceSuper2Constructor } from './core/model/builder/ArkMethodBuilder';
 import {
     addInitInConstructor as addInitInConstructorCpp
-} from './jingwei_cpp_frontend/model/builder/ArkMethodBuilder';
+} from './cpp_frontend/model/builder/ArkMethodBuilder';
 import { DEFAULT_ARK_CLASS_NAME, INSTANCE_INIT_METHOD_NAME, STATIC_INIT_METHOD_NAME } from './core/common/Const';
 import { CallGraph } from './callgraph/model/CallGraph';
 import { CallGraphBuilder } from './callgraph/model/builder/CallGraphBuilder';
-import { buildArkFileFromFile as buildArkFileFromFileCpp } from './jingwei_cpp_frontend/model/builder/ArkFileBuilder';
+import { buildArkFileFromFile as buildArkFileFromFileCpp } from './cpp_frontend/model/builder/ArkFileBuilder';
 
 
 import { IRInference } from './core/common/IRInference';

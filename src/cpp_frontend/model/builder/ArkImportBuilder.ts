@@ -21,26 +21,32 @@ import { normalize } from 'path';
 
 export function buildImportInfo(node: any, sourceFile: any, arkFile: ArkFile): ImportInfo[] {
     if (node.kind === 'inclusion directive') {
-        return buildImportDeclarationNode(node, sourceFile, arkFile);
+        // just like: #include '../xxx' => import '../xxx'
+        return buildGenericImportInfo(node, sourceFile, arkFile, n => `#include "${normalize(n.fileName ?? n.name ?? '')}"`);
+    }
+    if (node.kind === 'UsingDirectiveDecl') {
+        return buildGenericImportInfo(node, sourceFile, arkFile, n => n.code);
+
     }
     return [];
 }
 
-function buildImportDeclarationNode(node: any, sourceFile: any, arkFile: ArkFile): ImportInfo[] {
+function buildGenericImportInfo(
+    node: any,
+    sourceFile: any,
+    arkFile: ArkFile,
+    importClauseNameBuilder: (node: any) => string
+): ImportInfo[] {
     const originTsPosition = LineColPosition.buildFromNodeCpp(node, sourceFile);
     const tsSourceCode = node.code;
-
     let importInfos: ImportInfo[] = [];
     const importFrom: string = normalize(node.fileName ?? node.name ?? '');
-
-    // just like: #include '../xxx' => import '../xxx'
-    let importClauseName = `#include "${importFrom}"`;
+    let importClauseName = importClauseNameBuilder(node);
     let importType = '';
     let importInfo = new ImportInfo();
     importInfo.build(importClauseName, importType, importFrom, originTsPosition, 0);
     importInfo.setTsSourceCode(tsSourceCode);
     IRUtils.setComments(importInfo, node, sourceFile, arkFile.getScene().getOptions());
     importInfos.push(importInfo);
-
     return importInfos;
 }

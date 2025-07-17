@@ -42,30 +42,23 @@ export class AstUtils {
 
     private static updateInner(sourceFile: string, firstOccurrenceOfMainFile:boolean, entry:any, newInner:any[]): void {
         if (!firstOccurrenceOfMainFile){
-            if (Object.prototype.hasOwnProperty.call(entry, "isImplicit") && entry.isImplicit) {
+            if (Object.prototype.hasOwnProperty.call(entry, "isImplicit")
+                && entry.isImplicit && entry.kind != 'UsingDirectiveDecl') {
                 return;
             }
             let fileName = "";
-            let loc = entry.loc;
+            let loc = entry.locFile;
             if (!loc) {
                 if (entry.kind === 'inclusion directive') {
-                    entry.loc = {
-                        'file': sourceFile,
-                    };
+                    entry.locFile = sourceFile;
                     newInner.push(entry);
-                    firstOccurrenceOfMainFile = true;
                 } else {
-                    logger.warn('Node skipped due to missing "loc", kind of node: ', entry.kind);
+                    logger.warn('Node skipped due to missing "locFile", kind of node: ', entry.kind);
                 }
                 return;
             }
-            if (Object.prototype.hasOwnProperty.call(loc, "file")){
-                fileName = loc.file;
-            }
-            if (Object.prototype.hasOwnProperty.call(loc, "expansionLoc")){
-                if (Object.prototype.hasOwnProperty.call(loc.expansionLoc, "file")){
-                    fileName = loc.expansionLoc.file;
-                }
+            if (entry.locFile){
+                fileName = entry.locFile;
             }
             if (Object.prototype.hasOwnProperty.call(entry, "include") && entry.include && entry.kind !== 'inclusion directive'){
                 newInner.push(entry);
@@ -74,7 +67,6 @@ export class AstUtils {
             if (fileName !== sourceFile){
                 return;
             }
-            firstOccurrenceOfMainFile = true;
         }
         newInner.push(entry);
 
@@ -107,20 +99,22 @@ export class AstUtils {
         return filteredChildren;
     }
 
-    private static fullInfo(cursor:any){
+    private static fullInfo(cursor: any) {
         cursor.inner = this.filterChildren(cursor);
-        for (let index in cursor.inner){
-            if (Object.prototype.hasOwnProperty.call(cursor.inner, index)){
+        for (let index in cursor.inner) {
+            if (Object.prototype.hasOwnProperty.call(cursor.inner, index)) {
                 let currentCursor = cursor.inner[index];
                 type GetParentCallBack = any & {
-                    getParent:() => any;
+                    getParent: (isNeedInner?: boolean) => any;
                 };
                 currentCursor = Object.assign(currentCursor, {
-                    getParent:() => {
-                        let parentCursor = {...cursor}
-                        delete parentCursor.inner;
+                    getParent: (isNeedinner: boolean = false) => {
+                        let parentCursor = { ...cursor };
+                        if (!isNeedinner) {
+                            delete parentCursor.inner;
+                        }
                         return parentCursor;
-                    }
+                    },
                 }) as GetParentCallBack;
                 this.processAccess(currentCursor);
                 this.fullInfo(cursor.inner[index]);

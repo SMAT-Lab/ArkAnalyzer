@@ -56,25 +56,26 @@ import { ArkField } from '../../core/model/ArkField';
 import { Value } from '../../core/base/Value';
 import { Constant } from '../../core/base/Constant';
 import { ArkNamespace } from '../../core/model/ArkNamespace';
-import {
-    ALL,
-    CONSTRUCTOR_NAME, DEFAULT,
-    GLOBAL_THIS_NAME,
-    PROMISE,
-    SUPER_NAME,
-    THIS_NAME,
-} from './TSConst';
-import { ModelUtils } from './ModelUtils';
 import { Builtin } from '../../core/common/Builtin';
 import { MethodSignature, MethodSubSignature, NamespaceSignature } from '../../core/model/ArkSignature';
 import { INSTANCE_INIT_METHOD_NAME, LEXICAL_ENV_NAME_PREFIX, UNKNOWN_FILE_NAME } from '../../core/common/Const';
-import { EMPTY_STRING } from './ValueUtil';
 import { ImportInfo } from '../../core/model/ArkImport';
 import { MethodParameter } from '../../core/model/builder/ArkMethodBuilder';
 import { IRInference } from '../../core/common/IRInference';
 import { AbstractTypeExpr, KeyofTypeExpr, TypeQueryExpr } from '../../core/base/TypeExpr';
 import { SdkUtils } from '../../core/common/SdkUtils';
 import { ModifierType } from '../../core/model/ArkBaseModel';
+import { ModelUtils } from '../../core/common/ModelUtils';
+import {
+    ALL,
+    CONSTRUCTOR_NAME,
+    DEFAULT,
+    GLOBAL_THIS_NAME,
+    PROMISE,
+    SUPER_NAME,
+    THIS_NAME,
+} from '../../core/common/TSConst';
+import { EMPTY_STRING } from '../../core/common/ValueUtil';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'TypeInference');
 

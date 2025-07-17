@@ -134,7 +134,8 @@ import {
 } from '../../../resources_cpp/cfg/lambdaFunc/lambdaFuncExpects';
 import {
     THROW_EXPECT_CASE1,
-    THROW_EXPECT_CASE2
+    THROW_EXPECT_CASE2,
+    THROW_EXPECT_CASE3
 } from '../../../resources_cpp/cfg/throw/throwExpects';
 import {
     CAST_EXPECT_CASE1,
@@ -205,7 +206,7 @@ import {
     ADDRLABEL_EXPECT_CASE1,
     ADDRLABEL_EXPECT_CASE2, ADDRLABEL_EXPECT_CASE3,
 } from '../../../resources_cpp/cfg/addrLabelExpr/addrLabelExprExpect';
-
+import { NAMESPACE_CASE1 } from "../../../resources_cpp/cfg/namespace/namespace";
 
 describe('CfgTest', () => {
     it('case1: conditional operator', () => {
@@ -429,6 +430,7 @@ describe('Other Test', () => {
             const scene = buildScene('throw');
         testBlocks(scene, 'throwSample.cpp', 'division', THROW_EXPECT_CASE1.blocks);
         testBlocks(scene, 'throwSample.cpp', 'main', THROW_EXPECT_CASE2.blocks);
+        testBlocks(scene, 'throwSample.cpp', 'try_throw_case', THROW_EXPECT_CASE3.blocks);
         },
     );
     it('case3: iostream', () => {
@@ -517,11 +519,20 @@ describe('Lazy Import Test', () => {
     );
 });
 
+describe('namespace Test', () => {
+    it('case1: namespace', () => {
+            const scene = buildScene('namespace');
+            testBlocks(scene, 'namespace.cpp', 'test', NAMESPACE_CASE1.blocks);
+        },
+    );
+});
+
 
 const BASE_DIR = 'tests/resources_cpp/cfg';
 
 function buildScene(folderName: string): Scene {
     let config: SceneConfig = new SceneConfig();
+    config.setOptions(['.c', '.cpp', '.h', '.hpp']);
     config.buildFromProjectDir(path.join(BASE_DIR, folderName));
     let scene = new Scene();
     scene.buildSceneFromProjectDir(config);

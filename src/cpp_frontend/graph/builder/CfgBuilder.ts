@@ -21,17 +21,18 @@ import { Cfg } from '../../../core/graph/Cfg';
 import { ArkClass } from '../../../core/model/ArkClass';
 import { ArkMethod } from '../../../core/model/ArkMethod';
 import { ArkIRTransformerCpp, ValueAndStmts } from '../../common/ArkIRTransformer';
-import { ModelUtils } from '../../common/ModelUtils';
 import { IRUtils } from '../../../core/common/IRUtils';
 import { AliasType, ClassType, UnclearReferenceType, UnknownType, VoidType } from '../../../core/base/Type';
 import { Trap } from '../../../core/base/Trap';
 import { GlobalRef } from '../../../core/base/Ref';
 import { LoopBuilder } from '../../../core/graph/builder/LoopBuilder';
-import { SwitchBuilder } from './SwitchBuilder';
+import { SwitchBuilder } from '../../../core/graph/builder/SwitchBuilder';
 import { ConditionBuilder } from '../../../core/graph/builder/ConditionBuilder';
 import { TrapBuilder } from '../../../core/graph/builder/TrapBuilder';
-import { CONSTRUCTOR_NAME, PROMISE } from '../../common/TSConst';
 import { ModifierType } from '../../../core/model/ArkBaseModel';
+import { BlockBuilder, Case, Catch, TextError, Variable, Scope } from '../../../core/graph/builder/CfgBuilder';
+import { ModelUtils } from '../../../core/common/ModelUtils';
+import { CONSTRUCTOR_NAME, PROMISE } from '../../../core/common/TSConst';
 
 export class StatementBuilder {
     type: string;
@@ -107,86 +108,6 @@ export class TryStatementBuilder extends StatementBuilder {
 
     constructor(type: string, code: string, astNode: any, scopeID: number) {
         super(type, code, astNode, scopeID);
-    }
-}
-
-class Case {
-    value: string;
-    stmt: StatementBuilder;
-    valueNode!: ts.Node;
-
-    constructor(value: string, stmt: StatementBuilder) {
-        this.value = value;
-        this.stmt = stmt;
-    }
-}
-
-class DefUseChain {
-    def: StatementBuilder;
-    use: StatementBuilder;
-
-    constructor(def: StatementBuilder, use: StatementBuilder) {
-        this.def = def;
-        this.use = use;
-    }
-}
-
-class Variable {
-    name: string;
-    lastDef: StatementBuilder;
-    defUse: DefUseChain[];
-    properties: Variable[] = [];
-    propOf: Variable | null = null;
-
-    constructor(name: string, lastDef: StatementBuilder) {
-        this.name = name;
-        this.lastDef = lastDef;
-        this.defUse = [];
-    }
-}
-
-class Scope {
-    id: number;
-
-    constructor(id: number) {
-        this.id = id;
-    }
-}
-
-export class BlockBuilder {
-    id: number;
-    stmts: StatementBuilder[];
-    nexts: BlockBuilder[] = [];
-    lasts: BlockBuilder[] = [];
-    walked: boolean = false;
-
-    constructor(id: number, stmts: StatementBuilder[]) {
-        this.id = id;
-        this.stmts = stmts;
-    }
-}
-
-class Catch {
-    errorName: string;
-    from: number;
-    to: number;
-    withLabel: number;
-
-    constructor(errorName: string, from: number, to: number, withLabel: number) {
-        this.errorName = errorName;
-        this.from = from;
-        this.to = to;
-        this.withLabel = withLabel;
-    }
-}
-
-class TextError extends Error {
-    constructor(message: string) {
-        // 调用父类的构造函数，并传入错误消息
-        super(message);
-
-        // 设置错误类型的名称
-        this.name = 'TextError';
     }
 }
 
@@ -1047,22 +968,16 @@ export class CfgBuilder {
         }
     }
 
-    resetWalked(): void {
-        for (let stmt of this.statementArray) {
-            stmt.walked = false;
-        }
-    }
-
     addStmtBuilderPosition(): void {
         for (const stmt of this.statementArray) {
             if (stmt.astNode) {
-                if(stmt.astNode.loc && stmt.astNode.loc.line) {
-                    stmt.line = stmt.astNode.loc.line;
+                if(stmt.astNode.range?.begin && stmt.astNode.range.begin.line) {
+                    stmt.line = stmt.astNode.range.begin.line;
                 } else {
                     stmt.line = 0;
                 }
-                if(stmt.astNode.loc && stmt.astNode.loc.col) {
-                    stmt.column = stmt.astNode.loc.col;
+                if(stmt.astNode.range?.begin && stmt.astNode.range.begin.col) {
+                    stmt.column = stmt.astNode.range.begin.col;
                 } else {
                     stmt.column = 0;
                 }
@@ -1111,42 +1026,6 @@ export class CfgBuilder {
         } else {
             if (stmt.next != null) {
                 this.CfgBuilder2Array(stmt.next);
-            }
-        }
-    }
-
-    getDotEdges(stmt: StatementBuilder): void {
-        if (this.statementArray.length === 0) {
-            this.CfgBuilder2Array(this.entry);
-        }
-        if (stmt.walked) {
-            return;
-        }
-        stmt.walked = true;
-        if (stmt.type === 'ifStatement' || stmt.type === 'loopStatement' || stmt.type === 'catchOrNot') {
-            let cstm = stmt as ConditionStatementBuilder;
-            if (cstm.nextT == null || cstm.nextF == null) {
-                this.errorTest(cstm);
-                return;
-            }
-            let edge = [cstm.index, cstm.nextF.index];
-            this.dotEdges.push(edge);
-            edge = [cstm.index, cstm.nextT.index];
-            this.dotEdges.push(edge);
-            this.getDotEdges(cstm.nextF);
-            this.getDotEdges(cstm.nextT);
-        } else if (stmt.type === 'switchStatement') {
-            let sstm = stmt as SwitchStatementBuilder;
-            for (let ss of sstm.nexts) {
-                let edge = [sstm.index, ss.index];
-                this.dotEdges.push(edge);
-                this.getDotEdges(ss);
-            }
-        } else {
-            if (stmt.next != null) {
-                let edge = [stmt.index, stmt.next.index];
-                this.dotEdges.push(edge);
-                this.getDotEdges(stmt.next);
             }
         }
     }

@@ -31,7 +31,7 @@ type NestedMethodChain = {
     children: NestedMethodChain[] | null;
 };
 
-export class BodyBuilder {
+export class BodyBuilderCpp {
     private cfgBuilder: CfgBuilder;
     private globals?: Map<string, GlobalRef>;
 

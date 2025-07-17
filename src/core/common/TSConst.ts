@@ -39,3 +39,4 @@ export const VOID_KEYWORD = 'void';
 export const NEVER_KEYWORD = 'never';
 export const BIGINT_KEYWORD = 'bigint';
 export const TSCONFIG_JSON = 'tsconfig.json';
+export const NULL_POINTER = 'nullptr';

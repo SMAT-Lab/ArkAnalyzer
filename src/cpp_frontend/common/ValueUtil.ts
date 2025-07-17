@@ -14,37 +14,16 @@
  */
 
 import {
-    BigIntConstant,
-    BooleanConstant,
-    Constant, LabelConstant,
-    NullConstant,
+    Constant, 
+    LabelConstant,
     NullPtrConstant,
-    NumberConstant,
     StringConstant,
-    UndefinedConstant,
 } from '../../core/base/Constant';
-
-export const EMPTY_STRING = '';
+import { EMPTY_STRING, ValueUtil } from '../../core/common/ValueUtil';
 
 const charPrefixType = ["L\"","L\'","u\"","u\'","U\"","U\'"]
 
-export class ValueUtil {
-    private static readonly NumberConstantCache: Map<number, Constant> = new Map();
-    public static readonly EMPTY_STRING_CONSTANT = new StringConstant(EMPTY_STRING);
-
-    public static getOrCreateNumberConst(n: number): Constant {
-        let constant = this.NumberConstantCache.get(n);
-        if (constant === undefined) {
-            constant = new NumberConstant(n);
-            this.NumberConstantCache.set(n, constant);
-        }
-        return constant;
-    }
-
-    public static createBigIntConst(bigInt: bigint): BigIntConstant {
-        return new BigIntConstant(bigInt);
-    }
-
+export class CppValueUtil extends ValueUtil{
     public static normalizeString(str: string): string {
         let preStr: string = str.substring(0, 2); //获取前缀处理长字符类型
         if (charPrefixType.includes(preStr)) {
@@ -61,26 +40,6 @@ export class ValueUtil {
         }
         str = this.normalizeString(str);
         return new StringConstant(str);
-    }
-
-    public static createConst(str: string): Constant {
-        const n = Number(str);
-        if (!isNaN(n)) {
-            return this.getOrCreateNumberConst(n);
-        }
-        return new StringConstant(str);
-    }
-
-    public static getUndefinedConst(): Constant {
-        return UndefinedConstant.getInstance();
-    }
-
-    public static getNullConstant(): Constant {
-        return NullConstant.getInstance();
-    }
-
-    public static getBooleanConstant(value: string | boolean): Constant {
-        return BooleanConstant.getInstance(value);
     }
 
     public static getNullPtrConstant():Constant {

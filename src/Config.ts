@@ -76,6 +76,10 @@ export class SceneConfig {
         return this.options;
     }
 
+    public setOptions(options: string[]): void {
+        this.options = { supportFileExts: options };
+    }
+
     /**
      * Set the scene's config,
      * such as  the target project's name, the used sdks and the full path.

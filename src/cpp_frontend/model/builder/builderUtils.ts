@@ -13,17 +13,11 @@
  * limitations under the License.
  */
 
-import ts, { HeritageClause } from 'ohos-typescript';
+import ts from 'ohos-typescript';
 import {
-    AliasType,
-    ArrayType,
     ClassType,
-    FunctionType,
     GenericType,
-    TupleType,
     Type,
-    UnclearReferenceType,
-    UnionType,
     UnknownType,
     PointerType,
     ReferenceType,
@@ -33,75 +27,9 @@ import { TypeInference } from '../../common/TypeInference';
 import { ArkField } from '../../../core/model/ArkField';
 import { ArkClass } from '../../../core/model/ArkClass';
 import { ArkMethod } from '../../../core/model/ArkMethod';
-import { Decorator } from '../../../core/base/Decorator';
 import { MethodParameter } from '../../../core/model/builder/ArkMethodBuilder';
 import { modifierKind2Enum, modifierKind2EnumCpp } from '../../../core/model/ArkBaseModel';
-
-
-// const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'builderUtils');
-
-export function handleQualifiedName(node: ts.QualifiedName): string {
-    let right = (node.right as ts.Identifier).text;
-    let left: string = '';
-    if (node.left.kind === ts.SyntaxKind.Identifier) {
-        left = (node.left as ts.Identifier).text;
-    } else if (node.left.kind === ts.SyntaxKind.QualifiedName) {
-        left = handleQualifiedName(node.left as ts.QualifiedName);
-    }
-    let qualifiedName = left + '.' + right;
-    return qualifiedName;
-}
-
-export function handlePropertyAccessExpression(node: ts.PropertyAccessExpression): string {
-    let right = (node.name as ts.Identifier).text;
-    let left: string = '';
-    if (ts.SyntaxKind[node.expression.kind] === 'Identifier') {
-        left = (node.expression as ts.Identifier).text;
-    } else if (ts.isStringLiteral(node.expression)) {
-        left = node.expression.text;
-    } else if (ts.isPropertyAccessExpression(node.expression)) {
-        left = handlePropertyAccessExpression(node.expression as ts.PropertyAccessExpression);
-    }
-    let propertyAccessExpressionName = left + '.' + right;
-    return propertyAccessExpressionName;
-}
-
-export function buildDecorators(node: ts.Node, sourceFile: ts.SourceFile): Set<Decorator> {
-    let decorators: Set<Decorator> = new Set();
-    ts.getAllDecorators(node).forEach(decoratorNode => {
-        let decorator = parseDecorator(decoratorNode);
-        if (decorator) {
-            decorator.setContent(decoratorNode.expression.getText(sourceFile));
-            decorators.add(decorator);
-        }
-    });
-    return decorators;
-}
-
-function parseDecorator(node: ts.Decorator): Decorator | undefined {
-    if (!node.expression) {
-        return undefined;
-    }
-
-    let expression = node.expression;
-    if (ts.isIdentifier(expression)) {
-        return new Decorator(expression.text);
-    }
-    if (!ts.isCallExpression(expression) || !ts.isIdentifier(expression.expression)) {
-        return undefined;
-    }
-
-    let decorator = new Decorator(expression.expression.text);
-
-    if (expression.arguments.length > 0) {
-        const arg = expression.arguments[0];
-        if (ts.isArrowFunction(arg) && ts.isIdentifier(arg.body)) {
-            decorator.setParam(arg.body.text);
-        }
-    }
-
-    return decorator;
-}
+import { buildGenericType } from '../../../core/model/builder/builderUtils';
 
 function extractCommonModifiers(node:any):number{
     let modifiers: number = 0;
@@ -119,7 +47,7 @@ function extractCommonModifiers(node:any):number{
     return modifiers;
 }
 
-function hasOvverrideAttr(inner: any[] |undefined):boolean{
+function hasOverrideAttr(inner: any[] |undefined):boolean{
     if (!inner) return false;
     return inner.some(child => child.kind === "attribute(override)");
 }
@@ -132,7 +60,7 @@ function getMtdModifier(node: any, modifiers: number) {
             modifiers |= modifierKind2EnumCpp('pure virtual');
         }
     }
-    if (hasOvverrideAttr(node.inner)) {
+    if (hasOverrideAttr(node.inner)) {
         modifiers |= modifierKind2EnumCpp('override');
     }
     return modifiers;
@@ -160,26 +88,6 @@ export function buildModifiersForCxxCls(cls: ArkClass): number {
         }
     }
     return 0;
-}
-
-export function buildHeritageClauses(heritageClauses?: ts.NodeArray<HeritageClause>): Map<string, string> {
-    let heritageClausesMap: Map<string, string> = new Map<string, string>();
-    heritageClauses?.forEach(heritageClause => {
-        heritageClause.types.forEach(type => {
-            let heritageClauseName: string = '';
-            if (type.typeArguments) {
-                heritageClauseName = type.getText();
-            } else if (ts.isIdentifier(type.expression)) {
-                heritageClauseName = (type.expression as ts.Identifier).text;
-            } else if (ts.isPropertyAccessExpression(type.expression)) {
-                heritageClauseName = handlePropertyAccessExpression(type.expression);
-            } else {
-                heritageClauseName = type.getText();
-            }
-            heritageClausesMap.set(heritageClauseName, ts.SyntaxKind[heritageClause.token]);
-        });
-    });
-    return heritageClausesMap;
 }
 
 export function buildTypeParameters(
@@ -232,62 +140,6 @@ export function buildParameters(params: any, arkInstance: ArkMethod | ArkField, 
         parameters.push(methodParameter);
     });
     return parameters;
-}
-
-export function buildGenericType(type: Type, arkInstance: ArkMethod | ArkField | AliasType): Type {
-    function replace(urType: UnclearReferenceType): Type {
-        const typeName = urType.getName();
-        let gType;
-        if (arkInstance instanceof AliasType) {
-            gType = arkInstance.getGenericTypes()?.find(f => f.getName() === typeName);
-        } else {
-            if (arkInstance instanceof ArkMethod) {
-                gType = arkInstance.getGenericTypes()?.find(f => f.getName() === typeName);
-            }
-            if (!gType) {
-                gType = arkInstance
-                    .getDeclaringArkClass()
-                    .getGenericsTypes()
-                    ?.find(f => f.getName() === typeName);
-            }
-        }
-        if (gType) {
-            return gType;
-        }
-        const types = urType.getGenericTypes();
-        for (let i = 0; i < types.length; i++) {
-            const mayType = types[i];
-            if (mayType instanceof UnclearReferenceType) {
-                types[i] = replace(mayType);
-            }
-        }
-        return urType;
-    }
-
-    if (type instanceof UnclearReferenceType) {
-        return replace(type);
-    } else if (type instanceof ClassType && arkInstance instanceof AliasType) {
-        type.setRealGenericTypes(arkInstance.getGenericTypes());
-    } else if (type instanceof UnionType || type instanceof TupleType) {
-        const types = type.getTypes();
-        for (let i = 0; i < types.length; i++) {
-            const mayType = types[i];
-            if (mayType instanceof UnclearReferenceType) {
-                types[i] = replace(mayType);
-            }
-        }
-    } else if (type instanceof ArrayType) {
-        const baseType = type.getBaseType();
-        if (baseType instanceof UnclearReferenceType) {
-            type.setBaseType(replace(baseType));
-        }
-    } else if (type instanceof FunctionType) {
-        const returnType = type.getMethodSignature().getType();
-        if (returnType instanceof UnclearReferenceType) {
-            type.getMethodSignature().getMethodSubSignature().setReturnType(replace(returnType));
-        }
-    }
-    return type;
 }
 
 export function buildReturnType(mtdNode: any, sourceFile: any, method: ArkMethod): Type {

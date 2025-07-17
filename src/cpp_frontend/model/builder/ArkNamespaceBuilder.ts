@@ -18,12 +18,13 @@ import { ArkFile } from '../../../core/model/ArkFile';
 import { buildArkMethodFromArkClass } from './ArkMethodBuilder';
 import ts from 'ohos-typescript';
 import { ArkNamespace } from '../../../core/model/ArkNamespace';
-import { buildDecorators, buildModifiers } from './builderUtils';
+import { buildModifiers } from './builderUtils';
 import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
 import { ArkClass } from '../../../core/model/ArkClass';
 import { ArkMethod } from '../../../core/model/ArkMethod';
 import { NamespaceSignature } from '../../../core/model/ArkSignature';
 import { genDefaultArkClass } from '../../../core/model/builder/ArkNamespaceBuilder';
+import { buildDecorators } from '../../../core/model/builder/builderUtils';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkNamespaceBuilder');
 
@@ -53,8 +54,8 @@ export function buildArkNamespace(node: any, declaringInstance: ArkFile | ArkNam
     ns.setCode(node.code);
 
     // set line and column
-    if (node.loc){
-        ns.setLine(node.loc.line);
+    if (node.range?.begin){
+        ns.setLine(node.range.begin.line);
     } else {
         ns.setLine(-1);
         ns.setColumn(-1)
@@ -75,7 +76,7 @@ export function buildArkNamespace(node: any, declaringInstance: ArkFile | ArkNam
 function buildNamespaceMembers(node: any, namespace: ArkNamespace, sourceFile: any): void {
     const statements = node.inner;
     statements.forEach((child:any) => {
-        if (child.kind === 'NamespaceDecl') {
+        if (child.kind === 'Namespace') {
             let childNs: ArkNamespace = new ArkNamespace();
             childNs.setDeclaringArkNamespace(namespace);
             childNs.setDeclaringArkFile(namespace.getDeclaringArkFile());

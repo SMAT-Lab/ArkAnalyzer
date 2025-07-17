@@ -23,7 +23,6 @@ import {
     buildInitMethod,
 } from './ArkMethodBuilder';
 import {
-    buildDecorators,
     buildModifiers,
     buildTypeParameters,
     buildModifiersForCxxCls
@@ -42,6 +41,7 @@ import {
     init4StaticInitMethod,
 } from '../../../core/model/builder/ArkClassBuilder';
 import { ArkIRTransformerCpp } from '../../common/ArkIRTransformer';
+import { buildDecorators } from '../../../core/model/builder/builderUtils';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkClassBuilder');
 
@@ -54,8 +54,8 @@ export function buildNormalArkClassFromArkFile(
 ): void {
     cls.setDeclaringArkFile(arkFile);
     cls.setCode(clsNode.name);
-    cls.setLine(clsNode.loc.line);
-    cls.setColumn(clsNode.loc.col);
+    cls.setLine(clsNode.range.begin.line);
+    cls.setColumn(clsNode.range.begin.col);
     buildNormalArkClass(clsNode, cls, sourceFile, declaringMethod);
     arkFile.addArkClass(cls);
 }
@@ -70,9 +70,9 @@ export function buildNormalArkClassFromArkNamespace(
     cls.setDeclaringArkNamespace(arkNamespace);
     cls.setDeclaringArkFile(arkNamespace.getDeclaringArkFile());
     cls.setCode(clsNode.code);
-    if (clsNode.hasOwnProperty("loc")){
-        cls.setLine(clsNode.loc.line);
-        cls.setColumn(clsNode.loc.col);
+    if (clsNode.range?.begin){
+        cls.setLine(clsNode.range.begin.line);
+        cls.setColumn(clsNode.range.begin.col);
     }
     buildNormalArkClass(clsNode, cls, sourceFile, declaringMethod);
     //arkNamespace.addArkClass(cls);
@@ -84,7 +84,7 @@ export function buildNormalArkClass(clsNode: any, cls: ArkClass, sourceFile: any
             buildStruct2ArkClass(clsNode, cls, sourceFile, declaringMethod);
             break;
         case 'class':
-            buildClass2ArkClass(clsNode, cls, sourceFile, declaringMethod);
+            buildClass2ArkClass(clsNode, cls, sourceFile);
             break;
         case 'enum':
             buildEnum2ArkClass(clsNode, cls, sourceFile, declaringMethod);
@@ -98,7 +98,7 @@ export function buildNormalArkClass(clsNode: any, cls: ArkClass, sourceFile: any
 }
 
 function buildUnion2ArkClass(clsNode: any, cls:ArkClass, sourceFile: any, declaringMethod?: ArkMethod): void {
-    let className = '';
+    let className: string;
     if (clsNode.name) {
         className = clsNode.name;
     } else{
@@ -115,7 +115,7 @@ function buildUnion2ArkClass(clsNode: any, cls:ArkClass, sourceFile: any, declar
 }
 
 function buildStruct2ArkClass(clsNode: any, cls: ArkClass, sourceFile: any, declaringMethod?: ArkMethod): void {
-    let className = '';
+    let className: string;
     if (clsNode.name){
         className = clsNode.name;
     } else {
@@ -141,7 +141,7 @@ function buildStruct2ArkClass(clsNode: any, cls: ArkClass, sourceFile: any, decl
 function genAnonymousClassName(clsNode: ClassLikeNode, cls:ArkClass, declaringMethod?: ArkMethod): string {
     const declaringArkNamespace = cls.getDeclaringArkNamespace();
     const declaringArkFile = cls.getDeclaringArkFile();
-    let anonymousClassName = '';
+    let anonymousClassName: string;
     let declaringMethodName = '';
     if (declaringMethod){
         declaringMethodName = declaringMethod.getDeclaringArkClass().getName() + ANONYMOUS_CLASS_DELIMITER + declaringMethod.getName() + ANONYMOUS_CLASS_DELIMITER;
@@ -154,7 +154,7 @@ function genAnonymousClassName(clsNode: ClassLikeNode, cls:ArkClass, declaringMe
     return anonymousClassName;
 }
 
-function buildClass2ArkClass(clsNode: any, cls: ArkClass, sourceFile: any, declaringMethod?: ArkMethod): void {
+function buildClass2ArkClass(clsNode: any, cls: ArkClass, sourceFile: any): void {
     const className = clsNode.name ? clsNode.name : '';
     const classSignature = new ClassSignature(className, cls.getDeclaringArkFile().getFileSignature(), cls.getDeclaringArkNamespace()?.getSignature() || null);
     cls.setSignature(classSignature);
@@ -184,7 +184,7 @@ function processCXXHeritage(clsNode: any, cls: ArkClass) {
 }
 
 function buildEnum2ArkClass(clsNode: any, cls: ArkClass, sourceFile: any, declaringMethod?: ArkMethod): void {
-    let className = '';
+    let className: string;
     if (clsNode.name){
         className = clsNode.name;
     } else {
@@ -193,9 +193,6 @@ function buildEnum2ArkClass(clsNode: any, cls: ArkClass, sourceFile: any, declar
 
     const classSignature = new ClassSignature(className, cls.getDeclaringArkFile().getFileSignature(), cls.getDeclaringArkNamespace()?.getSignature() || null, ClassCategory.ENUM);
     cls.setSignature(classSignature);
-
-    // cls.setModifiers(buildModifiers(clsNode));
-    // cls.setDecorators(buildDecorators(clsNode, sourceFile));
 
     cls.setCategory(ClassCategory.ENUM);
 

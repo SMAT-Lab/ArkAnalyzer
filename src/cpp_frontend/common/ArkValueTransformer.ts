@@ -49,7 +49,6 @@ import {
     ReferenceType
 } from '../../core/base/Type';
 import { ArkSignatureBuilder } from '../../core/model/builder/ArkSignatureBuilder';
-import { CONSTRUCTOR_NAME, THIS_NAME } from './TSConst';
 import { ClassSignature, FieldSignature, MethodSignature } from '../../core/model/ArkSignature';
 import { Value } from '../../core/base/Value';
 import {
@@ -58,10 +57,9 @@ import {
     COMPONENT_FOR_EACH,
     COMPONENT_LAZY_FOR_EACH
 } from '../../core/common/EtsConst';
-import { ValueUtil } from './ValueUtil';
+import { CppValueUtil } from './ValueUtil';
 import { IRUtils } from '../../core/common/IRUtils';
 import { AbstractFieldRef, ArkArrayRef, ArkInstanceFieldRef, CXXArkInstanceFieldRef } from '../../core/base/Ref';
-import { ModelUtils } from './ModelUtils';
 import { ArkMethod } from '../../core/model/ArkMethod';
 import { buildArkMethodFromArkClass, buildDefaultConstructor } from '../model/builder/ArkMethodBuilder';
 import { Builtin } from '../../core/common/Builtin';
@@ -71,6 +69,8 @@ import { ArkIRTransformerCpp, DummyStmt, ValueAndStmts } from './ArkIRTransforme
 import {buildTypeFromPreStr, cppNode2Type, isCXXSTLContainer } from '../model/builder/builderUtils';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { ArkValueTransformer } from '../../core/common/ArkValueTransformer';
+import { ModelUtils } from '../../core/common/ModelUtils';
+import { CONSTRUCTOR_NAME, THIS_NAME } from '../../core/common/TSConst';
 
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkValueTransformer');
@@ -215,7 +215,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         } else if (node.kind === 'UnresolvedLookupExpr') {
             return this.identifierToValueAndStmtsCpp(node);
         } else if (node.kind === 'CXXMemberCallExpr') {
-            return this.cxxMembercallExpressionToValueAndStmtsCpp(node);
+            return this.cxxMemberCallExpressionToValueAndStmtsCpp(node);
         } else if (node.kind === 'MemberExpr' || node.kind === 'MemberRef' ) {
             return this.memberExpressionToValueAndStmts(node);
         } else if (node.kind === 'CXXNewExpr') {
@@ -233,8 +233,15 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         } else if (node.kind === 'IntegerLiteral') {
             return this.literalNodeToValueAndStmtsCpp(node) as ValueAndStmts;
         } else if (node.kind === 'InitListExpr') {
+            if (node.type.qualType.includes("[") && node.type.qualType.includes("]")||
+                node.type.qualType === 'void') {
+                // 结构体初始化则调用构造函数去初始化
+                return this.arrayLiteralExpressionToValueAndStmtsCpp(node);
+            }
             // 数组和结构体都可以用{}初始化，此处需要做区分
-            if (node.type.qualType.includes("struct") || node.type.qualType.includes("union") || this.resolveTypeNodeCpp(node.type.qualType) instanceof ClassType) {
+            let pNode = node.getParent(true);
+            if (pNode.inner[0].kind === 'TypeRef' || !node.type.qualType.includes("[")
+                || this.resolveTypeNodeCpp(node.type.qualType) instanceof ClassType) {
                 // 结构体初始化则调用构造函数去初始化
                 return this.newExpressionToValueAndStmtsCpp(node);
             }
@@ -443,14 +450,14 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         let constant: Constant | null = null;
         switch (initType) {
             case 'int':
-                constant = ValueUtil.getOrCreateNumberConst(parseFloat('0'));
+                constant = CppValueUtil.getOrCreateNumberConst(parseFloat('0'));
                 break;
             case 'float':
             case 'double':
-                constant = ValueUtil.getOrCreateNumberConst(parseFloat('0.0'));
+                constant = CppValueUtil.getOrCreateNumberConst(parseFloat('0.0'));
                 break;
             case 'char':
-                constant = ValueUtil.createStringConst('');
+                constant = CppValueUtil.createStringConst('');
                 break;
             default:
                 logger.warn(`The initType of ast node "CXXScalarValueInitExpr" is ${initType}, maybe it is not literalNode or is not processed`);
@@ -705,7 +712,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
             varNode = identifier;
         }
         if (varNode.name === UndefinedType.getInstance().getName()) {
-            identifierValue = ValueUtil.getUndefinedConst();
+            identifierValue = CppValueUtil.getUndefinedConst();
         } else {
             if (variableDefFlag) {
                 identifierValue = this.addNewLocal(varNode.name);
@@ -959,7 +966,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         };
     }
 
-    private cxxMembercallExpressionToValueAndStmtsCpp(callExpression: any): ValueAndStmts {
+    private cxxMemberCallExpressionToValueAndStmtsCpp(callExpression: any): ValueAndStmts {
         let realGenericTypes: Type[] | undefined;
         const stmts: Stmt[] = [];
         const [leftNode, rightNode] = this.getArgumentNode(callExpression.inner);
@@ -976,11 +983,6 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         } else if (callerValue instanceof Local) {
             invokeValue = this.buildInvokeValueForLocal(callerValue, args, realGenericTypes);
         } else {
-            ({
-                value: callerValue,
-                valueOriginalPositions: callerPositions,
-                stmts: callerStmts,
-            } = this.generateAssignStmtForValue(callerValue, callerPositions));
             stmts.push(...callerStmts);
             const methodSignature = ArkSignatureBuilder.buildMethodSignatureFromMethodName((callerValue as Local).getName());
             invokeValue = new ArkStaticInvokeExpr(methodSignature, args, realGenericTypes);
@@ -1158,6 +1160,9 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         const instanceInvokeExprPositions = [newLocalPositions[0], ...newLocalPositions, ...argPositions];
         invokeStmt.setOperandOriginalPositions(instanceInvokeExprPositions);
         stmts.push(invokeStmt);
+        if (className === 'napi_property_descriptor') {
+            this.setTs2CppFuncMapOfClass(argValues,false);
+        }
         if ((newExpression.kind === 'CompoundLiteralExpr' && newExpression.inner[1].kind === 'InitListExpr')) {
             const newExpr = newExpression.kind === 'InitListExpr' ? newExpression : newExpression.inner[1];
             for (const element of newExpr.inner) {
@@ -1206,7 +1211,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         if (isCXXSTLContainer(oriType)) {
             return oriType;
         }
-        return oriType.replace(/[\(\)]/g, '').replace(' *', '');
+        return oriType.replace(/[()]/g, '').replace(' *', '');
     }
 
     private newArrayExpressionToValueAndStmtsCpp(newArrayExpression: any): ValueAndStmts {
@@ -1227,7 +1232,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
             arrayLengthValue = argumentValues[0];
             arrayLengthPosition = argPositions[0];
         } else {
-            arrayLengthValue = ValueUtil.getOrCreateNumberConst(argumentsLength);
+            arrayLengthValue = CppValueUtil.getOrCreateNumberConst(argumentsLength);
             arrayLength = argumentsLength;
         }
         if (baseType instanceof UnknownType) {
@@ -1269,7 +1274,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         const newArrayExprPosition = FullPosition.buildFromNodeCpp(arrayLiteralExpression, this.sourceFile);
         return this.generateArrayExprAndStmtsCpp(
             baseType,
-            ValueUtil.getOrCreateNumberConst(arrayLength),
+            CppValueUtil.getOrCreateNumberConst(arrayLength),
             FullPosition.DEFAULT,
             arrayLength,
             elementValues,
@@ -1299,7 +1304,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
             funcElements = elementValues.length > 5 ? elementValues.slice(2, 5) : [];
             tsFuncNameIdx = 0;
         }
-        funcElements.forEach((element, idx) => {
+        funcElements.forEach((element) => {
             // 当前只在类中寻找匹配的函数，只处理local的情况，完整的类型推导在inferType
             if (element instanceof Local) {
                 const mtdInClass = curArkClass.getMethodWithName((element as Local).getName());
@@ -1352,7 +1357,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         } = this.arkIRTransformerCpp.generateAssignStmtForValue(newArrayExpr, newArrayExprPositions);
         arrayStmts.forEach(stmt => stmts.push(stmt));
         for (let i = 0; i < arrayLength; i++) {
-            const indexValue = ValueUtil.getOrCreateNumberConst(i);
+            const indexValue = CppValueUtil.getOrCreateNumberConst(i);
             const arrayRef = new ArkArrayRef(arrayLocal as Local, indexValue);
             const arrayRefPositions = [arrayLocalPositions[0], ...arrayLocalPositions, FullPosition.DEFAULT];
             const assignStmt = new ArkAssignStmt(arrayRef, initializerValues[i]);
@@ -1383,7 +1388,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         let exprPositions = [FullPosition.buildFromNodeCpp(prefixUnaryExpression, this.sourceFile)];
         if (operatorToken === '++' || operatorToken === '--') {
             const binaryOperator = operatorToken === '++' ? NormalBinaryOperator.Addition : NormalBinaryOperator.Subtraction;
-            const binopExpr = new ArkNormalBinopExpr(operandValue, ValueUtil.getOrCreateNumberConst(1), binaryOperator);
+            const binopExpr = new ArkNormalBinopExpr(operandValue, CppValueUtil.getOrCreateNumberConst(1), binaryOperator);
             exprPositions.push(...operandPositions, FullPosition.DEFAULT);
             const assignStmt = new ArkAssignStmt(operandValue, binopExpr);
             assignStmt.setOperandOriginalPositions([...operandPositions, ...exprPositions]);
@@ -1406,7 +1411,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
                 unopExpr = new ArkUnopExpr(operandValue, operator);
                 exprPositions.push(...operandPositions);
             } else {
-                unopExpr = ValueUtil.getUndefinedConst();
+                unopExpr = CppValueUtil.getUndefinedConst();
                 exprPositions = [FullPosition.DEFAULT];
             }
             return {
@@ -1435,14 +1440,14 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         const operatorToken = postfixUnaryExpression.opcode;
         if (operatorToken === '++' || operatorToken === '--') {
             const binaryOperator = operatorToken === '++' ? NormalBinaryOperator.Addition : NormalBinaryOperator.Subtraction;
-            const binopExpr = new ArkNormalBinopExpr(operandValue, ValueUtil.getOrCreateNumberConst(1), binaryOperator);
+            const binopExpr = new ArkNormalBinopExpr(operandValue, CppValueUtil.getOrCreateNumberConst(1), binaryOperator);
             exprPositions.push(...operandPositions, FullPosition.DEFAULT);
             const assignStmt = new ArkAssignStmt(operandValue, binopExpr);
             assignStmt.setOperandOriginalPositions([...operandPositions, ...exprPositions]);
             stmts.push(assignStmt);
             value = operandValue;
         } else {
-            value = ValueUtil.getUndefinedConst();
+            value = CppValueUtil.getUndefinedConst();
             exprPositions = [FullPosition.DEFAULT];
         }
 
@@ -1460,7 +1465,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
             declaredStmts.forEach(s => stmts.push(s));
         }
         return {
-            value: ValueUtil.getUndefinedConst(),
+            value: CppValueUtil.getUndefinedConst(),
             valueOriginalPositions: [FullPosition.DEFAULT],
             stmts: stmts,
         };
@@ -1542,7 +1547,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
             ({ value: rightValue, valueOriginalPositions: rightPositions, stmts: tempRightStmts } = this.tsNodeToValueAndStmts(rightOpNode));
             tempRightStmts.forEach(stmt => rightStmts.push(stmt));
         } else {
-            rightValue = ValueUtil.getUndefinedConst();
+            rightValue = CppValueUtil.getUndefinedConst();
             rightPositions = [FullPosition.DEFAULT];
         }
         if (IRUtils.moreThanOneAddress(leftValue) && IRUtils.moreThanOneAddress(rightValue)) {
@@ -1589,7 +1594,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
                 }
                 exprValuePositions.push(...opPositions1, ...opPositions2);
             } else {
-                exprValue = ValueUtil.getUndefinedConst();
+                exprValue = CppValueUtil.getUndefinedConst();
                 exprValuePositions.push(binaryExpressionPosition);
             }
         }
@@ -1629,7 +1634,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
             leftOpValue = leftValue;
             leftOpPositions = leftPositions;
         } else {
-            leftOpValue = ValueUtil.getUndefinedConst();
+            leftOpValue = CppValueUtil.getUndefinedConst();
             leftOpPositions = [leftPositions[0]];
         }
         return {
@@ -1683,7 +1688,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
                 } = this.arkIRTransformerCpp.generateAssignStmtForValue(conditionValue, conditionPositions));
                 conditionStmts.forEach(stmt => stmts.push(stmt));
             }
-            conditionExpr = new ArkConditionExpr(conditionValue, ValueUtil.getOrCreateNumberConst(0), RelationalBinaryOperator.InEquality);
+            conditionExpr = new ArkConditionExpr(conditionValue, CppValueUtil.getOrCreateNumberConst(0), RelationalBinaryOperator.InEquality);
             conditionPositions = [conditionPositions[0], ...conditionPositions, FullPosition.DEFAULT];
         }
         return {
@@ -1698,26 +1703,26 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         let constant: Constant | null = null;
         switch (syntaxKind) {
             case 'IntegerLiteral':
-                constant = ValueUtil.getOrCreateNumberConst(parseFloat(literalNode.value));
+                constant = CppValueUtil.getOrCreateNumberConst(parseFloat(literalNode.value));
                 break;
             case 'StringLiteral':
-                constant = ValueUtil.createStringConst(literalNode.value);
+                constant = CppValueUtil.createStringConst(literalNode.value);
                 break;
             case 'CXXBoolLiteralExpr':
-                constant = ValueUtil.getBooleanConstant(literalNode.value);
+                constant = CppValueUtil.getBooleanConstant(literalNode.value);
                 break;
             case 'CharacterLiteral':
-                constant = ValueUtil.createStringConst(literalNode.code);
+                constant = CppValueUtil.createStringConst(literalNode.code);
                 break;
             case 'FloatingLiteral':
-                constant = ValueUtil.getOrCreateNumberConst(parseFloat(literalNode.code))
+                constant = CppValueUtil.getOrCreateNumberConst(parseFloat(literalNode.code))
                 break;
             case 'CXXNullPtrLiteralExpr':
-                constant = ValueUtil.getNullPtrConstant();
+                constant = CppValueUtil.getNullPtrConstant();
                 break;
             case 'AddrLabelExpr':
                 // 在AddrLabelExpr结构下包含LabelRef节点，处于inner[0]的位置
-                constant = ValueUtil.getLabelPtrConstant(literalNode.inner[0].code);
+                constant = CppValueUtil.getLabelPtrConstant(literalNode.inner[0].code);
                 let p = literalNode.parent ? literalNode.parent : literalNode.getParent();
                 const point = p.code.match(/void\s*([^=]+)=/)[1].trim();
                 let stored = false;

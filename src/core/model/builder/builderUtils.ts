@@ -96,7 +96,7 @@ export function buildDecorators(node: ts.Node, sourceFile: ts.SourceFile): Set<D
     return decorators;
 }
 
-function parseDecorator(node: ts.Decorator): Decorator | undefined {
+export function parseDecorator(node: ts.Decorator): Decorator | undefined {
     if (!node.expression) {
         return undefined;
     }

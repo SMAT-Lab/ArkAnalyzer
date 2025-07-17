@@ -55,3 +55,34 @@ export const THROW_EXPECT_CASE2 = {
         { id: 4, stmts: [ 'return 0' ], preds: [ 3 ], succes: [] }
     ]
 };
+
+export const THROW_EXPECT_CASE3= {
+    blocks: [
+        {
+            id: 0,
+            stmts: [ 'this = this: @throw/throwSample.cpp: %dflt' ],
+            preds: [],
+            succes: [ 1 ]
+        },
+        {
+            id: 1,
+            stmts: [
+                "staticinvoke <@%unk/%unk: .cout()>('before throw')",
+                'throw 42',
+                "staticinvoke <@%unk/%unk: .cout()>('after throw')"
+            ],
+            preds: [ 0 ],
+            succes: [ 4 ]
+        },
+        {
+            id: 2,
+            stmts: [ 'e = caughtexception: unknown' ],
+            preds: [],
+            succes: [3]
+        },
+        { id: 3, stmts: ["staticinvoke <@%unk/%unk: .cout()>('Caught exception: ', e)"],
+            preds: [ 2 ], succes: [] },
+        { id: 4, stmts: [], preds: [ 1 ], succes: [5] },
+        { id: 5, stmts: ['return'], preds: [ 4 ], succes: [] }
+    ]
+};
