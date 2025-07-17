@@ -233,9 +233,13 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         } else if (node.kind === 'IntegerLiteral') {
             return this.literalNodeToValueAndStmtsCpp(node) as ValueAndStmts;
         } else if (node.kind === 'InitListExpr') {
+            if (node.type.qualType.includes("[") && node.type.qualType.includes("]")) {
+                // 结构体初始化则调用构造函数去初始化
+                return this.arrayLiteralExpressionToValueAndStmtsCpp(node);
+            }
             // 数组和结构体都可以用{}初始化，此处需要做区分
             let pNode = node.getParent(true);
-            if ((pNode.inner[0].kind === 'TypeRef' && !node.type.qualType.includes("["))
+            if (pNode.inner[0].kind === 'TypeRef' || !node.type.qualType.includes("[")
                 || this.resolveTypeNodeCpp(node.type.qualType) instanceof ClassType) {
                 // 结构体初始化则调用构造函数去初始化
                 return this.newExpressionToValueAndStmtsCpp(node);
