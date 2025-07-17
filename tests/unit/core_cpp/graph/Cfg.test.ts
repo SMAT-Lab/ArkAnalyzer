@@ -206,7 +206,7 @@ import {
     ADDRLABEL_EXPECT_CASE1,
     ADDRLABEL_EXPECT_CASE2, ADDRLABEL_EXPECT_CASE3,
 } from '../../../resources_cpp/cfg/addrLabelExpr/addrLabelExprExpect';
-
+import { NAMESPACE_CASE1 } from "../../../resources_cpp/cfg/namespace/namespace";
 
 describe('CfgTest', () => {
     it('case1: conditional operator', () => {
@@ -515,6 +515,14 @@ describe('Lazy Import Test', () => {
     it('case8: lazy import case8', () => {
             const scene = buildScene('lazyImport/lazyImportCase8');
             testBlocks(scene, 'lazyImportCase8.cpp', 'NativeCallArkTS', NativeCallArkTS8_EXPECT.blocks);
+        },
+    );
+});
+
+describe('namespace Test', () => {
+    it('case1: namespace', () => {
+            const scene = buildScene('namespace');
+            testBlocks(scene, 'namespace.cpp', 'test', NAMESPACE_CASE1.blocks);
         },
     );
 });

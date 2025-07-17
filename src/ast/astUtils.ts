@@ -42,7 +42,8 @@ export class AstUtils {
 
     private static updateInner(sourceFile: string, firstOccurrenceOfMainFile:boolean, entry:any, newInner:any[]): void {
         if (!firstOccurrenceOfMainFile){
-            if (Object.prototype.hasOwnProperty.call(entry, "isImplicit") && entry.isImplicit) {
+            if (Object.prototype.hasOwnProperty.call(entry, "isImplicit")
+                && entry.isImplicit && entry.kind != 'UsingDirectiveDecl') {
                 return;
             }
             let fileName = "";
