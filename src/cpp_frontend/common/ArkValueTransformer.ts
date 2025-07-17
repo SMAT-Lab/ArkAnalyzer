@@ -1155,6 +1155,9 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         const instanceInvokeExprPositions = [newLocalPositions[0], ...newLocalPositions, ...argPositions];
         invokeStmt.setOperandOriginalPositions(instanceInvokeExprPositions);
         stmts.push(invokeStmt);
+        if (className === 'napi_property_descriptor') {
+            this.setTs2CppFuncMapOfClass(argValues,false);
+        }
         if ((newExpression.kind === 'CompoundLiteralExpr' && newExpression.inner[1].kind === 'InitListExpr')) {
             const newExpr = newExpression.kind === 'InitListExpr' ? newExpression : newExpression.inner[1];
             for (const element of newExpr.inner) {
