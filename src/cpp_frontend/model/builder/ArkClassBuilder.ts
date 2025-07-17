@@ -54,8 +54,8 @@ export function buildNormalArkClassFromArkFile(
 ): void {
     cls.setDeclaringArkFile(arkFile);
     cls.setCode(clsNode.name);
-    cls.setLine(clsNode.loc.line);
-    cls.setColumn(clsNode.loc.col);
+    cls.setLine(clsNode.range.begin.line);
+    cls.setColumn(clsNode.range.begin.col);
     buildNormalArkClass(clsNode, cls, sourceFile, declaringMethod);
     arkFile.addArkClass(cls);
 }
@@ -70,9 +70,9 @@ export function buildNormalArkClassFromArkNamespace(
     cls.setDeclaringArkNamespace(arkNamespace);
     cls.setDeclaringArkFile(arkNamespace.getDeclaringArkFile());
     cls.setCode(clsNode.code);
-    if (clsNode.hasOwnProperty("loc")){
-        cls.setLine(clsNode.loc.line);
-        cls.setColumn(clsNode.loc.col);
+    if (clsNode.range?.begin){
+        cls.setLine(clsNode.range.begin.line);
+        cls.setColumn(clsNode.range.begin.col);
     }
     buildNormalArkClass(clsNode, cls, sourceFile, declaringMethod);
     //arkNamespace.addArkClass(cls);

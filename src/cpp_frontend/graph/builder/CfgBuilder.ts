@@ -971,13 +971,13 @@ export class CfgBuilder {
     addStmtBuilderPosition(): void {
         for (const stmt of this.statementArray) {
             if (stmt.astNode) {
-                if(stmt.astNode.loc && stmt.astNode.loc.line) {
-                    stmt.line = stmt.astNode.loc.line;
+                if(stmt.astNode.range?.begin && stmt.astNode.range.begin.line) {
+                    stmt.line = stmt.astNode.range.begin.line;
                 } else {
                     stmt.line = 0;
                 }
-                if(stmt.astNode.loc && stmt.astNode.loc.col) {
-                    stmt.column = stmt.astNode.loc.col;
+                if(stmt.astNode.range?.begin && stmt.astNode.range.begin.col) {
+                    stmt.column = stmt.astNode.range.begin.col;
                 } else {
                     stmt.column = 0;
                 }

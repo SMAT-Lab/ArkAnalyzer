@@ -136,8 +136,8 @@ export function buildArkMethodFromArkClass(
     // @ts-ignore
     const methodSubSignature = new MethodSubSignature(methodName, methodParameters, returnType, mtd.isStatic());
     const methodSignature = new MethodSignature(mtd.getDeclaringArkClass().getSignature(), methodSubSignature);
-    const line = methodNode.loc?methodNode.loc.line : methodNode.range.begin.line;
-    const character = methodNode.loc ? methodNode.loc.col : methodNode.range.begin.col;
+    const line = methodNode.range.begin.line;
+    const character = methodNode.range.begin.col;
     if (isMethodImplementation(methodNode)) {
         mtd.setImplementationSignature(methodSignature);
         mtd.setLine(line);
