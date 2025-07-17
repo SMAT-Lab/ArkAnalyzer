@@ -21,24 +21,15 @@ import { normalize } from 'path';
 
 export function buildImportInfo(node: any, sourceFile: any, arkFile: ArkFile): ImportInfo[] {
     if (node.kind === 'inclusion directive') {
-        return buildImportDeclarationNode(node, sourceFile, arkFile);
+        // just like: #include '../xxx' => import '../xxx'
+        return buildGenericImportInfo(node, sourceFile, arkFile, n => `#include "${normalize(n.fileName ?? n.name ?? '')}"`);
     }
     if (node.kind === 'UsingDirectiveDecl') {
-        return buildUsingDeclarationNode(node, sourceFile, arkFile);
+        return buildGenericImportInfo(node, sourceFile, arkFile, n => n.code);
 
     }
     return [];
 }
-
-function buildImportDeclarationNode(node: any, sourceFile: any, arkFile: ArkFile): ImportInfo[] {
-    // just like: #include '../xxx' => import '../xxx'
-    return buildGenericImportInfo(node, sourceFile, arkFile, n => `#include "${normalize(n.fileName ?? n.name ?? '')}"`);
-}
-
-function buildUsingDeclarationNode(node: any, sourceFile: any, arkFile: ArkFile): ImportInfo[] {
-    return buildGenericImportInfo(node, sourceFile, arkFile, n => n.code);
-}
-
 
 function buildGenericImportInfo(
     node: any,
