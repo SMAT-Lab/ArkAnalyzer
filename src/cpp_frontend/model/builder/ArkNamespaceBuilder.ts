@@ -76,7 +76,7 @@ export function buildArkNamespace(node: any, declaringInstance: ArkFile | ArkNam
 function buildNamespaceMembers(node: any, namespace: ArkNamespace, sourceFile: any): void {
     const statements = node.inner;
     statements.forEach((child:any) => {
-        if (child.kind === 'NamespaceDecl') {
+        if (child.kind === 'Namespace') {
             let childNs: ArkNamespace = new ArkNamespace();
             childNs.setDeclaringArkNamespace(namespace);
             childNs.setDeclaringArkFile(namespace.getDeclaringArkFile());

@@ -23,7 +23,7 @@ export const MY_HEADER_EXPORT_INFO_EXPECT_IR = {
     modifiers: [],
     arkExport: {
         type: ArkMethod,
-        methodSignature: `@exports/indirectRef/include/myHeader.h: ${DEFAULT_ARK_CLASS_NAME}`,
+        methodSignature: `@exports/indirectRef/include/myHeader.h: ${DEFAULT_ARK_CLASS_NAME}.funcDoSomething(int, int)`,
         modifiers: []
     }
 };
@@ -35,7 +35,7 @@ export const CAST_SAMPLE_EXPORT_INFO_EXPECT_IR = {
     modifiers: [],
     arkExport: {
         type: ArkMethod,
-        methodSignature: `@exports/indirectRef/include/castSample.h: ${DEFAULT_ARK_CLASS_NAME}`,
+        methodSignature: `@exports/indirectRef/include/castSample.h: ${DEFAULT_ARK_CLASS_NAME}.CXXStaticCast(int)`,
         modifiers: []
     }
 };
