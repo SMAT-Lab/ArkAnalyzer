@@ -1164,7 +1164,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
             this.setTs2CppFuncMapOfClass(argValues,false);
         }
         if ((newExpression.kind === 'CompoundLiteralExpr' && newExpression.inner[1].kind === 'InitListExpr')) {
-            const newExpr = newExpression.kind === 'InitListExpr' ? newExpression : newExpression.inner[1];
+            const newExpr = newExpression.inner[1];
             for (const element of newExpr.inner) {
                 const memberValueAndStmts = this.memberExpressionToValueAndStmts(element.inner[0],newLocal);
                 const fieldRef = memberValueAndStmts.value;
