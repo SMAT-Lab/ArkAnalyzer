@@ -28,7 +28,7 @@ import { ArkField } from '../../../core/model/ArkField';
 import { ArkClass } from '../../../core/model/ArkClass';
 import { ArkMethod } from '../../../core/model/ArkMethod';
 import { MethodParameter } from '../../../core/model/builder/ArkMethodBuilder';
-import { modifierKind2Enum, modifierKind2EnumCpp } from '../../../core/model/ArkBaseModel';
+import { modifierKind2EnumCpp } from '../../../core/model/ArkBaseModel';
 import { buildGenericType } from '../../../core/model/builder/builderUtils';
 
 function extractCommonModifiers(node:any):number{
@@ -36,10 +36,10 @@ function extractCommonModifiers(node:any):number{
     const nodeType: string = node?.type?.qualType ?? "";
 
     if (Object.prototype.hasOwnProperty.call(node, "access")){
-        modifiers |= modifierKind2Enum(node.access);
+        modifiers |= modifierKind2EnumCpp(node.access);
     }
     if (Object.prototype.hasOwnProperty.call(node, "storageClass")){
-        modifiers |= modifierKind2Enum(node.storageClass);
+        modifiers |= modifierKind2EnumCpp(node.storageClass);
     }
     if (nodeType.includes("const")){
         modifiers |= modifierKind2EnumCpp("const");

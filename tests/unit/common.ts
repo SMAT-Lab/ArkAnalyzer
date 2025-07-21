@@ -23,6 +23,7 @@ import {
     Stmt,
 } from '../../src';
 import { assert, expect } from 'vitest';
+import { ArkClass } from '../../src';
 
 export function buildScene(projectPath: string, needInferTypes: boolean = true) {
     const config: SceneConfig = new SceneConfig();
@@ -78,6 +79,25 @@ export function testBlocks(scene: Scene, filePath: string, methodName: string, e
     const arkFile = scene.getFiles().find((file) => file.getName().endsWith(filePath));
     const arkMethod = arkFile?.getDefaultClass().getMethods()
         .find((method) => (method.getName() === methodName));
+    const blocks = arkMethod?.getCfg()?.getBlocks();
+    if (!blocks) {
+        assert.isDefined(blocks);
+        return;
+    }
+    // @ts-ignore
+    assertBlocksEqual(blocks, expectBlocks);
+}
+
+export function testBlocksWithSignature(scene: Scene, filePath: string, className: string, methodSubSignature: string, expectBlocks: any[]): void {
+    const arkFile = scene.getFiles().find((file) => file.getName().endsWith(filePath));
+    let curClass: ArkClass | null | undefined;
+    if (!className) {
+        curClass = arkFile?.getDefaultClass();
+    } else {
+        curClass = arkFile?.getClassWithName(className);
+    }
+    const arkMethod = curClass?.getMethods()
+        .find((method) => (method.getSignature().getMethodSubSignature().toString() === methodSubSignature));
     const blocks = arkMethod?.getCfg()?.getBlocks();
     if (!blocks) {
         assert.isDefined(blocks);
