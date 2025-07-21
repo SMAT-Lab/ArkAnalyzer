@@ -77,6 +77,8 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
 
     // In order to record the mapping between arkTS and CPP functions
     private ts2CppFuncMap: Map<string, ArkMethod[]> = new Map<string, ArkMethod[]>();
+    // Record overload methods in cpp. Key of Map is method's name.
+    private overloadMethods: Map<string, ArkMethod[]> = new Map<string, ArkMethod[]>();
 
     constructor() {
         super();
@@ -353,24 +355,36 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
     public getMethods(generated?: boolean): ArkMethod[] {
         const allMethods = Array.from(this.methods.values()).filter(f => (!generated && !f.isGenerated()) || generated);
         allMethods.push(...this.staticMethods.values());
+        const allOverloadMtds: ArkMethod[][] = [...this.overloadMethods.values()];
+        allMethods.push(...allOverloadMtds.flat());
         return [...new Set(allMethods)];
     }
 
     public getMethod(methodSignature: MethodSignature): ArkMethod | null {
         const methodName = methodSignature.getMethodSubSignature().getMethodName();
-        const methodSearched = this.getMethodWithName(methodName) ?? this.getStaticMethodWithName(methodName);
-        if (methodSearched === null) {
+        const methodsWithSameName = this.getAllMethodsWithName(methodName);
+        if (methodsWithSameName.length === 0) {
             return null;
         }
-        const implSignature = methodSearched.getImplementationSignature();
-        if (implSignature !== null && implSignature.isMatch(methodSignature)) {
-            return methodSearched;
+        for (const mtd of methodsWithSameName) {
+            let methodMatched = this.findMatchingMethod(mtd, methodSignature);
+            if (methodMatched) {
+                return methodMatched;
+            }
         }
-        const declareSignatures = methodSearched.getDeclareSignatures();
+        return null;
+    }
+
+    private findMatchingMethod(mtd: ArkMethod, methodSignature: MethodSignature) {
+        const implSignature = mtd.getImplementationSignature();
+        if (implSignature !== null && implSignature.isMatch(methodSignature)) {
+            return mtd;
+        }
+        const declareSignatures = mtd.getDeclareSignatures();
         if (declareSignatures !== null) {
             for (let i = 0; i < declareSignatures.length; i++) {
                 if (declareSignatures[i].isMatch(methodSignature)) {
-                    return methodSearched;
+                    return mtd;
                 }
             }
         }
@@ -404,6 +418,43 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
                 this.addMethod(method, originName);
             }
         }
+    }
+
+    public addOverloadMethod(newMethod: ArkMethod): void {
+        const methodName = newMethod.getName();
+        const existingMtd = this.getMethodWithName(methodName) ?? this.getStaticMethodWithName(methodName);
+        if (!existingMtd) {
+            return;
+        }
+        const newMethodSignature = newMethod.getSignature();
+        if (!this.overloadMethods.has(methodName)) {
+            if (newMethodSignature.isMatch(existingMtd.getSignature())) {
+                return;
+            }
+            this.overloadMethods.set(methodName, [existingMtd, newMethod]);
+            return;
+        }
+        const overloadMethods = this.overloadMethods.get(methodName);
+        const index = overloadMethods!.findIndex(
+            curMtd => curMtd.getSignature().isMatch(newMethodSignature));
+        if (index !== -1) {
+            overloadMethods![index] = newMethod;
+        } else {
+            overloadMethods!.push(newMethod);
+        }
+    }
+
+    // In the case of overloading, there are multiple methods with the same name.
+    public getAllMethodsWithName(methodName: string): ArkMethod[] {
+        const sameNameMethods = this.overloadMethods.get(methodName) ?? [];
+        if (sameNameMethods.length !== 0) {
+            return sameNameMethods;
+        }
+        const matchedMtd = this.methods.get(methodName) ?? this.staticMethods.get(methodName);
+        if (matchedMtd) {
+            sameNameMethods.push(matchedMtd);
+        }
+        return sameNameMethods;
     }
 
     public setDefaultArkMethod(defaultMethod: ArkMethod): void {

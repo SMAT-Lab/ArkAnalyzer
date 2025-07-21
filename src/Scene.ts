@@ -300,16 +300,15 @@ export class Scene {
             const isCppFile = file.getLanguage() === Language.CPLUS;
             for (const cls of ModelUtils.getAllClassesInFile(file)) {
                 buildDefaultConstructor(cls);
-                const constructor = cls.getMethodWithName(CONSTRUCTOR_NAME);
-                if (constructor === null) {
+                const constructors = cls.getAllMethodsWithName(CONSTRUCTOR_NAME);
+                if (constructors.length === 0) {
                     continue;
                 }
-                replaceSuper2Constructor(constructor);
-                if (isCppFile) {
-                    addInitInConstructorCpp(constructor);
-                } else {
-                    addInitInConstructor(constructor);
-                }
+                const initInConstructorFn = isCppFile ? addInitInConstructorCpp : addInitInConstructor;
+                constructors.forEach(constructor => {
+                    replaceSuper2Constructor(constructor);
+                    initInConstructorFn(constructor);
+                });
             }
         }
     }
