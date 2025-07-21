@@ -233,10 +233,15 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         } else if (node.kind === 'IntegerLiteral') {
             return this.literalNodeToValueAndStmtsCpp(node) as ValueAndStmts;
         } else if (node.kind === 'InitListExpr') {
+            if (node.type.qualType.includes("[") && node.type.qualType.includes("]")||
+                node.type.qualType === 'void') {
+                // 结构体初始化则调用构造函数去初始化
+                return this.arrayLiteralExpressionToValueAndStmtsCpp(node);
+            }
             // 数组和结构体都可以用{}初始化，此处需要做区分
-            if (node.type.qualType.includes("struct") || node.type.qualType.includes("union") ||
-                this.resolveTypeNodeCpp(node.type.qualType ||
-                !(node.type.qualType.includes("[") && node.type.qualType.includes("]"))) instanceof ClassType) {
+            let pNode = node.getParent(true);
+            if (pNode.inner[0].kind === 'TypeRef' || !node.type.qualType.includes("[")
+                || this.resolveTypeNodeCpp(node.type.qualType) instanceof ClassType) {
                 // 结构体初始化则调用构造函数去初始化
                 return this.newExpressionToValueAndStmtsCpp(node);
             }
@@ -1159,7 +1164,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
             this.setTs2CppFuncMapOfClass(argValues,false);
         }
         if ((newExpression.kind === 'CompoundLiteralExpr' && newExpression.inner[1].kind === 'InitListExpr')) {
-            const newExpr = newExpression.kind === 'InitListExpr' ? newExpression : newExpression.inner[1];
+            const newExpr = newExpression.inner[1];
             for (const element of newExpr.inner) {
                 const memberValueAndStmts = this.memberExpressionToValueAndStmts(element.inner[0],newLocal);
                 const fieldRef = memberValueAndStmts.value;
