@@ -1,6 +1,7 @@
 # ArkAnalyzer-CPP前端
 
 ## 一、ArkAnalyzer-CPP工具使用介绍
+### 1、外部接口调用
 在本分支下，对ArkAnalyzer使用者提供统一接口调用，可以参考tests/unit/core_cpp/graph/Cfg.test.ts测试文件中的构建
 ```
     let config: SceneConfig = new SceneConfig();
@@ -9,12 +10,20 @@
     scene.buildSceneFromProjectDir(config);
     return scene;
 ```
-只需要调用SceneConfig和scene构建即可，其中config.buildFromProjectDir()传入的参数是需要解析的项目路径。
+只需要调用SceneConfig和scene构建即可，其中config.buildFromProjectDir()传入的参数是需要解析的项目路径。该函数位置在src/Scene.ts中
+以一个if代码的解析做介绍，解析过程如下图所示:
+![img.png](img.png)
 在解析过程中，genArkFiles函数会区分文件类型，对于cpp文件会调用buildArkFileFromFileCpp生成对应语法树。
 在genArkFiles下的buildAllMethodBody中调用method.freeBodyBuilderCpp()进行函数内语句的解析。
+### 2、解析结果，scene展示
+如下图所示
+![img_1.png](img_1.png)
+![img_2.png](img_2.png)
 
 一般情况下，CPP语言解析得到的Scene结构和Ts语言所解析出的结构是相同的，这个scene屏蔽掉语言的差异，便于开发者做其他方向的使用。
 如果一个cpp接口是在ts语言中被调用的接口，会在Scene结构中添加ts2CppFuncMap进行暴露，通过setTs2CppFuncMapOfClass函数进行填充。
+这里以懒加载任务提供的代码示例
+![img_3.png](img_3.png)
 
 ## 二、cpp_frontend模块介绍
 
@@ -22,45 +31,45 @@
 
 ### 1、common模块
 
-#### ArkIRTransformerCpp：继承ArkAnalyzer/src/core/common下的ArkIRTransformer，复用了ArkIRTransformer下的方法，根据c++语法重写和新增了ArkIRTransformerCpp下的方法
+ ArkIRTransformerCpp：继承ArkAnalyzer/src/core/common下的ArkIRTransformer，复用了ArkIRTransformer下的方法，根据c++语法重写和新增了ArkIRTransformerCpp下的方法
 
-#### ArkValueTransformerCPP：继承ArkAnalyzer/src/core/common下的ArkValueTransformer，复用了ArkValueTransformer下的方法，根据c++语法重写和新增了ArkValueTransformerCpp下的方法
+ ArkValueTransformerCPP：继承ArkAnalyzer/src/core/common下的ArkValueTransformer，复用了ArkValueTransformer下的方法，根据c++语法重写和新增了ArkValueTransformerCpp下的方法
 
-#### ModelUtils：根据c++语法编写了关于获取头文件的include信息的方法
+ ModelUtils：根据c++语法编写了关于获取头文件的include信息的方法
 
-#### TypeInference：根据c++语法编写了关于类型推断的方法，该文件下许多方法的函数体与ArkAnalyzer/src/core/common/TypeInference相同，因为c++和typescript使用的AST结构不同，所以不能复用
+TypeInference：根据c++语法编写了关于类型推断的方法，该文件下许多方法的函数体与ArkAnalyzer/src/core/common/TypeInference相同，因为c++和typescript使用的AST结构不同，所以不能复用
 
-#### ValueUtilsCpp：继承ArkAnalyzer/src/core/common下的ValueUtils,复用了ValueUtils下的方法，根据c++语法新增了normalizeString和createStringConst两个方法
+ValueUtilsCpp：继承ArkAnalyzer/src/core/common下的ValueUtils,复用了ValueUtils下的方法，根据c++语法新增了normalizeString和createStringConst两个方法
 
 ### 2、graph模块
 
-#### CfgBuilder：根据c++语法编写了关于构建cfg的方法，复用了ArkAnalyzer/src/core/graph/builder/CfgBuilder下的BlockBuilder, Case, Catch, TextError, Variable, Scope对象
+CfgBuilder：根据c++语法编写了关于构建cfg的方法，复用了ArkAnalyzer/src/core/graph/builder/CfgBuilder下的BlockBuilder, Case, Catch, TextError, Variable, Scope对象
 
 ### 3、model模块
 
-#### ArkClassBuilder：根据c++语法编写了关于构建cfg结构下ArkClass的方法，复用了ArkAnalyzer/src/core/model/builder/ArkClassBuilder下的方法和对象
+ ArkClassBuilder：根据c++语法编写了关于构建cfg结构下ArkClass的方法，复用了ArkAnalyzer/src/core/model/builder/ArkClassBuilder下的方法和对象
 
-#### ArkFieldBuilder：根据c++语法编写了关于构建cfg结构下ArkField的方法
+ ArkFieldBuilder：根据c++语法编写了关于构建cfg结构下ArkField的方法
 
-#### ArkFileBuilder：根据c++语法编写了关于构建cfg结构下ArkFile的方法，复用了ArkAnalyzer/src/core/model/builder下ArkExportBuilder和ArkClassBuilder的方法
+ ArkFileBuilder：根据c++语法编写了关于构建cfg结构下ArkFile的方法，复用了ArkAnalyzer/src/core/model/builder下ArkExportBuilder和ArkClassBuilder的方法
 
-#### ArkImportBuilder：根据c++语法编写了关于构建cfg结构下ArkInclude的方法
+ ArkImportBuilder：根据c++语法编写了关于构建cfg结构下ArkInclude的方法
 
-#### ArkMethodBuilder：根据c++语法编写了关于构建cfg结构下ArkMethod的方法，复用了ArkAnalyzer/src/core/model/builder下ViewTreeBuilder和ArkMethodBuilder的方法和对象
+ ArkMethodBuilder：根据c++语法编写了关于构建cfg结构下ArkMethod的方法，复用了ArkAnalyzer/src/core/model/builder下ViewTreeBuilder和ArkMethodBuilder的方法和对象
 
-#### ArkNamespaceBuilder：根据c++语法编写了关于构建cfg结构下ArkNamespace的方法，复用了ArkAnalyzer/src/core/model/builder/ArkNamespaceBuilder下的方法
+ ArkNamespaceBuilder：根据c++语法编写了关于构建cfg结构下ArkNamespace的方法，复用了ArkAnalyzer/src/core/model/builder/ArkNamespaceBuilder下的方法
 
-#### BodyBuilderCpp：根据c++语法编写了关于构建整个cfg结构的方法，从BodyBuilderCpp开始调用cpp_frontend模块下的方法，复用了ArkAnalyzer/src/core/model/builder/ArkMethodBuilder的方法
+ BodyBuilderCpp：根据c++语法编写了关于构建整个cfg结构的方法，从BodyBuilderCpp开始调用cpp_frontend模块下的方法，复用了ArkAnalyzer/src/core/model/builder/ArkMethodBuilder的方法
 
-#### builderUtils：根据c++语法编写了关于构建cfg的常规方法，复用了ArkAnalyzer/src/core/model/builder下ArkMethodBuilder和builderUtils的方法
+ builderUtils：根据c++语法编写了关于构建cfg的常规方法，复用了ArkAnalyzer/src/core/model/builder下ArkMethodBuilder和builderUtils的方法
 
 ## 三、ArkAnalyzer-CPP前端暴露接口，ArkAnalyzer/src/Scene下调用
 
-#### 1、ArkAnalyzer/src/cpp_frontend/model/builder/ArkFileBuilder下的buildArkFileFromFile方法，该方法获取c++的抽象语法树
+ 1、ArkAnalyzer/src/cpp_frontend/model/builder/ArkFileBuilder下的buildArkFileFromFile方法，该方法获取c++的抽象语法树
 
-#### 2、ArkAnalyzer/src/cpp_frontend/model/builder/ArkMethodBuilder下的addInitInConstructor方法，该方法添加默认的构造函数
+ 2、ArkAnalyzer/src/cpp_frontend/model/builder/ArkMethodBuilder下的addInitInConstructor方法，该方法添加默认的构造函数
 
-#### 3、ArkAnalyzer/src/cpp_frontend/model/ArkMethod下的buildBodyCpp和freeBodyBuilderCpp方法，作用分别是构建cfg和释放资源
+ 3、ArkAnalyzer/src/cpp_frontend/model/ArkMethod下的buildBodyCpp和freeBodyBuilderCpp方法，作用分别是构建cfg和释放资源
 
 ## 四、ArkAnalyzer-CPP工具开发介绍
 ### 本部分介绍ArkAnalzyer解析Cpp源码生成IR的接口逻辑，主要是关键函数相关的调用逻辑，以及函数功能的介绍
