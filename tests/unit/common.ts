@@ -87,7 +87,7 @@ export function testBlocks(scene: Scene, filePath: string, methodName: string, e
     assertBlocksEqual(blocks, expectBlocks);
 }
 
-export function showTestBlocks(scene: Scene, filePath: string, methodName: string, expectBlocks: any[]): void {
+export function showTestBlocks(scene: Scene, filePath: string, methodName: string): void {
     const arkFile = scene.getFiles().find((file) => file.getName().endsWith(filePath));
     const arkMethod = arkFile?.getDefaultClass().getMethods()
         .find((method) => (method.getName() === methodName));
@@ -97,10 +97,10 @@ export function showTestBlocks(scene: Scene, filePath: string, methodName: strin
         return;
     }
     // @ts-ignore
-    showCfgStmt(blocks, expectBlocks);
+    showCfgStmt(blocks);
 }
 
-export function showCfgStmt(blocks: Set<BasicBlock>, expectBlocks: any[]): void {
+export function showCfgStmt(blocks: Set<BasicBlock>): void {
     const blockMap = new Map<number, BasicBlock>();
     for (const block of blocks) {
         blockMap.set(block.getId(), block);
@@ -177,14 +177,14 @@ export function assertClassBlocksEqual(method: any, expectBlocks: any[]) {
     assertBlocksEqual(blocks, expectBlocks);
 }
 
-export function showClassBlocksEqual(method: any, expectBlocks: any[]) {
+export function showClassBlocksEqual(method: any) {
     const blocks: Set<BasicBlock> = method?.getCfg()?.getBlocks();
     if (!blocks) {
         assert.isDefined(blocks);
         return;
     }
     console.log('===============', method.getName(), '================');
-    showCfgStmt(blocks, expectBlocks);
+    showCfgStmt(blocks);
 }
 
 export function assertStmtsEqual(stmts: Stmt[], expectStmts: any[], assertPos: boolean = true): void {

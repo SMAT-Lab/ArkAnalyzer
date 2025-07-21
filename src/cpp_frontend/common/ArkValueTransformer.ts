@@ -178,6 +178,8 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
             return this.newExpressionToValueAndStmtsCpp(node);
         } else if (node.kind === 'CallExpr' && node.inner[0].kind === 'CXXPseudoDestructorExpression') {
             return this.callExpressionToValueAndStmtsCpp(node.inner[0]);
+        } else if (node.kind === 'CallExpr' && node.name === 'basic_string') {
+            return this.tsNodeToValueAndStmts(node.inner[0]);
         } else if (node.kind === 'CallExpr' || node.kind === 'AtomicCallExpr' || node.kind === 'CXXFoldExpr') {
             return this.callExpressionToValueAndStmtsCpp(node);
         } else if (node.kind === 'CXXNoexceptExpr') {
