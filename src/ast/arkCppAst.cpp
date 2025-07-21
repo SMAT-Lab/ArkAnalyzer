@@ -625,6 +625,9 @@ json addCXXCtorInitializer(json &children) {
         if (children[i]["kind"] == "CallExpr" && children[i]["inner"][0]["kind"] == "ImplicitCastExpr") {
             children[i] = children[i]["inner"][0];
         }
+        if (children[i]["kind"] == "CallExpr" && children[i]["inner"][0]["kind"] == "DeclRefExpr") {
+            children[i]["kind"] = "ImplicitCastExpr";
+        }
         if (children[i]["kind"] == "ImplicitCastExpr" || children[i]["kind"] == "IntegerLiteral" ||
         children[i]["kind"] == "StringLiteral" || children[i]["kind"] == "CharacterLiteral" || children[i]["kind"] == "FloatingLiteral") {
             if (!member.is_null()) {
