@@ -179,7 +179,7 @@ import { IOSTREAM_EXPECT_CASE1 } from '../../../resources_cpp/cfg/iostream/iostr
 import {NULLPTR_EXPECT_CASE1} from '../../../resources_cpp/cfg/nullPtr/nullPtrSampleExpects';
 import { BASE_DATA_TYPE_EXPECT_MAIN } from '../../../resources_cpp/cfg/baseDataType/baseDataTypeExpects';
 import {WHILE_CONTINUE_EXPECT_MAIN} from '../../../resources_cpp/cfg/whileContinue/whileContinueSampleExpects';
-import { assertClassBlocksEqual, testBlocks } from '../../common';
+import { assertClassBlocksEqual, testBlocks, testBlocksWithSignature } from '../../common';
 import { Scene } from '../../../../src';
 import {
     ANIMAL_CLASS_EXPECT,
@@ -207,6 +207,14 @@ import {
     ADDRLABEL_EXPECT_CASE2, ADDRLABEL_EXPECT_CASE3,
 } from '../../../resources_cpp/cfg/addrLabelExpr/addrLabelExprExpect';
 import { NAMESPACE_CASE1 } from "../../../resources_cpp/cfg/namespace/namespace";
+import {
+    OVERLOAD_PRINT_INFO_CASE1_EXPECT,
+    OVERLOAD_PRINT_INFO_CASE2_EXPECT,
+    OVERLOAD_PRINT_INFO_CASE3_EXPECT,
+    OVERLOAD_CLASS_PERSON_EXPECT,
+    OVERLOAD_MAIN_EXPECT,
+} from '../../../resources_cpp/cfg/overload/overloadExpect';
+
 
 describe('CfgTest', () => {
     it('case1: conditional operator', () => {
@@ -412,6 +420,18 @@ describe('Function Test', () => {
         testBlocks(scene, 'deleteExpr.cpp', 'delMember', DELETE_EXPECT_CASE4.blocks);
         },
     );
+
+    it('case5: Overload Test', () => {
+        const scene = buildScene('overload');
+        testBlocksWithSignature(scene, 'overloadSample.cpp', '',
+            'printInfo(int)', OVERLOAD_PRINT_INFO_CASE1_EXPECT.blocks);
+        testBlocksWithSignature(scene, 'overloadSample.cpp', '',
+            'printInfo(char)', OVERLOAD_PRINT_INFO_CASE2_EXPECT.blocks);
+        testBlocksWithSignature(scene, 'overloadSample.cpp', '',
+            'printInfo(int, char)', OVERLOAD_PRINT_INFO_CASE3_EXPECT.blocks);
+        testBlocksClass(scene, 'overloadSample.cpp', 'Person', OVERLOAD_CLASS_PERSON_EXPECT, true);
+        testBlocks(scene, 'overloadSample.cpp', 'main', OVERLOAD_MAIN_EXPECT.blocks);
+    });
 });
 
 
@@ -539,7 +559,7 @@ function buildScene(folderName: string): Scene {
     return scene;
 }
 
-function testBlocksClass(scene: Scene, filePath: string, className: string, expectBlocks: any): void {
+function testBlocksClass(scene: Scene, filePath: string, className: string, expectBlocks: any, isCheckOverload?: boolean): void {
     const arkFile = scene.getFiles().find((file) => file.getName().endsWith(filePath));
     const arkClass = arkFile?.getClasses().find(arkClass => (arkClass.getName() === className));
     const classBlockMap = new Map<String, BasicBlock[]>();
@@ -560,7 +580,8 @@ function testBlocksClass(scene: Scene, filePath: string, className: string, expe
     expect(fieldOfClass).toEqual(new Set(expectBlocks.fields));
     // 3.判断类的成员函数
     arkClass?.getMethods()?.forEach(method =>{
-        const classBlock = classBlockMap.get(method.getName());
+        const mapKey = isCheckOverload ? method.getSubSignature().toString() : method.getName();
+        const classBlock = classBlockMap.get(mapKey);
         if (classBlock) {
             assertClassBlocksEqual(method, classBlock);
         }
