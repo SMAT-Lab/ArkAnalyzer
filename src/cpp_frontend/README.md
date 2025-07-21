@@ -142,7 +142,7 @@ scene.buildSceneFromProjectDir(config);
 在buildArkFileFromFileCpp函数中调用AstUtils.parse()函数生成并记录生成的语法树
 AstUtils.parse()：在该函数中的核心代码是调用ast生成工具arkCppAstDumper.exe，该工具由精卫团队集成，可以生成语法树的json格式的文件。函数中会将生成的json格式文件解析存储到translationUnit中，存储后删除原json文件
 语法树生成后，构建scene中的默认类genDefaultArkClass(),以及调用buildArkFile()构建其他类。
-##### 第二阶段
+##### 第二阶段；
 这一部分主要介绍两个处理过程：
 1、buildAllMethodBody()，在此函数中使用buildBodyCpp()接口,在开发中walkAST依据语法树的结构划分出block，并构建出block的前后继关系
 2、tsNodeToStmts：在这个函数中根据不同的模块类型，进行不同的处理，比如传入节点是IfStmt时，选择对应的ifStatementToStmtsCpp，构建出相应的IR表示，这里的IR就是三地址码的形式了，例如其中条件表达部分调用conditionToValueAndStmts，构造ArkConditionExpr
