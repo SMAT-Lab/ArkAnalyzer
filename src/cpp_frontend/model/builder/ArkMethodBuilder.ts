@@ -156,6 +156,7 @@ export function buildArkMethodFromArkClass(
         declaringClass.setViewTree(buildViewTree(mtd));
     }
     checkAndUpdateMethod(mtd, declaringClass);
+    declaringClass.addOverloadMethod(mtd);
     declaringClass.addMethod(mtd);
     IRUtils.setComments(mtd, methodNode, sourceFile, mtd.getDeclaringArkFile().getScene().getOptions());
 }

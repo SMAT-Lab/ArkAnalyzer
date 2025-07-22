@@ -178,6 +178,8 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
             return this.newExpressionToValueAndStmtsCpp(node);
         } else if (node.kind === 'CallExpr' && node.inner[0].kind === 'CXXPseudoDestructorExpression') {
             return this.callExpressionToValueAndStmtsCpp(node.inner[0]);
+        } else if (node.kind === 'CallExpr' && node.name === 'basic_string') {
+            return this.tsNodeToValueAndStmts(node.inner[0]);
         } else if (node.kind === 'CallExpr' || node.kind === 'AtomicCallExpr' || node.kind === 'CXXFoldExpr') {
             return this.callExpressionToValueAndStmtsCpp(node);
         } else if (node.kind === 'CXXNoexceptExpr') {
@@ -1164,7 +1166,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
             this.setTs2CppFuncMapOfClass(argValues,false);
         }
         if ((newExpression.kind === 'CompoundLiteralExpr' && newExpression.inner[1].kind === 'InitListExpr')) {
-            const newExpr = newExpression.kind === 'InitListExpr' ? newExpression : newExpression.inner[1];
+            const newExpr = newExpression.inner[1];
             for (const element of newExpr.inner) {
                 const memberValueAndStmts = this.memberExpressionToValueAndStmts(element.inner[0],newLocal);
                 const fieldRef = memberValueAndStmts.value;
