@@ -176,7 +176,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
                 return this.tsNodeToValueAndStmts(node.inner[0]);
             }
             return this.newExpressionToValueAndStmtsCpp(node);
-        } else if (node.kind === 'CallExpr' && node.inner?.length > 0 && node.inner[0]?.kind === 'CXXPseudoDestructorExpression') {
+        } else if (node.kind === 'CallExpr' && node.inner?.length > 0 && node.inner[0].kind === 'CXXPseudoDestructorExpression') {
             return this.callExpressionToValueAndStmtsCpp(node.inner[0]);
         } else if (node.kind === 'CallExpr' && node.name === 'basic_string' && node.inner?.length > 0) {
             return this.tsNodeToValueAndStmts(node.inner[0]);
@@ -237,7 +237,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
                 return this.arrayLiteralExpressionToValueAndStmtsCpp(node);
             }
             let pNode = node.getParent(true);
-            if (pNode?.inner?.length > 0 && (pNode.inner[0]?.kind === 'TypeRef' || !node.type.qualType.includes("[") ||
+            if (pNode?.inner?.length > 0 && (pNode.inner[0].kind === 'TypeRef' || !node.type.qualType.includes("[") ||
                 this.resolveTypeNodeCpp(node.type.qualType) instanceof ClassType)) {
                 return this.newExpressionToValueAndStmtsCpp(node);
             }
@@ -252,7 +252,8 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
             }
         } else if (node.kind === 'ArraySubscriptExpr') {
             return this.elementAccessExpressionToValueAndStmtsCpp(node);
-        } else if (['StringLiteral', 'CXXBoolLiteralExpr', 'CharacterLiteral', 'FloatingLiteral', 'CXXNullPtrLiteralExpr', 'AddrLabelExpr'].includes(node.kind)) {
+        } else if (['StringLiteral', 'CXXBoolLiteralExpr', 'CharacterLiteral',
+            'FloatingLiteral', 'CXXNullPtrLiteralExpr', 'AddrLabelExpr'].includes(node.kind)) {
             return this.literalNodeToValueAndStmtsCpp(node) as ValueAndStmts;
         } else if (node.kind === 'CompoundAssignOperator') {
             return this.compoundAssignmentToValueAndStmtsCpp(node);
