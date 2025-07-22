@@ -53,7 +53,6 @@ void test_using_enum_member() {
     if (c == Color::Red)
         cout << "[test_using_enum_member] Red\n";
 }
-
 // 场景7: 模板类型萃取
 template<typename T>
 using value_type_t = typename T::value_type;
@@ -61,8 +60,7 @@ void test_template_type_alias() {
     value_type_t<std::vector<double>> x = 3.14;
     cout << "[test_template_type_alias] x = " << x << endl;
 }
-
-// 场景8: 作用域内的 using（函数内部）
+ // 场景8: 作用域内的 using（函数内部）
 void test_using_local_scope() {
     using std::string;
     string s = "abc";
@@ -76,7 +74,6 @@ void test_multi_alias() {
     INT2 val = 10;
     cout << "[test_multi_alias] val = " << val << endl;
 }
-
 // 场景10: 命名空间下的using
 namespace ns1 {
     int foo() { return 1; }
