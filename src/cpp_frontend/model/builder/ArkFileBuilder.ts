@@ -126,7 +126,7 @@ function buildArkFile(arkFile: ArkFile, astRoot: any): void {
             if (isChildLocFileHeader(child)) {
                 arkFile.addExportInfo(buildExportInfo(cls, arkFile, LineColPosition.buildFromNodeCpp(child, astRoot)))
             }
-        } else if (child.kind === 'inclusion directive') {
+        } else if (child.kind === 'inclusion directive' || child.kind === 'UsingDirectiveDecl') {
             let importInfos = buildImportInfo(child, astRoot, arkFile);
             importInfos?.forEach(element => {
                 element.setDeclaringArkFile(arkFile);

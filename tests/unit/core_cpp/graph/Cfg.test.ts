@@ -547,6 +547,13 @@ describe('namespace Test', () => {
     );
 });
 
+describe('using Test', () => {
+    it('case1: using', () => {
+            const scene = buildScene('using');
+            testBlocks(scene, 'usingcase.cpp', 'test_using_type_alias_template', []);
+        },
+    );
+});
 
 const BASE_DIR = 'tests/resources_cpp/cfg';
 
@@ -556,6 +563,7 @@ function buildScene(folderName: string): Scene {
     config.buildFromProjectDir(path.join(BASE_DIR, folderName));
     let scene = new Scene();
     scene.buildSceneFromProjectDir(config);
+    scene.inferTypes()
     return scene;
 }
 

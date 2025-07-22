@@ -172,13 +172,13 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
                 return this.superExpressionToValueAndStmts(node);
             }
             if ((!this.isPairConstructExpr((node)) && (this.isNodeRelatedToCXXLambdaFunc(node) ||
-                this.isNodeRelatedToMaterialize(node) || this.isNodeRelatedToImplicitNode(node)))) {
+                this.isNodeRelatedToMaterialize(node) || this.isNodeRelatedToImplicitNode(node))) && node.inner?.length > 0) {
                 return this.tsNodeToValueAndStmts(node.inner[0]);
             }
             return this.newExpressionToValueAndStmtsCpp(node);
-        } else if (node.kind === 'CallExpr' && node.inner[0].kind === 'CXXPseudoDestructorExpression') {
+        } else if (node.kind === 'CallExpr' && node.inner?.length > 0 && node.inner[0]?.kind === 'CXXPseudoDestructorExpression') {
             return this.callExpressionToValueAndStmtsCpp(node.inner[0]);
-        } else if (node.kind === 'CallExpr' && node.name === 'basic_string') {
+        } else if (node.kind === 'CallExpr' && node.name === 'basic_string' && node.inner?.length > 0) {
             return this.tsNodeToValueAndStmts(node.inner[0]);
         } else if (node.kind === 'CallExpr' || node.kind === 'AtomicCallExpr' || node.kind === 'CXXFoldExpr') {
             return this.callExpressionToValueAndStmtsCpp(node);
@@ -190,14 +190,14 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
             return this.RecoverExpressionToValueAndStmts(node);
         } else if (node.kind === 'ConstantExpr' || node.kind === 'ExprWithCleanups' ||
             node.kind === 'CXXStdInitializerListExpr' || node.kind === 'ParenExpr' ||
-            node.kind === 'CXXBindTemporaryExpr' || node.kind === 'VarDecl' || node.kind === 'UnexposedExpr') { // 处理隐式节点、变量节点
-            if (node.inner.length !== 0) {
+            node.kind === 'CXXBindTemporaryExpr' || node.kind === 'VarDecl' || node.kind === 'UnexposedExpr') {
+            if (node.inner?.length > 0) {
                 return this.tsNodeToValueAndStmts(node.inner[0]);
             }
         } else if (node.kind === 'ImplicitCastExpr') {
-            if (node.inner.length === 1) {
+            if (node.inner?.length === 1) {
                 return this.tsNodeToValueAndStmts(node.inner[0]);
-            } else if (node.inner.length === 2) {
+            } else if (node.inner?.length === 2) {
                 if (node.code.includes("=")){
                     let operatorExpression = Object.assign({}, node);
                     operatorExpression['opcode'] = "=";
@@ -205,14 +205,12 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
                 }
                 return this.tsNodeToValueAndStmts(node.inner[1]);
             }
-            // 把当前ImplicitCastExpr节点当作declRefExpr
             node.kind = 'DeclRefExpr';
             node.name = node.code;
             return this.tsNodeToValueAndStmts(node);
+        } else if ((node.kind === 'DeclRefExpr' || node.kind === 'typeRef') && node.inner?.length > 0 && !node.type) {
+            return this.tsNodeToValueAndStmts(node.inner[0]);
         } else if (node.kind === 'DeclRefExpr' || node.kind === 'typeRef') {
-            if (!node.type) {
-                return this.tsNodeToValueAndStmts(node.inner[0]);
-            }
             return this.identifierToValueAndStmtsCpp(node);
         } else if (node.kind === 'UnresolvedLookupExpr') {
             return this.identifierToValueAndStmtsCpp(node);
@@ -224,7 +222,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
             return this.newExpressionToValueAndStmtsCpp(node);
         } else if (node.kind === 'BinaryOperator') {
             return this.binaryExpressionToValueAndStmtsCpp(node);
-        } else if (node.kind === 'MaterializeTemporaryExpr') {
+        } else if (node.kind === 'MaterializeTemporaryExpr' && node.inner?.length > 0) {
             if (this.isNotNewExpression(node) || this.isNodeRelatedToCXXLambdaFunc(node) || this.isNodeRelatedToCXXMember(node) ||
                 this.isNodeRelatedToTemporary(node) || this.isNodeRelatedToCXXFuncCast(node)) {
                 return this.tsNodeToValueAndStmts(node.inner[0]);
@@ -235,16 +233,12 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         } else if (node.kind === 'IntegerLiteral') {
             return this.literalNodeToValueAndStmtsCpp(node) as ValueAndStmts;
         } else if (node.kind === 'InitListExpr') {
-            if (node.type.qualType.includes("[") && node.type.qualType.includes("]")||
-                node.type.qualType === 'void') {
-                // 结构体初始化则调用构造函数去初始化
+            if (node.type?.qualType?.includes("[") && node.type.qualType.includes("]") || node.type.qualType === 'void') {
                 return this.arrayLiteralExpressionToValueAndStmtsCpp(node);
             }
-            // 数组和结构体都可以用{}初始化，此处需要做区分
             let pNode = node.getParent(true);
-            if (pNode.inner[0].kind === 'TypeRef' || !node.type.qualType.includes("[")
-                || this.resolveTypeNodeCpp(node.type.qualType) instanceof ClassType) {
-                // 结构体初始化则调用构造函数去初始化
+            if (pNode?.inner?.length > 0 && (pNode.inner[0]?.kind === 'TypeRef' || !node.type.qualType.includes("[") ||
+                this.resolveTypeNodeCpp(node.type.qualType) instanceof ClassType)) {
                 return this.newExpressionToValueAndStmtsCpp(node);
             }
             return this.arrayLiteralExpressionToValueAndStmtsCpp(node);
@@ -258,9 +252,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
             }
         } else if (node.kind === 'ArraySubscriptExpr') {
             return this.elementAccessExpressionToValueAndStmtsCpp(node);
-        } else if (node.kind === 'StringLiteral' || node.kind === 'CXXBoolLiteralExpr' ||
-            node.kind === 'CharacterLiteral' || node.kind === 'FloatingLiteral' || node.kind === 'CXXNullPtrLiteralExpr'
-            || node.kind === 'AddrLabelExpr') {
+        } else if (['StringLiteral', 'CXXBoolLiteralExpr', 'CharacterLiteral', 'FloatingLiteral', 'CXXNullPtrLiteralExpr', 'AddrLabelExpr'].includes(node.kind)) {
             return this.literalNodeToValueAndStmtsCpp(node) as ValueAndStmts;
         } else if (node.kind === 'CompoundAssignOperator') {
             return this.compoundAssignmentToValueAndStmtsCpp(node);
@@ -270,8 +262,10 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
             return this.conditionalExpressionToValueAndStmtsCpp(node);
         } else if (node.kind === 'LambdaExpr') {
             return this.callableNodeToValueAndStmtsCpp(node);
-        } else if (node.kind === 'CXXStaticCastExpr' || node.kind === 'CStyleCastExpr' || node.kind === 'CXXConstCastExpr' ||
-            node.kind === 'CXXDynamicCastExpr' || node.kind === 'CXXReinterpretCastExpr' || node.kind === 'CXXFunctionalCastExpr') {
+        } else if ([
+            'CXXStaticCastExpr', 'CStyleCastExpr', 'CXXConstCastExpr',
+            'CXXDynamicCastExpr', 'CXXReinterpretCastExpr', 'CXXFunctionalCastExpr'
+        ].includes(node.kind)) {
             return this.castExpressionToValueAndStmts(node);
         } else if (node.kind === 'CXXDeleteExpr') {
             return this.deleteExpressionToValueAndStmtsCpp(node);
