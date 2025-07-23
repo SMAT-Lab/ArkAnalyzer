@@ -724,26 +724,50 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         };
     }
 
+    /**
+     * 将 C++ 的成员表达式（如 testMap.insert）转换为 Ark IR 的 ValueAndStmts
+     * @param memberExpression - 形如 AST MemberExpr/MemberRef 节点，通常表示 obj.field 或 obj->field
+     * @param localValue - （可选）直接指定 baseValue 的场景（如解析父节点时提前确定 base）
+     */
     private memberExpressionToValueAndStmts(memberExpression: any, localValue?: Value): ValueAndStmts {
         const stmts: Stmt[] = [];
-        // 当返回成员变量memberExpr需构建cxxThisExpr
-        if ((memberExpression.kind === 'MemberExpr' || memberExpression.kind === 'MemberRef') && memberExpression.inner[0] === undefined) {
+
+        // 【场景1】处理 C++ 代码中 this->field 或 this->method 调用
+        // 如果是类成员引用（MemberExpr/MemberRef）但没有 inner[0]，说明是隐式 this，需补充 this 节点
+        if ((memberExpression.kind === 'MemberExpr' || memberExpression.kind === 'MemberRef')
+            && memberExpression.inner[0] === undefined) {
             let node = memberExpression;
-            node.kind = 'CXXThisExpr';
-            memberExpression.inner[0] = node;
+            node.kind = 'CXXThisExpr';        // 转换为显式 this 指针
+            memberExpression.inner[0] = node; // 作为 base 节点
         }
-        let {value: baseValue, valueOriginalPositions: basePositions, stmts: baseStmts} = this.tsNodeToValueAndStmts(memberExpression.inner[0]);
+
+        // 【场景2】递归处理 base 对象，如 testMap.insert 里的 testMap
+        // 得到 baseValue（如 testMap）、位置信息和可能的前置语句（如 auto tmp = ...;）
+        let {value: baseValue, valueOriginalPositions: basePositions, stmts: baseStmts}
+            = this.tsNodeToValueAndStmts(memberExpression.inner[0]);
+
+        // 【场景3】处理链式成员访问，如 a.b.c 或 (*ptr).field
+        // 如果 base 是成员访问，再生成赋值语句保证 SSA 合法性
         if (memberExpression.inner[0].kind === 'MemberExpr' || memberExpression.kind === 'MemberRef') {
-            ({value: baseValue, valueOriginalPositions: basePositions, stmts: baseStmts} = this.arkIRTransformerCpp.generateAssignStmtForValue(baseValue, basePositions));
+            ({value: baseValue, valueOriginalPositions: basePositions, stmts: baseStmts}
+                = this.arkIRTransformerCpp.generateAssignStmtForValue(baseValue, basePositions));
         }
+
+        // 【场景4】特殊场合，调用方直接指定 baseValue（一般用于替换 base，比如虚拟成员、泛型等情况）
         if (localValue !== undefined && localValue !== null) {
             baseValue = localValue;
         }
+
+        // 合并前置语句，保证顺序完整
         stmts.push(...baseStmts);
-        //获取域的签名
+
+        // 【场景5】获取成员的字段签名
+        // 目的是将 testMap.insert 里的 insert 与 base 类型（如 testMap 的类型）关联，形成完整 field signature
         let fieldSignature: FieldSignature;
         let baseType = baseValue.getType();
         let baseClassType: ClassType | null = null;
+
+        // 判断 base 是不是类类型或其指针/引用
         if (baseType instanceof ClassType) {
             baseClassType = baseType as ClassType;
         } else if (baseType instanceof PointerType && (baseType as PointerType).getBaseType() instanceof ClassType) {
@@ -751,18 +775,40 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         } else if (baseType instanceof ReferenceType && (baseType as ReferenceType).getBaseType() instanceof ClassType) {
             baseClassType = (baseType as ReferenceType).getBaseType() as ClassType;
         }
+
+        // 【场景6】构造字段签名
+        // 如果 base 是类局部变量，则用完整的类签名
         if (baseValue instanceof Local && baseClassType !== null) {
             fieldSignature = new FieldSignature(
-                memberExpression.name, baseClassType.getClassSignature(), UnknownType.getInstance()
+                memberExpression.code,                  // 字段名（如 insert）
+                baseClassType.getClassSignature(),      // 基类类型签名
+                UnknownType.getInstance()               // 类型未知先占位
             );
-        }else {
-            fieldSignature = ArkSignatureBuilder.buildFieldSignatureFromFieldName(memberExpression.name);
+        } else {
+            // 否则只根据字段名生成
+            fieldSignature = ArkSignatureBuilder.buildFieldSignatureFromFieldName(memberExpression.code);
         }
+
+        // 【场景7】设置字段类型，支持 C++ 复杂类型解析（如模板、指针、const等）
         fieldSignature.setType(this.resolveTypeNodeCpp(memberExpression.type.qualType));
-        const fieldRef = new CXXArkInstanceFieldRef(baseValue as Local, memberExpression.isArrow, fieldSignature);
-        const fieldRefPositions = [FullPosition.buildFromNodeCpp(memberExpression, this.sourceFile), ...basePositions];
+
+        // 【场景8】生成 IR 层的字段引用对象（如 testMap.insert）
+        const fieldRef = new CXXArkInstanceFieldRef(
+            baseValue as Local,                        // baseValue（如 testMap）
+            memberExpression.isArrow,                  // 是否为箭头访问（->）
+            fieldSignature                             // 字段签名（如 insert）
+        );
+
+        // 记录节点位置信息，方便后续溯源和 debug
+        const fieldRefPositions = [
+            FullPosition.buildFromNodeCpp(memberExpression, this.sourceFile),
+            ...basePositions
+        ];
+
+        // 返回解析结果，包括 IR 字段引用、位置信息和相关 SSA 语句
         return {value: fieldRef, valueOriginalPositions: fieldRefPositions, stmts: stmts};
     }
+
     private elementAccessExpressionToValueAndStmtsCpp(elementAccessExpression: any): ValueAndStmts {
         const stmts: Stmt[] = [];
         let { value: baseValue, valueOriginalPositions: basePositions, stmts: baseStmts } = this.tsNodeToValueAndStmts(elementAccessExpression.inner[0]);
