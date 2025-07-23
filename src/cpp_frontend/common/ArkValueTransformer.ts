@@ -1307,9 +1307,6 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         const arrayLength = arrayLiteralExpression.inner.length;
         this.getArrayLiteralExpression(arrayLiteralExpression, stmts, elementTypes, elementValues, elementPositions);
         let baseType: Type = this.resolveTypeNodeCpp(arrayLiteralExpression.type.qualType, arrayLiteralExpression);
-        if (arrayLiteralExpression.type.qualType === 'napi_property_descriptor') {
-            this.setTs2CppFuncMapOfClass(elementValues, false);
-        }
         if (baseType === UnknownType.getInstance()) {
             // 如果类型不确定，当作未知引用类型
             return this.newExpressionToValueAndStmtsCpp(arrayLiteralExpression);

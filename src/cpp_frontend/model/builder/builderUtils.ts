@@ -253,7 +253,7 @@ export function buildTypeFromDerivedType(
         const suffix = isPtr ? '*' : isRef ? '&' : undefined;
         return new ClassType(arkClass.getSignature(), innerType, suffix);
     }
-    return TypeInference.buildTypeFromStr('unsupported');
+    return TypeInference.buildTypeFromStr(preStr);
 }
 
 const typeMap: Record<string, string> = {

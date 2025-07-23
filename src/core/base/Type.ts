@@ -942,6 +942,10 @@ export class ReferenceType extends Type {
         return this.baseType;
     }
 
+    public setBaseType(newBaseType: Type) {
+        this.baseType = newBaseType;
+    }
+
     public getCategory(): ReferCategory {
         return this.category;
     }
