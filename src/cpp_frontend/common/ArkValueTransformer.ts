@@ -778,15 +778,16 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
 
         // 【场景6】构造字段签名
         // 如果 base 是类局部变量，则用完整的类签名
+        const memberName = memberExpression.name || memberExpression.code;
         if (baseValue instanceof Local && baseClassType !== null) {
             fieldSignature = new FieldSignature(
-                memberExpression.code,                  // 字段名（如 insert）
+                memberName,                  // 字段名（如 insert）
                 baseClassType.getClassSignature(),      // 基类类型签名
                 UnknownType.getInstance()               // 类型未知先占位
             );
         } else {
             // 否则只根据字段名生成
-            fieldSignature = ArkSignatureBuilder.buildFieldSignatureFromFieldName(memberExpression.code);
+            fieldSignature = ArkSignatureBuilder.buildFieldSignatureFromFieldName(memberName);
         }
 
         // 【场景7】设置字段类型，支持 C++ 复杂类型解析（如模板、指针、const等）
