@@ -806,6 +806,20 @@ void fillNodeIdRangeLoc(json& node, const json& content, CXCursorKind kind_curso
     node["valueCategory"] = (kind_cursor == CXCursor_EnumConstantDecl) ? displayName : "prvalue";
 }
 
+void fillMemberExprName(json& node) {
+    if (node["name"] == "") return;
+    std::string codeStr = node["code"];
+    if (codeStr.find(".") != std::string::npos || codeStr.find("->") != std::string::npos) {
+       size_t index1 = codeStr.find("->") != std::string::npos ? codeStr.find("->") : codeStr.find(".");
+       size_t index2 = codeStr.find("(");
+       if (index2 != std::string::npos) {
+           node["name"] = codeStr.substr(index1 + 1, index2 - index1 - 1);
+       } else {
+           node["name"] = codeStr.substr(index1 + 1);
+       }
+    }
+}
+
 void nodePostprocess(
     json& node,
     CXCursor cursor,
@@ -845,6 +859,8 @@ void nodePostprocess(
         buildTypedefChild(clang_getTypedefDeclUnderlyingType(cursor), newChildren, children);
         children = newChildren;
     }
+
+    if (node["kind"] == "CXXMemberCallExpr" || node["kind"] == "MemberExpr") fillMemberExprName(node);
 
     if (node["kind"] == "InitListExpr") relateMemberType(typeStr, children);
 
