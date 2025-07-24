@@ -17,7 +17,7 @@ import fs from 'fs';
 import path from 'path';
 import { ArkFile } from '../../../core/model/ArkFile';
 import { ArkNamespace } from '../../../core/model/ArkNamespace';
-import { buildNormalArkClassFromArkFile } from './ArkClassBuilder';
+import { buildNormalArkClassFromArkFile, buildStdMapArkClassFromArkFile } from './ArkClassBuilder';
 import { buildArkMethodFromArkClass } from './ArkMethodBuilder';
 import {buildExportInfo} from '../../../core/model/builder/ArkExportBuilder'
 import { buildArkNamespace } from './ArkNamespaceBuilder';
@@ -132,6 +132,10 @@ function buildArkFile(arkFile: ArkFile, astRoot: any): void {
                 element.setDeclaringArkFile(arkFile);
                 arkFile.addImportInfo(element);
             });
+        } else if (child.kind === 'varDecl' && child.code.includes("std::")) {
+            let cls: ArkClass = new ArkClass();
+            buildStdMapArkClassFromArkFile(child, arkFile, cls, astRoot);
+            arkFile.addArkClass(cls);
         }
 
     });

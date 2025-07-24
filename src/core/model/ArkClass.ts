@@ -96,7 +96,9 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
      * @returns The name of this class.
      */
     public getName(): string {
-        return this.classSignature.getClassName();
+        return this.classSignature
+            ? this.classSignature.getClassName()
+            : "";
     }
 
     /**

@@ -60,6 +60,40 @@ export function buildNormalArkClassFromArkFile(
     arkFile.addArkClass(cls);
 }
 
+export function buildStdMapArkClassFromArkFile(
+    clsNode: any,
+    arkFile: ArkFile,
+    cls: ArkClass,
+    sourceFile: any,
+    declaringMethod?: ArkMethod
+): void {
+    cls.setDeclaringArkFile(arkFile);
+    cls.setCode(clsNode.name);
+    cls.setLine(clsNode.range.begin.line);
+    cls.setColumn(clsNode.range.begin.col);
+    buildClass2MapArkClass(clsNode, cls, sourceFile);
+    arkFile.addArkClass(cls);
+}
+
+function buildClass2MapArkClass(clsNode: any, cls: ArkClass, sourceFile: any): void {
+    const className = clsNode.name ? clsNode.name : '';
+    let clsFileSignature = cls.getDeclaringArkFile().getFileSignature()
+    if (clsNode.code.includes("std::map")){
+        clsFileSignature.projectName = 'std';
+        clsFileSignature.fileName = 'map.h'
+    }
+    const classSignature = new ClassSignature(className, clsFileSignature, cls.getDeclaringArkNamespace()?.getSignature() || null);
+    cls.setSignature(classSignature);
+    if (clsNode.inner) {
+        processCXXHeritage(clsNode, cls);
+    }
+    cls.setCategory(ClassCategory.CLASS);
+    init4InstanceInitMethod(cls);
+    init4StaticInitMethod(cls);
+    buildArkClassMembers(clsNode, cls, sourceFile);
+    cls.setModifiers(buildModifiersForCxxCls(cls));
+}
+
 export function buildNormalArkClassFromArkNamespace(
     clsNode: any,
     arkNamespace: ArkNamespace,
@@ -204,11 +238,15 @@ function buildArkClassMembers(clsNode: any, cls: ArkClass, sourceFile: any): voi
     buildMethodsForClass(clsNode, cls, sourceFile);
     let instanceIRTransformer: ArkIRTransformerCpp;
     let staticIRTransformer: ArkIRTransformerCpp;
-    if (clsNode.tagUsed.toString() === 'class' || clsNode.tagUsed.toString() === 'struct' || clsNode.tagUsed.toString() === 'union') {
+    // 判断是否有tagUsed属性
+    const hasTagUsed = clsNode && "tagUsed" in clsNode && clsNode.tagUsed !== undefined && clsNode.tagUsed !== null;
+    const tagStr = hasTagUsed ? clsNode.tagUsed.toString() : "";
+
+    if (tagStr === 'class' || tagStr === 'struct' || tagStr === 'union') {
         instanceIRTransformer = new ArkIRTransformerCpp(sourceFile, cls.getInstanceInitMethod());
         staticIRTransformer = new ArkIRTransformerCpp(sourceFile, cls.getStaticInitMethod());
     }
-    if (clsNode.tagUsed.toString() === 'enum') {
+    if (tagStr === 'enum') {
         staticIRTransformer = new ArkIRTransformerCpp(sourceFile, cls.getStaticInitMethod());
     }
     const staticInitStmts: Stmt[] = [];
@@ -216,7 +254,7 @@ function buildArkClassMembers(clsNode: any, cls: ArkClass, sourceFile: any): voi
     clsNode.inner.forEach((member: any) => {
         if (member.kind === 'FieldDecl' || member.kind === 'VarDecl') {
             const arkField = buildProperty2ArkField(member, sourceFile, cls);
-            if (clsNode.kind === 'CXXRecordDecl' && (clsNode.tagUsed === 'class' || clsNode.tagUsed === 'struct')) {
+            if (clsNode.kind === 'CXXRecordDecl' && (tagStr === 'class' || tagStr === 'struct')) {
                 if (arkField.isStatic()) {
                     getInitStmts(staticIRTransformer, arkField, member.initializer);
                     arkField.getInitializer().forEach(stmt => staticInitStmts.push(stmt));
@@ -236,11 +274,11 @@ function buildArkClassMembers(clsNode: any, cls: ArkClass, sourceFile: any): voi
             logger.warn('Please contact developers to support new member type: ', member.kind);
         }
     });
-    if (clsNode.tagUsed.toString() === 'class') {
+    if (tagStr === 'class') {
         buildInitMethod(cls.getInstanceInitMethod(), instanceInitStmts, instanceIRTransformer!.getThisLocal());
         buildInitMethod(cls.getStaticInitMethod(), staticInitStmts, staticIRTransformer!.getThisLocal());
     }
-    if (clsNode.tagUsed.toString() === 'enum') {
+    if (tagStr === 'enum') {
         buildInitMethod(cls.getStaticInitMethod(), staticInitStmts, staticIRTransformer!.getThisLocal());
     }
 }

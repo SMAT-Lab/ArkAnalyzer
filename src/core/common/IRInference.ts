@@ -597,6 +597,9 @@ export class IRInference {
             }
         }
         if (baseType instanceof UnionType || (baseType && !TypeInference.isUnclearType(baseType))) {
+            if (baseType.classSignature.className == 'testMap'){
+                baseType.classSignature.className = 'map'
+            }
             base.setType(baseType);
         }
     }
