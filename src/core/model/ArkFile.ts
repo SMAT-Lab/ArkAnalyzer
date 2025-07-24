@@ -161,8 +161,7 @@ export class ArkFile {
     }
 
     public addArkClass(arkClass: ArkClass, originName?: string): void {
-        const name = originName ??
-            (arkClass.getName() !== "" ? arkClass.getName() : arkClass.getCode());
+        const name = originName ?? arkClass.getName();
         this.classes.set(name, arkClass);
         if (!originName && !arkClass.isAnonymousClass()) {
             const index = name.indexOf(NAME_DELIMITER);
