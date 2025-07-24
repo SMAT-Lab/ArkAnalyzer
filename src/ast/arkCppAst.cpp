@@ -809,7 +809,7 @@ void fillNodeIdRangeLoc(json& node, const json& content, CXCursorKind kind_curso
 }
 
 void fillMemberExprName(json& node) {
-    if (node["name"] == "") return;
+    if (node["name"] != "") return;
     std::string codeStr = node["code"];
     size_t index1 = codeStr.find("->");
     size_t index2 = codeStr.find(".");
