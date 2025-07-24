@@ -399,6 +399,10 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
         return this.bodyBuilder;
     }
 
+    public getBodyBuilderCpp(): BodyBuilderCpp | undefined {
+        return this.bodyBuilderCpp;
+    }
+
     /**
      * Get {@link ArkBody} of a Method.
      * A {@link ArkBody} contains the CFG and actual instructions or operations to be executed for a method.
@@ -565,7 +569,7 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
     public setBodyBuilderCpp(bodyBuilder: BodyBuilderCpp): void {
         this.bodyBuilderCpp = bodyBuilder;
         if (this.getDeclaringArkFile().getScene().buildClassDone()) {
-            this.buildBody();
+            this.buildBodyCpp();
         }
     }
 

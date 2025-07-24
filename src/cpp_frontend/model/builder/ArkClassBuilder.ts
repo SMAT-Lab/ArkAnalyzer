@@ -32,6 +32,7 @@ import { Stmt } from '../../../core/base/Stmt';
 import {
     ANONYMOUS_CLASS_DELIMITER,
     ANONYMOUS_CLASS_PREFIX,
+    DEFAULT_ARK_CLASS_NAME,
 } from '../../../core/common/Const';
 import { IRUtils } from '../../../core/common/IRUtils';
 import { ClassSignature } from '../../../core/model/ArkSignature';
@@ -42,6 +43,7 @@ import {
 } from '../../../core/model/builder/ArkClassBuilder';
 import { ArkIRTransformerCpp } from '../../common/ArkIRTransformer';
 import { buildDecorators } from '../../../core/model/builder/builderUtils';
+import { buildDefaultArkMethodFromArkClass } from './ArkMethodBuilder';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkClassBuilder');
 
@@ -58,40 +60,6 @@ export function buildNormalArkClassFromArkFile(
     cls.setColumn(clsNode.range.begin.col);
     buildNormalArkClass(clsNode, cls, sourceFile, declaringMethod);
     arkFile.addArkClass(cls);
-}
-
-export function buildStdMapArkClassFromArkFile(
-    clsNode: any,
-    arkFile: ArkFile,
-    cls: ArkClass,
-    sourceFile: any,
-    declaringMethod?: ArkMethod
-): void {
-    cls.setDeclaringArkFile(arkFile);
-    cls.setCode(clsNode.name);
-    cls.setLine(clsNode.range.begin.line);
-    cls.setColumn(clsNode.range.begin.col);
-    buildClass2MapArkClass(clsNode, cls, sourceFile);
-    arkFile.addArkClass(cls);
-}
-
-function buildClass2MapArkClass(clsNode: any, cls: ArkClass, sourceFile: any): void {
-    const className = clsNode.name ? clsNode.name : '';
-    let clsFileSignature = cls.getDeclaringArkFile().getFileSignature()
-    if (clsNode.code.includes("std::map")){
-        clsFileSignature.projectName = 'std';
-        clsFileSignature.fileName = 'map.h'
-    }
-    const classSignature = new ClassSignature(className, clsFileSignature, cls.getDeclaringArkNamespace()?.getSignature() || null);
-    cls.setSignature(classSignature);
-    if (clsNode.inner) {
-        processCXXHeritage(clsNode, cls);
-    }
-    cls.setCategory(ClassCategory.CLASS);
-    init4InstanceInitMethod(cls);
-    init4StaticInitMethod(cls);
-    buildArkClassMembers(clsNode, cls, sourceFile);
-    cls.setModifiers(buildModifiersForCxxCls(cls));
 }
 
 export function buildNormalArkClassFromArkNamespace(
@@ -298,3 +266,25 @@ function buildMethodsForClass(clsNode: any, cls: ArkClass, sourceFile: any): voi
     })
 }
 
+export function buildDefaultArkClassFromArkFile(arkFile: ArkFile, defaultClass: ArkClass, astRoot: any): void {
+    defaultClass.setDeclaringArkFile(arkFile);
+    defaultClass.setCategory(ClassCategory.CLASS);
+    buildDefaultArkClass(defaultClass, astRoot);
+}
+
+function buildDefaultArkClass(cls: ArkClass, sourceFile: any, node?: any): void {
+    const defaultArkClassSignature = new ClassSignature(
+        DEFAULT_ARK_CLASS_NAME,
+        cls.getDeclaringArkFile().getFileSignature(),
+        cls.getDeclaringArkNamespace()?.getSignature() || null
+    );
+    cls.setSignature(defaultArkClassSignature);
+
+    genDefaultArkMethod(cls, sourceFile, node);
+}
+
+function genDefaultArkMethod(cls: ArkClass, sourceFile: any, node?: any): void {
+    let defaultMethod = new ArkMethod();
+    buildDefaultArkMethodFromArkClass(cls, defaultMethod, sourceFile, node);
+    cls.setDefaultArkMethod(defaultMethod);
+}

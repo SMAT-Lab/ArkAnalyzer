@@ -596,12 +596,6 @@ export class IRInference {
                 baseType = ModelUtils.findDeclaredLocal(base, arkMethod)?.getType() ?? TypeInference.inferBaseType(base.getName(), arkClass);
             }
         }
-        if (baseType instanceof UnionType || (baseType && !TypeInference.isUnclearType(baseType))) {
-            if (baseType.classSignature.className == 'testMap'){
-                baseType.classSignature.className = 'map'
-            }
-            base.setType(baseType);
-        }
     }
 
     private static generateNewFieldSignature(ref: AbstractFieldRef, arkClass: ArkClass, baseType: Type): FieldSignature | null {
