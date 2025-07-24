@@ -60,40 +60,6 @@ export function buildNormalArkClassFromArkFile(
     arkFile.addArkClass(cls);
 }
 
-export function buildStdMapArkClassFromArkFile(
-    clsNode: any,
-    arkFile: ArkFile,
-    cls: ArkClass,
-    sourceFile: any,
-    declaringMethod?: ArkMethod
-): void {
-    cls.setDeclaringArkFile(arkFile);
-    cls.setCode(clsNode.name);
-    cls.setLine(clsNode.range.begin.line);
-    cls.setColumn(clsNode.range.begin.col);
-    buildClass2MapArkClass(clsNode, cls, sourceFile);
-    arkFile.addArkClass(cls);
-}
-
-function buildClass2MapArkClass(clsNode: any, cls: ArkClass, sourceFile: any): void {
-    const className = clsNode.name ? clsNode.name : '';
-    let clsFileSignature = cls.getDeclaringArkFile().getFileSignature()
-    if (clsNode.code.includes("std::map")){
-        clsFileSignature.projectName = 'std';
-        clsFileSignature.fileName = 'map.h'
-    }
-    const classSignature = new ClassSignature(className, clsFileSignature, cls.getDeclaringArkNamespace()?.getSignature() || null);
-    cls.setSignature(classSignature);
-    if (clsNode.inner) {
-        processCXXHeritage(clsNode, cls);
-    }
-    cls.setCategory(ClassCategory.CLASS);
-    init4InstanceInitMethod(cls);
-    init4StaticInitMethod(cls);
-    buildArkClassMembers(clsNode, cls, sourceFile);
-    cls.setModifiers(buildModifiersForCxxCls(cls));
-}
-
 export function buildNormalArkClassFromArkNamespace(
     clsNode: any,
     arkNamespace: ArkNamespace,
