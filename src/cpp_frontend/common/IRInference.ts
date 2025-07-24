@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { ArkMethod } from '../model/ArkMethod';
+import { ArkMethod } from '../../core/model/ArkMethod';
 import {
     AliasType,
     AnnotationNamespaceType,
@@ -29,8 +29,8 @@ import {
     UndefinedType,
     UnionType,
     UnknownType,
-} from '../base/Type';
-import { Local } from '../base/Local';
+} from '../../core/base/Type';
+import { Local } from '../../core/base/Local';
 import { TypeInference } from './TypeInference';
 import {
     AbstractExpr,
@@ -39,13 +39,13 @@ import {
     ArkInstanceInvokeExpr,
     ArkPtrInvokeExpr,
     ArkStaticInvokeExpr
-} from '../base/Expr';
+} from '../../core/base/Expr';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { Scene } from '../../Scene';
-import { ArkClass } from '../model/ArkClass';
-import { findArkExport, ModelUtils } from './ModelUtils';
-import { ArkField, FieldCategory } from '../model/ArkField';
-import { CALL_BACK } from './EtsConst';
+import { ArkClass } from '../../core/model/ArkClass';
+import { findArkExport, ModelUtils } from '../../core/common/ModelUtils';
+import { ArkField, FieldCategory } from '../../core/model/ArkField';
+import { CALL_BACK } from '../../core/common/EtsConst';
 import {
     AliasClassSignature,
     BaseSignature,
@@ -53,11 +53,11 @@ import {
     FieldSignature,
     MethodSignature,
     MethodSubSignature
-} from '../model/ArkSignature';
-import { CONSTRUCTOR_NAME, FUNCTION, IMPORT, SUPER_NAME, THIS_NAME } from './TSConst';
-import { Builtin } from './Builtin';
-import { ArkBody } from '../model/ArkBody';
-import { ArkAssignStmt, ArkInvokeStmt } from '../base/Stmt';
+} from '../../core/model/ArkSignature';
+import { CONSTRUCTOR_NAME, FUNCTION, IMPORT, SUPER_NAME, THIS_NAME } from '../../core/common/TSConst';
+import { Builtin } from '../../core/common/Builtin';
+import { ArkBody } from '../../core/model/ArkBody';
+import { ArkAssignStmt, ArkInvokeStmt } from '../../core/base/Stmt';
 import {
     AbstractFieldRef,
     AbstractRef,
@@ -65,9 +65,9 @@ import {
     ArkInstanceFieldRef,
     ArkParameterRef,
     ArkStaticFieldRef
-} from '../base/Ref';
-import { Value } from '../base/Value';
-import { Constant } from '../base/Constant';
+} from '../../core/base/Ref';
+import { Value } from '../../core/base/Value';
+import { Constant } from '../../core/base/Constant';
 import {
     ANONYMOUS_CLASS_PREFIX,
     CALL_SIGNATURE_NAME,
@@ -75,11 +75,11 @@ import {
     NAME_DELIMITER,
     NAME_PREFIX,
     UNKNOWN_CLASS_NAME
-} from './Const';
-import { ValueUtil } from './ValueUtil';
-import { ArkFile } from '../model/ArkFile';
-import { AbstractTypeExpr, KeyofTypeExpr, TypeQueryExpr } from '../base/TypeExpr';
-import { ArkBaseModel } from '../model/ArkBaseModel';
+} from '../../core/common/Const';
+import { ValueUtil } from '../../core/common/ValueUtil';
+import { ArkFile } from '../../core/model/ArkFile';
+import { AbstractTypeExpr, KeyofTypeExpr, TypeQueryExpr } from '../../core/base/TypeExpr';
+import { ArkBaseModel } from '../../core/model/ArkBaseModel';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'IRInference');
 
@@ -597,9 +597,6 @@ export class IRInference {
             }
         }
         if (baseType instanceof UnionType || (baseType && !TypeInference.isUnclearType(baseType))) {
-            if (baseType.classSignature.className == 'testMap'){
-                baseType.classSignature.className = 'map'
-            }
             base.setType(baseType);
         }
     }

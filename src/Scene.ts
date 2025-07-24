@@ -44,6 +44,7 @@ import { buildArkFileFromFile as buildArkFileFromFileCpp } from './cpp_frontend/
 
 
 import { IRInference } from './core/common/IRInference';
+import { IRInference as IRInferenceCpp } from './cpp_frontend/common/IRInference';
 import { ImportInfo } from './core/model/ArkImport';
 import { ALL, CONSTRUCTOR_NAME, TSCONFIG_JSON } from './core/common/TSConst';
 import { BUILD_PROFILE_JSON5, OH_PACKAGE_JSON5 } from './core/common/EtsConst';
@@ -1088,7 +1089,7 @@ export class Scene {
         if (this.buildStage < SceneBuildStage.SDK_INFERRED) {
             this.sdkArkFilesMap.forEach(file => {
                 try {
-                    IRInference.inferFile(file);
+                    file.getLanguage() === Language.CPLUS ? IRInferenceCpp.inferFile(file) : IRInference.inferFile(file);
                 } catch (error) {
                     logger.error('Error inferring types of sdk file:', file.getFileSignature(), error);
                 }
@@ -1098,7 +1099,7 @@ export class Scene {
         this.buildFuncMapForCpp();
         this.filesMap.forEach(file => {
             try {
-                IRInference.inferFile(file);
+                file.getLanguage() === Language.CPLUS ? IRInferenceCpp.inferFile(file) : IRInference.inferFile(file);
             } catch (error) {
                 logger.error('Error inferring types of project file:', file.getFileSignature(), error);
             }

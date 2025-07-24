@@ -759,7 +759,7 @@ void fillNodeSourceContent(
         node["code"] = codeStr;
 
     // InclusionDirective 特殊处理
-    if (kind_cursor == CXCursor_InclusionDirective) {
+    if (kind_cursor == CXCursor_InclusionDirective && !content.is_null()) {
         node["kind"] = "InclusionDirective";
         node["fileName"] = cx2str(clang_getIncludedFile(cursor) ?
                                   clang_getFileName(clang_getIncludedFile(cursor)) :
@@ -797,13 +797,36 @@ void fillDeclRefInfo(json& node, CXCursor cursor, CXCursorKind kind_cursor) {
 
 void fillNodeIdRangeLoc(json& node, const json& content, CXCursorKind kind_cursor,
                         CXFile file, const std::string& displayName) {
-    node["id"] = content["id"];
-    json begin = content["begin"];
-    node["range"] = {{"begin", begin}, {"end", content["end"]}};
+    if (!content.is_null()) {
+         node["id"] = content["id"];
+         json begin = content["begin"];
+         node["range"] = {{"begin", begin}, {"end", content["end"]}};
+    }
     if (file && std::find(locCursorKind.begin(), locCursorKind.end(), kind_cursor) != locCursorKind.end()) {
         node["locFile"] = file ? cx2str(clang_getFileName(file)) : "";
     }
     node["valueCategory"] = (kind_cursor == CXCursor_EnumConstantDecl) ? displayName : "prvalue";
+}
+
+void fillMemberExprName(json& node) {
+    if (node["name"] != "") return;
+    std::string codeStr = node["code"];
+    size_t index1 = codeStr.find("->");
+    size_t index2 = codeStr.find(".");
+    size_t index = 0;
+    if (index1 == std::string::npos && index2 == std::string::npos) {
+        return;
+    } else if (index1 != std::string::npos && index2 != std::string::npos) {
+        index = index1 < index2 ? index1 : index2;
+    } else {
+        index = index1 != std::string::npos ? index1 : index2;
+    }
+    size_t index3 = codeStr.find("(");
+    if (index3 != std::string::npos) {
+        node["name"] = codeStr.substr(index + 1, index3 - index - 1);
+    } else {
+        node["name"] = codeStr.substr(index + 1);
+    }
 }
 
 void nodePostprocess(
@@ -845,6 +868,8 @@ void nodePostprocess(
         buildTypedefChild(clang_getTypedefDeclUnderlyingType(cursor), newChildren, children);
         children = newChildren;
     }
+
+    if (node["kind"] == "CXXMemberCallExpr" || node["kind"] == "MemberExpr") fillMemberExprName(node);
 
     if (node["kind"] == "InitListExpr") relateMemberType(typeStr, children);
 

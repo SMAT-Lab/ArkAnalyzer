@@ -47,7 +47,9 @@ import {
     UnknownType,
     VoidType,
     CXXStringType,
-    CXXNumberType
+    CXXNumberType,
+    PointerType,
+    ReferenceType,
 } from '../../core/base/Type';
 import { ArkMethod } from '../../core/model/ArkMethod';
 import { ArkExport } from '../../core/model/ArkExport';
@@ -339,6 +341,16 @@ export class TypeInference {
             IRInference.inferLocal(rightOp, arkMethod);
         }
         let rightType: Type | null | undefined = rightOp.getType();
+        let baseType: Type | null | undefined;
+        if (rightType instanceof  PointerType || rightType instanceof ReferenceType) {
+            baseType = rightType.getBaseType();
+            if (this.isUnclearType(baseType)) {
+                baseType = this.inferUnclearedType(baseType, arkClass);
+                if (baseType) {
+                    rightType.setBaseType(baseType);
+                }
+            }
+        }
         if (this.isUnclearType(rightType)) {
             rightType = this.inferUnclearedType(rightType, arkClass);
             if (rightType) {
@@ -351,7 +363,18 @@ export class TypeInference {
     private static resolveLeftOp(stmt: ArkAssignStmt, arkClass: ArkClass, rightType: Type | null | undefined, arkMethod: ArkMethod): void {
         const leftOp = stmt.getLeftOp();
         let leftType: Type | null | undefined = leftOp.getType();
-        if (this.isUnclearType(leftType)) {
+        let baseType: Type | null | undefined;
+        if (leftType instanceof  PointerType || leftType instanceof ReferenceType) {
+            baseType = leftType.getBaseType();
+            if (this.isUnclearType(baseType)) {
+                baseType = this.inferUnclearedType(baseType, arkClass);
+                if (!baseType && !this.isUnclearType(rightType)) {
+                    leftType = rightType;
+                } else if (baseType) {
+                    leftType.setBaseType(baseType);
+                }
+            }
+        } else if (this.isUnclearType(leftType)) {
             const newLeftType = this.inferUnclearedType(leftType, arkClass);
             if (!newLeftType && !this.isUnclearType(rightType)) {
                 leftType = rightType;
