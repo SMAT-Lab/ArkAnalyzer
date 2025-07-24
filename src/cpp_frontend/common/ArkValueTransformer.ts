@@ -1830,7 +1830,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
             // 处理标准库容器类型
             const match = /std::(\w+)/g.exec(qualType);
             const containerName = match ? match[1] : null;
-            if (containerName && convertDataType(containerName) === 'unsupported') {
+            if (containerName && convertDataType(containerName) === 'unsupported' && this.isCppStdContainer(containerName)) {
                 const fileSignature = new FileSignature('std', containerName + '.h');
                 const classSignature = new ClassSignature(containerName, fileSignature);
                 return new ClassType(classSignature);
@@ -1838,6 +1838,12 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         }
         let nodeType = cppNode2Type(qualType, null, this.declaringMethod);
         return (nodeType instanceof UnclearReferenceType ? UnknownType.getInstance() : nodeType);
+    }
+
+    private isCppStdContainer(typeName: string): boolean {
+        const typeNameInLowerCase = typeName.toLowerCase();
+        const stdContainerLists = ['map', 'vector', 'deque', 'list', 'array', 'set', 'stack', 'queue'];
+        return stdContainerLists.some(containerType => typeNameInLowerCase.includes(containerType));
     }
 
     public resolveVectorType(kind: string, dimension: number) {
