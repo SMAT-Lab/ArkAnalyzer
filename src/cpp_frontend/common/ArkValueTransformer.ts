@@ -1500,7 +1500,8 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
     }
     public variableDeclarationListToValueAndStmts(variableDeclarationList: any): ValueAndStmts {
         const stmts: Stmt[] = [];
-        for (const declaration of variableDeclarationList.inner) {
+        const variableDeclarationMembers = variableDeclarationList.inner?.length === 0 ? [variableDeclarationList] : variableDeclarationList.inner;
+        for (const declaration of variableDeclarationMembers) {
             let isConst = declaration.type!.qualType.toString().startsWith('const ');
             const { stmts: declaredStmts } = this.variableDeclarationToValueAndStmts(declaration, isConst);
             declaredStmts.forEach(s => stmts.push(s));
@@ -1827,9 +1828,9 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
             return new ArrayType(new UnclearReferenceType(qualType), dimension);
         } else if (qualType.startsWith('std::')) {
             // 处理标准库容器类型
-            const match = /std::(\w+)\s*</.exec(qualType);
-            const containerName = match ? match[1] : qualType;
-            if (convertDataType(containerName) === 'unsupported') {
+            const match = /std::(\w+)/g.exec(qualType);
+            const containerName = match ? match[1] : null;
+            if (containerName && convertDataType(containerName) === 'unsupported') {
                 const fileSignature = new FileSignature('std', containerName + '.h');
                 const classSignature = new ClassSignature(containerName, fileSignature);
                 return new ClassType(classSignature);
