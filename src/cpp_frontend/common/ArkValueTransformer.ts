@@ -49,7 +49,7 @@ import {
     ReferenceType
 } from '../../core/base/Type';
 import { ArkSignatureBuilder } from '../../core/model/builder/ArkSignatureBuilder';
-import { ClassSignature, FieldSignature, MethodSignature } from '../../core/model/ArkSignature';
+import { ClassSignature, FieldSignature, MethodSignature, FileSignature } from '../../core/model/ArkSignature';
 import { Value } from '../../core/base/Value';
 import {
     COMPONENT_CREATE_FUNCTION,
@@ -66,7 +66,7 @@ import { Builtin } from '../../core/common/Builtin';
 import { Constant, StringConstant } from '../../core/base/Constant';
 import { TEMP_LOCAL_PREFIX } from '../../core/common/Const';
 import { ArkIRTransformerCpp, DummyStmt, ValueAndStmts } from './ArkIRTransformer';
-import {buildTypeFromPreStr, cppNode2Type, isCXXSTLContainer } from '../model/builder/builderUtils';
+import { buildTypeFromPreStr, convertDataType, cppNode2Type, isCXXSTLContainer } from '../model/builder/builderUtils';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { ArkValueTransformer } from '../../core/common/ArkValueTransformer';
 import { ModelUtils } from '../../core/common/ModelUtils';
@@ -1515,11 +1515,22 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
     public variableDeclarationToValueAndStmts(variableDeclaration: any, isConst: boolean, needRightOp: boolean = true): ValueAndStmts {
         const leftOpNode = variableDeclaration;
         let rightOpNode = null;
-        if (variableDeclaration.inner !== null) {
+        if (variableDeclaration.inner !== null && variableDeclaration.inner.length !== 0) {
             rightOpNode = nodeInnerNode(variableDeclaration);
+        }
+        if (variableDeclaration.type.qualType.toString() === 'int' && variableDeclaration.code.startsWith('std::')) {
+            const containerType = this.getStdContainerType(variableDeclaration.code);
+            if (containerType) {
+                variableDeclaration.type.qualType = containerType;
+            }
         }
         const declarationType = variableDeclaration.type ? this.resolveTypeNodeCpp(variableDeclaration.type.qualType) : UnknownType.getInstance();
         return this.assignmentToValueAndStmtsCpp(leftOpNode, rightOpNode, true, isConst, declarationType, needRightOp);
+    }
+
+    private getStdContainerType(declCode: string) {
+        const match = /\b(std::\w+)</g.exec(declCode);
+        return match ? match[1] : null;
     }
 
     private assignmentToValueAndStmtsCpp(
@@ -1814,6 +1825,15 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         } else if (nodeKind && 'kind' in nodeKind && nodeKind.kind === "InitListExpr"){
             let dimension = nodeKind.inner.length;
             return new ArrayType(new UnclearReferenceType(qualType), dimension);
+        } else if (qualType.startsWith('std::')) {
+            // 处理标准库容器类型
+            const match = /std::(\w+)\s*</.exec(qualType);
+            const containerName = match ? match[1] : qualType;
+            if (convertDataType(containerName) === 'unsupported') {
+                const fileSignature = new FileSignature('std', containerName + '.h');
+                const classSignature = new ClassSignature(containerName, fileSignature);
+                return new ClassType(classSignature);
+            }
         }
         let nodeType = cppNode2Type(qualType, null, this.declaringMethod);
         return (nodeType instanceof UnclearReferenceType ? UnknownType.getInstance() : nodeType);

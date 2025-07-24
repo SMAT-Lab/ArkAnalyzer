@@ -22,12 +22,16 @@ import { buildArkMethodFromArkClass } from './ArkMethodBuilder';
 import {buildExportInfo} from '../../../core/model/builder/ArkExportBuilder'
 import { buildArkNamespace } from './ArkNamespaceBuilder';
 import { ArkClass } from '../../../core/model/ArkClass';
-import { buildDefaultArkClassFromArkFile } from '../../../core/model/builder/ArkClassBuilder';
+import { buildDefaultArkClassFromArkFile } from './ArkClassBuilder';
 import { ArkMethod } from '../../../core/model/ArkMethod';
 import {AstUtils} from "../../../ast/astUtils"
 import { FileSignature, ClassSignature } from '../../../core/model/ArkSignature';
 import { LineColPosition } from '../../../core/base/Position';
 import { buildImportInfo } from './ArkImportBuilder';
+import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
+
+const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkFileBuilder');
+
 /**
  * Entry of building ArkFile instance
  *
@@ -132,6 +136,8 @@ function buildArkFile(arkFile: ArkFile, astRoot: any): void {
                 element.setDeclaringArkFile(arkFile);
                 arkFile.addImportInfo(element);
             });
+        } else {
+            logger.trace('Child joined default method of arkFile: ', child.kind ?? child.code);
         }
     });
 }

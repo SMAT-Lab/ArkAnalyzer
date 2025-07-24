@@ -33,7 +33,7 @@ import { ArkAssignStmt, ArkInvokeStmt, ArkReturnStmt, ArkReturnVoidStmt, Stmt } 
 import { BasicBlock } from '../../../core/graph/BasicBlock';
 import { Local } from '../../../core/base/Local';
 import { Value } from '../../../core/base/Value';
-import { ANONYMOUS_METHOD_PREFIX } from '../../../core/common/Const';
+import { ANONYMOUS_METHOD_PREFIX, DEFAULT_ARK_METHOD_NAME } from '../../../core/common/Const';
 import { IRUtils } from '../../../core/common/IRUtils';
 import {
     buildNestedMethodName,
@@ -43,6 +43,7 @@ import {
 } from '../../../core/model/builder/ArkMethodBuilder';
 import { buildGenericType } from '../../../core/model/builder/builderUtils';
 import { CONSTRUCTOR_NAME, THIS_NAME } from '../../../core/common/TSConst';
+import { ArkSignatureBuilder } from '../../../core/model/builder/ArkSignatureBuilder';
 function getSpecificNodes(methodNode:any, targetNode:string): any[]{
     if (!methodNode || !methodNode.inner){
         return [];
@@ -59,6 +60,20 @@ function getSpecificNodes(methodNode:any, targetNode:string): any[]{
         }
     });
     return result.length>0?result:[];
+}
+
+export function buildDefaultArkMethodFromArkClass(declaringClass: ArkClass, mtd: ArkMethod, sourceFile: any, node?: any): void {
+    mtd.setDeclaringArkClass(declaringClass);
+
+    const methodSubSignature = ArkSignatureBuilder.buildMethodSubSignatureFromMethodName(DEFAULT_ARK_METHOD_NAME, true);
+    const methodSignature = new MethodSignature(mtd.getDeclaringArkClass().getSignature(), methodSubSignature);
+    mtd.setImplementationSignature(methodSignature);
+    mtd.setLineCol(0);
+
+    const defaultMethodNode = node ? node : sourceFile;
+
+    let bodyBuilder = new BodyBuilderCpp(mtd.getSignature(), defaultMethodNode, mtd, sourceFile);
+    mtd.setBodyBuilderCpp(bodyBuilder);
 }
 
 export function handleFunctionTemplate(methodNode:any, mtd:ArkMethod, sourceFile:any){

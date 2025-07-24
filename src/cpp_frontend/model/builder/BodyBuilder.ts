@@ -76,7 +76,7 @@ export class BodyBuilderCpp {
         let closuresRes: Local[] = [];
 
         const nestedMethod = childrenChain.parent;
-        let nestedGlobals = nestedMethod.getBodyBuilder()?.getGlobals();
+        let nestedGlobals = nestedMethod.getBodyBuilderCpp()?.getGlobals();
         if (nestedGlobals !== undefined) {
             for (let global of nestedGlobals.values()) {
                 const nestedLocal = allNestedLocals.get(global.getName());
@@ -150,8 +150,8 @@ export class BodyBuilderCpp {
          * There must be no closures in Level 0. So only need to remove the locals which with the same name as the ones in globals.
          */
         let outerMethod = this.getCfgBuilder().getDeclaringMethod();
-        let outerGlobals = outerMethod.getBodyBuilder()?.getGlobals();
-        outerMethod.freeBodyBuilder();
+        let outerGlobals = outerMethod.getBodyBuilderCpp()?.getGlobals();
+        outerMethod.freeBodyBuilderCpp();
         let outerLocals = outerMethod.getBody()?.getLocals();
         if (outerGlobals !== undefined && outerLocals !== undefined) {
             outerGlobals.forEach((value, key) => {
@@ -201,7 +201,7 @@ export class BodyBuilderCpp {
     }
 
     private freeBodyBuilder(nestedChain: NestedMethodChain): void {
-        nestedChain.parent.freeBodyBuilder();
+        nestedChain.parent.freeBodyBuilderCpp();
         const childrenChains = nestedChain.children;
         if (childrenChains === null) {
             return;
@@ -282,7 +282,7 @@ export class BodyBuilderCpp {
     }
 
     private moveCurrentMethodLocalToGlobal(method: ArkMethod): void {
-        const globals = method.getBodyBuilder()?.getGlobals();
+        const globals = method.getBodyBuilderCpp()?.getGlobals();
         const locals = method.getBody()?.getLocals();
         if (locals === undefined || globals === undefined) {
             return;
@@ -303,7 +303,7 @@ export class BodyBuilderCpp {
     private reorganizeGlobalAndLocal(nestedChain: NestedMethodChain): void {
         const nestedMethod = nestedChain.parent;
         const params = nestedMethod.getSubSignature().getParameters();
-        const globals = nestedMethod.getBodyBuilder()?.getGlobals();
+        const globals = nestedMethod.getBodyBuilderCpp()?.getGlobals();
         if (params.length > 0 && params[0].getType() instanceof LexicalEnvType && globals !== undefined) {
             const closures = (params[0].getType() as LexicalEnvType).getClosures();
             for (let closure of closures) {
