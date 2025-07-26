@@ -866,15 +866,15 @@ void fillMemberExprName(json& node) {
     if (index1 == std::string::npos && index2 == std::string::npos) {
         return;
     } else if (index1 != std::string::npos && index2 != std::string::npos) {
-        index = index1 < index2 ? index1 : index2;
+        index = index1 < index2 ? index1 + 2 : index2 + 1; // 去掉成员访问符的长度
     } else {
-        index = index1 != std::string::npos ? index1 : index2;
+        index = index1 != std::string::npos ? index1 + 2 : index2 + 1;
     }
     size_t index3 = codeStr.find("(");
     if (index3 != std::string::npos) {
-        node["name"] = codeStr.substr(index + 1, index3 - index - 1);
+        node["name"] = codeStr.substr(index, index3 - index);
     } else {
-        node["name"] = codeStr.substr(index + 1);
+        node["name"] = codeStr.substr(index);
     }
 }
 
