@@ -27,13 +27,26 @@ void cliutil::addMainFileDirToInclude(CommandLineOptions& opts) {
     std::string main_dir = std::filesystem::absolute(opts.input_file).parent_path().string();
     bool found = false;
     for (const auto& dir : opts.user_include_dirs) {
-        if (std::filesystem::equivalent(
-                std::filesystem::absolute(dir),
-                std::filesystem::absolute(main_dir))) {
-            found = true;
-            break;
+        auto abs_dir = std::filesystem::absolute(main_dir);
+        auto abs_main_dir = std::filesystem::absolute(dir);
+        auto dir_exists = std::filesystem::exists(abs_dir);
+        auto main_dir_exists = std::filesystem::exists(abs_main_dir);
+
+        if (dir_exists && main_dir_exists) {
+            try {
+                if (std::filesystem::equivalent(abs_dir, abs_main_dir)) {
+                    found = true;
+                    break;
+                }
+            } catch (const std::exception& e) {
+                std::cerr << "Caught std::exception in equivalent(): " << e.what() << std::endl;
+            }
+        } else {
+            std::cout << "[DEBUG] Does abs_dir exist?       " << (dir_exists ? "YES" : "NO") << std::endl;
+            std::cout << "[DEBUG] Does abs_main_dir exist?  " << (main_dir_exists ? "YES" : "NO") << std::endl;
         }
     }
+    std::cout << "[DEBUG] Included Path Comparison Finished" << std::endl;
     if (!found) {
         opts.user_include_dirs.push_back(main_dir);
     }
