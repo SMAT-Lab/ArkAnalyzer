@@ -15,7 +15,7 @@
 
 import {
     AbstractExpr,
-    AbstractInvokeExpr,
+    AbstractInvokeExpr, AliasTypeExpr,
     ArkCastExpr,
     ArkConditionExpr,
     ArkInstanceInvokeExpr,
@@ -37,7 +37,7 @@ import {
     ArkThrowStmt,
     Stmt,
 } from '../../core/base/Stmt';
-import { AliasType, BooleanType, ClassType, UnknownType } from '../../core/base/Type';
+import { AliasType, BooleanType, ClassType, UnclearReferenceType, UnknownType } from '../../core/base/Type';
 import { CppValueUtil } from './ValueUtil';
 import { IRUtils } from '../../core/common/IRUtils';
 import { ArkMethod } from '../../core/model/ArkMethod';
@@ -51,6 +51,7 @@ import {
 import { FullPosition, LineColPosition } from '../../core/base/Position';
 import { ArkValueTransformerCpp } from './ArkValueTransformer';
 import {
+    AliasTypeSignature,
     ClassSignature,
     FieldSignature,
     MethodSignature,
@@ -59,6 +60,10 @@ import {
 import { Builtin } from '../../core/common/Builtin';
 import { ArkSignatureBuilder } from '../../core/model/builder/ArkSignatureBuilder';
 import { ArkIRTransformer } from '../../core/common/ArkIRTransformer';
+import { AbstractTypeExpr } from '../../core/base/TypeExpr';
+import { buildModifiers  } from '../../core/model/builder/builderUtils';
+import { ModelUtils } from '../../core/common/ModelUtils';
+import { ImportInfo } from '../../core/model/ArkImport';
 
 export type ValueAndStmts = {
     value: Value;
@@ -78,7 +83,7 @@ export class DummyStmt extends Stmt {
 }
 
 function nodeInnerNode(node:any):any{
-    if (node.inner){
+    if (node.inner && node.inner.length > 0){
         return node.inner[0];
     }
     console.log('unsupported node !');
@@ -159,6 +164,8 @@ export class ArkIRTransformerCpp extends ArkIRTransformer{
                 stmts = this.expressionStatementToStmtsCpp(node);
                 break;
             case 'DeclStmt':
+                stmts = this.declStatementToStmtsCpp(node);
+                break;
             case 'VarDecl':
                 stmts = this.variableStatementToStmtsCpp(node);
                 break;
@@ -195,6 +202,8 @@ export class ArkIRTransformerCpp extends ArkIRTransformer{
             case 'CXXForRangeStmt':
                 stmts = this.forRangeStatementToStmts(node);
                 break;
+            case 'TypedefDecl':
+                stmts = this.typeDefDeclToStmts(node);
             case 'unsupported kind':
                 break;
         }
@@ -203,6 +212,92 @@ export class ArkIRTransformerCpp extends ArkIRTransformer{
             IRUtils.setComments(stmts[0], node, this.sourceFile, this.declaringMethod.getDeclaringArkFile().getScene().getOptions());
         }
         return stmts;
+    }
+
+    private typeDefDeclToStmts(typeAliasDeclaration: any): Stmt[] {
+        let typeNode:any;
+        const aliasName = typeAliasDeclaration.name;
+        if (typeAliasDeclaration.inner && typeAliasDeclaration.inner.length > 0){
+            typeNode = typeAliasDeclaration.inner[0];
+        }
+        const rightOp = (typeNode && typeNode.code) ? typeNode.code : "int";
+        let rightType = this.arkValueTransformerCpp.resolveTypeNodeCpp(rightOp);
+        if (rightType instanceof AbstractTypeExpr) {
+            rightType = rightType.getType();
+        }
+
+        const aliasType = new AliasType(aliasName, rightType, new AliasTypeSignature(aliasName, this.declaringMethod.getSignature()));
+        let expr = this.generateAliasTypeExpr(rightOp, aliasType);
+        const modifiers = typeAliasDeclaration.modifiers ? buildModifiers(typeAliasDeclaration) : 0;
+        aliasType.setModifiers(modifiers);
+
+        const aliasTypeDefineStmt = new ArkAliasTypeDefineStmt(aliasType, expr);
+        const leftPosition = FullPosition.buildFromNodeCpp(typeAliasDeclaration, this.sourceFile);
+        const rightPosition = FullPosition.buildFromNodeCpp(typeNode, this.sourceFile);
+        const operandOriginalPositions = [leftPosition, rightPosition];
+        aliasTypeDefineStmt.setOperandOriginalPositions(operandOriginalPositions);
+
+
+        this.getAliasTypeMap().set(aliasName, [aliasType, aliasTypeDefineStmt]);
+
+        return [aliasTypeDefineStmt];
+    }
+
+    protected generateAliasTypeExpr(rightOp: any, aliasType: AliasType): AliasTypeExpr {
+        let rightType = aliasType.getOriginalType();
+        let expr: AliasTypeExpr;
+        if (ts.isImportTypeNode(rightOp)) {
+            expr = this.resolveImportCppTypeNode(rightOp);
+        } else if (ts.isTypeQueryNode(rightOp)) {
+            const localName = rightOp.exprName.getText(this.sourceFile);
+            const originalLocal = Array.from(this.arkValueTransformer.getLocals()).find(local => local.getName() === localName);
+            if (originalLocal === undefined || rightType instanceof UnclearReferenceType) {
+                expr = new AliasTypeExpr(new Local(localName, rightType), true);
+            } else {
+                expr = new AliasTypeExpr(originalLocal, true);
+            }
+        } else if (ts.isTypeReferenceNode(rightOp)) {
+            // For type A = B<number> stmt and B is also an alias type with the same scope of A,
+            // rightType here is AliasType with real generic type number.
+            // The originalObject in expr should be the object without real generic type, so try to find it in this scope.
+            if (rightType instanceof AliasType) {
+                const existAliasType = this.getAliasTypeMap().get(rightType.getName());
+                if (existAliasType) {
+                    expr = new AliasTypeExpr(existAliasType[0], false);
+                } else {
+                    expr = new AliasTypeExpr(rightType, false);
+                }
+            } else {
+                expr = new AliasTypeExpr(rightType, false);
+            }
+        } else {
+            expr = new AliasTypeExpr(rightType, false);
+            // 对于type A = {x:1, y:2}语句，当前阶段即可精确获取ClassType类型，需找到对应的ArkClass作为originalObject
+            // 对于其他情况此处为UnclearReferenceTye并由类型推导进行查找和处理
+            if (rightType instanceof ClassType) {
+                const classObject = ModelUtils.getClassWithName(rightType.getClassSignature().getClassName(), this.declaringMethod.getDeclaringArkClass());
+                if (classObject) {
+                    expr.setOriginalObject(classObject);
+                }
+            }
+        }
+        return expr;
+    }
+
+    private resolveImportCppTypeNode(importTypeNode: any): AliasTypeExpr {
+        const importType = 'typeAliasDefine';
+        let importFrom = '';
+        let importClauseName = '';
+        const importQualifier = importTypeNode.qualifier;
+        if (importQualifier !== undefined) {
+            importClauseName = importQualifier.getText(this.sourceFile);
+        }
+
+        let importInfo = new ImportInfo();
+        importInfo.build(importClauseName, importType, importFrom, LineColPosition.buildFromNode(importTypeNode, this.sourceFile), 0);
+        importInfo.setDeclaringArkFile(this.declaringMethod.getDeclaringArkFile());
+
+        return new AliasTypeExpr(importInfo, importTypeNode.isTypeOf);
     }
 
     private forRangeStatementToStmts(forOfStatement: any): Stmt[] {
@@ -456,7 +551,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer{
         }
 
         if (initNode) {
-            this.tsNodeToValueAndStmts(initNode).stmts.forEach(stmt => stmts.push(stmt));
+            this.tsNodeToStmts(initNode).forEach(stmt => stmts.push(stmt));
         }
         const dummyInitializerStmt = new DummyStmt(ArkIRTransformer.DUMMY_LOOP_INITIALIZER_STMT);
         stmts.push(dummyInitializerStmt);
@@ -593,8 +688,20 @@ export class ArkIRTransformerCpp extends ArkIRTransformer{
         return this.variableDeclarationListToStmtsCpp(variableStatement);
     }
 
+    public declStatementToStmtsCpp(declStatement: any): Stmt[] {
+        const stmts: Stmt[] = [];
+        if (declStatement.inner.length === 0) {
+            return this.arkValueTransformerCpp.declStmtToValueAndStmts(declStatement).stmts;
+        }
+        for (const child of declStatement.inner) {
+            const childStmts = this.tsNodeToStmts(child);
+            stmts.push(...childStmts);
+        }
+        return stmts;
+    }
+
     private variableDeclarationListToStmtsCpp(variableDeclarationList: any): Stmt[] {
-        return this.arkValueTransformerCpp.variableDeclarationListToValueAndStmts(variableDeclarationList).stmts;
+        return this.arkValueTransformerCpp.declStmtToValueAndStmts(variableDeclarationList).stmts;
     }
 
     private ifStatementToStmtsCpp(ifStatement: any): Stmt[] {

@@ -57,6 +57,7 @@ import * as ADDRLABEL_EXPECT from '../../../resources_cpp/cfg/addrLabelExpr/addr
 import * as NAMESPACE_EXPECT from '../../../resources_cpp/cfg/namespace';
 import * as OVERLOAD from '../../../resources_cpp/cfg/overload/overloadExpect';
 import * as USING_EXPECT from '../../../resources_cpp/cfg/using/usingExpects';
+import * as TYPEDEF_EXPECT from '../../../resources_cpp/cfg/typedef/typdefExpects';
 
 describe('CfgTest', () => {
     it('case1: conditional operator', () => {
@@ -405,6 +406,14 @@ describe('using Test', () => {
     it('case4: using', () => {
         const scene = buildScene('using');
         testBlocks(scene, 'usingcase.cpp', 'test_using_enum_member', USING_EXPECT.USING_EXPECT_CASE4.blocks);},
+    );
+});
+
+describe('typedef Test', () => {
+    it('case1: typedef', () => {
+        const scene = buildScene('typedef');
+        testBlocks(scene, 'typedef.cpp', 'main', TYPEDEF_EXPECT.TYPEDEF_EXPECT_CASE1.blocks);
+        },
     );
 });
 
