@@ -1814,7 +1814,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         if (qualType.includes('[') && qualType.includes(']')) {
             const matches = qualType.match(/\[/g);
             const count = matches ? matches.length : 0;
-            let baseType = cppNode2Type(qualType.slice(0, qualType.indexOf('[')), null, this.declaringMethod);
+            let baseType = cppNode2Type(qualType.slice(0, qualType.indexOf('[')), this.declaringMethod, null);
             if (baseType instanceof UnclearReferenceType) {
                 return new ArrayType(new UnclearReferenceType(qualType.slice(0, qualType.indexOf('['))), count);
             }
@@ -1836,7 +1836,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
                 return new ClassType(classSignature);
             }
         }
-        let nodeType = cppNode2Type(qualType, null, this.declaringMethod);
+        let nodeType = cppNode2Type(qualType, this.declaringMethod , null);
         return (nodeType instanceof UnclearReferenceType ? UnknownType.getInstance() : nodeType);
     }
 

@@ -107,7 +107,7 @@ export function buildTypeParameters(
             innerNode.default = innerNode.inner[0].type.qualType;
         }
         if(innerNode.default){
-            defaultType = cppNode2Type(innerNode.default,sourceFile,arkInstance);
+            defaultType = cppNode2Type(innerNode.default, arkInstance, sourceFile);
         }
         let templateType = new GenericType(typename,defaultType);
         templateType.setIndex(++index);
@@ -132,7 +132,7 @@ export function buildParameters(params: any, arkInstance: ArkMethod | ArkField, 
         }
         // type
         if (parameter.type) {
-            methodParameter.setType(buildGenericType(cppNode2Type(parameter.type.qualType, sourceFile, arkInstance), arkInstance));
+            methodParameter.setType(buildGenericType(cppNode2Type(parameter.type.qualType, arkInstance, sourceFile), arkInstance));
         } else {
             methodParameter.setType(UnknownType.getInstance());
         }
@@ -154,7 +154,7 @@ export function buildReturnType(mtdNode: any, sourceFile: any, method: ArkMethod
         } else { // 不带返回值的lambda函数
             return UnknownType.getInstance();
         }
-        return cppNode2Type(funcRetType, sourceFile, method);
+        return cppNode2Type(funcRetType, method, sourceFile);
     } else {
         return UnknownType.getInstance();
     }
@@ -162,8 +162,8 @@ export function buildReturnType(mtdNode: any, sourceFile: any, method: ArkMethod
 
 export function cppNode2Type(
     nodeQualType: any,
-    sourceFile: any,
     arkInstance: ArkMethod | ArkClass | ArkField,
+    sourceFile?: any,
 ): Type {
     // 处理特殊类型
     if (nodeQualType === 'void () const') {
