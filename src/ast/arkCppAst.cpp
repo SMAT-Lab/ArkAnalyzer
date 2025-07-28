@@ -128,7 +128,8 @@ void buildNodeRange(json& node, json& parent) {
                 }
             }
         }
-        node["range"] = {{"begin", {{"line", startLine}, {"col", startCol}, {"offset", startOffset}, {"tokLen", endOffset - startOffset + 1}}},
+        node["range"] = {{"begin", {{"line", startLine}, {"col", startCol}, {"offset", startOffset},
+                         {"tokLen", endOffset - startOffset + 1}}},
                          {"end", {{"line", endLine}, {"col", endCol}, {"offset", endOffset}}}};
     }
 }
