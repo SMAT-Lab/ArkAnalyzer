@@ -4,14 +4,22 @@
 
 typedef int UserId;
 typedef unsigned int uint;
+
 typedef struct {
     int x, y;
 } Point;
 
-Point p = {1, 2};
+typedef union {
+    int x;
+    float y;
+} Value;
 
+typedef enum {
+    RED;
+    GREEN;
+    BLUE;
+} Color;
 
-typedef std::map<std::string, std::vector<int>> StrToVecMap;
 
 int main() {
     typedef std::map<std::string, std::vector<int>> StrToVecMap;

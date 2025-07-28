@@ -25,11 +25,11 @@ CommandLineOptions cliutil::parseCommandLineArgs(int argc, char** argv) {
 void cliutil::addMainFileDirToInclude(CommandLineOptions& opts) {
     if (opts.input_file.empty()) return;
     std::string main_dir = std::filesystem::absolute(opts.input_file).parent_path().string();
+    auto abs_dir = std::filesystem::absolute(main_dir);
+    auto dir_exists = std::filesystem::exists(abs_dir);
     bool found = false;
     for (const auto& dir : opts.user_include_dirs) {
-        auto abs_dir = std::filesystem::absolute(main_dir);
         auto abs_main_dir = std::filesystem::absolute(dir);
-        auto dir_exists = std::filesystem::exists(abs_dir);
         auto main_dir_exists = std::filesystem::exists(abs_main_dir);
 
         if (dir_exists && main_dir_exists) {

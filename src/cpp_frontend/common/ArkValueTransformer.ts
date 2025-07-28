@@ -72,7 +72,7 @@ import { ArkValueTransformer } from '../../core/common/ArkValueTransformer';
 import { ModelUtils } from '../../core/common/ModelUtils';
 import { CONSTRUCTOR_NAME, THIS_NAME } from '../../core/common/TSConst';
 import { ClassCategory } from '../../core/model/ArkClass';
-import { TypeInference } from '../../core/common/TypeInference';
+import { TypeInference } from './TypeInference';
 
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkValueTransformer');
@@ -1819,7 +1819,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
                 return new ArrayType(new UnclearReferenceType(qualType.slice(0, qualType.indexOf('['))), count);
             }
             return new ArrayType(baseType, count);
-        } else if (nodeKind && 'kind' in nodeKind && nodeKind.kind === "InitListExpr"){
+        } else if (nodeKind && nodeKind.hasOwnProperty("kind") && nodeKind.kind === "InitListExpr"){
             let dimension = nodeKind.inner.length;
             return new ArrayType(new UnclearReferenceType(qualType), dimension);
         } else if (qualType.startsWith('std::')) {
@@ -1831,15 +1831,24 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
                 const classSignature = new ClassSignature(containerName, fileSignature);
                 return new ClassType(classSignature);
             }
-        } else if (qualType.includes('struct')) {
+        } else if (nodeKind === 'struct') {
             const fileSignature = new FileSignature(this.sourceFile?.projectName ?? "", this.sourceFile.fileName);
             const classSignature = new ClassSignature('struct', fileSignature, null, ClassCategory.STRUCT);
+            return new ClassType(classSignature);
+        } else if (nodeKind === 'enum') {
+            const fileSignature = new FileSignature(this.sourceFile?.projectName ?? "", this.sourceFile.fileName);
+            const classSignature = new ClassSignature('enum', fileSignature, null, ClassCategory.ENUM);
+            return new ClassType(classSignature);
+        } else if (nodeKind === 'union') {
+            const fileSignature = new FileSignature(this.sourceFile?.projectName ?? "", this.sourceFile.fileName);
+            const classSignature = new ClassSignature('struct', fileSignature, null, ClassCategory.UNION);
             return new ClassType(classSignature);
         } else if (qualType.includes('vector')) { // 存在std::vector 的场景因此判断逻辑需要在std::之后
             let dimension = 0;
             let dataType = this.resolveVectorType(qualType, dimension);
             return new ArrayType(buildTypeFromPreStr(dataType), dimension);
         } else {
+            // 条件为命中则考虑别名场景的type处理
             let type = this.resolveCppTypeReferenceNode(qualType);
             if (!(type instanceof UnclearReferenceType)) {
                 return this.resolveCppTypeReferenceNode(qualType);
