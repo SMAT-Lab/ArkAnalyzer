@@ -333,7 +333,7 @@ export class ArkIRTransformer {
         return [aliasTypeDefineStmt];
     }
 
-    private generateAliasTypeExpr(rightOp: ts.TypeNode, aliasType: AliasType): AliasTypeExpr {
+    protected generateAliasTypeExpr(rightOp: ts.TypeNode, aliasType: AliasType): AliasTypeExpr {
         let rightType = aliasType.getOriginalType();
         let expr: AliasTypeExpr;
         if (ts.isImportTypeNode(rightOp)) {

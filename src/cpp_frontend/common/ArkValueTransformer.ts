@@ -46,7 +46,7 @@ import {
     UndefinedType,
     UnknownType,
     PointerType,
-    ReferenceType
+    ReferenceType, AliasType,
 } from '../../core/base/Type';
 import { ArkSignatureBuilder } from '../../core/model/builder/ArkSignatureBuilder';
 import { ClassSignature, FieldSignature, MethodSignature, FileSignature } from '../../core/model/ArkSignature';
@@ -71,6 +71,8 @@ import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { ArkValueTransformer } from '../../core/common/ArkValueTransformer';
 import { ModelUtils } from '../../core/common/ModelUtils';
 import { CONSTRUCTOR_NAME, THIS_NAME } from '../../core/common/TSConst';
+import { ClassCategory } from '../../core/model/ArkClass';
+import { TypeInference } from './TypeInference';
 
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkValueTransformer');
@@ -243,7 +245,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
             }
             return this.arrayLiteralExpressionToValueAndStmtsCpp(node);
         } else if (node.kind === 'DeclStmt') {
-            return this.variableDeclarationListToValueAndStmts(node);
+            return this.declStmtToValueAndStmts(node);
         } else if (node.kind === 'UnaryOperator') {
             if (node.isPostfix) {
                 return this.postfixUnaryExpressionToValueAndStmtsCpp(node);
@@ -1498,14 +1500,12 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
             stmts: stmts,
         };
     }
-    public variableDeclarationListToValueAndStmts(variableDeclarationList: any): ValueAndStmts {
+
+    public declStmtToValueAndStmts(variableDeclarationList: any): ValueAndStmts {
         const stmts: Stmt[] = [];
-        const variableDeclarationMembers = variableDeclarationList.inner?.length === 0 ? [variableDeclarationList] : variableDeclarationList.inner;
-        for (const declaration of variableDeclarationMembers) {
-            let isConst = declaration.type!.qualType.toString().startsWith('const ');
-            const { stmts: declaredStmts } = this.variableDeclarationToValueAndStmts(declaration, isConst);
-            declaredStmts.forEach(s => stmts.push(s));
-        }
+        let isConst = variableDeclarationList.type!.qualType.toString().startsWith('const ');
+        const { stmts: declaredStmts } = this.variableDeclarationToValueAndStmts(variableDeclarationList, isConst);
+        declaredStmts.forEach(s => stmts.push(s));
         return {
             value: CppValueUtil.getUndefinedConst(),
             valueOriginalPositions: [FullPosition.DEFAULT],
@@ -1591,7 +1591,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         };
     }
 
-    private assignmentRightOpToValueAndStmtsCpp(rightOpNode: ts.Node | undefined, leftValue: Value): ValueAndStmts {
+    private assignmentRightOpToValueAndStmtsCpp(rightOpNode: any | undefined, leftValue: Value): ValueAndStmts {
         let rightValue: Value;
         let rightPositions: FullPosition[];
         let tempRightStmts: Stmt[] = [];
@@ -1814,32 +1814,92 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         if (qualType.includes('[') && qualType.includes(']')) {
             const matches = qualType.match(/\[/g);
             const count = matches ? matches.length : 0;
-            let baseType = cppNode2Type(qualType.slice(0, qualType.indexOf('[')), null, this.declaringMethod);
+            let baseType = cppNode2Type(qualType.slice(0, qualType.indexOf('[')), this.declaringMethod, null);
             if (baseType instanceof UnclearReferenceType) {
                 return new ArrayType(new UnclearReferenceType(qualType.slice(0, qualType.indexOf('['))), count);
             }
             return new ArrayType(baseType, count);
-        } else if (qualType.includes('vector')) {
-            let dimension = 0;
-            let dataType = this.resolveVectorType(qualType, dimension);
-            return new ArrayType(buildTypeFromPreStr(dataType), dimension);
-        } else if (nodeKind && 'kind' in nodeKind && nodeKind.kind === "InitListExpr"){
+        } else if (nodeKind && Object.prototype.hasOwnProperty.call(nodeKind, "kind") && nodeKind.kind === "InitListExpr"){
             let dimension = nodeKind.inner.length;
             return new ArrayType(new UnclearReferenceType(qualType), dimension);
         } else if (qualType.startsWith('std::')) {
             // 处理标准库容器类型
             const match = /std::(\w+)/g.exec(qualType);
             const containerName = match ? match[1] : null;
-            if (containerName && convertDataType(containerName) === 'unsupported') {
+            if (containerName && convertDataType(containerName) === 'unsupported' && this.isCppStdContainer(containerName)) {
                 const fileSignature = new FileSignature('std', containerName + '.h');
                 const classSignature = new ClassSignature(containerName, fileSignature);
                 return new ClassType(classSignature);
             }
+        } else if (nodeKind === 'struct') {
+            const fileSignature = new FileSignature(this.sourceFile?.projectName ?? "", this.sourceFile.fileName);
+            const classSignature = new ClassSignature('struct', fileSignature, null, ClassCategory.STRUCT);
+            return new ClassType(classSignature);
+        } else if (nodeKind === 'enum') {
+            const fileSignature = new FileSignature(this.sourceFile?.projectName ?? "", this.sourceFile.fileName);
+            const classSignature = new ClassSignature('enum', fileSignature, null, ClassCategory.ENUM);
+            return new ClassType(classSignature);
+        } else if (nodeKind === 'union') {
+            const fileSignature = new FileSignature(this.sourceFile?.projectName ?? "", this.sourceFile.fileName);
+            const classSignature = new ClassSignature('struct', fileSignature, null, ClassCategory.UNION);
+            return new ClassType(classSignature);
+        } else if (qualType.includes('vector')) { // 存在std::vector 的场景因此判断逻辑需要在std::之后
+            let dimension = 0;
+            let dataType = this.resolveVectorType(qualType, dimension);
+            return new ArrayType(buildTypeFromPreStr(dataType), dimension);
+        } else {
+            // 条件为命中则考虑别名场景的type处理
+            let type = this.resolveCppTypeReferenceNode(qualType);
+            if (!(type instanceof UnclearReferenceType)) {
+                return this.resolveCppTypeReferenceNode(qualType);
+            }
         }
-        let nodeType = cppNode2Type(qualType, null, this.declaringMethod);
+        let nodeType = cppNode2Type(qualType, this.declaringMethod , null);
         return (nodeType instanceof UnclearReferenceType ? UnknownType.getInstance() : nodeType);
     }
 
+    private isCppStdContainer(typeName: string): boolean {
+        const typeNameInLowerCase = typeName.toLowerCase();
+        const stdContainerLists = ['map', 'vector', 'deque', 'list', 'array', 'set', 'stack', 'queue'];
+        return stdContainerLists.some(containerType => typeNameInLowerCase.includes(containerType));
+    }
+
+    private resolveCppTypeReferenceNode(typeReferenceNode: any): Type {
+        const typeReferenceFullName = typeReferenceNode;
+        if (typeReferenceFullName === Builtin.OBJECT) {
+            return Builtin.OBJECT_CLASS_TYPE;
+        }
+        const aliasTypeAndStmt = this.aliasTypeMap.get(typeReferenceFullName);
+
+        const genericTypes: Type[] = [];
+        if (typeReferenceNode.typeArguments) {
+            for (const typeArgument of typeReferenceNode.typeArguments) {
+                genericTypes.push(this.resolveTypeNode(typeArgument));
+            }
+        }
+
+        if (!aliasTypeAndStmt) {
+            const typeName = typeReferenceNode;
+            const local = this.locals.get(typeName);
+            if (local !== undefined) {
+                return local.getType();
+            }
+            return new UnclearReferenceType(typeName, genericTypes);
+        } else {
+            if (genericTypes.length > 0) {
+                const oldAlias = aliasTypeAndStmt[0];
+                let alias = new AliasType(
+                    oldAlias.getName(),
+                    TypeInference.replaceTypeWithReal(oldAlias.getOriginalType(), genericTypes),
+                    oldAlias.getSignature(),
+                    oldAlias.getGenericTypes()
+                );
+                alias.setRealGenericTypes(genericTypes);
+                return alias;
+            }
+            return aliasTypeAndStmt[0];
+        }
+    }
     public resolveVectorType(kind: string, dimension: number) {
         if (!kind.includes('vector')) {
             return kind;

@@ -32,12 +32,16 @@ import {
     ArrayType,
     BooleanType,
     ClassType,
+    CXXNumberType,
+    CXXStringType,
     EnumValueType,
     FunctionType,
     GenericType,
     IntersectionType,
     NeverType,
     NullType,
+    PointerType,
+    ReferenceType,
     StringType,
     TupleType,
     Type,
@@ -46,10 +50,6 @@ import {
     UnionType,
     UnknownType,
     VoidType,
-    CXXStringType,
-    CXXNumberType,
-    PointerType,
-    ReferenceType,
 } from '../../core/base/Type';
 import { ArkMethod } from '../../core/model/ArkMethod';
 import { ArkExport } from '../../core/model/ArkExport';
@@ -58,16 +58,6 @@ import { ArkField } from '../../core/model/ArkField';
 import { Value } from '../../core/base/Value';
 import { Constant } from '../../core/base/Constant';
 import { ArkNamespace } from '../../core/model/ArkNamespace';
-import { Builtin } from '../../core/common/Builtin';
-import { MethodSignature, MethodSubSignature, NamespaceSignature } from '../../core/model/ArkSignature';
-import { INSTANCE_INIT_METHOD_NAME, LEXICAL_ENV_NAME_PREFIX, UNKNOWN_FILE_NAME } from '../../core/common/Const';
-import { ImportInfo } from '../../core/model/ArkImport';
-import { MethodParameter } from '../../core/model/builder/ArkMethodBuilder';
-import { IRInference } from '../../core/common/IRInference';
-import { AbstractTypeExpr, KeyofTypeExpr, TypeQueryExpr } from '../../core/base/TypeExpr';
-import { SdkUtils } from '../../core/common/SdkUtils';
-import { ModifierType } from '../../core/model/ArkBaseModel';
-import { ModelUtils } from '../../core/common/ModelUtils';
 import {
     ALL,
     CONSTRUCTOR_NAME,
@@ -77,7 +67,17 @@ import {
     SUPER_NAME,
     THIS_NAME,
 } from '../../core/common/TSConst';
+import { ModelUtils } from '../../core/common/ModelUtils';
+import { Builtin } from '../../core/common/Builtin';
+import { MethodSignature, MethodSubSignature, NamespaceSignature } from '../../core/model/ArkSignature';
+import { INSTANCE_INIT_METHOD_NAME, LEXICAL_ENV_NAME_PREFIX, UNKNOWN_FILE_NAME } from '../../core/common/Const';
 import { EMPTY_STRING } from '../../core/common/ValueUtil';
+import { ImportInfo } from '../../core/model/ArkImport';
+import { MethodParameter } from '../../core/model/builder/ArkMethodBuilder';
+import { IRInference } from './IRInference';
+import { AbstractTypeExpr, KeyofTypeExpr, TypeQueryExpr } from '../../core/base/TypeExpr';
+import { SdkUtils } from '../../core/common/SdkUtils';
+import { ModifierType } from '../../core/model/ArkBaseModel';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'TypeInference');
 
@@ -247,6 +247,14 @@ export class TypeInference {
                 ((expr instanceof ArkInstanceInvokeExpr && newExpr instanceof ArkStaticInvokeExpr) || newExpr instanceof ArkPtrInvokeExpr)
             ) {
                 stmt.replaceUse(expr, newExpr);
+            }
+            // After infer the invoke method, it should replace the super.foo() to this.foo() while the foo is with super class as declaring class.
+            if (newExpr instanceof ArkInstanceInvokeExpr && newExpr.getBase().getName() === SUPER_NAME) {
+                const thisLocal = arkMethod.getBody()?.getLocals().get(THIS_NAME);
+                if (thisLocal) {
+                    newExpr.setBase(thisLocal);
+                    thisLocal.addUsedStmt(stmt);
+                }
             }
         }
         if (stmt instanceof ArkAliasTypeDefineStmt && this.isUnclearType(stmt.getAliasType().getOriginalType())) {
@@ -431,10 +439,10 @@ export class TypeInference {
         ) {
             return true;
         } else if (type instanceof UnionType || type instanceof IntersectionType || type instanceof TupleType) {
-            return !!type.getTypes().find(t => this.hasUnclearReferenceType(t));
+            return !!type.getTypes().find(t => this.checkType(t, e => e instanceof UnclearReferenceType || e instanceof GenericType));
         } else if (type instanceof ArrayType) {
             const baseType = type.getBaseType();
-            return this.hasUnclearReferenceType(baseType) || baseType instanceof GenericType;
+            return this.checkType(baseType, t => t instanceof UnclearReferenceType || baseType instanceof GenericType);
         } else if (type instanceof AliasType) {
             return this.isUnclearType(type.getOriginalType());
         } else if (type instanceof KeyofTypeExpr) {
@@ -445,25 +453,29 @@ export class TypeInference {
         return false;
     }
 
-    // This is the temporal function to check unclearReferenceType recursively and can be removed after typeInfer supports multiple candidate types.
-    private static hasUnclearReferenceType(type: Type, visited: Set<Type> = new Set()): boolean {
+    // This is the temporal function to check Type recursively and can be removed after typeInfer supports multiple candidate types.
+    public static checkType(type: Type,
+                            check: (t: Type) => boolean,
+                            visited: Set<Type> = new Set()): boolean {
         if (visited.has(type)) {
             return false;
         } else {
             visited.add(type);
         }
-        if (type instanceof UnclearReferenceType) {
+        if (check(type)) {
             return true;
+        } else if (type instanceof ClassType) {
+            return !!type.getRealGenericTypes()?.find(t => this.checkType(t, check, visited));
         } else if (type instanceof UnionType || type instanceof IntersectionType || type instanceof TupleType) {
-            return !!type.getTypes().find(t => this.hasUnclearReferenceType(t, visited));
+            return !!type.getTypes().find(t => this.checkType(t, check, visited));
         } else if (type instanceof ArrayType) {
-            return this.hasUnclearReferenceType(type.getBaseType(), visited);
+            return this.checkType(type.getBaseType(), check, visited);
         } else if (type instanceof AliasType) {
-            return this.hasUnclearReferenceType(type.getOriginalType(), visited);
+            return this.checkType(type.getOriginalType(), check, visited);
         } else if (type instanceof KeyofTypeExpr) {
-            return this.hasUnclearReferenceType(type.getOpType(), visited);
+            return this.checkType(type.getOpType(), check, visited);
         } else if (type instanceof TypeQueryExpr) {
-            return this.hasUnclearReferenceType(type.getType(), visited);
+            return this.checkType(type.getType(), check, visited);
         }
         return false;
     }
@@ -728,7 +740,8 @@ export class TypeInference {
         if (property instanceof ArkField) {
             if (arkClass.getCategory() === ClassCategory.ENUM) {
                 let constant;
-                const lastStmt = property.getInitializer()[-1];
+                const propertyInitializer = property.getInitializer();
+                const lastStmt = propertyInitializer[propertyInitializer.length - 1];
                 if (lastStmt instanceof ArkAssignStmt && lastStmt.getRightOp() instanceof Constant) {
                     constant = lastStmt.getRightOp() as Constant;
                 }
@@ -781,6 +794,7 @@ export class TypeInference {
     public static inferTypeByName(typeName: string, arkClass: ArkClass): Type | null {
         let arkExport: ArkExport | null =
             ModelUtils.getClassWithName(typeName, arkClass) ??
+            ModelUtils.getDefaultClass(arkClass)?.getDefaultArkMethod()?.getBody()?.getLocals()?.get(typeName) ??
             ModelUtils.getDefaultClass(arkClass)?.getDefaultArkMethod()?.getBody()?.getAliasTypeByName(typeName) ??
             ModelUtils.getArkExportInImportInfoWithName(typeName, arkClass.getDeclaringArkFile());
         if (!arkExport && !arkClass.getDeclaringArkFile().getImportInfoBy(typeName)) {
@@ -791,6 +805,11 @@ export class TypeInference {
             return type;
         }
         return null;
+    }
+
+    public static getTypeByGlobalName(globalName: string, arkMethod: ArkMethod): Type | null {
+        const arkExport: ArkExport | null = arkMethod.getDeclaringArkFile().getScene().getSdkGlobal(globalName);
+        return this.parseArkExport2Type(arkExport);
     }
 
     public static inferRealGenericTypes(realTypes: Type[] | undefined, arkClass: ArkClass): void {
@@ -878,7 +897,8 @@ export class TypeInference {
     public static inferFunctionType(argType: FunctionType, paramSubSignature: MethodSubSignature | undefined, realTypes: Type[] | undefined): void {
         const returnType = argType.getMethodSignature().getMethodSubSignature().getReturnType();
         const declareType = paramSubSignature?.getReturnType();
-        if (declareType instanceof GenericType && realTypes && !this.isUnclearType(returnType) && !(returnType instanceof VoidType)) {
+        if (declareType instanceof GenericType && realTypes && !realTypes[declareType.getIndex()] &&
+            !this.isUnclearType(returnType) && !(returnType instanceof VoidType)) {
             realTypes[declareType.getIndex()] = returnType;
         }
         const params = paramSubSignature?.getParameters();
@@ -907,9 +927,10 @@ export class TypeInference {
         if (!(stmt instanceof ArkReturnStmt)) {
             return;
         }
+        this.inferValueType(stmt.getOp(), arkMethod);
         let returnType: Type | undefined = arkMethod.getSignature().getType();
         if (returnType instanceof ClassType && returnType.getClassSignature().getClassName() === PROMISE) {
-            returnType = returnType.getRealGenericTypes()?.at(0);
+            returnType = returnType.getRealGenericTypes()?.[0];
         }
         if (returnType) {
             IRInference.inferRightWithSdkType(returnType, stmt.getOp().getType(), arkMethod.getDeclaringArkClass());

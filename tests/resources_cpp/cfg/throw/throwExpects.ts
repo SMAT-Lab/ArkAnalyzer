@@ -47,7 +47,7 @@ export const THROW_EXPECT_CASE2 = {
         },
         {
             id: 2,
-            stmts: [ 'msg = caughtexception: unknown' ],
+            stmts: [ 'msg = caughtexception: unknown', "msg = undefined", ],
             preds: [],
             succes: []
         },
@@ -76,7 +76,7 @@ export const THROW_EXPECT_CASE3= {
         },
         {
             id: 2,
-            stmts: [ 'e = caughtexception: unknown' ],
+            stmts: [ 'e = caughtexception: unknown', "e = undefined" ],
             preds: [],
             succes: [3]
         },

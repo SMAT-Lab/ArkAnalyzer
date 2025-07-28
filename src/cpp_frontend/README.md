@@ -1,5 +1,5 @@
 # ArkAnalyzer-CPP前端
-
+### ArkAnalyzer-CPP前端是由 HUAWEI ICT BG 公共开发部的品牌-精卫 团队主导设计与开发, 基于Clang的解析能力对cpp/c的语义场景完成其到ArkAnalyzer IR的转译及分析。
 ## 一、ArkAnalyzer-CPP工具使用介绍
 ### 1、外部接口调用
 在本分支下，对ArkAnalyzer使用者提供统一接口调用，可以参考tests/unit/core_cpp/graph/Cfg.test.ts测试文件中的构建

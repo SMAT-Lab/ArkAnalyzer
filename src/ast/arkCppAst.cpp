@@ -103,6 +103,37 @@ json getSourceContent(CXSourceRange range){
     };
 }
 
+// 根据父节点构建子节点的range
+void buildNodeRange(json& node, json& parent) {
+    std::string cCode = node["code"];
+    std::string pCode = parent["code"];
+    size_t index1 = pCode.find(cCode);
+    if (index1 != std::string::npos) {
+        json pRange = parent["range"];
+        int startLine = pRange["begin"]["line"];
+        int endLine = startLine;
+        int startOffset = pRange["begin"]["offset"] + index1;
+        int endOffset = startOffset + cCode.size() - 1;
+        int startCol = pRange["begin"]["col"] + index1;
+        int endCol = startCol + cCode.size() - 1;
+        for (size_t i = 0; i < pCode.size(); i++) {
+            if (pCode[i] == '\n') { // 根据换行符获取行列号
+                if (startOffset > i) {
+                    startLine += 1;
+                    startCol = startOffset - i;
+                }
+                if (endOffset > i) {
+                    endLine += 1;
+                    endCol = endOffset - i;
+                }
+            }
+        }
+        node["range"] = {{"begin", {{"line", startLine}, {"col", startCol}, {"offset", startOffset},
+                         {"tokLen", endOffset - startOffset + 1}}},
+                         {"end", {{"line", endLine}, {"col", endCol}, {"offset", endOffset}}}};
+    }
+}
+
 void fillUnaryOperatorInfo(json &node, CXCursor cursor){
     auto opKind = clang_getCursorUnaryOperatorKind(cursor);
     node["opcode"] = cx2str(clang_getUnaryOperatorKindSpelling(opKind));
@@ -613,50 +644,68 @@ void filterToMainFileOnly(json& node, const std::string& mainFileName, std::stri
     }
 }
 
+// 处理构造函数中参数的节点类型为callExpr
+void handleCXXCtorInitializerOfCallExpr(json &child) {
+    std::string kind = child["inner"][0]["kind"];
+    if (kind == "ImplicitCastExpr") {
+        child = child["inner"][0];
+    } else if (kind == "DeclRefExpr") {
+        child["kind"] = "ImplicitCastExpr";
+    }
+}
+
+// 构建CXXCtorInitializer
+json buildCXXCtorInitializer(json &memberRef, json &children, json& parent) {
+    json CXXCtor = json::object();
+    CXXCtor["kind"] = "CXXCtorInitializer";
+    CXXCtor["anyInit"] = {{"kind", "FieldDecl"}, {"name", memberRef["name"]}, {"type", memberRef["type"]}};
+    json inner = json::array();
+    inner.push_back(children);
+    CXXCtor["inner"] = inner;
+    std::string child = children["code"];
+    std::string ctor = memberRef["code"];
+    CXXCtor["code"] = ctor + "(" + child + ")";
+    buildNodeRange(CXXCtor, parent);
+    return CXXCtor;
+}
+
+// 构建CXXInheritedCtorInitExpr
+json buildCXXInheritedCtorInitExpr(json &memberRef, json &children) {
+    children["kind"] = "CXXInheritedCtorInitExpr";
+    children["type"] = memberRef["type"];
+    json CXXCtor = json::object();
+    CXXCtor["kind"] = "CXXCtorInitializer";
+    CXXCtor["baseInit"] = memberRef["type"];
+    json inner = json::array();
+    inner.push_back(children);
+    CXXCtor["inner"] = inner;
+    return CXXCtor;
+}
+
 // 添加构造函数的变量初始化节点
-json addCXXCtorInitializer(json &children) {
+json addCXXCtorInitializer(json &children, json& parent) {
     json newChildren = json::array();
-    json member = nullptr;
+    json memberRef = nullptr;
     for (int i = 0; i < children.size(); i++) {
         if (children[i]["kind"] == "MemberRef" || children[i]["kind"] == "TypeRef") {
-            member = children[i];
-            continue;
+            memberRef = children[i];
+            continue; // 缓存该类型的节点与下一个节点一起构建节点信息
         }
-        if (children[i]["kind"] == "CallExpr" && children[i]["inner"][0]["kind"] == "ImplicitCastExpr") {
-            children[i] = children[i]["inner"][0];
-        }
-        if (children[i]["kind"] == "CallExpr" && children[i]["inner"][0]["kind"] == "DeclRefExpr") {
-            children[i]["kind"] = "ImplicitCastExpr";
+        if (children[i]["kind"] == "CallExpr") {
+            handleCXXCtorInitializerOfCallExpr(children[i]);
         }
         if (children[i]["kind"] == "ImplicitCastExpr" || children[i]["kind"] == "IntegerLiteral" ||
         children[i]["kind"] == "StringLiteral" || children[i]["kind"] == "CharacterLiteral" || children[i]["kind"] == "FloatingLiteral") {
-            if (!member.is_null()) {
-                json CXXCtor = json::object();
-                CXXCtor["kind"] = "CXXCtorInitializer";
-                CXXCtor["anyInit"] = {{"kind", "FieldDecl"}, {"name", member["name"]}, {"type", member["type"]}};
-                json inner = json::array();
-                inner.push_back(children[i]);
-                CXXCtor["inner"] = inner;
-                std::string child = children[i]["code"];
-                std::string ctor = member["code"];
-                CXXCtor["code"] = ctor + "(" + child + ")";
-                newChildren.push_back(CXXCtor);
-                member = nullptr;
+            if (!memberRef.is_null()) {
+                newChildren.push_back(buildCXXCtorInitializer(memberRef, children[i], parent));
+                memberRef = nullptr;
             }
             continue;
         }
         if (children[i]["kind"] == "OverloadedDeclRef") {
-           if (!member.is_null()) {
-              children[i]["kind"] = "CXXInheritedCtorInitExpr";
-              children[i]["type"] = member["type"];
-              json CXXCtor = json::object();
-              CXXCtor["kind"] = "CXXCtorInitializer";
-              CXXCtor["baseInit"] = member["type"];
-              json inner = json::array();
-              inner.push_back(children[i]);
-              CXXCtor["inner"] = inner;
-              newChildren.push_back(CXXCtor);
-              member = nullptr;
+           if (!memberRef.is_null()) {
+              newChildren.push_back(buildCXXInheritedCtorInitExpr(memberRef, children[i]));
+              memberRef = nullptr;
            }
            continue;
         }
@@ -666,22 +715,23 @@ json addCXXCtorInitializer(json &children) {
 }
 
 // 遍历构建typedef的子节点
-void buildTypedefChild(CXType& type, json& newChildren, json& children) {
+void buildTypedefChild(CXType& type, json& newChildren, json& children, json& parent) {
     CXString cxType = clang_getTypeSpelling(type);
     std::string typeStr = clang_getCString(cxType);
+    clang_disposeString(cxType);
     json node = json::object();
     node["code"] = typeStr;
     node["name"] = typeStr;
-    clang_disposeString(cxType);
+    buildNodeRange(node, parent);
     json inner = json::array();
     if(type.kind == CXType_Pointer) {
         node["kind"] = "PointerType";
         CXType pointee = clang_getPointeeType(type);
-        buildTypedefChild(pointee, inner, children);
+        buildTypedefChild(pointee, inner, children, node);
     } else if (type.kind == CXType_FunctionProto) {
         node["kind"] = "FunctionProtoType";
         CXType result = clang_getResultType(type);
-        buildTypedefChild(result, inner, children);
+        buildTypedefChild(result, inner, children, node);
         size_t numArgs = children.size();
         for (size_t i = 0; i < numArgs; i++) {
             inner.push_back(children[i]);
@@ -817,15 +867,15 @@ void fillMemberExprName(json& node) {
     if (index1 == std::string::npos && index2 == std::string::npos) {
         return;
     } else if (index1 != std::string::npos && index2 != std::string::npos) {
-        index = index1 < index2 ? index1 : index2;
+        index = index1 < index2 ? index1 + 2 : index2 + 1; // 去掉成员访问符的长度
     } else {
-        index = index1 != std::string::npos ? index1 : index2;
+        index = index1 != std::string::npos ? index1 + 2 : index2 + 1;
     }
     size_t index3 = codeStr.find("(");
     if (index3 != std::string::npos) {
-        node["name"] = codeStr.substr(index + 1, index3 - index - 1);
+        node["name"] = codeStr.substr(index, index3 - index);
     } else {
-        node["name"] = codeStr.substr(index + 1);
+        node["name"] = codeStr.substr(index);
     }
 }
 
@@ -862,10 +912,10 @@ void nodePostprocess(
             node["kind"] = "RecoveryExpr";
         }
     } else if (node["kind"] == "CXXConstructorDecl") {
-        children = addCXXCtorInitializer(children);
+        children = addCXXCtorInitializer(children, node);
     } else if (node["kind"] == "TypedefDecl" && (children.size() == 0 || children[0]["kind"] != "CXXRecordDecl")) {
         json newChildren = json::array();
-        buildTypedefChild(clang_getTypedefDeclUnderlyingType(cursor), newChildren, children);
+        buildTypedefChild(clang_getTypedefDeclUnderlyingType(cursor), newChildren, children, node);
         children = newChildren;
     }
 

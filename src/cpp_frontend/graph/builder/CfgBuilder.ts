@@ -632,7 +632,7 @@ export class CfgBuilder {
                 this.judgeLastType(s, lastStatement);
                 lastStatement = s;
                 break;
-            } else if (nodeKind === 'DeclStmt' || nodeKind == "VarDecl") {
+            } else if (nodeKind === 'DeclStmt' || nodeKind === "VarDecl" || nodeKind === "TypedefDecl") {
                 let s = new StatementBuilder('statement', innerNode.code, innerNode, scope.id);
                 this.judgeLastType(s, lastStatement);
                 lastStatement = s;
