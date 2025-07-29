@@ -92,7 +92,7 @@ const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkValueTransforme
 export class ArkValueTransformer {
     protected conditionalOperatorNo: number = 0;
     protected tempLocalNo: number = 0;
-    protected sourceFile: ts.SourceFile;
+    protected sourceFile: ts.SourceFile | any;
     protected locals: Map<string, Local> = new Map();
     protected globals?: Map<string, GlobalRef>;
     protected thisLocal: Local;
@@ -1918,7 +1918,7 @@ export class ArkValueTransformer {
         return templateTypes[0];
     }
 
-    private resolveTypeReferenceNode(typeReferenceNode: ts.TypeReferenceNode): Type {
+    protected resolveTypeReferenceNode(typeReferenceNode: ts.TypeReferenceNode): Type {
         const typeReferenceFullName = typeReferenceNode.typeName.getText(this.sourceFile);
         if (typeReferenceFullName === Builtin.OBJECT) {
             return Builtin.OBJECT_CLASS_TYPE;

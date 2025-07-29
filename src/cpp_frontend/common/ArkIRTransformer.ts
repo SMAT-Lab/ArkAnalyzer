@@ -224,7 +224,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer{
 
         let rightType;
         // 识别tagUsed属性用于对struct, union, enum 节点进行判断
-        if(typeNode && typeNode.hasOwnProperty("tagUsed")){
+        if(typeNode && Object.prototype.hasOwnProperty.call(typeNode, "tagUsed")){
             rightType = this.arkValueTransformerCpp.resolveTypeNodeCpp(rightOp, typeNode.tagUsed);
         } else {
             rightType = this.arkValueTransformerCpp.resolveTypeNodeCpp(rightOp);

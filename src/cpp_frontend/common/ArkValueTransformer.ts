@@ -1819,7 +1819,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
                 return new ArrayType(new UnclearReferenceType(qualType.slice(0, qualType.indexOf('['))), count);
             }
             return new ArrayType(baseType, count);
-        } else if (nodeKind && nodeKind.hasOwnProperty("kind") && nodeKind.kind === "InitListExpr"){
+        } else if (nodeKind && Object.prototype.hasOwnProperty.call(nodeKind, "kind") && nodeKind.kind === "InitListExpr"){
             let dimension = nodeKind.inner.length;
             return new ArrayType(new UnclearReferenceType(qualType), dimension);
         } else if (qualType.startsWith('std::')) {
