@@ -429,16 +429,15 @@ void filterVarDeclArrayDims(json &node){
     // 只处理VarDecl且是数组类型
     if (node.contains("kind") && node["kind"] == "VarDecl" && node.contains("type") && node["type"].contains("qualType")){
         std::string qualType = node["type"]["qualType"];
-        if (qualType.find('[') != std::string::npos && qualType.find(']') != std::string::npos){
-            if (node.contains("inner") && node["inner"].is_array()){
-                json filtered = json::array();
-                for (auto &child:node["inner"]){
-                    // 仅移除作为数组维度信息的IntegerLiteral
-                    if (child.contains("kind") && child["kind"] == "IntegerLiteral") continue;
-                    filtered.push_back(child);
-                }
-                node["inner"] = filtered;
+        if (qualType.find('[') != std::string::npos && qualType.find(']') != std::string::npos &&
+            node.contains("inner") && node["inner"].is_array()){
+            json filtered = json::array();
+            for (auto &child:node["inner"]){
+                // 仅移除作为数组维度信息的IntegerLiteral
+                if (child.contains("kind") && child["kind"] == "IntegerLiteral") continue;
+                filtered.push_back(child);
             }
+            node["inner"] = filtered;
         }
     }
     forEachChild(node, [&](json &child){ filterVarDeclArrayDims(child); });

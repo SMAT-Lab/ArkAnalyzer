@@ -111,8 +111,9 @@ ClangArgs cliutil::load_compile_commands(const CommandLineOptions& opts){
         return result;
     }
     json compile_commands_json;
-    try {file >> compile_commands_json;}
-    catch (const json::exception &e){
+    try {
+        file >> compile_commands_json;
+    } catch (const json::exception &e){
         std::cerr << "JSON 解析错误: "<< e.what()<< std::endl;
         return result;
     }
