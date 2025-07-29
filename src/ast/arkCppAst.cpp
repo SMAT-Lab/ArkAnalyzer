@@ -105,28 +105,39 @@ json getSourceContent(CXSourceRange range){
 
 // 根据父节点构建子节点的range
 void buildNodeRange(json& node, json& parent) {
+    if (!node.contains("code") || node["code"] == "") return;
+    if (!parent.contains("code") || parent["code"] == "") return;
     std::string cCode = node["code"];
     std::string pCode = parent["code"];
+    if (!parent.contains("range") || parent["range"] == json()) return;
     size_t index1 = pCode.find(cCode);
     if (index1 != std::string::npos) {
         json pRange = parent["range"];
+        int startOffset = pRange["begin"]["offset"] + index1;
+        int endOffset = startOffset + cCode.size() - 1; // 存在子字符串不会越界
         int startLine = pRange["begin"]["line"];
         int endLine = startLine;
-        int startOffset = pRange["begin"]["offset"] + index1;
-        int endOffset = startOffset + cCode.size() - 1;
-        int startCol = pRange["begin"]["col"] + index1;
-        int endCol = startCol + cCode.size() - 1;
+        int startCol = pRange["begin"]["col"];
+        int endCol = startCol;
+        int curOffset = 0;
+        int line = startLine, col = startCol;
         for (size_t i = 0; i < pCode.size(); i++) {
-            if (pCode[i] == '\n') { // 根据换行符获取行列号
-                if (startOffset > i) {
-                    startLine += 1;
-                    startCol = startOffset - i;
-                }
-                if (endOffset > i) {
-                    endLine += 1;
-                    endCol = endOffset - i;
-                }
+            if (curOffset == startOffset) {
+                startLine = line;
+                startCol = col;
             }
+            if (curOffset == endOffset) {
+                endLine = line;
+                endCol = col;
+                break;
+            }
+            if (pCode[i] == '\n') { // 根据换行符获取行列号
+                line++;
+                col = 0;
+            } else {
+                col++;
+            }
+            curOffset++;
         }
         node["range"] = {{"begin", {{"line", startLine}, {"col", startCol}, {"offset", startOffset}, {"tokLen", endOffset - startOffset + 1}}},
                          {"end", {{"line", endLine}, {"col", endCol}, {"offset", endOffset}}}};
@@ -153,7 +164,7 @@ std::string handleUnexposedExpr(json node){
                    typeStr == "bool" || typeStr == "mapped_type" || codeStr.find(".erase") != std::string::npos){
             return "ExprWithCleanups";
         }else if (codeStr.find("std::make_pair") != std::string::npos){
-             return "MaterializeTemporaryExpr";
+            return "MaterializeTemporaryExpr";
         }
     }
     return "ImplicitCastExpr";
@@ -416,22 +427,21 @@ void patchFoldExpr(json &node) {
 void filterVarDeclArrayDims(json &node){
     // 只处理VarDecl且是数组类型
     if (node.contains("kind") && node["kind"] == "VarDecl" && node.contains("type") && node["type"].contains("qualType")){
-            std::string qualType = node["type"]["qualType"];
-            if (qualType.find('[') != std::string::npos && qualType.find(']') != std::string::npos){
-                if (node.contains("inner") && node["inner"].is_array()){
-                    json filtered = json::array();
-                    for (auto &child:node["inner"]){
-                        // 仅移除作为数组维度信息的IntegerLiteral
-                        if (child.contains("kind") && child["kind"] == "IntegerLiteral") continue;
-                        filtered.push_back(child);
-                    }
-                    node["inner"] = filtered;
+        std::string qualType = node["type"]["qualType"];
+        if (qualType.find('[') != std::string::npos && qualType.find(']') != std::string::npos){
+            if (node.contains("inner") && node["inner"].is_array()){
+                json filtered = json::array();
+                for (auto &child:node["inner"]){
+                    // 仅移除作为数组维度信息的IntegerLiteral
+                    if (child.contains("kind") && child["kind"] == "IntegerLiteral") continue;
+                    filtered.push_back(child);
                 }
+                node["inner"] = filtered;
             }
         }
+    }
     forEachChild(node, [&](json &child){ filterVarDeclArrayDims(child); });
 }
-
 
 // 收集当前作用域所有参数/变量声明， 返回名到类型的映射
 std::unordered_map<std::string, std::string> collectAllScopeVarTypeMap(const json &node){
@@ -746,6 +756,14 @@ void buildTypedefChild(CXType& type, json& newChildren, json& children, json& pa
     newChildren.push_back(node);
 }
 
+// 修改typedef下类的声明节点类型为constructorExpr
+void updateTypedefClassConstructor(json& children) {
+    if (children.size() < 2 || (children[0]["kind"] != "TypeRef" && children[1]["kind"] != "CallExpr")) return;
+    if (children[0]["type"]["qualType"] == children[1]["type"]["qualType"] && (children[1]["name"] == "map" || children[1]["name"] == "unordered_map"))
+        children[1]["kind"] = "CXXConstructExpr";
+}
+
+
 void fillNodeKindTag(json& node, CXCursor cursor, CXCursorKind kind_cursor, const std::string& kindSpelling) {
     std::string nameStr = node.value("name", "");
     std::string codeStr = node.value("code", "");
@@ -912,7 +930,7 @@ void nodePostprocess(
         }
     } else if (node["kind"] == "CXXConstructorDecl") {
         children = addCXXCtorInitializer(children, node);
-    } else if (node["kind"] == "TypedefDecl" && (children.size() == 0 || children[0]["kind"] != "CXXRecordDecl")) {
+    } else if (node["kind"] == "TypedefDecl" && (children.size() == 0 || (children[0]["kind"] != "CXXRecordDecl" && children[0]["kind"] != "EnumDecl"))) {
         json newChildren = json::array();
         buildTypedefChild(clang_getTypedefDeclUnderlyingType(cursor), newChildren, children, node);
         children = newChildren;
@@ -922,9 +940,10 @@ void nodePostprocess(
 
     if (node["kind"] == "InitListExpr") relateMemberType(typeStr, children);
 
-    if (kind_cursor == CXCursor_TemplateTypeParameter && codeStr.find("=") != std::string::npos){
+    if (node["kind"] == "VarDecl") updateTypedefClassConstructor(children);
+
+    if (kind_cursor == CXCursor_TemplateTypeParameter && codeStr.find("=") != std::string::npos)
         children.push_back(buildTemplateDefaultType(codeStr));
-    }
 
     node["inner"] = children;
 
@@ -988,64 +1007,9 @@ json buildASTJson(CXCursor cursor){
 
 // ======================工程辅助代码==========================
 
-struct CompileArgs{
-    std::vector<std::string> string_args;
-    std::vector<const char *> cstr_args;
-};
-
-CompileArgs load_compile_commands(const std::string &compile_commands_path, const std::string &input_file){
-    std::ifstream file(compile_commands_path);
-    CompileArgs result;
-    if (!file.is_open()){
-        std::cerr << "无法打开 compile_commands.json \n";
-        return result;
-    }
-    json compile_commands_json;
-    try {file >> compile_commands_json;}
-    catch (const json::exception &e){
-        std::cerr << "JSON 解析错误: "<< e.what()<< std::endl;
-        return result;
-    }
-    fs::path input_file_path = fs::canonical(input_file);
-    for (const auto &command: compile_commands_json){
-        if (command.contains("file") && command.contains("command")){
-            std::string command_file = command["file"].get<std::string>();
-            fs::path command_file_path;
-            try {
-                command_file_path = fs::canonical(command_file);
-            } catch (const std::filesystem::filesystem_error &e){
-                std::cerr << "路径错误: "<< e.what() << std::endl;
-                continue;
-            }
-            if (fs::equivalent(command_file_path, input_file_path)){
-                std::string directory_str = command_file_path.parent_path().string();
-                result.string_args.push_back("-I" + directory_str);
-                result.cstr_args.push_back(result.string_args.back().c_str());
-                std::string command_str = command["command"].get<std::string>();
-                std::istringstream iss(command_str);
-                std::string arg;
-                while (iss >>arg){
-                    if (!isSameFile(arg, input_file)){
-                        result.string_args.push_back(arg);
-                        result.cstr_args.push_back(result.string_args.back().c_str());
-                    }
-                }
-                break;
-            }
-        } else {
-            std::cerr<< "compile_commands.json 中 缺少 file 或 command 字段"<< std::endl;
-        }
-    }
-    return result;
-}
-
-CXTranslationUnit createTranslationUnit(CXIndex index,
-                                        const CommandLineOptions& opts,
-                                        const std::vector<const char*>& args) {
-    CXTranslationUnit unit = clang_parseTranslationUnit(
-        index, opts.input_file.c_str(), args.data(), args.size(), nullptr, 0,
+CXTranslationUnit createTranslationUnit(CXIndex index, const CommandLineOptions& opts, const std::vector<const char*>& args) {
+    return clang_parseTranslationUnit(index, opts.input_file.c_str(), args.data(), args.size(), nullptr, 0,
         CXTranslationUnit_DetailedPreprocessingRecord);
-    return unit;
 }
 
 json buildAndProcessAST(CXTranslationUnit unit, const CommandLineOptions& opts) {
@@ -1085,7 +1049,8 @@ int main(int argc, char** argv) {
     cliutil::addMainFileDirToInclude(opts);
 
     if (!cliutil::validateInput(opts)) return 1;
-    ClangArgs clang_args = cliutil::prepareClangArgs(opts);
+    ClangArgs clang_args = cliutil::getClangArgs(opts);
+
     g_user_include_dirs = opts.user_include_dirs;
     CXIndex index = clang_createIndex(0, 0);
     CXTranslationUnit unit = createTranslationUnit(index, opts, clang_args.cstr_args);

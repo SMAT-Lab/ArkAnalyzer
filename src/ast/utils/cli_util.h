@@ -20,5 +20,7 @@ namespace cliutil {
     bool validateInput(CommandLineOptions& opts);
     void printUsage(const char* progName);
     ClangArgs prepareClangArgs(const CommandLineOptions& opts);
+    ClangArgs load_compile_commands(const CommandLineOptions& opts);
     bool hasSuffix(const std::string& str, const std::string& suffix); // 内部用
+    ClangArgs getClangArgs(const CommandLineOptions& opts);
 }

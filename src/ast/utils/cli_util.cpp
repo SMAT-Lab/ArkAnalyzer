@@ -1,9 +1,13 @@
 #include "cli_util.h"
 #include "json.hpp"
+#include "utils_string.h"
 #include <fstream>
 #include <iostream>
 #include <filesystem>
 #include <sstream>
+
+using json = nlohmann::json;
+namespace fs = std::filesystem;
 
 CommandLineOptions cliutil::parseCommandLineArgs(int argc, char** argv) {
     CommandLineOptions opts;
@@ -95,4 +99,62 @@ ClangArgs cliutil::prepareClangArgs(const CommandLineOptions& opts) {
         res.cstr_args.push_back(arg.c_str());
     }
     return res;
+}
+
+ClangArgs cliutil::load_compile_commands(const CommandLineOptions& opts){
+    std::string compile_commands_path = opts.compile_commands_file;
+    std::string input_file = opts.input_file;
+    std::ifstream file(compile_commands_path);
+    ClangArgs result;
+    if (!file.is_open()){
+        std::cerr << "无法打开 compile_commands.json \n";
+        return result;
+    }
+    json compile_commands_json;
+    try {file >> compile_commands_json;}
+    catch (const json::exception &e){
+        std::cerr << "JSON 解析错误: "<< e.what()<< std::endl;
+        return result;
+    }
+    fs::path input_file_path = fs::canonical(input_file);
+    for (const auto &command: compile_commands_json){
+        if (command.contains("file") && command.contains("command")){
+            std::string command_file = command["file"].get<std::string>();
+            fs::path command_file_path;
+            try {
+                command_file_path = fs::canonical(command_file);
+            } catch (const std::filesystem::filesystem_error &e){
+                std::cerr << "路径错误: "<< e.what() << std::endl;
+                continue;
+            }
+            if (fs::equivalent(command_file_path, input_file_path)){
+                std::string directory_str = command_file_path.parent_path().string();
+                result.str_args.push_back("-I" + directory_str);
+                result.cstr_args.push_back(result.str_args.back().c_str());
+                std::string command_str = command["command"].get<std::string>();
+                std::istringstream iss(command_str);
+                std::string arg;
+                while (iss >>arg){
+                    if (!isSameFile(arg, input_file)){
+                        result.str_args.push_back(arg);
+                        result.cstr_args.push_back(result.str_args.back().c_str());
+                    }
+                }
+                break;
+            }
+        } else {
+            std::cerr<< "compile_commands.json 中 缺少 file 或 command 字段"<< std::endl;
+        }
+    }
+    return result;
+}
+
+ClangArgs cliutil::getClangArgs(const CommandLineOptions& opts) {
+    ClangArgs clang_args;
+    if (!opts.compile_commands_file.empty()) {
+        clang_args = cliutil::load_compile_commands(opts);
+    } else {
+        clang_args = cliutil::prepareClangArgs(opts);
+    }
+    return clang_args;
 }
