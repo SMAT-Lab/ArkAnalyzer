@@ -30,6 +30,7 @@ import {
 } from '../common/TSConst';
 import { Local } from './Local';
 import { Constant } from './Constant';
+import { Value } from './Value';
 
 /**
  * @category core/base/type
@@ -925,17 +926,20 @@ export class PointerType extends Type {
 
 export enum ReferCategory{
     LVALUE_REF = 'LVALUE_REF',
-    RVALUE_REF = 'RVALUE_REF'
+    RVALUE_REF = 'RVALUE_REF',
+    UNIVERSAL_REF = 'UNIVERSAL_REF'
 }
 
 export class ReferenceType extends Type {
     private baseType: Type;
     private category: ReferCategory;
+    private sourceValue?: Value;
 
-    constructor(bassType: Type, category: ReferCategory) {
+    constructor(bassType: Type, category: ReferCategory, sourceValue?: Value) {
         super();
         this.baseType = bassType;
         this.category = category;
+        this.sourceValue = sourceValue;
     }
 
     public getBaseType(): Type {
@@ -948,6 +952,14 @@ export class ReferenceType extends Type {
 
     public getCategory(): ReferCategory {
         return this.category;
+    }
+
+    public setSourceValue(sourceValue: Value) {
+        this.sourceValue = sourceValue;
+    }
+
+    public getSourceValue() {
+        return this.sourceValue;
     }
 
     public getTypeString(): string {

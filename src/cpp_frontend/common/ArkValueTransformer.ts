@@ -1526,7 +1526,11 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
             }
         }
         const declarationType = variableDeclaration.type ? this.resolveTypeNodeCpp(variableDeclaration.type.qualType) : UnknownType.getInstance();
-        return this.assignmentToValueAndStmtsCpp(leftOpNode, rightOpNode, true, isConst, declarationType, needRightOp);
+        const assignment = this.assignmentToValueAndStmtsCpp(leftOpNode, rightOpNode, true, isConst, declarationType, needRightOp);
+        if (declarationType instanceof ReferenceType) {
+            declarationType.setSourceValue((assignment.stmts[0] as ArkAssignStmt).getRightOp());
+        }
+        return assignment;
     }
 
     private getStdContainerType(declCode: string) {
