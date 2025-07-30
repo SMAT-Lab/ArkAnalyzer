@@ -140,7 +140,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer{
             ArkValueTransformerCpp.isCompoundAssignmentOperator(expression.opcode) ||
             expression.kind.toString() === 'CXXNewExpr' || expression.kind.toString() === 'CallExpr' ||
             (expression.kind.toString() === 'UnaryOperator' && (expression.opcode === '++' || expression.opcode === '--')) ||
-            (expression.kind.toString() === 'CXXOperatorCallExpr' && expression.name === 'operator=') ||
+            expression.kind.toString() === 'CXXOperatorCallExpr' ||
             expression.kind.toString() === 'CXXConstructExpr' || expression.kind.toString() === 'CXXCtorInitializer');
 
     }

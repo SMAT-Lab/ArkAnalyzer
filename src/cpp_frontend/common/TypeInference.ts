@@ -554,7 +554,11 @@ export class TypeInference {
             return;
         }
         const currReturnType = oldSignature.getType();
-        if (!this.isUnclearType(currReturnType)) {
+        let retTypeWithoutPtrOrRef = currReturnType;
+        if (retTypeWithoutPtrOrRef instanceof PointerType || retTypeWithoutPtrOrRef instanceof ReferenceType) {
+            retTypeWithoutPtrOrRef = retTypeWithoutPtrOrRef.getBaseType();
+        }
+        if (!this.isUnclearType(retTypeWithoutPtrOrRef)) {
             return;
         }
 
@@ -568,7 +572,11 @@ export class TypeInference {
             return;
         }
 
-        const newReturnType = this.inferUnclearedType(currReturnType, arkMethod.getDeclaringArkClass());
+        let newReturnType = this.inferUnclearedType(retTypeWithoutPtrOrRef, arkMethod.getDeclaringArkClass());
+        if (newReturnType && (currReturnType instanceof PointerType || currReturnType instanceof ReferenceType)) {
+            currReturnType.setBaseType(newReturnType);
+            newReturnType = currReturnType;
+        }
         if (newReturnType) {
             oldSignature.getMethodSubSignature().setReturnType(newReturnType);
         } else if (arkMethod.getBody()) {
@@ -587,6 +595,10 @@ export class TypeInference {
                 type.flatType()
                     .filter(t => !TypeInference.isUnclearType(t))
                     .forEach(t => typeMap.set(t.toString(), t));
+            } else if (type instanceof PointerType || type instanceof ReferenceType) {
+                if (!TypeInference.isUnclearType(type.getBaseType())) {
+                    typeMap.set(type.toString(), type);
+                }
             } else if (!TypeInference.isUnclearType(type)) {
                 typeMap.set(type.toString(), type);
             }

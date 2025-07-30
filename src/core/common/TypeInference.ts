@@ -41,6 +41,8 @@ import {
     NeverType,
     NullType,
     NumberType,
+    PointerType,
+    ReferenceType,
     StringType,
     TupleType,
     Type,
@@ -691,20 +693,24 @@ export class TypeInference {
             baseType = baseType.getCurrType();
         }
         let propertyAndType: [any, Type] | null = null;
-        if (baseType instanceof ClassType) {
+        let typeWithoutPtrOrRef = baseType;
+        if (baseType instanceof PointerType || baseType instanceof ReferenceType) {
+            typeWithoutPtrOrRef = baseType.getBaseType();
+        }
+        if (typeWithoutPtrOrRef instanceof ClassType) {
             if (
                 fieldName === Builtin.ITERATOR_RESULT_VALUE &&
-                baseType.getClassSignature().getDeclaringFileSignature().getProjectName() === Builtin.DUMMY_PROJECT_NAME
+                typeWithoutPtrOrRef.getClassSignature().getDeclaringFileSignature().getProjectName() === Builtin.DUMMY_PROJECT_NAME
             ) {
-                const types = baseType.getRealGenericTypes();
+                const types = typeWithoutPtrOrRef.getRealGenericTypes();
                 if (types && types.length > 0) {
                     return [null, types[0]];
                 }
                 return null;
             }
-            propertyAndType = this.inferClassFieldType(declareClass, baseType, fieldName);
-        } else if (baseType instanceof AnnotationNamespaceType) {
-            const namespace = declareClass.getDeclaringArkFile().getScene().getNamespace(baseType.getNamespaceSignature());
+            propertyAndType = this.inferClassFieldType(declareClass, typeWithoutPtrOrRef, fieldName);
+        } else if (typeWithoutPtrOrRef instanceof AnnotationNamespaceType) {
+            const namespace = declareClass.getDeclaringArkFile().getScene().getNamespace(typeWithoutPtrOrRef.getNamespaceSignature());
             if (namespace) {
                 const property = ModelUtils.findPropertyInNamespace(fieldName, namespace);
                 const propertyType = this.parseArkExport2Type(property);

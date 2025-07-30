@@ -23,6 +23,8 @@ import {
     GenericType,
     LexicalEnvType,
     NullType,
+    PointerType,
+    ReferenceType,
     Type,
     UnclearReferenceType,
     UndefinedType,
@@ -634,19 +636,23 @@ export class IRInference {
         let propertyType = IRInference.repairType(propertyAndType?.[1], fieldName, arkClass);
         let staticFlag: boolean;
         let signature: BaseSignature;
-        if (baseType instanceof ClassType) {
+        let typeWithoutPtrOrRef = baseType;
+        if (baseType instanceof PointerType || baseType instanceof ReferenceType) {
+            typeWithoutPtrOrRef = baseType.getBaseType();
+        }
+        if (typeWithoutPtrOrRef instanceof ClassType) {
             const property = propertyAndType?.[0];
             if (property instanceof ArkField && property.getCategory() !== FieldCategory.ENUM_MEMBER &&
                 !(property.getType() instanceof GenericType)) {
                 return property.getSignature();
             }
             staticFlag =
-                baseType.getClassSignature().getClassName() === DEFAULT_ARK_CLASS_NAME ||
+                typeWithoutPtrOrRef.getClassSignature().getClassName() === DEFAULT_ARK_CLASS_NAME ||
                 ((property instanceof ArkField || property instanceof ArkMethod) && property.isStatic());
-            signature = property instanceof ArkMethod ? property.getSignature().getDeclaringClassSignature() : baseType.getClassSignature();
-        } else if (baseType instanceof AnnotationNamespaceType) {
+            signature = property instanceof ArkMethod ? property.getSignature().getDeclaringClassSignature() : typeWithoutPtrOrRef.getClassSignature();
+        } else if (typeWithoutPtrOrRef instanceof AnnotationNamespaceType) {
             staticFlag = true;
-            signature = baseType.getNamespaceSignature();
+            signature = typeWithoutPtrOrRef.getNamespaceSignature();
         } else {
             return null;
         }
@@ -835,6 +841,17 @@ export class IRInference {
 
     public static inferParameterRef(ref: ArkParameterRef, arkMethod: ArkMethod): AbstractRef {
         const paramType = ref.getType();
+        let baseType: Type | null | undefined;
+        if (paramType instanceof PointerType || paramType instanceof ReferenceType) {
+            baseType = paramType.getBaseType();
+            if (TypeInference.isUnclearType(baseType)) {
+                baseType = TypeInference.inferUnclearedType(baseType, arkMethod.getDeclaringArkClass());
+                if (baseType) {
+                    paramType.setBaseType(baseType);
+                    return ref;
+                }
+            }
+        }
         if (paramType instanceof UnknownType || paramType instanceof UnclearReferenceType) {
             const signature = arkMethod.getDeclareSignatures()?.[0] ?? arkMethod.getSignature();
             const type1 = signature.getMethodSubSignature().getParameters()[ref.getIndex()]?.getType();
