@@ -1837,8 +1837,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
             }
             return new ArrayType(baseType, count);
         } else if (node && Object.prototype.hasOwnProperty.call(node, "kind") && node.kind === "InitListExpr"){
-            let dimension = node.inner.length;
-            return new ArrayType(new UnclearReferenceType(qualType), dimension);
+            return new ArrayType(new UnclearReferenceType(qualType), node.inner.length);
         } else if (qualType.startsWith('std::')) {
             // 处理标准库容器类型
             const match = /std::(\w+)/g.exec(qualType);
