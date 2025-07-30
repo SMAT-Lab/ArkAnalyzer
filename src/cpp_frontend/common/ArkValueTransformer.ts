@@ -1816,13 +1816,17 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
 
     public resolveTypeNodeCpp(node: any, stringItem ?: any): Type {
         // 若输入参数有字符串，则优先识别字符串字段类型，否则默认识别node节点的类型信息
-        let qualType = '';
+        let qualType: string
         if (typeof stringItem === 'string' && stringItem.trim()){
             qualType = stringItem;
+        } else if (typeof node?.type?.qualType === 'string' && node.type.qualType.trim()) {
+            qualType = node.type.qualType;
+        } else if (typeof  node?.code === 'string' && node.code.trim()){
+            qualType = node.code;
         } else {
-            qualType = (typeof node?.type?.qualType === 'string' && node.type.qualType.trim()) ? node.type.qualType :
-                (typeof  node?.code === 'string' && node.code.trim()) ? node.code : '';
+            qualType = '';
         }
+
         const tagUsed = Object.prototype.hasOwnProperty.call(node, 'tagUsed') ? node.tagUsed : '';
         if (qualType.includes('[') && qualType.includes(']')) {
             const matches = qualType.match(/\[/g);
