@@ -47,6 +47,15 @@ import { buildDefaultArkMethodFromArkClass } from './ArkMethodBuilder';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkClassBuilder');
 
+export function buildNormalArkClassFromArkMethod(clsNode: ClassLikeNode, cls: ArkClass, sourceFile: any, declaringMethod?: ArkMethod): void {
+    const namespace = cls.getDeclaringArkNamespace();
+    if (namespace) {
+        buildNormalArkClassFromArkNamespace(clsNode, namespace, cls, sourceFile, declaringMethod);
+    } else {
+        buildNormalArkClassFromArkFile(clsNode, cls.getDeclaringArkFile(), cls, sourceFile, declaringMethod);
+    }
+}
+
 export function buildNormalArkClassFromArkFile(
     clsNode: any,
     arkFile: ArkFile,

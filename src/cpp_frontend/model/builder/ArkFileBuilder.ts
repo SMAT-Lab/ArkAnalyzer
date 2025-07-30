@@ -96,7 +96,7 @@ function buildArkFile(arkFile: ArkFile, astRoot: any): void {
             if (isChildLocFileHeader(child)) {
                 arkFile.addExportInfo(buildExportInfo(mthd, arkFile, LineColPosition.buildFromNodeCpp(child, astRoot)))
             }
-        } else if (child.kind === 'NamespaceDecl') {
+        } else if (child.kind === 'NamespaceDecl' || child.kind === 'Namespace') {
             let ns: ArkNamespace = new ArkNamespace();
             ns.setDeclaringArkFile(arkFile);
             buildArkNamespace(child, arkFile, ns, astRoot);

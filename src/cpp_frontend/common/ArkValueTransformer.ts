@@ -240,7 +240,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
             }
             let pNode = node.getParent(true);
             if (pNode?.inner?.length > 0 && (pNode.inner[0].kind === 'TypeRef' || !node.type.qualType.includes("[") ||
-                this.resolveTypeNodeCpp(node.type.qualType) instanceof ClassType)) {
+                this.resolveTypeNodeCpp(node) instanceof ClassType)) {
                 return this.newExpressionToValueAndStmtsCpp(node);
             }
             return this.arrayLiteralExpressionToValueAndStmtsCpp(node);
@@ -487,7 +487,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
             ({value: exprValue, valueOriginalPositions: exprPositions, stmts: exprStmts} = this.arkIRTransformerCpp.generateAssignStmtForValue(exprValue, exprPositions));
             exprStmts.forEach((stmt: Stmt) => stmts.push(stmt));
         }
-        const castExpr = new ArkCastExpr(exprValue, this.resolveTypeNodeCpp(castExpression.type.qualType));
+        const castExpr = new ArkCastExpr(exprValue, this.resolveTypeNodeCpp(castExpression));
         const castExprPosition = [FullPosition.buildFromNodeCpp(castExpression, this.sourceFile), ...exprPositions];
         return {value: castExpr, valueOriginalPositions: castExprPosition, stmts: stmts};
     }
@@ -793,7 +793,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         }
 
         // 【场景7】设置字段类型，支持 C++ 复杂类型解析（如模板、指针、const等）
-        fieldSignature.setType(this.resolveTypeNodeCpp(memberExpression.type.qualType));
+        fieldSignature.setType(this.resolveTypeNodeCpp(memberExpression));
 
         // 【场景8】生成 IR 层的字段引用对象（如 testMap.insert）
         const fieldRef = new CXXArkInstanceFieldRef(
@@ -1164,7 +1164,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         if (newExpression.typeArguments) {
             realGenericTypes = [];
             newExpression.typeArguments.forEach((typeArgument: string) => {
-                realGenericTypes!.push(this.resolveTypeNodeCpp(typeArgument));
+                realGenericTypes!.push(this.resolveTypeNodeCpp("", typeArgument));
             });
         }
 
@@ -1263,7 +1263,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
     private newArrayExpressionToValueAndStmtsCpp(newArrayExpression: any): ValueAndStmts {
         let baseType: Type = UnknownType.getInstance();
         if (newArrayExpression.type.qualType) {
-            const argumentType = this.resolveTypeNodeCpp(newArrayExpression.type.qualType.replace('*', ''));
+            const argumentType = this.resolveTypeNodeCpp(newArrayExpression);
             if (!(argumentType instanceof AnyType || argumentType instanceof UnknownType)) {
                 baseType = argumentType;
             }
@@ -1309,7 +1309,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         const elementPositions: FullPosition[] = [];
         const arrayLength = arrayLiteralExpression.inner.length;
         this.getArrayLiteralExpression(arrayLiteralExpression, stmts, elementTypes, elementValues, elementPositions);
-        let baseType: Type = this.resolveTypeNodeCpp(arrayLiteralExpression.type.qualType, arrayLiteralExpression);
+        let baseType: Type = this.resolveTypeNodeCpp(arrayLiteralExpression);
         if (baseType === UnknownType.getInstance()) {
             // 如果类型不确定，当作未知引用类型
             return this.newExpressionToValueAndStmtsCpp(arrayLiteralExpression);
@@ -1525,7 +1525,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
                 variableDeclaration.type.qualType = containerType;
             }
         }
-        const declarationType = variableDeclaration.type ? this.resolveTypeNodeCpp(variableDeclaration.type.qualType) : UnknownType.getInstance();
+        const declarationType = variableDeclaration.type ? this.resolveTypeNodeCpp(variableDeclaration) : UnknownType.getInstance();
         const assignment = this.assignmentToValueAndStmtsCpp(leftOpNode, rightOpNode, true, isConst, declarationType, needRightOp);
         if (declarationType instanceof ReferenceType) {
             declarationType.setSourceValue((assignment.stmts[0] as ArkAssignStmt).getRightOp());
@@ -1814,7 +1814,16 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         return tempLocal;
     }
 
-    public resolveTypeNodeCpp(qualType: string, nodeKind ?: any): Type {
+    public resolveTypeNodeCpp(node: any, stringItem ?: any): Type {
+        // 若输入参数有字符串，则优先识别字符串字段类型，否则默认识别node节点的类型信息
+        let qualType = '';
+        if (typeof stringItem === 'string' && stringItem.trim()){
+            qualType = stringItem;
+        } else {
+            qualType = (typeof node?.type?.qualType === 'string' && node.type.qualType.trim()) ? node.type.qualType :
+                (typeof  node?.code === 'string' && node.code.trim()) ? node.code : '';
+        }
+        const tagUsed = Object.prototype.hasOwnProperty.call(node, 'tagUsed') ? node.tagUsed : '';
         if (qualType.includes('[') && qualType.includes(']')) {
             const matches = qualType.match(/\[/g);
             const count = matches ? matches.length : 0;
@@ -1823,8 +1832,8 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
                 return new ArrayType(new UnclearReferenceType(qualType.slice(0, qualType.indexOf('['))), count);
             }
             return new ArrayType(baseType, count);
-        } else if (nodeKind && Object.prototype.hasOwnProperty.call(nodeKind, "kind") && nodeKind.kind === "InitListExpr"){
-            let dimension = nodeKind.inner.length;
+        } else if (node && Object.prototype.hasOwnProperty.call(node, "kind") && node.kind === "InitListExpr"){
+            let dimension = node.inner.length;
             return new ArrayType(new UnclearReferenceType(qualType), dimension);
         } else if (qualType.startsWith('std::')) {
             // 处理标准库容器类型
@@ -1835,15 +1844,19 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
                 const classSignature = new ClassSignature(containerName, fileSignature);
                 return new ClassType(classSignature);
             }
-        } else if (nodeKind === 'struct') {
+        } else if (qualType === 'std' && node.kind === 'NamespaceRef'){
+            const fileSignature = new FileSignature('std','iostream.h');
+            const classSignature = new ClassSignature('iostream', fileSignature);
+            return new ClassType(classSignature);
+        } else if (tagUsed === 'struct') {
             const fileSignature = new FileSignature(this.sourceFile?.projectName ?? "", this.sourceFile.fileName);
             const classSignature = new ClassSignature('struct', fileSignature, null, ClassCategory.STRUCT);
             return new ClassType(classSignature);
-        } else if (nodeKind === 'enum') {
+        } else if (tagUsed === 'enum') {
             const fileSignature = new FileSignature(this.sourceFile?.projectName ?? "", this.sourceFile.fileName);
             const classSignature = new ClassSignature('enum', fileSignature, null, ClassCategory.ENUM);
             return new ClassType(classSignature);
-        } else if (nodeKind === 'union') {
+        } else if (tagUsed === 'union') {
             const fileSignature = new FileSignature(this.sourceFile?.projectName ?? "", this.sourceFile.fileName);
             const classSignature = new ClassSignature('struct', fileSignature, null, ClassCategory.UNION);
             return new ClassType(classSignature);
