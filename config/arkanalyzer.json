@@ -1,7 +1,7 @@
 {
   "supportFileExts": [
     ".ets",
-//    ".ts",
+    ".ts",
     ".js",
     ".d.ets",
     ".d.ts",
@@ -13,8 +13,14 @@
   "ignoreFileNames": [
     "oh_modules",
     "node_modules",
+    "hvigorfile.ts",
+    "hvigorfile.js",
+    "hvigor-wrapper.js",
     "build-tools",
-    "hvigorfile.ts"
+    "build",
+    ".cxx",
+    ".test",
+    ".preview"
   ],
   "sdkGlobalFolders": [
     "component",
