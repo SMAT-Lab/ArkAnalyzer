@@ -188,7 +188,8 @@ void annotateNewExprArrayInfo(json &node, const json &children){
     for (const auto &child:children){
         extractArraySizes(child, arraySizes);
     }
-    if (!arraySizes.empty()){
+    std::string codeStr = node["code"];
+    if (!arraySizes.empty() && codeStr.find("[") != std::string::npos && codeStr.find("]") != std::string::npos){
         isArray = true;
         std::reverse(arraySizes.begin(), arraySizes.end());
         node["arraySizes"] = arraySizes;
@@ -521,8 +522,13 @@ bool isConstructorByNameStr(std::string nameStr){
 }
 
 // 判断是否为继承父类的构造函数
-bool isUsingDecl(std::string codeStr){
-    return codeStr.find("using") != std::string::npos && codeStr.find("::") != std::string::npos;
+bool isUsingInheritClass(json& node, json& children){
+    if (children.size() == 0) return false;
+    if (children[0]["kind"] == "TypeRef" && children[0].contains("type")) {
+        std::string type = children[0]["type"].value("qualType", "");
+        if (derivedDataTypeMap.count(type)) return true;
+    }
+    return false;
 }
 
 bool isConstructorByCodeStr(std::string codeStr, std::string nameStr, std::string typeStr){
@@ -791,12 +797,22 @@ void fillNodeKindTag(json& node, CXCursor cursor, CXCursorKind kind_cursor, cons
             node["kind"] = kindSpelling;
         return;
     }
+    if (kind_cursor == CXCursor_BinaryOperator && node.contains("type") &&
+        node["type"]["qualType"] == "<dependent type>" && node["opcode"] == "<<") {
+        node.erase("opcode");
+        node["kind"] = "CXXOperatorCallExpr";
+        node["name"] = "operator<<";
+        node["type"]["qualType"] = "basic_ostream<char>";
+        return;
+    }
     if (kind_cursor == CXCursor_CXXMethod) {
         node["kind"] = "CXXMethodDecl"; node["mangledName"] = getMemberInClassName(cursor);
-    } else if (kind_cursor == CXCursor_Constructor || (kind_cursor == CXCursor_UsingDeclaration && isUsingDecl(codeStr))) {
+    } else if (kind_cursor == CXCursor_Constructor) {
         node["kind"] = "CXXConstructorDecl"; node["mangledName"] = getMemberInClassName(cursor);
     } else if (kind_cursor == CXCursor_Destructor) {
         node["kind"] = "CXXDestructorDecl"; node["mangledName"] = getMemberInClassName(cursor);
+    } else if (kind_cursor == CXCursor_UsingDeclaration) {
+        node["kind"] = "UsingDecl";
     } else {
         node["kind"] = kindSpelling;
     }
@@ -904,6 +920,11 @@ void nodePostprocess(
 ) {
     std::string codeStr = node.value("code", "");
     std::string typeStr = node["type"]["qualType"];
+
+    if (node["kind"] == "UsingDecl" && isUsingInheritClass(node, children)) {
+        node["kind"] = "CXXConstructorDecl"; node["mangledName"] = getMemberInClassName(cursor);
+    }
+
     if (node["kind"] == "InitListExpr" && typeStr.find("std::pair") != std::string::npos){
         fixMapPairInitListChildren(children, typeStr);
     } else if (node["kind"] == "CXXOperatorCallExpr"){

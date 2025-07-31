@@ -78,7 +78,8 @@ export const CAST_EXPECT_CASE5 = {
             id: 0,
             stmts: [
                 'this = this: @cast/castSample.cpp: %dflt',
-                '%0 = newarray (int)[42]',
+                '%0 = new @%unk/%unk: int',
+                'instanceinvoke %0.<@%unk/%unk: int.constructor()>(42)',
                 'pi = %0',
                 'pd = <double*>pi',
                 'return'

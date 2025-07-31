@@ -893,7 +893,8 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
             while (innerNode.kind === 'ImplicitCastExpr' && innerNode.valueCategory === 'lvalue' && innerNode.inner.length > 0) {
                 innerNode = innerNode.inner[0];
             }
-            if (innerNode.kind === 'DeclRefExpr') {
+            if (innerNode.kind === 'DeclRefExpr' && (innerNode.type.qualType.includes('iostream') || innerNode.type.qualType.includes('ostream') ||
+                innerNode.type.qualType.includes('istream') || innerNode.type.qualType.includes('lambda at'))) {
                 // 获取DeclRefExpr及其后面的节点
                 return this.buildValueAndStmtsForStream(innerNode, callArgus.reverse(), stmts, callExpression);
             }
@@ -984,7 +985,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         if (overloadedOpToValueAndStmts) {
             return overloadedOpToValueAndStmts;
         }
-        if ((callExpression.inner[0].kind === 'ImplicitCastExpr' && callExpression.inner[0].name === 'operator>>' ||
+        if ((callExpression.inner[0].kind === 'ImplicitCastExpr' && callExpression.inner[0].name === 'operator>>' || callExpression.name === 'operator<<' ||
             callExpression.inner[0].name === 'operator<<' || callExpression.inner[1]?.type.qualType.toString().includes('(lambda at'))) {
             return this.CXXOperatorExpressionCoutToValueAndStmts(callExpression, []);
         }

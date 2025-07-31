@@ -52,11 +52,7 @@ export const TEMPLATE_EXPECT_CASE3 = {
                 'a = parameter0: T1',
                 'b = parameter1: T2',
                 'this = this: @template/template.cpp: %dflt',
-                `%0 = staticinvoke <@%unk/%unk: .cout()>('First:')`,
-                '%1 = %0 << a',
-                `%2 = %1 << ', Second'`,
-                '%3 = %2 << b',
-                '%4 = %3 << endl',
+                "staticinvoke <@%unk/%unk: .cout()>('First:', a, ', Second', b)",
                 'return'
             ],
             preds: [],
@@ -146,7 +142,7 @@ export const TEMPLATE_MYCONTAINER_CLASS = {
                     stmts: [
                         'this = this: @template/template.cpp: MyContainer',
                         '%0 = this.<@template/template.cpp: MyContainer.data1>',
-                        '%1 = cout << %0',
+                        'staticinvoke <@%unk/%unk: .cout()>(%0)',
                         'return'
                     ],
                     preds: [],

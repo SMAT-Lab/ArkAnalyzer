@@ -23,7 +23,7 @@ export const DELETE_EXPECT_CASE2 = {
             id: 0,
             stmts: [
                 'this = this: @delete/deleteExpr.cpp: %dflt',
-                '%0 = newarray (int)[10]',
+                '%0 = newarray (int*)[10]',
                 'arr = %0',
                 '%1 = delete arr',
                 'arr = nullptr',
