@@ -890,7 +890,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
                 return this.buildValueAndStmtsForStream(innerNode.inner[1], callArgus.reverse(), stmts, callExpression);
 
             }
-            while (innerNode.kind === 'ImplicitCastExpr' && innerNode.valueCategory === 'lvalue') {
+            while (innerNode.kind === 'ImplicitCastExpr' && innerNode.valueCategory === 'lvalue' && innerNode.inner.length > 0) {
                 innerNode = innerNode.inner[0];
             }
             if (innerNode.kind === 'DeclRefExpr') {
