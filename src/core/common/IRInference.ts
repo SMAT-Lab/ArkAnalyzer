@@ -422,10 +422,14 @@ export class IRInference {
     }
 
     private static inferInvokeExpr(expr: AbstractInvokeExpr, baseType: Type, methodName: string, scene: Scene): AbstractInvokeExpr | null {
-        if (baseType instanceof AliasType) {
-            return this.inferInvokeExpr(expr, baseType.getOriginalType(), methodName, scene);
-        } else if (baseType instanceof UnionType) {
-            for (let type of baseType.flatType()) {
+        let typeWithoutPtrOrRef = baseType;
+        if (baseType instanceof PointerType || baseType instanceof ReferenceType) {
+            typeWithoutPtrOrRef = baseType.getBaseType();
+        }
+        if (typeWithoutPtrOrRef instanceof AliasType) {
+            return this.inferInvokeExpr(expr, typeWithoutPtrOrRef.getOriginalType(), methodName, scene);
+        } else if (typeWithoutPtrOrRef instanceof UnionType) {
+            for (let type of typeWithoutPtrOrRef.flatType()) {
                 if (type instanceof UndefinedType || type instanceof NullType) {
                     continue;
                 }
@@ -435,10 +439,10 @@ export class IRInference {
                 }
             }
         }
-        if (baseType instanceof ClassType) {
-            return this.inferInvokeExprWithDeclaredClass(expr, baseType, methodName, scene);
-        } else if (baseType instanceof AnnotationNamespaceType) {
-            const namespace = scene.getNamespace(baseType.getNamespaceSignature());
+        if (typeWithoutPtrOrRef instanceof ClassType) {
+            return this.inferInvokeExprWithDeclaredClass(expr, typeWithoutPtrOrRef, methodName, scene);
+        } else if (typeWithoutPtrOrRef instanceof AnnotationNamespaceType) {
+            const namespace = scene.getNamespace(typeWithoutPtrOrRef.getNamespaceSignature());
             if (namespace) {
                 const foundMethod = ModelUtils.findPropertyInNamespace(methodName, namespace);
                 if (foundMethod instanceof ArkMethod) {
@@ -448,10 +452,10 @@ export class IRInference {
                     return expr instanceof ArkInstanceInvokeExpr ? new ArkStaticInvokeExpr(signature, expr.getArgs(), expr.getRealGenericTypes()) : expr;
                 }
             }
-        } else if (baseType instanceof FunctionType) {
-            return IRInference.inferInvokeExprWithFunction(methodName, expr, baseType, scene);
-        } else if (baseType instanceof ArrayType) {
-            return IRInference.inferInvokeExprWithArray(methodName, expr, baseType, scene);
+        } else if (typeWithoutPtrOrRef instanceof FunctionType) {
+            return IRInference.inferInvokeExprWithFunction(methodName, expr, typeWithoutPtrOrRef, scene);
+        } else if (typeWithoutPtrOrRef instanceof ArrayType) {
+            return IRInference.inferInvokeExprWithArray(methodName, expr, typeWithoutPtrOrRef, scene);
         }
         return null;
     }
