@@ -58,6 +58,7 @@ import * as NAMESPACE_EXPECT from '../../../resources_cpp/cfg/namespace';
 import * as OVERLOAD from '../../../resources_cpp/cfg/overload/overloadExpect';
 import * as USING_EXPECT from '../../../resources_cpp/cfg/using/usingExpects';
 import * as TYPEDEF_EXPECT from '../../../resources_cpp/cfg/typedef/typdefExpects';
+import { REFERENCE_EXPECT_CASE5 } from '../../../resources_cpp/cfg/reference/referenceExpects';
 
 describe('CfgTest', () => {
     it('case1: conditional operator', () => {
@@ -169,6 +170,7 @@ describe('Type Test', () => {
         testBlocks(scene, 'reference.cpp', 'pointRefer', REFERENCE_EXPECT.REFERENCE_EXPECT_CASE2.blocks);
         testBlocks(scene, 'reference.cpp', 'myClassRefer', REFERENCE_EXPECT.REFERENCE_EXPECT_CASE3.blocks);
         testBlocks(scene, 'reference.cpp', 'baseRightRefer', REFERENCE_EXPECT.REFERENCE_EXPECT_CASE4.blocks);
+        testBlocks(scene, 'reference.cpp', 'relay', REFERENCE_EXPECT.REFERENCE_EXPECT_CASE5.blocks);
         },
     );
     it('case4: Derived Class', () => {

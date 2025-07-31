@@ -72,3 +72,18 @@ export const REFERENCE_EXPECT_CASE4 = {
         }
     ]
 };
+export const REFERENCE_EXPECT_CASE5 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                "arg = parameter0: T&&",
+                "this = this: @reference/reference.cpp: %dflt",
+                "d1 = staticinvoke <@%unk/%unk: .forward()>(arg)",
+                "return",
+            ],
+            preds: [],
+            succes: []
+        }
+    ]
+};

@@ -1,7 +1,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
-
+using namespace std ;
 class MyClass
 {
 public:
@@ -45,4 +45,32 @@ void myClassRefer()
 {
     MyClass a(5);
     MyClass &b = a;
+}
+
+void moveCase(){
+    int temp = 5;
+    int &&ref_a = std::move(temp);
+    ref_a = 6;
+
+    std::string str1 = "Hello";
+    std::string str2 = std::move(str1); // 移动而非复制
+}
+
+class Data {
+public:
+    Data() = default;
+    Data(const Data&) { std::cout << "Copy\n"; }
+    Data(Data&&) { std::cout << "Move\n"; }
+};
+
+template <typename T>
+void relay(T&& arg) {
+    Data d1(forward<T>(arg));
+
+}
+
+void main() {
+    Data data;
+    relay(Data());
+    relay(data);
 }
