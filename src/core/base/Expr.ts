@@ -19,11 +19,13 @@ import { MethodSignature } from '../model/ArkSignature';
 import { Local } from './Local';
 import {
     AliasType,
+    AnyType,
     ArrayType,
     BigIntType,
     BooleanType,
     ClassType,
     FunctionType,
+    GenericType,
     NullType,
     NumberType,
     StringType,
@@ -62,13 +64,15 @@ export abstract class AbstractExpr implements Value {
 export abstract class AbstractInvokeExpr extends AbstractExpr {
     private methodSignature: MethodSignature;
     private args: Value[];
-    private realGenericTypes?: Type[]; //新增
+    private realGenericTypes?: Type[];
+    private spreadFlags?: boolean[]; // flags to indicate whether the argument is spread, which is undefined  when no spread argument exists.
 
-    constructor(methodSignature: MethodSignature, args: Value[], realGenericTypes?: Type[]) {
+    constructor(methodSignature: MethodSignature, args: Value[], realGenericTypes?: Type[], spreadFlags?: boolean[]) {
         super();
         this.methodSignature = methodSignature;
         this.args = args;
         this.realGenericTypes = realGenericTypes;
+        this.spreadFlags = spreadFlags;
     }
 
     /**
@@ -134,7 +138,8 @@ export abstract class AbstractInvokeExpr extends AbstractExpr {
 
     public getType(): Type {
         const type = this.methodSignature.getType();
-        if (this.realGenericTypes) {
+        if (TypeInference.checkType(type, t => t instanceof GenericType || t instanceof AnyType) &&
+            this.realGenericTypes) {
             return TypeInference.replaceTypeWithReal(type, this.realGenericTypes);
         }
         return type;
@@ -150,6 +155,10 @@ export abstract class AbstractInvokeExpr extends AbstractExpr {
         }
     }
 
+    public getSpreadFlags(): boolean[] | undefined {
+        return this.spreadFlags;
+    }
+
     public getUses(): Value[] {
         let uses: Value[] = [];
         uses.push(...this.args);
@@ -158,13 +167,30 @@ export abstract class AbstractInvokeExpr extends AbstractExpr {
         }
         return uses;
     }
+
+    protected argsToString(): string {
+        const strs: string[] = [];
+        strs.push('(');
+        if (this.getArgs().length > 0) {
+            for (let i = 0; i < this.getArgs().length; i++) {
+                if (this.spreadFlags && this.spreadFlags[i]) {
+                    strs.push('...');
+                }
+                strs.push(this.getArgs()[i].toString());
+                strs.push(', ');
+            }
+            strs.pop();
+        }
+        strs.push(')');
+        return strs.join('');
+    }
 }
 
 export class ArkInstanceInvokeExpr extends AbstractInvokeExpr {
     private base: Local;
 
-    constructor(base: Local, methodSignature: MethodSignature, args: Value[], realGenericTypes?: Type[]) {
-        super(methodSignature, args, realGenericTypes);
+    constructor(base: Local, methodSignature: MethodSignature, args: Value[], realGenericTypes?: Type[], spreadFlags?: boolean[]) {
+        super(methodSignature, args, realGenericTypes, spreadFlags);
         this.base = base;
     }
 
@@ -203,15 +229,8 @@ export class ArkInstanceInvokeExpr extends AbstractInvokeExpr {
         strs.push(this.base.toString());
         strs.push('.<');
         strs.push(this.getMethodSignature().toString());
-        strs.push('>(');
-        if (this.getArgs().length > 0) {
-            for (const arg of this.getArgs()) {
-                strs.push(arg.toString());
-                strs.push(', ');
-            }
-            strs.pop();
-        }
-        strs.push(')');
+        strs.push('>');
+        strs.push(super.argsToString());
         return strs.join('');
     }
 
@@ -221,23 +240,16 @@ export class ArkInstanceInvokeExpr extends AbstractInvokeExpr {
 }
 
 export class ArkStaticInvokeExpr extends AbstractInvokeExpr {
-    constructor(methodSignature: MethodSignature, args: Value[], realGenericTypes?: Type[]) {
-        super(methodSignature, args, realGenericTypes);
+    constructor(methodSignature: MethodSignature, args: Value[], realGenericTypes?: Type[], spreadFlags?: boolean[]) {
+        super(methodSignature, args, realGenericTypes, spreadFlags);
     }
 
     public toString(): string {
         let strs: string[] = [];
         strs.push('staticinvoke <');
         strs.push(this.getMethodSignature().toString());
-        strs.push('>(');
-        if (this.getArgs().length > 0) {
-            for (const arg of this.getArgs()) {
-                strs.push(arg.toString());
-                strs.push(', ');
-            }
-            strs.pop();
-        }
-        strs.push(')');
+        strs.push('>');
+        strs.push(super.argsToString());
         return strs.join('');
     }
 
@@ -267,8 +279,8 @@ export class ArkStaticInvokeExpr extends AbstractInvokeExpr {
 export class ArkPtrInvokeExpr extends AbstractInvokeExpr {
     private funPtr: Local | AbstractFieldRef;
 
-    constructor(methodSignature: MethodSignature, ptr: Local | AbstractFieldRef, args: Value[], realGenericTypes?: Type[]) {
-        super(methodSignature, args, realGenericTypes);
+    constructor(methodSignature: MethodSignature, ptr: Local | AbstractFieldRef, args: Value[], realGenericTypes?: Type[], spreadFlags?: boolean[]) {
+        super(methodSignature, args, realGenericTypes, spreadFlags);
         this.funPtr = ptr;
     }
 
@@ -278,6 +290,16 @@ export class ArkPtrInvokeExpr extends AbstractInvokeExpr {
 
     public getFuncPtrLocal(): Local | AbstractFieldRef {
         return this.funPtr;
+    }
+
+    public inferType(arkMethod: ArkMethod): AbstractInvokeExpr {
+        this.getArgs().forEach(arg => TypeInference.inferValueType(arg, arkMethod));
+        const ptrType = this.funPtr.getType();
+        if (ptrType instanceof FunctionType) {
+            this.setMethodSignature(ptrType.getMethodSignature());
+        }
+        IRInference.inferArgs(this, arkMethod);
+        return IRInference.inferStaticInvokeExpr(this, arkMethod);
     }
 
     public toString(): string {
@@ -292,15 +314,8 @@ export class ArkPtrInvokeExpr extends AbstractInvokeExpr {
             ptrName = this.funPtr.getFieldName();
         }
         strs.push(this.getMethodSignature().toString(ptrName));
-        strs.push('>(');
-        if (this.getArgs().length > 0) {
-            for (const arg of this.getArgs()) {
-                strs.push(arg.toString());
-                strs.push(', ');
-            }
-            strs.pop();
-        }
-        strs.push(')');
+        strs.push('>');
+        strs.push(super.argsToString());
         return strs.join('');
     }
 
@@ -346,6 +361,14 @@ export class ArkNewExpr extends AbstractExpr {
             let type: Type | null | undefined = ModelUtils.findDeclaredLocal(new Local(className), arkMethod, 1)?.getType();
             if (TypeInference.isUnclearType(type)) {
                 type = TypeInference.inferUnclearRefName(className, arkMethod.getDeclaringArkClass());
+            }
+            if (type instanceof AliasType) {
+                const originalType = TypeInference.replaceAliasType(type);
+                if (originalType instanceof FunctionType) {
+                    type = originalType.getMethodSignature().getMethodSubSignature().getReturnType();
+                } else {
+                    type = originalType;
+                }
             }
             if (type && type instanceof ClassType) {
                 const instanceType = this.constructorSignature(type, arkMethod) ?? type;
@@ -686,13 +709,13 @@ export abstract class AbstractBinopExpr extends AbstractExpr {
         let type = UnknownType.getInstance();
         switch (this.operator) {
             case '+':
-                if (op1Type instanceof StringType || op2Type instanceof StringType) {
+                if (op1Type === StringType.getInstance() || op2Type === StringType.getInstance()) {
                     type = StringType.getInstance();
                 }
-                if (op1Type instanceof NumberType && op2Type instanceof NumberType) {
+                if (op1Type === NumberType.getInstance() && op2Type === NumberType.getInstance()) {
                     type = NumberType.getInstance();
                 }
-                if (op1Type instanceof BigIntType && op2Type instanceof BigIntType) {
+                if (op1Type === BigIntType.getInstance() && op2Type === BigIntType.getInstance()) {
                     type = BigIntType.getInstance();
                 }
                 break;
@@ -700,10 +723,11 @@ export abstract class AbstractBinopExpr extends AbstractExpr {
             case '*':
             case '/':
             case '%':
-                if (op1Type instanceof NumberType && op2Type instanceof NumberType) {
+            case '**':
+                if (op1Type === NumberType.getInstance() && op2Type === NumberType.getInstance()) {
                     type = NumberType.getInstance();
                 }
-                if (op1Type instanceof BigIntType && op2Type instanceof BigIntType) {
+                if (op1Type === BigIntType.getInstance() && op2Type === BigIntType.getInstance()) {
                     type = BigIntType.getInstance();
                 }
                 break;
@@ -725,15 +749,15 @@ export abstract class AbstractBinopExpr extends AbstractExpr {
             case '^':
             case '<<':
             case '>>':
-                if (op1Type instanceof NumberType && op2Type instanceof NumberType) {
+                if (op1Type === NumberType.getInstance() && op2Type === NumberType.getInstance()) {
                     type = NumberType.getInstance();
                 }
-                if (op1Type instanceof BigIntType && op2Type instanceof BigIntType) {
+                if (op1Type === BigIntType.getInstance() && op2Type === BigIntType.getInstance()) {
                     type = BigIntType.getInstance();
                 }
                 break;
             case '>>>':
-                if (op1Type instanceof NumberType && op2Type instanceof NumberType) {
+                if (op1Type === NumberType.getInstance() && op2Type === NumberType.getInstance()) {
                     type = NumberType.getInstance();
                 }
                 break;

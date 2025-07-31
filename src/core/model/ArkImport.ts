@@ -73,7 +73,7 @@ export class ImportInfo extends ArkBaseModel implements FromInfo {
      * @returns The export information. If there is no export information, the return will be a **null**.
      */
     public getLazyExportInfo(): ExportInfo | null {
-        if (this.lazyExportInfo === undefined && this.declaringArkFile.getScene().getStage() >= 2) {
+        if (this.lazyExportInfo === undefined) {
             if (this.declaringArkFile.getLanguage() === Language.CPLUS) {
                 this.lazyExportInfo = findExportInfoCpp(this);
             } else {
