@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+import { ClassSignature } from '../../core/model/ArkSignature';
+
 export class BuiltinCpp {
     // built-in classes
     public static ARRAY = 'array';
@@ -44,7 +46,9 @@ export class BuiltinCpp {
         return builtInClasses;
     }
 
-    public static isBuiltinClass(className: string, projectName: string): boolean {
+    public static isBuiltinClass(classSignature: ClassSignature): boolean {
+        const className = classSignature.getClassName();
+        const projectName = classSignature.getDeclaringFileSignature().getProjectName();
         return this.BUILT_IN_CLASSES.has(className) && projectName === this.DUMMY_PROJECT_NAME;
     }
 }

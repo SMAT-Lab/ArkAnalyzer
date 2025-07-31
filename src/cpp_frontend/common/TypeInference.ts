@@ -78,6 +78,7 @@ import { IRInference } from './IRInference';
 import { AbstractTypeExpr, KeyofTypeExpr, TypeQueryExpr } from '../../core/base/TypeExpr';
 import { SdkUtils } from '../../core/common/SdkUtils';
 import { ModifierType } from '../../core/model/ArkBaseModel';
+import { BuiltinCpp } from './Builtin';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'TypeInference');
 
@@ -244,7 +245,8 @@ export class TypeInference {
             const newExpr = expr.inferType(arkMethod);
             if (
                 stmt.containsInvokeExpr() &&
-                ((expr instanceof ArkInstanceInvokeExpr && newExpr instanceof ArkStaticInvokeExpr) || newExpr instanceof ArkPtrInvokeExpr)
+                ((expr instanceof ArkInstanceInvokeExpr && newExpr instanceof ArkStaticInvokeExpr) || newExpr instanceof ArkPtrInvokeExpr) ||
+                (newExpr instanceof ArkInstanceInvokeExpr && BuiltinCpp.isBuiltinClass(newExpr.getMethodSignature().getDeclaringClassSignature()))
             ) {
                 stmt.replaceUse(expr, newExpr);
             }

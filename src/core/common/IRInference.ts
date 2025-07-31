@@ -492,8 +492,8 @@ export class IRInference {
         scene: Scene
     ): AbstractInvokeExpr | null {
         const baseClassName = baseType.getClassSignature().getClassName();
-        if (Builtin.isBuiltinClass(baseClassName) ||
-            BuiltinCpp.isBuiltinClass(baseClassName, baseType.getClassSignature().getDeclaringFileSignature().getProjectName())) {
+        const isCppStdClass = BuiltinCpp.isBuiltinClass(baseType.getClassSignature());
+        if (Builtin.isBuiltinClass(baseClassName) || isCppStdClass) {
             expr.setMethodSignature(new MethodSignature(baseType.getClassSignature(), expr.getMethodSignature().getMethodSubSignature()));
         }
         let declaredClass = scene.getClass(baseType.getClassSignature());
@@ -501,6 +501,9 @@ export class IRInference {
             const globalClass = scene.getSdkGlobal(baseType.getClassSignature().getClassName());
             if (globalClass instanceof ArkClass) {
                 declaredClass = globalClass;
+            }
+            if (isCppStdClass) {
+                return expr;
             }
         }
         const method = declaredClass ? ModelUtils.findPropertyInClass(methodName, declaredClass) : null;
