@@ -21,7 +21,7 @@ import {
     UnknownType,
     PointerType,
     ReferenceType,
-    ReferCategory
+    ReferCategory, UnclearReferenceType,
 } from '../../../core/base/Type';
 import { TypeInference } from '../../common/TypeInference';
 import { ArkField } from '../../../core/model/ArkField';
@@ -199,24 +199,33 @@ export function buildTypeFromPreStr(preStr: string, arkInstance: any = null): Ty
 
     // 3. 推断类型
     const postStr = convertDataType(preStr);
-    const baseType = (postStr === 'unsupported')
+    let baseType = (postStr === 'unsupported')
         ? buildTypeFromDerivedType(preStr, arkInstance)
         : TypeInference.buildTypeFromStr(postStr, preStr);
-    // 4. 包装指针和引用
-    if (referenceCount > 0){
-        const referCategory = (referenceCount % 2 === 1)
-            ? ReferCategory.LVALUE_REF
-            : ReferCategory.RVALUE_REF;
-        return new ReferenceType(
-            pointerLevel > 0 ? new PointerType(baseType, pointerLevel): baseType,
-            referCategory
-        );
-    }
+
     // 待处理: 指针与其他类型/修饰符的优先级
+    // 4. 包装指针和引用
     if (pointerLevel > 0){
-        return new PointerType(baseType, pointerLevel);
+        baseType = new PointerType(baseType, pointerLevel);
+    }
+    // 处理引用类型
+    if (referenceCount > 0) {
+        return buildReferenceType(preStr, arkInstance, referenceCount, baseType);
     }
     return baseType;
+}
+
+export function buildReferenceType(preStr: string, arkInstance: any = null, referenceCount: number, baseType: Type): Type {
+    let referCategory = (referenceCount % 2 === 1)
+        ? ReferCategory.LVALUE_REF
+        : ReferCategory.RVALUE_REF;
+    if (baseType instanceof UnclearReferenceType) {
+        baseType = cppNode2Type(preStr, arkInstance);
+        if (baseType instanceof GenericType) {
+            referCategory = ReferCategory.UNIVERSAL_REF;
+        }
+    }
+    return new ReferenceType(baseType, referCategory);
 }
 
 export function isCXXSTLContainer(qualType: string){

@@ -63,6 +63,9 @@ import { ArkIRTransformer } from '../../core/common/ArkIRTransformer';
 import { AbstractTypeExpr } from '../../core/base/TypeExpr';
 import { buildModifiers  } from '../model/builder/builderUtils';
 import { ModelUtils } from '../../core/common/ModelUtils';
+import { ArkClass } from '../../core/model/ArkClass';
+import { buildNormalArkClassFromArkMethod} from '../model/builder/ArkClassBuilder';
+import { buildArkMethodFromArkClass} from '../model/builder/ArkMethodBuilder';
 
 export type ValueAndStmts = {
     value: Value;
@@ -137,7 +140,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer{
             ArkValueTransformerCpp.isCompoundAssignmentOperator(expression.opcode) ||
             expression.kind.toString() === 'CXXNewExpr' || expression.kind.toString() === 'CallExpr' ||
             (expression.kind.toString() === 'UnaryOperator' && (expression.opcode === '++' || expression.opcode === '--')) ||
-            (expression.kind.toString() === 'CXXOperatorCallExpr' && expression.name === 'operator=') ||
+            expression.kind.toString() === 'CXXOperatorCallExpr' ||
             expression.kind.toString() === 'CXXConstructExpr' || expression.kind.toString() === 'CXXCtorInitializer');
 
     }
@@ -204,6 +207,9 @@ export class ArkIRTransformerCpp extends ArkIRTransformer{
             case 'TypedefDecl':
                 stmts = this.typeDefDeclToStmts(node);
                 break;
+            case 'CXXRecordDecl':
+                stmts = this.classDeclarationToStmts(node);
+                break;
             case 'unsupported kind':
                 break;
         }
@@ -212,6 +218,27 @@ export class ArkIRTransformerCpp extends ArkIRTransformer{
             IRUtils.setComments(stmts[0], node, this.sourceFile, this.declaringMethod.getDeclaringArkFile().getScene().getOptions());
         }
         return stmts;
+    }
+
+    protected  functionDeclarationToStmts(functionDeclarationNode: any): Stmt[] {
+        const declaringClass = this.declaringMethod.getDeclaringArkClass();
+        const arkMethod = new ArkMethod();
+        if (this.builderMethodContextFlag) {
+            ModelUtils.implicitArkUIBuilderMethods.add(arkMethod);
+        }
+        buildArkMethodFromArkClass(functionDeclarationNode, declaringClass, arkMethod, this.sourceFile, this.declaringMethod);
+        return [];
+    }
+
+    protected classDeclarationToStmts(node: any): Stmt[] {
+        const cls = new ArkClass();
+        const declaringArkNamespace = this.declaringMethod.getDeclaringArkClass().getDeclaringArkNamespace();
+        if (declaringArkNamespace) {
+            cls.setDeclaringArkNamespace(declaringArkNamespace);
+        }
+        cls.setDeclaringArkFile(this.declaringMethod.getDeclaringArkFile());
+        buildNormalArkClassFromArkMethod(node, cls, this.sourceFile, this.declaringMethod);
+        return [];
     }
 
     private typeDefDeclToStmts(typeAliasDeclaration: any): Stmt[] {
@@ -224,11 +251,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer{
 
         let rightType;
         // 识别tagUsed属性用于对struct, union, enum 节点进行判断
-        if(typeNode && Object.prototype.hasOwnProperty.call(typeNode, "tagUsed")){
-            rightType = this.arkValueTransformerCpp.resolveTypeNodeCpp(rightOp, typeNode.tagUsed);
-        } else {
-            rightType = this.arkValueTransformerCpp.resolveTypeNodeCpp(rightOp);
-        }
+        rightType = this.arkValueTransformerCpp.resolveTypeNodeCpp(typeNode);
 
         if (rightType instanceof AbstractTypeExpr) {
             rightType = rightType.getType();

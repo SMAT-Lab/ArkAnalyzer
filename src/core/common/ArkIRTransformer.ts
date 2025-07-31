@@ -168,7 +168,7 @@ export class ArkIRTransformer {
         return this.arkValueTransformer.tsNodeToValueAndStmts(node);
     }
 
-    private functionDeclarationToStmts(functionDeclarationNode: ts.FunctionDeclaration): Stmt[] {
+    protected functionDeclarationToStmts(functionDeclarationNode: ts.FunctionDeclaration): Stmt[] {
         const declaringClass = this.declaringMethod.getDeclaringArkClass();
         const arkMethod = new ArkMethod();
         if (this.builderMethodContextFlag) {
@@ -178,7 +178,7 @@ export class ArkIRTransformer {
         return [];
     }
 
-    private classDeclarationToStmts(node: ts.ClassDeclaration): Stmt[] {
+    protected classDeclarationToStmts(node: ts.ClassDeclaration): Stmt[] {
         const cls = new ArkClass();
         const declaringArkNamespace = this.declaringMethod.getDeclaringArkClass().getDeclaringArkNamespace();
         if (declaringArkNamespace) {

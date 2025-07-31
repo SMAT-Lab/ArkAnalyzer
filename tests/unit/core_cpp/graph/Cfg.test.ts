@@ -266,6 +266,7 @@ describe('Function Test', () => {
 
     it('case5: Overload Test', () => {
         const scene = buildScene('overload');
+        scene.inferTypes();
         testBlocksWithSignature(scene, 'overloadSample.cpp', '',
             'printInfo(int)', OVERLOAD.OVERLOAD_PRINT_INFO_CASE1_EXPECT.blocks);
         testBlocksWithSignature(scene, 'overloadSample.cpp', '',
@@ -273,6 +274,9 @@ describe('Function Test', () => {
         testBlocksWithSignature(scene, 'overloadSample.cpp', '',
             'printInfo(int, char)', OVERLOAD.OVERLOAD_PRINT_INFO_CASE3_EXPECT.blocks);
         testBlocksClass(scene, 'overloadSample.cpp', 'Person', OVERLOAD.OVERLOAD_CLASS_PERSON_EXPECT, true);
+        testBlocksClass(scene, 'overloadSample.cpp', 'Vector', OVERLOAD.VECTOR_CLASS_EXPECT);
+        testBlocks(scene, 'overloadSample.cpp', 'operator<<', OVERLOAD.OVERLOAD_COUT_EXPECT.blocks);
+        testBlocks(scene, 'overloadSample.cpp', 'operator>>', OVERLOAD.OVERLOAD_CIN_EXPECT.blocks);
         testBlocks(scene, 'overloadSample.cpp', 'main', OVERLOAD.OVERLOAD_MAIN_EXPECT.blocks);
     });
 });
