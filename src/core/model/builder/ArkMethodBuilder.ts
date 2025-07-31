@@ -32,14 +32,21 @@ import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
 import { ArkParameterRef, ArkThisRef, ClosureFieldRef } from '../../base/Ref';
 import { ArkBody } from '../ArkBody';
 import { Cfg } from '../../graph/Cfg';
-import { ArkInstanceInvokeExpr, ArkStaticInvokeExpr } from '../../base/Expr';
+import { ArkInstanceInvokeExpr } from '../../base/Expr';
 import { MethodSignature, MethodSubSignature } from '../ArkSignature';
 import { ArkAssignStmt, ArkInvokeStmt, ArkReturnStmt, ArkReturnVoidStmt, Stmt } from '../../base/Stmt';
 import { BasicBlock } from '../../graph/BasicBlock';
 import { Local } from '../../base/Local';
 import { Value } from '../../base/Value';
 import { CONSTRUCTOR_NAME, SUPER_NAME, THIS_NAME } from '../../common/TSConst';
-import { ANONYMOUS_METHOD_PREFIX, CALL_SIGNATURE_NAME, DEFAULT_ARK_CLASS_NAME, DEFAULT_ARK_METHOD_NAME, NAME_DELIMITER, NAME_PREFIX } from '../../common/Const';
+import {
+    ANONYMOUS_METHOD_PREFIX,
+    CALL_SIGNATURE_NAME,
+    DEFAULT_ARK_CLASS_NAME,
+    DEFAULT_ARK_METHOD_NAME,
+    NAME_DELIMITER,
+    NAME_PREFIX,
+} from '../../common/Const';
 import { ArkSignatureBuilder } from './ArkSignatureBuilder';
 import { IRUtils } from '../../common/IRUtils';
 import { ArkErrorCode } from '../../common/ArkError';
@@ -113,6 +120,8 @@ export function buildArkMethodFromArkClass(
         mtd.setImplementationSignature(methodSignature);
         mtd.setLine(line + 1);
         mtd.setColumn(character + 1);
+        let bodyBuilder = new BodyBuilder(mtd.getSignature(), methodNode, mtd, sourceFile);
+        mtd.setBodyBuilder(bodyBuilder);
     } else {
         mtd.setDeclareSignatures(methodSignature);
         mtd.setDeclareLinesAndCols([line + 1], [character + 1]);
@@ -253,7 +262,7 @@ export class MethodParameter implements Value {
     private name: string = '';
     private type!: Type;
     private optional: boolean = false;
-    private dotDotDotToken: boolean = false;
+    private restFlag: boolean = false;
     private objElements: ObjectBindingPatternParameter[] = [];
     private arrayElements: ArrayBindingPatternParameter[] = [];
 
@@ -283,12 +292,12 @@ export class MethodParameter implements Value {
         this.optional = optional;
     }
 
-    public hasDotDotDotToken(): boolean {
-        return this.dotDotDotToken;
+    public isRest(): boolean {
+        return this.restFlag;
     }
 
-    public setDotDotDotToken(dotDotDotToken: boolean): void {
-        this.dotDotDotToken = dotDotDotToken;
+    public setRestFlag(restFlag: boolean): void {
+        this.restFlag = restFlag;
     }
 
     public addObjElement(element: ObjectBindingPatternParameter): void {
@@ -377,9 +386,7 @@ export function buildDefaultConstructor(arkClass: ArkClass): boolean {
     basicBlock.addStmt(new ArkAssignStmt(thisLocal, new ArkThisRef(new ClassType(arkClass.getSignature()))));
 
     if (superConstructor) {
-        const superMethodSubSignature = new MethodSubSignature(SUPER_NAME, parameters, superConstructor.getReturnType());
-        const superMethodSignature = new MethodSignature(arkClass.getSignature(), superMethodSubSignature);
-        const superInvokeExpr = new ArkStaticInvokeExpr(superMethodSignature, parameterArgs);
+        const superInvokeExpr = new ArkInstanceInvokeExpr(thisLocal, superConstructor.getSignature(), parameterArgs);
         basicBlock.addStmt(new ArkInvokeStmt(superInvokeExpr));
     }
 
@@ -456,12 +463,11 @@ export function addInitInConstructor(constructor: ArkMethod): void {
     if (cfg === undefined) {
         return;
     }
-    const blocks = cfg.getBlocks();
-    const firstBlockStmts = [...blocks][0].getStmts();
+    const firstBlockStmts = cfg.getStartingBlock()!.getStmts();
     let index = 0;
     for (let i = 0; i < firstBlockStmts.length; i++) {
         const stmt = firstBlockStmts[i];
-        if (stmt instanceof ArkInvokeStmt && stmt.getInvokeExpr().getMethodSignature().getMethodSubSignature().getMethodName() === SUPER_NAME) {
+        if (stmt instanceof ArkInvokeStmt && stmt.getInvokeExpr().getMethodSignature().getMethodSubSignature().getMethodName() === CONSTRUCTOR_NAME) {
             index++;
             continue;
         }
@@ -553,7 +559,9 @@ export function replaceSuper2Constructor(constructor: ArkMethod): void {
     }
     const superConstructor = superClass.getMethodWithName(CONSTRUCTOR_NAME);
     if (superConstructor === null) {
-        logger.error(`Can not find constructor method for class ${superClass.getSignature().toString()}`);
+        if (needDefaultConstructorInClass(superClass)) {
+            logger.error(`Can not find constructor method for class ${superClass.getSignature().toString()}`);
+        }
         return;
     }
     const startingBlock = constructor.getBody()?.getCfg().getStartingBlock();
