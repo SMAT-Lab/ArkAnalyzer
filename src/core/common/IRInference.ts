@@ -82,6 +82,7 @@ import { ValueUtil } from './ValueUtil';
 import { ArkFile } from '../model/ArkFile';
 import { AbstractTypeExpr, KeyofTypeExpr, TypeQueryExpr } from '../base/TypeExpr';
 import { ArkBaseModel } from '../model/ArkBaseModel';
+import { BuiltinCpp } from '../../cpp_frontend/common/Builtin'
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'IRInference');
 
@@ -490,7 +491,9 @@ export class IRInference {
         methodName: string,
         scene: Scene
     ): AbstractInvokeExpr | null {
-        if (Builtin.isBuiltinClass(baseType.getClassSignature().getClassName())) {
+        const baseClassName = baseType.getClassSignature().getClassName();
+        if (Builtin.isBuiltinClass(baseClassName) ||
+            BuiltinCpp.isBuiltinClass(baseClassName, baseType.getClassSignature().getDeclaringFileSignature().getProjectName())) {
             expr.setMethodSignature(new MethodSignature(baseType.getClassSignature(), expr.getMethodSignature().getMethodSubSignature()));
         }
         let declaredClass = scene.getClass(baseType.getClassSignature());
