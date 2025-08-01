@@ -660,6 +660,12 @@ export class IRInference {
                 typeWithoutPtrOrRef.getClassSignature().getClassName() === DEFAULT_ARK_CLASS_NAME ||
                 ((property instanceof ArkField || property instanceof ArkMethod) && property.isStatic());
             signature = property instanceof ArkMethod ? property.getSignature().getDeclaringClassSignature() : typeWithoutPtrOrRef.getClassSignature();
+        } else if (typeWithoutPtrOrRef instanceof ArrayType) {
+            const property = propertyAndType?.[0];
+            if (property instanceof ArkField) {
+                return property.getSignature();
+            }
+            return null;
         } else if (typeWithoutPtrOrRef instanceof AnnotationNamespaceType) {
             staticFlag = true;
             signature = typeWithoutPtrOrRef.getNamespaceSignature();

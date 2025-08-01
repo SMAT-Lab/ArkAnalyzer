@@ -312,13 +312,29 @@ export class TypeInference {
         } else if (use instanceof ArkInstanceFieldRef && fieldRef instanceof ArkArrayRef && stmt instanceof ArkAssignStmt) {
             const index = fieldRef.getIndex();
             if (index instanceof Constant && index.getType() instanceof StringType) {
-                const local = arkMethod?.getBody()?.getLocals().get(index.getValue());
+                const local = this.getLocalFromMethodBody(index.getValue(), arkMethod);
                 if (local) {
                     fieldRef.setIndex(local);
                 }
             }
             stmt.replaceUse(use, fieldRef);
         }
+    }
+
+    private static getLocalFromMethodBody(name: string, arkMethod: ArkMethod): Local | null {
+        const local = arkMethod?.getBody()?.getLocals().get(name);
+        if (local) {
+            return local;
+        }
+        const globalRef = arkMethod?.getBody()?.getUsedGlobals()?.get(name);
+        if (globalRef === undefined || !(globalRef instanceof GlobalRef)) {
+            return null;
+        }
+        const ref = globalRef.getRef();
+        if (ref !== null && ref instanceof Local) {
+            return ref;
+        }
+        return null;
     }
 
     public static parseArkExport2Type(arkExport: ArkExport | undefined | null): Type | null {
@@ -709,6 +725,8 @@ export class TypeInference {
                 return null;
             }
             propertyAndType = this.inferClassFieldType(declareClass, typeWithoutPtrOrRef, fieldName);
+        } else if (typeWithoutPtrOrRef instanceof ArrayType) {
+            propertyAndType = this.inferArrayFieldType(declareClass, fieldName);
         } else if (typeWithoutPtrOrRef instanceof AnnotationNamespaceType) {
             const namespace = declareClass.getDeclaringArkFile().getScene().getNamespace(typeWithoutPtrOrRef.getNamespaceSignature());
             if (namespace) {
@@ -751,6 +769,18 @@ export class TypeInference {
         } else if (arkClass.isAnonymousClass()) {
             const fieldType = this.inferUnclearRefName(fieldName, arkClass);
             return fieldType ? [null, fieldType] : null;
+        }
+        return null;
+    }
+
+    private static inferArrayFieldType(declareClass: ArkClass, fieldName: string): [ArkField, Type] | null {
+        const arrayClass = declareClass.getDeclaringArkFile().getScene().getSdkGlobal(Builtin.ARRAY);
+        if (arrayClass instanceof ArkClass) {
+            const property = ModelUtils.findPropertyInClass(fieldName, arrayClass);
+            if (property instanceof ArkField) {
+                return [property, property.getType()];
+            }
+            return null;
         }
         return null;
     }
