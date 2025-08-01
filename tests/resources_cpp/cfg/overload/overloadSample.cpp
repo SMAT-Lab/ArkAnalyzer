@@ -94,6 +94,15 @@ std::istream& operator>>(std::istream& is, Vector& v) {
     return is;
 }
 
+/****** clang::UserDefinedLiteral ******/
+constexpr long double operator""_km(long double km) {
+    return km * 1000; // 1km = 1000m
+}
+
+// 字符类型
+char operator""_c(char c) {
+    return c;
+}
 
 int main() {
     printInfo(1);
@@ -117,4 +126,8 @@ int main() {
     std::cin >> v;  // 等价于 operator>>(std::cin, v)
     std::cout << "Vector: " << v  << " ;" << std::endl;  // 等价于 operator<<(std::cout, v)
     std::cout << v << "aaa" << std::endl;  // 等价于 operator<<(std::cout, v)
+
+    // ***clang::UserDefinedLiteral
+    auto distance = 5.3_km;  // 会产生clang::UserDefinedLiteral节点
+    auto ch = 'a'_c;     // 字符用户定义字面量
 }

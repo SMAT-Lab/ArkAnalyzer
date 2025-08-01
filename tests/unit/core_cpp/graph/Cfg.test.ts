@@ -58,7 +58,6 @@ import * as NAMESPACE_EXPECT from '../../../resources_cpp/cfg/namespace';
 import * as OVERLOAD from '../../../resources_cpp/cfg/overload/overloadExpect';
 import * as USING_EXPECT from '../../../resources_cpp/cfg/using/usingExpects';
 import * as TYPEDEF_EXPECT from '../../../resources_cpp/cfg/typedef/typdefExpects';
-import { REFERENCE_EXPECT_CASE5 } from '../../../resources_cpp/cfg/reference/referenceExpects';
 
 describe('CfgTest', () => {
     it('case1: conditional operator', () => {
@@ -279,6 +278,8 @@ describe('Function Test', () => {
         testBlocksClass(scene, 'overloadSample.cpp', 'Vector', OVERLOAD.VECTOR_CLASS_EXPECT);
         testBlocks(scene, 'overloadSample.cpp', 'operator<<', OVERLOAD.OVERLOAD_COUT_EXPECT.blocks);
         testBlocks(scene, 'overloadSample.cpp', 'operator>>', OVERLOAD.OVERLOAD_CIN_EXPECT.blocks);
+        testBlocks(scene, 'overloadSample.cpp', 'operator""_km', OVERLOAD.OVERLOAD_USER_DEFINED_LITERAL_NUMBER_EXPECT.blocks);
+        testBlocks(scene, 'overloadSample.cpp', 'operator""_c', OVERLOAD.OVERLOAD_USER_DEFINED_LITERAL_CHAR_EXPECT.blocks);
         testBlocks(scene, 'overloadSample.cpp', 'main', OVERLOAD.OVERLOAD_MAIN_EXPECT.blocks);
     });
 });
