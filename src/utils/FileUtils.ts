@@ -74,7 +74,7 @@ export class FileUtils {
                         main = path.resolve(modulePath, target.main as string);
                     }
                 } else {
-                    path.resolve(dir, 'oh_modules', name);
+                    modulePath = path.resolve(dir, 'oh_modules', name);
                 }
                 moduleMap.set(name, new ModulePath(modulePath, main));
             });

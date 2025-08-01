@@ -9,18 +9,18 @@
   "main": "lib/index.js",
   "scripts": {
     "build": "tsc",
-    "prepack": "tsc -p ./tsconfig.prod.json && npx copyfiles -f src/ast/arkCppAstDumper.exe lib/ast/",
-    "test": "npm run copyCollectionDefintion && vitest",
-    "testonce": "npm run copyCollectionDefintion && vitest --no-color run",
-    "coverage": "npm run copyCollectionDefintion && vitest run --coverage",
+    "prepack": "tsc -p ./tsconfig.prod.json",
+    "test": "vitest",
+    "testonce": "vitest --no-color run",
+    "coverage": "vitest run --coverage",
     "heapdump": "npm run build && node --expose-gc out/tests/HeapDumpTest.js",
     "gendoc": "npx typedoc",
     "postinstall": "node script/npmInstall.js",
     "copyCollectionDefintion": "ts-node script/typescriptCollectionDefinitionCopy.ts"
   },
   "dependencies": {
-    "commander": "11.0.0",
-    "log4js": "6.7.1",
+    "commander": "13.1.0",
+    "log4js": "6.9.1",
     "ohos-typescript": "^4.9.5-r4"
   },
   "bundledDependencies": [

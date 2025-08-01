@@ -785,7 +785,9 @@ void fillNodeKindTag(json& node, CXCursor cursor, CXCursorKind kind_cursor, cons
         default: break;
     }
     if (kind_cursor == CXCursor_CallExpr) {
-        if (typeStr.find("basic_ostream") == 0 || nameStr.find("operator") != std::string::npos)
+        if (nameStr.find("operator\"\"") != std::string::npos)
+            node["kind"] = "UserDefinedLiteral";
+        else if (typeStr.find("basic_ostream") == 0 || nameStr.find("operator") != std::string::npos)
             node["kind"] = "CXXOperatorCallExpr";
         else if (isConstructorByTypeStr(typeStr) || isConstructorByNameStr(nameStr) ||
                  isConstructorByCodeStr(codeStr, nameStr, typeStr))
