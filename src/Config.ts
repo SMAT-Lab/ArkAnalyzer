@@ -313,7 +313,10 @@ export class SceneConfig {
      */
     public buildFromProjectDir(targetProjectDirectory: string, includeDirs: string[] = []): void {
         this.targetProjectDirectory = targetProjectDirectory;
-        const cmakeIncludeDirs = scanCMakeIncludeDirsOnly(path.resolve(targetProjectDirectory));
+        const resolvedDir = path.resolve(targetProjectDirectory);
+        const cmakeIncludeDirs = scanCMakeIncludeDirsOnly(resolvedDir);
+        // 把项目根路径加入 includeDirs
+        cmakeIncludeDirs.push(resolvedDir);
         this.includeDirs = Array.from(new Set([...cmakeIncludeDirs, ...includeDirs]))
         this.targetProjectName = path.basename(targetProjectDirectory);
         this.projectFiles = getAllFiles(targetProjectDirectory, this.options.supportFileExts!, this.options.ignoreFileNames);

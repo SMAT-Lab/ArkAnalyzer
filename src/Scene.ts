@@ -1201,8 +1201,8 @@ export class Scene {
             return;
         }
         if (!fs.existsSync(imFrom)) {
-            // Processing relative Path
-            imFrom = getFileAbsPath(filePath, imFrom);
+            // 若路径不存在，尝试使用 includeDirs 查找相对路径
+            imFrom = getFileAbsPath(this.includeDirs, imFrom);
             if (!imFrom) {
                 return;
             }
