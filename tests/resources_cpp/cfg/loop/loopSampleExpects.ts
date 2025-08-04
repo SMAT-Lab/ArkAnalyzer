@@ -203,7 +203,7 @@ export const LOOP_EXPECT_CASE8 = {
                 '%4[2] = %3',
                 'instanceinvoke %0.<@%unk/%unk: std::map<int, std::basic_string<char>>.constructor()>(%4)',
                 'map1 = %0',
-                '%5 = instanceinvoke map1.<@%unk/%unk: .iterator()>()'
+                '%5 = instanceinvoke map1.<@%unk/%unk: .Symbol.iterator()>()'
             ],
             preds: [],
             succes: [ 1 ]
@@ -254,7 +254,7 @@ export const LOOP_EXPECT_CASE9 = {
                 '%4[2] = %3',
                 'instanceinvoke %0.<@%unk/%unk: std::map<int, std::basic_string<char>>.constructor()>(%4)',
                 'map2 = %0',
-                '%5 = instanceinvoke map2.<@%unk/%unk: .iterator()>()'
+                '%5 = instanceinvoke map2.<@%unk/%unk: .Symbol.iterator()>()'
             ],
             preds: [],
             succes: [ 1 ]

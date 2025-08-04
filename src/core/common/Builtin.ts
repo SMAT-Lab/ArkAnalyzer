@@ -42,8 +42,8 @@ export class Builtin {
     public static BUILT_IN_CLASS_SIGNATURE_MAP = this.buildBuiltInClassSignatureMap();
 
     // constants for iterator
-    public static ITERATOR_FUNCTION = 'iterator';
-    public static ITERATOR = 'Iterator';
+    public static ITERATOR_FUNCTION = 'Symbol.iterator';
+    public static ITERATOR = 'IterableIterator';
     public static ITERATOR_NEXT = 'next';
     public static ITERATOR_RESULT = 'IteratorResult';
     public static ITERATOR_RESULT_DONE = 'done';
@@ -60,6 +60,10 @@ export class Builtin {
         ClassSignature.DEFAULT,
         new MethodSubSignature(this.TO_STRING, [], StringType.getInstance(), false)
     );
+
+    // constants for array
+    public static SLICE = 'slice';
+    public static CONCAT = 'concat';
 
     private static buildBuiltInClasses(): Set<string> {
         const builtInClasses = new Set<string>();
