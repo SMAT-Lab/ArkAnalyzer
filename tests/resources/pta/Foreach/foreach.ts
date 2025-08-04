@@ -22,26 +22,36 @@ namespace Foreach {
         }
     }
 
-    class Test {
-        spans: MyCustomSpan[] = [];
+    function arrayForeach(): void {
+        let ele = new MyCustomSpan(0);
+        let ele2 = new MyCustomSpan(1);
+        let arr = [ele, ele2];
+        arr.forEach((value: MyCustomSpan, index: number) => {
+            let temp = value;
+        });
+    }
 
-        public test(): void {
-            let span = new MyCustomSpan(0);
-            this.spans[0] = span;
+    function setForeach(): void {
+        let s = new Set();
+        let ele = new MyCustomSpan(0);
+        s.add(ele);
+        s.forEach((value: MyCustomSpan) => {
+            let temp = value;
+        });
+    }
 
-            this.processCustomSpans(this.spans);
-        }
-
-        processCustomSpans(spans: MyCustomSpan[]): void {
-            spans.forEach((spanInner: MyCustomSpan, index: number) => {
-                console.log(spanInner);
-                console.log(index);
-            });
-        }
+    function mapForeach(): void {
+        let s = new Map();
+        let ele = new MyCustomSpan(0);
+        s.set(0, ele);
+        s.forEach((value: MyCustomSpan, index: number) => {
+            let temp = value;
+        });
     }
 
     function main(): void {
-        let test = new Test();
-        test.test();
+        arrayForeach();
+        setForeach();
+        mapForeach();
     }
 }

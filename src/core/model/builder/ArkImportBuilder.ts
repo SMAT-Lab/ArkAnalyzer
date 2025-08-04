@@ -53,10 +53,11 @@ function buildImportDeclarationNode(node: ts.ImportDeclaration, sourceFile: ts.S
         importInfo.setTsSourceCode(tsSourceCode);
         IRUtils.setComments(importInfo, node, sourceFile, arkFile.getScene().getOptions());
         importInfos.push(importInfo);
+        return importInfos;
     }
 
     //just like: import fs from 'fs'
-    if (node.importClause && node.importClause.name && ts.isIdentifier(node.importClause.name)) {
+    if (node.importClause.name && ts.isIdentifier(node.importClause.name)) {
         let importClauseName = node.importClause.name.text;
         const pos = LineColPosition.buildFromNode(node.importClause.name, sourceFile);
         let importType = 'Identifier';
@@ -67,34 +68,37 @@ function buildImportDeclarationNode(node: ts.ImportDeclaration, sourceFile: ts.S
         importInfos.push(importInfo);
     }
 
+    if (node.importClause.namedBindings === undefined) {
+        return importInfos;
+    }
+
     // just like: import {xxx} from './yyy'
-    if (node.importClause && node.importClause.namedBindings && ts.isNamedImports(node.importClause.namedBindings)) {
-        let importType = 'NamedImports';
-        if (node.importClause.namedBindings.elements) {
-            node.importClause.namedBindings.elements.forEach(element => {
-                if (element.name && ts.isIdentifier(element.name)) {
-                    let importClauseName = element.name.text;
-                    const pos = LineColPosition.buildFromNode(element, sourceFile);
-                    if (element.propertyName && ts.isIdentifier(element.propertyName)) {
-                        let importInfo = new ImportInfo();
-                        importInfo.build(importClauseName, importType, importFrom, pos, modifiers, element.propertyName.text);
-                        importInfo.setTsSourceCode(tsSourceCode);
-                        IRUtils.setComments(importInfo, node, sourceFile, arkFile.getScene().getOptions());
-                        importInfos.push(importInfo);
-                    } else {
-                        let importInfo = new ImportInfo();
-                        importInfo.build(importClauseName, importType, importFrom, pos, modifiers);
-                        importInfo.setTsSourceCode(tsSourceCode);
-                        IRUtils.setComments(importInfo, node, sourceFile, arkFile.getScene().getOptions());
-                        importInfos.push(importInfo);
-                    }
-                }
-            });
+    if (ts.isNamedImports(node.importClause.namedBindings)) {
+        const elements = node.importClause.namedBindings.elements;
+        if (elements === undefined) {
+            return importInfos;
         }
+        let importType = 'NamedImports';
+        elements.forEach(element => {
+            if (element.name === undefined || !ts.isIdentifier(element.name)) {
+                return;
+            }
+            let importClauseName = element.name.text;
+            const pos = LineColPosition.buildFromNode(element, sourceFile);
+            let importInfo = new ImportInfo();
+            if (element.propertyName && ts.isIdentifier(element.propertyName)) {
+                importInfo.build(importClauseName, importType, importFrom, pos, modifiers, element.propertyName.text);
+            } else {
+                importInfo.build(importClauseName, importType, importFrom, pos, modifiers);
+            }
+            importInfo.setTsSourceCode(tsSourceCode);
+            IRUtils.setComments(importInfo, node, sourceFile, arkFile.getScene().getOptions());
+            importInfos.push(importInfo);
+        });
     }
 
     // just like: import * as ts from 'ohos-typescript'
-    if (node.importClause && node.importClause.namedBindings && ts.isNamespaceImport(node.importClause.namedBindings)) {
+    if (ts.isNamespaceImport(node.importClause.namedBindings)) {
         let importType = 'NamespaceImport';
         if (node.importClause.namedBindings.name && ts.isIdentifier(node.importClause.namedBindings.name)) {
             let importClauseName = node.importClause.namedBindings.name.text;

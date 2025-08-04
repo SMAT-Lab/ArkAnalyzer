@@ -1,8 +1,6 @@
 {
-    "targetProjectName": "applications_camera",
-    "targetProjectDirectory": "/Users/yangyizhuo/DevEcoStudioProjects/applications_camera",
-    "targetProjectName2": "Before",
-    "targetProjectDirectory2": "/Users/yangyizhuo/Desktop/test/testApp/Before",
+    "targetProjectName": "",
+    "targetProjectDirectory": "",
 
     "logPath": "./out/ArkAnalyzer.log",
     "logLevel": "INFO",
@@ -10,7 +8,7 @@
     "sdks": [
         {
             "name": "etsSdk",
-            "path": "/Users/yangyizhuo/Library/OpenHarmony/Sdk/11/ets",
+            "path": "",
             "moduleName": ""
         }
     ]

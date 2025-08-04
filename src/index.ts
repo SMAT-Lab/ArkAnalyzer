@@ -26,7 +26,6 @@ export * from './callgraph/model/CallGraph';
 export { CallGraphBuilder } from './callgraph/model/builder/CallGraphBuilder';
 
 // callgraph/pointerAnalysis
-export { KLimitedContextSensitive } from './callgraph/pointerAnalysis/Context';
 export { DummyCallCreator } from './callgraph/pointerAnalysis/DummyCallCreator';
 export * from './callgraph/pointerAnalysis/Pag';
 export { CSFuncID, PagBuilder } from './callgraph/pointerAnalysis/PagBuilder';

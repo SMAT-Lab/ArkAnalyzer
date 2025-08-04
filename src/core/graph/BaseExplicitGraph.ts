@@ -148,6 +148,10 @@ export abstract class BaseExplicitGraph implements GraphTraits<BaseNode> {
         return this.nodeNum;
     }
 
+    public getEdgeNum(): number {
+        return this.edgeNum;
+    }
+
     public nodesItor(): IterableIterator<BaseNode> {
         return this.idToNodeMap.values();
     }

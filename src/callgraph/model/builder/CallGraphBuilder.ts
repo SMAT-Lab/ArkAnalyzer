@@ -15,7 +15,7 @@
 
 import { CallGraph, CallGraphNode, CallGraphNodeKind, Method } from '../CallGraph';
 import { Scene } from '../../../Scene';
-import { AbstractInvokeExpr, ArkInstanceInvokeExpr, ArkStaticInvokeExpr } from '../../../core/base/Expr';
+import { AbstractInvokeExpr, ArkStaticInvokeExpr } from '../../../core/base/Expr';
 import { NodeID } from '../../../core/graph/BaseExplicitGraph';
 import { ClassHierarchyAnalysis } from '../../algorithm/ClassHierarchyAnalysis';
 import { RapidTypeAnalysis } from '../../algorithm/RapidTypeAnalysis';
@@ -77,11 +77,6 @@ export class CallGraphBuilder {
                 // abstract method will also be added into direct cg
                 if (callee && invokeExpr instanceof ArkStaticInvokeExpr) {
                     this.cg.addDirectOrSpecialCallEdge(method.getSignature(), callee, stmt);
-                } else if (
-                    callee && invokeExpr instanceof ArkInstanceInvokeExpr &&
-                    (this.isConstructor(callee) || this.scene.getMethod(callee)?.isGenerated())
-                ) {
-                    this.cg.addDirectOrSpecialCallEdge(method.getSignature(), callee, stmt, false);
                 } else {
                     this.cg.addDynamicCallInfo(stmt, method.getSignature(), callee);
                 }
@@ -119,10 +114,6 @@ export class CallGraphBuilder {
     /// Get direct call callee
     private getDCCallee(invokeExpr: AbstractInvokeExpr): Method | undefined {
         return invokeExpr.getMethodSignature();
-    }
-
-    private isConstructor(m: Method): boolean {
-        return m.getMethodSubSignature().getMethodName() === 'constructor';
     }
 
     public setEntries(): void {

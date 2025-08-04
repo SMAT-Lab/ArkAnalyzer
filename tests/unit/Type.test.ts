@@ -1745,6 +1745,8 @@ describe('Object Type Test', () => {
     const classA = arkFile?.getClassWithName('ClassA');
     const defaultClass = arkFile?.getDefaultClass();
     const objectTypeStr = '@ES2015/BuiltinClass: Object';
+    const objectConstructorTypeStr = '@built-in/lib.es2015.core.d.ts: ObjectConstructor';
+    const builtInObjectTypeStr = '@built-in/lib.es5.d.ts: Object';
 
     it('case1: whole ir', () => {
         assert.isNotNull(arkFile);
@@ -1812,19 +1814,19 @@ describe('Object Type Test', () => {
         assert.equal(((stmtsDefault![6] as ArkAssignStmt).getRightOp() as ArkStaticFieldRef).getFieldSignature().toString(), `${objectTypeStr}.[static]prototype`);
         assert.isTrue(stmtsDefault![7] instanceof ArkAssignStmt);
         assert.isTrue((stmtsDefault![7] as ArkAssignStmt).getRightOp() instanceof ArkStaticInvokeExpr);
-        assert.equal(((stmtsDefault![7] as ArkAssignStmt).getRightOp() as ArkStaticInvokeExpr).getMethodSignature().toString(), `${objectTypeStr}.create()`);
+        assert.equal(((stmtsDefault![7] as ArkAssignStmt).getRightOp() as ArkStaticInvokeExpr).getMethodSignature().toString(), `@built-in/lib.es5.d.ts: ObjectConstructor.create(any)`);
 
         const stmtsFoo = defaultClass?.getMethodWithName('foo')?.getBody()?.getCfg().getStmts();
         assert.isDefined(stmtsFoo);
         assert.isAtLeast(stmtsFoo!.length, 3);
         assert.isTrue(stmtsFoo![2] instanceof ArkInvokeStmt);
         assert.isTrue((stmtsFoo![2] as ArkInvokeStmt).getInvokeExpr() instanceof ArkStaticInvokeExpr);
-        assert.equal(((stmtsFoo![2] as ArkInvokeStmt).getInvokeExpr() as ArkStaticInvokeExpr).getMethodSignature().toString(), `${objectTypeStr}.keys()`);
+        assert.equal(((stmtsFoo![2] as ArkInvokeStmt).getInvokeExpr() as ArkStaticInvokeExpr).getMethodSignature().toString(), `${objectConstructorTypeStr}.keys(@built-in/lib.es2015.core.d.ts: %AC3)`);
 
         assert.isTrue(stmtsFoo![3] instanceof ArkInvokeStmt);
         assert.isTrue((stmtsFoo![3] as ArkInvokeStmt).getInvokeExpr() instanceof ArkInstanceInvokeExpr);
         assert.equal(((stmtsFoo![3] as ArkInvokeStmt).getInvokeExpr() as ArkInstanceInvokeExpr).getBase().toString(), 'obj');
-        assert.equal(((stmtsFoo![3] as ArkInvokeStmt).getInvokeExpr() as ArkInstanceInvokeExpr).getMethodSignature().toString(), `${objectTypeStr}.toLocaleString()`);
+        assert.equal(((stmtsFoo![3] as ArkInvokeStmt).getInvokeExpr() as ArkInstanceInvokeExpr).getMethodSignature().toString(), `${builtInObjectTypeStr}.toLocaleString()`);
     });
 
     it('case8: class field invoke expr', () => {
@@ -1836,7 +1838,7 @@ describe('Object Type Test', () => {
         assert.equal(((stmtsKeys![1] as ArkAssignStmt).getRightOp() as ArkInstanceFieldRef).getFieldSignature().getType().toString(), objectTypeStr);
         assert.isTrue(stmtsKeys![2] instanceof ArkInvokeStmt);
         assert.isTrue((stmtsKeys![2] as ArkInvokeStmt).getInvokeExpr() instanceof ArkStaticInvokeExpr);
-        assert.equal(((stmtsKeys![2] as ArkInvokeStmt).getInvokeExpr() as ArkStaticInvokeExpr).getMethodSignature().toString(), `${objectTypeStr}.keys()`);
+        assert.equal(((stmtsKeys![2] as ArkInvokeStmt).getInvokeExpr() as ArkStaticInvokeExpr).getMethodSignature().toString(), `${objectConstructorTypeStr}.keys(@built-in/lib.es2015.core.d.ts: %AC3)`);
 
         const stmtshasA = classA?.getMethodWithName('hasA')?.getBody()?.getCfg().getStmts();
         assert.isDefined(stmtshasA);
@@ -1846,6 +1848,18 @@ describe('Object Type Test', () => {
         assert.equal(((stmtshasA![1] as ArkAssignStmt).getRightOp() as ArkInstanceFieldRef).getFieldSignature().getType().toString(), objectTypeStr);
         assert.isTrue(stmtshasA![2] instanceof ArkAssignStmt);
         assert.isTrue((stmtshasA![2] as ArkAssignStmt).getRightOp() instanceof ArkInstanceInvokeExpr);
-        assert.equal(((stmtshasA![2] as ArkAssignStmt).getRightOp() as ArkInstanceInvokeExpr).getMethodSignature().toString(), `${objectTypeStr}.toLocaleString()`);
+        assert.equal(((stmtshasA![2] as ArkAssignStmt).getRightOp() as ArkInstanceInvokeExpr).getMethodSignature().toString(), `${builtInObjectTypeStr}.toLocaleString()`);
+    });
+});
+
+describe('Type of Binary Operator', () => {
+    const fileId = new FileSignature(projectScene.getProjectName(), 'numberType.ts');
+    const arkFile = projectScene.getFile(fileId);
+
+    it('case1: binary operator of Exponentiation', () => {
+        const stmts = arkFile?.getDefaultClass().getMethodWithName('testBinaryOperator')?.getCfg()?.getStmts();
+        assert.isDefined(stmts);
+        assert.isAtLeast(stmts!.length, 2);
+        assert.isTrue((stmts![1] as ArkAssignStmt).getLeftOp().getType() instanceof NumberType);
     });
 });

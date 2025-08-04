@@ -20,7 +20,7 @@ describe('SceneConfig Test', () => {
     it('true case', () => {
         let config: SceneConfig = new SceneConfig();
         config.buildFromJson('./tests/resources/scene/SceneTestConfig.json');
-        assert.equal(config.getTargetProjectName(), 'applications_photos');
+        assert.equal(config.getTargetProjectName(), 'viewtree');
         console.log(config.getTargetProjectDirectory())
         assert.equal(config.getTargetProjectDirectory(), 'tests/resources/viewtree/project');
         assert.equal(config.getSdksObj().length, 1);

@@ -19,6 +19,13 @@ import { describe, expect, it } from 'vitest';
 import { ArkFile, Scene, SceneConfig } from '../../../src';
 import { JsonPrinter } from '../../../src/save/JsonPrinter';
 
+function compareClassJson(arkClass: any, expectedClass: any): void {
+    for (const [index, arkMethod] of arkClass.methods.entries()) {
+        expect(arkMethod).toEqual(expectedClass.methods[index]);
+    }
+    expect(arkClass).toEqual(expectedClass);
+}
+
 describe('JsonPrinterTest', () => {
     let config: SceneConfig = new SceneConfig();
     config.buildFromProjectDir(path.join(__dirname, '../../resources/save'));
@@ -35,6 +42,12 @@ describe('JsonPrinterTest', () => {
 
     it('ArkIR for Scene for sample.ts', () => {
         let expected = JSON.parse(fs.readFileSync(path.join(__dirname, '../../resources/save/expected_sample.json'), 'utf8'));
-        expect(ir).toEqual(expected);
+        expect(ir.signature).toEqual(expected.signature);
+        expect(ir.namespaces).toEqual(expected.namespaces);
+        expect(ir.importInfos).toEqual(expected.importInfos);
+        expect(ir.exportInfos).toEqual(expected.exportInfos);
+        for (const [index, clazz] of ir.classes.entries()) {
+            compareClassJson(clazz, expected.classes[index]);
+        }
     });
 });

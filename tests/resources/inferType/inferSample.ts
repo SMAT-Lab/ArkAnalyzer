@@ -109,3 +109,8 @@ function foo(): void {
     let t = new Test();
     console.info(t.name);
 }
+
+function testArrayFrom(): void {
+    let arr1 = Array.from<number>(new Set<number>([1, 2, 3]));
+    let arr2 = Array.from('hello');
+}

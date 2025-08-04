@@ -178,7 +178,7 @@ export const ArrowFunction_Expect_IR = {
             {
                 text: 'return i',
                 operandOriginalPositions: [
-                    [22, 28, 22, 31],
+                    [22, 28, 22, 29],
                 ],
             },
         ],
@@ -1235,7 +1235,7 @@ export const ClosureClassMethod_Expect_IR = {
                 },
                 usedStmts: [
                     {
-                        text: '%0 = instanceinvoke nums.<@%unk/%unk: .iterator()>()'
+                        text: '%0 = instanceinvoke nums.<@built-in/lib.es2015.iterable.d.ts: Array.Symbol.iterator()>()'
                     }
                 ]
             },
@@ -2234,7 +2234,7 @@ export const MultipleAnonymousMethod2_Expect_IR = {
                 },
                 usedStmts: [
                     {
-                        text: '%1 = listener.<@%unk/%unk: .length>'
+                        text: '%1 = listener.<@built-in/lib.es5.d.ts: Array.length>'
                     }
                 ]
             },

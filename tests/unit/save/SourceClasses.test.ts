@@ -38,7 +38,10 @@ class Animal {
     this._name = theName;
     return this;
   }
-  public move(distanceInMeters: number): void {
+  public move(distanceInMeters?: number): void {
+    if (distanceInMeters == undefined) {
+      distanceInMeters = 0;
+    }
     logger.info(this._name.toString() + ' moved ' + distanceInMeters.toString() + 'm.');
   }
   get name(): string | undefined {
@@ -59,7 +62,10 @@ class Snake extends Animal {
     super(name);
     return this;
   }
-  move(distanceInMeters: any): void {
+  move(distanceInMeters?: any): void {
+    if (distanceInMeters == undefined) {
+      distanceInMeters = 5;
+    }
     logger.info('Slithering...');
     super.move(distanceInMeters);
   }
@@ -69,7 +75,10 @@ class Horse extends Animal {
     super(name);
     return this;
   }
-  move(distanceInMeters: any): void {
+  move(distanceInMeters?: any): void {
+    if (distanceInMeters == undefined) {
+      distanceInMeters = 45;
+    }
     logger.info('Galloping...');
     super.move(distanceInMeters);
   }

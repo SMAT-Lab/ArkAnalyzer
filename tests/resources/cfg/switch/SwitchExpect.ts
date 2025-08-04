@@ -741,3 +741,51 @@ export const SWITCH_EXPECT_CASE13 = {
         },
     ],
 };
+
+export const SWITCH_EXPECT_CASE14 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @switch/SwitchSample.ts: %dflt',
+                'a = 0',
+                'if a == 1',
+            ],
+            preds: [],
+            succes: [2, 4],
+        },
+        {
+            id: 1,
+            stmts: [
+                'a = 1',
+                'return',
+            ],
+            preds: [4],
+            succes: [],
+        },
+        {
+            id: 2,
+            stmts: [
+                'return',
+            ],
+            preds: [0],
+            succes: [],
+        },
+        {
+            id: 3,
+            stmts: [
+                'return',
+            ],
+            preds: [4],
+            succes: [],
+        },
+        {
+            id: 4,
+            stmts: [
+                'if a == 2',
+            ],
+            preds: [0],
+            succes: [3, 1],
+        },
+    ],
+};

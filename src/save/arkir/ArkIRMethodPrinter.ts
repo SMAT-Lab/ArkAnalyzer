@@ -113,7 +113,7 @@ export class ArkIRMethodPrinter extends BasePrinter {
         let parameters: string[] = [];
         method.getParameters().forEach(parameter => {
             let str: string = parameter.getName();
-            if (parameter.hasDotDotDotToken()) {
+            if (parameter.isRest()) {
                 str = `...${parameter.getName()}`;
             }
             if (parameter.isOptional()) {
@@ -133,14 +133,23 @@ export class ArkIRMethodPrinter extends BasePrinter {
     private printCfg(cfg: Cfg): void {
         let blocks = cfg.getBlocks();
 
-        let firstBB = true;
+        let isFirstBB = true;
+        let firstBB = cfg.getStartingBlock();
+        // Try to always print the starting block at the beginning.
+        if (firstBB) {
+            this.printBasicBlock(firstBB);
+            isFirstBB = false;
+        }
+
         for (const block of blocks) {
-            if (!firstBB) {
-                this.printer.writeLine('');
+            if (!firstBB || block.getId() !== firstBB.getId()) {
+                if (!isFirstBB) {
+                    this.printer.writeLine('');
+                }
+                this.printBasicBlock(block);
             }
-            this.printBasicBlock(block);
             if (firstBB) {
-                firstBB = false;
+                isFirstBB = false;
             }
         }
     }

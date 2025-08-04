@@ -126,8 +126,9 @@ export class SourceBody implements StmtPrinterContext {
         this.tempCodeMap.set(temp, code);
     }
 
-    public transTemp2Code(temp: Local): string {
-        if (this.tempCodeMap.has(temp.getName()) && PrinterUtils.isTemp(temp.getName())) {
+    public transTemp2Code(temp: Local, isLeftOp: boolean = false): string {
+        // if the temp local is not the left op of ArkAssignStmt, it should get the actual text from tempCodeMap
+        if (!isLeftOp && this.tempCodeMap.has(temp.getName()) && PrinterUtils.isTemp(temp.getName())) {
             this.tempVisitor.add(temp.getName());
             return this.tempCodeMap.get(temp.getName())!;
         }

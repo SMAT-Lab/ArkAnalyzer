@@ -14,7 +14,7 @@
  */
 
 import { assert, describe, expect, it } from 'vitest';
-import { ArkClass, ArkMethod, ClassSignature, ClassType, MethodSignature, Stmt } from '../../../../src';
+import { ArkClass, ArkMethod, ClassSignature, ClassType, CONSTRUCTOR_NAME, MethodSignature, Stmt, SUPER_NAME, THIS_NAME } from '../../../../src';
 import path from 'path';
 import { assertStmtsEqual, buildScene, fullPositionArray2String } from '../../common';
 import {
@@ -31,7 +31,15 @@ import {
     SubTypeLiteralClass,
     TypeLiteralClass,
     New_Class_In_Default_Method,
-    New_Class_In_Function
+    New_Class_In_Function,
+    ClassAConstructorIR,
+    ClassBConstructorIR,
+    ClassCConstructorIR,
+    ClassDConstructorIR,
+    ClassEConstructorIR,
+    ClassFConstructorIR,
+    ClassGConstructorIR,
+    ClassHConstructorIR,
 } from '../../../resources/model/class/ClassExpect';
 import { ArkIRClassPrinter } from '../../../../src/save/arkir/ArkIRClassPrinter';
 import { ArkIRMethodPrinter } from '../../../../src/save/arkir/ArkIRMethodPrinter';
@@ -287,6 +295,127 @@ describe('ArkClass with Heritage Class Test', () => {
         assert.isDefined(extendedClass);
         assert.equal(extendedClass!.getSignature().toString(), '@class/ClassWithHeritage.ts: Q');
         checkAllMethodsStmtsCfg(arkClass!);
+    });
+
+    it('parent class and child class both generated constructor', async () => {
+        const parentConsMth = arkFile?.getClassWithName('A')?.getMethodWithName(CONSTRUCTOR_NAME);
+        const ChildConsMth = arkFile?.getClassWithName('B')?.getMethodWithName(CONSTRUCTOR_NAME);
+        assert.isDefined(parentConsMth);
+        assert.isNotNull(parentConsMth);
+        assert.isDefined(ChildConsMth);
+        assert.isNotNull(ChildConsMth);
+
+        const parentConsMthIR = new ArkIRMethodPrinter(parentConsMth!);
+        const childConsMthIR = new ArkIRMethodPrinter(ChildConsMth!);
+        assert.equal(parentConsMthIR.dump(), ClassAConstructorIR);
+        assert.equal(childConsMthIR.dump(), ClassBConstructorIR);
+    });
+
+    it('parent class with constructor and child class without constructor', async () => {
+        const parentConsMth = arkFile?.getClassWithName('C')?.getMethodWithName(CONSTRUCTOR_NAME);
+        const ChildConsMth = arkFile?.getClassWithName('D')?.getMethodWithName(CONSTRUCTOR_NAME);
+        assert.isDefined(parentConsMth);
+        assert.isNotNull(parentConsMth);
+        assert.isDefined(ChildConsMth);
+        assert.isNotNull(ChildConsMth);
+
+        const parentConsMthIR = new ArkIRMethodPrinter(parentConsMth!);
+        const childConsMthIR = new ArkIRMethodPrinter(ChildConsMth!);
+        assert.equal(parentConsMthIR.dump(), ClassCConstructorIR);
+        assert.equal(childConsMthIR.dump(), ClassDConstructorIR);
+    });
+
+    it('parent class and child class both with constructor', async () => {
+        const ChildConsMth = arkFile?.getClassWithName('E')?.getMethodWithName(CONSTRUCTOR_NAME);
+        assert.isDefined(ChildConsMth);
+        assert.isNotNull(ChildConsMth);
+
+        const childConsMthIR = new ArkIRMethodPrinter(ChildConsMth!);
+        assert.equal(childConsMthIR.dump(), ClassEConstructorIR);
+    });
+
+    it('parent class is imported from other file', async () => {
+        const ChildConsMth = arkFile?.getClassWithName('F')?.getMethodWithName(CONSTRUCTOR_NAME);
+        assert.isDefined(ChildConsMth);
+        assert.isNotNull(ChildConsMth);
+
+        const childConsMthIR = new ArkIRMethodPrinter(ChildConsMth!);
+        assert.equal(childConsMthIR.dump(), ClassFConstructorIR);
+    });
+
+    it('parent class also has super class', async () => {
+        const ChildConsMth = arkFile?.getClassWithName('G')?.getMethodWithName(CONSTRUCTOR_NAME);
+        assert.isDefined(ChildConsMth);
+        assert.isNotNull(ChildConsMth);
+
+        const childConsMthIR = new ArkIRMethodPrinter(ChildConsMth!);
+        assert.equal(childConsMthIR.dump(), ClassGConstructorIR);
+    });
+
+    it('can not find parent class', async () => {
+        const ChildConsMth = arkFile?.getClassWithName('H')?.getMethodWithName(CONSTRUCTOR_NAME);
+        assert.isDefined(ChildConsMth);
+        assert.isNotNull(ChildConsMth);
+
+        const childConsMthIR = new ArkIRMethodPrinter(ChildConsMth!);
+        assert.equal(childConsMthIR.dump(), ClassHConstructorIR);
+    });
+
+    it('method only in parent class', async () => {
+        const method = arkFile?.getClassWithName('D')?.getMethodWithName('goo');
+        const stmts = method?.getCfg()?.getStmts();
+        assert.isDefined(stmts);
+
+        assert.isAtLeast(stmts!.length, 3);
+        assert.equal(stmts![1].toString(), 'instanceinvoke this.<@class/ClassWithHeritage.ts: C.foo()>()');
+        assert.equal(stmts![2].toString(), 'instanceinvoke this.<@class/ClassWithHeritage.ts: C.foo()>()');
+
+        const thisLocalStmts = method?.getBody()?.getLocals().get(THIS_NAME)?.getUsedStmts();
+        assert.isDefined(thisLocalStmts);
+        assert.isAtLeast(thisLocalStmts!.length, 2);
+        assert.equal(thisLocalStmts![0].toString(), 'instanceinvoke this.<@class/ClassWithHeritage.ts: C.foo()>()');
+        assert.equal(thisLocalStmts![1].toString(), 'instanceinvoke this.<@class/ClassWithHeritage.ts: C.foo()>()');
+
+        const superLocal = method?.getBody()?.getLocals().get(SUPER_NAME);
+        assert.isUndefined(superLocal);
+    });
+
+    it('method in both parent and child class', async () => {
+        const method = arkFile?.getClassWithName('E')?.getMethodWithName('goo');
+        const stmts = method?.getCfg()?.getStmts();
+        assert.isDefined(stmts);
+
+        assert.isAtLeast(stmts!.length, 3);
+        assert.equal(stmts![1].toString(), 'instanceinvoke this.<@class/ClassWithHeritage.ts: E.foo()>()');
+        assert.equal(stmts![2].toString(), 'instanceinvoke this.<@class/ClassWithHeritage.ts: C.foo()>()');
+
+        const thisLocalStmts = method?.getBody()?.getLocals().get(THIS_NAME)?.getUsedStmts();
+        assert.isDefined(thisLocalStmts);
+        assert.isAtLeast(thisLocalStmts!.length, 2);
+        assert.equal(thisLocalStmts![0].toString(), 'instanceinvoke this.<@class/ClassWithHeritage.ts: E.foo()>()');
+        assert.equal(thisLocalStmts![1].toString(), 'instanceinvoke this.<@class/ClassWithHeritage.ts: C.foo()>()');
+
+        const superLocal = method?.getBody()?.getLocals().get(SUPER_NAME);
+        assert.isUndefined(superLocal);
+    });
+
+    it('invoke expr with super class of super class', async () => {
+        const method = arkFile?.getClassWithName('G')?.getMethodWithName('goo');
+        const stmts = method?.getCfg()?.getStmts();
+        assert.isDefined(stmts);
+
+        assert.isAtLeast(stmts!.length, 2);
+        assert.equal(stmts![1].toString(), 'instanceinvoke this.<@class/ClassWithHeritage.ts: C.foo()>()');
+
+        const thisLocal = method?.getBody()?.getLocals().get(THIS_NAME);
+        assert.isDefined(thisLocal);
+        assert.equal(thisLocal!.getType().getTypeString(), '@class/ClassWithHeritage.ts: G');
+        const thisLocalStmts = thisLocal!.getUsedStmts();
+        assert.isAtLeast(thisLocalStmts!.length, 1);
+        assert.equal(thisLocalStmts![0].toString(), 'instanceinvoke this.<@class/ClassWithHeritage.ts: C.foo()>()');
+
+        const superLocal = method?.getBody()?.getLocals().get(SUPER_NAME);
+        assert.isUndefined(superLocal);
     });
 });
 

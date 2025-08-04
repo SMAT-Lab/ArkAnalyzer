@@ -14,7 +14,7 @@
  */
 
 import path from 'path';
-import { ArkClass, INSTANCE_INIT_METHOD_NAME, Scene, SceneConfig, STATIC_INIT_METHOD_NAME } from '../../../../src';
+import { ArkArrayRef, ArkAssignStmt, ArkClass, INSTANCE_INIT_METHOD_NAME, NumberType, Scene, SceneConfig, STATIC_INIT_METHOD_NAME } from '../../../../src';
 import { assert, describe, expect, it } from 'vitest';
 import { Trap } from '../../../../src/core/base/Trap';
 import {
@@ -74,6 +74,34 @@ describe('Local Test', () => {
     it('locals in generated method', async () => {
         assertLocalsInGeneratedMethodEqual(scene, 'LocalsInGeneratedMethod.ts', 'Case1', Local_Expect_In_Generated_Method.case1);
     });
+
+    it('local used stmt', async () => {
+        const fileName = 'Locals.ts';
+        const arkFile = scene.getFiles().find((file) => file.getName().endsWith(fileName));
+        const localIndex = arkFile?.getDefaultClass().getMethodWithName('foo')?.getBody()?.getLocals().get('index');
+        assert.isDefined(localIndex);
+        const usedStmts = localIndex!.getUsedStmts();
+        assert.equal(usedStmts.length, 1);
+        assert.equal(usedStmts[0].toString(), '%2 = %1[index]');
+    });
+
+    it('index from global', async () => {
+        const fileName = 'Locals.ts';
+        const arkFile = scene.getFiles().find((file) => file.getName().endsWith(fileName));
+        const body = arkFile?.getDefaultClass().getMethodWithName('goo')?.getBody();
+
+        const localIndex = body?.getLocals().get('globalIndex');
+        assert.isUndefined(localIndex);
+
+        const globalIndex = body?.getUsedGlobals()?.get('globalIndex');
+        assert.isDefined(globalIndex);
+
+        const stmts = body?.getCfg().getStmts();
+        assert.isDefined(stmts);
+        assert.isAtLeast(stmts!.length, 2);
+        assert.equal(stmts![2].toString(), 'item = %0[globalIndex]');
+        assert.isTrue(((stmts![2] as ArkAssignStmt).getRightOp() as ArkArrayRef).getIndex().getType() instanceof NumberType);
+    });
 });
 
 function buildScene(folderName: string): Scene {
@@ -81,6 +109,7 @@ function buildScene(folderName: string): Scene {
     config.buildFromProjectDir(path.join(BASE_DIR, folderName));
     let scene = new Scene();
     scene.buildSceneFromProjectDir(config);
+    scene.inferTypes();
     return scene;
 }
 

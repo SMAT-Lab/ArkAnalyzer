@@ -175,7 +175,7 @@ export class DummyMainCreater {
                 let superCls = method.getDeclaringArkClass().getSuperClass();
                 let methodInSuperCls = superCls?.getMethodWithName(method.getName());
                 if (methodInSuperCls) {
-                    paramType = methodInSuperCls.getParameters().at(paramIdx)?.getType();
+                    paramType = methodInSuperCls.getParameters()[paramIdx]?.getType();
                     method = methodInSuperCls;
                 }
             }
@@ -241,7 +241,7 @@ export class DummyMainCreater {
         const whileStmt = new ArkIfStmt(conditionTrue);
         firstBlock.addStmt(countAssignStmt);
         dummyCfg.addBlock(firstBlock);
-        dummyCfg.setStartingStmt(firstBlock.getStmts()[0]);
+        dummyCfg.setStartingStmt(firstBlock.getHead()!);
         const whileBlock = new BasicBlock();
         whileBlock.addStmt(whileStmt);
         dummyCfg.addBlock(whileBlock);

@@ -20,7 +20,7 @@ import { CallGraph } from '../../../src/callgraph/model/CallGraph';
 import { CallGraphBuilder } from '../../../src/callgraph/model/builder/CallGraphBuilder';
 import { Pag, PagEdge, PagEdgeKind, PagNode } from '../../../src/callgraph/pointerAnalysis/Pag';
 import { PointerAnalysis } from '../../../src/callgraph/pointerAnalysis/PointerAnalysis';
-import { PointerAnalysisConfig, PtaAnalysisScale } from '../../../src/callgraph/pointerAnalysis/PointerAnalysisConfig';
+import { ContextType, PointerAnalysisConfig, PtaAnalysisScale } from '../../../src/callgraph/pointerAnalysis/PointerAnalysisConfig';
 import { PtsCollectionType } from '../../../src/callgraph/pointerAnalysis/PtsDS';
 import { Local } from '../../../src/core/base/Local';
 import { Sdk } from '../../../src/Config';
@@ -50,7 +50,7 @@ describe('ExportNewTest', () => {
     let debugfunc = cg.getEntries().filter(funcID => cg.getArkMethodByFuncID(funcID)?.getName() === 'main');
 
     
-    let ptaConfig = PointerAnalysisConfig.create(2, './out', true, true, true, PtaAnalysisScale.WholeProgram, PtsCollectionType.BitVector);
+    let ptaConfig = PointerAnalysisConfig.create(2, './out', true, true, true, PtaAnalysisScale.WholeProgram, PtsCollectionType.BitVector, ContextType.CallSite);
     let pta = new PointerAnalysis(pag, cg, scene, ptaConfig);
     pta.setEntries(debugfunc);
     pta.start();
@@ -123,7 +123,7 @@ describe('ExportNew2Test', () => {
     let debugfunc = cg.getEntries().filter(funcID => cg.getArkMethodByFuncID(funcID)?.getName() === 'main');
 
     
-    let ptaConfig = PointerAnalysisConfig.create(2, './out', true, true, true, PtaAnalysisScale.WholeProgram, PtsCollectionType.BitVector);
+    let ptaConfig = PointerAnalysisConfig.create(2, './out', true, true, true, PtaAnalysisScale.WholeProgram, PtsCollectionType.BitVector, ContextType.CallSite);
     let pta = new PointerAnalysis(pag, cg, scene, ptaConfig);
     pta.setEntries(debugfunc);
     pta.start();
@@ -165,7 +165,7 @@ describe('ExportNew3Test', () => {
     let debugfunc = cg.getEntries().filter(funcID => cg.getArkMethodByFuncID(funcID)?.getName() === 'main');
 
     
-    let ptaConfig = PointerAnalysisConfig.create(2, './out', true, true, true, PtaAnalysisScale.WholeProgram, PtsCollectionType.BitVector);
+    let ptaConfig = PointerAnalysisConfig.create(2, './out', true, true, true, PtaAnalysisScale.WholeProgram, PtsCollectionType.BitVector, ContextType.CallSite);
     let pta = new PointerAnalysis(pag, cg, scene, ptaConfig);
     pta.setEntries(debugfunc);
     pta.start();
