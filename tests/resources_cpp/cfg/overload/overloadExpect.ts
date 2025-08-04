@@ -295,6 +295,37 @@ export const OVERLOAD_CIN_EXPECT = {
     ]
 };
 
+export const OVERLOAD_USER_DEFINED_LITERAL_NUMBER_EXPECT = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'km = parameter0: long double',
+                'this = this: @overload/overloadSample.cpp: %dflt',
+                '%0 = km * 1000',
+                'return %0'
+            ],
+            preds: [],
+            succes: []
+        }
+    ]
+};
+
+export const OVERLOAD_USER_DEFINED_LITERAL_CHAR_EXPECT = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'c = parameter0: char',
+                'this = this: @overload/overloadSample.cpp: %dflt',
+                'return c'
+            ],
+            preds: [],
+            succes: []
+        }
+    ]
+};
+
 export const OVERLOAD_MAIN_EXPECT = {
     blocks: [
         {
@@ -334,6 +365,8 @@ export const OVERLOAD_MAIN_EXPECT = {
                 "staticinvoke <@%unk/%unk: .cout()>(' ;')",
                 'staticinvoke <@overload/overloadSample.cpp: %dflt.operator<<(std::ostream&, @overload/overloadSample.cpp: Vector&)>(cout, v)',
                 "staticinvoke <@%unk/%unk: .cout()>('aaa')",
+                'distance = staticinvoke <@overload/overloadSample.cpp: %dflt.operator""_km(long double)>(5.3)',
+                `ch = staticinvoke <@overload/overloadSample.cpp: %dflt.operator""_c(char)>('a')`,
                 'return'
             ],
             preds: [],

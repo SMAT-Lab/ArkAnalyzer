@@ -57,6 +57,14 @@ import { CppSceneUtils } from '../../utils/CppSceneUtils';
 export class ModelUtils {
     public static implicitArkUIBuilderMethods: Set<ArkMethod> = new Set();
 
+    /*
+     * Set static field to be null, then all related objects could be freed by GC.
+     * Static field implicitArkUIBuilderMethods is only used during method body building, the dispose method should be called after build all body.
+     */
+    public static dispose(): void {
+        this.implicitArkUIBuilderMethods.clear();
+    }
+
     public static getMethodSignatureFromArkClass(arkClass: ArkClass, methodName: string): MethodSignature | null {
         for (const arkMethod of arkClass.getMethods()) {
             if (arkMethod.getName() === methodName) {

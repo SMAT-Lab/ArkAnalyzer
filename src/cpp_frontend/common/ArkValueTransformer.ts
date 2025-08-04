@@ -281,6 +281,8 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
             return this.arrayTypeTraitExprToValueAndStmts(node);
         } else if (node.kind === 'CXXCtorInitializer') {
             return this.cxxCtorInitializerToValueAndStmts(node);
+        } else if (node.kind === 'UserDefinedLiteral') {
+            return this.userDefinedLiteralToValueAndStmts(node);
         }
 
         logger.warn(`ArkValueTransformer-tsNodeToValueAndStmts: node '${node.kind}' is not specially processed.`);
@@ -293,6 +295,19 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
             valueOriginalPositions: [FullPosition.buildFromNodeCpp(node, this.sourceFile)],
             stmts: [],
         };
+    }
+
+    private userDefinedLiteralToValueAndStmts(userDefinedLiteral: any): ValueAndStmts {
+        // 用户定义字面量的语法是：原始值+后缀（如 123_km、"hello"_s、'a'_s）
+        if (userDefinedLiteral.inner?.length < 2) {
+            return this.unprocessedNodeToValueAndStmts(userDefinedLiteral);
+        }
+        const stmts: Stmt[] = [];
+        const literalStr = userDefinedLiteral.name.replace('operator""', '');
+        const argNode = userDefinedLiteral.inner[1];
+        argNode.code = argNode.code.replace(literalStr, '');  // 获取原始值（比如123，'a'）
+        return this.buildValueAndStmtsForMemberCall(
+            stmts, userDefinedLiteral.inner[0], [argNode], userDefinedLiteral, undefined);
     }
 
     /* 1. c++使用初始化列表对类成员变量的初始化：Base(char pname) : name(pname) {...}，最终效果类似this->name = pname，此处也处理成赋值的形式
