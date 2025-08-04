@@ -24,6 +24,18 @@ import { getFileAbsPath } from '../../utils/FileUtils';
 import path from 'path';
 import { ImportInfo } from '../../core/model/ArkImport';
 
+// 常见 C++ 标准库头文件（不含 .h 后缀）
+const CPP_STD_HEADERS = new Set([
+    "iostream", "iomanip", "fstream", "sstream", "string",
+    "vector", "map", "unordered_map", "set", "unordered_set",
+    "queue", "stack", "list", "algorithm", "utility", "memory",
+    "thread", "mutex", "condition_variable", "future", "atomic",
+    "chrono", "functional", "stdexcept", "type_traits",
+    "cassert", "cstdint", "cstdlib", "cstdio", "cstring", "cmath",
+    "array", "bitset", "deque", "tuple", "numeric", "any", "optional",
+    "variant", "filesystem", "span"
+]);
+
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ModelUtils');
 /**
  * find arkFile by from info
@@ -36,7 +48,7 @@ export function getArkFile(im: FromInfo): ArkFile | null | undefined {
         return null;
     }
     if (!path.isAbsolute(from)) {
-        from = getFileAbsPath(im.getDeclaringArkFile().getFilePath(), from);
+        from = getFileAbsPath([im.getDeclaringArkFile().getFilePath()], from);
     }
     if (!from) {
         return null;
@@ -71,7 +83,7 @@ export function findExportInfo(fromInfo: FromInfo): ExportInfo | null {
     return processHeaderExportInfos(fromInfo, file);
 }
 
-export function shouldAddCppHeaderImport(element: any): boolean {
+export function shouldAddCppHeaderImport(element: ImportInfo): boolean {
     if (!Object.prototype.hasOwnProperty.call(element, 'importClauseName')) {
         return false;
     }
@@ -80,18 +92,6 @@ export function shouldAddCppHeaderImport(element: any): boolean {
 
 export function isValidCppHeaderPath(headerPath: string | undefined): boolean {
     if (!headerPath) return false;
-
-    // 常见 C++ 标准库头文件（无 .h 后缀）
-    const stdHeaders = new Set([
-        "iostream", "iomanip", "fstream", "sstream", "string",
-        "vector", "map", "unordered_map", "set", "unordered_set",
-        "queue", "stack", "list", "algorithm", "utility", "memory",
-        "thread", "mutex", "condition_variable", "future", "atomic",
-        "chrono", "functional", "stdexcept", "type_traits",
-        "cassert", "cstdint", "cstdlib", "cstdio", "cstring", "cmath",
-        "array", "bitset", "deque", "tuple", "numeric", "any", "optional",
-        "variant", "filesystem", "span"
-    ]);
 
     const normalized = headerPath.replace(/\\/g, '/').toLowerCase();
 
@@ -105,7 +105,8 @@ export function isValidCppHeaderPath(headerPath: string | undefined): boolean {
     const filename = parts.length > 0 ? parts[parts.length - 1] : '';
 
     // 判断是否为标准库名或标准库名 + .h
-    if (stdHeaders.has(filename) || (filename.endsWith('.h') && stdHeaders.has(filename.replace(/\.h$/, '')))) {
+    if (CPP_STD_HEADERS.has(filename) || (filename.endsWith('.h') &&
+        CPP_STD_HEADERS.has(filename.replace(/\.h$/, '')))) {
         return false;
     }
 
