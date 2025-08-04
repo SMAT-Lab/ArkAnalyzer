@@ -43,6 +43,7 @@ export interface SceneOptions {
     ignoreFileNames?: string[];
     enableLeadingComments?: boolean;
     enableTrailingComments?: boolean;
+    enableBuiltIn?: boolean;
     tsconfig?: string;
     isScanAbc?: boolean;
     sdkGlobalFolders?: string[];

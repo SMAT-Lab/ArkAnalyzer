@@ -127,9 +127,6 @@ export function buildArkMethodFromArkClass(
         mtd.setDeclareLinesAndCols([line + 1], [character + 1]);
     }
 
-    let bodyBuilder = new BodyBuilder(mtd.getSignature(), methodNode, mtd, sourceFile);
-    mtd.setBodyBuilder(bodyBuilder);
-
     if (mtd.hasBuilderDecorator()) {
         mtd.setViewTree(buildViewTree(mtd));
     } else if (declaringClass.hasComponentDecorator() && mtd.getSubSignature().toString() === 'build()' && !mtd.isStatic()) {
@@ -430,28 +427,6 @@ export function buildInitMethod(initMethod: ArkMethod, fieldInitializerStmts: St
     cfg.buildDefUseStmt(locals);
     cfg.setDeclaringMethod(initMethod);
     initMethod.setBody(new ArkBody(locals, cfg));
-}
-
-export function addInitInConstructorByArkClass(arkClass: ArkClass): void {
-    for (const method of arkClass.getMethods(true)) {
-        if (method.getName() === CONSTRUCTOR_NAME) {
-            const thisLocal = method.getBody()?.getLocals().get(THIS_NAME);
-            if (!thisLocal) {
-                continue;
-            }
-            const initInvokeStmt = new ArkInvokeStmt(new ArkInstanceInvokeExpr(thisLocal, arkClass.getInstanceInitMethod().getSignature(), []));
-            const blocks = method.getCfg()?.getBlocks();
-            if (!blocks){
-                continue;
-            }
-            const firstBlockStmts = [...blocks][0].getStmts();
-            let index = 0;
-            if (firstBlockStmts[0].getDef() instanceof Local && (firstBlockStmts[0].getDef() as Local).getName() === THIS_NAME) {
-                index = 1;
-            }
-            firstBlockStmts.splice(index, 0, initInvokeStmt);
-        }
-    }
 }
 
 export function addInitInConstructor(constructor: ArkMethod): void {

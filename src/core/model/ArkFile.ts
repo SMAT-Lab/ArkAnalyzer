@@ -21,6 +21,7 @@ import { ArkNamespace } from './ArkNamespace';
 import { AliasClassSignature, ClassSignature, FileSignature, NamespaceSignature } from './ArkSignature';
 import { ALL } from '../common/TSConst';
 import { NAME_DELIMITER } from '../common/Const';
+import { ts } from '../../index';
 
 export const notStmtOrExprKind = [
     'ModuleDeclaration',
@@ -76,6 +77,8 @@ export class ArkFile {
     private ohPackageJson5Path: string[] = [];
 
     private anonymousClassNumber: number = 0;
+
+    private ast: ts.SourceFile | null = null;
 
     constructor(language: Language) {
         this.language = language;
@@ -365,5 +368,13 @@ export class ArkFile {
 
     public getAnonymousClassNumber(): number {
         return this.anonymousClassNumber++;
+    }
+
+    public getAST(): ts.SourceFile | null {
+        return this.ast;
+    }
+
+    public setAST(value: ts.SourceFile | null): void {
+        this.ast = value;
     }
 }

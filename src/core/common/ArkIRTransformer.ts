@@ -42,7 +42,7 @@ import { COMPONENT_BRANCH_FUNCTION, COMPONENT_CREATE_FUNCTION, COMPONENT_IF, COM
 import { FullPosition, LineColPosition } from '../base/Position';
 import { ModelUtils } from './ModelUtils';
 import { Builtin } from './Builtin';
-import { DEFAULT, PROMISE } from './TSConst';
+import { CONSTRUCTOR_NAME, DEFAULT, PROMISE } from './TSConst';
 import { buildGenericType, buildModifiers, buildTypeParameters } from '../model/builder/builderUtils';
 import { ArkValueTransformer } from './ArkValueTransformer';
 import { ImportInfo } from '../model/ArkImport';
@@ -155,6 +155,8 @@ export class ArkIRTransformer {
             stmts = this.expressionInExportToStmts(node.expression);
         } else if (ts.isClassDeclaration(node)) {
             stmts = this.classDeclarationToStmts(node);
+        } else if (ts.isParameter(node)) {
+            stmts = this.parameterToStmts(node);
         }
 
         this.mapStmtsToTsStmt(stmts, node);
@@ -187,6 +189,106 @@ export class ArkIRTransformer {
         cls.setDeclaringArkFile(this.declaringMethod.getDeclaringArkFile());
         buildNormalArkClassFromArkMethod(node, cls, this.sourceFile, this.declaringMethod);
         return [];
+    }
+
+    // This is only used to add class property assign stmts into constructor when it is with parameter property.
+    private parameterPropertyToStmts(paramNode: ts.ParameterDeclaration): Stmt[] {
+        let stmts: Stmt[] = [];
+        let fieldName: string;
+        if (ts.isIdentifier(paramNode.name)) {
+            fieldName = paramNode.name.text;
+        } else if (ts.isObjectBindingPattern(paramNode.name)) {
+            // TODO
+            return stmts;
+        } else if (ts.isArrayBindingPattern(paramNode.name)) {
+            // TODO
+            return stmts;
+        } else {
+            return stmts;
+        }
+        if (paramNode.modifiers === undefined || !ts.isIdentifier(paramNode.name)) {
+            return [];
+        }
+        const arkClass = this.declaringMethod.getDeclaringArkClass();
+        const fieldSignature = arkClass.getFieldWithName(fieldName)?.getSignature();
+        const paramLocal = Array.from(this.getLocals()).find(local => local.getName() === fieldName);
+        if (fieldSignature === undefined || paramLocal === undefined) {
+            return [];
+        }
+        const leftOp = new ArkInstanceFieldRef(this.getThisLocal(), fieldSignature);
+        const fieldAssignStmt = new ArkAssignStmt(leftOp, paramLocal);
+        fieldAssignStmt.setOperandOriginalPositions([FullPosition.DEFAULT, FullPosition.DEFAULT, FullPosition.DEFAULT]);
+
+        // If the parameter has initializer, the related stmts should be added into class instance init method.
+        const instInitMethodCfg = arkClass.getInstanceInitMethod().getBody()?.getCfg();
+        const instInitStmts = instInitMethodCfg?.getStartingBlock()?.getStmts();
+        if (paramNode.initializer && instInitStmts && instInitMethodCfg) {
+            const {
+                value: instanceInitValue,
+                valueOriginalPositions: instanceInitPositions,
+                stmts: instanceInitStmts,
+            } = this.tsNodeToValueAndStmts(paramNode.initializer);
+            const instanceAssignStmt = new ArkAssignStmt(leftOp, instanceInitValue);
+            instanceAssignStmt.setOperandOriginalPositions([FullPosition.DEFAULT, FullPosition.DEFAULT, ...instanceInitPositions]);
+            const newInstanceInitStmts = [...instanceInitStmts, instanceAssignStmt];
+
+            // All these stmts will be added into instance init method, while that method has completed the building. So all new stmts should set cfg here.
+            newInstanceInitStmts.forEach(stmt => stmt.setCfg(instInitMethodCfg));
+
+            // The last stmt of instance init method is return stmt, so all the initializer stmts should be added before return stmt.
+            instInitStmts.splice(instInitStmts.length - 1, 0, ...newInstanceInitStmts);
+        }
+        return [fieldAssignStmt];
+    }
+
+    private parameterToStmts(paramNode: ts.ParameterDeclaration): Stmt[] {
+        if (this.declaringMethod.getName() === CONSTRUCTOR_NAME && paramNode.modifiers) {
+            return this.parameterPropertyToStmts(paramNode);
+        }
+
+        let stmts: Stmt[] = [];
+        if (paramNode.initializer === undefined) {
+            return stmts;
+        }
+
+        let paramName: string;
+        if (ts.isIdentifier(paramNode.name)) {
+            paramName = paramNode.name.text;
+        } else if (ts.isObjectBindingPattern(paramNode.name)) {
+            // TODO
+            return stmts;
+        } else if (ts.isArrayBindingPattern(paramNode.name)) {
+            // TODO
+            return stmts;
+        } else {
+            return stmts;
+        }
+
+        const paramLocal = Array.from(this.getLocals()).find(local => local.getName() === paramName);
+        if (paramLocal === undefined) {
+            return stmts;
+        }
+
+        const {
+            value: paramInitValue,
+            valueOriginalPositions: paramInitPositions,
+            stmts: paramInitStmts,
+        } = this.tsNodeToValueAndStmts(paramNode.initializer!);
+        stmts.push(...paramInitStmts);
+
+        const ifStmt = new ArkIfStmt(new ArkConditionExpr(paramLocal, ValueUtil.getUndefinedConst(), RelationalBinaryOperator.Equality));
+        ifStmt.setOperandOriginalPositions([FullPosition.DEFAULT, FullPosition.DEFAULT]);
+        stmts.push(ifStmt);
+
+        const currConditionalOperatorIndex = this.arkValueTransformer.conditionalOperatorNo++;
+        stmts.push(new DummyStmt(ArkIRTransformer.DUMMY_CONDITIONAL_OPERATOR_IF_TRUE_STMT + currConditionalOperatorIndex));
+
+        const assignStmt = new ArkAssignStmt(paramLocal, paramInitValue);
+        assignStmt.setOperandOriginalPositions([FullPosition.DEFAULT, ...paramInitPositions]);
+        stmts.push(assignStmt);
+        stmts.push(new DummyStmt(ArkIRTransformer.DUMMY_CONDITIONAL_OPERATOR_IF_FALSE_STMT + currConditionalOperatorIndex));
+        stmts.push(new DummyStmt(ArkIRTransformer.DUMMY_CONDITIONAL_OPERATOR_END_STMT + currConditionalOperatorIndex));
+        return stmts;
     }
 
     private returnStatementToStmts(returnStatement: ts.ReturnStatement): Stmt[] {

@@ -18,10 +18,10 @@ import { ArkFile } from '../ArkFile';
 import { ArkMethod } from '../ArkMethod';
 import { ArkNamespace } from '../ArkNamespace';
 import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
-import ts, { ParameterDeclaration } from 'ohos-typescript';
+import ts, { ClassElement, EnumMember, ParameterDeclaration, TypeElement } from 'ohos-typescript';
 import { ArkClass, ClassCategory } from '../ArkClass';
 import { buildArkMethodFromArkClass, buildDefaultArkMethodFromArkClass, buildInitMethod, checkAndUpdateMethod } from './ArkMethodBuilder';
-import { buildDecorators, buildGenericType, buildHeritageClauses, buildModifiers, buildTypeParameters, tsNode2Type} from './builderUtils';
+import { buildDecorators, buildGenericType, buildHeritageClauses, buildModifiers, buildTypeParameters, tsNode2Type } from './builderUtils';
 import { buildGetAccessor2ArkField, buildIndexSignature2ArkField, buildProperty2ArkField } from './ArkFieldBuilder';
 import { ArkIRTransformer } from '../../common/ArkIRTransformer';
 import { ArkAssignStmt, ArkInvokeStmt, Stmt } from '../../base/Stmt';
@@ -370,31 +370,28 @@ function buildArkClassMembers(clsNode: ClassLikeNode, cls: ArkClass, sourceFile:
     const instanceInitStmts: Stmt[] = [];
     let staticBlockId = 0;
     clsNode.members.forEach(member => {
-        if (
-          ts.isMethodDeclaration(member) ||
-          ts.isConstructorDeclaration(member) ||
-          ts.isMethodSignature(member) ||
-          ts.isConstructSignatureDeclaration(member) ||
-          ts.isAccessor(member) ||
-          ts.isCallSignatureDeclaration(member)
-        ) {
+        if (isClassMethod(member)) {
             // these node types have been handled at the beginning of this function by calling buildMethodsForClass
             return;
-        } else if (ts.isPropertyDeclaration(member) || ts.isPropertySignature(member)) {
+        }
+        if (ts.isPropertyDeclaration(member) || ts.isPropertySignature(member)) {
             const arkField = buildProperty2ArkField(member, sourceFile, cls);
-            if (ts.isClassDeclaration(clsNode) || ts.isClassExpression(clsNode) || ts.isStructDeclaration(clsNode)) {
-                if (arkField.isStatic()) {
-                    getInitStmts(staticIRTransformer, arkField, member.initializer);
-                    arkField.getInitializer().forEach(stmt => staticInitStmts.push(stmt));
-                } else {
-                    if (!instanceIRTransformer) {
-                        console.log(clsNode.getText(sourceFile));
-                    }
-                    getInitStmts(instanceIRTransformer, arkField, member.initializer);
-                    arkField.getInitializer().forEach(stmt => instanceInitStmts.push(stmt));
-                }
+            if (!ts.isClassDeclaration(clsNode) && !ts.isClassExpression(clsNode) && !ts.isStructDeclaration(clsNode)) {
+                return;
             }
-        } else if (ts.isEnumMember(member)) {
+            if (arkField.isStatic()) {
+                getInitStmts(staticIRTransformer, arkField, member.initializer);
+                arkField.getInitializer().forEach(stmt => staticInitStmts.push(stmt));
+                return;
+            }
+            if (!instanceIRTransformer) {
+                console.log(clsNode.getText(sourceFile));
+            }
+            getInitStmts(instanceIRTransformer, arkField, member.initializer);
+            arkField.getInitializer().forEach(stmt => instanceInitStmts.push(stmt));
+            return;
+        }
+        if (ts.isEnumMember(member)) {
             const arkField = buildProperty2ArkField(member, sourceFile, cls);
             getInitStmts(staticIRTransformer, arkField, member.initializer);
             arkField.getInitializer().forEach(stmt => staticInitStmts.push(stmt));
@@ -417,6 +414,15 @@ function buildArkClassMembers(clsNode: ClassLikeNode, cls: ArkClass, sourceFile:
     if (ts.isEnumDeclaration(clsNode)) {
         buildInitMethod(cls.getStaticInitMethod(), staticInitStmts, staticIRTransformer!.getThisLocal());
     }
+}
+
+function isClassMethod(member: ClassElement | TypeElement | EnumMember): boolean {
+    return (ts.isMethodDeclaration(member) ||
+        ts.isConstructorDeclaration(member) ||
+        ts.isMethodSignature(member) ||
+        ts.isConstructSignatureDeclaration(member) ||
+        ts.isAccessor(member) ||
+        ts.isCallSignatureDeclaration(member));
 }
 
 function buildMethodsForClass(clsNode: ClassLikeNodeWithMethod, cls: ArkClass, sourceFile: ts.SourceFile): void {
@@ -446,6 +452,19 @@ function buildParameterProperty2ArkField(params: ts.NodeArray<ParameterDeclarati
         return;
     }
     params.forEach(parameter => {
+        let fieldName: string;
+        if (ts.isIdentifier(parameter.name)) {
+            fieldName = parameter.name.text;
+        } else if (ts.isObjectBindingPattern(parameter.name)) {
+            logger.warn(`Need to support param property with ObjectBindingPattern node type: ${cls.getSignature().toString()}!`);
+            return;
+        } else if (ts.isArrayBindingPattern(parameter.name)) {
+            logger.warn(`Need to support param property with ArrayBindingPattern node type: ${cls.getSignature().toString()}!`);
+            return;
+        } else {
+            logger.warn(`Need to support param property with new node type: ${cls.getSignature().toString()}!`);
+            return;
+        }
         if (parameter.modifiers === undefined || !ts.isIdentifier(parameter.name)) {
             return;
         }
@@ -456,7 +475,6 @@ function buildParameterProperty2ArkField(params: ts.NodeArray<ParameterDeclarati
         field.setCategory(FieldCategory.PARAMETER_PROPERTY);
         field.setOriginPosition(LineColPosition.buildFromNode(parameter, sourceFile));
 
-        let fieldName = parameter.name.text;
         let fieldType: Type;
         if (parameter.type) {
             fieldType = buildGenericType(tsNode2Type(parameter.type, sourceFile, field), field);
@@ -466,6 +484,9 @@ function buildParameterProperty2ArkField(params: ts.NodeArray<ParameterDeclarati
         const fieldSignature = new FieldSignature(fieldName, cls.getSignature(), fieldType, false);
         field.setSignature(fieldSignature);
         field.setModifiers(buildModifiers(parameter));
+        if (parameter.questionToken) {
+            field.setQuestionToken(true);
+        }
         cls.addField(field);
     });
 }

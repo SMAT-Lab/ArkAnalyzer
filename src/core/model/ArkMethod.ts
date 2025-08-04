@@ -23,7 +23,7 @@ import {
     GenericType,
     LiteralType,
     Type,
-    UnionType,
+    UnionType
 } from '../base/Type';
 import { Value } from '../base/Value';
 import { Cfg } from '../graph/Cfg';
@@ -484,11 +484,10 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
 
     public getParameterRefs(): ArkParameterRef[] | null {
         let paramRefs: ArkParameterRef[] = [];
-        const blocks = this.getBody()?.getCfg().getBlocks();
-        if (blocks === undefined) {
+        const stmts = this.getBody()?.getCfg().getStartingBlock()?.getStmts();
+        if (stmts === undefined) {
             return null;
         }
-        const stmts = Array.from(blocks)[0].getStmts();
         for (let stmt of stmts) {
             if (stmt instanceof ArkAssignStmt && stmt.getRightOp() instanceof ArkParameterRef) {
                 paramRefs.push((stmt as ArkAssignStmt).getRightOp() as ArkParameterRef);
@@ -549,9 +548,7 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
     }
 
     public getReturnStmt(): Stmt[] {
-        return this.getCfg()!
-            .getStmts()
-            .filter(stmt => stmt instanceof ArkReturnStmt);
+        return this.getCfg()?.getStmts().filter(stmt => stmt instanceof ArkReturnStmt) ?? [];
     }
 
     public setViewTree(viewTree: ViewTree): void {
@@ -685,16 +682,21 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
             if (!args[i]) {
                 return isArrowFunc ? true : parameters[i].isOptional();
             }
-            const isMatched = this.matchParam(parameters[i].getType(), args[i]);
+            const paramType = parameters[i].getType();
+            const isMatched = this.matchParam(paramType, args[i]);
             if (!isMatched) {
                 return false;
+            } else if (paramType instanceof EnumValueType || paramType instanceof LiteralType) {
+                return true;
             }
         }
         return true;
     }
 
     private matchParam(paramType: Type, arg: Value): boolean {
-        arg = ArkMethod.parseArg(arg);
+        if (paramType instanceof EnumValueType || paramType instanceof LiteralType) {
+            arg = ArkMethod.parseArg(arg);
+        }
         const argType = arg.getType();
         if (paramType instanceof AliasType && !(argType instanceof AliasType)) {
             paramType = TypeInference.replaceAliasType(paramType);
@@ -710,14 +712,10 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
             return this.isMatched(parameters, args, true);
         } else if (paramType instanceof ClassType && paramType.getClassSignature().getClassName().includes(CALL_BACK)) {
             return argType instanceof FunctionType;
-        } else if (paramType instanceof LiteralType && arg instanceof Constant) {
-            return (
-                arg.getValue().replace(/[\"|\']/g, '') ===
-                paramType
-                    .getLiteralName()
-                    .toString()
-                    .replace(/[\"|\']/g, '')
-            );
+        } else if (paramType instanceof LiteralType) {
+            const argStr = arg instanceof Constant ? arg.getValue() : argType.getTypeString();
+            return argStr.replace(/[\"|\']/g, '') ===
+                paramType.getTypeString().replace(/[\"|\']/g, '');
         } else if (paramType instanceof ClassType && argType instanceof EnumValueType) {
             return paramType.getClassSignature() === argType.getFieldSignature().getDeclaringSignature();
         } else if (paramType instanceof EnumValueType) {
