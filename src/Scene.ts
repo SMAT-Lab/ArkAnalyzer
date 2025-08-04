@@ -20,6 +20,7 @@ import { SceneConfig, SceneOptions, Sdk, TsConfig } from './Config';
 import { initModulePathMap, ModelUtils } from './core/common/ModelUtils';
 import { TypeInference } from './core/common/TypeInference';
 import { VisibleValue } from './core/common/VisibleValue';
+
 import { ArkClass } from './core/model/ArkClass';
 import { ArkFile, Language } from './core/model/ArkFile';
 import { ArkMethod } from './core/model/ArkMethod';
@@ -48,18 +49,16 @@ import { ImportInfo } from './core/model/ArkImport';
 import { ALL, CONSTRUCTOR_NAME, TSCONFIG_JSON } from './core/common/TSConst';
 import { BUILD_PROFILE_JSON5, OH_PACKAGE_JSON5 } from './core/common/EtsConst';
 import { SdkUtils } from './core/common/SdkUtils';
-import { PointerAnalysisConfig } from './callgraph/pointerAnalysis/PointerAnalysisConfig';
-import { ValueUtil } from './core/common/ValueUtil';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'Scene');
 
 enum SceneBuildStage {
     BUILD_INIT,
-    SDK_INFERRED,
     CLASS_DONE,
     METHOD_DONE,
     CLASS_COLLECTED,
     METHOD_COLLECTED,
+    SDK_INFERRED,
     TYPE_INFERRED,
 }
 
@@ -102,25 +101,15 @@ export class Scene {
     private fileLanguages: Map<string, Language> = new Map();
 
     private options!: SceneOptions;
+    private indexPathArray = ['Index.ets', 'Index.ts', 'Index.d.ets', 'Index.d.ts', 'index.ets', 'index.ts', 'index.d.ets', 'index.d.ts'];
 
-    private unhandledFilePaths: Set<string> = new Set<string>();
+    private unhandledFilePaths: string[] = [];
     private unhandledSdkFilePaths: string[] = [];
     // Map<path_to_headerFile, Map<func_sub_signature, ArkMethod of function definition>>
     // e.g. <path_to_h, <"retType clsName::funcSubSig", ArkMethod>>
     private cppFuncMap: Map<string, Map<string, ArkMethod>> = new Map();
 
-    constructor() { }
-
-    /*
-     * Set all static field to be null, then all related objects could be freed by GC.
-     * This method could be called before drop Scene.
-     */
-    public dispose(): void {
-        PointerAnalysisConfig.dispose();
-        SdkUtils.dispose();
-        ValueUtil.dispose();
-        ModelUtils.dispose();
-    }
+    constructor() {}
 
     public getOptions(): SceneOptions {
         return this.options;
@@ -219,9 +208,6 @@ export class Scene {
         }
 
         // handle sdks
-        if (this.options.enableBuiltIn && !sceneConfig.getSdksObj().find(sdk => sdk.name === SdkUtils.BUILT_IN_NAME)) {
-            sceneConfig.getSdksObj().unshift(SdkUtils.getBuiltInSdk());
-        }
         sceneConfig.getSdksObj()?.forEach(sdk => {
             if (!sdk.moduleName) {
                 this.buildSdk(sdk.name, sdk.path);
@@ -235,16 +221,7 @@ export class Scene {
                 }
             }
         });
-        if (this.buildStage < SceneBuildStage.SDK_INFERRED) {
-            this.sdkArkFilesMap.forEach(file => {
-                IRInference.inferFile(file);
-                SdkUtils.mergeGlobalAPI(file, this.sdkGlobalMap);
-            });
-            this.sdkArkFilesMap.forEach(file => {
-                SdkUtils.postInferredSdk(file, this.sdkGlobalMap);
-            });
-            this.buildStage = SceneBuildStage.SDK_INFERRED;
-        }
+
         this.fileLanguages = sceneConfig.getFileLanguages();
     }
 
@@ -259,7 +236,6 @@ export class Scene {
                 return;
             }
             const buildProfileJson = parseJsonText(configurationsText);
-            SdkUtils.setEsVersion(buildProfileJson);
             const modules = buildProfileJson.modules;
             if (modules instanceof Array) {
                 modules.forEach(module => {
@@ -320,7 +296,7 @@ export class Scene {
         }
     }
 
-    private updateOrAddDefaultConstructors(): void {
+    private addDefaultConstructors(): void {
         for (const file of this.getFiles()) {
             const isCppFile = file.getLanguage() === Language.CPLUS;
             for (const cls of ModelUtils.getAllClassesInFile(file)) {
@@ -375,7 +351,6 @@ export class Scene {
             }
         }
 
-        ModelUtils.dispose();
         this.buildStage = SceneBuildStage.METHOD_DONE;
     }
 
@@ -390,15 +365,15 @@ export class Scene {
                 } else {
                     buildArkFileFromFile(file, this.realProjectDir, arkFile, this.projectName);
                 }
-                this.setFile(arkFile);
+                this.filesMap.set(arkFile.getFileSignature().toMapKey(), arkFile);
             } catch (error) {
                 logger.error('Error parsing file:', file, error);
-                this.unhandledFilePaths.add(file);
+                this.unhandledFilePaths.push(file);
                 return;
             }
         });
         this.buildAllMethodBody();
-        this.updateOrAddDefaultConstructors();
+        this.addDefaultConstructors();
     }
 
     private getFilesOrderByDependency(): void {
@@ -406,7 +381,7 @@ export class Scene {
             this.getDependencyFilesDeeply(projectFile);
         }
         this.buildAllMethodBody();
-        this.updateOrAddDefaultConstructors();
+        this.addDefaultConstructors();
     }
 
     private getDependencyFilesDeeply(projectFile: string): void {
@@ -414,18 +389,16 @@ export class Scene {
             return;
         }
         const fileSignature = new FileSignature(this.getProjectName(), path.relative(this.getRealProjectDir(), projectFile));
-        if (this.filesMap.has(fileSignature.toMapKey()) || this.isRepeatBuildFile(projectFile) || this.unhandledFilePaths.has(projectFile)) {
+        if (this.filesMap.has(fileSignature.toMapKey()) || this.isRepeatBuildFile(projectFile)) {
             return;
         }
-        // Here use unhandledFilePaths to temporarily store current file until add it to fileMaps to avoid recursively import issue.
-        this.unhandledFilePaths.add(projectFile);
         try {
             const arkFile = new ArkFile(FileUtils.getFileLanguage(projectFile, this.fileLanguages));
             arkFile.setScene(this);
             if (arkFile.getLanguage() === Language.CPLUS) {
-                buildArkFileFromFileCpp(projectFile, this.getRealProjectDir(), arkFile, this.getProjectName(), this.includeDirs);
+                buildArkFileFromFileCpp(projectFile, this.realProjectDir, arkFile, this.projectName, this.includeDirs);
             } else {
-                buildArkFileFromFile(projectFile, this.getRealProjectDir(), arkFile, this.getProjectName());
+                buildArkFileFromFile(projectFile, this.realProjectDir, arkFile, this.projectName);
             }
             for (const [modulePath, moduleName] of this.modulePath2NameMap) {
                 if (arkFile.getFilePath().startsWith(modulePath)) {
@@ -433,18 +406,16 @@ export class Scene {
                     break;
                 }
             }
+            this.filesMap.set(arkFile.getFileSignature().toMapKey(), arkFile);
             const importInfos = arkFile.getImportInfos();
             const repeatFroms: string[] = [];
             this.findDependencyFiles(importInfos, arkFile, repeatFroms);
 
             const exportInfos = arkFile.getExportInfos();
             this.findDependencyFiles(exportInfos, arkFile, repeatFroms);
-
-            // add currently file to files map after adding all its dependencies, and remove it from unhandledFilePaths
-            this.setFile(arkFile);
-            this.unhandledFilePaths.delete(projectFile);
         } catch (error) {
             logger.error('Error parsing file:', projectFile, error);
+            this.unhandledFilePaths.push(projectFile);
             return;
         }
     }
@@ -485,31 +456,28 @@ export class Scene {
     }
 
     private parseFrom(from: string, arkFile: ArkFile): void {
-        if (/^@[a-z|\-]+?\/?/.test(from) || /^[a-z][a-z0-9._-]*[a-z0-9]$/.test(from)) {
-            // TODO: if there are more than one modules with the same name e.g. @lib1, here may got the wrong dependency
-            // It is better to loop all oh pkg with priority rather than the map key order. But it should be very complicated.
-            // Currently it is ok because it's with low probability and order error only affects type accuracy but has no other impact.
+        if (/^@[a-z|\-]+?\/?/.test(from)) {
             for (const [ohPkgContentPath, ohPkgContent] of this.ohPkgContentMap) {
-                this.findDependenciesByOhPkg(ohPkgContentPath, ohPkgContent, from);
+                this.findDependenciesByOhPkg(ohPkgContentPath, ohPkgContent, from, arkFile);
             }
         } else if (/^([^@]*\/)([^\/]*)$/.test(from) || /^[\.\./|\.\.]+$/.test(from)) {
             this.findRelativeDependenciesByOhPkg(from, arkFile);
         } else if (/^[@a-zA-Z0-9]+(\/[a-zA-Z0-9]+)*$/.test(from)) {
-            this.findDependenciesByTsConfig(from);
+            this.findDependenciesByTsConfig(from, arkFile);
         }
     }
 
-    private findDependenciesByTsConfig(from: string): void {
+    private findDependenciesByTsConfig(from: string, arkFile: ArkFile): void {
         if (this.globalModule2PathMapping) {
             const paths: { [k: string]: string[] } = this.globalModule2PathMapping;
-            Object.keys(paths).forEach(key => this.parseTsConfigParms(paths, key, from));
+            Object.keys(paths).forEach(key => this.parseTsConfigParms(paths, key, from, arkFile));
         }
     }
 
-    private parseTsConfigParms(paths: { [k: string]: string[] }, key: string, from: string): void {
+    private parseTsConfigParms(paths: { [k: string]: string[] }, key: string, from: string, arkFile: ArkFile): void {
         const module2pathMapping = paths[key];
         if (key.includes(ALL)) {
-            this.processFuzzyMapping(key, from, module2pathMapping);
+            this.processFuzzyMapping(key, from, module2pathMapping, arkFile);
         } else if (from.startsWith(key)) {
             let tail = from.substring(key.length, from.length);
             module2pathMapping.forEach(pathMapping => {
@@ -517,12 +485,12 @@ export class Scene {
                 if (this.baseUrl) {
                     originPath = path.resolve(this.baseUrl, originPath);
                 }
-                this.findDependenciesByRule(originPath);
+                this.findDependenciesByRule(originPath, arkFile);
             });
         }
     }
 
-    private processFuzzyMapping(key: string, from: string, module2pathMapping: string[]): void {
+    private processFuzzyMapping(key: string, from: string, module2pathMapping: string[], arkFile: ArkFile): void {
         key = key.substring(0, key.indexOf(ALL) - 1);
         if (from.substring(0, key.indexOf(ALL) - 1) === key) {
             let tail = from.substring(key.indexOf(ALL) - 1, from.length);
@@ -532,42 +500,36 @@ export class Scene {
                 if (this.baseUrl) {
                     originPath = path.join(this.baseUrl, originPath);
                 }
-                this.findDependenciesByRule(originPath);
+                this.findDependenciesByRule(originPath, arkFile);
             });
         }
     }
 
-    private findDependenciesByRule(originPath: string): void {
+    private findDependenciesByRule(originPath: string, arkFile: ArkFile): void {
         if (
-            !this.findFilesByPathArray(originPath) &&
-            !this.findFilesByExtNameArray(originPath, this.options.supportFileExts!)
+            !this.findFilesByPathArray(originPath, this.indexPathArray, arkFile) &&
+            !this.findFilesByExtNameArray(originPath, this.options.supportFileExts!, arkFile)
         ) {
             logger.trace(originPath + 'module mapperInfo is not found!');
         }
     }
 
-    private findFilesByPathArray(originPath: string): boolean {
-        if (!fs.existsSync(originPath)) {
-            return false;
-        }
-        const dirname = path.dirname(originPath);
-        const indexFileName = FileUtils.getIndexFileName(dirname);
-        if (indexFileName === '') {
-            return false;
-        }
-        const curPath = path.join(dirname, indexFileName);
-        if (!this.isRepeatBuildFile(curPath)) {
-            this.addFileNode2DependencyGrap(curPath);
-            return true;
+    private findFilesByPathArray(originPath: string, pathArray: string[], arkFile: ArkFile): boolean {
+        for (const pathInfo of pathArray) {
+            const curPath = path.join(originPath, pathInfo);
+            if (fs.existsSync(curPath) && !this.isRepeatBuildFile(curPath)) {
+                this.addFileNode2DependencyGrap(curPath, arkFile);
+                return true;
+            }
         }
         return false;
     }
 
-    private findFilesByExtNameArray(originPath: string, pathArray: string[]): boolean {
+    private findFilesByExtNameArray(originPath: string, pathArray: string[], arkFile: ArkFile): boolean {
         for (const pathInfo of pathArray) {
             const curPath = originPath + pathInfo;
             if (fs.existsSync(curPath) && !this.isRepeatBuildFile(curPath)) {
-                this.addFileNode2DependencyGrap(curPath);
+                this.addFileNode2DependencyGrap(curPath, arkFile);
                 return true;
             }
         }
@@ -588,10 +550,10 @@ export class Scene {
         let originPath = this.getOriginPath(from, arkFile);
         if (fs.existsSync(path.join(originPath, OH_PACKAGE_JSON5))) {
             for (const [ohPkgContentPath, ohPkgContent] of this.ohPkgContentMap) {
-                this.findDependenciesByOhPkg(ohPkgContentPath, ohPkgContent, from);
+                this.findDependenciesByOhPkg(ohPkgContentPath, ohPkgContent, from, arkFile);
             }
         }
-        this.findDependenciesByRule(originPath);
+        this.findDependenciesByRule(originPath, arkFile);
     }
 
     private findDependenciesByOhPkg(
@@ -599,7 +561,8 @@ export class Scene {
         ohPkgContentInfo: {
             [k: string]: unknown;
         },
-        from: string
+        from: string,
+        arkFile: ArkFile
     ): void {
         //module name @ohos/from
         const ohPkgContent: { [k: string]: unknown } | undefined = ohPkgContentInfo;
@@ -609,21 +572,21 @@ export class Scene {
             if (ohPkgContent.main) {
                 originPath = path.join(ohPkgContentPath.toString().replace(OH_PACKAGE_JSON5, ''), ohPkgContent.main.toString());
                 if (ohPkgContent.dependencies) {
-                    this.getDependenciesMapping(ohPkgContent.dependencies, ohPkgContentPath, from);
+                    this.getDependenciesMapping(ohPkgContent.dependencies, ohPkgContentPath, from, arkFile);
                 } else if (ohPkgContent.devDependencies) {
-                    this.getDependenciesMapping(ohPkgContent.devDependencies, ohPkgContentPath, from);
+                    this.getDependenciesMapping(ohPkgContent.devDependencies, ohPkgContentPath, from, arkFile);
                 } else if (ohPkgContent.dynamicDependencies) {
                     // dynamicDependencies not support
                 }
-                this.addFileNode2DependencyGrap(originPath);
+                this.addFileNode2DependencyGrap(originPath, arkFile);
             }
-            if (!this.findFilesByPathArray(originPath)) {
+            if (!this.findFilesByPathArray(originPath, this.indexPathArray, arkFile)) {
                 logger.trace(originPath + 'module mapperInfo is not found!');
             }
         }
     }
 
-    private getDependenciesMapping(dependencies: object, ohPkgContentPath: string, from: string): void {
+    private getDependenciesMapping(dependencies: object, ohPkgContentPath: string, from: string, arkFile: ArkFile): void {
         for (let [moduleName, modulePath] of Object.entries(dependencies)) {
             logger.debug('dependencies:' + moduleName);
             if (modulePath.startsWith('file:')) {
@@ -632,7 +595,7 @@ export class Scene {
             const innerOhpackagePath = path.join(ohPkgContentPath.replace(OH_PACKAGE_JSON5, ''), modulePath.toString(), OH_PACKAGE_JSON5);
             if (!this.ohPkgContentMap.has(innerOhpackagePath)) {
                 const innerModuleOhPkgContent = fetchDependenciesFromFile(innerOhpackagePath);
-                this.findDependenciesByOhPkg(innerOhpackagePath, innerModuleOhPkgContent, from);
+                this.findDependenciesByOhPkg(innerOhpackagePath, innerModuleOhPkgContent, from, arkFile);
             }
         }
     }
@@ -642,20 +605,13 @@ export class Scene {
         return path.resolve(parentPath, from);
     }
 
-    private addFileNode2DependencyGrap(filePath: string): void {
+    private addFileNode2DependencyGrap(filePath: string, arkFile: ArkFile): void {
         this.getDependencyFilesDeeply(filePath);
+        this.filesMap.set(arkFile.getFileSignature().toMapKey(), arkFile);
     }
 
     private buildSdk(sdkName: string, sdkPath: string): void {
-        let allFiles;
-        if (sdkName === SdkUtils.BUILT_IN_NAME) {
-            allFiles = SdkUtils.fetchBuiltInFiles(sdkPath);
-            if (allFiles.length > 0) {
-                this.getOptions().sdkGlobalFolders?.push(sdkPath);
-            }
-        } else {
-            allFiles = getAllFiles(sdkPath, this.options.supportFileExts!, this.options.ignoreFileNames);
-        }
+        const allFiles = getAllFiles(sdkPath, this.options.supportFileExts!, this.options.ignoreFileNames);
         allFiles.forEach(file => {
             logger.trace('=== parse sdk file:', file);
             try {
@@ -669,7 +625,7 @@ export class Scene {
                 const fileSig = arkFile.getFileSignature().toMapKey();
                 this.sdkArkFilesMap.set(fileSig, arkFile);
                 SdkUtils.buildSdkImportMap(arkFile);
-                SdkUtils.loadGlobalAPI(arkFile, this.sdkGlobalMap);
+                SdkUtils.buildGlobalMap(arkFile, this.sdkGlobalMap);
             } catch (error) {
                 logger.error('Error parsing file:', file, error);
                 this.unhandledSdkFilePaths.push(file);
@@ -692,7 +648,7 @@ export class Scene {
         });
         initModulePathMap(this.ohPkgContentMap);
         this.buildAllMethodBody();
-        this.updateOrAddDefaultConstructors();
+        this.addDefaultConstructors();
     }
 
     private buildOhPkgContentMap(): void {
@@ -814,7 +770,7 @@ export class Scene {
      * Returns the absolute file paths that cannot be handled currently.
      */
     public getUnhandledFilePaths(): string[] {
-        return Array.from(this.unhandledFilePaths);
+        return this.unhandledFilePaths;
     }
 
     /*
@@ -1130,6 +1086,16 @@ export class Scene {
      ```
      */
     public inferTypes(): void {
+        if (this.buildStage < SceneBuildStage.SDK_INFERRED) {
+            this.sdkArkFilesMap.forEach(file => {
+                try {
+                    file.getLanguage() === Language.CPLUS ? IRInferenceCpp.inferFile(file) : IRInference.inferFile(file);
+                } catch (error) {
+                    logger.error('Error inferring types of sdk file:', file.getFileSignature(), error);
+                }
+            });
+            this.buildStage = SceneBuildStage.SDK_INFERRED;
+        }
         this.buildFuncMapForCpp();
         this.filesMap.forEach(file => {
             try {
@@ -1142,7 +1108,6 @@ export class Scene {
             this.getMethodsMap(true);
             this.buildStage = SceneBuildStage.TYPE_INFERRED;
         }
-        SdkUtils.dispose();
     }
 
     private buildFuncMapForCpp(): void {
@@ -1351,7 +1316,7 @@ export class Scene {
                     // 遗留问题：只统计了项目文件的namespace，没统计sdk文件内部的引入
                     const importNameSpaceClasses = classMap.get(importNameSpace.getNamespaceSignature())!;
                     importClasses.push(...importNameSpaceClasses.filter(c => !importClasses.includes(c) && c.getName() !== DEFAULT_ARK_CLASS_NAME));
-                } catch { }
+                } catch {}
             }
         }
         const fileClasses = classMap.get(file.getFileSignature())!;
@@ -1484,7 +1449,7 @@ export class Scene {
                     // 遗留问题：只统计了项目文件，没统计sdk文件内部的引入
                     const importNameSpaceClasses = globalVariableMap.get(importNameSpace.getNamespaceSignature())!;
                     importLocals.push(...importNameSpaceClasses.filter(c => !importLocals.includes(c) && c.getName() !== DEFAULT_ARK_CLASS_NAME));
-                } catch { }
+                } catch {}
             }
         }
         const fileLocals = globalVariableMap.get(file.getFileSignature())!;
