@@ -64,7 +64,9 @@ function extractSetVar(line: string): [string, string] | null {
 
 // 递归解析变量，只支持本文件set变量
 function resolveCMakeVar(val: string, varTable: Record<string, string>, depth = 0): string {
-    if (depth > 10) return val;
+    if (depth > 10) {
+        return val;
+    }
     return val.replace(/\$\{([A-Za-z_0-9]+)\}/g, (m, varName) => {
         if (varTable[varName] !== undefined) {
             return resolveCMakeVar(varTable[varName], varTable, depth + 1);
@@ -72,6 +74,47 @@ function resolveCMakeVar(val: string, varTable: Record<string, string>, depth = 
         // 不能解析，返回原样（留给后续过滤用）
         return m;
     });
+}
+
+/**
+ * 判断当前行是否为 include_directories 或 target_include_directories 的起始，
+ * 如是，则进入收集状态，并处理单行立即闭合的场景。
+ * 返回新的 collecting 状态、funcType、buffer（支持多行参数）。
+ */
+function tryStartCollectingIncludeDirs(
+    line: string,
+    results: string[][],
+): {
+    collecting: boolean,
+    funcType: "include" | "target" | null,
+    buffer: string[]
+} {
+    if (line.startsWith("include_directories(")) {
+        let collecting = true;
+        let funcType: "include" | "target" | null = "include";
+        let buffer = [line];
+        if (line.includes(")")) {
+            collecting = false;
+            results.push(parseCMakeArgs(buffer, false));
+            buffer = [];
+            funcType = null;
+        }
+        return { collecting, funcType, buffer };
+    } else if (line.startsWith("target_include_directories(")) {
+        let collecting = true;
+        let funcType: "include" | "target" | null = "target";
+        let buffer = [line];
+        if (line.includes(")")) {
+            collecting = false;
+            results.push(parseCMakeArgs(buffer, true));
+            buffer = [];
+            funcType = null;
+        }
+        return { collecting, funcType, buffer };
+    } else {
+        // 没有进入收集状态
+        return { collecting: false, funcType: null, buffer: [] };
+    }
 }
 
 function extractAllIncludeDirs(lines: string[]): string[][] {
@@ -84,28 +127,10 @@ function extractAllIncludeDirs(lines: string[]): string[][] {
         // 去除注释
         const line = lineOrig.replace(/#.*$/, "").trim();
         if (!collecting) {
-            if (line.startsWith("include_directories(")) {
-                collecting = true;
-                funcType = "include";
-                buffer = [line];
-                // 如果本行含有右括号，直接处理
-                if (line.includes(")")) {
-                    collecting = false;
-                    results.push(parseCMakeArgs(buffer, false));
-                    buffer = [];
-                    funcType = null;
-                }
-            } else if (line.startsWith("target_include_directories(")) {
-                collecting = true;
-                funcType = "target";
-                buffer = [line];
-                if (line.includes(")")) {
-                    collecting = false;
-                    results.push(parseCMakeArgs(buffer, true));
-                    buffer = [];
-                    funcType = null;
-                }
-            }
+            const state = tryStartCollectingIncludeDirs(line, results);
+            collecting = state.collecting;
+            funcType = state.funcType;
+            buffer = state.buffer;
         } else {
             buffer.push(line);
             if (line.includes(")")) {
@@ -126,7 +151,9 @@ function parseCMakeArgs(buffer: string[], isTarget: boolean): string[] {
     // 去掉头部指令
     const lidx = line.indexOf('(');
     const ridx = line.lastIndexOf(')');
-    if (lidx === -1 || ridx === -1) return [];
+    if (lidx === -1 || ridx === -1) {
+        return [];
+    }
     line = line.substring(lidx + 1, ridx).trim();
 
     // 按引号和空格分割参数
@@ -160,9 +187,13 @@ function parseCMakeArgs(buffer: string[], isTarget: boolean): string[] {
 
     if (isTarget) {
         // 跳过target名字和 PUBLIC/PRIVATE/INTERFACE 关键字
-        if (args.length < 3) return [];
+        if (args.length < 3) {
+            return [];
+        }
         const idx = args.findIndex(a => ["PUBLIC", "PRIVATE", "INTERFACE"].includes(a.toUpperCase()));
-        if (idx < 1 || idx + 1 >= args.length) return [];
+        if (idx < 1 || idx + 1 >= args.length) {
+            return [];
+        }
         return args.slice(idx + 1);
     } else {
         return args;
@@ -177,7 +208,9 @@ function scanCMakeIncludeDirsOnly(dir: string) {
     };
 
     const cmakePath = path.join(dir, "CMakeLists.txt");
-    if (!fs.existsSync(cmakePath)) return [];
+    if (!fs.existsSync(cmakePath)) {
+        return [];
+    }
 
     const lines = fs.readFileSync(cmakePath, "utf-8").split(/\r?\n/);
 
@@ -196,7 +229,9 @@ function scanCMakeIncludeDirsOnly(dir: string) {
         for (let raw of argArr) {
             let resolved = resolveCMakeVar(raw, varTable);
             // 路径中还存在 ${XXX} 说明无法完全解析，直接丢弃
-            if (/\$\{[A-Za-z_0-9]+\}/.test(resolved)) continue;
+            if (/\$\{[A-Za-z_0-9]+\}/.test(resolved)) {
+                continue;
+            }
             // 相对路径转绝对
             if (!path.isAbsolute(resolved)) {
                 resolved = path.resolve(dir, resolved);

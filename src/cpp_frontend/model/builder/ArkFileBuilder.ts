@@ -28,6 +28,7 @@ import {AstUtils} from "../../../ast/astUtils"
 import { FileSignature, ClassSignature } from '../../../core/model/ArkSignature';
 import { LineColPosition } from '../../../core/base/Position';
 import { buildImportInfo } from './ArkImportBuilder';
+import { shouldAddCppHeaderImport } from '../../common/ModelUtils'
 import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkFileBuilder');
@@ -134,7 +135,9 @@ function buildArkFile(arkFile: ArkFile, astRoot: any): void {
             let importInfos = buildImportInfo(child, astRoot, arkFile);
             importInfos?.forEach(element => {
                 element.setDeclaringArkFile(arkFile);
-                arkFile.addImportInfo(element);
+                if (shouldAddCppHeaderImport(element)) {
+                    arkFile.addImportInfo(element);
+                }
             });
         } else {
             logger.trace('Child joined default method of arkFile: ', child.kind ?? child.code);

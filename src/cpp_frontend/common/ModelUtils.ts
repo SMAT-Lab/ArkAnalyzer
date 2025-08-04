@@ -71,6 +71,47 @@ export function findExportInfo(fromInfo: FromInfo): ExportInfo | null {
     return processHeaderExportInfos(fromInfo, file);
 }
 
+export function shouldAddCppHeaderImport(element: any): boolean {
+    if (!Object.prototype.hasOwnProperty.call(element, 'importClauseName')) {
+        return false;
+    }
+    return isValidCppHeaderPath(element.getImportClauseName());
+}
+
+export function isValidCppHeaderPath(headerPath: string | undefined): boolean {
+    if (!headerPath) return false;
+
+    // 常见 C++ 标准库头文件（无 .h 后缀）
+    const stdHeaders = new Set([
+        "iostream", "iomanip", "fstream", "sstream", "string",
+        "vector", "map", "unordered_map", "set", "unordered_set",
+        "queue", "stack", "list", "algorithm", "utility", "memory",
+        "thread", "mutex", "condition_variable", "future", "atomic",
+        "chrono", "functional", "stdexcept", "type_traits",
+        "cassert", "cstdint", "cstdlib", "cstdio", "cstring", "cmath",
+        "array", "bitset", "deque", "tuple", "numeric", "any", "optional",
+        "variant", "filesystem", "span"
+    ]);
+
+    const normalized = headerPath.replace(/\\/g, '/').toLowerCase();
+
+    // 检查 sdk/default 路径
+    if (normalized.includes('sdk/default')) {
+        return false;
+    }
+
+    // 拆分路径，检查最后一个文件名
+    const parts = normalized.split('/');
+    const filename = parts.length > 0 ? parts[parts.length - 1] : '';
+
+    // 判断是否为标准库名或标准库名 + .h
+    if (stdHeaders.has(filename) || (filename.endsWith('.h') && stdHeaders.has(filename.replace(/\.h$/, '')))) {
+        return false;
+    }
+
+    return true;
+}
+
 /* 处理#include "xx/xx.h"的头文件引用 */
 function processIncludeRef(fromInfo: FromInfo, headerFile: ArkFile): ExportInfo {
     // 1.构造#include "xxx/xx"该头文件引用的exportInfo为该头文件的DefaultClass
@@ -89,7 +130,9 @@ function processIncludeRef(fromInfo: FromInfo, headerFile: ArkFile): ExportInfo 
             exportInfo.getOriginTsPosition(), 0);
         headerRealIm.setTsSourceCode(includeClauseName);
         headerRealIm.setDeclaringArkFile(declFile);
-        declFile.addImportInfo(headerRealIm);
+        if (shouldAddCppHeaderImport(headerRealIm)) {
+            declFile.addImportInfo(headerRealIm);
+        }
         headerRealIm.getLazyExportInfo();  // 会递归findExportInfo函数
     }
     // 3.将头文件的importInfos添加到当前文件的importInfoMaps里，并设置好lazyImportInfo
@@ -97,7 +140,9 @@ function processIncludeRef(fromInfo: FromInfo, headerFile: ArkFile): ExportInfo 
         if (declFile.getImportInfoBy(im.getImportClauseName())) {
             continue;
         }
-        declFile.addImportInfo(im);
+        if (shouldAddCppHeaderImport(im)){
+            declFile.addImportInfo(im);
+        }
         im.getLazyExportInfo();
     }
     return includeExportInfo;
