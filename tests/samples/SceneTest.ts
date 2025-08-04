@@ -13,9 +13,7 @@
  * limitations under the License.
  */
 
-import { SceneConfig } from '../../src';
-import { Scene } from '../../src';
-import { Logger, LOG_LEVEL, LOG_MODULE_TYPE } from '../../src';
+import { LOG_LEVEL, LOG_MODULE_TYPE, Logger, Scene, SceneConfig } from '../../src';
 
 const logPath = 'out/ArkAnalyzer.log';
 Logger.configure(logPath, LOG_LEVEL.ERROR, LOG_LEVEL.DEBUG, true);
@@ -145,6 +143,4 @@ class SceneTest {
 }
 
 let sceneTest = new SceneTest();
-sceneTest.testETsWholePipline();
 sceneTest.testSimpleProject();
-sceneTest.testEtsProject();

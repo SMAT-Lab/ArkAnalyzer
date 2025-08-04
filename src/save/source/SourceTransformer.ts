@@ -34,7 +34,7 @@ import {
 import { Local } from '../../core/base/Local';
 import { ArkClass, ClassCategory } from '../../core/model/ArkClass';
 import { ArkMethod } from '../../core/model/ArkMethod';
-import { ClassSignature, MethodSignature } from '../../core/model/ArkSignature';
+import { ClassSignature, classSignatureCompare, MethodSignature } from '../../core/model/ArkSignature';
 import { ArkCodeBuffer } from '../ArkStream';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { PrinterUtils } from '../base/PrinterUtils';
@@ -69,7 +69,7 @@ import { ArkBaseModel } from '../../core/model/ArkBaseModel';
 import { ArkField } from '../../core/model/ArkField';
 import { ExportInfo } from '../../core/model/ArkExport';
 import { ImportInfo } from '../../core/model/ArkImport';
-import { BIGINT_KEYWORD, SUPER_NAME } from '../../core/common/TSConst';
+import { BIGINT_KEYWORD, CONSTRUCTOR_NAME, SUPER_NAME, THIS_NAME } from '../../core/common/TSConst';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'SourceTransformer');
 
@@ -84,7 +84,7 @@ export interface TransformerContext {
 
     getPrinter(): ArkCodeBuffer;
 
-    transTemp2Code(temp: Local): string;
+    transTemp2Code(temp: Local, isLeftOp: boolean): string;
 
     isInBuilderMethod(): boolean;
 }
@@ -107,7 +107,7 @@ export class SourceTransformer {
         return clsPrinter.dump().trimStart();
     }
 
-    public instanceInvokeExprToString(invokeExpr: ArkInstanceInvokeExpr): string {
+    public instanceInvokeExprToString(invokeExpr: ArkInstanceInvokeExpr, isAttr: boolean): string {
         let methodName = invokeExpr.getMethodSignature().getMethodSubSignature().getMethodName();
         if (methodName === INSTANCE_INIT_METHOD_NAME) {
             return '';
@@ -116,13 +116,26 @@ export class SourceTransformer {
         invokeExpr.getArgs().forEach(v => {
             args.push(this.valueToString(v));
         });
-        let genericCode = this.genericTypesToString(invokeExpr.getRealGenericTypes());
-
-        if (PrinterUtils.isComponentAttributeInvoke(invokeExpr) && this.context.isInBuilderMethod()) {
+        let genericCode = isAttr ? '' : this.genericTypesToString(invokeExpr.getRealGenericTypes());
+        if (isAttr && this.context.isInBuilderMethod()) {
             return `.${methodName}${genericCode}(${args.join(', ')})`;
         }
 
-        return `${this.valueToString(invokeExpr.getBase())}.${methodName}${genericCode}(${args.join(', ')})`;
+        const base = invokeExpr.getBase();
+        if (base.getName() === THIS_NAME) {
+            if (methodName === CONSTRUCTOR_NAME) {
+                return `super(${args.join(', ')})`;
+            }
+            // If base type is not match the method declaring class, here take it as super.foo() even though the source code may be this.foo().
+            // Because it can not distinguish exactly whether it's this.foo() or super.foo() when foo is only defined in super class.
+            const baseType = base.getType();
+            if (baseType instanceof ClassType) {
+                if (!classSignatureCompare(baseType.getClassSignature(), invokeExpr.getMethodSignature().getDeclaringClassSignature())) {
+                    return `super.${methodName}${genericCode}(${args.join(', ')})`;
+                }
+            }
+        }
+        return `${this.valueToString(base)}.${methodName}${genericCode}(${args.join(', ')})`;
     }
 
     private transBuilderMethod(className: string, methodName: string, args: string[], invokeExpr: ArkStaticInvokeExpr, genericCode: string): string | null {
@@ -227,7 +240,8 @@ export class SourceTransformer {
 
     private exprToString(expr: AbstractExpr): string {
         if (expr instanceof ArkInstanceInvokeExpr) {
-            return `${this.instanceInvokeExprToString(expr)}`;
+            const isAttr = PrinterUtils.isComponentAttributeInvoke(expr);
+            return `${this.instanceInvokeExprToString(expr, isAttr)}`;
         }
 
         if (expr instanceof ArkStaticInvokeExpr) {
@@ -251,7 +265,7 @@ export class SourceTransformer {
             let op2: Value = expr.getOp2();
             let operator: string = expr.getOperator();
 
-            return `${this.valueToString(op1, operator)} ${operator} ${this.valueToString(op2, operator)}`;
+            return `${this.valueToString(op1, false, operator)} ${operator} ${this.valueToString(op2, false, operator)}`;
         }
 
         if (expr instanceof ArkTypeOfExpr) {
@@ -310,7 +324,7 @@ export class SourceTransformer {
         return `${value}`;
     }
 
-    public valueToString(value: Value, operator?: string): string {
+    public valueToString(value: Value, isLeftOp: boolean = false, operator?: string): string {
         if (value instanceof AbstractExpr) {
             return this.exprToString(value);
         }
@@ -324,14 +338,14 @@ export class SourceTransformer {
         }
 
         if (value instanceof Local) {
-            return this.localToString(value, operator);
+            return this.localToString(value, isLeftOp, operator);
         }
 
         logger.info(`valueToString ${value.constructor} not support.`);
         return `${value}`;
     }
 
-    private localToString(value: Local, operator?: string): string {
+    private localToString(value: Local, isLeftOp: boolean = false, operator?: string): string {
         if (PrinterUtils.isAnonymousMethod(value.getName())) {
             let methodSignature = (value.getType() as FunctionType).getMethodSignature();
             let anonymousMethod = this.context.getMethod(methodSignature);
@@ -351,12 +365,12 @@ export class SourceTransformer {
             if (PrinterUtils.isTemp(value.getName())) {
                 let stmt = value.getDeclaringStmt();
                 if (stmt instanceof ArkAssignStmt && stmt.getRightOp() instanceof ArkNormalBinopExpr) {
-                    return `(${this.context.transTemp2Code(value)})`;
+                    return `(${this.context.transTemp2Code(value, isLeftOp)})`;
                 }
             }
         }
 
-        return this.context.transTemp2Code(value);
+        return this.context.transTemp2Code(value, isLeftOp);
     }
 
     public literalObjectToString(type: ClassType): string {

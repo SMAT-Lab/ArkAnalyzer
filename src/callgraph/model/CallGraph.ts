@@ -22,7 +22,7 @@ import { PrinterBuilder } from '../../save/PrinterBuilder';
 import { BaseEdge, BaseNode, BaseExplicitGraph, NodeID } from '../../core/graph/BaseExplicitGraph';
 import { CGStat } from '../common/Statistics';
 import { UNKNOWN_FILE_NAME } from '../../core/common/Const';
-import { CallSite, CallSiteID, DynCallSite, ICallSite } from './CallSite';
+import { CallSite, CallSiteID, CallSiteManager, DynCallSite, ICallSite } from './CallSite';
 
 export type Method = MethodSignature;
 export type FuncID = number;
@@ -64,9 +64,6 @@ export class CallGraphEdge extends BaseEdge {
         const indirectCallNums: number = this.indirectCalls.size;
         const directCallNums: number = this.directCalls.size;
         const specialCallNums: number = this.specialCalls.size;
-        if ([CallGraphNodeKind.intrinsic, CallGraphNodeKind.constructor].includes(this.getDstNode().getKind())) {
-            return '';
-        }
 
         if (indirectCallNums !== 0 && directCallNums === 0) {
             return 'color=red';
@@ -106,9 +103,6 @@ export class CallGraphNode extends BaseNode {
     }
 
     public getDotAttr(): string {
-        if ([CallGraphNodeKind.intrinsic, CallGraphNodeKind.constructor].includes(this.getKind())) {
-            return '';
-        }
         return 'shape=box';
     }
 
@@ -121,14 +115,12 @@ export class CallGraphNode extends BaseNode {
 
 export class CallGraph extends BaseExplicitGraph {
     private scene: Scene;
-    private idToCallSiteMap: Map<CallSiteID, CallSite> = new Map();
-    private callSiteToIdMap: Map<CallSite, CallSiteID> = new Map();
+    private csManager = new CallSiteManager();
     private stmtToCallSitemap: Map<Stmt, CallSite[]> = new Map();
     private stmtToDynCallSitemap: Map<Stmt, DynCallSite> = new Map();
     private methodToCGNodeMap: Map<string, NodeID> = new Map();
     private callPairToEdgeMap: Map<string, CallGraphEdge> = new Map();
     private methodToCallSiteMap: Map<FuncID, Set<CallSite>> = new Map();
-    private callSiteNum: number = 0;
     private entries!: NodeID[];
     private cgStat: CGStat;
     private dummyMainMethodID: FuncID | undefined;
@@ -190,15 +182,7 @@ export class CallGraph extends BaseExplicitGraph {
         let calleeNode = this.getCallGraphNodeByMethod(callee) as CallGraphNode;
         let args = callStmt.getInvokeExpr()?.getArgs();
 
-        let cs: CallSite = new CallSite(callStmt, args, calleeNode.getID(), callerNode.getID());
-        let csID: CallSiteID;
-        if (!this.callSiteToIdMap.has(cs)) {
-            csID = this.callSiteNum++;
-            this.idToCallSiteMap.set(csID, cs);
-            this.callSiteToIdMap.set(cs, csID);
-        } else {
-            csID = this.callSiteToIdMap.get(cs) as CallSiteID;
-        }
+        let cs: CallSite = this.csManager.newCallSite(callStmt, args, calleeNode.getID(), callerNode.getID());
 
         if (this.addStmtToCallSiteMap(callStmt, cs)) {
             // TODO: check stmt exists
@@ -211,6 +195,7 @@ export class CallGraph extends BaseExplicitGraph {
             callEdge.getSrcNode().addOutgoingEdge(callEdge);
             callEdge.getDstNode().addIncomingEdge(callEdge);
             this.callPairToEdgeMap.set(this.getCallPairString(callerNode.getID(), calleeNode.getID()), callEdge);
+            this.edgeNum++;
         }
         if (isDirectCall) {
             callEdge.addDirectCallSite(callStmt);
@@ -239,7 +224,7 @@ export class CallGraph extends BaseExplicitGraph {
         }
         let args = callStmt.getInvokeExpr()?.getArgs();
 
-        let cs = new DynCallSite(callStmt, args, calleeNode?.getID(), callerNode.getID());
+        let cs = this.csManager.newDynCallSite(callStmt, args, calleeNode?.getID(), callerNode.getID());
         this.stmtToDynCallSitemap.set(callStmt, cs);
     }
 
@@ -253,11 +238,12 @@ export class CallGraph extends BaseExplicitGraph {
             callEdge.getSrcNode().addOutgoingEdge(callEdge);
             callEdge.getDstNode().addIncomingEdge(callEdge);
             this.callPairToEdgeMap.set(this.getCallPairString(callerNode.getID(), calleeNode.getID()), callEdge);
+            this.edgeNum++;
         }
         callEdge.addInDirectCallSite(callStmt);
     }
 
-    public getDynCallsiteByStmt(stmt: Stmt): DynCallSite | undefined {
+    public getDynCallSiteByStmt(stmt: Stmt): DynCallSite | undefined {
         return this.stmtToDynCallSitemap.get(stmt);
     }
 
@@ -420,5 +406,21 @@ export class CallGraph extends BaseExplicitGraph {
 
     public getGraphName(): string {
         return 'CG';
+    }
+
+    public getCallSiteManager(): CallSiteManager {
+        return this.csManager;
+    }
+
+    public getCallSiteInfo(csID: CallSiteID): string {
+        const callSite = this.csManager.getCallSiteById(csID);
+        if (!callSite) {
+            return '';
+        }
+
+        const callerMethod = this.getMethodByFuncID(callSite.callerFuncID)!;
+        const calleeMethod = this.getMethodByFuncID(callSite.getCalleeFuncID()!)!;
+
+        return `CS[${csID}]: {${callerMethod.toString()} -> ${calleeMethod.toString()}}`;
     }
 }

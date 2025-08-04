@@ -13,16 +13,79 @@
  * limitations under the License.
  */
 
+import { O } from './ClassWithConstructor';
+
 class A {
-  name: string;
+    name: string = 'abc';
 }
 
 class B extends A {
-  age: number;
+    age: number = 123;
 }
 
 class Q extends B {
-  constructor() {
-    super();
-  }
+    constructor() {
+        super();
+    }
+}
+
+class C {
+    c: number;
+    constructor(c: number) {
+        this.c = c;
+    }
+
+    foo(): void {}
+}
+
+class D extends C {
+    d: string = 'd';
+
+    goo(): void {
+        this.foo();
+        super.foo();
+    }
+}
+
+class E extends C {
+    e: string;
+
+    constructor(c: number, e: string) {
+        super(c);
+        this.e = e;
+    }
+
+    foo(): string {
+        return 'e-foo';
+    }
+
+    goo(): void {
+        this.foo();
+        super.foo();
+    }
+}
+
+class F extends O {
+    f: string;
+
+    constructor(f: string) {
+        super();
+        this.f = f;
+    }
+}
+
+class G extends D {
+    f: string = 'g';
+
+    goo(): void {
+        this.foo();
+    }
+}
+
+class H extends HH {
+    h: string = 'h';
+
+    constructor() {
+        super();
+    }
 }

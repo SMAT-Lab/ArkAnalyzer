@@ -26,3 +26,28 @@ let a40 = call30(para10, para20);
 
 // call chain
 let a200 = call200().call300(para100, para200);
+
+// ptr invoke expr test
+function returnFunc1(): () => void {
+    const nestedReturnFunc:()=>void = () => {
+        /* Empty */
+    };
+    nestedReturnFunc();
+
+    return nestedReturnFunc;
+}
+
+function returnFunc2(): () => () => void {
+    return returnFunc1;
+}
+
+function callFuncReturned(): void {
+    returnFunc2()()();
+}
+
+async function promiseCall(): Promise<void> {
+    const promise = new Promise((resolve) => {
+        resolve(42);
+    });
+    await promise;
+}

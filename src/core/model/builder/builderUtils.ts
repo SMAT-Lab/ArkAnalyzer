@@ -33,7 +33,12 @@ import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
 import { ArkClass } from '../ArkClass';
 import { ArkMethod } from '../ArkMethod';
 import { Decorator } from '../../base/Decorator';
-import { ArrayBindingPatternParameter, buildArkMethodFromArkClass, MethodParameter, ObjectBindingPatternParameter } from './ArkMethodBuilder';
+import {
+    ArrayBindingPatternParameter,
+    buildArkMethodFromArkClass,
+    MethodParameter,
+    ObjectBindingPatternParameter,
+} from './ArkMethodBuilder';
 import { buildNormalArkClassFromArkMethod } from './ArkClassBuilder';
 import { Builtin } from '../../common/Builtin';
 import { modifierKind2Enum } from '../ArkBaseModel';
@@ -288,12 +293,13 @@ export function buildParameters(params: ts.NodeArray<ParameterDeclaration>, arkI
 
         // initializer
         if (parameter.initializer) {
-            //TODO?
+            // For param with initializer, it is actually optional param. The cfgBuilder will do the last initializer things.
+            methodParameter.setOptional(true);
         }
 
         // dotDotDotToken
         if (parameter.dotDotDotToken) {
-            methodParameter.setDotDotDotToken(true);
+            methodParameter.setRestFlag(true);
         }
 
         // modifiers

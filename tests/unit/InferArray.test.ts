@@ -17,7 +17,7 @@ import { assert, describe, it } from 'vitest';
 import path from 'path';
 import {
     AliasType,
-    ArkAssignStmt,
+    ArkAssignStmt, ArkClass,
     ArkInstanceFieldRef,
     ArkInvokeStmt,
     ArkNamespace,
@@ -137,8 +137,10 @@ describe("Infer Array Test", () => {
         const fileId = new FileSignature(projectScene.getProjectName(), 'demo.ts');
         const file = projectScene.getFile(fileId);
         const method = file?.getDefaultClass()?.getMethodWithName('testDoubleNamespace');
-        const stmt = method?.getCfg()?.getStmts().at(-2);
-        assert.equal(stmt?.toString(), 'staticinvoke <@inferType/demo.ts: outer.inner.TestClass.[static]request()>()');
+        const stmts = method?.getCfg()?.getStmts();
+        const stmt = stmts?.[stmts?.length - 2];
+        assert.isDefined(stmt);
+        assert.equal(stmt!.toString(), 'staticinvoke <@inferType/demo.ts: outer.inner.TestClass.[static]request()>()');
     })
 
     it('field case', () => {
@@ -338,5 +340,106 @@ describe("function Test", () => {
         if (stmts) {
             assert.equal(stmts[4].toString(), 'instanceinvoke player.<@etsSdk/api/@ohos.multimedia.media.d.ts: media.AVPlayer.on(\'stateChange\', @etsSdk/api/@ohos.multimedia.media.d.ts: media.%dflt.[static]%dflt()#OnAVPlayerStateChangeHandle)>(%0, %AM6$%AM5$matchOverride)');
         }
+    })
+
+    it('testArrayFrom', () => {
+        const fileId = new FileSignature(scene.getProjectName(), 'inferSample.ts');
+        const file = scene.getFile(fileId);
+        const locals = file?.getDefaultClass()?.getMethodWithName('testArrayFrom')?.getBody()?.getLocals();
+        assert.isDefined(locals)
+        assert.isTrue(locals?.get('arr1')?.getType() instanceof ArrayType);
+        assert.equal(locals?.get('arr2')?.getType().toString(), 'string[]');
+    })
+})
+
+describe("for Test without sdk", () => {
+    let config: SceneConfig = new SceneConfig();
+    config.buildFromProjectDir(path.join(__dirname, "../resources/cfg/loop"));
+    config.getOptions().enableBuiltIn = false;
+    let scene: Scene = new Scene();
+    scene.buildSceneFromProjectDir(config);
+    scene.inferTypes();
+    it('for case', () => {
+        const fileId = new FileSignature(scene.getProjectName(), 'LoopSample.ts');
+        const file = scene.getFile(fileId);
+        const item = file?.getDefaultClass()?.getMethodWithName('testFor')
+            ?.getBody()?.getLocals().get('item');
+        assert.isDefined(item);
+        if (item) {
+            assert.equal(item.getType().toString(), 'number');
+        }
+        assert.equal(file?.getDefaultClass()?.getMethodWithName('testFor')
+            ?.getCfg()?.getStmts()?.[10].toString(), '%4 = %2.<@ES2015/BuiltinClass: IteratorResult.value>')
+    })
+
+    it('while case', () => {
+        const fileId = new FileSignature(scene.getProjectName(), 'LoopSample.ts');
+        const file = scene.getFile(fileId);
+        const item = file?.getDefaultClass()?.getMethodWithName('testWhile')
+            ?.getBody()?.getLocals().get('item');
+        assert.isDefined(item);
+        if (item) {
+            assert.equal(item.getType().toString(), 'number');
+        }
+        assert.equal(file?.getDefaultClass()?.getMethodWithName('testFor')
+            ?.getCfg()?.getStmts()?.[10].toString(), '%4 = %2.<@ES2015/BuiltinClass: IteratorResult.value>')
+    })
+
+})
+
+describe("for Test with sdk", () => {
+    let config: SceneConfig = new SceneConfig();
+    config.buildFromProjectDir(path.join(__dirname, "../resources/cfg/loop"));
+    config.getOptions().enableBuiltIn = true;
+    let scene: Scene = new Scene();
+    scene.buildSceneFromProjectDir(config);
+    scene.inferTypes();
+    it('for case', () => {
+        const fileId = new FileSignature(scene.getProjectName(), 'LoopSample.ts');
+        const file = scene.getFile(fileId);
+        const item = file?.getDefaultClass()?.getMethodWithName('testFor')
+            ?.getBody()?.getLocals().get('item');
+        assert.isDefined(item);
+        if (item) {
+            assert.equal(item.getType().toString(), 'number');
+        }
+        assert.equal(file?.getDefaultClass()?.getMethodWithName('testFor')
+            ?.getCfg()?.getStmts()?.[10].toString(), '%4 = %2.<@built-in/lib.es2015.iterable.d.ts: IteratorYieldResult.value>')
+    })
+
+    it('while case', () => {
+        const fileId = new FileSignature(scene.getProjectName(), 'LoopSample.ts');
+        const file = scene.getFile(fileId);
+        const item = file?.getDefaultClass()?.getMethodWithName('testWhile')
+            ?.getBody()?.getLocals().get('item');
+        assert.isDefined(item);
+        if (item) {
+            assert.equal(item.getType().toString(), 'number');
+        }
+        assert.equal(file?.getDefaultClass()?.getMethodWithName('testWhile')
+            ?.getCfg()?.getStmts()?.[11].toString(), 'item = next.<@built-in/lib.es2015.iterable.d.ts: IteratorYieldResult.value>')
+    })
+})
+
+describe("Test built in version", () => {
+
+    it('version 2017 case', () => {
+        let config: SceneConfig = new SceneConfig();
+        config.buildFromProjectDir('./tests/resources/dependency/exampleProject/DependencyTest1');
+        config.getOptions().enableBuiltIn = true;
+        let scene: Scene = new Scene();
+        scene.buildSceneFromProjectDir(config);
+        scene.inferTypes();
+        assert.isNull((scene.getSdkGlobal('Promise') as ArkClass).getMethodWithName('any'));
+    })
+
+    it('version 2021 case', () => {
+        let config: SceneConfig = new SceneConfig();
+        config.buildFromProjectDir('./tests/resources/dependency/exampleProject/DependencyTest');
+        config.getOptions().enableBuiltIn = true;
+        let scene: Scene = new Scene();
+        scene.buildSceneFromProjectDir(config);
+        scene.inferTypes();
+        assert.isNotNull((scene.getSdkGlobal('Promise') as ArkClass).getMethodWithName('any'));
     })
 })

@@ -18,8 +18,11 @@ import { UnknownType } from '../../core/base/Type';
 import { CallGraphNode, CallGraphNodeKind } from '../model/CallGraph';
 import { PointerAnalysis } from '../pointerAnalysis/PointerAnalysis';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
+import { Local } from '../../core/base/Local';
+import { ArkThisRef } from '../../core/base/Ref';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'PTA');
+const LABEL_WIDTH = 55;
 
 abstract class StatTraits {
     TotalTime: number = 0;
@@ -91,6 +94,43 @@ export class PTAStat extends StatTraits {
     }
 
     private getInferedStat(): void {
+        let dm = this.pta.getTypeDiffMap();
+        
+        for (let [v] of dm) {
+            if (v instanceof Local) {
+                if (v.getName() === 'this') {
+                    continue;
+                }
+
+                let s = v.getDeclaringStmt();
+                if (s instanceof ArkAssignStmt && 
+                    s.getLeftOp() instanceof Local && 
+                    (s.getLeftOp() as Local).getName() === 'this' && 
+                    s.getRightOp() instanceof ArkThisRef) {
+                    continue;
+                }
+
+                if (v.getType() instanceof UnknownType) {
+                    this.numInferedUnknownValue++;
+                } else {
+                    this.numInferedDiffTypeValue++;
+                }
+            } else {
+                if (v.getType() instanceof UnknownType) {
+                    this.numInferedUnknownValue++;
+                } else {
+                    this.numInferedDiffTypeValue++;
+                }
+            }
+        }
+
+        this.getNotInferredUnknownStat();
+    }
+
+    private getNotInferredUnknownStat(): void {
+        let inferred = new Set(this.pta.getTypeDiffMap().keys());
+        let visited = new Set();
+        
         let stmtStat = (s: Stmt): void => {
             if (!(s instanceof ArkAssignStmt)) {
                 return;
@@ -102,30 +142,16 @@ export class PTAStat extends StatTraits {
             }
             visited.add(lop);
 
-            if (inferred.includes(lop)) {
-                if (lop.getType() instanceof UnknownType) {
-                    this.numInferedUnknownValue++;
-                } else {
-                    this.numInferedDiffTypeValue++;
-                }
-            } else {
-                if (lop.getType() instanceof UnknownType) {
-                    this.numNotInferedUnknownValue++;
-                }
+            if (!inferred.has(lop) && lop.getType() instanceof UnknownType) {
+                this.numNotInferedUnknownValue++;
             }
             this.totalValuesInVisitedFunc++;
         };
 
-        let inferred = Array.from(this.pta.getTypeDiffMap().keys());
-        let visited = new Set();
-
         let cg = this.pta.getCallGraph();
         this.pta.getHandledFuncs().forEach(funcID => {
             let f = cg.getArkMethodByFuncID(funcID);
-            f
-                ?.getCfg()
-                ?.getStmts()
-                .forEach(s => stmtStat(s));
+            f?.getCfg()?.getStmts().forEach(s => stmtStat(s));
         });
     }
 
@@ -145,24 +171,24 @@ export class PTAStat extends StatTraits {
     }
 
     public getStat(): string {
-        // TODO: get PAG stat and CG stat
-        let output: string;
-        output = '==== Pointer analysis Statictics: ====\n';
-        output = output + `Processed address\t${this.numProcessedAddr}\n`;
-        output = output + `Processed copy\t\t${this.numProcessedCopy}\n`;
-        output = output + `Processed load\t\t${this.numProcessedLoad}\n`;
-        output = output + `Processed write\t\t${this.numProcessedWrite}\n`;
-        output = output + `Real write\t\t${this.numRealWrite}\n`;
-        output = output + `Real load\t\t${this.numRealLoad}\n`;
-        output = output + `Processed This\t\t${this.numProcessedThis}\n\n`;
-        output = output + `Unhandled function\t${this.numUnhandledFun}\n`;
-        output = output + `Total values in visited function\t${this.totalValuesInVisitedFunc}\n`;
-        output = output + `Infered Value unknown+different type\t${this.numInferedUnknownValue}+${this.numInferedDiffTypeValue}\n\n`;
-        output = output + `Total Time\t\t${this.TotalTime} S\n`;
-        output = output + `Total iterator Times\t${this.iterTimes}\n`;
-        output = output + `RSS used\t\t${this.rssUsed.toFixed(3)} Mb\n`;
-        output = output + `Heap used\t\t${this.heapUsed.toFixed(3)} Mb\n`;
-        return output;
+        const title = ' Pointer Analysis Statistics ';
+        const padding = '='.repeat((LABEL_WIDTH - title.length) / 2);
+
+        return `${padding}${title}${padding}
+${'Processed address'.padEnd(LABEL_WIDTH)}${this.numProcessedAddr}
+${'Processed copy'.padEnd(LABEL_WIDTH)}${this.numProcessedCopy}
+${'Processed load'.padEnd(LABEL_WIDTH)}${this.numProcessedLoad}
+${'Processed write'.padEnd(LABEL_WIDTH)}${this.numProcessedWrite}
+${'Real write'.padEnd(LABEL_WIDTH)}${this.numRealWrite}
+${'Real load'.padEnd(LABEL_WIDTH)}${this.numRealLoad}
+${'Processed This'.padEnd(LABEL_WIDTH)}${this.numProcessedThis}
+${'Unhandled function'.padEnd(LABEL_WIDTH)}${this.numUnhandledFun}
+${'Total values in visited function'.padEnd(LABEL_WIDTH)}${this.totalValuesInVisitedFunc}
+${'Infered Value unknown+different type'.padEnd(LABEL_WIDTH)}${this.numInferedUnknownValue}+${this.numInferedDiffTypeValue}
+${'Total Time'.padEnd(LABEL_WIDTH)}${this.TotalTime} S
+${'Total iterator Times'.padEnd(LABEL_WIDTH)}${this.iterTimes}
+${'RSS used'.padEnd(LABEL_WIDTH)}${this.rssUsed.toFixed(3)} Mb
+${'Heap used'.padEnd(LABEL_WIDTH)}${this.heapUsed.toFixed(3)} Mb`;
     }
 
     public printStat(): void {
@@ -176,12 +202,13 @@ export class PAGStat extends StatTraits {
     numTotalNode: number = 0;
 
     public getStat(): string {
-        let output: string;
-        output = '==== PAG Statictics: ====\n';
-        output = output + `Dynamic call\t\t${this.numDynamicCall}\n`;
-        output = output + `Total function handled\t${this.numTotalFunction}\n`;
-        output = output + `Total PAG Nodes\t\t${this.numTotalNode}\n`;
-        return output;
+        const title = ' PAG Statistics ';
+        const padding = '='.repeat((LABEL_WIDTH - title.length) / 2);
+
+        return `${padding}${title}${padding}
+${`PAG Dynamic call`.padEnd(LABEL_WIDTH)}${this.numDynamicCall}
+${`Total function handled`.padEnd(LABEL_WIDTH)}${this.numTotalFunction}
+${`Total PAG Nodes`.padEnd(LABEL_WIDTH)}${this.numTotalNode}`;
     }
 
     public printStat(): void {
@@ -228,15 +255,16 @@ export class CGStat extends StatTraits {
     }
 
     public getStat(): string {
-        let output: string;
-        output = '==== CG Statictics: ====\n';
-        output = output + `CG construction Total Time\t\t${this.TotalTime} S\n`;
-        output = output + `Real function\t\t${this.numReal}\n`;
-        output = output + `Intrinsic function\t${this.numIntrinsic}\n`;
-        output = output + `Constructor function\t${this.numConstructor}\n`;
-        output = output + `Virtual function\t\t${this.numVirtual}\n`;
-        output = output + `Blank function\t\t${this.numBlank}\n`;
-        output = output + `Total\t\t\t${this.numTotalNode}\n`;
-        return output;
+        const title = ' CG Statistics ';
+        const padding = '='.repeat((LABEL_WIDTH - title.length) / 2);
+
+        return `${padding}${title}${padding}
+${'CG construction Total Time'.padEnd(LABEL_WIDTH)}${this.TotalTime} S
+${'Real function'.padEnd(LABEL_WIDTH)}${this.numReal}
+${'Intrinsic function'.padEnd(LABEL_WIDTH)}${this.numIntrinsic}
+${'Constructor function'.padEnd(LABEL_WIDTH)}${this.numConstructor}
+${'Virtual function'.padEnd(LABEL_WIDTH)}${this.numVirtual}
+${'Blank function'.padEnd(LABEL_WIDTH)}${this.numBlank}
+${'Total'.padEnd(LABEL_WIDTH)}${this.numTotalNode}`;
     }
 }

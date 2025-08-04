@@ -21,6 +21,7 @@ const SourceBasicTest_CASE1_EXPECT = `class Person {
   x: number = 0;
   public age: number;
   constructor(age: number) {
+    this.age = age;
     return this;
   }
   growOld: () => void  = (): void => {

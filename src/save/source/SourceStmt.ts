@@ -14,10 +14,31 @@
  */
 
 import { Constant } from '../../core/base/Constant';
-import { ArkInstanceInvokeExpr, ArkNewArrayExpr, ArkNewExpr, ArkStaticInvokeExpr, NormalBinaryOperator } from '../../core/base/Expr';
+import {
+    ArkInstanceInvokeExpr,
+    ArkNewArrayExpr,
+    ArkNewExpr,
+    ArkStaticInvokeExpr,
+    NormalBinaryOperator
+} from '../../core/base/Expr';
 import { Local } from '../../core/base/Local';
-import { ArkArrayRef, ArkInstanceFieldRef, ArkParameterRef, ArkStaticFieldRef, ClosureFieldRef } from '../../core/base/Ref';
-import { ArkAliasTypeDefineStmt, ArkAssignStmt, ArkIfStmt, ArkInvokeStmt, ArkReturnStmt, ArkReturnVoidStmt, ArkThrowStmt, Stmt } from '../../core/base/Stmt';
+import {
+    ArkArrayRef,
+    ArkInstanceFieldRef,
+    ArkParameterRef,
+    ArkStaticFieldRef,
+    ClosureFieldRef
+} from '../../core/base/Ref';
+import {
+    ArkAliasTypeDefineStmt,
+    ArkAssignStmt,
+    ArkIfStmt,
+    ArkInvokeStmt,
+    ArkReturnStmt,
+    ArkReturnVoidStmt,
+    ArkThrowStmt,
+    Stmt
+} from '../../core/base/Stmt';
 import { AliasType, ClassType, Type } from '../../core/base/Type';
 import { Value } from '../../core/base/Value';
 import { BasicBlock } from '../../core/graph/BasicBlock';
@@ -136,6 +157,7 @@ enum AssignStmtDumpType {
     NORMAL,
     TEMP_REPLACE,
     COMPONENT_CREATE,
+    PARAM_REPLACE,
 }
 
 export class SourceAssignStmt extends SourceStmt {
@@ -155,10 +177,15 @@ export class SourceAssignStmt extends SourceStmt {
         this.leftOp = (this.original as ArkAssignStmt).getLeftOp();
         this.rightOp = (this.original as ArkAssignStmt).getRightOp();
 
+        if (this.rightOp instanceof ArkParameterRef) {
+            this.setText('');
+            this.dumpType = AssignStmtDumpType.PARAM_REPLACE;
+            return;
+        }
+
         if (
             (this.leftOp instanceof Local && this.leftOp.getName() === 'this') ||
             (this.rightOp instanceof Constant && this.rightOp.getValue() === 'undefined') ||
-            this.rightOp instanceof ArkParameterRef ||
             this.rightOp instanceof ClosureFieldRef
         ) {
             this.setText('');
@@ -166,7 +193,7 @@ export class SourceAssignStmt extends SourceStmt {
             return;
         }
 
-        this.leftCode = this.transformer.valueToString(this.leftOp);
+        this.leftCode = this.transformer.valueToString(this.leftOp, true);
 
         if (this.leftOp instanceof Local && this.rightOp instanceof ArkNewExpr) {
             this.transferRightNewExpr();
@@ -176,8 +203,7 @@ export class SourceAssignStmt extends SourceStmt {
             this.transferRightComponentCreate();
         } else if (this.rightOp instanceof ArkInstanceInvokeExpr && PrinterUtils.isConstructorInvoke(this.rightOp)) {
             this.transferConstructorInvokeExpr(this.rightOp);
-        } else if (this.rightOp instanceof ArkInstanceInvokeExpr && PrinterUtils.isComponentAttributeInvoke(this.rightOp)
-        ) {
+        } else if (this.rightOp instanceof ArkInstanceInvokeExpr && PrinterUtils.isComponentAttributeInvoke(this.rightOp)) {
             this.transferRightComponentAttribute();
         } else {
             this.rightCode = this.transformer.valueToString(this.rightOp);
@@ -213,6 +239,10 @@ export class SourceAssignStmt extends SourceStmt {
     }
 
     protected beforeDump(): void {
+        if (this.dumpType === AssignStmtDumpType.PARAM_REPLACE && this.leftOp instanceof Local) {
+            this.context.defineLocal(this.leftOp);
+        }
+
         if (this.dumpType !== AssignStmtDumpType.TEMP_REPLACE) {
             return;
         }
@@ -390,8 +420,8 @@ export class SourceInvokeStmt extends SourceStmt {
                 isAttr = PrinterUtils.isComponentIfElseInvoke(invokeExpr);
             }
         } else if (invokeExpr instanceof ArkInstanceInvokeExpr) {
-            code = this.transformer.instanceInvokeExprToString(invokeExpr);
             isAttr = PrinterUtils.isComponentAttributeInvoke(invokeExpr);
+            code = this.transformer.instanceInvokeExprToString(invokeExpr, isAttr);
         }
 
         if (code.length > 0 && !isAttr) {
@@ -488,10 +518,6 @@ export class SourceWhileStmt extends SourceStmt {
         }
 
         let temp2 = done.getBase();
-        if (!(temp2 instanceof Local)) {
-            return false;
-        }
-
         stmt = temp2.getDeclaringStmt();
         if (!(stmt instanceof ArkAssignStmt)) {
             return false;
@@ -507,10 +533,6 @@ export class SourceWhileStmt extends SourceStmt {
         }
 
         let temp1 = next.getBase();
-        if (!(temp1 instanceof Local)) {
-            return false;
-        }
-
         stmt = temp1.getDeclaringStmt();
         if (!(stmt instanceof ArkAssignStmt)) {
             return false;
@@ -521,10 +543,14 @@ export class SourceWhileStmt extends SourceStmt {
             return false;
         }
 
-        if (iterator.getMethodSignature().getMethodSubSignature().getMethodName() !== 'iterator') {
+        if (iterator.getMethodSignature().getMethodSubSignature().getMethodName() !== 'Symbol.iterator') {
             return false;
         }
 
+        return this.getForOf2ts(temp3 as Local, temp1, iterator);
+    }
+
+    private getForOf2ts(temp3: Local, temp1: Local, iterator: ArkInstanceInvokeExpr): boolean {
         let successors = this.block.getSuccessors();
         if (successors.length !== 2) {
             return false;
@@ -535,7 +561,7 @@ export class SourceWhileStmt extends SourceStmt {
             return false;
         }
 
-        stmt = stmts[1];
+        let stmt = stmts[1];
         if (!(stmt instanceof ArkAssignStmt)) {
             return false;
         }
@@ -870,7 +896,7 @@ export class SourceCatchStmt extends SourceStmt {
 
     public transfer2ts(): void {
         if (this.block) {
-            let stmt = this.block!.getStmts()[0];
+            let stmt = this.block!.getHead()!;
             if (stmt instanceof ArkAssignStmt) {
                 if (stmt.getLeftOp() instanceof Local) {
                     let name = (stmt.getLeftOp() as Local).getName();

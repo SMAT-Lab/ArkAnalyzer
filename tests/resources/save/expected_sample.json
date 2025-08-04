@@ -2236,7 +2236,7 @@
                 "type": {
                   "_": "NumberType"
                 },
-                "isOptional": false,
+                "isOptional": true,
                 "isRest": false
               }
             ],
@@ -2293,7 +2293,7 @@
               "blocks": [
                 {
                   "id": 0,
-                  "successors": [],
+                  "successors": [1, 2],
                   "predecessors": [],
                   "stmts": [
                     {
@@ -2416,6 +2416,37 @@
                         "args": []
                       }
                     },
+                    {
+                      "_": "IfStmt",
+                      "condition": {
+                        "_": "ConditionExpr",
+                        "left": {
+                          "_": "Local",
+                          "name": "grade",
+                          "type": {
+                            "_": "NumberType"
+                          }
+                        },
+                        "op": "==",
+                        "right": {
+                          "_": "Constant",
+                          "type": {
+                            "_": "UndefinedType"
+                          },
+                          "value": "undefined"
+                        },
+                        "type": {
+                          "_": "BooleanType"
+                        }
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": 1,
+                  "successors": [],
+                  "predecessors": [0, 2],
+                  "stmts": [
                     {
                       "_": "AssignStmt",
                       "left": {
@@ -2558,6 +2589,30 @@
                             "declaringNamespace": null
                           }
                         }
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": 2,
+                  "successors": [1],
+                  "predecessors": [0],
+                  "stmts": [
+                    {
+                      "_": "AssignStmt",
+                      "left": {
+                        "_": "Local",
+                        "name": "grade",
+                        "type": {
+                          "_": "NumberType"
+                        }
+                      },
+                      "right": {
+                        "_": "Constant",
+                        "type": {
+                          "_": "NumberType"
+                        },
+                        "value": "1"
                       }
                     }
                   ]
@@ -4273,7 +4328,22 @@
                     {
                       "_": "CallStmt",
                       "expr": {
-                        "_": "StaticCallExpr",
+                        "_": "InstanceCallExpr",
+                        "instance": {
+                          "_": "Local",
+                          "name": "this",
+                          "type": {
+                            "_": "ClassType",
+                            "signature": {
+                              "name": "Circle",
+                              "declaringFile": {
+                                "projectName": "save",
+                                "fileName": "sample.ts"
+                              },
+                              "declaringNamespace": null
+                            }
+                          }
+                        },
                         "method": {
                           "declaringClass": {
                             "name": "Shape",
@@ -4283,10 +4353,18 @@
                             },
                             "declaringNamespace": null
                           },
-                          "name": "super",
+                          "name": "constructor",
                           "parameters": [],
                           "returnType": {
-                            "_": "UnknownType"
+                            "_": "ClassType",
+                            "signature":{
+                              "name": "Shape",
+                              "declaringFile": {
+                                "projectName": "save",
+                                "fileName": "sample.ts"
+                              },
+                              "declaringNamespace": null
+                            }
                           }
                         },
                         "args": []
@@ -4432,7 +4510,7 @@
               {
                 "name": "%0",
                 "type": {
-                  "_": "UnknownType"
+                  "_": "NumberType"
                 }
               },
               {
@@ -4444,7 +4522,7 @@
               {
                 "name": "%2",
                 "type": {
-                  "_": "UnknownType"
+                  "_": "NumberType"
                 }
               },
               {
@@ -4456,7 +4534,7 @@
               {
                 "name": "%4",
                 "type": {
-                  "_": "UnknownType"
+                  "_": "NumberType"
                 }
               }
             ],
@@ -4505,7 +4583,7 @@
                         "_": "Local",
                         "name": "%0",
                         "type": {
-                          "_": "UnknownType"
+                          "_": "NumberType"
                         }
                       },
                       "right": {
@@ -4514,21 +4592,29 @@
                           "_": "Local",
                           "name": "Math",
                           "type": {
-                            "_": "UnknownType"
+                            "_": "ClassType",
+                            "signature": {
+                              "name": "Math",
+                              "declaringFile": {
+                                "projectName": "built-in",
+                                "fileName": "lib.es5.d.ts"
+                              },
+                              "declaringNamespace": null
+                            }
                           }
                         },
                         "field": {
                           "declaringClass": {
-                            "name": "",
+                            "name": "Math",
                             "declaringFile": {
-                              "projectName": "%unk",
-                              "fileName": "%unk"
+                              "projectName": "built-in",
+                              "fileName": "lib.es5.d.ts"
                             },
                             "declaringNamespace": null
                           },
                           "name": "PI",
                           "type": {
-                            "_": "UnknownType"
+                            "_": "NumberType"
                           }
                         }
                       }
@@ -4581,7 +4667,7 @@
                         "_": "Local",
                         "name": "%2",
                         "type": {
-                          "_": "UnknownType"
+                          "_": "NumberType"
                         }
                       },
                       "right": {
@@ -4591,7 +4677,7 @@
                           "_": "Local",
                           "name": "%0",
                           "type": {
-                            "_": "UnknownType"
+                            "_": "NumberType"
                           }
                         },
                         "right": {
@@ -4651,7 +4737,7 @@
                         "_": "Local",
                         "name": "%4",
                         "type": {
-                          "_": "UnknownType"
+                          "_": "NumberType"
                         }
                       },
                       "right": {
@@ -4661,7 +4747,7 @@
                           "_": "Local",
                           "name": "%2",
                           "type": {
-                            "_": "UnknownType"
+                            "_": "NumberType"
                           }
                         },
                         "right": {
@@ -4679,7 +4765,7 @@
                         "_": "Local",
                         "name": "%4",
                         "type": {
-                          "_": "UnknownType"
+                          "_": "NumberType"
                         }
                       }
                     }
@@ -4726,13 +4812,13 @@
               {
                 "name": "%0",
                 "type": {
-                  "_": "UnknownType"
+                  "_": "NumberType"
                 }
               },
               {
                 "name": "%1",
                 "type": {
-                  "_": "UnknownType"
+                  "_": "NumberType"
                 }
               },
               {
@@ -4744,7 +4830,7 @@
               {
                 "name": "%3",
                 "type": {
-                  "_": "UnknownType"
+                  "_": "NumberType"
                 }
               }
             ],
@@ -4793,7 +4879,7 @@
                         "_": "Local",
                         "name": "%0",
                         "type": {
-                          "_": "UnknownType"
+                          "_": "NumberType"
                         }
                       },
                       "right": {
@@ -4802,21 +4888,29 @@
                           "_": "Local",
                           "name": "Math",
                           "type": {
-                            "_": "UnknownType"
+                            "_": "ClassType",
+                            "signature": {
+                              "name": "Math",
+                              "declaringFile": {
+                                "projectName": "built-in",
+                                "fileName": "lib.es5.d.ts"
+                              },
+                              "declaringNamespace": null
+                            }
                           }
                         },
                         "field": {
                           "declaringClass": {
-                            "name": "",
+                            "name": "Math",
                             "declaringFile": {
-                              "projectName": "%unk",
-                              "fileName": "%unk"
+                              "projectName": "built-in",
+                              "fileName": "lib.es5.d.ts"
                             },
                             "declaringNamespace": null
                           },
                           "name": "PI",
                           "type": {
-                            "_": "UnknownType"
+                            "_": "NumberType"
                           }
                         }
                       }
@@ -4827,7 +4921,7 @@
                         "_": "Local",
                         "name": "%1",
                         "type": {
-                          "_": "UnknownType"
+                          "_": "NumberType"
                         }
                       },
                       "right": {
@@ -4844,7 +4938,7 @@
                           "_": "Local",
                           "name": "%0",
                           "type": {
-                            "_": "UnknownType"
+                            "_": "NumberType"
                           }
                         }
                       }
@@ -4897,7 +4991,7 @@
                         "_": "Local",
                         "name": "%3",
                         "type": {
-                          "_": "UnknownType"
+                          "_": "NumberType"
                         }
                       },
                       "right": {
@@ -4907,7 +5001,7 @@
                           "_": "Local",
                           "name": "%1",
                           "type": {
-                            "_": "UnknownType"
+                            "_": "NumberType"
                           }
                         },
                         "right": {
@@ -4925,7 +5019,7 @@
                         "_": "Local",
                         "name": "%3",
                         "type": {
-                          "_": "UnknownType"
+                          "_": "NumberType"
                         }
                       }
                     }

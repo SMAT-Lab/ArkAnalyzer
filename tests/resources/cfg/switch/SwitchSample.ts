@@ -189,3 +189,14 @@ function case13(): void {
     }
     b = a > 1 ? 12 : 13;
 }
+
+function case14(): void {
+    let a = 0;
+    switch (a) {
+        case 1: 
+            return;
+        case 2:
+            return;
+    }
+    a = 1;
+}

@@ -46,6 +46,23 @@ class ClassWithSuperConstructor extends ClassWithParamsConstructor {
 }
 
 class ClassWithParamProperty {
-    constructor(public x: number, private readonly y: number) {
+    static x: number = 456;
+    y: string = 'abc';
+
+    constructor(
+        public a: number = 123,
+        private readonly b: string,
+        protected c: boolean,
+        e: string = 'abc',
+        public d?: string,
+    ) {
+        console.log('this is constructor method');
+    }
+}
+
+export class O {
+    o: string = 'o';
+
+    constructor() {
     }
 }

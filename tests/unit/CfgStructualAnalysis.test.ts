@@ -27,6 +27,12 @@ import { describe, expect, it } from 'vitest';
 import { AbstractFlowGraph } from '../../src/utils/CfgStructualAnalysis';
 import { ValueUtil } from '../../src/core/common/ValueUtil';
 
+function createStmtForBasicBlock(bb: BasicBlock, cfg: Cfg): void {
+    const stmt = new ArkReturnVoidStmt();
+    stmt.setCfg(cfg);
+    bb.addStmt(stmt);
+}
+
 describe('CfgStructualAnalysisTest', () => {
     it('case1: structual analysis', () => {
         let cfg = new Cfg();
@@ -45,34 +51,42 @@ describe('CfgStructualAnalysisTest', () => {
 
         bbs[0].addSuccessorBlock(bbs[1]);
 
+        createStmtForBasicBlock(bbs[1], cfg);
         bbs[1].addPredecessorBlock(bbs[0]);
         bbs[1].addSuccessorBlock(bbs[2]);
         bbs[1].addSuccessorBlock(bbs[3]);
 
+        createStmtForBasicBlock(bbs[2], cfg);
         bbs[2].addPredecessorBlock(bbs[1]);
         bbs[2].addSuccessorBlock(bbs[3]);
         bbs[2].addSuccessorBlock(bbs[2]);
         bbs[2].addPredecessorBlock(bbs[2]);
 
+        createStmtForBasicBlock(bbs[3], cfg);
         bbs[3].addPredecessorBlock(bbs[1]);
         bbs[3].addPredecessorBlock(bbs[2]);
         bbs[3].addSuccessorBlock(bbs[4]);
         bbs[3].addSuccessorBlock(bbs[5]);
 
+        createStmtForBasicBlock(bbs[4], cfg);
         bbs[4].addPredecessorBlock(bbs[3]);
         bbs[4].addSuccessorBlock(bbs[8]);
 
+        createStmtForBasicBlock(bbs[5], cfg);
         bbs[5].addPredecessorBlock(bbs[3]);
         bbs[5].addSuccessorBlock(bbs[6]);
         bbs[5].addSuccessorBlock(bbs[7]);
 
+        createStmtForBasicBlock(bbs[6], cfg);
         bbs[6].addPredecessorBlock(bbs[5]);
         bbs[6].addSuccessorBlock(bbs[7]);
 
+        createStmtForBasicBlock(bbs[7], cfg);
         bbs[7].addPredecessorBlock(bbs[5]);
         bbs[7].addPredecessorBlock(bbs[6]);
         bbs[7].addSuccessorBlock(bbs[8]);
 
+        createStmtForBasicBlock(bbs[8], cfg);
         bbs[8].addPredecessorBlock(bbs[4]);
         bbs[8].addPredecessorBlock(bbs[7]);
 

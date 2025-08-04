@@ -19,7 +19,7 @@ import { CallGraph } from '../../src/callgraph/model/CallGraph';
 import { CallGraphBuilder } from '../../src/callgraph/model/builder/CallGraphBuilder';
 import { Pag } from '../../src/callgraph/pointerAnalysis/Pag'
 import { PointerAnalysis } from '../../src/callgraph/pointerAnalysis/PointerAnalysis'
-import { PtaAnalysisScale, PointerAnalysisConfig } from '../../src/callgraph/pointerAnalysis/PointerAnalysisConfig';
+import { PtaAnalysisScale, PointerAnalysisConfig, ContextType } from '../../src/callgraph/pointerAnalysis/PointerAnalysisConfig';
 import { PtsCollectionType } from '../../src/callgraph/pointerAnalysis/PtsDS';
 import { Local } from '../../src/core/base/Local';
 import { ArkThisRef } from '../../src/core/base/Ref';
@@ -88,6 +88,7 @@ function printTypeDiff(pta: PointerAnalysis) {
 
     }
 }
+
 function runProject(output: string) {
     config.buildFromJson('./tests/resources/pta/PointerAnalysisTestConfig.json');
     let projectScene: Scene = new Scene();
@@ -102,7 +103,7 @@ function runProject(output: string) {
 
 
 function runDir(output: string) {
-    config.buildFromProjectDir('./tests/resources/pta/CallParam');
+    config.buildFromProjectDir('./tests/unit/save');
     config.getSdksObj().push(sdk);
 
     let projectScene: Scene = new Scene();
@@ -116,7 +117,7 @@ function runDir(output: string) {
     let pag = new Pag();
     let debugfunc = cg.getEntries().filter(funcID => cg.getArkMethodByFuncID(funcID)?.getName() === 'main');
 
-    let ptaConfig = PointerAnalysisConfig.create(2, output, true, true, true, PtaAnalysisScale.WholeProgram, PtsCollectionType.BitVector)
+    let ptaConfig = PointerAnalysisConfig.create(2, output, true, true, true, PtaAnalysisScale.WholeProgram, PtsCollectionType.BitVector, ContextType.CallSite)
     let pta = new PointerAnalysis(pag, cg, projectScene, ptaConfig)
     pta.setEntries(debugfunc);
     pta.start();
@@ -148,18 +149,18 @@ function runMethod(output: string): void {
     PointerAnalysis.pointerAnalysisForMethod(projectScene, cg.getArkMethodByFuncID(debugfunc[0]) as ArkMethod, ptaConfig);
 }
 
-let type = 2;
+let type = 1;
 
 switch (type) {
     case 1:
-        runDir('./out');
+        runDir('./out/dir');
         break;
 
     case 2:
-        runMethod('./out');
+        runMethod('./out/method');
         break;
 
     case 3:
-        runProject('./out');
+        runProject('./out/project');
         break;
 }

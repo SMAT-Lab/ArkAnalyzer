@@ -18,7 +18,7 @@ import { describe, it, expect } from 'vitest';
 import { SceneConfig, Scene, CallGraph, CallGraphBuilder, Pag, PointerAnalysis, PointerAnalysisConfig } from '../../../src';
 import { Sdk } from '../../../src/Config';
 import { PtsCollectionType } from '../../../src/callgraph/pointerAnalysis/PtsDS';
-import { PtaAnalysisScale } from '../../../src/callgraph/pointerAnalysis/PointerAnalysisConfig';
+import { ContextType, PtaAnalysisScale } from '../../../src/callgraph/pointerAnalysis/PointerAnalysisConfig';
 
 let sdk: Sdk = {
     name: 'ohos',
@@ -42,7 +42,7 @@ function test(type: PtsCollectionType): PointerAnalysis {
     let pag = new Pag();
     let debugfunc = cg.getEntries().filter(funcID => cg.getArkMethodByFuncID(funcID)?.getName() === 'main');
 
-    let ptaConfig = PointerAnalysisConfig.create(2, './out', true, true, false, PtaAnalysisScale.WholeProgram, type);
+    let ptaConfig = PointerAnalysisConfig.create(2, './out', true, true, false, PtaAnalysisScale.WholeProgram, type, ContextType.CallSite);
     let pta = new PointerAnalysis(pag, cg, scene, ptaConfig);
     pta.setEntries(debugfunc);
     pta.start();

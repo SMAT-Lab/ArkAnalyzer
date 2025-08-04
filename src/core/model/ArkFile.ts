@@ -55,6 +55,7 @@ export enum Language {
  * @category core/model
  */
 export class ArkFile {
+
     private language: Language;
     private absoluteFilePath: string = '';
     private projectDir: string = '';
@@ -139,9 +140,9 @@ export class ArkFile {
      * @example
      * 1. Read source code based on file path.
 
-    ```typescript
-    let str = fs.readFileSync(arkFile.getFilePath(), 'utf8');
-    ```
+     ```typescript
+     let str = fs.readFileSync(arkFile.getFilePath(), 'utf8');
+     ```
      */
     public getFilePath(): string {
         return this.absoluteFilePath;

@@ -20,7 +20,7 @@ import { TypeInference } from '../common/TypeInference';
 import { ArkExport, ExportType } from '../model/ArkExport';
 import { ClassSignature, LocalSignature, MethodSignature } from '../model/ArkSignature';
 import { ArkSignatureBuilder } from '../model/builder/ArkSignatureBuilder';
-import { UNKNOWN_METHOD_NAME } from '../common/Const';
+import { NAME_PREFIX, UNKNOWN_METHOD_NAME } from '../common/Const';
 import { ModifierType } from '../model/ArkBaseModel';
 import { ArkMethod } from '../model/ArkMethod';
 import { ModelUtils } from '../common/ModelUtils';
@@ -53,7 +53,7 @@ export class Local implements Value, ArkExport {
         if (this.name === THIS_NAME && this.type instanceof UnknownType) {
             const declaringArkClass = arkMethod.getDeclaringArkClass();
             this.type = new ClassType(declaringArkClass.getSignature(), declaringArkClass.getRealTypes());
-        } else if (TypeInference.isUnclearType(this.type)) {
+        } else if (!this.name.startsWith(NAME_PREFIX) && TypeInference.isUnclearType(this.type)) {
             const type = TypeInference.inferBaseType(this.name, arkMethod.getDeclaringArkClass()) ??
                 ModelUtils.findDeclaredLocal(this, arkMethod)?.getType();
             if (type) {

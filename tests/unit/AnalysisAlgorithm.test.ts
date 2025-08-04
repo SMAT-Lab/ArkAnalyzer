@@ -15,16 +15,16 @@
 
 import {SceneConfig} from "../../src/Config";
 import {describe, it} from "vitest";
-import path from "path";
 import {Scene} from "../../src/Scene";
 import { CallGraph } from "../../src/callgraph/model/CallGraph";
 import { CallGraphBuilder } from "../../src/callgraph/model/builder/CallGraphBuilder";
 import { Pag } from "../../src/callgraph/pointerAnalysis/Pag";
 import { PointerAnalysis } from "../../src/callgraph/pointerAnalysis/PointerAnalysis";
-import { PointerAnalysisConfig } from "../../src/callgraph/pointerAnalysis/PointerAnalysisConfig";
+import { ContextType, PointerAnalysisConfig, PtaAnalysisScale } from "../../src/callgraph/pointerAnalysis/PointerAnalysisConfig";
+import { PtsCollectionType } from "../../src/callgraph/pointerAnalysis/PtsDS";
 
 let config: SceneConfig = new SceneConfig();
-config.buildFromProjectDir(path.join(__dirname, "../resources/save"));
+config.buildFromProjectDir('./tests/unit/save');
 let scene = new Scene();
 scene.buildSceneFromProjectDir(config);
 describe("PointerAnalysisAlgorithm Test", () => {
@@ -34,7 +34,7 @@ describe("PointerAnalysisAlgorithm Test", () => {
 
     let pag = new Pag();
     let entry = cg.getEntries()
-    let ptaConfig = PointerAnalysisConfig.create(2, './out', true, true)
+    let ptaConfig = PointerAnalysisConfig.create(2, './out', true, true, true, PtaAnalysisScale.WholeProgram, PtsCollectionType.BitVector, ContextType.CallSite)
     let pta = new PointerAnalysis(pag, cg, scene, ptaConfig)
     pta.setEntries(entry)
     it('normal case', () => {
