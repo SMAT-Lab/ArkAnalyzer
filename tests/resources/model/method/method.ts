@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -23,11 +23,14 @@ function testObjectTypeParam(obj: object): void {
 
 function outerFunction1(): void {
     innerFunction1();
+
     function innerFunction1(): void {
         console.log('This is nested function with function declaration.');
+
         function innerInnerFunction1(): void {
             console.log('This is nested function in nested function with function declaration.');
         }
+
         innerInnerFunction1();
     }
 }
@@ -40,7 +43,7 @@ function outerFunction2(): (param: string) => void {
 }
 
 function outerFunction3(): void {
-    const innerFunction3 = function(): void {
+    const innerFunction3 = function (): void {
         console.log('This is nested function with function expression.');
     };
     innerFunction3();
@@ -60,16 +63,19 @@ function outerFunction5(n: number): number {
         }
         return n * factorial(n - 1);
     }
+
     return factorial(n);
 }
 
 class NestedTestClass {
     public outerMethod(): () => void {
         innerFunction1();
+
         function innerFunction1(): void {
             console.log('innerFunction1');
         }
-        const innerFunction2 = function(): void {
+
+        const innerFunction2 = function (): void {
             console.log('innerFunction2');
         };
         const innerFunction3 = (): void => {
@@ -88,7 +94,8 @@ interface InterfaceA {
 }
 
 class ClassA {
-    optionalMethod?(): void {}
+    optionalMethod?(): void {
+    }
 }
 
 type MyType = {
@@ -100,3 +107,74 @@ const myObject: {
     requiredMethod(): void;
     optionalMethod?(): void;
 };
+
+function paramWithInitializer(a: string, x: number = 5, y = 'abc', z: number = x + 1): number {
+    console.log(a + y);
+    return (x + z);
+}
+
+function getA(): number {
+    return 1;
+}
+
+const condition = true;
+
+function paramWithComplicatedInitializer(a = getA(), b = condition ? 'true' : 'false', c: string): void {
+    console.log(a + b);
+}
+
+function paramInitializerWithIfBranch(a = 3): number {
+    if (a > 0) {
+        return a;
+    } else {
+        return -a;
+    }
+}
+
+function paramInitializerWithTernary(a = 3): number {
+    let b: number;
+    a > 0 ? b = a : b = -a;
+    return b;
+}
+
+function paramInitializerWithTryCatch(a = 3): void {
+    try {
+        console.log(a);
+    } catch (e) {
+        console.log(e);
+    }
+}
+
+function paramInitializerWithForLoop(a = 3): void {
+    for (let i = 0; i < a; i++) {
+        console.log(i);
+    }
+}
+
+function paramInitializerWithSwitch(a = 3): void {
+    switch (a) {
+        case 1:
+            console.log(a + 1);
+            break;
+        default:
+            console.log(a);
+    }
+
+}
+
+function returnFunc(): Function {
+    const nestedReturnFunc = (): void => {
+
+    };
+    return nestedReturnFunc;
+}
+
+function func(): Function {
+    return returnFunc;
+}
+
+let globalNumber = 2;
+
+function assign2Global(): void {
+    globalNumber = 3;
+}

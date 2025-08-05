@@ -84,8 +84,8 @@ export class BooleanConstant extends Constant {
 }
 
 export class NumberConstant extends Constant {
-    constructor(value: number) {
-        super(value.toString(), NumberType.getInstance());
+    constructor(value: string) {
+        super(value, NumberType.getInstance());
     }
 }
 

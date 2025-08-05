@@ -18,19 +18,21 @@ import { ArkIRTransformer, DummyStmt } from '../../common/ArkIRTransformer';
 import { ArkAssignStmt, Stmt } from '../../base/Stmt';
 import { Local } from '../../base/Local';
 import { IRUtils } from '../../common/IRUtils';
+import { BlockBuilder } from './CfgBuilder';
 
 /**
  * Builder for condition in CFG
  */
 export class ConditionBuilder {
-    public rebuildBlocksContainConditionalOperator(basicBlockSet: Set<BasicBlock>, isArkUIBuilder: boolean): void {
+    public rebuildBlocksContainConditionalOperator(blockBuilderToCfgBlock: Map<BlockBuilder, BasicBlock>,
+                                                   basicBlockSet: Set<BasicBlock>, isArkUIBuilder: boolean): void {
         if (isArkUIBuilder) {
             this.deleteDummyConditionalOperatorStmt(basicBlockSet);
             return;
         }
 
-        const currBasicBlocks = Array.from(basicBlockSet);
-        for (const currBasicBlock of currBasicBlocks) {
+        const blockPairsToSet: [BlockBuilder, BasicBlock][] = [];
+        for (const [currBlockBuilder, currBasicBlock] of blockBuilderToCfgBlock) {
             const stmtsInCurrBasicBlock = Array.from(currBasicBlock.getStmts());
             const stmtsCnt = stmtsInCurrBasicBlock.length;
             let conditionalOperatorEndPos = -1;
@@ -64,6 +66,10 @@ export class ConditionBuilder {
             }
             this.relinkPrevAndSuccOfBlockContainConditionalOperator(currBasicBlock, generatedTopBlock, generatedBottomBlocks);
             basicBlockSet.delete(currBasicBlock);
+            blockPairsToSet.push([currBlockBuilder, generatedTopBlock]);
+        }
+        for (const [currBlockBuilder, generatedTopBlock] of blockPairsToSet) {
+            blockBuilderToCfgBlock.set(currBlockBuilder, generatedTopBlock);
         }
     }
 
@@ -222,7 +228,7 @@ export class ConditionBuilder {
     }
 
     private removeUnnecessaryBlocksInConditionalOperator(bottomBlock: BasicBlock, allBlocks: Set<BasicBlock>): BasicBlock[] {
-        const firstStmtInBottom = bottomBlock.getStmts()[0];
+        const firstStmtInBottom = bottomBlock.getHead()!;
         if (!(firstStmtInBottom instanceof ArkAssignStmt)) {
             return [bottomBlock];
         }

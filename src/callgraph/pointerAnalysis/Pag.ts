@@ -23,15 +23,16 @@ import { Local } from '../../core/base/Local';
 import { GraphPrinter } from '../../save/GraphPrinter';
 import { PrinterBuilder } from '../../save/PrinterBuilder';
 import { Constant } from '../../core/base/Constant';
-import { FunctionType, UnclearReferenceType } from '../../core/base/Type';
-import { ClassSignature, FieldSignature, FileSignature, MethodSignature } from '../../core/model/ArkSignature';
-import { ContextID } from './Context';
+import { FunctionType } from '../../core/base/Type';
+import { MethodSignature } from '../../core/model/ArkSignature';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { GLOBAL_THIS_NAME } from '../../core/common/TSConst';
 import { ExportInfo } from '../../core/model/ArkExport';
-import { BuiltApiType, getBuiltInApiType, IsCollectionClass } from './PTAUtils';
+import { ARRAY_FIELD_SIGNATURE, BuiltApiType, getBuiltInApiType, IsCollectionClass, MAP_FIELD_SIGNATURE, SET_FIELD_SIGNATURE } from './PTAUtils';
 import { IPtsCollection } from './PtsDS';
 import { PointerAnalysisConfig } from './PointerAnalysisConfig';
+import { ContextID } from './context/Context';
+import { StorageType } from './plugins/StoragePlugin';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'PTA');
 export type PagNodeType = Value;
@@ -39,8 +40,6 @@ export type PagNodeType = Value;
 /*
  * Implementation of pointer-to assignment graph for pointer analysis
  */
-
-const DUMMY_PAG_NODE_ID = -1;
 
 export enum PagEdgeKind {
     Address,
@@ -50,18 +49,6 @@ export enum PagEdgeKind {
     This,
     Unknown,
     InterProceduralCopy,
-}
-
-export enum StorageType {
-    APP_STORAGE,
-    LOCAL_STORAGE,
-    Undefined,
-}
-
-export enum StorageLinkEdgeType {
-    Property2Local,
-    Local2Property,
-    TwoWay,
 }
 
 export class PagEdge extends BaseEdge {
@@ -461,8 +448,8 @@ export class PagStaticFieldNode extends PagNode {
 
 export class PagThisRefNode extends PagNode {
     pointToNode: NodeID[];
-    constructor(id: NodeID, thisRef: ArkThisRef) {
-        super(id, DUMMY_PAG_NODE_ID, thisRef, PagNodeKind.ThisRef);
+    constructor(id: NodeID, cid: ContextID | undefined = undefined, thisRef: ArkThisRef) {
+        super(id, cid, thisRef, PagNodeKind.ThisRef);
         this.pointToNode = [];
     }
 
@@ -481,6 +468,12 @@ export class PagArrayNode extends PagNode {
     constructor(id: NodeID, cid: ContextID | undefined = undefined, expr: ArkArrayRef, stmt?: Stmt) {
         super(id, cid, expr, PagNodeKind.LocalVar, stmt);
         this.base = expr.getBase();
+    }
+}
+
+export class PagConstantNode extends PagNode {
+    constructor(id: NodeID, cid: ContextID | undefined = undefined, constant: Constant, stmt?: Stmt) {
+        super(id, cid, constant, PagNodeKind.LocalVar, stmt);
     }
 }
 
@@ -590,8 +583,8 @@ export class PagFuncNode extends PagNode {
         return this.thisPt;
     }
 
-    public setCS(callsite: CallSite): void {
-        this.originCallSite = callsite;
+    public setCS(callSite: CallSite): void {
+        this.originCallSite = callSite;
     }
 
     public getCS(): CallSite {
@@ -709,30 +702,33 @@ export class Pag extends BaseExplicitGraph {
         }
     }
 
-    public getOrClonePagContainerFieldNode(basePt: NodeID, src?: PagArrayNode, base?: Local): PagInstanceFieldNode | undefined {
+    public getOrClonePagContainerFieldNode(basePt: NodeID, base: Local, className: string): PagInstanceFieldNode | undefined {
         let baseNode = this.getNode(basePt) as PagNode;
         if (baseNode instanceof PagNewContainerExprNode) {
             // check if Array Ref real node has been created or not, if not: create a real Array Ref node
             let existedNode = baseNode.getElementNode();
             let fieldNode!: PagNode;
+            let fieldRef!: ArkInstanceFieldRef;
             if (existedNode) {
                 return this.getNode(existedNode) as PagInstanceFieldNode;
             }
 
-            if (src) {
-                fieldNode = this.getOrClonePagNode(src, basePt);
-            } else if (base) {
-                const containerFieldSignature = new FieldSignature(
-                    'field',
-                    new ClassSignature('container', new FileSignature('container', 'lib.es2015.collection.d.ts')),
-                    new UnclearReferenceType('')
-                );
-                fieldNode = this.getOrClonePagNode(
-                    // TODO: cid check
-                    this.addPagNode(0, new ArkInstanceFieldRef(base, containerFieldSignature)),
-                    basePt
-                );
+            switch (className) {
+                case 'Array':
+                    fieldRef = new ArkInstanceFieldRef(base, ARRAY_FIELD_SIGNATURE);
+                    break;
+                case 'Set':
+                    fieldRef = new ArkInstanceFieldRef(base, SET_FIELD_SIGNATURE);
+                    break;
+                case 'Map':
+                    fieldRef = new ArkInstanceFieldRef(base, MAP_FIELD_SIGNATURE);
+                    break;
+                default:
+                    logger.error(`Error clone array field node ${className}`);
+                    return undefined;
             }
+
+            fieldNode = this.addPagNode(0, fieldRef);
 
             baseNode.addElementNode(fieldNode.getID());
             fieldNode.setBasePt(basePt);
@@ -780,7 +776,9 @@ export class Pag extends BaseExplicitGraph {
         } else if (value instanceof ArkParameterRef) {
             pagNode = new PagParamNode(id, cid, value, stmt);
         } else if (value instanceof ArkThisRef) {
-            throw new Error('This Node needs to use addThisNode method');
+            pagNode = new PagThisRefNode(id, cid, value);
+        } else if (value instanceof Constant) {
+            pagNode = new PagConstantNode(id, cid, value, stmt);
         } else {
             throw new Error('unsupported Value type ' + value.getType().toString());
         }
@@ -885,35 +883,6 @@ export class Pag extends BaseExplicitGraph {
         this.contextBaseToIdMap.set(base, ctxMap);
     }
 
-    /*
-     * This node has no context info
-     * but point to node info
-     */
-    public addPagThisRefNode(value: ArkThisRef): PagNode {
-        let id: NodeID = this.nodeNum + 1;
-        let pagNode = new PagThisRefNode(id, value);
-        this.addNode(pagNode);
-
-        return pagNode;
-    }
-
-    public addPagThisLocalNode(ptNode: NodeID, value: Local): PagNode {
-        let id: NodeID = this.nodeNum + 1;
-        let pagNode = new PagLocalNode(id, ptNode, value);
-        this.addNode(pagNode);
-
-        return pagNode;
-    }
-
-    public getOrNewThisRefNode(thisRefNodeID: NodeID, value: ArkThisRef): PagNode {
-        if (thisRefNodeID !== -1) {
-            return this.getNode(thisRefNodeID) as PagNode;
-        }
-
-        let thisRefNode = this.addPagThisRefNode(value);
-        return thisRefNode;
-    }
-
     public getOrNewThisLocalNode(cid: ContextID, ptNode: NodeID, value: Local, s?: Stmt): PagNode {
         if (ptNode !== -1) {
             return this.getNode(ptNode) as PagNode;
@@ -954,6 +923,7 @@ export class Pag extends BaseExplicitGraph {
 
         return ndId;
     }
+
     public getOrNewNode(cid: ContextID, v: PagNodeType, s?: Stmt): PagNode {
         let nodeId;
         // Value
@@ -1016,6 +986,7 @@ export class Pag extends BaseExplicitGraph {
                 break;
             default:
         }
+        this.edgeNum++;
         return true;
     }
 

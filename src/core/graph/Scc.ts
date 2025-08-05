@@ -173,7 +173,7 @@ export class SCCDetection<Graph extends GraphTraits<BaseNode>> {
         if (this.getRep(v) === v) {
             this.setInSCC(v);
             while (this._S.length > 0) {
-                let w = this._S.at(this._S.length - 1)!;
+                let w = this._S[this._S.length - 1]!;
                 if (this._D.get(w)! <= this._D.get(v)!) {
                     break;
                 } else {

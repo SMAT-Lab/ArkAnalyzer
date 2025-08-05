@@ -142,14 +142,24 @@ export function getFileRecursively(srcDir: string, fileName: string, visited: Se
     return res;
 }
 
-export function getFileAbsPath(srcPath: string, relativePath: string): string {
-    if (!srcPath || !relativePath) {
+/**
+ * 尝试使用多个源路径中的每一个与相对路径组合，返回第一个存在的绝对路径。
+ * @param srcPathList 源路径数组（绝对或相对路径）
+ * @param relativePath 要拼接的相对路径
+ * @returns 存在的第一个拼接后的绝对路径；否则返回空字符串
+ */
+export function getFileAbsPath(srcPathList: string[], relativePath: string): string {
+    if (!srcPathList || srcPathList.length === 0 || !relativePath) {
         return '';
     }
-    const srcDir = path.dirname(path.resolve(srcPath));
-    const absPath = path.resolve(srcDir, relativePath);
-    if (fs.existsSync(absPath)) {
-        return absPath;
+
+    for (const srcPath of srcPathList) {
+        const srcDir = path.dirname(path.resolve(srcPath));
+        const absPath = path.resolve(srcDir, relativePath);
+        if (fs.existsSync(absPath)) {
+            return absPath;
+        }
     }
+
     return '';
 }

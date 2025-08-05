@@ -1026,8 +1026,8 @@ export const SourceIROfObjectType = `class %dflt {
     label0:
       obj = parameter0: @ES2015/BuiltinClass: Object
       this = this: @type/objectType.ts: %dflt
-      staticinvoke <@ES2015/BuiltinClass: Object.keys()>(obj)
-      instanceinvoke obj.<@ES2015/BuiltinClass: Object.toLocaleString()>()
+      staticinvoke <@built-in/lib.es2015.core.d.ts: ObjectConstructor.keys(@built-in/lib.es2015.core.d.ts: %AC3)>(obj)
+      instanceinvoke obj.<@built-in/lib.es5.d.ts: Object.toLocaleString()>()
       return obj
   }
 
@@ -1040,7 +1040,7 @@ export const SourceIROfObjectType = `class %dflt {
       a = staticinvoke <@type/objectType.ts: %dflt.foo(@ES2015/BuiltinClass: Object)>(emptyObj)
       type @type/objectType.ts: %dflt.[static]%dflt()#newObject = @ES2015/BuiltinClass: Object
       %1 = @ES2015/BuiltinClass: Object.[static]prototype
-      newEmptyObj = staticinvoke <@ES2015/BuiltinClass: Object.create()>(%1)
+      newEmptyObj = staticinvoke <@built-in/lib.es5.d.ts: ObjectConstructor.create(any)>(%1)
       b = staticinvoke <@type/objectType.ts: %dflt.foo(@ES2015/BuiltinClass: Object)>(newEmptyObj)
       return
   }
@@ -1074,7 +1074,7 @@ class ClassA {
     label0:
       this = this: @type/objectType.ts: ClassA
       %0 = this.<@type/objectType.ts: ClassA.fieldA>
-      %1 = instanceinvoke %0.<@ES2015/BuiltinClass: Object.toLocaleString()>()
+      %1 = instanceinvoke %0.<@built-in/lib.es5.d.ts: Object.toLocaleString()>()
       return %1
   }
 
@@ -1082,7 +1082,7 @@ class ClassA {
     label0:
       this = this: @type/objectType.ts: ClassA
       %0 = this.<@type/objectType.ts: ClassA.fieldA>
-      staticinvoke <@ES2015/BuiltinClass: Object.keys()>(%0)
+      staticinvoke <@built-in/lib.es2015.core.d.ts: ObjectConstructor.keys(@built-in/lib.es2015.core.d.ts: %AC3)>(%0)
       return
   }
 }

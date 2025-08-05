@@ -73,7 +73,7 @@ export class StaticSingleAssignmentFormer {
             let phiBlocks = localToPhiBlock.get(local) as Set<BasicBlock>;
             let blocks = Array.from(localToBlocks.get(local) as Set<BasicBlock>);
             while (blocks.length !== 0) {
-                let block = blocks.splice(0, 1).at(0) as BasicBlock;
+                let block = blocks.splice(0, 1)[0] as BasicBlock;
                 let dfs = dominanceFinder.getDominanceFrontiers(block);
                 for (const df of dfs) {
                     this.handleDf(blockToPhiStmts, blockToPhiLocals, phiBlocks, df, local, blockToDefs, blocks);

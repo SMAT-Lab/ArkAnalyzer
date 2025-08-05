@@ -14,6 +14,7 @@
  */
 
 import * as ts from 'ohos-typescript';
+import { ParameterDeclaration } from 'ohos-typescript';
 import { Local } from '../../base/Local';
 import { ArkAliasTypeDefineStmt, ArkReturnStmt, ArkReturnVoidStmt, Stmt } from '../../base/Stmt';
 import { BasicBlock } from '../BasicBlock';
@@ -524,7 +525,7 @@ export class CfgBuilder {
         this.scopes.push(scope);
         for (let i = 0; i < nodes.length; i++) {
             let c = nodes[i];
-            if (ts.isVariableStatement(c) || ts.isExpressionStatement(c) || ts.isThrowStatement(c) || ts.isTypeAliasDeclaration(c)) {
+            if (ts.isVariableStatement(c) || ts.isExpressionStatement(c) || ts.isThrowStatement(c) || ts.isTypeAliasDeclaration(c) || ts.isParameter(c)) {
                 let s = new StatementBuilder('statement', c.getText(this.sourceFile), c, scope.id);
                 this.judgeLastType(s, lastStatement);
                 lastStatement = s;
@@ -676,6 +677,9 @@ export class CfgBuilder {
             }
             for (let i = stmt.nexts.length - 1; i >= 0; i--) {
                 stmtQueue.push(stmt.nexts[i]);
+            }
+            if (stmt.afterSwitch && stmt.afterSwitch.lasts.size === 0) {
+                stmtQueue.push(stmt.afterSwitch);
             }
         } else if (stmt instanceof TryStatementBuilder) {
             if (stmt.finallyStatement) {
@@ -956,6 +960,16 @@ export class CfgBuilder {
         this.exit.lasts = new Set([s]);
     }
 
+    private getParamNodeWithInitializerOrModifier(paramNodes: ts.NodeArray<ParameterDeclaration>): ts.Node[] {
+        let stmts: ts.Node[] = [];
+        paramNodes.forEach(param => {
+            if (param.initializer !== undefined || param.modifiers !== undefined) {
+                stmts.push(param);
+            }
+        });
+        return stmts;
+    }
+
     buildCfgBuilder(): void {
         let stmts: ts.Node[] = [];
         if (ts.isSourceFile(this.astRoot)) {
@@ -969,11 +983,7 @@ export class CfgBuilder {
             ts.isFunctionExpression(this.astRoot) ||
             ts.isClassStaticBlockDeclaration(this.astRoot)
         ) {
-            if (this.astRoot.body) {
-                stmts = [...this.astRoot.body.statements];
-            } else {
-                this.emptyBody = true;
-            }
+            this.astRoot.body ? stmts = [...this.astRoot.body.statements] : this.emptyBody = true;
         } else if (ts.isArrowFunction(this.astRoot)) {
             if (ts.isBlock(this.astRoot.body)) {
                 stmts = [...this.astRoot.body.statements];
@@ -988,6 +998,10 @@ export class CfgBuilder {
         } else if (ts.isModuleDeclaration(this.astRoot) && ts.isModuleBlock(this.astRoot.body!)) {
             stmts = [...this.astRoot.body.statements];
         }
+        // Add param node with initializer or modifier to stmts which can be used when build body to create class field and initializer stmts.
+        if (!this.emptyBody && ts.isFunctionLike(this.astRoot)) {
+            stmts = [...this.getParamNodeWithInitializerOrModifier(this.astRoot.parameters), ...stmts];
+        }
         if (!ModelUtils.isArkUIBuilderMethod(this.declaringMethod)) {
             this.walkAST(this.entry, this.exit, stmts);
         } else {
@@ -996,6 +1010,7 @@ export class CfgBuilder {
         if (ts.isArrowFunction(this.astRoot) && !ts.isBlock(this.astRoot.body)) {
             this.buildStatementBuilder4ArrowFunction(this.astRoot.body);
         }
+
         this.addReturnInEmptyMethod();
         this.deleteExit();
         this.CfgBuilder2Array(this.entry);
@@ -1110,8 +1125,10 @@ export class CfgBuilder {
             arkIRTransformer
         );
 
-        const trapBuilder = new TrapBuilder();
-        const traps = trapBuilder.buildTraps(blockBuilderToCfgBlock, blockBuildersBeforeTry, arkIRTransformer, basicBlockSet);
+        const trapBuilder = new TrapBuilder(blockBuildersBeforeTry, blockBuilderToCfgBlock, arkIRTransformer, basicBlockSet);
+        const traps = trapBuilder.buildTraps();
+
+        this.removeEmptyBlocks(basicBlockSet);
 
         const cfg = this.createCfg(blockBuilderToCfgBlock, basicBlockSet, currBlockId);
         return {
@@ -1121,6 +1138,51 @@ export class CfgBuilder {
             aliasTypeMap: arkIRTransformer.getAliasTypeMap(),
             traps,
         };
+    }
+
+    private removeEmptyBlocks(basicBlockSet: Set<BasicBlock>): void {
+        for (const bb of basicBlockSet) {
+            if (bb.getStmts().length > 0) {
+                continue;
+            }
+            const predecessors = bb.getPredecessors();
+            const successors = bb.getSuccessors();
+
+            // the empty basic block with neither predecessor nor successor could be deleted directly
+            if (predecessors.length === 0 && successors.length === 0) {
+                basicBlockSet.delete(bb);
+                continue;
+            }
+
+            // the empty basic block with predecessor but no successor could be deleted directly and remove its ID from the predecessor blocks
+            if (predecessors.length > 0 && successors.length === 0) {
+                for (const predecessor of predecessors) {
+                    predecessor.removeSuccessorBlock(bb);
+                }
+                basicBlockSet.delete(bb);
+                continue;
+            }
+
+            // the empty basic block with successor but no predecessor could be deleted directly and remove its ID from the successor blocks
+            if (predecessors.length === 0 && successors.length > 0) {
+                for (const successor of successors) {
+                    successor.removePredecessorBlock(bb);
+                }
+                basicBlockSet.delete(bb);
+                continue;
+            }
+
+            // the rest case is the empty basic block both with predecessor and successor, should relink its predecessor and successor
+            for (const predecessor of predecessors) {
+                predecessor.removeSuccessorBlock(bb);
+                successors.forEach(successor => predecessor.addSuccessorBlock(successor));
+            }
+            for (const successor of successors) {
+                successor.removePredecessorBlock(bb);
+                predecessors.forEach(predecessor => successor.addPredecessorBlock(predecessor));
+            }
+            basicBlockSet.delete(bb);
+        }
     }
 
     private initializeBuild(): {
@@ -1221,7 +1283,8 @@ export class CfgBuilder {
         const switchBuilder = new SwitchBuilder();
         switchBuilder.buildSwitch(blockBuilderToCfgBlock, blockBuildersContainSwitch, valueAndStmtsOfSwitchAndCasesAll, arkIRTransformer, basicBlockSet);
         const conditionalBuilder = new ConditionBuilder();
-        conditionalBuilder.rebuildBlocksContainConditionalOperator(basicBlockSet, ModelUtils.isArkUIBuilderMethod(this.declaringMethod));
+        conditionalBuilder.rebuildBlocksContainConditionalOperator(blockBuilderToCfgBlock, basicBlockSet,
+            ModelUtils.isArkUIBuilderMethod(this.declaringMethod));
     }
 
     private createCfg(blockBuilderToCfgBlock: Map<BlockBuilder, BasicBlock>, basicBlockSet: Set<BasicBlock>, prevBlockId: number): Cfg {
@@ -1236,7 +1299,7 @@ export class CfgBuilder {
 
         const cfg = new Cfg();
         const startingBasicBlock = blockBuilderToCfgBlock.get(this.blocks[0])!;
-        cfg.setStartingStmt(startingBasicBlock.getStmts()[0]);
+        cfg.setStartingStmt(startingBasicBlock.getHead()!);
         currBlockId = 0;
         for (const basicBlock of basicBlockSet) {
             basicBlock.setId(currBlockId++);

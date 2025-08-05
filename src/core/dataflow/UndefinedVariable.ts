@@ -187,12 +187,12 @@ export class UndefinedVariableChecker extends DataflowProblem<Value> {
         const args = callStmt.getInvokeExpr().getArgs();
         for (let i = 0; i < args.length; i++) {
             if (args[i] === dataFact || (this.isUndefined(args[i]) && this.getZeroValue() === dataFact)) {
-                const realParameter = [...method.getCfg()!.getBlocks()][0].getStmts()[i].getDef();
+                const realParameter = method.getCfg()!.getStartingBlock()!.getStmts()[i].getDef();
                 if (realParameter) {
                     ret.add(realParameter);
                 }
             } else if (dataFact instanceof ArkInstanceFieldRef && dataFact.getBase().getName() === args[i].toString()) {
-                const realParameter = [...method.getCfg()!.getBlocks()][0].getStmts()[i].getDef();
+                const realParameter = method.getCfg()!.getStartingBlock()!.getStmts()[i].getDef();
                 if (realParameter) {
                     const retRef = new ArkInstanceFieldRef(realParameter as Local, dataFact.getFieldSignature());
                     ret.add(retRef);

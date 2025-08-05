@@ -18,14 +18,32 @@ import { BigIntConstant, BooleanConstant, Constant, NullConstant, NumberConstant
 export const EMPTY_STRING = '';
 
 export class ValueUtil {
-    private static readonly NumberConstantCache: Map<number, Constant> = new Map();
+    private static readonly NumberConstantCache: Map<string, Constant> = new Map();
     public static readonly EMPTY_STRING_CONSTANT = new StringConstant(EMPTY_STRING);
 
-    public static getOrCreateNumberConst(n: number): Constant {
-        let constant = this.NumberConstantCache.get(n);
+    /*
+     * Set static field to be null, then all related objects could be freed by GC.
+     * Class SdkUtils is only internally used by ArkAnalyzer, the dispose method should be called by users themselves before drop Scene.
+     */
+    public static dispose(): void {
+        this.NumberConstantCache.clear();
+    }
+
+    /*
+     * Get the number constant instance according to its value, and create a new one if didn't find.
+     * In order to distinguish 1, 1.0, 0x0001, here support to find with string instead of only number.
+     */
+    public static getOrCreateNumberConst(n: number | string): Constant {
+        let nStr: string;
+        if (typeof n === 'number') {
+            nStr = n.toString();
+        } else {
+            nStr = n;
+        }
+        let constant = this.NumberConstantCache.get(nStr);
         if (constant === undefined) {
-            constant = new NumberConstant(n);
-            this.NumberConstantCache.set(n, constant);
+            constant = new NumberConstant(nStr);
+            this.NumberConstantCache.set(nStr, constant);
         }
         return constant;
     }

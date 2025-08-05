@@ -19,7 +19,8 @@
   "main": "",
   "author": "",
   "license": "",
-  "dependencies": { 
+  "dependencies": {
+    "model2": "../model2",
     "@lib1": "./lib1",
     "@log4js": "./log4js"
   }

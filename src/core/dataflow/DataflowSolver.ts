@@ -119,7 +119,7 @@ export abstract class DataflowSolver<D> {
             } else {
                 const set: Set<Stmt> = new Set();
                 for (const successor of block.getSuccessors()) {
-                    set.add(successor.getStmts()[0]);
+                    set.add(successor.getHead()!);
                 }
                 this.stmtNexts.set(stmt, set);
             }
@@ -156,7 +156,7 @@ export abstract class DataflowSolver<D> {
     protected getStartOfCallerMethod(call: Stmt): Stmt {
         const cfg = call.getCfg()!;
         const paraNum = cfg.getDeclaringMethod().getParameters().length;
-        return [...cfg.getBlocks()][0].getStmts()[paraNum];
+        return cfg.getStartingBlock()!.getStmts()[paraNum];
     }
 
     protected pathEdgeSetHasEdge(edge: PathEdge<D>): boolean {
@@ -267,7 +267,7 @@ export abstract class DataflowSolver<D> {
             if (!callee.getCfg()) {
                 continue;
             }
-            let firstStmt: Stmt = [...callee.getCfg()!.getBlocks()][0].getStmts()[callee.getParameters().length];
+            let firstStmt: Stmt = callee.getCfg()!.getStartingBlock()!.getStmts()[callee.getParameters().length];
             let facts: Set<D> = callFlowFunc.getDataFacts(callEdgePoint.fact);
             for (let fact of facts) {
                 this.callNodeFactPropagate(edge, firstStmt, fact, returnSite);

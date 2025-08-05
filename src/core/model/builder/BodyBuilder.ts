@@ -46,7 +46,11 @@ export class BodyBuilder {
             if (globals !== null) {
                 this.setGlobals(globals);
             }
-            cfg.buildDefUseStmt(locals);
+            if (globals === null) {
+                cfg.buildDefUseStmt(locals);
+            } else {
+                cfg.buildDefUseStmt(locals, globals);
+            }
 
             return new ArkBody(locals, cfg, aliasTypeMap, traps.length ? traps : undefined);
         }
@@ -565,7 +569,7 @@ export class BodyBuilder {
         if (body === undefined) {
             return;
         }
-        let stmts = Array.from(body.getCfg().getBlocks())[0].getStmts();
+        let stmts = body.getCfg().getStartingBlock()!.getStmts();
         let index = 0;
         const parameterRef = new ArkParameterRef(index, lexicalEnv);
         const closuresLocal = new Local(closuresParam.getName(), lexicalEnv);

@@ -21,6 +21,7 @@ import { ArkNamespace } from './ArkNamespace';
 import { AliasClassSignature, ClassSignature, FileSignature, NamespaceSignature } from './ArkSignature';
 import { ALL } from '../common/TSConst';
 import { NAME_DELIMITER } from '../common/Const';
+import { ts } from '../../index';
 
 export const notStmtOrExprKind = [
     'ModuleDeclaration',
@@ -54,6 +55,7 @@ export enum Language {
  * @category core/model
  */
 export class ArkFile {
+
     private language: Language;
     private absoluteFilePath: string = '';
     private projectDir: string = '';
@@ -76,6 +78,8 @@ export class ArkFile {
     private ohPackageJson5Path: string[] = [];
 
     private anonymousClassNumber: number = 0;
+
+    private ast: ts.SourceFile | null = null;
 
     constructor(language: Language) {
         this.language = language;
@@ -136,9 +140,9 @@ export class ArkFile {
      * @example
      * 1. Read source code based on file path.
 
-    ```typescript
-    let str = fs.readFileSync(arkFile.getFilePath(), 'utf8');
-    ```
+     ```typescript
+     let str = fs.readFileSync(arkFile.getFilePath(), 'utf8');
+     ```
      */
     public getFilePath(): string {
         return this.absoluteFilePath;
@@ -365,5 +369,13 @@ export class ArkFile {
 
     public getAnonymousClassNumber(): number {
         return this.anonymousClassNumber++;
+    }
+
+    public getAST(): ts.SourceFile | null {
+        return this.ast;
+    }
+
+    public setAST(value: ts.SourceFile | null): void {
+        this.ast = value;
     }
 }

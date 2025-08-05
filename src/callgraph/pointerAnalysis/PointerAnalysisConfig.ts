@@ -22,14 +22,21 @@ export enum PtaAnalysisScale {
     MethodLevel = 1,
 }
 
+export enum ContextType {
+    CallSite = 0,
+    Obj = 1,
+    Func = 2,
+}
+
 export class PointerAnalysisConfig {
     private static instance: PointerAnalysisConfig;
 
     public kLimit: number;
+    public contextType: ContextType;
     public outputDirectory: string;
     public detectTypeDiff: boolean;
     public dotDump: boolean;
-    public unhandledFuncDump: boolean;
+    public debug: boolean;
     public analysisScale: PtaAnalysisScale;
     public ptsCollectionType: PtsCollectionType;
     public ptsCollectionCtor: new () => IPtsCollection<NodeID>;
@@ -40,10 +47,11 @@ export class PointerAnalysisConfig {
      */
     constructor(
         kLimit: number,
+        contextType: ContextType,
         outputDirectory: string,
         detectTypeDiff: boolean = false,
         dotDump: boolean = false,
-        unhandledFuncDump: boolean = false,
+        debug: boolean = false,
         analysisScale: PtaAnalysisScale = PtaAnalysisScale.WholeProgram,
         ptsCoType = PtsCollectionType.Set
     ) {
@@ -51,17 +59,28 @@ export class PointerAnalysisConfig {
             throw new Error('K Limit too large');
         }
         this.kLimit = kLimit;
+
         this.outputDirectory = outputDirectory;
         this.detectTypeDiff = detectTypeDiff;
         this.dotDump = dotDump;
-        this.unhandledFuncDump = unhandledFuncDump;
+        this.debug = debug;
         this.analysisScale = analysisScale;
         this.ptsCollectionType = ptsCoType;
         this.ptsCollectionCtor = createPtsCollectionCtor<NodeID>(ptsCoType);
+        this.contextType = contextType;
 
         if (!fs.existsSync(outputDirectory)) {
             fs.mkdirSync(outputDirectory, { recursive: true });
         }
+    }
+
+    /*
+     * Set static field to be null, then all related objects could be freed by GC.
+     * Class PointerAnalysisConfig has been exported by ArkAnalyzer, the dispose method should be called by users themselves before free this class.
+     */
+    public static dispose(): void {
+        // @ts-expect-error: only be used to free the memory
+        this.instance = null;
     }
 
     /*
@@ -73,16 +92,18 @@ export class PointerAnalysisConfig {
         outputDirectory: string,
         detectTypeDiff: boolean = false,
         dotDump: boolean = false,
-        unhandledFuncDump: boolean = false,
+        debug: boolean = false,
         analysisScale: PtaAnalysisScale = PtaAnalysisScale.WholeProgram,
-        ptsCoType = PtsCollectionType.Set
+        ptsCoType = PtsCollectionType.Set,
+        contextType: ContextType = ContextType.Func,
     ): PointerAnalysisConfig {
         PointerAnalysisConfig.instance = new PointerAnalysisConfig(
             kLimit,
+            contextType,
             outputDirectory,
             detectTypeDiff,
             dotDump,
-            unhandledFuncDump,
+            debug,
             analysisScale,
             ptsCoType
         );

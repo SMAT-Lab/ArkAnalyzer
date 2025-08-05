@@ -43,9 +43,13 @@ export class AstTreeUtils {
      * @returns ts.SourceFile
      */
     public static getSourceFileFromArkFile(arkFile: ArkFile): ts.SourceFile {
+        let sourceFile: ts.SourceFile | null | undefined = arkFile.getAST();
+        if (sourceFile) {
+            return sourceFile;
+        }
         const signature = arkFile.getFileSignature().toString();
         const key = this.getKeyFromCode(signature);
-        let sourceFile = sourceFileCache.get(key);
+        sourceFile = sourceFileCache.get(key);
         if (sourceFile) {
             return sourceFile;
         }
@@ -55,7 +59,6 @@ export class AstTreeUtils {
     }
 
     public static createSourceFile(fileName: string, code: string): ts.SourceFile {
-        // @ts-ignore
         return ts.createSourceFile(fileName, code, ts.ScriptTarget.Latest, true, undefined, ETS_COMPILER_OPTIONS);
     }
 

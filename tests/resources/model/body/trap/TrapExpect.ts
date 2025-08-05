@@ -385,11 +385,11 @@ export const TRAP_EXPECT_CASE6 = {
             ],
             catchBlocks: [
                 {
-                    id: 8,
+                    id: 9,
                     stmts: [
-                        '%0 = caughtexception: unknown',
+                        '%1 = caughtexception: unknown',
                         'instanceinvoke console.<@%unk/%unk: .log()>(\'finally\')',
-                        'throw %0',
+                        'throw %1',
                     ],
                     preds: [],
                     succes: [],
@@ -433,11 +433,11 @@ export const TRAP_EXPECT_CASE6 = {
             ],
             catchBlocks: [
                 {
-                    id: 9,
+                    id: 8,
                     stmts: [
-                        '%1 = caughtexception: unknown',
+                        '%0 = caughtexception: unknown',
                         'instanceinvoke console.<@%unk/%unk: .log()>(\'inner finally\')',
-                        'throw %1',
+                        'throw %0',
                     ],
                     preds: [],
                     succes: [],

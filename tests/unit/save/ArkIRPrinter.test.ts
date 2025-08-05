@@ -56,7 +56,7 @@ const CASE1_EXPECT = `class %dflt {
       goto label1
 
     label1:
-      %1 = sampleData.<@%unk/%unk: .length>
+      %1 = sampleData.<@built-in/lib.es5.d.ts: Array.length>
       if i < %1 goto label2 label13
 
     label2:
@@ -143,11 +143,11 @@ const CASE1_EXPECT = `class %dflt {
       %0 = new @save/basic.ts: Person
       %0 = instanceinvoke %0.<@save/basic.ts: Person.constructor(number)>(10)
       notPerson = %0
-      %1 = new @%unk/%unk: Map
-      %1 = instanceinvoke %1.<@%unk/%unk: Map.constructor()>()
+      %1 = new @built-in/lib.es2015.collection.d.ts: Map
+      %1 = instanceinvoke %1.<@built-in/lib.es2015.collection.d.ts: Map.constructor()>()
       x = %1
-      %2 = new @%unk/%unk: Error
-      %2 = instanceinvoke %2.<@%unk/%unk: Error.constructor()>()
+      %2 = new @built-in/lib.es5.d.ts: Error
+      %2 = instanceinvoke %2.<@built-in/lib.es5.d.ts: Error.constructor()>()
       z = %2
       y = staticinvoke <@save/basic.ts: %dflt.controlTest()>()
       a = notPerson.<@save/basic.ts: Person.age>
@@ -237,10 +237,10 @@ const CASE1_EXPECT = `class %dflt {
       gRGB = parameter1: number
       bRGB = parameter2: number
       this = this: @save/basic.ts: %dflt
-      %0 = instanceinvoke Math.<@%unk/%unk: .max()>(rRGB, gRGB)
-      max = instanceinvoke Math.<@%unk/%unk: .max()>(%0, bRGB)
-      %1 = instanceinvoke Math.<@%unk/%unk: .min()>(rRGB, gRGB)
-      min = instanceinvoke Math.<@%unk/%unk: .min()>(%1, bRGB)
+      %0 = instanceinvoke Math.<@built-in/lib.es5.d.ts: Math.max(number[])>(rRGB, gRGB)
+      max = instanceinvoke Math.<@built-in/lib.es5.d.ts: Math.max(number[])>(%0, bRGB)
+      %1 = instanceinvoke Math.<@built-in/lib.es5.d.ts: Math.min(number[])>(rRGB, gRGB)
+      min = instanceinvoke Math.<@built-in/lib.es5.d.ts: Math.min(number[])>(%1, bRGB)
       bHSB = max / 255
       hHSB = 0
       %2 = max === rRGB
@@ -318,14 +318,14 @@ const CASE1_EXPECT = `class %dflt {
     label0:
       text = parameter0: string
       this = this: @save/basic.ts: %dflt
-      %0 = new @%unk/%unk: RegExp
-      %0 = instanceinvoke %0.<@%unk/%unk: RegExp.constructor()>('\\[\\d{2,}:\\d{2}((\\.|:)\\d{2,})\\]', 'g')
+      %0 = new @built-in/lib.es5.d.ts: RegExp
+      %0 = instanceinvoke %0.<@built-in/lib.es5.d.ts: RegExp.constructor()>('\\[\\d{2,}:\\d{2}((\\.|:)\\d{2,})\\]', 'g')
       lrcLineRegex = %0
-      %1 = new @%unk/%unk: RegExp
-      %1 = instanceinvoke %1.<@%unk/%unk: RegExp.constructor()>('\\[\\d{2,}', 'i')
+      %1 = new @built-in/lib.es5.d.ts: RegExp
+      %1 = instanceinvoke %1.<@built-in/lib.es5.d.ts: RegExp.constructor()>('\\[\\d{2,}', 'i')
       lrcTimeRegex1 = %1
-      %2 = new @%unk/%unk: RegExp
-      %2 = instanceinvoke %2.<@%unk/%unk: RegExp.constructor()>('\\d{2}\\.\\d{2,}', 'i')
+      %2 = new @built-in/lib.es5.d.ts: RegExp
+      %2 = instanceinvoke %2.<@built-in/lib.es5.d.ts: RegExp.constructor()>('\\d{2}\\.\\d{2,}', 'i')
       lrcTimeRegex2 = %2
       lyric = instanceinvoke text.<@%unk/%unk: .split()>('\n')
       return
@@ -493,6 +493,7 @@ class Person {
       age = parameter0: number
       this = this: @save/basic.ts: Person
       instanceinvoke this.<@save/basic.ts: Person.%instInit()>()
+      this.<@save/basic.ts: Person.age> = age
       return this
   }
 
@@ -509,6 +510,7 @@ class Person {
       this = this: @save/basic.ts: Person
       %0 = this.<@save/basic.ts: Person.age>
       %0 = %0 + 1
+      this.<@save/basic.ts: Person.age> = %0
       return
   }
 
@@ -568,6 +570,7 @@ class Adder {
       a = parameter0: number
       this = this: @save/basic.ts: Adder
       instanceinvoke this.<@save/basic.ts: Adder.%instInit()>()
+      this.<@save/basic.ts: Adder.a> = a
       return this
   }
 
@@ -603,7 +606,7 @@ class ExtendedAdder extends Adder {
     label0:
       a = parameter0: number
       this = this: @save/basic.ts: ExtendedAdder
-      staticinvoke <@save/basic.ts: ExtendedAdder.super(number)>(a)
+      instanceinvoke this.<@save/basic.ts: Adder.constructor(number)>(a)
       instanceinvoke this.<@save/basic.ts: ExtendedAdder.%instInit()>()
       return this
   }
@@ -701,7 +704,7 @@ export class SecurityDoor extends Door implements Alarm, Alarm2 {
       x = parameter0: number
       y = parameter1: string
       this = this: @save/basic.ts: SecurityDoor
-      staticinvoke <@save/basic.ts: Door.super()>()
+      instanceinvoke this.<@save/basic.ts: Door.constructor()>()
       instanceinvoke this.<@save/basic.ts: SecurityDoor.%instInit()>()
       this.<@save/basic.ts: SecurityDoor.x> = x
       this.<@save/basic.ts: SecurityDoor.y> = y

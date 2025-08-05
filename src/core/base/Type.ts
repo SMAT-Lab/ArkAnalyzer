@@ -21,7 +21,8 @@ import {
     BIGINT_KEYWORD,
     BOOLEAN_KEYWORD,
     NEVER_KEYWORD,
-    NULL_KEYWORD, NULL_POINTER,
+    NULL_KEYWORD,
+    NULL_POINTER,
     NUMBER_KEYWORD,
     STRING_KEYWORD,
     UNDEFINED_KEYWORD,
@@ -576,6 +577,9 @@ export class ArrayType extends Type {
             strs.push('(' + this.baseType.toString() + ')');
         } else if (this.baseType) {
             strs.push(this.baseType.toString());
+        }
+        for (let i = 0; i < this.dimension; i++) {
+            strs.push('[]');
         }
         return strs.join('');
     }

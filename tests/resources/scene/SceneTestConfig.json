@@ -1,14 +1,11 @@
 {
-    "targetProjectName": "applications_photos",
+    "targetProjectName": "viewtree",
     "targetProjectDirectory": "tests/resources/viewtree/project",
-
-    "logPath": "out/ArkAnalyzer.log",
-    "logLevel": "DEBUG",
 
     "sdks": [
         {
             "name": "etsSdk",
-            "path": "tests/resources/Sdk",
+            "path": "D:\\codes\\openharmony\\sdks\\version-Master_Version-OpenHarmony_6.0.0.40-20250711_171128-ohos-sdk-full\\windows\\ets",
             "moduleName": ""
         }
     ]
