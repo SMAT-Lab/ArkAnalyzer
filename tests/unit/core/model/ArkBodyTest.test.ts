@@ -29,6 +29,7 @@ import {
 } from '../../../resources/model/body/trap/TrapExpect';
 import { assertBlocksEqual } from '../../common';
 import { Local_Expect_In_Generated_Method } from '../../../resources/model/body/local/LocalExpect';
+import { NumberConstant } from '../../../../src/core/base/Constant';
 
 const BASE_DIR = path.join(__dirname, '../../../../tests/resources/model/body');
 
@@ -101,6 +102,38 @@ describe('Local Test', () => {
         assert.isAtLeast(stmts!.length, 2);
         assert.equal(stmts![2].toString(), 'item = %0[globalIndex]');
         assert.isTrue(((stmts![2] as ArkAssignStmt).getRightOp() as ArkArrayRef).getIndex().getType() instanceof NumberType);
+    });
+
+    it('assign to array with index', async() => {
+        const fileName = 'Locals.ts';
+        const arkFile = scene.getFiles().find((file) => file.getName().endsWith(fileName));
+        const stmts = arkFile?.getClassWithName('Assign2ArrayItem')?.getMethodWithName('foo')?.getBody()?.getCfg().getStmts();
+
+        assert.isDefined(stmts);
+        assert.isAtLeast(stmts!.length, 9);
+        assert.equal(stmts![2].toString(), 'arr[a] = 2');
+        assert.isTrue(((stmts![2] as ArkAssignStmt).getLeftOp() as ArkArrayRef).getIndex().getType() instanceof NumberType);
+        assert.equal(stmts![5].toString(), 'arr[b] = 4');
+        assert.isTrue(((stmts![5] as ArkAssignStmt).getLeftOp() as ArkArrayRef).getIndex().getType() instanceof NumberType);
+        assert.equal(stmts![8].toString(), 'arr[%0] = 6');
+        assert.isTrue(((stmts![8] as ArkAssignStmt).getLeftOp() as ArkArrayRef).getIndex().getType() instanceof NumberType);
+    });
+
+    it('number constant as array index', async() => {
+        const fileName = 'Locals.ts';
+        const arkFile = scene.getFiles().find((file) => file.getName().endsWith(fileName));
+        const stmts = arkFile?.getClassWithName('IndexWithConstant')?.getMethodWithName('foo')?.getBody()?.getCfg().getStmts();
+
+        assert.isDefined(stmts);
+        assert.isAtLeast(stmts!.length, 5);
+        assert.equal(stmts![1].toString(), 'item = arr[1.0]');
+        assert.isTrue(((stmts![1] as ArkAssignStmt).getRightOp() as ArkArrayRef).getIndex() instanceof NumberConstant);
+        assert.equal(stmts![2].toString(), 'arr[2.0] = 3');
+        assert.isTrue(((stmts![2] as ArkAssignStmt).getLeftOp() as ArkArrayRef).getIndex() instanceof NumberConstant);
+        assert.equal(stmts![3].toString(), '%0 = arr[1.3]');
+        assert.isTrue(((stmts![3] as ArkAssignStmt).getRightOp() as ArkArrayRef).getIndex() instanceof NumberConstant);
+        assert.equal(stmts![4].toString(), 'arr[2.2] = 2');
+        assert.isTrue(((stmts![4] as ArkAssignStmt).getLeftOp() as ArkArrayRef).getIndex() instanceof NumberConstant);
     });
 });
 

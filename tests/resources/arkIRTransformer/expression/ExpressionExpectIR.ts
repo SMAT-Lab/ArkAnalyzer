@@ -1006,3 +1006,16 @@ export const REST_PARAMETERS1_EXPECT_IR = `restParameter(...numbers: number[]): 
     return %0
 }
 `;
+
+export const ASSIGNMENT_EXPECT_IR = `additiveCompoundAssignment(): void {
+  label0:
+    this = this: @expression/Assignment.ts: %dflt
+    i = 10
+    %0 = new @expression/Assignment.ts: A
+    %0 = instanceinvoke %0.<@expression/Assignment.ts: A.constructor()>()
+    a = %0
+    %1 = a.<@expression/Assignment.ts: A.i>
+    i = i + %1
+    return
+}
+`;

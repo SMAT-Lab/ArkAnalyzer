@@ -62,7 +62,7 @@ export class ValueUtil {
     public static createConst(str: string): Constant {
         const n = Number(str);
         if (!isNaN(n)) {
-            return this.getOrCreateNumberConst(n);
+            return this.getOrCreateNumberConst(str);
         }
         return new StringConstant(str);
     }

@@ -300,15 +300,18 @@ export class TypeInference {
             ) {
                 return;
             }
-            const fieldRef = stmtDef.inferType(arkMethod);
-            stmt.replaceDef(stmtDef, fieldRef);
+            this.processRef(stmtDef, stmt, arkMethod, false);
         }
     }
 
-    private static processRef(use: AbstractRef | ArkInstanceFieldRef, stmt: Stmt, arkMethod: ArkMethod): void {
+    private static processRef(use: AbstractRef | ArkInstanceFieldRef, stmt: Stmt, arkMethod: ArkMethod, replaceUse: boolean = true): void {
         const fieldRef = use.inferType(arkMethod);
         if (fieldRef instanceof ArkStaticFieldRef && stmt instanceof ArkAssignStmt) {
-            stmt.replaceUse(use, fieldRef);
+            if (replaceUse) {
+                stmt.replaceUse(use, fieldRef);
+            } else {
+                stmt.replaceDef(use, fieldRef);
+            }
         } else if (use instanceof ArkInstanceFieldRef && fieldRef instanceof ArkArrayRef && stmt instanceof ArkAssignStmt) {
             const index = fieldRef.getIndex();
             if (index instanceof Constant && index.getType() instanceof StringType) {
@@ -317,7 +320,11 @@ export class TypeInference {
                     fieldRef.setIndex(local);
                 }
             }
-            stmt.replaceUse(use, fieldRef);
+            if (replaceUse) {
+                stmt.replaceUse(use, fieldRef);
+            } else {
+                stmt.replaceDef(use, fieldRef);
+            }
         }
     }
 
