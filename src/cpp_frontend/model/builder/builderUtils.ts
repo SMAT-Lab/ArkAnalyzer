@@ -21,7 +21,7 @@ import {
     UnknownType,
     PointerType,
     ReferenceType,
-    ReferCategory, UnclearReferenceType,
+    ReferCategory, UnclearReferenceType, functionPointer,
 } from '../../../core/base/Type';
 import { TypeInference } from '../../common/TypeInference';
 import { ArkField } from '../../../core/model/ArkField';
@@ -181,6 +181,13 @@ export function cppNode2Type(
             if (nodeQualType === t.getName()) return t;
         }
     }
+
+    // 处理函数指针类型
+    const funcPtrRegex = /\(\s*\*\s*\)\s*\(\s*[^)]*\s*\)/;
+    if (funcPtrRegex.test(nodeQualType)){
+        return new functionPointer(nodeQualType);
+    }
+
     // 默认处理
     return buildTypeFromPreStr(nodeQualType, arkInstance);
 }
@@ -221,9 +228,9 @@ export function buildReferenceType(preStr: string, arkInstance: any = null, refe
         : ReferCategory.RVALUE_REF;
     if (baseType instanceof UnclearReferenceType) {
         baseType = cppNode2Type(preStr, arkInstance);
-        if (baseType instanceof GenericType) {
-            referCategory = ReferCategory.UNIVERSAL_REF;
-        }
+    }
+    if (baseType instanceof GenericType && referenceCount % 2 === 0) {
+        referCategory = ReferCategory.UNIVERSAL_REF;
     }
     return new ReferenceType(baseType, referCategory);
 }

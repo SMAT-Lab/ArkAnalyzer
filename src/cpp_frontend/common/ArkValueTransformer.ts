@@ -47,7 +47,7 @@ import {
     UndefinedType,
     UnknownType,
     PointerType,
-    ReferenceType, AliasType,
+    ReferenceType, AliasType, Thread, functionPointer,
 } from '../../core/base/Type';
 import { ArkSignatureBuilder } from '../../core/model/builder/ArkSignatureBuilder';
 import { ClassSignature, FieldSignature, MethodSignature, FileSignature } from '../../core/model/ArkSignature';
@@ -178,6 +178,9 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
                 this.isNodeRelatedToMaterialize(node) || this.isNodeRelatedToImplicitNode(node))) && node.inner?.length > 0) {
                 return this.tsNodeToValueAndStmts(node.inner[0]);
             }
+            return this.newExpressionToValueAndStmtsCpp(node);
+        } else if(node.kind === 'CallExpr' && node.inner?.length > 0 && node.getParent().type.qualType === 'std::thread'){
+
             return this.newExpressionToValueAndStmtsCpp(node);
         } else if (node.kind === 'CallExpr' && node.inner?.length > 0 && node.inner[0].kind === 'CXXPseudoDestructorExpression') {
             return this.callExpressionToValueAndStmtsCpp(node.inner[0]);
@@ -599,7 +602,8 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
                     continue;
                 }
                 // kind = MemberExpr为了处理多层Field结构
-                if (firstNode.kind.toString() === 'DeclRefExpr' || firstNode.kind.toString() === 'MemberExpr' || firstNode.kind.toString() === 'OverloadedDeclRef') {
+                if (firstNode.kind.toString() === 'DeclRefExpr' || firstNode.kind.toString() === 'MemberExpr'
+                    || firstNode.kind.toString() === 'OverloadedDeclRef') {
                     callNode = firstNode;
                 } else {
                     argumentNodes.push(firstNode);
@@ -726,7 +730,10 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         } else {
             varNode = identifier;
         }
-        if (varNode.name === UndefinedType.getInstance().getName()) {
+        if (varNode.kind && identifier.referencedDecl && varNode.kind === 'FunctionDecl') { //
+            const type = new functionPointer(varNode.type);
+            identifierValue = this.getOrCreateLocal(varNode.name, type);
+        } else if (varNode.name === UndefinedType.getInstance().getName()) {
             identifierValue = CppValueUtil.getUndefinedConst();
         } else {
             if (variableDefFlag) {
@@ -1382,6 +1389,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         const constructorMethodSubSignature = ArkSignatureBuilder.buildMethodSubSignatureFromMethodName(CONSTRUCTOR_NAME);
         const constructorMethodSignature = new MethodSignature(classSignature, constructorMethodSubSignature);
         // 区分new class 和 C++ STL容器
+        // 如果该语句在做类或结构体的初始化，将初始化的数据作为表格存储到IR中
         let constructArgs = newExpression.inner;
         if ((newExpression.kind === 'CXXNewExpr' && newExpression.inner[1]?.kind === 'CXXConstructExpr')) {
             constructArgs = [...newExpression.inner[1].inner];
@@ -1393,7 +1401,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         } else if (newExpression.kind === 'InitListExpr') {
             constructArgs = this.getConstructArgs(newExpression);
         }
-
+        // 对象构造，使用invokeStmt表达
         const { args: argValues, argPositions: argPositions } = this.parseArgumentsCpp(stmts, constructArgs);
         const instanceInvokeExpr = new ArkInstanceInvokeExpr(newLocal as Local, constructorMethodSignature, argValues);
 
@@ -1401,9 +1409,11 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         const instanceInvokeExprPositions = [newLocalPositions[0], ...newLocalPositions, ...argPositions];
         invokeStmt.setOperandOriginalPositions(instanceInvokeExprPositions);
         stmts.push(invokeStmt);
+        // 处理cpp与ts之间的接口
         if (className === 'napi_property_descriptor') {
             this.setTs2CppFuncMapOfClass(argValues,false);
         }
+        // 处理初始化语句含有成员变量的场景，对初始化的成员变量构造stmt
         if ((newExpression.kind === 'CompoundLiteralExpr' && newExpression.inner[1].kind === 'InitListExpr')) {
             const newExpr = newExpression.inner[1];
             for (const element of newExpr.inner) {
@@ -1422,6 +1432,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         return { value: newLocal, valueOriginalPositions: newLocalPositions, stmts: stmts };
     }
 
+    // 构造参数表格
     private getConstructArgs(constructArgs: any): Array<any> {
         if (constructArgs.kind === 'InitListExpr') {
             constructArgs = constructArgs.inner;
@@ -2041,6 +2052,8 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
                 const fileSignature = new FileSignature('std', containerName + '.h');
                 const classSignature = new ClassSignature(containerName, fileSignature);
                 return new ClassType(classSignature);
+            } else if (containerName === 'thread'){
+                return new Thread();
             }
         } else if (qualType === 'std' && node.kind === 'NamespaceRef'){
             const fileSignature = new FileSignature('std','iostream.h');
@@ -2062,6 +2075,8 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
             let dimension = 0;
             let dataType = this.resolveVectorType(qualType, dimension);
             return new ArrayType(buildTypeFromPreStr(dataType), dimension);
+        } else if (qualType === 'thread'){
+            return new Thread();
         } else {
             // 条件为命中则考虑别名场景的type处理
             let type = this.resolveCppTypeReferenceNode(qualType);

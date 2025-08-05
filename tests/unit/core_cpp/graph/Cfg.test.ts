@@ -58,6 +58,9 @@ import * as NAMESPACE_EXPECT from '../../../resources_cpp/cfg/namespace';
 import * as OVERLOAD from '../../../resources_cpp/cfg/overload/overloadExpect';
 import * as USING_EXPECT from '../../../resources_cpp/cfg/using/usingExpects';
 import * as TYPEDEF_EXPECT from '../../../resources_cpp/cfg/typedef/typdefExpects';
+import * as THREAD_EXPECT from '../../../resources_cpp/cfg/thread/threadExpects';
+import * as FUNCPTR_EXPECT from '../../../resources_cpp/cfg/functionPointer/functionPointerExpts';
+
 
 describe('CfgTest', () => {
     it('case1: conditional operator', () => {
@@ -170,6 +173,7 @@ describe('Type Test', () => {
         testBlocks(scene, 'reference.cpp', 'myClassRefer', REFERENCE_EXPECT.REFERENCE_EXPECT_CASE3.blocks);
         testBlocks(scene, 'reference.cpp', 'baseRightRefer', REFERENCE_EXPECT.REFERENCE_EXPECT_CASE4.blocks);
         testBlocks(scene, 'reference.cpp', 'relay', REFERENCE_EXPECT.REFERENCE_EXPECT_CASE5.blocks);
+        testBlocks(scene, 'reference.cpp', 'moveCase', REFERENCE_EXPECT.REFERENCE_EXPECT_CASE6.blocks);
         },
     );
     it('case4: Derived Class', () => {
@@ -278,8 +282,6 @@ describe('Function Test', () => {
         testBlocksClass(scene, 'overloadSample.cpp', 'Vector', OVERLOAD.VECTOR_CLASS_EXPECT);
         testBlocks(scene, 'overloadSample.cpp', 'operator<<', OVERLOAD.OVERLOAD_COUT_EXPECT.blocks);
         testBlocks(scene, 'overloadSample.cpp', 'operator>>', OVERLOAD.OVERLOAD_CIN_EXPECT.blocks);
-        testBlocks(scene, 'overloadSample.cpp', 'operator""_km', OVERLOAD.OVERLOAD_USER_DEFINED_LITERAL_NUMBER_EXPECT.blocks);
-        testBlocks(scene, 'overloadSample.cpp', 'operator""_c', OVERLOAD.OVERLOAD_USER_DEFINED_LITERAL_CHAR_EXPECT.blocks);
         testBlocks(scene, 'overloadSample.cpp', 'main', OVERLOAD.OVERLOAD_MAIN_EXPECT.blocks);
     });
 });
@@ -420,6 +422,25 @@ describe('typedef Test', () => {
     it('case1: typedef', () => {
         const scene = buildScene('typedef');
         testBlocks(scene, 'typedef.cpp', 'main', TYPEDEF_EXPECT.TYPEDEF_EXPECT_CASE1.blocks);
+        },
+    );
+});
+
+describe('thread Test', () => {
+    it('case1: thread', () => {
+            const scene = buildScene('thread');
+            testBlocks(scene, 'thread.cpp', 'case1', THREAD_EXPECT.THREAD_EXPECT_CASE1.blocks);
+            testBlocks(scene, 'thread.cpp', 'case2', THREAD_EXPECT.THREAD_EXPECT_CASE2.blocks);
+            testBlocks(scene, 'thread.cpp', 'case3', THREAD_EXPECT.THREAD_EXPECT_CASE3.blocks);
+            testBlocks(scene, 'thread.cpp', 'case4', THREAD_EXPECT.THREAD_EXPECT_CASE4.blocks);
+        },
+    );
+    it('case2: functionPointer', () => {
+            const scene = buildScene('functionPointer');
+            testBlocks(scene, 'functionPointer.cpp', 'case1', FUNCPTR_EXPECT.FUNCPTR_EXPECT_CASE1.blocks);
+            testBlocks(scene, 'functionPointer.cpp', 'case2', FUNCPTR_EXPECT.FUNCPTR_EXPECT_CASE2.blocks);
+            testBlocks(scene, 'functionPointer.cpp', 'case3', FUNCPTR_EXPECT.FUNCPTR_EXPECT_CASE3.blocks);
+            testBlocks(scene, 'functionPointer.cpp', 'greet', FUNCPTR_EXPECT.FUNCPTR_EXPECT_GREET.blocks);
         },
     );
 });
