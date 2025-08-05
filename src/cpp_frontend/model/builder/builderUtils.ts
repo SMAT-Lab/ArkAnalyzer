@@ -182,7 +182,7 @@ export function cppNode2Type(
         }
     }
 
-    // 处理函数指针类型
+    // 处理函数指针类型，对节点type含有(*)()的做识别
     const funcPtrRegex = /\(\s*\*\s*\)\s*\(\s*[^)]*\s*\)/;
     if (funcPtrRegex.test(nodeQualType)){
         return new functionPointer(nodeQualType);
