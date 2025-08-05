@@ -64,7 +64,7 @@ import { AbstractFieldRef, ArkArrayRef, ArkInstanceFieldRef, CXXArkInstanceField
 import { ArkMethod } from '../../core/model/ArkMethod';
 import { buildArkMethodFromArkClass, buildDefaultConstructor } from '../model/builder/ArkMethodBuilder';
 import { Builtin } from '../../core/common/Builtin';
-import { Constant, StringConstant } from '../../core/base/Constant';
+import { Constant } from '../../core/base/Constant';
 import { TEMP_LOCAL_PREFIX } from '../../core/common/Const';
 import { ArkIRTransformerCpp, DummyStmt, ValueAndStmts } from './ArkIRTransformer';
 import { buildTypeFromPreStr, convertDataType, cppNode2Type, isCXXSTLContainer } from '../model/builder/builderUtils';
@@ -74,6 +74,7 @@ import { ModelUtils } from '../../core/common/ModelUtils';
 import { CONSTRUCTOR_NAME, THIS_NAME } from '../../core/common/TSConst';
 import { ClassCategory } from '../../core/model/ArkClass';
 import { TypeInference } from './TypeInference';
+import { setTs2CppFuncMapOfClass } from './ModelUtils'
 
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkValueTransformer');
@@ -214,9 +215,13 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
             node.kind = 'DeclRefExpr';
             node.name = node.code;
             return this.tsNodeToValueAndStmts(node);
-        } else if ((node.kind === 'DeclRefExpr' || node.kind === 'typeRef') && node.inner?.length > 0 && !node.type) {
+        } else if ((node.kind === 'DeclRefExpr' || node.kind === 'TypeRef') && node.inner?.length > 0 && !node.type) {
             return this.tsNodeToValueAndStmts(node.inner[0]);
-        } else if (node.kind === 'DeclRefExpr' || node.kind === 'typeRef') {
+        } else if (node.kind === 'DeclRefExpr' || node.kind === 'TypeRef') {
+            // 处理类的静态成员调用，如A::a
+            if (node.code.includes('::') && node.inner?.[0].kind === 'TypeRef') {
+                return this.staticMemberExprToValueAndStmtsCpp(node);
+            }
             return this.identifierToValueAndStmtsCpp(node);
         } else if (node.kind === 'UnresolvedLookupExpr') {
             return this.identifierToValueAndStmtsCpp(node);
@@ -298,6 +303,11 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
             valueOriginalPositions: [FullPosition.buildFromNodeCpp(node, this.sourceFile)],
             stmts: [],
         };
+    }
+
+    private staticMemberExprToValueAndStmtsCpp(declRefExpr: any): ValueAndStmts {
+        declRefExpr.kind = 'MemberExpr';  // 类型替换成“成员调用”
+        return this.memberExpressionToValueAndStmts(declRefExpr);
     }
 
     private userDefinedLiteralToValueAndStmts(userDefinedLiteral: any): ValueAndStmts {
@@ -730,16 +740,17 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         } else {
             varNode = identifier;
         }
+        const varName = varNode.kind === 'TypeRef' ? varNode.code : varNode.name;
         if (varNode.kind && identifier.referencedDecl && varNode.kind === 'FunctionDecl') { //
             const type = new functionPointer(varNode.type);
-            identifierValue = this.getOrCreateLocal(varNode.name, type);
-        } else if (varNode.name === UndefinedType.getInstance().getName()) {
+            identifierValue = this.getOrCreateLocal(varName, type);
+        } else if (varName === UndefinedType.getInstance().getName()) {
             identifierValue = CppValueUtil.getUndefinedConst();
         } else {
             if (variableDefFlag) {
-                identifierValue = this.addNewLocal(varNode.name);
+                identifierValue = this.addNewLocal(varName);
             } else {
-                identifierValue = this.getOrCreateLocal(varNode.name);
+                identifierValue = this.getOrCreateLocal(varName);
             }
         }
         return {
@@ -884,7 +895,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         const [callNode, argumentNodes] = this.getArgumentNode(callExpression.inner);
         const argus = this.parseArgumentsCppOfCallExpressionCpp(stmts, argumentNodes);
         if (callExpression.name === 'napi_define_class') {
-            this.setTs2CppFuncMapOfClass(argus.args, true);
+            setTs2CppFuncMapOfClass(argus.args, true, this.declaringMethod);
         }
         return this.generateInvokeValueAndStmtsCpp(callNode, argus, stmts, callExpression);
     }
@@ -1411,7 +1422,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         stmts.push(invokeStmt);
         // 处理cpp与ts之间的接口
         if (className === 'napi_property_descriptor') {
-            this.setTs2CppFuncMapOfClass(argValues,false);
+            setTs2CppFuncMapOfClass(argValues, false, this.declaringMethod);
         }
         // 处理初始化语句含有成员变量的场景，对初始化的成员变量构造stmt
         if ((newExpression.kind === 'CompoundLiteralExpr' && newExpression.inner[1].kind === 'InitListExpr')) {
@@ -1532,39 +1543,6 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
             newArrayExprPosition,
             true
         );
-    }
-
-    // 记录cpp函数与ts函数的映射关系（有napi_property_descriptor、napi_define_class标识符时）
-    private setTs2CppFuncMapOfClass(elementValues: Value[], isDefineClass: boolean): void {
-        const curArkClass = this.declaringMethod.getDeclaringArkClass();
-        const dfltArkClass = this.declaringMethod.getDeclaringArkFile().getDefaultClass();
-        if (!(curArkClass && dfltArkClass)) {
-            return;
-        }
-        const cppFunc: ArkMethod[] = [];
-        let funcElements: Value[];
-        let tsFuncNameIdx: number;
-        if (isDefineClass) {
-            // napi_define_class设置对外暴露的类的构造函数
-            funcElements = elementValues.length > 4 ? [elementValues[3]] : [];
-            tsFuncNameIdx = 1;
-        } else {
-            // napi_property_descriptor内函数设置的字段
-            funcElements = elementValues.length > 5 ? elementValues.slice(2, 5) : [];
-            tsFuncNameIdx = 0;
-        }
-        funcElements.forEach((element) => {
-            // 当前只在类中寻找匹配的函数，只处理local的情况，完整的类型推导在inferType
-            if (element instanceof Local) {
-                const mtdInClass = curArkClass.getMethodWithName((element as Local).getName());
-                if (mtdInClass) {
-                    cppFunc.push(mtdInClass);
-                }
-            }
-        });
-        if (elementValues[tsFuncNameIdx] instanceof StringConstant) {
-            dfltArkClass.addTs2CppFuncMapElement((elementValues[tsFuncNameIdx] as StringConstant).getValue(), cppFunc);
-        }
     }
 
     private getArrayLiteralExpression(arrayLiteralExpression: any, stmts: Stmt[], elementTypes: Set<Type>, elementValues: Value[], elementPositions: FullPosition[]) {

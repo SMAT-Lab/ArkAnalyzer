@@ -13,16 +13,20 @@
  * limitations under the License.
  */
 
-import { ArkFile } from '../../core/model/ArkFile';
-import {
-    FileSignature,
-    fileSignatureCompare,
-} from '../../core/model/ArkSignature';
+import { ArkFile, Language } from '../../core/model/ArkFile';
+import { FileSignature, fileSignatureCompare } from '../../core/model/ArkSignature';
 import { ExportInfo, ExportType, FromInfo } from '../../core/model/ArkExport';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { getFileAbsPath } from '../../utils/FileUtils';
 import path from 'path';
 import { ImportInfo } from '../../core/model/ArkImport';
+import { ArkMethod } from '../../core/model/ArkMethod';
+import { ArkClass } from '../../core/model/ArkClass';
+import { Value } from '../../core/base/Value';
+import { Local } from '../../core/base/Local';
+import { StringConstant } from '../../core/base/Constant';
+import { TEMP_LOCAL_PREFIX } from '../../core/common/Const';
+import { FunctionType } from '../../core/base/Type';
 
 // 常见 C++ 标准库头文件（不含 .h 后缀）
 const CPP_STD_HEADERS = new Set([
@@ -162,4 +166,106 @@ function processHeaderExportInfos(fromInfo: FromInfo, headerFile: ArkFile): Expo
         exportInfo.setExportClauseType(arkExport.getExportType());
     }
     return exportInfo;
+}
+
+/**
+ * 记录cpp函数与ts函数的映射关系（有napi_property_descriptor、napi_define_class标识符时）
+ * @param elementValues 映射关系描述函数的各个实参Value
+ * @param isDefineClass 是否是napi_define_class标识符
+ * @param declMethod 调用处所在的ArkMethod
+ * @return 无
+ */
+export function setTs2CppFuncMapOfClass(elementValues: Value[], isDefineClass: boolean, declMethod: ArkMethod): void {
+    const curArkClass = declMethod.getDeclaringArkClass();
+    const dfltArkClass = declMethod.getDeclaringArkFile().getDefaultClass();
+    if (!(curArkClass && dfltArkClass)) {
+        return;
+    }
+    let funcElements: Value[];
+    let tsFuncNameIdx: number;
+    if (isDefineClass) {
+        // napi_define_class设置对外暴露的类的构造函数
+        funcElements = elementValues.length > 4 ? [elementValues[3]] : [];
+        tsFuncNameIdx = 1;
+    } else {
+        // napi_property_descriptor内函数设置的字段
+        funcElements = elementValues.length > 5 ? elementValues.slice(2, 5) : [];
+        tsFuncNameIdx = 0;
+    }
+    const cppFunc: ArkMethod[] = findMatchingCppMethod(funcElements, declMethod);
+    if (elementValues[tsFuncNameIdx] instanceof StringConstant) {
+        dfltArkClass.addTs2CppFuncMapElement((elementValues[tsFuncNameIdx] as StringConstant).getValue(), cppFunc);
+    }
+}
+
+/**
+ * 寻找映射函数中函数指针对应的实际cpp函数
+ * @param funcElements 函数指针对应的Value数组
+ * @param declMethod 调用处所在的ArkMethod
+ * @return 返回寻找的匹配函数数组
+ */
+function findMatchingCppMethod(funcElements: Value[], declMethod: ArkMethod): ArkMethod[] {
+    const cppFunc: ArkMethod[] = [];
+    const currArkClass = declMethod.getDeclaringArkClass();
+    const classesToBeSearched: ArkClass[] = [];
+    classesToBeSearched.push(currArkClass, ...getIncludeDefaultClasses(declMethod));
+    const scene = currArkClass.getDeclaringArkFile().getScene();
+    for (const element of funcElements) {
+        if (!(element instanceof Local)) {
+            continue;
+        }
+        let funcRef = element as Local;
+        const mtdName = funcRef.getName();
+        // 如果是local且%num形式 => %num = A.b，实际应该是某个类的成员
+        if (mtdName.startsWith(TEMP_LOCAL_PREFIX)) {
+            const realType = funcRef.getType();
+            if (!(realType instanceof FunctionType)) {
+                continue;
+            }
+            let matchMtd = scene.getMethod(realType.getMethodSignature());
+            if (matchMtd) {
+                cppFunc.push(matchMtd);
+            }
+            continue;
+        }
+        // 如果是local且不以"%"开头 => 当前类的成员函数or全局函数
+        for (const cls of classesToBeSearched) {
+            let matchMtd = cls.getMethodWithName(mtdName);
+            if (matchMtd) {
+                cppFunc.push(matchMtd);
+            }
+        }
+    }
+    return cppFunc;
+}
+
+/**
+ * 获取当前arkInstance所属文件的include头文件的defaultClass
+ * @param arkInstance ArkIR的实例
+ * @return 返回获取到的所有符合条件的defaultClass
+ */
+function getIncludeDefaultClasses(arkInstance: ArkMethod | ArkClass | ArkFile): ArkClass[] {
+    const defaultClasses: ArkClass[] = [];
+    if (arkInstance instanceof ArkMethod || arkInstance instanceof ArkClass) {
+        arkInstance = arkInstance.getDeclaringArkFile();
+    }
+    const includeFiles: string[] = [];
+    for (const info of arkInstance.getImportInfos()) {
+        const imFrom = info.getFrom();
+        if (!imFrom) {
+            continue;
+        }
+        includeFiles.push(imFrom);
+    }
+    if (includeFiles.length === 0) {
+        return defaultClasses;
+    }
+    const scene = arkInstance.getScene();
+    scene.getFiles().forEach(file => {
+        if (file.getLanguage() !== Language.CPLUS || !includeFiles.includes(file.getFilePath())) {
+            return;
+        }
+        defaultClasses.push(file.getDefaultClass());
+    });
+    return defaultClasses;
 }
