@@ -158,7 +158,7 @@ export function buildArkMethodFromArkClass(
         mtd.setLine(line);
         mtd.setColumn(character);
         let bodyBuilder = new BodyBuilderCpp(mtd.getSignature(), methodNode, mtd, sourceFile);
-        mtd.setBodyBuilder(bodyBuilder);
+        mtd.setBodyBuilderCpp(bodyBuilder);
         declaringClass.setInstanceInitMethod(mtd);
     } else {
         mtd.setDeclareSignatures(methodSignature);
@@ -375,7 +375,7 @@ export function addInitInConstructor(constructor: ArkMethod): void {
             index = i + 1;
         }
     }
-    let initInvokeStmt: ArkInvokeStmt | undefined = undefined;
+    let initInvokeStmt: ArkInvokeStmt;
     try {
         initInvokeStmt = new ArkInvokeStmt(new ArkInstanceInvokeExpr(
             thisLocal,

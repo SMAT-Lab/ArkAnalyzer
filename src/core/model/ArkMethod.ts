@@ -80,7 +80,7 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
     private body?: ArkBody;
     private viewTree?: ViewTree;
 
-    private bodyBuilder?: BodyBuilder | BodyBuilderCpp;
+    private bodyBuilder?: BodyBuilder;
     private bodyBuilderCpp?: BodyBuilderCpp;
 
     private isGeneratedFlag: boolean = false;
@@ -556,7 +556,7 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
         return this.viewTree !== undefined;
     }
 
-    public setBodyBuilder(bodyBuilder: BodyBuilder | BodyBuilderCpp): void {
+    public setBodyBuilder(bodyBuilder: BodyBuilder): void {
         this.bodyBuilder = bodyBuilder;
         if (this.getDeclaringArkFile().getScene().buildClassDone()) {
             this.buildBody();
