@@ -233,7 +233,9 @@ function scanCMakeIncludeDirsOnly(dir: string): string[] {
     for (const argArr of allIncludeArgArrs) {
         for (let raw of argArr) {
             let resolved = resolveCMakeVar(raw, varTable);
-            if (/\$\{[A-Za-z_0-9]+\}/.test(resolved)) continue;
+            if (/\$\{[A-Za-z_0-9]+\}/.test(resolved)) {
+                continue;
+            }
             if (!path.isAbsolute(resolved)) {
                 resolved = path.resolve(dir, resolved);
             }

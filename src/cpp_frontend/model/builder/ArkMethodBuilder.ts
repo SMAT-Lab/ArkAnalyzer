@@ -44,6 +44,10 @@ import {
 import { buildGenericType } from '../../../core/model/builder/builderUtils';
 import { CONSTRUCTOR_NAME, THIS_NAME } from '../../../core/common/TSConst';
 import { ArkSignatureBuilder } from '../../../core/model/builder/ArkSignatureBuilder';
+import Logger, {LOG_MODULE_TYPE} from "../../../utils/logger";
+
+const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkMethodBuilder');
+
 function getSpecificNodes(methodNode:any, targetNode:string): any[]{
     if (!methodNode || !methodNode.inner){
         return [];
@@ -383,7 +387,7 @@ export function addInitInConstructor(constructor: ArkMethod): void {
             []
         ));
     } catch (e) {
-        console.warn("addInitInConstructor: failed to build initInvokeStmt due to exception: ", e);
+        logger.warn("addInitInConstructor: failed to build initInvokeStmt due to exception: ", e);
         return;
     }
     if (initInvokeStmt){
