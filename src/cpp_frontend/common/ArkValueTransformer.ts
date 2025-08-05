@@ -370,7 +370,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
     }
 
     // C++中子类调用父类构造函数进行初始化，类似ts的super(xx)。比如Left(const char& name, int power) : Base(name) { ... }
-    private superExpressionToValueAndStmts(cxxConstructExpr: any): ValueAndStmts {
+    public superExpressionToValueAndStmts(cxxConstructExpr: any): ValueAndStmts {
         const cls = this.declaringMethod.getDeclaringArkClass();
         if (!cls) {
             return this.newExpressionToValueAndStmtsCpp(cxxConstructExpr);
