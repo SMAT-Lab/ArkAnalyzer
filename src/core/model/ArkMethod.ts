@@ -395,7 +395,7 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
         this.genericTypes = genericTypes;
     }
 
-    public getBodyBuilder(): BodyBuilder | BodyBuilderCpp | undefined {
+    public getBodyBuilder(): BodyBuilder | undefined {
         return this.bodyBuilder;
     }
 
