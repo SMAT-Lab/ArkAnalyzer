@@ -46,7 +46,6 @@ import { MethodParameter } from './builder/ArkMethodBuilder';
 import { TypeInference } from '../common/TypeInference';
 import { StatementBuilder } from '../../cpp_frontend/graph/builder/CfgBuilder';
 import { BodyBuilderCpp } from '../../cpp_frontend/model/builder/BodyBuilder';
-import { ArkSignatureBuilder } from './builder/ArkSignatureBuilder';
 
 export const arkMethodNodeKind = [
     'MethodDeclaration',
@@ -81,7 +80,7 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
     private body?: ArkBody;
     private viewTree?: ViewTree;
 
-    private bodyBuilder?: BodyBuilder;
+    private bodyBuilder?: BodyBuilder | BodyBuilderCpp;
     private bodyBuilderCpp?: BodyBuilderCpp;
 
     private isGeneratedFlag: boolean = false;
@@ -339,13 +338,7 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
      ```
      */
     public getSignature(): MethodSignature {
-        if (this.methodSignature) {
-            return this.methodSignature;
-        }
-        if (Array.isArray(this.methodDeclareSignatures) && this.methodDeclareSignatures.length > 0) {
-            return this.methodDeclareSignatures[0];
-        }
-        return ArkSignatureBuilder.buildMethodSignatureFromMethodName("DefaultMethod");
+        return this.methodSignature ?? (this.methodDeclareSignatures as MethodSignature[])[0];
     }
 
     /**
@@ -402,7 +395,7 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
         this.genericTypes = genericTypes;
     }
 
-    public getBodyBuilder(): BodyBuilder | undefined {
+    public getBodyBuilder(): BodyBuilder | BodyBuilderCpp | undefined {
         return this.bodyBuilder;
     }
 
@@ -563,7 +556,7 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
         return this.viewTree !== undefined;
     }
 
-    public setBodyBuilder(bodyBuilder: BodyBuilder): void {
+    public setBodyBuilder(bodyBuilder: BodyBuilder | BodyBuilderCpp): void {
         this.bodyBuilder = bodyBuilder;
         if (this.getDeclaringArkFile().getScene().buildClassDone()) {
             this.buildBody();

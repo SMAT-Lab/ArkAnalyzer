@@ -157,6 +157,9 @@ export function buildArkMethodFromArkClass(
         mtd.setImplementationSignature(methodSignature);
         mtd.setLine(line);
         mtd.setColumn(character);
+        let bodyBuilder = new BodyBuilderCpp(mtd.getSignature(), methodNode, mtd, sourceFile);
+        mtd.setBodyBuilder(bodyBuilder);
+        declaringClass.setInstanceInitMethod(mtd);
     } else {
         mtd.setDeclareSignatures(methodSignature);
         mtd.setDeclareLinesAndCols([line + 1], [character + 1]);
@@ -372,10 +375,21 @@ export function addInitInConstructor(constructor: ArkMethod): void {
             index = i + 1;
         }
     }
-    const initInvokeStmt = new ArkInvokeStmt(new ArkInstanceInvokeExpr(thisLocal,
-        constructor.getDeclaringArkClass().getInstanceInitMethod().getSignature(), []));
-    initInvokeStmt.setCfg(cfg);
-    firstBlockStmts.splice(index, 0, initInvokeStmt);
+    let initInvokeStmt: ArkInvokeStmt | undefined = undefined;
+    try {
+        initInvokeStmt = new ArkInvokeStmt(new ArkInstanceInvokeExpr(
+            thisLocal,
+            constructor.getDeclaringArkClass().getInstanceInitMethod().getSignature(),
+            []
+        ));
+    } catch (e) {
+        console.warn("addInitInConstructor: failed to build initInvokeStmt due to exception: ", e);
+        return;
+    }
+    if (initInvokeStmt){
+        initInvokeStmt.setCfg(cfg);
+        firstBlockStmts.splice(index, 0, initInvokeStmt);
+    }
 }
 
 export function isMethodImplementation(node: any): boolean {
