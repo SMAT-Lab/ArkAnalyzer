@@ -90,20 +90,27 @@ export function buildNormalArkClassFromArkNamespace(
 }
 
 export function buildNormalArkClass(clsNode: any, cls: ArkClass, sourceFile: any, declaringMethod?: ArkMethod): void {
-    switch (clsNode.tagUsed) {
-        case 'struct':
-            buildStruct2ArkClass(clsNode, cls, sourceFile, declaringMethod);
-            break;
-        case 'class':
-            buildClass2ArkClass(clsNode, cls, sourceFile);
-            break;
-        case 'enum':
-            buildEnum2ArkClass(clsNode, cls, sourceFile, declaringMethod);
-            break;
-        case 'union':
-            buildUnion2ArkClass(clsNode, cls, sourceFile, declaringMethod);
-            break;
-        default:
+    if (clsNode.kind === 'CXXRecordDecl') {
+        switch (clsNode.tagUsed) {
+            case 'struct':
+                buildStruct2ArkClass(clsNode, cls, sourceFile, declaringMethod);
+                break;
+            case 'class':
+                buildClass2ArkClass(clsNode, cls, sourceFile);
+                break;
+            case 'enum':
+                buildEnum2ArkClass(clsNode, cls, sourceFile, declaringMethod);
+                break;
+            case 'union':
+                buildUnion2ArkClass(clsNode, cls, sourceFile, declaringMethod);
+                break;
+            default:
+        }
+    }
+    if (clsNode.kind === 'ClassTemplate') {
+        buildClass2ArkClass(clsNode, cls, sourceFile); // 模板类的kind属性不会自动被归入tagUsed为'class'
+    } else if (clsNode.kind === 'EnumDecl') {
+        buildEnum2ArkClass(clsNode, cls, sourceFile, declaringMethod);
     }
     IRUtils.setComments(cls, clsNode, sourceFile, cls.getDeclaringArkFile().getScene().getOptions());
 }

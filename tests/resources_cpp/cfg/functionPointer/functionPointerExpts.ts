@@ -1,0 +1,105 @@
+export const FUNCPTR_EXPECT_CASE1 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @functionPointer/functionPointer.cpp: %dflt',
+                'funcPtr = int',
+                'funcPtr = add',
+                'result = staticinvoke <@%unk/%unk: .funcPtr()>(3, 4)',
+                'staticinvoke <@%unk/%unk: .cout()>(\'3 + 4 = \', result)',
+                'return 0',
+            ],
+            preds: [],
+            succes: [],
+        },
+    ],
+};
+
+export const FUNCPTR_EXPECT_CASE2 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @functionPointer/functionPointer.cpp: %dflt',
+                'staticinvoke <@%unk/%unk: .greet()>(greetEnglish)',
+                'staticinvoke <@%unk/%unk: .greet()>(greetSpanish)',
+                'return 0',
+            ],
+            preds: [],
+            succes: [],
+        },
+    ],
+};
+
+export const FUNCPTR_EXPECT_CASE3 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @functionPointer/functionPointer.cpp: %dflt',
+                '%0 = newarray (double (*[])[4]',
+                '%0[0] = add',
+                '%0[1] = subtract',
+                '%0[2] = multiply',
+                '%0[3] = divide',
+                'operations = %0',
+                'x = 10',
+                'y = 5',
+                '%1 = newarray (char[])[4]',
+                '%1[0] = \'+\'',
+                '%1[1] = \'-\'',
+                '%1[2] = \'*\'',
+                '%1[3] = \'/\'',
+                'opSymbols = %1',
+                'i = 0',
+            ],
+            preds: [],
+            succes: [1],
+        },
+        {
+            id: 1,
+            stmts: [
+                'if i < 4',
+            ],
+            preds: [0, 2],
+            succes: [2, 3],
+        },
+        {
+            id: 2,
+            stmts: [
+                '%2 = opSymbols[i]',
+                '%3 = operations[i]',
+                '%4 = staticinvoke <@%unk/%unk: .undefined()>(%3, x, y)',
+                'staticinvoke <@%unk/%unk: .cout()>(x, \' \', %2, \' \', y, \' = \', %4)',
+                'i = i + 1',
+            ],
+            preds: [1],
+            succes: [1],
+        },
+        {
+            id: 3,
+            stmts: [
+                'return 0',
+            ],
+            preds: [1],
+            succes: [],
+        },
+    ],
+};
+
+export const FUNCPTR_EXPECT_GREET = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'greetFunc = parameter0: void (*)()',
+                'this = this: @functionPointer/functionPointer.cpp: %dflt',
+                'staticinvoke <@%unk/%unk: .greetFunc()>()',
+                'return'
+            ],
+            preds: [],
+            succes: [],
+        },
+    ],
+};
