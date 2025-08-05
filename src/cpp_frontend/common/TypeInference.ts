@@ -24,7 +24,7 @@ import {
     ArkParameterRef,
     ArkStaticFieldRef, GlobalRef
 } from '../../core/base/Ref';
-import { ArkAliasTypeDefineStmt, ArkAssignStmt, ArkReturnStmt, Stmt } from '../../core/base/Stmt';
+import { ArkAliasTypeDefineStmt, ArkAssignStmt, ArkInvokeStmt, ArkReturnStmt, Stmt } from '../../core/base/Stmt';
 import {
     AliasType,
     AnnotationNamespaceType,
@@ -79,6 +79,7 @@ import { AbstractTypeExpr, KeyofTypeExpr, TypeQueryExpr } from '../../core/base/
 import { SdkUtils } from '../../core/common/SdkUtils';
 import { ModifierType } from '../../core/model/ArkBaseModel';
 import { BuiltinCpp } from './Builtin';
+import { setTs2CppFuncMapOfClass } from './ModelUtils';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'TypeInference');
 
@@ -261,6 +262,19 @@ export class TypeInference {
         }
         if (stmt instanceof ArkAliasTypeDefineStmt && this.isUnclearType(stmt.getAliasType().getOriginalType())) {
             stmt.getAliasType().setOriginalType(stmt.getAliasTypeExpr().getType());
+        }
+        // 处理ts2CppFuncMap
+        if (stmt instanceof ArkInvokeStmt) {
+            const invokeExpr = stmt.getInvokeExpr();
+            if (!(invokeExpr instanceof ArkInstanceInvokeExpr)) {
+                return;
+            }
+            const instInvokeExpr = invokeExpr as ArkInstanceInvokeExpr;
+            const invokeBaseType = instInvokeExpr.getBase().getType();
+            if (invokeBaseType instanceof ClassType &&
+                invokeBaseType.getClassSignature().getClassName() === 'napi_property_descriptor') {
+                setTs2CppFuncMapOfClass(instInvokeExpr.getArgs(), false, stmt.getCfg().getDeclaringMethod());
+            }
         }
     }
 
