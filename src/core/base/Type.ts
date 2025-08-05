@@ -994,3 +994,34 @@ export class LabelType extends PointerType {
         return this.INSTANCE;
     }
 }
+
+export class Thread extends Type {
+    constructor() {
+        super();
+    }
+    getTypeString(){
+        const strs: string[] = [];
+        return strs.join('thread ');
+    }
+}
+
+export class functionPointer extends Type {
+    funType: string;
+
+    constructor(funType: string) {
+        super();
+        this.funType = funType;
+    }
+
+    public getTypeString(): string {
+        return this.funType;
+    }
+
+    public setFunType(funType: string): void {
+        this.funType = funType;
+    }
+
+    public getFunType(): string {
+        return this.funType;
+    }
+}

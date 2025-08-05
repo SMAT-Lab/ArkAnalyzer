@@ -47,7 +47,7 @@ import {
     UndefinedType,
     UnknownType,
     PointerType,
-    ReferenceType, AliasType,
+    ReferenceType, AliasType, Thread, functionPointer,
 } from '../../core/base/Type';
 import { ArkSignatureBuilder } from '../../core/model/builder/ArkSignatureBuilder';
 import { ClassSignature, FieldSignature, MethodSignature, FileSignature } from '../../core/model/ArkSignature';
@@ -64,7 +64,7 @@ import { AbstractFieldRef, ArkArrayRef, ArkInstanceFieldRef, CXXArkInstanceField
 import { ArkMethod } from '../../core/model/ArkMethod';
 import { buildArkMethodFromArkClass, buildDefaultConstructor } from '../model/builder/ArkMethodBuilder';
 import { Builtin } from '../../core/common/Builtin';
-import { Constant, StringConstant } from '../../core/base/Constant';
+import { Constant } from '../../core/base/Constant';
 import { TEMP_LOCAL_PREFIX } from '../../core/common/Const';
 import { ArkIRTransformerCpp, DummyStmt, ValueAndStmts } from './ArkIRTransformer';
 import { buildTypeFromPreStr, convertDataType, cppNode2Type, isCXXSTLContainer } from '../model/builder/builderUtils';
@@ -74,6 +74,7 @@ import { ModelUtils } from '../../core/common/ModelUtils';
 import { CONSTRUCTOR_NAME, THIS_NAME } from '../../core/common/TSConst';
 import { ClassCategory } from '../../core/model/ArkClass';
 import { TypeInference } from './TypeInference';
+import { setTs2CppFuncMapOfClass } from './ModelUtils'
 
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkValueTransformer');
@@ -179,6 +180,9 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
                 return this.tsNodeToValueAndStmts(node.inner[0]);
             }
             return this.newExpressionToValueAndStmtsCpp(node);
+        } else if(node.kind === 'CallExpr' && node.inner?.length > 0 && node.getParent().type.qualType === 'std::thread'){
+
+            return this.newExpressionToValueAndStmtsCpp(node);
         } else if (node.kind === 'CallExpr' && node.inner?.length > 0 && node.inner[0].kind === 'CXXPseudoDestructorExpression') {
             return this.callExpressionToValueAndStmtsCpp(node.inner[0]);
         } else if (node.kind === 'CallExpr' && node.name === 'basic_string' && node.inner?.length > 0) {
@@ -211,9 +215,13 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
             node.kind = 'DeclRefExpr';
             node.name = node.code;
             return this.tsNodeToValueAndStmts(node);
-        } else if ((node.kind === 'DeclRefExpr' || node.kind === 'typeRef') && node.inner?.length > 0 && !node.type) {
+        } else if ((node.kind === 'DeclRefExpr' || node.kind === 'TypeRef') && node.inner?.length > 0 && !node.type) {
             return this.tsNodeToValueAndStmts(node.inner[0]);
-        } else if (node.kind === 'DeclRefExpr' || node.kind === 'typeRef') {
+        } else if (node.kind === 'DeclRefExpr' || node.kind === 'TypeRef') {
+            // 处理类的静态成员调用，如A::a
+            if (node.code.includes('::') && node.inner?.[0].kind === 'TypeRef') {
+                return this.staticMemberExprToValueAndStmtsCpp(node);
+            }
             return this.identifierToValueAndStmtsCpp(node);
         } else if (node.kind === 'UnresolvedLookupExpr') {
             return this.identifierToValueAndStmtsCpp(node);
@@ -297,6 +305,11 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         };
     }
 
+    private staticMemberExprToValueAndStmtsCpp(declRefExpr: any): ValueAndStmts {
+        declRefExpr.kind = 'MemberExpr';  // 类型替换成“成员调用”
+        return this.memberExpressionToValueAndStmts(declRefExpr);
+    }
+
     private userDefinedLiteralToValueAndStmts(userDefinedLiteral: any): ValueAndStmts {
         // 用户定义字面量的语法是：原始值+后缀（如 123_km、"hello"_s、'a'_s）
         if (userDefinedLiteral.inner?.length < 2) {
@@ -370,7 +383,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
     }
 
     // C++中子类调用父类构造函数进行初始化，类似ts的super(xx)。比如Left(const char& name, int power) : Base(name) { ... }
-    private superExpressionToValueAndStmts(cxxConstructExpr: any): ValueAndStmts {
+    public superExpressionToValueAndStmts(cxxConstructExpr: any): ValueAndStmts {
         const cls = this.declaringMethod.getDeclaringArkClass();
         if (!cls) {
             return this.newExpressionToValueAndStmtsCpp(cxxConstructExpr);
@@ -599,7 +612,8 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
                     continue;
                 }
                 // kind = MemberExpr为了处理多层Field结构
-                if (firstNode.kind.toString() === 'DeclRefExpr' || firstNode.kind.toString() === 'MemberExpr' || firstNode.kind.toString() === 'OverloadedDeclRef') {
+                if (firstNode.kind.toString() === 'DeclRefExpr' || firstNode.kind.toString() === 'MemberExpr'
+                    || firstNode.kind.toString() === 'OverloadedDeclRef') {
                     callNode = firstNode;
                 } else {
                     argumentNodes.push(firstNode);
@@ -726,13 +740,17 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         } else {
             varNode = identifier;
         }
-        if (varNode.name === UndefinedType.getInstance().getName()) {
+        const varName = varNode.kind === 'TypeRef' ? varNode.code : varNode.name;
+        if (varNode.kind && identifier.referencedDecl && varNode.kind === 'FunctionDecl') { //
+            const type = new functionPointer(varNode.type);
+            identifierValue = this.getOrCreateLocal(varName, type);
+        } else if (varName === UndefinedType.getInstance().getName()) {
             identifierValue = CppValueUtil.getUndefinedConst();
         } else {
             if (variableDefFlag) {
-                identifierValue = this.addNewLocal(varNode.name);
+                identifierValue = this.addNewLocal(varName);
             } else {
-                identifierValue = this.getOrCreateLocal(varNode.name);
+                identifierValue = this.getOrCreateLocal(varName);
             }
         }
         return {
@@ -877,7 +895,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         const [callNode, argumentNodes] = this.getArgumentNode(callExpression.inner);
         const argus = this.parseArgumentsCppOfCallExpressionCpp(stmts, argumentNodes);
         if (callExpression.name === 'napi_define_class') {
-            this.setTs2CppFuncMapOfClass(argus.args, true);
+            setTs2CppFuncMapOfClass(argus.args, true, this.declaringMethod);
         }
         return this.generateInvokeValueAndStmtsCpp(callNode, argus, stmts, callExpression);
     }
@@ -1382,6 +1400,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         const constructorMethodSubSignature = ArkSignatureBuilder.buildMethodSubSignatureFromMethodName(CONSTRUCTOR_NAME);
         const constructorMethodSignature = new MethodSignature(classSignature, constructorMethodSubSignature);
         // 区分new class 和 C++ STL容器
+        // 如果该语句在做类或结构体的初始化，将初始化的数据作为表格存储到IR中
         let constructArgs = newExpression.inner;
         if ((newExpression.kind === 'CXXNewExpr' && newExpression.inner[1]?.kind === 'CXXConstructExpr')) {
             constructArgs = [...newExpression.inner[1].inner];
@@ -1393,7 +1412,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         } else if (newExpression.kind === 'InitListExpr') {
             constructArgs = this.getConstructArgs(newExpression);
         }
-
+        // 对象构造，使用invokeStmt表达
         const { args: argValues, argPositions: argPositions } = this.parseArgumentsCpp(stmts, constructArgs);
         const instanceInvokeExpr = new ArkInstanceInvokeExpr(newLocal as Local, constructorMethodSignature, argValues);
 
@@ -1401,9 +1420,11 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         const instanceInvokeExprPositions = [newLocalPositions[0], ...newLocalPositions, ...argPositions];
         invokeStmt.setOperandOriginalPositions(instanceInvokeExprPositions);
         stmts.push(invokeStmt);
+        // 处理cpp与ts之间的接口
         if (className === 'napi_property_descriptor') {
-            this.setTs2CppFuncMapOfClass(argValues,false);
+            setTs2CppFuncMapOfClass(argValues, false, this.declaringMethod);
         }
+        // 处理初始化语句含有成员变量的场景，对初始化的成员变量构造stmt
         if ((newExpression.kind === 'CompoundLiteralExpr' && newExpression.inner[1].kind === 'InitListExpr')) {
             const newExpr = newExpression.inner[1];
             for (const element of newExpr.inner) {
@@ -1422,6 +1443,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         return { value: newLocal, valueOriginalPositions: newLocalPositions, stmts: stmts };
     }
 
+    // 构造参数表格
     private getConstructArgs(constructArgs: any): Array<any> {
         if (constructArgs.kind === 'InitListExpr') {
             constructArgs = constructArgs.inner;
@@ -1521,39 +1543,6 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
             newArrayExprPosition,
             true
         );
-    }
-
-    // 记录cpp函数与ts函数的映射关系（有napi_property_descriptor、napi_define_class标识符时）
-    private setTs2CppFuncMapOfClass(elementValues: Value[], isDefineClass: boolean): void {
-        const curArkClass = this.declaringMethod.getDeclaringArkClass();
-        const dfltArkClass = this.declaringMethod.getDeclaringArkFile().getDefaultClass();
-        if (!(curArkClass && dfltArkClass)) {
-            return;
-        }
-        const cppFunc: ArkMethod[] = [];
-        let funcElements: Value[];
-        let tsFuncNameIdx: number;
-        if (isDefineClass) {
-            // napi_define_class设置对外暴露的类的构造函数
-            funcElements = elementValues.length > 4 ? [elementValues[3]] : [];
-            tsFuncNameIdx = 1;
-        } else {
-            // napi_property_descriptor内函数设置的字段
-            funcElements = elementValues.length > 5 ? elementValues.slice(2, 5) : [];
-            tsFuncNameIdx = 0;
-        }
-        funcElements.forEach((element) => {
-            // 当前只在类中寻找匹配的函数，只处理local的情况，完整的类型推导在inferType
-            if (element instanceof Local) {
-                const mtdInClass = curArkClass.getMethodWithName((element as Local).getName());
-                if (mtdInClass) {
-                    cppFunc.push(mtdInClass);
-                }
-            }
-        });
-        if (elementValues[tsFuncNameIdx] instanceof StringConstant) {
-            dfltArkClass.addTs2CppFuncMapElement((elementValues[tsFuncNameIdx] as StringConstant).getValue(), cppFunc);
-        }
     }
 
     private getArrayLiteralExpression(arrayLiteralExpression: any, stmts: Stmt[], elementTypes: Set<Type>, elementValues: Value[], elementPositions: FullPosition[]) {
@@ -2041,6 +2030,8 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
                 const fileSignature = new FileSignature('std', containerName + '.h');
                 const classSignature = new ClassSignature(containerName, fileSignature);
                 return new ClassType(classSignature);
+            } else if (containerName === 'thread'){
+                return new Thread();
             }
         } else if (qualType === 'std' && node.kind === 'NamespaceRef'){
             const fileSignature = new FileSignature('std','iostream.h');
@@ -2062,6 +2053,8 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
             let dimension = 0;
             let dataType = this.resolveVectorType(qualType, dimension);
             return new ArrayType(buildTypeFromPreStr(dataType), dimension);
+        } else if (qualType === 'thread'){
+            return new Thread();
         } else {
             // 条件为命中则考虑别名场景的type处理
             let type = this.resolveCppTypeReferenceNode(qualType);

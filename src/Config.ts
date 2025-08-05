@@ -200,39 +200,42 @@ function parseCMakeArgs(buffer: string[], isTarget: boolean): string[] {
     }
 }
 
-function scanCMakeIncludeDirsOnly(dir: string) {
+function scanCMakeIncludeDirsOnly(dir: string): string[] {
     const result: string[] = [];
+
+    const cmakePath = path.join(dir, "CMakeLists.txt");
+    if (!fs.existsSync(cmakePath)) {
+        // 提前返回，仅递归子目录
+        const subdirs = fs.readdirSync(dir, { withFileTypes: true })
+            .filter(f => f.isDirectory())
+            .map(f => path.join(dir, f.name));
+
+        return subdirs.flatMap(subdir => scanCMakeIncludeDirsOnly(subdir));
+    }
+
+    // 有 CMakeLists.txt 的正常处理流程
     const varTable: Record<string, string> = {
         CMAKE_CURRENT_SOURCE_DIR: dir.replace(/\\/g, "/"),
         PROJECT_SOURCE_DIR: dir.replace(/\\/g, "/"),
     };
 
-    const cmakePath = path.join(dir, "CMakeLists.txt");
-    if (!fs.existsSync(cmakePath)) {
-        return [];
-    }
-
     const lines = fs.readFileSync(cmakePath, "utf-8").split(/\r?\n/);
 
-    // 1. 预处理所有 set 变量
     for (const line of lines) {
         const s = extractSetVar(line);
         if (s) {
-            let [name, val] = s;
+            const [name, val] = s;
             varTable[name] = resolveCMakeVar(val, varTable);
         }
     }
 
-    // 2. 提取 include_directories/target_include_directories
-    const allIncludeArrs = extractAllIncludeDirs(lines);
-    for (const argArr of allIncludeArrs) {
+    const allIncludeArgArrs = extractAllIncludeDirs(lines);
+    for (const argArr of allIncludeArgArrs) {
         for (let raw of argArr) {
             let resolved = resolveCMakeVar(raw, varTable);
-            // 路径中还存在 ${XXX} 说明无法完全解析，直接丢弃
             if (/\$\{[A-Za-z_0-9]+\}/.test(resolved)) {
                 continue;
             }
-            // 相对路径转绝对
             if (!path.isAbsolute(resolved)) {
                 resolved = path.resolve(dir, resolved);
             }
@@ -240,16 +243,18 @@ function scanCMakeIncludeDirsOnly(dir: string) {
         }
     }
 
-    // 3. 递归子目录
+    // 仍然递归子目录
     const subdirs = fs.readdirSync(dir, { withFileTypes: true })
         .filter(f => f.isDirectory())
         .map(f => path.join(dir, f.name));
+
     for (const subdir of subdirs) {
         result.push(...scanCMakeIncludeDirsOnly(subdir));
     }
 
     return result;
 }
+
 
 export class SceneConfig {
     private targetProjectName: string = '';

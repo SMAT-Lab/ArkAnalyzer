@@ -46,7 +46,6 @@ import { MethodParameter } from './builder/ArkMethodBuilder';
 import { TypeInference } from '../common/TypeInference';
 import { StatementBuilder } from '../../cpp_frontend/graph/builder/CfgBuilder';
 import { BodyBuilderCpp } from '../../cpp_frontend/model/builder/BodyBuilder';
-import { ArkSignatureBuilder } from './builder/ArkSignatureBuilder';
 
 export const arkMethodNodeKind = [
     'MethodDeclaration',
@@ -339,13 +338,7 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
      ```
      */
     public getSignature(): MethodSignature {
-        if (this.methodSignature) {
-            return this.methodSignature;
-        }
-        if (Array.isArray(this.methodDeclareSignatures) && this.methodDeclareSignatures.length > 0) {
-            return this.methodDeclareSignatures[0];
-        }
-        return ArkSignatureBuilder.buildMethodSignatureFromMethodName("DefaultMethod");
+        return this.methodSignature ?? (this.methodDeclareSignatures as MethodSignature[])[0];
     }
 
     /**

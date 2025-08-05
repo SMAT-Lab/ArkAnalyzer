@@ -88,3 +88,22 @@ export const REFERENCE_EXPECT_CASE5 = {
         }
     ]
 };
+
+export const REFERENCE_EXPECT_CASE6 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                "this = this: @reference/reference.cpp: %dflt",
+                "temp = 5",
+                "ref_a = staticinvoke <@%unk/%unk: .move()>(temp)",
+                "ref_a = 6",
+                "str1 = 'Hello'",
+                "str2 = staticinvoke <@%unk/%unk: .move()>(str1)",
+                "return",
+            ],
+            preds: [],
+            succes: []
+        }
+    ]
+};
