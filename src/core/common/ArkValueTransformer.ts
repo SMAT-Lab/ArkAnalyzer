@@ -231,7 +231,7 @@ export class ArkValueTransformer {
         };
     }
 
-    private superExpressionToValueAndStmts(superExpression: ts.SuperExpression): ValueAndStmts {
+    public superExpressionToValueAndStmts(superExpression: ts.SuperExpression): ValueAndStmts {
         return {
             value: this.getOrCreateLocal(SUPER_NAME),
             valueOriginalPositions: [FullPosition.buildFromNode(superExpression, this.sourceFile)],
@@ -1923,7 +1923,7 @@ export class ArkValueTransformer {
         };
     }
 
-    private getOrCreateLocal(localName: string, localType: Type = UnknownType.getInstance()): Local {
+    public getOrCreateLocal(localName: string, localType: Type = UnknownType.getInstance()): Local {
         let local = this.locals.get(localName);
         if (local !== undefined) {
             return local;
@@ -1941,7 +1941,7 @@ export class ArkValueTransformer {
         return tempLocal;
     }
 
-    private isRelationalOperator(operator: BinaryOperator): boolean {
+    public isRelationalOperator(operator: BinaryOperator): boolean {
         return (
             operator === RelationalBinaryOperator.LessThan ||
             operator === RelationalBinaryOperator.LessThanOrEqual ||
