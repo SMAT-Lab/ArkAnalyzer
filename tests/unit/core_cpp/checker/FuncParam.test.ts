@@ -33,11 +33,11 @@ describe('check func parm', () => {
 });
 
 
-const BASE_DIR = 'tests/resources/check';
+const BASE_DIR = 'tests/resources_cpp/check';
 
 function buildScene(folderName: string): Scene {
     let config: SceneConfig = new SceneConfig();
-    config.buildFromProjectDir(path.join(BASE_DIR + folderName));
+    config.buildFromProjectDir(path.join(BASE_DIR, folderName));
     let scene = new Scene();
     scene.buildSceneFromProjectDir(config);
     return scene;

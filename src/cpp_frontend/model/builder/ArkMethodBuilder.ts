@@ -37,9 +37,9 @@ import { ANONYMOUS_METHOD_PREFIX, DEFAULT_ARK_METHOD_NAME } from '../../../core/
 import { IRUtils } from '../../../core/common/IRUtils';
 import {
     buildNestedMethodName,
-    checkAndUpdateMethod,
     MethodParameter,
     needDefaultConstructorInClass,
+    updateMethodSignaturesAndLineCols,
 } from '../../../core/model/builder/ArkMethodBuilder';
 import { buildGenericType } from '../../../core/model/builder/builderUtils';
 import { CONSTRUCTOR_NAME, THIS_NAME } from '../../../core/common/TSConst';
@@ -173,10 +173,25 @@ export function buildArkMethodFromArkClass(
     } else if (declaringClass.hasComponentDecorator() && mtd.getSubSignature().toString() === 'build()' && !mtd.isStatic()) {
         declaringClass.setViewTree(buildViewTree(mtd));
     }
-    checkAndUpdateMethod(mtd, declaringClass);
+    checkAndUpdateMethodCpp(mtd, declaringClass);
     declaringClass.addOverloadMethod(mtd);
     declaringClass.addMethod(mtd);
     IRUtils.setComments(mtd, methodNode, sourceFile, mtd.getDeclaringArkFile().getScene().getOptions());
+}
+
+function checkAndUpdateMethodCpp(method: ArkMethod, cls: ArkClass): void {
+    const methodName = method.getName();
+    const methodSignature = method.getSignature();
+    let methodsWithSameName = cls.getAllMethodsWithName(methodName);
+    if (methodsWithSameName.length === 0) {
+        return;
+    }
+    for (const preMtd of methodsWithSameName) {
+        if (preMtd.getSignature().isMatch(methodSignature)) {
+            updateMethodSignaturesAndLineCols(method, preMtd);
+            break;
+        }
+    }
 }
 
 function isRelatedToCXXInheritedCtorInitExpr(node: any): boolean {
@@ -321,7 +336,7 @@ export function buildDefaultConstructor(arkClass: ArkClass): boolean {
     cfg.getStmts().forEach(s => s.setCfg(cfg));
 
     defaultConstructor.setBody(new ArkBody(locals, cfg));
-    checkAndUpdateMethod(defaultConstructor, arkClass);
+    checkAndUpdateMethodCpp(defaultConstructor, arkClass);
     arkClass.addMethod(defaultConstructor);
 
     return true;

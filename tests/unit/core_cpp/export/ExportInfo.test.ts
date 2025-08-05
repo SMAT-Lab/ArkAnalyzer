@@ -138,10 +138,10 @@ describe("export Test", () => {
         if (stmts) {
             assert.equal(stmts[1].getInvokeExpr()?.getMethodSignature().toString(),
                 '@exports/funcImplementInCpp/include/test.h: %dflt.funcDoSomething(int, int)');
-            assert.equal(stmts[8].getDef()?.getType().toString(), '@exports/funcImplementInCpp/include/test.h: Circle')
-            assert.equal(stmts[9].getInvokeExpr()?.getMethodSignature().toString(),
+            assert.equal(stmts[9].getDef()?.getType().toString(), '@exports/funcImplementInCpp/include/test.h: Circle')
+            assert.equal(stmts[10].getInvokeExpr()?.getMethodSignature().toString(),
                 '@exports/funcImplementInCpp/include/test.h: Circle.calculateArea()');
-            assert.equal(stmts[11].getInvokeExpr()?.getMethodSignature().toString(),
+            assert.equal(stmts[12].getInvokeExpr()?.getMethodSignature().toString(),
                 '@exports/funcImplementInCpp/include/test.h: Circle.printInfo()');
             // assert.equal(stmts[6].getDef()?.getType().toString(), '@exports/funcImplementInCpp/include/test.h: Point');  // 当前表示为数组？
         }
