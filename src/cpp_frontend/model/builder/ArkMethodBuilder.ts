@@ -375,7 +375,7 @@ export function addInitInConstructor(constructor: ArkMethod): void {
             index = i + 1;
         }
     }
-    let initInvokeStmt: ArkInvokeStmt | undefined = undefined;
+    let initInvokeStmt: ArkInvokeStmt;
     try {
         initInvokeStmt = new ArkInvokeStmt(new ArkInstanceInvokeExpr(
             thisLocal,
