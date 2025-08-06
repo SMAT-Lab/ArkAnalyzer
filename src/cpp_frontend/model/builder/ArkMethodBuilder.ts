@@ -37,9 +37,9 @@ import { ANONYMOUS_METHOD_PREFIX, DEFAULT_ARK_METHOD_NAME } from '../../../core/
 import { IRUtils } from '../../../core/common/IRUtils';
 import {
     buildNestedMethodName,
-    checkAndUpdateMethod,
     MethodParameter,
     needDefaultConstructorInClass,
+    updateMethodSignaturesAndLineCols,
 } from '../../../core/model/builder/ArkMethodBuilder';
 import { buildGenericType } from '../../../core/model/builder/builderUtils';
 import { CONSTRUCTOR_NAME, THIS_NAME } from '../../../core/common/TSConst';
@@ -161,9 +161,6 @@ export function buildArkMethodFromArkClass(
         mtd.setImplementationSignature(methodSignature);
         mtd.setLine(line);
         mtd.setColumn(character);
-        let bodyBuilder = new BodyBuilderCpp(mtd.getSignature(), methodNode, mtd, sourceFile);
-        mtd.setBodyBuilderCpp(bodyBuilder);
-        declaringClass.setInstanceInitMethod(mtd);
     } else {
         mtd.setDeclareSignatures(methodSignature);
         mtd.setDeclareLinesAndCols([line + 1], [character + 1]);
@@ -177,10 +174,25 @@ export function buildArkMethodFromArkClass(
     } else if (declaringClass.hasComponentDecorator() && mtd.getSubSignature().toString() === 'build()' && !mtd.isStatic()) {
         declaringClass.setViewTree(buildViewTree(mtd));
     }
-    checkAndUpdateMethod(mtd, declaringClass);
+    checkAndUpdateMethodCpp(mtd, declaringClass);
     declaringClass.addOverloadMethod(mtd);
     declaringClass.addMethod(mtd);
     IRUtils.setComments(mtd, methodNode, sourceFile, mtd.getDeclaringArkFile().getScene().getOptions());
+}
+
+function checkAndUpdateMethodCpp(method: ArkMethod, cls: ArkClass): void {
+    const methodName = method.getName();
+    const methodSignature = method.getSignature();
+    let methodsWithSameName = cls.getAllMethodsWithName(methodName);
+    if (methodsWithSameName.length === 0) {
+        return;
+    }
+    for (const preMtd of methodsWithSameName) {
+        if (preMtd.getSignature().isMatch(methodSignature)) {
+            updateMethodSignaturesAndLineCols(method, preMtd);
+            break;
+        }
+    }
 }
 
 function isRelatedToCXXInheritedCtorInitExpr(node: any): boolean {
@@ -325,7 +337,7 @@ export function buildDefaultConstructor(arkClass: ArkClass): boolean {
     cfg.getStmts().forEach(s => s.setCfg(cfg));
 
     defaultConstructor.setBody(new ArkBody(locals, cfg));
-    checkAndUpdateMethod(defaultConstructor, arkClass);
+    checkAndUpdateMethodCpp(defaultConstructor, arkClass);
     arkClass.addMethod(defaultConstructor);
 
     return true;
@@ -397,14 +409,23 @@ export function addInitInConstructor(constructor: ArkMethod): void {
 }
 
 export function isMethodImplementation(node: any): boolean {
-    if (node.kind === 'CXXMethodDecl' || node.kind === 'LambdaExpr'){
-        if (node.inner && node.inner.length > 0){
-            return true;
-        }
-    } else if (node.kind.toString() === 'CXXConstructorDecl' || node.kind.toString() === 'CXXDestructorDecl'){
-        if (node.inner.find((inn:any) => inn.kind.toString() === 'CompoundStmt')){
-            return true;
-        }
+    let isFuncImpl: boolean = false;
+    switch (node.kind) {
+        case 'LambdaExpr':
+            if (node.inner && node.inner.length > 0) {
+                isFuncImpl = true;
+            }
+            break;
+        case 'CXXMethodDecl':
+        case 'CXXConstructorDecl':
+        case 'CXXDestructorDecl':
+        case 'FunctionDecl':
+        case 'FunctionTemplate':
+        case 'FriendDecl':
+            if (node.inner.find((inn:any) => inn.kind.toString() === 'CompoundStmt')) {
+                isFuncImpl = true;
+            }
+            break;
     }
-    return false;
+    return isFuncImpl;
 }

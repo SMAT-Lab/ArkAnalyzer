@@ -31,6 +31,7 @@ import {
     Value,
 } from '../../src';
 import {
+    ASSIGNMENT_EXPECT_IR,
     BinaryExpression_Expect_IR,
     CallExpression_Expect_IR,
     ExpressionStatements_Expect_IR,
@@ -448,6 +449,11 @@ describe('expression Test', () => {
         testMethodIR(scene, 'Rest.ts', DEFAULT_ARK_CLASS_NAME, 'restElements1', REST_ELEMENTS1_EXPECT_IR);
         testMethodIR(scene, 'Rest.ts', DEFAULT_ARK_CLASS_NAME, 'restElements2', REST_ELEMENTS2_EXPECT_IR);
         testMethodIR(scene, 'Rest.ts', DEFAULT_ARK_CLASS_NAME, 'restParameter', REST_PARAMETERS1_EXPECT_IR);
+    });
+
+    it('test assignment', async () => {
+        testMethodIR(scene, 'Assignment.ts', DEFAULT_ARK_CLASS_NAME, 'additiveCompoundAssignment',
+            ASSIGNMENT_EXPECT_IR);
     });
 });
 

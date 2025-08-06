@@ -47,7 +47,10 @@ import {
     UndefinedType,
     UnknownType,
     PointerType,
-    ReferenceType, AliasType, Thread, functionPointer,
+    ReferenceType,
+    AliasType,
+    Thread,
+    functionPointer,
 } from '../../core/base/Type';
 import { ArkSignatureBuilder } from '../../core/model/builder/ArkSignatureBuilder';
 import { ClassSignature, FieldSignature, MethodSignature, FileSignature } from '../../core/model/ArkSignature';
@@ -163,7 +166,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
     public tsNodeToValueAndStmts(node: any): ValueAndStmts {
         if (node === undefined) {
             logger.error('ArkValueTransformer-TSNodeToValueAndStmts: node is undefined. Method signature is : ',
-                this.declaringMethod?.getDeclareSignatures()?.toString());
+                this.declaringMethod?.getSignature()?.toString());
             return {
                 value: new Local('undefined'),
                 valueOriginalPositions: [new FullPosition(0, 0, 0, 0)],
@@ -613,7 +616,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
                 }
                 // kind = MemberExpr为了处理多层Field结构
                 if (firstNode.kind.toString() === 'DeclRefExpr' || firstNode.kind.toString() === 'MemberExpr'
-                    || firstNode.kind.toString() === 'OverloadedDeclRef') {
+                    || firstNode.kind.toString() === 'OverloadedDeclRef' || firstNode.kind.toString() === 'ArraySubscriptExpr') {
                     callNode = firstNode;
                 } else {
                     argumentNodes.push(firstNode);
@@ -1710,6 +1713,10 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
             }
         }
         const declarationType = variableDeclaration.type ? this.resolveTypeNodeCpp(variableDeclaration) : UnknownType.getInstance();
+        if (declarationType instanceof functionPointer){
+            rightOpNode.code = declarationType.getFunType();
+            rightOpNode.type.qualType = declarationType.getFunType();
+        }
         const assignment = this.assignmentToValueAndStmtsCpp(leftOpNode, rightOpNode, true, isConst, declarationType, needRightOp);
         if (declarationType instanceof ReferenceType && assignment.stmts[0] instanceof ArkAssignStmt) {
             declarationType.setSourceValue(assignment.stmts[0].getRightOp());

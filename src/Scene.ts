@@ -105,9 +105,6 @@ export class Scene {
 
     private unhandledFilePaths: Set<string> = new Set<string>();
     private unhandledSdkFilePaths: string[] = [];
-    // Map<path_to_headerFile, Map<func_sub_signature, ArkMethod of function definition>>
-    // e.g. <path_to_h, <"retType clsName::funcSubSig", ArkMethod>>
-    private cppFuncMap: Map<string, Map<string, ArkMethod>> = new Map();
 
     constructor() { }
 
@@ -152,7 +149,6 @@ export class Scene {
         this.sdkGlobalMap.clear();
         this.ohPkgContentMap.clear();
         this.ohPkgContent = {};
-        this.cppFuncMap.clear();
     }
 
     public getStage(): SceneBuildStage {
@@ -1113,10 +1109,6 @@ export class Scene {
         return callGraph;
     }
 
-    public getCppFuncMap(): Map<string, Map<string, ArkMethod>> {
-        return this.cppFuncMap;
-    }
-
     /**
      * Infer type for each non-default method. It infers the type of each field/local/reference.
      * For example, the statement `let b = 5;`, the type of local `b` is `NumberType`; and for the statement `let s =
@@ -1163,16 +1155,10 @@ export class Scene {
     }
 
     private findMtdImpl(mtd: ArkMethod, headerPath: string, sortedRefFiles: string[]): void {
-        const mtdCode = mtd.getCode();
-        // Check if there are function body braces in the function code.
-        // @ts-ignore
-        const isFuncDef = mtdCode ? (/^.*\{.*\}$/s.test(mtdCode)) : false;
-        if (isFuncDef || mtd.isDefaultArkMethod() || mtd.getName() === INSTANCE_INIT_METHOD_NAME ||
+        const isFuncImpl = mtd.getImplementationSignature();
+        if (isFuncImpl || mtd.isDefaultArkMethod() || mtd.getName() === INSTANCE_INIT_METHOD_NAME ||
             mtd.getName() === STATIC_INIT_METHOD_NAME) {
             return;
-        }
-        if (!this.cppFuncMap.has(headerPath)) {
-            this.cppFuncMap.set(headerPath, new Map<string, ArkMethod>());
         }
         this.mapHeaderToSource(mtd, headerPath, sortedRefFiles);
     }
@@ -1241,12 +1227,15 @@ export class Scene {
             if (!refArkClass) {
                 continue;
             }
-            const nameMatchingMtd = refArkClass.getMethodWithName(mtdDecl.getName());  // 注意这里只返回单个，后续要考虑函数重载的情况
-            if (nameMatchingMtd) {
-                const nameMatchingMtdSubSig = nameMatchingMtd.getSubSignature();
+            const nameMatchingMtds = refArkClass.getAllMethodsWithName(mtdDecl.getName());
+            for (const mtd of nameMatchingMtds) {
+                const nameMatchingMtdSubSig = mtd.getSubSignature();
                 const mtdSubSigStr = `${nameMatchingMtdSubSig.getReturnType().toString()} ${tgtClsName}::${nameMatchingMtdSubSig.toString()}`;
                 if (mtdSubSigStr === matchKey) {
-                    this.cppFuncMap.get(headerFile)!.set(matchKey, nameMatchingMtd);
+                    // 设置当前函数声明对应的函数实现的签名
+                    mtdDecl.setImplementationSignature(mtd.getSignature());
+                    // 函数实现可能会缺失函数声明中已有的修饰符（如static），此处给函数实现补上
+                    mtd.setModifiers(mtdDecl.getModifiers() | mtd.getModifiers());
                     return;
                 }
             }

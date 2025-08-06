@@ -999,9 +999,9 @@ export class Thread extends Type {
     constructor() {
         super();
     }
+
     getTypeString(){
-        const strs: string[] = [];
-        return strs.join('thread ');
+        return 'thread ';
     }
 }
 

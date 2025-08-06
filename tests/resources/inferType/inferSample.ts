@@ -90,10 +90,6 @@ function testFieldType(): void {
     let anyType = ain['key'];
 }
 
-function foo() {
-    class Test {
-        name: string = "test"
-    }
 let out = 10;
 
 function test1(): number {

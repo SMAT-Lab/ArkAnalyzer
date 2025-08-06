@@ -480,21 +480,19 @@ export function isMethodImplementation(node: MethodLikeNode): boolean {
 }
 
 export function checkAndUpdateMethod(method: ArkMethod, cls: ArkClass): void {
-    const methodName = method.getName();
-    const methodSignature = method.getSignature();
-    let methodsWithSameName = cls.getAllMethodsWithName(methodName);
-    if (methodsWithSameName.length === 0) {
+    let presentMethod: ArkMethod | null;
+    if (method.isStatic()) {
+        presentMethod = cls.getStaticMethodWithName(method.getName());
+    } else {
+        presentMethod = cls.getMethodWithName(method.getName());
+    }
+    if (presentMethod === null) {
         return;
     }
-    for (const preMtd of methodsWithSameName) {
-        if (preMtd.getSignature().isMatch(methodSignature)) {
-            updateMethodSignaturesAndLineCols(method, preMtd);
-            break;
-        }
-    }
+    updateMethodSignaturesAndLineCols(method, presentMethod);
 }
 
-function updateMethodSignaturesAndLineCols(method: ArkMethod, presentMethod: ArkMethod) {
+export function updateMethodSignaturesAndLineCols(method: ArkMethod, presentMethod: ArkMethod) {
     if (method.validate().errCode !== ArkErrorCode.OK || presentMethod.validate().errCode !== ArkErrorCode.OK) {
         return;
     }
