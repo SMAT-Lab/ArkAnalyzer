@@ -30,6 +30,7 @@ import { LineColPosition } from '../../../core/base/Position';
 import { buildImportInfo } from './ArkImportBuilder';
 import { shouldAddCppHeaderImport } from '../../common/ModelUtils'
 import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
+import {init4InstanceInitMethod, init4StaticInitMethod} from "../../../core/model/builder/ArkClassBuilder";
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkFileBuilder');
 
@@ -106,6 +107,7 @@ function buildArkFile(arkFile: ArkFile, astRoot: any): void {
                 arkFile.addExportInfo(buildExportInfo(ns, arkFile, LineColPosition.buildFromNodeCpp(child, astRoot)))
             }
         } else if (child.kind === 'CXXMethodDecl' || child.kind === 'CXXConstructorDecl' || child.kind === 'CXXDestructorDecl') {
+            // 成员函数，构造，析构函数需先进行函数所属类的建立
             const arkClass = getDeclaringArkClassOfMethod(child, arkFile);
             let mthd: ArkMethod = new ArkMethod();
             // @ts-ignore
@@ -147,7 +149,7 @@ function buildArkFile(arkFile: ArkFile, astRoot: any): void {
 
 // Get ArkClass of 'CXXMethodDecl'/'CXXConstructorDecl'/'CXXDestructorDecl'
 function getDeclaringArkClassOfMethod(mtd: any, arkFile: ArkFile): ArkClass {
-    const className: string = mtd.mangledName;
+    const className: string = mtd.mangledName ?? '';
     let arkClass = arkFile.getClasses().find(arkClass => (arkClass.getName() === className));
     if (!arkClass) {
         arkClass = new ArkClass();
@@ -155,6 +157,8 @@ function getDeclaringArkClassOfMethod(mtd: any, arkFile: ArkFile): ArkClass {
         arkClass.setSignature(classSignature);
         arkClass.setDeclaringArkFile(arkFile);
         arkFile.addArkClass(arkClass);
+        init4InstanceInitMethod(arkClass);
+        init4StaticInitMethod(arkClass);
     }
     return arkClass;
 }

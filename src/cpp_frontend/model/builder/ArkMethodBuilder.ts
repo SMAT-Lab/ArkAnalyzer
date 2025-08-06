@@ -163,7 +163,6 @@ export function buildArkMethodFromArkClass(
         mtd.setColumn(character);
         let bodyBuilder = new BodyBuilderCpp(mtd.getSignature(), methodNode, mtd, sourceFile);
         mtd.setBodyBuilderCpp(bodyBuilder);
-        declaringClass.setInstanceInitMethod(mtd);
     } else {
         mtd.setDeclareSignatures(methodSignature);
         mtd.setDeclareLinesAndCols([line + 1], [character + 1]);
