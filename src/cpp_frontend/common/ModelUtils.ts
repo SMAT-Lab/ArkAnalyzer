@@ -25,7 +25,7 @@ import { ArkClass } from '../../core/model/ArkClass';
 import { Value } from '../../core/base/Value';
 import { Local } from '../../core/base/Local';
 import { StringConstant } from '../../core/base/Constant';
-import { TEMP_LOCAL_PREFIX } from '../../core/common/Const';
+import { INSTANCE_INIT_METHOD_NAME, STATIC_INIT_METHOD_NAME, TEMP_LOCAL_PREFIX } from '../../core/common/Const';
 import { FunctionType } from '../../core/base/Type';
 
 // 常见 C++ 标准库头文件（不含 .h 后缀）
@@ -224,6 +224,7 @@ function findMatchingCppMethod(funcElements: Value[], declMethod: ArkMethod): Ar
             }
             let matchMtd = scene.getMethod(realType.getMethodSignature());
             if (matchMtd) {
+                matchMtd = getFuncImplement(matchMtd);
                 cppFunc.push(matchMtd);
             }
             continue;
@@ -232,6 +233,7 @@ function findMatchingCppMethod(funcElements: Value[], declMethod: ArkMethod): Ar
         for (const cls of classesToBeSearched) {
             let matchMtd = cls.getMethodWithName(mtdName);
             if (matchMtd) {
+                matchMtd = getFuncImplement(matchMtd);
                 cppFunc.push(matchMtd);
             }
         }
@@ -268,4 +270,24 @@ function getIncludeDefaultClasses(arkInstance: ArkMethod | ArkClass | ArkFile): 
         defaultClasses.push(file.getDefaultClass());
     });
     return defaultClasses;
+}
+
+function getFuncImplement(mtd: ArkMethod): ArkMethod {
+    if (mtd.isDefaultArkMethod() || mtd.getName() === INSTANCE_INIT_METHOD_NAME || mtd.getName() === STATIC_INIT_METHOD_NAME) {
+        return mtd;
+    }
+    // 是函数实现，直接返回
+    if (mtd.getImplementationSignature()) {
+        return mtd;
+    }
+    const realImplSignature = mtd.getDeclareSignatures()?.[0];
+    if (!realImplSignature) {
+        return mtd;
+    }
+    const realImplMtd = mtd.getDeclaringArkFile().getScene().getMethod(realImplSignature);
+    if (!realImplMtd || !realImplMtd.getImplementationSignature()) {
+        return mtd;
+    }
+    realImplMtd.setDeclareSignatures(mtd.getSignature());
+    return realImplMtd;
 }

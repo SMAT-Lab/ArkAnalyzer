@@ -166,7 +166,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
     public tsNodeToValueAndStmts(node: any): ValueAndStmts {
         if (node === undefined) {
             logger.error('ArkValueTransformer-TSNodeToValueAndStmts: node is undefined. Method signature is : ',
-                this.declaringMethod?.getDeclareSignatures()?.toString());
+                this.declaringMethod?.getSignature()?.toString());
             return {
                 value: new Local('undefined'),
                 valueOriginalPositions: [new FullPosition(0, 0, 0, 0)],

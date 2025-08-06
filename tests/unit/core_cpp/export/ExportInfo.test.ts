@@ -77,7 +77,7 @@ function compareExportInfo(exportInfo: ExportInfo | undefined, expectIR: any): v
             assert.equal((arkExport as Local).getType().toString(), expectIR.arkExport.local.classSignature);
         }
     } else if (expectIR.arkExport.type === ArkMethod) {
-        assert.equal((arkExport as ArkMethod).getSignature().toString(), expectIR.arkExport.methodSignature);
+        assert.equal((arkExport as ArkMethod).getDeclareSignatures()?.[0].toString(), expectIR.arkExport.methodSignature);
         if (expectIR.arkExport.modifiers !== undefined) {
             compareModifiers(arkExport as ArkExport, expectIR.arkExport.modifiers);
         }
@@ -179,9 +179,9 @@ describe("export Test", () => {
         assert.equal(importInfos![1].getLazyExportInfo()?.getArkExport()?.getSignature().toString(),
             '@exports/indirectRef/include/castSample.h: %dflt');
         assert.equal(importInfos![3].getLazyExportInfo()?.getArkExport()?.getSignature().toString(),
-            '@exports/indirectRef/include/myHeader.h: %dflt.funcDoSomething(int, int)');
+            '@exports/indirectRef/src/myHeader.cpp: %dflt.funcDoSomething(int, int)');
         assert.equal(importInfos![4].getLazyExportInfo()?.getArkExport()?.getSignature().toString(),
-            '@exports/indirectRef/include/castSample.h: %dflt.CXXStaticCast(int)');
+            '@exports/indirectRef/src/castSample.cpp: %dflt.CXXStaticCast(int)');
 
         const fileId2 = new FileSignature(projectScene.getProjectName(), 'indirectRef/include/myHeader.h');
         const file2 = projectScene.getFile(fileId2);
@@ -193,7 +193,7 @@ describe("export Test", () => {
         assert.equal(importInfos![0].getLazyExportInfo()?.getArkExport()?.getSignature().toString(),
             '@exports/indirectRef/include/castSample.h: %dflt');
         assert.equal(importInfos![1].getLazyExportInfo()?.getArkExport()?.getSignature().toString(),
-            '@exports/indirectRef/include/castSample.h: %dflt.CXXStaticCast(int)');
+            '@exports/indirectRef/src/castSample.cpp: %dflt.CXXStaticCast(int)');
 
         const fileId3 = new FileSignature(projectScene.getProjectName(), 'indirectRef/include/castSample.h');
         const file3 = projectScene.getFile(fileId3);

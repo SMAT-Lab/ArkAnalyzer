@@ -412,14 +412,23 @@ export function addInitInConstructor(constructor: ArkMethod): void {
 }
 
 export function isMethodImplementation(node: any): boolean {
-    if (node.kind === 'CXXMethodDecl' || node.kind === 'LambdaExpr'){
-        if (node.inner && node.inner.length > 0){
-            return true;
-        }
-    } else if (node.kind.toString() === 'CXXConstructorDecl' || node.kind.toString() === 'CXXDestructorDecl'){
-        if (node.inner.find((inn:any) => inn.kind.toString() === 'CompoundStmt')){
-            return true;
-        }
+    let isFuncImpl: boolean = false;
+    switch (node.kind) {
+        case 'LambdaExpr':
+            if (node.inner && node.inner.length > 0) {
+                isFuncImpl = true;
+            }
+            break;
+        case 'CXXMethodDecl':
+        case 'CXXConstructorDecl':
+        case 'CXXDestructorDecl':
+        case 'FunctionDecl':
+        case 'FunctionTemplate':
+        case 'FriendDecl':
+            if (node.inner.find((inn:any) => inn.kind.toString() === 'CompoundStmt')) {
+                isFuncImpl = true;
+            }
+            break;
     }
-    return false;
+    return isFuncImpl;
 }
