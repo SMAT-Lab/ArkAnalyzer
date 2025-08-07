@@ -23,18 +23,26 @@ void forEachChild(json& node, F&& f) {
         for (auto& child : node["inner"]) f(child);
 }
 
-json buildASTJson(CXCursor cursor);
+json buildASTJson(CXCursor cursor, bool actionScope, std::unordered_map<std::string, std::string>& varTypeMap);
 
-inline void visitAllChildren(CXCursor cursor, json& children) {
+struct VisitContext {
+    json& children;
+    bool actionScope; // 是否为相同的作用域
+    std::unordered_map<std::string, std::string>& varTypeMap; // 收集当前作用域所有参数/变量声明， 返回名到类型的映射
+};
+
+inline void visitAllChildren(CXCursor cursor, json& children, bool actionScope, std::unordered_map<std::string, std::string>& varTypeMap) {
+    VisitContext context{children, actionScope, varTypeMap}; // 封装所有参数
+
     clang_visitChildren(
         cursor,
         [](CXCursor child, CXCursor parent, CXClientData client_data) {
-            json* list = static_cast<json*>(client_data);
-            json childAst = buildASTJson(child);
-            if (!childAst.is_null()) list->push_back(childAst);
+            VisitContext* ctx = static_cast<VisitContext*>(client_data);
+            json childAst = buildASTJson(child, ctx->actionScope, ctx->varTypeMap);
+            if (!childAst.is_null()) ctx->children.push_back(childAst);
             return CXChildVisit_Continue;
         },
-        &children
+        &context // 传递结构体指针
     );
 }
 
@@ -444,48 +452,18 @@ void filterVarDeclArrayDims(json &node){
     forEachChild(node, [&](json &child){ filterVarDeclArrayDims(child); });
 }
 
-// 收集当前作用域所有参数/变量声明， 返回名到类型的映射
-std::unordered_map<std::string, std::string> collectAllScopeVarTypeMap(const json &node){
-    std::unordered_map<std::string, std::string> varTypeMap;
-    if (node.contains("inner") && node["inner"].is_array()){
-        for (const auto &child:node["inner"]){
-            // 参数声明
-            if (child.contains("kind") && child["kind"] == "ParmDecl" || child["kind"] == "VarDecl" &&
-                child.contains("name") && child.contains("type") && child["type"].contains("qualType")){
-                    varTypeMap[child["name"]] = child["type"]["qualType"];
-                }
-            // 递归采集，支持嵌套作用域
-            auto subVarMap = collectAllScopeVarTypeMap(child);
-            varTypeMap.insert(subVarMap.begin(), subVarMap.end());
-        }
-    }
-    return varTypeMap;
-}
-
 // 统一修正 ImplicitCastExpr的类型和必要时转为DeclRefExpr
 void fixImplicitCastExprAndDeclRef(json &node, const std::unordered_map<std::string, std::string> &varTypeMap){
-    if (node.contains("kind") && node["kind"] == "ImplicitCastExpr"
-       && node.contains("code") && varTypeMap.count(node["code"])){
+    if (node.contains("kind") && node["kind"] == "ImplicitCastExpr" && node.contains("code") && varTypeMap.count(node["code"])){
         // 修正类型
-        if (node.contains("type") && node["type"].contains("qualType"))
-            node["type"]["qualType"] = varTypeMap.at(node["code"]);
+        if (node.contains("type") && node["type"].contains("qualType")) {
+            node["type"]["qualType"] = varTypeMap.at(node["code"]);}
         // 如果inner为空则转为DeclRefExpr
         if (node.contains("inner") && node["inner"].is_array() && node["inner"].empty()){
             node["kind"] = "DeclRefExpr";
             node["name"] = node["code"];
         }
     }
-    forEachChild(node, [&](json &child){ fixImplicitCastExprAndDeclRef(child, varTypeMap); });
-}
-
-void fixAllVarRefTypes(json &node){
-    // 只处理函数相关节点
-    if (node.contains("kind") && ( node["kind"] == "FunctionDecl" || node["kind"] == "CXXMethodDecl" ||
-        node["kind"] == "CXXConstructorDecl")){
-            auto typeMap = collectAllScopeVarTypeMap(node);
-            fixImplicitCastExprAndDeclRef(node, typeMap);
-        }
-    forEachChild(node, [&](json &child){ fixAllVarRefTypes(child); });
 }
 
 // 缓存所有的类, 结构体
@@ -769,6 +747,13 @@ void updateTypedefClassConstructor(json& children) {
         children[1]["kind"] = "CXXConstructExpr";
 }
 
+// decltype类型推导
+void deduceDecltype(json& node, json&children) {
+    if (children.size() == 0 || !node.contains("type") || node["type"].value("qualType", "").find("decltype(") == std::string::npos) return;
+    if (children[0].contains("type")) {
+        node["type"]["qualType"] = children[0]["type"]["qualType"];
+    }
+}
 
 void fillNodeKindTag(json& node, CXCursor cursor, CXCursorKind kind_cursor, const std::string& kindSpelling) {
     std::string nameStr = node.value("name", "");
@@ -963,7 +948,10 @@ void nodePostprocess(
 
     if (node["kind"] == "InitListExpr") relateMemberType(typeStr, children);
 
-    if (node["kind"] == "VarDecl") updateTypedefClassConstructor(children);
+    if (node["kind"] == "VarDecl") {
+        updateTypedefClassConstructor(children);
+        deduceDecltype(node, children);
+    }
 
     if (kind_cursor == CXCursor_TemplateTypeParameter && codeStr.find("=") != std::string::npos)
         children.push_back(buildTemplateDefaultType(codeStr));
@@ -985,7 +973,7 @@ void nodePostprocess(
 }
 // ==========================buildASTJson 主体========================
 
-json buildASTJson(CXCursor cursor){
+json buildASTJson(CXCursor cursor, bool actionScope, std::unordered_map<std::string, std::string>& varTypeMap){
     CXSourceLocation loc = clang_getCursorLocation(cursor);
     CXCursorKind kind_cursor = clang_getCursorKind(cursor);
 
@@ -999,7 +987,7 @@ json buildASTJson(CXCursor cursor){
     }
     if (kind_cursor == CXCursor_LinkageSpec){ // extern "C" { ... }
         json children = json::array();
-        visitAllChildren(cursor, children);
+        visitAllChildren(cursor, children, actionScope, varTypeMap);
         if (children.size() == 1) return children[0];
         if (children.empty()) return json();
         return children;
@@ -1021,9 +1009,16 @@ json buildASTJson(CXCursor cursor){
     fillVarDeclStorageClass(node, cursor, kind_cursor);
     fillDeclRefInfo(node, cursor, kind_cursor);
     fillNodeIdRangeLoc(node, content, kind_cursor, file, displayName);
+    if (node.contains("kind") && (node["kind"] == "ParmDecl" || node["kind"] == "VarDecl") && node.contains("name")
+    && node.contains("type") && node["type"].contains("qualType"))
+        varTypeMap[node["name"]] = node["type"]["qualType"];
+    fixImplicitCastExprAndDeclRef(node, varTypeMap);
 
     json children = json::array();
-    visitAllChildren(cursor, children); // 子节点递归
+    if (node.contains("kind") && (node["kind"] == "FunctionDecl" || node["kind"] == "CXXMethodDecl" || node["kind"] == "CXXConstructorDecl"))
+        actionScope = true;
+    visitAllChildren(cursor, children, actionScope, varTypeMap); // 子节点递归
+
     nodePostprocess(node, cursor, kind_cursor, children);
     return node;
 }
@@ -1036,7 +1031,8 @@ CXTranslationUnit createTranslationUnit(CXIndex index, const CommandLineOptions&
 }
 
 json buildAndProcessAST(CXTranslationUnit unit, const CommandLineOptions& opts) {
-    json ast = buildASTJson(clang_getTranslationUnitCursor(unit));
+    std::unordered_map<std::string, std::string> varTypeMap; // 收集当前作用域所有参数/变量声明， 返回名到类型的映射
+    json ast = buildASTJson(clang_getTranslationUnitCursor(unit), false, varTypeMap);
     std::cout << "[STEP1] buildASTJson finished\n";
     std::string mainFileName = fs::canonical(opts.input_file).string();
     filterToMainFileOnly(ast, mainFileName);
@@ -1051,7 +1047,6 @@ json buildAndProcessAST(CXTranslationUnit unit, const CommandLineOptions& opts) 
     std::cout << "[STEP2] filterToMainFileOnly finished\n";
     std::map<std::string, int> labelNameToId;
     patchPseudoDestructorExpr(ast);
-    fixAllVarRefTypes(ast);
     filterVarDeclArrayDims(ast);
     collectLabelStmt(ast, labelNameToId);
     patchGotoTarget(ast, labelNameToId);

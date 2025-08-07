@@ -34,6 +34,56 @@ import {init4InstanceInitMethod, init4StaticInitMethod} from "../../../core/mode
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkFileBuilder');
 
+function extractOhosSdkPath(mapData: Map<string, any>): string {
+    for (const [key, value] of mapData.entries()) {
+        if (key !== 'ohosSdk') {
+            continue;
+        }
+        const sdkPath = Object.prototype.hasOwnProperty.call(value, 'path') ? value.path : '';
+        if (typeof sdkPath === 'string' && sdkPath){
+            return sdkPath;
+        }
+    }
+    return '';
+}
+
+function findLLVMPath(inputPath: string): string {
+    if (!inputPath || !inputPath.trim() || !path.isAbsolute(inputPath)) {
+        return '';
+    }
+
+    const normalized = path.normalize(inputPath);
+    const parts = normalized.split(path.sep);
+
+    const devEcoIndex = parts.findIndex(p => p.trim() === 'DevEco Studio');
+    if (devEcoIndex === -1) {
+        return '';
+    }
+
+    const basePath = path.join(...parts.slice(0, devEcoIndex + 1));
+
+    // 优先查找环境变量中 LLVM 路径
+    const envPathList = (process.env.PATH || '').split(';');
+    const llvmEnvPath = envPathList.find(p =>
+        p.includes('clang+llvm-19.1.7-x86_64-pc-windows-msvc') && fs.existsSync(p)
+    ) || '';
+
+    const llvmBinCandidates = [
+        llvmEnvPath,
+        path.join(basePath, 'sdk', 'default', 'openharmony', 'native', 'clang+llvm-19.1.7-x86_64-pc-windows-msvc', 'bin'),
+        path.join(basePath, 'sdk', 'default', 'openharmony', 'native', 'llvm', 'bin'),
+    ];
+
+    for (const candidate of llvmBinCandidates) {
+        if (fs.existsSync(candidate)) {
+            return candidate;
+        }
+    }
+
+    return '';
+}
+
+
 /**
  * Entry of building ArkFile instance
  *
@@ -50,9 +100,10 @@ export function buildArkFileFromFile(absoluteFilePath: string, projectDir: strin
 
     const fileSignature = new FileSignature(projectName, path.relative(projectDir, absoluteFilePath));
     arkFile.setFileSignature(fileSignature);
-
     arkFile.setCode(fs.readFileSync(arkFile.getFilePath(), 'utf8'));
-    const jsonObject = AstUtils.parse(absoluteFilePath, null, includeDirs);
+    let sdkPath = extractOhosSdkPath(arkFile.getScene().getProjectSdkMap());
+    let llvmPath = findLLVMPath(sdkPath);
+    const jsonObject = AstUtils.parse(absoluteFilePath, null, includeDirs, llvmPath);
     genDefaultArkClass(arkFile, jsonObject);
     buildArkFile(arkFile, jsonObject);
 }

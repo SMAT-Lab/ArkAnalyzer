@@ -276,11 +276,7 @@ function getFuncImplement(mtd: ArkMethod): ArkMethod {
     if (mtd.isDefaultArkMethod() || mtd.getName() === INSTANCE_INIT_METHOD_NAME || mtd.getName() === STATIC_INIT_METHOD_NAME) {
         return mtd;
     }
-    // 是函数实现，直接返回
-    if (mtd.getImplementationSignature()) {
-        return mtd;
-    }
-    const realImplSignature = mtd.getDeclareSignatures()?.[0];
+    const realImplSignature = mtd.getImplementationSignature();
     if (!realImplSignature) {
         return mtd;
     }
@@ -288,6 +284,5 @@ function getFuncImplement(mtd: ArkMethod): ArkMethod {
     if (!realImplMtd || !realImplMtd.getImplementationSignature()) {
         return mtd;
     }
-    realImplMtd.setDeclareSignatures(mtd.getSignature());
     return realImplMtd;
 }

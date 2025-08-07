@@ -11,7 +11,7 @@ const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'astUtils');
 export class AstUtils {
     private static currentAccess:string = "public";
 
-    public static parse(sourceFile: string, ccJsonPath: string | null, includeDirs: string[] | null): JSON | null{
+    public static parse(sourceFile: string, ccJsonPath: string | null, includeDirs: string[] | null, llvmPath: string): JSON | null{
         if (!fs.existsSync(sourceFile)){
             logger.warn("parse file is not exists");
             return null;
@@ -26,8 +26,25 @@ export class AstUtils {
         let parseArguments: string[] = [sourceFile, '-o', astPath];
         parseArguments = [...parseArguments, ...includeArgs];
         this.ensureOutputDir(path.dirname(astPath));
+        const sep = path.delimiter;
+        const existingPath = process.env.PATH ?? '';
+        // 判断是否需要将 llvmPath 添加进 PATH（避免重复添加）
+        const shouldAppendLlvmPath = llvmPath &&
+            !existingPath.split(sep).includes(llvmPath);
+        // 如果需要追加 llvmPath，构造新的环境变量对象；否则使用默认环境变量
+        const envVars = shouldAppendLlvmPath
+            ? {
+                ...process.env,
+                PATH: existingPath + sep + llvmPath,
+            }
+            : undefined;
 
-        let parseResult = spawnSync(clangPath, parseArguments, {stdio:['inherit','pipe'], encoding: 'utf-8'});
+        const parseResult = spawnSync(
+            clangPath,
+            parseArguments,
+            { stdio: ['inherit', 'pipe'], encoding: 'utf-8', env: envVars }
+        );
+
         if (parseResult.status){
             logger.info("Error parsing ast", parseResult.stderr);
         } else{

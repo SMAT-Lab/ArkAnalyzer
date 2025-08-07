@@ -60,6 +60,7 @@ import * as USING_EXPECT from '../../../resources_cpp/cfg/using/usingExpects';
 import * as TYPEDEF_EXPECT from '../../../resources_cpp/cfg/typedef/typdefExpects';
 import * as THREAD_EXPECT from '../../../resources_cpp/cfg/thread/threadExpects';
 import * as FUNCPTR_EXPECT from '../../../resources_cpp/cfg/functionPointer/functionPointerExpts';
+import * as AUTO_EXPECT from '../../../resources_cpp/cfg/decltype/decltypeExpects';
 
 
 describe('CfgTest', () => {
@@ -441,6 +442,15 @@ describe('thread Test', () => {
             testBlocks(scene, 'functionPointer.cpp', 'case2', FUNCPTR_EXPECT.FUNCPTR_EXPECT_CASE2.blocks);
             testBlocks(scene, 'functionPointer.cpp', 'case3', FUNCPTR_EXPECT.FUNCPTR_EXPECT_CASE3.blocks);
             testBlocks(scene, 'functionPointer.cpp', 'greet', FUNCPTR_EXPECT.FUNCPTR_EXPECT_GREET.blocks);
+        },
+    );
+});
+
+describe('decltype Test', () => {
+    it('case1: decltype', () => {
+            const scene = buildScene('decltype');
+            testBlocks(scene, 'decltype.cpp', 'autoTest', AUTO_EXPECT.AUTO_EXPECT_CASE1.blocks);
+            testBlocks(scene, 'decltype.cpp', 'decltypeTest', AUTO_EXPECT.DECLTYPE_EXPECT_CASE1.blocks);
         },
     );
 });

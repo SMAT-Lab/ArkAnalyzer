@@ -426,6 +426,8 @@ export function isMethodImplementation(node: any): boolean {
                 isFuncImpl = true;
             }
             break;
+        default:
+            break;
     }
     return isFuncImpl;
 }
