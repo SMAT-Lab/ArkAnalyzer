@@ -34,6 +34,9 @@ import {
     ASSIGNMENT_EXPECT_IR,
     BinaryExpression_Expect_IR,
     CallExpression_Expect_IR,
+    DESTRUCTURING1_EXPECT_IR,
+    DESTRUCTURING2_EXPECT_IR,
+    DESTRUCTURING3_EXPECT_IR,
     ExpressionStatements_Expect_IR,
     LiteralExpression_Expect_IR,
     NewExpression_Expect_IR,
@@ -44,6 +47,7 @@ import {
     PTR_INVOKE_EXPRESSION_RETURNFUNC1_EXPECT_IR,
     REST_ELEMENTS1_EXPECT_IR,
     REST_ELEMENTS2_EXPECT_IR,
+    REST_ELEMENTS3_EXPECT_IR,
     REST_PARAMETERS1_EXPECT_IR,
     SPREAD_ARRAY1_EXPECT_IR,
     SPREAD_ARRAY2_EXPECT_IR,
@@ -448,12 +452,19 @@ describe('expression Test', () => {
     it('test rest syntax', async () => {
         testMethodIR(scene, 'Rest.ts', DEFAULT_ARK_CLASS_NAME, 'restElements1', REST_ELEMENTS1_EXPECT_IR);
         testMethodIR(scene, 'Rest.ts', DEFAULT_ARK_CLASS_NAME, 'restElements2', REST_ELEMENTS2_EXPECT_IR);
+        testMethodIR(scene, 'Rest.ts', DEFAULT_ARK_CLASS_NAME, 'restElements3', REST_ELEMENTS3_EXPECT_IR);
         testMethodIR(scene, 'Rest.ts', DEFAULT_ARK_CLASS_NAME, 'restParameter', REST_PARAMETERS1_EXPECT_IR);
     });
 
     it('test assignment', async () => {
         testMethodIR(scene, 'Assignment.ts', DEFAULT_ARK_CLASS_NAME, 'additiveCompoundAssignment',
             ASSIGNMENT_EXPECT_IR);
+    });
+
+    it('test destructuring', async () => {
+        testMethodIR(scene, 'Destructuring.ts', DEFAULT_ARK_CLASS_NAME, 'destructuring1', DESTRUCTURING1_EXPECT_IR);
+        testMethodIR(scene, 'Destructuring.ts', DEFAULT_ARK_CLASS_NAME, 'destructuring2', DESTRUCTURING2_EXPECT_IR);
+        testMethodIR(scene, 'Destructuring.ts', DEFAULT_ARK_CLASS_NAME, 'destructuring3', DESTRUCTURING3_EXPECT_IR);
     });
 });
 

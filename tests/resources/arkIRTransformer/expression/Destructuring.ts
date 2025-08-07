@@ -13,28 +13,17 @@
  * limitations under the License.
  */
 
-function restElements1(): void {
-    let [a, ...b] = [1, 2, 3];
-    [a, ...b] = [4, 5, 6];
+function destructuring1(): void {
+    let [a, b] = [1, 2];
+    [a, b] = [1, 2];
 }
 
-function restElements2(): void {
-    let [...arr] = [1, 2, 3];
-    [...arr] = [4, 5, 6];
+function destructuring2(): void {
+    let [a, , b] = [1, 2, 3];
+    [a, , b] = [1, 2, 3];
 }
 
-function restElements3(): void {
-    let [a, b, ...[c, d]] = [1, 2, 3, 4];
-    [a, b, ...[c, d]] = [1, 2, 3, 4];
-}
-
-function restParameter(...numbers: number[]):number {
-    return numbers.reduce((total, num) => total + num, 0);
-}
-
-function restParameterUse(): void {
-    const arr = [1, 2, 3];
-    restParameter(...arr);
-
-    restParameter(1, 2, 3);
+function destructuring3(): void {
+    let [a, , b, ...rest] = [1, 2, 3, 4, 5];
+    [a, , b, ...rest] = [1, 2, 3, 4, 5];
 }

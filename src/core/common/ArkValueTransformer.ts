@@ -1627,17 +1627,24 @@ export class ArkValueTransformer {
         const isArrayBindingPattern = ts.isArrayBindingPattern(arrayDestructuring);
         for (let i = 0; i < elements.length; i++) {
             const element = elements[i];
-            let itemName: string;
-            if (ts.isSpreadElement(element)) {
-                itemName = element.expression.getText(this.sourceFile);
-            } else if (ts.isBindingElement(element) && element.dotDotDotToken) {
-                itemName = element.name.getText(this.sourceFile);
-            } else {
-                itemName = element.getText(this.sourceFile);
+            if (ts.isOmittedExpression(element)) {
+                continue;
             }
-            const targetLocal = isArrayBindingPattern ? this.addNewLocal(itemName) : this.getOrCreateLocal(itemName);
+
             const targetLocalPosition = FullPosition.buildFromNode(element, this.sourceFile);
             if (ts.isSpreadElement(element) || (ts.isBindingElement(element) && element.dotDotDotToken)) {
+                const nodeInsideRest = ts.isSpreadElement(element) ? element.expression : element.name;
+                let targetLocal: Value;
+                let stmtsInsideRest: Stmt[] = [];
+                if (ts.isArrayBindingPattern(nodeInsideRest) || ts.isArrayLiteralExpression(nodeInsideRest)) {
+                    ({ value: targetLocal, stmts: stmtsInsideRest } = this.arrayDestructuringToValueAndStmts(
+                        nodeInsideRest, isConst));
+                } else {
+                    const elementName = nodeInsideRest.getText(this.sourceFile);
+                    targetLocal = ts.isBindingElement(element) ? this.addNewLocal(elementName) : this.getOrCreateLocal(
+                        elementName);
+                }
+
                 const sliceMethodSubSignature = ArkSignatureBuilder.buildMethodSubSignatureFromMethodName(
                     Builtin.SLICE);
                 const sliceMethodSignature = new MethodSignature(Builtin.ARRAY_CLASS_SIGNATURE,
@@ -1648,20 +1655,20 @@ export class ArkValueTransformer {
                 const assignStmt = new ArkAssignStmt(targetLocal, sliceInvokeExpr);
                 assignStmt.setOperandOriginalPositions([targetLocalPosition, ...sliceInvokeExprPositions]);
                 stmts.push(assignStmt);
+                stmtsInsideRest.forEach(stmt => stmts.push(stmt));
             } else {
                 const arrayRef = new ArkArrayRef(arrayTempLocal, ValueUtil.getOrCreateNumberConst(i));
                 const arrayRefPositions = [wholePosition, wholePosition, FullPosition.DEFAULT];
+                const itemName = element.getText(this.sourceFile);
+                const targetLocal = isArrayBindingPattern ? this.addNewLocal(itemName) : this.getOrCreateLocal(
+                    itemName);
                 isArrayBindingPattern && targetLocal.setConstFlag(isConst);
                 const assignStmt = new ArkAssignStmt(targetLocal, arrayRef);
                 assignStmt.setOperandOriginalPositions([targetLocalPosition, ...arrayRefPositions]);
                 stmts.push(assignStmt);
             }
         }
-        return {
-            value: arrayTempLocal,
-            valueOriginalPositions: [wholePosition],
-            stmts: stmts,
-        };
+        return { value: arrayTempLocal, valueOriginalPositions: [wholePosition], stmts: stmts };
     }
 
     // In assignment patterns, the left operand will be an object literal expression
