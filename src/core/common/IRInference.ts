@@ -82,7 +82,11 @@ import { ValueUtil } from './ValueUtil';
 import { ArkFile } from '../model/ArkFile';
 import { AbstractTypeExpr, KeyofTypeExpr, TypeQueryExpr } from '../base/TypeExpr';
 import { ArkBaseModel } from '../model/ArkBaseModel';
+
 import { BuiltinCpp } from '../../cpp_frontend/common/Builtin'
+
+import { SdkUtils } from './SdkUtils';
+
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'IRInference');
 
@@ -407,7 +411,11 @@ export class IRInference {
     }
 
     public static inferArgTypeWithSdk(sdkType: ClassType, scene: Scene, argType: Type): void {
-        if (!scene.getProjectSdkMap().has(sdkType.getClassSignature().getDeclaringFileSignature().getProjectName())) {
+        const sdkProjectName = sdkType.getClassSignature().getDeclaringFileSignature().getProjectName();
+        const className = sdkType.getClassSignature().getClassName();
+
+        // When leftOp is local with Function annotation, the rightOp is a lambda function, which should be inferred as method later.
+        if (!scene.getProjectSdkMap().has(sdkProjectName) || (sdkProjectName === SdkUtils.BUILT_IN_NAME && className === 'Function')) {
             return;
         }
         if (argType instanceof UnionType) {
