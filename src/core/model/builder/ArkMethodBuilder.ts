@@ -39,11 +39,17 @@ import { BasicBlock } from '../../graph/BasicBlock';
 import { Local } from '../../base/Local';
 import { Value } from '../../base/Value';
 import { CONSTRUCTOR_NAME, SUPER_NAME, THIS_NAME } from '../../common/TSConst';
-import { ANONYMOUS_METHOD_PREFIX, CALL_SIGNATURE_NAME, DEFAULT_ARK_CLASS_NAME, DEFAULT_ARK_METHOD_NAME, NAME_DELIMITER, NAME_PREFIX } from '../../common/Const';
+import {
+    ANONYMOUS_METHOD_PREFIX,
+    CALL_SIGNATURE_NAME,
+    DEFAULT_ARK_CLASS_NAME,
+    DEFAULT_ARK_METHOD_NAME,
+    NAME_DELIMITER,
+    NAME_PREFIX,
+} from '../../common/Const';
 import { ArkSignatureBuilder } from './ArkSignatureBuilder';
 import { IRUtils } from '../../common/IRUtils';
 import { ArkErrorCode } from '../../common/ArkError';
-import { FullPosition } from '../../base/Position';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkMethodBuilder');
 
@@ -99,8 +105,7 @@ export function buildArkMethodFromArkClass(
     // build methodDeclareSignatures and methodSignature as well as corresponding positions
     const methodName = buildMethodName(methodNode, declaringClass, sourceFile, declaringMethod);
     const methodParameters: MethodParameter[] = [];
-    let paramsPosition: Map<string, FullPosition> = new Map<string, FullPosition>();
-    buildParameters(methodNode.parameters, mtd, sourceFile, paramsPosition).forEach(parameter => {
+    buildParameters(methodNode.parameters, mtd, sourceFile).forEach(parameter => {
         buildGenericType(parameter.getType(), mtd);
         methodParameters.push(parameter);
     });
@@ -116,7 +121,6 @@ export function buildArkMethodFromArkClass(
         mtd.setLine(line + 1);
         mtd.setColumn(character + 1);
         let bodyBuilder = new BodyBuilder(mtd.getSignature(), methodNode, mtd, sourceFile);
-        bodyBuilder.setParamsPositions(paramsPosition);
         mtd.setBodyBuilder(bodyBuilder);
     } else {
         mtd.setDeclareSignatures(methodSignature);
@@ -180,7 +184,7 @@ function buildAnonymousMethodName(node: MethodLikeNode, declaringClass: ArkClass
     return `${ANONYMOUS_METHOD_PREFIX}${declaringClass.getAnonymousMethodNumber()}`;
 }
 
-export function buildNestedMethodName(originName: string, declaringMethodName: string): string {
+function buildNestedMethodName(originName: string, declaringMethodName: string): string {
     if (originName.startsWith(NAME_PREFIX)) {
         return `${originName}${NAME_DELIMITER}${declaringMethodName}`;
     }
@@ -322,7 +326,7 @@ export class MethodParameter implements Value {
     }
 }
 
-export function needDefaultConstructorInClass(arkClass: ArkClass): boolean {
+function needDefaultConstructorInClass(arkClass: ArkClass): boolean {
     const originClassType = arkClass.getCategory();
     return (
         arkClass.getMethodWithName(CONSTRUCTOR_NAME) === null &&
@@ -485,10 +489,7 @@ export function checkAndUpdateMethod(method: ArkMethod, cls: ArkClass): void {
     if (presentMethod === null) {
         return;
     }
-    updateMethodSignaturesAndLineCols(method, presentMethod);
-}
 
-export function updateMethodSignaturesAndLineCols(method: ArkMethod, presentMethod: ArkMethod) {
     if (method.validate().errCode !== ArkErrorCode.OK || presentMethod.validate().errCode !== ArkErrorCode.OK) {
         return;
     }
