@@ -73,7 +73,7 @@ export const ArrowFunction_Expect_IR = {
             {
                 text: 'i = parameter0: number',
                 operandOriginalPositions: [
-                    [16, 14, 16, 15], [16, 14, 16, 15],
+                    null, null,
                 ],
             },
             {
@@ -160,7 +160,7 @@ export const ArrowFunction_Expect_IR = {
             {
                 text: 'i = parameter0: number',
                 operandOriginalPositions: [
-                    [22, 14, 22, 15], [22, 14, 22, 15],
+                    null, null,
                 ],
             },
             {
