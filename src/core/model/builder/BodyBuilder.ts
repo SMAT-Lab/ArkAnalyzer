@@ -25,8 +25,9 @@ import { ArkParameterRef, ArkStaticFieldRef, ClosureFieldRef, GlobalRef } from '
 import { ArkAliasTypeDefineStmt, ArkAssignStmt, ArkInvokeStmt, ArkReturnStmt } from '../../base/Stmt';
 import { AliasType, ArrayType, ClosureType, FunctionType, LexicalEnvType, Type, UnclearReferenceType, UnionType } from '../../base/Type';
 import { AbstractInvokeExpr, ArkPtrInvokeExpr } from '../../base/Expr';
+import { FullPosition } from '../../base/Position';
 
-type NestedMethodChain = {
+export type NestedMethodChain = {
     parent: ArkMethod;
     children: NestedMethodChain[] | null;
 };
@@ -34,9 +35,11 @@ type NestedMethodChain = {
 export class BodyBuilder {
     private cfgBuilder: CfgBuilder;
     private globals?: Map<string, GlobalRef>;
+    private paramsPosition: Map<string, FullPosition>;
 
     constructor(methodSignature: MethodSignature, sourceAstNode: ts.Node, declaringMethod: ArkMethod, sourceFile: ts.SourceFile) {
         this.cfgBuilder = new CfgBuilder(sourceAstNode, methodSignature.getMethodSubSignature().getMethodName(), declaringMethod, sourceFile);
+        this.paramsPosition = new Map<string, FullPosition>();
     }
 
     public build(): ArkBody | null {
@@ -67,6 +70,14 @@ export class BodyBuilder {
 
     public setGlobals(globals: Map<string, GlobalRef>): void {
         this.globals = globals;
+    }
+
+    public getParamsPositions(): Map<string, FullPosition> {
+        return this.paramsPosition;
+    }
+
+    public setParamsPositions(paramsPosition: Map<string, FullPosition>): void {
+        this.paramsPosition = paramsPosition;
     }
 
     /**

@@ -75,12 +75,12 @@ export class ArkIRTransformer {
     public static readonly DUMMY_CONDITIONAL_OPERATOR_IF_FALSE_STMT = ArkIRTransformer.DUMMY_CONDITIONAL_OPERATOR + 'IfFalse';
     public static readonly DUMMY_CONDITIONAL_OPERATOR_END_STMT = ArkIRTransformer.DUMMY_CONDITIONAL_OPERATOR + 'End';
 
-    private sourceFile: ts.SourceFile;
-    private declaringMethod: ArkMethod;
-    private inBuilderMethod = false;
-    private builderMethodContextFlag = false;
-    private stmtsHaveOriginalText: Set<Stmt> = new Set();
-    private arkValueTransformer: ArkValueTransformer;
+    protected sourceFile: ts.SourceFile;
+    protected declaringMethod: ArkMethod;
+    protected inBuilderMethod = false;
+    protected builderMethodContextFlag = false;
+    protected stmtsHaveOriginalText: Set<Stmt> = new Set();
+    protected arkValueTransformer: ArkValueTransformer;
 
     constructor(sourceFile: ts.SourceFile, declaringMethod: ArkMethod) {
         this.sourceFile = sourceFile;
@@ -110,7 +110,10 @@ export class ArkIRTransformer {
         let index = 0;
         for (const methodParameter of this.declaringMethod.getParameters()) {
             const parameterRef = new ArkParameterRef(index, methodParameter.getType());
-            stmts.push(new ArkAssignStmt(this.arkValueTransformer.addNewLocal(methodParameter.getName(), parameterRef.getType()), parameterRef));
+            const stmt = new ArkAssignStmt(this.arkValueTransformer.addNewLocal(methodParameter.getName(), parameterRef.getType()), parameterRef);
+            const paramPosition = this.declaringMethod.getBodyBuilder()?.getParamsPositions().get(methodParameter.getName()) ?? FullPosition.DEFAULT;
+            stmt.setOperandOriginalPositions([paramPosition, paramPosition]);
+            stmts.push(stmt);
             index++;
         }
 
@@ -170,7 +173,7 @@ export class ArkIRTransformer {
         return this.arkValueTransformer.tsNodeToValueAndStmts(node);
     }
 
-    private functionDeclarationToStmts(functionDeclarationNode: ts.FunctionDeclaration): Stmt[] {
+    protected functionDeclarationToStmts(functionDeclarationNode: ts.FunctionDeclaration): Stmt[] {
         const declaringClass = this.declaringMethod.getDeclaringArkClass();
         const arkMethod = new ArkMethod();
         if (this.builderMethodContextFlag) {
@@ -180,7 +183,7 @@ export class ArkIRTransformer {
         return [];
     }
 
-    private classDeclarationToStmts(node: ts.ClassDeclaration): Stmt[] {
+    protected classDeclarationToStmts(node: ts.ClassDeclaration): Stmt[] {
         const cls = new ArkClass();
         const declaringArkNamespace = this.declaringMethod.getDeclaringArkClass().getDeclaringArkNamespace();
         if (declaringArkNamespace) {
@@ -269,11 +272,7 @@ export class ArkIRTransformer {
             return stmts;
         }
 
-        const {
-            value: paramInitValue,
-            valueOriginalPositions: paramInitPositions,
-            stmts: paramInitStmts,
-        } = this.tsNodeToValueAndStmts(paramNode.initializer!);
+        const { value: paramInitValue, valueOriginalPositions: paramInitPositions, stmts: paramInitStmts } = this.tsNodeToValueAndStmts(paramNode.initializer!);
         stmts.push(...paramInitStmts);
 
         const ifStmt = new ArkIfStmt(new ArkConditionExpr(paramLocal, ValueUtil.getUndefinedConst(), RelationalBinaryOperator.Equality));
@@ -435,7 +434,7 @@ export class ArkIRTransformer {
         return [aliasTypeDefineStmt];
     }
 
-    private generateAliasTypeExpr(rightOp: ts.TypeNode, aliasType: AliasType): AliasTypeExpr {
+    protected generateAliasTypeExpr(rightOp: ts.TypeNode, aliasType: AliasType): AliasTypeExpr {
         let rightType = aliasType.getOriginalType();
         let expr: AliasTypeExpr;
         if (ts.isImportTypeNode(rightOp)) {

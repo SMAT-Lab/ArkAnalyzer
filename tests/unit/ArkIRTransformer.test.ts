@@ -17,8 +17,10 @@ import { assert, describe, expect, it } from 'vitest';
 import path from 'path';
 import {
     ANONYMOUS_METHOD_PREFIX,
+    ArkAssignStmt,
     ArkFile,
     ArkMethod,
+    ArkInstanceFieldRef,
     ArkStaticFieldRef,
     DEFAULT_ARK_CLASS_NAME,
     GlobalRef,
@@ -27,6 +29,7 @@ import {
     Logger,
     NAME_DELIMITER,
     NAME_PREFIX,
+    NumberType,
     Scene,
     Value,
 } from '../../src';
@@ -725,5 +728,26 @@ describe('multiple closure Test', () => {
         const callMethod = multipleTestClass?.getMethods().find((method) => (method.getName() === 'callMethod4'));
         assert.isDefined(callMethod);
         testMethodClosure(callMethod!, MultipleCallMethod4_Expect_IR);
+    });
+});
+
+describe('closure in anonymous class Test', () => {
+    const scene = buildScene(path.join(BASE_DIR, 'function'));
+    const arkFile = scene.getFiles().find((file) => file.getName().endsWith('ClosureParamsTest.ts'));
+
+    it('create anonymous class in anonymous function', async () => {
+        const method = arkFile?.getClassWithName('%AC1$ClosureInClass.%AM0$%statInit')?.getInstanceInitMethod();
+        assert.isDefined(method);
+        const stmt = method?.getCfg()?.getStmts()[1];
+        assert.isDefined(stmt);
+        assert.isTrue(((stmt! as ArkAssignStmt).getRightOp() as ArkInstanceFieldRef).getType() instanceof NumberType);
+    });
+
+    it('create anonymous class in class method', async () => {
+        const method = arkFile?.getClassWithName('%AC0$ClosureInClass.goo')?.getInstanceInitMethod();
+        assert.isDefined(method);
+        const stmt = method?.getCfg()?.getStmts()[1];
+        assert.isDefined(stmt);
+        assert.isTrue(((stmt! as ArkAssignStmt).getRightOp() as ArkInstanceFieldRef).getType() instanceof NumberType);
     });
 });

@@ -210,3 +210,17 @@ class MultipleNestedTest {
         callMethod(3);
     }
 }
+
+interface Inter {
+    name: number;
+}
+
+class ClosureInClass {
+    static foo: Function = (param1: Inter): void => {
+        let a: Inter = { name: param1.name };
+    };
+
+    goo(param2: Inter): void {
+        let a: Inter = { name: param2.name };
+    }
+}

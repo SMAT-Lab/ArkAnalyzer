@@ -27,7 +27,7 @@ import {
     Stmt,
     ValueUtil,
 } from '../../../../src/index';
-import { describe, expect, it } from 'vitest';
+import { assert, describe, expect, it } from 'vitest';
 import path from 'path';
 import {
     CONDITIONAL_OPERATOR_EXPECT_CASE1,
@@ -135,13 +135,21 @@ describe('CfgTest', () => {
 
     it('case2: conditional operator', () => {
         const scene = buildScene('conditionalOperator');
-        testBlocks(scene, 'ConditionalOperatorSample.ts', 'case1', CONDITIONAL_OPERATOR_EXPECT_CASE1.blocks);
-        testBlocks(scene, 'ConditionalOperatorSample.ts', 'case2', CONDITIONAL_OPERATOR_EXPECT_CASE2.blocks);
-        testBlocks(scene, 'ConditionalOperatorSample.ts', 'case3', CONDITIONAL_OPERATOR_EXPECT_CASE3.blocks);
-        testBlocks(scene, 'ConditionalOperatorSample.ts', 'case4', CONDITIONAL_OPERATOR_EXPECT_CASE4.blocks);
-        testBlocks(scene, 'ConditionalOperatorSample.ts', 'case5', CONDITIONAL_OPERATOR_EXPECT_CASE5.blocks);
-        testBlocks(scene, 'ConditionalOperatorSample.ts', 'case6', CONDITIONAL_OPERATOR_EXPECT_CASE6.blocks);
-        testBlocks(scene, 'ConditionalOperatorSample.ts', 'case7', CONDITIONAL_OPERATOR_EXPECT_CASE7.blocks);
+        const fileName = 'ConditionalOperatorSample.ts';
+        testBlocks(scene, fileName, 'case1', CONDITIONAL_OPERATOR_EXPECT_CASE1.blocks);
+        testBlocks(scene, fileName, 'case2', CONDITIONAL_OPERATOR_EXPECT_CASE2.blocks);
+        testBlocks(scene, fileName, 'case3', CONDITIONAL_OPERATOR_EXPECT_CASE3.blocks);
+        testBlocks(scene, fileName, 'case4', CONDITIONAL_OPERATOR_EXPECT_CASE4.blocks);
+        testBlocks(scene, fileName, 'case5', CONDITIONAL_OPERATOR_EXPECT_CASE5.blocks);
+        testBlocks(scene, fileName, 'case6', CONDITIONAL_OPERATOR_EXPECT_CASE6.blocks);
+        testBlocks(scene, fileName, 'case7', CONDITIONAL_OPERATOR_EXPECT_CASE7.blocks);
+
+        const arkFile = scene.getFiles().find((file) => file.getName().endsWith(fileName));
+        const stmts = arkFile?.getDefaultClass().getMethodWithName('case1')?.getCfg()?.getStmts();
+        assert.isDefined(stmts);
+        assert.isAtLeast(stmts!.length, 5);
+        assert.equal(stmts![3].getOperandOriginalPosition(0)?.getLastCol(), 10);
+        assert.equal(stmts![4].getOperandOriginalPosition(0)?.getLastCol(), 10);
     });
 
     it('case3: switch statement', () => {
