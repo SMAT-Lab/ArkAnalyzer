@@ -26,17 +26,11 @@ export function buildImportInfo(node: any, sourceFile: any, arkFile: ArkFile): I
     }
     if (node.kind === 'UsingDirectiveDecl') {
         return buildGenericImportInfo(node, sourceFile, arkFile, n => n.code);
-
     }
     return [];
 }
 
-function buildGenericImportInfo(
-    node: any,
-    sourceFile: any,
-    arkFile: ArkFile,
-    importClauseNameBuilder: (node: any) => string
-): ImportInfo[] {
+function buildGenericImportInfo(node: any, sourceFile: any, arkFile: ArkFile, importClauseNameBuilder: (node: any) => string): ImportInfo[] {
     const originTsPosition = LineColPosition.buildFromNodeCpp(node, sourceFile);
     const tsSourceCode = node.code;
     let importInfos: ImportInfo[] = [];

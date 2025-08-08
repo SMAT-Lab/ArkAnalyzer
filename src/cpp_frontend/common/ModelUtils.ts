@@ -30,14 +30,47 @@ import { FunctionType } from '../../core/base/Type';
 
 // 常见 C++ 标准库头文件（不含 .h 后缀）
 const CPP_STD_HEADERS = new Set([
-    "iostream", "iomanip", "fstream", "sstream", "string",
-    "vector", "map", "unordered_map", "set", "unordered_set",
-    "queue", "stack", "list", "algorithm", "utility", "memory",
-    "thread", "mutex", "condition_variable", "future", "atomic",
-    "chrono", "functional", "stdexcept", "type_traits",
-    "cassert", "cstdint", "cstdlib", "cstdio", "cstring", "cmath",
-    "array", "bitset", "deque", "tuple", "numeric", "any", "optional",
-    "variant", "filesystem", "span"
+    'iostream',
+    'iomanip',
+    'fstream',
+    'sstream',
+    'string',
+    'vector',
+    'map',
+    'unordered_map',
+    'set',
+    'unordered_set',
+    'queue',
+    'stack',
+    'list',
+    'algorithm',
+    'utility',
+    'memory',
+    'thread',
+    'mutex',
+    'condition_variable',
+    'future',
+    'atomic',
+    'chrono',
+    'functional',
+    'stdexcept',
+    'type_traits',
+    'cassert',
+    'cstdint',
+    'cstdlib',
+    'cstdio',
+    'cstring',
+    'cmath',
+    'array',
+    'bitset',
+    'deque',
+    'tuple',
+    'numeric',
+    'any',
+    'optional',
+    'variant',
+    'filesystem',
+    'span',
 ]);
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ModelUtils');
@@ -109,8 +142,7 @@ export function isValidCppHeaderPath(headerPath: string | undefined): boolean {
     const filename = parts.length > 0 ? parts[parts.length - 1] : '';
 
     // 判断是否为标准库名或标准库名 + .h
-    if (CPP_STD_HEADERS.has(filename) || (filename.endsWith('.h') &&
-        CPP_STD_HEADERS.has(filename.replace(/\.h$/, '')))) {
+    if (CPP_STD_HEADERS.has(filename) || (filename.endsWith('.h') && CPP_STD_HEADERS.has(filename.replace(/\.h$/, '')))) {
         return false;
     }
 
@@ -128,24 +160,23 @@ function processIncludeRef(fromInfo: FromInfo, headerFile: ArkFile): ExportInfo 
         .build();
     // 2.将头文件的exportInfo添加到当前文件的importInfoMaps里，并设置好lazyImportInfo
     const declFile = fromInfo.getDeclaringArkFile();
-    let includeClauseName =  (fromInfo as ImportInfo).getImportClauseName();
+    let includeClauseName = (fromInfo as ImportInfo).getImportClauseName();
     for (const exportInfo of headerFile.getExportInfos()) {
         let headerRealIm = new ImportInfo();
-        headerRealIm.build(exportInfo.getExportClauseName(), 'NamedImports', headerFile.getFilePath(),
-            exportInfo.getOriginTsPosition(), 0);
+        headerRealIm.build(exportInfo.getExportClauseName(), 'NamedImports', headerFile.getFilePath(), exportInfo.getOriginTsPosition(), 0);
         headerRealIm.setTsSourceCode(includeClauseName);
         headerRealIm.setDeclaringArkFile(declFile);
         if (shouldAddCppHeaderImport(headerRealIm)) {
             declFile.addImportInfo(headerRealIm);
         }
-        headerRealIm.getLazyExportInfo();  // 会递归findExportInfo函数
+        headerRealIm.getLazyExportInfo(); // 会递归findExportInfo函数
     }
     // 3.将头文件的importInfos添加到当前文件的importInfoMaps里，并设置好lazyImportInfo
     for (const im of headerFile.getImportInfos()) {
         if (declFile.getImportInfoBy(im.getImportClauseName())) {
             continue;
         }
-        if (shouldAddCppHeaderImport(im)){
+        if (shouldAddCppHeaderImport(im)) {
             declFile.addImportInfo(im);
         }
         im.getLazyExportInfo();

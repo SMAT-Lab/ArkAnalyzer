@@ -377,7 +377,7 @@ export class CfgBuilder {
                 acc.push(curr);
             }
             return acc;
-        }, [] as any[])
+        }, [] as any[]);
     }
 
     ASTNodeSwitchStatement(c: any, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
@@ -464,7 +464,7 @@ export class CfgBuilder {
         let gotoStmtsOfLabel = this.declaringMethod.gotoStmtMap.get(label);
         if (gotoStmtsOfLabel === undefined) {
             this.declaringMethod.gotoStmtMap.set(label, [s]);
-        }else {
+        } else {
             gotoStmtsOfLabel.push(s);
         }
     }
@@ -501,9 +501,9 @@ export class CfgBuilder {
         if (idx === -1) {
             return new StatementBuilder('gotoStatement', innerNode.code, innerNode, scopeID);
         }
-        const label = innerNode.code.substring(0,idx);
+        const label = innerNode.code.substring(0, idx);
         const gotoStmts = this.declaringMethod.gotoStmtMap.get(label);
-        if(!gotoStmts) {
+        if (!gotoStmts) {
             let s = new StatementBuilder('gotoStatement', innerNode.code, innerNode, scopeID);
             this.declaringMethod.gotoStmtMap.set(label, [s]);
         } else {
@@ -575,7 +575,7 @@ export class CfgBuilder {
         trystm.next?.lasts.add(trystm);
         for (const catchBlock of catchBlockList) {
             let text = '';
-            if (catchBlock.code){
+            if (catchBlock.code) {
                 text += this.removeAfterBraces(catchBlock.code);
             }
             let catchOrNot = new ConditionStatementBuilder('catchOrNot', text, c, scopeID);
@@ -592,7 +592,7 @@ export class CfgBuilder {
             }
             const catchStatement = new StatementBuilder('statement', catchOrNot.code, catchBlock, catchOrNot.nextT.scopeID);
             catchStatement.next = catchOrNot.nextT;
-            trystm.catchStatement.push(catchStatement)
+            trystm.catchStatement.push(catchStatement);
             catchStatement.lasts.add(trystm);
             if (catchBlock.inner[0].name) {
                 trystm.catchError.push(catchBlock.inner[0].name);
@@ -632,7 +632,7 @@ export class CfgBuilder {
                 this.judgeLastType(s, lastStatement);
                 lastStatement = s;
                 break;
-            } else if (nodeKind === 'DeclStmt' || nodeKind === "VarDecl" || nodeKind === "TypedefDecl") {
+            } else if (nodeKind === 'DeclStmt' || nodeKind === 'VarDecl' || nodeKind === 'TypedefDecl') {
                 let s = new StatementBuilder('statement', innerNode.code, innerNode, scope.id);
                 this.judgeLastType(s, lastStatement);
                 lastStatement = s;
@@ -640,8 +640,18 @@ export class CfgBuilder {
                 let s = new StatementBuilder('statement', 'ExprWithCleanups', innerNode, scope.id);
                 this.judgeLastType(s, lastStatement);
                 lastStatement = s;
-            } else if (['CallExpr', 'CXXOperatorCallExpr', 'BinaryOperator', 'UnaryOperator', 'CompoundAssignOperator',
-                'AtomicCallExpr', 'CXXConstructExpr', 'CXXCtorInitializer'].includes(nodeKind)) {
+            } else if (
+                [
+                    'CallExpr',
+                    'CXXOperatorCallExpr',
+                    'BinaryOperator',
+                    'UnaryOperator',
+                    'CompoundAssignOperator',
+                    'AtomicCallExpr',
+                    'CXXConstructExpr',
+                    'CXXCtorInitializer',
+                ].includes(nodeKind)
+            ) {
                 let s = new StatementBuilder('statement', innerNode.code, innerNode, scope.id);
                 this.judgeLastType(s, lastStatement);
                 lastStatement = s;
@@ -971,12 +981,12 @@ export class CfgBuilder {
     addStmtBuilderPosition(): void {
         for (const stmt of this.statementArray) {
             if (stmt.astNode) {
-                if(stmt.astNode.range?.begin && stmt.astNode.range.begin.line) {
+                if (stmt.astNode.range?.begin && stmt.astNode.range.begin.line) {
                     stmt.line = stmt.astNode.range.begin.line;
                 } else {
                     stmt.line = 0;
                 }
-                if(stmt.astNode.range?.begin && stmt.astNode.range.begin.col) {
+                if (stmt.astNode.range?.begin && stmt.astNode.range.begin.col) {
                     stmt.column = stmt.astNode.range.begin.col;
                 } else {
                     stmt.column = 0;
@@ -1042,9 +1052,8 @@ export class CfgBuilder {
     getFuncBodyStmt() {
         let stmts: any[] = [];
         if (this.astRoot.inner) {
-            for(let i = 0; i< this.astRoot.inner.length; i++) {
-                if (this.astRoot.kind === 'CXXConstructorDecl' &&
-                    ['CXXConstructExpr', 'CXXCtorInitializer'].includes(this.astRoot.inner[i].kind)) {
+            for (let i = 0; i < this.astRoot.inner.length; i++) {
+                if (this.astRoot.kind === 'CXXConstructorDecl' && ['CXXConstructExpr', 'CXXCtorInitializer'].includes(this.astRoot.inner[i].kind)) {
                     stmts.push(this.astRoot.inner[i]);
                 }
                 if (this.astRoot.inner[i].kind === 'CompoundStmt') {
@@ -1060,7 +1069,11 @@ export class CfgBuilder {
         let stmts: ts.Node[] = [];
         if (this.astRoot.kind.toString() === 'TranslationUnit') {
             stmts = [...this.astRoot.inner];
-        } else if (['FunctionDecl', 'CXXMethodDecl', 'CXXConstructorDecl', 'LambdaExpr', 'FunctionTemplate', 'CXXDestructorDecl'].includes(this.astRoot.kind.toString())) {
+        } else if (
+            ['FunctionDecl', 'CXXMethodDecl', 'CXXConstructorDecl', 'LambdaExpr', 'FunctionTemplate', 'CXXDestructorDecl'].includes(
+                this.astRoot.kind.toString()
+            )
+        ) {
             stmts = this.getFuncBodyStmt();
         }
         if (!ModelUtils.isArkUIBuilderMethod(this.declaringMethod)) {
@@ -1294,7 +1307,11 @@ export class CfgBuilder {
         const switchBuilder = new SwitchBuilder();
         switchBuilder.buildSwitch(blockBuilderToCfgBlock, blockBuildersContainSwitch, valueAndStmtsOfSwitchAndCasesAll, arkIRTransformer, basicBlockSet);
         const conditionalBuilder = new ConditionBuilder();
-        conditionalBuilder.rebuildBlocksContainConditionalOperator(blockBuilderToCfgBlock, basicBlockSet, ModelUtils.isArkUIBuilderMethod(this.declaringMethod));
+        conditionalBuilder.rebuildBlocksContainConditionalOperator(
+            blockBuilderToCfgBlock,
+            basicBlockSet,
+            ModelUtils.isArkUIBuilderMethod(this.declaringMethod)
+        );
     }
 
     private createCfg(blockBuilderToCfgBlock: Map<BlockBuilder, BasicBlock>, basicBlockSet: Set<BasicBlock>, prevBlockId: number): Cfg {

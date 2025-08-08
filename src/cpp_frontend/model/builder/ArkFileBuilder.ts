@@ -17,20 +17,20 @@ import fs from 'fs';
 import path from 'path';
 import { ArkFile } from '../../../core/model/ArkFile';
 import { ArkNamespace } from '../../../core/model/ArkNamespace';
-import { buildNormalArkClassFromArkFile} from './ArkClassBuilder';
+import { buildNormalArkClassFromArkFile } from './ArkClassBuilder';
 import { buildArkMethodFromArkClass } from './ArkMethodBuilder';
-import {buildExportInfo} from '../../../core/model/builder/ArkExportBuilder'
+import { buildExportInfo } from '../../../core/model/builder/ArkExportBuilder';
 import { buildArkNamespace } from './ArkNamespaceBuilder';
 import { ArkClass } from '../../../core/model/ArkClass';
 import { buildDefaultArkClassFromArkFile } from './ArkClassBuilder';
 import { ArkMethod } from '../../../core/model/ArkMethod';
-import {AstUtils} from "../../../ast/astUtils"
+import { AstUtils } from '../../../ast/astUtils';
 import { FileSignature, ClassSignature } from '../../../core/model/ArkSignature';
 import { LineColPosition } from '../../../core/base/Position';
 import { buildImportInfo } from './ArkImportBuilder';
-import { shouldAddCppHeaderImport } from '../../common/ModelUtils'
+import { shouldAddCppHeaderImport } from '../../common/ModelUtils';
 import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
-import {init4InstanceInitMethod, init4StaticInitMethod} from "../../../core/model/builder/ArkClassBuilder";
+import { init4InstanceInitMethod, init4StaticInitMethod } from '../../../core/model/builder/ArkClassBuilder';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkFileBuilder');
 
@@ -40,7 +40,7 @@ function extractOhosSdkPath(mapData: Map<string, any>): string {
             continue;
         }
         const sdkPath = Object.prototype.hasOwnProperty.call(value, 'path') ? value.path : '';
-        if (typeof sdkPath === 'string' && sdkPath){
+        if (typeof sdkPath === 'string' && sdkPath) {
             return sdkPath;
         }
     }
@@ -64,9 +64,7 @@ function findLLVMPath(inputPath: string): string {
 
     // 优先查找环境变量中 LLVM 路径
     const envPathList = (process.env.PATH || '').split(';');
-    const llvmEnvPath = envPathList.find(p =>
-        p.includes('clang+llvm-19.1.7-x86_64-pc-windows-msvc') && fs.existsSync(p)
-    ) || '';
+    const llvmEnvPath = envPathList.find(p => p.includes('clang+llvm-19.1.7-x86_64-pc-windows-msvc') && fs.existsSync(p)) || '';
 
     const llvmBinCandidates = [
         llvmEnvPath,
@@ -82,7 +80,6 @@ function findLLVMPath(inputPath: string): string {
 
     return '';
 }
-
 
 /**
  * Entry of building ArkFile instance
@@ -109,12 +106,7 @@ export function buildArkFileFromFile(absoluteFilePath: string, projectDir: strin
 }
 
 function isChildLocFileHeader(child: any): boolean {
-    return (
-        child.hasOwnProperty('locFile') &&
-        child.locFile &&
-        typeof child.locFile === 'string' &&
-        child.locFile.endsWith('.h')
-    );
+    return child.hasOwnProperty('locFile') && child.locFile && typeof child.locFile === 'string' && child.locFile.endsWith('.h');
 }
 
 /**
@@ -125,10 +117,9 @@ function isChildLocFileHeader(child: any): boolean {
  * @returns
  */
 function buildArkFile(arkFile: ArkFile, astRoot: any): void {
-    const includeNodes = astRoot.headerUnits?.filter(
-        (item: any) => item?.kind === 'inclusion directive') ?? [];
-    const statements = [...includeNodes, ...astRoot.inner]
-    let recordMap = new Map; //记录派生类
+    const includeNodes = astRoot.headerUnits?.filter((item: any) => item?.kind === 'inclusion directive') ?? [];
+    const statements = [...includeNodes, ...astRoot.inner];
+    let recordMap = new Map(); //记录派生类
     statements.forEach((child: any) => {
         if (child.kind === 'CXXRecordDecl' || child.kind === 'ClassTemplate') {
             let cls: ArkClass = new ArkClass();
@@ -139,15 +130,14 @@ function buildArkFile(arkFile: ArkFile, astRoot: any): void {
             arkFile.addArkClass(cls);
             recordMap.set(child.id, cls);
             if (isChildLocFileHeader(child)) {
-                arkFile.addExportInfo(buildExportInfo(cls, arkFile, LineColPosition.buildFromNodeCpp(child, astRoot)))
+                arkFile.addExportInfo(buildExportInfo(cls, arkFile, LineColPosition.buildFromNodeCpp(child, astRoot)));
             }
-
         } else if (child.kind === 'FunctionDecl' || child.kind === 'FriendDecl' || child.kind === 'FunctionTemplate') {
             let mthd: ArkMethod = new ArkMethod();
 
             buildArkMethodFromArkClass(child, arkFile.getDefaultClass(), mthd, astRoot);
             if (isChildLocFileHeader(child)) {
-                arkFile.addExportInfo(buildExportInfo(mthd, arkFile, LineColPosition.buildFromNodeCpp(child, astRoot)))
+                arkFile.addExportInfo(buildExportInfo(mthd, arkFile, LineColPosition.buildFromNodeCpp(child, astRoot)));
             }
         } else if (child.kind === 'NamespaceDecl' || child.kind === 'Namespace') {
             let ns: ArkNamespace = new ArkNamespace();
@@ -155,7 +145,7 @@ function buildArkFile(arkFile: ArkFile, astRoot: any): void {
             buildArkNamespace(child, arkFile, ns, astRoot);
             arkFile.addNamespace(ns);
             if (isChildLocFileHeader(child)) {
-                arkFile.addExportInfo(buildExportInfo(ns, arkFile, LineColPosition.buildFromNodeCpp(child, astRoot)))
+                arkFile.addExportInfo(buildExportInfo(ns, arkFile, LineColPosition.buildFromNodeCpp(child, astRoot)));
             }
         } else if (child.kind === 'CXXMethodDecl' || child.kind === 'CXXConstructorDecl' || child.kind === 'CXXDestructorDecl') {
             // 成员函数，构造，析构函数需先进行函数所属类的建立
@@ -164,25 +154,25 @@ function buildArkFile(arkFile: ArkFile, astRoot: any): void {
             // @ts-ignore
             buildArkMethodFromArkClass(child, arkClass, mthd, astRoot);
             if (isChildLocFileHeader(child)) {
-                arkFile.addExportInfo(buildExportInfo(mthd, arkFile, LineColPosition.buildFromNodeCpp(child, astRoot)))
+                arkFile.addExportInfo(buildExportInfo(mthd, arkFile, LineColPosition.buildFromNodeCpp(child, astRoot)));
             }
         } else if (child.kind === 'TypedefDecl') {
-            if (child.inner[0].kind === "CXXRecordDecl") {
+            if (child.inner[0].kind === 'CXXRecordDecl') {
                 let cls: ArkClass = new ArkClass();
                 buildNormalArkClassFromArkFile(child.inner[0], arkFile, cls, astRoot);
                 arkFile.addArkClass(cls);
                 recordMap.set(child.id, cls);
                 if (isChildLocFileHeader(child)) {
-                    arkFile.addExportInfo(buildExportInfo(cls, arkFile, LineColPosition.buildFromNodeCpp(child, astRoot)))
+                    arkFile.addExportInfo(buildExportInfo(cls, arkFile, LineColPosition.buildFromNodeCpp(child, astRoot)));
                 }
             }
         } else if (child.kind === 'EnumDecl') {
-            child = { ...child, 'tagUsed': 'enum' };
+            child = { ...child, tagUsed: 'enum' };
             let cls: ArkClass = new ArkClass();
             buildNormalArkClassFromArkFile(child, arkFile, cls, astRoot);
             recordMap.set(child.id, cls);
             if (isChildLocFileHeader(child)) {
-                arkFile.addExportInfo(buildExportInfo(cls, arkFile, LineColPosition.buildFromNodeCpp(child, astRoot)))
+                arkFile.addExportInfo(buildExportInfo(cls, arkFile, LineColPosition.buildFromNodeCpp(child, astRoot)));
             }
         } else if (child.kind === 'inclusion directive' || child.kind === 'UsingDirectiveDecl') {
             let importInfos = buildImportInfo(child, astRoot, arkFile);
@@ -201,7 +191,7 @@ function buildArkFile(arkFile: ArkFile, astRoot: any): void {
 // Get ArkClass of 'CXXMethodDecl'/'CXXConstructorDecl'/'CXXDestructorDecl'
 function getDeclaringArkClassOfMethod(mtd: any, arkFile: ArkFile): ArkClass {
     const className: string = mtd.mangledName ?? '';
-    let arkClass = arkFile.getClasses().find(arkClass => (arkClass.getName() === className));
+    let arkClass = arkFile.getClasses().find(arkClass => arkClass.getName() === className);
     if (!arkClass) {
         arkClass = new ArkClass();
         const classSignature = new ClassSignature(className, arkFile.getFileSignature());

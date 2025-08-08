@@ -18,12 +18,7 @@ import { BodyBuilderCpp } from './BodyBuilder';
 import { buildViewTree } from '../../../core/graph/builder/ViewTreeBuilder';
 import { ArkClass } from '../../../core/model/ArkClass';
 import { ArkMethod } from '../../../core/model/ArkMethod';
-import {
-    buildModifiers,
-    buildParameters,
-    buildReturnType,
-    cppNode2Type,
-} from './builderUtils';
+import { buildModifiers, buildParameters, buildReturnType, cppNode2Type } from './builderUtils';
 import { ArkParameterRef, ArkThisRef } from '../../../core/base/Ref';
 import { ArkBody } from '../../../core/model/ArkBody';
 import { Cfg } from '../../../core/graph/Cfg';
@@ -44,26 +39,30 @@ import {
 import { buildGenericType } from '../../../core/model/builder/builderUtils';
 import { CONSTRUCTOR_NAME, THIS_NAME } from '../../../core/common/TSConst';
 import { ArkSignatureBuilder } from '../../../core/model/builder/ArkSignatureBuilder';
-import Logger, {LOG_MODULE_TYPE} from "../../../utils/logger";
+import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkMethodBuilder');
 
-function getSpecificNodes(methodNode:any, targetNode:string): any[]{
-    if (!methodNode || !methodNode.inner){
+function getSpecificNodes(methodNode: any, targetNode: string): any[] {
+    if (!methodNode || !methodNode.inner) {
         return [];
     }
     // 处理 Cpp 的lambda函数
-    if(!['FunctionDecl', 'CXXMethodDecl','CXXConstructorDecl', 'CXXDestructorDecl', 'FriendDecl', 'LambdaExpr',
-    'FunctionTemplate'].includes(methodNode.kind) && methodNode.inner){
+    if (
+        !['FunctionDecl', 'CXXMethodDecl', 'CXXConstructorDecl', 'CXXDestructorDecl', 'FriendDecl', 'LambdaExpr', 'FunctionTemplate'].includes(
+            methodNode.kind
+        ) &&
+        methodNode.inner
+    ) {
         return getSpecificNodes(methodNode.inner[0], targetNode);
     }
     let result: any[] = [];
-    methodNode.inner.forEach((childNode:any) => {
-        if (childNode.kind.toString() === targetNode){
+    methodNode.inner.forEach((childNode: any) => {
+        if (childNode.kind.toString() === targetNode) {
             result.push(childNode);
         }
     });
-    return result.length>0?result:[];
+    return result.length > 0 ? result : [];
 }
 
 export function buildDefaultArkMethodFromArkClass(declaringClass: ArkClass, mtd: ArkMethod, sourceFile: any, node?: any): void {
@@ -80,27 +79,27 @@ export function buildDefaultArkMethodFromArkClass(declaringClass: ArkClass, mtd:
     mtd.setBodyBuilderCpp(bodyBuilder);
 }
 
-export function handleFunctionTemplate(methodNode:any, mtd:ArkMethod, sourceFile:any){
-    if (methodNode.kind !== 'FunctionTemplate'){
+export function handleFunctionTemplate(methodNode: any, mtd: ArkMethod, sourceFile: any) {
+    if (methodNode.kind !== 'FunctionTemplate') {
         return;
     }
     mtd.isGenericsMethod();
     let templateTypesArray = [];
     let index = -1;
-    for (const innerNode of methodNode.inner){
-        if (innerNode.kind !== 'TemplateTypeParameter'){
+    for (const innerNode of methodNode.inner) {
+        if (innerNode.kind !== 'TemplateTypeParameter') {
             continue;
         }
         let typename = innerNode.name;
         // 处理参数折叠的模板
-        if (innerNode.code.includes('...')){
+        if (innerNode.code.includes('...')) {
             typename = typename + '...';
         }
         let defaultType;
-        if (innerNode.inner && innerNode.inner.length > 0){
+        if (innerNode.inner && innerNode.inner.length > 0) {
             innerNode.default = innerNode.inner[0].type.qualType;
         }
-        if (innerNode.default){
+        if (innerNode.default) {
             defaultType = cppNode2Type(innerNode.default, mtd, sourceFile);
         }
         let templateType = new GenericType(typename, defaultType);
@@ -110,30 +109,22 @@ export function handleFunctionTemplate(methodNode:any, mtd:ArkMethod, sourceFile
     mtd.setGenericTypes(templateTypesArray);
 }
 
-
-export function buildArkMethodFromArkClass(
-    methodNode: any,
-    declaringClass: ArkClass,
-    mtd: ArkMethod,
-    sourceFile: any,
-    declaringMethod?: ArkMethod
-): void {
+export function buildArkMethodFromArkClass(methodNode: any, declaringClass: ArkClass, mtd: ArkMethod, sourceFile: any, declaringMethod?: ArkMethod): void {
     mtd.setDeclaringArkClass(declaringClass);
-    if(declaringMethod !== undefined) {
+    if (declaringMethod !== undefined) {
         mtd.setOuterMethod(declaringMethod);
     }
     // 判断是否是生产器式函数
-    if (methodNode.kind === 'FunctionDecl' || methodNode.kind === 'FunctionTemplate'){
+    if (methodNode.kind === 'FunctionDecl' || methodNode.kind === 'FunctionTemplate') {
         mtd.setAsteriskToken(false);
     }
     handleFunctionTemplate(methodNode, mtd, sourceFile);
 
     mtd.setCode(methodNode.code);
     mtd.setModifiers(buildModifiers(methodNode));
-    if (methodNode.kind === 'FriendDecl' && methodNode.inner.length > 0){
+    if (methodNode.kind === 'FriendDecl' && methodNode.inner.length > 0) {
         methodNode = methodNode.inner[0];
     }
-
 
     // build methodDeclareSignatures and methodSignature as well as corresponding positions
     const methodName = buildMethodName(methodNode, declaringClass, sourceFile, declaringMethod);
@@ -257,7 +248,6 @@ function buildMethodName(node: any, declaringClass: ArkClass, sourceFile: any, d
             break;
     }
 
-
     if (declaringMethod !== undefined && !declaringMethod.isDefaultArkMethod()) {
         name = buildNestedMethodName(name, declaringMethod.getName());
     }
@@ -378,31 +368,28 @@ export function addInitInConstructor(constructor: ArkMethod): void {
         return;
     }
     const blocks = constructor.getCfg()?.getBlocks();
-    if (!blocks){
+    if (!blocks) {
         return;
     }
     const firstBlockStmts = [...blocks][0].getStmts();
     let index = 0;
     for (let i = 0; i < firstBlockStmts.length; i++) {
         const stmt = firstBlockStmts[i];
-        if ((stmt.getDef() instanceof Local && (stmt.getDef() as Local).getName() === THIS_NAME) ||
-            (stmt instanceof ArkInvokeStmt &&
-             stmt.getInvokeExpr().getMethodSignature().getMethodSubSignature().getMethodName() === CONSTRUCTOR_NAME)) {
+        if (
+            (stmt.getDef() instanceof Local && (stmt.getDef() as Local).getName() === THIS_NAME) ||
+            (stmt instanceof ArkInvokeStmt && stmt.getInvokeExpr().getMethodSignature().getMethodSubSignature().getMethodName() === CONSTRUCTOR_NAME)
+        ) {
             index = i + 1;
         }
     }
     let initInvokeStmt: ArkInvokeStmt;
     try {
-        initInvokeStmt = new ArkInvokeStmt(new ArkInstanceInvokeExpr(
-            thisLocal,
-            constructor.getDeclaringArkClass().getInstanceInitMethod().getSignature(),
-            []
-        ));
+        initInvokeStmt = new ArkInvokeStmt(new ArkInstanceInvokeExpr(thisLocal, constructor.getDeclaringArkClass().getInstanceInitMethod().getSignature(), []));
     } catch (e) {
-        logger.warn("addInitInConstructor: failed to build initInvokeStmt due to exception: ", e);
+        logger.warn('addInitInConstructor: failed to build initInvokeStmt due to exception: ', e);
         return;
     }
-    if (initInvokeStmt){
+    if (initInvokeStmt) {
         initInvokeStmt.setCfg(cfg);
         firstBlockStmts.splice(index, 0, initInvokeStmt);
     }
@@ -422,7 +409,7 @@ export function isMethodImplementation(node: any): boolean {
         case 'FunctionDecl':
         case 'FunctionTemplate':
         case 'FriendDecl':
-            if (node.inner.find((inn:any) => inn.kind.toString() === 'CompoundStmt')) {
+            if (node.inner.find((inn: any) => inn.kind.toString() === 'CompoundStmt')) {
                 isFuncImpl = true;
             }
             break;

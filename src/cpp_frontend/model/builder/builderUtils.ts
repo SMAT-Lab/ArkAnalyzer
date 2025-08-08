@@ -21,7 +21,9 @@ import {
     UnknownType,
     PointerType,
     ReferenceType,
-    ReferCategory, UnclearReferenceType, functionPointer,
+    ReferCategory,
+    UnclearReferenceType,
+    functionPointer,
 } from '../../../core/base/Type';
 import { TypeInference } from '../../common/TypeInference';
 import { ArkField } from '../../../core/model/ArkField';
@@ -31,25 +33,25 @@ import { MethodParameter } from '../../../core/model/builder/ArkMethodBuilder';
 import { modifierKind2EnumCpp } from '../../../core/model/ArkBaseModel';
 import { buildGenericType } from '../../../core/model/builder/builderUtils';
 
-function extractCommonModifiers(node:any):number{
+function extractCommonModifiers(node: any): number {
     let modifiers: number = 0;
-    const nodeType: string = node?.type?.qualType ?? "";
+    const nodeType: string = node?.type?.qualType ?? '';
 
-    if (Object.prototype.hasOwnProperty.call(node, "access")){
+    if (Object.prototype.hasOwnProperty.call(node, 'access')) {
         modifiers |= modifierKind2EnumCpp(node.access);
     }
-    if (Object.prototype.hasOwnProperty.call(node, "storageClass")){
+    if (Object.prototype.hasOwnProperty.call(node, 'storageClass')) {
         modifiers |= modifierKind2EnumCpp(node.storageClass);
     }
-    if (nodeType.includes("const")){
-        modifiers |= modifierKind2EnumCpp("const");
+    if (nodeType.includes('const')) {
+        modifiers |= modifierKind2EnumCpp('const');
     }
     return modifiers;
 }
 
-function hasOverrideAttr(inner: any[] |undefined):boolean{
+function hasOverrideAttr(inner: any[] | undefined): boolean {
     if (!inner) return false;
-    return inner.some(child => child.kind === "attribute(override)");
+    return inner.some(child => child.kind === 'attribute(override)');
 }
 
 function getMtdModifier(node: any, modifiers: number) {
@@ -69,11 +71,11 @@ function getMtdModifier(node: any, modifiers: number) {
 export function buildModifiers(node: any): number {
     let modifiers = extractCommonModifiers(node);
 
-    if (node.kind === 'CXXMethodDecl'){
+    if (node.kind === 'CXXMethodDecl') {
         modifiers = getMtdModifier(node, modifiers);
     }
-    if (node.kind === "FriendDecl"){
-        modifiers |= modifierKind2EnumCpp("friend");
+    if (node.kind === 'FriendDecl') {
+        modifiers |= modifierKind2EnumCpp('friend');
     }
 
     return modifiers;
@@ -84,32 +86,28 @@ export function buildModifiersForCxxCls(cls: ArkClass): number {
     for (const mtd of mtds) {
         // 如果类内有纯虚的成员函数，则该类是抽象类
         if (mtd.isPureVirtual()) {
-            return modifierKind2EnumCpp("abstract");
+            return modifierKind2EnumCpp('abstract');
         }
     }
     return 0;
 }
 
-export function buildTypeParameters(
-    clsNode: any,
-    sourceFile: ts.SourceFile,
-    arkInstance: ArkMethod | ArkClass
-): GenericType[] {
+export function buildTypeParameters(clsNode: any, sourceFile: ts.SourceFile, arkInstance: ArkMethod | ArkClass): GenericType[] {
     const genericTypes: GenericType[] = [];
     let index = -1;
-    for(const innerNode of clsNode.inner) {
-        if(innerNode.kind !== 'TemplateTypeParameter'){
+    for (const innerNode of clsNode.inner) {
+        if (innerNode.kind !== 'TemplateTypeParameter') {
             continue;
         }
         let typename = innerNode.name;
         let defaultType;
-        if(innerNode.inner && innerNode.inner.length > 0){
+        if (innerNode.inner && innerNode.inner.length > 0) {
             innerNode.default = innerNode.inner[0].type.qualType;
         }
-        if(innerNode.default){
+        if (innerNode.default) {
             defaultType = cppNode2Type(innerNode.default, arkInstance, sourceFile);
         }
-        let templateType = new GenericType(typename,defaultType);
+        let templateType = new GenericType(typename, defaultType);
         templateType.setIndex(++index);
         genericTypes.push(templateType);
     }
@@ -117,18 +115,18 @@ export function buildTypeParameters(
 }
 
 export function buildParameters(params: any, arkInstance: ArkMethod | ArkField, sourceFile: any): MethodParameter[] {
-    let parameters: MethodParameter[] = []
+    let parameters: MethodParameter[] = [];
     if (!params || params.length === 0) {
         return [];
     }
-    params.forEach((parameter:any) => {
+    params.forEach((parameter: any) => {
         let methodParameter = new MethodParameter();
 
         // name
         if (parameter.name) {
             methodParameter.setName(parameter.name.toString());
         } else {
-            methodParameter.setName("")
+            methodParameter.setName('');
         }
         // type
         if (parameter.type) {
@@ -144,14 +142,17 @@ export function buildParameters(params: any, arkInstance: ArkMethod | ArkField, 
 
 export function buildReturnType(mtdNode: any, sourceFile: any, method: ArkMethod): Type {
     let nodeType = mtdNode.type;
-    if (nodeType){
+    if (nodeType) {
         let funcRetType;
         let isLambdaFunc = nodeType.qualType.startsWith('(lambda at');
-        if (!isLambdaFunc){ //普通函数
+        if (!isLambdaFunc) {
+            //普通函数
             funcRetType = nodeType.qualType.split('(')[0].trim();
-        } else if (mtdNode.inner[0]?.inner[0]?.type.qualType.includes(' -> ')){ //处理带返回值的lambda函数
+        } else if (mtdNode.inner[0]?.inner[0]?.type.qualType.includes(' -> ')) {
+            //处理带返回值的lambda函数
             funcRetType = mtdNode.inner[0].inner[0].type.qualType.split(' -> ')[1];
-        } else { // 不带返回值的lambda函数
+        } else {
+            // 不带返回值的lambda函数
             return UnknownType.getInstance();
         }
         return cppNode2Type(funcRetType, method, sourceFile);
@@ -160,11 +161,7 @@ export function buildReturnType(mtdNode: any, sourceFile: any, method: ArkMethod
     }
 }
 
-export function cppNode2Type(
-    nodeQualType: any,
-    arkInstance: ArkMethod | ArkClass | ArkField,
-    sourceFile?: any,
-): Type {
+export function cppNode2Type(nodeQualType: any, arkInstance: ArkMethod | ArkClass | ArkField, sourceFile?: any): Type {
     // 处理特殊类型
     if (nodeQualType === 'void () const') {
         return buildTypeFromPreStr('VoidKeyword');
@@ -184,7 +181,7 @@ export function cppNode2Type(
 
     // 处理函数指针类型，对节点type含有(*)()的做识别
     const funcPtrRegex = /\(\s*\*\s*\)\s*\(\s*[^)]*\s*\)/;
-    if (funcPtrRegex.test(nodeQualType)){
+    if (funcPtrRegex.test(nodeQualType)) {
         return new functionPointer(nodeQualType);
     }
 
@@ -195,9 +192,10 @@ export function cppNode2Type(
 export function buildTypeFromPreStr(preStr: string, arkInstance: any = null): Type {
     // 1. 去除const/static/mutable 等修饰符
     preStr = preStr.replace(/\b(const|static|mutable)\s*\b/g, '');
-    let pointerLevel = 0, referenceCount = 0;
+    let pointerLevel = 0,
+        referenceCount = 0;
     // 2. 处理指针和引用，仅非STL容器处理
-    if (!isCXXSTLContainer(preStr)){
+    if (!isCXXSTLContainer(preStr)) {
         referenceCount = (preStr.match(/&/g) || []).length;
         preStr = preStr.replace(/&/g, '').trim();
         pointerLevel = (preStr.match(/\*/g) || []).length;
@@ -206,13 +204,11 @@ export function buildTypeFromPreStr(preStr: string, arkInstance: any = null): Ty
 
     // 3. 推断类型
     const postStr = convertDataType(preStr);
-    let baseType = (postStr === 'unsupported')
-        ? buildTypeFromDerivedType(preStr, arkInstance)
-        : TypeInference.buildTypeFromStr(postStr, preStr);
+    let baseType = postStr === 'unsupported' ? buildTypeFromDerivedType(preStr, arkInstance) : TypeInference.buildTypeFromStr(postStr, preStr);
 
     // 待处理: 指针与其他类型/修饰符的优先级
     // 4. 包装指针和引用
-    if (pointerLevel > 0){
+    if (pointerLevel > 0) {
         baseType = new PointerType(baseType, pointerLevel);
     }
     // 处理引用类型
@@ -223,9 +219,7 @@ export function buildTypeFromPreStr(preStr: string, arkInstance: any = null): Ty
 }
 
 export function buildReferenceType(preStr: string, arkInstance: any = null, referenceCount: number, baseType: Type): Type {
-    let referCategory = (referenceCount % 2 === 1)
-        ? ReferCategory.LVALUE_REF
-        : ReferCategory.RVALUE_REF;
+    let referCategory = referenceCount % 2 === 1 ? ReferCategory.LVALUE_REF : ReferCategory.RVALUE_REF;
     if (baseType instanceof UnclearReferenceType) {
         baseType = cppNode2Type(preStr, arkInstance);
     }
@@ -235,15 +229,12 @@ export function buildReferenceType(preStr: string, arkInstance: any = null, refe
     return new ReferenceType(baseType, referCategory);
 }
 
-export function isCXXSTLContainer(qualType: string){
+export function isCXXSTLContainer(qualType: string) {
     let STLContainerPtn = /(set|map|vector|queue|deque|stack|list|pair)<[^>]*>/g;
     return STLContainerPtn.test(qualType);
 }
 
-export function buildTypeFromDerivedType(
-    preStr: string,
-    arkInstance: ArkMethod | ArkClass | ArkField,
-): Type {
+export function buildTypeFromDerivedType(preStr: string, arkInstance: ArkMethod | ArkClass | ArkField): Type {
     const outerPartMatch = preStr.match(/^([^<]+)/);
     const outerPart = outerPartMatch ? outerPartMatch[1] : null;
     let typeStr: string, isPtr: boolean, isRef: boolean;
@@ -273,40 +264,40 @@ export function buildTypeFromDerivedType(
 }
 
 const typeMap: Record<string, string> = {
-    'bool': 'boolean',
+    bool: 'boolean',
     //字符串相关
-    'string': 'string',
+    string: 'string',
     'std::string': 'string',
-    'char': 'string',
+    char: 'string',
     'signed char': 'string',
-    'wchar_t': 'string',
-    'char16_t': 'string',
-    'char32_t': 'string',
+    wchar_t: 'string',
+    char16_t: 'string',
+    char32_t: 'string',
     'std::basic_string<char>': 'string',
     // 数字相关
-    'short': 'number',
+    short: 'number',
     'unsigned short': 'number',
     'unsigned int': 'number',
-    'int': 'number',
-    'long': 'number',
+    int: 'number',
+    long: 'number',
     'unsigned long': 'number',
     'long long': 'number',
     'unsigned long long': 'number',
-    'float': 'number',
-    'double': 'number',
+    float: 'number',
+    double: 'number',
     'long double': 'number',
-    'uint8_t': 'number',
-    'uint16_t': 'number',
-    'uint32_t': 'number',
-    'uint64_t': 'number',
-    'int8_t': 'number',
-    'int16_t': 'number',
-    'int32_t': 'number',
-    'int64_t': 'number',
+    uint8_t: 'number',
+    uint16_t: 'number',
+    uint32_t: 'number',
+    uint64_t: 'number',
+    int8_t: 'number',
+    int16_t: 'number',
+    int32_t: 'number',
+    int64_t: 'number',
     // void
-    'void': 'void',
+    void: 'void',
 };
 
-export function convertDataType(typeName: string): string{
+export function convertDataType(typeName: string): string {
     return typeMap[typeName] ?? 'unsupported';
 }

@@ -16,14 +16,7 @@
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { AbstractExpr, ArkInstanceInvokeExpr, ArkPtrInvokeExpr, ArkStaticInvokeExpr } from '../../core/base/Expr';
 import { Local } from '../../core/base/Local';
-import {
-    AbstractFieldRef,
-    AbstractRef,
-    ArkArrayRef,
-    ArkInstanceFieldRef,
-    ArkParameterRef,
-    ArkStaticFieldRef, GlobalRef
-} from '../../core/base/Ref';
+import { AbstractFieldRef, AbstractRef, ArkArrayRef, ArkInstanceFieldRef, ArkParameterRef, ArkStaticFieldRef, GlobalRef } from '../../core/base/Ref';
 import { ArkAliasTypeDefineStmt, ArkAssignStmt, ArkInvokeStmt, ArkReturnStmt, Stmt } from '../../core/base/Stmt';
 import {
     AliasType,
@@ -58,15 +51,7 @@ import { ArkField } from '../../core/model/ArkField';
 import { Value } from '../../core/base/Value';
 import { Constant } from '../../core/base/Constant';
 import { ArkNamespace } from '../../core/model/ArkNamespace';
-import {
-    ALL,
-    CONSTRUCTOR_NAME,
-    DEFAULT,
-    GLOBAL_THIS_NAME,
-    PROMISE,
-    SUPER_NAME,
-    THIS_NAME,
-} from '../../core/common/TSConst';
+import { ALL, CONSTRUCTOR_NAME, DEFAULT, GLOBAL_THIS_NAME, PROMISE, SUPER_NAME, THIS_NAME } from '../../core/common/TSConst';
 import { ModelUtils } from '../../core/common/ModelUtils';
 import { Builtin } from '../../core/common/Builtin';
 import { MethodSignature, MethodSubSignature, NamespaceSignature } from '../../core/model/ArkSignature';
@@ -245,8 +230,8 @@ export class TypeInference {
         for (const expr of stmt.getExprs()) {
             const newExpr = expr.inferType(arkMethod);
             if (
-                stmt.containsInvokeExpr() &&
-                ((expr instanceof ArkInstanceInvokeExpr && newExpr instanceof ArkStaticInvokeExpr) || newExpr instanceof ArkPtrInvokeExpr) ||
+                (stmt.containsInvokeExpr() &&
+                    ((expr instanceof ArkInstanceInvokeExpr && newExpr instanceof ArkStaticInvokeExpr) || newExpr instanceof ArkPtrInvokeExpr)) ||
                 (newExpr instanceof ArkInstanceInvokeExpr && BuiltinCpp.isBuiltinClass(newExpr.getMethodSignature().getDeclaringClassSignature()))
             ) {
                 stmt.replaceUse(expr, newExpr);
@@ -271,8 +256,7 @@ export class TypeInference {
             }
             const instInvokeExpr = invokeExpr as ArkInstanceInvokeExpr;
             const invokeBaseType = instInvokeExpr.getBase().getType();
-            if (invokeBaseType instanceof ClassType &&
-                invokeBaseType.getClassSignature().getClassName() === 'napi_property_descriptor') {
+            if (invokeBaseType instanceof ClassType && invokeBaseType.getClassSignature().getClassName() === 'napi_property_descriptor') {
                 setTs2CppFuncMapOfClass(instInvokeExpr.getArgs(), false, stmt.getCfg().getDeclaringMethod());
             }
         }
@@ -366,7 +350,7 @@ export class TypeInference {
         }
         let rightType: Type | null | undefined = rightOp.getType();
         let baseType: Type | null | undefined;
-        if (rightType instanceof  PointerType || rightType instanceof ReferenceType) {
+        if (rightType instanceof PointerType || rightType instanceof ReferenceType) {
             baseType = rightType.getBaseType();
             if (this.isUnclearType(baseType)) {
                 baseType = this.inferUnclearedType(baseType, arkClass);
@@ -388,7 +372,7 @@ export class TypeInference {
         const leftOp = stmt.getLeftOp();
         let leftType: Type | null | undefined = leftOp.getType();
         let baseType: Type | null | undefined;
-        if (leftType instanceof  PointerType || leftType instanceof ReferenceType) {
+        if (leftType instanceof PointerType || leftType instanceof ReferenceType) {
             baseType = leftType.getBaseType();
             if (this.isUnclearType(baseType)) {
                 baseType = this.inferUnclearedType(baseType, arkClass);
@@ -443,8 +427,14 @@ export class TypeInference {
 
     public static isUnclearType(type: Type | null | undefined): boolean {
         // TODO: For UnionType, IntersectionType and TupleType, it should recurse check every item of them.
-        if (!type || type instanceof UnknownType || type instanceof UnclearReferenceType || type instanceof NullType ||
-            type instanceof UndefinedType || type instanceof GenericType) {
+        if (
+            !type ||
+            type instanceof UnknownType ||
+            type instanceof UnclearReferenceType ||
+            type instanceof NullType ||
+            type instanceof UndefinedType ||
+            type instanceof GenericType
+        ) {
             return true;
         } else if (
             type instanceof ClassType &&
@@ -470,9 +460,7 @@ export class TypeInference {
     }
 
     // This is the temporal function to check Type recursively and can be removed after typeInfer supports multiple candidate types.
-    public static checkType(type: Type,
-                            check: (t: Type) => boolean,
-                            visited: Set<Type> = new Set()): boolean {
+    public static checkType(type: Type, check: (t: Type) => boolean, visited: Set<Type> = new Set()): boolean {
         if (visited.has(type)) {
             return false;
         } else {
@@ -925,8 +913,13 @@ export class TypeInference {
     public static inferFunctionType(argType: FunctionType, paramSubSignature: MethodSubSignature | undefined, realTypes: Type[] | undefined): void {
         const returnType = argType.getMethodSignature().getMethodSubSignature().getReturnType();
         const declareType = paramSubSignature?.getReturnType();
-        if (declareType instanceof GenericType && realTypes && !realTypes[declareType.getIndex()] &&
-            !this.isUnclearType(returnType) && !(returnType instanceof VoidType)) {
+        if (
+            declareType instanceof GenericType &&
+            realTypes &&
+            !realTypes[declareType.getIndex()] &&
+            !this.isUnclearType(returnType) &&
+            !(returnType instanceof VoidType)
+        ) {
             realTypes[declareType.getIndex()] = returnType;
         }
         const params = paramSubSignature?.getParameters();

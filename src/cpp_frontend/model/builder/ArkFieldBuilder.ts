@@ -16,10 +16,7 @@
 import ts from 'ohos-typescript';
 import { ArkField, FieldCategory } from '../../../core/model/ArkField';
 import { ArkClass } from '../../../core/model/ArkClass';
-import {
-    buildModifiers,
-    cppNode2Type,
-} from './builderUtils';
+import { buildModifiers, cppNode2Type } from './builderUtils';
 import { FieldSignature } from '../../../core/model/ArkSignature';
 import { ArrayType, ClassType, Type, UnclearReferenceType, UnknownType } from '../../../core/base/Type';
 import { LineColPosition } from '../../../core/base/Position';
@@ -27,11 +24,7 @@ import { ModifierType } from '../../../core/model/ArkBaseModel';
 import { IRUtils } from '../../../core/common/IRUtils';
 import { buildGenericType } from '../../../core/model/builder/builderUtils';
 
-export function buildProperty2ArkField(
-    member: any,
-    sourceFile: ts.SourceFile,
-    cls: ArkClass
-): ArkField {
+export function buildProperty2ArkField(member: any, sourceFile: ts.SourceFile, cls: ArkClass): ArkField {
     let field = new ArkField();
     field.setCategory(mapSyntaxKindToFieldOriginType(member.kind) as FieldCategory);
     field.setCode(member.code);
@@ -42,10 +35,10 @@ export function buildProperty2ArkField(
     field.addModifier(buildModifiers(member));
 
     let fieldType: Type = UnknownType.getInstance();
-    if ((member.kind == 'FieldDecl' || member.kind == 'VarDecl') && member.type){
+    if ((member.kind == 'FieldDecl' || member.kind == 'VarDecl') && member.type) {
         fieldType = buildGenericType(cppNode2Type(member.type.qualType, cls, sourceFile), field);
     }
-    if(member.kind == 'EnumConstantDecl'){
+    if (member.kind == 'EnumConstantDecl') {
         field.addModifier(ModifierType.STATIC);
         fieldType = new ClassType(cls.getSignature());
     }

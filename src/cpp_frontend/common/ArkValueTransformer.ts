@@ -55,12 +55,7 @@ import {
 import { ArkSignatureBuilder } from '../../core/model/builder/ArkSignatureBuilder';
 import { ClassSignature, FieldSignature, MethodSignature, FileSignature } from '../../core/model/ArkSignature';
 import { Value } from '../../core/base/Value';
-import {
-    COMPONENT_CREATE_FUNCTION,
-    COMPONENT_CUSTOMVIEW,
-    COMPONENT_FOR_EACH,
-    COMPONENT_LAZY_FOR_EACH
-} from '../../core/common/EtsConst';
+import { COMPONENT_CREATE_FUNCTION, COMPONENT_CUSTOMVIEW, COMPONENT_FOR_EACH, COMPONENT_LAZY_FOR_EACH } from '../../core/common/EtsConst';
 import { CppValueUtil } from './ValueUtil';
 import { IRUtils } from '../../core/common/IRUtils';
 import { AbstractFieldRef, ArkArrayRef, ArkInstanceFieldRef, CXXArkInstanceFieldRef } from '../../core/base/Ref';
@@ -77,8 +72,7 @@ import { ModelUtils } from '../../core/common/ModelUtils';
 import { CONSTRUCTOR_NAME, THIS_NAME } from '../../core/common/TSConst';
 import { ClassCategory } from '../../core/model/ArkClass';
 import { TypeInference } from './TypeInference';
-import { setTs2CppFuncMapOfClass } from './ModelUtils'
-
+import { setTs2CppFuncMapOfClass } from './ModelUtils';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkValueTransformer');
 
@@ -99,8 +93,7 @@ function nodeInnerNode(node: any): any {
     return { kind: 'unsupported kind', node };
 }
 
-
-export class ArkValueTransformerCpp extends ArkValueTransformer{
+export class ArkValueTransformerCpp extends ArkValueTransformer {
     private arkIRTransformerCpp: ArkIRTransformerCpp;
 
     constructor(arkIRTransformer: ArkIRTransformerCpp, sourceFile: ts.SourceFile, declaringMethod: ArkMethod) {
@@ -111,9 +104,9 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
     private thisExpressionToValueAndStmtsCpp(thisExpression: any): ValueAndStmts {
         return {
             value: this.getThisLocal(),
-            valueOriginalPositions: [FullPosition.buildFromNodeCpp(thisExpression,  this.sourceFile)],
-            stmts: []
-        }
+            valueOriginalPositions: [FullPosition.buildFromNodeCpp(thisExpression, this.sourceFile)],
+            stmts: [],
+        };
     }
 
     // 判断当前节点是否与CPP的lambda函数相关
@@ -123,8 +116,9 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
 
     private isNodeRelatedToImplicitNode(node: any): boolean {
         if (node.inner && node.inner instanceof Array) {
-            return node.inner.length !== 0 && node.inner[0].kind === 'ImplicitCastExpr' &&
-                (node.name === '_tree_const_iterator' || node.name === 'basic_string');
+            return (
+                node.inner.length !== 0 && node.inner[0].kind === 'ImplicitCastExpr' && (node.name === '_tree_const_iterator' || node.name === 'basic_string')
+            );
         }
         return false;
     }
@@ -136,8 +130,10 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
 
     // 判断当前节点的子节点是否是成员函数调用
     private isNodeRelatedToCXXMember(node: any): boolean {
-        return node.inner.length !== 0 && node.inner[0].kind === 'CXXMemberCallExpr' ||
-            (node.inner[0].kind === 'ImplicitCastExpr' && node.inner[0].inner[0] && node.inner[0].inner[0].kind === 'CXXMemberCallExpr');
+        return (
+            (node.inner.length !== 0 && node.inner[0].kind === 'CXXMemberCallExpr') ||
+            (node.inner[0].kind === 'ImplicitCastExpr' && node.inner[0].inner[0] && node.inner[0].inner[0].kind === 'CXXMemberCallExpr')
+        );
     }
 
     // std::pair类型的构造
@@ -152,10 +148,12 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
 
     // 不是new语句的表达式（排除构造函数作为参数）
     private isNotNewExpression(newExpression: any): boolean {
-        return newExpression.inner.length && (
-            newExpression.inner[0].kind === 'IntegerLiteral' || newExpression.inner[0].kind === 'InitListExpr' ||
-            (newExpression.inner[0].kind === 'ImplicitCastExpr' && !newExpression.inner[0].code.includes('(')) ||
-            newExpression.inner[0].kind === 'CompoundLiteralExpr'
+        return (
+            newExpression.inner.length &&
+            (newExpression.inner[0].kind === 'IntegerLiteral' ||
+                newExpression.inner[0].kind === 'InitListExpr' ||
+                (newExpression.inner[0].kind === 'ImplicitCastExpr' && !newExpression.inner[0].code.includes('(')) ||
+                newExpression.inner[0].kind === 'CompoundLiteralExpr')
         );
     }
 
@@ -165,26 +163,30 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
 
     public tsNodeToValueAndStmts(node: any): ValueAndStmts {
         if (node === undefined) {
-            logger.error('ArkValueTransformer-TSNodeToValueAndStmts: node is undefined. Method signature is : ',
-                this.declaringMethod?.getSignature()?.toString());
+            logger.error(
+                'ArkValueTransformer-TSNodeToValueAndStmts: node is undefined. Method signature is : ',
+                this.declaringMethod?.getSignature()?.toString()
+            );
             return {
                 value: new Local('undefined'),
                 valueOriginalPositions: [new FullPosition(0, 0, 0, 0)],
                 stmts: [],
             };
         }
-        if(node.kind === 'CXXConstructExpr') {
+        if (node.kind === 'CXXConstructExpr') {
             let parent = node.getParent();
             if (parent && parent.kind === 'CXXConstructorDecl') {
                 return this.superExpressionToValueAndStmts(node);
             }
-            if ((!this.isPairConstructExpr((node)) && (this.isNodeRelatedToCXXLambdaFunc(node) ||
-                this.isNodeRelatedToMaterialize(node) || this.isNodeRelatedToImplicitNode(node))) && node.inner?.length > 0) {
+            if (
+                !this.isPairConstructExpr(node) &&
+                (this.isNodeRelatedToCXXLambdaFunc(node) || this.isNodeRelatedToMaterialize(node) || this.isNodeRelatedToImplicitNode(node)) &&
+                node.inner?.length > 0
+            ) {
                 return this.tsNodeToValueAndStmts(node.inner[0]);
             }
             return this.newExpressionToValueAndStmtsCpp(node);
-        } else if(node.kind === 'CallExpr' && node.inner?.length > 0 && node.getParent().type.qualType === 'std::thread'){
-
+        } else if (node.kind === 'CallExpr' && node.inner?.length > 0 && node.getParent().type.qualType === 'std::thread') {
             return this.newExpressionToValueAndStmtsCpp(node);
         } else if (node.kind === 'CallExpr' && node.inner?.length > 0 && node.inner[0].kind === 'CXXPseudoDestructorExpression') {
             return this.callExpressionToValueAndStmtsCpp(node.inner[0]);
@@ -198,9 +200,15 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
             return this.cxxOperatorExpressionToValueAndStmts(node);
         } else if (node.kind === 'RecoveryExpr') {
             return this.RecoverExpressionToValueAndStmts(node);
-        } else if (node.kind === 'ConstantExpr' || node.kind === 'ExprWithCleanups' ||
-            node.kind === 'CXXStdInitializerListExpr' || node.kind === 'ParenExpr' ||
-            node.kind === 'CXXBindTemporaryExpr' || node.kind === 'VarDecl' || node.kind === 'UnexposedExpr') {
+        } else if (
+            node.kind === 'ConstantExpr' ||
+            node.kind === 'ExprWithCleanups' ||
+            node.kind === 'CXXStdInitializerListExpr' ||
+            node.kind === 'ParenExpr' ||
+            node.kind === 'CXXBindTemporaryExpr' ||
+            node.kind === 'VarDecl' ||
+            node.kind === 'UnexposedExpr'
+        ) {
             if (node.inner?.length > 0) {
                 return this.tsNodeToValueAndStmts(node.inner[0]);
             }
@@ -208,9 +216,9 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
             if (node.inner?.length === 1) {
                 return this.tsNodeToValueAndStmts(node.inner[0]);
             } else if (node.inner?.length === 2) {
-                if (node.code.includes("=")){
+                if (node.code.includes('=')) {
                     let operatorExpression = Object.assign({}, node);
-                    operatorExpression['opcode'] = "=";
+                    operatorExpression['opcode'] = '=';
                     return this.binaryExpressionToValueAndStmtsCpp(operatorExpression);
                 }
                 return this.tsNodeToValueAndStmts(node.inner[1]);
@@ -230,15 +238,20 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
             return this.identifierToValueAndStmtsCpp(node);
         } else if (node.kind === 'CXXMemberCallExpr') {
             return this.cxxMemberCallExpressionToValueAndStmtsCpp(node);
-        } else if (node.kind === 'MemberExpr' || node.kind === 'MemberRef' ) {
+        } else if (node.kind === 'MemberExpr' || node.kind === 'MemberRef') {
             return this.memberExpressionToValueAndStmts(node);
         } else if (node.kind === 'CXXNewExpr') {
             return this.newExpressionToValueAndStmtsCpp(node);
         } else if (node.kind === 'BinaryOperator') {
             return this.binaryExpressionToValueAndStmtsCpp(node);
         } else if (node.kind === 'MaterializeTemporaryExpr' && node.inner?.length > 0) {
-            if (this.isNotNewExpression(node) || this.isNodeRelatedToCXXLambdaFunc(node) || this.isNodeRelatedToCXXMember(node) ||
-                this.isNodeRelatedToTemporary(node) || this.isNodeRelatedToCXXFuncCast(node)) {
+            if (
+                this.isNotNewExpression(node) ||
+                this.isNodeRelatedToCXXLambdaFunc(node) ||
+                this.isNodeRelatedToCXXMember(node) ||
+                this.isNodeRelatedToTemporary(node) ||
+                this.isNodeRelatedToCXXFuncCast(node)
+            ) {
                 return this.tsNodeToValueAndStmts(node.inner[0]);
             }
             return this.newExpressionToValueAndStmtsCpp(node);
@@ -247,12 +260,14 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         } else if (node.kind === 'IntegerLiteral') {
             return this.literalNodeToValueAndStmtsCpp(node) as ValueAndStmts;
         } else if (node.kind === 'InitListExpr') {
-            if (node.type?.qualType?.includes("[") && node.type.qualType.includes("]") || node.type.qualType === 'void') {
+            if ((node.type?.qualType?.includes('[') && node.type.qualType.includes(']')) || node.type.qualType === 'void') {
                 return this.arrayLiteralExpressionToValueAndStmtsCpp(node);
             }
             let pNode = node.getParent(true);
-            if (pNode?.inner?.length > 0 && (pNode.inner[0].kind === 'TypeRef' || !node.type.qualType.includes("[") ||
-                this.resolveTypeNodeCpp(node) instanceof ClassType)) {
+            if (
+                pNode?.inner?.length > 0 &&
+                (pNode.inner[0].kind === 'TypeRef' || !node.type.qualType.includes('[') || this.resolveTypeNodeCpp(node) instanceof ClassType)
+            ) {
                 return this.newExpressionToValueAndStmtsCpp(node);
             }
             return this.arrayLiteralExpressionToValueAndStmtsCpp(node);
@@ -266,8 +281,9 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
             }
         } else if (node.kind === 'ArraySubscriptExpr') {
             return this.elementAccessExpressionToValueAndStmtsCpp(node);
-        } else if (['StringLiteral', 'CXXBoolLiteralExpr', 'CharacterLiteral',
-            'FloatingLiteral', 'CXXNullPtrLiteralExpr', 'AddrLabelExpr'].includes(node.kind)) {
+        } else if (
+            ['StringLiteral', 'CXXBoolLiteralExpr', 'CharacterLiteral', 'FloatingLiteral', 'CXXNullPtrLiteralExpr', 'AddrLabelExpr'].includes(node.kind)
+        ) {
             return this.literalNodeToValueAndStmtsCpp(node) as ValueAndStmts;
         } else if (node.kind === 'CompoundAssignOperator') {
             return this.compoundAssignmentToValueAndStmtsCpp(node);
@@ -277,10 +293,11 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
             return this.conditionalExpressionToValueAndStmtsCpp(node);
         } else if (node.kind === 'LambdaExpr') {
             return this.callableNodeToValueAndStmtsCpp(node);
-        } else if ([
-            'CXXStaticCastExpr', 'CStyleCastExpr', 'CXXConstCastExpr',
-            'CXXDynamicCastExpr', 'CXXReinterpretCastExpr', 'CXXFunctionalCastExpr'
-        ].includes(node.kind)) {
+        } else if (
+            ['CXXStaticCastExpr', 'CStyleCastExpr', 'CXXConstCastExpr', 'CXXDynamicCastExpr', 'CXXReinterpretCastExpr', 'CXXFunctionalCastExpr'].includes(
+                node.kind
+            )
+        ) {
             return this.castExpressionToValueAndStmts(node);
         } else if (node.kind === 'CXXDeleteExpr') {
             return this.deleteExpressionToValueAndStmtsCpp(node);
@@ -309,7 +326,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
     }
 
     private staticMemberExprToValueAndStmtsCpp(declRefExpr: any): ValueAndStmts {
-        declRefExpr.kind = 'MemberExpr';  // 类型替换成“成员调用”
+        declRefExpr.kind = 'MemberExpr'; // 类型替换成“成员调用”
         return this.memberExpressionToValueAndStmts(declRefExpr);
     }
 
@@ -321,13 +338,12 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         const stmts: Stmt[] = [];
         const literalStr = userDefinedLiteral.name.replace('operator""', '');
         const argNode = userDefinedLiteral.inner[1];
-        argNode.code = argNode.code.replace(literalStr, '');  // 获取原始值（比如123，'a'）
-        return this.buildValueAndStmtsForMemberCall(
-            stmts, userDefinedLiteral.inner[0], [argNode], userDefinedLiteral, undefined);
+        argNode.code = argNode.code.replace(literalStr, ''); // 获取原始值（比如123，'a'）
+        return this.buildValueAndStmtsForMemberCall(stmts, userDefinedLiteral.inner[0], [argNode], userDefinedLiteral, undefined);
     }
 
     /* 1. c++使用初始化列表对类成员变量的初始化：Base(char pname) : name(pname) {...}，最终效果类似this->name = pname，此处也处理成赋值的形式
-    *  2. using parent::parent，子类的构造函数调用从父类继承的构造函数; */
+     *  2. using parent::parent，子类的构造函数调用从父类继承的构造函数; */
     private cxxCtorInitializerToValueAndStmts(cxxCtorInitializer: any): ValueAndStmts {
         if (!cxxCtorInitializer.inner || cxxCtorInitializer.inner.length === 0) {
             return this.unprocessedNodeToValueAndStmts(cxxCtorInitializer);
@@ -342,13 +358,12 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
             name: cxxCtorInitializer.anyInit.name,
             inner: [
                 {
-                    kind : 'CXXThisExpr',
-                }
+                    kind: 'CXXThisExpr',
+                },
             ],
-            type: cxxCtorInitializer.anyInit.type
-        }
-        return this.assignmentToValueAndStmtsCpp(CtorInit2ThisMemberExpr, assignRight, false, false,
-                UnknownType.getInstance(), true);
+            type: cxxCtorInitializer.anyInit.type,
+        };
+        return this.assignmentToValueAndStmtsCpp(CtorInit2ThisMemberExpr, assignRight, false, false, UnknownType.getInstance(), true);
     }
 
     // using parent::parent==》子类的构造函数调用从父类继承的构造函数==》等同直接调用父类构造函数
@@ -374,9 +389,9 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         }
         const params = this.declaringMethod.getParameters();
         const argValues: Value[] = [];
-        params.forEach((param) => {
+        params.forEach(param => {
             argValues.push(this.getOrCreateLocal(param.getName()));
-        })
+        });
         const newSuperInvokeExpr = new ArkInstanceInvokeExpr(base, superConstructor.getSignature(), argValues);
         return {
             value: newSuperInvokeExpr,
@@ -424,15 +439,17 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         let innerNode = ArrayTypeTraitExpr;
         while (innerNode.inner instanceof Array && innerNode.inner.length !== 0) {
             innerNode = innerNode.inner[0];
-            if(innerNode.kind !== 'ArrayTypeTraitExpr') {
+            if (innerNode.kind !== 'ArrayTypeTraitExpr') {
                 break;
             }
         }
-        const callArgs = [{
-            kind: 'StringLiteral',
-            value: innerNode.type.qualType.toString()
-        }];
-        if(ArrayTypeTraitExpr.traitFunc === '__array_extent') {
+        const callArgs = [
+            {
+                kind: 'StringLiteral',
+                value: innerNode.type.qualType.toString(),
+            },
+        ];
+        if (ArrayTypeTraitExpr.traitFunc === '__array_extent') {
             const traitArgs = ArrayTypeTraitExpr.traitArgs.split(',');
             const numArg = traitArgs[traitArgs.length - 1].trim();
             callArgs.push({
@@ -454,10 +471,12 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         let typeidCallArgs = CXXTypeidExpr.inner;
         // [1.typeid的inner.length为0，则传入的是类型名； 2.std::Type引用命名空间中的类型] ==> 参数函数调用去构造类型对应字符串入参
         if (CXXTypeidExpr.inner.length === 0 || (CXXTypeidExpr.inner.length === 2 && CXXTypeidExpr.inner[1].kind === 'TypeRef')) {
-            typeidCallArgs = [{
-                kind: 'StringLiteral',
-                value: typeArgs
-            }];
+            typeidCallArgs = [
+                {
+                    kind: 'StringLiteral',
+                    value: typeArgs,
+                },
+            ];
         }
         // 构造节点作为函数名节点
         let typeidCallNode = JSON.parse(JSON.stringify(CXXTypeidExpr));
@@ -499,29 +518,36 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         return {
             value: constant,
             valueOriginalPositions: [FullPosition.buildFromNodeCpp(CXXScalarValueInitExpr, this.sourceFile)],
-            stmts: []
+            stmts: [],
         };
     }
 
     private deleteExpressionToValueAndStmtsCpp(deleteExpression: any): ValueAndStmts {
-        const { value: exprValue, valueOriginalPositions: exprPositions, stmts: stmts } =
-            this.tsNodeToValueAndStmts(deleteExpression.inner[0]);
+        const { value: exprValue, valueOriginalPositions: exprPositions, stmts: stmts } = this.tsNodeToValueAndStmts(deleteExpression.inner[0]);
         const deleteExpr = new ArkDeleteExpr(exprValue);
         const deleteExprPosition = [FullPosition.buildFromNodeCpp(deleteExpression, this.sourceFile), ...exprPositions];
-        return {value: deleteExpr, valueOriginalPositions: deleteExprPosition, stmts: stmts};
+        return { value: deleteExpr, valueOriginalPositions: deleteExprPosition, stmts: stmts };
     }
 
     private castExpressionToValueAndStmts(castExpression: any): ValueAndStmts {
         const stmts: Stmt[] = [];
-        let {value: exprValue, valueOriginalPositions: exprPositions, stmts: exprStmts} = this.tsNodeToValueAndStmts(castExpression.inner[castExpression.inner.length - 1]);
+        let {
+            value: exprValue,
+            valueOriginalPositions: exprPositions,
+            stmts: exprStmts,
+        } = this.tsNodeToValueAndStmts(castExpression.inner[castExpression.inner.length - 1]);
         exprStmts.forEach((stmt: Stmt) => stmts.push(stmt));
         if (IRUtils.moreThanOneAddress(exprValue)) {
-            ({value: exprValue, valueOriginalPositions: exprPositions, stmts: exprStmts} = this.arkIRTransformerCpp.generateAssignStmtForValue(exprValue, exprPositions));
+            ({
+                value: exprValue,
+                valueOriginalPositions: exprPositions,
+                stmts: exprStmts,
+            } = this.arkIRTransformerCpp.generateAssignStmtForValue(exprValue, exprPositions));
             exprStmts.forEach((stmt: Stmt) => stmts.push(stmt));
         }
         const castExpr = new ArkCastExpr(exprValue, this.resolveTypeNodeCpp(castExpression));
         const castExprPosition = [FullPosition.buildFromNodeCpp(castExpression, this.sourceFile), ...exprPositions];
-        return {value: castExpr, valueOriginalPositions: castExprPosition, stmts: stmts};
+        return { value: castExpr, valueOriginalPositions: castExprPosition, stmts: stmts };
     }
 
     private conditionalExpressionToValueAndStmtsCpp(conditionalExpression: any): ValueAndStmts {
@@ -615,13 +641,17 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
                     continue;
                 }
                 // kind = MemberExpr为了处理多层Field结构
-                if (firstNode.kind.toString() === 'DeclRefExpr' || firstNode.kind.toString() === 'MemberExpr'
-                    || firstNode.kind.toString() === 'OverloadedDeclRef' || firstNode.kind.toString() === 'ArraySubscriptExpr') {
+                if (
+                    firstNode.kind.toString() === 'DeclRefExpr' ||
+                    firstNode.kind.toString() === 'MemberExpr' ||
+                    firstNode.kind.toString() === 'OverloadedDeclRef' ||
+                    firstNode.kind.toString() === 'ArraySubscriptExpr'
+                ) {
                     callNode = firstNode;
                 } else {
                     argumentNodes.push(firstNode);
                 }
-            }else {
+            } else {
                 argumentNodes.push(innerAstNodes[i]);
             }
         }
@@ -744,7 +774,8 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
             varNode = identifier;
         }
         const varName = varNode.kind === 'TypeRef' ? varNode.code : varNode.name;
-        if (varNode.kind && identifier.referencedDecl && varNode.kind === 'FunctionDecl') { //
+        if (varNode.kind && identifier.referencedDecl && varNode.kind === 'FunctionDecl') {
+            //
             const type = new functionPointer(varNode.type);
             identifierValue = this.getOrCreateLocal(varName, type);
         } else if (varName === UndefinedType.getInstance().getName()) {
@@ -773,23 +804,24 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
 
         // 【场景1】处理 C++ 代码中 this->field 或 this->method 调用
         // 如果是类成员引用（MemberExpr/MemberRef）但没有 inner[0]，说明是隐式 this，需补充 this 节点
-        if ((memberExpression.kind === 'MemberExpr' || memberExpression.kind === 'MemberRef')
-            && memberExpression.inner[0] === undefined) {
+        if ((memberExpression.kind === 'MemberExpr' || memberExpression.kind === 'MemberRef') && memberExpression.inner[0] === undefined) {
             let node = memberExpression;
-            node.kind = 'CXXThisExpr';        // 转换为显式 this 指针
+            node.kind = 'CXXThisExpr'; // 转换为显式 this 指针
             memberExpression.inner[0] = node; // 作为 base 节点
         }
 
         // 【场景2】递归处理 base 对象，如 testMap.insert 里的 testMap
         // 得到 baseValue（如 testMap）、位置信息和可能的前置语句（如 auto tmp = ...;）
-        let {value: baseValue, valueOriginalPositions: basePositions, stmts: baseStmts}
-            = this.tsNodeToValueAndStmts(memberExpression.inner[0]);
+        let { value: baseValue, valueOriginalPositions: basePositions, stmts: baseStmts } = this.tsNodeToValueAndStmts(memberExpression.inner[0]);
 
         // 【场景3】处理链式成员访问，如 a.b.c 或 (*ptr).field
         // 如果 base 是成员访问，再生成赋值语句保证 SSA 合法性
         if (memberExpression.inner[0].kind === 'MemberExpr' || memberExpression.kind === 'MemberRef') {
-            ({value: baseValue, valueOriginalPositions: basePositions, stmts: baseStmts}
-                = this.arkIRTransformerCpp.generateAssignStmtForValue(baseValue, basePositions));
+            ({
+                value: baseValue,
+                valueOriginalPositions: basePositions,
+                stmts: baseStmts,
+            } = this.arkIRTransformerCpp.generateAssignStmtForValue(baseValue, basePositions));
         }
 
         // 【场景4】特殊场合，调用方直接指定 baseValue（一般用于替换 base，比如虚拟成员、泛型等情况）
@@ -820,9 +852,9 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         const memberName = memberExpression.name || memberExpression.code;
         if (baseValue instanceof Local && baseClassType !== null) {
             fieldSignature = new FieldSignature(
-                memberName,                  // 字段名（如 insert）
-                baseClassType.getClassSignature(),      // 基类类型签名
-                UnknownType.getInstance()               // 类型未知先占位
+                memberName, // 字段名（如 insert）
+                baseClassType.getClassSignature(), // 基类类型签名
+                UnknownType.getInstance() // 类型未知先占位
             );
         } else {
             // 否则只根据字段名生成
@@ -834,19 +866,16 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
 
         // 【场景8】生成 IR 层的字段引用对象（如 testMap.insert）
         const fieldRef = new CXXArkInstanceFieldRef(
-            baseValue as Local,                        // baseValue（如 testMap）
-            memberExpression.isArrow,                  // 是否为箭头访问（->）
-            fieldSignature                             // 字段签名（如 insert）
+            baseValue as Local, // baseValue（如 testMap）
+            memberExpression.isArrow, // 是否为箭头访问（->）
+            fieldSignature // 字段签名（如 insert）
         );
 
         // 记录节点位置信息，方便后续溯源和 debug
-        const fieldRefPositions = [
-            FullPosition.buildFromNodeCpp(memberExpression, this.sourceFile),
-            ...basePositions
-        ];
+        const fieldRefPositions = [FullPosition.buildFromNodeCpp(memberExpression, this.sourceFile), ...basePositions];
 
         // 返回解析结果，包括 IR 字段引用、位置信息和相关 SSA 语句
-        return {value: fieldRef, valueOriginalPositions: fieldRefPositions, stmts: stmts};
+        return { value: fieldRef, valueOriginalPositions: fieldRefPositions, stmts: stmts };
     }
 
     private elementAccessExpressionToValueAndStmtsCpp(elementAccessExpression: any): ValueAndStmts {
@@ -906,9 +935,14 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
     public CXXOperatorExpressionCoutToValueAndStmts(callExpression: any, callArgus: any[]): any {
         const stmts: Stmt[] = [];
         // 因为inner是依次提取最后面的参数，所以倒序遍历最后面的参数
-        for(let i = callExpression.inner.length - 1; i >= 0; i--) {
+        for (let i = callExpression.inner.length - 1; i >= 0; i--) {
             let innerNode = callExpression.inner[i];
-            if (!innerNode.code.includes('cout') && !innerNode.code.includes('<<') && !innerNode.code.includes('endl') && !callExpression.code.startsWith(innerNode.code)) {
+            if (
+                !innerNode.code.includes('cout') &&
+                !innerNode.code.includes('<<') &&
+                !innerNode.code.includes('endl') &&
+                !callExpression.code.startsWith(innerNode.code)
+            ) {
                 callArgus.push(innerNode);
             }
             if (innerNode.kind === 'CXXOperatorCallExpr') {
@@ -924,13 +958,17 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
                 }
                 // 无嵌套CXXOperatorCallExpr，则直接构建重载的流运算符的ValueAndStmts
                 return this.buildValueAndStmtsForStream(innerNode.inner[1], callArgus.reverse(), stmts, callExpression);
-
             }
             while (innerNode.kind === 'ImplicitCastExpr' && innerNode.valueCategory === 'lvalue' && innerNode.inner.length > 0) {
                 innerNode = innerNode.inner[0];
             }
-            if (innerNode.kind === 'DeclRefExpr' && (innerNode.type.qualType.includes('iostream') || innerNode.type.qualType.includes('ostream') ||
-                innerNode.type.qualType.includes('istream') || innerNode.type.qualType.includes('lambda at'))) {
+            if (
+                innerNode.kind === 'DeclRefExpr' &&
+                (innerNode.type.qualType.includes('iostream') ||
+                    innerNode.type.qualType.includes('ostream') ||
+                    innerNode.type.qualType.includes('istream') ||
+                    innerNode.type.qualType.includes('lambda at'))
+            ) {
                 // 获取DeclRefExpr及其后面的节点
                 return this.buildValueAndStmtsForStream(innerNode, callArgus.reverse(), stmts, callExpression);
             }
@@ -942,7 +980,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         const currValueAndStmts: ValueAndStmts = {
             value: new Local(streamExpr.code),
             valueOriginalPositions: [],
-            stmts: [...stmts]
+            stmts: [...stmts],
         };
         for (let i = 0; i < args.length; i += 1) {
             let arg = args[i];
@@ -966,7 +1004,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
     }
 
     private buildValueAndStmtsForOverloadedStream(streamNode: any, overloadedArg: any, currValueAndStmts: ValueAndStmts): void {
-        overloadedArg.inner[1] = streamNode;  // 将第2个子节点替换成重载的运算符节点，以避免重复处理嵌套CXXOperatorCallExpr
+        overloadedArg.inner[1] = streamNode; // 将第2个子节点替换成重载的运算符节点，以避免重复处理嵌套CXXOperatorCallExpr
         let overloadedStreamValueAndStmts = this.handleOverloadedOp(overloadedArg);
         if (!overloadedStreamValueAndStmts) {
             return;
@@ -987,9 +1025,9 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         const stmts: Stmt[] = [];
         const argus = this.parseArgumentsCppOfCallExpressionCpp(stmts, nonOverloadedArgs);
         const normalCoutValueAndStmts = this.generateInvokeValueAndStmtsCpp(streamNode, argus, stmts, streamExpr);
-        currValueAndStmts.stmts.push(...normalCoutValueAndStmts.stmts)
+        currValueAndStmts.stmts.push(...normalCoutValueAndStmts.stmts);
         currValueAndStmts.valueOriginalPositions = normalCoutValueAndStmts.valueOriginalPositions;
-        if (streamNode.type.qualType.includes("lambda at")) {
+        if (streamNode.type.qualType.includes('lambda at')) {
             currValueAndStmts.value = normalCoutValueAndStmts.value;
         } else if (normalCoutValueAndStmts.value instanceof AbstractInvokeExpr) {
             const invokeStmt = new ArkInvokeStmt(normalCoutValueAndStmts.value as AbstractInvokeExpr);
@@ -1021,13 +1059,19 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         if (overloadedOpToValueAndStmts) {
             return overloadedOpToValueAndStmts;
         }
-        if ((callExpression.inner[0].kind === 'ImplicitCastExpr' && callExpression.inner[0].name === 'operator>>' || callExpression.name === 'operator<<' ||
-            callExpression.inner[0].name === 'operator<<' || callExpression.inner[1]?.type.qualType.toString().includes('(lambda at'))) {
+        if (
+            (callExpression.inner[0].kind === 'ImplicitCastExpr' && callExpression.inner[0].name === 'operator>>') ||
+            callExpression.name === 'operator<<' ||
+            callExpression.inner[0].name === 'operator<<' ||
+            callExpression.inner[1]?.type.qualType.toString().includes('(lambda at')
+        ) {
             return this.CXXOperatorExpressionCoutToValueAndStmts(callExpression, []);
         }
         //cxxOperatorCallExpr实际是而二元操作，或者重载赋值运算符operator=
-        if (callExpression.inner[0].kind === 'ImplicitCastExpr' && (ArkValueTransformerCpp.isRelationalBinaryOperator(callExpression.inner[0].code) ||
-            callExpression.name === 'operator=')) {
+        if (
+            callExpression.inner[0].kind === 'ImplicitCastExpr' &&
+            (ArkValueTransformerCpp.isRelationalBinaryOperator(callExpression.inner[0].code) || callExpression.name === 'operator=')
+        ) {
             return this.CXXOperatorExpressionToBinaryOperator(callExpression);
         }
         // cxxOperatorCallExpr实际是一元操作符（++，--）
@@ -1041,8 +1085,13 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         const innerStmts: ValueAndStmts[] = [];
         const stmts: Stmt[] = [];
         for (let innerNode of callExpression.inner) {
-            if (innerNode.kind === 'CXXOperatorCallExpr' || innerNode.kind === 'MaterializeTemporaryExpr' || innerNode.kind === 'CXXBindTemporaryExpr' ||
-                innerNode.kind === 'CXXConstructExpr' || (innerNode.kind === 'ImplicitCastExpr' && innerNode.castKind !== 'FunctionToPointerDecay')) {
+            if (
+                innerNode.kind === 'CXXOperatorCallExpr' ||
+                innerNode.kind === 'MaterializeTemporaryExpr' ||
+                innerNode.kind === 'CXXBindTemporaryExpr' ||
+                innerNode.kind === 'CXXConstructExpr' ||
+                (innerNode.kind === 'ImplicitCastExpr' && innerNode.castKind !== 'FunctionToPointerDecay')
+            ) {
                 innerStmts.push(...this.cxxOperatorExpressionToValueAndStmts(innerNode, false));
             } else if (innerNode.kind === 'DeclRefExpr') {
                 innerStmts.push(this.identifierToValueAndStmtsCpp(innerNode));
@@ -1053,15 +1102,19 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
                 }
             }
         }
-        if (!layer) { // 只在递归的第一层处理结果，其他层都直接返回
+        if (!layer) {
+            // 只在递归的第一层处理结果，其他层都直接返回
             return innerStmts;
         }
-        const exprPositions = [FullPosition.buildFromNodeCpp(callExpression, this.sourceFile), ...innerStmts[0].valueOriginalPositions,
-            ...innerStmts[1].valueOriginalPositions];
+        const exprPositions = [
+            FullPosition.buildFromNodeCpp(callExpression, this.sourceFile),
+            ...innerStmts[0].valueOriginalPositions,
+            ...innerStmts[1].valueOriginalPositions,
+        ];
         let elementAccessExpr = new ArkArrayRef(innerStmts[0].value as Local, innerStmts[1].value);
         innerStmts[0].stmts.forEach(stmt => stmts.push(stmt));
         innerStmts[1].stmts.forEach(stmt => stmts.push(stmt));
-        return {value: elementAccessExpr, valueOriginalPositions: exprPositions, stmts: stmts};
+        return { value: elementAccessExpr, valueOriginalPositions: exprPositions, stmts: stmts };
     }
 
     private handleOverloadedOp(cxxOperatorCallExpr: any): ValueAndStmts | null {
@@ -1096,7 +1149,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
             return null;
         }
         const stmts: Stmt[] = [];
-        const {args, argPositions: argPositionsAll} = this.parseArgumentsCpp(stmts, cxxOperatorCallExpr.inner.slice(1));
+        const { args, argPositions: argPositionsAll } = this.parseArgumentsCpp(stmts, cxxOperatorCallExpr.inner.slice(1));
         // 输入/输出运算符必须作为全局函数重载，且重载函数只会有2个参数，因为输入/输出运算符实际为二元运算：流（左操作数） + 对象（右操作数）
         const defaultClass = this.declaringMethod.getDeclaringArkFile().getDefaultClass();
         const arkMtds = defaultClass.getAllMethodsWithName(cxxOperatorCallExpr.name);
@@ -1160,13 +1213,12 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         return this.buildValueAndStmtsForMemberCall(stmts, callNode, argNodes, cxxOperatorCallExpr, undefined);
     }
 
-     public RecoverExpressionToValueAndStmts(callExpression: any): ValueAndStmts {
+    public RecoverExpressionToValueAndStmts(callExpression: any): ValueAndStmts {
         const stmts: Stmt[] = [];
         const [callNode, argumentNodes] = this.getArgumentNodeForRecover(callExpression.inner);
         const argus = this.parseArgumentsCppOfCallExpressionCpp(stmts, argumentNodes);
         return this.generateInvokeValueAndStmtsCpp(callNode, argus, stmts, callExpression);
-     }
-
+    }
 
     private generateInvokeValueAndStmtsCpp(
         functionNameNode: any,
@@ -1228,14 +1280,16 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         return this.buildValueAndStmtsForMemberCall(stmts, callExpression.inner[0], rightNodes, callExpression, realGenericTypes);
     }
 
-    private buildValueAndStmtsForMemberCall(stmts: Stmt[], callerNode: any, argNodes: any[], callExpression: any, realGenericTypes: Type[] | undefined): ValueAndStmts {
-        const {args, argPositions: argPositionsAll} = this.parseArgumentsCpp(stmts, argNodes);
+    private buildValueAndStmtsForMemberCall(
+        stmts: Stmt[],
+        callerNode: any,
+        argNodes: any[],
+        callExpression: any,
+        realGenericTypes: Type[] | undefined
+    ): ValueAndStmts {
+        const { args, argPositions: argPositionsAll } = this.parseArgumentsCpp(stmts, argNodes);
         const argPositionsAllFlat = argPositionsAll.flat();
-        let {
-            value: callerValue,
-            valueOriginalPositions: callerPositions,
-            stmts: callerStmts,
-        } = this.tsNodeToValueAndStmts(callerNode);
+        let { value: callerValue, valueOriginalPositions: callerPositions, stmts: callerStmts } = this.tsNodeToValueAndStmts(callerNode);
         stmts.push(...callerStmts);
 
         let invokeValue: Value;
@@ -1258,8 +1312,13 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         };
     }
 
-    private buildInvokeValueForFieldRef(callerValue: AbstractFieldRef, args: Value[], realGenericTypes: Type[] | undefined,
-                                        invokeValuePositions: FullPosition[], callerPositions: FullPosition[]): ArkInstanceFieldRef | ArkStaticInvokeExpr {
+    private buildInvokeValueForFieldRef(
+        callerValue: AbstractFieldRef,
+        args: Value[],
+        realGenericTypes: Type[] | undefined,
+        invokeValuePositions: FullPosition[],
+        callerPositions: FullPosition[]
+    ): ArkInstanceFieldRef | ArkStaticInvokeExpr {
         let methodSignature: MethodSignature;
         const declareSignature = callerValue.getFieldSignature().getDeclaringSignature();
         if (declareSignature instanceof ClassSignature) {
@@ -1290,16 +1349,16 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         const leftOpPosition = valueOriginalPositions[0];
         const assignStmt = new ArkAssignStmt(leftOp, value);
         assignStmt.setOperandOriginalPositions([leftOpPosition, ...valueOriginalPositions]);
-        return {value: leftOp, valueOriginalPositions:  [leftOpPosition], stmts: [assignStmt]};
+        return { value: leftOp, valueOriginalPositions: [leftOpPosition], stmts: [assignStmt] };
     }
 
     private parseArgumentsCppOfCallExpressionCpp(
         currStmts: Stmt[],
         callExpression: any
     ): {
-        realGenericTypes: Type[] | undefined,
-        args: Value[],
-        argPositions: FullPosition[]
+        realGenericTypes: Type[] | undefined;
+        args: Value[];
+        argPositions: FullPosition[];
     } {
         let realGenericTypes: Type[] | undefined;
         let builderMethodIndexes: Set<number> | undefined;
@@ -1380,12 +1439,12 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         if (newExpression.typeArguments) {
             realGenericTypes = [];
             newExpression.typeArguments.forEach((typeArgument: string) => {
-                realGenericTypes!.push(this.resolveTypeNodeCpp("", typeArgument));
+                realGenericTypes!.push(this.resolveTypeNodeCpp('', typeArgument));
             });
         }
 
         let curClass = this.declaringMethod.getDeclaringArkFile().getClassWithName(className);
-        let classSignature = (curClass ? curClass.getSignature() : ArkSignatureBuilder.buildClassSignatureFromClassName(className));
+        let classSignature = curClass ? curClass.getSignature() : ArkSignatureBuilder.buildClassSignatureFromClassName(className);
         let classType = new ClassType(classSignature, realGenericTypes);
         if (className === Builtin.OBJECT) {
             classSignature = Builtin.OBJECT_CLASS_SIGNATURE;
@@ -1405,12 +1464,16 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         // 区分new class 和 C++ STL容器
         // 如果该语句在做类或结构体的初始化，将初始化的数据作为表格存储到IR中
         let constructArgs = newExpression.inner;
-        if ((newExpression.kind === 'CXXNewExpr' && newExpression.inner[1]?.kind === 'CXXConstructExpr')) {
+        if (newExpression.kind === 'CXXNewExpr' && newExpression.inner[1]?.kind === 'CXXConstructExpr') {
             constructArgs = [...newExpression.inner[1].inner];
         } else if (newExpression.kind === 'CompoundLiteralExpr') {
             constructArgs = this.getConstructArgs(constructArgs);
-        } else if (newExpression.kind === 'CXXConstructExpr' && newExpression.type.qualType.startsWith('struct') &&
-            constructArgs && constructArgs[0].inner[0]?.kind === 'CompoundLiteralExpr') {
+        } else if (
+            newExpression.kind === 'CXXConstructExpr' &&
+            newExpression.type.qualType.startsWith('struct') &&
+            constructArgs &&
+            constructArgs[0].inner[0]?.kind === 'CompoundLiteralExpr'
+        ) {
             constructArgs = this.getConstructArgs(constructArgs[0].inner[0].inner);
         } else if (newExpression.kind === 'InitListExpr') {
             constructArgs = this.getConstructArgs(newExpression);
@@ -1428,10 +1491,10 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
             setTs2CppFuncMapOfClass(argValues, false, this.declaringMethod);
         }
         // 处理初始化语句含有成员变量的场景，对初始化的成员变量构造stmt
-        if ((newExpression.kind === 'CompoundLiteralExpr' && newExpression.inner[1].kind === 'InitListExpr')) {
+        if (newExpression.kind === 'CompoundLiteralExpr' && newExpression.inner[1].kind === 'InitListExpr') {
             const newExpr = newExpression.inner[1];
             for (const element of newExpr.inner) {
-                const memberValueAndStmts = this.memberExpressionToValueAndStmts(element.inner[0],newLocal);
+                const memberValueAndStmts = this.memberExpressionToValueAndStmts(element.inner[0], newLocal);
                 const fieldRef = memberValueAndStmts.value;
                 const rightOpNode = element.inner[1];
                 const rightValueAndStmts = this.assignmentRightOpToValueAndStmtsCpp(rightOpNode, fieldRef);
@@ -1523,7 +1586,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
     }
 
     private arrayLiteralExpressionToValueAndStmtsCpp(arrayLiteralExpression: any): ValueAndStmts {
-        const stmts: Stmt[]=[];
+        const stmts: Stmt[] = [];
         const elementTypes: Set<Type> = new Set();
         const elementValues: Value[] = [];
         const elementPositions: FullPosition[] = [];
@@ -1548,7 +1611,13 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         );
     }
 
-    private getArrayLiteralExpression(arrayLiteralExpression: any, stmts: Stmt[], elementTypes: Set<Type>, elementValues: Value[], elementPositions: FullPosition[]) {
+    private getArrayLiteralExpression(
+        arrayLiteralExpression: any,
+        stmts: Stmt[],
+        elementTypes: Set<Type>,
+        elementValues: Value[],
+        elementPositions: FullPosition[]
+    ) {
         for (const element of arrayLiteralExpression.inner) {
             let { value: elementValue, valueOriginalPositions: elementPosition, stmts: elementStmts } = this.tsNodeToValueAndStmts(element);
             elementStmts.forEach(stmt => stmts.push(stmt));
@@ -1713,7 +1782,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
             }
         }
         const declarationType = variableDeclaration.type ? this.resolveTypeNodeCpp(variableDeclaration) : UnknownType.getInstance();
-        if (declarationType instanceof functionPointer){
+        if (declarationType instanceof functionPointer) {
             rightOpNode.code = declarationType.getFunType();
             rightOpNode.type.qualType = declarationType.getFunType();
         }
@@ -1814,14 +1883,13 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
     }
 
     // In assignment patterns, the left operand will be an array literal expression
-// In assignment patterns, the left operand will be an object literal expression
+    // In assignment patterns, the left operand will be an object literal expression
     private binaryExpressionToValueAndStmtsCpp(binaryExpression: any): ValueAndStmts {
         const operatorToken = binaryExpression.opcode;
         const binaryExpressionLeft = binaryExpression.inner[0];
         const binaryExpressionRight = binaryExpression.inner[1];
         if (operatorToken === '=') {
-            return this.assignmentToValueAndStmtsCpp(binaryExpressionLeft, binaryExpressionRight, false, false,
-                UnknownType.getInstance(), true);
+            return this.assignmentToValueAndStmtsCpp(binaryExpressionLeft, binaryExpressionRight, false, false, UnknownType.getInstance(), true);
         }
         const stmts: Stmt[] = [];
         const binaryExpressionPosition = FullPosition.buildFromNodeCpp(binaryExpression, this.sourceFile);
@@ -1963,7 +2031,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
                 constant = CppValueUtil.createStringConst(literalNode.code);
                 break;
             case 'FloatingLiteral':
-                constant = CppValueUtil.getOrCreateNumberConst(parseFloat(literalNode.code))
+                constant = CppValueUtil.getOrCreateNumberConst(parseFloat(literalNode.code));
                 break;
             case 'CXXNullPtrLiteralExpr':
                 constant = CppValueUtil.getNullPtrConstant();
@@ -1979,7 +2047,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
                         this.declaringMethod.gotoStmtMap.set(point, gotoStmts);
                     }
                 }
-                if(!stored) {
+                if (!stored) {
                     this.declaringMethod.gotoStmtMap.set(point, []);
                 }
                 break;
@@ -2005,14 +2073,14 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
         return tempLocal;
     }
 
-    public resolveTypeNodeCpp(node: any, stringItem ?: any): Type {
+    public resolveTypeNodeCpp(node: any, stringItem?: any): Type {
         // 若输入参数有字符串，则优先识别字符串字段类型，否则默认识别node节点的类型信息
-        let qualType: string
-        if (typeof stringItem === 'string' && stringItem.trim()){
+        let qualType: string;
+        if (typeof stringItem === 'string' && stringItem.trim()) {
             qualType = stringItem;
         } else if (typeof node?.type?.qualType === 'string' && node.type.qualType.trim()) {
             qualType = node.type.qualType;
-        } else if (typeof  node?.code === 'string' && node.code.trim()){
+        } else if (typeof node?.code === 'string' && node.code.trim()) {
             qualType = node.code;
         } else {
             qualType = '';
@@ -2027,7 +2095,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
                 return new ArrayType(new UnclearReferenceType(qualType.slice(0, qualType.indexOf('['))), count);
             }
             return new ArrayType(baseType, count);
-        } else if (node && Object.prototype.hasOwnProperty.call(node, "kind") && node.kind === "InitListExpr"){
+        } else if (node && Object.prototype.hasOwnProperty.call(node, 'kind') && node.kind === 'InitListExpr') {
             return new ArrayType(new UnclearReferenceType(qualType), node.inner.length);
         } else if (qualType.startsWith('std::')) {
             // 处理标准库容器类型
@@ -2037,30 +2105,31 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
                 const fileSignature = new FileSignature('std', containerName + '.h');
                 const classSignature = new ClassSignature(containerName, fileSignature);
                 return new ClassType(classSignature);
-            } else if (containerName === 'thread'){
+            } else if (containerName === 'thread') {
                 return new Thread();
             }
-        } else if (qualType === 'std' && node.kind === 'NamespaceRef'){
-            const fileSignature = new FileSignature('std','iostream.h');
+        } else if (qualType === 'std' && node.kind === 'NamespaceRef') {
+            const fileSignature = new FileSignature('std', 'iostream.h');
             const classSignature = new ClassSignature('iostream', fileSignature);
             return new ClassType(classSignature);
         } else if (tagUsed === 'struct') {
-            const fileSignature = new FileSignature(this.sourceFile?.projectName ?? "", this.sourceFile.fileName);
+            const fileSignature = new FileSignature(this.sourceFile?.projectName ?? '', this.sourceFile.fileName);
             const classSignature = new ClassSignature('struct', fileSignature, null, ClassCategory.STRUCT);
             return new ClassType(classSignature);
         } else if (tagUsed === 'enum') {
-            const fileSignature = new FileSignature(this.sourceFile?.projectName ?? "", this.sourceFile.fileName);
+            const fileSignature = new FileSignature(this.sourceFile?.projectName ?? '', this.sourceFile.fileName);
             const classSignature = new ClassSignature('enum', fileSignature, null, ClassCategory.ENUM);
             return new ClassType(classSignature);
         } else if (tagUsed === 'union') {
-            const fileSignature = new FileSignature(this.sourceFile?.projectName ?? "", this.sourceFile.fileName);
+            const fileSignature = new FileSignature(this.sourceFile?.projectName ?? '', this.sourceFile.fileName);
             const classSignature = new ClassSignature('struct', fileSignature, null, ClassCategory.UNION);
             return new ClassType(classSignature);
-        } else if (qualType.includes('vector')) { // 存在std::vector 的场景因此判断逻辑需要在std::之后
+        } else if (qualType.includes('vector')) {
+            // 存在std::vector 的场景因此判断逻辑需要在std::之后
             let dimension = 0;
             let dataType = this.resolveVectorType(qualType, dimension);
             return new ArrayType(buildTypeFromPreStr(dataType), dimension);
-        } else if (qualType === 'thread'){
+        } else if (qualType === 'thread') {
             return new Thread();
         } else {
             // 条件为命中则考虑别名场景的type处理
@@ -2069,8 +2138,8 @@ export class ArkValueTransformerCpp extends ArkValueTransformer{
                 return this.resolveCppTypeReferenceNode(qualType);
             }
         }
-        let nodeType = cppNode2Type(qualType, this.declaringMethod , null);
-        return (nodeType instanceof UnclearReferenceType ? UnknownType.getInstance() : nodeType);
+        let nodeType = cppNode2Type(qualType, this.declaringMethod, null);
+        return nodeType instanceof UnclearReferenceType ? UnknownType.getInstance() : nodeType;
     }
 
     private isCppStdContainer(typeName: string): boolean {

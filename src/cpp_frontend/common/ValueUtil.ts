@@ -13,23 +13,18 @@
  * limitations under the License.
  */
 
-import {
-    Constant, 
-    LabelConstant,
-    NullPtrConstant,
-    StringConstant,
-} from '../../core/base/Constant';
+import { Constant, LabelConstant, NullPtrConstant, StringConstant } from '../../core/base/Constant';
 import { EMPTY_STRING, ValueUtil } from '../../core/common/ValueUtil';
 
-const charPrefixType = ["L\"","L\'","u\"","u\'","U\"","U\'"]
+const charPrefixType = ['L"', "L\'", 'u"', "u\'", 'U"', "U\'"];
 
-export class CppValueUtil extends ValueUtil{
+export class CppValueUtil extends ValueUtil {
     public static normalizeString(str: string): string {
         let preStr: string = str.substring(0, 2); //获取前缀处理长字符类型
         if (charPrefixType.includes(preStr)) {
-            str = str.substring(2, str.length-1).replace("\\", "");
-        } else if (str.charAt(0) === "'"){
-            str = str.substring(1, str.length-1);
+            str = str.substring(2, str.length - 1).replace('\\', '');
+        } else if (str.charAt(0) === "'") {
+            str = str.substring(1, str.length - 1);
         }
         return str;
     }
@@ -42,7 +37,7 @@ export class CppValueUtil extends ValueUtil{
         return new StringConstant(str);
     }
 
-    public static getNullPtrConstant():Constant {
+    public static getNullPtrConstant(): Constant {
         return NullPtrConstant.getInstance();
     }
 

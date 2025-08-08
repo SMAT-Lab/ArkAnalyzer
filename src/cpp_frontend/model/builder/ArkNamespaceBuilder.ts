@@ -54,13 +54,12 @@ export function buildArkNamespace(node: any, declaringInstance: ArkFile | ArkNam
     ns.setCode(node.code);
 
     // set line and column
-    if (node.range?.begin){
+    if (node.range?.begin) {
         ns.setLine(node.range.begin.line);
     } else {
         ns.setLine(-1);
-        ns.setColumn(-1)
+        ns.setColumn(-1);
     }
-
 
     genDefaultArkClass(ns, node, sourceFile);
 
@@ -75,7 +74,7 @@ export function buildArkNamespace(node: any, declaringInstance: ArkFile | ArkNam
 // TODO: check and update
 function buildNamespaceMembers(node: any, namespace: ArkNamespace, sourceFile: any): void {
     const statements = node.inner;
-    statements.forEach((child:any) => {
+    statements.forEach((child: any) => {
         if (child.kind === 'Namespace') {
             let childNs: ArkNamespace = new ArkNamespace();
             childNs.setDeclaringArkNamespace(namespace);
@@ -83,18 +82,16 @@ function buildNamespaceMembers(node: any, namespace: ArkNamespace, sourceFile: a
 
             buildArkNamespace(child, namespace, childNs, sourceFile);
             namespace.addNamespace(childNs);
-        } else if ( child.kind === 'CXXRecordDecl' || child.kind === 'ClassTemplate') {
+        } else if (child.kind === 'CXXRecordDecl' || child.kind === 'ClassTemplate') {
             let cls: ArkClass = new ArkClass();
 
             buildNormalArkClassFromArkNamespace(child, namespace, cls, sourceFile);
             namespace.addArkClass(cls);
-
         } else if (child.kind === 'FunctionDecl' || child.kind === 'FriendDecl') {
             logger.trace('This is a MethodDeclaration in ArkNamespace.');
             let mthd: ArkMethod = new ArkMethod();
 
             buildArkMethodFromArkClass(child, namespace.getDefaultClass(), mthd, sourceFile);
-
         } else {
             logger.trace('Child joined default method of arkFile: ', ts.SyntaxKind[child.kind]);
             // join default method
