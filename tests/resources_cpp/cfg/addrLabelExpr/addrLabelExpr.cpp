@@ -1,3 +1,4 @@
+
 void foo1(){
     void *ptr = &&my_label;
     my_label : return;
