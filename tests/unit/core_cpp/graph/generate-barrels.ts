@@ -18,7 +18,6 @@ import path from 'path';
 
 const BASE_DIR = path.resolve(__dirname, '../../../resources_cpp/cfg');
 
-
 function generateIndexFile(folderPath: string) {
     const files = fs.readdirSync(folderPath).filter(f => {
         return f.endsWith('.ts') && !f.endsWith('index.ts');
@@ -27,7 +26,6 @@ function generateIndexFile(folderPath: string) {
     if (files.length === 0) return;
 
     const exports = files.map(f => `export * from './${f.replace(/\.ts$/, '')}';`).join('\n');
-
 
     const indexPath = path.join(folderPath, 'index.ts');
     fs.writeFileSync(indexPath, exports + '\n', 'utf8');

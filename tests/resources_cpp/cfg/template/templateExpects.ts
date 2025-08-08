@@ -28,12 +28,12 @@ export const TEMPLATE_EXPECT_CASE1 = {
                 '%0 = b',
                 'ConditionalOperatorEnd0',
                 'temp = %0',
-                'return temp'
+                'return temp',
             ],
             preds: [],
-            succes: []
+            succes: [],
         },
-    ]
+    ],
 };
 
 export const TEMPLATE_EXPECT_CASE2 = {
@@ -51,12 +51,12 @@ export const TEMPLATE_EXPECT_CASE2 = {
                 '%0 = b',
                 'ConditionalOperatorEnd0',
                 'temp = %0',
-                'return 2'
+                'return 2',
             ],
             preds: [],
-            succes: []
+            succes: [],
         },
-    ]
+    ],
 };
 
 export const TEMPLATE_EXPECT_CASE3 = {
@@ -68,28 +68,22 @@ export const TEMPLATE_EXPECT_CASE3 = {
                 'b = parameter1: T2',
                 'this = this: @template/template.cpp: %dflt',
                 "staticinvoke <@%unk/%unk: .cout()>('First:', a, ', Second', b)",
-                'return'
+                'return',
             ],
             preds: [],
-            succes: []
+            succes: [],
         },
-    ]
+    ],
 };
 export const TEMPLATE_EXPECT_CASE4 = {
     blocks: [
         {
             id: 0,
-            stmts: [
-                "this = this: @template/template.cpp: %dflt",
-                "d = 2.718",
-                "%0 = &d",
-                "staticinvoke <@%unk/%unk: .destroy_ptr()>(%0)",
-                "return 0",
-            ],
+            stmts: ['this = this: @template/template.cpp: %dflt', 'd = 2.718', '%0 = &d', 'staticinvoke <@%unk/%unk: .destroy_ptr()>(%0)', 'return 0'],
             preds: [],
-            succes: []
+            succes: [],
         },
-    ]
+    ],
 };
 
 export const TEMPLATE_EXPECT_CASE5 = {
@@ -100,34 +94,27 @@ export const TEMPLATE_EXPECT_CASE5 = {
                 'args = parameter0: Args...',
                 'this = this: @template/template.cpp: %dflt',
                 '%0 = staticinvoke <@%unk/%unk: .undefined()>(args)',
-                'return %0'
+                'return %0',
             ],
             preds: [],
-            succes: []
+            succes: [],
         },
-    ]
+    ],
 };
 
 export const TEMPLATE_EXPECT_CASE6 = {
     blocks: [
         {
             id: 0,
-            stmts: [
-                "this = this: @template/template.cpp: %dflt",
-                "z = staticinvoke <@%unk/%unk: .sum()>(1, 2, 3, 4, 5, 6)",
-                "return 0",
-            ],
+            stmts: ['this = this: @template/template.cpp: %dflt', 'z = staticinvoke <@%unk/%unk: .sum()>(1, 2, 3, 4, 5, 6)', 'return 0'],
             preds: [],
-            succes: []
+            succes: [],
         },
-    ]
+    ],
 };
 
 export const TEMPLATE_MYCONTAINER_CLASS = {
-    fields: [
-        'data1',
-        'data2',
-    ],
+    fields: ['data1', 'data2'],
     heritageClasses: [],
     blocks: [
         {
@@ -140,14 +127,14 @@ export const TEMPLATE_MYCONTAINER_CLASS = {
                         'value2 = parameter1: T',
                         'this = this: @template/template.cpp: MyContainer',
                         'instanceinvoke this.<@template/template.cpp: MyContainer.%instInit()>()',
-                        "this.<@template/template.cpp: MyContainer.data1> = value1",
-                        "this.<@template/template.cpp: MyContainer.data2> = value2",
-                        'return this'
+                        'this.<@template/template.cpp: MyContainer.data1> = value1',
+                        'this.<@template/template.cpp: MyContainer.data2> = value2',
+                        'return this',
                     ],
                     preds: [],
-                    succes: []
-                }
-            ]
+                    succes: [],
+                },
+            ],
         },
         {
             methodName: 'print',
@@ -158,12 +145,12 @@ export const TEMPLATE_MYCONTAINER_CLASS = {
                         'this = this: @template/template.cpp: MyContainer',
                         '%0 = this.<@template/template.cpp: MyContainer.data1>',
                         'staticinvoke <@%unk/%unk: .cout()>(%0)',
-                        'return'
+                        'return',
                     ],
                     preds: [],
-                    succes: []
-                }
-            ]
+                    succes: [],
+                },
+            ],
         },
         {
             methodName: 'sum',
@@ -175,12 +162,12 @@ export const TEMPLATE_MYCONTAINER_CLASS = {
                         '%0 = this.<@template/template.cpp: MyContainer.data1>',
                         '%1 = this.<@template/template.cpp: MyContainer.data2>',
                         '%2 = %0 + %1',
-                        'return %2'
+                        'return %2',
                     ],
                     preds: [],
-                    succes: []
-                }
-            ]
-        }
-    ]
+                    succes: [],
+                },
+            ],
+        },
+    ],
 };

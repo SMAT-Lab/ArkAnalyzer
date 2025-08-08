@@ -28,9 +28,7 @@ import { ArkField } from '../core/model/ArkField';
 import { FunctionType } from '../core/base/Type';
 import { CONSTRUCTOR_NAME } from '../core/common/TSConst';
 
-
 export class CppSceneUtils {
-
     public static puncture(cppModulePath: string, tsFile: ArkFile): void {
         const fileName = path.relative(tsFile.getProjectDir(), path.join(cppModulePath, '../../napi_init.cpp'));
         const initFile = tsFile.getScene().getFile(new FileSignature(tsFile.getProjectName(), fileName));
@@ -79,9 +77,9 @@ export class CppSceneUtils {
             if (x instanceof ArkAssignStmt && x.getLeftOp() instanceof ArkArrayRef) {
                 this.getUsedStmts(x.getRightOp())?.forEach(s => {
                     this.processPropDesc(s, ts2CppFuncMap, tsClass);
-                })
+                });
             }
-        })
+        });
     }
 
     private static processPropDesc(s: Stmt, ts2CppFuncMap: Map<string, ArkMethod[]>, tsClass: ArkClass): void {

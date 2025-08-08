@@ -15,16 +15,7 @@
 
 import { ArkParameterRef, ArkThisRef } from '../base/Ref';
 import { ArkAssignStmt, ArkReturnStmt, Stmt } from '../base/Stmt';
-import {
-    AliasType,
-    ClassType,
-    EnumValueType,
-    FunctionType,
-    GenericType,
-    LiteralType,
-    Type,
-    UnionType
-} from '../base/Type';
+import { AliasType, ClassType, EnumValueType, FunctionType, GenericType, LiteralType, Type, UnionType } from '../base/Type';
 import { Value } from '../base/Value';
 import { Cfg } from '../graph/Cfg';
 import { ViewTree } from '../graph/ViewTree';
@@ -541,7 +532,11 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
     }
 
     public getReturnStmt(): Stmt[] {
-        return this.getCfg()?.getStmts().filter(stmt => stmt instanceof ArkReturnStmt) ?? [];
+        return (
+            this.getCfg()
+                ?.getStmts()
+                .filter(stmt => stmt instanceof ArkReturnStmt) ?? []
+        );
     }
 
     public setViewTree(viewTree: ViewTree): void {
@@ -663,11 +658,7 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
             }
             return args.length >= min && args.length <= max;
         });
-        return (
-            signatures?.find(p => this.isMatched(p.getMethodSubSignature().getParameters(), args)) ??
-            signatures?.[0] ??
-            this.getSignature()
-        );
+        return signatures?.find(p => this.isMatched(p.getMethodSubSignature().getParameters(), args)) ?? signatures?.[0] ?? this.getSignature();
     }
 
     private isMatched(parameters: MethodParameter[], args: Value[], isArrowFunc: boolean = false): boolean {
@@ -701,14 +692,17 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
                 return false;
             }
             const parameters = paramType.getMethodSignature().getMethodSubSignature().getParameters();
-            const args = argType.getMethodSignature().getMethodSubSignature().getParameters().filter(p => !p.getName().startsWith(LEXICAL_ENV_NAME_PREFIX));
+            const args = argType
+                .getMethodSignature()
+                .getMethodSubSignature()
+                .getParameters()
+                .filter(p => !p.getName().startsWith(LEXICAL_ENV_NAME_PREFIX));
             return this.isMatched(parameters, args, true);
         } else if (paramType instanceof ClassType && paramType.getClassSignature().getClassName().includes(CALL_BACK)) {
             return argType instanceof FunctionType;
         } else if (paramType instanceof LiteralType) {
             const argStr = arg instanceof Constant ? arg.getValue() : argType.getTypeString();
-            return argStr.replace(/[\"|\']/g, '') ===
-                paramType.getTypeString().replace(/[\"|\']/g, '');
+            return argStr.replace(/[\"|\']/g, '') === paramType.getTypeString().replace(/[\"|\']/g, '');
         } else if (paramType instanceof ClassType && argType instanceof EnumValueType) {
             return paramType.getClassSignature() === argType.getFieldSignature().getDeclaringSignature();
         } else if (paramType instanceof EnumValueType) {

@@ -33,14 +33,11 @@ import { getAllFiles } from './utils/getAllFiles';
 import { FileUtils, getFileRecursively, getFileAbsPath } from './utils/FileUtils';
 import { ArkExport, ExportInfo, ExportType } from './core/model/ArkExport';
 import { addInitInConstructor, buildDefaultConstructor, replaceSuper2Constructor } from './core/model/builder/ArkMethodBuilder';
-import {
-    addInitInConstructor as addInitInConstructorCpp
-} from './cpp_frontend/model/builder/ArkMethodBuilder';
+import { addInitInConstructor as addInitInConstructorCpp } from './cpp_frontend/model/builder/ArkMethodBuilder';
 import { DEFAULT_ARK_CLASS_NAME, INSTANCE_INIT_METHOD_NAME, STATIC_INIT_METHOD_NAME } from './core/common/Const';
 import { CallGraph } from './callgraph/model/CallGraph';
 import { CallGraphBuilder } from './callgraph/model/builder/CallGraphBuilder';
 import { buildArkFileFromFile as buildArkFileFromFileCpp } from './cpp_frontend/model/builder/ArkFileBuilder';
-
 
 import { IRInference } from './core/common/IRInference';
 import { IRInference as IRInferenceCpp } from './cpp_frontend/common/IRInference';
@@ -106,7 +103,7 @@ export class Scene {
     private unhandledFilePaths: Set<string> = new Set<string>();
     private unhandledSdkFilePaths: string[] = [];
 
-    constructor() { }
+    constructor() {}
 
     /*
      * Set all static field to be null, then all related objects could be freed by GC.
@@ -534,10 +531,7 @@ export class Scene {
     }
 
     private findDependenciesByRule(originPath: string): void {
-        if (
-            !this.findFilesByPathArray(originPath) &&
-            !this.findFilesByExtNameArray(originPath, this.options.supportFileExts!)
-        ) {
+        if (!this.findFilesByPathArray(originPath) && !this.findFilesByExtNameArray(originPath, this.options.supportFileExts!)) {
             logger.trace(originPath + 'module mapperInfo is not found!');
         }
     }
@@ -1009,7 +1003,7 @@ export class Scene {
     }
 
     private getMethodsMapCpp(refresh?: boolean): Map<string, ArkMethod> {
-        if (refresh || (this.methodsMap.size === 0) && this.buildStage >= SceneBuildStage.METHOD_DONE) {
+        if (refresh || (this.methodsMap.size === 0 && this.buildStage >= SceneBuildStage.METHOD_DONE)) {
             this.methodsMap.clear();
             for (const cls of this.getClassesMap().values()) {
                 for (const method of cls.getMethods(true)) {
@@ -1140,8 +1134,7 @@ export class Scene {
     private buildFuncMapForCpp(): void {
         const headerFileRefMap = this.getCppHeaderFileRefMap();
         for (const [headerPath, refFiles] of headerFileRefMap) {
-            const headerArkFile = this.getFile(new FileSignature(
-                this.projectName, path.relative(this.realProjectDir, headerPath)));
+            const headerArkFile = this.getFile(new FileSignature(this.projectName, path.relative(this.realProjectDir, headerPath)));
             if (!headerArkFile) {
                 continue;
             }
@@ -1156,8 +1149,7 @@ export class Scene {
 
     private findMtdImpl(mtd: ArkMethod, headerPath: string, sortedRefFiles: string[]): void {
         const isFuncImpl = mtd.getImplementationSignature();
-        if (isFuncImpl || mtd.isDefaultArkMethod() || mtd.getName() === INSTANCE_INIT_METHOD_NAME ||
-            mtd.getName() === STATIC_INIT_METHOD_NAME) {
+        if (isFuncImpl || mtd.isDefaultArkMethod() || mtd.getName() === INSTANCE_INIT_METHOD_NAME || mtd.getName() === STATIC_INIT_METHOD_NAME) {
             return;
         }
         this.mapHeaderToSource(mtd, headerPath, sortedRefFiles);
@@ -1204,7 +1196,7 @@ export class Scene {
         const prioritized: string[] = [];
         const others: string[] = [];
         for (const refFile of refFiles) {
-            if(path.parse(refFile).name === targetFileName) {
+            if (path.parse(refFile).name === targetFileName) {
                 prioritized.push(refFile);
             } else {
                 others.push(refFile);
@@ -1218,8 +1210,7 @@ export class Scene {
         const tgtMtdSubSig = mtdDecl.getSubSignature();
         const matchKey = `${tgtMtdSubSig.getReturnType().toString()} ${tgtClsName}::${tgtMtdSubSig.toString()}`;
         for (const refFile of refFiles) {
-            const refArkFile = this.getFile(new FileSignature(
-                this.projectName, path.relative(this.realProjectDir, refFile)));
+            const refArkFile = this.getFile(new FileSignature(this.projectName, path.relative(this.realProjectDir, refFile)));
             if (!refArkFile) {
                 continue;
             }
@@ -1341,7 +1332,7 @@ export class Scene {
                     // 遗留问题：只统计了项目文件的namespace，没统计sdk文件内部的引入
                     const importNameSpaceClasses = classMap.get(importNameSpace.getNamespaceSignature())!;
                     importClasses.push(...importNameSpaceClasses.filter(c => !importClasses.includes(c) && c.getName() !== DEFAULT_ARK_CLASS_NAME));
-                } catch { }
+                } catch {}
             }
         }
         const fileClasses = classMap.get(file.getFileSignature())!;
@@ -1402,8 +1393,7 @@ export class Scene {
         while (namespaceStack.length > 0) {
             const ns = namespaceStack.shift()!;
             const nsGlobalLocals: Local[] = [];
-            ns
-                .getDefaultClass()
+            ns.getDefaultClass()
                 .getDefaultArkMethod()!
                 .getBody()
                 ?.getLocals()
@@ -1474,7 +1464,7 @@ export class Scene {
                     // 遗留问题：只统计了项目文件，没统计sdk文件内部的引入
                     const importNameSpaceClasses = globalVariableMap.get(importNameSpace.getNamespaceSignature())!;
                     importLocals.push(...importNameSpaceClasses.filter(c => !importLocals.includes(c) && c.getName() !== DEFAULT_ARK_CLASS_NAME));
-                } catch { }
+                } catch {}
             }
         }
         const fileLocals = globalVariableMap.get(file.getFileSignature())!;
@@ -1517,8 +1507,7 @@ export class Scene {
             const parentMap: Map<ArkNamespace, ArkNamespace | ArkFile> = new Map();
             const finalNamespaces: ArkNamespace[] = [];
             const globalLocals: Local[] = [];
-            file
-                .getDefaultClass()
+            file.getDefaultClass()
                 ?.getDefaultArkMethod()!
                 .getBody()
                 ?.getLocals()

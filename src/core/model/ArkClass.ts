@@ -35,7 +35,7 @@ export enum ClassCategory {
     ENUM = 3,
     TYPE_LITERAL = 4,
     OBJECT = 5,
-    UNION = 6
+    UNION = 6,
 }
 
 /**
@@ -96,9 +96,7 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
      * @returns The name of this class.
      */
     public getName(): string {
-        return this.classSignature
-            ? this.classSignature.getClassName()
-            : "";
+        return this.classSignature ? this.classSignature.getClassName() : '';
     }
 
     /**
@@ -222,7 +220,8 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
         }
         let superClass = this.heritageClasses.get(heritageClassName);
         if (superClass === undefined) {
-            let type = TypeInference.inferUnclearRefName(heritageClassName, this) ??
+            let type =
+                TypeInference.inferUnclearRefName(heritageClassName, this) ??
                 TypeInference.inferUnclearRefName(heritageClassName, this.getDeclaringArkFile().getDefaultClass());
             if (type) {
                 type = TypeInference.replaceAliasType(type);
@@ -438,8 +437,7 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
             return;
         }
         const overloadMethods = this.overloadMethods.get(methodName);
-        const index = overloadMethods!.findIndex(
-            curMtd => curMtd.getSignature().isMatch(newMethodSignature));
+        const index = overloadMethods!.findIndex(curMtd => curMtd.getSignature().isMatch(newMethodSignature));
         if (index !== -1) {
             overloadMethods![index] = newMethod;
         } else {

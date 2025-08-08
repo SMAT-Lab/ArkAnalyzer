@@ -14,9 +14,7 @@
  */
 
 export const BASE_CLASS_EXPECT = {
-    fields: [
-        'name',
-    ],
+    fields: ['name'],
     heritageClasses: [],
     blocks: [
         {
@@ -29,40 +27,32 @@ export const BASE_CLASS_EXPECT = {
                         'this = this: @class/classSample.cpp: Base',
                         'instanceinvoke this.<@class/classSample.cpp: Base.%instInit()>()',
                         'this.<@class/classSample.cpp: Base.name> = pname',
-                        "%0 = this.<@class/classSample.cpp: Base.name>",
+                        '%0 = this.<@class/classSample.cpp: Base.name>',
                         "staticinvoke <@%unk/%unk: .cout()>('Base constructor called with name: ', %0)",
-                        'return this'
+                        'return this',
                     ],
                     preds: [],
-                    succes: []
-                }
-            ]
+                    succes: [],
+                },
+            ],
         },
         {
             methodName: 'getName',
             blocks: [
                 {
                     id: 0,
-                    stmts: [
-                        'this = this: @class/classSample.cpp: Base',
-                        '%0 = this.<@class/classSample.cpp: Base.name>',
-                        'return %0'
-                    ],
+                    stmts: ['this = this: @class/classSample.cpp: Base', '%0 = this.<@class/classSample.cpp: Base.name>', 'return %0'],
                     preds: [],
-                    succes: []
-                }
-            ]
-        }
-    ]
+                    succes: [],
+                },
+            ],
+        },
+    ],
 };
 
 export const LEFT_CLASS_EXPECT = {
-    fields: [
-        'leftPower',
-    ],
-    heritageClasses: [
-        'Base'
-    ],
+    fields: ['leftPower'],
+    heritageClasses: ['Base'],
     blocks: [
         {
             methodName: 'constructor',
@@ -78,38 +68,30 @@ export const LEFT_CLASS_EXPECT = {
                         'this.<@class/classSample.cpp: Left.leftPower> = power',
                         '%0 = this.<@class/classSample.cpp: Left.leftPower>',
                         "staticinvoke <@%unk/%unk: .cout()>('Left constructor called with power: ', %0)",
-                        'return this'
+                        'return this',
                     ],
                     preds: [],
-                    succes: []
-                }
-            ]
+                    succes: [],
+                },
+            ],
         },
         {
             methodName: 'getLeftPower',
             blocks: [
                 {
                     id: 0,
-                    stmts: [
-                        'this = this: @class/classSample.cpp: Left',
-                        '%0 = this.<@class/classSample.cpp: Left.leftPower>',
-                        'return %0'
-                    ],
+                    stmts: ['this = this: @class/classSample.cpp: Left', '%0 = this.<@class/classSample.cpp: Left.leftPower>', 'return %0'],
                     preds: [],
-                    succes: []
-                }
-            ]
-        }
-    ]
+                    succes: [],
+                },
+            ],
+        },
+    ],
 };
 
 export const RIGHT_CLASS_EXPECT = {
-    fields: [
-        'rightSpeed',
-    ],
-    heritageClasses: [
-        'Base'
-    ],
+    fields: ['rightSpeed'],
+    heritageClasses: ['Base'],
     blocks: [
         {
             methodName: 'constructor',
@@ -125,40 +107,30 @@ export const RIGHT_CLASS_EXPECT = {
                         'this.<@class/classSample.cpp: Right.rightSpeed> = speed',
                         '%0 = this.<@class/classSample.cpp: Right.rightSpeed>',
                         "staticinvoke <@%unk/%unk: .cout()>('Right constructor called with speed: ', %0)",
-                        'return this'
+                        'return this',
                     ],
                     preds: [],
-                    succes: []
-                }
-            ]
+                    succes: [],
+                },
+            ],
         },
         {
             methodName: 'getRightSpeed',
             blocks: [
                 {
                     id: 0,
-                    stmts: [
-                        'this = this: @class/classSample.cpp: Right',
-                        '%0 = this.<@class/classSample.cpp: Right.rightSpeed>',
-                        'return %0'
-                    ],
+                    stmts: ['this = this: @class/classSample.cpp: Right', '%0 = this.<@class/classSample.cpp: Right.rightSpeed>', 'return %0'],
                     preds: [],
-                    succes: []
-                }
-            ]
-        }
-    ]
+                    succes: [],
+                },
+            ],
+        },
+    ],
 };
 
 export const DERIVED_CLASS_EXPECT = {
-    fields: [
-        'robotId',
-    ],
-    heritageClasses: [
-        'Left',
-        'Right',
-        'Base'
-    ],
+    fields: ['robotId'],
+    heritageClasses: ['Left', 'Right', 'Base'],
     blocks: [
         {
             methodName: 'constructor',
@@ -178,27 +150,23 @@ export const DERIVED_CLASS_EXPECT = {
                         'this.<@class/classSample.cpp: Derived.robotId> = id',
                         '%0 = this.<@class/classSample.cpp: Derived.robotId>',
                         "staticinvoke <@%unk/%unk: .cout()>('Derived constructor called with id: ', %0)",
-                        'return this'
+                        'return this',
                     ],
                     preds: [],
-                    succes: []
-                }
-            ]
+                    succes: [],
+                },
+            ],
         },
         {
             methodName: 'getRobotId',
             blocks: [
                 {
                     id: 0,
-                    stmts: [
-                        'this = this: @class/classSample.cpp: Derived',
-                        '%0 = this.<@class/classSample.cpp: Derived.robotId>',
-                        'return %0'
-                    ],
+                    stmts: ['this = this: @class/classSample.cpp: Derived', '%0 = this.<@class/classSample.cpp: Derived.robotId>', 'return %0'],
                     preds: [],
-                    succes: []
-                }
-            ]
+                    succes: [],
+                },
+            ],
         },
         {
             methodName: 'introduce',
@@ -219,14 +187,14 @@ export const DERIVED_CLASS_EXPECT = {
                         '%5 = this.<@class/classSample.cpp: Derived.getRightSpeed>',
                         '%6 = staticinvoke <@%unk/%unk: .this()>(%5)',
                         "staticinvoke <@%unk/%unk: .cout()>('Right Speed: ', %6)",
-                        'return'
+                        'return',
                     ],
                     preds: [],
-                    succes: []
-                }
-            ]
+                    succes: [],
+                },
+            ],
         },
-    ]
+    ],
 };
 
 export const ANIMAL_CLASS_EXPECT = {
@@ -238,38 +206,29 @@ export const ANIMAL_CLASS_EXPECT = {
             blocks: [
                 {
                     id: 0,
-                    stmts: [
-                        'this = this: @class/classSample.cpp: Animal',
-                        'instanceinvoke this.<@class/classSample.cpp: Animal.%instInit()>()',
-                        'return this'
-                    ],
+                    stmts: ['this = this: @class/classSample.cpp: Animal', 'instanceinvoke this.<@class/classSample.cpp: Animal.%instInit()>()', 'return this'],
                     preds: [],
-                    succes: []
-                }
-            ]
+                    succes: [],
+                },
+            ],
         },
         {
             methodName: 'sound',
             blocks: [
                 {
                     id: 0,
-                    stmts: [
-                        'this = this: @class/classSample.cpp: Animal',
-                        'return'
-                    ],
+                    stmts: ['this = this: @class/classSample.cpp: Animal', 'return'],
                     preds: [],
-                    succes: []
-                }
-            ]
+                    succes: [],
+                },
+            ],
         },
-    ]
+    ],
 };
 
 export const CAT_CLASS_EXPECT = {
     fields: [],
-    heritageClasses: [
-        'Animal',
-    ],
+    heritageClasses: ['Animal'],
     blocks: [
         {
             methodName: 'constructor',
@@ -280,36 +239,30 @@ export const CAT_CLASS_EXPECT = {
                         'this = this: @class/classSample.cpp: Cat',
                         'instanceinvoke this.<@class/classSample.cpp: Animal.constructor()>()',
                         'instanceinvoke this.<@class/classSample.cpp: Cat.%instInit()>()',
-                        'return this'
+                        'return this',
                     ],
                     preds: [],
-                    succes: []
-                }
-            ]
+                    succes: [],
+                },
+            ],
         },
         {
             methodName: 'sound',
             blocks: [
                 {
                     id: 0,
-                    stmts: [
-                        'this = this: @class/classSample.cpp: Cat',
-                        "staticinvoke <@%unk/%unk: .cout()>('meow meow mewo!')",
-                        'return'
-                    ],
+                    stmts: ['this = this: @class/classSample.cpp: Cat', "staticinvoke <@%unk/%unk: .cout()>('meow meow mewo!')", 'return'],
                     preds: [],
-                    succes: []
-                }
-            ]
+                    succes: [],
+                },
+            ],
         },
-    ]
+    ],
 };
 
 export const DOG_CLASS_EXPECT = {
     fields: [],
-    heritageClasses: [
-        'Animal',
-    ],
+    heritageClasses: ['Animal'],
     blocks: [
         {
             methodName: 'constructor',
@@ -320,36 +273,30 @@ export const DOG_CLASS_EXPECT = {
                         'this = this: @class/classSample.cpp: Dog',
                         'instanceinvoke this.<@class/classSample.cpp: Animal.constructor()>()',
                         'instanceinvoke this.<@class/classSample.cpp: Dog.%instInit()>()',
-                        'return this'
+                        'return this',
                     ],
                     preds: [],
-                    succes: []
-                }
-            ]
+                    succes: [],
+                },
+            ],
         },
         {
             methodName: 'sound',
             blocks: [
                 {
                     id: 0,
-                    stmts: [
-                        'this = this: @class/classSample.cpp: Dog',
-                        "staticinvoke <@%unk/%unk: .cout()>('wo wo wo!')",
-                        'return'
-                    ],
+                    stmts: ['this = this: @class/classSample.cpp: Dog', "staticinvoke <@%unk/%unk: .cout()>('wo wo wo!')", 'return'],
                     preds: [],
-                    succes: []
-                }
-            ]
+                    succes: [],
+                },
+            ],
         },
-    ]
+    ],
 };
 
 export const PIG_CLASS_EXPECT = {
     fields: [],
-    heritageClasses: [
-        'Animal',
-    ],
+    heritageClasses: ['Animal'],
     blocks: [
         {
             methodName: 'constructor',
@@ -360,36 +307,30 @@ export const PIG_CLASS_EXPECT = {
                         'this = this: @class/classSample.cpp: Pig',
                         'instanceinvoke this.<@class/classSample.cpp: Animal.constructor()>()',
                         'instanceinvoke this.<@class/classSample.cpp: Pig.%instInit()>()',
-                        'return this'
+                        'return this',
                     ],
                     preds: [],
-                    succes: []
-                }
-            ]
+                    succes: [],
+                },
+            ],
         },
         {
             methodName: 'sound',
             blocks: [
                 {
                     id: 0,
-                    stmts: [
-                        'this = this: @class/classSample.cpp: Pig',
-                        "staticinvoke <@%unk/%unk: .cout()>('Aooooooowooooo!')",
-                        'return'
-                    ],
+                    stmts: ['this = this: @class/classSample.cpp: Pig', "staticinvoke <@%unk/%unk: .cout()>('Aooooooowooooo!')", 'return'],
                     preds: [],
-                    succes: []
-                }
-            ]
+                    succes: [],
+                },
+            ],
         },
-    ]
+    ],
 };
 
 export const D_CLASS_EXPECT = {
     fields: [],
-    heritageClasses: [
-        'Base'
-    ],
+    heritageClasses: ['Base'],
     blocks: [
         {
             methodName: 'constructor',
@@ -401,14 +342,14 @@ export const D_CLASS_EXPECT = {
                         'this = this: @class/classSample.cpp: D',
                         'instanceinvoke this.<@class/classSample.cpp: Base.constructor(char&)>(pname)',
                         'instanceinvoke this.<@class/classSample.cpp: D.%instInit()>()',
-                        'return this'
+                        'return this',
                     ],
                     preds: [],
-                    succes: []
-                }
-            ]
+                    succes: [],
+                },
+            ],
         },
-    ]
+    ],
 };
 
 export const MAIN_EXPECT = {
@@ -425,10 +366,10 @@ export const MAIN_EXPECT = {
                 'instanceinvoke %1.<@class/classSample.cpp: Dog.constructor()>()',
                 'staticinvoke <@%unk/%unk: .makeSound()>(%1)',
                 'd1 = staticinvoke <@%unk/%unk: .undefined()>(100)',
-                'return 0'
+                'return 0',
             ],
             preds: [],
-            succes: []
-        }
-    ]
+            succes: [],
+        },
+    ],
 };

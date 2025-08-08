@@ -25,12 +25,12 @@ export const POINTER_EXPECT_CASE1 = {
                 '%0 = new @pointer/pointerExpr.cpp: MyClass',
                 'instanceinvoke %0.<@pointer/pointerExpr.cpp: MyClass.constructor()>(10)',
                 'clsPtr = %0',
-                'return'
+                'return',
             ],
             preds: [],
-            succes: []
-        }
-    ]
+            succes: [],
+        },
+    ],
 };
 
 export const POINTER_EXPECT_CASE2 = {
@@ -49,12 +49,12 @@ export const POINTER_EXPECT_CASE2 = {
                 's-><@pointer/pointerExpr.cpp: MyStruct.id> = 0',
                 `s-><@pointer/pointerExpr.cpp: MyStruct.name> = 'example'`,
                 'id = s1.<@pointer/pointerExpr.cpp: MyStruct.id>',
-                'return'
+                'return',
             ],
             preds: [],
-            succes: []
-        }
-    ]
+            succes: [],
+        },
+    ],
 };
 
 export const POINTER_EXPECT_CASE3 = {
@@ -86,10 +86,10 @@ export const POINTER_EXPECT_CASE3 = {
                 '%8 = new @pointer/pointerExpr.cpp: MyStruct',
                 'instanceinvoke %8.<@pointer/pointerExpr.cpp: MyStruct.constructor()>()',
                 's = %8',
-                'if s != nullptr'
+                'if s != nullptr',
             ],
             preds: [],
-            succes: [ 1, 2 ]
+            succes: [1, 2],
         },
         {
             id: 1,
@@ -104,11 +104,11 @@ export const POINTER_EXPECT_CASE3 = {
                 '%11 = s-><@pointer/pointerExpr.cpp: MyStruct.size>',
                 "*%11 = 'S'",
                 '%12 = *ss-><@%unk/%unk: .size>',
-                'size = *%12'
+                'size = *%12',
             ],
-            preds: [ 0 ],
-            succes: [ 2 ]
+            preds: [0],
+            succes: [2],
         },
-        { id: 2, stmts: [ 'return' ], preds: [ 1, 0 ], succes: [] }
-    ]
+        { id: 2, stmts: ['return'], preds: [1, 0], succes: [] },
+    ],
 };

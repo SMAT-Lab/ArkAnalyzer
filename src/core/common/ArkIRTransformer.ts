@@ -272,11 +272,7 @@ export class ArkIRTransformer {
             return stmts;
         }
 
-        const {
-            value: paramInitValue,
-            valueOriginalPositions: paramInitPositions,
-            stmts: paramInitStmts,
-        } = this.tsNodeToValueAndStmts(paramNode.initializer!);
+        const { value: paramInitValue, valueOriginalPositions: paramInitPositions, stmts: paramInitStmts } = this.tsNodeToValueAndStmts(paramNode.initializer!);
         stmts.push(...paramInitStmts);
 
         const ifStmt = new ArkIfStmt(new ArkConditionExpr(paramLocal, ValueUtil.getUndefinedConst(), RelationalBinaryOperator.Equality));

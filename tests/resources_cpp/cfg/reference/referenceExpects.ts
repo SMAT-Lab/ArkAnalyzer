@@ -28,28 +28,23 @@ export const REFERENCE_EXPECT_CASE1 = {
                 'ref_flag = flag',
                 'ref_f = f',
                 'ref_c = c',
-                'return'
+                'return',
             ],
             preds: [],
-            succes: []
-        }
-    ]
+            succes: [],
+        },
+    ],
 };
 
 export const REFERENCE_EXPECT_CASE2 = {
     blocks: [
         {
             id: 0,
-            stmts: [
-                'this = this: @reference/reference.cpp: %dflt',
-                'ptr = nullptr',
-                'ref_to_ptr = ptr',
-                'return'
-            ],
+            stmts: ['this = this: @reference/reference.cpp: %dflt', 'ptr = nullptr', 'ref_to_ptr = ptr', 'return'],
             preds: [],
-            succes: []
-        }
-    ]
+            succes: [],
+        },
+    ],
 };
 
 export const REFERENCE_EXPECT_CASE3 = {
@@ -62,46 +57,34 @@ export const REFERENCE_EXPECT_CASE3 = {
                 'instanceinvoke %0.<@reference/reference.cpp: MyClass.constructor()>(5)',
                 'a = %0',
                 'b = a',
-                'return'
+                'return',
             ],
             preds: [],
-            succes: []
-        }
-    ]
+            succes: [],
+        },
+    ],
 };
 
 export const REFERENCE_EXPECT_CASE4 = {
     blocks: [
         {
             id: 0,
-            stmts: [
-                'this = this: @reference/reference.cpp: %dflt',
-                'x = 1',
-                'y = 2',
-                'rr1 = 10',
-                'rr2 = x + y',
-                'return'
-            ],
+            stmts: ['this = this: @reference/reference.cpp: %dflt', 'x = 1', 'y = 2', 'rr1 = 10', 'rr2 = x + y', 'return'],
             preds: [],
-            succes: []
-        }
-    ]
+            succes: [],
+        },
+    ],
 };
 
 export const REFERENCE_EXPECT_CASE5 = {
     blocks: [
         {
             id: 0,
-            stmts: [
-                "arg = parameter0: T&&",
-                "this = this: @reference/reference.cpp: %dflt",
-                "d1 = staticinvoke <@%unk/%unk: .forward()>(arg)",
-                "return",
-            ],
+            stmts: ['arg = parameter0: T&&', 'this = this: @reference/reference.cpp: %dflt', 'd1 = staticinvoke <@%unk/%unk: .forward()>(arg)', 'return'],
             preds: [],
-            succes: []
-        }
-    ]
+            succes: [],
+        },
+    ],
 };
 
 export const REFERENCE_EXPECT_CASE6 = {
@@ -109,16 +92,16 @@ export const REFERENCE_EXPECT_CASE6 = {
         {
             id: 0,
             stmts: [
-                "this = this: @reference/reference.cpp: %dflt",
-                "temp = 5",
-                "ref_a = staticinvoke <@%unk/%unk: .move()>(temp)",
-                "ref_a = 6",
+                'this = this: @reference/reference.cpp: %dflt',
+                'temp = 5',
+                'ref_a = staticinvoke <@%unk/%unk: .move()>(temp)',
+                'ref_a = 6',
                 "str1 = 'Hello'",
-                "str2 = staticinvoke <@%unk/%unk: .move()>(str1)",
-                "return",
+                'str2 = staticinvoke <@%unk/%unk: .move()>(str1)',
+                'return',
             ],
             preds: [],
-            succes: []
-        }
-    ]
+            succes: [],
+        },
+    ],
 };

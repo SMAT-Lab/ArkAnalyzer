@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-
 import fs from 'fs';
 import { SceneConfig } from '../../../../src';
 import { DEFAULT_ARK_CLASS_NAME } from '../../../../src';
@@ -32,13 +31,15 @@ function runScene(config: SceneConfig, fileName: string) {
 
     let entryPoints: MethodSignature[] = [];
     // @ts-ignore
-    entryPoints.push(...projectScene.getFiles()
-        .filter(arkFile => arkFile.getName() === fileName)
-        .flatMap(arkFile => arkFile.getClasses())
-        .filter(arkClass => arkClass.getName() === DEFAULT_ARK_CLASS_NAME)
-        .flatMap(arkClass => arkClass.getMethods())
-        .filter(arkMethod => arkMethod.getName() === "main")
-        .map(arkMethod => arkMethod.getSignature())
+    entryPoints.push(
+        ...projectScene
+            .getFiles()
+            .filter(arkFile => arkFile.getName() === fileName)
+            .flatMap(arkFile => arkFile.getClasses())
+            .filter(arkClass => arkClass.getName() === DEFAULT_ARK_CLASS_NAME)
+            .flatMap(arkClass => arkClass.getMethods())
+            .filter(arkMethod => arkMethod.getName() === 'main')
+            .map(arkMethod => arkMethod.getSignature())
     );
 
     let callGraph = new CallGraph(projectScene);

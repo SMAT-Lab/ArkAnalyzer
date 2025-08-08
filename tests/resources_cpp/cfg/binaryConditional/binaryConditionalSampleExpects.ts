@@ -30,12 +30,12 @@ export const BINARY_CONDITIONAL_EXPECT_CASE1 = {
                 '%1 = k',
                 'ConditionalOperatorEnd0',
                 'j = %1',
-                'return j'
+                'return j',
             ],
             preds: [],
-            succes: []
+            succes: [],
         },
-    ]
+    ],
 };
 
 export const BINARY_CONDITIONAL_EXPECT_CASE2 = {
@@ -54,12 +54,12 @@ export const BINARY_CONDITIONAL_EXPECT_CASE2 = {
                 '%0 = c',
                 'ConditionalOperatorEnd0',
                 'y = %0',
-                'return y'
+                'return y',
             ],
             preds: [],
-            succes: [ ]
+            succes: [],
         },
-    ]
+    ],
 };
 
 export const BINARY_CONDITIONAL_EXPECT_CASE3 = {
@@ -79,12 +79,12 @@ export const BINARY_CONDITIONAL_EXPECT_CASE3 = {
                 '%0 = 3',
                 'ConditionalOperatorEnd0',
                 'y = %0',
-                'return y'
+                'return y',
             ],
             preds: [],
-            succes: []
+            succes: [],
         },
-    ]
+    ],
 };
 
 export const BINARY_CONDITIONAL_EXPECT_CASE4 = {
@@ -104,12 +104,12 @@ export const BINARY_CONDITIONAL_EXPECT_CASE4 = {
                 '%0 = 3',
                 'ConditionalOperatorEnd0',
                 'y = %0',
-                'return y'
+                'return y',
             ],
             preds: [],
-            succes: []
-        }
-    ]
+            succes: [],
+        },
+    ],
 };
 
 export const BINARY_CONDITIONAL_EXPECT_CASE5 = {
@@ -117,27 +117,27 @@ export const BINARY_CONDITIONAL_EXPECT_CASE5 = {
         {
             id: 0,
             stmts: [
-                "this = this: @binaryConditional/binaryConditionalSample.cpp: %dflt",
-                "i = 8",
-                "if i < 0",
-                "ConditionalOperatorIfTrue0",
-                "%0 = i < 0",
-                "ConditionalOperatorIfFalse0",
-                "if i > 1",
-                "ConditionalOperatorIfTrue1",
-                "%1 = i > 1",
-                "ConditionalOperatorIfFalse1",
-                "%1 = 4",
-                "ConditionalOperatorEnd1",
-                "%0 = %1",
-                "ConditionalOperatorEnd0",
-                "j = %0",
-                "return j",
+                'this = this: @binaryConditional/binaryConditionalSample.cpp: %dflt',
+                'i = 8',
+                'if i < 0',
+                'ConditionalOperatorIfTrue0',
+                '%0 = i < 0',
+                'ConditionalOperatorIfFalse0',
+                'if i > 1',
+                'ConditionalOperatorIfTrue1',
+                '%1 = i > 1',
+                'ConditionalOperatorIfFalse1',
+                '%1 = 4',
+                'ConditionalOperatorEnd1',
+                '%0 = %1',
+                'ConditionalOperatorEnd0',
+                'j = %0',
+                'return j',
             ],
             preds: [],
-            succes: []
-        }
-    ]
+            succes: [],
+        },
+    ],
 };
 
 export const BINARY_CONDITIONAL_EXPECT_CASE6 = {
@@ -145,26 +145,26 @@ export const BINARY_CONDITIONAL_EXPECT_CASE6 = {
         {
             id: 0,
             stmts: [
-                "this = this: @binaryConditional/binaryConditionalSample.cpp: %dflt",
-                "i = 0",
-                "j = 0",
-                "k = 1",
-                "%0 = i + j",
-                "%1 = %0 + k",
-                "%2 = %1 + 1",
-                "if %2 != 0",
-                "ConditionalOperatorIfTrue0",
-                "%3 = i + j",
-                "%4 = %3 + k",
-                "%5 = %4 + 1",
-                "ConditionalOperatorIfFalse0",
-                "%5 = k",
-                "ConditionalOperatorEnd0",
-                "j = %5",
-                "return j",
+                'this = this: @binaryConditional/binaryConditionalSample.cpp: %dflt',
+                'i = 0',
+                'j = 0',
+                'k = 1',
+                '%0 = i + j',
+                '%1 = %0 + k',
+                '%2 = %1 + 1',
+                'if %2 != 0',
+                'ConditionalOperatorIfTrue0',
+                '%3 = i + j',
+                '%4 = %3 + k',
+                '%5 = %4 + 1',
+                'ConditionalOperatorIfFalse0',
+                '%5 = k',
+                'ConditionalOperatorEnd0',
+                'j = %5',
+                'return j',
             ],
             preds: [],
-            succes: []
+            succes: [],
         },
-    ]
+    ],
 };

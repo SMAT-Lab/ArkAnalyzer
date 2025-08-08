@@ -983,7 +983,7 @@ export class CfgBuilder {
             ts.isFunctionExpression(this.astRoot) ||
             ts.isClassStaticBlockDeclaration(this.astRoot)
         ) {
-            this.astRoot.body ? stmts = [...this.astRoot.body.statements] : this.emptyBody = true;
+            this.astRoot.body ? (stmts = [...this.astRoot.body.statements]) : (this.emptyBody = true);
         } else if (ts.isArrowFunction(this.astRoot)) {
             if (ts.isBlock(this.astRoot.body)) {
                 stmts = [...this.astRoot.body.statements];
@@ -1283,8 +1283,11 @@ export class CfgBuilder {
         const switchBuilder = new SwitchBuilder();
         switchBuilder.buildSwitch(blockBuilderToCfgBlock, blockBuildersContainSwitch, valueAndStmtsOfSwitchAndCasesAll, arkIRTransformer, basicBlockSet);
         const conditionalBuilder = new ConditionBuilder();
-        conditionalBuilder.rebuildBlocksContainConditionalOperator(blockBuilderToCfgBlock, basicBlockSet,
-            ModelUtils.isArkUIBuilderMethod(this.declaringMethod));
+        conditionalBuilder.rebuildBlocksContainConditionalOperator(
+            blockBuilderToCfgBlock,
+            basicBlockSet,
+            ModelUtils.isArkUIBuilderMethod(this.declaringMethod)
+        );
     }
 
     private createCfg(blockBuilderToCfgBlock: Map<BlockBuilder, BasicBlock>, basicBlockSet: Set<BasicBlock>, prevBlockId: number): Cfg {

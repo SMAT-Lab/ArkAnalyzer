@@ -83,17 +83,17 @@ const MODIFIER_TYPE_STRINGS = [
 ];
 
 const MODIFIER_KIND_2_ENUM_CPP = new Map<string, ModifierType>([
-    ["virtual", ModifierType.VIRTUAL],
-    ["const", ModifierType.CONST],
-    ["private", ModifierType.PRIVATE],
-    ["protected", ModifierType.PROTECTED],
-    ["public", ModifierType.PUBLIC],
-    ["extern", ModifierType.EXTERN],
-    ["friend", ModifierType.FRIEND],
-    ["override", ModifierType.OVERRIDE],
-    ["static", ModifierType.STATIC],
-    ["pure virtual", ModifierType.PURE_VIRTUAL],
-    ["abstract", ModifierType.ABSTRACT],  // C++纯虚函数所在类为抽象类，此设置一个修饰符对标ts中的抽象类
+    ['virtual', ModifierType.VIRTUAL],
+    ['const', ModifierType.CONST],
+    ['private', ModifierType.PRIVATE],
+    ['protected', ModifierType.PROTECTED],
+    ['public', ModifierType.PUBLIC],
+    ['extern', ModifierType.EXTERN],
+    ['friend', ModifierType.FRIEND],
+    ['override', ModifierType.OVERRIDE],
+    ['static', ModifierType.STATIC],
+    ['pure virtual', ModifierType.PURE_VIRTUAL],
+    ['abstract', ModifierType.ABSTRACT], // C++纯虚函数所在类为抽象类，此设置一个修饰符对标ts中的抽象类
 ]);
 
 const MODIFIER_KIND_2_ENUM = new Map<ts.SyntaxKind, ModifierType>([

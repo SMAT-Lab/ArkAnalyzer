@@ -83,28 +83,28 @@ function resolveCMakeVar(val: string, varTable: Record<string, string>, depth = 
  */
 function tryStartCollectingIncludeDirs(
     line: string,
-    results: string[][],
+    results: string[][]
 ): {
-    collecting: boolean,
-    funcType: "include" | "target" | null,
-    buffer: string[]
+    collecting: boolean;
+    funcType: 'include' | 'target' | null;
+    buffer: string[];
 } {
-    if (line.startsWith("include_directories(")) {
+    if (line.startsWith('include_directories(')) {
         let collecting = true;
-        let funcType: "include" | "target" | null = "include";
+        let funcType: 'include' | 'target' | null = 'include';
         let buffer = [line];
-        if (line.includes(")")) {
+        if (line.includes(')')) {
             collecting = false;
             results.push(parseCMakeArgs(buffer, false));
             buffer = [];
             funcType = null;
         }
         return { collecting, funcType, buffer };
-    } else if (line.startsWith("target_include_directories(")) {
+    } else if (line.startsWith('target_include_directories(')) {
         let collecting = true;
-        let funcType: "include" | "target" | null = "target";
+        let funcType: 'include' | 'target' | null = 'target';
         let buffer = [line];
-        if (line.includes(")")) {
+        if (line.includes(')')) {
             collecting = false;
             results.push(parseCMakeArgs(buffer, true));
             buffer = [];
@@ -121,11 +121,11 @@ function extractAllIncludeDirs(lines: string[]): string[][] {
     const results: string[][] = [];
     let collecting = false;
     let buffer: string[] = [];
-    let funcType: "include" | "target" | null = null;
+    let funcType: 'include' | 'target' | null = null;
 
     for (const lineOrig of lines) {
         // 去除注释
-        const line = lineOrig.replace(/#.*$/, "").trim();
+        const line = lineOrig.replace(/#.*$/, '').trim();
         if (!collecting) {
             const state = tryStartCollectingIncludeDirs(line, results);
             collecting = state.collecting;
@@ -133,9 +133,9 @@ function extractAllIncludeDirs(lines: string[]): string[][] {
             buffer = state.buffer;
         } else {
             buffer.push(line);
-            if (line.includes(")")) {
+            if (line.includes(')')) {
                 collecting = false;
-                results.push(parseCMakeArgs(buffer, funcType === "target"));
+                results.push(parseCMakeArgs(buffer, funcType === 'target'));
                 buffer = [];
                 funcType = null;
             }
@@ -190,7 +190,7 @@ function parseCMakeArgs(buffer: string[], isTarget: boolean): string[] {
         if (args.length < 3) {
             return [];
         }
-        const idx = args.findIndex(a => ["PUBLIC", "PRIVATE", "INTERFACE"].includes(a.toUpperCase()));
+        const idx = args.findIndex(a => ['PUBLIC', 'PRIVATE', 'INTERFACE'].includes(a.toUpperCase()));
         if (idx < 1 || idx + 1 >= args.length) {
             return [];
         }
@@ -203,10 +203,11 @@ function parseCMakeArgs(buffer: string[], isTarget: boolean): string[] {
 function scanCMakeIncludeDirsOnly(dir: string): string[] {
     const result: string[] = [];
 
-    const cmakePath = path.join(dir, "CMakeLists.txt");
+    const cmakePath = path.join(dir, 'CMakeLists.txt');
     if (!fs.existsSync(cmakePath)) {
         // 提前返回，仅递归子目录
-        const subdirs = fs.readdirSync(dir, { withFileTypes: true })
+        const subdirs = fs
+            .readdirSync(dir, { withFileTypes: true })
             .filter(f => f.isDirectory())
             .map(f => path.join(dir, f.name));
 
@@ -215,11 +216,11 @@ function scanCMakeIncludeDirsOnly(dir: string): string[] {
 
     // 有 CMakeLists.txt 的正常处理流程
     const varTable: Record<string, string> = {
-        CMAKE_CURRENT_SOURCE_DIR: dir.replace(/\\/g, "/"),
-        PROJECT_SOURCE_DIR: dir.replace(/\\/g, "/"),
+        CMAKE_CURRENT_SOURCE_DIR: dir.replace(/\\/g, '/'),
+        PROJECT_SOURCE_DIR: dir.replace(/\\/g, '/'),
     };
 
-    const lines = fs.readFileSync(cmakePath, "utf-8").split(/\r?\n/);
+    const lines = fs.readFileSync(cmakePath, 'utf-8').split(/\r?\n/);
 
     for (const line of lines) {
         const s = extractSetVar(line);
@@ -244,7 +245,8 @@ function scanCMakeIncludeDirsOnly(dir: string): string[] {
     }
 
     // 仍然递归子目录
-    const subdirs = fs.readdirSync(dir, { withFileTypes: true })
+    const subdirs = fs
+        .readdirSync(dir, { withFileTypes: true })
         .filter(f => f.isDirectory())
         .map(f => path.join(dir, f.name));
 
@@ -254,7 +256,6 @@ function scanCMakeIncludeDirsOnly(dir: string): string[] {
 
     return result;
 }
-
 
 export class SceneConfig {
     private targetProjectName: string = '';
@@ -322,7 +323,7 @@ export class SceneConfig {
         const cmakeIncludeDirs = scanCMakeIncludeDirsOnly(resolvedDir);
         // 把项目根路径加入 includeDirs
         cmakeIncludeDirs.push(resolvedDir);
-        this.includeDirs = Array.from(new Set([...cmakeIncludeDirs, ...includeDirs]))
+        this.includeDirs = Array.from(new Set([...cmakeIncludeDirs, ...includeDirs]));
         this.targetProjectName = path.basename(targetProjectDirectory);
         this.projectFiles = getAllFiles(targetProjectDirectory, this.options.supportFileExts!, this.options.ignoreFileNames);
     }

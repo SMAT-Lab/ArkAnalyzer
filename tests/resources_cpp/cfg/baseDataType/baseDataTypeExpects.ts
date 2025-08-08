@@ -17,13 +17,9 @@ export const BASE_DATA_TYPE_EXPECT_MAIN = {
     blocks: [
         {
             id: 0,
-            stmts: [
-                'this = this: @baseDataType/baseDataType.cpp: %dflt',
-                'boolData = staticinvoke <@%unk/%unk: .isChar()>(1)',
-                'if boolData != 0'
-            ],
+            stmts: ['this = this: @baseDataType/baseDataType.cpp: %dflt', 'boolData = staticinvoke <@%unk/%unk: .isChar()>(1)', 'if boolData != 0'],
             preds: [],
-            succes: [ 1, 2 ]
+            succes: [1, 2],
         },
         {
             id: 1,
@@ -37,10 +33,10 @@ export const BASE_DATA_TYPE_EXPECT_MAIN = {
                 "char16Data2 = 'hello'",
                 "char32Data1 = 'U0001F600'",
                 "char32Data2 = 'hello'",
-                "charData4 = ''"
+                "charData4 = ''",
             ],
-            preds: [ 0 ],
-            succes: [ 3 ]
+            preds: [0],
+            succes: [3],
         },
         {
             id: 2,
@@ -58,11 +54,11 @@ export const BASE_DATA_TYPE_EXPECT_MAIN = {
                 'doubleData2 = 88.8888',
                 'intData3 = 0',
                 'floatData1 = 0',
-                'doubleData3 = 0'
+                'doubleData3 = 0',
             ],
-            preds: [ 0 ],
-            succes: [ 3 ]
+            preds: [0],
+            succes: [3],
         },
-        { id: 3, stmts: [ 'return 0' ], preds: [ 1, 2 ], succes: [] }
-    ]
+        { id: 3, stmts: ['return 0'], preds: [1, 2], succes: [] },
+    ],
 };

@@ -38,7 +38,7 @@ export default class ConsoleLogger {
         logFilePath: string = 'out/arkanalyzer.log',
         arkanalyzer_level: LOG_LEVEL = LOG_LEVEL.INFO,
         tool_level: LOG_LEVEL = LOG_LEVEL.INFO,
-        use_console: boolean = false,
+        use_console: boolean = false
     ): void {
         this.isConfigure = true;
         let appendersTypes: string[] = [];

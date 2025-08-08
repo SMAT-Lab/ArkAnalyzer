@@ -12,26 +12,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import {
-    SceneConfig,
-} from '../../../../src';
-import {Scene} from '../../../../src';
-import {describe, it} from 'vitest';
+import { SceneConfig } from '../../../../src';
+import { Scene } from '../../../../src';
+import { describe, it } from 'vitest';
 import path from 'path';
 
-import {ArkAssignStmt, ArkInvokeStmt, Stmt} from '../../../../src';
-import {AbstractInvokeExpr} from '../../../../src';
+import { ArkAssignStmt, ArkInvokeStmt, Stmt } from '../../../../src';
+import { AbstractInvokeExpr } from '../../../../src';
 // @ts-ignore
-import {testBlocks} from '../../common';
+import { testBlocks } from '../../common';
 
 describe('check func parm', () => {
     it('case1: check func parm', () => {
-            const scene = buildScene('func');
-            testBlocks(scene, 'Tests.cpp', 'main', []);
-        },
-    );
+        const scene = buildScene('func');
+        testBlocks(scene, 'Tests.cpp', 'main', []);
+    });
 });
-
 
 const BASE_DIR = 'tests/resources_cpp/check';
 
@@ -56,9 +52,11 @@ function getInvokeExprFromStmt(stmt: Stmt): AbstractInvokeExpr | null {
 }
 
 function testBlocks(scene: Scene, filePath: string, methodName: string, expectBlocks: any[]): void {
-    const arkfile = scene.getFiles().find((file) => file.getName().endsWith(filePath));
-    const arkMethod = arkfile?.getDefaultClass().getMethods()
-        .find((method) => method.getName() === methodName);
+    const arkfile = scene.getFiles().find(file => file.getName().endsWith(filePath));
+    const arkMethod = arkfile
+        ?.getDefaultClass()
+        .getMethods()
+        .find(method => method.getName() === methodName);
     const stmts = arkMethod?.getBody()?.getCfg().getStmts() ?? [];
     for (const stmt of stmts) {
         const invokeExpr = getInvokeExprFromStmt(stmt);
@@ -71,8 +69,5 @@ function testBlocks(scene: Scene, filePath: string, methodName: string, expectBl
         if (methodName === 'sumFourNumber' && argsNum > 3) {
             console.log('Func', methodName, 'has', argsNum, 'args');
         }
-
     }
 }
-
-

@@ -55,7 +55,6 @@ export enum Language {
  * @category core/model
  */
 export class ArkFile {
-
     private language: Language;
     private absoluteFilePath: string = '';
     private projectDir: string = '';

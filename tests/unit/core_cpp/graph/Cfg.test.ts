@@ -13,25 +13,22 @@
  * limitations under the License.
  */
 
-import {
-    BasicBlock,
-    SceneConfig,
-} from '../../../../src';
+import { BasicBlock, SceneConfig } from '../../../../src';
 import { describe, it, expect } from 'vitest';
 import path from 'path';
 import { Scene } from '../../../../src';
 import { assertClassBlocksEqual, testBlocks, testBlocksWithSignature } from '../../common';
 import * as CONDITION_EXPECT from '../../../resources_cpp/cfg/conditionalOperator';
 import * as IF_EXPECT from '../../../resources_cpp/cfg/if/ifSampleExpects';
-import * as SWITCH_EXPECT from '../../../resources_cpp/cfg/switch/switchSampleExpects'
+import * as SWITCH_EXPECT from '../../../resources_cpp/cfg/switch/switchSampleExpects';
 import * as LOOP_EXPECT from '../../../resources_cpp/cfg/loop/loopSampleExpects';
 import * as GOTO_EXPECT from '../../../resources_cpp/cfg/goto/gotoSampleExpects';
-import * as BINARY_CONDITIONAL_EXPECT from  '../../../resources_cpp/cfg/binaryConditional/binaryConditionalSampleExpects';
-import * as POINTER_EXPECT from '../../../resources_cpp/cfg/pointer/pointerExprExpects'
+import * as BINARY_CONDITIONAL_EXPECT from '../../../resources_cpp/cfg/binaryConditional/binaryConditionalSampleExpects';
+import * as POINTER_EXPECT from '../../../resources_cpp/cfg/pointer/pointerExprExpects';
 import * as REFERENCE_EXPECT from '../../../resources_cpp/cfg/reference/referenceExpects';
 import * as DATA_STRUCT_EXPECT from '../../../resources_cpp/cfg/dataStruct/dataStructExpects';
 import * as COMPOUND_LITERAL_EXPECT from '../../../resources_cpp/cfg/compoundLiteral/compoundLiteralExprExpects';
-import * as TEMPLATE_EXPECT from  '../../../resources_cpp/cfg/template/templateExpects';
+import * as TEMPLATE_EXPECT from '../../../resources_cpp/cfg/template/templateExpects';
 import * as OPERATOR_EXPECT from '../../../resources_cpp/cfg/operators/cppOperatorExpects';
 import * as LAMBDA_EXPECT from '../../../resources_cpp/cfg/lambdaFunc/lambdaFuncExpects';
 import * as THROW_EXPECT from '../../../resources_cpp/cfg/throw/throwExpects';
@@ -61,7 +58,6 @@ import * as TYPEDEF_EXPECT from '../../../resources_cpp/cfg/typedef/typdefExpect
 import * as THREAD_EXPECT from '../../../resources_cpp/cfg/thread/threadExpects';
 import * as FUNCPTR_EXPECT from '../../../resources_cpp/cfg/functionPointer/functionPointerExpts';
 import * as AUTO_EXPECT from '../../../resources_cpp/cfg/decltype/decltypeExpects';
-
 
 describe('CfgTest', () => {
     it('case1: conditional operator', () => {
@@ -103,7 +99,7 @@ describe('CfgTest', () => {
     });
 
     it('case4: loop statement', () => {
-            const scene = buildScene('loop');
+        const scene = buildScene('loop');
         testBlocks(scene, 'loopSample.cpp', 'case1', LOOP_EXPECT.LOOP_EXPECT_CASE1.blocks);
         testBlocks(scene, 'loopSample.cpp', 'case2', LOOP_EXPECT.LOOP_EXPECT_CASE2.blocks);
         testBlocks(scene, 'loopSample.cpp', 'case3', LOOP_EXPECT.LOOP_EXPECT_CASE3.blocks);
@@ -113,15 +109,13 @@ describe('CfgTest', () => {
         testBlocks(scene, 'loopSample.cpp', 'case7', LOOP_EXPECT.LOOP_EXPECT_CASE7.blocks);
         testBlocks(scene, 'loopSample.cpp', 'case8', LOOP_EXPECT.LOOP_EXPECT_CASE8.blocks);
         testBlocks(scene, 'loopSample.cpp', 'case9', LOOP_EXPECT.LOOP_EXPECT_CASE9.blocks);
-        },
-    );
+    });
     it('case5: while-continue statement', () => {
-            const scene = buildScene('whileContinue');
+        const scene = buildScene('whileContinue');
         testBlocks(scene, 'whileContinueSample.cpp', 'main', WHILE_CONTINUE_EXPECT.WHILE_CONTINUE_EXPECT_MAIN.blocks);
-        },
-    );
+    });
     it('case6: goto statement', () => {
-            const scene = buildScene('goto');
+        const scene = buildScene('goto');
         testBlocks(scene, 'gotoSample.cpp', 'case1', GOTO_EXPECT.GOTO_EXPECT_CASE1.blocks);
         testBlocks(scene, 'gotoSample.cpp', 'case2', GOTO_EXPECT.GOTO_EXPECT_CASE2.blocks);
         testBlocks(scene, 'gotoSample.cpp', 'case3', GOTO_EXPECT.GOTO_EXPECT_CASE3.blocks);
@@ -132,8 +126,7 @@ describe('CfgTest', () => {
         testBlocks(scene, 'gotoSample.cpp', 'case8', GOTO_EXPECT.GOTO_EXPECT_CASE8.blocks);
         testBlocks(scene, 'gotoSample.cpp', 'case9', GOTO_EXPECT.GOTO_EXPECT_CASE9.blocks);
         testBlocks(scene, 'gotoSample.cpp', 'case10', GOTO_EXPECT.GOTO_EXPECT_CASE10.blocks);
-        },
-    );
+    });
     it('case7: binaryCondition', () => {
         const scene = buildScene('binaryConditional');
         testBlocks(scene, 'binaryConditionalSample.cpp', 'case1', BINARY_CONDITIONAL_EXPECT.BINARY_CONDITIONAL_EXPECT_CASE1.blocks);
@@ -142,50 +135,43 @@ describe('CfgTest', () => {
         testBlocks(scene, 'binaryConditionalSample.cpp', 'case4', BINARY_CONDITIONAL_EXPECT.BINARY_CONDITIONAL_EXPECT_CASE4.blocks);
         testBlocks(scene, 'binaryConditionalSample.cpp', 'case5', BINARY_CONDITIONAL_EXPECT.BINARY_CONDITIONAL_EXPECT_CASE5.blocks);
         testBlocks(scene, 'binaryConditionalSample.cpp', 'case6', BINARY_CONDITIONAL_EXPECT.BINARY_CONDITIONAL_EXPECT_CASE6.blocks);
-        },
-    );
+    });
     it('case8: addrLabelExpr', () => {
-            const scene = buildScene('addrLabelExpr');
-            testBlocks(scene, 'addrLabelExpr.cpp', 'foo1', ADDRLABEL_EXPECT.ADDRLABEL_EXPECT_CASE1.blocks);
-            testBlocks(scene, 'addrLabelExpr.cpp', 'foo2', ADDRLABEL_EXPECT.ADDRLABEL_EXPECT_CASE2.blocks);
-            testBlocks(scene, 'addrLabelExpr.cpp', 'foo3', ADDRLABEL_EXPECT.ADDRLABEL_EXPECT_CASE3.blocks);
-        },
-    );
+        const scene = buildScene('addrLabelExpr');
+        testBlocks(scene, 'addrLabelExpr.cpp', 'foo1', ADDRLABEL_EXPECT.ADDRLABEL_EXPECT_CASE1.blocks);
+        testBlocks(scene, 'addrLabelExpr.cpp', 'foo2', ADDRLABEL_EXPECT.ADDRLABEL_EXPECT_CASE2.blocks);
+        testBlocks(scene, 'addrLabelExpr.cpp', 'foo3', ADDRLABEL_EXPECT.ADDRLABEL_EXPECT_CASE3.blocks);
+    });
 });
-
 
 describe('Type Test', () => {
     it('case1: base dataType', () => {
-            const scene = buildScene('baseDataType');
+        const scene = buildScene('baseDataType');
         testBlocks(scene, 'baseDataType.cpp', 'main', BASE_DATA_TYPE_EXPECT.BASE_DATA_TYPE_EXPECT_MAIN.blocks);
-        },
-    );
+    });
     it('case2: pointer Type', () => {
-            const scene = buildScene('pointer');
+        const scene = buildScene('pointer');
         testBlocks(scene, 'pointerExpr.cpp', 'ptrType', POINTER_EXPECT.POINTER_EXPECT_CASE1.blocks);
         testBlocks(scene, 'pointerExpr.cpp', 'basePtrOp', POINTER_EXPECT.POINTER_EXPECT_CASE2.blocks);
         testBlocks(scene, 'pointerExpr.cpp', 'multiLevelPtrOp', POINTER_EXPECT.POINTER_EXPECT_CASE3.blocks);
-        },
-    );
+    });
     it('case3: reference Type', () => {
-            const scene = buildScene('reference');
+        const scene = buildScene('reference');
         testBlocks(scene, 'reference.cpp', 'baseLeftRefer', REFERENCE_EXPECT.REFERENCE_EXPECT_CASE1.blocks);
         testBlocks(scene, 'reference.cpp', 'pointRefer', REFERENCE_EXPECT.REFERENCE_EXPECT_CASE2.blocks);
         testBlocks(scene, 'reference.cpp', 'myClassRefer', REFERENCE_EXPECT.REFERENCE_EXPECT_CASE3.blocks);
         testBlocks(scene, 'reference.cpp', 'baseRightRefer', REFERENCE_EXPECT.REFERENCE_EXPECT_CASE4.blocks);
         testBlocks(scene, 'reference.cpp', 'relay', REFERENCE_EXPECT.REFERENCE_EXPECT_CASE5.blocks);
         testBlocks(scene, 'reference.cpp', 'moveCase', REFERENCE_EXPECT.REFERENCE_EXPECT_CASE6.blocks);
-        },
-    );
+    });
     it('case4: Derived Class', () => {
-            const scene = buildScene('derivedDataType');
-            testBlocksClass(scene, 'derivedDataType.cpp', 'MyClass', DERIVED_DATA_TYPE_EXPECT.DERIVED_DATA_TYPE_EXPECT_CLASS);
-            testBlocksClass(scene, 'derivedDataType.cpp', 'DefaultClass', DERIVED_DATA_TYPE_EXPECT.DERIVED_DATA_TYPE_EXPECT_CLASS2);
-            testBlocksClass(scene, 'derivedDataType.cpp', 'MyStruct', DERIVED_DATA_TYPE_EXPECT.DERIVED_DATA_TYPE_EXPECT_STRUCT);
-        },
-    );
+        const scene = buildScene('derivedDataType');
+        testBlocksClass(scene, 'derivedDataType.cpp', 'MyClass', DERIVED_DATA_TYPE_EXPECT.DERIVED_DATA_TYPE_EXPECT_CLASS);
+        testBlocksClass(scene, 'derivedDataType.cpp', 'DefaultClass', DERIVED_DATA_TYPE_EXPECT.DERIVED_DATA_TYPE_EXPECT_CLASS2);
+        testBlocksClass(scene, 'derivedDataType.cpp', 'MyStruct', DERIVED_DATA_TYPE_EXPECT.DERIVED_DATA_TYPE_EXPECT_STRUCT);
+    });
     it('case5: DataStruct Test', () => {
-            const scene = buildScene('dataStruct');
+        const scene = buildScene('dataStruct');
         testBlocks(scene, 'dataStruct.cpp', 'vectorTest', DATA_STRUCT_EXPECT.DATA_STRUCT_EXPECT_VECTOR.blocks);
         testBlocks(scene, 'dataStruct.cpp', 'setTest', DATA_STRUCT_EXPECT.DATA_STRUCT_EXPECT_SET.blocks);
         testBlocks(scene, 'dataStruct.cpp', 'mapTest', DATA_STRUCT_EXPECT.DATA_STRUCT_EXPECT_MAP.blocks);
@@ -194,25 +180,22 @@ describe('Type Test', () => {
         testBlocks(scene, 'dataStruct.cpp', 'dequeTest', DATA_STRUCT_EXPECT.DATA_STRUCT_EXPECT_DEQUE.blocks);
         testBlocks(scene, 'dataStruct.cpp', 'stackTest', DATA_STRUCT_EXPECT.DATA_STRUCT_EXPECT_STACK.blocks);
         testBlocks(scene, 'dataStruct.cpp', 'listTest', DATA_STRUCT_EXPECT.DATA_STRUCT_EXPECT_LIST.blocks);
-        },
-    );
+    });
     it('case6: NullPtr Test', () => {
-            const scene = buildScene('nullPtr');
+        const scene = buildScene('nullPtr');
         testBlocks(scene, 'nullPtrSample.cpp', 'case1', NULLPTR_EXPECT.NULLPTR_EXPECT_CASE1.blocks);
-        },
-    );
+    });
     it('case7: CompoundLiteral Test', () => {
-            const scene = buildScene('compoundLiteral');
+        const scene = buildScene('compoundLiteral');
         testBlocks(scene, 'compoundLiteralExpr.cpp', 'case1', COMPOUND_LITERAL_EXPECT.COMPOUND_LITERAL_EXPECT_CASE1.blocks);
         testBlocks(scene, 'compoundLiteralExpr.cpp', 'case2', COMPOUND_LITERAL_EXPECT.COMPOUND_LITERAL_EXPECT_CASE2.blocks);
         testBlocks(scene, 'compoundLiteralExpr.cpp', 'case3', COMPOUND_LITERAL_EXPECT.COMPOUND_LITERAL_EXPECT_CASE3.blocks);
         testBlocks(scene, 'compoundLiteralExpr.cpp', 'case4', COMPOUND_LITERAL_EXPECT.COMPOUND_LITERAL_EXPECT_CASE4.blocks);
         testBlocks(scene, 'compoundLiteralExpr.cpp', 'case5', COMPOUND_LITERAL_EXPECT.COMPOUND_LITERAL_EXPECT_CASE5.blocks);
-        },
-    );
+    });
 
     it('case:8 Template Test', () => {
-            const scene = buildScene('template');
+        const scene = buildScene('template');
         testBlocks(scene, 'template.cpp', 'max1', TEMPLATE_EXPECT.TEMPLATE_EXPECT_CASE1.blocks);
         testBlocks(scene, 'template.cpp', 'max2', TEMPLATE_EXPECT.TEMPLATE_EXPECT_CASE2.blocks);
         testBlocks(scene, 'template.cpp', 'printPair', TEMPLATE_EXPECT.TEMPLATE_EXPECT_CASE3.blocks);
@@ -220,8 +203,7 @@ describe('Type Test', () => {
         testBlocks(scene, 'template.cpp', 'main', TEMPLATE_EXPECT.TEMPLATE_EXPECT_CASE4.blocks);
         testBlocks(scene, 'template.cpp', 'sum', TEMPLATE_EXPECT.TEMPLATE_EXPECT_CASE5.blocks);
         testBlocks(scene, 'template.cpp', 'instantiation3', TEMPLATE_EXPECT.TEMPLATE_EXPECT_CASE6.blocks);
-        },
-    );
+    });
 
     it('case9: class Test', () => {
         const scene = buildScene('class');
@@ -236,49 +218,39 @@ describe('Type Test', () => {
         testBlocksClass(scene, 'classSample.cpp', 'D', CLASS_EXPECT.D_CLASS_EXPECT);
         testBlocks(scene, 'classSample.cpp', 'main', CLASS_EXPECT.MAIN_EXPECT.blocks);
     });
-
-
-
 });
 describe('Function Test', () => {
     it('case1: return value', () => {
-            const scene = buildScene('operators');
+        const scene = buildScene('operators');
         testBlocks(scene, 'cppOperators.cpp', 'returnValue', OPERATOR_EXPECT.OPERATOR_EXPECT_RETURN.blocks);
-        },
-    );
+    });
     it('case2: no return value', () => {
-            const scene = buildScene('operators');
+        const scene = buildScene('operators');
         testBlocks(scene, 'cppOperators.cpp', 'noReturnValue', OPERATOR_EXPECT.OPERATOR_EXPECT_NO_RETURN.blocks);
-        },
-    );
+    });
 
     it('case3: Lambda Function Test', () => {
-            const scene = buildScene('lambdaFunc');
+        const scene = buildScene('lambdaFunc');
         testBlocks(scene, 'lambdaFuncSample.cpp', 'case1', LAMBDA_EXPECT.LAMBDA_EXPECT_CASE1.blocks);
         testBlocks(scene, 'lambdaFuncSample.cpp', 'case2', LAMBDA_EXPECT.LAMBDA_EXPECT_CASE2.blocks);
         testBlocks(scene, 'lambdaFuncSample.cpp', 'case3', LAMBDA_EXPECT.LAMBDA_EXPECT_CASE3.blocks);
         testBlocks(scene, 'lambdaFuncSample.cpp', 'case4', LAMBDA_EXPECT.LAMBDA_EXPECT_CASE4.blocks);
-        },
-    );
+    });
 
     it('case4: delete Expression Test', () => {
-            const scene = buildScene('delete');
+        const scene = buildScene('delete');
         testBlocks(scene, 'deleteExpr.cpp', 'delObj', DELETE_EXPECT.DELETE_EXPECT_CASE1.blocks);
         testBlocks(scene, 'deleteExpr.cpp', 'delArr', DELETE_EXPECT.DELETE_EXPECT_CASE2.blocks);
         testBlocks(scene, 'deleteExpr.cpp', 'delClassObj', DELETE_EXPECT.DELETE_EXPECT_CASE3.blocks);
         testBlocks(scene, 'deleteExpr.cpp', 'delMember', DELETE_EXPECT.DELETE_EXPECT_CASE4.blocks);
-        },
-    );
+    });
 
     it('case5: Overload Test', () => {
         const scene = buildScene('overload');
         scene.inferTypes();
-        testBlocksWithSignature(scene, 'overloadSample.cpp', '',
-            'printInfo(int)', OVERLOAD.OVERLOAD_PRINT_INFO_CASE1_EXPECT.blocks);
-        testBlocksWithSignature(scene, 'overloadSample.cpp', '',
-            'printInfo(char)', OVERLOAD.OVERLOAD_PRINT_INFO_CASE2_EXPECT.blocks);
-        testBlocksWithSignature(scene, 'overloadSample.cpp', '',
-            'printInfo(int, char)', OVERLOAD.OVERLOAD_PRINT_INFO_CASE3_EXPECT.blocks);
+        testBlocksWithSignature(scene, 'overloadSample.cpp', '', 'printInfo(int)', OVERLOAD.OVERLOAD_PRINT_INFO_CASE1_EXPECT.blocks);
+        testBlocksWithSignature(scene, 'overloadSample.cpp', '', 'printInfo(char)', OVERLOAD.OVERLOAD_PRINT_INFO_CASE2_EXPECT.blocks);
+        testBlocksWithSignature(scene, 'overloadSample.cpp', '', 'printInfo(int, char)', OVERLOAD.OVERLOAD_PRINT_INFO_CASE3_EXPECT.blocks);
         testBlocksClass(scene, 'overloadSample.cpp', 'Person', OVERLOAD.OVERLOAD_CLASS_PERSON_EXPECT, true);
         testBlocksClass(scene, 'overloadSample.cpp', 'Vector', OVERLOAD.VECTOR_CLASS_EXPECT);
         testBlocks(scene, 'overloadSample.cpp', 'operator<<', OVERLOAD.OVERLOAD_COUT_EXPECT.blocks);
@@ -287,42 +259,36 @@ describe('Function Test', () => {
     });
 });
 
-
-
 describe('Other Test', () => {
     it('case1: arithmetic operator', () => {
-            const scene = buildScene('operators');
+        const scene = buildScene('operators');
         testBlocks(scene, 'cppOperators.cpp', 'arithmeticOperator', OPERATOR_EXPECT.OPERATOR_EXPECT_CASE1.blocks);
         testBlocks(scene, 'cppOperators.cpp', 'relationOperator', OPERATOR_EXPECT.OPERATOR_EXPECT_CASE2.blocks);
         testBlocks(scene, 'cppOperators.cpp', 'componentOperator', OPERATOR_EXPECT.OPERATOR_EXPECT_CASE3.blocks);
         testBlocks(scene, 'cppOperators.cpp', 'bitOperator', OPERATOR_EXPECT.OPERATOR_EXPECT_CASE4.blocks);
         testBlocks(scene, 'cppOperators.cpp', 'otherOperator', OPERATOR_EXPECT.OPERATOR_EXPECT_CASE5.blocks);
-        },
-    );
+    });
     it('case2: try catch throw', () => {
-            const scene = buildScene('throw');
+        const scene = buildScene('throw');
         testBlocks(scene, 'throwSample.cpp', 'division', THROW_EXPECT.THROW_EXPECT_CASE1.blocks);
         testBlocks(scene, 'throwSample.cpp', 'main', THROW_EXPECT.THROW_EXPECT_CASE2.blocks);
         testBlocks(scene, 'throwSample.cpp', 'try_throw_case', THROW_EXPECT.THROW_EXPECT_CASE3.blocks);
-        },
-    );
+    });
     it('case3: iostream', () => {
-            const scene = buildScene('iostream');
+        const scene = buildScene('iostream');
         testBlocks(scene, 'iostreamTest.cpp', 'main', IOSTREAM_EXPECT.IOSTREAM_EXPECT_CASE1.blocks);
-        },
-    );
+    });
     it('case4: Cast Test', () => {
-            const scene = buildScene('cast');
+        const scene = buildScene('cast');
         testBlocks(scene, 'castSample.cpp', 'CXXStaticCastTest', CAST_EXPECT.CAST_EXPECT_CASE1.blocks);
-        testBlocks(scene, 'castSample.cpp',  'cStyleCastTest', CAST_EXPECT.CAST_EXPECT_CASE2.blocks);
+        testBlocks(scene, 'castSample.cpp', 'cStyleCastTest', CAST_EXPECT.CAST_EXPECT_CASE2.blocks);
         testBlocks(scene, 'castSample.cpp', 'CXXConstCastTest', CAST_EXPECT.CAST_EXPECT_CASE3.blocks);
         testBlocks(scene, 'castSample.cpp', 'CXXDynamicCastTest', CAST_EXPECT.CAST_EXPECT_CASE4.blocks);
         testBlocks(scene, 'castSample.cpp', 'CXXReinterpretCastTest', CAST_EXPECT.CAST_EXPECT_CASE5.blocks);
         testBlocks(scene, 'castSample.cpp', 'CXXFunctionalCastTest', CAST_EXPECT.CAST_EXPECT_CASE6.blocks);
-        },
-    );
+    });
     it('case5: NullStmt Test', () => {
-            const scene = buildScene('nullStmt');
+        const scene = buildScene('nullStmt');
         testBlocks(scene, 'nullStmtSample.cpp', 'case1', NULLSTMT_EXPECT.NULLSTMT_EXPECT_CASE1.blocks);
         testBlocks(scene, 'nullStmtSample.cpp', 'case2', NULLSTMT_EXPECT.NULLSTMT_EXPECT_CASE2.blocks);
         testBlocks(scene, 'nullStmtSample.cpp', 'case3', NULLSTMT_EXPECT.NULLSTMT_EXPECT_CASE3.blocks);
@@ -334,125 +300,109 @@ describe('Other Test', () => {
         testBlocks(scene, 'nullStmtSample.cpp', 'case9', NULLSTMT_EXPECT.NULLSTMT_EXPECT_CASE9.blocks);
         testBlocks(scene, 'nullStmtSample.cpp', 'case10', NULLSTMT_EXPECT.NULLSTMT_EXPECT_CASE10.blocks);
         testBlocks(scene, 'nullStmtSample.cpp', 'case11', NULLSTMT_EXPECT.NULLSTMT_EXPECT_CASE11.blocks);
-        },
-    );
+    });
     it('case6: BuiltInAndSTLFunc Test', () => {
-            const scene = buildScene('builtInAndSTLFunc');
+        const scene = buildScene('builtInAndSTLFunc');
         testBlocks(scene, 'builtInAndSTLFunction.cpp', 'CXXTypeidExprTest', BUILT_IN_EXPECT.BUILT_IN_EXPECT_CASE1.blocks);
         testBlocks(scene, 'builtInAndSTLFunction.cpp', 'ArrayTypeTraitTest', BUILT_IN_EXPECT.BUILT_IN_EXPECT_CASE2.blocks);
         testBlocks(scene, 'builtInAndSTLFunction.cpp', 'CXXNoexceptExprTest', BUILT_IN_EXPECT.BUILT_IN_EXPECT_CASE3.blocks);
         testBlocks(scene, 'builtInAndSTLFunction.cpp', 'AtomicExprTest', BUILT_IN_EXPECT.BUILT_IN_EXPECT_CASE4.blocks);
-        },
-    );
+    });
 });
-
 
 describe('Lazy Import Test', () => {
     it('case1: lazy import case1', () => {
         const scene = buildScene('lazyImport/lazyImportCase1');
         testBlocksClass(scene, 'lazyImportCase1.cpp', 'GlobalConfig', LAZY_IMPORT_EXPECT1.LAZY_IMPORT_CASE1_CLASS);
-        },
-    );
+    });
     it('case2: lazy import case2', () => {
-            const scene = buildScene('lazyImport/lazyImportCase2');
-            testBlocks(scene, 'lazyImportCase2.cpp', 'DefineObject', lazyImportCase2.DEFINE_OBJECT_EXPECT.blocks);
-            testBlocks(scene, 'lazyImportCase2.cpp', 'CallObject', lazyImportCase2.CALL_OBJECT_EXPECT.blocks);
-        },
-    );
+        const scene = buildScene('lazyImport/lazyImportCase2');
+        testBlocks(scene, 'lazyImportCase2.cpp', 'DefineObject', lazyImportCase2.DEFINE_OBJECT_EXPECT.blocks);
+        testBlocks(scene, 'lazyImportCase2.cpp', 'CallObject', lazyImportCase2.CALL_OBJECT_EXPECT.blocks);
+    });
     it('case3: lazy import case3', () => {
-            const scene = buildScene('lazyImport/lazyImportCase3');
-            testBlocks(scene, 'lazyImportCase3.cpp', 'MapDemo', lazyImportCase3.MapDemo_EXPECT.blocks);
-        },
-    );
+        const scene = buildScene('lazyImport/lazyImportCase3');
+        testBlocks(scene, 'lazyImportCase3.cpp', 'MapDemo', lazyImportCase3.MapDemo_EXPECT.blocks);
+    });
     it('case4: lazy import case4', () => {
-            const scene = buildScene('lazyImport/lazyImportCase4');
-            testBlocks(scene, 'lazyImportCase4.cpp', 'NativeCallArkTS', lazyImportCase4.NativeCallArkTS_EXPECT.blocks);
-        },
-    );
+        const scene = buildScene('lazyImport/lazyImportCase4');
+        testBlocks(scene, 'lazyImportCase4.cpp', 'NativeCallArkTS', lazyImportCase4.NativeCallArkTS_EXPECT.blocks);
+    });
     it('case5: lazy import case5', () => {
-            const scene = buildScene('lazyImport/lazyImportCase5');
-            testBlocks(scene, 'lazyImportCase5.cpp', 'Napi_AddPropertyInt32', lazyImportCase5.Napi_AddPropertyInt32_EXPECT.blocks);
-            testBlocks(scene, 'lazyImportCase5.cpp', 'CallbackToArkTS', lazyImportCase5.CallbackToArkTS_EXPECT.blocks);
-        },
-    );
+        const scene = buildScene('lazyImport/lazyImportCase5');
+        testBlocks(scene, 'lazyImportCase5.cpp', 'Napi_AddPropertyInt32', lazyImportCase5.Napi_AddPropertyInt32_EXPECT.blocks);
+        testBlocks(scene, 'lazyImportCase5.cpp', 'CallbackToArkTS', lazyImportCase5.CallbackToArkTS_EXPECT.blocks);
+    });
     it('case6: lazy import case6', () => {
-            const scene = buildScene('lazyImport/lazyImportCase6');
-            testBlocks(scene, 'lazyImportCase6.cpp', 'CallFunction', lazyImportCase6.CallFunction_EXPECT.blocks);
-        },
-    );
+        const scene = buildScene('lazyImport/lazyImportCase6');
+        testBlocks(scene, 'lazyImportCase6.cpp', 'CallFunction', lazyImportCase6.CallFunction_EXPECT.blocks);
+    });
     it('case7: lazy import case7', () => {
-            const scene = buildScene('lazyImport/lazyImportCase7');
-            testBlocks(scene, 'lazyImportCase7.cpp', 'ModifyObject', lazyImportCase7.ModifyObject_EXPECT.blocks);
-        },
-    );
+        const scene = buildScene('lazyImport/lazyImportCase7');
+        testBlocks(scene, 'lazyImportCase7.cpp', 'ModifyObject', lazyImportCase7.ModifyObject_EXPECT.blocks);
+    });
     it('case8: lazy import case8', () => {
-            const scene = buildScene('lazyImport/lazyImportCase8');
-            testBlocks(scene, 'lazyImportCase8.cpp', 'NativeCallArkTS', lazyImportCase8.NativeCallArkTS8_EXPECT.blocks);
-        },
-    );
+        const scene = buildScene('lazyImport/lazyImportCase8');
+        testBlocks(scene, 'lazyImportCase8.cpp', 'NativeCallArkTS', lazyImportCase8.NativeCallArkTS8_EXPECT.blocks);
+    });
 });
 
 describe('namespace Test', () => {
     it('case1: namespace', () => {
-            const scene = buildScene('namespace');
-            testBlocks(scene, 'namespace.cpp', 'test', NAMESPACE_EXPECT.NAMESPACE_CASE1.blocks);
-        },
-    );
+        const scene = buildScene('namespace');
+        testBlocks(scene, 'namespace.cpp', 'test', NAMESPACE_EXPECT.NAMESPACE_CASE1.blocks);
+    });
 });
 
 describe('using Test', () => {
     it('case1: using', () => {
-            const scene = buildScene('using');
-            testBlocks(scene, 'usingcase.cpp', 'test_using_namespace', USING_EXPECT.USING_EXPECT_CASE1.blocks);},
-    );
+        const scene = buildScene('using');
+        testBlocks(scene, 'usingcase.cpp', 'test_using_namespace', USING_EXPECT.USING_EXPECT_CASE1.blocks);
+    });
     it('case2: using', () => {
         const scene = buildScene('using');
-        testBlocks(scene, 'usingcase.cpp', 'test_using_declaration', USING_EXPECT.USING_EXPECT_CASE2.blocks);},
-    );
+        testBlocks(scene, 'usingcase.cpp', 'test_using_declaration', USING_EXPECT.USING_EXPECT_CASE2.blocks);
+    });
     it('case3: using', () => {
         const scene = buildScene('using');
-        testBlocks(scene, 'usingcase.cpp', 'test_using_base_member', USING_EXPECT.USING_EXPECT_CASE3.blocks);},
-    );
+        testBlocks(scene, 'usingcase.cpp', 'test_using_base_member', USING_EXPECT.USING_EXPECT_CASE3.blocks);
+    });
     it('case4: using', () => {
         const scene = buildScene('using');
-        testBlocks(scene, 'usingcase.cpp', 'test_using_enum_member', USING_EXPECT.USING_EXPECT_CASE4.blocks);},
-    );
+        testBlocks(scene, 'usingcase.cpp', 'test_using_enum_member', USING_EXPECT.USING_EXPECT_CASE4.blocks);
+    });
 });
 
 describe('typedef Test', () => {
     it('case1: typedef', () => {
         const scene = buildScene('typedef');
         testBlocks(scene, 'typedef.cpp', 'main', TYPEDEF_EXPECT.TYPEDEF_EXPECT_CASE1.blocks);
-        },
-    );
+    });
 });
 
 describe('thread Test', () => {
     it('case1: thread', () => {
-            const scene = buildScene('thread');
-            testBlocks(scene, 'thread.cpp', 'case1', THREAD_EXPECT.THREAD_EXPECT_CASE1.blocks);
-            testBlocks(scene, 'thread.cpp', 'case2', THREAD_EXPECT.THREAD_EXPECT_CASE2.blocks);
-            testBlocks(scene, 'thread.cpp', 'case3', THREAD_EXPECT.THREAD_EXPECT_CASE3.blocks);
-            testBlocks(scene, 'thread.cpp', 'case4', THREAD_EXPECT.THREAD_EXPECT_CASE4.blocks);
-        },
-    );
+        const scene = buildScene('thread');
+        testBlocks(scene, 'thread.cpp', 'case1', THREAD_EXPECT.THREAD_EXPECT_CASE1.blocks);
+        testBlocks(scene, 'thread.cpp', 'case2', THREAD_EXPECT.THREAD_EXPECT_CASE2.blocks);
+        testBlocks(scene, 'thread.cpp', 'case3', THREAD_EXPECT.THREAD_EXPECT_CASE3.blocks);
+        testBlocks(scene, 'thread.cpp', 'case4', THREAD_EXPECT.THREAD_EXPECT_CASE4.blocks);
+    });
     it('case2: functionPointer', () => {
-            const scene = buildScene('functionPointer');
-            testBlocks(scene, 'functionPointer.cpp', 'case1', FUNCPTR_EXPECT.FUNCPTR_EXPECT_CASE1.blocks);
-            testBlocks(scene, 'functionPointer.cpp', 'case2', FUNCPTR_EXPECT.FUNCPTR_EXPECT_CASE2.blocks);
-            testBlocks(scene, 'functionPointer.cpp', 'case3', FUNCPTR_EXPECT.FUNCPTR_EXPECT_CASE3.blocks);
-            testBlocks(scene, 'functionPointer.cpp', 'greet', FUNCPTR_EXPECT.FUNCPTR_EXPECT_GREET.blocks);
-        },
-    );
+        const scene = buildScene('functionPointer');
+        testBlocks(scene, 'functionPointer.cpp', 'case1', FUNCPTR_EXPECT.FUNCPTR_EXPECT_CASE1.blocks);
+        testBlocks(scene, 'functionPointer.cpp', 'case2', FUNCPTR_EXPECT.FUNCPTR_EXPECT_CASE2.blocks);
+        testBlocks(scene, 'functionPointer.cpp', 'case3', FUNCPTR_EXPECT.FUNCPTR_EXPECT_CASE3.blocks);
+        testBlocks(scene, 'functionPointer.cpp', 'greet', FUNCPTR_EXPECT.FUNCPTR_EXPECT_GREET.blocks);
+    });
 });
 
 describe('decltype Test', () => {
     it('case1: decltype', () => {
-            const scene = buildScene('decltype');
-            testBlocks(scene, 'decltype.cpp', 'autoTest', AUTO_EXPECT.AUTO_EXPECT_CASE1.blocks);
-            testBlocks(scene, 'decltype.cpp', 'decltypeTest', AUTO_EXPECT.DECLTYPE_EXPECT_CASE1.blocks);
-        },
-    );
+        const scene = buildScene('decltype');
+        testBlocks(scene, 'decltype.cpp', 'autoTest', AUTO_EXPECT.AUTO_EXPECT_CASE1.blocks);
+        testBlocks(scene, 'decltype.cpp', 'decltypeTest', AUTO_EXPECT.DECLTYPE_EXPECT_CASE1.blocks);
+    });
 });
 
 const BASE_DIR = 'tests/resources_cpp/cfg';
@@ -467,8 +417,8 @@ function buildScene(folderName: string): Scene {
 }
 
 function testBlocksClass(scene: Scene, filePath: string, className: string, expectBlocks: any, isCheckOverload?: boolean): void {
-    const arkFile = scene.getFiles().find((file) => file.getName().endsWith(filePath));
-    const arkClass = arkFile?.getClasses().find(arkClass => (arkClass.getName() === className));
+    const arkFile = scene.getFiles().find(file => file.getName().endsWith(filePath));
+    const arkClass = arkFile?.getClasses().find(arkClass => arkClass.getName() === className);
     const classBlockMap = new Map<String, BasicBlock[]>();
     for (const block of expectBlocks.blocks) {
         classBlockMap.set(block.methodName, block.blocks);
@@ -477,20 +427,20 @@ function testBlocksClass(scene: Scene, filePath: string, className: string, expe
     const heritageClasses = new Set();
     arkClass?.getAllHeritageClasses()?.forEach(heritageClass => {
         heritageClasses.add(heritageClass.getName());
-    })
+    });
     expect(heritageClasses).toEqual(new Set(expectBlocks.heritageClasses));
     // 2.判断类的域成员
     const fieldOfClass = new Set();
     arkClass?.getFields()?.forEach(field => {
         fieldOfClass.add(field.getName());
-    })
+    });
     expect(fieldOfClass).toEqual(new Set(expectBlocks.fields));
     // 3.判断类的成员函数
-    arkClass?.getMethods()?.forEach(method =>{
+    arkClass?.getMethods()?.forEach(method => {
         const mapKey = isCheckOverload ? method.getSubSignature().toString() : method.getName();
         const classBlock = classBlockMap.get(mapKey);
         if (classBlock) {
             assertClassBlocksEqual(method, classBlock);
         }
-    })
+    });
 }

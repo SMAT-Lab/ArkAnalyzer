@@ -16,15 +16,7 @@
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { AbstractExpr, ArkInstanceInvokeExpr, ArkPtrInvokeExpr, ArkStaticInvokeExpr } from '../base/Expr';
 import { Local } from '../base/Local';
-import {
-    AbstractFieldRef,
-    AbstractRef,
-    ArkArrayRef,
-    ArkInstanceFieldRef,
-    ArkParameterRef,
-    ArkStaticFieldRef,
-    GlobalRef
-} from '../base/Ref';
+import { AbstractFieldRef, AbstractRef, ArkArrayRef, ArkInstanceFieldRef, ArkParameterRef, ArkStaticFieldRef, GlobalRef } from '../base/Ref';
 import { ArkAliasTypeDefineStmt, ArkAssignStmt, ArkReturnStmt, Stmt } from '../base/Stmt';
 import {
     AliasType,
@@ -438,8 +430,14 @@ export class TypeInference {
 
     public static isUnclearType(type: Type | null | undefined): boolean {
         // TODO: For UnionType, IntersectionType and TupleType, it should recurse check every item of them.
-        if (!type || type instanceof UnknownType || type instanceof UnclearReferenceType || type instanceof NullType ||
-            type instanceof UndefinedType || type instanceof GenericType) {
+        if (
+            !type ||
+            type instanceof UnknownType ||
+            type instanceof UnclearReferenceType ||
+            type instanceof NullType ||
+            type instanceof UndefinedType ||
+            type instanceof GenericType
+        ) {
             return true;
         } else if (
             type instanceof ClassType &&
@@ -465,9 +463,7 @@ export class TypeInference {
     }
 
     // This is the temporal function to check Type recursively and can be removed after typeInfer supports multiple candidate types.
-    public static checkType(type: Type,
-                            check: (t: Type) => boolean,
-                            visited: Set<Type> = new Set()): boolean {
+    public static checkType(type: Type, check: (t: Type) => boolean, visited: Set<Type> = new Set()): boolean {
         if (visited.has(type)) {
             return false;
         } else {
@@ -928,8 +924,13 @@ export class TypeInference {
     public static inferFunctionType(argType: FunctionType, paramSubSignature: MethodSubSignature | undefined, realTypes: Type[] | undefined): void {
         const returnType = argType.getMethodSignature().getMethodSubSignature().getReturnType();
         const declareType = paramSubSignature?.getReturnType();
-        if (declareType instanceof GenericType && realTypes && !realTypes[declareType.getIndex()] &&
-            !this.isUnclearType(returnType) && !(returnType instanceof VoidType)) {
+        if (
+            declareType instanceof GenericType &&
+            realTypes &&
+            !realTypes[declareType.getIndex()] &&
+            !this.isUnclearType(returnType) &&
+            !(returnType instanceof VoidType)
+        ) {
             realTypes[declareType.getIndex()] = returnType;
         }
         const params = paramSubSignature?.getParameters();

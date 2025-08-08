@@ -24,30 +24,23 @@ export const DELETE_EXPECT_CASE1 = {
                 'a = %0',
                 '%1 = delete a',
                 'a = nullptr',
-                'return'
+                'return',
             ],
             preds: [],
-            succes: []
-        }
-    ]
+            succes: [],
+        },
+    ],
 };
 
 export const DELETE_EXPECT_CASE2 = {
     blocks: [
         {
             id: 0,
-            stmts: [
-                'this = this: @delete/deleteExpr.cpp: %dflt',
-                '%0 = newarray (int*)[10]',
-                'arr = %0',
-                '%1 = delete arr',
-                'arr = nullptr',
-                'return'
-            ],
+            stmts: ['this = this: @delete/deleteExpr.cpp: %dflt', '%0 = newarray (int*)[10]', 'arr = %0', '%1 = delete arr', 'arr = nullptr', 'return'],
             preds: [],
-            succes: []
-        }
-    ]
+            succes: [],
+        },
+    ],
 };
 
 export const DELETE_EXPECT_CASE3 = {
@@ -61,12 +54,12 @@ export const DELETE_EXPECT_CASE3 = {
                 'a = %0',
                 '%1 = delete a',
                 'a = nullptr',
-                'return'
+                'return',
             ],
             preds: [],
-            succes: []
-        }
-    ]
+            succes: [],
+        },
+    ],
 };
 
 export const DELETE_EXPECT_CASE4 = {
@@ -81,10 +74,10 @@ export const DELETE_EXPECT_CASE4 = {
                 '%1 = delete ss-><@delete/deleteExpr.cpp: myStruct.a>',
                 '%2 = delete ss',
                 'ss = nullptr',
-                'return'
+                'return',
             ],
             preds: [],
-            succes: []
-        }
-    ]
+            succes: [],
+        },
+    ],
 };

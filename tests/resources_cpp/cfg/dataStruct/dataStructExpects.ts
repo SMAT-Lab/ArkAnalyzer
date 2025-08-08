@@ -18,57 +18,57 @@ export const DATA_STRUCT_EXPECT_VECTOR = {
         {
             id: 0,
             stmts: [
-                "this = this: @dataStruct/dataStruct.cpp: %dflt",
-                "%0 = new @%unk/%unk: std::vector<int>",
-                "%1 = newarray (int[])[5]",
-                "%1[0] = 1",
-                "%1[1] = 2",
-                "%1[2] = 3",
-                "%1[3] = 4",
-                "%1[4] = 5",
-                "instanceinvoke %0.<@%unk/%unk: std::vector<int>.constructor()>(%1)",
-                "vec1 = %0",
-                "men = vec1[2]",
+                'this = this: @dataStruct/dataStruct.cpp: %dflt',
+                '%0 = new @%unk/%unk: std::vector<int>',
+                '%1 = newarray (int[])[5]',
+                '%1[0] = 1',
+                '%1[1] = 2',
+                '%1[2] = 3',
+                '%1[3] = 4',
+                '%1[4] = 5',
+                'instanceinvoke %0.<@%unk/%unk: std::vector<int>.constructor()>(%1)',
+                'vec1 = %0',
+                'men = vec1[2]',
                 "staticinvoke <@%unk/%unk: .cout()>('vec1[2]', men)",
-                "vec1[2] = 6",
-                "%2 = vec1[2]",
-                "staticinvoke <@%unk/%unk: .cout()>(%2)",
-                "%3 = instanceinvoke vec1.<@std/vector.h: vector.back()>()",
-                "staticinvoke <@%unk/%unk: .cout()>(%3)",
-                "%4 = new @%unk/%unk: std::vector<int>",
-                "instanceinvoke %4.<@%unk/%unk: std::vector<int>.constructor()>()",
-                "vec2 = %4",
-                "instanceinvoke vec2.<@std/vector.h: vector.push_back()>(10)",
-                "instanceinvoke vec2.<@std/vector.h: vector.push_back()>(20)",
-                "instanceinvoke vec2.<@std/vector.h: vector.push_back()>(30)",
-                "%5 = instanceinvoke vec2.<@std/vector.h: vector.size()>()",
+                'vec1[2] = 6',
+                '%2 = vec1[2]',
+                'staticinvoke <@%unk/%unk: .cout()>(%2)',
+                '%3 = instanceinvoke vec1.<@std/vector.h: vector.back()>()',
+                'staticinvoke <@%unk/%unk: .cout()>(%3)',
+                '%4 = new @%unk/%unk: std::vector<int>',
+                'instanceinvoke %4.<@%unk/%unk: std::vector<int>.constructor()>()',
+                'vec2 = %4',
+                'instanceinvoke vec2.<@std/vector.h: vector.push_back()>(10)',
+                'instanceinvoke vec2.<@std/vector.h: vector.push_back()>(20)',
+                'instanceinvoke vec2.<@std/vector.h: vector.push_back()>(30)',
+                '%5 = instanceinvoke vec2.<@std/vector.h: vector.size()>()',
                 "staticinvoke <@%unk/%unk: .cout()>('size is', %5, 'success')",
-                "instanceinvoke vec2.<@std/vector.h: vector.pop_back()>()",
-                "%6 = instanceinvoke vec2.<@std/vector.h: vector.size()>()",
-                "staticinvoke <@%unk/%unk: .cout()>(%6)",
-                "%7 = new @%unk/%unk: std::vector<int>",
-                "instanceinvoke %7.<@%unk/%unk: std::vector<int>.constructor()>()",
-                "vec3 = %7",
-                "instanceinvoke vec3.<@std/vector.h: vector.reserve()>(10)",
-                "i = 0",
+                'instanceinvoke vec2.<@std/vector.h: vector.pop_back()>()',
+                '%6 = instanceinvoke vec2.<@std/vector.h: vector.size()>()',
+                'staticinvoke <@%unk/%unk: .cout()>(%6)',
+                '%7 = new @%unk/%unk: std::vector<int>',
+                'instanceinvoke %7.<@%unk/%unk: std::vector<int>.constructor()>()',
+                'vec3 = %7',
+                'instanceinvoke vec3.<@std/vector.h: vector.reserve()>(10)',
+                'i = 0',
             ],
             preds: [],
-            succes: [ 1 ]
+            succes: [1],
         },
-        { id: 1, stmts: [ 'if i < 10' ], preds: [ 0, 2 ], succes: [ 2, 3 ] },
+        { id: 1, stmts: ['if i < 10'], preds: [0, 2], succes: [2, 3] },
         {
             id: 2,
             stmts: [
-                "instanceinvoke vec3.<@std/vector.h: vector.push_back()>(i)",
-                "%8 = instanceinvoke vec3.<@std/vector.h: vector.capacity()>()",
-                "staticinvoke <@%unk/%unk: .cout()>(%8)",
-                "i = i + 1",
+                'instanceinvoke vec3.<@std/vector.h: vector.push_back()>(i)',
+                '%8 = instanceinvoke vec3.<@std/vector.h: vector.capacity()>()',
+                'staticinvoke <@%unk/%unk: .cout()>(%8)',
+                'i = i + 1',
             ],
-            preds: [ 1 ],
-            succes: [ 1 ]
+            preds: [1],
+            succes: [1],
         },
-        { id: 3, stmts: [ 'return' ], preds: [ 1 ], succes: [] },
-    ]
+        { id: 3, stmts: ['return'], preds: [1], succes: [] },
+    ],
 };
 
 export const DATA_STRUCT_EXPECT_SET = {
@@ -98,12 +98,12 @@ export const DATA_STRUCT_EXPECT_SET = {
                 '%6 = instanceinvoke set3.<@std/set.h: set.count()>(3)',
                 'staticinvoke <@%unk/%unk: .cout()>(%6)',
                 'instanceinvoke set1.<@std/set.h: set.clear()>()',
-                'return'
+                'return',
             ],
             preds: [],
-            succes: []
+            succes: [],
         },
-    ]
+    ],
 };
 
 export const DATA_STRUCT_EXPECT_MAP = {
@@ -129,35 +129,28 @@ export const DATA_STRUCT_EXPECT_MAP = {
                 '%5 = instanceinvoke map1.<@std/map.h: map.find()>(1)',
                 '%6 = instanceinvoke map1.<@std/map.h: map.end()>()',
                 'if %5 != %6',
-                'it = instanceinvoke map1.<@std/map.h: map.begin()>()'
+                'it = instanceinvoke map1.<@std/map.h: map.begin()>()',
             ],
             preds: [],
-            succes: [ 1, 2 ]
+            succes: [1, 2],
         },
         {
             id: 1,
-            stmts: [ '%7 = map1[3]', 'staticinvoke <@%unk/%unk: .cout()>(%7)' ],
-            preds: [ 0 ],
-            succes: [ 2 ]
+            stmts: ['%7 = map1[3]', 'staticinvoke <@%unk/%unk: .cout()>(%7)'],
+            preds: [0],
+            succes: [2],
         },
         {
             id: 2,
-            stmts: [
-                '%8 = instanceinvoke map1.<@std/map.h: map.end()>()',
-                'if it != %8'
-            ],
-            preds: [ 0, 1, 3 ],
-            succes: [ 3, 4 ]
+            stmts: ['%8 = instanceinvoke map1.<@std/map.h: map.end()>()', 'if it != %8'],
+            preds: [0, 1, 3],
+            succes: [3, 4],
         },
         {
             id: 3,
-            stmts: [
-                '%9 = it-><@std/map.h: map.second>',
-                'staticinvoke <@%unk/%unk: .cout()>(%9)',
-                'it = it + 1'
-            ],
-            preds: [ 2 ],
-            succes: [ 2 ]
+            stmts: ['%9 = it-><@std/map.h: map.second>', 'staticinvoke <@%unk/%unk: .cout()>(%9)', 'it = it + 1'],
+            preds: [2],
+            succes: [2],
         },
         {
             id: 4,
@@ -168,12 +161,12 @@ export const DATA_STRUCT_EXPECT_MAP = {
                 `map2['Alice'] = 30`,
                 `map2['Bob'] = 25`,
                 `map2['Charlie'] = 35`,
-                'return'
+                'return',
             ],
-            preds: [ 2 ],
-            succes: []
+            preds: [2],
+            succes: [],
         },
-    ]
+    ],
 };
 
 export const DATA_STRUCT_EXPECT_MAP2 = {
@@ -196,21 +189,18 @@ export const DATA_STRUCT_EXPECT_MAP2 = {
                 'staticinvoke <@%unk/%unk: .cout()>(%4)',
                 "%5 = instanceinvoke myMap.<@std/unordered_map.h: unordered_map.find()>('orange')",
                 '%6 = instanceinvoke myMap.<@std/unordered_map.h: unordered_map.end()>()',
-                'if %5 != %6'
+                'if %5 != %6',
             ],
             preds: [],
-            succes: [ 1 ]
+            succes: [1],
         },
         {
             id: 1,
-            stmts: [
-                "instanceinvoke myMap.<@std/unordered_map.h: unordered_map.erase()>('apple')",
-                'return 0'
-            ],
-            preds: [ 0 ],
-            succes: []
+            stmts: ["instanceinvoke myMap.<@std/unordered_map.h: unordered_map.erase()>('apple')", 'return 0'],
+            preds: [0],
+            succes: [],
         },
-    ]
+    ],
 };
 
 export const DATA_STRUCT_EXPECT_QUEUE = {
@@ -226,46 +216,38 @@ export const DATA_STRUCT_EXPECT_QUEUE = {
                 'instanceinvoke q.<@std/queue.h: queue.push()>(20)',
                 'instanceinvoke q.<@std/queue.h: queue.push()>(30)',
                 '%1 = instanceinvoke q.<@std/queue.h: queue.empty()>()',
-                'if %1 != 0'
+                'if %1 != 0',
             ],
             preds: [],
-            succes: [ 1, 2 ]
+            succes: [1, 2],
         },
         {
             id: 1,
-            stmts: [ `staticinvoke <@%unk/%unk: .cout()>('empty')` ],
-            preds: [ 0 ],
-            succes: [ 2 ]
+            stmts: [`staticinvoke <@%unk/%unk: .cout()>('empty')`],
+            preds: [0],
+            succes: [2],
         },
         {
             id: 2,
-            stmts: [
-                '%2 = new @%unk/%unk: std::vector<int>',
-                'instanceinvoke %2.<@%unk/%unk: std::vector<int>.constructor()>()',
-                'v = %2'
-            ],
-            preds: [ 0, 1 ],
-            succes: [ 3 ]
+            stmts: ['%2 = new @%unk/%unk: std::vector<int>', 'instanceinvoke %2.<@%unk/%unk: std::vector<int>.constructor()>()', 'v = %2'],
+            preds: [0, 1],
+            succes: [3],
         },
         {
             id: 3,
-            stmts: [
-                '%3 = instanceinvoke q.<@std/queue.h: queue.empty()>()',
-                '%4 = !%3',
-                'if %4 != 0'
-            ],
-            preds: [ 2, 4 ],
-            succes: [ 4, 5 ]
+            stmts: ['%3 = instanceinvoke q.<@std/queue.h: queue.empty()>()', '%4 = !%3', 'if %4 != 0'],
+            preds: [2, 4],
+            succes: [4, 5],
         },
         {
             id: 4,
             stmts: [
-                "%5 = instanceinvoke q.<@std/queue.h: queue.front()>()",
-                "instanceinvoke v.<@std/vector.h: vector.push_back()>(%5)",
-                "instanceinvoke q.<@std/queue.h: queue.pop()>()",
+                '%5 = instanceinvoke q.<@std/queue.h: queue.front()>()',
+                'instanceinvoke v.<@std/vector.h: vector.push_back()>(%5)',
+                'instanceinvoke q.<@std/queue.h: queue.pop()>()',
             ],
-            preds: [ 3 ],
-            succes: [ 3 ]
+            preds: [3],
+            succes: [3],
         },
         {
             id: 5,
@@ -273,12 +255,12 @@ export const DATA_STRUCT_EXPECT_QUEUE = {
                 'instanceinvoke q.<@std/queue.h: queue.pop()>()',
                 '%6 = instanceinvoke q.<@std/queue.h: queue.front()>()',
                 'staticinvoke <@%unk/%unk: .cout()>(%6)',
-                'return 0'
+                'return 0',
             ],
-            preds: [ 3 ],
-            succes: []
+            preds: [3],
+            succes: [],
         },
-    ]
+    ],
 };
 
 export const DATA_STRUCT_EXPECT_DEQUE = {
@@ -295,12 +277,12 @@ export const DATA_STRUCT_EXPECT_DEQUE = {
                 '%1 = instanceinvoke dq.<@std/deque.h: deque.front()>()',
                 'staticinvoke <@%unk/%unk: .cout()>(%1)',
                 'instanceinvoke dq.<@std/deque.h: deque.pop_front()>()',
-                'return 0'
+                'return 0',
             ],
             preds: [],
-            succes: []
+            succes: [],
         },
-    ]
+    ],
 };
 
 export const DATA_STRUCT_EXPECT_STACK = {
@@ -319,28 +301,25 @@ export const DATA_STRUCT_EXPECT_STACK = {
                 'staticinvoke <@%unk/%unk: .cout()>(%1)',
                 'instanceinvoke myStack.<@std/stack.h: stack.pop()>()',
                 '%2 = instanceinvoke myStack.<@std/stack.h: stack.empty()>()',
-                'if %2 != 0'
+                'if %2 != 0',
             ],
             preds: [],
-            succes: [ 1, 2 ]
+            succes: [1, 2],
         },
         {
             id: 1,
-            stmts: [ `staticinvoke <@%unk/%unk: .cout()>('Stack is empty')` ],
-            preds: [ 0 ],
-            succes: [ 3 ]
+            stmts: [`staticinvoke <@%unk/%unk: .cout()>('Stack is empty')`],
+            preds: [0],
+            succes: [3],
         },
         {
             id: 2,
-            stmts: [
-                '%3 = instanceinvoke myStack.<@std/stack.h: stack.size()>()',
-                'staticinvoke <@%unk/%unk: .cout()>(%3)'
-            ],
-            preds: [ 0 ],
-            succes: [ 3 ]
+            stmts: ['%3 = instanceinvoke myStack.<@std/stack.h: stack.size()>()', 'staticinvoke <@%unk/%unk: .cout()>(%3)'],
+            preds: [0],
+            succes: [3],
         },
-        { id: 3, stmts: [ 'return 0' ], preds: [ 1, 2 ], succes: [] },
-    ]
+        { id: 3, stmts: ['return 0'], preds: [1, 2], succes: [] },
+    ],
 };
 
 export const DATA_STRUCT_EXPECT_LIST = {
@@ -372,10 +351,10 @@ export const DATA_STRUCT_EXPECT_LIST = {
                 '%5 = instanceinvoke list4.<@std/list.h: list.front()>()',
                 'staticinvoke <@%unk/%unk: .cout()>(%5)',
                 'instanceinvoke list4.<@std/list.h: list.pop_back()>()',
-                'return 0'
+                'return 0',
             ],
             preds: [],
-            succes: []
+            succes: [],
         },
-    ]
+    ],
 };

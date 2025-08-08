@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -33,21 +32,19 @@ export function findProjectRoot(startDIr: string = __dirname): string {
 
 const projectRoot = findProjectRoot(__dirname);
 
-function getPrintAstExePath():string {
-    let printAstExePath = path.join(projectRoot, 'src','ast','arkCppAstDumper.exe');
+function getPrintAstExePath(): string {
+    let printAstExePath = path.join(projectRoot, 'src', 'ast', 'arkCppAstDumper.exe');
     if (!fs.existsSync(printAstExePath)) {
-        printAstExePath = path.join(projectRoot, 'lib','ast','arkCppAstDumper.exe');
+        printAstExePath = path.join(projectRoot, 'lib', 'ast', 'arkCppAstDumper.exe');
     }
     return printAstExePath;
 }
 
-const printAstExePath = getPrintAstExePath()
+const printAstExePath = getPrintAstExePath();
 
 export class ClangPath {
     static WindowsPath = printAstExePath;
-    static LinuxPath = "";
-    static Unknown = "";
+    static LinuxPath = '';
+    static Unknown = '';
     static protectRoot = projectRoot;
 }
-
-

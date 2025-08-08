@@ -17,7 +17,7 @@ import { ArkFile, Language } from './ArkFile';
 import { LineColPosition } from '../base/Position';
 import { ExportInfo, FromInfo } from './ArkExport';
 import { findExportInfo } from '../common/ModelUtils';
-import { findExportInfo as findExportInfoCpp} from '../../cpp_frontend/common/ModelUtils';
+import { findExportInfo as findExportInfoCpp } from '../../cpp_frontend/common/ModelUtils';
 import { ArkBaseModel } from './ArkBaseModel';
 import { ArkError } from '../common/ArkError';
 

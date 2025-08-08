@@ -138,8 +138,7 @@ export abstract class AbstractInvokeExpr extends AbstractExpr {
 
     public getType(): Type {
         const type = this.methodSignature.getType();
-        if (TypeInference.checkType(type, t => t instanceof GenericType || t instanceof AnyType) &&
-            this.realGenericTypes) {
+        if (TypeInference.checkType(type, t => t instanceof GenericType || t instanceof AnyType) && this.realGenericTypes) {
             return TypeInference.replaceTypeWithReal(type, this.realGenericTypes);
         }
         return type;
@@ -1001,7 +1000,7 @@ export enum UnaryOperator {
     BitwiseNot = '~',
     LogicalNot = '!',
     Addr = '&',
-    Deref = '*'
+    Deref = '*',
 }
 
 // unary operation expression

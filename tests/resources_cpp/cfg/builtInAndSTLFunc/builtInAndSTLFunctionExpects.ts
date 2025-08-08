@@ -29,12 +29,12 @@ export const BUILT_IN_EXPECT_CASE1 = {
                 'instanceinvoke %1.<@builtInAndSTLFunc/builtInAndSTLFunction.cpp: MyStruct.constructor()>()',
                 's = %1',
                 't5 = staticinvoke <@%unk/%unk: .typeid()>(s)',
-                'return'
+                'return',
             ],
             preds: [],
-            succes: []
-        }
-    ]
+            succes: [],
+        },
+    ],
 };
 
 export const BUILT_IN_EXPECT_CASE2 = {
@@ -46,12 +46,12 @@ export const BUILT_IN_EXPECT_CASE2 = {
                 'arr2 = undefined',
                 "rank2 = staticinvoke <@%unk/%unk: .__array_rank()>('int[5][3]')",
                 "dim1_size = staticinvoke <@%unk/%unk: .__array_extent()>('int[5][3]', 1)",
-                'return'
+                'return',
             ],
             preds: [],
-            succes: []
-        }
-    ]
+            succes: [],
+        },
+    ],
 };
 
 export const BUILT_IN_EXPECT_CASE3 = {
@@ -62,12 +62,12 @@ export const BUILT_IN_EXPECT_CASE3 = {
                 'this = this: @builtInAndSTLFunc/builtInAndSTLFunction.cpp: %dflt',
                 '%0 = staticinvoke <@%unk/%unk: .foo()>()',
                 'b = staticinvoke <@%unk/%unk: .CXXNoexceptExpr()>(%0)',
-                'return 0'
+                'return 0',
             ],
             preds: [],
-            succes: []
-        }
-    ]
+            succes: [],
+        },
+    ],
 };
 
 export const BUILT_IN_EXPECT_CASE4 = {
@@ -78,10 +78,10 @@ export const BUILT_IN_EXPECT_CASE4 = {
                 'this = this: @builtInAndSTLFunc/builtInAndSTLFunction.cpp: %dflt',
                 '%0 = &counter',
                 'staticinvoke <@%unk/%unk: .atomic_fetch_add()>(%0, 1)',
-                'return'
+                'return',
             ],
             preds: [],
-            succes: []
-        }
-    ]
+            succes: [],
+        },
+    ],
 };

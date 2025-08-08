@@ -479,7 +479,7 @@ export class ClassType extends Type {
     private realGenericTypes?: Type[];
     private applyType: string; // 应用类型*和&
 
-    constructor(classSignature: ClassSignature, realGenericTypes?: Type[], applyType:string = '') {
+    constructor(classSignature: ClassSignature, realGenericTypes?: Type[], applyType: string = '') {
         super();
         this.classSignature = classSignature;
         this.realGenericTypes = realGenericTypes;
@@ -487,7 +487,7 @@ export class ClassType extends Type {
     }
 
     public getApplyType(): string {
-        return  this.applyType;
+        return this.applyType;
     }
 
     public setApplyType(applyType: string) {
@@ -917,7 +917,7 @@ export class PointerType extends Type {
     public getTypeString(): string {
         const strs: string[] = [];
         if (this.baseType instanceof UnionType) {
-            strs.push('(' +this.baseType.toString() + ')');
+            strs.push('(' + this.baseType.toString() + ')');
         } else if (this.baseType) {
             strs.push(this.baseType.toString());
         }
@@ -928,10 +928,10 @@ export class PointerType extends Type {
     }
 }
 
-export enum ReferCategory{
+export enum ReferCategory {
     LVALUE_REF = 'LVALUE_REF',
     RVALUE_REF = 'RVALUE_REF',
-    UNIVERSAL_REF = 'UNIVERSAL_REF'
+    UNIVERSAL_REF = 'UNIVERSAL_REF',
 }
 
 export class ReferenceType extends Type {
@@ -987,7 +987,7 @@ export class LabelType extends PointerType {
     private static readonly INSTANCE = new LabelType();
 
     protected constructor() {
-        super(VoidType.getInstance(),1);
+        super(VoidType.getInstance(), 1);
     }
 
     public static getInstance(): LabelType {
@@ -1000,7 +1000,7 @@ export class Thread extends Type {
         super();
     }
 
-    getTypeString(){
+    getTypeString() {
         return 'thread ';
     }
 }

@@ -39,14 +39,7 @@ import { BasicBlock } from '../../graph/BasicBlock';
 import { Local } from '../../base/Local';
 import { Value } from '../../base/Value';
 import { CONSTRUCTOR_NAME, SUPER_NAME, THIS_NAME } from '../../common/TSConst';
-import {
-    ANONYMOUS_METHOD_PREFIX,
-    CALL_SIGNATURE_NAME,
-    DEFAULT_ARK_CLASS_NAME,
-    DEFAULT_ARK_METHOD_NAME,
-    NAME_DELIMITER,
-    NAME_PREFIX,
-} from '../../common/Const';
+import { ANONYMOUS_METHOD_PREFIX, CALL_SIGNATURE_NAME, DEFAULT_ARK_CLASS_NAME, DEFAULT_ARK_METHOD_NAME, NAME_DELIMITER, NAME_PREFIX } from '../../common/Const';
 import { ArkSignatureBuilder } from './ArkSignatureBuilder';
 import { IRUtils } from '../../common/IRUtils';
 import { ArkErrorCode } from '../../common/ArkError';

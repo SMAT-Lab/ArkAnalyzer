@@ -14,12 +14,7 @@
  */
 
 export const LAZY_IMPORT_CASE1_CLASS = {
-    fields: [
-        'value_',
-        'env_',
-        'wrapper_',
-        'instance_'
-    ],
+    fields: ['value_', 'env_', 'wrapper_', 'instance_'],
     heritageClasses: [],
     blocks: [
         {
@@ -36,12 +31,12 @@ export const LAZY_IMPORT_CASE1_CLASS = {
                         '%0 = &g_ref',
                         'staticinvoke <@%unk/%unk: .napi_create_reference()>(env, cons, 1, %0)',
                         "staticinvoke <@%unk/%unk: .napi_set_named_property()>(env, exports, 'GlobalConfig', cons)",
-                        'return exports'
+                        'return exports',
                     ],
                     preds: [],
-                    succes: []
-                }
-            ]
+                    succes: [],
+                },
+            ],
         },
         {
             methodName: 'Destructor',
@@ -54,12 +49,12 @@ export const LAZY_IMPORT_CASE1_CLASS = {
                         'finalize_hint = parameter2: void*',
                         'this = this: @lazyImportCase1/lazyImportCase1.cpp: GlobalConfig',
                         '%0 = delete <@lazyImportCase1/lazyImportCase1.cpp: GlobalConfig*>nativeObject',
-                        'return'
+                        'return',
                     ],
                     preds: [],
-                    succes: []
-                }
-            ]
+                    succes: [],
+                },
+            ],
         },
         {
             methodName: 'constructor',
@@ -70,27 +65,24 @@ export const LAZY_IMPORT_CASE1_CLASS = {
                         'value = parameter0: double',
                         'this = this: @lazyImportCase1/lazyImportCase1.cpp: GlobalConfig',
                         'instanceinvoke this.<@lazyImportCase1/lazyImportCase1.cpp: GlobalConfig.%instInit()>()',
-                        "this.<@lazyImportCase1/lazyImportCase1.cpp: GlobalConfig.value_> = value",
-                        'return this'
+                        'this.<@lazyImportCase1/lazyImportCase1.cpp: GlobalConfig.value_> = value',
+                        'return this',
                     ],
                     preds: [],
-                    succes: []
-                }
-            ]
+                    succes: [],
+                },
+            ],
         },
         {
             methodName: '~GlobalConfig',
             blocks: [
                 {
                     id: 0,
-                    stmts: [
-                        'this = this: @lazyImportCase1/lazyImportCase1.cpp: GlobalConfig',
-                        'return'
-                    ],
+                    stmts: ['this = this: @lazyImportCase1/lazyImportCase1.cpp: GlobalConfig', 'return'],
                     preds: [],
-                    succes: []
-                }
-            ]
+                    succes: [],
+                },
+            ],
         },
         {
             methodName: 'New',
@@ -104,10 +96,10 @@ export const LAZY_IMPORT_CASE1_CLASS = {
                         'newTarget = undefined',
                         '%0 = &newTarget',
                         'staticinvoke <@%unk/%unk: .napi_get_new_target()>(env, info, %0)',
-                        'if newTarget != nullptr'
+                        'if newTarget != nullptr',
                     ],
                     preds: [],
-                    succes: [1, 6]
+                    succes: [1, 6],
                 },
                 {
                     id: 1,
@@ -123,20 +115,16 @@ export const LAZY_IMPORT_CASE1_CLASS = {
                         '%3 = args[0]',
                         '%4 = &valuetype',
                         'staticinvoke <@%unk/%unk: .napi_typeof()>(env, %3, %4)',
-                        'if valuetype != napi_undefined != 0'
+                        'if valuetype != napi_undefined != 0',
                     ],
                     preds: [0],
-                    succes: [2, 3]
+                    succes: [2, 3],
                 },
                 {
                     id: 2,
-                    stmts: [
-                        '%5 = args[0]',
-                        '%6 = &value',
-                        'staticinvoke <@%unk/%unk: .napi_get_value_double()>(env, %5, %6)'
-                    ],
+                    stmts: ['%5 = args[0]', '%6 = &value', 'staticinvoke <@%unk/%unk: .napi_get_value_double()>(env, %5, %6)'],
                     preds: [1],
-                    succes: [3]
+                    succes: [3],
                 },
                 {
                     id: 3,
@@ -146,30 +134,22 @@ export const LAZY_IMPORT_CASE1_CLASS = {
                         'obj = %7',
                         'obj = env',
                         'status = undefined',
-                        'if status != napi_ok != 0'
+                        'if status != napi_ok != 0',
                     ],
                     preds: [1, 2],
-                    succes: [4, 5]
+                    succes: [4, 5],
                 },
                 {
                     id: 4,
-                    stmts: [
-                        '%8 = delete obj',
-                        'return jsThis'
-                    ],
+                    stmts: ['%8 = delete obj', 'return jsThis'],
                     preds: [3],
-                    succes: []
+                    succes: [],
                 },
                 {
                     id: 5,
-                    stmts: [
-                        'refCount = 0',
-                        '%9 = &refCount',
-                        'staticinvoke <@%unk/%unk: .napi_reference_unref()>(env, obj, %9)',
-                        'return jsThis'
-                    ],
+                    stmts: ['refCount = 0', '%9 = &refCount', 'staticinvoke <@%unk/%unk: .napi_reference_unref()>(env, obj, %9)', 'return jsThis'],
                     preds: [3],
-                    succes: []
+                    succes: [],
                 },
                 {
                     id: 6,
@@ -184,12 +164,12 @@ export const LAZY_IMPORT_CASE1_CLASS = {
                         'instance = undefined',
                         '%12 = &instance',
                         'staticinvoke <@%unk/%unk: .napi_new_instance()>(env, cons, argc, args, %12)',
-                        'return instance'
+                        'return instance',
                     ],
                     preds: [0],
-                    succes: []
+                    succes: [],
                 },
-            ]
+            ],
         },
         {
             methodName: 'GetValue',
@@ -211,12 +191,12 @@ export const LAZY_IMPORT_CASE1_CLASS = {
                         '%3 = obj-><@lazyImportCase1/lazyImportCase1.cpp: GlobalConfig.value_>',
                         '%4 = &num',
                         'staticinvoke <@%unk/%unk: .napi_create_double()>(env, %3, %4)',
-                        'return num'
+                        'return num',
                     ],
                     preds: [],
-                    succes: []
-                }
-            ]
+                    succes: [],
+                },
+            ],
         },
         {
             methodName: 'SetValue',
@@ -241,12 +221,12 @@ export const LAZY_IMPORT_CASE1_CLASS = {
                         '%5 = obj-><@lazyImportCase1/lazyImportCase1.cpp: GlobalConfig.value_>',
                         '%6 = &%5',
                         'staticinvoke <@%unk/%unk: .napi_get_value_double()>(env, value, %6)',
-                        'return nullptr'
+                        'return nullptr',
                     ],
                     preds: [],
-                    succes: []
-                }
-            ]
+                    succes: [],
+                },
+            ],
         },
         {
             methodName: 'PlusOne',
@@ -269,12 +249,12 @@ export const LAZY_IMPORT_CASE1_CLASS = {
                         '%3 = obj-><@lazyImportCase1/lazyImportCase1.cpp: GlobalConfig.value_>',
                         '%4 = &num',
                         'staticinvoke <@%unk/%unk: .napi_create_double()>(env, %3, %4)',
-                        'return num'
+                        'return num',
                     ],
                     preds: [],
-                    succes: []
-                }
-            ]
+                    succes: [],
+                },
+            ],
         },
-    ]
+    ],
 };

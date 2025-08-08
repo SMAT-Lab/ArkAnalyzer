@@ -30,31 +30,21 @@ export const AUTO_EXPECT_CASE1 = {
                 'it = instanceinvoke vec.<@std/vector.h: vector.begin()>()',
                 'it2 = vec[0]',
                 'lambda = %AM0$autoTest',
-                'return'
+                'return',
             ],
             preds: [],
-            succes: []
-        }
-    ]
+            succes: [],
+        },
+    ],
 };
 
 export const DECLTYPE_EXPECT_CASE1 = {
     blocks: [
         {
             id: 0,
-            stmts: [
-                'this = this: @decltype/decltype.cpp: %dflt',
-                'a = 10',
-                'w = 10',
-                'b = 5',
-                'y = b',
-                'c = 10',
-                'y = c',
-                'z = 42',
-                'return'
-            ],
+            stmts: ['this = this: @decltype/decltype.cpp: %dflt', 'a = 10', 'w = 10', 'b = 5', 'y = b', 'c = 10', 'y = c', 'z = 42', 'return'],
             preds: [],
-            succes: []
-        }
-    ]
+            succes: [],
+        },
+    ],
 };

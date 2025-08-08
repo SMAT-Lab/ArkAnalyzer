@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-
 import { BigIntType, BooleanType, LabelType, NullType, NumberType, StringType, Type, UndefinedType } from './Type';
 import { Value } from './Value';
 import { NULL_KEYWORD, UNDEFINED_KEYWORD, NULL_POINTER } from '../common/TSConst';
@@ -74,7 +73,7 @@ export class BooleanConstant extends Constant {
         super(value.toString(), BooleanType.getInstance());
     }
 
-    public static getInstance(value: boolean|string): NullConstant {
+    public static getInstance(value: boolean | string): NullConstant {
         if (value.toString() === 'true') {
             return this.TRUE;
         } else {
@@ -98,7 +97,7 @@ export class BigIntConstant extends Constant {
 export class StringConstant extends Constant {
     constructor(value: string) {
         if (value.startsWith('"') && value.endsWith('"')) {
-            value = value.slice(1, -1);  // 去除多余双引号
+            value = value.slice(1, -1); // 去除多余双引号
         }
         super(value.toString(), StringType.getInstance());
     }
@@ -143,10 +142,8 @@ export class NullPtrConstant extends Constant {
 export class LabelConstant extends Constant {
     constructor(value: string) {
         if (value.startsWith('"') && value.endsWith('"')) {
-            value = value.slice(1, -1);  // 去除多余双引号
+            value = value.slice(1, -1); // 去除多余双引号
         }
         super(value, LabelType.getInstance());
     }
 }
-
-
