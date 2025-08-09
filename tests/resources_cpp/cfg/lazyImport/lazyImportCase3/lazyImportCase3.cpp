@@ -34,7 +34,7 @@ napi_value MapDemo(napi_env env, napi_callback_info info) {
     int num;
     napi_get_value_int32(env, args[1], &num);
     testmap.insert(std::make_pair(str1, num));  // *当前AST缺少该行代码对应的节点
-    for(auto e: testmap){  // *当前AST缺少for循环对应节点
+    for(auto e: testmap) {  // *当前AST缺少for循环对应节点
         OH_LOG_ERROR(LOG_APP, "key is: %{public}s, value is  %{public}d", (e.first).c_str(), e.second);
     }
 

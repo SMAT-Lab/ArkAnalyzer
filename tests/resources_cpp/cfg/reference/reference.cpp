@@ -63,7 +63,7 @@ void myClassRefer()
     MyClass &b = a;
 }
 
-void moveCase(){
+void moveCase() {
     int temp = 5;
     int &&ref_a = std::move(temp);
     ref_a = 6;

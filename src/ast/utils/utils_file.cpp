@@ -29,8 +29,8 @@ void loadFileContent(const std::string& filename) {
 }
 
 std::string get_default_output_path(const std::string &input_path) {
-    size_t last_dot = input_path.find_last_of('.');
-    std::string filename = (last_dot != std::string::npos) ? input_path.substr(0, last_dot) : input_path;
+    size_t lastDot = input_path.find_last_of('.');
+    std::string filename = (lastDot != std::string::npos) ? input_path.substr(0, lastDot) : input_path;
     return filename + ".json";
 }
 

@@ -44,11 +44,11 @@ void makeSound(Animal& animal)
 {
     animal.sound();
 }
-int main(){
+int main() {
     Cat cat;
     makeSound(Dog());
     int num = 1;
-    if (num > 0){
+    if (num > 0) {
         cat.sound();
     }
     else{
@@ -56,12 +56,12 @@ int main(){
     }
     return 0;
 }
-int main_if_elseif_else(){
+int main_if_elseif_else() {
     Cat cat;
     int num = 1;
-    if (num == 0){
+    if (num == 0) {
         cat.sound();
-    } else if (num == 1){
+    } else if (num == 1) {
         cat.sound1();
     } else {
         makeSound(Dog());

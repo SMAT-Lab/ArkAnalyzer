@@ -14,7 +14,7 @@
  */
 
 #include <stdio.h>
-void defUseChainTest(){
+void defUseChainTest() {
     int a = 1;
     int b = 2;
     a = a + b;

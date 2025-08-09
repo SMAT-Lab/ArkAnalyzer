@@ -14,14 +14,14 @@
  */
 
 
-void foo1(){
+void foo1() {
     void *ptr = &&my_label;
     my_label : return;
 }
 void foo2() {
     void *ptr = &&my_label;
     int x = 0;
-    if (x == 0){
+    if (x == 0) {
         goto *ptr;
     } else {
         return ;
