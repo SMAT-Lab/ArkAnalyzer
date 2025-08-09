@@ -13,25 +13,27 @@
  * limitations under the License.
  */
 
-class Cat
-{
+#define THREE 3
+#define TWO 2
+
+class Cat{
 public:
-    int runAndSound(int inputItem)
+    int RunAndSound(int inputItem)
     {
-        int info = inputItem + grtNum() * 3;
+        int info = inputItem + GrtNum() * THREE;
         return info;
     }
 
 private:
-    int grtNum()
+    int GrtNum()
     {
-        return 2;
+        return TWO;
     }
 };
 
 int main()
 {
     Cat cat;
-    int result = cat.runAndSound(1);
+    int result = cat.RunAndSound(1);
     return result;
 }
