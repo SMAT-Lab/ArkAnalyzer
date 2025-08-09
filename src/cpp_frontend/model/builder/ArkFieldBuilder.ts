@@ -35,10 +35,10 @@ export function buildProperty2ArkField(member: any, sourceFile: ts.SourceFile, c
     field.addModifier(buildModifiers(member));
 
     let fieldType: Type = UnknownType.getInstance();
-    if ((member.kind == 'FieldDecl' || member.kind == 'VarDecl') && member.type) {
+    if ((member.kind === 'FieldDecl' || member.kind === 'VarDecl') && member.type) {
         fieldType = buildGenericType(cppNode2Type(member.type.qualType, cls, sourceFile), field);
     }
-    if (member.kind == 'EnumConstantDecl') {
+    if (member.kind === 'EnumConstantDecl') {
         field.addModifier(ModifierType.STATIC);
         fieldType = new ClassType(cls.getSignature());
     }
