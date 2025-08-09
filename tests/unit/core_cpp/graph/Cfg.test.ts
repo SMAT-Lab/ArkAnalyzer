@@ -289,17 +289,17 @@ describe('Other Test', () => {
     });
     it('case5: NullStmt Test', () => {
         const scene = buildScene('nullStmt');
-        testBlocks(scene, 'nullStmtSample.cpp', 'case1', NULLSTMT_EXPECT.NULLSTMT_EXPECT_CASE1.blocks);
-        testBlocks(scene, 'nullStmtSample.cpp', 'case2', NULLSTMT_EXPECT.NULLSTMT_EXPECT_CASE2.blocks);
-        testBlocks(scene, 'nullStmtSample.cpp', 'case3', NULLSTMT_EXPECT.NULLSTMT_EXPECT_CASE3.blocks);
-        testBlocks(scene, 'nullStmtSample.cpp', 'case4', NULLSTMT_EXPECT.NULLSTMT_EXPECT_CASE4.blocks);
-        testBlocks(scene, 'nullStmtSample.cpp', 'case5', NULLSTMT_EXPECT.NULLSTMT_EXPECT_CASE5.blocks);
-        testBlocks(scene, 'nullStmtSample.cpp', 'case6', NULLSTMT_EXPECT.NULLSTMT_EXPECT_CASE6.blocks);
-        testBlocks(scene, 'nullStmtSample.cpp', 'case7', NULLSTMT_EXPECT.NULLSTMT_EXPECT_CASE7.blocks);
-        testBlocks(scene, 'nullStmtSample.cpp', 'case8', NULLSTMT_EXPECT.NULLSTMT_EXPECT_CASE8.blocks);
-        testBlocks(scene, 'nullStmtSample.cpp', 'case9', NULLSTMT_EXPECT.NULLSTMT_EXPECT_CASE9.blocks);
-        testBlocks(scene, 'nullStmtSample.cpp', 'case10', NULLSTMT_EXPECT.NULLSTMT_EXPECT_CASE10.blocks);
-        testBlocks(scene, 'nullStmtSample.cpp', 'case11', NULLSTMT_EXPECT.NULLSTMT_EXPECT_CASE11.blocks);
+        testBlocks(scene, 'nullStmtSample.cpp', 'Case1', NULLSTMT_EXPECT.NULLSTMT_EXPECT_CASE1.blocks);
+        testBlocks(scene, 'nullStmtSample.cpp', 'Case2', NULLSTMT_EXPECT.NULLSTMT_EXPECT_CASE2.blocks);
+        testBlocks(scene, 'nullStmtSample.cpp', 'Case3', NULLSTMT_EXPECT.NULLSTMT_EXPECT_CASE3.blocks);
+        testBlocks(scene, 'nullStmtSample.cpp', 'Case4', NULLSTMT_EXPECT.NULLSTMT_EXPECT_CASE4.blocks);
+        testBlocks(scene, 'nullStmtSample.cpp', 'Case5', NULLSTMT_EXPECT.NULLSTMT_EXPECT_CASE5.blocks);
+        testBlocks(scene, 'nullStmtSample.cpp', 'Case6', NULLSTMT_EXPECT.NULLSTMT_EXPECT_CASE6.blocks);
+        testBlocks(scene, 'nullStmtSample.cpp', 'Case7', NULLSTMT_EXPECT.NULLSTMT_EXPECT_CASE7.blocks);
+        testBlocks(scene, 'nullStmtSample.cpp', 'Case8', NULLSTMT_EXPECT.NULLSTMT_EXPECT_CASE8.blocks);
+        testBlocks(scene, 'nullStmtSample.cpp', 'Case9', NULLSTMT_EXPECT.NULLSTMT_EXPECT_CASE9.blocks);
+        testBlocks(scene, 'nullStmtSample.cpp', 'Case10', NULLSTMT_EXPECT.NULLSTMT_EXPECT_CASE10.blocks);
+        testBlocks(scene, 'nullStmtSample.cpp', 'Case11', NULLSTMT_EXPECT.NULLSTMT_EXPECT_CASE11.blocks);
     });
     it('case6: BuiltInAndSTLFunc Test', () => {
         const scene = buildScene('builtInAndSTLFunc');

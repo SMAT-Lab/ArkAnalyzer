@@ -13,14 +13,19 @@
  * limitations under the License.
  */
 
-void case1()
+#define ONE 1
+#define TWO 2
+#define FIVE 5
+#define TEN 10
+
+void Case1()
 {
     ;
     ;
     ; // 空操作
 }
 
-void case2()
+void Case2()
 {
     if (true)
         ;
@@ -28,42 +33,38 @@ void case2()
         ;
 }
 
-void case3()
+void Case3()
 {
     int i = 0;
-    for (; i < 2; ++i)
-    {
+    for (; i < TWO; ++i) {
         ;
     }
 }
 
-void case4()
+void Case4()
 {
     int count = 3;
-    while (count-- > 0)
-    {
+    while (count-- > 0) {
         ; // 空操作
     }
-    for (int i = 0; i < 5; ++i)
-    {
+    for (int i = 0; i < FIVE; ++i) {
         ; // 空操作
     }
 }
 
-void case5()
+void Case5()
 {
     int option = 2;
-    switch (option)
-    {
-    case 1:;
-        break;
-    case 2:;
-        break;
-    default:;
+    switch (option) {
+        case ONE:;
+            break;
+        case TWO:;
+            break;
+        default:;
     }
 }
 
-void case6()
+void Case6()
 {
     int x = 5;
     do
@@ -77,44 +78,42 @@ void case6()
     }
 }
 
-void case7()
+void Case7()
 {
     for (;;)
         ;
 }
 
-void case8()
+void Case8()
 {
     while (1)
         ;
 }
 
-void case9()
+void Case9()
 {
     int i = 0;
-    while (i < 10)
-    {
+    while (i < TEN) {
         i++;
         ;
     };
 }
 
-void case10()
+void Case10()
 {
-    for (int i = 0; i < 2;)
-    {
+    for (int i = 0; i < TWO;) {
         ;
     }
 }
 
-void case11()
+void Case11()
 {
-    for (int i = 0;;)
-    {
+    for (int i = 0;;) {
         ;
     }
 }
+
 int main()
 {
-    case1();
+    Case1();
 }
