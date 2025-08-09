@@ -1138,7 +1138,7 @@ export class CfgBuilder {
             value: expressionBodyValue,
             valueOriginalPositions: expressionBodyPositions,
             stmts: tempStmts,
-        } = arkIRTransformer.tsNodeToValueAndStmts(expressionBodyNode);
+        } = arkIRTransformer.cppNodeToValueAndStmts(expressionBodyNode);
         tempStmts.forEach(stmt => expressionBodyStmts.push(stmt));
         if (IRUtils.moreThanOneAddress(expressionBodyValue)) {
             ({

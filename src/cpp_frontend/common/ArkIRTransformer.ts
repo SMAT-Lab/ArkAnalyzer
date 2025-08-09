@@ -273,7 +273,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
         const stmts: Stmt[] = [];
         let entry = forOfStatement.inner[1];
         // 处理iterable初始化
-        let { value: iterableValue, valueOriginalPositions: iterablePositions, stmts: iterableStmts } = this.tsNodeToValueAndStmts(entry);
+        let { value: iterableValue, valueOriginalPositions: iterablePositions, stmts: iterableStmts } = this.cppNodeToValueAndStmts(entry);
         iterableStmts.forEach(stmt => stmts.push(stmt));
         if (!(iterableValue instanceof Local)) {
             ({
@@ -356,7 +356,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
             stmts.push(assignStmt);
             initStmts.forEach(stmt => stmts.push(stmt));
         } else {
-            const { value: initValue, valueOriginalPositions: initOriPos, stmts: initStmts } = this.tsNodeToValueAndStmts(declStmts);
+            const { value: initValue, valueOriginalPositions: initOriPos, stmts: initStmts } = this.cppNodeToValueAndStmts(declStmts);
             const assignStmt = new ArkAssignStmt(initValue, castExpr);
             assignStmt.setOperandOriginalPositions([...initOriPos, ...castExprPositions]);
             initStmts.forEach(stmt => stmts.push(stmt));
@@ -382,14 +382,14 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
         return stmts;
     }
 
-    public tsNodeToValueAndStmts(node: any): ValueAndStmts {
+    public cppNodeToValueAndStmts(node: any): ValueAndStmts {
         return this.arkValueTransformerCpp.tsNodeToValueAndStmts(node);
     }
 
     private returnStatementToStmtsCpp(returnStatement: CppAstNode): Stmt[] {
         const stmts: Stmt[] = [];
         if (returnStatement.inner.length > 0) {
-            let { value: exprValue, valueOriginalPositions: exprPositions, stmts: exprStmts } = this.tsNodeToValueAndStmts(returnStatement.inner[0]);
+            let { value: exprValue, valueOriginalPositions: exprPositions, stmts: exprStmts } = this.cppNodeToValueAndStmts(returnStatement.inner[0]);
             exprStmts.forEach(stmt => stmts.push(stmt));
             if (IRUtils.moreThanOneAddress(exprValue)) {
                 ({ value: exprValue, valueOriginalPositions: exprPositions, stmts: exprStmts } = this.generateAssignStmtForValue(exprValue, exprPositions));
@@ -405,7 +405,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
     }
 
     private expressionStatementToStmtsCpp(expressionStatement: CppAstNode): Stmt[] {
-        const { value: exprValue, valueOriginalPositions: exprPositions, stmts: stmts } = this.tsNodeToValueAndStmts(expressionStatement);
+        const { value: exprValue, valueOriginalPositions: exprPositions, stmts: stmts } = this.cppNodeToValueAndStmts(expressionStatement);
         if (exprValue instanceof AbstractInvokeExpr) {
             this.addInvokeStmtsCpp(exprValue, exprPositions, stmts);
         } else if (this.shouldGenerateExtraAssignStmtCpp(expressionStatement)) {
@@ -446,7 +446,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
     public switchStatementToValueAndStmts(switchStatement: any): ValueAndStmts[] {
         const valueAndStmtsOfSwitchAndCases: ValueAndStmts[] = [];
         const exprStmts: Stmt[] = [];
-        let { value: exprValue, valueOriginalPositions: exprPositions, stmts: exprTempStmts } = this.tsNodeToValueAndStmts(switchStatement.inner[0]);
+        let { value: exprValue, valueOriginalPositions: exprPositions, stmts: exprTempStmts } = this.cppNodeToValueAndStmts(switchStatement.inner[0]);
         exprTempStmts.forEach(stmt => exprStmts.push(stmt));
         if (IRUtils.moreThanOneAddress(exprValue)) {
             ({ value: exprValue, valueOriginalPositions: exprPositions, stmts: exprTempStmts } = this.generateAssignStmtForValue(exprValue, exprPositions));
@@ -461,7 +461,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
         for (const clause of switchStatement.inner[1].inner) {
             if (clause.kind.toString() === 'CaseStmt') {
                 const clauseStmts: Stmt[] = [];
-                let { value: clauseValue, valueOriginalPositions: clausePositions, stmts: clauseTempStmts } = this.tsNodeToValueAndStmts(clause.inner[0]);
+                let { value: clauseValue, valueOriginalPositions: clausePositions, stmts: clauseTempStmts } = this.cppNodeToValueAndStmts(clause.inner[0]);
                 clauseTempStmts.forEach(stmt => clauseStmts.push(stmt));
                 if (IRUtils.moreThanOneAddress(clauseValue)) {
                     ({
@@ -513,7 +513,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
             stmts.push(new ArkIfStmt(conditionExpr));
         }
         if (incrementor) {
-            this.tsNodeToValueAndStmts(incrementor).stmts.forEach(stmt => stmts.push(stmt));
+            this.cppNodeToValueAndStmts(incrementor).stmts.forEach(stmt => stmts.push(stmt));
         }
         return stmts;
     }
@@ -550,7 +550,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
     }
 
     private memberCallExpressionToStmts(expression: CppAstNode): Stmt[] {
-        const { value: exprValue, valueOriginalPositions: exprPositions, stmts: stmts } = this.tsNodeToValueAndStmts(expression);
+        const { value: exprValue, valueOriginalPositions: exprPositions, stmts: stmts } = this.cppNodeToValueAndStmts(expression);
         if (exprValue instanceof AbstractInvokeExpr) {
             const invokeStmt = new ArkInvokeStmt(exprValue);
             invokeStmt.setOperandOriginalPositions(exprPositions);
@@ -590,7 +590,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
     }
 
     private expressionToStmts(expression: CppAstNode): Stmt[] {
-        const { value: exprValue, valueOriginalPositions: exprPositions, stmts: stmts } = this.tsNodeToValueAndStmts(expression);
+        const { value: exprValue, valueOriginalPositions: exprPositions, stmts: stmts } = this.cppNodeToValueAndStmts(expression);
         if (exprValue instanceof AbstractInvokeExpr) {
             const invokeStmt = new ArkInvokeStmt(exprValue);
             invokeStmt.setOperandOriginalPositions(exprPositions);
@@ -709,7 +709,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
 
     private throwStatementToStmtsCpp(throwStatement: any): Stmt[] {
         const stmts: Stmt[] = [];
-        const { value: throwValue, valueOriginalPositions: throwValuePositions, stmts: throwStmts } = this.tsNodeToValueAndStmts(throwStatement.inner[0]);
+        const { value: throwValue, valueOriginalPositions: throwValuePositions, stmts: throwStmts } = this.cppNodeToValueAndStmts(throwStatement.inner[0]);
         throwStmts.forEach(stmt => stmts.push(stmt));
         const throwStmt = new ArkThrowStmt(throwValue);
         throwStmt.setOperandOriginalPositions(throwValuePositions);
