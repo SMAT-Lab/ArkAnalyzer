@@ -18,14 +18,19 @@
 #include <string>
 #include <vector>
 using namespace std;
+
+#define SEVEN 7
+
 // 线程执行的函数
-void hello() {
+void Hello()
+{
     cout << "Hello from thread!\n";
 }
 
-int case1() {
+int Case1()
+{
     // 创建并启动线程
-    thread t(hello);
+    thread t(Hello);
 
     // 等待线程完成
     t.join();
@@ -34,22 +39,22 @@ int case1() {
     return 0;
 }
 
-void print_sum(int a, int b) {
+void PrintSum(int a, int b) {
     cout << "Sum: " << a + b << endl;
 }
 
-int case2() {
+int Case2() {
     // 创建线程并传递参数
     int a = 5;
-    thread t(print_sum, a, 7);
+    thread t(PrintSum, a, SEVEN);
 
     t.join();
     return 0;
 }
 
-int case3() {
+int Case3() {
     // 创建并启动线程
-    std::thread t(hello);
+    std::thread t(Hello);
 
     // 等待线程完成
     t.join();
@@ -58,10 +63,10 @@ int case3() {
     return 0;
 }
 
-int case4() {
+int Case4() {
     // 创建线程并传递参数
     int a = 5;
-    std::thread t(print_sum, a, 7);
+    std::thread t(PrintSum, a, SEVEN);
 
     t.join();
     return 0;

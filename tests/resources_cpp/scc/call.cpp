@@ -13,38 +13,38 @@
  * limitations under the License.
  */
 
-void g();
-void e();
-void d();
-void c();
-void b();
-void a();
-void f();
+void G();
+void E();
+void D();
+void C();
+void B();
+void A();
+void F();
 
-void g()
+void G()
 {
 }
-void e()
+void E()
 {
-    f();
-    c();
+    F();
+    C();
 }
-void d() { e(); }
-void c() { d(); }
-void b()
+void D() { E(); }
+void C() { D(); }
+void B()
 {
-    a();
-    c();
+    A();
+    C();
 }
-void a()
+void A()
 {
-    b();
+    B();
 }
-void f()
+void F()
 {
-    c();
-    d();
-    g();
+    C();
+    D();
+    G();
 }
 
 int main() { return 0; }

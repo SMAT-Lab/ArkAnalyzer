@@ -64,12 +64,12 @@ void Case3()
             b = TWO;
         case THREE:
             switch (b) {
-            case ONE:
-                b = ONE;
-            case TWO:
-                b = TWO;
-            default:
-                b = TEN;
+                case ONE:
+                    b = ONE;
+                case TWO:
+                    b = TWO;
+                default:
+                    b = TEN;
             }
             break;
         default:
@@ -213,13 +213,13 @@ void Case13()
     }
     if (a > ONE) {
         b = TWO;
-    }
-    else {
+    } else {
         b = THREE;
     }
 }
 
-int main() {
+int main()
+{
     Case1();
     return 0;
 }
