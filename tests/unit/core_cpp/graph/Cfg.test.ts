@@ -172,14 +172,14 @@ describe('Type Test', () => {
     });
     it('case5: DataStruct Test', () => {
         const scene = buildScene('dataStruct');
-        testBlocks(scene, 'dataStruct.cpp', 'vectorTest', DATA_STRUCT_EXPECT.DATA_STRUCT_EXPECT_VECTOR.blocks);
-        testBlocks(scene, 'dataStruct.cpp', 'setTest', DATA_STRUCT_EXPECT.DATA_STRUCT_EXPECT_SET.blocks);
-        testBlocks(scene, 'dataStruct.cpp', 'mapTest', DATA_STRUCT_EXPECT.DATA_STRUCT_EXPECT_MAP.blocks);
-        testBlocks(scene, 'dataStruct.cpp', 'unorderedMapTest', DATA_STRUCT_EXPECT.DATA_STRUCT_EXPECT_MAP2.blocks);
-        testBlocks(scene, 'dataStruct.cpp', 'queueTest', DATA_STRUCT_EXPECT.DATA_STRUCT_EXPECT_QUEUE.blocks);
-        testBlocks(scene, 'dataStruct.cpp', 'dequeTest', DATA_STRUCT_EXPECT.DATA_STRUCT_EXPECT_DEQUE.blocks);
-        testBlocks(scene, 'dataStruct.cpp', 'stackTest', DATA_STRUCT_EXPECT.DATA_STRUCT_EXPECT_STACK.blocks);
-        testBlocks(scene, 'dataStruct.cpp', 'listTest', DATA_STRUCT_EXPECT.DATA_STRUCT_EXPECT_LIST.blocks);
+        testBlocks(scene, 'dataStruct.cpp', 'VectorTest', DATA_STRUCT_EXPECT.DATA_STRUCT_EXPECT_VECTOR.blocks);
+        testBlocks(scene, 'dataStruct.cpp', 'SetTest', DATA_STRUCT_EXPECT.DATA_STRUCT_EXPECT_SET.blocks);
+        testBlocks(scene, 'dataStruct.cpp', 'MapTest', DATA_STRUCT_EXPECT.DATA_STRUCT_EXPECT_MAP.blocks);
+        testBlocks(scene, 'dataStruct.cpp', 'UnorderedMapTest', DATA_STRUCT_EXPECT.DATA_STRUCT_EXPECT_MAP2.blocks);
+        testBlocks(scene, 'dataStruct.cpp', 'QueueTest', DATA_STRUCT_EXPECT.DATA_STRUCT_EXPECT_QUEUE.blocks);
+        testBlocks(scene, 'dataStruct.cpp', 'DequeTest', DATA_STRUCT_EXPECT.DATA_STRUCT_EXPECT_DEQUE.blocks);
+        testBlocks(scene, 'dataStruct.cpp', 'StackTest', DATA_STRUCT_EXPECT.DATA_STRUCT_EXPECT_STACK.blocks);
+        testBlocks(scene, 'dataStruct.cpp', 'ListTest', DATA_STRUCT_EXPECT.DATA_STRUCT_EXPECT_LIST.blocks);
     });
     it('case6: NullPtr Test', () => {
         const scene = buildScene('nullPtr');

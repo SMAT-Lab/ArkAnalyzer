@@ -25,27 +25,38 @@
 
 using namespace std;
 
+#define ONE 1
+#define TWO 2
+#define THREE 3
+#define FIVE 5
+#define SIX 6
+#define TEN 10
+#define TWENTY 20
+#define THIRTY 30
+#define TWENTY_FIVE 25
+#define THIRTY_FIVE 35
+
 // vector
-void vectorTest()
+void VectorTest()
 {
     std::vector<int> vec1 = {1, 2, 3, 4, 5};
-    int men = vec1[2];
+    int men = vec1[TWO];
     std::cout << "vec1[2]" << men << std::endl;
-    vec1[2] = 6;
-    std::cout << vec1[2] << std::endl;
+    vec1[TWO] = SIX;
+    std::cout << vec1[TWO] << std::endl;
     std::cout << vec1.back() << std::endl;
 
     std::vector<int> vec2;
-    vec2.push_back(10);
-    vec2.push_back(20);
-    vec2.push_back(30);
+    vec2.push_back(TEN);
+    vec2.push_back(TWENTY);
+    vec2.push_back(THIRTY);
     std::cout << "size is" << vec2.size() << "success" << std::endl;
     vec2.pop_back();
     std::cout << vec2.size() << std::endl;
 
     std::vector<int> vec3;
-    vec3.reserve(10);
-    for (int i = 0; i < 10; i++)
+    vec3.reserve(TEN);
+    for (int i = 0; i < TEN; i++)
     {
         vec3.push_back(i);
         std::cout << vec3.capacity() << std::endl;
@@ -53,72 +64,66 @@ void vectorTest()
 }
 
 // 集合set
-void setTest()
+void SetTest()
 {
     set<int> set1;
-    set1.insert(1);
-    set1.insert(2);
-    set1.insert(3);
+    set1.insert(ONE);
+    set1.insert(TWO);
+    set1.insert(THREE);
 
     set<int> set2(set1.begin(), set1.end());
-    auto a = set2.find(2);
+    auto a = set2.find(TWO);
     set2.erase(a);
 
     set<int> set3(set1);
-    std::cout << set3.count(3) << endl;
+    std::cout << set3.count(THREE) << endl;
     set1.clear();
 }
 
 // map
-void mapTest()
+void MapTest()
 {
     std::map<int, std::string> map1 = {{1, "one"}, {2, "two"}, {3, "three"}};
     std::string value1 = map1[1];
-    if (map1.find(1) != map1.end())
-    {
+    if (map1.find(1) != map1.end()) {
         std::cout << map1[3] << endl;
     }
-    for (std::map<int, std::string>::iterator it = map1.begin(); it != map1.end(); it++)
-    {
+    for (std::map<int, std::string>::iterator it = map1.begin(); it != map1.end(); it++) {
         std::cout << it->second << std::endl;
     }
 
     std::map<std::string, int> map2;
-    map2["Alice"] = 30;
-    map2["Bob"] = 25;
-    map2["Charlie"] = 35;
+    map2["Alice"] = THIRTY;
+    map2["Bob"] = TWENTY_FIVE;
+    map2["Charlie"] = THIRTY_FIVE;
 }
 
 // 哈希表
-int unorderedMapTest()
+int UnorderedMapTest()
 {
     std::unordered_map<std::string, int> myMap;
-    myMap["apple"] = 10;
-    myMap.insert(std::make_pair("banana", 20));
+    myMap["apple"] = TEN;
+    myMap.insert(std::make_pair("banana", TWENTY));
     std::cout << myMap["apple"] << std::endl;
     std::cout << myMap.at("banana") << std::endl;
 
-    if (myMap.find("orange") != myMap.end())
-    {
-    }
+    if (myMap.find("orange") != myMap.end()) {}
     myMap.erase("apple");
     return 0;
 }
 
 // queue
-int queueTest()
+int QueueTest()
 {
     std::queue<int> q;
-    q.push(10);
-    q.push(20);
-    q.push(30);
-    if (q.empty())
-    {
+    q.push(TEN);
+    q.push(TWENTY);
+    q.push(THIRTY);
+    if (q.empty()) {
         std::cout << "empty" << std::endl;
     }
     std::vector<int> v;
-    while (!q.empty())
-    {
+    while (!q.empty()) {
         v.push_back(q.front());
         q.pop();
     }
@@ -128,45 +133,42 @@ int queueTest()
 }
 
 // deque
-int dequeTest() {
+int DequeTest() {
     deque<int> dq;
-    dq.push_back(1);
-    dq.push_front(2);
+    dq.push_back(ONE);
+    dq.push_front(TWO);
     cout<< dq.front();
     dq.pop_front();
     return 0;
 }
 
 // stack
-int stackTest()
+int StackTest()
 {
     std::stack<int> myStack;
-    myStack.push(10);
-    myStack.push(20);
-    myStack.push(30);
+    myStack.push(TEN);
+    myStack.push(TWENTY);
+    myStack.push(THIRTY);
     std::cout << myStack.top() << endl;
     myStack.pop();
-    if (myStack.empty())
-    {
+    if (myStack.empty()) {
         std::cout << "Stack is empty" << std::endl;
-    }
-    else
-    {
+    } else {
         std::cout << myStack.size() << endl;
     }
     return 0;
 }
 
 // List
-int listTest()
+int ListTest()
 {
-    std::list<int> list1(5);
-    std::list<int> list2(5, 10);
+    std::list<int> list1(FIVE);
+    std::list<int> list2(FIVE, TEN);
     std::list<int> list3 = {1, 2, 3, 4};
     std::list<int> list4;
-    list4.push_back(10);
-    list4.push_back(20);
-    list4.push_back(30);
+    list4.push_back(TEN);
+    list4.push_back(TWENTY);
+    list4.push_back(THIRTY);
     std::cout << list4.front() << std::endl;
     list4.pop_back();
     return 0;
