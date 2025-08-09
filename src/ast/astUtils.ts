@@ -20,21 +20,34 @@ import * as os from 'os';
 
 import Logger, { LOG_MODULE_TYPE } from '../utils/logger';
 import { ClangPath } from './const';
+import {CppAstNode} from "./ArkCxxAstNode";
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'astUtils');
 
 export class AstUtils {
     private static currentAccess: string = 'public';
 
-    public static parse(sourceFile: string, ccJsonPath: string | null, includeDirs: string[] | null, llvmPath: string): JSON | null {
+    public static parse(sourceFile: string, ccJsonPath: string | null, includeDirs: string[] | null, llvmPath: string): CppAstNode {
         if (!fs.existsSync(sourceFile)) {
             logger.warn('parse file is not exists');
-            return null;
+            return {
+                kind: '',
+                name: '',
+                code: '',
+                type: { qualType: '' },
+                inner: []
+            };
         }
         let clangPath: string = this.getPlatformClang().toString();
         if (clangPath === '') {
             logger.warn('can not find clang path');
-            return null;
+            return {
+                kind: '',
+                name: '',
+                code: '',
+                type: { qualType: '' },
+                inner: []
+            };
         }
         let astPath: string = this.getAstOutputPath(sourceFile);
         let includeArgs = constructParseArguments(ccJsonPath, includeDirs);
@@ -60,9 +73,8 @@ export class AstUtils {
         } else {
             logger.info('Parsing completed!');
         }
-
-        let translationUnit: JSON = JSON.parse(fs.readFileSync(astPath, 'utf-8'));
-        translationUnit = this.filter(sourceFile, translationUnit);
+        let translationUnit = JSON.parse(fs.readFileSync(astPath, 'utf-8')) as CppAstNode;
+        translationUnit = this.filter(sourceFile, translationUnit) as CppAstNode;
         deleteFIle(astPath);
         return translationUnit;
     }
@@ -125,7 +137,17 @@ export class AstUtils {
     }
 
     private static fullInfo(cursor: any) {
+        if (!Array.isArray(cursor.inner)) {
+            cursor.inner = [];
+        }
+
         cursor.inner = this.filterChildren(cursor);
+        // **新增：保证 name 一定存在**
+        if (!Object.prototype.hasOwnProperty.call(cursor, 'name') || cursor.name === undefined) {
+            cursor.name = '';
+        }
+
+
         for (let index in cursor.inner) {
             if (Object.prototype.hasOwnProperty.call(cursor.inner, index)) {
                 let currentCursor = cursor.inner[index];

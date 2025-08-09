@@ -40,6 +40,7 @@ import { buildGenericType } from '../../../core/model/builder/builderUtils';
 import { CONSTRUCTOR_NAME, THIS_NAME } from '../../../core/common/TSConst';
 import { ArkSignatureBuilder } from '../../../core/model/builder/ArkSignatureBuilder';
 import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
+import {CppAstNode} from "../../../ast/ArkCxxAstNode";
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkMethodBuilder');
 
@@ -109,7 +110,7 @@ export function handleFunctionTemplate(methodNode: any, mtd: ArkMethod, sourceFi
     mtd.setGenericTypes(templateTypesArray);
 }
 
-export function buildArkMethodFromArkClass(methodNode: any, declaringClass: ArkClass, mtd: ArkMethod, sourceFile: any, declaringMethod?: ArkMethod): void {
+export function buildArkMethodFromArkClass(methodNode: CppAstNode, declaringClass: ArkClass, mtd: ArkMethod, sourceFile: any, declaringMethod?: ArkMethod): void {
     mtd.setDeclaringArkClass(declaringClass);
     if (declaringMethod !== undefined) {
         mtd.setOuterMethod(declaringMethod);
