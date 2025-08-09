@@ -231,10 +231,10 @@ describe('Function Test', () => {
 
     it('case3: Lambda Function Test', () => {
         const scene = buildScene('lambdaFunc');
-        testBlocks(scene, 'lambdaFuncSample.cpp', 'case1', LAMBDA_EXPECT.LAMBDA_EXPECT_CASE1.blocks);
-        testBlocks(scene, 'lambdaFuncSample.cpp', 'case2', LAMBDA_EXPECT.LAMBDA_EXPECT_CASE2.blocks);
-        testBlocks(scene, 'lambdaFuncSample.cpp', 'case3', LAMBDA_EXPECT.LAMBDA_EXPECT_CASE3.blocks);
-        testBlocks(scene, 'lambdaFuncSample.cpp', 'case4', LAMBDA_EXPECT.LAMBDA_EXPECT_CASE4.blocks);
+        testBlocks(scene, 'lambdaFuncSample.cpp', 'Case1', LAMBDA_EXPECT.LAMBDA_EXPECT_CASE1.blocks);
+        testBlocks(scene, 'lambdaFuncSample.cpp', 'Case2', LAMBDA_EXPECT.LAMBDA_EXPECT_CASE2.blocks);
+        testBlocks(scene, 'lambdaFuncSample.cpp', 'Case3', LAMBDA_EXPECT.LAMBDA_EXPECT_CASE3.blocks);
+        testBlocks(scene, 'lambdaFuncSample.cpp', 'Case4', LAMBDA_EXPECT.LAMBDA_EXPECT_CASE4.blocks);
     });
 
     it('case4: delete Expression Test', () => {

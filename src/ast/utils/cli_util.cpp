@@ -25,7 +25,8 @@
 using json = nlohmann::json;
 namespace fs = std::filesystem;
 
-CommandLineOptions cliutil::ParseCommandLineArgs(int argc, char** argv) {
+CommandLineOptions cliutil::ParseCommandLineArgs(int argc, char** argv)
+{
     CommandLineOptions opts;
     for(int i = 1; i< argc; ++i) {
         std::string arg = argv[i];
@@ -42,7 +43,8 @@ CommandLineOptions cliutil::ParseCommandLineArgs(int argc, char** argv) {
     return opts;
 }
 
-void cliutil::AddMainFileDirToInclude(CommandLineOptions& opts) {
+void cliutil::AddMainFileDirToInclude(CommandLineOptions& opts)
+{
     if (opts.inputFile.empty()) {
         return;
     }
@@ -73,7 +75,8 @@ void cliutil::AddMainFileDirToInclude(CommandLineOptions& opts) {
     }
 }
 
-bool cliutil::ValidateInput(CommandLineOptions& opts) {
+bool cliutil::ValidateInput(CommandLineOptions& opts)
+{
     if (opts.inputFile.empty()) {
         std::cerr << "Error: No input file provided.\n";
         return false;
@@ -86,19 +89,22 @@ bool cliutil::ValidateInput(CommandLineOptions& opts) {
     return true;
 }
 
-void cliutil::PrintUsage(const char* progName) {
+void cliutil::PrintUsage(const char* progName)
+{
     std::cerr << "Usage: " << progName <<
     " <file.cpp> [-o <output.json>] [-c <compile_commands.json>] [-i <include_dir> ...]\n";
 }
 
-bool cliutil::hasSuffix(const std::string& str, const std::string& suffix) {
+bool cliutil::hasSuffix(const std::string& str, const std::string& suffix)
+{
     if (suffix.size() > str.size()) {
         return false;
     }
     return str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
 }
 
-ClangArgs cliutil::PrepareClangArgs(const CommandLineOptions& opts) {
+ClangArgs cliutil::PrepareClangArgs(const CommandLineOptions& opts)
+{
     ClangArgs res;
     // 选择标准
     if (hasSuffix(opts.inputFile, ".c")) {
@@ -118,7 +124,8 @@ ClangArgs cliutil::PrepareClangArgs(const CommandLineOptions& opts) {
     return res;
 }
 
-ClangArgs cliutil::LoadCompileCommands(const CommandLineOptions& opts) {
+ClangArgs cliutil::LoadCompileCommands(const CommandLineOptions& opts)
+{
     std::string compileCommandsPath = opts.compile_commands_file;
     std::string inputFile = opts.inputFile;
     std::ifstream file(compileCommandsPath);
@@ -167,7 +174,8 @@ ClangArgs cliutil::LoadCompileCommands(const CommandLineOptions& opts) {
     return result;
 }
 
-ClangArgs cliutil::GetClangArgs(const CommandLineOptions& opts) {
+ClangArgs cliutil::GetClangArgs(const CommandLineOptions& opts)
+{
     ClangArgs clangArgs;
     if (!opts.compile_commands_file.empty()) {
         clangArgs = cliutil::LoadCompileCommands(opts);
