@@ -33,6 +33,7 @@ import { ModifierType } from '../../../core/model/ArkBaseModel';
 import { BlockBuilder, Case, Catch, TextError, Variable, Scope } from '../../../core/graph/builder/CfgBuilder';
 import { ModelUtils } from '../../../core/common/ModelUtils';
 import { CONSTRUCTOR_NAME, PROMISE } from '../../../core/common/TSConst';
+import {CppAstNode} from "../../../ast/ArkCxxAstNode";
 
 export class StatementBuilder {
     type: string;
@@ -1248,7 +1249,7 @@ export class CfgBuilder {
                     blocksContainLoopCondition.add(this.blocks[i]);
                 } else if (statementBuilder instanceof SwitchStatementBuilder) {
                     blockBuildersContainSwitch.push(this.blocks[i]);
-                    const valueAndStmtsOfSwitchAndCases = arkIRTransformer.switchStatementToValueAndStmts(statementBuilder.astNode as ts.SwitchStatement);
+                    const valueAndStmtsOfSwitchAndCases = arkIRTransformer.switchStatementToValueAndStmtsCpp(statementBuilder.astNode as CppAstNode);
                     valueAndStmtsOfSwitchAndCasesAll.push(valueAndStmtsOfSwitchAndCases);
                     continue;
                 }

@@ -169,7 +169,7 @@ void buildNodeRange(json& node, json& parent)
         int startCol = pRange["begin"]["col"];
         int endCol = startCol;
         int curOffset = 0;
-        int line = startLine
+        int line = startLine;
         int col = startCol;
         for (size_t i = 0; i < pCode.size(); i++) {
             if (curOffset == startOffset) {
@@ -754,7 +754,7 @@ void filterToMainFileOnly(json& node, const std::string& mainFileName, std::stri
     std::string normMainFileName = mainFileName;
     try {
         normMainFileName = std::filesystem::weakly_canonical(mainFileName).string();
-    } catch (...) {} // 省略捕获
+    } catch (...) { /*异常（如路径不存在、权限不足等） 保持原 normMainFileName 不变 */ }
 
     // 仅主文件节点和TranslationUnitDecl挂inner，头文件节点聚合到headerUnits
     if (node.value("kind", "") == "TranslationUnitDecl") {

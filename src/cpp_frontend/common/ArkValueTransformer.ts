@@ -602,7 +602,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         };
     }
 
-    public getArgumentNodeForRecover(innerAsNodes: CppAstNode): any {
+    public getArgumentNodeForRecover(innerAsNodes: CppAstNode): {}[]  {
         let callNode = {};
         let argumentNodes = [];
         for (let i = 0; i < innerAsNodes.length; i++) {
@@ -619,7 +619,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         let callNode = {};
         let argumentNodes = [];
         // 此时innerAstNode为单独的点
-        if (innerAstNodes.hasOwnProperty('id')) {
+        if (Object.prototype.hasOwnProperty.call(innerAstNodes, 'id')) {
             callNode = this.getDeclRef(innerAstNodes.inner[0]);
             if (innerAstNodes.inner.length > 1) {
                 for (let i = 1; i < innerAstNodes.inner.length; i++) {
@@ -954,7 +954,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         }
     }
 
-    private buildValueAndStmtsForStream(streamNode: any, args: any[], stmts: Stmt[], streamExpr: any): ValueAndStmts {
+    private buildValueAndStmtsForStream(streamNode: CppAstNode, args: any[], stmts: Stmt[], streamExpr: CppAstNode): ValueAndStmts {
         let nonOverloadedArgs = [];
         const currValueAndStmts: ValueAndStmts = {
             value: new Local(streamExpr.code),
@@ -1015,14 +1015,14 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         }
     }
 
-    public CXXOperatorExpressionToBinaryOperator(expression: CppAstNode): any {
+    public CXXOperatorExpressionToBinaryOperator(expression: CppAstNode): ValueAndStmts {
         let operatorExpression = Object.assign({}, expression);
         operatorExpression.opcode = expression.inner[0].code;
         operatorExpression.inner = [expression.inner[1], expression.inner[2]];
         return this.binaryExpressionToValueAndStmtsCpp(operatorExpression);
     }
 
-    public CXXOperatorExpressionToUnaryOperator(expression: CppAstNode): any {
+    public CXXOperatorExpressionToUnaryOperator(expression: CppAstNode): ValueAndStmts {
         let operatorExpression = Object.assign({}, expression);
         operatorExpression.opcode = expression.inner[0].code;
         operatorExpression.inner = [expression.inner[1]];
@@ -1032,7 +1032,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         return this.postfixUnaryExpressionToValueAndStmtsCpp(operatorExpression);
     }
 
-    public cxxOperatorExpressionToValueAndStmts(callExpression: CppAstNode| any, layer: boolean = true): any {
+    public cxxOperatorExpressionToValueAndStmts(callExpression: CppAstNode, layer: boolean = true): any {
         // First handle overloaded operators or other special cases
         const specialResult = this.handleSpecialOperators(callExpression);
         if (specialResult) {
@@ -1067,7 +1067,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
     /**
      * Handle special operator scenarios and return early if matched
      */
-    private handleSpecialOperators(callExpression: CppAstNode | any): any {
+    private handleSpecialOperators(callExpression: CppAstNode): ValueAndStmts | null {
         // Overloaded operator
         const overloadedOpToValueAndStmts = this.handleOverloadedOp(callExpression);
         if (overloadedOpToValueAndStmts) {
@@ -1544,7 +1544,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         return newConstructArgs;
     }
 
-    private getNewExpressionClassName(newExpression: CppAstNode | any): string {
+    private getNewExpressionClassName(newExpression: CppAstNode): string {
         let oriType = '';
         if (newExpression.type.desugaredQualType) {
             oriType = newExpression.type.desugaredQualType;
@@ -1728,7 +1728,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         }
     }
 
-    private postfixUnaryExpressionToValueAndStmtsCpp(postfixUnaryExpression: CppAstNode | any): ValueAndStmts {
+    private postfixUnaryExpressionToValueAndStmtsCpp(postfixUnaryExpression: CppAstNode): ValueAndStmts {
         const stmts: Stmt[] = [];
         let { value: operandValue, valueOriginalPositions: operandPositions, stmts: exprStmts } = this.tsNodeToValueAndStmts(postfixUnaryExpression.inner[0]);
         exprStmts.forEach(stmt => stmts.push(stmt));
@@ -2143,8 +2143,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         } else if (qualType === 'thread') {
             return new Thread();
         } else {
-            // Handle alias type references
-            let type = this.resolveCppTypeReferenceNode(qualType);
+            let type = this.resolveCppTypeReferenceNode(qualType); // Handle alias type references
             if (!(type instanceof UnclearReferenceType)) {
                 return this.resolveCppTypeReferenceNode(qualType);
             }
@@ -2160,7 +2159,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         return stdContainerLists.some(containerType => typeNameInLowerCase.includes(containerType));
     }
 
-    private resolveCppTypeReferenceNode(typeReferenceNode: any): Type {
+    private resolveCppTypeReferenceNode(typeReferenceNode: string | any): Type {
         const typeReferenceFullName = typeReferenceNode;
         if (typeReferenceFullName === Builtin.OBJECT) {
             return Builtin.OBJECT_CLASS_TYPE;

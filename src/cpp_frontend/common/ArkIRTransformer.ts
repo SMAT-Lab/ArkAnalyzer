@@ -45,7 +45,6 @@ import { buildModifiers } from '../model/builder/builderUtils';
 import { ModelUtils } from '../../core/common/ModelUtils';
 import { ArkClass } from '../../core/model/ArkClass';
 import { buildNormalArkClassFromArkMethod } from '../model/builder/ArkClassBuilder';
-import { buildArkMethodFromArkClass } from '../model/builder/ArkMethodBuilder';
 import {CppAstNode} from '../../ast/ArkCxxAstNode';
 
 export type ValueAndStmts = {
@@ -65,12 +64,12 @@ export class DummyStmt extends Stmt {
     }
 }
 
-function nodeInnerNode(node: CppAstNode): CppAstNode | any {
+function nodeInnerNode(node: CppAstNode): CppAstNode {
     if (node.inner && node.inner.length > 0) {
         return node.inner[0];
     }
     console.log('unsupported node !');
-    return { kind: 'unsupported kind', node };
+    return { kind: 'unsupported kind' } as CppAstNode;
 }
 
 export class ArkIRTransformerCpp extends ArkIRTransformer {
@@ -203,16 +202,6 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
         return stmts;
     }
 
-    protected functionDeclarationToStmtsCpp(functionDeclarationNode: CppAstNode | any): Stmt[] {
-        const declaringClass = this.declaringMethod.getDeclaringArkClass();
-        const arkMethod = new ArkMethod();
-        if (this.builderMethodContextFlag) {
-            ModelUtils.implicitArkUIBuilderMethods.add(arkMethod);
-        }
-        buildArkMethodFromArkClass(functionDeclarationNode, declaringClass, arkMethod, this.sourceFile, this.declaringMethod);
-        return [];
-    }
-
     protected classDeclarationToStmtsCpp(node: CppAstNode): Stmt[] {
         const cls = new ArkClass();
         const declaringArkNamespace = this.declaringMethod.getDeclaringArkClass().getDeclaringArkNamespace();
@@ -269,7 +258,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
         return expr;
     }
 
-    private forRangeStatementToStmts(forOfStatement: any): Stmt[] {
+    private forRangeStatementToStmts(forOfStatement: CppAstNode): Stmt[] {
         const stmts: Stmt[] = [];
         let entry = forOfStatement.inner[1];
         // 处理iterable初始化
@@ -382,7 +371,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
         return stmts;
     }
 
-    public cppNodeToValueAndStmts(node: any): ValueAndStmts {
+    public cppNodeToValueAndStmts(node: CppAstNode): ValueAndStmts {
         return this.arkValueTransformerCpp.tsNodeToValueAndStmts(node);
     }
 
@@ -443,7 +432,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
         }
     }
 
-    public switchStatementToValueAndStmts(switchStatement: any): ValueAndStmts[] {
+    public switchStatementToValueAndStmtsCpp(switchStatement: CppAstNode): ValueAndStmts[] {
         const valueAndStmtsOfSwitchAndCases: ValueAndStmts[] = [];
         const exprStmts: Stmt[] = [];
         let { value: exprValue, valueOriginalPositions: exprPositions, stmts: exprTempStmts } = this.cppNodeToValueAndStmts(switchStatement.inner[0]);
@@ -707,7 +696,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
         return stmts;
     }
 
-    private throwStatementToStmtsCpp(throwStatement: any): Stmt[] {
+    private throwStatementToStmtsCpp(throwStatement: CppAstNode): Stmt[] {
         const stmts: Stmt[] = [];
         const { value: throwValue, valueOriginalPositions: throwValuePositions, stmts: throwStmts } = this.cppNodeToValueAndStmts(throwStatement.inner[0]);
         throwStmts.forEach(stmt => stmts.push(stmt));
