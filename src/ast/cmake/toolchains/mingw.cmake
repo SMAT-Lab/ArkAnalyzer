@@ -3,9 +3,8 @@
 
 set(CMAKE_SYSTEM_NAME Windows)
 set(CMAKE_SYSTEM_PROCESSOR x86_64)
-set(LLVM_MINGW_ROOT "***//harmony_code/codearts_workspace/pre_scripts/llvm-mingw-x86_64")
-set(CMAKE_C_COMPILER "${LLVM_MINGW_ROOT}/bin/x86_64-w64-mingw32-gcc")
-set(CMAKE_CXX_COMPILER "${LLVM_MINGW_ROOT}/bin/x86_64-w64-mingw32-g++")
+set(CMAKE_C_COMPILER "***//harmony_code/codearts_workspace/pre_scripts/llvm-mingw-x86_64/bin/x86_64-w64-mingw32-clang")
+set(CMAKE_CXX_COMPILER "***//harmony_code/codearts_workspace/pre_scripts/llvm-mingw-x86_64/bin/x86_64-w64-mingw32-clang++")
 set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 set(CMAKE_INSTALL_RPATH "$ORIGIN")
