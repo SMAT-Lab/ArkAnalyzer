@@ -20,7 +20,7 @@ export const FUNCPTR_EXPECT_CASE1 = {
             stmts: [
                 'this = this: @functionPointer/functionPointer.cpp: %dflt',
                 'funcPtr = int (*)(int, int)',
-                'funcPtr = add',
+                'funcPtr = Add',
                 'result = staticinvoke <@%unk/%unk: .funcPtr()>(3, 4)',
                 "staticinvoke <@%unk/%unk: .cout()>('3 + 4 = ', result)",
                 'return 0',
@@ -37,8 +37,8 @@ export const FUNCPTR_EXPECT_CASE2 = {
             id: 0,
             stmts: [
                 'this = this: @functionPointer/functionPointer.cpp: %dflt',
-                'staticinvoke <@%unk/%unk: .greet()>(greetEnglish)',
-                'staticinvoke <@%unk/%unk: .greet()>(greetSpanish)',
+                'staticinvoke <@%unk/%unk: .Greet()>(GreetEnglish)',
+                'staticinvoke <@%unk/%unk: .Greet()>(GreetSpanish)',
                 'return 0',
             ],
             preds: [],
@@ -54,10 +54,10 @@ export const FUNCPTR_EXPECT_CASE3 = {
             stmts: [
                 'this = this: @functionPointer/functionPointer.cpp: %dflt',
                 '%0 = newarray (double (*[])[4]',
-                '%0[0] = add',
-                '%0[1] = subtract',
-                '%0[2] = multiply',
-                '%0[3] = divide',
+                '%0[0] = Add',
+                '%0[1] = Subtract',
+                '%0[2] = Multiply',
+                '%0[3] = Divide',
                 'operations = %0',
                 'x = 10',
                 'y = 5',
@@ -106,7 +106,7 @@ export const FUNCPTR_EXPECT_GREET = {
             stmts: [
                 'greetFunc = parameter0: void (*)()',
                 'this = this: @functionPointer/functionPointer.cpp: %dflt',
-                'staticinvoke <@%unk/%unk: .greetFunc()>()',
+                'staticinvoke <@%unk/%unk: .GreetFunc()>()',
                 'return',
             ],
             preds: [],

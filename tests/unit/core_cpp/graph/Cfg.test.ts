@@ -196,13 +196,13 @@ describe('Type Test', () => {
 
     it('case:8 Template Test', () => {
         const scene = buildScene('template');
-        testBlocks(scene, 'template.cpp', 'max1', TEMPLATE_EXPECT.TEMPLATE_EXPECT_CASE1.blocks);
-        testBlocks(scene, 'template.cpp', 'max2', TEMPLATE_EXPECT.TEMPLATE_EXPECT_CASE2.blocks);
-        testBlocks(scene, 'template.cpp', 'printPair', TEMPLATE_EXPECT.TEMPLATE_EXPECT_CASE3.blocks);
+        testBlocks(scene, 'template.cpp', 'Max1', TEMPLATE_EXPECT.TEMPLATE_EXPECT_CASE1.blocks);
+        testBlocks(scene, 'template.cpp', 'Max2', TEMPLATE_EXPECT.TEMPLATE_EXPECT_CASE2.blocks);
+        testBlocks(scene, 'template.cpp', 'PrintPair', TEMPLATE_EXPECT.TEMPLATE_EXPECT_CASE3.blocks);
         testBlocksClass(scene, 'template.cpp', 'MyContainer', TEMPLATE_EXPECT.TEMPLATE_MYCONTAINER_CLASS);
         testBlocks(scene, 'template.cpp', 'main', TEMPLATE_EXPECT.TEMPLATE_EXPECT_CASE4.blocks);
-        testBlocks(scene, 'template.cpp', 'sum', TEMPLATE_EXPECT.TEMPLATE_EXPECT_CASE5.blocks);
-        testBlocks(scene, 'template.cpp', 'instantiation3', TEMPLATE_EXPECT.TEMPLATE_EXPECT_CASE6.blocks);
+        testBlocks(scene, 'template.cpp', 'Sum', TEMPLATE_EXPECT.TEMPLATE_EXPECT_CASE5.blocks);
+        testBlocks(scene, 'template.cpp', 'Instantiation3', TEMPLATE_EXPECT.TEMPLATE_EXPECT_CASE6.blocks);
     });
 
     it('case9: class Test', () => {
@@ -222,11 +222,11 @@ describe('Type Test', () => {
 describe('Function Test', () => {
     it('case1: return value', () => {
         const scene = buildScene('operators');
-        testBlocks(scene, 'cppOperators.cpp', 'returnValue', OPERATOR_EXPECT.OPERATOR_EXPECT_RETURN.blocks);
+        testBlocks(scene, 'cppOperators.cpp', 'ReturnValue', OPERATOR_EXPECT.OPERATOR_EXPECT_RETURN.blocks);
     });
     it('case2: no return value', () => {
         const scene = buildScene('operators');
-        testBlocks(scene, 'cppOperators.cpp', 'noReturnValue', OPERATOR_EXPECT.OPERATOR_EXPECT_NO_RETURN.blocks);
+        testBlocks(scene, 'cppOperators.cpp', 'NoReturnValue', OPERATOR_EXPECT.OPERATOR_EXPECT_NO_RETURN.blocks);
     });
 
     it('case3: Lambda Function Test', () => {
@@ -264,11 +264,11 @@ describe('Function Test', () => {
 describe('Other Test', () => {
     it('case1: arithmetic operator', () => {
         const scene = buildScene('operators');
-        testBlocks(scene, 'cppOperators.cpp', 'arithmeticOperator', OPERATOR_EXPECT.OPERATOR_EXPECT_CASE1.blocks);
-        testBlocks(scene, 'cppOperators.cpp', 'relationOperator', OPERATOR_EXPECT.OPERATOR_EXPECT_CASE2.blocks);
-        testBlocks(scene, 'cppOperators.cpp', 'componentOperator', OPERATOR_EXPECT.OPERATOR_EXPECT_CASE3.blocks);
-        testBlocks(scene, 'cppOperators.cpp', 'bitOperator', OPERATOR_EXPECT.OPERATOR_EXPECT_CASE4.blocks);
-        testBlocks(scene, 'cppOperators.cpp', 'otherOperator', OPERATOR_EXPECT.OPERATOR_EXPECT_CASE5.blocks);
+        testBlocks(scene, 'cppOperators.cpp', 'ArithmeticOperator', OPERATOR_EXPECT.OPERATOR_EXPECT_CASE1.blocks);
+        testBlocks(scene, 'cppOperators.cpp', 'RelationOperator', OPERATOR_EXPECT.OPERATOR_EXPECT_CASE2.blocks);
+        testBlocks(scene, 'cppOperators.cpp', 'ComponentOperator', OPERATOR_EXPECT.OPERATOR_EXPECT_CASE3.blocks);
+        testBlocks(scene, 'cppOperators.cpp', 'BitOperator', OPERATOR_EXPECT.OPERATOR_EXPECT_CASE4.blocks);
+        testBlocks(scene, 'cppOperators.cpp', 'OtherOperator', OPERATOR_EXPECT.OPERATOR_EXPECT_CASE5.blocks);
     });
     it('case2: try catch throw', () => {
         const scene = buildScene('throw');
@@ -392,10 +392,10 @@ describe('thread Test', () => {
     });
     it('case2: functionPointer', () => {
         const scene = buildScene('functionPointer');
-        testBlocks(scene, 'functionPointer.cpp', 'case1', FUNCPTR_EXPECT.FUNCPTR_EXPECT_CASE1.blocks);
-        testBlocks(scene, 'functionPointer.cpp', 'case2', FUNCPTR_EXPECT.FUNCPTR_EXPECT_CASE2.blocks);
-        testBlocks(scene, 'functionPointer.cpp', 'case3', FUNCPTR_EXPECT.FUNCPTR_EXPECT_CASE3.blocks);
-        testBlocks(scene, 'functionPointer.cpp', 'greet', FUNCPTR_EXPECT.FUNCPTR_EXPECT_GREET.blocks);
+        testBlocks(scene, 'functionPointer.cpp', 'Case1', FUNCPTR_EXPECT.FUNCPTR_EXPECT_CASE1.blocks);
+        testBlocks(scene, 'functionPointer.cpp', 'Case2', FUNCPTR_EXPECT.FUNCPTR_EXPECT_CASE2.blocks);
+        testBlocks(scene, 'functionPointer.cpp', 'Case3', FUNCPTR_EXPECT.FUNCPTR_EXPECT_CASE3.blocks);
+        testBlocks(scene, 'functionPointer.cpp', 'Greet', FUNCPTR_EXPECT.FUNCPTR_EXPECT_GREET.blocks);
     });
 });
 
