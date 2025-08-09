@@ -55,7 +55,7 @@ struct ShoppingList
 
 void case1()
 {
-    struct Point q = (struct Point){.x = 5, .y = 8, .name = 'c'};
+    struct Point q = (struct Point) {.x = 5, .y = 8, .name = 'c'};
 }
 
 void case2()

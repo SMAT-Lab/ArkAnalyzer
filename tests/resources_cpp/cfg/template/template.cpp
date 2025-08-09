@@ -65,7 +65,7 @@ public:
     }
 
 };
-void instantiation2(){
+void instantiation2() {
     MyContainer<int> intContainer(100,20);
     int a = intContainer.sum();
     intContainer.print();
@@ -74,10 +74,10 @@ void instantiation2(){
 
 // clang:: CXXPseudoDestructorExpr
 template <typename T>
-void destroy_ptr(T* ptr){
+void destroy_ptr(T* ptr) {
     ptr->~T();
 }
-int main(){
+int main() {
     double d = 2.718;
     destroy_ptr(&d);
     return 0;
@@ -85,10 +85,10 @@ int main(){
 
 // clang::CXXFoldExpr
 template <typename... Args>
-auto sum(Args... args){
+auto sum(Args... args) {
     return (... + args);
 }
-int instantiation3(){
+int instantiation3() {
     int z = sum(1, 2, 3, 4, 5, 6);
     return 0;
 }

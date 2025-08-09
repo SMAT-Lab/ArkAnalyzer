@@ -488,11 +488,11 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
         let conditionNoe: any | undefined = undefined;
         let incrementor: any | undefined = undefined;
         for (const node of forStatement.inner) {
-            if (node.kind == 'DeclStmt') {
+            if (node.kind === 'DeclStmt') {
                 initNode = node;
-            } else if (node.kind == 'BinaryOperator' || node.kind == 'ExprWithCleanups') {
+            } else if (node.kind === 'BinaryOperator' || node.kind === 'ExprWithCleanups') {
                 conditionNoe = node;
-            } else if (node.kind == 'UnaryOperator' || node.kind == 'CXXOperatorCallExpr') {
+            } else if (node.kind === 'UnaryOperator' || node.kind === 'CXXOperatorCallExpr') {
                 incrementor = node;
             }
         }

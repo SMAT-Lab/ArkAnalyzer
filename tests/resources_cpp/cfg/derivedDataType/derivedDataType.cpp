@@ -67,7 +67,7 @@ private:
 
 public:
     DefaultClass() {}
-    // DefaultClass(char name, int age):name(name), age(age){
+    // DefaultClass(char name, int age):name(name), age(age) {
     //     this->name = name;
     //     this->age = age;
     // }

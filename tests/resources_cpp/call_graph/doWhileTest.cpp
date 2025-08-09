@@ -44,7 +44,7 @@ void makeSound(Animal& animal)
 {
     animal.sound();
 }
-int main(){
+int main() {
     Cat cat;
     makeSound(Dog());
     int num = 1;

@@ -44,7 +44,7 @@ void makeSound(const Animal& animal)
 {
     animal.sound();
 }
-int main(){
+int main() {
     Cat cat;
     makeSound(Dog());
     return 0;

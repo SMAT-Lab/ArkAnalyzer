@@ -83,19 +83,19 @@ describe('CfgTest', () => {
 
     it('case3: switch statement', () => {
         const scene = buildScene('switch');
-        testBlocks(scene, 'switchSample.cpp', 'case1', SWITCH_EXPECT.SWITCH_EXPECT_CASE1.blocks);
-        testBlocks(scene, 'switchSample.cpp', 'case2', SWITCH_EXPECT.SWITCH_EXPECT_CASE2.blocks);
-        testBlocks(scene, 'switchSample.cpp', 'case3', SWITCH_EXPECT.SWITCH_EXPECT_CASE3.blocks);
-        testBlocks(scene, 'switchSample.cpp', 'case4', SWITCH_EXPECT.SWITCH_EXPECT_CASE4.blocks);
-        testBlocks(scene, 'switchSample.cpp', 'case5', SWITCH_EXPECT.SWITCH_EXPECT_CASE5.blocks);
-        testBlocks(scene, 'switchSample.cpp', 'case6', SWITCH_EXPECT.SWITCH_EXPECT_CASE6.blocks);
-        testBlocks(scene, 'switchSample.cpp', 'case7', SWITCH_EXPECT.SWITCH_EXPECT_CASE7.blocks);
-        testBlocks(scene, 'switchSample.cpp', 'case8', SWITCH_EXPECT.SWITCH_EXPECT_CASE8.blocks);
-        testBlocks(scene, 'switchSample.cpp', 'case9', SWITCH_EXPECT.SWITCH_EXPECT_CASE9.blocks);
-        testBlocks(scene, 'switchSample.cpp', 'case10', SWITCH_EXPECT.SWITCH_EXPECT_CASE10.blocks);
-        testBlocks(scene, 'switchSample.cpp', 'case11', SWITCH_EXPECT.SWITCH_EXPECT_CASE11.blocks);
-        testBlocks(scene, 'switchSample.cpp', 'case12', SWITCH_EXPECT.SWITCH_EXPECT_CASE12.blocks);
-        testBlocks(scene, 'switchSample.cpp', 'case13', SWITCH_EXPECT.SWITCH_EXPECT_CASE13.blocks);
+        testBlocks(scene, 'switchSample.cpp', 'Case1', SWITCH_EXPECT.SWITCH_EXPECT_CASE1.blocks);
+        testBlocks(scene, 'switchSample.cpp', 'Case2', SWITCH_EXPECT.SWITCH_EXPECT_CASE2.blocks);
+        testBlocks(scene, 'switchSample.cpp', 'Case3', SWITCH_EXPECT.SWITCH_EXPECT_CASE3.blocks);
+        testBlocks(scene, 'switchSample.cpp', 'Case4', SWITCH_EXPECT.SWITCH_EXPECT_CASE4.blocks);
+        testBlocks(scene, 'switchSample.cpp', 'Case5', SWITCH_EXPECT.SWITCH_EXPECT_CASE5.blocks);
+        testBlocks(scene, 'switchSample.cpp', 'Case6', SWITCH_EXPECT.SWITCH_EXPECT_CASE6.blocks);
+        testBlocks(scene, 'switchSample.cpp', 'Case7', SWITCH_EXPECT.SWITCH_EXPECT_CASE7.blocks);
+        testBlocks(scene, 'switchSample.cpp', 'Case8', SWITCH_EXPECT.SWITCH_EXPECT_CASE8.blocks);
+        testBlocks(scene, 'switchSample.cpp', 'Case9', SWITCH_EXPECT.SWITCH_EXPECT_CASE9.blocks);
+        testBlocks(scene, 'switchSample.cpp', 'Case10', SWITCH_EXPECT.SWITCH_EXPECT_CASE10.blocks);
+        testBlocks(scene, 'switchSample.cpp', 'Case11', SWITCH_EXPECT.SWITCH_EXPECT_CASE11.blocks);
+        testBlocks(scene, 'switchSample.cpp', 'Case12', SWITCH_EXPECT.SWITCH_EXPECT_CASE12.blocks);
+        testBlocks(scene, 'switchSample.cpp', 'Case13', SWITCH_EXPECT.SWITCH_EXPECT_CASE13.blocks);
     });
 
     it('case4: loop statement', () => {

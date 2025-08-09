@@ -128,7 +128,9 @@ export function shouldAddCppHeaderImport(element: ImportInfo): boolean {
 }
 
 export function isValidCppHeaderPath(headerPath: string | undefined): boolean {
-    if (!headerPath) return false;
+    if (!headerPath) {
+        return false;
+    }
 
     const normalized = headerPath.replace(/\\/g, '/').toLowerCase();
 

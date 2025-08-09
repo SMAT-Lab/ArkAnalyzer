@@ -171,7 +171,7 @@ export class CfgBuilder {
     judgeLastType(s: StatementBuilder, lastStatement: StatementBuilder): void {
         if (lastStatement.type === 'ifStatement') {
             let lastIf = lastStatement as ConditionStatementBuilder;
-            if (lastIf.nextT == null) {
+            if (lastIf.nextT === null) {
                 lastIf.nextT = s;
                 s.lasts.add(lastIf);
             } else {
@@ -1006,7 +1006,7 @@ export class CfgBuilder {
         }
         if (stmt.type === 'ifStatement' || stmt.type === 'loopStatement' || stmt.type === 'catchOrNot') {
             let cstm = stmt as ConditionStatementBuilder;
-            if (cstm.nextT == null || cstm.nextF == null) {
+            if (cstm.nextT === null || cstm.nextF === null) {
                 this.errorTest(cstm);
                 return;
             }

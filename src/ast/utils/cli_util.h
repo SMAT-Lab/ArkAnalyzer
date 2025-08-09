@@ -19,7 +19,7 @@
 #include <vector>
 
 struct CommandLineOptions {
-    std::string input_file;
+    std::string inputFile;
     std::string output_file;
     std::string compile_commands_file;
     std::vector<std::string> user_include_dirs;
@@ -31,12 +31,12 @@ struct ClangArgs {
 };
 
 namespace cliutil {
-    CommandLineOptions parseCommandLineArgs(int argc, char** argv);
-    void addMainFileDirToInclude(CommandLineOptions& opts);
-    bool validateInput(CommandLineOptions& opts);
-    void printUsage(const char* progName);
-    ClangArgs prepareClangArgs(const CommandLineOptions& opts);
-    ClangArgs load_compile_commands(const CommandLineOptions& opts);
+    CommandLineOptions ParseCommandLineArgs(int argc, char** argv);
+    void AddMainFileDirToInclude(CommandLineOptions& opts);
+    bool ValidateInput(CommandLineOptions& opts);
+    void PrintUsage(const char* progName);
+    ClangArgs PrepareClangArgs(const CommandLineOptions& opts);
+    ClangArgs LoadCompileCommands(const CommandLineOptions& opts);
     bool hasSuffix(const std::string& str, const std::string& suffix); // 内部用
-    ClangArgs getClangArgs(const CommandLineOptions& opts);
+    ClangArgs GetClangArgs(const CommandLineOptions& opts);
 }
