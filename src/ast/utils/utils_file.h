@@ -29,4 +29,4 @@ void LoadFileContent(const std::string& filename);
 std::string get_default_output_path(const std::string &inputPath);
 
 // 保存AST到文件
-void saveASTToFile(const nlohmann::json& ast, const std::string& output_file);
+void saveASTToFile(const nlohmann::json& ast, const std::string& outputFile);

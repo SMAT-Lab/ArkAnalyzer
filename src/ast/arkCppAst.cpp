@@ -49,7 +49,8 @@ struct VisitContext {
 };
 
 inline void visitAllChildren(CXCursor cursor, json& children, bool actionScope,
-                             std::unordered_map<std::string, std::string>& varTypeMap) {
+                             std::unordered_map<std::string, std::string>& varTypeMap)
+{
     VisitContext context{children, actionScope, varTypeMap}; // 封装所有参数
 
     clang_visitChildren(
@@ -73,14 +74,14 @@ inline void fillMemberName(json &node, const std::string &displayName)
     if (node["name"] == "" && node.contains("code")) {
         std::string codeStr = node["code"];
         size_t pos = codeStr.find("->");
-        size_t arrow_len = TWO;
+        size_t arrowLen = TWO;
         if (pos == std::string::npos) {
             pos = codeStr.find(".");
-            arrow_len = 1;
+            arrowLen = 1;
         }
         if (pos != std::string::npos) {
-            std::string member = codeStr.substr(pos + arrow_len);
-            trim(member);
+            std::string member = codeStr.substr(pos + arrowLen);
+            Trim(member);
             node["name"] = member;
         }
     }
@@ -94,7 +95,7 @@ inline bool fillKindBycode(json &node, const std::string &codeStr,
     size_t pos = codeStr.find(prefix + "(");
     if (pos != std::string::npos && pos == 0) {
         node["kind"] = kind;
-        if (!argField.empty()) node[argField] = extractParentContent(codeStr, codeStr.find('(', pos));
+        if (!argField.empty()) node[argField] = ExtractParentContent(codeStr, codeStr.find('(', pos));
         return true;
     }
     return false;
@@ -612,7 +613,7 @@ void relateMemberType(const std::string& typeStr, json& children)
     }
 }
 
-bool isConstructorByTypeStr(std::string typeStr)
+bool IsConstructorByTypeStr(std::string typeStr)
 {
     return typeStr.find("std::map") == 0 || typeStr.find("std::unordered_map") == 0 ||
            typeStr.find("std::_Tree_const_iterator") != std::string::npos || typeStr == "key_type" ||
@@ -620,7 +621,7 @@ bool isConstructorByTypeStr(std::string typeStr)
            typeStr.find("lambda at") != std::string::npos || typeStr.find("struct") == 0;
 }
 
-bool isConstructorByNameStr(std::string nameStr)
+bool IsConstructorByNameStr(std::string nameStr)
 {
     return nameStr == "vector" || nameStr == "_Tree_const_iterator" || nameStr == "set" || nameStr == "queue" ||
     nameStr == "deque" || nameStr == "stack" || nameStr == "list";
@@ -661,7 +662,7 @@ std::vector<CXCursorKind> locCursorKind = {CXCursor_FunctionDecl, CXCursor_Class
                                            CXCursor_UsingDirective, CXCursor_Namespace};
 
 // 判断是否为内置数据类型
-bool isBuiltInType(std::string& type)
+bool IsBuiltInType(std::string& type)
 {
     // 内置类型列表
     std::set<std::string> builtInTypes = {
@@ -678,7 +679,7 @@ json buildTemplateDefaultType(const std::string& codeStr)
     auto eq = codeStr.find('=');
     std::string typeStr = eq == std::string::npos ? "" : codeStr.substr(eq + 1);
     typeStr.erase(std::remove(typeStr.begin(), typeStr.end(), ' '), typeStr.end());
-    if (isBuiltInType(typeStr))
+    if (IsBuiltInType(typeStr))
         return {{"kind", "BuildInType"}, {"type", {{"qualType", typeStr}}}, {"inner", json::array()}};
 
     json recordNode = {{"kind", "RecordType"}, {"type", {{"qualType", typeStr}}}};
@@ -693,7 +694,7 @@ bool IsInUserInclude(const std::string& fileName)
         // 统一路径分隔符
         std::string prefix = dir;
         if (!prefix.empty() && prefix.back() != '/' && prefix.back() != '\\')
-            prefix += getPathSeparator();
+            prefix += GetPathSeparator();
         if (fileName.find(prefix) == 0) {
             return true;
         }
@@ -755,7 +756,7 @@ void filterToMainFileOnly(json& node, const std::string& mainFileName, std::stri
     std::string normMainFileName = mainFileName;
     try {
         normMainFileName = std::filesystem::weakly_canonical(mainFileName).string();
-    } catch (...) {}
+    } catch (...) {} // 省略捕获
 
     // 仅主文件节点和TranslationUnitDecl挂inner，头文件节点聚合到headerUnits
     if (node.value("kind", "") == "TranslationUnitDecl") {
@@ -849,9 +850,9 @@ json addCXXCtorInitializer(json &children, json& parent)
         if (children[i]["kind"] == "OverloadedDeclRef") {
             if (!memberRef.is_null()) {
                 newChildren.push_back(buildCXXInheritedCtorInitExpr(memberRef, children[i]));
-                memberRef = nullptr;
+                memberRef = nullptr;} {
+                    continue;
            }
-            continue;
         }
         newChildren.push_back(children[i]);
     }
@@ -936,7 +937,7 @@ void fillNodeKindTag(json& node, CXCursor cursor, CXCursorKind kind_cursor, cons
             node["kind"] = "UserDefinedLiteral";
         else if (typeStr.find("basic_ostream") == 0 || nameStr.find("operator") != std::string::npos)
             node["kind"] = "CXXOperatorCallExpr";
-        else if (isConstructorByTypeStr(typeStr) || isConstructorByNameStr(nameStr) ||
+        else if (IsConstructorByTypeStr(typeStr) || IsConstructorByNameStr(nameStr) ||
                  IsConstructorByCodeStr(codeStr, nameStr, typeStr))
             node["kind"] = "CXXConstructExpr";
         else if ((codeStr.find(".") != std::string::npos || codeStr.find("->") != std::string::npos) &&
@@ -959,10 +960,10 @@ void fillNodeKindTag(json& node, CXCursor cursor, CXCursorKind kind_cursor, cons
         node["mangledName"] = getMemberInClassName(cursor);
     } else if (kind_cursor == CXCursor_Constructor) {
         node["kind"] = "CXXConstructorDecl";
-         node["mangledName"] = getMemberInClassName(cursor);
+        node["mangledName"] = getMemberInClassName(cursor);
     } else if (kind_cursor == CXCursor_Destructor) {
         node["kind"] = "CXXDestructorDecl";
-         node["mangledName"] = getMemberInClassName(cursor);
+        node["mangledName"] = getMemberInClassName(cursor);
     } else if (kind_cursor == CXCursor_UsingDeclaration) {
         node["kind"] = "UsingDecl";
     } else {
@@ -1032,7 +1033,8 @@ void fillDeclRefInfo(json& node, CXCursor cursor, CXCursorKind kind_cursor)
 }
 
 void fillNodeIdRangeLoc(json& node, const json& content, CXCursorKind kind_cursor,
-                        CXFile file, const std::string& displayName) {
+                        CXFile file, const std::string& displayName)
+{
     if (!content.is_null()) {
         node["id"] = content["id"];
         json begin = content["begin"];
@@ -1073,7 +1075,8 @@ void nodePostprocess(
     CXCursor cursor,
     CXCursorKind kind_cursor,
     json& children
-) {
+)
+{
     std::string codeStr = node.value("code", "");
     std::string typeStr = node["type"]["qualType"];
     if (node["kind"] == "UsingDecl" && isUsingInheritClass(node, children)) {
@@ -1182,7 +1185,7 @@ json buildASTJson(CXCursor cursor, bool actionScope, std::unordered_map<std::str
 
     json children = json::array();
     if (node.contains("kind") && (node["kind"] == "FunctionDecl" || node["kind"] == "CXXMethodDecl" ||
-        node["kind"] == "CXXConstructorDecl")){
+        node["kind"] == "CXXConstructorDecl")) {
         actionScope = true;
         }
     visitAllChildren(cursor, children, actionScope, varTypeMap); // 子节点递归
@@ -1255,7 +1258,7 @@ int main(int argc, char** argv)
     }
     json ast = buildAndProcessAST(unit, opts);
 
-    saveASTToFile(ast, opts.output_file);
+    saveASTToFile(ast, opts.outputFile);
 
     clang_disposeTranslationUnit(unit);
     clang_disposeIndex(index);

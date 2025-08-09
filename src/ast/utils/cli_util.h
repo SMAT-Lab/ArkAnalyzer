@@ -20,7 +20,7 @@
 
 struct CommandLineOptions {
     std::string inputFile;
-    std::string output_file;
+    std::string outputFile;
     std::string compile_commands_file;
     std::vector<std::string> userIncludeDirs;
 };

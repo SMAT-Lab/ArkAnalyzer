@@ -30,7 +30,7 @@ CommandLineOptions cliutil::ParseCommandLineArgs(int argc, char** argv) {
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
         if (arg == "-o" && i + 1 < argc) {
-            opts.output_file = argv[i + 1];
+            opts.outputFile = argv[i + 1];
             ++i;
             continue;
         }
@@ -91,10 +91,10 @@ bool cliutil::ValidateInput(CommandLineOptions& opts)
         std::cerr << "Error: No input file provided.\n";
         return false;
     }
-    if (opts.output_file.empty()) {
+    if (opts.outputFile.empty()) {
         size_t lastDot = opts.inputFile.find_last_of('.');
         std::string filename = (lastDot != std::string::npos) ? opts.inputFile.substr(0, lastDot) : opts.inputFile;
-        opts.output_file = filename + ".json";
+        opts.outputFile = filename + ".json";
     }
     return true;
 }
@@ -154,7 +154,7 @@ ClangArgs cliutil::LoadCompileCommands(const CommandLineOptions& opts)
         std::istringstream iss(command_str);
         std::string arg;
         while (iss >> arg) {
-            if (isSameFile(arg, opts.inputFile)) continue;
+            if (IsSameFile(arg, opts.inputFile)) continue;
             result.strArgs.push_back(arg);
             result.cstrArgs.push_back(result.strArgs.back().c_str());
         }

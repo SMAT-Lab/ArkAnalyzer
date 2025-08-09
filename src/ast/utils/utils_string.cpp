@@ -21,7 +21,7 @@
 #include <filesystem>
 
 // 去除首尾空白
-void trim(std::string &s)
+void Trim(std::string &s)
 {
     s.erase(0, s.find_first_not_of(" \t\r\n"));
     s.erase(s.find_last_not_of(" \t\r\n") + 1);
@@ -44,13 +44,15 @@ std::string cx2str(const CXString &s)
 }
 
 // 提取括号中的内容
-std::string extractParentContent(const std::string &code, size_t lpos, char open, char close)
+std::string ExtractParentContent(const std::string &code, size_t lpos, char open, char close)
 {
-    if (lpos == std::string::npos) lpos = code.find(open);
+    if (lpos == std::string::npos) {
+        lpos = code.find(open);
+    }
     size_t rpos = code.rfind(close);
-    if (lpos != std::string::npos && rpos != std::string::npos && rpos > lpos +1) {
-        std::string inside = code.substr(lpos + 1, rpos - lpos -1);
-        trim(inside);
+    if (lpos != std::string::npos && rpos != std::string::npos && rpos > lpos + 1) {
+        std::string inside = code.substr(lpos + 1, rpos - lpos - 1);
+        Trim(inside);
         return inside;
     }
     return std::string();
@@ -63,14 +65,14 @@ std::vector<std::string> split(const std::string &s, char delimiter)
     std::istringstream iss(s);
     std::string token;
     while (getline(iss, token, delimiter)) {
-        trim(token);
+        Trim(token);
         tokens.push_back(token);
     }
     return tokens;
 }
 
 // 路径分隔符
-std::string getPathSeparator()
+std::string GetPathSeparator()
 {
 #ifdef _WIN32
     return "\\";
@@ -80,9 +82,9 @@ std::string getPathSeparator()
 }
 
 // 路径归一化判断同名
-bool isSameFile(const std::string& pathA, const std::string& pathB)
+bool IsSameFile(const std::string& pathA, const std::string& pathB)
 {
-    try{
+    try {
         return std::filesystem::path(pathA).filename() == std::filesystem::path(pathB).filename();
     } catch (const std::filesystem::filesystem_error &e) {
         return false;

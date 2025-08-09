@@ -38,8 +38,8 @@ std::string get_default_output_path(const std::string &inputPath)
     return filename + ".json";
 }
 
-void saveASTToFile(const nlohmann::json& ast, const std::string& output_file)
+void saveASTToFile(const nlohmann::json& ast, const std::string& outputFile)
 {
-    std::ofstream(output_file) << ast.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace);
-    std::cout << "[STEP4] AST written to: " << output_file << std::endl;
+    std::ofstream(outputFile) << ast.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace);
+    std::cout << "[STEP4] AST written to: " << outputFile << std::endl;
 }
