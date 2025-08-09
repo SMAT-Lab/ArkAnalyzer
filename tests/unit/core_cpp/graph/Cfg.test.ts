@@ -72,13 +72,13 @@ describe('CfgTest', () => {
     });
     it('case2: if statement', () => {
         const scene = buildScene('if');
-        testBlocks(scene, 'ifSample.cpp', 'case1', IF_EXPECT.IF_EXPECT_CASE1.blocks);
-        testBlocks(scene, 'ifSample.cpp', 'case2', IF_EXPECT.IF_EXPECT_CASE2.blocks);
-        testBlocks(scene, 'ifSample.cpp', 'case3', IF_EXPECT.IF_EXPECT_CASE3.blocks);
-        testBlocks(scene, 'ifSample.cpp', 'case4', IF_EXPECT.IF_EXPECT_CASE4.blocks);
-        testBlocks(scene, 'ifSample.cpp', 'case5', IF_EXPECT.IF_EXPECT_CASE5.blocks);
-        testBlocks(scene, 'ifSample.cpp', 'case6', IF_EXPECT.IF_EXPECT_CASE6.blocks);
-        testBlocks(scene, 'ifSample.cpp', 'case7', IF_EXPECT.IF_EXPECT_CASE7.blocks);
+        testBlocks(scene, 'ifSample.cpp', 'Case1', IF_EXPECT.IF_EXPECT_CASE1.blocks);
+        testBlocks(scene, 'ifSample.cpp', 'Case2', IF_EXPECT.IF_EXPECT_CASE2.blocks);
+        testBlocks(scene, 'ifSample.cpp', 'Case3', IF_EXPECT.IF_EXPECT_CASE3.blocks);
+        testBlocks(scene, 'ifSample.cpp', 'Case4', IF_EXPECT.IF_EXPECT_CASE4.blocks);
+        testBlocks(scene, 'ifSample.cpp', 'Case5', IF_EXPECT.IF_EXPECT_CASE5.blocks);
+        testBlocks(scene, 'ifSample.cpp', 'Case6', IF_EXPECT.IF_EXPECT_CASE6.blocks);
+        testBlocks(scene, 'ifSample.cpp', 'Case7', IF_EXPECT.IF_EXPECT_CASE7.blocks);
     });
 
     it('case3: switch statement', () => {

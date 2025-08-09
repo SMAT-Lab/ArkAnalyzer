@@ -13,17 +13,18 @@
  * limitations under the License.
  */
 
- #define MARCO_THREE 3
+#define MARCO_THREE 3
 
- enum NumConstant {
+enum NumConstant {
     ONE,
     TWO,
     THREE,
     FOUR,
     TEN
- };
+};
 
-void Case1() {
+void Case1()
+{
     int a = 0;
     int b = 1;
     switch (a) {
@@ -37,7 +38,8 @@ void Case1() {
     }
 }
 
-void Case2() {
+void Case2()
+{
     int a = 0;
     int b = 1;
     switch (a) {
@@ -53,28 +55,30 @@ void Case2() {
     }
 }
 
-void Case3() {
+void Case3()
+{
     int a = 0;
     int b = 1;
     switch (a) {
-    case TWO:
-        b = TWO;
-    case THREE:
-        switch (b) {
-        case ONE:
-            b = ONE;
         case TWO:
             b = TWO;
+        case THREE:
+            switch (b) {
+            case ONE:
+                b = ONE;
+            case TWO:
+                b = TWO;
+            default:
+                b = TEN;
+            }
+            break;
         default:
             b = TEN;
-        }
-        break;
-    default:
-        b = TEN;
     }
 }
 
-void Case4() {
+void Case4()
+{
     int b = ONE;
     for (int i = 0; i < THREE; ++i) {
         switch (i) {
@@ -90,7 +94,8 @@ void Case4() {
     }
 }
 
-void Case5() {
+void Case5()
+{
     int a = 0;
     int b = 1;
     switch (a) {
@@ -100,14 +105,16 @@ void Case5() {
     a = ONE;
 }
 
-void Case6() {
+void Case6()
+{
     int a = 0;
     int b = 1;
     switch (a++) {}
     a = ONE;
 }
 
-void Case7() {
+void Case7()
+{
     int a = 0;
     int b = 1;
     switch (a) {
@@ -121,7 +128,8 @@ void Case7() {
     }
 }
 
-void Case8() {
+void Case8()
+{
     int a = 0;
     int b = 1;
     switch (a) {
@@ -134,7 +142,8 @@ void Case8() {
     }
 }
 
-void Case9() {
+void Case9()
+{
     int a = 0;
     int b = 1;
     switch (a) {
@@ -156,7 +165,8 @@ void Case10()
     }
 }
 
-void Case11() {
+void Case11()
+{
     int a = 0;
     int b = 1;
     switch (a) {
@@ -169,7 +179,8 @@ void Case11() {
     }
 }
 
-void Case12() {  // TODO: 修该待定！！！对应IR没改
+void Case12()
+{
     int a = 0;
     int b = (a > ONE) ? TWO : MARCO_THREE;
     switch (a) {
@@ -185,7 +196,8 @@ void Case12() {  // TODO: 修该待定！！！对应IR没改
     }
 }
 
-void Case13() {
+void Case13()
+{
     int a = 0;
     int b = 1;
     switch (a) {

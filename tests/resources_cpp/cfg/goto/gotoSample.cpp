@@ -22,7 +22,8 @@
 #define TEN 10
 
 
-int Case1() {
+int Case1()
+{
     int num = 1;
     if (num > 0) {
         num--;
@@ -35,7 +36,8 @@ end:
     return 0;
 }
 
-int Case2() {
+int Case2()
+{
     int num = 1;
     if (num > ZERO) {
         goto end;
@@ -47,7 +49,8 @@ end:
     return 0;
 }
 
-int Case3() {
+int Case3()
+{
     int num = 1;
     if (num == ZERO) {
         goto end;
@@ -63,7 +66,8 @@ end:
     return 0;
 }
 
-int Case4() {
+int Case4()
+{
     int num = 1;
     if (num == ZERO) {
         goto end1;
@@ -83,7 +87,8 @@ end3:
     return 0;
 }
 
-int Case5() {
+int Case5()
+{
     int i = 0;
     int j;
     if (i < ZERO) {
@@ -101,7 +106,8 @@ exit:
     return j;
 }
 
-int Case6() {
+int Case6()
+{
     int num = 1;
     if (num > ZERO)
         goto end;
@@ -112,7 +118,8 @@ end:
     return 0;
 }
 
-int Case7() {
+int Case7()
+{
     int i = 0;
     int j;
     if (i < ZERO) {
@@ -144,7 +151,8 @@ exit:
     return j;
 }
 
-void Case8() {
+void Case8()
+{
     int a = 0;
     int b = 1;
     switch (a) {
@@ -161,7 +169,8 @@ end:
     return;
 }
 
-void Case9() {
+void Case9()
+{
     int a = 0;
     int b = 1;
     switch (a) {
@@ -181,7 +190,8 @@ end:
     return;
 }
 
-void Case10() {
+void Case10()
+{
     int a = 0;
     for (int b = 1; b < TEN; b++) {
         a = a + TWO;
