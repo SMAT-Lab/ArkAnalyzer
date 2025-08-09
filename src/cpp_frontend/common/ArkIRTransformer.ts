@@ -339,7 +339,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
                 value: initValue,
                 valueOriginalPositions: initOriPos,
                 stmts: initStmts,
-            } = this.arkValueTransformerCpp.variableDeclarationToValueAndStmts(declStmts, true, false);
+            } = this.arkValueTransformerCpp.variableDeclarationToValueAndStmtsCpp(declStmts, true, false);
             const assignStmt = new ArkAssignStmt(initValue, castExpr);
             assignStmt.setOperandOriginalPositions([...initOriPos, ...castExprPositions]);
             stmts.push(assignStmt);
@@ -361,7 +361,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
                 value: catchValue,
                 valueOriginalPositions: catchOriPos,
                 stmts: catchStmts,
-            } = this.arkValueTransformerCpp.variableDeclarationToValueAndStmts(catchClause.inner[0], false, false);
+            } = this.arkValueTransformerCpp.variableDeclarationToValueAndStmtsCpp(catchClause.inner[0], false, false);
             const caughtExceptionRef = new ArkCaughtExceptionRef(UnknownType.getInstance());
             const assignStmt = new ArkAssignStmt(catchValue, caughtExceptionRef);
             assignStmt.setOperandOriginalPositions(catchOriPos);

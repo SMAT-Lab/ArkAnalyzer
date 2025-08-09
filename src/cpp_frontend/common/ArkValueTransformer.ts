@@ -180,7 +180,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         if (node.kind === 'CXXConstructExpr') {
             let parent = node.getParent();
             if (parent && parent.kind === 'CXXConstructorDecl') {
-                return this.superExpressionToValueAndStmts(node);
+                return this.superExpressionToValueAndStmtsCpp(node);
             }
             if (
                 !this.isPairConstructExpr(node) &&
@@ -405,7 +405,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
     }
 
     // C++中子类调用父类构造函数进行初始化，类似ts的super(xx)。比如Left(const char& name, int power) : Base(name) { ... }
-    public superExpressionToValueAndStmts(cxxConstructExpr: CppAstNode | any): ValueAndStmts {
+    public superExpressionToValueAndStmtsCpp(cxxConstructExpr: CppAstNode): ValueAndStmts {
         const cls = this.declaringMethod.getDeclaringArkClass();
         if (!cls) {
             return this.newExpressionToValueAndStmtsCpp(cxxConstructExpr);
@@ -1106,7 +1106,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
     /**
      * Collect ValueAndStmts from each inner node
      */
-    private collectInnerOperatorStmts(callExpression: CppAstNode | any, innerStmts: ValueAndStmts[]): void {
+    private collectInnerOperatorStmts(callExpression: CppAstNode, innerStmts: ValueAndStmts[]): void {
         for (let innerNode of callExpression.inner) {
             if (
                 innerNode.kind === 'CXXOperatorCallExpr' ||
@@ -1127,7 +1127,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         }
     }
 
-    private handleOverloadedOp(cxxOperatorCallExpr: CppAstNode | any): ValueAndStmts | null {
+    private handleOverloadedOp(cxxOperatorCallExpr: CppAstNode): ValueAndStmts | null {
         if (cxxOperatorCallExpr.type?.qualType === '' || cxxOperatorCallExpr.inner?.[0].castKind !== 'FunctionToPointerDecay') {
             return null;
         }
@@ -1767,7 +1767,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
     public declStmtToValueAndStmts(variableDeclarationList: CppAstNode): ValueAndStmts {
         const stmts: Stmt[] = [];
         let isConst = variableDeclarationList.type!.qualType.toString().startsWith('const ');
-        const { stmts: declaredStmts } = this.variableDeclarationToValueAndStmts(variableDeclarationList, isConst);
+        const { stmts: declaredStmts } = this.variableDeclarationToValueAndStmtsCpp(variableDeclarationList, isConst);
         declaredStmts.forEach(s => stmts.push(s));
         return {
             value: CppValueUtil.getUndefinedConst(),
@@ -1776,7 +1776,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         };
     }
 
-    public variableDeclarationToValueAndStmts(variableDeclaration: CppAstNode | any, isConst: boolean, needRightOp: boolean = true): ValueAndStmts {
+    public variableDeclarationToValueAndStmtsCpp(variableDeclaration: CppAstNode, isConst: boolean, needRightOp: boolean = true): ValueAndStmts {
         const leftOpNode = variableDeclaration;
         let rightOpNode = null;
         if (variableDeclaration.inner !== null && variableDeclaration.inner.length !== 0) {
@@ -2078,7 +2078,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
     /**
      * Extract qualType and tagUsed from input parameters
      */
-    private extractQualTypeAndTag(node: CppAstNode | any, stringItem?: string): { qualType: string; tagUsed: string } {
+    private extractQualTypeAndTag(node: CppAstNode, stringItem?: string): { qualType: string; tagUsed: string } {
         // If a valid string is provided, use it as qualType first;
         // otherwise, try to use the node's type information or code.
         let qualType: string;
@@ -2092,7 +2092,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
             qualType = '';
         }
 
-        const tagUsed = Object.prototype.hasOwnProperty.call(node, 'tagUsed') ? node.tagUsed : '';
+        const tagUsed = typeof node?.tagUsed === 'string' ? node.tagUsed : '';
         return { qualType, tagUsed };
     }
 
@@ -2225,7 +2225,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         return new LiteralType(literal.getText(sourceFile));
     }
 
-    public static isCompoundAssignmentOperatorCpp(op: string | any): boolean {
+    public static isCompoundAssignmentOperatorCpp(op: string): boolean {
         return (Object.values(CompoundBinaryOperator) as string[]).includes(op);
     }
 
