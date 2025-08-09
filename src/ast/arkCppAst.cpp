@@ -169,7 +169,7 @@ void buildNodeRange(json& node, json& parent)
         int startCol = pRange["begin"]["col"];
         int endCol = startCol;
         int curOffset = 0;
-        int line = startLine
+        int line = startLine;
         int col = startCol;
         for (size_t i = 0; i < pCode.size(); i++) {
             if (curOffset == startOffset) {
@@ -447,10 +447,8 @@ void postprocessCallExpr(json& node)
     const bool hasChildren = node.contains("inner") && !node["inner"].empty();
     if (missingName && hasChildren) {
         for (const auto& child : node["inner"]) {
-            const bool isDeclRef =
-                child.contains("kind") &&
-                (child["kind"] == "DeclRefExpr" || child["kind"] == "OverloadedDeclRef");
-
+            const bool isDeclRef = child.contains("kind") &&
+            (child["kind"] == "DeclRefExpr" || child["kind"] == "OverloadedDeclRef");
             if (isDeclRef) {
                 node["name"] = nameFromDeclRef(child);
                 break;
@@ -751,12 +749,12 @@ void filterToMainFileOnly(json& node, const std::string& mainFileName, std::stri
     if (!fileName.empty()) {
         try {
             fileName = std::filesystem::weakly_canonical(fileName).string();
-        } catch (...) {} // 忽略异常（如路径不存在、权限不足等） 保持原 fileName 不变
+        } catch (...) { /* 忽略异常（如路径权限不足等） 保持 normMainFileName 不变 */ }
     }
     std::string normMainFileName = mainFileName;
     try {
         normMainFileName = std::filesystem::weakly_canonical(mainFileName).string();
-    } catch (...) {} // 省略捕获
+    } catch (...) { /*异常（如路径不存在、权限不足等） 保持原 normMainFileName 不变 */ }
 
     // 仅主文件节点和TranslationUnitDecl挂inner，头文件节点聚合到headerUnits
     if (node.value("kind", "") == "TranslationUnitDecl") {
@@ -850,9 +848,9 @@ json addCXXCtorInitializer(json &children, json& parent)
         if (children[i]["kind"] == "OverloadedDeclRef") {
             if (!memberRef.is_null()) {
                 newChildren.push_back(buildCXXInheritedCtorInitExpr(memberRef, children[i]));
-                memberRef = nullptr;} {
-                    continue;
-           }
+                memberRef = nullptr;
+            }
+            continue;
         }
         newChildren.push_back(children[i]);
     }

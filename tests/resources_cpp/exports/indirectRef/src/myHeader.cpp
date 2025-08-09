@@ -14,7 +14,7 @@
  */
 #include "../include/myHeader.h"
 
-int funcDoSomething(int i, int j)
+int FuncDoSomething(int i, int j)
 {
     if (i > 0) {
         j = i;

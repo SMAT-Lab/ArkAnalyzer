@@ -16,7 +16,9 @@
 #include <iostream>
 #include "../include/test.h"
 
-int funcDoSomething(int i, int j)
+#define PI 3.14
+
+int FuncDoSomething(int i, int j)
 {
     if (i > 0) {
         j = i;
@@ -27,15 +29,18 @@ int funcDoSomething(int i, int j)
 }
 
 // 类方法实现
-double Circle::calculateArea() const {
-    return 3.14 * radius * radius;
+double Circle::CalculateArea() const
+{
+    return PI * radius * radius;
 }
 
-void Circle::printInfo() const {
+void Circle::PrintInfo() const
+{
     std::cout << "Circle at (" << center.x << ", " << center.y
               << ") with radius " << radius << std::endl;
 }
 
-bool Circle::isLarger(const Circle& c1, const Circle& c2) {
+bool Circle::IsLarger(const Circle& c1, const Circle& c2)
+{
     return c1.radius > c2.radius;
 }

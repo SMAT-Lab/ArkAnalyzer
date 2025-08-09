@@ -52,7 +52,7 @@ int main()
     return 0;
 }
 
-int main_if_elseif_else()
+int MainIfElseifElse()
 {
     Cat cat;
     int num = 1;
