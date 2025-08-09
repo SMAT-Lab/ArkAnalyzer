@@ -13,219 +13,201 @@
  * limitations under the License.
  */
 
-void case1()
-{
+ #define MARCO_THREE 3
+
+ enum NumConstant {
+    ONE,
+    TWO,
+    THREE,
+    FOUR,
+    TEN
+ }
+
+void Case1() {
     int a = 0;
     int b = 1;
-    switch (a)
-    {
-    case 2:
-        b = 2;
-    case 3:
-        b = 3;
-        break;
-    default:
-        b = 10;
-    }
-}
-void case2()
-{
-    int a = 0;
-    int b = 1;
-    switch (a)
-    {
-    case 2:
-    {
-        b = 2;
-    }
-    case 3:
-    {
-        b = 3;
-        break;
-    }
-    default:
-        b = 10;
-    }
-}
-void case3()
-{
-    int a = 0;
-    int b = 1;
-    switch (a)
-    {
-    case 2:
-        b = 2;
-    case 3:
-        switch (b)
-        {
-        case 1:
-            b = 11;
-        case 2:
-            b = 12;
+    switch (a) {
+        case TWO:
+            b = TWO;
+        case THREE:
+            b = THREE;
+            break;
         default:
-            b = 100;
-        }
-        break;
-    default:
-        b = 10;
+            b = TEN;
     }
 }
 
-void case4()
-{
+void Case2() {
+    int a = 0;
     int b = 1;
-    for (int i = 0; i < 3; ++i)
-    {
-        switch (i)
-        {
-        case 2:
-            b = 2;
-        case 3:
-            b = 3;
+    switch (a) {
+        case TWO: {
+            b = TWO;
+        }
+        case THREE: {
+            b = THREE;
+            break;
+        }
+        default:
+            b = TEN;
+    }
+}
+
+void Case3() {
+    int a = 0;
+    int b = 1;
+    switch (a) {
+    case TWO:
+        b = TWO;
+    case THREE:
+        switch (b) {
+        case ONE:
+            b = ONE;
+        case TWO:
+            b = TWO;
+        default:
+            b = TEN;
+        }
+        break;
+    default:
+        b = TEN;
+    }
+}
+
+void Case4() {
+    int b = ONE;
+    for (int i = 0; i < THREE; ++i) {
+        switch (i) {
+        case TWO:
+            b = TWO;
+        case THREE:
+            b = THREE;
             continue;
         default:
-            b = 10;
+            b = TEN;
         }
-        b = 100;
+        b = TEN;
     }
 }
 
-void case5()
-{
+void Case5() {
     int a = 0;
     int b = 1;
-    switch (a)
-    {
-    default:
-        b = 10;
+    switch (a) {
+        default:
+            b = TEN;
     }
-    a = 1;
+    a = ONE;
 }
 
-void case6()
-{
+void Case6() {
     int a = 0;
     int b = 1;
-    switch (a++)
-    {
-    }
-    a = 1;
+    switch (a++) {}
+    a = ONE;
 }
 
-void case7()
-{
+void Case7() {
     int a = 0;
     int b = 1;
-    switch (a)
-    {
-    case 2:
-        b = 2;
-    case 3:
-        b = 3;
-        break;
-    case 4:
-        b = 4;
+    switch (a) {
+        case TWO:
+            b = TWO;
+        case THREE:
+            b = THREE;
+            break;
+        case FOUR:
+            b = FOUR;
     }
 }
 
-void case8()
-{
+void Case8() {
     int a = 0;
     int b = 1;
-    switch (a)
-    {
-    case 2:
-    case 3:
-        b = 3;
-        break;
-    default:
-        b = 10;
+    switch (a) {
+        case TWO:
+        case THREE:
+            b = THREE;
+            break;
+        default:
+            b = TEN;
     }
 }
 
-void case9()
-{
+void Case9() {
     int a = 0;
     int b = 1;
-    switch (a)
-    {
-    case 2:
-    case 3:
-    default:
-        b = 10;
+    switch (a) {
+        case TWO:
+        case THREE:
+        default:
+            b = TEN;
     }
 }
 
-void case10()
+void Case10()
 {
     int a = 0;
     int b = 1;
-    switch (a)
-    {
-    case 2:
-    case 3:
-        b = 3;
+    switch (a) {
+        case TWO:
+        case THREE:
+            b = THREE;
     }
 }
 
-void case11()
-{
+void Case11() {
     int a = 0;
     int b = 1;
-    switch (a)
-    {
-    case 2:
-    case 3:
-        b = 3;
-        break;
-    default:
-        // 空操作
+    switch (a) {
+        case TWO:
+        case THREE:
+            b = THREE;
+            break;
+        default:
+            // 空操作
     }
 }
-void case12()
-{
+
+void Case12() {  // TODO: 修该待定！！！对应IR没改
     int a = 0;
-    int b = (a > 1) ? 12 : 13;
-    switch (a)
-    {
-    case 2:
-        b = 2;
-        break;
-    case 3:
-        b = 3;
-        break;
-    default:
-        b = 10;
-        break;
+    int b = (a > ONE) ? TWO : MARCO_THREE;
+    switch (a) {
+        case TWO:
+            b = TWO;
+            break;
+        case THREE:
+            b = THREE;
+            break;
+        default:
+            b = TEN;
+            break;
     }
 }
-void case13()
-{
+
+void Case13() {
     int a = 0;
     int b = 1;
-    switch (a)
-    {
-    case 2:
-        b = 2;
-        break;
-    case 3:
-        b = 3;
-        break;
-    default:
-        b = 10;
-        break;
+    switch (a) {
+        case TWO:
+            b = TWO;
+            break;
+        case THREE:
+            b = THREE;
+            break;
+        default:
+            b = TEN;
+            break;
     }
-    if (a > 1)
-    {
-        b = 12;
+    if (a > ONE) {
+        b = TWO;
     }
-    else
-    {
-        b = 13;
+    else {
+        b = THREE;
     }
 }
-int main()
-{
-    case1();
+
+int main() {
+    Case1();
     return 0;
 }
