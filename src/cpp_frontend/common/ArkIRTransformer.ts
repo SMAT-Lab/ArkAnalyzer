@@ -203,7 +203,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
         return stmts;
     }
 
-    protected functionDeclarationToStmts(functionDeclarationNode: any): Stmt[] {
+    protected functionDeclarationToStmtsCpp(functionDeclarationNode: CppAstNode | any): Stmt[] {
         const declaringClass = this.declaringMethod.getDeclaringArkClass();
         const arkMethod = new ArkMethod();
         if (this.builderMethodContextFlag) {
@@ -239,7 +239,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
         }
 
         const aliasType = new AliasType(aliasName, rightType, new AliasTypeSignature(aliasName, this.declaringMethod.getSignature()));
-        let expr = this.generateAliasTypeExpr(rightOp, aliasType);
+        let expr = this.generateAliasTypeExprCpp(rightOp, aliasType);
         const modifiers = buildModifiers(typeAliasDeclaration);
         aliasType.setModifiers(modifiers);
 
@@ -254,7 +254,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
         return [aliasTypeDefineStmt];
     }
 
-    protected generateAliasTypeExpr(rightOp: any, aliasType: AliasType): AliasTypeExpr {
+    protected generateAliasTypeExprCpp(rightOp: String, aliasType: AliasType): AliasTypeExpr {
         let rightType = aliasType.getOriginalType();
         let expr: AliasTypeExpr;
         expr = new AliasTypeExpr(rightType, false);
@@ -344,7 +344,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
 
         const castExpr = new ArkCastExpr(yieldValue, UnknownType.getInstance());
         const castExprPositions = [yieldValuePositions[0], ...yieldValuePositions];
-        const declStmts: any = forOfStatement.inner[0];
+        const declStmts: CppAstNode = forOfStatement.inner[0];
         if (declStmts.kind === 'VarDecl') {
             const {
                 value: initValue,
@@ -655,25 +655,19 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
         return stmts;
     }
 
-    private variableDeclarationListToStmtsCpp(variableDeclarationList: any): Stmt[] {
+    private variableDeclarationListToStmtsCpp(variableDeclarationList: CppAstNode): Stmt[] {
         return this.arkValueTransformerCpp.declStmtToValueAndStmts(variableDeclarationList).stmts;
     }
 
-    private ifStatementToStmtsCpp(ifStatement: any): Stmt[] {
+    private ifStatementToStmtsCpp(ifStatement: CppAstNode): Stmt[] {
         const stmts: Stmt[] = [];
         if (this.inBuilderMethod) {
-            const {
-                value: conditionExpr,
-                valueOriginalPositions: conditionExprPositions,
-                stmts: conditionStmts,
-            } = this.arkValueTransformerCpp.conditionToValueAndStmts(ifStatement.inner[0]);
+            const {value: conditionExpr, valueOriginalPositions: conditionExprPositions, stmts: conditionStmts,} =
+                this.arkValueTransformerCpp.conditionToValueAndStmts(ifStatement.inner[0]);
             conditionStmts.forEach(stmt => stmts.push(stmt));
             const createMethodSignature = ArkSignatureBuilder.buildMethodSignatureFromClassNameAndMethodName(COMPONENT_IF, COMPONENT_CREATE_FUNCTION);
-            const {
-                value: conditionLocal,
-                valueOriginalPositions: conditionLocalPositions,
-                stmts: assignConditionStmts,
-            } = this.generateAssignStmtForValue(conditionExpr, conditionExprPositions);
+            const {value: conditionLocal, valueOriginalPositions: conditionLocalPositions,
+                stmts: assignConditionStmts,} = this.generateAssignStmtForValue(conditionExpr, conditionExprPositions);
             assignConditionStmts.forEach(stmt => stmts.push(stmt));
             const createInvokeExpr = new ArkStaticInvokeExpr(createMethodSignature, [conditionLocal]);
             const createInvokeExprPositions = [conditionLocalPositions[0], ...conditionLocalPositions];
@@ -703,11 +697,8 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
             const popInvokeStmt = new ArkInvokeStmt(popInvokeExpr);
             stmts.push(popInvokeStmt);
         } else {
-            const {
-                value: conditionExpr,
-                valueOriginalPositions: conditionExprPositions,
-                stmts: conditionStmts,
-            } = this.arkValueTransformerCpp.conditionToValueAndStmts(ifStatement.inner[0]);
+            const {value: conditionExpr, valueOriginalPositions: conditionExprPositions, stmts: conditionStmts,} =
+                this.arkValueTransformerCpp.conditionToValueAndStmts(ifStatement.inner[0]);
             conditionStmts.forEach(stmt => stmts.push(stmt));
             const ifStmt = new ArkIfStmt(conditionExpr as ArkConditionExpr);
             ifStmt.setOperandOriginalPositions(conditionExprPositions);
