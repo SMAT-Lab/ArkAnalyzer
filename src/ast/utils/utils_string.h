@@ -33,7 +33,7 @@ std::string extractParentContent(const std::string &code, size_t lpos = std::str
 std::vector<std::string> split(const std::string &s, char delimiter);
 
 // 判断结尾
-bool hasSuffix(const std::string& str, const std::string& suffix);
+bool HasSuffix(const std::string& str, const std::string& suffix);
 
 // 路径分隔符（适配跨平台）
 std::string getPathSeparator();

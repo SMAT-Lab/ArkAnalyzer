@@ -127,11 +127,11 @@ json getSourceContent(CXSourceRange range)
     const char *cFileName = clang_getCString(fileName);
     std::string filename = cFileName ? cFileName : "";
     clang_disposeString(fileName);
-    if (filename.empty() || fileContents.find(filename) == fileContents.end()) {
-        loadFileContent(filename);
+    if (filename.empty() || g_fileContents.find(filename) == g_fileContents.end()) {
+        LoadFileContent(filename);
     }
 
-    const std::string &content = fileContents[filename];
+    const std::string &content = g_fileContents[filename];
     if ((startFile != endFile && startOffset >= content.size()) ||
         (startFile == endFile && endOffset > content.size())) {
         return json();
@@ -1243,13 +1243,13 @@ int main(int argc, char** argv)
     }
     ClangArgs clangArgs = cliutil::GetClangArgs(opts);
 
-    g_user_include_dirs = opts.user_include_dirs;
+    g_user_include_dirs = opts.userIncludeDirs;
     CXIndex index = clang_createIndex(0, 0);
-    CXTranslationUnit unit = createTranslationUnit(index, opts, clangArgs.cstr_args);
+    CXTranslationUnit unit = createTranslationUnit(index, opts, clangArgs.cstrArgs);
     if (!unit) {
         std::cerr << "[ERROR] clang_parseTranslationUnit failed!" << std::endl;
-        for (size_t i = 0; i < clangArgs.cstr_args.size(); ++i) {
-            std::cerr << clangArgs.cstr_args[i] << std::endl;
+        for (size_t i = 0; i < clangArgs.cstrArgs.size(); ++i) {
+            std::cerr << clangArgs.cstrArgs[i] << std::endl;
         }
         return TWO;
     }

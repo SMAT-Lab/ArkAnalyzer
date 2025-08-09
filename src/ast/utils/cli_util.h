@@ -22,12 +22,12 @@ struct CommandLineOptions {
     std::string inputFile;
     std::string output_file;
     std::string compile_commands_file;
-    std::vector<std::string> user_include_dirs;
+    std::vector<std::string> userIncludeDirs;
 };
 
 struct ClangArgs {
-    std::vector<std::string> str_args;   // 字符串本体
-    std::vector<const char*> cstr_args;  // 指针
+    std::vector<std::string> strArgs;   // 字符串本体
+    std::vector<const char*> cstrArgs;  // 指针
 };
 
 namespace cliutil {
@@ -37,6 +37,6 @@ namespace cliutil {
     void PrintUsage(const char* progName);
     ClangArgs PrepareClangArgs(const CommandLineOptions& opts);
     ClangArgs LoadCompileCommands(const CommandLineOptions& opts);
-    bool hasSuffix(const std::string& str, const std::string& suffix); // 内部用
+    bool HasSuffix(const std::string& str, const std::string& suffix); // 内部用
     ClangArgs GetClangArgs(const CommandLineOptions& opts);
 }
