@@ -16,7 +16,7 @@
 #ifndef MY_HEADER_H
 #define MY_HEADER_H
 
-int funcDoSomething(int i, int j)
+int FuncDoSomething(int i, int j)
 {
     if (i > 0) {
         j = i;

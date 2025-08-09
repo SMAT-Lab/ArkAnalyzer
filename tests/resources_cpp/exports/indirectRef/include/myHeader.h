@@ -18,6 +18,6 @@
 
 #include "castSample.h"
 
-int funcDoSomething(int i, int j);
+int FuncDoSomething(int i, int j);
 
 #endif
