@@ -63,7 +63,9 @@ inline void visitAllChildren(CXCursor cursor, json& children, bool actionScope, 
 
 // 赋成员名
 inline void fillMemberName(json &node, const std::string &displayName) {
-    if (!node["name"].empty()) return;
+    if (!node["name"].empty()) {
+        return;
+    }
     node["name"] = displayName;
     if (node["name"] == "" && node.contains("code")) {
         std::string codeStr = node["code"];
@@ -108,7 +110,9 @@ json getSourceContent(CXSourceRange range) {
     unsigned endLine, endColumn, endOffset;
     clang_getSpellingLocation(end, &endFile, &endLine, &endColumn, &endOffset);
 
-    if (startFile == endFile && startOffset >= endOffset) return json();
+    if (startFile == endFile && startOffset >= endOffset) {
+        return json();
+    }
 
     CXString fileName = clang_getFileName(startFile);
     const char *cFileName = clang_getCString(fileName);
@@ -117,7 +121,9 @@ json getSourceContent(CXSourceRange range) {
     if (filename.empty() || fileContents.find(filename) == fileContents.end()) loadFileContent(filename);
 
     const std::string &content = fileContents[filename];
-    if ((startFile != endFile && startOffset >= content.size()) || (startFile == endFile && endOffset > content.size())) return json();
+    if ((startFile != endFile && startOffset >= content.size()) || (startFile == endFile && endOffset > content.size())) {
+        return json();
+    }
     unsigned tokLen = endOffset > startOffset ? (endOffset - startOffset) : 0;
     return {
         {"id", startOffset + endOffset}, {"code", content.substr(startOffset, endOffset - startOffset)},
@@ -128,11 +134,17 @@ json getSourceContent(CXSourceRange range) {
 
 // 根据父节点构建子节点的range
 void buildNodeRange(json& node, json& parent) {
-    if (!node.contains("code") || node["code"] == "") return;
-    if (!parent.contains("code") || parent["code"] == "") return;
+    if (!node.contains("code") || node["code"] == "") {
+        return;
+    }
+    if (!parent.contains("code") || parent["code"] == "") {
+        return;
+    }
     std::string cCode = node["code"];
     std::string pCode = parent["code"];
-    if (!parent.contains("range") || parent["range"] == json()) return;
+    if (!parent.contains("range") || parent["range"] == json()) {
+        return;
+    }
     size_t index1 = pCode.find(cCode);
     if (index1 != std::string::npos) {
         json pRange = parent["range"];
@@ -187,7 +199,7 @@ std::string handleUnexposedExpr(json node) {
                    codeStr.find(".push") != std::string::npos || typeStr.find("basic_ostream") != std::string::npos ||
                    typeStr == "bool" || typeStr == "mapped_type" || codeStr.find(".erase") != std::string::npos) {
             return "ExprWithCleanups";
-        }else if (codeStr.find("std::make_pair") != std::string::npos) {
+        } else if (codeStr.find("std::make_pair") != std::string::npos) {
             return "MaterializeTemporaryExpr";
         }
     }
@@ -237,15 +249,21 @@ void swapChildNode(json &children) {
 // 判断callExpr节点是构造函数调用
 bool constructCallExpr(std::string codeStr, std::string typeStr) {
     size_t index = codeStr.find('(');
-    if (index > codeStr.length()) return false;
+    if (index > codeStr.length()) {
+        return false;
+    }
     std::string newStr = typeStr + codeStr.substr(index);
-    if (newStr == codeStr) return true;
+    if (newStr == codeStr) {
+        return true;
+    }
     return false;
 }
 
 // 判断callExpr节点是模板构造函数调用
 bool templateConstructCallExpr(std::string nameStr, std::string typeStr) {
-    if (nameStr.empty()) return false;
+    if (nameStr.empty()) {
+        return false;
+    }
     if (typeStr.find(nameStr) == 0 && typeStr.find('<') != std::string::npos && typeStr.find('>') != std::string::npos) {
         return true;
     }
@@ -324,7 +342,9 @@ void fixMapPairInitListChildren(json &children, const std::string &typeStr) {
 std::string getMemberInClassName(CXCursor cursor) {
     CXCursor parentCursor = clang_getCursorSemanticParent(cursor);
     CXCursorKind kind = clang_getCursorKind(parentCursor);
-    if (kind != CXCursor_ClassDecl && kind != CXCursor_StructDecl) return "";
+    if (kind != CXCursor_ClassDecl && kind != CXCursor_StructDecl) {
+        return "";
+    }
     return cx2str(clang_getCursorSpelling(parentCursor));
 }
 
@@ -344,7 +364,9 @@ json getReferenceDecl(CXCursor cursor, CXCursorKind kind_cursor) {
 
 // 检查并补充数组 trait typeid noexpect
 void detectAndFillSpecialKind(json &node) {
-    if (!node.contains("code")) return;
+    if (!node.contains("code")) {
+        return;
+    }
     std::string codeStr = node["code"];
     // __arra_rank/extent
     static const std::vector<std::pair<std::string, std::string>> traitFuncs = {
@@ -516,10 +538,14 @@ bool isConstructorByNameStr(std::string nameStr) {
 
 // 判断是否为继承父类的构造函数
 bool isUsingInheritClass(json& node, json& children) {
-    if (children.size() == 0) return false;
+    if (children.size() == 0) {
+        return false;
+    }
     if (children[0]["kind"] == "TypeRef" && children[0].contains("type")) {
         std::string type = children[0]["type"].value("qualType", "");
-        if (derivedDataTypeMap.count(type)) return true;
+        if (derivedDataTypeMap.count(type)) {
+            return true;
+        }
     }
     return false;
 }
@@ -535,10 +561,12 @@ bool isConstructorByCodeStr(std::string codeStr, std::string nameStr, std::strin
         return result;
 }
 
-std::vector<CXCursorKind> locCursorKind = {CXCursor_FunctionDecl, CXCursor_ClassDecl, CXCursor_Destructor, CXCursor_TemplateTypeParameter,
-                                           CXCursor_StructDecl, CXCursor_UnionDecl, CXCursor_VarDecl, CXCursor_EnumDecl, CXCursor_ClassTemplate,
-                                           CXCursor_Constructor, CXCursor_CXXMethod, CXCursor_TypedefDecl, CXCursor_FunctionTemplate,
-                                           CXCursor_MacroExpansion, CXCursor_MacroDefinition, CXCursor_UsingDirective, CXCursor_Namespace};
+std::vector<CXCursorKind> locCursorKind = {CXCursor_FunctionDecl, CXCursor_ClassDecl, CXCursor_Destructor,
+                                           CXCursor_TemplateTypeParameter, CXCursor_StructDecl, CXCursor_UnionDecl,
+                                           CXCursor_VarDecl, CXCursor_EnumDecl, CXCursor_ClassTemplate,
+                                           CXCursor_Constructor, CXCursor_CXXMethod, CXCursor_TypedefDecl,
+                                           CXCursor_FunctionTemplate, CXCursor_MacroExpansion, CXCursor_MacroDefinition,
+                                           CXCursor_UsingDirective, CXCursor_Namespace};
 
 // 判断是否为内置数据类型
 bool isBuiltInType(std::string& type) {
@@ -571,7 +599,9 @@ bool isInUserInclude(const std::string& fileName) {
         std::string prefix = dir;
         if (!prefix.empty() && prefix.back() != '/' && prefix.back() != '\\')
             prefix += getPathSeparator();
-        if (fileName.find(prefix) == 0) return true;
+        if (fileName.find(prefix) == 0) {
+            return true;
+        }
     }
     return false;
 }
@@ -609,7 +639,9 @@ void filterToMainFileOnly(json& node, const std::string& mainFileName, std::stri
         }
         return;
     }
-    if (!node.is_object()) return;
+    if (!node.is_object()) {
+        return;
+    }
     std::string fileName = node.value("fileName", "");
     if (node.contains("locFile"))
         fileName = node["locFile"];
@@ -757,14 +789,18 @@ void buildTypedefChild(CXType& type, json& newChildren, json& children, json& pa
 
 // 修改typedef下类的声明节点类型为constructorExpr
 void updateTypedefClassConstructor(json& children) {
-    if (children.size() < 2 || (children[0]["kind"] != "TypeRef" && children[1]["kind"] != "CallExpr")) return;
+    if (children.size() < 2 || (children[0]["kind"] != "TypeRef" && children[1]["kind"] != "CallExpr")) {
+        return;
+    }
     if (children[0]["type"]["qualType"] == children[1]["type"]["qualType"] && (children[1]["name"] == "map" || children[1]["name"] == "unordered_map"))
         children[1]["kind"] = "CXXConstructExpr";
 }
 
 // decltype类型推导
 void deduceDecltype(json& node, json&children) {
-    if (children.size() == 0 || !node.contains("type") || node["type"].value("qualType", "").find("decltype(") == std::string::npos) return;
+    if (children.size() == 0 || !node.contains("type") || node["type"].value("qualType", "").find("decltype(") == std::string::npos) {
+        return;
+    }
     if (children[0].contains("type")) {
         node["type"]["qualType"] = children[0]["type"]["qualType"];
     }
@@ -894,7 +930,9 @@ void fillNodeIdRangeLoc(json& node, const json& content, CXCursorKind kind_curso
 }
 
 void fillMemberExprName(json& node) {
-    if (node["name"] != "") return;
+    if (node["name"] != "") {
+        return;
+    }
     std::string codeStr = node["code"];
     size_t index1 = codeStr.find("->");
     size_t index2 = codeStr.find(".");
@@ -941,7 +979,7 @@ void nodePostprocess(
     } else if (node["kind"] == "CXXConstructExpr" || node["kind"] == "CallExpr") {
         if (!children.empty() && children[0]["kind"] == "MemberExpr") {
             node["kind"] = "CXXMemberCallExpr";
-        }else {
+        } else {
             changeChildNodeType(children);
         }
     } else if (node["kind"] == "ImplicitCastExpr") {
@@ -1003,8 +1041,12 @@ json buildASTJson(CXCursor cursor, bool actionScope, std::unordered_map<std::str
     if (kind_cursor == CXCursor_LinkageSpec) { // extern "C" { ... }
         json children = json::array();
         visitAllChildren(cursor, children, actionScope, varTypeMap);
-        if (children.size() == 1) return children[0];
-        if (children.empty()) return json();
+        if (children.size() == 1) {
+            return children[0];
+        }
+        if (children.empty()) {
+            return json();
+        }
         return children;
     }
 
@@ -1081,7 +1123,9 @@ int main(int argc, char** argv) {
     auto opts = cliutil::ParseCommandLineArgs(argc, argv);
     cliutil::AddMainFileDirToInclude(opts);
 
-    if (!cliutil::ValidateInput(opts)) return 1;
+    if (!cliutil::ValidateInput(opts)) {
+        return 1;
+    }
     ClangArgs clangArgs = cliutil::GetClangArgs(opts);
 
     g_user_include_dirs = opts.user_include_dirs;

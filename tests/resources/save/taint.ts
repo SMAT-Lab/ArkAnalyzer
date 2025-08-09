@@ -22,7 +22,9 @@ function pass(data: number | null): number | null {
 }
 
 function validate(data: number | null): number {
-    if (data == null) return 0
+    if (data == null) {
+        return 0
+    }
     return data
 }
 

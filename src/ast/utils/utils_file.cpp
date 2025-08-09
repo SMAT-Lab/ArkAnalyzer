@@ -23,7 +23,9 @@ std::map<std::string, std::string> fileContents;
 
 void loadFileContent(const std::string& filename) {
     std::ifstream file(filename, std::ios::in | std::ios::binary);
-    if (!file) return;
+    if (!file) {
+        return;
+    }
     std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
     fileContents[filename] = std::move(content);
 }

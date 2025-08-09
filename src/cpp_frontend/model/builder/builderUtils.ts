@@ -50,7 +50,9 @@ function extractCommonModifiers(node: any): number {
 }
 
 function hasOverrideAttr(inner: any[] | undefined): boolean {
-    if (!inner) return false;
+    if (!inner) {
+        return false;
+    }
     return inner.some(child => child.kind === 'attribute(override)');
 }
 
@@ -175,7 +177,9 @@ export function cppNode2Type(nodeQualType: any, arkInstance: ArkMethod | ArkClas
     }
     if (templateTypes) {
         for (const t of templateTypes) {
-            if (nodeQualType === t.getName()) return t;
+            if (nodeQualType === t.getName()) {
+                return t;
+            }
         }
     }
 

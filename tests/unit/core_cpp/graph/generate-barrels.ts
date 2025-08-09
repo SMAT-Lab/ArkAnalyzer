@@ -23,7 +23,9 @@ function generateIndexFile(folderPath: string) {
         return f.endsWith('.ts') && !f.endsWith('index.ts');
     });
 
-    if (files.length === 0) return;
+    if (files.length === 0) {
+        return;
+    }
 
     const exports = files.map(f => `export * from './${f.replace(/\.ts$/, '')}';`).join('\n');
 
