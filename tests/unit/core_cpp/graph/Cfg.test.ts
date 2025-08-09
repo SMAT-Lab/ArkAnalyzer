@@ -385,10 +385,10 @@ describe('typedef Test', () => {
 describe('thread Test', () => {
     it('case1: thread', () => {
         const scene = buildScene('thread');
-        testBlocks(scene, 'thread.cpp', 'case1', THREAD_EXPECT.THREAD_EXPECT_CASE1.blocks);
-        testBlocks(scene, 'thread.cpp', 'case2', THREAD_EXPECT.THREAD_EXPECT_CASE2.blocks);
-        testBlocks(scene, 'thread.cpp', 'case3', THREAD_EXPECT.THREAD_EXPECT_CASE3.blocks);
-        testBlocks(scene, 'thread.cpp', 'case4', THREAD_EXPECT.THREAD_EXPECT_CASE4.blocks);
+        testBlocks(scene, 'thread.cpp', 'Case1', THREAD_EXPECT.THREAD_EXPECT_CASE1.blocks);
+        testBlocks(scene, 'thread.cpp', 'Case2', THREAD_EXPECT.THREAD_EXPECT_CASE2.blocks);
+        testBlocks(scene, 'thread.cpp', 'Case3', THREAD_EXPECT.THREAD_EXPECT_CASE3.blocks);
+        testBlocks(scene, 'thread.cpp', 'Case4', THREAD_EXPECT.THREAD_EXPECT_CASE4.blocks);
     });
     it('case2: functionPointer', () => {
         const scene = buildScene('functionPointer');

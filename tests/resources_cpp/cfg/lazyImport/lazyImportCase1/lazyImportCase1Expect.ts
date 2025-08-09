@@ -46,7 +46,7 @@ export const LAZY_IMPORT_CASE1_CLASS = {
                     stmts: [
                         'env = parameter0: int',
                         'nativeObject = parameter1: void*',
-                        'finalize_hint = parameter2: void*',
+                        'finalizeHint = parameter2: void*',
                         'this = this: @lazyImportCase1/lazyImportCase1.cpp: GlobalConfig',
                         '%0 = delete <@lazyImportCase1/lazyImportCase1.cpp: GlobalConfig*>nativeObject',
                         'return',
