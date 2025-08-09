@@ -15,8 +15,14 @@
 
 #include <iostream>
 
+#define ONE 1
+#define TWO 2
+#define THREE 3
+#define FOUR 4
+#define FIVE 5
+
 // 算数运算符
-int arithmeticOperator()
+int ArithmeticOperator()
 {
     int a = -1 + 1;
     a++;
@@ -31,53 +37,48 @@ int arithmeticOperator()
 }
 
 // 关系运算符和逻辑运算符
-int relationOperator()
+int RelationOperator()
 {
     int a = -1;
     int b = 1;
-    if (a == b && a > b)
-    {
+    if (a == b && a > b) {
         a = a + b;
     }
-    if (a != b || a < b)
-    {
+    if (a != b || a < b) {
         b = b + a;
     }
-    if (a >= b)
-    {
+    if (a >= b) {
         return a;
     }
-    if (a <= b)
-    {
+    if (a <= b) {
         return b;
     }
-    if (!(a == b))
-    {
+    if (!(a == b)) {
         return -1;
     }
     return 0;
 }
 
 // 复合赋值运算符
-void componentOperator()
+void ComponentOperator()
 {
     int a = -1;
-    a += 1;
-    a *= 2;
-    a %= 3;
-    a >>= 4;
-    a ^= 5;
+    a += ONE;
+    a *= TWO;
+    a %= THREE;
+    a >>= FOUR;
+    a ^= FIVE;
 
     int b = 1;
-    b -= 1;
-    b /= 2;
-    b <<= 3;
-    b &= 4;
-    b |= 5;
+    b -= ONE;
+    b /= TWO;
+    b <<= THREE;
+    b &= FOUR;
+    b |= FIVE;
 }
 
 // return  语句
-int returnValue()
+int ReturnValue()
 {
     int a = -1;
     a += 1;
@@ -85,14 +86,14 @@ int returnValue()
 }
 
 // 无return语句
-void noReturnValue()
+void NoReturnValue()
 {
     int b = -1;
     b -= 1;
 }
 
 // 位运算符
-void bitOperator()
+void BitOperator()
 {
     unsigned int a = 60; // 60 =0011 1100
     unsigned int b = 13; // 13 =0000 1101
@@ -111,14 +112,13 @@ void bitOperator()
 }
 
 // 杂项运算符
-class MyClass
-{
+class MyClass {
     char name;
     int age;
 
 public:
     MyClass(char name, int age);
-    int getAge()
+    int GetAge()
     {
         return age;
     }
@@ -130,10 +130,10 @@ MyClass::MyClass(char name, int age) : name(name), age(age)
     this->age = age;
 }
 
-void otherOperator()
+void OtherOperator()
 {
     MyClass aClass('A', 2);
-    int age = aClass.getAge();
+    int age = aClass.GetAge();
 
     int j = sizeof(age);
     int i = (j++, j + 1, 2 + j);

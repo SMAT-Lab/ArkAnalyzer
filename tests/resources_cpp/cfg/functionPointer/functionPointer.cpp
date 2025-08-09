@@ -17,17 +17,21 @@
 #include <functional>
 using namespace std;
 
+#define FOUR 4
+
 // 定义一个函数
-int add(int a, int b) {
+int Add(int a, int b)
+{
     return a + b;
 }
 
-int case1() {
+int Case1()
+{
     // 声明一个函数指针
     int (*funcPtr)(int, int);
 
     // 将函数地址赋给指针
-    funcPtr = add;
+    funcPtr = Add;
 
     // 通过指针调用函数
     int result = funcPtr(3, 4);
@@ -36,39 +40,49 @@ int case1() {
     return 0;
 }
 
-void greetEnglish() {
+void GreetEnglish()
+{
     cout << "Hello!" << endl;
 }
 
-void greetSpanish() {
+void GreetSpanish()
+{
     cout << "¡Hola!" << endl;
 }
 
 // 函数接受函数指针作为参数
-void greet(void (*greetFunc)()) {
-    greetFunc();
+void Greet(void (*greetFunc)())
+{
+    GreetFunc();
 }
 
-int case2() {
-    greet(greetEnglish);  // 输出: Hello!
-    greet(greetSpanish);  // 输出: ¡Hola!
+int Case2()
+{
+    Greet(GreetEnglish);  // 输出: Hello!
+    Greet(GreetSpanish);  // 输出: ¡Hola!
 
     return 0;
 }
 
-double add(double a, double b) { return a + b; }
-double subtract(double a, double b) { return a - b; }
-double multiply(double a, double b) { return a * b; }
-double divide(double a, double b) { return a / b; }
+double Add(double a, double b) { return a + b; }
+double Subtract(double a, double b) { return a - b; }
+double Multiply(double a, double b) { return a * b; }
+double Divide(double a, double b)
+{
+    if (b == 0) { return 0; }
+    return a / b;
+}
 
-int case3() {
+int Case3()
+{
     // 函数指针数组
-    double (*operations[4])(double, double) = {add, subtract, multiply, divide};
+    double (*operations[4])(double, double) = {Add, Subtract, Multiply, Divide};
 
-    double x = 10, y = 5;
+    double x = 10;
+    double y = 5;
     char opSymbols[] = {'+', '-', '*', '/'};
 
-    for (int i = 0; i < 4; ++i) {
+    for (int i = 0; i < FOUR; ++i) {
         cout << x << " " << opSymbols[i] << " " << y << " = "
              << operations[i](x, y) << endl;
     }
