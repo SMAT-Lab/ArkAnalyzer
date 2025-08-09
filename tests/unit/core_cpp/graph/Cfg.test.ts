@@ -100,15 +100,15 @@ describe('CfgTest', () => {
 
     it('case4: loop statement', () => {
         const scene = buildScene('loop');
-        testBlocks(scene, 'loopSample.cpp', 'case1', LOOP_EXPECT.LOOP_EXPECT_CASE1.blocks);
-        testBlocks(scene, 'loopSample.cpp', 'case2', LOOP_EXPECT.LOOP_EXPECT_CASE2.blocks);
-        testBlocks(scene, 'loopSample.cpp', 'case3', LOOP_EXPECT.LOOP_EXPECT_CASE3.blocks);
-        testBlocks(scene, 'loopSample.cpp', 'case4', LOOP_EXPECT.LOOP_EXPECT_CASE4.blocks);
-        testBlocks(scene, 'loopSample.cpp', 'case5', LOOP_EXPECT.LOOP_EXPECT_CASE5.blocks);
-        testBlocks(scene, 'loopSample.cpp', 'case6', LOOP_EXPECT.LOOP_EXPECT_CASE6.blocks);
-        testBlocks(scene, 'loopSample.cpp', 'case7', LOOP_EXPECT.LOOP_EXPECT_CASE7.blocks);
-        testBlocks(scene, 'loopSample.cpp', 'case8', LOOP_EXPECT.LOOP_EXPECT_CASE8.blocks);
-        testBlocks(scene, 'loopSample.cpp', 'case9', LOOP_EXPECT.LOOP_EXPECT_CASE9.blocks);
+        testBlocks(scene, 'loopSample.cpp', 'Case1', LOOP_EXPECT.LOOP_EXPECT_CASE1.blocks);
+        testBlocks(scene, 'loopSample.cpp', 'Case2', LOOP_EXPECT.LOOP_EXPECT_CASE2.blocks);
+        testBlocks(scene, 'loopSample.cpp', 'Case3', LOOP_EXPECT.LOOP_EXPECT_CASE3.blocks);
+        testBlocks(scene, 'loopSample.cpp', 'Case4', LOOP_EXPECT.LOOP_EXPECT_CASE4.blocks);
+        testBlocks(scene, 'loopSample.cpp', 'Case5', LOOP_EXPECT.LOOP_EXPECT_CASE5.blocks);
+        testBlocks(scene, 'loopSample.cpp', 'Case6', LOOP_EXPECT.LOOP_EXPECT_CASE6.blocks);
+        testBlocks(scene, 'loopSample.cpp', 'Case7', LOOP_EXPECT.LOOP_EXPECT_CASE7.blocks);
+        testBlocks(scene, 'loopSample.cpp', 'Case8', LOOP_EXPECT.LOOP_EXPECT_CASE8.blocks);
+        testBlocks(scene, 'loopSample.cpp', 'Case9', LOOP_EXPECT.LOOP_EXPECT_CASE9.blocks);
     });
     it('case5: while-continue statement', () => {
         const scene = buildScene('whileContinue');
@@ -357,19 +357,19 @@ describe('namespace Test', () => {
 describe('using Test', () => {
     it('case1: using', () => {
         const scene = buildScene('using');
-        testBlocks(scene, 'usingcase.cpp', 'test_using_namespace', USING_EXPECT.USING_EXPECT_CASE1.blocks);
+        testBlocks(scene, 'usingcase.cpp', 'testUsingNamespace', USING_EXPECT.USING_EXPECT_CASE1.blocks);
     });
     it('case2: using', () => {
         const scene = buildScene('using');
-        testBlocks(scene, 'usingcase.cpp', 'test_using_declaration', USING_EXPECT.USING_EXPECT_CASE2.blocks);
+        testBlocks(scene, 'usingcase.cpp', 'TestUsingDeclaration', USING_EXPECT.USING_EXPECT_CASE2.blocks);
     });
     it('case3: using', () => {
         const scene = buildScene('using');
-        testBlocks(scene, 'usingcase.cpp', 'test_using_base_member', USING_EXPECT.USING_EXPECT_CASE3.blocks);
+        testBlocks(scene, 'usingcase.cpp', 'TestUsingBaseMember', USING_EXPECT.USING_EXPECT_CASE3.blocks);
     });
     it('case4: using', () => {
         const scene = buildScene('using');
-        testBlocks(scene, 'usingcase.cpp', 'test_using_enum_member', USING_EXPECT.USING_EXPECT_CASE4.blocks);
+        testBlocks(scene, 'usingcase.cpp', 'TestUsingEnumMember', USING_EXPECT.USING_EXPECT_CASE4.blocks);
     });
 });
 

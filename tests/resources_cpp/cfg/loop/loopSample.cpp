@@ -17,76 +17,72 @@
 #include <iostream>
 #include <map>
 
-struct Data
-{
+#define TWO 2
+
+struct Data {
     int a;
     int b;
 };
 
-void case1()
+void Case1()
 {
     int arr[2][2] = {{1, 2}, {3, 4}};
-    for (int i = 0; i < 2; i++)
-    {
+    for (int i = 0; i < TWO; i++) {
         int c = arr[i][0];
         int d = arr[i][1];
         printf("%d %d\n", c, d);
     }
 }
 
-void case2()
+void Case2()
 {
     Data arr[2] = {{1, 2}, {3, 4}};
-    for (int i = 0; i < 2; i++)
-    {
+    for (int i = 0; i < TWO; i++) {
         printf("%d %d\n", arr[i].a, arr[i].b);
     }
 }
 
-void case3()
+void Case3()
 {
     int b = 0;
-    for (int i = 0; i < 2; i++)
+    for (int i = 0; i < TWO; i++)
         b += 1;
     printf("%d\n", b);
 }
 
 // 省略初始化
-void case4()
+void Case4()
 {
     int i = 0;
-    for (; i < 2; i++)
+    for (; i < TWO; i++)
         printf("%d\n", i);
 }
 
-void case5()
+void Case5()
 {
     int i = 0;
-    for (;; i++)
-    {
-        if (i > 2)
+    for (;; i++) {
+        if (i > TWO)
             break;
         printf("%d\n", i);
     }
 }
 
 // 省略更新语句
-void case6()
+void Case6()
 {
-    for (int i = 0; i < 2;)
-    {
+    for (int i = 0; i < TWO;) {
         printf("%d\n", i);
         i++;
     }
 }
 
 // 全部省略
-void case7()
+void Case7()
 {
     int i = 0;
-    for (;;)
-    {
-        if (i > 2)
+    for (;;) {
+        if (i > TWO)
             break;
         printf("%d\n", i);
         i++;
@@ -94,27 +90,25 @@ void case7()
 }
 
 // C++的forRange
-void case8()
+void Case8()
 {
     std::map<int, std::string> map1 = {{1, "one"}, {2, "two"}, {3, "three"}};
-    for (const auto &pair : map1)
-    {
+    for (const auto &pair : map1) {
         printf("%d %s\n", pair.first, pair.second.c_str());
     }
 }
 
-void case9()
+void Case9()
 {
     std::map<int, std::string> map2 = {{1, "one"}, {2, "two"}, {3, "three"}};
-    for (const auto &[key, value] : map2)
-    {
+    for (const auto &[key, value] : map2) {
         printf("%d %s\n", key, value.c_str());
     }
 }
 
 int main()
 {
-    case1();
-    case2();
+    Case1();
+    Case2();
     return 0;
 }
