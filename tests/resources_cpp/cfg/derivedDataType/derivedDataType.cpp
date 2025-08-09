@@ -19,8 +19,7 @@
 using namespace std;
 
 // 类样例
-class MyClass
-{
+class MyClass {
     static int height;
 
 private:
@@ -30,16 +29,16 @@ private:
 public:
     ~MyClass();
     MyClass(char name, int age);
-    static int getHeight()
+    static int GetHeight()
     {
         return height;
     }
 
-    char getName()
+    char GetName()
     {
         return this->name;
     }
-    void setName(char name);
+    void SetName(char name);
 };
 
 MyClass::MyClass(char name, int age)
@@ -53,112 +52,100 @@ MyClass::~MyClass()
     cout << "delete" << endl;
 }
 
-void MyClass::setName(char nameStr)
+void MyClass::SetName(char nameStr)
 {
     this->name = nameStr;
 }
 
 // 类样例1，测试CXXDefaultInitExpr、函数重载
-class DefaultClass
-{
+class DefaultClass {
 private:
     char name = 'A';
     int age = '0';
 
 public:
     DefaultClass() {}
-    // DefaultClass(char name, int age):name(name), age(age) {
-    //     this->name = name;
-    //     this->age = age;
-    // }
 };
 
 // 结构体样例
-struct MyStruct
-{
+struct MyStruct {
     string title;
     string author;
     string subject;
-    int book_id;
+    int bookId;
 
-    MyStruct(string t, string a, string s, int id) : title(t), author(a), subject(s), book_id(id) {}
-    void printInfo()
+    MyStruct(string t, string a, string s, int id) : title(t), author(a), subject(s), bookId(id) {}
+    void PrintInfo()
     {
         cout << "title of the book is :" << title << endl;
     }
 };
-void printBookByRef(MyStruct &book)
+
+void PrintBookByRef(MyStruct &book)
 {
-    book.printInfo();
+    book.PrintInfo();
 }
 
 typedef struct
 {
     char title[50];
     char author[50];
-    struct
-    {
+    struct {
         int price;
     };
 } Books;
 
 // 枚举样例
-enum MyEnum
-{
-    Monday = 1,
-    Tuesday,
-    Wednesday,
-    Thursday,
+enum MyEnum {
+    MONDAY = 1,
+    TUESDAY,
+    WEDNESDAY,
+    THURSDAY,
 };
 
-typedef enum
-{
-    Friday,
-    Saturday,
-    Sunday
-} a_day;
+typedef enum {
+    FRIDAY,
+    SATURDAY,
+    SUNDAY
+} ADAY;
 
-bool isWorkDay(int day)
+bool IsWorkDay(int day)
 {
-    if (day == Tuesday)
-    {
+    if (day == TUESDAY) {
         return true;
     }
     return false;
 }
 
 // 联合体样例
-union MyUnion
-{
+union MyUnion {
     char level;
     bool pass;
     int grade;
 };
 
-static union
-{
+static union {
     int a;
     float b;
 };
 
-typedef union
-{
+typedef union {
     int i;
     char j;
-} a_union;
+} AUnion;
 
 int main()
 {
     MyClass myClass('A', 11);
-    myClass.setName('B');
+    myClass.SetName('B');
 
     MyStruct myStruct = {"bool", "auther", "C", 9};
-    myStruct.printInfo();
+    myStruct.PrintInfo();
 
     MyUnion mu = {'A'};
     cout << "level is" << mu.level << endl;
     cout << sizeof(mu) << endl;
 
-    bool isWork = isWorkDay(3);
+    bool isWork = IsWorkDay(3);
     return isWork;
 }

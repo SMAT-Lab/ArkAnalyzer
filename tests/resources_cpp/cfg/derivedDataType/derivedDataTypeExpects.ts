@@ -48,7 +48,7 @@ export const DERIVED_DATA_TYPE_EXPECT_CLASS = {
             ],
         },
         {
-            methodName: 'getHeight',
+            methodName: 'GetHeight',
             blocks: [
                 {
                     id: 0,
@@ -59,7 +59,7 @@ export const DERIVED_DATA_TYPE_EXPECT_CLASS = {
             ],
         },
         {
-            methodName: 'getName',
+            methodName: 'GetName',
             blocks: [
                 {
                     id: 0,
@@ -74,7 +74,7 @@ export const DERIVED_DATA_TYPE_EXPECT_CLASS = {
             ],
         },
         {
-            methodName: 'setName',
+            methodName: 'SetName',
             blocks: [
                 {
                     id: 0,
@@ -115,7 +115,7 @@ export const DERIVED_DATA_TYPE_EXPECT_CLASS2 = {
 };
 
 export const DERIVED_DATA_TYPE_EXPECT_STRUCT = {
-    fields: ['title', 'author', 'subject', 'book_id'],
+    fields: ['title', 'author', 'subject', 'bookId'],
     heritageClasses: [],
     blocks: [
         {
@@ -133,7 +133,7 @@ export const DERIVED_DATA_TYPE_EXPECT_STRUCT = {
                         'this.<@derivedDataType/derivedDataType.cpp: MyStruct.title> = t',
                         'this.<@derivedDataType/derivedDataType.cpp: MyStruct.author> = a',
                         'this.<@derivedDataType/derivedDataType.cpp: MyStruct.subject> = s',
-                        'this.<@derivedDataType/derivedDataType.cpp: MyStruct.book_id> = id',
+                        'this.<@derivedDataType/derivedDataType.cpp: MyStruct.bookId> = id',
                         'return this',
                     ],
                     preds: [],
@@ -142,7 +142,7 @@ export const DERIVED_DATA_TYPE_EXPECT_STRUCT = {
             ],
         },
         {
-            methodName: 'printInfo',
+            methodName: 'PrintInfo',
             blocks: [
                 {
                     id: 0,

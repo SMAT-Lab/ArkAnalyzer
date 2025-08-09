@@ -157,12 +157,12 @@ describe('Type Test', () => {
     });
     it('case3: reference Type', () => {
         const scene = buildScene('reference');
-        testBlocks(scene, 'reference.cpp', 'baseLeftRefer', REFERENCE_EXPECT.REFERENCE_EXPECT_CASE1.blocks);
-        testBlocks(scene, 'reference.cpp', 'pointRefer', REFERENCE_EXPECT.REFERENCE_EXPECT_CASE2.blocks);
-        testBlocks(scene, 'reference.cpp', 'myClassRefer', REFERENCE_EXPECT.REFERENCE_EXPECT_CASE3.blocks);
-        testBlocks(scene, 'reference.cpp', 'baseRightRefer', REFERENCE_EXPECT.REFERENCE_EXPECT_CASE4.blocks);
-        testBlocks(scene, 'reference.cpp', 'relay', REFERENCE_EXPECT.REFERENCE_EXPECT_CASE5.blocks);
-        testBlocks(scene, 'reference.cpp', 'moveCase', REFERENCE_EXPECT.REFERENCE_EXPECT_CASE6.blocks);
+        testBlocks(scene, 'reference.cpp', 'BaseLeftRefer', REFERENCE_EXPECT.REFERENCE_EXPECT_CASE1.blocks);
+        testBlocks(scene, 'reference.cpp', 'PointRefer', REFERENCE_EXPECT.REFERENCE_EXPECT_CASE2.blocks);
+        testBlocks(scene, 'reference.cpp', 'MyClassRefer', REFERENCE_EXPECT.REFERENCE_EXPECT_CASE3.blocks);
+        testBlocks(scene, 'reference.cpp', 'BaseRightRefer', REFERENCE_EXPECT.REFERENCE_EXPECT_CASE4.blocks);
+        testBlocks(scene, 'reference.cpp', 'Relay', REFERENCE_EXPECT.REFERENCE_EXPECT_CASE5.blocks);
+        testBlocks(scene, 'reference.cpp', 'MoveCase', REFERENCE_EXPECT.REFERENCE_EXPECT_CASE6.blocks);
     });
     it('case4: Derived Class', () => {
         const scene = buildScene('derivedDataType');

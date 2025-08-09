@@ -18,31 +18,33 @@
 #include <vector>
 using namespace std ;
 
-class MyClass
-{
+#define FIVE 5
+#define SIX 6
+
+class MyClass {
 public:
-    MyClass(int val) : data(val) {}
+    explicit MyClass(int val) : data(val) {}
     ~MyClass() {}
-    int getData() { return data; }
+    int GetData() { return data; }
 
 private:
     int data;
 };
 
 // 基本类型引用
-void baseLeftRefer(double &b)
+void BaseLeftRefer(double &b)
 {
     int a = 1;
     bool flag = true;
     double f = 1.02;
     char c = 'x';
-    int &ref_a = a;
-    bool &ref_flag = flag;
-    double &ref_f = f;
-    char &ref_c = c;
+    int &refA = a;
+    bool &refFlag = flag;
+    double &refF = f;
+    char &refC = c;
 }
 
-void baseRightRefer()
+void BaseRightRefer()
 {
     int x = 1;
     int y = 2;
@@ -50,23 +52,24 @@ void baseRightRefer()
 }
 
 // 基本类型指针
-void pointRefer()
+void PointRefer()
 {
     int *ptr = nullptr;
-    int *&ref_to_ptr = ptr; //  引用
+    int *&refToPtr = ptr; //  引用
 }
 
 // 自定义类型的引用
-void myClassRefer()
+void MyClassRefer()
 {
-    MyClass a(5);
+    MyClass a(FIVE);
     MyClass &b = a;
 }
 
-void moveCase() {
+void MoveCase()
+{
     int temp = 5;
-    int &&ref_a = std::move(temp);
-    ref_a = 6;
+    int &&refA = std::move(temp);
+    refA = SIX;
 
     std::string str1 = "Hello";
     std::string str2 = std::move(str1); // 移动而非复制
@@ -76,17 +79,19 @@ class Data {
 public:
     Data() = default;
     Data(const Data&) { std::cout << "Copy\n"; }
+    Data& operator=(const Data&) = delete;
     Data(Data&&) { std::cout << "Move\n"; }
 };
 
 template <typename T>
-void relay(T&& arg) {
+void Relay(T&& arg)
+{
     Data d1(forward<T>(arg));
-
 }
 
-void main() {
+void main()
+{
     Data data;
-    relay(Data());
-    relay(data);
+    Relay(Data());
+    Relay(data);
 }
