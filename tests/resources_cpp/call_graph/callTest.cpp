@@ -13,45 +13,41 @@
  * limitations under the License.
  */
 
-class Dummy
-{
+class Dummy {
 public:
 };
-void log() {}
 
-class Shape
-{
+void Log() {}
+
+class Shape {
 public:
-    virtual void draw(Dummy *d) = 0;
+    virtual void Draw(Dummy *d) = 0;
 };
 
-class Circle : public Shape
-{
+class Circle : public Shape {
 public:
     Dummy *obj;
-    void draw(Dummy *d) override
+    void Draw(Dummy *d) override
     {
-        log();
+        Log();
         this->obj = d;
     }
 };
-class Rectangle : public Shape
-{
+
+class Rectangle : public Shape {
 public:
     Dummy *obj;
-    void draw(Dummy *d) override
-    {
-    }
+    void Draw(Dummy *d) override {}
 };
 
-Shape *id(Shape *t) { return t; }
+Shape *Id(Shape *t) { return t; }
 
 int main()
 {
     Dummy *d = new Dummy();
     Circle *c = new Circle();
-    c->draw(d);
-    Shape *b1 = id(c);
-    b1->draw(d);
+    c->Draw(d);
+    Shape *b1 = Id(c);
+    b1->Draw(d);
     return 0;
 }

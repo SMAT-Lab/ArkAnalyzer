@@ -13,39 +13,35 @@
  * limitations under the License.
  */
 
-class Animal
-{
+class Animal {
 public:
-    virtual void sound() const = 0;
+    virtual void Sound() const = 0;
 };
 
-class Dog : public Animal
-{
+class Dog : public Animal {
 public:
-    void sound() const override{}
+    void Sound() const override {}
 };
 
-class Cat : public Animal
-{
+class Cat : public Animal {
 public:
-    void sound() const override{}
-    void sound1() const{
-
-    }
+    void Sound() const override {}
+    void Sound1() const {}
 };
 
-class Pig : public Animal
-{
+class Pig : public Animal {
 public:
-    void sound() const override{}
+    void Sound() const override{}
 };
 
-void makeSound(const Animal& animal)
+void MakeSound(const Animal& animal)
 {
-    animal.sound();
+    animal.Sound();
 }
-int main() {
+
+int main()
+{
     Cat cat;
-    makeSound(Dog());
+    MakeSound(Dog());
     return 0;
 }

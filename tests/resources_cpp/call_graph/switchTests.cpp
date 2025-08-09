@@ -39,7 +39,8 @@ void MakeSound(Animal &animal)
 {
     animal.Sound();
 }
-int MainSwitch(int num)
+
+void MainSwitch(int num)
 {
     Cat cat;
     switch (num)
