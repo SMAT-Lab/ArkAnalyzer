@@ -116,16 +116,16 @@ describe('CfgTest', () => {
     });
     it('case6: goto statement', () => {
         const scene = buildScene('goto');
-        testBlocks(scene, 'gotoSample.cpp', 'case1', GOTO_EXPECT.GOTO_EXPECT_CASE1.blocks);
-        testBlocks(scene, 'gotoSample.cpp', 'case2', GOTO_EXPECT.GOTO_EXPECT_CASE2.blocks);
-        testBlocks(scene, 'gotoSample.cpp', 'case3', GOTO_EXPECT.GOTO_EXPECT_CASE3.blocks);
-        testBlocks(scene, 'gotoSample.cpp', 'case4', GOTO_EXPECT.GOTO_EXPECT_CASE4.blocks);
-        testBlocks(scene, 'gotoSample.cpp', 'case5', GOTO_EXPECT.GOTO_EXPECT_CASE5.blocks);
-        testBlocks(scene, 'gotoSample.cpp', 'case6', GOTO_EXPECT.GOTO_EXPECT_CASE6.blocks);
-        testBlocks(scene, 'gotoSample.cpp', 'case7', GOTO_EXPECT.GOTO_EXPECT_CASE7.blocks);
-        testBlocks(scene, 'gotoSample.cpp', 'case8', GOTO_EXPECT.GOTO_EXPECT_CASE8.blocks);
-        testBlocks(scene, 'gotoSample.cpp', 'case9', GOTO_EXPECT.GOTO_EXPECT_CASE9.blocks);
-        testBlocks(scene, 'gotoSample.cpp', 'case10', GOTO_EXPECT.GOTO_EXPECT_CASE10.blocks);
+        testBlocks(scene, 'gotoSample.cpp', 'Case1', GOTO_EXPECT.GOTO_EXPECT_CASE1.blocks);
+        testBlocks(scene, 'gotoSample.cpp', 'Case2', GOTO_EXPECT.GOTO_EXPECT_CASE2.blocks);
+        testBlocks(scene, 'gotoSample.cpp', 'Case3', GOTO_EXPECT.GOTO_EXPECT_CASE3.blocks);
+        testBlocks(scene, 'gotoSample.cpp', 'Case4', GOTO_EXPECT.GOTO_EXPECT_CASE4.blocks);
+        testBlocks(scene, 'gotoSample.cpp', 'Case5', GOTO_EXPECT.GOTO_EXPECT_CASE5.blocks);
+        testBlocks(scene, 'gotoSample.cpp', 'Case6', GOTO_EXPECT.GOTO_EXPECT_CASE6.blocks);
+        testBlocks(scene, 'gotoSample.cpp', 'Case7', GOTO_EXPECT.GOTO_EXPECT_CASE7.blocks);
+        testBlocks(scene, 'gotoSample.cpp', 'Case8', GOTO_EXPECT.GOTO_EXPECT_CASE8.blocks);
+        testBlocks(scene, 'gotoSample.cpp', 'Case9', GOTO_EXPECT.GOTO_EXPECT_CASE9.blocks);
+        testBlocks(scene, 'gotoSample.cpp', 'Case10', GOTO_EXPECT.GOTO_EXPECT_CASE10.blocks);
     });
     it('case7: binaryCondition', () => {
         const scene = buildScene('binaryConditional');

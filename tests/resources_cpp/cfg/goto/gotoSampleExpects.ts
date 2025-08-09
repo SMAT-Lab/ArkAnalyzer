@@ -114,7 +114,7 @@ export const GOTO_EXPECT_CASE7 = {
         },
         {
             id: 1,
-            stmts: ['%0 = -1', 'if i < %0'],
+            stmts: ['if i < 1'],
             preds: [0],
             succes: [2, 3],
         },
