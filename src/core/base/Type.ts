@@ -32,6 +32,7 @@ import {
 import { Local } from './Local';
 import { Constant } from './Constant';
 import { Value } from './Value';
+import {CppTypeInfo} from "../../ast/ArkCxxAstNode";
 
 /**
  * @category core/base/type
@@ -1006,22 +1007,22 @@ export class Thread extends Type {
 }
 
 export class functionPointer extends Type {
-    funType: string;
+    funType: CppTypeInfo;
 
-    constructor(funType: string) {
+    constructor(funType: CppTypeInfo) {
         super();
         this.funType = funType;
     }
 
     public getTypeString(): string {
-        return this.funType;
+        return String(this.funType);
     }
 
-    public setFunType(funType: string): void {
+    public setFunType(funType: CppTypeInfo): void {
         this.funType = funType;
     }
 
-    public getFunType(): string {
+    public getFunType(): CppTypeInfo {
         return this.funType;
     }
 }
