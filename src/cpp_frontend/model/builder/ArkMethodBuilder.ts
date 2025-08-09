@@ -147,8 +147,9 @@ export function buildArkMethodFromArkClass(methodNode: CppAstNode, declaringClas
     // @ts-ignore
     const methodSubSignature = new MethodSubSignature(methodName, methodParameters, returnType, mtd.isStatic());
     const methodSignature = new MethodSignature(mtd.getDeclaringArkClass().getSignature(), methodSubSignature);
-    const line = methodNode.range.begin.line;
-    const character = methodNode.range.begin.col;
+    const begin = methodNode.range?.begin ?? { line: 0, col: 0 };
+    const line = begin.line;
+    const character = begin.col;
     if (isMethodImplementation(methodNode)) {
         mtd.setImplementationSignature(methodSignature);
         mtd.setLine(line);
