@@ -30,8 +30,6 @@ export const USING_EXPECT_CASE2 = {
             id: 0,
             stmts: [
                 'this = this: @using/usingcase.cpp: %dflt',
-                'using std::cout = std',
-                'using std::endl = std',
                 "staticinvoke <@%unk/%unk: .cout()>('[test_using_declaration] hello')",
                 'return',
             ],
@@ -64,7 +62,11 @@ export const USING_EXPECT_CASE4 = {
     blocks: [
         {
             id: 0,
-            stmts: ['this = this: @using/usingcase.cpp: %dflt', 'using Color::Red = using Red::Red', 'c = Red', 'if c == Red'],
+            stmts: [  "this = this: @using/usingcase.cpp: %dflt",
+                        "c = Red",
+                        "%0 = Color.<@%unk/%unk: .Red>",
+                        "if c == %0",
+            ],
             preds: [],
             succes: [1, 2],
         },

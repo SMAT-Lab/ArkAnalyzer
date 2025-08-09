@@ -682,7 +682,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
 
         if (ts.isEtsComponentExpression(componentExpression) && componentExpression.body) {
             for (const statement of componentExpression.body.statements) {
-                this.arkIRTransformerCpp.tsNodeToStmts(statement).forEach(stmt => stmts.push(stmt));
+                this.arkIRTransformerCpp.cppNodeToStmts(statement).forEach(stmt => stmts.push(stmt));
             }
         }
         stmts.push(this.generateComponentPopStmts(componentName, componentExpressionPosition));

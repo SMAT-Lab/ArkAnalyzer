@@ -46,7 +46,7 @@ import { ModelUtils } from '../../core/common/ModelUtils';
 import { ArkClass } from '../../core/model/ArkClass';
 import { buildNormalArkClassFromArkMethod } from '../model/builder/ArkClassBuilder';
 import { buildArkMethodFromArkClass } from '../model/builder/ArkMethodBuilder';
-import {CppAstNode} from "../../ast/ArkCxxAstNode";
+import {CppAstNode} from '../../ast/ArkCxxAstNode';
 
 export type ValueAndStmts = {
     value: Value;
@@ -65,7 +65,7 @@ export class DummyStmt extends Stmt {
     }
 }
 
-function nodeInnerNode(node: CppAstNode): any {
+function nodeInnerNode(node: CppAstNode): CppAstNode | any {
     if (node.inner && node.inner.length > 0) {
         return node.inner[0];
     }
@@ -128,7 +128,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
         );
     }
 
-    public tsNodeToStmts(node: any): Stmt[] {
+    public cppNodeToStmts(node: CppAstNode | any): Stmt[] {
         let stmts: Stmt[] = [];
         switch (node.kind) {
             case 'BreakStmt':
@@ -499,7 +499,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
         }
 
         if (initNode) {
-            this.tsNodeToStmts(initNode).forEach(stmt => stmts.push(stmt));
+            this.cppNodeToStmts(initNode).forEach(stmt => stmts.push(stmt));
         }
         const dummyInitializerStmt = new DummyStmt(ArkIRTransformer.DUMMY_LOOP_INITIALIZER_STMT);
         stmts.push(dummyInitializerStmt);
@@ -640,7 +640,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
             return this.arkValueTransformerCpp.declStmtToValueAndStmts(declStatement).stmts;
         }
         for (const child of declStatement.inner) {
-            const childStmts = this.tsNodeToStmts(child);
+            const childStmts = this.cppNodeToStmts(child);
             stmts.push(...childStmts);
         }
         return stmts;
@@ -676,7 +676,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
             const branchInvokeStmt = new ArkInvokeStmt(branchInvokeExpr);
             branchInvokeStmt.setOperandOriginalPositions(branchInvokeExprPositions);
             stmts.push(branchInvokeStmt);
-            this.tsNodeToStmts(ifStatement.inner[1]).forEach(stmt => stmts.push(stmt));
+            this.cppNodeToStmts(ifStatement.inner[1]).forEach(stmt => stmts.push(stmt));
             if (ifStatement.inner.length > 2) {
                 const branchElseMethodSignature = ArkSignatureBuilder.buildMethodSignatureFromClassNameAndMethodName(COMPONENT_IF, COMPONENT_BRANCH_FUNCTION);
                 const branchElseInvokeExpr = new ArkStaticInvokeExpr(branchElseMethodSignature, [CppValueUtil.getOrCreateNumberConst(1)]);
@@ -685,7 +685,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
                 branchElseInvokeStmt.setOperandOriginalPositions(branchElseInvokeExprPositions);
                 stmts.push(branchElseInvokeStmt);
 
-                this.tsNodeToStmts(ifStatement.inner[2]).forEach(stmt => stmts.push(stmt));
+                this.cppNodeToStmts(ifStatement.inner[2]).forEach(stmt => stmts.push(stmt));
             }
             const popMethodSignature = ArkSignatureBuilder.buildMethodSignatureFromClassNameAndMethodName(COMPONENT_IF, COMPONENT_POP_FUNCTION);
             const popInvokeExpr = new ArkStaticInvokeExpr(popMethodSignature, []);

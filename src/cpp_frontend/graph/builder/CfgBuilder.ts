@@ -1253,7 +1253,7 @@ export class CfgBuilder {
                     continue;
                 }
                 if (statementBuilder.astNode && statementBuilder.code !== '') {
-                    arkIRTransformer.tsNodeToStmts(statementBuilder.astNode).forEach(s => stmtsInBlock.push(s));
+                    arkIRTransformer.cppNodeToStmts(statementBuilder.astNode).forEach(s => stmtsInBlock.push(s));
                 } else if (statementBuilder.code.startsWith('return')) {
                     stmtsInBlock.push(this.generateReturnStmt(arkIRTransformer));
                 }
