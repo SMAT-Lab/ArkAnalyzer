@@ -225,11 +225,9 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
     }
 
     private typeDefDeclToStmts(typeAliasDeclaration: CppAstNode): Stmt[] {
-        let typeNode: any;
         const aliasName = typeAliasDeclaration.name;
-        if (typeAliasDeclaration.inner && typeAliasDeclaration.inner.length > 0) {
-            typeNode = typeAliasDeclaration.inner[0];
-        }
+        const typeNode: CppAstNode | undefined =
+            Array.isArray(typeAliasDeclaration.inner) ? typeAliasDeclaration.inner[0] : undefined;
         const rightOp = typeNode && typeNode.code ? typeNode.code : 'int'; // 若无type code 使用int类型托底
 
         let rightType;
@@ -485,9 +483,9 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
 
     private forStatementToStmtsCpp(forStatement: CppAstNode): Stmt[] {
         const stmts: Stmt[] = [];
-        let initNode: any | undefined = undefined;
-        let conditionNoe: any | undefined = undefined;
-        let incrementor: any | undefined = undefined;
+        let initNode: unknown | undefined = undefined;
+        let conditionNoe: unknown | undefined = undefined ;
+        let incrementor: unknown | undefined = undefined;
         for (const node of forStatement.inner) {
             if (node.kind === 'DeclStmt') {
                 initNode = node;
@@ -560,18 +558,23 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
 
             let hasRepeat: boolean = false;
             for (const stmt of stmts) {
-                if (stmt instanceof ArkAssignStmt && stmt.getRightOp() instanceof ArkStaticInvokeExpr) {
-                    const rightOp = stmt.getRightOp() as ArkStaticInvokeExpr;
-                    if (rightOp.getMethodSignature().getMethodSubSignature().getMethodName() === COMPONENT_REPEAT) {
-                        const createMethodSignature = ArkSignatureBuilder.buildMethodSignatureFromClassNameAndMethodName(
-                            COMPONENT_REPEAT,
-                            COMPONENT_CREATE_FUNCTION
-                        );
-                        const createInvokeExpr = new ArkStaticInvokeExpr(createMethodSignature, rightOp.getArgs());
-                        stmt.setRightOp(createInvokeExpr);
-                        hasRepeat = true;
-                    }
+                if (!(stmt instanceof ArkAssignStmt)) {
+                    continue;
                 }
+                if (!(stmt.getRightOp() instanceof ArkStaticInvokeExpr)) {
+                    continue;
+                }
+                const rightOp = stmt.getRightOp() as ArkStaticInvokeExpr;
+                if (rightOp.getMethodSignature().getMethodSubSignature().getMethodName() !== COMPONENT_REPEAT) {
+                    continue;
+                }
+                const createMethodSignature = ArkSignatureBuilder.buildMethodSignatureFromClassNameAndMethodName(
+                    COMPONENT_REPEAT,
+                    COMPONENT_CREATE_FUNCTION
+                );
+                const createInvokeExpr = new ArkStaticInvokeExpr(createMethodSignature, rightOp.getArgs());
+                stmt.setRightOp(createInvokeExpr);
+                hasRepeat = true;
             }
             if (hasRepeat) {
                 const popMethodSignature = ArkSignatureBuilder.buildMethodSignatureFromClassNameAndMethodName(COMPONENT_REPEAT, COMPONENT_POP_FUNCTION);
@@ -596,13 +599,19 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
             let hasRepeat: boolean = false;
             for (const stmt of stmts) {
                 // 不是赋值语句：跳过
-                if (!(stmt instanceof ArkAssignStmt)) continue;
+                if (!(stmt instanceof ArkAssignStmt)) {
+                    continue;
+                }
                 const rightOp = stmt.getRightOp?.(); // 如果可能没有这个方法，用可选调用更安全
                 // 右侧不存在或不是静态调用：跳过
-                if (!(rightOp instanceof ArkStaticInvokeExpr)) continue;
+                if (!(rightOp instanceof ArkStaticInvokeExpr)) {
+                    continue;
+                }
                 const methodName = rightOp.getMethodSignature().getMethodSubSignature().getMethodName();
                 // 不是 COMPONENT_REPEAT：跳过
-                if (methodName !== COMPONENT_REPEAT) continue;
+                if (methodName !== COMPONENT_REPEAT) {
+                    continue;
+                }
                 const createMethodSignature =
                     ArkSignatureBuilder.buildMethodSignatureFromClassNameAndMethodName(
                         COMPONENT_REPEAT,
@@ -676,7 +685,9 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
             const branchInvokeStmt = new ArkInvokeStmt(branchInvokeExpr);
             branchInvokeStmt.setOperandOriginalPositions(branchInvokeExprPositions);
             stmts.push(branchInvokeStmt);
-            this.cppNodeToStmts(ifStatement.inner[1]).forEach(stmt => stmts.push(stmt));
+            this.cppNodeToStmts(ifStatement.inner[1]).forEach((stmt: Stmt) => {
+                stmts.push(stmt);
+            });
             if (ifStatement.inner.length > 2) {
                 const branchElseMethodSignature = ArkSignatureBuilder.buildMethodSignatureFromClassNameAndMethodName(COMPONENT_IF, COMPONENT_BRANCH_FUNCTION);
                 const branchElseInvokeExpr = new ArkStaticInvokeExpr(branchElseMethodSignature, [CppValueUtil.getOrCreateNumberConst(1)]);
@@ -725,7 +736,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
         }
     }
 
-    public static tokenToUnaryOperator(token: any): UnaryOperator | null {
+    public static tokenToUnaryOperatorCpp(token: String): UnaryOperator | null {
         switch (token) {
             case '-':
                 return UnaryOperator.Neg;

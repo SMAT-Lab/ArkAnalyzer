@@ -1714,7 +1714,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
             };
         } else {
             let unopExpr: Value;
-            const operator = ArkIRTransformerCpp.tokenToUnaryOperator(operatorToken);
+            const operator = ArkIRTransformerCpp.tokenToUnaryOperatorCpp(operatorToken);
             if (operator) {
                 unopExpr = new ArkUnopExpr(operandValue, operator);
                 exprPositions.push(...operandPositions);
