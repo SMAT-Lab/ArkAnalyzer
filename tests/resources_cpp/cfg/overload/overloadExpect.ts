@@ -114,7 +114,7 @@ export const OVERLOAD_CLASS_PERSON_EXPECT = {
             ],
         },
         {
-            methodName: 'printInfo()',
+            methodName: 'PrintInfo()',
             blocks: [
                 {
                     id: 0,
@@ -322,9 +322,9 @@ export const OVERLOAD_MAIN_EXPECT = {
             id: 0,
             stmts: [
                 'this = this: @overload/overloadSample.cpp: %dflt',
-                'staticinvoke <@overload/overloadSample.cpp: %dflt.printInfo(int, char)>(1)',
-                "staticinvoke <@overload/overloadSample.cpp: %dflt.printInfo(int, char)>('A')",
-                "staticinvoke <@overload/overloadSample.cpp: %dflt.printInfo(int, char)>(1, 'A')",
+                'staticinvoke <@overload/overloadSample.cpp: %dflt.PrintInfo(int, char)>(1)',
+                "staticinvoke <@overload/overloadSample.cpp: %dflt.PrintInfo(int, char)>('A')",
+                "staticinvoke <@overload/overloadSample.cpp: %dflt.PrintInfo(int, char)>(1, 'A')",
                 '%0 = new @overload/overloadSample.cpp: Person',
                 'instanceinvoke %0.<@overload/overloadSample.cpp: Person.constructor()>()',
                 'p1 = %0',
@@ -334,9 +334,9 @@ export const OVERLOAD_MAIN_EXPECT = {
                 '%2 = new @overload/overloadSample.cpp: Person',
                 "instanceinvoke %2.<@overload/overloadSample.cpp: Person.constructor()>('Charlie')",
                 'p3 = %2',
-                'instanceinvoke p1.<@overload/overloadSample.cpp: Person.printInfo()>()',
-                'instanceinvoke p2.<@overload/overloadSample.cpp: Person.printInfo()>()',
-                'instanceinvoke p3.<@overload/overloadSample.cpp: Person.printInfo()>()',
+                'instanceinvoke p1.<@overload/overloadSample.cpp: Person.PrintInfo()>()',
+                'instanceinvoke p2.<@overload/overloadSample.cpp: Person.PrintInfo()>()',
+                'instanceinvoke p3.<@overload/overloadSample.cpp: Person.PrintInfo()>()',
                 '%3 = new @overload/overloadSample.cpp: Vector',
                 'instanceinvoke %3.<@overload/overloadSample.cpp: Vector.constructor()>(1, 2)',
                 'a = %3',

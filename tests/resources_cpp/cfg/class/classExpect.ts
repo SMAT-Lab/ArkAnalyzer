@@ -37,7 +37,7 @@ export const BASE_CLASS_EXPECT = {
             ],
         },
         {
-            methodName: 'getName',
+            methodName: 'GetName',
             blocks: [
                 {
                     id: 0,
@@ -76,7 +76,7 @@ export const LEFT_CLASS_EXPECT = {
             ],
         },
         {
-            methodName: 'getLeftPower',
+            methodName: 'GetLeftPower',
             blocks: [
                 {
                     id: 0,
@@ -115,7 +115,7 @@ export const RIGHT_CLASS_EXPECT = {
             ],
         },
         {
-            methodName: 'getRightSpeed',
+            methodName: 'GetRightSpeed',
             blocks: [
                 {
                     id: 0,
@@ -158,7 +158,7 @@ export const DERIVED_CLASS_EXPECT = {
             ],
         },
         {
-            methodName: 'getRobotId',
+            methodName: 'GetRobotId',
             blocks: [
                 {
                     id: 0,
@@ -169,22 +169,22 @@ export const DERIVED_CLASS_EXPECT = {
             ],
         },
         {
-            methodName: 'introduce',
+            methodName: 'Introduce',
             blocks: [
                 {
                     id: 0,
                     stmts: [
                         'this = this: @class/classSample.cpp: Derived',
                         "staticinvoke <@%unk/%unk: .cout()>('=== Robot Info ===')",
-                        '%0 = this.<@class/classSample.cpp: Derived.getName>',
+                        '%0 = this.<@class/classSample.cpp: Derived.GetName>',
                         '%1 = staticinvoke <@%unk/%unk: .this()>(%0)',
                         "staticinvoke <@%unk/%unk: .cout()>('Name: ', %1)",
                         '%2 = this.<@class/classSample.cpp: Derived.robotId>',
                         "staticinvoke <@%unk/%unk: .cout()>('ID: ', %2)",
-                        '%3 = this.<@class/classSample.cpp: Derived.getLeftPower>',
+                        '%3 = this.<@class/classSample.cpp: Derived.GetLeftPower>',
                         '%4 = staticinvoke <@%unk/%unk: .this()>(%3)',
                         "staticinvoke <@%unk/%unk: .cout()>('Left Power: ', %4)",
-                        '%5 = this.<@class/classSample.cpp: Derived.getRightSpeed>',
+                        '%5 = this.<@class/classSample.cpp: Derived.GetRightSpeed>',
                         '%6 = staticinvoke <@%unk/%unk: .this()>(%5)',
                         "staticinvoke <@%unk/%unk: .cout()>('Right Speed: ', %6)",
                         'return',
@@ -213,7 +213,7 @@ export const ANIMAL_CLASS_EXPECT = {
             ],
         },
         {
-            methodName: 'sound',
+            methodName: 'Sound',
             blocks: [
                 {
                     id: 0,
@@ -247,7 +247,7 @@ export const CAT_CLASS_EXPECT = {
             ],
         },
         {
-            methodName: 'sound',
+            methodName: 'Sound',
             blocks: [
                 {
                     id: 0,
@@ -281,7 +281,7 @@ export const DOG_CLASS_EXPECT = {
             ],
         },
         {
-            methodName: 'sound',
+            methodName: 'Sound',
             blocks: [
                 {
                     id: 0,
@@ -315,7 +315,7 @@ export const PIG_CLASS_EXPECT = {
             ],
         },
         {
-            methodName: 'sound',
+            methodName: 'Sound',
             blocks: [
                 {
                     id: 0,
@@ -361,10 +361,10 @@ export const MAIN_EXPECT = {
                 '%0 = new @class/classSample.cpp: Derived',
                 "instanceinvoke %0.<@class/classSample.cpp: Derived.constructor()>('X', 101, 75, 3.6)",
                 'd = %0',
-                'instanceinvoke d.<@class/classSample.cpp: Derived.introduce()>()',
+                'instanceinvoke d.<@class/classSample.cpp: Derived.Introduce()>()',
                 '%1 = new @class/classSample.cpp: Dog',
                 'instanceinvoke %1.<@class/classSample.cpp: Dog.constructor()>()',
-                'staticinvoke <@%unk/%unk: .makeSound()>(%1)',
+                'staticinvoke <@%unk/%unk: .MakeSound()>(%1)',
                 'd1 = staticinvoke <@%unk/%unk: .undefined()>(100)',
                 'return 0',
             ],

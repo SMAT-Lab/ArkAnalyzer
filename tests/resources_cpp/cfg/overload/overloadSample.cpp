@@ -18,16 +18,25 @@
 
 using namespace std;
 
+#define ONE 1
+#define TWO 2
+#define THREE 3
+#define FOUR 4
+#define THIRTY 30
+
 /****** 函数重载 ******/
-void printInfo(int x) {
+void PrintInfo(int x)
+{
     cout << x << endl;
 }
 
-void printInfo(char x) {
+void PrintInfo(char x)
+{
     cout << x << endl;
 }
 
-void printInfo(int x, char y) {
+void PrintInfo(int x, char y)
+{
     cout << x << " " << y << endl;
 }
 
@@ -39,31 +48,35 @@ private:
 
 public:
     // 1. 默认构造函数
-    Person() {
+    Person()
+    {
         name = "Unknown";
         age = 0;
         cout << "Default constructor called" << endl;
     }
 
     // 2. 带全部参数的构造函数
-    Person(const string& n, int a);
+    explicit Person(const string& n, int a);
 
     // 3. 带姓名的构造函数，使用初始化列表的构造函数（推荐写法）
-    Person(const string& n);
+    explicit Person(const string& n);
 
     // 打印信息的方法
-    void printInfo() const {
+    void PrintInfo() const
+    {
         cout << "Name: " << name << ", Age: " << age << endl;
     }
 };
 
-Person::Person(const string& n, int a) {
+Person::Person(const string& n, int a)
+{
     name = n;
     age = a;
     cout << "Constructor with all parameters called" << endl;
 }
 
-Person::Person(const string& n) : name(n), age(0) {
+Person::Person(const string& n) : name(n), age(0)
+{
     cout << "Constructor with name called" << endl;
 }
 
@@ -72,22 +85,25 @@ class Vector {
 private:
     double x, y;
 public:
-    Vector(double x = 0, double y = 0) : x(x), y(y) {}
+    explicit Vector(double x = 0, double y = 0) : x(x), y(y) {}
 
     // 重载 二元运算符（成员函数）
-    Vector operator+(const Vector& other) const {
+    Vector operator+(const Vector& other) const
+    {
         return Vector(x + other.x, y + other.y);
     }
 
     // 前置自增运算符（++v）
-    Vector& operator++() {
+    Vector& operator++()
+    {
         ++x;  // 自增 x 分量
         ++y;  // 自增 y 分量
         return *this;  // 返回自身引用
     }
 
     // 重载函数调用
-    Vector& operator()(const int num1, const int num2) {
+    Vector& operator()(const int num1, const int num2)
+    {
         x = x + num1;
         y = y + num2;
         return *this;
@@ -99,40 +115,46 @@ public:
 };
 
 // 在类外定义
-std::ostream& operator<<(std::ostream& os, const Vector& v) {
+std::ostream& operator<<(std::ostream& os, const Vector& v)
+{
     os << "(" << v.x << ", " << v.y << ")";
     return os;
 }
 
-std::istream& operator>>(std::istream& is, Vector& v) {
+std::istream& operator>>(std::istream& is, Vector& v)
+{
     is >> v.x >> v.y;
     return is;
 }
 
 /****** clang::UserDefinedLiteral ******/
-constexpr long double operator""_km(long double km) {
+constexpr long double operator""_km(long double km)
+{
     return km * 1000; // 1km = 1000m
 }
 
 // 字符类型
-char operator""_c(char c) {
+char operator""_c(char c)
+{
     return c;
 }
 
-int main() {
-    printInfo(1);
-    printInfo('A');
-    printInfo(1, 'A');
+int main()
+{
+    PrintInfo(1);
+    PrintInfo('A');
+    PrintInfo(1, 'A');
 
     Person p1;                        // 默认构造函数
-    Person p2("Alice", 30);           // 带全部参数的构造函数
+    Person p2("Alice", THIRTY);           // 带全部参数的构造函数
     Person p3("Charlie");             // 带姓名的构造函数
-    p1.printInfo();
-    p2.printInfo();
-    p3.printInfo();
+    p1.PrintInfo();
+    p2.PrintInfo();
+    p3.PrintInfo();
 
     // ***运算符重载
-    Vector a(1, 2), b(3, 4);
+    Vector a(ONE, TWO);
+    Vector b(THREE, FOUR);
     Vector c = a + b;  // 等价于 a.operator+(b)
     ++c;  // 等价于c.operator++()
     c(1, 1);  // 等价于c.operator()(1, 1)
