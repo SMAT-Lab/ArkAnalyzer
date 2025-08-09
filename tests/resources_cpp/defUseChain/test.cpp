@@ -14,11 +14,14 @@
  */
 
 #include <stdio.h>
-void defUseChainTest() {
+
+#define TWO 2
+
+void DefUseChainTest() {
     int a = 1;
     int b = 2;
     a = a + b;
-    if (a < 2) {
+    if (a < TWO) {
         a = b;
     } else {
         printf("%d\n", a);

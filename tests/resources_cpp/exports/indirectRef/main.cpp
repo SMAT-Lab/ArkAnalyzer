@@ -18,8 +18,9 @@
 
 using namespace std;
 
-int main() {
-    double res = funcDoSomething(1, 2);
+int main()
+{
+    double res = FuncDoSomething(1, 2);
     cout << "result is : " << res << endl;
     return 0;
 }

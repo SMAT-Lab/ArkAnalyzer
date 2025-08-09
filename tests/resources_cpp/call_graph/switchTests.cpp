@@ -13,49 +13,46 @@
  * limitations under the License.
  */
 
-class Animal
-{
+class Animal {
 public:
-    virtual void sound() const = 0;
+    virtual void Sound() const = 0;
 };
 
-class Dog : public Animal
-{
+class Dog : public Animal {
 public:
-    void sound() const override {}
+    void Sound() const override {}
 };
 
-class Cat : public Animal
-{
+class Cat : public Animal {
 public:
-    void sound() const override {}
-    void sound1() const
+    void Sound() const override {}
+    void Sound1() const
     {
-        meov();
+        Meov();
     }
 
 private:
-    void meov() const {}
+    void Meov() const {}
 };
 
-void makeSound(Animal &animal)
+void MakeSound(Animal &animal)
 {
-    animal.sound();
+    animal.Sound();
 }
-int main_switch(int num)
+int MainSwitch(int num)
 {
     Cat cat;
     switch (num)
     {
-    case 1:
-        cat.sound();
-        break;
-    case 2:
-        cat.sound1();
-        break;
+        case 1:
+            cat.Sound();
+            break;
+        case 2:
+            cat.Sound1();
+            break;
 
-    default:
-        makeSound(Dog());
-        break;
+        default:
+            MakeSound(Dog());
+            break;
     }
 }

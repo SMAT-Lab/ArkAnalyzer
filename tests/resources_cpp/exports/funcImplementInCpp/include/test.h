@@ -33,7 +33,7 @@ struct Point {
     double y;
 };
 
-int funcDoSomething(int i, int j);
+int FuncDoSomething(int i, int j);
 
 class Circle {
 private:
@@ -47,16 +47,16 @@ public:
         : center(c), radius(r), color(clr) {}
 
     // Getter方法
-    Point getCenter() const { return center; }
-    double getRadius() const { return radius; }
-    Color getColor() const { return color; }
+    Point GetCenter() const { return center; }
+    double GetRadius() const { return radius; }
+    Color GetColor() const { return color; }
 
     // 普通成员函数
-    double calculateArea() const;
-    void printInfo() const;
+    double CalculateArea() const;
+    void PrintInfo() const;
 
     // 静态函数
-    static bool isLarger(const Circle& c1, const Circle& c2);
+    static bool IsLarger(const Circle& c1, const Circle& c2);
 };
 
 #endif

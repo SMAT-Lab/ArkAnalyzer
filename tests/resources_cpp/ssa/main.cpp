@@ -13,35 +13,30 @@
  * limitations under the License.
  */
 
-int case1()
+#define TEN 10
+#define MINUS_TEN -10
+
+int Case1()
 {
     int v = 3;
     int a;
-    if (v > 0)
-    {
-        a = 10;
-    }
-    else
-    {
-        a = -10;
+    if (v > 0) {
+        a = TEN;
+    } else {
+        a = MINUS_TEN;
     }
     return a;
 }
-int case2()
+int Case2()
 {
     int v = 3;
     int a;
-    if (v > 0)
-    {
-        a = 10;
-    }
-    else if (v == 0)
-    {
+    if (v > 0) {
+        a = TEN;
+    } else if (v == 0) {
         a = 0;
-    }
-    else
-    {
-        a = -10;
+    } else {
+        a = MINUS_TEN;
     }
     return a;
 }

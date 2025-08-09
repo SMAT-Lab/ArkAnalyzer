@@ -87,7 +87,7 @@ describe('export Test', () => {
         if (stmts) {
             assert.equal(
                 stmts[1].getInvokeExpr()?.getMethodSignature().toString(),
-                '@exports/funcImplementInHeaderFile/sameDir/myHeader.h: %dflt.funcDoSomething(int, int)'
+                '@exports/funcImplementInHeaderFile/sameDir/myHeader.h: %dflt.FuncDoSomething(int, int)'
             );
         }
 
@@ -95,7 +95,7 @@ describe('export Test', () => {
         const file2 = projectScene.getFile(fileId2);
         assert.equal(file2?.getExportInfos().length, 1);
         assert.equal(file2?.getImportInfos().length, 0);
-        const stmts2 = file2?.getDefaultClass().getMethodWithName('funcDoSomething')?.getCfg()?.getStmts();
+        const stmts2 = file2?.getDefaultClass().getMethodWithName('FuncDoSomething')?.getCfg()?.getStmts();
         assert.isNotEmpty(stmts2);
     });
 
@@ -109,7 +109,7 @@ describe('export Test', () => {
         if (stmts) {
             assert.equal(
                 stmts[1].getInvokeExpr()?.getMethodSignature().toString(),
-                '@exports/funcImplementInHeaderFile/diffDir/include/myHeader.h: %dflt.funcDoSomething(int, int)'
+                '@exports/funcImplementInHeaderFile/diffDir/include/myHeader.h: %dflt.FuncDoSomething(int, int)'
             );
         }
 
@@ -117,7 +117,7 @@ describe('export Test', () => {
         const file2 = projectScene.getFile(fileId2);
         assert.equal(file2?.getExportInfos().length, 1);
         assert.equal(file2?.getImportInfos().length, 0);
-        const stmts2 = file2?.getDefaultClass().getMethodWithName('funcDoSomething')?.getCfg()?.getStmts();
+        const stmts2 = file2?.getDefaultClass().getMethodWithName('FuncDoSomething')?.getCfg()?.getStmts();
         assert.isNotEmpty(stmts2);
     });
 
@@ -131,11 +131,11 @@ describe('export Test', () => {
         if (stmts) {
             assert.equal(
                 stmts[1].getInvokeExpr()?.getMethodSignature().toString(),
-                '@exports/funcImplementInCpp/include/test.h: %dflt.funcDoSomething(int, int)'
+                '@exports/funcImplementInCpp/include/test.h: %dflt.FuncDoSomething(int, int)'
             );
             assert.equal(stmts[9].getDef()?.getType().toString(), '@exports/funcImplementInCpp/include/test.h: Circle');
-            assert.equal(stmts[10].getInvokeExpr()?.getMethodSignature().toString(), '@exports/funcImplementInCpp/include/test.h: Circle.calculateArea()');
-            assert.equal(stmts[12].getInvokeExpr()?.getMethodSignature().toString(), '@exports/funcImplementInCpp/include/test.h: Circle.printInfo()');
+            assert.equal(stmts[10].getInvokeExpr()?.getMethodSignature().toString(), '@exports/funcImplementInCpp/include/test.h: Circle.CalculateArea()');
+            assert.equal(stmts[12].getInvokeExpr()?.getMethodSignature().toString(), '@exports/funcImplementInCpp/include/test.h: Circle.PrintInfo()');
             // assert.equal(stmts[6].getDef()?.getType().toString(), '@exports/funcImplementInCpp/include/test.h: Point');  // 当前表示为数组？
         }
 
@@ -143,14 +143,14 @@ describe('export Test', () => {
         const file2 = projectScene.getFile(fileId2);
         assert.equal(file2?.getExportInfos().length, 4);
         assert.equal(file2?.getImportInfos().length, 0);
-        const stmts2 = file2?.getDefaultClass().getMethodWithName('funcDoSomething')?.getCfg()?.getStmts();
+        const stmts2 = file2?.getDefaultClass().getMethodWithName('FuncDoSomething')?.getCfg()?.getStmts();
         assert.isNotEmpty(stmts2);
 
         const fileId3 = new FileSignature(projectScene.getProjectName(), 'funcImplementInCpp/src/test.cpp');
         const file3 = projectScene.getFile(fileId3);
         assert.equal(file3?.getExportInfos().length, 0);
         assert.equal(file3?.getImportInfos().length, 5);
-        const stmts3 = file3?.getClassWithName('Circle')?.getMethodWithName('calculateArea')?.getCfg()?.getStmts();
+        const stmts3 = file3?.getClassWithName('Circle')?.getMethodWithName('CalculateArea')?.getCfg()?.getStmts();
         assert.isNotEmpty(stmts3);
         assert.equal(stmts3![1].toString(), '%0 = this.<@exports/funcImplementInCpp/src/test.cpp: Circle.radius>');
     });
@@ -161,7 +161,7 @@ describe('export Test', () => {
         const stmts = file1?.getDefaultClass().getMethodWithName('main')?.getCfg()?.getStmts();
         assert.isNotEmpty(stmts);
         if (stmts) {
-            assert.equal(stmts[1].getInvokeExpr()?.getMethodSignature().toString(), '@exports/indirectRef/include/myHeader.h: %dflt.funcDoSomething(int, int)');
+            assert.equal(stmts[1].getInvokeExpr()?.getMethodSignature().toString(), '@exports/indirectRef/include/myHeader.h: %dflt.FuncDoSomething(int, int)');
         }
         let importInfos = file1?.getImportInfos();
         assert.equal(importInfos!.length, 5);
@@ -169,7 +169,7 @@ describe('export Test', () => {
         assert.equal(importInfos![1].getLazyExportInfo()?.getArkExport()?.getSignature().toString(), '@exports/indirectRef/include/castSample.h: %dflt');
         assert.equal(
             importInfos![3].getLazyExportInfo()?.getArkExport()?.getSignature().toString(),
-            '@exports/indirectRef/src/myHeader.cpp: %dflt.funcDoSomething(int, int)'
+            '@exports/indirectRef/src/myHeader.cpp: %dflt.FuncDoSomething(int, int)'
         );
         assert.equal(
             importInfos![4].getLazyExportInfo()?.getArkExport()?.getSignature().toString(),
