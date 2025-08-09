@@ -29,10 +29,11 @@ import { ClassLikeNode, getInitStmts, init4InstanceInitMethod, init4StaticInitMe
 import { ArkIRTransformerCpp } from '../../common/ArkIRTransformer';
 import { buildDecorators } from '../../../core/model/builder/builderUtils';
 import { buildDefaultArkMethodFromArkClass } from './ArkMethodBuilder';
+import {CppAstNode} from "../../../ast/ArkCxxAstNode";
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkClassBuilder');
 
-export function buildNormalArkClassFromArkMethod(clsNode: ClassLikeNode, cls: ArkClass, sourceFile: any, declaringMethod?: ArkMethod): void {
+export function buildNormalArkClassFromArkMethod(clsNode: CppAstNode, cls: ArkClass, sourceFile: any, declaringMethod?: ArkMethod): void {
     const namespace = cls.getDeclaringArkNamespace();
     if (namespace) {
         buildNormalArkClassFromArkNamespace(clsNode, namespace, cls, sourceFile, declaringMethod);

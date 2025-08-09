@@ -1132,7 +1132,7 @@ export class CfgBuilder {
         const stmts: Stmt[] = [];
         const arkIRTransformer = new ArkIRTransformerCpp(this.sourceFile, this.declaringMethod);
         arkIRTransformer.prebuildStmts().forEach(stmt => stmts.push(stmt));
-        const expressionBodyNode = (this.astRoot as ts.ArrowFunction).body as ts.Expression;
+        const expressionBodyNode = this.astRoot
         const expressionBodyStmts: Stmt[] = [];
         let {
             value: expressionBodyValue,
@@ -1151,7 +1151,7 @@ export class CfgBuilder {
         const returnStmt = new ArkReturnStmt(expressionBodyValue);
         returnStmt.setOperandOriginalPositions([expressionBodyPositions[0], ...expressionBodyPositions]);
         expressionBodyStmts.push(returnStmt);
-        arkIRTransformer.mapStmtsToTsStmt(expressionBodyStmts, expressionBodyNode);
+        arkIRTransformer.mapStmtsToTsStmtCpp(expressionBodyStmts, expressionBodyNode);
         expressionBodyStmts.forEach(stmt => stmts.push(stmt));
         const cfg = new Cfg();
         const blockInCfg = new BasicBlock();
