@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-int case1()
+int Case1()
 {
     int i = 0;
     int j = 0;
@@ -21,7 +21,7 @@ int case1()
     return j;
 }
 
-int case2()
+int Case2()
 {
     int a = 0;
     int b = 1;
@@ -30,29 +30,29 @@ int case2()
     return y;
 }
 
-int case3()
+int Case3()
 {
     int x = 0;
     int y = 0;
-    y = ++x ?: 3;
+    y = ++x ?: 1;
     return y;
 }
 
-int case4()
+int Case4()
 {
     int x = 0;
     int y = 0;
-    y = x++ ?: 3;
+    y = x++ ?: 1;
     return y;
 }
 
-int case5()
+int Case5()
 {
     int i = 8;
-    int j = i < 0 ?: i > 1 ? : 4;
+    int j = i < 0 ?: i > 1 ? : 0;
     return j;
 }
-int case6()
+int Case6()
 {
     int i = 0;
     int j = 0;

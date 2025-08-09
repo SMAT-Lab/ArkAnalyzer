@@ -21,17 +21,20 @@
 
 class TestClass {
 public:
-    int GetValue() {
+    int GetValue()
+    {
         return this->value;
     }
-    void SetValue(int value) {
-        this->value = value;
+    void SetValue(int pValue)
+    {
+        this->value = pValue;
     }
 private:
     int value = 999;
 };
 
-static napi_value DefineObject(napi_env env, napi_callback_info info) {
+static napi_value DefineObject(napi_env env, napi_callback_info info)
+{
     OH_LOG_INFO(LOG_APP, "enter DefineObject");
 
     napi_value result;
@@ -39,11 +42,12 @@ static napi_value DefineObject(napi_env env, napi_callback_info info) {
     int64_t addrValue = (int64_t)a;
     napi_create_bigint_int64(env, addrValue, &result);
     OH_LOG_INFO(LOG_APP, "end DefineObject, addrValue:%{public}ld", addrValue);
-    napi_create_double(env, 22, &result);
+    napi_create_double(env, 1, &result);
     return result;
 }
 
-static napi_value CallObject(napi_env env, napi_callback_info info) {
+static napi_value CallObject(napi_env env, napi_callback_info info)
+{
     OH_LOG_INFO(LOG_APP, "enter CallObject");
     size_t argc = 1;
     napi_value args[1] = {nullptr};
@@ -54,7 +58,7 @@ static napi_value CallObject(napi_env env, napi_callback_info info) {
     TestClass *a = (TestClass *)addrValue;
     OH_LOG_INFO(LOG_APP, "CallObject, addrValue:%{public}ld", addrValue);
     OH_LOG_INFO(LOG_APP, "CallObject, value:%{public}d", a->GetValue());
-    a->SetValue(888);
+    a->SetValue(1);
     return nullptr;
 }
 

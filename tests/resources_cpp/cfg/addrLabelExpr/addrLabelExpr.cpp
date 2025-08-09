@@ -14,11 +14,14 @@
  */
 
 
-void foo1() {
+void Foo1()
+{
     void *ptr = &&my_label;
     my_label : return;
 }
-void foo2() {
+
+void Foo2()
+{
     void *ptr = &&my_label;
     int x = 0;
     if (x == 0) {
@@ -30,15 +33,17 @@ my_label2:
      int x = 2;
      goto end;
 my_label:
-    while (x < 5) {
+    while (x < 0) {
         char c = 'c';
+        X--;
     }
 end:
-        int x = 3;
-        return 0;
+    int x = 3;
+    return 0;
 }
 
-int foo3() {
+int Foo3()
+{
     // 定义两个标签地址指针
     void *ptr1 = &&my_label1;
     void *ptr2 = &&my_label2;

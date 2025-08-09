@@ -16,10 +16,13 @@
 #include <iostream>
 using namespace std;
 
-void try_throw_case() {
+#define ERROR_CODE 42
+
+void TryThrowCase()
+{
     try {
         cout << "before throw" << endl;
-        throw 42; //抛出一个整数异常
+        throw ERROR_CODE; //抛出一个整数异常
         cout << "after throw" << endl;
     } catch (int e) {
         cout << "Caught exception: " << e << endl;
@@ -27,10 +30,9 @@ void try_throw_case() {
 }
 
 
-double division(int a, int b)
+double Division(int a, int b)
 {
-    if (b == 0)
-    {
+    if (b == 0) {
         throw "Division by zero condition!";
     }
     return (a / b);
@@ -41,12 +43,9 @@ int main()
     int x = 50;
     int y = 0;
     double z = 0;
-    try
-    {
-        z = division(x, y);
-    }
-    catch (const char *msg)
-    {
+    try {
+        z = Division(x, y);
+    } catch (const char *msg) {
         //
     }
     return 0;

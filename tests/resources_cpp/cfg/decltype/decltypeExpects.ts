@@ -29,7 +29,7 @@ export const AUTO_EXPECT_CASE1 = {
                 'vec = %0',
                 'it = instanceinvoke vec.<@std/vector.h: vector.begin()>()',
                 'it2 = vec[0]',
-                'lambda = %AM0$autoTest',
+                'lambda = %AM0$AutoTest',
                 'return',
             ],
             preds: [],

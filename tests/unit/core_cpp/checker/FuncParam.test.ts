@@ -66,7 +66,7 @@ function testBlocks(scene: Scene, filePath: string, methodName: string, expectBl
         const methodSign = invokeExpr.getMethodSignature();
         const methodName = methodSign.getMethodSubSignature().getMethodName();
         const argsNum = invokeExpr.getArgs().length;
-        if (methodName === 'sumFourNumber' && argsNum > 3) {
+        if (methodName === 'SumFourNumber' && argsNum > 3) {
             console.log('Func', methodName, 'has', argsNum, 'args');
         }
     }

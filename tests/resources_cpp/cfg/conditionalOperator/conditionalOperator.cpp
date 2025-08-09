@@ -13,14 +13,14 @@
  * limitations under the License.
  */
 
-int case1()
+int Case1()
 {
     int i = 0;
     int j = i > 0 ? i : -i;
     return j;
 }
 
-int case2()
+int Case2()
 {
     int i = 0;
     int k = 0;
@@ -28,27 +28,27 @@ int case2()
     return j;
 }
 
-int case3()
+int Case3()
 {
     int i = 0;
     int j = i < 0 ? i < -1 ? 1 : 2 : i > 1 ? 3 : 4;
     return j;
 }
 
-int case4()
+int Case4()
 {
     int i = 0;
     int j = i < 0 ? (i < -1 ? 1 : 2) + 3 : 4;
     return j;
 }
 
-int case5()
+int Case5()
 {
     int i = 0;
     int j = i < 0 ? i < -1 ? i < -2 ? 1 : 2 : 3 : 4;
 }
 
-int case6()
+int Case6()
 {
     int i = 0;
     int j = i > 0 ? i : -i;
@@ -56,11 +56,10 @@ int case6()
     return k;
 }
 
-int case7()
+int Case7()
 {
     int i = 0;
-    if (i > -1)
-    {
+    if (i > -1) {
         int j = i > 0 ? i : -i;
     }
 }

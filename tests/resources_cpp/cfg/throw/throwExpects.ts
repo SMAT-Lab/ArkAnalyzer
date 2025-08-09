@@ -46,7 +46,7 @@ export const THROW_EXPECT_CASE2 = {
         },
         {
             id: 1,
-            stmts: ['z = staticinvoke <@%unk/%unk: .division()>(x, y)'],
+            stmts: ['z = staticinvoke <@%unk/%unk: .Division()>(x, y)'],
             preds: [0],
             succes: [3],
         },

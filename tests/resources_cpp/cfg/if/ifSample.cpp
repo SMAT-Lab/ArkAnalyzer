@@ -13,14 +13,15 @@
  * limitations under the License.
  */
 
-#define MINUS_ONE -1
-#define MINUS_TWO -2
+#define MINUS_ONE (-1)
+#define MINUS_TWO (-2)
 #define ONE 1
 #define TWO 2
 #define THREE 3
 #define FOUR 4
 
-int Case1() {
+int Case1()
+{
     int i = 0;
     int j;
     if (i > 0) {
@@ -31,7 +32,8 @@ int Case1() {
     return j;
 }
 
-int Case2() {
+int Case2()
+{
     int i = 0;
     int k = 0;
     int j;
@@ -44,7 +46,8 @@ int Case2() {
     return j;
 }
 
-int Case3() {
+int Case3()
+{
     int i = 0;
     int j;
     if (i < 0) {
@@ -62,7 +65,9 @@ int Case3() {
     }
     return j;
 }
-int Case4() {
+
+int Case4()
+{
     int i = 0;
     int j;
     if (i < 0) {
@@ -77,7 +82,8 @@ int Case4() {
     return j;
 }
 
-int Case5() {
+int Case5()
+{
     int i = 0;
     int j;
     if (i < 0) {
@@ -96,7 +102,8 @@ int Case5() {
     return j;
 }
 
-int Case6() {
+int Case6()
+{
     int i = 0;
     int j;
     if (i > 0) {

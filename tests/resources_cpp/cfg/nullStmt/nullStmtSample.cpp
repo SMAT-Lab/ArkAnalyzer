@@ -67,8 +67,7 @@ void Case5()
 void Case6()
 {
     int x = 5;
-    do
-    {
+    do {
         ;
     } while (x-- > 0);
     ;

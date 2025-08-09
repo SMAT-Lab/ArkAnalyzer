@@ -68,10 +68,10 @@ export const DELETE_EXPECT_CASE4 = {
             id: 0,
             stmts: [
                 'this = this: @delete/deleteExpr.cpp: %dflt',
-                '%0 = new @delete/deleteExpr.cpp: myStruct',
-                'instanceinvoke %0.<@delete/deleteExpr.cpp: myStruct.constructor()>()',
+                '%0 = new @delete/deleteExpr.cpp: MyStruct',
+                'instanceinvoke %0.<@delete/deleteExpr.cpp: MyStruct.constructor()>()',
                 'ss = %0',
-                '%1 = delete ss-><@delete/deleteExpr.cpp: myStruct.a>',
+                '%1 = delete ss-><@delete/deleteExpr.cpp: MyStruct.a>',
                 '%2 = delete ss',
                 'ss = nullptr',
                 'return',

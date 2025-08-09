@@ -62,13 +62,13 @@ import * as AUTO_EXPECT from '../../../resources_cpp/cfg/decltype/decltypeExpect
 describe('CfgTest', () => {
     it('case1: conditional operator', () => {
         const scene = buildScene('conditionalOperator');
-        testBlocks(scene, 'conditionalOperator.cpp', 'case1', CONDITION_EXPECT.CONDITIONAL_OPERATOR_EXPECT_CASE1.blocks);
-        testBlocks(scene, 'conditionalOperator.cpp', 'case2', CONDITION_EXPECT.CONDITIONAL_OPERATOR_EXPECT_CASE2.blocks);
-        testBlocks(scene, 'conditionalOperator.cpp', 'case3', CONDITION_EXPECT.CONDITIONAL_OPERATOR_EXPECT_CASE3.blocks);
-        testBlocks(scene, 'conditionalOperator.cpp', 'case4', CONDITION_EXPECT.CONDITIONAL_OPERATOR_EXPECT_CASE4.blocks);
-        testBlocks(scene, 'conditionalOperator.cpp', 'case5', CONDITION_EXPECT.CONDITIONAL_OPERATOR_EXPECT_CASE5.blocks);
-        testBlocks(scene, 'conditionalOperator.cpp', 'case6', CONDITION_EXPECT.CONDITIONAL_OPERATOR_EXPECT_CASE6.blocks);
-        testBlocks(scene, 'conditionalOperator.cpp', 'case7', CONDITION_EXPECT.CONDITIONAL_OPERATOR_EXPECT_CASE7.blocks);
+        testBlocks(scene, 'conditionalOperator.cpp', 'Case1', CONDITION_EXPECT.CONDITIONAL_OPERATOR_EXPECT_CASE1.blocks);
+        testBlocks(scene, 'conditionalOperator.cpp', 'Case2', CONDITION_EXPECT.CONDITIONAL_OPERATOR_EXPECT_CASE2.blocks);
+        testBlocks(scene, 'conditionalOperator.cpp', 'Case3', CONDITION_EXPECT.CONDITIONAL_OPERATOR_EXPECT_CASE3.blocks);
+        testBlocks(scene, 'conditionalOperator.cpp', 'Case4', CONDITION_EXPECT.CONDITIONAL_OPERATOR_EXPECT_CASE4.blocks);
+        testBlocks(scene, 'conditionalOperator.cpp', 'Case5', CONDITION_EXPECT.CONDITIONAL_OPERATOR_EXPECT_CASE5.blocks);
+        testBlocks(scene, 'conditionalOperator.cpp', 'Case6', CONDITION_EXPECT.CONDITIONAL_OPERATOR_EXPECT_CASE6.blocks);
+        testBlocks(scene, 'conditionalOperator.cpp', 'Case7', CONDITION_EXPECT.CONDITIONAL_OPERATOR_EXPECT_CASE7.blocks);
     });
     it('case2: if statement', () => {
         const scene = buildScene('if');
@@ -129,18 +129,18 @@ describe('CfgTest', () => {
     });
     it('case7: binaryCondition', () => {
         const scene = buildScene('binaryConditional');
-        testBlocks(scene, 'binaryConditionalSample.cpp', 'case1', BINARY_CONDITIONAL_EXPECT.BINARY_CONDITIONAL_EXPECT_CASE1.blocks);
-        testBlocks(scene, 'binaryConditionalSample.cpp', 'case2', BINARY_CONDITIONAL_EXPECT.BINARY_CONDITIONAL_EXPECT_CASE2.blocks);
-        testBlocks(scene, 'binaryConditionalSample.cpp', 'case3', BINARY_CONDITIONAL_EXPECT.BINARY_CONDITIONAL_EXPECT_CASE3.blocks);
-        testBlocks(scene, 'binaryConditionalSample.cpp', 'case4', BINARY_CONDITIONAL_EXPECT.BINARY_CONDITIONAL_EXPECT_CASE4.blocks);
-        testBlocks(scene, 'binaryConditionalSample.cpp', 'case5', BINARY_CONDITIONAL_EXPECT.BINARY_CONDITIONAL_EXPECT_CASE5.blocks);
-        testBlocks(scene, 'binaryConditionalSample.cpp', 'case6', BINARY_CONDITIONAL_EXPECT.BINARY_CONDITIONAL_EXPECT_CASE6.blocks);
+        testBlocks(scene, 'binaryConditionalSample.cpp', 'Case1', BINARY_CONDITIONAL_EXPECT.BINARY_CONDITIONAL_EXPECT_CASE1.blocks);
+        testBlocks(scene, 'binaryConditionalSample.cpp', 'Case2', BINARY_CONDITIONAL_EXPECT.BINARY_CONDITIONAL_EXPECT_CASE2.blocks);
+        testBlocks(scene, 'binaryConditionalSample.cpp', 'Case3', BINARY_CONDITIONAL_EXPECT.BINARY_CONDITIONAL_EXPECT_CASE3.blocks);
+        testBlocks(scene, 'binaryConditionalSample.cpp', 'Case4', BINARY_CONDITIONAL_EXPECT.BINARY_CONDITIONAL_EXPECT_CASE4.blocks);
+        testBlocks(scene, 'binaryConditionalSample.cpp', 'Case5', BINARY_CONDITIONAL_EXPECT.BINARY_CONDITIONAL_EXPECT_CASE5.blocks);
+        testBlocks(scene, 'binaryConditionalSample.cpp', 'Case6', BINARY_CONDITIONAL_EXPECT.BINARY_CONDITIONAL_EXPECT_CASE6.blocks);
     });
     it('case8: addrLabelExpr', () => {
         const scene = buildScene('addrLabelExpr');
-        testBlocks(scene, 'addrLabelExpr.cpp', 'foo1', ADDRLABEL_EXPECT.ADDRLABEL_EXPECT_CASE1.blocks);
-        testBlocks(scene, 'addrLabelExpr.cpp', 'foo2', ADDRLABEL_EXPECT.ADDRLABEL_EXPECT_CASE2.blocks);
-        testBlocks(scene, 'addrLabelExpr.cpp', 'foo3', ADDRLABEL_EXPECT.ADDRLABEL_EXPECT_CASE3.blocks);
+        testBlocks(scene, 'addrLabelExpr.cpp', 'Foo1', ADDRLABEL_EXPECT.ADDRLABEL_EXPECT_CASE1.blocks);
+        testBlocks(scene, 'addrLabelExpr.cpp', 'Foo2', ADDRLABEL_EXPECT.ADDRLABEL_EXPECT_CASE2.blocks);
+        testBlocks(scene, 'addrLabelExpr.cpp', 'Foo3', ADDRLABEL_EXPECT.ADDRLABEL_EXPECT_CASE3.blocks);
     });
 });
 
@@ -239,10 +239,10 @@ describe('Function Test', () => {
 
     it('case4: delete Expression Test', () => {
         const scene = buildScene('delete');
-        testBlocks(scene, 'deleteExpr.cpp', 'delObj', DELETE_EXPECT.DELETE_EXPECT_CASE1.blocks);
-        testBlocks(scene, 'deleteExpr.cpp', 'delArr', DELETE_EXPECT.DELETE_EXPECT_CASE2.blocks);
-        testBlocks(scene, 'deleteExpr.cpp', 'delClassObj', DELETE_EXPECT.DELETE_EXPECT_CASE3.blocks);
-        testBlocks(scene, 'deleteExpr.cpp', 'delMember', DELETE_EXPECT.DELETE_EXPECT_CASE4.blocks);
+        testBlocks(scene, 'deleteExpr.cpp', 'DelObj', DELETE_EXPECT.DELETE_EXPECT_CASE1.blocks);
+        testBlocks(scene, 'deleteExpr.cpp', 'DelArr', DELETE_EXPECT.DELETE_EXPECT_CASE2.blocks);
+        testBlocks(scene, 'deleteExpr.cpp', 'DelClassObj', DELETE_EXPECT.DELETE_EXPECT_CASE3.blocks);
+        testBlocks(scene, 'deleteExpr.cpp', 'DelMember', DELETE_EXPECT.DELETE_EXPECT_CASE4.blocks);
     });
 
     it('case5: Overload Test', () => {
@@ -272,9 +272,9 @@ describe('Other Test', () => {
     });
     it('case2: try catch throw', () => {
         const scene = buildScene('throw');
-        testBlocks(scene, 'throwSample.cpp', 'division', THROW_EXPECT.THROW_EXPECT_CASE1.blocks);
+        testBlocks(scene, 'throwSample.cpp', 'Division', THROW_EXPECT.THROW_EXPECT_CASE1.blocks);
         testBlocks(scene, 'throwSample.cpp', 'main', THROW_EXPECT.THROW_EXPECT_CASE2.blocks);
-        testBlocks(scene, 'throwSample.cpp', 'try_throw_case', THROW_EXPECT.THROW_EXPECT_CASE3.blocks);
+        testBlocks(scene, 'throwSample.cpp', 'TryThrowCase', THROW_EXPECT.THROW_EXPECT_CASE3.blocks);
     });
     it('case3: iostream', () => {
         const scene = buildScene('iostream');
@@ -402,8 +402,8 @@ describe('thread Test', () => {
 describe('decltype Test', () => {
     it('case1: decltype', () => {
         const scene = buildScene('decltype');
-        testBlocks(scene, 'decltype.cpp', 'autoTest', AUTO_EXPECT.AUTO_EXPECT_CASE1.blocks);
-        testBlocks(scene, 'decltype.cpp', 'decltypeTest', AUTO_EXPECT.DECLTYPE_EXPECT_CASE1.blocks);
+        testBlocks(scene, 'decltype.cpp', 'AutoTest', AUTO_EXPECT.AUTO_EXPECT_CASE1.blocks);
+        testBlocks(scene, 'decltype.cpp', 'DecltypeTest', AUTO_EXPECT.DECLTYPE_EXPECT_CASE1.blocks);
     });
 });
 

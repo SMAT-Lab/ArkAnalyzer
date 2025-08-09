@@ -13,16 +13,15 @@
  * limitations under the License.
  */
 
-class Animal
-{
+class Animal {
 public:
     Animal() {}
     ~Animal() {}
-    void sound() {}
+    void Sound() {}
 };
 
 // 创建单个对象，然后释放
-void delObj()
+void DelObj()
 {
     int *a = new int;
     delete a;
@@ -30,7 +29,7 @@ void delObj()
 }
 
 // 动态创建数组然后释放
-void delArr()
+void DelArr()
 {
     int *arr = new int[10];
     delete[] arr;
@@ -38,7 +37,7 @@ void delArr()
 }
 
 // 创建类对象，然后释放
-void delClassObj()
+void DelClassObj()
 {
     Animal *a = new Animal;
     delete a;
@@ -46,16 +45,15 @@ void delClassObj()
 }
 
 // 释放成员
-struct myStruct
-{
+struct MyStruct {
     int *a;
     int b;
-    myStruct() {}
+    MyStruct() {}
 };
 
-void delMember()
+void DelMember()
 {
-    myStruct *ss = new myStruct;
+    MyStruct *ss = new MyStruct;
     delete ss->a;
     delete ss;
     ss = nullptr;
