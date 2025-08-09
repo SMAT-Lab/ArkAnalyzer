@@ -997,7 +997,8 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         }
     }
 
-    private buildValueAndStmtsForStdStream(streamNode: CppAstNode, nonOverloadedArgs: [] | any, streamExpr: CppAstNode | any, currValueAndStmts: ValueAndStmts): void {
+    private buildValueAndStmtsForStdStream(streamNode: CppAstNode, nonOverloadedArgs: [] | any,
+                                           streamExpr: CppAstNode | any, currValueAndStmts: ValueAndStmts): void {
         if (nonOverloadedArgs.length === 0) {
             return;
         }
@@ -2137,7 +2138,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
             const classSignature = new ClassSignature('struct', fileSignature, null, ClassCategory.UNION);
             return new ClassType(classSignature);
         } else if (qualType.includes('vector')) {
-            let dimension = 0;  // Handle std::vector scenarios (must be after std:: check)
+            let dimension = 0; // Handle std::vector scenarios (must be after std:: check)
             let dataType = this.resolveVectorType(qualType, dimension);
             return new ArrayType(buildTypeFromPreStr(dataType), dimension);
         } else if (qualType === 'thread') {
@@ -2196,7 +2197,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         }
     }
 
-    public resolveVectorType(kind: string, dimension: number): string{
+    public resolveVectorType(kind: string, dimension: number): string {
         if (!kind.includes('vector')) {
             return kind;
         }
