@@ -24,10 +24,10 @@ void CXXStaticCastTest()
 }
 
 // c style cast
-void cStyleCastTest()
+void CStyleCastTest()
 {
     int i = 2;
-    float i_float = (float)i;
+    float iFloat = (float)i;
 }
 
 // CXXConstCastExpr,const_cast转换类型是指针/引用
@@ -39,16 +39,14 @@ void CXXConstCastTest()
 
 // CXXDynamicCastExpr
 // Define 'Circle' class that implements 'Shape'
-
-class Shape
-{
+class Shape {
 public:
-    virtual void draw() = 0; // Pure virtual
+    virtual void Draw() = 0; // Pure virtual
 };
-class Circle : public Shape
-{
+
+class Circle : public Shape {
 public:
-    void draw() override
+    void Draw() override
     {
         //  ...
     }
@@ -58,22 +56,21 @@ void CXXDynamicCastTest()
 {
     Shape *s = new Circle();
     Circle *c = dynamic_cast<Circle *>(s); // 指针的表示
-    if (c)
-    {
-        c->draw();
+    if (c) {
+        c->Draw();
     }
 }
 
-void CXXReinterpretCastTest() {
+void CXXReinterpretCastTest()
+{
     int* pi = new int(42);
     double* pd = reinterpret_cast<double*>(pi); // 指针的表示
 }
 
 // CXXFunctionalCastExpr
-class Widget
-{
+class Widget {
 public:
-    Widget(int);
+    explicit Widget(int);
 };
 
 void CXXFunctionalCastTest()
@@ -82,9 +79,3 @@ void CXXFunctionalCastTest()
     auto y = std::string("hello");
     Widget w = Widget(42);
 }
-// // builtinBitCastExpr----头文件找不到
-// void BuiltinBitCastTest() {
-//     float f = 3.14f;
-//     int i = std::bit_cast<int>(f);
-//     float f2 = std::bit_cast<float>(i);
-// }

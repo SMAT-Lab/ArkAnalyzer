@@ -28,7 +28,7 @@ export const CAST_EXPECT_CASE2 = {
     blocks: [
         {
             id: 0,
-            stmts: ['this = this: @cast/castSample.cpp: %dflt', 'i = 2', 'i_float = <float>i', 'return'],
+            stmts: ['this = this: @cast/castSample.cpp: %dflt', 'i = 2', 'iFloat = <float>i', 'return'],
             preds: [],
             succes: [],
         },
@@ -63,7 +63,7 @@ export const CAST_EXPECT_CASE4 = {
         },
         {
             id: 1,
-            stmts: ['instanceinvoke c.<@cast/castSample.cpp: Circle.draw()>()'],
+            stmts: ['instanceinvoke c.<@cast/castSample.cpp: Circle.Draw()>()'],
             preds: [0],
             succes: [2],
         },
