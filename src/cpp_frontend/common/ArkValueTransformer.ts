@@ -857,7 +857,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         return { value: fieldRef, valueOriginalPositions: fieldRefPositions, stmts: stmts };
     }
 
-    private elementAccessExpressionToValueAndStmtsCpp(elementAccessExpression: CppAstNode | any): ValueAndStmts {
+    private elementAccessExpressionToValueAndStmtsCpp(elementAccessExpression: CppAstNode): ValueAndStmts {
         const stmts: Stmt[] = [];
         let { value: baseValue, valueOriginalPositions: basePositions, stmts: baseStmts } = this.tsNodeToValueAndStmts(elementAccessExpression.inner[0]);
         baseStmts.forEach(stmt => stmts.push(stmt));
@@ -997,7 +997,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         }
     }
 
-    private buildValueAndStmtsForStdStream(streamNode: CppAstNode | any, nonOverloadedArgs: [] | any, streamExpr: CppAstNode | any, currValueAndStmts: ValueAndStmts): void {
+    private buildValueAndStmtsForStdStream(streamNode: CppAstNode, nonOverloadedArgs: [] | any, streamExpr: CppAstNode | any, currValueAndStmts: ValueAndStmts): void {
         if (nonOverloadedArgs.length === 0) {
             return;
         }
@@ -1831,7 +1831,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
             }
             const assignStmt = new ArkAssignStmt(leftValue, rightValue);
             assignStmt.setOperandOriginalPositions([...leftPositions, ...rightPositions]);
-            if (ts.isArrayBindingPattern(leftOpNode) || leftOpNode.kind === 'InitListExpr' || ts.isObjectBindingPattern(leftOpNode)) {
+            if (leftOpNode.kind === 'InitListExpr') {
                 rightStmts.forEach(stmt => stmts.push(stmt));
                 stmts.push(assignStmt);
                 leftStmts.forEach(stmt => stmts.push(stmt));
@@ -1850,7 +1850,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         };
     }
 
-    private assignmentRightOpToValueAndStmtsCpp(rightOpNode: CppAstNode | any | undefined, leftValue: Value): ValueAndStmts {
+    private assignmentRightOpToValueAndStmtsCpp(rightOpNode: CppAstNode | undefined, leftValue: Value): ValueAndStmts {
         let rightValue: Value;
         let rightPositions: FullPosition[];
         let tempRightStmts: Stmt[] = [];
