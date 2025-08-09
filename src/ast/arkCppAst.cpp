@@ -1074,23 +1074,23 @@ json buildAndProcessAST(CXTranslationUnit unit, const CommandLineOptions& opts) 
 // ===================主程序入口==================
 int main(int argc, char** argv) {
     if (argc < 2) {
-        cliutil::printUsage(argv[0]);
+        cliutil::PrintUsage(argv[0]);
         return 1;
     }
 
-    auto opts = cliutil::parseCommandLineArgs(argc, argv);
-    cliutil::addMainFileDirToInclude(opts);
+    auto opts = cliutil::ParseCommandLineArgs(argc, argv);
+    cliutil::AddMainFileDirToInclude(opts);
 
     if (!cliutil::ValidateInput(opts)) return 1;
-    ClangArgs clang_args = cliutil::getClangArgs(opts);
+    ClangArgs clangArgs = cliutil::GetClangArgs(opts);
 
     g_user_include_dirs = opts.user_include_dirs;
     CXIndex index = clang_createIndex(0, 0);
-    CXTranslationUnit unit = createTranslationUnit(index, opts, clang_args.cstr_args);
+    CXTranslationUnit unit = createTranslationUnit(index, opts, clangArgs.cstr_args);
     if (!unit) {
         std::cerr << "[ERROR] clang_parseTranslationUnit failed!" << std::endl;
-        for (size_t i = 0; i < clang_args.cstr_args.size(); ++i) {
-             std::cerr << clang_args.cstr_args[i] << std::endl;
+        for (size_t i = 0; i < clangArgs.cstr_args.size(); ++i) {
+             std::cerr << clangArgs.cstr_args[i] << std::endl;
         }
         return 2;
     }

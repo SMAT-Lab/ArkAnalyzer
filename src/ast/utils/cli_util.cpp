@@ -25,11 +25,11 @@
 using json = nlohmann::json;
 namespace fs = std::filesystem;
 
-CommandLineOptions cliutil::parseCommandLineArgs(int argc, char** argv) {
+CommandLineOptions cliutil::ParseCommandLineArgs(int argc, char** argv) {
     CommandLineOptions opts;
     for(int i = 1; i< argc; ++i) {
         std::string arg = argv[i];
-        if (arg == "-o" && i + 1 <argc) {
+        if (arg == "-o" && i + 1 < argc) {
             opts.output_file = argv[++i];
         } else if (arg == "-c" && i + 1 < argc) {
             opts.compile_commands_file = argv[++i];
@@ -42,16 +42,17 @@ CommandLineOptions cliutil::parseCommandLineArgs(int argc, char** argv) {
     return opts;
 }
 
-void cliutil::addMainFileDirToInclude(CommandLineOptions& opts) {
-    if (opts.inputFile.empty()) return;
-    std::string main_dir = std::filesystem::absolute(opts.inputFile).parent_path().string();
-    auto abs_dir = std::filesystem::absolute(main_dir);
+void cliutil::AddMainFileDirToInclude(CommandLineOptions& opts) {
+    if (opts.inputFile.empty()) {
+        return;
+    }
+    std::string mainDir = std::filesystem::absolute(opts.inputFile).parent_path().string();
+    auto abs_dir = std::filesystem::absolute(mainDir);
     auto dir_exists = std::filesystem::exists(abs_dir);
     bool found = false;
     for (const auto& dir : opts.user_include_dirs) {
         auto abs_main_dir = std::filesystem::absolute(dir);
         auto main_dir_exists = std::filesystem::exists(abs_main_dir);
-
         if (dir_exists && main_dir_exists) {
             try {
                 if (std::filesystem::equivalent(abs_dir, abs_main_dir)) {
@@ -68,7 +69,7 @@ void cliutil::addMainFileDirToInclude(CommandLineOptions& opts) {
     }
     std::cout << "[DEBUG] Included Path Comparison Finished" << std::endl;
     if (!found) {
-        opts.user_include_dirs.push_back(main_dir);
+        opts.user_include_dirs.push_back(mainDir);
     }
 }
 
@@ -85,9 +86,9 @@ bool cliutil::ValidateInput(CommandLineOptions& opts) {
     return true;
 }
 
-void cliutil::printUsage(const char* progName) {
-    std::cerr << "Usage: " << progName
-              << " <file.cpp> [-o <output.json>] [-c <compile_commands.json>] [-i <include_dir> ...]\n";
+void cliutil::PrintUsage(const char* progName) {
+    std::cerr << "Usage: " << progName <<
+    " <file.cpp> [-o <output.json>] [-c <compile_commands.json>] [-i <include_dir> ...]\n";
 }
 
 bool cliutil::hasSuffix(const std::string& str, const std::string& suffix) {
@@ -97,7 +98,7 @@ bool cliutil::hasSuffix(const std::string& str, const std::string& suffix) {
     return str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
 }
 
-ClangArgs cliutil::prepareClangArgs(const CommandLineOptions& opts) {
+ClangArgs cliutil::PrepareClangArgs(const CommandLineOptions& opts) {
     ClangArgs res;
     // 选择标准
     if (hasSuffix(opts.inputFile, ".c")) {
@@ -118,9 +119,9 @@ ClangArgs cliutil::prepareClangArgs(const CommandLineOptions& opts) {
 }
 
 ClangArgs cliutil::LoadCompileCommands(const CommandLineOptions& opts) {
-    std::string compile_commands_path = opts.compile_commands_file;
+    std::string compileCommandsPath = opts.compile_commands_file;
     std::string inputFile = opts.inputFile;
-    std::ifstream file(compile_commands_path);
+    std::ifstream file(compileCommandsPath);
     ClangArgs result;
     if (!file.is_open()) {
         std::cerr << "无法打开 compile_commands.json \n";
@@ -166,12 +167,12 @@ ClangArgs cliutil::LoadCompileCommands(const CommandLineOptions& opts) {
     return result;
 }
 
-ClangArgs cliutil::getClangArgs(const CommandLineOptions& opts) {
-    ClangArgs clang_args;
+ClangArgs cliutil::GetClangArgs(const CommandLineOptions& opts) {
+    ClangArgs clangArgs;
     if (!opts.compile_commands_file.empty()) {
-        clang_args = cliutil::LoadCompileCommands(opts);
+        clangArgs = cliutil::LoadCompileCommands(opts);
     } else {
-        clang_args = cliutil::prepareClangArgs(opts);
+        clangArgs = cliutil::PrepareClangArgs(opts);
     }
-    return clang_args;
+    return clangArgs;
 }

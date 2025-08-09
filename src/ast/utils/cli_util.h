@@ -31,12 +31,12 @@ struct ClangArgs {
 };
 
 namespace cliutil {
-    CommandLineOptions parseCommandLineArgs(int argc, char** argv);
-    void addMainFileDirToInclude(CommandLineOptions& opts);
+    CommandLineOptions ParseCommandLineArgs(int argc, char** argv);
+    void AddMainFileDirToInclude(CommandLineOptions& opts);
     bool ValidateInput(CommandLineOptions& opts);
-    void printUsage(const char* progName);
-    ClangArgs prepareClangArgs(const CommandLineOptions& opts);
+    void PrintUsage(const char* progName);
+    ClangArgs PrepareClangArgs(const CommandLineOptions& opts);
     ClangArgs LoadCompileCommands(const CommandLineOptions& opts);
     bool hasSuffix(const std::string& str, const std::string& suffix); // 内部用
-    ClangArgs getClangArgs(const CommandLineOptions& opts);
+    ClangArgs GetClangArgs(const CommandLineOptions& opts);
 }
