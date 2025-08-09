@@ -21,7 +21,7 @@
     THREE,
     FOUR,
     TEN
- }
+ };
 
 void Case1() {
     int a = 0;
