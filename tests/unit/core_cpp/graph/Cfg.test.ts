@@ -359,7 +359,7 @@ describe('namespace Test', () => {
 describe('using Test', () => {
     it('case1: using', () => {
         const scene = buildScene('using');
-        testBlocks(scene, 'usingcase.cpp', 'testUsingNamespace', USING_EXPECT.USING_EXPECT_CASE1.blocks);
+        testBlocks(scene, 'usingcase.cpp', 'TestUsingNamespace', USING_EXPECT.USING_EXPECT_CASE1.blocks);
     });
     it('case2: using', () => {
         const scene = buildScene('using');

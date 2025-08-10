@@ -39,7 +39,7 @@ static napi_value DefineObject(napi_env env, napi_callback_info info)
 
     napi_value result;
     auto a = new TestClass();
-    int64_t addrValue = (int64_t)a;
+    int64_t addrValue = static_cast<int64_t>(reinterpret_cast<intptr_t>(a));
     napi_create_bigint_int64(env, addrValue, &result);
     OH_LOG_INFO(LOG_APP, "end DefineObject, addrValue:%{public}ld", addrValue);
     napi_create_double(env, 1, &result);
@@ -55,7 +55,7 @@ static napi_value CallObject(napi_env env, napi_callback_info info)
     int64_t addrValue = 0;
     bool flag = false;
     napi_get_value_bigint_int64(env, args[0], &addrValue, &flag);
-    TestClass *a = (TestClass *)addrValue;
+    TestClass *a = reinterpret_cast<TestClass *>(addrValue);
     OH_LOG_INFO(LOG_APP, "CallObject, addrValue:%{public}ld", addrValue);
     OH_LOG_INFO(LOG_APP, "CallObject, value:%{public}d", a->GetValue());
     a->SetValue(1);

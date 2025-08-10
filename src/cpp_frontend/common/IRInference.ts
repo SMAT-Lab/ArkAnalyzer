@@ -575,7 +575,7 @@ export class IRInference {
         if (argType instanceof FunctionType) {
             const argMethodSignature = argType.getMethodSignature();
             const argMethod = scene.getMethod(argMethodSignature);
-            if (argMethod != null && argMethod.getBody()) {
+            if (argMethod !== null && argMethod.getBody()) {
                 const body = argMethod.getBody() as ArkBody;
                 const firstStmt = body.getCfg().getStartingStmt();
                 if (firstStmt instanceof ArkAssignStmt && firstStmt.getRightOp() instanceof ArkParameterRef) {

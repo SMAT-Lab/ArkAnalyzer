@@ -53,7 +53,7 @@ export interface CppCtorAnyInit {
 /** 通用 C++ AST 节点（兼容 Clang JSON ） */
 export interface CppAstNode {
     /** 节点唯一 ID */
-    id?: number;
+    id?: number | string;
 
     /** 节点种类（如 "TranslationUnit" / "FunctionDecl" / "CXXConstructExpr" 等） */
     kind: string;
@@ -113,14 +113,14 @@ export interface CppAstNode {
     targetLabelId?: number;
 
     /** CXXCtorInitializer 专用 */
-    anyInit?: CppCtorAnyInit;   // 形如 { kind:"FieldDecl", name, type }
-    baseInit?: CppTypeInfo;     // 继承基类的初始化时使用
+    anyInit?: CppCtorAnyInit; // 形如{ kind:"FieldDecl", name, type }
+    baseInit?: CppTypeInfo; // 继承基类的初始化时使用
 
     /** 头文件/包含关系相关 */
-    include?: boolean;   // 节点来自 include 的用户头
-    included?: string;   // InclusionDirective 时的宿主文件路径
-    fileName?: string;   // TranslationUnit/Include 的文件名
-    locFile?: string;    // 在 locCursorKind 里写入的文件名
+    include?: boolean; // 节点来自 include 的用户头
+    included?: string; // InclusionDirective时的宿主文件路径
+    fileName?: string; // TranslationUnit/Include 的文件名
+    locFile?: string; // 在locCursorKind 里写入的文件名
 
     /** 简单定位（行/列），有些节点不一定都有 */
     loc?: {
@@ -141,8 +141,15 @@ export interface CppAstNode {
      */
     headerUnits?: CppAstNode[];
 
-    /** 兼容未来新增字段 */
-    [key: string]: any;
+    typeArguments?: string[];
+
+    default: string;
+
+    parent?: CppAstNode;
+
+    access?: string;
+    // /** 兼容未来新增字段 */
+    [key: string]: unknown;
 }
 
 /** 根节点类型 */

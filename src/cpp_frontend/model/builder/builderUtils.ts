@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-import ts from 'ohos-typescript';
 import {
     ClassType,
     GenericType,
@@ -32,16 +31,17 @@ import { ArkMethod } from '../../../core/model/ArkMethod';
 import { MethodParameter } from '../../../core/model/builder/ArkMethodBuilder';
 import { modifierKind2EnumCpp } from '../../../core/model/ArkBaseModel';
 import { buildGenericType } from '../../../core/model/builder/builderUtils';
+import { CppAstNode } from '../../../ast/ArkCxxAstNode';
 
-function extractCommonModifiers(node: any): number {
+function extractCommonModifiers(node: CppAstNode): number {
     let modifiers: number = 0;
     const nodeType: string = node?.type?.qualType ?? '';
 
     if (Object.prototype.hasOwnProperty.call(node, 'access')) {
-        modifiers |= modifierKind2EnumCpp(node.access);
+        modifiers |= modifierKind2EnumCpp(node.access ?? "");
     }
     if (Object.prototype.hasOwnProperty.call(node, 'storageClass')) {
-        modifiers |= modifierKind2EnumCpp(node.storageClass);
+        modifiers |= modifierKind2EnumCpp(node.storageClass ?? "");
     }
     if (nodeType.includes('const')) {
         modifiers |= modifierKind2EnumCpp('const');
@@ -56,7 +56,7 @@ function hasOverrideAttr(inner: any[] | undefined): boolean {
     return inner.some(child => child.kind === 'attribute(override)');
 }
 
-function getMtdModifier(node: any, modifiers: number) {
+function getMtdModifier(node: CppAstNode, modifiers: number) {
     if (node.code.startsWith('virtual ')) {
         modifiers |= modifierKind2EnumCpp('virtual');
         // 纯虚函数的定义：virtual func() = 0 / virtual func() =0
@@ -70,7 +70,7 @@ function getMtdModifier(node: any, modifiers: number) {
     return modifiers;
 }
 
-export function buildModifiers(node: any): number {
+export function buildModifiers(node: CppAstNode): number {
     let modifiers = extractCommonModifiers(node);
 
     if (node.kind === 'CXXMethodDecl') {
@@ -94,7 +94,7 @@ export function buildModifiersForCxxCls(cls: ArkClass): number {
     return 0;
 }
 
-export function buildTypeParameters(clsNode: any, sourceFile: ts.SourceFile, arkInstance: ArkMethod | ArkClass): GenericType[] {
+export function buildTypeParameters(clsNode: CppAstNode, sourceFile: CppAstNode, arkInstance: ArkMethod | ArkClass): GenericType[] {
     const genericTypes: GenericType[] = [];
     let index = -1;
     for (const innerNode of clsNode.inner) {
@@ -116,12 +116,12 @@ export function buildTypeParameters(clsNode: any, sourceFile: ts.SourceFile, ark
     return genericTypes;
 }
 
-export function buildParameters(params: any, arkInstance: ArkMethod | ArkField, sourceFile: any): MethodParameter[] {
+export function buildParameters(params: CppAstNode[], arkInstance: ArkMethod | ArkField, sourceFile: CppAstNode): MethodParameter[] {
     let parameters: MethodParameter[] = [];
     if (!params || params.length === 0) {
         return [];
     }
-    params.forEach((parameter: any) => {
+    params.forEach((parameter: CppAstNode) => {
         let methodParameter = new MethodParameter();
 
         // name
@@ -142,7 +142,7 @@ export function buildParameters(params: any, arkInstance: ArkMethod | ArkField, 
     return parameters;
 }
 
-export function buildReturnType(mtdNode: any, sourceFile: any, method: ArkMethod): Type {
+export function buildReturnType(mtdNode: CppAstNode, sourceFile: CppAstNode, method: ArkMethod): Type {
     let nodeType = mtdNode.type;
     if (nodeType) {
         let funcRetType;
@@ -222,7 +222,7 @@ export function buildTypeFromPreStr(preStr: string, arkInstance: any = null): Ty
     return baseType;
 }
 
-export function buildReferenceType(preStr: string, arkInstance: any = null, referenceCount: number, baseType: Type): Type {
+export function buildReferenceType(preStr: string, arkInstance: ArkMethod | ArkClass | ArkField, referenceCount: number, baseType: Type): Type {
     let referCategory = referenceCount % 2 === 1 ? ReferCategory.LVALUE_REF : ReferCategory.RVALUE_REF;
     if (baseType instanceof UnclearReferenceType) {
         baseType = cppNode2Type(preStr, arkInstance);
@@ -233,7 +233,7 @@ export function buildReferenceType(preStr: string, arkInstance: any = null, refe
     return new ReferenceType(baseType, referCategory);
 }
 
-export function isCXXSTLContainer(qualType: string) {
+export function isCXXSTLContainer(qualType: string):boolean {
     let STLContainerPtn = /(set|map|vector|queue|deque|stack|list|pair)<[^>]*>/g;
     return STLContainerPtn.test(qualType);
 }
@@ -241,7 +241,9 @@ export function isCXXSTLContainer(qualType: string) {
 export function buildTypeFromDerivedType(preStr: string, arkInstance: ArkMethod | ArkClass | ArkField): Type {
     const outerPartMatch = preStr.match(/^([^<]+)/);
     const outerPart = outerPartMatch ? outerPartMatch[1] : null;
-    let typeStr: string, isPtr: boolean, isRef: boolean;
+    let typeStr: string;
+    let isPtr: boolean;
+    let isRef: boolean;
     if (outerPart === null) {
         typeStr = preStr.trim().split(' ')[0];
         isPtr = preStr.includes(' *');

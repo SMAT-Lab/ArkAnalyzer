@@ -32,7 +32,7 @@ import {
 import { Local } from './Local';
 import { Constant } from './Constant';
 import { Value } from './Value';
-import {CppTypeInfo} from "../../ast/ArkCxxAstNode";
+import { CppTypeInfo } from '../../ast/ArkCxxAstNode';
 
 /**
  * @category core/base/type

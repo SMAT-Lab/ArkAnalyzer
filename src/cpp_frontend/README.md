@@ -1,6 +1,6 @@
 # ArkAnalyzer-CPP前端
 
-### ArkAnalyzer-CPP前端是由 HUAWEI ICT BG 公共开发部的品牌-精卫 团队主导设计与开发, 基于Clang的解析能力对cpp/c的语义场景完成其到ArkAnalyzer IR的转译及分析。
+### ArkAnalyzer-CPP前端是由 ICT BG 公共开发部的品牌-精卫 团队主导设计与开发, 基于llvm的解析能力对cpp/c的语义场景完成其到ArkAnalyzer IR的转译及分析。
 
 ## 一、ArkAnalyzer-CPP工具使用介绍
 
@@ -28,7 +28,6 @@
 ![img_1.png](img_1.png)
 ![img_2.png](img_2.png)
 
-一般情况下，CPP语言解析得到的Scene结构和Ts语言所解析出的结构是相同的，这个scene屏蔽掉语言的差异，便于开发者做其他方向的使用。
 如果一个cpp接口是在ts语言中被调用的接口，会在Scene结构中添加ts2CppFuncMap进行暴露，通过setTs2CppFuncMapOfClass函数进行填充。
 这里以懒加载任务提供的代码示例
 ![img_3.png](img_3.png)
@@ -164,11 +163,6 @@ scene.buildSceneFromProjectDir(config);
         this.addDefaultConstructors();
     }
 ```
-
-如上述代码所示在genArkFiles()函数中，通过区分cpp和ts源码文件，选用不同的接口，这里调用buildArkFileFromFileCpp，这个过程称作一轮翻译，在代码上是粗粒度的划分，将文件按类划分，记录类中的方法，对于方法中的语句不做解析，留到后续的二轮翻译中做。这里的划分时，如果一个函数或语句不属于一个规定出的类，那么他就被划分到默认类中；如果一个类中有语句不属于某个函数，他就会划分到默认函数中；
-在buildArkFileFromFileCpp函数中调用AstUtils.parse()函数生成并记录生成的语法树
-AstUtils.parse()：在该函数中的核心代码是调用ast生成工具arkCppAstDumper.exe，该工具由精卫团队集成，可以生成语法树的json格式的文件。函数中会将生成的json格式文件解析存储到translationUnit中，存储后删除原json文件
-语法树生成后，构建scene中的默认类genDefaultArkClass(),以及调用buildArkFile()构建其他类。
 
 ##### 第二阶段：
 
