@@ -14,7 +14,7 @@
  */
 
 // ArkTS侧如何接收Native侧的键值对进行修改并返回到Native侧
-#include <stddef.h>
+#include <cstddef>
 #include "napi/native_api.h"
 #include "hilog/log.h"
 #undef LOG_DOMAIN

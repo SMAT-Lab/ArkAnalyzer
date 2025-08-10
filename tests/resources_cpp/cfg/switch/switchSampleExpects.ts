@@ -193,7 +193,7 @@ export const SWITCH_EXPECT_CASE10 = {
         { id: 1, stmts: [ 'b = THREE' ], preds: [ 0, 4 ], succes: [ 3 ] },
         { id: 2, stmts: [ 'b = 0' ], preds: [ 4 ], succes: [ 3 ] },
         { id: 3, stmts: [ 'return' ], preds: [ 1, 2 ], succes: [] },
-        { id: 4, stmts: [ 'if a == THREE' ], preds: [ 0 ], succes: [ 1, 2 ] }
+        { id: 4, stmts: [ 'if a == THREE'], preds: [ 0 ], succes: [ 1, 2 ] }
     ],
 };
 

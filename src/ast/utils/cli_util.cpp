@@ -35,7 +35,7 @@ CommandLineOptions cliutil::ParseCommandLineArgs(int argc, char** argv) {
             continue;
         }
         if (arg == "-c" && i + 1 < argc) {
-            opts.compile_commands_file = argv[i + 1];
+            opts.compileCommandsFile = argv[i + 1];
             ++i;
             continue;
         }
@@ -137,7 +137,7 @@ ClangArgs cliutil::PrepareClangArgs(const CommandLineOptions& opts)
 ClangArgs cliutil::LoadCompileCommands(const CommandLineOptions& opts)
 {
     ClangArgs result;
-    std::ifstream file(opts.compile_commands_file);
+    std::ifstream file(opts.compileCommandsFile);
     if (!file.is_open()) {
         std::cerr << "无法打开 compile_commands.json \n";
         return result;
@@ -194,7 +194,7 @@ ClangArgs cliutil::LoadCompileCommands(const CommandLineOptions& opts)
 ClangArgs cliutil::GetClangArgs(const CommandLineOptions& opts)
 {
     ClangArgs clangArgs;
-    if (!opts.compile_commands_file.empty()) {
+    if (!opts.compileCommandsFile.empty()) {
         clangArgs = cliutil::LoadCompileCommands(opts);
     } else {
         clangArgs = cliutil::PrepareClangArgs(opts);

@@ -109,7 +109,7 @@ export class AstUtils {
         newInner.push(entry);
     }
 
-    private static filter(sourceFile: string, translationUnit: CppAstNode) {
+    private static filter(sourceFile: string, translationUnit: CppAstNode):CppAstNode {
         let newInner: any[] = [];
         let firstOccurrenceOfMainFile: boolean = false;
         for (let index in translationUnit.inner) {

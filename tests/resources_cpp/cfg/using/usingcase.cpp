@@ -74,7 +74,7 @@ void TestUsingEnumMember()
 {
     using Color::RED;
     Color c = RED;
-    if (c == Color::RED){
+    if (c == Color::RED) {
         cout << "[test_using_enum_member] Red\n";
     }
 }

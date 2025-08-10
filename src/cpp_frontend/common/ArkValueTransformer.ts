@@ -1147,7 +1147,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         if (cxxOperatorCallExpr.type?.qualType === '' || cxxOperatorCallExpr.inner?.[0].castKind !== 'FunctionToPointerDecay') {
             return null;
         }
-        let callType = cppNode2Type(cxxOperatorCallExpr.type.qualType, this.declaringMethod, null);
+        let callType = cppNode2Type(cxxOperatorCallExpr.type.qualType, this.declaringMethod);
         if (callType instanceof ReferenceType) {
             callType = callType.getBaseType();
         }
@@ -2119,7 +2119,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         if (qualType.includes('[') && qualType.includes(']')) {
             const matches = qualType.match(/\[/g);
             const count = matches ? matches.length : 0;
-            let baseType = cppNode2Type(qualType.slice(0, qualType.indexOf('[')), this.declaringMethod, null);
+            let baseType = cppNode2Type(qualType.slice(0, qualType.indexOf('[')), this.declaringMethod);
             if (baseType instanceof UnclearReferenceType) {
                 return new ArrayType(new UnclearReferenceType(qualType.slice(0, qualType.indexOf('['))), count);
             }
@@ -2155,7 +2155,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         } else if (qualType.includes('vector')) {
             let dimension = 0; // Handle std::vector scenarios (must be after std:: check)
             let dataType = this.resolveVectorType(qualType, dimension);
-            return new ArrayType(buildTypeFromPreStr(dataType), dimension);
+            return new ArrayType(buildTypeFromPreStr(dataType, undefined), dimension);
         } else if (qualType === 'thread') {
             return new Thread();
         } else {
@@ -2164,7 +2164,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
                 return this.resolveCppTypeReferenceNode(qualType);
             }
         }
-        let nodeType = cppNode2Type(qualType, this.declaringMethod, null);
+        let nodeType = cppNode2Type(qualType, this.declaringMethod);
         return nodeType instanceof UnclearReferenceType ? UnknownType.getInstance() : nodeType;
     }
 

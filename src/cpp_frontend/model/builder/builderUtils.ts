@@ -49,7 +49,7 @@ function extractCommonModifiers(node: CppAstNode): number {
     return modifiers;
 }
 
-function hasOverrideAttr(inner: any[] | undefined): boolean {
+function hasOverrideAttr(inner: CppAstNode[] | undefined): boolean {
     if (!inner) {
         return false;
     }
@@ -163,7 +163,7 @@ export function buildReturnType(mtdNode: CppAstNode, sourceFile: CppAstNode, met
     }
 }
 
-export function cppNode2Type(nodeQualType: any, arkInstance: ArkMethod | ArkClass | ArkField, sourceFile?: any): Type {
+export function cppNode2Type(nodeQualType: any, arkInstance: ArkMethod | ArkClass | ArkField | undefined, sourceFile?: CppAstNode): Type {
     // 处理特殊类型
     if (nodeQualType === 'void () const') {
         return buildTypeFromPreStr('VoidKeyword', arkInstance);
@@ -193,7 +193,7 @@ export function cppNode2Type(nodeQualType: any, arkInstance: ArkMethod | ArkClas
     return buildTypeFromPreStr(nodeQualType, arkInstance);
 }
 
-export function buildTypeFromPreStr(preStr: string, arkInstance: ArkMethod | ArkClass | ArkField): Type {
+export function buildTypeFromPreStr(preStr: string, arkInstance: ArkMethod | ArkClass | ArkField | undefined): Type {
     // 1. 去除const/static/mutable 等修饰符
     preStr = preStr.replace(/\b(const|static|mutable)\s*\b/g, '');
     let pointerLevel = 0,
@@ -222,7 +222,7 @@ export function buildTypeFromPreStr(preStr: string, arkInstance: ArkMethod | Ark
     return baseType;
 }
 
-export function buildReferenceType(preStr: string, arkInstance: ArkMethod | ArkClass | ArkField, referenceCount: number, baseType: Type): Type {
+export function buildReferenceType(preStr: string, arkInstance: ArkMethod | ArkClass | ArkField | undefined, referenceCount: number, baseType: Type): Type {
     let referCategory = referenceCount % 2 === 1 ? ReferCategory.LVALUE_REF : ReferCategory.RVALUE_REF;
     if (baseType instanceof UnclearReferenceType) {
         baseType = cppNode2Type(preStr, arkInstance);
@@ -238,7 +238,7 @@ export function isCXXSTLContainer(qualType: string):boolean {
     return STLContainerPtn.test(qualType);
 }
 
-export function buildTypeFromDerivedType(preStr: string, arkInstance: ArkMethod | ArkClass | ArkField): Type {
+export function buildTypeFromDerivedType(preStr: string, arkInstance: ArkMethod | ArkClass | ArkField | undefined): Type {
     const outerPartMatch = preStr.match(/^([^<]+)/);
     const outerPart = outerPartMatch ? outerPartMatch[1] : null;
     let typeStr: string;

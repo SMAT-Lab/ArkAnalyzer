@@ -162,7 +162,7 @@ function genAnonymousClassName(clsNode: ClassLikeNode, cls: ArkClass, declaringM
     return anonymousClassName;
 }
 
-function buildClass2ArkClass(clsNode: any, cls: ArkClass, sourceFile: any): void {
+function buildClass2ArkClass(clsNode: CppAstNode, cls: ArkClass, sourceFile: CppAstNode): void {
     const className = clsNode.name ? clsNode.name : '';
     const classSignature = new ClassSignature(className, cls.getDeclaringArkFile().getFileSignature(), cls.getDeclaringArkNamespace()?.getSignature() || null);
     cls.setSignature(classSignature);

@@ -16,7 +16,7 @@
 // Native侧如何获取ArkTS侧Object对象及其成员变量
 
 // 传入实例对象，在C++侧调用对象中的函数
-#include <stddef.h>
+#include <cstddef>
 #include "napi/native_api.h"
 static napi_value CallFunction(napi_env env, napi_callback_info info) {
     // 获取实例对象

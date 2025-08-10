@@ -38,7 +38,7 @@ export interface CppTypeInfo {
 
 /** DeclRef 的目标信息 */
 export interface CppReferencedDecl {
-    kind?: string;                    // VarDecl / ParamVarDecl / FunctionDecl ...
+    kind?: string; // VarDecl / ParamVarDecl / FunctionDecl ...
     name?: string;
     type?: CppTypeInfo;
 }

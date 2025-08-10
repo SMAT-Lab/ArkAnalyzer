@@ -45,7 +45,7 @@ void Case2()
 void Case3()
 {
     int b = 0;
-    for (int i = 0; i < TWO; i++){
+    for (int i = 0; i < TWO; i++) {
         b += 1;
     }
     printf("%d\n", b);
@@ -55,7 +55,7 @@ void Case3()
 void Case4()
 {
     int i = 0;
-    for (; i < TWO; i++){
+    for (; i < TWO; i++) {
         printf("%d\n", i);
     }
 }
@@ -64,7 +64,7 @@ void Case5()
 {
     int i = 0;
     for (;; i++) {
-        if (i > TWO){
+        if (i > TWO) {
             break;
         }
         printf("%d\n", i);

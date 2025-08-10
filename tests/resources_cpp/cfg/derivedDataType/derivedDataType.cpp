@@ -15,7 +15,8 @@
 
 #include <iostream>
 #include <string>
-
+#define NINE 9
+#define ELEVEN 11
 using namespace std;
 
 // 类样例
@@ -86,8 +87,7 @@ void PrintBookByRef(MyStruct &book)
     book.PrintInfo();
 }
 
-typedef struct
-{
+typedef struct{
     char title[50];
     char author[50];
     struct {
@@ -136,10 +136,10 @@ typedef union {
 
 int main()
 {
-    MyClass myClass('A', 11);
+    MyClass myClass('A', ELEVEN);
     myClass.SetName('B');
 
-    MyStruct myStruct = {"bool", "auther", "C", 9};
+    MyStruct myStruct = {"bool", "auther", "C", NINE};
     myStruct.PrintInfo();
 
     MyUnion mu = {'A'};
