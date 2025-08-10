@@ -361,14 +361,14 @@ export class CfgBuilder {
     }
 
     // 将cpp的case-default的ast格式转换成TS的caseClause/defaultClause
-    private getCaseDefClauseAsts(switchNode: CppAstNode) {
+    private getCaseDefClauseAsts(switchNode: CppAstNode):CppAstNode[] {
         // cpp解析case:后面没有语句且没有break时，会把后面的case/default作为该case的inner节点，因此要把原有的ast拆分成一个个的case，default
         let tempClauses: any[] = [];
         for (let node of switchNode.inner[1].inner) {
             this.aliceCaseDefaultNode(node, tempClauses);
         }
         // 灭有case括号时，cpp中case和break/continue是分开的两个节点，此处将break/continue节点加入作为case或default节点的inner成员
-        return tempClauses.reduce((acc: any, curr: any, idx: number, arr: any) => {
+        return tempClauses.reduce((acc: CppAstNode[], curr: CppAstNode, idx: number, arr: CppAstNode[]) => {
             if (['CaseStmt', 'DefaultStmt'].includes(curr.kind.toString())) {
                 curr.parent = switchNode.inner[1];
                 if (idx + 1 < arr.length && ['BreakStmt', 'ContinueStmt'].includes(arr[idx + 1].kind.toString())) {
@@ -378,7 +378,7 @@ export class CfgBuilder {
                 acc.push(curr);
             }
             return acc;
-        }, [] as any[]);
+        }, [] as CppAstNode[]);
     }
 
     ASTNodeSwitchStatement(c: CppAstNode, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {

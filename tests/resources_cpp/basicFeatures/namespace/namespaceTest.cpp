@@ -15,14 +15,13 @@
 
 namespace mainSpace
 {
-    int x = 0;
-    int y = 1;
+    int g_x = 0;
+    int g_y = 1;
 
-    class innerClass
-    {
-        int getValue()
+    class InnerClass{
+        int GetValue()
         {
-            return mainSpace::x;
+            return mainSpace::g_x;
 
         }
     };

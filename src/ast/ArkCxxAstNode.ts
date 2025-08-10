@@ -89,8 +89,8 @@ export interface CppAstNode {
     valueCategory?: string;
 
     /** 一些派生信息：一元/二元运算符 */
-    opcode?: string;       // Binary / CompoundAssign / UnaryOperator
-    isPostfix?: boolean;   // UnaryOperator
+    opcode?: string; // Binary / CompoundAssign / UnaryOperator
+    isPostfix?: boolean; // UnaryOperator
 
     /** MemberExpr 是否通过 -> 访问 */
     isArrow?: boolean;
@@ -143,7 +143,7 @@ export interface CppAstNode {
 
     typeArguments?: string[];
 
-    default: string;
+    default?: string;
 
     parent?: CppAstNode;
 

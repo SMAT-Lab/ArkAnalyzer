@@ -53,24 +53,24 @@ struct ShoppingList
     double budget;
 };
 
-void case1()
+void Case1()
 {
-    struct Point q = (struct Point) {.x = 5, .y = 8, .name = 'c'};
+    struct Point q = (struct Point){.x = 5, .y = 8, .name = 'c'};
 }
 
-void case2()
+void Case2()
 {
     struct Color c1 = {255, 128, 0};
 }
-void case3()
+void Case3()
 {
     Circle circ1 = {{5, 5}, 10.5};
 }
-void case4()
+void Case4()
 {
     Person p2 = {"Alice", 30};
 }
-void case5()
+void Case5()
 {
     ShoppingList list = {{"苹果", "牛奶", "面包"}, 100.5};
 }

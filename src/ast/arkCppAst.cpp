@@ -1256,7 +1256,7 @@ int main(int argc, char** argv)
     }
     json ast = buildAndProcessAST(unit, opts);
 
-    saveASTToFile(ast, opts.outputFile);
+    SaveAstToFile(ast, opts.outputFile);
 
     clang_disposeTranslationUnit(unit);
     clang_disposeIndex(index);

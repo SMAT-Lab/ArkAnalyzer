@@ -166,7 +166,7 @@ export function buildReturnType(mtdNode: CppAstNode, sourceFile: CppAstNode, met
 export function cppNode2Type(nodeQualType: any, arkInstance: ArkMethod | ArkClass | ArkField, sourceFile?: any): Type {
     // 处理特殊类型
     if (nodeQualType === 'void () const') {
-        return buildTypeFromPreStr('VoidKeyword');
+        return buildTypeFromPreStr('VoidKeyword', arkInstance);
     }
     // 处理泛型类型
     let templateTypes: GenericType[] | undefined;
@@ -193,7 +193,7 @@ export function cppNode2Type(nodeQualType: any, arkInstance: ArkMethod | ArkClas
     return buildTypeFromPreStr(nodeQualType, arkInstance);
 }
 
-export function buildTypeFromPreStr(preStr: string, arkInstance: any = null): Type {
+export function buildTypeFromPreStr(preStr: string, arkInstance: ArkMethod | ArkClass | ArkField): Type {
     // 1. 去除const/static/mutable 等修饰符
     preStr = preStr.replace(/\b(const|static|mutable)\s*\b/g, '');
     let pointerLevel = 0,
@@ -255,7 +255,7 @@ export function buildTypeFromDerivedType(preStr: string, arkInstance: ArkMethod 
     }
     const innerPartMatch = preStr.match(/<([^>]+)>/);
     const innerPart = innerPartMatch ? innerPartMatch[1] : null;
-    let innerType = innerPart === null ? [] : [buildTypeFromPreStr(innerPart, null)];
+    let innerType = innerPart === null ? [] : [buildTypeFromPreStr(innerPart, arkInstance)];
 
     let arkClass: ArkClass | null = null;
     if (arkInstance instanceof ArkMethod || arkInstance instanceof ArkClass) {

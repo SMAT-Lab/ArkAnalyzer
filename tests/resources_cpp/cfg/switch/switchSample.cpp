@@ -82,13 +82,13 @@ void Case4()
     int b = ONE;
     for (int i = 0; i < THREE; ++i) {
         switch (i) {
-        case TWO:
-            b = TWO;
-        case THREE:
-            b = THREE;
-            continue;
-        default:
-            b = TEN;
+            case TWO:
+                b = TWO;
+            case THREE:
+                b = THREE;
+                continue;
+            default:
+                b = TEN;
         }
         b = TEN;
     }
@@ -109,8 +109,14 @@ void Case6()
 {
     int a = 0;
     int b = 1;
-    switch (a++) {}
-    a = ONE;
+    switch (a++) {
+        case ONE:
+            b = ONE;
+            break;
+        default:
+            b = 0;
+            break;
+    }
 }
 
 void Case7()
@@ -125,6 +131,8 @@ void Case7()
             break;
         case FOUR:
             b = FOUR;
+        default:
+            b = TEN;
     }
 }
 
@@ -148,12 +156,16 @@ void Case9()
     int b = 1;
     switch (a) {
         case TWO:
+            b = TWO;
+            break;
         case THREE:
+            b = THREE;
+            break;
         default:
             b = TEN;
+            break;
     }
 }
-
 void Case10()
 {
     int a = 0;
@@ -162,6 +174,10 @@ void Case10()
         case TWO:
         case THREE:
             b = THREE;
+            break;
+        default:
+            b = 0;
+            break;
     }
 }
 

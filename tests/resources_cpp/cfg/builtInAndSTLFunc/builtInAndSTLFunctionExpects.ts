@@ -45,7 +45,7 @@ export const BUILT_IN_EXPECT_CASE2 = {
                 'this = this: @builtInAndSTLFunc/builtInAndSTLFunction.cpp: %dflt',
                 'arr2 = undefined',
                 "rank2 = staticinvoke <@%unk/%unk: .__array_rank()>('int[5][3]')",
-                "dim1_size = staticinvoke <@%unk/%unk: .__array_extent()>('int[5][3]', 1)",
+                "dim1Size = staticinvoke <@%unk/%unk: .__array_extent()>('int[5][3]', 1)",
                 'return',
             ],
             preds: [],
@@ -60,7 +60,7 @@ export const BUILT_IN_EXPECT_CASE3 = {
             id: 0,
             stmts: [
                 'this = this: @builtInAndSTLFunc/builtInAndSTLFunction.cpp: %dflt',
-                '%0 = staticinvoke <@%unk/%unk: .foo()>()',
+                '%0 = staticinvoke <@%unk/%unk: .Foo()>()',
                 'b = staticinvoke <@%unk/%unk: .CXXNoexceptExpr()>(%0)',
                 'return 0',
             ],
@@ -76,7 +76,7 @@ export const BUILT_IN_EXPECT_CASE4 = {
             id: 0,
             stmts: [
                 'this = this: @builtInAndSTLFunc/builtInAndSTLFunction.cpp: %dflt',
-                '%0 = &counter',
+                '%0 = &g_counter',
                 'staticinvoke <@%unk/%unk: .atomic_fetch_add()>(%0, 1)',
                 'return',
             ],

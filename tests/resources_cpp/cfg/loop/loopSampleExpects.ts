@@ -179,18 +179,17 @@ export const LOOP_EXPECT_CASE7 = {
         },
         {
             id: 1,
-            stmts: ['if true == true'],
-            preds: [0, 3],
-            succes: [2, 4],
+            stmts: ['if i <= 2'],
+            preds: [ 0, 2 ],
+            succes: [ 2, 3 ],
         },
-        { id: 2, stmts: ['if i > 2'], preds: [1], succes: [4, 3] },
         {
-            id: 3,
+            id: 2,
             stmts: ["staticinvoke <@%unk/%unk: .printf()>('%d\\n', i)", 'i = i + 1'],
-            preds: [2],
+            preds: [1],
             succes: [1],
         },
-        { id: 4, stmts: ['return'], preds: [1, 2], succes: [] },
+        { id: 3, stmts: ['return'], preds: [1], succes: [] },
     ],
 };
 

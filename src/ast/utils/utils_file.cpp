@@ -31,14 +31,14 @@ void LoadFileContent(const std::string& filename)
     g_fileContents[filename] = std::move(content);
 }
 
-std::string get_default_output_path(const std::string &inputPath)
+std::string GetDefaultOutputPath(const std::string &inputPath)
 {
     size_t lastDot = inputPath.find_last_of('.');
     std::string filename = (lastDot != std::string::npos) ? inputPath.substr(0, lastDot) : inputPath;
     return filename + ".json";
 }
 
-void saveASTToFile(const nlohmann::json& ast, const std::string& outputFile)
+void SaveAstToFile(const nlohmann::json& ast, const std::string& outputFile)
 {
     std::ofstream(outputFile) << ast.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace);
     std::cout << "[STEP4] AST written to: " << outputFile << std::endl;

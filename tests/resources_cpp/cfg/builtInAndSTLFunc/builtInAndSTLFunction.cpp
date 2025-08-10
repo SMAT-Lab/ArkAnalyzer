@@ -19,8 +19,7 @@
 #include <stdatomic.h>
 
 using namespace std;
-struct MyStruct
-{
+struct MyStruct{
     int id;
     std::string name;
 };
@@ -40,19 +39,19 @@ void ArrayTypeTraitTest()
 {
     int arr2[5][3];
     int rank2 = __array_rank(decltype(arr2));
-    int dim1_size = __array_extent(decltype(arr2), 1);
+    int dim1Size = __array_extent(decltype(arr2), 1);
 }
 
-void foo() noexcept {} // foo()是noexpect的
+void Foo() noexcept {} // Foo()是noexpect的
 
 int CXXNoexceptExprTest()
 {
-    bool b = noexcept(foo()); // 这里会生成CXXNoexceptExpr
+    bool b = noexcept(Foo()); // 这里会生成CXXNoexceptExpr
     return 0;
 }
 
-atomic_int counter = ATOMIC_VAR_INIT(0);
+atomic_int g_counter = ATOMIC_VAR_INIT(0);
 void AtomicExprTest()
 {
-    atomic_fetch_add(&counter, 1); // 这里会生成AtomicExpr
+    atomic_fetch_add(&g_counter, 1); // 这里会生成AtomicExpr
 }

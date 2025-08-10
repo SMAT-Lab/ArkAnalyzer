@@ -397,7 +397,7 @@ export function addInitInConstructor(constructor: ArkMethod): void {
     }
 }
 
-export function isMethodImplementation(node: any): boolean {
+export function isMethodImplementation(node: CppAstNode): boolean {
     let isFuncImpl: boolean = false;
     switch (node.kind) {
         case 'LambdaExpr':
@@ -411,7 +411,7 @@ export function isMethodImplementation(node: any): boolean {
         case 'FunctionDecl':
         case 'FunctionTemplate':
         case 'FriendDecl':
-            if (node.inner.find((inn: any) => inn.kind.toString() === 'CompoundStmt')) {
+            if (node.inner.find((inn: CppAstNode) => inn.kind.toString() === 'CompoundStmt')) {
                 isFuncImpl = true;
             }
             break;
