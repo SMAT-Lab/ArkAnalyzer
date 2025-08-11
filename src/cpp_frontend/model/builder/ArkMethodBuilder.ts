@@ -230,7 +230,7 @@ function addParamsToCXXInheritedCtorInitExpr(mtdNode: any, mtd: ArkMethod, metho
     });
 }
 
-function buildMethodName(node: any, declaringClass: ArkClass, sourceFile: any, declaringMethod?: ArkMethod): string {
+function buildMethodName(node: CppAstNode, declaringClass: ArkClass, sourceFile: any, declaringMethod?: ArkMethod): string {
     let name: string = '';
     let declType = node.kind.toString();
     switch (declType) {
@@ -256,7 +256,7 @@ function buildMethodName(node: any, declaringClass: ArkClass, sourceFile: any, d
     return name;
 }
 
-function buildAnonymousMethodName(node: any, declaringClass: ArkClass): string {
+function buildAnonymousMethodName(node: CppAstNode, declaringClass: ArkClass): string {
     return `${ANONYMOUS_METHOD_PREFIX}${declaringClass.getAnonymousMethodNumber()}`;
 }
 

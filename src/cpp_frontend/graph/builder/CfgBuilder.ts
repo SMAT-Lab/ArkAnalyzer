@@ -1059,7 +1059,7 @@ export class CfgBuilder {
         throw new TextError(mes);
     }
 
-    getFuncBodyStmt() {
+    getFuncBodyStmt(): CppAstNode[] {
         let stmts: CppAstNode[] = [];
         if (this.astRoot.inner) {
             for (let i = 0; i < this.astRoot.inner.length; i++) {
