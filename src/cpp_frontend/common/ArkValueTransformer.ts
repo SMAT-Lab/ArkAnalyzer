@@ -695,11 +695,6 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         } = this.generateComponentCreationStmtsCpp(componentName, args, componentExpressionPosition, argPositionsAllFlat);
         componentStmts.forEach(stmt => stmts.push(stmt));
 
-        if (ts.isEtsComponentExpression(componentExpression) && componentExpression.body) {
-            for (const statement of componentExpression.body.statements) {
-                this.arkIRTransformerCpp.cppNodeToStmts(statement).forEach(stmt => stmts.push(stmt));
-            }
-        }
         stmts.push(this.generateComponentPopStmts(componentName, componentExpressionPosition));
         return {
             value: componentValue,
@@ -970,7 +965,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         return null;
     }
 
-    private buildValueAndStmtsForStream(streamNode: CppAstNode, args: any[], stmts: Stmt[], streamExpr: CppAstNode): ValueAndStmts {
+    private buildValueAndStmtsForStream(streamNode: CppAstNode, args: CppAstNode[], stmts: Stmt[], streamExpr: CppAstNode): ValueAndStmts {
         let nonOverloadedArgs = [];
         const currValueAndStmts: ValueAndStmts = {
             value: new Local(streamExpr.code),

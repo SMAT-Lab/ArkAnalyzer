@@ -18,8 +18,8 @@
 export interface CppPosition {
     line: number;
     col: number;
-    offset?: number;  // 生成器会写 offset
-    tokLen?: number;  // begin 有 tokLen
+    offset?: number; // 生成器会写 offset
+    tokLen?: number; // begin 有 tokLen
 }
 
 /** 源码范围 */

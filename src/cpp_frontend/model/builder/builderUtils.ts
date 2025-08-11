@@ -32,6 +32,7 @@ import { MethodParameter } from '../../../core/model/builder/ArkMethodBuilder';
 import { modifierKind2EnumCpp } from '../../../core/model/ArkBaseModel';
 import { buildGenericType } from '../../../core/model/builder/builderUtils';
 import { CppAstNode } from '../../../ast/ArkCxxAstNode';
+import {Decorator} from "../../../core/base/Decorator";
 
 function extractCommonModifiers(node: CppAstNode): number {
     let modifiers: number = 0;
@@ -79,8 +80,12 @@ export function buildModifiers(node: CppAstNode): number {
     if (node.kind === 'FriendDecl') {
         modifiers |= modifierKind2EnumCpp('friend');
     }
-
     return modifiers;
+}
+
+export function buildDecorators(node: CppAstNode, sourceFile: CppAstNode): Set<Decorator> {
+    let decorators: Set<Decorator> = new Set();
+    return decorators;
 }
 
 export function buildModifiersForCxxCls(cls: ArkClass): number {

@@ -131,7 +131,7 @@ export class AstUtils {
             return filteredChildren;
         }
         filteredChildren = cursor.inner.filter(
-            (item: any) => !Object.prototype.hasOwnProperty.call(cursor, 'isImplicit') || !item.isImplicit || cursor.kind === 'LambdaExpr' || item.isUsed
+            (item: CppAstNode) => !Object.prototype.hasOwnProperty.call(cursor, 'isImplicit') || !item.isImplicit || cursor.kind === 'LambdaExpr' || item.isUsed
         );
         return filteredChildren;
     }

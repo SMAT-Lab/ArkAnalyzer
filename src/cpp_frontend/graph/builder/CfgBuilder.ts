@@ -574,7 +574,7 @@ export class CfgBuilder {
         this.exits.push(tryExit);
         trystm.tryExit = tryExit;
 
-        let tryBlock: any | undefined = undefined;
+        let tryBlock: CppAstNode | undefined = undefined;
         let catchBlockList: CppAstNode[] = [];
         for (const node of c.inner) {
             if (node.kind === 'CompoundStmt') {
