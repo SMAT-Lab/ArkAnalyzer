@@ -24,7 +24,7 @@ import { MethodSignature } from '../../../../src';
 let config: SceneConfig = new SceneConfig();
 config.buildFromProjectDir('../../../resources_cpp/call_graph/');
 
-function runScene(config: SceneConfig, fileName: string) {
+function runScene(config: SceneConfig, fileName: string): void {
     let projectScene: Scene = new Scene();
     projectScene.buildSceneFromProjectDir(config);
     projectScene.inferTypes();

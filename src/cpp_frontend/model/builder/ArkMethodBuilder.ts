@@ -80,7 +80,7 @@ export function buildDefaultArkMethodFromArkClass(declaringClass: ArkClass, mtd:
     mtd.setBodyBuilderCpp(bodyBuilder);
 }
 
-export function handleFunctionTemplate(methodNode: any, mtd: ArkMethod, sourceFile: any) {
+export function handleFunctionTemplate(methodNode: any, mtd: ArkMethod, sourceFile: any): void {
     if (methodNode.kind !== 'FunctionTemplate') {
         return;
     }

@@ -204,7 +204,7 @@ export function assertBlocksEqual(blocks: Set<BasicBlock>, expectBlocks: any[]):
     }
 }
 
-export function assertClassBlocksEqual(method: any, expectBlocks: any[]) {
+export function assertClassBlocksEqual(method: any, expectBlocks: any[]): void {
     const blocks: Set<BasicBlock> = method?.getCfg()?.getBlocks();
     if (!blocks) {
         assert.isDefined(blocks);
@@ -213,7 +213,7 @@ export function assertClassBlocksEqual(method: any, expectBlocks: any[]) {
     assertBlocksEqual(blocks, expectBlocks);
 }
 
-export function showClassBlocksEqual(method: any) {
+export function showClassBlocksEqual(method: any): void {
     const blocks: Set<BasicBlock> = method?.getCfg()?.getBlocks();
     if (!blocks) {
         assert.isDefined(blocks);

@@ -223,7 +223,7 @@ export class CXXStringType extends StringType {
         this.cxxType = cxxType;
     }
 
-    public static getInstance(cxxType?: string) {
+    public static getInstance(cxxType?: string): CXXStringType | StringType {
         if (cxxType) {
             return new CXXStringType(cxxType);
         }
@@ -491,7 +491,7 @@ export class ClassType extends Type {
         return this.applyType;
     }
 
-    public setApplyType(applyType: string) {
+    public setApplyType(applyType: string): void {
         this.applyType = applyType;
     }
 
@@ -907,7 +907,7 @@ export class PointerType extends Type {
         return this.baseType;
     }
 
-    public setBaseType(newBaseType: Type) {
+    public setBaseType(newBaseType: Type): void {
         this.baseType = newBaseType;
     }
 
@@ -951,7 +951,7 @@ export class ReferenceType extends Type {
         return this.baseType;
     }
 
-    public setBaseType(newBaseType: Type) {
+    public setBaseType(newBaseType: Type): void {
         this.baseType = newBaseType;
     }
 
@@ -959,11 +959,11 @@ export class ReferenceType extends Type {
         return this.category;
     }
 
-    public setSourceValue(sourceValue: Value) {
+    public setSourceValue(sourceValue: Value): void {
         this.sourceValue = sourceValue;
     }
 
-    public getSourceValue() {
+    public getSourceValue(): Value | undefined {
         return this.sourceValue;
     }
 
@@ -1001,7 +1001,7 @@ export class Thread extends Type {
         super();
     }
 
-    getTypeString() {
+    getTypeString(): string {
         return 'thread ';
     }
 }

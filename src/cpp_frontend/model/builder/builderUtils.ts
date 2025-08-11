@@ -56,7 +56,7 @@ function hasOverrideAttr(inner: CppAstNode[] | undefined): boolean {
     return inner.some(child => child.kind === 'attribute(override)');
 }
 
-function getMtdModifier(node: CppAstNode, modifiers: number) {
+function getMtdModifier(node: CppAstNode, modifiers: number): number {
     if (node.code.startsWith('virtual ')) {
         modifiers |= modifierKind2EnumCpp('virtual');
         // 纯虚函数的定义：virtual func() = 0 / virtual func() =0

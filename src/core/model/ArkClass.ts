@@ -377,7 +377,7 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
         return null;
     }
 
-    private findMatchingMethod(mtd: ArkMethod, methodSignature: MethodSignature) {
+    private findMatchingMethod(mtd: ArkMethod, methodSignature: MethodSignature): ArkMethod | null {
         const implSignature = mtd.getImplementationSignature();
         if (implSignature !== null && implSignature.isMatch(methodSignature)) {
             return mtd;

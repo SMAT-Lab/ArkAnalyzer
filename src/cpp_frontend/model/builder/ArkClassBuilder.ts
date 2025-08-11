@@ -182,7 +182,7 @@ function buildClass2ArkClass(clsNode: CppAstNode, cls: ArkClass, sourceFile: Cpp
     cls.setModifiers(buildModifiersForCxxCls(cls));
 }
 
-function processCXXHeritage(clsNode: any, cls: ArkClass) {
+function processCXXHeritage(clsNode: any, cls: ArkClass): void {
     for (let i = 0; i < clsNode.inner.length; i++) {
         if (clsNode.inner[i].kind === 'C++ base class specifier') {
             cls.addHeritageClassName(clsNode.inner[i].type.qualType);

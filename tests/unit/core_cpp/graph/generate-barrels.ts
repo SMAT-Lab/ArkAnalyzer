@@ -18,7 +18,7 @@ import path from 'path';
 
 const BASE_DIR = path.resolve(__dirname, '../../../resources_cpp/cfg');
 
-function generateIndexFile(folderPath: string) {
+function generateIndexFile(folderPath: string): void {
     const files = fs.readdirSync(folderPath).filter(f => {
         return f.endsWith('.ts') && !f.endsWith('index.ts');
     });
