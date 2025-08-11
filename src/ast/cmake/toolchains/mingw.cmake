@@ -11,6 +11,4 @@ link_directories(
    "***//harmony_code/codearts_workspace/pre_scripts/llvm-mingw-x86_64/x86_64-w64-mingw32/bin"
 )
 
-set(CLANG_LIBRARIES "***//harmony_code/codearts_workspace/pre_scripts/llvm-19.1.7-x86_64/bin/libclang.dll")
-
 message(STATUS "Found libclang on linux: ${CLANG_LIBRARIES}")
