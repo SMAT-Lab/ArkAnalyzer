@@ -1689,7 +1689,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         };
     }
 
-    private prefixUnaryExpressionToValueAndStmtsCpp(prefixUnaryExpression: CppAstNode | any): ValueAndStmts {
+    private prefixUnaryExpressionToValueAndStmtsCpp(prefixUnaryExpression: CppAstNode): ValueAndStmts {
         const stmts: Stmt[] = [];
         let { value: operandValue, valueOriginalPositions: operandPositions, stmts: operandStmts } = this.tsNodeToValueAndStmts(prefixUnaryExpression.inner[0]);
         operandStmts.forEach(stmt => stmts.push(stmt));
@@ -1702,7 +1702,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
             operandStmts.forEach(stmt => stmts.push(stmt));
         }
 
-        const operatorToken = prefixUnaryExpression.opcode;
+        const operatorToken: string = prefixUnaryExpression.opcode ?? '';  // 可选字段兜底为空串
         let exprPositions = [FullPosition.buildFromNodeCpp(prefixUnaryExpression, this.sourceFile)];
         if (operatorToken === '++' || operatorToken === '--') {
             const binaryOperator = operatorToken === '++' ? NormalBinaryOperator.Addition : NormalBinaryOperator.Subtraction;

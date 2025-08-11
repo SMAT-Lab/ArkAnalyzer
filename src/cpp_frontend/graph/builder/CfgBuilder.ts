@@ -970,7 +970,7 @@ export class CfgBuilder {
                     TryOrSwitchExit = true;
                     break;
                 }
-                p = (p.parent ?? p.getParent?.()) ?? null;
+                p = (p.parent ?? p.getParent?.(true)) ?? null;
             }
         }
         if (notReturnStmts.length === 1 && !(notReturnStmts[0] instanceof ConditionStatementBuilder) && !TryOrSwitchExit) {

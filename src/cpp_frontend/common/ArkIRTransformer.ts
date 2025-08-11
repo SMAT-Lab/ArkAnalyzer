@@ -718,7 +718,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
         }
     }
 
-    public static tokenToUnaryOperatorCpp(token: String): UnaryOperator | null {
+    public static tokenToUnaryOperatorCpp(token: string): UnaryOperator | null {
         switch (token) {
             case '-':
                 return UnaryOperator.Neg;
