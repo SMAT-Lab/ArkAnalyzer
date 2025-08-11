@@ -66,7 +66,6 @@ export function buildNormalArkClassFromArkNamespace(
         cls.setColumn(clsNode.range.begin.col);
     }
     buildNormalArkClass(clsNode, cls, sourceFile, declaringMethod);
-    //arkNamespace.addArkClass(cls);
 }
 
 export function buildNormalArkClass(clsNode: any, cls: ArkClass, sourceFile: any, declaringMethod?: ArkMethod): void {

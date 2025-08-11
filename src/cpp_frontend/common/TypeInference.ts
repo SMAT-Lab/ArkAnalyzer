@@ -370,6 +370,29 @@ export class TypeInference {
 
     private static resolveLeftOp(stmt: ArkAssignStmt, arkClass: ArkClass, rightType: Type | null | undefined, arkMethod: ArkMethod): void {
         const leftOp = stmt.getLeftOp();
+        let leftType = this.inferAssignLeftType(arkClass, rightType, leftOp, arkMethod, stmt);
+        if (leftType && !this.isUnclearType(leftType)) {
+            this.setValueType(leftOp, leftType);
+            if (leftOp instanceof Local && stmt.getOriginalText()?.startsWith(leftOp.getName())) {
+                let localDef = ModelUtils.findDeclaredLocal(leftOp, arkMethod);
+                if (localDef && this.isUnclearType(localDef.getType())) {
+                    localDef.setType(leftType);
+                }
+            }
+            if (rightType) {
+                IRInference.inferRightWithSdkType(leftType, rightType, arkClass);
+            }
+            if (leftOp instanceof AbstractFieldRef) {
+                const declaringSignature = leftOp.getFieldSignature().getDeclaringSignature();
+                if (declaringSignature instanceof NamespaceSignature && declaringSignature.getNamespaceName() === GLOBAL_THIS_NAME) {
+                    SdkUtils.computeGlobalThis(leftOp, arkMethod);
+                }
+            }
+        }
+    }
+
+    private static inferAssignLeftType(arkClass: ArkClass, rightType: Type | null | undefined, leftOp: Value | Local,
+        arkMethod: ArkMethod, stmt: ArkAssignStmt): Type | null | undefined  {
         let leftType: Type | null | undefined = leftOp.getType();
         let baseType: Type | null | undefined;
         if (leftType instanceof PointerType || leftType instanceof ReferenceType) {
@@ -397,24 +420,7 @@ export class TypeInference {
                 leftType = rightType;
             }
         }
-        if (leftType && !this.isUnclearType(leftType)) {
-            this.setValueType(leftOp, leftType);
-            if (leftOp instanceof Local && stmt.getOriginalText()?.startsWith(leftOp.getName())) {
-                let localDef = ModelUtils.findDeclaredLocal(leftOp, arkMethod);
-                if (localDef && this.isUnclearType(localDef.getType())) {
-                    localDef.setType(leftType);
-                }
-            }
-            if (rightType) {
-                IRInference.inferRightWithSdkType(leftType, rightType, arkClass);
-            }
-            if (leftOp instanceof AbstractFieldRef) {
-                const declaringSignature = leftOp.getFieldSignature().getDeclaringSignature();
-                if (declaringSignature instanceof NamespaceSignature && declaringSignature.getNamespaceName() === GLOBAL_THIS_NAME) {
-                    SdkUtils.computeGlobalThis(leftOp, arkMethod);
-                }
-            }
-        }
+        return leftType;
     }
 
     private static setValueType(value: Value, type: Type): void {
