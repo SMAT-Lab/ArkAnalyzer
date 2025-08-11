@@ -7,10 +7,6 @@ set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 set(CMAKE_INSTALL_RPATH "$ORIGIN")
 
-set(CLANG_INCLUDE_DIRS
-   "***//harmony_code/codearts_workspace/pre_scripts/llvm-19.1.7-x86_64/include/clang-c"
-)
-
 link_directories(
    "***//harmony_code/codearts_workspace/pre_scripts/llvm-mingw-x86_64/x86_64-w64-mingw32/bin"
 )
