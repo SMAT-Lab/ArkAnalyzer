@@ -31,7 +31,7 @@ import { Local } from '../../core/base/Local';
 import { ArkAliasTypeDefineStmt, ArkAssignStmt, ArkIfStmt, ArkInvokeStmt, ArkReturnStmt, ArkReturnVoidStmt, ArkThrowStmt, Stmt } from '../../core/base/Stmt';
 import { AliasType, BooleanType, ClassType, UnknownType } from '../../core/base/Type';
 import { CppValueUtil } from './ValueUtil';
-import { IRUtils } from '../../core/common/IRUtils';
+import { IRUtils } from './IRUtils';
 import { ArkMethod } from '../../core/model/ArkMethod';
 import { COMPONENT_BRANCH_FUNCTION, COMPONENT_CREATE_FUNCTION, COMPONENT_IF, COMPONENT_POP_FUNCTION, COMPONENT_REPEAT } from '../../core/common/EtsConst';
 import { FullPosition, LineColPosition } from '../../core/base/Position';
@@ -73,10 +73,12 @@ function nodeInnerNode(node: CppAstNode): CppAstNode {
 }
 
 export class ArkIRTransformerCpp extends ArkIRTransformer {
+    private readonly sourceFileCpp: CppAstNode;
     private arkValueTransformerCpp: ArkValueTransformerCpp;
 
     constructor(sourceFile: CppAstNode, declaringMethod: ArkMethod) {
         super(sourceFile as unknown as ts.SourceFile, declaringMethod);
+        this.sourceFileCpp = sourceFile;
         this.arkValueTransformerCpp = new ArkValueTransformerCpp(this, sourceFile, this.declaringMethod);
     }
 
@@ -127,7 +129,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
         );
     }
 
-    public cppNodeToStmts(node: CppAstNode | any): Stmt[] {
+    public cppNodeToStmts(node: CppAstNode): Stmt[] {
         let stmts: Stmt[] = [];
         switch (node.kind) {
             case 'BreakStmt':
@@ -197,7 +199,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
         }
         this.mapStmtsToTsStmtCpp(stmts, node);
         if (stmts.length > 0) {
-            IRUtils.setComments(stmts[0], node, this.sourceFile, this.declaringMethod.getDeclaringArkFile().getScene().getOptions());
+            IRUtils.setComments(stmts[0], node, this.sourceFileCpp, this.declaringMethod.getDeclaringArkFile().getScene().getOptions());
         }
         return stmts;
     }
@@ -209,7 +211,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
             cls.setDeclaringArkNamespace(declaringArkNamespace);
         }
         cls.setDeclaringArkFile(this.declaringMethod.getDeclaringArkFile());
-        buildNormalArkClassFromArkMethod(node, cls, this.sourceFile, this.declaringMethod);
+        buildNormalArkClassFromArkMethod(node, cls, this.sourceFileCpp, this.declaringMethod);
         return [];
     }
 

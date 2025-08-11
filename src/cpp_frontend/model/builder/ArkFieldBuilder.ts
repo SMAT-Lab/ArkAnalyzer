@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-import ts from 'ohos-typescript';
 import { ArkField, FieldCategory } from '../../../core/model/ArkField';
 import { ArkClass } from '../../../core/model/ArkClass';
 import { buildModifiers, cppNode2Type } from './builderUtils';
@@ -21,10 +20,11 @@ import { FieldSignature } from '../../../core/model/ArkSignature';
 import { ArrayType, ClassType, Type, UnclearReferenceType, UnknownType } from '../../../core/base/Type';
 import { LineColPosition } from '../../../core/base/Position';
 import { ModifierType } from '../../../core/model/ArkBaseModel';
-import { IRUtils } from '../../../core/common/IRUtils';
+import { IRUtils } from '../../common/IRUtils';
 import { buildGenericType } from '../../../core/model/builder/builderUtils';
+import { CppAstNode } from "../../../ast/ArkCxxAstNode";
 
-export function buildProperty2ArkField(member: any, sourceFile: ts.SourceFile, cls: ArkClass): ArkField {
+export function buildProperty2ArkField(member: any, sourceFile: CppAstNode, cls: ArkClass): ArkField {
     let field = new ArkField();
     field.setCategory(mapSyntaxKindToFieldOriginType(member.kind) as FieldCategory);
     field.setCode(member.code);

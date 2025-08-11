@@ -57,7 +57,7 @@ import { ClassSignature, FieldSignature, MethodSignature, FileSignature } from '
 import { Value } from '../../core/base/Value';
 import { COMPONENT_CREATE_FUNCTION, COMPONENT_CUSTOMVIEW, COMPONENT_FOR_EACH, COMPONENT_LAZY_FOR_EACH } from '../../core/common/EtsConst';
 import { CppValueUtil } from './ValueUtil';
-import { IRUtils } from '../../core/common/IRUtils';
+import { IRUtils } from './IRUtils';
 import { AbstractFieldRef, ArkArrayRef, ArkInstanceFieldRef, CXXArkInstanceFieldRef } from '../../core/base/Ref';
 import { ArkMethod } from '../../core/model/ArkMethod';
 import { buildArkMethodFromArkClass, buildDefaultConstructor } from '../model/builder/ArkMethodBuilder';
