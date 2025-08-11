@@ -110,11 +110,11 @@ export const SWITCH_EXPECT_CASE6 = {
                 'if a == ONE'
             ],
             preds: [],
-            succes: [ 1, 2 ]
+            succes: [1, 2]
         },
-        { id: 1, stmts: [ 'b = ONE' ], preds: [ 0 ], succes: [ 3 ] },
-        { id: 2, stmts: [ 'b = 0' ], preds: [ 0 ], succes: [ 3 ] },
-        { id: 3, stmts: [ 'return' ], preds: [ 1, 2 ], succes: [] }
+        { id: 1, stmts: ['b = ONE'], preds: [0], succes: [3] },
+        { id: 2, stmts: ['b = 0'], preds: [0], succes: [3] },
+        { id: 3, stmts: ['return'], preds: [1, 2], succes: [] }
     ],
 };
 
@@ -129,15 +129,15 @@ export const SWITCH_EXPECT_CASE7 = {
                 'if a == TWO'
             ],
             preds: [],
-            succes: [ 1, 6 ]
+            succes: [1, 6]
         },
-        { id: 1, stmts: [ 'b = TWO' ], preds: [ 0 ], succes: [ 2 ] },
-        { id: 2, stmts: [ 'b = THREE' ], preds: [ 1, 6 ], succes: [ 5 ] },
-        { id: 3, stmts: [ 'b = FOUR' ], preds: [ 7 ], succes: [ 4 ] },
-        { id: 4, stmts: [ 'b = TEN' ], preds: [ 3, 7 ], succes: [ 5 ] },
-        { id: 5, stmts: [ 'return' ], preds: [ 2, 4 ], succes: [] },
-        { id: 6, stmts: [ 'if a == THREE' ], preds: [ 0 ], succes: [ 2, 7 ] },
-        { id: 7, stmts: [ 'if a == FOUR' ], preds: [ 6 ], succes: [ 3, 4 ] }
+        { id: 1, stmts: ['b = TWO'], preds: [0], succes: [2] },
+        { id: 2, stmts: ['b = THREE'], preds: [1, 6], succes: [5] },
+        { id: 3, stmts: ['b = FOUR'], preds: [7], succes: [4] },
+        { id: 4, stmts: ['b = TEN'], preds: [3, 7], succes: [5] },
+        { id: 5, stmts: ['return'], preds: [2, 4], succes: [] },
+        { id: 6, stmts: ['if a == THREE'], preds: [0], succes: [2, 7] },
+        { id: 7, stmts: ['if a == FOUR'], preds: [6], succes: [3, 4] }
     ],
 };
 
@@ -167,13 +167,13 @@ export const SWITCH_EXPECT_CASE9 = {
                 'if a == TWO'
             ],
             preds: [],
-            succes: [ 1, 5 ]
+            succes: [1, 5]
         },
-        { id: 1, stmts: [ 'b = TWO' ], preds: [ 0 ], succes: [ 4 ] },
-        { id: 2, stmts: [ 'b = THREE' ], preds: [ 5 ], succes: [ 4 ] },
-        { id: 3, stmts: [ 'b = TEN' ], preds: [ 5 ], succes: [ 4 ] },
-        { id: 4, stmts: [ 'return' ], preds: [ 1, 2, 3 ], succes: [] },
-        { id: 5, stmts: [ 'if a == THREE' ], preds: [ 0 ], succes: [ 2, 3 ] }
+        { id: 1, stmts: ['b = TWO'], preds: [0], succes: [4] },
+        { id: 2, stmts: ['b = THREE'], preds: [5], succes: [4] },
+        { id: 3, stmts: ['b = TEN'], preds: [5], succes: [4] },
+        { id: 4, stmts: ['return'], preds: [1, 2, 3], succes: [] },
+        { id: 5, stmts: ['if a == THREE'], preds: [0], succes: [2, 3] }
     ],
 };
 
@@ -188,12 +188,12 @@ export const SWITCH_EXPECT_CASE10 = {
                 'if a == TWO'
             ],
             preds: [],
-            succes: [ 1, 4 ]
+            succes: [1, 4]
         },
-        { id: 1, stmts: [ 'b = THREE' ], preds: [ 0, 4 ], succes: [ 3 ] },
-        { id: 2, stmts: [ 'b = 0' ], preds: [ 4 ], succes: [ 3 ] },
-        { id: 3, stmts: [ 'return' ], preds: [ 1, 2 ], succes: [] },
-        { id: 4, stmts: [ 'if a == THREE'], preds: [ 0 ], succes: [ 1, 2 ] }
+        { id: 1, stmts: ['b = THREE'], preds: [0, 4], succes: [3] },
+        { id: 2, stmts: ['b = 0'], preds: [4], succes: [3] },
+        { id: 3, stmts: ['return'], preds: [1, 2], succes: [] },
+        { id: 4, stmts: ['if a == THREE'], preds: [0], succes: [1, 2] }
     ],
 };
 

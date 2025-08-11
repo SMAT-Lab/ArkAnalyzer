@@ -105,12 +105,14 @@ export class CppSceneUtils {
                 return declaringStmt;
             }
         }
+        return undefined;
     }
 
     private static getUsedStmts(value?: Value): Stmt[] | undefined {
         if (value instanceof Local) {
             return value.getUsedStmts();
         }
+        return undefined;
     }
 
     private static mergeMethod(tsMtdName: string, tsClass: ArkClass, cppMtd: ArkMethod): void {
