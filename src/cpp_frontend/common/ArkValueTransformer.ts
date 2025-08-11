@@ -99,8 +99,8 @@ const COMPOUND_BIN_OPS = new Set<string>(Object.values(CompoundBinaryOperator));
 export class ArkValueTransformerCpp extends ArkValueTransformer {
     private arkIRTransformerCpp: ArkIRTransformerCpp;
 
-    constructor(arkIRTransformer: ArkIRTransformerCpp, sourceFile: ts.SourceFile, declaringMethod: ArkMethod) {
-        super(arkIRTransformer, sourceFile, declaringMethod);
+    constructor(arkIRTransformer: ArkIRTransformerCpp, sourceFile: CppAstNode, declaringMethod: ArkMethod) {
+        super(arkIRTransformer, sourceFile as unknown as ts.SourceFile, declaringMethod);
         this.arkIRTransformerCpp = arkIRTransformer;
     }
 
@@ -1398,7 +1398,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
 
     private parseArgumentsCpp(
         currStmts: Stmt[],
-        argumentNodes?: any[],
+        argumentNodes?: CppAstNode[],
         builderMethodIndexes?: Set<number>
     ): {
         args: Value[];
