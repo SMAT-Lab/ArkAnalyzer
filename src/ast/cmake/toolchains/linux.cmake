@@ -8,9 +8,4 @@ link_directories(
    "***//harmony_code/codearts_workspace/pre_scripts/llvm-19.1.7-x86_64/lib"
 )
 
-find_library(CLANG_LIBRARIES
-   NAMES libclang clang clang-cpp
-   PATHS "***//harmony_code/codearts_workspace/pre_scripts/llvm-19.1.7-x86_64/lib"
-)
-
 message(STATUS "Found libclang on linux: ${CLANG_LIBRARIES}")
