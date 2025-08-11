@@ -149,8 +149,8 @@ export interface CppAstNode {
     parent?: CppAstNode;
 
     getParent?: {
-        (isNeedInner: true): CppAstNode;        // 要完整父节点
-        (isNeedInner?: false): CppAstNodeLite;  // 轻量快照
+        (isNeedInner: true): CppAstNode; // 需要完整父节点
+        (isNeedInner?: false): any; // 旧用例多数把它当“轻量快照”比对
     };
 
     access?: string;

@@ -194,7 +194,7 @@ export class AstUtils {
         return null;
     }
 
-    private static processAccess(cursor: any) {
+    private static processAccess(cursor: any): void {
         if (cursor.kind === 'AccessSpecDecl') {
             this.currentAccess = cursor.access;
         }

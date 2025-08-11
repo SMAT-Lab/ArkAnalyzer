@@ -170,7 +170,7 @@ export class CXXNumberType extends NumberType {
         this.cxxType = cxxType;
     }
 
-    public static getInstance(cxxType?: string) {
+    public static getInstance(cxxType?: string): CXXNumberType | NumberType {
         if (cxxType) {
             return new CXXNumberType(cxxType);
         }

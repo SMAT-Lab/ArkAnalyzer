@@ -32,7 +32,7 @@ import { MethodParameter } from '../../../core/model/builder/ArkMethodBuilder';
 import { modifierKind2EnumCpp } from '../../../core/model/ArkBaseModel';
 import { buildGenericType } from '../../../core/model/builder/builderUtils';
 import { CppAstNode } from '../../../ast/ArkCxxAstNode';
-import {Decorator} from "../../../core/base/Decorator";
+import {Decorator} from '../../../core/base/Decorator';
 
 function extractCommonModifiers(node: CppAstNode): number {
     let modifiers: number = 0;

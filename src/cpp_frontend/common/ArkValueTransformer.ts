@@ -2123,7 +2123,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         } else if (node && Object.prototype.hasOwnProperty.call(node, 'kind') && node.kind === 'InitListExpr') {
             return new ArrayType(new UnclearReferenceType(qualType), node.inner.length);
         } else if (qualType.startsWith('std::')) {
-            const match = /std::(\w+)/g.exec(qualType);  // Handle standard library container types
+            const match = /std::(\w+)/g.exec(qualType); // Handle standard library container types
             const containerName = match ? match[1] : null;
             if (containerName && convertDataType(containerName) === 'unsupported' && this.isCppStdContainer(containerName)) {
                 const fileSignature = new FileSignature('std', containerName + '.h');
