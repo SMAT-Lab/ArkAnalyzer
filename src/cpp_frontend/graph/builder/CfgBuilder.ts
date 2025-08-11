@@ -21,7 +21,7 @@ import { Cfg } from '../../../core/graph/Cfg';
 import { ArkClass } from '../../../core/model/ArkClass';
 import { ArkMethod } from '../../../core/model/ArkMethod';
 import { ArkIRTransformerCpp, ValueAndStmts } from '../../common/ArkIRTransformer';
-import { IRUtils } from '../../../core/common/IRUtils';
+import { IRUtils } from '../../common/IRUtils';
 import { AliasType, ClassType, UnclearReferenceType, UnknownType, VoidType } from '../../../core/base/Type';
 import { Trap } from '../../../core/base/Trap';
 import { GlobalRef } from '../../../core/base/Ref';
@@ -964,13 +964,13 @@ export class CfgBuilder {
         const returnStatement = new StatementBuilder('returnStatement', 'return;', null, this.exit.scopeID);
         let TryOrSwitchExit = false;
         if (notReturnStmts.length === 1 && notReturnStmts[0].block) {
-            let p: any | null = notReturnStmts[0].astNode;
+            let p: CppAstNode | null = notReturnStmts[0].astNode;
             while (p && p.id !== this.astRoot.id) {
                 if (p.kind === 'CXXTryStmt' || p.kind === 'SwitchStmt') {
                     TryOrSwitchExit = true;
                     break;
                 }
-                p = p.parent ? p.parent : p.getParent();
+                p = (p.parent ?? p.getParent?.()) ?? null;
             }
         }
         if (notReturnStmts.length === 1 && !(notReturnStmts[0] instanceof ConditionStatementBuilder) && !TryOrSwitchExit) {

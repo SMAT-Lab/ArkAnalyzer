@@ -18,8 +18,8 @@
 export interface CppPosition {
     line: number;
     col: number;
-    offset?: number;   // 生成器会写 offset
-    tokLen?: number;   // begin 有 tokLen
+    offset?: number;  // 生成器会写 offset
+    tokLen?: number;  // begin 有 tokLen
 }
 
 /** 源码范围 */
@@ -146,6 +146,11 @@ export interface CppAstNode {
     default?: string;
 
     parent?: CppAstNode;
+
+    getParent?: {
+        (isNeedInner: true): CppAstNode;     // 需要完整父节点
+        (isNeedInner?: false): any;          // 旧用例多数把它当“轻量快照”比对
+    };
 
     access?: string;
     // /** 兼容未来新增字段 */

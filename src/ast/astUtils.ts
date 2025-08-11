@@ -136,7 +136,7 @@ export class AstUtils {
         return filteredChildren;
     }
 
-    private static fullInfo(cursor: any): void {
+    private static fullInfo(cursor: CppAstNode):void {
         if (!Array.isArray(cursor.inner)) {
             cursor.inner = [];
         }
@@ -147,7 +147,6 @@ export class AstUtils {
             cursor.name = '';
         }
 
-
         for (let index in cursor.inner) {
             if (Object.prototype.hasOwnProperty.call(cursor.inner, index)) {
                 let currentCursor = cursor.inner[index];
@@ -156,11 +155,10 @@ export class AstUtils {
                 };
                 currentCursor = Object.assign(currentCursor, {
                     getParent: (isNeedinner: boolean = false) => {
-                        let parentCursor = { ...cursor };
-                        if (!isNeedinner) {
-                            delete parentCursor.inner;
-                        }
-                        return parentCursor;
+                        const parentCursor = isNeedinner
+                            ? { ...cursor } // 带 inner 的浅拷贝
+                            : (({ inner, ...rest }: CppAstNode) => rest)(cursor); // 去掉 inner 的浅拷贝
+                        return parentCursor; // 类型是 Omit<CppAstNode,'inner'>，符合旧用例“轻量快照”预期
                     },
                 }) as GetParentCallBack;
                 this.processAccess(currentCursor);
@@ -197,7 +195,7 @@ export class AstUtils {
         return null;
     }
 
-    private static processAccess(cursor: any): void {
+    private static processAccess(cursor: any) {
         if (cursor.kind === 'AccessSpecDecl') {
             this.currentAccess = cursor.access;
         }

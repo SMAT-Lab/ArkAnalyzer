@@ -29,7 +29,7 @@ import { BasicBlock } from '../../../core/graph/BasicBlock';
 import { Local } from '../../../core/base/Local';
 import { Value } from '../../../core/base/Value';
 import { ANONYMOUS_METHOD_PREFIX, DEFAULT_ARK_METHOD_NAME } from '../../../core/common/Const';
-import { IRUtils } from '../../../core/common/IRUtils';
+import { IRUtils } from '../../common/IRUtils';
 import {
     buildNestedMethodName,
     MethodParameter,

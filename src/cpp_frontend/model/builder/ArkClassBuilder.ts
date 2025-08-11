@@ -23,7 +23,7 @@ import { buildModifiers, buildTypeParameters, buildModifiersForCxxCls } from './
 import { buildProperty2ArkField } from './ArkFieldBuilder';
 import { Stmt } from '../../../core/base/Stmt';
 import { ANONYMOUS_CLASS_DELIMITER, ANONYMOUS_CLASS_PREFIX, DEFAULT_ARK_CLASS_NAME } from '../../../core/common/Const';
-import { IRUtils } from '../../../core/common/IRUtils';
+import { IRUtils } from '../../common/IRUtils';
 import { ClassSignature } from '../../../core/model/ArkSignature';
 import { ClassLikeNode, getInitStmts, init4InstanceInitMethod, init4StaticInitMethod } from '../../../core/model/builder/ArkClassBuilder';
 import { ArkIRTransformerCpp } from '../../common/ArkIRTransformer';
@@ -33,7 +33,7 @@ import {CppAstNode} from '../../../ast/ArkCxxAstNode';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkClassBuilder');
 
-export function buildNormalArkClassFromArkMethod(clsNode: CppAstNode, cls: ArkClass, sourceFile: any, declaringMethod?: ArkMethod): void {
+export function buildNormalArkClassFromArkMethod(clsNode: CppAstNode, cls: ArkClass, sourceFile: CppAstNode, declaringMethod?: ArkMethod): void {
     const namespace = cls.getDeclaringArkNamespace();
     if (namespace) {
         buildNormalArkClassFromArkNamespace(clsNode, namespace, cls, sourceFile, declaringMethod);

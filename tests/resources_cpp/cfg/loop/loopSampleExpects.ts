@@ -180,8 +180,8 @@ export const LOOP_EXPECT_CASE7 = {
         {
             id: 1,
             stmts: ['if i <= 2'],
-            preds: [ 0, 2 ],
-            succes: [ 2, 3 ],
+            preds: [0, 2],
+            succes: [2, 3],
         },
         {
             id: 2,

@@ -13,18 +13,18 @@
  * limitations under the License.
  */
 
-import { AbstractBinopExpr, AbstractInvokeExpr, ArkCastExpr, ArkUnopExpr } from '../base/Expr';
-import { AbstractFieldRef, AbstractRef, ArkArrayRef, ArkInstanceFieldRef, ArkStaticFieldRef } from '../base/Ref';
-import { Value } from '../base/Value';
+import { AbstractBinopExpr, AbstractInvokeExpr, ArkCastExpr, ArkUnopExpr } from '../../core/base/Expr';
+import { AbstractFieldRef, AbstractRef, ArkArrayRef, ArkInstanceFieldRef, ArkStaticFieldRef } from '../../core/base/Ref';
+import { Value } from '../../core/base/Value';
 import { Scene } from '../../Scene';
-import ts from 'ohos-typescript';
 import { SceneOptions } from '../../Config';
-import { ArkMetadataKind, CommentItem, CommentsMetadata } from '../model/ArkMetadata';
-import { Stmt } from '../base/Stmt';
-import { ArkBaseModel } from '../model/ArkBaseModel';
-import { FullPosition } from '../base/Position';
-import { Local } from '../base/Local';
-import { NAME_PREFIX } from './Const';
+import { ArkMetadataKind, CommentItem, CommentsMetadata } from '../../core/model/ArkMetadata';
+import { Stmt } from '../../core/base/Stmt';
+import { ArkBaseModel } from '../../core/model/ArkBaseModel';
+import { FullPosition } from '../../core/base/Position';
+import { Local } from '../../core/base/Local';
+import { NAME_PREFIX } from '../../core/common/Const';
+import { CppAstNode } from '../../ast/ArkCxxAstNode';
 
 export class IRUtils {
     public static moreThanOneAddress(value: Value): boolean {
@@ -52,7 +52,7 @@ export class IRUtils {
         }
     }
 
-    public static setComments(metadata: Stmt | ArkBaseModel, node: ts.Node, sourceFile: ts.SourceFile, options: SceneOptions): void {
+    public static setComments(metadata: Stmt | ArkBaseModel, node: CppAstNode, sourceFile: CppAstNode, options: SceneOptions): void {
         const leadingCommentsMetadata = this.getCommentsMetadata(node, sourceFile, options, true);
         if (leadingCommentsMetadata.getComments().length > 0) {
             metadata.setMetadata(ArkMetadataKind.LEADING_COMMENTS, leadingCommentsMetadata);
@@ -64,28 +64,10 @@ export class IRUtils {
         }
     }
 
-    public static getCommentsMetadata(node: ts.Node, sourceFile: ts.SourceFile, options: SceneOptions, isLeading: boolean): CommentsMetadata {
+    public static getCommentsMetadata(node: CppAstNode, sourceFile: CppAstNode, options: SceneOptions, isLeading: boolean): CommentsMetadata {
         const comments: CommentItem[] = [];
         if ((isLeading && !options.enableLeadingComments) || (!isLeading && !options.enableTrailingComments)) {
             return new CommentsMetadata(comments);
-        }
-
-        // node.pos is the start position of
-        const commentRanges =
-            (isLeading ? ts.getLeadingCommentRanges(sourceFile.text, node.pos) : ts.getTrailingCommentRanges(sourceFile.text, node.end)) || [];
-        // leading comment, while node.end is the
-        // end position of the statement
-        const getPosition = (pos: number, end: number): FullPosition => {
-            const start = ts.getLineAndCharacterOfPosition(sourceFile, pos);
-            const endPos = ts.getLineAndCharacterOfPosition(sourceFile, end);
-            return new FullPosition(start.line + 1, start.character + 1, endPos.line + 1, endPos.character + 1);
-        };
-
-        for (const range of commentRanges) {
-            comments.push({
-                content: sourceFile.text.substring(range.pos, range.end).replace(/\r\n/g, '\n'),
-                position: getPosition(range.pos, range.end),
-            });
         }
 
         return new CommentsMetadata(comments);

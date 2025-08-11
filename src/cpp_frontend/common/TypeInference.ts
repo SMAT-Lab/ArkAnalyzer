@@ -392,7 +392,7 @@ export class TypeInference {
     }
 
     private static inferAssignLeftType(arkClass: ArkClass, rightType: Type | null | undefined, leftOp: Value | Local,
-        arkMethod: ArkMethod, stmt: ArkAssignStmt): Type | null | undefined  {
+        arkMethod: ArkMethod, stmt: ArkAssignStmt): Type | null | undefined {
         let leftType: Type | null | undefined = leftOp.getType();
         let baseType: Type | null | undefined;
         if (leftType instanceof PointerType || leftType instanceof ReferenceType) {
