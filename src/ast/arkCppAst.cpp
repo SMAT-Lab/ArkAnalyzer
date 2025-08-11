@@ -915,7 +915,8 @@ void deduceDecltype(json& node, json&children)
     }
 }
 
-static bool applyDeclLikeKind(json& node, CXCursor cursor, CXCursorKind k) {
+static bool applyDeclLikeKind(json& node, CXCursor cursor, CXCursorKind k)
+{
     switch (k) {
         case CXCursor_CXXMethod:
             node["kind"] = "CXXMethodDecl";

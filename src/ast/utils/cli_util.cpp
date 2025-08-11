@@ -25,7 +25,8 @@
 using json = nlohmann::json;
 namespace fs = std::filesystem;
 
-CommandLineOptions cliutil::ParseCommandLineArgs(int argc, char** argv) {
+CommandLineOptions cliutil::ParseCommandLineArgs(int argc, char** argv)
+{
     CommandLineOptions opts;
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
@@ -57,20 +58,20 @@ void cliutil::AddMainFileDirToInclude(CommandLineOptions& opts)
         return;
     }
     const std::string mainDir = std::filesystem::absolute(opts.inputFile).parent_path().string();
-    const auto abs_dir = std::filesystem::absolute(mainDir);
-    const bool dir_exists = std::filesystem::exists(abs_dir);
+    const auto absDir = std::filesystem::absolute(mainDir);
+    const bool dirExists = std::filesystem::exists(absDir);
     bool found = false;
     for (const auto& dir : opts.userIncludeDirs) {
-        const auto abs_main_dir = std::filesystem::absolute(dir);
-        const bool main_dir_exists = std::filesystem::exists(abs_main_dir);
+        const auto absMainDir = std::filesystem::absolute(dir);
+        const bool mainDirExists = std::filesystem::exists(absMainDir);
         // 若任一不存在：打印调试信息并继续下一个目录（卫语句）
-        if (!(dir_exists && main_dir_exists)) {
-            std::cout << "[DEBUG] Does abs_dir exist?       " << (dir_exists ? "YES" : "NO") << std::endl;
-            std::cout << "[DEBUG] Does abs_main_dir exist?  " << (main_dir_exists ? "YES" : "NO") << std::endl;
+        if (!(dirExists && mainDirExists)) {
+            std::cout << "[DEBUG] Does absDir exist?       " << (dirExists ? "YES" : "NO") << std::endl;
+            std::cout << "[DEBUG] Does absMainDir exist?  " << (mainDirExists ? "YES" : "NO") << std::endl;
             continue;
         }
         try {
-            if (std::filesystem::equivalent(abs_dir, abs_main_dir)) {
+            if (std::filesystem::equivalent(absDir, absMainDir)) {
                 found = true;
                 break;
             }
@@ -142,48 +143,48 @@ ClangArgs cliutil::LoadCompileCommands(const CommandLineOptions& opts)
         std::cerr << "无法打开 compile_commands.json \n";
         return result;
     }
-    json compile_commands_json;
+    json compileCommandsJson;
     try {
-        file >> compile_commands_json;
+        file >> compileCommandsJson;
     } catch (const json::exception &e) {
         std::cerr << "JSON 解析错误: " << e.what() << std::endl;
         return result;
     }
-    fs::path input_file_path = fs::canonical(opts.inputFile);
-    auto append_args_from_command = [&](const std::string& command_str) {
-        std::istringstream iss(command_str);
+    fs::path inputFilePath = fs::canonical(opts.inputFile);
+    auto append_args_from_command = [&](const std::string& commandStr) {
+        std::istringstream iss(commandStr);
         std::string arg;
         while (iss >> arg) {
-            if (IsSameFile(arg, opts.inputFile)) continue;
+            if (IsSameFile(arg, opts.inputFile)) { continue };
             result.strArgs.push_back(arg);
             result.cstrArgs.push_back(result.strArgs.back().c_str());
         }
     };
-    for (const auto &command : compile_commands_json) {
+    for (const auto &command : compileCommandsJson) {
         if (!(command.contains("file") && command.contains("command"))) {
             std::cerr << "compile_commands.json 中 缺少 file 或 command 字段" << std::endl;
             continue;
         }
 
-        fs::path command_file_path;
+        fs::path commandFilePath;
         try {
-            const std::string command_file = command["file"].get<std::string>();
-            command_file_path = fs::canonical(command_file);
+            const std::string commandFile = command["file"].get<std::string>();
+            commandFilePath = fs::canonical(commandFile);
         } catch (const std::filesystem::filesystem_error &e) {
             std::cerr << "路径错误: " << e.what() << std::endl;
             continue;
         }
-        if (!fs::equivalent(command_file_path, input_file_path)) {
+        if (!fs::equivalent(commandFilePath, inputFilePath)) {
             continue;
         }
         // 命中目标文件：追加 -I<目录>
-        const std::string directory_str = command_file_path.parent_path().string();
-        result.strArgs.push_back("-I" + directory_str);
+        const std::string directoryStr = commandFilePath.parent_path().string();
+        result.strArgs.push_back("-I" + directoryStr);
         result.cstrArgs.push_back(result.strArgs.back().c_str());
 
         // 追加 command 中的其它参数（排除源文件自身）
-        const std::string command_str = command["command"].get<std::string>();
-        append_args_from_command(command_str);
+        const std::string commandStr = command["command"].get<std::string>();
+        append_args_from_command(commandStr);
 
         break;
     }
