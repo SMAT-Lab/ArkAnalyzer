@@ -28,7 +28,7 @@ void Trim(std::string &s)
 }
 
 // CXString 转 std::string + 自动释放
-std::string cx2str(const CXString &s)
+std::string Cx2Str(const CXString &s)
 {
     std::string r = clang_getCString(s) ? clang_getCString(s) : "" ;
     clang_disposeString(s);

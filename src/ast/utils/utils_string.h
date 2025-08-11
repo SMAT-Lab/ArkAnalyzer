@@ -24,7 +24,7 @@
 void Trim(std::string &s);
 
 // CXString 转 std::string 并自动释放
-std::string cx2str(const CXString &s);
+std::string Cx2Str(const CXString &s);
 
 // 提取括号内容
 std::string ExtractParentContent(const std::string &code, size_t lpos = std::string::npos, char open = '(', char close = ')');

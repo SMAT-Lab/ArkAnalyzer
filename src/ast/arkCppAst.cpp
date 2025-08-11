@@ -198,7 +198,7 @@ void buildNodeRange(json& node, json& parent)
 void fillUnaryOperatorInfo(json &node, CXCursor cursor)
 {
     auto opKind = clang_getCursorUnaryOperatorKind(cursor);
-    node["opcode"] = cx2str(clang_getUnaryOperatorKindSpelling(opKind));
+    node["opcode"] = Cx2Str(clang_getUnaryOperatorKindSpelling(opKind));
     node["isPostfix"] = (opKind == CXUnaryOperator_PostInc || opKind == CXUnaryOperator_PostDec);
 }
 
@@ -378,7 +378,7 @@ std::string getMemberInClassName(CXCursor cursor)
     if (kind != CXCursor_ClassDecl && kind != CXCursor_StructDecl) {
         return "";
     }
-    return cx2str(clang_getCursorSpelling(parentCursor));
+    return Cx2Str(clang_getCursorSpelling(parentCursor));
 }
 
 // 获取引用的信息
@@ -387,8 +387,8 @@ json getReferenceDecl(CXCursor cursor, CXCursorKind kind_cursor)
     json refNode;
     CXCursor referenced = clang_getCursorReferenced(cursor);
     if (!clang_isInvalid(kind_cursor)) {
-        refNode["name"] = cx2str(clang_getCursorSpelling(referenced));
-        std::string kind = cx2str(clang_getCursorKindSpelling(clang_getCursorKind(referenced)));
+        refNode["name"] = Cx2Str(clang_getCursorSpelling(referenced));
+        std::string kind = Cx2Str(clang_getCursorKindSpelling(clang_getCursorKind(referenced)));
         if (kind == "ParamDecl") {
             kind = "ParamVarDecl";
         }
@@ -993,7 +993,7 @@ void fillNodeSourceContent(json& node, const json& content, CXCursorKind kind_cu
     if (kind_cursor == CXCursor_UnaryOperator) {
         fillUnaryOperatorInfo(node, cursor);
     } else if (kind_cursor == CXCursor_BinaryOperator || kind_cursor == CXCursor_CompoundAssignOperator) {
-        node["opcode"] = cx2str(clang_Cursor_getBinaryOpcodeStr(clang_Cursor_getBinaryOpcode(cursor)));
+        node["opcode"] = Cx2Str(clang_Cursor_getBinaryOpcodeStr(clang_Cursor_getBinaryOpcode(cursor)));
     } else {
         node["name"] = displayName;
     }
@@ -1007,7 +1007,7 @@ void fillNodeSourceContent(json& node, const json& content, CXCursorKind kind_cu
     // InclusionDirective 特殊处理
     if (kind_cursor == CXCursor_InclusionDirective && !content.is_null()) {
         node["kind"] = "InclusionDirective";
-        node["fileName"] = cx2str(clang_getIncludedFile(cursor) ?
+        node["fileName"] = Cx2Str(clang_getIncludedFile(cursor) ?
                                   clang_getFileName(clang_getIncludedFile(cursor)) :
                                   clang_getCursorSpelling(cursor));
         node["name"] = displayName;
@@ -1052,7 +1052,7 @@ void fillNodeIdRangeLoc(json& node, const json& content, CXCursorKind kind_curso
         node["range"] = {{"begin", begin}, {"end", content["end"]}};
     }
     if (file && std::find(locCursorKind.begin(), locCursorKind.end(), kind_cursor) != locCursorKind.end()) {
-        node["locFile"] = file ? cx2str(clang_getFileName(file)) : "";
+        node["locFile"] = file ? Cx2Str(clang_getFileName(file)) : "";
     }
     node["valueCategory"] = (kind_cursor == CXCursor_EnumConstantDecl) ? displayName : "prvalue";
 }
@@ -1155,7 +1155,7 @@ json buildASTJson(CXCursor cursor, bool actionScope, std::unordered_map<std::str
 
     CXFile file;
     clang_getSpellingLocation(loc, &file, nullptr, nullptr, nullptr);
-    std::string fileName = file ? cx2str(clang_getFileName(file)) : "";
+    std::string fileName = file ? Cx2Str(clang_getFileName(file)) : "";
 
     bool isInclude = IsInUserInclude(fileName);
     if (kind_cursor != CXCursor_TranslationUnit && !clang_Location_isFromMainFile(loc) && !isInclude) {
@@ -1174,8 +1174,8 @@ json buildASTJson(CXCursor cursor, bool actionScope, std::unordered_map<std::str
     }
 
     json node;
-    std::string kindSpelling = cx2str(clang_getCursorKindSpelling(kind_cursor));
-    std::string displayName = cx2str(clang_getCursorSpelling(cursor));
+    std::string kindSpelling = Cx2Str(clang_getCursorKindSpelling(kind_cursor));
+    std::string displayName = Cx2Str(clang_getCursorSpelling(cursor));
     CXSourceRange range = clang_getCursorExtent(cursor);
     if (isInclude) {
         node["include"] = true;
