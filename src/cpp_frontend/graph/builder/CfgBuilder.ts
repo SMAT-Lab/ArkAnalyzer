@@ -194,7 +194,7 @@ export class CfgBuilder {
     }
 
     ASTNodeBreakStatement(c: CppAstNode, lastStatement: StatementBuilder): void {
-        let p: any | null = c;
+        let p: CppAstNode | null = c;
         while (p && p.id !== this.astRoot.id) {
             let pKind = p.kind.toString();
             if (pKind === 'WhileStmt' || pKind === 'DoStmt' || pKind === 'ForStmt') {
@@ -209,7 +209,7 @@ export class CfgBuilder {
                 lastSwitchExit.lasts.add(lastStatement);
                 return;
             }
-            p = p.parent ? p.parent : p.getParent();
+            p = (p.parent ?? p.getParent?.(true)) ?? null;
         }
     }
 
@@ -584,7 +584,7 @@ export class CfgBuilder {
             }
         }
 
-        this.walkAST(trystm, tryExit, [tryBlock]);
+        this.walkAST(trystm, tryExit, tryBlock?.inner ?? []);
         trystm.tryFirst = trystm.next;
         trystm.next?.lasts.add(trystm);
         for (const catchBlock of catchBlockList) {
@@ -631,7 +631,7 @@ export class CfgBuilder {
         return finalExit;
     }
 
-    walkAST(lastStatement: StatementBuilder, nextStatement: StatementBuilder, nodes: any): void {
+    walkAST(lastStatement: StatementBuilder, nextStatement: StatementBuilder, nodes: CppAstNode[]): void {
         let scope = new Scope(this.scopes.length);
         this.scopes.push(scope);
         for (let i = 0; i < nodes.length; i++) {
@@ -702,12 +702,12 @@ export class CfgBuilder {
                 lastStatement = this.ASTNodeTryStatement(innerNode, lastStatement, scope.id);
             } else if (nodeKind === 'GotoStmt' || nodeKind === 'IndirectGotoStmt') {
                 this.ASTNodeGotoStatement(innerNode, lastStatement, scope.id);
-                let p = innerNode;
+                let p: CppAstNode | null = innerNode;
                 while (p && p.id !== this.astRoot.id) {
                     if (['IfStmt', 'WhileStmt', 'DoStmt', 'ForStmt', 'CaseStmt', 'DefaultStmt', 'CXXTryStmt'].includes(p.kind)) {
                         return;
                     }
-                    p = p.parent ? p.parent : p.getParent();
+                    p = (p.parent ?? p.getParent?.(true)) ?? null;
                 }
             } else if (nodeKind === 'LabelStmt') {
                 lastStatement = this.ASTNodeLabelStatement(innerNode, lastStatement, scope.id);

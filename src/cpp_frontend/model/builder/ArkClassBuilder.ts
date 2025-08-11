@@ -45,7 +45,7 @@ export function buildNormalArkClassFromArkMethod(clsNode: CppAstNode, cls: ArkCl
 export function buildNormalArkClassFromArkFile(clsNode: CppAstNode, arkFile: ArkFile, cls: ArkClass, sourceFile: CppAstNode, declaringMethod?: ArkMethod): void {
     cls.setDeclaringArkFile(arkFile);
     cls.setCode(clsNode.name);
-    if (clsNode.range?.begin){
+    if (clsNode.range?.begin) {
         cls.setLine(clsNode.range.begin.line);
         cls.setColumn(clsNode.range.begin.col);
     }
@@ -192,7 +192,7 @@ function processCXXHeritage(clsNode: CppAstNode, cls: ArkClass): void {
     }
 }
 
-function buildEnum2ArkClass(clsNode: any, cls: ArkClass, sourceFile: CppAstNode, declaringMethod?: ArkMethod): void {
+function buildEnum2ArkClass(clsNode: CppAstNode, cls: ArkClass, sourceFile: CppAstNode, declaringMethod?: ArkMethod): void {
     let className: string;
     if (clsNode.name) {
         className = clsNode.name;
@@ -264,7 +264,7 @@ function buildArkClassMembers(clsNode: CppAstNode, cls: ArkClass, sourceFile: Cp
 
 function buildMethodsForClass(clsNode: CppAstNode, cls: ArkClass, sourceFile: CppAstNode): void {
     let cxxAccessModifier = 'private';
-    clsNode.inner.forEach((member: any) => {
+    clsNode.inner.forEach((member: CppAstNode) => {
         if (member.kind.toString() === 'CXXAccessSpecifier') {
             cxxAccessModifier = member.code.split(':')[0];
         }

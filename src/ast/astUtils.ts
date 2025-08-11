@@ -126,7 +126,7 @@ export class AstUtils {
     }
 
     private static filterChildren(cursor: CppAstNode): CppAstNode[] {
-        let filteredChildren: any[] = [];
+        let filteredChildren: CppAstNode[] = [];
         if (!Object.prototype.hasOwnProperty.call(cursor, 'inner')) {
             return filteredChildren;
         }

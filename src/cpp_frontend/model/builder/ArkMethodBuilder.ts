@@ -58,7 +58,7 @@ function getSpecificNodes(methodNode: CppAstNode, targetNode: string): CppAstNod
         return getSpecificNodes(methodNode.inner[0], targetNode);
     }
     let result: CppAstNode[] = [];
-    methodNode.inner.forEach((childNode: any) => {
+    methodNode.inner.forEach((childNode: CppAstNode) => {
         if (childNode.kind.toString() === targetNode) {
             result.push(childNode);
         }
@@ -66,7 +66,7 @@ function getSpecificNodes(methodNode: CppAstNode, targetNode: string): CppAstNod
     return result.length > 0 ? result : [];
 }
 
-export function buildDefaultArkMethodFromArkClass(declaringClass: ArkClass, mtd: ArkMethod, sourceFile: any, node?: any): void {
+export function buildDefaultArkMethodFromArkClass(declaringClass: ArkClass, mtd: ArkMethod, sourceFile: CppAstNode, node?: CppAstNode): void {
     mtd.setDeclaringArkClass(declaringClass);
 
     const methodSubSignature = ArkSignatureBuilder.buildMethodSubSignatureFromMethodName(DEFAULT_ARK_METHOD_NAME, true);
@@ -189,7 +189,7 @@ function checkAndUpdateMethodCpp(method: ArkMethod, cls: ArkClass): void {
     }
 }
 
-function isRelatedToCXXInheritedCtorInitExpr(node: any): boolean {
+function isRelatedToCXXInheritedCtorInitExpr(node: CppAstNode): boolean {
     if (!node) {
         return false;
     }
@@ -206,7 +206,7 @@ function isRelatedToCXXInheritedCtorInitExpr(node: any): boolean {
     return false;
 }
 
-function addParamsToCXXInheritedCtorInitExpr(mtdNode: any, mtd: ArkMethod, methodParameters: MethodParameter[]): void {
+function addParamsToCXXInheritedCtorInitExpr(mtdNode: CppAstNode, mtd: ArkMethod, methodParameters: MethodParameter[]): void {
     const cls = mtd.getDeclaringArkClass();
     const superClassName = mtdNode.inner?.[0]?.baseInit?.qualType;
     if (!superClassName) {

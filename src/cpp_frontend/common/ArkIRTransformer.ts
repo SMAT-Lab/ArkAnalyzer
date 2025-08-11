@@ -235,8 +235,8 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
         aliasType.setModifiers(modifiers);
 
         const aliasTypeDefineStmt = new ArkAliasTypeDefineStmt(aliasType, expr);
-        const leftPosition = FullPosition.buildFromNodeCpp(typeAliasDeclaration, this.sourceFile);
-        const rightPosition = FullPosition.buildFromNodeCpp(typeNode, this.sourceFile);
+        const leftPosition = FullPosition.buildFromNodeCpp(typeAliasDeclaration, this.sourceFileCpp);
+        const rightPosition = FullPosition.buildFromNodeCpp(typeNode, this.sourceFileCpp);
         const operandOriginalPositions = [leftPosition, rightPosition];
         aliasTypeDefineStmt.setOperandOriginalPositions(operandOriginalPositions);
 
@@ -676,7 +676,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
             if (ifStatement.inner.length > 2) {
                 const branchElseMethodSignature = ArkSignatureBuilder.buildMethodSignatureFromClassNameAndMethodName(COMPONENT_IF, COMPONENT_BRANCH_FUNCTION);
                 const branchElseInvokeExpr = new ArkStaticInvokeExpr(branchElseMethodSignature, [CppValueUtil.getOrCreateNumberConst(1)]);
-                const branchElseInvokeExprPositions = [FullPosition.buildFromNodeCpp(ifStatement.inner[2], this.sourceFile), FullPosition.DEFAULT];
+                const branchElseInvokeExprPositions = [FullPosition.buildFromNodeCpp(ifStatement.inner[2], this.sourceFileCpp), FullPosition.DEFAULT];
                 const branchElseInvokeStmt = new ArkInvokeStmt(branchElseInvokeExpr);
                 branchElseInvokeStmt.setOperandOriginalPositions(branchElseInvokeExprPositions);
                 stmts.push(branchElseInvokeStmt);
@@ -712,7 +712,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
         for (const stmt of stmts) {
             if (!this.stmtsHaveOriginalText.has(stmt)) {
                 this.stmtsHaveOriginalText.add(stmt);
-                stmt.setOriginPositionInfo(LineColPosition.buildFromNodeCpp(node, this.sourceFile));
+                stmt.setOriginPositionInfo(LineColPosition.buildFromNodeCpp(node, this.sourceFileCpp));
                 stmt.setOriginalText(node.code);
             }
         }

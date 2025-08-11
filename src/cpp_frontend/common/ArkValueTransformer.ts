@@ -683,7 +683,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         componentName: string,
         args: Value[],
         argPositionsAllFlat: FullPosition[],
-        componentExpression: ts.EtsComponentExpression | ts.CallExpression,
+        componentExpression: CppAstNode,
         currStmts: Stmt[]
     ): ValueAndStmts {
         const stmts: Stmt[] = [...currStmts];
@@ -707,7 +707,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         componentName: string,
         args: Value[],
         argPositionsAllFlat: FullPosition[],
-        componentExpression: ts.EtsComponentExpression | ts.CallExpression,
+        componentExpression: CppAstNode,
         currStmts: Stmt[]
     ): ValueAndStmts {
         const stmts: Stmt[] = [...currStmts];
@@ -800,7 +800,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
      * @param memberExpression - 形如 AST MemberExpr/MemberRef 节点，通常表示 obj.field 或 obj->field
      * @param localValue - （可选）直接指定 baseValue 的场景（如解析父节点时提前确定 base）
      */
-    private memberExpressionToValueAndStmts(memberExpression: CppAstNode | any, localValue?: Value): ValueAndStmts {
+    private memberExpressionToValueAndStmts(memberExpression: CppAstNode, localValue?: Value): ValueAndStmts {
         const stmts: Stmt[] = [];
         // 【场景1】处理 C++ 代码中 this->field 或 this->method 调用
         // 如果是类成员引用（MemberExpr/MemberRef）但没有 inner[0]，说明是隐式 this，需补充 this 节点
@@ -858,7 +858,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         // 【场景8】生成 IR 层的字段引用对象（如 testMap.insert）
         const fieldRef = new CXXArkInstanceFieldRef(
             baseValue as Local, // baseValue（如 testMap）
-            memberExpression.isArrow, // 是否为箭头访问（->）
+            memberExpression.isArrow ?? false, // 是否为箭头访问（->）
             fieldSignature // 字段签名（如 insert）
         );
         // 记录节点位置信息，方便后续溯源和 debug
@@ -911,7 +911,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         };
     }
 
-    private callExpressionToValueAndStmtsCpp(callExpression: CppAstNode | any): ValueAndStmts {
+    private callExpressionToValueAndStmtsCpp(callExpression: CppAstNode): ValueAndStmts {
         const stmts: Stmt[] = [];
         const [callNode, argumentNodes] = this.getArgumentNode(callExpression.inner);
         const argus = this.parseArgumentsCppOfCallExpressionCpp(stmts, argumentNodes);
@@ -1009,7 +1009,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
     }
 
     private buildValueAndStmtsForStdStream(streamNode: CppAstNode, nonOverloadedArgs: [] | any,
-                                           streamExpr: CppAstNode | any, currValueAndStmts: ValueAndStmts): void {
+                                           streamExpr: CppAstNode, currValueAndStmts: ValueAndStmts): void {
         if (nonOverloadedArgs.length === 0) {
             return;
         }
@@ -1235,7 +1235,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         return this.buildValueAndStmtsForMemberCall(stmts, callNode, argNodes, cxxOperatorCallExpr, undefined);
     }
 
-    public RecoverExpressionToValueAndStmts(callExpression: CppAstNode | any): ValueAndStmts {
+    public RecoverExpressionToValueAndStmts(callExpression: CppAstNode): ValueAndStmts {
         const stmts: Stmt[] = [];
         const [callNode, argumentNodes] = this.getArgumentNodeForRecover(callExpression.inner);
         const argus = this.parseArgumentsCppOfCallExpressionCpp(stmts, argumentNodes);
@@ -1267,7 +1267,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
             let cls = ModelUtils.getClass(this.declaringMethod, classSignature);
             if (cls?.hasComponentDecorator() && ['CallExpr', 'CXXOperatorCallExpr'].includes(callExpression)) {
                 return this.generateCustomViewStmtCpp(callerName, args, argPositions, callExpression, stmts);
-            } else if ((callerName === COMPONENT_FOR_EACH || callerName === COMPONENT_LAZY_FOR_EACH) && ts.isCallExpression(callExpression)) {
+            } else if (callerName === COMPONENT_FOR_EACH || callerName === COMPONENT_LAZY_FOR_EACH) {
                 // foreach/lazyforeach will be parsed as ts.callExpression
                 return this.generateSystemComponentStmtCpp(callerName, args, argPositions, callExpression, stmts);
             }
@@ -1295,7 +1295,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         };
     }
 
-    private cxxMemberCallExpressionToValueAndStmtsCpp(callExpression: CppAstNode | any): ValueAndStmts {
+    private cxxMemberCallExpressionToValueAndStmtsCpp(callExpression: CppAstNode): ValueAndStmts {
         let realGenericTypes: Type[] | undefined;
         const stmts: Stmt[] = [];
         const [_, rightNodes] = this.getArgumentNode(callExpression.inner);
@@ -1702,7 +1702,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
             operandStmts.forEach(stmt => stmts.push(stmt));
         }
 
-        const operatorToken: string = prefixUnaryExpression.opcode ?? '';  // 可选字段兜底为空串
+        const operatorToken: string = prefixUnaryExpression.opcode ?? ''; // 可选字段兜底为空串
         let exprPositions = [FullPosition.buildFromNodeCpp(prefixUnaryExpression, this.sourceFile)];
         if (operatorToken === '++' || operatorToken === '--') {
             const binaryOperator = operatorToken === '++' ? NormalBinaryOperator.Addition : NormalBinaryOperator.Subtraction;
@@ -2021,55 +2021,68 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         };
     }
 
-    private literalNodeToValueAndStmtsCpp(literalNode: CppAstNode | any): ValueAndStmts | null {
-        const syntaxKind = literalNode.kind;
-        let constant: Constant | null = null;
-        switch (syntaxKind) {
-            case 'IntegerLiteral':
-                constant = CppValueUtil.getOrCreateNumberConst(parseFloat(literalNode.value));
-                break;
-            case 'StringLiteral':
-                constant = CppValueUtil.createStringConst(literalNode.value);
-                break;
-            case 'CXXBoolLiteralExpr':
-                constant = CppValueUtil.getBooleanConstant(literalNode.value);
-                break;
-            case 'CharacterLiteral':
-                constant = CppValueUtil.createStringConst(literalNode.code);
-                break;
-            case 'FloatingLiteral':
-                constant = CppValueUtil.getOrCreateNumberConst(parseFloat(literalNode.code));
-                break;
-            case 'CXXNullPtrLiteralExpr':
-                constant = CppValueUtil.getNullPtrConstant();
-                break;
-            case 'AddrLabelExpr':
-                // 在AddrLabelExpr结构下包含LabelRef节点，处于inner[0]的位置
-                constant = CppValueUtil.getLabelPtrConstant(literalNode.inner[0].code);
-                let p = literalNode.parent ? literalNode.parent : literalNode.getParent();
-                const point = p.code.match(/void\s*([^=]+)=/)[1].trim();
-                let stored = false;
-                for (const [key, gotoStmts] of this.declaringMethod.gotoStmtMap) {
-                    if (key === literalNode.inner[0].code) {
-                        this.declaringMethod.gotoStmtMap.set(point, gotoStmts);
-                    }
+    private literalNodeToValueAndStmtsCpp(literalNode: CppAstNode): ValueAndStmts | null {
+        const stmts: Stmt[] = [];
+        const pos = [FullPosition.buildFromNodeCpp(literalNode, this.sourceFile)];
+        // 小工具：安全取字符串
+        const S = (v: string | undefined | null) => v ?? '';
+        switch (literalNode.kind) {
+            case 'IntegerLiteral': {
+                const raw = S(literalNode.value) || S(literalNode.code);
+                const num = Number.parseFloat(raw);
+                const constant = CppValueUtil.getOrCreateNumberConst(Number.isFinite(num) ? num : 0);
+                return { value: constant, valueOriginalPositions: pos, stmts };
+            }
+            case 'FloatingLiteral': {
+                const raw = S(literalNode.value) || S(literalNode.code);
+                const num = Number.parseFloat(raw);
+                const constant = CppValueUtil.getOrCreateNumberConst(Number.isFinite(num) ? num : 0);
+                return { value: constant, valueOriginalPositions: pos, stmts };
+            }
+            case 'StringLiteral': {
+                const constant = CppValueUtil.createStringConst(S(literalNode.value) || S(literalNode.code));
+                return { value: constant, valueOriginalPositions: pos, stmts };
+            }
+            case 'CharacterLiteral': {
+                const constant = CppValueUtil.createStringConst(S(literalNode.code));
+                return { value: constant, valueOriginalPositions: pos, stmts };
+            }
+            case 'CXXBoolLiteralExpr': {
+                const raw = (literalNode.value ?? literalNode.code ?? '').trim().toLowerCase();
+                const b = raw === 'true' || raw === '1';
+                const constant = CppValueUtil.getBooleanConstant(b);
+                return { value: constant, valueOriginalPositions: pos, stmts };
+            }
+            case 'CXXNullPtrLiteralExpr': {
+                const constant = CppValueUtil.getNullPtrConstant();
+                return { value: constant, valueOriginalPositions: pos, stmts };
+            }
+            case 'AddrLabelExpr': {
+                // inner[0] 里是 LabelRef
+                const labelNode = literalNode.inner?.[0];
+                const labelName = S(labelNode?.code);
+                const constant = CppValueUtil.getLabelPtrConstant(labelName);
+                // 安全拿父节点；需要完整父节点就用 (true)
+                const parent = (literalNode.parent ?? literalNode.getParent?.(true)) ?? null;
+                // 从父节点 code 里提取 point 名称（形如 "void  foo = ..."）
+                const m = parent?.code?.match(/void\s*([^=]+)=/);
+                const point = S(m?.[1]).trim() || labelName;
+                const map = this.declaringMethod.gotoStmtMap;
+                const gotoStmts = map.get(labelName);
+                if (gotoStmts) {
+                    map.set(point, gotoStmts);
                 }
-                if (!stored) {
-                    this.declaringMethod.gotoStmtMap.set(point, []);
+                if (!map.has(point)) {
+                    map.set(point, []);
                 }
-                break;
-            default:
-                logger.warn(`ast node's syntaxKind is ${syntaxKind}, not literalNode`);
-        }
+                return { value: constant, valueOriginalPositions: pos, stmts };
+            }
 
-        if (constant === null) {
-            return null;
+            default: {
+                logger.warn(`ast node's syntaxKind is ${literalNode.kind}, not literalNode`);
+                return null;
+            }
         }
-        return {
-            value: constant,
-            valueOriginalPositions: [FullPosition.buildFromNodeCpp(literalNode, this.sourceFile)],
-            stmts: [],
-        };
     }
 
     public generateTempLocal(localType: Type = UnknownType.getInstance()): Local {
@@ -2113,8 +2126,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
      */
     private buildCppTypeFromQualType(node: CppAstNode, qualType: string, tagUsed: string): Type {
         if (qualType.includes('[') && qualType.includes(']')) {
-            const matches = qualType.match(/\[/g);
-            const count = matches ? matches.length : 0;
+            const count = qualType.match(/\[/g)?.length ?? 0;
             let baseType = cppNode2Type(qualType.slice(0, qualType.indexOf('[')), this.declaringMethod);
             if (baseType instanceof UnclearReferenceType) {
                 return new ArrayType(new UnclearReferenceType(qualType.slice(0, qualType.indexOf('['))), count);
