@@ -16,7 +16,7 @@
 // 如何在C++调用从ArkTS传递过来的function（实际上与case3一模一样）
 
 #include "napi/native_api.h"
-
+#define TWO 2
 static napi_value NativeCallArkTS(napi_env env, napi_callback_info info)
 {
     size_t argc = 1;
@@ -28,7 +28,7 @@ static napi_value NativeCallArkTS(napi_env env, napi_callback_info info)
 
     // 创建一个int，作为ArkTS的入参
     napi_value argv = nullptr;
-    napi_create_int32(env, 2, &argv );
+    napi_create_int32(env, TWO, &argv );
 
     // 调用传入的callback，并将其结果返回
     napi_value result = nullptr;
