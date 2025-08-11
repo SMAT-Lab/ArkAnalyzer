@@ -13,18 +13,16 @@
  * limitations under the License.
  */
 
-#include <stdio.h>
-
+#include <cstdio>
+#define TWO 2
 int main(int num)
 {
-    while (num > 0)
-    {
-        if (num == 2)
-        {
+    while (num > 0) {
+        if (num == TWO) {
             num = num + 1;
             continue;
         }
-        num = num - 2;
+        num = num - TWO;
     }
     return 0;
 }

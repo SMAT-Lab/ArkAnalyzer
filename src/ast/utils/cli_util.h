@@ -21,7 +21,7 @@
 struct CommandLineOptions {
     std::string inputFile;
     std::string outputFile;
-    std::string compile_commands_file;
+    std::string compileCommandsFile;
     std::vector<std::string> userIncludeDirs;
 };
 

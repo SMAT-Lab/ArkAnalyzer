@@ -183,15 +183,15 @@ describe('Type Test', () => {
     });
     it('case6: NullPtr Test', () => {
         const scene = buildScene('nullPtr');
-        testBlocks(scene, 'nullPtrSample.cpp', 'case1', NULLPTR_EXPECT.NULLPTR_EXPECT_CASE1.blocks);
+        testBlocks(scene, 'nullPtrSample.cpp', 'Case1', NULLPTR_EXPECT.NULLPTR_EXPECT_CASE1.blocks);
     });
     it('case7: CompoundLiteral Test', () => {
         const scene = buildScene('compoundLiteral');
-        testBlocks(scene, 'compoundLiteralExpr.cpp', 'case1', COMPOUND_LITERAL_EXPECT.COMPOUND_LITERAL_EXPECT_CASE1.blocks);
-        testBlocks(scene, 'compoundLiteralExpr.cpp', 'case2', COMPOUND_LITERAL_EXPECT.COMPOUND_LITERAL_EXPECT_CASE2.blocks);
-        testBlocks(scene, 'compoundLiteralExpr.cpp', 'case3', COMPOUND_LITERAL_EXPECT.COMPOUND_LITERAL_EXPECT_CASE3.blocks);
-        testBlocks(scene, 'compoundLiteralExpr.cpp', 'case4', COMPOUND_LITERAL_EXPECT.COMPOUND_LITERAL_EXPECT_CASE4.blocks);
-        testBlocks(scene, 'compoundLiteralExpr.cpp', 'case5', COMPOUND_LITERAL_EXPECT.COMPOUND_LITERAL_EXPECT_CASE5.blocks);
+        testBlocks(scene, 'compoundLiteralExpr.cpp', 'Case1', COMPOUND_LITERAL_EXPECT.COMPOUND_LITERAL_EXPECT_CASE1.blocks);
+        testBlocks(scene, 'compoundLiteralExpr.cpp', 'Case2', COMPOUND_LITERAL_EXPECT.COMPOUND_LITERAL_EXPECT_CASE2.blocks);
+        testBlocks(scene, 'compoundLiteralExpr.cpp', 'Case3', COMPOUND_LITERAL_EXPECT.COMPOUND_LITERAL_EXPECT_CASE3.blocks);
+        testBlocks(scene, 'compoundLiteralExpr.cpp', 'Case4', COMPOUND_LITERAL_EXPECT.COMPOUND_LITERAL_EXPECT_CASE4.blocks);
+        testBlocks(scene, 'compoundLiteralExpr.cpp', 'Case5', COMPOUND_LITERAL_EXPECT.COMPOUND_LITERAL_EXPECT_CASE5.blocks);
     });
 
     it('case:8 Template Test', () => {
@@ -359,7 +359,7 @@ describe('namespace Test', () => {
 describe('using Test', () => {
     it('case1: using', () => {
         const scene = buildScene('using');
-        testBlocks(scene, 'usingcase.cpp', 'testUsingNamespace', USING_EXPECT.USING_EXPECT_CASE1.blocks);
+        testBlocks(scene, 'usingcase.cpp', 'TestUsingNamespace', USING_EXPECT.USING_EXPECT_CASE1.blocks);
     });
     it('case2: using', () => {
         const scene = buildScene('using');

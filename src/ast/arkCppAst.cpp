@@ -915,6 +915,28 @@ void deduceDecltype(json& node, json&children)
     }
 }
 
+static bool applyDeclLikeKind(json& node, CXCursor cursor, CXCursorKind k) {
+    switch (k) {
+        case CXCursor_CXXMethod:
+            node["kind"] = "CXXMethodDecl";
+            node["mangledName"] = getMemberInClassName(cursor);
+            return true;
+        case CXCursor_Constructor:
+            node["kind"] = "CXXConstructorDecl";
+            node["mangledName"] = getMemberInClassName(cursor);
+            return true;
+        case CXCursor_Destructor:
+            node["kind"] = "CXXDestructorDecl";
+            node["mangledName"] = getMemberInClassName(cursor);
+            return true;
+        case CXCursor_UsingDeclaration:
+            node["kind"] = "UsingDecl";
+            return true;
+        default:
+            return false;
+    }
+}
+
 void fillNodeKindTag(json& node, CXCursor cursor, CXCursorKind kind_cursor, const std::string& kindSpelling)
 {
     std::string nameStr = node.value("name", "");
@@ -953,20 +975,10 @@ void fillNodeKindTag(json& node, CXCursor cursor, CXCursorKind kind_cursor, cons
         node["type"]["qualType"] = "basic_ostream<char>";
         return;
     }
-    if (kind_cursor == CXCursor_CXXMethod) {
-        node["kind"] = "CXXMethodDecl";
-        node["mangledName"] = getMemberInClassName(cursor);
-    } else if (kind_cursor == CXCursor_Constructor) {
-        node["kind"] = "CXXConstructorDecl";
-        node["mangledName"] = getMemberInClassName(cursor);
-    } else if (kind_cursor == CXCursor_Destructor) {
-        node["kind"] = "CXXDestructorDecl";
-        node["mangledName"] = getMemberInClassName(cursor);
-    } else if (kind_cursor == CXCursor_UsingDeclaration) {
-        node["kind"] = "UsingDecl";
-    } else {
-        node["kind"] = kindSpelling;
+    if (applyDeclLikeKind(node, cursor, kind_cursor)) {
+        return;
     }
+    node["kind"] = kindSpelling; // 兜底
 }
 
 void fillNodeSourceContent(json& node, const json& content, CXCursorKind kind_cursor, CXCursor cursor,
@@ -1256,7 +1268,7 @@ int main(int argc, char** argv)
     }
     json ast = buildAndProcessAST(unit, opts);
 
-    saveASTToFile(ast, opts.outputFile);
+    SaveAstToFile(ast, opts.outputFile);
 
     clang_disposeTranslationUnit(unit);
     clang_disposeIndex(index);

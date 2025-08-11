@@ -36,7 +36,8 @@ typedef enum {
 } Color;
 
 
-int main() {
+int main()
+{
     typedef std::map<std::string, std::vector<int>> StrToVecMap;
     StrToVecMap myMap;
     myMap["key"].push_back(1);

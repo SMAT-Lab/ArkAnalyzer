@@ -39,11 +39,13 @@ int Case1()
     return 0;
 }
 
-void PrintSum(int a, int b) {
+void PrintSum(int a, int b)
+{
     cout << "Sum: " << a + b << endl;
 }
 
-int Case2() {
+int Case2()
+{
     // 创建线程并传递参数
     int a = 5;
     thread t(PrintSum, a, SEVEN);
@@ -52,7 +54,8 @@ int Case2() {
     return 0;
 }
 
-int Case3() {
+int Case3()
+{
     // 创建并启动线程
     std::thread t(Hello);
 
@@ -63,7 +66,8 @@ int Case3() {
     return 0;
 }
 
-int Case4() {
+int Case4()
+{
     // 创建线程并传递参数
     int a = 5;
     std::thread t(PrintSum, a, SEVEN);

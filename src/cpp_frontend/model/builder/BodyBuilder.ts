@@ -24,7 +24,7 @@ import { ArkParameterRef, ArkStaticFieldRef, ClosureFieldRef, GlobalRef } from '
 import { ArkAliasTypeDefineStmt, ArkAssignStmt, ArkInvokeStmt, ArkReturnStmt } from '../../../core/base/Stmt';
 import { AliasType, ArrayType, ClosureType, FunctionType, LexicalEnvType, Type, UnclearReferenceType, UnionType } from '../../../core/base/Type';
 import { AbstractInvokeExpr, ArkPtrInvokeExpr } from '../../../core/base/Expr';
-import {CppAstNode} from "../../../ast/ArkCxxAstNode";
+import { CppAstNode } from '../../../ast/ArkCxxAstNode';
 
 type NestedMethodChain = {
     parent: ArkMethod;

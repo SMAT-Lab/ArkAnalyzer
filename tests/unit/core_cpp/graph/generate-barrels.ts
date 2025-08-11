@@ -34,7 +34,7 @@ function generateIndexFile(folderPath: string) {
     console.log(`✅ Generated: ${path.relative(BASE_DIR, indexPath)}`);
 }
 
-function walkAndGenerate(baseDir: string) {
+function walkAndGenerate(baseDir: string):void {
     const entries = fs.readdirSync(baseDir, { withFileTypes: true });
     for (const entry of entries) {
         const fullPath = path.join(baseDir, entry.name);

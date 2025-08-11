@@ -31,7 +31,7 @@ import { buildImportInfo } from './ArkImportBuilder';
 import { shouldAddCppHeaderImport } from '../../common/ModelUtils';
 import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
 import { init4InstanceInitMethod, init4StaticInitMethod } from '../../../core/model/builder/ArkClassBuilder';
-import { CppAstNode } from "../../../ast/ArkCxxAstNode";
+import { CppAstNode } from '../../../ast/ArkCxxAstNode';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkFileBuilder');
 

@@ -488,7 +488,7 @@ export function checkAndUpdateMethod(method: ArkMethod, cls: ArkClass): void {
     updateMethodSignaturesAndLineCols(method, presentMethod);
 }
 
-export function updateMethodSignaturesAndLineCols(method: ArkMethod, presentMethod: ArkMethod) {
+export function updateMethodSignaturesAndLineCols(method: ArkMethod, presentMethod: ArkMethod): void {
     if (method.validate().errCode !== ArkErrorCode.OK || presentMethod.validate().errCode !== ArkErrorCode.OK) {
         return;
     }

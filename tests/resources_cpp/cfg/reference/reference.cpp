@@ -81,6 +81,7 @@ public:
     Data(const Data&) { std::cout << "Copy\n"; }
     Data& operator=(const Data&) = delete;
     Data(Data&&) { std::cout << "Move\n"; }
+    Data& operator=(Data&& other) noexcept;
 };
 
 template <typename T>

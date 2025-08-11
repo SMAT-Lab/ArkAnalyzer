@@ -39,7 +39,8 @@ void MakeSound(Animal& animal)
     animal.Sound();
 }
 
-int main() {
+int main()
+{
     Cat cat;
     MakeSound(Dog());
     int num = 1;

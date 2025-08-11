@@ -23,7 +23,7 @@
 
 using namespace std; // 场景1: 全局using namespace
 
-void testUsingNamespace()
+void TestUsingNamespace()
 {
     cout << "[test_using_namespace] hello" << endl;
 }
@@ -74,8 +74,9 @@ void TestUsingEnumMember()
 {
     using Color::RED;
     Color c = RED;
-    if (c == Color::RED)
+    if (c == Color::RED) {
         cout << "[test_using_enum_member] Red\n";
+    }
 }
 
 // 场景7: 模板类型萃取

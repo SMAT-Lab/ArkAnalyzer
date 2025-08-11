@@ -18,6 +18,8 @@
 #define TWO 2
 #define PI 3.14
 #define TWO_PI 6.28
+#define A_HUNDRED 100
+#define TWENTY 20
 
 // 定义带有两个模板类型的函数模板
 template <typename T1, typename T2>
@@ -41,7 +43,7 @@ int Max2(Q a, Q b)
     return TWO;
 }
 
-int instantiation1(int x, int y)
+int Instantiation1(int x, int y)
 {
     int z = Max1(x, y);
     int y = Max2(x, y);
@@ -57,19 +59,19 @@ private:
     T data2;
 public:
     MyContainer(T value1, T value2) : data1(value1), data2(value2) {}
-    void Print() {
+    void Print()
+    {
         std::cout << data1;
     }
     T Sum()
     {
         return data1 + data2;
     }
-
 };
 
 void Instantiation2()
 {
-    MyContainer<int> intContainer(100, 20);
+    MyContainer<int> intContainer(A_HUNDRED, TWENTY);
     int a = intContainer.Sum();
     intContainer.Print();
     MyContainer<double> doubleContainer(PI, TWO_PI);

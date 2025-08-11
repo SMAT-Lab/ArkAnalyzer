@@ -26,7 +26,7 @@ extern std::map<std::string, std::string> g_fileContents;
 void LoadFileContent(const std::string& filename);
 
 // 获取默认输出路径
-std::string get_default_output_path(const std::string &inputPath);
+std::string GetDefaultOutputPath(const std::string &inputPath);
 
 // 保存AST到文件
-void saveASTToFile(const nlohmann::json& ast, const std::string& outputFile);
+void SaveAstToFile(const nlohmann::json& ast, const std::string& outputFile);

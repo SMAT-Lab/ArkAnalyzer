@@ -94,6 +94,8 @@ function nodeInnerNode(node: CppAstNode): CppAstNode {
     return { kind: 'unsupported kind' } as CppAstNode;
 }
 
+const COMPOUND_BIN_OPS = new Set<string>(Object.values(CompoundBinaryOperator));
+
 export class ArkValueTransformerCpp extends ArkValueTransformer {
     private arkIRTransformerCpp: ArkIRTransformerCpp;
 
@@ -602,7 +604,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         };
     }
 
-    public getArgumentNodeForRecover(innerAsNodes: CppAstNode): {}[]  {
+    public getArgumentNodeForRecover(innerAsNodes: CppAstNode[]): {}[]  {
         let callNode = {};
         let argumentNodes = [];
         for (let i = 0; i < innerAsNodes.length; i++) {
@@ -615,53 +617,66 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         return [callNode, argumentNodes];
     }
 
-    public getArgumentNode(innerAstNodes: CppAstNode): any {
-        let callNode = {};
-        let argumentNodes = [];
+    public getArgumentNode(innerAstNodes: CppAstNode[] | CppAstNode): [call: CppAstNode | undefined, args: CppAstNode[]] {
         // 此时innerAstNode为单独的点
-        if (Object.prototype.hasOwnProperty.call(innerAstNodes, 'id')) {
-            callNode = this.getDeclRef(innerAstNodes.inner[0]);
-            if (innerAstNodes.inner.length > 1) {
-                for (let i = 1; i < innerAstNodes.inner.length; i++) {
-                    argumentNodes.push(this.getDeclRef(innerAstNodes.inner[i]));
-                }
+        if (!Array.isArray(innerAstNodes)) {
+            const firstInner = innerAstNodes.inner?.[0];
+            if (!firstInner) {
+                return [undefined, []];
             }
-            return [callNode, argumentNodes];
+            const call = this.getDeclRef(firstInner) as CppAstNode;
+            const args = (innerAstNodes.inner?.slice(1) ?? [])
+                .map(n => this.getDeclRef(n) as CppAstNode);
+            return [call, args];
         }
+        // 可调用的若干 kind
+        const CALLABLE_KINDS = new Set([
+            'DeclRefExpr',
+            'MemberExpr',
+            'OverloadedDeclRef',
+            'ArraySubscriptExpr',
+        ]);
+        function unwrapImplicit(n?: CppAstNode): CppAstNode | undefined {
+            while (n && n.kind === 'ImplicitCastExpr') {
+                n = n.inner?.[0];
+            }
+            return n;
+        }
+        let callNode: CppAstNode | undefined;
+        const argumentNodes: CppAstNode[] = [];
         for (let i = 0; i < innerAstNodes.length; i++) {
-            if (i === 0 && innerAstNodes[i].inner?.length !== 0) {
-                let firstNode = innerAstNodes[i].inner[0];
-                while (firstNode && firstNode.kind.toString() === 'ImplicitCastExpr') {
-                    firstNode = firstNode.inner[0];
-                }
-                if (!firstNode) {
+            const node = innerAstNodes[i];
+            if (i === 0 && node.inner?.length) {
+                const first = unwrapImplicit(node.inner[0]);
+                if (!first) {
                     continue;
                 }
-                // kind = MemberExpr为了处理多层Field结构
-                if (
-                    firstNode.kind.toString() === 'DeclRefExpr' ||
-                    firstNode.kind.toString() === 'MemberExpr' ||
-                    firstNode.kind.toString() === 'OverloadedDeclRef' ||
-                    firstNode.kind.toString() === 'ArraySubscriptExpr'
-                ) {
-                    callNode = firstNode;
+                if (CALLABLE_KINDS.has(first.kind)) {
+                    callNode = first;
                 } else {
-                    argumentNodes.push(firstNode);
+                    argumentNodes.push(first);
                 }
-            } else {
-                argumentNodes.push(innerAstNodes[i]);
+                continue;
             }
+            argumentNodes.push(node);
         }
         return [callNode, argumentNodes];
     }
 
-    private getDeclRef(astNode: CppAstNode): CppAstNode | any {
-        while (astNode.inner) {
-            astNode = astNode.inner[0];
-            if (astNode.kind === 'DeclRefExpr') {
-                return astNode;
+    private getDeclRef(astNode: CppAstNode): CppAstNode | undefined {
+        let n: CppAstNode | undefined = astNode;
+        while (n) {
+            if (n.kind === 'DeclRefExpr') {
+                return n;
             }
+            // 没有子节点或子节点为空，结束
+            if (!n.inner || n.inner.length === 0) {
+                break;
+            }
+            // 沿着第一个子节点往下走
+            n = n.inner[0];
         }
+        return undefined;
     }
 
     private generateSystemComponentStmtCpp(
@@ -1027,7 +1042,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         let operatorExpression = Object.assign({}, expression);
         operatorExpression.opcode = expression.inner[0].code;
         operatorExpression.inner = [expression.inner[1]];
-        if (expression.code.indexOf(expression.inner[0].cdoe) === 0) {
+        if (expression.code.indexOf(expression.inner[0].code) === 0) {
             return this.prefixUnaryExpressionToValueAndStmtsCpp(operatorExpression);
         }
         return this.postfixUnaryExpressionToValueAndStmtsCpp(operatorExpression);
@@ -1132,7 +1147,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         if (cxxOperatorCallExpr.type?.qualType === '' || cxxOperatorCallExpr.inner?.[0].castKind !== 'FunctionToPointerDecay') {
             return null;
         }
-        let callType = cppNode2Type(cxxOperatorCallExpr.type.qualType, this.declaringMethod, null);
+        let callType = cppNode2Type(cxxOperatorCallExpr.type.qualType, this.declaringMethod);
         if (callType instanceof ReferenceType) {
             callType = callType.getBaseType();
         }
@@ -2104,7 +2119,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         if (qualType.includes('[') && qualType.includes(']')) {
             const matches = qualType.match(/\[/g);
             const count = matches ? matches.length : 0;
-            let baseType = cppNode2Type(qualType.slice(0, qualType.indexOf('[')), this.declaringMethod, null);
+            let baseType = cppNode2Type(qualType.slice(0, qualType.indexOf('[')), this.declaringMethod);
             if (baseType instanceof UnclearReferenceType) {
                 return new ArrayType(new UnclearReferenceType(qualType.slice(0, qualType.indexOf('['))), count);
             }
@@ -2140,7 +2155,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         } else if (qualType.includes('vector')) {
             let dimension = 0; // Handle std::vector scenarios (must be after std:: check)
             let dataType = this.resolveVectorType(qualType, dimension);
-            return new ArrayType(buildTypeFromPreStr(dataType), dimension);
+            return new ArrayType(buildTypeFromPreStr(dataType, undefined), dimension);
         } else if (qualType === 'thread') {
             return new Thread();
         } else {
@@ -2149,7 +2164,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
                 return this.resolveCppTypeReferenceNode(qualType);
             }
         }
-        let nodeType = cppNode2Type(qualType, this.declaringMethod, null);
+        let nodeType = cppNode2Type(qualType, this.declaringMethod);
         return nodeType instanceof UnclearReferenceType ? UnknownType.getInstance() : nodeType;
     }
 
@@ -2226,8 +2241,8 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         return new LiteralType(literal.getText(sourceFile));
     }
 
-    public static isCompoundAssignmentOperatorCpp(op: string): boolean {
-        return (Object.values(CompoundBinaryOperator) as string[]).includes(op);
+    public static isCompoundAssignmentOperatorCpp(op?: string): boolean {
+        return !!op && COMPOUND_BIN_OPS.has(op);
     }
 
     public static isRelationalBinaryOperator(op: string): boolean {

@@ -40,11 +40,11 @@ import { buildGenericType } from '../../../core/model/builder/builderUtils';
 import { CONSTRUCTOR_NAME, THIS_NAME } from '../../../core/common/TSConst';
 import { ArkSignatureBuilder } from '../../../core/model/builder/ArkSignatureBuilder';
 import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
-import {CppAstNode} from "../../../ast/ArkCxxAstNode";
+import {CppAstNode} from '../../../ast/ArkCxxAstNode';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkMethodBuilder');
 
-function getSpecificNodes(methodNode: any, targetNode: string): any[] {
+function getSpecificNodes(methodNode: CppAstNode, targetNode: string): CppAstNode[] {
     if (!methodNode || !methodNode.inner) {
         return [];
     }
@@ -57,7 +57,7 @@ function getSpecificNodes(methodNode: any, targetNode: string): any[] {
     ) {
         return getSpecificNodes(methodNode.inner[0], targetNode);
     }
-    let result: any[] = [];
+    let result: CppAstNode[] = [];
     methodNode.inner.forEach((childNode: any) => {
         if (childNode.kind.toString() === targetNode) {
             result.push(childNode);
@@ -397,7 +397,7 @@ export function addInitInConstructor(constructor: ArkMethod): void {
     }
 }
 
-export function isMethodImplementation(node: any): boolean {
+export function isMethodImplementation(node: CppAstNode): boolean {
     let isFuncImpl: boolean = false;
     switch (node.kind) {
         case 'LambdaExpr':
@@ -411,7 +411,7 @@ export function isMethodImplementation(node: any): boolean {
         case 'FunctionDecl':
         case 'FunctionTemplate':
         case 'FriendDecl':
-            if (node.inner.find((inn: any) => inn.kind.toString() === 'CompoundStmt')) {
+            if (node.inner.find((inn: CppAstNode) => inn.kind.toString() === 'CompoundStmt')) {
                 isFuncImpl = true;
             }
             break;

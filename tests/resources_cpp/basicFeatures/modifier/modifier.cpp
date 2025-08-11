@@ -21,8 +21,6 @@ struct Counter {
     static void Reset() { count = 0; } // 静态函数
 };
 
-// 外部extern
-extern int g_count;
 class Student {
 public:
     // 静态变量，在AST节点中表现为VarDecl

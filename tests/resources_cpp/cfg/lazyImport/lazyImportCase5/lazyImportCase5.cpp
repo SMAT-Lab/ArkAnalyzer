@@ -14,15 +14,17 @@
  */
 
 // ArkTS侧如何接收Native侧的键值对进行修改并返回到Native侧
-#include <stddef.h>
+#include <cstddef>
 #include "napi/native_api.h"
 #include "hilog/log.h"
 #undef LOG_DOMAIN
 #undef LOG_TAG
 #define LOG_DOMAIN 0x3200
 #define LOG_TAG "MY_TAG"
+#define TWO 2
 
-static bool Napi_AddPropertyInt32(napi_env env, napi_value obj, const char *key, int32_t value) {
+static bool Napi_AddPropertyInt32(napi_env env, napi_value obj, const char *key, int32_t value)
+{
     napi_value key_napi = nullptr;
     napi_status status = napi_create_string_utf8(env, key, NAPI_AUTO_LENGTH, &key_napi);  // *右侧因为有未知宏导致AST节点缺失
     napi_value value_napi = nullptr;
@@ -31,7 +33,8 @@ static bool Napi_AddPropertyInt32(napi_env env, napi_value obj, const char *key,
     return true;
 }
 
-static  napi_value CallbackToArkTS(napi_env env, napi_callback_info info) {
+static  napi_value CallbackToArkTS(napi_env env, napi_callback_info info)
+{
     size_t argc = 1;
     napi_value args[1] = {nullptr};
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
@@ -39,7 +42,7 @@ static  napi_value CallbackToArkTS(napi_env env, napi_callback_info info) {
     napi_value argv = nullptr;
     napi_create_object(env, &argv);
     Napi_AddPropertyInt32(env, argv, "type", 1);
-    Napi_AddPropertyInt32(env, argv, "index", 2);
+    Napi_AddPropertyInt32(env, argv, "index", TWO);
     // native回调到ArkTS层
     napi_value result = nullptr;
     napi_call_function(env, NULL, args[0], 1, &argv, &result);  // *NULL对应AST节点缺失

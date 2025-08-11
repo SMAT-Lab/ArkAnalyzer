@@ -27,10 +27,12 @@ void Case1()
 
 void Case2()
 {
-    if (true)
+    if (true) {
         ;
-    if (false)
+    }
+    if (false) {
         ;
+    }
 }
 
 void Case3()

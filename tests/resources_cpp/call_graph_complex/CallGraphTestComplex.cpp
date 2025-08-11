@@ -16,7 +16,7 @@
 #define THREE 3
 #define TWO 2
 
-class Cat{
+class Cat {
 public:
     int RunAndSound(int inputItem)
     {

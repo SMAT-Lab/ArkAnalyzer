@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+#define TWO 2
 class Animal {
 public:
     virtual void Sound() const = 0;
@@ -43,12 +43,11 @@ void MakeSound(Animal &animal)
 void MainSwitch(int num)
 {
     Cat cat;
-    switch (num)
-    {
+    switch (num) {
         case 1:
             cat.Sound();
             break;
-        case 2:
+        case TWO:
             cat.Sound1();
             break;
 

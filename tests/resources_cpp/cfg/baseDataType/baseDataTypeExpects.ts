@@ -17,7 +17,7 @@ export const BASE_DATA_TYPE_EXPECT_MAIN = {
     blocks: [
         {
             id: 0,
-            stmts: ['this = this: @baseDataType/baseDataType.cpp: %dflt', 'boolData = staticinvoke <@%unk/%unk: .isChar()>(1)', 'if boolData != 0'],
+            stmts: ['this = this: @baseDataType/baseDataType.cpp: %dflt', 'boolData = staticinvoke <@%unk/%unk: .IsChar()>(1)', 'if boolData != 0'],
             preds: [],
             succes: [1, 2],
         },

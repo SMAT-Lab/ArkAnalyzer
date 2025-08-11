@@ -16,7 +16,7 @@
 // Native如何调ArkTS的方法
 
 #include "NativeMap.h"
-
+#define TWO 2
 static napi_value NativeCallArkTS(napi_env env, napi_callback_info info)
 {
     size_t argc = 1;
@@ -24,11 +24,11 @@ static napi_value NativeCallArkTS(napi_env env, napi_callback_info info)
     napi_value args[1] = { nullptr };
 
     // 获取传入的参数并依次放入参数数组中
-    napi_get_cb_info(env, info, &argc, args , nullptr, nullptr);
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
 
     // 创建一个int，作为ArkTS的入参
     napi_value argv = nullptr;
-    napi_create_int32(env, 2, &argv );
+    napi_create_int32(env, TWO, &argv);
 
     // 调用传入的callback，并将其结果返回
     napi_value result = nullptr;

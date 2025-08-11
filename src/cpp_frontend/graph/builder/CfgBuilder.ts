@@ -33,7 +33,7 @@ import { ModifierType } from '../../../core/model/ArkBaseModel';
 import { BlockBuilder, Case, Catch, TextError, Variable, Scope } from '../../../core/graph/builder/CfgBuilder';
 import { ModelUtils } from '../../../core/common/ModelUtils';
 import { CONSTRUCTOR_NAME, PROMISE } from '../../../core/common/TSConst';
-import {CppAstNode} from "../../../ast/ArkCxxAstNode";
+import { CppAstNode } from '../../../ast/ArkCxxAstNode';
 
 export class StatementBuilder {
     type: string;
@@ -139,7 +139,7 @@ export class CfgBuilder {
     private sourceFile: any;
     private declaringMethod: ArkMethod;
 
-    constructor(ast: any, name: string, declaringMethod: ArkMethod, sourceFile: any) {
+    constructor(ast: CppAstNode, name: string, declaringMethod: ArkMethod, sourceFile: any) {
         this.name = name;
         this.astRoot = ast;
         this.declaringMethod = declaringMethod;
@@ -193,9 +193,9 @@ export class CfgBuilder {
         }
     }
 
-    ASTNodeBreakStatement(c: any, lastStatement: StatementBuilder): void {
+    ASTNodeBreakStatement(c: CppAstNode, lastStatement: StatementBuilder): void {
         let p: any | null = c;
-        while (p && p.id != this.astRoot.id) {
+        while (p && p.id !== this.astRoot.id) {
             let pKind = p.kind.toString();
             if (pKind === 'WhileStmt' || pKind === 'DoStmt' || pKind === 'ForStmt') {
                 const lastLoopNextF = this.loopStack[this.loopStack.length - 1].nextF!;
@@ -213,7 +213,7 @@ export class CfgBuilder {
         }
     }
 
-    ASTNodeIfStatement(c: any, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
+    ASTNodeIfStatement(c: CppAstNode, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
         let ifstm: ConditionStatementBuilder = new ConditionStatementBuilder('ifStatement', 'IfStmt', c, scopeID);
         this.judgeLastType(ifstm, lastStatement);
         let ifexit: StatementBuilder = new StatementBuilder('ifExit', '', c, scopeID);
@@ -243,7 +243,7 @@ export class CfgBuilder {
         return ifexit;
     }
 
-    ASTNodeWhileStatement(c: any, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
+    ASTNodeWhileStatement(c: CppAstNode, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
         this.breakin = 'loop';
         let loopstm = new ConditionStatementBuilder('loopStatement', '', c, scopeID);
         this.loopStack.push(loopstm);
@@ -279,7 +279,7 @@ export class CfgBuilder {
         return s.substring(0, index);
     }
 
-    ASTNodeForStatement(c: any | ts.ForStatement, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
+    ASTNodeForStatement(c: CppAstNode, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
         this.breakin = 'loop';
         let loopstm = new ConditionStatementBuilder('loopStatement', '', c, scopeID);
         this.loopStack.push(loopstm);
@@ -306,7 +306,7 @@ export class CfgBuilder {
         return loopExit;
     }
 
-    ASTNodeDoStatement(c: any, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
+    ASTNodeDoStatement(c: CppAstNode, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
         this.breakin = 'loop';
         let loopstm = new ConditionStatementBuilder('loopStatement', '', c, scopeID);
         this.loopStack.push(loopstm);
@@ -339,7 +339,7 @@ export class CfgBuilder {
         return loopExit;
     }
 
-    private aliceCaseDefaultNode(node: any, clauses: any[]) {
+    private aliceCaseDefaultNode(node: CppAstNode, clauses: CppAstNode[]) {
         if (node.kind === 'BreakStmt' || node.kind === 'DefaultStmt' || node.kind === 'ContinueStmt') {
             clauses.push(node);
             return;
@@ -361,14 +361,14 @@ export class CfgBuilder {
     }
 
     // 将cpp的case-default的ast格式转换成TS的caseClause/defaultClause
-    private getCaseDefClauseAsts(switchNode: any) {
+    private getCaseDefClauseAsts(switchNode: CppAstNode):CppAstNode[] {
         // cpp解析case:后面没有语句且没有break时，会把后面的case/default作为该case的inner节点，因此要把原有的ast拆分成一个个的case，default
-        let tempClauses: any[] = [];
+        let tempClauses: CppAstNode[] = [];
         for (let node of switchNode.inner[1].inner) {
             this.aliceCaseDefaultNode(node, tempClauses);
         }
-        // 灭有case括号时，cpp中case和break/continue是分开的两个节点，此处将break/continue节点加入作为case或default节点的inner成员
-        return tempClauses.reduce((acc: any, curr: any, idx: number, arr: any) => {
+        // 没有case括号时，cpp中case和break/continue是分开的两个节点，此处将break/continue节点加入作为case或default节点的inner成员
+        return tempClauses.reduce((acc: CppAstNode[], curr: CppAstNode, idx: number, arr: CppAstNode[]) => {
             if (['CaseStmt', 'DefaultStmt'].includes(curr.kind.toString())) {
                 curr.parent = switchNode.inner[1];
                 if (idx + 1 < arr.length && ['BreakStmt', 'ContinueStmt'].includes(arr[idx + 1].kind.toString())) {
@@ -378,10 +378,10 @@ export class CfgBuilder {
                 acc.push(curr);
             }
             return acc;
-        }, [] as any[]);
+        }, [] as CppAstNode[]);
     }
 
-    ASTNodeSwitchStatement(c: any, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
+    ASTNodeSwitchStatement(c: CppAstNode, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
         this.breakin = 'switch';
         let switchstm = new SwitchStatementBuilder('switchStatement', '', c, scopeID);
         this.judgeLastType(switchstm, lastStatement);
@@ -396,7 +396,7 @@ export class CfgBuilder {
         for (let i = 0; i < c.inner[1].inner.length; i++) {
             const clause = c.inner[1].inner[i];
             let casestm: StatementBuilder;
-            let caseBody: any = [...clause.inner];
+            let caseBody: CppAstNode[] = [...clause.inner];
             if (clause.kind.toString() === 'CaseStmt') {
                 casestm = new StatementBuilder('statement', 'case ' + clause.inner[0].code + ':', clause, scopeID);
                 caseBody = caseBody.slice(1);
@@ -434,31 +434,44 @@ export class CfgBuilder {
         return switchExit;
     }
 
-    private ASTNodeCXXMemberCallExpr(innerNode: any, lastStatement: StatementBuilder, scopeID: number) {
+    private ASTNodeCXXMemberCallExpr(
+        innerNode: CppAstNode,
+        lastStatement: StatementBuilder,
+        scopeID: number
+    ) {
         let caller = '';
         let callee = '';
-        if (innerNode && innerNode.inner[0].kind === 'MemberExpr') {
-            let childInner = innerNode.inner[0];
-            callee = '.' + childInner.name;
-            while (childInner.inner && childInner.inner.length !== 0) {
-                let innerType = childInner.inner[0].kind.toString();
-                if (innerType === 'DeclRefExpr') {
-                    caller = childInner.inner[0].referencedDecl.name;
+        const first = innerNode?.inner?.[0];
+        if (first && first.kind === 'MemberExpr') {
+            let childInner: CppAstNode = first;
+            // callee：优先用 name，有些 JSON 可能只有 code
+            callee = '.' + (childInner.name || childInner.code || '');
+            // 2) 向下穿过 ImplicitCastExpr 链，直到 DeclRefExpr 或其他终点 同时使用可选链，避免越界
+            while (childInner.inner && childInner.inner.length > 0) {
+                const n0 = childInner.inner[0];
+                const innerKind = n0?.kind;
+                if (innerKind === 'DeclRefExpr') {
+                    // 3) 安全读取 referencedDecl?.name；兜底使用 n0.name / n0.code / 空串
+                    caller = n0.referencedDecl?.name || n0.name || n0.code || '';
                     break;
-                } else if (innerType === 'ImplicitCastExpr') {
-                    childInner = childInner.inner[0];
+                }
+                if (innerKind === 'ImplicitCastExpr') {
+                    childInner = n0; // 继续向下剥
                     continue;
                 }
+                // 其他节点就停止
                 break;
             }
         }
-        let nodeCode = caller + callee;
-        let s = new StatementBuilder('statement', nodeCode, innerNode, scopeID);
+
+        const nodeCode = caller + callee;
+        const s = new StatementBuilder('statement', nodeCode, innerNode, scopeID);
         this.judgeLastType(s, lastStatement);
         return s;
     }
 
-    ASTNodeGotoStatement(innerNode: any, lastStatement: StatementBuilder, scopeID: number) {
+
+    ASTNodeGotoStatement(innerNode: CppAstNode, lastStatement: StatementBuilder, scopeID: number) {
         let s = new StatementBuilder('gotoStatement', innerNode.code, innerNode, scopeID);
         this.judgeLastType(s, lastStatement);
         let label: string = innerNode.code.substring(innerNode.code.indexOf('goto ') + 5);
@@ -470,7 +483,7 @@ export class CfgBuilder {
         }
     }
 
-    private judgeLastStmtForLabel(s: StatementBuilder, lastStatement: StatementBuilder, gotoStatement: StatementBuilder | undefined) {
+    private judgeLastStmtForLabel(s: StatementBuilder, lastStatement: StatementBuilder, gotoStatement: StatementBuilder | undefined):void {
         if (lastStatement.type === 'ifStatement') {
             let lastIf = lastStatement as ConditionStatementBuilder;
             if (lastIf.nextT!.type === 'gotoStatement') {
@@ -494,7 +507,7 @@ export class CfgBuilder {
         }
     }
 
-    ASTNodeLabelStatement(innerNode: any, lastStatement: StatementBuilder, scopeID: number) {
+    ASTNodeLabelStatement(innerNode: CppAstNode, lastStatement: StatementBuilder, scopeID: number) {
         let labelStmt = new StatementBuilder('statement', 'goto label:' + innerNode.name, innerNode, scopeID);
         // 处理goto语句与label语句的前后关系
 
@@ -554,7 +567,7 @@ export class CfgBuilder {
         return str;
     }
 
-    ASTNodeTryStatement(c: any, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
+    ASTNodeTryStatement(c: CppAstNode, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
         let trystm = new TryStatementBuilder('tryStatement', 'try', c, scopeID);
         this.judgeLastType(trystm, lastStatement);
         let tryExit = new StatementBuilder('tryExit', '', c, scopeID);
@@ -604,15 +617,11 @@ export class CfgBuilder {
         let final = new StatementBuilder('statement', 'finally', c, scopeID);
         let finalExit = new StatementBuilder('finallyExit', '', c, scopeID);
         this.exits.push(finalExit);
-        if (c.finallyBlock && c.finallyBlock.statements.length > 0) {
-            this.walkAST(final, finalExit, [...c.finallyBlock.statements]);
-        } else {
-            let dummyFinally = new StatementBuilder('statement', 'dummyFinally', c, new Scope(this.scopes.length).id);
-            final.next = dummyFinally;
-            dummyFinally.lasts.add(final);
-            dummyFinally.next = finalExit;
-            finalExit.lasts.add(dummyFinally);
-        }
+        let dummyFinally = new StatementBuilder('statement', 'dummyFinally', c, new Scope(this.scopes.length).id);
+        final.next = dummyFinally;
+        dummyFinally.lasts.add(final);
+        dummyFinally.next = finalExit;
+        finalExit.lasts.add(dummyFinally);
         trystm.finallyStatement = final.next;
         tryExit.next = final.next;
         final.next?.lasts.add(tryExit);
@@ -1035,7 +1044,7 @@ export class CfgBuilder {
                 this.CfgBuilder2Array(trystm.next);
             }
         } else {
-            if (stmt.next != null) {
+            if (stmt.next !== null) {
                 this.CfgBuilder2Array(stmt.next);
             }
         }
@@ -1051,7 +1060,7 @@ export class CfgBuilder {
     }
 
     getFuncBodyStmt() {
-        let stmts: any[] = [];
+        let stmts: CppAstNode[] = [];
         if (this.astRoot.inner) {
             for (let i = 0; i < this.astRoot.inner.length; i++) {
                 if (this.astRoot.kind === 'CXXConstructorDecl' && ['CXXConstructExpr', 'CXXCtorInitializer'].includes(this.astRoot.inner[i].kind)) {
@@ -1067,7 +1076,7 @@ export class CfgBuilder {
     }
 
     buildCfgBuilder(): void {
-        let stmts: ts.Node[] = [];
+        let stmts: CppAstNode[] = [];
         if (this.astRoot.kind.toString() === 'TranslationUnit') {
             stmts = [...this.astRoot.inner];
         } else if (
@@ -1093,10 +1102,10 @@ export class CfgBuilder {
         this.addReturnStmt();
     }
 
-    private handleBuilder(stmts: ts.Node[]): void {
+    private handleBuilder(stmts: CppAstNode[]): void {
         let lastStmt = this.entry;
         for (const stmt of stmts) {
-            const stmtBuilder = new StatementBuilder('statement', stmt.getText(this.sourceFile), stmt, 0);
+            const stmtBuilder = new StatementBuilder('statement', stmt.code, stmt, 0);
             lastStmt.next = stmtBuilder;
             stmtBuilder.lasts.add(lastStmt);
             lastStmt = stmtBuilder;

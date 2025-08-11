@@ -32,7 +32,7 @@ int ArithmeticOperator()
     c++;
     int d = c / 1;
     --d;
-    int e = d % 2;
+    int e = d % TWO;
     return e;
 }
 
@@ -106,9 +106,9 @@ void BitOperator()
 
     int c4 = ~a; // -61 =1100 0011
 
-    int c5 = a << 2; // 240 =1111 0000
+    int c5 = a << TWO; // 240 =1111 0000
 
-    int c6 = a >> 2; // 15 =0000 1111
+    int c6 = a >> TWO; // 15 =0000 1111
 }
 
 // 杂项运算符
@@ -132,10 +132,10 @@ MyClass::MyClass(char name, int age) : name(name), age(age)
 
 void OtherOperator()
 {
-    MyClass aClass('A', 2);
+    MyClass aClass('A', TWO);
     int age = aClass.GetAge();
 
     int j = sizeof(age);
-    int i = (j++, j + 1, 2 + j);
+    int i = (j++, j + 1, TWO + j);
     std::cout << i << std::endl;
 }
