@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include <stdio.h>
+#include <cstdio>
 
 // 无捕获，有参
 void Case1()

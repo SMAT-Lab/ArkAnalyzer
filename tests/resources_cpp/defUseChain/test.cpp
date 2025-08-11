@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include <stdio.h>
+#include <cstdio>
 
 #define TWO 2
 

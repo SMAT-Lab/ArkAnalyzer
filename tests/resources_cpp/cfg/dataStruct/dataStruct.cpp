@@ -28,6 +28,7 @@ using namespace std;
 #define ONE 1
 #define TWO 2
 #define THREE 3
+#define FOUR 4
 #define FIVE 5
 #define SIX 6
 #define TEN 10
@@ -39,7 +40,7 @@ using namespace std;
 // vector
 void VectorTest()
 {
-    std::vector<int> vec1 = {1, 2, 3, 4, 5};
+    std::vector<int> vec1 = {ONE, TWO, THREE, FOUR, FIVE};
     int men = vec1[TWO];
     std::cout << "vec1[2]" << men << std::endl;
     vec1[TWO] = SIX;
@@ -83,7 +84,7 @@ void SetTest()
 // map
 void MapTest()
 {
-    std::map<int, std::string> map1 = {{1, "one"}, {2, "two"}, {3, "three"}};
+    std::map<int, std::string> map1 = {{ONE, "one"}, {TWO, "two"}, {THREE, "three"}};
     std::string value1 = map1[1];
     if (map1.find(1) != map1.end()) {
         std::cout << map1[3] << endl;
@@ -164,7 +165,7 @@ int ListTest()
 {
     std::list<int> list1(FIVE);
     std::list<int> list2(FIVE, TEN);
-    std::list<int> list3 = {1, 2, 3, 4};
+    std::list<int> list3 = {ONE, TWO, THREE, FOUR};
     std::list<int> list4;
     list4.push_back(TEN);
     list4.push_back(TWENTY);

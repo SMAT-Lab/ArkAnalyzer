@@ -21,6 +21,7 @@
 #undef LOG_TAG
 #define LOG_DOMAIN 0x3200
 #define LOG_TAG "MY_TAG"
+#define TWO 2
 
 static bool Napi_AddPropertyInt32(napi_env env, napi_value obj, const char *key, int32_t value) {
     napi_value key_napi = nullptr;
@@ -39,7 +40,7 @@ static  napi_value CallbackToArkTS(napi_env env, napi_callback_info info) {
     napi_value argv = nullptr;
     napi_create_object(env, &argv);
     Napi_AddPropertyInt32(env, argv, "type", 1);
-    Napi_AddPropertyInt32(env, argv, "index", 2);
+    Napi_AddPropertyInt32(env, argv, "index", TWO);
     // native回调到ArkTS层
     napi_value result = nullptr;
     napi_call_function(env, NULL, args[0], 1, &argv, &result);  // *NULL对应AST节点缺失

@@ -17,14 +17,15 @@
 #include "include/test.h"
 
 using namespace std;
-
+#define TWO 2
+#define FIVE 5
 int main()
 {
-    int res = FuncDoSomething(1, 2);
+    int res = FuncDoSomething(1, TWO);
     cout << "result is : " << res << endl;
 
-    Point p = {1.0, 2.0};
-    Circle c(p, 5.0, Color::GREEN);
+    Point p = {1.0, TWO};
+    Circle c(p, FIVE, Color::GREEN);
     double area = c.CalculateArea();
     cout << "Area of circle is : " << area << endl;
     c.PrintInfo();

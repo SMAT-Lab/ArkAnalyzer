@@ -30,7 +30,7 @@ export interface CppRange {
 
 /** 类型信息 */
 export interface CppTypeInfo {
-    qualType: string;                // 主字段：unifyTypeStr 输出
+    qualType: string; // 主字段：unifyTypeStr 输出
     desugaredQualType?: string;
     typeAliasDeclId?: number;
     typeAliasDeclQualifiedName?: string;
