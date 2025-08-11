@@ -107,8 +107,7 @@ function buildUnion2ArkClass(clsNode: CppAstNode, cls: ArkClass, sourceFile: Cpp
     const classSignature = new ClassSignature(
         className,
         cls.getDeclaringArkFile().getFileSignature(),
-        cls.getDeclaringArkNamespace()?.getSignature() || null,
-        ClassCategory.UNION
+        cls.getDeclaringArkNamespace()?.getSignature() || null
     );
     cls.setSignature(classSignature);
     cls.setCategory(ClassCategory.UNION);
@@ -129,8 +128,7 @@ function buildStruct2ArkClass(clsNode: CppAstNode, cls: ArkClass, sourceFile: Cp
     const classSignature = new ClassSignature(
         className,
         cls.getDeclaringArkFile().getFileSignature(),
-        cls.getDeclaringArkNamespace()?.getSignature() || null,
-        ClassCategory.STRUCT
+        cls.getDeclaringArkNamespace()?.getSignature() || null
     );
     cls.setSignature(classSignature);
 
@@ -204,8 +202,7 @@ function buildEnum2ArkClass(clsNode: CppAstNode, cls: ArkClass, sourceFile: CppA
     const classSignature = new ClassSignature(
         className,
         cls.getDeclaringArkFile().getFileSignature(),
-        cls.getDeclaringArkNamespace()?.getSignature() || null,
-        ClassCategory.ENUM
+        cls.getDeclaringArkNamespace()?.getSignature() || null
     );
     cls.setSignature(classSignature);
 

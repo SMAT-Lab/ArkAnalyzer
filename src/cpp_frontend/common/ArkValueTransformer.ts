@@ -70,7 +70,6 @@ import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { ArkValueTransformer } from '../../core/common/ArkValueTransformer';
 import { ModelUtils } from '../../core/common/ModelUtils';
 import { CONSTRUCTOR_NAME, THIS_NAME } from '../../core/common/TSConst';
-import { ClassCategory } from '../../core/model/ArkClass';
 import { TypeInference } from './TypeInference';
 import { setTs2CppFuncMapOfClass } from './ModelUtils';
 import {CppAstNode, CppTranslationUnit} from '../../ast/ArkCxxAstNode';
@@ -2157,15 +2156,15 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
             return new ClassType(classSignature);
         } else if (tagUsed === 'struct') {
             const fileSignature = new FileSignature(this.sourceFileCpp?.projectName ?? '', this.sourceFile.fileName);
-            const classSignature = new ClassSignature('struct', fileSignature, null, ClassCategory.STRUCT);
+            const classSignature = new ClassSignature('struct', fileSignature, null);
             return new ClassType(classSignature);
         } else if (tagUsed === 'enum') {
             const fileSignature = new FileSignature(this.sourceFileCpp?.projectName ?? '', this.sourceFile.fileName);
-            const classSignature = new ClassSignature('enum', fileSignature, null, ClassCategory.ENUM);
+            const classSignature = new ClassSignature('enum', fileSignature, null);
             return new ClassType(classSignature);
         } else if (tagUsed === 'union') {
             const fileSignature = new FileSignature(this.sourceFileCpp?.projectName ?? '', this.sourceFile.fileName);
-            const classSignature = new ClassSignature('struct', fileSignature, null, ClassCategory.UNION);
+            const classSignature = new ClassSignature('union', fileSignature, null);
             return new ClassType(classSignature);
         } else if (qualType.includes('vector')) {
             let dimension = 0; // Handle std::vector scenarios (must be after std:: check)

@@ -113,23 +113,13 @@ export class ClassSignature {
     private declaringFileSignature: FileSignature;
     private declaringNamespaceSignature: NamespaceSignature | null;
     private className: string;
-    private category: any; // arkClass类型
 
-    public static readonly DEFAULT: ClassSignature = new ClassSignature(UNKNOWN_CLASS_NAME, FileSignature.DEFAULT, null, null);
+    public static readonly DEFAULT: ClassSignature = new ClassSignature(UNKNOWN_CLASS_NAME, FileSignature.DEFAULT, null);
 
-    constructor(className: string, declaringFileSignature: FileSignature, declaringNamespaceSignature: NamespaceSignature | null = null, category: any = null) {
+    constructor(className: string, declaringFileSignature: FileSignature, declaringNamespaceSignature: NamespaceSignature | null = null) {
         this.className = className;
         this.declaringFileSignature = declaringFileSignature;
         this.declaringNamespaceSignature = declaringNamespaceSignature;
-        this.category = category;
-    }
-
-    get getCategory(): any {
-        return this.category;
-    }
-
-    set setCategory(category: any) {
-        this.category = category;
     }
 
     /**
