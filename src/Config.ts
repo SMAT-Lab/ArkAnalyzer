@@ -185,15 +185,13 @@ function parseCMakeArgs(buffer: string[], isTarget: boolean): string[] {
             }
             continue;
         }
-
         curr += c;
     }
     if (curr.length > 0) {
         args.push(curr);
     }
     if (isTarget) {
-        // 跳过target名字和 PUBLIC/PRIVATE/INTERFACE 关键字
-        if (args.length < 3) {
+        if (args.length < 3) {  // 跳过target名字和 PUBLIC/PRIVATE/INTERFACE 关键字
             return [];
         }
         const idx = args.findIndex(a => ['PUBLIC', 'PRIVATE', 'INTERFACE'].includes(a.toUpperCase()));

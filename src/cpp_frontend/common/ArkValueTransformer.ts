@@ -73,7 +73,7 @@ import { CONSTRUCTOR_NAME, THIS_NAME } from '../../core/common/TSConst';
 import { ClassCategory } from '../../core/model/ArkClass';
 import { TypeInference } from './TypeInference';
 import { setTs2CppFuncMapOfClass } from './ModelUtils';
-import { CppAstNode } from '../../ast/ArkCxxAstNode';
+import {CppAstNode, CppTranslationUnit} from '../../ast/ArkCxxAstNode';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkValueTransformer');
 
@@ -98,16 +98,17 @@ const COMPOUND_BIN_OPS = new Set<string>(Object.values(CompoundBinaryOperator));
 
 export class ArkValueTransformerCpp extends ArkValueTransformer {
     private arkIRTransformerCpp: ArkIRTransformerCpp;
-
-    constructor(arkIRTransformer: ArkIRTransformerCpp, sourceFile: CppAstNode, declaringMethod: ArkMethod) {
+    private readonly sourceFileCpp: CppTranslationUnit;
+    constructor(arkIRTransformer: ArkIRTransformerCpp, sourceFile: CppTranslationUnit, declaringMethod: ArkMethod) {
         super(arkIRTransformer, sourceFile as unknown as ts.SourceFile, declaringMethod);
         this.arkIRTransformerCpp = arkIRTransformer;
+        this.sourceFileCpp = sourceFile;
     }
 
     private thisExpressionToValueAndStmtsCpp(thisExpression: CppAstNode): ValueAndStmts {
         return {
             value: this.getThisLocal(),
-            valueOriginalPositions: [FullPosition.buildFromNodeCpp(thisExpression, this.sourceFile)],
+            valueOriginalPositions: [FullPosition.buildFromNodeCpp(thisExpression, this.sourceFileCpp)],
             stmts: [],
         };
     }
@@ -326,7 +327,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
     private unprocessedNodeToValueAndStmts(node: CppAstNode): ValueAndStmts {
         return {
             value: new Local(node.code),
-            valueOriginalPositions: [FullPosition.buildFromNodeCpp(node, this.sourceFile)],
+            valueOriginalPositions: [FullPosition.buildFromNodeCpp(node, this.sourceFileCpp)],
             stmts: [],
         };
     }
@@ -401,7 +402,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         const newSuperInvokeExpr = new ArkInstanceInvokeExpr(base, superConstructor.getSignature(), argValues);
         return {
             value: newSuperInvokeExpr,
-            valueOriginalPositions: [FullPosition.buildFromNodeCpp(cxxInheritedCtorInitExpr, this.sourceFile)],
+            valueOriginalPositions: [FullPosition.buildFromNodeCpp(cxxInheritedCtorInitExpr, this.sourceFileCpp)],
             stmts: [],
         };
     }
@@ -432,7 +433,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
             const newSuperInvokeExpr = new ArkInstanceInvokeExpr(base, superConstructor.getSignature(), argValues);
             return {
                 value: newSuperInvokeExpr,
-                valueOriginalPositions: [FullPosition.buildFromNodeCpp(cxxConstructExpr, this.sourceFile)],
+                valueOriginalPositions: [FullPosition.buildFromNodeCpp(cxxConstructExpr, this.sourceFileCpp)],
                 stmts: [],
             };
         }
@@ -527,7 +528,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         }
         return {
             value: constant,
-            valueOriginalPositions: [FullPosition.buildFromNodeCpp(CXXScalarValueInitExpr, this.sourceFile)],
+            valueOriginalPositions: [FullPosition.buildFromNodeCpp(CXXScalarValueInitExpr, this.sourceFileCpp)],
             stmts: [],
         };
     }
@@ -535,7 +536,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
     private deleteExpressionToValueAndStmtsCpp(deleteExpression: CppAstNode): ValueAndStmts {
         const { value: exprValue, valueOriginalPositions: exprPositions, stmts: stmts } = this.tsNodeToValueAndStmts(deleteExpression.inner[0]);
         const deleteExpr = new ArkDeleteExpr(exprValue);
-        const deleteExprPosition = [FullPosition.buildFromNodeCpp(deleteExpression, this.sourceFile), ...exprPositions];
+        const deleteExprPosition = [FullPosition.buildFromNodeCpp(deleteExpression, this.sourceFileCpp), ...exprPositions];
         return { value: deleteExpr, valueOriginalPositions: deleteExprPosition, stmts: stmts };
     }
 
@@ -556,7 +557,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
             exprStmts.forEach((stmt: Stmt) => stmts.push(stmt));
         }
         const castExpr = new ArkCastExpr(exprValue, this.resolveTypeNodeCpp(castExpression));
-        const castExprPosition = [FullPosition.buildFromNodeCpp(castExpression, this.sourceFile), ...exprPositions];
+        const castExprPosition = [FullPosition.buildFromNodeCpp(castExpression, this.sourceFileCpp), ...exprPositions];
         return { value: castExpr, valueOriginalPositions: castExprPosition, stmts: stmts };
     }
 
@@ -687,7 +688,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         currStmts: Stmt[]
     ): ValueAndStmts {
         const stmts: Stmt[] = [...currStmts];
-        const componentExpressionPosition = FullPosition.buildFromNodeCpp(componentExpression, this.sourceFile);
+        const componentExpressionPosition = FullPosition.buildFromNodeCpp(componentExpression, this.sourceFileCpp);
         const {
             value: componentValue,
             valueOriginalPositions: componentPositions,
@@ -711,7 +712,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         currStmts: Stmt[]
     ): ValueAndStmts {
         const stmts: Stmt[] = [...currStmts];
-        const componentExpressionPosition = FullPosition.buildFromNodeCpp(componentExpression, this.sourceFile);
+        const componentExpressionPosition = FullPosition.buildFromNodeCpp(componentExpression, this.sourceFileCpp);
         const classSignature = ArkSignatureBuilder.buildClassSignatureFromClassName(componentName);
         const classType = new ClassType(classSignature);
         const newExpr = new ArkNewExpr(classType);
@@ -767,7 +768,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
 
     private identifierToValueAndStmtsCpp(identifier: CppAstNode | any, variableDefFlag: boolean = false): ValueAndStmts {
         let identifierValue: Value;
-        let identifierPositions = [FullPosition.buildFromNodeCpp(identifier, this.sourceFile)];
+        let identifierPositions = [FullPosition.buildFromNodeCpp(identifier, this.sourceFileCpp)];
         let varNode: CppAstNode;
         if (identifier.referencedDecl) {
             varNode = identifier.referencedDecl;
@@ -862,7 +863,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
             fieldSignature // 字段签名（如 insert）
         );
         // 记录节点位置信息，方便后续溯源和 debug
-        const fieldRefPositions = [FullPosition.buildFromNodeCpp(memberExpression, this.sourceFile), ...basePositions];
+        const fieldRefPositions = [FullPosition.buildFromNodeCpp(memberExpression, this.sourceFileCpp), ...basePositions];
         // 返回解析结果，包括 IR 字段引用、位置信息和相关 SSA 语句
         return { value: fieldRef, valueOriginalPositions: fieldRefPositions, stmts: stmts };
     }
@@ -903,7 +904,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
             elementAccessExpr = new ArkInstanceFieldRef(baseValue as Local, fieldSignature);
         }
         // reserve positions for field name
-        const exprPositions = [FullPosition.buildFromNodeCpp(elementAccessExpression, this.sourceFile), ...basePositions, ...arguPositions];
+        const exprPositions = [FullPosition.buildFromNodeCpp(elementAccessExpression, this.sourceFileCpp), ...basePositions, ...arguPositions];
         return {
             value: elementAccessExpr,
             valueOriginalPositions: exprPositions,
@@ -1064,7 +1065,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
 
         // Merge results and build element access expression
         const exprPositions = [
-            FullPosition.buildFromNodeCpp(callExpression, this.sourceFile),
+            FullPosition.buildFromNodeCpp(callExpression, this.sourceFileCpp),
             ...innerStmts[0].valueOriginalPositions,
             ...innerStmts[1].valueOriginalPositions,
         ];
@@ -1257,7 +1258,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         callerStmts.forEach(stmt => stmts.push(stmt));
 
         let invokeValue: Value;
-        let invokeValuePositions: FullPosition[] = [FullPosition.buildFromNodeCpp(callExpression, this.sourceFile)];
+        let invokeValuePositions: FullPosition[] = [FullPosition.buildFromNodeCpp(callExpression, this.sourceFileCpp)];
         const { args, argPositions, realGenericTypes } = argus;
         if (callerValue instanceof AbstractFieldRef) {
             invokeValue = this.buildInvokeValueForFieldRef(callerValue, args, realGenericTypes, invokeValuePositions, callerPositions);
@@ -1315,7 +1316,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         stmts.push(...callerStmts);
 
         let invokeValue: Value;
-        let invokeValuePositions: FullPosition[] = [FullPosition.buildFromNodeCpp(callExpression, this.sourceFile)];
+        let invokeValuePositions: FullPosition[] = [FullPosition.buildFromNodeCpp(callExpression, this.sourceFileCpp)];
         if (callerValue instanceof ArkInstanceFieldRef) {
             invokeValue = this.buildInvokeValueForFieldRef(callerValue, args, realGenericTypes, invokeValuePositions, callerPositions);
         } else if (callerValue instanceof Local) {
@@ -1438,13 +1439,13 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         if (this.builderMethodContextFlag) {
             ModelUtils.implicitArkUIBuilderMethods.add(arrowArkMethod);
         }
-        buildArkMethodFromArkClass(callableNode, declaringClass, arrowArkMethod, this.sourceFile, this.declaringMethod);
+        buildArkMethodFromArkClass(callableNode, declaringClass, arrowArkMethod, this.sourceFileCpp, this.declaringMethod);
 
         const callableType = new FunctionType(arrowArkMethod.getSignature());
         const callableValue = this.addNewLocal(arrowArkMethod.getName(), callableType);
         return {
             value: callableValue,
-            valueOriginalPositions: [FullPosition.buildFromNodeCpp(callableNode, this.sourceFile)],
+            valueOriginalPositions: [FullPosition.buildFromNodeCpp(callableNode, this.sourceFileCpp)],
             stmts: [],
         };
     }
@@ -1472,7 +1473,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         }
         const newExpr = new ArkNewExpr(classType);
         const {value: newLocal, valueOriginalPositions: newLocalPositions, stmts: newExprStmts, } =
-            this.arkIRTransformerCpp.generateAssignStmtForValue(newExpr, [FullPosition.buildFromNodeCpp(newExpression, this.sourceFile)]);
+            this.arkIRTransformerCpp.generateAssignStmtForValue(newExpr, [FullPosition.buildFromNodeCpp(newExpression, this.sourceFileCpp)]);
         newExprStmts.forEach(stmt => stmts.push(stmt));
         const constructorMethodSubSignature = ArkSignatureBuilder.buildMethodSubSignatureFromMethodName(CONSTRUCTOR_NAME);
         const constructorMethodSignature = new MethodSignature(classSignature, constructorMethodSubSignature);
@@ -1482,7 +1483,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
     // 抽出的尾部逻辑：构造调用 + 特例处理 + 成员初始化
     private emitCtorInvokeAndMemberInitsCpp(
         stmts: Stmt[],
-        newExpression: any,
+        newExpression: CppAstNode,
         newLocal: Local,
         newLocalPositions: FullPosition[],
         constructorMethodSignature: MethodSignature,
@@ -1538,19 +1539,33 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
 
 
     // 构造参数表格
-    private getConstructArgs(constructArgs: CppAstNode | any): Array<any> {
-        if (constructArgs.kind === 'InitListExpr') {
-            constructArgs = constructArgs.inner;
+    private getConstructArgs(constructArgs: CppAstNode): CppAstNode[];
+    private getConstructArgs(constructArgs: CppAstNode[]): CppAstNode[];
+    private getConstructArgs(constructArgs: CppAstNode | CppAstNode[]): CppAstNode[] {
+        // 1) 先规整成“参数数组”形态
+        let arr: CppAstNode[];
+        if (Array.isArray(constructArgs)) {
+            arr = constructArgs;
+        } else if (constructArgs.kind === 'InitListExpr') {
+            arr = constructArgs.inner ?? [];
+        } else {
+            // 某些场景（如 CXXConstructExpr）参数可能放在 inner[1] 的 InitListExpr 里
+            arr = constructArgs.inner ?? [];
         }
-        if (constructArgs[1]?.kind === 'InitListExpr') {
-            constructArgs = constructArgs[1].inner;
+        // 2) 若第二个元素本身是 InitListExpr，则取它的 inner 作为真正的参数
+        if (arr[1]?.kind === 'InitListExpr') {
+            arr = arr[1].inner ?? [];
         }
-        let newConstructArgs = [];
-        for (let i = 0; i < constructArgs.length; i++) {
-            if (constructArgs[1]?.kind.toString() === 'ImplicitCastExpr') {
-                newConstructArgs.push(constructArgs[i].inner[1]);
+        // 3) 若存在“隐式转换”形态（原逻辑：看第二个元素是否为 ImplicitCastExpr）
+        const useInner1 = arr[1]?.kind === 'ImplicitCastExpr';
+        // 4) 生成新参数列表（与原逻辑等价）
+        const newConstructArgs: CppAstNode[] = [];
+        for (let i = 0; i < arr.length; i++) {
+            if (useInner1) {
+                const inner1 = arr[i]?.inner?.[1];
+                newConstructArgs.push(inner1 ?? arr[i]); // 防御：缺少 inner[1] 时退回 arr[i]
             } else {
-                newConstructArgs.push(constructArgs[i]);
+                newConstructArgs.push(arr[i]);
             }
         }
         return newConstructArgs;
@@ -1599,7 +1614,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
                 baseType = AnyType.getInstance();
             }
         }
-        const newArrayExprPosition = FullPosition.buildFromNodeCpp(newArrayExpression, this.sourceFile);
+        const newArrayExprPosition = FullPosition.buildFromNodeCpp(newArrayExpression, this.sourceFileCpp);
         return this.generateArrayExprAndStmtsCpp(
             baseType,
             arrayLengthValue,
@@ -1625,7 +1640,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
             // 如果类型不确定，当作未知引用类型
             return this.newExpressionToValueAndStmtsCpp(arrayLiteralExpression);
         }
-        const newArrayExprPosition = FullPosition.buildFromNodeCpp(arrayLiteralExpression, this.sourceFile);
+        const newArrayExprPosition = FullPosition.buildFromNodeCpp(arrayLiteralExpression, this.sourceFileCpp);
         return this.generateArrayExprAndStmtsCpp(baseType, CppValueUtil.getOrCreateNumberConst(arrayLength),
             FullPosition.DEFAULT, arrayLength, elementValues, elementPositions, stmts, newArrayExprPosition, true);
     }
@@ -1703,7 +1718,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         }
 
         const operatorToken: string = prefixUnaryExpression.opcode ?? ''; // 可选字段兜底为空串
-        let exprPositions = [FullPosition.buildFromNodeCpp(prefixUnaryExpression, this.sourceFile)];
+        let exprPositions = [FullPosition.buildFromNodeCpp(prefixUnaryExpression, this.sourceFileCpp)];
         if (operatorToken === '++' || operatorToken === '--') {
             const binaryOperator = operatorToken === '++' ? NormalBinaryOperator.Addition : NormalBinaryOperator.Subtraction;
             const binopExpr = new ArkNormalBinopExpr(operandValue, CppValueUtil.getOrCreateNumberConst(1), binaryOperator);
@@ -1754,7 +1769,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         }
 
         let value: Value;
-        let exprPositions = [FullPosition.buildFromNodeCpp(postfixUnaryExpression, this.sourceFile)];
+        let exprPositions = [FullPosition.buildFromNodeCpp(postfixUnaryExpression, this.sourceFileCpp)];
         const operatorToken = postfixUnaryExpression.opcode;
         if (operatorToken === '++' || operatorToken === '--') {
             const binaryOperator = operatorToken === '++' ? NormalBinaryOperator.Addition : NormalBinaryOperator.Subtraction;
@@ -1899,7 +1914,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
             return this.assignmentToValueAndStmtsCpp(binaryExpressionLeft, binaryExpressionRight, false, false, UnknownType.getInstance(), true);
         }
         const stmts: Stmt[] = [];
-        const binaryExpressionPosition = FullPosition.buildFromNodeCpp(binaryExpression, this.sourceFile);
+        const binaryExpressionPosition = FullPosition.buildFromNodeCpp(binaryExpression, this.sourceFileCpp);
         const { value: opValue1, valueOriginalPositions: opPositions1, stmts: opStmts1 } = this.tsNodeToSingleAddressValueAndStmts(binaryExpressionLeft);
         opStmts1.forEach(stmt => stmts.push(stmt));
         const { value: opValue2, valueOriginalPositions: opPositions2, stmts: opStmts2 } = this.tsNodeToSingleAddressValueAndStmts(binaryExpressionRight);
@@ -1950,7 +1965,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         const operator = this.compoundAssignmentTokenToBinaryOperatorCpp(binaryExpression.opcode);
         if (operator) {
             const exprValue = new ArkNormalBinopExpr(leftValue, rightValue, operator);
-            const exprValuePosition = FullPosition.buildFromNodeCpp(binaryExpression, this.sourceFile);
+            const exprValuePosition = FullPosition.buildFromNodeCpp(binaryExpression, this.sourceFileCpp);
             const assignStmt = new ArkAssignStmt(leftValue, exprValue);
             assignStmt.setOperandOriginalPositions([...leftPositions, exprValuePosition, ...leftPositions, ...rightPositions]);
             stmts.push(assignStmt);
@@ -2023,19 +2038,16 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
 
     private literalNodeToValueAndStmtsCpp(literalNode: CppAstNode): ValueAndStmts | null {
         const stmts: Stmt[] = [];
-        const pos = [FullPosition.buildFromNodeCpp(literalNode, this.sourceFile)];
-        // 小工具：安全取字符串
-        const S = (v: string | undefined | null) => v ?? '';
+        const pos = [FullPosition.buildFromNodeCpp(literalNode, this.sourceFileCpp)];
+        const S = (v: string | undefined | null): string => v ?? '';
         switch (literalNode.kind) {
             case 'IntegerLiteral': {
-                const raw = S(literalNode.value) || S(literalNode.code);
-                const num = Number.parseFloat(raw);
+                const num = Number.parseFloat(S(literalNode.value) || S(literalNode.code));
                 const constant = CppValueUtil.getOrCreateNumberConst(Number.isFinite(num) ? num : 0);
                 return { value: constant, valueOriginalPositions: pos, stmts };
             }
             case 'FloatingLiteral': {
-                const raw = S(literalNode.value) || S(literalNode.code);
-                const num = Number.parseFloat(raw);
+                const num = Number.parseFloat(S(literalNode.value) || S(literalNode.code));
                 const constant = CppValueUtil.getOrCreateNumberConst(Number.isFinite(num) ? num : 0);
                 return { value: constant, valueOriginalPositions: pos, stmts };
             }
@@ -2058,13 +2070,9 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
                 return { value: constant, valueOriginalPositions: pos, stmts };
             }
             case 'AddrLabelExpr': {
-                // inner[0] 里是 LabelRef
-                const labelNode = literalNode.inner?.[0];
-                const labelName = S(labelNode?.code);
+                const labelName = S(literalNode.inner?.[0]?.code);
                 const constant = CppValueUtil.getLabelPtrConstant(labelName);
-                // 安全拿父节点；需要完整父节点就用 (true)
                 const parent = (literalNode.parent ?? literalNode.getParent?.(true)) ?? null;
-                // 从父节点 code 里提取 point 名称（形如 "void  foo = ..."）
                 const m = parent?.code?.match(/void\s*([^=]+)=/);
                 const point = S(m?.[1]).trim() || labelName;
                 const map = this.declaringMethod.gotoStmtMap;
@@ -2077,7 +2085,6 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
                 }
                 return { value: constant, valueOriginalPositions: pos, stmts };
             }
-
             default: {
                 logger.warn(`ast node's syntaxKind is ${literalNode.kind}, not literalNode`);
                 return null;
@@ -2149,15 +2156,15 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
             const classSignature = new ClassSignature('iostream', fileSignature);
             return new ClassType(classSignature);
         } else if (tagUsed === 'struct') {
-            const fileSignature = new FileSignature(this.sourceFile?.projectName ?? '', this.sourceFile.fileName);
+            const fileSignature = new FileSignature(this.sourceFileCpp?.projectName ?? '', this.sourceFile.fileName);
             const classSignature = new ClassSignature('struct', fileSignature, null, ClassCategory.STRUCT);
             return new ClassType(classSignature);
         } else if (tagUsed === 'enum') {
-            const fileSignature = new FileSignature(this.sourceFile?.projectName ?? '', this.sourceFile.fileName);
+            const fileSignature = new FileSignature(this.sourceFileCpp?.projectName ?? '', this.sourceFile.fileName);
             const classSignature = new ClassSignature('enum', fileSignature, null, ClassCategory.ENUM);
             return new ClassType(classSignature);
         } else if (tagUsed === 'union') {
-            const fileSignature = new FileSignature(this.sourceFile?.projectName ?? '', this.sourceFile.fileName);
+            const fileSignature = new FileSignature(this.sourceFileCpp?.projectName ?? '', this.sourceFile.fileName);
             const classSignature = new ClassSignature('struct', fileSignature, null, ClassCategory.UNION);
             return new ClassType(classSignature);
         } else if (qualType.includes('vector')) {

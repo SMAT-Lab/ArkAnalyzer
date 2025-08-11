@@ -16,7 +16,7 @@
 import ts from 'ohos-typescript';
 
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
-import {CppAstNode} from "../../ast/ArkCxxAstNode";
+import { CppAstNode } from '../../ast/ArkCxxAstNode';
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'Position');
 
 const LOW_BITS_SIZE = 16;
@@ -148,10 +148,10 @@ export class FullPosition {
 
     public static buildFromNodeCpp(node: CppAstNode | undefined, _sourceFile: CppAstNode): FullPosition {
         const begin = node?.range?.begin;
-        const end   = node?.range?.end;
-        const startLine      = begin?.line ?? 0;
+        const end = node?.range?.end;
+        const startLine = begin?.line ?? 0;
         const startCharacter = begin?.col  ?? 0;
-        const endLine      = end?.line ?? startLine;
+        const endLine= end?.line ?? startLine;
         const endCharacter = end?.col ?? (begin?.tokLen != null ? startCharacter + begin.tokLen : startCharacter);
         return new FullPosition(startLine, startCharacter, endLine, endCharacter);
     }

@@ -163,4 +163,5 @@ export interface CppTranslationUnit extends CppAstNode {
     kind: 'TranslationUnit' | 'TranslationUnitDecl';
     fileName?: string;
     headerUnits?: CppAstNode[];
+    projectName?: string;
 }

@@ -92,7 +92,7 @@ const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkValueTransforme
 export class ArkValueTransformer {
     public conditionalOperatorNo: number = 0;
     protected tempLocalNo: number = 0;
-    protected sourceFile: ts.SourceFile | any;
+    protected sourceFile: ts.SourceFile;
     protected locals: Map<string, Local> = new Map();
     protected globals?: Map<string, GlobalRef>;
     protected thisLocal: Local;

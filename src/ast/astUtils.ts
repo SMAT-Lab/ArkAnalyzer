@@ -137,7 +137,9 @@ export class AstUtils {
     }
 
     private static fullInfo(cursor: CppAstNode): void {
-        if (!Array.isArray(cursor.inner)) cursor.inner = [];
+        if (!Array.isArray(cursor.inner)) {
+            cursor.inner = [];
+        }
         cursor.inner = this.filterChildren(cursor);
         if (!Object.prototype.hasOwnProperty.call(cursor, 'name') || cursor.name === undefined) {
             cursor.name = '';
@@ -148,11 +150,7 @@ export class AstUtils {
             }
             const currentCursor = cursor.inner[idx];
             // 明确 getParent 的重载类型
-            type GetParentOverload = {
-                (isNeedInner: true): CppAstNode;
-                (isNeedInner?: false): CppAstNodeLite;
-            };
-
+            type GetParentOverload = { (isNeedInner: true): CppAstNode; (isNeedInner?: false): CppAstNodeLite; };
             const getParentImpl: GetParentOverload = ((isNeedInner?: boolean):CppAstNodeLite => {
                 if (isNeedInner) {
                     return { ...cursor };

@@ -42,7 +42,8 @@ export function buildNormalArkClassFromArkMethod(clsNode: CppAstNode, cls: ArkCl
     }
 }
 
-export function buildNormalArkClassFromArkFile(clsNode: CppAstNode, arkFile: ArkFile, cls: ArkClass, sourceFile: CppAstNode, declaringMethod?: ArkMethod): void {
+export function buildNormalArkClassFromArkFile(clsNode: CppAstNode, arkFile: ArkFile, cls: ArkClass,
+                                               sourceFile: CppAstNode, declaringMethod?: ArkMethod): void {
     cls.setDeclaringArkFile(arkFile);
     cls.setCode(clsNode.name);
     if (clsNode.range?.begin) {

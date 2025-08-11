@@ -116,23 +116,18 @@ export function buildArkMethodFromArkClass(methodNode: CppAstNode, declaringClas
     if (declaringMethod !== undefined) {
         mtd.setOuterMethod(declaringMethod);
     }
-    // 判断是否是生产器式函数
     if (methodNode.kind === 'FunctionDecl' || methodNode.kind === 'FunctionTemplate') {
         mtd.setAsteriskToken(false);
     }
     handleFunctionTemplate(methodNode, mtd, sourceFile);
-
     mtd.setCode(methodNode.code);
     mtd.setModifiers(buildModifiers(methodNode));
     if (methodNode.kind === 'FriendDecl' && methodNode.inner.length > 0) {
         methodNode = methodNode.inner[0];
     }
-
-    // build methodDeclareSignatures and methodSignature as well as corresponding positions
     const methodName = buildMethodName(methodNode, declaringClass, sourceFile, declaringMethod);
     const methodParameters: MethodParameter[] = [];
     const parameters = getSpecificNodes(methodNode, 'ParmDecl');
-
     buildParameters(parameters, mtd, sourceFile).forEach(parameter => {
         buildGenericType(parameter.getType(), mtd);
         methodParameters.push(parameter);
@@ -159,10 +154,8 @@ export function buildArkMethodFromArkClass(methodNode: CppAstNode, declaringClas
         mtd.setDeclareSignatures(methodSignature);
         mtd.setDeclareLinesAndCols([line + 1], [character + 1]);
     }
-
     let bodyBuilder = new BodyBuilderCpp(mtd.getSignature(), methodNode, mtd, sourceFile);
     mtd.setBodyBuilderCpp(bodyBuilder);
-
     if (mtd.hasBuilderDecorator()) {
         mtd.setViewTree(buildViewTree(mtd));
     } else if (declaringClass.hasComponentDecorator() && mtd.getSubSignature().toString() === 'build()' && !mtd.isStatic()) {
