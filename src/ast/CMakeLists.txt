@@ -11,7 +11,6 @@ add_executable(arkCppAstDumper
         utils/cli_util.cpp
 )
 
-
 target_include_directories(arkCppAstDumper PRIVATE
         ${CLANG_INCLUDE_DIRS}
         ${CMAKE_CURRENT_SOURCE_DIR}/utils

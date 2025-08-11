@@ -162,7 +162,8 @@ void buildNodeRange(json& node, json& parent)
     size_t index1 = pCode.find(cCode);
     if (index1 != std::string::npos) {
         json pRange = parent["range"];
-        int startOffset = pRange["begin"]["offset"] + index1;
+        size_t offset = pRange["begin"]["offset"];
+        int startOffset = offset + index1;
         int endOffset = startOffset + cCode.size() - 1; // 存在子字符串不会越界
         int startLine = pRange["begin"]["line"];
         int endLine = startLine;
@@ -858,7 +859,7 @@ json addCXXCtorInitializer(json &children, json& parent)
 }
 
 // 遍历构建typedef的子节点
-void buildTypedefChild(CXType& type, json& newChildren, json& children, json& parent)
+void buildTypedefChild(const CXType& type, json& newChildren, json& children, json& parent)
 {
     CXString cxType = clang_getTypeSpelling(type);
     std::string typeStr = clang_getCString(cxType);

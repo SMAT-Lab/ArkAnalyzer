@@ -156,8 +156,8 @@ ClangArgs cliutil::LoadCompileCommands(const CommandLineOptions& opts)
         std::string arg;
         while (iss >> arg) {
             if (IsSameFile(arg, opts.inputFile)) {
-                continue
-            };
+                continue;
+            }
             result.strArgs.push_back(arg);
             result.cstrArgs.push_back(result.strArgs.back().c_str());
         }
