@@ -183,7 +183,9 @@ function parseCMakeArgs(buffer: string[], isTarget: boolean): string[] {
             }
         }
     }
-    if (curr.length > 0) args.push(curr);
+    if (curr.length > 0) {
+        args.push(curr);
+    }
 
     if (isTarget) {
         // 跳过target名字和 PUBLIC/PRIVATE/INTERFACE 关键字

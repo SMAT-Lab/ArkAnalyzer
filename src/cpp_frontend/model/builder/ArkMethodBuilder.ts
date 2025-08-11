@@ -110,7 +110,8 @@ export function handleFunctionTemplate(methodNode: any, mtd: ArkMethod, sourceFi
     mtd.setGenericTypes(templateTypesArray);
 }
 
-export function buildArkMethodFromArkClass(methodNode: CppAstNode, declaringClass: ArkClass, mtd: ArkMethod, sourceFile: any, declaringMethod?: ArkMethod): void {
+export function buildArkMethodFromArkClass(methodNode: CppAstNode, declaringClass: ArkClass, mtd: ArkMethod,
+                                           sourceFile: any, declaringMethod?: ArkMethod): void {
     mtd.setDeclaringArkClass(declaringClass);
     if (declaringMethod !== undefined) {
         mtd.setOuterMethod(declaringMethod);

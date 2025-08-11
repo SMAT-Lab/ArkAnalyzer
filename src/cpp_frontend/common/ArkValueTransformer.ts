@@ -50,7 +50,7 @@ import {
     ReferenceType,
     AliasType,
     Thread,
-    functionPointer,
+    FunctionPointer,
 } from '../../core/base/Type';
 import { ArkSignatureBuilder } from '../../core/model/builder/ArkSignatureBuilder';
 import { ClassSignature, FieldSignature, MethodSignature, FileSignature } from '../../core/model/ArkSignature';
@@ -782,7 +782,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         const varName = varNode.kind === 'TypeRef' ? varNode.code : varNode.name;
         if (varNode.kind && identifier.referencedDecl && varNode.kind === 'FunctionDecl') {
             //
-            const type = new functionPointer(varNode.type);
+            const type = new FunctionPointer(varNode.type);
             identifierValue = this.getOrCreateLocal(varName, type);
         } else if (varName === UndefinedType.getInstance().getName()) {
             identifierValue = CppValueUtil.getUndefinedConst();
@@ -1806,7 +1806,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
             }
         }
         const declarationType = variableDeclaration.type ? this.resolveTypeNodeCpp(variableDeclaration) : UnknownType.getInstance();
-        if (rightOpNode && declarationType instanceof functionPointer) {
+        if (rightOpNode && declarationType instanceof FunctionPointer) {
             rightOpNode.code = declarationType.getFunType().toString();
             rightOpNode.type.qualType = declarationType.getFunType().toString();
         }

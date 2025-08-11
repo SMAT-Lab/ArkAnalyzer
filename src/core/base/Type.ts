@@ -1006,7 +1006,7 @@ export class Thread extends Type {
     }
 }
 
-export class functionPointer extends Type {
+export class FunctionPointer extends Type {
     funType: CppTypeInfo;
 
     constructor(funType: CppTypeInfo) {

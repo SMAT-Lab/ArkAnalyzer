@@ -1142,7 +1142,7 @@ export class CfgBuilder {
         const stmts: Stmt[] = [];
         const arkIRTransformer = new ArkIRTransformerCpp(this.sourceFile, this.declaringMethod);
         arkIRTransformer.prebuildStmts().forEach(stmt => stmts.push(stmt));
-        const expressionBodyNode = this.astRoot
+        const expressionBodyNode = this.astRoot;
         const expressionBodyStmts: Stmt[] = [];
         let {
             value: expressionBodyValue,

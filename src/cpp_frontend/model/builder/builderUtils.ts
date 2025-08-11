@@ -22,7 +22,7 @@ import {
     ReferenceType,
     ReferCategory,
     UnclearReferenceType,
-    functionPointer,
+    FunctionPointer,
 } from '../../../core/base/Type';
 import { TypeInference } from '../../common/TypeInference';
 import { ArkField } from '../../../core/model/ArkField';
@@ -38,7 +38,7 @@ function extractCommonModifiers(node: CppAstNode): number {
     const nodeType: string = node?.type?.qualType ?? '';
 
     if (Object.prototype.hasOwnProperty.call(node, 'access')) {
-        modifiers |= modifierKind2EnumCpp(node.access ?? "");
+        modifiers |= modifierKind2EnumCpp(node.access ?? '');
     }
     if (Object.prototype.hasOwnProperty.call(node, 'storageClass')) {
         modifiers |= modifierKind2EnumCpp(node.storageClass ?? '');
@@ -186,7 +186,7 @@ export function cppNode2Type(nodeQualType: any, arkInstance: ArkMethod | ArkClas
     // 处理函数指针类型，对节点type含有(*)()的做识别
     const funcPtrRegex = /\(\s*\*\s*\)\s*\(\s*[^)]*\s*\)/;
     if (funcPtrRegex.test(nodeQualType)) {
-        return new functionPointer(nodeQualType);
+        return new FunctionPointer(nodeQualType);
     }
 
     // 默认处理
@@ -196,8 +196,8 @@ export function cppNode2Type(nodeQualType: any, arkInstance: ArkMethod | ArkClas
 export function buildTypeFromPreStr(preStr: string, arkInstance: ArkMethod | ArkClass | ArkField | undefined): Type {
     // 1. 去除const/static/mutable 等修饰符
     preStr = preStr.replace(/\b(const|static|mutable)\s*\b/g, '');
-    let pointerLevel = 0,
-        referenceCount = 0;
+    let pointerLevel = 0;
+    let referenceCount = 0;
     // 2. 处理指针和引用，仅非STL容器处理
     if (!isCXXSTLContainer(preStr)) {
         referenceCount = (preStr.match(/&/g) || []).length;
