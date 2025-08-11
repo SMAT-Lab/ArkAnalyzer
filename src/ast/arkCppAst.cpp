@@ -1119,7 +1119,7 @@ void nodePostprocess(
             codeStr.find(children[0]["code"]) == 0 && codeStr.find("(") != std::string::npos) {
             node["kind"] = "RecoveryExpr";
         }
-    } else if (node["kind"] == "CXXConstructorDecl") {
+    } else if (node["kind"] == "CXXConstructorDeclinitializer") {
         children = addCXXCtorInitializer(children, node);
     } else if (node["kind"] == "TypedefDecl" && (children.size() == 0 || (children[0]["kind"] !=
                                "CXXRecordDecl" && children[0]["kind"] != "EnumDecl"))) {

@@ -155,38 +155,42 @@ function parseCMakeArgs(buffer: string[], isTarget: boolean): string[] {
         return [];
     }
     line = line.substring(lidx + 1, ridx).trim();
-
     // 按引号和空格分割参数
     const args: string[] = [];
     let curr = '';
     let inQuote = false;
     for (let i = 0; i < line.length; ++i) {
         const c = line[i];
-        if (inQuote) {
-            if (c === '"') {
+        // 先统一处理引号
+        if (c === '"') {
+            if (inQuote) {
                 inQuote = false;
                 args.push(curr);
                 curr = '';
             } else {
-                curr += c;
-            }
-        } else {
-            if (c === '"') {
                 inQuote = true;
-            } else if (/\s/.test(c)) {
-                if (curr.length > 0) {
-                    args.push(curr);
-                    curr = '';
-                }
-            } else {
-                curr += c;
             }
+            continue;
         }
+        // 在引号内：字面追加
+        if (inQuote) {
+            curr += c;
+            continue;
+        }
+        // 不在引号内：空白分隔，否则字面追加
+        if (/\s/.test(c)) {
+            if (curr.length > 0) {
+                args.push(curr);
+                curr = '';
+            }
+            continue;
+        }
+
+        curr += c;
     }
     if (curr.length > 0) {
         args.push(curr);
     }
-
     if (isTarget) {
         // 跳过target名字和 PUBLIC/PRIVATE/INTERFACE 关键字
         if (args.length < 3) {

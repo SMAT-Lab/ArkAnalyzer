@@ -25,7 +25,7 @@ import { Stmt } from '../../../core/base/Stmt';
 import { ANONYMOUS_CLASS_DELIMITER, ANONYMOUS_CLASS_PREFIX, DEFAULT_ARK_CLASS_NAME } from '../../../core/common/Const';
 import { IRUtils } from '../../common/IRUtils';
 import { ClassSignature } from '../../../core/model/ArkSignature';
-import { getInitStmts, init4InstanceInitMethod, init4StaticInitMethod } from '../../../core/model/builder/ArkClassBuilder';
+import { init4InstanceInitMethod, init4StaticInitMethod } from '../../../core/model/builder/ArkClassBuilder';
 import { ArkIRTransformerCpp } from '../../common/ArkIRTransformer';
 import { buildDecorators } from './builderUtils';
 import { buildDefaultArkMethodFromArkClass } from './ArkMethodBuilder';
@@ -230,24 +230,14 @@ function buildArkClassMembers(clsNode: CppAstNode, cls: ArkClass, sourceFile: Cp
     }
     const staticInitStmts: Stmt[] = [];
     const instanceInitStmts: Stmt[] = [];
-    clsNode.inner.forEach((member: any) => {
+    clsNode.inner.forEach((member: CppAstNode) => {
         if (member.kind === 'FieldDecl' || member.kind === 'VarDecl') {
             const arkField = buildProperty2ArkField(member, sourceFile, cls);
             if (clsNode.kind === 'CXXRecordDecl' && (tagStr === 'class' || tagStr === 'struct')) {
-                if (arkField.isStatic()) {
-                    getInitStmts(staticIRTransformer, arkField, member.initializer);
-                    arkField.getInitializer().forEach(stmt => staticInitStmts.push(stmt));
-                } else {
-                    if (!instanceIRTransformer) {
-                        console.log(clsNode.code);
-                    }
-                    getInitStmts(instanceIRTransformer, arkField, member.initializer);
-                    arkField.getInitializer().forEach(stmt => instanceInitStmts.push(stmt));
-                }
+                arkField.getInitializer().forEach(stmt => instanceInitStmts.push(stmt));
             }
         } else if (member.kind === 'EnumConstantDecl') {
             const arkField = buildProperty2ArkField(member, sourceFile, cls);
-            getInitStmts(staticIRTransformer, arkField, member.initializer);
             arkField.getInitializer().forEach(stmt => staticInitStmts.push(stmt));
         } else {
             logger.warn('Please contact developers to support new member type: ', member.kind);

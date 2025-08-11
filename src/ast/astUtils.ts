@@ -143,7 +143,9 @@ export class AstUtils {
             cursor.name = '';
         }
         for (const idx in cursor.inner) {
-            if (!Object.prototype.hasOwnProperty.call(cursor.inner, idx)) continue;
+            if (!Object.prototype.hasOwnProperty.call(cursor.inner, idx)) {
+                continue;
+            }
             const currentCursor = cursor.inner[idx];
             // 明确 getParent 的重载类型
             type GetParentOverload = {

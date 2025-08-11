@@ -151,7 +151,7 @@ ClangArgs cliutil::LoadCompileCommands(const CommandLineOptions& opts)
         return result;
     }
     fs::path inputFilePath = fs::canonical(opts.inputFile);
-    auto appendArgsFromCommand = [&](const std::string& commandStr) {
+    auto appendArgsFromCommand = [&opts, &result](const std::string& commandStr) {
         std::istringstream iss(commandStr);
         std::string arg;
         while (iss >> arg) {
@@ -167,7 +167,6 @@ ClangArgs cliutil::LoadCompileCommands(const CommandLineOptions& opts)
             std::cerr << "compile_commands.json 中 缺少 file 或 command 字段" << std::endl;
             continue;
         }
-
         fs::path commandFilePath;
         try {
             const std::string commandFile = command["file"].get<std::string>();
@@ -190,7 +189,6 @@ ClangArgs cliutil::LoadCompileCommands(const CommandLineOptions& opts)
 
         break;
     }
-
     return result;
 }
 
