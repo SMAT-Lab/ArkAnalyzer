@@ -339,7 +339,7 @@ export class CfgBuilder {
         return loopExit;
     }
 
-    private aliceCaseDefaultNode(node: CppAstNode, clauses: CppAstNode[]):void {
+    private sliceCaseDefaultNode(node: CppAstNode, clauses: CppAstNode[]): void {
         if (node.kind === 'BreakStmt' || node.kind === 'DefaultStmt' || node.kind === 'ContinueStmt') {
             clauses.push(node);
             return;
@@ -351,7 +351,7 @@ export class CfgBuilder {
                     let caseClause = JSON.parse(JSON.stringify(node));
                     caseClause.inner = caseClause.inner.slice(0, i);
                     clauses.push(caseClause);
-                    this.aliceCaseDefaultNode(node.inner[i], clauses);
+                    this.sliceCaseDefaultNode(node.inner[i], clauses);
                 }
                 if (i === node.inner.length - 1 && !isCaseOrDefault) {
                     clauses.push(node);
@@ -365,7 +365,7 @@ export class CfgBuilder {
         // cpp解析case:后面没有语句且没有break时，会把后面的case/default作为该case的inner节点，因此要把原有的ast拆分成一个个的case，default
         let tempClauses: CppAstNode[] = [];
         for (let node of switchNode.inner[1].inner) {
-            this.aliceCaseDefaultNode(node, tempClauses);
+            this.sliceCaseDefaultNode(node, tempClauses);
         }
         // 没有case括号时，cpp中case和break/continue是分开的两个节点，此处将break/continue节点加入作为case或default节点的inner成员
         return tempClauses.reduce((acc: CppAstNode[], curr: CppAstNode, idx: number, arr: CppAstNode[]) => {
@@ -438,7 +438,7 @@ export class CfgBuilder {
         innerNode: CppAstNode,
         lastStatement: StatementBuilder,
         scopeID: number
-    ):StatementBuilder {
+    ): StatementBuilder {
         let caller = '';
         let callee = '';
         const first = innerNode?.inner?.[0];
@@ -471,7 +471,7 @@ export class CfgBuilder {
     }
 
 
-    ASTNodeGotoStatement(innerNode: CppAstNode, lastStatement: StatementBuilder, scopeID: number):void {
+    ASTNodeGotoStatement(innerNode: CppAstNode, lastStatement: StatementBuilder, scopeID: number): void {
         let s = new StatementBuilder('gotoStatement', innerNode.code, innerNode, scopeID);
         this.judgeLastType(s, lastStatement);
         let label: string = innerNode.code.substring(innerNode.code.indexOf('goto ') + 5);
@@ -507,7 +507,7 @@ export class CfgBuilder {
         }
     }
 
-    ASTNodeLabelStatement(innerNode: CppAstNode, lastStatement: StatementBuilder, scopeID: number):StatementBuilder {
+    ASTNodeLabelStatement(innerNode: CppAstNode, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
         let labelStmt = new StatementBuilder('statement', 'goto label:' + innerNode.name, innerNode, scopeID);
         // 处理goto语句与label语句的前后关系
 

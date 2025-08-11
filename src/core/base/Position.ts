@@ -99,7 +99,7 @@ export class LineColPosition {
         // line start from 1.
         return new LineColPosition(line + 1, character + 1);
     }
-    public static buildFromNodeCpp(node: any, sourceFile: any) {
+    public static buildFromNodeCpp(node: any, sourceFile: any): LineColPosition {
         let line = 0;
         let character = 0;
         if (node.range?.begin && node.range.begin.line) {

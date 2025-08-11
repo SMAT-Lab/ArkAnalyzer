@@ -136,7 +136,7 @@ export class AstUtils {
         return filteredChildren;
     }
 
-    private static fullInfo(cursor: any) {
+    private static fullInfo(cursor: any): void {
         if (!Array.isArray(cursor.inner)) {
             cursor.inner = [];
         }
@@ -197,7 +197,7 @@ export class AstUtils {
         return null;
     }
 
-    private static processAccess(cursor: any) {
+    private static processAccess(cursor: any): void {
         if (cursor.kind === 'AccessSpecDecl') {
             this.currentAccess = cursor.access;
         }
@@ -235,7 +235,7 @@ export class AstUtils {
     }
 }
 
-async function deleteFIle(filePath: string) {
+async function deleteFIle(filePath: string): Promise<void> {
     try {
         await fs.promises.unlink(filePath);
         logger.info('delete file ok:', filePath);

@@ -1173,7 +1173,7 @@ export class Scene {
         return headerFileRefMap;
     }
 
-    private processImportInfo(im: ImportInfo, filePath: string, headerFileRefMap: Map<string, string[]>) {
+    private processImportInfo(im: ImportInfo, filePath: string, headerFileRefMap: Map<string, string[]>): void {
         let imFrom = im.getFrom();
         if (!imFrom) {
             return;
