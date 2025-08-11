@@ -604,7 +604,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         };
     }
 
-    public getArgumentNodeForRecover(innerAsNodes: CppAstNode[]): {}[]  {
+    public getArgumentNodeForRecover(innerAsNodes: CppAstNode[]): {}[] {
         let callNode = {};
         let argumentNodes = [];
         for (let i = 0; i < innerAsNodes.length; i++) {
@@ -926,7 +926,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         return this.generateInvokeValueAndStmtsCpp(callNode, argus, stmts, callExpression);
     }
 
-    public CXXOperatorExpressionCoutToValueAndStmts(callExpression: CppAstNode, callArgus: any[]): any {
+    public CXXOperatorExpressionCoutToValueAndStmts(callExpression: CppAstNode, callArgus: any[]): ValueAndStmts | null {
         const stmts: Stmt[] = [];
         // 因为inner是依次提取最后面的参数，所以倒序遍历最后面的参数
         for (let i = callExpression.inner.length - 1; i >= 0; i--) {
@@ -967,6 +967,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
                 return this.buildValueAndStmtsForStream(innerNode, callArgus.reverse(), stmts, callExpression);
             }
         }
+        return null;
     }
 
     private buildValueAndStmtsForStream(streamNode: CppAstNode, args: any[], stmts: Stmt[], streamExpr: CppAstNode): ValueAndStmts {
