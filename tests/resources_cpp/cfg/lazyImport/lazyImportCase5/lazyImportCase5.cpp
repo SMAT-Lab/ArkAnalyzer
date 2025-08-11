@@ -23,7 +23,8 @@
 #define LOG_TAG "MY_TAG"
 #define TWO 2
 
-static bool Napi_AddPropertyInt32(napi_env env, napi_value obj, const char *key, int32_t value) {
+static bool Napi_AddPropertyInt32(napi_env env, napi_value obj, const char *key, int32_t value)
+{
     napi_value key_napi = nullptr;
     napi_status status = napi_create_string_utf8(env, key, NAPI_AUTO_LENGTH, &key_napi);  // *右侧因为有未知宏导致AST节点缺失
     napi_value value_napi = nullptr;
@@ -32,7 +33,8 @@ static bool Napi_AddPropertyInt32(napi_env env, napi_value obj, const char *key,
     return true;
 }
 
-static  napi_value CallbackToArkTS(napi_env env, napi_callback_info info) {
+static  napi_value CallbackToArkTS(napi_env env, napi_callback_info info)
+{
     size_t argc = 1;
     napi_value args[1] = {nullptr};
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);

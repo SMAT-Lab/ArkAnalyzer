@@ -13,16 +13,14 @@
  * limitations under the License.
  */
 
-namespace mainSpace
-{
+namespace mainSpace {
     int g_x = 0;
     int g_y = 1;
 
-    class InnerClass{
+    class InnerClass {
         int GetValue()
         {
             return mainSpace::g_x;
-
         }
     };
 }

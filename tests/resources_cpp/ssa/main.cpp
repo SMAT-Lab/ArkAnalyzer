@@ -14,7 +14,7 @@
  */
 
 #define TEN 10
-#define MINUS_TEN -10
+#define MINUS_TEN (-10)
 
 int Case1()
 {

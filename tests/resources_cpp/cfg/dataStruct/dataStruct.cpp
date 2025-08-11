@@ -57,8 +57,7 @@ void VectorTest()
 
     std::vector<int> vec3;
     vec3.reserve(TEN);
-    for (int i = 0; i < TEN; i++)
-    {
+    for (int i = 0; i < TEN; i++) {
         vec3.push_back(i);
         std::cout << vec3.capacity() << std::endl;
     }
@@ -87,7 +86,7 @@ void MapTest()
     std::map<int, std::string> map1 = {{ONE, "one"}, {TWO, "two"}, {THREE, "three"}};
     std::string value1 = map1[1];
     if (map1.find(1) != map1.end()) {
-        std::cout << map1[3] << endl;
+        std::cout << map1[1] << endl;
     }
     for (std::map<int, std::string>::iterator it = map1.begin(); it != map1.end(); it++) {
         std::cout << it->second << std::endl;
@@ -134,7 +133,8 @@ int QueueTest()
 }
 
 // deque
-int DequeTest() {
+int DequeTest()
+{
     deque<int> dq;
     dq.push_back(ONE);
     dq.push_front(TWO);

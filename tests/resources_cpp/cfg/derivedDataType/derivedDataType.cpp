@@ -87,7 +87,7 @@ void PrintBookByRef(MyStruct &book)
     book.PrintInfo();
 }
 
-typedef struct{
+typedef struct {
     char title[50];
     char author[50];
     struct {

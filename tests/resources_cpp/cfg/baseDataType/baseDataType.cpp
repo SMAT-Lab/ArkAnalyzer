@@ -16,14 +16,14 @@
 #include <iostream>
 using namespace std;
 
-bool isChar(int data)
+bool IsChar(int data)
 {
     return data > 0;
 }
 
 int main()
 {
-    bool boolData = isChar(1);
+    bool boolData = IsChar(1);
     if (boolData)
     {
         char charData1 = 'A';
@@ -36,9 +36,7 @@ int main()
         char32_t char32Data1 = U'\U0001F600';
         char32_t char32Data2[] = U"hello";
         char charData4 = char(); // clang::CXXScalarValueInitExpr, 合法，charData4被初始化为""
-    }
-    else
-    {
+    } else {
         short shortData1 = -1;
         unsigned short shortData2 = 1;
         int intData1 = -10;

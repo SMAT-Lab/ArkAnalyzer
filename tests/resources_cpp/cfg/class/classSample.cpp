@@ -29,7 +29,7 @@ private:
     char name;  // *string做类型时解析this->name节点为CXXMemberCallExpr
 
 public:
-    Base(const char& pname) : name(pname)
+    explicit Base(const char& pname) : name(pname)
     {
         cout << "Base constructor called with name: " << name << endl;
     }

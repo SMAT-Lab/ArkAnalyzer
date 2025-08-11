@@ -14,11 +14,12 @@
  */
 
 namespace nsA {
-    void func() {}
+    void Func() {}
 }
 
 using namespace nsA;
 
-void test() {
-    func();
+void test()
+{
+    Func();
 }

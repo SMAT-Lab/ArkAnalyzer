@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
-int case1() {
+int Case1()
+{
     int *p = nullptr;
 }

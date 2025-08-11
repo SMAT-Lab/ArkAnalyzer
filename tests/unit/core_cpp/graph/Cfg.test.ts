@@ -183,7 +183,7 @@ describe('Type Test', () => {
     });
     it('case6: NullPtr Test', () => {
         const scene = buildScene('nullPtr');
-        testBlocks(scene, 'nullPtrSample.cpp', 'case1', NULLPTR_EXPECT.NULLPTR_EXPECT_CASE1.blocks);
+        testBlocks(scene, 'nullPtrSample.cpp', 'Case1', NULLPTR_EXPECT.NULLPTR_EXPECT_CASE1.blocks);
     });
     it('case7: CompoundLiteral Test', () => {
         const scene = buildScene('compoundLiteral');

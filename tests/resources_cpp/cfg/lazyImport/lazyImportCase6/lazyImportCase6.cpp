@@ -18,7 +18,8 @@
 // 传入实例对象，在C++侧调用对象中的函数
 #include <cstddef>
 #include "napi/native_api.h"
-static napi_value CallFunction(napi_env env, napi_callback_info info) {
+static napi_value CallFunction(napi_env env, napi_callback_info info)
+{
     // 获取实例对象
     size_t argc = 1;
     napi_value args[1] = {nullptr};
@@ -33,7 +34,8 @@ static napi_value CallFunction(napi_env env, napi_callback_info info) {
 }
 
 EXTERN_C_START
-static napi_value Init(napi_env env, napi_value exports) {
+static napi_value Init(napi_env env, napi_value exports)
+{
     napi_property_descriptor desc[] = {
         {"callFunction", nullptr, CallFunction, nullptr, nullptr, nullptr, napi_default, nullptr}};
     napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc);

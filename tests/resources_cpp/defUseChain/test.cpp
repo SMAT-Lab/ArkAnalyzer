@@ -17,7 +17,8 @@
 
 #define TWO 2
 
-void DefUseChainTest() {
+void DefUseChainTest()
+{
     int a = 1;
     int b = 2;
     a = a + b;

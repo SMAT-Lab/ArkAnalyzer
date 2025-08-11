@@ -136,7 +136,7 @@ export const DATA_STRUCT_EXPECT_MAP = {
         },
         {
             id: 1,
-            stmts: ['%7 = map1[3]', 'staticinvoke <@%unk/%unk: .cout()>(%7)'],
+            stmts: ['%7 = map1[1]', 'staticinvoke <@%unk/%unk: .cout()>(%7)'],
             preds: [0],
             succes: [2],
         },

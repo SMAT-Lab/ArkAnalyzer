@@ -84,7 +84,7 @@ void Case6()
 void Case7()
 {
     int i = 0;
-    for (; i <= TWO; ) {
+    for (; i <= TWO;) {
         printf("%d\n", i);
         i++;
     }

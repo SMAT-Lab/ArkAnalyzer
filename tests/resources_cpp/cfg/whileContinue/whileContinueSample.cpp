@@ -17,8 +17,7 @@
 #define TWO 2
 int main(int num)
 {
-    while (num > 0)
-    {
+    while (num > 0) {
         if (num == TWO) {
             num = num + 1;
             continue;

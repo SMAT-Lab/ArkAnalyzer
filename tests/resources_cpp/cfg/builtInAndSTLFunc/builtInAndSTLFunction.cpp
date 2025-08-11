@@ -19,7 +19,7 @@
 #include <stdatomic.h>
 
 using namespace std;
-struct MyStruct{
+struct MyStruct {
     int id;
     std::string name;
 };

@@ -25,7 +25,7 @@ public:
     static void Destructor(napi_env env, void* nativeObject, void* finalizeHint);
 
 private:
-    explicit GlobalConfig(double value_ = 0);
+    explicit GlobalConfig(double value = 0);
     ~GlobalConfig();
 
     static napi_value New(napi_env env, napi_callback_info info);
@@ -103,7 +103,6 @@ napi_value GlobalConfig::New(napi_env env, napi_callback_info info)
                                        GlobalConfig::Destructor,
                                        nullptr,
                                        &obj->wrapper_);
-
         if (status != napi_ok) {
             OH_LOG_INFO(LOG_APP, "Failed to bind native object to js object"
                         ", return code: %{public}d", status);

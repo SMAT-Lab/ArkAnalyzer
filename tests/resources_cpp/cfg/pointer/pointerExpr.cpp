@@ -21,7 +21,7 @@ using namespace std;
 
 class MyClass {
 public:
-    MyClass(int val) : data(val) {}
+    explicit MyClass(int val) : data(val) {}
     ~MyClass() {}
     int GetData() { return this->data; }
 
