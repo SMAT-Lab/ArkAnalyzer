@@ -19,7 +19,7 @@
 #define PI 3.14
 #define MAX_SIZE 100
 
-extern const int kVersion;
+extern const int K_VERSION;
 
 enum class Color {
     RED,

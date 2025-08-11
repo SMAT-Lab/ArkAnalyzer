@@ -41,7 +41,7 @@ function extractCommonModifiers(node: CppAstNode): number {
         modifiers |= modifierKind2EnumCpp(node.access ?? "");
     }
     if (Object.prototype.hasOwnProperty.call(node, 'storageClass')) {
-        modifiers |= modifierKind2EnumCpp(node.storageClass ?? "");
+        modifiers |= modifierKind2EnumCpp(node.storageClass ?? '');
     }
     if (nodeType.includes('const')) {
         modifiers |= modifierKind2EnumCpp('const');

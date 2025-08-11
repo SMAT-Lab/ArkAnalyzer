@@ -17,7 +17,11 @@ export const USING_EXPECT_CASE1 = {
     blocks: [
         {
             id: 0,
-            stmts: ['this = this: @using/usingcase.cpp: %dflt', "staticinvoke <@%unk/%unk: .cout()>('[test_using_namespace] hello')", 'return'],
+            stmts: [
+                'this = this: @using/usingcase.cpp: %dflt',
+                "staticinvoke <@%unk/%unk: .cout()>('[test_using_namespace] hello')",
+                'return'
+            ],
             preds: [],
             succes: [],
         },
@@ -62,10 +66,11 @@ export const USING_EXPECT_CASE4 = {
     blocks: [
         {
             id: 0,
-            stmts: [  "this = this: @using/usingcase.cpp: %dflt",
-                        "c = RED",
-                        "%0 = Color.<@%unk/%unk: .RED>",
-                        "if c == %0",
+            stmts: [
+                'this = this: @using/usingcase.cpp: %dflt',
+                'c = RED',
+                '%0 = Color.<@%unk/%unk: .RED>',
+                'if c == %0',
             ],
             preds: [],
             succes: [1, 2],

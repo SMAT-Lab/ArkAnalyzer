@@ -20,7 +20,7 @@ import * as os from 'os';
 
 import Logger, { LOG_MODULE_TYPE } from '../utils/logger';
 import { ClangPath } from './const';
-import {CppAstNode} from "./ArkCxxAstNode";
+import {CppAstNode} from './ArkCxxAstNode';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'astUtils');
 

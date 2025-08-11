@@ -25,7 +25,7 @@ import { ArkBaseModel } from '../model/ArkBaseModel';
 import { FullPosition } from '../base/Position';
 import { Local } from '../base/Local';
 import { NAME_PREFIX } from './Const';
-import {CppAstNode} from "../../ast/ArkCxxAstNode";
+import {CppAstNode} from '../../ast/ArkCxxAstNode';
 
 export class IRUtils {
     public static moreThanOneAddress(value: Value): boolean {

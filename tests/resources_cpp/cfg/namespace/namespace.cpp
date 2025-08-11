@@ -19,7 +19,7 @@ namespace nsA {
 
 using namespace nsA;
 
-void test()
+void Test()
 {
     Func();
 }
