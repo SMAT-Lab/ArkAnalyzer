@@ -352,7 +352,7 @@ describe('Lazy Import Test', () => {
 describe('namespace Test', () => {
     it('case1: namespace', () => {
         const scene = buildScene('namespace');
-        testBlocks(scene, 'namespace.cpp', 'test', NAMESPACE_EXPECT.NAMESPACE_CASE1.blocks);
+        testBlocks(scene, 'namespace.cpp', 'Test', NAMESPACE_EXPECT.NAMESPACE_CASE1.blocks);
     });
 });
 

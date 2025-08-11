@@ -24,8 +24,7 @@ bool IsChar(int data)
 int main()
 {
     bool boolData = IsChar(1);
-    if (boolData)
-    {
+    if (boolData) {
         char charData1 = 'A';
         signed char charData2 = -10;
         unsigned char charData3 = 10;

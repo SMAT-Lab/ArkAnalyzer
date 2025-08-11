@@ -151,11 +151,13 @@ ClangArgs cliutil::LoadCompileCommands(const CommandLineOptions& opts)
         return result;
     }
     fs::path inputFilePath = fs::canonical(opts.inputFile);
-    auto append_args_from_command = [&](const std::string& commandStr) {
+    auto appendArgsFromCommand = [&](const std::string& commandStr) {
         std::istringstream iss(commandStr);
         std::string arg;
         while (iss >> arg) {
-            if (IsSameFile(arg, opts.inputFile)) { continue };
+            if (IsSameFile(arg, opts.inputFile)) {
+                continue
+            };
             result.strArgs.push_back(arg);
             result.cstrArgs.push_back(result.strArgs.back().c_str());
         }
@@ -184,7 +186,7 @@ ClangArgs cliutil::LoadCompileCommands(const CommandLineOptions& opts)
 
         // 追加 command 中的其它参数（排除源文件自身）
         const std::string commandStr = command["command"].get<std::string>();
-        append_args_from_command(commandStr);
+        appendArgsFromCommand(commandStr);
 
         break;
     }

@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef MY_HEADER_H
-#define MY_HEADER_H
+#ifndef CAST_SAMPLE_H
+#define CAST_SAMPLE_H
 
 // CXXStaticCastTest
 double CXXStaticCast(int d);
