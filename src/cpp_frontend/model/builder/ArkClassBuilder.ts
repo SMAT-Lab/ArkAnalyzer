@@ -42,20 +42,22 @@ export function buildNormalArkClassFromArkMethod(clsNode: CppAstNode, cls: ArkCl
     }
 }
 
-export function buildNormalArkClassFromArkFile(clsNode: any, arkFile: ArkFile, cls: ArkClass, sourceFile: any, declaringMethod?: ArkMethod): void {
+export function buildNormalArkClassFromArkFile(clsNode: CppAstNode, arkFile: ArkFile, cls: ArkClass, sourceFile: CppAstNode, declaringMethod?: ArkMethod): void {
     cls.setDeclaringArkFile(arkFile);
     cls.setCode(clsNode.name);
-    cls.setLine(clsNode.range.begin.line);
-    cls.setColumn(clsNode.range.begin.col);
+    if (clsNode.range?.begin){
+        cls.setLine(clsNode.range.begin.line);
+        cls.setColumn(clsNode.range.begin.col);
+    }
     buildNormalArkClass(clsNode, cls, sourceFile, declaringMethod);
     arkFile.addArkClass(cls);
 }
 
 export function buildNormalArkClassFromArkNamespace(
-    clsNode: any,
+    clsNode: CppAstNode,
     arkNamespace: ArkNamespace,
     cls: ArkClass,
-    sourceFile: any,
+    sourceFile: CppAstNode,
     declaringMethod?: ArkMethod
 ): void {
     cls.setDeclaringArkNamespace(arkNamespace);

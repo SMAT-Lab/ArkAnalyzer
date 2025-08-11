@@ -73,7 +73,7 @@ import { CONSTRUCTOR_NAME, THIS_NAME } from '../../core/common/TSConst';
 import { ClassCategory } from '../../core/model/ArkClass';
 import { TypeInference } from './TypeInference';
 import { setTs2CppFuncMapOfClass } from './ModelUtils';
-import {CppAstNode} from '../../ast/ArkCxxAstNode';
+import { CppAstNode } from '../../ast/ArkCxxAstNode';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkValueTransformer');
 
@@ -921,7 +921,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         return this.generateInvokeValueAndStmtsCpp(callNode, argus, stmts, callExpression);
     }
 
-    public CXXOperatorExpressionCoutToValueAndStmts(callExpression: CppAstNode, callArgus: any[]): ValueAndStmts | null {
+    public CXXOperatorExpressionCoutToValueAndStmts(callExpression: CppAstNode, callArgus: CppAstNode[]): ValueAndStmts | null {
         const stmts: Stmt[] = [];
         // 因为inner是依次提取最后面的参数，所以倒序遍历最后面的参数
         for (let i = callExpression.inner.length - 1; i >= 0; i--) {

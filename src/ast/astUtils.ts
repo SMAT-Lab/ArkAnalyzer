@@ -20,7 +20,7 @@ import * as os from 'os';
 
 import Logger, { LOG_MODULE_TYPE } from '../utils/logger';
 import { ClangPath } from './const';
-import {CppAstNode} from './ArkCxxAstNode';
+import {CppAstNode, CppAstNodeLite} from './ArkCxxAstNode';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'astUtils');
 
@@ -79,7 +79,7 @@ export class AstUtils {
         return translationUnit;
     }
 
-    private static updateInner(sourceFile: string, firstOccurrenceOfMainFile: boolean, entry: any, newInner: any[]): void {
+    private static updateInner(sourceFile: string, firstOccurrenceOfMainFile: boolean, entry: CppAstNode, newInner: CppAstNode[]): void {
         if (!firstOccurrenceOfMainFile) {
             if (Object.prototype.hasOwnProperty.call(entry, 'isImplicit') && entry.isImplicit && entry.kind !== 'UsingDirectiveDecl') {
                 return;
@@ -125,7 +125,7 @@ export class AstUtils {
         return translationUnit;
     }
 
-    private static filterChildren(cursor: any): any[] {
+    private static filterChildren(cursor: CppAstNode): CppAstNode[] {
         let filteredChildren: any[] = [];
         if (!Object.prototype.hasOwnProperty.call(cursor, 'inner')) {
             return filteredChildren;
@@ -136,36 +136,35 @@ export class AstUtils {
         return filteredChildren;
     }
 
-    private static fullInfo(cursor: CppAstNode):void {
-        if (!Array.isArray(cursor.inner)) {
-            cursor.inner = [];
-        }
-
+    private static fullInfo(cursor: CppAstNode): void {
+        if (!Array.isArray(cursor.inner)) cursor.inner = [];
         cursor.inner = this.filterChildren(cursor);
-        // **新增：保证 name 一定存在**
         if (!Object.prototype.hasOwnProperty.call(cursor, 'name') || cursor.name === undefined) {
             cursor.name = '';
         }
+        for (const idx in cursor.inner) {
+            if (!Object.prototype.hasOwnProperty.call(cursor.inner, idx)) continue;
+            const currentCursor = cursor.inner[idx];
+            // 明确 getParent 的重载类型
+            type GetParentOverload = {
+                (isNeedInner: true): CppAstNode;
+                (isNeedInner?: false): CppAstNodeLite;
+            };
 
-        for (let index in cursor.inner) {
-            if (Object.prototype.hasOwnProperty.call(cursor.inner, index)) {
-                let currentCursor = cursor.inner[index];
-                type GetParentCallBack = any & {
-                    getParent: (isNeedInner?: boolean) => any;
-                };
-                currentCursor = Object.assign(currentCursor, {
-                    getParent: (isNeedinner: boolean = false) => {
-                        const parentCursor = isNeedinner
-                            ? { ...cursor } // 带 inner 的浅拷贝
-                            : (({ inner, ...rest }: CppAstNode) => rest)(cursor); // 去掉 inner 的浅拷贝
-                        return parentCursor; // 类型是 Omit<CppAstNode,'inner'>，符合旧用例“轻量快照”预期
-                    },
-                }) as GetParentCallBack;
-                this.processAccess(currentCursor);
-                this.fullInfo(cursor.inner[index]);
-            }
+            const getParentImpl: GetParentOverload = ((isNeedInner?: boolean):CppAstNodeLite => {
+                if (isNeedInner) {
+                    return { ...cursor };
+                }
+                // 去掉 inner 的浅拷贝
+                const { inner, ...rest } = cursor as CppAstNode;
+                return rest as CppAstNodeLite;
+            }) as GetParentOverload;
+            Object.assign(currentCursor, { getParent: getParentImpl });
+            this.processAccess(currentCursor);
+            this.fullInfo(currentCursor);
         }
     }
+
 
     static extractCppModifier(code: string): string | null {
         const cppModifiers = [

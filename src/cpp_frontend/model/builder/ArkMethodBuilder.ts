@@ -80,7 +80,7 @@ export function buildDefaultArkMethodFromArkClass(declaringClass: ArkClass, mtd:
     mtd.setBodyBuilderCpp(bodyBuilder);
 }
 
-export function handleFunctionTemplate(methodNode: any, mtd: ArkMethod, sourceFile: any): void {
+export function handleFunctionTemplate(methodNode: CppAstNode, mtd: ArkMethod, sourceFile: CppAstNode): void {
     if (methodNode.kind !== 'FunctionTemplate') {
         return;
     }
@@ -111,7 +111,7 @@ export function handleFunctionTemplate(methodNode: any, mtd: ArkMethod, sourceFi
 }
 
 export function buildArkMethodFromArkClass(methodNode: CppAstNode, declaringClass: ArkClass, mtd: ArkMethod,
-                                           sourceFile: any, declaringMethod?: ArkMethod): void {
+                                           sourceFile: CppAstNode, declaringMethod?: ArkMethod): void {
     mtd.setDeclaringArkClass(declaringClass);
     if (declaringMethod !== undefined) {
         mtd.setOuterMethod(declaringMethod);
@@ -231,7 +231,7 @@ function addParamsToCXXInheritedCtorInitExpr(mtdNode: any, mtd: ArkMethod, metho
     });
 }
 
-function buildMethodName(node: CppAstNode, declaringClass: ArkClass, sourceFile: any, declaringMethod?: ArkMethod): string {
+function buildMethodName(node: CppAstNode, declaringClass: ArkClass, sourceFile: CppAstNode, declaringMethod?: ArkMethod): string {
     let name: string = '';
     let declType = node.kind.toString();
     switch (declType) {

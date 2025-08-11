@@ -49,6 +49,7 @@ export interface CppCtorAnyInit {
     name: string;
     type?: CppTypeInfo;
 }
+export type CppAstNodeLite = Omit<CppAstNode, 'inner'>;
 
 /** 通用 C++ AST 节点（兼容 Clang JSON ） */
 export interface CppAstNode {
@@ -148,8 +149,8 @@ export interface CppAstNode {
     parent?: CppAstNode;
 
     getParent?: {
-        (isNeedInner: true): CppAstNode;     // 需要完整父节点
-        (isNeedInner?: false): any;          // 旧用例多数把它当“轻量快照”比对
+        (isNeedInner: true): CppAstNode;        // 要完整父节点
+        (isNeedInner?: false): CppAstNodeLite;  // 轻量快照
     };
 
     access?: string;
