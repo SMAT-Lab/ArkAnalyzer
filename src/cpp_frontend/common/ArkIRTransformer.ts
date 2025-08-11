@@ -75,8 +75,8 @@ function nodeInnerNode(node: CppAstNode): CppAstNode {
 export class ArkIRTransformerCpp extends ArkIRTransformer {
     private arkValueTransformerCpp: ArkValueTransformerCpp;
 
-    constructor(sourceFile: ts.SourceFile, declaringMethod: ArkMethod) {
-        super(sourceFile, declaringMethod);
+    constructor(sourceFile: CppAstNode, declaringMethod: ArkMethod) {
+        super(sourceFile as unknown as ts.SourceFile, declaringMethod);
         this.arkValueTransformerCpp = new ArkValueTransformerCpp(this, sourceFile, this.declaringMethod);
     }
 

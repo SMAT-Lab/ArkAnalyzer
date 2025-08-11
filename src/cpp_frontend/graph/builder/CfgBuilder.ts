@@ -136,7 +136,7 @@ export class CfgBuilder {
     emptyBody: boolean = false;
     arrowFunctionWithoutBlock: boolean = false;
 
-    private sourceFile: any;
+    private sourceFile: CppAstNode;
     private declaringMethod: ArkMethod;
 
     constructor(ast: CppAstNode, name: string, declaringMethod: ArkMethod, sourceFile: any) {
@@ -339,7 +339,7 @@ export class CfgBuilder {
         return loopExit;
     }
 
-    private aliceCaseDefaultNode(node: CppAstNode, clauses: CppAstNode[]) {
+    private aliceCaseDefaultNode(node: CppAstNode, clauses: CppAstNode[]):void {
         if (node.kind === 'BreakStmt' || node.kind === 'DefaultStmt' || node.kind === 'ContinueStmt') {
             clauses.push(node);
             return;
@@ -438,7 +438,7 @@ export class CfgBuilder {
         innerNode: CppAstNode,
         lastStatement: StatementBuilder,
         scopeID: number
-    ) {
+    ):StatementBuilder {
         let caller = '';
         let callee = '';
         const first = innerNode?.inner?.[0];
@@ -471,7 +471,7 @@ export class CfgBuilder {
     }
 
 
-    ASTNodeGotoStatement(innerNode: CppAstNode, lastStatement: StatementBuilder, scopeID: number) {
+    ASTNodeGotoStatement(innerNode: CppAstNode, lastStatement: StatementBuilder, scopeID: number):void {
         let s = new StatementBuilder('gotoStatement', innerNode.code, innerNode, scopeID);
         this.judgeLastType(s, lastStatement);
         let label: string = innerNode.code.substring(innerNode.code.indexOf('goto ') + 5);
@@ -507,7 +507,7 @@ export class CfgBuilder {
         }
     }
 
-    ASTNodeLabelStatement(innerNode: CppAstNode, lastStatement: StatementBuilder, scopeID: number) {
+    ASTNodeLabelStatement(innerNode: CppAstNode, lastStatement: StatementBuilder, scopeID: number):StatementBuilder {
         let labelStmt = new StatementBuilder('statement', 'goto label:' + innerNode.name, innerNode, scopeID);
         // 处理goto语句与label语句的前后关系
 
@@ -575,7 +575,7 @@ export class CfgBuilder {
         trystm.tryExit = tryExit;
 
         let tryBlock: any | undefined = undefined;
-        let catchBlockList: any[] = [];
+        let catchBlockList: CppAstNode[] = [];
         for (const node of c.inner) {
             if (node.kind === 'CompoundStmt') {
                 tryBlock = node;
