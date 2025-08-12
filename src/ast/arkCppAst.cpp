@@ -745,18 +745,14 @@ void filterToMainFileOnly(json& node, const std::string& mainFileName, std::stri
         fileName = node["locFile"];
     if (fileName.empty())
         fileName = parentFileName;
-
     // 规范化路径
-    if (!fileName.empty()) {
-        try {
-            fileName = std::filesystem::weakly_canonical(fileName).string();
-        } catch (...) { /* 忽略异常（如路径权限不足等） 保持 normMainFileName 不变 */ }
+    if (!fileName.empty() && std::filesystem::exists(fileName)) {
+        fileName = std::filesystem::weakly_canonical(fileName).string();
     }
     std::string normMainFileName = mainFileName;
-    try {
+    if (std::filesystem::exists(mainFileName)) {
         normMainFileName = std::filesystem::weakly_canonical(mainFileName).string();
-    } catch (...) { /*异常（如路径不存在、权限不足等） 保持原 normMainFileName 不变 */ }
-
+    }
     // 仅主文件节点和TranslationUnitDecl挂inner，头文件节点聚合到headerUnits
     if (node.value("kind", "") == "TranslationUnitDecl") {
             // 根节点保留
@@ -769,7 +765,6 @@ void filterToMainFileOnly(json& node, const std::string& mainFileName, std::stri
         node = json(); // 移除AST中的节点（不在main的inner里）
         return;
     }
-
     // 递归处理子节点
     if (node.contains("inner") && node["inner"].is_array()) {
         json filtered = json::array();

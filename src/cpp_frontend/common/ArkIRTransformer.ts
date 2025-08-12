@@ -129,7 +129,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
         );
     }
 
-    public cppNodeToStmts(node: any): Stmt[] {
+    public cppNodeToStmts(node: CppAstNode): Stmt[] {
         let stmts: Stmt[] = [];
         switch (node.kind) {
             case 'BreakStmt':

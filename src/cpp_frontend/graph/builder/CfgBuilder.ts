@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-import * as ts from 'ohos-typescript';
 import { Local } from '../../../core/base/Local';
 import { ArkAliasTypeDefineStmt, ArkReturnStmt, ArkReturnVoidStmt, Stmt } from '../../../core/base/Stmt';
 import { BasicBlock } from '../../../core/graph/BasicBlock';
@@ -30,10 +29,34 @@ import { SwitchBuilder } from '../../../core/graph/builder/SwitchBuilder';
 import { ConditionBuilder } from '../../../core/graph/builder/ConditionBuilder';
 import { TrapBuilder } from '../../../core/graph/builder/TrapBuilder';
 import { ModifierType } from '../../../core/model/ArkBaseModel';
-import { BlockBuilder, Case, Catch, TextError, Variable, Scope } from '../../../core/graph/builder/CfgBuilder';
+import { BlockBuilder as CoreBlockBuilder, Catch, TextError, Variable, Scope } from '../../../core/graph/builder/CfgBuilder';
 import { ModelUtils } from '../../../core/common/ModelUtils';
 import { CONSTRUCTOR_NAME, PROMISE } from '../../../core/common/TSConst';
 import { CppAstNode, CppTranslationUnit } from '../../../ast/ArkCxxAstNode';
+
+export class BlockBuilder {
+    id: number;
+    stmts: StatementBuilder[];
+    nexts: BlockBuilder[] = [];
+    lasts: BlockBuilder[] = [];
+    walked: boolean = false;
+
+    constructor(id: number, stmts: StatementBuilder[]) {
+        this.id = id;
+        this.stmts = stmts;
+    }
+}
+
+export class Case {
+    value: string;
+    stmt: StatementBuilder;
+    valueNode!: CppAstNode;
+
+    constructor(value: string, stmt: StatementBuilder) {
+        this.value = value;
+        this.stmt = stmt;
+    }
+}
 
 export class StatementBuilder {
     type: string;
@@ -46,7 +69,7 @@ export class StatementBuilder {
     // TODO:以下两个属性需要获取
     line: number; //行号//ast节点存了一个start值为这段代码的起始地址，可以从start开始往回查原文有几个换行符确定行号
     column: number; // 列
-    astNode: any | null; //ast节点对象
+    astNode: CppAstNode | null; //ast节点对象
     scopeID: number;
     addressCode3: string[] = [];
     block: BlockBuilder | null;
@@ -55,7 +78,7 @@ export class StatementBuilder {
     numOfIdentifier: number = 0;
     isDoWhile: boolean = false;
 
-    constructor(type: string, code: string, astNode: any | null, scopeID: number) {
+    constructor(type: string, code: string, astNode: CppAstNode | null, scopeID: number) {
         this.type = type;
         this.code = code;
         this.next = null;
@@ -139,7 +162,7 @@ export class CfgBuilder {
     private sourceFile: CppAstNode;
     private declaringMethod: ArkMethod;
 
-    constructor(ast: CppAstNode, name: string, declaringMethod: ArkMethod, sourceFile: any) {
+    constructor(ast: CppAstNode, name: string, declaringMethod: ArkMethod, sourceFile: CppAstNode) {
         this.name = name;
         this.astRoot = ast;
         this.declaringMethod = declaringMethod;
@@ -812,8 +835,7 @@ export class CfgBuilder {
             if (stmt.next.passTmies === stmt.next.lasts.size || stmt.next.type === 'loopStatement' || stmt.next.isDoWhile) {
                 if (
                     stmt.next.scopeID !== stmt.scopeID &&
-                    !(stmt.next instanceof ConditionStatementBuilder && stmt.next.doStatement) &&
-                    !(ts.isCaseClause(stmt.astNode!) || ts.isDefaultClause(stmt.astNode!))
+                    !(stmt.next instanceof ConditionStatementBuilder && stmt.next.doStatement)
                 ) {
                     stmtQueue.push(stmt.next);
                     return null;
@@ -1205,12 +1227,12 @@ export class CfgBuilder {
         traps: Trap[];
     } {
         const { blockBuilderToCfgBlock, basicBlockSet, arkIRTransformer } = this.initializeBuild();
-        const { blocksContainLoopCondition, blockBuildersBeforeTry, blockBuildersContainSwitch, valueAndStmtsOfSwitchAndCasesAll } = this.processBlocks(
-            blockBuilderToCfgBlock,
-            basicBlockSet,
-            arkIRTransformer
-        );
-
+        const {
+            blocksContainLoopCondition,
+            blockBuildersBeforeTry,
+            blockBuildersContainSwitch,
+            valueAndStmtsOfSwitchAndCasesAll,
+        } = this.processBlocks(blockBuilderToCfgBlock, basicBlockSet, arkIRTransformer);
         const currBlockId = this.blocks.length;
         this.linkBasicBlocks(blockBuilderToCfgBlock);
         this.adjustBlocks(
@@ -1221,10 +1243,11 @@ export class CfgBuilder {
             valueAndStmtsOfSwitchAndCasesAll,
             arkIRTransformer
         );
-
-        const trapBuilder = new TrapBuilder(blockBuildersBeforeTry, blockBuilderToCfgBlock, arkIRTransformer, basicBlockSet);
+        // 仅为 TrapBuilder 做一次 core 类型的适配 ——
+        const asCoreMapForTrap = blockBuilderToCfgBlock as unknown as Map<CoreBlockBuilder, BasicBlock>;
+        const asCoreBeforeTry = blockBuildersBeforeTry as unknown as Set<CoreBlockBuilder>;
+        const trapBuilder = new TrapBuilder(asCoreBeforeTry, asCoreMapForTrap, arkIRTransformer, basicBlockSet);
         const traps = trapBuilder.buildTraps();
-
         const cfg = this.createCfg(blockBuilderToCfgBlock, basicBlockSet, currBlockId);
         return {
             cfg,
@@ -1328,13 +1351,17 @@ export class CfgBuilder {
         valueAndStmtsOfSwitchAndCasesAll: ValueAndStmts[][],
         arkIRTransformer: ArkIRTransformerCpp
     ): void {
+        const asCoreMap = blockBuilderToCfgBlock as unknown as Map<CoreBlockBuilder, BasicBlock>;
+        const asCoreSet = blocksContainLoopCondition as unknown as Set<CoreBlockBuilder>;
+        const asCoreArr = blockBuildersContainSwitch as unknown as CoreBlockBuilder[];
+        const asCoreBlocks = this.blocks as unknown as CoreBlockBuilder[]; // 适配 this.blocks
         const loopBuilder = new LoopBuilder();
-        loopBuilder.rebuildBlocksInLoop(blockBuilderToCfgBlock, blocksContainLoopCondition, basicBlockSet, this.blocks);
+        loopBuilder.rebuildBlocksInLoop(asCoreMap, asCoreSet, basicBlockSet, asCoreBlocks);
         const switchBuilder = new SwitchBuilder();
-        switchBuilder.buildSwitch(blockBuilderToCfgBlock, blockBuildersContainSwitch, valueAndStmtsOfSwitchAndCasesAll, arkIRTransformer, basicBlockSet);
+        switchBuilder.buildSwitch(asCoreMap, asCoreArr, valueAndStmtsOfSwitchAndCasesAll, arkIRTransformer, basicBlockSet);
         const conditionalBuilder = new ConditionBuilder();
         conditionalBuilder.rebuildBlocksContainConditionalOperator(
-            blockBuilderToCfgBlock,
+            asCoreMap,
             basicBlockSet,
             ModelUtils.isArkUIBuilderMethod(this.declaringMethod)
         );
