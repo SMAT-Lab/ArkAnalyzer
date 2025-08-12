@@ -53,7 +53,7 @@ export const FUNCPTR_EXPECT_CASE3 = {
             id: 0,
             stmts: [
                 'this = this: @functionPointer/functionPointer.cpp: %dflt',
-                '%0 = newarray (double (*[])[4]',
+                "%0 = newarray (double (*)(double, double)[])[4]",
                 '%0[0] = Add',
                 '%0[1] = Subtract',
                 '%0[2] = Multiply',

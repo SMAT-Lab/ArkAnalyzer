@@ -2142,7 +2142,8 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
     private buildCppTypeFromQualType(node: CppAstNode | undefined, qualType: string, tagUsed: string): Type {
         if (qualType.includes('[') && qualType.includes(']')) {
             const count = qualType.match(/\[/g)?.length ?? 0;
-            let baseType = cppNode2Type(qualType.slice(0, qualType.indexOf('[')), this.declaringMethod);
+            let baseType = cppNode2Type(qualType.slice(0, qualType.indexOf('['))
+                + qualType.slice(qualType.lastIndexOf(']') + 1), this.declaringMethod);
             if (baseType instanceof UnclearReferenceType) {
                 return new ArrayType(new UnclearReferenceType(qualType.slice(0, qualType.indexOf('['))), count);
             }

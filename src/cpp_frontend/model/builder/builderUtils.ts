@@ -187,12 +187,7 @@ export function cppNode2Type(nodeQualType: CppAstNode | string, arkInstance: Ark
             }
         }
     }
-    // Handle function pointer type — detect strings containing (*)()
-    const funcPtrRegex = /\(\s*\*\s*\)\s*\(\s*[^)]*\s*\)/;
-    if (typeof nodeQualType === 'string' && funcPtrRegex.test(nodeQualType)) {
-        const info: CppTypeInfo = { qualType: nodeQualType };
-        return new FunctionPointer(info);
-    }
+
     // 默认处理
     return buildTypeFromPreStr(nodeQualType.toString(), arkInstance);
 }
@@ -200,6 +195,11 @@ export function cppNode2Type(nodeQualType: CppAstNode | string, arkInstance: Ark
 export function buildTypeFromPreStr(preStr: string, arkInstance: ArkMethod | ArkClass | ArkField | undefined): Type {
     // 1. 去除const/static/mutable 等修饰符
     preStr = preStr.replace(/\b(const|static|mutable)\s*\b/g, '');
+    let isFuncPtr = false;
+    const funcPtrRegex = /\(\s*\*\s*\)\s*\(\s*[^)]*\s*\)/;
+    if (funcPtrRegex.test(preStr)){
+        isFuncPtr = true;
+    }
     let pointerLevel = 0;
     let referenceCount = 0;
     // 2. 处理指针和引用，仅非STL容器处理
@@ -207,16 +207,28 @@ export function buildTypeFromPreStr(preStr: string, arkInstance: ArkMethod | Ark
         referenceCount = (preStr.match(/&/g) || []).length;
         preStr = preStr.replace(/&/g, '').trim();
         pointerLevel = (preStr.match(/\*/g) || []).length;
-        preStr = preStr.replace(/\*/g, '').trim();
+        if (isFuncPtr){
+            preStr = preStr.replace(/(\*)(\*+)/g, '$1').trim();
+        } else {
+            preStr = preStr.replace(/\*/g, '').trim();
+        }
     }
 
     // 3. 推断类型
     const postStr = convertDataType(preStr);
-    let baseType = postStr === 'unsupported' ? buildTypeFromDerivedType(preStr, arkInstance) : TypeInference.buildTypeFromStr(postStr, preStr);
+    let baseType: Type;
+    if (isFuncPtr){
+        const info: CppTypeInfo = { qualType: preStr };
+        baseType = new FunctionPointer(info);
+    } else if (postStr === 'unsupported'){
+        baseType = buildTypeFromDerivedType(preStr, arkInstance)
+    } else {
+        baseType = TypeInference.buildTypeFromStr(postStr, preStr);
+    }
 
     // 待处理: 指针与其他类型/修饰符的优先级
     // 4. 包装指针和引用
-    if (pointerLevel > 0) {
+    if (pointerLevel > 0 && !(baseType instanceof FunctionPointer) || pointerLevel > 1) {
         baseType = new PointerType(baseType, pointerLevel);
     }
     // 处理引用类型
