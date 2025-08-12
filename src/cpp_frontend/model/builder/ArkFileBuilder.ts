@@ -35,7 +35,13 @@ import { CppAstNode } from '../../../ast/ArkCxxAstNode';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkFileBuilder');
 
-function extractOhosSdkPath(mapData: Map<string, any>): string {
+interface ModuleInfo {
+    moduleName?: string;
+    name: string;
+    path?: string;
+}
+
+function extractOhosSdkPath(mapData: Map<string, ModuleInfo>): string {
     for (const [key, value] of mapData.entries()) {
         if (key !== 'ohosSdk') {
             continue;

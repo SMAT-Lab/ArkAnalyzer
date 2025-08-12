@@ -1077,6 +1077,28 @@ void fillMemberExprName(json& node)
     }
 }
 
+static void HandleTemplateAndCursorSpecific(
+    json& node,
+    CXCursorKind kind_cursor,
+    const std::string& codeStr,
+    json& children
+) {
+    if (kind_cursor == CXCursor_TemplateTypeParameter && codeStr.find("=") != std::string::npos) {
+        children.push_back(buildTemplateDefaultType(codeStr));
+    }
+    node["inner"] = children;
+    if (kind_cursor == CXCursor_ClassDecl || kind_cursor == CXCursor_StructDecl) {
+        derivedDataTypeMap[node["name"]] = node;
+    }
+    if (kind_cursor == CXCursor_CXXNewExpr) {
+        annotateNewExprArrayInfo(node, children);
+    } else if (kind_cursor == CXCursor_MemberRefExpr) {
+        annotateMemberExprIsArrow(node);
+    } else if (kind_cursor == CXCursor_CallExpr) {
+        postprocessCallExpr(node);
+    }
+}
+
 void nodePostprocess(
     json& node,
     CXCursor cursor,
@@ -1128,18 +1150,7 @@ void nodePostprocess(
         updateTypedefClassConstructor(children);
         deduceDecltype(node, children);
     }
-    if (kind_cursor == CXCursor_TemplateTypeParameter && codeStr.find("=") != std::string::npos)
-        children.push_back(buildTemplateDefaultType(codeStr));
-    node["inner"] = children;
-    if (kind_cursor == CXCursor_ClassDecl || kind_cursor == CXCursor_StructDecl)
-        derivedDataTypeMap[node["name"]] = node;
-    if (kind_cursor == CXCursor_CXXNewExpr) {
-        annotateNewExprArrayInfo(node, children);
-    } else if (kind_cursor == CXCursor_MemberRefExpr) {
-        annotateMemberExprIsArrow(node);
-    } else if (kind_cursor == CXCursor_CallExpr) {
-        postprocessCallExpr(node);
-    }
+    HandleTemplateAndCursorSpecific(node, kind_cursor, codeStr, children);
     detectAndFillSpecialKind(node);  // 特殊表达式类型自动判断兜底
 }
 // ==========================buildASTJson 主体========================
