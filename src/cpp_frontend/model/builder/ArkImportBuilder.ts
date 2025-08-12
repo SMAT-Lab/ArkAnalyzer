@@ -32,7 +32,7 @@ export function buildImportInfo(node: any, sourceFile: any, arkFile: ArkFile): I
 }
 
 function buildGenericImportInfo(node: CppAstNode, sourceFile: CppTranslationUnit, arkFile: ArkFile,
-                                importClauseNameBuilder: (node: any) => string): ImportInfo[] {
+                                importClauseNameBuilder: (node: CppAstNode) => string): ImportInfo[] {
     const originTsPosition = LineColPosition.buildFromNodeCpp(node, sourceFile);
     const tsSourceCode = node.code;
     let importInfos: ImportInfo[] = [];

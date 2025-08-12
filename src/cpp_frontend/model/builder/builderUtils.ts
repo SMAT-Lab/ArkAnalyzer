@@ -169,11 +169,11 @@ export function buildReturnType(mtdNode: CppAstNode, sourceFile: CppAstNode, met
 }
 
 export function cppNode2Type(nodeQualType: CppAstNode | any, arkInstance: ArkMethod | ArkClass | ArkField | undefined, sourceFile?: CppAstNode): Type {
-    // 处理特殊类型
+    // Handle special type
     if (nodeQualType === 'void () const') {
         return buildTypeFromPreStr('VoidKeyword', arkInstance);
     }
-    // 处理泛型类型
+    // Handle generic types
     let templateTypes: GenericType[] | undefined;
     if (arkInstance instanceof ArkMethod) {
         templateTypes = arkInstance.getGenericTypes() ?? arkInstance.getDeclaringArkClass()?.getGenericsTypes();
@@ -188,7 +188,7 @@ export function cppNode2Type(nodeQualType: CppAstNode | any, arkInstance: ArkMet
         }
     }
 
-    // 处理函数指针类型，对节点type含有(*)()的做识别
+    // Handle function pointer type — detect strings containing (*)()
     const funcPtrRegex = /\(\s*\*\s*\)\s*\(\s*[^)]*\s*\)/;
     if (funcPtrRegex.test(nodeQualType)) {
         return new FunctionPointer(nodeQualType);

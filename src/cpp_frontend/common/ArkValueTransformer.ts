@@ -131,14 +131,13 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         return node.inner.length !== 0 && node.inner[0].kind === 'MaterializeTemporaryExpr';
     }
 
-// 判断当前节点的子节点是否是成员函数调用
+    // 判断当前节点的子节点是否是成员函数调用
     private isNodeRelatedToCXXMember(node: CppAstNode): boolean {
         return (
             (node.inner.length !== 0 && node.inner[0].kind === 'CXXMemberCallExpr') ||
             (node.inner[0].kind === 'ImplicitCastExpr' && node.inner[0].inner[0] && node.inner[0].inner[0].kind === 'CXXMemberCallExpr')
         );
     }
-
 
     // std::pair类型的构造
     private isPairConstructExpr(node: CppAstNode): boolean {
@@ -154,18 +153,15 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
     private isNotNewExpression(newExpression: CppAstNode): boolean {
         return (
             newExpression.inner.length > 0 &&
-            (newExpression.inner[0].kind === 'IntegerLiteral' ||
-                newExpression.inner[0].kind === 'InitListExpr' ||
+            (newExpression.inner[0].kind === 'IntegerLiteral' || newExpression.inner[0].kind === 'InitListExpr' ||
                 (newExpression.inner[0].kind === 'ImplicitCastExpr' && !newExpression.inner[0].code.includes('(')) ||
                 newExpression.inner[0].kind === 'CompoundLiteralExpr')
         );
     }
 
-
     private isNodeRelatedToCXXFuncCast(node: CppAstNode): boolean {
         return node.inner.length !== 0 && node.inner[0].kind === 'CXXFunctionalCastExpr';
     }
-
 
     public cppNodeToValueAndStmts(node: CppAstNode): ValueAndStmts {
         if (node === undefined) {
