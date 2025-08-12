@@ -1705,7 +1705,8 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
 
     private prefixUnaryExpressionToValueAndStmtsCpp(prefixUnaryExpression: CppAstNode): ValueAndStmts {
         const stmts: Stmt[] = [];
-        let { value: operandValue, valueOriginalPositions: operandPositions, stmts: operandStmts } = this.cppNodeToValueAndStmts(prefixUnaryExpression.inner[0]);
+        let { value: operandValue, valueOriginalPositions: operandPositions, stmts: operandStmts } =
+            this.cppNodeToValueAndStmts(prefixUnaryExpression.inner[0]);
         operandStmts.forEach(stmt => stmts.push(stmt));
         if (IRUtils.moreThanOneAddress(operandValue)) {
             ({

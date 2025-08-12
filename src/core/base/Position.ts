@@ -150,8 +150,8 @@ export class FullPosition {
         const begin = node?.range?.begin;
         const end = node?.range?.end;
         const startLine = begin?.line ?? 0;
-        const startCharacter = begin?.col  ?? 0;
-        const endLine= end?.line ?? startLine;
+        const startCharacter = begin?.col ?? 0;
+        const endLine = end?.line ?? startLine;
         const endCharacter = end?.col ?? (begin?.tokLen != null ? startCharacter + begin.tokLen : startCharacter);
         return new FullPosition(startLine, startCharacter, endLine, endCharacter);
     }
