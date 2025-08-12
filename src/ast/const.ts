@@ -40,11 +40,20 @@ function getPrintAstExePath(): string {
     return printAstExePath;
 }
 
+function getPrintAstExePathLinux(): string {
+    let printAstExePath = path.join(projectRoot, 'src', 'ast', 'arkCppAstDumper');
+    if (!fs.existsSync(printAstExePath)) {
+        printAstExePath = path.join(projectRoot, 'lib', 'ast', 'arkCppAstDumper');
+    }
+    return printAstExePath;
+}
+
 const printAstExePath = getPrintAstExePath();
+const printAstExePathLinux = getPrintAstExePathLinux();
 
 export class ClangPath {
     static WindowsPath = printAstExePath;
-    static LinuxPath = '';
+    static LinuxPath = printAstExePathLinux;
     static Unknown = '';
     static protectRoot = projectRoot;
 }
