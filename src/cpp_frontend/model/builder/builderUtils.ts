@@ -31,8 +31,8 @@ import { ArkMethod } from '../../../core/model/ArkMethod';
 import { MethodParameter } from '../../../core/model/builder/ArkMethodBuilder';
 import { modifierKind2EnumCpp } from '../../../core/model/ArkBaseModel';
 import { buildGenericType } from '../../../core/model/builder/builderUtils';
-import { CppAstNode } from '../../../ast/ArkCxxAstNode';
-import {Decorator} from '../../../core/base/Decorator';
+import { CppAstNode, CppTypeInfo } from '../../../ast/ArkCxxAstNode';
+import { Decorator } from '../../../core/base/Decorator';
 
 function extractCommonModifiers(node: CppAstNode): number {
     let modifiers: number = 0;
@@ -168,7 +168,7 @@ export function buildReturnType(mtdNode: CppAstNode, sourceFile: CppAstNode, met
     }
 }
 
-export function cppNode2Type(nodeQualType: CppAstNode | any, arkInstance: ArkMethod | ArkClass | ArkField | undefined, sourceFile?: CppAstNode): Type {
+export function cppNode2Type(nodeQualType: CppAstNode | string, arkInstance: ArkMethod | ArkClass | ArkField | undefined, sourceFile?: CppAstNode): Type {
     // Handle special type
     if (nodeQualType === 'void () const') {
         return buildTypeFromPreStr('VoidKeyword', arkInstance);
@@ -187,15 +187,14 @@ export function cppNode2Type(nodeQualType: CppAstNode | any, arkInstance: ArkMet
             }
         }
     }
-
     // Handle function pointer type — detect strings containing (*)()
     const funcPtrRegex = /\(\s*\*\s*\)\s*\(\s*[^)]*\s*\)/;
-    if (funcPtrRegex.test(nodeQualType)) {
-        return new FunctionPointer(nodeQualType);
+    if (typeof nodeQualType === 'string' && funcPtrRegex.test(nodeQualType)) {
+        const info: CppTypeInfo = { qualType: nodeQualType };
+        return new FunctionPointer(info);
     }
-
     // 默认处理
-    return buildTypeFromPreStr(nodeQualType, arkInstance);
+    return buildTypeFromPreStr(nodeQualType.toString(), arkInstance);
 }
 
 export function buildTypeFromPreStr(preStr: string, arkInstance: ArkMethod | ArkClass | ArkField | undefined): Type {
