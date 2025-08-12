@@ -33,7 +33,7 @@ import { ModifierType } from '../../../core/model/ArkBaseModel';
 import { BlockBuilder, Case, Catch, TextError, Variable, Scope } from '../../../core/graph/builder/CfgBuilder';
 import { ModelUtils } from '../../../core/common/ModelUtils';
 import { CONSTRUCTOR_NAME, PROMISE } from '../../../core/common/TSConst';
-import { CppAstNode } from '../../../ast/ArkCxxAstNode';
+import { CppAstNode, CppTranslationUnit } from '../../../ast/ArkCxxAstNode';
 
 export class StatementBuilder {
     type: string;
@@ -636,12 +636,72 @@ export class CfgBuilder {
         this.scopes.push(scope);
         for (let i = 0; i < nodes.length; i++) {
             let innerNode = nodes[i];
-            lastStatement = this.handleASTStmtSuccession(innerNode, lastStatement, scope);
-            if (innerNode.kind === 'ReturnStmt') {
+            let nodeKind = innerNode.kind.toString();
+            if (nodeKind === 'ReturnStmt') {
+                let s = new StatementBuilder('returnStatement', innerNode.code, innerNode, scope.id);
+                this.judgeLastType(s, lastStatement);
+                lastStatement = s;
                 break;
-            } else if (innerNode.kind === 'BreakStmt' || innerNode.kind === 'ContinueStmt') {
+            } else if (nodeKind === 'DeclStmt' || nodeKind === 'VarDecl' || nodeKind === 'TypedefDecl') {
+                let s = new StatementBuilder('statement', innerNode.code, innerNode, scope.id);
+                this.judgeLastType(s, lastStatement);
+                lastStatement = s;
+            } else if (nodeKind === 'ExprWithCleanups') {
+                let s = new StatementBuilder('statement', 'ExprWithCleanups', innerNode, scope.id);
+                this.judgeLastType(s, lastStatement);
+                lastStatement = s;
+            } else if (
+                [
+                    'CallExpr',
+                    'CXXOperatorCallExpr',
+                    'BinaryOperator',
+                    'UnaryOperator',
+                    'CompoundAssignOperator',
+                    'AtomicCallExpr',
+                    'CXXConstructExpr',
+                    'CXXCtorInitializer',
+                ].includes(nodeKind)
+            ) {
+                let s = new StatementBuilder('statement', innerNode.code, innerNode, scope.id);
+                this.judgeLastType(s, lastStatement);
+                lastStatement = s;
+            } else if (nodeKind === 'CXXMemberCallExpr') {
+                lastStatement = this.ASTNodeCXXMemberCallExpr(innerNode, lastStatement, scope.id);
+            } else if (nodeKind === 'IfStmt') {
+                lastStatement = this.ASTNodeIfStatement(innerNode, lastStatement, scope.id);
+            } else if (nodeKind === 'ForStmt' || nodeKind === 'CXXForRangeStmt') {
+                lastStatement = this.ASTNodeForStatement(innerNode, lastStatement, scope.id);
+            } else if (nodeKind === 'RecoveryExpr') {
+                let s = new StatementBuilder('statement', innerNode.code, innerNode, scope.id);
+                this.judgeLastType(s, lastStatement);
+                lastStatement = s;
+            } else if (nodeKind === 'WhileStmt') {
+                lastStatement = this.ASTNodeWhileStatement(innerNode, lastStatement, scope.id);
+            } else if (nodeKind === 'BreakStmt') {
+                this.ASTNodeBreakStatement(innerNode, lastStatement);
                 return;
-            } else if (innerNode.kind === 'GotoStmt' || innerNode.kind === 'IndirectGotoStmt') {
+            } else if (nodeKind === 'DoStmt') {
+                lastStatement = this.ASTNodeDoStatement(innerNode, lastStatement, scope.id);
+            } else if (nodeKind === 'SwitchStmt') {
+                lastStatement = this.ASTNodeSwitchStatement(innerNode, lastStatement, scope.id);
+            } else if (nodeKind === 'ContinueStmt') {
+                const lastLoop = this.loopStack[this.loopStack.length - 1];
+                this.judgeLastType(lastLoop, lastStatement);
+                lastLoop.lasts.add(lastStatement);
+                return;
+            } else if (nodeKind === 'CompoundStmt') {
+                let blockExit = new StatementBuilder('blockExit', '', innerNode, scope.id);
+                this.exits.push(blockExit);
+                this.walkAST(lastStatement, blockExit, [...innerNode.inner]);
+                lastStatement = blockExit;
+            } else if (nodeKind === 'CXXThrowExpr') {
+                let s = new StatementBuilder('statement', innerNode.code, innerNode, scope.id);
+                this.judgeLastType(s, lastStatement);
+                lastStatement = s;
+            } else if (nodeKind === 'CXXTryStmt') {
+                lastStatement = this.ASTNodeTryStatement(innerNode, lastStatement, scope.id);
+            } else if (nodeKind === 'GotoStmt' || nodeKind === 'IndirectGotoStmt') {
+                this.ASTNodeGotoStatement(innerNode, lastStatement, scope.id);
                 let p: CppAstNode | null = innerNode;
                 while (p && p.id !== this.astRoot.id) {
                     if (['IfStmt', 'WhileStmt', 'DoStmt', 'ForStmt', 'CaseStmt', 'DefaultStmt', 'CXXTryStmt'].includes(p.kind)) {
@@ -649,93 +709,18 @@ export class CfgBuilder {
                     }
                     p = (p.parent ?? p.getParent?.(true)) ?? null;
                 }
+            } else if (nodeKind === 'LabelStmt') {
+                lastStatement = this.ASTNodeLabelStatement(innerNode, lastStatement, scope.id);
+            } else if (nodeKind === 'CXXDeleteExpr') {
+                let s = new StatementBuilder('statement', innerNode.code, innerNode, scope.id);
+                this.judgeLastType(s, lastStatement);
+                lastStatement = s;
             }
         }
         if (lastStatement.type !== 'breakStatement' && lastStatement.type !== 'continueStatement' && lastStatement.type !== 'returnStatement') {
             lastStatement.next = nextStatement;
             nextStatement.lasts.add(lastStatement);
         }
-    }
-
-    handleASTStmtSuccession(innerNode: CppAstNode, lastStatement: StatementBuilder, scope: Scope): StatementBuilder {
-        let nodeKind = innerNode.kind.toString();
-        let s: StatementBuilder;
-        switch (nodeKind) {
-            case 'AtomicCallExpr':
-            case 'BinaryOperator':
-            case 'CallExpr':
-            case 'CompoundAssignOperator':
-            case 'CXXConstructExpr':
-            case 'CXXCtorInitializer':
-            case 'CXXDeleteExpr':
-            case 'CXXOperatorCallExpr':
-            case 'CXXThrowExpr':
-            case 'DeclStmt':
-            case 'RecoveryExpr':
-            case 'TypedefDecl':
-            case 'UnaryOperator':
-            case 'VarDecl':
-                s = new StatementBuilder('statement', innerNode.code, innerNode, scope.id);
-                this.judgeLastType(s, lastStatement);
-                lastStatement = s;
-                break;
-            case 'BreakStmt':
-                this.ASTNodeBreakStatement(innerNode, lastStatement);
-                break;
-            case 'CompoundStmt':
-                let blockExit = new StatementBuilder('blockExit', '', innerNode, scope.id);
-                this.exits.push(blockExit);
-                this.walkAST(lastStatement, blockExit, [...innerNode.inner]);
-                lastStatement = blockExit;
-                break;
-            case 'ContinueStmt':
-                const lastLoop = this.loopStack[this.loopStack.length - 1];
-                this.judgeLastType(lastLoop, lastStatement);
-                lastLoop.lasts.add(lastStatement);
-                break;
-            case 'CXXMemberCallExpr':
-                lastStatement = this.ASTNodeCXXMemberCallExpr(innerNode, lastStatement, scope.id);
-                break;
-            case 'CXXForRangeStmt':
-            case 'ForStmt':
-                lastStatement = this.ASTNodeForStatement(innerNode, lastStatement, scope.id);
-                break;
-            case 'CXXTryStmt':
-                lastStatement = this.ASTNodeTryStatement(innerNode, lastStatement, scope.id);
-                break;
-            case 'DoStmt':
-                lastStatement = this.ASTNodeDoStatement(innerNode, lastStatement, scope.id);
-                break;
-            case 'ExprWithCleanups':
-                s = new StatementBuilder('statement', 'ExprWithCleanups', innerNode, scope.id);
-                this.judgeLastType(s, lastStatement);
-                lastStatement = s;
-                break;
-            case 'GotoStmt':
-            case 'IndirectGotoStmt':
-                this.ASTNodeGotoStatement(innerNode, lastStatement, scope.id);
-                break;
-            case 'IfStmt':
-                lastStatement = this.ASTNodeIfStatement(innerNode, lastStatement, scope.id);
-                break;
-            case 'LabelStmt':
-                lastStatement = this.ASTNodeLabelStatement(innerNode, lastStatement, scope.id);
-                break;
-            case 'ReturnStmt':
-                s = new StatementBuilder('returnStatement', innerNode.code, innerNode, scope.id);
-                this.judgeLastType(s, lastStatement);
-                lastStatement = s;
-                break;
-            case 'SwitchStmt':
-                lastStatement = this.ASTNodeSwitchStatement(innerNode, lastStatement, scope.id);
-                break;
-            case 'WhileStmt':
-                lastStatement = this.ASTNodeWhileStatement(innerNode, lastStatement, scope.id);
-                break;
-            default:
-                break;
-        }
-        return lastStatement;
     }
 
     addReturnInEmptyMethod(): void {
@@ -1155,7 +1140,7 @@ export class CfgBuilder {
         traps: Trap[];
     } {
         const stmts: Stmt[] = [];
-        const arkIRTransformer = new ArkIRTransformerCpp(this.sourceFile, this.declaringMethod);
+        const arkIRTransformer = new ArkIRTransformerCpp(this.sourceFile as CppTranslationUnit, this.declaringMethod);
         arkIRTransformer.prebuildStmts().forEach(stmt => stmts.push(stmt));
         const expressionBodyNode = this.astRoot;
         const expressionBodyStmts: Stmt[] = [];
@@ -1241,7 +1226,7 @@ export class CfgBuilder {
     } {
         const blockBuilderToCfgBlock = new Map<BlockBuilder, BasicBlock>();
         const basicBlockSet = new Set<BasicBlock>();
-        const arkIRTransformer = new ArkIRTransformerCpp(this.sourceFile, this.declaringMethod);
+        const arkIRTransformer = new ArkIRTransformerCpp(this.sourceFile as CppTranslationUnit, this.declaringMethod);
         return { blockBuilderToCfgBlock, basicBlockSet, arkIRTransformer };
     }
 

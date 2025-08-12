@@ -122,7 +122,7 @@ graph TD
     processBlocks --> switchStatementToValueAndStmts
     processBlocks --> tsNodeToStmts
     tsNodeToStmts --> xxxToStmts
-    xxxToStmts --> tsNodeToValueAndStmts
+    xxxToStmts --> cppNodeToValueAndStmts
 
 ```
 

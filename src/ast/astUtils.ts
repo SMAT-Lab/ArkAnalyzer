@@ -194,9 +194,9 @@ export class AstUtils {
         return null;
     }
 
-    private static processAccess(cursor: any): void {
+    private static processAccess(cursor: CppAstNode): void {
         if (cursor.kind === 'AccessSpecDecl') {
-            this.currentAccess = cursor.access;
+            this.currentAccess = cursor.access ??  '';
         }
         if (cursor.kind === 'CXXMethodDecl' || cursor.kind === 'FieldDecl' || cursor.kind === 'VarDecl' || cursor.kind === 'FriendDecl') {
             let codeModifier = this.extractCppModifier(cursor.code);

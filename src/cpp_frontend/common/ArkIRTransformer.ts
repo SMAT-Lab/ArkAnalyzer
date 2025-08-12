@@ -45,7 +45,7 @@ import { buildModifiers } from '../model/builder/builderUtils';
 import { ModelUtils } from '../../core/common/ModelUtils';
 import { ArkClass } from '../../core/model/ArkClass';
 import { buildNormalArkClassFromArkMethod } from '../model/builder/ArkClassBuilder';
-import {CppAstNode} from '../../ast/ArkCxxAstNode';
+import {CppAstNode, CppTranslationUnit} from '../../ast/ArkCxxAstNode';
 
 export type ValueAndStmts = {
     value: Value;
@@ -73,13 +73,13 @@ function nodeInnerNode(node: CppAstNode): CppAstNode {
 }
 
 export class ArkIRTransformerCpp extends ArkIRTransformer {
-    private readonly sourceFileCpp: CppAstNode;
+    private readonly sourceFileCpp: CppTranslationUnit;
     private arkValueTransformerCpp: ArkValueTransformerCpp;
 
-    constructor(sourceFile: CppAstNode, declaringMethod: ArkMethod) {
+    constructor(sourceFile: CppTranslationUnit, declaringMethod: ArkMethod) {
         super(sourceFile as unknown as ts.SourceFile, declaringMethod);
         this.sourceFileCpp = sourceFile;
-        this.arkValueTransformerCpp = new ArkValueTransformerCpp(this, sourceFile, this.declaringMethod);
+        this.arkValueTransformerCpp = new ArkValueTransformerCpp(this, this.sourceFileCpp, this.declaringMethod);
     }
 
     public getLocals(): Set<Local> {
@@ -374,7 +374,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
     }
 
     public cppNodeToValueAndStmts(node: CppAstNode): ValueAndStmts {
-        return this.arkValueTransformerCpp.tsNodeToValueAndStmts(node);
+        return this.arkValueTransformerCpp.cppNodeToValueAndStmts(node);
     }
 
     private returnStatementToStmtsCpp(returnStatement: CppAstNode): Stmt[] {

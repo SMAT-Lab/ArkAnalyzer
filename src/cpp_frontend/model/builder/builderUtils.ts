@@ -168,7 +168,7 @@ export function buildReturnType(mtdNode: CppAstNode, sourceFile: CppAstNode, met
     }
 }
 
-export function cppNode2Type(nodeQualType: any, arkInstance: ArkMethod | ArkClass | ArkField | undefined, sourceFile?: CppAstNode): Type {
+export function cppNode2Type(nodeQualType: CppAstNode | any, arkInstance: ArkMethod | ArkClass | ArkField | undefined, sourceFile?: CppAstNode): Type {
     // 处理特殊类型
     if (nodeQualType === 'void () const') {
         return buildTypeFromPreStr('VoidKeyword', arkInstance);
