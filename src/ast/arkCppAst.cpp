@@ -1082,7 +1082,8 @@ static void HandleTemplateAndCursorSpecific(
     CXCursorKind kind_cursor,
     const std::string& codeStr,
     json& children
-) {
+)
+{
     if (kind_cursor == CXCursor_TemplateTypeParameter && codeStr.find("=") != std::string::npos) {
         children.push_back(buildTemplateDefaultType(codeStr));
     }

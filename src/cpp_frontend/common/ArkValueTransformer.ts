@@ -167,7 +167,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
     }
 
 
-    public cppNodeToValueAndStmts(node: CppAstNode | any ): ValueAndStmts {
+    public cppNodeToValueAndStmts(node: CppAstNode): ValueAndStmts {
         if (node === undefined) {
             logger.error(
                 'ArkValueTransformer-Cpp NodeToValueAndStmts: node is undefined. Method signature is : ',
@@ -180,7 +180,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
             };
         }
         if (node.kind === 'CXXConstructExpr') {
-            let parent = node.getParent();
+            let parent = (node.parent ?? node.getParent?.(true)) ?? null;
             if (parent && parent.kind === 'CXXConstructorDecl') {
                 return this.superExpressionToValueAndStmtsCpp(node);
             }
@@ -192,7 +192,8 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
                 return this.cppNodeToValueAndStmts(node.inner[0]);
             }
             return this.newExpressionToValueAndStmtsCpp(node);
-        } else if (node.kind === 'CallExpr' && node.inner?.length > 0 && node.getParent().type.qualType === 'std::thread') {
+        } else if (node.kind === 'CallExpr' && node.inner?.length > 0 &&
+            ((node.parent ?? node.getParent?.(true))?.type?.qualType === 'std::thread')) {
             return this.newExpressionToValueAndStmtsCpp(node);
         } else if (node.kind === 'CallExpr' && node.inner?.length > 0 && node.inner[0].kind === 'CXXPseudoDestructorExpression') {
             return this.callExpressionToValueAndStmtsCpp(node.inner[0]);
@@ -269,9 +270,9 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
             if ((node.type?.qualType?.includes('[') && node.type.qualType.includes(']')) || node.type.qualType === 'void') {
                 return this.arrayLiteralExpressionToValueAndStmtsCpp(node);
             }
-            let pNode = node.getParent(true);
+            let pNode = (node.parent ?? node.getParent?.(true)) ?? null;
             if (
-                pNode?.inner?.length > 0 &&
+                pNode && pNode?.inner?.length > 0 &&
                 (pNode.inner[0].kind === 'TypeRef' || !node.type.qualType.includes('[') || this.resolveTypeNodeCpp(node) instanceof ClassType)
             ) {
                 return this.newExpressionToValueAndStmtsCpp(node);
@@ -2020,7 +2021,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         return null;
     }
 
-    public conditionToValueAndStmtsCpp(condition: CppAstNode | undefined): ValueAndStmts {
+    public conditionToValueAndStmtsCpp(condition: CppAstNode): ValueAndStmts {
         const stmts: Stmt[] = [];
         let { value: conditionValue, valueOriginalPositions: conditionPositions, stmts: conditionStmts } = this.cppNodeToValueAndStmts(condition);
         conditionStmts.forEach(stmt => stmts.push(stmt));
@@ -2201,22 +2202,26 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         return stdContainerLists.some(containerType => typeNameInLowerCase.includes(containerType));
     }
 
-    private resolveCppTypeReferenceNode(typeReferenceNode: string | any): Type {
-        const typeReferenceFullName = typeReferenceNode;
+    private resolveCppTypeReferenceNode(typeReferenceNode: string | CppAstNode): Type {
+        const typeReferenceFullName =
+            typeof typeReferenceNode === 'string'
+                ? typeReferenceNode
+                : typeReferenceNode.name ?? ''; // 假设 CppAstNode 有 name 字段
         if (typeReferenceFullName === Builtin.OBJECT) {
             return Builtin.OBJECT_CLASS_TYPE;
         }
         const aliasTypeAndStmt = this.aliasTypeMap.get(typeReferenceFullName);
-
         const genericTypes: Type[] = [];
-        if (typeReferenceNode.typeArguments) {
+        if (typeof typeReferenceNode !== 'string' && typeReferenceNode.typeArguments) {
             for (const typeArgument of typeReferenceNode.typeArguments) {
-                genericTypes.push(this.resolveTypeNode(typeArgument));
+                genericTypes.push(this.resolveTypeNodeCpp(undefined, typeArgument));
             }
         }
-
         if (!aliasTypeAndStmt) {
-            const typeName = typeReferenceNode;
+            const typeName =
+                typeof typeReferenceNode === 'string'
+                    ? typeReferenceNode
+                    : typeReferenceNode.name ?? '';
             const local = this.locals.get(typeName);
             if (local !== undefined) {
                 return local.getType();
