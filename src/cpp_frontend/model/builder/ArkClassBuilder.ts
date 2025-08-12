@@ -29,7 +29,7 @@ import { init4InstanceInitMethod, init4StaticInitMethod } from '../../../core/mo
 import { ArkIRTransformerCpp } from '../../common/ArkIRTransformer';
 import { buildDecorators } from './builderUtils';
 import { buildDefaultArkMethodFromArkClass } from './ArkMethodBuilder';
-import { CppAstNode } from '../../../ast/ArkCxxAstNode';
+import { CppAstNode, CppTranslationUnit } from '../../../ast/ArkCxxAstNode';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkClassBuilder');
 
@@ -220,11 +220,11 @@ function buildArkClassMembers(clsNode: CppAstNode, cls: ArkClass, sourceFile: Cp
     const tagStr = (clsNode.tagUsed ?? '');
 
     if (tagStr === 'class' || tagStr === 'struct' || tagStr === 'union') {
-        instanceIRTransformer = new ArkIRTransformerCpp(sourceFile, cls.getInstanceInitMethod());
-        staticIRTransformer = new ArkIRTransformerCpp(sourceFile, cls.getStaticInitMethod());
+        instanceIRTransformer = new ArkIRTransformerCpp(sourceFile as CppTranslationUnit, cls.getInstanceInitMethod());
+        staticIRTransformer = new ArkIRTransformerCpp(sourceFile as CppTranslationUnit, cls.getStaticInitMethod());
     }
     if (tagStr === 'enum') {
-        staticIRTransformer = new ArkIRTransformerCpp(sourceFile, cls.getStaticInitMethod());
+        staticIRTransformer = new ArkIRTransformerCpp(sourceFile as CppTranslationUnit, cls.getStaticInitMethod());
     }
     const staticInitStmts: Stmt[] = [];
     const instanceInitStmts: Stmt[] = [];
