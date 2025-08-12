@@ -1015,7 +1015,7 @@ export class FunctionPointer extends Type {
     }
 
     public getTypeString(): string {
-        return String(this.funType);
+        return String(this.funType.qualType);
     }
 
     public setFunType(funType: CppTypeInfo): void {

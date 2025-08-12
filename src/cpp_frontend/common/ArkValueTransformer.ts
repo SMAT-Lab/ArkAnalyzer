@@ -1814,8 +1814,8 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         }
         const declarationType = variableDeclaration.type ? this.resolveTypeNodeCpp(variableDeclaration) : UnknownType.getInstance();
         if (rightOpNode && declarationType instanceof FunctionPointer) {
-            rightOpNode.code = declarationType.getFunType().toString();
-            rightOpNode.type.qualType = declarationType.getFunType().toString();
+            rightOpNode.code = declarationType.getFunType().qualType;
+            rightOpNode.type.qualType = declarationType.getFunType().qualType;
         }
         const assignment = this.assignmentToValueAndStmtsCpp(leftOpNode, rightOpNode, true, isConst, declarationType, needRightOp);
         if (declarationType instanceof ReferenceType && assignment.stmts[0] instanceof ArkAssignStmt) {
