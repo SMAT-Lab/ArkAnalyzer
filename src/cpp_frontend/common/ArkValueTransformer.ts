@@ -1486,8 +1486,8 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         className: string,
     ): void {
         // 对象构造，使用 invokeStmt 表达
-        const constructArgs = (() => {
-            let args = newExpression.inner;
+        const constructArgs:CppAstNode[] = (():CppAstNode[] => {
+            let args:CppAstNode[] = newExpression.inner;
             if (newExpression.kind === 'CXXNewExpr' && newExpression.inner[1]?.kind === 'CXXConstructExpr') {
                 return [...newExpression.inner[1].inner];
             } else if (newExpression.kind === 'CompoundLiteralExpr') {

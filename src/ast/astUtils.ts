@@ -56,9 +56,9 @@ export class AstUtils {
         this.ensureOutputDir(path.dirname(astPath));
         const sep = path.delimiter;
         const existingPath = process.env.PATH ?? '';
-        // 判断是否需要将 llvmPath 添加进 PATH（避免重复添加）
+        // Check whether llvmPath needs to be added to PATH (avoid adding it twice)
         const shouldAppendLlvmPath = llvmPath && !existingPath.split(sep).includes(llvmPath);
-        // 如果需要追加 llvmPath，构造新的环境变量对象；否则使用默认环境变量
+        // If llvmPath needs to be appended, construct a new environment variable object; otherwise, use the default environment variables
         const envVars = shouldAppendLlvmPath
             ? {
                   ...process.env,
@@ -136,6 +136,23 @@ export class AstUtils {
         return filteredChildren;
     }
 
+    // Factory: generates a getParent implementation with overload signatures for a given cursor
+    private static makeGetParent(cursor: CppAstNode) {
+        function getParent(isNeedInner: true): CppAstNode;
+        function getParent(isNeedInner?: false): CppAstNodeLite;
+        function getParent(isNeedInner?: boolean): CppAstNode | CppAstNodeLite {
+            if (isNeedInner) {
+                // Return the "full parent node": shallow copy, keeping the inner property
+                // Note: This will also copy getParent itself (usually not an issue)
+                return { ...cursor };
+            }
+            // Return the "lightweight snapshot": shallow copy without inner, keeping other fields
+            const { inner, ...rest } = cursor;
+            return rest; // Inferred as CppAstNodeLite
+        }
+        return getParent;
+    }
+
     private static fullInfo(cursor: CppAstNode): void {
         if (!Array.isArray(cursor.inner)) {
             cursor.inner = [];
@@ -149,17 +166,8 @@ export class AstUtils {
                 continue;
             }
             const currentCursor = cursor.inner[idx];
-            // 明确 getParent 的重载类型
-            type GetParentOverload = { (isNeedInner: true): CppAstNode; (isNeedInner?: false): CppAstNodeLite; };
-            const getParentImpl: GetParentOverload = ((isNeedInner?: boolean):CppAstNodeLite => {
-                if (isNeedInner) {
-                    return { ...cursor };
-                }
-                // 去掉 inner 的浅拷贝
-                const { inner, ...rest } = cursor as CppAstNode;
-                return rest as CppAstNodeLite;
-            }) as GetParentOverload;
-            Object.assign(currentCursor, { getParent: getParentImpl });
+            // Overloaded implementation without any usage of 'any' or type assertions
+            Object.assign(currentCursor, { getParent: this.makeGetParent(cursor) });
             this.processAccess(currentCursor);
             this.fullInfo(currentCursor);
         }
@@ -185,7 +193,7 @@ export class AstUtils {
             'thread_local',
             'typedef',
         ];
-        // 构造正则表达式, \b 保证是单词匹配
+        // Construct the regular expression; \b ensures whole-word matching
         const pattern = new RegExp(`\\b(${cppModifiers.join('|')})\\b`, 'g');
         const match = pattern.exec(code);
         if (match) {
