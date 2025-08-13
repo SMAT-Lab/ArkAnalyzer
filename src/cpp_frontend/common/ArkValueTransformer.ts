@@ -73,6 +73,7 @@ import { CONSTRUCTOR_NAME, THIS_NAME } from '../../core/common/TSConst';
 import { TypeInference } from './TypeInference';
 import { setTs2CppFuncMapOfClass } from './ModelUtils';
 import { CppAstNode, CppTranslationUnit } from '../../ast/ArkCxxAstNode';
+import {BinaryOperator} from "../../../lib";
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkValueTransformer');
 
@@ -1939,7 +1940,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
 
     // In assignment patterns, the left operand will be an array literal expression
     // In assignment patterns, the left operand will be an object literal expression
-    private cxxBinaryExpressionToValueAndStmts(binaryExpression: CppAstNode | any): ValueAndStmts {
+    private cxxBinaryExpressionToValueAndStmts(binaryExpression: CppAstNode): ValueAndStmts {
         const operatorToken = binaryExpression.opcode;
         const binaryExpressionLeft = binaryExpression.inner[0];
         const binaryExpressionRight = binaryExpression.inner[1];
@@ -1954,20 +1955,16 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         opStmts2.forEach(stmt => stmts.push(stmt));
         let exprValue: Value;
         let exprValuePositions = [binaryExpressionPosition];
-        if (operatorToken.kind === ',') {
-            exprValue = opValue2;
-        } else {
-            if (operatorToken) {
-                if (this.isRelationalOperator(operatorToken)) {
-                    exprValue = new ArkConditionExpr(opValue1, opValue2, operatorToken as RelationalBinaryOperator);
-                } else {
-                    exprValue = new ArkNormalBinopExpr(opValue1, opValue2, operatorToken as NormalBinaryOperator);
-                }
-                exprValuePositions.push(...opPositions1, ...opPositions2);
+        if (operatorToken) {
+            if (this.isRelationalOperator(operatorToken as BinaryOperator)) {
+                exprValue = new ArkConditionExpr(opValue1, opValue2, operatorToken as RelationalBinaryOperator);
             } else {
-                exprValue = CppValueUtil.getUndefinedConst();
-                exprValuePositions.push(binaryExpressionPosition);
+                exprValue = new ArkNormalBinopExpr(opValue1, opValue2, operatorToken as NormalBinaryOperator);
             }
+            exprValuePositions.push(...opPositions1, ...opPositions2);
+        } else {
+            exprValue = CppValueUtil.getUndefinedConst();
+            exprValuePositions.push(binaryExpressionPosition);
         }
         return {
             value: exprValue,
@@ -1976,7 +1973,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         };
     }
 
-    private cxxCompoundAssignmentToValueAndStmts(binaryExpression: CppAstNode | any): ValueAndStmts {
+    private cxxCompoundAssignmentToValueAndStmts(binaryExpression: CppAstNode): ValueAndStmts {
         const stmts: Stmt[] = [];
         let { value: leftValue, valueOriginalPositions: leftPositions, stmts: leftStmts } = this.cppNodeToValueAndStmts(binaryExpression.inner[0]);
         leftStmts.forEach(stmt => stmts.push(stmt));
@@ -1995,7 +1992,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
 
         let leftOpValue: Value;
         let leftOpPositions: FullPosition[];
-        const operator = this.compoundAssignmentTokenToBinaryOperatorCpp(binaryExpression.opcode);
+        const operator = this.compoundAssignmentTokenToBinaryOperatorCpp(binaryExpression.opcode ?? '');
         if (operator) {
             const exprValue = new ArkNormalBinopExpr(leftValue, rightValue, operator);
             const exprValuePosition = FullPosition.buildFromNodeCpp(binaryExpression, this.sourceFileCpp);

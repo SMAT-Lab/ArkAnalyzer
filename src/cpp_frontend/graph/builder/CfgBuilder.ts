@@ -662,7 +662,9 @@ export class CfgBuilder {
         let p: CppAstNode | null = node;
         const rootId = this.astRoot.id;
         while (p && p.id !== rootId) {
-            if (CONTROL_BOUNDARY_KINDS.has(p.kind)) return true;
+            if (CONTROL_BOUNDARY_KINDS.has(p.kind)) {
+                return true;
+            }
             p = (p.parent ?? p.getParent?.(true)) ?? null;
         }
         return false;

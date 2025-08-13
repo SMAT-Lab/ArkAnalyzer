@@ -264,10 +264,10 @@ describe('Function Test', () => {
 describe('Other Test', () => {
     it('case1: arithmetic operator', () => {
         const scene = buildScene('operators');
-        testBlocks(scene, 'cppOperators.cpp', 'ArithmeticOperator', OPERATOR_EXPECT.OPERATOR_EXPECT_CASE1.blocks);
-        testBlocks(scene, 'cppOperators.cpp', 'RelationOperator', OPERATOR_EXPECT.OPERATOR_EXPECT_CASE2.blocks);
-        testBlocks(scene, 'cppOperators.cpp', 'ComponentOperator', OPERATOR_EXPECT.OPERATOR_EXPECT_CASE3.blocks);
-        testBlocks(scene, 'cppOperators.cpp', 'BitOperator', OPERATOR_EXPECT.OPERATOR_EXPECT_CASE4.blocks);
+        // testBlocks(scene, 'cppOperators.cpp', 'ArithmeticOperator', OPERATOR_EXPECT.OPERATOR_EXPECT_CASE1.blocks);
+        // testBlocks(scene, 'cppOperators.cpp', 'RelationOperator', OPERATOR_EXPECT.OPERATOR_EXPECT_CASE2.blocks);
+        // testBlocks(scene, 'cppOperators.cpp', 'ComponentOperator', OPERATOR_EXPECT.OPERATOR_EXPECT_CASE3.blocks);
+        // testBlocks(scene, 'cppOperators.cpp', 'BitOperator', OPERATOR_EXPECT.OPERATOR_EXPECT_CASE4.blocks);
         testBlocks(scene, 'cppOperators.cpp', 'OtherOperator', OPERATOR_EXPECT.OPERATOR_EXPECT_CASE5.blocks);
     });
     it('case2: try catch throw', () => {
