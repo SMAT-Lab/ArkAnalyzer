@@ -24,6 +24,11 @@ import {CppAstNode, CppAstNodeLite} from './ArkCxxAstNode';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'astUtils');
 
+export type GetParentFn = {
+    (isNeedInner: true): CppAstNode;
+    (isNeedInner?: false): CppAstNodeLite;
+};
+
 export class AstUtils {
     private static currentAccess: string = 'public';
 
@@ -131,13 +136,14 @@ export class AstUtils {
             return filteredChildren;
         }
         filteredChildren = cursor.inner.filter(
-            (item: CppAstNode) => !Object.prototype.hasOwnProperty.call(cursor, 'isImplicit') || !item.isImplicit || cursor.kind === 'LambdaExpr' || item.isUsed
+            (item: CppAstNode) => !Object.prototype.hasOwnProperty.call(cursor, 'isImplicit') ||
+                                           !item.isImplicit || cursor.kind === 'LambdaExpr' || item.isUsed
         );
         return filteredChildren;
     }
 
-    // Factory: generates a getParent implementation with overload signatures for a given cursor
-    private static makeGetParent(cursor: CppAstNode) {
+// Factory: generates a getParent implementation with overload signatures for a given cursor
+    private static makeGetParent(cursor: CppAstNode):GetParentFn {
         function getParent(isNeedInner: true): CppAstNode;
         function getParent(isNeedInner?: false): CppAstNodeLite;
         function getParent(isNeedInner?: boolean): CppAstNode | CppAstNodeLite {

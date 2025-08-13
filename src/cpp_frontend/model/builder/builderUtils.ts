@@ -193,7 +193,7 @@ export function cppNode2Type(nodeQualType: CppAstNode | string, arkInstance: Ark
 }
 
 export function buildTypeFromPreStr(preStr: string, arkInstance: ArkMethod | ArkClass | ArkField | undefined): Type {
-    // 1. 去除const/static/mutable 等修饰符
+    // 1. Remove modifiers such as const/static/mutable
     preStr = preStr.replace(/\b(const|static|mutable)\s*\b/g, '');
     let isFuncPtr = false;
     const funcPtrRegex = /\(\s*\*\s*\)\s*\(\s*[^)]*\s*\)/;
@@ -202,7 +202,7 @@ export function buildTypeFromPreStr(preStr: string, arkInstance: ArkMethod | Ark
     }
     let pointerLevel = 0;
     let referenceCount = 0;
-    // 2. 处理指针和引用，仅非STL容器处理
+    // 2. Handle pointers and references; only process if not an STL container
     if (!isCXXSTLContainer(preStr)) {
         referenceCount = (preStr.match(/&/g) || []).length;
         preStr = preStr.replace(/&/g, '').trim();
@@ -214,24 +214,23 @@ export function buildTypeFromPreStr(preStr: string, arkInstance: ArkMethod | Ark
         }
     }
 
-    // 3. 推断类型
+    // 3. Infer the type
     const postStr = convertDataType(preStr);
     let baseType: Type;
     if (isFuncPtr){
         const info: CppTypeInfo = { qualType: preStr };
         baseType = new FunctionPointer(info);
     } else if (postStr === 'unsupported'){
-        baseType = buildTypeFromDerivedType(preStr, arkInstance)
+        baseType = buildTypeFromDerivedType(preStr, arkInstance);
     } else {
         baseType = TypeInference.buildTypeFromStr(postStr, preStr);
     }
-
-    // 待处理: 指针与其他类型/修饰符的优先级
-    // 4. 包装指针和引用
+    // Need to Handle precedence between pointers and other types/modifiers
+    // 4. Wrap pointers and references
     if (pointerLevel > 0 && !(baseType instanceof FunctionPointer) || pointerLevel > 1) {
         baseType = new PointerType(baseType, pointerLevel);
     }
-    // 处理引用类型
+    // Handle reference types
     if (referenceCount > 0) {
         return buildReferenceType(preStr, arkInstance, referenceCount, baseType);
     }

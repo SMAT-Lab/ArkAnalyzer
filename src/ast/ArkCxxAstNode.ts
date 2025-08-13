@@ -14,37 +14,37 @@
  */
 
 
-/** 位置信息（行/列/偏移/长度） */
+/** Position information (line/column/offset/length) */
 export interface CppPosition {
     line: number;
     col: number;
-    offset?: number; // 生成器会写 offset
-    tokLen?: number; // begin 有 tokLen
+    offset?: number; // Offset will be set by the generator
+    tokLen?: number; // tokLen is available for 'begin'
 }
 
-/** 源码范围 */
+/** Source code range */
 export interface CppRange {
     begin: CppPosition;
     end: CppPosition;
 }
 
-/** 类型信息 */
+/** Type information */
 export interface CppTypeInfo {
     type?: string;
-    qualType: string; // 主字段：unifyTypeStr 输出
+    qualType: string; // Main field: output from unifyTypeStr
     desugaredQualType?: string;
     typeAliasDeclId?: number;
     typeAliasDeclQualifiedName?: string;
 }
 
-/** DeclRef 的目标信息 */
+/** Target information for DeclRef */
 export interface CppReferencedDecl {
     kind?: string; // VarDecl / ParamVarDecl / FunctionDecl ...
     name?: string;
     type?: CppTypeInfo;
 }
 
-/** CXXCtorInitializer 里专用的字段 */
+/** Target information for CXXCtorInitializer */
 export interface CppCtorAnyInit {
     kind: 'FieldDecl';
     name: string;
@@ -52,94 +52,94 @@ export interface CppCtorAnyInit {
 }
 export type CppAstNodeLite = Omit<CppAstNode, 'inner'>;
 
-/** 通用 C++ AST 节点（兼容 Clang JSON ） */
+/** General C++ AST node (compatible with Clang JSON) */
 export interface CppAstNode {
-    /** 节点唯一 ID */
+    /** Unique node ID */
     id?: number | string;
 
-    /** 节点种类（如 "TranslationUnit" / "FunctionDecl" / "CXXConstructExpr" 等） */
+    /** Node kind (e.g., "TranslationUnit", "FunctionDecl", "CXXConstructExpr", etc.) */
     kind: string;
 
-    /** 节点名（函数/变量/类型/操作符名等） */
+    /** Node name (function/variable/type/operator name, etc.) */
     name: string;
 
-    /** 源码片段 */
+    /** Source code snippet */
     code: string;
 
-    /** 类型信息 */
+    /** Type information */
     type: CppTypeInfo;
 
-    /** 修饰名（方法/构造/析构时由 getMemberInClassName 注入） */
+    /** Mangled name (injected by getMemberInClassName for methods/constructors/destructors) */
     mangledName?: string;
 
-    /** 标签：class/struct/union/enum（由 fillNodeKindTag 注入） */
+    /** Tag: class/struct/union/enum (injected by fillNodeKindTag) */
     tagUsed?: string;
 
-    /** 存放诸如 UsingDirective 的隐式标记 */
+    /** Stores implicit markers such as UsingDirective */
     isImplicit?: boolean;
 
-    /** 存储类（例如成员 VarDecl 标记为 "static"） */
+    /** Storage class (e.g., "static" for member VarDecl) */
     storageClass?: string;
 
-    /** DeclRef 解析出的目标信息 */
+    /** Target information parsed from DeclRef */
     referencedDecl?: CppReferencedDecl;
 
-    /** 字面量值（IntegerLiteral/StringLiteral/BoolLiteral） */
+    /** Literal value (IntegerLiteral/StringLiteral/BoolLiteral) */
     value?: string;
 
-    /** 值类别（"prvalue"/"lvalue"...默认写 "prvalue"） */
+    /** Value category ("prvalue"/"lvalue"... default is "prvalue") */
     valueCategory?: string;
 
-    /** 一些派生信息：一元/二元运算符 */
+    /** Derived information: unary/binary operator */
     opcode?: string; // Binary / CompoundAssign / UnaryOperator
     isPostfix?: boolean; // UnaryOperator
 
-    /** MemberExpr 是否通过 -> 访问 */
+    /** Whether MemberExpr is accessed via -> */
     isArrow?: boolean;
 
-    /** new[] 注解 */
+    /** Annotation for new[] */
     isArray?: boolean;
     arraySizes?: string[];
 
-    /** 特殊表达式注解（trait/noexcept/typeid/atomic） */
+    /** Special expression annotations (trait/noexcept/typeid/atomic) */
     traitFunc?: string;
     traitArgs?: string;
     noexceptArg?: string;
     typeArg?: string;
     atomicFunc?: string;
 
-    /** 伪析构表达式注解 */
+    /** Annotation for pseudo-destructor expression */
     pseudoDestructorType?: string;
 
-    /** goto -> label 的解析结果 */
+    /** Result of goto -> label resolution */
     targetLabelId?: number;
 
-    /** CXXCtorInitializer 专用 */
-    anyInit?: CppCtorAnyInit; // 形如{ kind:"FieldDecl", name, type }
-    baseInit?: CppTypeInfo; // 继承基类的初始化时使用
+    /** Specific to CXXCtorInitializer */
+    anyInit?: CppCtorAnyInit; // e.g., { kind: "FieldDecl", name, type }
+    baseInit?: CppTypeInfo; // Used for base class initialization
 
-    /** 头文件/包含关系相关 */
-    include?: boolean; // 节点来自 include 的用户头
-    included?: string; // InclusionDirective时的宿主文件路径
-    fileName?: string; // TranslationUnit/Include 的文件名
-    locFile?: string; // 在locCursorKind 里写入的文件名
+    /** Header/include relationship related */
+    include?: boolean; // Node comes from a user header via include
+    included?: string; // Host file path for InclusionDirective
+    fileName?: string; // File name for TranslationUnit/Include
+    locFile?: string; // File name written by locCursorKind
 
-    /** 简单定位（行/列），有些节点不一定都有 */
+    /** Simple location (line/column); some nodes may not have this */
     loc?: {
         file?: string;
         line?: number;
         col?: number;
     };
 
-    /** 精确范围（begin/end 含 offset 与 tokLen） */
+    /** Precise range (begin/end includes offset and tokLen) */
     range?: CppRange;
 
-    /** 子节点 */
+    /** Child nodes */
     inner: CppAstNode[];
 
     /**
-     * 根节点会额外携带：把用户 include 的节点聚合在这里
-     * （filterToMainFileOnly() 填充；样例 JSON 里也有）
+     * Root node may additionally carry: nodes from user includes aggregated here
+     * (filled by filterToMainFileOnly(); also present in sample JSON)
      */
     headerUnits?: CppAstNode[];
 
@@ -150,16 +150,16 @@ export interface CppAstNode {
     parent?: CppAstNode;
 
     getParent?: {
-        (isNeedInner: true): CppAstNode;        // 需要完整父节点（含 inner）
-        (isNeedInner?: false): CppAstNodeLite;  // 轻量快照（不含 inner）
+        (isNeedInner: true): CppAstNode; // Requires full parent node (including inner)
+        (isNeedInner?: false): CppAstNodeLite; // Lightweight snapshot (excluding inner)
     };
 
     access?: string;
-    // /** 兼容未来新增字段 */
+    /** Reserved for future fields */
     [key: string]: unknown;
 }
 
-/** 根节点类型 */
+/** root type */
 export interface CppTranslationUnit extends CppAstNode {
     kind: 'TranslationUnit' | 'TranslationUnitDecl';
     fileName?: string;
