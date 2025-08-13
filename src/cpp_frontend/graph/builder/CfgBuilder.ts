@@ -654,6 +654,20 @@ export class CfgBuilder {
         return finalExit;
     }
 
+    private hitsControlBoundaryBeforeRoot(node: CppAstNode): boolean {
+        const CONTROL_BOUNDARY_KINDS = new Set([
+            'IfStmt', 'WhileStmt', 'DoStmt', 'ForStmt',
+            'CaseStmt', 'DefaultStmt', 'CXXTryStmt',
+        ]);
+        let p: CppAstNode | null = node;
+        const rootId = this.astRoot.id;
+        while (p && p.id !== rootId) {
+            if (CONTROL_BOUNDARY_KINDS.has(p.kind)) return true;
+            p = (p.parent ?? p.getParent?.(true)) ?? null;
+        }
+        return false;
+    }
+
     walkAST(lastStatement: StatementBuilder, nextStatement: StatementBuilder, nodes: CppAstNode[]): void {
         let scope = new Scope(this.scopes.length);
         this.scopes.push(scope);
@@ -666,12 +680,8 @@ export class CfgBuilder {
             } else if (nodeKind === 'BreakStmt' || nodeKind === 'ContinueStmt') {
                 return;
             } else if (nodeKind === 'GotoStmt' || nodeKind === 'IndirectGotoStmt') {
-                let p: CppAstNode | null = innerNode;
-                while (p && p.id !== this.astRoot.id) {
-                    if (['IfStmt', 'WhileStmt', 'DoStmt', 'ForStmt', 'CaseStmt', 'DefaultStmt', 'CXXTryStmt'].includes(p.kind)) {
-                        return;
-                    }
-                    p = (p.parent ?? p.getParent?.(true)) ?? null;
+                if (this.hitsControlBoundaryBeforeRoot(innerNode)) {
+                    return;
                 }
             }
         }
