@@ -72,7 +72,7 @@ import { ModelUtils } from '../../core/common/ModelUtils';
 import { CONSTRUCTOR_NAME, THIS_NAME } from '../../core/common/TSConst';
 import { TypeInference } from './TypeInference';
 import { setTs2CppFuncMapOfClass } from './ModelUtils';
-import {CppAstNode, CppTranslationUnit} from '../../ast/ArkCxxAstNode';
+import { CppAstNode, CppTranslationUnit } from '../../ast/ArkCxxAstNode';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkValueTransformer');
 
@@ -240,7 +240,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         return node.inner.length !== 0 && node.inner[0].kind === 'CXXFunctionalCastExpr';
     }
 
-    private undefinedToValueAndStmts() {
+    private undefinedToValueAndStmts():ValueAndStmts {
         logger.error(
             'ArkValueTransformer-Cpp NodeToValueAndStmts: node is undefined. Method signature is : ',
             this.declaringMethod?.getSignature()?.toString(),
@@ -777,12 +777,12 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         };
     }
 
-    private cxxIdentifierToValueAndStmts(identifier: CppAstNode | any, variableDefFlag?: boolean): ValueAndStmts {
+    private cxxIdentifierToValueAndStmts(identifier: CppAstNode, variableDefFlag?: boolean): ValueAndStmts {
         let identifierValue: Value;
         let identifierPositions = [FullPosition.buildFromNodeCpp(identifier, this.sourceFileCpp)];
         let varNode: CppAstNode;
         if (identifier.referencedDecl) {
-            varNode = identifier.referencedDecl;
+            varNode = identifier.referencedDecl as CppAstNode;
         } else {
             varNode = identifier;
         }
