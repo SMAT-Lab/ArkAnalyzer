@@ -31,21 +31,12 @@ CommandLineOptions cliutil::ParseCommandLineArgs(int argc, char** argv)
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
         if (arg == "-o" && i + 1 < argc) {
-            opts.outputFile = argv[i + 1];
-            ++i;
-            continue;
-        }
-        if (arg == "-c" && i + 1 < argc) {
-            opts.compileCommandsFile = argv[i + 1];
-            ++i;
-            continue;
-        }
-        if (arg == "-i" && i + 1 < argc) {
-            opts.userIncludeDirs.push_back(argv[i + 1]);
-            ++i;
-            continue;
-        }
-        if (opts.inputFile.empty()) {
+            opts.outputFile = argv[++i];
+        } else if (arg == "-c" && i + 1 < argc) {
+            opts.compileCommandsFile = argv[++i];
+        } else if (arg == "-i" && i + 1 < argc) {
+            opts.userIncludeDirs.push_back(argv[++i]);
+        } else if (opts.inputFile.empty()) {
             opts.inputFile = arg;
         }
     }

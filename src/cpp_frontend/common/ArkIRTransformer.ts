@@ -286,7 +286,6 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
         } = this.generateAssignStmtForValue(iteratorInvokeExpr, iteratorInvokeExprPositions);
         iteratorStmts.forEach(stmt => stmts.push(stmt));
         (iterator as Local).setType(Builtin.ITERATOR_CLASS_TYPE);
-
         const nextMethodSubSignature = new MethodSubSignature(Builtin.ITERATOR_NEXT, [], Builtin.ITERATOR_RESULT_CLASS_TYPE);
         const nextMethodSignature = new MethodSignature(ClassSignature.DEFAULT, nextMethodSubSignature);
         const iteratorNextInvokeExpr = new ArkInstanceInvokeExpr(iterator as Local, nextMethodSignature, []);
@@ -324,7 +323,6 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
         );
         const valueFieldRef = new ArkInstanceFieldRef(iterableValue as Local, valueFieldSignature);
         const valueFieldRefPositions = [iteratorResultPositions[0], ...iteratorResultPositions];
-
         // 处理iterable是否结束
         const {
             value: yieldValue,
@@ -332,7 +330,6 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
             stmts: yieldValueStmts,
         } = this.generateAssignStmtForValue(valueFieldRef, valueFieldRefPositions);
         yieldValueStmts.forEach(stmt => stmts.push(stmt));
-
         const castExpr = new ArkCastExpr(yieldValue, UnknownType.getInstance());
         const castExprPositions = [yieldValuePositions[0], ...yieldValuePositions];
         const declStmts: CppAstNode = forOfStatement.inner[0];

@@ -65,7 +65,7 @@ inline void visitAllChildren(CXCursor cursor, json& children, bool actionScope,
 }
 
 // 赋成员名
-inline void fillMemberName(json &node, const std::string &displayName)
+void fillMemberName(json &node, const std::string &displayName)
 {
     if (!node["name"].empty()) {
         return;
