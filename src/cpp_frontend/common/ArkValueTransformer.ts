@@ -2162,61 +2162,55 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
      * Build Type object according to qualType/tagUsed
      */
     private buildCppTypeFromQualType(node: CppAstNode | undefined, qualType: string, tagUsed: string): Type {
-        let nodeType;
-        try {
-            if (qualType.includes('[') && qualType.includes(']')) {
-                const count = qualType.match(/\[/g)?.length ?? 0;
-                let baseType = cppNode2Type(qualType.slice(0, qualType.indexOf('[')) +
-                    qualType.slice(qualType.lastIndexOf(']') + 1), this.declaringMethod);
-                if (baseType instanceof UnclearReferenceType) {
-                    return new ArrayType(new UnclearReferenceType(qualType.slice(0, qualType.indexOf('['))), count);
-                }
-                return new ArrayType(baseType, count);
-            } else if (node && Object.prototype.hasOwnProperty.call(node, 'kind') && node.kind === 'InitListExpr') {
-                return new ArrayType(new UnclearReferenceType(qualType), node.inner.length);
-            } else if (qualType.startsWith('std::')) {
-                const match = /std::(\w+)/g.exec(qualType); // Handle standard library container types
-                const containerName = match ? match[1] : null;
-                if (containerName && convertDataType(containerName) === 'unsupported' && this.isCppStdContainer(containerName)) {
-                    const fileSignature = new FileSignature('std', containerName + '.h');
-                    const classSignature = new ClassSignature(containerName, fileSignature);
-                    return new ClassType(classSignature);
-                } else if (containerName === 'thread') {
-                    return new Thread();
-                }
-            } else if (qualType === 'std' && node && node.kind === 'NamespaceRef') {
-                const fileSignature = new FileSignature('std', 'iostream.h');
-                const classSignature = new ClassSignature('iostream', fileSignature);
-                return new ClassType(classSignature);
-            } else if (tagUsed === 'struct') {
-                const fileSignature = new FileSignature(this.sourceFileCpp?.projectName ?? '', this.sourceFile.fileName);
-                const classSignature = new ClassSignature('struct', fileSignature, null);
-                return new ClassType(classSignature);
-            } else if (tagUsed === 'enum') {
-                const fileSignature = new FileSignature(this.sourceFileCpp?.projectName ?? '', this.sourceFile.fileName);
-                const classSignature = new ClassSignature('enum', fileSignature, null);
-                return new ClassType(classSignature);
-            } else if (tagUsed === 'union') {
-                const fileSignature = new FileSignature(this.sourceFileCpp?.projectName ?? '', this.sourceFile.fileName);
-                const classSignature = new ClassSignature('union', fileSignature, null);
-                return new ClassType(classSignature);
-            } else if (qualType.includes('vector')) {
-                let dimension = 0; // Handle std::vector scenarios (must be after std:: check)
-                let dataType = this.resolveVectorType(qualType, dimension);
-                return new ArrayType(buildTypeFromPreStr(dataType, undefined), dimension);
-            } else if (qualType === 'thread') {
-                return new Thread();
-            } else {
-                let type = this.resolveCppTypeReferenceNode(qualType); // Handle alias type references
-                if (!(type instanceof UnclearReferenceType)) {
-                    return this.resolveCppTypeReferenceNode(qualType);
-                }
+        if (qualType.includes('[') && qualType.includes(']')) {
+            const count = qualType.match(/\[/g)?.length ?? 0;
+            let baseType = cppNode2Type(qualType.slice(0, qualType.indexOf('[')) +
+                qualType.slice(qualType.lastIndexOf(']') + 1), this.declaringMethod);
+            if (baseType instanceof UnclearReferenceType) {
+                return new ArrayType(new UnclearReferenceType(qualType.slice(0, qualType.indexOf('['))), count);
             }
-            nodeType = cppNode2Type(qualType, this.declaringMethod);
-        } catch (e) {} finally {
-            nodeType = UnknownType.getInstance();
+            return new ArrayType(baseType, count);
+        } else if (node && Object.prototype.hasOwnProperty.call(node, 'kind') && node.kind === 'InitListExpr') {
+            return new ArrayType(new UnclearReferenceType(qualType), node.inner.length);
+        } else if (qualType.startsWith('std::')) {
+            const match = /std::(\w+)/g.exec(qualType); // Handle standard library container types
+            const containerName = match ? match[1] : null;
+            if (containerName && convertDataType(containerName) === 'unsupported' && this.isCppStdContainer(containerName)) {
+                const fileSignature = new FileSignature('std', containerName + '.h');
+                const classSignature = new ClassSignature(containerName, fileSignature);
+                return new ClassType(classSignature);
+            } else if (containerName === 'thread') {
+                return new Thread();
+            }
+        } else if (qualType === 'std' && node && node.kind === 'NamespaceRef') {
+            const fileSignature = new FileSignature('std', 'iostream.h');
+            const classSignature = new ClassSignature('iostream', fileSignature);
+            return new ClassType(classSignature);
+        } else if (tagUsed === 'struct') {
+            const fileSignature = new FileSignature(this.sourceFileCpp?.projectName ?? '', this.sourceFile.fileName);
+            const classSignature = new ClassSignature('struct', fileSignature, null);
+            return new ClassType(classSignature);
+        } else if (tagUsed === 'enum') {
+            const fileSignature = new FileSignature(this.sourceFileCpp?.projectName ?? '', this.sourceFile.fileName);
+            const classSignature = new ClassSignature('enum', fileSignature, null);
+            return new ClassType(classSignature);
+        } else if (tagUsed === 'union') {
+            const fileSignature = new FileSignature(this.sourceFileCpp?.projectName ?? '', this.sourceFile.fileName);
+            const classSignature = new ClassSignature('union', fileSignature, null);
+            return new ClassType(classSignature);
+        } else if (qualType.includes('vector')) {
+            let dimension = 0; // Handle std::vector scenarios (must be after std:: check)
+            let dataType = this.resolveVectorType(qualType, dimension);
+            return new ArrayType(buildTypeFromPreStr(dataType, undefined), dimension);
+        } else if (qualType === 'thread') {
+            return new Thread();
+        } else {
+            let type = this.resolveCppTypeReferenceNode(qualType); // Handle alias type references
+            if (!(type instanceof UnclearReferenceType)) {
+                return this.resolveCppTypeReferenceNode(qualType);
+            }
         }
-
+        let nodeType = cppNode2Type(qualType, this.declaringMethod);
         return nodeType instanceof UnclearReferenceType ? UnknownType.getInstance() : nodeType;
     }
 
