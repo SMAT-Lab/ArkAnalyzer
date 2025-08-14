@@ -237,6 +237,9 @@ function buildArkClassMembers(clsNode: CppAstNode, cls: ArkClass, sourceFile: Cp
         } else if (member.kind === 'EnumConstantDecl') {
             const arkField = buildProperty2ArkField(member, sourceFile, cls);
             arkField.getInitializer().forEach(stmt => staticInitStmts.push(stmt));
+        } else if (member.kind === 'CXXMethodDecl' || member.kind === 'CXXConstructorDecl' ||
+            member.kind === 'CXXAccessSpecifier' || member.kind === 'CXXDestructorDecl'){
+            return
         } else {
             logger.warn('Please contact developers to support new member type: ', member.kind);
         }
