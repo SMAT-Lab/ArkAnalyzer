@@ -1100,6 +1100,35 @@ static void HandleTemplateAndCursorSpecific(
     }
 }
 
+void operatorCallExprPostProcess(
+    json& node,
+    json& children
+)
+{
+    if (children.size() >= TWO) {
+        std::string childName1 = children[1]["name"].is_null() ? "" : children[1]["name"];
+        if (children[1]["code"] == "<<" || childName1.find("operator") != std::string::npos)
+            swapChildNode(children);
+        std::string childName0 = children[0]["name"].is_null() ? "" : children[0]["name"];
+        if (childName0.find("operator") != std::string::npos) children[0]["castKind"] = "FunctionToPointerDecay";
+    }
+    if (children.size() == THREE) children[1]["valueCategory"] = "lvalue";
+}
+
+void implicitCastExprPostProcess(
+    json& node,
+    json& children,
+    std::string codeStr
+)
+{
+    if (!children.empty() && children[0]["kind"] == "CallExpr") {
+        node["kind"] = "ExprWithCleanups";
+    } else if (!children.empty() && children[0]["kind"] == "DeclRefExpr" &&
+        codeStr.find(children[0]["code"]) == 0 && codeStr.find("(") != std::string::npos) {
+        node["kind"] = "RecoveryExpr";
+    }
+}
+
 void nodePostprocess(
     json& node,
     CXCursor cursor,
@@ -1116,14 +1145,7 @@ void nodePostprocess(
     if (node["kind"] == "InitListExpr" && typeStr.find("std::pair") != std::string::npos) {
         fixMapPairInitListChildren(children, typeStr);
     } else if (node["kind"] == "CXXOperatorCallExpr") {
-        if (children.size() >= TWO) {
-            std::string chilName1 = children[1]["name"].is_null() ? "": children[1]["name"];
-            if (children[1]["code"] == "<<" || chilName1.find("operator") != std::string::npos)
-                swapChildNode(children);
-            std::string childName0 = children[0]["name"].is_null() ? "" : children[0]["name"];
-            if (childName0.find("operator") != std::string::npos) children[0]["castKind"] = "FunctionToPointerDecay";
-        }
-        if (children.size() == THREE) children[1]["valueCategory"] = "lvalue";
+        operatorCallExprPostProcess(node, children);
     } else if (node["kind"] == "CXXConstructExpr" || node["kind"] == "CallExpr") {
         if (!children.empty() && children[0]["kind"] == "MemberExpr") {
             node["kind"] = "CXXMemberCallExpr";
@@ -1131,12 +1153,7 @@ void nodePostprocess(
             changeChildNodeType(children);
         }
     } else if (node["kind"] == "ImplicitCastExpr") {
-        if (!children.empty() && children[0]["kind"] == "CallExpr") {
-            node["kind"] = "ExprWithCleanups";
-        } else if (!children.empty() && children[0]["kind"] == "DeclRefExpr" &&
-            codeStr.find(children[0]["code"]) == 0 && codeStr.find("(") != std::string::npos) {
-            node["kind"] = "RecoveryExpr";
-        }
+        implicitCastExprPostProcess(node, children, codeStr);
     } else if (node["kind"] == "CXXConstructorDeclinitializer") {
         children = addCXXCtorInitializer(children, node);
     } else if (node["kind"] == "TypedefDecl" && (children.size() == 0 || (children[0]["kind"] !=
