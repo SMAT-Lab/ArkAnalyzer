@@ -18,6 +18,7 @@ import path from 'path';
 import Logger, { LOG_MODULE_TYPE } from './utils/logger';
 import { getAllFiles } from './utils/getAllFiles';
 import { Language } from './core/model/ArkFile';
+import { CmakeUtils } from './cpp_frontend/utils/cmakeUtils';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'Config');
 
@@ -52,213 +53,6 @@ export interface SceneOptions {
 const CONFIG_FILENAME = 'arkanalyzer.json';
 const DEFAULT_CONFIG_FILE = path.join(__dirname, '../config', CONFIG_FILENAME);
 
-// Extract set variable definition: set (VAR value)
-function extractSetVar(line: string): [string, string] | null {
-    const m = line.match(/^\s*set\s*\(\s*([A-Za-z_0-9]+)\s+(.+?)\s*\)$/);
-    if (m) {
-        const [, varName, value] = m;
-        return [varName, value];
-    }
-    return null;
-}
-
-// Recursive parsing of variables, only supports set variables in this file
-function resolveCMakeVar(val: string, varTable: Record<string, string>, depth = 0): string {
-    if (depth > 10) {
-        return val;
-    }
-    return val.replace(/\$\{([A-Za-z_0-9]+)\}/g, (m, varName) => {
-        if (varTable[varName] !== undefined) {
-            return resolveCMakeVar(varTable[varName], varTable, depth + 1);
-        }
-        // Unable to parse, returns as is (reserved for subsequent filtering)
-        return m;
-    });
-}
-
-/**
- *Determine whether the current row is the starting point of incle_rectifiers or target_include-directies,
- *If so, enter the collection state and process the scene where a single line is immediately closed.
- *Return the new collecting status, funcType, and buffer (supporting multiple line parameters).
- */
-function tryStartCollectingIncludeDirs(
-    line: string,
-    results: string[][]
-): {
-    collecting: boolean;
-    funcType: 'include' | 'target' | null;
-    buffer: string[];
-} {
-    if (line.startsWith('include_directories(')) {
-        let collecting = true;
-        let funcType: 'include' | 'target' | null = 'include';
-        let buffer = [line];
-        if (line.includes(')')) {
-            collecting = false;
-            results.push(parseCMakeArgs(buffer, false));
-            buffer = [];
-            funcType = null;
-        }
-        return { collecting, funcType, buffer };
-    } else if (line.startsWith('target_include_directories(')) {
-        let collecting = true;
-        let funcType: 'include' | 'target' | null = 'target';
-        let buffer = [line];
-        if (line.includes(')')) {
-            collecting = false;
-            results.push(parseCMakeArgs(buffer, true));
-            buffer = [];
-            funcType = null;
-        }
-        return { collecting, funcType, buffer };
-    } else {
-        // Not in collection mode
-        return { collecting: false, funcType: null, buffer: [] };
-    }
-}
-
-function extractAllIncludeDirs(lines: string[]): string[][] {
-    const results: string[][] = [];
-    let collecting = false;
-    let buffer: string[] = [];
-    let funcType: 'include' | 'target' | null = null;
-
-    for (const lineOrig of lines) {
-        // Remove comments
-        const line = lineOrig.replace(/#.*$/, '').trim();
-        if (!collecting) {
-            const state = tryStartCollectingIncludeDirs(line, results);
-            collecting = state.collecting;
-            funcType = state.funcType;
-            buffer = state.buffer;
-        } else {
-            buffer.push(line);
-            if (line.includes(')')) {
-                collecting = false;
-                results.push(parseCMakeArgs(buffer, funcType === 'target'));
-                buffer = [];
-                funcType = null;
-            }
-        }
-    }
-    return results;
-}
-
-// ----------- Parameter segmentation and target parameter skipping-----------
-function parseCMakeArgs(buffer: string[], isTarget: boolean): string[] {
-    // Form a line and remove unnecessary line breaks and whitespace
-    let line = buffer.join(' ').replace(/\s+/g, ' ');
-    // Remove leading command
-    const lidx = line.indexOf('(');
-    const ridx = line.lastIndexOf(')');
-    if (lidx === -1 || ridx === -1) {
-        return [];
-    }
-    line = line.substring(lidx + 1, ridx).trim();
-    // Split parameters by quotes and spaces
-    const args: string[] = [];
-    let curr = '';
-    let inQuote = false;
-    for (let i = 0; i < line.length; ++i) {
-        const c = line[i];
-        // uniformly handle quotes
-        if (c === '"') {
-            if (inQuote) {
-                inQuote = false;
-                args.push(curr);
-                curr = '';
-            } else {
-                inQuote = true;
-            }
-            continue;
-        }
-        // In quotes: literal append
-        if (inQuote) {
-            curr += c;
-            continue;
-        }
-        // Not in quotes: space separated, otherwise literal append
-        if (/\s/.test(c)) {
-            if (curr.length > 0) {
-                args.push(curr);
-                curr = '';
-            }
-            continue;
-        }
-        curr += c;
-    }
-    if (curr.length > 0) {
-        args.push(curr);
-    }
-    if (isTarget) {
-        // Skip target name and PUBLIC/PRIVATE/INTERFACE keywords
-        const idx = args.findIndex(a => ['PUBLIC', 'PRIVATE', 'INTERFACE'].includes(a.toUpperCase()));
-        if (args.length < 3 || (idx < 1 || idx + 1 >= args.length)) {
-            return [];
-        }
-        return args.slice(idx + 1);
-    } else {
-        return args;
-    }
-}
-
-function scanCMakeIncludeDirsOnly(dir: string): string[] {
-    const result: string[] = [];
-
-    const cmakePath = path.join(dir, 'CMakeLists.txt');
-    if (!fs.existsSync(cmakePath)) {
-        // Return early, only recursively process subdirectories
-        const subdirs = fs
-            .readdirSync(dir, { withFileTypes: true })
-            .filter(f => f.isDirectory())
-            .map(f => path.join(dir, f.name));
-
-        return subdirs.flatMap(subdir => scanCMakeIncludeDirsOnly(subdir));
-    }
-
-    // Normal processing flow with CMakeLists.txt
-    const varTable: Record<string, string> = {
-        CMAKE_CURRENT_SOURCE_DIR: dir.replace(/\\/g, '/'),
-        PROJECT_SOURCE_DIR: dir.replace(/\\/g, '/'),
-    };
-
-    const lines = fs.readFileSync(cmakePath, 'utf-8').split(/\r?\n/);
-
-    for (const line of lines) {
-        const s = extractSetVar(line);
-        if (s) {
-            const [name, val] = s;
-            varTable[name] = resolveCMakeVar(val, varTable);
-        }
-    }
-
-    const allIncludeArgArrs = extractAllIncludeDirs(lines);
-    for (const argArr of allIncludeArgArrs) {
-        for (let raw of argArr) {
-            let resolved = resolveCMakeVar(raw, varTable);
-            if (/\$\{[A-Za-z_0-9]+\}/.test(resolved)) {
-                continue;
-            }
-            if (!path.isAbsolute(resolved)) {
-                resolved = path.resolve(dir, resolved);
-            }
-            result.push(resolved);
-        }
-    }
-
-    // 仍然递归子目录
-    const subdirs = fs
-        .readdirSync(dir, { withFileTypes: true })
-        .filter(f => f.isDirectory())
-        .map(f => path.join(dir, f.name));
-
-    for (const subdir of subdirs) {
-        result.push(...scanCMakeIncludeDirsOnly(subdir));
-    }
-
-    return result;
-}
-
 export class SceneConfig {
     private targetProjectName: string = '';
     private targetProjectDirectory: string = '';
@@ -270,7 +64,7 @@ export class SceneConfig {
     private sdkFilesMap: Map<string[], string> = new Map<string[], string>();
 
     private projectFiles: string[] = [];
-    private includeDirs: string[] = [];
+    private includeDirs: string[] = [];  // Include directories that the C++ project depends on.
     private fileLanguages: Map<string, Language> = new Map();
 
     private options: SceneOptions;
@@ -311,6 +105,7 @@ export class SceneConfig {
      * targetProjectDirectory property of the sceneConfig object.
      * @param targetProjectDirectory - the target project directory, such as xxx/xxx/xxx, started from project
      *     directory.
+     * @param includeDirs - Header file directories that the CXX project depends on.
      * @example
      * 1. build a sceneConfig object.
     ```typescript
@@ -321,9 +116,9 @@ export class SceneConfig {
      */
     public buildFromProjectDir(targetProjectDirectory: string, includeDirs: string[] = []): void {
         this.targetProjectDirectory = targetProjectDirectory;
+        // Search for the include directories set by the cxx project.
         const resolvedDir = path.resolve(targetProjectDirectory);
-        const cmakeIncludeDirs = scanCMakeIncludeDirsOnly(resolvedDir);
-        // Add project root path to includeDirs
+        const cmakeIncludeDirs = CmakeUtils.scanCMakeIncludeDirsOnly(resolvedDir);
         cmakeIncludeDirs.push(resolvedDir);
         this.includeDirs = Array.from(new Set([...cmakeIncludeDirs, ...includeDirs]));
         this.targetProjectName = path.basename(targetProjectDirectory);
