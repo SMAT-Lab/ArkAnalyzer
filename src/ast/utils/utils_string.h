@@ -20,25 +20,25 @@
 #include <vector>
 #include <clang-c/Index.h>
 
-// 去除首尾空白
+// Remove leading and trailing whitespace
 void Trim(std::string &s);
 
-// CXString 转 std::string 并自动释放
+// Convert CXString to std::string and auto release
 std::string Cx2Str(const CXString &s);
 
-// 提取括号内容
+// Extract parentheses content
 std::string ExtractParentContent(
     const std::string &code, size_t lpos = std::string::npos, char open = '(', char close = ')');
 
-// 字符串分割
+// String splitting
 std::vector<std::string> split(const std::string &s, char delimiter);
 
-// 判断结尾
+// Check suffix
 bool HasSuffix(const std::string& str, const std::string& suffix);
 
-// 路径分隔符（适配跨平台）
+// Path separator (cross-platform compatible)
 std::string GetPathSeparator();
 
-// 路径归一化后判断是否同文件（实现见 .cpp）
+// Check if same file after path normalization(implementation in .cpp)
 bool IsSameFile(const std::string& pathA, const std::string& pathB);
 

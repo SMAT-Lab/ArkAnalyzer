@@ -19,7 +19,7 @@
 #define ELEVEN 11
 using namespace std;
 
-// 类样例
+// Class example
 class MyClass {
     static int height;
 
@@ -58,7 +58,7 @@ void MyClass::SetName(char nameStr)
     this->name = nameStr;
 }
 
-// 类样例1，测试CXXDefaultInitExpr、函数重载
+// Class example 1, testing CXXDefaultInitExpr, function overloading
 class DefaultClass {
 private:
     char name = 'A';
@@ -68,7 +68,7 @@ public:
     DefaultClass() {}
 };
 
-// 结构体样例
+// Struct example
 struct MyStruct {
     string title;
     string author;
@@ -95,7 +95,7 @@ typedef struct {
     };
 } Books;
 
-// 枚举样例
+// Enum example
 enum MyEnum {
     MONDAY = 1,
     TUESDAY,
@@ -117,7 +117,7 @@ bool IsWorkDay(int day)
     return false;
 }
 
-// 联合体样例
+// Union example
 union MyUnion {
     char level;
     bool pass;

@@ -23,10 +23,10 @@ using namespace std;
 #define SEVENTY_FIVE 75
 #define FLOAT_NUM 3.6
 
-// 顶层基类
+// Top-level base class
 class Base {
 private:
-    char name;  // *string做类型时解析this->name节点为CXXMemberCallExpr
+    char name;  // When string is used as type, parsing this->name node as CXXMemberCallExpr
 
 public:
     explicit Base(const char& pname) : name(pname)
@@ -40,14 +40,14 @@ public:
     }
 };
 
-// 左中间类，虚继承 Base
-class Left : virtual public Base {  // *public访问修饰符当前ArkIR没有表达
+// Left middle class, virtual inheritance from Base
+class Left : virtual public Base {  // public access modifier is currently not expressed in ArkIR
 private:
     int leftPower;
 
 public:
     Left(const char& name, int power) : Base(name), leftPower(power)
-    {  // *leftPower(power)没有对应AST节点
+    {  // leftPower(power) has no corresponding AST node
         cout << "Left constructor called with power: " << leftPower << endl;
     }
 
@@ -57,7 +57,7 @@ public:
     }
 };
 
-// 右中间类，虚继承 Base
+// Right middle class, virtual inheritance from Base
 class Right : virtual public Base {
 private:
     double rightSpeed;
@@ -74,7 +74,7 @@ public:
     }
 };
 
-// 最终派生类
+// Final derived class
 class Derived : public Left, public Right {
 private:
     int robotId;
@@ -101,17 +101,18 @@ public:
     }
 };
 
-// *** 类的多态 ***
+// *** Class polymorphism ***
 class Animal {
 public:
-    virtual void Sound() const = 0;  // 纯虚函数（virtual + =0) -》 抽象类（不能实例化），该函数必须被子类重写
+    // Pure virtual function (virtual + =0) -> abstract class (cannot be instantiated), this function must be overridden by subclasses
+    virtual void Sound() const = 0;
 };
 
 class Dog : public Animal {
 public:
     void Sound() const override
     {
-            std::cout << "wo wo wo!" <<  std::endl;
+        std::cout << "wo wo wo!" <<  std::endl;
     }
 };
 
@@ -138,7 +139,8 @@ void MakeSound(const Animal* animal)
 
 // clang::CXXInheritedCtorInitExpr节点
 class D : public Base {
-    using Base::Base;   // 此处产生CXXInheritedCtorInitExpr节点：子类构造函数调用了从父类继承的构造函数，编译器生成D(int x) : B(x) {}
+    // CXXInheritedCtorInitExpr node is generated here: subclass constructor calls inherited constructor from parent class, compiler generates D(int x) : B(x) {}
+    using Base::Base;
 }
 
 int main()

@@ -21,7 +21,7 @@
 #define FOUR 4
 #define FIVE 5
 
-// 算数运算符
+// Arithmetic operators
 int ArithmeticOperator()
 {
     int a = -1 + 1;
@@ -36,7 +36,7 @@ int ArithmeticOperator()
     return e;
 }
 
-// 关系运算符和逻辑运算符
+// Relational and logical operators
 int RelationOperator()
 {
     int a = -1;
@@ -59,7 +59,7 @@ int RelationOperator()
     return 0;
 }
 
-// 复合赋值运算符
+// Compound assignment operators
 void ComponentOperator()
 {
     int a = -1;
@@ -77,7 +77,7 @@ void ComponentOperator()
     b |= FIVE;
 }
 
-// return  语句
+// return statement
 int ReturnValue()
 {
     int a = -1;
@@ -85,14 +85,14 @@ int ReturnValue()
     return a;
 }
 
-// 无return语句
+// No return statement
 void NoReturnValue()
 {
     int b = -1;
     b -= 1;
 }
 
-// 位运算符
+// Bitwise operators
 void BitOperator()
 {
     unsigned int a = 60; // 60 =0011 1100
@@ -111,7 +111,7 @@ void BitOperator()
     int c6 = a >> TWO; // 15 =0000 1111
 }
 
-// 杂项运算符
+// Miscellaneous operators
 class MyClass {
     char name;
     int age;

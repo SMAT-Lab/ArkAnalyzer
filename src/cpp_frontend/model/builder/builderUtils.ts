@@ -60,7 +60,7 @@ function hasOverrideAttr(inner: CppAstNode[] | undefined): boolean {
 function getMtdModifier(node: CppAstNode, modifiers: number): number {
     if (node.code.startsWith('virtual ')) {
         modifiers |= modifierKind2EnumCpp('virtual');
-        // 纯虚函数的定义：virtual func() = 0 / virtual func() =0
+        // Definition of pure virtual function: virtual func()=0/virtual func()=0
         if (node.code.endsWith('= 0') || node.code.endsWith('=0')) {
             modifiers |= modifierKind2EnumCpp('pure virtual');
         }
@@ -153,13 +153,13 @@ export function buildReturnType(mtdNode: CppAstNode, sourceFile: CppAstNode, met
         let funcRetType;
         let isLambdaFunc = nodeType.qualType.startsWith('(lambda at');
         if (!isLambdaFunc) {
-            //普通函数
+            // Ordinary function
             funcRetType = nodeType.qualType.split('(')[0].trim();
         } else if (mtdNode.inner[0]?.inner[0]?.type.qualType.includes(' -> ')) {
-            //处理带返回值的lambda函数
+            // Handle lambda functions with return values
             funcRetType = mtdNode.inner[0].inner[0].type.qualType.split(' -> ')[1];
         } else {
-            // 不带返回值的lambda函数
+            // Lambda function without return value
             return UnknownType.getInstance();
         }
         return cppNode2Type(funcRetType, method, sourceFile);
@@ -188,7 +188,7 @@ export function cppNode2Type(nodeQualType: CppAstNode | string, arkInstance: Ark
         }
     }
 
-    // 默认处理
+    // Default processing
     return buildTypeFromPreStr(nodeQualType.toString(), arkInstance);
 }
 

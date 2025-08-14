@@ -20,7 +20,7 @@ public:
     void Sound() {}
 };
 
-// 创建单个对象，然后释放
+// Create a single object, then release it
 void DelObj()
 {
     int *a = new int;
@@ -28,7 +28,7 @@ void DelObj()
     a = nullptr;
 }
 
-// 动态创建数组然后释放
+// Dynamically create an array then release it
 void DelArr()
 {
     int *arr = new int[10];
@@ -36,7 +36,7 @@ void DelArr()
     arr = nullptr;
 }
 
-// 创建类对象，然后释放
+// Create a class object, then release it
 void DelClassObj()
 {
     Animal *a = new Animal;
@@ -44,7 +44,7 @@ void DelClassObj()
     a = nullptr;
 }
 
-// 释放成员
+// Release members
 struct MyStruct {
     int *a;
     int b;

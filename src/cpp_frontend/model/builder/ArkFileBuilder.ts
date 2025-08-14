@@ -70,7 +70,7 @@ function findLLVMPath(inputPath: string): string {
 
     const basePath = path.join(...parts.slice(0, devEcoIndex + 1));
 
-    // 优先查找环境变量中 LLVM 路径
+    // Prioritize finding LLVM path in environment variables
     const envPathList = (process.env.PATH || '').split(';');
     const llvmEnvPath = envPathList.find(p => p.includes('clang+llvm-19.1.7-x86_64-pc-windows-msvc') && fs.existsSync(p)) || '';
 
@@ -179,7 +179,7 @@ function buildArkFile(arkFile: ArkFile, astRoot: CppAstNode): void {
             case 'CXXMethodDecl':
             case 'CXXConstructorDecl':
             case 'CXXDestructorDecl':
-                // 成员函数，构造，析构函数需先进行函数所属类的建立
+                // Member function, construction and destructor need to establish the function class first
                 const arkClass = getDeclaringArkClassOfMethod(child, arkFile);
                 buildArkMethodFromCppMethod(child, arkFile, astRoot, arkClass);
                 break;

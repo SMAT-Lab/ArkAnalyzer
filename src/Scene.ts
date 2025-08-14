@@ -1329,7 +1329,7 @@ export class Scene {
             const importNameSpace = ModelUtils.getNamespaceInImportInfoWithName(importInfo.getImportClauseName(), file);
             if (importNameSpace && !importNameSpaces.includes(importNameSpace)) {
                 try {
-                    // 遗留问题：只统计了项目文件的namespace，没统计sdk文件内部的引入
+                    // Legacy issue: only counted project file namespaces, not internal SDK file imports
                     const importNameSpaceClasses = classMap.get(importNameSpace.getNamespaceSignature())!;
                     importClasses.push(...importNameSpaceClasses.filter(c => !importClasses.includes(c) && c.getName() !== DEFAULT_ARK_CLASS_NAME));
                 } catch {}
@@ -1337,7 +1337,7 @@ export class Scene {
         }
         const fileClasses = classMap.get(file.getFileSignature())!;
         fileClasses.push(...importClasses.filter(c => !fileClasses.includes(c)));
-        // 子节点加上父节点的class
+        // Child nodes add parent node's classes
         const namespaceStack = [...file.getNamespaces()];
         for (const ns of namespaceStack) {
             const nsClasses = classMap.get(ns.getNamespaceSignature())!;
@@ -1370,15 +1370,15 @@ export class Scene {
             }
 
             classMap.set(file.getFileSignature(), fileClass);
-            // 第一轮遍历，加上每个namespace自己的class
+            // The first round of traversal, adding each namespace's own class
             this.addNSClasses(namespaceStack, finalNamespaces, classMap, parentMap);
 
-            // 第二轮遍历，父节点加上子节点的export的class
+            // The second round of traversal involves adding the export class of the parent node and the child node
             this.addNSExportedClasses(finalNamespaces, classMap, parentMap);
         }
 
         for (const file of this.getFiles()) {
-            // 文件加上import的class，包括ns的
+            // Add the imported class to the file, including ns
             this.addFileImportedClasses(file, classMap);
         }
         return classMap;
@@ -1461,7 +1461,7 @@ export class Scene {
             const importNameSpace = ModelUtils.getNamespaceInImportInfoWithName(importInfo.getImportClauseName(), file);
             if (importNameSpace && !importNameSpaces.includes(importNameSpace)) {
                 try {
-                    // 遗留问题：只统计了项目文件，没统计sdk文件内部的引入
+                    // Legacy issue: only counted project files, not internal SDK file imports
                     const importNameSpaceClasses = globalVariableMap.get(importNameSpace.getNamespaceSignature())!;
                     importLocals.push(...importNameSpaceClasses.filter(c => !importLocals.includes(c) && c.getName() !== DEFAULT_ARK_CLASS_NAME));
                 } catch {}
@@ -1469,7 +1469,7 @@ export class Scene {
         }
         const fileLocals = globalVariableMap.get(file.getFileSignature())!;
         fileLocals.push(...importLocals.filter(c => !fileLocals.includes(c)));
-        // 子节点加上父节点的local
+        // Child node plus local of parent node
         const namespaceStack = [...file.getNamespaces()];
         for (const ns of namespaceStack) {
             const nsLocals = globalVariableMap.get(ns.getNamespaceSignature())!;
@@ -1521,15 +1521,15 @@ export class Scene {
                 namespaceStack.push(ns);
                 parentMap.set(ns, file);
             }
-            // 第一轮遍历，加上每个namespace自己的local
+            // The first round of traversal, plus each namespace's own local
             this.addNSLocals(namespaceStack, finalNamespaces, parentMap, globalVariableMap);
 
-            // 第二轮遍历，父节点加上子节点的export的local
+            // The second round of traversal includes the local export of the parent node and the child node
             this.addNSExportedLocals(finalNamespaces, globalVariableMap, parentMap);
         }
 
         for (const file of this.getFiles()) {
-            // 文件加上import的local，包括ns的
+            // File adds imported locals, including namespaces
             this.addFileImportLocals(file, globalVariableMap);
         }
         return globalVariableMap;

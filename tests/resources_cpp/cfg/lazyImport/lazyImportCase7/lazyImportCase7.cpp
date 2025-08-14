@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-// Native侧如何对ArkTS传递的Object类型的数据、属性进行修改
+// How Native side modifies Object type data and properties passed from ArkTS
 #include <iostream>
 #include <cstdint>
 #include "napi/native_api.h"
@@ -21,7 +21,7 @@
 
 #define TWO 2
 
-// *原本RevArkTSObj::ModifyObject =》 找不到RevArkTSObj.h文件时，这种类外声明的函数Class::Method没有对应AST节点
+// *Originally RevArkTSObj::ModifyObject => When RevArkTSObj.h file cannot be found, Class::Method functions declared outside class have no corresponding AST nodes
 napi_value ModifyObject(napi_env env, napi_callback_info info)
 {
     size_t argc = 1;
@@ -35,10 +35,10 @@ napi_value ModifyObject(napi_env env, napi_callback_info info)
     napi_get_named_property(env, obj, "obj", &obj1);
     char *buf = "this is modified";
     napi_value str1;
-    napi_create_string_utf8(env, buf, NAPI_AUTO_LENGTH, &str1);  // *未知宏NAPI_AUTO_LENGTH导致赋值右侧表达式的AST节点缺失
+    napi_create_string_utf8(env, buf, NAPI_AUTO_LENGTH, &str1);  // *Unknown macro NAPI_AUTO_LENGTH causes AST node missing on the right side of assignment expression
     napi_set_named_property(env, obj1, "str", str1);
     napi_set_named_property(env, obj, "obj", obj1);
-    napi_create_string_utf8(env, "world0", NAPI_AUTO_LENGTH, &hello1);  // *未知宏NAPI_AUTO_LENGTH导致赋值右侧表达式的AST节点缺失
+    napi_create_string_utf8(env, "world0", NAPI_AUTO_LENGTH, &hello1);  // *Unknown macro NAPI_AUTO_LENGTH causes AST node missing on the right side of assignment expression
     napi_set_named_property(env, obj, "hello", hello1);
     napi_get_named_property(env, obj, "arr", &arr1);
     uint32_t arrLen;
@@ -51,7 +51,7 @@ napi_value ModifyObject(napi_env env, napi_callback_info info)
     napi_delete_element(env, arr1, TWO, nullptr);
     napi_get_named_property(env, obj, "typedArray", &typedArray1);
     bool isTypedArray;
-    // *未知函数napi_is_typedarray(env, typedArray1, &isTypedArray)导致if判断语句构不成BinaryOp
+    // *Unknown function napi_is_typedarray(env, typedArray1, &isTypedArray) causes if statement cannot form BinaryOp
     if (napi_ok != napi_is_typedarray(env, typedArray1, &isTypedArray)) {
         return nullptr;
     }
@@ -60,28 +60,28 @@ napi_value ModifyObject(napi_env env, napi_callback_info info)
     size_t length;
     size_t byteOffset;
     napi_get_typedarray_info(env, typedArray1, &type, &length, nullptr, &inputBuffer, &byteOffset);
-    // 获取 inputBuffer 的基础数据缓冲区 data，和基础数据缓冲区的长度 byteLength。
+    // Get the underlying data buffer 'data' of inputBuffer, and the length 'byteLength' of the underlying data buffer.
     void *data;
     size_t byteLength;
     napi_get_arraybuffer_info(env, inputBuffer, &data, &byteLength);
-    // 创建新的ArrayBuffer，&output_ptr 指向 ArrayBuffer 的底层数据缓冲区的指针
+    // Create a new ArrayBuffer, &output_ptr points to the pointer of the underlying data buffer of ArrayBuffer
     napi_value outputBuffer;
     void *outputPrt = nullptr;
     napi_create_arraybuffer(env, byteLength, &outputPrt, &outputBuffer);
-    // 使用 outputBuffer 创建 typedarray
+    // Create typedarray using outputBuffer
     napi_value outputArray;
     napi_create_typedarray(env, type, length, outputBuffer, byteOffset, &outputArray);
-    // data 是由连续的内存位置组成，reinterpret_cast<uint8_t *>(data)  表示其第一个元素的内存地址。
-    // data 是旧的 arraybuffer 数据指针
+    // data consists of consecutive memory locations, reinterpret_cast<uint8_t *>(data) represents the memory address of its first element.
+    // data is the old arraybuffer data pointer
     uint8_t *inputBytes = reinterpret_cast<uint8_t *>(data) + byteOffset;
-    // 把 output_ptr 指针赋值给 outputBytes
-    // output_ptr 是新的 arraybuffer 数据指针
+    // Assign output_ptr pointer to outputBytes
+    // output_ptr is the new arraybuffer data pointer
     uint8_t *outputBytes = reinterpret_cast<uint8_t *>(outputPrt);
     for (int i = 0; i < length; i++) {
-        // 将旧 arraybuffer 数据每一个元素乘 2，赋值给新 arraybuffer 数据
+        // Multiply each element of old arraybuffer data by 2, and assign to new arraybuffer data
         outputBytes[i] = inputBytes[i] * 2;
     }
-    // 将新 typedArray 赋值给 obj['typedArray']
+    // Assign new typedArray to obj['typedArray']
     napi_set_named_property(env, obj, "typedArray", outputArray);
     return obj;
 }

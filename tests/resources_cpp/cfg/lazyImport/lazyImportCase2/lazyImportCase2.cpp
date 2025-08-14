@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-// 如何在ArkTS侧管理Native侧的C++对象
+// How to manage Native-side C++ objects on the ArkTS side
 #include <cstdint>
 #include "napi/native_api.h"
 #include "hilog/log.h"

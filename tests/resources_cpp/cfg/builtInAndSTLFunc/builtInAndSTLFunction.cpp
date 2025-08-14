@@ -26,13 +26,13 @@ struct MyStruct {
 
 void CXXTypeidExprTest()
 {
-    const std::type_info &t1 = typeid(int);         // 类型
-    const std::type_info &t2 = typeid(std::string); // 类型
+    const std::type_info &t1 = typeid(int);         // Type
+    const std::type_info &t2 = typeid(std::string); // Type
     int a;
-    const std::type_info &t3 = typeid(a);  // 基本类型对象
-    const std::type_info &t4 = typeid(&a); // 指针
+    const std::type_info &t3 = typeid(a);  // Basic type object
+    const std::type_info &t4 = typeid(&a); // Pointer
     MyStruct s;
-    const std::type_info &t5 = typeid(s); // 结构体对象
+    const std::type_info &t5 = typeid(s); // Struct object
 }
 
 void ArrayTypeTraitTest()
@@ -42,16 +42,16 @@ void ArrayTypeTraitTest()
     int dim1Size = __array_extent(decltype(arr2), 1);
 }
 
-void Foo() noexcept {} // Foo()是noexpect的
+void Foo() noexcept {} // Foo() is noexcept
 
 int CXXNoexceptExprTest()
 {
-    bool b = noexcept(Foo()); // 这里会生成CXXNoexceptExpr
+    bool b = noexcept(Foo()); // CXXNoexceptExpr will be generated here
     return 0;
 }
 
 atomic_int g_counter = ATOMIC_VAR_INIT(0);
 void AtomicExprTest()
 {
-    atomic_fetch_add(&g_counter, 1); // 这里会生成AtomicExpr
+    atomic_fetch_add(&g_counter, 1); // AtomicExpr will be generated here
 }

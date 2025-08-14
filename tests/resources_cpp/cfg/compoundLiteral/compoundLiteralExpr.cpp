@@ -17,32 +17,32 @@
 #include <string>
 #include <vector>
 
-// 1.简单结构体 - 包含基础类型
+// 1. Simple struct - contains basic types
 struct Point {
     int x;
     int y;
     char name;
 };
 
-// 2.包含数组的结构体
+// 2. Struct containing arrays
 struct Color {
     unsigned char rgb[3];
 };
 
-// 3.包含嵌套结构体的结构体
+// 3. Struct containing nested structs
 struct Circle {
     Point center;
     double radius;
 };
 
-// 4.包含字符串和默认值的结构体
+// 4. Struct containing strings and default values
 struct Person {
     std::string name;
     int age;
     bool isStudent = false;
 };
 
-// 5.包含容器的结构体
+// 5. Struct containing containers
 struct ShoppingList {
     std::vector<std::string> items;
     double budget;

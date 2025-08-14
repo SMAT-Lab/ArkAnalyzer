@@ -21,7 +21,7 @@
 #define PI 3.14
 #define FLOAT123 1.23
 
-using namespace std; // 场景1: 全局using namespace
+using namespace std; // Scenario 1: Global using namespace
 
 void TestUsingNamespace()
 {
@@ -29,13 +29,13 @@ void TestUsingNamespace()
 }
 
 void TestUsingDeclaration()
-{ // 场景2: using 声明单个成员
+{ // Scenario 2: using declaration for individual members
     using std::cout;
     using std::endl;
     cout << "[test_using_declaration] hello" << endl;
 }
 
-using IntVec = std::vector<int>; // 场景3: using 类型别名（非模板）
+using IntVec = std::vector<int>; // Scenario 3: using type alias (non-template)
 
 IntVec MakeIntvec()
 {
@@ -43,7 +43,7 @@ IntVec MakeIntvec()
 }
 
 template<typename T>
-using MyMap = std::map<int, T>; // 场景4: using 类型别名（模板）
+using MyMap = std::map<int, T>; // Scenario 4: using type alias (template)
 
 void TestUsingTypeAliasTemplate()
 {
@@ -52,7 +52,7 @@ void TestUsingTypeAliasTemplate()
     cout << "[test_using_type_alias_template] m[1] = " << m[1] << endl;
 }
 
-struct Base { // 场景5: using 基类成员
+struct Base { // Scenario 5: using base class members
     void Foo(int) { cout << "[Base::foo(int)]\n"; }
 };
 
@@ -64,11 +64,11 @@ struct Derived : Base {
 void TestUsingBaseMember()
 {
     Derived d;
-    d.Foo(1);      // 调用Base::foo(int)
-    d.Foo(FLOAT123);   // 调用Derived::foo(double)
+    d.Foo(1);      // Call Base::foo(int)
+    d.Foo(FLOAT123);   // Call Derived::foo(double)
 }
 
-// 场景6: using 枚举成员引入（不建议，但演示写法）
+// Scenario 6: using enum member introduction (not recommended, but shown for demonstration)
 enum class Color { RED, GREEN, BLUE };
 void TestUsingEnumMember()
 {
@@ -79,7 +79,7 @@ void TestUsingEnumMember()
     }
 }
 
-// 场景7: 模板类型萃取
+// Scenario 7: Template type extraction
 template<typename T>
 using value_type_t = typename T::value_type;
 void TestTemplateTypeAlias()
@@ -88,7 +88,7 @@ void TestTemplateTypeAlias()
     cout << "[test_template_type_alias] x = " << x << endl;
 }
 
- // 场景8: 作用域内的 using（函数内部）
+ // Scenario 8: using within scope (inside function)
 void TestUsingLocalScope()
 {
     using std::string;
@@ -96,7 +96,7 @@ void TestUsingLocalScope()
     cout << "[test_using_local_scope] s = " << s << endl;
 }
 
-// 场景9: 多层嵌套别名
+// Scenario 9: Multi-level nested aliases
 using INT = int;
 using INT2 = INT;
 void TestMultiAlias()
@@ -104,7 +104,7 @@ void TestMultiAlias()
     INT2 val = 10;
     cout << "[test_multi_alias] val = " << val << endl;
 }
-// 场景10: 命名空间下的using
+// Scenario 10: using within namespace
 namespace ns1 {
     int Foo() { return 1; }
 }
@@ -117,7 +117,7 @@ void TestNamespaceUsing()
     cout << "[test_namespace_using] v = " << v << endl;
 }
 
-// 场景11: 模板参数类型别名嵌套
+// Scenario 11: Nested type alias for template parameters
 template<typename T>
 struct Foo {
     using Vec = std::vector<T>;

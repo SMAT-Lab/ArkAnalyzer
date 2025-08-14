@@ -35,14 +35,14 @@ struct MyStruct {
     char *size;
 };
 
-// 1.普通指针类型声明
+// 1.Ordinary pointer type declaration
 void PtrType(int *p, int **pp)
 {
     int *q = p;
     MyClass *clsPtr = new MyClass(TWO);
 }
 
-// 2.基础指针操作
+// 2. Basic pointer operations
 void BasePtrOp(MyStruct *s, MyStruct s1)
 {
     int x = 1;
@@ -55,7 +55,7 @@ void BasePtrOp(MyStruct *s, MyStruct s1)
     int id = s1.id;
 }
 
-// 3.多级指针操作
+// 3.Multi-level pointer operations
 void MultiLevelPtrOp(int *p, int **pp, int ***ppp)
 {
     int x = 1;
@@ -78,4 +78,4 @@ void MultiLevelPtrOp(int *p, int **pp, int ***ppp)
     }
 }
 
-// 4.其他复杂指针操作：数组与指针、函数与指针、指针与const、智能指针(?)
+// 4.Other complex pointer operations: arrays and pointers, functions and pointers, pointers and const, smart pointers(?)

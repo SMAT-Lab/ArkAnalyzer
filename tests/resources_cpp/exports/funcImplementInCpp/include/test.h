@@ -42,20 +42,20 @@ private:
     Color color;
 
 public:
-    // 构造函数
+    // Constructor
     Circle(const Point& c, double r, Color clr = Color::RED)
         : center(c), radius(r), color(clr) {}
 
-    // Getter方法
+    // Getter methods
     Point GetCenter() const { return center; }
     double GetRadius() const { return radius; }
     Color GetColor() const { return color; }
 
-    // 普通成员函数
+    // Ordinary member functions
     double CalculateArea() const;
     void PrintInfo() const;
 
-    // 静态函数
+    // Static functions
     static bool IsLarger(const Circle& c1, const Circle& c2);
 };
 

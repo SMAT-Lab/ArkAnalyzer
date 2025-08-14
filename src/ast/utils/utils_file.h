@@ -19,14 +19,14 @@
 #include <map>
 #include "json.hpp"
 
-// 文件内容缓存（可以用 extern 声明在头文件里）
+// File content cache (can be declared with extern in header file)
 extern std::map<std::string, std::string> g_fileContents;
 
-// 加载文件内容进缓存
+// Load file content into cache
 void LoadFileContent(const std::string& filename);
 
-// 获取默认输出路径
+// Get default output path
 std::string GetDefaultOutputPath(const std::string &inputPath);
 
-// 保存AST到文件
+// Save AST to file
 void SaveAstToFile(const nlohmann::json& ast, const std::string& outputFile);

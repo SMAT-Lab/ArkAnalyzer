@@ -34,7 +34,7 @@ int main()
         char16_t char16Data2[] = u"hello";
         char32_t char32Data1 = U'\U0001F600';
         char32_t char32Data2[] = U"hello";
-        char charData4 = char(); // clang::CXXScalarValueInitExpr, 合法，charData4被初始化为""
+        char charData4 = char(); // clang::CXXScalarValueInitExpr, valid, charData4 is initialized to ""
     } else {
         short shortData1 = -1;
         unsigned short shortData2 = 1;
@@ -47,9 +47,9 @@ int main()
         float floatData = 88.8f;
         double doubleData1 = 88.888;
         long double doubleData2 = 88.8888;
-        int intData3 = int();          // clang::CXXScalarValueInitExpr, 合法，initData3被初始化为0
-        float floatData1 = float();    // clang::CXXScalarValueInitExpr,合法，floatDaTa1被初始化为0
-        double doubleData3 = double(); // clang::CXXScalarValueInitExpr,合法，doubleData3被初始化为0
+        int intData3 = int();          // clang::CXXScalarValueInitExpr, valid, initData3 is initialized to 0
+        float floatData1 = float();    // clang::CXXScalarValueInitExpr, valid, floatDaTa1 is initialized to 0
+        double doubleData3 = double(); // clang::CXXScalarValueInitExpr, valid, doubleData3 is initialized to 0
     }
     return 0;
 }

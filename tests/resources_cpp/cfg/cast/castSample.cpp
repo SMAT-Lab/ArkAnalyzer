@@ -30,11 +30,12 @@ void CStyleCastTest()
     float iFloat = (float)i;
 }
 
-// CXXConstCastExpr,const_cast转换类型是指针/引用
+// CXXConstCastExpr, const_cast conversion types are pointers/references
 void CXXConstCastTest()
 {
     const int ci = 2;
-    int *pi = const_cast<int *>(&ci); // 指针的表示，addr操作处理。（映射至UnaryOperator时因为&未定义而undifined）
+    // Pointer representation, addr operation handling. (When mapped to UnaryOperator, it's undefined because & is not defined)
+    int *pi = const_cast<int *>(&ci);
 }
 
 // CXXDynamicCastExpr
@@ -55,7 +56,7 @@ public:
 void CXXDynamicCastTest()
 {
     Shape *s = new Circle();
-    Circle *c = dynamic_cast<Circle *>(s); // 指针的表示
+    Circle *c = dynamic_cast<Circle *>(s); // Pointer representation
     if (c) {
         c->Draw();
     }
@@ -64,7 +65,7 @@ void CXXDynamicCastTest()
 void CXXReinterpretCastTest()
 {
     int* pi = new int(42);
-    double* pd = reinterpret_cast<double*>(pi); // 指针的表示
+    double* pd = reinterpret_cast<double*>(pi); // Pointer representation
 }
 
 // CXXFunctionalCastExpr

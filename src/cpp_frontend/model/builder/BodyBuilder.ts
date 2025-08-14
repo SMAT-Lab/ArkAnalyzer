@@ -322,7 +322,7 @@ export class BodyBuilderCpp {
         }
     }
 
-    // 对嵌套函数中的UnclearReferenceType类型的变量进行类型推导，类型是否为外层函数中定义的类型别名
+    // Type derivation of variables of UnclearReferenceType type in nested functions. Whether the type is a type alias defined in the outer function
     private inferTypesDefineInOuter(outerMethod: ArkMethod, childrenChain: NestedMethodChain): void {
         const typeAliases = outerMethod.getBody()?.getAliasTypeMap();
         const nestedLocals = childrenChain.parent.getBody()?.getLocals();
@@ -466,7 +466,7 @@ export class BodyBuilderCpp {
             return;
         }
 
-        // 更新local的类型为ClosureType，methodSignature为内层嵌套函数
+        // Update the local type to CloseType and methodSignature to inner nested function
         const nestedMethodSignature = nestedMethod.getImplementationSignature();
         if (nestedMethodSignature !== null) {
             local.setType(new ClosureType(lexicalEnv, nestedMethodSignature, localType.getRealGenericTypes()));
@@ -477,8 +477,8 @@ export class BodyBuilderCpp {
         this.updateAbstractInvokeExprWithClosures(local, outerMethod.getSignature(), nestedMethod.getSignature(), closuresLocal);
     }
 
-    // 更新所有stmt中调用内层函数处的AbstractInvokeExpr中的函数签名和实参args，加入闭包参数
-    // 更新所有stmt中定义的函数指针的usedStmt中的函数签名和实参args，加入闭包参数
+    // Update the function signature and actual parameter args in AbstractInvokeExpr where the inner function is called in all stmt, and add the closure parameter
+    // Update the function signature and actual parameter args in usedStmt of all function pointers defined in stmt, and add closure parameters
     private updateAbstractInvokeExprWithClosures(
         value: Local | GlobalRef,
         outerMethodSignature: MethodSignature,

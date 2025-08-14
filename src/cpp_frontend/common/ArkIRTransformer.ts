@@ -112,7 +112,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
         return stmts;
     }
 
-    // 根据操作符判断是否生成临时变量赋值语句
+    // Determine whether to generate temporary variable assignment statement based on operator
     private shouldGenerateExtraAssignStmtCpp(expression: CppAstNode): boolean {
         if (expression.kind.toString() === 'ParentExpr') {
             return this.shouldGenerateExtraAssignStmtCpp(expression.inner[0]);
@@ -219,10 +219,10 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
         const aliasName = typeAliasDeclaration.name;
         const typeNode: CppAstNode | undefined =
             Array.isArray(typeAliasDeclaration.inner) ? typeAliasDeclaration.inner[0] : undefined;
-        const rightOp = typeNode && typeNode.code ? typeNode.code : 'int'; // 若无type code 使用int类型托底
+        const rightOp = typeNode && typeNode.code ? typeNode.code : 'int'; // If there is no type code, use int type as fallback
 
         let rightType;
-        // 识别tagUsed属性用于对struct, union, enum 节点进行判断
+        //  Identify the tagUsed attribute to determine struct, union, and enum nodes
         rightType = this.arkValueTransformerCpp.resolveTypeNodeCpp(typeNode);
 
         if (rightType instanceof AbstractTypeExpr) {
@@ -249,8 +249,8 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
         let rightType = aliasType.getOriginalType();
         let expr: AliasTypeExpr;
         expr = new AliasTypeExpr(rightType, false);
-        // 对于type A = {x:1, y:2}语句，当前阶段即可精确获取ClassType类型，需找到对应的ArkClass作为originalObject
-        // 对于其他情况此处为UnclearReferenceTye并由类型推导进行查找和处理
+        // For statements like type A = {x:1, y:2}, the ClassType can be accurately obtained at this stage, and the corresponding ArkClass needs to be found as originalObject
+        // For other cases, this is UnclearReferenceType here and will be found and processed by type inference
         if (rightType instanceof ClassType) {
             const classObject = ModelUtils.getClassWithName(rightType.getClassSignature().getClassName(), this.declaringMethod.getDeclaringArkClass());
             if (classObject) {
@@ -263,7 +263,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
     private forRangeStatementToStmts(forOfStatement: CppAstNode): Stmt[] {
         const stmts: Stmt[] = [];
         let entry = forOfStatement.inner[1];
-        // 处理iterable初始化
+        // Handle iterable initialization
         let { value: iterableValue, valueOriginalPositions: iterablePositions, stmts: iterableStmts } = this.cppNodeToValueAndStmts(entry);
         iterableStmts.forEach(stmt => stmts.push(stmt));
         if (!(iterableValue instanceof Local)) {
@@ -278,7 +278,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
         const iteratorMethodSignature = new MethodSignature(ClassSignature.DEFAULT, iteratorMethodSubSignature);
         const iteratorInvokeExpr = new ArkInstanceInvokeExpr(iterableValue as Local, iteratorMethodSignature, []);
         const iteratorInvokeExprPositions = [iterablePositions[0], ...iterablePositions];
-        // 处理iterable.next
+        // Handle iterable.next
         const {
             value: iterator,
             valueOriginalPositions: iteratorPositions,
@@ -290,7 +290,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
         const nextMethodSignature = new MethodSignature(ClassSignature.DEFAULT, nextMethodSubSignature);
         const iteratorNextInvokeExpr = new ArkInstanceInvokeExpr(iterator as Local, nextMethodSignature, []);
         const iteratorNextInvokeExprPositions = [iteratorPositions[0], ...iterablePositions];
-        //处理iterable 取值result
+        // Handle iterable result value
         const {
             value: iteratorResult,
             valueOriginalPositions: iteratorResultPositions,
@@ -301,7 +301,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
         const doneFieldSignature = new FieldSignature(Builtin.ITERATOR_RESULT_DONE, Builtin.ITERATOR_RESULT_CLASS_SIGNATURE, BooleanType.getInstance(), false);
         const doneFieldRef = new ArkInstanceFieldRef(iteratorResult as Local, doneFieldSignature);
         const doneFieldRefPositions = [iteratorResultPositions[0], ...iteratorResultPositions];
-        // 处理iterable.done 结束
+        // Handle iterable.done end
         const {
             value: doneFlag,
             valueOriginalPositions: doneFlagPositions,
@@ -323,7 +323,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
         );
         const valueFieldRef = new ArkInstanceFieldRef(iterableValue as Local, valueFieldSignature);
         const valueFieldRefPositions = [iteratorResultPositions[0], ...iteratorResultPositions];
-        // 处理iterable是否结束
+        // Handle whether iterable is finished
         const {
             value: yieldValue,
             valueOriginalPositions: yieldValuePositions,
@@ -586,17 +586,17 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
 
             let hasRepeat: boolean = false;
             for (const stmt of stmts) {
-                // 不是赋值语句：跳过
+                // Not an assignment statement: skip
                 if (!(stmt instanceof ArkAssignStmt)) {
                     continue;
                 }
                 const rightOp = stmt.getRightOp?.(); // 如果可能没有这个方法，用可选调用更安全
-                // 右侧不存在或不是静态调用：跳过
+                // Right side does not exist or is not a static call: skip
                 if (!(rightOp instanceof ArkStaticInvokeExpr)) {
                     continue;
                 }
                 const methodName = rightOp.getMethodSignature().getMethodSubSignature().getMethodName();
-                // 不是 COMPONENT_REPEAT：跳过
+                // Not COMPONENT_REPEAT: skip
                 if (methodName !== COMPONENT_REPEAT) {
                     continue;
                 }

@@ -97,7 +97,7 @@ export class BigIntConstant extends Constant {
 export class StringConstant extends Constant {
     constructor(value: string) {
         if (value.startsWith('"') && value.endsWith('"')) {
-            value = value.slice(1, -1); // 去除多余双引号
+            value = value.slice(1, -1); // Remove extra double quotes
         }
         super(value.toString(), StringType.getInstance());
     }
@@ -142,7 +142,7 @@ export class NullPtrConstant extends Constant {
 export class LabelConstant extends Constant {
     constructor(value: string) {
         if (value.startsWith('"') && value.endsWith('"')) {
-            value = value.slice(1, -1); // 去除多余双引号
+            value = value.slice(1, -1); // Remove extra double quotes
         }
         super(value, LabelType.getInstance());
     }

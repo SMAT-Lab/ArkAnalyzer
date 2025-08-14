@@ -16,54 +16,54 @@
 #define PI 3.1415926
 
 struct Counter {
-    static int count; // 静态函数声明
+    static int count; // Static function declaration
     Counter() { count++; }
-    static void Reset() { count = 0; } // 静态函数
+    static void Reset() { count = 0; } // Static function
 };
 
 class Student {
 public:
-    // 静态变量，在AST节点中表现为VarDecl
+    // Static variable, represented as VarDecl in AST nodes
     static int age;
-    // 常量类型
+    // Constant type
     const int constVar = 30;
-    // 静态函数
+    // Static function
     static void GrowUp() { age++; }
 
-    // 常量成员函数
+    // Constant member function
     double GetPi() const
     {
         return PI;
     }
 
-// 受保护
+// Protected
 protected:
     int protectedValue;
 
-    // 私有
+    // Private
 private:
     int score;
-    // 用于在const成员函数中修改变量值
-    mutable int accessCount; // 可变成员
+    // Used to modify variable values in const member functions
+    mutable int accessCount; // Mutable member
 
-    // 声明友元函数
+    // Declare friend function
     friend void ModifyScore(Student &s, int newScore);
 };
 
 void ModifyScore(Student &s, int newScore)
 {
-    s.score = newScore; // 友元函数可访问私有成员
+    s.score = newScore; // Friend function can access private members
 }
 
-// 抽象类
+// Abstract class
 class AA {
 public:
     virtual void Connect() = 0;
 };
 
-// 类继承
+// Class inheritance
 class BB : public AA {
 public:
-    // 虚函数实现
+    // Virtual function implementation
     void Connect() override {};
 };

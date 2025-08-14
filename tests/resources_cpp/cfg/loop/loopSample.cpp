@@ -51,7 +51,7 @@ void Case3()
     printf("%d\n", b);
 }
 
-// 省略初始化
+// Omit initialization
 void Case4()
 {
     int i = 0;
@@ -71,7 +71,7 @@ void Case5()
     }
 }
 
-// 省略更新语句
+// Omit update statement
 void Case6()
 {
     for (int i = 0; i < TWO;) {
@@ -80,7 +80,7 @@ void Case6()
     }
 }
 
-// 全部省略
+// Omit all
 void Case7()
 {
     int i = 0;

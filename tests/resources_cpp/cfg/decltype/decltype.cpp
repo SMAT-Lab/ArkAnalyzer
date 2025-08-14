@@ -36,6 +36,6 @@ void DecltypeTest()
     decltype(b) y = b;
 
     int c = 10;
-    decltype(auto) y = c;  // y 是 int&
-    decltype(auto) z = 42; // z 是 int
+    decltype(auto) y = c;  // y is int&
+    decltype(auto) z = 42; // z is int
 }

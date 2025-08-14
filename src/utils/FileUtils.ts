@@ -143,10 +143,10 @@ export function getFileRecursively(srcDir: string, fileName: string, visited: Se
 }
 
 /**
- * 尝试使用多个源路径中的每一个与相对路径组合，返回第一个存在的绝对路径。
- * @param srcPathList 源路径数组（绝对或相对路径）
- * @param relativePath 要拼接的相对路径
- * @returns 存在的第一个拼接后的绝对路径；否则返回空字符串
+ * Try to combine each source path in the array with the relative path, returning the first absolute path that exists.
+ * @param srcPathList Source path array (absolute or relative paths)
+ * @param relativePath The relative path to concatenate
+ * @returns The first concatenated absolute path that exists; otherwise returns an empty string
  */
 export function getFileAbsPath(srcPathList: string[], relativePath: string): string {
     if (!srcPathList || srcPathList.length === 0 || !relativePath) {

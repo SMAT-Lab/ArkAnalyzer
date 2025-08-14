@@ -21,7 +21,7 @@ using namespace std;
 
 #define SEVEN 7
 
-// 线程执行的函数
+// Function executed by thread
 void Hello()
 {
     cout << "Hello from thread!\n";
@@ -29,10 +29,10 @@ void Hello()
 
 int Case1()
 {
-    // 创建并启动线程
+    // Create and start thread
     thread t(Hello);
 
-    // 等待线程完成
+    // Wait for thread to complete
     t.join();
 
     cout << "Hello from main!\n";
@@ -46,7 +46,7 @@ void PrintSum(int a, int b)
 
 int Case2()
 {
-    // 创建线程并传递参数
+    // Create thread and pass parameters
     int a = 5;
     thread t(PrintSum, a, SEVEN);
 
@@ -56,10 +56,10 @@ int Case2()
 
 int Case3()
 {
-    // 创建并启动线程
+    // Create and start thread
     std::thread t(Hello);
 
-    // 等待线程完成
+    // Wait for thread to complete
     t.join();
 
     cout << "Hello from main!\n";
@@ -68,7 +68,7 @@ int Case3()
 
 int Case4()
 {
-    // 创建线程并传递参数
+    // Create thread and pass parameters
     int a = 5;
     std::thread t(PrintSum, a, SEVEN);
 

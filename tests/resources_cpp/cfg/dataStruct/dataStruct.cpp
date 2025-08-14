@@ -63,7 +63,7 @@ void VectorTest()
     }
 }
 
-// 集合set
+// set
 void SetTest()
 {
     set<int> set1;
@@ -98,7 +98,7 @@ void MapTest()
     map2["Charlie"] = THIRTY_FIVE;
 }
 
-// 哈希表
+// Hashtable
 int UnorderedMapTest()
 {
     std::unordered_map<std::string, int> myMap;

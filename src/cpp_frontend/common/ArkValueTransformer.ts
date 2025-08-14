@@ -81,11 +81,11 @@ function nodeInnerNode(node: CppAstNode): CppAstNode {
     if (Array.isArray(node?.inner) && node.inner.length > 0) {
         const last = node.inner[node.inner.length - 1];
 
-        // 优先返回 InitListExpr
+        // Return InitListExpr first
         if (last?.kind === 'InitListExpr') {
             return last;
         }
-        // 只包含一个 TypeRef 节点的数组不返回
+        // Arrays containing only one TypeRef node do not return
         if (!(node.inner.length === 1 && node.inner[0]?.kind === 'TypeRef')) {
             return last;
         }
@@ -190,7 +190,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         };
     }
 
-    // 判断当前节点是否与CPP的lambda函数相关
+    // Judge whether the current node is related to the lambda function of CPP
     private isNodeRelatedToCXXLambdaFunc(node: CppAstNode): boolean {
         return !!node.type?.qualType?.startsWith('(lambda at');
     }
@@ -204,12 +204,12 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         return false;
     }
 
-    // 判断当前节点的子节点是否是优化后的临时变量
+    // Judge whether the child nodes of the current node are temporary variables after optimization
     private isNodeRelatedToMaterialize(node: CppAstNode): boolean {
         return node.inner.length !== 0 && node.inner[0].kind === 'MaterializeTemporaryExpr';
     }
 
-    // 判断当前节点的子节点是否是成员函数调用
+    // Check if the child nodes of the current node are member function calls
     private isNodeRelatedToCXXMember(node: CppAstNode): boolean {
         return (
             (node.inner.length !== 0 && node.inner[0].kind === 'CXXMemberCallExpr') ||
@@ -217,17 +217,17 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         );
     }
 
-    // std::pair类型的构造
+    // Construction of std::pair type
     private isPairConstructExpr(node: CppAstNode): boolean {
         return node.type.qualType.includes('std::pair');
     }
 
-    // 多层std::pair构造
+    // Multi-layer std::pair construction
     private isNodeRelatedToTemporary(node: CppAstNode): boolean {
         return node.inner.length !== 0 && node.inner[0].kind === 'CXXBindTemporaryExpr' && node.code === node.inner[0].code;
     }
 
-    // 不是new语句的表达式（排除构造函数作为参数）
+    // Expressions that are not new statements (excluding constructors as parameters)
     private isNotNewExpression(newExpression: CppAstNode): boolean {
         return (
             newExpression.inner.length > 0 &&
@@ -350,7 +350,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
     }
 
     private userDefinedLiteralToValueAndStmts(userDefinedLiteral: CppAstNode): ValueAndStmts {
-        // 用户定义字面量的语法是：原始值+后缀（如 123_km、"hello"_s、'a'_s）
+        // The syntax for user-defined literals is: raw value + suffix (e.g., 123_km, "hello"_s, 'a'_s)
         if (userDefinedLiteral.inner?.length < 2) {
             return this.unprocessedNodeToValueAndStmts(userDefinedLiteral);
         }
@@ -361,14 +361,15 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         return this.buildValueAndStmtsForMemberCall(stmts, userDefinedLiteral.inner[0], [argNode], userDefinedLiteral, undefined);
     }
 
-    /* 1. c++使用初始化列表对类成员变量的初始化：Base(char pname) : name(pname) {...}，最终效果类似this->name = pname，此处也处理成赋值的形式
-     *  2. using parent::parent，子类的构造函数调用从父类继承的构造函数; */
+    /* 1. C++uses the initialization list to initialize class member variables: Base (char pname): name (pname) {...}.
+        The final effect is similar to this ->name=pname, which is also processed as an assignment here
+     *  2. using parent::parent， The constructor of the subclass calls the constructor inherited from the parent class */
     private cxxCtorInitializerToValueAndStmts(cxxCtorInitializer: CppAstNode): ValueAndStmts {
         if (!cxxCtorInitializer.inner || cxxCtorInitializer.inner.length === 0) {
             return this.unprocessedNodeToValueAndStmts(cxxCtorInitializer);
         }
         if (cxxCtorInitializer.inner[0].kind === 'CXXInheritedCtorInitExpr') {
-            // 处理using parent::parent的情况
+            // Processing of using parent:: parent
             return this.cxxInheritedCtorInitExprToValueAndStmts(cxxCtorInitializer.inner[0]);
         }
         const assignRight = cxxCtorInitializer.inner[0];
@@ -385,7 +386,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         return this.assignmentToValueAndStmtsCpp(CtorInit2ThisMemberExpr as CppAstNode, assignRight, false, false, UnknownType.getInstance(), true);
     }
 
-    // using parent::parent==》子类的构造函数调用从父类继承的构造函数==》等同直接调用父类构造函数
+    // Using parent:: parent==>The constructor of the sub class calls the constructor inherited from the parent class==>The same as calling the constructor of the parent class directly
     private cxxInheritedCtorInitExprToValueAndStmts(cxxInheritedCtorInitExpr: CppAstNode): ValueAndStmts {
         cxxInheritedCtorInitExpr.code = `using ${cxxInheritedCtorInitExpr.code}::${cxxInheritedCtorInitExpr.code}`;
         const cls = this.declaringMethod.getDeclaringArkClass();
@@ -419,7 +420,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         };
     }
 
-    // C++中子类调用父类构造函数进行初始化，类似ts的super(xx)。比如Left(const char& name, int power) : Base(name) { ... }
+    // C++subclasses call the parent class constructor for initialization, similar to ts super (xx). For example, Left (const char&name, int power): Base (name) {...}
     public cxxSuperExpressionToValueAndStmts(cxxConstructExpr: CppAstNode): ValueAndStmts {
         const cls = this.declaringMethod.getDeclaringArkClass();
         if (!cls) {
@@ -452,7 +453,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         return this.cxxNewExpressionToValueAndStmts(cxxConstructExpr);
     }
 
-    // ArrayTypeTraitExpr按照函数调用处理
+    // ArrayTypeTraitExpr is processed by function call
     private arrayTypeTraitExprToValueAndStmts(ArrayTypeTraitExpr: CppAstNode): ValueAndStmts {
         const stmts: Stmt[] = [];
         let innerNode = ArrayTypeTraitExpr;
@@ -483,12 +484,13 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         return this.generateInvokeValueAndStmtsCpp(callNode, args, stmts, ArrayTypeTraitExpr);
     }
 
-    // CXXTypeidExpr按照函数调用处理
+    // CXXTypeidExpr is processed by function call
     private cxxTypeidExprToValueAndStmts(CXXTypeidExpr: CppAstNode): ValueAndStmts {
         const stmts: Stmt[] = [];
         let typeArgs = CXXTypeidExpr.typeArg?.toString() ?? '';
         let typeidCallArgs = CXXTypeidExpr.inner;
-        // [1.typeid的inner.length为0，则传入的是类型名； 2.std::Type引用命名空间中的类型] ==> 参数函数调用去构造类型对应字符串入参
+        // [1.typeid's inner.length is 0, then the type name is passed in; 2. std:: Type refers to the type in the namespace]==>
+        // Parameter function call to construct the string corresponding to the type into the parameter
         if (CXXTypeidExpr.inner.length === 0 || (CXXTypeidExpr.inner.length === 2 && CXXTypeidExpr.inner[1].kind === 'TypeRef')) {
             typeidCallArgs = [
                 {
@@ -501,7 +503,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
                 },
             ];
         }
-        // 构造节点作为函数名节点
+        // Construct node as function name node
         let typeidCallNode = JSON.parse(JSON.stringify(CXXTypeidExpr));
         typeidCallNode.kind = 'DeclRefExpr';
         typeidCallNode.name = 'typeid';
@@ -631,7 +633,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
     }
 
     public getArgumentNode(innerAstNodes: CppAstNode[] | CppAstNode): [call: CppAstNode | undefined, args: CppAstNode[]] {
-        // 此时innerAstNode为单独的点
+        // At this time, innerAstNode is a separate point
         if (!Array.isArray(innerAstNodes)) {
             const firstInner = innerAstNodes.inner?.[0];
             if (!firstInner) {
@@ -642,7 +644,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
                 .map(n => this.getDeclRef(n) as CppAstNode);
             return [call, args];
         }
-        // 可调用的若干 kind
+        // Several callable kinds
         const CALLABLE_KINDS = new Set([
             'DeclRefExpr',
             'MemberExpr',
@@ -682,11 +684,11 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
             if (n.kind === 'DeclRefExpr') {
                 return n;
             }
-            // 没有子节点或子节点为空，结束
+            // No child node or empty child node, end
             if (!n.inner || n.inner.length === 0) {
                 break;
             }
-            // 沿着第一个子节点往下走
+            // Go down the first child node
             n = n.inner[0];
         }
         return undefined;
@@ -809,24 +811,24 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
     }
 
     /**
-     * 将 C++ 的成员表达式（如 testMap.insert）转换为 Ark IR 的 ValueAndStmts
-     * @param memberExpression - 形如 AST MemberExpr/MemberRef 节点，通常表示 obj.field 或 obj->field
-     * @param localValue - （可选）直接指定 baseValue 的场景（如解析父节点时提前确定 base）
+     *Convert the member expression of C++(such as testMap. insert) to ValueAndStmts of Ark IR
+     *@ param memberExpression - shaped like an AST MemberExpr/MemberRef node, which usually means obj. field or obj ->field
+     *@ param localValue - (Optional) The scenario where the baseValue is specified directly (such as determining the base in advance when resolving the parent node)
      */
     private memberExpressionToValueAndStmts(memberExpression: CppAstNode, localValue?: Value): ValueAndStmts {
         const stmts: Stmt[] = [];
-        // 【场景1】处理 C++ 代码中 this->field 或 this->method 调用
-        // 如果是类成员引用（MemberExpr/MemberRef）但没有 inner[0]，说明是隐式 this，需补充 this 节点
+        // [Scenario 1] Process this ->field or this ->method calls in C++code
+        // If it's a class member reference (MemberExpr/MemberRef) but has no inner[0], it means implicit this, need to supplement this node
         if ((memberExpression.kind === 'MemberExpr' || memberExpression.kind === 'MemberRef') && memberExpression.inner[0] === undefined) {
             let node = memberExpression;
-            node.kind = 'CXXThisExpr'; // 转换为显式 this 指针
-            memberExpression.inner[0] = node; // 作为 base 节点
+            node.kind = 'CXXThisExpr'; // Convert to explicit this pointer
+            memberExpression.inner[0] = node; //  As base node
         }
-        // 【场景2】递归处理 base 对象，如 testMap.insert 里的 testMap
-        // 得到 baseValue（如 testMap）、位置信息和可能的前置语句（如 auto tmp = ...;）
+        // [Scenario 2] Recursively process base object, such as testMap in testMap.insert
+        //  Get baseValue (e.g., testMap), position information, and possible preceding statements (e.g., auto tmp = ...;)
         let { value: baseValue, valueOriginalPositions: basePositions, stmts: baseStmts } = this.cppNodeToValueAndStmts(memberExpression.inner[0]);
-        // 【场景3】处理链式成员访问，如 a.b.c 或 (*ptr).field
-        // 如果 base 是成员访问，再生成赋值语句保证 SSA 合法性
+        // [Scenario 3] Processing chained member access, such as a.b.c or (* ptr). field
+        // If the base is a member access, generate an assignment statement to ensure the validity of SSA
         if (memberExpression.inner[0].kind === 'MemberExpr' || memberExpression.kind === 'MemberRef') {
             ({
                 value: baseValue,
@@ -834,18 +836,18 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
                 stmts: baseStmts,
             } = this.arkIRTransformerCpp.generateAssignStmtForValue(baseValue, basePositions));
         }
-        // 【场景4】特殊场合，调用方直接指定 baseValue（一般用于替换 base，比如虚拟成员、泛型等情况）
+        // [Scenario 4] On special occasions, the caller directly specifies the baseValue (generally used to replace the base, such as virtual members, generics, etc.)
         if (localValue !== undefined && localValue !== null) {
             baseValue = localValue;
         }
-        // 合并前置语句，保证顺序完整
+        // Combine preceding statements to ensure complete order
         stmts.push(...baseStmts);
-        // 【场景5】获取成员的字段签名
-        // 目的是将 testMap.insert 里的 insert 与 base 类型（如 testMap 的类型）关联，形成完整 field signature
+        // [Scenario 5] Get the member's field signature
+        // The purpose is to associate the insert in testMap.insert with the base type (such as the type of testMap) to form a complete field signature
         let fieldSignature: FieldSignature;
         let baseType = baseValue.getType();
         let baseClassType: ClassType | null = null;
-        // 判断 base 是不是类类型或其指针/引用
+        // Judge whether the base is a class type or its pointer/reference
         if (baseType instanceof ClassType) {
             baseClassType = baseType as ClassType;
         } else if (baseType instanceof PointerType && (baseType as PointerType).getBaseType() instanceof ClassType) {
@@ -853,30 +855,30 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         } else if (baseType instanceof ReferenceType && (baseType as ReferenceType).getBaseType() instanceof ClassType) {
             baseClassType = (baseType as ReferenceType).getBaseType() as ClassType;
         }
-        // 【场景6】构造字段签名
-        // 如果 base 是类局部变量，则用完整的类签名
+        // [Scenario 6] Construction field signature
+        // If base is a class local variable, use the complete class signature
         const memberName = memberExpression.name || memberExpression.code;
         if (baseValue instanceof Local && baseClassType !== null) {
             fieldSignature = new FieldSignature(
-                memberName, // 字段名（如 insert）
-                baseClassType.getClassSignature(), // 基类类型签名
-                UnknownType.getInstance() // 类型未知先占位
+                memberName, // Field name (such as insert)
+                baseClassType.getClassSignature(), // Base class type signature
+                UnknownType.getInstance() // Unknown type preemption
             );
         } else {
-            // 否则只根据字段名生成
+            // Otherwise, it is generated only according to the field name
             fieldSignature = ArkSignatureBuilder.buildFieldSignatureFromFieldName(memberName);
         }
-        // 【场景7】设置字段类型，支持 C++ 复杂类型解析（如模板、指针、const等）
+        // [Scenario 7] Set field types to support C++complex type resolution (such as template, pointer, const, etc.)
         fieldSignature.setType(this.resolveTypeNodeCpp(memberExpression));
-        // 【场景8】生成 IR 层的字段引用对象（如 testMap.insert）
+        // [Scenario 8] Generate the field reference object of IR layer (such as testMap. insert)
         const fieldRef = new CXXArkInstanceFieldRef(
-            baseValue as Local, // baseValue（如 testMap）
-            memberExpression.isArrow ?? false, // 是否为箭头访问（->）
-            fieldSignature // 字段签名（如 insert）
+            baseValue as Local, // baseValue（eg: testMap）
+            memberExpression.isArrow ?? false, // Whether it is arrow access (->)
+            fieldSignature // Field signature (such as insert)
         );
-        // 记录节点位置信息，方便后续溯源和 debug
+        // Record node location information for subsequent traceability and debugging
         const fieldRefPositions = [FullPosition.buildFromNodeCpp(memberExpression, this.sourceFileCpp), ...basePositions];
-        // 返回解析结果，包括 IR 字段引用、位置信息和相关 SSA 语句
+        // Return resolution results, including IR field references, location information, and related SSA statements
         return { value: fieldRef, valueOriginalPositions: fieldRefPositions, stmts: stmts };
     }
 
@@ -946,7 +948,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
 
     public CXXOperatorExpressionCoutToValueAndStmts(callExpression: CppAstNode, callArgus: CppAstNode[]): ValueAndStmts | null {
         const stmts: Stmt[] = [];
-        // 因为inner是依次提取最后面的参数，所以倒序遍历最后面的参数
+        // Because inner extracts the last parameters in turn, it traverses the last parameters in reverse order
         for (let i = callExpression.inner.length - 1; i >= 0; i--) {
             let innerNode = callExpression.inner[i];
             if (
@@ -958,17 +960,17 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
                 callArgus.push(innerNode);
             }
             if (innerNode.kind === 'CXXOperatorCallExpr') {
-                // 递归调用处理CXXOperatorCallExpr
+                // Recursive call processing CXXOperatorCallExpr
                 if (innerNode.type.qualType !== 'std::ostream') {
                     return this.CXXOperatorExpressionCoutToValueAndStmts(innerNode, callArgus);
                 }
-                // 类型为std::ostream时，说明是重载的流运算符，记录该流运算符重载节点
+                // When the type is std:: ostream, it indicates an overloaded stream operator and records the overloaded node of the stream operator
                 callArgus.push(innerNode);
-                // 递归调用，处理CXXOperatorCallExpr的inner中嵌套的CXXOperatorCallExpr
+                // Recursive call to process CXXOperatorCallExpr nested in the inner of CXXOperatorCallExpr
                 if (innerNode.inner[1].kind === 'CXXOperatorCallExpr') {
                     return this.CXXOperatorExpressionCoutToValueAndStmts(innerNode.inner[1], callArgus);
                 }
-                // 无嵌套CXXOperatorCallExpr，则直接构建重载的流运算符的ValueAndStmts
+                // If there is no nested CXXOperatorCallExpr, the ValueAndStmts of overloaded stream operators will be built directly
                 return this.buildValueAndStmtsForStream(innerNode.inner[1], callArgus.reverse(), stmts, callExpression);
             }
             while (innerNode.kind === 'ImplicitCastExpr' && innerNode.valueCategory === 'lvalue' && innerNode.inner.length > 0) {
@@ -981,7 +983,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
                     innerNode.type.qualType.includes('istream') ||
                     innerNode.type.qualType.includes('lambda at'))
             ) {
-                // 获取DeclRefExpr及其后面的节点
+                // Get DeclRefExpr and its subsequent nodes
                 return this.buildValueAndStmtsForStream(innerNode, callArgus.reverse(), stmts, callExpression);
             }
         }
@@ -998,10 +1000,10 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         for (let i = 0; i < args.length; i += 1) {
             let arg = args[i];
             if (arg.kind === 'CXXOperatorCallExpr') {
-                // 标准流运算符 + 重载流运算符
-                // 1.标准流运算符的对象，调用std::stream函数
+                // Standard stream operator+overloaded stream operator
+                // 1. Object of standard stream operator, call std:: stream function
                 this.buildValueAndStmtsForStdStream(streamNode, nonOverloadedArgs, streamExpr, currValueAndStmts);
-                // 2.重载输出运算符的对象，调用重载函数
+                // 2. Overload the object of the output operator and call the overloaded function
                 this.buildValueAndStmtsForOverloadedStream(streamNode, arg, currValueAndStmts);
                 nonOverloadedArgs = [];
             } else {
@@ -1009,7 +1011,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
                 if (i !== args.length - 1) {
                     continue;
                 }
-                // 循环结束时，处理剩余的标准流运算符
+                // At the end of the loop, process the remaining standard stream operators
                 this.buildValueAndStmtsForStdStream(streamNode, nonOverloadedArgs, streamExpr, currValueAndStmts);
             }
         }
@@ -1017,7 +1019,8 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
     }
 
     private buildValueAndStmtsForOverloadedStream(streamNode: CppAstNode, overloadedArg: CppAstNode, currValueAndStmts: ValueAndStmts): void {
-        overloadedArg.inner[1] = streamNode; // 将第2个子节点替换成重载的运算符节点，以避免重复处理嵌套CXXOperatorCallExpr
+        // Replace the second child node with an overloaded operator node to avoid repeated processing of nested CXXOperatorCallExpr
+        overloadedArg.inner[1] = streamNode;
         let overloadedStreamValueAndStmts = this.handleOverloadedOp(overloadedArg);
         if (!overloadedStreamValueAndStmts) {
             return;
@@ -1188,14 +1191,15 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         return this.buildInvokeValueForNormalOverloadedOp(cxxOperatorCallExpr);
     }
 
-    /* 对输入输出流运算符operator<<、operator>>的重载 构建对应的函数调用IR */
+    /* Call IR for the function corresponding to the overload construction of the input/output stream operators operator<<, operator>> */
     private buildInvokeValueForOverloadedStreamOp(cxxOperatorCallExpr: CppAstNode): ValueAndStmts | null {
         if (!cxxOperatorCallExpr.inner || cxxOperatorCallExpr.inner.length < 2) {
             return null;
         }
         const stmts: Stmt[] = [];
         const { args, argPositions: argPositionsAll } = this.parseArgumentsCpp(stmts, cxxOperatorCallExpr.inner.slice(1));
-        // 输入/输出运算符必须作为全局函数重载，且重载函数只会有2个参数，因为输入/输出运算符实际为二元运算：流（左操作数） + 对象（右操作数）
+        // The input/output operator must be overloaded as a global function, and the overloaded function only has 2 parameters,
+        // because the input/output operator is actually a binary operation: stream (left operand)+object (right operand)
         const defaultClass = this.declaringMethod.getDeclaringArkFile().getDefaultClass();
         const arkMtds = defaultClass.getAllMethodsWithName(cxxOperatorCallExpr.name);
         if (arkMtds.length === 0) {
@@ -1216,7 +1220,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         if (!matchMtd) {
             return null;
         }
-        // 构造callNode
+        // Construct callNode
         const callNode = {
             code: cxxOperatorCallExpr.name,
             name: cxxOperatorCallExpr.name,
@@ -1237,16 +1241,16 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         return valueAndStmts;
     }
 
-    /* 对普通的运算符的重载构建对应的函数调用IR */
+    /* Build corresponding function call IR for overloading ordinary operators */
     private buildInvokeValueForNormalOverloadedOp(cxxOperatorCallExpr: CppAstNode): ValueAndStmts | null {
-        // 重载运算符节点的子节点不会少于2（inner[0]为FunctionToPointerDecay，inner[1]为实例对象DeclRefExpr）
+        // The child nodes of the overloaded operator node cannot be less than 2 (inner [0] is FunctionToPointerDecay, and inner [1] is the instance object DeclRefExpr)
         const innerLen = cxxOperatorCallExpr.inner?.length;
         if (!innerLen || innerLen < 2) {
             return null;
         }
         const stmts: Stmt[] = [];
         const argNodes = innerLen === 2 ? [] : cxxOperatorCallExpr.inner.slice(2);
-        // 如重载operator+时，a + b等价于 a.operator+(b)，构造a.operator+这个memberExpr作为caller
+        // For example, when overloading operator+, a+b is equivalent to a.operator+(b), and the memberExpr of a.operator+is constructed as the caller
         const callNode = {
             code: cxxOperatorCallExpr.inner[1].code + '.' + cxxOperatorCallExpr.name,
             name: cxxOperatorCallExpr.name,
@@ -1474,7 +1478,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
 
     private cxxNewExpressionToValueAndStmts(newExpression: CppAstNode): ValueAndStmts {
         let className = this.getNewExpressionClassName(newExpression);
-        //新增处理动态数组创建： int *arr = new int[10]
+        // Add handling for dynamic array creation: int *arr = new int[10]
         if (className === Builtin.ARRAY || newExpression.isArray) {
             return this.newArrayExpressionToValueAndStmtsCpp(newExpression);
         }
@@ -1502,7 +1506,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         this.emitCtorInvokeAndMemberInitsCpp(stmts, newExpression, newLocal as Local, newLocalPositions, constructorMethodSignature, className);
         return { value: newLocal, valueOriginalPositions: newLocalPositions, stmts: stmts };
     }
-    // 抽出的尾部逻辑：构造调用 + 特例处理 + 成员初始化
+    // Extracted tail logic: construction call+special case processing+member initialization
     private emitCtorInvokeAndMemberInitsCpp(
         stmts: Stmt[],
         newExpression: CppAstNode,
@@ -1537,12 +1541,12 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         invokeStmt.setOperandOriginalPositions(instanceInvokeExprPositions);
         stmts.push(invokeStmt);
 
-        // 处理 cpp 与 ts 之间的接口
+        // Processing the interface between cpp and ts
         if (className === 'napi_property_descriptor') {
             setTs2CppFuncMapOfClass(argValues, false, this.declaringMethod);
         }
 
-        // 处理初始化语句含有成员变量的场景
+        // Processing scenarios where initialization statements contain member variables
         if (newExpression.kind === 'CompoundLiteralExpr' && newExpression.inner[1].kind === 'InitListExpr') {
             const newExprInit = newExpression.inner[1];
             for (const element of newExprInit.inner) {
@@ -1560,27 +1564,27 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
     }
 
 
-    // 构造参数表格
+    // Construction parameter table
     private getConstructArgs(constructArgs: CppAstNode): CppAstNode[];
     private getConstructArgs(constructArgs: CppAstNode[]): CppAstNode[];
     private getConstructArgs(constructArgs: CppAstNode | CppAstNode[]): CppAstNode[] {
-        // 1) 先规整成“参数数组”形态
+        // 1) Regularize to "parameter array"
         let arr: CppAstNode[];
         if (Array.isArray(constructArgs)) {
             arr = constructArgs;
         } else if (constructArgs.kind === 'InitListExpr') {
             arr = constructArgs.inner ?? [];
         } else {
-            // 某些场景（如 CXXConstructExpr）参数可能放在 inner[1] 的 InitListExpr 里
+            // Parameters of some scenarios (such as CXXConstructExpr) may be placed in InitListExpr of inner [1]
             arr = constructArgs.inner ?? [];
         }
-        // 2) 若第二个元素本身是 InitListExpr，则取它的 inner 作为真正的参数
+        // 2) If the second element itself is InitListExpr, take its inner as the real parameter
         if (arr[1]?.kind === 'InitListExpr') {
             arr = arr[1].inner ?? [];
         }
-        // 3) 若存在“隐式转换”形态（原逻辑：看第二个元素是否为 ImplicitCastExpr）
+        // 3) If there is "implicit conversion" (original logic: check whether the second element is ImplicitCastExpr)
         const useInner1 = arr[1]?.kind === 'ImplicitCastExpr';
-        // 4) 生成新参数列表（与原逻辑等价）
+        // 4) Generate a new parameter list (equivalent to the original logic)
         const newConstructArgs: CppAstNode[] = [];
         for (let i = 0; i < arr.length; i++) {
             if (useInner1) {
@@ -1659,7 +1663,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         this.getArrayLiteralExpression(arrayLiteralExpression, stmts, elementTypes, elementValues, elementPositions);
         let baseType: Type = this.resolveTypeNodeCpp(arrayLiteralExpression);
         if (baseType === UnknownType.getInstance()) {
-            // 如果类型不确定，当作未知引用类型
+            // If the type is uncertain, it is regarded as an unknown reference type
             return this.cxxNewExpressionToValueAndStmts(arrayLiteralExpression);
         }
         const newArrayExprPosition = FullPosition.buildFromNodeCpp(arrayLiteralExpression, this.sourceFileCpp);

@@ -39,8 +39,8 @@ export abstract class AbstractRef implements Value {
 }
 
 export class ArkArrayRef extends AbstractRef {
-    private base: Local; // 数组变量
-    private index: Value; // 索引
+    private base: Local; // Array variable
+    private index: Value; // Index
 
     constructor(base: Local, index: Value) {
         super();
@@ -218,7 +218,10 @@ export class ArkInstanceFieldRef extends AbstractFieldRef {
     }
 }
 
-// CPP的成员访问实现，因为需区分p.f和p->f且不对原arkIR做侵入式修改，这里设计派生类
+/**
+ * C++ member access implementation, designed as a derived class because it needs to distinguish between p.f
+ * and p->f without intrusive modification to the original arkIR
+ */
 export class CXXArkInstanceFieldRef extends ArkInstanceFieldRef {
     private isArrow: boolean;
 

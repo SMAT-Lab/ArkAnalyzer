@@ -31,7 +31,7 @@ private:
     int data;
 };
 
-// 基本类型引用
+// Basic type references
 void BaseLeftRefer(double &b)
 {
     int a = 1;
@@ -51,14 +51,14 @@ void BaseRightRefer()
     int &&rr1 = 10 int &&rr2 = x + y;
 }
 
-// 基本类型指针
+//  Basic type pointers
 void PointRefer()
 {
     int *ptr = nullptr;
     int *&refToPtr = ptr; //  引用
 }
 
-// 自定义类型的引用
+// Custom type references
 void MyClassRefer()
 {
     MyClass a(FIVE);
@@ -72,7 +72,7 @@ void MoveCase()
     refA = SIX;
 
     std::string str1 = "Hello";
-    std::string str2 = std::move(str1); // 移动而非复制
+    std::string str2 = std::move(str1); // Move instead of copy
 }
 
 class Data {

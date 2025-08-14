@@ -52,7 +52,7 @@ export interface SceneOptions {
 const CONFIG_FILENAME = 'arkanalyzer.json';
 const DEFAULT_CONFIG_FILE = path.join(__dirname, '../config', CONFIG_FILENAME);
 
-// 提取 set 变量定义: set(VAR value)
+// Extract set variable definition: set (VAR value)
 function extractSetVar(line: string): [string, string] | null {
     const m = line.match(/^\s*set\s*\(\s*([A-Za-z_0-9]+)\s+(.+?)\s*\)$/);
     if (m) {
@@ -62,7 +62,7 @@ function extractSetVar(line: string): [string, string] | null {
     return null;
 }
 
-// 递归解析变量，只支持本文件set变量
+// Recursive parsing of variables, only supports set variables in this file
 function resolveCMakeVar(val: string, varTable: Record<string, string>, depth = 0): string {
     if (depth > 10) {
         return val;
@@ -71,15 +71,15 @@ function resolveCMakeVar(val: string, varTable: Record<string, string>, depth = 
         if (varTable[varName] !== undefined) {
             return resolveCMakeVar(varTable[varName], varTable, depth + 1);
         }
-        // 不能解析，返回原样（留给后续过滤用）
+        // Unable to parse, returns as is (reserved for subsequent filtering)
         return m;
     });
 }
 
 /**
- * 判断当前行是否为 include_directories 或 target_include_directories 的起始，
- * 如是，则进入收集状态，并处理单行立即闭合的场景。
- * 返回新的 collecting 状态、funcType、buffer（支持多行参数）。
+ *Determine whether the current row is the starting point of incle_rectifiers or target_include-directies,
+ *If so, enter the collection state and process the scene where a single line is immediately closed.
+ *Return the new collecting status, funcType, and buffer (supporting multiple line parameters).
  */
 function tryStartCollectingIncludeDirs(
     line: string,
@@ -112,7 +112,7 @@ function tryStartCollectingIncludeDirs(
         }
         return { collecting, funcType, buffer };
     } else {
-        // 没有进入收集状态
+        // Not in collection mode
         return { collecting: false, funcType: null, buffer: [] };
     }
 }
@@ -124,7 +124,7 @@ function extractAllIncludeDirs(lines: string[]): string[][] {
     let funcType: 'include' | 'target' | null = null;
 
     for (const lineOrig of lines) {
-        // 去除注释
+        // Remove comments
         const line = lineOrig.replace(/#.*$/, '').trim();
         if (!collecting) {
             const state = tryStartCollectingIncludeDirs(line, results);
@@ -144,24 +144,24 @@ function extractAllIncludeDirs(lines: string[]): string[][] {
     return results;
 }
 
-// ----------- 参数分割及target参数跳过-----------
+// ----------- Parameter segmentation and target parameter skipping-----------
 function parseCMakeArgs(buffer: string[], isTarget: boolean): string[] {
-    // 拼成一行，去掉多余换行和空白
+    // Form a line and remove unnecessary line breaks and whitespace
     let line = buffer.join(' ').replace(/\s+/g, ' ');
-    // 去掉头部指令
+    // Remove leading command
     const lidx = line.indexOf('(');
     const ridx = line.lastIndexOf(')');
     if (lidx === -1 || ridx === -1) {
         return [];
     }
     line = line.substring(lidx + 1, ridx).trim();
-    // 按引号和空格分割参数
+    // Split parameters by quotes and spaces
     const args: string[] = [];
     let curr = '';
     let inQuote = false;
     for (let i = 0; i < line.length; ++i) {
         const c = line[i];
-        // 先统一处理引号
+        // uniformly handle quotes
         if (c === '"') {
             if (inQuote) {
                 inQuote = false;
@@ -172,12 +172,12 @@ function parseCMakeArgs(buffer: string[], isTarget: boolean): string[] {
             }
             continue;
         }
-        // 在引号内：字面追加
+        // In quotes: literal append
         if (inQuote) {
             curr += c;
             continue;
         }
-        // 不在引号内：空白分隔，否则字面追加
+        // Not in quotes: space separated, otherwise literal append
         if (/\s/.test(c)) {
             if (curr.length > 0) {
                 args.push(curr);
@@ -191,7 +191,7 @@ function parseCMakeArgs(buffer: string[], isTarget: boolean): string[] {
         args.push(curr);
     }
     if (isTarget) {
-        // 跳过target名字和 PUBLIC/PRIVATE/INTERFACE 关键字
+        // Skip target name and PUBLIC/PRIVATE/INTERFACE keywords
         const idx = args.findIndex(a => ['PUBLIC', 'PRIVATE', 'INTERFACE'].includes(a.toUpperCase()));
         if (args.length < 3 || (idx < 1 || idx + 1 >= args.length)) {
             return [];
@@ -207,7 +207,7 @@ function scanCMakeIncludeDirsOnly(dir: string): string[] {
 
     const cmakePath = path.join(dir, 'CMakeLists.txt');
     if (!fs.existsSync(cmakePath)) {
-        // 提前返回，仅递归子目录
+        // Return early, only recursively process subdirectories
         const subdirs = fs
             .readdirSync(dir, { withFileTypes: true })
             .filter(f => f.isDirectory())
@@ -216,7 +216,7 @@ function scanCMakeIncludeDirsOnly(dir: string): string[] {
         return subdirs.flatMap(subdir => scanCMakeIncludeDirsOnly(subdir));
     }
 
-    // 有 CMakeLists.txt 的正常处理流程
+    // Normal processing flow with CMakeLists.txt
     const varTable: Record<string, string> = {
         CMAKE_CURRENT_SOURCE_DIR: dir.replace(/\\/g, '/'),
         PROJECT_SOURCE_DIR: dir.replace(/\\/g, '/'),
@@ -323,7 +323,7 @@ export class SceneConfig {
         this.targetProjectDirectory = targetProjectDirectory;
         const resolvedDir = path.resolve(targetProjectDirectory);
         const cmakeIncludeDirs = scanCMakeIncludeDirsOnly(resolvedDir);
-        // 把项目根路径加入 includeDirs
+        // Add project root path to includeDirs
         cmakeIncludeDirs.push(resolvedDir);
         this.includeDirs = Array.from(new Set([...cmakeIncludeDirs, ...includeDirs]));
         this.targetProjectName = path.basename(targetProjectDirectory);

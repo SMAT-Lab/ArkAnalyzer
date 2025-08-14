@@ -610,7 +610,7 @@ export enum CompoundBinaryOperator {
 
 export type BinaryOperator = NormalBinaryOperator | RelationalBinaryOperator;
 
-// 二元运算表达式
+// Binary operation expression
 export abstract class AbstractBinopExpr extends AbstractExpr {
     protected op1: Value;
     protected op2: Value;
@@ -898,7 +898,7 @@ export class ArkInstanceOfExpr extends AbstractExpr {
     }
 }
 
-// 类型转换
+// Type conversion
 export class ArkCastExpr extends AbstractExpr {
     private op: Value;
     private type: Type;

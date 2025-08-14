@@ -60,16 +60,16 @@ export class Case {
 
 export class StatementBuilder {
     type: string;
-    //节点对应源代码
+    // Source code corresponding to the node
     code: string;
     next: StatementBuilder | null;
     lasts: Set<StatementBuilder>;
     walked: boolean;
     index: number;
-    // TODO:以下两个属性需要获取
-    line: number; //行号//ast节点存了一个start值为这段代码的起始地址，可以从start开始往回查原文有几个换行符确定行号
-    column: number; // 列
-    astNode: CppAstNode | null; //ast节点对象
+    // TODO:The following two properties need to be obtained
+    line: number; // Line number: ast node stores a start value as the starting address of this code, you can count how many line
+    column: number; // Column
+    astNode: CppAstNode | null; // Ast node object
     scopeID: number;
     addressCode3: string[] = [];
     block: BlockBuilder | null;
@@ -383,14 +383,17 @@ export class CfgBuilder {
         }
     }
 
-    // 将cpp的case-default的ast格式转换成TS的caseClause/defaultClause
+    // Convert cpp's case-default ast format to TS's caseClause/defaultClause
     private getCaseDefClauseAsts(switchNode: CppAstNode):CppAstNode[] {
-        // cpp解析case:后面没有语句且没有break时，会把后面的case/default作为该case的inner节点，因此要把原有的ast拆分成一个个的case，default
+        // When cpp parses case: without statements and no break,
+        // it will treat the following case/default as inner nodes of that case,
+        // so the original ast needs to be split into individual cases and defaults
         let tempClauses: CppAstNode[] = [];
         for (let node of switchNode.inner[1].inner) {
             this.sliceCaseDefaultNode(node, tempClauses);
         }
-        // 没有case括号时，cpp中case和break/continue是分开的两个节点，此处将break/continue节点加入作为case或default节点的inner成员
+        // When there are no case brackets, case and break/continue are separate nodes in cpp,
+        // here we add the break/continue nodes as inner members of case or default nodes
         return tempClauses.reduce((acc: CppAstNode[], curr: CppAstNode, idx: number, arr: CppAstNode[]) => {
             if (['CaseStmt', 'DefaultStmt'].includes(curr.kind.toString())) {
                 curr.parent = switchNode.inner[1];
@@ -467,22 +470,22 @@ export class CfgBuilder {
         const first = innerNode?.inner?.[0];
         if (first && first.kind === 'MemberExpr') {
             let childInner: CppAstNode = first;
-            // callee：优先用 name，有些 JSON 可能只有 code
+            // Callee: name is preferred. Some JSONs may only have code
             callee = '.' + (childInner.name || childInner.code || '');
-            // 2) 向下穿过 ImplicitCastExpr 链，直到 DeclRefExpr 或其他终点 同时使用可选链，避免越界
+            // 2) Go down through ImplicitCastExpr chain until DeclRefExpr or other end points use the optional chain at the same time to avoid out of bounds
             while (childInner.inner && childInner.inner.length > 0) {
                 const n0 = childInner.inner[0];
                 const innerKind = n0?.kind;
                 if (innerKind === 'DeclRefExpr') {
-                    // 3) 安全读取 referencedDecl?.name；兜底使用 n0.name / n0.code / 空串
+                    // 3) Safely read referencedDecl? .name； Use n0. name/n0. code/empty string at the bottom
                     caller = n0.referencedDecl?.name || n0.name || n0.code || '';
                     break;
                 }
                 if (innerKind === 'ImplicitCastExpr') {
-                    childInner = n0; // 继续向下剥
+                    childInner = n0; // Continue to traverse downward
                     continue;
                 }
-                // 其他节点就停止
+                // Other nodes stop
                 break;
             }
         }
@@ -532,7 +535,7 @@ export class CfgBuilder {
 
     ASTNodeLabelStatement(innerNode: CppAstNode, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
         let labelStmt = new StatementBuilder('statement', 'goto label:' + innerNode.name, innerNode, scopeID);
-        // 处理goto语句与label语句的前后关系
+        // Handle the sequence relationship between goto statements and label statements
 
         const idx = innerNode.code.indexOf(':');
         if (idx === -1) {
@@ -551,13 +554,13 @@ export class CfgBuilder {
             }
         }
 
-        // 处理label语句和前一句的前后关系
+        // Handle the sequence relationship between label statements and the previous statement
         this.judgeLastStmtForLabel(labelStmt, lastStatement, undefined);
-        // labelStmt内节点的处理
+        // Processing nodes within labelStmt
         let labelExit = new StatementBuilder('labelExit', '', innerNode, scopeID);
         this.exits.push(labelExit);
         this.walkAST(labelStmt, labelExit, [...innerNode.inner]);
-        // 去除labelStmt
+        // Remove labelStmt
         for (const stmt of [...labelStmt.lasts]) {
             labelStmt.next!.lasts.add(stmt);
             if (stmt.type === 'ifStatement') {
@@ -830,7 +833,7 @@ export class CfgBuilder {
                 }
             }
         }
-        // 部分语句例如return后面的exit语句的next无法在上面清除
+        // The next of some statements, such as the exit statement after return, cannot be cleared
         for (const exit of this.exits) {
             if (exit.next && exit.next.lasts.has(exit)) {
                 exit.next.lasts.delete(exit);
@@ -1255,7 +1258,7 @@ export class CfgBuilder {
             valueAndStmtsOfSwitchAndCasesAll,
             arkIRTransformer
         );
-        // 仅为 TrapBuilder 做一次 core 类型的适配 ——
+        // Only do a core type adaptation for TrapBuilder ——
         const asCoreMapForTrap = blockBuilderToCfgBlock as unknown as Map<CoreBlockBuilder, BasicBlock>;
         const asCoreBeforeTry = blockBuildersBeforeTry as unknown as Set<CoreBlockBuilder>;
         const trapBuilder = new TrapBuilder(asCoreBeforeTry, asCoreMapForTrap, arkIRTransformer, basicBlockSet);

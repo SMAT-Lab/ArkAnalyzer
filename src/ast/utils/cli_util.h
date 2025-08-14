@@ -26,8 +26,8 @@ struct CommandLineOptions {
 };
 
 struct ClangArgs {
-    std::vector<std::string> strArgs;   // 字符串本体
-    std::vector<const char*> cstrArgs;  // 指针
+    std::vector<std::string> strArgs;   // String itself
+    std::vector<const char*> cstrArgs;  // Pointer
 };
 
 namespace cliutil {
@@ -37,6 +37,6 @@ namespace cliutil {
     void PrintUsage(const char* progName);
     ClangArgs PrepareClangArgs(const CommandLineOptions& opts);
     ClangArgs LoadCompileCommands(const CommandLineOptions& opts);
-    bool HasSuffix(const std::string& str, const std::string& suffix); // 内部用
+    bool HasSuffix(const std::string& str, const std::string& suffix); // Internal use
     ClangArgs GetClangArgs(const CommandLineOptions& opts);
 }

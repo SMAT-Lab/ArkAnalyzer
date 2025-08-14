@@ -22,7 +22,7 @@ void Case1()
 {
     ;
     ;
-    ; // 空操作
+    ; // Null operation
 }
 
 void Case2()
@@ -47,10 +47,10 @@ void Case4()
 {
     int count = 3;
     while (count-- > 0) {
-        ; // 空操作
+        ; // Null operation
     }
     for (int i = 0; i < FIVE; ++i) {
-        ; // 空操作
+        ; // Null operation
     }
 }
 

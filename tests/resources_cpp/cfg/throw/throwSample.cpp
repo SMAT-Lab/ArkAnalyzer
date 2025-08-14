@@ -22,7 +22,7 @@ void TryThrowCase()
 {
     try {
         cout << "before throw" << endl;
-        throw ERROR_CODE; //抛出一个整数异常
+        throw ERROR_CODE; // Throw an integer exception
         cout << "after throw" << endl;
     } catch (int e) {
         cout << "Caught exception: " << e << endl;

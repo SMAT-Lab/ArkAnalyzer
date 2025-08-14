@@ -161,7 +161,7 @@ export class NumberType extends PrimitiveType {
     }
 }
 
-// cpp的number有多种整型、浮点型的区分，因此派生一个cpp的number类型
+// C++ number has multiple integer and floating-point type distinctions, so derive a C++ number type
 export class CXXNumberType extends NumberType {
     private readonly cxxType: string;
 
@@ -214,7 +214,7 @@ export class StringType extends PrimitiveType {
     }
 }
 
-// cpp的string有不同字符类型区分，因此派生一个cpp的string类型
+// C++ string has different character type distinctions, so derive a C++ string type
 export class CXXStringType extends StringType {
     private readonly cxxType: string;
 
@@ -478,7 +478,7 @@ export class ClosureType extends FunctionType {
 export class ClassType extends Type {
     private classSignature: ClassSignature;
     private realGenericTypes?: Type[];
-    private applyType: string; // 应用类型*和&
+    private applyType: string; // Application types * and &
 
     constructor(classSignature: ClassSignature, realGenericTypes?: Type[], applyType: string = '') {
         super();
@@ -892,10 +892,10 @@ export class EnumValueType extends Type {
     }
 }
 
-/* CPP的指针类型 */
+/* C++ pointer type */
 export class PointerType extends Type {
-    private baseType: Type; // 基础类型，如int *中的int
-    private level: number; // 代表几级指针
+    private baseType: Type; // Base type, such as int in int *
+    private level: number; // Represents the level of pointer
 
     constructor(baseType: Type, level: number) {
         super();
@@ -968,7 +968,7 @@ export class ReferenceType extends Type {
     }
 
     public getTypeString(): string {
-        // 实现抽象方法，返回类型字符串
+        // Implement abstract method, return type string
         const strs: string[] = [];
         if (this.baseType instanceof UnionType) {
             strs.push('(' + this.baseType.toString() + ')');

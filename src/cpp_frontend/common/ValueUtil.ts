@@ -20,7 +20,7 @@ const charPrefixType = ['L"', "L\'", 'u"', "u\'", 'U"', "U\'"];
 
 export class CppValueUtil extends ValueUtil {
     public static normalizeString(str: string): string {
-        let preStr: string = str.substring(0, 2); //获取前缀处理长字符类型
+        let preStr: string = str.substring(0, 2); // Get prefix processing long character type
         if (charPrefixType.includes(preStr)) {
             str = str.substring(2, str.length - 1).replace('\\', '');
         } else if (str.charAt(0) === "'") {

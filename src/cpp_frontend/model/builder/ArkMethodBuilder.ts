@@ -48,7 +48,7 @@ function getSpecificNodes(methodNode: CppAstNode, targetNode: string): CppAstNod
     if (!methodNode || !methodNode.inner) {
         return [];
     }
-    // 处理 Cpp 的lambda函数
+    // Handle Cpp lambda functions
     if (
         !['FunctionDecl', 'CXXMethodDecl', 'CXXConstructorDecl', 'CXXDestructorDecl', 'FriendDecl', 'LambdaExpr', 'FunctionTemplate'].includes(
             methodNode.kind
@@ -92,7 +92,7 @@ export function handleFunctionTemplate(methodNode: CppAstNode, mtd: ArkMethod, s
             continue;
         }
         let typename = innerNode.name;
-        // 处理参数折叠的模板
+        // Template for handling parameter folding
         if (innerNode.code.includes('...')) {
             typename = typename + '...';
         }

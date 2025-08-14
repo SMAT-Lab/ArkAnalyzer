@@ -44,7 +44,7 @@ end:
 
 int Foo3()
 {
-    // 定义两个标签地址指针
+    // Define two label address pointers
     void *ptr1 = &&my_label1;
     void *ptr2 = &&my_label2;
 

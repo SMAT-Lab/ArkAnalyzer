@@ -21,14 +21,14 @@
 #define A_HUNDRED 100
 #define TWENTY 20
 
-// 定义带有两个模板类型的函数模板
+// Define a function template with two template types
 template <typename T1, typename T2>
 void PrintPair(T1 a, T2 b)
 {
     std::cout << "First:" << a << ", Second" << b << std::endl;
 }
 
-// 函数模板
+//  Function template
 template <typename T = int>
 T Max1(T a, T b)
 {
@@ -51,7 +51,7 @@ int Instantiation1(int x, int y)
     return 0;
 }
 
-// 类模板
+// Class template
 template <typename T>
 class MyContainer {
 private:

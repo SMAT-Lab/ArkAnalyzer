@@ -90,7 +90,7 @@ export function buildNormalArkClass(clsNode: CppAstNode, cls: ArkClass, sourceFi
         }
     }
     if (clsNode.kind === 'ClassTemplate') {
-        buildClass2ArkClass(clsNode, cls, sourceFile); // 模板类的kind属性不会自动被归入tagUsed为'class'
+        buildClass2ArkClass(clsNode, cls, sourceFile); // The kind attribute of template classes will not be automatically classified as 'class' in tagUsed
     } else if (clsNode.kind === 'EnumDecl') {
         buildEnum2ArkClass(clsNode, cls, sourceFile, declaringMethod);
     }

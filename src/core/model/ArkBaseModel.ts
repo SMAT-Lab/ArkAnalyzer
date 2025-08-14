@@ -93,7 +93,8 @@ const MODIFIER_KIND_2_ENUM_CPP = new Map<string, ModifierType>([
     ['override', ModifierType.OVERRIDE],
     ['static', ModifierType.STATIC],
     ['pure virtual', ModifierType.PURE_VIRTUAL],
-    ['abstract', ModifierType.ABSTRACT], // C++纯虚函数所在类为抽象类，此设置一个修饰符对标ts中的抽象类
+    // In C++, a class with pure virtual functions is an abstract class. This sets a modifier to correspond to the abstract class in TypeScript.
+    ['abstract', ModifierType.ABSTRACT],
 ]);
 
 const MODIFIER_KIND_2_ENUM = new Map<ts.SyntaxKind, ModifierType>([

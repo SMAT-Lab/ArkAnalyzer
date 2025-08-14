@@ -28,7 +28,7 @@ int FuncDoSomething(int i, int j)
     return j;
 }
 
-// 类方法实现
+// Class method implementation
 double Circle::CalculateArea() const
 {
     return PI * radius * radius;

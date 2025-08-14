@@ -13,21 +13,21 @@
  * limitations under the License.
  */
 
-// Native侧如何获取ArkTS侧Object对象及其成员变量
+// How Native side gets Object objects and their member variables from ArkTS side
 
-// 传入实例对象，在C++侧调用对象中的函数
+// Pass in instance object and call functions in the object on C++ side
 #include <cstddef>
 #include "napi/native_api.h"
 static napi_value CallFunction(napi_env env, napi_callback_info info)
 {
-    // 获取实例对象
+    // Get instance object
     size_t argc = 1;
     napi_value args[1] = {nullptr};
-    napi_get_cb_info(env, info, &argc, args, NULL, NULL);  // *NULL对应AST节点缺失
-    // 获取对象的方法
+    napi_get_cb_info(env, info, &argc, args, NULL, NULL);  // AST node missing corresponding to NULL
+    // Get object's method
     napi_value onCall;
     napi_get_named_property(env, args[0], "onCall", &onCall);
-    // 调用对象中的函数
+    // Call function in the object
     napi_value res;
     napi_call_function(env, args[0], onCall, 0, nullptr, &res);
     return onCall;

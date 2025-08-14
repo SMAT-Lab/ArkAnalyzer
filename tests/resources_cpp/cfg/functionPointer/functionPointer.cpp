@@ -19,7 +19,7 @@ using namespace std;
 
 #define FOUR 4
 
-// 定义一个函数
+// Define a function
 int Add(int a, int b)
 {
     return a + b;
@@ -27,13 +27,13 @@ int Add(int a, int b)
 
 int Case1()
 {
-    // 声明一个函数指针
+    // Declare a function pointer
     int (*funcPtr)(int, int);
 
-    // 将函数地址赋给指针
+    // Assign function address to pointer
     funcPtr = Add;
 
-    // 通过指针调用函数
+    // Call function through pointer
     int result = funcPtr(3, 4);
     cout << "3 + 4 = " << result << endl;  // 输出: 3 + 4 = 7
 
@@ -50,7 +50,7 @@ void GreetSpanish()
     cout << "¡Hola!" << endl;
 }
 
-// 函数接受函数指针作为参数
+// Function accepts function pointer as parameter
 void Greet(void (*greetFunc)())
 {
     GreetFunc();
@@ -58,8 +58,8 @@ void Greet(void (*greetFunc)())
 
 int Case2()
 {
-    Greet(GreetEnglish);  // 输出: Hello!
-    Greet(GreetSpanish);  // 输出: ¡Hola!
+    Greet(GreetEnglish);  // Output: Hello!
+    Greet(GreetSpanish);  // Output: ¡Hola!
 
     return 0;
 }
@@ -75,7 +75,7 @@ double Divide(double a, double b)
 
 int Case3()
 {
-    // 函数指针数组
+    // Function pointer array
     double (*operations[4])(double, double) = {Add, Subtract, Multiply, Divide};
 
     double x = 10;

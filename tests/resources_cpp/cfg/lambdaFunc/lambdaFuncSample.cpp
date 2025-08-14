@@ -15,7 +15,7 @@
 
 #include <cstdio>
 
-// 无捕获，有参
+// No capture, with parameters
 void Case1()
 {
     auto func = [](int x) { return x + 1; };
@@ -23,7 +23,7 @@ void Case1()
     printf("%d", res);
 }
 
-// 带捕获
+// With capture
 void Case2()
 {
     const int a = 5;
@@ -32,7 +32,7 @@ void Case2()
     printf("%d", res);
 }
 
-// 带返回类型
+// With return type
 void Case3()
 {
     auto func = [](int x) -> int { return x + 1; };
@@ -40,7 +40,7 @@ void Case3()
     printf("%d", res);
 }
 
-// 无返回值
+// No return value
 void Case4()
 {
     auto func = [](int x) { printf("%d", x); };

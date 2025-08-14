@@ -45,7 +45,7 @@ static thread_local napi_ref g_ref = nullptr;
 
 
 GlobalConfig::GlobalConfig(double value)
-    : value_(value), env_(nullptr), wrapper_(nullptr) {}  // 初始化列表的赋值，当前ArkIR没有体现出来
+    : value_(value), env_(nullptr), wrapper_(nullptr) {}  // Initialization list assignment, currently not reflected in ArkIR
 
 GlobalConfig::~GlobalConfig()
 {
@@ -80,7 +80,7 @@ napi_value GlobalConfig::New(napi_env env, napi_callback_info info)
     napi_value newTarget;
     napi_get_new_target(env, info, &newTarget);
     if (newTarget != nullptr) {
-        // 使用'new GlobalConfig(...)'调用方式
+        // Using 'new GlobalConfig(...)' calling method
         size_t argc = 1;
         napi_value args[1];
         napi_value jsThis;
@@ -96,7 +96,7 @@ napi_value GlobalConfig::New(napi_env env, napi_callback_info info)
         GlobalConfig* obj = new GlobalConfig(value);
 
         obj->env_ = env;
-        // 通过napi_wrap将ArkTS对象jsThis与C++对象obj绑定
+        // Bind ArkTS object jsThis with C++ object obj through napi_wrap
         napi_status status = napi_wrap(env,
                                        jsThis,
                                        reinterpret_cast<void*>(obj),

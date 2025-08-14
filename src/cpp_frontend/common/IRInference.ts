@@ -518,7 +518,7 @@ export class IRInference {
             }
             return expr;
         } else if (methodName === CONSTRUCTOR_NAME) {
-            //sdk隐式构造
+            //Sdk implicit construction
             const subSignature = new MethodSubSignature(methodName, [], new ClassType(baseType.getClassSignature()));
             expr.setMethodSignature(new MethodSignature(baseType.getClassSignature(), subSignature));
             return expr;

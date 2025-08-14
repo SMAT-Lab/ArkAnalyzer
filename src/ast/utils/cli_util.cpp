@@ -55,7 +55,7 @@ void cliutil::AddMainFileDirToInclude(CommandLineOptions& opts)
     for (const auto& dir : opts.userIncludeDirs) {
         const auto absMainDir = std::filesystem::absolute(dir);
         const bool mainDirExists = std::filesystem::exists(absMainDir);
-        // 若任一不存在：打印调试信息并继续下一个目录（卫语句）
+        // If any of them do not exist: print debugging information and continue to the next directory (guard statement)
         if (!(dirExists && mainDirExists)) {
             std::cout << "[DEBUG] Does absDir exist?       " << (dirExists ? "YES" : "NO") << std::endl;
             std::cout << "[DEBUG] Does absMainDir exist?  " << (mainDirExists ? "YES" : "NO") << std::endl;
@@ -108,18 +108,18 @@ bool cliutil::HasSuffix(const std::string& str, const std::string& suffix)
 ClangArgs cliutil::PrepareClangArgs(const CommandLineOptions& opts)
 {
     ClangArgs res;
-    // 选择标准
+    // Select standard
     if (HasSuffix(opts.inputFile, ".c")) {
         res.strArgs.push_back("-std=c99");
     } else {
         res.strArgs.push_back("-xc++");
         res.strArgs.push_back("-std=c++17");
     }
-    // 添加用户 include
+    // Add user include
     for (const auto& dir : opts.userIncludeDirs) {
         res.strArgs.push_back("-I" + dir);
     }
-    // 将 string 转换为 c_str 指针
+    // Convert string to c_str pointer
     for (const auto& arg : res.strArgs) {
         res.cstrArgs.push_back(arg.c_str());
     }
@@ -169,12 +169,12 @@ ClangArgs cliutil::LoadCompileCommands(const CommandLineOptions& opts)
         if (!fs::equivalent(commandFilePath, inputFilePath)) {
             continue;
         }
-        // 命中目标文件：追加 -I<目录>
+        // Target file hit: Append - I<directory>
         const std::string directoryStr = commandFilePath.parent_path().string();
         result.strArgs.push_back("-I" + directoryStr);
         result.cstrArgs.push_back(result.strArgs.back().c_str());
 
-        // 追加 command 中的其它参数（排除源文件自身）
+        // Add other parameters to the command (excluding the source file itself)
         const std::string commandStr = command["command"].get<std::string>();
         appendArgsFromCommand(commandStr);
 
