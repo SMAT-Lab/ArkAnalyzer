@@ -185,22 +185,26 @@ export function assertBlocksEqual(blocks: Set<BasicBlock>, expectBlocks: any[]):
         }
 
         const stmts: string[] = [];
-        for (const stmt of block.getStmts()) {
-            stmts.push(stmt.toString());
-        }
-        expect(stmts).toEqual(expectBlocks[i].stmts);
-
         const preds: number[] = [];
-        block.getPredecessors().forEach(predBlock => {
-            preds.push(predBlock.getId());
-        });
-        expect(preds).toEqual(expectBlocks[i].preds);
-
         const succes: number[] = [];
-        block.getSuccessors().forEach(succBlock => {
-            succes.push(succBlock.getId());
-        });
-        expect(succes).toEqual(expectBlocks[i].succes);
+        try {
+            for (const stmt of block.getStmts()) {
+                stmts.push(stmt.toString());
+            }
+            expect(stmts).toEqual(expectBlocks[i].stmts);
+
+            block.getPredecessors().forEach(predBlock => {
+                preds.push(predBlock.getId());
+            });
+            expect(preds).toEqual(expectBlocks[i].preds);
+
+            block.getSuccessors().forEach(succBlock => {
+                succes.push(succBlock.getId());
+            });
+            expect(succes).toEqual(expectBlocks[i].succes);
+        } catch (e) {
+            throw new Error(`equal error: \n ${stmts} \n ${preds} \n ${succes}`);
+        }
     }
 }
 
