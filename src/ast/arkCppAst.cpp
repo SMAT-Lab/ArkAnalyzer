@@ -1155,7 +1155,7 @@ void nodePostprocess(
         }
     } else if (node["kind"] == "ImplicitCastExpr") {
         implicitCastExprPostProcess(node, children, codeStr);
-    } else if (node["kind"] == "CXXConstructorDeclinitializer") {
+    } else if (node["kind"] == "CXXConstructorDecl") {
         children = addCXXCtorInitializer(children, node);
     } else if (node["kind"] == "TypedefDecl" && (children.size() == 0 || (children[0]["kind"] !=
                                "CXXRecordDecl" && children[0]["kind"] != "EnumDecl"))) {
