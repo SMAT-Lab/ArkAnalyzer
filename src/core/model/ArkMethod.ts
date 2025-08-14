@@ -677,12 +677,12 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
         return true;
     }
 
-    private matchParam(paramType: Type, arg: Value): boolean {
-        if (paramType instanceof EnumValueType || paramType instanceof LiteralType) {
-            arg = ArkMethod.parseArg(arg);
-        }
+    private matchParam(paramType: Type, argument: Value): boolean {
+        const arg = ArkMethod.parseArg(argument, paramType);
         const argType = arg.getType();
         if (paramType instanceof AliasType && !(argType instanceof AliasType)) {
+            paramType = TypeInference.replaceAliasType(paramType);
+        } else if (!(paramType instanceof AliasType) && argType instanceof AliasType) {
             paramType = TypeInference.replaceAliasType(paramType);
         }
         if (paramType instanceof UnionType) {
@@ -715,8 +715,8 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
         return argType.constructor === paramType.constructor;
     }
 
-    private static parseArg(arg: Value): Value {
-        if (arg instanceof Local) {
+    private static parseArg(arg: Value, paramType: Type): Value {
+        if ((paramType instanceof EnumValueType || paramType instanceof LiteralType) && arg instanceof Local) {
             const stmt = arg.getDeclaringStmt();
             const argType = arg.getType();
             if (argType instanceof EnumValueType && argType.getConstant()) {

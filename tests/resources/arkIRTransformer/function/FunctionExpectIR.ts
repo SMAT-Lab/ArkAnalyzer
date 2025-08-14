@@ -1370,7 +1370,7 @@ export const ClosureNamespaceFunction_Expect_IR = {
         globals: [
             {
                 name: 'globalValue',
-                type: 'unknown',
+                type: 'number',
                 instanceof: GlobalRef,
                 usedStmts: [
                     {

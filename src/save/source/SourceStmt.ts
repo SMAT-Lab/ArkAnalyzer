@@ -305,8 +305,9 @@ export class SourceAssignStmt extends SourceStmt {
             let rollback = true;
             if (stmt instanceof ArkAssignStmt && stmt.getRightOp() instanceof ArkInstanceInvokeExpr) {
                 let instanceInvokeExpr = stmt.getRightOp() as ArkInstanceInvokeExpr;
+                const methodName = instanceInvokeExpr.getMethodSignature().getMethodSubSignature().getMethodName();
                 if (
-                    'constructor' === instanceInvokeExpr.getMethodSignature().getMethodSubSignature().getMethodName() &&
+                    ('constructor' === methodName || 'construct-signature' === methodName) &&
                     instanceInvokeExpr.getBase().getName() === (this.leftOp as Local).getName()
                 ) {
                     this.handleConstructorInvoke(instanceInvokeExpr, originType);

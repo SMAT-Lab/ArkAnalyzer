@@ -175,6 +175,17 @@ describe("Infer Array Test", () => {
         }
     })
 
+    it('global local ref case', () => {
+        const fileId = new FileSignature(projectScene.getProjectName(), 'inferSample.ts');
+        const file = projectScene.getFile(fileId);
+        const usedGlobals = file?.getNamespaceWithName('testGV1')?.getDefaultClass().getMethodWithName('increment')?.getBody()?.getUsedGlobals();
+        assert.isDefined(usedGlobals);
+        if (usedGlobals) {
+            assert.equal(usedGlobals.get('fileGV')?.getType(), NumberType.getInstance());
+            assert.equal(usedGlobals.get('counter')?.getType(), NumberType.getInstance());
+        }
+    })
+
     it('supperClass Test case', () => {
         const fileId = new FileSignature(projectScene.getProjectName(), 'B.ets');
         const classB = projectScene.getFile(fileId)?.getClassWithName('ClassB');

@@ -28,9 +28,10 @@ v#1 = 3
 a#2 = undefined
 if v#1 > 0
 a#3 = 10
-a#4 = -10
-a#5 = phi(a#3, a#4)
-return a#5`;
+a#4 = phi(a#3, a#5)
+return a#4
+a#5 = -10`
+;
 
 describe('StaticSingleAssignmentFormer Test', () => {
     let config: SceneConfig = new SceneConfig();

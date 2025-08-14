@@ -147,9 +147,9 @@ describe('CfgTest', () => {
         const arkFile = scene.getFiles().find((file) => file.getName().endsWith(fileName));
         const stmts = arkFile?.getDefaultClass().getMethodWithName('case1')?.getCfg()?.getStmts();
         assert.isDefined(stmts);
-        assert.isAtLeast(stmts!.length, 5);
+        assert.isAtLeast(stmts!.length, 6);
         assert.equal(stmts![3].getOperandOriginalPosition(0)?.getLastCol(), 10);
-        assert.equal(stmts![4].getOperandOriginalPosition(0)?.getLastCol(), 10);
+        assert.equal(stmts![5].getOperandOriginalPosition(0)?.getLastCol(), 10);
     });
 
     it('case3: switch statement', () => {

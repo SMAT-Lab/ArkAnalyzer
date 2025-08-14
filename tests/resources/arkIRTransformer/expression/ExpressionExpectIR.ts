@@ -843,11 +843,11 @@ export const PTR_INVOKE_EXPRESSION_CALLFUNCRETURNED_EXPECT_IR = `callFuncReturne
 }
 `;
 
-export const PTR_INVOKE_EXPRESSION_AM4$PROMISECALL_EXPECT_IR = `%AM5$promiseCall(resolve: unknown): void {
+export const PTR_INVOKE_EXPRESSION_AM4$PROMISECALL_EXPECT_IR = `%AM5$promiseCall(resolve: @built-in/lib.es2015.promise.d.ts: PromiseConstructor.%AM1(T|@built-in/lib.es5.d.ts: PromiseLike<T>)): void {
   label0:
-    resolve = parameter0: unknown
+    resolve = parameter0: @built-in/lib.es2015.promise.d.ts: PromiseConstructor.%AM1(T|@built-in/lib.es5.d.ts: PromiseLike<T>)
     this = this: @expression/CallExpressionTest.ts: %dflt
-    ptrinvoke <@%unk/%unk: .resolve()>(42)
+    ptrinvoke <@built-in/lib.es2015.promise.d.ts: PromiseConstructor.resolve(T|@built-in/lib.es5.d.ts: PromiseLike<T>)>(42)
     return
 }
 `;
