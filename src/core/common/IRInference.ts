@@ -63,8 +63,6 @@ import { ArkFile } from '../model/ArkFile';
 import { AbstractTypeExpr, KeyofTypeExpr, TypeQueryExpr } from '../base/TypeExpr';
 import { ArkBaseModel } from '../model/ArkBaseModel';
 
-import { BuiltinCpp } from '../../cpp_frontend/common/Builtin';
-
 import { SdkUtils } from './SdkUtils';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'IRInference');
@@ -484,19 +482,11 @@ export class IRInference {
         methodName: string,
         scene: Scene
     ): AbstractInvokeExpr | null {
-        const baseClassName = baseType.getClassSignature().getClassName();
-        const isCppStdClass = BuiltinCpp.isBuiltinClass(baseType.getClassSignature());
-        if (Builtin.isBuiltinClass(baseClassName) || isCppStdClass) {
-            expr.setMethodSignature(new MethodSignature(baseType.getClassSignature(), expr.getMethodSignature().getMethodSubSignature()));
-        }
         let declaredClass = scene.getClass(baseType.getClassSignature());
         if (!declaredClass) {
             const globalClass = scene.getSdkGlobal(baseType.getClassSignature().getClassName());
             if (globalClass instanceof ArkClass) {
                 declaredClass = globalClass;
-            }
-            if (isCppStdClass) {
-                return expr;
             }
         }
         const method = declaredClass ? ModelUtils.findPropertyInClass(methodName, declaredClass) : null;
@@ -529,9 +519,16 @@ export class IRInference {
             }
             return expr;
         } else if (methodName === CONSTRUCTOR_NAME) {
-            //sdk隐式构造
-            const subSignature = new MethodSubSignature(methodName, [], new ClassType(baseType.getClassSignature()));
-            expr.setMethodSignature(new MethodSignature(baseType.getClassSignature(), subSignature));
+            const constructor = declaredClass?.getMethodWithName('construct-signature') ?? declaredClass?.getMethodWithName(CALL_SIGNATURE_NAME);
+            if (constructor) {
+                const methodSignature = constructor.matchMethodSignature(expr.getArgs());
+                TypeInference.inferSignatureReturnType(methodSignature, constructor);
+                expr.setMethodSignature(this.replaceMethodSignature(expr.getMethodSignature(), methodSignature));
+                expr.setRealGenericTypes(IRInference.getRealTypes(expr, declaredClass, baseType, constructor));
+            } else {
+                const subSignature = new MethodSubSignature(methodName, [], new ClassType(baseType.getClassSignature()));
+                expr.setMethodSignature(new MethodSignature(baseType.getClassSignature(), subSignature));
+            }
             return expr;
         } else if (
             methodName === Builtin.ITERATOR_NEXT &&
