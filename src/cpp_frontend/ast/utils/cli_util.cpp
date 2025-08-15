@@ -21,6 +21,10 @@
 #include <iostream>
 #include <filesystem>
 #include <sstream>
+#include <cstdlib>
+
+const std::string msvc_include = std::getenv("MSVC_INCLUDE");
+const std::string msvc_ucrt = std::getenv("MSVC_UCRT");
 
 using json = nlohmann::json;
 namespace fs = std::filesystem;
@@ -115,6 +119,12 @@ ClangArgs cliutil::PrepareClangArgs(const CommandLineOptions& opts)
         res.strArgs.push_back("-xc++");
         res.strArgs.push_back("-std=c++17");
     }
+
+    res.strArgs.push_back("-target");
+    res.strArgs.push_back("x86_64-pc-win32");
+    res.strArgs.push_back("-I" + msvc_include);
+    res.strArgs.push_back("-I" + msvc_ucrt);
+
     // Add user include
     for (const auto& dir : opts.userIncludeDirs) {
         res.strArgs.push_back("-I" + dir);
