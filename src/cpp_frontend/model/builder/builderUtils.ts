@@ -168,6 +168,13 @@ export function buildReturnType(mtdNode: CppAstNode, sourceFile: CppAstNode, met
     }
 }
 
+/**
+ *Convert C++AST node to Type
+ *@ param nodeQualType - type information of C++AST node or string type
+ *@ param arkInstance - Ark instance (method, class or field) that may contain generic information
+ *@ param sourceFile - optional source file node
+ *@ returns Type after conversion
+ */
 export function cppNode2Type(nodeQualType: CppAstNode | string, arkInstance: ArkMethod | ArkClass | ArkField | undefined, sourceFile?: CppAstNode): Type {
     // Handle special type
     if (nodeQualType === 'void () const') {
@@ -192,6 +199,19 @@ export function cppNode2Type(nodeQualType: CppAstNode | string, arkInstance: Ark
     return buildTypeFromPreStr(nodeQualType.toString(), arkInstance);
 }
 
+/**
+ *The corresponding Type object is constructed according to the pre type string and the optional Ark instance.
+ *
+ *The main processing flow of this function includes:
+ *1 Remove modifiers (such as const, static, mutable);
+ *2 Judge whether it is a function pointer, and handle pointers and references;
+ *3 Type inference to generate basic types;
+ *4 Wrap the final Type object according to the pointer level and the number of references.
+ *
+ *@ param preStr The original pre type string, such as "const int *" or "std:: vector<int>&"
+ *@ param arkInstance The optional ArkMethod, ArkClass or ArkField instances are used to assist type construction
+ *@ returns Type object constructed
+ */
 export function buildTypeFromPreStr(preStr: string, arkInstance: ArkMethod | ArkClass | ArkField | undefined): Type {
     // 1. Remove modifiers such as const/static/mutable
     preStr = preStr.replace(/\b(const|static|mutable)\s*\b/g, '');

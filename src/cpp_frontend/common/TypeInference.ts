@@ -151,7 +151,10 @@ export class TypeInference {
         }
         return type;
     }
-
+    /**
+     * Type information in inference method
+     * @param arkMethod Ark method object for type inference
+     */
     public static inferTypeInMethod(arkMethod: ArkMethod): void {
         const arkClass = arkMethod.getDeclaringArkClass();
         this.inferGenericType(arkMethod.getGenericTypes(), arkClass);
@@ -192,6 +195,11 @@ export class TypeInference {
         signatures.forEach(s => this.inferSignatureReturnType(s, arkMethod));
     }
 
+    /**
+     * Parse statement and process various references and expressions within it
+     * @param stmt Statement object to be parsed
+     * @param arkMethod Current Ark method context
+     */
     private static resolveStmt(stmt: Stmt, arkMethod: ArkMethod): void {
         try {
             this.resolveTypeExprsInStmt(stmt, arkMethod);
@@ -296,6 +304,14 @@ export class TypeInference {
         }
     }
 
+    /**
+     *Process field references, perform corresponding conversion processing according to the reference type and statement type,
+     * process static field references, process instance field references and field references as array references,
+     * and try to replace them with local variables when the index is a string constant
+     *@ param use - abstract reference object, which may be a static field reference or an instance field reference
+     *@ param stmt - statement object, used to replace references
+     *@ param arkMethod - Ark method object, used to obtain method body information
+     */
     private static processRef(use: AbstractRef | ArkInstanceFieldRef, stmt: Stmt, arkMethod: ArkMethod): void {
         const fieldRef = use.inferType(arkMethod);
         if (fieldRef instanceof ArkStaticFieldRef && stmt instanceof ArkAssignStmt) {
@@ -312,6 +328,11 @@ export class TypeInference {
         }
     }
 
+    /**
+     * Parse ArkExport object into corresponding Type
+     * @param arkExport - The ArkExport object to parse, may be undefined or null
+     * @returns The parsed Type object, or null if it cannot be parsed
+     */
     public static parseArkExport2Type(arkExport: ArkExport | undefined | null): Type | null {
         if (!arkExport) {
             return null;
@@ -368,6 +389,14 @@ export class TypeInference {
         TypeInference.resolveLeftOp(stmt, arkClass, rightType, arkMethod);
     }
 
+    /**
+     * Resolve type inference and setting for the left operand of an assignment statement
+     *
+     * @param stmt Assignment statement node
+     * @param arkClass The current Ark class
+     * @param rightType Type of the right-hand expression in the assignment
+     * @param arkMethod The current Ark method
+     */
     private static resolveLeftOp(stmt: ArkAssignStmt, arkClass: ArkClass, rightType: Type | null | undefined, arkMethod: ArkMethod): void {
         const leftOp = stmt.getLeftOp();
         let leftType = this.inferAssignLeftType(arkClass, rightType, leftOp, arkMethod, stmt);
@@ -391,6 +420,16 @@ export class TypeInference {
         }
     }
 
+    /**
+     * Infer the type of the left operand in an assignment statement
+     *
+     * @param arkClass Current class object
+     * @param rightType The type on the right side of the assignment statement
+     * @param leftOp The operand on the left side of the assignment
+     * @param arkMethod Current method object
+     * @param stmt Assignment statement object
+     * @returns The inferred left type, or null/undefined if it cannot be inferred
+     */
     private static inferAssignLeftType(arkClass: ArkClass, rightType: Type | null | undefined, leftOp: Value | Local,
         arkMethod: ArkMethod, stmt: ArkAssignStmt): Type | null | undefined {
         let leftType: Type | null | undefined = leftOp.getType();
@@ -423,6 +462,12 @@ export class TypeInference {
         return leftType;
     }
 
+    /**
+     * Set the type of value
+     *
+     * @param value The value object whose type needs to be set
+     * @param type The type to be set
+     */
     private static setValueType(value: Value, type: Type): void {
         if (value instanceof Local || value instanceof ArkParameterRef) {
             value.setType(type);
@@ -431,6 +476,11 @@ export class TypeInference {
         }
     }
 
+    /**
+     * Determine if the given type is an unclear type
+     * @param type The type to check, which can be null or undefined
+     * @returns true if the type is unclear, otherwise false
+     */
     public static isUnclearType(type: Type | null | undefined): boolean {
         // TODO: For UnionType, IntersectionType and TupleType, it should recurse check every item of them.
         if (
@@ -465,7 +515,13 @@ export class TypeInference {
         return false;
     }
 
-    // This is the temporal function to check Type recursively and can be removed after typeInfer supports multiple candidate types.
+    /**
+     * This is the temporal function to check Type recursively and can be removed after typeInfer supports multiple candidate types.
+     * @param type The type to check
+     * @param check Condition checking function that takes a type parameter and returns a boolean
+     * @param visited Set of visited types to prevent infinite recursion from circular references, defaults to empty set
+     * @returns true if the type meets the condition, otherwise false
+     */
     public static checkType(type: Type, check: (t: Type) => boolean, visited: Set<Type> = new Set()): boolean {
         if (visited.has(type)) {
             return false;
@@ -490,6 +546,10 @@ export class TypeInference {
         return false;
     }
 
+    /**
+     * Infer simple types in a statement
+     * @param stmt The statement to perform type inference on
+     */
     public static inferSimpleTypeInStmt(stmt: Stmt): void {
         if (stmt instanceof ArkAssignStmt) {
             const leftOp = stmt.getLeftOp();
@@ -503,7 +563,13 @@ export class TypeInference {
         }
     }
 
-    // Deal only with simple situations
+    /**
+     * Build corresponding Type object based on TypeScript type string
+     * Deal only with simple situations
+     * @param tsTypeStr TypeScript type string used to identify basic types
+     * @param cxxTypeStr Optional C++ type string used for detailed type information of number and string types
+     * @returns Returns the Type instance corresponding to the input string
+     */
     public static buildTypeFromStr(tsTypeStr: string, cxxTypeStr?: string): Type {
         switch (tsTypeStr) {
             case 'boolean':
@@ -531,6 +597,12 @@ export class TypeInference {
         }
     }
 
+    /**
+     * Infer the type of value
+     * @param value The value whose type needs to be inferred
+     * @param arkMethod The current method context
+     * @returns The inferred type, or null if it cannot be inferred
+     */
     public static inferValueType(value: Value, arkMethod: ArkMethod): Type | null {
         if (value instanceof ArkInstanceFieldRef || value instanceof ArkInstanceInvokeExpr) {
             this.inferValueType(value.getBase(), arkMethod);
@@ -541,6 +613,12 @@ export class TypeInference {
         return value.getType();
     }
 
+    /**
+     * Infer the type of method parameters and update the parameter's type information.
+     *
+     * @param param - The parameter object whose type needs to be inferred
+     * @param arkMethod - The method object that the parameter belongs to
+     */
     public static inferParameterType(param: MethodParameter, arkMethod: ArkMethod): void {
         let pType = param.getType();
         const arkClass = arkMethod.getDeclaringArkClass();
@@ -557,6 +635,12 @@ export class TypeInference {
         }
     }
 
+    /**
+     * Infer the return type of method signature and update the return type information in the signature.
+     *
+     * @param oldSignature - The method signature object whose return type needs to be inferred
+     * @param arkMethod - The method object that corresponds to the signature
+     */
     public static inferSignatureReturnType(oldSignature: MethodSignature, arkMethod: ArkMethod): void {
         if (oldSignature.getMethodSubSignature().getMethodName() === CONSTRUCTOR_NAME) {
             const newReturnType = new ClassType(oldSignature.getDeclaringClassSignature());
@@ -597,6 +681,11 @@ export class TypeInference {
         }
     }
 
+    /**
+     * Infer the return type of method and update the return type information in the method.
+     *
+     * @param arkMethod - The method object whose return type needs to be inferred
+     */
     private static inferReturnType(arkMethod: ArkMethod): Type | null {
         const typeMap: Map<string, Type> = new Map();
         for (let returnValue of arkMethod.getReturnValues()) {
@@ -627,6 +716,12 @@ export class TypeInference {
         return null;
     }
 
+    /**
+     * Infer the type of generic type and update the generic type information.
+     *
+     * @param types - The generic type array that needs to be inferred
+     * @param arkClass - The class object that the generic type belongs to
+     */
     public static inferGenericType(types: GenericType[] | undefined, arkClass: ArkClass): void {
         types?.forEach(type => {
             const defaultType = type.getDefaultType();
@@ -709,14 +804,11 @@ export class TypeInference {
     }
 
     /**
-     * Find out the original object and type for a given base type and the field name.
-     * It returns an array with 2 items, original object and original type.
-     * The original object is null if there is no object, or it failed to find the object.
-     * The original type is null if it failed to infer the type.
-     * @param baseType
-     * @param fieldName
-     * @param declareClass
-     * @returns
+     *Inferred field type
+     *@ param baseType Base Type
+     *@ param fieldName
+     *@ param declareClass Declare the class
+     *@ returns a tuple of attributes and types. If the inference fails, null is returned
      */
     public static inferFieldType(baseType: Type, fieldName: string, declareClass: ArkClass): [any, Type] | null {
         if (baseType instanceof AliasType) {
@@ -752,6 +844,13 @@ export class TypeInference {
         return propertyAndType;
     }
 
+    /**
+     *Infer type information of class fields
+     *@ param declareClass Declare the class object
+     *@ param baseType Basic class type
+     *@ param fieldName
+     *@ returns a tuple containing property and type information. If it cannot be inferred, it returns null
+     */
     private static inferClassFieldType(declareClass: ArkClass, baseType: ClassType, fieldName: string): [any, Type] | null {
         const arkClass = declareClass.getDeclaringArkFile().getScene().getClass(baseType.getClassSignature());
         if (!arkClass) {
@@ -784,12 +883,10 @@ export class TypeInference {
     }
 
     /**
-     * Find out the original object and type for a given base name.
-     * It returns original type.
-     * The original type is null if failed to infer the type.
-     * @param baseName
-     * @param arkClass
-     * @returns
+     *Infer Base Type
+     *@ param baseName
+     *@ param arkClass Ark class object
+     *@ returns the inferred type. If it cannot be inferred, it returns null
      */
     public static inferBaseType(baseName: string, arkClass: ArkClass): Type | null {
         if (SUPER_NAME === baseName) {
@@ -813,6 +910,12 @@ export class TypeInference {
         return this.parseArkExport2Type(arkExport);
     }
 
+    /**
+     *Infer type information based on type name
+     *@ param typeName - the type name to infer
+     *@ param arkClass - the current Ark class object
+     *@ returns The type object inferred. If it cannot be inferred, null is returned
+     */
     public static inferTypeByName(typeName: string, arkClass: ArkClass): Type | null {
         let arkExport: ArkExport | null =
             ModelUtils.getClassWithName(typeName, arkClass) ??
@@ -829,11 +932,26 @@ export class TypeInference {
         return null;
     }
 
+    /**
+     *Get the corresponding type information according to the global name
+     *@ param globalName - global name string
+     *@ param arkMethod - Ark method object, used to obtain declaration file and scene information
+     *@ returns the type object parsed. If it is not found, it returns null
+     */
     public static getTypeByGlobalName(globalName: string, arkMethod: ArkMethod): Type | null {
         const arkExport: ArkExport | null = arkMethod.getDeclaringArkFile().getScene().getSdkGlobal(globalName);
         return this.parseArkExport2Type(arkExport);
     }
 
+    /**
+     * Infer real generic types
+     *
+     * This function iterates through the passed type array, infers unclear types,
+     * and replaces the unclear types in the original array with the inferred concrete types.
+     *
+     * @param realTypes - Type array that may contain unclear types, returns directly if undefined
+     * @param arkClass - ArkClass object used for type inference
+     */
     public static inferRealGenericTypes(realTypes: Type[] | undefined, arkClass: ArkClass): void {
         if (!realTypes) {
             return;
@@ -849,6 +967,12 @@ export class TypeInference {
         }
     }
 
+    /**
+     *Infer type information of dynamic import
+     *@ param from - import source path
+     *@ param arkClass - Ark class information
+     *@ returns The type information obtained by parsing. If it cannot be parsed, null is returned
+     */
     public static inferDynamicImportType(from: string, arkClass: ArkClass): Type | null {
         const importInfo = new ImportInfo();
         importInfo.setNameBeforeAs(ALL);
@@ -858,6 +982,13 @@ export class TypeInference {
         return TypeInference.parseArkExport2Type(importInfo.getLazyExportInfo()?.getArkExport());
     }
 
+    /**
+     *Replace generic parameters in type with actual types
+     *@ param type - the original type to be replaced
+     *@ param realTypes - array of actual types, used to replace generic parameters
+     *@ param visited - the accessed type collection, used to prevent circular references
+     *@ returns The actual type after replacement
+     */
     public static replaceTypeWithReal(type: Type, realTypes?: Type[], visited: Set<Type> = new Set()): Type {
         if (visited.has(type)) {
             return type;
@@ -874,6 +1005,14 @@ export class TypeInference {
         return this.replaceRecursiveType(type, visited, realTypes);
     }
 
+    /**
+     * Recursively replace generic parameters in types with actual types.
+     *
+     * @param type The original type to process
+     * @param visited Set of visited types to prevent infinite recursion
+     * @param realTypes List of actual types used to replace generic parameters
+     * @returns The replaced type
+     */
     public static replaceRecursiveType(type: Type, visited: Set<Type>, realTypes?: Type[]): Type {
         if (type instanceof ClassType) {
             const replacedTypes = type.getRealGenericTypes()?.map(g => this.replaceTypeWithReal(g, realTypes, visited)) ?? realTypes;
@@ -908,6 +1047,16 @@ export class TypeInference {
         return type;
     }
 
+    /**
+     * Replace alias types with their original types
+     *
+     * This function recursively resolves alias types by following the chain of type aliases
+     * until it reaches the original underlying type. If the input type is an alias type,
+     * it will trace through to the non-alias type.
+     *
+     * @param type - The type to be replaced, which may be an alias type
+     * @returns Returns the resolved original type; if the input is not an alias type, it returns the original type directly
+     */
     public static replaceAliasType(type: Type): Type {
         let aliasType = type;
         while (aliasType instanceof AliasType) {
@@ -916,6 +1065,12 @@ export class TypeInference {
         return aliasType;
     }
 
+    /**
+     * Infer function type for generic type inference
+     * @param argType Function argument type
+     * @param paramSubSignature Parameter sub-signature
+     * @param realTypes Array of real types
+     */
     public static inferFunctionType(argType: FunctionType, paramSubSignature: MethodSubSignature | undefined, realTypes: Type[] | undefined): void {
         const returnType = argType.getMethodSignature().getMethodSubSignature().getReturnType();
         const declareType = paramSubSignature?.getReturnType();
@@ -950,6 +1105,11 @@ export class TypeInference {
             });
     }
 
+    /**
+     * Resolve Ark return statement, perform type inference processing
+     * @param stmt The statement object that needs to be parsed
+     * @param arkMethod The current Ark method
+     */
     private static resolveArkReturnStmt(stmt: Stmt, arkMethod: ArkMethod): void {
         if (!(stmt instanceof ArkReturnStmt)) {
             return;

@@ -77,6 +77,12 @@ import { BinaryOperator } from '../../core/base/Expr';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkValueTransformer');
 
+/**
+ * Get the inner node of an AST node
+ *
+ * @param node - C++ AST node object
+ * @returns Returns the processed C++ AST node, or an unsupported type node if unable to process
+ */
 function nodeInnerNode(node: CppAstNode): CppAstNode {
     if (Array.isArray(node?.inner) && node.inner.length > 0) {
         const last = node.inner[node.inner.length - 1];
@@ -103,6 +109,7 @@ type TransformerType = {
 export class ArkValueTransformerCpp extends ArkValueTransformer {
     private arkIRTransformerCpp: ArkIRTransformerCpp;
     private readonly sourceFileCpp: CppTranslationUnit;
+
     // An object that records the corresponding processing functions of CXX ast nodes.
     private nodeTransformerFuncMap: TransformerType = {
         'AddrLabelExpr': this.cxxLiteralNodeToValueAndStmts,
@@ -166,6 +173,12 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         this.sourceFileCpp = sourceFile;
     }
 
+
+    /**
+     *Convert C++AST nodes into a combination of values and statements
+     *@ param node - C++AST node to be converted
+     *@ returns Objects containing converted values and related statements
+     */
     public cppNodeToValueAndStmts(node: CppAstNode): ValueAndStmts {
         if (node === undefined) {
             return this.undefinedToValueAndStmts();
@@ -262,6 +275,12 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         };
     }
 
+    /**
+     *Convert the C++construction expression node into a combination of values and statements.
+     * The main scenarios are structure and class construction, STL data structure object construction, and thread object construction
+     *@ param node - C++AST node, representing the construction expression
+     *@ returns ValueAndStmts object, including converted values and related statements
+     */
     private cxxConstructExprToValueAndStmts(node: CppAstNode): ValueAndStmts {
         let parent = (node.parent ?? node.getParent?.(true)) ?? null;
         if (parent && parent.kind === 'CXXConstructorDecl') {
@@ -282,6 +301,11 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         return this.unprocessedNodeToValueAndStmts(node);
     }
 
+    /**
+     *Converts an implicit conversion expression node to a combination of values and statements
+     *@ param node - C++AST node, representing implicit type conversion expression
+     *@ returns ValueAndStmts object, including converted values and related statements
+     */
     private implicitCastExprToValueAndStmts(node: CppAstNode): ValueAndStmts {
         if (node.inner?.length === 1) {
             return this.cppNodeToValueAndStmts(node.inner[0]);
@@ -298,6 +322,11 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         return this.cppNodeToValueAndStmts(node);
     }
 
+    /**
+     *Convert declaration and type reference nodes to collections of values and statements
+     *@ param node - C++AST node
+     *@ returns ValueAndStmts object, including converted values and related statements
+     */
     private declAndTypeRefToValueAndStmts(node: CppAstNode): ValueAndStmts {
         if (node.inner?.length > 0 && !node.type) {
             return this.cppNodeToValueAndStmts(node.inner[0]);
@@ -327,6 +356,11 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         return this.cxxNewExpressionToValueAndStmts(node);
     }
 
+    /**
+     *Initialize a list expression into a collection of values and statements
+     *@ param node - C++abstract syntax tree node
+     *@ returns ValueAndStmts object, including converted values and related statements
+     */
     private initListExprToValueAndStmts(node: CppAstNode): ValueAndStmts {
         if ((node.type?.qualType?.includes('[') && node.type.qualType.includes(']')) || node.type.qualType === 'void') {
             return this.cxxArrayLiteralExpressionToValueAndStmts(node);
@@ -341,6 +375,11 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         return this.cxxArrayLiteralExpressionToValueAndStmts(node);
     }
 
+    /**
+     *Convert the unary operator node into a combination of values and statements
+     *@ param node - C++AST node, representing unary operator expression
+     *@ returns ValueAndStmts object, including converted values and related statements
+     */
     private unaryOperatorToValueAndStmts(node: CppAstNode): ValueAndStmts {
         if (node.isPostfix) {
             return this.cxxPostfixUnaryExpressionToValueAndStmts(node);
@@ -349,6 +388,13 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         }
     }
 
+    /**
+     *Convert user-defined literals into sets of values and statements
+     *The syntax format of user-defined literals is: original value+suffix (for example: 123_km, "hello" _s, 'a' _s)
+     *
+     *@ param userDefinedLiteral - AST node of user-defined literal
+     *@ returns The ValueAndStmts object containing the converted value and related statements
+     */
     private userDefinedLiteralToValueAndStmts(userDefinedLiteral: CppAstNode): ValueAndStmts {
         // The syntax for user-defined literals is: raw value + suffix (e.g., 123_km, "hello"_s, 'a'_s)
         if (userDefinedLiteral.inner?.length < 2) {
@@ -361,9 +407,14 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         return this.buildValueAndStmtsForMemberCall(stmts, userDefinedLiteral.inner[0], [argNode], userDefinedLiteral, undefined);
     }
 
-    /* 1. C++uses the initialization list to initialize class member variables: Base (char pname): name (pname) {...}.
-        The final effect is similar to this ->name=pname, which is also processed as an assignment here
-     *  2. using parent::parent， The constructor of the subclass calls the constructor inherited from the parent class */
+    /**
+     *Convert the C++constructor initialization list node to a collection of values and statements
+     *  1. C++uses the initialization list to initialize class member variables: Base (char pname): name (pname) {...}.
+     *         The final effect is similar to this ->name=pname, which is also processed as an assignment here
+     *  2. using parent::parent， The constructor of the subclass calls the constructor inherited from the parent class
+     *@ param cxxCtorInitializer C++constructor initializes list nodes
+     *@ returns An object containing a collection of values and statements
+     */
     private cxxCtorInitializerToValueAndStmts(cxxCtorInitializer: CppAstNode): ValueAndStmts {
         if (!cxxCtorInitializer.inner || cxxCtorInitializer.inner.length === 0) {
             return this.unprocessedNodeToValueAndStmts(cxxCtorInitializer);
@@ -386,7 +437,12 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         return this.assignmentToValueAndStmtsCpp(CtorInit2ThisMemberExpr as CppAstNode, assignRight, false, false, UnknownType.getInstance(), true);
     }
 
-    // Using parent:: parent==>The constructor of the sub class calls the constructor inherited from the parent class==>The same as calling the constructor of the parent class directly
+    /**
+     *Convert the C++inheritance constructor initialization expression to a collection of values and statements
+     * Using parent:: parent==>The constructor of the sub——class calls the constructor inherited from the parent class==>The same as calling the constructor of the parent class directly
+     *@ param cxxInheritedCtorInitExpr - C++inheritance constructor initialization expression node
+     *@ returns The object containing the converted value and statement array
+     */
     private cxxInheritedCtorInitExprToValueAndStmts(cxxInheritedCtorInitExpr: CppAstNode): ValueAndStmts {
         cxxInheritedCtorInitExpr.code = `using ${cxxInheritedCtorInitExpr.code}::${cxxInheritedCtorInitExpr.code}`;
         const cls = this.declaringMethod.getDeclaringArkClass();
@@ -420,7 +476,12 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         };
     }
 
-    // C++subclasses call the parent class constructor for initialization, similar to ts super (xx). For example, Left (const char&name, int power): Base (name) {...}
+    /**
+     *Convert super expression in C++to IR
+     * C++subclasses call the parent class constructor for initialization, similar to ts super (xx). For example, Left (const char&name, int power): Base (name) {...}
+     *@ param cxxConstructExpr C++construction expression node
+     *@ returns The ValueAndStmts object containing the converted value and related statements
+     */
     public cxxSuperExpressionToValueAndStmts(cxxConstructExpr: CppAstNode): ValueAndStmts {
         const cls = this.declaringMethod.getDeclaringArkClass();
         if (!cls) {
@@ -453,7 +514,12 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         return this.cxxNewExpressionToValueAndStmts(cxxConstructExpr);
     }
 
-    // ArrayTypeTraitExpr is processed by function call
+    /**
+     *Convert array type characteristic expression to IR
+     * ArrayTypeTraitExpr is processed by function call
+     *@ param ArrayTypeTraitExpr - C++AST node, representing array type characteristic expression
+     *@ returns ValueAndStmts object, including converted values and related statements
+     */
     private arrayTypeTraitExprToValueAndStmts(ArrayTypeTraitExpr: CppAstNode): ValueAndStmts {
         const stmts: Stmt[] = [];
         let innerNode = ArrayTypeTraitExpr;
@@ -484,7 +550,13 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         return this.generateInvokeValueAndStmtsCpp(callNode, args, stmts, ArrayTypeTraitExpr);
     }
 
-    // CXXTypeidExpr is processed by function call
+    //
+    /**
+     *Convert C++typeid expression to IR
+     * CXXTypeidExpr is processed by function call
+     *@ param CXXTypeidExpr - typeid expression node in C++AST
+     *@ returns Objects containing converted values and related statements
+     */
     private cxxTypeidExprToValueAndStmts(CXXTypeidExpr: CppAstNode): ValueAndStmts {
         const stmts: Stmt[] = [];
         let typeArgs = CXXTypeidExpr.typeArg?.toString() ?? '';
@@ -511,6 +583,11 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         return this.generateInvokeValueAndStmtsCpp(typeidCallNode, argus, stmts, CXXTypeidExpr);
     }
 
+    /**
+     *Convert the noexcept expression of C++syntax tree to IR
+     *@ param CXXNoexceptExpr - AST node representing C++noexcept expression
+     *@ returns Objects containing converted values and related statements
+     */
     private cxxNoexceptExprToValueAndStmts(CXXNoexceptExpr: CppAstNode): ValueAndStmts {
         const stmts: Stmt[] = [];
         let cxxNoexceptCallNode = JSON.parse(JSON.stringify(CXXNoexceptExpr));
@@ -520,6 +597,11 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         return this.generateInvokeValueAndStmtsCpp(cxxNoexceptCallNode, argus, stmts, CXXNoexceptExpr);
     }
 
+    /**
+     *Process the C++scalar value initialization expression and convert it to IR
+     *@ param CXXScalarValueInitExpr - C++abstract syntax tree node, representing scalar value initialization expression
+     *@ returns an object containing initialization values and related statements. If it cannot be processed, it returns null
+     */
     private cxxScalarValueInitToValueAndStmts(CXXScalarValueInitExpr: CppAstNode): ValueAndStmts | null {
         const initType = CXXScalarValueInitExpr.type.qualType;
         let constant: Constant | null = null;
@@ -547,6 +629,11 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         };
     }
 
+    /**
+     *Convert C++delete expression to IR
+     *@ param deleteExpression - C++AST node, representing delete expression
+     *@ returns The object containing the converted value and statement array
+     */
     private cxxDeleteExpressionToValueAndStmts(deleteExpression: CppAstNode): ValueAndStmts {
         const { value: exprValue, valueOriginalPositions: exprPositions, stmts: stmts } = this.cppNodeToValueAndStmts(deleteExpression.inner[0]);
         const deleteExpr = new ArkDeleteExpr(exprValue);
@@ -554,6 +641,11 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         return { value: deleteExpr, valueOriginalPositions: deleteExprPosition, stmts: stmts };
     }
 
+    /**
+     *Convert C++type conversion expression to IR
+     *@ param castExpression C++AST node, representing type conversion expression
+     *@ returns ValueAndStmts object, including converted values, original location information and related statements
+     */
     private castExpressionToValueAndStmts(castExpression: CppAstNode): ValueAndStmts {
         const stmts: Stmt[] = [];
         let {
@@ -575,6 +667,11 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         return { value: castExpr, valueOriginalPositions: castExprPosition, stmts: stmts };
     }
 
+    /**
+     *Convert C++conditional expression to IR
+     *@ param conditionalExpression - C++AST node, representing conditional expression
+     *@ returns ValueAndStmts object, including converted values, original location information and related statements
+     */
     private cxxConditionalExpressionToValueAndStmts(conditionalExpression: CppAstNode): ValueAndStmts {
         let InnerIdx = 0;
         const stmts: Stmt[] = [];
@@ -619,6 +716,11 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         };
     }
 
+    /**
+     *Extract the calling node and parameter node from the internal AST node array for overwriting
+     *@ param innerAsNodes An AST node array containing call information and parameters. The first element is the call node, and the rest are parameter nodes
+     *@ returns an array containing two elements: the first element is the call node, and the second element is the parameter node array
+     */
     public getArgumentNodeForRecover(innerAsNodes: CppAstNode[]): {}[] {
         let callNode = {};
         let argumentNodes = [];
@@ -631,6 +733,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         }
         return [callNode, argumentNodes];
     }
+
 
     public getArgumentNode(innerAstNodes: CppAstNode[] | CppAstNode): [call: CppAstNode | undefined, args: CppAstNode[]] {
         // At this time, innerAstNode is a separate point
@@ -780,6 +883,12 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         };
     }
 
+    /**
+     *Convert C++identifiers to collections of values and statements
+     *@ param identifier C++AST node identifier
+     *@ param variableDefFlag Optional variable definition flag, used to distinguish variable declaration from variable use
+     *@ returns Objects containing values, location information and statement arrays
+     */
     private cxxIdentifierToValueAndStmts(identifier: CppAstNode, variableDefFlag?: boolean): ValueAndStmts {
         let identifierValue: Value;
         let identifierPositions = [FullPosition.buildFromNodeCpp(identifier, this.sourceFileCpp)];
@@ -882,6 +991,12 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         return { value: fieldRef, valueOriginalPositions: fieldRefPositions, stmts: stmts };
     }
 
+    /**
+     *Convert element access expressions (such as array [index] or object. field) in C++AST to values and statements in intermediate representation (IR).
+     *
+     *@ param elementAccessExpression represents the AST node of C++element access expression
+     *@ returns contains the generated IR value, original location information and the ValueAndStmts object of related statements
+     */
     private cxxElementAccessExpressionToValueAndStmts(elementAccessExpression: CppAstNode): ValueAndStmts {
         const stmts: Stmt[] = [];
         let { value: baseValue, valueOriginalPositions: basePositions, stmts: baseStmts } = this.cppNodeToValueAndStmts(elementAccessExpression.inner[0]);
@@ -946,6 +1061,13 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         return this.generateInvokeValueAndStmtsCpp(callNode, argus, stmts, callExpression);
     }
 
+    /**
+     *Process the 'cout<<...' expression in C++, extract its operands and construct corresponding statements and values.
+     *
+     *@ param callExpression - The currently processed C++AST node, which represents an operator calling expression (such as<<).
+     *@ param callArgus - An array used to collect the parameter nodes involved in the expression.
+     *@ returns the ValueAndStmts object containing values and statements. If it cannot be processed, it returns null.
+     */
     public CXXOperatorExpressionCoutToValueAndStmts(callExpression: CppAstNode, callArgus: CppAstNode[]): ValueAndStmts | null {
         const stmts: Stmt[] = [];
         // Because inner extracts the last parameters in turn, it traverses the last parameters in reverse order
@@ -990,6 +1112,15 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         return null;
     }
 
+    /**
+     *Build a collection of values and statements for stream operations
+     *
+     *@ param streamNode The AST node of the stream node
+     *@ param args parameter array of stream operation
+     *@ param stmts statement array
+     *@ param streamExpr AST node of stream expression
+     *@ returns The ValueAndStmts object containing values and statements
+     */
     private buildValueAndStmtsForStream(streamNode: CppAstNode, args: CppAstNode[], stmts: Stmt[], streamExpr: CppAstNode): ValueAndStmts {
         let nonOverloadedArgs = [];
         const currValueAndStmts: ValueAndStmts = {
@@ -1018,6 +1149,12 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         return currValueAndStmts;
     }
 
+    /**
+     *Build values and statements of overloaded flow operators
+     *@ param streamNode
+     *@ param overloadedArg overload parameter node
+     *@ param currValueAndStmts Current value and statement collection
+     */
     private buildValueAndStmtsForOverloadedStream(streamNode: CppAstNode, overloadedArg: CppAstNode, currValueAndStmts: ValueAndStmts): void {
         // Replace the second child node with an overloaded operator node to avoid repeated processing of nested CXXOperatorCallExpr
         overloadedArg.inner[1] = streamNode;
@@ -1034,6 +1171,13 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         }
     }
 
+    /**
+     *Build a collection of values and statements for standard flow nodes
+     *@ param streamNode - AST node of the stream node
+     *@ param nonOverlooadedArgs - non overloaded parameter array
+     *@ param streamExpr - AST node of stream expression
+     *@ param currValueAndStmts - current value and statement collection object, used to store processing results
+     */
     private buildValueAndStmtsForStdStream(streamNode: CppAstNode, nonOverloadedArgs: [] | any,
                                            streamExpr: CppAstNode, currValueAndStmts: ValueAndStmts): void {
         if (nonOverloadedArgs.length === 0) {
@@ -1053,6 +1197,11 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         }
     }
 
+    /**
+     *Convert C++operator expression to binary operator expression
+     *@ param expression - C++AST node, representing operator expression
+     *@ returns returns the converted values and statements
+     */
     public CXXOperatorExpressionToBinaryOperator(expression: CppAstNode): ValueAndStmts {
         let operatorExpression = Object.assign({}, expression);
         operatorExpression.opcode = expression.inner[0].code;
@@ -1060,6 +1209,11 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         return this.cxxBinaryExpressionToValueAndStmts(operatorExpression);
     }
 
+    /**
+     *Convert C++operator expression to unary operator expression
+     *@ param expression - C++AST node, representing operator expression
+     *@ returns ValueAndStmts object, including converted values and statements
+     */
     public CXXOperatorExpressionToUnaryOperator(expression: CppAstNode): ValueAndStmts {
         let operatorExpression = Object.assign({}, expression);
         operatorExpression.opcode = expression.inner[0].code;
@@ -1070,6 +1224,12 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         return this.cxxPostfixUnaryExpressionToValueAndStmts(operatorExpression);
     }
 
+    /**
+     *Convert C++operator expressions to lists of values and statements
+     *@ param callExpression - C++AST node, representing the operator expression to be converted
+     *@ param layer - Boolean value, which controls whether to process the final output layer. The default value is true
+     *@ returns a list of converted values and statements, which may include special operator processing results or array reference expressions
+     */
     public cxxOperatorExpressionToValueAndStmts(callExpression: CppAstNode, layer: boolean = true): any {
         // First handle overloaded operators or other special cases
         const specialResult = this.handleSpecialOperators(callExpression);
@@ -1165,6 +1325,11 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         }
     }
 
+    /**
+     *Handling C++overloaded operator call expressions
+     *@ param cxxOperatorCallExpr C++AST node, representing operator calling expression
+     *@ returns the processed value and statement object. If it cannot be processed, it returns null
+     */
     private handleOverloadedOp(cxxOperatorCallExpr: CppAstNode): ValueAndStmts | null {
         if (cxxOperatorCallExpr.type?.qualType === '' || cxxOperatorCallExpr.inner?.[0].castKind !== 'FunctionToPointerDecay') {
             return null;
@@ -1191,7 +1356,15 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         return this.buildInvokeValueForNormalOverloadedOp(cxxOperatorCallExpr);
     }
 
-    /* Call IR for the function corresponding to the overload construction of the input/output stream operators operator<<, operator>> */
+    /**
+     *Build values and statements called by overloaded flow operators, such as<<or>>.
+     * Call IR for the function corresponding to the overload construction of the input/output stream operators operator<<, operator>>
+     *This function is used to handle operator overloading call expressions in C++, especially for input/output stream operators.
+     *It will parse parameters, find matching Ark methods, and generate corresponding call expressions.
+     *
+     *@ param cxxOperatorCallExpr represents the AST node of the C++operator call expression
+     *@ returns an object containing values and statements. If it cannot be constructed, it returns null
+     */
     private buildInvokeValueForOverloadedStreamOp(cxxOperatorCallExpr: CppAstNode): ValueAndStmts | null {
         if (!cxxOperatorCallExpr.inner || cxxOperatorCallExpr.inner.length < 2) {
             return null;
@@ -1269,6 +1442,18 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         return this.generateInvokeValueAndStmtsCpp(callNode, argus, stmts, callExpression);
     }
 
+    /**
+     *Generate the value and statement block of the C++call expression (ValueAndStmts).
+     *
+     *@ param functionNameNode - the node corresponding to the function name, which is used to resolve the caller information.
+     *@ param argus - The object containing the actual generic type, parameter value list, and parameter location information.
+     *- realGenericTypes: list of actual generic types.
+     *- args: parameter value list.
+     *- argPositions: The location information of the parameter in the source code.
+     *@ param currStmts - List of existing statements. The newly generated statements will be appended on this basis.
+     *@ param callExpression - represents the AST node of the call expression, which is used to obtain the call location information.
+     *@ returns a ValueAndStmts object that contains the call value, value location information, and related statements.
+     */
     private generateInvokeValueAndStmtsCpp(
         functionNameNode: any,
         argus: {
@@ -1322,6 +1507,11 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         };
     }
 
+    /**
+     *IR Processing of C++Function Calls
+     *@ param callExpression - C++AST node, representing member call expression
+     *@ returns ValueAndStmts object, including converted values and related statements
+     */
     private cxxMemberCallExpressionToValueAndStmts(callExpression: CppAstNode): ValueAndStmts {
         let realGenericTypes: Type[] | undefined;
         const stmts: Stmt[] = [];
@@ -1329,6 +1519,15 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         return this.buildValueAndStmtsForMemberCall(stmts, callExpression.inner[0], rightNodes, callExpression, realGenericTypes);
     }
 
+    /**
+     *Build values and statements called by members
+     *@ param stmts statement array, used to collect generated statements
+     *@ param callerNode Caller Node
+     *@ param argNodes parameter node array
+     *@ param callExpression calls the expression node
+     *@ param realGenericTypes Actual generic type array
+     *@ returns The ValueAndStmts object containing values, location information, and statements
+     */
     private buildValueAndStmtsForMemberCall(
         stmts: Stmt[],
         callerNode: any,
@@ -1361,6 +1560,16 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         };
     }
 
+    /**
+     *Build the call value referenced by the field
+     *
+     *@ param callerValue The caller value indicates the field reference
+     *@ param args calls the parameter array
+     *@ param realGenericTypes The actual generic type array may be undefined
+     *@ param invokeValuePositions calls the value position information array
+     *@ param callerPositions Caller position information array
+     *@ returns the ArkInstanceFieldRef or ArkStaticInvokeExpr instance
+     */
     private buildInvokeValueForFieldRef(
         callerValue: AbstractFieldRef,
         args: Value[],
@@ -1506,7 +1715,17 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         this.emitCtorInvokeAndMemberInitsCpp(stmts, newExpression, newLocal as Local, newLocalPositions, constructorMethodSignature, className);
         return { value: newLocal, valueOriginalPositions: newLocalPositions, stmts: stmts };
     }
-    // Extracted tail logic: construction call+special case processing+member initialization
+
+    /**
+     *Generate C++code representation of constructor calls and member initialization, and add related statements to stmts.
+     * Extracted tail logic: construction call+special case processing+member initialization
+     *@ param stmts - an array that stores the generated statement nodes
+     *@ param newExpression - C++AST node representing new expression
+     *@ param newLocal - local variable representing the newly created object
+     *@ param newLocalPositions - the location information of the new local variable in the source code
+     *@ param constructorMethodSignature - constructor's method signature
+     *@ param className - the name of the current class, which is used for special processing of certain types (such as napi_property_descriptor)
+     */
     private emitCtorInvokeAndMemberInitsCpp(
         stmts: Stmt[],
         newExpression: CppAstNode,
@@ -1563,8 +1782,11 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         }
     }
 
-
-    // Construction parameter table
+    /**
+     *Get the constructor parameter list, and process parameter resolution and conversion of various AST node types
+     *@ param constructArgs constructor parameter, which can be a single AST node or AST node array
+     *@ returns The constructor parameter array after parsing
+     */
     private getConstructArgs(constructArgs: CppAstNode): CppAstNode[];
     private getConstructArgs(constructArgs: CppAstNode[]): CppAstNode[];
     private getConstructArgs(constructArgs: CppAstNode | CppAstNode[]): CppAstNode[] {
@@ -1597,6 +1819,11 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         return newConstructArgs;
     }
 
+    /**
+     *Get the class name of the new expression
+     *@ param newExpression - new expression node of CppAstNode type
+     *@ returns the processed class name string
+     */
     private getNewExpressionClassName(newExpression: CppAstNode): string {
         let oriType = '';
         if (newExpression.type.desugaredQualType) {
@@ -1612,6 +1839,11 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         return oriType.replace(/[()]/g, '').replace(' *', '');
     }
 
+    /**
+     *Convert the new array expression of C++to ValueAndStmts
+     *@ param newArrayExpression - C++AST node, representing new array expression
+     *@ returns ValueAndStmts object, including converted values and related statements
+     */
     private newArrayExpressionToValueAndStmtsCpp(newArrayExpression: CppAstNode): ValueAndStmts {
         let baseType: Type = UnknownType.getInstance();
         if (newArrayExpression.type.qualType) {
@@ -1654,6 +1886,11 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         );
     }
 
+    /**
+     *Convert C++array literal expression to ValueAndStmts
+     *@ param arrayLiteralExpression - Array literal node in C++abstract syntax tree
+     *@ returns The ValueAndStmts object containing the converted value and related statements
+     */
     private cxxArrayLiteralExpressionToValueAndStmts(arrayLiteralExpression: CppAstNode): ValueAndStmts {
         const stmts: Stmt[] = [];
         const elementTypes: Set<Type> = new Set();
@@ -1671,6 +1908,14 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
             FullPosition.DEFAULT, arrayLength, elementValues, elementPositions, stmts, newArrayExprPosition, true);
     }
 
+    /**
+     *Process array literal expression and convert it to intermediate representation
+     *@ param arrayLiteralExpression array literal expression node
+     *@ param stmts is used to collect the generated statement list
+     *@ param elementTypes is used to collect the collection of array element types
+     *@ param elementValues is used to collect the list of array element values
+     *@ param elementPositions is used to collect the list of array element position information
+     */
     private getArrayLiteralExpression(
         arrayLiteralExpression: any,
         stmts: Stmt[],
@@ -1695,6 +1940,20 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         }
     }
 
+    /**
+     *Generate IR expressed by C++array
+     *
+     *@ param baseType - the basic type of the array element
+     *@ param arrayLengthValue - value object of array length
+     *@ param arrayLengthPosition - position information of array length
+     *@ param arrayLength - the actual length of the array
+     *@ param initializerValues - array initialization value list
+     *@ param initializerPositions - List of location information of initialization values
+     *@ param currStmts - List of existing statements
+     *@ param newArrayExprPosition - position information of the new array expression
+     *@ param fromLiteral - whether from literal
+     *@ returns The ValueAndStmts object containing values and statements
+     */
     private generateArrayExprAndStmtsCpp(
         baseType: Type,
         arrayLengthValue: Value,
@@ -1730,6 +1989,12 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         };
     }
 
+    /**
+     *Converts C++prefix unary expression nodes to IR values and statement lists.
+     *
+     *@ param prefixUnaryExpression - prefix unary expression node in C++AST
+     *@ returns The object containing the converted value and the generated statement list
+     */
     private cxxPrefixUnaryExpressionToValueAndStmts(prefixUnaryExpression: CppAstNode): ValueAndStmts {
         const stmts: Stmt[] = [];
         let { value: operandValue, valueOriginalPositions: operandPositions, stmts: operandStmts } =
@@ -1782,6 +2047,12 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         }
     }
 
+    /**
+     *Convert a C++suffix unary expression to a sequence of values and statements
+     *
+     *@ param postfixUnaryExpression - suffix unary expression node in C++AST
+     *@ returns The object containing the converted value and related statements
+     */
     private cxxPostfixUnaryExpressionToValueAndStmts(postfixUnaryExpression: CppAstNode): ValueAndStmts {
         const stmts: Stmt[] = [];
         let { value: operandValue, valueOriginalPositions: operandPositions, stmts: exprStmts } = this.cppNodeToValueAndStmts(postfixUnaryExpression.inner[0]);
@@ -1818,6 +2089,11 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         };
     }
 
+    /**
+     *Convert C++variable declaration statements to IR
+     *@ param variableDeclarationList - C++AST node, representing variable declaration list
+     *@ returns ValueAndStmts object, containing the converted value and statement list
+     */
     public declStmtToValueAndStmts(variableDeclarationList: CppAstNode): ValueAndStmts {
         const stmts: Stmt[] = [];
         let isConst = variableDeclarationList.type!.qualType.toString().startsWith('const ');
@@ -1830,6 +2106,13 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         };
     }
 
+    /**
+     *Convert C++variable declarations to combinations of values and statements
+     *@ param variableDeclaration - C++variable declaration node
+     *@ param isConst - whether it is a constant declaration
+     *@ param needRightOp - Whether the right operand is required, the default is true
+     *@ returns the ValueAndStmts object containing values and statements
+     */
     public variableDeclarationToValueAndStmtsCpp(variableDeclaration: CppAstNode, isConst: boolean, needRightOp: boolean = true): ValueAndStmts {
         const leftOpNode = variableDeclaration;
         let rightOpNode: CppAstNode | undefined = undefined;
@@ -1859,6 +2142,17 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         return match ? match[1] : null;
     }
 
+    /**
+     *Process C++assignment expressions and convert them into ValueAndStmts structures.
+     *
+     *@ param leftOpNode The AST node of the left operand
+     *@ param rightOpNode The AST node of the right operand, which may be undefined
+     *@ param variableDefFlag indicates whether the variable is defined
+     *@ param isConst indicates whether it is a constant
+     *@ param declarationType Declared type
+     *@ param needRightOp Whether to process the right operand, the default is true
+     *@ returns the ValueAndStmts object containing the value, original position and statement list
+     */
     private assignmentToValueAndStmtsCpp(leftOpNode: CppAstNode, rightOpNode: CppAstNode | undefined, variableDefFlag: boolean,
         isConst: boolean, declarationType: Type, needRightOp: boolean = true): ValueAndStmts {
         let leftValueAndStmts: ValueAndStmts;
@@ -1904,6 +2198,12 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         };
     }
 
+    /**
+     *CPP implementation of converting the right operand node to a list of values and statements
+     *@ param rightOpNode The AST node of the right operand, which may be undefined
+     *@ param leftValue Left value object
+     *@ returns Objects containing values, location information, and statement lists
+     */
     private assignmentRightOpToValueAndStmtsCpp(rightOpNode: CppAstNode | undefined, leftValue: Value): ValueAndStmts {
         let rightValue: Value;
         let rightPositions: FullPosition[];
@@ -1931,6 +2231,11 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         };
     }
 
+    /**
+     *Convert the C++AST node to a single address value and statement list
+     *@ param node - C++AST node to be converted
+     *@ returns An object containing a list of values, original positions, and statements
+     */
     public cppNodeToSingleAddressValueAndStmts(node: CppAstNode): ValueAndStmts {
         const allStmts: Stmt[] = [];
         let { value, valueOriginalPositions, stmts } = this.cppNodeToValueAndStmts(node);
@@ -1942,8 +2247,13 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         return { value, valueOriginalPositions, stmts: allStmts };
     }
 
-    // In assignment patterns, the left operand will be an array literal expression
-    // In assignment patterns, the left operand will be an object literal expression
+    /**
+     *Converts a C++binary expression node to a list of values and statements.
+     *In assignment patterns, the left operand will be an array literal expression
+     *In assignment patterns, the left operand will be an object literal expression
+     *@ param binaryExpression - Binary expression node in C++AST
+     *@ returns The ValueAndStmts object containing calculated values and related statements
+     */
     private cxxBinaryExpressionToValueAndStmts(binaryExpression: CppAstNode): ValueAndStmts {
         const operatorToken = binaryExpression.opcode;
         const binaryExpressionLeft = binaryExpression.inner[0];
@@ -1977,6 +2287,12 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         };
     }
 
+    /**
+     *Convert compound assignment expressions (such as+=, -=, etc.) in C++to values and statement lists in intermediate representation (IR).
+     *
+     *@ param binaryExpression represents the C++AST node of the compound assignment operation
+     *@ returns an object containing the calculated value, the original location information, and the generated statement list
+     */
     private cxxCompoundAssignmentToValueAndStmts(binaryExpression: CppAstNode): ValueAndStmts {
         const stmts: Stmt[] = [];
         let { value: leftValue, valueOriginalPositions: leftPositions, stmts: leftStmts } = this.cppNodeToValueAndStmts(binaryExpression.inner[0]);
@@ -2016,6 +2332,12 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         };
     }
 
+    /**
+     *Convert the compound assignment operator to the corresponding binary operator
+     *
+     *@ param token - compound assignment operator string
+     *@ returns The corresponding binary operator. If no match is found, null is returned
+     */
     private compoundAssignmentTokenToBinaryOperatorCpp(token: string): NormalBinaryOperator | null {
         switch (token) {
             case CompoundBinaryOperator.AdditionEquals:
@@ -2043,6 +2365,11 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         return null;
     }
 
+    /**
+     *Convert C++conditional expression nodes to a combination of values and statements
+     *@ param condition - Condition node in C++abstract syntax tree
+     *@ returns Objects containing conditional expression values and related statements
+     */
     public conditionToValueAndStmtsCpp(condition: CppAstNode): ValueAndStmts {
         const stmts: Stmt[] = [];
         let { value: conditionValue, valueOriginalPositions: conditionPositions, stmts: conditionStmts } = this.cppNodeToValueAndStmts(condition);
@@ -2070,6 +2397,12 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         };
     }
 
+    /**
+     *Convert literal nodes in C++AST into corresponding value and statement lists.
+     *Literals currently processed: integer, floating point, string, character, Boolean value, null pointer, address label
+     *@ param literalNode - an AST node representing a C++literal
+     *@ returns the object containing the value, original location information and statement list. If the node type cannot be processed, null is returned
+     */
     private cxxLiteralNodeToValueAndStmts(literalNode: CppAstNode): ValueAndStmts | null {
         const stmts: Stmt[] = [];
         const pos = [FullPosition.buildFromNodeCpp(literalNode, this.sourceFileCpp)];
@@ -2126,6 +2459,11 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         }
     }
 
+    /**
+     *Generate a temporary local variable
+     *@ param localType The type of the local variable is unknown by default
+     *@ returns the newly created temporary local variable object
+     */
     public generateTempLocal(localType: Type = UnknownType.getInstance()): Local {
         const tempLocalName = TEMP_LOCAL_PREFIX + this.tempLocalNo;
         this.tempLocalNo++;
@@ -2134,6 +2472,12 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         return tempLocal;
     }
 
+    /**
+     *Parse C++type nodes and build corresponding Type objects
+     *@ param node C++AST node, possibly undefined
+     *@ param stringItem Optional string item, used for type resolution
+     *@ returns The parsed Type object
+     */
     public resolveTypeNodeCpp(node: CppAstNode | undefined, stringItem?: string): Type {
         // Step 1: Extract qualType and tagUsed
         const { qualType, tagUsed } = this.extractQualTypeAndTag(node, stringItem);
@@ -2143,6 +2487,9 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
 
     /**
      * Extract qualType and tagUsed from input parameters
+     *@ param node - CppAstNode object, which may contain type information and label information
+     *@ param stringItem - optional string parameter with the highest priority
+     *@ returns Objects containing qualType and tagUsed
      */
     private extractQualTypeAndTag(node: CppAstNode | undefined, stringItem?: string): { qualType: string; tagUsed: string } {
         // If a valid string is provided, use it as qualType first;
@@ -2163,7 +2510,15 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
     }
 
     /**
-     * Build Type object according to qualType/tagUsed
+     *Build corresponding Type objects according to qualType and tagUsed.
+     *
+     *This function is based on the passed in type string qualType and tag TagUsed,
+     *Resolve and construct the corresponding Type object. Support array, standard library container, structure, enumeration, union and other types.
+     *
+     *@ param node - C++AST node, used to help determine the type (optional)
+     *@ param qualType - Full type string with modifiers, such as "int []", "std:: vector<int>"
+     *@ param tagUsed - type label, such as "struct", "enum", "union", etc
+     *@ returns the parsed Type object
      */
     private buildCppTypeFromQualType(node: CppAstNode | undefined, qualType: string, tagUsed: string): Type {
         if (qualType.includes('[') && qualType.includes(']')) {
@@ -2225,6 +2580,11 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         return stdContainerLists.some(containerType => typeNameInLowerCase.includes(containerType));
     }
 
+    /**
+     *Resolve the C++type reference node and convert it to an internal Type representation
+     *@ param typeReferenceNode refers to a node of type, which can be a string or CppAstNode object
+     *@ returns The parsed Type object
+     */
     private resolveCppTypeReferenceNode(typeReferenceNode: string | CppAstNode): Type {
         const typeReferenceFullName =
             typeof typeReferenceNode === 'string'
@@ -2266,6 +2626,12 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         }
     }
 
+    /**
+     *Resolve vector types, recursively process nested vector types and return the innermost type
+     *@ param kind - type string, which may contain vector<>structure
+     *@ param dimension - the current recursive dimension level
+     *@ returns the parsed innermost type string
+     */
     public resolveVectorType(kind: string, dimension: number): string {
         if (!kind.includes('vector')) {
             return kind;
@@ -2276,6 +2642,12 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
         return lowDimension;
     }
 
+    /**
+     *Resolve the literal type node and convert it to the corresponding Type object
+     *@ param literalTypeNode - Literal type node of TypeScript
+     *@ param sourceFile - source file object, used to obtain node text
+     *The Type object corresponding to @ returns
+     */
     public static resolveLiteralTypeNode(literalTypeNode: ts.LiteralTypeNode, sourceFile: ts.SourceFile): Type {
         const literal = literalTypeNode.literal;
         const kind = literal.kind;
