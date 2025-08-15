@@ -95,9 +95,6 @@ export class BigIntConstant extends Constant {
 
 export class StringConstant extends Constant {
     constructor(value: string) {
-        if (value.startsWith('"') && value.endsWith('"')) {
-            value = value.slice(1, -1); // Remove extra double quotes
-        }
         super(value.toString(), StringType.getInstance());
     }
 }
@@ -128,9 +125,6 @@ export class UndefinedConstant extends Constant {
 
 export class LabelConstant extends Constant {
     constructor(value: string) {
-        if (value.startsWith('"') && value.endsWith('"')) {
-            value = value.slice(1, -1); // Remove extra double quotes
-        }
         super(value, LabelType.getInstance());
     }
 }

@@ -23,7 +23,7 @@ export class CppValueUtil extends ValueUtil {
         let preStr: string = str.substring(0, 2); // Get prefix processing long character type
         if (charPrefixType.includes(preStr)) {
             str = str.substring(2, str.length - 1).replace('\\', '');
-        } else if (str.charAt(0) === "'") {
+        } else if (str.charAt(0) === "'" || (str.startsWith('"') && str.endsWith('"'))) {
             str = str.substring(1, str.length - 1);
         }
         return str;
