@@ -451,10 +451,12 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
         if (sameNameMethods.length !== 0) {
             return sameNameMethods;
         }
-        const matchedMtd = this.methods.get(methodName) ?? this.staticMethods.get(methodName);
-        if (matchedMtd) {
-            sameNameMethods.push(matchedMtd);
-        }
+        [this.methods, this.staticMethods].forEach(mtdMap => {
+            const matchedMtd = mtdMap.get(methodName);
+            if (matchedMtd) {
+                sameNameMethods.push(matchedMtd);
+            }
+        });
         return sameNameMethods;
     }
 
