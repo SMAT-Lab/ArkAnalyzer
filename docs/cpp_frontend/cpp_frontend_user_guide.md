@@ -84,7 +84,9 @@ builderUtils：根据c++语法编写了关于构建cfg的常规方法，复用�
 
 #### 1、对scene数据结构的介绍，ArkAnalyzer项目的核心就是在将代码解析成scene数据结构
 
-（scene的介绍）
+Scene 类为 ArkAnalyzer 的核心类，用户可以通过该类访问所分析代码（项目）的所有信息，包括文件列表、类列表、方法列表、属性列表等。Scene 类具体数据结构如下所示。
+
+![img_4.png](img_4.png)
 
 ### 2.下面介绍Cpp代码解析的过程
 
@@ -147,7 +149,7 @@ scene.buildSceneFromProjectDir(config);
             try {
                 const arkFile: ArkFile = new ArkFile(FileUtils.getFileLanguage(file, this.fileLanguages));
                 arkFile.setScene(this);
-                if (arkFile.getLanguage() === Language.CPLUS) {
+                if (arkFile.getLanguage() === Language.CXX) {
                     buildArkFileFromFileCpp(file, this.realProjectDir, arkFile, this.projectName, this.includeDirs);
                 } else {
                     buildArkFileFromFile(file, this.realProjectDir, arkFile, this.projectName);

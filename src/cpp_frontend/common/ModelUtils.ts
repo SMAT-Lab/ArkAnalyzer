@@ -297,7 +297,7 @@ function getIncludeDefaultClasses(arkInstance: ArkMethod | ArkClass | ArkFile): 
     }
     const scene = arkInstance.getScene();
     scene.getFiles().forEach(file => {
-        if (file.getLanguage() !== Language.CPLUS || !includeFiles.includes(file.getFilePath())) {
+        if (file.getLanguage() !== Language.CXX || !includeFiles.includes(file.getFilePath())) {
             return;
         }
         defaultClasses.push(file.getDefaultClass());

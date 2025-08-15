@@ -96,7 +96,7 @@ export class FileUtils {
                 return Language.JAVASCRIPT;
             case '.h':
             case '.cpp':
-                return Language.CPLUS;
+                return Language.CXX;
             default:
                 return Language.UNKNOWN;
         }

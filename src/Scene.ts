@@ -228,6 +228,7 @@ export class Scene {
                 }
             }
         });
+        // If the SDK inference phase has not been completed, execute the type inference and global API merge of the SDK file
         if (this.buildStage < SceneBuildStage.SDK_INFERRED) {
             this.sdkArkFilesMap.forEach(file => {
                 IRInference.inferFile(file);
@@ -313,15 +314,25 @@ export class Scene {
         }
     }
 
+    /**
+     * Update or add default constructors for all classes in the scene.
+     *
+     * This function iterates through all files and classes in the scene,
+     * builds default constructors for each class, and processes existing constructors
+     * by replacing super constructor calls and adding initialization logic.
+     *
+     * @returns {void}
+     */
     private updateOrAddDefaultConstructors(): void {
         for (const file of this.getFiles()) {
-            const isCppFile = file.getLanguage() === Language.CPLUS;
+            const isCppFile = file.getLanguage() === Language.CXX;
             for (const cls of ModelUtils.getAllClassesInFile(file)) {
                 buildDefaultConstructor(cls);
                 const constructors = cls.getAllMethodsWithName(CONSTRUCTOR_NAME);
                 if (constructors.length === 0) {
                     continue;
                 }
+                // Select the appropriate initialization function based on file type
                 const initInConstructorFn = isCppFile ? addInitInConstructorCpp : addInitInConstructor;
                 constructors.forEach(constructor => {
                     replaceSuper2Constructor(constructor);
@@ -350,7 +361,7 @@ export class Scene {
         }
 
         for (const method of methods) {
-            const isCppFile = method.getDeclaringArkFile()?.getLanguage() === Language.CPLUS;
+            const isCppFile = method.getDeclaringArkFile()?.getLanguage() === Language.CXX;
             try {
                 if (isCppFile) {
                     method.buildBodyCpp();
@@ -378,7 +389,8 @@ export class Scene {
             try {
                 const arkFile: ArkFile = new ArkFile(FileUtils.getFileLanguage(file, this.fileLanguages));
                 arkFile.setScene(this);
-                if (arkFile.getLanguage() === Language.CPLUS) {
+                // Call different builder functions based on file language
+                if (arkFile.getLanguage() === Language.CXX) {
                     buildArkFileFromFileCpp(file, this.realProjectDir, arkFile, this.projectName, this.includeDirs);
                 } else {
                     buildArkFileFromFile(file, this.realProjectDir, arkFile, this.projectName);
@@ -415,7 +427,7 @@ export class Scene {
         try {
             const arkFile = new ArkFile(FileUtils.getFileLanguage(projectFile, this.fileLanguages));
             arkFile.setScene(this);
-            if (arkFile.getLanguage() === Language.CPLUS) {
+            if (arkFile.getLanguage() === Language.CXX) {
                 buildArkFileFromFileCpp(projectFile, this.getRealProjectDir(), arkFile, this.getProjectName(), this.includeDirs);
             } else {
                 buildArkFileFromFile(projectFile, this.getRealProjectDir(), arkFile, this.getProjectName());
@@ -1119,7 +1131,7 @@ export class Scene {
         this.buildFuncMapForCpp();
         this.filesMap.forEach(file => {
             try {
-                file.getLanguage() === Language.CPLUS ? IRInferenceCpp.inferFile(file) : IRInference.inferFile(file);
+                file.getLanguage() === Language.CXX ? IRInferenceCpp.inferFile(file) : IRInference.inferFile(file);
             } catch (error) {
                 logger.error('Error inferring types of project file:', file.getFileSignature(), error);
             }
