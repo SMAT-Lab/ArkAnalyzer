@@ -18,7 +18,7 @@ import { ImportInfo } from '../../../core/model/ArkImport';
 import { IRUtils } from '../../common/IRUtils';
 import { ArkFile } from '../../../core/model/ArkFile';
 import { normalize } from 'path';
-import { CppAstNode, CppTranslationUnit} from '../../../ast/ArkCxxAstNode';
+import { CppAstNode, CppTranslationUnit} from '../../ast/ArkCxxAstNode';
 
 export function buildImportInfo(node: any, sourceFile: any, arkFile: ArkFile): ImportInfo[] {
     if (node.kind === 'inclusion directive') {

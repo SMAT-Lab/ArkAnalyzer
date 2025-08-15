@@ -71,7 +71,7 @@ import { ModelUtils } from '../../core/common/ModelUtils';
 import { CONSTRUCTOR_NAME, THIS_NAME } from '../../core/common/TSConst';
 import { TypeInference } from './TypeInference';
 import { setTs2CppFuncMapOfClass } from './ModelUtils';
-import { CppAstNode, CppTranslationUnit } from '../../ast/ArkCxxAstNode';
+import { CppAstNode, CppTranslationUnit } from '../ast/ArkCxxAstNode';
 import { BinaryOperator } from '../../core/base/Expr';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkValueTransformer');

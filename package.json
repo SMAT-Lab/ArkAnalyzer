@@ -9,7 +9,7 @@
   "main": "lib/index.js",
   "scripts": {
     "build": "tsc",
-    "prepack": "tsc -p ./tsconfig.prod.json && npx copyfiles -f src/ast/arkCppAstDumper.exe lib/ast/",
+    "prepack": "tsc -p ./tsconfig.prod.json && npx copyfiles -f src/cpp_frontend/ast/arkCppAstDumper.exe lib/ast/",
     "test": "vitest",
     "testonce": "vitest --no-color run",
     "coverage": "vitest run --coverage",

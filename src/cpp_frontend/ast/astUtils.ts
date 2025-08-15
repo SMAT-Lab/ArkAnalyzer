@@ -18,7 +18,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 
-import Logger, { LOG_MODULE_TYPE } from '../utils/logger';
+import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { ClangPath } from './const';
 import {CppAstNode, CppAstNodeLite} from './ArkCxxAstNode';
 

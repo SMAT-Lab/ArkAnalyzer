@@ -29,7 +29,7 @@ import { init4InstanceInitMethod, init4StaticInitMethod } from '../../../core/mo
 import { ArkIRTransformerCpp } from '../../common/ArkIRTransformer';
 import { buildDecorators } from './builderUtils';
 import { buildDefaultArkMethodFromArkClass } from './ArkMethodBuilder';
-import { CppAstNode, CppTranslationUnit } from '../../../ast/ArkCxxAstNode';
+import { CppAstNode, CppTranslationUnit } from '../../ast/ArkCxxAstNode';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkClassBuilder');
 

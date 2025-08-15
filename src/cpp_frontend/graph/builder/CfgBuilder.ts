@@ -32,7 +32,7 @@ import { ModifierType } from '../../../core/model/ArkBaseModel';
 import { BlockBuilder as CoreBlockBuilder, Catch, TextError, Variable, Scope } from '../../../core/graph/builder/CfgBuilder';
 import { ModelUtils } from '../../../core/common/ModelUtils';
 import { CONSTRUCTOR_NAME, PROMISE } from '../../../core/common/TSConst';
-import { CppAstNode, CppTranslationUnit } from '../../../ast/ArkCxxAstNode';
+import { CppAstNode, CppTranslationUnit } from '../../ast/ArkCxxAstNode';
 
 export class BlockBuilder {
     id: number;

@@ -24,14 +24,14 @@ import { buildArkNamespace } from './ArkNamespaceBuilder';
 import { ArkClass } from '../../../core/model/ArkClass';
 import { buildDefaultArkClassFromArkFile } from './ArkClassBuilder';
 import { ArkMethod } from '../../../core/model/ArkMethod';
-import { AstUtils } from '../../../ast/astUtils';
+import { AstUtils } from '../../ast/astUtils';
 import { FileSignature, ClassSignature } from '../../../core/model/ArkSignature';
 import { LineColPosition } from '../../../core/base/Position';
 import { buildImportInfo } from './ArkImportBuilder';
 import { shouldAddCppHeaderImport } from '../../common/ModelUtils';
 import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
 import { init4InstanceInitMethod, init4StaticInitMethod } from '../../../core/model/builder/ArkClassBuilder';
-import { CppAstNode } from '../../../ast/ArkCxxAstNode';
+import { CppAstNode } from '../../ast/ArkCxxAstNode';
 import { ArkExport } from '../../../core/model/ArkExport';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkFileBuilder');

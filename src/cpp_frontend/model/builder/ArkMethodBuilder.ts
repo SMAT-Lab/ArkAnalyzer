@@ -40,7 +40,7 @@ import { buildGenericType } from '../../../core/model/builder/builderUtils';
 import { CONSTRUCTOR_NAME, THIS_NAME } from '../../../core/common/TSConst';
 import { ArkSignatureBuilder } from '../../../core/model/builder/ArkSignatureBuilder';
 import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
-import {CppAstNode} from '../../../ast/ArkCxxAstNode';
+import {CppAstNode} from '../../ast/ArkCxxAstNode';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkMethodBuilder');
 

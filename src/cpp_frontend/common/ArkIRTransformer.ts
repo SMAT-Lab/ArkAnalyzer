@@ -45,7 +45,7 @@ import { buildModifiers } from '../model/builder/builderUtils';
 import { ModelUtils } from '../../core/common/ModelUtils';
 import { ArkClass } from '../../core/model/ArkClass';
 import { buildNormalArkClassFromArkMethod } from '../model/builder/ArkClassBuilder';
-import {CppAstNode, CppTranslationUnit} from '../../ast/ArkCxxAstNode';
+import {CppAstNode, CppTranslationUnit} from '../ast/ArkCxxAstNode';
 
 export type ValueAndStmts = {
     value: Value;
