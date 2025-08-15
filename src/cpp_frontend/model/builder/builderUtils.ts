@@ -277,16 +277,10 @@ export function buildTypeFromDerivedType(preStr: string, arkInstance: ArkMethod 
     const outerPartMatch = preStr.match(/^([^<]+)/);
     const outerPart = outerPartMatch ? outerPartMatch[1] : null;
     let typeStr: string;
-    let isPtr: boolean;
-    let isRef: boolean;
     if (outerPart === null) {
         typeStr = preStr.trim().split(' ')[0];
-        isPtr = preStr.includes(' *');
-        isRef = preStr.includes(' &');
     } else {
         typeStr = outerPart.trim().split(' ')[0];
-        isPtr = outerPart.includes(' *');
-        isRef = outerPart.includes(' &');
     }
     const innerPartMatch = preStr.match(/<([^>]+)>/);
     const innerPart = innerPartMatch ? innerPartMatch[1] : null;
@@ -298,8 +292,7 @@ export function buildTypeFromDerivedType(preStr: string, arkInstance: ArkMethod 
         arkClass = file?.getClassWithName?.(typeStr) ?? null;
     }
     if (arkClass) {
-        const suffix = isPtr ? '*' : isRef ? '&' : undefined;
-        return new ClassType(arkClass.getSignature(), innerType, suffix);
+        return new ClassType(arkClass.getSignature(), innerType);
     }
     return TypeInference.buildTypeFromStr(preStr);
 }

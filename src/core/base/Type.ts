@@ -477,21 +477,11 @@ export class ClosureType extends FunctionType {
 export class ClassType extends Type {
     private classSignature: ClassSignature;
     private realGenericTypes?: Type[];
-    private applyType: string; // Application types * and &
 
-    constructor(classSignature: ClassSignature, realGenericTypes?: Type[], applyType: string = '') {
+    constructor(classSignature: ClassSignature, realGenericTypes?: Type[]) {
         super();
         this.classSignature = classSignature;
         this.realGenericTypes = realGenericTypes;
-        this.applyType = applyType;
-    }
-
-    public getApplyType(): string {
-        return this.applyType;
-    }
-
-    public setApplyType(applyType: string): void {
-        this.applyType = applyType;
     }
 
     public getClassSignature(): ClassSignature {
