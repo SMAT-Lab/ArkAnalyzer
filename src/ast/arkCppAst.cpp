@@ -755,9 +755,18 @@ void filterToMainFileOnly(json& node, const std::string& mainFileName, std::stri
         normMainFileName = std::filesystem::weakly_canonical(mainFileName).string();
     }
     // Only main file nodes and TranslationUnitDecl have inner, header file nodes are aggregated to headerUnits
+    auto normalizedFilePath = fileName;
+    std::replace(normalizedFilePath.begin(), normalizedFilePath.end(), '\\', '/');
     if (node.value("kind", "") == "TranslationUnitDecl") {
             // Root node reservation
     } else if (fileName != normMainFileName) {
+        // Filter out non-header inclusions (kind is not "inclusion directive")
+        // and header files from system library paths (containing "sdk/default")
+        if (node.value("kind", "") != "inclusion directive" ||
+            normalizedFilePath.find("sdk/default") != std::string::npos) {
+            node = json();
+            return;
+        }
         if (IsInUserInclude(fileName) || (IsInUserInclude(node.value("included", "")) &&
             node.value("code", "").find("<") == std::string::npos && node.value("code", "").find(">") ==
             std::string::npos)) {
