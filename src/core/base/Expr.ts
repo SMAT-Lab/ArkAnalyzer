@@ -595,19 +595,6 @@ export enum RelationalBinaryOperator {
     isPropertyOf = 'in',
 }
 
-export enum CompoundBinaryOperator {
-    AdditionEquals = '+=',
-    SubtractionEquals = '-=',
-    MultiplicationEquals = '*=',
-    DivisionEquals = '/=',
-    RemainderEquals = '%=',
-    LeftShiftEquals = '<<=',
-    RightShiftEquals = '>>=',
-    BitwiseAndEquals = '&=',
-    BitwiseOrEquals = '|=',
-    BitwiseXorEquals = '^=',
-}
-
 export type BinaryOperator = NormalBinaryOperator | RelationalBinaryOperator;
 
 // Binary operation expression

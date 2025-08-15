@@ -31,7 +31,6 @@ import {
     ArkUnopExpr,
     NormalBinaryOperator,
     RelationalBinaryOperator,
-    CompoundBinaryOperator,
     AbstractInvokeExpr,
 } from '../../core/base/Expr';
 import {
@@ -76,6 +75,19 @@ import { CppAstNode, CppTranslationUnit } from '../../ast/ArkCxxAstNode';
 import { BinaryOperator } from '../../core/base/Expr';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkValueTransformer');
+
+enum CompoundBinaryOperator {
+    AdditionEquals = '+=',
+    SubtractionEquals = '-=',
+    MultiplicationEquals = '*=',
+    DivisionEquals = '/=',
+    RemainderEquals = '%=',
+    LeftShiftEquals = '<<=',
+    RightShiftEquals = '>>=',
+    BitwiseAndEquals = '&=',
+    BitwiseOrEquals = '|=',
+    BitwiseXorEquals = '^=',
+}
 
 /**
  * Get the inner node of an AST node
