@@ -55,11 +55,12 @@ export enum ModifierType {
     OUT = 1 << 12,
     OVERRIDE = 1 << 13,
     DECLARE = 1 << 14,
-    AUTO = 1 << 15,
-    EXTERN = 1 << 16,
-    FRIEND = 1 << 17,
-    VIRTUAL = 1 << 18,
-    PURE_VIRTUAL = 1 << 19,
+    // The following are CXX specific modifiers.
+    AUTO = 1 << 20,
+    EXTERN = 1 << 21,
+    FRIEND = 1 << 22,
+    VIRTUAL = 1 << 23,
+    PURE_VIRTUAL = 1 << 24,
 }
 
 export const MODIFIER_TYPE_MASK = 0xffff;
