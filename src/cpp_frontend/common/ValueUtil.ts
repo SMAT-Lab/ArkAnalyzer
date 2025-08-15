@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { Constant, LabelConstant, NullPtrConstant, StringConstant } from '../../core/base/Constant';
+import { Constant, LabelConstant, StringConstant } from '../../core/base/Constant';
 import { EMPTY_STRING, ValueUtil } from '../../core/common/ValueUtil';
 
 const charPrefixType = ['L"', "L\'", 'u"', "u\'", 'U"', "U\'"];
@@ -35,10 +35,6 @@ export class CppValueUtil extends ValueUtil {
         }
         str = this.normalizeString(str);
         return new StringConstant(str);
-    }
-
-    public static getNullPtrConstant(): Constant {
-        return NullPtrConstant.getInstance();
     }
 
     public static getLabelPtrConstant(label: string): Constant {

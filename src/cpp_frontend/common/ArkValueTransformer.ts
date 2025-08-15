@@ -62,7 +62,7 @@ import { AbstractFieldRef, ArkArrayRef, ArkInstanceFieldRef, CXXArkInstanceField
 import { ArkMethod } from '../../core/model/ArkMethod';
 import { buildArkMethodFromArkClass, buildDefaultConstructor } from '../model/builder/ArkMethodBuilder';
 import { Builtin } from '../../core/common/Builtin';
-import { Constant } from '../../core/base/Constant';
+import { Constant, NullConstant } from '../../core/base/Constant';
 import { TEMP_LOCAL_PREFIX } from '../../core/common/Const';
 import { ArkIRTransformerCpp, DummyStmt, ValueAndStmts } from './ArkIRTransformer';
 import { buildTypeFromPreStr, convertDataType, cppNode2Type, isCXXSTLContainer } from '../model/builder/builderUtils';
@@ -105,26 +105,26 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
     private readonly sourceFileCpp: CppTranslationUnit;
     // An object that records the corresponding processing functions of CXX ast nodes.
     private nodeTransformerFuncMap: TransformerType = {
-        'AddrLabelExpr': this.cxxLiteralNodeToValueAndStmts.bind(this),
-        'ArraySubscriptExpr': this.cxxElementAccessExpressionToValueAndStmts.bind(this),
-        'ArrayTypeTraitExpr': this.arrayTypeTraitExprToValueAndStmts.bind(this),
-        'AtomicCallExpr': this.cxxCallExpressionToValueAndStmts.bind(this),
-        'BinaryConditionalOperator': this.cxxConditionalExpressionToValueAndStmts.bind(this),
-        'BinaryOperator': this.cxxBinaryExpressionToValueAndStmts.bind(this),
-        'CallExpr': this.cxxCallExpressionToValueAndStmts.bind(this),
-        'CharacterLiteral': this.cxxLiteralNodeToValueAndStmts.bind(this),
-        'CompoundAssignOperator': this.cxxCompoundAssignmentToValueAndStmts.bind(this),
-        'CompoundLiteralExpr': this.cxxNewExpressionToValueAndStmts.bind(this),
-        'ConditionalOperator': this.cxxConditionalExpressionToValueAndStmts.bind(this),
-        'ConstantExpr': this.processInnerNodeToValueAndStmts.bind(this),
-        'CXXBindTemporaryExpr': this.processInnerNodeToValueAndStmts.bind(this),
-        'CXXBoolLiteralExpr': this.cxxLiteralNodeToValueAndStmts.bind(this),
-        'CXXConstCastExpr': this.castExpressionToValueAndStmts.bind(this),
-        'CXXConstructExpr': this.cxxConstructExprToValueAndStmts.bind(this),
-        'CXXCtorInitializer': this.cxxCtorInitializerToValueAndStmts.bind(this),
-        'CXXDeleteExpr': this.cxxDeleteExpressionToValueAndStmts.bind(this),
-        'CXXDynamicCastExpr': this.castExpressionToValueAndStmts.bind(this),
-        'CXXFoldExpr': this.cxxCallExpressionToValueAndStmts.bind(this),
+        'AddrLabelExpr': this.cxxLiteralNodeToValueAndStmts,
+        'ArraySubscriptExpr': this.cxxElementAccessExpressionToValueAndStmts,
+        'ArrayTypeTraitExpr': this.arrayTypeTraitExprToValueAndStmts,
+        'AtomicCallExpr': this.cxxCallExpressionToValueAndStmts,
+        'BinaryConditionalOperator': this.cxxConditionalExpressionToValueAndStmts,
+        'BinaryOperator': this.cxxBinaryExpressionToValueAndStmts,
+        'CallExpr': this.cxxCallExpressionToValueAndStmts,
+        'CharacterLiteral': this.cxxLiteralNodeToValueAndStmts,
+        'CompoundAssignOperator': this.cxxCompoundAssignmentToValueAndStmts,
+        'CompoundLiteralExpr': this.cxxNewExpressionToValueAndStmts,
+        'ConditionalOperator': this.cxxConditionalExpressionToValueAndStmts,
+        'ConstantExpr': this.processInnerNodeToValueAndStmts,
+        'CXXBindTemporaryExpr': this.processInnerNodeToValueAndStmts,
+        'CXXBoolLiteralExpr': this.cxxLiteralNodeToValueAndStmts,
+        'CXXConstCastExpr': this.castExpressionToValueAndStmts,
+        'CXXConstructExpr': this.cxxConstructExprToValueAndStmts,
+        'CXXCtorInitializer': this.cxxCtorInitializerToValueAndStmts,
+        'CXXDeleteExpr': this.cxxDeleteExpressionToValueAndStmts,
+        'CXXDynamicCastExpr': this.castExpressionToValueAndStmts,
+        'CXXFoldExpr': this.cxxCallExpressionToValueAndStmts,
         'CXXFunctionalCastExpr': this.castExpressionToValueAndStmts.bind(this),
         'CXXMemberCallExpr': this.cxxMemberCallExpressionToValueAndStmts.bind(this),
         'CXXNewExpr': this.cxxNewExpressionToValueAndStmts.bind(this),
@@ -173,7 +173,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
 
         const nodeKind = node.kind;
         if (nodeKind in this.nodeTransformerFuncMap) {
-            const valueAndStmts = this.nodeTransformerFuncMap[nodeKind](node);
+            const valueAndStmts = this.nodeTransformerFuncMap[nodeKind].bind(this)(node);
             if (valueAndStmts) {
                 return valueAndStmts;
             }
@@ -2100,7 +2100,7 @@ export class ArkValueTransformerCpp extends ArkValueTransformer {
                 return { value: constant, valueOriginalPositions: pos, stmts };
             }
             case 'CXXNullPtrLiteralExpr': {
-                const constant = CppValueUtil.getNullPtrConstant();
+                const constant = NullConstant.getInstance();
                 return { value: constant, valueOriginalPositions: pos, stmts };
             }
             case 'AddrLabelExpr': {

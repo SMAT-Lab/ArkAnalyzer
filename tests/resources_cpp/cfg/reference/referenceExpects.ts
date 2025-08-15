@@ -40,7 +40,7 @@ export const REFERENCE_EXPECT_CASE2 = {
     blocks: [
         {
             id: 0,
-            stmts: ['this = this: @reference/reference.cpp: %dflt', 'ptr = nullptr', 'refToPtr = ptr', 'return'],
+            stmts: ['this = this: @reference/reference.cpp: %dflt', 'ptr = null', 'refToPtr = ptr', 'return'],
             preds: [],
             succes: [],
         },

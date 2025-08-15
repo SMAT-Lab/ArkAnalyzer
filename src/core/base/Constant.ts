@@ -15,8 +15,7 @@
 
 import { BigIntType, BooleanType, LabelType, NullType, NumberType, StringType, Type, UndefinedType } from './Type';
 import { Value } from './Value';
-import { NULL_KEYWORD, UNDEFINED_KEYWORD, NULL_POINTER } from '../common/TSConst';
-import { NullPtrType } from './Type';
+import { NULL_KEYWORD, UNDEFINED_KEYWORD } from '../common/TSConst';
 
 /**
  * @category core/base
@@ -123,18 +122,6 @@ export class UndefinedConstant extends Constant {
     }
 
     public static getInstance(): UndefinedConstant {
-        return this.INSTANCE;
-    }
-}
-
-export class NullPtrConstant extends Constant {
-    private static readonly INSTANCE = new NullPtrConstant();
-
-    constructor() {
-        super(NULL_POINTER, NullPtrType.getInstance());
-    }
-
-    public static getInstance(): NullPtrConstant {
         return this.INSTANCE;
     }
 }

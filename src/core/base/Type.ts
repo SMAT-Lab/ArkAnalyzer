@@ -22,7 +22,6 @@ import {
     BOOLEAN_KEYWORD,
     NEVER_KEYWORD,
     NULL_KEYWORD,
-    NULL_POINTER,
     NUMBER_KEYWORD,
     STRING_KEYWORD,
     UNDEFINED_KEYWORD,
@@ -252,18 +251,6 @@ export class NullType extends PrimitiveType {
 
     private constructor() {
         super(NULL_KEYWORD);
-    }
-}
-
-export class NullPtrType extends PrimitiveType {
-    private static readonly INSTANCE = new NullPtrType();
-
-    public static getInstance(): NullPtrType {
-        return this.INSTANCE;
-    }
-
-    private constructor() {
-        super(NULL_POINTER);
     }
 }
 

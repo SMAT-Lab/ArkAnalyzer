@@ -86,7 +86,7 @@ export const POINTER_EXPECT_CASE3 = {
                 '%8 = new @pointer/pointerExpr.cpp: MyStruct',
                 'instanceinvoke %8.<@pointer/pointerExpr.cpp: MyStruct.constructor()>()',
                 's = %8',
-                'if s != nullptr',
+                'if s != null',
             ],
             preds: [],
             succes: [1, 2],
