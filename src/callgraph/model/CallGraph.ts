@@ -23,6 +23,7 @@ import { BaseEdge, BaseNode, BaseExplicitGraph, NodeID } from '../../core/graph/
 import { CGStat } from '../common/Statistics';
 import { UNKNOWN_FILE_NAME } from '../../core/common/Const';
 import { CallSite, CallSiteID, CallSiteManager, DynCallSite, ICallSite } from './CallSite';
+import { CallGraphJsonPrinter } from '../../save/CGJsonPrinter';
 
 export type Method = MethodSignature;
 export type FuncID = number;
@@ -334,11 +335,20 @@ export class CallGraph extends BaseExplicitGraph {
         this.entries = n;
     }
 
+    public getCallPairEdges(): Map<string, CallGraphEdge> {
+        return this.callPairToEdgeMap;
+    }
+
     public dump(name: string, entry?: FuncID): void {
         let printer = new GraphPrinter<this>(this);
         if (entry) {
             printer.setStartID(entry);
         }
+        PrinterBuilder.dump(printer, name);
+    }
+
+    public dump2Json(name: string): void {
+        let printer = new CallGraphJsonPrinter(this);
         PrinterBuilder.dump(printer, name);
     }
 
