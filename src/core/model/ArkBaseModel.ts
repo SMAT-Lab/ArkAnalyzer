@@ -102,7 +102,7 @@ const MODIFIER_TYPE_STRINGS = [
  *- pure virtual ->ModifierType.PURE_VIRTUAL: pure virtual function modifier
  *- abstract ->ModifierType.ABSTRACT: abstract class modifier (implemented through pure virtual function in C++)
  */
-const MODIFIER_KIND_2_ENUM_CPP = new Map<string, ModifierType>([
+const MODIFIER_KIND_2_ENUM_CXX = new Map<string, ModifierType>([
     ['virtual', ModifierType.VIRTUAL],
     ['const', ModifierType.CONST],
     ['private', ModifierType.PRIVATE],
@@ -139,8 +139,8 @@ export function modifierKind2Enum(kind: ts.SyntaxKind): ModifierType {
     return MODIFIER_KIND_2_ENUM.get(kind)!;
 }
 
-export function modifierKind2EnumCpp(kind: string): ModifierType {
-    return MODIFIER_KIND_2_ENUM_CPP.get(kind)!;
+export function modifierKind2CxxEnum(kind: string): ModifierType {
+    return MODIFIER_KIND_2_ENUM_CXX.get(kind)!;
 }
 
 export function modifiers2stringArray(modifiers: number): string[] {

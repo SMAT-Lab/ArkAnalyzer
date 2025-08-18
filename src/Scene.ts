@@ -33,14 +33,14 @@ import { getAllFiles } from './utils/getAllFiles';
 import { FileUtils, getFileRecursively, getFileAbsPath } from './utils/FileUtils';
 import { ArkExport, ExportInfo, ExportType } from './core/model/ArkExport';
 import { addInitInConstructor, buildDefaultConstructor, replaceSuper2Constructor } from './core/model/builder/ArkMethodBuilder';
-import { addInitInConstructor as addInitInConstructorCpp } from './cpp_frontend/model/builder/ArkMethodBuilder';
+import { addInitInConstructor as addCxxInitInConstructor } from './cpp_frontend/model/builder/ArkMethodBuilder';
 import { DEFAULT_ARK_CLASS_NAME, INSTANCE_INIT_METHOD_NAME, STATIC_INIT_METHOD_NAME } from './core/common/Const';
 import { CallGraph } from './callgraph/model/CallGraph';
 import { CallGraphBuilder } from './callgraph/model/builder/CallGraphBuilder';
-import { buildArkFileFromFile as buildArkFileFromFileCpp } from './cpp_frontend/model/builder/ArkFileBuilder';
+import { buildArkFileFromFile as buildArkCxxFileFromFile } from './cpp_frontend/model/builder/ArkFileBuilder';
 
 import { IRInference } from './core/common/IRInference';
-import { IRInference as IRInferenceCpp } from './cpp_frontend/common/IRInference';
+import { IRInference as CxxIRInference } from './cpp_frontend/common/IRInference';
 import { ImportInfo } from './core/model/ArkImport';
 import { ALL, CONSTRUCTOR_NAME, TSCONFIG_JSON } from './core/common/TSConst';
 import { BUILD_PROFILE_JSON5, OH_PACKAGE_JSON5 } from './core/common/EtsConst';
@@ -325,7 +325,7 @@ export class Scene {
      */
     private updateOrAddDefaultConstructors(): void {
         for (const file of this.getFiles()) {
-            const isCppFile = file.getLanguage() === Language.CXX;
+            const isCxxFile = file.getLanguage() === Language.CXX;
             for (const cls of ModelUtils.getAllClassesInFile(file)) {
                 buildDefaultConstructor(cls);
                 const constructors = cls.getAllMethodsWithName(CONSTRUCTOR_NAME);
@@ -333,7 +333,7 @@ export class Scene {
                     continue;
                 }
                 // Select the appropriate initialization function based on file type
-                const initInConstructorFn = isCppFile ? addInitInConstructorCpp : addInitInConstructor;
+                const initInConstructorFn = isCxxFile ? addCxxInitInConstructor : addInitInConstructor;
                 constructors.forEach(constructor => {
                     replaceSuper2Constructor(constructor);
                     initInConstructorFn(constructor);
@@ -361,18 +361,18 @@ export class Scene {
         }
 
         for (const method of methods) {
-            const isCppFile = method.getDeclaringArkFile()?.getLanguage() === Language.CXX;
+            const isCxxFile = method.getDeclaringArkFile()?.getLanguage() === Language.CXX;
             try {
-                if (isCppFile) {
-                    method.buildBodyCpp();
+                if (isCxxFile) {
+                    method.buildCxxBody();
                 } else {
                     method.buildBody();
                 }
             } catch (error) {
                 logger.error('Error building body:', method.getSignature(), error);
             } finally {
-                if (isCppFile) {
-                    method.freeBodyBuilderCpp();
+                if (isCxxFile) {
+                    method.freeCxxBodyBuilder();
                 } else {
                     method.freeBodyBuilder();
                 }
@@ -391,7 +391,7 @@ export class Scene {
                 arkFile.setScene(this);
                 // Call different builder functions based on file language
                 if (arkFile.getLanguage() === Language.CXX) {
-                    buildArkFileFromFileCpp(file, this.realProjectDir, arkFile, this.projectName, this.includeDirs);
+                    buildArkCxxFileFromFile(file, this.realProjectDir, arkFile, this.projectName, this.includeDirs);
                 } else {
                     buildArkFileFromFile(file, this.realProjectDir, arkFile, this.projectName);
                 }
@@ -428,7 +428,7 @@ export class Scene {
             const arkFile = new ArkFile(FileUtils.getFileLanguage(projectFile, this.fileLanguages));
             arkFile.setScene(this);
             if (arkFile.getLanguage() === Language.CXX) {
-                buildArkFileFromFileCpp(projectFile, this.getRealProjectDir(), arkFile, this.getProjectName(), this.includeDirs);
+                buildArkCxxFileFromFile(projectFile, this.getRealProjectDir(), arkFile, this.getProjectName(), this.includeDirs);
             } else {
                 buildArkFileFromFile(projectFile, this.getRealProjectDir(), arkFile, this.getProjectName());
             }
@@ -1143,7 +1143,7 @@ export class Scene {
         this.buildCxxFuncMap();
         this.filesMap.forEach(file => {
             try {
-                file.getLanguage() === Language.CXX ? IRInferenceCpp.inferFile(file) : IRInference.inferFile(file);
+                file.getLanguage() === Language.CXX ? CxxIRInference.inferFile(file) : IRInference.inferFile(file);
             } catch (error) {
                 logger.error('Error inferring types of project file:', file.getFileSignature(), error);
             }
@@ -1162,7 +1162,7 @@ export class Scene {
      *And establish the mapping relationship between methods and implementation files
      */
     private buildCxxFuncMap(): void {
-        const headerFileRefMap = this.getCppHeaderFileRefMap();
+        const headerFileRefMap = this.getCxxHeaderFileRefMap();
         for (const [headerPath, refFiles] of headerFileRefMap) {
             const headerArkFile = this.getFile(new FileSignature(this.projectName, path.relative(this.realProjectDir, headerPath)));
             if (!headerArkFile) {
@@ -1199,13 +1199,13 @@ export class Scene {
      *
      *@ returns Map<string, string []>The mapping from the header file path to the source file path array that references the header file
      */
-    private getCppHeaderFileRefMap(): Map<string, string[]> {
+    private getCxxHeaderFileRefMap(): Map<string, string[]> {
         const headerFileRefMap = new Map<string, string[]>();
-        const cppSuffixes = ['.cpp', '.c', '.cxx'];
+        const cxxSuffixes = ['.cpp', '.c', '.cxx'];
         this.filesMap.forEach(file => {
             const filePath = normalize(file.getFilePath());
             const extension = path.extname(filePath).toLowerCase();
-            if (!cppSuffixes.some(suffix => extension === suffix)) {
+            if (!cxxSuffixes.some(suffix => extension === suffix)) {
                 return;
             }
             const importInfos = file.getImportInfos();

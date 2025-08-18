@@ -18,7 +18,7 @@ import { EMPTY_STRING, ValueUtil } from '../../core/common/ValueUtil';
 
 const charPrefixType = ['L"', "L\'", 'u"', "u\'", 'U"', "U\'"];
 
-export class CppValueUtil extends ValueUtil {
+export class CxxValueUtil extends ValueUtil {
     public static normalizeString(str: string): string {
         let preStr: string = str.substring(0, 2); // Get prefix processing long character type
         if (charPrefixType.includes(preStr)) {

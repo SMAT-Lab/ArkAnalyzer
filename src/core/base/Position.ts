@@ -100,7 +100,7 @@ export class LineColPosition {
         // line start from 1.
         return new LineColPosition(line + 1, character + 1);
     }
-    public static buildFromNodeCpp(node: CxxAstNode, sourceFile: CxxAstNode): LineColPosition {
+    public static cxxBuildFromNode(node: CxxAstNode, sourceFile: CxxAstNode): LineColPosition {
         let line = 0;
         let character = 0;
         if (node.range?.begin && node.range.begin.line) {
@@ -152,7 +152,7 @@ export class FullPosition {
      *@ param_sourceFile source file node (not used)
      *@ returns The FullPosition object containing location information
      */
-    public static buildFromNodeCpp(node: CxxAstNode | undefined, _sourceFile: CxxAstNode): FullPosition {
+    public static cxxBuildFromNode(node: CxxAstNode | undefined, _sourceFile: CxxAstNode): FullPosition {
         const begin = node?.range?.begin;
         const end = node?.range?.end;
         const startLine = begin?.line ?? 0;

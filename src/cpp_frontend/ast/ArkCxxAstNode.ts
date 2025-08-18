@@ -15,7 +15,7 @@
 
 
 /** Position information (line/column/offset/length) */
-export interface CppPosition {
+export interface CxxPosition {
     line: number;
     col: number;
     offset?: number; // Offset will be set by the generator
@@ -23,13 +23,13 @@ export interface CppPosition {
 }
 
 /** Source code range */
-export interface CppRange {
-    begin: CppPosition;
-    end: CppPosition;
+export interface CxxRange {
+    begin: CxxPosition;
+    end: CxxPosition;
 }
 
 /** Type information */
-export interface CppTypeInfo {
+export interface CxxTypeInfo {
     type?: string;
     qualType: string; // Main field: output from unifyTypeStr
     desugaredQualType?: string;
@@ -38,17 +38,17 @@ export interface CppTypeInfo {
 }
 
 /** Target information for DeclRef */
-export interface CppReferencedDecl {
+export interface CxxReferencedDecl {
     kind?: string; // VarDecl / ParamVarDecl / FunctionDecl ...
     name?: string;
-    type?: CppTypeInfo;
+    type?: CxxTypeInfo;
 }
 
 /** Target information for CXXCtorInitializer */
-export interface CppCtorAnyInit {
+export interface CxxCtorAnyInit {
     kind: 'FieldDecl';
     name: string;
-    type?: CppTypeInfo;
+    type?: CxxTypeInfo;
 }
 export type CxxAstNodeLite = Omit<CxxAstNode, 'inner'>;
 
@@ -67,7 +67,7 @@ export interface CxxAstNode {
     code: string;
 
     /** Type information */
-    type: CppTypeInfo;
+    type: CxxTypeInfo;
 
     /** Mangled name (injected by getMemberInClassName for methods/constructors/destructors) */
     mangledName?: string;
@@ -82,7 +82,7 @@ export interface CxxAstNode {
     storageClass?: string;
 
     /** Target information parsed from DeclRef */
-    referencedDecl?: CppReferencedDecl;
+    referencedDecl?: CxxReferencedDecl;
 
     /** Literal value (IntegerLiteral/StringLiteral/BoolLiteral) */
     value?: string;
@@ -115,8 +115,8 @@ export interface CxxAstNode {
     targetLabelId?: number;
 
     /** Specific to CXXCtorInitializer */
-    anyInit?: CppCtorAnyInit; // e.g., { kind: "FieldDecl", name, type }
-    baseInit?: CppTypeInfo; // Used for base class initialization
+    anyInit?: CxxCtorAnyInit; // e.g., { kind: "FieldDecl", name, type }
+    baseInit?: CxxTypeInfo; // Used for base class initialization
 
     /** Header/include relationship related */
     include?: boolean; // Node comes from a user header via include
@@ -132,7 +132,7 @@ export interface CxxAstNode {
     };
 
     /** Precise range (begin/end includes offset and tokLen) */
-    range?: CppRange;
+    range?: CxxRange;
 
     /** Child nodes */
     inner: CxxAstNode[];
@@ -160,7 +160,7 @@ export interface CxxAstNode {
 }
 
 /** root type */
-export interface CppTranslationUnit extends CxxAstNode {
+export interface CxxTranslationUnit extends CxxAstNode {
     kind: 'TranslationUnit' | 'TranslationUnitDecl';
     fileName?: string;
     headerUnits?: CxxAstNode[];

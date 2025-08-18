@@ -15,7 +15,7 @@
 
 import { ClassSignature } from '../../core/model/ArkSignature';
 
-export class BuiltinCpp {
+export class BuiltinCxx {
     // built-in classes
     public static ARRAY = 'array';
     public static SET = 'set';

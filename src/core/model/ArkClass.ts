@@ -76,7 +76,7 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
     private viewTree?: ViewTree;
 
     // In order to record the mapping between arkTS and CPP functions
-    private ts2CppFuncMap: Map<string, ArkMethod[]> = new Map<string, ArkMethod[]>();
+    private ts2cxxFuncMap: Map<string, ArkMethod[]> = new Map<string, ArkMethod[]>();
     // Record overload methods in cpp. Key of Map is method's name.
     private overloadMethods: Map<string, ArkMethod[]> = new Map<string, ArkMethod[]>();
 
@@ -604,11 +604,11 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
         return this.validateFields(['declaringArkFile', 'category', 'classSignature']);
     }
 
-    public addTs2CppFuncMapElement(funcName: string, methods: ArkMethod[]): void {
-        this.ts2CppFuncMap.set(funcName, methods);
+    public addTs2cxxFuncMapElement(funcName: string, methods: ArkMethod[]): void {
+        this.ts2cxxFuncMap.set(funcName, methods);
     }
 
-    public getTs2CppFuncMap(): Map<string, ArkMethod[]> {
-        return this.ts2CppFuncMap;
+    public getTs2cxxFuncMap(): Map<string, ArkMethod[]> {
+        return this.ts2cxxFuncMap;
     }
 }

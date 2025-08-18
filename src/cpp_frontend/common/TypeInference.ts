@@ -63,8 +63,8 @@ import { IRInference } from './IRInference';
 import { AbstractTypeExpr, KeyofTypeExpr, TypeQueryExpr } from '../../core/base/TypeExpr';
 import { SdkUtils } from '../../core/common/SdkUtils';
 import { ModifierType } from '../../core/model/ArkBaseModel';
-import { BuiltinCpp } from './Builtin';
-import { setTs2CppFuncMapOfClass } from './ModelUtils';
+import { BuiltinCxx } from './Builtin';
+import { setTs2CxxFuncMapOfClass } from './ModelUtils';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'TypeInference');
 
@@ -240,7 +240,7 @@ export class TypeInference {
             if (
                 (stmt.containsInvokeExpr() &&
                     ((expr instanceof ArkInstanceInvokeExpr && newExpr instanceof ArkStaticInvokeExpr) || newExpr instanceof ArkPtrInvokeExpr)) ||
-                (newExpr instanceof ArkInstanceInvokeExpr && BuiltinCpp.isBuiltinClass(newExpr.getMethodSignature().getDeclaringClassSignature()))
+                (newExpr instanceof ArkInstanceInvokeExpr && BuiltinCxx.isBuiltinClass(newExpr.getMethodSignature().getDeclaringClassSignature()))
             ) {
                 stmt.replaceUse(expr, newExpr);
             }
@@ -256,7 +256,7 @@ export class TypeInference {
         if (stmt instanceof ArkAliasTypeDefineStmt && this.isUnclearType(stmt.getAliasType().getOriginalType())) {
             stmt.getAliasType().setOriginalType(stmt.getAliasTypeExpr().getType());
         }
-        // 处理ts2CppFuncMap
+        // 处理ts2cxxFuncMap
         if (stmt instanceof ArkInvokeStmt) {
             const invokeExpr = stmt.getInvokeExpr();
             if (!(invokeExpr instanceof ArkInstanceInvokeExpr)) {
@@ -265,7 +265,7 @@ export class TypeInference {
             const instInvokeExpr = invokeExpr as ArkInstanceInvokeExpr;
             const invokeBaseType = instInvokeExpr.getBase().getType();
             if (invokeBaseType instanceof ClassType && invokeBaseType.getClassSignature().getClassName() === 'napi_property_descriptor') {
-                setTs2CppFuncMapOfClass(instInvokeExpr.getArgs(), false, stmt.getCfg().getDeclaringMethod());
+                setTs2CxxFuncMapOfClass(instInvokeExpr.getArgs(), false, stmt.getCfg().getDeclaringMethod());
             }
         }
     }

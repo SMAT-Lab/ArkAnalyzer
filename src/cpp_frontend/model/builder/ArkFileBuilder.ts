@@ -28,7 +28,7 @@ import { AstUtils } from '../../ast/astUtils';
 import { FileSignature, ClassSignature } from '../../../core/model/ArkSignature';
 import { LineColPosition } from '../../../core/base/Position';
 import { buildImportInfo } from './ArkImportBuilder';
-import { shouldAddCppHeaderImport } from '../../common/ModelUtils';
+import { shouldAddCxxHeaderImport } from '../../common/ModelUtils';
 import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
 import { init4InstanceInitMethod, init4StaticInitMethod } from '../../../core/model/builder/ArkClassBuilder';
 import { CxxAstNode } from '../../ast/ArkCxxAstNode';
@@ -113,7 +113,7 @@ export function buildArkFileFromFile(absoluteFilePath: string, projectDir: strin
     buildArkFile(arkFile, jsonObject);
 }
 
-function buildArkClassFromCppClass(classNode: CxxAstNode, arkFile: ArkFile, astRoot: CxxAstNode): void {
+function buildArkClassFromCxxClass(classNode: CxxAstNode, arkFile: ArkFile, astRoot: CxxAstNode): void {
     let cls: ArkClass = new ArkClass();
     if (classNode.kind === 'ClassTemplate') {
         classNode.tagUsed = 'class';
@@ -127,7 +127,7 @@ function buildImportInfoFromIncludeOrUsing(child: CxxAstNode, astRoot: CxxAstNod
     let importInfos = buildImportInfo(child, astRoot, arkFile);
     importInfos?.forEach(element => {
         element.setDeclaringArkFile(arkFile);
-        if (shouldAddCppHeaderImport(element)) {
+        if (shouldAddCxxHeaderImport(element)) {
             arkFile.addImportInfo(element);
         }
     });
@@ -136,11 +136,11 @@ function buildImportInfoFromIncludeOrUsing(child: CxxAstNode, astRoot: CxxAstNod
 function addExportInfoOnCondition(currNode: CxxAstNode, arkInstance: ArkExport, arkFile: ArkFile, astRoot: CxxAstNode): void {
     if (Object.prototype.hasOwnProperty.call(currNode, 'locFile') &&
         typeof currNode.locFile === 'string' && currNode.locFile.endsWith('.h')) {
-        arkFile.addExportInfo(buildExportInfo(arkInstance, arkFile, LineColPosition.buildFromNodeCpp(currNode, astRoot)));
+        arkFile.addExportInfo(buildExportInfo(arkInstance, arkFile, LineColPosition.cxxBuildFromNode(currNode, astRoot)));
     }
 }
 
-function buildArkMethodFromCppMethod(mtdNode: CxxAstNode, arkFile: ArkFile, astRoot: CxxAstNode, arkClass?: ArkClass): void {
+function buildArkMethodFromCxxMethod(mtdNode: CxxAstNode, arkFile: ArkFile, astRoot: CxxAstNode, arkClass?: ArkClass): void {
     let mtd = new ArkMethod();
     buildArkMethodFromArkClass(mtdNode, arkClass ?? arkFile.getDefaultClass(), mtd, astRoot);
     addExportInfoOnCondition(mtdNode, mtd, arkFile, astRoot);
@@ -161,12 +161,12 @@ function buildArkFile(arkFile: ArkFile, astRoot: CxxAstNode): void {
         switch (childKind) {
             case 'CXXRecordDecl':
             case 'ClassTemplate':
-                buildArkClassFromCppClass(child, arkFile, astRoot);
+                buildArkClassFromCxxClass(child, arkFile, astRoot);
                 break;
             case 'FunctionDecl':
             case 'FriendDecl':
             case 'FunctionTemplate':
-                buildArkMethodFromCppMethod(child, arkFile, astRoot);
+                buildArkMethodFromCxxMethod(child, arkFile, astRoot);
                 break;
             case 'NamespaceDecl':
             case 'Namespace':
@@ -181,16 +181,16 @@ function buildArkFile(arkFile: ArkFile, astRoot: CxxAstNode): void {
             case 'CXXDestructorDecl':
                 // Member function, construction and destructor need to establish the function class first
                 const arkClass = getDeclaringArkClassOfMethod(child, arkFile);
-                buildArkMethodFromCppMethod(child, arkFile, astRoot, arkClass);
+                buildArkMethodFromCxxMethod(child, arkFile, astRoot, arkClass);
                 break;
             case 'TypedefDecl':
                 if (child.inner?.[0]?.kind === 'CXXRecordDecl') {
-                    buildArkClassFromCppClass(child.inner[0], arkFile, astRoot);
+                    buildArkClassFromCxxClass(child.inner[0], arkFile, astRoot);
                 }
                 break;
             case 'EnumDecl':
                 child = { ...child, tagUsed: 'enum' };
-                buildArkClassFromCppClass(child, arkFile, astRoot);
+                buildArkClassFromCxxClass(child, arkFile, astRoot);
                 break;
             case 'inclusion directive':
             case 'UsingDirectiveDecl':

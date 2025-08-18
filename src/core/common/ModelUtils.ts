@@ -52,7 +52,7 @@ import { ArkBaseModel } from '../model/ArkBaseModel';
 import { ArkAssignStmt } from '../base/Stmt';
 import { ClosureFieldRef } from '../base/Ref';
 import { SdkUtils } from './SdkUtils';
-import { CppSceneUtils } from '../../utils/CppSceneUtils';
+import { CxxSceneUtils } from '../../utils/CxxSceneUtils';
 
 export class ModelUtils {
     public static implicitArkUIBuilderMethods: Set<ArkMethod> = new Set();
@@ -787,7 +787,7 @@ function getArkFileFromOtherModule(fromInfo: FromInfo): ArkFile | undefined {
     if (!file && FileUtils.isDirectory(modulePath.path)) {
         file = findFileInModule(fromInfo, modulePath, FileUtils.getIndexFileName(modulePath.path));
         if (from.endsWith('.so') && file) {
-            CppSceneUtils.puncture(modulePath.path, file);
+            CxxSceneUtils.puncture(modulePath.path, file);
         }
     }
     //find file in module path/src/main/ets/TsIndex.ts

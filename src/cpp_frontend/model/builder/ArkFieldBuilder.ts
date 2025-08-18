@@ -15,7 +15,7 @@
 
 import { ArkField, FieldCategory } from '../../../core/model/ArkField';
 import { ArkClass } from '../../../core/model/ArkClass';
-import { buildModifiers, cppNode2Type } from './builderUtils';
+import { buildModifiers, cxxNode2Type } from './builderUtils';
 import { FieldSignature } from '../../../core/model/ArkSignature';
 import { ArrayType, ClassType, Type, UnclearReferenceType, UnknownType } from '../../../core/base/Type';
 import { LineColPosition } from '../../../core/base/Position';
@@ -29,14 +29,14 @@ export function buildProperty2ArkField(member: CxxAstNode, sourceFile: CxxAstNod
     field.setCategory(mapSyntaxKindToFieldOriginType(member.kind) as FieldCategory);
     field.setCode(member.code);
     field.setDeclaringArkClass(cls);
-    field.setOriginPosition(LineColPosition.buildFromNodeCpp(member, sourceFile));
+    field.setOriginPosition(LineColPosition.cxxBuildFromNode(member, sourceFile));
 
     let fieldName = member.name;
     field.addModifier(buildModifiers(member));
 
     let fieldType: Type = UnknownType.getInstance();
     if ((member.kind === 'FieldDecl' || member.kind === 'VarDecl') && member.type) {
-        fieldType = buildGenericType(cppNode2Type(member.type.qualType, cls, sourceFile), field);
+        fieldType = buildGenericType(cxxNode2Type(member.type.qualType, cls, sourceFile), field);
     }
     if (member.kind === 'EnumConstantDecl') {
         field.addModifier(ModifierType.STATIC);
@@ -45,7 +45,7 @@ export function buildProperty2ArkField(member: CxxAstNode, sourceFile: CxxAstNod
     if (member.type.qualType.includes('[') && member.type.qualType.includes(']')) {
         const matches = member.type.qualType.match(/\[/g);
         const count = matches ? matches.length : 0;
-        let baseType = cppNode2Type(member.type.qualType.slice(0, member.type.qualType.indexOf('[')), cls, sourceFile);
+        let baseType = cxxNode2Type(member.type.qualType.slice(0, member.type.qualType.indexOf('[')), cls, sourceFile);
         if (baseType instanceof UnclearReferenceType) {
             fieldType = new ArrayType(new UnclearReferenceType(member.type.qualType.slice(0, member.type.qualType.indexOf('['))), count);
         }

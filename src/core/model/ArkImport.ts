@@ -17,7 +17,7 @@ import { ArkFile, Language } from './ArkFile';
 import { LineColPosition } from '../base/Position';
 import { ExportInfo, FromInfo } from './ArkExport';
 import { findExportInfo } from '../common/ModelUtils';
-import { findExportInfo as findExportInfoCpp } from '../../cpp_frontend/common/ModelUtils';
+import { findExportInfo as findCxxExportInfo } from '../../cpp_frontend/common/ModelUtils';
 import { ArkBaseModel } from './ArkBaseModel';
 import { ArkError } from '../common/ArkError';
 
@@ -75,7 +75,7 @@ export class ImportInfo extends ArkBaseModel implements FromInfo {
     public getLazyExportInfo(): ExportInfo | null {
         if (this.lazyExportInfo === undefined) {
             if (this.declaringArkFile.getLanguage() === Language.CXX) {
-                this.lazyExportInfo = findExportInfoCpp(this);
+                this.lazyExportInfo = findCxxExportInfo(this);
             } else {
                 this.lazyExportInfo = findExportInfo(this);
             }

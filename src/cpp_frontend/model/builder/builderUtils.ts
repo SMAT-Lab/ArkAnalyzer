@@ -29,9 +29,9 @@ import { ArkField } from '../../../core/model/ArkField';
 import { ArkClass } from '../../../core/model/ArkClass';
 import { ArkMethod } from '../../../core/model/ArkMethod';
 import { MethodParameter } from '../../../core/model/builder/ArkMethodBuilder';
-import { modifierKind2EnumCpp } from '../../../core/model/ArkBaseModel';
+import { modifierKind2CxxEnum } from '../../../core/model/ArkBaseModel';
 import { buildGenericType } from '../../../core/model/builder/builderUtils';
-import { CxxAstNode, CppTypeInfo } from '../../ast/ArkCxxAstNode';
+import { CxxAstNode, CxxTypeInfo } from '../../ast/ArkCxxAstNode';
 import { Decorator } from '../../../core/base/Decorator';
 
 function extractCommonModifiers(node: CxxAstNode): number {
@@ -39,13 +39,13 @@ function extractCommonModifiers(node: CxxAstNode): number {
     const nodeType: string = node?.type?.qualType ?? '';
 
     if (Object.prototype.hasOwnProperty.call(node, 'access')) {
-        modifiers |= modifierKind2EnumCpp(node.access ?? '');
+        modifiers |= modifierKind2CxxEnum(node.access ?? '');
     }
     if (Object.prototype.hasOwnProperty.call(node, 'storageClass')) {
-        modifiers |= modifierKind2EnumCpp(node.storageClass ?? '');
+        modifiers |= modifierKind2CxxEnum(node.storageClass ?? '');
     }
     if (nodeType.includes('const')) {
-        modifiers |= modifierKind2EnumCpp('const');
+        modifiers |= modifierKind2CxxEnum('const');
     }
     return modifiers;
 }
@@ -59,14 +59,14 @@ function hasOverrideAttr(inner: CxxAstNode[] | undefined): boolean {
 
 function getMtdModifier(node: CxxAstNode, modifiers: number): number {
     if (node.code.startsWith('virtual ')) {
-        modifiers |= modifierKind2EnumCpp('virtual');
+        modifiers |= modifierKind2CxxEnum('virtual');
         // Definition of pure virtual function: virtual func()=0/virtual func()=0
         if (node.code.endsWith('= 0') || node.code.endsWith('=0')) {
-            modifiers |= modifierKind2EnumCpp('pure virtual');
+            modifiers |= modifierKind2CxxEnum('pure virtual');
         }
     }
     if (hasOverrideAttr(node.inner)) {
-        modifiers |= modifierKind2EnumCpp('override');
+        modifiers |= modifierKind2CxxEnum('override');
     }
     return modifiers;
 }
@@ -78,7 +78,7 @@ export function buildModifiers(node: CxxAstNode): number {
         modifiers = getMtdModifier(node, modifiers);
     }
     if (node.kind === 'FriendDecl') {
-        modifiers |= modifierKind2EnumCpp('friend');
+        modifiers |= modifierKind2CxxEnum('friend');
     }
     return modifiers;
 }
@@ -93,7 +93,7 @@ export function buildModifiersForCxxCls(cls: ArkClass): number {
     for (const mtd of mtds) {
         // 如果类内有纯虚的成员函数，则该类是抽象类
         if (mtd.isPureVirtual()) {
-            return modifierKind2EnumCpp('abstract');
+            return modifierKind2CxxEnum('abstract');
         }
     }
     return 0;
@@ -112,7 +112,7 @@ export function buildTypeParameters(clsNode: CxxAstNode, sourceFile: CxxAstNode,
             innerNode.default = innerNode.inner[0].type.qualType;
         }
         if (innerNode.default) {
-            defaultType = cppNode2Type(innerNode.default, arkInstance, sourceFile);
+            defaultType = cxxNode2Type(innerNode.default, arkInstance, sourceFile);
         }
         let templateType = new GenericType(typename, defaultType);
         templateType.setIndex(++index);
@@ -137,7 +137,7 @@ export function buildParameters(params: CxxAstNode[], arkInstance: ArkMethod | A
         }
         // type
         if (parameter.type) {
-            methodParameter.setType(buildGenericType(cppNode2Type(parameter.type.qualType, arkInstance, sourceFile), arkInstance));
+            methodParameter.setType(buildGenericType(cxxNode2Type(parameter.type.qualType, arkInstance, sourceFile), arkInstance));
         } else {
             methodParameter.setType(UnknownType.getInstance());
         }
@@ -162,7 +162,7 @@ export function buildReturnType(mtdNode: CxxAstNode, sourceFile: CxxAstNode, met
             // Lambda function without return value
             return UnknownType.getInstance();
         }
-        return cppNode2Type(funcRetType, method, sourceFile);
+        return cxxNode2Type(funcRetType, method, sourceFile);
     } else {
         return UnknownType.getInstance();
     }
@@ -175,7 +175,7 @@ export function buildReturnType(mtdNode: CxxAstNode, sourceFile: CxxAstNode, met
  *@ param sourceFile - optional source file node
  *@ returns Type after conversion
  */
-export function cppNode2Type(nodeQualType: CxxAstNode | string, arkInstance: ArkMethod | ArkClass | ArkField | undefined, sourceFile?: CxxAstNode): Type {
+export function cxxNode2Type(nodeQualType: CxxAstNode | string, arkInstance: ArkMethod | ArkClass | ArkField | undefined, sourceFile?: CxxAstNode): Type {
     // Handle special type
     if (nodeQualType === 'void () const') {
         return buildTypeFromPreStr('VoidKeyword', arkInstance);
@@ -238,7 +238,7 @@ export function buildTypeFromPreStr(preStr: string, arkInstance: ArkMethod | Ark
     const postStr = convertDataType(preStr);
     let baseType: Type;
     if (isFuncPtr){
-        const info: CppTypeInfo = { qualType: preStr };
+        const info: CxxTypeInfo = { qualType: preStr };
         baseType = new FunctionPointer(info);
     } else if (postStr === 'unsupported'){
         baseType = buildTypeFromDerivedType(preStr, arkInstance);
@@ -260,7 +260,7 @@ export function buildTypeFromPreStr(preStr: string, arkInstance: ArkMethod | Ark
 export function buildReferenceType(preStr: string, arkInstance: ArkMethod | ArkClass | ArkField | undefined, referenceCount: number, baseType: Type): Type {
     let referCategory = referenceCount % 2 === 1 ? ReferCategory.LVALUE_REF : ReferCategory.RVALUE_REF;
     if (baseType instanceof UnclearReferenceType) {
-        baseType = cppNode2Type(preStr, arkInstance);
+        baseType = cxxNode2Type(preStr, arkInstance);
     }
     if (baseType instanceof GenericType && referenceCount % 2 === 0) {
         referCategory = ReferCategory.UNIVERSAL_REF;

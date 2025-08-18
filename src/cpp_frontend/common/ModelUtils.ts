@@ -29,7 +29,7 @@ import { INSTANCE_INIT_METHOD_NAME, STATIC_INIT_METHOD_NAME, TEMP_LOCAL_PREFIX }
 import { FunctionType } from '../../core/base/Type';
 
 // Common C++standard library header files (excluding the. h suffix)
-const CPP_STD_HEADERS = new Set([
+const CXX_STD_HEADERS = new Set([
     'iostream',
     'iomanip',
     'fstream',
@@ -120,14 +120,14 @@ export function findExportInfo(fromInfo: FromInfo): ExportInfo | null {
     return processHeaderExportInfos(fromInfo, file);
 }
 
-export function shouldAddCppHeaderImport(element: ImportInfo): boolean {
+export function shouldAddCxxHeaderImport(element: ImportInfo): boolean {
     if (!Object.prototype.hasOwnProperty.call(element, 'importClauseName')) {
         return false;
     }
-    return isValidCppHeaderPath(element.getImportClauseName());
+    return isValidCxxHeaderPath(element.getImportClauseName());
 }
 
-export function isValidCppHeaderPath(headerPath: string | undefined): boolean {
+export function isValidCxxHeaderPath(headerPath: string | undefined): boolean {
     if (!headerPath) {
         return false;
     }
@@ -144,7 +144,7 @@ export function isValidCppHeaderPath(headerPath: string | undefined): boolean {
     const filename = parts.length > 0 ? parts[parts.length - 1] : '';
 
     // Determine whether it is a standard library name or a standard library name+ h
-    if (CPP_STD_HEADERS.has(filename) || (filename.endsWith('.h') && CPP_STD_HEADERS.has(filename.replace(/\.h$/, '')))) {
+    if (CXX_STD_HEADERS.has(filename) || (filename.endsWith('.h') && CXX_STD_HEADERS.has(filename.replace(/\.h$/, '')))) {
         return false;
     }
 
@@ -168,7 +168,7 @@ function processIncludeRef(fromInfo: FromInfo, headerFile: ArkFile): ExportInfo 
         headerRealIm.build(exportInfo.getExportClauseName(), 'NamedImports', headerFile.getFilePath(), exportInfo.getOriginTsPosition(), 0);
         headerRealIm.setTsSourceCode(includeClauseName);
         headerRealIm.setDeclaringArkFile(declFile);
-        if (shouldAddCppHeaderImport(headerRealIm)) {
+        if (shouldAddCxxHeaderImport(headerRealIm)) {
             declFile.addImportInfo(headerRealIm);
         }
         headerRealIm.getLazyExportInfo(); // The findExportInfo function will be recursed
@@ -178,7 +178,7 @@ function processIncludeRef(fromInfo: FromInfo, headerFile: ArkFile): ExportInfo 
         if (declFile.getImportInfoBy(im.getImportClauseName())) {
             continue;
         }
-        if (shouldAddCppHeaderImport(im)) {
+        if (shouldAddCxxHeaderImport(im)) {
             declFile.addImportInfo(im);
         }
         im.getLazyExportInfo();
@@ -208,7 +208,7 @@ function processHeaderExportInfos(fromInfo: FromInfo, headerFile: ArkFile): Expo
  * @param declMethod The ArkMethod where the call is located
  * @return None
  */
-export function setTs2CppFuncMapOfClass(elementValues: Value[], isDefineClass: boolean, declMethod: ArkMethod): void {
+export function setTs2CxxFuncMapOfClass(elementValues: Value[], isDefineClass: boolean, declMethod: ArkMethod): void {
     const curArkClass = declMethod.getDeclaringArkClass();
     const dfltArkClass = declMethod.getDeclaringArkFile().getDefaultClass();
     if (!(curArkClass && dfltArkClass)) {
@@ -225,9 +225,9 @@ export function setTs2CppFuncMapOfClass(elementValues: Value[], isDefineClass: b
         funcElements = elementValues.length > 5 ? elementValues.slice(2, 5) : [];
         tsFuncNameIdx = 0;
     }
-    const cppFunc: ArkMethod[] = findMatchingCppMethod(funcElements, declMethod);
+    const cxxFunc: ArkMethod[] = findMatchingCxxMethod(funcElements, declMethod);
     if (elementValues[tsFuncNameIdx] instanceof StringConstant) {
-        dfltArkClass.addTs2CppFuncMapElement((elementValues[tsFuncNameIdx] as StringConstant).getValue(), cppFunc);
+        dfltArkClass.addTs2cxxFuncMapElement((elementValues[tsFuncNameIdx] as StringConstant).getValue(), cxxFunc);
     }
 }
 
@@ -237,8 +237,8 @@ export function setTs2CppFuncMapOfClass(elementValues: Value[], isDefineClass: b
  * @param declMethod The ArkMethod where the call is located
  * @return Returns the found matching function array
  */
-function findMatchingCppMethod(funcElements: Value[], declMethod: ArkMethod): ArkMethod[] {
-    const cppFunc: ArkMethod[] = [];
+function findMatchingCxxMethod(funcElements: Value[], declMethod: ArkMethod): ArkMethod[] {
+    const cxxFunc: ArkMethod[] = [];
     const currArkClass = declMethod.getDeclaringArkClass();
     const classesToBeSearched: ArkClass[] = [];
     classesToBeSearched.push(currArkClass, ...getIncludeDefaultClasses(declMethod));
@@ -258,7 +258,7 @@ function findMatchingCppMethod(funcElements: Value[], declMethod: ArkMethod): Ar
             let matchMtd = scene.getMethod(realType.getMethodSignature());
             if (matchMtd) {
                 matchMtd = getFuncImplement(matchMtd);
-                cppFunc.push(matchMtd);
+                cxxFunc.push(matchMtd);
             }
             continue;
         }
@@ -267,11 +267,11 @@ function findMatchingCppMethod(funcElements: Value[], declMethod: ArkMethod): Ar
             let matchMtd = cls.getMethodWithName(mtdName);
             if (matchMtd) {
                 matchMtd = getFuncImplement(matchMtd);
-                cppFunc.push(matchMtd);
+                cxxFunc.push(matchMtd);
             }
         }
     }
-    return cppFunc;
+    return cxxFunc;
 }
 
 /**

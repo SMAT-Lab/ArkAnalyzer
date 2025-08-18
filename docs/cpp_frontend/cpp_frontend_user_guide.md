@@ -19,8 +19,8 @@
 只需要调用SceneConfig和scene构建即可，其中config.buildFromProjectDir()传入的参数是需要解析的项目路径。该函数位置在src/Scene.ts中
 以一个if代码的解析做介绍，解析过程如下图所示:
 ![img.png](img.png)
-在解析过程中，genArkFiles函数会区分文件类型，对于cpp文件会调用buildArkFileFromFileCpp生成对应语法树。
-在genArkFiles下的buildAllMethodBody中调用method.freeBodyBuilderCpp()进行函数内语句的解析。
+在解析过程中，genArkFiles函数会区分文件类型，对于cpp文件会调用buildArkCxxFileFromFile生成对应语法树。
+在genArkFiles下的buildAllMethodBody中调用method.freeCxxBodyBuilder()进行函数内语句的解析。
 
 ### 2、解析结果，scene展示
 
@@ -28,7 +28,7 @@
 ![img_1.png](img_1.png)
 ![img_2.png](img_2.png)
 
-如果一个cpp接口是在ts语言中被调用的接口，会在Scene结构中添加ts2CppFuncMap进行暴露，通过setTs2CppFuncMapOfClass函数进行填充。
+如果一个cpp接口是在ts语言中被调用的接口，会在Scene结构中添加ts2cxxFuncMap进行暴露，通过setTs2CxxFuncMapOfClass函数进行填充。
 这里以懒加载任务提供的代码示例
 ![img_3.png](img_3.png)
 
@@ -38,9 +38,9 @@
 
 ### 1、common模块
 
-ArkIRTransformerCpp：继承ArkAnalyzer/src/core/common下的ArkIRTransformer，复用了ArkIRTransformer下的方法，根据c++语法重写和新增了ArkIRTransformerCpp下的方法
+ArkCxxIRTransformer：继承ArkAnalyzer/src/core/common下的ArkIRTransformer，复用了ArkIRTransformer下的方法，根据c++语法重写和新增了ArkCxxIRTransformer下的方法
 
-ArkValueTransformerCPP：继承ArkAnalyzer/src/core/common下的ArkValueTransformer，复用了ArkValueTransformer下的方法，根据c++语法重写和新增了ArkValueTransformerCpp下的方法
+ArkCxxValueTransformer：继承ArkAnalyzer/src/core/common下的ArkValueTransformer，复用了ArkValueTransformer下的方法，根据c++语法重写和新增了ArkCxxValueTransformer下的方法
 
 ModelUtils：根据c++语法编写了关于获取头文件的include信息的方法
 
@@ -66,7 +66,7 @@ ArkMethodBuilder：根据c++语法编写了关于构建cfg结构下ArkMethod的�
 
 ArkNamespaceBuilder：根据c++语法编写了关于构建cfg结构下ArkNamespace的方法，复用了ArkAnalyzer/src/core/model/builder/ArkNamespaceBuilder下的方法
 
-BodyBuilderCpp：根据c++语法编写了关于构建整个cfg结构的方法，从BodyBuilderCpp开始调用cpp_frontend模块下的方法，复用了ArkAnalyzer/src/core/model/builder/ArkMethodBuilder的方法
+CxxBodyBuilder：根据c++语法编写了关于构建整个cfg结构的方法，从CxxBodyBuilder开始调用cpp_frontend模块下的方法，复用了ArkAnalyzer/src/core/model/builder/ArkMethodBuilder的方法
 
 builderUtils：根据c++语法编写了关于构建cfg的常规方法，复用了ArkAnalyzer/src/core/model/builder下ArkMethodBuilder和builderUtils的方法
 
@@ -76,7 +76,7 @@ builderUtils：根据c++语法编写了关于构建cfg的常规方法，复用�
 
 2、ArkAnalyzer/src/cpp_frontend/model/builder/ArkMethodBuilder下的addInitInConstructor方法，该方法添加默认的构造函数
 
-3、ArkAnalyzer/src/cpp_frontend/model/ArkMethod下的buildBodyCpp和freeBodyBuilderCpp方法，作用分别是构建cfg和释放资源
+3、ArkAnalyzer/src/cpp_frontend/model/ArkMethod下的buildCxxBody和freeCxxBodyBuilder方法，作用分别是构建cfg和释放资源
 
 ## 四、ArkAnalyzer-CPP工具开发介绍
 
@@ -96,14 +96,14 @@ Scene 类为 ArkAnalyzer 的核心类，用户可以通过该类访问所分析�
 graph TD
     buildSceneFromProjectDir --> buildBasicInfo
     buildSceneFromProjectDir --> genArkFiles
-    genArkFiles --> buildArkFileFromFileCpp
+    genArkFiles --> buildArkCxxFileFromFile
     genArkFiles --> buildAllMethodBody
     genArkFiles --> addDefaultConstructors
-    buildArkFileFromFileCpp --> AstUtils.parse
+    buildArkCxxFileFromFile --> AstUtils.parse
     AstUtils.parse --> getPlatformClang
     AstUtils.parse --> JSON.parse
-    buildArkFileFromFileCpp --> genDefaultArkClass
-    buildArkFileFromFileCpp --> buildArkFile
+    buildArkCxxFileFromFile --> genDefaultArkClass
+    buildArkCxxFileFromFile --> buildArkFile
     genDefaultArkClass --> buildDefaultArkClassFromArkFile
     genDefaultArkClass --> arkFile.setDefaultClass
     genDefaultArkClass --> arkFile.addArkClass
@@ -113,10 +113,10 @@ graph TD
     buildArkFile --> buildImportInfo
     genArkFiles --> buildAllMethodBody
     genArkFiles --> addDefaultConstructors
-    buildAllMethodBody --> method.buildBodyCpp
-    method.buildBodyCpp --> bodyBuilderCpp.build
-    bodyBuilderCpp.build --> cfgBuilder.buildCfgBuilder
-    bodyBuilderCpp.build --> cfgBuilder.buildCfg
+    buildAllMethodBody --> method.buildCxxBody
+    method.buildCxxBody --> CxxBodyBuilder.build
+    CxxBodyBuilder.build --> cfgBuilder.buildCfgBuilder
+    CxxBodyBuilder.build --> cfgBuilder.buildCfg
     cfgBuilder.buildCfgBuilder --> walkAST
     cfgBuilder.buildCfg --> buildNormalCfg
     cfgBuilder.buildCfg --> buildCfgForSimpleArrowFunction
@@ -124,7 +124,7 @@ graph TD
     processBlocks --> switchStatementToValueAndStmts
     processBlocks --> tsNodeToStmts
     tsNodeToStmts --> xxxToStmts
-    xxxToStmts --> cppNodeToValueAndStmts
+    xxxToStmts --> cxxNodeToValueAndStmts
 
 ```
 
@@ -150,7 +150,7 @@ scene.buildSceneFromProjectDir(config);
                 const arkFile: ArkFile = new ArkFile(FileUtils.getFileLanguage(file, this.fileLanguages));
                 arkFile.setScene(this);
                 if (arkFile.getLanguage() === Language.CXX) {
-                    buildArkFileFromFileCpp(file, this.realProjectDir, arkFile, this.projectName, this.includeDirs);
+                    buildArkCxxFileFromFile(file, this.realProjectDir, arkFile, this.projectName, this.includeDirs);
                 } else {
                     buildArkFileFromFile(file, this.realProjectDir, arkFile, this.projectName);
                 }
@@ -169,7 +169,7 @@ scene.buildSceneFromProjectDir(config);
 ##### 第二阶段：
 
 这一部分主要介绍两个处理过程：
-1、buildAllMethodBody()，在此函数中使用buildBodyCpp()接口,在开发中walkAST依据语法树的结构划分出block，并构建出block的前后继关系
-2、tsNodeToStmts：在这个函数中根据不同的模块类型，进行不同的处理，比如传入节点是IfStmt时，选择对应的ifStatementToStmtsCpp，构建出相应的IR表示，这里的IR就是三地址码的形式了，例如其中条件表达部分调用conditionToValueAndStmts，构造ArkConditionExpr
+1、buildAllMethodBody()，在此函数中使用buildCxxBody()接口,在开发中walkAST依据语法树的结构划分出block，并构建出block的前后继关系
+2、tsNodeToStmts：在这个函数中根据不同的模块类型，进行不同的处理，比如传入节点是IfStmt时，选择对应的cxxIfStatementToStmts，构建出相应的IR表示，这里的IR就是三地址码的形式了，例如其中条件表达部分调用conditionToValueAndStmts，构造ArkConditionExpr
 
 当前ArkAnalzyer在解析源码生成中间IR集

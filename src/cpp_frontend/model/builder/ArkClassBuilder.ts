@@ -26,10 +26,10 @@ import { ANONYMOUS_CLASS_DELIMITER, ANONYMOUS_CLASS_PREFIX, DEFAULT_ARK_CLASS_NA
 import { IRUtils } from '../../common/IRUtils';
 import { ClassSignature } from '../../../core/model/ArkSignature';
 import { init4InstanceInitMethod, init4StaticInitMethod } from '../../../core/model/builder/ArkClassBuilder';
-import { ArkIRTransformerCpp } from '../../common/ArkIRTransformer';
+import { ArkCxxIRTransformer } from '../../common/ArkIRTransformer';
 import { buildDecorators } from './builderUtils';
 import { buildDefaultArkMethodFromArkClass } from './ArkMethodBuilder';
-import { CxxAstNode, CppTranslationUnit } from '../../ast/ArkCxxAstNode';
+import { CxxAstNode, CxxTranslationUnit } from '../../ast/ArkCxxAstNode';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkClassBuilder');
 
@@ -214,17 +214,17 @@ function buildEnum2ArkClass(clsNode: CxxAstNode, cls: ArkClass, sourceFile: CxxA
 
 function buildArkClassMembers(clsNode: CxxAstNode, cls: ArkClass, sourceFile: CxxAstNode): void {
     buildMethodsForClass(clsNode, cls, sourceFile);
-    let instanceIRTransformer: ArkIRTransformerCpp;
-    let staticIRTransformer: ArkIRTransformerCpp;
+    let instanceIRTransformer: ArkCxxIRTransformer;
+    let staticIRTransformer: ArkCxxIRTransformer;
     // 判断是否有tagUsed属性
     const tagStr = (clsNode.tagUsed ?? '');
 
     if (tagStr === 'class' || tagStr === 'struct' || tagStr === 'union') {
-        instanceIRTransformer = new ArkIRTransformerCpp(sourceFile as CppTranslationUnit, cls.getInstanceInitMethod());
-        staticIRTransformer = new ArkIRTransformerCpp(sourceFile as CppTranslationUnit, cls.getStaticInitMethod());
+        instanceIRTransformer = new ArkCxxIRTransformer(sourceFile as CxxTranslationUnit, cls.getInstanceInitMethod());
+        staticIRTransformer = new ArkCxxIRTransformer(sourceFile as CxxTranslationUnit, cls.getStaticInitMethod());
     }
     if (tagStr === 'enum') {
-        staticIRTransformer = new ArkIRTransformerCpp(sourceFile as CppTranslationUnit, cls.getStaticInitMethod());
+        staticIRTransformer = new ArkCxxIRTransformer(sourceFile as CxxTranslationUnit, cls.getStaticInitMethod());
     }
     const staticInitStmts: Stmt[] = [];
     const instanceInitStmts: Stmt[] = [];

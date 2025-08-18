@@ -19,7 +19,7 @@ import { BasicBlock } from '../../../core/graph/BasicBlock';
 import { Cfg } from '../../../core/graph/Cfg';
 import { ArkClass } from '../../../core/model/ArkClass';
 import { ArkMethod } from '../../../core/model/ArkMethod';
-import { ArkIRTransformerCpp, ValueAndStmts } from '../../common/ArkIRTransformer';
+import { ArkCxxIRTransformer, ValueAndStmts } from '../../common/ArkIRTransformer';
 import { IRUtils } from '../../common/IRUtils';
 import { AliasType, ClassType, UnclearReferenceType, UnknownType, VoidType } from '../../../core/base/Type';
 import { Trap } from '../../../core/base/Trap';
@@ -32,7 +32,7 @@ import { ModifierType } from '../../../core/model/ArkBaseModel';
 import { BlockBuilder as CoreBlockBuilder, Catch, TextError, Variable, Scope } from '../../../core/graph/builder/CfgBuilder';
 import { ModelUtils } from '../../../core/common/ModelUtils';
 import { CONSTRUCTOR_NAME, PROMISE } from '../../../core/common/TSConst';
-import { CxxAstNode, CppTranslationUnit } from '../../ast/ArkCxxAstNode';
+import { CxxAstNode, CxxTranslationUnit } from '../../ast/ArkCxxAstNode';
 
 export class BlockBuilder {
     id: number;
@@ -1193,7 +1193,7 @@ export class CfgBuilder {
         traps: Trap[];
     } {
         const stmts: Stmt[] = [];
-        const arkIRTransformer = new ArkIRTransformerCpp(this.sourceFile as CppTranslationUnit, this.declaringMethod);
+        const arkIRTransformer = new ArkCxxIRTransformer(this.sourceFile as CxxTranslationUnit, this.declaringMethod);
         arkIRTransformer.prebuildStmts().forEach(stmt => stmts.push(stmt));
         const expressionBodyNode = this.astRoot;
         const expressionBodyStmts: Stmt[] = [];
@@ -1201,7 +1201,7 @@ export class CfgBuilder {
             value: expressionBodyValue,
             valueOriginalPositions: expressionBodyPositions,
             stmts: tempStmts,
-        } = arkIRTransformer.cppNodeToValueAndStmts(expressionBodyNode);
+        } = arkIRTransformer.cxxNodeToValueAndStmts(expressionBodyNode);
         tempStmts.forEach(stmt => expressionBodyStmts.push(stmt));
         if (IRUtils.moreThanOneAddress(expressionBodyValue)) {
             ({
@@ -1214,7 +1214,7 @@ export class CfgBuilder {
         const returnStmt = new ArkReturnStmt(expressionBodyValue);
         returnStmt.setOperandOriginalPositions([expressionBodyPositions[0], ...expressionBodyPositions]);
         expressionBodyStmts.push(returnStmt);
-        arkIRTransformer.mapStmtsToTsStmtCpp(expressionBodyStmts, expressionBodyNode);
+        arkIRTransformer.cxxMapStmtsToTsStmt(expressionBodyStmts, expressionBodyNode);
         expressionBodyStmts.forEach(stmt => stmts.push(stmt));
         const cfg = new Cfg();
         const blockInCfg = new BasicBlock();
@@ -1276,18 +1276,18 @@ export class CfgBuilder {
     private initializeBuild(): {
         blockBuilderToCfgBlock: Map<BlockBuilder, BasicBlock>;
         basicBlockSet: Set<BasicBlock>;
-        arkIRTransformer: ArkIRTransformerCpp;
+        arkIRTransformer: ArkCxxIRTransformer;
     } {
         const blockBuilderToCfgBlock = new Map<BlockBuilder, BasicBlock>();
         const basicBlockSet = new Set<BasicBlock>();
-        const arkIRTransformer = new ArkIRTransformerCpp(this.sourceFile as CppTranslationUnit, this.declaringMethod);
+        const arkIRTransformer = new ArkCxxIRTransformer(this.sourceFile as CxxTranslationUnit, this.declaringMethod);
         return { blockBuilderToCfgBlock, basicBlockSet, arkIRTransformer };
     }
 
     private processBlocks(
         blockBuilderToCfgBlock: Map<BlockBuilder, BasicBlock>,
         basicBlockSet: Set<BasicBlock>,
-        arkIRTransformer: ArkIRTransformerCpp
+        arkIRTransformer: ArkCxxIRTransformer
     ): {
         blocksContainLoopCondition: Set<BlockBuilder>;
         blockBuildersBeforeTry: Set<BlockBuilder>;
@@ -1312,12 +1312,12 @@ export class CfgBuilder {
                     blocksContainLoopCondition.add(this.blocks[i]);
                 } else if (statementBuilder instanceof SwitchStatementBuilder) {
                     blockBuildersContainSwitch.push(this.blocks[i]);
-                    const valueAndStmtsOfSwitchAndCases = arkIRTransformer.switchStatementToValueAndStmtsCpp(statementBuilder.astNode as CxxAstNode);
+                    const valueAndStmtsOfSwitchAndCases = arkIRTransformer.cxxSwitchStatementToValueAndStmts(statementBuilder.astNode as CxxAstNode);
                     valueAndStmtsOfSwitchAndCasesAll.push(valueAndStmtsOfSwitchAndCases);
                     continue;
                 }
                 if (statementBuilder.astNode && statementBuilder.code !== '') {
-                    arkIRTransformer.cppNodeToStmts(statementBuilder.astNode).forEach(s => stmtsInBlock.push(s));
+                    arkIRTransformer.cxxNodeToStmts(statementBuilder.astNode).forEach(s => stmtsInBlock.push(s));
                 } else if (statementBuilder.code.startsWith('return')) {
                     stmtsInBlock.push(this.generateReturnStmt(arkIRTransformer));
                 }
@@ -1338,7 +1338,7 @@ export class CfgBuilder {
         };
     }
 
-    private generateReturnStmt(arkIRTransformer: ArkIRTransformerCpp): Stmt {
+    private generateReturnStmt(arkIRTransformer: ArkCxxIRTransformer): Stmt {
         if (this.name === CONSTRUCTOR_NAME) {
             this.declaringMethod.getSubSignature().setReturnType(arkIRTransformer.getThisLocal().getType());
             return new ArkReturnStmt(arkIRTransformer.getThisLocal());
@@ -1364,7 +1364,7 @@ export class CfgBuilder {
         basicBlockSet: Set<BasicBlock>,
         blockBuildersContainSwitch: BlockBuilder[],
         valueAndStmtsOfSwitchAndCasesAll: ValueAndStmts[][],
-        arkIRTransformer: ArkIRTransformerCpp
+        arkIRTransformer: ArkCxxIRTransformer
     ): void {
         const asCoreMap = blockBuilderToCfgBlock as unknown as Map<CoreBlockBuilder, BasicBlock>;
         const asCoreSet = blocksContainLoopCondition as unknown as Set<CoreBlockBuilder>;

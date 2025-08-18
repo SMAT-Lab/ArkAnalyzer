@@ -14,11 +14,11 @@
  */
 
 import { ClassType, GenericType, UnknownType, VoidType } from '../../../core/base/Type';
-import { BodyBuilderCpp } from './BodyBuilder';
+import { CxxBodyBuilder } from './BodyBuilder';
 import { buildViewTree } from '../../../core/graph/builder/ViewTreeBuilder';
 import { ArkClass } from '../../../core/model/ArkClass';
 import { ArkMethod } from '../../../core/model/ArkMethod';
-import { buildModifiers, buildParameters, buildReturnType, cppNode2Type } from './builderUtils';
+import { buildModifiers, buildParameters, buildReturnType, cxxNode2Type } from './builderUtils';
 import { ArkParameterRef, ArkThisRef } from '../../../core/base/Ref';
 import { ArkBody } from '../../../core/model/ArkBody';
 import { Cfg } from '../../../core/graph/Cfg';
@@ -76,8 +76,8 @@ export function buildDefaultArkMethodFromArkClass(declaringClass: ArkClass, mtd:
 
     const defaultMethodNode = node ? node : sourceFile;
 
-    let bodyBuilder = new BodyBuilderCpp(mtd.getSignature(), defaultMethodNode, mtd, sourceFile);
-    mtd.setBodyBuilderCpp(bodyBuilder);
+    let bodyBuilder = new CxxBodyBuilder(mtd.getSignature(), defaultMethodNode, mtd, sourceFile);
+    mtd.setCxxBodyBuilder(bodyBuilder);
 }
 
 export function handleFunctionTemplate(methodNode: CxxAstNode, mtd: ArkMethod, sourceFile: CxxAstNode): void {
@@ -101,7 +101,7 @@ export function handleFunctionTemplate(methodNode: CxxAstNode, mtd: ArkMethod, s
             innerNode.default = innerNode.inner[0].type.qualType;
         }
         if (innerNode.default) {
-            defaultType = cppNode2Type(innerNode.default, mtd, sourceFile);
+            defaultType = cxxNode2Type(innerNode.default, mtd, sourceFile);
         }
         let templateType = new GenericType(typename, defaultType);
         templateType.setIndex(++index);
@@ -154,20 +154,20 @@ export function buildArkMethodFromArkClass(methodNode: CxxAstNode, declaringClas
         mtd.setDeclareSignatures(methodSignature);
         mtd.setDeclareLinesAndCols([line + 1], [character + 1]);
     }
-    let bodyBuilder = new BodyBuilderCpp(mtd.getSignature(), methodNode, mtd, sourceFile);
-    mtd.setBodyBuilderCpp(bodyBuilder);
+    let bodyBuilder = new CxxBodyBuilder(mtd.getSignature(), methodNode, mtd, sourceFile);
+    mtd.setCxxBodyBuilder(bodyBuilder);
     if (mtd.hasBuilderDecorator()) {
         mtd.setViewTree(buildViewTree(mtd));
     } else if (declaringClass.hasComponentDecorator() && mtd.getSubSignature().toString() === 'build()' && !mtd.isStatic()) {
         declaringClass.setViewTree(buildViewTree(mtd));
     }
-    checkAndUpdateMethodCpp(mtd, declaringClass);
+    checkAndUpdateCxxMethod(mtd, declaringClass);
     declaringClass.addOverloadMethod(mtd);
     declaringClass.addMethod(mtd);
     IRUtils.setComments(mtd, methodNode, sourceFile, mtd.getDeclaringArkFile().getScene().getOptions());
 }
 
-function checkAndUpdateMethodCpp(method: ArkMethod, cls: ArkClass): void {
+function checkAndUpdateCxxMethod(method: ArkMethod, cls: ArkClass): void {
     const methodName = method.getName();
     const methodSignature = method.getSignature();
     let methodsWithSameName = cls.getAllMethodsWithName(methodName);
@@ -323,7 +323,7 @@ export function buildDefaultConstructor(arkClass: ArkClass): boolean {
     cfg.getStmts().forEach(s => s.setCfg(cfg));
 
     defaultConstructor.setBody(new ArkBody(locals, cfg));
-    checkAndUpdateMethodCpp(defaultConstructor, arkClass);
+    checkAndUpdateCxxMethod(defaultConstructor, arkClass);
     arkClass.addMethod(defaultConstructor);
 
     return true;

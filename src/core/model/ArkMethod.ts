@@ -36,7 +36,7 @@ import { CONSTRUCTOR_NAME } from '../common/TSConst';
 import { MethodParameter } from './builder/ArkMethodBuilder';
 import { TypeInference } from '../common/TypeInference';
 import { StatementBuilder } from '../../cpp_frontend/graph/builder/CfgBuilder';
-import { BodyBuilderCpp } from '../../cpp_frontend/model/builder/BodyBuilder';
+import { CxxBodyBuilder } from '../../cpp_frontend/model/builder/BodyBuilder';
 
 export const arkMethodNodeKind = [
     'MethodDeclaration',
@@ -72,7 +72,7 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
     private viewTree?: ViewTree;
 
     private bodyBuilder?: BodyBuilder;
-    private bodyBuilderCpp?: BodyBuilderCpp;
+    private CxxBodyBuilder?: CxxBodyBuilder;
 
     private isGeneratedFlag: boolean = false;
     private asteriskToken: boolean = false;
@@ -390,8 +390,8 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
         return this.bodyBuilder;
     }
 
-    public getBodyBuilderCpp(): BodyBuilderCpp | undefined {
-        return this.bodyBuilderCpp;
+    public getCxxBodyBuilder(): CxxBodyBuilder | undefined {
+        return this.CxxBodyBuilder;
     }
 
     /**
@@ -558,10 +558,10 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
         }
     }
 
-    public setBodyBuilderCpp(bodyBuilder: BodyBuilderCpp): void {
-        this.bodyBuilderCpp = bodyBuilder;
+    public setCxxBodyBuilder(bodyBuilder: CxxBodyBuilder): void {
+        this.CxxBodyBuilder = bodyBuilder;
         if (this.getDeclaringArkFile().getScene().buildClassDone()) {
-            this.buildBodyCpp();
+            this.buildCxxBody();
         }
     }
 
@@ -569,8 +569,8 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
         this.bodyBuilder = undefined;
     }
 
-    public freeBodyBuilderCpp(): void {
-        this.bodyBuilderCpp = undefined;
+    public freeCxxBodyBuilder(): void {
+        this.CxxBodyBuilder = undefined;
     }
 
     public buildBody(): void {
@@ -586,14 +586,14 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
         }
     }
 
-    public buildBodyCpp(): void {
-        if (this.bodyBuilderCpp) {
-            const arkBody: ArkBody | null = this.bodyBuilderCpp.build();
+    public buildCxxBody(): void {
+        if (this.CxxBodyBuilder) {
+            const arkBody: ArkBody | null = this.CxxBodyBuilder.build();
             if (arkBody) {
                 this.setBody(arkBody);
                 arkBody.getCfg().setDeclaringMethod(this);
                 if (this.getOuterMethod() === undefined) {
-                    this.bodyBuilderCpp.handleGlobalAndClosure();
+                    this.CxxBodyBuilder.handleGlobalAndClosure();
                 }
             }
         }
