@@ -22,9 +22,9 @@ import { LineColPosition } from '../../../core/base/Position';
 import { ModifierType } from '../../../core/model/ArkBaseModel';
 import { IRUtils } from '../../common/IRUtils';
 import { buildGenericType } from '../../../core/model/builder/builderUtils';
-import { CppAstNode } from '../../ast/ArkCxxAstNode';
+import { CxxAstNode } from '../../ast/ArkCxxAstNode';
 
-export function buildProperty2ArkField(member: CppAstNode, sourceFile: CppAstNode, cls: ArkClass): ArkField {
+export function buildProperty2ArkField(member: CxxAstNode, sourceFile: CxxAstNode, cls: ArkClass): ArkField {
     let field = new ArkField();
     field.setCategory(mapSyntaxKindToFieldOriginType(member.kind) as FieldCategory);
     field.setCode(member.code);

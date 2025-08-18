@@ -45,7 +45,7 @@ import { buildModifiers } from '../model/builder/builderUtils';
 import { ModelUtils } from '../../core/common/ModelUtils';
 import { ArkClass } from '../../core/model/ArkClass';
 import { buildNormalArkClassFromArkMethod } from '../model/builder/ArkClassBuilder';
-import {CppAstNode, CppTranslationUnit} from '../ast/ArkCxxAstNode';
+import {CxxAstNode, CppTranslationUnit} from '../ast/ArkCxxAstNode';
 
 export type ValueAndStmts = {
     value: Value;
@@ -64,12 +64,12 @@ export class DummyStmt extends Stmt {
     }
 }
 
-function nodeInnerNode(node: CppAstNode): CppAstNode {
+function nodeInnerNode(node: CxxAstNode): CxxAstNode {
     if (node.inner && node.inner.length > 0) {
         return node.inner[0];
     }
     console.log('unsupported node !');
-    return { kind: 'unsupported kind' } as CppAstNode;
+    return { kind: 'unsupported kind' } as CxxAstNode;
 }
 
 export class ArkIRTransformerCpp extends ArkIRTransformer {
@@ -113,7 +113,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
     }
 
     // Determine whether to generate temporary variable assignment statement based on operator
-    private shouldGenerateExtraAssignStmtCpp(expression: CppAstNode): boolean {
+    private shouldGenerateExtraAssignStmtCpp(expression: CxxAstNode): boolean {
         if (expression.kind.toString() === 'ParentExpr') {
             return this.shouldGenerateExtraAssignStmtCpp(expression.inner[0]);
         }
@@ -129,7 +129,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
         );
     }
 
-    public cppNodeToStmts(node: CppAstNode): Stmt[] {
+    public cppNodeToStmts(node: CxxAstNode): Stmt[] {
         let stmts: Stmt[] = [];
         switch (node.kind) {
             case 'BreakStmt':
@@ -204,7 +204,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
         return stmts;
     }
 
-    protected classDeclarationToStmtsCpp(node: CppAstNode): Stmt[] {
+    protected classDeclarationToStmtsCpp(node: CxxAstNode): Stmt[] {
         const cls = new ArkClass();
         const declaringArkNamespace = this.declaringMethod.getDeclaringArkClass().getDeclaringArkNamespace();
         if (declaringArkNamespace) {
@@ -215,9 +215,9 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
         return [];
     }
 
-    private typeDefDeclToStmts(typeAliasDeclaration: CppAstNode): Stmt[] {
+    private typeDefDeclToStmts(typeAliasDeclaration: CxxAstNode): Stmt[] {
         const aliasName = typeAliasDeclaration.name;
-        const typeNode: CppAstNode | undefined =
+        const typeNode: CxxAstNode | undefined =
             Array.isArray(typeAliasDeclaration.inner) ? typeAliasDeclaration.inner[0] : undefined;
         const rightOp = typeNode && typeNode.code ? typeNode.code : 'int'; // If there is no type code, use int type as fallback
 
@@ -260,7 +260,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
         return expr;
     }
 
-    private forRangeStatementToStmts(forOfStatement: CppAstNode): Stmt[] {
+    private forRangeStatementToStmts(forOfStatement: CxxAstNode): Stmt[] {
         const stmts: Stmt[] = [];
         let entry = forOfStatement.inner[1];
         // Handle iterable initialization
@@ -332,7 +332,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
         yieldValueStmts.forEach(stmt => stmts.push(stmt));
         const castExpr = new ArkCastExpr(yieldValue, UnknownType.getInstance());
         const castExprPositions = [yieldValuePositions[0], ...yieldValuePositions];
-        const declStmts: CppAstNode = forOfStatement.inner[0];
+        const declStmts: CxxAstNode = forOfStatement.inner[0];
         if (declStmts.kind === 'VarDecl') {
             const {
                 value: initValue,
@@ -353,7 +353,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
         return stmts;
     }
 
-    private catchClauseToStmtsCpp(catchClause: CppAstNode): Stmt[] {
+    private catchClauseToStmtsCpp(catchClause: CxxAstNode): Stmt[] {
         const stmts: Stmt[] = [];
         if (catchClause.inner) {
             const {
@@ -370,11 +370,11 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
         return stmts;
     }
 
-    public cppNodeToValueAndStmts(node: CppAstNode): ValueAndStmts {
+    public cppNodeToValueAndStmts(node: CxxAstNode): ValueAndStmts {
         return this.arkValueTransformerCpp.cppNodeToValueAndStmts(node);
     }
 
-    private returnStatementToStmtsCpp(returnStatement: CppAstNode): Stmt[] {
+    private returnStatementToStmtsCpp(returnStatement: CxxAstNode): Stmt[] {
         const stmts: Stmt[] = [];
         if (returnStatement.inner.length > 0) {
             let { value: exprValue, valueOriginalPositions: exprPositions, stmts: exprStmts } = this.cppNodeToValueAndStmts(returnStatement.inner[0]);
@@ -392,7 +392,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
         return stmts;
     }
 
-    private expressionStatementToStmtsCpp(expressionStatement: CppAstNode): Stmt[] {
+    private expressionStatementToStmtsCpp(expressionStatement: CxxAstNode): Stmt[] {
         const { value: exprValue, valueOriginalPositions: exprPositions, stmts: stmts } = this.cppNodeToValueAndStmts(expressionStatement);
         if (exprValue instanceof AbstractInvokeExpr) {
             this.addInvokeStmtsCpp(exprValue, exprPositions, stmts);
@@ -431,7 +431,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
         }
     }
 
-    public switchStatementToValueAndStmtsCpp(switchStatement: CppAstNode): ValueAndStmts[] {
+    public switchStatementToValueAndStmtsCpp(switchStatement: CxxAstNode): ValueAndStmts[] {
         const valueAndStmtsOfSwitchAndCases: ValueAndStmts[] = [];
         const exprStmts: Stmt[] = [];
         let { value: exprValue, valueOriginalPositions: exprPositions, stmts: exprTempStmts } = this.cppNodeToValueAndStmts(switchStatement.inner[0]);
@@ -469,11 +469,11 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
         return valueAndStmtsOfSwitchAndCases;
     }
 
-    private forStatementToStmtsCpp(forStatement: CppAstNode): Stmt[] {
+    private forStatementToStmtsCpp(forStatement: CxxAstNode): Stmt[] {
         const stmts: Stmt[] = [];
-        let initNode: CppAstNode | undefined;
-        let conditionNoe: CppAstNode | undefined;
-        let incrementor: CppAstNode | undefined;
+        let initNode: CxxAstNode | undefined;
+        let conditionNoe: CxxAstNode | undefined;
+        let incrementor: CxxAstNode | undefined;
         for (const node of forStatement.inner) {
             if (node.kind === 'DeclStmt') {
                 initNode = node;
@@ -506,7 +506,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
         return stmts;
     }
 
-    private whileStatementToStmtsCpp(whileStatement: CppAstNode): Stmt[] {
+    private whileStatementToStmtsCpp(whileStatement: CxxAstNode): Stmt[] {
         const stmts: Stmt[] = [];
         const dummyInitializerStmt = new DummyStmt(ArkIRTransformer.DUMMY_LOOP_INITIALIZER_STMT);
         stmts.push(dummyInitializerStmt);
@@ -517,7 +517,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
         return stmts;
     }
 
-    private doStatementToStmtsCpp(doStatement: CppAstNode): Stmt[] {
+    private doStatementToStmtsCpp(doStatement: CxxAstNode): Stmt[] {
         const stmts: Stmt[] = [];
         const { value: conditionExpr, stmts: conditionStmts } = this.arkValueTransformerCpp.conditionToValueAndStmtsCpp(doStatement.inner[1]);
         conditionStmts.forEach(stmt => stmts.push(stmt));
@@ -525,19 +525,19 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
         return stmts;
     }
 
-    private expressionWithCleanup(exprWithCleanup: CppAstNode): Stmt[] {
+    private expressionWithCleanup(exprWithCleanup: CxxAstNode): Stmt[] {
         return this.expressionToStmts(nodeInnerNode(exprWithCleanup));
     }
 
-    private compoundToStmts(expressionStatement: CppAstNode): Stmt[] {
+    private compoundToStmts(expressionStatement: CxxAstNode): Stmt[] {
         return this.memberCallExpressionToStmts(expressionStatement.inner[0]);
     }
 
-    private memberCallExprToStmts(expressionStatement: CppAstNode): Stmt[] {
+    private memberCallExprToStmts(expressionStatement: CxxAstNode): Stmt[] {
         return this.memberCallExpressionToStmts(expressionStatement);
     }
 
-    private memberCallExpressionToStmts(expression: CppAstNode): Stmt[] {
+    private memberCallExpressionToStmts(expression: CxxAstNode): Stmt[] {
         const { value: exprValue, valueOriginalPositions: exprPositions, stmts: stmts } = this.cppNodeToValueAndStmts(expression);
         if (exprValue instanceof AbstractInvokeExpr) {
             const invokeStmt = new ArkInvokeStmt(exprValue);
@@ -577,7 +577,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
         return stmts;
     }
 
-    private expressionToStmts(expression: CppAstNode): Stmt[] {
+    private expressionToStmts(expression: CxxAstNode): Stmt[] {
         const { value: exprValue, valueOriginalPositions: exprPositions, stmts: stmts } = this.cppNodeToValueAndStmts(expression);
         if (exprValue instanceof AbstractInvokeExpr) {
             const invokeStmt = new ArkInvokeStmt(exprValue);
@@ -627,11 +627,11 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
         return stmts;
     }
 
-    private variableStatementToStmtsCpp(variableStatement: CppAstNode): Stmt[] {
+    private variableStatementToStmtsCpp(variableStatement: CxxAstNode): Stmt[] {
         return this.variableDeclarationListToStmtsCpp(variableStatement);
     }
 
-    public declStatementToStmtsCpp(declStatement: CppAstNode): Stmt[] {
+    public declStatementToStmtsCpp(declStatement: CxxAstNode): Stmt[] {
         const stmts: Stmt[] = [];
         if (declStatement.inner.length === 0) {
             return this.arkValueTransformerCpp.declStmtToValueAndStmts(declStatement).stmts;
@@ -643,11 +643,11 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
         return stmts;
     }
 
-    private variableDeclarationListToStmtsCpp(variableDeclarationList: CppAstNode): Stmt[] {
+    private variableDeclarationListToStmtsCpp(variableDeclarationList: CxxAstNode): Stmt[] {
         return this.arkValueTransformerCpp.declStmtToValueAndStmts(variableDeclarationList).stmts;
     }
 
-    private ifStatementToStmtsCpp(ifStatement: CppAstNode): Stmt[] {
+    private ifStatementToStmtsCpp(ifStatement: CxxAstNode): Stmt[] {
         const stmts: Stmt[] = [];
         if (this.inBuilderMethod) {
             const {value: conditionExpr, valueOriginalPositions: conditionExprPositions, stmts: conditionStmts, } =
@@ -695,7 +695,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
         return stmts;
     }
 
-    private throwStatementToStmtsCpp(throwStatement: CppAstNode): Stmt[] {
+    private throwStatementToStmtsCpp(throwStatement: CxxAstNode): Stmt[] {
         const stmts: Stmt[] = [];
         const { value: throwValue, valueOriginalPositions: throwValuePositions, stmts: throwStmts } = this.cppNodeToValueAndStmts(throwStatement.inner[0]);
         throwStmts.forEach(stmt => stmts.push(stmt));
@@ -705,7 +705,7 @@ export class ArkIRTransformerCpp extends ArkIRTransformer {
         return stmts;
     }
 
-    public mapStmtsToTsStmtCpp(stmts: Stmt[], node: CppAstNode): void {
+    public mapStmtsToTsStmtCpp(stmts: Stmt[], node: CxxAstNode): void {
         for (const stmt of stmts) {
             if (!this.stmtsHaveOriginalText.has(stmt)) {
                 this.stmtsHaveOriginalText.add(stmt);

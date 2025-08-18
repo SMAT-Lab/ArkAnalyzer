@@ -32,7 +32,7 @@ import { ModifierType } from '../../../core/model/ArkBaseModel';
 import { BlockBuilder as CoreBlockBuilder, Catch, TextError, Variable, Scope } from '../../../core/graph/builder/CfgBuilder';
 import { ModelUtils } from '../../../core/common/ModelUtils';
 import { CONSTRUCTOR_NAME, PROMISE } from '../../../core/common/TSConst';
-import { CppAstNode, CppTranslationUnit } from '../../ast/ArkCxxAstNode';
+import { CxxAstNode, CppTranslationUnit } from '../../ast/ArkCxxAstNode';
 
 export class BlockBuilder {
     id: number;
@@ -50,7 +50,7 @@ export class BlockBuilder {
 export class Case {
     value: string;
     stmt: StatementBuilder;
-    valueNode!: CppAstNode;
+    valueNode!: CxxAstNode;
 
     constructor(value: string, stmt: StatementBuilder) {
         this.value = value;
@@ -69,7 +69,7 @@ export class StatementBuilder {
     // TODO:The following two properties need to be obtained
     line: number; // Line number: ast node stores a start value as the starting address of this code, you can count how many line
     column: number; // Column
-    astNode: CppAstNode | null; // Ast node object
+    astNode: CxxAstNode | null; // Ast node object
     scopeID: number;
     addressCode3: string[] = [];
     block: BlockBuilder | null;
@@ -78,7 +78,7 @@ export class StatementBuilder {
     numOfIdentifier: number = 0;
     isDoWhile: boolean = false;
 
-    constructor(type: string, code: string, astNode: CppAstNode | null, scopeID: number) {
+    constructor(type: string, code: string, astNode: CxxAstNode | null, scopeID: number) {
         this.type = type;
         this.code = code;
         this.next = null;
@@ -159,10 +159,10 @@ export class CfgBuilder {
     emptyBody: boolean = false;
     arrowFunctionWithoutBlock: boolean = false;
 
-    private sourceFile: CppAstNode;
+    private sourceFile: CxxAstNode;
     private declaringMethod: ArkMethod;
 
-    constructor(ast: CppAstNode, name: string, declaringMethod: ArkMethod, sourceFile: CppAstNode) {
+    constructor(ast: CxxAstNode, name: string, declaringMethod: ArkMethod, sourceFile: CxxAstNode) {
         this.name = name;
         this.astRoot = ast;
         this.declaringMethod = declaringMethod;
@@ -216,8 +216,8 @@ export class CfgBuilder {
         }
     }
 
-    ASTNodeBreakStatement(c: CppAstNode, lastStatement: StatementBuilder): void {
-        let p: CppAstNode | null = c;
+    ASTNodeBreakStatement(c: CxxAstNode, lastStatement: StatementBuilder): void {
+        let p: CxxAstNode | null = c;
         while (p && p.id !== this.astRoot.id) {
             let pKind = p.kind.toString();
             if (pKind === 'WhileStmt' || pKind === 'DoStmt' || pKind === 'ForStmt') {
@@ -236,7 +236,7 @@ export class CfgBuilder {
         }
     }
 
-    ASTNodeIfStatement(c: CppAstNode, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
+    ASTNodeIfStatement(c: CxxAstNode, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
         let ifstm: ConditionStatementBuilder = new ConditionStatementBuilder('ifStatement', 'IfStmt', c, scopeID);
         this.judgeLastType(ifstm, lastStatement);
         let ifexit: StatementBuilder = new StatementBuilder('ifExit', '', c, scopeID);
@@ -266,7 +266,7 @@ export class CfgBuilder {
         return ifexit;
     }
 
-    ASTNodeWhileStatement(c: CppAstNode, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
+    ASTNodeWhileStatement(c: CxxAstNode, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
         this.breakin = 'loop';
         let loopstm = new ConditionStatementBuilder('loopStatement', '', c, scopeID);
         this.loopStack.push(loopstm);
@@ -302,7 +302,7 @@ export class CfgBuilder {
         return s.substring(0, index);
     }
 
-    ASTNodeForStatement(c: CppAstNode, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
+    ASTNodeForStatement(c: CxxAstNode, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
         this.breakin = 'loop';
         let loopstm = new ConditionStatementBuilder('loopStatement', '', c, scopeID);
         this.loopStack.push(loopstm);
@@ -329,7 +329,7 @@ export class CfgBuilder {
         return loopExit;
     }
 
-    ASTNodeDoStatement(c: CppAstNode, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
+    ASTNodeDoStatement(c: CxxAstNode, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
         this.breakin = 'loop';
         let loopstm = new ConditionStatementBuilder('loopStatement', '', c, scopeID);
         this.loopStack.push(loopstm);
@@ -362,7 +362,7 @@ export class CfgBuilder {
         return loopExit;
     }
 
-    private sliceCaseDefaultNode(node: CppAstNode, clauses: CppAstNode[]): void {
+    private sliceCaseDefaultNode(node: CxxAstNode, clauses: CxxAstNode[]): void {
         if (node.kind === 'BreakStmt' || node.kind === 'DefaultStmt' || node.kind === 'ContinueStmt') {
             clauses.push(node);
             return;
@@ -384,17 +384,17 @@ export class CfgBuilder {
     }
 
     // Convert cpp's case-default ast format to TS's caseClause/defaultClause
-    private getCaseDefClauseAsts(switchNode: CppAstNode):CppAstNode[] {
+    private getCaseDefClauseAsts(switchNode: CxxAstNode):CxxAstNode[] {
         // When cpp parses case: without statements and no break,
         // it will treat the following case/default as inner nodes of that case,
         // so the original ast needs to be split into individual cases and defaults
-        let tempClauses: CppAstNode[] = [];
+        let tempClauses: CxxAstNode[] = [];
         for (let node of switchNode.inner[1].inner) {
             this.sliceCaseDefaultNode(node, tempClauses);
         }
         // When there are no case brackets, case and break/continue are separate nodes in cpp,
         // here we add the break/continue nodes as inner members of case or default nodes
-        return tempClauses.reduce((acc: CppAstNode[], curr: CppAstNode, idx: number, arr: CppAstNode[]) => {
+        return tempClauses.reduce((acc: CxxAstNode[], curr: CxxAstNode, idx: number, arr: CxxAstNode[]) => {
             if (['CaseStmt', 'DefaultStmt'].includes(curr.kind.toString())) {
                 curr.parent = switchNode.inner[1];
                 if (idx + 1 < arr.length && ['BreakStmt', 'ContinueStmt'].includes(arr[idx + 1].kind.toString())) {
@@ -404,10 +404,10 @@ export class CfgBuilder {
                 acc.push(curr);
             }
             return acc;
-        }, [] as CppAstNode[]);
+        }, [] as CxxAstNode[]);
     }
 
-    ASTNodeSwitchStatement(c: CppAstNode, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
+    ASTNodeSwitchStatement(c: CxxAstNode, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
         this.breakin = 'switch';
         let switchstm = new SwitchStatementBuilder('switchStatement', '', c, scopeID);
         this.judgeLastType(switchstm, lastStatement);
@@ -422,7 +422,7 @@ export class CfgBuilder {
         for (let i = 0; i < c.inner[1].inner.length; i++) {
             const clause = c.inner[1].inner[i];
             let casestm: StatementBuilder;
-            let caseBody: CppAstNode[] = [...clause.inner];
+            let caseBody: CxxAstNode[] = [...clause.inner];
             if (clause.kind.toString() === 'CaseStmt') {
                 casestm = new StatementBuilder('statement', 'case ' + clause.inner[0].code + ':', clause, scopeID);
                 caseBody = caseBody.slice(1);
@@ -461,7 +461,7 @@ export class CfgBuilder {
     }
 
     private ASTNodeCXXMemberCallExpr(
-        innerNode: CppAstNode,
+        innerNode: CxxAstNode,
         lastStatement: StatementBuilder,
         scopeID: number
     ): StatementBuilder {
@@ -469,7 +469,7 @@ export class CfgBuilder {
         let callee = '';
         const first = innerNode?.inner?.[0];
         if (first && first.kind === 'MemberExpr') {
-            let childInner: CppAstNode = first;
+            let childInner: CxxAstNode = first;
             // Callee: name is preferred. Some JSONs may only have code
             callee = '.' + (childInner.name || childInner.code || '');
             // 2) Go down through ImplicitCastExpr chain until DeclRefExpr or other end points use the optional chain at the same time to avoid out of bounds
@@ -497,7 +497,7 @@ export class CfgBuilder {
     }
 
 
-    ASTNodeGotoStatement(innerNode: CppAstNode, lastStatement: StatementBuilder, scopeID: number): void {
+    ASTNodeGotoStatement(innerNode: CxxAstNode, lastStatement: StatementBuilder, scopeID: number): void {
         let s = new StatementBuilder('gotoStatement', innerNode.code, innerNode, scopeID);
         this.judgeLastType(s, lastStatement);
         let label: string = innerNode.code.substring(innerNode.code.indexOf('goto ') + 5);
@@ -533,7 +533,7 @@ export class CfgBuilder {
         }
     }
 
-    ASTNodeLabelStatement(innerNode: CppAstNode, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
+    ASTNodeLabelStatement(innerNode: CxxAstNode, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
         let labelStmt = new StatementBuilder('statement', 'goto label:' + innerNode.name, innerNode, scopeID);
         // Handle the sequence relationship between goto statements and label statements
 
@@ -593,15 +593,15 @@ export class CfgBuilder {
         return str;
     }
 
-    ASTNodeTryStatement(c: CppAstNode, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
+    ASTNodeTryStatement(c: CxxAstNode, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
         let trystm = new TryStatementBuilder('tryStatement', 'try', c, scopeID);
         this.judgeLastType(trystm, lastStatement);
         let tryExit = new StatementBuilder('tryExit', '', c, scopeID);
         this.exits.push(tryExit);
         trystm.tryExit = tryExit;
 
-        let tryBlock: CppAstNode | undefined = undefined;
-        let catchBlockList: CppAstNode[] = [];
+        let tryBlock: CxxAstNode | undefined = undefined;
+        let catchBlockList: CxxAstNode[] = [];
         for (const node of c.inner) {
             if (node.kind === 'CompoundStmt') {
                 tryBlock = node;
@@ -657,12 +657,12 @@ export class CfgBuilder {
         return finalExit;
     }
 
-    private hitsControlBoundaryBeforeRoot(node: CppAstNode): boolean {
+    private hitsControlBoundaryBeforeRoot(node: CxxAstNode): boolean {
         const CONTROL_BOUNDARY_KINDS = new Set([
             'IfStmt', 'WhileStmt', 'DoStmt', 'ForStmt',
             'CaseStmt', 'DefaultStmt', 'CXXTryStmt',
         ]);
-        let p: CppAstNode | null = node;
+        let p: CxxAstNode | null = node;
         const rootId = this.astRoot.id;
         while (p && p.id !== rootId) {
             if (CONTROL_BOUNDARY_KINDS.has(p.kind)) {
@@ -673,7 +673,7 @@ export class CfgBuilder {
         return false;
     }
 
-    walkAST(lastStatement: StatementBuilder, nextStatement: StatementBuilder, nodes: CppAstNode[]): void {
+    walkAST(lastStatement: StatementBuilder, nextStatement: StatementBuilder, nodes: CxxAstNode[]): void {
         let scope = new Scope(this.scopes.length);
         this.scopes.push(scope);
         for (let i = 0; i < nodes.length; i++) {
@@ -696,7 +696,7 @@ export class CfgBuilder {
         }
     }
 
-    handleASTStmtSuccession(innerNode: CppAstNode, lastStatement: StatementBuilder, scope: Scope): StatementBuilder {
+    handleASTStmtSuccession(innerNode: CxxAstNode, lastStatement: StatementBuilder, scope: Scope): StatementBuilder {
         let nodeKind = innerNode.kind.toString();
         let s: StatementBuilder;
         switch (nodeKind) {
@@ -1017,7 +1017,7 @@ export class CfgBuilder {
         const returnStatement = new StatementBuilder('returnStatement', 'return;', null, this.exit.scopeID);
         let TryOrSwitchExit = false;
         if (notReturnStmts.length === 1 && notReturnStmts[0].block) {
-            let p: CppAstNode | null = notReturnStmts[0].astNode;
+            let p: CxxAstNode | null = notReturnStmts[0].astNode;
             while (p && p.id !== this.astRoot.id) {
                 if (p.kind === 'CXXTryStmt' || p.kind === 'SwitchStmt') {
                     TryOrSwitchExit = true;
@@ -1112,8 +1112,8 @@ export class CfgBuilder {
         throw new TextError(mes);
     }
 
-    getFuncBodyStmt(): CppAstNode[] {
-        let stmts: CppAstNode[] = [];
+    getFuncBodyStmt(): CxxAstNode[] {
+        let stmts: CxxAstNode[] = [];
         if (this.astRoot.inner) {
             for (let i = 0; i < this.astRoot.inner.length; i++) {
                 if (this.astRoot.kind === 'CXXConstructorDecl' && ['CXXConstructExpr', 'CXXCtorInitializer'].includes(this.astRoot.inner[i].kind)) {
@@ -1129,7 +1129,7 @@ export class CfgBuilder {
     }
 
     buildCfgBuilder(): void {
-        let stmts: CppAstNode[] = [];
+        let stmts: CxxAstNode[] = [];
         if (this.astRoot.kind.toString() === 'TranslationUnit') {
             stmts = [...this.astRoot.inner];
         } else if (
@@ -1155,7 +1155,7 @@ export class CfgBuilder {
         this.addReturnStmt();
     }
 
-    private handleBuilder(stmts: CppAstNode[]): void {
+    private handleBuilder(stmts: CxxAstNode[]): void {
         let lastStmt = this.entry;
         for (const stmt of stmts) {
             const stmtBuilder = new StatementBuilder('statement', stmt.code, stmt, 0);
@@ -1312,7 +1312,7 @@ export class CfgBuilder {
                     blocksContainLoopCondition.add(this.blocks[i]);
                 } else if (statementBuilder instanceof SwitchStatementBuilder) {
                     blockBuildersContainSwitch.push(this.blocks[i]);
-                    const valueAndStmtsOfSwitchAndCases = arkIRTransformer.switchStatementToValueAndStmtsCpp(statementBuilder.astNode as CppAstNode);
+                    const valueAndStmtsOfSwitchAndCases = arkIRTransformer.switchStatementToValueAndStmtsCpp(statementBuilder.astNode as CxxAstNode);
                     valueAndStmtsOfSwitchAndCasesAll.push(valueAndStmtsOfSwitchAndCases);
                     continue;
                 }

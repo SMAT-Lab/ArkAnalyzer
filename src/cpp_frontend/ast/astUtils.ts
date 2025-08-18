@@ -20,19 +20,19 @@ import * as os from 'os';
 
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { ClangPath } from './const';
-import {CppAstNode, CppAstNodeLite} from './ArkCxxAstNode';
+import {CxxAstNode, CxxAstNodeLite} from './ArkCxxAstNode';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'astUtils');
 
 export type GetParentFn = {
-    (isNeedInner: true): CppAstNode;
-    (isNeedInner?: false): CppAstNodeLite;
+    (isNeedInner: true): CxxAstNode;
+    (isNeedInner?: false): CxxAstNodeLite;
 };
 
 export class AstUtils {
     private static currentAccess: string = 'public';
 
-    public static parse(sourceFile: string, ccJsonPath: string | null, includeDirs: string[] | null, llvmPath: string): CppAstNode {
+    public static parse(sourceFile: string, ccJsonPath: string | null, includeDirs: string[] | null, llvmPath: string): CxxAstNode {
         if (!fs.existsSync(sourceFile)) {
             logger.warn('parse file is not exists');
             return {
@@ -78,13 +78,13 @@ export class AstUtils {
         } else {
             logger.info('Parsing completed!');
         }
-        let translationUnit = JSON.parse(fs.readFileSync(astPath, 'utf-8')) as CppAstNode;
-        translationUnit = this.filter(sourceFile, translationUnit) as CppAstNode;
+        let translationUnit = JSON.parse(fs.readFileSync(astPath, 'utf-8')) as CxxAstNode;
+        translationUnit = this.filter(sourceFile, translationUnit) as CxxAstNode;
         deleteFIle(astPath);
         return translationUnit;
     }
 
-    private static updateInner(sourceFile: string, firstOccurrenceOfMainFile: boolean, entry: CppAstNode, newInner: CppAstNode[]): void {
+    private static updateInner(sourceFile: string, firstOccurrenceOfMainFile: boolean, entry: CxxAstNode, newInner: CxxAstNode[]): void {
         if (!firstOccurrenceOfMainFile) {
             if (Object.prototype.hasOwnProperty.call(entry, 'isImplicit') && entry.isImplicit && entry.kind !== 'UsingDirectiveDecl') {
                 return;
@@ -114,7 +114,7 @@ export class AstUtils {
         newInner.push(entry);
     }
 
-    private static filter(sourceFile: string, translationUnit: CppAstNode):CppAstNode {
+    private static filter(sourceFile: string, translationUnit: CxxAstNode):CxxAstNode {
         let newInner: any[] = [];
         let firstOccurrenceOfMainFile: boolean = false;
         for (let index in translationUnit.inner) {
@@ -130,23 +130,23 @@ export class AstUtils {
         return translationUnit;
     }
 
-    private static filterChildren(cursor: CppAstNode): CppAstNode[] {
-        let filteredChildren: CppAstNode[] = [];
+    private static filterChildren(cursor: CxxAstNode): CxxAstNode[] {
+        let filteredChildren: CxxAstNode[] = [];
         if (!Object.prototype.hasOwnProperty.call(cursor, 'inner')) {
             return filteredChildren;
         }
         filteredChildren = cursor.inner.filter(
-            (item: CppAstNode) => !Object.prototype.hasOwnProperty.call(cursor, 'isImplicit') ||
+            (item: CxxAstNode) => !Object.prototype.hasOwnProperty.call(cursor, 'isImplicit') ||
                                            !item.isImplicit || cursor.kind === 'LambdaExpr' || item.isUsed
         );
         return filteredChildren;
     }
 
 // Factory: generates a getParent implementation with overload signatures for a given cursor
-    private static makeGetParent(cursor: CppAstNode):GetParentFn {
-        function getParent(isNeedInner: true): CppAstNode;
-        function getParent(isNeedInner?: false): CppAstNodeLite;
-        function getParent(isNeedInner?: boolean): CppAstNode | CppAstNodeLite {
+    private static makeGetParent(cursor: CxxAstNode):GetParentFn {
+        function getParent(isNeedInner: true): CxxAstNode;
+        function getParent(isNeedInner?: false): CxxAstNodeLite;
+        function getParent(isNeedInner?: boolean): CxxAstNode | CxxAstNodeLite {
             if (isNeedInner) {
                 // Return the "full parent node": shallow copy, keeping the inner property
                 // Note: This will also copy getParent itself (usually not an issue)
@@ -154,12 +154,12 @@ export class AstUtils {
             }
             // Return the "lightweight snapshot": shallow copy without inner, keeping other fields
             const { inner, ...rest } = cursor;
-            return rest; // Inferred as CppAstNodeLite
+            return rest; // Inferred as CxxAstNodeLite
         }
         return getParent;
     }
 
-    private static fullInfo(cursor: CppAstNode): void {
+    private static fullInfo(cursor: CxxAstNode): void {
         if (!Array.isArray(cursor.inner)) {
             cursor.inner = [];
         }
@@ -208,7 +208,7 @@ export class AstUtils {
         return null;
     }
 
-    private static processAccess(cursor: CppAstNode): void {
+    private static processAccess(cursor: CxxAstNode): void {
         if (cursor.kind === 'AccessSpecDecl') {
             this.currentAccess = cursor.access ?? '';
         }

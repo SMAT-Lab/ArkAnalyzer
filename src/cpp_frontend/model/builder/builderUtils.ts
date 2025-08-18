@@ -31,10 +31,10 @@ import { ArkMethod } from '../../../core/model/ArkMethod';
 import { MethodParameter } from '../../../core/model/builder/ArkMethodBuilder';
 import { modifierKind2EnumCpp } from '../../../core/model/ArkBaseModel';
 import { buildGenericType } from '../../../core/model/builder/builderUtils';
-import { CppAstNode, CppTypeInfo } from '../../ast/ArkCxxAstNode';
+import { CxxAstNode, CppTypeInfo } from '../../ast/ArkCxxAstNode';
 import { Decorator } from '../../../core/base/Decorator';
 
-function extractCommonModifiers(node: CppAstNode): number {
+function extractCommonModifiers(node: CxxAstNode): number {
     let modifiers: number = 0;
     const nodeType: string = node?.type?.qualType ?? '';
 
@@ -50,14 +50,14 @@ function extractCommonModifiers(node: CppAstNode): number {
     return modifiers;
 }
 
-function hasOverrideAttr(inner: CppAstNode[] | undefined): boolean {
+function hasOverrideAttr(inner: CxxAstNode[] | undefined): boolean {
     if (!inner) {
         return false;
     }
     return inner.some(child => child.kind === 'attribute(override)');
 }
 
-function getMtdModifier(node: CppAstNode, modifiers: number): number {
+function getMtdModifier(node: CxxAstNode, modifiers: number): number {
     if (node.code.startsWith('virtual ')) {
         modifiers |= modifierKind2EnumCpp('virtual');
         // Definition of pure virtual function: virtual func()=0/virtual func()=0
@@ -71,7 +71,7 @@ function getMtdModifier(node: CppAstNode, modifiers: number): number {
     return modifiers;
 }
 
-export function buildModifiers(node: CppAstNode): number {
+export function buildModifiers(node: CxxAstNode): number {
     let modifiers = extractCommonModifiers(node);
 
     if (node.kind === 'CXXMethodDecl') {
@@ -83,7 +83,7 @@ export function buildModifiers(node: CppAstNode): number {
     return modifiers;
 }
 
-export function buildDecorators(node: CppAstNode, sourceFile: CppAstNode): Set<Decorator> {
+export function buildDecorators(node: CxxAstNode, sourceFile: CxxAstNode): Set<Decorator> {
     let decorators: Set<Decorator> = new Set();
     return decorators;
 }
@@ -99,7 +99,7 @@ export function buildModifiersForCxxCls(cls: ArkClass): number {
     return 0;
 }
 
-export function buildTypeParameters(clsNode: CppAstNode, sourceFile: CppAstNode, arkInstance: ArkMethod | ArkClass): GenericType[] {
+export function buildTypeParameters(clsNode: CxxAstNode, sourceFile: CxxAstNode, arkInstance: ArkMethod | ArkClass): GenericType[] {
     const genericTypes: GenericType[] = [];
     let index = -1;
     for (const innerNode of clsNode.inner) {
@@ -121,12 +121,12 @@ export function buildTypeParameters(clsNode: CppAstNode, sourceFile: CppAstNode,
     return genericTypes;
 }
 
-export function buildParameters(params: CppAstNode[], arkInstance: ArkMethod | ArkField, sourceFile: CppAstNode): MethodParameter[] {
+export function buildParameters(params: CxxAstNode[], arkInstance: ArkMethod | ArkField, sourceFile: CxxAstNode): MethodParameter[] {
     let parameters: MethodParameter[] = [];
     if (!params || params.length === 0) {
         return [];
     }
-    params.forEach((parameter: CppAstNode) => {
+    params.forEach((parameter: CxxAstNode) => {
         let methodParameter = new MethodParameter();
 
         // name
@@ -147,7 +147,7 @@ export function buildParameters(params: CppAstNode[], arkInstance: ArkMethod | A
     return parameters;
 }
 
-export function buildReturnType(mtdNode: CppAstNode, sourceFile: CppAstNode, method: ArkMethod): Type {
+export function buildReturnType(mtdNode: CxxAstNode, sourceFile: CxxAstNode, method: ArkMethod): Type {
     let nodeType = mtdNode.type;
     if (nodeType) {
         let funcRetType;
@@ -175,7 +175,7 @@ export function buildReturnType(mtdNode: CppAstNode, sourceFile: CppAstNode, met
  *@ param sourceFile - optional source file node
  *@ returns Type after conversion
  */
-export function cppNode2Type(nodeQualType: CppAstNode | string, arkInstance: ArkMethod | ArkClass | ArkField | undefined, sourceFile?: CppAstNode): Type {
+export function cppNode2Type(nodeQualType: CxxAstNode | string, arkInstance: ArkMethod | ArkClass | ArkField | undefined, sourceFile?: CxxAstNode): Type {
     // Handle special type
     if (nodeQualType === 'void () const') {
         return buildTypeFromPreStr('VoidKeyword', arkInstance);

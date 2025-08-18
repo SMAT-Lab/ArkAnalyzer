@@ -73,6 +73,7 @@ export class BooleanConstant extends Constant {
     }
 
     public static getInstance(value: boolean | string): NullConstant {
+        // When ast is parsed, boolean type is assigned
         if (value.toString() === 'true') {
             return this.TRUE;
         } else {
@@ -123,6 +124,10 @@ export class UndefinedConstant extends Constant {
     }
 }
 
+/**
+ *The LabelConstant class is used to create a label constant object
+ *This class inherits from the Constant base class and is specifically used to process constant values of label types
+ */
 export class LabelConstant extends Constant {
     constructor(value: string) {
         super(value, LabelType.getInstance());

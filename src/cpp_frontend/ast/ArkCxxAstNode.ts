@@ -50,10 +50,10 @@ export interface CppCtorAnyInit {
     name: string;
     type?: CppTypeInfo;
 }
-export type CppAstNodeLite = Omit<CppAstNode, 'inner'>;
+export type CxxAstNodeLite = Omit<CxxAstNode, 'inner'>;
 
 /** General C++ AST node (compatible with Clang JSON) */
-export interface CppAstNode {
+export interface CxxAstNode {
     /** Unique node ID */
     id?: number | string;
 
@@ -135,23 +135,23 @@ export interface CppAstNode {
     range?: CppRange;
 
     /** Child nodes */
-    inner: CppAstNode[];
+    inner: CxxAstNode[];
 
     /**
      * Root node may additionally carry: nodes from user includes aggregated here
      * (filled by filterToMainFileOnly(); also present in sample JSON)
      */
-    headerUnits?: CppAstNode[];
+    headerUnits?: CxxAstNode[];
 
     typeArguments?: string[];
 
     default?: string;
 
-    parent?: CppAstNode;
+    parent?: CxxAstNode;
 
     getParent?: {
-        (isNeedInner: true): CppAstNode; // Requires full parent node (including inner)
-        (isNeedInner?: false): CppAstNodeLite; // Lightweight snapshot (excluding inner)
+        (isNeedInner: true): CxxAstNode; // Requires full parent node (including inner)
+        (isNeedInner?: false): CxxAstNodeLite; // Lightweight snapshot (excluding inner)
     };
 
     access?: string;
@@ -160,9 +160,9 @@ export interface CppAstNode {
 }
 
 /** root type */
-export interface CppTranslationUnit extends CppAstNode {
+export interface CppTranslationUnit extends CxxAstNode {
     kind: 'TranslationUnit' | 'TranslationUnitDecl';
     fileName?: string;
-    headerUnits?: CppAstNode[];
+    headerUnits?: CxxAstNode[];
     projectName?: string;
 }

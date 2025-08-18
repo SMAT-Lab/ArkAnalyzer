@@ -377,6 +377,12 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
         return null;
     }
 
+    /**
+     * Find a method that matches the specified signature
+     * @ param mtd - Ark method object to check
+     * @ param methodSignature - the method signature to match
+     * @ returns If a matching method is found, the method object will be returned; otherwise, null will be returned
+     */
     private findMatchingMethod(mtd: ArkMethod, methodSignature: MethodSignature): ArkMethod | null {
         const implSignature = mtd.getImplementationSignature();
         if (implSignature !== null && implSignature.isMatch(methodSignature)) {
@@ -422,6 +428,15 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
         }
     }
 
+    /**
+     * Adds an overloaded method to the class.
+     *
+     * This method handles the logic for adding method overloads. If a method with the same name
+     * already exists, it creates or updates the overload method list. If the new method has the
+     * same signature as an existing method, it replaces the existing method with the new one.
+     *
+     * @param newMethod - The new method to be added as an overload
+     */
     public addOverloadMethod(newMethod: ArkMethod): void {
         const methodName = newMethod.getName();
         const existingMtd = this.getMethodWithName(methodName) ?? this.getStaticMethodWithName(methodName);

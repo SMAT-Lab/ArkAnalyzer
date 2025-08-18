@@ -991,9 +991,16 @@ export class Scene {
         return arkMethod || null;
     }
 
-    public getMethodCpp(methodSignature: MethodSignature, refresh?: boolean): ArkMethod | null {
+    /**
+     * Retrieve an Ark C++ method object based on its method signature.
+     *
+     * @param methodSignature - The method signature used to locate the specific method
+     * @param refresh - Optional parameter to indicate whether to refresh the cache, defaults to false
+     * @returns The corresponding ArkMethod object if found, otherwise null
+     */
+    public getArkCxxMethod(methodSignature: MethodSignature, refresh?: boolean): ArkMethod | null {
         if (this.projectName === methodSignature.getDeclaringClassSignature().getDeclaringFileSignature().getProjectName()) {
-            return this.getMethodsMapCpp(refresh).get(methodSignature.toMapKey()) || null;
+            return this.getCxxMethodsMap(refresh).get(methodSignature.toMapKey()) || null;
         } else {
             return this.getClass(methodSignature.getDeclaringClassSignature())?.getMethod(methodSignature) || null;
         }
@@ -1014,7 +1021,12 @@ export class Scene {
         return this.methodsMap;
     }
 
-    private getMethodsMapCpp(refresh?: boolean): Map<string, ArkMethod> {
+    /**
+     * Get the C++ methods map
+     * @param refresh - Whether to force refresh the map, defaults to false
+     * @returns Returns a Map containing all C++ methods, with method signatures as keys and ArkMethod objects as values
+     */
+    private getCxxMethodsMap(refresh?: boolean): Map<string, ArkMethod> {
         if (refresh || (this.methodsMap.size === 0 && this.buildStage >= SceneBuildStage.METHOD_DONE)) {
             this.methodsMap.clear();
             for (const cls of this.getClassesMap().values()) {
@@ -1128,7 +1140,7 @@ export class Scene {
      ```
      */
     public inferTypes(): void {
-        this.buildFuncMapForCpp();
+        this.buildCxxFuncMap();
         this.filesMap.forEach(file => {
             try {
                 file.getLanguage() === Language.CXX ? IRInferenceCpp.inferFile(file) : IRInference.inferFile(file);
@@ -1143,7 +1155,13 @@ export class Scene {
         SdkUtils.dispose();
     }
 
-    private buildFuncMapForCpp(): void {
+    /**
+     *Build C++function mapping table
+     *
+     *This function traverses all C++header files to find the corresponding implementation file for each class's method,
+     *And establish the mapping relationship between methods and implementation files
+     */
+    private buildCxxFuncMap(): void {
         const headerFileRefMap = this.getCppHeaderFileRefMap();
         for (const [headerPath, refFiles] of headerFileRefMap) {
             const headerArkFile = this.getFile(new FileSignature(this.projectName, path.relative(this.realProjectDir, headerPath)));
@@ -1159,6 +1177,12 @@ export class Scene {
         }
     }
 
+    /**
+     *Implementation method of search method
+     *@ param mtd - Ark method object
+     *@ param headerPath - Header file path
+     *@ param sortedRefFiles - sorted reference file array
+     */
     private findMtdImpl(mtd: ArkMethod, headerPath: string, sortedRefFiles: string[]): void {
         const isFuncImpl = mtd.getImplementationSignature();
         if (isFuncImpl || mtd.isDefaultArkMethod() || mtd.getName() === INSTANCE_INIT_METHOD_NAME || mtd.getName() === STATIC_INIT_METHOD_NAME) {
@@ -1167,6 +1191,14 @@ export class Scene {
         this.mapHeaderToSource(mtd, headerPath, sortedRefFiles);
     }
 
+    /**
+     *Get the C++header file reference mapping table
+     *
+     *This function traverses all files and filters out C++source files (.cpp ,.c,.cxx),
+     *Then analyze the import information in these source files, and establish the reference relationship mapping from the header file to the source file.
+     *
+     *@ returns Map<string, string []>The mapping from the header file path to the source file path array that references the header file
+     */
     private getCppHeaderFileRefMap(): Map<string, string[]> {
         const headerFileRefMap = new Map<string, string[]>();
         const cppSuffixes = ['.cpp', '.c', '.cxx'];
@@ -1185,13 +1217,19 @@ export class Scene {
         return headerFileRefMap;
     }
 
+    /**
+     *Process import information and establish header file reference relationship mapping
+     *@ param im Import information object, including imported module information
+     *@ param filePath Path of the current file
+     *@ param headerFileRefMap header file reference relationship mapping table, used to record which files are referenced by each header file
+     */
     private processImportInfo(im: ImportInfo, filePath: string, headerFileRefMap: Map<string, string[]>): void {
         let imFrom = im.getFrom();
         if (!imFrom) {
             return;
         }
         if (!fs.existsSync(imFrom)) {
-            // 若路径不存在，尝试使用 includeDirs 查找相对路径
+            // If the path does not exist, try to use includeDirs to find the relative path
             imFrom = getFileAbsPath(this.includeDirs, imFrom);
             if (!imFrom) {
                 return;
@@ -1203,6 +1241,12 @@ export class Scene {
         headerFileRefMap.get(imFrom)!.push(filePath);
     }
 
+    /**
+     *Sort the reference file array, and prioritize the reference files with the same name as the target file
+     *@ param headerFilePath Destination header file path
+     *@ param refFiles Array of reference file paths to be sorted
+     *@ returns The array of reference file paths sorted, with files with the same name first and other files second
+     */
     private sortRefFiles(headerFilePath: string, refFiles: string[]): string[] {
         const targetFileName = path.parse(headerFilePath).name;
         const prioritized: string[] = [];
@@ -1217,6 +1261,14 @@ export class Scene {
         return [...prioritized, ...others];
     }
 
+    /**
+     *Map the method declaration to the corresponding source code implementation
+     *Find the corresponding method implementation in the reference file by matching the method signature, and establish the association between declaration and implementation
+     *
+     *@ param mtdDecl - target method declaration object, used to obtain declaration information and set implementation signature
+     *@ param headerFile - Header file path, as one of the reference files
+     *@ param refFiles - reference file list, used to search method implementation
+     */
     private mapHeaderToSource(mtdDecl: ArkMethod, headerFile: string, refFiles: string[]): void {
         const tgtClsName = mtdDecl.getDeclaringArkClass().getName();
         const tgtMtdSubSig = mtdDecl.getSubSignature();
@@ -1235,9 +1287,9 @@ export class Scene {
                 const nameMatchingMtdSubSig = mtd.getSubSignature();
                 const mtdSubSigStr = `${nameMatchingMtdSubSig.getReturnType().toString()} ${tgtClsName}::${nameMatchingMtdSubSig.toString()}`;
                 if (mtdSubSigStr === matchKey) {
-                    // 设置当前函数声明对应的函数实现的签名
+                    // Set the signature of the function implementation corresponding to the current function declaration
                     mtdDecl.setImplementationSignature(mtd.getSignature());
-                    // 函数实现可能会缺失函数声明中已有的修饰符（如static），此处给函数实现补上
+                    // The function implementation may be missing the existing modifiers (such as static) in the function declaration. Here we add
                     mtd.setModifiers(mtdDecl.getModifiers() | mtd.getModifiers());
                     return;
                 }

@@ -18,7 +18,7 @@ import { ImportInfo } from '../../../core/model/ArkImport';
 import { IRUtils } from '../../common/IRUtils';
 import { ArkFile } from '../../../core/model/ArkFile';
 import { normalize } from 'path';
-import { CppAstNode, CppTranslationUnit} from '../../ast/ArkCxxAstNode';
+import { CxxAstNode, CppTranslationUnit} from '../../ast/ArkCxxAstNode';
 
 export function buildImportInfo(node: any, sourceFile: any, arkFile: ArkFile): ImportInfo[] {
     if (node.kind === 'inclusion directive') {
@@ -31,8 +31,8 @@ export function buildImportInfo(node: any, sourceFile: any, arkFile: ArkFile): I
     return [];
 }
 
-function buildGenericImportInfo(node: CppAstNode, sourceFile: CppTranslationUnit, arkFile: ArkFile,
-                                importClauseNameBuilder: (node: CppAstNode) => string): ImportInfo[] {
+function buildGenericImportInfo(node: CxxAstNode, sourceFile: CppTranslationUnit, arkFile: ArkFile,
+                                importClauseNameBuilder: (node: CxxAstNode) => string): ImportInfo[] {
     const originTsPosition = LineColPosition.buildFromNodeCpp(node, sourceFile);
     const tsSourceCode = node.code;
     let importInfos: ImportInfo[] = [];

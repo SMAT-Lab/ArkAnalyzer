@@ -167,6 +167,10 @@ export abstract class AbstractInvokeExpr extends AbstractExpr {
         return uses;
     }
 
+    /**
+     *Convert parameter list to string representation
+     *@ returns the formatted parameter string, including parentheses and parameter list
+     */
     protected argsToString(): string {
         const strs: string[] = [];
         strs.push('(');
@@ -188,6 +192,14 @@ export abstract class AbstractInvokeExpr extends AbstractExpr {
 export class ArkInstanceInvokeExpr extends AbstractInvokeExpr {
     private base: Local;
 
+    /**
+     *Constructor, used to create method call instances
+     *@ param base - local object, representing the basic object of method call
+     *@ param methodSignature - method signature, which defines the structure information of the method to be called
+     *@ param args - parameter array, containing the actual parameter value passed to the method
+     *@ param realGenericTypes - optional array of real generic types, used for type inference of generic methods
+     *@ param spreadFlags - optional expansion flag array, used to identify which parameters need to be expanded
+     */
     constructor(base: Local, methodSignature: MethodSignature, args: Value[], realGenericTypes?: Type[], spreadFlags?: boolean[]) {
         super(methodSignature, args, realGenericTypes, spreadFlags);
         this.base = base;
@@ -207,7 +219,7 @@ export class ArkInstanceInvokeExpr extends AbstractInvokeExpr {
 
     /**
      * Returns an **array** of values used in this invoke expression,
-     * including all arguments and values each arguments used.
+     * including all arguments and values each argument used.
      * For {@link ArkInstanceInvokeExpr}, the return also contains the caller base and uses of base.
      * @returns An **array** of arguments used in the invoke expression.
      */
@@ -278,6 +290,15 @@ export class ArkStaticInvokeExpr extends AbstractInvokeExpr {
 export class ArkPtrInvokeExpr extends AbstractInvokeExpr {
     private funPtr: Local | AbstractFieldRef;
 
+
+    /**
+     *Constructor, used to create a method call instance
+     *@ param methodSignature method signature, which defines the parameter type and return value type of the method
+     *@ param ptr Pointer to a function, which can be a local function reference or an abstract field reference
+     *The actual parameter array passed in when the @ param args method is called
+     *@ param realGenericTypes Optional parameter, actual generic type array
+     *@ param spreadFlags Optional parameter, used to identify whether the parameter uses the Boolean array of expansion syntax
+     */
     constructor(methodSignature: MethodSignature, ptr: Local | AbstractFieldRef, args: Value[], realGenericTypes?: Type[], spreadFlags?: boolean[]) {
         super(methodSignature, args, realGenericTypes, spreadFlags);
         this.funPtr = ptr;
@@ -291,6 +312,11 @@ export class ArkPtrInvokeExpr extends AbstractInvokeExpr {
         return this.funPtr;
     }
 
+    /**
+     *Infer the type of function call expression
+     *@ param arkMethod - Ark method object currently analyzed
+     *@ returns The abstract calling expression after inference
+     */
     public inferType(arkMethod: ArkMethod): AbstractInvokeExpr {
         this.getArgs().forEach(arg => TypeInference.inferValueType(arg, arkMethod));
         const ptrType = this.funPtr.getType();
@@ -353,6 +379,11 @@ export class ArkNewExpr extends AbstractExpr {
         return 'new ' + this.classType;
     }
 
+    /**
+     *Inference type method
+     *@ param arkMethod - Ark method object, the context used for type inference
+     *@ returns the ArkNewExpr instance of the current object
+     */
     public inferType(arkMethod: ArkMethod): ArkNewExpr {
         const classSignature = this.classType.getClassSignature();
         if (classSignature.getDeclaringFileSignature().getFileName() === UNKNOWN_FILE_NAME) {
@@ -361,6 +392,7 @@ export class ArkNewExpr extends AbstractExpr {
             if (TypeInference.isUnclearType(type)) {
                 type = TypeInference.inferUnclearRefName(className, arkMethod.getDeclaringArkClass());
             }
+            // If the type is an alias type, replace with the original type
             if (type instanceof AliasType) {
                 const originalType = TypeInference.replaceAliasType(type);
                 if (originalType instanceof FunctionType) {

@@ -24,7 +24,7 @@ import { ArkBaseModel } from '../../core/model/ArkBaseModel';
 import { FullPosition } from '../../core/base/Position';
 import { Local } from '../../core/base/Local';
 import { NAME_PREFIX } from '../../core/common/Const';
-import { CppAstNode } from '../ast/ArkCxxAstNode';
+import { CxxAstNode } from '../ast/ArkCxxAstNode';
 
 export class IRUtils {
     public static moreThanOneAddress(value: Value): boolean {
@@ -52,7 +52,7 @@ export class IRUtils {
         }
     }
 
-    public static setComments(metadata: Stmt | ArkBaseModel, node: CppAstNode, sourceFile: CppAstNode, options: SceneOptions): void {
+    public static setComments(metadata: Stmt | ArkBaseModel, node: CxxAstNode, sourceFile: CxxAstNode, options: SceneOptions): void {
         const leadingCommentsMetadata = this.getCommentsMetadata(node, sourceFile, options, true);
         if (leadingCommentsMetadata.getComments().length > 0) {
             metadata.setMetadata(ArkMetadataKind.LEADING_COMMENTS, leadingCommentsMetadata);
@@ -64,7 +64,7 @@ export class IRUtils {
         }
     }
 
-    public static getCommentsMetadata(node: CppAstNode, sourceFile: CppAstNode, options: SceneOptions, isLeading: boolean): CommentsMetadata {
+    public static getCommentsMetadata(node: CxxAstNode, sourceFile: CxxAstNode, options: SceneOptions, isLeading: boolean): CommentsMetadata {
         const comments: CommentItem[] = [];
         if ((isLeading && !options.enableLeadingComments) || (!isLeading && !options.enableTrailingComments)) {
             return new CommentsMetadata(comments);

@@ -31,7 +31,7 @@ import { buildImportInfo } from './ArkImportBuilder';
 import { shouldAddCppHeaderImport } from '../../common/ModelUtils';
 import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
 import { init4InstanceInitMethod, init4StaticInitMethod } from '../../../core/model/builder/ArkClassBuilder';
-import { CppAstNode } from '../../ast/ArkCxxAstNode';
+import { CxxAstNode } from '../../ast/ArkCxxAstNode';
 import { ArkExport } from '../../../core/model/ArkExport';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkFileBuilder');
@@ -113,7 +113,7 @@ export function buildArkFileFromFile(absoluteFilePath: string, projectDir: strin
     buildArkFile(arkFile, jsonObject);
 }
 
-function buildArkClassFromCppClass(classNode: CppAstNode, arkFile: ArkFile, astRoot: CppAstNode): void {
+function buildArkClassFromCppClass(classNode: CxxAstNode, arkFile: ArkFile, astRoot: CxxAstNode): void {
     let cls: ArkClass = new ArkClass();
     if (classNode.kind === 'ClassTemplate') {
         classNode.tagUsed = 'class';
@@ -123,7 +123,7 @@ function buildArkClassFromCppClass(classNode: CppAstNode, arkFile: ArkFile, astR
     addExportInfoOnCondition(classNode, cls, arkFile, astRoot);
 }
 
-function buildImportInfoFromIncludeOrUsing(child: CppAstNode, astRoot: CppAstNode, arkFile: ArkFile): void {
+function buildImportInfoFromIncludeOrUsing(child: CxxAstNode, astRoot: CxxAstNode, arkFile: ArkFile): void {
     let importInfos = buildImportInfo(child, astRoot, arkFile);
     importInfos?.forEach(element => {
         element.setDeclaringArkFile(arkFile);
@@ -133,14 +133,14 @@ function buildImportInfoFromIncludeOrUsing(child: CppAstNode, astRoot: CppAstNod
     });
 }
 
-function addExportInfoOnCondition(currNode: CppAstNode, arkInstance: ArkExport, arkFile: ArkFile, astRoot: CppAstNode): void {
+function addExportInfoOnCondition(currNode: CxxAstNode, arkInstance: ArkExport, arkFile: ArkFile, astRoot: CxxAstNode): void {
     if (Object.prototype.hasOwnProperty.call(currNode, 'locFile') &&
         typeof currNode.locFile === 'string' && currNode.locFile.endsWith('.h')) {
         arkFile.addExportInfo(buildExportInfo(arkInstance, arkFile, LineColPosition.buildFromNodeCpp(currNode, astRoot)));
     }
 }
 
-function buildArkMethodFromCppMethod(mtdNode: CppAstNode, arkFile: ArkFile, astRoot: CppAstNode, arkClass?: ArkClass): void {
+function buildArkMethodFromCppMethod(mtdNode: CxxAstNode, arkFile: ArkFile, astRoot: CxxAstNode, arkClass?: ArkClass): void {
     let mtd = new ArkMethod();
     buildArkMethodFromArkClass(mtdNode, arkClass ?? arkFile.getDefaultClass(), mtd, astRoot);
     addExportInfoOnCondition(mtdNode, mtd, arkFile, astRoot);
@@ -153,10 +153,10 @@ function buildArkMethodFromCppMethod(mtdNode: CppAstNode, arkFile: ArkFile, astR
  * @param astRoot
  * @returns
  */
-function buildArkFile(arkFile: ArkFile, astRoot: CppAstNode): void {
-    const includeNodes = astRoot.headerUnits?.filter((item: CppAstNode) => item?.kind === 'inclusion directive') ?? [];
+function buildArkFile(arkFile: ArkFile, astRoot: CxxAstNode): void {
+    const includeNodes = astRoot.headerUnits?.filter((item: CxxAstNode) => item?.kind === 'inclusion directive') ?? [];
     const statements = [...includeNodes, ...(astRoot.inner ?? [])];
-    statements.forEach((child: CppAstNode) => {
+    statements.forEach((child: CxxAstNode) => {
         let childKind = child.kind;
         switch (childKind) {
             case 'CXXRecordDecl':
@@ -204,7 +204,7 @@ function buildArkFile(arkFile: ArkFile, astRoot: CppAstNode): void {
 }
 
 // Get ArkClass of 'CXXMethodDecl'/'CXXConstructorDecl'/'CXXDestructorDecl'
-function getDeclaringArkClassOfMethod(mtd: CppAstNode, arkFile: ArkFile): ArkClass {
+function getDeclaringArkClassOfMethod(mtd: CxxAstNode, arkFile: ArkFile): ArkClass {
     const className: string = mtd.mangledName ?? '';
     let arkClass = arkFile.getClasses().find(arkClass => arkClass.getName() === className);
     if (!arkClass) {
@@ -219,7 +219,7 @@ function getDeclaringArkClassOfMethod(mtd: CppAstNode, arkFile: ArkFile): ArkCla
     return arkClass;
 }
 
-function genDefaultArkClass(arkFile: ArkFile, astRoot: CppAstNode): void {
+function genDefaultArkClass(arkFile: ArkFile, astRoot: CxxAstNode): void {
     let defaultClass = new ArkClass();
 
     buildDefaultArkClassFromArkFile(arkFile, defaultClass, astRoot);

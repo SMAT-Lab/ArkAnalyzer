@@ -24,7 +24,7 @@ import { ArkParameterRef, ArkStaticFieldRef, ClosureFieldRef, GlobalRef } from '
 import { ArkAliasTypeDefineStmt, ArkAssignStmt, ArkInvokeStmt, ArkReturnStmt } from '../../../core/base/Stmt';
 import { AliasType, ArrayType, ClosureType, FunctionType, LexicalEnvType, Type, UnclearReferenceType, UnionType } from '../../../core/base/Type';
 import { AbstractInvokeExpr, ArkPtrInvokeExpr } from '../../../core/base/Expr';
-import { CppAstNode } from '../../ast/ArkCxxAstNode';
+import { CxxAstNode } from '../../ast/ArkCxxAstNode';
 
 type NestedMethodChain = {
     parent: ArkMethod;
@@ -35,7 +35,7 @@ export class BodyBuilderCpp {
     private cfgBuilder: CfgBuilder;
     private globals?: Map<string, GlobalRef>;
 
-    constructor(methodSignature: MethodSignature, sourceAstNode: CppAstNode, declaringMethod: ArkMethod, sourceFile: CppAstNode) {
+    constructor(methodSignature: MethodSignature, sourceAstNode: CxxAstNode, declaringMethod: ArkMethod, sourceFile: CxxAstNode) {
         this.cfgBuilder = new CfgBuilder(sourceAstNode, methodSignature.getMethodSubSignature().getMethodName(), declaringMethod, sourceFile);
     }
 

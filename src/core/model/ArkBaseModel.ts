@@ -83,6 +83,25 @@ const MODIFIER_TYPE_STRINGS = [
     'declare',
 ];
 
+/**
+ *Map the C++modifier keyword to the corresponding modifier type enumeration value
+ *
+ *This constant defines a Map object, which is used to map the modifier keyword string in C++language to
+ *The corresponding ModifierType enumeration value is convenient for type identification and processing during code analysis and conversion.
+ *
+ *Included modifier mapping relationship:
+ *- virtual ->ModifierType.VIRTUAL: virtual function modifier
+ *- const ->ModifierType.CONST: constant modifier
+ *- private ->ModifierType.PRIVATE: private access modifier
+ *- protected ->ModifierType.PROTECTED: protect access modifier
+ *- public ->ModifierType.PUBLIC: public access modifier
+ *- extern ->ModifierType.EXTERN: external link modifier
+ *- friend ->ModifierType.FRIEND: Friend modifier
+ *- override ->ModifierType.OVERRIDE: override modifier
+ *- static ->ModifierType.STATIC: static modifier
+ *- pure virtual ->ModifierType.PURE_VIRTUAL: pure virtual function modifier
+ *- abstract ->ModifierType.ABSTRACT: abstract class modifier (implemented through pure virtual function in C++)
+ */
 const MODIFIER_KIND_2_ENUM_CPP = new Map<string, ModifierType>([
     ['virtual', ModifierType.VIRTUAL],
     ['const', ModifierType.CONST],

@@ -29,11 +29,11 @@ import { init4InstanceInitMethod, init4StaticInitMethod } from '../../../core/mo
 import { ArkIRTransformerCpp } from '../../common/ArkIRTransformer';
 import { buildDecorators } from './builderUtils';
 import { buildDefaultArkMethodFromArkClass } from './ArkMethodBuilder';
-import { CppAstNode, CppTranslationUnit } from '../../ast/ArkCxxAstNode';
+import { CxxAstNode, CppTranslationUnit } from '../../ast/ArkCxxAstNode';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkClassBuilder');
 
-export function buildNormalArkClassFromArkMethod(clsNode: CppAstNode, cls: ArkClass, sourceFile: CppAstNode, declaringMethod?: ArkMethod): void {
+export function buildNormalArkClassFromArkMethod(clsNode: CxxAstNode, cls: ArkClass, sourceFile: CxxAstNode, declaringMethod?: ArkMethod): void {
     const namespace = cls.getDeclaringArkNamespace();
     if (namespace) {
         buildNormalArkClassFromArkNamespace(clsNode, namespace, cls, sourceFile, declaringMethod);
@@ -42,8 +42,8 @@ export function buildNormalArkClassFromArkMethod(clsNode: CppAstNode, cls: ArkCl
     }
 }
 
-export function buildNormalArkClassFromArkFile(clsNode: CppAstNode, arkFile: ArkFile, cls: ArkClass,
-                                               sourceFile: CppAstNode, declaringMethod?: ArkMethod): void {
+export function buildNormalArkClassFromArkFile(clsNode: CxxAstNode, arkFile: ArkFile, cls: ArkClass,
+                                               sourceFile: CxxAstNode, declaringMethod?: ArkMethod): void {
     cls.setDeclaringArkFile(arkFile);
     cls.setCode(clsNode.name);
     if (clsNode.range?.begin) {
@@ -55,10 +55,10 @@ export function buildNormalArkClassFromArkFile(clsNode: CppAstNode, arkFile: Ark
 }
 
 export function buildNormalArkClassFromArkNamespace(
-    clsNode: CppAstNode,
+    clsNode: CxxAstNode,
     arkNamespace: ArkNamespace,
     cls: ArkClass,
-    sourceFile: CppAstNode,
+    sourceFile: CxxAstNode,
     declaringMethod?: ArkMethod
 ): void {
     cls.setDeclaringArkNamespace(arkNamespace);
@@ -71,7 +71,7 @@ export function buildNormalArkClassFromArkNamespace(
     buildNormalArkClass(clsNode, cls, sourceFile, declaringMethod);
 }
 
-export function buildNormalArkClass(clsNode: CppAstNode, cls: ArkClass, sourceFile: CppAstNode, declaringMethod?: ArkMethod): void {
+export function buildNormalArkClass(clsNode: CxxAstNode, cls: ArkClass, sourceFile: CxxAstNode, declaringMethod?: ArkMethod): void {
     if (clsNode.kind === 'CXXRecordDecl') {
         switch (clsNode.tagUsed) {
             case 'struct':
@@ -97,7 +97,7 @@ export function buildNormalArkClass(clsNode: CppAstNode, cls: ArkClass, sourceFi
     IRUtils.setComments(cls, clsNode, sourceFile, cls.getDeclaringArkFile().getScene().getOptions());
 }
 
-function buildUnion2ArkClass(clsNode: CppAstNode, cls: ArkClass, sourceFile: CppAstNode, declaringMethod?: ArkMethod): void {
+function buildUnion2ArkClass(clsNode: CxxAstNode, cls: ArkClass, sourceFile: CxxAstNode, declaringMethod?: ArkMethod): void {
     let className: string;
     if (clsNode.name) {
         className = clsNode.name;
@@ -117,7 +117,7 @@ function buildUnion2ArkClass(clsNode: CppAstNode, cls: ArkClass, sourceFile: Cpp
     buildArkClassMembers(clsNode, cls, sourceFile);
 }
 
-function buildStruct2ArkClass(clsNode: CppAstNode, cls: ArkClass, sourceFile: CppAstNode, declaringMethod?: ArkMethod): void {
+function buildStruct2ArkClass(clsNode: CxxAstNode, cls: ArkClass, sourceFile: CxxAstNode, declaringMethod?: ArkMethod): void {
     let className: string;
     if (clsNode.name) {
         className = clsNode.name;
@@ -145,7 +145,7 @@ function buildStruct2ArkClass(clsNode: CppAstNode, cls: ArkClass, sourceFile: Cp
     buildArkClassMembers(clsNode, cls, sourceFile);
 }
 
-function genAnonymousClassName(clsNode: CppAstNode, cls: ArkClass, declaringMethod?: ArkMethod): string {
+function genAnonymousClassName(clsNode: CxxAstNode, cls: ArkClass, declaringMethod?: ArkMethod): string {
     const declaringArkNamespace = cls.getDeclaringArkNamespace();
     const declaringArkFile = cls.getDeclaringArkFile();
     let anonymousClassName: string;
@@ -162,7 +162,7 @@ function genAnonymousClassName(clsNode: CppAstNode, cls: ArkClass, declaringMeth
     return anonymousClassName;
 }
 
-function buildClass2ArkClass(clsNode: CppAstNode, cls: ArkClass, sourceFile: CppAstNode): void {
+function buildClass2ArkClass(clsNode: CxxAstNode, cls: ArkClass, sourceFile: CxxAstNode): void {
     const className = clsNode.name ? clsNode.name : '';
     const classSignature = new ClassSignature(className, cls.getDeclaringArkFile().getFileSignature(), cls.getDeclaringArkNamespace()?.getSignature() || null);
     cls.setSignature(classSignature);
@@ -183,7 +183,7 @@ function buildClass2ArkClass(clsNode: CppAstNode, cls: ArkClass, sourceFile: Cpp
     cls.setModifiers(buildModifiersForCxxCls(cls));
 }
 
-function processCXXHeritage(clsNode: CppAstNode, cls: ArkClass): void {
+function processCXXHeritage(clsNode: CxxAstNode, cls: ArkClass): void {
     for (let i = 0; i < clsNode.inner.length; i++) {
         if (clsNode.inner[i].kind === 'C++ base class specifier') {
             cls.addHeritageClassName(clsNode.inner[i].type.qualType);
@@ -191,7 +191,7 @@ function processCXXHeritage(clsNode: CppAstNode, cls: ArkClass): void {
     }
 }
 
-function buildEnum2ArkClass(clsNode: CppAstNode, cls: ArkClass, sourceFile: CppAstNode, declaringMethod?: ArkMethod): void {
+function buildEnum2ArkClass(clsNode: CxxAstNode, cls: ArkClass, sourceFile: CxxAstNode, declaringMethod?: ArkMethod): void {
     let className: string;
     if (clsNode.name) {
         className = clsNode.name;
@@ -212,7 +212,7 @@ function buildEnum2ArkClass(clsNode: CppAstNode, cls: ArkClass, sourceFile: CppA
     buildArkClassMembers(clsNode, cls, sourceFile);
 }
 
-function buildArkClassMembers(clsNode: CppAstNode, cls: ArkClass, sourceFile: CppAstNode): void {
+function buildArkClassMembers(clsNode: CxxAstNode, cls: ArkClass, sourceFile: CxxAstNode): void {
     buildMethodsForClass(clsNode, cls, sourceFile);
     let instanceIRTransformer: ArkIRTransformerCpp;
     let staticIRTransformer: ArkIRTransformerCpp;
@@ -228,7 +228,7 @@ function buildArkClassMembers(clsNode: CppAstNode, cls: ArkClass, sourceFile: Cp
     }
     const staticInitStmts: Stmt[] = [];
     const instanceInitStmts: Stmt[] = [];
-    clsNode.inner.forEach((member: CppAstNode) => {
+    clsNode.inner.forEach((member: CxxAstNode) => {
         if (member.kind === 'FieldDecl' || member.kind === 'VarDecl') {
             const arkField = buildProperty2ArkField(member, sourceFile, cls);
             if (clsNode.kind === 'CXXRecordDecl' && (tagStr === 'class' || tagStr === 'struct')) {
@@ -253,9 +253,9 @@ function buildArkClassMembers(clsNode: CppAstNode, cls: ArkClass, sourceFile: Cp
     }
 }
 
-function buildMethodsForClass(clsNode: CppAstNode, cls: ArkClass, sourceFile: CppAstNode): void {
+function buildMethodsForClass(clsNode: CxxAstNode, cls: ArkClass, sourceFile: CxxAstNode): void {
     let cxxAccessModifier = 'private';
-    clsNode.inner.forEach((member: CppAstNode) => {
+    clsNode.inner.forEach((member: CxxAstNode) => {
         if (member.kind.toString() === 'CXXAccessSpecifier') {
             cxxAccessModifier = member.code.split(':')[0];
         }
@@ -272,13 +272,13 @@ function buildMethodsForClass(clsNode: CppAstNode, cls: ArkClass, sourceFile: Cp
     });
 }
 
-export function buildDefaultArkClassFromArkFile(arkFile: ArkFile, defaultClass: ArkClass, astRoot: CppAstNode): void {
+export function buildDefaultArkClassFromArkFile(arkFile: ArkFile, defaultClass: ArkClass, astRoot: CxxAstNode): void {
     defaultClass.setDeclaringArkFile(arkFile);
     defaultClass.setCategory(ClassCategory.CLASS);
     buildDefaultArkClass(defaultClass, astRoot);
 }
 
-function buildDefaultArkClass(cls: ArkClass, sourceFile: CppAstNode, node?: CppAstNode): void {
+function buildDefaultArkClass(cls: ArkClass, sourceFile: CxxAstNode, node?: CxxAstNode): void {
     const defaultArkClassSignature = new ClassSignature(
         DEFAULT_ARK_CLASS_NAME,
         cls.getDeclaringArkFile().getFileSignature(),
@@ -289,7 +289,7 @@ function buildDefaultArkClass(cls: ArkClass, sourceFile: CppAstNode, node?: CppA
     genDefaultArkMethod(cls, sourceFile, node);
 }
 
-function genDefaultArkMethod(cls: ArkClass, sourceFile: CppAstNode, node?: CppAstNode): void {
+function genDefaultArkMethod(cls: ArkClass, sourceFile: CxxAstNode, node?: CxxAstNode): void {
     let defaultMethod = new ArkMethod();
     buildDefaultArkMethodFromArkClass(cls, defaultMethod, sourceFile, node);
     cls.setDefaultArkMethod(defaultMethod);
