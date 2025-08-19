@@ -207,9 +207,6 @@ export class ArkFile {
     }
 
     public getClassWithName(Class: string): ArkClass | null {
-        if (Class && Class.includes(' ')) {
-            Class = Class.split(' ')[1];
-        }
         return this.classes.get(Class) || null;
     }
 
