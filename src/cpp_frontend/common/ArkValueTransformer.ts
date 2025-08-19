@@ -124,7 +124,6 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
 
     // An object that records the corresponding processing functions of CXX ast nodes.
     private nodeTransformerFuncMap: TransformerType = {
-        'AddrLabelExpr': this.cxxLiteralNodeToValueAndStmts,
         'ArraySubscriptExpr': this.cxxElementAccessExpressionToValueAndStmts,
         'ArrayTypeTraitExpr': this.arrayTypeTraitExprToValueAndStmts,
         'AtomicCallExpr': this.cxxCallExpressionToValueAndStmts,
@@ -2446,22 +2445,6 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             }
             case 'CXXNullPtrLiteralExpr': {
                 const constant = NullConstant.getInstance();
-                return { value: constant, valueOriginalPositions: pos, stmts };
-            }
-            case 'AddrLabelExpr': {
-                const labelName = S(literalNode.inner?.[0]?.code);
-                const constant = CxxValueUtil.getLabelPtrConstant(labelName);
-                const parent = (literalNode.parent ?? literalNode.getParent?.(true)) ?? null;
-                const m = parent?.code?.match(/void\s*([^=]+)=/);
-                const point = S(m?.[1]).trim() || labelName;
-                const map = this.declaringMethod.gotoStmtMap;
-                const gotoStmts = map.get(labelName);
-                if (gotoStmts) {
-                    map.set(point, gotoStmts);
-                }
-                if (!map.has(point)) {
-                    map.set(point, []);
-                }
                 return { value: constant, valueOriginalPositions: pos, stmts };
             }
             default: {

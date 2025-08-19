@@ -536,20 +536,13 @@ export class CfgBuilder {
     ASTNodeLabelStatement(innerNode: CxxAstNode, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
         let labelStmt = new StatementBuilder('statement', 'goto label:' + innerNode.name, innerNode, scopeID);
         // Handle the sequence relationship between goto statements and label statements
-
-        const idx = innerNode.code.indexOf(':');
-        if (idx === -1) {
-            return new StatementBuilder('gotoStatement', innerNode.code, innerNode, scopeID);
-        }
-        const label = innerNode.code.substring(0, idx);
-        const gotoStmts = this.declaringMethod.gotoStmtMap.get(label);
-        if (!gotoStmts) {
-            let s = new StatementBuilder('gotoStatement', innerNode.code, innerNode, scopeID);
-            this.declaringMethod.gotoStmtMap.set(label, [s]);
-        } else {
-            for (const gotoStmt of gotoStmts) {
-                for (const lastStmt of [...gotoStmt.lasts]) {
-                    this.judgeLastStmtForLabel(labelStmt, lastStmt, gotoStmt);
+        let label: string = innerNode.code.substring(0, innerNode.code.indexOf(':'));
+        for (const [key, gotoStmts] of this.declaringMethod.gotoStmtMap) {
+            if (key === label){
+                for (const gotoStmt of gotoStmts) {
+                    for (const lastStmt of [...gotoStmt.lasts]) {
+                        this.judgeLastStmtForLabel(labelStmt, lastStmt, gotoStmt);
+                    }
                 }
             }
         }
@@ -684,7 +677,7 @@ export class CfgBuilder {
                 break;
             } else if (nodeKind === 'BreakStmt' || nodeKind === 'ContinueStmt') {
                 return;
-            } else if (nodeKind === 'GotoStmt' || nodeKind === 'IndirectGotoStmt') {
+            } else if (nodeKind === 'GotoStmt') {
                 if (this.hitsControlBoundaryBeforeRoot(innerNode)) {
                     return;
                 }

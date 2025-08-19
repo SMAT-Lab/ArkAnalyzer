@@ -50,7 +50,6 @@ import * as lazyImportCase5 from '../../../resources_cpp/cfg/lazyImport/lazyImpo
 import * as lazyImportCase6 from '../../../resources_cpp/cfg/lazyImport/lazyImportCase6';
 import * as lazyImportCase7 from '../../../resources_cpp/cfg/lazyImport/lazyImportCase7';
 import * as lazyImportCase8 from '../../../resources_cpp/cfg/lazyImport/lazyImportCase8';
-import * as ADDRLABEL_EXPECT from '../../../resources_cpp/cfg/addrLabelExpr/addrLabelExprExpect';
 import * as NAMESPACE_EXPECT from '../../../resources_cpp/cfg/namespace';
 import * as OVERLOAD from '../../../resources_cpp/cfg/overload/overloadExpect';
 import * as USING_EXPECT from '../../../resources_cpp/cfg/using/usingExpects';
@@ -135,12 +134,6 @@ describe('CfgTest', () => {
         testBlocks(scene, 'binaryConditionalSample.cpp', 'Case4', BINARY_CONDITIONAL_EXPECT.BINARY_CONDITIONAL_EXPECT_CASE4.blocks);
         testBlocks(scene, 'binaryConditionalSample.cpp', 'Case5', BINARY_CONDITIONAL_EXPECT.BINARY_CONDITIONAL_EXPECT_CASE5.blocks);
         testBlocks(scene, 'binaryConditionalSample.cpp', 'Case6', BINARY_CONDITIONAL_EXPECT.BINARY_CONDITIONAL_EXPECT_CASE6.blocks);
-    });
-    it('case8: addrLabelExpr', () => {
-        const scene = buildScene('addrLabelExpr');
-        testBlocks(scene, 'addrLabelExpr.cpp', 'Foo1', ADDRLABEL_EXPECT.ADDRLABEL_EXPECT_CASE1.blocks);
-        testBlocks(scene, 'addrLabelExpr.cpp', 'Foo2', ADDRLABEL_EXPECT.ADDRLABEL_EXPECT_CASE2.blocks);
-        testBlocks(scene, 'addrLabelExpr.cpp', 'Foo3', ADDRLABEL_EXPECT.ADDRLABEL_EXPECT_CASE3.blocks);
     });
 });
 

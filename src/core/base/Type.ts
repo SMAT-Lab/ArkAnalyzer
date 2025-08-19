@@ -987,22 +987,6 @@ export class ReferenceType extends Type {
 }
 
 /**
- *The LabelType class represents the label type, inherited from the PointerType class.
- *This is a singleton class used to represent the label type in the program.
- */
-export class LabelType extends PointerType {
-    private static readonly INSTANCE = new LabelType();
-
-    protected constructor() {
-        super(VoidType.getInstance(), 1);
-    }
-
-    public static getInstance(): LabelType {
-        return this.INSTANCE;
-    }
-}
-
-/**
  *The Thread class inherits from the Type class and represents a thread type
  *This class provides the basic implementation of thread types
  */

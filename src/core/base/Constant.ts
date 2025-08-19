@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { BigIntType, BooleanType, LabelType, NullType, NumberType, StringType, Type, UndefinedType } from './Type';
+import { BigIntType, BooleanType, NullType, NumberType, StringType, Type, UndefinedType } from './Type';
 import { Value } from './Value';
 import { NULL_KEYWORD, UNDEFINED_KEYWORD } from '../common/TSConst';
 
@@ -121,15 +121,5 @@ export class UndefinedConstant extends Constant {
 
     public static getInstance(): UndefinedConstant {
         return this.INSTANCE;
-    }
-}
-
-/**
- *The LabelConstant class is used to create a label constant object
- *This class inherits from the Constant base class and is specifically used to process constant values of label types
- */
-export class LabelConstant extends Constant {
-    constructor(value: string) {
-        super(value, LabelType.getInstance());
     }
 }
