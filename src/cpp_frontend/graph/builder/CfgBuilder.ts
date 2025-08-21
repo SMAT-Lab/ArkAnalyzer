@@ -161,6 +161,7 @@ export class CfgBuilder {
 
     private sourceFile: CxxAstNode;
     private declaringMethod: ArkMethod;
+    private gotoStmtMap: Map<string, StatementBuilder[]>;
 
     constructor(ast: CxxAstNode, name: string, declaringMethod: ArkMethod, sourceFile: CxxAstNode) {
         this.name = name;
@@ -185,7 +186,7 @@ export class CfgBuilder {
         this.catches = [];
         this.sourceFile = sourceFile;
         this.arrowFunctionWithoutBlock = true;
-        this.declaringMethod.gotoStmtMap = new Map();
+        this.gotoStmtMap = new Map();
     }
 
     public getDeclaringMethod(): ArkMethod {
@@ -501,9 +502,9 @@ export class CfgBuilder {
         let s = new StatementBuilder('gotoStatement', innerNode.code, innerNode, scopeID);
         this.judgeLastType(s, lastStatement);
         let label: string = innerNode.code.substring(innerNode.code.indexOf('goto ') + 5);
-        let gotoStmtsOfLabel = this.declaringMethod.gotoStmtMap.get(label);
+        let gotoStmtsOfLabel = this.gotoStmtMap.get(label);
         if (gotoStmtsOfLabel === undefined) {
-            this.declaringMethod.gotoStmtMap.set(label, [s]);
+            this.gotoStmtMap.set(label, [s]);
         } else {
             gotoStmtsOfLabel.push(s);
         }
@@ -537,7 +538,7 @@ export class CfgBuilder {
         let labelStmt = new StatementBuilder('statement', 'goto label:' + innerNode.name, innerNode, scopeID);
         // Handle the sequence relationship between goto statements and label statements
         let label: string = innerNode.code.substring(0, innerNode.code.indexOf(':'));
-        for (const [key, gotoStmts] of this.declaringMethod.gotoStmtMap) {
+        for (const [key, gotoStmts] of this.gotoStmtMap) {
             if (key === label){
                 for (const gotoStmt of gotoStmts) {
                     for (const lastStmt of [...gotoStmt.lasts]) {

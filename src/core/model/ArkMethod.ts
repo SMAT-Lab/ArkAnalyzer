@@ -35,7 +35,6 @@ import { ArkFile, Language } from './ArkFile';
 import { CONSTRUCTOR_NAME } from '../common/TSConst';
 import { MethodParameter } from './builder/ArkMethodBuilder';
 import { TypeInference } from '../common/TypeInference';
-import { StatementBuilder } from '../../cpp_frontend/graph/builder/CfgBuilder';
 import { CxxBodyBuilder } from '../../cpp_frontend/model/builder/BodyBuilder';
 
 export const arkMethodNodeKind = [
@@ -78,11 +77,8 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
     private asteriskToken: boolean = false;
     private questionToken: boolean = false;
 
-    public gotoStmtMap: Map<string, StatementBuilder[]>;
-
     constructor() {
         super();
-        this.gotoStmtMap = new Map();
     }
 
     /**
