@@ -733,7 +733,11 @@ static std::unordered_map<std::string, std::string> g_pathCanonCache; // need to
 static std::unordered_map<std::string, bool>        g_pathExistCache; // need to free after use
 
 static inline std::string Slashify(std::string s) {
-    for (auto& ch : s) if (ch == '\\') ch = '/';
+    for (auto& ch : s) {
+        if (ch == '\\') {
+            ch = '/';
+        }
+    }
     return s;
 }
 
