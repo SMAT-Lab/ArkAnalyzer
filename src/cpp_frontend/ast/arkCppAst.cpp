@@ -729,62 +729,96 @@ void cleanJson(json& node)
 
 // Global variable temporarily stores header file AST
 std::vector<json> headerUnits;
+static std::unordered_map<std::string, std::string> g_pathCanonCache; // need to free after use
+static std::unordered_map<std::string, bool>        g_pathExistCache; // need to free after use
 
-void filterToMainFileOnly(json& node, const std::string& mainFileName, std::string parentFileName = "")
+static inline std::string Slashify(std::string s) {
+    for (auto& ch : s) if (ch == '\\') ch = '/';
+    return s;
+}
+
+static inline const std::string& CanonicalCached(const std::string& path) {
+    auto it = g_pathCanonCache.find(path);
+    if (it != g_pathCanonCache.end()) return it->second;
+
+    // Check existence cache first
+    bool ex = false;
+    if (auto it2 = g_pathExistCache.find(path); it2 != g_pathExistCache.end()) {
+        ex = it2->second;
+    } else {
+        ex = !path.empty() && std::filesystem::exists(path);
+        g_pathExistCache.emplace(path, ex);
+    }
+
+    std::string canon = path;
+    if (ex) {
+        canon = std::filesystem::weakly_canonical(path).string();
+    }
+    canon = Slashify(std::move(canon));
+    return g_pathCanonCache.emplace(path, std::move(canon)).first->second;
+}
+
+void filterToMainFileOnly(json& node, const std::string& normMainFileName, std::string parentFileName = "")
 {
+    // Array: recurse in-place
     if (node.is_array()) {
-        for (auto& elem : node) {
-            filterToMainFileOnly(elem, mainFileName, parentFileName);
-        }
+        for (auto& elem : node) filterToMainFileOnly(elem, normMainFileName, parentFileName);
         return;
     }
     if (!node.is_object()) {
         return;
     }
+    // Get file name: prefer locFile, then fileName, fallback to parent name
     std::string fileName = node.value("fileName", "");
-    if (node.contains("locFile"))
+    if (node.contains("locFile")) {
         fileName = node["locFile"];
-    if (fileName.empty())
+    }
+    if (fileName.empty()) {
         fileName = parentFileName;
-    // Standardized path
-    if (!fileName.empty() && std::filesystem::exists(fileName)) {
-        fileName = std::filesystem::weakly_canonical(fileName).string();
     }
-    std::string normMainFileName = mainFileName;
-    if (std::filesystem::exists(mainFileName)) {
-        normMainFileName = std::filesystem::weakly_canonical(mainFileName).string();
+    // Normalize only when non-empty (also unify slashes)
+    if (!fileName.empty()) {
+        fileName = CanonicalCached(fileName);
     }
-    // Only main file nodes and TranslationUnitDecl have inner, header file nodes are aggregated to headerUnits
-    auto normalizedFilePath = fileName;
-    std::replace(normalizedFilePath.begin(), normalizedFilePath.end(), '\\', '/');
-    if (node.value("kind", "") == "TranslationUnitDecl") {
-            // Root node reservation
-    } else if (fileName != normMainFileName) {
-        // Filter out non-header inclusions (kind is not "inclusion directive")
-        // and header files from system library paths (containing "sdk/default")
-        if (node.value("kind", "") != "inclusion directive" ||
-            normalizedFilePath.find("sdk/default") != std::string::npos) {
-            node = json();
+    // Keep the root node
+    const std::string kind = node.value("kind", "");
+    if (kind != "TranslationUnitDecl") {
+        // Non-main file: keep only user-header inclusion directives, collect into headerUnits
+        if (!fileName.empty() && fileName != normMainFileName) {
+            // Drop system SDK headers directly
+            const bool isSdk = (fileName.find("/sdk/default/") != std::string::npos);
+            if (kind != "inclusion directive" || isSdk) {
+                node = json(); // Remove
+                return;
+            }
+            const std::string included = node.value("included", "");
+            const bool inUserByFile    = IsInUserInclude(fileName);
+            const bool inUserByIncl    = (!included.empty() && IsInUserInclude(included));
+            const std::string code     = node.value("code", "");
+            const bool isAngle         = (code.find('<') != std::string::npos) || (code.find('>') != std::string::npos);
+
+            if (inUserByFile || (inUserByIncl && !isAngle)) {
+                headerUnits.push_back(node); // Collect user-header include
+            }
+            node = json(); // Remove from main AST
             return;
         }
-        if (IsInUserInclude(fileName) || (IsInUserInclude(node.value("included", "")) &&
-            node.value("code", "").find("<") == std::string::npos && node.value("code", "").find(">") ==
-            std::string::npos)) {
-            headerUnits.push_back(node); // Collect to headerUnits
-        }
-        node = json(); // Remove nodes from AST (not in main's inner)
-        return;
     }
-    // Recursive processing of child nodes
+    // Recurse into child nodes: shrink in-place, avoid copy
     if (node.contains("inner") && node["inner"].is_array()) {
-        json filtered = json::array();
-        for (size_t i = 0; i < node["inner"].size(); ++i) {
-            auto child = node["inner"][i];
-            filterToMainFileOnly(child, mainFileName, fileName);
-            if (!child.is_null() && !child.empty())
-                filtered.push_back(child);
+        auto& arr = node["inner"];
+        std::size_t out = 0;
+        for (std::size_t i = 0; i < arr.size(); ++i) {
+            auto& child = arr[i];
+            filterToMainFileOnly(child, normMainFileName, fileName);
+            if (!child.is_null() && !child.empty()) {
+                if (out != i) arr[out] = std::move(child);
+                ++out;
+            }
         }
-        node["inner"] = filtered;
+        if (out < arr.size()) {
+            arr.erase(arr.begin() + static_cast<long long>(out), arr.end());
+        }
     }
 }
 
@@ -1255,8 +1289,8 @@ json buildAndProcessAST(CXTranslationUnit unit, const CommandLineOptions& opts)
     std::unordered_map<std::string, std::string> varTypeMap;
     json ast = buildASTJson(clang_getTranslationUnitCursor(unit), false, varTypeMap);
     std::cout << "[STEP1] buildASTJson finished\n";
-    std::string mainFileName = fs::canonical(opts.inputFile).string();
-    filterToMainFileOnly(ast, mainFileName);
+    std::string normMain = CanonicalCached(fs::canonical(opts.inputFile).string());
+    filterToMainFileOnly(ast, normMain);
     if (!headerUnits.empty() && ast.contains("kind")) {
         ast["headerUnits"] = headerUnits;
         headerUnits.clear();
