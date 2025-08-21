@@ -22,7 +22,7 @@ import {
     ReferenceType,
     ReferCategory,
     UnclearReferenceType,
-    FunctionPointer,
+    FunctionType,
 } from '../../../core/base/Type';
 import { TypeInference } from '../../common/TypeInference';
 import { ArkField } from '../../../core/model/ArkField';
@@ -31,8 +31,11 @@ import { ArkMethod } from '../../../core/model/ArkMethod';
 import { MethodParameter } from '../../../core/model/builder/ArkMethodBuilder';
 import { modifierKind2CxxEnum } from '../../../core/model/ArkBaseModel';
 import { buildGenericType } from '../../../core/model/builder/builderUtils';
-import { CxxAstNode, CxxTypeInfo } from '../../ast/ArkCxxAstNode';
+import { CxxAstNode, CxxTranslationUnit } from '../../ast/ArkCxxAstNode';
 import { Decorator } from '../../../core/base/Decorator';
+import { buildArkMethodFromArkClass } from './ArkMethodBuilder';
+
+const FUNC_PTR_REGEX = /\(\s*\*\s*(?:\[\s*[^]]*\s*\])?\s*\)\s*\(\s*[^)]*\s*\)/;
 
 function extractCommonModifiers(node: CxxAstNode): number {
     let modifiers: number = 0;
@@ -137,7 +140,7 @@ export function buildParameters(params: CxxAstNode[], arkInstance: ArkMethod | A
         }
         // type
         if (parameter.type) {
-            methodParameter.setType(buildGenericType(cxxNode2Type(parameter.type.qualType, arkInstance, sourceFile), arkInstance));
+            methodParameter.setType(buildGenericType(cxxNode2Type(parameter.type.qualType, arkInstance, sourceFile, parameter), arkInstance));
         } else {
             methodParameter.setType(UnknownType.getInstance());
         }
@@ -168,6 +171,17 @@ export function buildReturnType(mtdNode: CxxAstNode, sourceFile: CxxAstNode, met
     }
 }
 
+export function isCxxFunctionPointer(type: string): boolean {
+    return FUNC_PTR_REGEX.test(type);
+}
+
+export function buildFuncPtrType(funcPtrNode: CxxAstNode, arkMtd: ArkMethod, sourceFile: CxxAstNode | CxxTranslationUnit): Type {
+    const anonymousMethod = new ArkMethod();
+    const declaringClass = arkMtd.getDeclaringArkClass();
+    buildArkMethodFromArkClass(funcPtrNode, declaringClass, anonymousMethod, sourceFile);
+    return new FunctionType(anonymousMethod.getSignature());
+}
+
 /**
  *Convert C++AST node to Type
  *@ param nodeQualType - type information of C++AST node or string type
@@ -175,7 +189,11 @@ export function buildReturnType(mtdNode: CxxAstNode, sourceFile: CxxAstNode, met
  *@ param sourceFile - optional source file node
  *@ returns Type after conversion
  */
-export function cxxNode2Type(nodeQualType: CxxAstNode | string, arkInstance: ArkMethod | ArkClass | ArkField | undefined, sourceFile?: CxxAstNode): Type {
+export function cxxNode2Type(nodeQualType: CxxAstNode | string, arkInstance: ArkMethod | ArkClass | ArkField | undefined, sourceFile?: CxxAstNode, currNode?: CxxAstNode): Type {
+    // Handle function pointer type
+    if (currNode && arkInstance instanceof ArkMethod && isCxxFunctionPointer(currNode.type.qualType)) {
+        return buildFuncPtrType(currNode, arkInstance, sourceFile!);
+    }
     // Handle special type
     if (nodeQualType === 'void () const') {
         return buildTypeFromPreStr('VoidKeyword', arkInstance);
@@ -215,11 +233,6 @@ export function cxxNode2Type(nodeQualType: CxxAstNode | string, arkInstance: Ark
 export function buildTypeFromPreStr(preStr: string, arkInstance: ArkMethod | ArkClass | ArkField | undefined): Type {
     // 1. Remove modifiers such as const/static/mutable
     preStr = preStr.replace(/\b(const|static|mutable)\s*\b/g, '');
-    let isFuncPtr = false;
-    const funcPtrRegex = /\(\s*\*\s*\)\s*\(\s*[^)]*\s*\)/;
-    if (funcPtrRegex.test(preStr)){
-        isFuncPtr = true;
-    }
     let pointerLevel = 0;
     let referenceCount = 0;
     // 2. Handle pointers and references; only process if not an STL container
@@ -227,30 +240,21 @@ export function buildTypeFromPreStr(preStr: string, arkInstance: ArkMethod | Ark
         referenceCount = (preStr.match(/&/g) || []).length;
         preStr = preStr.replace(/&/g, '').trim();
         pointerLevel = (preStr.match(/\*/g) || []).length;
-        if (isFuncPtr){
-            preStr = preStr.replace(/(\*)(\*+)/g, '$1').trim();
-        } else {
-            preStr = preStr.replace(/\*/g, '').trim();
-        }
+        preStr = preStr.replace(/\*/g, '').trim();
     }
-
     // 3. Infer the type
     const postStr = convertDataType(preStr);
     let baseType: Type;
-    if (isFuncPtr){
-        const info: CxxTypeInfo = { qualType: preStr };
-        baseType = new FunctionPointer(info);
-    } else if (postStr === 'unsupported'){
+    if (postStr === 'unsupported'){
         baseType = buildTypeFromDerivedType(preStr, arkInstance);
     } else {
         baseType = TypeInference.buildTypeFromStr(postStr, preStr);
     }
     // Need to Handle precedence between pointers and other types/modifiers
     // 4. Wrap pointers and references
-    if (pointerLevel > 0 && !(baseType instanceof FunctionPointer) || pointerLevel > 1) {
+    if (pointerLevel > 0) {  // && !(baseType instanceof FunctionPointer) || pointerLevel > 1
         baseType = new PointerType(baseType, pointerLevel);
     }
-    // Handle reference types
     if (referenceCount > 0) {
         return buildReferenceType(preStr, arkInstance, referenceCount, baseType);
     }

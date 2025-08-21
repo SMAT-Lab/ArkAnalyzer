@@ -214,14 +214,7 @@ export const ANIMAL_CLASS_EXPECT = {
         },
         {
             methodName: 'Sound',
-            blocks: [
-                {
-                    id: 0,
-                    stmts: ['this = this: @class/classSample.cpp: Animal', 'return'],
-                    preds: [],
-                    succes: [],
-                },
-            ],
+            blocks: undefined,
         },
     ],
 };

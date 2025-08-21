@@ -31,7 +31,6 @@ import {
 import { Local } from './Local';
 import { Constant } from './Constant';
 import { Value } from './Value';
-import { CxxTypeInfo } from '../../cpp_frontend/ast/ArkCxxAstNode';
 
 /**
  * @category core/base/type
@@ -997,30 +996,5 @@ export class Thread extends Type {
 
     getTypeString(): string {
         return 'thread ';
-    }
-}
-
-/**
- *The FunctionPointer class represents a function pointer type
- *Inherited from Type base class, used to encapsulate C++function pointer type information
- */
-export class FunctionPointer extends Type {
-    funType: CxxTypeInfo;
-
-    constructor(funType: CxxTypeInfo) {
-        super();
-        this.funType = funType;
-    }
-
-    public getTypeString(): string {
-        return String(this.funType.qualType);
-    }
-
-    public setFunType(funType: CxxTypeInfo): void {
-        this.funType = funType;
-    }
-
-    public getFunType(): CxxTypeInfo {
-        return this.funType;
     }
 }

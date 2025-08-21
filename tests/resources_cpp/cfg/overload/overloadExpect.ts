@@ -223,35 +223,11 @@ export const VECTOR_CLASS_EXPECT = {
         },
         {
             methodName: 'operator<<',
-            blocks: [
-                {
-                    id: 0,
-                    stmts: [
-                        'os = parameter0: std::ostream&',
-                        'v = parameter1: @overload/overloadSample.cpp: Vector&',
-                        'this = this: @overload/overloadSample.cpp: Vector',
-                        'return',
-                    ],
-                    preds: [],
-                    succes: [],
-                },
-            ],
+            blocks: undefined,
         },
         {
             methodName: 'operator>>',
-            blocks: [
-                {
-                    id: 0,
-                    stmts: [
-                        'is = parameter0: std::istream&',
-                        'v = parameter1: @overload/overloadSample.cpp: Vector&',
-                        'this = this: @overload/overloadSample.cpp: Vector',
-                        'return',
-                    ],
-                    preds: [],
-                    succes: [],
-                },
-            ],
+            blocks: undefined,
         },
     ],
 };

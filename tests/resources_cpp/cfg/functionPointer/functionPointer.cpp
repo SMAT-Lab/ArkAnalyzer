@@ -53,7 +53,7 @@ void GreetSpanish()
 // Function accepts function pointer as parameter
 void Greet(void (*greetFunc)())
 {
-    GreetFunc();
+    greetFunc();
 }
 
 int Case2()

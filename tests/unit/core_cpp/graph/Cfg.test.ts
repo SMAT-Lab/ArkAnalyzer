@@ -385,6 +385,7 @@ describe('thread Test', () => {
     });
     it('case2: functionPointer', () => {
         const scene = buildScene('functionPointer');
+        scene.inferTypes();
         testBlocks(scene, 'functionPointer.cpp', 'Case1', FUNCPTR_EXPECT.FUNCPTR_EXPECT_CASE1.blocks);
         testBlocks(scene, 'functionPointer.cpp', 'Case2', FUNCPTR_EXPECT.FUNCPTR_EXPECT_CASE2.blocks);
         testBlocks(scene, 'functionPointer.cpp', 'Case3', FUNCPTR_EXPECT.FUNCPTR_EXPECT_CASE3.blocks);

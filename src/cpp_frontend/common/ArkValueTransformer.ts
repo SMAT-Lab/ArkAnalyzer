@@ -49,7 +49,6 @@ import {
     ReferenceType,
     AliasType,
     Thread,
-    FunctionPointer,
 } from '../../core/base/Type';
 import { ArkSignatureBuilder } from '../../core/model/builder/ArkSignatureBuilder';
 import { ClassSignature, FieldSignature, MethodSignature, FileSignature } from '../../core/model/ArkSignature';
@@ -64,7 +63,7 @@ import { Builtin } from '../../core/common/Builtin';
 import { Constant, NullConstant } from '../../core/base/Constant';
 import { TEMP_LOCAL_PREFIX } from '../../core/common/Const';
 import { ArkCxxIRTransformer, DummyStmt, ValueAndStmts } from './ArkIRTransformer';
-import { buildTypeFromPreStr, convertDataType, cxxNode2Type, isCXXSTLContainer } from '../model/builder/builderUtils';
+import { buildTypeFromPreStr, convertDataType, cxxNode2Type, isCxxFunctionPointer, isCXXSTLContainer, } from '../model/builder/builderUtils';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { ArkValueTransformer } from '../../core/common/ArkValueTransformer';
 import { ModelUtils } from '../../core/common/ModelUtils';
@@ -104,7 +103,7 @@ function nodeInnerNode(node: CxxAstNode): CxxAstNode {
             return last;
         }
         // Arrays containing only one TypeRef node do not return
-        if (!(node.inner.length === 1 && node.inner[0]?.kind === 'TypeRef')) {
+        if (!(node.inner.length === 1 && node.inner[0]?.kind === 'TypeRef') && !isCxxFunctionPointer(node.type.qualType)) {
             return last;
         }
     }
@@ -910,11 +909,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             varNode = identifier;
         }
         const varName = varNode.kind === 'TypeRef' ? varNode.code : varNode.name;
-        if (varNode.kind && identifier.referencedDecl && varNode.kind === 'FunctionDecl') {
-            //
-            const type = new FunctionPointer(varNode.type);
-            identifierValue = this.getOrCreateLocal(varName, type);
-        } else if (varName === UndefinedType.getInstance().getName()) {
+        if (varName === UndefinedType.getInstance().getName()) {
             identifierValue = CxxValueUtil.getUndefinedConst();
         } else {
             if (variableDefFlag) {
@@ -1909,7 +1904,13 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         const elementPositions: FullPosition[] = [];
         const arrayLength = arrayLiteralExpression.inner.length;
         this.getArrayLiteralExpression(arrayLiteralExpression, stmts, elementTypes, elementValues, elementPositions);
+        const oriType = arrayLiteralExpression.type.qualType;
+        if (isCxxFunctionPointer(oriType)) {
+            // If it's an array of function pointers, the array symbols in the type should be removed here before resolving for the base type.
+            arrayLiteralExpression.type.qualType = arrayLiteralExpression.type.qualType.replace(/\[.*?\]/g, '');
+        }
         let baseType: Type = this.cxxResolveTypeNode(arrayLiteralExpression);
+        arrayLiteralExpression.type.qualType = oriType;
         if (baseType === UnknownType.getInstance()) {
             // If the type is uncertain, it is regarded as an unknown reference type
             return this.cxxNewExpressionToValueAndStmts(arrayLiteralExpression);
@@ -2137,10 +2138,6 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             }
         }
         const declarationType = variableDeclaration.type ? this.cxxResolveTypeNode(variableDeclaration) : UnknownType.getInstance();
-        if (rightOpNode && declarationType instanceof FunctionPointer) {
-            rightOpNode.code = declarationType.getFunType().qualType;
-            rightOpNode.type.qualType = declarationType.getFunType().qualType;
-        }
         const assignment = this.cxxAssignmentToValueAndStmts(leftOpNode, rightOpNode, true, isConst, declarationType, needRightOp);
         if (declarationType instanceof ReferenceType && assignment.stmts[0] instanceof ArkAssignStmt) {
             declarationType.setSourceValue(assignment.stmts[0].getRightOp());
@@ -2519,13 +2516,17 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         if (qualType.includes('[') && qualType.includes(']')) {
             const count = qualType.match(/\[/g)?.length ?? 0;
             let baseType = cxxNode2Type(qualType.slice(0, qualType.indexOf('[')) +
-                qualType.slice(qualType.lastIndexOf(']') + 1), this.declaringMethod);
+                qualType.slice(qualType.lastIndexOf(']') + 1), this.declaringMethod, this.cxxSourceFile, node);
             if (baseType instanceof UnclearReferenceType) {
                 return new ArrayType(new UnclearReferenceType(qualType.slice(0, qualType.indexOf('['))), count);
             }
             return new ArrayType(baseType, count);
-        } else if (node && Object.prototype.hasOwnProperty.call(node, 'kind') && node.kind === 'InitListExpr') {
-            return new ArrayType(new UnclearReferenceType(qualType), node.inner.length);
+        } else if (node && node.kind === 'InitListExpr') {
+            if (qualType.includes('[') && qualType.includes(']')) {
+                return new ArrayType(new UnclearReferenceType(qualType), node.inner.length);
+            } else if (isCxxFunctionPointer(qualType)) {
+                return new UnclearReferenceType(qualType);
+            }
         } else if (qualType.startsWith('std::')) {
             const match = /std::(\w+)/g.exec(qualType); // Handle standard library container types
             const containerName = match ? match[1] : null;
@@ -2564,7 +2565,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
                 return this.resolveCxxTypeReferenceNode(qualType);
             }
         }
-        let nodeType = cxxNode2Type(qualType, this.declaringMethod);
+        let nodeType = cxxNode2Type(qualType, this.declaringMethod, this.cxxSourceFile, node);
         return nodeType instanceof UnclearReferenceType ? UnknownType.getInstance() : nodeType;
     }
 

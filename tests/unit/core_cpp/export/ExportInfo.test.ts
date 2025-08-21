@@ -144,7 +144,7 @@ describe('export Test', () => {
         assert.equal(file2?.getExportInfos().length, 4);
         assert.equal(file2?.getImportInfos().length, 0);
         const stmts2 = file2?.getDefaultClass().getMethodWithName('FuncDoSomething')?.getCfg()?.getStmts();
-        assert.isNotEmpty(stmts2);
+        assert.isUndefined(stmts2);
 
         const fileId3 = new FileSignature(projectScene.getProjectName(), 'funcImplementInCpp/src/test.cpp');
         const file3 = projectScene.getFile(fileId3);

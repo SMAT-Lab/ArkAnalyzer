@@ -19,9 +19,9 @@ export const FUNCPTR_EXPECT_CASE1 = {
             id: 0,
             stmts: [
                 'this = this: @functionPointer/functionPointer.cpp: %dflt',
-                'funcPtr = int (*)(int, int)',
+                'funcPtr = undefined',
                 'funcPtr = Add',
-                'result = staticinvoke <@%unk/%unk: .funcPtr()>(3, 4)',
+                'result = ptrinvoke <@functionPointer/functionPointer.cpp: %dflt.funcPtr(int, int)>(3, 4)',
                 "staticinvoke <@%unk/%unk: .cout()>('3 + 4 = ', result)",
                 'return 0',
             ],
@@ -37,8 +37,8 @@ export const FUNCPTR_EXPECT_CASE2 = {
             id: 0,
             stmts: [
                 'this = this: @functionPointer/functionPointer.cpp: %dflt',
-                'staticinvoke <@%unk/%unk: .Greet()>(GreetEnglish)',
-                'staticinvoke <@%unk/%unk: .Greet()>(GreetSpanish)',
+                'staticinvoke <@functionPointer/functionPointer.cpp: %dflt.Greet(@functionPointer/functionPointer.cpp: %dflt.%AM0())>(GreetEnglish)',
+                'staticinvoke <@functionPointer/functionPointer.cpp: %dflt.Greet(@functionPointer/functionPointer.cpp: %dflt.%AM0())>(GreetSpanish)',
                 'return 0',
             ],
             preds: [],
@@ -53,7 +53,7 @@ export const FUNCPTR_EXPECT_CASE3 = {
             id: 0,
             stmts: [
                 'this = this: @functionPointer/functionPointer.cpp: %dflt',
-                "%0 = newarray (double (*)(double, double)[])[4]",
+                '%0 = newarray (double (*)(double, double))[4]',
                 '%0[0] = Add',
                 '%0[1] = Subtract',
                 '%0[2] = Multiply',
@@ -83,7 +83,7 @@ export const FUNCPTR_EXPECT_CASE3 = {
             stmts: [
                 '%2 = opSymbols[i]',
                 '%3 = operations[i]',
-                '%4 = staticinvoke <@%unk/%unk: .%3()>(x, y)',
+                '%4 = ptrinvoke <@functionPointer/functionPointer.cpp: %dflt.%3(double, double)>(x, y)',
                 "staticinvoke <@%unk/%unk: .cout()>(x, ' ', %2, ' ', y, ' = ', %4)",
                 'i = i + 1',
             ],
@@ -104,9 +104,9 @@ export const FUNCPTR_EXPECT_GREET = {
         {
             id: 0,
             stmts: [
-                'greetFunc = parameter0: void (*)()',
+                'greetFunc = parameter0: @functionPointer/functionPointer.cpp: %dflt.%AM0()',
                 'this = this: @functionPointer/functionPointer.cpp: %dflt',
-                'staticinvoke <@%unk/%unk: .GreetFunc()>()',
+                'ptrinvoke <@functionPointer/functionPointer.cpp: %dflt.greetFunc()>()',
                 'return',
             ],
             preds: [],

@@ -18,7 +18,7 @@ import { CxxBodyBuilder } from './BodyBuilder';
 import { buildViewTree } from '../../../core/graph/builder/ViewTreeBuilder';
 import { ArkClass } from '../../../core/model/ArkClass';
 import { ArkMethod } from '../../../core/model/ArkMethod';
-import { buildModifiers, buildParameters, buildReturnType, cxxNode2Type } from './builderUtils';
+import { buildModifiers, buildParameters, buildReturnType, cxxNode2Type, isCxxFunctionPointer } from './builderUtils';
 import { ArkParameterRef, ArkThisRef } from '../../../core/base/Ref';
 import { ArkBody } from '../../../core/model/ArkBody';
 import { Cfg } from '../../../core/graph/Cfg';
@@ -49,7 +49,7 @@ function getSpecificNodes(methodNode: CxxAstNode, targetNode: string): CxxAstNod
         return [];
     }
     // Handle Cpp lambda functions
-    if (
+    if (!(isCxxFunctionPointer(methodNode.type.qualType)) &&
         !['FunctionDecl', 'CXXMethodDecl', 'CXXConstructorDecl', 'CXXDestructorDecl', 'FriendDecl', 'LambdaExpr', 'FunctionTemplate'].includes(
             methodNode.kind
         ) &&
@@ -150,12 +150,13 @@ export function buildArkMethodFromArkClass(methodNode: CxxAstNode, declaringClas
         mtd.setImplementationSignature(methodSignature);
         mtd.setLine(line);
         mtd.setColumn(character);
+        let bodyBuilder = new CxxBodyBuilder(mtd.getSignature(), methodNode, mtd, sourceFile);
+        mtd.setCxxBodyBuilder(bodyBuilder);
     } else {
         mtd.setDeclareSignatures(methodSignature);
         mtd.setDeclareLinesAndCols([line + 1], [character + 1]);
     }
-    let bodyBuilder = new CxxBodyBuilder(mtd.getSignature(), methodNode, mtd, sourceFile);
-    mtd.setCxxBodyBuilder(bodyBuilder);
+
     if (mtd.hasBuilderDecorator()) {
         mtd.setViewTree(buildViewTree(mtd));
     } else if (declaringClass.hasComponentDecorator() && mtd.getSubSignature().toString() === 'build()' && !mtd.isStatic()) {
@@ -239,6 +240,12 @@ function buildMethodName(node: CxxAstNode, declaringClass: ArkClass, sourceFile:
             break;
         case 'LambdaExpr':
             name = buildAnonymousMethodName(node, declaringClass);
+            break;
+        case 'VarDecl':
+        case 'ParmDecl':
+            if (isCxxFunctionPointer(node.type.qualType)) {
+                name = buildAnonymousMethodName(node, declaringClass);
+            }
             break;
         default:
             break;
@@ -405,7 +412,9 @@ export function isMethodImplementation(node: CxxAstNode): boolean {
         case 'FunctionDecl':
         case 'FunctionTemplate':
         case 'FriendDecl':
-            if (node.inner.find((inn: CxxAstNode) => inn.kind.toString() === 'CompoundStmt')) {
+            // CXXConstructorDecl-CXXCtorInitializer: using Base::Base
+            // ==> The constructor of the subclass has the same implementation as that of the parent class.
+            if (node.inner.find((inn: CxxAstNode) => (inn.kind === 'CompoundStmt' || inn.kind === 'CXXCtorInitializer'))) {
                 isFuncImpl = true;
             }
             break;

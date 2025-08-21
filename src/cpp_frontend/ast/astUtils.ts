@@ -80,7 +80,7 @@ export class AstUtils {
         }
         let translationUnit = JSON.parse(fs.readFileSync(astPath, 'utf-8')) as CxxAstNode;
         translationUnit = this.filter(sourceFile, translationUnit) as CxxAstNode;
-        deleteFIle(astPath);
+        deleteFile(astPath);
         return translationUnit;
     }
 
@@ -246,7 +246,7 @@ export class AstUtils {
     }
 }
 
-async function deleteFIle(filePath: string): Promise<void> {
+async function deleteFile(filePath: string): Promise<void> {
     try {
         await fs.promises.unlink(filePath);
         logger.info('delete file ok:', filePath);
