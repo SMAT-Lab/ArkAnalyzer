@@ -139,11 +139,19 @@ json getSourceContent(CXSourceRange range)
         return json();
     }
     unsigned tokLen = endOffset > startOffset ? (endOffset - startOffset) : 0;
-    return {
-        {"id", startOffset + endOffset}, {"code", content.substr(startOffset, endOffset - startOffset)},
-        {"begin", {{"line", startLine}, {"col", startColumn}, {"offset", startOffset}, {"tokLen", tokLen}}},
-        {"end", {{"line", endLine}, {"col", endColumn}, {"offset", endOffset}}}
-    };
+    json j = json::object();
+    j["id"] = startOffset + endOffset;
+    auto& jb = j["begin"] = json::object();
+    jb["line"] = startLine;
+    jb["col"] = startColumn;
+    jb["offset"] = startOffset;
+    jb["tokLen"] = tokLen;
+    auto& je = j["end"] = json::object();
+    je["line"] = endLine;
+    je["col"] = endColumn;
+    je["offset"] = endOffset;
+    j["code"] = content.substr(startOffset, tokLen);
+    return j;
 }
 
 // Build child node's range based on parent node
