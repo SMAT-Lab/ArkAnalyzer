@@ -1135,16 +1135,18 @@ static void HandleTemplateAndCursorSpecific(
     if (kind_cursor == CXCursor_TemplateTypeParameter && codeStr.find("=") != std::string::npos) {
         children.push_back(buildTemplateDefaultType(codeStr));
     }
-    node["inner"] = children;
-    if (kind_cursor == CXCursor_ClassDecl || kind_cursor == CXCursor_StructDecl) {
-        derivedDataTypeMap[node["name"]] = node;
-    }
     if (kind_cursor == CXCursor_CXXNewExpr) {
         annotateNewExprArrayInfo(node, children);
     } else if (kind_cursor == CXCursor_MemberRefExpr) {
         annotateMemberExprIsArrow(node);
-    } else if (kind_cursor == CXCursor_CallExpr) {
+    }
+    node["inner"] = json::array();
+    node["inner"].swap(children);
+    if (kind_cursor == CXCursor_CallExpr) {
         postprocessCallExpr(node);
+    }
+    if (kind_cursor == CXCursor_ClassDecl || kind_cursor == CXCursor_StructDecl) {
+        derivedDataTypeMap[node["name"]] = node;
     }
 }
 
