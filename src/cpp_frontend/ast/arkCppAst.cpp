@@ -1099,14 +1099,30 @@ void fillNodeIdRangeLoc(json& node, const json& content, CXCursorKind kind_curso
                         CXFile file, const std::string& displayName)
 {
     if (!content.is_null()) {
-        node["id"] = content["id"];
-        json begin = content["begin"];
-        node["range"] = {{"begin", begin}, {"end", content["end"]}};
+        auto it = content.find("id");
+        if (it != content.end()) {
+            node["id"] = *it;
+        }
+        auto itB = content.find("begin");
+        auto itE = content.find("end");
+        if (itB != content.end() && itE != content.end()) {
+            auto& r = node["range"] = json::object();
+            r["begin"] = *itB;
+            r["end"]   = *itE;
+        }
     }
     if (file && std::find(locCursorKind.begin(), locCursorKind.end(), kind_cursor) != locCursorKind.end()) {
-        node["locFile"] = file ? Cx2Str(clang_getFileName(file)) : "";
+        if (file) {
+            node["locFile"] = Cx2Str(clang_getFileName(file));
+        } else {
+            node["locFile"] = "";
+        }
     }
-    node["valueCategory"] = (kind_cursor == CXCursor_EnumConstantDecl) ? displayName : "prvalue";
+    if (kind_cursor == CXCursor_EnumConstantDecl) {
+        node["valueCategory"] = displayName;
+    } else {
+        node["valueCategory"] = "prvalue";
+    }
 }
 
 void fillMemberExprName(json& node)
