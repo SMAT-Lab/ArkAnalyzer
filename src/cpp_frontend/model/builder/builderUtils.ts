@@ -18,12 +18,10 @@ import {
     GenericType,
     Type,
     UnknownType,
-    PointerType,
-    ReferenceType,
-    ReferCategory,
     UnclearReferenceType,
     FunctionType,
 } from '../../../core/base/Type';
+import { PointerType, ReferenceType, ReferCategory } from '../../base/Type';
 import { TypeInference } from '../../common/TypeInference';
 import { ArkField } from '../../../core/model/ArkField';
 import { ArkClass } from '../../../core/model/ArkClass';
@@ -308,6 +306,7 @@ const typeMap: Record<string, string> = {
     'std::string': 'string',
     char: 'string',
     'signed char': 'string',
+    'unsigned char': 'string',
     wchar_t: 'string',
     char16_t: 'string',
     char32_t: 'string',
@@ -332,6 +331,7 @@ const typeMap: Record<string, string> = {
     int16_t: 'number',
     int32_t: 'number',
     int64_t: 'number',
+    size_t: 'number',
     // void
     void: 'void',
 };

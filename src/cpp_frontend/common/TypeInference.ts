@@ -25,16 +25,13 @@ import {
     ArrayType,
     BooleanType,
     ClassType,
-    CXXNumberType,
-    CXXStringType,
     EnumValueType,
     FunctionType,
     GenericType,
     IntersectionType,
     NeverType,
     NullType,
-    PointerType,
-    ReferenceType,
+    NumberType,
     StringType,
     TupleType,
     Type,
@@ -44,6 +41,20 @@ import {
     UnknownType,
     VoidType,
 } from '../../core/base/Type';
+import {
+    CxxCharType,
+    CxxDoubleType,
+    CxxFloatType,
+    CxxIntType,
+    CxxLongDoubleType,
+    CxxLongLongType,
+    CxxLongType,
+    CxxShortType,
+    CxxTypeSigned,
+    CxxTypeSize,
+    PointerType,
+    ReferenceType,
+} from '../base/Type';
 import { ArkMethod } from '../../core/model/ArkMethod';
 import { ArkExport } from '../../core/model/ArkExport';
 import { ArkClass, ClassCategory } from '../../core/model/ArkClass';
@@ -575,9 +586,9 @@ export class TypeInference {
             case 'boolean':
                 return BooleanType.getInstance();
             case 'number':
-                return CXXNumberType.getInstance(cxxTypeStr);
+                return this.buildTypeFromCxxNumberStr(cxxTypeStr);
             case 'string':
-                return CXXStringType.getInstance(cxxTypeStr);
+                return this.buildTypeFromCxxStringStr(cxxTypeStr);
             case 'undefined':
                 return UndefinedType.getInstance();
             case 'null':
@@ -594,6 +605,82 @@ export class TypeInference {
             }
             default:
                 return new UnclearReferenceType(tsTypeStr);
+        }
+    }
+
+    public static buildTypeFromCxxNumberStr(cxxTypeStr?: string): Type {
+        if (!cxxTypeStr) {
+            return NumberType.getInstance();
+        }
+        switch (cxxTypeStr) {
+            case 'short':
+                return CxxShortType.getInstance(CxxTypeSigned.SIGNED, CxxTypeSize.SIXTEEN_BITS, 'short');
+            case 'unsigned short':
+                return CxxShortType.getInstance(CxxTypeSigned.UNSIGNED, CxxTypeSize.SIXTEEN_BITS, 'unsigned short');
+            case 'int':
+                return CxxIntType.getInstance(CxxTypeSigned.SIGNED, CxxTypeSize.THIRTY_TWO_BITS, 'int');
+            case 'unsigned int':
+                return CxxIntType.getInstance(CxxTypeSigned.UNSIGNED, CxxTypeSize.THIRTY_TWO_BITS, 'unsigned int');
+            case 'int8_t':
+                return CxxIntType.getInstance(CxxTypeSigned.SIGNED, CxxTypeSize.EIGHT_BITS, 'int8_t');
+            case 'uint8_t':
+                return CxxIntType.getInstance(CxxTypeSigned.UNSIGNED, CxxTypeSize.EIGHT_BITS, 'uint8_t');
+            case 'int16_t':
+                return CxxIntType.getInstance(CxxTypeSigned.SIGNED, CxxTypeSize.SIXTEEN_BITS, 'int16_t');
+            case 'uint16_t':
+                return CxxIntType.getInstance(CxxTypeSigned.UNSIGNED, CxxTypeSize.SIXTEEN_BITS, 'uint16_t');
+            case 'int32_t':
+                return CxxIntType.getInstance(CxxTypeSigned.SIGNED, CxxTypeSize.THIRTY_TWO_BITS, 'int32_t');
+            case 'uint32_t':
+                return CxxIntType.getInstance(CxxTypeSigned.UNSIGNED, CxxTypeSize.THIRTY_TWO_BITS, 'uint32_t');
+            case 'int64_t':
+                return CxxIntType.getInstance(CxxTypeSigned.SIGNED, CxxTypeSize.SIXTY_FOUR_BITS, 'int64_t');
+            case 'uint64_t':
+                return CxxIntType.getInstance(CxxTypeSigned.UNSIGNED, CxxTypeSize.SIXTY_FOUR_BITS, 'uint64_t');
+            case 'size_t':
+                return CxxIntType.getInstance(CxxTypeSigned.UNSIGNED, CxxTypeSize.UNKNOWN, 'size_t');
+            case 'long':
+                return CxxLongType.getInstance(CxxTypeSigned.SIGNED, CxxTypeSize.THIRTY_TWO_BITS, 'long');
+            case 'unsigned long':
+                return CxxLongType.getInstance(CxxTypeSigned.UNSIGNED, CxxTypeSize.THIRTY_TWO_BITS, 'unsigned long');
+            case 'long long':
+                return CxxLongLongType.getInstance(CxxTypeSigned.SIGNED, CxxTypeSize.SIXTY_FOUR_BITS, 'long long');
+            case 'unsigned long long':
+                return CxxLongLongType.getInstance(CxxTypeSigned.UNSIGNED, CxxTypeSize.SIXTY_FOUR_BITS, 'unsigned long long');
+            case 'float':
+                return CxxFloatType.getInstance();
+            case 'double':
+                return CxxDoubleType.getInstance();
+            case 'long double':
+                return CxxLongDoubleType.getInstance();
+            default:
+                return new UnclearReferenceType(cxxTypeStr);
+        }
+    }
+
+    public static buildTypeFromCxxStringStr(cxxTypeStr?: string): Type {
+        if (!cxxTypeStr) {
+            return StringType.getInstance();
+        }
+        switch (cxxTypeStr) {
+            case 'string':
+            case 'std::string':
+            case 'std::basic_string<char>':
+                return StringType.getInstance();
+            case 'char':
+                return CxxCharType.getInstance(CxxTypeSigned.UNKNOWN, CxxTypeSize.EIGHT_BITS, 'char');
+            case 'signed char':
+                return CxxCharType.getInstance(CxxTypeSigned.SIGNED, CxxTypeSize.EIGHT_BITS, 'signed char');
+            case 'unsigned char':
+                return CxxCharType.getInstance(CxxTypeSigned.UNSIGNED, CxxTypeSize.EIGHT_BITS, 'unsigned char');
+            case 'char16_t':
+                return CxxCharType.getInstance(CxxTypeSigned.UNSIGNED, CxxTypeSize.SIXTEEN_BITS, 'char16_t');
+            case 'char32_t':
+                return CxxCharType.getInstance(CxxTypeSigned.UNSIGNED, CxxTypeSize.THIRTY_TWO_BITS, 'char32_t');
+            case 'wchar_t':
+                return CxxCharType.getInstance(CxxTypeSigned.UNKNOWN, CxxTypeSize.UNKNOWN, 'wchar_t');
+            default:
+                return new UnclearReferenceType(cxxTypeStr);
         }
     }
 

@@ -43,7 +43,7 @@ int main()
         long longData1 = -100;
         unsigned long longData2 = 100;
         long long long2Data1 = -1000;
-        unsigned long long2Data2 = 1000;
+        unsigned long long long2Data2 = 1000;
         float floatData = 88.8f;
         double doubleData1 = 88.888;
         long double doubleData2 = 88.8888;

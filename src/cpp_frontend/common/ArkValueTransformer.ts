@@ -45,11 +45,9 @@ import {
     UnclearReferenceType,
     UndefinedType,
     UnknownType,
-    PointerType,
-    ReferenceType,
     AliasType,
-    Thread,
 } from '../../core/base/Type';
+import { PointerType, ReferenceType, Thread } from '../base/Type';
 import { ArkSignatureBuilder } from '../../core/model/builder/ArkSignatureBuilder';
 import { ClassSignature, FieldSignature, MethodSignature, FileSignature } from '../../core/model/ArkSignature';
 import { Value } from '../../core/base/Value';

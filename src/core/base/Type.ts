@@ -30,7 +30,6 @@ import {
 } from '../common/TSConst';
 import { Local } from './Local';
 import { Constant } from './Constant';
-import { Value } from './Value';
 
 /**
  * @category core/base/type
@@ -159,31 +158,6 @@ export class NumberType extends PrimitiveType {
     }
 }
 
-// C++ number has multiple integer and floating-point type distinctions, so derive a C++ number type
-export class CXXNumberType extends NumberType {
-    private readonly cxxType: string;
-
-    private constructor(cxxType: string) {
-        super();
-        this.cxxType = cxxType;
-    }
-
-    public static getInstance(cxxType?: string): CXXNumberType | NumberType {
-        if (cxxType) {
-            return new CXXNumberType(cxxType);
-        }
-        return NumberType.getInstance();
-    }
-
-    public getCxxType(): string {
-        return this.cxxType;
-    }
-
-    public getTypeString(): string {
-        return this.cxxType;
-    }
-}
-
 /**
  * bigint type
  * @category core/base/type
@@ -213,35 +187,6 @@ export class StringType extends PrimitiveType {
 
     public static getInstance(): StringType {
         return this.INSTANCE;
-    }
-}
-
-/**
- * CXXStringType type
- * C++ string has different character type distinctions, so derive a C++ string type
- * @category core/base/type
- */
-export class CXXStringType extends StringType {
-    private readonly cxxType: string;
-
-    private constructor(cxxType: string) {
-        super();
-        this.cxxType = cxxType;
-    }
-
-    public static getInstance(cxxType?: string): CXXStringType | StringType {
-        if (cxxType) {
-            return new CXXStringType(cxxType);
-        }
-        return StringType.getInstance();
-    }
-
-    public getCxxType(): string {
-        return this.cxxType;
-    }
-
-    public getTypeString(): string {
-        return this.cxxType.toString();
     }
 }
 
@@ -877,124 +822,5 @@ export class EnumValueType extends Type {
 
     public getTypeString(): string {
         return this.signature.toString();
-    }
-}
-
-/**
- *PointerType class represents pointer type, inherited from Type base class
- *Pointer types used to represent C language style, such as int *, char * *, etc
- */
-export class PointerType extends Type {
-    private baseType: Type; // Base type, such as int in int *
-    private level: number; // Represents the level of pointer
-
-    constructor(baseType: Type, level: number) {
-        super();
-        this.baseType = baseType;
-        this.level = level;
-    }
-
-    public getBaseType(): Type {
-        return this.baseType;
-    }
-
-    public setBaseType(newBaseType: Type): void {
-        this.baseType = newBaseType;
-    }
-
-    public getLevel(): number {
-        return this.level;
-    }
-
-    public getTypeString(): string {
-        const strs: string[] = [];
-        if (this.baseType instanceof UnionType) {
-            strs.push('(' + this.baseType.toString() + ')');
-        } else if (this.baseType) {
-            strs.push(this.baseType.toString());
-        }
-        for (let i = 0; i < this.level; i++) {
-            strs.push('*');
-        }
-        return strs.join('');
-    }
-}
-
-/**
- *Reference category enumeration, used to distinguish different types of references
- *LVALUE_REF: Left value reference, the reference type of address can be obtained
- *RVALUE_REF: Right value reference, used to bind the reference type of temporary object
- *UNIVERSAL_REF: universal reference, which can bind reference types of left or right values
- */
-export enum ReferCategory {
-    LVALUE_REF = 'LVALUE_REF',
-    RVALUE_REF = 'RVALUE_REF',
-    UNIVERSAL_REF = 'UNIVERSAL_REF',
-}
-
-/**
- *The ReferenceType class represents the reference type, inherited from the Type base class
- *Used to represent the type of left value reference (&) and right value reference (&&) in C++
- */
-export class ReferenceType extends Type {
-    private baseType: Type;
-    private category: ReferCategory;
-    private sourceValue?: Value;
-
-    constructor(bassType: Type, category: ReferCategory, sourceValue?: Value) {
-        super();
-        this.baseType = bassType;
-        this.category = category;
-        this.sourceValue = sourceValue;
-    }
-
-    public getBaseType(): Type {
-        return this.baseType;
-    }
-
-    public setBaseType(newBaseType: Type): void {
-        this.baseType = newBaseType;
-    }
-
-    public getCategory(): ReferCategory {
-        return this.category;
-    }
-
-    public setSourceValue(sourceValue: Value): void {
-        this.sourceValue = sourceValue;
-    }
-
-    public getSourceValue(): Value | undefined {
-        return this.sourceValue;
-    }
-
-    public getTypeString(): string {
-        // Implement abstract method, return type string
-        const strs: string[] = [];
-        if (this.baseType instanceof UnionType) {
-            strs.push('(' + this.baseType.toString() + ')');
-        } else if (this.baseType) {
-            strs.push(this.baseType.toString());
-        }
-        if (this.category === ReferCategory.LVALUE_REF) {
-            strs.push('&');
-        } else {
-            strs.push('&&');
-        }
-        return strs.join('');
-    }
-}
-
-/**
- *The Thread class inherits from the Type class and represents a thread type
- *This class provides the basic implementation of thread types
- */
-export class Thread extends Type {
-    constructor() {
-        super();
-    }
-
-    getTypeString(): string {
-        return 'thread ';
     }
 }

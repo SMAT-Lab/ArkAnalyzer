@@ -23,14 +23,13 @@ import {
     GenericType,
     LexicalEnvType,
     NullType,
-    PointerType,
-    ReferenceType,
     Type,
     UnclearReferenceType,
     UndefinedType,
     UnionType,
     UnknownType,
 } from '../base/Type';
+import { PointerType, ReferenceType } from '../../cpp_frontend/base/Type';
 import { Local } from '../base/Local';
 import { TypeInference } from './TypeInference';
 import { AbstractExpr, AbstractInvokeExpr, AliasTypeExpr, ArkInstanceInvokeExpr, ArkPtrInvokeExpr, ArkStaticInvokeExpr } from '../base/Expr';

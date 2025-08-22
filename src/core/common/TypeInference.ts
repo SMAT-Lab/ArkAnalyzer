@@ -33,8 +33,6 @@ import {
     NeverType,
     NullType,
     NumberType,
-    PointerType,
-    ReferenceType,
     StringType,
     TupleType,
     Type,
@@ -44,6 +42,7 @@ import {
     UnknownType,
     VoidType,
 } from '../base/Type';
+import { PointerType, ReferenceType } from '../../cpp_frontend/base/Type';
 import { ArkMethod } from '../model/ArkMethod';
 import { ArkExport } from '../model/ArkExport';
 import { ArkClass, ClassCategory } from '../model/ArkClass';
