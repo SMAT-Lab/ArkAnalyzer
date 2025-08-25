@@ -695,28 +695,6 @@ json buildTemplateDefaultType(const std::string& codeStr)
     return {{"kind", "TemplateArgument"}, {"type", {{"qualType", typeStr}}}, {"inner", {elaboratedNode}}};
 }
 
-//  Determine if filename is in -i directory
-bool IsInUserInclude(const std::string& fileName)
-{
-    // Normalize the path (resolve symlinks, unify separators, cache results).
-    auto norm = CanonicalCached(fileName);
-    // Exclude system header prefixes (standard library, SDK, etc.).
-    for (const auto& p: kDenyPrefixes) {
-        if (norm.find(p) != std::string::npos) {
-            return false;
-        }
-    }
-    for (const auto& dir: g_user_include_dirs) {
-        std::string prefix = CanonicalCached(dir);
-        if (!prefix.empty() && prefix.back() != '/') {
-            prefix += '/';
-        }
-        if (norm.find(prefix) == 0) {
-            return true;
-        }
-    }
-    return false;
-}
 
 inline bool isRemovable(const json& j)
 {
@@ -779,6 +757,30 @@ static const std::string& CanonicalCached(const std::string& path)
     canon = Slashify(std::move(canon));
     return g_pathCanonCache.emplace(path, std::move(canon)).first->second;
 }
+
+//  Determine if filename is in -i directory
+bool IsInUserInclude(const std::string& fileName)
+{
+    // Normalize the path (resolve symlinks, unify separators, cache results).
+    auto norm = CanonicalCached(fileName);
+    // Exclude system header prefixes (standard library, SDK, etc.).
+    for (const auto& p: kDenyPrefixes) {
+        if (norm.find(p) != std::string::npos) {
+            return false;
+        }
+    }
+    for (const auto& dir: g_user_include_dirs) {
+        std::string prefix = CanonicalCached(dir);
+        if (!prefix.empty() && prefix.back() != '/') {
+            prefix += '/';
+        }
+        if (norm.find(prefix) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
 
 void filterToMainFileOnly(json& node, const std::string& normMainFileName, std::string parentFileName = "")
 {
@@ -1319,7 +1321,7 @@ CXTranslationUnit createTranslationUnit(CXIndex index, const CommandLineOptions&
                                         const std::vector<const char*>& args)
 {
     return clang_parseTranslationUnit(index, opts.inputFile.c_str(), args.data(), args.size(), nullptr, 0,
-        CXTranslationUnit_DetailedPreprocessingRecord);
+        CXTranslationUnit_KeepGoing);
 }
 
 json buildAndProcessAST(CXTranslationUnit unit, const CommandLineOptions& opts)
