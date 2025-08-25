@@ -37,9 +37,31 @@ export const MapDemo_EXPECT = {
                 '%4 = args[1]',
                 '%5 = &num',
                 'staticinvoke <@%unk/%unk: .napi_get_value_int32()>(env, %4, %5)',
-                'return null',
+                '%6 = new @%unk/%unk: pair<_Unrefwrap_t<char (&)[1024]>, _Unrefwrap_t<int &>>',
+                '%7 = staticinvoke <@%unk/%unk: .make_pair()>(str1, num)',
+                'instanceinvoke %6.<@%unk/%unk: pair<_Unrefwrap_t<char (&)[1024]>, _Unrefwrap_t<int &>>.constructor()>(%7)',
+                'instanceinvoke testmap.<@%unk/%unk: .insert()>(%6)',
+                '%8 = instanceinvoke testmap.<@%unk/%unk: .Symbol.iterator()>()'
             ],
             preds: [],
+            succes: [ 1 ],
+        },
+        {
+            id: 1,
+            stmts: [
+                'e = <unknown>%11',
+                '%8 = instanceinvoke testmap.<@%unk/%unk: .Symbol.iterator()>()',
+                '%9 = instanceinvoke %8.<@%unk/%unk: .next()>()'
+            ],
+            preds: [ 0, 1],
+            succes: [ 1, 2 ],
+        },
+        {
+            id: 2,
+            stmts: [
+                'return null'
+            ],
+            preds: [ 1 ],
             succes: [],
         },
     ],
