@@ -39,6 +39,18 @@ export class CxxBodyBuilder {
         this.cfgBuilder = new CfgBuilder(sourceAstNode, methodSignature.getMethodSubSignature().getMethodName(), declaringMethod, sourceFile);
     }
 
+    public buildBody(): void {
+        const arkBody: ArkBody | null = this.build();
+        if (arkBody) {
+            const declMethod = this.cfgBuilder.getDeclaringMethod();
+            declMethod.setBody(arkBody);
+            arkBody.getCfg().setDeclaringMethod(declMethod);
+            if (declMethod.getOuterMethod() === undefined) {
+                this.handleGlobalAndClosure();
+            }
+        }
+    }
+
     public build(): ArkBody | null {
         this.cfgBuilder.buildCfgBuilder();
         if (!this.cfgBuilder.isBodyEmpty()) {

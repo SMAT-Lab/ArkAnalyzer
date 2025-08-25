@@ -364,7 +364,7 @@ export class Scene {
             const isCxxFile = method.getDeclaringArkFile()?.getLanguage() === Language.CXX;
             try {
                 if (isCxxFile) {
-                    method.buildCxxBody();
+                    method.getCxxBodyBuilder()?.buildBody();
                 } else {
                     method.buildBody();
                 }

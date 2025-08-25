@@ -557,7 +557,7 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
     public setCxxBodyBuilder(bodyBuilder: CxxBodyBuilder): void {
         this.CxxBodyBuilder = bodyBuilder;
         if (this.getDeclaringArkFile().getScene().buildClassDone()) {
-            this.buildCxxBody();
+            this.CxxBodyBuilder.buildBody();
         }
     }
 
@@ -577,19 +577,6 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
                 arkBody.getCfg().setDeclaringMethod(this);
                 if (this.getOuterMethod() === undefined) {
                     this.bodyBuilder.handleGlobalAndClosure();
-                }
-            }
-        }
-    }
-
-    public buildCxxBody(): void {
-        if (this.CxxBodyBuilder) {
-            const arkBody: ArkBody | null = this.CxxBodyBuilder.build();
-            if (arkBody) {
-                this.setBody(arkBody);
-                arkBody.getCfg().setDeclaringMethod(this);
-                if (this.getOuterMethod() === undefined) {
-                    this.CxxBodyBuilder.handleGlobalAndClosure();
                 }
             }
         }
