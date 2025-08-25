@@ -698,12 +698,20 @@ json buildTemplateDefaultType(const std::string& codeStr)
 //  Determine if filename is in -i directory
 bool IsInUserInclude(const std::string& fileName)
 {
+    // Normalize the path (resolve symlinks, unify separators, cache results).
+    auto norm = CanonicalCached(fileName);
+    // Exclude system header prefixes (standard library, SDK, etc.).
+    for (const auto& p: kDenyPrefixes) {
+        if (norm.find(p) != std::string::npos) {
+            return false;
+        }
+    }
     for (const auto& dir: g_user_include_dirs) {
-        // Unify path separators
-        std::string prefix = dir;
-        if (!prefix.empty() && prefix.back() != '/' && prefix.back() != '\\')
-            prefix += GetPathSeparator();
-        if (fileName.find(prefix) == 0) {
+        std::string prefix = CanonicalCached(dir);
+        if (!prefix.empty() && prefix.back() != '/') {
+            prefix += '/';
+        }
+        if (norm.find(prefix) == 0) {
             return true;
         }
     }
@@ -740,7 +748,8 @@ std::vector<json> headerUnits;
 static std::unordered_map<std::string, std::string> g_pathCanonCache; // need to free after use
 static std::unordered_map<std::string, bool>        g_pathExistCache; // need to free after use
 
-static inline std::string Slashify(std::string s) {
+static inline std::string Slashify(std::string s)
+{
     for (auto& ch : s) {
         if (ch == '\\') {
             ch = '/';
@@ -749,7 +758,8 @@ static inline std::string Slashify(std::string s) {
     return s;
 }
 
-static inline const std::string& CanonicalCached(const std::string& path) {
+static const std::string& CanonicalCached(const std::string& path)
+{
     auto it = g_pathCanonCache.find(path);
     if (it != g_pathCanonCache.end()) return it->second;
 
@@ -804,11 +814,10 @@ void filterToMainFileOnly(json& node, const std::string& normMainFileName, std::
                 return;
             }
             const std::string included = node.value("included", "");
-            const bool inUserByFile    = IsInUserInclude(fileName);
-            const bool inUserByIncl    = (!included.empty() && IsInUserInclude(included));
-            const std::string code     = node.value("code", "");
-            const bool isAngle         = (code.find('<') != std::string::npos) || (code.find('>') != std::string::npos);
-
+            const bool inUserByFile = IsInUserInclude(fileName);
+            const bool inUserByIncl = (!included.empty() && IsInUserInclude(included));
+            const std::string code = node.value("code", "");
+            const bool isAngle = (code.find('<') != std::string::npos) || (code.find('>') != std::string::npos);
             if (inUserByFile || (inUserByIncl && !isAngle)) {
                 headerUnits.push_back(node); // Collect user-header include
             }

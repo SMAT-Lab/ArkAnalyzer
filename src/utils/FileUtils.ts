@@ -95,6 +95,8 @@ export class FileUtils {
             case '.js':
                 return Language.JAVASCRIPT;
             case '.h':
+            case '.hpp':
+            case '.c':
             case '.cpp':
                 return Language.CXX;
             default:
