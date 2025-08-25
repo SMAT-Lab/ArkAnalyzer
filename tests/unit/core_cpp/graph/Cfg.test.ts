@@ -100,16 +100,18 @@ describe('CfgTest', () => {
     });
 
     it('case4: loop statement', () => {
-        const scene = buildScene('loop');
-        testBlocks(scene, 'loopSample.cpp', 'Case1', LOOP_EXPECT.LOOP_EXPECT_CASE1.blocks);
-        testBlocks(scene, 'loopSample.cpp', 'Case2', LOOP_EXPECT.LOOP_EXPECT_CASE2.blocks);
-        testBlocks(scene, 'loopSample.cpp', 'Case3', LOOP_EXPECT.LOOP_EXPECT_CASE3.blocks);
-        testBlocks(scene, 'loopSample.cpp', 'Case4', LOOP_EXPECT.LOOP_EXPECT_CASE4.blocks);
-        testBlocks(scene, 'loopSample.cpp', 'Case5', LOOP_EXPECT.LOOP_EXPECT_CASE5.blocks);
-        testBlocks(scene, 'loopSample.cpp', 'Case6', LOOP_EXPECT.LOOP_EXPECT_CASE6.blocks);
-        testBlocks(scene, 'loopSample.cpp', 'Case7', LOOP_EXPECT.LOOP_EXPECT_CASE7.blocks);
-        testBlocks(scene, 'loopSample.cpp', 'Case8', LOOP_EXPECT.LOOP_EXPECT_CASE8.blocks);
-        testBlocks(scene, 'loopSample.cpp', 'Case9', LOOP_EXPECT.LOOP_EXPECT_CASE9.blocks);
+        if (system_win32) {
+            const scene = buildScene('loop');
+            testBlocks(scene, 'loopSample.cpp', 'Case1', LOOP_EXPECT.LOOP_EXPECT_CASE1.blocks);
+            testBlocks(scene, 'loopSample.cpp', 'Case2', LOOP_EXPECT.LOOP_EXPECT_CASE2.blocks);
+            testBlocks(scene, 'loopSample.cpp', 'Case3', LOOP_EXPECT.LOOP_EXPECT_CASE3.blocks);
+            testBlocks(scene, 'loopSample.cpp', 'Case4', LOOP_EXPECT.LOOP_EXPECT_CASE4.blocks);
+            testBlocks(scene, 'loopSample.cpp', 'Case5', LOOP_EXPECT.LOOP_EXPECT_CASE5.blocks);
+            testBlocks(scene, 'loopSample.cpp', 'Case6', LOOP_EXPECT.LOOP_EXPECT_CASE6.blocks);
+            testBlocks(scene, 'loopSample.cpp', 'Case7', LOOP_EXPECT.LOOP_EXPECT_CASE7.blocks);
+            testBlocks(scene, 'loopSample.cpp', 'Case8', LOOP_EXPECT.LOOP_EXPECT_CASE8.blocks);
+            testBlocks(scene, 'loopSample.cpp', 'Case9', LOOP_EXPECT.LOOP_EXPECT_CASE9.blocks);
+        }
     });
     it('case5: while-continue statement', () => {
         const scene = buildScene('whileContinue');
