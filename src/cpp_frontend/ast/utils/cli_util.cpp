@@ -26,6 +26,261 @@
 using json = nlohmann::json;
 namespace fs = std::filesystem;
 
+static std::string Slashify(std::string s)
+{
+    for (auto& ch : s) {
+        if (ch == '\\') {
+            ch = '/';
+        }
+    }
+    return s;
+}
+#ifdef _WIN32
+std::string Lower(std::string s) {
+    std::transform(s.begin(), s.end(), s.begin(),
+                   [](unsigned char c){ return (char)std::tolower(c); });
+    return s;
+}
+#else
+std::string Lower(std::string s) { return s; }
+#endif
+
+fs::path CanonicalOr(const fs::path& p) {
+    std::error_code ec;
+    fs::path r = fs::weakly_canonical(p, ec);
+    if (ec) {
+        r = p;
+    }
+    return r;
+}
+
+std::string NormalizePath(const std::string& p) {
+    auto c = CanonicalOr(fs::path(p)).string();
+    return Lower(Slashify(c));
+}
+
+bool EndsWith(const std::string& s, const char* suf) {
+    const size_t n = std::strlen(suf);
+    return s.size() >= n && s.compare(s.size()-n, n, suf) == 0;
+}
+
+bool IsCompilerExecutable(std::string arg) {
+    for (auto& ch : arg) {
+        ch = (char)std::tolower((unsigned char)ch);
+    }
+    return EndsWith(arg,"clang.exe") || EndsWith(arg,"clang++.exe")
+        || EndsWith(arg,"clang-cl.exe") || EndsWith(arg,"clang")
+        || EndsWith(arg,"clang++") || EndsWith(arg,"clang-cl")
+        || EndsWith(arg,"clang_~1.exe");
+}
+
+// Shell-like split: supports quotes, \" and \<space>.
+std::vector<std::string> SplitCommandLine(const std::string& cmd) {
+    std::vector<std::string> out; std::string cur; bool in_quotes=false;
+    for (size_t i=0;i<cmd.size();++i) {
+        char ch = cmd[i];
+        if (ch=='\\') {
+            if (i+1<cmd.size()) {
+                char nxt = cmd[i+1];
+                if (nxt=='"' || nxt=='\\' || nxt==' ') {
+                    cur.push_back(nxt); ++i;
+                } else {
+                    cur.push_back(ch);
+                }
+            } else {
+                cur.push_back(ch);
+            }
+        } else if (ch=='"') {
+            in_quotes = !in_quotes;
+        } else if (std::isspace((unsigned char)ch) && !in_quotes) {
+            if (!cur.empty()) {
+                out.push_back(std::move(cur)); cur.clear();
+            }
+        } else {
+            cur.push_back(ch);
+        }
+    }
+    if (!cur.empty()) {
+        out.push_back(std::move(cur));
+    }
+    return out;
+}
+
+void BuildCStrArgs(ClangArgs& a) {
+    a.cstrArgs.clear();
+    a.cstrArgs.reserve(a.strArgs.size());
+    for (auto& s : a.strArgs) {
+        a.cstrArgs.push_back(s.c_str());
+    }
+}
+
+bool LoadCompileCommandsJSON(const std::string& path, json& out) {
+    std::ifstream f(path);
+    if (!f.is_open()) {
+        std::cerr << "Failed to open compile_commands.json: " << path << "\n";
+        return false;
+    }
+    try { f >> out; }
+    catch (const json::exception& e) {
+        std::cerr << "JSON parse error: " << e.what() << "\n";
+        return false;
+    }
+    return true;
+}
+
+const json* FindMatchingEntry(const json& ccjson, const std::string& inputFile) {
+    const std::string inputNorm = NormalizePath(inputFile);
+    for (const auto& entry : ccjson) {
+        if (!entry.contains("file")) {
+            continue;
+        }
+        std::string fileField;
+        try { fileField = entry["file"].get<std::string>(); } catch (...) { continue; }
+        if (NormalizePath(fileField) == inputNorm) {
+            return &entry;
+        }
+    }
+    return nullptr;
+}
+
+std::string ExtractWorkDir(const json& entry) {
+    if (!entry.contains("directory")) {
+        return {};
+    }
+    try { return Slashify(entry["directory"].get<std::string>()); }
+    catch (...) { return {}; }
+}
+
+std::vector<std::string> BuildArgvFromEntry(const json& entry) {
+    std::vector<std::string> argv;
+    if (entry.contains("arguments")) {
+        try { for (const auto& a : entry["arguments"]) argv.push_back(a.get<std::string>()); }
+        catch (...) { argv.clear(); }
+    }
+    if (argv.empty() && entry.contains("command")) {
+        try { argv = SplitCommandLine(entry["command"].get<std::string>()); }
+        catch (...) { argv.clear(); }
+    }
+    if (argv.empty()) {
+        std::cerr << "compile_commands.json has neither valid 'arguments' nor 'command'\n";
+    }
+    return argv;
+}
+
+bool StartsWithAny(const std::string& s, std::initializer_list<const char*> ps) {
+    for (auto p : ps) {
+        const size_t n = std::strlen(p);
+        if (s.size() >= n && s.compare(0, n, p) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void FilterAndNormalizeArgs(const std::vector<std::string>& argv,
+                            const std::string& entryFile,
+                            const std::string& inputFile,
+                            std::vector<std::string>& outArgs) {
+    const std::string entryNorm = NormalizePath(entryFile);
+    const std::string inputNorm = NormalizePath(inputFile);
+
+    bool skipNext=false, pendingX=false, stdTwoPart=false, stopAfterDD=false;
+    bool hasLang=false, hasStd=false;
+
+    for (size_t i=0;i<argv.size();++i) {
+        std::string arg = argv[i];
+        if (arg.empty()) {
+            continue;
+        }
+        if (stopAfterDD) {
+            continue;
+        }
+        if (skipNext) {
+            skipNext=false; continue;
+        }
+        if (i==0 && IsCompilerExecutable(arg)) {
+            continue;
+        }
+        const std::string norm = NormalizePath(arg);
+        if (norm==entryNorm || norm==inputNorm) {
+            continue;
+        }
+        if (arg=="--") {
+            stopAfterDD=true; continue;
+        }
+        if (arg=="-x") {
+            pendingX=true; continue;
+        }
+        if (pendingX) {
+            outArgs.push_back(std::string("-x")+arg);
+            hasLang=true;
+            pendingX=false;
+            continue;
+        }
+
+        if (arg=="-std") {
+            stdTwoPart=true;
+            continue;
+        }
+        if (stdTwoPart) {
+            outArgs.push_back(std::string("-std=")+arg);
+            hasStd=true;
+            stdTwoPart=false;
+            continue;
+        }
+        if (arg.rfind("-std=",0)==0) {
+            hasStd=true;
+            outArgs.push_back(std::move(arg));
+            continue;
+        }
+
+        if (arg=="-xc" || arg=="-xc++" || arg=="-xc-header" || arg=="-xc++-header") {
+            hasLang=true;
+            outArgs.push_back(std::move(arg));
+            continue;
+        }
+
+        auto EatsNextArg = [](const std::string& s){
+            return (s=="-o"||s=="-c"||s=="-MF"||s=="-MT"||s=="-MQ"
+                    ||s=="--sysroot"||s=="-isysroot"||s=="-include"||s=="-imacros");
+        };
+        auto DropSingleOpt = [](const std::string& s){
+            return (s=="-c"||s=="-shared"||s=="-fPIC");
+        };
+        if (DropSingleOpt(arg)) {
+            continue;
+        }
+        if (EatsNextArg(arg)) {
+            skipNext=true; continue;
+        }
+        if (StartsWithAny(arg,{"-o","-MF","-MT","-MQ","-c"})) {
+            continue;
+        }
+        outArgs.push_back(std::move(arg));
+    }
+
+    // Fallbacks
+    if (!hasLang) {
+        fs::path p(entryFile);
+        std::string ext = p.extension().string();
+        std::transform(ext.begin(), ext.end(), ext.begin(),
+                       [](unsigned char c){ return (char)std::tolower(c); });
+        const bool isHeader = (ext==".h"||ext==".hh"||ext==".hpp"||ext==".hxx");
+        outArgs.push_back(isHeader? "-xc++-header" : (ext==".c"? "-xc" : "-xc++"));
+    }
+    if (!hasStd) {
+        outArgs.push_back("-std=c++17");
+    }
+}
+
+void MaybeAddSourceDirInclude(const std::string& entryFile, std::vector<std::string>& outArgs) {
+    fs::path p = CanonicalOr(fs::path(entryFile));
+    std::string dir = Slashify(p.parent_path().string());
+    if (!dir.empty()) {
+        outArgs.push_back("-I"+dir);
+    }
+}
+
 CommandLineOptions cliutil::ParseCommandLineArgs(int argc, char** argv)
 {
     CommandLineOptions opts;
