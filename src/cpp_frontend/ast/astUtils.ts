@@ -224,7 +224,7 @@ export class AstUtils {
 
     private static getAstOutputPath(sourceFile: string): string {
         const fileName = `${path.parse(path.basename(sourceFile)).name}_AST.json`;
-        return path.join(ClangPath.protectRoot, 'src', 'ast', 'out', fileName);
+        return path.join(ClangPath.protectRoot, 'src', 'cpp_frontend', 'ast', 'out', fileName);
     }
 
     private static ensureOutputDir(dir: string): void {

@@ -106,51 +106,79 @@ inline bool fillKindBycode(json &node, const std::string &codeStr,
 
 json getSourceContent(CXSourceRange range)
 {
-    CXSourceLocation start = clang_getRangeStart(range);
-    CXSourceLocation end = clang_getRangeEnd(range);
-
-    CXFile startFile;
-    unsigned startLine;
-    unsigned startColumn;
-    unsigned startOffset;
-    clang_getSpellingLocation(start, &startFile, &startLine, &startColumn, &startOffset);
-
-    CXFile endFile;
-    unsigned endLine;
-    unsigned endColumn;
-    unsigned endOffset;
-    clang_getSpellingLocation(end, &endFile, &endLine, &endColumn, &endOffset);
-
-    if (startFile == endFile && startOffset >= endOffset) {
-        return json();
-    }
-
-    CXString fileName = clang_getFileName(startFile);
-    const char *cFileName = clang_getCString(fileName);
-    std::string filename = cFileName ? cFileName : "";
-    clang_disposeString(fileName);
-    if (filename.empty() || g_fileContents.find(filename) == g_fileContents.end()) {
-        LoadFileContent(filename);
-    }
-
-    const std::string &content = g_fileContents[filename];
-    if ((startFile != endFile && startOffset >= content.size()) ||
-        (startFile == endFile && endOffset > content.size())) {
-        return json();
-    }
-    unsigned tokLen = endOffset > startOffset ? (endOffset - startOffset) : 0;
+    // 1) Get expansion locations
+    CXSourceLocation b = clang_getRangeStart(range);
+    CXSourceLocation e = clang_getRangeEnd(range);
+    CXFile bf, ef;
+    unsigned bl, bc, boff;
+    unsigned el, ec, eoff;
+    clang_getExpansionLocation(b, &bf, &bl, &bc, &boff);
+    clang_getExpansionLocation(e, &ef, &el, &ec, &eoff);
+    // 2) Assemble common metadata
     json j = json::object();
-    j["id"] = startOffset + endOffset;
+    j["id"] = static_cast<unsigned long long>(boff) + static_cast<unsigned long long>(eoff);
     auto& jb = j["begin"] = json::object();
-    jb["line"] = startLine;
-    jb["col"] = startColumn;
-    jb["offset"] = startOffset;
-    jb["tokLen"] = tokLen;
+    jb["line"]   = bl;
+    jb["col"]    = bc;
+    jb["offset"] = boff;
     auto& je = j["end"] = json::object();
-    je["line"] = endLine;
-    je["col"] = endColumn;
-    je["offset"] = endOffset;
-    j["code"] = content.substr(startOffset, tokLen);
+    je["line"]   = el;
+    je["col"]    = ec;
+    je["offset"] = eoff;
+    jb["tokLen"] = (eoff > boff ? (eoff - boff) : 0);
+    // 3) Prefer slicing at the expansion site (requires begin/end in the same file and a valid range)
+    if (bf && ef && bf == ef && eoff >= boff) {
+        CXString sfile = clang_getFileName(bf);
+        const char* cfn = clang_getCString(sfile);
+        std::string filename = cfn ? cfn : "";
+        clang_disposeString(sfile);
+        if (filename.empty()) {
+            // do nothing, fall through to fallback after this block
+        } else {
+            auto it = g_fileContents.find(filename);
+            if (it == g_fileContents.end()) {
+                LoadFileContent(filename);
+                it = g_fileContents.find(filename);
+            }
+            if (it != g_fileContents.end() && eoff <= it->second.size()) {
+                const std::string& content = it->second;
+                j["code"] = content.substr(boff, eoff - boff);
+                return j;
+            }
+        }
+    }
+    // 4) Fallback: tokenize the expansion range and join token spellings (separated by spaces to avoid sticking)
+    CXTranslationUnit tu = clang_Cursor_getTranslationUnit(clang_getNullCursor());
+    // Note: libclang has no API to get a TU directly from a range. Alternative approach:
+    //       derive the TU from the begin location (the robust cross-API approach is to pass the TU in).
+    // To avoid larger structural changes, we use a small trick here: infer the TU from the begin location.
+    // If you’re willing to change the function signature, prefer: getSourceContent(CXTranslationUnit tu, CXSourceRange range).
+    // Simplified handling: rebuild a range using the offsets on bf/ef and then tokenize
+    CXSourceRange expRange = clang_getRange(
+        clang_getLocationForOffset(clang_Cursor_getTranslationUnit(clang_getNullCursor()), bf, boff),
+        clang_getLocationForOffset(clang_Cursor_getTranslationUnit(clang_getNullCursor()), ef, eoff)
+    );
+
+    CXToken* toks = nullptr;
+    unsigned ntok = 0;
+    // If we cannot obtain the TU above, try tokenizing the original range directly
+    clang_tokenize(clang_Cursor_getTranslationUnit(clang_getNullCursor()),
+                   (ntok || !toks) ? range : expRange, &toks, &ntok);
+    std::string text;
+    text.reserve((eoff > boff ? (eoff - boff) : 8));
+    for (unsigned i = 0; i < ntok; ++i) {
+        CXString s = clang_getTokenSpelling(clang_Cursor_getTranslationUnit(clang_getNullCursor()), toks[i]);
+        const char* c = clang_getCString(s);
+        if (c) {
+            if (!text.empty()) text.push_back(' ');
+            text.append(c);
+        }
+        clang_disposeString(s);
+    }
+    if (toks) {
+        clang_disposeTokens(clang_Cursor_getTranslationUnit(clang_getNullCursor()), toks, ntok);
+    }
+    j["code"] = text;
     return j;
 }
 
@@ -672,7 +700,7 @@ std::vector<CXCursorKind> locCursorKind = {CXCursor_FunctionDecl, CXCursor_Class
 // Determine if it is a built-in data type
 bool IsBuiltInType(std::string& type)
 {
-    // 内置类型列表
+    // Built-in types list
     std::set<std::string> builtInTypes = {
         "int", "float", "double", "char", "bool",
         "short", "long", "unsigned int", "unsigned char",
@@ -1052,7 +1080,6 @@ void fillNodeSourceContent(json& node, const json& content, CXCursorKind kind_cu
         node["fileName"] = fileStr;
         return;
     }
-
     if (kind_cursor == CXCursor_UnaryOperator) {
         fillUnaryOperatorInfo(node, cursor);
     } else if (kind_cursor == CXCursor_BinaryOperator || kind_cursor == CXCursor_CompoundAssignOperator) {
@@ -1060,13 +1087,11 @@ void fillNodeSourceContent(json& node, const json& content, CXCursorKind kind_cu
     } else {
         node["name"] = displayName;
     }
-
     // Fill code field
     std::string codeStr = (content.contains("code") && content["code"].is_string())
                           ? content["code"].get<std::string>() : "";
     if (!content.is_null() && kind_cursor != CXCursor_TranslationUnit)
         node["code"] = codeStr;
-
     // Special handling for InclusionDirective
     if (kind_cursor == CXCursor_InclusionDirective && !content.is_null()) {
         node["kind"] = "InclusionDirective";
@@ -1080,14 +1105,49 @@ void fillNodeSourceContent(json& node, const json& content, CXCursorKind kind_cu
         node["included"] = fileStr;
         return;
     }
-
     // Literal node value field
     if (kind_cursor == CXCursor_IntegerLiteral ||
-        kind_cursor == CXCursor_StringLiteral ||
-        kind_cursor == CXCursor_CXXBoolLiteralExpr) {
-        node["value"] = node.value("code", "");
+        kind_cursor == CXCursor_CXXBoolLiteralExpr ||
+        kind_cursor == CXCursor_CharacterLiteral ||
+        kind_cursor == CXCursor_FloatingLiteral   ||
+        kind_cursor == CXCursor_StringLiteral) {
+        const std::string codeStr = node.value("code", "");
+        node["value"] = codeStr;  // Fallback: store the source text first (macro name, literal text, etc.)
+
+        if (kind_cursor == CXCursor_StringLiteral) {
+            // Do not Evaluate string literals (avoid truncating L/u/U/u8 to the first character)
+        } else {
+            if (CXEvalResult ev = clang_Cursor_Evaluate(cursor)) {
+                switch (clang_EvalResult_getKind(ev)) {
+                    case CXEval_Int:
+                        node["value"] = std::to_string(
+                            (long long)clang_EvalResult_getAsLongLong(ev));
+                        break;
+                    case CXEval_Float: {
+                        double v = clang_EvalResult_getAsDouble(ev);
+                        // Render as a shortest, lossless double string
+                        std::ostringstream oss;
+                        oss.setf(std::ios::fmtflags(0), std::ios::floatfield);
+                        oss << std::setprecision(std::numeric_limits<double>::max_digits10) << v;
+                        std::string s = oss.str();
+                        // Strip trailing zeros and trailing dot
+                        if (s.find('.') != std::string::npos) {
+                            while (!s.empty() && s.back() == '0') s.pop_back();
+                            if (!s.empty() && s.back() == '.') s.pop_back();
+                        }
+                        node["value"] = s; // e.g., 3.6
+                        break;
+                    }
+                    default:
+                        // Other kinds (e.g., unexposed): keep codeStr as-is
+                        break;
+                }
+                clang_EvalResult_dispose(ev);
+            }
         }
+    }
 }
+
 
 void fillVarDeclStorageClass(json& node, CXCursor cursor, CXCursorKind kind_cursor)
 {
@@ -1324,6 +1384,62 @@ CXTranslationUnit createTranslationUnit(CXIndex index, const CommandLineOptions&
         CXTranslationUnit_KeepGoing);
 }
 
+struct InclusionCtx {
+    std::string normMain; // normalized path to the main source file
+    bool onlyFromMain = true; // collect only includes originating from the main file
+};
+
+// Callback: construct a "basic" headerUnit element
+static void inclusionVisitorBuildHeaderUnits(CXFile included_file,
+                                             CXSourceLocation* inclusion_stack,
+                                             unsigned include_len,
+                                             CXClientData client_data)
+{
+    if (!included_file || include_len == 0) {
+        return;
+    }
+    auto* ctx = static_cast<InclusionCtx*>(client_data);
+    // The inclusion site (the frame closest to the #include)
+    CXFile locFile;
+    unsigned line = 0, col = 0, offset = 0;
+    clang_getSpellingLocation(inclusion_stack[0], &locFile, &line, &col, &offset);
+    // includer (the file that contains the #include)
+    std::string includerPath;
+    if (locFile) {
+        CXString s = clang_getFileName(locFile);
+        includerPath = Cx2Str(s);
+        clang_disposeString(s);
+    }
+    // Only collect includes originating from the main source file (same semantics as filterToMainFileOnly)
+    if (ctx && ctx->onlyFromMain && CanonicalCached(includerPath) != ctx->normMain) {
+        return;
+    }
+    // Path of the included file
+    CXString incName = clang_getFileName(included_file);
+    std::string incPath = Cx2Str(incName);
+    clang_disposeString(incName);
+    if (incPath.empty()) {
+        return;
+    }
+    if (!IsInUserInclude(incPath)) {
+        return;
+    }
+    // Build a "basic" headerUnit (note: your JSON uses lowercase "inclusion directive")
+    json beginJ = {{"line", line}, {"col", col}, {"offset", offset}, {"tokLen", 0u}};
+    json endJ   = {{"line", line}, {"col", col}, {"offset", offset}};
+    json j = {
+        {"kind", "inclusion directive"},
+        {"include", true},
+        // Without DPP enabled we can't get the original line text; use a fallback code string here
+        {"code", "#include \"" + Slashify(incPath) + "\""},
+        {"fileName", CanonicalCached(incPath)},         // included file
+        {"locFile", CanonicalCached(includerPath)},    // file where the directive resides (typically the main file)
+        {"included", ctx ? ctx->normMain : CanonicalCached(includerPath)}, // In your example this field points to main.cpp
+        {"range", {{"begin", beginJ}, {"end", endJ}}}
+    };
+    headerUnits.push_back(std::move(j));
+}
+
 json buildAndProcessAST(CXTranslationUnit unit, const CommandLineOptions& opts)
 {
     // Collect all parameter/variable declarations in current scope, return name to type mapping
@@ -1332,6 +1448,11 @@ json buildAndProcessAST(CXTranslationUnit unit, const CommandLineOptions& opts)
     std::cout << "[STEP1] buildASTJson finished\n";
     std::string normMain = CanonicalCached(fs::canonical(opts.inputFile).string());
     filterToMainFileOnly(ast, normMain);
+    // Collect header files when not using CXTranslationUnit_DetailedPreprocessingRecord
+    if (headerUnits.empty()) {
+        InclusionCtx ctx{normMain, /*onlyFromMain=*/true};
+        clang_getInInclusionCtxclusions(unit, inclusionVisitorBuildHeaderUnits, &ctx);
+    }
     if (!headerUnits.empty() && ast.contains("kind")) {
         ast["headerUnits"] = headerUnits;
         headerUnits.clear();

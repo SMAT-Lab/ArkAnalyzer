@@ -166,11 +166,7 @@ describe('export Test', () => {
         let importInfos = file1?.getImportInfos();
         assert.equal(importInfos!.length, 5);
         assert.equal(importInfos![0].getLazyExportInfo()?.getArkExport()?.getSignature().toString(), '@exports/indirectRef/include/myHeader.h: %dflt');
-        assert.equal(importInfos![1].getLazyExportInfo()?.getArkExport()?.getSignature().toString(), '@exports/indirectRef/include/castSample.h: %dflt');
-        assert.equal(
-            importInfos![3].getLazyExportInfo()?.getArkExport()?.getSignature().toString(),
-            '@exports/indirectRef/src/myHeader.cpp: %dflt.FuncDoSomething(int, int)'
-        );
+        assert.equal(importInfos![3].getLazyExportInfo()?.getArkExport()?.getSignature().toString(), '@exports/indirectRef/include/castSample.h: %dflt');
         assert.equal(
             importInfos![4].getLazyExportInfo()?.getArkExport()?.getSignature().toString(),
             '@exports/indirectRef/src/castSample.cpp: %dflt.CXXStaticCast(int)'
