@@ -55,7 +55,7 @@ export class AstUtils {
             };
         }
         let astPath: string = this.getAstOutputPath(sourceFile);
-        let includeArgs = constructParseArguments(ccJsonPath, includeDirs);
+        let includeArgs = constructParseArguments(sourceFile, ccJsonPath, includeDirs);
         let parseArguments: string[] = [sourceFile, '-o', astPath];
         parseArguments = [...parseArguments, ...includeArgs];
         this.ensureOutputDir(path.dirname(astPath));
@@ -255,16 +255,67 @@ async function deleteFile(filePath: string): Promise<void> {
     }
 }
 
-function constructParseArguments(ccJsonPath: string | null, includeDirs: string[] | null): string[] {
+function constructParseArguments(srcFilePath: string, ccJsonPath: string | null, includeDirs: string[] | null): string[] {
     const args: string[] = [];
-
+    if (!ccJsonPath) {
+        ccJsonPath = findCompileCommands(srcFilePath)
+    }
     if (ccJsonPath) {
         args.push('-c', ccJsonPath);
-    }
-    if (includeDirs && includeDirs.length > 0) {
+    } else if (includeDirs && includeDirs.length > 0) {
         includeDirs.forEach(dir => {
             args.push('-i', `${dir}`);
         });
     }
     return args;
+}
+
+/**
+ * Find the absolute path of compile_commands.json starting from a file path.
+ * It goes upward to find a ".cxx" directory, and then recursively searches
+ * inside it for compile_commands.json.
+ * @param filePath Absolute path of the input file
+ * @returns Absolute path of compile_commands.json if found, otherwise empty string
+ */
+export function findCompileCommands(filePath: string): string {
+    let dir = path.dirname(filePath);
+
+    while (true) {
+        const cxxDir = path.join(dir, ".cxx");
+        if (fs.existsSync(cxxDir) && fs.statSync(cxxDir).isDirectory()) {
+            const result = searchCompileCommandsInDir(cxxDir);
+            if (result) {
+                return result;
+            }
+        }
+
+        const parent = path.dirname(dir);
+        if (parent === dir) {
+            break; // reached the root directory
+        }
+        dir = parent;
+    }
+
+    return "";
+}
+
+/**
+ * Recursively search for compile_commands.json inside a directory
+ * @param dir Directory path to start searching
+ * @returns Absolute path of compile_commands.json if found, otherwise empty string
+ */
+function searchCompileCommandsInDir(dir: string): string {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+        const fullPath = path.join(dir, entry.name);
+        if (entry.isFile() && entry.name === "compile_commands.json") {
+            return fullPath;
+        } else if (entry.isDirectory()) {
+            const result = searchCompileCommandsInDir(fullPath);
+            if (result) {
+                return result;
+            }
+        }
+    }
+    return "";
 }
