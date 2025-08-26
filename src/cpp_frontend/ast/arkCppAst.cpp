@@ -1451,7 +1451,7 @@ json buildAndProcessAST(CXTranslationUnit unit, const CommandLineOptions& opts)
     // Collect header files when not using CXTranslationUnit_DetailedPreprocessingRecord
     if (headerUnits.empty()) {
         InclusionCtx ctx{normMain, /*onlyFromMain=*/true};
-        clang_getInInclusionCtxclusions(unit, inclusionVisitorBuildHeaderUnits, &ctx);
+        clang_getInclusions(unit, inclusionVisitorBuildHeaderUnits, &ctx);
     }
     if (!headerUnits.empty() && ast.contains("kind")) {
         ast["headerUnits"] = headerUnits;
