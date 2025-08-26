@@ -35,6 +35,7 @@ export enum ClassCategory {
     ENUM = 3,
     TYPE_LITERAL = 4,
     OBJECT = 5,
+    // The following are CXX specific categories.
     UNION = 6,
 }
 

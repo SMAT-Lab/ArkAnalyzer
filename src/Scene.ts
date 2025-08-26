@@ -14,7 +14,7 @@
  */
 
 import fs from 'fs';
-import path, { normalize } from 'path';
+import path from 'path';
 
 import { SceneConfig, SceneOptions, Sdk, TsConfig } from './Config';
 import { initModulePathMap, ModelUtils } from './core/common/ModelUtils';
@@ -30,11 +30,11 @@ import { Local } from './core/base/Local';
 import { buildArkFileFromFile } from './core/model/builder/ArkFileBuilder';
 import { fetchDependenciesFromFile, parseJsonText } from './utils/json5parser';
 import { getAllFiles } from './utils/getAllFiles';
-import { FileUtils, getFileRecursively, getFileAbsPath } from './utils/FileUtils';
+import { FileUtils, getFileRecursively } from './utils/FileUtils';
 import { ArkExport, ExportInfo, ExportType } from './core/model/ArkExport';
 import { addInitInConstructor, buildDefaultConstructor, replaceSuper2Constructor } from './core/model/builder/ArkMethodBuilder';
 import { addInitInConstructor as addCxxInitInConstructor } from './cpp_frontend/model/builder/ArkMethodBuilder';
-import { DEFAULT_ARK_CLASS_NAME, INSTANCE_INIT_METHOD_NAME, STATIC_INIT_METHOD_NAME } from './core/common/Const';
+import { DEFAULT_ARK_CLASS_NAME, STATIC_INIT_METHOD_NAME } from './core/common/Const';
 import { CallGraph } from './callgraph/model/CallGraph';
 import { CallGraphBuilder } from './callgraph/model/builder/CallGraphBuilder';
 import { buildArkFileFromFile as buildArkCxxFileFromFile } from './cpp_frontend/model/builder/ArkFileBuilder';
@@ -328,6 +328,8 @@ export class Scene {
             const isCxxFile = file.getLanguage() === Language.CXX;
             for (const cls of ModelUtils.getAllClassesInFile(file)) {
                 buildDefaultConstructor(cls);
+                // In C++, there may be multiple methods with the same name.
+                // Therefore, the interface 'getAllMethodsWithName' for obtaining all methods with the same name is used here.
                 const constructors = cls.getAllMethodsWithName(CONSTRUCTOR_NAME);
                 if (constructors.length === 0) {
                     continue;
@@ -363,6 +365,7 @@ export class Scene {
         for (const method of methods) {
             const isCxxFile = method.getDeclaringArkFile()?.getLanguage() === Language.CXX;
             try {
+                // Distinguish between C++ and TS/ArkTS.
                 if (isCxxFile) {
                     method.getCxxBodyBuilder()?.buildBody();
                 } else {
@@ -371,6 +374,7 @@ export class Scene {
             } catch (error) {
                 logger.error('Error building body:', method.getSignature(), error);
             } finally {
+                // Distinguish between C++ and TS/ArkTS.
                 if (isCxxFile) {
                     method.freeCxxBodyBuilder();
                 } else {
@@ -389,7 +393,7 @@ export class Scene {
             try {
                 const arkFile: ArkFile = new ArkFile(FileUtils.getFileLanguage(file, this.fileLanguages));
                 arkFile.setScene(this);
-                // Call different builder functions based on file language
+                // Distinguish between C++ and TS/ArkTS. Call different builder functions based on file language.
                 if (arkFile.getLanguage() === Language.CXX) {
                     buildArkCxxFileFromFile(file, this.realProjectDir, arkFile, this.projectName, this.includeDirs);
                 } else {
@@ -991,21 +995,6 @@ export class Scene {
         return arkMethod || null;
     }
 
-    /**
-     * Retrieve an Ark C++ method object based on its method signature.
-     *
-     * @param methodSignature - The method signature used to locate the specific method
-     * @param refresh - Optional parameter to indicate whether to refresh the cache, defaults to false
-     * @returns The corresponding ArkMethod object if found, otherwise null
-     */
-    public getArkCxxMethod(methodSignature: MethodSignature, refresh?: boolean): ArkMethod | null {
-        if (this.projectName === methodSignature.getDeclaringClassSignature().getDeclaringFileSignature().getProjectName()) {
-            return this.getCxxMethodsMap(refresh).get(methodSignature.toMapKey()) || null;
-        } else {
-            return this.getClass(methodSignature.getDeclaringClassSignature())?.getMethod(methodSignature) || null;
-        }
-    }
-
     private getMethodsMap(refresh?: boolean): Map<string, ArkMethod> {
         if (refresh || (this.buildStage >= SceneBuildStage.METHOD_DONE && this.buildStage < SceneBuildStage.METHOD_COLLECTED)) {
             this.methodsMap.clear();
@@ -1016,23 +1005,6 @@ export class Scene {
             }
             if (this.buildStage < SceneBuildStage.METHOD_COLLECTED) {
                 this.buildStage = SceneBuildStage.METHOD_COLLECTED;
-            }
-        }
-        return this.methodsMap;
-    }
-
-    /**
-     * Get the C++ methods map
-     * @param refresh - Whether to force refresh the map, defaults to false
-     * @returns Returns a Map containing all C++ methods, with method signatures as keys and ArkMethod objects as values
-     */
-    private getCxxMethodsMap(refresh?: boolean): Map<string, ArkMethod> {
-        if (refresh || (this.methodsMap.size === 0 && this.buildStage >= SceneBuildStage.METHOD_DONE)) {
-            this.methodsMap.clear();
-            for (const cls of this.getClassesMap().values()) {
-                for (const method of cls.getMethods(true)) {
-                    this.methodsMap.set(method.getSignature().toMapKey(), method);
-                }
             }
         }
         return this.methodsMap;
@@ -1127,6 +1099,10 @@ export class Scene {
         return callGraph;
     }
 
+    public getIncludeDirs(): string[] {
+        return this.includeDirs;
+    }
+
     /**
      * Infer type for each non-default method. It infers the type of each field/local/reference.
      * For example, the statement `let b = 5;`, the type of local `b` is `NumberType`; and for the statement `let s =
@@ -1140,9 +1116,11 @@ export class Scene {
      ```
      */
     public inferTypes(): void {
-        this.buildCxxFuncMap();
+        // Building the mapping between declarations and implementations of C++ functions in cross-file scenarios.
+        CxxIRInference.buildCxxFuncMap(this);
         this.filesMap.forEach(file => {
             try {
+                // Distinguish between C++ and TS/ArkTS.
                 file.getLanguage() === Language.CXX ? CxxIRInference.inferFile(file) : IRInference.inferFile(file);
             } catch (error) {
                 logger.error('Error inferring types of project file:', file.getFileSignature(), error);
@@ -1153,148 +1131,6 @@ export class Scene {
             this.buildStage = SceneBuildStage.TYPE_INFERRED;
         }
         SdkUtils.dispose();
-    }
-
-    /**
-     *Build C++function mapping table
-     *
-     *This function traverses all C++header files to find the corresponding implementation file for each class's method,
-     *And establish the mapping relationship between methods and implementation files
-     */
-    private buildCxxFuncMap(): void {
-        const headerFileRefMap = this.getCxxHeaderFileRefMap();
-        for (const [headerPath, refFiles] of headerFileRefMap) {
-            const headerArkFile = this.getFile(new FileSignature(this.projectName, path.relative(this.realProjectDir, headerPath)));
-            if (!headerArkFile) {
-                continue;
-            }
-            const sortedRefFiles = this.sortRefFiles(headerPath, refFiles);
-            for (const cls of headerArkFile.getClasses()) {
-                for (const mtd of cls.getMethods(true)) {
-                    this.findMtdImpl(mtd, headerPath, sortedRefFiles);
-                }
-            }
-        }
-    }
-
-    /**
-     *Implementation method of search method
-     *@ param mtd - Ark method object
-     *@ param headerPath - Header file path
-     *@ param sortedRefFiles - sorted reference file array
-     */
-    private findMtdImpl(mtd: ArkMethod, headerPath: string, sortedRefFiles: string[]): void {
-        const isFuncImpl = mtd.getImplementationSignature();
-        if (isFuncImpl || mtd.isDefaultArkMethod() || mtd.getName() === INSTANCE_INIT_METHOD_NAME || mtd.getName() === STATIC_INIT_METHOD_NAME) {
-            return;
-        }
-        this.mapHeaderToSource(mtd, headerPath, sortedRefFiles);
-    }
-
-    /**
-     *Get the C++header file reference mapping table
-     *
-     *This function traverses all files and filters out C++source files (.cpp ,.c,.cxx),
-     *Then analyze the import information in these source files, and establish the reference relationship mapping from the header file to the source file.
-     *
-     *@ returns Map<string, string []>The mapping from the header file path to the source file path array that references the header file
-     */
-    private getCxxHeaderFileRefMap(): Map<string, string[]> {
-        const headerFileRefMap = new Map<string, string[]>();
-        const cxxSuffixes = ['.cpp', '.c', '.cxx'];
-        this.filesMap.forEach(file => {
-            const filePath = normalize(file.getFilePath());
-            const extension = path.extname(filePath).toLowerCase();
-            if (!cxxSuffixes.some(suffix => extension === suffix)) {
-                return;
-            }
-            const importInfos = file.getImportInfos();
-            importInfos.forEach(im => {
-                this.processImportInfo(im, filePath, headerFileRefMap);
-            });
-        });
-
-        return headerFileRefMap;
-    }
-
-    /**
-     *Process import information and establish header file reference relationship mapping
-     *@ param im Import information object, including imported module information
-     *@ param filePath Path of the current file
-     *@ param headerFileRefMap header file reference relationship mapping table, used to record which files are referenced by each header file
-     */
-    private processImportInfo(im: ImportInfo, filePath: string, headerFileRefMap: Map<string, string[]>): void {
-        let imFrom = im.getFrom();
-        if (!imFrom) {
-            return;
-        }
-        if (!fs.existsSync(imFrom)) {
-            // If the path does not exist, try to use includeDirs to find the relative path
-            imFrom = getFileAbsPath(this.includeDirs, imFrom);
-            if (!imFrom) {
-                return;
-            }
-        }
-        if (!headerFileRefMap.has(imFrom)) {
-            headerFileRefMap.set(imFrom, []);
-        }
-        headerFileRefMap.get(imFrom)!.push(filePath);
-    }
-
-    /**
-     *Sort the reference file array, and prioritize the reference files with the same name as the target file
-     *@ param headerFilePath Destination header file path
-     *@ param refFiles Array of reference file paths to be sorted
-     *@ returns The array of reference file paths sorted, with files with the same name first and other files second
-     */
-    private sortRefFiles(headerFilePath: string, refFiles: string[]): string[] {
-        const targetFileName = path.parse(headerFilePath).name;
-        const prioritized: string[] = [];
-        const others: string[] = [];
-        for (const refFile of refFiles) {
-            if (path.parse(refFile).name === targetFileName) {
-                prioritized.push(refFile);
-            } else {
-                others.push(refFile);
-            }
-        }
-        return [...prioritized, ...others];
-    }
-
-    /**
-     *Map the method declaration to the corresponding source code implementation
-     *Find the corresponding method implementation in the reference file by matching the method signature, and establish the association between declaration and implementation
-     *
-     *@ param mtdDecl - target method declaration object, used to obtain declaration information and set implementation signature
-     *@ param headerFile - Header file path, as one of the reference files
-     *@ param refFiles - reference file list, used to search method implementation
-     */
-    private mapHeaderToSource(mtdDecl: ArkMethod, headerFile: string, refFiles: string[]): void {
-        const tgtClsName = mtdDecl.getDeclaringArkClass().getName();
-        const tgtMtdSubSig = mtdDecl.getSubSignature();
-        const matchKey = `${tgtMtdSubSig.getReturnType().toString()} ${tgtClsName}::${tgtMtdSubSig.toString()}`;
-        for (const refFile of refFiles) {
-            const refArkFile = this.getFile(new FileSignature(this.projectName, path.relative(this.realProjectDir, refFile)));
-            if (!refArkFile) {
-                continue;
-            }
-            const refArkClass = refArkFile.getClassWithName(tgtClsName);
-            if (!refArkClass) {
-                continue;
-            }
-            const nameMatchingMtds = refArkClass.getAllMethodsWithName(mtdDecl.getName());
-            for (const mtd of nameMatchingMtds) {
-                const nameMatchingMtdSubSig = mtd.getSubSignature();
-                const mtdSubSigStr = `${nameMatchingMtdSubSig.getReturnType().toString()} ${tgtClsName}::${nameMatchingMtdSubSig.toString()}`;
-                if (mtdSubSigStr === matchKey) {
-                    // Set the signature of the function implementation corresponding to the current function declaration
-                    mtdDecl.setImplementationSignature(mtd.getSignature());
-                    // The function implementation may be missing the existing modifiers (such as static) in the function declaration. Here we add
-                    mtd.setModifiers(mtdDecl.getModifiers() | mtd.getModifiers());
-                    return;
-                }
-            }
-        }
     }
 
     /**

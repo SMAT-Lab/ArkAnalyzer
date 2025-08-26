@@ -74,6 +74,7 @@ export class ImportInfo extends ArkBaseModel implements FromInfo {
      */
     public getLazyExportInfo(): ExportInfo | null {
         if (this.lazyExportInfo === undefined) {
+            // Distinguish between C++ and TS/ArkTS.
             if (this.declaringArkFile.getLanguage() === Language.CXX) {
                 this.lazyExportInfo = findCxxExportInfo(this);
             } else {

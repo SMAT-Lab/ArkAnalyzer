@@ -218,27 +218,6 @@ export class ArkInstanceFieldRef extends AbstractFieldRef {
     }
 }
 
-/**
- * C++ member access implementation, designed as a derived class because it needs to distinguish between p.f
- * and p->f without intrusive modification to the original arkIR
- */
-export class CXXArkInstanceFieldRef extends ArkInstanceFieldRef {
-    private isArrow: boolean;
-
-    constructor(base: Local, isArrow: boolean, fieldSignature: FieldSignature) {
-        super(base, fieldSignature);
-        this.isArrow = isArrow;
-    }
-
-    public isArrowAccess(): boolean {
-        return this.isArrow;
-    }
-
-    public toString(): string {
-        return this.getBase().toString() + (this.isArrow ? '->' : '.') + '<' + this.getFieldSignature() + '>';
-    }
-}
-
 export class ArkStaticFieldRef extends AbstractFieldRef {
     constructor(fieldSignature: FieldSignature) {
         super(fieldSignature);

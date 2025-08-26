@@ -71,6 +71,7 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
     private viewTree?: ViewTree;
 
     private bodyBuilder?: BodyBuilder;
+    // The bodybuilder for C++. After the subsequent abstraction of BodyBuilder, this field will be removed.
     private CxxBodyBuilder?: CxxBodyBuilder;
 
     private isGeneratedFlag: boolean = false;

@@ -409,6 +409,7 @@ export class IRInference {
 
     private static inferInvokeExpr(expr: AbstractInvokeExpr, baseType: Type, methodName: string, scene: Scene): AbstractInvokeExpr | null {
         let typeWithoutPtrOrRef = baseType;
+        // If it is a Cxx pointer or reference type, it is necessary to obtain its baseType and determine whether type inference is required.
         if (baseType instanceof PointerType || baseType instanceof ReferenceType) {
             typeWithoutPtrOrRef = baseType.getBaseType();
         }
@@ -636,6 +637,7 @@ export class IRInference {
         let staticFlag: boolean;
         let signature: BaseSignature;
         let typeWithoutPtrOrRef = baseType;
+        // If it is a Cxx pointer or reference type, it is necessary to obtain its baseType and determine whether type inference is required.
         if (baseType instanceof PointerType || baseType instanceof ReferenceType) {
             typeWithoutPtrOrRef = baseType.getBaseType();
         }
@@ -846,6 +848,7 @@ export class IRInference {
     public static inferParameterRef(ref: ArkParameterRef, arkMethod: ArkMethod): AbstractRef {
         const paramType = ref.getType();
         let baseType: Type | null | undefined;
+        // If it is a Cxx pointer or reference type, it is necessary to obtain its baseType and determine whether type inference is required.
         if (paramType instanceof PointerType || paramType instanceof ReferenceType) {
             baseType = paramType.getBaseType();
             if (TypeInference.isUnclearType(baseType)) {

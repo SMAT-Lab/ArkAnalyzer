@@ -54,7 +54,8 @@ import { Value } from '../../core/base/Value';
 import { COMPONENT_CREATE_FUNCTION, COMPONENT_CUSTOMVIEW, COMPONENT_FOR_EACH, COMPONENT_LAZY_FOR_EACH } from '../../core/common/EtsConst';
 import { CxxValueUtil } from './ValueUtil';
 import { IRUtils } from './IRUtils';
-import { AbstractFieldRef, ArkArrayRef, ArkInstanceFieldRef, CXXArkInstanceFieldRef } from '../../core/base/Ref';
+import { AbstractFieldRef, ArkArrayRef, ArkInstanceFieldRef } from '../../core/base/Ref';
+import { ArkCxxInstanceFieldRef } from '../base/Ref';
 import { ArkMethod } from '../../core/model/ArkMethod';
 import { buildArkMethodFromArkClass, buildDefaultConstructor } from '../model/builder/ArkMethodBuilder';
 import { Builtin } from '../../core/common/Builtin';
@@ -984,7 +985,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         // [Scenario 7] Set field types to support C++complex type resolution (such as template, pointer, const, etc.)
         fieldSignature.setType(this.cxxResolveTypeNode(memberExpression));
         // [Scenario 8] Generate the field reference object of IR layer (such as testMap. insert)
-        const fieldRef = new CXXArkInstanceFieldRef(
+        const fieldRef = new ArkCxxInstanceFieldRef(
             baseValue as Local, // baseValue（eg: testMap）
             memberExpression.isArrow ?? false, // Whether it is arrow access (->)
             fieldSignature // Field signature (such as insert)

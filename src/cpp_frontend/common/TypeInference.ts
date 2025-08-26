@@ -736,6 +736,7 @@ export class TypeInference {
         }
         const currReturnType = oldSignature.getType();
         let retTypeWithoutPtrOrRef = currReturnType;
+        // If it is a Cxx pointer or reference type, it is necessary to obtain its baseType and determine whether type inference is required.
         if (retTypeWithoutPtrOrRef instanceof PointerType || retTypeWithoutPtrOrRef instanceof ReferenceType) {
             retTypeWithoutPtrOrRef = retTypeWithoutPtrOrRef.getBaseType();
         }

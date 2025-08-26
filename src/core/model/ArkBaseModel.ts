@@ -226,6 +226,7 @@ export abstract class ArkBaseModel {
         return this.containsModifier(ModifierType.DEFAULT);
     }
 
+    /* Determine whether a method is a pure virtual method in C++. */
     public isPureVirtual(): boolean {
         return this.containsModifier(ModifierType.PURE_VIRTUAL);
     }
