@@ -431,6 +431,7 @@ export class Scene {
         try {
             const arkFile = new ArkFile(FileUtils.getFileLanguage(projectFile, this.fileLanguages));
             arkFile.setScene(this);
+            // Distinguish between C++ and TS/ArkTS.
             if (arkFile.getLanguage() === Language.CXX) {
                 buildArkCxxFileFromFile(projectFile, this.getRealProjectDir(), arkFile, this.getProjectName(), this.includeDirs);
             } else {
