@@ -539,7 +539,7 @@ export class CfgBuilder {
         // Handle the sequence relationship between goto statements and label statements
         let label: string = innerNode.code.substring(0, innerNode.code.indexOf(':'));
         for (const [key, gotoStmts] of this.gotoStmtMap) {
-            if (key === label){
+            if (key === label) {
                 for (const gotoStmt of gotoStmts) {
                     for (const lastStmt of [...gotoStmt.lasts]) {
                         this.judgeLastStmtForLabel(labelStmt, lastStmt, gotoStmt);

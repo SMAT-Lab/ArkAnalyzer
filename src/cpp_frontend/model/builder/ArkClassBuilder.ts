@@ -238,8 +238,8 @@ function buildArkClassMembers(clsNode: CxxAstNode, cls: ArkClass, sourceFile: Cx
             const arkField = buildProperty2ArkField(member, sourceFile, cls);
             arkField.getInitializer().forEach(stmt => staticInitStmts.push(stmt));
         } else if (member.kind === 'CXXMethodDecl' || member.kind === 'CXXConstructorDecl' ||
-            member.kind === 'CXXAccessSpecifier' || member.kind === 'CXXDestructorDecl'){
-            return
+            member.kind === 'CXXAccessSpecifier' || member.kind === 'CXXDestructorDecl') {
+            return;
         } else {
             logger.warn('Please contact developers to support new member type: ', member.kind);
         }

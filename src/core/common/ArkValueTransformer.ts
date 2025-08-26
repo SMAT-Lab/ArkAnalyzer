@@ -1187,23 +1187,13 @@ export class ArkValueTransformer {
             }
         } else {
             // contains spread elements and begins with literal elements.
-            const beginLiteralValueAndStmts = this.generateArrayExprFromLiteral(
-                elementValues,
-                elementTypes,
-                elementPositions,
-                wholePosition,
-                0,
-                firstSpreadIdx,
-                stmts
-            );
+            const beginLiteralValueAndStmts =
+                this.generateArrayExprFromLiteral(elementValues, elementTypes, elementPositions, wholePosition, 0, firstSpreadIdx, stmts);
 
             const concatMethodSubSignature = ArkSignatureBuilder.buildMethodSubSignatureFromMethodName(Builtin.CONCAT);
             const concatMethodSignature = new MethodSignature(Builtin.ARRAY_CLASS_SIGNATURE, concatMethodSubSignature);
             const concatInvokeExpr = new ArkInstanceInvokeExpr(
-                beginLiteralValueAndStmts.value as Local,
-                concatMethodSignature,
-                elementValues.slice(firstSpreadIdx)
-            );
+                beginLiteralValueAndStmts.value as Local, concatMethodSignature, elementValues.slice(firstSpreadIdx));
 
             const concatInvokeExprPositions = [wholePosition, beginLiteralValueAndStmts.valueOriginalPositions[0], ...elementPositions.slice(firstSpreadIdx)];
             return { value: concatInvokeExpr, valueOriginalPositions: concatInvokeExprPositions, stmts: beginLiteralValueAndStmts.stmts };

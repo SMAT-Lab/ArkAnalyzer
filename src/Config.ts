@@ -64,7 +64,7 @@ export class SceneConfig {
     private sdkFilesMap: Map<string[], string> = new Map<string[], string>();
 
     private projectFiles: string[] = [];
-    private includeDirs: string[] = [];  // Include directories that the C++ project depends on.
+    private includeDirs: string[] = []; // Include directories that the C++ project depends on.
     private fileLanguages: Map<string, Language> = new Map();
 
     private options: SceneOptions;

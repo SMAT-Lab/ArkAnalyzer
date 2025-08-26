@@ -21,7 +21,8 @@
 
 #define TWO 2
 
-// *Originally RevArkTSObj::ModifyObject => When RevArkTSObj.h file cannot be found, Class::Method functions declared outside class have no corresponding AST nodes
+// *Originally RevArkTSObj::ModifyObject => When RevArkTSObj.h file cannot be found,
+// Class::Method functions declared outside class have no corresponding AST nodes
 napi_value ModifyObject(napi_env env, napi_callback_info info)
 {
     size_t argc = 1;
@@ -35,10 +36,12 @@ napi_value ModifyObject(napi_env env, napi_callback_info info)
     napi_get_named_property(env, obj, "obj", &obj1);
     char *buf = "this is modified";
     napi_value str1;
-    napi_create_string_utf8(env, buf, NAPI_AUTO_LENGTH, &str1);  // *Unknown macro NAPI_AUTO_LENGTH causes AST node missing on the right side of assignment expression
+    // *Unknown macro NAPI_AUTO_LENGTH causes AST node missing on the right side of assignment expression
+    napi_create_string_utf8(env, buf, NAPI_AUTO_LENGTH, &str1);
     napi_set_named_property(env, obj1, "str", str1);
     napi_set_named_property(env, obj, "obj", obj1);
-    napi_create_string_utf8(env, "world0", NAPI_AUTO_LENGTH, &hello1);  // *Unknown macro NAPI_AUTO_LENGTH causes AST node missing on the right side of assignment expression
+    // *Unknown macro NAPI_AUTO_LENGTH causes AST node missing on the right side of assignment expression
+    napi_create_string_utf8(env, "world0", NAPI_AUTO_LENGTH, &hello1);
     napi_set_named_property(env, obj, "hello", hello1);
     napi_get_named_property(env, obj, "arr", &arr1);
     uint32_t arrLen;
@@ -71,8 +74,8 @@ napi_value ModifyObject(napi_env env, napi_callback_info info)
     // Create typedarray using outputBuffer
     napi_value outputArray;
     napi_create_typedarray(env, type, length, outputBuffer, byteOffset, &outputArray);
-    // data consists of consecutive memory locations, reinterpret_cast<uint8_t *>(data) represents the memory address of its first element.
-    // data is the old arraybuffer data pointer
+    // data consists of consecutive memory locations, reinterpret_cast<uint8_t *>(data) represents the memory address of
+    // its first element. data is the old arraybuffer data pointer
     uint8_t *inputBytes = reinterpret_cast<uint8_t *>(data) + byteOffset;
     // Assign output_ptr pointer to outputBytes
     // output_ptr is the new arraybuffer data pointer

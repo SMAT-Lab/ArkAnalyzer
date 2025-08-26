@@ -927,7 +927,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
     /**
      *Convert the member expression of C++(such as testMap. insert) to ValueAndStmts of Ark IR
      *@ param memberExpression - shaped like an AST MemberExpr/MemberRef node, which usually means obj. field or obj ->field
-     *@ param localValue - (Optional) The scenario where the baseValue is specified directly (such as determining the base in advance when resolving the parent node)
+     *@ param localValue - (Optional) The scenario where the baseValue is specified directly (
+     *  such as determining the base in advance when resolving the parent node)
      */
     private memberExpressionToValueAndStmts(memberExpression: CxxAstNode, localValue?: Value): ValueAndStmts {
         const stmts: Stmt[] = [];
@@ -950,7 +951,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
                 stmts: baseStmts,
             } = this.ArkCxxIRTransformer.generateAssignStmtForValue(baseValue, basePositions));
         }
-        // [Scenario 4] On special occasions, the caller directly specifies the baseValue (generally used to replace the base, such as virtual members, generics, etc.)
+        // [Scenario 4] On special occasions, the caller directly specifies the baseValue (generally used to replace the base,
+        // such as virtual members, generics, etc.)
         if (localValue !== undefined && localValue !== null) {
             baseValue = localValue;
         }
@@ -1421,7 +1423,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
 
     /* Build corresponding function call IR for overloading ordinary operators */
     private buildInvokeValueForNormalOverloadedOp(cxxOperatorCallExpr: CxxAstNode): ValueAndStmts | null {
-        // The child nodes of the overloaded operator node cannot be less than 2 (inner [0] is FunctionToPointerDecay, and inner [1] is the instance object DeclRefExpr)
+        // The child nodes of the overloaded operator node cannot be less than 2 (inner [0] is FunctionToPointerDecay,
+        // and inner [1] is the instance object DeclRefExpr)
         const innerLen = cxxOperatorCallExpr.inner?.length;
         if (!innerLen || innerLen < 2) {
             return null;

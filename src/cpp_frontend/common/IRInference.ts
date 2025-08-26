@@ -964,7 +964,8 @@ export class IRInference {
 
     /**
      *Map the method declaration to the corresponding source code implementation
-     *Find the corresponding method implementation in the reference file by matching the method signature, and establish the association between declaration and implementation
+     *Find the corresponding method implementation in the reference file by matching the method signature,
+     * and establish the association between declaration and implementation
      *
      *@ param mtdDecl - target method declaration object, used to obtain declaration information and set implementation signature
      *@ param headerFile - Header file path, as one of the reference files

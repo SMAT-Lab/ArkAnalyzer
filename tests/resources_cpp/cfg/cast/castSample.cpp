@@ -34,7 +34,8 @@ void CStyleCastTest()
 void CXXConstCastTest()
 {
     const int ci = 2;
-    // Pointer representation, addr operation handling. (When mapped to UnaryOperator, it's undefined because & is not defined)
+    // Pointer representation, addr operation handling.
+    // (When mapped to UnaryOperator, it's undefined because & is not defined)
     int *pi = const_cast<int *>(&ci);
 }
 

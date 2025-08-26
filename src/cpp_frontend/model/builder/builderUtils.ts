@@ -187,7 +187,12 @@ export function buildFuncPtrType(funcPtrNode: CxxAstNode, arkMtd: ArkMethod, sou
  *@ param sourceFile - optional source file node
  *@ returns Type after conversion
  */
-export function cxxNode2Type(nodeQualType: CxxAstNode | string, arkInstance: ArkMethod | ArkClass | ArkField | undefined, sourceFile?: CxxAstNode, currNode?: CxxAstNode): Type {
+export function cxxNode2Type(
+    nodeQualType: CxxAstNode | string,
+    arkInstance: ArkMethod | ArkClass | ArkField | undefined,
+    sourceFile?: CxxAstNode,
+    currNode?: CxxAstNode
+): Type {
     // Handle function pointer type
     if (currNode && arkInstance instanceof ArkMethod && isCxxFunctionPointer(currNode.type.qualType)) {
         return buildFuncPtrType(currNode, arkInstance, sourceFile!);
@@ -250,7 +255,7 @@ export function buildTypeFromPreStr(preStr: string, arkInstance: ArkMethod | Ark
     }
     // Need to Handle precedence between pointers and other types/modifiers
     // 4. Wrap pointers and references
-    if (pointerLevel > 0) {  // && !(baseType instanceof FunctionPointer) || pointerLevel > 1
+    if (pointerLevel > 0) { // && !(baseType instanceof FunctionPointer) || pointerLevel > 1
         baseType = new PointerType(baseType, pointerLevel);
     }
     if (referenceCount > 0) {

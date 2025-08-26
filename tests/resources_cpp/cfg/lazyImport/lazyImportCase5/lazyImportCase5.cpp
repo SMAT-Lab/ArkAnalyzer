@@ -26,7 +26,8 @@
 static bool Napi_AddPropertyInt32(napi_env env, napi_value obj, const char *key, int32_t value)
 {
     napi_value key_napi = nullptr;
-    napi_status status = napi_create_string_utf8(env, key, NAPI_AUTO_LENGTH, &key_napi);  // AST node missing on the right side due to unknown macro
+    // AST node missing on the right side due to unknown macro
+    napi_status status = napi_create_string_utf8(env, key, NAPI_AUTO_LENGTH, &key_napi);
     napi_value value_napi = nullptr;
     status = napi_create_int32(env, value, &value_napi);
     status = napi_set_property(env, obj, key_napi, value_napi);
