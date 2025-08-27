@@ -109,9 +109,14 @@ json getSourceContent(CXSourceRange range)
     // 1) Get expansion locations
     CXSourceLocation b = clang_getRangeStart(range);
     CXSourceLocation e = clang_getRangeEnd(range);
-    CXFile bf, ef;
-    unsigned bl, bc, boff;
-    unsigned el, ec, eoff;
+    CXFile bf;
+    CXFile ef;
+    unsigned bl;
+    unsigned bc;
+    unsigned boff;
+    unsigned el;
+    unsigned ec;
+    unsigned eoff;
     clang_getExpansionLocation(b, &bf, &bl, &bc, &boff);
     clang_getExpansionLocation(e, &ef, &el, &ec, &eoff);
     // 2) Assemble common metadata
@@ -170,7 +175,9 @@ json getSourceContent(CXSourceRange range)
         CXString s = clang_getTokenSpelling(clang_Cursor_getTranslationUnit(clang_getNullCursor()), toks[i]);
         const char* c = clang_getCString(s);
         if (c) {
-            if (!text.empty()) text.push_back(' ');
+            if (!text.empty()) {
+                text.push_back(' ');
+            }
             text.append(c);
         }
         clang_disposeString(s);
@@ -1401,7 +1408,9 @@ static void inclusionVisitorBuildHeaderUnits(CXFile included_file,
     auto* ctx = static_cast<InclusionCtx*>(client_data);
     // The inclusion site (the frame closest to the #include)
     CXFile locFile;
-    unsigned line = 0, col = 0, offset = 0;
+    unsigned line = 0;
+    unsigned col = 0;
+    unsigned offset = 0;
     clang_getSpellingLocation(inclusion_stack[0], &locFile, &line, &col, &offset);
     // includer (the file that contains the #include)
     std::string includerPath;
