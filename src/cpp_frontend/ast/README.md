@@ -39,9 +39,9 @@ arkCppAstDumper是基于llvm开发的工具，对C/C++生成简洁的抽象语�
 
 ### 工具执行的依赖文件
 
-- libclang.dll
-- vcruntime140.dll（visual studio 17）
-- vcruntime140_1.dll（visual studio 17）
+- libclang.dll（可从windows环境下clang的bin目录下获取）
+- vcruntime140.dll（可从Microsoft Visual Studio的MSVC目录下获取）
+- vcruntime140_1.dll（可从Microsoft Visual Studio的MSVC目录下获取）
 
 ### 工具解析cpp文件需引入的标准库头文件
 
@@ -72,12 +72,12 @@ arkCppAstDumper是基于llvm开发的工具，对C/C++生成简洁的抽象语�
 
 ### 工具执行的依赖文件
 
-- libclang.so
-- libstdc++.so
-- libgcc_s.so
-- libc.so
-- libz.so
-- libm.so
+- libclang.so（可从linux环境下clang的lib目录下获取）
+- libstdc++.so（可从gcc的目录下获取）
+- libgcc_s.so（可从gcc的目录下获取）
+- libc.so（linux环境自带）
+- libz.so（linux环境自带）
+- libm.so（linux环境自带）
 
 ### 工具解析cpp文件需引入的标准库头文件
 
@@ -104,3 +104,6 @@ arkCppAstDumper是基于llvm开发的工具，对C/C++生成简洁的抽象语�
 ### 对单个文件生成抽象语法树并提供多个-I编译参数
 
     ./arkCppAstDumper.exe <文件.cpp> -o <json文件指定路径> -i <头文件路径> -i <头文件路径> ...
+
+## arkCppAstDumper工具解析策略
+- arkCppAstDumper会优先从-c获取编译数据库引入头文件的编译参数，如果编译数据库不存在再从-i获取引入头文件的编译参数，-c参数和-i参数不能同时存在，只能选其一。

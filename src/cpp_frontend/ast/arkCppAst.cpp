@@ -113,41 +113,39 @@ json getSourceContent(CXSourceRange range)
     CXFile ef;
     unsigned bl;
     unsigned bc;
-    unsigned boff;
+    unsigned beginOffset;
     unsigned el;
     unsigned ec;
-    unsigned eoff;
-    clang_getExpansionLocation(b, &bf, &bl, &bc, &boff);
-    clang_getExpansionLocation(e, &ef, &el, &ec, &eoff);
+    unsigned endOffset;
+    clang_getExpansionLocation(b, &bf, &bl, &bc, &beginOffset);
+    clang_getExpansionLocation(e, &ef, &el, &ec, &endOffset);
     // 2) Assemble common metadata
     json j = json::object();
-    j["id"] = static_cast<unsigned long long>(boff) + static_cast<unsigned long long>(eoff);
+    j["id"] = static_cast<unsigned long long>(beginOffset) + static_cast<unsigned long long>(endOffset);
     auto& jb = j["begin"] = json::object();
     jb["line"]   = bl;
     jb["col"]    = bc;
-    jb["offset"] = boff;
+    jb["offset"] = beginOffset;
     auto& je = j["end"] = json::object();
     je["line"]   = el;
     je["col"]    = ec;
-    je["offset"] = eoff;
-    jb["tokLen"] = (eoff > boff ? (eoff - boff) : 0);
+    je["offset"] = endOffset;
+    jb["tokLen"] = (endOffset > beginOffset ? (endOffset - beginOffset) : 0);
     // 3) Prefer slicing at the expansion site (requires begin/end in the same file and a valid range)
-    if (bf && ef && bf == ef && eoff >= boff) {
+    if (bf && ef && bf == ef && endOffset >= beginOffset) {
         CXString sfile = clang_getFileName(bf);
         const char* cfn = clang_getCString(sfile);
         std::string filename = cfn ? cfn : "";
         clang_disposeString(sfile);
-        if (filename.empty()) {
-            // do nothing, fall through to fallback after this block
-        } else {
+        if (!filename.empty()) {
             auto it = g_fileContents.find(filename);
             if (it == g_fileContents.end()) {
                 LoadFileContent(filename);
                 it = g_fileContents.find(filename);
             }
-            if (it != g_fileContents.end() && eoff <= it->second.size()) {
+            if (it != g_fileContents.end() && endOffset <= it->second.size()) {
                 const std::string& content = it->second;
-                j["code"] = content.substr(boff, eoff - boff);
+                j["code"] = content.substr(beginOffset, endOffset - beginOffset);
                 return j;
             }
         }
@@ -157,11 +155,12 @@ json getSourceContent(CXSourceRange range)
     // Note: libclang has no API to get a TU directly from a range. Alternative approach:
     //       derive the TU from the begin location (the robust cross-API approach is to pass the TU in).
     // To avoid larger structural changes, we use a small trick here: infer the TU from the begin location.
-    // If you’re willing to change the function signature, prefer: getSourceContent(CXTranslationUnit tu, CXSourceRange range).
+    // If you’re willing to change the function signature, prefer:
+    //       getSourceContent(CXTranslationUnit tu, CXSourceRange range).
     // Simplified handling: rebuild a range using the offsets on bf/ef and then tokenize
     CXSourceRange expRange = clang_getRange(
-        clang_getLocationForOffset(clang_Cursor_getTranslationUnit(clang_getNullCursor()), bf, boff),
-        clang_getLocationForOffset(clang_Cursor_getTranslationUnit(clang_getNullCursor()), ef, eoff)
+        clang_getLocationForOffset(clang_Cursor_getTranslationUnit(clang_getNullCursor()), bf, beginOffset),
+        clang_getLocationForOffset(clang_Cursor_getTranslationUnit(clang_getNullCursor()), ef, endOffset)
     );
 
     CXToken* toks = nullptr;
@@ -170,7 +169,7 @@ json getSourceContent(CXSourceRange range)
     clang_tokenize(clang_Cursor_getTranslationUnit(clang_getNullCursor()),
                    (ntok || !toks) ? range : expRange, &toks, &ntok);
     std::string text;
-    text.reserve((eoff > boff ? (eoff - boff) : 8));
+    text.reserve((endOffset > beginOffset ? (endOffset - beginOffset) : 8));
     for (unsigned i = 0; i < ntok; ++i) {
         CXString s = clang_getTokenSpelling(clang_Cursor_getTranslationUnit(clang_getNullCursor()), toks[i]);
         const char* c = clang_getCString(s);
@@ -816,6 +815,24 @@ bool IsInUserInclude(const std::string& fileName)
     return false;
 }
 
+void removeNoTMainNode(std::string fileName, std::string kind, json& node)
+{
+    // Drop system SDK headers directly
+    const bool isSdk = (fileName.find("/sdk/default/") != std::string::npos);
+    if (kind != "inclusion directive" || isSdk) {
+        node = json(); // Remove
+        return;
+    }
+    const std::string included = node.value("included", "");
+    const bool inUserByFile = IsInUserInclude(fileName);
+    const bool inUserByIncl = (!included.empty() && IsInUserInclude(included));
+    const std::string code = node.value("code", "");
+    const bool isAngle = (code.find('<') != std::string::npos) || (code.find('>') != std::string::npos);
+    if (inUserByFile || (inUserByIncl && !isAngle)) {
+        headerUnits.push_back(node); // Collect user-header include
+    }
+    node = json(); // Remove from main AST
+}
 
 void filterToMainFileOnly(json& node, const std::string& normMainFileName, std::string parentFileName = "")
 {
@@ -844,21 +861,7 @@ void filterToMainFileOnly(json& node, const std::string& normMainFileName, std::
     if (kind != "TranslationUnitDecl") {
         // Non-main file: keep only user-header inclusion directives, collect into headerUnits
         if (!fileName.empty() && fileName != normMainFileName) {
-            // Drop system SDK headers directly
-            const bool isSdk = (fileName.find("/sdk/default/") != std::string::npos);
-            if (kind != "inclusion directive" || isSdk) {
-                node = json(); // Remove
-                return;
-            }
-            const std::string included = node.value("included", "");
-            const bool inUserByFile = IsInUserInclude(fileName);
-            const bool inUserByIncl = (!included.empty() && IsInUserInclude(included));
-            const std::string code = node.value("code", "");
-            const bool isAngle = (code.find('<') != std::string::npos) || (code.find('>') != std::string::npos);
-            if (inUserByFile || (inUserByIncl && !isAngle)) {
-                headerUnits.push_back(node); // Collect user-header include
-            }
-            node = json(); // Remove from main AST
+            removeNoTMainNode(fileName, kind, node);
             return;
         }
     }
@@ -870,7 +873,7 @@ void filterToMainFileOnly(json& node, const std::string& normMainFileName, std::
             auto& child = arr[i];
             filterToMainFileOnly(child, normMainFileName, fileName);
             if (!child.is_null() && !child.empty()) {
-                if (out != i) arr[out] = std::move(child);
+                arr[out] = out != i ? std::move(child) : arr[out];
                 ++out;
             }
         }
@@ -1080,6 +1083,37 @@ void fillNodeKindTag(json& node, CXCursor cursor, CXCursorKind kind_cursor, cons
     node["kind"] = kindSpelling; // Fallback
 }
 
+void fillCXEvalResult(CXEvalResult ev, json& node)
+{
+    switch (clang_EvalResult_getKind(ev)) {
+        case CXEval_Int:
+             node["value"] = std::to_string((long long)clang_EvalResult_getAsLongLong(ev));
+             break;
+        case CXEval_Float: {
+             double v = clang_EvalResult_getAsDouble(ev);
+             // Render as a shortest, lossless double string
+             std::ostringstream oss;
+             oss.setf(std::ios::fmtflags(0), std::ios::floatfield);
+             oss << std::setprecision(std::numeric_limits<double>::max_digits10) << v;
+             std::string s = oss.str();
+             // Strip trailing zeros and trailing dot
+             if (s.find('.') != std::string::npos) {
+                 while (!s.empty() && s.back() == '0') {
+                     s.pop_back();
+                 }
+                 if (!s.empty() && s.back() == '.') {
+                     s.pop_back();
+                 }
+             }
+             node["value"] = s; // e.g., 3.6
+             break;
+        }
+        default:
+             break; // Other kinds (e.g., unexposed): keep codeStr as-is
+    }
+    clang_EvalResult_dispose(ev);
+}
+
 void fillNodeSourceContent(json& node, const json& content, CXCursorKind kind_cursor, CXCursor cursor,
                            CXFile file, const std::string& displayName, const std::string& fileStr)
 {
@@ -1118,38 +1152,14 @@ void fillNodeSourceContent(json& node, const json& content, CXCursorKind kind_cu
         kind_cursor == CXCursor_CharacterLiteral ||
         kind_cursor == CXCursor_FloatingLiteral   ||
         kind_cursor == CXCursor_StringLiteral) {
-        const std::string codeStr = node.value("code", "");
-        node["value"] = codeStr;  // Fallback: store the source text first (macro name, literal text, etc.)
+        const std::string nodeCodeStr = node.value("code", "");
+        node["value"] = nodeCodeStr;  // Fallback: store the source text first (macro name, literal text, etc.)
 
         if (kind_cursor == CXCursor_StringLiteral) {
             // Do not Evaluate string literals (avoid truncating L/u/U/u8 to the first character)
         } else {
             if (CXEvalResult ev = clang_Cursor_Evaluate(cursor)) {
-                switch (clang_EvalResult_getKind(ev)) {
-                    case CXEval_Int:
-                        node["value"] = std::to_string(
-                            (long long)clang_EvalResult_getAsLongLong(ev));
-                        break;
-                    case CXEval_Float: {
-                        double v = clang_EvalResult_getAsDouble(ev);
-                        // Render as a shortest, lossless double string
-                        std::ostringstream oss;
-                        oss.setf(std::ios::fmtflags(0), std::ios::floatfield);
-                        oss << std::setprecision(std::numeric_limits<double>::max_digits10) << v;
-                        std::string s = oss.str();
-                        // Strip trailing zeros and trailing dot
-                        if (s.find('.') != std::string::npos) {
-                            while (!s.empty() && s.back() == '0') s.pop_back();
-                            if (!s.empty() && s.back() == '.') s.pop_back();
-                        }
-                        node["value"] = s; // e.g., 3.6
-                        break;
-                    }
-                    default:
-                        // Other kinds (e.g., unexposed): keep codeStr as-is
-                        break;
-                }
-                clang_EvalResult_dispose(ev);
+                fillCXEvalResult(ev, node);
             }
         }
     }
@@ -1281,6 +1291,15 @@ void implicitCastExprPostProcess(
     }
 }
 
+void callExprPostProcess(json& node, json& children)
+{
+    if (!children.empty() && children[0]["kind"] == "MemberExpr") {
+        node["kind"] = "CXXMemberCallExpr";
+    } else {
+        changeChildNodeType(children);
+    }
+}
+
 void nodePostprocess(
     json& node,
     CXCursor cursor,
@@ -1299,11 +1318,7 @@ void nodePostprocess(
     } else if (node["kind"] == "CXXOperatorCallExpr") {
         operatorCallExprPostProcess(node, children);
     } else if (node["kind"] == "CXXConstructExpr" || node["kind"] == "CallExpr") {
-        if (!children.empty() && children[0]["kind"] == "MemberExpr") {
-            node["kind"] = "CXXMemberCallExpr";
-        } else {
-            changeChildNodeType(children);
-        }
+        callExprPostProcess(node, children);
     } else if (node["kind"] == "ImplicitCastExpr") {
         implicitCastExprPostProcess(node, children, codeStr);
     } else if (node["kind"] == "CXXConstructorDecl") {
@@ -1397,21 +1412,21 @@ struct InclusionCtx {
 };
 
 // Callback: construct a "basic" headerUnit element
-static void inclusionVisitorBuildHeaderUnits(CXFile included_file,
-                                             CXSourceLocation* inclusion_stack,
-                                             unsigned include_len,
-                                             CXClientData client_data)
+static void inclusionVisitorBuildHeaderUnits(CXFile includedFile,
+                                             CXSourceLocation* inclusionStack,
+                                             unsigned includeLen,
+                                             CXClientData clientData)
 {
-    if (!included_file || include_len == 0) {
+    if (!includedFile || includeLen == 0) {
         return;
     }
-    auto* ctx = static_cast<InclusionCtx*>(client_data);
+    auto* ctx = static_cast<InclusionCtx*>(clientData);
     // The inclusion site (the frame closest to the #include)
     CXFile locFile;
     unsigned line = 0;
     unsigned col = 0;
     unsigned offset = 0;
-    clang_getSpellingLocation(inclusion_stack[0], &locFile, &line, &col, &offset);
+    clang_getSpellingLocation(inclusionStack[0], &locFile, &line, &col, &offset);
     // includer (the file that contains the #include)
     std::string includerPath;
     if (locFile) {
@@ -1424,7 +1439,7 @@ static void inclusionVisitorBuildHeaderUnits(CXFile included_file,
         return;
     }
     // Path of the included file
-    CXString incName = clang_getFileName(included_file);
+    CXString incName = clang_getFileName(includedFile);
     std::string incPath = Cx2Str(incName);
     clang_disposeString(incName);
     if (incPath.empty()) {
@@ -1443,7 +1458,7 @@ static void inclusionVisitorBuildHeaderUnits(CXFile included_file,
         {"code", "#include \"" + Slashify(incPath) + "\""},
         {"fileName", CanonicalCached(incPath)},         // included file
         {"locFile", CanonicalCached(includerPath)},    // file where the directive resides (typically the main file)
-        {"included", ctx ? ctx->normMain : CanonicalCached(includerPath)}, // In your example this field points to main.cpp
+        {"included", ctx ? ctx->normMain : CanonicalCached(includerPath)}, // field points to main.cpp
         {"range", {{"begin", beginJ}, {"end", endJ}}}
     };
     headerUnits.push_back(std::move(j));
@@ -1459,7 +1474,7 @@ json buildAndProcessAST(CXTranslationUnit unit, const CommandLineOptions& opts)
     filterToMainFileOnly(ast, normMain);
     // Collect header files when not using CXTranslationUnit_DetailedPreprocessingRecord
     if (headerUnits.empty()) {
-        InclusionCtx ctx{normMain, /*onlyFromMain=*/true};
+        InclusionCtx ctx{normMain, true};
         clang_getInclusions(unit, inclusionVisitorBuildHeaderUnits, &ctx);
     }
     if (!headerUnits.empty() && ast.contains("kind")) {
