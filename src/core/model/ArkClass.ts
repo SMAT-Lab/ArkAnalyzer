@@ -28,9 +28,6 @@ import { getColNo, getLineNo, LineCol, setCol, setLine } from '../base/Position'
 import { ArkBaseModel } from './ArkBaseModel';
 import { ArkError } from '../common/ArkError';
 
-import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
-const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkClass');
-
 export enum ClassCategory {
     CLASS = 0,
     STRUCT = 1,
@@ -65,10 +62,10 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
     private defaultMethod: ArkMethod | null = null;
 
     // name to model
-    private methods: Map<string, ArkMethod[]> = new Map<string, ArkMethod[]>();
+    private methods: Map<string, ArkMethod> = new Map<string, ArkMethod>();
     private fields: Map<string, ArkField> = new Map<string, ArkField>();
     private extendedClasses: Map<string, ArkClass> = new Map<string, ArkClass>();
-    private staticMethods: Map<string, ArkMethod[]> = new Map<string, ArkMethod[]>();
+    private staticMethods: Map<string, ArkMethod> = new Map<string, ArkMethod>();
     private staticFields: Map<string, ArkField> = new Map<string, ArkField>();
 
     private instanceInitMethod: ArkMethod = new ArkMethod();
@@ -81,6 +78,8 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
 
     // In order to record the mapping between arkTS and CPP functions
     private ts2cxxFuncMap: Map<string, ArkMethod[]> = new Map<string, ArkMethod[]>();
+    // Record overload methods in cpp. Key of Map is method's name.
+    private overloadMethods: Map<string, ArkMethod[]> = new Map<string, ArkMethod[]>();
 
     constructor() {
         super();
@@ -357,8 +356,10 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
      ```
      */
     public getMethods(generated?: boolean): ArkMethod[] {
-        const allMethods = Array.from(this.methods.values()).flatMap(arr => arr).filter(f => (!generated && !f.isGenerated()) || generated);
-        allMethods.push(...[...this.staticMethods.values()].flat());
+        const allMethods = Array.from(this.methods.values()).filter(f => (!generated && !f.isGenerated()) || generated);
+        allMethods.push(...this.staticMethods.values());
+        const allOverloadMtds: ArkMethod[][] = [...this.overloadMethods.values()];
+        allMethods.push(...allOverloadMtds.flat());
         return [...new Set(allMethods)];
     }
 
@@ -400,27 +401,11 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
     }
 
     public getMethodWithName(methodName: string): ArkMethod | null {
-        const sameNameMethods = this.methods.get(methodName);
-        if (!sameNameMethods) {
-            return null;
-        }
-        if (sameNameMethods.length > 1) {
-            logger.error("There are multiple methods with the same name, and the interface 'getMethodWithName' only returns one of them. " +
-                "If you want to obtain all non-static methods with the same name, please use the interface 'getMethodsWithName'.")
-        }
-        return sameNameMethods[0];
+        return this.methods.get(methodName) || null;
     }
 
     public getStaticMethodWithName(methodName: string): ArkMethod | null {
-        const sameNameStaticMethods = this.staticMethods.get(methodName);
-        if (!sameNameStaticMethods) {
-            return null;
-        }
-        if (sameNameStaticMethods.length > 1) {
-            logger.error("There are multiple static methods with the same name, and the interface 'getStaticMethodWithName' only returns one of them. " +
-                "If you want to obtain all static methods with the same name, please use the interface 'getStaticMethodsWithName'.")
-        }
-        return sameNameStaticMethods[0];
+        return this.staticMethods.get(methodName) || null;
     }
 
     /**
@@ -429,18 +414,11 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
      * %${declare name}$${outer method name} in class.
      */
     public addMethod(method: ArkMethod, originName?: string): void {
-        // TODO: 根据函数签名去做覆盖，以防止函数的声明与实现都构建ArkMethod
         const name = originName ?? method.getName();
         if (method.isStatic()) {
-            if (!this.staticMethods.has(name)) {
-                this.staticMethods.set(name, []);
-            }
-            this.staticMethods.get(name)!.push(method);
+            this.staticMethods.set(name, method);
         } else {
-            if (!this.methods.has(name)) {
-                this.methods.set(name, []);
-            }
-            this.methods.get(name)!.push(method);
+            this.methods.set(name, method);
         }
         if (!originName && !method.isAnonymousMethod() && name.startsWith(NAME_PREFIX)) {
             const index = name.indexOf(NAME_DELIMITER);
@@ -451,21 +429,51 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
         }
     }
 
-    // In the case of overloading, there are multiple non-static methods with the same name.
-    public getMethodsWithName(methodName: string): ArkMethod[] {
-        return this.methods.get(methodName) ?? []
+    /**
+     * Adds an overloaded method to the class.
+     *
+     * This method handles the logic for adding method overloads. If a method with the same name
+     * already exists, it creates or updates the overload method list. If the new method has the
+     * same signature as an existing method, it replaces the existing method with the new one.
+     *
+     * @param newMethod - The new method to be added as an overload
+     */
+    public addOverloadMethod(newMethod: ArkMethod): void {
+        const methodName = newMethod.getName();
+        const existingMtd = this.getMethodWithName(methodName) ?? this.getStaticMethodWithName(methodName);
+        if (!existingMtd) {
+            return;
+        }
+        const newMethodSignature = newMethod.getSignature();
+        if (!this.overloadMethods.has(methodName)) {
+            if (newMethodSignature.isMatch(existingMtd.getSignature())) {
+                return;
+            }
+            this.overloadMethods.set(methodName, [existingMtd, newMethod]);
+            return;
+        }
+        const overloadMethods = this.overloadMethods.get(methodName);
+        const index = overloadMethods!.findIndex(curMtd => curMtd.getSignature().isMatch(newMethodSignature));
+        if (index !== -1) {
+            overloadMethods![index] = newMethod;
+        } else {
+            overloadMethods!.push(newMethod);
+        }
     }
 
-    // In the case of overloading, there are multiple static methods with the same name.
-    public getStaticMethodsWithName(methodName: string): ArkMethod[] {
-        return this.staticMethods.get(methodName) ?? []
-    }
-
-    // In the case of overloading, there may be multiple static and non-static functions with the same name.
+    // In the case of overloading, there are multiple methods with the same name.
     public getAllMethodsWithName(methodName: string): ArkMethod[] {
-        const allMethods = this.getMethodsWithName(methodName);
-        allMethods.push(...this.getStaticMethodsWithName(methodName));
-        return [...new Set(allMethods)];
+        const sameNameMethods = this.overloadMethods.get(methodName) ?? [];
+        if (sameNameMethods.length !== 0) {
+            return sameNameMethods;
+        }
+        [this.methods, this.staticMethods].forEach(mtdMap => {
+            const matchedMtd = mtdMap.get(methodName);
+            if (matchedMtd) {
+                sameNameMethods.push(matchedMtd);
+            }
+        });
+        return sameNameMethods;
     }
 
     public setDefaultArkMethod(defaultMethod: ArkMethod): void {
