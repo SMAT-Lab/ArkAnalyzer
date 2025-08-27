@@ -60,7 +60,7 @@ export const CallbackToArkTS_EXPECT = {
                 '%3 = args[0]',
                 '%4 = &argv',
                 '%5 = &result',
-                'staticinvoke <@%unk/%unk: .napi_call_function()>(env, %3, 1, %4, %5)',
+                'staticinvoke <@%unk/%unk: .napi_call_function()>(env, 0, %3, 1, %4, %5)',
                 'typeNumber = null',
                 '%6 = &typeNumber',
                 "staticinvoke <@%unk/%unk: .napi_get_named_property()>(env, result, 'type', %6)",

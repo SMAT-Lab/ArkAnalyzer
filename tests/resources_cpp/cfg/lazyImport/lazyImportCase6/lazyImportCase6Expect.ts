@@ -26,7 +26,7 @@ export const CallFunction_EXPECT = {
                 '%0[0] = null',
                 'args = %0',
                 '%1 = &argc',
-                'staticinvoke <@%unk/%unk: .napi_get_cb_info()>(env, info, %1, args)',
+                'staticinvoke <@%unk/%unk: .napi_get_cb_info()>(env, info, %1, args, 0, 0)',
                 'onCall = undefined',
                 '%2 = args[0]',
                 '%3 = &onCall',
