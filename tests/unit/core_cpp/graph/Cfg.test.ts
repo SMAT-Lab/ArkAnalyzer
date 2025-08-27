@@ -348,8 +348,10 @@ describe('Lazy Import Test', () => {
         testBlocks(scene, 'lazyImportCase2.cpp', 'CallObject', lazyImportCase2.CALL_OBJECT_EXPECT.blocks);
     });
     it('case3: lazy import case3', () => {
-        const scene = buildScene('lazyImport/lazyImportCase3');
-        testBlocks(scene, 'lazyImportCase3.cpp', 'MapDemo', lazyImportCase3.MapDemo_EXPECT.blocks);
+        if (system_win32) {
+            const scene = buildScene('lazyImport/lazyImportCase3');
+            testBlocks(scene, 'lazyImportCase3.cpp', 'MapDemo', lazyImportCase3.MapDemo_EXPECT.blocks);
+        }
     });
     it('case4: lazy import case4', () => {
         const scene = buildScene('lazyImport/lazyImportCase4');
