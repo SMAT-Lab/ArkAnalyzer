@@ -14,45 +14,63 @@ arkCppAstDumper是基于llvm开发的工具，对C/C++生成简洁的抽象语�
 
 ## 开发指南
 
-### windows
+### 构建脚本
 
-#### 环境准备
+相对路径：\cmake\toolchains
+- linux.cmake：在linux环境的构建脚本
+- mingw.cmake：在linux环境交叉编译构建windows执行文件的构建脚本
+- windows.cmake：在windows环境的构建脚本
 
-- llvm/clang 19.1.7
+## windows
+
+### 环境准备
+
+- llvm 19.1.7
 - cmake 3.10及以上
-- visual studio 17(支持c++17以上的编译器)
+- 构建工具visual studio 17(支持c++17以上的编译器)
 
-#### 构建
+### 构建
 
      mkdir build && cd build
-     cmake .. -G "visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Release
+     cmake -DCMAKE_TOOLCHAIN_FILE=..\cmake\toolchains\windows.cmake ..
      cmake --build . --config Release
 
 构建成功将会在/build下生成**arkCppAstDumper.exe**可执行文件
 
-#### 执行依赖的文件
+### 工具执行的依赖文件
 
 - libclang.dll
-- vcruntime140.dll
-- vcruntime140_1.dll
+- vcruntime140.dll（visual studio 17）
+- vcruntime140_1.dll（visual studio 17）
+
+### 工具解析cpp文件需引入的标准库头文件
+
+- visual studio 17会默认查找MSVC头文件
+
+- devEcoStudio需手动-i引入下列头文件目录
+
+  1、/devEcoStudio/sdk/default/openharmony/native/llvm/incldue/c++/v1 \
+  2、/devEcoStudio/sdk/default/openharmony/native/llvm/incldue/x86_64-unknown-linux-gnu/c++/v1 \
+  3、/devEcoStudio/sdk/default/openharmony/native/llvm/lib/clang/<版本号>/include
+  
 
 ## linux
 
 ### 环境准备：
 
-- llvm/clang发行版
+- llvm 19.1.7
 - cmake 3.10及以上
 - gcc 8.4(支持c++17以上的编译器)
 
 ### 构建
 
     build && cd build
-    cmake ..
+    cmake -DCMAKE_TOOLCHAIN_FILE=..\cmake\toolchains\linux.cmake ..
     make
 
-构建成功将会在/build下生成**arkCppAstDumper.so**可执行文件
+构建成功将会在/build下生成**arkCppAstDumper**可执行文件
 
-#### 执行依赖文件
+### 工具执行的依赖文件
 
 - libclang.so
 - libstdc++.so
@@ -61,8 +79,15 @@ arkCppAstDumper是基于llvm开发的工具，对C/C++生成简洁的抽象语�
 - libz.so
 - libm.so
 
+### 工具解析cpp文件需引入的标准库头文件
 
-## 工具使用示例
+- common-line-tools需手动-i引入下列头文件目录
+
+  1、/common-line-tools/sdk/default/openharmony/native/llvm/incldue/c++/v1 \
+  2、/common-line-tools/sdk/default/openharmony/native/llvm/incldue/x86_64-unknown-linux-gnu/c++/v1 \
+  3、/common-line-tools/sdk/default/openharmony/native/llvm/lib/clang/<版本号>/include
+
+## arkCppAstDumper工具使用示例
 
 ### 对单个文件生成抽象语法树并输出到文件.cpp同级路径下（默认路径）
 
