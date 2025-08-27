@@ -363,18 +363,13 @@ export class Scene {
         }
 
         for (const method of methods) {
-            const isCxxFile = method.getDeclaringArkFile()?.getLanguage() === Language.CXX;
             try {
-                // Distinguish between C++ and TS/ArkTS.
-                if (isCxxFile) {
-                    method.getCxxBodyBuilder()?.buildBody();
-                } else {
-                    method.buildBody();
-                }
+                method.buildBody();
             } catch (error) {
                 logger.error('Error building body:', method.getSignature(), error);
             } finally {
-                // Distinguish between C++ and TS/ArkTS.
+                // CXXTodo: Distinguish between C++ and TS/ArkTS.
+                const isCxxFile = method.getDeclaringArkFile()?.getLanguage() === Language.CXX;
                 if (isCxxFile) {
                     method.freeCxxBodyBuilder();
                 } else {
