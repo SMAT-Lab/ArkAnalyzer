@@ -489,7 +489,8 @@ export class CxxBodyBuilder {
         this.updateAbstractInvokeExprWithClosures(local, outerMethod.getSignature(), nestedMethod.getSignature(), closuresLocal);
     }
 
-    // Update the function signature and actual parameter args in AbstractInvokeExpr where the inner function is called in all stmt, and add the closure parameter
+    // Update the function signature and actual parameter args in AbstractInvokeExpr where the inner function is called in all stmt,
+    // and add the closure parameter.
     // Update the function signature and actual parameter args in usedStmt of all function pointers defined in stmt, and add closure parameters
     private updateAbstractInvokeExprWithClosures(
         value: Local | GlobalRef,

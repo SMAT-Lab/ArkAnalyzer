@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { Type, NumberType, StringType, UnionType } from '../../core/base/Type'
+import { Type, NumberType, StringType, UnionType } from '../../core/base/Type';
 import { Value } from '../../core/base/Value';
 
 export enum CxxTypeSize {

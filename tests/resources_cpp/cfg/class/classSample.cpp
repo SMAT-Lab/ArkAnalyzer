@@ -104,7 +104,8 @@ public:
 // *** Class polymorphism ***
 class Animal {
 public:
-    // Pure virtual function (virtual + =0) -> abstract class (cannot be instantiated), this function must be overridden by subclasses
+    // Pure virtual function (virtual + =0) -> abstract class (cannot be instantiated),
+    // this function must be overridden by subclasses
     virtual void Sound() const = 0;
 };
 
@@ -139,7 +140,8 @@ void MakeSound(const Animal* animal)
 
 // clang::CXXInheritedCtorInitExpr节点
 class D : public Base {
-    // CXXInheritedCtorInitExpr node is generated here: subclass constructor calls inherited constructor from parent class, compiler generates D(int x) : B(x) {}
+    // CXXInheritedCtorInitExpr node is generated here: subclass constructor calls inherited constructor from
+    // parent class, compiler generates D(int x) : B(x) {}.
     using Base::Base;
 }
 

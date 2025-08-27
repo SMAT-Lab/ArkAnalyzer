@@ -163,7 +163,6 @@ export function buildArkMethodFromArkClass(methodNode: CxxAstNode, declaringClas
         declaringClass.setViewTree(buildViewTree(mtd));
     }
     checkAndUpdateCxxMethod(mtd, declaringClass);
-    declaringClass.addOverloadMethod(mtd);
     declaringClass.addMethod(mtd);
     IRUtils.setComments(mtd, methodNode, sourceFile, mtd.getDeclaringArkFile().getScene().getOptions());
 }

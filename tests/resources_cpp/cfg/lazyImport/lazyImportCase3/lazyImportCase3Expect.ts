@@ -61,7 +61,7 @@ export const MapDemo_EXPECT = {
             stmts: [
                 'return null'
             ],
-            preds: [ 1 ],
+            preds: [1],
             succes: [],
         },
     ],

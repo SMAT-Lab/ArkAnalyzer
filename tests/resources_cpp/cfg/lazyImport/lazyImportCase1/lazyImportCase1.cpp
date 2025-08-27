@@ -43,9 +43,9 @@ private:
 
 static thread_local napi_ref g_ref = nullptr;
 
-
+// Initialization list assignment, currently not reflected in ArkIR
 GlobalConfig::GlobalConfig(double value)
-    : value_(value), env_(nullptr), wrapper_(nullptr) {}  // Initialization list assignment, currently not reflected in ArkIR
+    : value_(value), env_(nullptr), wrapper_(nullptr) {}
 
 GlobalConfig::~GlobalConfig()
 {
