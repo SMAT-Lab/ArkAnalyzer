@@ -32,6 +32,12 @@
 using json = nlohmann::json;
 namespace fs = std::filesystem;
 std::vector<std::string> g_user_include_dirs;
+
+// Global variable to store the normalized absolute path of the main source file.
+// Used to distinguish nodes that are *expanded* in the main file even if their
+// spelling location points to an SDK/system header (e.g., macro expansions).
+static std::string g_norm_main_file;
+
 //===================Tool Functions Area===================
 template<typename F>
 void forEachChild(json& node, F&& f)
@@ -1350,8 +1356,23 @@ json buildASTJson(CXCursor cursor, bool actionScope, std::unordered_map<std::str
     std::string fileName = file ? Cx2Str(clang_getFileName(file)) : "";
 
     bool isInclude = IsInUserInclude(fileName);
-    if (kind_cursor != CXCursor_TranslationUnit && !clang_Location_isFromMainFile(loc) && !isInclude) {
-            return json();
+    bool fromMainSpell = clang_Location_isFromMainFile(loc);
+    bool fromMainByExpansion = false;
+    {
+        CXFile ef;
+        unsigned el=0;
+        unsigned ec=0;
+        unsigned eoff=0;
+        // Get the expansion location (where the token is actually used in source code,
+        // as opposed to the spelling location in a header or macro definition).
+        clang_getExpansionLocation(loc, &ef, &el, &ec, &eoff);
+        if (ef) {
+            std::string expPath = CanonicalCached(Cx2Str(clang_getFileName(ef)));
+            fromMainByExpansion = (!g_norm_main_file.empty() && expPath == g_norm_main_file);
+        }
+    }
+    if (kind_cursor != CXCursor_TranslationUnit && !fromMainSpell && !fromMainByExpansion && !isInclude) {
+        return json();
     }
     if (kind_cursor == CXCursor_LinkageSpec) { // extern "C" { ... }
         json children = json::array();
@@ -1466,6 +1487,7 @@ static void inclusionVisitorBuildHeaderUnits(CXFile includedFile,
 
 json buildAndProcessAST(CXTranslationUnit unit, const CommandLineOptions& opts)
 {
+    g_norm_main_file = CanonicalCached(fs::canonical(opts.inputFile).string());
     // Collect all parameter/variable declarations in current scope, return name to type mapping
     std::unordered_map<std::string, std::string> varTypeMap;
     json ast = buildASTJson(clang_getTranslationUnitCursor(unit), false, varTypeMap);
