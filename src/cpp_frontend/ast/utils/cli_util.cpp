@@ -74,9 +74,9 @@ bool IsCompilerExecutable(std::string arg)
     for (auto& ch : arg) {
         ch = (char)std::tolower((unsigned char)ch);
     }
-    return EndsWith(arg,"clang.exe") || EndsWith(arg,"clang++.exe") ||
-           EndsWith(arg,"clang-cl.exe") || EndsWith(arg,"clang") || EndsWith(arg,"clang++") ||
-           EndsWith(arg,"clang-cl") || EndsWith(arg,"clang_~1.exe");
+    return EndsWith(arg, "clang.exe") || EndsWith(arg, "clang++.exe") ||
+           EndsWith(arg, "clang-cl.exe") || EndsWith(arg, "clang") || EndsWith(arg, "clang++") ||
+           EndsWith(arg, "clang-cl") || EndsWith(arg, "clang_~1.exe");
 }
 
 // Shell-like split: supports quotes, \" and \<space>.
@@ -84,7 +84,7 @@ std::vector<std::string> SplitCommandLine(const std::string& cmd)
 {
     std::vector<std::string> out;
     std::string cur;
-    bool in_quotes = false;
+    bool inQuotes = false;
     for (size_t i = 0; i < cmd.size(); ++i) {
         char ch = cmd[i];
         // --- handle escape ---
@@ -97,7 +97,7 @@ std::vector<std::string> SplitCommandLine(const std::string& cmd)
             char nxt = cmd[i + 1];
             if (nxt == '"' || nxt == '\\' || nxt == ' ') {
                 cur.push_back(nxt);
-                ++i;
+                i = i + 1;
                 continue;
             }
             cur.push_back(ch);
@@ -105,11 +105,11 @@ std::vector<std::string> SplitCommandLine(const std::string& cmd)
         }
         // --- handle quotes ---
         if (ch == '"') {
-            in_quotes = !in_quotes;
+            inQuotes = !inQuotes;
             continue;
         }
         // --- handle space outside quotes ---
-        if (std::isspace(static_cast<unsigned char>(ch)) && !in_quotes) {
+        if (std::isspace(static_cast<unsigned char>(ch)) && !inQuotes) {
             if (!cur.empty()) {
                 out.push_back(std::move(cur));
                 cur.clear();
@@ -157,7 +157,7 @@ const json* FindMatchingEntry(const json& ccjson, const std::string& inputFile)
         if (!entry.contains("file")) {
             continue;
         }
-        std::string fileField;
+        std::string fileField = "";
         try { fileField = entry["file"].get<std::string>(); } catch (...) { continue; }
         if (NormalizePath(fileField) == inputNorm) {
             return &entry;
@@ -211,80 +211,66 @@ void FilterAndNormalizeArgs(const std::vector<std::string>& argv,
     const std::string entryNorm = NormalizePath(entryFile);
     const std::string inputNorm = NormalizePath(inputFile);
 
-    bool skipNext = false, pendingX = false, stdTwoPart = false, stopAfterDD = false;
-    bool hasLang = false, hasStd = false;
+    bool skipNext = false;
+    bool pendingX = false;
+    bool stdTwoPart = false;
+    bool stopAfterDD = false;
+    bool hasLang = false;
+    bool hasStd = false;
+
+    auto EatsNextArg = [](const std::string& s) {
+        return (s == "-o" || s == "-c" || s == "-MF" || s == "-MT" || s == "-MQ" ||
+                s == "--sysroot" || s == "-isysroot" || s == "-include" || s == "-imacros");
+    };
+
+    auto DropSingleOpt = [](const std::string& s) {
+        return (s == "-c" || s == "-shared" || s == "-fPIC");
+    };
 
     for (size_t i = 0; i < argv.size(); ++i) {
         std::string arg = argv[i];
-        if (arg.empty()) {
-            continue;
-        }
-        if (stopAfterDD) {
+        const std::string norm = NormalizePath(arg);
+        if (arg.empty() || stopAfterDD || (i == 0 && IsCompilerExecutable(arg)) || DropSingleOpt(arg) ||
+            StartsWithAny(arg, {"-o", "-MF", "-MT", "-MQ", "-c"}) || norm == entryNorm || norm == inputNorm) {
             continue;
         }
         if (skipNext) {
             skipNext = false;
             continue;
         }
-        if (i==0 && IsCompilerExecutable(arg)) {
-            continue;
-        }
-        const std::string norm = NormalizePath(arg);
-        if (norm==entryNorm || norm==inputNorm) {
-            continue;
-        }
-        if (arg=="--") {
+        if (arg == "--") {
             stopAfterDD = true;
             continue;
         }
-        if (arg=="-x") {
+        if (arg == "-x") {
             pendingX = true;
             continue;
         }
         if (pendingX) {
-            outArgs.push_back(std::string("-x")+arg);
+            outArgs.push_back(std::string("-x") + arg);
             hasLang = true;
             pendingX = false;
             continue;
         }
 
-        if (arg=="-std") {
+        if (arg == "-std") {
             stdTwoPart = true;
             continue;
         }
         if (stdTwoPart) {
-            outArgs.push_back(std::string("-std=")+arg);
+            outArgs.push_back(std::string("-std=") + arg);
             hasStd = true;
             stdTwoPart = false;
             continue;
         }
-        if (arg.rfind("-std=", 0)==0) {
+        if (arg.rfind("-std=", 0) == 0) {
             hasStd = true;
             outArgs.push_back(std::move(arg));
             continue;
         }
-
-        if (arg=="-xc" || arg=="-xc++" || arg=="-xc-header" || arg=="-xc++-header") {
+        if (arg == "-xc" || arg == "-xc++" || arg == "-xc-header" || arg == "-xc++-header") {
             hasLang = true;
             outArgs.push_back(std::move(arg));
-            continue;
-        }
-
-        auto EatsNextArg = [](const std::string& s) {
-            return (s=="-o" || s=="-c" || s=="-MF" || s=="-MT" || s=="-MQ" ||
-                    s=="--sysroot" || s=="-isysroot" || s=="-include" || s=="-imacros");
-        };
-        auto DropSingleOpt = [](const std::string& s) {
-            return (s=="-c" || s=="-shared" || s=="-fPIC");
-        };
-        if (DropSingleOpt(arg)) {
-            continue;
-        }
-        if (EatsNextArg(arg)) {
-            skipNext = true;
-            continue;
-        }
-        if (StartsWithAny(arg, {"-o", "-MF", "-MT", "-MQ", "-c"})) {
             continue;
         }
         outArgs.push_back(std::move(arg));
@@ -294,7 +280,7 @@ void FilterAndNormalizeArgs(const std::vector<std::string>& argv,
     if (!hasLang) {
         fs::path p(entryFile);
         std::string ext = p.extension().string();
-        std::transform(ext.begin(), ext.end(), ext.begin(),[](unsigned char c) {
+        std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c) {
             return (char)std::tolower(c);
         });
         const bool isHeader = (ext==".h" || ext==".hh" || ext==".hpp" || ext==".hxx");
@@ -320,11 +306,14 @@ CommandLineOptions cliutil::ParseCommandLineArgs(int argc, char** argv)
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
         if (arg == "-o" && i + 1 < argc) {
-            opts.outputFile = argv[++i];
+            i = i + 1;
+            opts.outputFile = argv[i];
         } else if (arg == "-c" && i + 1 < argc) {
-            opts.compileCommandsFile = argv[++i];
+            i = i + 1;
+            opts.compileCommandsFile = argv[i];
         } else if (arg == "-i" && i + 1 < argc) {
-            opts.userIncludeDirs.push_back(argv[++i]);
+            i = i + 1;
+            opts.userIncludeDirs.push_back(argv[i]);
         } else if (opts.inputFile.empty()) {
             opts.inputFile = arg;
         }
@@ -436,9 +425,7 @@ ClangArgs cliutil::LoadCompileCommands(const CommandLineOptions& opts)
         std::istringstream iss(commandStr);
         std::string arg;
         while (iss >> arg) {
-            if (IsSameFile(arg, opts.inputFile)) {
-                continue;
-            }
+            if (IsSameFile(arg, opts.inputFile)) continue;
             result.strArgs.push_back(arg);
             result.cstrArgs.push_back(result.strArgs.back().c_str());
         }

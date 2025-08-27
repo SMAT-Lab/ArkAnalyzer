@@ -110,6 +110,45 @@ inline bool fillKindBycode(json &node, const std::string &codeStr,
 
 // ========================AST attribute assistance ======================
 
+std::string getSourceCode(CXFile bf, CXFile ef, unsigned beginOffset, unsigned endOffset, CXSourceRange range)
+{
+    // Fallback: tokenize the expansion range and join token spellings (separated by spaces to avoid sticking)
+    CXTranslationUnit tu = clang_Cursor_getTranslationUnit(clang_getNullCursor());
+    // Note: libclang has no API to get a TU directly from a range. Alternative approach:
+    //       derive the TU from the begin location (the robust cross-API approach is to pass the TU in).
+    // To avoid larger structural changes, we use a small trick here: infer the TU from the begin location.
+    // If you’re willing to change the function signature, prefer:
+    //       getSourceContent(CXTranslationUnit tu, CXSourceRange range).
+    // Simplified handling: rebuild a range using the offsets on bf/ef and then tokenize
+    CXSourceRange expRange = clang_getRange(
+        clang_getLocationForOffset(clang_Cursor_getTranslationUnit(clang_getNullCursor()), bf, beginOffset),
+        clang_getLocationForOffset(clang_Cursor_getTranslationUnit(clang_getNullCursor()), ef, endOffset)
+    );
+
+    CXToken* toks = nullptr;
+    unsigned ntok = 0;
+    // If we cannot obtain the TU above, try tokenizing the original range directly
+    clang_tokenize(clang_Cursor_getTranslationUnit(clang_getNullCursor()),
+        (ntok || !toks) ? range : expRange, &toks, &ntok);
+    std::string text;
+    text.reserve((endOffset > beginOffset ? (endOffset - beginOffset) : 8));
+    for (unsigned i = 0; i < ntok; ++i) {
+        CXString s = clang_getTokenSpelling(clang_Cursor_getTranslationUnit(clang_getNullCursor()), toks[i]);
+        const char* c = clang_getCString(s);
+        if (c) {
+            if (!text.empty()) {
+                text.push_back(' ');
+            }
+            text.append(c);
+        }
+        clang_disposeString(s);
+    }
+    if (toks) {
+        clang_disposeTokens(clang_Cursor_getTranslationUnit(clang_getNullCursor()), toks, ntok);
+    }
+    return text;
+}
+
 json getSourceContent(CXSourceRange range)
 {
     // 1) Get expansion locations
@@ -156,41 +195,7 @@ json getSourceContent(CXSourceRange range)
             }
         }
     }
-    // 4) Fallback: tokenize the expansion range and join token spellings (separated by spaces to avoid sticking)
-    CXTranslationUnit tu = clang_Cursor_getTranslationUnit(clang_getNullCursor());
-    // Note: libclang has no API to get a TU directly from a range. Alternative approach:
-    //       derive the TU from the begin location (the robust cross-API approach is to pass the TU in).
-    // To avoid larger structural changes, we use a small trick here: infer the TU from the begin location.
-    // If you’re willing to change the function signature, prefer:
-    //       getSourceContent(CXTranslationUnit tu, CXSourceRange range).
-    // Simplified handling: rebuild a range using the offsets on bf/ef and then tokenize
-    CXSourceRange expRange = clang_getRange(
-        clang_getLocationForOffset(clang_Cursor_getTranslationUnit(clang_getNullCursor()), bf, beginOffset),
-        clang_getLocationForOffset(clang_Cursor_getTranslationUnit(clang_getNullCursor()), ef, endOffset)
-    );
-
-    CXToken* toks = nullptr;
-    unsigned ntok = 0;
-    // If we cannot obtain the TU above, try tokenizing the original range directly
-    clang_tokenize(clang_Cursor_getTranslationUnit(clang_getNullCursor()),
-                   (ntok || !toks) ? range : expRange, &toks, &ntok);
-    std::string text;
-    text.reserve((endOffset > beginOffset ? (endOffset - beginOffset) : 8));
-    for (unsigned i = 0; i < ntok; ++i) {
-        CXString s = clang_getTokenSpelling(clang_Cursor_getTranslationUnit(clang_getNullCursor()), toks[i]);
-        const char* c = clang_getCString(s);
-        if (c) {
-            if (!text.empty()) {
-                text.push_back(' ');
-            }
-            text.append(c);
-        }
-        clang_disposeString(s);
-    }
-    if (toks) {
-        clang_disposeTokens(clang_Cursor_getTranslationUnit(clang_getNullCursor()), toks, ntok);
-    }
-    j["code"] = text;
+    j["code"] = getSourceCode(bf, ef, beginOffset, endOffset, range);
     return j;
 }
 
@@ -1093,36 +1098,37 @@ void fillCXEvalResult(CXEvalResult ev, json& node)
 {
     switch (clang_EvalResult_getKind(ev)) {
         case CXEval_Int:
-             node["value"] = std::to_string((long long)clang_EvalResult_getAsLongLong(ev));
-             break;
+            node["value"] = std::to_string((long long)clang_EvalResult_getAsLongLong(ev));
+            break;
         case CXEval_Float: {
-             double v = clang_EvalResult_getAsDouble(ev);
-             // Render as a shortest, lossless double string
-             std::ostringstream oss;
-             oss.setf(std::ios::fmtflags(0), std::ios::floatfield);
-             oss << std::setprecision(std::numeric_limits<double>::max_digits10) << v;
-             std::string s = oss.str();
-             // Strip trailing zeros and trailing dot
-             if (s.find('.') != std::string::npos) {
-                 while (!s.empty() && s.back() == '0') {
-                     s.pop_back();
-                 }
-                 if (!s.empty() && s.back() == '.') {
-                     s.pop_back();
-                 }
-             }
-             node["value"] = s; // e.g., 3.6
-             break;
+            double v = clang_EvalResult_getAsDouble(ev);
+            // Render as a shortest, lossless double string
+            std::ostringstream oss;
+            oss.setf(std::ios::fmtflags(0), std::ios::floatfield);
+            oss << std::setprecision(std::numeric_limits<double>::max_digits10) << v;
+            std::string s = oss.str();
+            // Strip trailing zeros and trailing dot
+            if (s.find('.') != std::string::npos) {
+                while (!s.empty() && s.back() == '0') {
+                    s.pop_back();
+                }
+                if (!s.empty() && s.back() == '.') {
+                    s.pop_back();
+                }
+            }
+            node["value"] = s; // e.g., 3.6
+            break;
         }
         default:
-             break; // Other kinds (e.g., unexposed): keep codeStr as-is
+            break; // Other kinds (e.g., unexposed): keep codeStr as-is
     }
     clang_EvalResult_dispose(ev);
 }
 
 void fillNodeSourceContent(json& node, const json& content, CXCursorKind kind_cursor, CXCursor cursor,
-                           CXFile file, const std::string& displayName, const std::string& fileStr)
+                           const std::string& fileStr)
 {
+    std::string displayName = Cx2Str(clang_getCursorSpelling(cursor));
     if (kind_cursor == CXCursor_TranslationUnit) {
         node["fileName"] = fileStr;
         return;
@@ -1397,7 +1403,7 @@ json buildASTJson(CXCursor cursor, bool actionScope, std::unordered_map<std::str
     node["type"] = {{"qualType", unifyTypeStr(clang_getTypeSpelling(clang_getCursorType(cursor)))}};
     std::string fileStr = fileName != "" ? fileName : displayName;
     json content = getSourceContent(range);
-    fillNodeSourceContent(node, content, kind_cursor, cursor, file, displayName, fileStr);
+    fillNodeSourceContent(node, content, kind_cursor, cursor, fileStr);
     fillNodeKindTag(node, cursor, kind_cursor, kindSpelling);
     fillVarDeclStorageClass(node, cursor, kind_cursor);
     fillDeclRefInfo(node, cursor, kind_cursor);
