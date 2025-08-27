@@ -191,7 +191,7 @@ export class StringType extends PrimitiveType {
 }
 
 /**
- * null type
+ * Null type in TS/ArkTS, and it also refers to nullptr in Cxx.
  * @category core/base/type
  */
 export class NullType extends PrimitiveType {

@@ -71,7 +71,7 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
     private viewTree?: ViewTree;
 
     private bodyBuilder?: BodyBuilder;
-    // The bodybuilder for C++. After the subsequent abstraction of BodyBuilder, this field will be removed.
+    // CXXTodo: The bodybuilder for Cxx. After the subsequent abstraction of BodyBuilder, this field will be refactored.
     private CxxBodyBuilder?: CxxBodyBuilder;
 
     private isGeneratedFlag: boolean = false;
@@ -558,7 +558,7 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
     public setCxxBodyBuilder(bodyBuilder: CxxBodyBuilder): void {
         this.CxxBodyBuilder = bodyBuilder;
         if (this.getDeclaringArkFile().getScene().buildClassDone()) {
-            this.CxxBodyBuilder.buildBody();
+            this.buildBody();
         }
     }
 
@@ -578,6 +578,17 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
                 arkBody.getCfg().setDeclaringMethod(this);
                 if (this.getOuterMethod() === undefined) {
                     this.bodyBuilder.handleGlobalAndClosure();
+                }
+            }
+        }
+        // CXXTodo: Building body in Cxx. After the BodyBuilder completes abstraction, this part needs to be refactored.
+        if (this.CxxBodyBuilder) {
+            const arkBody: ArkBody | null = this.CxxBodyBuilder.build();
+            if (arkBody) {
+                this.setBody(arkBody);
+                arkBody.getCfg().setDeclaringMethod(this);
+                if (this.getOuterMethod() === undefined) {
+                    this.CxxBodyBuilder.handleGlobalAndClosure();
                 }
             }
         }
