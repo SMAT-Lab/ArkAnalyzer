@@ -19,6 +19,9 @@ import { EMPTY_STRING, ValueUtil } from '../../core/common/ValueUtil';
 const charPrefixType = ['L"', "L\'", 'u"', "u\'", 'U"', "U\'"];
 
 export class CxxValueUtil extends ValueUtil {
+    /** Normalize the string constant.
+     * Remove the prefix of the char-type variable and eliminate redundant double quotes
+     */
     public static normalizeString(str: string): string {
         let preStr: string = str.substring(0, 2); // Get prefix processing long character type
         if (charPrefixType.includes(preStr)) {
@@ -29,6 +32,7 @@ export class CxxValueUtil extends ValueUtil {
         return str;
     }
 
+    /** Create C++ string constants */
     public static createStringConst(str: string): Constant {
         if (str === EMPTY_STRING) {
             return this.EMPTY_STRING_CONSTANT;

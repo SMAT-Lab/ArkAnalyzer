@@ -127,7 +127,7 @@ export function shouldAddCxxHeaderImport(element: ImportInfo): boolean {
     return isValidCxxHeaderPath(element.getImportClauseName());
 }
 
-export function isValidCxxHeaderPath(headerPath: string | undefined): boolean {
+function isValidCxxHeaderPath(headerPath: string | undefined): boolean {
     if (!headerPath) {
         return false;
     }

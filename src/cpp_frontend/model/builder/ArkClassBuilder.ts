@@ -19,7 +19,7 @@ import { ArkNamespace } from '../../../core/model/ArkNamespace';
 import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
 import { ArkClass, ClassCategory } from '../../../core/model/ArkClass';
 import { buildArkMethodFromArkClass, buildInitMethod } from './ArkMethodBuilder';
-import { buildModifiers, buildTypeParameters, buildModifiersForCxxCls } from './builderUtils';
+import { buildModifiers, buildTypeParameters, buildModifiersForCxxClass } from './builderUtils';
 import { buildProperty2ArkField } from './ArkFieldBuilder';
 import { Stmt } from '../../../core/base/Stmt';
 import { ANONYMOUS_CLASS_DELIMITER, ANONYMOUS_CLASS_PREFIX, DEFAULT_ARK_CLASS_NAME } from '../../../core/common/Const';
@@ -180,7 +180,7 @@ function buildClass2ArkClass(clsNode: CxxAstNode, cls: ArkClass, sourceFile: Cxx
     init4InstanceInitMethod(cls);
     init4StaticInitMethod(cls);
     buildArkClassMembers(clsNode, cls, sourceFile);
-    cls.setModifiers(buildModifiersForCxxCls(cls));
+    cls.setModifiers(buildModifiersForCxxClass(cls));
 }
 
 function processCXXHeritage(clsNode: CxxAstNode, cls: ArkClass): void {
@@ -216,7 +216,7 @@ function buildArkClassMembers(clsNode: CxxAstNode, cls: ArkClass, sourceFile: Cx
     buildMethodsForClass(clsNode, cls, sourceFile);
     let instanceIRTransformer: ArkCxxIRTransformer;
     let staticIRTransformer: ArkCxxIRTransformer;
-    // 判断是否有tagUsed属性
+    // Determine whether the 'tagUsed' property exists
     const tagStr = (clsNode.tagUsed ?? '');
 
     if (tagStr === 'class' || tagStr === 'struct' || tagStr === 'union') {

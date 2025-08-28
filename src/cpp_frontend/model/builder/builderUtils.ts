@@ -89,10 +89,10 @@ export function buildDecorators(node: CxxAstNode, sourceFile: CxxAstNode): Set<D
     return decorators;
 }
 
-export function buildModifiersForCxxCls(cls: ArkClass): number {
+export function buildModifiersForCxxClass(cls: ArkClass): number {
     const mtds = cls.getMethods();
     for (const mtd of mtds) {
-        // 如果类内有纯虚的成员函数，则该类是抽象类
+        // If a class contains a pure virtual member function, then the class is an abstract class.
         if (mtd.isPureVirtual()) {
             return modifierKind2CxxEnum('abstract');
         }
@@ -306,7 +306,7 @@ export function buildTypeFromDerivedType(preStr: string, arkInstance: ArkMethod 
 
 const typeMap: Record<string, string> = {
     bool: 'boolean',
-    //字符串相关
+    // String
     string: 'string',
     'std::string': 'string',
     char: 'string',
@@ -316,7 +316,7 @@ const typeMap: Record<string, string> = {
     char16_t: 'string',
     char32_t: 'string',
     'std::basic_string<char>': 'string',
-    // 数字相关
+    // Number
     short: 'number',
     'unsigned short': 'number',
     'unsigned int': 'number',
