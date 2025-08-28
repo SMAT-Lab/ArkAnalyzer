@@ -550,15 +550,12 @@ namespace {
             {"includebriefcommentsincodecompletion",                 CXTranslationUnit_IncludeBriefCommentsInCodeCompletion},
             {"briefcomments",                                       CXTranslationUnit_IncludeBriefCommentsInCodeCompletion},
 
-            {"cxtranslationunit_createpreamblesonfirstparse", CXTranslationUnit_CreatePreamblesOnFirstParse},
-            {"createpreamblesonfirstparse",                   CXTranslationUnit_CreatePreamblesOnFirstParse},
-
             {"cxtranslationunit_keepgoing",                   CXTranslationUnit_KeepGoing},
             {"keepgoing",                                     CXTranslationUnit_KeepGoing},
 
             {"cxtranslationunit_singlefileparse",             CXTranslationUnit_SingleFileParse},
             {"singlefileparse",                               CXTranslationUnit_SingleFileParse},
-
+        };
             unsigned out = 0u;
             for (auto t : toks) {
                 const auto key = ToLowerAscii(TrimAscii(t));
