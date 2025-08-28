@@ -120,7 +120,7 @@ function buildArkClassFromCxxClass(classNode: CxxAstNode, arkFile: ArkFile, astR
     }
     buildNormalArkClassFromArkFile(classNode, arkFile, cls, astRoot);
     arkFile.addArkClass(cls);
-    addExportInfoOnCondition(classNode, cls, arkFile, astRoot);
+    addExportInfoOnCondition(classNode, cls, arkFile);
 }
 
 function buildImportInfoFromIncludeOrUsing(child: CxxAstNode, astRoot: CxxAstNode, arkFile: ArkFile): void {
@@ -133,17 +133,17 @@ function buildImportInfoFromIncludeOrUsing(child: CxxAstNode, astRoot: CxxAstNod
     });
 }
 
-function addExportInfoOnCondition(currNode: CxxAstNode, arkInstance: ArkExport, arkFile: ArkFile, astRoot: CxxAstNode): void {
+function addExportInfoOnCondition(currNode: CxxAstNode, arkInstance: ArkExport, arkFile: ArkFile): void {
     if (Object.prototype.hasOwnProperty.call(currNode, 'locFile') &&
         typeof currNode.locFile === 'string' && currNode.locFile.endsWith('.h')) {
-        arkFile.addExportInfo(buildExportInfo(arkInstance, arkFile, LineColPosition.cxxBuildFromNode(currNode, astRoot)));
+        arkFile.addExportInfo(buildExportInfo(arkInstance, arkFile, LineColPosition.cxxBuildFromNode(currNode)));
     }
 }
 
 function buildArkMethodFromCxxMethod(mtdNode: CxxAstNode, arkFile: ArkFile, astRoot: CxxAstNode, arkClass?: ArkClass): void {
     let mtd = new ArkMethod();
     buildArkMethodFromArkClass(mtdNode, arkClass ?? arkFile.getDefaultClass(), mtd, astRoot);
-    addExportInfoOnCondition(mtdNode, mtd, arkFile, astRoot);
+    addExportInfoOnCondition(mtdNode, mtd, arkFile);
 }
 
 /**
@@ -174,7 +174,7 @@ function buildArkFile(arkFile: ArkFile, astRoot: CxxAstNode): void {
                 ns.setDeclaringArkFile(arkFile);
                 buildArkNamespace(child, arkFile, ns, astRoot);
                 arkFile.addNamespace(ns);
-                addExportInfoOnCondition(child, ns, arkFile, astRoot);
+                addExportInfoOnCondition(child, ns, arkFile);
                 break;
             case 'CXXMethodDecl':
             case 'CXXConstructorDecl':

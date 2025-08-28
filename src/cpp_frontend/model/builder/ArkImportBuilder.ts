@@ -33,7 +33,7 @@ export function buildImportInfo(node: any, sourceFile: any, arkFile: ArkFile): I
 
 function buildGenericImportInfo(node: CxxAstNode, sourceFile: CxxTranslationUnit, arkFile: ArkFile,
                                 importClauseNameBuilder: (node: CxxAstNode) => string): ImportInfo[] {
-    const originTsPosition = LineColPosition.cxxBuildFromNode(node, sourceFile);
+    const originTsPosition = LineColPosition.cxxBuildFromNode(node);
     const tsSourceCode = node.code;
     let importInfos: ImportInfo[] = [];
     const importFrom: string = normalize(node.fileName ?? node.name ?? '');

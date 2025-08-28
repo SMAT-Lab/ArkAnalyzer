@@ -100,7 +100,13 @@ export class LineColPosition {
         // line start from 1.
         return new LineColPosition(line + 1, character + 1);
     }
-    public static cxxBuildFromNode(node: CxxAstNode, sourceFile: CxxAstNode): LineColPosition {
+
+    /**
+     * Builds a LineColPosition object from a CxxAstNode.
+     * @param node - The C++ AST node.
+     * @returns A LineColPosition object containing the line and character information. Default LineColPosition is (0, 0).
+     */
+    public static cxxBuildFromNode(node: CxxAstNode): LineColPosition {
         let line = 0;
         let character = 0;
         if (node.range?.begin && node.range.begin.line) {

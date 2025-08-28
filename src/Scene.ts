@@ -68,7 +68,7 @@ export class Scene {
     private projectName: string = '';
     private projectFiles: string[] = [];
     private realProjectDir: string = '';
-    private includeDirs: string[] = [];
+    private includeDirs: string[] = [];  // Include directories that the C++ project depends on.
 
     private moduleScenesMap: Map<string, ModuleScene> = new Map();
     private modulePath2NameMap: Map<string, string> = new Map<string, string>();
@@ -325,17 +325,12 @@ export class Scene {
      */
     private updateOrAddDefaultConstructors(): void {
         for (const file of this.getFiles()) {
-            const isCxxFile = file.getLanguage() === Language.CXX;
+            // CXXTodo: Select the appropriate initialization function based on file type
+            const initInConstructorFn = file.getLanguage() === Language.CXX ? addCxxInitInConstructor : addInitInConstructor;
             for (const cls of ModelUtils.getAllClassesInFile(file)) {
                 buildDefaultConstructor(cls);
-                // In C++, there may be multiple methods with the same name.
-                // Therefore, the interface 'getAllMethodsWithName' for obtaining all methods with the same name is used here.
+                // CXXTodo: Use the interface 'getAllMethodsWithName' for obtaining all methods with the same name.
                 const constructors = cls.getAllMethodsWithName(CONSTRUCTOR_NAME);
-                if (constructors.length === 0) {
-                    continue;
-                }
-                // Select the appropriate initialization function based on file type
-                const initInConstructorFn = isCxxFile ? addCxxInitInConstructor : addInitInConstructor;
                 constructors.forEach(constructor => {
                     replaceSuper2Constructor(constructor);
                     initInConstructorFn(constructor);
@@ -388,7 +383,7 @@ export class Scene {
             try {
                 const arkFile: ArkFile = new ArkFile(FileUtils.getFileLanguage(file, this.fileLanguages));
                 arkFile.setScene(this);
-                // Distinguish between C++ and TS/ArkTS. Call different builder functions based on file language.
+                // CXXTodo: Distinguish between C++ and TS/ArkTS. Call different builder functions based on file language.
                 if (arkFile.getLanguage() === Language.CXX) {
                     buildArkCxxFileFromFile(file, this.realProjectDir, arkFile, this.projectName, this.includeDirs);
                 } else {
@@ -426,7 +421,7 @@ export class Scene {
         try {
             const arkFile = new ArkFile(FileUtils.getFileLanguage(projectFile, this.fileLanguages));
             arkFile.setScene(this);
-            // Distinguish between C++ and TS/ArkTS.
+            // CXXTodo: Distinguish between C++ and TS/ArkTS.
             if (arkFile.getLanguage() === Language.CXX) {
                 buildArkCxxFileFromFile(projectFile, this.getRealProjectDir(), arkFile, this.getProjectName(), this.includeDirs);
             } else {
@@ -1095,6 +1090,7 @@ export class Scene {
         return callGraph;
     }
 
+    /** Obtain the header file directories of the input C++ project dependencies. */
     public getIncludeDirs(): string[] {
         return this.includeDirs;
     }
@@ -1112,11 +1108,11 @@ export class Scene {
      ```
      */
     public inferTypes(): void {
-        // Building the mapping between declarations and implementations of C++ functions in cross-file scenarios.
+        // CXXTodo: Building the mapping between declarations and implementations of C++ functions in cross-file scenarios.
         CxxIRInference.buildCxxFuncMap(this);
         this.filesMap.forEach(file => {
             try {
-                // Distinguish between C++ and TS/ArkTS.
+                // CXXTodo: Distinguish between C++ and TS/ArkTS.
                 file.getLanguage() === Language.CXX ? CxxIRInference.inferFile(file) : IRInference.inferFile(file);
             } catch (error) {
                 logger.error('Error inferring types of project file:', file.getFileSignature(), error);
