@@ -581,7 +581,7 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
                 }
             }
         }
-        // CXXTodo: Building body in Cxx. After the BodyBuilder completes abstraction, this part needs to be refactored.
+        // CXXTodo: Building body for Cxx. After the BodyBuilder completes abstraction, this part needs to be refactored.
         if (this.CxxBodyBuilder) {
             const arkBody: ArkBody | null = this.CxxBodyBuilder.build();
             if (arkBody) {

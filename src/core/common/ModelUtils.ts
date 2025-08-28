@@ -786,6 +786,7 @@ function getArkFileFromOtherModule(fromInfo: FromInfo): ArkFile | undefined {
     //find file in module path Index.ts
     if (!file && FileUtils.isDirectory(modulePath.path)) {
         file = findFileInModule(fromInfo, modulePath, FileUtils.getIndexFileName(modulePath.path));
+        // process lazy import project.
         if (from.endsWith('.so') && file) {
             CxxSceneUtils.puncture(modulePath.path, file);
         }

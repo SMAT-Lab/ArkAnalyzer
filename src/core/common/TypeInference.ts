@@ -726,7 +726,7 @@ export class TypeInference {
         }
         let propertyAndType: [any, Type] | null = null;
         let typeWithoutPtrOrRef = baseType;
-        // If it is a Cxx pointer or reference type, it is necessary to obtain its baseType and determine whether type inference is required.
+        // CXXTodo: If it is a Cxx pointer or reference type, it is necessary to obtain its baseType and determine whether type inference is required.
         if (baseType instanceof PointerType || baseType instanceof ReferenceType) {
             typeWithoutPtrOrRef = baseType.getBaseType();
         }
