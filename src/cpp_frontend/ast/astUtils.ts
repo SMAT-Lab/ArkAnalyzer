@@ -56,7 +56,7 @@ export class AstUtils {
         }
         let astPath: string = this.getAstOutputPath(sourceFile);
         let includeArgs = constructParseArguments(sourceFile, ccJsonPath, includeDirs);
-        let parseArguments: string[] = [sourceFile, '-o', astPath];
+        let parseArguments: string[] = [sourceFile, '-o', astPath, '-t','dpp'];
         parseArguments = [...parseArguments, ...includeArgs];
         this.ensureOutputDir(path.dirname(astPath));
         const sep = path.delimiter;

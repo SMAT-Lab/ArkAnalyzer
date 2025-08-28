@@ -22,6 +22,7 @@ struct CommandLineOptions {
     std::string inputFile;
     std::string outputFile;
     std::string compileCommandsFile;
+    std::string flag;
     std::vector<std::string> userIncludeDirs;
 };
 
@@ -39,4 +40,5 @@ namespace cliutil {
     ClangArgs LoadCompileCommands(const CommandLineOptions& opts);
     bool HasSuffix(const std::string& str, const std::string& suffix); // Internal use
     ClangArgs GetClangArgs(const CommandLineOptions& opts);
+    unsigned BuildTUFlags(const CommandLineOptions& opts);
 }

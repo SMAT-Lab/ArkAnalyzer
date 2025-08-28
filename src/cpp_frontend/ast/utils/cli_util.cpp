@@ -23,6 +23,7 @@
 #include <sstream>
 #include <cstdlib>
 #include <cctype>
+#include <clang-c/Index.h>
 
 using json = nlohmann::json;
 namespace fs = std::filesystem;
@@ -314,6 +315,8 @@ CommandLineOptions cliutil::ParseCommandLineArgs(int argc, char** argv)
         } else if (arg == "-i" && i + 1 < argc) {
             i = i + 1;
             opts.userIncludeDirs.push_back(argv[i]);
+        } else if (arg == "-f") {
+            opts.flag = argv[++i];
         } else if (opts.inputFile.empty()) {
             opts.inputFile = arg;
         }
@@ -467,4 +470,146 @@ ClangArgs cliutil::GetClangArgs(const CommandLineOptions& opts)
         clangArgs = cliutil::PrepareClangArgs(opts);
     }
     return clangArgs;
+}
+
+// ======================= TU flags parsing =========================
+// Internal helpers live in an anonymous namespace to avoid ODR/symbol clashes.
+namespace {
+    // Lowercase ASCII safely (cross-platform)
+    inline std::string ToLowerAscii(std::string s)
+    {
+        for (char& c : s) {
+            c = (char)std::tolower((unsigned char)c);
+        }
+        return s;
+    }
+
+    inline std::string TrimAscii(const std::string& s)
+    {
+        size_t b = s.find_first_not_of(" \t\r\n");
+        if (b == std::string::npos) {
+            return {};
+        }
+        size_t e = s.find_last_not_of(" \t\r\n");
+        return s.substr(b, e - b + 1);
+    }
+
+    // Split by ',', '|' or whitespace.
+    std::vector<std::string> TokenizeFlags(const std::string& raw)
+    {
+        std::string s = raw;
+        for (char& ch : s) {
+            if (ch == ',' || ch == '|') {
+                ch = ' ';
+            }
+        }
+        std::istringstream iss(s);
+        std::vector<std::string> toks;
+        std::string t;
+        while (iss >> t) {
+            toks.push_back(std::move(t));
+        }
+        return toks;
+    }
+
+    // Map tokens -> CXTranslationUnit_* bit flags.
+    // Add aliases freely; matching is case-insensitive.
+    unsigned ParseTUFlags(const std::string& flagStrRaw)
+     {
+        if (flagStrRaw.empty()) {
+            return 0u;
+        }
+        const auto toks = TokenizeFlags(flagStrRaw);
+        struct Map { const char* k; unsigned v; };
+        static const Map kMap[] = {
+            {"cxtranslationunit_detailedpreprocessingrecord", CXTranslationUnit_DetailedPreprocessingRecord},
+            {"detailedpreprocessingrecord",                   CXTranslationUnit_DetailedPreprocessingRecord},
+            {"dpp",                                           CXTranslationUnit_DetailedPreprocessingRecord},
+
+            {"cxtranslationunit_incomplete",                  CXTranslationUnit_Incomplete},
+            {"incomplete",                                    CXTranslationUnit_Incomplete},
+
+            {"cxtranslationunit_precompiledpreamble",         CXTranslationUnit_PrecompiledPreamble},
+            {"precompiledpreamble",                           CXTranslationUnit_PrecompiledPreamble},
+            {"preamble",                                      CXTranslationUnit_PrecompiledPreamble},
+
+            {"cxtranslationunit_cachecompletionresults",      CXTranslationUnit_CacheCompletionResults},
+            {"cachecompletionresults",                        CXTranslationUnit_CacheCompletionResults},
+
+            {"cxtranslationunit_forserialization",            CXTranslationUnit_ForSerialization},
+            {"forserialization",                              CXTranslationUnit_ForSerialization},
+
+            {"cxtranslationunit_cxxchainedpch",               CXTranslationUnit_CXXChainedPCH},
+            {"cxxchainedpch",                                 CXTranslationUnit_CXXChainedPCH},
+
+            {"cxtranslationunit_skipfunctionbodies",          CXTranslationUnit_SkipFunctionBodies},
+            {"skipfunctionbodies",                            CXTranslationUnit_SkipFunctionBodies},
+            {"skipfuncbodies",                                CXTranslationUnit_SkipFunctionBodies},
+
+            {"cxtranslationunit_includebriefcommentsincodecompletion", CXTranslationUnit_IncludeBriefCommentsInCodeCompletion},
+            {"includebriefcommentsincodecompletion",                 CXTranslationUnit_IncludeBriefCommentsInCodeCompletion},
+            {"briefcomments",                                       CXTranslationUnit_IncludeBriefCommentsInCodeCompletion},
+
+            {"cxtranslationunit_createpreamblesonfirstparse", CXTranslationUnit_CreatePreamblesOnFirstParse},
+            {"createpreamblesonfirstparse",                   CXTranslationUnit_CreatePreamblesOnFirstParse},
+
+            {"cxtranslationunit_keepgoing",                   CXTranslationUnit_KeepGoing},
+            {"keepgoing",                                     CXTranslationUnit_KeepGoing},
+
+            {"cxtranslationunit_singlefileparse",             CXTranslationUnit_SingleFileParse},
+            {"singlefileparse",                               CXTranslationUnit_SingleFileParse},
+
+            unsigned out = 0u;
+            for (auto t : toks) {
+                const auto key = ToLowerAscii(TrimAscii(t));
+                bool matched = false;
+                for (const auto& m : kMap) {
+                    if (key == m.k) {
+                        out |= m.v;
+                        matched = true;
+                        break;
+                    }
+                }
+            }
+            return out;
+    }
+} // namespace
+
+// Debug helper: pretty-print TU flags
+static void PrintTUFlags(unsigned flags) {
+    struct FlagInfo {
+        unsigned bit;
+        const char* name;
+    };
+    static const FlagInfo kFlags[] = {
+        {CXTranslationUnit_KeepGoing, "KeepGoing"},
+        {CXTranslationUnit_DetailedPreprocessingRecord, "DetailedPreprocessingRecord"},
+        {CXTranslationUnit_Incomplete, "Incomplete"},
+        {CXTranslationUnit_PrecompiledPreamble, "PrecompiledPreamble"},
+        {CXTranslationUnit_CacheCompletionResults, "CacheCompletionResults"},
+        {CXTranslationUnit_ForSerialization, "ForSerialization"},
+        {CXTranslationUnit_CXXChainedPCH, "CXXChainedPCH"},
+        {CXTranslationUnit_SkipFunctionBodies, "SkipFunctionBodies"},
+        {CXTranslationUnit_IncludeBriefCommentsInCodeCompletion, "IncludeBriefCommentsInCodeCompletion"},
+        {CXTranslationUnit_SingleFileParse, "SingleFileParse"},
+    };
+    std::cout << "[DEBUG] CXTranslationUnit flags = " << flags << " { ";
+    for (const auto& f : kFlags) {
+        if (flags & f.bit) {
+            std::cout << f.name << " ";
+        }
+    }
+    std::cout << "}" << std::endl;
+}
+
+// Public API: build final TU flags for clang_parseTranslationUnit.
+// Always includes CXTranslationUnit_KeepGoing; ORs in any tokens from opts.flag.
+unsigned cliutil::BuildTUFlags(const CommandLineOptions& opts)
+{
+    unsigned flags = CXTranslationUnit_KeepGoing;
+    if (!opts.flag.empty()) {
+        flags |= ParseTUFlags(opts.flag);
+    }
+    PrintTUFlags(flags);
+    return flags;
 }

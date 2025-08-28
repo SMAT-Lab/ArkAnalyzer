@@ -1443,8 +1443,8 @@ json buildASTJson(CXCursor cursor, bool actionScope, std::unordered_map<std::str
 CXTranslationUnit createTranslationUnit(CXIndex index, const CommandLineOptions& opts,
                                         const std::vector<const char*>& args)
 {
-    return clang_parseTranslationUnit(index, opts.inputFile.c_str(), args.data(), args.size(), nullptr, 0,
-        CXTranslationUnit_KeepGoing);
+    const unsigned tuFlags = cliutil::BuildTUFlags(opts);
+    return clang_parseTranslationUnit(index, opts.inputFile.c_str(), args.data(), args.size(), nullptr, 0, tuFlags);
 }
 
 struct InclusionCtx {
