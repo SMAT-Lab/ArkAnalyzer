@@ -205,6 +205,90 @@ bool StartsWithAny(const std::string& s, std::initializer_list<const char*> ps)
     return false;
 }
 
+struct NormalizeArgs {
+    bool skipNext = false;
+    bool pendingX = false;
+    bool stdTwoPart = false;
+    bool stopAfterDD = false;
+    bool hasLang = false;
+    bool hasStd = false;
+};
+
+bool isFilterArgs(std::string arg, NormalizeArgs& normalizeArgs, std::string entryNorm, std::string inputNorm, int i)
+{
+   if (normalizeArgs.stopAfterDD) {
+       return true;
+   }
+   if (normalizeArgs.skipNext) {
+       normalizeArgs.skipNext = false;
+       return true;
+   }
+   if (i == 0 && IsCompilerExecutable(arg)) {
+       return true;
+   }
+   const std::string norm = NormalizePath(arg);
+   if (norm == entryNorm || norm == inputNorm) {
+       return true;
+   }
+   if (arg == "--") {
+       normalizeArgs.stopAfterDD = true;
+       return true;
+   }
+   if (arg == "-x") {
+       normalizeArgs.pendingX = true;
+       return true;
+   }
+   return false;
+}
+
+bool isNormalizeArgs(std::string arg, NormalizeArgs& normalizeArgs, std::vector<std::string>& outArgs)
+{
+    if (normalizeArgs.pendingX) {
+        outArgs.push_back(std::string("-x")+arg);
+        normalizeArgs.hasLang = true;
+        normalizeArgs.pendingX = false;
+        return true;
+    }
+    if (arg=="-std") {
+        normalizeArgs.stdTwoPart = true;
+        return true;
+    }
+    if (normalizeArgs.stdTwoPart) {
+        outArgs.push_back(std::string("-std=")+arg);
+        normalizeArgs.hasStd = true;
+        normalizeArgs.stdTwoPart = false;
+        return true;
+    }
+    if (arg.rfind("-std=", 0)==0) {
+        normalizeArgs.hasStd = true;
+        outArgs.push_back(std::move(arg));
+        return true;
+    }
+    if (arg=="-xc" || arg=="-xc++" || arg=="-xc-header" || arg=="-xc++-header") {
+        normalizeArgs.hasLang = true;
+        outArgs.push_back(std::move(arg));
+        return true;
+    }
+    auto dropSingleOpt = [](const std::string& s) {
+        return (s == "-c" || s == "-shared" || s == "-fPIC");
+    };
+    if (dropSingleOpt(arg)) {
+        return true;
+    }
+    auto eatsNextArg = [](const std::string& s) {
+        return (s == "-o" || s == "-c" || s == "-MF" || s == "-MT" || s == "-MQ" ||
+                s == "--sysroot" || s == "-isysroot" || s == "-include" || s == "-imacros");
+    };
+    if (eatsNextArg(arg)) {
+        normalizeArgs.skipNext = true;
+        return true;
+    }
+    if (StartsWithAny(arg, {"-o", "-MF", "-MT", "-MQ", "-c"})) {
+        return true;
+    }
+    return false;
+}
+
 void FilterAndNormalizeArgs(const std::vector<std::string>& argv,
                             const std::string& entryFile,
                             const std::string& inputFile,
@@ -213,73 +297,19 @@ void FilterAndNormalizeArgs(const std::vector<std::string>& argv,
     const std::string entryNorm = NormalizePath(entryFile);
     const std::string inputNorm = NormalizePath(inputFile);
 
-    bool skipNext = false;
-    bool pendingX = false;
-    bool stdTwoPart = false;
-    bool stopAfterDD = false;
-    bool hasLang = false;
-    bool hasStd = false;
-
-    auto EatsNextArg = [](const std::string& s) {
-        return (s == "-o" || s == "-c" || s == "-MF" || s == "-MT" || s == "-MQ" ||
-                s == "--sysroot" || s == "-isysroot" || s == "-include" || s == "-imacros");
-    };
-
-    auto DropSingleOpt = [](const std::string& s) {
-        return (s == "-c" || s == "-shared" || s == "-fPIC");
-    };
-
+    NormalizeArgs normalizeArgs;
     for (size_t i = 0; i < argv.size(); ++i) {
         std::string arg = argv[i];
-        const std::string norm = NormalizePath(arg);
-        if (arg.empty() || stopAfterDD || (i == 0 && IsCompilerExecutable(arg)) || DropSingleOpt(arg) ||
-            StartsWithAny(arg, {"-o", "-MF", "-MT", "-MQ", "-c"}) || norm == entryNorm || norm == inputNorm) {
-            continue;
-        }
-        if (skipNext) {
-            skipNext = false;
-            continue;
-        }
-        if (arg == "--") {
-            stopAfterDD = true;
-            continue;
-        }
-        if (arg == "-x") {
-            pendingX = true;
-            continue;
-        }
-        if (pendingX) {
-            outArgs.push_back(std::string("-x") + arg);
-            hasLang = true;
-            pendingX = false;
-            continue;
-        }
-
-        if (arg == "-std") {
-            stdTwoPart = true;
-            continue;
-        }
-        if (stdTwoPart) {
-            outArgs.push_back(std::string("-std=") + arg);
-            hasStd = true;
-            stdTwoPart = false;
-            continue;
-        }
-        if (arg.rfind("-std=", 0) == 0) {
-            hasStd = true;
-            outArgs.push_back(std::move(arg));
-            continue;
-        }
-        if (arg == "-xc" || arg == "-xc++" || arg == "-xc-header" || arg == "-xc++-header") {
-            hasLang = true;
-            outArgs.push_back(std::move(arg));
+        if (arg.empty() ||
+            isFilterArgs(arg, normalizeArgs, entryNorm, inputNorm, i) ||
+            isNormalizeArgs(arg, normalizeArgs, outArgs)) {
             continue;
         }
         outArgs.push_back(std::move(arg));
     }
 
     // Fallbacks
-    if (!hasLang) {
+    if (!normalizeArgs.hasLang) {
         fs::path p(entryFile);
         std::string ext = p.extension().string();
         std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c) {
@@ -288,7 +318,7 @@ void FilterAndNormalizeArgs(const std::vector<std::string>& argv,
         const bool isHeader = (ext==".h" || ext==".hh" || ext==".hpp" || ext==".hxx");
         outArgs.push_back(isHeader? "-xc++-header" : (ext==".c"? "-xc" : "-xc++"));
     }
-    if (!hasStd) {
+    if (!normalizeArgs.hasStd) {
         outArgs.push_back("-std=c++17");
     }
 }
@@ -308,13 +338,13 @@ CommandLineOptions cliutil::ParseCommandLineArgs(int argc, char** argv)
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
         if (arg == "-o" && i + 1 < argc) {
-            i = i + 1;
+            i++;
             opts.outputFile = argv[i];
         } else if (arg == "-c" && i + 1 < argc) {
-            i = i + 1;
+            i++;
             opts.compileCommandsFile = argv[i];
         } else if (arg == "-i" && i + 1 < argc) {
-            i = i + 1;
+            i++;
             opts.userIncludeDirs.push_back(argv[i]);
         } else if (arg == "-f") {
             opts.flag = argv[++i];
