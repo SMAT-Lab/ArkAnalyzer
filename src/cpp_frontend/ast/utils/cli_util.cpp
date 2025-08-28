@@ -87,7 +87,12 @@ std::vector<std::string> SplitCommandLine(const std::string& cmd)
     std::vector<std::string> out;
     std::string cur;
     bool inQuotes = false;
+    bool isSkip = false;
     for (size_t i = 0; i < cmd.size(); ++i) {
+        if (isSkip) {
+            isSkip = false;
+            continue;
+        }
         char ch = cmd[i];
         // --- handle escape ---
         if (ch == '\\') {
@@ -99,7 +104,7 @@ std::vector<std::string> SplitCommandLine(const std::string& cmd)
             char nxt = cmd[i + 1];
             if (nxt == '"' || nxt == '\\' || nxt == ' ') {
                 cur.push_back(nxt);
-                i = i + 1;
+                isSkip = true;
                 continue;
             }
             cur.push_back(ch);
@@ -335,17 +340,22 @@ void MaybeAddSourceDirInclude(const std::string& entryFile, std::vector<std::str
 CommandLineOptions cliutil::ParseCommandLineArgs(int argc, char** argv)
 {
     CommandLineOptions opts;
+    bool isSkip = false;
     for (int i = 1; i < argc; ++i) {
+        if (isSkip) {
+            isSkip = false;
+            continue;
+        }
         std::string arg = argv[i];
         if (arg == "-o" && i + 1 < argc) {
-            i++;
-            opts.outputFile = argv[i];
+            isSkip = true;
+            opts.outputFile = argv[i + 1];
         } else if (arg == "-c" && i + 1 < argc) {
-            i++;
-            opts.compileCommandsFile = argv[i];
+            isSkip = true;
+            opts.compileCommandsFile = argv[i + 1];
         } else if (arg == "-i" && i + 1 < argc) {
-            i++;
-            opts.userIncludeDirs.push_back(argv[i]);
+            isSkip = true;
+            opts.userIncludeDirs.push_back(argv[i + 1]);
         } else if (arg == "-f") {
             opts.flag = argv[++i];
         } else if (opts.inputFile.empty()) {
@@ -439,7 +449,8 @@ ClangArgs cliutil::PrepareClangArgs(const CommandLineOptions& opts)
     return res;
 }
 
-ClangArgs cliutil::LoadCompileCommands(const CommandLineOptions& opts) {
+ClangArgs cliutil::LoadCompileCommands(const CommandLineOptions& opts)
+{
     ClangArgs result;
 
     json ccjson;
@@ -532,7 +543,7 @@ namespace {
     // Map tokens -> CXTranslationUnit_* bit flags.
     // Add aliases freely; matching is case-insensitive.
     unsigned ParseTUFlags(const std::string& flagStrRaw)
-     {
+    {
         if (flagStrRaw.empty()) {
             return 0u;
         }
@@ -563,9 +574,11 @@ namespace {
             {"skipfunctionbodies",                            CXTranslationUnit_SkipFunctionBodies},
             {"skipfuncbodies",                                CXTranslationUnit_SkipFunctionBodies},
 
-            {"cxtranslationunit_includebriefcommentsincodecompletion", CXTranslationUnit_IncludeBriefCommentsInCodeCompletion},
-            {"includebriefcommentsincodecompletion",                 CXTranslationUnit_IncludeBriefCommentsInCodeCompletion},
-            {"briefcomments",                                       CXTranslationUnit_IncludeBriefCommentsInCodeCompletion},
+            {"cxtranslationunit_includebriefcommentsincodecompletion",
+             CXTranslationUnit_IncludeBriefCommentsInCodeCompletion},
+            {"includebriefcommentsincodecompletion",
+             CXTranslationUnit_IncludeBriefCommentsInCodeCompletion},
+            {"briefcomments",                                 CXTranslationUnit_IncludeBriefCommentsInCodeCompletion},
 
             {"cxtranslationunit_keepgoing",                   CXTranslationUnit_KeepGoing},
             {"keepgoing",                                     CXTranslationUnit_KeepGoing},
@@ -573,24 +586,25 @@ namespace {
             {"cxtranslationunit_singlefileparse",             CXTranslationUnit_SingleFileParse},
             {"singlefileparse",                               CXTranslationUnit_SingleFileParse},
         };
-            unsigned out = 0u;
-            for (auto t : toks) {
-                const auto key = ToLowerAscii(TrimAscii(t));
-                bool matched = false;
-                for (const auto& m : kMap) {
-                    if (key == m.k) {
-                        out |= m.v;
-                        matched = true;
-                        break;
-                    }
+        unsigned out = 0u;
+        for (auto t : toks) {
+            const auto key = ToLowerAscii(TrimAscii(t));
+            bool matched = false;
+            for (const auto& m : kMap) {
+                if (key == m.k) {
+                    out |= m.v;
+                    matched = true;
+                    break;
                 }
             }
-            return out;
+        }
+        return out;
     }
 } // namespace
 
 // Debug helper: pretty-print TU flags
-static void PrintTUFlags(unsigned flags) {
+static void PrintTUFlags(unsigned flags)
+{
     struct FlagInfo {
         unsigned bit;
         const char* name;
