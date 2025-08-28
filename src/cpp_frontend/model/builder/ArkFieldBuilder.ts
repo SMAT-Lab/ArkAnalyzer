@@ -29,7 +29,7 @@ export function buildProperty2ArkField(member: CxxAstNode, sourceFile: CxxAstNod
     field.setCategory(mapSyntaxKindToFieldOriginType(member.kind) as FieldCategory);
     field.setCode(member.code);
     field.setDeclaringArkClass(cls);
-    field.setOriginPosition(LineColPosition.cxxBuildFromNode(member, sourceFile));
+    field.setOriginPosition(LineColPosition.cxxBuildFromNode(member));
 
     let fieldName = member.name;
     field.addModifier(buildModifiers(member));

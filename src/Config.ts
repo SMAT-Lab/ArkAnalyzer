@@ -70,7 +70,7 @@ export class SceneConfig {
     private options: SceneOptions;
 
     constructor(options?: SceneOptions) {
-        this.options = { supportFileExts: ['.ets', '.cpp', '.c', '.h', '.hpp', '.ts'] };
+        this.options = { supportFileExts: ['.ets', '.ts', '.cpp', '.c', '.h', '.hpp'] };
         this.loadDefaultConfig(options);
     }
 
@@ -78,8 +78,12 @@ export class SceneConfig {
         return this.options;
     }
 
-    public setOptions(options: string[]): void {
-        this.options = { supportFileExts: options };
+    /**
+     * Set the support file Extensions.
+     * @param supportFileExts - the support file Extensions.
+     */
+    public setSupportFileExts(supportFileExts: string[]): void {
+        this.options.supportFileExts = supportFileExts;
     }
 
     /**
@@ -226,6 +230,7 @@ export class SceneConfig {
         return this.projectFiles;
     }
 
+    /** Obtain the header file directories of the input C++ project dependencies. */
     public getIncludeDirs(): string[] {
         return this.includeDirs;
     }

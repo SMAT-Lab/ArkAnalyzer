@@ -762,7 +762,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         for (const stmt of stmts) {
             if (!this.stmtsHaveOriginalText.has(stmt)) {
                 this.stmtsHaveOriginalText.add(stmt);
-                stmt.setOriginPositionInfo(LineColPosition.cxxBuildFromNode(node, this.cxxSourceFile));
+                stmt.setOriginPositionInfo(LineColPosition.cxxBuildFromNode(node));
                 stmt.setOriginalText(node.code);
             }
         }

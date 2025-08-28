@@ -479,6 +479,11 @@ export class ArkNewArrayExpr extends AbstractExpr {
     }
 }
 
+/**
+ * delete expression in TS/ArkTS/C++
+ *  1. TS/ArkTS: delete a.b
+ *  2. c++: delete a / delete a.b / delete a->b
+ */
 export class ArkDeleteExpr extends AbstractExpr {
     private field: AbstractFieldRef | Value;
 
@@ -1018,8 +1023,9 @@ export enum UnaryOperator {
     Neg = '-',
     BitwiseNot = '~',
     LogicalNot = '!',
-    Addr = '&',
-    Deref = '*',
+    // The following are C++ specific unary operator.
+    Addr = '&', // address-of operator
+    Deref = '*', // dereference operator
 }
 
 // unary operation expression
