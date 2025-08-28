@@ -105,5 +105,17 @@ arkCppAstDumper是基于llvm开发的工具，对C/C++生成简洁的抽象语�
 
     ./arkCppAstDumper.exe <文件.cpp> -o <json文件指定路径> -i <头文件路径> -i <头文件路径> ...
 
+### 对单个文件生成抽象语法树并指定 TU Flags
+
+    ./arkCppAstDumper.exe <文件.cpp> -o <json文件指定路径> -f <flags>
+
+    其中 -f 参数用于控制 libClang 的 TranslationUnit 解析标志：
+    默认总是包含 KeepGoing（保证 AST 构建在遇到错误时尽量继续）。
+    允许与 DetailedPreprocessingRecord 组合，开启详细预处理记录（可以获取 #include 和 #define 等信息）。
+    允许与 SingleFileParse 组合，仅解析单个源文件而不递归解析包含的头文件。
+    多个标志可以用 , 或 | 分隔，例如：
+    ./arkCppAstDumper.exe test.cpp -f "DPP|SingleFileParse"
+    等价于 KeepGoing | DetailedPreprocessingRecord | SingleFileParse。
+
 ## arkCppAstDumper工具解析策略
 - arkCppAstDumper会优先从-c获取编译数据库引入头文件的编译参数，如果编译数据库不存在再从-i获取引入头文件的编译参数，-c参数和-i参数不能同时存在，只能选其一。
