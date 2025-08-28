@@ -27,6 +27,7 @@
 
 using json = nlohmann::json;
 namespace fs = std::filesystem;
+#define FOUR 4
 
 static std::string Slashify(std::string s)
 {
@@ -408,56 +409,42 @@ ClangArgs cliutil::PrepareClangArgs(const CommandLineOptions& opts)
     return res;
 }
 
-ClangArgs cliutil::LoadCompileCommands(const CommandLineOptions& opts)
-{
+ClangArgs cliutil::LoadCompileCommands(const CommandLineOptions& opts) {
     ClangArgs result;
-    std::ifstream file(opts.compileCommandsFile);
-    if (!file.is_open()) {
-        std::cerr << "无法打开 compile_commands.json \n";
+
+    json ccjson;
+    if (!LoadCompileCommandsJSON(opts.compileCommandsFile, ccjson)) {
         return result;
     }
-    json compileCommandsJson;
-    try {
-        file >> compileCommandsJson;
-    } catch (const json::exception &e) {
-        std::cerr << "JSON 解析错误: " << e.what() << std::endl;
+    const json* hit = FindMatchingEntry(ccjson, opts.inputFile);
+    if (!hit) {
+        std::cerr << "No matching file in compile_commands.json: " << opts.inputFile << "\n";
         return result;
     }
-    fs::path inputFilePath = fs::canonical(opts.inputFile);
-    auto appendArgsFromCommand = [&opts, &result](const std::string& commandStr) {
-        std::istringstream iss(commandStr);
-        std::string arg;
-        while (iss >> arg) {
-            if (IsSameFile(arg, opts.inputFile)) continue;
-            result.strArgs.push_back(arg);
-            result.cstrArgs.push_back(result.strArgs.back().c_str());
-        }
-    };
-    for (const auto &command : compileCommandsJson) {
-        if (!(command.contains("file") && command.contains("command"))) {
-            std::cerr << "compile_commands.json 中 缺少 file 或 command 字段" << std::endl;
-            continue;
-        }
-        fs::path commandFilePath;
-        try {
-            const std::string commandFile = command["file"].get<std::string>();
-            commandFilePath = fs::canonical(commandFile);
-        } catch (const std::filesystem::filesystem_error &e) {
-            std::cerr << "路径错误: " << e.what() << std::endl;
-            continue;
-        }
-        if (!fs::equivalent(commandFilePath, inputFilePath)) {
-            continue;
-        }
-        // Target file hit: Append - I<directory>
-        const std::string directoryStr = commandFilePath.parent_path().string();
-        result.strArgs.push_back("-I" + directoryStr);
-        result.cstrArgs.push_back(result.strArgs.back().c_str());
-        // Add other parameters to the command (excluding the source file itself)
-        const std::string commandStr = command["command"].get<std::string>();
-        appendArgsFromCommand(commandStr);
-        break;
+    const std::string workdir = ExtractWorkDir(*hit);
+    if (!workdir.empty()) {
+        result.strArgs.push_back(std::string("-working-directory=") + workdir);
     }
+    const std::vector<std::string> argv = BuildArgvFromEntry(*hit);
+    if (argv.empty()) {
+        BuildCStrArgs(result); return result;
+    }
+    const std::string entryFile = (*hit)["file"].get<std::string>();
+
+    // Filter & normalize
+    std::vector<std::string> filtered;
+    // Reserve space for argv plus up to 4 extra fallback arguments (-x, -std, -I, etc.)
+    filtered.reserve(argv.size() + FOUR);
+    FilterAndNormalizeArgs(argv, entryFile, opts.inputFile, filtered);
+
+    // Optional: add source dir include
+    MaybeAddSourceDirInclude(entryFile, filtered);
+
+    // Assemble final args
+    result.strArgs.insert(result.strArgs.end(),
+                          std::make_move_iterator(filtered.begin()),
+                          std::make_move_iterator(filtered.end()));
+    BuildCStrArgs(result);
     return result;
 }
 
