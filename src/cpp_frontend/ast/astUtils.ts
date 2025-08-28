@@ -56,7 +56,7 @@ export class AstUtils {
         }
         let astPath: string = this.getAstOutputPath(sourceFile);
         let includeArgs = constructParseArguments(sourceFile, ccJsonPath, includeDirs);
-        let parseArguments: string[] = [sourceFile, '-o', astPath, '-t','dpp'];
+        let parseArguments: string[] = [sourceFile, '-o', astPath];
         parseArguments = [...parseArguments, ...includeArgs];
         this.ensureOutputDir(path.dirname(astPath));
         const sep = path.delimiter;
@@ -78,6 +78,7 @@ export class AstUtils {
         } else {
             logger.info('Parsing completed!');
         }
+        console.log(parseResult.stdout)
         let translationUnit = JSON.parse(fs.readFileSync(astPath, 'utf-8')) as CxxAstNode;
         translationUnit = this.filter(sourceFile, translationUnit) as CxxAstNode;
         deleteFile(astPath);
