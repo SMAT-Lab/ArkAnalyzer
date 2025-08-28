@@ -357,7 +357,8 @@ CommandLineOptions cliutil::ParseCommandLineArgs(int argc, char** argv)
             isSkip = true;
             opts.userIncludeDirs.push_back(argv[i + 1]);
         } else if (arg == "-f") {
-            opts.flag = argv[++i];
+            isSkip = true;
+            opts.flag = argv[i + 1];
         } else if (opts.inputFile.empty()) {
             opts.inputFile = arg;
         }
@@ -468,7 +469,8 @@ ClangArgs cliutil::LoadCompileCommands(const CommandLineOptions& opts)
     }
     const std::vector<std::string> argv = BuildArgvFromEntry(*hit);
     if (argv.empty()) {
-        BuildCStrArgs(result); return result;
+        BuildCStrArgs(result);
+        return result;
     }
     const std::string entryFile = (*hit)["file"].get<std::string>();
 
