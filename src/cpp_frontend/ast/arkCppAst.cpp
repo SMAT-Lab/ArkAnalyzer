@@ -144,7 +144,7 @@ std::string getSourceCode(CXFile bf, CXFile ef, unsigned beginOffset, unsigned e
     clang_tokenize(clang_Cursor_getTranslationUnit(clang_getNullCursor()),
         (ntok || !toks) ? range : expRange, &toks, &ntok);
     std::string text;
-    const reserveSize = (endOffset > beginOffset) ? (endOffset - beginOffset) : 8;
+    const auto reserveSize = (endOffset > beginOffset) ? (endOffset - beginOffset) : 8;
     text.reserve(reserveSize);
     for (unsigned i = 0; i < ntok; ++i) {
         CXString s = clang_getTokenSpelling(clang_Cursor_getTranslationUnit(clang_getNullCursor()), toks[i]);
