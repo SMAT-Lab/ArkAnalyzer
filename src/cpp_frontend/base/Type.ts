@@ -16,6 +16,7 @@
 import { Type, NumberType, StringType, UnionType } from '../../core/base/Type';
 import { Value } from '../../core/base/Value';
 
+/** Enum representing the size of C++ types. */
 export enum CxxTypeSize {
     EIGHT_BITS = 8,
     SIXTEEN_BITS = 16,
@@ -24,6 +25,7 @@ export enum CxxTypeSize {
     UNKNOWN = -1
 }
 
+/** Enum representing the signedness attribute of C++ types. */
 export enum CxxTypeSigned {
     UNSIGNED = 'unsigned',
     SIGNED = 'signed',

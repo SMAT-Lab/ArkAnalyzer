@@ -129,6 +129,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         );
     }
 
+    /** The main function for converting C++ AST nodes to Stmts */
     public cxxNodeToStmts(node: CxxAstNode): Stmt[] {
         let stmts: Stmt[] = [];
         switch (node.kind) {
@@ -204,7 +205,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         return stmts;
     }
 
-    protected cxxClassDeclarationToStmts(node: CxxAstNode): Stmt[] {
+    private cxxClassDeclarationToStmts(node: CxxAstNode): Stmt[] {
         const cls = new ArkClass();
         const declaringArkNamespace = this.declaringMethod.getDeclaringArkClass().getDeclaringArkNamespace();
         if (declaringArkNamespace) {
@@ -245,7 +246,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         return [aliasTypeDefineStmt];
     }
 
-    protected cxxGenerateAliasTypeExpr(rightOp: String, aliasType: AliasType): AliasTypeExpr {
+    private cxxGenerateAliasTypeExpr(rightOp: String, aliasType: AliasType): AliasTypeExpr {
         let rightType = aliasType.getOriginalType();
         let expr: AliasTypeExpr;
         expr = new AliasTypeExpr(rightType, false);
@@ -423,6 +424,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         return stmts;
     }
 
+    /** The main function for converting C++ AST nodes to ValueAndStmts */
     public cxxNodeToValueAndStmts(node: CxxAstNode): ValueAndStmts {
         return this.ArkCxxValueTransformer.cxxNodeToValueAndStmts(node);
     }
@@ -484,6 +486,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         }
     }
 
+    /** Convert C++ switch statements to ValueAndStmts */
     public cxxSwitchStatementToValueAndStmts(switchStatement: CxxAstNode): ValueAndStmts[] {
         const valueAndStmtsOfSwitchAndCases: ValueAndStmts[] = [];
         const exprStmts: Stmt[] = [];
@@ -684,7 +687,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         return this.cxxVariableDeclarationListToStmts(variableStatement);
     }
 
-    public cxxDeclStatementToStmts(declStatement: CxxAstNode): Stmt[] {
+    private cxxDeclStatementToStmts(declStatement: CxxAstNode): Stmt[] {
         const stmts: Stmt[] = [];
         if (declStatement.inner.length === 0) {
             return this.ArkCxxValueTransformer.declStmtToValueAndStmts(declStatement).stmts;
@@ -768,6 +771,12 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         }
     }
 
+    /**
+     * Converts a C++ token to the corresponding unary operator.
+     *
+     * @param token - The C++ token to be converted.
+     * @returns - The corresponding `UnaryOperator` if the token matches, otherwise `null`.
+     */
     public static cxxTokenToUnaryOperator(token: string): UnaryOperator | null {
         switch (token) {
             case '-':
@@ -795,42 +804,6 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
             valueOriginalPositions: [leftOpPosition],
             stmts: [assignStmt],
         };
-    }
-
-    public generateIfStmtForValues(
-        leftValue: Value,
-        leftOpOriginalPositions: FullPosition[],
-        rightValue: Value,
-        rightOpOriginalPositions: FullPosition[]
-    ): Stmt[] {
-        const stmts: Stmt[] = [];
-        if (IRUtils.moreThanOneAddress(leftValue)) {
-            const {
-                value: tempLeftValue,
-                valueOriginalPositions: tempLeftPositions,
-                stmts: leftStmts,
-            } = this.generateAssignStmtForValue(leftValue, leftOpOriginalPositions);
-            leftStmts.forEach(stmt => stmts.push(stmt));
-            leftValue = tempLeftValue;
-            leftOpOriginalPositions = tempLeftPositions;
-        }
-        if (IRUtils.moreThanOneAddress(rightValue)) {
-            const {
-                value: tempRightValue,
-                valueOriginalPositions: tempRightPositions,
-                stmts: rightStmts,
-            } = this.generateAssignStmtForValue(rightValue, rightOpOriginalPositions);
-            rightStmts.forEach(stmt => stmts.push(stmt));
-            rightValue = tempRightValue;
-            rightOpOriginalPositions = tempRightPositions;
-        }
-
-        const conditionExpr = new ArkConditionExpr(leftValue, rightValue, RelationalBinaryOperator.Equality);
-        const conditionPositions = [...leftOpOriginalPositions, ...rightOpOriginalPositions];
-        const ifStmt = new ArkIfStmt(conditionExpr);
-        ifStmt.setOperandOriginalPositions([...conditionPositions]);
-        stmts.push(ifStmt);
-        return stmts;
     }
 
     public setBuilderMethodContextFlag(builderMethodContextFlag: boolean): void {}

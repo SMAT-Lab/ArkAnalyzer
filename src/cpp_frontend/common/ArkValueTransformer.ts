@@ -38,8 +38,6 @@ import {
     ArrayType,
     ClassType,
     FunctionType,
-    LiteralType,
-    NullType,
     NumberType,
     Type,
     UnclearReferenceType,
@@ -60,7 +58,6 @@ import { ArkMethod } from '../../core/model/ArkMethod';
 import { buildArkMethodFromArkClass, buildDefaultConstructor } from '../model/builder/ArkMethodBuilder';
 import { Builtin } from '../../core/common/Builtin';
 import { Constant, NullConstant } from '../../core/base/Constant';
-import { TEMP_LOCAL_PREFIX } from '../../core/common/Const';
 import { ArkCxxIRTransformer, DummyStmt, ValueAndStmts } from './ArkIRTransformer';
 import { buildTypeFromPreStr, convertDataType, cxxNode2Type, isCxxFunctionPointer, isCXXSTLContainer, } from '../model/builder/builderUtils';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
@@ -491,7 +488,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
      *@ param cxxConstructExpr C++construction expression node
      *@ returns The ValueAndStmts object containing the converted value and related statements
      */
-    public cxxSuperExpressionToValueAndStmts(cxxConstructExpr: CxxAstNode): ValueAndStmts {
+    private cxxSuperExpressionToValueAndStmts(cxxConstructExpr: CxxAstNode): ValueAndStmts {
         const cls = this.declaringMethod.getDeclaringArkClass();
         if (!cls) {
             return this.cxxNewExpressionToValueAndStmts(cxxConstructExpr);
@@ -559,10 +556,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         return this.cxxGenerateInvokeValueAndStmts(callNode, args, stmts, ArrayTypeTraitExpr);
     }
 
-    //
     /**
-     *Convert C++typeid expression to IR
-     * CXXTypeidExpr is processed by function call
+     * Convert C++typeid expression to IR, And CXXTypeidExpr is processed by function call.
      *@ param CXXTypeidExpr - typeid expression node in C++AST
      *@ returns Objects containing converted values and related statements
      */
@@ -730,7 +725,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
      *@ param innerAsNodes An AST node array containing call information and parameters. The first element is the call node, and the rest are parameter nodes
      *@ returns an array containing two elements: the first element is the call node, and the second element is the parameter node array
      */
-    public getArgumentNodeForRecover(innerAsNodes: CxxAstNode[]): {}[] {
+    private getArgumentNodeForRecover(innerAsNodes: CxxAstNode[]): {}[] {
         let callNode = {};
         let argumentNodes = [];
         for (let i = 0; i < innerAsNodes.length; i++) {
@@ -744,7 +739,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
     }
 
 
-    public getArgumentNode(innerAstNodes: CxxAstNode[] | CxxAstNode): [call: CxxAstNode | undefined, args: CxxAstNode[]] {
+    private getArgumentNode(innerAstNodes: CxxAstNode[] | CxxAstNode): [call: CxxAstNode | undefined, args: CxxAstNode[]] {
         // At this time, innerAstNode is a separate point
         if (!Array.isArray(innerAstNodes)) {
             const firstInner = innerAstNodes.inner?.[0];
@@ -1075,7 +1070,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
      *@ param callArgus - An array used to collect the parameter nodes involved in the expression.
      *@ returns the ValueAndStmts object containing values and statements. If it cannot be processed, it returns null.
      */
-    public CXXOperatorExpressionCoutToValueAndStmts(callExpression: CxxAstNode, callArgus: CxxAstNode[]): ValueAndStmts | null {
+    private CXXOperatorExpressionCoutToValueAndStmts(callExpression: CxxAstNode, callArgus: CxxAstNode[]): ValueAndStmts | null {
         const stmts: Stmt[] = [];
         // Because inner extracts the last parameters in turn, it traverses the last parameters in reverse order
         for (let i = callExpression.inner.length - 1; i >= 0; i--) {
@@ -1207,9 +1202,9 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
     /**
      *Convert C++operator expression to binary operator expression
      *@ param expression - C++AST node, representing operator expression
-     *@ returns returns the converted values and statements
+     *@ returns the converted values and statements
      */
-    public CXXOperatorExpressionToBinaryOperator(expression: CxxAstNode): ValueAndStmts {
+    private CXXOperatorExpressionToBinaryOperator(expression: CxxAstNode): ValueAndStmts {
         let operatorExpression = Object.assign({}, expression);
         operatorExpression.opcode = expression.inner[0].code;
         operatorExpression.inner = [expression.inner[1], expression.inner[2]];
@@ -1221,7 +1216,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
      *@ param expression - C++AST node, representing operator expression
      *@ returns ValueAndStmts object, including converted values and statements
      */
-    public CXXOperatorExpressionToUnaryOperator(expression: CxxAstNode): ValueAndStmts {
+    private CXXOperatorExpressionToUnaryOperator(expression: CxxAstNode): ValueAndStmts {
         let operatorExpression = Object.assign({}, expression);
         operatorExpression.opcode = expression.inner[0].code;
         operatorExpression.inner = [expression.inner[1]];
@@ -1237,7 +1232,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
      *@ param layer - Boolean value, which controls whether to process the final output layer. The default value is true
      *@ returns a list of converted values and statements, which may include special operator processing results or array reference expressions
      */
-    public cxxOperatorExpressionToValueAndStmts(callExpression: CxxAstNode, layer: boolean = true): any {
+    private cxxOperatorExpressionToValueAndStmts(callExpression: CxxAstNode, layer: boolean = true): any {
         // First handle overloaded operators or other special cases
         const specialResult = this.handleSpecialOperators(callExpression);
         if (specialResult) {
@@ -1443,7 +1438,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         return this.buildValueAndStmtsForMemberCall(stmts, callNode, argNodes, cxxOperatorCallExpr, undefined);
     }
 
-    public RecoverExpressionToValueAndStmts(callExpression: CxxAstNode): ValueAndStmts {
+    private RecoverExpressionToValueAndStmts(callExpression: CxxAstNode): ValueAndStmts {
         const stmts: Stmt[] = [];
         const [callNode, argumentNodes] = this.getArgumentNodeForRecover(callExpression.inner);
         const argus = this.cxxParseArgumentsOfCallExpression(stmts, argumentNodes);
@@ -1608,14 +1603,6 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         } else {
             return new ArkStaticInvokeExpr(methodSignature, args, realGenericTypes);
         }
-    }
-
-    public generateAssignStmtForValue(value: Value, valueOriginalPositions: FullPosition[]): ValueAndStmts {
-        const leftOp = this.generateTempLocal(value.getType());
-        const leftOpPosition = valueOriginalPositions[0];
-        const assignStmt = new ArkAssignStmt(leftOp, value);
-        assignStmt.setOperandOriginalPositions([leftOpPosition, ...valueOriginalPositions]);
-        return { value: leftOp, valueOriginalPositions: [leftOpPosition], stmts: [assignStmt] };
     }
 
     private cxxParseArgumentsOfCallExpression(
@@ -2246,7 +2233,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
      *@ param node - C++AST node to be converted
      *@ returns An object containing a list of values, original positions, and statements
      */
-    public cxxNodeToSingleAddressValueAndStmts(node: CxxAstNode): ValueAndStmts {
+    private cxxNodeToSingleAddressValueAndStmts(node: CxxAstNode): ValueAndStmts {
         const allStmts: Stmt[] = [];
         let { value, valueOriginalPositions, stmts } = this.cxxNodeToValueAndStmts(node);
         stmts.forEach(stmt => allStmts.push(stmt));
@@ -2454,19 +2441,6 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
     }
 
     /**
-     *Generate a temporary local variable
-     *@ param localType The type of the local variable is unknown by default
-     *@ returns the newly created temporary local variable object
-     */
-    public generateTempLocal(localType: Type = UnknownType.getInstance()): Local {
-        const tempLocalName = TEMP_LOCAL_PREFIX + this.tempLocalNo;
-        this.tempLocalNo++;
-        const tempLocal: Local = new Local(tempLocalName, localType);
-        this.locals.set(tempLocalName, tempLocal);
-        return tempLocal;
-    }
-
-    /**
      *Parse C++type nodes and build corresponding Type objects
      *@ param node C++AST node, possibly undefined
      *@ param stringItem Optional string item, used for type resolution
@@ -2630,7 +2604,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
      *@ param dimension - the current recursive dimension level
      *@ returns the parsed innermost type string
      */
-    public resolveVectorType(kind: string, dimension: number): string {
+    private resolveVectorType(kind: string, dimension: number): string {
         if (!kind.includes('vector')) {
             return kind;
         }
@@ -2640,36 +2614,11 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         return lowDimension;
     }
 
-    /**
-     *Resolve the literal type node and convert it to the corresponding Type object
-     *@ param literalTypeNode - Literal type node of TypeScript
-     *@ param sourceFile - source file object, used to obtain node text
-     *The Type object corresponding to @ returns
-     */
-    public static resolveLiteralTypeNode(literalTypeNode: ts.LiteralTypeNode, sourceFile: ts.SourceFile): Type {
-        const literal = literalTypeNode.literal;
-        const kind = literal.kind;
-        switch (kind) {
-            case ts.SyntaxKind.NullKeyword:
-                return NullType.getInstance();
-            case ts.SyntaxKind.TrueKeyword:
-                return LiteralType.TRUE;
-            case ts.SyntaxKind.FalseKeyword:
-                return LiteralType.FALSE;
-            case ts.SyntaxKind.NumericLiteral:
-                return new LiteralType(parseFloat((literal as ts.NumericLiteral).text));
-            case ts.SyntaxKind.PrefixUnaryExpression:
-                return new LiteralType(parseFloat(literal.getText(sourceFile)));
-            default:
-        }
-        return new LiteralType(literal.getText(sourceFile));
-    }
-
     public static isCxxCompoundAssignmentOperator(op?: string): boolean {
         return !!op && COMPOUND_BIN_OPS.has(op);
     }
 
-    public static isRelationalBinaryOperator(op: string): boolean {
+    private static isRelationalBinaryOperator(op: string): boolean {
         return (Object.values(RelationalBinaryOperator) as string[]).includes(op);
     }
 }
