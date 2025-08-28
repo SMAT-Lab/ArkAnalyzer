@@ -214,57 +214,57 @@ struct NormalizeArgs {
     bool hasStd = false;
 };
 
-bool isFilterArgs(std::string arg, NormalizeArgs& normalizeArgs, std::string entryNorm, std::string inputNorm, int i)
+bool IsFilterArgs(std::string arg, NormalizeArgs& normalizeArgs, std::string entryNorm, std::string inputNorm, int i)
 {
-   if (normalizeArgs.stopAfterDD) {
-       return true;
-   }
-   if (normalizeArgs.skipNext) {
-       normalizeArgs.skipNext = false;
-       return true;
-   }
-   if (i == 0 && IsCompilerExecutable(arg)) {
-       return true;
-   }
-   const std::string norm = NormalizePath(arg);
-   if (norm == entryNorm || norm == inputNorm) {
-       return true;
-   }
-   if (arg == "--") {
-       normalizeArgs.stopAfterDD = true;
-       return true;
-   }
-   if (arg == "-x") {
-       normalizeArgs.pendingX = true;
-       return true;
-   }
-   return false;
+    if (normalizeArgs.stopAfterDD) {
+        return true;
+    }
+    if (normalizeArgs.skipNext) {
+        normalizeArgs.skipNext = false;
+        return true;
+    }
+    if (i == 0 && IsCompilerExecutable(arg)) {
+        return true;
+    }
+    const std::string norm = NormalizePath(arg);
+    if (norm == entryNorm || norm == inputNorm) {
+        return true;
+    }
+    if (arg == "--") {
+        normalizeArgs.stopAfterDD = true;
+        return true;
+    }
+    if (arg == "-x") {
+        normalizeArgs.pendingX = true;
+        return true;
+    }
+    return false;
 }
 
-bool isNormalizeArgs(std::string arg, NormalizeArgs& normalizeArgs, std::vector<std::string>& outArgs)
+bool IsNormalizeArgs(std::string arg, NormalizeArgs& normalizeArgs, std::vector<std::string>& outArgs)
 {
     if (normalizeArgs.pendingX) {
-        outArgs.push_back(std::string("-x")+arg);
+        outArgs.push_back(std::string("-x") + arg);
         normalizeArgs.hasLang = true;
         normalizeArgs.pendingX = false;
         return true;
     }
-    if (arg=="-std") {
+    if (arg == "-std") {
         normalizeArgs.stdTwoPart = true;
         return true;
     }
     if (normalizeArgs.stdTwoPart) {
-        outArgs.push_back(std::string("-std=")+arg);
+        outArgs.push_back(std::string("-std=") + arg);
         normalizeArgs.hasStd = true;
         normalizeArgs.stdTwoPart = false;
         return true;
     }
-    if (arg.rfind("-std=", 0)==0) {
+    if (arg.rfind("-std=", 0) == 0) {
         normalizeArgs.hasStd = true;
         outArgs.push_back(std::move(arg));
         return true;
     }
-    if (arg=="-xc" || arg=="-xc++" || arg=="-xc-header" || arg=="-xc++-header") {
+    if (arg == "-xc" || arg == "-xc++" || arg == "-xc-header" || arg == "-xc++-header") {
         normalizeArgs.hasLang = true;
         outArgs.push_back(std::move(arg));
         return true;
@@ -301,8 +301,8 @@ void FilterAndNormalizeArgs(const std::vector<std::string>& argv,
     for (size_t i = 0; i < argv.size(); ++i) {
         std::string arg = argv[i];
         if (arg.empty() ||
-            isFilterArgs(arg, normalizeArgs, entryNorm, inputNorm, i) ||
-            isNormalizeArgs(arg, normalizeArgs, outArgs)) {
+            IsFilterArgs(arg, normalizeArgs, entryNorm, inputNorm, i) ||
+            IsNormalizeArgs(arg, normalizeArgs, outArgs)) {
             continue;
         }
         outArgs.push_back(std::move(arg));
