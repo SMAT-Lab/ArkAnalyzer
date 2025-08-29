@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { Type, NumberType, StringType, UnionType } from '../../core/base/Type';
+import { Type, NumberType, UnionType } from '../../core/base/Type';
 import { Value } from '../../core/base/Value';
 
 /** Enum representing the size of C++ types. */
@@ -27,9 +27,9 @@ export enum CxxTypeSize {
 
 /** Enum representing the signedness attribute of C++ types. */
 export enum CxxTypeSigned {
-    UNSIGNED = 'unsigned',
-    SIGNED = 'signed',
-    UNKNOWN = 'unknown'
+    UNSIGNED = 0,
+    SIGNED = 1,
+    UNKNOWN = -1
 }
 
 /**
@@ -164,7 +164,7 @@ export class CxxLongDoubleType extends CxxFloatType {
  * char type in cxx
  * @category core/base/type
  */
-export class CxxCharType extends StringType {
+export class CxxCharType extends Type {
     private readonly signType: CxxTypeSigned;
     private readonly size: CxxTypeSize;
     private readonly oriTypeName: string;
@@ -251,9 +251,9 @@ export class PointerType extends Type {
  *UNIVERSAL_REF: universal reference, which can bind reference types of left or right values
  */
 export enum ReferCategory {
-    LVALUE_REF = 'LVALUE_REF',
-    RVALUE_REF = 'RVALUE_REF',
-    UNIVERSAL_REF = 'UNIVERSAL_REF',
+    LVALUE_REF = 0,
+    RVALUE_REF = 1,
+    UNIVERSAL_REF = 2,
 }
 
 /**
