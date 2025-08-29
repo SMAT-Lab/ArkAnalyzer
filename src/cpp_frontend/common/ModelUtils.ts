@@ -28,16 +28,49 @@ import { StringConstant } from '../../core/base/Constant';
 import { INSTANCE_INIT_METHOD_NAME, STATIC_INIT_METHOD_NAME, TEMP_LOCAL_PREFIX } from '../../core/common/Const';
 import { FunctionType } from '../../core/base/Type';
 
-// 常见 C++ 标准库头文件（不含 .h 后缀）
-const CPP_STD_HEADERS = new Set([
-    "iostream", "iomanip", "fstream", "sstream", "string",
-    "vector", "map", "unordered_map", "set", "unordered_set",
-    "queue", "stack", "list", "algorithm", "utility", "memory",
-    "thread", "mutex", "condition_variable", "future", "atomic",
-    "chrono", "functional", "stdexcept", "type_traits",
-    "cassert", "cstdint", "cstdlib", "cstdio", "cstring", "cmath",
-    "array", "bitset", "deque", "tuple", "numeric", "any", "optional",
-    "variant", "filesystem", "span"
+// Common C++standard library header files (excluding the. h suffix)
+const CXX_STD_HEADERS = new Set([
+    'iostream',
+    'iomanip',
+    'fstream',
+    'sstream',
+    'string',
+    'vector',
+    'map',
+    'unordered_map',
+    'set',
+    'unordered_set',
+    'queue',
+    'stack',
+    'list',
+    'algorithm',
+    'utility',
+    'memory',
+    'thread',
+    'mutex',
+    'condition_variable',
+    'future',
+    'atomic',
+    'chrono',
+    'functional',
+    'stdexcept',
+    'type_traits',
+    'cassert',
+    'cstdint',
+    'cstdlib',
+    'cstdio',
+    'cstring',
+    'cmath',
+    'array',
+    'bitset',
+    'deque',
+    'tuple',
+    'numeric',
+    'any',
+    'optional',
+    'variant',
+    'filesystem',
+    'span',
 ]);
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ModelUtils');
@@ -62,7 +95,7 @@ export function getArkFile(im: FromInfo): ArkFile | null | undefined {
 }
 
 /**
- * #include "xx/xx.h"==>预编译直接展开==>相当于导入文件的全部内容==>头文件直接获取exportInfo
+ * #include "xx/xx.h" ==> Precompilation directly expands ==> Equivalent to importing all content of the file ==> Get exportInfo directly from header file
  * find from info's export
  * @param fromInfo importInfo or exportInfo
  */
@@ -87,65 +120,65 @@ export function findExportInfo(fromInfo: FromInfo): ExportInfo | null {
     return processHeaderExportInfos(fromInfo, file);
 }
 
-export function shouldAddCppHeaderImport(element: ImportInfo): boolean {
+export function shouldAddCxxHeaderImport(element: ImportInfo): boolean {
     if (!Object.prototype.hasOwnProperty.call(element, 'importClauseName')) {
         return false;
     }
-    return isValidCppHeaderPath(element.getImportClauseName());
+    return isValidCxxHeaderPath(element.getImportClauseName());
 }
 
-export function isValidCppHeaderPath(headerPath: string | undefined): boolean {
-    if (!headerPath) return false;
+function isValidCxxHeaderPath(headerPath: string | undefined): boolean {
+    if (!headerPath) {
+        return false;
+    }
 
     const normalized = headerPath.replace(/\\/g, '/').toLowerCase();
 
-    // 检查 sdk/default 路径
+    // Check the sdk/default path
     if (normalized.includes('sdk/default')) {
         return false;
     }
 
-    // 拆分路径，检查最后一个文件名
+    // Split the path and check the last file name
     const parts = normalized.split('/');
     const filename = parts.length > 0 ? parts[parts.length - 1] : '';
 
-    // 判断是否为标准库名或标准库名 + .h
-    if (CPP_STD_HEADERS.has(filename) || (filename.endsWith('.h') &&
-        CPP_STD_HEADERS.has(filename.replace(/\.h$/, '')))) {
+    // Determine whether it is a standard library name or a standard library name+ h
+    if (CXX_STD_HEADERS.has(filename) || (filename.endsWith('.h') && CXX_STD_HEADERS.has(filename.replace(/\.h$/, '')))) {
         return false;
     }
 
     return true;
 }
 
-/* 处理#include "xx/xx.h"的头文件引用 */
+/* Handling header file references for # include "xx/xx. h" */
 function processIncludeRef(fromInfo: FromInfo, headerFile: ArkFile): ExportInfo {
-    // 1.构造#include "xxx/xx"该头文件引用的exportInfo为该头文件的DefaultClass
+    // 1.Construct # include "xxx/xx" The exportInfo referenced by the header file is the DefaultClass of the header file
     const includeExportInfo = new ExportInfo.Builder()
         .exportClauseType(ExportType.CLASS)
         .exportClauseName(`#include "${fromInfo.getFrom()}"`)
         .declaringArkFile(headerFile)
         .arkExport(headerFile.getDefaultClass())
         .build();
-    // 2.将头文件的exportInfo添加到当前文件的importInfoMaps里，并设置好lazyImportInfo
+    // 2.Add the exportInfo of the header file to the importInfoMaps of the current file, and set lazyImportInfo
     const declFile = fromInfo.getDeclaringArkFile();
-    let includeClauseName =  (fromInfo as ImportInfo).getImportClauseName();
+    let includeClauseName = (fromInfo as ImportInfo).getImportClauseName();
     for (const exportInfo of headerFile.getExportInfos()) {
         let headerRealIm = new ImportInfo();
-        headerRealIm.build(exportInfo.getExportClauseName(), 'NamedImports', headerFile.getFilePath(),
-            exportInfo.getOriginTsPosition(), 0);
+        headerRealIm.build(exportInfo.getExportClauseName(), 'NamedImports', headerFile.getFilePath(), exportInfo.getOriginTsPosition(), 0);
         headerRealIm.setTsSourceCode(includeClauseName);
         headerRealIm.setDeclaringArkFile(declFile);
-        if (shouldAddCppHeaderImport(headerRealIm)) {
+        if (shouldAddCxxHeaderImport(headerRealIm)) {
             declFile.addImportInfo(headerRealIm);
         }
-        headerRealIm.getLazyExportInfo();  // 会递归findExportInfo函数
+        headerRealIm.getLazyExportInfo(); // The findExportInfo function will be recursed
     }
-    // 3.将头文件的importInfos添加到当前文件的importInfoMaps里，并设置好lazyImportInfo
+    // 3.Add the importInfos of the header file to the importInfoMaps of the current file, and set lazyImportInfo
     for (const im of headerFile.getImportInfos()) {
         if (declFile.getImportInfoBy(im.getImportClauseName())) {
             continue;
         }
-        if (shouldAddCppHeaderImport(im)){
+        if (shouldAddCxxHeaderImport(im)) {
             declFile.addImportInfo(im);
         }
         im.getLazyExportInfo();
@@ -153,7 +186,7 @@ function processIncludeRef(fromInfo: FromInfo, headerFile: ArkFile): ExportInfo 
     return includeExportInfo;
 }
 
-/* 处理头文件的exportInfo（当作当前文件named importInfo) */
+/* Process the exportInfo of the header file (as the current file named importInfo) */
 function processHeaderExportInfos(fromInfo: FromInfo, headerFile: ArkFile): ExportInfo | null {
     const exportName = fromInfo.getOriginName();
     let exportInfo = headerFile.getExportInfoBy(exportName);
@@ -169,13 +202,13 @@ function processHeaderExportInfos(fromInfo: FromInfo, headerFile: ArkFile): Expo
 }
 
 /**
- * 记录cpp函数与ts函数的映射关系（有napi_property_descriptor、napi_define_class标识符时）
- * @param elementValues 映射关系描述函数的各个实参Value
- * @param isDefineClass 是否是napi_define_class标识符
- * @param declMethod 调用处所在的ArkMethod
- * @return 无
+ * Record the mapping relationship between cpp functions and ts functions (when there are napi_property_descriptor and napi_define_class identifiers)
+ * @param elementValues Value of each actual parameter of the function describing the mapping relationship
+ * @param isDefineClass Whether it is a napi_define_class identifier
+ * @param declMethod The ArkMethod where the call is located
+ * @return None
  */
-export function setTs2CppFuncMapOfClass(elementValues: Value[], isDefineClass: boolean, declMethod: ArkMethod): void {
+export function setTs2CxxFuncMapOfClass(elementValues: Value[], isDefineClass: boolean, declMethod: ArkMethod): void {
     const curArkClass = declMethod.getDeclaringArkClass();
     const dfltArkClass = declMethod.getDeclaringArkFile().getDefaultClass();
     if (!(curArkClass && dfltArkClass)) {
@@ -184,28 +217,28 @@ export function setTs2CppFuncMapOfClass(elementValues: Value[], isDefineClass: b
     let funcElements: Value[];
     let tsFuncNameIdx: number;
     if (isDefineClass) {
-        // napi_define_class设置对外暴露的类的构造函数
+        // napi_define_class sets the constructor of the externally exposed class
         funcElements = elementValues.length > 4 ? [elementValues[3]] : [];
         tsFuncNameIdx = 1;
     } else {
-        // napi_property_descriptor内函数设置的字段
+        // Fields set by functions in napi_property_descriptor
         funcElements = elementValues.length > 5 ? elementValues.slice(2, 5) : [];
         tsFuncNameIdx = 0;
     }
-    const cppFunc: ArkMethod[] = findMatchingCppMethod(funcElements, declMethod);
+    const cxxFunc: ArkMethod[] = findMatchingCxxMethod(funcElements, declMethod);
     if (elementValues[tsFuncNameIdx] instanceof StringConstant) {
-        dfltArkClass.addTs2CppFuncMapElement((elementValues[tsFuncNameIdx] as StringConstant).getValue(), cppFunc);
+        dfltArkClass.addTs2cxxFuncMapElement((elementValues[tsFuncNameIdx] as StringConstant).getValue(), cxxFunc);
     }
 }
 
 /**
- * 寻找映射函数中函数指针对应的实际cpp函数
- * @param funcElements 函数指针对应的Value数组
- * @param declMethod 调用处所在的ArkMethod
- * @return 返回寻找的匹配函数数组
+ * Find the actual cpp function corresponding to the function pointer in the mapping function
+ * @param funcElements Value array corresponding to function pointers
+ * @param declMethod The ArkMethod where the call is located
+ * @return Returns the found matching function array
  */
-function findMatchingCppMethod(funcElements: Value[], declMethod: ArkMethod): ArkMethod[] {
-    const cppFunc: ArkMethod[] = [];
+function findMatchingCxxMethod(funcElements: Value[], declMethod: ArkMethod): ArkMethod[] {
+    const cxxFunc: ArkMethod[] = [];
     const currArkClass = declMethod.getDeclaringArkClass();
     const classesToBeSearched: ArkClass[] = [];
     classesToBeSearched.push(currArkClass, ...getIncludeDefaultClasses(declMethod));
@@ -216,7 +249,7 @@ function findMatchingCppMethod(funcElements: Value[], declMethod: ArkMethod): Ar
         }
         let funcRef = element as Local;
         const mtdName = funcRef.getName();
-        // 如果是local且%num形式 => %num = A.b，实际应该是某个类的成员
+        // If it is local and in %num format => %num = A.b, it should actually be a member of a class
         if (mtdName.startsWith(TEMP_LOCAL_PREFIX)) {
             const realType = funcRef.getType();
             if (!(realType instanceof FunctionType)) {
@@ -225,26 +258,26 @@ function findMatchingCppMethod(funcElements: Value[], declMethod: ArkMethod): Ar
             let matchMtd = scene.getMethod(realType.getMethodSignature());
             if (matchMtd) {
                 matchMtd = getFuncImplement(matchMtd);
-                cppFunc.push(matchMtd);
+                cxxFunc.push(matchMtd);
             }
             continue;
         }
-        // 如果是local且不以"%"开头 => 当前类的成员函数or全局函数
+        // If it is local and does not start with "%" => Member function of current class or global function
         for (const cls of classesToBeSearched) {
             let matchMtd = cls.getMethodWithName(mtdName);
             if (matchMtd) {
                 matchMtd = getFuncImplement(matchMtd);
-                cppFunc.push(matchMtd);
+                cxxFunc.push(matchMtd);
             }
         }
     }
-    return cppFunc;
+    return cxxFunc;
 }
 
 /**
- * 获取当前arkInstance所属文件的include头文件的defaultClass
- * @param arkInstance ArkIR的实例
- * @return 返回获取到的所有符合条件的defaultClass
+ * Get the defaultClass of the include header files of the file to which the current arkInstance belongs
+ * @param arkInstance Instance of ArkIR
+ * @return Returns all qualified defaultClasses obtained
  */
 function getIncludeDefaultClasses(arkInstance: ArkMethod | ArkClass | ArkFile): ArkClass[] {
     const defaultClasses: ArkClass[] = [];
@@ -264,7 +297,7 @@ function getIncludeDefaultClasses(arkInstance: ArkMethod | ArkClass | ArkFile): 
     }
     const scene = arkInstance.getScene();
     scene.getFiles().forEach(file => {
-        if (file.getLanguage() !== Language.CPLUS || !includeFiles.includes(file.getFilePath())) {
+        if (file.getLanguage() !== Language.CXX || !includeFiles.includes(file.getFilePath())) {
             return;
         }
         defaultClasses.push(file.getDefaultClass());

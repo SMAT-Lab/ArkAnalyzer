@@ -71,13 +71,6 @@ const CASE1_EXPECT = `class %dflt {
       instanceinvoke logger.<@%unk/%unk: .info()>(%6)
       goto label5
 
-    label4:
-      %7 = sampleData[i]
-      %8 = instanceinvoke %7.<@%unk/%unk: .toString()>()
-      %9 = %8 + ' 是奇数'
-      instanceinvoke logger.<@%unk/%unk: .info()>(%9)
-      goto label5
-
     label5:
       count = 0
       goto label6
@@ -93,17 +86,29 @@ const CASE1_EXPECT = `class %dflt {
       count = count + 1
       goto label6
 
+    label15:
+      j = 0
+      goto label8
+
     label8:
       if j < 5 goto label9 label17
 
     label9:
       if j === 2 goto label16 label10
 
+    label16:
+      j = j + 1
+      goto label8
+
     label10:
       %13 = instanceinvoke j.<@%unk/%unk: .toString()>()
       %14 = '当前内层循环计数: ' + %13
       instanceinvoke logger.<@%unk/%unk: .info()>(%14)
       goto label16
+
+    label17:
+      k = 0
+      goto label11
 
     label11:
       if k < 3 goto label12 label14
@@ -117,24 +122,19 @@ const CASE1_EXPECT = `class %dflt {
       if k === 1 goto label14 label11
       k = k + 1
 
-    label13:
-      return
-
     label14:
       i = i + 1
       goto label1
 
-    label15:
-      j = 0
-      goto label8
+    label4:
+      %7 = sampleData[i]
+      %8 = instanceinvoke %7.<@%unk/%unk: .toString()>()
+      %9 = %8 + ' 是奇数'
+      instanceinvoke logger.<@%unk/%unk: .info()>(%9)
+      goto label5
 
-    label16:
-      j = j + 1
-      goto label8
-
-    label17:
-      k = 0
-      goto label11
+    label13:
+      return
   }
 
   export classMethodTest(): void {
@@ -144,10 +144,10 @@ const CASE1_EXPECT = `class %dflt {
       %0 = instanceinvoke %0.<@save/basic.ts: Person.constructor(number)>(10)
       notPerson = %0
       %1 = new @built-in/lib.es2015.collection.d.ts: Map
-      %1 = instanceinvoke %1.<@built-in/lib.es2015.collection.d.ts: Map.constructor()>()
+      %1 = instanceinvoke %1.<@built-in/lib.es2015.collection.d.ts: MapConstructor.construct-signature()>()
       x = %1
       %2 = new @built-in/lib.es5.d.ts: Error
-      %2 = instanceinvoke %2.<@built-in/lib.es5.d.ts: Error.constructor()>()
+      %2 = instanceinvoke %2.<@built-in/lib.es5.d.ts: ErrorConstructor.construct-signature(string)>()
       z = %2
       y = staticinvoke <@save/basic.ts: %dflt.controlTest()>()
       a = notPerson.<@save/basic.ts: Person.age>
@@ -299,6 +299,9 @@ const CASE1_EXPECT = `class %dflt {
       bHSB = 0.3
       goto label13
 
+    label13:
+      return
+
     label10:
       if bHSB >= 0.2 goto label11 label12
 
@@ -309,9 +312,6 @@ const CASE1_EXPECT = `class %dflt {
     label12:
       bHSB = bHSB + 0.2
       goto label13
-
-    label13:
-      return
   }
 
   specialString(text: string): void {
@@ -319,13 +319,13 @@ const CASE1_EXPECT = `class %dflt {
       text = parameter0: string
       this = this: @save/basic.ts: %dflt
       %0 = new @built-in/lib.es5.d.ts: RegExp
-      %0 = instanceinvoke %0.<@built-in/lib.es5.d.ts: RegExp.constructor()>('\\[\\d{2,}:\\d{2}((\\.|:)\\d{2,})\\]', 'g')
+      %0 = instanceinvoke %0.<@built-in/lib.es5.d.ts: RegExpConstructor.construct-signature(string, string)>('\\[\\d{2,}:\\d{2}((\\.|:)\\d{2,})\\]', 'g')
       lrcLineRegex = %0
       %1 = new @built-in/lib.es5.d.ts: RegExp
-      %1 = instanceinvoke %1.<@built-in/lib.es5.d.ts: RegExp.constructor()>('\\[\\d{2,}', 'i')
+      %1 = instanceinvoke %1.<@built-in/lib.es5.d.ts: RegExpConstructor.construct-signature(string, string)>('\\[\\d{2,}', 'i')
       lrcTimeRegex1 = %1
       %2 = new @built-in/lib.es5.d.ts: RegExp
-      %2 = instanceinvoke %2.<@built-in/lib.es5.d.ts: RegExp.constructor()>('\\d{2}\\.\\d{2,}', 'i')
+      %2 = instanceinvoke %2.<@built-in/lib.es5.d.ts: RegExpConstructor.construct-signature(string, string)>('\\d{2}\\.\\d{2,}', 'i')
       lrcTimeRegex2 = %2
       lyric = instanceinvoke text.<@%unk/%unk: .split()>('\n')
       return
@@ -752,7 +752,7 @@ class %AC8$%dflt.%dflt<Type> {
       value = parameter0: Type
       this = this: @save/basic.ts: %AC8$%dflt.%dflt
       instanceinvoke this.<@save/basic.ts: %AC8$%dflt.%dflt.%instInit()>()
-      @save/basic.ts: %dflt.[static]content = value
+      this.<@save/basic.ts: %AC8$%dflt.%dflt.content> = value
       return this
   }
 }

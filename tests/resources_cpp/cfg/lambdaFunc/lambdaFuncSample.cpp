@@ -1,61 +1,48 @@
-#include <stdio.h>
+/*
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-// 无捕获，有参
-void case1()
+#include <cstdio>
+
+// No capture, with parameters
+void Case1()
 {
-    auto func = [](int x)
-    { return x + 1; };
+    auto func = [](int x) { return x + 1; };
     int res = func(1);
     printf("%d", res);
 }
 
-// TODO: 可以尝试写一个const变量声明，修改variableDeclarationListToValueAndStmts函数
-
-// 带捕获
-void case2()
+// With capture
+void Case2()
 {
     const int a = 5;
-    auto func = [a](int x)
-    { return x + a; };
-    int res = func(2);
+    auto func = [a](int x) { return x + a; };
+    int res = func(1);
     printf("%d", res);
 }
 
-// 带返回类型
-void case3()
+// With return type
+void Case3()
 {
-    auto func = [](int x) -> int
-    { return x + 1; };
-    int res = func(3);
+    auto func = [](int x) -> int { return x + 1; };
+    int res = func(1);
     printf("%d", res);
 }
 
-// 无返回值
-void case4()
+// No return value
+void Case4()
 {
-    auto func = [](int x)
-    { printf("%d", x); };
-    func(4);
+    auto func = [](int x) { printf("%d", x); };
+    func(1);
 }
-
-// void case5()
-// {
-//     int a = 5;
-//     auto func = [&a](int x) { // 引用传递
-//         a = 6;
-//         return x + a;
-//     };
-//     int res = func(2);
-//     printf("%d", res);
-// }
-
-// void case6()
-// {
-//     int a = 5;
-//     auto func = [a](int x) mutable { // 在函数内可以修改值传递的捕获参数
-//         a = 6;
-//         return x + a;
-//     };
-//     int res = func(2);
-//     printf("%d", res);
-// }

@@ -1,14 +1,25 @@
+/*
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 export const BASE_DATA_TYPE_EXPECT_MAIN = {
     blocks: [
         {
             id: 0,
-            stmts: [
-                'this = this: @baseDataType/baseDataType.cpp: %dflt',
-                'boolData = staticinvoke <@%unk/%unk: .isChar()>(1)',
-                'if boolData != 0'
-            ],
+            stmts: ['this = this: @baseDataType/baseDataType.cpp: %dflt', 'boolData = staticinvoke <@%unk/%unk: .IsChar()>(1)', 'if boolData != 0'],
             preds: [],
-            succes: [ 1, 2 ]
+            succes: [1, 2],
         },
         {
             id: 1,
@@ -22,10 +33,10 @@ export const BASE_DATA_TYPE_EXPECT_MAIN = {
                 "char16Data2 = 'hello'",
                 "char32Data1 = 'U0001F600'",
                 "char32Data2 = 'hello'",
-                "charData4 = ''"
+                "charData4 = ''",
             ],
-            preds: [ 0 ],
-            succes: [ 3 ]
+            preds: [0],
+            succes: [3],
         },
         {
             id: 2,
@@ -38,16 +49,16 @@ export const BASE_DATA_TYPE_EXPECT_MAIN = {
                 'longData2 = 100',
                 'long2Data1 = -1000',
                 'long2Data2 = 1000',
-                'floatData = 88.8',
+                'floatData = 88.80000305175781',
                 'doubleData1 = 88.888',
                 'doubleData2 = 88.8888',
                 'intData3 = 0',
                 'floatData1 = 0',
-                'doubleData3 = 0'
+                'doubleData3 = 0',
             ],
-            preds: [ 0 ],
-            succes: [ 3 ]
+            preds: [0],
+            succes: [3],
         },
-        { id: 3, stmts: [ 'return 0' ], preds: [ 1, 2 ], succes: [] }
-    ]
+        { id: 3, stmts: ['return 0'], preds: [1, 2], succes: [] },
+    ],
 };

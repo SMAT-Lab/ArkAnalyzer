@@ -1,57 +1,69 @@
-struct Counter
-{
-    static int count; // 静态函数声明
-    Counter() { count++; }
-    static void reset() { count = 0; } // 静态函数
-};
-// 外部extern
-extern int count;
-class Student
-{
-public:
-    // 静态变量，在AST节点中表现为VarDecl
-    static int age;
-    // 常量类型
-    const int constVar = 30;
-    // 静态函数
-    static void growup() { age++; }
+/*
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-    // 常量成员函数
-    double getPi() const
+#define PI 3.1415926
+
+struct Counter {
+    static int count; // Static function declaration
+    Counter() { count++; }
+    static void Reset() { count = 0; } // Static function
+};
+
+class Student {
+public:
+    // Static variable, represented as VarDecl in AST nodes
+    static int age;
+    // Constant type
+    const int constVar = 30;
+    // Static function
+    static void GrowUp() { age++; }
+
+    // Constant member function
+    double GetPi() const
     {
-        return 3.1415926;
+        return PI;
     }
 
-// 受保护
+// Protected
 protected:
     int protectedValue;
 
-    // 私有
+    // Private
 private:
     int score;
-    // 用于在const成员函数中修改变量值
-    mutable int accessCount; // 可变成员
+    // Used to modify variable values in const member functions
+    mutable int accessCount; // Mutable member
 
-    // 声明友元函数
-    friend void modifyScore(Student &s, int newScore);
+    // Declare friend function
+    friend void ModifyScore(Student &s, int newScore);
 };
 
-void modifyScore(Student &s, int newScore)
+void ModifyScore(Student &s, int newScore)
 {
-    s.score = newScore; // 友元函数可访问私有成员
+    s.score = newScore; // Friend function can access private members
 }
 
-// 抽象类
-class AA
-{
+// Abstract class
+class AA {
 public:
-    virtual void connect() = 0;
+    virtual void Connect() = 0;
 };
 
-// 类继承
-class BB : public AA
-{
+// Class inheritance
+class BB : public AA {
 public:
-    // 虚函数实现
-    void connect() override {};
+    // Virtual function implementation
+    void Connect() override {};
 };

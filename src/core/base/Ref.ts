@@ -39,8 +39,8 @@ export abstract class AbstractRef implements Value {
 }
 
 export class ArkArrayRef extends AbstractRef {
-    private base: Local; // 数组变量
-    private index: Value; // 索引
+    private base: Local; // Array variable
+    private index: Value; // Index
 
     constructor(base: Local, index: Value) {
         super();
@@ -215,24 +215,6 @@ export class ArkInstanceFieldRef extends AbstractFieldRef {
 
     public inferType(arkMethod: ArkMethod): AbstractRef {
         return IRInference.inferFieldRef(this, arkMethod);
-    }
-}
-
-// CPP的成员访问实现，因为需区分p.f和p->f且不对原arkIR做侵入式修改，这里设计派生类
-export class CXXArkInstanceFieldRef extends ArkInstanceFieldRef {
-    private isArrow: boolean;
-
-    constructor(base: Local, isArrow: boolean, fieldSignature: FieldSignature) {
-        super(base, fieldSignature);
-        this.isArrow = isArrow;
-    }
-
-    public isArrowAccess(): boolean {
-        return this.isArrow;
-    }
-
-    public toString(): string {
-        return this.getBase().toString() + (this.isArrow ? '->' : '.') + '<' + this.getFieldSignature() + '>';
     }
 }
 

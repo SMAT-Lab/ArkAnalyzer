@@ -1,0 +1,14 @@
+# --- cmake/toolchains/mingw.cmake ---
+
+
+set(CMAKE_SYSTEM_NAME Windows)
+set(CMAKE_SYSTEM_PROCESSOR x86_64)
+set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+set(CMAKE_INSTALL_RPATH "$ORIGIN")
+
+link_directories(
+   "***//harmony_code/codearts_workspace/pre_scripts/llvm-mingw-x86_64/x86_64-w64-mingw32/bin"
+)
+
+message(STATUS "Found libclang on linux: ${CLANG_LIBRARIES}")

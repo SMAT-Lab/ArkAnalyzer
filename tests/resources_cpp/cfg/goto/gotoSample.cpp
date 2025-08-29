@@ -1,77 +1,84 @@
-int case1()
+/*
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#define ZERO 0
+#define ONE 1
+#define TWO 2
+#define THREE 3
+#define FOUR 4
+#define FIVE 5
+#define TEN 10
+
+
+int Case1()
 {
     int num = 1;
-    if (num > 0)
-    {
+    if (num > 0) {
         num--;
         goto end;
-    }
-    else
-    {
+    } else {
         num++;
     }
-    int j = 1;
+    int j = ONE;
 end:
     return 0;
 }
-int case2()
+
+int Case2()
 {
     int num = 1;
-    if (num > 0)
-    {
+    if (num > ZERO) {
         goto end;
-    }
-    else
-    {
+    } else {
         num++;
     }
-    int j = 1;
+    int j = ONE;
 end:
     return 0;
 }
-int case3()
+
+int Case3()
 {
     int num = 1;
-    if (num == 0)
-    {
+    if (num == ZERO) {
         goto end;
-    }
-    else if (num == 1)
-    {
+    } else if (num == ONE) {
         goto end;
-    }
-    else if (num == 2)
-    {
+    } else if (num == TWO) {
         goto end;
-    }
-    else
-    {
+    } else {
         num++;
     }
-    int j = 1;
+    int j = ONE;
 end:
     return 0;
 }
-int case4()
+
+int Case4()
 {
     int num = 1;
-    if (num == 0)
-    {
+    if (num == ZERO) {
         goto end1;
-    }
-    else if (num == 1)
-    {
+    } else if (num == ONE) {
         goto end2;
-    }
-    else if (num == 2)
-    {
+    } else if (num == TWO) {
         goto end3;
-    }
-    else
-    {
+    } else {
         num++;
     }
-    int j = 1;
+    int j = ONE;
 end1:
     j++;
 end2:
@@ -80,138 +87,117 @@ end3:
     return 0;
 }
 
-int case5()
+int Case5()
 {
     int i = 0;
     int j;
-    if (i < 0)
-    {
+    if (i < ZERO) {
         goto l1;
-    }
-    else
-    {
+    } else {
         goto l2;
     }
 l1:
-    j = 1;
+    j = ONE;
     goto exit;
 l2:
-    j = 2;
+    j = TWO;
     goto exit;
 exit:
     return j;
 }
 
-int case6()
+int Case6()
 {
     int num = 1;
-    if (num > 0)
+    if (num > ZERO)
         goto end;
     else
         num++;
-    int j = 1;
+    int j = ONE;
 end:
     return 0;
 }
 
-int case7()
+int Case7()
 {
     int i = 0;
     int j;
-    if (i < 0)
-    {
-        if (i < -1)
-        {
+    if (i < ZERO) {
+        if (i < ONE) {
             goto l1;
-        }
-        else
-        {
+        } else {
             goto l2;
         }
-    }
-    else
-    {
-        if (i > 1)
-        {
+    } else {
+        if (i > ONE) {
             goto l3;
-        }
-        else
-        {
+        } else {
             goto l4;
         }
     }
 l1:
-    j = 1;
+    j = ONE;
     goto exit;
 l2:
-    j = 2;
+    j = TWO;
     goto exit;
 l3:
-    j = 3;
+    j = THREE;
     goto exit;
 l4:
-    j = 4;
+    j = FOUR;
     goto exit;
 exit:
     return j;
 }
 
-void case8()
+void Case8()
 {
     int a = 0;
     int b = 1;
-    switch (a)
-    {
-    case 2:
-        goto end;
-    case 3:
-        b = 3;
-        break;
-    default:
-        b = 10;
-        break;
+    switch (a) {
+        case TWO:
+            goto end;
+        case THREE:
+            b = THREE;
+            break;
+        default:
+            b = TEN;
+            break;
     }
 end:
     return;
 }
 
-void case9()
+void Case9()
 {
     int a = 0;
     int b = 1;
-    switch (a)
-    {
-    case 2:
-    {
-        goto end;
-    }
-    case 3:
-    {
-        b = 3;
-        break;
-    }
-    default:
-    {
-        b = 10;
-        break;
-    }
-    }
-end:
-    return;
-}
-
-void case10()
-{
-    int a = 0;
-    for (int b = 1; b < 10; b++)
-    {
-        a = a + 2;
-        if (a > 5)
-        {
+    switch (a) {
+        case TWO: {
             goto end;
         }
-        else
-        {
+        case THREE: {
+            b = THREE;
+            break;
+        }
+        default: {
+            b = TEN;
+            break;
+        }
+    }
+end:
+    return;
+}
+
+void Case10()
+{
+    int a = 0;
+    for (int b = 1; b < TEN; b++) {
+        a = a + TWO;
+        if (a > FIVE) {
+            goto end;
+        } else {
             a--;
         }
     }

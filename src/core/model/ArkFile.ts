@@ -47,7 +47,7 @@ export enum Language {
     ARKTS1_1 = 1,
     ARKTS1_2 = 2,
     JAVASCRIPT = 3,
-    CPLUS = 4,
+    CXX = 4,
     UNKNOWN = -1,
 }
 
@@ -55,7 +55,6 @@ export enum Language {
  * @category core/model
  */
 export class ArkFile {
-
     private language: Language;
     private absoluteFilePath: string = '';
     private projectDir: string = '';
@@ -208,9 +207,6 @@ export class ArkFile {
     }
 
     public getClassWithName(Class: string): ArkClass | null {
-        if (Class && Class.includes(' ')) {
-            Class = Class.split(' ')[1];
-        }
         return this.classes.get(Class) || null;
     }
 

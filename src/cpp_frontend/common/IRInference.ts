@@ -12,6 +12,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import fs from 'fs';
+import path, { normalize } from 'path';
+
 import { ArkMethod } from '../../core/model/ArkMethod';
 import {
     AliasType,
@@ -31,14 +34,7 @@ import {
 } from '../../core/base/Type';
 import { Local } from '../../core/base/Local';
 import { TypeInference } from './TypeInference';
-import {
-    AbstractExpr,
-    AbstractInvokeExpr,
-    AliasTypeExpr,
-    ArkInstanceInvokeExpr,
-    ArkPtrInvokeExpr,
-    ArkStaticInvokeExpr
-} from '../../core/base/Expr';
+import { AbstractExpr, AbstractInvokeExpr, AliasTypeExpr, ArkInstanceInvokeExpr, ArkPtrInvokeExpr, ArkStaticInvokeExpr } from '../../core/base/Expr';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { Scene } from '../../Scene';
 import { ArkClass } from '../../core/model/ArkClass';
@@ -52,20 +48,13 @@ import {
     FieldSignature,
     FileSignature,
     MethodSignature,
-    MethodSubSignature
+    MethodSubSignature,
 } from '../../core/model/ArkSignature';
 import { CONSTRUCTOR_NAME, FUNCTION, IMPORT, SUPER_NAME, THIS_NAME } from '../../core/common/TSConst';
 import { Builtin } from '../../core/common/Builtin';
 import { ArkBody } from '../../core/model/ArkBody';
 import { ArkAssignStmt, ArkInvokeStmt } from '../../core/base/Stmt';
-import {
-    AbstractFieldRef,
-    AbstractRef,
-    ArkArrayRef,
-    ArkInstanceFieldRef,
-    ArkParameterRef,
-    ArkStaticFieldRef
-} from '../../core/base/Ref';
+import { AbstractFieldRef, AbstractRef, ArkArrayRef, ArkInstanceFieldRef, ArkParameterRef, ArkStaticFieldRef } from '../../core/base/Ref';
 import { Value } from '../../core/base/Value';
 import { Constant } from '../../core/base/Constant';
 import {
@@ -76,12 +65,16 @@ import {
     NAME_DELIMITER,
     NAME_PREFIX,
     UNKNOWN_CLASS_NAME,
-    UNKNOWN_FILE_NAME
+    UNKNOWN_FILE_NAME,
+    INSTANCE_INIT_METHOD_NAME,
+    STATIC_INIT_METHOD_NAME
 } from '../../core/common/Const';
 import { ValueUtil } from '../../core/common/ValueUtil';
 import { ArkFile } from '../../core/model/ArkFile';
 import { AbstractTypeExpr, KeyofTypeExpr, TypeQueryExpr } from '../../core/base/TypeExpr';
 import { ArkBaseModel } from '../../core/model/ArkBaseModel';
+import { getFileAbsPath } from '../../utils/FileUtils';
+import { ImportInfo } from '../../core/model/ArkImport';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'IRInference');
 
@@ -226,8 +219,10 @@ export class IRInference {
 
         const baseType: Type = TypeInference.replaceAliasType(expr.getBase().getType());
         let methodName = expr.getMethodSignature().getMethodSubSignature().getMethodName();
-        if (methodName === CONSTRUCTOR_NAME &&
-            expr.getMethodSignature().getDeclaringClassSignature().getDeclaringFileSignature().getFileName() !== UNKNOWN_FILE_NAME) {
+        if (
+            methodName === CONSTRUCTOR_NAME &&
+            expr.getMethodSignature().getDeclaringClassSignature().getDeclaringFileSignature().getFileName() !== UNKNOWN_FILE_NAME
+        ) {
             return expr;
         }
         if (methodName.startsWith(NAME_PREFIX)) {
@@ -296,8 +291,8 @@ export class IRInference {
     private static inferBase(instance: ArkInstanceFieldRef | ArkInstanceInvokeExpr, arkMethod: ArkMethod): void {
         const base = instance.getBase();
         if (base.getName() === THIS_NAME) {
-            const name = instance instanceof ArkInstanceFieldRef ? instance.getFieldName() :
-                instance.getMethodSignature().getMethodSubSignature().getMethodName();
+            const name =
+                instance instanceof ArkInstanceFieldRef ? instance.getFieldName() : instance.getMethodSignature().getMethodSubSignature().getMethodName();
             if (name.includes('.')) {
                 return;
             }
@@ -511,34 +506,40 @@ export class IRInference {
             }
             return expr;
         } else if (method instanceof ArkField) {
-            const type = method.getType();
-            let methodSignature;
-            if (type instanceof FunctionType) {
-                methodSignature = type.getMethodSignature();
-            } else if (type instanceof ClassType && type.getClassSignature().getClassName().endsWith(CALL_BACK)) {
-                const callback = scene.getClass(type.getClassSignature())?.getMethodWithName(CALL_SIGNATURE_NAME);
-                if (callback) {
-                    methodSignature = callback.getSignature();
-                }
-            }
-            if (methodSignature) {
-                const ptr =
-                    expr instanceof ArkInstanceInvokeExpr
-                        ? new ArkInstanceFieldRef(expr.getBase(), method.getSignature())
-                        : new ArkStaticFieldRef(method.getSignature());
-                expr = new ArkPtrInvokeExpr(methodSignature, ptr, expr.getArgs(), expr.getRealGenericTypes());
-            }
-            return expr;
+            return this.changePtrInvokeExpr(method, scene, expr) ?? expr;
         } else if (methodName === CONSTRUCTOR_NAME) {
-            //sdk隐式构造
+            //Sdk implicit construction
             const subSignature = new MethodSubSignature(methodName, [], new ClassType(baseType.getClassSignature()));
             expr.setMethodSignature(new MethodSignature(baseType.getClassSignature(), subSignature));
             return expr;
-        } else if (methodName === Builtin.ITERATOR_NEXT &&
-            baseType.getClassSignature().getDeclaringFileSignature().getProjectName() === Builtin.DUMMY_PROJECT_NAME) {
+        } else if (
+            methodName === Builtin.ITERATOR_NEXT &&
+            baseType.getClassSignature().getDeclaringFileSignature().getProjectName() === Builtin.DUMMY_PROJECT_NAME
+        ) {
             expr.getMethodSignature().getMethodSubSignature().setReturnType(Builtin.ITERATOR_RESULT_CLASS_TYPE);
             expr.setRealGenericTypes(baseType.getRealGenericTypes());
             return expr;
+        }
+        return null;
+    }
+
+    private static changePtrInvokeExpr(method: ArkField, scene: Scene, expr: AbstractInvokeExpr | ArkInstanceInvokeExpr): ArkPtrInvokeExpr | null {
+        const type = method.getType();
+        let methodSignature;
+        if (type instanceof FunctionType) {
+            methodSignature = type.getMethodSignature();
+        } else if (type instanceof ClassType && type.getClassSignature().getClassName().endsWith(CALL_BACK)) {
+            const callback = scene.getClass(type.getClassSignature())?.getMethodWithName(CALL_SIGNATURE_NAME);
+            if (callback) {
+                methodSignature = callback.getSignature();
+            }
+        }
+        if (methodSignature) {
+            const ptr =
+                expr instanceof ArkInstanceInvokeExpr
+                    ? new ArkInstanceFieldRef(expr.getBase(), method.getSignature())
+                    : new ArkStaticFieldRef(method.getSignature());
+            return new ArkPtrInvokeExpr(methodSignature, ptr, expr.getArgs(), expr.getRealGenericTypes());
         }
         return null;
     }
@@ -547,7 +548,9 @@ export class IRInference {
         let realTypes;
         const tmp: Type[] = [];
         if (method.getGenericTypes()) {
-            expr.getMethodSignature().getMethodSubSignature().getParameters()
+            expr.getMethodSignature()
+                .getMethodSubSignature()
+                .getParameters()
                 .filter(p => !p.getName().startsWith(LEXICAL_ENV_NAME_PREFIX))
                 .forEach((p, i) => {
                     if (TypeInference.checkType(p.getType(), t => t instanceof GenericType)) {
@@ -583,7 +586,7 @@ export class IRInference {
         if (argType instanceof FunctionType) {
             const argMethodSignature = argType.getMethodSignature();
             const argMethod = scene.getMethod(argMethodSignature);
-            if (argMethod != null && argMethod.getBody()) {
+            if (argMethod !== null && argMethod.getBody()) {
                 const body = argMethod.getBody() as ArkBody;
                 const firstStmt = body.getCfg().getStartingStmt();
                 if (firstStmt instanceof ArkAssignStmt && firstStmt.getRightOp() instanceof ArkParameterRef) {
@@ -638,8 +641,7 @@ export class IRInference {
         let signature: BaseSignature;
         if (baseType instanceof ClassType) {
             const property = propertyAndType?.[0];
-            if (property instanceof ArkField && property.getCategory() !== FieldCategory.ENUM_MEMBER &&
-                !(property.getType() instanceof GenericType)) {
+            if (property instanceof ArkField && property.getCategory() !== FieldCategory.ENUM_MEMBER && !(property.getType() instanceof GenericType)) {
                 return property.getSignature();
             }
             staticFlag =
@@ -856,5 +858,148 @@ export class IRInference {
             ref.setType(type);
         }
         return ref;
+    }
+
+    /**
+     *Build C++function mapping table
+     *
+     *This function traverses all C++header files to find the corresponding implementation file for each class's method,
+     *And establish the mapping relationship between methods and implementation files
+     */
+    public static buildCxxFuncMap(scene: Scene): void {
+        const headerFileRefMap = this.getCxxHeaderFileRefMap(scene.getFiles(), scene.getIncludeDirs());
+        for (const [headerPath, refFiles] of headerFileRefMap) {
+            const headerArkFile = scene.getFile(new FileSignature(scene.getProjectName(), path.relative(scene.getRealProjectDir(), headerPath)));
+            if (!headerArkFile) {
+                continue;
+            }
+            const sortedRefFiles = this.sortRefFiles(headerPath, refFiles);
+            for (const cls of headerArkFile.getClasses()) {
+                for (const mtd of cls.getMethods(true)) {
+                    this.findMtdImpl(mtd, headerPath, sortedRefFiles, scene);
+                }
+            }
+        }
+    }
+
+    /**
+     *Implementation method of search method
+     *@ param mtd - Ark method object
+     *@ param headerPath - Header file path
+     *@ param sortedRefFiles - sorted reference file array
+     */
+    private static findMtdImpl(mtd: ArkMethod, headerPath: string, sortedRefFiles: string[], scene: Scene): void {
+        const isFuncImpl = mtd.getImplementationSignature();
+        if (isFuncImpl || mtd.isDefaultArkMethod() || mtd.getName() === INSTANCE_INIT_METHOD_NAME || mtd.getName() === STATIC_INIT_METHOD_NAME) {
+            return;
+        }
+        this.mapHeaderToSource(mtd, headerPath, sortedRefFiles, scene);
+    }
+
+    /**
+     *Get the C++header file reference mapping table
+     *
+     *This function traverses all files and filters out C++source files (.cpp ,.c,.cxx),
+     *Then analyze the import information in these source files, and establish the reference relationship mapping from the header file to the source file.
+     *
+     *@ returns Map<string, string []>The mapping from the header file path to the source file path array that references the header file
+     */
+    private static getCxxHeaderFileRefMap(files: ArkFile[], includeDirs: string[]): Map<string, string[]> {
+        const headerFileRefMap = new Map<string, string[]>();
+        const cxxSuffixes = ['.cpp', '.c', '.cxx'];
+        files.forEach(file => {
+            const filePath = normalize(file.getFilePath());
+            const extension = path.extname(filePath).toLowerCase();
+            if (!cxxSuffixes.some(suffix => extension === suffix)) {
+                return;
+            }
+            const importInfos = file.getImportInfos();
+            importInfos.forEach(im => {
+                this.processImportInfo(im, filePath, headerFileRefMap, includeDirs);
+            });
+        });
+
+        return headerFileRefMap;
+    }
+
+    /**
+     *Process import information and establish header file reference relationship mapping
+     *@ param im Import information object, including imported module information
+     *@ param filePath Path of the current file
+     *@ param headerFileRefMap header file reference relationship mapping table, used to record which files are referenced by each header file
+     */
+    private static processImportInfo(im: ImportInfo, filePath: string, headerFileRefMap: Map<string, string[]>, includeDirs: string[]): void {
+        let imFrom = im.getFrom();
+        if (!imFrom) {
+            return;
+        }
+        if (!fs.existsSync(imFrom)) {
+            // If the path does not exist, try to use includeDirs to find the relative path
+            imFrom = getFileAbsPath(includeDirs, imFrom);
+            if (!imFrom) {
+                return;
+            }
+        }
+        if (!headerFileRefMap.has(imFrom)) {
+            headerFileRefMap.set(imFrom, []);
+        }
+        headerFileRefMap.get(imFrom)!.push(filePath);
+    }
+
+    /**
+     *Sort the reference file array, and prioritize the reference files with the same name as the target file
+     *@ param headerFilePath Destination header file path
+     *@ param refFiles Array of reference file paths to be sorted
+     *@ returns The array of reference file paths sorted, with files with the same name first and other files second
+     */
+    private static sortRefFiles(headerFilePath: string, refFiles: string[]): string[] {
+        const targetFileName = path.parse(headerFilePath).name;
+        const prioritized: string[] = [];
+        const others: string[] = [];
+        for (const refFile of refFiles) {
+            if (path.parse(refFile).name === targetFileName) {
+                prioritized.push(refFile);
+            } else {
+                others.push(refFile);
+            }
+        }
+        return [...prioritized, ...others];
+    }
+
+    /**
+     *Map the method declaration to the corresponding source code implementation
+     *Find the corresponding method implementation in the reference file by matching the method signature,
+     * and establish the association between declaration and implementation
+     *
+     *@ param mtdDecl - target method declaration object, used to obtain declaration information and set implementation signature
+     *@ param headerFile - Header file path, as one of the reference files
+     *@ param refFiles - reference file list, used to search method implementation
+     */
+    private static mapHeaderToSource(mtdDecl: ArkMethod, headerFile: string, refFiles: string[], scene: Scene): void {
+        const tgtClsName = mtdDecl.getDeclaringArkClass().getName();
+        const tgtMtdSubSig = mtdDecl.getSubSignature();
+        const matchKey = `${tgtMtdSubSig.getReturnType().toString()} ${tgtClsName}::${tgtMtdSubSig.toString()}`;
+        for (const refFile of refFiles) {
+            const refArkFile = scene.getFile(new FileSignature(scene.getProjectName(), path.relative(scene.getRealProjectDir(), refFile)));
+            if (!refArkFile) {
+                continue;
+            }
+            const refArkClass = refArkFile.getClassWithName(tgtClsName);
+            if (!refArkClass) {
+                continue;
+            }
+            const nameMatchingMtds = refArkClass.getAllMethodsWithName(mtdDecl.getName());
+            for (const mtd of nameMatchingMtds) {
+                const nameMatchingMtdSubSig = mtd.getSubSignature();
+                const mtdSubSigStr = `${nameMatchingMtdSubSig.getReturnType().toString()} ${tgtClsName}::${nameMatchingMtdSubSig.toString()}`;
+                if (mtdSubSigStr === matchKey) {
+                    // Set the signature of the function implementation corresponding to the current function declaration
+                    mtdDecl.setImplementationSignature(mtd.getSignature());
+                    // The function implementation may be missing the existing modifiers (such as static) in the function declaration. Here we add
+                    mtd.setModifiers(mtdDecl.getModifiers() | mtd.getModifiers());
+                    return;
+                }
+            }
+        }
     }
 }

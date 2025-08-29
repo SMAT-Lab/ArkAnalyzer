@@ -1,21 +1,36 @@
-// 如何在C++调用从ArkTS传递过来的function（实际上与case3一模一样）
+/*
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+// How to call functions passed from ArkTS in C++ (actually identical to case3)
 
 #include "napi/native_api.h"
-
+#define TWO 2
 static napi_value NativeCallArkTS(napi_env env, napi_callback_info info)
 {
     size_t argc = 1;
-    // 声明参数数组
+    // Declare parameter array
     napi_value args[1] = {nullptr};
 
-    // 获取传入的参数并依次放入参数数组中
-    napi_get_cb_info(env, info, &argc, args , nullptr, nullptr);
+    // Get incoming parameters and put them into parameter array one by one
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
 
-    // 创建一个int，作为ArkTS的入参
+    // Create an int as input parameter for ArkTS
     napi_value argv = nullptr;
-    napi_create_int32(env, 2, &argv );
+    napi_create_int32(env, TWO, &argv);
 
-    // 调用传入的callback，并将其结果返回
+    // Call the incoming callback and return its result
     napi_value result = nullptr;
     napi_call_function(env, nullptr, args[0], 1, &argv, &result);
     return result;

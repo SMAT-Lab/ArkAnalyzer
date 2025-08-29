@@ -16,6 +16,7 @@
 import ts from 'ohos-typescript';
 
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
+import { CxxAstNode } from '../../cpp_frontend/ast/ArkCxxAstNode';
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'Position');
 
 const LOW_BITS_SIZE = 16;
@@ -99,7 +100,13 @@ export class LineColPosition {
         // line start from 1.
         return new LineColPosition(line + 1, character + 1);
     }
-    public static buildFromNodeCpp(node: any, sourceFile: any) {
+
+    /**
+     * Builds a LineColPosition object from a CxxAstNode.
+     * @param node - The C++ AST node.
+     * @returns A LineColPosition object containing the line and character information. Default LineColPosition is (0, 0).
+     */
+    public static cxxBuildFromNode(node: CxxAstNode): LineColPosition {
         let line = 0;
         let character = 0;
         if (node.range?.begin && node.range.begin.line) {
@@ -145,17 +152,19 @@ export class FullPosition {
         return new FullPosition(startLine + 1, startCharacter + 1, endLine + 1, endCharacter + 1);
     }
 
-    public static buildFromNodeCpp(node: any, sourceFile: any): FullPosition {
-        let startLine = 0;
-        let startCharacter = 0;
-        let endLine = 0;
-        let endCharacter = 0;
-        if (node.range && node.range.begin && node.range.begin.line) {
-            startLine = node.range.begin.line;
-            startCharacter = node.range.begin.col;
-            endLine = node.range.begin.line;
-            endCharacter = startLine + node.range.begin.tokLen;
-        }
+    /**
+     *Building a FullPosition object from a C++AST node
+     *@ param node C++AST node, possibly undefined
+     *@ param_sourceFile source file node (not used)
+     *@ returns The FullPosition object containing location information
+     */
+    public static cxxBuildFromNode(node: CxxAstNode | undefined, _sourceFile: CxxAstNode): FullPosition {
+        const begin = node?.range?.begin;
+        const end = node?.range?.end;
+        const startLine = begin?.line ?? 0;
+        const startCharacter = begin?.col ?? 0;
+        const endLine = end?.line ?? startLine;
+        const endCharacter = end?.col ?? (begin?.tokLen != null ? startCharacter + begin.tokLen : startCharacter);
         return new FullPosition(startLine, startCharacter, endLine, endCharacter);
     }
 

@@ -1,10 +1,20 @@
+/*
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 export const LAZY_IMPORT_CASE1_CLASS = {
-    fields: [
-        'value_',
-        'env_',
-        'wrapper_',
-        'instance_'
-    ],
+    fields: ['value_', 'env_', 'wrapper_', 'instance_'],
     heritageClasses: [],
     blocks: [
         {
@@ -21,12 +31,12 @@ export const LAZY_IMPORT_CASE1_CLASS = {
                         '%0 = &g_ref',
                         'staticinvoke <@%unk/%unk: .napi_create_reference()>(env, cons, 1, %0)',
                         "staticinvoke <@%unk/%unk: .napi_set_named_property()>(env, exports, 'GlobalConfig', cons)",
-                        'return exports'
+                        'return exports',
                     ],
                     preds: [],
-                    succes: []
-                }
-            ]
+                    succes: [],
+                },
+            ],
         },
         {
             methodName: 'Destructor',
@@ -36,15 +46,15 @@ export const LAZY_IMPORT_CASE1_CLASS = {
                     stmts: [
                         'env = parameter0: int',
                         'nativeObject = parameter1: void*',
-                        'finalize_hint = parameter2: void*',
+                        'finalizeHint = parameter2: void*',
                         'this = this: @lazyImportCase1/lazyImportCase1.cpp: GlobalConfig',
                         '%0 = delete <@lazyImportCase1/lazyImportCase1.cpp: GlobalConfig*>nativeObject',
-                        'return'
+                        'return',
                     ],
                     preds: [],
-                    succes: []
-                }
-            ]
+                    succes: [],
+                },
+            ],
         },
         {
             methodName: 'constructor',
@@ -55,27 +65,24 @@ export const LAZY_IMPORT_CASE1_CLASS = {
                         'value = parameter0: double',
                         'this = this: @lazyImportCase1/lazyImportCase1.cpp: GlobalConfig',
                         'instanceinvoke this.<@lazyImportCase1/lazyImportCase1.cpp: GlobalConfig.%instInit()>()',
-                        "this.<@lazyImportCase1/lazyImportCase1.cpp: GlobalConfig.value_> = value",
-                        'return this'
+                        'this.<@lazyImportCase1/lazyImportCase1.cpp: GlobalConfig.value_> = value',
+                        'return this',
                     ],
                     preds: [],
-                    succes: []
-                }
-            ]
+                    succes: [],
+                },
+            ],
         },
         {
             methodName: '~GlobalConfig',
             blocks: [
                 {
                     id: 0,
-                    stmts: [
-                        'this = this: @lazyImportCase1/lazyImportCase1.cpp: GlobalConfig',
-                        'return'
-                    ],
+                    stmts: ['this = this: @lazyImportCase1/lazyImportCase1.cpp: GlobalConfig', 'return'],
                     preds: [],
-                    succes: []
-                }
-            ]
+                    succes: [],
+                },
+            ],
         },
         {
             methodName: 'New',
@@ -89,10 +96,10 @@ export const LAZY_IMPORT_CASE1_CLASS = {
                         'newTarget = undefined',
                         '%0 = &newTarget',
                         'staticinvoke <@%unk/%unk: .napi_get_new_target()>(env, info, %0)',
-                        'if newTarget != nullptr'
+                        'if newTarget != null',
                     ],
                     preds: [],
-                    succes: [1, 6]
+                    succes: [1, 6],
                 },
                 {
                     id: 1,
@@ -102,26 +109,22 @@ export const LAZY_IMPORT_CASE1_CLASS = {
                         'jsThis = undefined',
                         '%1 = &argc',
                         '%2 = &jsThis',
-                        'staticinvoke <@%unk/%unk: .napi_get_cb_info()>(env, info, %1, args, %2, nullptr)',
+                        'staticinvoke <@%unk/%unk: .napi_get_cb_info()>(env, info, %1, args, %2, null)',
                         'value = 0',
                         'valuetype = undefined',
                         '%3 = args[0]',
                         '%4 = &valuetype',
                         'staticinvoke <@%unk/%unk: .napi_typeof()>(env, %3, %4)',
-                        'if valuetype != napi_undefined != 0'
+                        'if valuetype != napi_undefined != 0',
                     ],
                     preds: [0],
-                    succes: [2, 3]
+                    succes: [2, 3],
                 },
                 {
                     id: 2,
-                    stmts: [
-                        '%5 = args[0]',
-                        '%6 = &value',
-                        'staticinvoke <@%unk/%unk: .napi_get_value_double()>(env, %5, %6)'
-                    ],
+                    stmts: ['%5 = args[0]', '%6 = &value', 'staticinvoke <@%unk/%unk: .napi_get_value_double()>(env, %5, %6)'],
                     preds: [1],
-                    succes: [3]
+                    succes: [3],
                 },
                 {
                     id: 3,
@@ -131,30 +134,22 @@ export const LAZY_IMPORT_CASE1_CLASS = {
                         'obj = %7',
                         'obj = env',
                         'status = undefined',
-                        'if status != napi_ok != 0'
+                        'if status != napi_ok != 0',
                     ],
                     preds: [1, 2],
-                    succes: [4, 5]
+                    succes: [4, 5],
                 },
                 {
                     id: 4,
-                    stmts: [
-                        '%8 = delete obj',
-                        'return jsThis'
-                    ],
+                    stmts: ['%8 = delete obj', 'return jsThis'],
                     preds: [3],
-                    succes: []
+                    succes: [],
                 },
                 {
                     id: 5,
-                    stmts: [
-                        'refCount = 0',
-                        '%9 = &refCount',
-                        'staticinvoke <@%unk/%unk: .napi_reference_unref()>(env, obj, %9)',
-                        'return jsThis'
-                    ],
+                    stmts: ['refCount = 0', '%9 = &refCount', 'staticinvoke <@%unk/%unk: .napi_reference_unref()>(env, obj, %9)', 'return jsThis'],
                     preds: [3],
-                    succes: []
+                    succes: [],
                 },
                 {
                     id: 6,
@@ -162,19 +157,19 @@ export const LAZY_IMPORT_CASE1_CLASS = {
                         'argc = 1',
                         'args = undefined',
                         '%10 = &argc',
-                        'staticinvoke <@%unk/%unk: .napi_get_cb_info()>(env, info, %10, args, nullptr, nullptr)',
+                        'staticinvoke <@%unk/%unk: .napi_get_cb_info()>(env, info, %10, args, null, null)',
                         'cons = undefined',
                         '%11 = &cons',
                         'staticinvoke <@%unk/%unk: .napi_get_reference_value()>(env, g_ref, %11)',
                         'instance = undefined',
                         '%12 = &instance',
                         'staticinvoke <@%unk/%unk: .napi_new_instance()>(env, cons, argc, args, %12)',
-                        'return instance'
+                        'return instance',
                     ],
                     preds: [0],
-                    succes: []
+                    succes: [],
                 },
-            ]
+            ],
         },
         {
             methodName: 'GetValue',
@@ -187,7 +182,7 @@ export const LAZY_IMPORT_CASE1_CLASS = {
                         'this = this: @lazyImportCase1/lazyImportCase1.cpp: GlobalConfig',
                         'jsThis = undefined',
                         '%0 = &jsThis',
-                        'staticinvoke <@%unk/%unk: .napi_get_cb_info()>(env, info, nullptr, nullptr, %0, nullptr)',
+                        'staticinvoke <@%unk/%unk: .napi_get_cb_info()>(env, info, null, null, %0, null)',
                         'obj = undefined',
                         '%1 = &obj',
                         '%2 = <void**>%1',
@@ -196,12 +191,12 @@ export const LAZY_IMPORT_CASE1_CLASS = {
                         '%3 = obj-><@lazyImportCase1/lazyImportCase1.cpp: GlobalConfig.value_>',
                         '%4 = &num',
                         'staticinvoke <@%unk/%unk: .napi_create_double()>(env, %3, %4)',
-                        'return num'
+                        'return num',
                     ],
                     preds: [],
-                    succes: []
-                }
-            ]
+                    succes: [],
+                },
+            ],
         },
         {
             methodName: 'SetValue',
@@ -218,7 +213,7 @@ export const LAZY_IMPORT_CASE1_CLASS = {
                         '%0 = &argc',
                         '%1 = &value',
                         '%2 = &jsThis',
-                        'staticinvoke <@%unk/%unk: .napi_get_cb_info()>(env, info, %0, %1, %2, nullptr)',
+                        'staticinvoke <@%unk/%unk: .napi_get_cb_info()>(env, info, %0, %1, %2, null)',
                         'obj = undefined',
                         '%3 = &obj',
                         '%4 = <void**>%3',
@@ -226,12 +221,12 @@ export const LAZY_IMPORT_CASE1_CLASS = {
                         '%5 = obj-><@lazyImportCase1/lazyImportCase1.cpp: GlobalConfig.value_>',
                         '%6 = &%5',
                         'staticinvoke <@%unk/%unk: .napi_get_value_double()>(env, value, %6)',
-                        'return nullptr'
+                        'return null',
                     ],
                     preds: [],
-                    succes: []
-                }
-            ]
+                    succes: [],
+                },
+            ],
         },
         {
             methodName: 'PlusOne',
@@ -244,7 +239,7 @@ export const LAZY_IMPORT_CASE1_CLASS = {
                         'this = this: @lazyImportCase1/lazyImportCase1.cpp: GlobalConfig',
                         'jsThis = undefined',
                         '%0 = &jsThis',
-                        'staticinvoke <@%unk/%unk: .napi_get_cb_info()>(env, info, nullptr, nullptr, %0, nullptr)',
+                        'staticinvoke <@%unk/%unk: .napi_get_cb_info()>(env, info, null, null, %0, null)',
                         'obj = undefined',
                         '%1 = &obj',
                         '%2 = <void**>%1',
@@ -254,12 +249,12 @@ export const LAZY_IMPORT_CASE1_CLASS = {
                         '%3 = obj-><@lazyImportCase1/lazyImportCase1.cpp: GlobalConfig.value_>',
                         '%4 = &num',
                         'staticinvoke <@%unk/%unk: .napi_create_double()>(env, %3, %4)',
-                        'return num'
+                        'return num',
                     ],
                     preds: [],
-                    succes: []
-                }
-            ]
+                    succes: [],
+                },
+            ],
         },
-    ]
+    ],
 };

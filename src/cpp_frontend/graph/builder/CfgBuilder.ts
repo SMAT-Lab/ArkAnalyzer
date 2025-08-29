@@ -13,15 +13,14 @@
  * limitations under the License.
  */
 
-import * as ts from 'ohos-typescript';
 import { Local } from '../../../core/base/Local';
 import { ArkAliasTypeDefineStmt, ArkReturnStmt, ArkReturnVoidStmt, Stmt } from '../../../core/base/Stmt';
 import { BasicBlock } from '../../../core/graph/BasicBlock';
 import { Cfg } from '../../../core/graph/Cfg';
 import { ArkClass } from '../../../core/model/ArkClass';
 import { ArkMethod } from '../../../core/model/ArkMethod';
-import { ArkIRTransformerCpp, ValueAndStmts } from '../../common/ArkIRTransformer';
-import { IRUtils } from '../../../core/common/IRUtils';
+import { ArkCxxIRTransformer, ValueAndStmts } from '../../common/ArkIRTransformer';
+import { IRUtils } from '../../common/IRUtils';
 import { AliasType, ClassType, UnclearReferenceType, UnknownType, VoidType } from '../../../core/base/Type';
 import { Trap } from '../../../core/base/Trap';
 import { GlobalRef } from '../../../core/base/Ref';
@@ -30,22 +29,47 @@ import { SwitchBuilder } from '../../../core/graph/builder/SwitchBuilder';
 import { ConditionBuilder } from '../../../core/graph/builder/ConditionBuilder';
 import { TrapBuilder } from '../../../core/graph/builder/TrapBuilder';
 import { ModifierType } from '../../../core/model/ArkBaseModel';
-import { BlockBuilder, Case, Catch, TextError, Variable, Scope } from '../../../core/graph/builder/CfgBuilder';
+import { BlockBuilder as CoreBlockBuilder, Catch, TextError, Variable, Scope } from '../../../core/graph/builder/CfgBuilder';
 import { ModelUtils } from '../../../core/common/ModelUtils';
 import { CONSTRUCTOR_NAME, PROMISE } from '../../../core/common/TSConst';
+import { CxxAstNode, CxxTranslationUnit } from '../../ast/ArkCxxAstNode';
+
+export class BlockBuilder {
+    id: number;
+    stmts: StatementBuilder[];
+    nexts: BlockBuilder[] = [];
+    lasts: BlockBuilder[] = [];
+    walked: boolean = false;
+
+    constructor(id: number, stmts: StatementBuilder[]) {
+        this.id = id;
+        this.stmts = stmts;
+    }
+}
+
+export class Case {
+    value: string;
+    stmt: StatementBuilder;
+    valueNode!: CxxAstNode;
+
+    constructor(value: string, stmt: StatementBuilder) {
+        this.value = value;
+        this.stmt = stmt;
+    }
+}
 
 export class StatementBuilder {
     type: string;
-    //节点对应源代码
+    // Source code corresponding to the node
     code: string;
     next: StatementBuilder | null;
     lasts: Set<StatementBuilder>;
     walked: boolean;
     index: number;
-    // TODO:以下两个属性需要获取
-    line: number; //行号//ast节点存了一个start值为这段代码的起始地址，可以从start开始往回查原文有几个换行符确定行号
-    column: number; // 列
-    astNode: any | null; //ast节点对象
+    // TODO:The following two properties need to be obtained
+    line: number; // Line number: ast node stores a start value as the starting address of this code, you can count how many line
+    column: number; // Column
+    astNode: CxxAstNode | null; // Ast node object
     scopeID: number;
     addressCode3: string[] = [];
     block: BlockBuilder | null;
@@ -54,7 +78,7 @@ export class StatementBuilder {
     numOfIdentifier: number = 0;
     isDoWhile: boolean = false;
 
-    constructor(type: string, code: string, astNode: any | null, scopeID: number) {
+    constructor(type: string, code: string, astNode: CxxAstNode | null, scopeID: number) {
         this.type = type;
         this.code = code;
         this.next = null;
@@ -135,10 +159,11 @@ export class CfgBuilder {
     emptyBody: boolean = false;
     arrowFunctionWithoutBlock: boolean = false;
 
-    private sourceFile: any;
+    private sourceFile: CxxAstNode;
     private declaringMethod: ArkMethod;
+    private gotoStmtMap: Map<string, StatementBuilder[]>;
 
-    constructor(ast: any, name: string, declaringMethod: ArkMethod, sourceFile: any) {
+    constructor(ast: CxxAstNode, name: string, declaringMethod: ArkMethod, sourceFile: CxxAstNode) {
         this.name = name;
         this.astRoot = ast;
         this.declaringMethod = declaringMethod;
@@ -161,7 +186,7 @@ export class CfgBuilder {
         this.catches = [];
         this.sourceFile = sourceFile;
         this.arrowFunctionWithoutBlock = true;
-        this.declaringMethod.gotoStmtMap = new Map();
+        this.gotoStmtMap = new Map();
     }
 
     public getDeclaringMethod(): ArkMethod {
@@ -171,7 +196,7 @@ export class CfgBuilder {
     judgeLastType(s: StatementBuilder, lastStatement: StatementBuilder): void {
         if (lastStatement.type === 'ifStatement') {
             let lastIf = lastStatement as ConditionStatementBuilder;
-            if (lastIf.nextT == null) {
+            if (lastIf.nextT === null) {
                 lastIf.nextT = s;
                 s.lasts.add(lastIf);
             } else {
@@ -192,9 +217,9 @@ export class CfgBuilder {
         }
     }
 
-    ASTNodeBreakStatement(c: any, lastStatement: StatementBuilder): void {
-        let p: any | null = c;
-        while (p && p.id != this.astRoot.id) {
+    ASTNodeBreakStatement(c: CxxAstNode, lastStatement: StatementBuilder): void {
+        let p: CxxAstNode | null = c;
+        while (p && p.id !== this.astRoot.id) {
             let pKind = p.kind.toString();
             if (pKind === 'WhileStmt' || pKind === 'DoStmt' || pKind === 'ForStmt') {
                 const lastLoopNextF = this.loopStack[this.loopStack.length - 1].nextF!;
@@ -208,11 +233,11 @@ export class CfgBuilder {
                 lastSwitchExit.lasts.add(lastStatement);
                 return;
             }
-            p = p.parent ? p.parent : p.getParent();
+            p = (p.parent ?? p.getParent?.(true)) ?? null;
         }
     }
 
-    ASTNodeIfStatement(c: any, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
+    ASTNodeIfStatement(c: CxxAstNode, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
         let ifstm: ConditionStatementBuilder = new ConditionStatementBuilder('ifStatement', 'IfStmt', c, scopeID);
         this.judgeLastType(ifstm, lastStatement);
         let ifexit: StatementBuilder = new StatementBuilder('ifExit', '', c, scopeID);
@@ -242,7 +267,7 @@ export class CfgBuilder {
         return ifexit;
     }
 
-    ASTNodeWhileStatement(c: any, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
+    ASTNodeWhileStatement(c: CxxAstNode, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
         this.breakin = 'loop';
         let loopstm = new ConditionStatementBuilder('loopStatement', '', c, scopeID);
         this.loopStack.push(loopstm);
@@ -278,7 +303,7 @@ export class CfgBuilder {
         return s.substring(0, index);
     }
 
-    ASTNodeForStatement(c: any | ts.ForStatement, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
+    ASTNodeForStatement(c: CxxAstNode, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
         this.breakin = 'loop';
         let loopstm = new ConditionStatementBuilder('loopStatement', '', c, scopeID);
         this.loopStack.push(loopstm);
@@ -305,7 +330,7 @@ export class CfgBuilder {
         return loopExit;
     }
 
-    ASTNodeDoStatement(c: any, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
+    ASTNodeDoStatement(c: CxxAstNode, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
         this.breakin = 'loop';
         let loopstm = new ConditionStatementBuilder('loopStatement', '', c, scopeID);
         this.loopStack.push(loopstm);
@@ -338,7 +363,7 @@ export class CfgBuilder {
         return loopExit;
     }
 
-    private aliceCaseDefaultNode(node: any, clauses: any[]) {
+    private sliceCaseDefaultNode(node: CxxAstNode, clauses: CxxAstNode[]): void {
         if (node.kind === 'BreakStmt' || node.kind === 'DefaultStmt' || node.kind === 'ContinueStmt') {
             clauses.push(node);
             return;
@@ -350,7 +375,7 @@ export class CfgBuilder {
                     let caseClause = JSON.parse(JSON.stringify(node));
                     caseClause.inner = caseClause.inner.slice(0, i);
                     clauses.push(caseClause);
-                    this.aliceCaseDefaultNode(node.inner[i], clauses);
+                    this.sliceCaseDefaultNode(node.inner[i], clauses);
                 }
                 if (i === node.inner.length - 1 && !isCaseOrDefault) {
                     clauses.push(node);
@@ -359,15 +384,18 @@ export class CfgBuilder {
         }
     }
 
-    // 将cpp的case-default的ast格式转换成TS的caseClause/defaultClause
-    private getCaseDefClauseAsts(switchNode: any) {
-        // cpp解析case:后面没有语句且没有break时，会把后面的case/default作为该case的inner节点，因此要把原有的ast拆分成一个个的case，default
-        let tempClauses: any[] = [];
+    // Convert cpp's case-default ast format to TS's caseClause/defaultClause
+    private getCaseDefClauseAsts(switchNode: CxxAstNode):CxxAstNode[] {
+        // When cpp parses case: without statements and no break,
+        // it will treat the following case/default as inner nodes of that case,
+        // so the original ast needs to be split into individual cases and defaults
+        let tempClauses: CxxAstNode[] = [];
         for (let node of switchNode.inner[1].inner) {
-            this.aliceCaseDefaultNode(node, tempClauses);
+            this.sliceCaseDefaultNode(node, tempClauses);
         }
-        // 灭有case括号时，cpp中case和break/continue是分开的两个节点，此处将break/continue节点加入作为case或default节点的inner成员
-        return tempClauses.reduce((acc: any, curr: any, idx: number, arr: any) => {
+        // When there are no case brackets, case and break/continue are separate nodes in cpp,
+        // here we add the break/continue nodes as inner members of case or default nodes
+        return tempClauses.reduce((acc: CxxAstNode[], curr: CxxAstNode, idx: number, arr: CxxAstNode[]) => {
             if (['CaseStmt', 'DefaultStmt'].includes(curr.kind.toString())) {
                 curr.parent = switchNode.inner[1];
                 if (idx + 1 < arr.length && ['BreakStmt', 'ContinueStmt'].includes(arr[idx + 1].kind.toString())) {
@@ -377,10 +405,10 @@ export class CfgBuilder {
                 acc.push(curr);
             }
             return acc;
-        }, [] as any[])
+        }, [] as CxxAstNode[]);
     }
 
-    ASTNodeSwitchStatement(c: any, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
+    ASTNodeSwitchStatement(c: CxxAstNode, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
         this.breakin = 'switch';
         let switchstm = new SwitchStatementBuilder('switchStatement', '', c, scopeID);
         this.judgeLastType(switchstm, lastStatement);
@@ -395,7 +423,7 @@ export class CfgBuilder {
         for (let i = 0; i < c.inner[1].inner.length; i++) {
             const clause = c.inner[1].inner[i];
             let casestm: StatementBuilder;
-            let caseBody: any = [...clause.inner];
+            let caseBody: CxxAstNode[] = [...clause.inner];
             if (clause.kind.toString() === 'CaseStmt') {
                 casestm = new StatementBuilder('statement', 'case ' + clause.inner[0].code + ':', clause, scopeID);
                 caseBody = caseBody.slice(1);
@@ -433,43 +461,56 @@ export class CfgBuilder {
         return switchExit;
     }
 
-    private ASTNodeCXXMemberCallExpr(innerNode: any, lastStatement: StatementBuilder, scopeID: number) {
+    private ASTNodeCXXMemberCallExpr(
+        innerNode: CxxAstNode,
+        lastStatement: StatementBuilder,
+        scopeID: number
+    ): StatementBuilder {
         let caller = '';
         let callee = '';
-        if (innerNode && innerNode.inner[0].kind === 'MemberExpr') {
-            let childInner = innerNode.inner[0];
-            callee = '.' + childInner.name;
-            while (childInner.inner && childInner.inner.length !== 0) {
-                let innerType = childInner.inner[0].kind.toString();
-                if (innerType === 'DeclRefExpr') {
-                    caller = childInner.inner[0].referencedDecl.name;
+        const first = innerNode?.inner?.[0];
+        if (first && first.kind === 'MemberExpr') {
+            let childInner: CxxAstNode = first;
+            // Callee: name is preferred. Some JSONs may only have code
+            callee = '.' + (childInner.name || childInner.code || '');
+            // 2) Go down through ImplicitCastExpr chain until DeclRefExpr or other end points use the optional chain at the same time to avoid out of bounds
+            while (childInner.inner && childInner.inner.length > 0) {
+                const n0 = childInner.inner[0];
+                const innerKind = n0?.kind;
+                if (innerKind === 'DeclRefExpr') {
+                    // 3) Safely read referencedDecl? .name； Use n0. name/n0. code/empty string at the bottom
+                    caller = n0.referencedDecl?.name || n0.name || n0.code || '';
                     break;
-                } else if (innerType === 'ImplicitCastExpr') {
-                    childInner = childInner.inner[0];
+                }
+                if (innerKind === 'ImplicitCastExpr') {
+                    childInner = n0; // Continue to traverse downward
                     continue;
                 }
+                // Other nodes stop
                 break;
             }
         }
-        let nodeCode = caller + callee;
-        let s = new StatementBuilder('statement', nodeCode, innerNode, scopeID);
+
+        const nodeCode = caller + callee;
+        const s = new StatementBuilder('statement', nodeCode, innerNode, scopeID);
         this.judgeLastType(s, lastStatement);
         return s;
     }
 
-    ASTNodeGotoStatement(innerNode: any, lastStatement: StatementBuilder, scopeID: number) {
+
+    ASTNodeGotoStatement(innerNode: CxxAstNode, lastStatement: StatementBuilder, scopeID: number): void {
         let s = new StatementBuilder('gotoStatement', innerNode.code, innerNode, scopeID);
         this.judgeLastType(s, lastStatement);
         let label: string = innerNode.code.substring(innerNode.code.indexOf('goto ') + 5);
-        let gotoStmtsOfLabel = this.declaringMethod.gotoStmtMap.get(label);
+        let gotoStmtsOfLabel = this.gotoStmtMap.get(label);
         if (gotoStmtsOfLabel === undefined) {
-            this.declaringMethod.gotoStmtMap.set(label, [s]);
-        }else {
+            this.gotoStmtMap.set(label, [s]);
+        } else {
             gotoStmtsOfLabel.push(s);
         }
     }
 
-    private judgeLastStmtForLabel(s: StatementBuilder, lastStatement: StatementBuilder, gotoStatement: StatementBuilder | undefined) {
+    private judgeLastStmtForLabel(s: StatementBuilder, lastStatement: StatementBuilder, gotoStatement: StatementBuilder | undefined):void {
         if (lastStatement.type === 'ifStatement') {
             let lastIf = lastStatement as ConditionStatementBuilder;
             if (lastIf.nextT!.type === 'gotoStatement') {
@@ -493,34 +534,27 @@ export class CfgBuilder {
         }
     }
 
-    ASTNodeLabelStatement(innerNode: any, lastStatement: StatementBuilder, scopeID: number) {
+    ASTNodeLabelStatement(innerNode: CxxAstNode, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
         let labelStmt = new StatementBuilder('statement', 'goto label:' + innerNode.name, innerNode, scopeID);
-        // 处理goto语句与label语句的前后关系
-
-        const idx = innerNode.code.indexOf(':');
-        if (idx === -1) {
-            return new StatementBuilder('gotoStatement', innerNode.code, innerNode, scopeID);
-        }
-        const label = innerNode.code.substring(0,idx);
-        const gotoStmts = this.declaringMethod.gotoStmtMap.get(label);
-        if(!gotoStmts) {
-            let s = new StatementBuilder('gotoStatement', innerNode.code, innerNode, scopeID);
-            this.declaringMethod.gotoStmtMap.set(label, [s]);
-        } else {
-            for (const gotoStmt of gotoStmts) {
-                for (const lastStmt of [...gotoStmt.lasts]) {
-                    this.judgeLastStmtForLabel(labelStmt, lastStmt, gotoStmt);
+        // Handle the sequence relationship between goto statements and label statements
+        let label: string = innerNode.code.substring(0, innerNode.code.indexOf(':'));
+        for (const [key, gotoStmts] of this.gotoStmtMap) {
+            if (key === label) {
+                for (const gotoStmt of gotoStmts) {
+                    for (const lastStmt of [...gotoStmt.lasts]) {
+                        this.judgeLastStmtForLabel(labelStmt, lastStmt, gotoStmt);
+                    }
                 }
             }
         }
 
-        // 处理label语句和前一句的前后关系
+        // Handle the sequence relationship between label statements and the previous statement
         this.judgeLastStmtForLabel(labelStmt, lastStatement, undefined);
-        // labelStmt内节点的处理
+        // Processing nodes within labelStmt
         let labelExit = new StatementBuilder('labelExit', '', innerNode, scopeID);
         this.exits.push(labelExit);
         this.walkAST(labelStmt, labelExit, [...innerNode.inner]);
-        // 去除labelStmt
+        // Remove labelStmt
         for (const stmt of [...labelStmt.lasts]) {
             labelStmt.next!.lasts.add(stmt);
             if (stmt.type === 'ifStatement') {
@@ -553,15 +587,15 @@ export class CfgBuilder {
         return str;
     }
 
-    ASTNodeTryStatement(c: any, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
+    ASTNodeTryStatement(c: CxxAstNode, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
         let trystm = new TryStatementBuilder('tryStatement', 'try', c, scopeID);
         this.judgeLastType(trystm, lastStatement);
         let tryExit = new StatementBuilder('tryExit', '', c, scopeID);
         this.exits.push(tryExit);
         trystm.tryExit = tryExit;
 
-        let tryBlock: any | undefined = undefined;
-        let catchBlockList: any[] = [];
+        let tryBlock: CxxAstNode | undefined = undefined;
+        let catchBlockList: CxxAstNode[] = [];
         for (const node of c.inner) {
             if (node.kind === 'CompoundStmt') {
                 tryBlock = node;
@@ -570,12 +604,12 @@ export class CfgBuilder {
             }
         }
 
-        this.walkAST(trystm, tryExit, [tryBlock]);
+        this.walkAST(trystm, tryExit, tryBlock?.inner ?? []);
         trystm.tryFirst = trystm.next;
         trystm.next?.lasts.add(trystm);
         for (const catchBlock of catchBlockList) {
             let text = '';
-            if (catchBlock.code){
+            if (catchBlock.code) {
                 text += this.removeAfterBraces(catchBlock.code);
             }
             let catchOrNot = new ConditionStatementBuilder('catchOrNot', text, c, scopeID);
@@ -592,7 +626,7 @@ export class CfgBuilder {
             }
             const catchStatement = new StatementBuilder('statement', catchOrNot.code, catchBlock, catchOrNot.nextT.scopeID);
             catchStatement.next = catchOrNot.nextT;
-            trystm.catchStatement.push(catchStatement)
+            trystm.catchStatement.push(catchStatement);
             catchStatement.lasts.add(trystm);
             if (catchBlock.inner[0].name) {
                 trystm.catchError.push(catchBlock.inner[0].name);
@@ -603,15 +637,11 @@ export class CfgBuilder {
         let final = new StatementBuilder('statement', 'finally', c, scopeID);
         let finalExit = new StatementBuilder('finallyExit', '', c, scopeID);
         this.exits.push(finalExit);
-        if (c.finallyBlock && c.finallyBlock.statements.length > 0) {
-            this.walkAST(final, finalExit, [...c.finallyBlock.statements]);
-        } else {
-            let dummyFinally = new StatementBuilder('statement', 'dummyFinally', c, new Scope(this.scopes.length).id);
-            final.next = dummyFinally;
-            dummyFinally.lasts.add(final);
-            dummyFinally.next = finalExit;
-            finalExit.lasts.add(dummyFinally);
-        }
+        let dummyFinally = new StatementBuilder('statement', 'dummyFinally', c, new Scope(this.scopes.length).id);
+        final.next = dummyFinally;
+        dummyFinally.lasts.add(final);
+        dummyFinally.next = finalExit;
+        finalExit.lasts.add(dummyFinally);
         trystm.finallyStatement = final.next;
         tryExit.next = final.next;
         final.next?.lasts.add(tryExit);
@@ -621,86 +651,124 @@ export class CfgBuilder {
         return finalExit;
     }
 
-    walkAST(lastStatement: StatementBuilder, nextStatement: StatementBuilder, nodes: any): void {
+    private hitsControlBoundaryBeforeRoot(node: CxxAstNode): boolean {
+        const CONTROL_BOUNDARY_KINDS = new Set([
+            'IfStmt', 'WhileStmt', 'DoStmt', 'ForStmt',
+            'CaseStmt', 'DefaultStmt', 'CXXTryStmt',
+        ]);
+        let p: CxxAstNode | null = node;
+        const rootId = this.astRoot.id;
+        while (p && p.id !== rootId) {
+            if (CONTROL_BOUNDARY_KINDS.has(p.kind)) {
+                return true;
+            }
+            p = (p.parent ?? p.getParent?.(true)) ?? null;
+        }
+        return false;
+    }
+
+    walkAST(lastStatement: StatementBuilder, nextStatement: StatementBuilder, nodes: CxxAstNode[]): void {
         let scope = new Scope(this.scopes.length);
         this.scopes.push(scope);
         for (let i = 0; i < nodes.length; i++) {
             let innerNode = nodes[i];
-            let nodeKind = innerNode.kind.toString();
+            let nodeKind = innerNode.kind;
+            lastStatement = this.handleASTStmtSuccession(innerNode, lastStatement, scope);
             if (nodeKind === 'ReturnStmt') {
-                let s = new StatementBuilder('returnStatement', innerNode.code, innerNode, scope.id);
-                this.judgeLastType(s, lastStatement);
-                lastStatement = s;
                 break;
-            } else if (nodeKind === 'DeclStmt' || nodeKind === "VarDecl" || nodeKind === "TypedefDecl") {
-                let s = new StatementBuilder('statement', innerNode.code, innerNode, scope.id);
-                this.judgeLastType(s, lastStatement);
-                lastStatement = s;
-            } else if (nodeKind === 'ExprWithCleanups') {
-                let s = new StatementBuilder('statement', 'ExprWithCleanups', innerNode, scope.id);
-                this.judgeLastType(s, lastStatement);
-                lastStatement = s;
-            } else if (['CallExpr', 'CXXOperatorCallExpr', 'BinaryOperator', 'UnaryOperator', 'CompoundAssignOperator',
-                'AtomicCallExpr', 'CXXConstructExpr', 'CXXCtorInitializer'].includes(nodeKind)) {
-                let s = new StatementBuilder('statement', innerNode.code, innerNode, scope.id);
-                this.judgeLastType(s, lastStatement);
-                lastStatement = s;
-            } else if (nodeKind === 'CXXMemberCallExpr') {
-                lastStatement = this.ASTNodeCXXMemberCallExpr(innerNode, lastStatement, scope.id);
-            } else if (nodeKind === 'IfStmt') {
-                lastStatement = this.ASTNodeIfStatement(innerNode, lastStatement, scope.id);
-            } else if (nodeKind === 'ForStmt' || nodeKind === 'CXXForRangeStmt') {
-                lastStatement = this.ASTNodeForStatement(innerNode, lastStatement, scope.id);
-            } else if (nodeKind === 'RecoveryExpr') {
-                let s = new StatementBuilder('statement', innerNode.code, innerNode, scope.id);
-                this.judgeLastType(s, lastStatement);
-                lastStatement = s;
-            } else if (nodeKind === 'WhileStmt') {
-                lastStatement = this.ASTNodeWhileStatement(innerNode, lastStatement, scope.id);
-            } else if (nodeKind === 'BreakStmt') {
-                this.ASTNodeBreakStatement(innerNode, lastStatement);
+            } else if (nodeKind === 'BreakStmt' || nodeKind === 'ContinueStmt') {
                 return;
-            } else if (nodeKind === 'DoStmt') {
-                lastStatement = this.ASTNodeDoStatement(innerNode, lastStatement, scope.id);
-            } else if (nodeKind === 'SwitchStmt') {
-                lastStatement = this.ASTNodeSwitchStatement(innerNode, lastStatement, scope.id);
-            } else if (nodeKind === 'ContinueStmt') {
-                const lastLoop = this.loopStack[this.loopStack.length - 1];
-                this.judgeLastType(lastLoop, lastStatement);
-                lastLoop.lasts.add(lastStatement);
-                return;
-            } else if (nodeKind === 'CompoundStmt') {
-                let blockExit = new StatementBuilder('blockExit', '', innerNode, scope.id);
-                this.exits.push(blockExit);
-                this.walkAST(lastStatement, blockExit, [...innerNode.inner]);
-                lastStatement = blockExit;
-            } else if (nodeKind === 'CXXThrowExpr') {
-                let s = new StatementBuilder('statement', innerNode.code, innerNode, scope.id);
-                this.judgeLastType(s, lastStatement);
-                lastStatement = s;
-            } else if (nodeKind === 'CXXTryStmt') {
-                lastStatement = this.ASTNodeTryStatement(innerNode, lastStatement, scope.id);
-            } else if (nodeKind === 'GotoStmt' || nodeKind === 'IndirectGotoStmt') {
-                this.ASTNodeGotoStatement(innerNode, lastStatement, scope.id);
-                let p = innerNode;
-                while (p && p.id !== this.astRoot.id) {
-                    if (['IfStmt', 'WhileStmt', 'DoStmt', 'ForStmt', 'CaseStmt', 'DefaultStmt', 'CXXTryStmt'].includes(p.kind)) {
-                        return;
-                    }
-                    p = p.parent ? p.parent : p.getParent();
+            } else if (nodeKind === 'GotoStmt') {
+                if (this.hitsControlBoundaryBeforeRoot(innerNode)) {
+                    return;
                 }
-            } else if (nodeKind === 'LabelStmt') {
-                lastStatement = this.ASTNodeLabelStatement(innerNode, lastStatement, scope.id);
-            } else if (nodeKind === 'CXXDeleteExpr') {
-                let s = new StatementBuilder('statement', innerNode.code, innerNode, scope.id);
-                this.judgeLastType(s, lastStatement);
-                lastStatement = s;
             }
         }
         if (lastStatement.type !== 'breakStatement' && lastStatement.type !== 'continueStatement' && lastStatement.type !== 'returnStatement') {
             lastStatement.next = nextStatement;
             nextStatement.lasts.add(lastStatement);
         }
+    }
+
+    handleASTStmtSuccession(innerNode: CxxAstNode, lastStatement: StatementBuilder, scope: Scope): StatementBuilder {
+        let nodeKind = innerNode.kind.toString();
+        let s: StatementBuilder;
+        switch (nodeKind) {
+            case 'AtomicCallExpr':
+            case 'BinaryOperator':
+            case 'CallExpr':
+            case 'CompoundAssignOperator':
+            case 'CXXConstructExpr':
+            case 'CXXCtorInitializer':
+            case 'CXXDeleteExpr':
+            case 'CXXOperatorCallExpr':
+            case 'CXXThrowExpr':
+            case 'DeclStmt':
+            case 'RecoveryExpr':
+            case 'TypedefDecl':
+            case 'UnaryOperator':
+            case 'VarDecl':
+                s = new StatementBuilder('statement', innerNode.code, innerNode, scope.id);
+                this.judgeLastType(s, lastStatement);
+                lastStatement = s;
+                break;
+            case 'BreakStmt':
+                this.ASTNodeBreakStatement(innerNode, lastStatement);
+                break;
+            case 'CompoundStmt':
+                let blockExit = new StatementBuilder('blockExit', '', innerNode, scope.id);
+                this.exits.push(blockExit);
+                this.walkAST(lastStatement, blockExit, [...innerNode.inner]);
+                lastStatement = blockExit;
+                break;
+            case 'ContinueStmt':
+                const lastLoop = this.loopStack[this.loopStack.length - 1];
+                this.judgeLastType(lastLoop, lastStatement);
+                lastLoop.lasts.add(lastStatement);
+                break;
+            case 'CXXMemberCallExpr':
+                lastStatement = this.ASTNodeCXXMemberCallExpr(innerNode, lastStatement, scope.id);
+                break;
+            case 'CXXForRangeStmt':
+            case 'ForStmt':
+                lastStatement = this.ASTNodeForStatement(innerNode, lastStatement, scope.id);
+                break;
+            case 'CXXTryStmt':
+                lastStatement = this.ASTNodeTryStatement(innerNode, lastStatement, scope.id);
+                break;
+            case 'DoStmt':
+                lastStatement = this.ASTNodeDoStatement(innerNode, lastStatement, scope.id);
+                break;
+            case 'ExprWithCleanups':
+                s = new StatementBuilder('statement', 'ExprWithCleanups', innerNode, scope.id);
+                this.judgeLastType(s, lastStatement);
+                lastStatement = s;
+                break;
+            case 'GotoStmt':
+            case 'IndirectGotoStmt':
+                this.ASTNodeGotoStatement(innerNode, lastStatement, scope.id);
+                break;
+            case 'IfStmt':
+                lastStatement = this.ASTNodeIfStatement(innerNode, lastStatement, scope.id);
+                break;
+            case 'LabelStmt':
+                lastStatement = this.ASTNodeLabelStatement(innerNode, lastStatement, scope.id);
+                break;
+            case 'ReturnStmt':
+                s = new StatementBuilder('returnStatement', innerNode.code, innerNode, scope.id);
+                this.judgeLastType(s, lastStatement);
+                lastStatement = s;
+                break;
+            case 'SwitchStmt':
+                lastStatement = this.ASTNodeSwitchStatement(innerNode, lastStatement, scope.id);
+                break;
+            case 'WhileStmt':
+                lastStatement = this.ASTNodeWhileStatement(innerNode, lastStatement, scope.id);
+                break;
+            default:
+                break;
+        }
+        return lastStatement;
     }
 
     addReturnInEmptyMethod(): void {
@@ -759,7 +827,7 @@ export class CfgBuilder {
                 }
             }
         }
-        // 部分语句例如return后面的exit语句的next无法在上面清除
+        // The next of some statements, such as the exit statement after return, cannot be cleared
         for (const exit of this.exits) {
             if (exit.next && exit.next.lasts.has(exit)) {
                 exit.next.lasts.delete(exit);
@@ -776,8 +844,7 @@ export class CfgBuilder {
             if (stmt.next.passTmies === stmt.next.lasts.size || stmt.next.type === 'loopStatement' || stmt.next.isDoWhile) {
                 if (
                     stmt.next.scopeID !== stmt.scopeID &&
-                    !(stmt.next instanceof ConditionStatementBuilder && stmt.next.doStatement) &&
-                    !(ts.isCaseClause(stmt.astNode!) || ts.isDefaultClause(stmt.astNode!))
+                    !(stmt.next instanceof ConditionStatementBuilder && stmt.next.doStatement)
                 ) {
                     stmtQueue.push(stmt.next);
                     return null;
@@ -944,13 +1011,13 @@ export class CfgBuilder {
         const returnStatement = new StatementBuilder('returnStatement', 'return;', null, this.exit.scopeID);
         let TryOrSwitchExit = false;
         if (notReturnStmts.length === 1 && notReturnStmts[0].block) {
-            let p: any | null = notReturnStmts[0].astNode;
+            let p: CxxAstNode | null = notReturnStmts[0].astNode;
             while (p && p.id !== this.astRoot.id) {
                 if (p.kind === 'CXXTryStmt' || p.kind === 'SwitchStmt') {
                     TryOrSwitchExit = true;
                     break;
                 }
-                p = p.parent ? p.parent : p.getParent();
+                p = (p.parent ?? p.getParent?.(true)) ?? null;
             }
         }
         if (notReturnStmts.length === 1 && !(notReturnStmts[0] instanceof ConditionStatementBuilder) && !TryOrSwitchExit) {
@@ -971,12 +1038,12 @@ export class CfgBuilder {
     addStmtBuilderPosition(): void {
         for (const stmt of this.statementArray) {
             if (stmt.astNode) {
-                if(stmt.astNode.range?.begin && stmt.astNode.range.begin.line) {
+                if (stmt.astNode.range?.begin && stmt.astNode.range.begin.line) {
                     stmt.line = stmt.astNode.range.begin.line;
                 } else {
                     stmt.line = 0;
                 }
-                if(stmt.astNode.range?.begin && stmt.astNode.range.begin.col) {
+                if (stmt.astNode.range?.begin && stmt.astNode.range.begin.col) {
                     stmt.column = stmt.astNode.range.begin.col;
                 } else {
                     stmt.column = 0;
@@ -996,7 +1063,7 @@ export class CfgBuilder {
         }
         if (stmt.type === 'ifStatement' || stmt.type === 'loopStatement' || stmt.type === 'catchOrNot') {
             let cstm = stmt as ConditionStatementBuilder;
-            if (cstm.nextT == null || cstm.nextF == null) {
+            if (cstm.nextT === null || cstm.nextF === null) {
                 this.errorTest(cstm);
                 return;
             }
@@ -1024,7 +1091,7 @@ export class CfgBuilder {
                 this.CfgBuilder2Array(trystm.next);
             }
         } else {
-            if (stmt.next != null) {
+            if (stmt.next !== null) {
                 this.CfgBuilder2Array(stmt.next);
             }
         }
@@ -1039,12 +1106,11 @@ export class CfgBuilder {
         throw new TextError(mes);
     }
 
-    getFuncBodyStmt() {
-        let stmts: any[] = [];
+    getFuncBodyStmt(): CxxAstNode[] {
+        let stmts: CxxAstNode[] = [];
         if (this.astRoot.inner) {
-            for(let i = 0; i< this.astRoot.inner.length; i++) {
-                if (this.astRoot.kind === 'CXXConstructorDecl' &&
-                    ['CXXConstructExpr', 'CXXCtorInitializer'].includes(this.astRoot.inner[i].kind)) {
+            for (let i = 0; i < this.astRoot.inner.length; i++) {
+                if (this.astRoot.kind === 'CXXConstructorDecl' && ['CXXConstructExpr', 'CXXCtorInitializer'].includes(this.astRoot.inner[i].kind)) {
                     stmts.push(this.astRoot.inner[i]);
                 }
                 if (this.astRoot.inner[i].kind === 'CompoundStmt') {
@@ -1057,10 +1123,14 @@ export class CfgBuilder {
     }
 
     buildCfgBuilder(): void {
-        let stmts: ts.Node[] = [];
+        let stmts: CxxAstNode[] = [];
         if (this.astRoot.kind.toString() === 'TranslationUnit') {
             stmts = [...this.astRoot.inner];
-        } else if (['FunctionDecl', 'CXXMethodDecl', 'CXXConstructorDecl', 'LambdaExpr', 'FunctionTemplate', 'CXXDestructorDecl'].includes(this.astRoot.kind.toString())) {
+        } else if (
+            ['FunctionDecl', 'CXXMethodDecl', 'CXXConstructorDecl', 'LambdaExpr', 'FunctionTemplate', 'CXXDestructorDecl'].includes(
+                this.astRoot.kind.toString()
+            )
+        ) {
             stmts = this.getFuncBodyStmt();
         }
         if (!ModelUtils.isArkUIBuilderMethod(this.declaringMethod)) {
@@ -1079,10 +1149,10 @@ export class CfgBuilder {
         this.addReturnStmt();
     }
 
-    private handleBuilder(stmts: ts.Node[]): void {
+    private handleBuilder(stmts: CxxAstNode[]): void {
         let lastStmt = this.entry;
         for (const stmt of stmts) {
-            const stmtBuilder = new StatementBuilder('statement', stmt.getText(this.sourceFile), stmt, 0);
+            const stmtBuilder = new StatementBuilder('statement', stmt.code, stmt, 0);
             lastStmt.next = stmtBuilder;
             stmtBuilder.lasts.add(lastStmt);
             lastStmt = stmtBuilder;
@@ -1117,15 +1187,15 @@ export class CfgBuilder {
         traps: Trap[];
     } {
         const stmts: Stmt[] = [];
-        const arkIRTransformer = new ArkIRTransformerCpp(this.sourceFile, this.declaringMethod);
+        const arkIRTransformer = new ArkCxxIRTransformer(this.sourceFile as CxxTranslationUnit, this.declaringMethod);
         arkIRTransformer.prebuildStmts().forEach(stmt => stmts.push(stmt));
-        const expressionBodyNode = (this.astRoot as ts.ArrowFunction).body as ts.Expression;
+        const expressionBodyNode = this.astRoot;
         const expressionBodyStmts: Stmt[] = [];
         let {
             value: expressionBodyValue,
             valueOriginalPositions: expressionBodyPositions,
             stmts: tempStmts,
-        } = arkIRTransformer.tsNodeToValueAndStmts(expressionBodyNode);
+        } = arkIRTransformer.cxxNodeToValueAndStmts(expressionBodyNode);
         tempStmts.forEach(stmt => expressionBodyStmts.push(stmt));
         if (IRUtils.moreThanOneAddress(expressionBodyValue)) {
             ({
@@ -1138,7 +1208,7 @@ export class CfgBuilder {
         const returnStmt = new ArkReturnStmt(expressionBodyValue);
         returnStmt.setOperandOriginalPositions([expressionBodyPositions[0], ...expressionBodyPositions]);
         expressionBodyStmts.push(returnStmt);
-        arkIRTransformer.mapStmtsToTsStmt(expressionBodyStmts, expressionBodyNode);
+        arkIRTransformer.cxxMapStmtsToTsStmt(expressionBodyStmts, expressionBodyNode);
         expressionBodyStmts.forEach(stmt => stmts.push(stmt));
         const cfg = new Cfg();
         const blockInCfg = new BasicBlock();
@@ -1166,12 +1236,12 @@ export class CfgBuilder {
         traps: Trap[];
     } {
         const { blockBuilderToCfgBlock, basicBlockSet, arkIRTransformer } = this.initializeBuild();
-        const { blocksContainLoopCondition, blockBuildersBeforeTry, blockBuildersContainSwitch, valueAndStmtsOfSwitchAndCasesAll } = this.processBlocks(
-            blockBuilderToCfgBlock,
-            basicBlockSet,
-            arkIRTransformer
-        );
-
+        const {
+            blocksContainLoopCondition,
+            blockBuildersBeforeTry,
+            blockBuildersContainSwitch,
+            valueAndStmtsOfSwitchAndCasesAll,
+        } = this.processBlocks(blockBuilderToCfgBlock, basicBlockSet, arkIRTransformer);
         const currBlockId = this.blocks.length;
         this.linkBasicBlocks(blockBuilderToCfgBlock);
         this.adjustBlocks(
@@ -1182,10 +1252,11 @@ export class CfgBuilder {
             valueAndStmtsOfSwitchAndCasesAll,
             arkIRTransformer
         );
-
-        const trapBuilder = new TrapBuilder(blockBuildersBeforeTry, blockBuilderToCfgBlock, arkIRTransformer, basicBlockSet);
+        // Only do a core type adaptation for TrapBuilder ——
+        const asCoreMapForTrap = blockBuilderToCfgBlock as unknown as Map<CoreBlockBuilder, BasicBlock>;
+        const asCoreBeforeTry = blockBuildersBeforeTry as unknown as Set<CoreBlockBuilder>;
+        const trapBuilder = new TrapBuilder(asCoreBeforeTry, asCoreMapForTrap, arkIRTransformer, basicBlockSet);
         const traps = trapBuilder.buildTraps();
-
         const cfg = this.createCfg(blockBuilderToCfgBlock, basicBlockSet, currBlockId);
         return {
             cfg,
@@ -1199,18 +1270,18 @@ export class CfgBuilder {
     private initializeBuild(): {
         blockBuilderToCfgBlock: Map<BlockBuilder, BasicBlock>;
         basicBlockSet: Set<BasicBlock>;
-        arkIRTransformer: ArkIRTransformerCpp;
+        arkIRTransformer: ArkCxxIRTransformer;
     } {
         const blockBuilderToCfgBlock = new Map<BlockBuilder, BasicBlock>();
         const basicBlockSet = new Set<BasicBlock>();
-        const arkIRTransformer = new ArkIRTransformerCpp(this.sourceFile, this.declaringMethod);
+        const arkIRTransformer = new ArkCxxIRTransformer(this.sourceFile as CxxTranslationUnit, this.declaringMethod);
         return { blockBuilderToCfgBlock, basicBlockSet, arkIRTransformer };
     }
 
     private processBlocks(
         blockBuilderToCfgBlock: Map<BlockBuilder, BasicBlock>,
         basicBlockSet: Set<BasicBlock>,
-        arkIRTransformer: ArkIRTransformerCpp
+        arkIRTransformer: ArkCxxIRTransformer
     ): {
         blocksContainLoopCondition: Set<BlockBuilder>;
         blockBuildersBeforeTry: Set<BlockBuilder>;
@@ -1235,12 +1306,12 @@ export class CfgBuilder {
                     blocksContainLoopCondition.add(this.blocks[i]);
                 } else if (statementBuilder instanceof SwitchStatementBuilder) {
                     blockBuildersContainSwitch.push(this.blocks[i]);
-                    const valueAndStmtsOfSwitchAndCases = arkIRTransformer.switchStatementToValueAndStmts(statementBuilder.astNode as ts.SwitchStatement);
+                    const valueAndStmtsOfSwitchAndCases = arkIRTransformer.cxxSwitchStatementToValueAndStmts(statementBuilder.astNode as CxxAstNode);
                     valueAndStmtsOfSwitchAndCasesAll.push(valueAndStmtsOfSwitchAndCases);
                     continue;
                 }
                 if (statementBuilder.astNode && statementBuilder.code !== '') {
-                    arkIRTransformer.tsNodeToStmts(statementBuilder.astNode).forEach(s => stmtsInBlock.push(s));
+                    arkIRTransformer.cxxNodeToStmts(statementBuilder.astNode).forEach(s => stmtsInBlock.push(s));
                 } else if (statementBuilder.code.startsWith('return')) {
                     stmtsInBlock.push(this.generateReturnStmt(arkIRTransformer));
                 }
@@ -1261,7 +1332,7 @@ export class CfgBuilder {
         };
     }
 
-    private generateReturnStmt(arkIRTransformer: ArkIRTransformerCpp): Stmt {
+    private generateReturnStmt(arkIRTransformer: ArkCxxIRTransformer): Stmt {
         if (this.name === CONSTRUCTOR_NAME) {
             this.declaringMethod.getSubSignature().setReturnType(arkIRTransformer.getThisLocal().getType());
             return new ArkReturnStmt(arkIRTransformer.getThisLocal());
@@ -1287,14 +1358,22 @@ export class CfgBuilder {
         basicBlockSet: Set<BasicBlock>,
         blockBuildersContainSwitch: BlockBuilder[],
         valueAndStmtsOfSwitchAndCasesAll: ValueAndStmts[][],
-        arkIRTransformer: ArkIRTransformerCpp
+        arkIRTransformer: ArkCxxIRTransformer
     ): void {
+        const asCoreMap = blockBuilderToCfgBlock as unknown as Map<CoreBlockBuilder, BasicBlock>;
+        const asCoreSet = blocksContainLoopCondition as unknown as Set<CoreBlockBuilder>;
+        const asCoreArr = blockBuildersContainSwitch as unknown as CoreBlockBuilder[];
+        const asCoreBlocks = this.blocks as unknown as CoreBlockBuilder[]; // 适配 this.blocks
         const loopBuilder = new LoopBuilder();
-        loopBuilder.rebuildBlocksInLoop(blockBuilderToCfgBlock, blocksContainLoopCondition, basicBlockSet, this.blocks);
+        loopBuilder.rebuildBlocksInLoop(asCoreMap, asCoreSet, basicBlockSet, asCoreBlocks);
         const switchBuilder = new SwitchBuilder();
-        switchBuilder.buildSwitch(blockBuilderToCfgBlock, blockBuildersContainSwitch, valueAndStmtsOfSwitchAndCasesAll, arkIRTransformer, basicBlockSet);
+        switchBuilder.buildSwitch(asCoreMap, asCoreArr, valueAndStmtsOfSwitchAndCasesAll, arkIRTransformer, basicBlockSet);
         const conditionalBuilder = new ConditionBuilder();
-        conditionalBuilder.rebuildBlocksContainConditionalOperator(blockBuilderToCfgBlock, basicBlockSet, ModelUtils.isArkUIBuilderMethod(this.declaringMethod));
+        conditionalBuilder.rebuildBlocksContainConditionalOperator(
+            asCoreMap,
+            basicBlockSet,
+            ModelUtils.isArkUIBuilderMethod(this.declaringMethod)
+        );
     }
 
     private createCfg(blockBuilderToCfgBlock: Map<BlockBuilder, BasicBlock>, basicBlockSet: Set<BasicBlock>, prevBlockId: number): Cfg {

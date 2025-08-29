@@ -110,7 +110,10 @@ export class ArkIRTransformer {
         let index = 0;
         for (const methodParameter of this.declaringMethod.getParameters()) {
             const parameterRef = new ArkParameterRef(index, methodParameter.getType());
-            stmts.push(new ArkAssignStmt(this.arkValueTransformer.addNewLocal(methodParameter.getName(), parameterRef.getType()), parameterRef));
+            const stmt = new ArkAssignStmt(this.arkValueTransformer.addNewLocal(methodParameter.getName(), parameterRef.getType()), parameterRef);
+            const paramPosition = this.declaringMethod.getBodyBuilder()?.getParamsPositions().get(methodParameter.getName()) ?? FullPosition.DEFAULT;
+            stmt.setOperandOriginalPositions([paramPosition, paramPosition]);
+            stmts.push(stmt);
             index++;
         }
 
@@ -269,11 +272,7 @@ export class ArkIRTransformer {
             return stmts;
         }
 
-        const {
-            value: paramInitValue,
-            valueOriginalPositions: paramInitPositions,
-            stmts: paramInitStmts,
-        } = this.tsNodeToValueAndStmts(paramNode.initializer!);
+        const { value: paramInitValue, valueOriginalPositions: paramInitPositions, stmts: paramInitStmts } = this.tsNodeToValueAndStmts(paramNode.initializer!);
         stmts.push(...paramInitStmts);
 
         const ifStmt = new ArkIfStmt(new ArkConditionExpr(paramLocal, ValueUtil.getUndefinedConst(), RelationalBinaryOperator.Equality));

@@ -1,3 +1,18 @@
+/*
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 export const CONDITIONAL_OPERATOR_EXPECT_CASE1 = {
     blocks: [
         {
@@ -12,12 +27,12 @@ export const CONDITIONAL_OPERATOR_EXPECT_CASE1 = {
                 '%0 = -i',
                 'ConditionalOperatorEnd0',
                 'j = %0',
-                'return j'
+                'return j',
             ],
             preds: [],
-            succes: []
+            succes: [],
         },
-    ]
+    ],
 };
 
 export const CONDITIONAL_OPERATOR_EXPECT_CASE2 = {
@@ -36,12 +51,12 @@ export const CONDITIONAL_OPERATOR_EXPECT_CASE2 = {
                 '%0 = -i',
                 'ConditionalOperatorEnd0',
                 'j = %0',
-                'return j'
+                'return j',
             ],
             preds: [],
-            succes: []
+            succes: [],
         },
-    ]
+    ],
 };
 
 export const CONDITIONAL_OPERATOR_EXPECT_CASE3 = {
@@ -71,12 +86,12 @@ export const CONDITIONAL_OPERATOR_EXPECT_CASE3 = {
                 '%2 = %3',
                 'ConditionalOperatorEnd0',
                 'j = %2',
-                'return j'
+                'return j',
             ],
             preds: [],
-            succes: []
+            succes: [],
         },
-    ]
+    ],
 };
 
 export const CONDITIONAL_OPERATOR_EXPECT_CASE4 = {
@@ -100,12 +115,12 @@ export const CONDITIONAL_OPERATOR_EXPECT_CASE4 = {
                 '%2 = 4',
                 'ConditionalOperatorEnd0',
                 'j = %2',
-                'return j'
+                'return j',
             ],
             preds: [],
-            succes: []
+            succes: [],
         },
-    ]
+    ],
 };
 
 export const CONDITIONAL_OPERATOR_EXPECT_CASE5 = {
@@ -136,12 +151,12 @@ export const CONDITIONAL_OPERATOR_EXPECT_CASE5 = {
                 '%4 = 4',
                 'ConditionalOperatorEnd0',
                 'j = %4',
-                'return'
+                'return',
             ],
             preds: [],
-            succes: []
+            succes: [],
         },
-    ]
+    ],
 };
 
 export const CONDITIONAL_OPERATOR_EXPECT_CASE6 = {
@@ -165,43 +180,28 @@ export const CONDITIONAL_OPERATOR_EXPECT_CASE6 = {
                 '%1 = -j',
                 'ConditionalOperatorEnd1',
                 'k = %1',
-                'return k'
+                'return k',
             ],
             preds: [],
-            succes: []
+            succes: [],
         },
-    ]
+    ],
 };
 
 export const CONDITIONAL_OPERATOR_EXPECT_CASE7 = {
     blocks: [
         {
             id: 0,
-            stmts: [
-                'this = this: @conditionalOperator/conditionalOperator.cpp: %dflt',
-                'i = 0',
-                '%0 = -1',
-                'if i > %0'
-            ],
+            stmts: ['this = this: @conditionalOperator/conditionalOperator.cpp: %dflt', 'i = 0', '%0 = -1', 'if i > %0'],
             preds: [],
-            succes: [ 1, 2 ]
+            succes: [1, 2],
         },
-        { id: 1,
-          stmts: [ 'if i > 0',
-                'ConditionalOperatorIfTrue0',
-                '%1 = i',
-                'ConditionalOperatorIfFalse0',
-                '%1 = -i',
-                'ConditionalOperatorEnd0',
-                'j = %1'
-            ],
-          preds: [ 0 ],
-          succes: [2]
+        {
+            id: 1,
+            stmts: ['if i > 0', 'ConditionalOperatorIfTrue0', '%1 = i', 'ConditionalOperatorIfFalse0', '%1 = -i', 'ConditionalOperatorEnd0', 'j = %1'],
+            preds: [0],
+            succes: [2],
         },
-        { id: 2,
-          stmts: [ 'return' ],
-          preds: [ 1, 0 ],
-          succes: []
-        }
-    ]
-}
+        { id: 2, stmts: ['return'], preds: [1, 0], succes: [] },
+    ],
+};

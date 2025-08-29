@@ -23,66 +23,46 @@ import {
     GenericType,
     LexicalEnvType,
     NullType,
-    PointerType,
-    ReferenceType,
     Type,
     UnclearReferenceType,
     UndefinedType,
     UnionType,
     UnknownType,
 } from '../base/Type';
+import { PointerType, ReferenceType } from '../../cpp_frontend/base/Type';
 import { Local } from '../base/Local';
 import { TypeInference } from './TypeInference';
-import {
-    AbstractExpr,
-    AbstractInvokeExpr,
-    AliasTypeExpr,
-    ArkInstanceInvokeExpr,
-    ArkPtrInvokeExpr,
-    ArkStaticInvokeExpr
-} from '../base/Expr';
+import { AbstractExpr, AbstractInvokeExpr, AliasTypeExpr, ArkInstanceInvokeExpr, ArkPtrInvokeExpr, ArkStaticInvokeExpr } from '../base/Expr';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { Scene } from '../../Scene';
 import { ArkClass } from '../model/ArkClass';
 import { findArkExport, ModelUtils } from './ModelUtils';
 import { ArkField, FieldCategory } from '../model/ArkField';
 import { CALL_BACK } from './EtsConst';
-import {
-    AliasClassSignature,
-    BaseSignature,
-    ClassSignature,
-    FieldSignature, FileSignature,
-    MethodSignature,
-    MethodSubSignature
-} from '../model/ArkSignature';
+import { AliasClassSignature, BaseSignature, ClassSignature, FieldSignature, FileSignature, MethodSignature, MethodSubSignature } from '../model/ArkSignature';
 import { CONSTRUCTOR_NAME, FUNCTION, IMPORT, SUPER_NAME, THIS_NAME } from './TSConst';
 import { Builtin } from './Builtin';
 import { ArkBody } from '../model/ArkBody';
 import { ArkAssignStmt, ArkInvokeStmt } from '../base/Stmt';
-import {
-    AbstractFieldRef,
-    AbstractRef,
-    ArkArrayRef,
-    ArkInstanceFieldRef,
-    ArkParameterRef,
-    ArkStaticFieldRef
-} from '../base/Ref';
+import { AbstractFieldRef, AbstractRef, ArkArrayRef, ArkInstanceFieldRef, ArkParameterRef, ArkStaticFieldRef } from '../base/Ref';
 import { Value } from '../base/Value';
 import { Constant } from '../base/Constant';
 import {
     ANONYMOUS_CLASS_PREFIX,
     CALL_SIGNATURE_NAME,
-    DEFAULT_ARK_CLASS_NAME, LEXICAL_ENV_NAME_PREFIX,
+    DEFAULT_ARK_CLASS_NAME,
+    LEXICAL_ENV_NAME_PREFIX,
     NAME_DELIMITER,
     NAME_PREFIX,
     UNKNOWN_CLASS_NAME,
-    UNKNOWN_FILE_NAME
+    UNKNOWN_FILE_NAME,
 } from './Const';
 import { ValueUtil } from './ValueUtil';
 import { ArkFile } from '../model/ArkFile';
 import { AbstractTypeExpr, KeyofTypeExpr, TypeQueryExpr } from '../base/TypeExpr';
 import { ArkBaseModel } from '../model/ArkBaseModel';
-import { BuiltinCpp } from '../../cpp_frontend/common/Builtin'
+
+import { SdkUtils } from './SdkUtils';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'IRInference');
 
@@ -227,8 +207,10 @@ export class IRInference {
 
         const baseType: Type = TypeInference.replaceAliasType(expr.getBase().getType());
         let methodName = expr.getMethodSignature().getMethodSubSignature().getMethodName();
-        if (methodName === CONSTRUCTOR_NAME &&
-            expr.getMethodSignature().getDeclaringClassSignature().getDeclaringFileSignature().getFileName() !== UNKNOWN_FILE_NAME) {
+        if (
+            methodName === CONSTRUCTOR_NAME &&
+            expr.getMethodSignature().getDeclaringClassSignature().getDeclaringFileSignature().getFileName() !== UNKNOWN_FILE_NAME
+        ) {
             return expr;
         }
         if (methodName.startsWith(NAME_PREFIX)) {
@@ -297,8 +279,8 @@ export class IRInference {
     private static inferBase(instance: ArkInstanceFieldRef | ArkInstanceInvokeExpr, arkMethod: ArkMethod): void {
         const base = instance.getBase();
         if (base.getName() === THIS_NAME) {
-            const name = instance instanceof ArkInstanceFieldRef ? instance.getFieldName() :
-                instance.getMethodSignature().getMethodSubSignature().getMethodName();
+            const name =
+                instance instanceof ArkInstanceFieldRef ? instance.getFieldName() : instance.getMethodSignature().getMethodSubSignature().getMethodName();
             if (name.includes('.')) {
                 return;
             }
@@ -407,7 +389,11 @@ export class IRInference {
     }
 
     public static inferArgTypeWithSdk(sdkType: ClassType, scene: Scene, argType: Type): void {
-        if (!scene.getProjectSdkMap().has(sdkType.getClassSignature().getDeclaringFileSignature().getProjectName())) {
+        const sdkProjectName = sdkType.getClassSignature().getDeclaringFileSignature().getProjectName();
+        const className = sdkType.getClassSignature().getClassName();
+
+        // When leftOp is local with Function annotation, the rightOp is a lambda function, which should be inferred as method later.
+        if (!scene.getProjectSdkMap().has(sdkProjectName) || (sdkProjectName === SdkUtils.BUILT_IN_NAME && className === 'Function')) {
             return;
         }
         if (argType instanceof UnionType) {
@@ -423,6 +409,7 @@ export class IRInference {
 
     private static inferInvokeExpr(expr: AbstractInvokeExpr, baseType: Type, methodName: string, scene: Scene): AbstractInvokeExpr | null {
         let typeWithoutPtrOrRef = baseType;
+        // CXXTodo: If it is a Cxx pointer or reference type, it is necessary to obtain its baseType and determine whether type inference is required.
         if (baseType instanceof PointerType || baseType instanceof ReferenceType) {
             typeWithoutPtrOrRef = baseType.getBaseType();
         }
@@ -495,19 +482,11 @@ export class IRInference {
         methodName: string,
         scene: Scene
     ): AbstractInvokeExpr | null {
-        const baseClassName = baseType.getClassSignature().getClassName();
-        const isCppStdClass = BuiltinCpp.isBuiltinClass(baseType.getClassSignature());
-        if (Builtin.isBuiltinClass(baseClassName) || isCppStdClass) {
-            expr.setMethodSignature(new MethodSignature(baseType.getClassSignature(), expr.getMethodSignature().getMethodSubSignature()));
-        }
         let declaredClass = scene.getClass(baseType.getClassSignature());
         if (!declaredClass) {
             const globalClass = scene.getSdkGlobal(baseType.getClassSignature().getClassName());
             if (globalClass instanceof ArkClass) {
                 declaredClass = globalClass;
-            }
-            if (isCppStdClass) {
-                return expr;
             }
         }
         const method = declaredClass ? ModelUtils.findPropertyInClass(methodName, declaredClass) : null;
@@ -521,34 +500,47 @@ export class IRInference {
             }
             return expr;
         } else if (method instanceof ArkField) {
-            const type = method.getType();
-            let methodSignature;
-            if (type instanceof FunctionType) {
-                methodSignature = type.getMethodSignature();
-            } else if (type instanceof ClassType && type.getClassSignature().getClassName().endsWith(CALL_BACK)) {
-                const callback = scene.getClass(type.getClassSignature())?.getMethodWithName(CALL_SIGNATURE_NAME);
-                if (callback) {
-                    methodSignature = callback.getSignature();
-                }
-            }
-            if (methodSignature) {
-                const ptr =
-                    expr instanceof ArkInstanceInvokeExpr
-                        ? new ArkInstanceFieldRef(expr.getBase(), method.getSignature())
-                        : new ArkStaticFieldRef(method.getSignature());
-                expr = new ArkPtrInvokeExpr(methodSignature, ptr, expr.getArgs(), expr.getRealGenericTypes());
-            }
-            return expr;
+            return this.changePtrInvokeExpr(method, scene, expr) ?? expr;
         } else if (methodName === CONSTRUCTOR_NAME) {
-            //sdk隐式构造
-            const subSignature = new MethodSubSignature(methodName, [], new ClassType(baseType.getClassSignature()));
-            expr.setMethodSignature(new MethodSignature(baseType.getClassSignature(), subSignature));
+            const constructor = declaredClass?.getMethodWithName('construct-signature') ?? declaredClass?.getMethodWithName(CALL_SIGNATURE_NAME);
+            if (constructor) {
+                const methodSignature = constructor.matchMethodSignature(expr.getArgs());
+                TypeInference.inferSignatureReturnType(methodSignature, constructor);
+                expr.setMethodSignature(this.replaceMethodSignature(expr.getMethodSignature(), methodSignature));
+                expr.setRealGenericTypes(IRInference.getRealTypes(expr, declaredClass, baseType, constructor));
+            } else {
+                const subSignature = new MethodSubSignature(methodName, [], new ClassType(baseType.getClassSignature()));
+                expr.setMethodSignature(new MethodSignature(baseType.getClassSignature(), subSignature));
+            }
             return expr;
-        } else if (methodName === Builtin.ITERATOR_NEXT &&
-            baseType.getClassSignature().getDeclaringFileSignature().getProjectName() === Builtin.DUMMY_PROJECT_NAME) {
+        } else if (
+            methodName === Builtin.ITERATOR_NEXT &&
+            baseType.getClassSignature().getDeclaringFileSignature().getProjectName() === Builtin.DUMMY_PROJECT_NAME
+        ) {
             expr.getMethodSignature().getMethodSubSignature().setReturnType(Builtin.ITERATOR_RESULT_CLASS_TYPE);
             expr.setRealGenericTypes(baseType.getRealGenericTypes());
             return expr;
+        }
+        return null;
+    }
+
+    private static changePtrInvokeExpr(method: ArkField, scene: Scene, expr: AbstractInvokeExpr | ArkInstanceInvokeExpr): ArkPtrInvokeExpr | null {
+        const type = method.getType();
+        let methodSignature;
+        if (type instanceof FunctionType) {
+            methodSignature = type.getMethodSignature();
+        } else if (type instanceof ClassType && type.getClassSignature().getClassName().endsWith(CALL_BACK)) {
+            const callback = scene.getClass(type.getClassSignature())?.getMethodWithName(CALL_SIGNATURE_NAME);
+            if (callback) {
+                methodSignature = callback.getSignature();
+            }
+        }
+        if (methodSignature) {
+            const ptr =
+                expr instanceof ArkInstanceInvokeExpr
+                    ? new ArkInstanceFieldRef(expr.getBase(), method.getSignature())
+                    : new ArkStaticFieldRef(method.getSignature());
+            return new ArkPtrInvokeExpr(methodSignature, ptr, expr.getArgs(), expr.getRealGenericTypes());
         }
         return null;
     }
@@ -557,7 +549,9 @@ export class IRInference {
         let realTypes;
         const tmp: Type[] = [];
         if (method.getGenericTypes()) {
-            expr.getMethodSignature().getMethodSubSignature().getParameters()
+            expr.getMethodSignature()
+                .getMethodSubSignature()
+                .getParameters()
                 .filter(p => !p.getName().startsWith(LEXICAL_ENV_NAME_PREFIX))
                 .forEach((p, i) => {
                     if (TypeInference.checkType(p.getType(), t => t instanceof GenericType)) {
@@ -647,13 +641,13 @@ export class IRInference {
         let staticFlag: boolean;
         let signature: BaseSignature;
         let typeWithoutPtrOrRef = baseType;
+        // CXXTodo: If it is a Cxx pointer or reference type, it is necessary to obtain its baseType and determine whether type inference is required.
         if (baseType instanceof PointerType || baseType instanceof ReferenceType) {
             typeWithoutPtrOrRef = baseType.getBaseType();
         }
         if (typeWithoutPtrOrRef instanceof ClassType) {
             const property = propertyAndType?.[0];
-            if (property instanceof ArkField && property.getCategory() !== FieldCategory.ENUM_MEMBER &&
-                !(property.getType() instanceof GenericType)) {
+            if (property instanceof ArkField && property.getCategory() !== FieldCategory.ENUM_MEMBER && !(property.getType() instanceof GenericType)) {
                 return property.getSignature();
             }
             staticFlag =
@@ -858,6 +852,7 @@ export class IRInference {
     public static inferParameterRef(ref: ArkParameterRef, arkMethod: ArkMethod): AbstractRef {
         const paramType = ref.getType();
         let baseType: Type | null | undefined;
+        // CXXTodo: If it is a Cxx pointer or reference type, it is necessary to obtain its baseType and determine whether type inference is required.
         if (paramType instanceof PointerType || paramType instanceof ReferenceType) {
             baseType = paramType.getBaseType();
             if (TypeInference.isUnclearType(baseType)) {

@@ -1,33 +1,38 @@
+/*
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 export const OVERLOAD_PRINT_INFO_CASE1_EXPECT = {
     blocks: [
         {
             id: 0,
-            stmts: [
-                'x = parameter0: int',
-                'this = this: @overload/overloadSample.cpp: %dflt',
-                'staticinvoke <@%unk/%unk: .cout()>(x)',
-                'return'
-            ],
+            stmts: ['x = parameter0: int', 'this = this: @overload/overloadSample.cpp: %dflt', 'staticinvoke <@%unk/%unk: .cout()>(x)', 'return'],
             preds: [],
-            succes: []
-        }
-    ]
+            succes: [],
+        },
+    ],
 };
 
 export const OVERLOAD_PRINT_INFO_CASE2_EXPECT = {
     blocks: [
         {
             id: 0,
-            stmts: [
-                'x = parameter0: char',
-                'this = this: @overload/overloadSample.cpp: %dflt',
-                'staticinvoke <@%unk/%unk: .cout()>(x)',
-                'return'
-            ],
+            stmts: ['x = parameter0: char', 'this = this: @overload/overloadSample.cpp: %dflt', 'staticinvoke <@%unk/%unk: .cout()>(x)', 'return'],
             preds: [],
-            succes: []
-        }
-    ]
+            succes: [],
+        },
+    ],
 };
 
 export const OVERLOAD_PRINT_INFO_CASE3_EXPECT = {
@@ -39,19 +44,16 @@ export const OVERLOAD_PRINT_INFO_CASE3_EXPECT = {
                 'y = parameter1: char',
                 'this = this: @overload/overloadSample.cpp: %dflt',
                 "staticinvoke <@%unk/%unk: .cout()>(x, ' ', y)",
-                'return'
+                'return',
             ],
             preds: [],
-            succes: []
-        }
-    ]
+            succes: [],
+        },
+    ],
 };
 
 export const OVERLOAD_CLASS_PERSON_EXPECT = {
-    fields: [
-        'name',
-        'age'
-    ],
+    fields: ['name', 'age'],
     heritageClasses: [],
     blocks: [
         {
@@ -65,12 +67,12 @@ export const OVERLOAD_CLASS_PERSON_EXPECT = {
                         "this.<@overload/overloadSample.cpp: Person.name> = 'Unknown'",
                         'this.<@overload/overloadSample.cpp: Person.age> = 0',
                         "staticinvoke <@%unk/%unk: .cout()>('Default constructor called')",
-                        'return this'
+                        'return this',
                     ],
                     preds: [],
-                    succes: []
-                }
-            ]
+                    succes: [],
+                },
+            ],
         },
         {
             methodName: 'constructor(string&, int)',
@@ -85,12 +87,12 @@ export const OVERLOAD_CLASS_PERSON_EXPECT = {
                         'this.<@overload/overloadSample.cpp: Person.name> = n',
                         'this.<@overload/overloadSample.cpp: Person.age> = a',
                         "staticinvoke <@%unk/%unk: .cout()>('Constructor with all parameters called')",
-                        'return this'
+                        'return this',
                     ],
                     preds: [],
-                    succes: []
-                }
-            ]
+                    succes: [],
+                },
+            ],
         },
         {
             methodName: 'constructor(string&)',
@@ -104,15 +106,15 @@ export const OVERLOAD_CLASS_PERSON_EXPECT = {
                         'this.<@overload/overloadSample.cpp: Person.name> = n',
                         'this.<@overload/overloadSample.cpp: Person.age> = 0',
                         "staticinvoke <@%unk/%unk: .cout()>('Constructor with name called')",
-                        'return this'
+                        'return this',
                     ],
                     preds: [],
-                    succes: []
-                }
-            ]
+                    succes: [],
+                },
+            ],
         },
         {
-            methodName: 'printInfo()',
+            methodName: 'PrintInfo()',
             blocks: [
                 {
                     id: 0,
@@ -121,21 +123,18 @@ export const OVERLOAD_CLASS_PERSON_EXPECT = {
                         '%0 = this.<@overload/overloadSample.cpp: Person.name>',
                         '%1 = this.<@overload/overloadSample.cpp: Person.age>',
                         "staticinvoke <@%unk/%unk: .cout()>('Name: ', %0, ', Age: ', %1)",
-                        'return'
+                        'return',
                     ],
                     preds: [],
-                    succes: []
-                }
-            ]
+                    succes: [],
+                },
+            ],
         },
-    ]
+    ],
 };
 
 export const VECTOR_CLASS_EXPECT = {
-    fields: [
-        'x',
-        'y'
-    ],
+    fields: ['x', 'y'],
     heritageClasses: [],
     blocks: [
         {
@@ -150,12 +149,12 @@ export const VECTOR_CLASS_EXPECT = {
                         'instanceinvoke this.<@overload/overloadSample.cpp: Vector.%instInit()>()',
                         'this.<@overload/overloadSample.cpp: Vector.x> = x',
                         'this.<@overload/overloadSample.cpp: Vector.y> = y',
-                        'return this'
+                        'return this',
                     ],
                     preds: [],
-                    succes: []
-                }
-            ]
+                    succes: [],
+                },
+            ],
         },
         {
             methodName: 'operator+',
@@ -173,12 +172,12 @@ export const VECTOR_CLASS_EXPECT = {
                         '%5 = other.<@overload/overloadSample.cpp: Vector.y>',
                         '%6 = %4 + %5',
                         'instanceinvoke %0.<@overload/overloadSample.cpp: Vector.constructor()>(Vector, %3, %6)',
-                        'return %0'
+                        'return %0',
                     ],
                     preds: [],
-                    succes: []
-                }
-            ]
+                    succes: [],
+                },
+            ],
         },
         {
             methodName: 'operator++',
@@ -192,12 +191,12 @@ export const VECTOR_CLASS_EXPECT = {
                         '%1 = this.<@overload/overloadSample.cpp: Vector.y>',
                         '%1 = %1 + 1',
                         '%2 = *this',
-                        'return %2'
+                        'return %2',
                     ],
                     preds: [],
-                    succes: []
-                }
-            ]
+                    succes: [],
+                },
+            ],
         },
         {
             methodName: 'operator()',
@@ -215,46 +214,22 @@ export const VECTOR_CLASS_EXPECT = {
                         '%3 = %2 + num2',
                         'this.<@overload/overloadSample.cpp: Vector.y> = %3',
                         '%4 = *this',
-                        'return %4'
+                        'return %4',
                     ],
                     preds: [],
-                    succes: []
-                }
-            ]
+                    succes: [],
+                },
+            ],
         },
         {
             methodName: 'operator<<',
-            blocks: [
-                {
-                    id: 0,
-                    stmts: [
-                        'os = parameter0: std::ostream&',
-                        'v = parameter1: @overload/overloadSample.cpp: Vector&',
-                        'this = this: @overload/overloadSample.cpp: Vector',
-                        'return'
-                    ],
-                    preds: [],
-                    succes: []
-                }
-            ]
+            blocks: undefined,
         },
         {
             methodName: 'operator>>',
-            blocks: [
-                {
-                    id: 0,
-                    stmts: [
-                        'is = parameter0: std::istream&',
-                        'v = parameter1: @overload/overloadSample.cpp: Vector&',
-                        'this = this: @overload/overloadSample.cpp: Vector',
-                        'return'
-                    ],
-                    preds: [],
-                    succes: []
-                }
-            ]
+            blocks: undefined,
         },
-    ]
+    ],
 };
 
 export const OVERLOAD_COUT_EXPECT = {
@@ -268,12 +243,12 @@ export const OVERLOAD_COUT_EXPECT = {
                 '%0 = v.<@overload/overloadSample.cpp: Vector.x>',
                 '%1 = v.<@overload/overloadSample.cpp: Vector.y>',
                 "staticinvoke <@%unk/%unk: .os()>('(', %0, ', ', %1, ')')",
-                'return os'
+                'return os',
             ],
             preds: [],
-            succes: []
-        }
-    ]
+            succes: [],
+        },
+    ],
 };
 
 export const OVERLOAD_CIN_EXPECT = {
@@ -287,43 +262,34 @@ export const OVERLOAD_CIN_EXPECT = {
                 '%0 = v.<@overload/overloadSample.cpp: Vector.x>',
                 '%1 = v.<@overload/overloadSample.cpp: Vector.y>',
                 'staticinvoke <@%unk/%unk: .is()>(%0, %1)',
-                'return is'
+                'return is',
             ],
             preds: [],
-            succes: []
-        }
-    ]
+            succes: [],
+        },
+    ],
 };
 
 export const OVERLOAD_USER_DEFINED_LITERAL_NUMBER_EXPECT = {
     blocks: [
         {
             id: 0,
-            stmts: [
-                'km = parameter0: long double',
-                'this = this: @overload/overloadSample.cpp: %dflt',
-                '%0 = km * 1000',
-                'return %0'
-            ],
+            stmts: ['km = parameter0: long double', 'this = this: @overload/overloadSample.cpp: %dflt', '%0 = km * 1000', 'return %0'],
             preds: [],
-            succes: []
-        }
-    ]
+            succes: [],
+        },
+    ],
 };
 
 export const OVERLOAD_USER_DEFINED_LITERAL_CHAR_EXPECT = {
     blocks: [
         {
             id: 0,
-            stmts: [
-                'c = parameter0: char',
-                'this = this: @overload/overloadSample.cpp: %dflt',
-                'return c'
-            ],
+            stmts: ['c = parameter0: char', 'this = this: @overload/overloadSample.cpp: %dflt', 'return c'],
             preds: [],
-            succes: []
-        }
-    ]
+            succes: [],
+        },
+    ],
 };
 
 export const OVERLOAD_MAIN_EXPECT = {
@@ -332,9 +298,9 @@ export const OVERLOAD_MAIN_EXPECT = {
             id: 0,
             stmts: [
                 'this = this: @overload/overloadSample.cpp: %dflt',
-                'staticinvoke <@overload/overloadSample.cpp: %dflt.printInfo(int, char)>(1)',
-                "staticinvoke <@overload/overloadSample.cpp: %dflt.printInfo(int, char)>('A')",
-                "staticinvoke <@overload/overloadSample.cpp: %dflt.printInfo(int, char)>(1, 'A')",
+                'staticinvoke <@overload/overloadSample.cpp: %dflt.PrintInfo(int, char)>(1)',
+                "staticinvoke <@overload/overloadSample.cpp: %dflt.PrintInfo(int, char)>('A')",
+                "staticinvoke <@overload/overloadSample.cpp: %dflt.PrintInfo(int, char)>(1, 'A')",
                 '%0 = new @overload/overloadSample.cpp: Person',
                 'instanceinvoke %0.<@overload/overloadSample.cpp: Person.constructor()>()',
                 'p1 = %0',
@@ -344,9 +310,9 @@ export const OVERLOAD_MAIN_EXPECT = {
                 '%2 = new @overload/overloadSample.cpp: Person',
                 "instanceinvoke %2.<@overload/overloadSample.cpp: Person.constructor()>('Charlie')",
                 'p3 = %2',
-                'instanceinvoke p1.<@overload/overloadSample.cpp: Person.printInfo()>()',
-                'instanceinvoke p2.<@overload/overloadSample.cpp: Person.printInfo()>()',
-                'instanceinvoke p3.<@overload/overloadSample.cpp: Person.printInfo()>()',
+                'instanceinvoke p1.<@overload/overloadSample.cpp: Person.PrintInfo()>()',
+                'instanceinvoke p2.<@overload/overloadSample.cpp: Person.PrintInfo()>()',
+                'instanceinvoke p3.<@overload/overloadSample.cpp: Person.PrintInfo()>()',
                 '%3 = new @overload/overloadSample.cpp: Vector',
                 'instanceinvoke %3.<@overload/overloadSample.cpp: Vector.constructor()>(1, 2)',
                 'a = %3',
@@ -356,9 +322,9 @@ export const OVERLOAD_MAIN_EXPECT = {
                 'c = instanceinvoke a.<@overload/overloadSample.cpp: Vector.operator+(@overload/overloadSample.cpp: Vector&)>(b)',
                 'instanceinvoke c.<@overload/overloadSample.cpp: Vector.operator++()>()',
                 'instanceinvoke c.<@overload/overloadSample.cpp: Vector.operator()(int, int)>(1, 1)',
-                "%5 = new @overload/overloadSample.cpp: Vector",
-                "instanceinvoke %5.<@overload/overloadSample.cpp: Vector.constructor()>()",
-                "v = %5",
+                '%5 = new @overload/overloadSample.cpp: Vector',
+                'instanceinvoke %5.<@overload/overloadSample.cpp: Vector.constructor()>()',
+                'v = %5',
                 'staticinvoke <@overload/overloadSample.cpp: %dflt.operator>>(std::istream&, @overload/overloadSample.cpp: Vector&)>(cin, v)',
                 "staticinvoke <@%unk/%unk: .cout()>('Vector: ')",
                 'staticinvoke <@overload/overloadSample.cpp: %dflt.operator<<(std::ostream&, @overload/overloadSample.cpp: Vector&)>(cout, v)',
@@ -367,10 +333,10 @@ export const OVERLOAD_MAIN_EXPECT = {
                 "staticinvoke <@%unk/%unk: .cout()>('aaa')",
                 'distance = staticinvoke <@overload/overloadSample.cpp: %dflt.operator""_km(long double)>(5.3)',
                 `ch = staticinvoke <@overload/overloadSample.cpp: %dflt.operator""_c(char)>('a')`,
-                'return'
+                'return',
             ],
             preds: [],
-            succes: []
-        }
-    ]
+            succes: [],
+        },
+    ],
 };

@@ -13,22 +13,17 @@
  * limitations under the License.
  */
 
-// single line head comment
-int a = 1;
+function destructuring1(): void {
+    let [a, b] = [1, 2];
+    [a, b] = [1, 2];
+}
 
-// single line head comment 1
-// single line head comment 2
-int b = 2;
+function destructuring2(): void {
+    let [a, , b] = [1, 2, 3];
+    [a, , b] = [1, 2, 3];
+}
 
-/* multiple line head comment 1
-*  multiple line head comment 1
-*/
-int c = 4;
-
-// single line head comment 3
-int d = 5; // single line tail comment
-
-
-int e = 6;/*multiple line tail comment 1
-* multiple line tail comment 2
-*/
+function destructuring3(): void {
+    let [a, , b, ...rest] = [1, 2, 3, 4, 5];
+    [a, , b, ...rest] = [1, 2, 3, 4, 5];
+}

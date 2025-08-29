@@ -16,15 +16,7 @@
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { AbstractExpr, ArkInstanceInvokeExpr, ArkPtrInvokeExpr, ArkStaticInvokeExpr } from '../base/Expr';
 import { Local } from '../base/Local';
-import {
-    AbstractFieldRef,
-    AbstractRef,
-    ArkArrayRef,
-    ArkInstanceFieldRef,
-    ArkParameterRef,
-    ArkStaticFieldRef,
-    GlobalRef
-} from '../base/Ref';
+import { AbstractFieldRef, AbstractRef, ArkArrayRef, ArkInstanceFieldRef, ArkParameterRef, ArkStaticFieldRef, GlobalRef } from '../base/Ref';
 import { ArkAliasTypeDefineStmt, ArkAssignStmt, ArkReturnStmt, Stmt } from '../base/Stmt';
 import {
     AliasType,
@@ -41,8 +33,6 @@ import {
     NeverType,
     NullType,
     NumberType,
-    PointerType,
-    ReferenceType,
     StringType,
     TupleType,
     Type,
@@ -52,6 +42,7 @@ import {
     UnknownType,
     VoidType,
 } from '../base/Type';
+import { PointerType, ReferenceType } from '../../cpp_frontend/base/Type';
 import { ArkMethod } from '../model/ArkMethod';
 import { ArkExport } from '../model/ArkExport';
 import { ArkClass, ClassCategory } from '../model/ArkClass';
@@ -80,7 +71,12 @@ import {
 import { ModelUtils } from './ModelUtils';
 import { Builtin } from './Builtin';
 import { MethodSignature, MethodSubSignature, NamespaceSignature } from '../model/ArkSignature';
-import { INSTANCE_INIT_METHOD_NAME, LEXICAL_ENV_NAME_PREFIX, UNKNOWN_FILE_NAME } from './Const';
+import {
+    ANONYMOUS_METHOD_PREFIX,
+    INSTANCE_INIT_METHOD_NAME,
+    LEXICAL_ENV_NAME_PREFIX,
+    UNKNOWN_FILE_NAME
+} from './Const';
 import { EMPTY_STRING } from './ValueUtil';
 import { ImportInfo } from '../model/ArkImport';
 import { MethodParameter } from '../model/builder/ArkMethodBuilder';
@@ -391,23 +387,8 @@ export class TypeInference {
     }
 
     private static resolveLeftOp(stmt: ArkAssignStmt, arkClass: ArkClass, rightType: Type | null | undefined, arkMethod: ArkMethod): void {
+        let leftType = this.inferLeftOpType(stmt, arkClass, rightType, arkMethod);
         const leftOp = stmt.getLeftOp();
-        let leftType: Type | null | undefined = leftOp.getType();
-        if (this.isUnclearType(leftType)) {
-            const newLeftType = this.inferUnclearedType(leftType, arkClass);
-            if (!newLeftType && !this.isUnclearType(rightType)) {
-                leftType = rightType;
-            } else if (newLeftType) {
-                leftType = newLeftType;
-            }
-        } else if (leftOp instanceof Local && leftOp.getName() === THIS_NAME) {
-            const thisLocal = IRInference.inferThisLocal(arkMethod);
-            if (thisLocal) {
-                stmt.setLeftOp(thisLocal);
-            } else {
-                leftType = rightType;
-            }
-        }
         if (leftType && !this.isUnclearType(leftType)) {
             this.setValueType(leftOp, leftType);
             if (leftOp instanceof Local && stmt.getOriginalText()?.startsWith(leftOp.getName())) {
@@ -428,6 +409,30 @@ export class TypeInference {
         }
     }
 
+    private static inferLeftOpType(stmt: ArkAssignStmt, arkClass: ArkClass, rightType: Type | null | undefined, arkMethod: ArkMethod): Type | null {
+        const leftOp = stmt.getLeftOp();
+        let leftType: Type | null | undefined = leftOp.getType();
+        if (this.isUnclearType(leftType)) {
+            const newLeftType = this.inferUnclearedType(leftType, arkClass);
+            if (!newLeftType && !this.isUnclearType(rightType)) {
+                leftType = rightType;
+            } else if (newLeftType) {
+                leftType = newLeftType;
+            }
+        } else if (leftOp instanceof Local && leftOp.getName() === THIS_NAME) {
+            const thisLocal = IRInference.inferThisLocal(arkMethod);
+            if (thisLocal) {
+                stmt.setLeftOp(thisLocal);
+            } else {
+                leftType = rightType;
+            }
+        } else if (leftType instanceof FunctionType && !this.isUnclearType(rightType) &&
+            leftType.getMethodSignature().getMethodSubSignature().getMethodName().startsWith(ANONYMOUS_METHOD_PREFIX)) {
+            leftType = rightType;
+        }
+        return leftType || null;
+    }
+
     private static setValueType(value: Value, type: Type): void {
         if (value instanceof Local || value instanceof ArkParameterRef) {
             value.setType(type);
@@ -438,8 +443,14 @@ export class TypeInference {
 
     public static isUnclearType(type: Type | null | undefined): boolean {
         // TODO: For UnionType, IntersectionType and TupleType, it should recurse check every item of them.
-        if (!type || type instanceof UnknownType || type instanceof UnclearReferenceType || type instanceof NullType ||
-            type instanceof UndefinedType || type instanceof GenericType) {
+        if (
+            !type ||
+            type instanceof UnknownType ||
+            type instanceof UnclearReferenceType ||
+            type instanceof NullType ||
+            type instanceof UndefinedType ||
+            type instanceof GenericType
+        ) {
             return true;
         } else if (
             type instanceof ClassType &&
@@ -465,9 +476,7 @@ export class TypeInference {
     }
 
     // This is the temporal function to check Type recursively and can be removed after typeInfer supports multiple candidate types.
-    public static checkType(type: Type,
-                            check: (t: Type) => boolean,
-                            visited: Set<Type> = new Set()): boolean {
+    public static checkType(type: Type, check: (t: Type) => boolean, visited: Set<Type> = new Set()): boolean {
         if (visited.has(type)) {
             return false;
         } else {
@@ -717,6 +726,7 @@ export class TypeInference {
         }
         let propertyAndType: [any, Type] | null = null;
         let typeWithoutPtrOrRef = baseType;
+        // CXXTodo: If it is a Cxx pointer or reference type, it is necessary to obtain its baseType and determine whether type inference is required.
         if (baseType instanceof PointerType || baseType instanceof ReferenceType) {
             typeWithoutPtrOrRef = baseType.getBaseType();
         }
@@ -806,15 +816,8 @@ export class TypeInference {
         } else if (DEFAULT === baseName) {
             return this.parseArkExport2Type(arkClass.getDeclaringArkFile().getExportInfoBy(DEFAULT)?.getArkExport());
         }
-        const field = ModelUtils.getDefaultClass(arkClass)?.getDefaultArkMethod()?.getBody()?.getLocals()?.get(baseName);
-        if (field && !this.isUnclearType(field.getType())) {
-            return field.getType();
-        }
         let arkExport: ArkExport | null =
-            ModelUtils.getClassWithName(baseName, arkClass) ??
-            ModelUtils.getDefaultClass(arkClass)?.getDefaultArkMethod()?.getBody()?.getAliasTypeByName(baseName) ??
-            ModelUtils.getNamespaceWithName(baseName, arkClass) ??
-            ModelUtils.getDefaultClass(arkClass)?.getMethodWithName(baseName) ??
+            ModelUtils.findSymbolInFileWithName(baseName, arkClass) ??
             ModelUtils.getArkExportInImportInfoWithName(baseName, arkClass.getDeclaringArkFile());
         if (!arkExport && !arkClass.getDeclaringArkFile().getImportInfoBy(baseName)) {
             arkExport = arkClass.getDeclaringArkFile().getScene().getSdkGlobal(baseName);
@@ -824,9 +827,7 @@ export class TypeInference {
 
     public static inferTypeByName(typeName: string, arkClass: ArkClass): Type | null {
         let arkExport: ArkExport | null =
-            ModelUtils.getClassWithName(typeName, arkClass) ??
-            ModelUtils.getDefaultClass(arkClass)?.getDefaultArkMethod()?.getBody()?.getLocals()?.get(typeName) ??
-            ModelUtils.getDefaultClass(arkClass)?.getDefaultArkMethod()?.getBody()?.getAliasTypeByName(typeName) ??
+            ModelUtils.findSymbolInFileWithName(typeName, arkClass, true) ??
             ModelUtils.getArkExportInImportInfoWithName(typeName, arkClass.getDeclaringArkFile());
         if (!arkExport && !arkClass.getDeclaringArkFile().getImportInfoBy(typeName)) {
             arkExport = arkClass.getDeclaringArkFile().getScene().getSdkGlobal(typeName);
@@ -928,8 +929,13 @@ export class TypeInference {
     public static inferFunctionType(argType: FunctionType, paramSubSignature: MethodSubSignature | undefined, realTypes: Type[] | undefined): void {
         const returnType = argType.getMethodSignature().getMethodSubSignature().getReturnType();
         const declareType = paramSubSignature?.getReturnType();
-        if (declareType instanceof GenericType && realTypes && !realTypes[declareType.getIndex()] &&
-            !this.isUnclearType(returnType) && !(returnType instanceof VoidType)) {
+        if (
+            declareType instanceof GenericType &&
+            realTypes &&
+            !realTypes[declareType.getIndex()] &&
+            !this.isUnclearType(returnType) &&
+            !(returnType instanceof VoidType)
+        ) {
             realTypes[declareType.getIndex()] = returnType;
         }
         const params = paramSubSignature?.getParameters();

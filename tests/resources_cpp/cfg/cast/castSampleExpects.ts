@@ -1,50 +1,49 @@
+/*
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 export const CAST_EXPECT_CASE1 = {
     blocks: [
         {
             id: 0,
-            stmts: [
-                'this = this: @cast/castSample.cpp: %dflt',
-                'd = 3',
-                'i = <double>d',
-                'return'
-            ],
+            stmts: ['this = this: @cast/castSample.cpp: %dflt', 'd = 3', 'i = <double>d', 'return'],
             preds: [],
-            succes: []
-        }
-    ]
+            succes: [],
+        },
+    ],
 };
 
 export const CAST_EXPECT_CASE2 = {
     blocks: [
         {
             id: 0,
-            stmts: [
-                'this = this: @cast/castSample.cpp: %dflt',
-                'i = 2',
-                'i_float = <float>i',
-                'return'
-            ],
+            stmts: ['this = this: @cast/castSample.cpp: %dflt', 'i = 2', 'iFloat = <float>i', 'return'],
             preds: [],
-            succes: []
-        }
-    ]
+            succes: [],
+        },
+    ],
 };
 
 export const CAST_EXPECT_CASE3 = {
     blocks: [
         {
             id: 0,
-            stmts: [
-                'this = this: @cast/castSample.cpp: %dflt',
-                'ci = 2',
-                '%0 = &ci',
-                'pi = <int*>%0',
-                'return'
-            ],
+            stmts: ['this = this: @cast/castSample.cpp: %dflt', 'ci = 2', '%0 = &ci', 'pi = <int*>%0', 'return'],
             preds: [],
-            succes: []
-        }
-    ]
+            succes: [],
+        },
+    ],
 };
 
 export const CAST_EXPECT_CASE4 = {
@@ -57,19 +56,19 @@ export const CAST_EXPECT_CASE4 = {
                 'instanceinvoke %0.<@cast/castSample.cpp: Circle.constructor()>()',
                 's = %0',
                 'c = <@cast/castSample.cpp: Circle*>s',
-                'if c != 0'
+                'if c != 0',
             ],
             preds: [],
-            succes: [ 1, 2 ]
+            succes: [1, 2],
         },
         {
             id: 1,
-            stmts: [ 'instanceinvoke c.<@cast/castSample.cpp: Circle.draw()>()' ],
-            preds: [ 0 ],
-            succes: [ 2 ]
+            stmts: ['instanceinvoke c.<@cast/castSample.cpp: Circle.Draw()>()'],
+            preds: [0],
+            succes: [2],
         },
-        { id: 2, stmts: [ 'return' ], preds: [ 1, 0 ], succes: [] }
-    ]
+        { id: 2, stmts: ['return'], preds: [1, 0], succes: [] },
+    ],
 };
 
 export const CAST_EXPECT_CASE5 = {
@@ -82,12 +81,12 @@ export const CAST_EXPECT_CASE5 = {
                 'instanceinvoke %0.<@%unk/%unk: int.constructor()>(42)',
                 'pi = %0',
                 'pd = <double*>pi',
-                'return'
+                'return',
             ],
             preds: [],
-            succes: []
-        }
-    ]
+            succes: [],
+        },
+    ],
 };
 
 export const CAST_EXPECT_CASE6 = {
@@ -97,14 +96,14 @@ export const CAST_EXPECT_CASE6 = {
             stmts: [
                 'this = this: @cast/castSample.cpp: %dflt',
                 'x = <int>3.14',
-                `y = <std::basic_string<char>>'hello'`,
+                `y = <string>'hello'`,
                 '%0 = new @cast/castSample.cpp: Widget',
                 'instanceinvoke %0.<@cast/castSample.cpp: Widget.constructor()>(42)',
                 'w = <@cast/castSample.cpp: Widget>%0',
-                'return'
+                'return',
             ],
             preds: [],
-            succes: []
-        }
-    ]
+            succes: [],
+        },
+    ],
 };

@@ -417,12 +417,14 @@ function buildArkClassMembers(clsNode: ClassLikeNode, cls: ArkClass, sourceFile:
 }
 
 function isClassMethod(member: ClassElement | TypeElement | EnumMember): boolean {
-    return (ts.isMethodDeclaration(member) ||
+    return (
+        ts.isMethodDeclaration(member) ||
         ts.isConstructorDeclaration(member) ||
         ts.isMethodSignature(member) ||
         ts.isConstructSignatureDeclaration(member) ||
         ts.isAccessor(member) ||
-        ts.isCallSignatureDeclaration(member));
+        ts.isCallSignatureDeclaration(member)
+    );
 }
 
 function buildMethodsForClass(clsNode: ClassLikeNodeWithMethod, cls: ArkClass, sourceFile: ts.SourceFile): void {

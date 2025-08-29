@@ -13,16 +13,7 @@
  * limitations under the License.
  */
 
-import {
-    BasicBlock,
-    DEFAULT_ARK_CLASS_NAME,
-    DEFAULT_ARK_METHOD_NAME,
-    FullPosition,
-    ModelUtils,
-    Scene,
-    SceneConfig,
-    Stmt,
-} from '../../src';
+import { BasicBlock, DEFAULT_ARK_CLASS_NAME, DEFAULT_ARK_METHOD_NAME, FullPosition, ModelUtils, Scene, SceneConfig, Stmt } from '../../src';
 import { assert, expect } from 'vitest';
 import { ArkClass } from '../../src';
 import { ArkIRMethodPrinter } from '../../src/save/arkir/ArkIRMethodPrinter';
@@ -39,7 +30,7 @@ export function buildScene(projectPath: string, needInferTypes: boolean = true) 
 }
 
 export function testFileStmts(scene: Scene, filePath: string, expectFileStmts: any): void {
-    const arkFile = scene.getFiles().find((file) => file.getName().endsWith(filePath));
+    const arkFile = scene.getFiles().find(file => file.getName().endsWith(filePath));
     if (!arkFile) {
         assert.isDefined(arkFile);
         return;
@@ -47,7 +38,7 @@ export function testFileStmts(scene: Scene, filePath: string, expectFileStmts: a
     const methods = ModelUtils.getAllMethodsInFile(arkFile);
     for (const expectMethod of expectFileStmts.methods) {
         const expectMethodName = expectMethod.name;
-        const method = methods.find((method) => method.getName() === expectMethodName);
+        const method = methods.find(method => method.getName() === expectMethodName);
         if (!method) {
             assert.isDefined(method);
             continue;
@@ -61,12 +52,19 @@ export function testFileStmts(scene: Scene, filePath: string, expectFileStmts: a
     }
 }
 
-export function testMethodStmts(scene: Scene, fileName: string, expectStmts: any[],
-                                className: string = DEFAULT_ARK_CLASS_NAME,
-                                methodName: string = DEFAULT_ARK_METHOD_NAME, assertPos: boolean = true): void {
-    const arkFile = scene.getFiles().find((file) => file.getName().endsWith(fileName));
-    const arkMethod = arkFile?.getClassWithName(className)?.getMethods()
-        .find((method) => (method.getName() === methodName));
+export function testMethodStmts(
+    scene: Scene,
+    fileName: string,
+    expectStmts: any[],
+    className: string = DEFAULT_ARK_CLASS_NAME,
+    methodName: string = DEFAULT_ARK_METHOD_NAME,
+    assertPos: boolean = true
+): void {
+    const arkFile = scene.getFiles().find(file => file.getName().endsWith(fileName));
+    const arkMethod = arkFile
+        ?.getClassWithName(className)
+        ?.getMethods()
+        .find(method => method.getName() === methodName);
     const stmts = arkMethod?.getCfg()?.getStmts();
     if (!stmts) {
         assert.isDefined(stmts);
@@ -75,20 +73,29 @@ export function testMethodStmts(scene: Scene, fileName: string, expectStmts: any
     assertStmtsEqual(stmts, expectStmts, assertPos);
 }
 
-export function testMethodIR(scene: Scene, fileName: string, className: string = DEFAULT_ARK_CLASS_NAME,
-                             methodName: string = DEFAULT_ARK_METHOD_NAME, expectMethodIR: string): void {
-    const arkFile = scene.getFiles().find((file) => file.getName().endsWith(fileName));
-    const arkMethod = arkFile?.getClassWithName(className)?.getMethods()
-        .find((method) => (method.getName() === methodName));
+export function testMethodIR(
+    scene: Scene,
+    fileName: string,
+    className: string = DEFAULT_ARK_CLASS_NAME,
+    methodName: string = DEFAULT_ARK_METHOD_NAME,
+    expectMethodIR: string
+): void {
+    const arkFile = scene.getFiles().find(file => file.getName().endsWith(fileName));
+    const arkMethod = arkFile
+        ?.getClassWithName(className)
+        ?.getMethods()
+        .find(method => method.getName() === methodName);
     assert.isDefined(arkMethod);
     const printer = new ArkIRMethodPrinter(arkMethod!);
     expect(printer.dump()).toEqual(expectMethodIR);
 }
 
 export function testBlocks(scene: Scene, filePath: string, methodName: string, expectBlocks: any[]): void {
-    const arkFile = scene.getFiles().find((file) => file.getName().endsWith(filePath));
-    const arkMethod = arkFile?.getDefaultClass().getMethods()
-        .find((method) => (method.getName() === methodName));
+    const arkFile = scene.getFiles().find(file => file.getName().endsWith(filePath));
+    const arkMethod = arkFile
+        ?.getDefaultClass()
+        .getMethods()
+        .find(method => method.getName() === methodName);
     const blocks = arkMethod?.getCfg()?.getBlocks();
     if (!blocks) {
         assert.isDefined(blocks);
@@ -99,15 +106,14 @@ export function testBlocks(scene: Scene, filePath: string, methodName: string, e
 }
 
 export function testBlocksWithSignature(scene: Scene, filePath: string, className: string, methodSubSignature: string, expectBlocks: any[]): void {
-    const arkFile = scene.getFiles().find((file) => file.getName().endsWith(filePath));
+    const arkFile = scene.getFiles().find(file => file.getName().endsWith(filePath));
     let curClass: ArkClass | null | undefined;
     if (!className) {
         curClass = arkFile?.getDefaultClass();
     } else {
         curClass = arkFile?.getClassWithName(className);
     }
-    const arkMethod = curClass?.getMethods()
-        .find((method) => (method.getSignature().getMethodSubSignature().toString() === methodSubSignature));
+    const arkMethod = curClass?.getMethods().find(method => method.getSignature().getMethodSubSignature().toString() === methodSubSignature);
     const blocks = arkMethod?.getCfg()?.getBlocks();
     if (!blocks) {
         assert.isDefined(blocks);
@@ -118,9 +124,11 @@ export function testBlocksWithSignature(scene: Scene, filePath: string, classNam
 }
 
 export function showTestBlocks(scene: Scene, filePath: string, methodName: string): void {
-    const arkFile = scene.getFiles().find((file) => file.getName().endsWith(filePath));
-    const arkMethod = arkFile?.getDefaultClass().getMethods()
-        .find((method) => (method.getName() === methodName));
+    const arkFile = scene.getFiles().find(file => file.getName().endsWith(filePath));
+    const arkMethod = arkFile
+        ?.getDefaultClass()
+        .getMethods()
+        .find(method => method.getName() === methodName);
     const blocks = arkMethod?.getCfg()?.getBlocks();
     if (!blocks) {
         assert.isDefined(blocks);
@@ -135,15 +143,15 @@ export function showCfgStmt(blocks: Set<BasicBlock>): void {
     for (const block of blocks) {
         blockMap.set(block.getId(), block);
     }
-    blockMap.forEach((value:BasicBlock, key) => {
-       const block = blockMap.get(key);
-       const stmts: string[] = [];
-       // @ts-ignore
+    blockMap.forEach((value: BasicBlock, key) => {
+        const block = blockMap.get(key);
+        const stmts: string[] = [];
+        // @ts-ignore
         for (const stmt of block.getStmts()) {
             stmts.push(stmt.toString());
-       }
-       const preds: number[] = [];
-       // @ts-ignore
+        }
+        const preds: number[] = [];
+        // @ts-ignore
         block.getPredecessors().forEach(predBlock => {
             preds.push(predBlock.getId());
         });
@@ -152,14 +160,12 @@ export function showCfgStmt(blocks: Set<BasicBlock>): void {
         block.getSuccessors().forEach(succBlock => {
             succes.push(succBlock.getId());
         });
-        console.log(
-            {
-                'id': key,
-                'stmts': stmts,
-                'preds': preds,
-                'succes': succes
-            }
-        )
+        console.log({
+            id: key,
+            stmts: stmts,
+            preds: preds,
+            succes: succes,
+        });
     });
 }
 
@@ -179,26 +185,30 @@ export function assertBlocksEqual(blocks: Set<BasicBlock>, expectBlocks: any[]):
         }
 
         const stmts: string[] = [];
-        for (const stmt of block.getStmts()) {
-            stmts.push(stmt.toString());
-        }
-        expect(stmts).toEqual(expectBlocks[i].stmts);
-
         const preds: number[] = [];
-        block.getPredecessors().forEach(predBlock => {
-            preds.push(predBlock.getId());
-        });
-        expect(preds).toEqual(expectBlocks[i].preds);
-
         const succes: number[] = [];
-        block.getSuccessors().forEach(succBlock => {
-            succes.push(succBlock.getId());
-        });
-        expect(succes).toEqual(expectBlocks[i].succes);
+        try {
+            for (const stmt of block.getStmts()) {
+                stmts.push(stmt.toString());
+            }
+            expect(stmts).toEqual(expectBlocks[i].stmts);
+
+            block.getPredecessors().forEach(predBlock => {
+                preds.push(predBlock.getId());
+            });
+            expect(preds).toEqual(expectBlocks[i].preds);
+
+            block.getSuccessors().forEach(succBlock => {
+                succes.push(succBlock.getId());
+            });
+            expect(succes).toEqual(expectBlocks[i].succes);
+        } catch (e) {
+            throw new Error(`equal error: \n ${stmts} \n ${preds} \n ${succes}`);
+        }
     }
 }
 
-export function assertClassBlocksEqual(method: any, expectBlocks: any[]) {
+export function assertClassBlocksEqual(method: any, expectBlocks: any[]): void {
     const blocks: Set<BasicBlock> = method?.getCfg()?.getBlocks();
     if (!blocks) {
         assert.isDefined(blocks);
@@ -207,7 +217,7 @@ export function assertClassBlocksEqual(method: any, expectBlocks: any[]) {
     assertBlocksEqual(blocks, expectBlocks);
 }
 
-export function showClassBlocksEqual(method: any) {
+export function showClassBlocksEqual(method: any): void {
     const blocks: Set<BasicBlock> = method?.getCfg()?.getBlocks();
     if (!blocks) {
         assert.isDefined(blocks);
@@ -233,9 +243,12 @@ export function assertStmtsEqual(stmts: Stmt[], expectStmts: any[], assertPos: b
         for (const operand of stmts[i].getDefAndUses()) {
             const operandOriginalPosition = stmts[i].getOperandOriginalPosition(operand);
             if (operandOriginalPosition) {
-                operandOriginalPositions.push(
-                    [operandOriginalPosition.getFirstLine(), operandOriginalPosition.getFirstCol(),
-                        operandOriginalPosition.getLastLine(), operandOriginalPosition.getLastCol()]);
+                operandOriginalPositions.push([
+                    operandOriginalPosition.getFirstLine(),
+                    operandOriginalPosition.getFirstCol(),
+                    operandOriginalPosition.getLastLine(),
+                    operandOriginalPosition.getLastCol(),
+                ]);
             } else {
                 operandOriginalPositions.push(operandOriginalPosition);
             }

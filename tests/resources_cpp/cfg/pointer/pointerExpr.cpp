@@ -1,62 +1,76 @@
+/*
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #include <string>
 
 using namespace std;
 
-class MyClass
-{
+#define TWO 2
+
+class MyClass {
 public:
-    MyClass(int val) : data(val) {}
+    explicit MyClass(int val) : data(val) {}
     ~MyClass() {}
-    int getData() { return this->data; }
+    int GetData() { return this->data; }
 
 private:
     int data;
 };
 
-struct MyStruct
-{
+struct MyStruct {
     int id;
     std::string name;
     char *size;
 };
 
-// 1.普通指针类型声明
-void ptrType(int *p, int **pp)
+// 1.Ordinary pointer type declaration
+void PtrType(int *p, int **pp)
 {
     int *q = p;
-    MyClass *clsPtr = new MyClass(10);
+    MyClass *clsPtr = new MyClass(TWO);
 }
 
-// 2.基础指针操作
-void basePtrOp(MyStruct *s, MyStruct s1)
+// 2. Basic pointer operations
+void BasePtrOp(MyStruct *s, MyStruct s1)
 {
     int x = 1;
     int *p = &x;
     int y = *p;
-    *p = 2;
+    *p = TWO;
     p = p + 1;
     s->id = 0;
     s->name = "example";
     int id = s1.id;
 }
 
-// 3.多级指针操作
-void multiLevelPtrOp(int *p, int **pp, int ***ppp)
+// 3.Multi-level pointer operations
+void MultiLevelPtrOp(int *p, int **pp, int ***ppp)
 {
     int x = 1;
     int y = 2;
     int **qq = pp;
-    **pp = 100;
+    **pp = TWO;
     *qq = &x;
     ppp = &qq;
     **ppp = &y;
     *qq = **ppp;
-    **(pp + 1) = 101;
+    **(pp + 1) = TWO;
     MyStruct *s = new MyStruct();
-    if (s != nullptr)
-    {
+    if (s != nullptr) {
         MyStruct **ss = &s;
-        (*ss)->id = 3;
+        (*ss)->id = TWO;
         (**ss).name = "example";
         s->size = new char;
         *(s->size) = 'S';
@@ -64,4 +78,5 @@ void multiLevelPtrOp(int *p, int **pp, int ***ppp)
     }
 }
 
-// 4.其他复杂指针操作：数组与指针、函数与指针、指针与const、智能指针(?)
+// 4. Other complex pointer operations:
+// arrays and pointers, functions and pointers, pointers and const, smart pointers(?)

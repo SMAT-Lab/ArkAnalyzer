@@ -35,7 +35,8 @@ export enum ClassCategory {
     ENUM = 3,
     TYPE_LITERAL = 4,
     OBJECT = 5,
-    UNION = 6
+    // The following are CXX specific categories.
+    UNION = 6,
 }
 
 /**
@@ -76,7 +77,7 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
     private viewTree?: ViewTree;
 
     // In order to record the mapping between arkTS and CPP functions
-    private ts2CppFuncMap: Map<string, ArkMethod[]> = new Map<string, ArkMethod[]>();
+    private ts2cxxFuncMap: Map<string, ArkMethod[]> = new Map<string, ArkMethod[]>();
     // Record overload methods in cpp. Key of Map is method's name.
     private overloadMethods: Map<string, ArkMethod[]> = new Map<string, ArkMethod[]>();
 
@@ -96,9 +97,7 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
      * @returns The name of this class.
      */
     public getName(): string {
-        return this.classSignature
-            ? this.classSignature.getClassName()
-            : "";
+        return this.classSignature.getClassName();
     }
 
     /**
@@ -222,7 +221,8 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
         }
         let superClass = this.heritageClasses.get(heritageClassName);
         if (superClass === undefined) {
-            let type = TypeInference.inferUnclearRefName(heritageClassName, this) ??
+            let type =
+                TypeInference.inferUnclearRefName(heritageClassName, this) ??
                 TypeInference.inferUnclearRefName(heritageClassName, this.getDeclaringArkFile().getDefaultClass());
             if (type) {
                 type = TypeInference.replaceAliasType(type);
@@ -378,7 +378,13 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
         return null;
     }
 
-    private findMatchingMethod(mtd: ArkMethod, methodSignature: MethodSignature) {
+    /**
+     * Find a method that matches the specified signature
+     * @ param mtd - Ark method object to check
+     * @ param methodSignature - the method signature to match
+     * @ returns If a matching method is found, the method object will be returned; otherwise, null will be returned
+     */
+    private findMatchingMethod(mtd: ArkMethod, methodSignature: MethodSignature): ArkMethod | null {
         const implSignature = mtd.getImplementationSignature();
         if (implSignature !== null && implSignature.isMatch(methodSignature)) {
             return mtd;
@@ -423,6 +429,15 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
         }
     }
 
+    /**
+     * Adds an overloaded method to the class.
+     *
+     * This method handles the logic for adding method overloads. If a method with the same name
+     * already exists, it creates or updates the overload method list. If the new method has the
+     * same signature as an existing method, it replaces the existing method with the new one.
+     *
+     * @param newMethod - The new method to be added as an overload
+     */
     public addOverloadMethod(newMethod: ArkMethod): void {
         const methodName = newMethod.getName();
         const existingMtd = this.getMethodWithName(methodName) ?? this.getStaticMethodWithName(methodName);
@@ -438,8 +453,7 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
             return;
         }
         const overloadMethods = this.overloadMethods.get(methodName);
-        const index = overloadMethods!.findIndex(
-            curMtd => curMtd.getSignature().isMatch(newMethodSignature));
+        const index = overloadMethods!.findIndex(curMtd => curMtd.getSignature().isMatch(newMethodSignature));
         if (index !== -1) {
             overloadMethods![index] = newMethod;
         } else {
@@ -453,10 +467,12 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
         if (sameNameMethods.length !== 0) {
             return sameNameMethods;
         }
-        const matchedMtd = this.methods.get(methodName) ?? this.staticMethods.get(methodName);
-        if (matchedMtd) {
-            sameNameMethods.push(matchedMtd);
-        }
+        [this.methods, this.staticMethods].forEach(mtdMap => {
+            const matchedMtd = mtdMap.get(methodName);
+            if (matchedMtd) {
+                sameNameMethods.push(matchedMtd);
+            }
+        });
         return sameNameMethods;
     }
 
@@ -589,11 +605,11 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
         return this.validateFields(['declaringArkFile', 'category', 'classSignature']);
     }
 
-    public addTs2CppFuncMapElement(funcName: string, methods: ArkMethod[]): void {
-        this.ts2CppFuncMap.set(funcName, methods);
+    public addTs2cxxFuncMapElement(funcName: string, methods: ArkMethod[]): void {
+        this.ts2cxxFuncMap.set(funcName, methods);
     }
 
-    public getTs2CppFuncMap(): Map<string, ArkMethod[]> {
-        return this.ts2CppFuncMap;
+    public getTs2cxxFuncMap(): Map<string, ArkMethod[]> {
+        return this.ts2cxxFuncMap;
     }
 }

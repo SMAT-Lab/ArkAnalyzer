@@ -14,7 +14,7 @@
  */
 
 import fs from 'fs';
-import path, { normalize } from 'path';
+import path from 'path';
 
 import { SceneConfig, SceneOptions, Sdk, TsConfig } from './Config';
 import { initModulePathMap, ModelUtils } from './core/common/ModelUtils';
@@ -30,20 +30,17 @@ import { Local } from './core/base/Local';
 import { buildArkFileFromFile } from './core/model/builder/ArkFileBuilder';
 import { fetchDependenciesFromFile, parseJsonText } from './utils/json5parser';
 import { getAllFiles } from './utils/getAllFiles';
-import { FileUtils, getFileRecursively, getFileAbsPath } from './utils/FileUtils';
+import { FileUtils, getFileRecursively } from './utils/FileUtils';
 import { ArkExport, ExportInfo, ExportType } from './core/model/ArkExport';
 import { addInitInConstructor, buildDefaultConstructor, replaceSuper2Constructor } from './core/model/builder/ArkMethodBuilder';
-import {
-    addInitInConstructor as addInitInConstructorCpp
-} from './cpp_frontend/model/builder/ArkMethodBuilder';
-import { DEFAULT_ARK_CLASS_NAME, INSTANCE_INIT_METHOD_NAME, STATIC_INIT_METHOD_NAME } from './core/common/Const';
+import { addInitInConstructor as addCxxInitInConstructor } from './cpp_frontend/model/builder/ArkMethodBuilder';
+import { DEFAULT_ARK_CLASS_NAME, STATIC_INIT_METHOD_NAME } from './core/common/Const';
 import { CallGraph } from './callgraph/model/CallGraph';
 import { CallGraphBuilder } from './callgraph/model/builder/CallGraphBuilder';
-import { buildArkFileFromFile as buildArkFileFromFileCpp } from './cpp_frontend/model/builder/ArkFileBuilder';
-
+import { buildArkFileFromFile as buildArkCxxFileFromFile } from './cpp_frontend/model/builder/ArkFileBuilder';
 
 import { IRInference } from './core/common/IRInference';
-import { IRInference as IRInferenceCpp } from './cpp_frontend/common/IRInference';
+import { IRInference as CxxIRInference } from './cpp_frontend/common/IRInference';
 import { ImportInfo } from './core/model/ArkImport';
 import { ALL, CONSTRUCTOR_NAME, TSCONFIG_JSON } from './core/common/TSConst';
 import { BUILD_PROFILE_JSON5, OH_PACKAGE_JSON5 } from './core/common/EtsConst';
@@ -71,7 +68,7 @@ export class Scene {
     private projectName: string = '';
     private projectFiles: string[] = [];
     private realProjectDir: string = '';
-    private includeDirs: string[] = [];
+    private includeDirs: string[] = []; // Include directories that the C++ project depends on.
 
     private moduleScenesMap: Map<string, ModuleScene> = new Map();
     private modulePath2NameMap: Map<string, string> = new Map<string, string>();
@@ -106,7 +103,7 @@ export class Scene {
     private unhandledFilePaths: Set<string> = new Set<string>();
     private unhandledSdkFilePaths: string[] = [];
 
-    constructor() { }
+    constructor() {}
 
     /*
      * Set all static field to be null, then all related objects could be freed by GC.
@@ -231,6 +228,7 @@ export class Scene {
                 }
             }
         });
+        // If the SDK inference phase has not been completed, execute the type inference and global API merge of the SDK file
         if (this.buildStage < SceneBuildStage.SDK_INFERRED) {
             this.sdkArkFilesMap.forEach(file => {
                 IRInference.inferFile(file);
@@ -316,16 +314,23 @@ export class Scene {
         }
     }
 
+    /**
+     * Update or add default constructors for all classes in the scene.
+     *
+     * This function iterates through all files and classes in the scene,
+     * builds default constructors for each class, and processes existing constructors
+     * by replacing super constructor calls and adding initialization logic.
+     *
+     * @returns {void}
+     */
     private updateOrAddDefaultConstructors(): void {
         for (const file of this.getFiles()) {
-            const isCppFile = file.getLanguage() === Language.CPLUS;
+            // CXXTodo: Select the appropriate initialization function based on file type
+            const initInConstructorFn = file.getLanguage() === Language.CXX ? addCxxInitInConstructor : addInitInConstructor;
             for (const cls of ModelUtils.getAllClassesInFile(file)) {
                 buildDefaultConstructor(cls);
+                // CXXTodo: Use the interface 'getAllMethodsWithName' for obtaining all methods with the same name.
                 const constructors = cls.getAllMethodsWithName(CONSTRUCTOR_NAME);
-                if (constructors.length === 0) {
-                    continue;
-                }
-                const initInConstructorFn = isCppFile ? addInitInConstructorCpp : addInitInConstructor;
                 constructors.forEach(constructor => {
                     replaceSuper2Constructor(constructor);
                     initInConstructorFn(constructor);
@@ -353,18 +358,15 @@ export class Scene {
         }
 
         for (const method of methods) {
-            const isCppFile = method.getDeclaringArkFile()?.getLanguage() === Language.CPLUS;
             try {
-                if (isCppFile) {
-                    method.buildBodyCpp();
-                } else {
-                    method.buildBody();
-                }
+                method.buildBody();
             } catch (error) {
                 logger.error('Error building body:', method.getSignature(), error);
             } finally {
-                if (isCppFile) {
-                    method.freeBodyBuilderCpp();
+                // CXXTodo: Distinguish between C++ and TS/ArkTS.
+                const isCxxFile = method.getDeclaringArkFile()?.getLanguage() === Language.CXX;
+                if (isCxxFile) {
+                    method.freeCxxBodyBuilder();
                 } else {
                     method.freeBodyBuilder();
                 }
@@ -381,8 +383,9 @@ export class Scene {
             try {
                 const arkFile: ArkFile = new ArkFile(FileUtils.getFileLanguage(file, this.fileLanguages));
                 arkFile.setScene(this);
-                if (arkFile.getLanguage() === Language.CPLUS) {
-                    buildArkFileFromFileCpp(file, this.realProjectDir, arkFile, this.projectName, this.includeDirs);
+                // CXXTodo: Distinguish between C++ and TS/ArkTS. Call different builder functions based on file language.
+                if (arkFile.getLanguage() === Language.CXX) {
+                    buildArkCxxFileFromFile(file, this.realProjectDir, arkFile, this.projectName, this.includeDirs);
                 } else {
                     buildArkFileFromFile(file, this.realProjectDir, arkFile, this.projectName);
                 }
@@ -418,8 +421,9 @@ export class Scene {
         try {
             const arkFile = new ArkFile(FileUtils.getFileLanguage(projectFile, this.fileLanguages));
             arkFile.setScene(this);
-            if (arkFile.getLanguage() === Language.CPLUS) {
-                buildArkFileFromFileCpp(projectFile, this.getRealProjectDir(), arkFile, this.getProjectName(), this.includeDirs);
+            // CXXTodo: Distinguish between C++ and TS/ArkTS.
+            if (arkFile.getLanguage() === Language.CXX) {
+                buildArkCxxFileFromFile(projectFile, this.getRealProjectDir(), arkFile, this.getProjectName(), this.includeDirs);
             } else {
                 buildArkFileFromFile(projectFile, this.getRealProjectDir(), arkFile, this.getProjectName());
             }
@@ -534,10 +538,7 @@ export class Scene {
     }
 
     private findDependenciesByRule(originPath: string): void {
-        if (
-            !this.findFilesByPathArray(originPath) &&
-            !this.findFilesByExtNameArray(originPath, this.options.supportFileExts!)
-        ) {
+        if (!this.findFilesByPathArray(originPath) && !this.findFilesByExtNameArray(originPath, this.options.supportFileExts!)) {
             logger.trace(originPath + 'module mapperInfo is not found!');
         }
     }
@@ -985,14 +986,6 @@ export class Scene {
         return arkMethod || null;
     }
 
-    public getMethodCpp(methodSignature: MethodSignature, refresh?: boolean): ArkMethod | null {
-        if (this.projectName === methodSignature.getDeclaringClassSignature().getDeclaringFileSignature().getProjectName()) {
-            return this.getMethodsMapCpp(refresh).get(methodSignature.toMapKey()) || null;
-        } else {
-            return this.getClass(methodSignature.getDeclaringClassSignature())?.getMethod(methodSignature) || null;
-        }
-    }
-
     private getMethodsMap(refresh?: boolean): Map<string, ArkMethod> {
         if (refresh || (this.buildStage >= SceneBuildStage.METHOD_DONE && this.buildStage < SceneBuildStage.METHOD_COLLECTED)) {
             this.methodsMap.clear();
@@ -1003,18 +996,6 @@ export class Scene {
             }
             if (this.buildStage < SceneBuildStage.METHOD_COLLECTED) {
                 this.buildStage = SceneBuildStage.METHOD_COLLECTED;
-            }
-        }
-        return this.methodsMap;
-    }
-
-    private getMethodsMapCpp(refresh?: boolean): Map<string, ArkMethod> {
-        if (refresh || (this.methodsMap.size === 0) && this.buildStage >= SceneBuildStage.METHOD_DONE) {
-            this.methodsMap.clear();
-            for (const cls of this.getClassesMap().values()) {
-                for (const method of cls.getMethods(true)) {
-                    this.methodsMap.set(method.getSignature().toMapKey(), method);
-                }
             }
         }
         return this.methodsMap;
@@ -1109,6 +1090,11 @@ export class Scene {
         return callGraph;
     }
 
+    /** Obtain the header file directories of the input C++ project dependencies. */
+    public getIncludeDirs(): string[] {
+        return this.includeDirs;
+    }
+
     /**
      * Infer type for each non-default method. It infers the type of each field/local/reference.
      * For example, the statement `let b = 5;`, the type of local `b` is `NumberType`; and for the statement `let s =
@@ -1122,10 +1108,12 @@ export class Scene {
      ```
      */
     public inferTypes(): void {
-        this.buildFuncMapForCpp();
+        // CXXTodo: Building the mapping between declarations and implementations of C++ functions in cross-file scenarios.
+        CxxIRInference.buildCxxFuncMap(this);
         this.filesMap.forEach(file => {
             try {
-                file.getLanguage() === Language.CPLUS ? IRInferenceCpp.inferFile(file) : IRInference.inferFile(file);
+                // CXXTodo: Distinguish between C++ and TS/ArkTS.
+                file.getLanguage() === Language.CXX ? CxxIRInference.inferFile(file) : IRInference.inferFile(file);
             } catch (error) {
                 logger.error('Error inferring types of project file:', file.getFileSignature(), error);
             }
@@ -1135,111 +1123,6 @@ export class Scene {
             this.buildStage = SceneBuildStage.TYPE_INFERRED;
         }
         SdkUtils.dispose();
-    }
-
-    private buildFuncMapForCpp(): void {
-        const headerFileRefMap = this.getCppHeaderFileRefMap();
-        for (const [headerPath, refFiles] of headerFileRefMap) {
-            const headerArkFile = this.getFile(new FileSignature(
-                this.projectName, path.relative(this.realProjectDir, headerPath)));
-            if (!headerArkFile) {
-                continue;
-            }
-            const sortedRefFiles = this.sortRefFiles(headerPath, refFiles);
-            for (const cls of headerArkFile.getClasses()) {
-                for (const mtd of cls.getMethods(true)) {
-                    this.findMtdImpl(mtd, headerPath, sortedRefFiles);
-                }
-            }
-        }
-    }
-
-    private findMtdImpl(mtd: ArkMethod, headerPath: string, sortedRefFiles: string[]): void {
-        const isFuncImpl = mtd.getImplementationSignature();
-        if (isFuncImpl || mtd.isDefaultArkMethod() || mtd.getName() === INSTANCE_INIT_METHOD_NAME ||
-            mtd.getName() === STATIC_INIT_METHOD_NAME) {
-            return;
-        }
-        this.mapHeaderToSource(mtd, headerPath, sortedRefFiles);
-    }
-
-    private getCppHeaderFileRefMap(): Map<string, string[]> {
-        const headerFileRefMap = new Map<string, string[]>();
-        const cppSuffixes = ['.cpp', '.c', '.cxx'];
-        this.filesMap.forEach(file => {
-            const filePath = normalize(file.getFilePath());
-            const extension = path.extname(filePath).toLowerCase();
-            if (!cppSuffixes.some(suffix => extension === suffix)) {
-                return;
-            }
-            const importInfos = file.getImportInfos();
-            importInfos.forEach(im => {
-                this.processImportInfo(im, filePath, headerFileRefMap);
-            });
-        });
-
-        return headerFileRefMap;
-    }
-
-    private processImportInfo(im: ImportInfo, filePath: string, headerFileRefMap: Map<string, string[]>) {
-        let imFrom = im.getFrom();
-        if (!imFrom) {
-            return;
-        }
-        if (!fs.existsSync(imFrom)) {
-            // 若路径不存在，尝试使用 includeDirs 查找相对路径
-            imFrom = getFileAbsPath(this.includeDirs, imFrom);
-            if (!imFrom) {
-                return;
-            }
-        }
-        if (!headerFileRefMap.has(imFrom)) {
-            headerFileRefMap.set(imFrom, []);
-        }
-        headerFileRefMap.get(imFrom)!.push(filePath);
-    }
-
-    private sortRefFiles(headerFilePath: string, refFiles: string[]): string[] {
-        const targetFileName = path.parse(headerFilePath).name;
-        const prioritized: string[] = [];
-        const others: string[] = [];
-        for (const refFile of refFiles) {
-            if(path.parse(refFile).name === targetFileName) {
-                prioritized.push(refFile);
-            } else {
-                others.push(refFile);
-            }
-        }
-        return [...prioritized, ...others];
-    }
-
-    private mapHeaderToSource(mtdDecl: ArkMethod, headerFile: string, refFiles: string[]): void {
-        const tgtClsName = mtdDecl.getDeclaringArkClass().getName();
-        const tgtMtdSubSig = mtdDecl.getSubSignature();
-        const matchKey = `${tgtMtdSubSig.getReturnType().toString()} ${tgtClsName}::${tgtMtdSubSig.toString()}`;
-        for (const refFile of refFiles) {
-            const refArkFile = this.getFile(new FileSignature(
-                this.projectName, path.relative(this.realProjectDir, refFile)));
-            if (!refArkFile) {
-                continue;
-            }
-            const refArkClass = refArkFile.getClassWithName(tgtClsName);
-            if (!refArkClass) {
-                continue;
-            }
-            const nameMatchingMtds = refArkClass.getAllMethodsWithName(mtdDecl.getName());
-            for (const mtd of nameMatchingMtds) {
-                const nameMatchingMtdSubSig = mtd.getSubSignature();
-                const mtdSubSigStr = `${nameMatchingMtdSubSig.getReturnType().toString()} ${tgtClsName}::${nameMatchingMtdSubSig.toString()}`;
-                if (mtdSubSigStr === matchKey) {
-                    // 设置当前函数声明对应的函数实现的签名
-                    mtdDecl.setImplementationSignature(mtd.getSignature());
-                    // 函数实现可能会缺失函数声明中已有的修饰符（如static），此处给函数实现补上
-                    mtd.setModifiers(mtdDecl.getModifiers() | mtd.getModifiers());
-                    return;
-                }
-            }
-        }
     }
 
     /**
@@ -1338,15 +1221,15 @@ export class Scene {
             const importNameSpace = ModelUtils.getNamespaceInImportInfoWithName(importInfo.getImportClauseName(), file);
             if (importNameSpace && !importNameSpaces.includes(importNameSpace)) {
                 try {
-                    // 遗留问题：只统计了项目文件的namespace，没统计sdk文件内部的引入
+                    // Legacy issue: only counted project file namespaces, not internal SDK file imports
                     const importNameSpaceClasses = classMap.get(importNameSpace.getNamespaceSignature())!;
                     importClasses.push(...importNameSpaceClasses.filter(c => !importClasses.includes(c) && c.getName() !== DEFAULT_ARK_CLASS_NAME));
-                } catch { }
+                } catch {}
             }
         }
         const fileClasses = classMap.get(file.getFileSignature())!;
         fileClasses.push(...importClasses.filter(c => !fileClasses.includes(c)));
-        // 子节点加上父节点的class
+        // Child nodes add parent node's classes
         const namespaceStack = [...file.getNamespaces()];
         for (const ns of namespaceStack) {
             const nsClasses = classMap.get(ns.getNamespaceSignature())!;
@@ -1379,15 +1262,15 @@ export class Scene {
             }
 
             classMap.set(file.getFileSignature(), fileClass);
-            // 第一轮遍历，加上每个namespace自己的class
+            // The first round of traversal, adding each namespace's own class
             this.addNSClasses(namespaceStack, finalNamespaces, classMap, parentMap);
 
-            // 第二轮遍历，父节点加上子节点的export的class
+            // The second round of traversal involves adding the export class of the parent node and the child node
             this.addNSExportedClasses(finalNamespaces, classMap, parentMap);
         }
 
         for (const file of this.getFiles()) {
-            // 文件加上import的class，包括ns的
+            // Add the imported class to the file, including ns
             this.addFileImportedClasses(file, classMap);
         }
         return classMap;
@@ -1402,8 +1285,7 @@ export class Scene {
         while (namespaceStack.length > 0) {
             const ns = namespaceStack.shift()!;
             const nsGlobalLocals: Local[] = [];
-            ns
-                .getDefaultClass()
+            ns.getDefaultClass()
                 .getDefaultArkMethod()!
                 .getBody()
                 ?.getLocals()
@@ -1471,15 +1353,15 @@ export class Scene {
             const importNameSpace = ModelUtils.getNamespaceInImportInfoWithName(importInfo.getImportClauseName(), file);
             if (importNameSpace && !importNameSpaces.includes(importNameSpace)) {
                 try {
-                    // 遗留问题：只统计了项目文件，没统计sdk文件内部的引入
+                    // Legacy issue: only counted project files, not internal SDK file imports
                     const importNameSpaceClasses = globalVariableMap.get(importNameSpace.getNamespaceSignature())!;
                     importLocals.push(...importNameSpaceClasses.filter(c => !importLocals.includes(c) && c.getName() !== DEFAULT_ARK_CLASS_NAME));
-                } catch { }
+                } catch {}
             }
         }
         const fileLocals = globalVariableMap.get(file.getFileSignature())!;
         fileLocals.push(...importLocals.filter(c => !fileLocals.includes(c)));
-        // 子节点加上父节点的local
+        // Child node plus local of parent node
         const namespaceStack = [...file.getNamespaces()];
         for (const ns of namespaceStack) {
             const nsLocals = globalVariableMap.get(ns.getNamespaceSignature())!;
@@ -1517,8 +1399,7 @@ export class Scene {
             const parentMap: Map<ArkNamespace, ArkNamespace | ArkFile> = new Map();
             const finalNamespaces: ArkNamespace[] = [];
             const globalLocals: Local[] = [];
-            file
-                .getDefaultClass()
+            file.getDefaultClass()
                 ?.getDefaultArkMethod()!
                 .getBody()
                 ?.getLocals()
@@ -1532,15 +1413,15 @@ export class Scene {
                 namespaceStack.push(ns);
                 parentMap.set(ns, file);
             }
-            // 第一轮遍历，加上每个namespace自己的local
+            // The first round of traversal, plus each namespace's own local
             this.addNSLocals(namespaceStack, finalNamespaces, parentMap, globalVariableMap);
 
-            // 第二轮遍历，父节点加上子节点的export的local
+            // The second round of traversal includes the local export of the parent node and the child node
             this.addNSExportedLocals(finalNamespaces, globalVariableMap, parentMap);
         }
 
         for (const file of this.getFiles()) {
-            // 文件加上import的local，包括ns的
+            // File adds imported locals, including namespaces
             this.addFileImportLocals(file, globalVariableMap);
         }
         return globalVariableMap;

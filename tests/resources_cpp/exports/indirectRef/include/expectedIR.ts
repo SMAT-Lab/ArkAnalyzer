@@ -18,14 +18,14 @@ import { ArkMethod, DEFAULT_ARK_CLASS_NAME } from '../../../../../src';
 
 export const MY_HEADER_EXPORT_INFO_EXPECT_IR = {
     _default: false,
-    exportClauseName: 'funcDoSomething',
+    exportClauseName: 'FuncDoSomething',
     exportClauseType: ExportType.METHOD,
     modifiers: [],
     arkExport: {
         type: ArkMethod,
-        methodSignature: `@exports/indirectRef/include/myHeader.h: ${DEFAULT_ARK_CLASS_NAME}.funcDoSomething(int, int)`,
-        modifiers: []
-    }
+        methodSignature: `@exports/indirectRef/include/myHeader.h: ${DEFAULT_ARK_CLASS_NAME}.FuncDoSomething(int, int)`,
+        modifiers: [],
+    },
 };
 
 export const CAST_SAMPLE_EXPORT_INFO_EXPECT_IR = {
@@ -36,6 +36,6 @@ export const CAST_SAMPLE_EXPORT_INFO_EXPECT_IR = {
     arkExport: {
         type: ArkMethod,
         methodSignature: `@exports/indirectRef/include/castSample.h: ${DEFAULT_ARK_CLASS_NAME}.CXXStaticCast(int)`,
-        modifiers: []
-    }
+        modifiers: [],
+    },
 };

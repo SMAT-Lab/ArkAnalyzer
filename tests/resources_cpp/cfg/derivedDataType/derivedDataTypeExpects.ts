@@ -1,9 +1,20 @@
+/*
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 export const DERIVED_DATA_TYPE_EXPECT_CLASS = {
-    fields: [
-        'height',
-        'name',
-        'age',
-    ],
+    fields: ['height', 'name', 'age'],
     heritageClasses: [],
     blocks: [
         {
@@ -11,15 +22,11 @@ export const DERIVED_DATA_TYPE_EXPECT_CLASS = {
             blocks: [
                 {
                     id: 0,
-                    stmts: [
-                        'this = this: @derivedDataType/derivedDataType.cpp: MyClass',
-                        "staticinvoke <@%unk/%unk: .cout()>('delete')",
-                        'return'
-                    ],
+                    stmts: ['this = this: @derivedDataType/derivedDataType.cpp: MyClass', "staticinvoke <@%unk/%unk: .cout()>('delete')", 'return'],
                     preds: [],
-                    succes: []
-                }
-            ]
+                    succes: [],
+                },
+            ],
         },
         {
             methodName: 'constructor',
@@ -33,44 +40,41 @@ export const DERIVED_DATA_TYPE_EXPECT_CLASS = {
                         'instanceinvoke this.<@derivedDataType/derivedDataType.cpp: MyClass.%instInit()>()',
                         'this-><@derivedDataType/derivedDataType.cpp: MyClass.name> = name',
                         'this-><@derivedDataType/derivedDataType.cpp: MyClass.age> = age',
-                        'return this'
+                        'return this',
                     ],
                     preds: [],
-                    succes: []
-                }
-            ]
+                    succes: [],
+                },
+            ],
         },
         {
-            methodName: 'getHeight',
+            methodName: 'GetHeight',
             blocks: [
                 {
                     id: 0,
-                    stmts: [
-                        'this = this: @derivedDataType/derivedDataType.cpp: MyClass',
-                        'return height'
-                    ],
+                    stmts: ['this = this: @derivedDataType/derivedDataType.cpp: MyClass', 'return height'],
                     preds: [],
-                    succes: []
-                }
-            ]
+                    succes: [],
+                },
+            ],
         },
         {
-            methodName: 'getName',
+            methodName: 'GetName',
             blocks: [
                 {
                     id: 0,
                     stmts: [
                         'this = this: @derivedDataType/derivedDataType.cpp: MyClass',
                         '%0 = this-><@derivedDataType/derivedDataType.cpp: MyClass.name>',
-                        'return %0'
+                        'return %0',
                     ],
                     preds: [],
-                    succes: []
-                }
-            ]
+                    succes: [],
+                },
+            ],
         },
         {
-            methodName: 'setName',
+            methodName: 'SetName',
             blocks: [
                 {
                     id: 0,
@@ -78,21 +82,18 @@ export const DERIVED_DATA_TYPE_EXPECT_CLASS = {
                         'nameStr = parameter0: char',
                         'this = this: @derivedDataType/derivedDataType.cpp: MyClass',
                         'this-><@derivedDataType/derivedDataType.cpp: MyClass.name> = nameStr',
-                        'return'
+                        'return',
                     ],
                     preds: [],
-                    succes: []
-                }
-            ]
-        }
-    ]
+                    succes: [],
+                },
+            ],
+        },
+    ],
 };
 
 export const DERIVED_DATA_TYPE_EXPECT_CLASS2 = {
-    fields: [
-        'name',
-        'age',
-    ],
+    fields: ['name', 'age'],
     heritageClasses: [],
     blocks: [
         {
@@ -103,23 +104,18 @@ export const DERIVED_DATA_TYPE_EXPECT_CLASS2 = {
                     stmts: [
                         'this = this: @derivedDataType/derivedDataType.cpp: DefaultClass',
                         'instanceinvoke this.<@derivedDataType/derivedDataType.cpp: DefaultClass.%instInit()>()',
-                        'return this'
+                        'return this',
                     ],
                     preds: [],
-                    succes: []
-                }
-            ]
-        }
-    ]
+                    succes: [],
+                },
+            ],
+        },
+    ],
 };
 
 export const DERIVED_DATA_TYPE_EXPECT_STRUCT = {
-    fields: [
-        'title',
-        'author',
-        'subject',
-        'book_id'
-    ],
+    fields: ['title', 'author', 'subject', 'bookId'],
     heritageClasses: [],
     blocks: [
         {
@@ -137,16 +133,16 @@ export const DERIVED_DATA_TYPE_EXPECT_STRUCT = {
                         'this.<@derivedDataType/derivedDataType.cpp: MyStruct.title> = t',
                         'this.<@derivedDataType/derivedDataType.cpp: MyStruct.author> = a',
                         'this.<@derivedDataType/derivedDataType.cpp: MyStruct.subject> = s',
-                        'this.<@derivedDataType/derivedDataType.cpp: MyStruct.book_id> = id',
-                        'return this'
+                        'this.<@derivedDataType/derivedDataType.cpp: MyStruct.bookId> = id',
+                        'return this',
                     ],
                     preds: [],
-                    succes: []
-                }
-            ]
+                    succes: [],
+                },
+            ],
         },
         {
-            methodName: 'printInfo',
+            methodName: 'PrintInfo',
             blocks: [
                 {
                     id: 0,
@@ -154,12 +150,12 @@ export const DERIVED_DATA_TYPE_EXPECT_STRUCT = {
                         'this = this: @derivedDataType/derivedDataType.cpp: MyStruct',
                         '%0 = this.<@derivedDataType/derivedDataType.cpp: MyStruct.title>',
                         `staticinvoke <@%unk/%unk: .cout()>('title of the book is :', %0)`,
-                        'return'
+                        'return',
                     ],
                     preds: [],
-                    succes: []
-                }
-            ]
-        }
-    ]
+                    succes: [],
+                },
+            ],
+        },
+    ],
 };

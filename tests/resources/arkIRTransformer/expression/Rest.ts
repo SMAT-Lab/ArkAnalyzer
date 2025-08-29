@@ -19,8 +19,13 @@ function restElements1(): void {
 }
 
 function restElements2(): void {
-    const [...arr] = [1, 2, 3];
+    let [...arr] = [1, 2, 3];
     [...arr] = [4, 5, 6];
+}
+
+function restElements3(): void {
+    let [a, b, ...[c, d]] = [1, 2, 3, 4];
+    [a, b, ...[c, d]] = [1, 2, 3, 4];
 }
 
 function restParameter(...numbers: number[]):number {

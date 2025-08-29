@@ -33,12 +33,7 @@ import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
 import { ArkClass } from '../ArkClass';
 import { ArkMethod } from '../ArkMethod';
 import { Decorator } from '../../base/Decorator';
-import {
-    ArrayBindingPatternParameter,
-    buildArkMethodFromArkClass,
-    MethodParameter,
-    ObjectBindingPatternParameter,
-} from './ArkMethodBuilder';
+import { ArrayBindingPatternParameter, buildArkMethodFromArkClass, MethodParameter, ObjectBindingPatternParameter } from './ArkMethodBuilder';
 import { buildNormalArkClassFromArkMethod } from './ArkClassBuilder';
 import { Builtin } from '../../common/Builtin';
 import { modifierKind2Enum } from '../ArkBaseModel';
@@ -60,6 +55,7 @@ import { ArkSignatureBuilder } from './ArkSignatureBuilder';
 import { ArkInstanceFieldRef } from '../../base/Ref';
 import { Local } from '../../base/Local';
 import { Value } from '../../base/Value';
+import { FullPosition } from '../../base/Position';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'builderUtils');
 
@@ -263,7 +259,12 @@ function buildArrayBindingPatternParam(methodParameter: MethodParameter, paramNa
     methodParameter.setArrayElements(elements);
 }
 
-export function buildParameters(params: ts.NodeArray<ParameterDeclaration>, arkInstance: ArkMethod | ArkField, sourceFile: ts.SourceFile): MethodParameter[] {
+export function buildParameters(
+    params: ts.NodeArray<ParameterDeclaration>,
+    arkInstance: ArkMethod | ArkField,
+    sourceFile: ts.SourceFile,
+    paramsPosition: Map<string, FullPosition>
+): MethodParameter[] {
     let parameters: MethodParameter[] = [];
     params.forEach(parameter => {
         let methodParameter = new MethodParameter();
@@ -271,10 +272,13 @@ export function buildParameters(params: ts.NodeArray<ParameterDeclaration>, arkI
         // name
         if (ts.isIdentifier(parameter.name)) {
             methodParameter.setName(parameter.name.text);
+            paramsPosition.set(parameter.name.text, FullPosition.buildFromNode(parameter.name, sourceFile));
         } else if (ts.isObjectBindingPattern(parameter.name)) {
             buildObjectBindingPatternParam(methodParameter, parameter.name);
+            paramsPosition.set('ObjectBindingPattern', FullPosition.buildFromNode(parameter.name, sourceFile));
         } else if (ts.isArrayBindingPattern(parameter.name)) {
             buildArrayBindingPatternParam(methodParameter, parameter.name);
+            paramsPosition.set('ArrayBindingPattern', FullPosition.buildFromNode(parameter.name, sourceFile));
         } else {
             logger.warn('Parameter name is not identifier, ObjectBindingPattern nor ArrayBindingPattern, please contact developers to support this!');
         }

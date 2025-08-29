@@ -17,7 +17,6 @@ import { ArkBody } from '../../../core/model/ArkBody';
 import { ArkMethod } from '../../../core/model/ArkMethod';
 import { FieldSignature, MethodSignature, methodSignatureCompare, MethodSubSignature } from '../../../core/model/ArkSignature';
 import { CfgBuilder } from '../../graph/builder/CfgBuilder';
-import * as ts from 'ohos-typescript';
 import { Local } from '../../../core/base/Local';
 import { MethodParameter } from '../../../core/model/builder/ArkMethodBuilder';
 import { LEXICAL_ENV_NAME_PREFIX, NAME_DELIMITER, NAME_PREFIX } from '../../../core/common/Const';
@@ -25,18 +24,31 @@ import { ArkParameterRef, ArkStaticFieldRef, ClosureFieldRef, GlobalRef } from '
 import { ArkAliasTypeDefineStmt, ArkAssignStmt, ArkInvokeStmt, ArkReturnStmt } from '../../../core/base/Stmt';
 import { AliasType, ArrayType, ClosureType, FunctionType, LexicalEnvType, Type, UnclearReferenceType, UnionType } from '../../../core/base/Type';
 import { AbstractInvokeExpr, ArkPtrInvokeExpr } from '../../../core/base/Expr';
+import { CxxAstNode } from '../../ast/ArkCxxAstNode';
 
 type NestedMethodChain = {
     parent: ArkMethod;
     children: NestedMethodChain[] | null;
 };
 
-export class BodyBuilderCpp {
+export class CxxBodyBuilder {
     private cfgBuilder: CfgBuilder;
     private globals?: Map<string, GlobalRef>;
 
-    constructor(methodSignature: MethodSignature, sourceAstNode: ts.Node, declaringMethod: ArkMethod, sourceFile: ts.SourceFile) {
+    constructor(methodSignature: MethodSignature, sourceAstNode: CxxAstNode, declaringMethod: ArkMethod, sourceFile: CxxAstNode) {
         this.cfgBuilder = new CfgBuilder(sourceAstNode, methodSignature.getMethodSubSignature().getMethodName(), declaringMethod, sourceFile);
+    }
+
+    public buildBody(): void {
+        const arkBody: ArkBody | null = this.build();
+        if (arkBody) {
+            const declMethod = this.cfgBuilder.getDeclaringMethod();
+            declMethod.setBody(arkBody);
+            arkBody.getCfg().setDeclaringMethod(declMethod);
+            if (declMethod.getOuterMethod() === undefined) {
+                this.handleGlobalAndClosure();
+            }
+        }
     }
 
     public build(): ArkBody | null {
@@ -76,7 +88,7 @@ export class BodyBuilderCpp {
         let closuresRes: Local[] = [];
 
         const nestedMethod = childrenChain.parent;
-        let nestedGlobals = nestedMethod.getBodyBuilderCpp()?.getGlobals();
+        let nestedGlobals = nestedMethod.getCxxBodyBuilder()?.getGlobals();
         if (nestedGlobals !== undefined) {
             for (let global of nestedGlobals.values()) {
                 const nestedLocal = allNestedLocals.get(global.getName());
@@ -150,8 +162,8 @@ export class BodyBuilderCpp {
          * There must be no closures in Level 0. So only need to remove the locals which with the same name as the ones in globals.
          */
         let outerMethod = this.getCfgBuilder().getDeclaringMethod();
-        let outerGlobals = outerMethod.getBodyBuilderCpp()?.getGlobals();
-        outerMethod.freeBodyBuilderCpp();
+        let outerGlobals = outerMethod.getCxxBodyBuilder()?.getGlobals();
+        outerMethod.freeCxxBodyBuilder();
         let outerLocals = outerMethod.getBody()?.getLocals();
         if (outerGlobals !== undefined && outerLocals !== undefined) {
             outerGlobals.forEach((value, key) => {
@@ -201,7 +213,7 @@ export class BodyBuilderCpp {
     }
 
     private freeBodyBuilder(nestedChain: NestedMethodChain): void {
-        nestedChain.parent.freeBodyBuilderCpp();
+        nestedChain.parent.freeCxxBodyBuilder();
         const childrenChains = nestedChain.children;
         if (childrenChains === null) {
             return;
@@ -282,7 +294,7 @@ export class BodyBuilderCpp {
     }
 
     private moveCurrentMethodLocalToGlobal(method: ArkMethod): void {
-        const globals = method.getBodyBuilderCpp()?.getGlobals();
+        const globals = method.getCxxBodyBuilder()?.getGlobals();
         const locals = method.getBody()?.getLocals();
         if (locals === undefined || globals === undefined) {
             return;
@@ -303,7 +315,7 @@ export class BodyBuilderCpp {
     private reorganizeGlobalAndLocal(nestedChain: NestedMethodChain): void {
         const nestedMethod = nestedChain.parent;
         const params = nestedMethod.getSubSignature().getParameters();
-        const globals = nestedMethod.getBodyBuilderCpp()?.getGlobals();
+        const globals = nestedMethod.getCxxBodyBuilder()?.getGlobals();
         if (params.length > 0 && params[0].getType() instanceof LexicalEnvType && globals !== undefined) {
             const closures = (params[0].getType() as LexicalEnvType).getClosures();
             for (let closure of closures) {
@@ -322,7 +334,7 @@ export class BodyBuilderCpp {
         }
     }
 
-    // 对嵌套函数中的UnclearReferenceType类型的变量进行类型推导，类型是否为外层函数中定义的类型别名
+    // Type derivation of variables of UnclearReferenceType type in nested functions. Whether the type is a type alias defined in the outer function
     private inferTypesDefineInOuter(outerMethod: ArkMethod, childrenChain: NestedMethodChain): void {
         const typeAliases = outerMethod.getBody()?.getAliasTypeMap();
         const nestedLocals = childrenChain.parent.getBody()?.getLocals();
@@ -466,7 +478,7 @@ export class BodyBuilderCpp {
             return;
         }
 
-        // 更新local的类型为ClosureType，methodSignature为内层嵌套函数
+        // Update the local type to CloseType and methodSignature to inner nested function
         const nestedMethodSignature = nestedMethod.getImplementationSignature();
         if (nestedMethodSignature !== null) {
             local.setType(new ClosureType(lexicalEnv, nestedMethodSignature, localType.getRealGenericTypes()));
@@ -477,8 +489,9 @@ export class BodyBuilderCpp {
         this.updateAbstractInvokeExprWithClosures(local, outerMethod.getSignature(), nestedMethod.getSignature(), closuresLocal);
     }
 
-    // 更新所有stmt中调用内层函数处的AbstractInvokeExpr中的函数签名和实参args，加入闭包参数
-    // 更新所有stmt中定义的函数指针的usedStmt中的函数签名和实参args，加入闭包参数
+    // Update the function signature and actual parameter args in AbstractInvokeExpr where the inner function is called in all stmt,
+    // and add the closure parameter.
+    // Update the function signature and actual parameter args in usedStmt of all function pointers defined in stmt, and add closure parameters
     private updateAbstractInvokeExprWithClosures(
         value: Local | GlobalRef,
         outerMethodSignature: MethodSignature,

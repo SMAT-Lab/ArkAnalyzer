@@ -131,26 +131,13 @@ export class ArkIRMethodPrinter extends BasePrinter {
     }
 
     private printCfg(cfg: Cfg): void {
-        let blocks = cfg.getBlocks();
-
         let isFirstBB = true;
-        let firstBB = cfg.getStartingBlock();
-        // Try to always print the starting block at the beginning.
-        if (firstBB) {
-            this.printBasicBlock(firstBB);
+        for (const block of cfg.getBlocks()) {
+            if (!isFirstBB) {
+                this.printer.writeLine('');
+            }
+            this.printBasicBlock(block);
             isFirstBB = false;
-        }
-
-        for (const block of blocks) {
-            if (!firstBB || block.getId() !== firstBB.getId()) {
-                if (!isFirstBB) {
-                    this.printer.writeLine('');
-                }
-                this.printBasicBlock(block);
-            }
-            if (firstBB) {
-                isFirstBB = false;
-            }
         }
     }
 

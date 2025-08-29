@@ -43,7 +43,7 @@ import {
     FunctionType,
     Type,
     UnclearReferenceType,
-    UnknownType,
+    UnknownType
 } from '../base/Type';
 import { Scene } from '../../Scene';
 import { DEFAULT_ARK_CLASS_NAME, DEFAULT_ARK_METHOD_NAME, NAME_DELIMITER, TEMP_LOCAL_PREFIX } from './Const';
@@ -52,7 +52,7 @@ import { ArkBaseModel } from '../model/ArkBaseModel';
 import { ArkAssignStmt } from '../base/Stmt';
 import { ClosureFieldRef } from '../base/Ref';
 import { SdkUtils } from './SdkUtils';
-import { CppSceneUtils } from '../../utils/CppSceneUtils';
+import { CxxSceneUtils } from '../../utils/CxxSceneUtils';
 
 export class ModelUtils {
     public static implicitArkUIBuilderMethods: Set<ArkMethod> = new Set();
@@ -214,6 +214,36 @@ export class ModelUtils {
         }
 
         return null;
+    }
+
+    public static findSymbolInFileWithName(symbolName: string, arkClass: ArkClass, onlyType: boolean = false): ArkExport | null {
+        let currNamespace: ArkNamespace | null | undefined = arkClass.getDeclaringArkNamespace();
+        let result: ArkExport | null | undefined;
+        while (currNamespace) {
+            result = currNamespace.getClassWithName(symbolName) ??
+                currNamespace.getDefaultClass()?.getDefaultArkMethod()?.getBody()?.getAliasTypeByName(symbolName) ??
+                currNamespace.getDefaultClass()?.getDefaultArkMethod()?.getBody()?.getLocals()?.get(symbolName);
+            if (!result && !onlyType) {
+                result = (currNamespace.getName() === symbolName ? currNamespace : null) ??
+                    currNamespace.getNamespaceWithName(symbolName) ??
+                    currNamespace.getDefaultClass().getMethodWithName(symbolName);
+            }
+            if (result) {
+                return result;
+            }
+            currNamespace = currNamespace.getDeclaringArkNamespace();
+        }
+        const file = arkClass.getDeclaringArkFile();
+        result =
+            file.getClassWithName(symbolName) ??
+            file.getDefaultClass().getDefaultArkMethod()?.getBody()?.getAliasTypeByName(symbolName) ??
+            file.getDefaultClass()?.getDefaultArkMethod()?.getBody()?.getLocals().get(symbolName);
+        if (!result && !onlyType) {
+            result = file.getNamespaceWithName(symbolName) ??
+                file.getDefaultClass().getMethodWithName(symbolName);
+
+        }
+        return result || null;
     }
 
     public static getNamespaceInImportInfoWithName(namespaceName: string, arkFile: ArkFile): ArkNamespace | null {
@@ -420,8 +450,8 @@ export class ModelUtils {
                     .getClassWithName(className.substring(outerStart + 1, outerEnd))
                     ?.getMethodWithName(className.substring(outerEnd + 1));
             } else {
-                const cls = arkMethod.getDeclaringArkClass();
-                invokeMethod = cls.getDefaultArkMethod() ?? cls.getDeclaringArkFile().getDefaultClass()?.getDefaultArkMethod();
+                const symbol = this.findSymbolInFileWithName(name, arkMethod.getDeclaringArkClass(), true);
+                return symbol instanceof Local ? symbol : null;
             }
         }
         if (invokeMethod) {
@@ -756,8 +786,9 @@ function getArkFileFromOtherModule(fromInfo: FromInfo): ArkFile | undefined {
     //find file in module path Index.ts
     if (!file && FileUtils.isDirectory(modulePath.path)) {
         file = findFileInModule(fromInfo, modulePath, FileUtils.getIndexFileName(modulePath.path));
+        // process lazy import project.
         if (from.endsWith('.so') && file) {
-            CppSceneUtils.puncture(modulePath.path, file);
+            CxxSceneUtils.puncture(modulePath.path, file);
         }
     }
     //find file in module path/src/main/ets/TsIndex.ts

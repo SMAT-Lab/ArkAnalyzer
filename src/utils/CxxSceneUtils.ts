@@ -28,16 +28,14 @@ import { ArkField } from '../core/model/ArkField';
 import { FunctionType } from '../core/base/Type';
 import { CONSTRUCTOR_NAME } from '../core/common/TSConst';
 
-
-export class CppSceneUtils {
-
-    public static puncture(cppModulePath: string, tsFile: ArkFile): void {
-        const fileName = path.relative(tsFile.getProjectDir(), path.join(cppModulePath, '../../napi_init.cpp'));
+export class CxxSceneUtils {
+    public static puncture(cxxModulePath: string, tsFile: ArkFile): void {
+        const fileName = path.relative(tsFile.getProjectDir(), path.join(cxxModulePath, '../../napi_init.cpp'));
         const initFile = tsFile.getScene().getFile(new FileSignature(tsFile.getProjectName(), fileName));
         if (!initFile) {
             return;
         }
-        const ts2CppFuncMap = initFile.getDefaultClass().getTs2CppFuncMap();
+        const ts2cxxFuncMap = initFile.getDefaultClass().getTs2cxxFuncMap();
         const methods = ModelUtils.getAllMethodsInFile(initFile);
         for (const method of methods) {
             const stmts = method.getCfg()?.getStmts();
@@ -46,13 +44,13 @@ export class CppSceneUtils {
             }
             for (const stmt of stmts) {
                 if (stmt instanceof ArkInvokeStmt) {
-                    this.processApiDefine(stmt, tsFile, ts2CppFuncMap);
+                    this.processApiDefine(stmt, tsFile, ts2cxxFuncMap);
                 }
             }
         }
     }
 
-    private static processApiDefine(stmt: ArkInvokeStmt, tsFile: ArkFile, ts2CppFuncMap: Map<string, ArkMethod[]>): void {
+    private static processApiDefine(stmt: ArkInvokeStmt, tsFile: ArkFile, ts2cxxFuncMap: Map<string, ArkMethod[]>): void {
         const invokeExpr = stmt.getInvokeExpr();
         const methodName = invokeExpr.getMethodSignature().getMethodSubSignature().getMethodName();
         const clsConstant = invokeExpr.getArg(1);
@@ -62,34 +60,34 @@ export class CppSceneUtils {
                 return;
             }
             const props = invokeExpr.getArg(6);
-            this.findPropDesc(props, ts2CppFuncMap, tsClass);
-            const arkMethods = ts2CppFuncMap.get(clsConstant.getValue());
+            this.findPropDesc(props, ts2cxxFuncMap, tsClass);
+            const arkMethods = ts2cxxFuncMap.get(clsConstant.getValue());
             if (arkMethods?.length === 1) {
                 this.mergeMethod(CONSTRUCTOR_NAME, tsClass, arkMethods[0]);
             }
         } else if (methodName === 'napi_define_properties') {
             const tsClass = tsFile.getDefaultClass();
             const props = invokeExpr.getArg(3);
-            this.findPropDesc(props, ts2CppFuncMap, tsClass);
+            this.findPropDesc(props, ts2cxxFuncMap, tsClass);
         }
     }
 
-    private static findPropDesc(props: Value, ts2CppFuncMap: Map<string, ArkMethod[]>, tsClass: ArkClass): void {
+    private static findPropDesc(props: Value, ts2cxxFuncMap: Map<string, ArkMethod[]>, tsClass: ArkClass): void {
         this.getUsedStmts(this.getDeclaredAssignStmt(props)?.getRightOp())?.forEach(x => {
             if (x instanceof ArkAssignStmt && x.getLeftOp() instanceof ArkArrayRef) {
                 this.getUsedStmts(x.getRightOp())?.forEach(s => {
-                    this.processPropDesc(s, ts2CppFuncMap, tsClass);
-                })
+                    this.processPropDesc(s, ts2cxxFuncMap, tsClass);
+                });
             }
-        })
+        });
     }
 
-    private static processPropDesc(s: Stmt, ts2CppFuncMap: Map<string, ArkMethod[]>, tsClass: ArkClass): void {
+    private static processPropDesc(s: Stmt, ts2cxxFuncMap: Map<string, ArkMethod[]>, tsClass: ArkClass): void {
         if (s instanceof ArkInvokeStmt) {
             const constant = s.getInvokeExpr().getArg(0);
             if (constant instanceof Constant) {
                 const tsMtdName = constant.getValue();
-                const arkMethods = ts2CppFuncMap.get(tsMtdName);
+                const arkMethods = ts2cxxFuncMap.get(tsMtdName);
                 if (arkMethods?.length === 1) {
                     this.mergeMethod(tsMtdName, tsClass, arkMethods[0]);
                 } else if (arkMethods?.length === 2) {
@@ -107,12 +105,14 @@ export class CppSceneUtils {
                 return declaringStmt;
             }
         }
+        return undefined;
     }
 
     private static getUsedStmts(value?: Value): Stmt[] | undefined {
         if (value instanceof Local) {
             return value.getUsedStmts();
         }
+        return undefined;
     }
 
     private static mergeMethod(tsMtdName: string, tsClass: ArkClass, cppMtd: ArkMethod): void {

@@ -983,7 +983,7 @@ export class CfgBuilder {
             ts.isFunctionExpression(this.astRoot) ||
             ts.isClassStaticBlockDeclaration(this.astRoot)
         ) {
-            this.astRoot.body ? stmts = [...this.astRoot.body.statements] : this.emptyBody = true;
+            this.astRoot.body ? (stmts = [...this.astRoot.body.statements]) : (this.emptyBody = true);
         } else if (ts.isArrowFunction(this.astRoot)) {
             if (ts.isBlock(this.astRoot.body)) {
                 stmts = [...this.astRoot.body.statements];
@@ -1114,7 +1114,6 @@ export class CfgBuilder {
             arkIRTransformer
         );
 
-        const currBlockId = this.blocks.length;
         this.linkBasicBlocks(blockBuilderToCfgBlock);
         this.adjustBlocks(
             blockBuilderToCfgBlock,
@@ -1130,7 +1129,7 @@ export class CfgBuilder {
 
         this.removeEmptyBlocks(basicBlockSet);
 
-        const cfg = this.createCfg(blockBuilderToCfgBlock, basicBlockSet, currBlockId);
+        const cfg = this.createCfg(blockBuilderToCfgBlock, basicBlockSet);
         return {
             cfg,
             locals: arkIRTransformer.getLocals(),
@@ -1283,24 +1282,18 @@ export class CfgBuilder {
         const switchBuilder = new SwitchBuilder();
         switchBuilder.buildSwitch(blockBuilderToCfgBlock, blockBuildersContainSwitch, valueAndStmtsOfSwitchAndCasesAll, arkIRTransformer, basicBlockSet);
         const conditionalBuilder = new ConditionBuilder();
-        conditionalBuilder.rebuildBlocksContainConditionalOperator(blockBuilderToCfgBlock, basicBlockSet,
-            ModelUtils.isArkUIBuilderMethod(this.declaringMethod));
+        conditionalBuilder.rebuildBlocksContainConditionalOperator(
+            blockBuilderToCfgBlock,
+            basicBlockSet,
+            ModelUtils.isArkUIBuilderMethod(this.declaringMethod)
+        );
     }
 
-    private createCfg(blockBuilderToCfgBlock: Map<BlockBuilder, BasicBlock>, basicBlockSet: Set<BasicBlock>, prevBlockId: number): Cfg {
-        let currBlockId = prevBlockId;
-        for (const blockBuilder of this.blocks) {
-            if (blockBuilder.id === -1) {
-                blockBuilder.id = currBlockId++;
-                const block = blockBuilderToCfgBlock.get(blockBuilder) as BasicBlock;
-                block.setId(blockBuilder.id);
-            }
-        }
-
+    private createCfg(blockBuilderToCfgBlock: Map<BlockBuilder, BasicBlock>, basicBlockSet: Set<BasicBlock>): Cfg {
         const cfg = new Cfg();
         const startingBasicBlock = blockBuilderToCfgBlock.get(this.blocks[0])!;
         cfg.setStartingStmt(startingBasicBlock.getHead()!);
-        currBlockId = 0;
+        let currBlockId = 0;
         for (const basicBlock of basicBlockSet) {
             basicBlock.setId(currBlockId++);
             cfg.addBlock(basicBlock);
@@ -1308,7 +1301,43 @@ export class CfgBuilder {
         for (const stmt of cfg.getStmts()) {
             stmt.setCfg(cfg);
         }
+        this.topologicalSortBlock(cfg);
         return cfg;
+    }
+
+    private topologicalSortBlock(cfg: Cfg): void {
+        function dfs(block: BasicBlock): void {
+            if (visited[block.getId()]) {
+                return;
+            }
+
+            visited[block.getId()] = true;
+            result.add(block);
+
+            for (const succ of block.getSuccessors() || []) {
+                dfs(succ);
+            }
+        }
+
+        const startingBlock = cfg.getStartingBlock();
+        if (!startingBlock) {
+            return;
+        }
+        const blocks = cfg.getBlocks();
+        const visited: boolean[] = new Array(blocks.size).fill(false);
+        const result: Set<BasicBlock> = new Set<BasicBlock>();
+
+        dfs(startingBlock);
+
+        // handle rest blocks haven't visted, which should be with no predecessorBlocks or the rest block in a block circle
+        for (const block of blocks) {
+            if (!visited[block.getId()]) {
+                dfs(block);
+            }
+        }
+        if (result.size === blocks.size) {
+            cfg.setBlocks(result, false);
+        }
     }
 
     private linkBasicBlocks(blockBuilderToCfgBlock: Map<BlockBuilder, BasicBlock>): void {

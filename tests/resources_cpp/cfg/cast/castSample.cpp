@@ -1,3 +1,18 @@
+/*
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #include <iostream>
 using namespace std;
 
@@ -9,31 +24,31 @@ void CXXStaticCastTest()
 }
 
 // c style cast
-void cStyleCastTest()
+void CStyleCastTest()
 {
     int i = 2;
-    float i_float = (float)i;
+    float iFloat = (float)i;
 }
 
-// CXXConstCastExpr,const_cast转换类型是指针/引用
+// CXXConstCastExpr, const_cast conversion types are pointers/references
 void CXXConstCastTest()
 {
     const int ci = 2;
-    int *pi = const_cast<int *>(&ci); // 指针的表示，addr操作处理。（映射至UnaryOperator时因为&未定义而undifined）
+    // Pointer representation, addr operation handling.
+    // (When mapped to UnaryOperator, it's undefined because & is not defined)
+    int *pi = const_cast<int *>(&ci);
 }
 
 // CXXDynamicCastExpr
 // Define 'Circle' class that implements 'Shape'
-
-class Shape
-{
+class Shape {
 public:
-    virtual void draw() = 0; // Pure virtual
+    virtual void Draw() = 0; // Pure virtual
 };
-class Circle : public Shape
-{
+
+class Circle : public Shape {
 public:
-    void draw() override
+    void Draw() override
     {
         //  ...
     }
@@ -42,23 +57,22 @@ public:
 void CXXDynamicCastTest()
 {
     Shape *s = new Circle();
-    Circle *c = dynamic_cast<Circle *>(s); // 指针的表示
-    if (c)
-    {
-        c->draw();
+    Circle *c = dynamic_cast<Circle *>(s); // Pointer representation
+    if (c) {
+        c->Draw();
     }
 }
 
-void CXXReinterpretCastTest() {
+void CXXReinterpretCastTest()
+{
     int* pi = new int(42);
-    double* pd = reinterpret_cast<double*>(pi); // 指针的表示
+    double* pd = reinterpret_cast<double*>(pi); // Pointer representation
 }
 
 // CXXFunctionalCastExpr
-class Widget
-{
+class Widget {
 public:
-    Widget(int);
+    explicit Widget(int);
 };
 
 void CXXFunctionalCastTest()
@@ -67,9 +81,3 @@ void CXXFunctionalCastTest()
     auto y = std::string("hello");
     Widget w = Widget(42);
 }
-// // builtinBitCastExpr----头文件找不到
-// void BuiltinBitCastTest(){
-//     float f = 3.14f;
-//     int i = std::bit_cast<int>(f);
-//     float f2 = std::bit_cast<float>(i);
-// }

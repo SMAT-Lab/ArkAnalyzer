@@ -22,7 +22,6 @@ import {
     BOOLEAN_KEYWORD,
     NEVER_KEYWORD,
     NULL_KEYWORD,
-    NULL_POINTER,
     NUMBER_KEYWORD,
     STRING_KEYWORD,
     UNDEFINED_KEYWORD,
@@ -31,7 +30,6 @@ import {
 } from '../common/TSConst';
 import { Local } from './Local';
 import { Constant } from './Constant';
-import { Value } from './Value';
 
 /**
  * @category core/base/type
@@ -160,31 +158,6 @@ export class NumberType extends PrimitiveType {
     }
 }
 
-// cpp的number有多种整型、浮点型的区分，因此派生一个cpp的number类型
-export class CXXNumberType extends NumberType {
-    private readonly cxxType: string;
-
-    private constructor(cxxType: string) {
-        super();
-        this.cxxType = cxxType;
-    }
-
-    public static getInstance(cxxType?: string) {
-        if (cxxType) {
-            return new CXXNumberType(cxxType);
-        }
-        return NumberType.getInstance();
-    }
-
-    public getCxxType(): string {
-        return this.cxxType;
-    }
-
-    public getTypeString(): string {
-        return this.cxxType;
-    }
-}
-
 /**
  * bigint type
  * @category core/base/type
@@ -201,6 +174,10 @@ export class BigIntType extends PrimitiveType {
     }
 }
 
+/**
+ * StringType type
+ * @category core/base/type
+ */
 export class StringType extends PrimitiveType {
     private static readonly INSTANCE = new StringType();
 
@@ -213,33 +190,8 @@ export class StringType extends PrimitiveType {
     }
 }
 
-// cpp的string有不同字符类型区分，因此派生一个cpp的string类型
-export class CXXStringType extends StringType {
-    private readonly cxxType: string;
-
-    private constructor(cxxType: string) {
-        super();
-        this.cxxType = cxxType;
-    }
-
-    public static getInstance(cxxType?: string) {
-        if (cxxType) {
-            return new CXXStringType(cxxType);
-        }
-        return StringType.getInstance();
-    }
-
-    public getCxxType(): string {
-        return this.cxxType;
-    }
-
-    public getTypeString(): string {
-        return this.cxxType.toString();
-    }
-}
-
 /**
- * null type
+ * Null type in TS/ArkTS, and it also refers to nullptr in Cxx.
  * @category core/base/type
  */
 export class NullType extends PrimitiveType {
@@ -251,18 +203,6 @@ export class NullType extends PrimitiveType {
 
     private constructor() {
         super(NULL_KEYWORD);
-    }
-}
-
-export class NullPtrType extends PrimitiveType {
-    private static readonly INSTANCE = new NullPtrType();
-
-    public static getInstance(): NullPtrType {
-        return this.INSTANCE;
-    }
-
-    private constructor() {
-        super(NULL_POINTER);
     }
 }
 
@@ -406,6 +346,10 @@ export class VoidType extends Type {
     }
 }
 
+/**
+ * NeverType type
+ * @category core/base/type
+ */
 export class NeverType extends Type {
     private static readonly INSTANCE = new NeverType();
 
@@ -471,27 +415,17 @@ export class ClosureType extends FunctionType {
 }
 
 /**
- * type of an object
+ * type of object
  * @category core/base/type
  */
 export class ClassType extends Type {
     private classSignature: ClassSignature;
     private realGenericTypes?: Type[];
-    private applyType: string; // 应用类型*和&
 
-    constructor(classSignature: ClassSignature, realGenericTypes?: Type[], applyType:string = '') {
+    constructor(classSignature: ClassSignature, realGenericTypes?: Type[]) {
         super();
         this.classSignature = classSignature;
         this.realGenericTypes = realGenericTypes;
-        this.applyType = applyType;
-    }
-
-    public getApplyType(): string {
-        return  this.applyType;
-    }
-
-    public setApplyType(applyType: string) {
-        this.applyType = applyType;
     }
 
     public getClassSignature(): ClassSignature {
@@ -888,140 +822,5 @@ export class EnumValueType extends Type {
 
     public getTypeString(): string {
         return this.signature.toString();
-    }
-}
-
-/* CPP的指针类型 */
-export class PointerType extends Type {
-    private baseType: Type; // 基础类型，如int *中的int
-    private level: number; // 代表几级指针
-
-    constructor(baseType: Type, level: number) {
-        super();
-        this.baseType = baseType;
-        this.level = level;
-    }
-
-    public getBaseType(): Type {
-        return this.baseType;
-    }
-
-    public setBaseType(newBaseType: Type) {
-        this.baseType = newBaseType;
-    }
-
-    public getLevel(): number {
-        return this.level;
-    }
-
-    public getTypeString(): string {
-        const strs: string[] = [];
-        if (this.baseType instanceof UnionType) {
-            strs.push('(' +this.baseType.toString() + ')');
-        } else if (this.baseType) {
-            strs.push(this.baseType.toString());
-        }
-        for (let i = 0; i < this.level; i++) {
-            strs.push('*');
-        }
-        return strs.join('');
-    }
-}
-
-export enum ReferCategory{
-    LVALUE_REF = 'LVALUE_REF',
-    RVALUE_REF = 'RVALUE_REF',
-    UNIVERSAL_REF = 'UNIVERSAL_REF'
-}
-
-export class ReferenceType extends Type {
-    private baseType: Type;
-    private category: ReferCategory;
-    private sourceValue?: Value;
-
-    constructor(bassType: Type, category: ReferCategory, sourceValue?: Value) {
-        super();
-        this.baseType = bassType;
-        this.category = category;
-        this.sourceValue = sourceValue;
-    }
-
-    public getBaseType(): Type {
-        return this.baseType;
-    }
-
-    public setBaseType(newBaseType: Type) {
-        this.baseType = newBaseType;
-    }
-
-    public getCategory(): ReferCategory {
-        return this.category;
-    }
-
-    public setSourceValue(sourceValue: Value) {
-        this.sourceValue = sourceValue;
-    }
-
-    public getSourceValue() {
-        return this.sourceValue;
-    }
-
-    public getTypeString(): string {
-        // 实现抽象方法，返回类型字符串
-        const strs: string[] = [];
-        if (this.baseType instanceof UnionType) {
-            strs.push('(' + this.baseType.toString() + ')');
-        } else if (this.baseType) {
-            strs.push(this.baseType.toString());
-        }
-        if (this.category === ReferCategory.LVALUE_REF) {
-            strs.push('&');
-        } else {
-            strs.push('&&');
-        }
-        return strs.join('');
-    }
-}
-
-export class LabelType extends PointerType {
-    private static readonly INSTANCE = new LabelType();
-
-    protected constructor() {
-        super(VoidType.getInstance(),1);
-    }
-
-    public static getInstance(): LabelType {
-        return this.INSTANCE;
-    }
-}
-
-export class Thread extends Type {
-    constructor() {
-        super();
-    }
-
-    getTypeString(){
-        return 'thread ';
-    }
-}
-
-export class functionPointer extends Type {
-    funType: string;
-
-    constructor(funType: string) {
-        super();
-        this.funType = funType;
-    }
-
-    public getTypeString(): string {
-        return this.funType;
-    }
-
-    public setFunType(funType: string): void {
-        this.funType = funType;
-    }
-
-    public getFunType(): string {
-        return this.funType;
     }
 }

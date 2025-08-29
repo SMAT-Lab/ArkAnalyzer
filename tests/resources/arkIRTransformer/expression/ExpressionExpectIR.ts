@@ -843,11 +843,11 @@ export const PTR_INVOKE_EXPRESSION_CALLFUNCRETURNED_EXPECT_IR = `callFuncReturne
 }
 `;
 
-export const PTR_INVOKE_EXPRESSION_AM4$PROMISECALL_EXPECT_IR = `%AM5$promiseCall(resolve: unknown): void {
+export const PTR_INVOKE_EXPRESSION_AM4$PROMISECALL_EXPECT_IR = `%AM5$promiseCall(resolve: @built-in/lib.es2015.promise.d.ts: PromiseConstructor.%AM1(T|@built-in/lib.es5.d.ts: PromiseLike<T>)): void {
   label0:
-    resolve = parameter0: unknown
+    resolve = parameter0: @built-in/lib.es2015.promise.d.ts: PromiseConstructor.%AM1(T|@built-in/lib.es5.d.ts: PromiseLike<T>)
     this = this: @expression/CallExpressionTest.ts: %dflt
-    ptrinvoke <@%unk/%unk: .resolve()>(42)
+    ptrinvoke <@built-in/lib.es2015.promise.d.ts: PromiseConstructor.resolve(T|@built-in/lib.es5.d.ts: PromiseLike<T>)>(42)
     return
 }
 `;
@@ -998,6 +998,35 @@ export const REST_ELEMENTS2_EXPECT_IR = `restElements2(): void {
 }
 `;
 
+export const REST_ELEMENTS3_EXPECT_IR = `restElements3(): void {
+  label0:
+    this = this: @expression/Rest.ts: %dflt
+    %2 = newarray (number)[4]
+    %2[0] = 1
+    %2[1] = 2
+    %2[2] = 3
+    %2[3] = 4
+    %0 = %2
+    a = %0[0]
+    b = %0[1]
+    %1 = instanceinvoke %0.<@built-in/lib.es5.d.ts: Array.slice(number, number)>(2)
+    c = %1[0]
+    d = %1[1]
+    %5 = newarray (number)[4]
+    %5[0] = 1
+    %5[1] = 2
+    %5[2] = 3
+    %5[3] = 4
+    %3 = %5
+    a = %3[0]
+    b = %3[1]
+    %4 = instanceinvoke %3.<@built-in/lib.es5.d.ts: Array.slice(number, number)>(2)
+    c = %4[0]
+    d = %4[1]
+    return
+}
+`;
+
 export const REST_PARAMETERS1_EXPECT_IR = `restParameter(...numbers: number[]): number {
   label0:
     numbers = parameter0: number[]
@@ -1016,6 +1045,73 @@ export const ASSIGNMENT_EXPECT_IR = `additiveCompoundAssignment(): void {
     a = %0
     %1 = a.<@expression/Assignment.ts: A.i>
     i = i + %1
+    return
+}
+`;
+
+export const DESTRUCTURING1_EXPECT_IR = `destructuring1(): void {
+  label0:
+    this = this: @expression/Destructuring.ts: %dflt
+    %1 = newarray (number)[2]
+    %1[0] = 1
+    %1[1] = 2
+    %0 = %1
+    a = %0[0]
+    b = %0[1]
+    %3 = newarray (number)[2]
+    %3[0] = 1
+    %3[1] = 2
+    %2 = %3
+    a = %2[0]
+    b = %2[1]
+    return
+}
+`;
+
+export const DESTRUCTURING2_EXPECT_IR = `destructuring2(): void {
+  label0:
+    this = this: @expression/Destructuring.ts: %dflt
+    %1 = newarray (number)[3]
+    %1[0] = 1
+    %1[1] = 2
+    %1[2] = 3
+    %0 = %1
+    a = %0[0]
+    b = %0[2]
+    %3 = newarray (number)[3]
+    %3[0] = 1
+    %3[1] = 2
+    %3[2] = 3
+    %2 = %3
+    a = %2[0]
+    b = %2[2]
+    return
+}
+`;
+
+export const DESTRUCTURING3_EXPECT_IR = `destructuring3(): void {
+  label0:
+    this = this: @expression/Destructuring.ts: %dflt
+    %1 = newarray (number)[5]
+    %1[0] = 1
+    %1[1] = 2
+    %1[2] = 3
+    %1[3] = 4
+    %1[4] = 5
+    %0 = %1
+    a = %0[0]
+    b = %0[2]
+    rest = instanceinvoke %0.<@built-in/lib.es5.d.ts: Array.slice(number, number)>(3)
+    %3 = newarray (number)[5]
+    %3[0] = 1
+    %3[1] = 2
+    %3[2] = 3
+    %3[3] = 4
+    %3[4] = 5
+    %2 = %3
+    a = %2[0]
+    b = %2[2]
+    rest = instanceinvoke %2.<@built-in/lib.es5.d.ts: Array.slice(number, number)>(3)
     return
 }
 `;

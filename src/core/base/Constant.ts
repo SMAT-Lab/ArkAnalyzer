@@ -13,11 +13,9 @@
  * limitations under the License.
  */
 
-
-import { BigIntType, BooleanType, LabelType, NullType, NumberType, StringType, Type, UndefinedType } from './Type';
+import { BigIntType, BooleanType, NullType, NumberType, StringType, Type, UndefinedType } from './Type';
 import { Value } from './Value';
-import { NULL_KEYWORD, UNDEFINED_KEYWORD, NULL_POINTER } from '../common/TSConst';
-import { NullPtrType } from './Type';
+import { NULL_KEYWORD, UNDEFINED_KEYWORD } from '../common/TSConst';
 
 /**
  * @category core/base
@@ -74,7 +72,8 @@ export class BooleanConstant extends Constant {
         super(value.toString(), BooleanType.getInstance());
     }
 
-    public static getInstance(value: boolean|string): NullConstant {
+    public static getInstance(value: boolean | string): NullConstant {
+        // When ast is parsed, boolean type is assigned
         if (value.toString() === 'true') {
             return this.TRUE;
         } else {
@@ -97,9 +96,6 @@ export class BigIntConstant extends Constant {
 
 export class StringConstant extends Constant {
     constructor(value: string) {
-        if (value.startsWith('"') && value.endsWith('"')) {
-            value = value.slice(1, -1);  // 去除多余双引号
-        }
         super(value.toString(), StringType.getInstance());
     }
 }
@@ -127,26 +123,3 @@ export class UndefinedConstant extends Constant {
         return this.INSTANCE;
     }
 }
-
-export class NullPtrConstant extends Constant {
-    private static readonly INSTANCE = new NullPtrConstant();
-
-    constructor() {
-        super(NULL_POINTER, NullPtrType.getInstance());
-    }
-
-    public static getInstance(): NullPtrConstant {
-        return this.INSTANCE;
-    }
-}
-
-export class LabelConstant extends Constant {
-    constructor(value: string) {
-        if (value.startsWith('"') && value.endsWith('"')) {
-            value = value.slice(1, -1);  // 去除多余双引号
-        }
-        super(value, LabelType.getInstance());
-    }
-}
-
-

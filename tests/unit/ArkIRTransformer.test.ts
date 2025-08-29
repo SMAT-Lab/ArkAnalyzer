@@ -17,8 +17,10 @@ import { assert, describe, expect, it } from 'vitest';
 import path from 'path';
 import {
     ANONYMOUS_METHOD_PREFIX,
+    ArkAssignStmt,
     ArkFile,
     ArkMethod,
+    ArkInstanceFieldRef,
     ArkStaticFieldRef,
     DEFAULT_ARK_CLASS_NAME,
     GlobalRef,
@@ -27,6 +29,7 @@ import {
     Logger,
     NAME_DELIMITER,
     NAME_PREFIX,
+    NumberType,
     Scene,
     Value,
 } from '../../src';
@@ -34,6 +37,9 @@ import {
     ASSIGNMENT_EXPECT_IR,
     BinaryExpression_Expect_IR,
     CallExpression_Expect_IR,
+    DESTRUCTURING1_EXPECT_IR,
+    DESTRUCTURING2_EXPECT_IR,
+    DESTRUCTURING3_EXPECT_IR,
     ExpressionStatements_Expect_IR,
     LiteralExpression_Expect_IR,
     NewExpression_Expect_IR,
@@ -44,6 +50,7 @@ import {
     PTR_INVOKE_EXPRESSION_RETURNFUNC1_EXPECT_IR,
     REST_ELEMENTS1_EXPECT_IR,
     REST_ELEMENTS2_EXPECT_IR,
+    REST_ELEMENTS3_EXPECT_IR,
     REST_PARAMETERS1_EXPECT_IR,
     SPREAD_ARRAY1_EXPECT_IR,
     SPREAD_ARRAY2_EXPECT_IR,
@@ -448,12 +455,19 @@ describe('expression Test', () => {
     it('test rest syntax', async () => {
         testMethodIR(scene, 'Rest.ts', DEFAULT_ARK_CLASS_NAME, 'restElements1', REST_ELEMENTS1_EXPECT_IR);
         testMethodIR(scene, 'Rest.ts', DEFAULT_ARK_CLASS_NAME, 'restElements2', REST_ELEMENTS2_EXPECT_IR);
+        testMethodIR(scene, 'Rest.ts', DEFAULT_ARK_CLASS_NAME, 'restElements3', REST_ELEMENTS3_EXPECT_IR);
         testMethodIR(scene, 'Rest.ts', DEFAULT_ARK_CLASS_NAME, 'restParameter', REST_PARAMETERS1_EXPECT_IR);
     });
 
     it('test assignment', async () => {
         testMethodIR(scene, 'Assignment.ts', DEFAULT_ARK_CLASS_NAME, 'additiveCompoundAssignment',
             ASSIGNMENT_EXPECT_IR);
+    });
+
+    it('test destructuring', async () => {
+        testMethodIR(scene, 'Destructuring.ts', DEFAULT_ARK_CLASS_NAME, 'destructuring1', DESTRUCTURING1_EXPECT_IR);
+        testMethodIR(scene, 'Destructuring.ts', DEFAULT_ARK_CLASS_NAME, 'destructuring2', DESTRUCTURING2_EXPECT_IR);
+        testMethodIR(scene, 'Destructuring.ts', DEFAULT_ARK_CLASS_NAME, 'destructuring3', DESTRUCTURING3_EXPECT_IR);
     });
 });
 
@@ -714,5 +728,26 @@ describe('multiple closure Test', () => {
         const callMethod = multipleTestClass?.getMethods().find((method) => (method.getName() === 'callMethod4'));
         assert.isDefined(callMethod);
         testMethodClosure(callMethod!, MultipleCallMethod4_Expect_IR);
+    });
+});
+
+describe('closure in anonymous class Test', () => {
+    const scene = buildScene(path.join(BASE_DIR, 'function'));
+    const arkFile = scene.getFiles().find((file) => file.getName().endsWith('ClosureParamsTest.ts'));
+
+    it('create anonymous class in anonymous function', async () => {
+        const method = arkFile?.getClassWithName('%AC1$ClosureInClass.%AM0$%statInit')?.getInstanceInitMethod();
+        assert.isDefined(method);
+        const stmt = method?.getCfg()?.getStmts()[1];
+        assert.isDefined(stmt);
+        assert.isTrue(((stmt! as ArkAssignStmt).getRightOp() as ArkInstanceFieldRef).getType() instanceof NumberType);
+    });
+
+    it('create anonymous class in class method', async () => {
+        const method = arkFile?.getClassWithName('%AC0$ClosureInClass.goo')?.getInstanceInitMethod();
+        assert.isDefined(method);
+        const stmt = method?.getCfg()?.getStmts()[1];
+        assert.isDefined(stmt);
+        assert.isTrue(((stmt! as ArkAssignStmt).getRightOp() as ArkInstanceFieldRef).getType() instanceof NumberType);
     });
 });

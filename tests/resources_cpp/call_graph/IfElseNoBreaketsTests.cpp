@@ -1,41 +1,53 @@
-class Animal
-{
+/*
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+*/
+
+class Animal {
 public:
-    virtual void sound() const = 0;
+    virtual void Sound() const = 0;
 };
 
-class Dog : public Animal
-{
+class Dog : public Animal {
 public:
-    void sound() const override{}
+    void Sound() const override {}
 };
 
-class Cat : public Animal
-{
+class Cat : public Animal {
 public:
-    void sound() const override{}
-    void sound1() const{
-
-    }
+    void Sound() const override {}
+    void Sound1() const {}
 };
 
-class Pig : public Animal
-{
+class Pig : public Animal {
 public:
-    void sound() const override{}
+    void Sound() const override{}
 };
 
-void makeSound(Animal& animal)
+void MakeSound(Animal& animal)
 {
-    animal.sound();
+    animal.Sound();
 }
-int main(){
+
+int main()
+{
     Cat cat;
-    makeSound(Dog());
+    MakeSound(Dog());
     int num = 1;
-    if (num > 0)
-        cat.sound();
-    else
-        cat.sound1();
+    if (num > 0) {
+        cat.Sound();
+    } else {
+        cat.Sound1();
+    }
     return 0;
 }

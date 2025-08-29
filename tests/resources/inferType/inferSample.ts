@@ -110,3 +110,13 @@ function testArrayFrom(): void {
     let arr1 = Array.from<number>(new Set<number>([1, 2, 3]));
     let arr2 = Array.from('hello');
 }
+
+let fileGV = 1;
+
+namespace testGV1 {
+    let counter = 0;
+
+    function increment(): void {
+        counter += fileGV;
+    }
+}

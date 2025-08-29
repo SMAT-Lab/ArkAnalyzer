@@ -84,10 +84,6 @@ const paramWithComplicatedInitializer = `paramWithComplicatedInitializer(a?: unk
     %0 = 'true'
     goto label5
 
-  label4:
-    %0 = 'false'
-    goto label5
-
   label5:
     if b == undefined goto label6 label7
 
@@ -99,6 +95,10 @@ const paramWithComplicatedInitializer = `paramWithComplicatedInitializer(a?: unk
     %1 = a + b
     instanceinvoke console.<@%unk/%unk: .log()>(%1)
     return
+
+  label4:
+    %0 = 'false'
+    goto label5
 }
 `;
 
@@ -108,19 +108,19 @@ const methodWithIfBranch = `paramInitializerWithIfBranch(a?: unknown): number {
     this = this: @method/method.ts: %dflt
     if a == undefined goto label3 label4
 
-  label0:
-    return a
-
-  label1:
-    %0 = -a
-    return %0
-
   label3:
     a = 3
     goto label4
 
   label4:
     if a > 0 goto label0 label1
+
+  label0:
+    return a
+
+  label1:
+    %0 = -a
+    return %0
 }
 `;
 
@@ -143,13 +143,13 @@ const methodWithTernary = `paramInitializerWithTernary(a?: unknown): number {
     %1 = b
     goto label5
 
+  label5:
+    return b
+
   label4:
     b = -a
     %1 = b
     goto label5
-
-  label5:
-    return b
 }
 `;
 
@@ -159,21 +159,21 @@ const methodWithTryCatch = `paramInitializerWithTryCatch(a?: unknown): void {
     this = this: @method/method.ts: %dflt
     if a == undefined goto label4 label0
 
+  label4:
+    a = 3
+    goto label0
+
   label0:
     instanceinvoke console.<@%unk/%unk: .log()>(a)
-    goto label2
-
-  label1:
-    e = caughtexception: unknown
-    instanceinvoke console.<@%unk/%unk: .log()>(e)
     goto label2
 
   label2:
     return
 
-  label4:
-    a = 3
-    goto label0
+  label1:
+    e = caughtexception: unknown
+    instanceinvoke console.<@%unk/%unk: .log()>(e)
+    goto label2
 }
 `;
 
@@ -182,6 +182,14 @@ const methodWithForLoop = `paramInitializerWithForLoop(a?: unknown): void {
     a = parameter0: unknown
     this = this: @method/method.ts: %dflt
     if a == undefined goto label4 label5
+
+  label4:
+    a = 3
+    goto label5
+
+  label5:
+    i = 0
+    goto label0
 
   label0:
     if i < a goto label1 label2
@@ -193,14 +201,6 @@ const methodWithForLoop = `paramInitializerWithForLoop(a?: unknown): void {
 
   label2:
     return
-
-  label4:
-    a = 3
-    goto label5
-
-  label5:
-    i = 0
-    goto label0
 }
 `;
 
@@ -210,24 +210,24 @@ const methodWithSwitch = `paramInitializerWithSwitch(a?: unknown): void {
     this = this: @method/method.ts: %dflt
     if a == undefined goto label4 label5
 
-  label0:
-    %0 = a + 1
-    instanceinvoke console.<@%unk/%unk: .log()>(%0)
-    goto label2
-
-  label1:
-    instanceinvoke console.<@%unk/%unk: .log()>(a)
-    goto label2
-
-  label2:
-    return
-
   label4:
     a = 3
     goto label5
 
   label5:
     if a == 1 goto label0 label1
+
+  label0:
+    %0 = a + 1
+    instanceinvoke console.<@%unk/%unk: .log()>(%0)
+    goto label2
+
+  label2:
+    return
+
+  label1:
+    instanceinvoke console.<@%unk/%unk: .log()>(a)
+    goto label2
 }
 `;
 

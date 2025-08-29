@@ -1,133 +1,170 @@
+/*
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #include <iostream>
 #include <string>
 
 using namespace std;
 
-/****** 函数重载 ******/
-void printInfo(int x) {
+#define ONE 1
+#define TWO 2
+#define THREE 3
+#define FOUR 4
+#define THIRTY 30
+
+/****** Function overloading ******/
+void PrintInfo(int x)
+{
     cout << x << endl;
 }
 
-void printInfo(char x) {
+void PrintInfo(char x)
+{
     cout << x << endl;
 }
 
-void printInfo(int x, char y) {
+void PrintInfo(int x, char y)
+{
     cout << x << " " << y << endl;
 }
 
-/****** 构造函数重载 ******/
+/******  Constructor overloading ******/
 class Person {
 private:
     string name;
     int age;
 
 public:
-    // 1. 默认构造函数
-    Person() {
+    // 1. Default constructor
+    Person()
+    {
         name = "Unknown";
         age = 0;
         cout << "Default constructor called" << endl;
     }
 
-    // 2. 带全部参数的构造函数
-    Person(const string& n, int a);
+    // 2. Constructor with all parameters
+    explicit Person(const string& n, int a);
 
-    // 3. 带姓名的构造函数，使用初始化列表的构造函数（推荐写法）
-    Person(const string& n);
+    // 3. Constructor with name, using initializer list constructor (recommended approach)
+    explicit Person(const string& n);
 
-    // 打印信息的方法
-    void printInfo() const {
+    // Method to print information
+    void PrintInfo() const
+    {
         cout << "Name: " << name << ", Age: " << age << endl;
     }
 };
 
-Person::Person(const string& n, int a) {
+Person::Person(const string& n, int a)
+{
     name = n;
     age = a;
     cout << "Constructor with all parameters called" << endl;
 }
 
-Person::Person(const string& n) : name(n), age(0) {
+Person::Person(const string& n) : name(n), age(0)
+{
     cout << "Constructor with name called" << endl;
 }
 
-/****** 运算符重载 ******/
+/****** Operator overloading ******/
 class Vector {
 private:
     double x, y;
 public:
-    Vector(double x = 0, double y = 0) : x(x), y(y) {}
+    explicit Vector(double x = 0, double y = 0) : x(x), y(y) {}
 
-    // 重载 二元运算符（成员函数）
-    Vector operator+(const Vector& other) const {
+    // Overload binary operator (member function)
+    Vector operator+(const Vector& other) const
+    {
         return Vector(x + other.x, y + other.y);
     }
 
-    // 前置自增运算符（++v）
-    Vector& operator++() {
-        ++x;  // 自增 x 分量
-        ++y;  // 自增 y 分量
+    // Prefix increment operator (++v)
+    Vector& operator++()
+    {
+        ++x;  // Increment y component
+        ++y;  // Increment y component
         return *this;  // 返回自身引用
     }
 
-    // 重载函数调用
-    Vector& operator()(const int num1, const int num2) {
+    //  Overload function call
+    Vector& operator()(const int num1, const int num2)
+    {
         x = x + num1;
         y = y + num2;
         return *this;
     }
 
-    // 在类内声明友元函数（关键！）
+    // Declare friend function within class (key!)
     friend std::ostream& operator<<(std::ostream& os, const Vector& v);
     friend std::istream& operator>>(std::istream& is, Vector& v);
 };
 
-// 在类外定义
-std::ostream& operator<<(std::ostream& os, const Vector& v) {
+// Define outside class
+std::ostream& operator<<(std::ostream& os, const Vector& v)
+{
     os << "(" << v.x << ", " << v.y << ")";
     return os;
 }
 
-std::istream& operator>>(std::istream& is, Vector& v) {
+std::istream& operator>>(std::istream& is, Vector& v)
+{
     is >> v.x >> v.y;
     return is;
 }
 
 /****** clang::UserDefinedLiteral ******/
-constexpr long double operator""_km(long double km) {
+constexpr long double operator""_km(long double km)
+{
     return km * 1000; // 1km = 1000m
 }
 
-// 字符类型
-char operator""_c(char c) {
+// Character type
+char operator""_c(char c)
+{
     return c;
 }
 
-int main() {
-    printInfo(1);
-    printInfo('A');
-    printInfo(1, 'A');
+int main()
+{
+    PrintInfo(1);
+    PrintInfo('A');
+    PrintInfo(1, 'A');
 
-    Person p1;                        // 默认构造函数
-    Person p2("Alice", 30);           // 带全部参数的构造函数
-    Person p3("Charlie");             // 带姓名的构造函数
-    p1.printInfo();
-    p2.printInfo();
-    p3.printInfo();
+    Person p1;                        // Default constructor
+    Person p2("Alice", THIRTY);           // Constructor with all parameters
+    Person p3("Charlie");             // Constructor with name
+    p1.PrintInfo();
+    p2.PrintInfo();
+    p3.PrintInfo();
 
-    // ***运算符重载
-    Vector a(1, 2), b(3, 4);
-    Vector c = a + b;  // 等价于 a.operator+(b)
-    ++c;  // 等价于c.operator++()
-    c(1, 1);  // 等价于c.operator()(1, 1)
+    // ***Operator overloading
+    Vector a(ONE, TWO);
+    Vector b(THREE, FOUR);
+    Vector c = a + b;  // Equivalent to a.operator+(b)
+    ++c;  // Equivalent to c.operator++()
+    c(1, 1);  // Equivalent to c.operator()(1, 1)
 
     Vector v;
-    std::cin >> v;  // 等价于 operator>>(std::cin, v)
-    std::cout << "Vector: " << v  << " ;" << std::endl;  // 等价于 operator<<(std::cout, v)
-    std::cout << v << "aaa" << std::endl;  // 等价于 operator<<(std::cout, v)
+    std::cin >> v;  // Equivalent to operator>>(std::cin, v)
+    std::cout << "Vector: " << v  << " ;" << std::endl;  // Equivalent to operator<<(std::cout, v)
+    std::cout << v << "aaa" << std::endl;  // Equivalent to operator<<(std::cout, v)
 
     // ***clang::UserDefinedLiteral
-    auto distance = 5.3_km;  // 会产生clang::UserDefinedLiteral节点
-    auto ch = 'a'_c;     // 字符用户定义字面量
+    auto distance = 5.3_km;  // Will generate clang::UserDefinedLiteral node
+    auto ch = 'a'_c;     // Character user-defined literal
 }

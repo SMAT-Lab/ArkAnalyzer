@@ -15,16 +15,7 @@
 
 import { ArkParameterRef, ArkThisRef } from '../base/Ref';
 import { ArkAssignStmt, ArkReturnStmt, Stmt } from '../base/Stmt';
-import {
-    AliasType,
-    ClassType,
-    EnumValueType,
-    FunctionType,
-    GenericType,
-    LiteralType,
-    Type,
-    UnionType
-} from '../base/Type';
+import { AliasType, ClassType, EnumValueType, FunctionType, GenericType, LiteralType, Type, UnionType } from '../base/Type';
 import { Value } from '../base/Value';
 import { Cfg } from '../graph/Cfg';
 import { ViewTree } from '../graph/ViewTree';
@@ -44,8 +35,7 @@ import { ArkFile, Language } from './ArkFile';
 import { CONSTRUCTOR_NAME } from '../common/TSConst';
 import { MethodParameter } from './builder/ArkMethodBuilder';
 import { TypeInference } from '../common/TypeInference';
-import { StatementBuilder } from '../../cpp_frontend/graph/builder/CfgBuilder';
-import { BodyBuilderCpp } from '../../cpp_frontend/model/builder/BodyBuilder';
+import { CxxBodyBuilder } from '../../cpp_frontend/model/builder/BodyBuilder';
 
 export const arkMethodNodeKind = [
     'MethodDeclaration',
@@ -81,17 +71,15 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
     private viewTree?: ViewTree;
 
     private bodyBuilder?: BodyBuilder;
-    private bodyBuilderCpp?: BodyBuilderCpp;
+    // CXXTodo: The bodybuilder for Cxx. After the subsequent abstraction of BodyBuilder, this field will be refactored.
+    private CxxBodyBuilder?: CxxBodyBuilder;
 
     private isGeneratedFlag: boolean = false;
     private asteriskToken: boolean = false;
     private questionToken: boolean = false;
 
-    public gotoStmtMap: Map<string, StatementBuilder[]>;
-
     constructor() {
         super();
-        this.gotoStmtMap = new Map();
     }
 
     /**
@@ -399,8 +387,8 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
         return this.bodyBuilder;
     }
 
-    public getBodyBuilderCpp(): BodyBuilderCpp | undefined {
-        return this.bodyBuilderCpp;
+    public getCxxBodyBuilder(): CxxBodyBuilder | undefined {
+        return this.CxxBodyBuilder;
     }
 
     /**
@@ -541,7 +529,11 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
     }
 
     public getReturnStmt(): Stmt[] {
-        return this.getCfg()?.getStmts().filter(stmt => stmt instanceof ArkReturnStmt) ?? [];
+        return (
+            this.getCfg()
+                ?.getStmts()
+                .filter(stmt => stmt instanceof ArkReturnStmt) ?? []
+        );
     }
 
     public setViewTree(viewTree: ViewTree): void {
@@ -563,10 +555,10 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
         }
     }
 
-    public setBodyBuilderCpp(bodyBuilder: BodyBuilderCpp): void {
-        this.bodyBuilderCpp = bodyBuilder;
+    public setCxxBodyBuilder(bodyBuilder: CxxBodyBuilder): void {
+        this.CxxBodyBuilder = bodyBuilder;
         if (this.getDeclaringArkFile().getScene().buildClassDone()) {
-            this.buildBodyCpp();
+            this.buildBody();
         }
     }
 
@@ -574,8 +566,8 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
         this.bodyBuilder = undefined;
     }
 
-    public freeBodyBuilderCpp(): void {
-        this.bodyBuilderCpp = undefined;
+    public freeCxxBodyBuilder(): void {
+        this.CxxBodyBuilder = undefined;
     }
 
     public buildBody(): void {
@@ -589,16 +581,14 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
                 }
             }
         }
-    }
-
-    public buildBodyCpp(): void {
-        if (this.bodyBuilderCpp) {
-            const arkBody: ArkBody | null = this.bodyBuilderCpp.build();
+        // CXXTodo: Building body for Cxx. After the BodyBuilder completes abstraction, this part needs to be refactored.
+        if (this.CxxBodyBuilder) {
+            const arkBody: ArkBody | null = this.CxxBodyBuilder.build();
             if (arkBody) {
                 this.setBody(arkBody);
                 arkBody.getCfg().setDeclaringMethod(this);
                 if (this.getOuterMethod() === undefined) {
-                    this.bodyBuilderCpp.handleGlobalAndClosure();
+                    this.CxxBodyBuilder.handleGlobalAndClosure();
                 }
             }
         }
@@ -663,11 +653,7 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
             }
             return args.length >= min && args.length <= max;
         });
-        return (
-            signatures?.find(p => this.isMatched(p.getMethodSubSignature().getParameters(), args)) ??
-            signatures?.[0] ??
-            this.getSignature()
-        );
+        return signatures?.find(p => this.isMatched(p.getMethodSubSignature().getParameters(), args)) ?? signatures?.[0] ?? this.getSignature();
     }
 
     private isMatched(parameters: MethodParameter[], args: Value[], isArrowFunc: boolean = false): boolean {
@@ -686,12 +672,12 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
         return true;
     }
 
-    private matchParam(paramType: Type, arg: Value): boolean {
-        if (paramType instanceof EnumValueType || paramType instanceof LiteralType) {
-            arg = ArkMethod.parseArg(arg);
-        }
+    private matchParam(paramType: Type, argument: Value): boolean {
+        const arg = ArkMethod.parseArg(argument, paramType);
         const argType = arg.getType();
         if (paramType instanceof AliasType && !(argType instanceof AliasType)) {
+            paramType = TypeInference.replaceAliasType(paramType);
+        } else if (!(paramType instanceof AliasType) && argType instanceof AliasType) {
             paramType = TypeInference.replaceAliasType(paramType);
         }
         if (paramType instanceof UnionType) {
@@ -701,14 +687,17 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
                 return false;
             }
             const parameters = paramType.getMethodSignature().getMethodSubSignature().getParameters();
-            const args = argType.getMethodSignature().getMethodSubSignature().getParameters().filter(p => !p.getName().startsWith(LEXICAL_ENV_NAME_PREFIX));
+            const args = argType
+                .getMethodSignature()
+                .getMethodSubSignature()
+                .getParameters()
+                .filter(p => !p.getName().startsWith(LEXICAL_ENV_NAME_PREFIX));
             return this.isMatched(parameters, args, true);
         } else if (paramType instanceof ClassType && paramType.getClassSignature().getClassName().includes(CALL_BACK)) {
             return argType instanceof FunctionType;
         } else if (paramType instanceof LiteralType) {
             const argStr = arg instanceof Constant ? arg.getValue() : argType.getTypeString();
-            return argStr.replace(/[\"|\']/g, '') ===
-                paramType.getTypeString().replace(/[\"|\']/g, '');
+            return argStr.replace(/[\"|\']/g, '') === paramType.getTypeString().replace(/[\"|\']/g, '');
         } else if (paramType instanceof ClassType && argType instanceof EnumValueType) {
             return paramType.getClassSignature() === argType.getFieldSignature().getDeclaringSignature();
         } else if (paramType instanceof EnumValueType) {
@@ -721,8 +710,8 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
         return argType.constructor === paramType.constructor;
     }
 
-    private static parseArg(arg: Value): Value {
-        if (arg instanceof Local) {
+    private static parseArg(arg: Value, paramType: Type): Value {
+        if ((paramType instanceof EnumValueType || paramType instanceof LiteralType) && arg instanceof Local) {
             const stmt = arg.getDeclaringStmt();
             const argType = arg.getType();
             if (argType instanceof EnumValueType && argType.getConstant()) {

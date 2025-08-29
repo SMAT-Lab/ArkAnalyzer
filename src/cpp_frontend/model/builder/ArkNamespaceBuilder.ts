@@ -16,19 +16,56 @@
 import { buildNormalArkClassFromArkNamespace } from './ArkClassBuilder';
 import { ArkFile } from '../../../core/model/ArkFile';
 import { buildArkMethodFromArkClass } from './ArkMethodBuilder';
-import ts from 'ohos-typescript';
 import { ArkNamespace } from '../../../core/model/ArkNamespace';
-import { buildModifiers } from './builderUtils';
+import { buildModifiers, buildDecorators } from './builderUtils';
 import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
 import { ArkClass } from '../../../core/model/ArkClass';
 import { ArkMethod } from '../../../core/model/ArkMethod';
-import { NamespaceSignature } from '../../../core/model/ArkSignature';
-import { genDefaultArkClass } from '../../../core/model/builder/ArkNamespaceBuilder';
-import { buildDecorators } from '../../../core/model/builder/builderUtils';
+import { ClassSignature, NamespaceSignature } from '../../../core/model/ArkSignature';
+import { CxxAstNode } from '../../ast/ArkCxxAstNode';
+import { DEFAULT_ARK_CLASS_NAME } from '../../../core/common/Const';
+import { buildDefaultArkMethodFromArkClass } from './ArkMethodBuilder';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkNamespaceBuilder');
 
-export function buildArkNamespace(node: any, declaringInstance: ArkFile | ArkNamespace, ns: ArkNamespace, sourceFile: any): void {
+function buildDefaultArkClass(cls: ArkClass, sourceFile: CxxAstNode, node?: CxxAstNode): void {
+    const defaultArkClassSignature = new ClassSignature(
+        DEFAULT_ARK_CLASS_NAME,
+        cls.getDeclaringArkFile().getFileSignature(),
+        cls.getDeclaringArkNamespace()?.getSignature() || null
+    );
+    cls.setSignature(defaultArkClassSignature);
+
+    genDefaultArkMethod(cls, sourceFile, node);
+}
+
+function genDefaultArkMethod(cls: ArkClass, sourceFile: CxxAstNode, node?: CxxAstNode): void {
+    let defaultMethod = new ArkMethod();
+    buildDefaultArkMethodFromArkClass(cls, defaultMethod, sourceFile, node);
+    cls.setDefaultArkMethod(defaultMethod);
+}
+
+export function buildDefaultArkClassFromArkNamespace(
+    arkNamespace: ArkNamespace,
+    defaultClass: ArkClass,
+    nsNode: CxxAstNode,
+    sourceFile: CxxAstNode
+): void {
+    defaultClass.setDeclaringArkNamespace(arkNamespace);
+    defaultClass.setDeclaringArkFile(arkNamespace.getDeclaringArkFile());
+    buildDefaultArkClass(defaultClass, sourceFile, nsNode);
+}
+
+
+export function genDefaultArkClass(ns: ArkNamespace, node: CxxAstNode, sourceFile: CxxAstNode): void {
+    let defaultClass = new ArkClass();
+
+    buildDefaultArkClassFromArkNamespace(ns, defaultClass, node, sourceFile);
+    ns.setDefaultClass(defaultClass);
+    ns.addArkClass(defaultClass);
+}
+
+export function buildArkNamespace(node: CxxAstNode, declaringInstance: ArkFile | ArkNamespace, ns: ArkNamespace, sourceFile: CxxAstNode): void {
     // modifiers
     if (node.modifiers) {
         ns.setModifiers(buildModifiers(node));
@@ -54,13 +91,12 @@ export function buildArkNamespace(node: any, declaringInstance: ArkFile | ArkNam
     ns.setCode(node.code);
 
     // set line and column
-    if (node.range?.begin){
+    if (node.range?.begin) {
         ns.setLine(node.range.begin.line);
     } else {
         ns.setLine(-1);
-        ns.setColumn(-1)
+        ns.setColumn(-1);
     }
-
 
     genDefaultArkClass(ns, node, sourceFile);
 
@@ -73,9 +109,9 @@ export function buildArkNamespace(node: any, declaringInstance: ArkFile | ArkNam
 }
 
 // TODO: check and update
-function buildNamespaceMembers(node: any, namespace: ArkNamespace, sourceFile: any): void {
+function buildNamespaceMembers(node: CxxAstNode, namespace: ArkNamespace, sourceFile: CxxAstNode): void {
     const statements = node.inner;
-    statements.forEach((child:any) => {
+    statements.forEach((child: CxxAstNode) => {
         if (child.kind === 'Namespace') {
             let childNs: ArkNamespace = new ArkNamespace();
             childNs.setDeclaringArkNamespace(namespace);
@@ -83,20 +119,18 @@ function buildNamespaceMembers(node: any, namespace: ArkNamespace, sourceFile: a
 
             buildArkNamespace(child, namespace, childNs, sourceFile);
             namespace.addNamespace(childNs);
-        } else if ( child.kind === 'CXXRecordDecl' || child.kind === 'ClassTemplate') {
+        } else if (child.kind === 'CXXRecordDecl' || child.kind === 'ClassTemplate') {
             let cls: ArkClass = new ArkClass();
 
             buildNormalArkClassFromArkNamespace(child, namespace, cls, sourceFile);
             namespace.addArkClass(cls);
-
         } else if (child.kind === 'FunctionDecl' || child.kind === 'FriendDecl') {
             logger.trace('This is a MethodDeclaration in ArkNamespace.');
             let mthd: ArkMethod = new ArkMethod();
 
             buildArkMethodFromArkClass(child, namespace.getDefaultClass(), mthd, sourceFile);
-
         } else {
-            logger.trace('Child joined default method of arkFile: ', ts.SyntaxKind[child.kind]);
+            logger.trace('Child joined default method of arkFile: ', child.kind);
             // join default method
         }
     });
