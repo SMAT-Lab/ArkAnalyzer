@@ -44,7 +44,7 @@ export const MapDemo_EXPECT = {
                 '%8 = instanceinvoke testmap.<@%unk/%unk: .Symbol.iterator()>()'
             ],
             preds: [],
-            succes: [ 1 ],
+            succes: [1],
         },
         {
             id: 1,
@@ -53,8 +53,8 @@ export const MapDemo_EXPECT = {
                 '%8 = instanceinvoke testmap.<@%unk/%unk: .Symbol.iterator()>()',
                 '%9 = instanceinvoke %8.<@%unk/%unk: .next()>()'
             ],
-            preds: [ 0, 1],
-            succes: [ 1, 2 ],
+            preds: [0, 1],
+            succes: [1, 2],
         },
         {
             id: 2,
