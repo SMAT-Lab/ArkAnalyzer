@@ -484,7 +484,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
 
     /**
      *Convert super expression in C++to IR
-     * C++subclasses call the parent class constructor for initialization, similar to ts super (xx). For example, Left (const char&name, int power): Base (name) {...}
+     * C++subclasses call the parent class constructor for initialization,
+     * similar to ts super (xx). For example, Left (const char&name, int power): Base (name) {...}
      *@ param cxxConstructExpr C++construction expression node
      *@ returns The ValueAndStmts object containing the converted value and related statements
      */

@@ -32,7 +32,7 @@ std::string GetDefaultOutputPath(const std::string &inputPath);
 void SaveAstToFile(const nlohmann::json& ast, const std::string& outputFile);
 
 // System header prefixes (to exclude)
-static const std::vector<std::string> kDenyPrefixes = {
+inline const std::vector<std::string> kDenyPrefixes = {
     "/sdk/default/",
     "/llvm/include/",
     "/libcxx/include/",
