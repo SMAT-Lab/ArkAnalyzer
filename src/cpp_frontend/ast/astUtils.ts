@@ -281,7 +281,7 @@ export function findCompileCommands(filePath: string): string {
     let dir = path.dirname(filePath);
 
     while (true) {
-        const cxxDir = path.join(dir, ".cxx");
+        const cxxDir = path.join(dir, '.cxx');
         if (fs.existsSync(cxxDir) && fs.statSync(cxxDir).isDirectory()) {
             const result = searchCompileCommandsInDir(cxxDir);
             if (result) {
@@ -308,7 +308,7 @@ function searchCompileCommandsInDir(dir: string): string {
     const entries = fs.readdirSync(dir, { withFileTypes: true });
     for (const entry of entries) {
         const fullPath = path.join(dir, entry.name);
-        if (entry.isFile() && entry.name === "compile_commands.json") {
+        if (entry.isFile() && entry.name === 'compile_commands.json') {
             return fullPath;
         } else if (entry.isDirectory()) {
             const result = searchCompileCommandsInDir(fullPath);

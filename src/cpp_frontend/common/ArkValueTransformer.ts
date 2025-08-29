@@ -445,7 +445,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
 
     /**
      *Convert the C++inheritance constructor initialization expression to a collection of values and statements
-     * Using parent:: parent==>The constructor of the sub——class calls the constructor inherited from the parent class==>The same as calling the constructor of the parent class directly
+     * Using parent:: parent==>The constructor of the sub——class calls the constructor inherited from the parent
+     * class==>The same as calling the constructor of the parent class directly
      *@ param cxxInheritedCtorInitExpr - C++inheritance constructor initialization expression node
      *@ returns The object containing the converted value and statement array
      */
