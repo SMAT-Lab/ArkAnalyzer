@@ -1518,6 +1518,9 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
      *@ returns ValueAndStmts object, including converted values and related statements
      */
     private cxxMemberCallExpressionToValueAndStmts(callExpression: CxxAstNode): ValueAndStmts {
+        if ((callExpression.parent ?? callExpression.getParent?.(true))?.type?.qualType === 'std::thread') {
+            return this.cxxNewExpressionToValueAndStmts(callExpression);
+        }
         let realGenericTypes: Type[] | undefined;
         const stmts: Stmt[] = [];
         const [_, rightNodes] = this.getArgumentNode(callExpression.inner);
