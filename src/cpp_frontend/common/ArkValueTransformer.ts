@@ -1833,7 +1833,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         if (isCXXSTLContainer(oriType)) {
             return oriType;
         }
-        return oriType.replace(/[()]|\ \*|struct\ /g, '');
+        return oriType.replace(/[()]|\ \*|struct\ |union\ /g, '');
     }
 
     /**
