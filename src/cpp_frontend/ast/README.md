@@ -40,8 +40,8 @@ arkCppAstDumper是基于llvm开发的工具，对C/C++生成简洁的抽象语�
 ### 工具执行的依赖文件
 
 - libclang.dll（可从windows环境下clang的bin目录下获取）
-- vcruntime140.dll（可从Microsoft Visual Studio的MSVC目录下获取）
-- vcruntime140_1.dll（可从Microsoft Visual Studio的MSVC目录下获取）
+- libc++.dll (可从交叉编译的llvm-mingw获取)
+- libunwind.dll (可从交叉编译的llvm-mingw获取)
 
 ### 工具解析cpp文件需引入的标准库头文件
 

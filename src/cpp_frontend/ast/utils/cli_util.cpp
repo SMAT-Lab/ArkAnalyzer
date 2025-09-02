@@ -438,6 +438,7 @@ ClangArgs cliutil::PrepareClangArgs(const CommandLineOptions& opts)
         res.strArgs.push_back("-xc++");
         res.strArgs.push_back("-std=c++17");
     }
+    res.strArgs.push_back("-stdlib=libc++");
 
     // Add user include
     for (const auto& dir : opts.userIncludeDirs) {

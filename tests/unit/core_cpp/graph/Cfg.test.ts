@@ -412,10 +412,9 @@ function buildScene(folderName: string): Scene {
     config.setSupportFileExts(['.c', '.cpp', '.h', '.hpp']);
     let includeDirs: string[] = [];
     // header file configuration for DevEco
-    console.log('=========deveco: ', deveco_c);
-    console.log('=========deveco: ', deveco_include);
-    includeDirs.push(path.join('***//harmony_code/codearts_workspace/pre_scripts/devEco_include', 'c++', 'v1'));
-    includeDirs.push(path.join('***//harmony_code/codearts_workspace/pre_scripts/devEco_include', 'include'));
+    includeDirs.push(path.join(deveco_c, 'c++', 'v1'));
+    includeDirs.push(path.join(deveco_include, 'include'));
+    console.log("---------include: ", includeDirs[0]);
     config.buildFromProjectDir(path.join(BASE_DIR, folderName), includeDirs);
     let scene = new Scene();
     scene.buildSceneFromProjectDir(config);
