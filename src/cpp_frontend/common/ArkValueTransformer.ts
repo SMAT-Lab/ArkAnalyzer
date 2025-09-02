@@ -445,7 +445,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
 
     /**
      *Convert the C++inheritance constructor initialization expression to a collection of values and statements
-     * Using parent:: parent==>The constructor of the sub——class calls the constructor inherited from the parent class==>The same as calling the constructor of the parent class directly
+     * Using parent:: parent==>The constructor of the sub——class calls the constructor inherited from the parent
+     * class==>The same as calling the constructor of the parent class directly
      *@ param cxxInheritedCtorInitExpr - C++inheritance constructor initialization expression node
      *@ returns The object containing the converted value and statement array
      */
@@ -484,7 +485,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
 
     /**
      *Convert super expression in C++to IR
-     * C++subclasses call the parent class constructor for initialization, similar to ts super (xx). For example, Left (const char&name, int power): Base (name) {...}
+     * C++subclasses call the parent class constructor for initialization,
+     * similar to ts super (xx). For example, Left (const char&name, int power): Base (name) {...}
      *@ param cxxConstructExpr C++construction expression node
      *@ returns The ValueAndStmts object containing the converted value and related statements
      */
@@ -1516,6 +1518,9 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
      *@ returns ValueAndStmts object, including converted values and related statements
      */
     private cxxMemberCallExpressionToValueAndStmts(callExpression: CxxAstNode): ValueAndStmts {
+        if ((callExpression.parent ?? callExpression.getParent?.(true))?.type?.qualType === 'std::thread') {
+            return this.cxxNewExpressionToValueAndStmts(callExpression);
+        }
         let realGenericTypes: Type[] | undefined;
         const stmts: Stmt[] = [];
         const [_, rightNodes] = this.getArgumentNode(callExpression.inner);
@@ -1831,7 +1836,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         if (isCXXSTLContainer(oriType)) {
             return oriType;
         }
-        return oriType.replace(/[()]|\ \*|struct\ /g, '');
+        return oriType.replace(/[()]|\ \*|struct\ |union\ /g, '');
     }
 
     /**
@@ -2450,7 +2455,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         // Step 1: Extract qualType and tagUsed
         const { qualType, tagUsed } = this.extractQualTypeAndTag(node, stringItem);
         // Step 2: Build Type object from qualType and tagUsed
-        return this.buildCxxTypeFromQualType(node, qualType, tagUsed);
+        return this.buildCxxTypeFromQualTypeAndTagUsed(node, qualType, tagUsed);
     }
 
     /**
@@ -2488,7 +2493,28 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
      *@ param tagUsed - type label, such as "struct", "enum", "union", etc
      *@ returns the parsed Type object
      */
-    private buildCxxTypeFromQualType(node: CxxAstNode | undefined, qualType: string, tagUsed: string): Type {
+    private buildCxxTypeFromQualTypeAndTagUsed(node: CxxAstNode | undefined, qualType: string, tagUsed: string): Type {
+        let cxxType = this.buildCxxTypeFromQualType(node, qualType) ?? this.buildCxxTypeFromTagUsed(tagUsed);
+        if (cxxType) {
+            return cxxType;
+        }
+        if (node && node.kind === 'InitListExpr') {
+            if (qualType.includes('[') && qualType.includes(']')) {
+                return new ArrayType(new UnclearReferenceType(qualType), node.inner.length);
+            } else if (isCxxFunctionPointer(qualType)) {
+                return new UnclearReferenceType(qualType);
+            }
+        } else {
+            let type = this.resolveCxxTypeReferenceNode(qualType); // Handle alias type references
+            if (!(type instanceof UnclearReferenceType)) {
+                return this.resolveCxxTypeReferenceNode(qualType);
+            }
+        }
+        let nodeType = cxxNode2Type(qualType, this.declaringMethod, this.cxxSourceFile, node);
+        return nodeType instanceof UnclearReferenceType ? UnknownType.getInstance() : nodeType;
+    }
+
+    private buildCxxTypeFromQualType(node: CxxAstNode | undefined, qualType: string): Type | undefined {
         if (qualType.includes('[') && qualType.includes(']')) {
             const count = qualType.match(/\[/g)?.length ?? 0;
             let baseType = cxxNode2Type(qualType.slice(0, qualType.indexOf('[')) +
@@ -2497,12 +2523,6 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
                 return new ArrayType(new UnclearReferenceType(qualType.slice(0, qualType.indexOf('['))), count);
             }
             return new ArrayType(baseType, count);
-        } else if (node && node.kind === 'InitListExpr') {
-            if (qualType.includes('[') && qualType.includes(']')) {
-                return new ArrayType(new UnclearReferenceType(qualType), node.inner.length);
-            } else if (isCxxFunctionPointer(qualType)) {
-                return new UnclearReferenceType(qualType);
-            }
         } else if (qualType.startsWith('std::')) {
             const match = /std::(\w+)/g.exec(qualType); // Handle standard library container types
             const containerName = match ? match[1] : null;
@@ -2517,32 +2537,36 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             const fileSignature = new FileSignature('std', 'iostream.h');
             const classSignature = new ClassSignature('iostream', fileSignature);
             return new ClassType(classSignature);
-        } else if (tagUsed === 'struct') {
-            const fileSignature = new FileSignature(this.cxxSourceFile?.projectName ?? '', this.sourceFile.fileName);
-            const classSignature = new ClassSignature('struct', fileSignature, null);
-            return new ClassType(classSignature);
-        } else if (tagUsed === 'enum') {
-            const fileSignature = new FileSignature(this.cxxSourceFile?.projectName ?? '', this.sourceFile.fileName);
-            const classSignature = new ClassSignature('enum', fileSignature, null);
-            return new ClassType(classSignature);
-        } else if (tagUsed === 'union') {
-            const fileSignature = new FileSignature(this.cxxSourceFile?.projectName ?? '', this.sourceFile.fileName);
-            const classSignature = new ClassSignature('union', fileSignature, null);
-            return new ClassType(classSignature);
         } else if (qualType.includes('vector')) {
             let dimension = 0; // Handle std::vector scenarios (must be after std:: check)
             let dataType = this.resolveVectorType(qualType, dimension);
             return new ArrayType(buildTypeFromPreStr(dataType, undefined), dimension);
         } else if (qualType === 'thread') {
             return new Thread();
-        } else {
-            let type = this.resolveCxxTypeReferenceNode(qualType); // Handle alias type references
-            if (!(type instanceof UnclearReferenceType)) {
-                return this.resolveCxxTypeReferenceNode(qualType);
-            }
         }
-        let nodeType = cxxNode2Type(qualType, this.declaringMethod, this.cxxSourceFile, node);
-        return nodeType instanceof UnclearReferenceType ? UnknownType.getInstance() : nodeType;
+        return undefined;
+    }
+
+    private buildCxxTypeFromTagUsed(tagUsed: string): Type | undefined {
+        let fileSignature: FileSignature;
+        let classSignature: ClassSignature;
+        switch (tagUsed) {
+            case 'struct':
+                fileSignature = new FileSignature(this.cxxSourceFile?.projectName ?? '', this.sourceFile.fileName);
+                classSignature = new ClassSignature('struct', fileSignature, null);
+                return new ClassType(classSignature);
+            case 'enum':
+                fileSignature = new FileSignature(this.cxxSourceFile?.projectName ?? '', this.sourceFile.fileName);
+                classSignature = new ClassSignature('enum', fileSignature, null);
+                return new ClassType(classSignature);
+            case 'union':
+                fileSignature = new FileSignature(this.cxxSourceFile?.projectName ?? '', this.sourceFile.fileName);
+                classSignature = new ClassSignature('union', fileSignature, null);
+                return new ClassType(classSignature);
+            default:
+                break;
+        }
+        return undefined;
     }
 
 

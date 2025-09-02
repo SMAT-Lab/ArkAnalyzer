@@ -46,7 +46,7 @@ import { PointerType, ReferenceType } from '../../cpp_frontend/base/Type';
 import { ArkMethod } from '../model/ArkMethod';
 import { ArkExport } from '../model/ArkExport';
 import { ArkClass, ClassCategory } from '../model/ArkClass';
-import { ArkField } from '../model/ArkField';
+import { ArkField, FieldCategory } from '../model/ArkField';
 import { Value } from '../base/Value';
 import { Constant } from '../base/Constant';
 import { ArkNamespace } from '../model/ArkNamespace';
@@ -75,6 +75,7 @@ import {
     ANONYMOUS_METHOD_PREFIX,
     INSTANCE_INIT_METHOD_NAME,
     LEXICAL_ENV_NAME_PREFIX,
+    STATIC_INIT_METHOD_NAME,
     UNKNOWN_FILE_NAME
 } from './Const';
 import { EMPTY_STRING } from './ValueUtil';
@@ -91,7 +92,9 @@ export class TypeInference {
     public static inferTypeInArkField(arkField: ArkField): void {
         const arkClass = arkField.getDeclaringArkClass();
         const stmts = arkField.getInitializer();
-        const method = arkClass.getMethodWithName(INSTANCE_INIT_METHOD_NAME) ?? arkClass.getMethodWithName(CONSTRUCTOR_NAME);
+        const method = arkClass.getMethodWithName(INSTANCE_INIT_METHOD_NAME) ??
+            arkClass.getMethodWithName(STATIC_INIT_METHOD_NAME) ??
+            arkClass.getMethodWithName(CONSTRUCTOR_NAME);
         for (const stmt of stmts) {
             if (method) {
                 this.resolveStmt(stmt, method);
@@ -163,6 +166,18 @@ export class TypeInference {
                 leftOpType.setOriginalType(baseType);
                 type = leftOpType;
             }
+        } else if (leftOpType instanceof KeyofTypeExpr) {
+            let baseType = this.inferUnclearedType(leftOpType.getOpType(), declaringArkClass, visited);
+            if (baseType) {
+                leftOpType.setOpType(baseType);
+                type = leftOpType;
+            }
+        } else if (leftOpType instanceof TupleType) {
+            this.inferRealGenericTypes(leftOpType.getTypes(), declaringArkClass);
+            type = leftOpType;
+        } else if (leftOpType instanceof GenericType) {
+            this.inferGenericType([leftOpType], declaringArkClass);
+            type = leftOpType;
         } else if (leftOpType instanceof AnnotationNamespaceType) {
             type = this.inferBaseType(leftOpType.getOriginType(), declaringArkClass);
         } else if (leftOpType instanceof UnclearReferenceType) {
@@ -630,15 +645,15 @@ export class TypeInference {
     public static inferGenericType(types: GenericType[] | undefined, arkClass: ArkClass): void {
         types?.forEach(type => {
             const defaultType = type.getDefaultType();
-            if (defaultType instanceof UnclearReferenceType) {
-                const newDefaultType = TypeInference.inferUnclearRefName(defaultType.getName(), arkClass);
+            if (defaultType && this.isUnclearType(defaultType)) {
+                const newDefaultType = TypeInference.inferUnclearedType(defaultType, arkClass);
                 if (newDefaultType) {
                     type.setDefaultType(this.replaceTypeWithReal(newDefaultType));
                 }
             }
             const constraint = type.getConstraint();
-            if (constraint instanceof UnclearReferenceType) {
-                const newConstraint = TypeInference.inferUnclearRefName(constraint.getName(), arkClass);
+            if (constraint && this.isUnclearType(constraint)) {
+                const newConstraint = TypeInference.inferUnclearedType(constraint, arkClass);
                 if (newConstraint) {
                     type.setConstraint(this.replaceTypeWithReal(newConstraint));
                 }
@@ -768,13 +783,7 @@ export class TypeInference {
         let propertyType: Type | null = null;
         if (property instanceof ArkField) {
             if (arkClass.getCategory() === ClassCategory.ENUM) {
-                let constant;
-                const propertyInitializer = property.getInitializer();
-                const lastStmt = propertyInitializer[propertyInitializer.length - 1];
-                if (lastStmt instanceof ArkAssignStmt && lastStmt.getRightOp() instanceof Constant) {
-                    constant = lastStmt.getRightOp() as Constant;
-                }
-                propertyType = new EnumValueType(property.getSignature(), constant);
+                propertyType = this.getEnumValueType(property);
             } else {
                 propertyType = this.replaceTypeWithReal(property.getType(), baseType.getRealGenericTypes());
             }
@@ -788,6 +797,26 @@ export class TypeInference {
             return fieldType ? [null, fieldType] : null;
         }
         return null;
+    }
+
+    public static getEnumValueType(property: ArkField): EnumValueType | null {
+        if (property.getCategory() !== FieldCategory.ENUM_MEMBER) {
+            return null;
+        }
+        const type = property.getType();
+        if (type instanceof EnumValueType) {
+            return type;
+        }
+        const initStmts = property.getInitializer();
+        const lastStmt = initStmts[initStmts.length - 1];
+        let constant;
+        if (lastStmt instanceof ArkAssignStmt) {
+            const rightOp = lastStmt.getRightOp();
+            constant = rightOp instanceof Constant ? rightOp : new Constant('unknown', rightOp.getType());
+        }
+        const enumValueType = new EnumValueType(property.getSignature(), constant);
+        property.getSignature().setType(enumValueType);
+        return enumValueType;
     }
 
     private static inferArrayFieldType(declareClass: ArkClass, fieldName: string): [ArkField, Type] | null {
@@ -826,17 +855,24 @@ export class TypeInference {
     }
 
     public static inferTypeByName(typeName: string, arkClass: ArkClass): Type | null {
+        //look up from declared file, if not found then from imports
+        const declaredArkFile = arkClass.getDeclaringArkFile();
         let arkExport: ArkExport | null =
             ModelUtils.findSymbolInFileWithName(typeName, arkClass, true) ??
-            ModelUtils.getArkExportInImportInfoWithName(typeName, arkClass.getDeclaringArkFile());
-        if (!arkExport && !arkClass.getDeclaringArkFile().getImportInfoBy(typeName)) {
-            arkExport = arkClass.getDeclaringArkFile().getScene().getSdkGlobal(typeName);
+            ModelUtils.getArkExportInImportInfoWithName(typeName, declaredArkFile);
+        //if not found or local in built-in then look up global in sdks
+        if ((!arkExport || (arkExport instanceof Local && declaredArkFile.getProjectName() === SdkUtils.BUILT_IN_NAME)) &&
+            !declaredArkFile.getImportInfoBy(typeName)) {
+            const globalVal = arkClass.getDeclaringArkFile().getScene().getSdkGlobal(typeName);
+            if (globalVal) {
+                arkExport = globalVal;
+            }
         }
         const type = this.parseArkExport2Type(arkExport);
         if (type instanceof ClassType || type instanceof AliasType) {
             return type;
         }
-        return null;
+        return arkClass.getGenericsTypes()?.find(g => g.getName() === typeName) || null;
     }
 
     public static getTypeByGlobalName(globalName: string, arkMethod: ArkMethod): Type | null {

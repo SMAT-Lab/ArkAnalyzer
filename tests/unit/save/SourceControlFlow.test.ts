@@ -64,14 +64,14 @@ namespace Case1 {
         while (j < lineTime.length) {
           let min = Number(String(lineTime.j.match(lrcTimeRegex1)).slice(1));
           let sec = Number.parseFloat(String(lineTime.j.match(lrcTimeRegex2)));
-          let timeInSeconds = (min * 60 + sec) * 1000;
+          let timeInSeconds: number = (min * 60 + sec) * 1000;
           lrc.push({lineStartTime: timeInSeconds, lineDuration: 0, lineWords: lineText, words: []});
           j = j + 1;
         }
       }
     }
     if (lrc && lrc.length > 0 != 0) {
-      lrc.sort((a: any, b: any) => {
+      lrc.sort((a: any, b: any): number => {
       return a.lineStartTime - b.lineStartTime;
     });
       let i: number = 0;

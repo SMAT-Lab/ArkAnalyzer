@@ -14,7 +14,7 @@
  */
 
 import { Local } from '../base/Local';
-import { ArkClass } from '../model/ArkClass';
+import { ArkClass, ClassCategory } from '../model/ArkClass';
 import { ArkFile } from '../model/ArkFile';
 import { ArkMethod } from '../model/ArkMethod';
 import { ArkNamespace } from '../model/ArkNamespace';
@@ -53,6 +53,7 @@ import { ArkAssignStmt } from '../base/Stmt';
 import { ClosureFieldRef } from '../base/Ref';
 import { SdkUtils } from './SdkUtils';
 import { CxxSceneUtils } from '../../utils/CxxSceneUtils';
+import { TypeInference } from './TypeInference';
 
 export class ModelUtils {
     public static implicitArkUIBuilderMethods: Set<ArkMethod> = new Set();
@@ -217,6 +218,14 @@ export class ModelUtils {
     }
 
     public static findSymbolInFileWithName(symbolName: string, arkClass: ArkClass, onlyType: boolean = false): ArkExport | null {
+        // find symbol from enum value
+        if (arkClass.getCategory() === ClassCategory.ENUM) {
+            const field = arkClass.getStaticFieldWithName(symbolName);
+            if (field) {
+                return new Local(symbolName, TypeInference.getEnumValueType(field) ?? field.getType());
+            }
+        }
+        // look up symbol from inner to outer
         let currNamespace: ArkNamespace | null | undefined = arkClass.getDeclaringArkNamespace();
         let result: ArkExport | null | undefined;
         while (currNamespace) {

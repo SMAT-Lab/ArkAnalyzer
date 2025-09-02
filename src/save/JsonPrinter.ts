@@ -316,7 +316,7 @@ export class JsonPrinter extends Printer {
             const c = type.getConstant();
             return {
                 _: 'EnumValueType',
-                signature: this.serializeFieldSignature(type.getFieldSignature()),
+                originType: c && this.serializeType(c.getType()),
                 constant: c && this.serializeValue(c),
             };
         } else {

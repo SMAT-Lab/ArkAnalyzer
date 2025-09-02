@@ -78,7 +78,6 @@ export class AstUtils {
         } else {
             logger.info('Parsing completed!');
         }
-        console.log(parseResult.stdout)
         let translationUnit = JSON.parse(fs.readFileSync(astPath, 'utf-8')) as CxxAstNode;
         translationUnit = this.filter(sourceFile, translationUnit) as CxxAstNode;
         deleteFile(astPath);
@@ -259,7 +258,7 @@ async function deleteFile(filePath: string): Promise<void> {
 function constructParseArguments(srcFilePath: string, ccJsonPath: string | null, includeDirs: string[] | null): string[] {
     const args: string[] = [];
     if (!ccJsonPath) {
-        ccJsonPath = findCompileCommands(srcFilePath)
+        ccJsonPath = findCompileCommands(srcFilePath);
     }
     if (ccJsonPath) {
         args.push('-c', ccJsonPath);
@@ -282,7 +281,7 @@ export function findCompileCommands(filePath: string): string {
     let dir = path.dirname(filePath);
 
     while (true) {
-        const cxxDir = path.join(dir, ".cxx");
+        const cxxDir = path.join(dir, '.cxx');
         if (fs.existsSync(cxxDir) && fs.statSync(cxxDir).isDirectory()) {
             const result = searchCompileCommandsInDir(cxxDir);
             if (result) {
@@ -297,7 +296,7 @@ export function findCompileCommands(filePath: string): string {
         dir = parent;
     }
 
-    return "";
+    return '';
 }
 
 /**
@@ -309,7 +308,7 @@ function searchCompileCommandsInDir(dir: string): string {
     const entries = fs.readdirSync(dir, { withFileTypes: true });
     for (const entry of entries) {
         const fullPath = path.join(dir, entry.name);
-        if (entry.isFile() && entry.name === "compile_commands.json") {
+        if (entry.isFile() && entry.name === 'compile_commands.json') {
             return fullPath;
         } else if (entry.isDirectory()) {
             const result = searchCompileCommandsInDir(fullPath);
@@ -318,5 +317,5 @@ function searchCompileCommandsInDir(dir: string): string {
             }
         }
     }
-    return "";
+    return '';
 }

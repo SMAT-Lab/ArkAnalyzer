@@ -78,7 +78,7 @@ const paramWithComplicatedInitializer = `paramWithComplicatedInitializer(a?: unk
     goto label2
 
   label2:
-    if condition != 0 goto label3 label4
+    if condition != false goto label3 label4
 
   label3:
     %0 = 'true'

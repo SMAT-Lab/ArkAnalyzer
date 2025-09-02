@@ -23,7 +23,7 @@ import {
     ArrayType,
     BigIntType,
     BooleanType,
-    ClassType,
+    ClassType, EnumValueType,
     FunctionType,
     GenericType,
     NullType,
@@ -715,20 +715,21 @@ export abstract class AbstractBinopExpr extends AbstractExpr {
     }
 
     protected inferOpType(op: Value, arkMethod: ArkMethod): void {
-        if (op instanceof AbstractExpr || op instanceof AbstractRef) {
-            TypeInference.inferValueType(op, arkMethod);
+        TypeInference.inferValueType(op, arkMethod);
+    }
+
+    private parseType(op: Type): Type {
+        if (op instanceof UnionType) {
+            return op.getCurrType();
+        } else if (op instanceof EnumValueType) {
+            return op.getConstant()?.getType() || op;
         }
+        return op;
     }
 
     protected setType(): void {
-        let op1Type = this.op1.getType();
-        let op2Type = this.op2.getType();
-        if (op1Type instanceof UnionType) {
-            op1Type = op1Type.getCurrType();
-        }
-        if (op2Type instanceof UnionType) {
-            op2Type = op2Type.getCurrType();
-        }
+        let op1Type = this.parseType(this.op1.getType());
+        let op2Type = this.parseType(this.op2.getType());
         let type = UnknownType.getInstance();
         switch (this.operator) {
             case '+':
@@ -747,11 +748,10 @@ export abstract class AbstractBinopExpr extends AbstractExpr {
             case '/':
             case '%':
             case '**':
-                if (op1Type === NumberType.getInstance() && op2Type === NumberType.getInstance()) {
-                    type = NumberType.getInstance();
-                }
-                if (op1Type === BigIntType.getInstance() && op2Type === BigIntType.getInstance()) {
+                if (op1Type === BigIntType.getInstance() || op2Type === BigIntType.getInstance()) {
                     type = BigIntType.getInstance();
+                } else {
+                    type = NumberType.getInstance();
                 }
                 break;
             case '!=':
