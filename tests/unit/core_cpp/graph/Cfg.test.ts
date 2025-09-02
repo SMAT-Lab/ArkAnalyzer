@@ -413,6 +413,7 @@ function buildScene(folderName: string): Scene {
     let includeDirs: string[] = [];
     // header file configuration for DevEco
     console.log('=========deveco: ', deveco_c);
+    console.log('=========deveco: ', deveco_include);
     includeDirs.push(path.join('***//harmony_code/codearts_workspace/pre_scripts/devEco_include', 'c++', 'v1'));
     includeDirs.push(path.join('***//harmony_code/codearts_workspace/pre_scripts/devEco_include', 'include'));
     config.buildFromProjectDir(path.join(BASE_DIR, folderName), includeDirs);
