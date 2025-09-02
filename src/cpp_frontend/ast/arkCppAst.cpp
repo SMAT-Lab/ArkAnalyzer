@@ -282,7 +282,7 @@ std::string handleUnexposedExpr(json node)
         } else if (codeStr.find("?") != std::string::npos) {
             return "BinaryConditionalOperator";
         } else if (codeStr.find(".push_back") != std::string::npos || codeStr.find(".insert") != std::string::npos ||
-                   codeStr.find(".push") != std::string::npos || typeStr.find("basic_ostream") != std::string::npos ||
+                   codeStr.find(".push") != std::string::npos || typeStr.find("ostream") != std::string::npos ||
                    typeStr == "bool" || typeStr == "mapped_type" || codeStr.find(".erase") != std::string::npos) {
             return "ExprWithCleanups";
         } else if (codeStr.find("std::make_pair") != std::string::npos) {
@@ -683,14 +683,14 @@ void relateMemberType(const std::string& typeStr, json& children)
 bool IsConstructorByTypeStr(std::string typeStr)
 {
     return typeStr.find("std::map") == 0 || typeStr.find("std::unordered_map") == 0 ||
-           typeStr.find("std::_Tree_const_iterator") != std::string::npos || typeStr == "key_type" ||
+           typeStr.find("std::__tree_const_iterator") != std::string::npos || typeStr == "key_type" ||
            typeStr == "const key_type" || typeStr == "const std::basic_string<char>" ||
            typeStr.find("lambda at") != std::string::npos || typeStr.find("struct") == 0;
 }
 
 bool IsConstructorByNameStr(std::string nameStr)
 {
-    return nameStr == "vector" || nameStr == "_Tree_const_iterator" || nameStr == "set" || nameStr == "queue" ||
+    return nameStr == "vector" || nameStr == "__tree_const_iterator" || nameStr == "set" || nameStr == "queue" ||
     nameStr == "deque" || nameStr == "stack" || nameStr == "list";
 }
 
@@ -1082,7 +1082,7 @@ void fillNodeKindTag(json& node, CXCursor cursor, CXCursorKind kind_cursor, cons
     if (kind_cursor == CXCursor_CallExpr) {
         if (nameStr.find("operator\"\"") != std::string::npos)
             node["kind"] = "UserDefinedLiteral";
-        else if (typeStr.find("basic_ostream") == 0 || nameStr.find("operator") != std::string::npos)
+        else if (typeStr.find("ostream") == 0 || nameStr.find("operator") != std::string::npos)
             node["kind"] = "CXXOperatorCallExpr";
         else if (IsConstructorByTypeStr(typeStr) || IsConstructorByNameStr(nameStr) ||
                  IsConstructorByCodeStr(codeStr, nameStr, typeStr))
@@ -1099,7 +1099,7 @@ void fillNodeKindTag(json& node, CXCursor cursor, CXCursorKind kind_cursor, cons
         node.erase("opcode");
         node["kind"] = "CXXOperatorCallExpr";
         node["name"] = "operator<<";
-        node["type"]["qualType"] = "basic_ostream<char>";
+        node["type"]["qualType"] = "ostream";
         return;
     }
     if (applyDeclLikeKind(node, cursor, kind_cursor)) {

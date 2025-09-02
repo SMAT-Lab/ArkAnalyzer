@@ -217,7 +217,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
     private isNodeRelatedToImplicitNode(node: CxxAstNode): boolean {
         if (node.inner && node.inner instanceof Array) {
             return (
-                node.inner.length !== 0 && node.inner[0].kind === 'ImplicitCastExpr' && (node.name === '_tree_const_iterator' || node.name === 'basic_string')
+                node.inner.length !== 0 && node.inner[0].kind === 'ImplicitCastExpr' && (node.name === '__tree_const_iterator' || node.name === 'basic_string')
             );
         }
         return false;

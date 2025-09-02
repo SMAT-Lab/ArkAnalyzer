@@ -4,6 +4,10 @@ project(arkCppAstDumper LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+if(WIN32)
+    include(cmake/toolchains/windows.cmake)
+endif()
+
 add_executable(arkCppAstDumper
         arkCppAst.cpp
         utils/utils_string.cpp
