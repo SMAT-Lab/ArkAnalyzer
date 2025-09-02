@@ -123,6 +123,7 @@ import {
     FOR_STATEMENT_EXPECT_CASE6,
 } from '../resources/arkIRTransformer/loopStatement/LoopExpect';
 import { ArkIRFilePrinter } from '../../src/save/arkir/ArkIRFilePrinter';
+import { ClosureFieldRef } from '../../src/core/base/Ref';
 
 const BASE_DIR = path.join(__dirname, '../../tests/resources/arkIRTransformer');
 Logger.configure('out/ArkIRTransformerTest.test.log', LOG_LEVEL.INFO, LOG_LEVEL.INFO, false);
@@ -559,6 +560,16 @@ describe('closure Test', () => {
         const outerMethod = arkFile?.getClassWithName('BasicTest')?.getMethods().find((method) => (method.getName() === 'basicOuterMethod1'));
         assert.isDefined(outerMethod);
         testMethodClosure(outerMethod as ArkMethod, BasicOuterMethod1_Expect_IR);
+
+        // make sure in nested method, there is only one %closures0 instance
+        const nestedStmts = nestedMethod!.getCfg()?.getStmts();
+        const closure = ((nestedStmts![0] as ArkAssignStmt).getLeftOp() as Local);
+        const closureRefBase = ((nestedStmts![2] as ArkAssignStmt).getRightOp() as ClosureFieldRef).getBase();
+        const nestedLocal = nestedMethod!.getBody()?.getLocals().get(closure.getName());
+        const outerLocal = outerMethod!.getBody()?.getLocals().get(closure.getName());
+        assert.isTrue(closure === closureRefBase);
+        assert.isTrue(closure === nestedLocal);
+        assert.isTrue(closure !== outerLocal);
     });
 
     it('basic test anonymous nested function declared in forEach', async () => {

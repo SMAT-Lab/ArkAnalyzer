@@ -604,7 +604,7 @@ export class BodyBuilder {
                 local.setType(closure.getType());
             }
             index++;
-            const closureFieldRef = new ClosureFieldRef(closuresParam, closure.getName(), closure.getType());
+            const closureFieldRef = new ClosureFieldRef(closuresLocal, closure.getName(), closure.getType());
             let assignStmt = new ArkAssignStmt(local, closureFieldRef);
             assignStmt.setCfg(body.getCfg());
             stmts.splice(index, 0, assignStmt);

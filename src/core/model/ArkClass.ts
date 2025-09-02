@@ -305,8 +305,8 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
      * @returns an **array** of fields in the class.
      */
     public getFields(): ArkField[] {
-        const allFields: ArkField[] = Array.from(this.fields.values());
-        allFields.push(...this.staticFields.values());
+        const allFields: ArkField[] = Array.from(this.staticFields.values());
+        allFields.push(...this.fields.values());
         return allFields;
     }
 

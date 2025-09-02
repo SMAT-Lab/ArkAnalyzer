@@ -316,8 +316,29 @@ export const EnumClass = `enum TestEnum {
   %statInit(): void {
     label0:
       this = this: @class/ClassWithOtherCategory.ts: TestEnum
-      this.<@class/ClassWithOtherCategory.ts: TestEnum.[static]A> = 123
-      this.<@class/ClassWithOtherCategory.ts: TestEnum.[static]B> = 'abc'
+      @class/ClassWithOtherCategory.ts: TestEnum.[static]A = 123
+      @class/ClassWithOtherCategory.ts: TestEnum.[static]B = 'abc'
+      return
+  }
+}
+`;
+
+export const EnumClass2 = `enum TestEnum2 {
+  A,
+  B,
+  C,
+  D,
+
+  %statInit(): void {
+    label0:
+      this = this: @class/ClassWithOtherCategory.ts: TestEnum2
+      @class/ClassWithOtherCategory.ts: TestEnum2.[static]A = a
+      %0 = instanceinvoke str.<@%unk/%unk: .toString()>()
+      %1 = 'abc ' + %0
+      @class/ClassWithOtherCategory.ts: TestEnum2.[static]B = %1
+      %2 = 2 + 2
+      @class/ClassWithOtherCategory.ts: TestEnum2.[static]C = %2
+      @class/ClassWithOtherCategory.ts: TestEnum2.[static]D = C
       return
   }
 }
