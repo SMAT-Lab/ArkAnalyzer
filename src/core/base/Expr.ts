@@ -515,7 +515,7 @@ export class ArkDeleteExpr extends AbstractExpr {
 
     public toString(): string {
         if (this.isArray) {
-            return 'delete[]' + this.field;
+            return 'delete[] ' + this.field;
         }
         return 'delete ' + this.field;
     }
