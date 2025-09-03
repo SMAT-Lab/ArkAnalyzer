@@ -642,7 +642,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
      */
     private cxxDeleteExpressionToValueAndStmts(deleteExpression: CxxAstNode): ValueAndStmts {
         const { value: exprValue, valueOriginalPositions: exprPositions, stmts: stmts } = this.cxxNodeToValueAndStmts(deleteExpression.inner[0]);
-        const deleteExpr = new ArkDeleteExpr(exprValue);
+        const isArray = deleteExpression.isArray;
+        const deleteExpr = new ArkDeleteExpr(exprValue, isArray);
         const deleteExprPosition = [FullPosition.cxxBuildFromNode(deleteExpression, this.cxxSourceFile), ...exprPositions];
         return { value: deleteExpr, valueOriginalPositions: deleteExprPosition, stmts: stmts };
     }

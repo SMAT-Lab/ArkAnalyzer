@@ -1421,6 +1421,10 @@ json buildASTJson(CXCursor cursor, bool actionScope, std::unordered_map<std::str
 
     json node;
     fillNodeProperties(node, cursor, kind_cursor, isInclude, file);
+    std::string codeStr = node.value("code", "");
+    if (node["kind"] == "CXXDeleteExpr" && codeStr.find("delete[]") != std::string::npos) {
+        node["isArray"] = true;
+    }
 
     if (node.contains("kind") && (node["kind"] == "ParmDecl" || node["kind"] == "VarDecl") && node.contains("name") &&
         node.contains("type") && node["type"].contains("qualType"))

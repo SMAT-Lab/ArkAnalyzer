@@ -414,7 +414,6 @@ function buildScene(folderName: string): Scene {
     // header file configuration for DevEco
     includeDirs.push(path.join(deveco_c, 'c++', 'v1'));
     includeDirs.push(path.join(deveco_include, 'include'));
-    console.log("---------include: ", includeDirs[0]);
     config.buildFromProjectDir(path.join(BASE_DIR, folderName), includeDirs);
     let scene = new Scene();
     scene.buildSceneFromProjectDir(config);

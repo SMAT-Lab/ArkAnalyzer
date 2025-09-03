@@ -486,10 +486,12 @@ export class ArkNewArrayExpr extends AbstractExpr {
  */
 export class ArkDeleteExpr extends AbstractExpr {
     private field: AbstractFieldRef | Value;
+    private isArray: boolean;
 
-    constructor(field: AbstractFieldRef | Value) {
+    constructor(field: AbstractFieldRef | Value, isArray: boolean = false) {
         super();
         this.field = field;
+        this.isArray = isArray;
     }
 
     public getField(): AbstractFieldRef | Value {
@@ -512,6 +514,9 @@ export class ArkDeleteExpr extends AbstractExpr {
     }
 
     public toString(): string {
+        if (this.isArray) {
+            return 'delete[]' + this.field;
+        }
         return 'delete ' + this.field;
     }
 }
