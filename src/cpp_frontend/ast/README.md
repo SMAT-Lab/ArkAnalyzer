@@ -49,7 +49,7 @@ arkCppAstDumper是基于llvm开发的工具，对C/C++生成简洁的抽象语�
 
 - devEcoStudio需配置下列环境变量
 
-  1、DEVECO_C=/devEcoStudio/sdk/default/openharmony/native/llvm/incldue \
+  1、DEVECO_C=/devEcoStudio/sdk/default/openharmony/native/llvm/include \
   2、DEVECO_INCLUDE=/devEcoStudio/sdk/default/openharmony/native/llvm/lib/clang/<版本号>
   
 
@@ -82,7 +82,7 @@ arkCppAstDumper是基于llvm开发的工具，对C/C++生成简洁的抽象语�
 
 - common-line-tools需配置下列环境变量
 
-  1、DEVECO_C=/devEcoStudio/sdk/default/openharmony/native/llvm/incldue \
+  1、DEVECO_C=/devEcoStudio/sdk/default/openharmony/native/llvm/include \
   2、DEVECO_INCLUDE=/devEcoStudio/sdk/default/openharmony/native/llvm/lib/clang/<版本号>
 
 ## arkCppAstDumper工具使用示例
