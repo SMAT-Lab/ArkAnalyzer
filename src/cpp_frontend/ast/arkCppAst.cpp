@@ -1448,7 +1448,23 @@ CXTranslationUnit createTranslationUnit(CXIndex index, const CommandLineOptions&
                                         const std::vector<const char*>& args)
 {
     const unsigned tuFlags = cliutil::BuildTUFlags(opts);
+
+    std::cout << "[Args] size=" << args.size()
+              << " , data()=" << static_cast<const void*>(args.data()) << "\n";
+
+    for (size_t i = 0; i< args.size(); ++i) {
+        const char* a = args[i];
+        std::cout << " [" << i << "] " << (a ? a : "<null>") << "\n";
+    }
+
+    auto to = std::chrono::high_resolution_clock::now();
+
     return clang_parseTranslationUnit(index, opts.inputFile.c_str(), args.data(), args.size(), nullptr, 0, tuFlags);
+
+    auto to = std::chrono::high_resolution_clock::now();
+    auto ms = std::chrono::duration_case<std::milliseconds>(t1 - t0).count()
+    std::cout << "[Timing] create TU tims is " << ms << "ms" << std::endl;
+
 }
 
 struct InclusionCtx {
@@ -1546,13 +1562,13 @@ json buildAndProcessAST(CXTranslationUnit unit, const CommandLineOptions& opts)
 // ===================Main Program Entry==================
 int main(int argc, char** argv)
 {
+    auto to = std::chrono::high_resolution_clock::now();
     if (argc < TWO) {
         cliutil::PrintUsage(argv[0]);
         return 1;
     }
 
     auto opts = cliutil::ParseCommandLineArgs(argc, argv);
-    cliutil::AddMainFileDirToInclude(opts);
 
     if (!cliutil::ValidateInput(opts)) {
         return 1;
@@ -1575,5 +1591,8 @@ int main(int argc, char** argv)
 
     clang_disposeTranslationUnit(unit);
     clang_disposeIndex(index);
+    auto t1 = std::chrono::high_resolution_clock::now();
+    auto ms = std::chrono::duration_case<std::milliseconds>(t1 - t0).count()
+    std::cout << "dumper total time is " << ms << "ms" << std::endl;
     return 0;
 }

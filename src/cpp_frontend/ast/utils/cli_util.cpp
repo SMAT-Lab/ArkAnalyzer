@@ -457,11 +457,13 @@ ClangArgs cliutil::LoadCompileCommands(const CommandLineOptions& opts)
 
     json ccjson;
     if (!LoadCompileCommandsJSON(opts.compileCommandsFile, ccjson)) {
+        result = cliutil::PrepareClangArgs(opts);
         return result;
     }
     const json* hit = FindMatchingEntry(ccjson, opts.inputFile);
     if (!hit) {
         std::cerr << "No matching file in compile_commands.json: " << opts.inputFile << "\n";
+        result = cliutil::PrepareClangArgs(opts);
         return result;
     }
     const std::string workdir = ExtractWorkDir(*hit);

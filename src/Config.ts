@@ -18,7 +18,6 @@ import path from 'path';
 import Logger, { LOG_MODULE_TYPE } from './utils/logger';
 import { getAllFiles } from './utils/getAllFiles';
 import { Language } from './core/model/ArkFile';
-import { CmakeUtils } from './cpp_frontend/utils/cmakeUtils';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'Config');
 
@@ -120,11 +119,7 @@ export class SceneConfig {
      */
     public buildFromProjectDir(targetProjectDirectory: string, includeDirs: string[] = []): void {
         this.targetProjectDirectory = targetProjectDirectory;
-        // Search for the include directories set by the cxx project.
-        const resolvedDir = path.resolve(targetProjectDirectory);
-        const cmakeIncludeDirs = CmakeUtils.scanCMakeIncludeDirsOnly(resolvedDir);
-        cmakeIncludeDirs.push(resolvedDir);
-        this.includeDirs = Array.from(new Set([...cmakeIncludeDirs, ...includeDirs]));
+        this.includeDirs = Array.from(new Set([...includeDirs]));
         this.targetProjectName = path.basename(targetProjectDirectory);
         this.projectFiles = getAllFiles(targetProjectDirectory, this.options.supportFileExts!, this.options.ignoreFileNames);
     }

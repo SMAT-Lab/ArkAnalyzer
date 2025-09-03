@@ -262,7 +262,8 @@ function constructParseArguments(srcFilePath: string, ccJsonPath: string | null,
     }
     if (ccJsonPath) {
         args.push('-c', ccJsonPath);
-    } else if (includeDirs && includeDirs.length > 0) {
+    }
+    if (includeDirs && includeDirs.length > 0) {
         includeDirs.forEach(dir => {
             args.push('-i', `${dir}`);
         });
