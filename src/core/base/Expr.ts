@@ -486,12 +486,10 @@ export class ArkNewArrayExpr extends AbstractExpr {
  */
 export class ArkDeleteExpr extends AbstractExpr {
     private field: AbstractFieldRef | Value;
-    private isArray: boolean;
 
-    constructor(field: AbstractFieldRef | Value, isArray: boolean = false) {
+    constructor(field: AbstractFieldRef | Value) {
         super();
         this.field = field;
-        this.isArray = isArray;
     }
 
     public getField(): AbstractFieldRef | Value {
@@ -514,10 +512,43 @@ export class ArkDeleteExpr extends AbstractExpr {
     }
 
     public toString(): string {
-        if (this.isArray) {
-            return 'delete[] ' + this.field;
-        }
         return 'delete ' + this.field;
+    }
+}
+
+/**
+ * delete[] expression in C++
+ *  1. c++: delete[] a / delete[] a.b / delete[] a->b
+ */
+export class ArkCxxDeleteArrayExpr extends AbstractExpr {
+    private field: AbstractFieldRef | Value;
+
+    constructor(field: AbstractFieldRef | Value) {
+        super();
+        this.field = field;
+    }
+
+    public getField(): AbstractFieldRef | Value {
+        return this.field;
+    }
+
+    public setField(newField: AbstractFieldRef | Value): void {
+        this.field = newField;
+    }
+
+    public getType(): Type {
+        return BooleanType.getInstance();
+    }
+
+    public getUses(): Value[] {
+        const uses: Value[] = [];
+        uses.push(this.field);
+        uses.push(...this.field.getUses());
+        return uses;
+    }
+
+    public toString(): string {
+        return 'delete[] ' + this.field;
     }
 }
 
