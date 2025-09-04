@@ -61,6 +61,7 @@ import * as AUTO_EXPECT from '../../../resources_cpp/cfg/decltype/decltypeExpect
 // Standard library header file configuration for DevEco
 const deveco_c = process.env.DEVECO_C !== undefined ? process.env.DEVECO_C : '';
 const deveco_include = process.env.DEVECO_INCLUDE !== undefined ? process.env.DEVECO_INCLUDE : '';
+const is_system_win32 = process.platform === 'win32';
 
 describe('CfgTest', () => {
     it('case1: conditional operator', () => {
@@ -305,7 +306,8 @@ describe('Other Test', () => {
         testBlocks(scene, 'builtInAndSTLFunction.cpp', 'CXXTypeidExprTest', BUILT_IN_EXPECT.BUILT_IN_EXPECT_CASE1.blocks);
         testBlocks(scene, 'builtInAndSTLFunction.cpp', 'ArrayTypeTraitTest', BUILT_IN_EXPECT.BUILT_IN_EXPECT_CASE2.blocks);
         testBlocks(scene, 'builtInAndSTLFunction.cpp', 'CXXNoexceptExprTest', BUILT_IN_EXPECT.BUILT_IN_EXPECT_CASE3.blocks);
-        testBlocks(scene, 'builtInAndSTLFunction.cpp', 'AtomicExprTest', BUILT_IN_EXPECT.BUILT_IN_EXPECT_CASE4.blocks);
+        testBlocks(scene, 'builtInAndSTLFunction.cpp', 'AtomicExprTest',
+            is_system_win32 ? BUILT_IN_EXPECT.BUILT_IN_EXPECT_CASE4.blocks : BUILT_IN_EXPECT.BUILT_IN_EXPECT_CASE4_LINUX.blocks);
     });
 });
 

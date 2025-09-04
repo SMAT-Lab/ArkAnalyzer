@@ -170,7 +170,17 @@ export function showCfgStmt(blocks: Set<BasicBlock>): void {
 }
 
 export function assertBlocksEqual(blocks: Set<BasicBlock>, expectBlocks: any[]): void {
-    expect(blocks.size).toEqual(expectBlocks.length);
+    try {
+        expect(blocks.size).toEqual(expectBlocks.length);
+    }catch (e) {
+        const stmts: string[] = [];
+        for (const block of blocks) {
+            for (const stmt of block.getStmts()) {
+                stmts.push(stmt.toString());
+            }
+        }
+        throw new Error(`size equal error: \\n ${stmts}`);
+    }
 
     const blockMap = new Map<number, BasicBlock>();
     for (const block of blocks) {
