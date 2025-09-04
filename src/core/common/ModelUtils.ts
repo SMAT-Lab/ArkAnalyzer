@@ -15,7 +15,7 @@
 
 import { Local } from '../base/Local';
 import { ArkClass, ClassCategory } from '../model/ArkClass';
-import { ArkFile } from '../model/ArkFile';
+import { ArkFile, Language } from '../model/ArkFile';
 import { ArkMethod } from '../model/ArkMethod';
 import { ArkNamespace } from '../model/ArkNamespace';
 import {
@@ -275,6 +275,14 @@ export class ModelUtils {
             }
         }
         return this.getStaticMethodInFileWithName(methodName, thisClass.getDeclaringArkFile());
+    }
+
+    public static isLanguageOverloadSupport(language: Language): boolean {
+        if (language === Language.CXX) {
+            return true;
+        } else {
+            return false;
+        }
     }
 
     public static getStaticMethodInFileWithName(methodName: string, arkFile: ArkFile): ArkMethod | null {
