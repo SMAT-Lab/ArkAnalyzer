@@ -258,7 +258,7 @@ async function deleteFile(filePath: string): Promise<void> {
 function constructParseArguments(srcFilePath: string, ccJsonPath: string | null, includeDirs: string[] | null): string[] {
     const args: string[] = [];
     const ext = path.extname(srcFilePath).toLowerCase();
-    const isHeader = ext === ".h" || ext === ".hpp";
+    const isHeader = ext === '.h' || ext === '.hpp';
 
     if (!ccJsonPath && !isHeader) {
         ccJsonPath = findCompileCommands(srcFilePath);

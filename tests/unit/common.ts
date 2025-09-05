@@ -172,7 +172,7 @@ export function showCfgStmt(blocks: Set<BasicBlock>): void {
 export function assertBlocksEqual(blocks: Set<BasicBlock>, expectBlocks: any[]): void {
     try {
         expect(blocks.size).toEqual(expectBlocks.length);
-    }catch (e) {
+    } catch (e) {
         const stmts: string[] = [];
         for (const block of blocks) {
             for (const stmt of block.getStmts()) {

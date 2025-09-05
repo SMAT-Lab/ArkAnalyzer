@@ -1566,9 +1566,7 @@ int main(int argc, char** argv)
         cliutil::PrintUsage(argv[0]);
         return 1;
     }
-
     auto opts = cliutil::ParseCommandLineArgs(argc, argv);
-
     if (!cliutil::ValidateInput(opts)) {
         return 1;
     }
