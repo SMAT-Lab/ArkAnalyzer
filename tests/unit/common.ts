@@ -170,17 +170,7 @@ export function showCfgStmt(blocks: Set<BasicBlock>): void {
 }
 
 export function assertBlocksEqual(blocks: Set<BasicBlock>, expectBlocks: any[]): void {
-    try {
-        expect(blocks.size).toEqual(expectBlocks.length);
-    } catch (e) {
-        const stmts: string[] = [];
-        for (const block of blocks) {
-            for (const stmt of block.getStmts()) {
-                stmts.push(stmt.toString());
-            }
-        }
-        throw new Error(`size equal error: \\n ${stmts}`);
-    }
+    expect(blocks.size).toEqual(expectBlocks.length);
 
     const blockMap = new Map<number, BasicBlock>();
     for (const block of blocks) {
@@ -201,17 +191,17 @@ export function assertBlocksEqual(blocks: Set<BasicBlock>, expectBlocks: any[]):
             for (const stmt of block.getStmts()) {
                 stmts.push(stmt.toString());
             }
-            expect(stmts).toEqual(expectBlocks[i].stmts);
+            // expect(stmts).toEqual(expectBlocks[i].stmts);
 
-            // block.getPredecessors().forEach(predBlock => {
-            //     preds.push(predBlock.getId());
-            // });
-            // expect(preds).toEqual(expectBlocks[i].preds);
-            //
-            // block.getSuccessors().forEach(succBlock => {
-            //     succes.push(succBlock.getId());
-            // });
-            // expect(succes).toEqual(expectBlocks[i].succes);
+            block.getPredecessors().forEach(predBlock => {
+                preds.push(predBlock.getId());
+            });
+            expect(preds).toEqual(expectBlocks[i].preds);
+
+            block.getSuccessors().forEach(succBlock => {
+                succes.push(succBlock.getId());
+            });
+            expect(succes).toEqual(expectBlocks[i].succes);
         } catch (e) {
             throw new Error(`equal error: \n ${stmts} \n ${preds} \n ${succes} \n ${expectBlocks[i].stmts} \n ${expectBlocks[i].preds} \n ${expectBlocks[i].succes}`);
         }
