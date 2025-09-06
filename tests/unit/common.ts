@@ -191,7 +191,7 @@ export function assertBlocksEqual(blocks: Set<BasicBlock>, expectBlocks: any[]):
             for (const stmt of block.getStmts()) {
                 stmts.push(stmt.toString());
             }
-            // expect(stmts).toEqual(expectBlocks[i].stmts);
+            expect(stmts).toEqual(expectBlocks[i].stmts);
 
             block.getPredecessors().forEach(predBlock => {
                 preds.push(predBlock.getId());
