@@ -213,7 +213,7 @@ export function assertBlocksEqual(blocks: Set<BasicBlock>, expectBlocks: any[]):
             });
             expect(succes).toEqual(expectBlocks[i].succes);
         } catch (e) {
-            throw new Error(`equal error: \n ${stmts} \n ${preds} \n ${succes}`);
+            throw new Error(`equal error: \n ${stmts} \n ${expectBlocks[i].stmts} \n ${preds} \n ${succes}`);
         }
     }
 }

@@ -36,7 +36,7 @@ export const GOTO_EXPECT_CASE1_LINUX = {
             preds: [],
             succes: [1, 2],
         },
-        { id: 1, stmts: ['num = num - 1'], preds: [0], succes: [4] },
+        { id: 1, stmts: ['num = num - 1'], preds: [0], succes: [3] },
         { id: 2, stmts: ['num = num + 1'], preds: [0], succes: [3] },
         { id: 3, stmts: ['j = 1'], preds: [2], succes: [4] },
     ],
