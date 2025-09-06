@@ -294,6 +294,14 @@ bool IsNormalizeArgs(std::string arg, NormalizeArgs& normalizeArgs, std::vector<
     return false;
 }
 
+// Normalize and filter compiler arguments coming from compile_commands.json.
+// Goals:
+//  - Keep existing filtering/normalization behavior.
+//  - Ensure language/standard consistency (e.g., avoid `-xc` + `-std=c++17`).
+//  - If no language is provided, infer from file extension.
+//  - If no standard is provided, add a language-appropriate default:
+//      * C or C headers   -> -std=c99  (kept consistent with PrepareClangArgs)
+//      * C++ or C++ headers -> -std=c++17
 void FilterAndNormalizeArgs(const std::vector<std::string>& argv,
                             const std::string& entryFile,
                             const std::string& inputFile,
@@ -305,28 +313,101 @@ void FilterAndNormalizeArgs(const std::vector<std::string>& argv,
     NormalizeArgs normalizeArgs;
     for (size_t i = 0; i < argv.size(); ++i) {
         std::string arg = argv[i];
-        if (arg.empty() ||
-            IsFilterArgs(arg, normalizeArgs, entryNorm, inputNorm, i) ||
+        // Skip empty tokens; drop tool/exe, current file path, `--` tail, and
+        // consume stateful options (`-x` next, etc.). Also normalize things like
+        // two-part `-std c++17` -> `-std=c++17`. If any of those handlers
+        // processed this `arg`, continue to next token.
+        if (arg.empty() || IsFilterArgs(arg, normalizeArgs, entryNorm, inputNorm, static_cast<int>(i)) ||
             IsNormalizeArgs(arg, normalizeArgs, outArgs)) {
             continue;
         }
+        // Pass-through: anything not filtered/normalized is forwarded as-is.
         outArgs.push_back(std::move(arg));
     }
-
-    // Fallbacks
+    // ---------------------------
+    // Language fallback (preserve original policy):
+    //   - `.c`          => C (`-xc`)
+    //   - `.h`/`.hpp`…  => C++ header (`-xc++-header`)
+    //   - otherwise     => C++ (`-xc++`)
+    // ---------------------------
     if (!normalizeArgs.hasLang) {
         fs::path p(entryFile);
         std::string ext = p.extension().string();
-        std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c) {
-            return (char)std::tolower(c);
-        });
-        const bool isHeader = (ext==".h" || ext==".hh" || ext==".hpp" || ext==".hxx");
-        outArgs.push_back(isHeader? "-xc++-header" : (ext==".c"? "-xc" : "-xc++"));
+        std::transform(ext.begin(), ext.end(), ext.begin(),
+                       [](unsigned char c){ return (char)std::tolower(c); });
+        const bool isHeader = (ext == ".h" || ext == ".hh" || ext == ".hpp" || ext == ".hxx");
+        outArgs.push_back(isHeader ? "-xc++-header" : (ext == ".c" ? "-xc" : "-xc++"));
     }
-    if (!normalizeArgs.hasStd) {
-        outArgs.push_back("-std=c++17");
+
+    // ---------------------------
+    // Standard fallback and cleanup:
+    //   - Decide the effective language (prefer explicit `-x`, else infer).
+    //   - Remove mismatched `-std=` flags (e.g., drop `-std=c++17` under C).
+    //   - If no `-std=` remains, add a language-appropriate default.
+    // ---------------------------
+
+    // Helpers
+    auto hasArg = [&](auto pred){
+        return std::any_of(outArgs.begin(), outArgs.end(), pred);
+    };
+    auto removeIfPred = [&](auto pred){
+        outArgs.erase(std::remove_if(outArgs.begin(), outArgs.end(), pred), outArgs.end());
+    };
+    // Any -std=...
+    auto isStdAny = [](const std::string& s) { return s.rfind("-std=", 0) == 0; };
+    // C++ standards: -std=c++11/14/17/20/23/...
+    auto isStdCXX = [](const std::string& s) { return s.rfind("-std=c++", 0) == 0; };
+    // C standards: -std=c89/c90/c99/c11/... (but NOT c++)
+    auto isStdC   = [](const std::string& s) {
+        if (s.rfind("-std=c", 0) != 0) return false;
+        return s.rfind("-std=c++", 0) != 0; // exclude c++
+    };
+
+    // Determine effective language:
+    // prefer explicit `-x` flags; if absent, infer from file extension
+    bool isCFlag = hasArg([](const std::string& s) { return s == "-xc" || s == "-x c"; });
+    bool isCXXFlag = hasArg([](const std::string& s) { return s == "-xc++" || s == "-x c++"; });
+    bool isCHeader = hasArg([](const std::string& s) { return s == "-xc-header"; });
+    bool isCXXHeader = hasArg([](const std::string& s) { return s == "-xc++-header"; });
+
+    if (!isCFlag && !isCXXFlag && !isCHeader && !isCXXHeader) {
+        // Mirror the fallback policy above
+        fs::path p(entryFile);
+        std::string ext = p.extension().string();
+        std::transform(ext.begin(), ext.end(), ext.begin(),
+                       [](unsigned char c){ return (char)std::tolower(c); });
+        if (ext == ".c") {
+            isCFlag = true;
+        } else if (ext == ".h" || ext == ".hh" || ext == ".hpp" || ext == ".hxx") {
+            isCXXHeader = true;
+        } else {
+            isCXXFlag = true;
+        }
+    }
+
+    // Clean up and fill in `-std=` according to the decided language
+    const bool hadStdAtEntry = hasArg(isStdAny);
+
+    if (isCFlag || isCHeader) {
+        // Under C: remove any C++ standard flags and ensure a C standard exists
+        removeIfPred(isStdCXX);
+        if (!hasArg(isStdAny)) {
+            outArgs.push_back("-std=c99"); // keep consistent with PrepareClangArgs
+        }
+    } else if (isCXXFlag || isCXXHeader) {
+        // Under C++: remove any C standard flags and ensure a C++ standard exists
+        removeIfPred(isStdC);
+        if (!hasArg(isStdAny)) {
+            outArgs.push_back("-std=c++17");
+        }
+    } else {
+        // Should not happen (we always pick C or C++). Default to C++ as a safety net.
+        if (!hadStdAtEntry && !hasArg(isStdAny)) {
+            outArgs.push_back("-std=c++17");
+        }
     }
 }
+
 
 void MaybeAddSourceDirInclude(const std::string& entryFile, std::vector<std::string>& outArgs)
 {
