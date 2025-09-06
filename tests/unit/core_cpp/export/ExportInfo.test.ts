@@ -149,7 +149,7 @@ describe('export Test', () => {
         const fileId3 = new FileSignature(projectScene.getProjectName(), 'funcImplementInCpp/src/test.cpp');
         const file3 = projectScene.getFile(fileId3);
         assert.equal(file3?.getExportInfos().length, 0);
-        assert.equal(file3?.getImportInfos().length, 5);
+        assert.equal(file3?.getImportInfos().length, 0);
         const stmts3 = file3?.getClassWithName('Circle')?.getMethodWithName('CalculateArea')?.getCfg()?.getStmts();
         assert.isNotEmpty(stmts3);
         assert.equal(stmts3![1].toString(), '%0 = this.<@exports/funcImplementInCpp/src/test.cpp: Circle.radius>');
@@ -169,7 +169,7 @@ describe('export Test', () => {
         assert.equal(importInfos![3].getLazyExportInfo()?.getArkExport()?.getSignature().toString(), '@exports/indirectRef/include/castSample.h: %dflt');
         assert.equal(
             importInfos![4].getLazyExportInfo()?.getArkExport()?.getSignature().toString(),
-            '@exports/indirectRef/src/castSample.cpp: %dflt.CXXStaticCast(int)'
+            '@exports/indirectRef/include/castSample.h: %dflt.CXXStaticCast(int)'
         );
 
         const fileId2 = new FileSignature(projectScene.getProjectName(), 'indirectRef/include/myHeader.h');
@@ -182,7 +182,7 @@ describe('export Test', () => {
         assert.equal(importInfos![0].getLazyExportInfo()?.getArkExport()?.getSignature().toString(), '@exports/indirectRef/include/castSample.h: %dflt');
         assert.equal(
             importInfos![1].getLazyExportInfo()?.getArkExport()?.getSignature().toString(),
-            '@exports/indirectRef/src/castSample.cpp: %dflt.CXXStaticCast(int)'
+            '@exports/indirectRef/include/castSample.h: %dflt.CXXStaticCast(int)'
         );
 
         const fileId3 = new FileSignature(projectScene.getProjectName(), 'indirectRef/include/castSample.h');

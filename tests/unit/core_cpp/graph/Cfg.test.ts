@@ -120,7 +120,8 @@ describe('CfgTest', () => {
     });
     it('case6: goto statement', () => {
         const scene = buildScene('goto');
-        testBlocks(scene, 'gotoSample.cpp', 'Case1', GOTO_EXPECT.GOTO_EXPECT_CASE1.blocks);
+        testBlocks(scene, 'gotoSample.cpp', 'Case1',
+            is_system_win32 ? GOTO_EXPECT.GOTO_EXPECT_CASE1.blocks : GOTO_EXPECT.GOTO_EXPECT_CASE1_LINUX.blocks);
         testBlocks(scene, 'gotoSample.cpp', 'Case2', GOTO_EXPECT.GOTO_EXPECT_CASE2.blocks);
         testBlocks(scene, 'gotoSample.cpp', 'Case3', GOTO_EXPECT.GOTO_EXPECT_CASE3.blocks);
         testBlocks(scene, 'gotoSample.cpp', 'Case4', GOTO_EXPECT.GOTO_EXPECT_CASE4.blocks);
@@ -332,11 +333,13 @@ describe('Lazy Import Test', () => {
     it('case5: lazy import case5', () => {
         const scene = buildScene('lazyImport/lazyImportCase5');
         testBlocks(scene, 'lazyImportCase5.cpp', 'Napi_AddPropertyInt32', lazyImportCase5.Napi_AddPropertyInt32_EXPECT.blocks);
-        testBlocks(scene, 'lazyImportCase5.cpp', 'CallbackToArkTS', lazyImportCase5.CallbackToArkTS_EXPECT.blocks);
+        testBlocks(scene, 'lazyImportCase5.cpp', 'CallbackToArkTS',
+            is_system_win32 ? lazyImportCase5.CallbackToArkTS_EXPECT.blocks : lazyImportCase5.CallbackToArkTS_EXPECT_LINUX.blocks);
     });
     it('case6: lazy import case6', () => {
         const scene = buildScene('lazyImport/lazyImportCase6');
-        testBlocks(scene, 'lazyImportCase6.cpp', 'CallFunction', lazyImportCase6.CallFunction_EXPECT.blocks);
+        testBlocks(scene, 'lazyImportCase6.cpp', 'CallFunction',
+            is_system_win32 ? lazyImportCase6.CallFunction_EXPECT.blocks : lazyImportCase6.CallFunction_EXPECT_LINUX.blocks);
     });
     it('case7: lazy import case7', () => {
         const scene = buildScene('lazyImport/lazyImportCase7');

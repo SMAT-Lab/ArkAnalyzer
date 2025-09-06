@@ -1567,6 +1567,7 @@ int main(int argc, char** argv)
         return 1;
     }
     auto opts = cliutil::ParseCommandLineArgs(argc, argv);
+    cliutil::AddMainFileDirToInclude(opts);
     if (!cliutil::ValidateInput(opts)) {
         return 1;
     }
