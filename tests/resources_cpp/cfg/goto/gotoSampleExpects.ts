@@ -128,7 +128,7 @@ export const GOTO_EXPECT_CASE6_LINUX = {
         },
         { id: 1, stmts: ['return 0'], preds: [0, 3], succes: [] },
         { id: 2, stmts: ['num = num + 1'], preds: [0], succes: [3] },
-        { id: 3, stmts: ['j = 1'], preds: [1, 2], succes: [] },
+        { id: 3, stmts: ['j = 1'], preds: [2], succes: [4] },
     ],
 };
 
