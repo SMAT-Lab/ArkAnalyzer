@@ -126,7 +126,8 @@ describe('CfgTest', () => {
         testBlocks(scene, 'gotoSample.cpp', 'Case3', GOTO_EXPECT.GOTO_EXPECT_CASE3.blocks);
         testBlocks(scene, 'gotoSample.cpp', 'Case4', GOTO_EXPECT.GOTO_EXPECT_CASE4.blocks);
         testBlocks(scene, 'gotoSample.cpp', 'Case5', GOTO_EXPECT.GOTO_EXPECT_CASE5.blocks);
-        testBlocks(scene, 'gotoSample.cpp', 'Case6', GOTO_EXPECT.GOTO_EXPECT_CASE6.blocks);
+        testBlocks(scene, 'gotoSample.cpp', 'Case6',
+            is_system_win32 ? GOTO_EXPECT.GOTO_EXPECT_CASE6.blocks : GOTO_EXPECT.GOTO_EXPECT_CASE6_LINUX.blocks);
         testBlocks(scene, 'gotoSample.cpp', 'Case7', GOTO_EXPECT.GOTO_EXPECT_CASE7.blocks);
         testBlocks(scene, 'gotoSample.cpp', 'Case8', GOTO_EXPECT.GOTO_EXPECT_CASE8.blocks);
         testBlocks(scene, 'gotoSample.cpp', 'Case9', GOTO_EXPECT.GOTO_EXPECT_CASE9.blocks);

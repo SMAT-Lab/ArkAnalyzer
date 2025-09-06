@@ -106,7 +106,7 @@ export const CallbackToArkTS_EXPECT_LINUX = {
                 'number = undefined',
                 '%7 = &number',
                 'staticinvoke <@%unk/%unk: .napi_get_value_int32()>(env, typeNumber, %7)',
-                'return result'
+                'return result',
             ],
             preds: [],
             succes: [],
