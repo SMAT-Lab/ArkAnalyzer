@@ -78,7 +78,7 @@ bool IsCompilerExecutable(std::string arg)
     }
     return EndsWith(arg, "clang.exe") || EndsWith(arg, "clang++.exe") ||
            EndsWith(arg, "clang-cl.exe") || EndsWith(arg, "clang") || EndsWith(arg, "clang++") ||
-           EndsWith(arg, "clang-cl") || EndsWith(arg, "clang_~1.exe");
+           EndsWith(arg, "clang-cl") || EndsWith(arg, "clang_~1.exe") || EndsWith(arg, "cl.exe") || EndsWith(arg, "cl");
 }
 
 // Shell-like split: supports quotes, \" and \<space>.
