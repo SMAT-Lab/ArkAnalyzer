@@ -1456,14 +1456,7 @@ CXTranslationUnit createTranslationUnit(CXIndex index, const CommandLineOptions&
         const char* a = args[i];
         std::cout << " [" << i << "] " << (a ? a : "<null>") << "\n";
     }
-
-    auto t0 = std::chrono::high_resolution_clock::now();
-
     return clang_parseTranslationUnit(index, opts.inputFile.c_str(), args.data(), args.size(), nullptr, 0, tuFlags);
-
-    auto t1 = std::chrono::high_resolution_clock::now();
-    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count();
-    std::cout << "[Timing] create TU tims is " << ms << "ms" << std::endl;
 }
 
 struct InclusionCtx {
@@ -1575,7 +1568,11 @@ int main(int argc, char** argv)
 
     g_user_include_dirs = opts.userIncludeDirs;
     CXIndex index = clang_createIndex(0, 0);
+    auto t1 = std::chrono::high_resolution_clock::now();
     CXTranslationUnit unit = createTranslationUnit(index, opts, clangArgs.cstrArgs);
+    auto t2 = std::chrono::high_resolution_clock::now();
+    auto ms1 = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
+    std::cout << "create TU time is " << ms1 << "ms" << std::endl;
     if (!unit) {
         std::cerr << "[ERROR] clang_parseTranslationUnit failed!" << std::endl;
         for (size_t i = 0; i < clangArgs.cstrArgs.size(); ++i) {
@@ -1589,8 +1586,8 @@ int main(int argc, char** argv)
 
     clang_disposeTranslationUnit(unit);
     clang_disposeIndex(index);
-    auto t1 = std::chrono::high_resolution_clock::now();
-    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count();
-    std::cout << "dumper total time is " << ms << "ms" << std::endl;
+    auto t3 = std::chrono::high_resolution_clock::now();
+    auto ms2 = std::chrono::duration_cast<std::chrono::milliseconds>(t3 - t0).count();
+    std::cout << "dumper total time is " << ms2 << "ms" << std::endl;
     return 0;
 }
