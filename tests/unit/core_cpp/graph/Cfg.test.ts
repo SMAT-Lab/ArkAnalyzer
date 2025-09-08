@@ -334,15 +334,13 @@ describe('Lazy Import Test', () => {
     it('case5: lazy import case5', () => {
         const scene = buildScene('lazyImport/lazyImportCase5');
         testBlocks(scene, 'lazyImportCase5.cpp', 'Napi_AddPropertyInt32', lazyImportCase5.Napi_AddPropertyInt32_EXPECT.blocks);
-        if (is_system_win32) {
-            testBlocks(scene, 'lazyImportCase5.cpp', 'CallbackToArkTS', lazyImportCase5.CallbackToArkTS_EXPECT.blocks);
-        }
+        testBlocks(scene, 'lazyImportCase5.cpp', 'CallbackToArkTS',
+            is_system_win32 ? lazyImportCase5.CallbackToArkTS_EXPECT.blocks : lazyImportCase5.CallbackToArkTS_EXPECT_LINUX.blocks);
     });
     it('case6: lazy import case6', () => {
         const scene = buildScene('lazyImport/lazyImportCase6');
-        if (is_system_win32) {
-            testBlocks(scene, 'lazyImportCase5.cpp', 'CallbackToArkTS', lazyImportCase6.CallFunction_EXPECT.blocks);
-        }
+        testBlocks(scene, 'lazyImportCase5.cpp', 'CallbackToArkTS',
+            is_system_win32 ? lazyImportCase6.CallFunction_EXPECT.blocks : lazyImportCase6.CallFunction_EXPECT_LINUX.blocks);
     });
     it('case7: lazy import case7', () => {
         const scene = buildScene('lazyImport/lazyImportCase7');
