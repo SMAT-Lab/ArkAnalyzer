@@ -21,7 +21,7 @@ import {
     UnclearReferenceType,
     FunctionType,
 } from '../../../core/base/Type';
-import { PointerType, ReferenceType, ReferCategory } from '../../base/Type';
+import { PointerType, ReferenceType, ReferCategory, NapiType } from '../../base/Type';
 import { TypeInference } from '../../common/TypeInference';
 import { ArkField } from '../../../core/model/ArkField';
 import { ArkClass } from '../../../core/model/ArkClass';
@@ -196,6 +196,10 @@ export function cxxNode2Type(
     // Handle function pointer type
     if (currNode && arkInstance instanceof ArkMethod && isCxxFunctionPointer(currNode.type.qualType)) {
         return buildFuncPtrType(currNode, arkInstance, sourceFile!);
+    }
+    // Handle napi type
+    if (typeof nodeQualType === 'string' && nodeQualType.startsWith('napi_')) {
+        return new NapiType(nodeQualType);
     }
     // Handle special type
     if (nodeQualType === 'void () const') {
