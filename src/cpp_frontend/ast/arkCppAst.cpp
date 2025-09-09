@@ -1388,6 +1388,13 @@ void fillNodeProperties(json& node, CXCursor& cursor, CXCursorKind& kind_cursor,
     fillDeclRefInfo(node, cursor, kind_cursor);
     fillNodeIdRangeLoc(node, content, kind_cursor, file, displayName);
 }
+
+bool filterAstNode(CXCursorKind kind_cursor, bool isInclude, bool fromMainSpell, bool fromMainByExpansion,
+                   std::string fileName)
+{
+    return kind_cursor != CXCursor_TranslationUnit && !fromMainSpell && !fromMainByExpansion && !isInclude ||
+           (kind_cursor == CXCursor_DeclStmt && !g_normMainFile.empty() && CanonicalCached(fileName) != g_normMainFile);
+}
 // ==========================buildASTJson Main Body========================
 
 json buildASTJson(CXCursor cursor, bool actionScope, std::unordered_map<std::string, std::string>& varTypeMap)
@@ -1415,8 +1422,7 @@ json buildASTJson(CXCursor cursor, bool actionScope, std::unordered_map<std::str
             fromMainByExpansion = (!g_normMainFile.empty() && expPath == g_normMainFile);
         }
     }
-    if (kind_cursor != CXCursor_TranslationUnit && !fromMainSpell && !fromMainByExpansion && !isInclude ||
-        (kind_cursor == CXCursor_DeclStmt && !g_normMainFile.empty() && CanonicalCached(fileName) != g_normMainFile)) {
+    if (filterAstNode(kind_cursor, isInclude, fromMainSpell, fromMainByExpansion, fileName)) {
         return json();
     }
     if (kind_cursor == CXCursor_LinkageSpec) { // extern "C" { ... }
