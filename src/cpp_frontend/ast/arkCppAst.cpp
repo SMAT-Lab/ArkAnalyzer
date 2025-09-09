@@ -822,6 +822,9 @@ bool IsInUserInclude(const std::string& fileName)
 {
     // Normalize the path (resolve symlinks, unify separators, cache results).
     auto norm = CanonicalCached(fileName);
+    if (!g_normMainFile.empty() && norm == g_normMainFile) {
+        return false;
+    }
     // Exclude system header prefixes (standard library, SDK, etc.).
     for (const auto& p: kDenyPrefixes) {
         if (norm.find(p) != std::string::npos) {

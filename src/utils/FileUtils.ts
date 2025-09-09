@@ -94,8 +94,6 @@ export class FileUtils {
                 return Language.ARKTS1_1;
             case '.js':
                 return Language.JAVASCRIPT;
-            case '.h':
-            case '.hpp':
             case '.c':
             case '.cpp':
                 return Language.CXX;
