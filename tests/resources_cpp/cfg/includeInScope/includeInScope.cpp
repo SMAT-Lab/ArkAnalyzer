@@ -23,15 +23,16 @@ void IncludeInFunction() {
     int b = a + NUM;
     int c = add(a, b);
 
-    MyStr myStr;
-    myStr.age = 10;
+    MyStruct myStruct;
+    myStruct.age = 10;
 }
 
 class IncludeInClass {
 private:
     int data;
 public:
-    void process() {
+    void Process()
+    {
         #ifdef USE_OPTIMIZED_VERSION
             #include "includeInClass.h"
         #endif

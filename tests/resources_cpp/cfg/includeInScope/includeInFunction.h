@@ -23,7 +23,7 @@ int add(int aa, int bb);
 int g_NUM = 1;
 
 // struct definition
-struct MyStr{
+struct MyStruct{
    int age;
 };
 

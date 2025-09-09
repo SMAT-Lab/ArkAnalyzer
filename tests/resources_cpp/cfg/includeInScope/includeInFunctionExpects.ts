@@ -22,10 +22,10 @@ export const INCLUDE_IN_FUNCTION_CASE1 = {
                 'a = g_NUM',
                 'b = a + 1',
                 'c = staticinvoke <@%unk/%unk: .add()>(a, b)',
-                '%0 = new @%unk/%unk: MyStr',
-                'instanceinvoke %0.<@%unk/%unk: MyStr.constructor()>()',
-                'myStr = %0',
-                'myStr.<@%unk/%unk: MyStr.age> = 10',
+                '%0 = new @%unk/%unk: MyStruct',
+                'instanceinvoke %0.<@%unk/%unk: MyStruct.constructor()>()',
+                'myStruct = %0',
+                'myStruct.<@%unk/%unk: MyStruct.age> = 10',
                 'return'
             ],
             preds: [],
@@ -39,7 +39,7 @@ export const INCLUDE_IN_CLASS_CASE1 = {
     fields: ['data'],
     blocks: [
         {
-            methodName: 'process',
+            methodName: 'Process',
             blocks: [
                 {
                     id: 0,
