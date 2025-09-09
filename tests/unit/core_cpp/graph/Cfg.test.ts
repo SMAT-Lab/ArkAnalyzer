@@ -57,6 +57,7 @@ import * as TYPEDEF_EXPECT from '../../../resources_cpp/cfg/typedef/typdefExpect
 import * as THREAD_EXPECT from '../../../resources_cpp/cfg/thread/threadExpects';
 import * as FUNCPTR_EXPECT from '../../../resources_cpp/cfg/functionPointer/functionPointerExpts';
 import * as AUTO_EXPECT from '../../../resources_cpp/cfg/decltype/decltypeExpects';
+import * as INCLUDE_IN_SCOPE from '../../../resources_cpp/cfg/includeInScope/includeInFunctionExpects';
 
 // Standard library header file configuration for DevEco
 const deveco_c = process.env.DEVECO_C !== undefined ? process.env.DEVECO_C : '';
@@ -409,6 +410,14 @@ describe('decltype Test', () => {
         const scene = buildScene('decltype');
         testBlocks(scene, 'decltype.cpp', 'AutoTest', AUTO_EXPECT.AUTO_EXPECT_CASE1.blocks);
         testBlocks(scene, 'decltype.cpp', 'DecltypeTest', AUTO_EXPECT.DECLTYPE_EXPECT_CASE1.blocks);
+    });
+});
+
+describe('include in scope', () => {
+    it('case1: includeInScope', () => {
+        const scene = buildScene('includeInScope');
+        testBlocks(scene, 'includeInScope.cpp', 'IncludeInFunction', INCLUDE_IN_SCOPE.INCLUDE_IN_FUNCTION_CASE1.blocks);
+        testBlocksClass(scene, 'includeInScope.cpp', 'IncludeInClass', INCLUDE_IN_SCOPE.INCLUDE_IN_CLASS_CASE1);
     });
 });
 
