@@ -1,0 +1,1 @@
+std::cout << "Using optimized processing" << std::endl;

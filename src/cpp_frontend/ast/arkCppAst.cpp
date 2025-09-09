@@ -1412,7 +1412,8 @@ json buildASTJson(CXCursor cursor, bool actionScope, std::unordered_map<std::str
             fromMainByExpansion = (!g_normMainFile.empty() && expPath == g_normMainFile);
         }
     }
-    if (kind_cursor != CXCursor_TranslationUnit && !fromMainSpell && !fromMainByExpansion && !isInclude) {
+    if (kind_cursor != CXCursor_TranslationUnit && !fromMainSpell && !fromMainByExpansion && !isInclude ||
+        (kind_cursor == CXCursor_DeclStmt && !g_normMainFile.empty() && CanonicalCached(fileName) != g_normMainFile)) {
         return json();
     }
     if (kind_cursor == CXCursor_LinkageSpec) { // extern "C" { ... }
