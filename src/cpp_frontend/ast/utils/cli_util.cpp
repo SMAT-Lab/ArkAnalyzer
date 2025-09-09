@@ -295,12 +295,13 @@ bool IsNormalizeArgs(std::string arg, NormalizeArgs& normalizeArgs, std::vector<
 }
 
 namespace {
-enum class EffectiveLang { C, CXX, Unknown };
+enum class EffectiveLang { C, CXX, UNKNOWN };
 
-constexpr const char* kDefaultCStd   = "-std=c99";
-constexpr const char* kDefaultCxxStd = "-std=c++17";
+constexpr const char* K_DEFAULT_C_STD   = "-std=c99";
+constexpr const char* K_DEFAULT_CXX_STD = "-std=c++17";
 
-void NormalizeStdFlags(std::vector<std::string>& outArgs, EffectiveLang lang) {
+void NormalizeStdFlags(std::vector<std::string>& outArgs, EffectiveLang lang)
+{
     auto hasArg = [&outArgs](const auto& pred) -> bool {
         return std::any_of(outArgs.begin(), outArgs.end(), pred);
     };
@@ -318,12 +319,12 @@ void NormalizeStdFlags(std::vector<std::string>& outArgs, EffectiveLang lang) {
 
     if (lang == EffectiveLang::C) {
         removeIfPred(isStdCXX);
-        if (!hasArg(isStdAny)) outArgs.push_back(kDefaultCStd);
+        if (!hasArg(isStdAny)) outArgs.push_back(K_DEFAULT_C_STD);
     } else if (lang == EffectiveLang::CXX) {
         removeIfPred(isStdC);
-        if (!hasArg(isStdAny)) outArgs.push_back(kDefaultCxxStd);
+        if (!hasArg(isStdAny)) outArgs.push_back(K_DEFAULT_CXX_STD);
     } else {
-        if (!hadStdAtEntry && !hasArg(isStdAny)) outArgs.push_back(kDefaultCxxStd);
+        if (!hadStdAtEntry && !hasArg(isStdAny)) outArgs.push_back(K_DEFAULT_CXX_STD);
     }
 }
 } // namespace
@@ -399,7 +400,7 @@ void FilterAndNormalizeArgs(const std::vector<std::string>& argv,
     bool isCXXFlag = hasArg([](const std::string& s) { return s == "-xc++" || s == "-x c++"; });
     bool isCHeader = hasArg([](const std::string& s) { return s == "-xc-header"; });
     bool isCXXHeader = hasArg([](const std::string& s) { return s == "-xc++-header"; });
-    EffectiveLang lang = EffectiveLang::Unknown;
+    EffectiveLang lang = EffectiveLang::UNKNOWN;
     if (isCFlag || isCHeader) {
         lang = EffectiveLang::C;
     } else if (isCXXFlag || isCXXHeader) {
