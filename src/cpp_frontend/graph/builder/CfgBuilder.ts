@@ -137,7 +137,7 @@ export class TryStatementBuilder extends StatementBuilder {
 
 export class CfgBuilder {
     name: string;
-    astRoot: any;
+    astRoot: CxxAstNode;
     entry: StatementBuilder;
     exit: StatementBuilder;
     loopStack: ConditionStatementBuilder[];
@@ -1124,13 +1124,10 @@ export class CfgBuilder {
 
     buildCfgBuilder(): void {
         let stmts: CxxAstNode[] = [];
-        if (this.astRoot.kind.toString() === 'TranslationUnit') {
+        if (['TranslationUnit', 'Namespace'].includes(this.astRoot.kind)) {
             stmts = [...this.astRoot.inner];
-        } else if (
-            ['FunctionDecl', 'CXXMethodDecl', 'CXXConstructorDecl', 'LambdaExpr', 'FunctionTemplate', 'CXXDestructorDecl'].includes(
-                this.astRoot.kind.toString()
-            )
-        ) {
+        } else if (['FunctionDecl', 'CXXMethodDecl', 'CXXConstructorDecl', 'LambdaExpr', 'FunctionTemplate', 'CXXDestructorDecl'].includes(
+                this.astRoot.kind)) {
             stmts = this.getFuncBodyStmt();
         }
         if (!ModelUtils.isArkUIBuilderMethod(this.declaringMethod)) {
