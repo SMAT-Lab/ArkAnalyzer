@@ -25,7 +25,7 @@ export const INCLUDE_IN_FUNCTION_CASE1 = {
                 '%0 = new @%unk/%unk: MyStruct',
                 'instanceinvoke %0.<@%unk/%unk: MyStruct.constructor()>()',
                 'myStruct = %0',
-                'myStruct.<@%unk/%unk: MyStruct.age> = 10',
+                'myStruct.<@%unk/%unk: MyStruct.age> = g_NUM',
                 'return'
             ],
             preds: [],

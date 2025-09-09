@@ -16,7 +16,8 @@
 #include <iostream>
 #define USE_OPTIMIZED_VERSION
 
-void IncludeInFunction() {
+void IncludeInFunction()
+{
     #include "includeInFunction.h"
 
     int a = g_NUM;
@@ -24,7 +25,7 @@ void IncludeInFunction() {
     int c = add(a, b);
 
     MyStruct myStruct;
-    myStruct.age = 10;
+    myStruct.age = g_NUM;
 }
 
 class IncludeInClass {
