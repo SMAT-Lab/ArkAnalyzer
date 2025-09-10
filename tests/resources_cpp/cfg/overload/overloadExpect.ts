@@ -298,9 +298,9 @@ export const OVERLOAD_MAIN_EXPECT = {
             id: 0,
             stmts: [
                 'this = this: @overload/overloadSample.cpp: %dflt',
-                'staticinvoke <@overload/overloadSample.cpp: %dflt.PrintInfo(int, char)>(1)',
-                "staticinvoke <@overload/overloadSample.cpp: %dflt.PrintInfo(int, char)>('A')",
-                "staticinvoke <@overload/overloadSample.cpp: %dflt.PrintInfo(int, char)>(1, 'A')",
+                'staticinvoke <@overload/overloadSample.cpp: %dflt.PrintInfo(int)>(1)',
+                "staticinvoke <@overload/overloadSample.cpp: %dflt.PrintInfo(int)>('A')",
+                "staticinvoke <@overload/overloadSample.cpp: %dflt.PrintInfo(int)>(1, 'A')",
                 '%0 = new @overload/overloadSample.cpp: Person',
                 'instanceinvoke %0.<@overload/overloadSample.cpp: Person.constructor()>()',
                 'p1 = %0',

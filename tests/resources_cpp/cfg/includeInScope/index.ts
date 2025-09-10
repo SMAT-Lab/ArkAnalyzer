@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,38 +13,4 @@
  * limitations under the License.
  */
 
-interface TestInterface {
-    a: string;
-    b: number;
-}
-
-enum TestEnum {
-    A = 123,
-    B = 'abc'
-}
-
-type c = number;
-type TestLiteral = {
-    a: string,
-    b: {
-        c: c
-    }
-};
-
-let a = 123;
-let b = 456;
-let testObj = {
-    a: a,
-    b: {
-        value: b
-    }
-};
-
-const str = 'Test';
-
-enum TestEnum2 {
-    A = a,
-    B = `abc ${str}`,
-    C = 2 + 2,
-    D = C
-}
+export * from './includeInFunctionExpects';

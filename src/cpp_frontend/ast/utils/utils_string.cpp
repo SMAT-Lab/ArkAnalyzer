@@ -32,6 +32,12 @@ std::string Cx2Str(const CXString &s)
 {
     std::string r = clang_getCString(s) ? clang_getCString(s) : "" ;
     clang_disposeString(s);
+    if (r == "*****") {
+        r = "null"; // Handling Linux features
+    }
+    if (r == "NULL") {
+        r = "0"; // Handling Linux features
+    }
     // If contains \../, process with canonical
     if (r.find("\\../") != std::string::npos) {
         try {

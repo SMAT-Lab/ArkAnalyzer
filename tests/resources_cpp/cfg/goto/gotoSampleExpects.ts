@@ -28,6 +28,20 @@ export const GOTO_EXPECT_CASE1 = {
     ],
 };
 
+export const GOTO_EXPECT_CASE1_LINUX = {
+    blocks: [
+        {
+            id: 0,
+            stmts: ['this = this: @goto/gotoSample.cpp: %dflt', 'num = 1', 'if num > 0'],
+            preds: [],
+            succes: [1, 2],
+        },
+        { id: 1, stmts: ['num = num - 1'], preds: [0], succes: [3] },
+        { id: 2, stmts: ['num = num + 1'], preds: [0], succes: [3] },
+        { id: 3, stmts: ['j = 1'], preds: [1, 2], succes: [] },
+    ],
+};
+
 export const GOTO_EXPECT_CASE2 = {
     blocks: [
         {

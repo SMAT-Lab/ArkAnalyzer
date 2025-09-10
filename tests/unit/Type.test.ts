@@ -860,10 +860,10 @@ describe('Intersection Type Test', () => {
     it('case10: class field with class intersection', () => {
         const fields = projectScene.getFile(fileId)?.getClassWithName('Inter')?.getFields();
         assert.isDefined(fields);
-        assert.equal(fields![0].getType().toString(), 'string&number');
-        assert.equal(fields![1].getType().toString(), '@type/intersectionType.ts: %dflt.[static]%dflt()#A&@type/intersectionType.ts: %dflt.[static]%dflt()#B');
-        assert.equal(fields![2].getType().toString(), '@type/intersectionType.ts: %dflt.[static]%dflt()#Employee&(number|boolean)');
-        assert.equal(((fields![2].getType() as IntersectionType).getTypes()[0] as AliasType).getOriginalType().toString(), '@type/intersectionType.ts: %dflt.[static]%dflt()#Person&@type/intersectionType.ts: %AC3');
+        assert.equal(fields![1].getType().toString(), 'string&number');
+        assert.equal(fields![2].getType().toString(), '@type/intersectionType.ts: %dflt.[static]%dflt()#A&@type/intersectionType.ts: %dflt.[static]%dflt()#B');
+        assert.equal(fields![0].getType().toString(), '@type/intersectionType.ts: %dflt.[static]%dflt()#Employee&(number|boolean)');
+        assert.equal(((fields![0].getType() as IntersectionType).getTypes()[0] as AliasType).getOriginalType().toString(), '@type/intersectionType.ts: %dflt.[static]%dflt()#Person&@type/intersectionType.ts: %AC3');
     });
 });
 

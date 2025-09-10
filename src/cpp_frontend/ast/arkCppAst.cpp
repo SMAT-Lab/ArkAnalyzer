@@ -282,7 +282,7 @@ std::string handleUnexposedExpr(json node)
         } else if (codeStr.find("?") != std::string::npos) {
             return "BinaryConditionalOperator";
         } else if (codeStr.find(".push_back") != std::string::npos || codeStr.find(".insert") != std::string::npos ||
-                   codeStr.find(".push") != std::string::npos || typeStr.find("basic_ostream") != std::string::npos ||
+                   codeStr.find(".push") != std::string::npos || typeStr.find("ostream") != std::string::npos ||
                    typeStr == "bool" || typeStr == "mapped_type" || codeStr.find(".erase") != std::string::npos) {
             return "ExprWithCleanups";
         } else if (codeStr.find("std::make_pair") != std::string::npos) {
@@ -683,14 +683,14 @@ void relateMemberType(const std::string& typeStr, json& children)
 bool IsConstructorByTypeStr(std::string typeStr)
 {
     return typeStr.find("std::map") == 0 || typeStr.find("std::unordered_map") == 0 ||
-           typeStr.find("std::_Tree_const_iterator") != std::string::npos || typeStr == "key_type" ||
+           typeStr.find("std::__tree_const_iterator") != std::string::npos || typeStr == "key_type" ||
            typeStr == "const key_type" || typeStr == "const std::basic_string<char>" ||
            typeStr.find("lambda at") != std::string::npos || typeStr.find("struct") == 0;
 }
 
 bool IsConstructorByNameStr(std::string nameStr)
 {
-    return nameStr == "vector" || nameStr == "_Tree_const_iterator" || nameStr == "set" || nameStr == "queue" ||
+    return nameStr == "vector" || nameStr == "__tree_const_iterator" || nameStr == "set" || nameStr == "queue" ||
     nameStr == "deque" || nameStr == "stack" || nameStr == "list";
 }
 
@@ -822,6 +822,9 @@ bool IsInUserInclude(const std::string& fileName)
 {
     // Normalize the path (resolve symlinks, unify separators, cache results).
     auto norm = CanonicalCached(fileName);
+    if (!g_normMainFile.empty() && norm == g_normMainFile) {
+        return false;
+    }
     // Exclude system header prefixes (standard library, SDK, etc.).
     for (const auto& p: kDenyPrefixes) {
         if (norm.find(p) != std::string::npos) {
@@ -1082,7 +1085,7 @@ void fillNodeKindTag(json& node, CXCursor cursor, CXCursorKind kind_cursor, cons
     if (kind_cursor == CXCursor_CallExpr) {
         if (nameStr.find("operator\"\"") != std::string::npos)
             node["kind"] = "UserDefinedLiteral";
-        else if (typeStr.find("basic_ostream") == 0 || nameStr.find("operator") != std::string::npos)
+        else if (typeStr.find("ostream") == 0 || nameStr.find("operator") != std::string::npos)
             node["kind"] = "CXXOperatorCallExpr";
         else if (IsConstructorByTypeStr(typeStr) || IsConstructorByNameStr(nameStr) ||
                  IsConstructorByCodeStr(codeStr, nameStr, typeStr))
@@ -1099,7 +1102,7 @@ void fillNodeKindTag(json& node, CXCursor cursor, CXCursorKind kind_cursor, cons
         node.erase("opcode");
         node["kind"] = "CXXOperatorCallExpr";
         node["name"] = "operator<<";
-        node["type"]["qualType"] = "basic_ostream<char>";
+        node["type"]["qualType"] = "ostream";
         return;
     }
     if (applyDeclLikeKind(node, cursor, kind_cursor)) {
@@ -1385,6 +1388,13 @@ void fillNodeProperties(json& node, CXCursor& cursor, CXCursorKind& kind_cursor,
     fillDeclRefInfo(node, cursor, kind_cursor);
     fillNodeIdRangeLoc(node, content, kind_cursor, file, displayName);
 }
+
+bool filterAstNode(CXCursorKind kind_cursor, bool isInclude, bool fromMainSpell, bool fromMainByExpansion,
+                   std::string fileName)
+{
+    return kind_cursor != CXCursor_TranslationUnit && !fromMainSpell && !fromMainByExpansion && !isInclude ||
+           (kind_cursor == CXCursor_DeclStmt && !g_normMainFile.empty() && CanonicalCached(fileName) != g_normMainFile);
+}
 // ==========================buildASTJson Main Body========================
 
 json buildASTJson(CXCursor cursor, bool actionScope, std::unordered_map<std::string, std::string>& varTypeMap)
@@ -1412,7 +1422,7 @@ json buildASTJson(CXCursor cursor, bool actionScope, std::unordered_map<std::str
             fromMainByExpansion = (!g_normMainFile.empty() && expPath == g_normMainFile);
         }
     }
-    if (kind_cursor != CXCursor_TranslationUnit && !fromMainSpell && !fromMainByExpansion && !isInclude) {
+    if (filterAstNode(kind_cursor, isInclude, fromMainSpell, fromMainByExpansion, fileName)) {
         return json();
     }
     if (kind_cursor == CXCursor_LinkageSpec) { // extern "C" { ... }
@@ -1421,6 +1431,10 @@ json buildASTJson(CXCursor cursor, bool actionScope, std::unordered_map<std::str
 
     json node;
     fillNodeProperties(node, cursor, kind_cursor, isInclude, file);
+    std::string codeStr = node.value("code", "");
+    if (node["kind"] == "CXXDeleteExpr" && codeStr.find("delete[]") != std::string::npos) {
+        node["isArray"] = true;
+    }
 
     if (node.contains("kind") && (node["kind"] == "ParmDecl" || node["kind"] == "VarDecl") && node.contains("name") &&
         node.contains("type") && node["type"].contains("qualType"))
@@ -1444,6 +1458,14 @@ CXTranslationUnit createTranslationUnit(CXIndex index, const CommandLineOptions&
                                         const std::vector<const char*>& args)
 {
     const unsigned tuFlags = cliutil::BuildTUFlags(opts);
+
+    std::cout << "[Args] size=" << args.size()
+              << " , data()=" << static_cast<const void*>(args.data()) << "\n";
+
+    for (size_t i = 0; i< args.size(); ++i) {
+        const char* a = args[i];
+        std::cout << " [" << i << "] " << (a ? a : "<null>") << "\n";
+    }
     return clang_parseTranslationUnit(index, opts.inputFile.c_str(), args.data(), args.size(), nullptr, 0, tuFlags);
 }
 
@@ -1542,14 +1564,13 @@ json buildAndProcessAST(CXTranslationUnit unit, const CommandLineOptions& opts)
 // ===================Main Program Entry==================
 int main(int argc, char** argv)
 {
+    auto t0 = std::chrono::high_resolution_clock::now();
     if (argc < TWO) {
         cliutil::PrintUsage(argv[0]);
         return 1;
     }
-
     auto opts = cliutil::ParseCommandLineArgs(argc, argv);
     cliutil::AddMainFileDirToInclude(opts);
-
     if (!cliutil::ValidateInput(opts)) {
         return 1;
     }
@@ -1557,7 +1578,11 @@ int main(int argc, char** argv)
 
     g_user_include_dirs = opts.userIncludeDirs;
     CXIndex index = clang_createIndex(0, 0);
+    auto t1 = std::chrono::high_resolution_clock::now();
     CXTranslationUnit unit = createTranslationUnit(index, opts, clangArgs.cstrArgs);
+    auto t2 = std::chrono::high_resolution_clock::now();
+    auto ms1 = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
+    std::cout << "create TU time is " << ms1 << "ms" << std::endl;
     if (!unit) {
         std::cerr << "[ERROR] clang_parseTranslationUnit failed!" << std::endl;
         for (size_t i = 0; i < clangArgs.cstrArgs.size(); ++i) {
@@ -1571,5 +1596,8 @@ int main(int argc, char** argv)
 
     clang_disposeTranslationUnit(unit);
     clang_disposeIndex(index);
+    auto t3 = std::chrono::high_resolution_clock::now();
+    auto ms2 = std::chrono::duration_cast<std::chrono::milliseconds>(t3 - t0).count();
+    std::cout << "dumper total time is " << ms2 << "ms" << std::endl;
     return 0;
 }

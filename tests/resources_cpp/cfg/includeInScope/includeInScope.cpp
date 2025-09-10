@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,38 +13,29 @@
  * limitations under the License.
  */
 
-interface TestInterface {
-    a: string;
-    b: number;
+#include <iostream>
+#define USE_OPTIMIZED_VERSION
+
+void IncludeInFunction()
+{
+    #include "includeInFunction.h"
+
+    int a = g_NUM;
+    int b = a + NUM;
+    int c = add(a, b);
+
+    MyStruct myStruct;
+    myStruct.age = g_NUM;
 }
 
-enum TestEnum {
-    A = 123,
-    B = 'abc'
-}
-
-type c = number;
-type TestLiteral = {
-    a: string,
-    b: {
-        c: c
+class IncludeInClass {
+private:
+    int data;
+public:
+    void Process()
+    {
+        #ifdef USE_OPTIMIZED_VERSION
+            #include "includeInClass.h"
+        #endif
     }
 };
-
-let a = 123;
-let b = 456;
-let testObj = {
-    a: a,
-    b: {
-        value: b
-    }
-};
-
-const str = 'Test';
-
-enum TestEnum2 {
-    A = a,
-    B = `abc ${str}`,
-    C = 2 + 2,
-    D = C
-}

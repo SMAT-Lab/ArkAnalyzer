@@ -40,18 +40,17 @@ arkCppAstDumper是基于llvm开发的工具，对C/C++生成简洁的抽象语�
 ### 工具执行的依赖文件
 
 - libclang.dll（可从windows环境下clang的bin目录下获取）
-- vcruntime140.dll（可从Microsoft Visual Studio的MSVC目录下获取）
-- vcruntime140_1.dll（可从Microsoft Visual Studio的MSVC目录下获取）
+- libc++.dll (可从交叉编译的llvm-mingw获取)
+- libunwind.dll (可从交叉编译的llvm-mingw获取)
 
 ### 工具解析cpp文件需引入的标准库头文件
 
 - visual studio 17会默认查找MSVC头文件
 
-- devEcoStudio需手动-i引入下列头文件目录
+- devEcoStudio需配置下列环境变量,环境变量不能有空格且需高优先级
 
-  1、/devEcoStudio/sdk/default/openharmony/native/llvm/incldue/c++/v1 \
-  2、/devEcoStudio/sdk/default/openharmony/native/llvm/incldue/x86_64-unknown-linux-gnu/c++/v1 \
-  3、/devEcoStudio/sdk/default/openharmony/native/llvm/lib/clang/<版本号>/include
+  1、DEVECO_C=/devEcoStudio/sdk/default/openharmony/native/llvm/include \
+  2、DEVECO_INCLUDE=/devEcoStudio/sdk/default/openharmony/native/llvm/lib/clang/<版本号>
   
 
 ## linux
@@ -81,11 +80,10 @@ arkCppAstDumper是基于llvm开发的工具，对C/C++生成简洁的抽象语�
 
 ### 工具解析cpp文件需引入的标准库头文件
 
-- common-line-tools需手动-i引入下列头文件目录
+- common-line-tools需配置下列环境变量,,环境变量不能有空格且需高优先级
 
-  1、/common-line-tools/sdk/default/openharmony/native/llvm/incldue/c++/v1 \
-  2、/common-line-tools/sdk/default/openharmony/native/llvm/incldue/x86_64-unknown-linux-gnu/c++/v1 \
-  3、/common-line-tools/sdk/default/openharmony/native/llvm/lib/clang/<版本号>/include
+  1、DEVECO_C=/devEcoStudio/sdk/default/openharmony/native/llvm/include \
+  2、DEVECO_INCLUDE=/devEcoStudio/sdk/default/openharmony/native/llvm/lib/clang/<版本号>
 
 ## arkCppAstDumper工具使用示例
 

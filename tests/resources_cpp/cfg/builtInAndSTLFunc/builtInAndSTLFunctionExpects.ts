@@ -85,3 +85,19 @@ export const BUILT_IN_EXPECT_CASE4 = {
         },
     ],
 };
+
+export const BUILT_IN_EXPECT_CASE4_LINUX = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @builtInAndSTLFunc/builtInAndSTLFunction.cpp: %dflt',
+                '%0 = &g_counter',
+                'staticinvoke <@%unk/%unk: .__c11_atomic_fetch_add()>(%0, 1, 5)',
+                'return',
+            ],
+            preds: [],
+            succes: [],
+        },
+    ],
+};

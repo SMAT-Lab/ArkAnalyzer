@@ -1364,7 +1364,7 @@ export const ClosureNamespaceFunction_Expect_IR = {
             },
             {
                 name: 'res',
-                type: 'unknown',
+                type: 'number',
             }
         ],
         globals: [

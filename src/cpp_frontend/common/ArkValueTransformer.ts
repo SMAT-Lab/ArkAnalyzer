@@ -22,6 +22,7 @@ import {
     ArkCastExpr,
     ArkConditionExpr,
     ArkDeleteExpr,
+    ArkCxxDeleteArrayExpr,
     ArkInstanceInvokeExpr,
     ArkNewArrayExpr,
     ArkNewExpr,
@@ -217,7 +218,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
     private isNodeRelatedToImplicitNode(node: CxxAstNode): boolean {
         if (node.inner && node.inner instanceof Array) {
             return (
-                node.inner.length !== 0 && node.inner[0].kind === 'ImplicitCastExpr' && (node.name === '_tree_const_iterator' || node.name === 'basic_string')
+                node.inner.length !== 0 && node.inner[0].kind === 'ImplicitCastExpr' && (node.name === '__tree_const_iterator' || node.name === 'basic_string')
             );
         }
         return false;
@@ -642,7 +643,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
      */
     private cxxDeleteExpressionToValueAndStmts(deleteExpression: CxxAstNode): ValueAndStmts {
         const { value: exprValue, valueOriginalPositions: exprPositions, stmts: stmts } = this.cxxNodeToValueAndStmts(deleteExpression.inner[0]);
-        const deleteExpr = new ArkDeleteExpr(exprValue);
+        const isArray = deleteExpression.isArray;
+        const deleteExpr = isArray ? new ArkCxxDeleteArrayExpr(exprValue) : new ArkDeleteExpr(exprValue);
         const deleteExprPosition = [FullPosition.cxxBuildFromNode(deleteExpression, this.cxxSourceFile), ...exprPositions];
         return { value: deleteExpr, valueOriginalPositions: deleteExprPosition, stmts: stmts };
     }
@@ -1518,6 +1520,9 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
      *@ returns ValueAndStmts object, including converted values and related statements
      */
     private cxxMemberCallExpressionToValueAndStmts(callExpression: CxxAstNode): ValueAndStmts {
+        if ((callExpression.parent ?? callExpression.getParent?.(true))?.type?.qualType === 'std::thread') {
+            return this.cxxNewExpressionToValueAndStmts(callExpression);
+        }
         let realGenericTypes: Type[] | undefined;
         const stmts: Stmt[] = [];
         const [_, rightNodes] = this.getArgumentNode(callExpression.inner);
@@ -1833,7 +1838,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         if (isCXXSTLContainer(oriType)) {
             return oriType;
         }
-        return oriType.replace(/[()]|\ \*|struct\ /g, '');
+        return oriType.replace(/[()]|\ \*|struct\ |union\ /g, '');
     }
 
     /**

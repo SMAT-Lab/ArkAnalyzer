@@ -257,12 +257,16 @@ async function deleteFile(filePath: string): Promise<void> {
 
 function constructParseArguments(srcFilePath: string, ccJsonPath: string | null, includeDirs: string[] | null): string[] {
     const args: string[] = [];
-    if (!ccJsonPath) {
+    const ext = path.extname(srcFilePath).toLowerCase();
+    const isHeader = ext === '.h' || ext === '.hpp';
+
+    if (!ccJsonPath && !isHeader) {
         ccJsonPath = findCompileCommands(srcFilePath);
     }
     if (ccJsonPath) {
         args.push('-c', ccJsonPath);
-    } else if (includeDirs && includeDirs.length > 0) {
+    }
+    if (includeDirs && includeDirs.length > 0) {
         includeDirs.forEach(dir => {
             args.push('-i', `${dir}`);
         });
