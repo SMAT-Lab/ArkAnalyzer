@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -12,7 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+#ifndef INCLUDEINFUNCTION_H
+#define INCLUDEINFUNCTION_H
 // macro definition
 #define NUM 1
 
@@ -23,8 +24,8 @@ int add(int aa, int bb);
 int g_NUM = 1;
 
 // struct definition
-struct MyStruct{
-   int age;
+struct MyStruct {
+    int age;
 };
 
 // class definition
@@ -39,3 +40,4 @@ private:
 
 // type alias
 typedef unsigned int uint;
+#endif
