@@ -55,6 +55,58 @@ struct VisitContext {
     std::unordered_map<std::string, std::string>& varTypeMap;
 };
 
+// -------- Function-scope context for labels/gotos --------
+struct FuncCtx {
+    std::unordered_map<std::string, int> labels; // label name -> id
+};
+// Push when encountering a function/method/constructor/destructor,
+// pop when finishing building one.
+static thread_local std::vector<FuncCtx> s_funcCtx;
+
+// --------- O(1) check for simple left fold "(... <op> ident)", replaces regex ---------
+static inline bool LooksLikeSimpleLeftFold(const std::string& s, char& op_out)
+{
+    // Look for "(..."
+    size_t p = s.find("(...");           // most common print style
+    if (p == std::string::npos) return false;
+    size_t i = p + 4;                    // skip "(..."
+    while (i < s.size() && (unsigned char)s[i] <= ' ') ++i; // skip whitespace
+    if (i >= s.size()) return false;
+    char c = s[i];
+    switch (c) { case '+': case '-': case '*': case '/': case '&': case '|': case '^': break; default: return false; }
+    op_out = c;
+    // Roughly check matching right parenthesis
+    return s.find(')', i) != std::string::npos;
+}
+
+// Only patch targetLabelId for GotoStmt inside the current function subtree;
+// Only rewrite when the node is marked "_isGoto", to avoid full-tree scan overhead.
+static void PatchGotosInFunction(json& node, const std::unordered_map<std::string, int>& labels)
+{
+    if (node.is_object()) {
+        auto itMark = node.find("_isGoto");
+        if (itMark != node.end() && itMark->is_boolean() && *itMark) {
+            // Label name comes from inner[0].name (your AST structure)
+            std::string labelName;
+            if (node.contains("inner") && node["inner"].is_array() && !node["inner"].empty()) {
+                const json& labelRef = node["inner"][0];
+                labelName = labelRef.value("name", "");
+            }
+            auto itLab = labels.find(labelName);
+            if (itLab != labels.end()) {
+                node["targetLabelId"] = itLab->second;
+            }
+        }
+        // Recurse into children
+        if (auto it = node.find("inner"); it != node.end() && it->is_array()) {
+            for (auto& c : *it) PatchGotosInFunction(c, labels);
+        }
+    } else if (node.is_array()) {
+        for (auto& c : node) PatchGotosInFunction(c, labels);
+    }
+}
+
+
 inline void visitAllChildren(CXCursor cursor, json& children, bool actionScope,
                              std::unordered_map<std::string, std::string>& varTypeMap)
 {
@@ -163,55 +215,120 @@ std::string getSourceCode(CXFile bf, CXFile ef, unsigned beginOffset, unsigned e
     return text;
 }
 
-json getSourceContent(CXSourceRange range)
-{
-    // 1) Get expansion locations
+// Common helpers for source slicing
+
+struct SourceSlice {
+    CXFile file = nullptr;
+    unsigned beginOffset = 0;
+    unsigned endOffset = 0;
+    unsigned beginLine = 0;
+    unsigned beginCol = 0;
+    unsigned endLine = 0;
+    unsigned endCol = 0;
+    std::string filename;
+};
+
+// Get expansion info for a CXSourceRange.
+// Returns true if begin/end belong to the same file and offsets form a valid range.
+static inline bool GetExpansionInfo(CXSourceRange range, SourceSlice& out) {
     CXSourceLocation b = clang_getRangeStart(range);
     CXSourceLocation e = clang_getRangeEnd(range);
-    CXFile bf;
-    CXFile ef;
-    unsigned bl;
-    unsigned bc;
-    unsigned beginOffset;
-    unsigned el;
-    unsigned ec;
-    unsigned endOffset;
-    clang_getExpansionLocation(b, &bf, &bl, &bc, &beginOffset);
-    clang_getExpansionLocation(e, &ef, &el, &ec, &endOffset);
-    // 2) Assemble common metadata
-    json j = json::object();
-    j["id"] = static_cast<unsigned long long>(beginOffset) + static_cast<unsigned long long>(endOffset);
-    auto& jb = j["begin"] = json::object();
-    jb["line"]   = bl;
-    jb["col"]    = bc;
-    jb["offset"] = beginOffset;
-    auto& je = j["end"] = json::object();
-    je["line"]   = el;
-    je["col"]    = ec;
-    je["offset"] = endOffset;
-    jb["tokLen"] = (endOffset > beginOffset ? (endOffset - beginOffset) : 0);
-    // 3) Prefer slicing at the expansion site (requires begin/end in the same file and a valid range)
-    if (bf && ef && bf == ef && endOffset >= beginOffset) {
+
+    CXFile bf = nullptr;
+    CXFile ef = nullptr;
+    unsigned bl = 0, bc = 0, bo = 0;
+    unsigned el = 0, ec = 0, eo = 0;
+
+    clang_getExpansionLocation(b, &bf, &bl, &bc, &bo);
+    clang_getExpansionLocation(e, &ef, &el, &ec, &eo);
+
+    out.file = bf; // if same file, bf == ef
+    out.beginOffset = bo;
+    out.endOffset = eo;
+    out.beginLine = bl;
+    out.beginCol = bc;
+    out.endLine = el;
+    out.endCol = ec;
+
+    if (bf && ef && bf == ef && eo >= bo) {
         CXString sfile = clang_getFileName(bf);
-        const char* cfn = clang_getCString(sfile);
-        std::string filename = cfn ? cfn : "";
+        out.filename = Cx2Str(sfile); // your existing helper
         clang_disposeString(sfile);
-        if (!filename.empty()) {
-            auto it = g_fileContents.find(filename);
-            if (it == g_fileContents.end()) {
-                LoadFileContent(filename);
-                it = g_fileContents.find(filename);
-            }
-            if (it != g_fileContents.end() && endOffset <= it->second.size()) {
-                const std::string& content = it->second;
-                j["code"] = content.substr(beginOffset, endOffset - beginOffset);
-                return j;
-            }
+        return !out.filename.empty();
+    }
+    out.filename.clear();
+    return false;
+}
+
+// Try slicing from cached file content using filename and offsets.
+// Returns true when sliced successfully and writes code to out_code.
+static inline bool TrySliceFromCache(const SourceSlice& s, std::string& out_code) {
+    if (s.filename.empty()) return false;
+    auto it = g_fileContents.find(s.filename);
+    if (it == g_fileContents.end()) {
+        LoadFileContent(s.filename);
+        it = g_fileContents.find(s.filename);
+    }
+    if (it == g_fileContents.end()) return false;
+
+    const std::string& content = it->second;
+    if (s.endOffset > content.size()) return false;
+
+    // Avoid extra allocation by using string_view when building json later if you want,
+    // but here we materialize a std::string for simplicity.
+    out_code = content.substr(s.beginOffset, s.endOffset - s.beginOffset);
+    return true;
+}
+
+// Lightweight version: returns only the "code" field.
+json getSourceContentLight(CXSourceRange range) {
+    SourceSlice s;
+    const bool sameFileValid = GetExpansionInfo(range, s);
+
+    if (sameFileValid) {
+        std::string code;
+        if (TrySliceFromCache(s, code)) {
+            return json{{"code", std::move(code)}};
         }
     }
-    j["code"] = getSourceCode(bf, ef, beginOffset, endOffset, range);
+
+    // Fallback path via tokenization
+    return json{{"code", getSourceCode(s.file, s.file, s.beginOffset, s.endOffset, range)}};
+}
+
+// Full version: includes begin/end metadata and prefers cached slicing for "code".
+json getSourceContent(CXSourceRange range) {
+    SourceSlice s;
+    const bool sameFileValid = GetExpansionInfo(range, s);
+
+    json j = json::object();
+    j["id"] = static_cast<unsigned long long>(s.beginOffset) +
+              static_cast<unsigned long long>(s.endOffset);
+
+    auto& jb = j["begin"] = json::object();
+    jb["line"]   = s.beginLine;
+    jb["col"]    = s.beginCol;
+    jb["offset"] = s.beginOffset;
+
+    auto& je = j["end"] = json::object();
+    je["line"]   = s.endLine;
+    je["col"]    = s.endCol;
+    je["offset"] = s.endOffset;
+
+    jb["tokLen"] = (s.endOffset > s.beginOffset ? (s.endOffset - s.beginOffset) : 0);
+
+    if (sameFileValid) {
+        std::string code;
+        if (TrySliceFromCache(s, code)) {
+            j["code"] = std::move(code);
+            return j;
+        }
+    }
+
+    j["code"] = getSourceCode(s.file, s.file, s.beginOffset, s.endOffset, range);
     return j;
 }
+
 
 // Build child node's range based on parent node
 void buildNodeRange(json& node, json& parent)
@@ -1164,7 +1281,7 @@ void fillNodeSourceContent(json& node, const json& content, CXCursorKind kind_cu
         node["code"] = codeStr;
     // Special handling for InclusionDirective
     if (kind_cursor == CXCursor_InclusionDirective && !content.is_null()) {
-        node["kind"] = "InclusionDirective";
+        node["kind"] = "inclusion directive";
         node["fileName"] = Cx2Str(clang_getIncludedFile(cursor) ?
                                   clang_getFileName(clang_getIncludedFile(cursor)) :
                                   clang_getCursorSpelling(cursor));
@@ -1320,14 +1437,44 @@ void implicitCastExprPostProcess(
     }
 }
 
+// Post-process a CallExpr node: adjust kind for member calls or fix missing kinds
 void callExprPostProcess(json& node, json& children)
 {
+    // If the first child is a MemberExpr, upgrade the call to CXXMemberCallExpr
     if (!children.empty() && children[0]["kind"] == "MemberExpr") {
         node["kind"] = "CXXMemberCallExpr";
     } else {
+        // Otherwise, try to normalize child node types
         changeChildNodeType(children);
     }
+    // If it's still a plain CallExpr and the first child is missing kind info,
+    // infer its kind from referencedDecl or code pattern.
+    if (node.value("kind","") == "CallExpr" && !children.empty()) {
+        auto &child0 = children[0];
+        bool missingKind = (!child0.contains("kind") || child0["kind"].is_null() ||
+                            (child0["kind"].is_string() && child0["kind"].get_ref<const std::string&>().empty()));
+
+        if (missingKind) {
+            const std::string code0 = child0.value("code", "");
+            if (child0.contains("referencedDecl") && child0["referencedDecl"].contains("kind") &&
+                !child0["referencedDecl"]["kind"].is_null()) {
+                // Use referencedDecl.kind if available
+                child0["kind"] = child0["referencedDecl"]["kind"];
+            } else if (code0.find('.') != std::string::npos || code0.find("->") != std::string::npos) {
+                // Guess member access based on code text
+                child0["kind"] = "MemberExpr";
+            } else if (child0.contains("referencedDecl") &&
+                       child0["referencedDecl"].value("kind","") == "OverloadedDeclRef") {
+                // Special case: overloaded function reference
+                child0["kind"] = "OverloadedDeclRef";
+            } else {
+                // Default to DeclRefExpr
+                child0["kind"] = "DeclRefExpr";
+            }
+        }
+    }
 }
+
 
 void nodePostprocess(
     json& node,
@@ -1364,6 +1511,46 @@ void nodePostprocess(
         updateTypedefClassConstructor(children);
         deduceDecltype(node, children);
     }
+
+    // ------------------- (A) Pseudo-destructor: MemberExpr + '~' + TypeRef -------------------
+if (node.value("kind","") == "MemberExpr") {
+    if (codeStr.find('~') != std::string::npos &&
+        !children.empty() && children.size() >= 2 &&
+        children[1].value("kind","") == "TypeRef") {
+        node["kind"] = "CXXPseudoDestructorExpr";
+        node["pseudoDestructorType"] = children[1]["type"]["qualType"];
+    }
+}
+
+// Fold expression: fast non-regex detection -------------------
+if (node.value("kind","") == "ImplicitCastExpr") {
+    char op = 0;
+    if (!codeStr.empty() && LooksLikeSimpleLeftFold(codeStr, op)) {
+        node["kind"] = "CXXFoldExpr";
+        node["op"]   = std::string(1, op);
+        node["pattern"] = "left";
+        // Keep node["inner"], node["range"], node["type"] unchanged
+    }
+}
+
+// Function-scope label/goto tracking -------------------
+// Label: store name->id mapping into current function context
+if (node.value("kind","") == "LabelStmt") {
+    if (!s_funcCtx.empty()) {
+        s_funcCtx.back().labels[node.value("name","")] = node.value("id", 0);
+    }
+}
+// Goto: try to resolve immediately; otherwise mark for later patching at function end
+if (node.value("kind","") == "GotoStmt") {
+    node["_isGoto"] = true; // mark, to be patched at function finalization
+    if (!s_funcCtx.empty() && node.contains("inner") && node["inner"].is_array() && !node["inner"].empty()) {
+        const std::string label = node["inner"][0].value("name", "");
+        auto it = s_funcCtx.back().labels.find(label);
+        if (it != s_funcCtx.back().labels.end()) {
+            node["targetLabelId"] = it->second;
+        }
+    }
+}
     HandleTemplateAndCursorSpecific(node, kind_cursor, codeStr, children);
     detectAndFillSpecialKind(node);  // Automatic fallback for special expression types
 }
@@ -1371,22 +1558,35 @@ void nodePostprocess(
 void fillNodeProperties(json& node, CXCursor& cursor, CXCursorKind& kind_cursor, bool isInclude,
                         CXFile file)
 {
-    std::string fileName = file ? Cx2Str(clang_getFileName(file)) : "";
-    std::string kindSpelling = Cx2Str(clang_getCursorKindSpelling(kind_cursor));
-    std::string displayName = Cx2Str(clang_getCursorSpelling(cursor));
-    CXSourceRange range = clang_getCursorExtent(cursor);
+    // Common: file/kind/range
+    const bool isLight = (kind_cursor == CXCursor_UnexposedExpr || kind_cursor == CXCursor_UnexposedDecl);
+    const std::string fileName     = file ? Cx2Str(clang_getFileName(file)) : std::string();
+    const std::string kindSpelling = Cx2Str(clang_getCursorKindSpelling(kind_cursor));
+    const CXSourceRange range      = clang_getCursorExtent(cursor);
+
     if (isInclude) {
         node["include"] = true;
     }
-
+    // Common: type.qualType
     node["type"] = {{"qualType", unifyTypeStr(clang_getTypeSpelling(clang_getCursorType(cursor)))}};
-    std::string fileStr = fileName != "" ? fileName : displayName;
-    json content = getSourceContent(range);
+    // Source content: light vs full
+    const json content = isLight ? getSourceContentLight(range) : getSourceContent(range);
+    // fileStr policy: light uses fileName; full falls back to displayName when fileName is empty
+    std::string fileStr = fileName;
+    std::string displayName;
+    if (!isLight) {
+        displayName = Cx2Str(clang_getCursorSpelling(cursor));
+        if (fileStr.empty()) fileStr = displayName;
+    }
+    // Common sinks
     fillNodeSourceContent(node, content, kind_cursor, cursor, fileStr);
     fillNodeKindTag(node, cursor, kind_cursor, kindSpelling);
-    fillVarDeclStorageClass(node, cursor, kind_cursor);
-    fillDeclRefInfo(node, cursor, kind_cursor);
-    fillNodeIdRangeLoc(node, content, kind_cursor, file, displayName);
+    // Full-path extras only
+    if (!isLight) {
+        fillVarDeclStorageClass(node, cursor, kind_cursor);
+        fillDeclRefInfo(node, cursor, kind_cursor);
+        fillNodeIdRangeLoc(node, content, kind_cursor, file, displayName);
+    }
 }
 
 bool filterAstNode(CXCursorKind kind_cursor, bool isInclude, bool fromMainSpell, bool fromMainByExpansion,
@@ -1442,13 +1642,26 @@ json buildASTJson(CXCursor cursor, bool actionScope, std::unordered_map<std::str
     fixImplicitCastExprAndDeclRef(node, varTypeMap);
 
     if (node.contains("kind") && (node["kind"] == "FunctionDecl" || node["kind"] == "CXXMethodDecl" ||
-        node["kind"] == "CXXConstructorDecl")) {
+        node["kind"] == "CXXConstructorDecl" || node["kind"] == "CXXDestructorDecl")) {
         actionScope = true;
     }
+    // Check if this is a function boundary (CursorKind is more reliable)
+    bool isFunc =
+        (kind_cursor == CXCursor_FunctionDecl ||
+         kind_cursor == CXCursor_CXXMethod   ||
+         kind_cursor == CXCursor_Constructor ||
+         kind_cursor == CXCursor_Destructor);
+    if (isFunc) {
+        s_funcCtx.emplace_back(); // Entering a function: create local context
+    }
     json children = json::array();
-    visitAllChildren(cursor, children, actionScope, varTypeMap); // 子节点递归
-
+    visitAllChildren(cursor, children, actionScope, varTypeMap);
     nodePostprocess(node, cursor, kind_cursor, children);
+    // Function exit: patch Goto statements in the current subtree using collected labels
+    if (isFunc) {
+        PatchGotosInFunction(node, s_funcCtx.back().labels);
+        s_funcCtx.pop_back();
+    }
     return node;
 }
 
@@ -1535,7 +1748,6 @@ json buildAndProcessAST(CXTranslationUnit unit, const CommandLineOptions& opts)
     json ast = buildASTJson(clang_getTranslationUnitCursor(unit), false, varTypeMap);
     std::cout << "[STEP1] buildASTJson finished\n";
     std::string normMain = CanonicalCached(fs::canonical(opts.inputFile).string());
-    filterToMainFileOnly(ast, normMain);
     // Collect header files when not using CXTranslationUnit_DetailedPreprocessingRecord
     if (headerUnits.empty()) {
         InclusionCtx ctx{normMain, true};
@@ -1545,18 +1757,11 @@ json buildAndProcessAST(CXTranslationUnit unit, const CommandLineOptions& opts)
         ast["headerUnits"] = headerUnits;
         headerUnits.clear();
     }
-    cleanJson(ast);
     if (!ast.contains("headerUnits")) {
         ast["headerUnits"] = json::array();
     }
     std::cout << "[STEP2] filterToMainFileOnly finished\n";
     std::map<std::string, int> labelNameToId;
-    patchPseudoDestructorExpr(ast);
-    filterVarDeclArrayDims(ast);
-    collectLabelStmt(ast, labelNameToId);
-    patchGotoTarget(ast, labelNameToId);
-    fixCallExprChildKind(ast);
-    patchFoldExpr(ast);
     std::cout << "[STEP3] AST built successfully\n";
     return ast;
 }

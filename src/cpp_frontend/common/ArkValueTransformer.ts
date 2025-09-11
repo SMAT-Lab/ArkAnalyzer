@@ -2133,6 +2133,10 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
                 variableDeclaration.type.qualType = containerType;
             }
         }
+        // In this case, the non assigned information on the right node needs to be discarded
+        if (this.isCxxArray(leftOpNode.type.qualType) && rightOpNode?.kind === 'IntegerLiteral'){
+            rightOpNode = undefined;
+        }
         const declarationType = variableDeclaration.type ? this.cxxResolveTypeNode(variableDeclaration) : UnknownType.getInstance();
         const assignment = this.cxxAssignmentToValueAndStmts(leftOpNode, rightOpNode, true, isConst, declarationType, needRightOp);
         if (declarationType instanceof ReferenceType && assignment.stmts[0] instanceof ArkAssignStmt) {
@@ -2141,6 +2145,10 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         return assignment;
     }
 
+    private isCxxArray(qualType: string): boolean {
+        const pattern =/\[.*\]/;
+        return pattern.test(qualType);
+    }
     private getStdContainerType(declCode: string): string | null {
         const match = /\b(std::\w+)</g.exec(declCode);
         return match ? match[1] : null;
