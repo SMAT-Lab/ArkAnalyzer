@@ -252,8 +252,8 @@ inline void PrintReportPretty(std::ostream& os, bool unicode = false,
 
     // Total time (prefer "Total.Program"; otherwise take max inclusive)
     uint64_t total_ns = 0;
-    for (auto& kv : rows) if (kv.first == "Total.Program") { total_ns = kv.second.inclusive_ns; break; }
-    if (total_ns == 0) for (auto& kv : rows) total_ns = std::max(total_ns, kv.second.inclusive_ns);
+    for (auto& kv : rows) { if (kv.first == "Total.Program") { total_ns = kv.second.inclusive_ns; break; } }
+    if (total_ns == 0) { for (auto& kv : rows) total_ns = std::max(total_ns, kv.second.inclusive_ns); }
 
     auto toFixed = [](double v, int n=3) {
         std::ostringstream oss;
@@ -278,31 +278,65 @@ inline void PrintReportPretty(std::ostream& os, bool unicode = false,
     const int  w_pct = 6;
     const int  w_bar = 24;
 
-    // Box-drawing characters
-    struct Box { const char* tl; const char* tr; const char* bl; const char* br;
-                 const char* h;  const char* v;  const char* tj; const char* mj; const char* bj; };
+    // Box-drawing characters (UTF-8 escaped to avoid source-encoding issues)
+    struct Box {
+        const char* tl; const char* tr; const char* bl; const char* br;
+        const char* h;  const char* v;  const char* tj; const char* mj; const char* bj;
+    };
+
+    // UTF-8 sequences for box drawing and full block:
+    static constexpr const char* U_TL = "\xE2\x94\x8C"; // ┌
+    static constexpr const char* U_TR = "\xE2\x94\x90"; // ┐
+    static constexpr const char* U_BL = "\xE2\x94\x94"; // └
+    static constexpr const char* U_BR = "\xE2\x94\x98"; // ┘
+    static constexpr const char* U_H  = "\xE2\x94\x80"; // ─
+    static constexpr const char* U_V  = "\xE2\x94\x82"; // │
+    static constexpr const char* U_TJ = "\xE2\x94\xAC"; // ┬
+    static constexpr const char* U_MJ = "\xE2\x94\xBC"; // ┼
+    static constexpr const char* U_BJ = "\xE2\x94\xB4"; // ┴
+    static constexpr const char* U_FULL = "\xE2\x96\x88"; // █
+
     Box bx;
     if (unicode) {
-        bx = {"┌","┐","└","┘","─","│","┬","┼","┴"};
+        bx = {U_TL, U_TR, U_BL, U_BR, U_H, U_V, U_TJ, U_MJ, U_BJ};
     } else {
-        bx = {"+","+", "+","+", "-", "|", "+", "+", "+"};
+        bx = {"+",  "+",  "+",  "+",  "-", "|",  "+",  "+",  "+"};
     }
+
+    // Draw a horizontal line using the chosen characters.
     auto line = [&](int innerWidth) {
-        os << bx.tl << std::string(innerWidth, bx.h[0]) << bx.tr << "\n";
+        std::ostringstream tmp;
+        tmp << bx.tl;
+        for (int i = 0; i < innerWidth; ++i) tmp << bx.h; // repeat "h" token, not h[0]
+        tmp << bx.tr << "\n";
+        os << tmp.str();
     };
-    auto midline = [&](int innerWidth) {
-        os << bx.tl << std::string(innerWidth, bx.h[0]) << bx.tr << "\n"; // Simplified: single segment line
+    auto midline = line; // simplified single-segment splitter
+
+    // Progress bar: build string using either UTF-8 full block or ASCII '#'
+    auto make_bar = [&](int filled, int width, bool use_unicode) -> std::string {
+        if (filled < 0) filled = 0;
+        if (filled > width) filled = width;
+        std::string out;
+        if (use_unicode) {
+            for (int i = 0; i < filled; ++i) out += U_FULL; // append one UTF-8 token per "cell"
+        } else {
+            out.assign(filled, '#');
+        }
+        // pad with spaces to reach the target "cells" count
+        out.append((std::max)(0, width - filled), ' ');
+        return out;
     };
 
     // Title
     const std::string title = "Profiling (ms)";
-    const int totalWidth = (int)w_name + 2 + w_cnt + 2 + w_ms*3 + 2 + w_pct + 2 + w_bar + 2 + 8;
+    const int totalWidth = static_cast<int>(w_name) + 2 + w_cnt + 2 + w_ms*3 + 2 + w_pct + 2 + w_bar + 2 + 8;
     line(totalWidth);
-    os << bx.v << " " << std::left << std::setw(totalWidth-2) << title << bx.v << "\n";
+    os << bx.v << " " << std::left << std::setw(totalWidth - 2) << title << bx.v << "\n";
     midline(totalWidth);
 
     // Table header
-    os << bx.v << " " << std::left << std::setw((int)w_name) << "Phase"
+    os << bx.v << " " << std::left << std::setw(static_cast<int>(w_name)) << "Phase"
        << "  " << std::right << std::setw(w_cnt) << "Cnt"
        << "  " << std::setw(w_ms) << "Incl"
        << "  " << std::setw(w_ms) << "Excl"
@@ -321,26 +355,24 @@ inline void PrintReportPretty(std::ostream& os, bool unicode = false,
 
         const double incl_ms = st.inclusive_ns / 1e6;
         const double excl_ms = st.exclusive_ns / 1e6;
-        const double avg_ms  = st.count ? incl_ms / (double)st.count : 0.0;
-        const double pct     = total_ns ? (100.0 * (double)st.inclusive_ns / (double)total_ns) : 0.0;
+        const double avg_ms  = st.count ? incl_ms / static_cast<double>(st.count) : 0.0;
+        const double pct     = total_ns ? (100.0 * static_cast<double>(st.inclusive_ns) / static_cast<double>(total_ns)) : 0.0;
 
         // Indentation based on hierarchy
         const size_t lvl = levelOf(name);
         std::string disp = std::string(lvl * 2, ' ') + name;
 
         // Progress bar
-        const int filled = (int)std::round((pct / 100.0) * w_bar);
-        const char full = unicode ? '█' : '#';
-        const std::string bar(filled > 0 ? filled : 0, full);
-        const std::string pad((std::max)(0, w_bar - filled), ' ');
+        const int filled = static_cast<int>(std::llround((pct / 100.0) * w_bar));
+        const std::string bar = make_bar(filled, w_bar, unicode);
 
-        os << bx.v << " " << std::left  << std::setw((int)w_name) << disp.substr(0, (size_t)w_name)
+        os << bx.v << " " << std::left  << std::setw(static_cast<int>(w_name)) << disp.substr(0, (size_t)w_name)
            << "  " << std::right << std::setw(w_cnt) << st.count
            << "  " << std::setw(w_ms) << toFixed(incl_ms, 3)
            << "  " << std::setw(w_ms) << toFixed(excl_ms, 3)
            << "  " << std::setw(w_ms) << toFixed(avg_ms, 3)
            << "  " << std::setw(w_pct) << toFixed(pct, 2)
-           << "  " << std::left  << bar << pad
+           << "  " << std::left  << bar
            << " " << bx.v << "\n";
         ++printed;
     }
@@ -351,6 +383,7 @@ inline void PrintReportPretty(std::ostream& os, bool unicode = false,
            << "   (sorted by " << (sort_by_inclusive ? "inclusive" : "exclusive") << ")\n";
     }
 }
+
 
 
 } // namespace arkprof
