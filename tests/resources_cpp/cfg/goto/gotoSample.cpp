@@ -24,6 +24,7 @@
 
 int Case1()
 {
+    int j;
     int num = 1;
     if (num > 0) {
         num--;
@@ -31,26 +32,28 @@ int Case1()
     } else {
         num++;
     }
-    int j = ONE;
+    j = ONE;
 end:
     return 0;
 }
 
 int Case2()
 {
+    int j;
     int num = 1;
     if (num > ZERO) {
         goto end;
     } else {
         num++;
     }
-    int j = ONE;
+    j = ONE;
 end:
     return 0;
 }
 
 int Case3()
 {
+    int j;
     int num = 1;
     if (num == ZERO) {
         goto end;
@@ -61,13 +64,14 @@ int Case3()
     } else {
         num++;
     }
-    int j = ONE;
+    j = ONE;
 end:
     return 0;
 }
 
 int Case4()
 {
+    int j;
     int num = 1;
     if (num == ZERO) {
         goto end1;
@@ -78,7 +82,7 @@ int Case4()
     } else {
         num++;
     }
-    int j = ONE;
+    j = ONE;
 end1:
     j++;
 end2:
@@ -108,12 +112,13 @@ exit:
 
 int Case6()
 {
+    int j;
     int num = 1;
     if (num > ZERO)
         goto end;
     else
         num++;
-    int j = ONE;
+    j = ONE;
 end:
     return 0;
 }

@@ -72,13 +72,8 @@ export class BooleanConstant extends Constant {
         super(value.toString(), BooleanType.getInstance());
     }
 
-    public static getInstance(value: boolean | string): NullConstant {
-        // When ast is parsed, boolean type is assigned
-        if (value.toString() === 'true') {
-            return this.TRUE;
-        } else {
-            return this.FALSE;
-        }
+    public static getInstance(value: boolean): NullConstant {
+        return value ? this.TRUE : this.FALSE;
     }
 }
 
