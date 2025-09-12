@@ -79,6 +79,9 @@ export class AstUtils {
             logger.info('Parsing completed!');
         }
         let translationUnit = JSON.parse(fs.readFileSync(astPath, 'utf-8')) as CxxAstNode;
+        if (sourceFile.includes('lazyImportCase5')) {
+            console.log(JSON.stringify(translationUnit));
+        }
         translationUnit = this.filter(sourceFile, translationUnit) as CxxAstNode;
         deleteFile(astPath);
         return translationUnit;
