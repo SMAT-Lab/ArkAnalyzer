@@ -121,8 +121,7 @@ describe('CfgTest', () => {
     });
     it('case6: goto statement', () => {
         const scene = buildScene('goto');
-        testBlocks(scene, 'gotoSample.cpp', 'Case1',
-            is_system_win32 ? GOTO_EXPECT.GOTO_EXPECT_CASE1.blocks : GOTO_EXPECT.GOTO_EXPECT_CASE1_LINUX.blocks);
+        testBlocks(scene, 'gotoSample.cpp', 'Case1', GOTO_EXPECT.GOTO_EXPECT_CASE1.blocks);
         testBlocks(scene, 'gotoSample.cpp', 'Case2', GOTO_EXPECT.GOTO_EXPECT_CASE2.blocks);
         testBlocks(scene, 'gotoSample.cpp', 'Case3', GOTO_EXPECT.GOTO_EXPECT_CASE3.blocks);
         testBlocks(scene, 'gotoSample.cpp', 'Case4', GOTO_EXPECT.GOTO_EXPECT_CASE4.blocks);
