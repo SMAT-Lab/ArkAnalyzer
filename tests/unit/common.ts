@@ -187,20 +187,24 @@ export function assertBlocksEqual(blocks: Set<BasicBlock>, expectBlocks: any[]):
         const stmts: string[] = [];
         const preds: number[] = [];
         const succes: number[] = [];
-        for (const stmt of block.getStmts()) {
-            stmts.push(stmt.toString());
+        try {
+            for (const stmt of block.getStmts()) {
+                stmts.push(stmt.toString());
+            }
+            block.getPredecessors().forEach(predBlock => {
+
+                preds.push(predBlock.getId());
+            });
+            block.getSuccessors().forEach(succBlock => {
+                succes.push(succBlock.getId());
+
+            });
+            expect(stmts).toEqual(expectBlocks[i].stmts);
+            expect(preds).toEqual(expectBlocks[i].preds);
+            expect(succes).toEqual(expectBlocks[i].succes);
+        } catch (e) {
+            throw new Error(`equal error: \n ${i} \n ${stmts} \n ${preds} \n ${succes} \n ${expectBlocks[i].stmts} \n ${expectBlocks[i].preds} \n ${expectBlocks[i].succes}`);
         }
-        expect(stmts).toEqual(expectBlocks[i].stmts);
-
-        block.getPredecessors().forEach(predBlock => {
-            preds.push(predBlock.getId());
-        });
-        expect(preds).toEqual(expectBlocks[i].preds);
-
-        block.getSuccessors().forEach(succBlock => {
-            succes.push(succBlock.getId());
-        });
-        expect(succes).toEqual(expectBlocks[i].succes);
     }
 }
 
