@@ -1062,6 +1062,7 @@ export enum UnaryOperator {
     // The following are C++ specific unary operator.
     Addr = '&', // address-of operator
     Deref = '*', // dereference operator
+    Sizeof = 'sizeof',
 }
 
 // unary operation expression
@@ -1091,6 +1092,9 @@ export class ArkUnopExpr extends AbstractExpr {
     }
 
     public getType(): Type {
+        if (this.operator === UnaryOperator.Sizeof){
+            return NumberType.getInstance();
+        }
         return this.op.getType();
     }
 
@@ -1103,6 +1107,9 @@ export class ArkUnopExpr extends AbstractExpr {
     }
 
     public toString(): string {
+        if (this.operator === UnaryOperator.Sizeof){
+            return 'sizeof(' + this.op + ')';
+        }
         return this.operator + this.op;
     }
 }

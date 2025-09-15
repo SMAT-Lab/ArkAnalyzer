@@ -274,7 +274,9 @@ export const LOOP_EXPECT_CASE9 = {
             id: 2,
             stmts: [
                 '%8 = map2.<@ES2015/BuiltinClass: IteratorResult.value>',
-                'const auto &[key, value] : = <unknown>%8',
+                'key = %8[0]',
+                'value = %8[1]',
+                '%8 = <unknown>%8',
                 '%9 = instanceinvoke value.<@%unk/%unk: .c_str()>()',
                 "staticinvoke <@%unk/%unk: .printf()>('%d %s\\n', key, %9)",
             ],
