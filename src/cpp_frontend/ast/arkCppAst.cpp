@@ -27,6 +27,7 @@
 #include <set>
 #include <algorithm>
 #include <regex>
+#include "mat_metrics.h"
 #define TWO 2
 #define THREE 3
 using json = nlohmann::json;
@@ -663,31 +664,6 @@ void postprocessCallExpr(json& node)
     node["atomicFunc"] = name;
 }
 
-
-// Save all label statements and IDs
-std::map<std::string, int> labelNameToId;
-
-// Traverse all AST nodes to collect labels
-void collectLabelStmt(const json &node, std::map<std::string, int> &labelMap)
-{
-    if (node.contains("kind") && node["kind"] == "LabelStmt" && node.contains("name"))
-        labelMap[node["name"]] = node["id"];
-    forEachChild(const_cast<json&>(node), [&](json &child) { collectLabelStmt(child, labelMap); });
-}
-
-// Supplement targetLabelId for goto statements
-void patchGotoTarget(json &node, const std::map<std::string, int> &labelMap)
-{
-    if (node.contains("kind") && node["kind"] == "GotoStmt") {
-        if (node.contains("inner") && !node["inner"].empty()) {
-            const json &labelRef = node["inner"][0];
-            std::string labelName = labelRef.value("name", "");
-            if (!labelName.empty() && labelMap.count(labelName)) node["targetLabelId"] = labelMap.at(labelName);
-        }
-    }
-    forEachChild(node, [&](json &child) { patchGotoTarget(child, labelMap); });
-}
-
 void patchPseudoDestructorExpr(json &node)
 {
     // Check if current is MemberExpr + TypeRef combination and contains ~, infer as pseudo-destructor
@@ -934,98 +910,153 @@ static const std::string& CanonicalCached(const std::string& path)
     return g_pathCanonCache.emplace(path, std::move(canon)).first->second;
 }
 
-//  Determine if filename is in -i directory
-bool IsInUserInclude(const std::string& fileName)
+// Path fallback: some Windows/MSVC headers are not marked as system headers
+// under certain configurations. Use kDenyPrefixes (should include Windows Kits / MSVC / SDK prefixes).
+static inline bool IsSystemishByPath(const std::string& fileName)
 {
-    // Normalize the path (resolve symlinks, unify separators, cache results).
-    auto norm = CanonicalCached(fileName);
-    if (!g_normMainFile.empty() && norm == g_normMainFile) {
-        return false;
-    }
-    // Exclude system header prefixes (standard library, SDK, etc.).
-    for (const auto& p: kDenyPrefixes) {
-        if (norm.find(p) != std::string::npos) {
-            return false;
-        }
-    }
-    for (const auto& dir: g_user_include_dirs) {
-        std::string prefix = CanonicalCached(dir);
-        if (!prefix.empty() && prefix.back() != '/') {
-            prefix += '/';
-        }
-        if (norm.find(prefix) == 0) {
+    if (fileName.empty()) return false;
+    const std::string norm = CanonicalCached(fileName);
+    for (const auto& p : kDenyPrefixes) {
+        if (!p.empty() && norm.find(p) != std::string::npos) {
             return true;
         }
     }
     return false;
 }
 
-void removeNoTMainNode(std::string fileName, std::string kind, json& node)
+// Only determines whether the file is in the user whitelist path
+// (not responsible for pruning system headers)
+static bool IsInUserWhitelistPath(const std::string& fileName)
 {
-    // Drop system SDK headers directly
-    const bool isSdk = (fileName.find("/sdk/default/") != std::string::npos);
-    if (kind != "inclusion directive" || isSdk) {
-        node = json(); // Remove
-        return;
+    // Normalize (with cache)
+    const std::string norm = CanonicalCached(fileName);
+
+    // Blacklist fallback (e.g., specific SDK prefixes)
+    for (const auto& p : kDenyPrefixes) {
+        if (!p.empty() && norm.find(p) != std::string::npos) {
+            return false;
+        }
     }
-    const std::string included = node.value("included", "");
-    const bool inUserByFile = IsInUserInclude(fileName);
-    const bool inUserByIncl = (!included.empty() && IsInUserInclude(included));
-    const std::string code = node.value("code", "");
-    const bool isAngle = (code.find('<') != std::string::npos) || (code.find('>') != std::string::npos);
-    if (inUserByFile || (inUserByIncl && !isAngle)) {
-        headerUnits.push_back(node); // Collect user-header include
+    // User whitelist directories (from CLI/config -I user paths)
+    for (const auto& dir : g_user_include_dirs) {
+        std::string prefix = CanonicalCached(dir);
+        if (!prefix.empty() && prefix.back() != '/') {
+            prefix += '/';
+        }
+        if (!prefix.empty() && norm.find(prefix) == 0) {
+            return true;
+        }
     }
-    node = json(); // Remove from main AST
+    return false;
 }
 
-void filterToMainFileOnly(json& node, const std::string& normMainFileName, std::string parentFileName = "")
+// Lightweight expression whitelist: only serves to complete value semantics
+// for expansions inside the main file
+static inline bool IsLightExpansionExpr(CXCursorKind k) {
+    switch (k) {
+        case CXCursor_LinkageSpec:
+        case CXCursor_IntegerLiteral:
+        case CXCursor_FloatingLiteral:
+        case CXCursor_CharacterLiteral:
+        case CXCursor_StringLiteral:
+        case CXCursor_GNUNullExpr:
+        case CXCursor_CXXNullPtrLiteralExpr:
+        case CXCursor_CStyleCastExpr:
+        case CXCursor_ParenExpr:
+            return true;
+        default:
+            return false;
+    }
+}
+
+static inline bool IsTypeDeclLike(CXCursorKind k) {
+    switch (k) {
+        case CXCursor_StructDecl:
+        case CXCursor_ClassDecl:
+        case CXCursor_UnionDecl:
+        case CXCursor_EnumDecl:
+        case CXCursor_FieldDecl:
+        case CXCursor_TypedefDecl:
+        case CXCursor_TypeAliasDecl:
+        case CXCursor_ClassTemplate:
+        case CXCursor_ClassTemplatePartialSpecialization:
+        case CXCursor_TypeAliasTemplateDecl:
+        case CXCursor_TemplateTypeParameter:
+        case CXCursor_CXXBaseSpecifier:
+        case CXCursor_Namespace:
+        case CXCursor_UsingDeclaration:
+        case CXCursor_UsingDirective:
+            return true;
+        default:
+            return false;
+    }
+}
+
+// Unified decision: whether this cursor should enter the "materialization"
+// stage (with statistics and default sample recording)
+static bool ShouldMaterializeCursor(
+    CXCursor cursor,
+    CXCursorKind kind_cursor,
+    bool fromMainSpell,
+    bool fromMainByExpansion,
+    const std::string& spellingFileName)
 {
-    // Array: recurse in-place
-    if (node.is_array()) {
-        for (auto& elem : node) filterToMainFileOnly(elem, normMainFileName, parentFileName);
-        return;
+
+    // Root node must be allowed; otherwise the whole tree won't be traversed
+    if (kind_cursor == CXCursor_TranslationUnit) {
+        mat::g_matStats.hits_mainFilePass.fetch_add(1, std::memory_order_relaxed);
+        return true;
     }
-    if (!node.is_object()) {
-        return;
-    }
-    // Get file name: prefer locFile, then fileName, fallback to parent name
-    std::string fileName = node.value("fileName", "");
-    if (node.contains("locFile")) {
-        fileName = node["locFile"];
-    }
-    if (fileName.empty()) {
-        fileName = parentFileName;
-    }
-    // Normalize only when non-empty (also unify slashes)
-    if (!fileName.empty()) {
-        fileName = CanonicalCached(fileName);
-    }
-    // Keep the root node
-    const std::string kind = node.value("kind", "");
-    if (kind != "TranslationUnitDecl") {
-        // Non-main file: keep only user-header inclusion directives, collect into headerUnits
-        if (!fileName.empty() && fileName != normMainFileName) {
-            removeNoTMainNode(fileName, kind, node);
-            return;
+
+    if (fromMainByExpansion) {
+        if (IsLightExpansionExpr(kind_cursor)) {
+            mat::g_matStats.hits_expansion.fetch_add(1, std::memory_order_relaxed);
+            return true;
         }
     }
-    // Recurse into child nodes: shrink in-place, avoid copy
-    if (node.contains("inner") && node["inner"].is_array()) {
-        auto& arr = node["inner"];
-        std::size_t out = 0;
-        for (std::size_t i = 0; i < arr.size(); ++i) {
-            auto& child = arr[i];
-            filterToMainFileOnly(child, normMainFileName, fileName);
-            if (!child.is_null() && !child.empty()) {
-                arr[out] = out != i ? std::move(child) : arr[out];
-                ++out;
-            }
-        }
-        if (out < arr.size()) {
-            arr.erase(arr.begin() + static_cast<long long>(out), arr.end());
+
+    if (kind_cursor == CXCursor_InclusionDirective &&
+        (fromMainSpell || fromMainByExpansion)) {
+        mat::g_matStats.hits_userWhitelist.fetch_add(1, std::memory_order_relaxed);
+        return true;
+    }
+
+    // Fast pruning for system headers
+    if (IsInSystemHeader(cursor)) {
+        mat::g_matStats.hits_sysHeader.fetch_add(1, std::memory_order_relaxed);
+        return false;
+    }
+
+    // Path fallback: Windows/MSVC files not marked as system headers but actually belong to system/SDK
+    if (IsSystemishByPath(spellingFileName)) {
+        mat::g_matStats.hits_sysHeaderByPath.fetch_add(1, std::memory_order_relaxed);
+        return false;
+    }
+
+    // Main file: always keep (with statistics)
+    if (!g_normMainFile.empty()) {
+        const std::string norm = CanonicalCached(spellingFileName);
+        if (!norm.empty() && norm == g_normMainFile) {
+            mat::g_matStats.hits_mainFilePass.fetch_add(1, std::memory_order_relaxed);
+            return true;
         }
     }
+
+    // Whitelist path: keep (with statistics)
+    if (IsInUserWhitelistPath(spellingFileName)) {
+        mat::g_matStats.hits_userWhitelist.fetch_add(1, std::memory_order_relaxed);
+        return true;
+    }
+
+    // Must be from main file perspective (either by spelling or by expansion)
+    const bool fromMainView = (fromMainSpell || fromMainByExpansion);
+
+    if (!fromMainView) {
+        mat::g_matStats.hits_notMainView.fetch_add(1, std::memory_order_relaxed);
+        return false;
+    }
+
+    return false;
 }
 
 // Process parameter node types in constructor as callExpr
@@ -1513,44 +1544,44 @@ void nodePostprocess(
     }
 
     // ------------------- (A) Pseudo-destructor: MemberExpr + '~' + TypeRef -------------------
-if (node.value("kind","") == "MemberExpr") {
-    if (codeStr.find('~') != std::string::npos &&
-        !children.empty() && children.size() >= 2 &&
-        children[1].value("kind","") == "TypeRef") {
-        node["kind"] = "CXXPseudoDestructorExpr";
-        node["pseudoDestructorType"] = children[1]["type"]["qualType"];
-    }
-}
-
-// Fold expression: fast non-regex detection -------------------
-if (node.value("kind","") == "ImplicitCastExpr") {
-    char op = 0;
-    if (!codeStr.empty() && LooksLikeSimpleLeftFold(codeStr, op)) {
-        node["kind"] = "CXXFoldExpr";
-        node["op"]   = std::string(1, op);
-        node["pattern"] = "left";
-        // Keep node["inner"], node["range"], node["type"] unchanged
-    }
-}
-
-// Function-scope label/goto tracking -------------------
-// Label: store name->id mapping into current function context
-if (node.value("kind","") == "LabelStmt") {
-    if (!s_funcCtx.empty()) {
-        s_funcCtx.back().labels[node.value("name","")] = node.value("id", 0);
-    }
-}
-// Goto: try to resolve immediately; otherwise mark for later patching at function end
-if (node.value("kind","") == "GotoStmt") {
-    node["_isGoto"] = true; // mark, to be patched at function finalization
-    if (!s_funcCtx.empty() && node.contains("inner") && node["inner"].is_array() && !node["inner"].empty()) {
-        const std::string label = node["inner"][0].value("name", "");
-        auto it = s_funcCtx.back().labels.find(label);
-        if (it != s_funcCtx.back().labels.end()) {
-            node["targetLabelId"] = it->second;
+    if (node.value("kind","") == "MemberExpr") {
+        if (codeStr.find('~') != std::string::npos &&
+            !children.empty() && children.size() >= 2 &&
+            children[1].value("kind","") == "TypeRef") {
+            node["kind"] = "CXXPseudoDestructorExpr";
+            node["pseudoDestructorType"] = children[1]["type"]["qualType"];
         }
     }
-}
+
+    // Fold expression: fast non-regex detection -------------------
+    if (node.value("kind","") == "ImplicitCastExpr") {
+        char op = 0;
+        if (!codeStr.empty() && LooksLikeSimpleLeftFold(codeStr, op)) {
+            node["kind"] = "CXXFoldExpr";
+            node["op"]   = std::string(1, op);
+            node["pattern"] = "left";
+            // Keep node["inner"], node["range"], node["type"] unchanged
+        }
+    }
+
+    // Function-scope label/goto tracking -------------------
+    // Label: store name->id mapping into current function context
+    if (node.value("kind","") == "LabelStmt") {
+        if (!s_funcCtx.empty()) {
+            s_funcCtx.back().labels[node.value("name","")] = node.value("id", 0);
+        }
+    }
+    // Goto: try to resolve immediately; otherwise mark for later patching at function end
+    if (node.value("kind","") == "GotoStmt") {
+        node["_isGoto"] = true; // mark, to be patched at function finalization
+        if (!s_funcCtx.empty() && node.contains("inner") && node["inner"].is_array() && !node["inner"].empty()) {
+            const std::string label = node["inner"][0].value("name", "");
+            auto it = s_funcCtx.back().labels.find(label);
+            if (it != s_funcCtx.back().labels.end()) {
+                node["targetLabelId"] = it->second;
+            }
+        }
+    }
     HandleTemplateAndCursorSpecific(node, kind_cursor, codeStr, children);
     detectAndFillSpecialKind(node);  // Automatic fallback for special expression types
 }
@@ -1589,12 +1620,6 @@ void fillNodeProperties(json& node, CXCursor& cursor, CXCursorKind& kind_cursor,
     }
 }
 
-bool filterAstNode(CXCursorKind kind_cursor, bool isInclude, bool fromMainSpell, bool fromMainByExpansion,
-                   std::string fileName)
-{
-    return kind_cursor != CXCursor_TranslationUnit && !fromMainSpell && !fromMainByExpansion && !isInclude ||
-           (kind_cursor == CXCursor_DeclStmt && !g_normMainFile.empty() && CanonicalCached(fileName) != g_normMainFile);
-}
 // ==========================buildASTJson Main Body========================
 
 json buildASTJson(CXCursor cursor, bool actionScope, std::unordered_map<std::string, std::string>& varTypeMap)
@@ -1606,7 +1631,7 @@ json buildASTJson(CXCursor cursor, bool actionScope, std::unordered_map<std::str
     clang_getSpellingLocation(loc, &file, nullptr, nullptr, nullptr);
     std::string fileName = file ? Cx2Str(clang_getFileName(file)) : "";
 
-    bool isInclude = IsInUserInclude(fileName);
+    bool isUserHeader = IsInUserWhitelistPath(fileName);
     bool fromMainSpell = clang_Location_isFromMainFile(loc);
     bool fromMainByExpansion = false;
     {
@@ -1622,7 +1647,7 @@ json buildASTJson(CXCursor cursor, bool actionScope, std::unordered_map<std::str
             fromMainByExpansion = (!g_normMainFile.empty() && expPath == g_normMainFile);
         }
     }
-    if (filterAstNode(kind_cursor, isInclude, fromMainSpell, fromMainByExpansion, fileName)) {
+    if (!ShouldMaterializeCursor(cursor, kind_cursor, fromMainSpell, fromMainByExpansion, fileName)) {
         return json();
     }
     if (kind_cursor == CXCursor_LinkageSpec) { // extern "C" { ... }
@@ -1630,7 +1655,7 @@ json buildASTJson(CXCursor cursor, bool actionScope, std::unordered_map<std::str
     }
 
     json node;
-    fillNodeProperties(node, cursor, kind_cursor, isInclude, file);
+    fillNodeProperties(node, cursor, kind_cursor, isUserHeader, file);
     std::string codeStr = node.value("code", "");
     if (node["kind"] == "CXXDeleteExpr" && codeStr.find("delete[]") != std::string::npos) {
         node["isArray"] = true;
@@ -1721,7 +1746,7 @@ static void inclusionVisitorBuildHeaderUnits(CXFile includedFile,
     if (incPath.empty()) {
         return;
     }
-    if (!IsInUserInclude(incPath)) {
+    if (!IsInUserWhitelistPath(incPath)) {
         return;
     }
     // Build a "basic" headerUnit (note: your JSON uses lowercase "inclusion directive")
@@ -1760,8 +1785,6 @@ json buildAndProcessAST(CXTranslationUnit unit, const CommandLineOptions& opts)
     if (!ast.contains("headerUnits")) {
         ast["headerUnits"] = json::array();
     }
-    std::cout << "[STEP2] filterToMainFileOnly finished\n";
-    std::map<std::string, int> labelNameToId;
     std::cout << "[STEP3] AST built successfully\n";
     return ast;
 }
@@ -1801,6 +1824,7 @@ int main(int argc, char** argv)
 
     clang_disposeTranslationUnit(unit);
     clang_disposeIndex(index);
+    mat::DumpMaterializeMetrics(std::cerr);
     auto t3 = std::chrono::high_resolution_clock::now();
     auto ms2 = std::chrono::duration_cast<std::chrono::milliseconds>(t3 - t0).count();
     std::cout << "dumper total time is " << ms2 << "ms" << std::endl;
