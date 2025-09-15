@@ -177,7 +177,8 @@ export function buildFuncPtrType(funcPtrNode: CxxAstNode, arkMtd: ArkMethod, sou
     const anonymousMethod = new ArkMethod();
     const declaringClass = arkMtd.getDeclaringArkClass();
     buildArkMethodFromArkClass(funcPtrNode, declaringClass, anonymousMethod, sourceFile);
-    return new FunctionType(anonymousMethod.getSignature());
+    const funcType = new FunctionType(anonymousMethod.getSignature())
+    return new PointerType(funcType, 1);
 }
 
 /**

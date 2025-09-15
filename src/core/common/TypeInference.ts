@@ -85,6 +85,7 @@ import { IRInference } from './IRInference';
 import { AbstractTypeExpr, KeyofTypeExpr, TypeQueryExpr } from '../base/TypeExpr';
 import { SdkUtils } from './SdkUtils';
 import { ModifierType } from '../model/ArkBaseModel';
+import { Language } from '../model/ArkFile';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'TypeInference');
 
@@ -564,6 +565,14 @@ export class TypeInference {
         }
         if (value instanceof AbstractRef || value instanceof AbstractExpr || value instanceof Local) {
             value.inferType(arkMethod);
+            // CXXTodo: If the type of value is functionType and the current file is a CXX file,
+            // it should be represented as a CXX function pointer type ==> PointerType(FunctionType, 1).
+            const valueType = value.getType();
+            if (arkMethod.getLanguage() === Language.CXX && valueType instanceof FunctionType) {
+                if (value instanceof ArkParameterRef || value instanceof Local) {
+                    value.setType(new PointerType(valueType, 1));
+                }
+            }
         }
         return value.getType();
     }

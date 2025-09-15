@@ -265,7 +265,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
     }
 
     private undefinedToValueAndStmts():ValueAndStmts {
-        logger.error(
+        logger.warn(
             'ArkValueTransformer-Cpp NodeToValueAndStmts: node is undefined. Method signature is : ',
             this.declaringMethod?.getSignature()?.toString(),
         );
@@ -1560,7 +1560,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
                 return this.cxxGenerateSystemComponentStmt(callerName, args, argPositions, callExpression, stmts);
             }
             const methodSignature = ArkSignatureBuilder.buildMethodSignatureFromMethodName(callerName);
-            if (callerValue.getType() instanceof FunctionType) {
+            const callerType = callerValue.getType();
+            if (callerType instanceof FunctionType || (callerType instanceof PointerType && callerType.getBaseType() instanceof FunctionType)) {
                 invokeValue = new ArkPtrInvokeExpr(methodSignature, callerValue, args, realGenericTypes);
             } else {
                 invokeValue = new ArkStaticInvokeExpr(methodSignature, args, realGenericTypes);

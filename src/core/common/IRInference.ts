@@ -177,6 +177,9 @@ export class IRInference {
                 method = cls?.getMethodWithName(CONSTRUCTOR_NAME) ?? cls?.getMethodWithName(CALL_SIGNATURE_NAME);
             } else if (type instanceof FunctionType) {
                 signature = type.getMethodSignature();
+            } else if (type instanceof PointerType && type.getBaseType() instanceof FunctionType) {
+                // CXXTodo: The type of a function pointer in CXX is 'PointerType(FunctionType, 1)'
+                signature = (type.getBaseType() as FunctionType).getMethodSignature();
             }
         } else if (arkExport instanceof AliasType && arkExport.getOriginalType() instanceof FunctionType) {
             signature = (arkExport.getOriginalType() as FunctionType).getMethodSignature();

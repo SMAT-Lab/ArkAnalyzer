@@ -75,6 +75,7 @@ import { AbstractTypeExpr, KeyofTypeExpr, TypeQueryExpr } from '../../core/base/
 import { ArkBaseModel } from '../../core/model/ArkBaseModel';
 import { getFileAbsPath } from '../../utils/FileUtils';
 import { ImportInfo } from '../../core/model/ArkImport';
+import { PointerType } from '../base/Type';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'IRInference');
 
@@ -616,6 +617,11 @@ export class IRInference {
         }
         if (baseType instanceof UnionType || (baseType && !TypeInference.isUnclearType(baseType))) {
             base.setType(baseType);
+        }
+        // If the type of value is functionType and the current file is a CXX file,
+        // it should be represented as a CXX function pointer type ==> PointerType(FunctionType, 1).
+        if (baseType instanceof FunctionType) {
+            base.setType(new PointerType(baseType, 1));
         }
     }
 

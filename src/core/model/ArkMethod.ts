@@ -36,6 +36,7 @@ import { CONSTRUCTOR_NAME } from '../common/TSConst';
 import { MethodParameter } from './builder/ArkMethodBuilder';
 import { TypeInference } from '../common/TypeInference';
 import { CxxBodyBuilder } from '../../cpp_frontend/model/builder/BodyBuilder';
+import { PointerType } from '../../cpp_frontend/base/Type';
 
 export const arkMethodNodeKind = [
     'MethodDeclaration',
@@ -733,7 +734,15 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
 
     public getFunctionLocal(name: string): Local | null {
         const local = this.getBody()?.getLocals().get(name);
-        return local?.getType() instanceof FunctionType ? local : null;
+        // CXXTodo: The type of a function pointer in CXX is 'PointerType(FunctionType, 1)'
+        if (!local) {
+            return null;
+        }
+        const localType = local.getType();
+        if (localType instanceof FunctionType || (localType instanceof PointerType && localType.getBaseType() instanceof FunctionType)) {
+            return local;
+        }
+        return  null;
     }
 
     public setQuestionToken(questionToken: boolean): void {

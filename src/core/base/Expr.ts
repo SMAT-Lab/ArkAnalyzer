@@ -45,6 +45,7 @@ import { ImportInfo } from '../model/ArkImport';
 import { ArkClass, ClassCategory } from '../model/ArkClass';
 import { ArkField } from '../model/ArkField';
 import { ModelUtils } from '../common/ModelUtils';
+import { PointerType } from '../../cpp_frontend/base/Type';
 
 /**
  * @category core/base/expr
@@ -319,9 +320,13 @@ export class ArkPtrInvokeExpr extends AbstractInvokeExpr {
      */
     public inferType(arkMethod: ArkMethod): AbstractInvokeExpr {
         this.getArgs().forEach(arg => TypeInference.inferValueType(arg, arkMethod));
-        const ptrType = this.funPtr.getType();
-        if (ptrType instanceof FunctionType) {
-            this.setMethodSignature(ptrType.getMethodSignature());
+        // CXXTodo: If it is a Cxx function pointer, it is necessary to obtain its baseType to get method signature.
+        let typeWithoutPtr = this.funPtr.getType();
+        if (typeWithoutPtr instanceof PointerType) {
+            typeWithoutPtr = typeWithoutPtr.getBaseType();
+        }
+        if (typeWithoutPtr instanceof FunctionType) {
+            this.setMethodSignature(typeWithoutPtr.getMethodSignature());
         }
         IRInference.inferArgs(this, arkMethod);
         return IRInference.inferStaticInvokeExpr(this, arkMethod);
