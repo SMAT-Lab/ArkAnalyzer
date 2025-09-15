@@ -18,6 +18,7 @@
 #include <string>
 #include <map>
 #include "json.hpp"
+#include <clang-c/Index.h>
 
 // File content cache (can be declared with extern in header file)
 extern std::map<std::string, std::string> g_fileContents;
@@ -37,5 +38,13 @@ inline const std::vector<std::string> kDenyPrefixes = {
     "/llvm/include/",
     "/libcxx/include/",
     "/usr/include/",
-    "/usr/local/include/"
+    "/usr/local/include/",
+    "Windows Kits",
+    "Microsoft Visual Studio"
 };
+
+static inline bool IsInSystemHeader(CXCursor cursor)
+{
+    CXSourceLocation loc = clang_getCursorLocation(cursor);
+    return clang_Location_isInSystemHeader(loc) != 0;
+}
