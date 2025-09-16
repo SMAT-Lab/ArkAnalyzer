@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -12,22 +12,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+#include <algorithm>
 #include <filesystem>
+#include <fstream>
+#include <iostream>
+#include <regex>
+#include <set>
 #include <sstream>
+#include <string>
+#include <vector>
 #include <clang-c/Index.h>
+#include "json.hpp"
 #include "utils_string.h"
 #include "utils_file.h"
 #include "cli_util.h"
-#include "json.hpp"
-#include <fstream>
-#include <iostream>
-#include <string>
-#include <vector>
-#include <set>
-#include <algorithm>
-#include <regex>
-#include "mat_metrics.h"
+#include "ast_prune_policy.h"
+
 #define TWO 2
 #define THREE 3
 using json = nlohmann::json;
@@ -176,45 +176,51 @@ inline bool fillKindBycode(json &node, const std::string &codeStr,
 
 // ========================AST attribute assistance ======================
 
-std::string getSourceCode(CXFile bf, CXFile ef, unsigned beginOffset, unsigned endOffset, CXSourceRange range)
+std::string getSourceCode(CXTranslationUnit tu, CXFile bf, CXFile ef,
+                          unsigned beginOffset, unsigned endOffset, CXSourceRange range)
 {
-    // Fallback: tokenize the expansion range and join token spellings (separated by spaces to avoid sticking)
-    CXTranslationUnit tu = clang_Cursor_getTranslationUnit(clang_getNullCursor());
-    // Note: libclang has no API to get a TU directly from a range. Alternative approach:
-    //       derive the TU from the begin location (the robust cross-API approach is to pass the TU in).
-    // To avoid larger structural changes, we use a small trick here: infer the TU from the begin location.
-    // If you’re willing to change the function signature, prefer:
-    //       getSourceContent(CXTranslationUnit tu, CXSourceRange range).
-    // Simplified handling: rebuild a range using the offsets on bf/ef and then tokenize
-    CXSourceRange expRange = clang_getRange(
-        clang_getLocationForOffset(clang_Cursor_getTranslationUnit(clang_getNullCursor()), bf, beginOffset),
-        clang_getLocationForOffset(clang_Cursor_getTranslationUnit(clang_getNullCursor()), ef, endOffset)
-    );
+    if (!tu) {
+        return std::string();
+    }
+    // Prefer constructing an "offset-based" expansion range (more stable than using 'range' directly)
+    CXSourceRange expRange{};
+    bool expValid = false;
+    if (bf && ef) {
+        CXSourceLocation bLoc = clang_getLocationForOffset(tu, bf, beginOffset);
+        CXSourceLocation eLoc = clang_getLocationForOffset(tu, ef, endOffset);
+        expRange = clang_getRange(bLoc, eLoc);
+        // Simple validation: start/end must be non-null
+        CXSourceLocation s = clang_getRangeStart(expRange);
+        CXSourceLocation e = clang_getRangeEnd(expRange);
+        expValid = !(clang_equalLocations(s, clang_getNullLocation()) ||
+                     clang_equalLocations(e, clang_getNullLocation()));
+    }
+
+    const CXSourceRange tryRange = expValid ? expRange : range;
 
     CXToken* toks = nullptr;
     unsigned ntok = 0;
-    // If we cannot obtain the TU above, try tokenizing the original range directly
-    clang_tokenize(clang_Cursor_getTranslationUnit(clang_getNullCursor()),
-        (ntok || !toks) ? range : expRange, &toks, &ntok);
+    clang_tokenize(tu, tryRange, &toks, &ntok);
+
     std::string text;
-    const auto reserveSize = (endOffset > beginOffset) ? (endOffset - beginOffset) : 8;
+    const auto reserveSize = (endOffset > beginOffset) ? (endOffset - beginOffset) : 8u;
     text.reserve(reserveSize);
+
     for (unsigned i = 0; i < ntok; ++i) {
-        CXString s = clang_getTokenSpelling(clang_Cursor_getTranslationUnit(clang_getNullCursor()), toks[i]);
+        CXString s = clang_getTokenSpelling(tu, toks[i]);
         const char* c = clang_getCString(s);
         if (c) {
-            if (!text.empty()) {
-                text.push_back(' ');
-            }
+            if (!text.empty()) text.push_back(' ');
             text.append(c);
         }
         clang_disposeString(s);
     }
     if (toks) {
-        clang_disposeTokens(clang_Cursor_getTranslationUnit(clang_getNullCursor()), toks, ntok);
+        clang_disposeTokens(tu, toks, ntok);
     }
     return text;
 }
+
 
 // Common helpers for source slicing
 
@@ -282,7 +288,7 @@ static inline bool TrySliceFromCache(const SourceSlice& s, std::string& out_code
 }
 
 // Lightweight version: returns only the "code" field.
-json getSourceContentLight(CXSourceRange range) {
+json getSourceContentLight(CXTranslationUnit tu, CXSourceRange range) {
     SourceSlice s;
     const bool sameFileValid = GetExpansionInfo(range, s);
 
@@ -294,17 +300,19 @@ json getSourceContentLight(CXSourceRange range) {
     }
 
     // Fallback path via tokenization
-    return json{{"code", getSourceCode(s.file, s.file, s.beginOffset, s.endOffset, range)}};
+    return json{{"code", getSourceCode(tu, s.file, s.file, s.beginOffset, s.endOffset, range)}};
 }
 
 // Full version: includes begin/end metadata and prefers cached slicing for "code".
-json getSourceContent(CXSourceRange range) {
+json getSourceContent(CXTranslationUnit tu, CXSourceRange range) {
     SourceSlice s;
     const bool sameFileValid = GetExpansionInfo(range, s);
 
     json j = json::object();
-    j["id"] = static_cast<unsigned long long>(s.beginOffset) +
+    // More reliable ID (avoids collisions when using begin+end offsets directly)
+    j["id"] = (static_cast<unsigned long long>(s.beginOffset) << 32) |
               static_cast<unsigned long long>(s.endOffset);
+
 
     auto& jb = j["begin"] = json::object();
     jb["line"]   = s.beginLine;
@@ -326,7 +334,7 @@ json getSourceContent(CXSourceRange range) {
         }
     }
 
-    j["code"] = getSourceCode(s.file, s.file, s.beginOffset, s.endOffset, range);
+    j["code"] = getSourceCode(tu, s.file, s.file, s.beginOffset, s.endOffset, range);
     return j;
 }
 
@@ -853,26 +861,6 @@ inline bool isRemovable(const json& j)
     return j.is_null() || (j.is_object() && j.empty()) || (j.is_array() && j.empty());
 }
 
-void cleanJson(json& node)
-{
-    if (node.is_array()) {
-        for (auto& elem: node) {
-            cleanJson(elem);
-        }
-        node.erase(std::remove_if(node.begin(), node.end(), isRemovable), node.end());
-    } else if (node.is_object()) {
-        for (auto it = node.begin(); it != node.end();) {
-            cleanJson(it.value());
-            if (isRemovable(it.value())) {
-                it = node.erase(it);
-            } else {
-                ++it;
-            }
-        }
-    }
-}
-
-
 // Global variable temporarily stores header file AST
 std::vector<json> headerUnits;
 static std::unordered_map<std::string, std::string> g_pathCanonCache; // need to free after use
@@ -969,31 +957,7 @@ static inline bool IsLightExpansionExpr(CXCursorKind k) {
     }
 }
 
-static inline bool IsTypeDeclLike(CXCursorKind k) {
-    switch (k) {
-        case CXCursor_StructDecl:
-        case CXCursor_ClassDecl:
-        case CXCursor_UnionDecl:
-        case CXCursor_EnumDecl:
-        case CXCursor_FieldDecl:
-        case CXCursor_TypedefDecl:
-        case CXCursor_TypeAliasDecl:
-        case CXCursor_ClassTemplate:
-        case CXCursor_ClassTemplatePartialSpecialization:
-        case CXCursor_TypeAliasTemplateDecl:
-        case CXCursor_TemplateTypeParameter:
-        case CXCursor_CXXBaseSpecifier:
-        case CXCursor_Namespace:
-        case CXCursor_UsingDeclaration:
-        case CXCursor_UsingDirective:
-            return true;
-        default:
-            return false;
-    }
-}
-
-// Unified decision: whether this cursor should enter the "materialization"
-// stage (with statistics and default sample recording)
+// Decide if a cursor should be materialized (kept in AST)
 static bool ShouldMaterializeCursor(
     CXCursor cursor,
     CXCursorKind kind_cursor,
@@ -1001,59 +965,39 @@ static bool ShouldMaterializeCursor(
     bool fromMainByExpansion,
     const std::string& spellingFileName)
 {
-
-    // Root node must be allowed; otherwise the whole tree won't be traversed
+    // Always keep the root node
     if (kind_cursor == CXCursor_TranslationUnit) {
-        mat::g_matStats.hits_mainFilePass.fetch_add(1, std::memory_order_relaxed);
         return true;
     }
 
-    if (fromMainByExpansion) {
-        if (IsLightExpansionExpr(kind_cursor)) {
-            mat::g_matStats.hits_expansion.fetch_add(1, std::memory_order_relaxed);
-            return true;
-        }
-    }
-
-    if (kind_cursor == CXCursor_InclusionDirective &&
-        (fromMainSpell || fromMainByExpansion)) {
-        mat::g_matStats.hits_userWhitelist.fetch_add(1, std::memory_order_relaxed);
+    // Allow light expressions expanded from the main file
+    if (fromMainByExpansion && IsLightExpansionExpr(kind_cursor)) {
         return true;
     }
 
-    // Fast pruning for system headers
+    // Prune system headers
     if (IsInSystemHeader(cursor)) {
-        mat::g_matStats.hits_sysHeader.fetch_add(1, std::memory_order_relaxed);
         return false;
     }
 
-    // Path fallback: Windows/MSVC files not marked as system headers but actually belong to system/SDK
+    // Prune SDK/MSVC headers by path fallback
     if (IsSystemishByPath(spellingFileName)) {
-        mat::g_matStats.hits_sysHeaderByPath.fetch_add(1, std::memory_order_relaxed);
         return false;
     }
 
-    // Main file: always keep (with statistics)
+    // Keep anything in the main file
     if (!g_normMainFile.empty()) {
         const std::string norm = CanonicalCached(spellingFileName);
         if (!norm.empty() && norm == g_normMainFile) {
-            mat::g_matStats.hits_mainFilePass.fetch_add(1, std::memory_order_relaxed);
             return true;
         }
     }
 
-    // Whitelist path: keep (with statistics)
-    if (IsInUserWhitelistPath(spellingFileName)) {
-        mat::g_matStats.hits_userWhitelist.fetch_add(1, std::memory_order_relaxed);
-        return true;
-    }
-
-    // Must be from main file perspective (either by spelling or by expansion)
     const bool fromMainView = (fromMainSpell || fromMainByExpansion);
 
-    if (!fromMainView) {
-        mat::g_matStats.hits_notMainView.fetch_add(1, std::memory_order_relaxed);
-        return false;
+    // Keep headers from user whitelist visible to main file
+    if (IsInUserWhitelistPath(spellingFileName) && fromMainView) {
+        return true;
     }
 
     return false;
@@ -1289,6 +1233,41 @@ void fillCXEvalResult(CXEvalResult ev, json& node)
     }
     clang_EvalResult_dispose(ev);
 }
+
+// Fill literal value (only if "code" is available).
+// Equivalent to the original inline block:
+// For integer/float/char/bool/string literals,
+// first store the source text into node["value"];
+// for non-string literals, also try evaluating with Clang.
+static void FillLiteralValueIfNeeded(json& node,
+                                     CXCursor cursor,
+                                     CXCursorKind kind_cursor,
+                                     bool hasCode)
+{
+    if (!hasCode) {
+        return;
+    }
+    switch (kind_cursor) {
+        case CXCursor_IntegerLiteral:
+        case CXCursor_CXXBoolLiteralExpr:
+        case CXCursor_CharacterLiteral:
+        case CXCursor_FloatingLiteral:
+        case CXCursor_StringLiteral: {
+            const std::string nodeCodeStr = node.value("code", "");
+            node["value"] = nodeCodeStr;
+
+            if (kind_cursor != CXCursor_StringLiteral) {
+                if (CXEvalResult ev = clang_Cursor_Evaluate(cursor)) {
+                    fillCXEvalResult(ev, node);
+                }
+            }
+            break;
+        }
+        default:
+            break;
+    }
+}
+
 
 void fillNodeSourceContent(json& node, const json& content, CXCursorKind kind_cursor, CXCursor cursor,
                            const std::string& fileStr)
@@ -1586,109 +1565,320 @@ void nodePostprocess(
     detectAndFillSpecialKind(node);  // Automatic fallback for special expression types
 }
 
-void fillNodeProperties(json& node, CXCursor& cursor, CXCursorKind& kind_cursor, bool isInclude,
-                        CXFile file)
+json getSourceContentMasked(CXTranslationUnit tu, CXSourceRange range, uint32_t want)
 {
-    // Common: file/kind/range
-    const bool isLight = (kind_cursor == CXCursor_UnexposedExpr || kind_cursor == CXCursor_UnexposedDecl);
-    const std::string fileName     = file ? Cx2Str(clang_getFileName(file)) : std::string();
-    const std::string kindSpelling = Cx2Str(clang_getCursorKindSpelling(kind_cursor));
-    const CXSourceRange range      = clang_getCursorExtent(cursor);
+    SourceSlice s;
+    const bool sameFileValid = GetExpansionInfo(range, s);
+    json j = json::object();
 
-    if (isInclude) {
-        node["include"] = true;
+    // Extract source code if requested
+    if (want & WANT_CODE) {
+        if (sameFileValid) {
+            // Prefer fast slicing from cached file content
+            std::string code;
+            if (TrySliceFromCache(s, code)) {
+                j["code"] = std::move(code);
+            } else {
+                // Fallback: tokenize and rebuild code from libClang
+                j["code"] = getSourceCode(tu, s.file, s.file, s.beginOffset, s.endOffset, range);
+            }
+        } else {
+            // Fallback if expansion info is invalid
+            j["code"] = getSourceCode(tu, s.file, s.file, s.beginOffset, s.endOffset, range);
+        }
     }
-    // Common: type.qualType
-    node["type"] = {{"qualType", unifyTypeStr(clang_getTypeSpelling(clang_getCursorType(cursor)))}};
-    // Source content: light vs full
-    const json content = isLight ? getSourceContentLight(range) : getSourceContent(range);
-    // fileStr policy: light uses fileName; full falls back to displayName when fileName is empty
-    std::string fileStr = fileName;
+
+    // Extract source range metadata if requested
+    if (want & WANT_RANGE) {
+        auto& begin = j["begin"] = json::object();
+        begin["line"]   = s.beginLine;
+        begin["col"]    = s.beginCol;
+        begin["offset"] = s.beginOffset;
+        begin["tokLen"] = (s.endOffset > s.beginOffset ? (s.endOffset - s.beginOffset) : 0);
+
+        auto& end = j["end"] = json::object();
+        end["line"]   = s.endLine;
+        end["col"]    = s.endCol;
+        end["offset"] = s.endOffset;
+
+        // Unique ID based on begin/end offsets (more stable than just concatenation)
+        j["id"] = (static_cast<unsigned long long>(s.beginOffset) << 32) |
+                  static_cast<unsigned long long>(s.endOffset);
+    }
+    return j;
+}
+
+static inline void EnsureDeclRefName(json& node, CXCursorKind kind_cursor)
+{
+    if (kind_cursor != CXCursor_DeclRefExpr) return;
+    // If "name" is missing or empty, fall back to "code";
+    // avoids empty names in cases like overloaded functions.
+    if ((!node.contains("name")) || node["name"].is_null() || node["name"] == "") {
+        const std::string code = node.value("code", "");
+        if (!code.empty()) {
+            node["name"] = code;
+        }
+    }
+}
+
+static bool HandleInclusionDirective(
+    json& node,
+    CXCursor cursor,
+    const json& content,
+    const WantMask& w,
+    const std::string& fileStr)
+{
+    // Only handle inclusion directives (#include ...)
+    if (clang_getCursorKind(cursor) != CXCursor_InclusionDirective) {
+        return false;
+    }
+
+    // Record cursor kind if requested
+    if (w.kind) {
+        node["kind"] = "inclusion directive";
+    }
+
+    // Get the included file: prefer clang_getIncludedFile, fallback to cursor spelling
+    const bool hasInc = (clang_getIncludedFile(cursor) != nullptr);
+    const std::string incFile = hasInc
+        ? Cx2Str(clang_getFileName(clang_getIncludedFile(cursor)))
+        : Cx2Str(clang_getCursorSpelling(cursor));
+
+    node["fileName"] = incFile;
+
+    // Note: original logic sets locFile = incFile only inside the include branch
+    if (w.loc) {
+        node["locFile"] = incFile;
+    }
+
+    // Preserve source range if available
+    if (w.range && content.contains("begin") && content.contains("end")) {
+        node["range"] = {{"begin", content["begin"]}, {"end", content["end"]}};
+    }
+
+    // The file that performed the inclusion
+    node["included"] = fileStr;
+
+    return true;
+}
+
+// Whether displayName is needed: required only if "name" is requested,
+// or when extras need to backfill location/range information.
+static inline bool NeedDisplayName(const WantMask& w) {
+    return w.name || (w.extras && (w.range || w.loc));
+}
+
+
+void fillNodeProperties(json& node, CXCursor cursor, CXCursorKind kind_cursor,
+                        bool isInclude, CXFile file)
+{
+    // ===== 1) Policy unpack =====
+    const uint32_t wantBits = SelectFieldMaskForCursorKind(kind_cursor);
+    const WantMask w = DecodeWant(wantBits);
+    // ===== 2) Basic context =====
+    const CXSourceRange range = clang_getCursorExtent(cursor);
+    CXTranslationUnit tu = clang_Cursor_getTranslationUnit(cursor);
+    const std::string kindSpelling = Cx2Str(clang_getCursorKindSpelling(kind_cursor));
+    const std::string fileName     = (file ? Cx2Str(clang_getFileName(file)) : std::string());
+    if (isInclude) node["include"] = true;
+    // ===== 3) type (on demand) =====
+    if (w.type) {
+        node["type"] = {{"qualType", unifyTypeStr(clang_getTypeSpelling(clang_getCursorType(cursor)))}};
+    } else {
+        node["type"] = {{"qualType", ""}}; // placeholder to avoid downstream crashes
+    }
+    // ===== 4) Source content (only when code or range is needed) =====
+    json content;           // null
+    const bool needContent = (w.code || w.range);
+    if (needContent) {
+        content = getSourceContentMasked(tu, range, wantBits);
+    }
+    const bool hasContent = !content.is_null();
+    // ===== 5) displayName / fileStr (lazy computation) =====
     std::string displayName;
-    if (!isLight) {
+    std::string fileStr = fileName;
+    if (NeedDisplayName(w)) {
         displayName = Cx2Str(clang_getCursorSpelling(cursor));
-        if (fileStr.empty()) fileStr = displayName;
+        if (fileStr.empty() && !displayName.empty()) fileStr = displayName;
     }
-    // Common sinks
-    fillNodeSourceContent(node, content, kind_cursor, cursor, fileStr);
-    fillNodeKindTag(node, cursor, kind_cursor, kindSpelling);
-    // Full-path extras only
-    if (!isLight) {
+    // ===== 6) name / opcode (on demand) =====
+    if (w.name) {
+        if (kind_cursor == CXCursor_UnaryOperator) {
+            fillUnaryOperatorInfo(node, cursor);
+            // Do not force writing "name" — only set when spelling exists
+            std::string nm = Cx2Str(clang_getCursorSpelling(cursor));
+            if (!nm.empty()) node["name"] = nm;
+        } else if (kind_cursor == CXCursor_BinaryOperator || kind_cursor == CXCursor_CompoundAssignOperator) {
+            node["opcode"] = Cx2Str(clang_Cursor_getBinaryOpcodeStr(clang_Cursor_getBinaryOpcode(cursor)));
+            std::string nm = Cx2Str(clang_getCursorSpelling(cursor));
+            if (!nm.empty()) node["name"] = nm;
+        } else {
+            node["name"] = Cx2Str(clang_getCursorSpelling(cursor));
+        }
+    }
+    // ===== 7) code (on demand) =====
+    if (w.code) {
+        node["code"] = (hasContent && content.contains("code") && content["code"].is_string())
+                           ? content["code"].get<std::string>()
+                           : "";
+    }
+    // ===== 8) #include special case (preserve equivalent behavior) =====
+    if (HandleInclusionDirective(node, cursor, content, w, fileStr)) {
+        return;
+    }
+    // ===== 9) range (on demand) =====
+    if (w.range && hasContent && content.contains("begin") && content.contains("end")) {
+        auto& r = node["range"] = json::object();
+        r["begin"] = content["begin"];
+        r["end"]   = content["end"];
+    }
+    // ===== 10) Literal value (only if code is available) =====
+    FillLiteralValueIfNeeded(node, cursor, kind_cursor, w.code);
+    // ===== 11) kind (on demand) =====
+    if (w.kind) {
+        fillNodeKindTag(node, cursor, kind_cursor, kindSpelling);
+    }
+    // ===== 12) extras (bit-controlled) =====
+    if (w.extras) {
         fillVarDeclStorageClass(node, cursor, kind_cursor);
         fillDeclRefInfo(node, cursor, kind_cursor);
-        fillNodeIdRangeLoc(node, content, kind_cursor, file, displayName);
+        // If range or loc is needed, fill begin/end/loc (displayName already lazy-computed)
+        if (w.range || w.loc) {
+            fillNodeIdRangeLoc(node, content, kind_cursor, file, displayName);
+        }
+    } else {
+        // Without extras: if only minimal loc is needed, use a placeholder
+        if (w.loc && !node.contains("locFile")) {
+            node["locFile"] = fileName;
+        }
     }
+    // ===== 13) DeclRef name fallback (on demand) =====
+    if (w.name) {
+        EnsureDeclRefName(node, kind_cursor);
+    }
+}
+
+// Utility: aggregate source origin information
+struct OriginInfo {
+    std::string fileName;       // Source file name
+    bool isUserHeader = false;  // True if the file is a user header
+    bool fromMainSpell = false; // True if spelled directly in the main file
+    bool fromMainByExpansion = false; // True if brought in via expansion (e.g., macro)
+};
+
+// Compute origin information (file, header type, main-file relation) for a cursor
+static OriginInfo ComputeOriginInfo(CXCursor cursor) {
+    OriginInfo oi;
+    const CXSourceLocation loc = clang_getCursorLocation(cursor);
+
+    // Spelling location (where the cursor is written in source)
+    CXFile spellFile{};
+    clang_getSpellingLocation(loc, &spellFile, nullptr, nullptr, nullptr);
+    oi.fileName = spellFile ? Cx2Str(clang_getFileName(spellFile)) : "";
+    oi.isUserHeader   = IsInUserWhitelistPath(oi.fileName);
+    oi.fromMainSpell  = clang_Location_isFromMainFile(loc);
+
+    // Expansion location (e.g., from macro expansion path)
+    CXFile ef{};
+    unsigned el = 0;
+    unsigned ec = 0;
+    unsigned eoff = 0;
+    clang_getExpansionLocation(loc, &ef, &el, &ec, &eoff);
+    if (ef) {
+        const std::string expPath = CanonicalCached(Cx2Str(clang_getFileName(ef)));
+        oi.fromMainByExpansion = (!g_normMainFile.empty() && expPath == g_normMainFile);
+    }
+    return oi;
+}
+
+// Utility: check if a cursor kind represents a function
+static inline bool IsFunctionCursor(CXCursorKind k) {
+    return k == CXCursor_FunctionDecl ||
+           k == CXCursor_CXXMethod   ||
+           k == CXCursor_Constructor ||
+           k == CXCursor_Destructor;
 }
 
 // ==========================buildASTJson Main Body========================
 
-json buildASTJson(CXCursor cursor, bool actionScope, std::unordered_map<std::string, std::string>& varTypeMap)
+json buildASTJson(CXCursor cursor, bool actionScope,
+                  std::unordered_map<std::string, std::string>& varTypeMap)
 {
-    CXSourceLocation loc = clang_getCursorLocation(cursor);
-    CXCursorKind kind_cursor = clang_getCursorKind(cursor);
+    // -------- 1) Origin & kind --------
+    const CXCursorKind kind = clang_getCursorKind(cursor);
+    const OriginInfo   oi   = ComputeOriginInfo(cursor);
 
-    CXFile file;
-    clang_getSpellingLocation(loc, &file, nullptr, nullptr, nullptr);
-    std::string fileName = file ? Cx2Str(clang_getFileName(file)) : "";
+    // -------- 2) Materialization gate --------
+    // Skip nodes that should not be materialized
+    if (!ShouldMaterializeCursor(cursor, kind, oi.fromMainSpell, oi.fromMainByExpansion, oi.fileName)) {
+        return json(); // drop
+    }
 
-    bool isUserHeader = IsInUserWhitelistPath(fileName);
-    bool fromMainSpell = clang_Location_isFromMainFile(loc);
-    bool fromMainByExpansion = false;
-    {
-        CXFile ef;
-        unsigned el = 0;
-        unsigned ec = 0;
-        unsigned eoff = 0;
-        // Get the expansion location (where the token is actually used in source code,
-        // as opposed to the spelling location in a header or macro definition).
-        clang_getExpansionLocation(loc, &ef, &el, &ec, &eoff);
-        if (ef) {
-            std::string expPath = CanonicalCached(Cx2Str(clang_getFileName(ef)));
-            fromMainByExpansion = (!g_normMainFile.empty() && expPath == g_normMainFile);
-        }
-    }
-    if (!ShouldMaterializeCursor(cursor, kind_cursor, fromMainSpell, fromMainByExpansion, fileName)) {
-        return json();
-    }
-    if (kind_cursor == CXCursor_LinkageSpec) { // extern "C" { ... }
+    // -------- 3) Special cases (fast path) --------
+    // Handle linkage specifications directly
+    if (kind == CXCursor_LinkageSpec) {
         return visitLinkageSpec(cursor, actionScope, varTypeMap);
     }
 
+    // -------- 4) Core node properties --------
     json node;
-    fillNodeProperties(node, cursor, kind_cursor, isUserHeader, file);
-    std::string codeStr = node.value("code", "");
-    if (node["kind"] == "CXXDeleteExpr" && codeStr.find("delete[]") != std::string::npos) {
+    {
+        CXFile spellFile{};
+        // Only needed for passing into fillNodeProperties.
+        // Simpler to fetch here again; could also be cached in ComputeOriginInfo.
+        clang_getSpellingLocation(clang_getCursorLocation(cursor), &spellFile, nullptr, nullptr, nullptr);
+        fillNodeProperties(node, cursor, kind, oi.isUserHeader, spellFile);
+    }
+
+    // Small decoration: mark delete[] expressions
+    if (node.value("kind","") == "CXXDeleteExpr" &&
+        node.value("code","").find("delete[]") != std::string::npos) {
         node["isArray"] = true;
     }
 
-    if (node.contains("kind") && (node["kind"] == "ParmDecl" || node["kind"] == "VarDecl") && node.contains("name") &&
-        node.contains("type") && node["type"].contains("qualType"))
-        varTypeMap[node["name"]] = node["type"]["qualType"];
+    // Record type of visible parameters/variables for later cast/declref fixes
+    if (node.value("kind","") == "ParmDecl" || node.value("kind","") == "VarDecl") {
+        if (node.contains("name") && node.contains("type") && node["type"].contains("qualType")) {
+            varTypeMap[node["name"]] = node["type"]["qualType"];
+        }
+    }
+
+    // Fix ImplicitCastExpr (add type) / DeclRef (fallback name)
     fixImplicitCastExprAndDeclRef(node, varTypeMap);
 
-    if (node.contains("kind") && (node["kind"] == "FunctionDecl" || node["kind"] == "CXXMethodDecl" ||
-        node["kind"] == "CXXConstructorDecl" || node["kind"] == "CXXDestructorDecl")) {
+    // Enable actionScope when entering a function/method body
+    if (node.contains("kind") &&
+        (node["kind"] == "FunctionDecl" || node["kind"] == "CXXMethodDecl" ||
+         node["kind"] == "CXXConstructorDecl" || node["kind"] == "CXXDestructorDecl")) {
         actionScope = true;
     }
-    // Check if this is a function boundary (CursorKind is more reliable)
-    bool isFunc =
-        (kind_cursor == CXCursor_FunctionDecl ||
-         kind_cursor == CXCursor_CXXMethod   ||
-         kind_cursor == CXCursor_Constructor ||
-         kind_cursor == CXCursor_Destructor);
-    if (isFunc) {
-        s_funcCtx.emplace_back(); // Entering a function: create local context
+
+    // -------- 5) Early prune (opaque) --------
+    // Convert large InitListExpr into opaque nodes
+    if (ShouldPruneInitList(node)) {
+        return MakeOpaqueNode(node);
     }
+
+    // -------- 6) Function-scope context (labels/gotos) --------
+    const bool isFunc = IsFunctionCursor(kind);
+    if (isFunc) {
+        s_funcCtx.emplace_back();
+    }
+
+    // -------- 7) Children build --------
     json children = json::array();
     visitAllChildren(cursor, children, actionScope, varTypeMap);
-    nodePostprocess(node, cursor, kind_cursor, children);
-    // Function exit: patch Goto statements in the current subtree using collected labels
+
+    // -------- 8) Postprocess & patch --------
+    nodePostprocess(node, cursor, kind, children);
+
     if (isFunc) {
         PatchGotosInFunction(node, s_funcCtx.back().labels);
         s_funcCtx.pop_back();
     }
     return node;
 }
+
 
 // ======================Project Helper Code==========================
 
@@ -1824,7 +2014,6 @@ int main(int argc, char** argv)
 
     clang_disposeTranslationUnit(unit);
     clang_disposeIndex(index);
-    mat::DumpMaterializeMetrics(std::cerr);
     auto t3 = std::chrono::high_resolution_clock::now();
     auto ms2 = std::chrono::duration_cast<std::chrono::milliseconds>(t3 - t0).count();
     std::cout << "dumper total time is " << ms2 << "ms" << std::endl;

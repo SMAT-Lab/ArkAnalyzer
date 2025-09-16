@@ -1,3 +1,19 @@
+/*
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
 #pragma once
 
 #include <atomic>
@@ -10,55 +26,57 @@
 
 namespace mat {
 
-// 统计项
+// Statistics counters for materialization decisions
 struct MatStats {
-    std::atomic<uint64_t> hits_sysHeader{0};       // 规则0：系统头剪枝
-    std::atomic<uint64_t> hits_notMainView{0};     // 规则1：非主文件视角剪枝
-    std::atomic<uint64_t> hits_mainFilePass{0};    // 规则2：主文件直通
-    std::atomic<uint64_t> hits_userWhitelist{0};   // 规则3：白名单放行
-    std::atomic<uint64_t> hits_defaultDeny{0};     // 规则4：缺省拒绝
-    std::atomic<uint64_t> hits_sysHeaderByPath{0}; // 路径兜底命中（Windows/MSVC 等）
-    std::atomic<uint64_t> hits_expansion{0};       // 主文件展开直通（轻量表达式）
+    std::atomic<uint64_t> hits_sysHeader{0};        // Rule 0: pruned due to system header
+    std::atomic<uint64_t> hits_notMainView{0};      // Rule 1: pruned because not from main file view
+    std::atomic<uint64_t> hits_mainFilePass{0};     // Rule 2: passed (main file always allowed)
+    std::atomic<uint64_t> hits_userWhitelist{0};    // Rule 3: passed by user whitelist
+    std::atomic<uint64_t> hits_defaultDeny{0};      // Rule 4: default deny
+    std::atomic<uint64_t> hits_sysHeaderByPath{0};  // Path-based fallback (e.g., Windows/MSVC headers)
+    std::atomic<uint64_t> hits_expansion{0};        // Passed by expansion (lightweight expressions)
+    std::atomic<uint64_t> hits_userHeaderContent{0};// Content inside user-whitelisted headers
 };
 
-// 采样一小部分被拒绝的游标，便于诊断
+// Store a small sample of denied cursors for diagnostics
 struct FallbackSample {
-    std::string kind;         // 游标种类
-    std::string spellingFile; // 拼写文件
-    std::string expansionFile;// 展开文件（宏）
+    std::string kind;          // Cursor kind
+    std::string spellingFile;  // Spelling file (original location)
+    std::string expansionFile; // Expansion file (macro-expanded location)
     unsigned   line = 0;
     unsigned   col  = 0;
-    std::string name;         // 游标可读名称
+    std::string name;          // Readable cursor name
 };
 
-// 主文件展开的“轻量表达式”配额控制，防止宏风暴拖垮性能
+// Quota control for "lightweight expressions" expanded from main file
+// Prevents performance degradation in macro-heavy code.
 struct ExpansionBudget {
     std::atomic<uint32_t> pass_count{0};
-    uint32_t hard_cap = 2000; // 可通过 SetExpansionHardCap 动态调整
+    uint32_t hard_cap = 2000; // Can be adjusted dynamically via SetExpansionHardCap
 };
 
-// 全局对象（简化接入成本）
+// Global objects (simplifies usage)
 extern MatStats g_matStats;
 extern ExpansionBudget g_expBudget;
 
-// 采样容器与上限
+// Sample container and limit
 inline constexpr size_t kMaxFallbackSamples = 200;
 extern std::mutex g_fbMu;
 extern std::vector<FallbackSample> g_fallbackSamples;
 
-// 小工具：把枚举与文件句柄转成字符串
+// Helpers: convert enum values and file handles to string
 std::string KindStr(CXCursorKind k);
 std::string FileStr(CXFile f);
 
-// 在“默认拒绝”分支里调用，记录一条采样（含展开位置信息）
+// Record a sample under the "default deny" branch (includes expansion location)
 void RecordDefaultFallback(CXCursor cursor,
                            CXCursorKind kind,
                            const std::string& spellingFileName);
 
-// 打印总览统计与若干采样
+// Print statistics overview and collected samples
 void DumpMaterializeMetrics(std::ostream& os);
 
-// 设置与重置
+// Adjust and reset APIs
 void SetExpansionHardCap(uint32_t cap);
 void ResetMetrics();
 

@@ -18,17 +18,15 @@ export const INCLUDE_IN_FUNCTION_CASE1 = {
         {
             id: 0,
             stmts: [
-                "this = this: @includeInScope/includeInScope.cpp: %dflt",
-                "g_NUM = 1",
-                "type @includeInScope/includeInScope.cpp: %dflt.IncludeInFunction()#uint = unsigned int",
-                "a = g_NUM",
-                "b = a + 1",
-                "c = staticinvoke <@%unk/%unk: .add()>(a, b)",
-                "%0 = new @includeInScope/includeInScope.cpp: MyStruct",
-                "instanceinvoke %0.<@includeInScope/includeInScope.cpp: MyStruct.constructor()>()",
-                "myStruct = %0",
-                "myStruct.<@includeInScope/includeInScope.cpp: MyStruct.age> = g_NUM",
-                "return",
+                'this = this: @includeInScope/includeInScope.cpp: %dflt',
+                'a = g_NUM',
+                'b = a + 1',
+                'c = staticinvoke <@%unk/%unk: .add()>(a, b)',
+                '%0 = new @%unk/%unk: MyStruct',
+                'instanceinvoke %0.<@%unk/%unk: MyStruct.constructor()>()',
+                'myStruct = %0',
+                'myStruct.<@%unk/%unk: MyStruct.age> = g_NUM',
+                'return'
             ],
             preds: [],
             succes: []
