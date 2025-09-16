@@ -16,8 +16,8 @@
 import { Type, NumberType, UnionType } from '../../core/base/Type';
 import { Value } from '../../core/base/Value';
 
-/** Enum representing the size of C++ types. */
-export enum CxxTypeSize {
+/** Enum representing the bitWidth of Cxx types. */
+export enum CxxTypeBitWidth {
     EIGHT_BITS = 8,
     SIXTEEN_BITS = 16,
     THIRTY_TWO_BITS = 32,
@@ -25,54 +25,91 @@ export enum CxxTypeSize {
     UNKNOWN = -1
 }
 
-/** Enum representing the signedness attribute of C++ types. */
+/** Enum representing the signedness attribute of Cxx types. */
 export enum CxxTypeSigned {
     UNSIGNED = 0,
     SIGNED = 1,
     UNKNOWN = -1
 }
 
+/** Enumerate the standard library types of Cxx */
+export enum CxxStdTypeName {
+    CHAR = 1,
+    SIGNED_CHAR,
+    UNSIGNED_CHAR,
+    WCHAR_T,
+    CHAR16_T,
+    CHAR32_T,
+    SHORT,
+    UNSIGNED_SHORT,
+    INT,
+    UNSIGNED_INT,
+    LONG,
+    UNSIGNED_LONG,
+    LONG_LONG,
+    UNSIGNED_LONG_LONG,
+    UINT8_T,
+    UINT16_T,
+    UINT32_T,
+    UINT64_T,
+    INT8_T,
+    INT16_T,
+    INT32_T,
+    INT64_T,
+    SIZE_T
+}
+
 /**
- * int type in cxx
+ * integral type in cxx, for example int, short, long and so on.
  * @category core/base/type
  */
-export class CxxIntType extends NumberType {
-    private readonly signType: CxxTypeSigned;
-    private readonly size: CxxTypeSize;
-    private readonly oriTypeName: string;
+export class CxxIntegralType extends NumberType {
+    protected readonly signType: CxxTypeSigned; // the type is signed or unsigned
+    protected readonly bitWidth: CxxTypeBitWidth; // the bit width of this type
+    protected readonly oriTypeName?: CxxStdTypeName; // the actual type name
 
-    protected constructor(signType: CxxTypeSigned, size: CxxTypeSize, oriTypeName: string) {
+    protected constructor(signType: CxxTypeSigned, bitWidth: CxxTypeBitWidth, oriTypeName?: CxxStdTypeName) {
         super();
         this.signType = signType;
-        this.size = size;
+        this.bitWidth = bitWidth;
         this.oriTypeName = oriTypeName;
     }
 
     public static getInstance(signType: CxxTypeSigned = CxxTypeSigned.UNKNOWN,
-                              size: CxxTypeSize = CxxTypeSize.UNKNOWN,
-                              oriTypeName: string = ''): CxxIntType {
-        return new CxxIntType(signType, size, oriTypeName);
+                              size: CxxTypeBitWidth = CxxTypeBitWidth.UNKNOWN,
+                              oriTypeName?: CxxStdTypeName): CxxIntegralType {
+        return new CxxIntegralType(signType, size, oriTypeName);
     }
 
     public getSignType(): CxxTypeSigned {
         return this.signType;
     }
 
-    public getSize(): CxxTypeSize {
-        return this.size;
+    public getBitWidth(): CxxTypeBitWidth {
+        return this.bitWidth;
     }
 
-    public getCxxOriTypeName(): string {
+    public getOriTypeName(): CxxStdTypeName | undefined {
         return this.oriTypeName;
+    }
+}
+
+/**
+ * int type in cxx
+ * @category core/base/type
+ */
+export class CxxIntType extends CxxIntegralType {
+    public static getInstance(signType: CxxTypeSigned, bitWidth: CxxTypeBitWidth, oriTypeName?: CxxStdTypeName): CxxIntType {
+        return new CxxIntType(signType, bitWidth, oriTypeName);
     }
 
     public getTypeString(): string {
-        if (this.oriTypeName !== '') {
-            return this.oriTypeName;
+        if (this.oriTypeName) {
+            return cxxStdTypeNameToStr(this.oriTypeName);
         }
-        const signStr = this.signType === CxxTypeSigned.UNKNOWN? '' : this.signType.toString();
-        const bitStr = this.size === CxxTypeSize.UNKNOWN? '' : this.size.toString() + '_t';
-        return signStr + ' int' + bitStr;
+        const signStr = this.signType === CxxTypeSigned.UNSIGNED ? 'u' : '';
+        const bitStr = this.bitWidth === CxxTypeBitWidth.UNKNOWN ? '' : this.bitWidth.toString() + '_t';
+        return signStr + 'int' + bitStr;
     }
 }
 
@@ -80,9 +117,17 @@ export class CxxIntType extends NumberType {
  * short type in cxx
  * @category core/base/type
  */
-export class CxxShortType extends CxxIntType {
-    public static getInstance(signType: CxxTypeSigned, size: CxxTypeSize, oriTypeName: string): CxxShortType {
-        return new CxxShortType(signType, size, oriTypeName);
+export class CxxShortType extends CxxIntegralType {
+    public static getInstance(signType: CxxTypeSigned, bitWidth: CxxTypeBitWidth, oriTypeName?: CxxStdTypeName): CxxShortType {
+        return new CxxShortType(signType, bitWidth, oriTypeName);
+    }
+
+    public getTypeString(): string {
+        if (this.oriTypeName) {
+            return cxxStdTypeNameToStr(this.oriTypeName);
+        }
+        const signStr = this.signType === CxxTypeSigned.UNSIGNED ? 'unsigned ' : '';
+        return signStr + 'short';
     }
 }
 
@@ -90,9 +135,17 @@ export class CxxShortType extends CxxIntType {
  * long type in cxx
  * @category core/base/type
  */
-export class CxxLongType extends CxxIntType {
-    public static getInstance(signType: CxxTypeSigned, size: CxxTypeSize, oriTypeName: string): CxxLongType {
-        return new CxxLongType(signType, size, oriTypeName);
+export class CxxLongType extends CxxIntegralType {
+    public static getInstance(signType: CxxTypeSigned, bitWidth: CxxTypeBitWidth, oriTypeName?: CxxStdTypeName): CxxLongType {
+        return new CxxLongType(signType, bitWidth, oriTypeName);
+    }
+
+    public getTypeString(): string {
+        if (this.oriTypeName) {
+            return cxxStdTypeNameToStr(this.oriTypeName);
+        }
+        const signStr = this.signType === CxxTypeSigned.UNSIGNED ? 'unsigned ' : '';
+        return signStr + 'long';
     }
 }
 
@@ -100,9 +153,41 @@ export class CxxLongType extends CxxIntType {
  * long long type in cxx
  * @category core/base/type
  */
-export class CxxLongLongType extends CxxIntType {
-    public static getInstance(signType: CxxTypeSigned, size: CxxTypeSize, oriTypeName: string): CxxLongLongType {
-        return new CxxLongLongType(signType, size, oriTypeName);
+export class CxxLongLongType extends CxxIntegralType {
+    public static getInstance(signType: CxxTypeSigned, bitWidth: CxxTypeBitWidth, oriTypeName?: CxxStdTypeName): CxxLongLongType {
+        return new CxxLongLongType(signType, bitWidth, oriTypeName);
+    }
+
+    public getTypeString(): string {
+        if (this.oriTypeName) {
+            return cxxStdTypeNameToStr(this.oriTypeName);
+        }
+        const signStr = this.signType === CxxTypeSigned.UNSIGNED ? 'unsigned ' : '';
+        return signStr + 'long long';
+    }
+}
+
+/**
+ * size_t type in cxx
+ * @category core/base/type
+ */
+export class CxxSizeTType extends CxxIntegralType {
+    public static getInstance(signType: CxxTypeSigned, bitWidth: CxxTypeBitWidth, oriTypeName?: CxxStdTypeName): CxxSizeTType {
+        return new CxxSizeTType(signType, bitWidth, oriTypeName);
+    }
+
+    public getTypeString(): string {
+        return 'size_t';
+    }
+}
+
+/**
+ * floating-point types in cxx, for example float, double and so on.
+ * @category core/base/type
+ */
+export class CxxFloatingPointType extends NumberType {
+    public static getInstance(): CxxFloatingPointType {
+        return new CxxFloatingPointType();
     }
 }
 
@@ -110,7 +195,7 @@ export class CxxLongLongType extends CxxIntType {
  * float type in cxx
  * @category core/base/type
  */
-export class CxxFloatType extends NumberType {
+export class CxxFloatType extends CxxFloatingPointType {
     public static getInstance(): CxxFloatType {
         return new CxxFloatType();
     }
@@ -119,8 +204,8 @@ export class CxxFloatType extends NumberType {
         return 'float';
     }
 
-    public getSize(): CxxTypeSize {
-        return CxxTypeSize.THIRTY_TWO_BITS;
+    public getBitWidth(): CxxTypeBitWidth {
+        return CxxTypeBitWidth.THIRTY_TWO_BITS;
     }
 }
 
@@ -128,7 +213,7 @@ export class CxxFloatType extends NumberType {
  * double type in cxx
  * @category core/base/type
  */
-export class CxxDoubleType extends CxxFloatType {
+export class CxxDoubleType extends CxxFloatingPointType {
     public static getInstance(): CxxDoubleType {
         return new CxxDoubleType();
     }
@@ -137,8 +222,8 @@ export class CxxDoubleType extends CxxFloatType {
         return 'double';
     }
 
-    public getSize(): CxxTypeSize {
-        return CxxTypeSize.SIXTY_FOUR_BITS;
+    public getBitWidth(): CxxTypeBitWidth {
+        return CxxTypeBitWidth.SIXTY_FOUR_BITS;
     }
 }
 
@@ -146,7 +231,7 @@ export class CxxDoubleType extends CxxFloatType {
  * long double type in cxx
  * @category core/base/type
  */
-export class CxxLongDoubleType extends CxxFloatType {
+export class CxxLongDoubleType extends CxxFloatingPointType {
     public static getInstance(): CxxLongDoubleType {
         return new CxxLongDoubleType();
     }
@@ -155,8 +240,8 @@ export class CxxLongDoubleType extends CxxFloatType {
         return 'long double';
     }
 
-    public getSize(): CxxTypeSize {
-        return CxxTypeSize.UNKNOWN;
+    public getBitWidth(): CxxTypeBitWidth {
+        return CxxTypeBitWidth.UNKNOWN;
     }
 }
 
@@ -165,20 +250,20 @@ export class CxxLongDoubleType extends CxxFloatType {
  * @category core/base/type
  */
 export class CxxCharType extends Type {
-    private readonly signType: CxxTypeSigned;
-    private readonly size: CxxTypeSize;
-    private readonly oriTypeName: string;
+    private readonly signType: CxxTypeSigned; // the type is signed or unsigned
+    private readonly bitWidth: CxxTypeBitWidth; // the bit width of this type
+    private readonly oriTypeName?: CxxStdTypeName; // the actual type name
 
-    private constructor(signType: CxxTypeSigned, size: CxxTypeSize, oriTypeName: string) {
+    private constructor(signType: CxxTypeSigned, bitWidth: CxxTypeBitWidth, oriTypeName?: CxxStdTypeName) {
         super();
         this.signType = signType;
-        this.size = size;
+        this.bitWidth = bitWidth;
         this.oriTypeName = oriTypeName;
     }
 
     public static getInstance(signType: CxxTypeSigned = CxxTypeSigned.UNKNOWN,
-                              size: CxxTypeSize = CxxTypeSize.UNKNOWN,
-                              oriTypeName: string = ''): CxxCharType {
+                              size: CxxTypeBitWidth = CxxTypeBitWidth.UNKNOWN,
+                              oriTypeName?: CxxStdTypeName): CxxCharType {
         return new CxxCharType(signType, size, oriTypeName);
     }
 
@@ -186,21 +271,90 @@ export class CxxCharType extends Type {
         return this.signType;
     }
 
-    public getSize(): CxxTypeSize {
-        return this.size;
+    public getBitWidth(): CxxTypeBitWidth {
+        return this.bitWidth;
     }
 
-    public getCxxOriTypeName(): string {
+    public getOriTypeName(): CxxStdTypeName | undefined {
         return this.oriTypeName;
     }
 
     public getTypeString(): string {
-        if (this.oriTypeName !== '') {
-            return this.oriTypeName;
+        if (this.oriTypeName) {
+            return cxxStdTypeNameToStr(this.oriTypeName);
         }
-        const signStr = this.signType === CxxTypeSigned.UNKNOWN? '' : this.signType.toString();
-        const bitStr = this.size === CxxTypeSize.UNKNOWN? '' : this.size.toString() + '_t';
-        return signStr + ' char' + bitStr;
+        const signStr = this.signType === CxxTypeSigned.UNKNOWN ? '' : this.signType === CxxTypeSigned.SIGNED ? 'signed ' : 'unsigned ';
+        const bitStr = this.bitWidth === CxxTypeBitWidth.UNKNOWN ? '' : this.bitWidth.toString() + '_t';
+        return signStr + 'char' + bitStr;
+    }
+}
+
+/**
+ * wchar_t type in cxx
+ * @category core/base/type
+ */
+export class CxxWcharType extends CxxIntegralType {
+    public static getInstance(signType: CxxTypeSigned = CxxTypeSigned.UNKNOWN,
+                              size: CxxTypeBitWidth = CxxTypeBitWidth.UNKNOWN,
+                              oriTypeName?: CxxStdTypeName): CxxWcharType {
+        return new CxxWcharType(signType, size, oriTypeName);
+    }
+
+    public getTypeString(): string {
+        return 'wchar_t';
+    }
+}
+
+function cxxStdTypeNameToStr(cxxStdTypeName: CxxStdTypeName): string {
+    switch (cxxStdTypeName) {
+        case CxxStdTypeName.CHAR:
+            return 'char';
+        case CxxStdTypeName.SIGNED_CHAR:
+            return 'signed char';
+        case CxxStdTypeName.UNSIGNED_CHAR:
+            return 'unsigned char';
+        case CxxStdTypeName.WCHAR_T:
+            return 'wchar_t';
+        case CxxStdTypeName.CHAR16_T:
+            return 'char16_t';
+        case CxxStdTypeName.CHAR32_T:
+            return 'char32_t';
+        case CxxStdTypeName.SHORT:
+            return 'short';
+        case CxxStdTypeName.UNSIGNED_SHORT:
+            return 'unsigned short';
+        case CxxStdTypeName.INT:
+            return 'int';
+        case CxxStdTypeName.UNSIGNED_INT:
+            return 'unsigned int';
+        case CxxStdTypeName.LONG:
+            return 'long';
+        case CxxStdTypeName.UNSIGNED_LONG:
+            return 'unsigned long';
+        case CxxStdTypeName.LONG_LONG:
+            return 'long long';
+        case CxxStdTypeName.UNSIGNED_LONG_LONG:
+            return 'unsigned long long';
+        case CxxStdTypeName.UINT8_T:
+            return 'uint8_t';
+        case CxxStdTypeName.UINT16_T:
+            return 'uint16_t';
+        case CxxStdTypeName.UINT32_T:
+            return 'uint32_t';
+        case CxxStdTypeName.UINT64_T:
+            return 'uint64_t';
+        case CxxStdTypeName.INT8_T:
+            return 'int8_t';
+        case CxxStdTypeName.INT16_T:
+            return 'int16_t';
+        case CxxStdTypeName.INT32_T:
+            return 'int32_t';
+        case CxxStdTypeName.INT64_T:
+            return 'int64_t';
+        case CxxStdTypeName.SIZE_T:
+            return 'size_t';
+        default:
+            return '';
     }
 }
 
