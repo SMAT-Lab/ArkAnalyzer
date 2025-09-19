@@ -13,11 +13,12 @@
  * limitations under the License.
  */
 
-import { ArkNewExpr, ArkPtrInvokeExpr } from '../../../core/base/Expr';
+import { ArkNewArrayExpr, ArkNewExpr, ArkPtrInvokeExpr, ArkStaticInvokeExpr } from '../../../core/base/Expr';
 import { Local } from '../../../core/base/Local';
 import { ArkAssignStmt, ArkInvokeStmt, Stmt } from '../../../core/base/Stmt';
-import { ClassType, FunctionType } from '../../../core/base/Type';
+import { AliasType, ArrayType, ClassType, FunctionType, GenericType, UnionType } from '../../../core/base/Type';
 import { Value } from '../../../core/base/Value';
+import { MAKEOBSERVED } from '../../../core/common/Const';
 import { NodeID } from '../../../core/graph/GraphTraits';
 import { ArkMethod } from '../../../core/model/ArkMethod';
 import { CallGraph, CallGraphNode, FuncID, ICallSite } from '../../model/CallGraph';
@@ -37,6 +38,7 @@ export class SdkPlugin implements IPagPlugin {
     cg: CallGraph;
     // record the SDK API param, and create fake Values
     private sdkMethodReturnValueMap: Map<ArkMethod, Map<ContextID, ArkNewExpr>>;
+    private sdkMethodReturnArrayMap: Map<ArkMethod, Map<ContextID, ArkNewArrayExpr>>;
     private methodParamValueMap: Map<FuncID, Value[]>;
     private fakeSdkMethodParamDeclaringStmt: Stmt;
 
@@ -45,6 +47,8 @@ export class SdkPlugin implements IPagPlugin {
         this.pagBuilder = pagBuilder;
         this.cg = cg;
         this.sdkMethodReturnValueMap = new Map();
+        this.sdkMethodReturnArrayMap = new Map();
+        this.sdkMethodReturnArrayMap = new Map();
         this.methodParamValueMap = new Map();
         this.fakeSdkMethodParamDeclaringStmt = new ArkAssignStmt(new Local(''), new Local(''));
     }
@@ -109,6 +113,23 @@ export class SdkPlugin implements IPagPlugin {
 
     private addSDKMethodReturnPagEdge(cs: ICallSite, callerCid: ContextID, calleeCid: ContextID, calleeMethod: ArkMethod, srcNodes: NodeID[]): void {
         let returnType = calleeMethod.getReturnType();
+        if (returnType instanceof ArrayType && cs.callStmt instanceof ArkAssignStmt) {
+            // Handling the return value of collections.Array.creat, return type is ArrayType
+            this.addSDKMethodReturnArrayPagEdge(cs, callerCid, calleeCid, calleeMethod, srcNodes);
+            return;
+        }
+        if (returnType instanceof UnionType && cs.callStmt instanceof ArkAssignStmt) {
+            // Handling the return value of ArkTSUtils.ASON.parse, return type is UnionType
+            // find real type in UnionType
+            this.addSDKMethodReturnUnionPagEdge(cs, callerCid, calleeCid, calleeMethod, srcNodes);
+            return;
+        }
+        if (returnType instanceof GenericType && cs.callStmt instanceof ArkAssignStmt) {
+            // Handling the return value of UIUtils.makeObserved, return type is GenericType
+            // find real type in callsite realGenericTypes
+            this.addSDKMethodReturnGenericPagEdge(cs, callerCid, calleeCid, calleeMethod, srcNodes);
+            return;
+        }
         if (!(returnType instanceof ClassType) || !(cs.callStmt instanceof ArkAssignStmt)) {
             return;
         }
@@ -133,6 +154,107 @@ export class SdkPlugin implements IPagPlugin {
         this.pag.addPagEdge(srcPagNode, dstPagNode, PagEdgeKind.Address, cs.callStmt);
         srcNodes.push(srcPagNode.getID());
         return;
+    }
+
+    private addSDKMethodReturnArrayPagEdge(cs: ICallSite, callerCid: ContextID, calleeCid: ContextID, calleeMethod: ArkMethod, srcNodes: NodeID[]): void {
+        let returnType = calleeMethod.getReturnType() as ArrayType;
+        let callstmt = cs.callStmt as ArkAssignStmt;
+        let arraycidMap = this.sdkMethodReturnArrayMap.get(calleeMethod);
+        if (!arraycidMap) {
+            arraycidMap = new Map();
+        }
+        let newArrayExpr = arraycidMap.get(calleeCid);
+        if (!newArrayExpr) {
+            let staticInvokeExpr = callstmt.getRightOp();
+            if (!(staticInvokeExpr instanceof ArkStaticInvokeExpr)) {
+                return;
+            }
+            if (staticInvokeExpr.getMethodSignature().getDeclaringClassSignature().getDeclaringNamespaceSignature()?.getNamespaceName() === 'collections') {
+                let realtypes = staticInvokeExpr.getRealGenericTypes();
+                if (realtypes !== undefined && realtypes.length > 0) {
+                    // create new array with real type
+                    newArrayExpr = new ArkNewArrayExpr(realtypes[0], staticInvokeExpr.getArg(0));
+                } else {
+                    // create new array with base type
+                    newArrayExpr = new ArkNewArrayExpr(returnType.getBaseType(), staticInvokeExpr.getArg(0));
+                }
+            }
+        }
+        if (newArrayExpr === undefined) {
+            return;
+        }
+        arraycidMap.set(calleeCid, newArrayExpr!);
+        this.sdkMethodReturnArrayMap.set(calleeMethod, arraycidMap);
+
+        let srcPagNode = this.pagBuilder.getOrNewPagNode(calleeCid, newArrayExpr!);
+        let dstPagNode = this.pagBuilder.getOrNewPagNode(callerCid, callstmt.getLeftOp(), cs.callStmt);
+
+        this.pag.addPagEdge(srcPagNode, dstPagNode, PagEdgeKind.Address, cs.callStmt);
+        srcNodes.push(srcPagNode.getID());
+        return;
+    }
+
+    private addSDKMethodReturnUnionPagEdge(cs: ICallSite, callerCid: ContextID, calleeCid: ContextID, calleeMethod: ArkMethod, srcNodes: NodeID[]): void {
+        let returnType = calleeMethod.getReturnType() as UnionType;
+        let callstmt = cs.callStmt as ArkAssignStmt;
+        let cidMap = this.sdkMethodReturnValueMap.get(calleeMethod);
+        if (!cidMap) {
+            cidMap = new Map();
+        }
+        let newExpr = cidMap.get(calleeCid);
+        if (!newExpr) {
+            let types = returnType.getTypes();
+            for (let uniontype of types) {
+                if (uniontype instanceof AliasType && uniontype.getOriginalType() instanceof ClassType) {
+                    let classtype = uniontype.getOriginalType() as ClassType;
+                    newExpr = new ArkNewExpr(classtype);
+                }
+                if (uniontype instanceof ClassType) {
+                    newExpr = new ArkNewExpr(uniontype);
+                }
+            }
+        }
+        if (newExpr === undefined) {
+            return;
+        }
+        cidMap.set(calleeCid, newExpr!);
+        this.sdkMethodReturnValueMap.set(calleeMethod, cidMap);
+
+        let srcPagNode = this.pagBuilder.getOrNewPagNode(calleeCid, newExpr!);
+        let dstPagNode = this.pagBuilder.getOrNewPagNode(callerCid, callstmt.getLeftOp(), cs.callStmt);
+
+        this.pag.addPagEdge(srcPagNode, dstPagNode, PagEdgeKind.Address, cs.callStmt);
+        srcNodes.push(srcPagNode.getID());
+        return;
+    }
+
+    private addSDKMethodReturnGenericPagEdge(cs: ICallSite, callerCid: ContextID, calleeCid: ContextID, calleeMethod: ArkMethod, srcNodes: NodeID[]): void {
+        if (calleeMethod.getName() === MAKEOBSERVED) {
+            let callstmt = cs.callStmt as ArkAssignStmt;
+            let cidMap = this.sdkMethodReturnValueMap.get(calleeMethod);
+            if (!cidMap) {
+                cidMap = new Map();
+            }
+            let newExpr = cidMap.get(calleeCid);
+            if (!newExpr && cs.args !== undefined && cs.args.length > 0) {
+                let type = cs.args[0].getType();
+                if (type instanceof ClassType) {
+                    newExpr = new ArkNewExpr(type);
+                }
+            }
+            if (newExpr === undefined) {
+                return;
+            }
+            cidMap.set(calleeCid, newExpr!);
+            this.sdkMethodReturnValueMap.set(calleeMethod, cidMap);
+
+            let srcPagNode = this.pagBuilder.getOrNewPagNode(calleeCid, newExpr!);
+            let dstPagNode = this.pagBuilder.getOrNewPagNode(callerCid, callstmt.getLeftOp(), cs.callStmt);
+
+            this.pag.addPagEdge(srcPagNode, dstPagNode, PagEdgeKind.Address, cs.callStmt);
+            srcNodes.push(srcPagNode.getID());
+            return;
+        }
     }
 
     /**

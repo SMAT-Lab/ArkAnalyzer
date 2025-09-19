@@ -46,3 +46,10 @@ export const LEXICAL_ENV_NAME_PREFIX = TEMP_LOCAL_PREFIX + 'closures';
 
 // ArkTS version
 export const ARKTS_STATIC_MARK = 'use static';
+
+// Concurrent const
+export const MAKEOBSERVED = 'makeObserved';
+export const CONSTRUCTORFUCNNAME = 'constructor';
+export const POSTMESSAGEFUNCNAME = 'postMessage';
+export const POSTMESSAGEWITHSHAREDSENDABLEFUNCNAME = 'postMessageWithSharedSendable';
+export const ONMESSAGEFUNCNAME = 'onmessage';

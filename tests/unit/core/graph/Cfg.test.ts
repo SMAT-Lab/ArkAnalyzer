@@ -62,6 +62,9 @@ import {
     MIX_OF_STATEMENTS_EXPECT_CASE3,
     MIX_OF_STATEMENTS_EXPECT_CASE4,
 } from '../../../resources/cfg/mixOfStatements/MixOfStatementsExpect';
+import {
+    TRY_CATCH_EXPECT_CASE1
+} from '../../../resources/cfg/tryCatch/TryCatchExpect';
 
 describe('CfgTest', () => {
     it('case1: patching interface', () => {
@@ -183,6 +186,11 @@ describe('CfgTest', () => {
         testBlocks(scene, 'MixOfStatementsSample.ts', 'case2', MIX_OF_STATEMENTS_EXPECT_CASE2.blocks);
         testBlocks(scene, 'MixOfStatementsSample.ts', 'case3', MIX_OF_STATEMENTS_EXPECT_CASE3.blocks);
         testBlocks(scene, 'MixOfStatementsSample.ts', 'case4', MIX_OF_STATEMENTS_EXPECT_CASE4.blocks);
+    });
+
+    it('case6: try catch statement', () => {
+        const scene = buildScene('tryCatch');
+        testBlocks(scene, 'TryCatchSample.ts', 'case1', TRY_CATCH_EXPECT_CASE1.blocks);
     });
 });
 

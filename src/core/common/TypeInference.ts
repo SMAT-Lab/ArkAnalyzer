@@ -249,6 +249,10 @@ export class TypeInference {
             return;
         }
         const cfg = body.getCfg();
+        if (!cfg) {
+            logger.warn('empty cfg');
+            return;
+        }
         for (const block of cfg.getBlocks()) {
             for (const stmt of block.getStmts()) {
                 TypeInference.inferSimpleTypeInStmt(stmt);
