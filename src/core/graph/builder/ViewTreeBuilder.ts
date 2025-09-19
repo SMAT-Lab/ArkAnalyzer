@@ -27,11 +27,12 @@ import {
 import { Local } from '../../base/Local';
 import { ArkArrayRef, ArkInstanceFieldRef, ArkThisRef } from '../../base/Ref';
 import { ArkAssignStmt, ArkInvokeStmt, Stmt } from '../../base/Stmt';
-import { ClassType, FunctionType, Type } from '../../base/Type';
+import { BooleanType, ClassType, FunctionType, Type } from '../../base/Type';
 import { Value } from '../../base/Value';
 import {
     BUILDER_DECORATOR,
     BUILDER_PARAM_DECORATOR,
+    COMPONENT_BEHAVIOR,
     COMPONENT_BRANCH_FUNCTION,
     COMPONENT_CREATE_FUNCTION,
     COMPONENT_CUSTOMVIEW,
@@ -316,7 +317,11 @@ class ViewTreeNodeImpl implements ViewTreeNode {
         instance.type = ViewTreeNodeType.BuilderParam;
         return instance;
     }
-
+    public static createBehaviorNode(): ViewTreeNodeImpl {
+        let instance = new ViewTreeNodeImpl(COMPONENT_BEHAVIOR);
+        instance.type = ViewTreeNodeType.SystemComponent; // to check
+        return instance;
+    }
     public changeBuilderParam2BuilderNode(builder: ArkMethod): void {
         this.name = BUILDER_DECORATOR;
         this.type = ViewTreeNodeType.Builder;
@@ -362,14 +367,14 @@ class ViewTreeNodeImpl implements ViewTreeNode {
         return newNode;
     }
 
-    public addStmt(tree: ViewTreeImpl, stmt: Stmt): void {
-        this.parseAttributes(stmt);
+    public addStmt(local2Node: Map<Local, ViewTreeNodeImpl>, tree: ViewTreeImpl, stmt: Stmt): void {
+        this.parseAttributes(local2Node, tree, stmt);
         if (this.name !== COMPONENT_FOR_EACH && this.name !== COMPONENT_LAZY_FOR_EACH) {
             this.parseStateValues(tree, stmt);
         }
     }
 
-    private parseAttributes(stmt: Stmt): void {
+    private parseAttributes(local2Node: Map<Local, ViewTreeNodeImpl>, tree: ViewTreeImpl, stmt: Stmt): void {
         let expr: AbstractInvokeExpr | undefined;
         if (stmt instanceof ArkAssignStmt) {
             let op = stmt.getRightOp();
@@ -395,6 +400,24 @@ class ViewTreeNodeImpl implements ViewTreeNode {
                 } else if (arg instanceof Constant) {
                     relationValues.push(arg);
                 }
+            }
+
+            let builderNode: ViewTreeNodeImpl | undefined;
+            if (tree.COMPONENT_BEHAVIOR_PARSERS.has(key) && expr instanceof ArkInstanceInvokeExpr) {
+                let parseFn = tree.COMPONENT_BEHAVIOR_PARSERS.get(key);
+                if (parseFn) {
+                    builderNode = parseFn(local2Node, stmt, expr);
+                }
+            }
+            if (builderNode) {
+                // create a virtual node name 'Behavior' to hold the behaviorNode
+                let behaviorNode = ViewTreeNodeImpl.createBehaviorNode();
+                behaviorNode.attributes.set(key, [stmt, relationValues]);
+                behaviorNode.parseStateValues(tree, stmt);
+                behaviorNode.children.push(builderNode);
+                builderNode.parent = behaviorNode;
+                this.children.push(behaviorNode);
+                behaviorNode.parent = this;
             }
             this.attributes.set(key, [stmt, relationValues]);
         }
@@ -716,11 +739,10 @@ export class ViewTreeImpl extends TreeNodeStack implements ViewTree {
 
         return method;
     }
-
     /**
      * @internal
      */
-    private addBuilderNode(method: ArkMethod): ViewTreeNodeImpl {
+    private addBuilderNode(method: ArkMethod, shouldPush: boolean = true): ViewTreeNodeImpl {
         let builderViewTree = method.getViewTree();
         if (!builderViewTree || !builderViewTree.getRoot()) {
             logger.error(`ViewTree->addBuilderNode ${method.getSignature().toString()} build viewtree fail.`);
@@ -728,13 +750,17 @@ export class ViewTreeImpl extends TreeNodeStack implements ViewTree {
             let node = ViewTreeNodeImpl.createBuilderNode();
             node.signature = method.getSignature();
             node.classSignature = node.signature;
-            this.push(node);
-            this.pop();
+            if (shouldPush) {
+                this.push(node);
+                this.pop();
+            }
             return node;
         }
 
         let root = builderViewTree.getRoot() as ViewTreeNodeImpl;
-        this.push(root);
+        if (shouldPush) {
+            this.push(root);
+        }
         if (method.getDeclaringArkClass() === this.render.getDeclaringArkClass()) {
             for (const [field, nodes] of builderViewTree.getStateValues()) {
                 for (const node of nodes) {
@@ -742,7 +768,9 @@ export class ViewTreeImpl extends TreeNodeStack implements ViewTree {
                 }
             }
         }
-        this.pop();
+        if (shouldPush) {
+            this.pop();
+        }
         return root;
     }
 
@@ -1021,33 +1049,56 @@ export class ViewTreeImpl extends TreeNodeStack implements ViewTree {
         return this.addSystemComponentNode(COMPONENT_IF_BRANCH);
     }
 
-    private COMPONENT_CREATE_PARSERS: Map<string, (name: string, stmt: Stmt, expr: AbstractInvokeExpr) => ViewTreeNodeImpl | undefined> = new Map([
-        ['ForEach.create', this.forEachCreationParser.bind(this)],
-        ['LazyForEach.create', this.forEachCreationParser.bind(this)],
-        ['Repeat.create', this.repeatCreationParser.bind(this)],
-        ['View.create', this.viewComponentCreationParser.bind(this)],
-        ['If.branch', this.ifBranchCreationParser.bind(this)],
-        ['WaterFlow.create', this.waterFlowCreationParser.bind(this)],
-    ]);
-
-    private componentCreateParse(componentName: string, methodName: string, stmt: Stmt, expr: ArkStaticInvokeExpr): ViewTreeNodeImpl | undefined {
+    private COMPONENT_CREATE_PARSERS:
+        Map<string, (name: string, stmt: Stmt, expr: AbstractInvokeExpr) => ViewTreeNodeImpl | undefined
+        > = new Map([
+            ['ForEach.create', this.forEachCreationParser.bind(this)],
+            ['LazyForEach.create', this.forEachCreationParser.bind(this)],
+            ['Repeat.create', this.repeatCreationParser.bind(this)],
+            ['View.create', this.viewComponentCreationParser.bind(this)],
+            ['If.branch', this.ifBranchCreationParser.bind(this)],
+            ['WaterFlow.create', this.waterFlowCreationParser.bind(this)],
+        ]);
+    public COMPONENT_BEHAVIOR_PARSERS:
+        Map<string, (local2Node: Map<Local, ViewTreeNodeImpl>, stmt: Stmt, expr: ArkInstanceInvokeExpr) => ViewTreeNodeImpl | undefined
+        > = new Map([
+            ['tabBar', this.tabBarComponentParser.bind(this)],
+            ['navDestination', this.navDestinationComponentParser.bind(this)],
+            ['bindContextMenu', this.bindContextMenuComponentParser.bind(this)],
+            ['bindMenu', this.bindContextMenuComponentParser.bind(this)],
+            ['bindContentCover', this.bindContentCoverComponentParser.bind(this)],
+            ['bindSheet', this.bindContentCoverComponentParser.bind(this)],
+            ['bindPopup', this.bindPopupComponentParser.bind(this)],
+        ]);
+    private componentCreateParse(
+        local2Node: Map<Local, ViewTreeNodeImpl>,
+        componentName: string,
+        methodName: string,
+        stmt: Stmt,
+        expr: ArkStaticInvokeExpr
+    ): ViewTreeNodeImpl | undefined {
         let parserFn = this.COMPONENT_CREATE_PARSERS.get(`${componentName}.${methodName}`);
         if (parserFn) {
             let node = parserFn(componentName, stmt, expr);
-            node?.addStmt(this, stmt);
+            node?.addStmt(local2Node, this, stmt);
             return node;
         }
         this.popAutomicComponent(componentName);
         let node = this.addSystemComponentNode(componentName);
-        node.addStmt(this, stmt);
+        node.addStmt(local2Node, this, stmt);
         return node;
     }
 
-    private parseStaticInvokeExpr(local2Node: Map<Local, ViewTreeNode>, stmt: Stmt, expr: ArkStaticInvokeExpr): ViewTreeNodeImpl | undefined {
+    private parseStaticInvokeExpr(
+        local2Node: Map<Local, ViewTreeNodeImpl>,
+        stmt: Stmt, expr: ArkStaticInvokeExpr,
+        shouldPush: boolean = true
+    )
+        : ViewTreeNodeImpl | undefined {
         let methodSignature = expr.getMethodSignature();
         let method = this.findMethod(methodSignature);
         if (method?.hasBuilderDecorator()) {
-            let node = this.addBuilderNode(method);
+            let node = this.addBuilderNode(method, shouldPush);
             node.parseStateValues(this, stmt);
             return node;
         }
@@ -1056,12 +1107,12 @@ export class ViewTreeImpl extends TreeNodeStack implements ViewTree {
         let methodName = methodSignature.getMethodSubSignature().getMethodName();
 
         if (this.isCreateFunc(methodName)) {
-            return this.componentCreateParse(name, methodName, stmt, expr);
+            return this.componentCreateParse(local2Node, name, methodName, stmt, expr);
         }
 
         let currentNode = this.top();
         if (name === currentNode?.name) {
-            currentNode.addStmt(this, stmt);
+            currentNode.addStmt(local2Node, this, stmt);
             if (methodName === COMPONENT_POP_FUNCTION) {
                 this.pop();
             }
@@ -1079,7 +1130,11 @@ export class ViewTreeImpl extends TreeNodeStack implements ViewTree {
      * @param local2Node
      * @param expr
      */
-    private parseInstanceInvokeExpr(local2Node: Map<Local, ViewTreeNodeImpl>, stmt: Stmt, expr: ArkInstanceInvokeExpr): ViewTreeNodeImpl | undefined {
+    private parseInstanceInvokeExpr(
+        local2Node: Map<Local, ViewTreeNodeImpl>,
+        stmt: Stmt, expr: ArkInstanceInvokeExpr,
+        shouldPush: boolean = true
+    ): ViewTreeNodeImpl | undefined {
         let temp = expr.getBase();
         if (local2Node.has(temp)) {
             let component = local2Node.get(temp);
@@ -1092,9 +1147,8 @@ export class ViewTreeImpl extends TreeNodeStack implements ViewTree {
                 }
                 this.pop();
             } else {
-                component?.addStmt(this, stmt);
+                component?.addStmt(local2Node, this, stmt);
             }
-
             return component;
         }
 
@@ -1114,13 +1168,17 @@ export class ViewTreeImpl extends TreeNodeStack implements ViewTree {
 
         let method = this.findMethod(expr.getMethodSignature());
         if (name === 'this' && method?.hasBuilderDecorator()) {
-            return this.addBuilderNode(method);
+            return this.addBuilderNode(method, shouldPush);
         }
-
         return undefined;
     }
 
-    private parsePtrInvokeExpr(local2Node: Map<Local, ViewTreeNodeImpl>, stmt: Stmt, expr: ArkPtrInvokeExpr): ViewTreeNodeImpl | undefined {
+    private parsePtrInvokeExpr(
+        local2Node: Map<Local, ViewTreeNodeImpl>,
+        stmt: Stmt,
+        expr: ArkPtrInvokeExpr,
+        shouldPush: boolean = true
+    ): ViewTreeNodeImpl | undefined {
         let temp = expr.getFuncPtrLocal();
         if (temp instanceof Local && local2Node.has(temp)) {
             let component = local2Node.get(temp);
@@ -1133,7 +1191,7 @@ export class ViewTreeImpl extends TreeNodeStack implements ViewTree {
                 }
                 this.pop();
             } else {
-                component?.addStmt(this, stmt);
+                component?.addStmt(local2Node, this, stmt);
             }
 
             return component;
@@ -1154,7 +1212,7 @@ export class ViewTreeImpl extends TreeNodeStack implements ViewTree {
 
             let method = this.findMethod(expr.getMethodSignature());
             if (name === 'this' && method?.hasBuilderDecorator()) {
-                return this.addBuilderNode(method);
+                return this.addBuilderNode(method, shouldPush);
             }
         }
         return undefined;
@@ -1174,21 +1232,20 @@ export class ViewTreeImpl extends TreeNodeStack implements ViewTree {
      * @param stmt
      * @returns
      */
-    private parseAssignStmt(local2Node: Map<Local, ViewTreeNodeImpl>, stmt: ArkAssignStmt): void {
+    private parseAssignStmt(local2Node: Map<Local, ViewTreeNodeImpl>, stmt: ArkAssignStmt, shouldPush: boolean = true): void {
         let left = stmt.getLeftOp();
         let right = stmt.getRightOp();
 
         if (!(left instanceof Local)) {
             return;
         }
-
         let component: ViewTreeNodeImpl | undefined;
         if (right instanceof ArkStaticInvokeExpr) {
-            component = this.parseStaticInvokeExpr(local2Node, stmt, right);
+            component = this.parseStaticInvokeExpr(local2Node, stmt, right, shouldPush);
         } else if (right instanceof ArkInstanceInvokeExpr) {
-            component = this.parseInstanceInvokeExpr(local2Node, stmt, right);
+            component = this.parseInstanceInvokeExpr(local2Node, stmt, right, shouldPush);
         } else if (right instanceof ArkPtrInvokeExpr) {
-            component = this.parsePtrInvokeExpr(local2Node, stmt, right);
+            component = this.parsePtrInvokeExpr(local2Node, stmt, right, shouldPush);
         }
         if (component) {
             local2Node.set(left, component);
@@ -1216,14 +1273,159 @@ export class ViewTreeImpl extends TreeNodeStack implements ViewTree {
                 if (!(stmt instanceof ArkInvokeStmt || stmt instanceof ArkAssignStmt)) {
                     continue;
                 }
-
                 if (stmt instanceof ArkAssignStmt) {
-                    this.parseAssignStmt(local2Node, stmt);
+                    this.parseAssignStmt(local2Node, stmt, false);
                 } else if (stmt instanceof ArkInvokeStmt) {
                     this.parseInvokeStmt(local2Node, stmt);
                 }
             }
         }
+    }
+    /**
+     * Parses the 'tabBar' behavior binding.
+     * Only supports extracting the argument when it is of type CustomBuilder.
+     * Other argument types (e.g. string, Resource, TabBarOptions, SubTabBarStyle, BottomTabBarStyle, ComponentContent) are not handled.
+     *
+     * Supported signatures:
+     *   - tabBar(options: string | Resource | CustomBuilder | TabBarOptions)
+     *   - tabBar(value: SubTabBarStyle | BottomTabBarStyle) // API 9+
+     *   - tabBar(content: ComponentContent | SubTabBarStyle | BottomTabBarStyle | string | Resource | CustomBuilder | TabBarOptions) // API 18+
+     */
+    private tabBarComponentParser(local2Node: Map<Local, ViewTreeNodeImpl>, stmt: Stmt, expr: ArkInstanceInvokeExpr): ViewTreeNodeImpl | undefined {
+        // Only the first argument (index 0) is analyzed for CustomBuilder type
+        return this.parseBehaviorComponent(local2Node, expr, 0);
+    }
+
+    /**
+     * Parses the 'navDestination' behavior binding.
+     * Supports extracting the 'builder' argument when it is of FunctionType.
+     *
+     * navDestination(builder: (name: string, param: unknown) => void)
+     */
+    private navDestinationComponentParser(local2Node: Map<Local, ViewTreeNodeImpl>, stmt: Stmt, expr: ArkInstanceInvokeExpr): ViewTreeNodeImpl | undefined {
+        const args = expr.getArgs();
+        const arg = args[0];
+        const type = arg.getType();
+        if (!(type instanceof FunctionType)) {
+            return undefined;
+        }
+        return this.parseBehaviorComponent(local2Node, expr, 0);
+    }
+    /**
+     * Parses the 'bindContextMenu' behavior binding for API 8 and API 12.
+     * Only supports extracting the 'content' argument when it is of type CustomBuilder.
+     * Other argument types (e.g. ResponseType, ContextMenuOptions) are not handled.
+     *
+     * Supported signatures:
+     *   - bindContextMenu(content: CustomBuilder, responseType: ResponseType, options?: ContextMenuOptions): T   // API 8
+     *   - bindContextMenu(isShown: boolean, content: CustomBuilder, options?: ContextMenuOptions): T             // API 12
+     */
+    private bindContextMenuComponentParser(
+        local2Node: Map<Local, ViewTreeNodeImpl>,
+        stmt: Stmt,
+        expr: ArkInstanceInvokeExpr
+    ): ViewTreeNodeImpl | undefined {
+        const args = expr.getArgs();
+        const firstType = args[0].getType();
+        const argIndex = firstType instanceof BooleanType ? 1 : 0;
+        return this.parseBehaviorComponent(local2Node, expr, argIndex);
+    }
+    /**
+     * Parses the 'bindContentCover' behavior binding.
+     * Only supports extracting the CustomBuilder argument from the second parameter.
+     * Other ContentCoverOptions properties are not handled.
+     * 
+     * bindContentCover(isShow: boolean, builder: CustomBuilder, options?: ContentCoverOptions): T
+     */
+    private bindContentCoverComponentParser(
+        local2Node: Map<Local, ViewTreeNodeImpl>,
+        stmt: Stmt,
+        expr: ArkInstanceInvokeExpr
+    ): ViewTreeNodeImpl | undefined {
+        return this.parseBehaviorComponent(local2Node, expr, 1);
+    }
+
+    /**
+     * Parses the 'bindPopup' behavior binding.
+     * Only supports extracting the 'builder' field from CustomPopupOptions (custom popup content).
+     * Other PopupOptions properties are not supported yet.
+     *
+     * bindPopup(show: boolean, popup: PopupOptions | CustomPopupOptions): T
+     */
+    private bindPopupComponentParser(
+        local2Node: Map<Local, ViewTreeNodeImpl>,
+        stmt: Stmt,
+        expr: ArkInstanceInvokeExpr
+    ): ViewTreeNodeImpl | undefined {
+        return this.parseBehaviorComponent(local2Node, expr, 1, 'builder');
+    }
+
+    private parseBehaviorComponent(
+        local2Node: Map<Local, ViewTreeNodeImpl>,
+        expr: ArkInstanceInvokeExpr,
+        argIndex: number,
+        builderFieldName?: string
+    ): ViewTreeNodeImpl | undefined {
+        const args = expr.getArgs();
+        const arg = args[argIndex];
+        const local = arg as Local;
+        const type = arg.getType();
+
+        // Prefer to return existing node
+        if (local2Node.has(local)) {
+            const node = local2Node.get(local);
+            return node;
+        }
+
+        // Normal ‘Builder’ parsing
+        if (!builderFieldName) {
+            if (type instanceof FunctionType) {
+                const method = this.findMethod(type.getMethodSignature());
+                if (method && method.hasBuilderDecorator()) {
+                    const builderNode = this.addBuilderNode(method, false);
+                    local2Node.set(local, builderNode);
+                    return builderNode;
+                }
+            }
+        } else {
+            // Complex builder field parsing (e.g. 'builder' field in ‘bindPopup’)
+            if (type instanceof ClassType && builderFieldName) {
+                return this.parseBuilderFieldNode(local, type, builderFieldName, local2Node);
+            }
+        }
+        return undefined;
+    }
+
+    private parseBuilderFieldNode(
+        local: Local,
+        type: ClassType,
+        builderFieldName: string,
+        local2Node: Map<Local, ViewTreeNodeImpl>
+    ): ViewTreeNodeImpl | undefined {
+        const cls = this.findClass(type.getClassSignature());
+        if (!cls) {
+            return undefined;
+        }
+        const field = cls.getFieldWithName(builderFieldName);
+        if (!field) {
+            return undefined;
+        }
+        const map = parseObjectLiteral(cls, this.getDeclaringArkClass().getDeclaringArkFile().getScene());
+        const builderValue = map.get(field);
+        if (!(builderValue instanceof ArkInstanceFieldRef)) {
+            return undefined;
+        }
+        const builder_type = builderValue.getType();
+        if (!(builder_type instanceof FunctionType)) {
+            return undefined;
+        }
+        const method = this.findMethod(builder_type.getMethodSignature());
+        if (method && method.hasBuilderDecorator()) {
+            const builderNode = this.addBuilderNode(method, false);
+            local2Node.set(local, builderNode);
+            return builderNode;
+        }
+        return undefined;
     }
 }
 

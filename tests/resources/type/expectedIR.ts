@@ -955,17 +955,17 @@ class BigIntClass {
   fieldB: number&bigint
   static fieldC: bigint|number
 
-  %statInit(): void {
-    label0:
-      this = this: @type/bigIntType.ts: BigIntClass
-      return
-  }
-
   constructor(): @type/bigIntType.ts: BigIntClass {
     label0:
       this = this: @type/bigIntType.ts: BigIntClass
       instanceinvoke this.<@type/bigIntType.ts: BigIntClass.%instInit()>()
       return this
+  }
+
+  static %statInit(): void {
+    label0:
+      this = this: @type/bigIntType.ts: BigIntClass
+      return
   }
 
   %instInit(): void {
@@ -1048,17 +1048,17 @@ export const SourceIROfObjectType = `class %dflt {
 class ClassA {
   fieldA: @ES2015/BuiltinClass: Object
 
-  %statInit(): void {
-    label0:
-      this = this: @type/objectType.ts: ClassA
-      return
-  }
-
   constructor(): @type/objectType.ts: ClassA {
     label0:
       this = this: @type/objectType.ts: ClassA
       instanceinvoke this.<@type/objectType.ts: ClassA.%instInit()>()
       return this
+  }
+
+  static %statInit(): void {
+    label0:
+      this = this: @type/objectType.ts: ClassA
+      return
   }
 
   %instInit(): void {

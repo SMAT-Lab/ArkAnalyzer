@@ -39,7 +39,10 @@ import {
     ClassEConstructorIR,
     ClassFConstructorIR,
     ClassGConstructorIR,
-    ClassHConstructorIR, EnumClass2,
+    ClassHConstructorIR,
+    EnumClass2,
+    EnumClass3,
+    EnumClass4,
 } from '../../../resources/model/class/ClassExpect';
 import { ArkIRClassPrinter } from '../../../../src/save/arkir/ArkIRClassPrinter';
 import { ArkIRMethodPrinter } from '../../../../src/save/arkir/ArkIRMethodPrinter';
@@ -224,6 +227,26 @@ describe('ArkClass with Other Category Test', () => {
         let printer = new ArkIRClassPrinter(arkClass!);
         let ir = printer.dump();
         assert.equal(ir, EnumClass2);
+        checkAllMethodsStmtsCfg(arkClass!);
+    });
+
+    it('enum class 3', async () => {
+        const arkClass = arkFile?.getClassWithName('TestEnum3');
+        assert.isDefined(arkClass);
+        assert.isNotNull(arkClass);
+        let printer = new ArkIRClassPrinter(arkClass!);
+        let ir = printer.dump();
+        assert.equal(ir, EnumClass3);
+        checkAllMethodsStmtsCfg(arkClass!);
+    });
+
+    it('enum class 4', async () => {
+        const arkClass = arkFile?.getClassWithName('TestEnum4');
+        assert.isDefined(arkClass);
+        assert.isNotNull(arkClass);
+        let printer = new ArkIRClassPrinter(arkClass!);
+        let ir = printer.dump();
+        assert.equal(ir, EnumClass4);
         checkAllMethodsStmtsCfg(arkClass!);
     });
 

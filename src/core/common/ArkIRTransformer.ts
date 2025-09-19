@@ -862,6 +862,13 @@ export class ArkIRTransformer {
 
     public generateAssignStmtForValue(value: Value, valueOriginalPositions: FullPosition[]): ValueAndStmts {
         const leftOp = this.arkValueTransformer.generateTempLocal(value.getType());
+        if (valueOriginalPositions.length === 0 ) {
+            return {
+                value: leftOp,
+                valueOriginalPositions: [],
+                stmts: []
+            };
+        }
         const leftOpPosition = valueOriginalPositions[0];
         const assignStmt = new ArkAssignStmt(leftOp, value);
         assignStmt.setOperandOriginalPositions([leftOpPosition, ...valueOriginalPositions]);

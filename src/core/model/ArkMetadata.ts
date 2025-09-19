@@ -18,9 +18,10 @@ import { FullPosition } from '../base/Position';
 export enum ArkMetadataKind {
     LEADING_COMMENTS,
     TRAILING_COMMENTS,
+    ENUM_INIT_TYPE_USER
 }
 
-export interface ArkMetadataType {}
+export interface ArkMetadataType { }
 
 /**
  * ArkMetadata
@@ -61,5 +62,17 @@ export class CommentsMetadata implements ArkMetadataType {
 
     public getComments(): CommentItem[] {
         return this.comments;
+    }
+}
+
+export class EnumInitTypeUserMetadata implements ArkMetadataType {
+    private originTypeUser: boolean;
+
+    constructor(originTypeUser: boolean) {
+        this.originTypeUser = originTypeUser;
+    }
+
+    public isUserDefined(): boolean {
+        return this.originTypeUser;
     }
 }

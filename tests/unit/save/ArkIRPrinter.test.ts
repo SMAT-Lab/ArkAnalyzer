@@ -119,12 +119,15 @@ const CASE1_EXPECT = `class %dflt {
       instanceinvoke logger.<@%unk/%unk: .info()>(%16)
       %17 = 'Department name: ' + k
       instanceinvoke logger.<@%unk/%unk: .info()>(%17)
-      if k === 1 goto label14 label11
-      k = k + 1
+      if k === 1 goto label14 label18
 
     label14:
       i = i + 1
       goto label1
+
+    label18:
+      k = k + 1
+      goto label11
 
     label4:
       %7 = sampleData[i]
@@ -482,7 +485,7 @@ class Person {
   public age: number
   growOld: @save/basic.ts: Person.%AM0$%instInit()
 
-  %statInit(): void {
+  static %statInit(): void {
     label0:
       this = this: @save/basic.ts: Person
       return
@@ -541,17 +544,17 @@ class Door {
       return
   }
 
-  %statInit(): void {
-    label0:
-      this = this: @save/basic.ts: Door
-      return
-  }
-
   constructor(): @save/basic.ts: Door {
     label0:
       this = this: @save/basic.ts: Door
       instanceinvoke this.<@save/basic.ts: Door.%instInit()>()
       return this
+  }
+
+  static %statInit(): void {
+    label0:
+      this = this: @save/basic.ts: Door
+      return
   }
 }
 class Adder {
@@ -559,7 +562,7 @@ class Adder {
   // This function is now safe to pass around
   add: @save/basic.ts: Adder.%AM0$%instInit(string)
 
-  %statInit(): void {
+  static %statInit(): void {
     label0:
       this = this: @save/basic.ts: Adder
       return
@@ -596,12 +599,6 @@ class ExtendedAdder extends Adder {
   // Now create our override
   add: @save/basic.ts: ExtendedAdder.%AM0$%instInit(string)
 
-  %statInit(): void {
-    label0:
-      this = this: @save/basic.ts: ExtendedAdder
-      return
-  }
-
   constructor(a: number): @save/basic.ts: ExtendedAdder {
     label0:
       a = parameter0: number
@@ -609,6 +606,12 @@ class ExtendedAdder extends Adder {
       instanceinvoke this.<@save/basic.ts: Adder.constructor(number)>(a)
       instanceinvoke this.<@save/basic.ts: ExtendedAdder.%instInit()>()
       return this
+  }
+
+  static %statInit(): void {
+    label0:
+      this = this: @save/basic.ts: ExtendedAdder
+      return
   }
 
   %instInit(): void {
@@ -660,7 +663,7 @@ export class SecurityDoor extends Door implements Alarm, Alarm2 {
   z: @save/basic.ts: Person
   public Members: @save/basic.ts: %AC1$SecurityDoor.%instInit
 
-  %statInit(): void {
+  static %statInit(): void {
     label0:
       this = this: @save/basic.ts: SecurityDoor
       return
@@ -719,17 +722,17 @@ class %AC1$SecurityDoor.%instInit {
       return
   }
 
-  %statInit(): void {
-    label0:
-      this = this: @save/basic.ts: %AC1$SecurityDoor.%instInit
-      return
-  }
-
   constructor(): @save/basic.ts: %AC1$SecurityDoor.%instInit {
     label0:
       this = this: @save/basic.ts: %AC1$SecurityDoor.%instInit
       instanceinvoke this.<@save/basic.ts: %AC1$SecurityDoor.%instInit.%instInit()>()
       return this
+  }
+
+  static %statInit(): void {
+    label0:
+      this = this: @save/basic.ts: %AC1$SecurityDoor.%instInit
+      return
   }
 }
 class %AC8$%dflt.%dflt<Type> {
@@ -741,7 +744,7 @@ class %AC8$%dflt.%dflt<Type> {
       return
   }
 
-  %statInit(): void {
+  static %statInit(): void {
     label0:
       this = this: @save/basic.ts: %AC8$%dflt.%dflt
       return
@@ -765,7 +768,7 @@ abstract class Animal {
       return
   }
 
-  %statInit(): void {
+  static %statInit(): void {
     label0:
       this = this: @save/basic.ts: Animal
       return

@@ -309,7 +309,8 @@ export class TrapBuilder {
         }
         blockAfterFinally.getPredecessors().splice(dummyFinallyIdxInPredecessors, 1);
         for (const tryTailBlock of tryTailBlocks) {
-            tryTailBlock.setSuccessorBlock(0, blockAfterFinally);
+            const finallyIndex = tryTailBlock.getSuccessors().findIndex(succ => succ === finallyBlock);
+            tryTailBlock.setSuccessorBlock(finallyIndex, blockAfterFinally);
             blockAfterFinally.addPredecessorBlock(tryTailBlock);
         }
         this.basicBlockSet.delete(finallyBlock);

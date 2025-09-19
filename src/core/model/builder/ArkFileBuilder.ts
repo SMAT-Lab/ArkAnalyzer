@@ -72,7 +72,12 @@ export function buildArkFileFromFile(absoluteFilePath: string, projectDir: strin
     const fileSignature = new FileSignature(projectName, path.relative(projectDir, absoluteFilePath));
     arkFile.setFileSignature(fileSignature);
 
-    arkFile.setCode(fs.readFileSync(arkFile.getFilePath(), 'utf8'));
+    try {
+        arkFile.setCode(fs.readFileSync(arkFile.getFilePath(), 'utf8'));
+    } catch (error) {
+        logger.error('Failed to read file: ${error}');
+        return;
+    }
     const sourceFile = ts.createSourceFile(arkFile.getName(), arkFile.getCode(), ts.ScriptTarget.Latest, true, undefined, ETS_COMPILER_OPTIONS);
     // save ast source file, if enabled ast and file is from the project (not from sdk)
     if (arkFile.getScene().getOptions().enableAST && arkFile.getScene().getProjectName() === arkFile.getProjectName()) {

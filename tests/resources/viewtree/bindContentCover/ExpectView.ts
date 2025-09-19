@@ -1,0 +1,78 @@
+/*
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+export const myBuilder2_Expect_ViewTree = {
+    name: 'Builder',
+    children: [
+        {
+            name: 'Column',
+            children: [
+                {
+                    name: 'Button',
+                    stateValues: ['isShow2'],
+                    children: []
+                }
+            ]
+        }
+    ]
+};
+export const myBuilder_Expect_ViewTree = {
+    name: 'Builder',
+    children: [
+        {
+            name: 'Column',
+            stateValues: ['isScale2'],
+            children: [
+                {
+                    name: 'Button',
+                    stateValues: ['isShow2'],
+                    children: [
+                        {
+                            name: 'Behavior',
+                            stateValues: ['isShow2'],
+                            children: [
+                                myBuilder2_Expect_ViewTree
+                            ]
+                        }
+                    ]
+                },
+                {
+                    name: 'Button',
+                    stateValues: ['isShow'],
+                    children: []
+                }
+            ]
+        }
+    ]
+};
+
+export const bindContentCoverTest_Expect_ViewTree = {
+    name: 'Column',
+    stateValues: ['isScale1'],
+    children: [
+        {
+            name: 'Button',
+            stateValues: ['isShow', 'isScale2', 'isShow2'],
+            children: [
+                {
+                    name: 'Behavior',
+                    stateValues: ['isShow', 'isScale2', 'isShow2'],
+                    children: [
+                        myBuilder_Expect_ViewTree
+                    ]
+                }
+            ]
+        }
+    ]
+};

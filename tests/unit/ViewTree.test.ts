@@ -59,6 +59,24 @@ import {
     Case2_BuilderParamTest_Expect_ViewTree,
     Case3_BuilderParamTest_Expect_ViewTree,
 } from '../resources/viewtree/builderparam/ExpectView';
+import {
+    TabbarTest_Expect_ViewTree
+} from '../resources/viewtree/tabbar/ExpectView';
+import {
+    bindContextMenuTest_Expect_ViewTree
+} from '../resources/viewtree/bindContextMenu/ExpectView';
+import {
+    bindMenuTest_Expect_ViewTree
+} from '../resources/viewtree/bindMenu/ExpectView';
+import {
+    navDestinationTest_Expect_ViewTree
+} from '../resources/viewtree/navDestination/ExpectView';
+import {
+    bindContentCoverTest_Expect_ViewTree
+} from '../resources/viewtree/bindContentCover/ExpectView';
+import {
+    bindPopupTest_Expect_ViewTree
+} from '../resources/viewtree/bindPopup/ExpectView';
 import { Project_Page_Expect_ViewTree } from '../resources/viewtree/project/ExpectView';
 import { ViewTreePrinter } from '../../src';
 import { CryptoUtils } from '../../src/utils/crypto_utils';
@@ -413,5 +431,82 @@ describe('project Test', () => {
         }
         let printer = new ViewTreePrinter(vt);
         expect(CryptoUtils.sha256(printer.dump())).eq('gA9b_8g9pqxGE0JjQkK19eC-Rq5LANgG6DuDtq_X8Fo');
+    });
+});
+
+describe('tabbar Test', () => {
+    let config: SceneConfig = new SceneConfig();
+    config.getSdksObj().push({ moduleName: '', name: 'etsSdk', path: path.join(__dirname, '../resources/Sdk') });
+    config.buildFromProjectDir(path.join(__dirname, '../../tests/resources/viewtree/tabbar'));
+    let scene = new Scene();
+    scene.buildSceneFromProjectDir(config);
+    scene.inferTypes();
+
+    it('test TabsExample1', async () => {
+        testClassViewTree(scene, 'TabbarTest', TabbarTest_Expect_ViewTree);
+    });
+});
+
+describe('bindContextMenu Test', () => {
+    let config: SceneConfig = new SceneConfig();
+    config.getSdksObj().push({ moduleName: '', name: 'etsSdk', path: path.join(__dirname, '../resources/Sdk') });
+    config.buildFromProjectDir(path.join(__dirname, '../../tests/resources/viewtree/bindContextMenu'));
+    let scene = new Scene();
+    scene.buildSceneFromProjectDir(config);
+    scene.inferTypes();
+
+    it('test bindContextMenuTest', async () => {
+        testClassViewTree(scene, 'bindContextMenuTest', bindContextMenuTest_Expect_ViewTree);
+    });
+});
+
+describe('bindtMenu Test', () => {
+    let config: SceneConfig = new SceneConfig();
+    config.getSdksObj().push({ moduleName: '', name: 'etsSdk', path: path.join(__dirname, '../resources/Sdk') });
+    config.buildFromProjectDir(path.join(__dirname, '../../tests/resources/viewtree/bindMenu'));
+    let scene = new Scene();
+    scene.buildSceneFromProjectDir(config);
+    scene.inferTypes();
+
+    it('test bindMenuTest', async () => {
+        testClassViewTree(scene, 'bindMenuTest', bindMenuTest_Expect_ViewTree);
+    });
+});
+
+describe('navDestion Test', () => {
+    let config: SceneConfig = new SceneConfig();
+    config.getSdksObj().push({ moduleName: '', name: 'etsSdk', path: path.join(__dirname, '../resources/Sdk') });
+    config.buildFromProjectDir(path.join(__dirname, '../../tests/resources/viewtree/navDestination'));
+    let scene = new Scene();
+    scene.buildSceneFromProjectDir(config);
+    scene.inferTypes();
+
+    it('test navDestinationTest', async () => {
+        testClassViewTree(scene, 'navDestinationTest', navDestinationTest_Expect_ViewTree);
+    });
+});
+describe('bindContentCover Test', () => {
+    let config: SceneConfig = new SceneConfig();
+    config.getSdksObj().push({ moduleName: '', name: 'etsSdk', path: path.join(__dirname, '../resources/Sdk') });
+    config.buildFromProjectDir(path.join(__dirname, '../../tests/resources/viewtree/bindContentCover'));
+    let scene = new Scene();
+    scene.buildSceneFromProjectDir(config);
+    scene.inferTypes();
+
+    it('test bindContentCover', async () => {
+        testClassViewTree(scene, 'bindContentCoverTest', bindContentCoverTest_Expect_ViewTree);
+    });
+});
+
+describe('bindPopup Test', () => {
+    let config: SceneConfig = new SceneConfig();
+    config.getSdksObj().push({ moduleName: '', name: 'etsSdk', path: path.join(__dirname, '../resources/Sdk') });
+    config.buildFromProjectDir(path.join(__dirname, '../../tests/resources/viewtree/bindPopup'));
+    let scene = new Scene();
+    scene.buildSceneFromProjectDir(config);
+    scene.inferTypes();
+
+    it('test bindContentCover', async () => {
+        testClassViewTree(scene, 'bindPopupTest', bindPopupTest_Expect_ViewTree);
     });
 });

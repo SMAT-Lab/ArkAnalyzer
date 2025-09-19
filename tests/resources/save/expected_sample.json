@@ -2130,89 +2130,6 @@
               },
               "declaringNamespace": null
             },
-            "name": "%statInit",
-            "parameters": [],
-            "returnType": {
-              "_": "VoidType"
-            }
-          },
-          "modifiers": 0,
-          "decorators": [],
-          "body": {
-            "locals": [
-              {
-                "name": "this",
-                "type": {
-                  "_": "ClassType",
-                  "signature": {
-                    "name": "Student",
-                    "declaringFile": {
-                      "projectName": "save",
-                      "fileName": "sample.ts"
-                    },
-                    "declaringNamespace": null
-                  }
-                }
-              }
-            ],
-            "cfg": {
-              "blocks": [
-                {
-                  "id": 0,
-                  "successors": [],
-                  "predecessors": [],
-                  "stmts": [
-                    {
-                      "_": "AssignStmt",
-                      "left": {
-                        "_": "Local",
-                        "name": "this",
-                        "type": {
-                          "_": "ClassType",
-                          "signature": {
-                            "name": "Student",
-                            "declaringFile": {
-                              "projectName": "save",
-                              "fileName": "sample.ts"
-                            },
-                            "declaringNamespace": null
-                          }
-                        }
-                      },
-                      "right": {
-                        "_": "ThisRef",
-                        "type": {
-                          "_": "ClassType",
-                          "signature": {
-                            "name": "Student",
-                            "declaringFile": {
-                              "projectName": "save",
-                              "fileName": "sample.ts"
-                            },
-                            "declaringNamespace": null
-                          }
-                        }
-                      }
-                    },
-                    {
-                      "_": "ReturnVoidStmt"
-                    }
-                  ]
-                }
-              ]
-            }
-          }
-        },
-        {
-          "signature": {
-            "declaringClass": {
-              "name": "Student",
-              "declaringFile": {
-                "projectName": "save",
-                "fileName": "sample.ts"
-              },
-              "declaringNamespace": null
-            },
             "name": "constructor",
             "parameters": [
               {
@@ -3264,6 +3181,89 @@
               ]
             }
           }
+        },
+        {
+          "signature": {
+            "declaringClass": {
+              "name": "Student",
+              "declaringFile": {
+                "projectName": "save",
+                "fileName": "sample.ts"
+              },
+              "declaringNamespace": null
+            },
+            "name": "%statInit",
+            "parameters": [],
+            "returnType": {
+              "_": "VoidType"
+            }
+          },
+          "modifiers": 16,
+          "decorators": [],
+          "body": {
+            "locals": [
+              {
+                "name": "this",
+                "type": {
+                  "_": "ClassType",
+                  "signature": {
+                    "name": "Student",
+                    "declaringFile": {
+                      "projectName": "save",
+                      "fileName": "sample.ts"
+                    },
+                    "declaringNamespace": null
+                  }
+                }
+              }
+            ],
+            "cfg": {
+              "blocks": [
+                {
+                  "id": 0,
+                  "successors": [],
+                  "predecessors": [],
+                  "stmts": [
+                    {
+                      "_": "AssignStmt",
+                      "left": {
+                        "_": "Local",
+                        "name": "this",
+                        "type": {
+                          "_": "ClassType",
+                          "signature": {
+                            "name": "Student",
+                            "declaringFile": {
+                              "projectName": "save",
+                              "fileName": "sample.ts"
+                            },
+                            "declaringNamespace": null
+                          }
+                        }
+                      },
+                      "right": {
+                        "_": "ThisRef",
+                        "type": {
+                          "_": "ClassType",
+                          "signature": {
+                            "name": "Student",
+                            "declaringFile": {
+                              "projectName": "save",
+                              "fileName": "sample.ts"
+                            },
+                            "declaringNamespace": null
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "_": "ReturnVoidStmt"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
         }
       ]
     },
@@ -3294,89 +3294,6 @@
               "declaringNamespace": null
             },
             "name": "%instInit",
-            "parameters": [],
-            "returnType": {
-              "_": "VoidType"
-            }
-          },
-          "modifiers": 0,
-          "decorators": [],
-          "body": {
-            "locals": [
-              {
-                "name": "this",
-                "type": {
-                  "_": "ClassType",
-                  "signature": {
-                    "name": "Shape",
-                    "declaringFile": {
-                      "projectName": "save",
-                      "fileName": "sample.ts"
-                    },
-                    "declaringNamespace": null
-                  }
-                }
-              }
-            ],
-            "cfg": {
-              "blocks": [
-                {
-                  "id": 0,
-                  "successors": [],
-                  "predecessors": [],
-                  "stmts": [
-                    {
-                      "_": "AssignStmt",
-                      "left": {
-                        "_": "Local",
-                        "name": "this",
-                        "type": {
-                          "_": "ClassType",
-                          "signature": {
-                            "name": "Shape",
-                            "declaringFile": {
-                              "projectName": "save",
-                              "fileName": "sample.ts"
-                            },
-                            "declaringNamespace": null
-                          }
-                        }
-                      },
-                      "right": {
-                        "_": "ThisRef",
-                        "type": {
-                          "_": "ClassType",
-                          "signature": {
-                            "name": "Shape",
-                            "declaringFile": {
-                              "projectName": "save",
-                              "fileName": "sample.ts"
-                            },
-                            "declaringNamespace": null
-                          }
-                        }
-                      }
-                    },
-                    {
-                      "_": "ReturnVoidStmt"
-                    }
-                  ]
-                }
-              ]
-            }
-          }
-        },
-        {
-          "signature": {
-            "declaringClass": {
-              "name": "Shape",
-              "declaringFile": {
-                "projectName": "save",
-                "fileName": "sample.ts"
-              },
-              "declaringNamespace": null
-            },
-            "name": "%statInit",
             "parameters": [],
             "returnType": {
               "_": "VoidType"
@@ -4005,6 +3922,89 @@
               ]
             }
           }
+        },
+        {
+          "signature": {
+            "declaringClass": {
+              "name": "Shape",
+              "declaringFile": {
+                "projectName": "save",
+                "fileName": "sample.ts"
+              },
+              "declaringNamespace": null
+            },
+            "name": "%statInit",
+            "parameters": [],
+            "returnType": {
+              "_": "VoidType"
+            }
+          },
+          "modifiers": 16,
+          "decorators": [],
+          "body": {
+            "locals": [
+              {
+                "name": "this",
+                "type": {
+                  "_": "ClassType",
+                  "signature": {
+                    "name": "Shape",
+                    "declaringFile": {
+                      "projectName": "save",
+                      "fileName": "sample.ts"
+                    },
+                    "declaringNamespace": null
+                  }
+                }
+              }
+            ],
+            "cfg": {
+              "blocks": [
+                {
+                  "id": 0,
+                  "successors": [],
+                  "predecessors": [],
+                  "stmts": [
+                    {
+                      "_": "AssignStmt",
+                      "left": {
+                        "_": "Local",
+                        "name": "this",
+                        "type": {
+                          "_": "ClassType",
+                          "signature": {
+                            "name": "Shape",
+                            "declaringFile": {
+                              "projectName": "save",
+                              "fileName": "sample.ts"
+                            },
+                            "declaringNamespace": null
+                          }
+                        }
+                      },
+                      "right": {
+                        "_": "ThisRef",
+                        "type": {
+                          "_": "ClassType",
+                          "signature": {
+                            "name": "Shape",
+                            "declaringFile": {
+                              "projectName": "save",
+                              "fileName": "sample.ts"
+                            },
+                            "declaringNamespace": null
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "_": "ReturnVoidStmt"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
         }
       ]
     },
@@ -4056,89 +4056,6 @@
               "declaringNamespace": null
             },
             "name": "%instInit",
-            "parameters": [],
-            "returnType": {
-              "_": "VoidType"
-            }
-          },
-          "modifiers": 0,
-          "decorators": [],
-          "body": {
-            "locals": [
-              {
-                "name": "this",
-                "type": {
-                  "_": "ClassType",
-                  "signature": {
-                    "name": "Circle",
-                    "declaringFile": {
-                      "projectName": "save",
-                      "fileName": "sample.ts"
-                    },
-                    "declaringNamespace": null
-                  }
-                }
-              }
-            ],
-            "cfg": {
-              "blocks": [
-                {
-                  "id": 0,
-                  "successors": [],
-                  "predecessors": [],
-                  "stmts": [
-                    {
-                      "_": "AssignStmt",
-                      "left": {
-                        "_": "Local",
-                        "name": "this",
-                        "type": {
-                          "_": "ClassType",
-                          "signature": {
-                            "name": "Circle",
-                            "declaringFile": {
-                              "projectName": "save",
-                              "fileName": "sample.ts"
-                            },
-                            "declaringNamespace": null
-                          }
-                        }
-                      },
-                      "right": {
-                        "_": "ThisRef",
-                        "type": {
-                          "_": "ClassType",
-                          "signature": {
-                            "name": "Circle",
-                            "declaringFile": {
-                              "projectName": "save",
-                              "fileName": "sample.ts"
-                            },
-                            "declaringNamespace": null
-                          }
-                        }
-                      }
-                    },
-                    {
-                      "_": "ReturnVoidStmt"
-                    }
-                  ]
-                }
-              ]
-            }
-          }
-        },
-        {
-          "signature": {
-            "declaringClass": {
-              "name": "Circle",
-              "declaringFile": {
-                "projectName": "save",
-                "fileName": "sample.ts"
-              },
-              "declaringNamespace": null
-            },
-            "name": "%statInit",
             "parameters": [],
             "returnType": {
               "_": "VoidType"
@@ -5022,6 +4939,89 @@
                           "_": "NumberType"
                         }
                       }
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "signature": {
+            "declaringClass": {
+              "name": "Circle",
+              "declaringFile": {
+                "projectName": "save",
+                "fileName": "sample.ts"
+              },
+              "declaringNamespace": null
+            },
+            "name": "%statInit",
+            "parameters": [],
+            "returnType": {
+              "_": "VoidType"
+            }
+          },
+          "modifiers": 16,
+          "decorators": [],
+          "body": {
+            "locals": [
+              {
+                "name": "this",
+                "type": {
+                  "_": "ClassType",
+                  "signature": {
+                    "name": "Circle",
+                    "declaringFile": {
+                      "projectName": "save",
+                      "fileName": "sample.ts"
+                    },
+                    "declaringNamespace": null
+                  }
+                }
+              }
+            ],
+            "cfg": {
+              "blocks": [
+                {
+                  "id": 0,
+                  "successors": [],
+                  "predecessors": [],
+                  "stmts": [
+                    {
+                      "_": "AssignStmt",
+                      "left": {
+                        "_": "Local",
+                        "name": "this",
+                        "type": {
+                          "_": "ClassType",
+                          "signature": {
+                            "name": "Circle",
+                            "declaringFile": {
+                              "projectName": "save",
+                              "fileName": "sample.ts"
+                            },
+                            "declaringNamespace": null
+                          }
+                        }
+                      },
+                      "right": {
+                        "_": "ThisRef",
+                        "type": {
+                          "_": "ClassType",
+                          "signature": {
+                            "name": "Circle",
+                            "declaringFile": {
+                              "projectName": "save",
+                              "fileName": "sample.ts"
+                            },
+                            "declaringNamespace": null
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "_": "ReturnVoidStmt"
                     }
                   ]
                 }

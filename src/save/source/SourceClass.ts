@@ -184,7 +184,7 @@ export class SourceClass extends SourceBase {
     }
 
     private parseFieldInitMethod(name: string): Map<string, string> {
-        let method = this.cls.getMethodWithName(name);
+        let method = this.cls.getMethodWithName(name) ?? this.cls.getStaticMethodWithName(name);
         if (!method || method?.getBody() === undefined) {
             return new Map<string, string>();
         }

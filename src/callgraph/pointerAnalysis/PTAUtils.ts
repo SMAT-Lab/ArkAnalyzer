@@ -85,7 +85,7 @@ export function getBuiltInApiType(method: MethodSignature): BuiltApiType {
     }
 
     const match = methodSigStr.match(FUNCTION_METHOD_REGEX);
-    if (match) {
+    if (match && match.length > 1) {
         const functionName = match[1];
         if (functionName in FUNCTION_METHOD_MAP) {
             return FUNCTION_METHOD_MAP[functionName];

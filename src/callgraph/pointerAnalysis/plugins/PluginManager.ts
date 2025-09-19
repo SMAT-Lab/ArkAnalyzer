@@ -25,6 +25,10 @@ import { SdkPlugin } from './SdkPlugin';
 import { StoragePlugin } from './StoragePlugin';
 import { ArkMethod } from '../../../core/model/ArkMethod';
 import { Value } from '../../../core/base/Value';
+import { TaskPoolPlugin } from './TaskPoolPlugin';
+import { WorkerPlugin } from './WorkerPlugin';
+import { Local } from '../../../core/base/Local';
+import { Stmt } from '../../../core/base/Stmt';
 
 // plugins/PluginManager.ts
 export class PluginManager {
@@ -37,6 +41,8 @@ export class PluginManager {
     private init(pag: Pag, pagBuilder: PagBuilder, cg: CallGraph): void {
         this.registerPlugin(new StoragePlugin(pag, pagBuilder, cg));
         this.registerPlugin(new FunctionPlugin(pag, pagBuilder, cg));
+        this.registerPlugin(new TaskPoolPlugin(pag, pagBuilder, cg));
+        this.registerPlugin(new WorkerPlugin(pag, pagBuilder, cg));
         this.registerPlugin(new SdkPlugin(pag, pagBuilder, cg));
         this.registerPlugin(new ContainerPlugin(pag, pagBuilder, cg));
     }
@@ -79,5 +85,19 @@ export class PluginManager {
 
     public getSDKParamValue(method: ArkMethod): Value[] | undefined {
         return (this.plugins.find(p => p.getName() === 'SdkPlugin') as SdkPlugin).getParamValues(method);
+    }
+    
+    // taskpool plugin interfaces
+    public getTaskObj2CGNodeMap(): Map<Local, CallGraphNode> {
+        return (this.plugins.find(p => p.getName() === 'TaskPoolPlugin') as TaskPoolPlugin).getTaskObj2CGNodeMap();
+    }
+
+    public getTaskObj2ConstructorStmtMap(): Map<Local, Stmt> {
+        return (this.plugins.find(p => p.getName() === 'TaskPoolPlugin') as TaskPoolPlugin).getTaskObj2ConstructorStmtMap();
+    }
+
+    // worker plugin interfaces
+    public getWorkerObj2CGNodeMap(): Map<Local, CallGraphNode> {
+        return (this.plugins.find(p => p.getName() === 'WorkerPlugin') as WorkerPlugin).getWorkerObj2CGNodeMap();
     }
 }

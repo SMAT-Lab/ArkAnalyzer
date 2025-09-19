@@ -380,7 +380,11 @@ export class LoopBuilder {
             }
         }
 
-        if (blockBuildersReenterCondition.length > 1 || blocksContainLoopCondition.has(blockBuildersReenterCondition[0])) {
+        if (
+            blockBuildersReenterCondition.length > 1 ||
+            blockBuildersReenterCondition[0].nexts.length > 1 ||
+            blocksContainLoopCondition.has(blockBuildersReenterCondition[0])
+        ) {
             // put incrementor statements into an extra block
             this.insertBeforeConditionBlockBuilder(blockBuilderToCfgBlock, currBlockBuilder, stmtsReenterCondition, true, basicBlockSet, blockBuilders);
         } else {

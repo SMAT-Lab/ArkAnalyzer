@@ -48,3 +48,20 @@ enum TestEnum2 {
     C = 2 + 2,
     D = C
 }
+
+enum TestEnum3 {
+    A,
+    B = -1,
+    C,
+    D = 0.5,
+    E,
+    F,
+}
+
+enum TestEnum4 {
+    A = 1 << 2,
+    B,
+    C,
+    D = A + B,
+    E,
+}
