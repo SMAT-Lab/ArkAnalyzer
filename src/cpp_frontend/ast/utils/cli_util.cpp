@@ -33,17 +33,16 @@ namespace fs = std::filesystem;
 // Normalize a Windows drive path.
 // Example: "?C:\Users\xxx\file.cpp" → "C:\Users\xxx\file.cpp"
 // "\\?\C:\Users\xxx\file.cpp" → "C:\Users\xxx\file.cpp"
-static inline std::string ExtractFirstDrivePath(std::string_view s)
+static std::string ExtractFirstDrivePath(std::string_view s)
 {
 #ifdef _WIN32
     // Case 1: Extended-length device prefix "\\?\" at the beginning
     // Example: "\\?\C:\path\to\file.cpp" → "C:\path\to\file.cpp"
-    if (s.rfind("\\\\?\\", 0) == 0) {
-        s.remove_prefix(FOUR);
-    }
     // Case 2: Alternate prefix "\?\" at the beginning
     // Example: "\?\C:\path\to\file.cpp" → "C:\path\to\file.cpp"
-    else if (s.size() >= THREE && s[0] == '\\' && s[1] == '?' &&
+    if (s.rfind("\\\\?\\", 0) == 0) {
+        s.remove_prefix(FOUR);
+    } else if (s.size() >= THREE && s[0] == '\\' && s[1] == '?' &&
              (s[TWO] == '\\' || s[TWO] == '/')) {
         s.remove_prefix(THREE);
     }

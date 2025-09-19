@@ -742,7 +742,7 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
         if (localType instanceof FunctionType || (localType instanceof PointerType && localType.getBaseType() instanceof FunctionType)) {
             return local;
         }
-        return  null;
+        return null;
     }
 
     public setQuestionToken(questionToken: boolean): void {

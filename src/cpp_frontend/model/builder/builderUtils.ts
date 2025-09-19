@@ -177,7 +177,7 @@ export function buildFuncPtrType(funcPtrNode: CxxAstNode, arkMtd: ArkMethod, sou
     const anonymousMethod = new ArkMethod();
     const declaringClass = arkMtd.getDeclaringArkClass();
     buildArkMethodFromArkClass(funcPtrNode, declaringClass, anonymousMethod, sourceFile);
-    const funcType = new FunctionType(anonymousMethod.getSignature())
+    const funcType = new FunctionType(anonymousMethod.getSignature());
     return new PointerType(funcType, 1);
 }
 
@@ -253,7 +253,7 @@ export function buildTypeFromPreStr(preStr: string, arkInstance: ArkMethod | Ark
     // 3. Infer the type
     const postStr = convertDataType(preStr);
     let baseType: Type;
-    if (postStr === 'unsupported'){
+    if (postStr === 'unsupported') {
         baseType = buildTypeFromDerivedType(preStr, arkInstance);
     } else {
         baseType = TypeInference.buildTypeFromStr(postStr, preStr);

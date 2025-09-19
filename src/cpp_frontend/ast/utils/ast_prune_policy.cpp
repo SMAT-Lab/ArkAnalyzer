@@ -24,22 +24,26 @@ unsigned g_initTokenCountThreshold = 96;
 
 // ---------- Field policy state (single source of truth) ----------
 // Controls which fields are extracted for AST nodes
-static FieldPolicy g_fieldPolicy = FieldPolicy::Lite;
+static FieldPolicy g_fieldPolicy = FieldPolicy::LITE;
 
 void SetFieldPolicy(FieldPolicy p) { g_fieldPolicy = p; }
-void SetFieldPolicyLite(bool on)   { g_fieldPolicy = on ? FieldPolicy::Lite : FieldPolicy::DefaultFull; }
+void SetFieldPolicyLite(bool on)   { g_fieldPolicy = on ? FieldPolicy::LITE : FieldPolicy::DefaultFull; }
 FieldPolicy GetFieldPolicy()       { return g_fieldPolicy; }
 
 FieldPolicy ParseFieldPolicy(std::string_view s)
 {
     // Case-insensitive matching (basic check, can be extended if needed)
-    if (s == "lite" || s == "Lite" || s == "LITE") return FieldPolicy::Lite;
+    if (s == "lite" || s == "Lite" || s == "LITE") {
+        return FieldPolicy::LITE;
+    }
     return FieldPolicy::DefaultFull;
 }
 
 uint32_t SelectFieldMaskForCursorKind(CXCursorKind k)
 {
-    if (GetFieldPolicy() != FieldPolicy::Lite) return DefaultFieldMask();
+    if (GetFieldPolicy() != FieldPolicy::LITE) {
+        return DefaultFieldMask();
+    }
 
     switch (k) {
         // Expressions and references: keep basic info
@@ -115,7 +119,8 @@ uint32_t SelectFieldMaskForCursorKind(CXCursorKind k)
 /// Decide whether an InitListExpr node should be pruned (leaf-ified).
 /// - Respects the global switch `g_pruneHugeInits`.
 /// - Uses a quick check based on token length (`IsHugeInitializerByTokLen`).
-bool ShouldPruneInitList(const json& node) {
+bool ShouldPruneInitList(const json& node)
+{
     if (!g_pruneHugeInits) {
         return false;
     }

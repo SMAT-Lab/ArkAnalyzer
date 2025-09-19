@@ -26,7 +26,8 @@ std::mutex g_fbMu;
 std::vector<FallbackSample> g_fallbackSamples;
 
 // Convert CXCursorKind to string
-std::string KindStr(CXCursorKind k) {
+std::string KindStr(CXCursorKind k)
+{
     CXString s = clang_getCursorKindSpelling(k);
     std::string out = clang_getCString(s) ? clang_getCString(s) : "";
     clang_disposeString(s);
@@ -34,8 +35,11 @@ std::string KindStr(CXCursorKind k) {
 }
 
 // Convert CXFile to string (file path)
-std::string FileStr(CXFile f) {
-    if (!f) return {};
+std::string FileStr(CXFile f)
+{
+    if (!f) {
+        return {};
+    }
     CXString s = clang_getFileName(f);
     std::string out = clang_getCString(s) ? clang_getCString(s) : "";
     clang_disposeString(s);
@@ -43,19 +47,22 @@ std::string FileStr(CXFile f) {
 }
 
 // Record a cursor that was filtered by default fallback.
-// Stores at most kMaxFallbackSamples for inspection.
+// Stores at most K_MAX_FALLBACK_SAMPLES for inspection.
 void RecordDefaultFallback(CXCursor cursor,
                            CXCursorKind kind,
                            const std::string& spellingFileName)
 {
-    g_matStats.hits_defaultDeny.fetch_add(1, std::memory_order_relaxed);
+    g_matStats.hitsDefaultDeny.fetch_add(1, std::memory_order_relaxed);
 
     std::lock_guard<std::mutex> lk(g_fbMu);
-    if (g_fallbackSamples.size() >= kMaxFallbackSamples) return;
+    if (g_fallbackSamples.size() >= K_MAX_FALLBACK_SAMPLES) return;
 
     // Expansion location (useful in macro expansion scenarios)
     CXSourceLocation loc = clang_getCursorLocation(cursor);
-    CXFile expFile = nullptr; unsigned el = 0, ec = 0, eo = 0;
+    CXFile expFile = nullptr;
+    unsigned el = 0;
+    unsigned ec = 0;
+    unsigned eo = 0;
     clang_getExpansionLocation(loc, &expFile, &el, &ec, &eo);
 
     FallbackSample s;
@@ -76,17 +83,17 @@ void RecordDefaultFallback(CXCursor cursor,
 void DumpMaterializeMetrics(std::ostream& os)
 {
     os << "[Materialize Metrics]\n";
-    os << "  SystemHeader filtered:  "        << g_matStats.hits_sysHeader.load()       << "\n";
-    os << "  NotMainView filtered:   "        << g_matStats.hits_notMainView.load()     << "\n";
-    os << "  Default filtered:       "        << g_matStats.hits_defaultDeny.load()     << "\n";
-    os << "  SysHeaderByPath filtered: "      << g_matStats.hits_sysHeaderByPath.load() << "\n";
-    os << "  Expansion passed:       "        << g_matStats.hits_expansion.load()       << "\n";
-    os << "  UserHeaderContent passed: "      << g_matStats.hits_userHeaderContent.load()<< "\n";
-    os << "  MainFile passed:        "        << g_matStats.hits_mainFilePass.load()    << "\n";
-    os << "  UserWhitelist passed:   "        << g_matStats.hits_userWhitelist.load()   << "\n";
+    os << "  SystemHeader filtered:  "        << g_matStats.hitsSysHeader.load()       << "\n";
+    os << "  NotMainView filtered:   "        << g_matStats.hitsNotMainView.load()     << "\n";
+    os << "  Default filtered:       "        << g_matStats.hitsDefaultDeny.load()     << "\n";
+    os << "  SysHeaderByPath filtered: "      << g_matStats.hitsSysHeaderByPath.load() << "\n";
+    os << "  Expansion passed:       "        << g_matStats.hitsExpansion.load()       << "\n";
+    os << "  UserHeaderContent passed: "      << g_matStats.hitsUserHeaderContent.load()<< "\n";
+    os << "  MainFile passed:        "        << g_matStats.hitsMainFilePass.load()    << "\n";
+    os << "  UserWhitelist passed:   "        << g_matStats.hitsUserWhitelist.load()   << "\n";
 
     if (!g_fallbackSamples.empty()) {
-        os << "  Default-deny samples (up to " << kMaxFallbackSamples << "):\n";
+        os << "  Default-deny samples (up to " << K_MAX_FALLBACK_SAMPLES << "):\n";
         for (const auto& s : g_fallbackSamples) {
             os << "    - kind="   << s.kind
                << " name=\""      << s.name << "\""
@@ -99,22 +106,24 @@ void DumpMaterializeMetrics(std::ostream& os)
 }
 
 // Configure hard cap for expansion budget
-void SetExpansionHardCap(uint32_t cap) {
-    g_expBudget.hard_cap = cap;
+void SetExpansionHardCap(uint32_t cap)
+{
+    g_expBudget.hardCap = cap;
 }
 
 // Reset all metrics and clear fallback samples
-void ResetMetrics() {
-    g_matStats.hits_sysHeader.store(0, std::memory_order_relaxed);
-    g_matStats.hits_notMainView.store(0, std::memory_order_relaxed);
-    g_matStats.hits_mainFilePass.store(0, std::memory_order_relaxed);
-    g_matStats.hits_userWhitelist.store(0, std::memory_order_relaxed);
-    g_matStats.hits_defaultDeny.store(0, std::memory_order_relaxed);
-    g_matStats.hits_sysHeaderByPath.store(0, std::memory_order_relaxed);
-    g_matStats.hits_expansion.store(0, std::memory_order_relaxed);
-    g_matStats.hits_userHeaderContent.store(0, std::memory_order_relaxed);
+void ResetMetrics()
+{
+    g_matStats.hitsSysHeader.store(0, std::memory_order_relaxed);
+    g_matStats.hitsNotMainView.store(0, std::memory_order_relaxed);
+    g_matStats.hitsMainFilePass.store(0, std::memory_order_relaxed);
+    g_matStats.hitsUserWhitelist.store(0, std::memory_order_relaxed);
+    g_matStats.hitsDefaultDeny.store(0, std::memory_order_relaxed);
+    g_matStats.hitsSysHeaderByPath.store(0, std::memory_order_relaxed);
+    g_matStats.hitsExpansion.store(0, std::memory_order_relaxed);
+    g_matStats.hitsUserHeaderContent.store(0, std::memory_order_relaxed);
 
-    g_expBudget.pass_count.store(0, std::memory_order_relaxed);
+    g_expBudget.passCount.store(0, std::memory_order_relaxed);
 
     std::lock_guard<std::mutex> lk(g_fbMu);
     g_fallbackSamples.clear();

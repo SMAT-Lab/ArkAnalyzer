@@ -73,11 +73,11 @@ extern unsigned g_initTokenCountThreshold;
 /// NOTE: This expects the JSON schema to store a per-node span length,
 /// commonly at node["range"]["begin"]["tokLen"]. If your schema differs,
 /// adjust this accessor accordingly.
-static inline bool IsHugeInitializerByTokLen(const json& node) noexcept
+inline bool IsHugeInitializerByTokLen(const json& node) noexcept
 {
-    if (node.value("kind", "") != "InitListExpr") return false;
-    if (!node.contains("range"))                 return false;
-
+    if (node.value("kind", "") != "InitListExpr" || !node.contains("range")) {
+        return false;
+    }
     // If your schema stores tokLen elsewhere, change here accordingly.
     const auto tokLen = static_cast<size_t>(
         node["range"]["begin"].value("tokLen", 0u)
@@ -88,7 +88,7 @@ static inline bool IsHugeInitializerByTokLen(const json& node) noexcept
 /// Tokenization-based check using libClang. More precise but slightly heavier
 /// due to clang_tokenize/clang_disposeTokens. Useful near threshold edges.
 /// `thres` defaults to 96 to match the typical global default.
-static inline bool IsHugeInitializerByTokenize(CXTranslationUnit tu,
+inline bool IsHugeInitializerByTokenize(CXTranslationUnit tu,
                                                CXCursor cursor,
                                                unsigned thres = 96) noexcept
 {
@@ -96,7 +96,9 @@ static inline bool IsHugeInitializerByTokenize(CXTranslationUnit tu,
     CXToken* toks = nullptr;
     unsigned ntok = 0;
     clang_tokenize(tu, r, &toks, &ntok);
-    if (toks) clang_disposeTokens(tu, toks, ntok);
+    if (toks) {
+        clang_disposeTokens(tu, toks, ntok);
+    }
     return ntok >= thres;
 }
 
@@ -114,22 +116,22 @@ enum FieldBits : uint32_t {
 };
 
 /// Default mask for “full” policy.
-constexpr inline uint32_t DefaultFieldMask() noexcept {
-    return WANT_KIND | WANT_NAME | WANT_TYPE | WANT_CODE |
-           WANT_RANGE | WANT_LOCFILE | WANT_REFERENCED;
+constexpr inline uint32_t DefaultFieldMask() noexcept
+{
+    return WANT_KIND | WANT_NAME | WANT_TYPE | WANT_CODE | WANT_RANGE | WANT_LOCFILE | WANT_REFERENCED;
 }
 
 /// Policy kind:
 ///  - DefaultFull: materialize most fields for richer tooling.
-///  - Lite:        materialize a subset for speed/smaller output.
-enum class FieldPolicy { DefaultFull, Lite };
+///  - LITE:        materialize a subset for speed/smaller output.
+enum class FieldPolicy { DefaultFull, LITE };
 
 // Policy setters/getters (implemented in .cpp).
 void        SetFieldPolicy(FieldPolicy p);
 void        SetFieldPolicyLite(bool on);
 FieldPolicy GetFieldPolicy();
 
-/// Parse from CLI/config string (e.g., "lite", "default").
+/// Parse from CLI/config string (e.g., "LITE", "default").
 /// Case-insensitive handling can be extended as needed.
 FieldPolicy ParseFieldPolicy(std::string_view s);
 
@@ -147,13 +149,10 @@ inline bool WantLocFile(uint32_t m)               noexcept { return Want(m, WANT
 inline bool WantReferenced(uint32_t m)            noexcept { return Want(m, WANT_REFERENCED); }
 
 // ================== Prune Utilities ==================
-//
 // Decide whether a JSON node should be pruned and how to
 // produce an “opaque” leaf node.
-//
-
-/// Return whether the given JSON node (expected InitListExpr) should be pruned
-/// under current global switches and thresholds.
+// Return whether the given JSON node (expected InitListExpr) should be pruned
+// under current global switches and thresholds.
 bool ShouldPruneInitList(const json& node);
 
 /// Make a shallow “opaque” copy of the node: mark `_opaque=true` and clear
@@ -161,9 +160,7 @@ bool ShouldPruneInitList(const json& node);
 json MakeOpaqueNode(const json& node);
 
 // ================== Mask Decoding Helper ==================
-//
 // Convenience utility to unpack a bitmask into a struct of booleans.
-//
 
 struct WantMask {
     bool kind;
@@ -175,7 +172,9 @@ struct WantMask {
     bool extras; // maps to WANT_REFERENCED
 };
 
-static inline WantMask DecodeWant(uint32_t m) noexcept {
+inline WantMask DecodeWant(uint32_t m) noexcept
+{
+
     return {
         (m & WANT_KIND)       != 0,
         (m & WANT_NAME)       != 0,

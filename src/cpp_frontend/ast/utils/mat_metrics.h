@@ -28,14 +28,14 @@ namespace mat {
 
 // Statistics counters for materialization decisions
 struct MatStats {
-    std::atomic<uint64_t> hits_sysHeader{0};        // Rule 0: pruned due to system header
-    std::atomic<uint64_t> hits_notMainView{0};      // Rule 1: pruned because not from main file view
-    std::atomic<uint64_t> hits_mainFilePass{0};     // Rule 2: passed (main file always allowed)
-    std::atomic<uint64_t> hits_userWhitelist{0};    // Rule 3: passed by user whitelist
-    std::atomic<uint64_t> hits_defaultDeny{0};      // Rule 4: default deny
-    std::atomic<uint64_t> hits_sysHeaderByPath{0};  // Path-based fallback (e.g., Windows/MSVC headers)
-    std::atomic<uint64_t> hits_expansion{0};        // Passed by expansion (lightweight expressions)
-    std::atomic<uint64_t> hits_userHeaderContent{0};// Content inside user-whitelisted headers
+    std::atomic<uint64_t> hitsSysHeader{0};        // Rule 0: pruned due to system header
+    std::atomic<uint64_t> hitsNotMainView{0};      // Rule 1: pruned because not from main file view
+    std::atomic<uint64_t> hitsMainFilePass{0};     // Rule 2: passed (main file always allowed)
+    std::atomic<uint64_t> hitsUserWhitelist{0};    // Rule 3: passed by user whitelist
+    std::atomic<uint64_t> hitsDefaultDeny{0};      // Rule 4: default deny
+    std::atomic<uint64_t> hitsSysHeaderByPath{0};  // Path-based fallback (e.g., Windows/MSVC headers)
+    std::atomic<uint64_t> hitsExpansion{0};        // Passed by expansion (lightweight expressions)
+    std::atomic<uint64_t> hitsUserHeaderContent{0}; // Content inside user-whitelisted headers
 };
 
 // Store a small sample of denied cursors for diagnostics
@@ -51,8 +51,8 @@ struct FallbackSample {
 // Quota control for "lightweight expressions" expanded from main file
 // Prevents performance degradation in macro-heavy code.
 struct ExpansionBudget {
-    std::atomic<uint32_t> pass_count{0};
-    uint32_t hard_cap = 2000; // Can be adjusted dynamically via SetExpansionHardCap
+    std::atomic<uint32_t> passCount{0};
+    uint32_t hardCap = 2000; // Can be adjusted dynamically via SetExpansionHardCap
 };
 
 // Global objects (simplifies usage)
@@ -60,7 +60,7 @@ extern MatStats g_matStats;
 extern ExpansionBudget g_expBudget;
 
 // Sample container and limit
-inline constexpr size_t kMaxFallbackSamples = 200;
+inline constexpr size_t K_MAX_FALLBACK_SAMPLES = 200;
 extern std::mutex g_fbMu;
 extern std::vector<FallbackSample> g_fallbackSamples;
 

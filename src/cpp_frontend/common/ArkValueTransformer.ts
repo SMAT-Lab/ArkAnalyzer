@@ -329,8 +329,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         for (let i = 0; i < length - 1; i++) {
             const leftValueAndStmts = this.cxxIdentifierToValueAndStmts(node.inner[i]);
             const indexValue = ValueUtil.getOrCreateNumberConst(i);
-            const arrayRef = new ArkArrayRef(objectValue as Local,indexValue);
-            const assignStmt = new ArkAssignStmt(leftValueAndStmts.value,arrayRef);
+            const arrayRef = new ArkArrayRef(objectValue as Local, indexValue);
+            const assignStmt = new ArkAssignStmt(leftValueAndStmts.value, arrayRef);
             stmts.push(assignStmt);
             valueOriginalPositions = [FullPosition.cxxBuildFromNode(node.inner[i], this.cxxSourceFile)];
         }
@@ -2204,7 +2204,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             }
         }
         // In this case, the non assigned information on the right node needs to be discarded
-        if (this.isCxxArray(leftOpNode.type.qualType) && rightOpNode?.kind === 'IntegerLiteral'){
+        if (this.isCxxArray(leftOpNode.type.qualType) && rightOpNode?.kind === 'IntegerLiteral') {
             rightOpNode = undefined;
         }
         const declarationType = variableDeclaration.type ? this.cxxResolveTypeNode(variableDeclaration) : UnknownType.getInstance();
@@ -2216,7 +2216,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
     }
 
     private isCxxArray(qualType: string): boolean {
-        const pattern =/\[.*\]/;
+        const pattern = /\[.*\]/;
         return pattern.test(qualType);
     }
     private getStdContainerType(declCode: string): string | null {
