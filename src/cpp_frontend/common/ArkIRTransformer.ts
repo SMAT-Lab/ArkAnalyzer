@@ -805,8 +805,6 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
                 return UnaryOperator.Addr;
             case '*':
                 return UnaryOperator.Deref;
-            case 'sizeof':
-                return UnaryOperator.Sizeof;
             default:
         }
         return null;

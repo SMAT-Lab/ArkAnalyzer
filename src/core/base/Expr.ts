@@ -914,6 +914,49 @@ export class ArkTypeOfExpr extends AbstractExpr {
     }
 }
 
+export class ArkSizeOfExpr extends AbstractExpr {
+    private op: Value;
+
+    constructor(op: Value) {
+        super();
+        this.op = op;
+    }
+
+    public getOp(): Value {
+        return this.op;
+    }
+
+    public setOp(newOp: Value): void {
+        this.op = newOp;
+    }
+
+    public getUses(): Value[] {
+        let uses: Value[] = [];
+        uses.push(this.op);
+        uses.push(...this.op.getUses());
+        return uses;
+    }
+
+    public getOpType(): Type {
+        return this.op.getType();
+    }
+
+    public getType(): Type {
+        return NumberType.getInstance();
+    }
+
+    public toString(): string {
+        return 'sizeof(' + this.op + ')';
+    }
+
+    public inferType(arkMethod: ArkMethod): AbstractExpr {
+        if (this.op instanceof AbstractRef || this.op instanceof AbstractExpr) {
+            this.op.inferType(arkMethod);
+        }
+        return this;
+    }
+}
+
 export class ArkInstanceOfExpr extends AbstractExpr {
     private op: Value;
     private checkType: Type;
@@ -1067,7 +1110,6 @@ export enum UnaryOperator {
     // The following are C++ specific unary operator.
     Addr = '&', // address-of operator
     Deref = '*', // dereference operator
-    Sizeof = 'sizeof',
 }
 
 // unary operation expression
@@ -1097,9 +1139,6 @@ export class ArkUnopExpr extends AbstractExpr {
     }
 
     public getType(): Type {
-        if (this.operator === UnaryOperator.Sizeof){
-            return NumberType.getInstance();
-        }
         return this.op.getType();
     }
 
@@ -1112,9 +1151,6 @@ export class ArkUnopExpr extends AbstractExpr {
     }
 
     public toString(): string {
-        if (this.operator === UnaryOperator.Sizeof){
-            return 'sizeof(' + this.op + ')';
-        }
         return this.operator + this.op;
     }
 }

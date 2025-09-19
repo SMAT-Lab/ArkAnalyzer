@@ -33,6 +33,7 @@ import {
     NormalBinaryOperator,
     RelationalBinaryOperator,
     AbstractInvokeExpr,
+    ArkSizeOfExpr,
 } from '../../core/base/Expr';
 import {
     AnyType,
@@ -435,10 +436,9 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         }
     }
 
+    // 需要语法树修改后完善判断
     private unaryExprToValueAndStmts(unaryExprNode: CxxAstNode): ValueAndStmts {
         const stmts: Stmt[] = [];
-        const operatorToken = 'sizeof';
-        const operator = ArkCxxIRTransformer.cxxTokenToUnaryOperator(operatorToken);
         let unaryValue: Value;
         let operpositions: FullPosition[] = [FullPosition.cxxBuildFromNode(unaryExprNode, this.cxxSourceFile)];
         if (unaryExprNode.inner.length > 0) {
@@ -453,11 +453,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             unaryValue = CxxValueUtil.createStringConst(typeName);
 
         }
-        if (operator === null) {
-            logger.warn(`Unsupported unary operator: ${operatorToken}`);
-            throw new Error(`Unsupported unary operator: ${operatorToken}`);
-        }
-        const unaryExpr = new ArkUnopExpr(unaryValue, operator);
+        const unaryExpr = new ArkSizeOfExpr(unaryValue);
         return {
             value: unaryExpr,
             valueOriginalPositions: operpositions,
