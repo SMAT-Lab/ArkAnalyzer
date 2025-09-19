@@ -27,7 +27,7 @@ unsigned g_initTokenCountThreshold = 96;
 static FieldPolicy g_fieldPolicy = FieldPolicy::LITE;
 
 void SetFieldPolicy(FieldPolicy p) { g_fieldPolicy = p; }
-void SetFieldPolicyLite(bool on)   { g_fieldPolicy = on ? FieldPolicy::LITE : FieldPolicy::DefaultFull; }
+void SetFieldPolicyLite(bool on)   { g_fieldPolicy = on ? FieldPolicy::LITE : FieldPolicy::DEFAULT_FULL; }
 FieldPolicy GetFieldPolicy()       { return g_fieldPolicy; }
 
 FieldPolicy ParseFieldPolicy(std::string_view s)
@@ -36,7 +36,7 @@ FieldPolicy ParseFieldPolicy(std::string_view s)
     if (s == "lite" || s == "Lite" || s == "LITE") {
         return FieldPolicy::LITE;
     }
-    return FieldPolicy::DefaultFull;
+    return FieldPolicy::DEFAULT_FULL;
 }
 
 uint32_t SelectFieldMaskForCursorKind(CXCursorKind k)
@@ -44,14 +44,12 @@ uint32_t SelectFieldMaskForCursorKind(CXCursorKind k)
     if (GetFieldPolicy() != FieldPolicy::LITE) {
         return DefaultFieldMask();
     }
-
     switch (k) {
         // Expressions and references: keep basic info
         case CXCursor_UnexposedExpr:
         case CXCursor_UnexposedDecl:
         case CXCursor_DeclRefExpr:
             return WANT_KIND | WANT_NAME | WANT_TYPE | WANT_CODE;
-
         // Operators and simple statements: keep basic info
         case CXCursor_BinaryOperator:
         case CXCursor_UnaryOperator:
@@ -59,7 +57,6 @@ uint32_t SelectFieldMaskForCursorKind(CXCursorKind k)
         case CXCursor_ReturnStmt:
         case CXCursor_DeclStmt:
             return WANT_KIND | WANT_NAME | WANT_TYPE | WANT_CODE;
-
         // Control flow blocks: keep only kind + code
         case CXCursor_CompoundStmt:
         case CXCursor_IfStmt:
@@ -68,49 +65,40 @@ uint32_t SelectFieldMaskForCursorKind(CXCursorKind k)
         case CXCursor_DoStmt:
         case CXCursor_SwitchStmt:
             return WANT_KIND | WANT_CODE;
-
         // Function-related declarations: include ranges and references
         case CXCursor_FunctionDecl:
         case CXCursor_CXXMethod:
         case CXCursor_Constructor:
         case CXCursor_Destructor:
             return WANT_KIND | WANT_NAME | WANT_RANGE | WANT_REFERENCED | WANT_CODE;
-
         // Variables, parameters, fields: need type information
         case CXCursor_VarDecl:
         case CXCursor_ParmDecl:
         case CXCursor_FieldDecl:
             return WANT_KIND | WANT_NAME | WANT_TYPE | WANT_CODE;
-
         // Typedefs and type aliases: keep names only
         case CXCursor_TypedefDecl:
         case CXCursor_TypeAliasDecl:
             return WANT_KIND | WANT_NAME;
-
         // Enums, structs, classes, unions: full info with type + range + references
         case CXCursor_EnumDecl:
         case CXCursor_StructDecl:
         case CXCursor_ClassDecl:
         case CXCursor_UnionDecl:
             return WANT_KIND | WANT_NAME | WANT_TYPE | WANT_CODE | WANT_RANGE | WANT_REFERENCED;
-
         // Using declarations/directives: keep name and type
         case CXCursor_UsingDeclaration:
         case CXCursor_UsingDirective:
             return WANT_KIND | WANT_NAME | WANT_TYPE;
-
         // Namespaces: keep name and type
         case CXCursor_Namespace:
             return WANT_KIND | WANT_NAME | WANT_TYPE;
-
         // Translation unit: keep most metadata
         case CXCursor_TranslationUnit:
             return WANT_KIND | WANT_TYPE | WANT_CODE | WANT_RANGE | WANT_LOCFILE | WANT_REFERENCED;
-
         // Function calls: keep kind, name, type, and code
         case CXCursor_CallExpr:
             return WANT_KIND | WANT_NAME | WANT_TYPE | WANT_CODE;
-
         default:
             return DefaultFieldMask();
     }

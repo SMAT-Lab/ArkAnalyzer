@@ -46,10 +46,8 @@
 using json = nlohmann::json;
 
 // ================== Global Policy Switches ==================
-//
 // Controls whether and how we prune large InitListExpr nodes.
 // Tune thresholds based on your codebase characteristics.
-//
 
 // Enable pruning of huge initializer lists (default: true).
 extern bool g_pruneHugeInits;
@@ -64,10 +62,7 @@ extern unsigned g_initTokLenThreshold;
 extern unsigned g_initTokenCountThreshold;
 
 // ================== Prune Check Helpers ==================
-//
 // Fast/slow-ish predicates to decide whether to prune an InitListExpr.
-//
-
 /// Fast check by source-span length (“tokLen”).
 /// O(1): reads a precomputed length from JSON.
 /// NOTE: This expects the JSON schema to store a per-node span length,
@@ -88,9 +83,7 @@ inline bool IsHugeInitializerByTokLen(const json& node) noexcept
 /// Tokenization-based check using libClang. More precise but slightly heavier
 /// due to clang_tokenize/clang_disposeTokens. Useful near threshold edges.
 /// `thres` defaults to 96 to match the typical global default.
-inline bool IsHugeInitializerByTokenize(CXTranslationUnit tu,
-                                               CXCursor cursor,
-                                               unsigned thres = 96) noexcept
+inline bool IsHugeInitializerByTokenize(CXTranslationUnit tu, CXCursor cursor, unsigned thres = 96) noexcept
 {
     CXSourceRange r = clang_getCursorExtent(cursor);
     CXToken* toks = nullptr;
@@ -122,9 +115,9 @@ constexpr inline uint32_t DefaultFieldMask() noexcept
 }
 
 /// Policy kind:
-///  - DefaultFull: materialize most fields for richer tooling.
+///  - DEFAULT_FULL: materialize most fields for richer tooling.
 ///  - LITE:        materialize a subset for speed/smaller output.
-enum class FieldPolicy { DefaultFull, LITE };
+enum class FieldPolicy { DEFAULT_FULL, LITE };
 
 // Policy setters/getters (implemented in .cpp).
 void        SetFieldPolicy(FieldPolicy p);
@@ -174,7 +167,6 @@ struct WantMask {
 
 inline WantMask DecodeWant(uint32_t m) noexcept
 {
-
     return {
         (m & WANT_KIND)       != 0,
         (m & WANT_NAME)       != 0,

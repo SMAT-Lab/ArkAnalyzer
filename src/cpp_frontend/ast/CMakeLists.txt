@@ -19,6 +19,7 @@ add_executable(arkCppAstDumper
   utils/cli_util.cpp
   utils/mat_metrics.cpp
   utils/ast_prune_policy.cpp
+  utils/ast_call_postprocess.cpp
 )
 
 # Require C++17 features
