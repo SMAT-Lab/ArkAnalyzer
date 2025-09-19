@@ -27,9 +27,10 @@
 #include "utils_file.h"
 #include "cli_util.h"
 #include "ast_prune_policy.h"
-
+#include "ast_call_postprocess.h"
 #define TWO 2
 #define THREE 3
+#define EIGHT 8
 constexpr unsigned SHIFT_BITS_FOR_OFFSET = 32U;
 using json = nlohmann::json;
 namespace fs = std::filesystem;
@@ -41,13 +42,6 @@ std::vector<std::string> g_user_include_dirs;
 static std::string g_normMainFile;
 
 //===================Tool Functions Area===================
-template<typename F>
-void forEachChild(json& node, F&& f)
-{
-    if (node.contains("inner") && node["inner"].is_array())
-        for (auto& child : node["inner"]) f(child);
-}
-
 json buildASTJson(CXCursor cursor, bool actionScope, std::unordered_map<std::string, std::string>& varTypeMap);
 
 struct VisitContext {
@@ -224,9 +218,9 @@ std::string getSourceCode(CXTranslationUnit tu, const SourceExtent& ext) noexcep
 
     std::string text;
     // Reserve a reasonable size; guard against unsigned underflow
-    size_t reserveSize = 8;
+    size_t reserveSize = EIGHT;
     if (ext.endOffset >= ext.beginOffset) {
-        reserveSize = std::max<size_t>(8, static_cast<size_t>(ext.endOffset - ext.beginOffset));
+        reserveSize = std::max<size_t>(EIGHT, static_cast<size_t>(ext.endOffset - ext.beginOffset));
     }
     text.reserve(reserveSize);
 
@@ -247,10 +241,7 @@ std::string getSourceCode(CXTranslationUnit tu, const SourceExtent& ext) noexcep
     return text;
 }
 
-
-
 // Common helpers for source slicing
-
 struct SourceSlice {
     CXFile file = nullptr;
     unsigned beginOffset = 0;
@@ -337,11 +328,11 @@ json getSourceContentLight(CXTranslationUnit tu, CXSourceRange range)
     }
     // 使用结构体封装参数，减少入参数量
     SourceExtent ext{
-        /*beginFile*/   s.file,
-        /*endFile*/     s.file,
-        /*beginOffset*/ s.beginOffset,
-        /*endOffset*/   s.endOffset,
-        /*fallback*/    range
+        s.file, /*beginFile*/
+        s.file, /*endFile*/
+        s.beginOffset, /*beginOffset*/
+        s.endOffset, /*endOffset*/
+        range /*fallback*/
     };
     return json{{"code", getSourceCode(tu, ext)}};
 }
@@ -376,11 +367,11 @@ json getSourceContent(CXTranslationUnit tu, CXSourceRange range)
     }
     // 封装参数
     const SourceExtent ext{
-        /*beginFile*/   s.file,
-        /*endFile*/     s.file,
-        /*beginOffset*/ s.beginOffset,
-        /*endOffset*/   s.endOffset,
-        /*fallback*/    range
+        s.file, /*beginFile*/
+        s.file, /*endFile*/
+        s.beginOffset, /*beginOffset*/
+        s.endOffset, /*endOffset*/
+        range /*fallback*/
     };
     j["code"] = getSourceCode(tu, ext);
     return j;
@@ -501,28 +492,6 @@ void annotateMemberExprIsArrow(json &node)
     }
 }
 
-// Swap CXXOperatorCallExpr child node order
-void swapChildNode(json &children)
-{
-    json child = children[1];
-    children[1] = children[0];
-    children[0] = child;
-}
-
-// Determine if callExpr node is a constructor call
-bool ConstructCallExpr(std::string codeStr, std::string typeStr)
-{
-    size_t index = codeStr.find('(');
-    if (index > codeStr.length()) {
-        return false;
-    }
-    std::string newStr = typeStr + codeStr.substr(index);
-    if (newStr == codeStr) {
-        return true;
-    }
-    return false;
-}
-
 // Determine if callExpr node is a template constructor call
 bool TemplateConstructCallExpr(std::string nameStr, std::string typeStr)
 {
@@ -559,20 +528,6 @@ void fixCallExprChildKind(json &node)
                 child["kind"] = "OverloadedDeclRef";
             else
                 child["kind"] = "DeclRefExpr";
-        }
-    }
-}
-
-// Modify child node types under CXXConstructExpr node
-void changeChildNodeType(json &children)
-{
-    if (children.size() == 1) {
-        std::string typeStr = children[0]["type"]["qualType"];
-        std::string codeStr = children[0]["code"];
-        std::string kindStr = children[0]["kind"];
-        if (typeStr == "iterator" || typeStr == "std::basic_string<char>" ||
-        (kindStr == "ImplicitCastExpr" && ConstructCallExpr(codeStr, typeStr))) {
-            children[0]["kind"] = "MaterializeTemporaryExpr";
         }
     }
 }
@@ -967,8 +922,6 @@ static bool IsInUserWhitelistPath(const std::string& fileName)
 {
     // Normalize (with cache)
     const std::string norm = CanonicalCached(fileName);
-
-    // Blacklist fallback
     for (const auto& p : kDenyPrefixes) {
         if (!p.empty() && norm.find(p) != std::string::npos) {
             return false;
@@ -1468,107 +1421,15 @@ static void HandleTemplateAndCursorSpecific(
     }
 }
 
-void operatorCallExprPostProcess(
-    json& node,
-    json& children
-)
-{
-    if (children.size() >= TWO) {
-        std::string childName1 = children[1]["name"].is_null() ? "" : children[1]["name"];
-        if (children[1]["code"] == "<<" || childName1.find("operator") != std::string::npos)
-            swapChildNode(children);
-        std::string childName0 = children[0]["name"].is_null() ? "" : children[0]["name"];
-        if (childName0.find("operator") != std::string::npos) children[0]["castKind"] = "FunctionToPointerDecay";
-    }
-    if (children.size() == THREE) children[1]["valueCategory"] = "lvalue";
-}
-
-void implicitCastExprPostProcess(
-    json& node,
-    json& children,
-    std::string codeStr
-)
-{
-    if (!children.empty() && children[0]["kind"] == "CallExpr") {
-        node["kind"] = "ExprWithCleanups";
-    } else if (!children.empty() && children[0]["kind"] == "DeclRefExpr" &&
-        codeStr.find(children[0]["code"]) == 0 && codeStr.find("(") != std::string::npos) {
-        node["kind"] = "RecoveryExpr";
-    }
-}
-
-// Post-process a CallExpr node: adjust kind for member calls or fix missing kinds
-void callExprPostProcess(json& node, json& children)
-{
-    // If the first child is a MemberExpr, upgrade the call to CXXMemberCallExpr
-    if (!children.empty() && children[0]["kind"] == "MemberExpr") {
-        node["kind"] = "CXXMemberCallExpr";
-    } else {
-        // Otherwise, try to normalize child node types
-        changeChildNodeType(children);
-    }
-    // If it's still a plain CallExpr and the first child is missing kind info,
-    // infer its kind from referencedDecl or code pattern.
-    if (node.value("kind", "") == "CallExpr" && !children.empty()) {
-        auto &child0 = children[0];
-        bool missingKind = (!child0.contains("kind") || child0["kind"].is_null() ||
-                            (child0["kind"].is_string() && child0["kind"].get_ref<const std::string&>().empty()));
-        if (missingKind) {
-            const std::string code0 = child0.value("code", "");
-            if (child0.contains("referencedDecl") && child0["referencedDecl"].contains("kind") &&
-                !child0["referencedDecl"]["kind"].is_null()) {
-                // Use referencedDecl.kind if available
-                child0["kind"] = child0["referencedDecl"]["kind"];
-            } else if (code0.find('.') != std::string::npos || code0.find("->") != std::string::npos) {
-                // Guess member access based on code text
-                child0["kind"] = "MemberExpr";
-            } else if (child0.contains("referencedDecl") &&
-                       child0["referencedDecl"].value("kind", "") == "OverloadedDeclRef") {
-                // Special case: overloaded function reference
-                child0["kind"] = "OverloadedDeclRef";
-            } else {
-                // Default to DeclRefExpr
-                child0["kind"] = "DeclRefExpr";
-            }
-        }
-    }
-}
-
-// Detect pseudo-destructor expression: MemberExpr + '~' + TypeRef
-inline void PostprocessPseudoDestructor(json& node,
-                                        const json& children,
-                                        std::string_view codeStr)
-{
-    if (node.value("kind", "") != "MemberExpr") return;
-    if (codeStr.find('~') == std::string::npos) return;
-    if (children.size() < TWO || children[1].value("kind", "") != "TypeRef") return;
-
-    node["kind"] = "CXXPseudoDestructorExpr";
-    node["pseudoDestructorType"] = children[1]["type"]["qualType"];
-}
-
-// Detect simple fold expressions without regex (fast path)
-void PostprocessFoldExpr(json& node, std::string_view codeStr)
-{
-    if (node.value("kind", "") != "ImplicitCastExpr") {
-        return;
-    }
-    if (codeStr.empty()) {
-        return;
-    }
-    char op = 0;
-    if (LooksLikeSimpleLeftFold(codeStr, op)) {
-        node["kind"]    = "CXXFoldExpr";
-        node["op"]      = std::string(1, op);
-        node["pattern"] = "left";
-    }
-}
-
 // Track labels in function scope (map name -> id)
 inline void TrackFunctionScopeLabel(json& node)
 {
-    if (node.value("kind", "") != "LabelStmt") return;
-    if (s_funcCtx.empty()) return;
+    if (node.value("kind", "") != "LabelStmt") {
+        return;
+    }
+    if (s_funcCtx.empty()) {
+        return;
+    }
     s_funcCtx.back().labels[node.value("name", "")] = node.value("id", 0);
 }
 
@@ -1579,7 +1440,9 @@ void ResolveGotoTarget(json& node)
         return;
     }
     node["_isGoto"] = true; // mark for patching at function finalization
-    if (s_funcCtx.empty()) return;
+    if (s_funcCtx.empty()) {
+        return;
+    }
     if (node.contains("inner") && node["inner"].is_array() && !node["inner"].empty()) {
         const std::string label = node["inner"][0].value("name", "");
         auto it = s_funcCtx.back().labels.find(label);
@@ -1645,37 +1508,9 @@ json getSourceContentMasked(CXTranslationUnit tu, CXSourceRange range, uint32_t 
     SourceSlice s;
     const bool sameFileValid = GetExpansionInfo(range, s);
     json j = json::object();
-    // ---- code 提取（按需）----
-    if (want & WANT_CODE) {
-        if (sameFileValid) {
-            // 先尝试缓存切片（最快）
-            std::string code;
-            if (TrySliceFromCache(s, code)) {
-                j["code"] = std::move(code);
-            } else {
-                // 失败则封装成 SourceExtent，交由 getSourceCode 先走 offset 路径，必要时回退到 fallback(range)
-                const SourceExtent ext{
-                    /*beginFile*/   s.file,
-                    /*endFile*/     s.file,
-                    /*beginOffset*/ s.beginOffset,
-                    /*endOffset*/   s.endOffset,
-                    /*fallback*/    range
-                };
-                j["code"] = getSourceCode(tu, ext);
-            }
-        } else {
-            // sameFile 无效：直接走 fallback(range)
-            const SourceExtent ext{
-                /*beginFile*/   nullptr,
-                /*endFile*/     nullptr,
-                /*beginOffset*/ 0u,
-                /*endOffset*/   0u,
-                /*fallback*/    range
-            };
-            j["code"] = getSourceCode(tu, ext);
-        }
-    }
-    if (want & WANT_RANGE) {
+    const bool needCode  = (want & WANT_CODE)  != 0;
+    const bool needRange = (want & WANT_RANGE) != 0;
+    if (needRange) {
         auto& begin = j["begin"] = json::object();
         begin["line"]   = s.beginLine;
         begin["col"]    = s.beginCol;
@@ -1689,6 +1524,22 @@ json getSourceContentMasked(CXTranslationUnit tu, CXSourceRange range, uint32_t 
         j["id"] = (static_cast<unsigned long long>(s.beginOffset) << SHIFT_BITS_FOR_OFFSET) |
                   static_cast<unsigned long long>(s.endOffset);
     }
+    // 若不需要 CODE，直接返回
+    if (!needCode) {
+        return j;
+    }
+    if (!sameFileValid) {
+        const SourceExtent ext{nullptr, nullptr, 0u, 0u, range};
+        j["code"] = getSourceCode(tu, ext);
+        return j;
+    }
+    std::string code;
+    if (TrySliceFromCache(s, code)) {
+        j["code"] = std::move(code);
+        return j;
+    }
+    const SourceExtent ext{s.file, s.file, s.beginOffset, s.endOffset, range};
+    j["code"] = getSourceCode(tu, ext);
     return j;
 }
 
@@ -1750,15 +1601,13 @@ static bool HandleInclusionDirective(
 
 // Whether displayName is needed: required only if "name" is requested,
 // or when extras need to backfill location/range information.
-static inline bool NeedDisplayName(const WantMask& w) {
+static inline bool NeedDisplayName(const WantMask& w)
+{
     return w.name || (w.extras && (w.range || w.loc));
 }
 
 // 填充 name / opcode（仅当 wantName == true 才执行任何操作）
-void FillNameAndOpcode(json& node,
-                              CXCursor cursor,
-                              CXCursorKind kind_cursor,
-                              bool wantName) noexcept
+void FillNameAndOpcode(json& node, CXCursor cursor, CXCursorKind kind_cursor, bool wantName) noexcept
 {
     if (!wantName) {
         return;
@@ -1783,6 +1632,35 @@ void FillNameAndOpcode(json& node,
     }
     node["name"] = Cx2Str(clang_getCursorSpelling(cursor));
 }
+
+// ---------- helpers: extras (safe for headers; no static/anon ns) ----------
+struct ExtrasRefs {
+    const json*        content{nullptr};      // may be null
+    CXFile             file{};                // for fillNodeIdRangeLoc
+    const std::string* displayName{nullptr};  // may be null
+    const std::string* fileName{nullptr};     // for minimal loc fallback
+};
+
+// Apply extras + loc/range fallback.
+void ApplyExtras(json& node, CXCursor cursor, CXCursorKind kind, const WantMask& w, const ExtrasRefs& refs) noexcept
+{
+    if (w.extras) {
+        // 1) storage class & decl-ref
+        fillVarDeclStorageClass(node, cursor, kind);
+        fillDeclRefInfo(node, cursor, kind);
+        // 2) id/range/loc only when requested
+        if (w.range || w.loc) {
+            json empty = json::object();  // local fallback (no header-level static)
+            const json& c = (refs.content && !refs.content->is_null()) ? *refs.content : empty;
+            const std::string& disp = refs.displayName ? *refs.displayName : std::string();
+            fillNodeIdRangeLoc(node, c, kind, refs.file, disp);
+        }
+    } else if (w.loc && !node.contains("locFile")) {
+        // Minimal loc fallback without extras
+        node["locFile"] = refs.fileName ? *refs.fileName : std::string();
+    }
+}
+
 
 void fillNodeProperties(json& node, CXCursor cursor, CXCursorKind kind_cursor,
                         bool isInclude, CXFile file)
@@ -1822,9 +1700,8 @@ void fillNodeProperties(json& node, CXCursor cursor, CXCursorKind kind_cursor,
     FillNameAndOpcode(node, cursor, kind_cursor, w.name);
     // ===== 7) code (on demand) =====
     if (w.code) {
-        node["code"] = (hasContent && content.contains("code") && content["code"].is_string())
-                           ? content["code"].get<std::string>()
-                           : "";
+        node["code"] = (hasContent && content.contains("code") &&
+        content["code"].is_string()) ? content["code"].get<std::string>() : "";
     }
     // ===== 8) #include special case (preserve equivalent behavior) =====
     if (HandleInclusionDirective(node, cursor, content, w, fileStr)) {
@@ -1842,20 +1719,9 @@ void fillNodeProperties(json& node, CXCursor cursor, CXCursorKind kind_cursor,
     if (w.kind) {
         fillNodeKindTag(node, cursor, kind_cursor, kindSpelling);
     }
-    // ===== 12) extras (bit-controlled) =====
-    if (w.extras) {
-        fillVarDeclStorageClass(node, cursor, kind_cursor);
-        fillDeclRefInfo(node, cursor, kind_cursor);
-        // If range or loc is needed, fill begin/end/loc (displayName already lazy-computed)
-        if (w.range || w.loc) {
-            fillNodeIdRangeLoc(node, content, kind_cursor, file, displayName);
-        }
-    } else {
-        // Without extras: if only minimal loc is needed, use a placeholder
-        if (w.loc && !node.contains("locFile")) {
-            node["locFile"] = fileName;
-        }
-    }
+    const ExtrasRefs xrefs{ hasContent ? &content : nullptr,
+    file, NeedDisplayName(w) ? &displayName : nullptr, &fileStr };
+    ApplyExtras(node, cursor, kind_cursor, w, xrefs);
     // ===== 13) DeclRef name fallback (on demand) =====
     if (w.name) {
         EnsureDeclRefName(node, kind_cursor);

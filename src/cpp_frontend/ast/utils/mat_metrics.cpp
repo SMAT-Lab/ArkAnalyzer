@@ -55,8 +55,9 @@ void RecordDefaultFallback(CXCursor cursor,
     g_matStats.hitsDefaultDeny.fetch_add(1, std::memory_order_relaxed);
 
     std::lock_guard<std::mutex> lk(g_fbMu);
-    if (g_fallbackSamples.size() >= K_MAX_FALLBACK_SAMPLES) return;
-
+    if (g_fallbackSamples.size() >= K_MAX_FALLBACK_SAMPLES) {
+        return;
+    }
     // Expansion location (useful in macro expansion scenarios)
     CXSourceLocation loc = clang_getCursorLocation(cursor);
     CXFile expFile = nullptr;
