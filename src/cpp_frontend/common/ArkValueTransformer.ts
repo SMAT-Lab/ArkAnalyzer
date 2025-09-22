@@ -315,12 +315,12 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         let valueOriginalPositions: FullPosition[];
         let innerStmts: Stmt[];
         if (yieldValue !== undefined) {
-            // 如果 yieldValue 存在，使用它作为 objectValue
+            // If yieldValue exists, use it as the objectValue
             objectValue = yieldValue;
             valueOriginalPositions = [FullPosition.cxxBuildFromNode(node, this.cxxSourceFile)];
             innerStmts = [];
         } else {
-            // 如果 yieldValue 不存在，通过递归调用 cxxNodeToValueAndStmts 获取
+            // If yieldValue does not exist, obtain it by recursively calling cxxNodeToValueAndSTms
             const result = this.cxxNodeToValueAndStmts(node.inner[length - 1]);
             objectValue = result.value;
             valueOriginalPositions = result.valueOriginalPositions;
@@ -436,7 +436,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         }
     }
 
-    // 需要语法树修改后完善判断
+    // CTodo：Need to add judgment criteria after changing the syntax tree
     private unaryExprToValueAndStmts(unaryExprNode: CxxAstNode): ValueAndStmts {
         const stmts: Stmt[] = [];
         let unaryValue: Value;
