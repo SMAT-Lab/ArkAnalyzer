@@ -65,6 +65,7 @@ export class SceneConfig {
     private projectFiles: string[] = [];
     private includeDirs: string[] = []; // Include directories that the C++ project depends on.
     private fileLanguages: Map<string, Language> = new Map();
+    private ccjsonPath: string = '';
 
     private options: SceneOptions;
 
@@ -228,6 +229,14 @@ export class SceneConfig {
     /** Obtain the header file directories of the input C++ project dependencies. */
     public getIncludeDirs(): string[] {
         return this.includeDirs;
+    }
+
+    public setCcjsonPath(ccjsonPath: string): void {
+        this.ccjsonPath = ccjsonPath;
+    }
+
+    public getCcjsonPath(): string {
+        return this.ccjsonPath;
     }
 
     public getFileLanguages(): Map<string, Language> {
