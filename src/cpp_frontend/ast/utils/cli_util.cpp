@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -12,7 +12,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 
 #include "cli_util.h"
 #include "json.hpp"
@@ -28,6 +27,43 @@
 using json = nlohmann::json;
 namespace fs = std::filesystem;
 #define FOUR 4
+#define THREE 3
+#define TWO 2
+
+// Normalize a Windows drive path.
+// Example: "?C:\Users\xxx\file.cpp" → "C:\Users\xxx\file.cpp"
+// "\\?\C:\Users\xxx\file.cpp" → "C:\Users\xxx\file.cpp"
+static std::string ExtractFirstDrivePath(std::string_view s)
+{
+#ifdef _WIN32
+    // Case 1: Extended-length device prefix "\\?\" at the beginning
+    // Example: "\\?\C:\path\to\file.cpp" → "C:\path\to\file.cpp"
+    // Case 2: Alternate prefix "\?\" at the beginning
+    // Example: "\?\C:\path\to\file.cpp" → "C:\path\to\file.cpp"
+    if (s.rfind("\\\\?\\", 0) == 0) {
+        s.remove_prefix(FOUR);
+    } else if (s.size() >= THREE && s[0] == '\\' && s[1] == '?' &&
+             (s[TWO] == '\\' || s[TWO] == '/')) {
+        s.remove_prefix(THREE);
+    }
+#endif
+    // Scan the string to find the first valid drive anchor: "<Letter>:\"
+    // Conditions:
+    //   - One alphabet character [A-Za-z]
+    //   - Followed by a colon ':'
+    //   - Followed by either '\' or '/'
+    for (size_t i = 0; i + TWO < s.size(); ++i) {
+        char c = s[i];
+        if (std::isalpha(static_cast<unsigned char>(c)) &&
+            s[i + 1] == ':' &&
+            (s[i + TWO] == '\\' || s[i + TWO] == '/')) {
+            // Return substring starting from the detected drive letter
+            return std::string(s.substr(i));
+        }
+    }
+    // Fallback: no drive anchor found → return input unchanged
+    return std::string(s);
+}
 
 static std::string Slashify(std::string s)
 {

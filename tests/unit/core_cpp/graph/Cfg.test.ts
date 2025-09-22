@@ -58,6 +58,7 @@ import * as THREAD_EXPECT from '../../../resources_cpp/cfg/thread/threadExpects'
 import * as FUNCPTR_EXPECT from '../../../resources_cpp/cfg/functionPointer/functionPointerExpts';
 import * as AUTO_EXPECT from '../../../resources_cpp/cfg/decltype/decltypeExpects';
 import * as INCLUDE_IN_SCOPE from '../../../resources_cpp/cfg/includeInScope/includeInFunctionExpects';
+import * as STRUCTBINDING from '../../../resources_cpp/cfg/structBinding/structBindingExpect';
 
 // Standard library header file configuration for DevEco
 const deveco_c = process.env.DEVECO_C !== undefined ? process.env.DEVECO_C : '';
@@ -121,8 +122,7 @@ describe('CfgTest', () => {
     });
     it('case6: goto statement', () => {
         const scene = buildScene('goto');
-        testBlocks(scene, 'gotoSample.cpp', 'Case1',
-            is_system_win32 ? GOTO_EXPECT.GOTO_EXPECT_CASE1.blocks : GOTO_EXPECT.GOTO_EXPECT_CASE1_LINUX.blocks);
+        testBlocks(scene, 'gotoSample.cpp', 'Case1', GOTO_EXPECT.GOTO_EXPECT_CASE1.blocks);
         testBlocks(scene, 'gotoSample.cpp', 'Case2', GOTO_EXPECT.GOTO_EXPECT_CASE2.blocks);
         testBlocks(scene, 'gotoSample.cpp', 'Case3', GOTO_EXPECT.GOTO_EXPECT_CASE3.blocks);
         testBlocks(scene, 'gotoSample.cpp', 'Case4', GOTO_EXPECT.GOTO_EXPECT_CASE4.blocks);
@@ -402,6 +402,18 @@ describe('thread Test', () => {
         testBlocks(scene, 'functionPointer.cpp', 'Case2', FUNCPTR_EXPECT.FUNCPTR_EXPECT_CASE2.blocks);
         testBlocks(scene, 'functionPointer.cpp', 'Case3', FUNCPTR_EXPECT.FUNCPTR_EXPECT_CASE3.blocks);
         testBlocks(scene, 'functionPointer.cpp', 'Greet', FUNCPTR_EXPECT.FUNCPTR_EXPECT_GREET.blocks);
+    });
+    it('case3: structBinding', () => {
+        const scene = buildScene('structBinding');
+        scene.inferTypes();
+        testBlocks(scene, 'structBinding.cpp', 'BasicUsage', STRUCTBINDING.REFERENCE_EXPECT_BASICUSAGE.blocks);
+        testBlocks(scene, 'structBinding.cpp', 'ReferenceUsage', STRUCTBINDING.REFERENCE_EXPECT_REFERENCE.blocks);
+        testBlocks(scene, 'structBinding.cpp', 'TupleUsage', STRUCTBINDING.REFERENCE_EXPECT_TUPLEUSAGE.blocks);
+        testBlocks(scene, 'structBinding.cpp', 'StructUsage', STRUCTBINDING.REFERENCE_EXPECT_STRUCT.blocks);
+        testBlocks(scene, 'structBinding.cpp', 'MapUsage', STRUCTBINDING.REFERENCE_EXPECT_MAP.blocks);
+        testBlocks(scene, 'structBinding.cpp', 'GetStudentInfo', STRUCTBINDING.REFERENCE_EXPECT_GETSTRUCTINFO.blocks);
+        testBlocks(scene, 'structBinding.cpp', 'FunctionReturnUsage', STRUCTBINDING.REFERENCE_EXPECT_FUNCTIONRETURN.blocks);
+        testBlocks(scene, 'structBinding.cpp', 'ConstReferenceUsage', STRUCTBINDING.REFERENCE_EXPECT_CONSTREFERENCE.blocks);
     });
 });
 

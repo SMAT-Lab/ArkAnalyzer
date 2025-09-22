@@ -765,7 +765,7 @@ class FieldModification {
       return this
   }
 
-  %statInit(): void {
+  static %statInit(): void {
     label0:
       this = this: @expression/PostfixAndPrefixUnaryExpression.ts: FieldModification
       @expression/PostfixAndPrefixUnaryExpression.ts: FieldModification.[static]count = 0
@@ -798,17 +798,17 @@ class LocalModification {
       return
   }
 
-  %statInit(): void {
-    label0:
-      this = this: @expression/PostfixAndPrefixUnaryExpression.ts: LocalModification
-      return
-  }
-
   constructor(): @expression/PostfixAndPrefixUnaryExpression.ts: LocalModification {
     label0:
       this = this: @expression/PostfixAndPrefixUnaryExpression.ts: LocalModification
       instanceinvoke this.<@expression/PostfixAndPrefixUnaryExpression.ts: LocalModification.%instInit()>()
       return this
+  }
+
+  static %statInit(): void {
+    label0:
+      this = this: @expression/PostfixAndPrefixUnaryExpression.ts: LocalModification
+      return
   }
 
   changeLocal(): number {

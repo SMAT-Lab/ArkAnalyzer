@@ -37,8 +37,8 @@ export const FUNCPTR_EXPECT_CASE2 = {
             id: 0,
             stmts: [
                 'this = this: @functionPointer/functionPointer.cpp: %dflt',
-                'staticinvoke <@functionPointer/functionPointer.cpp: %dflt.Greet(@functionPointer/functionPointer.cpp: %dflt.%AM0())>(GreetEnglish)',
-                'staticinvoke <@functionPointer/functionPointer.cpp: %dflt.Greet(@functionPointer/functionPointer.cpp: %dflt.%AM0())>(GreetSpanish)',
+                'staticinvoke <@functionPointer/functionPointer.cpp: %dflt.Greet(@functionPointer/functionPointer.cpp: %dflt.%AM0()*)>(GreetEnglish)',
+                'staticinvoke <@functionPointer/functionPointer.cpp: %dflt.Greet(@functionPointer/functionPointer.cpp: %dflt.%AM0()*)>(GreetSpanish)',
                 'return 0',
             ],
             preds: [],
@@ -104,7 +104,7 @@ export const FUNCPTR_EXPECT_GREET = {
         {
             id: 0,
             stmts: [
-                'greetFunc = parameter0: @functionPointer/functionPointer.cpp: %dflt.%AM0()',
+                'greetFunc = parameter0: @functionPointer/functionPointer.cpp: %dflt.%AM0()*',
                 'this = this: @functionPointer/functionPointer.cpp: %dflt',
                 'ptrinvoke <@functionPointer/functionPointer.cpp: %dflt.greetFunc()>()',
                 'return',

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -12,23 +12,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+#include <algorithm>
 #include <filesystem>
+#include <fstream>
+#include <iostream>
+#include <regex>
+#include <set>
 #include <sstream>
+#include <string>
+#include <vector>
 #include <clang-c/Index.h>
+#include "json.hpp"
 #include "utils_string.h"
 #include "utils_file.h"
 #include "cli_util.h"
-#include "json.hpp"
-#include <fstream>
-#include <iostream>
-#include <string>
-#include <vector>
-#include <set>
-#include <algorithm>
-#include <regex>
+#include "ast_prune_policy.h"
+#include "ast_call_postprocess.h"
 #define TWO 2
 #define THREE 3
+#define EIGHT 8
+constexpr unsigned SHIFT_BITS_FOR_OFFSET = 32U;
 using json = nlohmann::json;
 namespace fs = std::filesystem;
 std::vector<std::string> g_user_include_dirs;
@@ -39,13 +42,6 @@ std::vector<std::string> g_user_include_dirs;
 static std::string g_normMainFile;
 
 //===================Tool Functions Area===================
-template<typename F>
-void forEachChild(json& node, F&& f)
-{
-    if (node.contains("inner") && node["inner"].is_array())
-        for (auto& child : node["inner"]) f(child);
-}
-
 json buildASTJson(CXCursor cursor, bool actionScope, std::unordered_map<std::string, std::string>& varTypeMap);
 
 struct VisitContext {
@@ -54,6 +50,70 @@ struct VisitContext {
     // Collect all parameter/variable declarations in the current scope, return name to type mapping
     std::unordered_map<std::string, std::string>& varTypeMap;
 };
+
+// -------- Function-scope context for labels/gotos --------
+struct FuncCtx {
+    std::unordered_map<std::string, int> labels; // label name -> id
+};
+// Push when encountering a function/method/constructor/destructor,
+// pop when finishing building one.
+static thread_local std::vector<FuncCtx> s_funcCtx;
+
+// --------- O(1) check for simple left fold "(... <op> ident)", replaces regex ---------
+static bool LooksLikeSimpleLeftFold(std::string_view s, char& opOut)
+{
+    // Look for "(..."
+    size_t p = s.find("(...");                 // common pretty-printed form
+    if (p == std::string::npos) {
+        return false;
+    }
+    size_t i = p + 4;                          // skip "(..."
+    while (i < s.size() && static_cast<unsigned char>(s[i]) <= ' ') {
+        ++i; // skip spaces
+    }
+    if (i >= s.size()) {
+        return false;
+    }
+    char c = s[i];
+    switch (c) {
+        case '+': case '-': case '*': case '/':
+        case '&': case '|': case '^':
+            break;
+        default:
+            return false;
+    }
+    opOut = c;
+    // Roughly check matching right parenthesis
+    return s.find(')', i) != std::string::npos;
+}
+
+// Only patch targetLabelId for GotoStmt inside the current function subtree;
+// Only rewrite when the node is marked "_isGoto", to avoid full-tree scan overhead.
+static void PatchGotosInFunction(json& node, const std::unordered_map<std::string, int>& labels)
+{
+    if (node.is_object()) {
+        auto itMark = node.find("_isGoto");
+        if (itMark != node.end() && itMark->is_boolean() && *itMark) {
+            // Label name comes from inner[0].name (your AST structure)
+            std::string labelName;
+            if (node.contains("inner") && node["inner"].is_array() && !node["inner"].empty()) {
+                const json& labelRef = node["inner"][0];
+                labelName = labelRef.value("name", "");
+            }
+            auto itLab = labels.find(labelName);
+            if (itLab != labels.end()) {
+                node["targetLabelId"] = itLab->second;
+            }
+        }
+        // Recurse into children
+        if (auto it = node.find("inner"); it != node.end() && it->is_array()) {
+            for (auto& c : *it) PatchGotosInFunction(c, labels);
+        }
+    } else if (node.is_array()) {
+        for (auto& c : node) PatchGotosInFunction(c, labels);
+    }
+}
+
 
 inline void visitAllChildren(CXCursor cursor, json& children, bool actionScope,
                              std::unordered_map<std::string, std::string>& varTypeMap)
@@ -122,32 +182,50 @@ inline bool fillKindBycode(json &node, const std::string &codeStr,
 }
 
 // ========================AST attribute assistance ======================
+struct SourceExtent {
+    CXFile beginFile{};
+    CXFile endFile{};
+    unsigned beginOffset{};
+    unsigned endOffset{};
+    CXSourceRange fallback{};
+};
 
-std::string getSourceCode(CXFile bf, CXFile ef, unsigned beginOffset, unsigned endOffset, CXSourceRange range)
+std::string getSourceCode(CXTranslationUnit tu, const SourceExtent& ext) noexcept
 {
-    // Fallback: tokenize the expansion range and join token spellings (separated by spaces to avoid sticking)
-    CXTranslationUnit tu = clang_Cursor_getTranslationUnit(clang_getNullCursor());
-    // Note: libclang has no API to get a TU directly from a range. Alternative approach:
-    //       derive the TU from the begin location (the robust cross-API approach is to pass the TU in).
-    // To avoid larger structural changes, we use a small trick here: infer the TU from the begin location.
-    // If you’re willing to change the function signature, prefer:
-    //       getSourceContent(CXTranslationUnit tu, CXSourceRange range).
-    // Simplified handling: rebuild a range using the offsets on bf/ef and then tokenize
-    CXSourceRange expRange = clang_getRange(
-        clang_getLocationForOffset(clang_Cursor_getTranslationUnit(clang_getNullCursor()), bf, beginOffset),
-        clang_getLocationForOffset(clang_Cursor_getTranslationUnit(clang_getNullCursor()), ef, endOffset)
-    );
+    if (!tu) {
+        return {};
+    }
+    // Prefer an offset-based range; fall back to ext.fallback
+    CXSourceRange expRange{};
+    bool expValid = false;
+    if (ext.beginFile && ext.endFile) {
+        CXSourceLocation bLoc = clang_getLocationForOffset(tu, ext.beginFile, ext.beginOffset);
+        CXSourceLocation eLoc = clang_getLocationForOffset(tu, ext.endFile,   ext.endOffset);
+        expRange = clang_getRange(bLoc, eLoc);
+
+        // Validate start/end locations
+        CXSourceLocation s = clang_getRangeStart(expRange);
+        CXSourceLocation e = clang_getRangeEnd(expRange);
+        expValid = !(clang_equalLocations(s, clang_getNullLocation()) ||
+                     clang_equalLocations(e, clang_getNullLocation()));
+    }
+
+    const CXSourceRange tryRange = expValid ? expRange : ext.fallback;
 
     CXToken* toks = nullptr;
     unsigned ntok = 0;
-    // If we cannot obtain the TU above, try tokenizing the original range directly
-    clang_tokenize(clang_Cursor_getTranslationUnit(clang_getNullCursor()),
-        (ntok || !toks) ? range : expRange, &toks, &ntok);
+    clang_tokenize(tu, tryRange, &toks, &ntok);
+
     std::string text;
-    const auto reserveSize = (endOffset > beginOffset) ? (endOffset - beginOffset) : 8;
+    // Reserve a reasonable size; guard against unsigned underflow
+    size_t reserveSize = EIGHT;
+    if (ext.endOffset >= ext.beginOffset) {
+        reserveSize = std::max<size_t>(EIGHT, static_cast<size_t>(ext.endOffset - ext.beginOffset));
+    }
     text.reserve(reserveSize);
+
     for (unsigned i = 0; i < ntok; ++i) {
-        CXString s = clang_getTokenSpelling(clang_Cursor_getTranslationUnit(clang_getNullCursor()), toks[i]);
+        CXString s = clang_getTokenSpelling(tu, toks[i]);
         const char* c = clang_getCString(s);
         if (c) {
             if (!text.empty()) {
@@ -158,58 +236,144 @@ std::string getSourceCode(CXFile bf, CXFile ef, unsigned beginOffset, unsigned e
         clang_disposeString(s);
     }
     if (toks) {
-        clang_disposeTokens(clang_Cursor_getTranslationUnit(clang_getNullCursor()), toks, ntok);
+        clang_disposeTokens(tu, toks, ntok);
     }
     return text;
 }
 
-json getSourceContent(CXSourceRange range)
+// Common helpers for source slicing
+struct SourceSlice {
+    CXFile file = nullptr;
+    unsigned beginOffset = 0;
+    unsigned endOffset = 0;
+    unsigned beginLine = 0;
+    unsigned beginCol = 0;
+    unsigned endLine = 0;
+    unsigned endCol = 0;
+    std::string filename;
+};
+
+// Get expansion info for a CXSourceRange.
+// Returns true if begin/end belong to the same file and offsets form a valid range.
+static bool GetExpansionInfo(CXSourceRange range, SourceSlice& out)
 {
-    // 1) Get expansion locations
     CXSourceLocation b = clang_getRangeStart(range);
     CXSourceLocation e = clang_getRangeEnd(range);
-    CXFile bf;
-    CXFile ef;
-    unsigned bl;
-    unsigned bc;
-    unsigned beginOffset;
-    unsigned el;
-    unsigned ec;
-    unsigned endOffset;
-    clang_getExpansionLocation(b, &bf, &bl, &bc, &beginOffset);
-    clang_getExpansionLocation(e, &ef, &el, &ec, &endOffset);
-    // 2) Assemble common metadata
-    json j = json::object();
-    j["id"] = static_cast<unsigned long long>(beginOffset) + static_cast<unsigned long long>(endOffset);
-    auto& jb = j["begin"] = json::object();
-    jb["line"]   = bl;
-    jb["col"]    = bc;
-    jb["offset"] = beginOffset;
-    auto& je = j["end"] = json::object();
-    je["line"]   = el;
-    je["col"]    = ec;
-    je["offset"] = endOffset;
-    jb["tokLen"] = (endOffset > beginOffset ? (endOffset - beginOffset) : 0);
-    // 3) Prefer slicing at the expansion site (requires begin/end in the same file and a valid range)
-    if (bf && ef && bf == ef && endOffset >= beginOffset) {
+
+    CXFile bf = nullptr;
+    CXFile ef = nullptr;
+    unsigned bl = 0;
+    unsigned bc = 0;
+    unsigned bo = 0;
+    unsigned el = 0;
+    unsigned ec = 0;
+    unsigned eo = 0;
+
+    clang_getExpansionLocation(b, &bf, &bl, &bc, &bo);
+    clang_getExpansionLocation(e, &ef, &el, &ec, &eo);
+
+    out.file = bf; // if same file, bf == ef
+    out.beginOffset = bo;
+    out.endOffset = eo;
+    out.beginLine = bl;
+    out.beginCol = bc;
+    out.endLine = el;
+    out.endCol = ec;
+
+    if (bf && ef && bf == ef && eo >= bo) {
         CXString sfile = clang_getFileName(bf);
-        const char* cfn = clang_getCString(sfile);
-        std::string filename = cfn ? cfn : "";
+        out.filename = Cx2Str(sfile); // your existing helper
         clang_disposeString(sfile);
-        if (!filename.empty()) {
-            auto it = g_fileContents.find(filename);
-            if (it == g_fileContents.end()) {
-                LoadFileContent(filename);
-                it = g_fileContents.find(filename);
-            }
-            if (it != g_fileContents.end() && endOffset <= it->second.size()) {
-                const std::string& content = it->second;
-                j["code"] = content.substr(beginOffset, endOffset - beginOffset);
-                return j;
-            }
+        return !out.filename.empty();
+    }
+    out.filename.clear();
+    return false;
+}
+
+// Try slicing from cached file content using filename and offsets.
+// Returns true when sliced successfully and writes code to outCode.
+static bool TrySliceFromCache(const SourceSlice& s, std::string& outCode)
+{
+    if (s.filename.empty()) {
+        return false;
+    }
+    auto it = g_fileContents.find(s.filename);
+    if (it == g_fileContents.end()) {
+        LoadFileContent(s.filename);
+        it = g_fileContents.find(s.filename);
+    }
+    if (it == g_fileContents.end()) {
+        return false;
+    }
+    const std::string& content = it->second;
+    if (s.endOffset > content.size()) {
+        return false;
+    }
+    // Avoid extra allocation by using string_view when building json later if you want,
+    // but here we materialize a std::string for simplicity.
+    outCode = content.substr(s.beginOffset, s.endOffset - s.beginOffset);
+    return true;
+}
+
+// Lightweight version: returns only the "code" field.
+json getSourceContentLight(CXTranslationUnit tu, CXSourceRange range)
+{
+    SourceSlice s;
+    const bool sameFileValid = GetExpansionInfo(range, s);
+    if (sameFileValid) {
+        std::string code;
+        if (TrySliceFromCache(s, code)) {
+            return json{{"code", std::move(code)}};
         }
     }
-    j["code"] = getSourceCode(bf, ef, beginOffset, endOffset, range);
+    // 使用结构体封装参数，减少入参数量
+    SourceExtent ext{
+        s.file, /*beginFile*/
+        s.file, /*endFile*/
+        s.beginOffset, /*beginOffset*/
+        s.endOffset, /*endOffset*/
+        range /*fallback*/
+    };
+    return json{{"code", getSourceCode(tu, ext)}};
+}
+
+// Full version: includes begin/end metadata and prefers cached slicing for "code".
+json getSourceContent(CXTranslationUnit tu, CXSourceRange range)
+{
+    SourceSlice s;
+    const bool sameFileValid = GetExpansionInfo(range, s);
+    json j = json::object();
+    // Stable ID composed by high/low 32-bit offsets
+    j["id"] = (static_cast<unsigned long long>(s.beginOffset) << SHIFT_BITS_FOR_OFFSET) |
+              static_cast<unsigned long long>(s.endOffset);
+    auto& jb = j["begin"] = json::object();
+    jb["line"]   = s.beginLine;
+    jb["col"]    = s.beginCol;
+    jb["offset"] = s.beginOffset;
+
+    auto& je = j["end"] = json::object();
+    je["line"]   = s.endLine;
+    je["col"]    = s.endCol;
+    je["offset"] = s.endOffset;
+
+    jb["tokLen"] = (s.endOffset > s.beginOffset ? (s.endOffset - s.beginOffset) : 0);
+
+    if (sameFileValid) {
+        std::string code;
+        if (TrySliceFromCache(s, code)) {
+            j["code"] = std::move(code);
+            return j;
+        }
+    }
+    // 封装参数
+    const SourceExtent ext{
+        s.file, /*beginFile*/
+        s.file, /*endFile*/
+        s.beginOffset, /*beginOffset*/
+        s.endOffset, /*endOffset*/
+        range /*fallback*/
+    };
+    j["code"] = getSourceCode(tu, ext);
     return j;
 }
 
@@ -328,28 +492,6 @@ void annotateMemberExprIsArrow(json &node)
     }
 }
 
-// Swap CXXOperatorCallExpr child node order
-void swapChildNode(json &children)
-{
-    json child = children[1];
-    children[1] = children[0];
-    children[0] = child;
-}
-
-// Determine if callExpr node is a constructor call
-bool ConstructCallExpr(std::string codeStr, std::string typeStr)
-{
-    size_t index = codeStr.find('(');
-    if (index > codeStr.length()) {
-        return false;
-    }
-    std::string newStr = typeStr + codeStr.substr(index);
-    if (newStr == codeStr) {
-        return true;
-    }
-    return false;
-}
-
 // Determine if callExpr node is a template constructor call
 bool TemplateConstructCallExpr(std::string nameStr, std::string typeStr)
 {
@@ -386,20 +528,6 @@ void fixCallExprChildKind(json &node)
                 child["kind"] = "OverloadedDeclRef";
             else
                 child["kind"] = "DeclRefExpr";
-        }
-    }
-}
-
-// Modify child node types under CXXConstructExpr node
-void changeChildNodeType(json &children)
-{
-    if (children.size() == 1) {
-        std::string typeStr = children[0]["type"]["qualType"];
-        std::string codeStr = children[0]["code"];
-        std::string kindStr = children[0]["kind"];
-        if (typeStr == "iterator" || typeStr == "std::basic_string<char>" ||
-        (kindStr == "ImplicitCastExpr" && ConstructCallExpr(codeStr, typeStr))) {
-            children[0]["kind"] = "MaterializeTemporaryExpr";
         }
     }
 }
@@ -544,31 +672,6 @@ void postprocessCallExpr(json& node)
 
     node["kind"] = "AtomicCallExpr";
     node["atomicFunc"] = name;
-}
-
-
-// Save all label statements and IDs
-std::map<std::string, int> labelNameToId;
-
-// Traverse all AST nodes to collect labels
-void collectLabelStmt(const json &node, std::map<std::string, int> &labelMap)
-{
-    if (node.contains("kind") && node["kind"] == "LabelStmt" && node.contains("name"))
-        labelMap[node["name"]] = node["id"];
-    forEachChild(const_cast<json&>(node), [&](json &child) { collectLabelStmt(child, labelMap); });
-}
-
-// Supplement targetLabelId for goto statements
-void patchGotoTarget(json &node, const std::map<std::string, int> &labelMap)
-{
-    if (node.contains("kind") && node["kind"] == "GotoStmt") {
-        if (node.contains("inner") && !node["inner"].empty()) {
-            const json &labelRef = node["inner"][0];
-            std::string labelName = labelRef.value("name", "");
-            if (!labelName.empty() && labelMap.count(labelName)) node["targetLabelId"] = labelMap.at(labelName);
-        }
-    }
-    forEachChild(node, [&](json &child) { patchGotoTarget(child, labelMap); });
 }
 
 void patchPseudoDestructorExpr(json &node)
@@ -760,26 +863,6 @@ inline bool isRemovable(const json& j)
     return j.is_null() || (j.is_object() && j.empty()) || (j.is_array() && j.empty());
 }
 
-void cleanJson(json& node)
-{
-    if (node.is_array()) {
-        for (auto& elem: node) {
-            cleanJson(elem);
-        }
-        node.erase(std::remove_if(node.begin(), node.end(), isRemovable), node.end());
-    } else if (node.is_object()) {
-        for (auto it = node.begin(); it != node.end();) {
-            cleanJson(it.value());
-            if (isRemovable(it.value())) {
-                it = node.erase(it);
-            } else {
-                ++it;
-            }
-        }
-    }
-}
-
-
 // Global variable temporarily stores header file AST
 std::vector<json> headerUnits;
 static std::unordered_map<std::string, std::string> g_pathCanonCache; // need to free after use
@@ -817,98 +900,110 @@ static const std::string& CanonicalCached(const std::string& path)
     return g_pathCanonCache.emplace(path, std::move(canon)).first->second;
 }
 
-//  Determine if filename is in -i directory
-bool IsInUserInclude(const std::string& fileName)
+// Path fallback: some Windows/MSVC headers are not marked as system headers
+// under certain configurations. Use kDenyPrefixes (should include Windows Kits / MSVC / SDK prefixes).
+static inline bool IsSystemishByPath(const std::string& fileName)
 {
-    // Normalize the path (resolve symlinks, unify separators, cache results).
-    auto norm = CanonicalCached(fileName);
-    if (!g_normMainFile.empty() && norm == g_normMainFile) {
+    if (fileName.empty()) {
         return false;
     }
-    // Exclude system header prefixes (standard library, SDK, etc.).
-    for (const auto& p: kDenyPrefixes) {
-        if (norm.find(p) != std::string::npos) {
-            return false;
-        }
-    }
-    for (const auto& dir: g_user_include_dirs) {
-        std::string prefix = CanonicalCached(dir);
-        if (!prefix.empty() && prefix.back() != '/') {
-            prefix += '/';
-        }
-        if (norm.find(prefix) == 0) {
+    const std::string norm = CanonicalCached(fileName);
+    for (const auto& p : kDenyPrefixes) {
+        if (!p.empty() && norm.find(p) != std::string::npos) {
             return true;
         }
     }
     return false;
 }
 
-void removeNoTMainNode(std::string fileName, std::string kind, json& node)
+// Only determines whether the file is in the user whitelist path
+// (not responsible for pruning system headers)
+static bool IsInUserWhitelistPath(const std::string& fileName)
 {
-    // Drop system SDK headers directly
-    const bool isSdk = (fileName.find("/sdk/default/") != std::string::npos);
-    if (kind != "inclusion directive" || isSdk) {
-        node = json(); // Remove
-        return;
+    // Normalize (with cache)
+    const std::string norm = CanonicalCached(fileName);
+    for (const auto& p : kDenyPrefixes) {
+        if (!p.empty() && norm.find(p) != std::string::npos) {
+            return false;
+        }
     }
-    const std::string included = node.value("included", "");
-    const bool inUserByFile = IsInUserInclude(fileName);
-    const bool inUserByIncl = (!included.empty() && IsInUserInclude(included));
-    const std::string code = node.value("code", "");
-    const bool isAngle = (code.find('<') != std::string::npos) || (code.find('>') != std::string::npos);
-    if (inUserByFile || (inUserByIncl && !isAngle)) {
-        headerUnits.push_back(node); // Collect user-header include
+    // User whitelist directories (from CLI/config -I user paths)
+    for (const auto& dir : g_user_include_dirs) {
+        std::string prefix = CanonicalCached(dir);
+        if (!prefix.empty() && prefix.back() != '/') {
+            prefix += '/';
+        }
+        if (!prefix.empty() && norm.find(prefix) == 0) {
+            return true;
+        }
     }
-    node = json(); // Remove from main AST
+    return false;
 }
 
-void filterToMainFileOnly(json& node, const std::string& normMainFileName, std::string parentFileName = "")
+// Lightweight expression whitelist: only serves to complete value semantics
+// for expansions inside the main file
+static bool IsLightExpansionExpr(CXCursorKind k)
 {
-    // Array: recurse in-place
-    if (node.is_array()) {
-        for (auto& elem : node) filterToMainFileOnly(elem, normMainFileName, parentFileName);
-        return;
+    switch (k) {
+        case CXCursor_LinkageSpec:
+        case CXCursor_IntegerLiteral:
+        case CXCursor_FloatingLiteral:
+        case CXCursor_CharacterLiteral:
+        case CXCursor_StringLiteral:
+        case CXCursor_GNUNullExpr:
+        case CXCursor_CXXNullPtrLiteralExpr:
+        case CXCursor_CStyleCastExpr:
+        case CXCursor_ParenExpr:
+            return true;
+        default:
+            return false;
     }
-    if (!node.is_object()) {
-        return;
+}
+
+// Decide if a cursor should be materialized (kept in AST)
+static bool ShouldMaterializeCursor(
+    CXCursor cursor,
+    CXCursorKind kind_cursor,
+    bool fromMainSpell,
+    bool fromMainByExpansion,
+    const std::string& spellingFileName)
+{
+    // Always keep the root node
+    if (kind_cursor == CXCursor_TranslationUnit) {
+        return true;
     }
-    // Get file name: prefer locFile, then fileName, fallback to parent name
-    std::string fileName = node.value("fileName", "");
-    if (node.contains("locFile")) {
-        fileName = node["locFile"];
+
+    // Allow light expressions expanded from the main file
+    if (fromMainByExpansion && IsLightExpansionExpr(kind_cursor)) {
+        return true;
     }
-    if (fileName.empty()) {
-        fileName = parentFileName;
+
+    // Prune system headers
+    if (IsInSystemHeader(cursor)) {
+        return false;
     }
-    // Normalize only when non-empty (also unify slashes)
-    if (!fileName.empty()) {
-        fileName = CanonicalCached(fileName);
+
+    // Prune SDK/MSVC headers by path fallback
+    if (IsSystemishByPath(spellingFileName)) {
+        return false;
     }
-    // Keep the root node
-    const std::string kind = node.value("kind", "");
-    if (kind != "TranslationUnitDecl") {
-        // Non-main file: keep only user-header inclusion directives, collect into headerUnits
-        if (!fileName.empty() && fileName != normMainFileName) {
-            removeNoTMainNode(fileName, kind, node);
-            return;
+
+    // Keep anything in the main file
+    if (!g_normMainFile.empty()) {
+        const std::string norm = CanonicalCached(spellingFileName);
+        if (!norm.empty() && norm == g_normMainFile) {
+            return true;
         }
     }
-    // Recurse into child nodes: shrink in-place, avoid copy
-    if (node.contains("inner") && node["inner"].is_array()) {
-        auto& arr = node["inner"];
-        std::size_t out = 0;
-        for (std::size_t i = 0; i < arr.size(); ++i) {
-            auto& child = arr[i];
-            filterToMainFileOnly(child, normMainFileName, fileName);
-            if (!child.is_null() && !child.empty()) {
-                arr[out] = out != i ? std::move(child) : arr[out];
-                ++out;
-            }
-        }
-        if (out < arr.size()) {
-            arr.erase(arr.begin() + static_cast<long long>(out), arr.end());
-        }
+
+    const bool fromMainView = (fromMainSpell || fromMainByExpansion);
+
+    // Keep headers from user whitelist visible to main file
+    if (IsInUserWhitelistPath(spellingFileName) && fromMainView) {
+        return true;
     }
+
+    return false;
 }
 
 // Process parameter node types in constructor as callExpr
@@ -1142,6 +1237,41 @@ void fillCXEvalResult(CXEvalResult ev, json& node)
     clang_EvalResult_dispose(ev);
 }
 
+// Fill literal value (only if "code" is available).
+// Equivalent to the original inline block:
+// For integer/float/char/bool/string literals,
+// first store the source text into node["value"];
+// for non-string literals, also try evaluating with Clang.
+static void FillLiteralValueIfNeeded(json& node,
+                                     CXCursor cursor,
+                                     CXCursorKind kind_cursor,
+                                     bool hasCode)
+{
+    if (!hasCode) {
+        return;
+    }
+    switch (kind_cursor) {
+        case CXCursor_IntegerLiteral:
+        case CXCursor_CXXBoolLiteralExpr:
+        case CXCursor_CharacterLiteral:
+        case CXCursor_FloatingLiteral:
+        case CXCursor_StringLiteral: {
+            const std::string nodeCodeStr = node.value("code", "");
+            node["value"] = nodeCodeStr;
+
+            if (kind_cursor != CXCursor_StringLiteral) {
+                if (CXEvalResult ev = clang_Cursor_Evaluate(cursor)) {
+                    fillCXEvalResult(ev, node);
+                }
+            }
+            break;
+        }
+        default:
+            break;
+    }
+}
+
+
 void fillNodeSourceContent(json& node, const json& content, CXCursorKind kind_cursor, CXCursor cursor,
                            const std::string& fileStr)
 {
@@ -1164,7 +1294,7 @@ void fillNodeSourceContent(json& node, const json& content, CXCursorKind kind_cu
         node["code"] = codeStr;
     // Special handling for InclusionDirective
     if (kind_cursor == CXCursor_InclusionDirective && !content.is_null()) {
-        node["kind"] = "InclusionDirective";
+        node["kind"] = "inclusion directive";
         node["fileName"] = Cx2Str(clang_getIncludedFile(cursor) ?
                                   clang_getFileName(clang_getIncludedFile(cursor)) :
                                   clang_getCursorSpelling(cursor));
@@ -1291,53 +1421,47 @@ static void HandleTemplateAndCursorSpecific(
     }
 }
 
-void operatorCallExprPostProcess(
-    json& node,
-    json& children
-)
+// Track labels in function scope (map name -> id)
+inline void TrackFunctionScopeLabel(json& node)
 {
-    if (children.size() >= TWO) {
-        std::string childName1 = children[1]["name"].is_null() ? "" : children[1]["name"];
-        if (children[1]["code"] == "<<" || childName1.find("operator") != std::string::npos)
-            swapChildNode(children);
-        std::string childName0 = children[0]["name"].is_null() ? "" : children[0]["name"];
-        if (childName0.find("operator") != std::string::npos) children[0]["castKind"] = "FunctionToPointerDecay";
+    if (node.value("kind", "") != "LabelStmt") {
+        return;
     }
-    if (children.size() == THREE) children[1]["valueCategory"] = "lvalue";
+    if (s_funcCtx.empty()) {
+        return;
+    }
+    s_funcCtx.back().labels[node.value("name", "")] = node.value("id", 0);
 }
 
-void implicitCastExprPostProcess(
-    json& node,
-    json& children,
-    std::string codeStr
-)
+// Resolve or mark goto target (link to label if available)
+void ResolveGotoTarget(json& node)
 {
-    if (!children.empty() && children[0]["kind"] == "CallExpr") {
-        node["kind"] = "ExprWithCleanups";
-    } else if (!children.empty() && children[0]["kind"] == "DeclRefExpr" &&
-        codeStr.find(children[0]["code"]) == 0 && codeStr.find("(") != std::string::npos) {
-        node["kind"] = "RecoveryExpr";
+    if (node.value("kind", "") != "GotoStmt") {
+        return;
+    }
+    node["_isGoto"] = true; // mark for patching at function finalization
+    if (s_funcCtx.empty()) {
+        return;
+    }
+    if (node.contains("inner") && node["inner"].is_array() && !node["inner"].empty()) {
+        const std::string label = node["inner"][0].value("name", "");
+        auto it = s_funcCtx.back().labels.find(label);
+        if (it != s_funcCtx.back().labels.end()) {
+            node["targetLabelId"] = it->second;
+        }
     }
 }
 
-void callExprPostProcess(json& node, json& children)
-{
-    if (!children.empty() && children[0]["kind"] == "MemberExpr") {
-        node["kind"] = "CXXMemberCallExpr";
-    } else {
-        changeChildNodeType(children);
-    }
-}
 
 void nodePostprocess(
     json& node,
     CXCursor cursor,
     CXCursorKind kind_cursor,
-    json& children
-)
+    json& children)
 {
     std::string codeStr = node.value("code", "");
     std::string typeStr = node["type"]["qualType"];
+    // --- High-level transformations ---
     if (node["kind"] == "UsingDecl" && isUsingInheritClass(node, children)) {
         node["kind"] = "CXXConstructorDecl";
         node["mangledName"] = getMemberInClassName(cursor);
@@ -1352,105 +1476,369 @@ void nodePostprocess(
         implicitCastExprPostProcess(node, children, codeStr);
     } else if (node["kind"] == "CXXConstructorDecl") {
         children = addCXXCtorInitializer(children, node);
-    } else if (node["kind"] == "TypedefDecl" && (children.size() == 0 || (children[0]["kind"] !=
-                               "CXXRecordDecl" && children[0]["kind"] != "EnumDecl"))) {
+    } else if (node["kind"] == "TypedefDecl" &&
+               (children.empty() ||
+                (children[0]["kind"] != "CXXRecordDecl" && children[0]["kind"] != "EnumDecl"))) {
         json newChildren = json::array();
-        buildTypedefChild(clang_getTypedefDeclUnderlyingType(cursor), newChildren, children, node);
+        buildTypedefChild(clang_getTypedefDeclUnderlyingType(cursor),
+                          newChildren, children, node);
         children = newChildren;
     }
-    if (node["kind"] == "CXXMemberCallExpr" || node["kind"] == "MemberExpr") fillMemberExprName(node);
-    if (node["kind"] == "InitListExpr") relateMemberType(typeStr, children);
+    if (node["kind"] == "CXXMemberCallExpr" || node["kind"] == "MemberExpr")
+        fillMemberExprName(node);
+    if (node["kind"] == "InitListExpr")
+        relateMemberType(typeStr, children);
     if (node["kind"] == "VarDecl") {
         updateTypedefClassConstructor(children);
         deduceDecltype(node, children);
     }
+    // --- Extracted specialized postprocessing ---
+    PostprocessPseudoDestructor(node, children, codeStr);
+    PostprocessFoldExpr(node, codeStr);
+    TrackFunctionScopeLabel(node);
+    ResolveGotoTarget(node);
+    // --- Remaining generic handlers ---
     HandleTemplateAndCursorSpecific(node, kind_cursor, codeStr, children);
-    detectAndFillSpecialKind(node);  // Automatic fallback for special expression types
+    detectAndFillSpecialKind(node);
 }
 
-void fillNodeProperties(json& node, CXCursor& cursor, CXCursorKind& kind_cursor, bool isInclude,
-                        CXFile file)
+
+json getSourceContentMasked(CXTranslationUnit tu, CXSourceRange range, uint32_t want)
 {
-    std::string fileName = file ? Cx2Str(clang_getFileName(file)) : "";
-    std::string kindSpelling = Cx2Str(clang_getCursorKindSpelling(kind_cursor));
-    std::string displayName = Cx2Str(clang_getCursorSpelling(cursor));
-    CXSourceRange range = clang_getCursorExtent(cursor);
-    if (isInclude) {
-        node["include"] = true;
+    SourceSlice s;
+    const bool sameFileValid = GetExpansionInfo(range, s);
+    json j = json::object();
+    const bool needCode  = (want & WANT_CODE)  != 0;
+    const bool needRange = (want & WANT_RANGE) != 0;
+    if (needRange) {
+        auto& begin = j["begin"] = json::object();
+        begin["line"]   = s.beginLine;
+        begin["col"]    = s.beginCol;
+        begin["offset"] = s.beginOffset;
+        begin["tokLen"] = (s.endOffset > s.beginOffset) ? (s.endOffset - s.beginOffset) : 0;
+        auto& end = j["end"] = json::object();
+        end["line"]   = s.endLine;
+        end["col"]    = s.endCol;
+        end["offset"] = s.endOffset;
+        // 64-bit 稳定 ID：高 32 位 beginOffset，低 32 位 endOffset
+        j["id"] = (static_cast<unsigned long long>(s.beginOffset) << SHIFT_BITS_FOR_OFFSET) |
+                  static_cast<unsigned long long>(s.endOffset);
     }
-
-    node["type"] = {{"qualType", unifyTypeStr(clang_getTypeSpelling(clang_getCursorType(cursor)))}};
-    std::string fileStr = fileName != "" ? fileName : displayName;
-    json content = getSourceContent(range);
-    fillNodeSourceContent(node, content, kind_cursor, cursor, fileStr);
-    fillNodeKindTag(node, cursor, kind_cursor, kindSpelling);
-    fillVarDeclStorageClass(node, cursor, kind_cursor);
-    fillDeclRefInfo(node, cursor, kind_cursor);
-    fillNodeIdRangeLoc(node, content, kind_cursor, file, displayName);
+    // 若不需要 CODE，直接返回
+    if (!needCode) {
+        return j;
+    }
+    if (!sameFileValid) {
+        const SourceExtent ext{nullptr, nullptr, 0u, 0u, range};
+        j["code"] = getSourceCode(tu, ext);
+        return j;
+    }
+    std::string code;
+    if (TrySliceFromCache(s, code)) {
+        j["code"] = std::move(code);
+        return j;
+    }
+    const SourceExtent ext{s.file, s.file, s.beginOffset, s.endOffset, range};
+    j["code"] = getSourceCode(tu, ext);
+    return j;
 }
 
-bool filterAstNode(CXCursorKind kind_cursor, bool isInclude, bool fromMainSpell, bool fromMainByExpansion,
-                   std::string fileName)
+static inline void EnsureDeclRefName(json& node, CXCursorKind kind_cursor)
 {
-    return kind_cursor != CXCursor_TranslationUnit && !fromMainSpell && !fromMainByExpansion && !isInclude ||
-           (kind_cursor == CXCursor_DeclStmt && !g_normMainFile.empty() && CanonicalCached(fileName) != g_normMainFile);
-}
-// ==========================buildASTJson Main Body========================
-
-json buildASTJson(CXCursor cursor, bool actionScope, std::unordered_map<std::string, std::string>& varTypeMap)
-{
-    CXSourceLocation loc = clang_getCursorLocation(cursor);
-    CXCursorKind kind_cursor = clang_getCursorKind(cursor);
-
-    CXFile file;
-    clang_getSpellingLocation(loc, &file, nullptr, nullptr, nullptr);
-    std::string fileName = file ? Cx2Str(clang_getFileName(file)) : "";
-
-    bool isInclude = IsInUserInclude(fileName);
-    bool fromMainSpell = clang_Location_isFromMainFile(loc);
-    bool fromMainByExpansion = false;
-    {
-        CXFile ef;
-        unsigned el = 0;
-        unsigned ec = 0;
-        unsigned eoff = 0;
-        // Get the expansion location (where the token is actually used in source code,
-        // as opposed to the spelling location in a header or macro definition).
-        clang_getExpansionLocation(loc, &ef, &el, &ec, &eoff);
-        if (ef) {
-            std::string expPath = CanonicalCached(Cx2Str(clang_getFileName(ef)));
-            fromMainByExpansion = (!g_normMainFile.empty() && expPath == g_normMainFile);
+    if (kind_cursor != CXCursor_DeclRefExpr) {
+        return;
+    }
+    // If "name" is missing or empty, fall back to "code";
+    // avoids empty names in cases like overloaded functions.
+    if ((!node.contains("name")) || node["name"].is_null() || node["name"] == "") {
+        const std::string code = node.value("code", "");
+        if (!code.empty()) {
+            node["name"] = code;
         }
     }
-    if (filterAstNode(kind_cursor, isInclude, fromMainSpell, fromMainByExpansion, fileName)) {
-        return json();
+}
+
+static bool HandleInclusionDirective(
+    json& node,
+    CXCursor cursor,
+    const json& content,
+    const WantMask& w,
+    const std::string& fileStr)
+{
+    // Only handle inclusion directives (#include ...)
+    if (clang_getCursorKind(cursor) != CXCursor_InclusionDirective) {
+        return false;
     }
-    if (kind_cursor == CXCursor_LinkageSpec) { // extern "C" { ... }
+
+    // Record cursor kind if requested
+    if (w.kind) {
+        node["kind"] = "inclusion directive";
+    }
+
+    // Get the included file: prefer clang_getIncludedFile, fallback to cursor spelling
+    const bool hasInc = (clang_getIncludedFile(cursor) != nullptr);
+    const std::string incFile = hasInc
+        ? Cx2Str(clang_getFileName(clang_getIncludedFile(cursor)))
+        : Cx2Str(clang_getCursorSpelling(cursor));
+
+    node["fileName"] = incFile;
+
+    // Note: original logic sets locFile = incFile only inside the include branch
+    if (w.loc) {
+        node["locFile"] = incFile;
+    }
+
+    // Preserve source range if available
+    if (w.range && content.contains("begin") && content.contains("end")) {
+        node["range"] = {{"begin", content["begin"]}, {"end", content["end"]}};
+    }
+
+    // The file that performed the inclusion
+    node["included"] = fileStr;
+
+    return true;
+}
+
+// Whether displayName is needed: required only if "name" is requested,
+// or when extras need to backfill location/range information.
+static inline bool NeedDisplayName(const WantMask& w)
+{
+    return w.name || (w.extras && (w.range || w.loc));
+}
+
+// 填充 name / opcode（仅当 wantName == true 才执行任何操作）
+void FillNameAndOpcode(json& node, CXCursor cursor, CXCursorKind kind_cursor, bool wantName) noexcept
+{
+    if (!wantName) {
+        return;
+    }
+    if (kind_cursor == CXCursor_UnaryOperator) {
+        // 会顺带写入 opcode 相关的字段（你现有函数里就是这么做的）
+        fillUnaryOperatorInfo(node, cursor);
+        // 只在有拼写名时写 name
+        std::string nm = Cx2Str(clang_getCursorSpelling(cursor));
+        if (!nm.empty()) node["name"] = nm;
+        return;
+    }
+    if (kind_cursor == CXCursor_BinaryOperator ||
+        kind_cursor == CXCursor_CompoundAssignOperator) {
+        node["opcode"] = Cx2Str(
+            clang_Cursor_getBinaryOpcodeStr(clang_Cursor_getBinaryOpcode(cursor)));
+        std::string nm = Cx2Str(clang_getCursorSpelling(cursor));
+        if (!nm.empty()) {
+            node["name"] = nm;
+        }
+        return;
+    }
+    node["name"] = Cx2Str(clang_getCursorSpelling(cursor));
+}
+
+// ---------- helpers: extras (safe for headers; no static/anon ns) ----------
+struct ExtrasRefs {
+    const json*        content{nullptr};      // may be null
+    CXFile             file{};                // for fillNodeIdRangeLoc
+    const std::string* displayName{nullptr};  // may be null
+    const std::string* fileName{nullptr};     // for minimal loc fallback
+};
+
+// Apply extras + loc/range fallback.
+void ApplyExtras(json& node, CXCursor cursor, CXCursorKind kind, const WantMask& w, const ExtrasRefs& refs) noexcept
+{
+    if (w.extras) {
+        // 1) storage class & decl-ref
+        fillVarDeclStorageClass(node, cursor, kind);
+        fillDeclRefInfo(node, cursor, kind);
+        // 2) id/range/loc only when requested
+        if (w.range || w.loc) {
+            json empty = json::object();  // local fallback (no header-level static)
+            const json& c = (refs.content && !refs.content->is_null()) ? *refs.content : empty;
+            const std::string& disp = refs.displayName ? *refs.displayName : std::string();
+            fillNodeIdRangeLoc(node, c, kind, refs.file, disp);
+        }
+    } else if (w.loc && !node.contains("locFile")) {
+        // Minimal loc fallback without extras
+        node["locFile"] = refs.fileName ? *refs.fileName : std::string();
+    }
+}
+
+
+void fillNodeProperties(json& node, CXCursor cursor, CXCursorKind kind_cursor,
+                        bool isInclude, CXFile file)
+{
+    // ===== 1) Policy unpack =====
+    const uint32_t wantBits = SelectFieldMaskForCursorKind(kind_cursor);
+    const WantMask w = DecodeWant(wantBits);
+    // ===== 2) Basic context =====
+    const CXSourceRange range = clang_getCursorExtent(cursor);
+    CXTranslationUnit tu = clang_Cursor_getTranslationUnit(cursor);
+    const std::string kindSpelling = Cx2Str(clang_getCursorKindSpelling(kind_cursor));
+    const std::string fileName     = (file ? Cx2Str(clang_getFileName(file)) : std::string());
+    if (isInclude) node["include"] = true;
+    // ===== 3) type (on demand) =====
+    if (w.type) {
+        node["type"] = {{"qualType", unifyTypeStr(clang_getTypeSpelling(clang_getCursorType(cursor)))}};
+    } else {
+        node["type"] = {{"qualType", ""}}; // placeholder to avoid downstream crashes
+    }
+    // ===== 4) Source content (only when code or range is needed) =====
+    json content;           // null
+    const bool needContent = (w.code || w.range);
+    if (needContent) {
+        content = getSourceContentMasked(tu, range, wantBits);
+    }
+    const bool hasContent = !content.is_null();
+    // ===== 5) displayName / fileStr (lazy computation) =====
+    std::string displayName;
+    std::string fileStr = fileName;
+    if (NeedDisplayName(w)) {
+        displayName = Cx2Str(clang_getCursorSpelling(cursor));
+        if (fileStr.empty() && !displayName.empty()) {
+            fileStr = displayName;
+        }
+    }
+    // ===== 6) name / opcode (on demand) =====
+    FillNameAndOpcode(node, cursor, kind_cursor, w.name);
+    // ===== 7) code (on demand) =====
+    if (w.code) {
+        node["code"] = (hasContent && content.contains("code") &&
+        content["code"].is_string()) ? content["code"].get<std::string>() : "";
+    }
+    // ===== 8) #include special case (preserve equivalent behavior) =====
+    if (HandleInclusionDirective(node, cursor, content, w, fileStr)) {
+        return;
+    }
+    // ===== 9) range (on demand) =====
+    if (w.range && hasContent && content.contains("begin") && content.contains("end")) {
+        auto& r = node["range"] = json::object();
+        r["begin"] = content["begin"];
+        r["end"]   = content["end"];
+    }
+    // ===== 10) Literal value (only if code is available) =====
+    FillLiteralValueIfNeeded(node, cursor, kind_cursor, w.code);
+    // ===== 11) kind (on demand) =====
+    if (w.kind) {
+        fillNodeKindTag(node, cursor, kind_cursor, kindSpelling);
+    }
+    const ExtrasRefs xrefs{ hasContent ? &content : nullptr,
+    file, NeedDisplayName(w) ? &displayName : nullptr, &fileStr };
+    ApplyExtras(node, cursor, kind_cursor, w, xrefs);
+    // ===== 13) DeclRef name fallback (on demand) =====
+    if (w.name) {
+        EnsureDeclRefName(node, kind_cursor);
+    }
+}
+
+// Utility: aggregate source origin information
+struct OriginInfo {
+    std::string fileName;       // Source file name
+    bool isUserHeader = false;  // True if the file is a user header
+    bool fromMainSpell = false; // True if spelled directly in the main file
+    bool fromMainByExpansion = false; // True if brought in via expansion (e.g., macro)
+};
+
+// Compute origin information (file, header type, main-file relation) for a cursor
+static OriginInfo ComputeOriginInfo(CXCursor cursor)
+{
+    OriginInfo oi;
+    const CXSourceLocation loc = clang_getCursorLocation(cursor);
+
+    // Spelling location (where the cursor is written in source)
+    CXFile spellFile{};
+    clang_getSpellingLocation(loc, &spellFile, nullptr, nullptr, nullptr);
+    oi.fileName = spellFile ? Cx2Str(clang_getFileName(spellFile)) : "";
+    oi.isUserHeader   = IsInUserWhitelistPath(oi.fileName);
+    oi.fromMainSpell  = clang_Location_isFromMainFile(loc);
+
+    // Expansion location (e.g., from macro expansion path)
+    CXFile ef{};
+    unsigned el = 0;
+    unsigned ec = 0;
+    unsigned eoff = 0;
+    clang_getExpansionLocation(loc, &ef, &el, &ec, &eoff);
+    if (ef) {
+        const std::string expPath = CanonicalCached(Cx2Str(clang_getFileName(ef)));
+        oi.fromMainByExpansion = (!g_normMainFile.empty() && expPath == g_normMainFile);
+    }
+    return oi;
+}
+
+// Utility: check if a cursor kind represents a function
+static inline bool IsFunctionCursor(CXCursorKind k)
+{
+    return k == CXCursor_FunctionDecl ||
+           k == CXCursor_CXXMethod   ||
+           k == CXCursor_Constructor ||
+           k == CXCursor_Destructor;
+}
+
+// ==========================buildASTJson Main Body========================
+
+json buildASTJson(CXCursor cursor, bool actionScope,
+                  std::unordered_map<std::string, std::string>& varTypeMap)
+{
+    // -------- 1) Origin & kind --------
+    const CXCursorKind kind = clang_getCursorKind(cursor);
+    const OriginInfo   oi   = ComputeOriginInfo(cursor);
+    // -------- 2) Materialization gate --------
+    // Skip nodes that should not be materialized
+    if (!ShouldMaterializeCursor(cursor, kind, oi.fromMainSpell, oi.fromMainByExpansion, oi.fileName)) {
+        return json(); // drop
+    }
+    // -------- 3) Special cases (fast path) --------
+    // Handle linkage specifications directly
+    if (kind == CXCursor_LinkageSpec) {
         return visitLinkageSpec(cursor, actionScope, varTypeMap);
     }
-
+    // -------- 4) Core node properties --------
     json node;
-    fillNodeProperties(node, cursor, kind_cursor, isInclude, file);
-    std::string codeStr = node.value("code", "");
-    if (node["kind"] == "CXXDeleteExpr" && codeStr.find("delete[]") != std::string::npos) {
+    {
+        CXFile spellFile{};
+        // Only needed for passing into fillNodeProperties.
+        // Simpler to fetch here again; could also be cached in ComputeOriginInfo.
+        clang_getSpellingLocation(clang_getCursorLocation(cursor), &spellFile, nullptr, nullptr, nullptr);
+        fillNodeProperties(node, cursor, kind, oi.isUserHeader, spellFile);
+    }
+    // Small decoration: mark delete[] expressions
+    if (node.value("kind", "") == "CXXDeleteExpr" &&
+        node.value("code", "").find("delete[]") != std::string::npos) {
         node["isArray"] = true;
     }
-
-    if (node.contains("kind") && (node["kind"] == "ParmDecl" || node["kind"] == "VarDecl") && node.contains("name") &&
-        node.contains("type") && node["type"].contains("qualType"))
-        varTypeMap[node["name"]] = node["type"]["qualType"];
+    // Record type of visible parameters/variables for later cast/declref fixes
+    if (node.value("kind", "") == "ParmDecl" || node.value("kind", "") == "VarDecl") {
+        if (node.contains("name") && node.contains("type") && node["type"].contains("qualType")) {
+            varTypeMap[node["name"]] = node["type"]["qualType"];
+        }
+    }
+    // Fix ImplicitCastExpr (add type) / DeclRef (fallback name)
     fixImplicitCastExprAndDeclRef(node, varTypeMap);
-
-    if (node.contains("kind") && (node["kind"] == "FunctionDecl" || node["kind"] == "CXXMethodDecl" ||
-        node["kind"] == "CXXConstructorDecl")) {
+    // Enable actionScope when entering a function/method body
+    if (node.contains("kind") &&
+        (node["kind"] == "FunctionDecl" || node["kind"] == "CXXMethodDecl" ||
+         node["kind"] == "CXXConstructorDecl" || node["kind"] == "CXXDestructorDecl")) {
         actionScope = true;
     }
+    // -------- 5) Early prune (opaque) --------
+    // Convert large InitListExpr into opaque nodes
+    if (ShouldPruneInitList(node)) {
+        return MakeOpaqueNode(node);
+    }
+    // -------- 6) Function-scope context (labels/gotos) --------
+    const bool isFunc = IsFunctionCursor(kind);
+    if (isFunc) {
+        s_funcCtx.emplace_back();
+    }
+    // -------- 7) Children build --------
     json children = json::array();
-    visitAllChildren(cursor, children, actionScope, varTypeMap); // 子节点递归
-
-    nodePostprocess(node, cursor, kind_cursor, children);
+    visitAllChildren(cursor, children, actionScope, varTypeMap);
+    // -------- 8) Postprocess & patch --------
+    nodePostprocess(node, cursor, kind, children);
+    if (isFunc) {
+        PatchGotosInFunction(node, s_funcCtx.back().labels);
+        s_funcCtx.pop_back();
+    }
     return node;
 }
+
 
 // ======================Project Helper Code==========================
 
@@ -1508,7 +1896,7 @@ static void inclusionVisitorBuildHeaderUnits(CXFile includedFile,
     if (incPath.empty()) {
         return;
     }
-    if (!IsInUserInclude(incPath)) {
+    if (!IsInUserWhitelistPath(incPath)) {
         return;
     }
     // Build a "basic" headerUnit (note: your JSON uses lowercase "inclusion directive")
@@ -1535,7 +1923,6 @@ json buildAndProcessAST(CXTranslationUnit unit, const CommandLineOptions& opts)
     json ast = buildASTJson(clang_getTranslationUnitCursor(unit), false, varTypeMap);
     std::cout << "[STEP1] buildASTJson finished\n";
     std::string normMain = CanonicalCached(fs::canonical(opts.inputFile).string());
-    filterToMainFileOnly(ast, normMain);
     // Collect header files when not using CXTranslationUnit_DetailedPreprocessingRecord
     if (headerUnits.empty()) {
         InclusionCtx ctx{normMain, true};
@@ -1545,18 +1932,9 @@ json buildAndProcessAST(CXTranslationUnit unit, const CommandLineOptions& opts)
         ast["headerUnits"] = headerUnits;
         headerUnits.clear();
     }
-    cleanJson(ast);
     if (!ast.contains("headerUnits")) {
         ast["headerUnits"] = json::array();
     }
-    std::cout << "[STEP2] filterToMainFileOnly finished\n";
-    std::map<std::string, int> labelNameToId;
-    patchPseudoDestructorExpr(ast);
-    filterVarDeclArrayDims(ast);
-    collectLabelStmt(ast, labelNameToId);
-    patchGotoTarget(ast, labelNameToId);
-    fixCallExprChildKind(ast);
-    patchFoldExpr(ast);
     std::cout << "[STEP3] AST built successfully\n";
     return ast;
 }

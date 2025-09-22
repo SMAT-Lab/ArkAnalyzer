@@ -168,11 +168,10 @@ const SourceBasicTest_CASE10_EXPECT = `function controlTest(): void {
     }
     // 使用 break 终止循环
     let k: number = 0;
-    while (k < 3) {
+    for (; k < 3; k = k + 1) {
       logger.info('外层循环计数: ' + k.toString());
       logger.info('Department name: ' + k);
       if (k === 1) {
-        k = k + 1;
         break;
       }
     }

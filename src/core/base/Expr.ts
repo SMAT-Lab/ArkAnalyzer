@@ -45,6 +45,7 @@ import { ImportInfo } from '../model/ArkImport';
 import { ArkClass, ClassCategory } from '../model/ArkClass';
 import { ArkField } from '../model/ArkField';
 import { ModelUtils } from '../common/ModelUtils';
+import { PointerType } from '../../cpp_frontend/base/Type';
 
 /**
  * @category core/base/expr
@@ -319,9 +320,13 @@ export class ArkPtrInvokeExpr extends AbstractInvokeExpr {
      */
     public inferType(arkMethod: ArkMethod): AbstractInvokeExpr {
         this.getArgs().forEach(arg => TypeInference.inferValueType(arg, arkMethod));
-        const ptrType = this.funPtr.getType();
-        if (ptrType instanceof FunctionType) {
-            this.setMethodSignature(ptrType.getMethodSignature());
+        // CXXTodo: If it is a Cxx function pointer, it is necessary to obtain its baseType to get method signature.
+        let typeWithoutPtr = this.funPtr.getType();
+        if (typeWithoutPtr instanceof PointerType) {
+            typeWithoutPtr = typeWithoutPtr.getBaseType();
+        }
+        if (typeWithoutPtr instanceof FunctionType) {
+            this.setMethodSignature(typeWithoutPtr.getMethodSignature());
         }
         IRInference.inferArgs(this, arkMethod);
         return IRInference.inferStaticInvokeExpr(this, arkMethod);
@@ -899,6 +904,49 @@ export class ArkTypeOfExpr extends AbstractExpr {
 
     public toString(): string {
         return 'typeof ' + this.op;
+    }
+
+    public inferType(arkMethod: ArkMethod): AbstractExpr {
+        if (this.op instanceof AbstractRef || this.op instanceof AbstractExpr) {
+            this.op.inferType(arkMethod);
+        }
+        return this;
+    }
+}
+
+export class ArkSizeOfExpr extends AbstractExpr {
+    private op: Value;
+
+    constructor(op: Value) {
+        super();
+        this.op = op;
+    }
+
+    public getOp(): Value {
+        return this.op;
+    }
+
+    public setOp(newOp: Value): void {
+        this.op = newOp;
+    }
+
+    public getUses(): Value[] {
+        let uses: Value[] = [];
+        uses.push(this.op);
+        uses.push(...this.op.getUses());
+        return uses;
+    }
+
+    public getOpType(): Type {
+        return this.op.getType();
+    }
+
+    public getType(): Type {
+        return NumberType.getInstance();
+    }
+
+    public toString(): string {
+        return 'sizeof(' + this.op + ')';
     }
 
     public inferType(arkMethod: ArkMethod): AbstractExpr {

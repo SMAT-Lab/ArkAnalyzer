@@ -34,6 +34,7 @@ arkCppAstDumper是基于llvm开发的工具，对C/C++生成简洁的抽象语�
      mkdir build && cd build
      cmake -DCMAKE_TOOLCHAIN_FILE=..\cmake\toolchains\windows.cmake ..
      cmake --build . --config Release
+     //开启头文件节点记录统计可在build同级目录 执行 cmake -B build -DARK_ENABLE_PROFILING=ON
 
 构建成功将会在/build下生成**arkCppAstDumper.exe**可执行文件
 

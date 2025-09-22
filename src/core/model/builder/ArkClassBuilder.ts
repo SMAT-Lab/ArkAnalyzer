@@ -40,7 +40,13 @@ import { ArkSignatureBuilder } from './ArkSignatureBuilder';
 import { FullPosition, LineColPosition } from '../../base/Position';
 import { Type, UnknownType, VoidType } from '../../base/Type';
 import { BodyBuilder } from './BodyBuilder';
-import { ArkStaticInvokeExpr } from '../../base/Expr';
+import { ArkNormalBinopExpr, ArkStaticInvokeExpr, NormalBinaryOperator } from '../../base/Expr';
+import { ModifierType } from '../ArkBaseModel';
+import { Value } from '../../base/Value';
+import { NumberConstant } from '../../base/Constant';
+import { ValueUtil } from '../../common/ValueUtil';
+import { Local } from '../../base/Local';
+import { ArkMetadataKind, EnumInitTypeUserMetadata } from '../ArkMetadata';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkClassBuilder');
 
@@ -186,6 +192,9 @@ export function init4StaticInitMethod(cls: ArkClass): void {
     const staticInit = new ArkMethod();
     staticInit.setDeclaringArkClass(cls);
     staticInit.setIsGeneratedFlag(true);
+
+    staticInit.setModifiers(ModifierType.STATIC);
+
     const methodSubSignature = ArkSignatureBuilder.buildMethodSubSignatureFromMethodName(STATIC_INIT_METHOD_NAME);
     methodSubSignature.setReturnType(VoidType.getInstance());
     const methodSignature = new MethodSignature(staticInit.getDeclaringArkClass().getSignature(), methodSubSignature);
@@ -369,6 +378,7 @@ function buildArkClassMembers(clsNode: ClassLikeNode, cls: ArkClass, sourceFile:
     const staticInitStmts: Stmt[] = [];
     const instanceInitStmts: Stmt[] = [];
     let staticBlockId = 0;
+    const enumFieldInfo = { lastFieldName: '', curValue: 0, isCurValueValid: true };
     clsNode.members.forEach(member => {
         if (isClassMethod(member)) {
             // these node types have been handled at the beginning of this function by calling buildMethodsForClass
@@ -393,7 +403,7 @@ function buildArkClassMembers(clsNode: ClassLikeNode, cls: ArkClass, sourceFile:
         }
         if (ts.isEnumMember(member)) {
             const arkField = buildProperty2ArkField(member, sourceFile, cls);
-            getInitStmts(staticIRTransformer, arkField, member.initializer);
+            getInitStmts(staticIRTransformer, arkField, member.initializer, enumFieldInfo);
             arkField.getInitializer().forEach(stmt => staticInitStmts.push(stmt));
         } else if (ts.isIndexSignatureDeclaration(member)) {
             buildIndexSignature2ArkField(member, sourceFile, cls);
@@ -520,31 +530,64 @@ function buildStaticBlocksForClass(clsNode: ClassLikeNodeWithMethod, cls: ArkCla
     return staticBlockMethodSignatures;
 }
 
-export function getInitStmts(transformer: ArkIRTransformer, field: ArkField, initNode?: ts.Node): void {
+function getInitStmts(
+    transformer: ArkIRTransformer,
+    field: ArkField,
+    initNode?: ts.Node,
+    enumFieldInfo?: {
+        lastFieldName: string,
+        curValue: number,
+        isCurValueValid: boolean
+    }
+): void {
+    let initValue: Value;
+    let initPositions;
+    const stmts: Stmt[] = [];
     if (initNode) {
-        const stmts: Stmt[] = [];
-        let { value: initValue, valueOriginalPositions: initPositions, stmts: initStmts } = transformer.tsNodeToValueAndStmts(initNode);
+        let initStmts: Stmt[] = [];
+        ({ value: initValue, valueOriginalPositions: initPositions, stmts: initStmts } = transformer.tsNodeToValueAndStmts(initNode));
         initStmts.forEach(stmt => stmts.push(stmt));
         if (IRUtils.moreThanOneAddress(initValue)) {
             ({ value: initValue, valueOriginalPositions: initPositions, stmts: initStmts } = transformer.generateAssignStmtForValue(initValue, initPositions));
             initStmts.forEach(stmt => stmts.push(stmt));
         }
-
-        const fieldRef = new ArkInstanceFieldRef(transformer.getThisLocal(), field.getSignature());
-        const fieldRefPositions = [FullPosition.DEFAULT, FullPosition.DEFAULT];
-        const assignStmt = new ArkAssignStmt(fieldRef, initValue);
-        assignStmt.setOperandOriginalPositions([...fieldRefPositions, ...initPositions]);
-        stmts.push(assignStmt);
-
-        const fieldSourceCode = field.getCode();
-        const fieldOriginPosition = field.getOriginPosition();
-        for (const stmt of stmts) {
-            stmt.setOriginPositionInfo(fieldOriginPosition);
-            stmt.setOriginalText(fieldSourceCode);
+        if (enumFieldInfo !== undefined) {
+            if (initValue instanceof NumberConstant) {
+                enumFieldInfo.curValue = parseFloat(initValue.getValue()) + 1;
+                enumFieldInfo.isCurValueValid = true;
+            } else {
+                enumFieldInfo.lastFieldName = field.getName();
+                enumFieldInfo.isCurValueValid = false;
+            }
         }
-        field.setInitializer(stmts);
-        if (field.getType() instanceof UnknownType) {
-            field.getSignature().setType(initValue.getType());
+    }
+    else if (enumFieldInfo !== undefined) {
+        if (enumFieldInfo.isCurValueValid) {
+            initValue = ValueUtil.getOrCreateNumberConst(enumFieldInfo.curValue);
+            enumFieldInfo.curValue += 1;
+        } else {
+            initValue = new ArkNormalBinopExpr(new Local(enumFieldInfo.lastFieldName), ValueUtil.getOrCreateNumberConst(1), NormalBinaryOperator.Addition);
+            enumFieldInfo.lastFieldName = field.getName();
         }
+        initPositions = [FullPosition.DEFAULT];
+        field.setMetadata(ArkMetadataKind.ENUM_INIT_TYPE_USER, new EnumInitTypeUserMetadata(false));
+    } else {
+        return;
+    }
+    const fieldRef = new ArkInstanceFieldRef(transformer.getThisLocal(), field.getSignature());
+    const fieldRefPositions = [FullPosition.DEFAULT, FullPosition.DEFAULT];
+    const assignStmt = new ArkAssignStmt(fieldRef, initValue);
+    assignStmt.setOperandOriginalPositions([...fieldRefPositions, ...initPositions]);
+    stmts.push(assignStmt);
+
+    const fieldSourceCode = field.getCode();
+    const fieldOriginPosition = field.getOriginPosition();
+    for (const stmt of stmts) {
+        stmt.setOriginPositionInfo(fieldOriginPosition);
+        stmt.setOriginalText(fieldSourceCode);
+    }
+    field.setInitializer(stmts);
+    if (field.getType() instanceof UnknownType) {
+        field.getSignature().setType(initValue.getType());
     }
 }

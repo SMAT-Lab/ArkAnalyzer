@@ -195,6 +195,8 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
             case 'CXXRecordDecl':
                 stmts = this.cxxClassDeclarationToStmts(node);
                 break;
+            case 'UnexposedDecl':
+                stmts = this.unexposedDeclToStmts(node);
             case 'unsupported kind':
                 break;
         }
@@ -303,6 +305,16 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
             assignStmt.setOperandOriginalPositions([...initOriPos, ...castExprPositions]);
             stmts.push(assignStmt);
             initStmts.forEach(stmt => stmts.push(stmt));
+        } else if (declStmts.kind === 'UnexposedDecl') {
+            const {
+                value: initValue,
+                valueOriginalPositions: initOriPos,
+                stmts: initStmts,
+            } = this.ArkCxxValueTransformer.bindingNodeToValueAndStmts(declStmts, yieldValue);
+            const assignStmt = new ArkAssignStmt(initValue, castExpr);
+            assignStmt.setOperandOriginalPositions([...initOriPos, ...castExprPositions]);
+            initStmts.forEach(stmt => stmts.push(stmt));
+            stmts.push(assignStmt);
         } else {
             const { value: initValue, valueOriginalPositions: initOriPos, stmts: initStmts } = this.cxxNodeToValueAndStmts(declStmts);
             const assignStmt = new ArkAssignStmt(initValue, castExpr);
@@ -697,6 +709,10 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
             stmts.push(...childStmts);
         }
         return stmts;
+    }
+
+    private unexposedDeclToStmts(unexposedDecl: CxxAstNode): Stmt[] {
+        return this.ArkCxxValueTransformer.bindingNodeToValueAndStmts(unexposedDecl).stmts;
     }
 
     private cxxVariableDeclarationListToStmts(variableDeclarationList: CxxAstNode): Stmt[] {

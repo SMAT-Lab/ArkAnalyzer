@@ -16,7 +16,15 @@
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { AbstractExpr, ArkInstanceInvokeExpr, ArkPtrInvokeExpr, ArkStaticInvokeExpr } from '../../core/base/Expr';
 import { Local } from '../../core/base/Local';
-import { AbstractFieldRef, AbstractRef, ArkArrayRef, ArkInstanceFieldRef, ArkParameterRef, ArkStaticFieldRef, GlobalRef } from '../../core/base/Ref';
+import {
+    AbstractFieldRef,
+    AbstractRef,
+    ArkArrayRef,
+    ArkInstanceFieldRef,
+    ArkParameterRef,
+    ArkStaticFieldRef,
+    GlobalRef,
+} from '../../core/base/Ref';
 import { ArkAliasTypeDefineStmt, ArkAssignStmt, ArkInvokeStmt, ArkReturnStmt, Stmt } from '../../core/base/Stmt';
 import {
     AliasType,
@@ -50,8 +58,11 @@ import {
     CxxLongLongType,
     CxxLongType,
     CxxShortType,
+    CxxSizeTType,
+    CxxStdTypeName,
+    CxxTypeBitWidth,
     CxxTypeSigned,
-    CxxTypeSize,
+    CxxWcharType,
     PointerType,
     ReferenceType,
 } from '../base/Type';
@@ -614,39 +625,39 @@ export class TypeInference {
         }
         switch (cxxTypeStr) {
             case 'short':
-                return CxxShortType.getInstance(CxxTypeSigned.SIGNED, CxxTypeSize.SIXTEEN_BITS, 'short');
+                return CxxShortType.getInstance(CxxTypeSigned.SIGNED, CxxTypeBitWidth.SIXTEEN_BITS, CxxStdTypeName.SHORT);
             case 'unsigned short':
-                return CxxShortType.getInstance(CxxTypeSigned.UNSIGNED, CxxTypeSize.SIXTEEN_BITS, 'unsigned short');
+                return CxxShortType.getInstance(CxxTypeSigned.UNSIGNED, CxxTypeBitWidth.SIXTEEN_BITS, CxxStdTypeName.UNSIGNED_SHORT);
             case 'int':
-                return CxxIntType.getInstance(CxxTypeSigned.SIGNED, CxxTypeSize.THIRTY_TWO_BITS, 'int');
+                return CxxIntType.getInstance(CxxTypeSigned.SIGNED, CxxTypeBitWidth.THIRTY_TWO_BITS, CxxStdTypeName.INT);
             case 'unsigned int':
-                return CxxIntType.getInstance(CxxTypeSigned.UNSIGNED, CxxTypeSize.THIRTY_TWO_BITS, 'unsigned int');
+                return CxxIntType.getInstance(CxxTypeSigned.UNSIGNED, CxxTypeBitWidth.THIRTY_TWO_BITS, CxxStdTypeName.UNSIGNED_INT);
             case 'int8_t':
-                return CxxIntType.getInstance(CxxTypeSigned.SIGNED, CxxTypeSize.EIGHT_BITS, 'int8_t');
+                return CxxIntType.getInstance(CxxTypeSigned.SIGNED, CxxTypeBitWidth.EIGHT_BITS, CxxStdTypeName.INT8_T);
             case 'uint8_t':
-                return CxxIntType.getInstance(CxxTypeSigned.UNSIGNED, CxxTypeSize.EIGHT_BITS, 'uint8_t');
+                return CxxIntType.getInstance(CxxTypeSigned.UNSIGNED, CxxTypeBitWidth.EIGHT_BITS, CxxStdTypeName.UINT8_T);
             case 'int16_t':
-                return CxxIntType.getInstance(CxxTypeSigned.SIGNED, CxxTypeSize.SIXTEEN_BITS, 'int16_t');
+                return CxxIntType.getInstance(CxxTypeSigned.SIGNED, CxxTypeBitWidth.SIXTEEN_BITS, CxxStdTypeName.INT16_T);
             case 'uint16_t':
-                return CxxIntType.getInstance(CxxTypeSigned.UNSIGNED, CxxTypeSize.SIXTEEN_BITS, 'uint16_t');
+                return CxxIntType.getInstance(CxxTypeSigned.UNSIGNED, CxxTypeBitWidth.SIXTEEN_BITS, CxxStdTypeName.UINT16_T);
             case 'int32_t':
-                return CxxIntType.getInstance(CxxTypeSigned.SIGNED, CxxTypeSize.THIRTY_TWO_BITS, 'int32_t');
+                return CxxIntType.getInstance(CxxTypeSigned.SIGNED, CxxTypeBitWidth.THIRTY_TWO_BITS, CxxStdTypeName.INT32_T);
             case 'uint32_t':
-                return CxxIntType.getInstance(CxxTypeSigned.UNSIGNED, CxxTypeSize.THIRTY_TWO_BITS, 'uint32_t');
+                return CxxIntType.getInstance(CxxTypeSigned.UNSIGNED, CxxTypeBitWidth.THIRTY_TWO_BITS, CxxStdTypeName.UINT32_T);
             case 'int64_t':
-                return CxxIntType.getInstance(CxxTypeSigned.SIGNED, CxxTypeSize.SIXTY_FOUR_BITS, 'int64_t');
+                return CxxIntType.getInstance(CxxTypeSigned.SIGNED, CxxTypeBitWidth.SIXTY_FOUR_BITS, CxxStdTypeName.INT64_T);
             case 'uint64_t':
-                return CxxIntType.getInstance(CxxTypeSigned.UNSIGNED, CxxTypeSize.SIXTY_FOUR_BITS, 'uint64_t');
+                return CxxIntType.getInstance(CxxTypeSigned.UNSIGNED, CxxTypeBitWidth.SIXTY_FOUR_BITS, CxxStdTypeName.UINT64_T);
             case 'size_t':
-                return CxxIntType.getInstance(CxxTypeSigned.UNSIGNED, CxxTypeSize.UNKNOWN, 'size_t');
+                return CxxSizeTType.getInstance(CxxTypeSigned.UNSIGNED, CxxTypeBitWidth.UNKNOWN, CxxStdTypeName.SIZE_T);
             case 'long':
-                return CxxLongType.getInstance(CxxTypeSigned.SIGNED, CxxTypeSize.THIRTY_TWO_BITS, 'long');
+                return CxxLongType.getInstance(CxxTypeSigned.SIGNED, CxxTypeBitWidth.THIRTY_TWO_BITS, CxxStdTypeName.LONG);
             case 'unsigned long':
-                return CxxLongType.getInstance(CxxTypeSigned.UNSIGNED, CxxTypeSize.THIRTY_TWO_BITS, 'unsigned long');
+                return CxxLongType.getInstance(CxxTypeSigned.UNSIGNED, CxxTypeBitWidth.THIRTY_TWO_BITS, CxxStdTypeName.UNSIGNED_LONG);
             case 'long long':
-                return CxxLongLongType.getInstance(CxxTypeSigned.SIGNED, CxxTypeSize.SIXTY_FOUR_BITS, 'long long');
+                return CxxLongLongType.getInstance(CxxTypeSigned.SIGNED, CxxTypeBitWidth.SIXTY_FOUR_BITS, CxxStdTypeName.LONG_LONG);
             case 'unsigned long long':
-                return CxxLongLongType.getInstance(CxxTypeSigned.UNSIGNED, CxxTypeSize.SIXTY_FOUR_BITS, 'unsigned long long');
+                return CxxLongLongType.getInstance(CxxTypeSigned.UNSIGNED, CxxTypeBitWidth.SIXTY_FOUR_BITS, CxxStdTypeName.UNSIGNED_LONG_LONG);
             case 'float':
                 return CxxFloatType.getInstance();
             case 'double':
@@ -668,17 +679,17 @@ export class TypeInference {
             case 'std::basic_string<char>':
                 return StringType.getInstance();
             case 'char':
-                return CxxCharType.getInstance(CxxTypeSigned.UNKNOWN, CxxTypeSize.EIGHT_BITS, 'char');
+                return CxxCharType.getInstance(CxxTypeSigned.UNKNOWN, CxxTypeBitWidth.EIGHT_BITS, CxxStdTypeName.CHAR);
             case 'signed char':
-                return CxxCharType.getInstance(CxxTypeSigned.SIGNED, CxxTypeSize.EIGHT_BITS, 'signed char');
+                return CxxCharType.getInstance(CxxTypeSigned.SIGNED, CxxTypeBitWidth.EIGHT_BITS, CxxStdTypeName.SIGNED_CHAR);
             case 'unsigned char':
-                return CxxCharType.getInstance(CxxTypeSigned.UNSIGNED, CxxTypeSize.EIGHT_BITS, 'unsigned char');
+                return CxxCharType.getInstance(CxxTypeSigned.UNSIGNED, CxxTypeBitWidth.EIGHT_BITS, CxxStdTypeName.UNSIGNED_CHAR);
             case 'char16_t':
-                return CxxCharType.getInstance(CxxTypeSigned.UNSIGNED, CxxTypeSize.SIXTEEN_BITS, 'char16_t');
+                return CxxCharType.getInstance(CxxTypeSigned.UNSIGNED, CxxTypeBitWidth.SIXTEEN_BITS, CxxStdTypeName.CHAR16_T);
             case 'char32_t':
-                return CxxCharType.getInstance(CxxTypeSigned.UNSIGNED, CxxTypeSize.THIRTY_TWO_BITS, 'char32_t');
+                return CxxCharType.getInstance(CxxTypeSigned.UNSIGNED, CxxTypeBitWidth.THIRTY_TWO_BITS, CxxStdTypeName.CHAR32_T);
             case 'wchar_t':
-                return CxxCharType.getInstance(CxxTypeSigned.UNKNOWN, CxxTypeSize.UNKNOWN, 'wchar_t');
+                return CxxWcharType.getInstance(CxxTypeSigned.UNKNOWN, CxxTypeBitWidth.UNKNOWN, CxxStdTypeName.WCHAR_T);
             default:
                 return new UnclearReferenceType(cxxTypeStr);
         }

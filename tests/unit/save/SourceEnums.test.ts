@@ -39,7 +39,7 @@ enum SceneBuildStage {
 }
 const ALL_BUILD_STAGE: any[] = [SceneBuildStage.BUILD_INIT, SceneBuildStage.CLASS_DONE, SceneBuildStage.METHOD_DONE];
 export enum ValueTag {
-  TAINT,
+  TAINT = 0,
 }
 export enum ExportType {
   NAME_SPACE = 0,
@@ -49,10 +49,10 @@ export enum ExportType {
   UNKNOWN = 4,
 }
 declare enum ViewTreeNodeType {
-  SystemComponent,
-  CustomComponent,
-  Builder,
-  BuilderParam,
+  SystemComponent = 0,
+  CustomComponent = 1,
+  Builder = 2,
+  BuilderParam = 3,
 }
 let systemComponent = ViewTreeNodeType.SystemComponent;
 let nameOfsystemComponent = ViewTreeNodeType.systemComponent;
