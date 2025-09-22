@@ -69,6 +69,7 @@ export class Scene {
     private projectFiles: string[] = [];
     private realProjectDir: string = '';
     private includeDirs: string[] = []; // Include directories that the C++ project depends on.
+    private ccjsonPath: string = '';
 
     private moduleScenesMap: Map<string, ModuleScene> = new Map();
     private modulePath2NameMap: Map<string, string> = new Map<string, string>();
@@ -194,6 +195,7 @@ export class Scene {
         this.realProjectDir = fs.realpathSync(sceneConfig.getTargetProjectDirectory());
         this.projectFiles = sceneConfig.getProjectFiles();
         this.includeDirs = sceneConfig.getIncludeDirs();
+        this.ccjsonPath = sceneConfig.getCcjsonPath();
 
         this.parseBuildProfile();
 
@@ -1093,6 +1095,10 @@ export class Scene {
     /** Obtain the header file directories of the input C++ project dependencies. */
     public getIncludeDirs(): string[] {
         return this.includeDirs;
+    }
+
+    public getCcjsonPath(): string {
+        return this.ccjsonPath;
     }
 
     /**

@@ -33,6 +33,7 @@ import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
 import { init4InstanceInitMethod, init4StaticInitMethod } from '../../../core/model/builder/ArkClassBuilder';
 import { CxxAstNode } from '../../ast/ArkCxxAstNode';
 import { ArkExport } from '../../../core/model/ArkExport';
+import { Scene } from '../../../Scene';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkFileBuilder');
 
@@ -100,6 +101,7 @@ function findLLVMPath(inputPath: string): string {
  * @returns
  */
 export function buildArkFileFromFile(absoluteFilePath: string, projectDir: string, arkFile: ArkFile, projectName: string, includeDirs: string[] = []): void {
+    let scene: Scene = arkFile.getScene();
     arkFile.setFilePath(absoluteFilePath);
     arkFile.setProjectDir(projectDir);
 
@@ -108,7 +110,7 @@ export function buildArkFileFromFile(absoluteFilePath: string, projectDir: strin
     arkFile.setCode(fs.readFileSync(arkFile.getFilePath(), 'utf8'));
     let sdkPath = extractOhosSdkPath(arkFile.getScene().getProjectSdkMap());
     let llvmPath = findLLVMPath(sdkPath);
-    const jsonObject = AstUtils.parse(absoluteFilePath, null, includeDirs, llvmPath);
+    const jsonObject = AstUtils.parse(absoluteFilePath, scene.getCcjsonPath(), includeDirs, llvmPath);
     genDefaultArkClass(arkFile, jsonObject);
     buildArkFile(arkFile, jsonObject);
 }
