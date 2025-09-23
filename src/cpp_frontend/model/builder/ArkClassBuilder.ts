@@ -30,6 +30,7 @@ import { ArkCxxIRTransformer } from '../../common/ArkIRTransformer';
 import { buildDecorators } from './builderUtils';
 import { buildDefaultArkMethodFromArkClass } from './ArkMethodBuilder';
 import { CxxAstNode, CxxTranslationUnit } from '../../ast/ArkCxxAstNode';
+import { buildArkClassFromCxxClass } from './ArkFileBuilder';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkClassBuilder');
 
@@ -119,7 +120,7 @@ function buildUnion2ArkClass(clsNode: CxxAstNode, cls: ArkClass, sourceFile: Cxx
 
 function buildStruct2ArkClass(clsNode: CxxAstNode, cls: ArkClass, sourceFile: CxxAstNode, declaringMethod?: ArkMethod): void {
     let className: string;
-    if (clsNode.name) {
+    if (clsNode.name && !clsNode.name.startsWith('(unnamed')) {
         className = clsNode.name;
     } else {
         className = genAnonymousClassName(clsNode, cls, declaringMethod);
@@ -240,6 +241,8 @@ function buildArkClassMembers(clsNode: CxxAstNode, cls: ArkClass, sourceFile: Cx
         } else if (member.kind === 'CXXMethodDecl' || member.kind === 'CXXConstructorDecl' ||
             member.kind === 'CXXAccessSpecifier' || member.kind === 'CXXDestructorDecl') {
             return;
+        } else if (member.kind === 'EnumDecl' || member.kind === 'CXXRecordDecl') {
+            buildArkClassFromCxxClass(member, cls.getDeclaringArkFile(), sourceFile);
         } else {
             logger.warn('Please contact developers to support new member type: ', member.kind);
         }

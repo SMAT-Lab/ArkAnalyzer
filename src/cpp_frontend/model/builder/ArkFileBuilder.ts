@@ -115,7 +115,7 @@ export function buildArkFileFromFile(absoluteFilePath: string, projectDir: strin
     buildArkFile(arkFile, jsonObject);
 }
 
-function buildArkClassFromCxxClass(classNode: CxxAstNode, arkFile: ArkFile, astRoot: CxxAstNode): void {
+export function buildArkClassFromCxxClass(classNode: CxxAstNode, arkFile: ArkFile, astRoot: CxxAstNode): void {
     let cls: ArkClass = new ArkClass();
     if (classNode.kind === 'ClassTemplate') {
         classNode.tagUsed = 'class';

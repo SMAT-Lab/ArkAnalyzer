@@ -32,6 +32,7 @@ import { buildGenericType } from '../../../core/model/builder/builderUtils';
 import { CxxAstNode, CxxTranslationUnit } from '../../ast/ArkCxxAstNode';
 import { Decorator } from '../../../core/base/Decorator';
 import { buildArkMethodFromArkClass } from './ArkMethodBuilder';
+import { ArkFile } from '../../../core/model/ArkFile';
 
 const FUNC_PTR_REGEX = /\(\s*\*\s*(?:\[\s*[^]]*\s*\])?\s*\)\s*\(\s*[^)]*\s*\)/;
 
@@ -289,10 +290,13 @@ export function buildTypeFromDerivedType(preStr: string, arkInstance: ArkMethod 
     const outerPartMatch = preStr.match(/^([^<]+)/);
     const outerPart = outerPartMatch ? outerPartMatch[1] : null;
     let typeStr: string;
+    let firstSpaceIndex: number;
     if (outerPart === null) {
-        typeStr = preStr.trim().split(' ')[0];
+        firstSpaceIndex = preStr.indexOf(' ');
+        typeStr = firstSpaceIndex === -1 ? preStr : preStr.substring(firstSpaceIndex + 1);
     } else {
-        typeStr = outerPart.trim().split(' ')[0];
+        firstSpaceIndex = outerPart.indexOf(' ');
+        typeStr = firstSpaceIndex === -1 ? outerPart : outerPart.substring(firstSpaceIndex + 1);
     }
     const innerPartMatch = preStr.match(/<([^>]+)>/);
     const innerPart = innerPartMatch ? innerPartMatch[1] : null;
@@ -301,12 +305,22 @@ export function buildTypeFromDerivedType(preStr: string, arkInstance: ArkMethod 
     let arkClass: ArkClass | null = null;
     if (arkInstance instanceof ArkMethod || arkInstance instanceof ArkClass) {
         const file = arkInstance.getDeclaringArkFile?.();
-        arkClass = file?.getClassWithName?.(typeStr) ?? null;
+        arkClass = file?.getClassWithName?.(typeStr) ?? getAnonymousClassByTypeCode(typeStr, file);
     }
     if (arkClass) {
         return new ClassType(arkClass.getSignature(), innerType);
     }
     return TypeInference.buildTypeFromStr(preStr);
+}
+
+/** Handling anonymous cases, such as '(unnamed struct ...)' */
+function getAnonymousClassByTypeCode(typeCode: string, file: ArkFile): ArkClass | null {
+    for (const cls of file.getClasses()) {
+        if (cls.isAnonymousClass() && cls.getCode() === typeCode) {
+            return cls;
+        }
+    }
+    return null;
 }
 
 const typeMap: Record<string, string> = {
