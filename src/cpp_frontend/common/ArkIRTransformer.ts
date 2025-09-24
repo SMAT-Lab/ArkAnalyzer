@@ -45,24 +45,14 @@ import { buildModifiers } from '../model/builder/builderUtils';
 import { ModelUtils } from '../../core/common/ModelUtils';
 import { ArkClass } from '../../core/model/ArkClass';
 import { buildNormalArkClassFromArkMethod } from '../model/builder/ArkClassBuilder';
-import {CxxAstNode, CxxTranslationUnit} from '../ast/ArkCxxAstNode';
+import { CxxAstNode, CxxTranslationUnit } from '../ast/ArkCxxAstNode';
+import { DummyStmt } from '../../core/common/ArkIRTransformer';
 
 export type ValueAndStmts = {
     value: Value;
     valueOriginalPositions: FullPosition[]; // original positions of value and its uses
     stmts: Stmt[];
 };
-
-export class DummyStmt extends Stmt {
-    constructor(text: string) {
-        super();
-        this.text = text;
-    }
-
-    public toString(): string {
-        return this.text!;
-    }
-}
 
 function nodeInnerNode(node: CxxAstNode): CxxAstNode {
     if (node.inner && node.inner.length > 0) {

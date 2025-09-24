@@ -60,7 +60,7 @@ import { ArkMethod } from '../../core/model/ArkMethod';
 import { buildArkMethodFromArkClass, buildDefaultConstructor } from '../model/builder/ArkMethodBuilder';
 import { Builtin } from '../../core/common/Builtin';
 import { Constant, NullConstant } from '../../core/base/Constant';
-import { ArkCxxIRTransformer, DummyStmt, ValueAndStmts } from './ArkIRTransformer';
+import { ArkCxxIRTransformer, ValueAndStmts } from './ArkIRTransformer';
 import { buildTypeFromPreStr, convertDataType, cxxNode2Type, isCxxFunctionPointer, isCXXSTLContainer, } from '../model/builder/builderUtils';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { ArkValueTransformer } from '../../core/common/ArkValueTransformer';
@@ -71,6 +71,7 @@ import { setTs2CxxFuncMapOfClass } from './ModelUtils';
 import { CxxAstNode, CxxTranslationUnit } from '../ast/ArkCxxAstNode';
 import { BinaryOperator } from '../../core/base/Expr';
 import { ValueUtil } from '../../core/common/ValueUtil';
+import { DummyStmt } from '../../core/common/ArkIRTransformer';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkValueTransformer');
 

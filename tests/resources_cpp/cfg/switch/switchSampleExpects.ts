@@ -107,14 +107,14 @@ export const SWITCH_EXPECT_CASE6 = {
                 'a = 0',
                 'b = 1',
                 'a = a + 1',
-                'if a == ONE'
+                'if a == ONE',
             ],
             preds: [],
-            succes: [1, 2]
+            succes: [1, 2],
         },
         { id: 1, stmts: ['b = ONE'], preds: [0], succes: [3] },
         { id: 2, stmts: ['b = 0'], preds: [0], succes: [3] },
-        { id: 3, stmts: ['return'], preds: [1, 2], succes: [] }
+        { id: 3, stmts: ['return'], preds: [1, 2], succes: [] },
     ],
 };
 
@@ -126,10 +126,10 @@ export const SWITCH_EXPECT_CASE7 = {
                 'this = this: @switch/switchSample.cpp: %dflt',
                 'a = 0',
                 'b = 1',
-                'if a == TWO'
+                'if a == TWO',
             ],
             preds: [],
-            succes: [1, 6]
+            succes: [1, 6],
         },
         { id: 1, stmts: ['b = TWO'], preds: [0], succes: [2] },
         { id: 2, stmts: ['b = THREE'], preds: [1, 6], succes: [5] },
@@ -137,7 +137,7 @@ export const SWITCH_EXPECT_CASE7 = {
         { id: 4, stmts: ['b = TEN'], preds: [3, 7], succes: [5] },
         { id: 5, stmts: ['return'], preds: [2, 4], succes: [] },
         { id: 6, stmts: ['if a == THREE'], preds: [0], succes: [2, 7] },
-        { id: 7, stmts: ['if a == FOUR'], preds: [6], succes: [3, 4] }
+        { id: 7, stmts: ['if a == FOUR'], preds: [6], succes: [3, 4] },
     ],
 };
 
@@ -164,16 +164,16 @@ export const SWITCH_EXPECT_CASE9 = {
                 'this = this: @switch/switchSample.cpp: %dflt',
                 'a = 0',
                 'b = 1',
-                'if a == TWO'
+                'if a == TWO',
             ],
             preds: [],
-            succes: [1, 5]
+            succes: [1, 5],
         },
         { id: 1, stmts: ['b = TWO'], preds: [0], succes: [4] },
         { id: 2, stmts: ['b = THREE'], preds: [5], succes: [4] },
         { id: 3, stmts: ['b = TEN'], preds: [5], succes: [4] },
         { id: 4, stmts: ['return'], preds: [1, 2, 3], succes: [] },
-        { id: 5, stmts: ['if a == THREE'], preds: [0], succes: [2, 3] }
+        { id: 5, stmts: ['if a == THREE'], preds: [0], succes: [2, 3] },
     ],
 };
 
@@ -185,15 +185,15 @@ export const SWITCH_EXPECT_CASE10 = {
                 'this = this: @switch/switchSample.cpp: %dflt',
                 'a = 0',
                 'b = 1',
-                'if a == TWO'
+                'if a == TWO',
             ],
             preds: [],
-            succes: [1, 4]
+            succes: [1, 4],
         },
         { id: 1, stmts: ['b = THREE'], preds: [0, 4], succes: [3] },
         { id: 2, stmts: ['b = 0'], preds: [4], succes: [3] },
         { id: 3, stmts: ['return'], preds: [1, 2], succes: [] },
-        { id: 4, stmts: ['if a == THREE'], preds: [0], succes: [1, 2] }
+        { id: 4, stmts: ['if a == THREE'], preds: [0], succes: [1, 2] },
     ],
 };
 
@@ -213,28 +213,24 @@ export const SWITCH_EXPECT_CASE11 = {
 
 export const SWITCH_EXPECT_CASE12 = {
     blocks: [
+        { id: 0, stmts: ['b = TWO'], preds: [8], succes: [3] },
+        { id: 1, stmts: ['b = THREE'], preds: [4], succes: [3] },
+        { id: 2, stmts: ['b = TEN'], preds: [4], succes: [3] },
+        { id: 3, stmts: ['return'], preds: [0, 1, 2], succes: [] },
+        { id: 4, stmts: ['if a == THREE'], preds: [8], succes: [1, 2] },
         {
-            id: 0,
+            id: 5,
             stmts: [
                 'this = this: @switch/switchSample.cpp: %dflt',
                 'a = 0',
                 'if a > ONE',
-                'ConditionalOperatorIfTrue0',
-                '%0 = TWO',
-                'ConditionalOperatorIfFalse0',
-                '%0 = 3',
-                'ConditionalOperatorEnd0',
-                'b = %0',
-                'if a == TWO',
             ],
             preds: [],
-            succes: [1, 5],
+            succes: [6, 7],
         },
-        { id: 1, stmts: ['b = TWO'], preds: [0], succes: [4] },
-        { id: 2, stmts: ['b = THREE'], preds: [5], succes: [4] },
-        { id: 3, stmts: ['b = TEN'], preds: [5], succes: [4] },
-        { id: 4, stmts: ['return'], preds: [1, 2, 3], succes: [] },
-        { id: 5, stmts: ['if a == THREE'], preds: [0], succes: [2, 3] },
+        { id: 6, stmts: ['b = TWO'], preds: [5], succes: [8] },
+        { id: 7, stmts: ['b = 3'], preds: [5], succes: [8] },
+        { id: 8, stmts: ['if a == TWO'], preds: [6, 7], succes: [0, 4] },
     ],
 };
 
