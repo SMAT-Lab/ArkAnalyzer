@@ -398,6 +398,51 @@ export class PointerType extends Type {
     }
 }
 
+export enum SmartPointerCategory {
+    UNKNOWN = -1,
+    UNIQUE_PTR = 0,
+    SHARED_PTR = 1,
+    WEAK_PTR = 2,
+}
+
+export class SmartPointerType extends PointerType {
+    private category: SmartPointerCategory;
+    constructor(baseType: Type, level: number, source: string) {
+        let category = SmartPointerCategory.UNKNOWN;
+        super(baseType, level);
+        if (source.includes('unique')) {
+            category = SmartPointerCategory.UNIQUE_PTR;
+        } else if (source.includes('shared')) {
+            category = SmartPointerCategory.SHARED_PTR;
+        } else if (source.includes('weak')) {
+            category = SmartPointerCategory.WEAK_PTR;
+        }
+        this.category = category;
+    }
+
+    public getCategory(): SmartPointerCategory {
+        return this.category;
+    }
+
+    public setCategory(category: SmartPointerCategory): void {
+        this.category = category;
+    }
+
+    public getTypeString(): string {
+        const baseTypeStr = this.getBaseType().toString();
+        switch (this.category) {
+            case SmartPointerCategory.UNIQUE_PTR:
+                return `unique_ptr<${baseTypeStr}>`;
+            case SmartPointerCategory.SHARED_PTR:
+                return `shared_ptr<${baseTypeStr}>`;
+            case SmartPointerCategory.WEAK_PTR:
+                return `weak_ptr<${baseTypeStr}>`;
+            default:
+                return `smart_ptr<${baseTypeStr}>`;
+        }
+    }
+}
+
 /**
  *Reference category enumeration, used to distinguish different types of references
  *LVALUE_REF: Left value reference, the reference type of address can be obtained

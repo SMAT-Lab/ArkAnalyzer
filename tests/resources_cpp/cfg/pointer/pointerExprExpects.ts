@@ -112,3 +112,96 @@ export const POINTER_EXPECT_CASE3 = {
         { id: 2, stmts: ['return'], preds: [1, 0], succes: [] },
     ],
 };
+
+export const POINTER_EXPECT_CASE4 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @pointer/pointerExpr.cpp: %dflt',
+                'ptr1 = staticinvoke <@%unk/%unk: .make_unique()>(42)',
+                '%0 = new @%unk/%unk: unique_ptr<int>',
+                '%1 = new @%unk/%unk: int',
+                'instanceinvoke %1.<@%unk/%unk: int.constructor()>(42)',
+                'instanceinvoke %0.<@%unk/%unk: unique_ptr<int>.constructor()>(%1)',
+                'ptr2 = %0',
+                '*ptr1 = 100',
+                'rawPtr = instanceinvoke ptr1.<@%unk/%unk: .get()>()',
+                'return'
+            ],
+            preds: [],
+            succes: [],
+        },
+    ],
+};
+
+export const POINTER_EXPECT_CASE5 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @pointer/pointerExpr.cpp: %dflt',
+                'ptr1 = staticinvoke <@%unk/%unk: .make_shared()>(42)',
+                '%0 = new @%unk/%unk: shared_ptr<int>',
+                '%1 = new @%unk/%unk: int',
+                'instanceinvoke %1.<@%unk/%unk: int.constructor()>(42)',
+                'instanceinvoke %0.<@%unk/%unk: shared_ptr<int>.constructor()>(%1)',
+                'ptr2 = %0',
+                '*ptr1 = 100',
+                'rawPtr = instanceinvoke ptr1.<@%unk/%unk: .get()>()',
+                'return'
+            ],
+            preds: [],
+            succes: [],
+        },
+    ],
+};
+
+export const POINTER_EXPECT_CASE6 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @pointer/pointerExpr.cpp: %dflt'
+            ],
+            preds: [],
+            succes: [1],
+        },
+        {
+            id: 1,
+            stmts: [
+                'node1 = staticinvoke <@%unk/%unk: .make_shared()>(1)',
+                'node2 = staticinvoke <@%unk/%unk: .make_shared()>(2)',
+                'node1-><@%unk/%unk: .next> = node2',
+                'node2-><@%unk/%unk: .parent> = node1',
+                'return'
+            ],
+            preds: [0],
+            succes: [],
+        },
+    ],
+};
+
+export const POINTER_NODE_CLASS1 = {
+    fields: ['data', 'next', 'parent'],
+    heritageClasses: [],
+    blocks: [
+        {
+            methodName: 'constructor',
+            blocks: [
+                {
+                    id: 0,
+                    stmts: [
+                        'value = parameter0: int',
+                        'this = this: @pointer/pointerExpr.cpp: Node',
+                        'instanceinvoke this.<@pointer/pointerExpr.cpp: Node.%instInit()>()',
+                        'this.<@pointer/pointerExpr.cpp: Node.data> = value',
+                        'return this'
+                    ],
+                    preds: [],
+                    succes: [],
+                },
+            ],
+        },
+    ],
+};

@@ -467,14 +467,14 @@ export class CfgBuilder {
     }
 
     ASTNodeTryStatement(c: ts.TryStatement, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
-        let trystm = new TryStatementBuilder('tryStatement', 'try', c, scopeID);
-        this.judgeLastType(trystm, lastStatement);
+        let trystmt = new TryStatementBuilder('tryStatement', 'try', c, scopeID);
+        this.judgeLastType(trystmt, lastStatement);
         let tryExit = new StatementBuilder('tryExit', '', c, scopeID);
         this.exits.push(tryExit);
-        trystm.tryExit = tryExit;
-        this.walkAST(trystm, tryExit, [...c.tryBlock.statements]);
-        trystm.tryFirst = trystm.next;
-        trystm.next?.lasts.add(trystm);
+        trystmt.tryExit = tryExit;
+        this.walkAST(trystmt, tryExit, [...c.tryBlock.statements]);
+        trystmt.tryFirst = trystmt.next;
+        trystmt.next?.lasts.add(trystmt);
         if (c.catchClause) {
             let text = 'catch';
             if (c.catchClause.variableDeclaration) {
@@ -491,12 +491,12 @@ export class CfgBuilder {
             }
             const catchStatement = new StatementBuilder('statement', catchOrNot.code, c.catchClause, catchOrNot.nextT.scopeID);
             catchStatement.next = catchOrNot.nextT;
-            trystm.catchStatement = catchStatement;
-            catchStatement.lasts.add(trystm);
+            trystmt.catchStatement = catchStatement;
+            catchStatement.lasts.add(trystmt);
             if (c.catchClause.variableDeclaration) {
-                trystm.catchError = c.catchClause.variableDeclaration.getText(this.sourceFile);
+                trystmt.catchError = c.catchClause.variableDeclaration.getText(this.sourceFile);
             } else {
-                trystm.catchError = 'Error';
+                trystmt.catchError = 'Error';
             }
         }
         let final = new StatementBuilder('statement', 'finally', c, scopeID);
@@ -511,12 +511,12 @@ export class CfgBuilder {
             dummyFinally.next = finalExit;
             finalExit.lasts.add(dummyFinally);
         }
-        trystm.finallyStatement = final.next;
+        trystmt.finallyStatement = final.next;
         tryExit.next = final.next;
         final.next?.lasts.add(tryExit);
 
-        trystm.next = finalExit;
-        finalExit.lasts.add(trystm);
+        trystmt.next = finalExit;
+        finalExit.lasts.add(trystmt);
         return finalExit;
     }
 
@@ -887,18 +887,18 @@ export class CfgBuilder {
                 this.CfgBuilder2Array(ss);
             }
         } else if (stmt.type === 'tryStatement') {
-            let trystm = stmt as TryStatementBuilder;
-            if (trystm.tryFirst) {
-                this.CfgBuilder2Array(trystm.tryFirst);
+            let trystmt = stmt as TryStatementBuilder;
+            if (trystmt.tryFirst) {
+                this.CfgBuilder2Array(trystmt.tryFirst);
             }
-            if (trystm.catchStatement) {
-                this.CfgBuilder2Array(trystm.catchStatement);
+            if (trystmt.catchStatement) {
+                this.CfgBuilder2Array(trystmt.catchStatement);
             }
-            if (trystm.finallyStatement) {
-                this.CfgBuilder2Array(trystm.finallyStatement);
+            if (trystmt.finallyStatement) {
+                this.CfgBuilder2Array(trystmt.finallyStatement);
             }
-            if (trystm.next) {
-                this.CfgBuilder2Array(trystm.next);
+            if (trystmt.next) {
+                this.CfgBuilder2Array(trystmt.next);
             }
         } else {
             if (stmt.next != null) {

@@ -588,11 +588,11 @@ export class CfgBuilder {
     }
 
     ASTNodeTryStatement(c: CxxAstNode, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
-        let trystm = new TryStatementBuilder('tryStatement', 'try', c, scopeID);
-        this.judgeLastType(trystm, lastStatement);
+        let trystmt = new TryStatementBuilder('tryStatement', 'try', c, scopeID);
+        this.judgeLastType(trystmt, lastStatement);
         let tryExit = new StatementBuilder('tryExit', '', c, scopeID);
         this.exits.push(tryExit);
-        trystm.tryExit = tryExit;
+        trystmt.tryExit = tryExit;
 
         let tryBlock: CxxAstNode | undefined = undefined;
         let catchBlockList: CxxAstNode[] = [];
@@ -604,9 +604,9 @@ export class CfgBuilder {
             }
         }
 
-        this.walkAST(trystm, tryExit, tryBlock?.inner ?? []);
-        trystm.tryFirst = trystm.next;
-        trystm.next?.lasts.add(trystm);
+        this.walkAST(trystmt, tryExit, tryBlock?.inner ?? []);
+        trystmt.tryFirst = trystmt.next;
+        trystmt.next?.lasts.add(trystmt);
         for (const catchBlock of catchBlockList) {
             let text = '';
             if (catchBlock.code) {
@@ -626,12 +626,12 @@ export class CfgBuilder {
             }
             const catchStatement = new StatementBuilder('statement', catchOrNot.code, catchBlock, catchOrNot.nextT.scopeID);
             catchStatement.next = catchOrNot.nextT;
-            trystm.catchStatement.push(catchStatement);
-            catchStatement.lasts.add(trystm);
+            trystmt.catchStatement.push(catchStatement);
+            catchStatement.lasts.add(trystmt);
             if (catchBlock.inner[0].name) {
-                trystm.catchError.push(catchBlock.inner[0].name);
+                trystmt.catchError.push(catchBlock.inner[0].name);
             } else {
-                trystm.catchError.push('Error');
+                trystmt.catchError.push('Error');
             }
         }
         let final = new StatementBuilder('statement', 'finally', c, scopeID);
@@ -642,12 +642,12 @@ export class CfgBuilder {
         dummyFinally.lasts.add(final);
         dummyFinally.next = finalExit;
         finalExit.lasts.add(dummyFinally);
-        trystm.finallyStatement = final.next;
+        trystmt.finallyStatement = final.next;
         tryExit.next = final.next;
         final.next?.lasts.add(tryExit);
 
-        trystm.next = finalExit;
-        finalExit.lasts.add(trystm);
+        trystmt.next = finalExit;
+        finalExit.lasts.add(trystmt);
         return finalExit;
     }
 
@@ -1075,20 +1075,20 @@ export class CfgBuilder {
                 this.CfgBuilder2Array(ss);
             }
         } else if (stmt.type === 'tryStatement') {
-            let trystm = stmt as TryStatementBuilder;
-            if (trystm.tryFirst) {
-                this.CfgBuilder2Array(trystm.tryFirst);
+            let trystmt = stmt as TryStatementBuilder;
+            if (trystmt.tryFirst) {
+                this.CfgBuilder2Array(trystmt.tryFirst);
             }
-            if (trystm.catchStatement) {
-                for (let catchStmt of trystm.catchStatement) {
+            if (trystmt.catchStatement) {
+                for (let catchStmt of trystmt.catchStatement) {
                     this.CfgBuilder2Array(catchStmt);
                 }
             }
-            if (trystm.finallyStatement) {
-                this.CfgBuilder2Array(trystm.finallyStatement);
+            if (trystmt.finallyStatement) {
+                this.CfgBuilder2Array(trystmt.finallyStatement);
             }
-            if (trystm.next) {
-                this.CfgBuilder2Array(trystm.next);
+            if (trystmt.next) {
+                this.CfgBuilder2Array(trystmt.next);
             }
         } else {
             if (stmt.next !== null) {

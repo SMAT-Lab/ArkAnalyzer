@@ -47,7 +47,7 @@ import {
     UnknownType,
     AliasType,
 } from '../../core/base/Type';
-import { PointerType, ReferenceType, Thread } from '../base/Type';
+import { PointerType, ReferenceType, SmartPointerType, Thread } from '../base/Type';
 import { ArkSignatureBuilder } from '../../core/model/builder/ArkSignatureBuilder';
 import { ClassSignature, FieldSignature, MethodSignature, FileSignature } from '../../core/model/ArkSignature';
 import { Value } from '../../core/base/Value';
@@ -380,7 +380,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             return this.cxxNodeToValueAndStmts(node.inner[0]);
         }
         // Handle the invocation of static members of a class, such as A::a
-        if (node.code.includes('::') && node.inner?.[0].kind === 'TypeRef') {
+        if (node.code.includes('::') && node.inner.length > 0 && node.inner[0]?.kind === 'TypeRef') {
             return this.staticMemberExprToValueAndStmts(node);
         }
         return this.cxxIdentifierToValueAndStmts(node);
@@ -1320,16 +1320,27 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         }
 
         // Merge results and build element access expression
-        const exprPositions = [
-            FullPosition.cxxBuildFromNode(callExpression, this.cxxSourceFile),
-            ...innerStmts[0].valueOriginalPositions,
-            ...innerStmts[1].valueOriginalPositions,
-        ];
-        let elementAccessExpr = new ArkArrayRef(innerStmts[0].value as Local, innerStmts[1].value);
+        const exprPositions = [FullPosition.cxxBuildFromNode(callExpression, this.cxxSourceFile)];
+        for (const stmt of innerStmts) {
+            exprPositions.push(...stmt.valueOriginalPositions);
+        }
 
-        innerStmts[0].stmts.forEach(stmt => stmts.push(stmt));
-        innerStmts[1].stmts.forEach(stmt => stmts.push(stmt));
+        let elementAccessExpr: Value;
+        if (innerStmts.length >= 2) {
+            elementAccessExpr = new ArkArrayRef(innerStmts[0].value as Local, innerStmts[1].value);
+        } else {
+            const operatorToken: string = (callExpression.name ?? '').replace('operator', '');
+            const operator = ArkCxxIRTransformer.cxxTokenToUnaryOperator(operatorToken);
+            if (operator) {
+                elementAccessExpr = new ArkUnopExpr(innerStmts[0].value, operator);
+            } else {
+                elementAccessExpr = CxxValueUtil.getUndefinedConst();
+            }
+        }
 
+        innerStmts.forEach(innerStmt => {
+            innerStmt.stmts.forEach(stmt => stmts.push(stmt));
+        });
         return { value: elementAccessExpr, valueOriginalPositions: exprPositions, stmts: stmts };
     }
 
@@ -2619,6 +2630,10 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             return new ArrayType(buildTypeFromPreStr(dataType, undefined), dimension);
         } else if (qualType === 'thread') {
             return new Thread();
+        } else if (qualType.includes('unique_ptr') || qualType.includes('shared_ptr') || qualType.includes('weak_ptr')) {
+            // Locate the type represented by the smart pointer
+            let baseType = cxxNode2Type(qualType.slice(qualType.indexOf('<') + 1, qualType.lastIndexOf('>')), undefined);
+            return new SmartPointerType(baseType, 0, qualType);
         }
         return undefined;
     }

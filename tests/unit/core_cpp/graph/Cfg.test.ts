@@ -154,6 +154,10 @@ describe('Type Test', () => {
         testBlocks(scene, 'pointerExpr.cpp', 'PtrType', POINTER_EXPECT.POINTER_EXPECT_CASE1.blocks);
         testBlocks(scene, 'pointerExpr.cpp', 'BasePtrOp', POINTER_EXPECT.POINTER_EXPECT_CASE2.blocks);
         testBlocks(scene, 'pointerExpr.cpp', 'MultiLevelPtrOp', POINTER_EXPECT.POINTER_EXPECT_CASE3.blocks);
+        testBlocks(scene, 'pointerExpr.cpp', 'UniquePtrTest', POINTER_EXPECT.POINTER_EXPECT_CASE4.blocks);
+        testBlocks(scene, 'pointerExpr.cpp', 'SharedPtrTest', POINTER_EXPECT.POINTER_EXPECT_CASE5.blocks);
+        testBlocks(scene, 'pointerExpr.cpp', 'CircularReferenceExample', POINTER_EXPECT.POINTER_EXPECT_CASE6.blocks);
+        testBlocksClass(scene, 'pointerExpr.cpp', 'Node', POINTER_EXPECT.POINTER_NODE_CLASS1);
     });
     it('case3: reference Type', () => {
         const scene = buildScene('reference');

@@ -21,7 +21,7 @@ import {
     UnclearReferenceType,
     FunctionType,
 } from '../../../core/base/Type';
-import { PointerType, ReferenceType, ReferCategory, NapiType } from '../../base/Type';
+import { PointerType, ReferenceType, ReferCategory, NapiType, SmartPointerType } from '../../base/Type';
 import { TypeInference } from '../../common/TypeInference';
 import { ArkField } from '../../../core/model/ArkField';
 import { ArkClass } from '../../../core/model/ArkClass';
@@ -266,6 +266,11 @@ export function buildTypeFromPreStr(preStr: string, arkInstance: ArkMethod | Ark
     }
     if (referenceCount > 0) {
         return buildReferenceType(preStr, arkInstance, referenceCount, baseType);
+    }
+    if (preStr.includes('unique') || preStr.includes('shared') || preStr.includes('weak')) {
+        // Locate the type represented by the smart pointer
+        let baseType = cxxNode2Type(preStr.slice(preStr.indexOf('<') + 1, preStr.lastIndexOf('>')), undefined);
+        return new SmartPointerType(baseType, 0, preStr);
     }
     return baseType;
 }
