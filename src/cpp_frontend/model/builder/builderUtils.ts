@@ -223,7 +223,8 @@ export function cxxNode2Type(
     }
 
     // Default processing
-    return buildTypeFromPreStr(nodeQualType.toString(), arkInstance);
+    const typeString  = typeof nodeQualType === 'string' ? nodeQualType : nodeQualType.type.qualType;
+    return buildTypeFromPreStr(typeString, arkInstance);
 }
 
 /**

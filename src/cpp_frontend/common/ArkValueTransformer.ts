@@ -973,13 +973,14 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             varNode = identifier;
         }
         const varName = varNode.kind === 'TypeRef' ? varNode.code : varNode.name;
+        const varType = cxxNode2Type(identifier, undefined);
         if (varName === UndefinedType.getInstance().getName()) {
             identifierValue = CxxValueUtil.getUndefinedConst();
         } else {
             if (variableDefFlag) {
-                identifierValue = this.addNewLocal(varName);
+                identifierValue = this.addNewLocal(varName, varType);
             } else {
-                identifierValue = this.getOrCreateLocal(varName);
+                identifierValue = this.getOrCreateLocal(varName, varType);
             }
         }
         return {
