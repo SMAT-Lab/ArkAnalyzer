@@ -411,7 +411,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
 
     private cxxCatchClauseToStmts(catchClause: CxxAstNode): Stmt[] {
         const stmts: Stmt[] = [];
-        if (catchClause.inner) {
+        if (catchClause.inner && catchClause.inner.length > 1) {
             const {
                 value: catchValue,
                 valueOriginalPositions: catchOriPos,

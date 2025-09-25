@@ -2352,6 +2352,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         if (operatorToken === '=') {
             return this.cxxAssignmentToValueAndStmts(binaryExpressionLeft, binaryExpressionRight, false, false, UnknownType.getInstance(), true);
         }
+
         const stmts: Stmt[] = [];
         const binaryExpressionPosition = FullPosition.cxxBuildFromNode(binaryExpression, this.cxxSourceFile);
         const { value: opValue1, valueOriginalPositions: opPositions1, stmts: opStmts1 } = this.cxxNodeToSingleAddressValueAndStmts(binaryExpressionLeft);
@@ -2360,7 +2361,10 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         opStmts2.forEach(stmt => stmts.push(stmt));
         let exprValue: Value;
         let exprValuePositions = [binaryExpressionPosition];
-        if (operatorToken) {
+        if (operatorToken === ',') {
+            exprValue = opValue2;
+            exprValuePositions.push(...opPositions1, ...opPositions2);
+        } else if (operatorToken) {
             if (this.isRelationalOperator(operatorToken as BinaryOperator)) {
                 exprValue = new ArkConditionExpr(opValue1, opValue2, operatorToken as RelationalBinaryOperator);
             } else {
