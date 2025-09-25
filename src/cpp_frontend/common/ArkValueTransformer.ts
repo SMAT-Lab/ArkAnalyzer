@@ -973,13 +973,14 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             varNode = identifier;
         }
         const varName = varNode.kind === 'TypeRef' ? varNode.code : varNode.name;
+        const varType = cxxNode2Type(identifier, undefined);
         if (varName === UndefinedType.getInstance().getName()) {
             identifierValue = CxxValueUtil.getUndefinedConst();
         } else {
             if (variableDefFlag) {
-                identifierValue = this.addNewLocal(varName);
+                identifierValue = this.addNewLocal(varName, varType);
             } else {
-                identifierValue = this.getOrCreateLocal(varName);
+                identifierValue = this.getOrCreateLocal(varName, varType);
             }
         }
         return {
@@ -2487,6 +2488,15 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         };
     }
 
+    private parseFloatAsCxxFloat(s:string): number {
+        const num = Number.parseFloat(s);
+        // perform a float32 round-trip using Float32Array to simulate C++ 'float' precision
+        const f32 = new Float32Array(1);
+        f32[0] = num;
+        // keeping 5 decimal places to cover float precision
+        return +f32[0].toFixed(5);
+    }
+
     /**
      *Convert literal nodes in C++AST into corresponding value and statement lists.
      *Literals currently processed: integer, floating point, string, character, Boolean value, null pointer, address label
@@ -2504,7 +2514,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
                 return { value: constant, valueOriginalPositions: pos, stmts };
             }
             case 'FloatingLiteral': {
-                const num = Number.parseFloat(S(literalNode.value) || S(literalNode.code));
+                const num = this.parseFloatAsCxxFloat(S(literalNode.value) || S(literalNode.code));
                 const constant = CxxValueUtil.getOrCreateNumberConst(Number.isFinite(num) ? num : 0);
                 return { value: constant, valueOriginalPositions: pos, stmts };
             }

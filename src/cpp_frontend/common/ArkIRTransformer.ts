@@ -417,7 +417,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
                 valueOriginalPositions: catchOriPos,
                 stmts: catchStmts,
             } = this.ArkCxxValueTransformer.cxxVariableDeclarationToValueAndStmts(catchClause.inner[0], false, false);
-            const caughtExceptionRef = new ArkCaughtExceptionRef(UnknownType.getInstance());
+            const caughtExceptionRef = new ArkCaughtExceptionRef(catchValue.getType());
             const assignStmt = new ArkAssignStmt(catchValue, caughtExceptionRef);
             assignStmt.setOperandOriginalPositions(catchOriPos);
             stmts.push(assignStmt);
