@@ -19,7 +19,7 @@
 // ---------- Prune policy globals ----------
 // Global switches for pruning overly large InitListExpr nodes
 bool     g_pruneHugeInits          = true;
-unsigned g_initTokLenThreshold     = 160;
+unsigned g_initTokLenThreshold     = 320;
 unsigned g_initTokenCountThreshold = 96;
 
 // ---------- Field policy state (single source of truth) ----------

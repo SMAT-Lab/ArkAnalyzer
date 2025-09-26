@@ -757,10 +757,11 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         ifStmt.setOperandOriginalPositions(conditionPositions);
         stmts.push(ifStmt);
         stmts.push(new DummyStmt(ArkCxxIRTransformer.DUMMY_CONDITIONAL_OPERATOR_IF_TRUE_STMT + currConditionalOperatorIndex));
-        if (conditionalExpression.inner.length === 3) {
-            InnerIdx = 1;
-        } else if (conditionalExpression.inner.length === 4) {
-            InnerIdx = 0;
+        if (conditionalExpression.inner.length === 3) { // a > b ? t : f
+            InnerIdx = 1; // Obtain truth values from ternary expressions
+        } else if (conditionalExpression.inner.length === 4) { // a > b ?: f：Binary expressions have one more ExprWithCleanups child node than ternary expressions
+            InnerIdx = 2; // Obtain truth values from binary expressions
+
         }
         const {value: whenTrueValue, valueOriginalPositions: whenTruePositions, stmts: whenTrueStmts, } =
             this.cxxNodeToValueAndStmts(conditionalExpression.inner[InnerIdx]);
@@ -772,9 +773,9 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         stmts.push(assignStmtWhenTrue);
         stmts.push(new DummyStmt(ArkCxxIRTransformer.DUMMY_CONDITIONAL_OPERATOR_IF_FALSE_STMT + currConditionalOperatorIndex));
         if (conditionalExpression.inner.length === 3) {
-            InnerIdx = 2;
+            InnerIdx = 2; // Obtain false values from ternary expressions
         } else if (conditionalExpression.inner.length === 4) {
-            InnerIdx = 3;
+            InnerIdx = 3; // Obtain false values from binary expressions
         }
         const {value: whenFalseValue, valueOriginalPositions: whenFalsePositions, stmts: whenFalseStmts, } =
             this.cxxNodeToValueAndStmts(conditionalExpression.inner[InnerIdx]);
