@@ -33,3 +33,24 @@ export const WHILE_CONTINUE_EXPECT_MAIN = {
         { id: 5, stmts: ['return 0'], preds: [1], succes: [] },
     ],
 };
+
+export const DO_WHILE_STMT = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @whileContinue/whileContinueSample.cpp: %dflt',
+                'i = 0'
+            ],
+            preds: [],
+            succes: [ 1 ]
+        },
+        {
+            id: 1,
+            stmts: [ 'i = i + 1', 'if i < 10' ],
+            preds: [ 0, 1 ],
+            succes: [ 1, 2 ]
+        },
+        { id: 2, stmts: [ 'return' ], preds: [ 1 ], succes: [] }
+    ],
+};

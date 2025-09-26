@@ -119,6 +119,7 @@ describe('CfgTest', () => {
     it('case5: while-continue statement', () => {
         const scene = buildScene('whileContinue');
         testBlocks(scene, 'whileContinueSample.cpp', 'main', WHILE_CONTINUE_EXPECT.WHILE_CONTINUE_EXPECT_MAIN.blocks);
+        testBlocks(scene, 'whileContinueSample.cpp', 'DoStmtFunc',  WHILE_CONTINUE_EXPECT.DO_WHILE_STMT.blocks);
     });
     it('case6: goto statement', () => {
         const scene = buildScene('goto');

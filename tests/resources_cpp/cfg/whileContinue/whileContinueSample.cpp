@@ -26,3 +26,11 @@ int main(int num)
     }
     return 0;
 }
+
+void DoStmtFunc()
+{
+    int i = 0;
+    do {
+        ++i;
+    } while (i < 10);
+}
