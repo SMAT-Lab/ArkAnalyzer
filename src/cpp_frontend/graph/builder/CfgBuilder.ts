@@ -472,7 +472,8 @@ export class CfgBuilder {
         if (first && first.kind === 'MemberExpr') {
             let childInner: CxxAstNode = first;
             // Callee: name is preferred. Some JSONs may only have code
-            callee = '.' + (childInner.name || childInner.code || '');
+            const op = childInner.isArrow ? '->' : '.';
+            callee = op + (childInner.name || childInner.code || '');
             // 2) Go down through ImplicitCastExpr chain until DeclRefExpr or other end points use the optional chain at the same time to avoid out of bounds
             while (childInner.inner && childInner.inner.length > 0) {
                 const n0 = childInner.inner[0];

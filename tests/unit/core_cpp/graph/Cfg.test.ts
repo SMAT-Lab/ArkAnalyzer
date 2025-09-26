@@ -59,6 +59,7 @@ import * as FUNCPTR_EXPECT from '../../../resources_cpp/cfg/functionPointer/func
 import * as AUTO_EXPECT from '../../../resources_cpp/cfg/decltype/decltypeExpects';
 import * as INCLUDE_IN_SCOPE from '../../../resources_cpp/cfg/includeInScope/includeInFunctionExpects';
 import * as STRUCTBINDING from '../../../resources_cpp/cfg/structBinding/structBindingExpect';
+import * as CALLEXPR_EXPECT from '../../../resources_cpp/cfg/call/callExpect'
 
 // Standard library header file configuration for DevEco
 const deveco_c = process.env.DEVECO_C !== undefined ? process.env.DEVECO_C : '';
@@ -263,6 +264,11 @@ describe('Function Test', () => {
         testBlocks(scene, 'overloadSample.cpp', 'operator""_km', OVERLOAD.OVERLOAD_USER_DEFINED_LITERAL_NUMBER_EXPECT.blocks);
         testBlocks(scene, 'overloadSample.cpp', 'operator""_c', OVERLOAD.OVERLOAD_USER_DEFINED_LITERAL_CHAR_EXPECT.blocks);
         testBlocks(scene, 'overloadSample.cpp', 'main', OVERLOAD.OVERLOAD_MAIN_EXPECT.blocks);
+    });
+
+    it('case6: call expr', () => {
+        const scene = buildScene('call');
+        testBlocks(scene, 'call.cpp', 'case1', CALLEXPR_EXPECT.CXXMEMBERCALL_EXPECT.blocks);
     });
 });
 
