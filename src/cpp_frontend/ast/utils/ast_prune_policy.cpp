@@ -19,7 +19,7 @@
 // ---------- Prune policy globals ----------
 // Global switches for pruning overly large InitListExpr nodes
 bool     g_pruneHugeInits          = true;
-unsigned g_initTokLenThreshold     = 160;
+unsigned g_initTokLenThreshold     = 320;
 unsigned g_initTokenCountThreshold = 96;
 
 // ---------- Field policy state (single source of truth) ----------
@@ -90,8 +90,9 @@ uint32_t SelectFieldMaskForCursorKind(CXCursorKind k)
             return WANT_KIND | WANT_NAME | WANT_TYPE | WANT_CODE | WANT_RANGE | WANT_REFERENCED;
         // Using declarations/directives: keep name and type
         case CXCursor_UsingDeclaration:
-        case CXCursor_UsingDirective:
             return WANT_KIND | WANT_NAME | WANT_TYPE;
+        case CXCursor_UsingDirective:
+            return WANT_KIND | WANT_NAME | WANT_TYPE | WANT_LOCFILE;
         // Namespaces: keep name and type
         case CXCursor_Namespace:
             return WANT_KIND | WANT_NAME | WANT_TYPE | WANT_LOCFILE;

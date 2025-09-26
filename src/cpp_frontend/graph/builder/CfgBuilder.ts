@@ -765,6 +765,8 @@ export class CfgBuilder {
             case 'WhileStmt':
                 lastStatement = this.ASTNodeWhileStatement(innerNode, lastStatement, scope.id);
                 break;
+            case 'NullStmt':
+                break;
             default:
                 break;
         }

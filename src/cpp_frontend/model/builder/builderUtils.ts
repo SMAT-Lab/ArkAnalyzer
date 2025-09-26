@@ -200,7 +200,7 @@ export function cxxNode2Type(
         return buildFuncPtrType(currNode, arkInstance, sourceFile!);
     }
     // Handle napi type
-    if (typeof nodeQualType === 'string' && nodeQualType.startsWith('napi_')) {
+    if (typeof nodeQualType === 'string' && nodeQualType.startsWith('napi_') && nodeQualType !== 'napi_property_descriptor') {
         return new NapiType(nodeQualType);
     }
     // Handle special type

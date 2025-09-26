@@ -757,10 +757,11 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         ifStmt.setOperandOriginalPositions(conditionPositions);
         stmts.push(ifStmt);
         stmts.push(new DummyStmt(ArkCxxIRTransformer.DUMMY_CONDITIONAL_OPERATOR_IF_TRUE_STMT + currConditionalOperatorIndex));
-        if (conditionalExpression.inner.length === 3) {
-            InnerIdx = 1;
-        } else if (conditionalExpression.inner.length === 4) {
-            InnerIdx = 0;
+        if (conditionalExpression.inner.length === 3) { // a > b ? t : f
+            InnerIdx = 1; // Obtain truth values from ternary expressions
+        } else if (conditionalExpression.inner.length === 4) { // a > b ?: f：Binary expressions have one more ExprWithCleanups child node than ternary expressions
+            InnerIdx = 2; // Obtain truth values from binary expressions
+
         }
         const {value: whenTrueValue, valueOriginalPositions: whenTruePositions, stmts: whenTrueStmts, } =
             this.cxxNodeToValueAndStmts(conditionalExpression.inner[InnerIdx]);
@@ -772,9 +773,9 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         stmts.push(assignStmtWhenTrue);
         stmts.push(new DummyStmt(ArkCxxIRTransformer.DUMMY_CONDITIONAL_OPERATOR_IF_FALSE_STMT + currConditionalOperatorIndex));
         if (conditionalExpression.inner.length === 3) {
-            InnerIdx = 2;
+            InnerIdx = 2; // Obtain false values from ternary expressions
         } else if (conditionalExpression.inner.length === 4) {
-            InnerIdx = 3;
+            InnerIdx = 3; // Obtain false values from binary expressions
         }
         const {value: whenFalseValue, valueOriginalPositions: whenFalsePositions, stmts: whenFalseStmts, } =
             this.cxxNodeToValueAndStmts(conditionalExpression.inner[InnerIdx]);
@@ -2492,6 +2493,15 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         };
     }
 
+    private parseFloatAsCxxFloat(s:string): number {
+        const num = Number.parseFloat(s);
+        // perform a float32 round-trip using Float32Array to simulate C++ 'float' precision
+        const f32 = new Float32Array(1);
+        f32[0] = num;
+        // keeping 5 decimal places to cover float precision
+        return +f32[0].toFixed(5);
+    }
+
     /**
      *Convert literal nodes in C++AST into corresponding value and statement lists.
      *Literals currently processed: integer, floating point, string, character, Boolean value, null pointer, address label
@@ -2509,7 +2519,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
                 return { value: constant, valueOriginalPositions: pos, stmts };
             }
             case 'FloatingLiteral': {
-                const num = Number.parseFloat(S(literalNode.value) || S(literalNode.code));
+                const num = this.parseFloatAsCxxFloat(S(literalNode.value) || S(literalNode.code));
                 const constant = CxxValueUtil.getOrCreateNumberConst(Number.isFinite(num) ? num : 0);
                 return { value: constant, valueOriginalPositions: pos, stmts };
             }
