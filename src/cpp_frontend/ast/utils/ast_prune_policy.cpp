@@ -90,7 +90,6 @@ uint32_t SelectFieldMaskForCursorKind(CXCursorKind k)
             return WANT_KIND | WANT_NAME | WANT_TYPE | WANT_CODE | WANT_RANGE | WANT_REFERENCED;
         // Using declarations/directives: keep name and type
         case CXCursor_UsingDeclaration:
-            return WANT_KIND | WANT_NAME | WANT_TYPE;
         case CXCursor_UsingDirective:
             return WANT_KIND | WANT_NAME | WANT_TYPE | WANT_LOCFILE;
         // Namespaces: keep name and type
