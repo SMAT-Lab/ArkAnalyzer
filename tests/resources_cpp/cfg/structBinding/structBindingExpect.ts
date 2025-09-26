@@ -101,56 +101,62 @@ export const REFERENCE_EXPECT_MAP = {
                 'this = this: @structBinding/structBinding.cpp: %dflt',
                 '%0 = new @%unk/%unk: std::map<std::basic_string<char>, int>',
                 '%1 = new @%unk/%unk: const std::pair<const std::basic_string<char>, int>',
-                'instanceinvoke %1.<@%unk/%unk: const std::pair<const std::basic_string<char>, int>.constructor()>(\'Alice\', 90)',
+                "instanceinvoke %1.<@%unk/%unk: const std::pair<const std::basic_string<char>, int>.constructor()>('Alice', 90)",
                 '%2 = new @%unk/%unk: const std::pair<const std::basic_string<char>, int>',
-                'instanceinvoke %2.<@%unk/%unk: const std::pair<const std::basic_string<char>, int>.constructor()>(\'Bob\', 85)',
+                "instanceinvoke %2.<@%unk/%unk: const std::pair<const std::basic_string<char>, int>.constructor()>('Bob', 85)",
                 '%3 = new @%unk/%unk: const std::pair<const std::basic_string<char>, int>',
-                'instanceinvoke %3.<@%unk/%unk: const std::pair<const std::basic_string<char>, int>.constructor()>(\'Charlie\', 95)',
+                "instanceinvoke %3.<@%unk/%unk: const std::pair<const std::basic_string<char>, int>.constructor()>('Charlie', 95)",
                 '%4 = newarray (const std::pair<const std::basic_string<char>, int>[])[3]',
                 '%4[0] = %1',
                 '%4[1] = %2',
                 '%4[2] = %3',
                 'instanceinvoke %0.<@%unk/%unk: std::map<std::basic_string<char>, int>.constructor()>(%4)',
-                'scores = %0',
-                '%5 = instanceinvoke scores.<@%unk/%unk: .Symbol.iterator()>()',
+                'scores = %0'
             ],
             preds: [],
-            succes: [1],
+            succes: [ 1 ]
         },
         {
             id: 1,
             stmts: [
-                'item = <unknown>%8',
                 '%5 = instanceinvoke scores.<@%unk/%unk: .Symbol.iterator()>()',
-                '%6 = instanceinvoke %5.<@built-in/lib.es2015.iterable.d.ts: Iterator.next([]|[undefined])>()',
+                '%6 = instanceinvoke %5.<@%unk/%unk: .std::next()>()',
+                '%7 = %6.<@CXX/std/BuiltinClass: IterableIterator.std::end>',
+                'if %7 == true',
+                '%8 = scores.<@std/map.h: map.value>',
+                'item = <unknown>%8'
             ],
-            preds: [0, 1],
-            succes: [1, 4],
+            preds: [ 0, 2 ],
+            succes: [ 2, 3 ]
         },
         {
             id: 2,
-            stmts: [
-                'name = %12[0]', 'score = %12[1]', '%12 = <unknown>%12',
-            ],
-            preds: [4, 2],
-            succes: [2, 3],
+            stmts: [ "staticinvoke <@%unk/%unk: .cout()>('Overall object access')" ],
+            preds: [ 1 ],
+            succes: [ 1 ]
         },
         {
             id: 3,
             stmts: [
-                'return',
+                '%9 = instanceinvoke scores.<@%unk/%unk: .Symbol.iterator()>()',
+                '%10 = instanceinvoke %9.<@%unk/%unk: .std::next()>()',
+                '%11 = %10.<@CXX/std/BuiltinClass: IterableIterator.std::end>',
+                'if %11 == true',
+                '%12 = scores.<@std/map.h: map.value>',
+                'name = %12[0]',
+                'score = %12[1]',
+                '%12 = <unknown>%12'
             ],
-            preds: [2],
-            succes: [],
+            preds: [ 1, 4 ],
+            succes: [ 4, 5 ]
         },
         {
             id: 4,
-            stmts: [
-                '%9 = instanceinvoke scores.<@%unk/%unk: .Symbol.iterator()>()',
-            ],
-            preds: [1],
-            succes: [2],
+            stmts: [ "staticinvoke <@%unk/%unk: .cout()>('Structured binding access')" ],
+            preds: [ 3 ],
+            succes: [ 3 ]
         },
+        { id: 5, stmts: [ 'return' ], preds: [ 3 ], succes: [] }
     ],
 };
 

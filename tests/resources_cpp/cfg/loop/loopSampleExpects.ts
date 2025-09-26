@@ -211,32 +211,36 @@ export const LOOP_EXPECT_CASE8 = {
                 '%4[1] = %2',
                 '%4[2] = %3',
                 'instanceinvoke %0.<@%unk/%unk: std::map<int, std::basic_string<char>>.constructor()>(%4)',
-                'map1 = %0',
-                '%5 = instanceinvoke map1.<@%unk/%unk: .Symbol.iterator()>()',
+                'map1 = %0'
             ],
             preds: [],
-            succes: [1],
+            succes: [ 1 ]
         },
         {
             id: 1,
-            stmts: ['%6 = instanceinvoke %5.<@%unk/%unk: .next()>()', '%7 = %6.<@ES2015/BuiltinClass: IteratorResult.done>', 'if %7 == true'],
-            preds: [0, 2],
-            succes: [2, 3],
+            stmts: [
+                '%5 = instanceinvoke map1.<@%unk/%unk: .Symbol.iterator()>()',
+                '%6 = instanceinvoke %5.<@%unk/%unk: .std::next()>()',
+                '%7 = %6.<@CXX/std/BuiltinClass: IteratorResult.std::end>',
+                'if %7 == true',
+                '%8 = map1.<@CXX/std/BuiltinClass: IteratorResult.value>',
+                'pair = <unknown>%8'
+            ],
+            preds: [ 0, 2 ],
+            succes: [ 2, 3 ]
         },
         {
             id: 2,
             stmts: [
-                '%8 = map1.<@ES2015/BuiltinClass: IteratorResult.value>',
-                'pair = <unknown>%8',
                 '%9 = pair.<@%unk/%unk: .first>',
                 '%10 = pair.<@%unk/%unk: .second>',
                 '%11 = instanceinvoke %10.<@%unk/%unk: .c_str()>()',
-                "staticinvoke <@%unk/%unk: .printf()>('%d %s\\n', %9, %11)",
+                "staticinvoke <@%unk/%unk: .printf()>('%d %s\\n', %9, %11)"
             ],
-            preds: [1],
-            succes: [1],
+            preds: [ 1 ],
+            succes: [ 1 ]
         },
-        { id: 3, stmts: ['return'], preds: [1], succes: [] },
+        { id: 3, stmts: [ 'return' ], preds: [ 1 ], succes: [] }
     ],
 };
 
@@ -258,31 +262,35 @@ export const LOOP_EXPECT_CASE9 = {
                 '%4[1] = %2',
                 '%4[2] = %3',
                 'instanceinvoke %0.<@%unk/%unk: std::map<int, std::basic_string<char>>.constructor()>(%4)',
-                'map2 = %0',
-                '%5 = instanceinvoke map2.<@%unk/%unk: .Symbol.iterator()>()',
+                'map2 = %0'
             ],
             preds: [],
-            succes: [1],
+            succes: [ 1 ]
         },
         {
             id: 1,
-            stmts: ['%6 = instanceinvoke %5.<@%unk/%unk: .next()>()', '%7 = %6.<@ES2015/BuiltinClass: IteratorResult.done>', 'if %7 == true'],
-            preds: [0, 2],
-            succes: [2, 3],
+            stmts: [
+                '%5 = instanceinvoke map2.<@%unk/%unk: .Symbol.iterator()>()',
+                '%6 = instanceinvoke %5.<@%unk/%unk: .std::next()>()',
+                '%7 = %6.<@CXX/std/BuiltinClass: IteratorResult.std::end>',
+                'if %7 == true',
+                '%8 = map2.<@CXX/std/BuiltinClass: IteratorResult.value>',
+                'key = %8[0]',
+                'value = %8[1]',
+                '%8 = <unknown>%8'
+            ],
+            preds: [ 0, 2 ],
+            succes: [ 2, 3 ]
         },
         {
             id: 2,
             stmts: [
-                '%8 = map2.<@ES2015/BuiltinClass: IteratorResult.value>',
-                'key = %8[0]',
-                'value = %8[1]',
-                '%8 = <unknown>%8',
                 '%9 = instanceinvoke value.<@%unk/%unk: .c_str()>()',
-                "staticinvoke <@%unk/%unk: .printf()>('%d %s\\n', key, %9)",
+                "staticinvoke <@%unk/%unk: .printf()>('%d %s\\n', key, %9)"
             ],
-            preds: [1],
-            succes: [1],
+            preds: [ 1 ],
+            succes: [ 1 ]
         },
-        { id: 3, stmts: ['return'], preds: [1], succes: [] },
+        { id: 3, stmts: [ 'return' ], preds: [ 1 ], succes: [] }
     ],
 };

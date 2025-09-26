@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-import { ClassSignature } from '../../core/model/ArkSignature';
+import { ClassSignature, FileSignature } from '../../core/model/ArkSignature';
+import { ClassType, GenericType } from '../../core/base/Type';
 
 export class BuiltinCxx {
     // built-in classes
@@ -26,12 +27,45 @@ export class BuiltinCxx {
     public static STACK = 'stack';
     public static LIST = 'list';
     public static VECTOR = 'vector';
+    public static UNORDERED_SET = 'unordered_set';
+    public static PRIORITY_QUEUE = 'priority_queue';
+    public static FORWARD_LIST = 'forward_list';
+    public static MULTISET = 'multiset';
+    public static MULTIMAP = 'multimap';
+    public static UNORDERED_MULTIMAP = 'unordered_multimap';
+    public static UNORDERED_MULTISET = 'unordered_multiset';
+    public static OBJECT = 'Object';
+    public static REGEXP = 'RegExp';
 
     public static BUILT_IN_CLASSES = this.buildBuiltInClasses();
 
-    // signature for built-in class
-    public static DUMMY_PROJECT_NAME = 'std';
+    public static DUMMY_PROJECT_NAME = 'CXX/std';
+    public static DUMMY_FILE_NAME = 'BuiltinClass';
 
+    public static BUILT_IN_CLASSES_FILE_SIGNATURE = BuiltinCxx.buildBuiltInClassesFileSignature();
+    public static OBJECT_CLASS_SIGNATURE = this.buildBuiltInClassSignature(this.OBJECT);
+    public static OBJECT_CLASS_TYPE = new ClassType(this.OBJECT_CLASS_SIGNATURE);
+    public static ARRAY_CLASS_SIGNATURE = this.buildBuiltInClassSignature(this.ARRAY);
+    public static SET_CLASS_SIGNATURE = this.buildBuiltInClassSignature(this.SET);
+    public static MAP_CLASS_SIGNATURE = this.buildBuiltInClassSignature(this.MAP);
+    public static REGEXP_CLASS_SIGNATURE = this.buildBuiltInClassSignature(this.REGEXP);
+    public static REGEXP_CLASS_TYPE = new ClassType(this.REGEXP_CLASS_SIGNATURE);
+    public static BUILT_IN_CLASS_SIGNATURE_MAP = this.buildBuiltInClassSignatureMap();
+
+    // signature for built-in class
+
+
+    public static ITERATOR_FUNCTION = 'Symbol.iterator';
+    public static ITERATOR = 'IterableIterator';
+    public static ITERATOR_NEXT = 'std::next';
+    public static ITERATOR_RESULT = 'IteratorResult';
+    public static ITERATOR_RESULT_DONE = 'std::end';
+    public static ITERATOR_RESULT_VALUE = 'value';
+
+    public static ITERATOR_CLASS_SIGNATURE = this.buildBuiltInClassSignature(this.ITERATOR);
+    public static ITERATOR_RESULT_CLASS_SIGNATURE = this.buildBuiltInClassSignature(this.ITERATOR_RESULT);
+    public static ITERATOR_CLASS_TYPE = new ClassType(this.ITERATOR_CLASS_SIGNATURE, [new GenericType('T')]);
+    public static ITERATOR_RESULT_CLASS_TYPE = new ClassType(this.ITERATOR_RESULT_CLASS_SIGNATURE, [new GenericType('T')]);
     private static buildBuiltInClasses(): Set<string> {
         const builtInClasses = new Set<string>();
         builtInClasses.add(this.ARRAY);
@@ -46,9 +80,26 @@ export class BuiltinCxx {
         return builtInClasses;
     }
 
+    private static buildBuiltInClassesFileSignature(): FileSignature {
+        return new FileSignature(this.DUMMY_PROJECT_NAME, this.DUMMY_FILE_NAME);
+    }
+
+    public static buildBuiltInClassSignature(className: string): ClassSignature {
+        return new ClassSignature(className, this.BUILT_IN_CLASSES_FILE_SIGNATURE);
+    }
     public static isBuiltinClass(classSignature: ClassSignature): boolean {
         const className = classSignature.getClassName();
         const projectName = classSignature.getDeclaringFileSignature().getProjectName();
         return this.BUILT_IN_CLASSES.has(className) && projectName === this.DUMMY_PROJECT_NAME;
+    }
+
+    private static buildBuiltInClassSignatureMap(): Map<string, ClassSignature> {
+        const builtInClassSignatureMap = new Map<string, ClassSignature>();
+        builtInClassSignatureMap.set(this.OBJECT, this.OBJECT_CLASS_SIGNATURE);
+        builtInClassSignatureMap.set(this.ARRAY, this.ARRAY_CLASS_SIGNATURE);
+        builtInClassSignatureMap.set(this.SET, this.SET_CLASS_SIGNATURE);
+        builtInClassSignatureMap.set(this.MAP, this.MAP_CLASS_SIGNATURE);
+        builtInClassSignatureMap.set(this.REGEXP, this.REGEXP_CLASS_SIGNATURE);
+        return builtInClassSignatureMap;
     }
 }

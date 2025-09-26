@@ -37,7 +37,7 @@ import { COMPONENT_CREATE_FUNCTION, COMPONENT_POP_FUNCTION, COMPONENT_REPEAT } f
 import { FullPosition, LineColPosition } from '../../core/base/Position';
 import { ArkCxxValueTransformer } from './ArkValueTransformer';
 import { AliasTypeSignature, ClassSignature, FieldSignature, MethodSignature, MethodSubSignature } from '../../core/model/ArkSignature';
-import { Builtin } from '../../core/common/Builtin';
+import { BuiltinCxx } from '../common/Builtin';
 import { ArkSignatureBuilder } from '../../core/model/builder/ArkSignatureBuilder';
 import { ArkIRTransformer } from '../../core/common/ArkIRTransformer';
 import { AbstractTypeExpr } from '../../core/base/TypeExpr';
@@ -336,7 +336,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
             } = this.generateAssignStmtForValue(iterableValue, iterablePositions));
             iterableStmts.forEach(stmt => stmts.push(stmt));
         }
-        const iteratorMethodSubSignature = new MethodSubSignature(Builtin.ITERATOR_FUNCTION, [], Builtin.ITERATOR_CLASS_TYPE);
+        const iteratorMethodSubSignature = new MethodSubSignature(BuiltinCxx.ITERATOR_FUNCTION, [], BuiltinCxx.ITERATOR_CLASS_TYPE);
         const iteratorMethodSignature = new MethodSignature(ClassSignature.DEFAULT, iteratorMethodSubSignature);
         const iteratorInvokeExpr = new ArkInstanceInvokeExpr(iterableValue as Local, iteratorMethodSignature, []);
         const iteratorInvokeExprPositions = [iterablePositions[0], ...iterablePositions];
@@ -355,8 +355,8 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
             stmts: iteratorStmts,
         } = this.generateAssignStmtForValue(iteratorInvokeExpr, iteratorInvokeExprPositions);
         iteratorStmts.forEach(stmt => stmts.push(stmt));
-        (iterator as Local).setType(Builtin.ITERATOR_CLASS_TYPE);
-        const nextMethodSubSignature = new MethodSubSignature(Builtin.ITERATOR_NEXT, [], Builtin.ITERATOR_RESULT_CLASS_TYPE);
+        (iterator as Local).setType(BuiltinCxx.ITERATOR_CLASS_TYPE);
+        const nextMethodSubSignature = new MethodSubSignature(BuiltinCxx.ITERATOR_NEXT, [], BuiltinCxx.ITERATOR_RESULT_CLASS_TYPE);
         const nextMethodSignature = new MethodSignature(ClassSignature.DEFAULT, nextMethodSubSignature);
         const iteratorNextInvokeExpr = new ArkInstanceInvokeExpr(iterator as Local, nextMethodSignature, []);
         const iteratorNextInvokeExprPositions = [iteratorPositions[0], ...iterablePositions];
@@ -384,8 +384,8 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         stmts.push(ifStmt);
 
         const valueFieldSignature = new FieldSignature(
-            Builtin.ITERATOR_RESULT_VALUE,
-            Builtin.ITERATOR_RESULT_CLASS_SIGNATURE,
+            BuiltinCxx.ITERATOR_RESULT_VALUE,
+            BuiltinCxx.ITERATOR_RESULT_CLASS_SIGNATURE,
             UnknownType.getInstance(),
             false,
         );
@@ -402,8 +402,8 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
             stmts: iteratorResultStmts,
         } = this.generateAssignStmtForValue(iteratorNextInvokeExpr, iteratorNextInvokeExprPositions);
         iteratorResultStmts.forEach(stmt => stmts.push(stmt));
-        (iteratorResult as Local).setType(Builtin.ITERATOR_CLASS_TYPE);
-        const doneFieldSignature = new FieldSignature(Builtin.ITERATOR_RESULT_DONE, Builtin.ITERATOR_RESULT_CLASS_SIGNATURE, BooleanType.getInstance(), false);
+        (iteratorResult as Local).setType(BuiltinCxx.ITERATOR_CLASS_TYPE);
+        const doneFieldSignature = new FieldSignature(BuiltinCxx.ITERATOR_RESULT_DONE, BuiltinCxx.ITERATOR_RESULT_CLASS_SIGNATURE, BooleanType.getInstance(), false);
         const doneFieldRef = new ArkInstanceFieldRef(iteratorResult as Local, doneFieldSignature);
         const doneFieldRefPositions = [iteratorResultPositions[0], ...iteratorResultPositions];
         return { iteratorResultPositions, doneFieldRef, doneFieldRefPositions };

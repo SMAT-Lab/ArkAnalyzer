@@ -17,6 +17,7 @@
 #include <tuple>
 #include <string>
 #include <map>
+#include <iostream>
 using namespace std;
 // 示例1：基本用法
 void BasicUsage()
@@ -61,9 +62,11 @@ void MapUsage()
     };
 
     for (const auto& item : scores) {
+        cout << "Overall object access";
     }
 
     for (const auto& [name, score] : scores) {
+        cout << "Structured binding access";
     }
 }
 
