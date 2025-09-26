@@ -411,6 +411,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
 
     private cxxCatchClauseToStmts(catchClause: CxxAstNode): Stmt[] {
         const stmts: Stmt[] = [];
+        // When the scenario is catch (...), inner [0] is the exception handling content, and in other cases, it is the exception type
         if (catchClause.inner && catchClause.inner.length > 1) {
             const {
                 value: catchValue,
