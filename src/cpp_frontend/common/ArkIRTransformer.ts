@@ -29,7 +29,7 @@ import { Value } from '../../core/base/Value';
 import * as ts from 'ohos-typescript';
 import { Local } from '../../core/base/Local';
 import { ArkAliasTypeDefineStmt, ArkAssignStmt, ArkIfStmt, ArkInvokeStmt, ArkReturnStmt, ArkReturnVoidStmt, ArkThrowStmt, Stmt } from '../../core/base/Stmt';
-import { AliasType, BooleanType, ClassType, UnknownType } from '../../core/base/Type';
+import { AliasType, BooleanType, ClassType,  UnknownType, VoidType } from '../../core/base/Type';
 import { CxxValueUtil } from './ValueUtil';
 import { IRUtils } from './IRUtils';
 import { ArkMethod } from '../../core/model/ArkMethod';
@@ -444,8 +444,14 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
             const returnStmt = new ArkReturnStmt(exprValue);
             returnStmt.setOperandOriginalPositions(exprPositions);
             stmts.push(returnStmt);
-        } else {
-            stmts.push(new ArkReturnVoidStmt());
+            if (this.declaringMethod.getSubSignature().getReturnType() instanceof UnknownType) {
+                this.declaringMethod.getSubSignature().setReturnType(exprValue.getType());
+            }
+            return stmts;
+        }
+        stmts.push(new ArkReturnVoidStmt());
+        if (this.declaringMethod.getSubSignature().getReturnType() instanceof UnknownType) {
+            this.declaringMethod.getSubSignature().setReturnType(VoidType.getInstance());
         }
         return stmts;
     }

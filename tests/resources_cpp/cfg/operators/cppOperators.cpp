@@ -90,6 +90,7 @@ void NoReturnValue()
 {
     int b = -1;
     b -= 1;
+    return;
 }
 
 // Bitwise operators
