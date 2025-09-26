@@ -70,7 +70,6 @@ import { TypeInference } from './TypeInference';
 import { setTs2CxxFuncMapOfClass } from './ModelUtils';
 import { CxxAstNode, CxxTranslationUnit } from '../ast/ArkCxxAstNode';
 import { BinaryOperator } from '../../core/base/Expr';
-import { ValueUtil } from '../../core/common/ValueUtil';
 import { DummyStmt } from '../../core/common/ArkIRTransformer';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkValueTransformer');
@@ -330,7 +329,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         innerStmts.forEach(stmt => stmts.push(stmt));
         for (let i = 0; i < length - 1; i++) {
             const leftValueAndStmts = this.cxxIdentifierToValueAndStmts(node.inner[i]);
-            const indexValue = ValueUtil.getOrCreateNumberConst(i);
+            const indexValue = CxxValueUtil.getOrCreateNumberConst(i);
             const arrayRef = new ArkArrayRef(objectValue as Local, indexValue);
             const assignStmt = new ArkAssignStmt(leftValueAndStmts.value, arrayRef);
             stmts.push(assignStmt);
