@@ -901,7 +901,7 @@ export class CfgBuilder {
             const block = new BlockBuilder(this.blocks.length, []);
             this.blocks.push(block);
             while (stmt && !handledStmts.has(stmt)) {
-                if (stmt.type === 'loopStatement' && block.stmts.length > 0 && !stmt.isDoWhile) {
+                if (stmt.type === 'loopStatement' && block.stmts.length > 0) {
                     stmtQueue.push(stmt);
                     break;
                 }
