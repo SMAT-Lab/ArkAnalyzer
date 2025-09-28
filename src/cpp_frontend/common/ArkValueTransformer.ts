@@ -358,6 +358,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         if (node.inner?.length === 1) {
             return this.cxxNodeToValueAndStmts(node.inner[0]);
         }
+
         node.kind = 'DeclRefExpr';
         node.name = node.code;
         return this.cxxNodeToValueAndStmts(node);
