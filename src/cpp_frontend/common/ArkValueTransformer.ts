@@ -751,7 +751,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         const stmts: Stmt[] = [];
         const currConditionalOperatorIndex = this.conditionalOperatorNo++;
         // Peel off 'ImplicitCastExpr'
-        const conditionNode = conditionalExpression.inner[InnerIdx].kind === 'ImplicitCastExpr' ?
+        const conditionNode = conditionalExpression.inner[InnerIdx].kind === 'ImplicitCastExpr'?
             conditionalExpression.inner[InnerIdx].inner[0] : conditionalExpression.inner[InnerIdx];
         const {value: conditionValue, valueOriginalPositions: conditionPositions, stmts: conditionStmts, } =
             this.cxxConditionToValueAndStmts(conditionNode);
@@ -763,8 +763,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         stmts.push(new DummyStmt(ArkCxxIRTransformer.DUMMY_CONDITIONAL_OPERATOR_IF_TRUE_STMT + currConditionalOperatorIndex));
         // inner[1] is a value whose expression is true
         InnerIdx++;
-        let whenTrueValueAndStmts: ValueAndStmts;
-        if (conditionalExpression.kind === 'ConditionalOperator') {
+        let whenTrueValueAndStmts: ValueAndStmts ;
+        if (conditionalExpression.kind === 'ConditionalOperator'){
             whenTrueValueAndStmts = this.cxxNodeToValueAndStmts(conditionalExpression.inner[InnerIdx]);
             // else kind is BinaryConditionalOperator,No need to parse the node again, the result of the judgment is its value
         } else {
@@ -2508,6 +2508,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         // perform a float32 round-trip using Float32Array to simulate C++ 'float' precision
         const f32 = new Float32Array(1);
         f32[0] = num;
+        // keeping 5 decimal places to cover float precision
         return +f32[0].toFixed(5);
     }
 

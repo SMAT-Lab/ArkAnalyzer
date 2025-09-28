@@ -285,7 +285,7 @@ export class ConditionBuilder {
             if (IRUtils.isTempLocal(stmt.getRightOp())) {
                 // When only one stmt remains in a block, it should be retained, and the final value of the ternary expression should be concatenated with it
                 tempResultReassignStmt = stmt;
-                if (i !== 0) {
+                if (i !== 0){
                     continue;
                 }
             }
