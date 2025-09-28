@@ -26,7 +26,7 @@ import { Trap } from '../../../core/base/Trap';
 import { GlobalRef } from '../../../core/base/Ref';
 import { LoopBuilder } from '../../../core/graph/builder/LoopBuilder';
 import { SwitchBuilder } from '../../../core/graph/builder/SwitchBuilder';
-import { ConditionBuilder } from '../../../core/graph/builder/ConditionBuilder';
+import { CxxConditionBuilder } from './ConditionBuilder';
 import { TrapBuilder } from '../../../core/graph/builder/TrapBuilder';
 import { ModifierType } from '../../../core/model/ArkBaseModel';
 import { BlockBuilder as CoreBlockBuilder, Catch, TextError, Variable, Scope } from '../../../core/graph/builder/CfgBuilder';
@@ -1368,7 +1368,7 @@ export class CfgBuilder {
         loopBuilder.rebuildBlocksInLoop(asCoreMap, asCoreSet, basicBlockSet, asCoreBlocks);
         const switchBuilder = new SwitchBuilder();
         switchBuilder.buildSwitch(asCoreMap, asCoreArr, valueAndStmtsOfSwitchAndCasesAll, arkIRTransformer, basicBlockSet);
-        const conditionalBuilder = new ConditionBuilder();
+        const conditionalBuilder = new CxxConditionBuilder();
         conditionalBuilder.rebuildBlocksContainConditionalOperator(
             asCoreMap,
             basicBlockSet,

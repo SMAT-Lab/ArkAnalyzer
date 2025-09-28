@@ -48,7 +48,7 @@ export const BINARY_CONDITIONAL_EXPECT_CASE2 = {
             preds: [],
             succes: [ 1, 2 ]
         },
-        { id: 1, stmts: [ 'y = a' ], preds: [ 0 ], succes: [ 3 ] },
+        { id: 1, stmts: [ 'y = 1' ], preds: [ 0 ], succes: [ 3 ] },
         { id: 2, stmts: [ 'y = c' ], preds: [ 0 ], succes: [ 3 ] },
         { id: 3, stmts: [ 'return y' ], preds: [ 1, 2 ], succes: [] }
     ],
@@ -106,9 +106,9 @@ export const BINARY_CONDITIONAL_EXPECT_CASE5 = {
             preds: [],
             succes: [ 1, 2 ]
         },
-        { id: 1, stmts: [ 'j = i' ], preds: [ 0 ], succes: [ 6 ] },
+        { id: 1, stmts: [ 'j = 1' ], preds: [ 0 ], succes: [ 6 ] },
         { id: 2, stmts: [ 'if i > 1' ], preds: [ 0 ], succes: [ 3, 4 ] },
-        { id: 3, stmts: [ '%1 = i' ], preds: [ 2 ], succes: [ 5 ] },
+        { id: 3, stmts: [ '%1 = 1' ], preds: [ 2 ], succes: [ 5 ] },
         { id: 4, stmts: [ '%1 = 0' ], preds: [ 2 ], succes: [ 5 ] },
         { id: 5, stmts: [ 'j = %1' ], preds: [ 3, 4 ], succes: [ 6 ] },
         { id: 6, stmts: [ 'return j' ], preds: [ 1, 5 ], succes: [] }

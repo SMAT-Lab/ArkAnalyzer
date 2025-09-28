@@ -756,7 +756,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         const {value: conditionValue, valueOriginalPositions: conditionPositions, stmts: conditionStmts, } =
             this.cxxConditionToValueAndStmts(conditionNode);
         conditionStmts.forEach(stmt => stmts.push(stmt));
-
+        let isBooleanExpr = conditionNode.type.qualType === 'bool' ? true : false;
         const ifStmt = new ArkIfStmt(conditionValue as ArkConditionExpr);
         ifStmt.setOperandOriginalPositions(conditionPositions);
         stmts.push(ifStmt);
@@ -769,7 +769,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             // else kind is BinaryConditionalOperator,No need to parse the node again, the result of the judgment is its value
         } else {
             whenTrueValueAndStmts = {
-                value: (conditionValue as ArkConditionExpr).getOp1(),
+                value: isBooleanExpr ? CxxValueUtil.getOrCreateNumberConst(1) : (conditionValue as ArkConditionExpr).getOp1(),
                 stmts: [],
                 valueOriginalPositions: conditionPositions,
             };

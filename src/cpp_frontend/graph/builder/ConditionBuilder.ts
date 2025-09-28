@@ -13,18 +13,18 @@
  * limitations under the License.
  */
 
-import { BasicBlock } from '../BasicBlock';
-import { ArkIRTransformer, DummyStmt } from '../../common/ArkIRTransformer';
-import { ArkAssignStmt, Stmt } from '../../base/Stmt';
-import { Local } from '../../base/Local';
+import { BasicBlock } from '../../../core/graph/BasicBlock';
+import { ArkIRTransformer, DummyStmt } from '../../../core/common/ArkIRTransformer';
+import { ArkAssignStmt, Stmt } from '../../../core/base/Stmt';
+import { Local } from '../../../core/base/Local';
 import { IRUtils } from '../../common/IRUtils';
-import { BlockBuilder } from './CfgBuilder';
-import { FullPosition } from '../../base/Position';
+import { BlockBuilder } from '../../../core/graph/builder/CfgBuilder';
+import { FullPosition } from '../../../core/base/Position';
 
 /**
  * Builder for condition in CFG
  */
-export class ConditionBuilder {
+export class CxxConditionBuilder  {
     public rebuildBlocksContainConditionalOperator(
         blockBuilderToCfgBlock: Map<BlockBuilder, BasicBlock>,
         basicBlockSet: Set<BasicBlock>,
@@ -276,15 +276,18 @@ export class ConditionBuilder {
     ): BasicBlock[] {
         const stmts = currBottomBlock.getStmts();
         const stmtsCnt = stmts.length;
-        let tempResultReassignStmt: Stmt | null = null;
+        let tempResultReassignStmt: ArkAssignStmt | null = null;
         for (let i = stmtsCnt - 1; i >= 0; i--) {
             const stmt = stmts[i];
             if (!(stmt instanceof ArkAssignStmt) || stmt.getLeftOp() !== tempResultLocal) {
                 continue;
             }
             if (IRUtils.isTempLocal(stmt.getRightOp())) {
+                // When only one stmt remains in a block, it should be retained, and the final value of the ternary expression should be concatenated with it
                 tempResultReassignStmt = stmt;
-                continue;
+                if (i !== 0){
+                    continue;
+                }
             }
             stmt.setLeftOp(targetLocal);
             if (targetValuePosition) {
@@ -296,7 +299,8 @@ export class ConditionBuilder {
         }
 
         let newBottomBlocks: BasicBlock[] = [];
-        if (tempResultReassignStmt) {
+        // When both ends are TempLocal, the statement begins filtering
+        if (tempResultReassignStmt && IRUtils.isTempLocal(tempResultReassignStmt.getLeftOp())) {
             const oldPredecessors = currBottomBlock.getPredecessors();
             const newPredecessors: BasicBlock[] = [];
             const prevTempResultLocal = (tempResultReassignStmt as ArkAssignStmt).getRightOp() as Local;
