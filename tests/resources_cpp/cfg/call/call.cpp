@@ -12,11 +12,13 @@
  * limitations under the License.
  */
 
-struct Foo{
-    void bar(int x){}
+struct Foo {
+    void bar(int x) {
+    }
 };
 
-void case1() {
+void case1()
+{
     Foo f;
     f.bar(42); // 这里会生成CXXMemberCallExpr节点
 }

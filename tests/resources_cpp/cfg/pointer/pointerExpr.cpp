@@ -79,7 +79,7 @@ void MultiLevelPtrOp(int *p, int **pp, int ***ppp)
     }
 }
 
-// 4. Other complex pointer operations:
+// 4.Other complex pointer operations:
 // arrays and pointers, functions and pointers, pointers and const, smart pointers(?)
 
 void UniquePtrTest()
@@ -98,8 +98,7 @@ void SharedPtrTest()
     int* rawPtr = ptr1.get();
 }
 
-class Node
-{
+class Node {
 public:
     int data;
     std::shared_ptr<Node> next;

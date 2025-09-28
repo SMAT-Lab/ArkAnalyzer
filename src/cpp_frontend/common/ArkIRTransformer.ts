@@ -29,7 +29,7 @@ import { Value } from '../../core/base/Value';
 import * as ts from 'ohos-typescript';
 import { Local } from '../../core/base/Local';
 import { ArkAliasTypeDefineStmt, ArkAssignStmt, ArkIfStmt, ArkInvokeStmt, ArkReturnStmt, ArkReturnVoidStmt, ArkThrowStmt, Stmt } from '../../core/base/Stmt';
-import { AliasType, BooleanType, ClassType,  UnknownType, VoidType } from '../../core/base/Type';
+import { AliasType, BooleanType, ClassType, UnknownType, VoidType } from '../../core/base/Type';
 import { CxxValueUtil } from './ValueUtil';
 import { IRUtils } from './IRUtils';
 import { ArkMethod } from '../../core/model/ArkMethod';
@@ -403,7 +403,8 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         } = this.generateAssignStmtForValue(iteratorNextInvokeExpr, iteratorNextInvokeExprPositions);
         iteratorResultStmts.forEach(stmt => stmts.push(stmt));
         (iteratorResult as Local).setType(BuiltinCxx.ITERATOR_CLASS_TYPE);
-        const doneFieldSignature = new FieldSignature(BuiltinCxx.ITERATOR_RESULT_DONE, BuiltinCxx.ITERATOR_RESULT_CLASS_SIGNATURE, BooleanType.getInstance(), false);
+        const doneFieldSignature = new FieldSignature(BuiltinCxx.ITERATOR_RESULT_DONE,
+            BuiltinCxx.ITERATOR_RESULT_CLASS_SIGNATURE, BooleanType.getInstance(), false);
         const doneFieldRef = new ArkInstanceFieldRef(iteratorResult as Local, doneFieldSignature);
         const doneFieldRefPositions = [iteratorResultPositions[0], ...iteratorResultPositions];
         return { iteratorResultPositions, doneFieldRef, doneFieldRefPositions };

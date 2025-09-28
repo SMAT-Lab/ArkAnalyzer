@@ -24,7 +24,7 @@ import { FullPosition } from '../../../core/base/Position';
 /**
  * Builder for condition in CFG
  */
-export class CxxConditionBuilder  {
+export class CxxConditionBuilder {
     public rebuildBlocksContainConditionalOperator(
         blockBuilderToCfgBlock: Map<BlockBuilder, BasicBlock>,
         basicBlockSet: Set<BasicBlock>,
@@ -285,7 +285,7 @@ export class CxxConditionBuilder  {
             if (IRUtils.isTempLocal(stmt.getRightOp())) {
                 // When only one stmt remains in a block, it should be retained, and the final value of the ternary expression should be concatenated with it
                 tempResultReassignStmt = stmt;
-                if (i !== 0){
+                if (i !== 0) {
                     continue;
                 }
             }
