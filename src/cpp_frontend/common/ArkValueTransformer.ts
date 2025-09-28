@@ -2502,7 +2502,6 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         // perform a float32 round-trip using Float32Array to simulate C++ 'float' precision
         const f32 = new Float32Array(1);
         f32[0] = num;
-        // keeping 5 decimal places to cover float precision
         return +f32[0].toFixed(5);
     }
 
