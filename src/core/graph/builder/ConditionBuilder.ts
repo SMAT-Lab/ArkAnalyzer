@@ -276,15 +276,18 @@ export class ConditionBuilder {
     ): BasicBlock[] {
         const stmts = currBottomBlock.getStmts();
         const stmtsCnt = stmts.length;
-        let tempResultReassignStmt: Stmt | null = null;
+        let tempResultReassignStmt: ArkAssignStmt | null = null;
         for (let i = stmtsCnt - 1; i >= 0; i--) {
             const stmt = stmts[i];
             if (!(stmt instanceof ArkAssignStmt) || stmt.getLeftOp() !== tempResultLocal) {
                 continue;
             }
             if (IRUtils.isTempLocal(stmt.getRightOp())) {
+                // When only one stmt remains in a block, it should be retained, and the final value of the ternary expression should be concatenated with it
                 tempResultReassignStmt = stmt;
-                continue;
+                if (i !== 0) {
+                    continue;
+                }
             }
             stmt.setLeftOp(targetLocal);
             if (targetValuePosition) {
@@ -296,7 +299,8 @@ export class ConditionBuilder {
         }
 
         let newBottomBlocks: BasicBlock[] = [];
-        if (tempResultReassignStmt) {
+        // When both ends are TempLocal, the statement begins filtering
+        if (tempResultReassignStmt && IRUtils.isTempLocal(tempResultReassignStmt.getLeftOp())) {
             const oldPredecessors = currBottomBlock.getPredecessors();
             const newPredecessors: BasicBlock[] = [];
             const prevTempResultLocal = (tempResultReassignStmt as ArkAssignStmt).getRightOp() as Local;

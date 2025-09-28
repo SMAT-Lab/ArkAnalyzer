@@ -12,8 +12,9 @@
  * limitations under the License.
  */
 
-struct Foo{
-    void bar(int x){}
+struct Foo {
+    void bar(int x) {
+    }
 };
 
 void case1() {
