@@ -240,7 +240,7 @@ export const LOOP_EXPECT_CASE8 = {
             preds: [ 1 ],
             succes: [ 1 ]
         },
-        { id: 3, stmts: [ 'return' ], preds: [ 1 ], succes: [] }
+        { id: 3, stmts: [ 'return' ], preds: [ 1 ], succes: []}
     ],
 };
 
@@ -291,6 +291,6 @@ export const LOOP_EXPECT_CASE9 = {
             preds: [ 1 ],
             succes: [ 1 ]
         },
-        { id: 3, stmts: [ 'return' ], preds: [ 1 ], succes: [] }
+        { id: 3, stmts: [ 'return' ], preds: [ 1 ], succes: []}
     ],
 };

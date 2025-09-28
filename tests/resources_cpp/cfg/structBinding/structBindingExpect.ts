@@ -156,7 +156,7 @@ export const REFERENCE_EXPECT_MAP = {
             preds: [ 3 ],
             succes: [ 3 ]
         },
-        { id: 5, stmts: [ 'return' ], preds: [ 3 ], succes: [] }
+        { id: 5, stmts: [ 'return' ], preds: [ 3 ], succes: []}
     ],
 };
 

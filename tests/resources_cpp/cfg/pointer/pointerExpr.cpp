@@ -98,8 +98,7 @@ void SharedPtrTest()
     int* rawPtr = ptr1.get();
 }
 
-class Node
-{
+class Node {
 public:
     int data;
     std::shared_ptr<Node> next;

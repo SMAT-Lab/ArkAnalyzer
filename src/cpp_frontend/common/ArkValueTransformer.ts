@@ -357,14 +357,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
     private implicitCastExprToValueAndStmts(node: CxxAstNode): ValueAndStmts {
         if (node.inner?.length === 1) {
             return this.cxxNodeToValueAndStmts(node.inner[0]);
-        } else if (node.inner?.length === 2) {
-            if (node.code.includes('=')) {
-                let operatorExpression = Object.assign({}, node);
-                operatorExpression.opcode = '=';
-                return this.cxxBinaryExpressionToValueAndStmts(operatorExpression);
-            }
-            return this.cxxNodeToValueAndStmts(node.inner[1]);
         }
+
         node.kind = 'DeclRefExpr';
         node.name = node.code;
         return this.cxxNodeToValueAndStmts(node);
