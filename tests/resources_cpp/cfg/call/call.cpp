@@ -17,7 +17,8 @@ struct Foo {
     }
 };
 
-void case1() {
+void case1()
+{
     Foo f;
     f.bar(42); // 这里会生成CXXMemberCallExpr节点
 }
