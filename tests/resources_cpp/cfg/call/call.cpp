@@ -12,14 +12,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#define FOURTYTWO 42
 
 struct Foo {
     void Bar(int x) {
     }
 };
 
-void case1()
+void Case1()
 {
     Foo f;
-    f.Bar(42); // 这里会生成CXXMemberCallExpr节点
+    f.Bar(FOURTYTWO); // 这里会生成CXXMemberCallExpr节点
 }
