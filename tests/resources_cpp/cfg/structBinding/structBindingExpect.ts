@@ -101,20 +101,20 @@ export const REFERENCE_EXPECT_MAP = {
                 'this = this: @structBinding/structBinding.cpp: %dflt',
                 '%0 = new @%unk/%unk: std::map<std::basic_string<char>, int>',
                 '%1 = new @%unk/%unk: const std::pair<const std::basic_string<char>, int>',
-                "instanceinvoke %1.<@%unk/%unk: const std::pair<const std::basic_string<char>, int>.constructor()>('Alice', 90)",
+                'instanceinvoke %1.<@%unk/%unk: const std::pair<const std::basic_string<char>, int>.constructor()>(\'Alice\', 90)',
                 '%2 = new @%unk/%unk: const std::pair<const std::basic_string<char>, int>',
-                "instanceinvoke %2.<@%unk/%unk: const std::pair<const std::basic_string<char>, int>.constructor()>('Bob', 85)",
+                'instanceinvoke %2.<@%unk/%unk: const std::pair<const std::basic_string<char>, int>.constructor()>(\'Bob\', 85)',
                 '%3 = new @%unk/%unk: const std::pair<const std::basic_string<char>, int>',
-                "instanceinvoke %3.<@%unk/%unk: const std::pair<const std::basic_string<char>, int>.constructor()>('Charlie', 95)",
+                'instanceinvoke %3.<@%unk/%unk: const std::pair<const std::basic_string<char>, int>.constructor()>(\'Charlie\', 95)',
                 '%4 = newarray (const std::pair<const std::basic_string<char>, int>[])[3]',
                 '%4[0] = %1',
                 '%4[1] = %2',
                 '%4[2] = %3',
                 'instanceinvoke %0.<@%unk/%unk: std::map<std::basic_string<char>, int>.constructor()>(%4)',
-                'scores = %0'
+                'scores = %0',
             ],
             preds: [],
-            succes: [ 1 ]
+            succes: [1],
         },
         {
             id: 1,
@@ -124,16 +124,16 @@ export const REFERENCE_EXPECT_MAP = {
                 '%7 = %6.<@CXX/std/BuiltinClass: IterableIterator.std::end>',
                 'if %7 == true',
                 '%8 = scores.<@std/map.h: map.value>',
-                'item = <unknown>%8'
+                'item = <unknown>%8',
             ],
-            preds: [ 0, 2 ],
-            succes: [ 2, 3 ]
+            preds: [0, 2],
+            succes: [2, 3],
         },
         {
             id: 2,
-            stmts: [ "staticinvoke <@%unk/%unk: .cout()>('Overall object access')" ],
-            preds: [ 1 ],
-            succes: [ 1 ]
+            stmts: ['staticinvoke <@%unk/%unk: .cout()>(\'Overall object access\')'],
+            preds: [1],
+            succes: [1],
         },
         {
             id: 3,
@@ -145,18 +145,18 @@ export const REFERENCE_EXPECT_MAP = {
                 '%12 = scores.<@std/map.h: map.value>',
                 'name = %12[0]',
                 'score = %12[1]',
-                '%12 = <unknown>%12'
+                '%12 = <unknown>%12',
             ],
-            preds: [ 1, 4 ],
-            succes: [ 4, 5 ]
+            preds: [1, 4],
+            succes: [4, 5],
         },
         {
             id: 4,
-            stmts: [ "staticinvoke <@%unk/%unk: .cout()>('Structured binding access')" ],
-            preds: [ 3 ],
-            succes: [ 3 ]
+            stmts: ['staticinvoke <@%unk/%unk: .cout()>(\'Structured binding access\')'],
+            preds: [3],
+            succes: [3],
         },
-        { id: 5, stmts: [ 'return' ], preds: [ 3 ], succes: []}
+        { id: 5, stmts: ['return'], preds: [3], succes: [] },
     ],
 };
 
