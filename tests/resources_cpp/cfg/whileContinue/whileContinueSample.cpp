@@ -15,6 +15,8 @@
 
 #include <cstdio>
 #define TWO 2
+#define TEN 10
+
 int main(int num)
 {
     while (num > 0) {
@@ -32,5 +34,5 @@ void DoStmtFunc()
     int i = 0;
     do {
         ++i;
-    } while (i < 10);
+    } while (i < TEN);
 }

@@ -19,6 +19,8 @@
 using namespace std;
 
 #define TWO 2
+#define FOURTYTWO 42
+#define HUNDRED 100
 
 class MyClass {
 public:
@@ -83,17 +85,17 @@ void MultiLevelPtrOp(int *p, int **pp, int ***ppp)
 
 void UniquePtrTest()
 {
-    unique_ptr<int> ptr1 = make_unique<int>(42);
-    unique_ptr<int> ptr2(new int(42));
-    *ptr1 = 100;
+    unique_ptr<int> ptr1 = make_unique<int>(FOURTYTWO);
+    unique_ptr<int> ptr2(new int(FOURTYTWO));
+    *ptr1 = HUNDRED;
     int* rawPtr = ptr1.get();
 }
 
 void SharedPtrTest()
 {
-    shared_ptr<int> ptr1 = make_shared<int>(42);
-    shared_ptr<int> ptr2(new int(42));
-    *ptr1 = 100;
+    shared_ptr<int> ptr1 = make_shared<int>(FOURTYTWO);
+    shared_ptr<int> ptr2(new int(FOURTYTWO));
+    *ptr1 = HUNDRED;
     int* rawPtr = ptr1.get();
 }
 

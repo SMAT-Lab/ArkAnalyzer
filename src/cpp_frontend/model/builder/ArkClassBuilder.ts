@@ -223,7 +223,7 @@ function buildInitMethodsForClassTag(
     if (tagStr === 'class') {
         const tu = sourceFile as CxxTranslationUnit;
         const instanceIRTransformer = new ArkCxxIRTransformer(tu, cls.getInstanceInitMethod());
-        const staticIRTransformer   = new ArkCxxIRTransformer(tu, cls.getStaticInitMethod());
+        const staticIRTransformer = new ArkCxxIRTransformer(tu, cls.getStaticInitMethod());
         buildInitMethod(cls.getInstanceInitMethod(), instanceInitStmts, instanceIRTransformer.getThisLocal());
         buildInitMethod(cls.getStaticInitMethod(), staticInitStmts, staticIRTransformer.getThisLocal());
     } else if (tagStr === 'enum') {
