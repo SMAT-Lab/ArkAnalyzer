@@ -15,9 +15,10 @@
 
 import { AbstractExpr, ArkCastExpr } from '../../core/base/Expr';
 import { Value } from '../../core/base/Value';
-import { NumberType, Type } from '../../core/base/Type';
+import { BooleanType, Type } from '../../core/base/Type';
 import { ArkMethod } from '../../core/model/ArkMethod';
 import { AbstractRef } from '../../core/base/Ref';
+import { CxxSizeTType, CxxStdTypeName, CxxTypeBitWidth, CxxTypeSigned, typeInfo } from './Type';
 
 export class ArkSizeOfExpr extends AbstractExpr {
     private op: Value;
@@ -47,7 +48,7 @@ export class ArkSizeOfExpr extends AbstractExpr {
     }
 
     public getType(): Type {
-        return NumberType.getInstance();
+        return CxxSizeTType.getInstance(CxxTypeSigned.UNSIGNED, CxxTypeBitWidth.UNKNOWN, CxxStdTypeName.SIZE_T);
     }
 
     public toString(): string {
@@ -64,13 +65,16 @@ export class ArkSizeOfExpr extends AbstractExpr {
 
 export class ArkCxxCastExpr extends ArkCastExpr {
     private cxxCastType: string;
+
     constructor(op: Value, type: Type, cxxCastType: string) {
         super(op, type);
         this.cxxCastType = cxxCastType;
     }
+
     public getCxxCastType(): string {
         return this.cxxCastType;
     }
+
     public toString(): string {
         return `<${this.cxxCastType}: ${this.getType()}>${this.getOp()}`;
     }
@@ -79,6 +83,146 @@ export class ArkCxxCastExpr extends ArkCastExpr {
         let op = this.getOp();
         if (op instanceof AbstractRef || op instanceof AbstractExpr) {
             op.inferType(arkMethod);
+        }
+        return this;
+    }
+}
+
+export class ArkArrayTypeTraitExpr extends AbstractExpr {
+    private op: Value;
+    private dimensionOrder: number = 0;
+    private func: string;
+
+    constructor(op: Value, func: string, dimensionOrder: number = 0) {
+        super();
+        this.op = op;
+        this.dimensionOrder = dimensionOrder;
+        this.func = func;
+    }
+
+    public getOp(): Value {
+        return this.op;
+    }
+
+    public setOp(newOp: Value): void {
+        this.op = newOp;
+    }
+
+    public getUses(): Value[] {
+        let uses: Value[] = [];
+        uses.push(this.op);
+        uses.push(...this.op.getUses());
+        return uses;
+    }
+
+    public getDimensionOrder(): number {
+        return this.dimensionOrder;
+    }
+
+    public setDimensionOrder(dimensionOrder: number): void {
+        this.dimensionOrder = dimensionOrder;
+    }
+
+    public getOpType(): Type {
+        return this.op.getType();
+    }
+
+    public getType(): Type {
+        return CxxSizeTType.getInstance(CxxTypeSigned.UNSIGNED, CxxTypeBitWidth.UNKNOWN, CxxStdTypeName.SIZE_T);
+    }
+
+    public toString(): string {
+        if (this.func === '__array_extent') {
+            return this.func + '(' + this.op + ',' + this.dimensionOrder + ')';
+        }
+        return this.func + '(' + this.op + ')';
+    }
+
+    public inferType(arkMethod: ArkMethod): AbstractExpr {
+        if (this.op instanceof AbstractRef || this.op instanceof AbstractExpr) {
+            this.op.inferType(arkMethod);
+        }
+        return this;
+    }
+}
+
+export class ArkTypeIdExpr extends AbstractExpr {
+    private op: Value;
+
+    constructor(op: Value) {
+        super();
+        this.op = op;
+    }
+
+    public getOp(): Value {
+        return this.op;
+    }
+
+    public setOp(newOp: Value): void {
+        this.op = newOp;
+    }
+
+    public getUses(): Value[] {
+        let uses: Value[] = [];
+        uses.push(this.op);
+        uses.push(...this.op.getUses());
+        return uses;
+    }
+
+    public getType(): Type {
+        return new typeInfo('type_info', this.op.getType());
+    }
+
+    public toString(): string {
+        return 'typeId(' + this.op + ')';
+    }
+
+    public inferType(arkMethod: ArkMethod): AbstractExpr {
+        if (this.op instanceof AbstractRef || this.op instanceof AbstractExpr) {
+            this.op.inferType(arkMethod);
+        }
+        return this;
+    }
+}
+
+export class ArkNoExpectExpr extends AbstractExpr {
+    private op: Value;
+
+    constructor(op: Value) {
+        super();
+        this.op = op;
+    }
+
+    public getOp(): Value {
+        return this.op;
+    }
+
+    public setOp(newOp: Value): void {
+        this.op = newOp;
+    }
+
+    public getUses(): Value[] {
+        let uses: Value[] = [];
+        uses.push(this.op);
+        uses.push(...this.op.getUses());
+        return uses;
+    }
+
+    public getOpType(): Type {
+        return this.op.getType();
+    }
+
+    public getType(): Type {
+        return BooleanType.getInstance();
+    }
+
+    public toString(): string {
+        return 'noexcept(' + this.op + ')';
+    }
+
+    public inferType(arkMethod: ArkMethod): AbstractExpr {
+        if (this.op instanceof AbstractRef || this.op instanceof AbstractExpr) {
+            this.op.inferType(arkMethod);
         }
         return this;
     }

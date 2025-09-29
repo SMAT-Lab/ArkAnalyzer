@@ -364,6 +364,8 @@ const typeMap: Record<string, string> = {
     size_t: 'number',
     // void
     void: 'void',
+    'std::type_info': 'type_info',
+    'type_info': 'type_info',
 };
 
 export function convertDataType(typeName: string): string {
