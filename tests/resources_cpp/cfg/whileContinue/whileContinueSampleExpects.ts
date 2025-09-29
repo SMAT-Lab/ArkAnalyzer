@@ -40,13 +40,13 @@ export const DO_WHILE_STMT = {
             id: 0,
             stmts: [
                 'this = this: @whileContinue/whileContinueSample.cpp: %dflt',
-                'i = 0'
+                'i = 0',
             ],
             preds: [],
-            succes: [ 1 ]
+            succes: [1],
         },
-        { id: 1, stmts: [ 'i = i + 1' ], preds: [ 0, 2 ], succes: [ 2 ] },
-        { id: 2, stmts: [ 'if i < 10' ], preds: [ 1 ], succes: [ 1, 3 ] },
-        { id: 3, stmts: [ 'return' ], preds: [ 2 ], succes: [] }
+        { id: 1, stmts: ['i = i + 1'], preds: [0, 2], succes: [2] },
+        { id: 2, stmts: ['if i < 10'], preds: [1], succes: [1, 3] },
+        { id: 3, stmts: ['return'], preds: [2], succes: [] },
     ],
 };
