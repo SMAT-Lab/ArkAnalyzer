@@ -40,10 +40,10 @@ export const MapDemo_EXPECT = {
                 '%6 = new @%unk/%unk: pair<typename __unwrap_ref_decay<char (&)[1024]>::type, typename __unwrap_ref_decay<int &>::type>',
                 '%7 = staticinvoke <@%unk/%unk: .make_pair()>(str1, num)',
                 'instanceinvoke %6.<@%unk/%unk: pair<typename __unwrap_ref_decay<char (&)[1024]>::type, typename __unwrap_ref_decay<int &>::type>.constructor()>(%7)',
-                'instanceinvoke testmap.<@%unk/%unk: .insert()>(%6)'
+                'instanceinvoke testmap.<@%unk/%unk: .insert()>(%6)',
             ],
             preds: [],
-            succes: [ 1 ]
+            succes: [1],
         },
         {
             id: 1,
@@ -53,11 +53,11 @@ export const MapDemo_EXPECT = {
                 '%10 = %9.<@CXX/std/BuiltinClass: IteratorResult.std::end>',
                 'if %10 == true',
                 '%11 = testmap.<@CXX/std/BuiltinClass: IteratorResult.value>',
-                'e = <unknown>%11'
+                'e = <unknown>%11',
             ],
-            preds: [ 0 ],
-            succes: [ 2 ]
+            preds: [0],
+            succes: [2],
         },
-        { id: 2, stmts: [ 'return null' ], preds: [ 1 ], succes: [] }
+        { id: 2, stmts: ['return null'], preds: [1], succes: [] },
     ],
 };
