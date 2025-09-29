@@ -17,7 +17,12 @@ export const CAST_EXPECT_CASE1 = {
     blocks: [
         {
             id: 0,
-            stmts: ['this = this: @cast/castSample.cpp: %dflt', 'd = 3', 'i = <double>d', 'return'],
+            stmts: [
+                'this = this: @cast/castSample.cpp: %dflt',
+                'd = 3',
+                'i = <CXXStaticCastExpr: double>d',
+                'return',
+            ],
             preds: [],
             succes: [],
         },
@@ -28,7 +33,12 @@ export const CAST_EXPECT_CASE2 = {
     blocks: [
         {
             id: 0,
-            stmts: ['this = this: @cast/castSample.cpp: %dflt', 'i = 2', 'iFloat = <float>i', 'return'],
+            stmts: [
+                'this = this: @cast/castSample.cpp: %dflt',
+                'i = 2',
+                'iFloat = <CStyleCastExpr: float>i',
+                'return',
+            ],
             preds: [],
             succes: [],
         },
@@ -39,7 +49,13 @@ export const CAST_EXPECT_CASE3 = {
     blocks: [
         {
             id: 0,
-            stmts: ['this = this: @cast/castSample.cpp: %dflt', 'ci = 2', '%0 = &ci', 'pi = <int*>%0', 'return'],
+            stmts: [
+                'this = this: @cast/castSample.cpp: %dflt',
+                'ci = 2',
+                '%0 = &ci',
+                'pi = <CXXConstCastExpr: int*>%0',
+                'return',
+            ],
             preds: [],
             succes: [],
         },
@@ -55,7 +71,7 @@ export const CAST_EXPECT_CASE4 = {
                 '%0 = new @cast/castSample.cpp: Circle',
                 'instanceinvoke %0.<@cast/castSample.cpp: Circle.constructor()>()',
                 's = %0',
-                'c = <@cast/castSample.cpp: Circle*>s',
+                'c = <CXXDynamicCastExpr: @cast/castSample.cpp: Circle*>s',
                 'if c != 0',
             ],
             preds: [],
@@ -80,7 +96,7 @@ export const CAST_EXPECT_CASE5 = {
                 '%0 = new @%unk/%unk: int',
                 'instanceinvoke %0.<@%unk/%unk: int.constructor()>(42)',
                 'pi = %0',
-                'pd = <double*>pi',
+                'pd = <CXXReinterpretCastExpr: double*>pi',
                 'return',
             ],
             preds: [],
@@ -95,11 +111,11 @@ export const CAST_EXPECT_CASE6 = {
             id: 0,
             stmts: [
                 'this = this: @cast/castSample.cpp: %dflt',
-                'x = <int>3.14',
-                `y = <string>'hello'`,
+                'x = <CXXFunctionalCastExpr: int>3.14',
+                'y = <CXXFunctionalCastExpr: string>\'hello\'',
                 '%0 = new @cast/castSample.cpp: Widget',
                 'instanceinvoke %0.<@cast/castSample.cpp: Widget.constructor()>(42)',
-                'w = <@cast/castSample.cpp: Widget>%0',
+                'w = <CXXFunctionalCastExpr: @cast/castSample.cpp: Widget>%0',
                 'return',
             ],
             preds: [],
