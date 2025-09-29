@@ -17,7 +17,7 @@ import { BasicBlock, SceneConfig } from '../../../../src';
 import { describe, it, expect } from 'vitest';
 import path from 'path';
 import { Scene } from '../../../../src';
-import { assertClassBlocksEqual, testBlocks, testBlocksWithSignature } from '../../common';
+import { assertClassBlocksEqual, showClassBlocksEqual, testBlocks, testBlocksWithSignature } from '../../common';
 import * as CONDITION_EXPECT from '../../../resources_cpp/cfg/conditionalOperator';
 import * as IF_EXPECT from '../../../resources_cpp/cfg/if/ifSampleExpects';
 import * as SWITCH_EXPECT from '../../../resources_cpp/cfg/switch/switchSampleExpects';
