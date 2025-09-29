@@ -80,8 +80,9 @@ uint32_t SelectFieldMaskForCursorKind(CXCursorKind k)
             return WANT_KIND | WANT_NAME | WANT_TYPE | WANT_CODE | WANT_RANGE | WANT_LOCFILE;
         // Typedefs and type aliases: keep names only
         case CXCursor_TypedefDecl:
-        case CXCursor_TypeAliasDecl:
             return WANT_KIND | WANT_NAME;
+        case CXCursor_TypeAliasDecl:
+            return WANT_KIND | WANT_NAME | WANT_LOCFILE;;
         // Enums, structs, classes, unions: full info with type + range + references
         case CXCursor_EnumDecl:
         case CXCursor_StructDecl:

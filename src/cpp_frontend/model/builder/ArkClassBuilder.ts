@@ -213,23 +213,32 @@ function buildEnum2ArkClass(clsNode: CxxAstNode, cls: ArkClass, sourceFile: CxxA
     buildArkClassMembers(clsNode, cls, sourceFile);
 }
 
+function buildInitMethodsForClassTag(
+    tagStr: string,
+    cls: ArkClass,
+    sourceFile: CxxAstNode,
+    instanceInitStmts: Stmt[],
+    staticInitStmts: Stmt[]
+): void {
+    if (tagStr === 'class') {
+        const tu = sourceFile as CxxTranslationUnit;
+        const instanceIRTransformer = new ArkCxxIRTransformer(tu, cls.getInstanceInitMethod());
+        const staticIRTransformer   = new ArkCxxIRTransformer(tu, cls.getStaticInitMethod());
+        buildInitMethod(cls.getInstanceInitMethod(), instanceInitStmts, instanceIRTransformer.getThisLocal());
+        buildInitMethod(cls.getStaticInitMethod(),  staticInitStmts,  staticIRTransformer.getThisLocal());
+    } else if (tagStr === 'enum') {
+        const tu = sourceFile as CxxTranslationUnit;
+        const staticIRTransformer   = new ArkCxxIRTransformer(tu, cls.getStaticInitMethod());
+        buildInitMethod(cls.getStaticInitMethod(),  staticInitStmts,  staticIRTransformer.getThisLocal());
+    }
+}
+
 function buildArkClassMembers(clsNode: CxxAstNode, cls: ArkClass, sourceFile: CxxAstNode): void {
     buildMethodsForClass(clsNode, cls, sourceFile);
-    let instanceIRTransformer: ArkCxxIRTransformer;
-    let staticIRTransformer: ArkCxxIRTransformer;
-    // Determine whether the 'tagUsed' property exists
     const tagStr = (clsNode.tagUsed ?? '');
-
-    if (tagStr === 'class' || tagStr === 'struct' || tagStr === 'union') {
-        instanceIRTransformer = new ArkCxxIRTransformer(sourceFile as CxxTranslationUnit, cls.getInstanceInitMethod());
-        staticIRTransformer = new ArkCxxIRTransformer(sourceFile as CxxTranslationUnit, cls.getStaticInitMethod());
-    }
-    if (tagStr === 'enum') {
-        staticIRTransformer = new ArkCxxIRTransformer(sourceFile as CxxTranslationUnit, cls.getStaticInitMethod());
-    }
     const staticInitStmts: Stmt[] = [];
     const instanceInitStmts: Stmt[] = [];
-    clsNode.inner.forEach((member: CxxAstNode) => {
+    for (const member of clsNode.inner as CxxAstNode[]) {
         if (member.kind === 'FieldDecl' || member.kind === 'VarDecl') {
             const arkField = buildProperty2ArkField(member, sourceFile, cls);
             if (clsNode.kind === 'CXXRecordDecl' && (tagStr === 'class' || tagStr === 'struct')) {
@@ -238,23 +247,22 @@ function buildArkClassMembers(clsNode: CxxAstNode, cls: ArkClass, sourceFile: Cx
         } else if (member.kind === 'EnumConstantDecl') {
             const arkField = buildProperty2ArkField(member, sourceFile, cls);
             arkField.getInitializer().forEach(stmt => staticInitStmts.push(stmt));
-        } else if (member.kind === 'CXXMethodDecl' || member.kind === 'CXXConstructorDecl' ||
-            member.kind === 'CXXAccessSpecifier' || member.kind === 'CXXDestructorDecl') {
-            return;
+        } else if (
+            member.kind === 'CXXMethodDecl' ||
+            member.kind === 'CXXConstructorDecl' ||
+            member.kind === 'CXXAccessSpecifier' ||
+            member.kind === 'CXXDestructorDecl'
+        ) {
+            // ignore
         } else if (member.kind === 'EnumDecl' || member.kind === 'CXXRecordDecl') {
             buildArkClassFromCxxClass(member, cls.getDeclaringArkFile(), sourceFile);
         } else {
             logger.warn('Please contact developers to support new member type: ', member.kind);
         }
-    });
-    if (tagStr === 'class') {
-        buildInitMethod(cls.getInstanceInitMethod(), instanceInitStmts, instanceIRTransformer!.getThisLocal());
-        buildInitMethod(cls.getStaticInitMethod(), staticInitStmts, staticIRTransformer!.getThisLocal());
     }
-    if (tagStr === 'enum') {
-        buildInitMethod(cls.getStaticInitMethod(), staticInitStmts, staticIRTransformer!.getThisLocal());
-    }
+    buildInitMethodsForClassTag(tagStr, cls, sourceFile, instanceInitStmts, staticInitStmts);
 }
+
 
 function buildMethodsForClass(clsNode: CxxAstNode, cls: ArkClass, sourceFile: CxxAstNode): void {
     let cxxAccessModifier = 'private';
