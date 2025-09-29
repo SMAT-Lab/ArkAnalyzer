@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -12,27 +12,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#define FOURTYTWO 42
 
-#include <cstdio>
-#define TWO 2
-#define TEN 10
-
-int main(int num)
-{
-    while (num > 0) {
-        if (num == TWO) {
-            num = num + 1;
-            continue;
-        }
-        num = num - TWO;
+struct Foo {
+    void Bar(int x) {
     }
-    return 0;
-}
+};
 
-void DoStmtFunc()
+void Case1()
 {
-    int i = 0;
-    do {
-        ++i;
-    } while (i < TEN);
+    Foo f;
+    f.Bar(FOURTYTWO); // 这里会生成CXXMemberCallExpr节点
 }

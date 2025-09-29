@@ -26,7 +26,7 @@ import { Trap } from '../../../core/base/Trap';
 import { GlobalRef } from '../../../core/base/Ref';
 import { LoopBuilder } from '../../../core/graph/builder/LoopBuilder';
 import { SwitchBuilder } from '../../../core/graph/builder/SwitchBuilder';
-import { ConditionBuilder } from '../../../core/graph/builder/ConditionBuilder';
+import { CxxConditionBuilder } from './ConditionBuilder';
 import { TrapBuilder } from '../../../core/graph/builder/TrapBuilder';
 import { ModifierType } from '../../../core/model/ArkBaseModel';
 import { BlockBuilder as CoreBlockBuilder, Catch, TextError, Variable, Scope } from '../../../core/graph/builder/CfgBuilder';
@@ -77,7 +77,7 @@ export class StatementBuilder {
     passTmies: number = 0;
     numOfIdentifier: number = 0;
     isDoWhile: boolean = false;
-
+    hasDoWhileBody: boolean = false;
     constructor(type: string, code: string, astNode: CxxAstNode | null, scopeID: number) {
         this.type = type;
         this.code = code;
@@ -341,6 +341,12 @@ export class CfgBuilder {
         loopstm.condition = c.inner[1].code;
         loopstm.code = 'while (' + loopstm.condition + ')';
         loopstm.isDoWhile = true;
+        for (let idx = 0; idx < c.inner[0].inner.length; idx++) {
+            let kind = c.inner[0].inner[idx].kind;
+            if (kind !== 'NullStmt') {
+                loopstm.hasDoWhileBody = true;
+            }
+        }
         if (c.inner[0].kind.toString() === 'CompoundStmt') {
             this.walkAST(lastStatement, loopstm, [...c.inner[0].inner]);
         } else {
@@ -472,7 +478,8 @@ export class CfgBuilder {
         if (first && first.kind === 'MemberExpr') {
             let childInner: CxxAstNode = first;
             // Callee: name is preferred. Some JSONs may only have code
-            callee = '.' + (childInner.name || childInner.code || '');
+            const op = childInner.isArrow ? '->' : '.';
+            callee = op + (childInner.name || childInner.code || '');
             // 2) Go down through ImplicitCastExpr chain until DeclRefExpr or other end points use the optional chain at the same time to avoid out of bounds
             while (childInner.inner && childInner.inner.length > 0) {
                 const n0 = childInner.inner[0];
@@ -588,11 +595,11 @@ export class CfgBuilder {
     }
 
     ASTNodeTryStatement(c: CxxAstNode, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
-        let trystm = new TryStatementBuilder('tryStatement', 'try', c, scopeID);
-        this.judgeLastType(trystm, lastStatement);
+        let trystmt = new TryStatementBuilder('tryStatement', 'try', c, scopeID);
+        this.judgeLastType(trystmt, lastStatement);
         let tryExit = new StatementBuilder('tryExit', '', c, scopeID);
         this.exits.push(tryExit);
-        trystm.tryExit = tryExit;
+        trystmt.tryExit = tryExit;
 
         let tryBlock: CxxAstNode | undefined = undefined;
         let catchBlockList: CxxAstNode[] = [];
@@ -604,9 +611,9 @@ export class CfgBuilder {
             }
         }
 
-        this.walkAST(trystm, tryExit, tryBlock?.inner ?? []);
-        trystm.tryFirst = trystm.next;
-        trystm.next?.lasts.add(trystm);
+        this.walkAST(trystmt, tryExit, tryBlock?.inner ?? []);
+        trystmt.tryFirst = trystmt.next;
+        trystmt.next?.lasts.add(trystmt);
         for (const catchBlock of catchBlockList) {
             let text = '';
             if (catchBlock.code) {
@@ -626,12 +633,12 @@ export class CfgBuilder {
             }
             const catchStatement = new StatementBuilder('statement', catchOrNot.code, catchBlock, catchOrNot.nextT.scopeID);
             catchStatement.next = catchOrNot.nextT;
-            trystm.catchStatement.push(catchStatement);
-            catchStatement.lasts.add(trystm);
+            trystmt.catchStatement.push(catchStatement);
+            catchStatement.lasts.add(trystmt);
             if (catchBlock.inner[0].name) {
-                trystm.catchError.push(catchBlock.inner[0].name);
+                trystmt.catchError.push(catchBlock.inner[0].name);
             } else {
-                trystm.catchError.push('Error');
+                trystmt.catchError.push('Error');
             }
         }
         let final = new StatementBuilder('statement', 'finally', c, scopeID);
@@ -642,12 +649,12 @@ export class CfgBuilder {
         dummyFinally.lasts.add(final);
         dummyFinally.next = finalExit;
         finalExit.lasts.add(dummyFinally);
-        trystm.finallyStatement = final.next;
+        trystmt.finallyStatement = final.next;
         tryExit.next = final.next;
         final.next?.lasts.add(tryExit);
 
-        trystm.next = finalExit;
-        finalExit.lasts.add(trystm);
+        trystmt.next = finalExit;
+        finalExit.lasts.add(trystmt);
         return finalExit;
     }
 
@@ -764,6 +771,8 @@ export class CfgBuilder {
                 break;
             case 'WhileStmt':
                 lastStatement = this.ASTNodeWhileStatement(innerNode, lastStatement, scope.id);
+                break;
+            case 'NullStmt':
                 break;
             default:
                 break;
@@ -898,7 +907,7 @@ export class CfgBuilder {
             const block = new BlockBuilder(this.blocks.length, []);
             this.blocks.push(block);
             while (stmt && !handledStmts.has(stmt)) {
-                if (stmt.type === 'loopStatement' && block.stmts.length > 0 && !stmt.isDoWhile) {
+                if (stmt.type === 'loopStatement' && block.stmts.length > 0 && !stmt.hasDoWhileBody) {
                     stmtQueue.push(stmt);
                     break;
                 }
@@ -1075,20 +1084,20 @@ export class CfgBuilder {
                 this.CfgBuilder2Array(ss);
             }
         } else if (stmt.type === 'tryStatement') {
-            let trystm = stmt as TryStatementBuilder;
-            if (trystm.tryFirst) {
-                this.CfgBuilder2Array(trystm.tryFirst);
+            let trystmt = stmt as TryStatementBuilder;
+            if (trystmt.tryFirst) {
+                this.CfgBuilder2Array(trystmt.tryFirst);
             }
-            if (trystm.catchStatement) {
-                for (let catchStmt of trystm.catchStatement) {
+            if (trystmt.catchStatement) {
+                for (let catchStmt of trystmt.catchStatement) {
                     this.CfgBuilder2Array(catchStmt);
                 }
             }
-            if (trystm.finallyStatement) {
-                this.CfgBuilder2Array(trystm.finallyStatement);
+            if (trystmt.finallyStatement) {
+                this.CfgBuilder2Array(trystmt.finallyStatement);
             }
-            if (trystm.next) {
-                this.CfgBuilder2Array(trystm.next);
+            if (trystmt.next) {
+                this.CfgBuilder2Array(trystmt.next);
             }
         } else {
             if (stmt.next !== null) {
@@ -1365,7 +1374,7 @@ export class CfgBuilder {
         loopBuilder.rebuildBlocksInLoop(asCoreMap, asCoreSet, basicBlockSet, asCoreBlocks);
         const switchBuilder = new SwitchBuilder();
         switchBuilder.buildSwitch(asCoreMap, asCoreArr, valueAndStmtsOfSwitchAndCasesAll, arkIRTransformer, basicBlockSet);
-        const conditionalBuilder = new ConditionBuilder();
+        const conditionalBuilder = new CxxConditionBuilder();
         conditionalBuilder.rebuildBlocksContainConditionalOperator(
             asCoreMap,
             basicBlockSet,

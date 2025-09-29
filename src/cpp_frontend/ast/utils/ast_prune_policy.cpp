@@ -19,7 +19,7 @@
 // ---------- Prune policy globals ----------
 // Global switches for pruning overly large InitListExpr nodes
 bool     g_pruneHugeInits          = true;
-unsigned g_initTokLenThreshold     = 160;
+unsigned g_initTokLenThreshold     = 320;
 unsigned g_initTokenCountThreshold = 96;
 
 // ---------- Field policy state (single source of truth) ----------
@@ -59,12 +59,13 @@ uint32_t SelectFieldMaskForCursorKind(CXCursorKind k)
             return WANT_KIND | WANT_NAME | WANT_TYPE | WANT_CODE;
         // Control flow blocks: keep only kind + code
         case CXCursor_CompoundStmt:
-        case CXCursor_IfStmt:
-        case CXCursor_ForStmt:
-        case CXCursor_WhileStmt:
         case CXCursor_DoStmt:
         case CXCursor_SwitchStmt:
             return WANT_KIND | WANT_CODE;
+        case CXCursor_IfStmt:
+        case CXCursor_ForStmt:
+        case CXCursor_WhileStmt:
+            return WANT_KIND | WANT_CODE | WANT_RANGE;
         // Function-related declarations: include ranges and references
         case CXCursor_FunctionDecl:
         case CXCursor_CXXMethod:
@@ -72,14 +73,15 @@ uint32_t SelectFieldMaskForCursorKind(CXCursorKind k)
         case CXCursor_Destructor:
             return WANT_KIND | WANT_NAME | WANT_RANGE | WANT_REFERENCED | WANT_CODE;
         // Variables, parameters, fields: need type information
-        case CXCursor_VarDecl:
         case CXCursor_ParmDecl:
         case CXCursor_FieldDecl:
             return WANT_KIND | WANT_NAME | WANT_TYPE | WANT_CODE;
+        case CXCursor_VarDecl:
+            return WANT_KIND | WANT_NAME | WANT_TYPE | WANT_CODE | WANT_RANGE | WANT_LOCFILE;
         // Typedefs and type aliases: keep names only
         case CXCursor_TypedefDecl:
         case CXCursor_TypeAliasDecl:
-            return WANT_KIND | WANT_NAME;
+            return WANT_KIND | WANT_NAME | WANT_LOCFILE;;
         // Enums, structs, classes, unions: full info with type + range + references
         case CXCursor_EnumDecl:
         case CXCursor_StructDecl:
@@ -89,16 +91,16 @@ uint32_t SelectFieldMaskForCursorKind(CXCursorKind k)
         // Using declarations/directives: keep name and type
         case CXCursor_UsingDeclaration:
         case CXCursor_UsingDirective:
-            return WANT_KIND | WANT_NAME | WANT_TYPE;
+            return WANT_KIND | WANT_NAME | WANT_TYPE | WANT_LOCFILE;
         // Namespaces: keep name and type
         case CXCursor_Namespace:
-            return WANT_KIND | WANT_NAME | WANT_TYPE;
+            return WANT_KIND | WANT_NAME | WANT_TYPE | WANT_LOCFILE;
         // Translation unit: keep most metadata
         case CXCursor_TranslationUnit:
             return WANT_KIND | WANT_TYPE | WANT_CODE | WANT_RANGE | WANT_LOCFILE | WANT_REFERENCED;
         // Function calls: keep kind, name, type, and code
         case CXCursor_CallExpr:
-            return WANT_KIND | WANT_NAME | WANT_TYPE | WANT_CODE;
+            return WANT_KIND | WANT_NAME | WANT_TYPE | WANT_CODE | WANT_RANGE;
         default:
             return DefaultFieldMask();
     }

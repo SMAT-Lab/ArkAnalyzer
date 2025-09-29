@@ -478,7 +478,7 @@ CommandLineOptions cliutil::ParseCommandLineArgs(int argc, char** argv)
             isSkip = true;
             opts.flag = argv[i + 1];
         } else if (opts.inputFile.empty()) {
-            opts.inputFile = arg;
+            opts.inputFile = ExtractFirstDrivePath(arg);
         }
     }
     return opts;

@@ -13,26 +13,4 @@
  * limitations under the License.
  */
 
-#include <cstdio>
-#define TWO 2
-#define TEN 10
-
-int main(int num)
-{
-    while (num > 0) {
-        if (num == TWO) {
-            num = num + 1;
-            continue;
-        }
-        num = num - TWO;
-    }
-    return 0;
-}
-
-void DoStmtFunc()
-{
-    int i = 0;
-    do {
-        ++i;
-    } while (i < TEN);
-}
+export * from './callExpect';

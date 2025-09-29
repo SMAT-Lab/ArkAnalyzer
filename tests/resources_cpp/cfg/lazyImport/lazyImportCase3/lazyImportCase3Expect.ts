@@ -41,7 +41,6 @@ export const MapDemo_EXPECT = {
                 '%7 = staticinvoke <@%unk/%unk: .make_pair()>(str1, num)',
                 'instanceinvoke %6.<@%unk/%unk: pair<typename __unwrap_ref_decay<char (&)[1024]>::type, typename __unwrap_ref_decay<int &>::type>.constructor()>(%7)',
                 'instanceinvoke testmap.<@%unk/%unk: .insert()>(%6)',
-                '%8 = instanceinvoke testmap.<@%unk/%unk: .Symbol.iterator()>()'
             ],
             preds: [],
             succes: [1],
@@ -49,20 +48,16 @@ export const MapDemo_EXPECT = {
         {
             id: 1,
             stmts: [
-                'e = <unknown>%11',
                 '%8 = instanceinvoke testmap.<@%unk/%unk: .Symbol.iterator()>()',
-                '%9 = instanceinvoke %8.<@%unk/%unk: .next()>()'
+                '%9 = instanceinvoke %8.<@%unk/%unk: .std::next()>()',
+                '%10 = %9.<@CXX/std/BuiltinClass: IteratorResult.std::end>',
+                'if %10 == true',
+                '%11 = testmap.<@CXX/std/BuiltinClass: IteratorResult.value>',
+                'e = <unknown>%11',
             ],
-            preds: [0, 1],
-            succes: [1, 2],
+            preds: [0],
+            succes: [2],
         },
-        {
-            id: 2,
-            stmts: [
-                'return null'
-            ],
-            preds: [1],
-            succes: [],
-        },
+        { id: 2, stmts: ['return null'], preds: [1], succes: [] },
     ],
 };

@@ -59,6 +59,7 @@ import * as FUNCPTR_EXPECT from '../../../resources_cpp/cfg/functionPointer/func
 import * as AUTO_EXPECT from '../../../resources_cpp/cfg/decltype/decltypeExpects';
 import * as INCLUDE_IN_SCOPE from '../../../resources_cpp/cfg/includeInScope/includeInFunctionExpects';
 import * as STRUCTBINDING from '../../../resources_cpp/cfg/structBinding/structBindingExpect';
+import * as CALLEXPR_EXPECT from '../../../resources_cpp/cfg/call/callExpect';
 
 // Standard library header file configuration for DevEco
 const deveco_c = process.env.DEVECO_C !== undefined ? process.env.DEVECO_C : '';
@@ -119,6 +120,7 @@ describe('CfgTest', () => {
     it('case5: while-continue statement', () => {
         const scene = buildScene('whileContinue');
         testBlocks(scene, 'whileContinueSample.cpp', 'main', WHILE_CONTINUE_EXPECT.WHILE_CONTINUE_EXPECT_MAIN.blocks);
+        testBlocks(scene, 'whileContinueSample.cpp', 'DoStmtFunc', WHILE_CONTINUE_EXPECT.DO_WHILE_STMT.blocks);
     });
     it('case6: goto statement', () => {
         const scene = buildScene('goto');
@@ -154,6 +156,10 @@ describe('Type Test', () => {
         testBlocks(scene, 'pointerExpr.cpp', 'PtrType', POINTER_EXPECT.POINTER_EXPECT_CASE1.blocks);
         testBlocks(scene, 'pointerExpr.cpp', 'BasePtrOp', POINTER_EXPECT.POINTER_EXPECT_CASE2.blocks);
         testBlocks(scene, 'pointerExpr.cpp', 'MultiLevelPtrOp', POINTER_EXPECT.POINTER_EXPECT_CASE3.blocks);
+        testBlocks(scene, 'pointerExpr.cpp', 'UniquePtrTest', POINTER_EXPECT.POINTER_EXPECT_CASE4.blocks);
+        testBlocks(scene, 'pointerExpr.cpp', 'SharedPtrTest', POINTER_EXPECT.POINTER_EXPECT_CASE5.blocks);
+        testBlocks(scene, 'pointerExpr.cpp', 'CircularReferenceExample', POINTER_EXPECT.POINTER_EXPECT_CASE6.blocks);
+        testBlocksClass(scene, 'pointerExpr.cpp', 'Node', POINTER_EXPECT.POINTER_NODE_CLASS1);
     });
     it('case3: reference Type', () => {
         const scene = buildScene('reference');
@@ -258,6 +264,11 @@ describe('Function Test', () => {
         testBlocks(scene, 'overloadSample.cpp', 'operator""_km', OVERLOAD.OVERLOAD_USER_DEFINED_LITERAL_NUMBER_EXPECT.blocks);
         testBlocks(scene, 'overloadSample.cpp', 'operator""_c', OVERLOAD.OVERLOAD_USER_DEFINED_LITERAL_CHAR_EXPECT.blocks);
         testBlocks(scene, 'overloadSample.cpp', 'main', OVERLOAD.OVERLOAD_MAIN_EXPECT.blocks);
+    });
+
+    it('case6: call expr', () => {
+        const scene = buildScene('call');
+        testBlocks(scene, 'call.cpp', 'Case1', CALLEXPR_EXPECT.CXXMEMBERCALL_EXPECT.blocks);
     });
 });
 

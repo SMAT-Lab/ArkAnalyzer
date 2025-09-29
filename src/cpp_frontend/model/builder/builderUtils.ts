@@ -21,7 +21,7 @@ import {
     UnclearReferenceType,
     FunctionType,
 } from '../../../core/base/Type';
-import { PointerType, ReferenceType, ReferCategory, NapiType } from '../../base/Type';
+import { PointerType, ReferenceType, ReferCategory, NapiType, SmartPointerType } from '../../base/Type';
 import { TypeInference } from '../../common/TypeInference';
 import { ArkField } from '../../../core/model/ArkField';
 import { ArkClass } from '../../../core/model/ArkClass';
@@ -32,6 +32,7 @@ import { buildGenericType } from '../../../core/model/builder/builderUtils';
 import { CxxAstNode, CxxTranslationUnit } from '../../ast/ArkCxxAstNode';
 import { Decorator } from '../../../core/base/Decorator';
 import { buildArkMethodFromArkClass } from './ArkMethodBuilder';
+import { ArkFile } from '../../../core/model/ArkFile';
 
 const FUNC_PTR_REGEX = /\(\s*\*\s*(?:\[\s*[^]]*\s*\])?\s*\)\s*\(\s*[^)]*\s*\)/;
 
@@ -199,7 +200,7 @@ export function cxxNode2Type(
         return buildFuncPtrType(currNode, arkInstance, sourceFile!);
     }
     // Handle napi type
-    if (typeof nodeQualType === 'string' && nodeQualType.startsWith('napi_')) {
+    if (typeof nodeQualType === 'string' && nodeQualType.startsWith('napi_') && nodeQualType !== 'napi_property_descriptor') {
         return new NapiType(nodeQualType);
     }
     // Handle special type
@@ -222,7 +223,8 @@ export function cxxNode2Type(
     }
 
     // Default processing
-    return buildTypeFromPreStr(nodeQualType.toString(), arkInstance);
+    const typeString = typeof nodeQualType === 'string' ? nodeQualType : nodeQualType.type.qualType;
+    return buildTypeFromPreStr(typeString, arkInstance);
 }
 
 /**
@@ -266,6 +268,11 @@ export function buildTypeFromPreStr(preStr: string, arkInstance: ArkMethod | Ark
     if (referenceCount > 0) {
         return buildReferenceType(preStr, arkInstance, referenceCount, baseType);
     }
+    if (preStr.includes('unique') || preStr.includes('shared') || preStr.includes('weak')) {
+        // Locate the type represented by the smart pointer
+        let baseType = cxxNode2Type(preStr.slice(preStr.indexOf('<') + 1, preStr.lastIndexOf('>')), undefined);
+        return new SmartPointerType(baseType, 0, preStr);
+    }
     return baseType;
 }
 
@@ -289,10 +296,13 @@ export function buildTypeFromDerivedType(preStr: string, arkInstance: ArkMethod 
     const outerPartMatch = preStr.match(/^([^<]+)/);
     const outerPart = outerPartMatch ? outerPartMatch[1] : null;
     let typeStr: string;
+    let firstSpaceIndex: number;
     if (outerPart === null) {
-        typeStr = preStr.trim().split(' ')[0];
+        firstSpaceIndex = preStr.indexOf(' ');
+        typeStr = firstSpaceIndex === -1 ? preStr : preStr.substring(firstSpaceIndex + 1);
     } else {
-        typeStr = outerPart.trim().split(' ')[0];
+        firstSpaceIndex = outerPart.indexOf(' ');
+        typeStr = firstSpaceIndex === -1 ? outerPart : outerPart.substring(firstSpaceIndex + 1);
     }
     const innerPartMatch = preStr.match(/<([^>]+)>/);
     const innerPart = innerPartMatch ? innerPartMatch[1] : null;
@@ -301,12 +311,22 @@ export function buildTypeFromDerivedType(preStr: string, arkInstance: ArkMethod 
     let arkClass: ArkClass | null = null;
     if (arkInstance instanceof ArkMethod || arkInstance instanceof ArkClass) {
         const file = arkInstance.getDeclaringArkFile?.();
-        arkClass = file?.getClassWithName?.(typeStr) ?? null;
+        arkClass = file?.getClassWithName?.(typeStr) ?? getAnonymousClassByTypeCode(typeStr, file);
     }
     if (arkClass) {
         return new ClassType(arkClass.getSignature(), innerType);
     }
     return TypeInference.buildTypeFromStr(preStr);
+}
+
+/** Handling anonymous cases, such as '(unnamed struct ...)' */
+function getAnonymousClassByTypeCode(typeCode: string, file: ArkFile): ArkClass | null {
+    for (const cls of file.getClasses()) {
+        if (cls.isAnonymousClass() && cls.getCode() === typeCode) {
+            return cls;
+        }
+    }
+    return null;
 }
 
 const typeMap: Record<string, string> = {

@@ -88,11 +88,17 @@ export const NULLSTMT_EXPECT_CASE6 = {
     blocks: [
         {
             id: 0,
-            stmts: ['this = this: @nullStmt/nullStmtSample.cpp: %dflt', 'x = 5', 'x = x - 1', 'if x > 0'],
-            preds: [0],
-            succes: [0, 1],
+            stmts: ['this = this: @nullStmt/nullStmtSample.cpp: %dflt', 'x = 5'],
+            preds: [],
+            succes: [1],
         },
-        { id: 1, stmts: ['return'], preds: [0], succes: [] },
+        {
+            id: 1,
+            stmts: ['x = x - 1', 'if x > 0'],
+            preds: [0, 1],
+            succes: [1, 2],
+        },
+        { id: 2, stmts: ['return'], preds: [1], succes: [] },
     ],
 };
 
