@@ -341,9 +341,9 @@ export class CfgBuilder {
         loopstm.condition = c.inner[1].code;
         loopstm.code = 'while (' + loopstm.condition + ')';
         loopstm.isDoWhile = true;
-        for (let idx = 0; idx < c.inner[0].inner.length; idx++) {
+        for (let idx = 0;idx<c.inner[0].inner.length;idx++){
             let kind = c.inner[0].inner[idx].kind;
-            if (kind !== 'NullStmt') {
+            if (kind !== 'NullStmt'){
                 loopstm.hasDoWhileBody = true;
             }
         }
