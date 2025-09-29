@@ -19,7 +19,6 @@ import { FullPosition } from '../../core/base/Position';
 import { ArkAssignStmt, ArkIfStmt, ArkInvokeStmt, Stmt } from '../../core/base/Stmt';
 import {
     AbstractBinopExpr,
-    ArkCastExpr,
     ArkConditionExpr,
     ArkDeleteExpr,
     ArkCxxDeleteArrayExpr,
@@ -33,8 +32,8 @@ import {
     NormalBinaryOperator,
     RelationalBinaryOperator,
     AbstractInvokeExpr,
-    ArkSizeOfExpr,
 } from '../../core/base/Expr';
+import { ArkSizeOfExpr, ArkCxxCastExpr } from '../base/Expr'
 import {
     AnyType,
     ArrayType,
@@ -729,7 +728,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             } = this.ArkCxxIRTransformer.generateAssignStmtForValue(exprValue, exprPositions));
             exprStmts.forEach((stmt: Stmt) => stmts.push(stmt));
         }
-        const castExpr = new ArkCastExpr(exprValue, this.cxxResolveTypeNode(castExpression));
+        const castType = castExpression.kind;
+        const castExpr = new ArkCxxCastExpr(exprValue, this.cxxResolveTypeNode(castExpression), castType);
         const castExprPosition = [FullPosition.cxxBuildFromNode(castExpression, this.cxxSourceFile), ...exprPositions];
         return { value: castExpr, valueOriginalPositions: castExprPosition, stmts: stmts };
     }
