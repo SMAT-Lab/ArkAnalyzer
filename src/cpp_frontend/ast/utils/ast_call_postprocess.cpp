@@ -16,6 +16,8 @@
 #include "ast_call_postprocess.h"
 #include <algorithm>
 #include <vector>
+#include <iostream>
+#include <set>
 #define TWO 2
 #define THREE 3
 
@@ -181,4 +183,148 @@ void PostprocessFoldExpr(json& node, std::string_view codeStr)
         node["op"]      = std::string(1, op);
         node["pattern"] = "left";
     }
+}
+
+// ---- helpers: builtin-name set (tokens must be whitespace-stripped) ----
+static bool IsBuiltinNameNoSpaceImpl(const std::string& s)
+{
+    static const std::set<std::string> kBuiltin = {
+        "void","bool","char","wchar_t","char16_t","char32_t",
+        "short","unsignedshort","int","unsignedint",
+        "long","unsignedlong","longlong","unsignedlonglong",
+        "float","double","longdouble"
+    };
+    return kBuiltin.count(s) != 0;
+}
+
+bool IsBuiltinNameNoSpace(const std::string& tokNoSpace)
+{
+    return IsBuiltinNameNoSpaceImpl(tokNoSpace);
+}
+
+json MakeMinimalTypeNodeFromToken(const std::string& tokNoSpace)
+{
+    if (IsBuiltinNameNoSpaceImpl(tokNoSpace)) {
+        return json{
+            {"kind","BuiltinType"},
+            {"name", tokNoSpace},
+            {"type", {{"qualType", tokNoSpace}}},
+            {"inner", json::array()}
+        };
+    }
+    return json{
+        {"kind","TypeRef"},
+        {"name", tokNoSpace},
+        {"type", {{"qualType", tokNoSpace}}},
+        {"inner", json::array()}
+    };
+}
+
+std::vector<std::string>
+ParseTemplateArgsAfterEqual(const std::string& codeRaw, const std::string& tplNameHint)
+{
+    // Strip all whitespace
+    std::string s; s.reserve(codeRaw.size());
+    for (char c : codeRaw) {
+        if (!std::isspace(static_cast<unsigned char>(c))) {
+            s.push_back(c);
+        }
+    }
+    size_t eq = s.find('=');
+    if (eq == std::string::npos) {
+        return {};
+    }
+    size_t startSearch = eq + 1;
+    size_t posName = std::string::npos;
+    if (!tplNameHint.empty()) {
+        posName = s.find(tplNameHint, startSearch);
+    }
+    size_t lt = (posName != std::string::npos) ? s.find('<', posName)
+                                               : s.find('<', startSearch);
+    if (lt == std::string::npos) {
+        return {};
+    }
+    int depth = 0;
+    size_t insideBeg = std::string::npos;
+    size_t insideEnd = std::string::npos;
+    for (size_t i = lt; i < s.size(); ++i) {
+        if (s[i] == '<') {
+            if (++depth == 1) {
+                insideBeg = i + 1;
+            }
+        } else if (s[i] == '>') {
+            if (--depth == 0) {
+                insideEnd = i;
+                break;
+            }
+        }
+    }
+    if (insideBeg == std::string::npos || insideEnd == std::string::npos || insideEnd <= insideBeg) {
+        return {};
+    }
+    std::string inside = s.substr(insideBeg, insideEnd - insideBeg);
+    std::vector<std::string> out;
+    int d = 0; size_t seg = 0;
+    for (size_t i = 0; i <= inside.size(); ++i) {
+        if (i == inside.size() || (inside[i] == ',' && d == 0)) {
+            std::string tok = inside.substr(seg, i - seg);
+            if (!tok.empty()) {
+                out.push_back(std::move(tok)); // token is already whitespace-stripped
+            }
+            seg = i + 1;
+        } else if (inside[i] == '<') {
+            ++d;
+        } else if (inside[i] == '>') {
+            --d;
+        }
+    }
+    return out;
+}
+
+
+// RewriteTypeAliasTemplateArgs
+// Purpose: When libclang omits template-argument children of a TypeAliasDecl
+// (e.g., `using MyMap = std::map<int, T>;`), parse typeAliasDecl["code"] after
+// '=' to extract the first top-level '<...>' list and append minimal arg nodes
+// (BuiltinType for known builtins, TypeRef otherwise) after existing
+// NamespaceRef/TemplateRef in `children`.
+// Notes: Handles nested templates by depth counting; ignores non-type and
+// template-template args (e.g., `4` in `std::array<int,4>` becomes a TypeRef).
+// Requires a TemplateRef in `children`. Linear time in the code length.
+void RewriteTypeAliasTemplateArgs(json& typeAliasDecl, json& children)
+{
+    // Get template name hint from existing TemplateRef
+    std::string tplNameHint;
+    for (const auto& e : children) {
+        if (e.value("kind","") == "TemplateRef") {
+            tplNameHint = e.value("name","");
+            break;
+        }
+    }
+
+    const auto toks = ParseTemplateArgsAfterEqual(typeAliasDecl.value("code" ,""), tplNameHint);
+    if (toks.empty()) {
+        return;
+    }
+
+    // Locate the TemplateRef position (usually after NamespaceRef("std"))
+    size_t tplPos = children.size();
+    for (size_t i = 0; i < children.size(); ++i)
+        if (children[i].value("kind","") == "TemplateRef") {
+            tplPos = i;
+            break;
+        }
+
+    if (tplPos >= children.size()) {
+        return;
+    }
+
+    json newChildren = json::array();
+    for (size_t i = 0; i <= tplPos && i < children.size(); ++i) {
+        newChildren.push_back(children[i]);  // keep NamespaceRef and TemplateRef
+    }
+    for (const auto& t : toks) {
+        newChildren.push_back(MakeMinimalTypeNodeFromToken(t)); // append int / T, etc.
+    }
+    children.swap(newChildren);
 }

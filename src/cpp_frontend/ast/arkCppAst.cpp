@@ -829,7 +829,8 @@ std::vector<CXCursorKind> locCursorKind = {CXCursor_FunctionDecl, CXCursor_Class
                                            CXCursor_VarDecl, CXCursor_EnumDecl, CXCursor_ClassTemplate,
                                            CXCursor_Constructor, CXCursor_CXXMethod, CXCursor_TypedefDecl,
                                            CXCursor_FunctionTemplate, CXCursor_MacroExpansion, CXCursor_MacroDefinition,
-                                           CXCursor_UsingDirective, CXCursor_Namespace};
+                                           CXCursor_UsingDirective, CXCursor_Namespace,
+                                           CXCursor_TypeAliasTemplateDecl};
 
 // Determine if it is a built-in data type
 bool IsBuiltInType(std::string& type)
@@ -1094,6 +1095,7 @@ void buildTypedefChild(const CXType& type, json& newChildren, json& children, js
     json inner = json::array();
     if (type.kind == CXType_Pointer) {
         node["kind"] = "PointerType";
+        node["type"]["qualType"] = typeStr;
         CXType pointee = clang_getPointeeType(type);
         buildTypedefChild(pointee, inner, children, node);
     } else if (type.kind == CXType_FunctionProto) {
@@ -1497,6 +1499,9 @@ void nodePostprocess(
     PostprocessFoldExpr(node, codeStr);
     TrackFunctionScopeLabel(node);
     ResolveGotoTarget(node);
+    if (kind_cursor == CXCursor_TypeAliasDecl) {
+        RewriteTypeAliasTemplateArgs(node, children);
+    }
     // --- Remaining generic handlers ---
     HandleTemplateAndCursorSpecific(node, kind_cursor, codeStr, children);
     detectAndFillSpecialKind(node);

@@ -43,3 +43,13 @@ void PostprocessPseudoDestructor(json& node, const json& children, std::string_v
 void PostprocessFoldExpr(json& node, std::string_view codeStr);
 
 bool ConstructCallExpr(std::string codeStr, std::string typeStr);
+
+
+std::vector<std::string>
+ParseTemplateArgsAfterEqual(const std::string& codeRaw, const std::string& tplNameHint);
+
+bool IsBuiltinNameNoSpace(const std::string& tokNoSpace);
+
+json MakeMinimalTypeNodeFromToken(const std::string& tokNoSpace);
+
+void RewriteTypeAliasTemplateArgs(json& typeAliasDecl, json& children);
