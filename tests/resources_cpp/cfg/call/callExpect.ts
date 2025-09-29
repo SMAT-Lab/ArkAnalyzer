@@ -21,7 +21,7 @@ export const CXXMEMBERCALL_EXPECT = {
                 '%0 = new @call/call.cpp: Foo',
                 'instanceinvoke %0.<@call/call.cpp: Foo.constructor()>()',
                 'f = %0',
-                'instanceinvoke f.<@call/call.cpp: Foo.bar()>(42)',
+                'instanceinvoke f.<@call/call.cpp: Foo.Bar()>(42)',
                 'return'
             ],
             preds: [],

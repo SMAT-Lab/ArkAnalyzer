@@ -57,25 +57,25 @@ export const CONDITIONAL_OPERATOR_EXPECT_CASE3 = {
             stmts: [
                 'this = this: @conditionalOperator/conditionalOperator.cpp: %dflt',
                 'i = 0',
-                'if i < 0'
+                'if i < 0',
             ],
             preds: [],
-            succes: [ 1, 5 ]
+            succes: [1, 5],
         },
         {
             id: 1,
-            stmts: [ '%0 = -1', 'if i < %0' ],
-            preds: [ 0 ],
-            succes: [ 2, 3 ]
+            stmts: ['%0 = -1', 'if i < %0'],
+            preds: [0],
+            succes: [2, 3],
         },
-        { id: 2, stmts: [ '%1 = 1' ], preds: [ 1 ], succes: [ 4 ] },
-        { id: 3, stmts: [ '%1 = 2' ], preds: [ 1 ], succes: [ 4 ] },
-        { id: 4, stmts: [ 'j = %1' ], preds: [ 2, 3 ], succes: [ 9 ] },
-        { id: 5, stmts: [ 'if i > 1' ], preds: [ 0 ], succes: [ 6, 7 ] },
-        { id: 6, stmts: [ '%3 = 3' ], preds: [ 5 ], succes: [ 8 ] },
-        { id: 7, stmts: [ '%3 = 4' ], preds: [ 5 ], succes: [ 8 ] },
-        { id: 8, stmts: [ 'j = %3' ], preds: [ 6, 7 ], succes: [ 9 ] },
-        { id: 9, stmts: [ 'return j' ], preds: [ 4, 8 ], succes: [] }
+        { id: 2, stmts: ['%1 = 1'], preds: [1], succes: [4] },
+        { id: 3, stmts: ['%1 = 2'], preds: [1], succes: [4] },
+        { id: 4, stmts: ['j = %1'], preds: [2, 3], succes: [9] },
+        { id: 5, stmts: ['if i > 1'], preds: [0], succes: [6, 7] },
+        { id: 6, stmts: ['%3 = 3'], preds: [5], succes: [8] },
+        { id: 7, stmts: ['%3 = 4'], preds: [5], succes: [8] },
+        { id: 8, stmts: ['j = %3'], preds: [6, 7], succes: [9] },
+        { id: 9, stmts: ['return j'], preds: [4, 8], succes: [] },
     ],
 };
 
@@ -86,22 +86,22 @@ export const CONDITIONAL_OPERATOR_EXPECT_CASE4 = {
             stmts: [
                 'this = this: @conditionalOperator/conditionalOperator.cpp: %dflt',
                 'i = 0',
-                'if i < 0'
+                'if i < 0',
             ],
             preds: [],
-            succes: [ 1, 5 ]
+            succes: [1, 5],
         },
         {
             id: 1,
-            stmts: [ '%0 = -1', 'if i < %0' ],
-            preds: [ 0 ],
-            succes: [ 2, 3 ]
+            stmts: ['%0 = -1', 'if i < %0'],
+            preds: [0],
+            succes: [2, 3],
         },
-        { id: 2, stmts: [ '%1 = 1' ], preds: [ 1 ], succes: [ 4 ] },
-        { id: 3, stmts: [ '%1 = 2' ], preds: [ 1 ], succes: [ 4 ] },
-        { id: 4, stmts: [ 'j = %1 + 3' ], preds: [ 2, 3 ], succes: [ 6 ] },
-        { id: 5, stmts: [ 'j = 4' ], preds: [ 0 ], succes: [ 6 ] },
-        { id: 6, stmts: [ 'return j' ], preds: [ 4, 5 ], succes: [] }
+        { id: 2, stmts: ['%1 = 1'], preds: [1], succes: [4] },
+        { id: 3, stmts: ['%1 = 2'], preds: [1], succes: [4] },
+        { id: 4, stmts: ['j = %1 + 3'], preds: [2, 3], succes: [6] },
+        { id: 5, stmts: ['j = 4'], preds: [0], succes: [6] },
+        { id: 6, stmts: ['return j'], preds: [4, 5], succes: [] },
     ],
 };
 
@@ -112,30 +112,30 @@ export const CONDITIONAL_OPERATOR_EXPECT_CASE5 = {
             stmts: [
                 'this = this: @conditionalOperator/conditionalOperator.cpp: %dflt',
                 'i = 0',
-                'if i < 0'
+                'if i < 0',
             ],
             preds: [],
-            succes: [ 1, 8 ]
+            succes: [1, 8],
         },
         {
             id: 1,
-            stmts: [ '%0 = -1', 'if i < %0' ],
-            preds: [ 0 ],
-            succes: [ 2, 6 ]
+            stmts: ['%0 = -1', 'if i < %0'],
+            preds: [0],
+            succes: [2, 6],
         },
         {
             id: 2,
-            stmts: [ '%1 = -2', 'if i < %1' ],
-            preds: [ 1 ],
-            succes: [ 3, 4 ]
+            stmts: ['%1 = -2', 'if i < %1'],
+            preds: [1],
+            succes: [3, 4],
         },
-        { id: 3, stmts: [ '%2 = 1' ], preds: [ 2 ], succes: [ 5 ] },
-        { id: 4, stmts: [ '%2 = 2' ], preds: [ 2 ], succes: [ 5 ] },
-        { id: 5, stmts: [ '%3 = %2' ], preds: [ 3, 4 ], succes: [ 7 ] },
-        { id: 6, stmts: [ '%3 = 3' ], preds: [ 1 ], succes: [ 7 ] },
-        { id: 7, stmts: [ 'j = %3' ], preds: [ 5, 6 ], succes: [ 9 ] },
-        { id: 8, stmts: [ 'j = 4' ], preds: [ 0 ], succes: [ 9 ] },
-        { id: 9, stmts: [ 'return' ], preds: [ 7, 8 ], succes: [] }
+        { id: 3, stmts: ['%2 = 1'], preds: [2], succes: [5] },
+        { id: 4, stmts: ['%2 = 2'], preds: [2], succes: [5] },
+        { id: 5, stmts: ['%3 = %2'], preds: [3, 4], succes: [7] },
+        { id: 6, stmts: ['%3 = 3'], preds: [1], succes: [7] },
+        { id: 7, stmts: ['j = %3'], preds: [5, 6], succes: [9] },
+        { id: 8, stmts: ['j = 4'], preds: [0], succes: [9] },
+        { id: 9, stmts: ['return'], preds: [7, 8], succes: [] },
     ],
 };
 
