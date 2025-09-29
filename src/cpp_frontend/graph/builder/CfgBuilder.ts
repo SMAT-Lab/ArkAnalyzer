@@ -77,7 +77,7 @@ export class StatementBuilder {
     passTmies: number = 0;
     numOfIdentifier: number = 0;
     isDoWhile: boolean = false;
-
+    hasDoWhileBody: boolean = false;
     constructor(type: string, code: string, astNode: CxxAstNode | null, scopeID: number) {
         this.type = type;
         this.code = code;
@@ -341,6 +341,12 @@ export class CfgBuilder {
         loopstm.condition = c.inner[1].code;
         loopstm.code = 'while (' + loopstm.condition + ')';
         loopstm.isDoWhile = true;
+        for (let idx = 0;idx<c.inner[0].inner.length;idx++){
+            let kind = c.inner[0].inner[idx].kind;
+            if (kind !== 'NullStmt'){
+                loopstm.hasDoWhileBody = true;
+            }
+        }
         if (c.inner[0].kind.toString() === 'CompoundStmt') {
             this.walkAST(lastStatement, loopstm, [...c.inner[0].inner]);
         } else {
@@ -901,7 +907,7 @@ export class CfgBuilder {
             const block = new BlockBuilder(this.blocks.length, []);
             this.blocks.push(block);
             while (stmt && !handledStmts.has(stmt)) {
-                if (stmt.type === 'loopStatement' && block.stmts.length > 0) {
+                if (stmt.type === 'loopStatement' && block.stmts.length > 0 && !stmt.hasDoWhileBody) {
                     stmtQueue.push(stmt);
                     break;
                 }

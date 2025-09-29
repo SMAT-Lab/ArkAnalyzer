@@ -45,8 +45,12 @@ export const DO_WHILE_STMT = {
             preds: [],
             succes: [1],
         },
-        { id: 1, stmts: ['i = i + 1'], preds: [0, 2], succes: [2] },
-        { id: 2, stmts: ['if i < 10'], preds: [1], succes: [1, 3] },
-        { id: 3, stmts: ['return'], preds: [2], succes: [] },
+        {
+            id: 1,
+            stmts: ['i = i + 1', 'if i < 10'],
+            preds: [0, 1],
+            succes: [1, 2],
+        },
+        { id: 2, stmts: ['return'], preds: [1], succes: [] },
     ],
 };
