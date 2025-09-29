@@ -72,7 +72,7 @@ export class ArkCxxCastExpr extends ArkCastExpr {
         return this.cxxCastType;
     }
     public toString(): string {
-        return `<${this.cxxCastType}: ${this.getType()}>${this.getOp()}` ;
+        return `<${this.cxxCastType}: ${this.getType()}>${this.getOp()}`;
     }
 
     public inferType(arkMethod: ArkMethod): AbstractExpr {

@@ -225,11 +225,11 @@ function buildInitMethodsForClassTag(
         const instanceIRTransformer = new ArkCxxIRTransformer(tu, cls.getInstanceInitMethod());
         const staticIRTransformer   = new ArkCxxIRTransformer(tu, cls.getStaticInitMethod());
         buildInitMethod(cls.getInstanceInitMethod(), instanceInitStmts, instanceIRTransformer.getThisLocal());
-        buildInitMethod(cls.getStaticInitMethod(),  staticInitStmts,  staticIRTransformer.getThisLocal());
+        buildInitMethod(cls.getStaticInitMethod(), staticInitStmts, staticIRTransformer.getThisLocal());
     } else if (tagStr === 'enum') {
         const tu = sourceFile as CxxTranslationUnit;
-        const staticIRTransformer   = new ArkCxxIRTransformer(tu, cls.getStaticInitMethod());
-        buildInitMethod(cls.getStaticInitMethod(),  staticInitStmts,  staticIRTransformer.getThisLocal());
+        const staticIRTransformer = new ArkCxxIRTransformer(tu, cls.getStaticInitMethod());
+        buildInitMethod(cls.getStaticInitMethod(), staticInitStmts, staticIRTransformer.getThisLocal());
     }
 }
 

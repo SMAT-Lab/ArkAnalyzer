@@ -33,7 +33,7 @@ import {
     RelationalBinaryOperator,
     AbstractInvokeExpr,
 } from '../../core/base/Expr';
-import { ArkSizeOfExpr, ArkCxxCastExpr } from '../base/Expr'
+import { ArkSizeOfExpr, ArkCxxCastExpr } from '../base/Expr';
 import {
     AnyType,
     ArrayType,
