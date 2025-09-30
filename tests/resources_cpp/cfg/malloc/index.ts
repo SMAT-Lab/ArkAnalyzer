@@ -13,13 +13,4 @@
  * limitations under the License.
  */
 
-namespace nsA {
-    void Func() {}
-}
-
-using namespace nsA;
-
-void Test()
-{
-    Func();
-}
+export * from './mallocSampleExpects';

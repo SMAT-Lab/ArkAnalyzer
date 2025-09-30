@@ -13,13 +13,14 @@
  * limitations under the License.
  */
 
-namespace nsA {
-    void Func() {}
-}
+#include <cstdlib>
 
-using namespace nsA;
-
-void Test()
-{
-    Func();
+int main() {
+    const std::size_t N = 5;
+    int* p = static_cast<int*>(std::malloc(N * sizeof(*p)));
+    for (std::size_t i = 0; i < N; ++i) {
+        p[i] = static_cast<int>(i + 1);
+    }
+    std::free(p);
+    return 0;
 }

@@ -60,6 +60,7 @@ import * as AUTO_EXPECT from '../../../resources_cpp/cfg/decltype/decltypeExpect
 import * as INCLUDE_IN_SCOPE from '../../../resources_cpp/cfg/includeInScope/includeInFunctionExpects';
 import * as STRUCTBINDING from '../../../resources_cpp/cfg/structBinding/structBindingExpect';
 import * as CALLEXPR_EXPECT from '../../../resources_cpp/cfg/call/callExpect';
+import * as MALLOC_EXPECT from '../../../resources_cpp/cfg/malloc/mallocSampleExpects'
 
 // Standard library header file configuration for DevEco
 const deveco_c = process.env.DEVECO_C !== undefined ? process.env.DEVECO_C : '';
@@ -321,6 +322,10 @@ describe('Other Test', () => {
         testBlocks(scene, 'builtInAndSTLFunction.cpp', 'CXXNoexceptExprTest', BUILT_IN_EXPECT.BUILT_IN_EXPECT_CASE3.blocks);
         testBlocks(scene, 'builtInAndSTLFunction.cpp', 'AtomicExprTest',
             is_system_win32 ? BUILT_IN_EXPECT.BUILT_IN_EXPECT_CASE4.blocks : BUILT_IN_EXPECT.BUILT_IN_EXPECT_CASE4_LINUX.blocks);
+    });
+    it('case7: malloc Test', () => {
+        const scene = buildScene('malloc');
+        testBlocks(scene, 'mallocSample.cpp', 'main', MALLOC_EXPECT.MALLOC_EXPECT_CASE1.blocks);
     });
 });
 

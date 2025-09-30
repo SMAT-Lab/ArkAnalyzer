@@ -25,7 +25,7 @@ import { AliasType, ClassType, UnclearReferenceType, UnknownType, VoidType } fro
 import { Trap } from '../../../core/base/Trap';
 import { GlobalRef } from '../../../core/base/Ref';
 import { LoopBuilder } from '../../../core/graph/builder/LoopBuilder';
-import { SwitchBuilder } from '../../../core/graph/builder/SwitchBuilder';
+import { CxxSwitchBuilder } from './SwitchBuilder';
 import { CxxConditionBuilder } from './ConditionBuilder';
 import { TrapBuilder } from '../../../core/graph/builder/TrapBuilder';
 import { ModifierType } from '../../../core/model/ArkBaseModel';
@@ -454,8 +454,8 @@ export class CfgBuilder {
             casestm.next!.lasts.delete(casestm);
 
             if (lastCaseExit) {
-                lastCaseExit.next = casestm.next;
-                casestm.next?.lasts.add(lastCaseExit);
+                lastCaseExit.next = casestm;
+                casestm.lasts.add(lastCaseExit);
             }
             lastCaseExit = caseExit;
             if (i === c.inner[1].inner.length - 1) {
@@ -1374,7 +1374,7 @@ export class CfgBuilder {
         const asCoreBlocks = this.blocks as unknown as CoreBlockBuilder[]; // 适配 this.blocks
         const loopBuilder = new LoopBuilder();
         loopBuilder.rebuildBlocksInLoop(asCoreMap, asCoreSet, basicBlockSet, asCoreBlocks);
-        const switchBuilder = new SwitchBuilder();
+        const switchBuilder = new CxxSwitchBuilder();
         switchBuilder.buildSwitch(asCoreMap, asCoreArr, valueAndStmtsOfSwitchAndCasesAll, arkIRTransformer, basicBlockSet);
         const conditionalBuilder = new CxxConditionBuilder();
         conditionalBuilder.rebuildBlocksContainConditionalOperator(
