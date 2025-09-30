@@ -33,7 +33,7 @@ import {
     RelationalBinaryOperator,
     AbstractInvokeExpr,
 } from '../../core/base/Expr';
-import { ArkSizeOfExpr, ArkCxxCastExpr, ArkArrayTypeTraitExpr, ArkNoExpectExpr } from '../base/Expr';
+import { ArkSizeOfExpr, ArkCxxCastExpr, ArkArrayTypeTraitExpr, ArkNoExpectExpr, ArkTypeIdExpr } from '../base/Expr';
 import {
     AnyType,
     ArrayType,
@@ -623,11 +623,12 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         if (CXXTypeidExpr.inner.length === 0 || (CXXTypeidExpr.inner.length === 2 && CXXTypeidExpr.inner[1].kind === 'TypeRef')) {
             const innerType = cxxNode2Type(CXXTypeidExpr.typeArg ?? '', undefined, undefined);
             typeValue = new Local(innerType.toString(), innerType);
+        } else {
+            let innerValueAndStmts = this.cxxNodeToValueAndStmts(CXXTypeidExpr.inner[0]);
+            innerValueAndStmts.stmts.forEach(stmt => stmts.push(stmt));
+            typeValue = innerValueAndStmts.value;
         }
-        let innerValueAndStmts = this.cxxNodeToValueAndStmts(CXXTypeidExpr.inner[0]);
-        innerValueAndStmts.stmts.forEach(stmt => stmts.push(stmt));
-        typeValue = innerValueAndStmts.value;
-        const typeIdExpr = new ArkNoExpectExpr(typeValue);
+        const typeIdExpr = new ArkTypeIdExpr(typeValue);
         return {
             value: typeIdExpr,
             valueOriginalPositions: [FullPosition.cxxBuildFromNode(CXXTypeidExpr, this.cxxSourceFile)],

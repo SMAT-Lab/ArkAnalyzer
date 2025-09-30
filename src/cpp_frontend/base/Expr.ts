@@ -174,7 +174,7 @@ export class ArkTypeIdExpr extends AbstractExpr {
     }
 
     public toString(): string {
-        return 'typeId(' + this.op + ')';
+        return 'typeid(' + this.op + ')';
     }
 
     public inferType(arkMethod: ArkMethod): AbstractExpr {
