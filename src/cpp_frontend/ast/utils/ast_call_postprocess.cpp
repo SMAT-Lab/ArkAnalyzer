@@ -339,3 +339,38 @@ void RewriteTypeAliasTemplateArgs(json& typeAliasDecl, json& children)
     }
     children.swap(newChildren);
 }
+
+// Merge the std of namespace and the T of typename into the name attribute of aliasTemplateDecl,
+// The source code scenario is as follows:
+// template<typename T>
+// using MyMap = std::map<int, T>;
+void mergeTypeAliasDeclChild(json& newChildren, json& children, json& parent)
+{
+    bool existNamespace = false;
+    std::string templateName = "";
+    for (int i = 0; i < children.size(); i++) {
+        if (children[i]["kind"] == "NamespaceRef") {
+            existNamespace = true;
+            continue;
+        }
+        if (existNamespace && children[i]["kind"] == "TemplateRef") {
+            std::string namespaceStr = children[i - 1]["name"]; // get name of NamespaceRef node
+            std::string templateStr = children[i]["name"];
+            templateName = namespaceStr + "::" + templateStr + "<";
+            newChildren.push_back(children[i]);
+            continue;
+        }
+        if (existNamespace) {
+            templateName += children[i]["name"];
+            if (i < children.size() - 1) {
+                templateName += ", ";
+            }
+            continue;
+        }
+        newChildren.push_back(children[i]);
+    }
+    if(existNamespace) {
+        newChildren[0]["name"] = templateName + ">";
+        newChildren[0]["code"] = templateName + ">";
+    }
+}

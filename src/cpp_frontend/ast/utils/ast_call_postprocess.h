@@ -53,3 +53,5 @@ bool IsBuiltinNameNoSpace(const std::string& tokNoSpace);
 json MakeMinimalTypeNodeFromToken(const std::string& tokNoSpace);
 
 void RewriteTypeAliasTemplateArgs(json& typeAliasDecl, json& children);
+
+void mergeTypeAliasDeclChild(json& newChildren, json& children, json& parent);
