@@ -713,6 +713,8 @@ export class CfgBuilder {
             case 'DeclStmt':
             case 'RecoveryExpr':
             case 'TypedefDecl':
+            case 'TypeAliasDecl':
+            case 'TypeAliasTemplateDecl':
             case 'UnaryOperator':
             case 'VarDecl':
                 s = new StatementBuilder('statement', innerNode.code, innerNode, scope.id);

@@ -180,7 +180,11 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
                 stmts = this.forRangeStatementToStmts(node);
                 break;
             case 'TypedefDecl':
+            case 'TypeAliasDecl':
                 stmts = this.typeDefDeclToStmts(node);
+                break;
+            case 'TypeAliasTemplateDecl':
+                stmts = this.typeDefDeclToStmts(node.inner[1]); // skip TemplateTypeParameter node
                 break;
             case 'CXXRecordDecl':
                 stmts = this.cxxClassDeclarationToStmts(node);

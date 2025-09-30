@@ -14,6 +14,7 @@
  */
 
 #include "ast_call_postprocess.h"
+#include "utils_string.h"
 #include <algorithm>
 #include <vector>
 #include <iostream>
@@ -302,7 +303,18 @@ void RewriteTypeAliasTemplateArgs(json& typeAliasDecl, json& children)
         }
     }
 
-    const auto toks = ParseTemplateArgsAfterEqual(typeAliasDecl.value("code" ,""), tplNameHint);
+    json newChildren = json::array();
+    std::string codeStr = typeAliasDecl.value("code" ,"");
+    if (tplNameHint.empty()) {
+        size_t ind = codeStr.find("=");
+        std::string tok = codeStr.substr(ind + 1);
+        Trim(tok);
+        newChildren.push_back(MakeMinimalTypeNodeFromToken(tok));
+        children.swap(newChildren);
+        return;
+    }
+
+    const auto toks = ParseTemplateArgsAfterEqual(codeStr, tplNameHint);
     if (toks.empty()) {
         return;
     }
@@ -319,7 +331,6 @@ void RewriteTypeAliasTemplateArgs(json& typeAliasDecl, json& children)
         return;
     }
 
-    json newChildren = json::array();
     for (size_t i = 0; i <= tplPos && i < children.size(); ++i) {
         newChildren.push_back(children[i]);  // keep NamespaceRef and TemplateRef
     }

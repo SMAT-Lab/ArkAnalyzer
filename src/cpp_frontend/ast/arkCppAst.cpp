@@ -1117,6 +1117,38 @@ void buildTypedefChild(const CXType& type, json& newChildren, json& children, js
     newChildren.push_back(node);
 }
 
+// Merge the namespace and template of typealiasTemplate
+void mergeTypeAliasDeclChild(json& newChildren, json& children, json& parent)
+{
+    bool existNamespace = false;
+    std::string templateName = "";
+    for (int i = 0; i < children.size(); i++) {
+        if (children[i]["kind"] == "NamespaceRef") {
+            existNamespace = true;
+            continue;
+        }
+        if (existNamespace && children[i]["kind"] == "TemplateRef") {
+            std::string namespaceStr = children[i - 1]["name"];
+            std::string templateStr = children[i]["name"];
+            templateName = namespaceStr + "::" + templateStr + "<";
+            newChildren.push_back(children[i]);
+            continue;
+        }
+        if (existNamespace) {
+            templateName += children[i]["name"];
+            if (i < children.size() - 1) {
+                templateName += ", ";
+            }
+            continue;
+        }
+        newChildren.push_back(children[i]);
+    }
+    if(existNamespace) {
+        newChildren[0]["name"] = templateName + ">";
+        newChildren[0]["code"] = templateName + ">";
+    }
+}
+
 // Modify class declaration node type under typedef to constructorExpr
 void updateTypedefClassConstructor(json& children)
 {
@@ -1501,6 +1533,9 @@ void nodePostprocess(
     ResolveGotoTarget(node);
     if (kind_cursor == CXCursor_TypeAliasDecl) {
         RewriteTypeAliasTemplateArgs(node, children);
+        json newChildren = json::array();
+        mergeTypeAliasDeclChild(newChildren, children, node);
+        children = newChildren;
     }
     // --- Remaining generic handlers ---
     HandleTemplateAndCursorSpecific(node, kind_cursor, codeStr, children);
