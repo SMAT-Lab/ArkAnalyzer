@@ -29,6 +29,7 @@ projectScene.inferTypes();
 let arkFile = projectScene.getFiles().find((file) => file.getName() == 'method.ts');
 let arkDefaultClass = arkFile?.getDefaultClass();
 let nestedTestClass = arkFile?.getClassWithName('NestedTestClass');
+let testNamespace = arkFile?.getNamespaceWithName('ConstructorTest');
 
 const MethodParamWithDefaultValue = `paramWithInitializer(a: string, x?: number, y?: unknown, z?: number): number {
   label0:
@@ -232,427 +233,445 @@ const methodWithSwitch = `paramInitializerWithSwitch(a?: unknown): void {
 `;
 
 describe("ArkMethod Test", () => {
-    it('test dotDotDot parameter', async () => {
-        let method = arkDefaultClass?.getMethodWithName('testDotDotDotToken');
-        let parameter = method?.getParameters().find((param) => param.getName() == 'arr2');
-        if (parameter) {
-            const hasDotDotDotToken = parameter.isRest();
-            expect(hasDotDotDotToken).eq(true);
-        }
-    });
+  it('test dotDotDot parameter', async () => {
+    let method = arkDefaultClass?.getMethodWithName('testDotDotDotToken');
+    let parameter = method?.getParameters().find((param) => param.getName() == 'arr2');
+    if (parameter) {
+      const hasDotDotDotToken = parameter.isRest();
+      expect(hasDotDotDotToken).eq(true);
+    }
+  });
 
-    it('test object parameter', async () => {
-        let method = arkDefaultClass?.getMethodWithName('testObjectTypeParam');
-        let parameter = method?.getParameters().find((param) => param.getName() == 'obj');
-        if (parameter) {
-            const paramTypeName = parameter.getType().toString();
-            expect(paramTypeName).eq('object');
-        }
-    });
+  it('test object parameter', async () => {
+    let method = arkDefaultClass?.getMethodWithName('testObjectTypeParam');
+    let parameter = method?.getParameters().find((param) => param.getName() == 'obj');
+    if (parameter) {
+      const paramTypeName = parameter.getType().toString();
+      expect(paramTypeName).eq('object');
+    }
+  });
 });
 
 describe('Nested Method with Function Declaration Statement', () => {
-    it('test nested method', async () => {
-        const method = arkDefaultClass?.getMethodWithName('%innerFunction1$outerFunction1');
-        assert.isDefined(method);
-        assert.isNotNull(method);
+  it('test nested method', async () => {
+    const method = arkDefaultClass?.getMethodWithName('%innerFunction1$outerFunction1');
+    assert.isDefined(method);
+    assert.isNotNull(method);
 
-        const stmts = method?.getBody()?.getCfg().getStmts();
-        assert.isDefined(stmts);
-        expect((stmts as Stmt[])[1].toString()).toEqual('instanceinvoke console.<@%unk/%unk: .log()>(\'This is nested function with function declaration.\')');
-        expect((stmts as Stmt[])[2].toString()).toEqual('staticinvoke <@method/method.ts: %dflt.%innerInnerFunction1$%innerFunction1$outerFunction1()>()');
+    const stmts = method?.getBody()?.getCfg().getStmts();
+    assert.isDefined(stmts);
+    expect((stmts as Stmt[])[1].toString()).toEqual('instanceinvoke console.<@%unk/%unk: .log()>(\'This is nested function with function declaration.\')');
+    expect((stmts as Stmt[])[2].toString()).toEqual('staticinvoke <@method/method.ts: %dflt.%innerInnerFunction1$%innerFunction1$outerFunction1()>()');
 
-        const global = method!.getBody()?.getUsedGlobals()?.get('innerInnerFunction1');
-        assert.isDefined(global);
+    const global = method!.getBody()?.getUsedGlobals()?.get('innerInnerFunction1');
+    assert.isDefined(global);
 
-        expect(global!.getType().toString()).toEqual('@method/method.ts: %dflt.%innerInnerFunction1$%innerFunction1$outerFunction1()');
-    });
+    expect(global!.getType().toString()).toEqual('@method/method.ts: %dflt.%innerInnerFunction1$%innerFunction1$outerFunction1()');
+  });
 
-    it('test nested method in nested method', async () => {
-        const method = arkDefaultClass?.getMethodWithName('%innerInnerFunction1$%innerFunction1$outerFunction1');
-        assert.isDefined(method);
-        assert.isNotNull(method);
-        const stmts = method?.getBody()?.getCfg().getStmts();
-        assert.isDefined(stmts);
-        expect((stmts as Stmt[])[1].toString()).toEqual(
-            'instanceinvoke console.<@%unk/%unk: .log()>(\'This is nested function in nested function with function declaration.\')');
-        const locals = method?.getBody()?.getLocals();
-        assert.isDefined(locals);
-        expect((locals as Map<string, Local>).size).toEqual(1);
-        const globals = method?.getBody()?.getUsedGlobals();
-        assert.isDefined(globals);
-        expect(globals!.size).toEqual(1);
-    });
+  it('test nested method in nested method', async () => {
+    const method = arkDefaultClass?.getMethodWithName('%innerInnerFunction1$%innerFunction1$outerFunction1');
+    assert.isDefined(method);
+    assert.isNotNull(method);
+    const stmts = method?.getBody()?.getCfg().getStmts();
+    assert.isDefined(stmts);
+    expect((stmts as Stmt[])[1].toString()).toEqual(
+      'instanceinvoke console.<@%unk/%unk: .log()>(\'This is nested function in nested function with function declaration.\')');
+    const locals = method?.getBody()?.getLocals();
+    assert.isDefined(locals);
+    expect((locals as Map<string, Local>).size).toEqual(1);
+    const globals = method?.getBody()?.getUsedGlobals();
+    assert.isDefined(globals);
+    expect(globals!.size).toEqual(1);
+  });
 
-    it('test outer method', async () => {
-        const method = arkDefaultClass?.getMethodWithName('outerFunction1');
-        assert.isDefined(method);
-        assert.isNotNull(method);
+  it('test outer method', async () => {
+    const method = arkDefaultClass?.getMethodWithName('outerFunction1');
+    assert.isDefined(method);
+    assert.isNotNull(method);
 
-        const stmts = method?.getBody()?.getCfg().getStmts();
-        assert.isDefined(stmts);
-        expect((stmts as Stmt[])[1].toString()).toEqual('staticinvoke <@method/method.ts: %dflt.%innerFunction1$outerFunction1()>()');
+    const stmts = method?.getBody()?.getCfg().getStmts();
+    assert.isDefined(stmts);
+    expect((stmts as Stmt[])[1].toString()).toEqual('staticinvoke <@method/method.ts: %dflt.%innerFunction1$outerFunction1()>()');
 
-        const global = method!.getBody()?.getUsedGlobals()?.get('innerFunction1');
-        assert.isDefined(global);
+    const global = method!.getBody()?.getUsedGlobals()?.get('innerFunction1');
+    assert.isDefined(global);
 
-        expect(global!.getType().toString()).toEqual('@method/method.ts: %dflt.%innerFunction1$outerFunction1()');
-    });
+    expect(global!.getType().toString()).toEqual('@method/method.ts: %dflt.%innerFunction1$outerFunction1()');
+  });
 
-    it('test local function type', async () => {
-        const method = arkDefaultClass?.getMethodWithName('func');
-        const stmts = method?.getBody()?.getCfg().getStmts();
-        const stmt = stmts?.[stmts?.length - 1];
-        assert.isTrue(stmt instanceof ArkReturnStmt);
+  it('test local function type', async () => {
+    const method = arkDefaultClass?.getMethodWithName('func');
+    const stmts = method?.getBody()?.getCfg().getStmts();
+    const stmt = stmts?.[stmts?.length - 1];
+    assert.isTrue(stmt instanceof ArkReturnStmt);
 
-        assert.equal((stmt as ArkReturnStmt).getOp().getType().toString(), '@method/method.ts: %dflt.returnFunc()');
-    });
+    assert.equal((stmt as ArkReturnStmt).getOp().getType().toString(), '@method/method.ts: %dflt.returnFunc()');
+  });
 });
 
 describe('Nested Method with Return Statement', () => {
-    it('test nested method', async () => {
-        const method = arkDefaultClass?.getMethodWithName('%innerFunction2$outerFunction2');
-        assert.isDefined(method);
-        assert.isNotNull(method);
-        const stmts = method?.getBody()?.getCfg().getStmts();
-        assert.isDefined(stmts);
-        expect((stmts as Stmt[])[2].toString()).toEqual('%0 = instanceinvoke param.<@%unk/%unk: .toString()>()');
-        const local = method?.getBody()?.getLocals().get('param');
-        assert.isDefined(local);
-        expect((local as Local).getType().toString()).toEqual('string');
-    });
+  it('test nested method', async () => {
+    const method = arkDefaultClass?.getMethodWithName('%innerFunction2$outerFunction2');
+    assert.isDefined(method);
+    assert.isNotNull(method);
+    const stmts = method?.getBody()?.getCfg().getStmts();
+    assert.isDefined(stmts);
+    expect((stmts as Stmt[])[2].toString()).toEqual('%0 = instanceinvoke param.<@%unk/%unk: .toString()>()');
+    const local = method?.getBody()?.getLocals().get('param');
+    assert.isDefined(local);
+    expect((local as Local).getType().toString()).toEqual('string');
+  });
 
-    it('test outer method', async () => {
-        const method = arkDefaultClass?.getMethodWithName('outerFunction2');
-        assert.isDefined(method);
-        assert.isNotNull(method);
-        const stmts = method?.getBody()?.getCfg().getStmts();
-        assert.isDefined(stmts);
-        expect((stmts as Stmt[])[2].toString()).toEqual('return %innerFunction2$outerFunction2');
-        const functionLocal = method?.getBody()?.getLocals().get('%innerFunction2$outerFunction2');
-        assert.isDefined(functionLocal);
-        expect((functionLocal as Local).getType().toString()).toEqual('@method/method.ts: %dflt.%innerFunction2$outerFunction2(string)');
-        const numberLocal = method?.getBody()?.getLocals().get('innerFunction2');
-        assert.isDefined(numberLocal);
-        expect((numberLocal as Local).getType().toString()).toEqual('number');
-    });
+  it('test outer method', async () => {
+    const method = arkDefaultClass?.getMethodWithName('outerFunction2');
+    assert.isDefined(method);
+    assert.isNotNull(method);
+    const stmts = method?.getBody()?.getCfg().getStmts();
+    assert.isDefined(stmts);
+    expect((stmts as Stmt[])[2].toString()).toEqual('return %innerFunction2$outerFunction2');
+    const functionLocal = method?.getBody()?.getLocals().get('%innerFunction2$outerFunction2');
+    assert.isDefined(functionLocal);
+    expect((functionLocal as Local).getType().toString()).toEqual('@method/method.ts: %dflt.%innerFunction2$outerFunction2(string)');
+    const numberLocal = method?.getBody()?.getLocals().get('innerFunction2');
+    assert.isDefined(numberLocal);
+    expect((numberLocal as Local).getType().toString()).toEqual('number');
+  });
 });
 
 describe('Nested Method with Function Expression', () => {
-    it('test nested method', async () => {
-        const method = arkDefaultClass?.getMethodWithName('%AM1$outerFunction3');
-        assert.isDefined(method);
-        assert.isNotNull(method);
-        const stmts = method?.getBody()?.getCfg().getStmts();
-        assert.isDefined(stmts);
-        expect((stmts as Stmt[])[1].toString()).toEqual('instanceinvoke console.<@%unk/%unk: .log()>(\'This is nested function with function expression.\')');
-        const locals = method?.getBody()?.getLocals();
-        assert.isDefined(locals);
-        expect(locals!.size).toEqual(1);
-    });
+  it('test nested method', async () => {
+    const method = arkDefaultClass?.getMethodWithName('%AM1$outerFunction3');
+    assert.isDefined(method);
+    assert.isNotNull(method);
+    const stmts = method?.getBody()?.getCfg().getStmts();
+    assert.isDefined(stmts);
+    expect((stmts as Stmt[])[1].toString()).toEqual('instanceinvoke console.<@%unk/%unk: .log()>(\'This is nested function with function expression.\')');
+    const locals = method?.getBody()?.getLocals();
+    assert.isDefined(locals);
+    expect(locals!.size).toEqual(1);
+  });
 
-    it('test outer method', async () => {
-        const method = arkDefaultClass?.getMethodWithName('outerFunction3');
-        assert.isDefined(method);
-        assert.isNotNull(method);
-        const stmts = method?.getBody()?.getCfg().getStmts();
-        assert.isDefined(stmts);
-        expect((stmts as Stmt[])[1].toString()).toEqual('innerFunction3 = %AM1$outerFunction3');
-        const leftOpLocal = method?.getBody()?.getLocals().get('innerFunction3');
-        assert.isDefined(leftOpLocal);
-        expect((leftOpLocal as Local).getType().toString()).toEqual('@method/method.ts: %dflt.%AM1$outerFunction3()');
-        assert.isTrue((leftOpLocal as Local).getConstFlag());
-        const rightOpLocal = method?.getBody()?.getLocals().get('%AM1$outerFunction3');
-        assert.isDefined(rightOpLocal);
-        expect((rightOpLocal as Local).getType().toString()).toEqual('@method/method.ts: %dflt.%AM1$outerFunction3()');
-        expect((stmts as Stmt[])[2].toString()).toEqual('ptrinvoke <@method/method.ts: %dflt.innerFunction3()>()');
-    });
+  it('test outer method', async () => {
+    const method = arkDefaultClass?.getMethodWithName('outerFunction3');
+    assert.isDefined(method);
+    assert.isNotNull(method);
+    const stmts = method?.getBody()?.getCfg().getStmts();
+    assert.isDefined(stmts);
+    expect((stmts as Stmt[])[1].toString()).toEqual('innerFunction3 = %AM1$outerFunction3');
+    const leftOpLocal = method?.getBody()?.getLocals().get('innerFunction3');
+    assert.isDefined(leftOpLocal);
+    expect((leftOpLocal as Local).getType().toString()).toEqual('@method/method.ts: %dflt.%AM1$outerFunction3()');
+    assert.isTrue((leftOpLocal as Local).getConstFlag());
+    const rightOpLocal = method?.getBody()?.getLocals().get('%AM1$outerFunction3');
+    assert.isDefined(rightOpLocal);
+    expect((rightOpLocal as Local).getType().toString()).toEqual('@method/method.ts: %dflt.%AM1$outerFunction3()');
+    expect((stmts as Stmt[])[2].toString()).toEqual('ptrinvoke <@method/method.ts: %dflt.innerFunction3()>()');
+  });
 });
 
 describe('Nested Method with Arrow Function', () => {
-    it('test nested method', async () => {
-        const method = arkDefaultClass?.getMethodWithName('%AM2$outerFunction4');
-        assert.isDefined(method);
-        assert.isNotNull(method);
-        const stmts = method?.getBody()?.getCfg().getStmts();
-        assert.isDefined(stmts);
-        expect((stmts as Stmt[])[1].toString()).toEqual('instanceinvoke console.<@%unk/%unk: .log()>(\'This is nested function with arrow function.\')');
-        const locals = method?.getBody()?.getLocals();
-        assert.isDefined(locals);
-        expect(locals!.size).toEqual(1);
-    });
+  it('test nested method', async () => {
+    const method = arkDefaultClass?.getMethodWithName('%AM2$outerFunction4');
+    assert.isDefined(method);
+    assert.isNotNull(method);
+    const stmts = method?.getBody()?.getCfg().getStmts();
+    assert.isDefined(stmts);
+    expect((stmts as Stmt[])[1].toString()).toEqual('instanceinvoke console.<@%unk/%unk: .log()>(\'This is nested function with arrow function.\')');
+    const locals = method?.getBody()?.getLocals();
+    assert.isDefined(locals);
+    expect(locals!.size).toEqual(1);
+  });
 
-    it('test outer method', async () => {
-        const method = arkDefaultClass?.getMethodWithName('outerFunction4');
-        assert.isDefined(method);
-        assert.isNotNull(method);
-        const stmts = method?.getBody()?.getCfg().getStmts();
-        assert.isDefined(stmts);
-        expect((stmts as Stmt[])[1].toString()).toEqual('innerFunction4 = %AM2$outerFunction4');
-        const leftOpLocal = method?.getBody()?.getLocals().get('innerFunction4');
-        assert.isDefined(leftOpLocal);
-        expect((leftOpLocal as Local).getType().toString()).toEqual('@method/method.ts: %dflt.%AM2$outerFunction4()');
-        assert.isTrue((leftOpLocal as Local).getConstFlag());
-        const rightOpLocal = method?.getBody()?.getLocals().get('%AM2$outerFunction4');
-        assert.isDefined(rightOpLocal);
-        expect((rightOpLocal as Local).getType().toString()).toEqual('@method/method.ts: %dflt.%AM2$outerFunction4()');
-        expect((stmts as Stmt[])[2].toString()).toEqual('ptrinvoke <@method/method.ts: %dflt.innerFunction4()>()');
-    });
+  it('test outer method', async () => {
+    const method = arkDefaultClass?.getMethodWithName('outerFunction4');
+    assert.isDefined(method);
+    assert.isNotNull(method);
+    const stmts = method?.getBody()?.getCfg().getStmts();
+    assert.isDefined(stmts);
+    expect((stmts as Stmt[])[1].toString()).toEqual('innerFunction4 = %AM2$outerFunction4');
+    const leftOpLocal = method?.getBody()?.getLocals().get('innerFunction4');
+    assert.isDefined(leftOpLocal);
+    expect((leftOpLocal as Local).getType().toString()).toEqual('@method/method.ts: %dflt.%AM2$outerFunction4()');
+    assert.isTrue((leftOpLocal as Local).getConstFlag());
+    const rightOpLocal = method?.getBody()?.getLocals().get('%AM2$outerFunction4');
+    assert.isDefined(rightOpLocal);
+    expect((rightOpLocal as Local).getType().toString()).toEqual('@method/method.ts: %dflt.%AM2$outerFunction4()');
+    expect((stmts as Stmt[])[2].toString()).toEqual('ptrinvoke <@method/method.ts: %dflt.innerFunction4()>()');
+  });
 })
 
 describe('Recursive Method', () => {
-    it('test nested method', async () => {
-        const method = arkDefaultClass?.getMethodWithName('%factorial$outerFunction5');
-        assert.isDefined(method);
-        assert.isNotNull(method);
+  it('test nested method', async () => {
+    const method = arkDefaultClass?.getMethodWithName('%factorial$outerFunction5');
+    assert.isDefined(method);
+    assert.isNotNull(method);
 
-        const global = method!.getBody()?.getUsedGlobals()?.get('factorial');
-        assert.isDefined(global);
+    const global = method!.getBody()?.getUsedGlobals()?.get('factorial');
+    assert.isDefined(global);
 
-        // TODO： the type should be FunctionType after inferType support
-        expect(global!.getType().toString()).toEqual('unknown');
+    // TODO： the type should be FunctionType after inferType support
+    expect(global!.getType().toString()).toEqual('unknown');
 
-        expect(method!.getReturnType().toString()).toEqual('number');
-    });
+    expect(method!.getReturnType().toString()).toEqual('number');
+  });
 
-    it('test outer method', async () => {
-        const method = arkDefaultClass?.getMethodWithName('outerFunction5');
-        assert.isDefined(method);
-        assert.isNotNull(method);
+  it('test outer method', async () => {
+    const method = arkDefaultClass?.getMethodWithName('outerFunction5');
+    assert.isDefined(method);
+    assert.isNotNull(method);
 
-        const global = method!.getBody()?.getUsedGlobals()?.get('factorial');
-        assert.isDefined(global);
+    const global = method!.getBody()?.getUsedGlobals()?.get('factorial');
+    assert.isDefined(global);
 
-        expect(global!.getType().toString()).toEqual('@method/method.ts: %dflt.%factorial$outerFunction5(number)');
+    expect(global!.getType().toString()).toEqual('@method/method.ts: %dflt.%factorial$outerFunction5(number)');
 
-        expect(method!.getReturnType().toString()).toEqual('number');
-    })
+    expect(method!.getReturnType().toString()).toEqual('number');
+  })
 })
 
 describe('Nested Method in Class', () => {
-    it('test nested method', async () => {
-        const method1 = nestedTestClass?.getMethodWithName('%innerFunction1$outerMethod');
-        assert.isDefined(method1);
-        assert.isNotNull(method1);
-        const stmts1 = method1?.getBody()?.getCfg().getStmts();
-        assert.isDefined(stmts1);
-        expect((stmts1 as Stmt[])[1].toString()).toEqual('instanceinvoke console.<@%unk/%unk: .log()>(\'innerFunction1\')');
+  it('test nested method', async () => {
+    const method1 = nestedTestClass?.getMethodWithName('%innerFunction1$outerMethod');
+    assert.isDefined(method1);
+    assert.isNotNull(method1);
+    const stmts1 = method1?.getBody()?.getCfg().getStmts();
+    assert.isDefined(stmts1);
+    expect((stmts1 as Stmt[])[1].toString()).toEqual('instanceinvoke console.<@%unk/%unk: .log()>(\'innerFunction1\')');
 
-        const method2 = nestedTestClass?.getMethodWithName('%AM1$outerMethod');
-        assert.isDefined(method2);
-        assert.isNotNull(method2);
-        const stmts2 = method2?.getBody()?.getCfg().getStmts();
-        assert.isDefined(stmts2);
-        expect((stmts2 as Stmt[])[1].toString()).toEqual('instanceinvoke console.<@%unk/%unk: .log()>(\'innerFunction2\')');
+    const method2 = nestedTestClass?.getMethodWithName('%AM1$outerMethod');
+    assert.isDefined(method2);
+    assert.isNotNull(method2);
+    const stmts2 = method2?.getBody()?.getCfg().getStmts();
+    assert.isDefined(stmts2);
+    expect((stmts2 as Stmt[])[1].toString()).toEqual('instanceinvoke console.<@%unk/%unk: .log()>(\'innerFunction2\')');
 
-        const method3 = nestedTestClass?.getMethodWithName('%AM2$outerMethod');
-        assert.isDefined(method3);
-        assert.isNotNull(method3);
-        const stmts3 = method3?.getBody()?.getCfg().getStmts();
-        assert.isDefined(stmts3);
-        expect((stmts3 as Stmt[])[1].toString()).toEqual('instanceinvoke console.<@%unk/%unk: .log()>(\'innerFunction3\')');
+    const method3 = nestedTestClass?.getMethodWithName('%AM2$outerMethod');
+    assert.isDefined(method3);
+    assert.isNotNull(method3);
+    const stmts3 = method3?.getBody()?.getCfg().getStmts();
+    assert.isDefined(stmts3);
+    expect((stmts3 as Stmt[])[1].toString()).toEqual('instanceinvoke console.<@%unk/%unk: .log()>(\'innerFunction3\')');
 
-        const method4 = nestedTestClass?.getMethodWithName('%AM3$outerMethod');
-        assert.isDefined(method4);
-        assert.isNotNull(method4);
-        const stmts4 = method4?.getBody()?.getCfg().getStmts();
-        assert.isDefined(stmts4);
-        expect((stmts4 as Stmt[])[1].toString()).toEqual('instanceinvoke console.<@%unk/%unk: .log()>(\'innerFunction4\')');
-    });
+    const method4 = nestedTestClass?.getMethodWithName('%AM3$outerMethod');
+    assert.isDefined(method4);
+    assert.isNotNull(method4);
+    const stmts4 = method4?.getBody()?.getCfg().getStmts();
+    assert.isDefined(stmts4);
+    expect((stmts4 as Stmt[])[1].toString()).toEqual('instanceinvoke console.<@%unk/%unk: .log()>(\'innerFunction4\')');
+  });
 
-    it('test outer method', async () => {
-        const outerMethod = nestedTestClass?.getMethodWithName('outerMethod');
-        assert.isDefined(outerMethod);
-        assert.isNotNull(outerMethod);
+  it('test outer method', async () => {
+    const outerMethod = nestedTestClass?.getMethodWithName('outerMethod');
+    assert.isDefined(outerMethod);
+    assert.isNotNull(outerMethod);
 
-        const stmts = outerMethod?.getBody()?.getCfg().getStmts();
-        assert.isDefined(stmts);
-        expect((stmts as Stmt[])[1].toString()).toEqual('staticinvoke <@method/method.ts: %dflt.%innerFunction1$outerFunction1()>()');
-        expect((stmts as Stmt[])[4].toString()).toEqual('ptrinvoke <@method/method.ts: NestedTestClass.innerFunction2()>()');
-        expect((stmts as Stmt[])[5].toString()).toEqual('ptrinvoke <@method/method.ts: NestedTestClass.innerFunction3()>()');
+    const stmts = outerMethod?.getBody()?.getCfg().getStmts();
+    assert.isDefined(stmts);
+    expect((stmts as Stmt[])[1].toString()).toEqual('staticinvoke <@method/method.ts: %dflt.%innerFunction1$outerFunction1()>()');
+    expect((stmts as Stmt[])[4].toString()).toEqual('ptrinvoke <@method/method.ts: NestedTestClass.innerFunction2()>()');
+    expect((stmts as Stmt[])[5].toString()).toEqual('ptrinvoke <@method/method.ts: NestedTestClass.innerFunction3()>()');
 
-        const locals = outerMethod?.getBody()?.getLocals();
-        assert.isDefined(locals);
-        let innerFunction1Value: Value | undefined = locals?.get('innerFunction1');
-        assert.isUndefined(innerFunction1Value);
+    const locals = outerMethod?.getBody()?.getLocals();
+    assert.isDefined(locals);
+    let innerFunction1Value: Value | undefined = locals?.get('innerFunction1');
+    assert.isUndefined(innerFunction1Value);
 
-        const globals = outerMethod?.getBody()?.getUsedGlobals();
-        assert.isDefined(globals);
-        innerFunction1Value = globals!.get('innerFunction1');
-        assert.isDefined(innerFunction1Value);
+    const globals = outerMethod?.getBody()?.getUsedGlobals();
+    assert.isDefined(globals);
+    innerFunction1Value = globals!.get('innerFunction1');
+    assert.isDefined(innerFunction1Value);
 
-        expect(innerFunction1Value!.getType().toString()).toEqual('@method/method.ts: NestedTestClass.%innerFunction1$outerMethod()');
-        const innerFunction2Local = locals?.get('innerFunction2');
-        assert.isDefined(innerFunction2Local);
-        expect(innerFunction2Local!.getType().toString()).toEqual('@method/method.ts: NestedTestClass.%AM1$outerMethod()');
-        const innerFunction3Local = locals?.get('innerFunction3');
-        assert.isDefined(innerFunction3Local);
-        expect(innerFunction3Local!.getType().toString()).toEqual('@method/method.ts: NestedTestClass.%AM2$outerMethod()');
-    });
+    expect(innerFunction1Value!.getType().toString()).toEqual('@method/method.ts: NestedTestClass.%innerFunction1$outerMethod()');
+    const innerFunction2Local = locals?.get('innerFunction2');
+    assert.isDefined(innerFunction2Local);
+    expect(innerFunction2Local!.getType().toString()).toEqual('@method/method.ts: NestedTestClass.%AM1$outerMethod()');
+    const innerFunction3Local = locals?.get('innerFunction3');
+    assert.isDefined(innerFunction3Local);
+    expect(innerFunction3Local!.getType().toString()).toEqual('@method/method.ts: NestedTestClass.%AM2$outerMethod()');
+  });
 })
 
 describe('Optional Method', () => {
-    it('optional methods', async () => {
-        const method1 = arkFile?.getClassWithName('InterfaceA')?.getMethodWithName('optionalMethod');
-        assert.isDefined(method1);
-        assert.isNotNull(method1);
-        assert.isTrue(method1!.getQuestionToken());
+  it('optional methods', async () => {
+    const method1 = arkFile?.getClassWithName('InterfaceA')?.getMethodWithName('optionalMethod');
+    assert.isDefined(method1);
+    assert.isNotNull(method1);
+    assert.isTrue(method1!.getQuestionToken());
 
-        const method2 = arkFile?.getClassWithName('ClassA')?.getMethodWithName('optionalMethod');
-        assert.isDefined(method2);
-        assert.isNotNull(method2);
-        assert.isTrue(method2!.getQuestionToken());
+    const method2 = arkFile?.getClassWithName('ClassA')?.getMethodWithName('optionalMethod');
+    assert.isDefined(method2);
+    assert.isNotNull(method2);
+    assert.isTrue(method2!.getQuestionToken());
 
-        const method3 = arkFile?.getClassWithName('%AC0')?.getMethodWithName('optionalMethod');
-        assert.isDefined(method3);
-        assert.isNotNull(method3);
-        assert.isTrue(method3!.getQuestionToken());
+    const method3 = arkFile?.getClassWithName('%AC0')?.getMethodWithName('optionalMethod');
+    assert.isDefined(method3);
+    assert.isNotNull(method3);
+    assert.isTrue(method3!.getQuestionToken());
 
-        const method4 = arkFile?.getClassWithName('%AC1')?.getMethodWithName('optionalMethod');
-        assert.isDefined(method4);
-        assert.isNotNull(method4);
-        assert.isTrue(method4!.getQuestionToken());
-    });
+    const method4 = arkFile?.getClassWithName('%AC1')?.getMethodWithName('optionalMethod');
+    assert.isDefined(method4);
+    assert.isNotNull(method4);
+    assert.isTrue(method4!.getQuestionToken());
+  });
 
-    it('nonOptional methods', async () => {
-        const method1 = arkFile?.getDefaultClass().getMethodWithName('testDotDotDotToken');
-        assert.isDefined(method1);
-        assert.isNotNull(method1);
-        assert.isFalse(method1!.getQuestionToken());
+  it('nonOptional methods', async () => {
+    const method1 = arkFile?.getDefaultClass().getMethodWithName('testDotDotDotToken');
+    assert.isDefined(method1);
+    assert.isNotNull(method1);
+    assert.isFalse(method1!.getQuestionToken());
 
-        const method2 = arkFile?.getDefaultClass().getMethodWithName('%innerFunction1$outerFunction1');
-        assert.isDefined(method2);
-        assert.isNotNull(method2);
-        assert.isFalse(method2!.getQuestionToken());
+    const method2 = arkFile?.getDefaultClass().getMethodWithName('%innerFunction1$outerFunction1');
+    assert.isDefined(method2);
+    assert.isNotNull(method2);
+    assert.isFalse(method2!.getQuestionToken());
 
-        const method3 = arkFile?.getDefaultClass().getMethodWithName('%AM1$outerFunction3');
-        assert.isDefined(method3);
-        assert.isNotNull(method3);
-        assert.isFalse(method3!.getQuestionToken());
+    const method3 = arkFile?.getDefaultClass().getMethodWithName('%AM1$outerFunction3');
+    assert.isDefined(method3);
+    assert.isNotNull(method3);
+    assert.isFalse(method3!.getQuestionToken());
 
-        const method4 = arkFile?.getDefaultClass().getDefaultArkMethod();
-        assert.isDefined(method4);
-        assert.isNotNull(method4);
-        assert.isFalse(method4!.getQuestionToken());
+    const method4 = arkFile?.getDefaultClass().getDefaultArkMethod();
+    assert.isDefined(method4);
+    assert.isNotNull(method4);
+    assert.isFalse(method4!.getQuestionToken());
 
-        const method5 = arkFile?.getClassWithName('%AC0')?.getMethodWithName('requiredMethod');
-        assert.isDefined(method5);
-        assert.isNotNull(method5);
-        assert.isFalse(method5!.getQuestionToken());
+    const method5 = arkFile?.getClassWithName('%AC0')?.getMethodWithName('requiredMethod');
+    assert.isDefined(method5);
+    assert.isNotNull(method5);
+    assert.isFalse(method5!.getQuestionToken());
 
-        const method6 = arkFile?.getClassWithName('%AC1')?.getMethodWithName('requiredMethod');
-        assert.isDefined(method6);
-        assert.isNotNull(method6);
-        assert.isFalse(method6!.getQuestionToken());
-    });
+    const method6 = arkFile?.getClassWithName('%AC1')?.getMethodWithName('requiredMethod');
+    assert.isDefined(method6);
+    assert.isNotNull(method6);
+    assert.isFalse(method6!.getQuestionToken());
+  });
 });
 
 describe('Method Param with Default Value', () => {
-    const method = arkFile?.getDefaultClass().getMethodWithName('paramWithInitializer');
+  const method = arkFile?.getDefaultClass().getMethodWithName('paramWithInitializer');
 
-    it('case1: param without default value', async () => {
-        const param = method?.getSubSignature().getParameters()[0];
-        assert.isDefined(param);
-        assert.isFalse(param!.isOptional());
-        assert.equal(param!.getType().toString(), 'string');
-    });
+  it('case1: param without default value', async () => {
+    const param = method?.getSubSignature().getParameters()[0];
+    assert.isDefined(param);
+    assert.isFalse(param!.isOptional());
+    assert.equal(param!.getType().toString(), 'string');
+  });
 
-    it('case2: param with default value and type annotation', async () => {
-        const param = method?.getSubSignature().getParameters()[1];
-        assert.isDefined(param);
-        assert.isTrue(param!.isOptional());
-        assert.equal(param!.getType().toString(), 'number');
-    });
+  it('case2: param with default value and type annotation', async () => {
+    const param = method?.getSubSignature().getParameters()[1];
+    assert.isDefined(param);
+    assert.isTrue(param!.isOptional());
+    assert.equal(param!.getType().toString(), 'number');
+  });
 
-    it('case3: param with default value and without type annotation', async () => {
-        const param = method?.getSubSignature().getParameters()[2];
-        assert.isDefined(param);
-        assert.isTrue(param!.isOptional());
-        // TODO: type inference should update the param type with initializer stmts.
-        assert.equal(param!.getType().toString(), 'unknown');
-    });
+  it('case3: param with default value and without type annotation', async () => {
+    const param = method?.getSubSignature().getParameters()[2];
+    assert.isDefined(param);
+    assert.isTrue(param!.isOptional());
+    // TODO: type inference should update the param type with initializer stmts.
+    assert.equal(param!.getType().toString(), 'unknown');
+  });
 
-    it('case4: param with default value according to another param', async () => {
-        const param = method?.getSubSignature().getParameters()[3];
-        assert.isDefined(param);
-        assert.isTrue(param!.isOptional());
-        assert.equal(param!.getType().toString(), 'number');
-    });
+  it('case4: param with default value according to another param', async () => {
+    const param = method?.getSubSignature().getParameters()[3];
+    assert.isDefined(param);
+    assert.isTrue(param!.isOptional());
+    assert.equal(param!.getType().toString(), 'number');
+  });
 
-    it('case5: method ir', async () => {
-        assert.isDefined(method);
-        assert.isNotNull(method);
-        const printer = new ArkIRMethodPrinter(method!);
-        assert.equal(printer.dump(), MethodParamWithDefaultValue);
-    });
+  it('case5: method ir', async () => {
+    assert.isDefined(method);
+    assert.isNotNull(method);
+    const printer = new ArkIRMethodPrinter(method!);
+    assert.equal(printer.dump(), MethodParamWithDefaultValue);
+  });
 
-    it('case6: method with complicated initializer ir', async () => {
-        const method = arkFile?.getDefaultClass().getMethodWithName('paramWithComplicatedInitializer');
-        assert.isDefined(method);
-        assert.isNotNull(method);
-        const printer = new ArkIRMethodPrinter(method!);
-        assert.equal(printer.dump(), paramWithComplicatedInitializer);
-    });
+  it('case6: method with complicated initializer ir', async () => {
+    const method = arkFile?.getDefaultClass().getMethodWithName('paramWithComplicatedInitializer');
+    assert.isDefined(method);
+    assert.isNotNull(method);
+    const printer = new ArkIRMethodPrinter(method!);
+    assert.equal(printer.dump(), paramWithComplicatedInitializer);
+  });
 
-    it('case7: method with if branch', async () => {
-        const method = arkFile?.getDefaultClass().getMethodWithName('paramInitializerWithIfBranch');
-        assert.isDefined(method);
-        assert.isNotNull(method);
-        const printer = new ArkIRMethodPrinter(method!);
-        assert.equal(printer.dump(), methodWithIfBranch);
-        const startingBlockID = method!.getBody()?.getCfg().getStartingBlock()?.getId();
-        assert.isDefined(startingBlockID);
-        assert.equal(startingBlockID, 2);
-    });
+  it('case7: method with if branch', async () => {
+    const method = arkFile?.getDefaultClass().getMethodWithName('paramInitializerWithIfBranch');
+    assert.isDefined(method);
+    assert.isNotNull(method);
+    const printer = new ArkIRMethodPrinter(method!);
+    assert.equal(printer.dump(), methodWithIfBranch);
+    const startingBlockID = method!.getBody()?.getCfg().getStartingBlock()?.getId();
+    assert.isDefined(startingBlockID);
+    assert.equal(startingBlockID, 2);
+  });
 
-    it('case8: method with ternary expression', async () => {
-        const method = arkFile?.getDefaultClass().getMethodWithName('paramInitializerWithTernary');
-        assert.isDefined(method);
-        assert.isNotNull(method);
-        const printer = new ArkIRMethodPrinter(method!);
-        assert.equal(printer.dump(), methodWithTernary);
-    });
+  it('case8: method with ternary expression', async () => {
+    const method = arkFile?.getDefaultClass().getMethodWithName('paramInitializerWithTernary');
+    assert.isDefined(method);
+    assert.isNotNull(method);
+    const printer = new ArkIRMethodPrinter(method!);
+    assert.equal(printer.dump(), methodWithTernary);
+  });
 
-    it('case9: method with try catch', async () => {
-        const method = arkFile?.getDefaultClass().getMethodWithName('paramInitializerWithTryCatch');
-        assert.isDefined(method);
-        assert.isNotNull(method);
-        const printer = new ArkIRMethodPrinter(method!);
-        assert.equal(printer.dump(), methodWithTryCatch);
-        const startingBlockID = method!.getBody()?.getCfg().getStartingBlock()?.getId();
-        assert.isDefined(startingBlockID);
-        assert.equal(startingBlockID, 3);
-    });
+  it('case9: method with try catch', async () => {
+    const method = arkFile?.getDefaultClass().getMethodWithName('paramInitializerWithTryCatch');
+    assert.isDefined(method);
+    assert.isNotNull(method);
+    const printer = new ArkIRMethodPrinter(method!);
+    assert.equal(printer.dump(), methodWithTryCatch);
+    const startingBlockID = method!.getBody()?.getCfg().getStartingBlock()?.getId();
+    assert.isDefined(startingBlockID);
+    assert.equal(startingBlockID, 3);
+  });
 
-    it('case10: method with for loop', async () => {
-        const method = arkFile?.getDefaultClass().getMethodWithName('paramInitializerWithForLoop');
-        assert.isDefined(method);
-        assert.isNotNull(method);
-        const printer = new ArkIRMethodPrinter(method!);
-        assert.equal(printer.dump(), methodWithForLoop);
-        const startingBlockID = method!.getBody()?.getCfg().getStartingBlock()?.getId();
-        assert.isDefined(startingBlockID);
-        assert.equal(startingBlockID, 3);
-    });
+  it('case10: method with for loop', async () => {
+    const method = arkFile?.getDefaultClass().getMethodWithName('paramInitializerWithForLoop');
+    assert.isDefined(method);
+    assert.isNotNull(method);
+    const printer = new ArkIRMethodPrinter(method!);
+    assert.equal(printer.dump(), methodWithForLoop);
+    const startingBlockID = method!.getBody()?.getCfg().getStartingBlock()?.getId();
+    assert.isDefined(startingBlockID);
+    assert.equal(startingBlockID, 3);
+  });
 
-    it('case11: method with Switch', async () => {
-        const method = arkFile?.getDefaultClass().getMethodWithName('paramInitializerWithSwitch');
-        assert.isDefined(method);
-        assert.isNotNull(method);
-        const printer = new ArkIRMethodPrinter(method!);
-        assert.equal(printer.dump(), methodWithSwitch);
-        const startingBlockID = method!.getBody()?.getCfg().getStartingBlock()?.getId();
-        assert.isDefined(startingBlockID);
-        assert.equal(startingBlockID, 3);
-    });
+  it('case11: method with Switch', async () => {
+    const method = arkFile?.getDefaultClass().getMethodWithName('paramInitializerWithSwitch');
+    assert.isDefined(method);
+    assert.isNotNull(method);
+    const printer = new ArkIRMethodPrinter(method!);
+    assert.equal(printer.dump(), methodWithSwitch);
+    const startingBlockID = method!.getBody()?.getCfg().getStartingBlock()?.getId();
+    assert.isDefined(startingBlockID);
+    assert.equal(startingBlockID, 3);
+  });
 });
 
 describe('Global Used in Method', () => {
-    it('test global with no declaring stmt', async () => {
-        const method = arkDefaultClass?.getMethodWithName('assign2Global');
-        const stmts = method?.getCfg()?.getStmts();
-        assert.isDefined(stmts);
-        assert.isAtLeast(stmts!.length, 2);
-        assert.isNull(((stmts![1] as ArkAssignStmt).getLeftOp() as Local).getDeclaringStmt());
-    });
+  it('test global with no declaring stmt', async () => {
+    const method = arkDefaultClass?.getMethodWithName('assign2Global');
+    const stmts = method?.getCfg()?.getStmts();
+    assert.isDefined(stmts);
+    assert.isAtLeast(stmts!.length, 2);
+    assert.isNull(((stmts![1] as ArkAssignStmt).getLeftOp() as Local).getDeclaringStmt());
+  });
+});
+
+describe('Empty Function constructor()', () => {
+  it('should execute without errors and have no side effects', () => {
+    const method = arkDefaultClass?.getMethodWithName('constructor');
+    assert.isDefined(method);
+    const stmts = method?.getCfg()?.getStmts();
+    assert.isDefined(stmts);
+  });
+});
+
+describe('Empty Function constructor()', () => {
+  it('should execute without errors and have no side effects', () => {
+    const method = testNamespace?.getDefaultClass()?.getMethodWithName('constructor');
+    assert.isDefined(method);
+    const stmts = method?.getCfg()?.getStmts();
+    assert.isDefined(stmts);
+  });
 });

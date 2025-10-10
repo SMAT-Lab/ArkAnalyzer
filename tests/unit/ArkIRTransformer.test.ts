@@ -60,6 +60,7 @@ import {
     SPREAD_PARAMETERS2_EXPECT_IR,
     SPREAD_PARAMETERS3_EXPECT_IR,
     UnaryExpression_Expect_IR,
+    INCREMENT_EXPECT_IR,
 } from '../resources/arkIRTransformer/expression/ExpressionExpectIR';
 import {
     CompoundAssignment_Expect_IR,
@@ -469,6 +470,10 @@ describe('expression Test', () => {
         testMethodIR(scene, 'Destructuring.ts', DEFAULT_ARK_CLASS_NAME, 'destructuring1', DESTRUCTURING1_EXPECT_IR);
         testMethodIR(scene, 'Destructuring.ts', DEFAULT_ARK_CLASS_NAME, 'destructuring2', DESTRUCTURING2_EXPECT_IR);
         testMethodIR(scene, 'Destructuring.ts', DEFAULT_ARK_CLASS_NAME, 'destructuring3', DESTRUCTURING3_EXPECT_IR);
+    });
+
+    it('test increment expression', async () => {
+        testMethodIR(scene, 'IncrementExpressionTest.ts', DEFAULT_ARK_CLASS_NAME, 'incrementExpression', INCREMENT_EXPECT_IR);
     });
 });
 

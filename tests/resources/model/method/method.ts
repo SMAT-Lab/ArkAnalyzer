@@ -178,3 +178,10 @@ let globalNumber = 2;
 function assign2Global(): void {
     globalNumber = 3;
 }
+
+function constructor(): void {
+}
+
+namespace ConstructorTest {
+    export function constructor(): void { }
+}

@@ -13,26 +13,16 @@
  * limitations under the License.
  */
 
-function case1(): void {
-    let i = 0;
-    try {
-        if (i !== 0) {
-            let y = 10 / i;
-        }
-    } catch (e) {
-        console.log('i === 0');
-    }
-}
+function incrementExpression(): void {
+    let x = 10;
+    x += 5;
 
-function case2(): void {
-    try {
-        let a = 1;
-    } catch (e) {
-        let b = 2;
-    } finally {
-        type FuncType = (p: string) => void;
-        let c: FuncType = (p: string): number => {
-            return 0;
-        };
-    }
+    const arr = [10];
+    arr[0] += 5;
+
+    const obj = { x: 10 };
+    obj.x += 5;
+
+    const obj1 = { x: { y: [10] } };
+    obj1.x.y[0] += 5;
 }
