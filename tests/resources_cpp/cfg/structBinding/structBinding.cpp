@@ -78,7 +78,7 @@ std::tuple<std::string, int, bool> GetStudentInfo()
 
 void FunctionReturnUsage()
 {
-    auto [name, age, is_graduated] = get_student_info();
+    auto [name, age, is_graduated] = GetStudentInfo();
 }
 
 // 示例7：与const和引用组合使用

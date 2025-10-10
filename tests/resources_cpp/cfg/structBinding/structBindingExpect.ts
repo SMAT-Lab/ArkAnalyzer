@@ -181,9 +181,9 @@ export const REFERENCE_EXPECT_FUNCTIONRETURN = {
             id: 0,
             stmts: [
                 'this = this: @structBinding/structBinding.cpp: %dflt',
-                'name = staticinvoke <@%unk/%unk: .get_student_info()>()[0]',
-                'age = staticinvoke <@%unk/%unk: .get_student_info()>()[1]',
-                'is_graduated = staticinvoke <@%unk/%unk: .get_student_info()>()[2]',
+                'name = staticinvoke <@structBinding/structBinding.cpp: %dflt.GetStudentInfo()>()[0]',
+                'age = staticinvoke <@structBinding/structBinding.cpp: %dflt.GetStudentInfo()>()[1]',
+                'is_graduated = staticinvoke <@structBinding/structBinding.cpp: %dflt.GetStudentInfo()>()[2]',
                 'return',
             ],
             preds: [],
