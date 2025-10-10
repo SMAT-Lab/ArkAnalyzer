@@ -136,7 +136,7 @@ export class CxxSwitchBuilder {
         const caseCnt = switchStmtBuilder.cases.length;
         for (let i = caseCnt - 1; i >= 0; i--) {
             const currCase = switchStmtBuilder.cases[i];
-            if (currCase.stmt.block) {
+            if (currCase.stmt.block || currCase.stmt.type === 'gotoStatement') {
                 expectedSuccessorsOfCaseIfBlock.push(...successorsOfBlockContainSwitch.splice(-1, 1));
             } else {
                 // if there are no stmts after this case, reuse the successor of the next case
