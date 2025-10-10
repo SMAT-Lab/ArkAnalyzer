@@ -140,7 +140,7 @@ export class CxxSwitchBuilder {
                 expectedSuccessorsOfCaseIfBlock.push(...successorsOfBlockContainSwitch.splice(-1, 1));
             } else {
                 // if there are no stmts after this case, reuse the successor of the next case
-                expectedSuccessorsOfCaseIfBlock.push(...expectedSuccessorsOfCaseIfBlock.slice(-1));
+                expectedSuccessorsOfCaseIfBlock.push(new BasicBlock());
             }
         }
         expectedSuccessorsOfCaseIfBlock.reverse();
@@ -167,6 +167,15 @@ export class CxxSwitchBuilder {
                 caseIfBlock.addPredecessorBlock(lastCaseBlock);
             }
             lastCaseBlock = expectedSuccessorsOfCaseIfBlock[j];
+        }
+        for (let j = 0; j < caseCnt; j++) {
+            const caseStmtBlock = expectedSuccessorsOfCaseIfBlock[j];
+            if (caseStmtBlock.getId() === -1) {
+                caseStmtBlock.getPredecessors().forEach(predecessor =>
+                {predecessor.removeSuccessorBlock(caseStmtBlock)});
+                caseStmtBlock.getSuccessors().forEach(successor =>
+                {successor.removePredecessorBlock(caseStmtBlock)});
+            }
         }
         return true;
     }

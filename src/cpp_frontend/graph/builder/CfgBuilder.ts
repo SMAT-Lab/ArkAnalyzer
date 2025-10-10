@@ -370,7 +370,8 @@ export class CfgBuilder {
     }
 
     private sliceCaseDefaultNode(node: CxxAstNode, clauses: CxxAstNode[]): void {
-        if (node.kind === 'BreakStmt' || node.kind === 'DefaultStmt' || node.kind === 'ContinueStmt') {
+        if (node.kind === 'BreakStmt' || node.kind === 'DefaultStmt' || node.kind === 'ContinueStmt' ||
+            node.kind === 'GotoStmt') {
             clauses.push(node);
             return;
         }
@@ -404,7 +405,7 @@ export class CfgBuilder {
         return tempClauses.reduce((acc: CxxAstNode[], curr: CxxAstNode, idx: number, arr: CxxAstNode[]) => {
             if (['CaseStmt', 'DefaultStmt'].includes(curr.kind.toString())) {
                 curr.parent = switchNode.inner[1];
-                if (idx + 1 < arr.length && ['BreakStmt', 'ContinueStmt'].includes(arr[idx + 1].kind.toString())) {
+                if (idx + 1 < arr.length && ['BreakStmt', 'ContinueStmt', 'GotoStmt'].includes(arr[idx + 1].kind.toString())) {
                     arr[idx + 1].parent = curr;
                     curr.inner.push(arr[idx + 1]);
                 }
@@ -453,9 +454,12 @@ export class CfgBuilder {
             }
             casestm.next!.lasts.delete(casestm);
 
-            if (lastCaseExit) {
+            if (lastCaseExit && casestm.code !== 'default:') {
                 lastCaseExit.next = casestm;
                 casestm.lasts.add(lastCaseExit);
+            } else if (lastCaseExit && casestm.code === 'default:') {
+                lastCaseExit.next = casestm.next;
+                casestm.next?.lasts.add(lastCaseExit);
             }
             lastCaseExit = caseExit;
             if (i === c.inner[1].inner.length - 1) {
