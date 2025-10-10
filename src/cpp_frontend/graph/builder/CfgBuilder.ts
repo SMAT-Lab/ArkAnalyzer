@@ -453,11 +453,7 @@ export class CfgBuilder {
                 casestm.next!.lasts.add(stmt);
             }
             casestm.next!.lasts.delete(casestm);
-
-            if (lastCaseExit && casestm.code !== 'default:') {
-                lastCaseExit.next = casestm;
-                casestm.lasts.add(lastCaseExit);
-            } else if (lastCaseExit && casestm.code === 'default:') {
+            if (lastCaseExit) {
                 lastCaseExit.next = casestm.next;
                 casestm.next?.lasts.add(lastCaseExit);
             }
