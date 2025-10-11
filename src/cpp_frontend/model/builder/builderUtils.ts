@@ -137,6 +137,10 @@ export function buildParameters(params: CxxAstNode[], arkInstance: ArkMethod | A
         } else {
             methodParameter.setName('');
         }
+        // Is it optional
+        if (parameter.inner.length > 0) {
+            methodParameter.setOptional(true);
+        }
         // type
         if (parameter.type) {
             methodParameter.setType(buildGenericType(cxxNode2Type(parameter.type.qualType, arkInstance, sourceFile, parameter), arkInstance));
