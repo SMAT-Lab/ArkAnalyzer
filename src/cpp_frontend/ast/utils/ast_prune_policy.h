@@ -53,7 +53,7 @@ using json = nlohmann::json;
 extern bool g_pruneHugeInits;
 
 // Threshold by *source span length in characters* (cheap O(1) check).
-// Typical range: 120–256. Default: 160.
+// Typical range: 120–256. Default: 1280.
 extern unsigned g_initTokLenThreshold;
 
 // Threshold by *token count* via clang_tokenize (slightly heavier).

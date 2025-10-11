@@ -57,7 +57,7 @@ export const CallbackToArkTS_EXPECT = {
                 "staticinvoke <@%unk/%unk: .Napi_AddPropertyInt32()>(env, argv, 'type', 1)",
                 "staticinvoke <@%unk/%unk: .Napi_AddPropertyInt32()>(env, argv, 'index', 2)",
                 'result = null',
-                '%3 = args[0]',
+                '%3 = args.<@%unk/%unk: .0>',
                 '%4 = &argv',
                 '%5 = &result',
                 'staticinvoke <@%unk/%unk: .napi_call_function()>(env, 0, %3, 1, %4, %5)',

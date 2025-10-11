@@ -112,7 +112,7 @@ export const LAZY_IMPORT_CASE1_CLASS = {
                         'staticinvoke <@%unk/%unk: .napi_get_cb_info()>(env, info, %1, args, %2, null)',
                         'value = 0',
                         'valuetype = undefined',
-                        '%3 = args[0]',
+                        '%3 = args.<@%unk/%unk: .0>',
                         '%4 = &valuetype',
                         'staticinvoke <@%unk/%unk: .napi_typeof()>(env, %3, %4)',
                         'if valuetype != napi_undefined != 0',
@@ -122,7 +122,7 @@ export const LAZY_IMPORT_CASE1_CLASS = {
                 },
                 {
                     id: 2,
-                    stmts: ['%5 = args[0]', '%6 = &value', 'staticinvoke <@%unk/%unk: .napi_get_value_double()>(env, %5, %6)'],
+                    stmts: ['%5 = args.<@%unk/%unk: .0>', '%6 = &value', 'staticinvoke <@%unk/%unk: .napi_get_value_double()>(env, %5, %6)'],
                     preds: [1],
                     succes: [3],
                 },

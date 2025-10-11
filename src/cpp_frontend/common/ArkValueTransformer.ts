@@ -1322,7 +1322,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         for (const stmt of innerStmts) {
             exprPositions.push(...stmt.valueOriginalPositions);
         }
-
+        // *ptr,When ptr is a smart pointer and the node type is CXXOperatorCallExpr, we will perform pointer dereference parsing here
         let elementAccessExpr: Value;
         if (innerStmts.length >= 2) {
             elementAccessExpr = new ArkArrayRef(innerStmts[0].value as Local, innerStmts[1].value);

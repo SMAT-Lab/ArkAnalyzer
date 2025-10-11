@@ -40,7 +40,7 @@ void operatorCallExprPostProcess(json& node, json& children);
 void implicitCastExprPostProcess(json& node, json& children, std::string codeStr);
 void callExprPostProcess(json& node, json& children);
 void PostprocessPseudoDestructor(json& node, const json& children, std::string_view codeStr);
-void PostprocessFoldExpr(json& node, std::string_view codeStr);
+// void PostprocessFoldExpr(json& node, std::string_view codeStr);
 
 bool ConstructCallExpr(std::string codeStr, std::string typeStr);
 
@@ -55,3 +55,61 @@ json MakeMinimalTypeNodeFromToken(const std::string& tokNoSpace);
 void RewriteTypeAliasTemplateArgs(json& typeAliasDecl, json& children);
 
 void mergeTypeAliasDeclChild(json& newChildren, json& children, json& parent);
+
+// TrimView: Return a subview of `s` with leading and trailing ASCII whitespace (<= ' ') removed.
+// Details:
+//   - No allocation/copy; only adjusts view bounds (O(n) time, O(1) extra space).
+//   - Does not modify the original string; if `s` is all whitespace, returns an empty view.
+//   - The returned view must not outlive the underlying character buffer.
+//   - Only ASCII whitespace is considered (space, tab, CR, LF, etc.), not Unicode whitespace.
+inline std::string_view TrimView(std::string_view s) noexcept
+{
+    size_t i = 0, j = s.size();
+    while (i < j && (unsigned char) s[i] <= ' ') {
+        ++i;
+    }
+    while (j > i && (unsigned char) s[j - 1] <= ' ') {
+        --j;
+    }
+    return s.substr(i, j - i);
+}
+
+bool LooksLikeSimpleLeftFold(std::string_view s, char& opOut) noexcept;
+
+// ------ type/name helpers ------
+bool IsClassLikeQualType(const std::string& qt) noexcept;
+std::string StripTemplates(std::string s);
+std::string ShortTypeNameFromQual(const std::string& qt);
+
+// Only intended in VarDecl context: whether node looks like a parenthesized init
+bool LooksLikeParenInitNode(const json& n);
+
+// Promote VarDecl’s parenthesized init to CXXConstructExpr if it’s a class-like type
+void RecoverCtorForVarDecl(json& varDecl);
+
+// Returns true if s is at least 2 chars long and is wrapped by a single
+// leading '(' and trailing ')'. Does not check for balanced parentheses.
+bool IsParenWrapped(std::string_view s) noexcept;
+
+// Convenience overload so existing call sites with std::string keep working.
+bool IsParenWrapped(const std::string& s) noexcept;
+
+// — Public, reusable fold-expression patcher —
+// Recursively walks the subtree and rewrites wrapper nodes of the form
+// `(... <op> ident)` (ImplicitCastExpr / UnexposedExpr / ParenExpr) in place
+// into CXXFoldExpr.
+void patchFoldExpr(json& node);
+
+// --- CXX ctor-initializer helpers ---
+void handleCXXCtorInitializerOfCallExpr(nlohmann::json& child);
+nlohmann::json buildCXXCtorInitializer(nlohmann::json& memberRef,
+                                       nlohmann::json& arg,
+                                       nlohmann::json& parent);
+nlohmann::json addCXXCtorInitializer(nlohmann::json& children,
+                                     nlohmann::json& parent);
+
+// Build child node's range based on parent node
+void buildNodeRange(json& node, json& parent);
+
+// Recursively build typedef child nodes from a CXType
+void buildTypedefChild(const CXType& type, json& newChildren, json& children, json& parent);
