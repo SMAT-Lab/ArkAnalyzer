@@ -44,8 +44,9 @@ void PostprocessPseudoDestructor(json& node, const json& children, std::string_v
 bool ConstructCallExpr(std::string codeStr, std::string typeStr);
 
 
-std::vector<std::string>
-ParseTemplateArgsAfterEqual(const std::string& codeRaw, const std::string& tplNameHint);
+std::vector<std::string> ParseTemplateArgsAfterEqual(
+    const std::string& codeRaw,
+    const std::string& tplNameHint);
 
 bool IsBuiltinNameNoSpace(const std::string& tokNoSpace);
 

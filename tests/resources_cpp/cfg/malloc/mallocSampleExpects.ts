@@ -23,29 +23,29 @@ export const MALLOC_EXPECT_CASE1 = {
                 '%0 = n * sizeof(*p)',
                 '%1 = staticinvoke <@%unk/%unk: .malloc()>(%0)',
                 'p = <CXXStaticCastExpr: int*>%1',
-                'i = 0'
+                'i = 0',
             ],
             preds: [],
-            succes: [ 1 ]
+            succes: [1],
         },
-        { id: 1, stmts: [ 'if i < n' ], preds: [ 0, 2 ], succes: [ 2, 3 ] },
+        { id: 1, stmts: ['if i < n'], preds: [0, 2], succes: [2, 3] },
         {
             id: 2,
             stmts: [
                 '%2 = i + 1',
                 '%3 = <CXXStaticCastExpr: int>%2',
                 'p[i] = %3',
-                'i = i + 1'
+                'i = i + 1',
             ],
-            preds: [ 1 ],
-            succes: [ 1 ]
+            preds: [1],
+            succes: [1],
         },
         {
             id: 3,
-            stmts: [ 'staticinvoke <@%unk/%unk: .free()>(p)', 'return 0' ],
-            preds: [ 1 ],
-            succes: []
-        }
+            stmts: ['staticinvoke <@%unk/%unk: .free()>(p)', 'return 0'],
+            preds: [1],
+            succes: [],
+        },
     ],
 };
 
