@@ -776,6 +776,11 @@ export class CfgBuilder {
                 break;
             case 'NullStmt':
                 break;
+            case 'ParmDecl':
+                s = new StatementBuilder('statement', 'ParmDecl', innerNode, scope.id);
+                this.judgeLastType(s, lastStatement);
+                lastStatement = s;
+                break;
             default:
                 break;
         }
@@ -1124,6 +1129,12 @@ export class CfgBuilder {
                 if (this.astRoot.kind === 'CXXConstructorDecl' && ['CXXConstructExpr', 'CXXCtorInitializer'].includes(this.astRoot.inner[i].kind)) {
                     stmts.push(this.astRoot.inner[i]);
                 }
+                const length = this.astRoot.inner[i].inner.length;
+                if (this.astRoot.inner[i].kind === 'ParmDecl' && length > 0 &&
+                    this.astRoot.inner[i].inner[length - 1].kind !== 'TypeRef') {
+                    stmts.push(this.astRoot.inner[i]);
+                    continue;
+                }
                 if (this.astRoot.inner[i].kind === 'CompoundStmt') {
                     stmts.push(...this.astRoot.inner[i].inner);
                     break;
@@ -1265,6 +1276,7 @@ export class CfgBuilder {
         const asCoreBeforeTry = blockBuildersBeforeTry as unknown as Set<CoreBlockBuilder>;
         const trapBuilder = new TrapBuilder(asCoreBeforeTry, asCoreMapForTrap, arkIRTransformer, basicBlockSet);
         const traps = trapBuilder.buildTraps();
+        this.removeEmptyBlocks(basicBlockSet);
         const cfg = this.createCfg(blockBuilderToCfgBlock, basicBlockSet, currBlockId);
         return {
             cfg,
@@ -1273,6 +1285,51 @@ export class CfgBuilder {
             aliasTypeMap: arkIRTransformer.getAliasTypeMap(),
             traps,
         };
+    }
+
+    private removeEmptyBlocks(basicBlockSet: Set<BasicBlock>): void {
+        for (const bb of basicBlockSet) {
+            if (bb.getStmts().length > 0) {
+                continue;
+            }
+            const predecessors = bb.getPredecessors();
+            const successors = bb.getSuccessors();
+
+            // the empty basic block with neither predecessor nor successor could be deleted directly
+            if (predecessors.length === 0 && successors.length === 0) {
+                basicBlockSet.delete(bb);
+                continue;
+            }
+
+            // the empty basic block with predecessor but no successor could be deleted directly and remove its ID from the predecessor blocks
+            if (predecessors.length > 0 && successors.length === 0) {
+                for (const predecessor of predecessors) {
+                    predecessor.removeSuccessorBlock(bb);
+                }
+                basicBlockSet.delete(bb);
+                continue;
+            }
+
+            // the empty basic block with successor but no predecessor could be deleted directly and remove its ID from the successor blocks
+            if (predecessors.length === 0 && successors.length > 0) {
+                for (const successor of successors) {
+                    successor.removePredecessorBlock(bb);
+                }
+                basicBlockSet.delete(bb);
+                continue;
+            }
+
+            // the rest case is the empty basic block both with predecessor and successor, should relink its predecessor and successor
+            for (const predecessor of predecessors) {
+                predecessor.removeSuccessorBlock(bb);
+                successors.forEach(successor => predecessor.addSuccessorBlock(successor));
+            }
+            for (const successor of successors) {
+                successor.removePredecessorBlock(bb);
+                predecessors.forEach(predecessor => successor.addPredecessorBlock(predecessor));
+            }
+            basicBlockSet.delete(bb);
+        }
     }
 
     private initializeBuild(): {
