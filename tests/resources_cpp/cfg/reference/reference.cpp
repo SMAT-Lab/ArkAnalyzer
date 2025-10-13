@@ -48,7 +48,8 @@ void BaseRightRefer()
 {
     int x = 1;
     int y = 2;
-    int &&rr1 = 10 int &&rr2 = x + y;
+    int &&rr1 = 10 ;
+    int &&rr2 = x + y;
 }
 
 //  Basic type pointers
