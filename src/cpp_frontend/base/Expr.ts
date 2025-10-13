@@ -18,7 +18,7 @@ import { Value } from '../../core/base/Value';
 import { BooleanType, Type } from '../../core/base/Type';
 import { ArkMethod } from '../../core/model/ArkMethod';
 import { AbstractRef } from '../../core/base/Ref';
-import { CxxSizeTType, CxxStdTypeName, CxxTypeBitWidth, CxxTypeSigned, typeInfo } from './Type';
+import { CxxSizeTType, CxxStdTypeName, CxxTypeBitWidth, CxxTypeSigned, TypeInfo } from './Type';
 
 export class ArkSizeOfExpr extends AbstractExpr {
     private op: Value;
@@ -170,7 +170,7 @@ export class ArkTypeIdExpr extends AbstractExpr {
     }
 
     public getType(): Type {
-        return new typeInfo('type_info', this.op.getType());
+        return new TypeInfo('type_info', this.op.getType());
     }
 
     public toString(): string {

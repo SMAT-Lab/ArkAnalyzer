@@ -21,11 +21,12 @@
 #include <set>
 #define TWO 2
 #define THREE 3
+#define FIVE 5
 
 
 bool IsParenWrapped(std::string_view s) noexcept
 {
-    return s.size() >= 2 && s.front() == '(' && s.back() == ')';
+    return s.size() >= TWO && s.front() == '(' && s.back() == ')';
 }
 
 bool IsParenWrapped(const std::string& s) noexcept
@@ -154,31 +155,25 @@ void PostprocessPseudoDestructor(json& node, const json& children, std::string_v
 
 // Fast, allocation-free check for the pattern of a simple *left* fold expression,
 // i.e. "(... <op> <anything>)" after trimming ASCII whitespace.
-//
-// Behavior:
 //   - Accepts only the operators: +, -, *, /, &, |, ^
 //   - Requires the string (after TrimView) to be fully parenthesized and to start with "(..."
 //   - Skips ASCII spaces after "(..." and then expects a single operator
 //   - On success, writes that operator to `opOut` and returns true
 //   - On failure, returns false and leaves `opOut` unchanged
-//
-// Notes:
 //   - This is a syntactic quick check: it does not validate the right-hand expression.
 //   - Only ASCII whitespace (<= ' ') is skipped; no Unicode whitespace handling.
 //   - Time: O(n) due to the initial trim; Space: O(1).
 bool LooksLikeSimpleLeftFold(std::string_view s, char& opOut) noexcept
 {
     const std::string_view t = TrimView(s);
-
     // Require a fully parenthesized expression: "( ... )"
-    if (t.size() < 5 || t.front() != '(' || t.back() != ')') {
+    if (t.size() < FIVE || t.front() != '(' || t.back() != ')') {
         return false;
     }
     // Must start with the fold ellipsis: "(..."
     if (t.rfind("(...", 0) != 0) { // starts-with
         return false;
     }
-
     size_t i = 4; // skip "(..."
     while (i < t.size() && (unsigned char)t[i] <= ' ') {
         ++i;
@@ -202,10 +197,10 @@ bool LooksLikeSimpleLeftFold(std::string_view s, char& opOut) noexcept
 static bool IsBuiltinNameNoSpaceImpl(const std::string& s)
 {
     static const std::set<std::string> kBuiltin = {
-        "void","bool","char","wchar_t","char16_t","char32_t",
-        "short","unsignedshort","int","unsignedint",
-        "long","unsignedlong","longlong","unsignedlonglong",
-        "float","double","longdouble"
+        "void", "bool", "char", "wchar_t", "char16_t", "char32_t",
+        "short", "unsignedshort", "int", "unsignedint",
+        "long", "unsignedlong", "longlong", "unsignedlonglong",
+        "float", "double", "longdouble"
     };
     return kBuiltin.count(s) != 0;
 }
@@ -219,25 +214,49 @@ json MakeMinimalTypeNodeFromToken(const std::string& tokNoSpace)
 {
     if (IsBuiltinNameNoSpaceImpl(tokNoSpace)) {
         return json{
-            {"kind","BuiltinType"},
+            {"kind", "BuiltinType"},
             {"name", tokNoSpace},
             {"type", {{"qualType", tokNoSpace}}},
             {"inner", json::array()}
         };
     }
     return json{
-        {"kind","TypeRef"},
+        {"kind", "TypeRef"},
         {"name", tokNoSpace},
         {"type", {{"qualType", tokNoSpace}}},
         {"inner", json::array()}
     };
 }
 
-std::vector<std::string>
-ParseTemplateArgsAfterEqual(const std::string& codeRaw, const std::string& tplNameHint)
+
+static std::vector<std::string> SplitTopLevelTemplateArgs(std::string_view inside)
+{
+    std::vector<std::string> out;
+    int depth = 0;
+    size_t seg = 0;
+    for (size_t i = 0; i <= inside.size(); ++i) {
+        const bool end = (i == inside.size());
+        if (end || (inside[i] == ',' && depth == 0)) {
+            std::string tok(inside.substr(seg, i - seg));
+            if (!tok.empty()) {
+                out.push_back(std::move(tok));
+            }
+            seg = i + 1;
+        } else if (inside[i] == '<') {
+            ++depth;
+        } else if (inside[i] == '>') {
+            --depth;
+        }
+    }
+    return out;
+}
+
+std::vector<std::string> ParseTemplateArgsAfterEqual(const std::string& codeRaw,
+                                                     const std::string& tplNameHint)
 {
     // Strip all whitespace
-    std::string s; s.reserve(codeRaw.size());
+    std::string s;
+    s.reserve(codeRaw.size());
     for (char c : codeRaw) {
         if (!std::isspace(static_cast<unsigned char>(c))) {
             s.push_back(c);
@@ -252,8 +271,7 @@ ParseTemplateArgsAfterEqual(const std::string& codeRaw, const std::string& tplNa
     if (!tplNameHint.empty()) {
         posName = s.find(tplNameHint, startSearch);
     }
-    size_t lt = (posName != std::string::npos) ? s.find('<', posName)
-                                               : s.find('<', startSearch);
+    size_t lt = (posName != std::string::npos) ? s.find('<', posName) : s.find('<', startSearch);
     if (lt == std::string::npos) {
         return {};
     }
@@ -275,23 +293,9 @@ ParseTemplateArgsAfterEqual(const std::string& codeRaw, const std::string& tplNa
     if (insideBeg == std::string::npos || insideEnd == std::string::npos || insideEnd <= insideBeg) {
         return {};
     }
-    std::string inside = s.substr(insideBeg, insideEnd - insideBeg);
-    std::vector<std::string> out;
-    int d = 0; size_t seg = 0;
-    for (size_t i = 0; i <= inside.size(); ++i) {
-        if (i == inside.size() || (inside[i] == ',' && d == 0)) {
-            std::string tok = inside.substr(seg, i - seg);
-            if (!tok.empty()) {
-                out.push_back(std::move(tok)); // token is already whitespace-stripped
-            }
-            seg = i + 1;
-        } else if (inside[i] == '<') {
-            ++d;
-        } else if (inside[i] == '>') {
-            --d;
-        }
-    }
-    return out;
+
+    std::string_view inside = std::string_view{s}.substr(insideBeg, insideEnd - insideBeg);
+    return SplitTopLevelTemplateArgs(inside);
 }
 
 
@@ -309,14 +313,14 @@ void RewriteTypeAliasTemplateArgs(json& typeAliasDecl, json& children)
     // Get template name hint from existing TemplateRef
     std::string tplNameHint;
     for (const auto& e : children) {
-        if (e.value("kind","") == "TemplateRef") {
-            tplNameHint = e.value("name","");
+        if (e.value("kind", "") == "TemplateRef") {
+            tplNameHint = e.value("name", "");
             break;
         }
     }
 
     json newChildren = json::array();
-    std::string codeStr = typeAliasDecl.value("code" ,"");
+    std::string codeStr = typeAliasDecl.value("code", "");
     if (tplNameHint.empty()) {
         size_t ind = codeStr.find("=");
         std::string tok = codeStr.substr(ind + 1);
@@ -334,7 +338,7 @@ void RewriteTypeAliasTemplateArgs(json& typeAliasDecl, json& children)
     // Locate the TemplateRef position (usually after NamespaceRef("std"))
     size_t tplPos = children.size();
     for (size_t i = 0; i < children.size(); ++i)
-        if (children[i].value("kind","") == "TemplateRef") {
+        if (children[i].value("kind", "") == "TemplateRef") {
             tplPos = i;
             break;
         }
@@ -381,7 +385,7 @@ void mergeTypeAliasDeclChild(json& newChildren, json& children, json& parent)
         }
         newChildren.push_back(children[i]);
     }
-    if(existNamespace) {
+    if (existNamespace) {
         newChildren[0]["name"] = templateName + ">";
         newChildren[0]["code"] = templateName + ">";
     }
@@ -397,10 +401,10 @@ bool IsClassLikeQualType(const std::string& qt) noexcept
         return true;
     }
     static const std::set<std::string> kBuiltins = {
-        "void","bool","char","wchar_t","char8_t","char16_t","char32_t",
-        "signed char","unsigned char","short","unsigned short","int","unsigned int",
-        "long","unsigned long","long long","unsigned long long",
-        "float","double","long double"
+        "void", "bool", "char", "wchar_t", "char8_t", "char16_t", "char32_t",
+        "signed char", "unsigned char", "short", "unsigned short", "int", "unsigned int",
+        "long", "unsigned long", "long long", "unsigned long long",
+        "float", "double", "long double"
     };
     if (kBuiltins.count(qt)) {
         return false;
@@ -415,7 +419,8 @@ bool IsClassLikeQualType(const std::string& qt) noexcept
 std::string StripTemplates(std::string s)
 {
     int depth = 0;
-    std::string out; out.reserve(s.size());
+    std::string out;
+    out.reserve(s.size());
     for (char c : s) {
         if (c == '<') {
             ++depth;
@@ -451,7 +456,7 @@ bool LooksLikeParenInitNode(const json& n)
     // Use only in the VarDecl context; avoid indiscriminately promoting
     // generic parenthesized expressions such as fold/cast nodes.
     if (k == "UnexposedExpr" || k == "ParenExpr" || k == "ImplicitCastExpr") {
-        return (c.size() >= 2 && c.front() == '(' && c.back() == ')');
+        return (c.size() >= TWO && c.front() == '(' && c.back() == ')');
     }
     return false;
 }
@@ -459,18 +464,18 @@ bool LooksLikeParenInitNode(const json& n)
 // ---- Restore parenthesized initialization in VarDecl to CXXConstructExpr ----
 void RecoverCtorForVarDecl(json& varDecl)
 {
-    if (varDecl.value("kind","") != "VarDecl") {
+    if (varDecl.value("kind", "") != "VarDecl") {
         return;
     }
     if (!varDecl.contains("inner") || !varDecl["inner"].is_array()) {
         return;
     }
     auto& inn = varDecl["inner"];
-    if (inn.size() < 2) {
+    if (inn.size() < TWO) {
         return;
     }
-    const std::string qt  = varDecl["type"].value("qualType","");
-    const std::string viC = inn[1].value("code","");
+    const std::string qt  = varDecl["type"].value("qualType", "");
+    const std::string viC = inn[1].value("code", "");
 
     if (!IsClassLikeQualType(qt)) {
         return;
@@ -481,7 +486,7 @@ void RecoverCtorForVarDecl(json& varDecl)
     }
 
     json ctor = {
-        {"kind","CXXConstructExpr"},
+        {"kind", "CXXConstructExpr"},
         {"name", ShortTypeNameFromQual(qt)},
         {"type", {{"qualType", qt}}},
         {"valueCategory", "prvalue"}
@@ -526,7 +531,7 @@ void patchFoldExpr(json &node)
     // Rewrite in place as CXXFoldExpr (preserve original type/range/inner/valueCategory)
     json inner = node.contains("inner") ? node["inner"] : json::array();
     json range = node.contains("range") ? node["range"] : json();
-    json type = node.contains("type") ? node["type"] : json{{"qualType","<dependent type>"}};
+    json type = node.contains("type") ? node["type"] : json{{"qualType", "<dependent type>"}};
     std::string vc = node.value("valueCategory", "prvalue");
 
     node = {
@@ -658,14 +663,13 @@ json buildCXXInheritedCtorInitExpr(json &memberRef, json &children)
 }
 
 // Process parameter node types in constructor as CallExpr
-void handleCXXCtorInitializerOfCallExpr(nlohmann::json& child)
+void HandleCxxCtorInitializerOfCallExpr(nlohmann::json& child)
 {
     if (!child.contains("inner") || !child["inner"].is_array() || child["inner"].empty()) {
         return;
     }
     auto& g0 = child["inner"][0];
     const std::string k = g0.value("kind", "");
-
     if (k == "ImplicitCastExpr" || k == "UnexposedExpr" || k == "ParenExpr") {
         // Lift the value-like wrapper
         child = g0;
@@ -684,7 +688,7 @@ nlohmann::json buildCXXCtorInitializer(nlohmann::json& memberRef, nlohmann::json
 {
     nlohmann::json ctor;
     ctor["kind"] = "CXXCtorInitializer";
-    ctor["anyInit"] = {{"kind","FieldDecl"}, {"name", memberRef["name"]}, {"type", memberRef["type"]}};
+    ctor["anyInit"] = {{"kind", "FieldDecl"}, {"name", memberRef["name"]}, {"type", memberRef["type"]}};
 
     nlohmann::json argNode = arg;
     nlohmann::json inner = nlohmann::json::array();
@@ -692,8 +696,8 @@ nlohmann::json buildCXXCtorInitializer(nlohmann::json& memberRef, nlohmann::json
     ctor["inner"] = std::move(inner);
     const std::string base = memberRef.value("code", "");
     std::string argCode = argNode.value("code", "");
-    if (argCode.size() >= 2 && argCode.front() == '(' && argCode.back() == ')') {
-        argCode = argCode.substr(1, argCode.size() - 2);
+    if (argCode.size() >= TWO && argCode.front() == '(' && argCode.back() == ')') {
+        argCode = argCode.substr(1, argCode.size() - TWO);
     }
     ctor["code"] = base + "(" + argCode + ")";
 
@@ -729,7 +733,7 @@ nlohmann::json addCXXCtorInitializer(nlohmann::json& children,
             continue;
         }
         if (k == "CallExpr") {
-            handleCXXCtorInitializerOfCallExpr(children[i]);
+            HandleCxxCtorInitializerOfCallExpr(children[i]);
             k = children[i].value("kind", "");
         }
         if (isValueLike(k)) {

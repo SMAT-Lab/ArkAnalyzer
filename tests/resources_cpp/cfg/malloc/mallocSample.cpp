@@ -15,10 +15,11 @@
 
 #include <cstdlib>
 
-int main() {
-    const std::size_t N = 5;
-    int* p = static_cast<int*>(std::malloc(N * sizeof(*p)));
-    for (std::size_t i = 0; i < N; ++i) {
+int main()
+{
+    const std::size_t n = 5;
+    int* p = static_cast<int*>(std::malloc(n * sizeof(*p)));
+    for (std::size_t i = 0; i < n; ++i) {
         p[i] = static_cast<int>(i + 1);
     }
     std::free(p);

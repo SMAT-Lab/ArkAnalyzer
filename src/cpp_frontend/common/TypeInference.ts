@@ -64,7 +64,7 @@ import {
     CxxTypeSigned,
     CxxWcharType,
     PointerType,
-    ReferenceType, typeInfo,
+    ReferenceType, TypeInfo,
 } from '../base/Type';
 import { ArkMethod } from '../../core/model/ArkMethod';
 import { ArkExport } from '../../core/model/ArkExport';
@@ -631,7 +631,7 @@ export class TypeInference {
                 return new ClassType(classSignature);
             }
             case 'type_info':
-                return new typeInfo('type_info', new UnclearReferenceType(tsTypeStr));
+                return new TypeInfo('type_info', new UnclearReferenceType(tsTypeStr));
             default:
                 return new UnclearReferenceType(tsTypeStr);
         }

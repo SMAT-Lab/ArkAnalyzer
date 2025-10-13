@@ -47,4 +47,7 @@ void F()
     G();
 }
 
-int main() { return 0; }
+int main()
+{
+    return 0;
+}

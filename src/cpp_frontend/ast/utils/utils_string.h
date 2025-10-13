@@ -42,7 +42,7 @@ std::string GetPathSeparator();
 // Check if same file after path normalization(implementation in .cpp)
 bool IsSameFile(const std::string& pathA, const std::string& pathB);
 
-static inline bool StartsWith(std::string_view s, std::string_view p)
+inline bool StartsWith(std::string_view s, std::string_view p) noexcept
 {
     return s.rfind(p, 0) == 0;
 }

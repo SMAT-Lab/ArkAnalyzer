@@ -543,7 +543,7 @@ export class NapiType extends Type {
     }
 }
 
-export class typeInfo extends Type {
+export class TypeInfo extends Type {
     private name: string;
     private type: Type;
 

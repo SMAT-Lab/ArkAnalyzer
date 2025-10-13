@@ -19,8 +19,8 @@ export const MALLOC_EXPECT_CASE1 = {
             id: 0,
             stmts: [
                 'this = this: @malloc/mallocSample.cpp: %dflt',
-                'N = 5',
-                '%0 = N * sizeof(*p)',
+                'n = 5',
+                '%0 = n * sizeof(*p)',
                 '%1 = staticinvoke <@%unk/%unk: .malloc()>(%0)',
                 'p = <CXXStaticCastExpr: int*>%1',
                 'i = 0'
@@ -28,7 +28,7 @@ export const MALLOC_EXPECT_CASE1 = {
             preds: [],
             succes: [ 1 ]
         },
-        { id: 1, stmts: [ 'if i < N' ], preds: [ 0, 2 ], succes: [ 2, 3 ] },
+        { id: 1, stmts: [ 'if i < n' ], preds: [ 0, 2 ], succes: [ 2, 3 ] },
         {
             id: 2,
             stmts: [

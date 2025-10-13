@@ -60,7 +60,7 @@ import * as AUTO_EXPECT from '../../../resources_cpp/cfg/decltype/decltypeExpect
 import * as INCLUDE_IN_SCOPE from '../../../resources_cpp/cfg/includeInScope/includeInFunctionExpects';
 import * as STRUCTBINDING from '../../../resources_cpp/cfg/structBinding/structBindingExpect';
 import * as CALLEXPR_EXPECT from '../../../resources_cpp/cfg/call/callExpect';
-import * as MALLOC_EXPECT from '../../../resources_cpp/cfg/malloc/mallocSampleExpects'
+import * as MALLOC_EXPECT from '../../../resources_cpp/cfg/malloc/mallocSampleExpects';
 
 // Standard library header file configuration for DevEco
 const deveco_c = process.env.DEVECO_C !== undefined ? process.env.DEVECO_C : '';

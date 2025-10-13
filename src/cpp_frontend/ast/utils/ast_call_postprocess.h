@@ -40,7 +40,6 @@ void operatorCallExprPostProcess(json& node, json& children);
 void implicitCastExprPostProcess(json& node, json& children, std::string codeStr);
 void callExprPostProcess(json& node, json& children);
 void PostprocessPseudoDestructor(json& node, const json& children, std::string_view codeStr);
-// void PostprocessFoldExpr(json& node, std::string_view codeStr);
 
 bool ConstructCallExpr(std::string codeStr, std::string typeStr);
 
@@ -57,14 +56,14 @@ void RewriteTypeAliasTemplateArgs(json& typeAliasDecl, json& children);
 void mergeTypeAliasDeclChild(json& newChildren, json& children, json& parent);
 
 // TrimView: Return a subview of `s` with leading and trailing ASCII whitespace (<= ' ') removed.
-// Details:
-//   - No allocation/copy; only adjusts view bounds (O(n) time, O(1) extra space).
-//   - Does not modify the original string; if `s` is all whitespace, returns an empty view.
-//   - The returned view must not outlive the underlying character buffer.
-//   - Only ASCII whitespace is considered (space, tab, CR, LF, etc.), not Unicode whitespace.
+// No allocation/copy; only adjusts view bounds (O(n) time, O(1) extra space).
+// Does not modify the original string; if `s` is all whitespace, returns an empty view.
+// The returned view must not outlive the underlying character buffer.
+// Only ASCII whitespace is considered (space, tab, CR, LF, etc.), not Unicode whitespace.
 inline std::string_view TrimView(std::string_view s) noexcept
 {
-    size_t i = 0, j = s.size();
+    size_t i = 0;
+    size_t j = s.size();
     while (i < j && (unsigned char) s[i] <= ' ') {
         ++i;
     }
@@ -101,7 +100,7 @@ bool IsParenWrapped(const std::string& s) noexcept;
 void patchFoldExpr(json& node);
 
 // --- CXX ctor-initializer helpers ---
-void handleCXXCtorInitializerOfCallExpr(nlohmann::json& child);
+void HandleCxxCtorInitializerOfCallExpr(nlohmann::json& child);
 nlohmann::json buildCXXCtorInitializer(nlohmann::json& memberRef,
                                        nlohmann::json& arg,
                                        nlohmann::json& parent);

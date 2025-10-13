@@ -1329,7 +1329,7 @@ void nodePostprocess(
     // --- Remaining generic handlers ---
     HandleTemplateAndCursorSpecific(node, kind_cursor, codeStr, children);
     patchFoldExpr(node);
-    if (node.value("kind","") == "VarDecl") {
+    if (node.value("kind", "") == "VarDecl") {
         RecoverCtorForVarDecl(node);
     }
     detectAndFillSpecialKind(node);
