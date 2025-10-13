@@ -238,6 +238,7 @@ describe('Function Test', () => {
 
     it('case3: Lambda Function Test', () => {
         const scene = buildScene('lambdaFunc');
+        scene.inferTypes();
         testBlocks(scene, 'lambdaFuncSample.cpp', 'Case1', LAMBDA_EXPECT.LAMBDA_EXPECT_CASE1.blocks);
         testBlocks(scene, 'lambdaFuncSample.cpp', 'Case2', LAMBDA_EXPECT.LAMBDA_EXPECT_CASE2.blocks);
         testBlocks(scene, 'lambdaFuncSample.cpp', 'Case3', LAMBDA_EXPECT.LAMBDA_EXPECT_CASE3.blocks);
