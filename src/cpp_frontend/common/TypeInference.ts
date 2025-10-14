@@ -493,7 +493,7 @@ export class TypeInference {
                 if (leftType instanceof PointerType || leftType instanceof ReferenceType) {
                     leftType.setBaseType(newLeftType);
                 } else {
-                    leftType =  newLeftType;
+                    leftType = newLeftType;
                 }
             }
         } else if (leftOp instanceof Local && leftOp.getName() === THIS_NAME) {

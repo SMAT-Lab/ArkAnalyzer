@@ -333,11 +333,12 @@ export class Scene {
                 buildDefaultConstructor(cls);
                 // CXXTodo: Use the interface 'getAllMethodsWithName' for obtaining all methods with the same name.
                 const constructors = cls.getAllMethodsWithName(CONSTRUCTOR_NAME);
+                if (cls.isDefaultArkClass()) {
+                    continue;
+                }
                 constructors.forEach(constructor => {
-                    if (!cls.isDefaultArkClass()) {
-                        replaceSuper2Constructor(constructor);
-                        initInConstructorFn(constructor);
-                    }
+                    replaceSuper2Constructor(constructor);
+                    initInConstructorFn(constructor);
                 });
             }
         }
