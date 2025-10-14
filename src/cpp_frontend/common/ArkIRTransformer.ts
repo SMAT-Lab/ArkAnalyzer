@@ -247,20 +247,24 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
     }
 
     // When there are default parameters, how to handle them
-    private cxxParameterToStmts(parameter: CxxAstNode):Stmt[]{
+    private cxxParameterToStmts(parameter: CxxAstNode): Stmt[] {
         const stmts: Stmt[] = [];
-        let paramName : string = parameter.name;
+        let paramName: string = parameter.name;
         const paramLocal = Array.from(this.getLocals()).find(local => local.getName() === paramName);
         if (paramLocal === undefined) {
             return stmts;
         }
         // Inner contains only one element, indicating that no default value has been declared
         const length = parameter.inner.length;
-        if (parameter.inner[0].code === 'maybe_unused' && length === 1){
+        if (parameter.inner[0].code === 'maybe_unused' && length === 1) {
             return stmts;
         }
         // The last element is the default value
-        const { value: paramInitValue, valueOriginalPositions: paramInitPositions, stmts: paramInitStmts } = this.cxxNodeToValueAndStmts(parameter.inner[length - 1]);
+        const {
+            value: paramInitValue,
+            valueOriginalPositions: paramInitPositions,
+            stmts: paramInitStmts,
+        } = this.cxxNodeToValueAndStmts(parameter.inner[length - 1]);
 
         stmts.push(...paramInitStmts);
 
