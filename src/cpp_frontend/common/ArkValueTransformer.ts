@@ -343,7 +343,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
 
     private processInnerNodeToValueAndStmts(node: CxxAstNode): ValueAndStmts {
         if (node.inner?.length > 0) {
-            return this.cxxNodeToValueAndStmts(node.inner[0]);
+            // When a node is an implicit node, the actual node is the last internal node
+            return this.cxxNodeToValueAndStmts(node.inner[node.inner?.length - 1]);
         }
         return this.unprocessedNodeToValueAndStmts(node);
     }
