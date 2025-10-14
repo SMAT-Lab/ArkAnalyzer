@@ -238,6 +238,7 @@ describe('Function Test', () => {
 
     it('case3: Lambda Function Test', () => {
         const scene = buildScene('lambdaFunc');
+        scene.inferTypes();
         testBlocks(scene, 'lambdaFuncSample.cpp', 'Case1', LAMBDA_EXPECT.LAMBDA_EXPECT_CASE1.blocks);
         testBlocks(scene, 'lambdaFuncSample.cpp', 'Case2', LAMBDA_EXPECT.LAMBDA_EXPECT_CASE2.blocks);
         testBlocks(scene, 'lambdaFuncSample.cpp', 'Case3', LAMBDA_EXPECT.LAMBDA_EXPECT_CASE3.blocks);
@@ -270,6 +271,8 @@ describe('Function Test', () => {
     it('case6: call expr', () => {
         const scene = buildScene('call');
         testBlocks(scene, 'call.cpp', 'Case1', CALLEXPR_EXPECT.CXXMEMBERCALL_EXPECT.blocks);
+        testBlocks(scene, 'call.cpp', 'Case2', CALLEXPR_EXPECT.CXXMETHODDEFAULT_CASE2_EXPECT.blocks);
+        testBlocks(scene, 'call.cpp', 'Case3', CALLEXPR_EXPECT.CXXMETHODDEFAULT_CASE3_EXPECT.blocks);
     });
 });
 

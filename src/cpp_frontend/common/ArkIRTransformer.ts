@@ -47,6 +47,7 @@ import { ArkClass } from '../../core/model/ArkClass';
 import { buildNormalArkClassFromArkMethod } from '../model/builder/ArkClassBuilder';
 import { CxxAstNode, CxxTranslationUnit } from '../ast/ArkCxxAstNode';
 import { DummyStmt } from '../../core/common/ArkIRTransformer';
+import { ValueUtil } from '../../core/common/ValueUtil';
 
 export type ValueAndStmts = {
     value: Value;
@@ -123,6 +124,9 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
     public cxxNodeToStmts(node: CxxAstNode): Stmt[] {
         let stmts: Stmt[] = [];
         switch (node.kind) {
+            case 'ParmDecl':
+                stmts = this.cxxParameterToStmts(node);
+                break;
             case 'BreakStmt':
             case 'ContinueStmt':
             case 'GotoStmt':
@@ -240,6 +244,40 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         this.getAliasTypeMap().set(aliasName, [aliasType, aliasTypeDefineStmt]);
 
         return [aliasTypeDefineStmt];
+    }
+
+    // When there are default parameters, how to handle them
+    private cxxParameterToStmts(parameter: CxxAstNode):Stmt[]{
+        const stmts: Stmt[] = [];
+        let paramName : string = parameter.name;
+        const paramLocal = Array.from(this.getLocals()).find(local => local.getName() === paramName);
+        if (paramLocal === undefined) {
+            return stmts;
+        }
+        // Inner contains only one element, indicating that no default value has been declared
+        const length = parameter.inner.length;
+        if (parameter.inner[0].code === 'maybe_unused' && length === 1){
+            return stmts;
+        }
+        // The last element is the default value
+        const { value: paramInitValue, valueOriginalPositions: paramInitPositions, stmts: paramInitStmts } = this.cxxNodeToValueAndStmts(parameter.inner[length - 1]);
+
+        stmts.push(...paramInitStmts);
+
+        const ifStmt = new ArkIfStmt(new ArkConditionExpr(paramLocal, ValueUtil.getUndefinedConst(), RelationalBinaryOperator.Equality));
+        ifStmt.setOperandOriginalPositions([FullPosition.DEFAULT, FullPosition.DEFAULT]);
+        stmts.push(ifStmt);
+
+        const currConditionalOperatorIndex = this.arkValueTransformer.conditionalOperatorNo++;
+        stmts.push(new DummyStmt(ArkIRTransformer.DUMMY_CONDITIONAL_OPERATOR_IF_TRUE_STMT + currConditionalOperatorIndex));
+
+        const assignStmt = new ArkAssignStmt(paramLocal, paramInitValue);
+        assignStmt.setOperandOriginalPositions([FullPosition.DEFAULT, ...paramInitPositions]);
+        stmts.push(assignStmt);
+        stmts.push(new DummyStmt(ArkIRTransformer.DUMMY_CONDITIONAL_OPERATOR_IF_FALSE_STMT + currConditionalOperatorIndex));
+        stmts.push(new DummyStmt(ArkIRTransformer.DUMMY_CONDITIONAL_OPERATOR_END_STMT + currConditionalOperatorIndex));
+
+        return stmts;
     }
 
     private cxxGenerateAliasTypeExpr(rightOp: String, aliasType: AliasType): AliasTypeExpr {
