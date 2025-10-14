@@ -36,9 +36,7 @@ void Case3(char c = 'o')
     c++;
 }
 
-void exampleFunction(int requiredParam,
-                    [[maybe_unused]] int unusedParam = 0,
-                    [[maybe_unused]] const std::string& unusedStr = "")
+void exampleFunction(int requiredParam, [[maybe_unused]] int unusedParam = 0, [[maybe_unused]] const std::string& unusedStr = "")
 {
     // 只使用 requiredParam
     // unusedParam 和 unusedStr 可能未使用，但有默认值
