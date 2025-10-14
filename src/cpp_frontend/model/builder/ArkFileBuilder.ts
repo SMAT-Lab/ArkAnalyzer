@@ -111,9 +111,6 @@ export function buildArkFileFromFile(absoluteFilePath: string, projectDir: strin
     let sdkPath = extractOhosSdkPath(arkFile.getScene().getProjectSdkMap());
     let llvmPath = findLLVMPath(sdkPath);
     const jsonObject = AstUtils.parse(absoluteFilePath, scene.getCcjsonPath(), includeDirs, llvmPath);
-    if (projectName === 'builtInAndSTLFunc') {
-        console.log(`ast json: \n ${JSON.stringify(jsonObject, null, 2)}`)
-    }
     genDefaultArkClass(arkFile, jsonObject);
     buildArkFile(arkFile, jsonObject);
 }
