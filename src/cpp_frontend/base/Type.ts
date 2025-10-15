@@ -542,3 +542,26 @@ export class NapiType extends Type {
         return this.name;
     }
 }
+
+export class TypeInfo extends Type {
+    private name: string;
+    private type: Type;
+
+    constructor(name: string, type: Type) {
+        super();
+        this.name = name;
+        this.type = type;
+    }
+
+    public getName(): string {
+        return this.name;
+    }
+
+    public getType(): Type {
+        return this.type;
+    }
+
+    public getTypeString(): string {
+        return this.name;
+    }
+}

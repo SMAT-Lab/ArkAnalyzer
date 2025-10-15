@@ -55,7 +55,7 @@ export const CALL_OBJECT_EXPECT = {
                 'staticinvoke <@%unk/%unk: .napi_get_cb_info()>(env, info, %1, args, null, null)',
                 'addrValue = 0',
                 'flag = false',
-                '%2 = args[0]',
+                '%2 = args.<@%unk/%unk: .0>',
                 '%3 = &addrValue',
                 '%4 = &flag',
                 'staticinvoke <@%unk/%unk: .napi_get_value_bigint_int64()>(env, %2, %3, %4)',

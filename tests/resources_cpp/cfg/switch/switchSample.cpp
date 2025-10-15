@@ -20,6 +20,8 @@ enum NumConstant {
     TWO,
     THREE,
     FOUR,
+    FIVE,
+    SIX,
     TEN
 };
 
@@ -64,12 +66,12 @@ void Case3()
             b = TWO;
         case THREE:
             switch (b) {
-                case ONE:
-                    b = ONE;
-                case TWO:
-                    b = TWO;
+                case FOUR:
+                    b = FOUR;
+                case FIVE:
+                    b = FIVE;
                 default:
-                    b = TEN;
+                    b = SIX;
             }
             break;
         default:

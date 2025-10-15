@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -12,34 +12,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define FOURTYTWO 42
 
-struct Foo {
-    void Bar(int x) {
-    }
-};
+function incrementExpression(): void {
+    let x = 10;
+    x += 5;
 
-void Case1()
-{
-    Foo f;
-    f.Bar(FOURTYTWO); // 这里会生成CXXMemberCallExpr节点
-}
+    const arr = [10];
+    arr[0] += 5;
 
-void Case2(int x = 0, int y = 1)
-{
-    x++;
-    y--;
-}
+    const obj = { x: 10 };
+    obj.x += 5;
 
-void Case3(char c = 'o')
-{
-    c++;
-}
-
-void exampleFunction(int requiredParam,
-    [[maybe_unused]] int unusedParam = 0,
-    [[maybe_unused]] const std::string& unusedStr = "")
-{
-    // 只使用 requiredParam
-    // unusedParam 和 unusedStr 可能未使用，但有默认值
+    const obj1 = { x: { y: [10] } };
+    obj1.x.y[0] += 5;
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -42,3 +42,7 @@ std::string GetPathSeparator();
 // Check if same file after path normalization(implementation in .cpp)
 bool IsSameFile(const std::string& pathA, const std::string& pathB);
 
+inline bool StartsWith(std::string_view s, std::string_view p) noexcept
+{
+    return s.rfind(p, 0) == 0;
+}

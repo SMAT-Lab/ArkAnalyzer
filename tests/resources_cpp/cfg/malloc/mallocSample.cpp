@@ -12,34 +12,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define FOURTYTWO 42
 
-struct Foo {
-    void Bar(int x) {
+#include <cstdlib>
+
+int main()
+{
+    const std::size_t n = 5;
+    int* p = static_cast<int*>(std::malloc(n * sizeof(*p)));
+    for (std::size_t i = 0; i < n; ++i) {
+        p[i] = static_cast<int>(i + 1);
     }
-};
-
-void Case1()
-{
-    Foo f;
-    f.Bar(FOURTYTWO); // 这里会生成CXXMemberCallExpr节点
-}
-
-void Case2(int x = 0, int y = 1)
-{
-    x++;
-    y--;
-}
-
-void Case3(char c = 'o')
-{
-    c++;
-}
-
-void exampleFunction(int requiredParam,
-    [[maybe_unused]] int unusedParam = 0,
-    [[maybe_unused]] const std::string& unusedStr = "")
-{
-    // 只使用 requiredParam
-    // unusedParam 和 unusedStr 可能未使用，但有默认值
+    std::free(p);
+    return 0;
 }

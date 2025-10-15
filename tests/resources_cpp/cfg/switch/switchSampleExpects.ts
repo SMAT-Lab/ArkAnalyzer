@@ -17,7 +17,12 @@ export const SWITCH_EXPECT_CASE1 = {
     blocks: [
         {
             id: 0,
-            stmts: ['this = this: @switch/switchSample.cpp: %dflt', 'a = 0', 'b = 1', 'if a == TWO'],
+            stmts: [
+                'this = this: @switch/switchSample.cpp: %dflt',
+                'a = 0',
+                'b = 1',
+                'if a == TWO',
+            ],
             preds: [],
             succes: [1, 5],
         },
@@ -33,7 +38,12 @@ export const SWITCH_EXPECT_CASE2 = {
     blocks: [
         {
             id: 0,
-            stmts: ['this = this: @switch/switchSample.cpp: %dflt', 'a = 0', 'b = 1', 'if a == TWO'],
+            stmts: [
+                'this = this: @switch/switchSample.cpp: %dflt',
+                'a = 0',
+                'b = 1',
+                'if a == TWO',
+            ],
             preds: [],
             succes: [1, 5],
         },
@@ -49,19 +59,24 @@ export const SWITCH_EXPECT_CASE3 = {
     blocks: [
         {
             id: 0,
-            stmts: ['this = this: @switch/switchSample.cpp: %dflt', 'a = 0', 'b = 1', 'if a == TWO'],
+            stmts: [
+                'this = this: @switch/switchSample.cpp: %dflt',
+                'a = 0',
+                'b = 1',
+                'if a == TWO',
+            ],
             preds: [],
             succes: [1, 8],
         },
         { id: 1, stmts: ['b = TWO'], preds: [0], succes: [2] },
-        { id: 2, stmts: ['if b == ONE'], preds: [1, 8], succes: [3, 9] },
-        { id: 3, stmts: ['b = ONE'], preds: [2], succes: [4] },
-        { id: 4, stmts: ['b = TWO'], preds: [3, 9], succes: [5] },
-        { id: 5, stmts: ['b = TEN'], preds: [4, 9], succes: [7] },
+        { id: 2, stmts: ['if b == FOUR'], preds: [1, 8], succes: [3, 9] },
+        { id: 3, stmts: ['b = FOUR'], preds: [2], succes: [4] },
+        { id: 4, stmts: ['b = FIVE'], preds: [3, 9], succes: [5] },
+        { id: 5, stmts: ['b = SIX'], preds: [4, 9], succes: [7] },
         { id: 6, stmts: ['b = TEN'], preds: [8], succes: [7] },
         { id: 7, stmts: ['return'], preds: [5, 6], succes: [] },
         { id: 8, stmts: ['if a == THREE'], preds: [0], succes: [2, 6] },
-        { id: 9, stmts: ['if b == TWO'], preds: [2], succes: [4, 5] },
+        { id: 9, stmts: ['if b == FIVE'], preds: [2], succes: [4, 5] },
     ],
 };
 
@@ -69,7 +84,11 @@ export const SWITCH_EXPECT_CASE4 = {
     blocks: [
         {
             id: 0,
-            stmts: ['this = this: @switch/switchSample.cpp: %dflt', 'b = ONE', 'i = 0'],
+            stmts: [
+                'this = this: @switch/switchSample.cpp: %dflt',
+                'b = ONE',
+                'i = 0',
+            ],
             preds: [],
             succes: [1],
         },
@@ -145,7 +164,12 @@ export const SWITCH_EXPECT_CASE8 = {
     blocks: [
         {
             id: 0,
-            stmts: ['this = this: @switch/switchSample.cpp: %dflt', 'a = 0', 'b = 1', 'if a == TWO'],
+            stmts: [
+                'this = this: @switch/switchSample.cpp: %dflt',
+                'a = 0',
+                'b = 1',
+                'if a == TWO',
+            ],
             preds: [],
             succes: [1, 4],
         },
@@ -201,7 +225,12 @@ export const SWITCH_EXPECT_CASE11 = {
     blocks: [
         {
             id: 0,
-            stmts: ['this = this: @switch/switchSample.cpp: %dflt', 'a = 0', 'b = 1', 'if a == TWO'],
+            stmts: [
+                'this = this: @switch/switchSample.cpp: %dflt',
+                'a = 0',
+                'b = 1',
+                'if a == TWO',
+            ],
             preds: [],
             succes: [1, 3],
         },

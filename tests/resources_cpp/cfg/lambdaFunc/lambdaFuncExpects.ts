@@ -20,9 +20,9 @@ export const LAMBDA_EXPECT_CASE1 = {
             stmts: [
                 'this = this: @lambdaFunc/lambdaFuncSample.cpp: %dflt',
                 'func = %AM0$Case1',
-                'res = ptrinvoke <@%unk/%unk: .func()>(1)',
-                `staticinvoke <@%unk/%unk: .printf()>('%d', res)`,
-                'return',
+                'res = ptrinvoke <@lambdaFunc/lambdaFuncSample.cpp: %dflt.func(int)>(1)',
+                "staticinvoke <@%unk/%unk: .printf()>('%d', res)",
+                'return'
             ],
             preds: [],
             succes: [],
@@ -40,7 +40,7 @@ export const LAMBDA_EXPECT_CASE2 = {
                 'func = %AM1$Case2',
                 'res = ptrinvoke <@lambdaFunc/lambdaFuncSample.cpp: %dflt.func([a], int)>(%closures0, 1)',
                 "staticinvoke <@%unk/%unk: .printf()>('%d', res)",
-                'return',
+                'return'
             ],
             preds: [],
             succes: [],
@@ -55,9 +55,9 @@ export const LAMBDA_EXPECT_CASE3 = {
             stmts: [
                 'this = this: @lambdaFunc/lambdaFuncSample.cpp: %dflt',
                 'func = %AM2$Case3',
-                'res = ptrinvoke <@%unk/%unk: .func()>(1)',
-                `staticinvoke <@%unk/%unk: .printf()>('%d', res)`,
-                'return',
+                'res = ptrinvoke <@lambdaFunc/lambdaFuncSample.cpp: %dflt.func(int)>(1)',
+                "staticinvoke <@%unk/%unk: .printf()>('%d', res)",
+                'return'
             ],
             preds: [],
             succes: [],
@@ -69,7 +69,12 @@ export const LAMBDA_EXPECT_CASE4 = {
     blocks: [
         {
             id: 0,
-            stmts: ['this = this: @lambdaFunc/lambdaFuncSample.cpp: %dflt', 'func = %AM3$Case4', 'ptrinvoke <@%unk/%unk: .func()>(1)', 'return'],
+            stmts: [
+                'this = this: @lambdaFunc/lambdaFuncSample.cpp: %dflt',
+                'func = %AM3$Case4',
+                'ptrinvoke <@lambdaFunc/lambdaFuncSample.cpp: %dflt.func(int)>(1)',
+                'return'
+            ],
             preds: [],
             succes: [],
         },

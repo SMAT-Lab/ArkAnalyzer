@@ -33,7 +33,7 @@ import {
     RelationalBinaryOperator,
     AbstractInvokeExpr,
 } from '../../core/base/Expr';
-import { ArkSizeOfExpr, ArkCxxCastExpr } from '../base/Expr';
+import { ArkSizeOfExpr, ArkCxxCastExpr, ArkArrayTypeTraitExpr, ArkNoExpectExpr, ArkTypeIdExpr } from '../base/Expr';
 import {
     AnyType,
     ArrayType,
@@ -343,7 +343,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
 
     private processInnerNodeToValueAndStmts(node: CxxAstNode): ValueAndStmts {
         if (node.inner?.length > 0) {
-            return this.cxxNodeToValueAndStmts(node.inner[0]);
+            // When a node is an implicit node, the actual node is the last internal node
+            return this.cxxNodeToValueAndStmts(node.inner[node.inner?.length - 1]);
         }
         return this.unprocessedNodeToValueAndStmts(node);
     }
@@ -588,33 +589,26 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
      *@ returns ValueAndStmts object, including converted values and related statements
      */
     private arrayTypeTraitExprToValueAndStmts(ArrayTypeTraitExpr: CxxAstNode): ValueAndStmts {
+        const traitFunc = ArrayTypeTraitExpr.traitFunc ?? '';
+        const traitArgs = ArrayTypeTraitExpr.traitArgs?.split(',') ?? [];
+        const numArg = Number(traitArgs[traitArgs.length - 1].trim());
         const stmts: Stmt[] = [];
         let innerNode = ArrayTypeTraitExpr;
-        while (innerNode.inner instanceof Array && innerNode.inner.length !== 0) {
+        while (Array.isArray(innerNode.inner) && innerNode.inner.length !== 0) {
             innerNode = innerNode.inner[0];
             if (innerNode.kind !== 'ArrayTypeTraitExpr') {
                 break;
             }
         }
-        const callArgs = [
-            {
-                kind: 'StringLiteral',
-                value: innerNode.type.qualType.toString(),
-            },
-        ];
-        if (ArrayTypeTraitExpr.traitFunc === '__array_extent') {
-            const traitArgs = ArrayTypeTraitExpr.traitArgs?.split(',') ?? [];
-            const numArg = traitArgs[traitArgs.length - 1].trim();
-            callArgs.push({
-                kind: 'IntegerLiteral',
-                value: numArg,
-            });
-        }
-        const callNode = JSON.parse(JSON.stringify(ArrayTypeTraitExpr));
-        callNode.kind = 'DeclRefExpr';
-        callNode.name = ArrayTypeTraitExpr.traitFunc;
-        const args = this.cxxParseArgumentsOfCallExpression(stmts, callArgs);
-        return this.cxxGenerateInvokeValueAndStmts(callNode, args, stmts, ArrayTypeTraitExpr);
+        let innerValueAndStmts = this.cxxNodeToValueAndStmts(innerNode);
+        innerValueAndStmts.stmts.forEach(stmt => stmts.push(stmt));
+        const arrayRankExpr = new ArkArrayTypeTraitExpr(innerValueAndStmts.value, traitFunc, numArg);
+        return {
+            value: arrayRankExpr,
+            valueOriginalPositions: [FullPosition.cxxBuildFromNode(ArrayTypeTraitExpr, this.cxxSourceFile)],
+            stmts: stmts,
+        };
+
     }
 
     /**
@@ -624,28 +618,23 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
      */
     private cxxTypeidExprToValueAndStmts(CXXTypeidExpr: CxxAstNode): ValueAndStmts {
         const stmts: Stmt[] = [];
-        let typeArgs = CXXTypeidExpr.typeArg?.toString() ?? '';
-        let typeidCallArgs = CXXTypeidExpr.inner;
-        // [1.typeid's inner.length is 0, then the type name is passed in; 2. std:: Type refers to the type in the namespace]==>
+        let typeValue: Value;
+        // [1.typeid's inner.length is 0 or 2, then the type name is passed in; 2. std:: Type refers to the type in the namespace]==>
         // Parameter function call to construct the string corresponding to the type into the parameter
         if (CXXTypeidExpr.inner.length === 0 || (CXXTypeidExpr.inner.length === 2 && CXXTypeidExpr.inner[1].kind === 'TypeRef')) {
-            typeidCallArgs = [
-                {
-                    kind: 'StringLiteral',
-                    name: '',
-                    code: '',
-                    value: typeArgs,
-                    type: { qualType: '' },
-                    inner: [],
-                },
-            ];
+            const innerType = cxxNode2Type(CXXTypeidExpr.typeArg ?? '', undefined, undefined);
+            typeValue = new Local(innerType.toString(), innerType);
+        } else {
+            let innerValueAndStmts = this.cxxNodeToValueAndStmts(CXXTypeidExpr.inner[0]);
+            innerValueAndStmts.stmts.forEach(stmt => stmts.push(stmt));
+            typeValue = innerValueAndStmts.value;
         }
-        // Construct node as function name node
-        let typeidCallNode = JSON.parse(JSON.stringify(CXXTypeidExpr));
-        typeidCallNode.kind = 'DeclRefExpr';
-        typeidCallNode.name = 'typeid';
-        const argus = this.cxxParseArgumentsOfCallExpression(stmts, typeidCallArgs);
-        return this.cxxGenerateInvokeValueAndStmts(typeidCallNode, argus, stmts, CXXTypeidExpr);
+        const typeIdExpr = new ArkTypeIdExpr(typeValue);
+        return {
+            value: typeIdExpr,
+            valueOriginalPositions: [FullPosition.cxxBuildFromNode(CXXTypeidExpr, this.cxxSourceFile)],
+            stmts: stmts,
+        };
     }
 
     /**
@@ -655,11 +644,14 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
      */
     private cxxNoexceptExprToValueAndStmts(CXXNoexceptExpr: CxxAstNode): ValueAndStmts {
         const stmts: Stmt[] = [];
-        let cxxNoexceptCallNode = JSON.parse(JSON.stringify(CXXNoexceptExpr));
-        cxxNoexceptCallNode.kind = 'DeclRefExpr';
-        cxxNoexceptCallNode.name = 'CXXNoexceptExpr';
-        const argus = this.cxxParseArgumentsOfCallExpression(stmts, CXXNoexceptExpr.inner);
-        return this.cxxGenerateInvokeValueAndStmts(cxxNoexceptCallNode, argus, stmts, CXXNoexceptExpr);
+        let innerValueAndStmts = this.cxxNodeToValueAndStmts(CXXNoexceptExpr.inner[0]);
+        innerValueAndStmts.stmts.forEach(stmt => stmts.push(stmt));
+        const noExpectExpr = new ArkNoExpectExpr(innerValueAndStmts.value);
+        return {
+            value: noExpectExpr,
+            valueOriginalPositions: [FullPosition.cxxBuildFromNode(CXXNoexceptExpr, this.cxxSourceFile)],
+            stmts: stmts,
+        };
     }
 
     /**
@@ -1331,7 +1323,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         for (const stmt of innerStmts) {
             exprPositions.push(...stmt.valueOriginalPositions);
         }
-
+        // *ptr,When ptr is a smart pointer and the node type is CXXOperatorCallExpr, we will perform pointer dereference parsing here
         let elementAccessExpr: Value;
         if (innerStmts.length >= 2) {
             elementAccessExpr = new ArkArrayRef(innerStmts[0].value as Local, innerStmts[1].value);

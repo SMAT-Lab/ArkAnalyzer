@@ -27,7 +27,7 @@ export const ModifyObject_EXPECT = {
                 'args = %0',
                 '%1 = &argc',
                 'staticinvoke <@%unk/%unk: .napi_get_cb_info()>(env, info, %1, args, null, null)',
-                'obj = args[0]',
+                'obj = args.<@%unk/%unk: .0>',
                 'obj1 = undefined',
                 'hello1 = undefined',
                 'arr1 = undefined',

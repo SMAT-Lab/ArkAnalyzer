@@ -137,6 +137,10 @@ export function buildParameters(params: CxxAstNode[], arkInstance: ArkMethod | A
         } else {
             methodParameter.setName('');
         }
+        // Is it optional,If there are default parameters, they should be set as optional parameters
+        if (parameter.inner.length > 0 && parameter.inner[parameter.inner.length - 1].kind !== 'TypeRef') {
+            methodParameter.setOptional(true);
+        }
         // type
         if (parameter.type) {
             methodParameter.setType(buildGenericType(cxxNode2Type(parameter.type.qualType, arkInstance, sourceFile, parameter), arkInstance));
@@ -364,6 +368,8 @@ const typeMap: Record<string, string> = {
     size_t: 'number',
     // void
     void: 'void',
+    'std::type_info': 'type_info',
+    'type_info': 'type_info',
 };
 
 export function convertDataType(typeName: string): string {

@@ -64,7 +64,7 @@ import {
     CxxTypeSigned,
     CxxWcharType,
     PointerType,
-    ReferenceType,
+    ReferenceType, TypeInfo,
 } from '../base/Type';
 import { ArkMethod } from '../../core/model/ArkMethod';
 import { ArkExport } from '../../core/model/ArkExport';
@@ -412,7 +412,8 @@ export class TypeInference {
         }
         const arkClass = arkMethod.getDeclaringArkClass();
         const rightOp = stmt.getRightOp();
-        if (rightOp instanceof Local && rightOp.getType() instanceof UnknownType) {
+        // infer not only UnknowType but also other unclear types
+        if (rightOp instanceof Local && this.isUnclearType(rightOp.getType())) {
             IRInference.inferLocal(rightOp, arkMethod);
         }
         let rightType: Type | null | undefined = rightOp.getType();
@@ -479,12 +480,21 @@ export class TypeInference {
     private static inferLeftOpType(stmt: ArkAssignStmt, arkClass: ArkClass, rightType: Type | null | undefined, arkMethod: ArkMethod): Type | null {
         const leftOp = stmt.getLeftOp();
         let leftType: Type | null | undefined = leftOp.getType();
-        if (this.isUnclearType(leftType)) {
-            const newLeftType = this.inferUnclearedType(leftType, arkClass);
+        let baseType: Type | null | undefined = leftType;
+        // If it is a Cxx pointer or reference type, it is necessary to obtain its baseType and determine whether type inference is required.
+        if (leftType instanceof PointerType || leftType instanceof ReferenceType) {
+            baseType = leftType.getBaseType();
+        }
+        if (this.isUnclearType(baseType)) {
+            const newLeftType = this.inferUnclearedType(baseType, arkClass);
             if (!newLeftType && !this.isUnclearType(rightType)) {
                 leftType = rightType;
             } else if (newLeftType) {
-                leftType = newLeftType;
+                if (leftType instanceof PointerType || leftType instanceof ReferenceType) {
+                    leftType.setBaseType(newLeftType);
+                } else {
+                    leftType = newLeftType;
+                }
             }
         } else if (leftOp instanceof Local && leftOp.getName() === THIS_NAME) {
             const thisLocal = IRInference.inferThisLocal(arkMethod);
@@ -493,8 +503,8 @@ export class TypeInference {
             } else {
                 leftType = rightType;
             }
-        } else if (leftType instanceof FunctionType && !this.isUnclearType(rightType) &&
-            leftType.getMethodSignature().getMethodSubSignature().getMethodName().startsWith(ANONYMOUS_METHOD_PREFIX)) {
+        } else if (baseType instanceof FunctionType && !this.isUnclearType(rightType) &&
+            baseType.getMethodSignature().getMethodSubSignature().getMethodName().startsWith(ANONYMOUS_METHOD_PREFIX)) {
             leftType = rightType;
         }
         return leftType || null;
@@ -630,6 +640,8 @@ export class TypeInference {
                 const classSignature = Builtin.REGEXP_CLASS_SIGNATURE;
                 return new ClassType(classSignature);
             }
+            case 'type_info':
+                return new TypeInfo('type_info', new UnclearReferenceType(tsTypeStr));
             default:
                 return new UnclearReferenceType(tsTypeStr);
         }

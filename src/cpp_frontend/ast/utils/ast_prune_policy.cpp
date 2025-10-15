@@ -19,7 +19,7 @@
 // ---------- Prune policy globals ----------
 // Global switches for pruning overly large InitListExpr nodes
 bool     g_pruneHugeInits          = true;
-unsigned g_initTokLenThreshold     = 320;
+unsigned g_initTokLenThreshold     = 1280;
 unsigned g_initTokenCountThreshold = 96;
 
 // ---------- Field policy state (single source of truth) ----------
@@ -48,8 +48,9 @@ uint32_t SelectFieldMaskForCursorKind(CXCursorKind k)
         // Expressions and references: keep basic info
         case CXCursor_UnexposedExpr:
         case CXCursor_UnexposedDecl:
-        case CXCursor_DeclRefExpr:
             return WANT_KIND | WANT_NAME | WANT_TYPE | WANT_CODE;
+        case CXCursor_DeclRefExpr:
+            return WANT_KIND | WANT_NAME | WANT_TYPE | WANT_CODE | WANT_RANGE;
         // Operators and simple statements: keep basic info
         case CXCursor_BinaryOperator:
         case CXCursor_UnaryOperator:
@@ -81,7 +82,7 @@ uint32_t SelectFieldMaskForCursorKind(CXCursorKind k)
         // Typedefs and type aliases: keep names only
         case CXCursor_TypedefDecl:
         case CXCursor_TypeAliasDecl:
-            return WANT_KIND | WANT_NAME | WANT_LOCFILE;;
+            return WANT_KIND | WANT_NAME | WANT_LOCFILE | WANT_CODE;
         // Enums, structs, classes, unions: full info with type + range + references
         case CXCursor_EnumDecl:
         case CXCursor_StructDecl:

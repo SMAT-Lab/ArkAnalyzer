@@ -80,7 +80,15 @@ export const REFERENCE_EXPECT_CASE5 = {
     blocks: [
         {
             id: 0,
-            stmts: ['arg = parameter0: T&&', 'this = this: @reference/reference.cpp: %dflt', 'd1 = staticinvoke <@%unk/%unk: .forward()>(arg)', 'return'],
+            stmts: [
+                'arg = parameter0: T&&',
+                'this = this: @reference/reference.cpp: %dflt',
+                '%0 = new @reference/reference.cpp: Data',
+                '%1 = staticinvoke <@%unk/%unk: .forward()>(arg)',
+                'instanceinvoke %0.<@reference/reference.cpp: Data.constructor()>(%1)',
+                'd1 = %0',
+                'return'
+            ],
             preds: [],
             succes: [],
         },

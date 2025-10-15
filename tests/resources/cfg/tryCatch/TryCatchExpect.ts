@@ -59,3 +59,61 @@ export const TRY_CATCH_EXPECT_CASE1 = {
         },
     ],
 };
+
+export const TRY_CATCH_EXPECT_CASE2 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @tryCatch/TryCatchSample.ts: %dflt',
+            ],
+            preds: [],
+            succes: [1],
+        },
+        {
+            id: 1,
+            stmts: [
+                'a = 1',
+            ],
+            preds: [0],
+            succes: [3],
+        },
+        {
+            id: 2,
+            stmts: [
+                'e = caughtexception: unknown',
+                'b = 2',
+            ],
+            preds: [],
+            succes: [3],
+        },
+        {
+            id: 3,
+            stmts: [
+                'type @tryCatch/TryCatchSample.ts: %dflt.case2()#FuncType = @tryCatch/TryCatchSample.ts: %dflt.%AM0(string)',
+                'c = %AM1$case2',
+            ],
+            preds: [1, 2],
+            succes: [4],
+        },
+        {
+            id: 4,
+            stmts: [
+                'return',
+            ],
+            preds: [3],
+            succes: [],
+        },
+        {
+            id: 5,
+            stmts: [
+                '%0 = caughtexception: unknown',
+                'type @tryCatch/TryCatchSample.ts: %dflt.case2()#FuncType = @tryCatch/TryCatchSample.ts: %dflt.%AM0(string)',
+                'c = %AM1$case2',
+                'throw %0'
+            ],
+            preds: [],
+            succes: [],
+        },
+    ],
+};

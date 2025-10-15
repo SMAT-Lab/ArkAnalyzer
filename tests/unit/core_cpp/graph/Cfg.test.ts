@@ -60,6 +60,7 @@ import * as AUTO_EXPECT from '../../../resources_cpp/cfg/decltype/decltypeExpect
 import * as INCLUDE_IN_SCOPE from '../../../resources_cpp/cfg/includeInScope/includeInFunctionExpects';
 import * as STRUCTBINDING from '../../../resources_cpp/cfg/structBinding/structBindingExpect';
 import * as CALLEXPR_EXPECT from '../../../resources_cpp/cfg/call/callExpect';
+import * as MALLOC_EXPECT from '../../../resources_cpp/cfg/malloc/mallocSampleExpects';
 
 // Standard library header file configuration for DevEco
 const deveco_c = process.env.DEVECO_C !== undefined ? process.env.DEVECO_C : '';
@@ -237,6 +238,7 @@ describe('Function Test', () => {
 
     it('case3: Lambda Function Test', () => {
         const scene = buildScene('lambdaFunc');
+        scene.inferTypes();
         testBlocks(scene, 'lambdaFuncSample.cpp', 'Case1', LAMBDA_EXPECT.LAMBDA_EXPECT_CASE1.blocks);
         testBlocks(scene, 'lambdaFuncSample.cpp', 'Case2', LAMBDA_EXPECT.LAMBDA_EXPECT_CASE2.blocks);
         testBlocks(scene, 'lambdaFuncSample.cpp', 'Case3', LAMBDA_EXPECT.LAMBDA_EXPECT_CASE3.blocks);
@@ -269,6 +271,8 @@ describe('Function Test', () => {
     it('case6: call expr', () => {
         const scene = buildScene('call');
         testBlocks(scene, 'call.cpp', 'Case1', CALLEXPR_EXPECT.CXXMEMBERCALL_EXPECT.blocks);
+        testBlocks(scene, 'call.cpp', 'Case2', CALLEXPR_EXPECT.CXXMETHODDEFAULT_CASE2_EXPECT.blocks);
+        testBlocks(scene, 'call.cpp', 'Case3', CALLEXPR_EXPECT.CXXMETHODDEFAULT_CASE3_EXPECT.blocks);
     });
 });
 
@@ -321,6 +325,10 @@ describe('Other Test', () => {
         testBlocks(scene, 'builtInAndSTLFunction.cpp', 'CXXNoexceptExprTest', BUILT_IN_EXPECT.BUILT_IN_EXPECT_CASE3.blocks);
         testBlocks(scene, 'builtInAndSTLFunction.cpp', 'AtomicExprTest',
             is_system_win32 ? BUILT_IN_EXPECT.BUILT_IN_EXPECT_CASE4.blocks : BUILT_IN_EXPECT.BUILT_IN_EXPECT_CASE4_LINUX.blocks);
+    });
+    it('case7: malloc Test', () => {
+        const scene = buildScene('malloc');
+        testBlocks(scene, 'mallocSample.cpp', 'main', MALLOC_EXPECT.MALLOC_EXPECT_CASE1.blocks);
     });
 });
 

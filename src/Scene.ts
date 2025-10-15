@@ -104,7 +104,7 @@ export class Scene {
     private unhandledFilePaths: Set<string> = new Set<string>();
     private unhandledSdkFilePaths: string[] = [];
 
-    constructor() {}
+    constructor() { }
 
     /*
      * Set all static field to be null, then all related objects could be freed by GC.
@@ -333,6 +333,9 @@ export class Scene {
                 buildDefaultConstructor(cls);
                 // CXXTodo: Use the interface 'getAllMethodsWithName' for obtaining all methods with the same name.
                 const constructors = cls.getAllMethodsWithName(CONSTRUCTOR_NAME);
+                if (cls.isDefaultArkClass()) {
+                    continue;
+                }
                 constructors.forEach(constructor => {
                     replaceSuper2Constructor(constructor);
                     initInConstructorFn(constructor);
@@ -540,7 +543,10 @@ export class Scene {
     }
 
     private findDependenciesByRule(originPath: string): void {
-        if (!this.findFilesByPathArray(originPath) && !this.findFilesByExtNameArray(originPath, this.options.supportFileExts!)) {
+        if (
+            !this.findFilesByPathArray(originPath) &&
+            !this.findFilesByExtNameArray(originPath, this.options.supportFileExts!)
+        ) {
             logger.trace(originPath + 'module mapperInfo is not found!');
         }
     }
@@ -759,7 +765,7 @@ export class Scene {
      * @example
      * 1. get real project directory, such as:
      ```typescript
-     let projectDir = projectScene.getRealProjectDir();
+     let projectDir = projectScene.getRealProjectDir(); 
      ```
      */
     public getRealProjectDir(): string {
@@ -1227,15 +1233,15 @@ export class Scene {
             const importNameSpace = ModelUtils.getNamespaceInImportInfoWithName(importInfo.getImportClauseName(), file);
             if (importNameSpace && !importNameSpaces.includes(importNameSpace)) {
                 try {
-                    // Legacy issue: only counted project file namespaces, not internal SDK file imports
+                    // 遗留问题：只统计了项目文件的namespace，没统计sdk文件内部的引入
                     const importNameSpaceClasses = classMap.get(importNameSpace.getNamespaceSignature())!;
                     importClasses.push(...importNameSpaceClasses.filter(c => !importClasses.includes(c) && c.getName() !== DEFAULT_ARK_CLASS_NAME));
-                } catch {}
+                } catch { }
             }
         }
         const fileClasses = classMap.get(file.getFileSignature())!;
         fileClasses.push(...importClasses.filter(c => !fileClasses.includes(c)));
-        // Child nodes add parent node's classes
+        // 子节点加上父节点的class
         const namespaceStack = [...file.getNamespaces()];
         for (const ns of namespaceStack) {
             const nsClasses = classMap.get(ns.getNamespaceSignature())!;
@@ -1268,15 +1274,15 @@ export class Scene {
             }
 
             classMap.set(file.getFileSignature(), fileClass);
-            // The first round of traversal, adding each namespace's own class
+            // 第一轮遍历，加上每个namespace自己的class
             this.addNSClasses(namespaceStack, finalNamespaces, classMap, parentMap);
 
-            // The second round of traversal involves adding the export class of the parent node and the child node
+            // 第二轮遍历，父节点加上子节点的export的class
             this.addNSExportedClasses(finalNamespaces, classMap, parentMap);
         }
 
         for (const file of this.getFiles()) {
-            // Add the imported class to the file, including ns
+            // 文件加上import的class，包括ns的
             this.addFileImportedClasses(file, classMap);
         }
         return classMap;
@@ -1291,7 +1297,8 @@ export class Scene {
         while (namespaceStack.length > 0) {
             const ns = namespaceStack.shift()!;
             const nsGlobalLocals: Local[] = [];
-            ns.getDefaultClass()
+            ns
+                .getDefaultClass()
                 .getDefaultArkMethod()!
                 .getBody()
                 ?.getLocals()
@@ -1359,15 +1366,15 @@ export class Scene {
             const importNameSpace = ModelUtils.getNamespaceInImportInfoWithName(importInfo.getImportClauseName(), file);
             if (importNameSpace && !importNameSpaces.includes(importNameSpace)) {
                 try {
-                    // Legacy issue: only counted project files, not internal SDK file imports
+                    // 遗留问题：只统计了项目文件，没统计sdk文件内部的引入
                     const importNameSpaceClasses = globalVariableMap.get(importNameSpace.getNamespaceSignature())!;
                     importLocals.push(...importNameSpaceClasses.filter(c => !importLocals.includes(c) && c.getName() !== DEFAULT_ARK_CLASS_NAME));
-                } catch {}
+                } catch { }
             }
         }
         const fileLocals = globalVariableMap.get(file.getFileSignature())!;
         fileLocals.push(...importLocals.filter(c => !fileLocals.includes(c)));
-        // Child node plus local of parent node
+        // 子节点加上父节点的local
         const namespaceStack = [...file.getNamespaces()];
         for (const ns of namespaceStack) {
             const nsLocals = globalVariableMap.get(ns.getNamespaceSignature())!;
@@ -1405,7 +1412,8 @@ export class Scene {
             const parentMap: Map<ArkNamespace, ArkNamespace | ArkFile> = new Map();
             const finalNamespaces: ArkNamespace[] = [];
             const globalLocals: Local[] = [];
-            file.getDefaultClass()
+            file
+                .getDefaultClass()
                 ?.getDefaultArkMethod()!
                 .getBody()
                 ?.getLocals()
@@ -1419,15 +1427,15 @@ export class Scene {
                 namespaceStack.push(ns);
                 parentMap.set(ns, file);
             }
-            // The first round of traversal, plus each namespace's own local
+            // 第一轮遍历，加上每个namespace自己的local
             this.addNSLocals(namespaceStack, finalNamespaces, parentMap, globalVariableMap);
 
-            // The second round of traversal includes the local export of the parent node and the child node
+            // 第二轮遍历，父节点加上子节点的export的local
             this.addNSExportedLocals(finalNamespaces, globalVariableMap, parentMap);
         }
 
         for (const file of this.getFiles()) {
-            // File adds imported locals, including namespaces
+            // 文件加上import的local，包括ns的
             this.addFileImportLocals(file, globalVariableMap);
         }
         return globalVariableMap;

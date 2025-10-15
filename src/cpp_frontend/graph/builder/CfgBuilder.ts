@@ -25,7 +25,7 @@ import { AliasType, ClassType, UnclearReferenceType, UnknownType, VoidType } fro
 import { Trap } from '../../../core/base/Trap';
 import { GlobalRef } from '../../../core/base/Ref';
 import { LoopBuilder } from '../../../core/graph/builder/LoopBuilder';
-import { SwitchBuilder } from '../../../core/graph/builder/SwitchBuilder';
+import { CxxSwitchBuilder } from './SwitchBuilder';
 import { CxxConditionBuilder } from './ConditionBuilder';
 import { TrapBuilder } from '../../../core/graph/builder/TrapBuilder';
 import { ModifierType } from '../../../core/model/ArkBaseModel';
@@ -370,7 +370,8 @@ export class CfgBuilder {
     }
 
     private sliceCaseDefaultNode(node: CxxAstNode, clauses: CxxAstNode[]): void {
-        if (node.kind === 'BreakStmt' || node.kind === 'DefaultStmt' || node.kind === 'ContinueStmt') {
+        if (node.kind === 'BreakStmt' || node.kind === 'DefaultStmt' || node.kind === 'ContinueStmt' ||
+            node.kind === 'GotoStmt') {
             clauses.push(node);
             return;
         }
@@ -404,7 +405,7 @@ export class CfgBuilder {
         return tempClauses.reduce((acc: CxxAstNode[], curr: CxxAstNode, idx: number, arr: CxxAstNode[]) => {
             if (['CaseStmt', 'DefaultStmt'].includes(curr.kind.toString())) {
                 curr.parent = switchNode.inner[1];
-                if (idx + 1 < arr.length && ['BreakStmt', 'ContinueStmt'].includes(arr[idx + 1].kind.toString())) {
+                if (idx + 1 < arr.length && ['BreakStmt', 'ContinueStmt', 'GotoStmt'].includes(arr[idx + 1].kind.toString())) {
                     arr[idx + 1].parent = curr;
                     curr.inner.push(arr[idx + 1]);
                 }
@@ -452,7 +453,6 @@ export class CfgBuilder {
                 casestm.next!.lasts.add(stmt);
             }
             casestm.next!.lasts.delete(casestm);
-
             if (lastCaseExit) {
                 lastCaseExit.next = casestm.next;
                 casestm.next?.lasts.add(lastCaseExit);
@@ -713,6 +713,8 @@ export class CfgBuilder {
             case 'DeclStmt':
             case 'RecoveryExpr':
             case 'TypedefDecl':
+            case 'TypeAliasDecl':
+            case 'TypeAliasTemplateDecl':
             case 'UnaryOperator':
             case 'VarDecl':
                 s = new StatementBuilder('statement', innerNode.code, innerNode, scope.id);
@@ -773,6 +775,11 @@ export class CfgBuilder {
                 lastStatement = this.ASTNodeWhileStatement(innerNode, lastStatement, scope.id);
                 break;
             case 'NullStmt':
+                break;
+            case 'ParmDecl':
+                s = new StatementBuilder('statement', 'ParmDecl', innerNode, scope.id);
+                this.judgeLastType(s, lastStatement);
+                lastStatement = s;
                 break;
             default:
                 break;
@@ -1122,6 +1129,12 @@ export class CfgBuilder {
                 if (this.astRoot.kind === 'CXXConstructorDecl' && ['CXXConstructExpr', 'CXXCtorInitializer'].includes(this.astRoot.inner[i].kind)) {
                     stmts.push(this.astRoot.inner[i]);
                 }
+                const length = this.astRoot.inner[i].inner.length;
+                if (this.astRoot.inner[i].kind === 'ParmDecl' && length > 0 &&
+                    this.astRoot.inner[i].inner[length - 1].kind !== 'TypeRef') {
+                    stmts.push(this.astRoot.inner[i]);
+                    continue;
+                }
                 if (this.astRoot.inner[i].kind === 'CompoundStmt') {
                     stmts.push(...this.astRoot.inner[i].inner);
                     break;
@@ -1263,6 +1276,7 @@ export class CfgBuilder {
         const asCoreBeforeTry = blockBuildersBeforeTry as unknown as Set<CoreBlockBuilder>;
         const trapBuilder = new TrapBuilder(asCoreBeforeTry, asCoreMapForTrap, arkIRTransformer, basicBlockSet);
         const traps = trapBuilder.buildTraps();
+        this.removeEmptyBlocks(basicBlockSet);
         const cfg = this.createCfg(blockBuilderToCfgBlock, basicBlockSet, currBlockId);
         return {
             cfg,
@@ -1271,6 +1285,51 @@ export class CfgBuilder {
             aliasTypeMap: arkIRTransformer.getAliasTypeMap(),
             traps,
         };
+    }
+
+    private removeEmptyBlocks(basicBlockSet: Set<BasicBlock>): void {
+        for (const bb of basicBlockSet) {
+            if (bb.getStmts().length > 0) {
+                continue;
+            }
+            const predecessors = bb.getPredecessors();
+            const successors = bb.getSuccessors();
+
+            // the empty basic block with neither predecessor nor successor could be deleted directly
+            if (predecessors.length === 0 && successors.length === 0) {
+                basicBlockSet.delete(bb);
+                continue;
+            }
+
+            // the empty basic block with predecessor but no successor could be deleted directly and remove its ID from the predecessor blocks
+            if (predecessors.length > 0 && successors.length === 0) {
+                for (const predecessor of predecessors) {
+                    predecessor.removeSuccessorBlock(bb);
+                }
+                basicBlockSet.delete(bb);
+                continue;
+            }
+
+            // the empty basic block with successor but no predecessor could be deleted directly and remove its ID from the successor blocks
+            if (predecessors.length === 0 && successors.length > 0) {
+                for (const successor of successors) {
+                    successor.removePredecessorBlock(bb);
+                }
+                basicBlockSet.delete(bb);
+                continue;
+            }
+
+            // the rest case is the empty basic block both with predecessor and successor, should relink its predecessor and successor
+            for (const predecessor of predecessors) {
+                predecessor.removeSuccessorBlock(bb);
+                successors.forEach(successor => predecessor.addSuccessorBlock(successor));
+            }
+            for (const successor of successors) {
+                successor.removePredecessorBlock(bb);
+                predecessors.forEach(predecessor => successor.addPredecessorBlock(predecessor));
+            }
+            basicBlockSet.delete(bb);
+        }
     }
 
     private initializeBuild(): {
@@ -1372,7 +1431,7 @@ export class CfgBuilder {
         const asCoreBlocks = this.blocks as unknown as CoreBlockBuilder[]; // 适配 this.blocks
         const loopBuilder = new LoopBuilder();
         loopBuilder.rebuildBlocksInLoop(asCoreMap, asCoreSet, basicBlockSet, asCoreBlocks);
-        const switchBuilder = new SwitchBuilder();
+        const switchBuilder = new CxxSwitchBuilder();
         switchBuilder.buildSwitch(asCoreMap, asCoreArr, valueAndStmtsOfSwitchAndCasesAll, arkIRTransformer, basicBlockSet);
         const conditionalBuilder = new CxxConditionBuilder();
         conditionalBuilder.rebuildBlocksContainConditionalOperator(

@@ -622,7 +622,8 @@ export class IRInference {
         let baseType: Type | null | undefined = base.getType();
         if (baseType instanceof UnclearReferenceType) {
             baseType = TypeInference.inferUnclearRefName(baseType.getName(), arkClass);
-        } else if (TypeInference.isUnclearType(baseType)) {
+        }
+        if (TypeInference.isUnclearType(baseType)) {
             const declaringStmt = base.getDeclaringStmt();
             if (!declaringStmt || !declaringStmt.getOriginalText() || declaringStmt.getOriginalText()?.startsWith(base.getName())) {
                 baseType = ModelUtils.findDeclaredLocal(base, arkMethod)?.getType() ?? TypeInference.inferBaseType(base.getName(), arkClass);

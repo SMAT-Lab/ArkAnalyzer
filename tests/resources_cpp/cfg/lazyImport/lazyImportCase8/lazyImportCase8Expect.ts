@@ -31,7 +31,7 @@ export const NativeCallArkTS8_EXPECT = {
                 '%2 = &argv',
                 'staticinvoke <@%unk/%unk: .napi_create_int32()>(env, 2, %2)',
                 'result = null',
-                '%3 = args[0]',
+                '%3 = args.<@%unk/%unk: .0>',
                 '%4 = &argv',
                 '%5 = &result',
                 'staticinvoke <@%unk/%unk: .napi_call_function()>(env, null, %3, 1, %4, %5)',

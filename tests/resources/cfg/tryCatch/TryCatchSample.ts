@@ -23,3 +23,16 @@ function case1(): void {
         console.log('i === 0');
     }
 }
+
+function case2(): void {
+    try {
+        let a = 1;
+    } catch (e) {
+        let b = 2;
+    } finally {
+        type FuncType = (p: string) => void;
+        let c: FuncType = (p: string): number => {
+            return 0;
+        };
+    }
+}

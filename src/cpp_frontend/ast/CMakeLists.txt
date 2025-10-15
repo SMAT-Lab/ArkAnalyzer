@@ -8,8 +8,6 @@ message(STATUS "ARK_ENABLE_PROFILING = ${ARK_ENABLE_PROFILING}")
 # Platform-specific toolchain (if needed)
 if(WIN32)
   include(cmake/toolchains/windows.cmake)
-elseif(UNIX)
-  include(cmake/toolchains/linux.cmake)
 endif()
 
 add_executable(arkCppAstDumper

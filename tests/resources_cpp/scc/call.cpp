@@ -46,5 +46,3 @@ void F()
     D();
     G();
 }
-
-int main() { return 0; }
