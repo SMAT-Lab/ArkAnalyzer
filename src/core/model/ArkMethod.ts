@@ -15,7 +15,7 @@
 
 import { ArkParameterRef, ArkThisRef } from '../base/Ref';
 import { ArkAssignStmt, ArkReturnStmt, Stmt } from '../base/Stmt';
-import { AliasType, ClassType, EnumValueType, FunctionType, GenericType, LiteralType, Type, UnionType } from '../base/Type';
+import { FunctionType, GenericType, Type } from '../base/Type';
 import { Value } from '../base/Value';
 import { Cfg } from '../graph/Cfg';
 import { ViewTree } from '../graph/ViewTree';
@@ -24,19 +24,17 @@ import { ArkClass, ClassCategory } from './ArkClass';
 import { MethodSignature, MethodSubSignature } from './ArkSignature';
 import { BodyBuilder } from './builder/BodyBuilder';
 import { ArkExport, ExportType } from './ArkExport';
-import { ANONYMOUS_METHOD_PREFIX, DEFAULT_ARK_METHOD_NAME, LEXICAL_ENV_NAME_PREFIX } from '../common/Const';
+import { ANONYMOUS_METHOD_PREFIX, DEFAULT_ARK_METHOD_NAME } from '../common/Const';
 import { getColNo, getLineNo, LineCol, setCol, setLine } from '../base/Position';
 import { ArkBaseModel, ModifierType } from './ArkBaseModel';
 import { ArkError, ArkErrorCode } from '../common/ArkError';
-import { CALL_BACK } from '../common/EtsConst';
-import { Constant } from '../base/Constant';
 import { Local } from '../base/Local';
 import { ArkFile, Language } from './ArkFile';
 import { CONSTRUCTOR_NAME } from '../common/TSConst';
 import { MethodParameter } from './builder/ArkMethodBuilder';
-import { TypeInference } from '../common/TypeInference';
 import { CxxBodyBuilder } from '../../cpp_frontend/model/builder/BodyBuilder';
 import { PointerType } from '../../cpp_frontend/base/Type';
+import { ModelUtils } from '../common/ModelUtils';
 
 export const arkMethodNodeKind = [
     'MethodDeclaration',
@@ -530,11 +528,7 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
     }
 
     public getReturnStmt(): Stmt[] {
-        return (
-            this.getCfg()
-                ?.getStmts()
-                .filter(stmt => stmt instanceof ArkReturnStmt) ?? []
-        );
+        return this.getCfg()?.getStmts().filter(stmt => stmt instanceof ArkReturnStmt) ?? [];
     }
 
     public setViewTree(viewTree: ViewTree): void {
@@ -654,75 +648,13 @@ export class ArkMethod extends ArkBaseModel implements ArkExport {
             }
             return args.length >= min && args.length <= max;
         });
-        return signatures?.find(p => this.isMatched(p.getMethodSubSignature().getParameters(), args)) ?? signatures?.[0] ?? this.getSignature();
+        return (
+            signatures?.find(p => ModelUtils.isMatched(p.getMethodSubSignature().getParameters(), args, this.getDeclaringArkFile().getScene())) ??
+            signatures?.[0] ??
+            this.getSignature()
+        );
     }
 
-    private isMatched(parameters: MethodParameter[], args: Value[], isArrowFunc: boolean = false): boolean {
-        for (let i = 0; i < parameters.length; i++) {
-            if (!args[i]) {
-                return isArrowFunc ? true : parameters[i].isOptional();
-            }
-            const paramType = parameters[i].getType();
-            const isMatched = this.matchParam(paramType, args[i]);
-            if (!isMatched) {
-                return false;
-            } else if (paramType instanceof EnumValueType || paramType instanceof LiteralType) {
-                return true;
-            }
-        }
-        return true;
-    }
-
-    private matchParam(paramType: Type, argument: Value): boolean {
-        const arg = ArkMethod.parseArg(argument, paramType);
-        const argType = arg.getType();
-        if (paramType instanceof AliasType && !(argType instanceof AliasType)) {
-            paramType = TypeInference.replaceAliasType(paramType);
-        } else if (!(paramType instanceof AliasType) && argType instanceof AliasType) {
-            paramType = TypeInference.replaceAliasType(paramType);
-        }
-        if (paramType instanceof UnionType) {
-            return !!paramType.getTypes().find(p => this.matchParam(p, arg));
-        } else if (argType instanceof FunctionType && paramType instanceof FunctionType) {
-            if (argType.getMethodSignature().getParamLength() > paramType.getMethodSignature().getParamLength()) {
-                return false;
-            }
-            const parameters = paramType.getMethodSignature().getMethodSubSignature().getParameters();
-            const args = argType
-                .getMethodSignature()
-                .getMethodSubSignature()
-                .getParameters()
-                .filter(p => !p.getName().startsWith(LEXICAL_ENV_NAME_PREFIX));
-            return this.isMatched(parameters, args, true);
-        } else if (paramType instanceof ClassType && paramType.getClassSignature().getClassName().includes(CALL_BACK)) {
-            return argType instanceof FunctionType;
-        } else if (paramType instanceof LiteralType) {
-            const argStr = arg instanceof Constant ? arg.getValue() : argType.getTypeString();
-            return argStr.replace(/[\"|\']/g, '') === paramType.getTypeString().replace(/[\"|\']/g, '');
-        } else if (paramType instanceof ClassType && argType instanceof EnumValueType) {
-            return paramType.getClassSignature() === argType.getFieldSignature().getDeclaringSignature();
-        } else if (paramType instanceof EnumValueType) {
-            if (argType instanceof EnumValueType) {
-                return paramType.getFieldSignature() === argType.getFieldSignature();
-            } else if (argType.constructor === paramType.getConstant()?.getType().constructor && arg instanceof Constant) {
-                return paramType.getConstant()?.getValue() === arg.getValue();
-            }
-        }
-        return argType.constructor === paramType.constructor;
-    }
-
-    private static parseArg(arg: Value, paramType: Type): Value {
-        if ((paramType instanceof EnumValueType || paramType instanceof LiteralType) && arg instanceof Local) {
-            const stmt = arg.getDeclaringStmt();
-            const argType = arg.getType();
-            if (argType instanceof EnumValueType && argType.getConstant()) {
-                arg = argType.getConstant()!;
-            } else if (stmt instanceof ArkAssignStmt && stmt.getRightOp() instanceof Constant) {
-                arg = stmt.getRightOp();
-            }
-        }
-        return arg;
-    }
 
     public getOuterMethod(): ArkMethod | undefined {
         return this.outerMethod;

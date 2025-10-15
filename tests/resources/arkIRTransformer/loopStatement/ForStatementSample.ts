@@ -49,3 +49,12 @@ function case6(): void {
         }
     }
 }
+
+function case7(): number {
+    for (let i = 0; i < 10; i++) {
+        if (i === 5) {
+            return 42;
+        }
+    }
+    return 0;
+}

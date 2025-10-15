@@ -122,6 +122,7 @@ import {
     FOR_STATEMENT_EXPECT_CASE4,
     FOR_STATEMENT_EXPECT_CASE5,
     FOR_STATEMENT_EXPECT_CASE6,
+    FOR_STATEMENT_EXPECT_CASE7,
 } from '../resources/arkIRTransformer/loopStatement/LoopExpect';
 import { ArkIRFilePrinter } from '../../src/save/arkir/ArkIRFilePrinter';
 import { ClosureFieldRef } from '../../src/core/base/Ref';
@@ -503,6 +504,7 @@ describe('loop statement Test', () => {
         testBlocks(scene, 'ForStatementSample.ts', 'case4', FOR_STATEMENT_EXPECT_CASE4.blocks);
         testBlocks(scene, 'ForStatementSample.ts', 'case5', FOR_STATEMENT_EXPECT_CASE5.blocks);
         testBlocks(scene, 'ForStatementSample.ts', 'case6', FOR_STATEMENT_EXPECT_CASE6.blocks);
+        testBlocks(scene, 'ForStatementSample.ts', 'case7', FOR_STATEMENT_EXPECT_CASE7.blocks);
     });
 
 });

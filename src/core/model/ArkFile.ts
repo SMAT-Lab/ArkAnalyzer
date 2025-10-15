@@ -170,7 +170,9 @@ export class ArkFile {
             const index = name.indexOf(NAME_DELIMITER);
             if (index > 0) {
                 const originName = name.substring(0, index);
-                this.addArkClass(arkClass, originName);
+                if (!this.classes.has(originName)) {
+                    this.addArkClass(arkClass, originName);
+                }
             }
         }
     }

@@ -434,12 +434,12 @@ export class AbstractFlowGraph {
     private isIfBreakRegion(node: AbstractNode, nodeSet: Set<AbstractNode>, loop: NaturalLoopRegion): boolean {
         let m = node.getSucc()[0];
         nodeSet.clear();
-        if (this.isExitLoop(m, this.structBlocks.get(loop)!)) {
+        if (this.isExitLoop(m, this.structBlocks.get(loop)!) && !m.hasReturnStmt()) {
             nodeSet.add(node);
             return true;
         }
 
-        if (m.getSucc().length === 1 && this.isExitLoop(m.getSucc()[0], this.structBlocks.get(loop)!)) {
+        if (m.getSucc().length === 1 && this.isExitLoop(m.getSucc()[0], this.structBlocks.get(loop)!) && !m.hasReturnStmt()) {
             nodeSet.add(node).add(m);
             return true;
         }
@@ -1440,7 +1440,7 @@ class NaturalTrapRegion extends Region {
         return size;
     }
 
-    public replace(): void {}
+    public replace(): void { }
 
     public getNodes(): AbstractNode[] {
         let nodes = Array.from(this.trySet);

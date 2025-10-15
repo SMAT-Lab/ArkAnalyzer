@@ -38,15 +38,23 @@ import { Sdk } from '../../Config';
 import { ALL, DEFAULT, THIS_NAME } from './TSConst';
 import { buildDefaultExportInfo } from '../model/builder/ArkExportBuilder';
 import {
+    AliasType,
     AnnotationNamespaceType,
-    ClassType,
-    FunctionType,
+    ClassType, EnumValueType,
+    FunctionType, LiteralType,
     Type,
-    UnclearReferenceType,
+    UnclearReferenceType, UnionType,
     UnknownType
 } from '../base/Type';
 import { Scene } from '../../Scene';
-import { DEFAULT_ARK_CLASS_NAME, DEFAULT_ARK_METHOD_NAME, NAME_DELIMITER, TEMP_LOCAL_PREFIX } from './Const';
+import {
+    ANONYMOUS_CLASS_PREFIX,
+    DEFAULT_ARK_CLASS_NAME,
+    DEFAULT_ARK_METHOD_NAME,
+    LEXICAL_ENV_NAME_PREFIX,
+    NAME_DELIMITER,
+    TEMP_LOCAL_PREFIX
+} from './Const';
 import { EMPTY_STRING } from './ValueUtil';
 import { ArkBaseModel } from '../model/ArkBaseModel';
 import { ArkAssignStmt } from '../base/Stmt';
@@ -54,6 +62,11 @@ import { ClosureFieldRef } from '../base/Ref';
 import { SdkUtils } from './SdkUtils';
 import { CxxSceneUtils } from '../../utils/CxxSceneUtils';
 import { TypeInference } from './TypeInference';
+import { MethodParameter } from '../model/builder/ArkMethodBuilder';
+import { Value } from '../base/Value';
+import { Constant } from '../base/Constant';
+import { Builtin } from './Builtin';
+import { CALL_BACK } from './EtsConst';
 
 export class ModelUtils {
     public static implicitArkUIBuilderMethods: Set<ArkMethod> = new Set();
@@ -573,6 +586,117 @@ export class ModelUtils {
             return arkBaseModel.getType();
         }
         return null;
+    }
+
+    public static isMatched(parameters: MethodParameter[], args: Value[], scene: Scene, isArrowFunc: boolean = false): boolean {
+        for (let i = 0; i < parameters.length; i++) {
+            if (!args[i]) {
+                return isArrowFunc ? true : parameters[i].isOptional();
+            }
+            const paramType = parameters[i].getType();
+            const isMatched = ModelUtils.matchParam(paramType, args[i], scene);
+            if (!isMatched) {
+                return false;
+            } else if (paramType instanceof EnumValueType || paramType instanceof LiteralType) {
+                return true;
+            }
+        }
+        return true;
+    }
+
+    private static matchParam(paramType: Type, argument: Value, scene: Scene): boolean {
+        const arg = ModelUtils.parseArg(argument, paramType);
+        let argType = arg.getType();
+        if (paramType instanceof AliasType && !(argType instanceof AliasType)) {
+            paramType = TypeInference.replaceAliasType(paramType);
+        } else if (!(paramType instanceof AliasType) && argType instanceof AliasType) {
+            argType = TypeInference.replaceAliasType(argType);
+        }
+
+        if (paramType instanceof UnionType) {
+            return !!paramType.getTypes().find(p => this.matchParam(p, arg, scene));
+        } else if (argType instanceof FunctionType && paramType instanceof FunctionType) {
+            if (argType.getMethodSignature().getParamLength() > paramType.getMethodSignature().getParamLength()) {
+                return false;
+            }
+            const parameters = paramType.getMethodSignature().getMethodSubSignature().getParameters();
+            const args = argType.getMethodSignature().getMethodSubSignature().getParameters().filter(p => !p.getName().startsWith(LEXICAL_ENV_NAME_PREFIX));
+            return ModelUtils.isMatched(parameters, args, scene, true);
+        }
+        return ModelUtils.matchType(paramType, argType, arg, scene);
+    }
+
+    private static matchType(paramType: Type, argType: Type, arg: Value, scene: Scene): boolean {
+        if (paramType instanceof LiteralType) {
+            const argStr = arg instanceof Constant ? arg.getValue() : argType.getTypeString();
+            return argStr.replace(/[\"|\']/g, '') ===
+                paramType.getTypeString().replace(/[\"|\']/g, '');
+        } else if (paramType instanceof ClassType && argType instanceof EnumValueType) {
+            return paramType.getClassSignature() === argType.getFieldSignature().getDeclaringSignature();
+        } else if (paramType instanceof EnumValueType) {
+            if (argType instanceof EnumValueType) {
+                return paramType.getFieldSignature() === argType.getFieldSignature();
+            } else if (argType.constructor === paramType.getConstant()?.getType().constructor && arg instanceof Constant) {
+                return paramType.getConstant()?.getValue() === arg.getValue();
+            }
+        } else if (paramType instanceof ClassType && paramType.getClassSignature().getClassName().startsWith(ANONYMOUS_CLASS_PREFIX)) {
+            if (argType instanceof ClassType) {
+                const className = argType.getClassSignature().getClassName();
+                return className === Builtin.OBJECT || className.startsWith(ANONYMOUS_CLASS_PREFIX);
+            }
+            return false;
+        } else if (paramType instanceof ClassType && argType instanceof ClassType) {
+            return ModelUtils.classTypeMatch(paramType, argType, scene);
+        } else if (paramType instanceof ClassType && paramType.getClassSignature().getClassName().includes(CALL_BACK)) {
+            return argType instanceof FunctionType;
+        }
+        return argType.constructor === paramType.constructor;
+    }
+
+
+    private static classTypeMatch(paramType: ClassType, argType: ClassType, scene: Scene): boolean {
+        const paramClass = scene.getClass(paramType.getClassSignature());
+        const argClass = scene.getClass(argType.getClassSignature());
+        if (!paramClass || !argClass) {
+            return false;
+        }
+        if (paramClass === argClass) {
+            return true;
+        }
+        const mustFields = paramClass.getFields().filter(f => !f.isStatic() && !f.getQuestionToken());
+        const noMatchedField = mustFields.find(f => !argClass.getFieldWithName(f.getName()));
+        if (noMatchedField) {
+            return false;
+        }
+        const mustMethods = paramClass.getMethods().filter(f => !f.isStatic() && !f.getQuestionToken());
+        const noMatchedMethod = mustMethods.find(f => !argClass.getMethodWithName(f.getName()));
+        if (noMatchedMethod) {
+            return false;
+        }
+        if (mustFields.length === 0 && mustMethods.length === 0) {
+            const excessField = argClass.getFields().find(f => !paramClass.getFieldWithName(f.getName()));
+            if (excessField) {
+                return false;
+            }
+            const excessMethod = argClass.getMethods().find(f => !paramClass.getMethodWithName(f.getName()));
+            if (excessMethod) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static parseArg(arg: Value, paramType: Type): Value {
+        if ((paramType instanceof EnumValueType || paramType instanceof LiteralType) && arg instanceof Local) {
+            const stmt = arg.getDeclaringStmt();
+            const argType = arg.getType();
+            if (argType instanceof EnumValueType && argType.getConstant()) {
+                arg = argType.getConstant()!;
+            } else if (stmt instanceof ArkAssignStmt && stmt.getRightOp() instanceof Constant) {
+                arg = stmt.getRightOp();
+            }
+        }
+        return arg;
     }
 }
 
