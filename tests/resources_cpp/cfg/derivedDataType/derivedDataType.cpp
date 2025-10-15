@@ -109,6 +109,38 @@ typedef enum {
     SUNDAY
 } ADAY;
 
+// Basic enumeration class
+enum class Color {
+    RED,
+    GREEN,
+    BLUE,
+    YELLOW
+};
+
+// Enumeration class with default values
+enum class HttpStatus {
+    OK = 200,
+    NOT_FOUND = 404,
+    SERVER_ERROR = 500
+};
+
+// Specify the enumeration class of the underlying type
+enum class Direction : char {
+    NORTH = 'N',
+    SOUTH = 'S',
+    EAST = 'E',
+    WEST = 'W'
+};
+
+// Example of complex enumeration class
+enum class Priority : unsigned int {
+    LOW = 1,
+    MEDIUM = 5,
+    HIGH ,
+    CRITICAL = 20
+};
+
+
 bool IsWorkDay(int day)
 {
     if (day == TUESDAY) {
