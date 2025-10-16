@@ -193,8 +193,8 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
             case 'CXXRecordDecl':
                 stmts = this.cxxClassDeclarationToStmts(node);
                 break;
-            case 'UnexposedDecl':
-                stmts = this.unexposedDeclToStmts(node);
+            case 'DecompositionDecl':
+                stmts = this.decompositionDeclToStmts(node);
             case 'unsupported kind':
                 break;
         }
@@ -341,7 +341,8 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
             assignStmt.setOperandOriginalPositions([...initOriPos, ...castExprPositions]);
             stmts.push(assignStmt);
             initStmts.forEach(stmt => stmts.push(stmt));
-        } else if (declStmts.kind === 'UnexposedDecl') {
+            // Processing structured binding under cyclic conditions
+        } else if (declStmts.kind === 'DecompositionDecl') {
             const {
                 value: initValue,
                 valueOriginalPositions: initOriPos,
@@ -755,7 +756,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         return stmts;
     }
 
-    private unexposedDeclToStmts(unexposedDecl: CxxAstNode): Stmt[] {
+    private decompositionDeclToStmts(unexposedDecl: CxxAstNode): Stmt[] {
         return this.ArkCxxValueTransformer.bindingNodeToValueAndStmts(unexposedDecl).stmts;
     }
 

@@ -16,6 +16,7 @@
 #pragma once
 #include <string>
 #include <string_view>
+#include <map>
 #include "json.hpp"
 #include <clang-c/Index.h>
 
@@ -44,9 +45,8 @@ void PostprocessPseudoDestructor(json& node, const json& children, std::string_v
 bool ConstructCallExpr(std::string codeStr, std::string typeStr);
 
 
-std::vector<std::string> ParseTemplateArgsAfterEqual(
-    const std::string& codeRaw,
-    const std::string& tplNameHint);
+std::vector<std::string>
+ParseTemplateArgsAfterEqual(const std::string& codeRaw, const std::string& tplNameHint);
 
 bool IsBuiltinNameNoSpace(const std::string& tokNoSpace);
 
@@ -113,3 +113,13 @@ void buildNodeRange(json& node, json& parent);
 
 // Recursively build typedef child nodes from a CXType
 void buildTypedefChild(const CXType& type, json& newChildren, json& children, json& parent);
+
+bool TryNormalizeDecompositionDecl(json& node, json& children, const std::map<std::string, json>& derivedDataTypeMap);
+
+void fixMapPairInitListChildren(json &children, const std::string &typeStr);
+
+void fillMemberExprName(json& node);
+
+void updateTypedefClassConstructor(json& children);
+
+void deduceDecltype(json& node, json&children);

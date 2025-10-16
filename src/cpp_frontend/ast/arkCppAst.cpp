@@ -507,18 +507,6 @@ std::string unifyTypeStr(CXString typeSpelling)
     return typeStr;
 }
 
-
-// Fix for std::pair's map InitListExpr
-void fixMapPairInitListChildren(json &children, const std::string &typeStr)
-{
-    for (auto &child:children) {
-        if (child["kind"] == "InitListExpr" && child["type"]["qualType"] == "void") {
-            child["type"]["qualType"] = typeStr.substr(0, typeStr.find('['));
-            child["kind"] = "CXXConstructExpr";
-        }
-    }
-}
-
 std::string getMemberInClassName(CXCursor cursor)
 {
     CXCursor parentCursor = clang_getCursorSemanticParent(cursor);
@@ -696,25 +684,6 @@ void fixImplicitCastExprAndDeclRef(json &node, const std::unordered_map<std::str
 
 // Cache all classes, structs
 std::map<std::string, json> derivedDataTypeMap;
-
-// Associate object parameters during constructor initialization
-void relateMemberType(const std::string& typeStr, json& children)
-{
-    const auto& classNode = derivedDataTypeMap[typeStr];
-    if (!classNode.is_null() && children.size() == classNode["inner"].size()) {
-        for (int i = 0; i < children.size(); ++i) {
-            const auto& memberType = classNode["inner"][i]["type"]["qualType"];
-            auto& child = children[i];
-            if (child["type"]["qualType"] != memberType && derivedDataTypeMap.count(child["type"]["qualType"])) {
-                child = {
-                    {"id", child["id"]}, {"code", child["code"]}, {"name", child["name"]},
-                    {"range", child["range"]}, {"type", classNode["inner"][i]["type"]},
-                    {"kind", "CXXConstructExpr"}, {"inner", json::array({child})}
-                };
-            }
-        }
-    }
-}
 
 bool IsConstructorByTypeStr(std::string typeStr)
 {
@@ -936,31 +905,6 @@ static bool ShouldMaterializeCursor(
         return true;
     }
     return false;
-}
-
-
-// Modify class declaration node type under typedef to constructorExpr
-void updateTypedefClassConstructor(json& children)
-{
-    if (children.size() < TWO || (children[0]["kind"] != "TypeRef" && children[1]["kind"] != "CallExpr")) {
-        return;
-    }
-    if (children[0]["type"]["qualType"] == children[1]["type"]["qualType"] && (children[1]["name"] == "map" ||
-        children[1]["name"] == "unordered_map")) {
-            children[1]["kind"] = "CXXConstructExpr";
-        }
-}
-
-// decltype type deduction
-void deduceDecltype(json& node, json&children)
-{
-    if (children.size() == 0 || !node.contains("type") ||
-        node["type"].value("qualType", "").find("decltype(") == std::string::npos) {
-        return;
-    }
-    if (children[0].contains("type")) {
-        node["type"]["qualType"] = children[0]["type"]["qualType"];
-    }
 }
 
 static bool applyDeclLikeKind(json& node, CXCursor cursor, CXCursorKind k)
@@ -1196,30 +1140,6 @@ void fillNodeIdRangeLoc(json& node, const json& content, CXCursorKind kind_curso
     }
 }
 
-void fillMemberExprName(json& node)
-{
-    if (node["name"] != "") {
-        return;
-    }
-    std::string codeStr = node["code"];
-    size_t index1 = codeStr.find("->");
-    size_t index2 = codeStr.find(".");
-    size_t index = 0;
-    if (index1 == std::string::npos && index2 == std::string::npos) {
-        return;
-    } else if (index1 != std::string::npos && index2 != std::string::npos) {
-        index = index1 < index2 ? index1 + TWO : index2 + 1; // 去掉成员访问符的长度
-    } else {
-        index = index1 != std::string::npos ? index1 + TWO : index2 + 1;
-    }
-    size_t index3 = codeStr.find("(");
-    if (index3 != std::string::npos) {
-        node["name"] = codeStr.substr(index, index3 - index);
-    } else {
-        node["name"] = codeStr.substr(index);
-    }
-}
-
 static void HandleTemplateAndCursorSpecific(
     json& node,
     CXCursorKind kind_cursor,
@@ -1276,6 +1196,24 @@ void ResolveGotoTarget(json& node)
     }
 }
 
+// Associate object parameters during constructor initialization
+void relateMemberType(const std::string& typeStr, json& children)
+{
+    const auto& classNode = derivedDataTypeMap[typeStr];
+    if (!classNode.is_null() && children.size() == classNode["inner"].size()) {
+        for (int i = 0; i < children.size(); ++i) {
+            const auto& memberType = classNode["inner"][i]["type"]["qualType"];
+            auto& child = children[i];
+            if (child["type"]["qualType"] != memberType && derivedDataTypeMap.count(child["type"]["qualType"])) {
+                child = {
+                    {"id", child["id"]}, {"code", child["code"]}, {"name", child["name"]},
+                    {"range", child["range"]}, {"type", classNode["inner"][i]["type"]},
+                    {"kind", "CXXConstructExpr"}, {"inner", json::array({child})}
+                };
+            }
+        }
+    }
+}
 
 void nodePostprocess(
     json& node,
@@ -1285,6 +1223,9 @@ void nodePostprocess(
 {
     std::string codeStr = node.value("code", "");
     std::string typeStr = node["type"]["qualType"];
+    if (kind_cursor == CXCursor_UnexposedDecl) {
+        TryNormalizeDecompositionDecl(node, children, derivedDataTypeMap);
+    }
     // --- High-level transformations ---
     if (node["kind"] == "UsingDecl" && isUsingInheritClass(node, children)) {
         node["kind"] = "CXXConstructorDecl";
