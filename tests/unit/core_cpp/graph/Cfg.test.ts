@@ -413,7 +413,7 @@ describe('typedef Test', () => {
     });
 });
 
-describe('thread Test', () => {
+describe('feature Test', () => {
     it('case1: thread', () => {
         const scene = buildScene('thread');
         testBlocks(scene, 'thread.cpp', 'Case1', THREAD_EXPECT.THREAD_EXPECT_CASE1.blocks);
