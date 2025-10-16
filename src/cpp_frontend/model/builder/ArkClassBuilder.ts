@@ -269,7 +269,6 @@ function buildArkClassMembers(clsNode: CxxAstNode, cls: ArkClass, sourceFile: Cx
         } else if (
             member.kind === 'CXXMethodDecl' ||
             member.kind === 'CXXConstructorDecl' ||
-            member.kind === 'CXXAccessSpecifier' ||
             member.kind === 'CXXDestructorDecl'
         ) {
             // ignore
@@ -284,12 +283,7 @@ function buildArkClassMembers(clsNode: CxxAstNode, cls: ArkClass, sourceFile: Cx
 
 
 function buildMethodsForClass(clsNode: CxxAstNode, cls: ArkClass, sourceFile: CxxAstNode): void {
-    let cxxAccessModifier = 'private';
     clsNode.inner.forEach((member: CxxAstNode) => {
-        if (member.kind.toString() === 'CXXAccessSpecifier') {
-            cxxAccessModifier = member.code.split(':')[0];
-        }
-        member.access = cxxAccessModifier;
         if (
             member.kind.toString() === 'CXXMethodDecl' ||
             member.kind.toString() === 'CXXConstructorDecl' ||

@@ -167,6 +167,11 @@ export class AstUtils {
         if (!Object.prototype.hasOwnProperty.call(cursor, 'name') || cursor.name === undefined) {
             cursor.name = '';
         }
+        if (cursor.kind === 'CXXRecordDecl' && cursor.tagUsed === 'class') {
+            this.currentAccess = 'private';
+        } else if (cursor.kind === 'CXXRecordDecl' && cursor.tagUsed === 'struct') {
+            this.currentAccess = 'public';
+        }
         for (const idx in cursor.inner) {
             if (!Object.prototype.hasOwnProperty.call(cursor.inner, idx)) {
                 continue;
@@ -174,7 +179,9 @@ export class AstUtils {
             const currentCursor = cursor.inner[idx];
             // Overloaded implementation without any usage of 'any' or type assertions
             Object.assign(currentCursor, { getParent: this.makeGetParent(cursor) });
-            this.processAccess(currentCursor);
+            if (cursor.kind === 'CXXRecordDecl'){
+                this.processAccess(currentCursor);
+            }
             this.fullInfo(currentCursor);
         }
     }
@@ -209,10 +216,9 @@ export class AstUtils {
     }
 
     private static processAccess(cursor: CxxAstNode): void {
-        if (cursor.kind === 'AccessSpecDecl') {
-            this.currentAccess = cursor.access ?? '';
-        }
-        if (cursor.kind === 'CXXMethodDecl' || cursor.kind === 'FieldDecl' || cursor.kind === 'VarDecl' || cursor.kind === 'FriendDecl') {
+        if (cursor.kind === 'CXXAccessSpecifier') {
+            this.currentAccess = this.extractCppModifier(cursor.code) ?? '';
+        } else  {
             let codeModifier = this.extractCppModifier(cursor.code);
             if (codeModifier !== null) {
                 cursor.access = codeModifier;
