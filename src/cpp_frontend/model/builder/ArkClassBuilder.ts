@@ -253,14 +253,13 @@ function buildArkClassMembers(clsNode: CxxAstNode, cls: ArkClass, sourceFile: Cx
     for (const member of clsNode.inner as CxxAstNode[]) {
         if (member.kind === 'FieldDecl' || member.kind === 'VarDecl') {
             const arkField = buildProperty2ArkField(member, sourceFile, cls);
-
-            if (clsNode.kind === 'CXXRecordDecl' && (tagStr === 'class' || tagStr === 'struct')) {
-                if (member.inner.length > 0) {
-                    staticIRTransformer = new ArkCxxIRTransformer(sourceFile as CxxTranslationUnit, cls.getStaticInitMethod());
-                    getInitStmts(staticIRTransformer, arkField, member.inner[0]);
-                }
-                arkField.getInitializer().forEach(stmt => instanceInitStmts.push(stmt));
+            // If the parameter innner is not empty, it means it contains initialization information
+            if (member.inner.length > 0) {
+                staticIRTransformer = new ArkCxxIRTransformer(sourceFile as CxxTranslationUnit, cls.getStaticInitMethod());
+                getInitStmts(staticIRTransformer, arkField, member.inner[member.inner.length - 1]);
             }
+            arkField.getInitializer().forEach(stmt => instanceInitStmts.push(stmt));
+            // Initialization of enumeration types
         } else if (member.kind === 'EnumConstantDecl') {
             const arkField = buildProperty2ArkField(member, sourceFile, cls);
             staticIRTransformer = new ArkCxxIRTransformer(sourceFile as CxxTranslationUnit, cls.getStaticInitMethod());
@@ -269,6 +268,7 @@ function buildArkClassMembers(clsNode: CxxAstNode, cls: ArkClass, sourceFile: Cx
         } else if (
             member.kind === 'CXXMethodDecl' ||
             member.kind === 'CXXConstructorDecl' ||
+            member.kind === 'CXXAccessSpecifier' ||
             member.kind === 'CXXDestructorDecl'
         ) {
             // ignore

@@ -167,6 +167,7 @@ export class AstUtils {
         if (!Object.prototype.hasOwnProperty.call(cursor, 'name') || cursor.name === undefined) {
             cursor.name = '';
         }
+        // The default access property of class is 'private',The default access property of struct is 'public'
         if (cursor.kind === 'CXXRecordDecl' && cursor.tagUsed === 'class') {
             this.currentAccess = 'private';
         } else if (cursor.kind === 'CXXRecordDecl' && cursor.tagUsed === 'struct') {
@@ -215,7 +216,9 @@ export class AstUtils {
         return null;
     }
 
+    // Members in the syntax tree do not have control attributes, please process them here
     private static processAccess(cursor: CxxAstNode): void {
+        // C++access control is a partition declaration that updates current information when encountering an access control symbol
         if (cursor.kind === 'CXXAccessSpecifier') {
             this.currentAccess = this.extractCppModifier(cursor.code) ?? '';
         } else  {
