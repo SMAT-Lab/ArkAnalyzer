@@ -812,7 +812,8 @@ int CountBindingsInBrackets(std::string_view s) noexcept
         s.remove_suffix(1);
     }
     int cnt = 0;
-    size_t i = 0, n = s.size();
+    size_t i = 0;
+    size_t n = s.size();
     while (i < n) {
         // 跳前导空白
         while (i < n && (s[i]==' ' || s[i]=='\t' || s[i]=='\n' || s[i]=='\r')) {
@@ -839,28 +840,33 @@ int CountBindingsInBrackets(std::string_view s) noexcept
 // 规整类型名（去 const/volatile/struct/class 与末尾 & * 空格）
 std::string NormalizeTypeName(std::string qt)
 {
-    auto strip_prefix = [](std::string& s, std::string_view p) {
-        if (s.size() >= p.size() && s.compare(0, p.size(), p) == 0) s.erase(0, p.size());
+    auto stripPrefix = [](std::string& s, std::string_view p) {
+        if (s.size() >= p.size() && s.compare(0, p.size(), p) == 0) {
+            s.erase(0, p.size());
+        }
     };
     // Trim 两端空白
-    while (!qt.empty() && (qt.front()==' ' || qt.front()=='\t' || qt.front()=='\n' || qt.front()=='\r')) {
+    while (!qt.empty() && (qt.front() == ' ' || qt.front() == '\t' || qt.front() == '\n' || qt.front() == '\r')) {
         qt.erase(qt.begin());
     }
-    while (!qt.empty() && (qt.back ()==' ' || qt.back ()=='\t' || qt.back ()=='\n' || qt.back ()=='\r')) {
+    while (!qt.empty() && (qt.back () == ' ' || qt.back () == '\t' || qt.back() == '\n' || qt.back() == '\r')) {
         qt.pop_back();
     }
-    strip_prefix(qt, "const ");
-    strip_prefix(qt, "volatile ");
-    strip_prefix(qt, "struct ");
-    strip_prefix(qt, "class ");
-    while (!qt.empty() && (qt.back()=='&' || qt.back()=='*' || qt.back()==' ')) {
+    stripPrefix(qt, "const ");
+    stripPrefix(qt, "volatile ");
+    stripPrefix(qt, "struct ");
+    stripPrefix(qt, "class ");
+    while (!qt.empty() && (qt.back() == '&' || qt.back() == '*' || qt.back() == ' ')) {
         qt.pop_back();
     }
     return qt;
 }
 
 // 派生的 Record 信息里查字段数是否足够
-bool IsAggregateRecordWithEnoughFields(const std::string& qt, int need, const std::map<std::string, json>& derivedDataTypeMap)
+bool IsAggregateRecordWithEnoughFields(const std::string& qt,
+                                       int need,
+                                       const std::map<std::string,
+                                       json>& derivedDataTypeMap)
 {
     if (qt.empty()) {
         return false;
@@ -871,7 +877,7 @@ bool IsAggregateRecordWithEnoughFields(const std::string& qt, int need, const st
         return false;
     }
     const json& rec = it->second;
-    if (rec.value("kind","") != "CXXRecordDecl") {
+    if (rec.value("kind", "") != "CXXRecordDecl") {
         return false;
     }
     if (!rec.contains("inner") || !rec["inner"].is_array()) {
@@ -879,7 +885,7 @@ bool IsAggregateRecordWithEnoughFields(const std::string& qt, int need, const st
     }
     int fieldCnt = 0;
     for (const auto& mem : rec["inner"]) {
-        if (mem.value("kind","") == "FieldDecl") {
+        if (mem.value("kind", "") == "FieldDecl") {
             ++fieldCnt;
         }
     }
@@ -899,7 +905,11 @@ bool IsAggregateRecordWithEnoughFields(const std::string& qt, int need, const st
  * @param anyTupleElementType 输出/累加：是否出现过 tuple_element<> 类型迹象（任一命中即置 true）
  * @param initQualType 输出/设置：首次遇到表达式样结点时记录其 type.qualType（若已非空则不再改写）
  */
-void AccumulateChildStats(const json& c, int& bindCnt, int& exprCnt, bool& anyTupleElementType, std::string& initQualType) noexcept
+void AccumulateChildStats(const json& c,
+                          int& bindCnt,
+                          int& exprCnt,
+                          bool& anyTupleElementType,
+                          std::string& initQualType) noexcept
 {
     const std::string ck = c.value("kind", "");
     if (IsBindingNameNode(c)) {
@@ -1015,12 +1025,11 @@ bool TryNormalizeDecompositionDecl(json& node, json& children, const std::map<st
         return false;
     }
     // ---------- 4) 类型侧 ----------
-    const std::string parentQT = node.contains("type") ? node["type"].value("qualType","") : "";
+    const std::string parentQT = node.contains("type") ? node["type"].value("qualType", "") : "";
     const bool tupleLikeByParent = IsTupleLikeType(parentQT) || LooksArrayType(parentQT);
     const bool tupleLikeByInit = IsTupleLikeType(initQualType) || LooksArrayType(initQualType);
     const bool aggregateByInit = IsAggregateRecordWithEnoughFields(initQualType, bindCnt, derivedDataTypeMap);
     const bool aggregateByParent = IsAggregateRecordWithEnoughFields(parentQT, bindCnt, derivedDataTypeMap);
-
     if (!tupleLikeByParent && !tupleLikeByInit && !aggregateByInit && !aggregateByParent && !anyTupleElementType) {
         return false;
     }

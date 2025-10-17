@@ -41,7 +41,6 @@ import { CONSTRUCTOR_NAME, THIS_NAME } from '../../../core/common/TSConst';
 import { ArkSignatureBuilder } from '../../../core/model/builder/ArkSignatureBuilder';
 import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
 import {CxxAstNode} from '../../ast/ArkCxxAstNode';
-import { ModifierType } from '../../../core/model/ArkBaseModel';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkMethodBuilder');
 
@@ -142,7 +141,7 @@ export function buildArkMethodFromArkClass(methodNode: CxxAstNode, declaringClas
         returnType = VoidType.getInstance();
     }
     // @ts-ignore
-    reCheckStaticMethod(methodName, declaringClass, mtd);
+    reCheckModifiers(methodName, declaringClass, mtd);
     const methodSubSignature = new MethodSubSignature(methodName, methodParameters, returnType, mtd.isStatic());
     const methodSignature = new MethodSignature(mtd.getDeclaringArkClass().getSignature(), methodSubSignature);
     const begin = methodNode.range?.begin ?? { line: 0, col: 0 };
@@ -169,11 +168,13 @@ export function buildArkMethodFromArkClass(methodNode: CxxAstNode, declaringClas
     IRUtils.setComments(mtd, methodNode, sourceFile, mtd.getDeclaringArkFile().getScene().getOptions());
 }
 
-function reCheckStaticMethod(methodName: string, cls: ArkClass, method: ArkMethod): void {
-    const staticMethods = cls.getStaticMethodsWithName(methodName);
-    if (staticMethods.length > 0) {
-        method.addModifier(ModifierType.STATIC);
+// When a function is implemented outside the class, it retrieves the modifier at the original definition
+function reCheckModifiers(methodName: string, cls: ArkClass, method: ArkMethod): void {
+    let methodsWithSameName = cls.getAllMethodsWithName(methodName);
+    if (methodsWithSameName.length === 0) {
+        return;
     }
+    method.addModifier(methodsWithSameName[0].getModifiers());
 }
 
 function checkAndUpdateCxxMethod(method: ArkMethod, cls: ArkClass): void {

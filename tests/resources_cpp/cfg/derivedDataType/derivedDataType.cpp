@@ -136,7 +136,7 @@ enum class Direction : char {
 enum class Priority : unsigned int {
     LOW = 1,
     MEDIUM = 5,
-    HIGH ,
+    HIGH,
     CRITICAL = 20
 };
 

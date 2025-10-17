@@ -16,17 +16,17 @@
 #include <initializer_list>
 #include <vector>
 
-void example1()
+void Example1()
 {
     std::initializer_list<int> list = {1, 2, 3, 4, 5};
     //这里会产生 CXXStdInitializerListExpr
 }
 
-void func(std::initializer_list<int> list) {}
+void Func(std::initializer_list<int> list) {}
 
-void example2()
+void Example2()
 {
-    func({1, 2, 3});
+    Func({1, 2, 3});
     //这里会产生 CXXStdInitializerListExpr
 
     std::vector<int> vec = {1, 2, 3, 4};
@@ -38,7 +38,8 @@ public:
     MyClass(std::initializer_list<int> list) {}
 };
 
-void example3() {
+void Example3()
+{
     MyClass obj{1, 2, 3, 4};
     //这里会产生 CXXStdInitializerListExpr
 }
