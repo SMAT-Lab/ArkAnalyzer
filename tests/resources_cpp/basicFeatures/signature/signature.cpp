@@ -15,6 +15,8 @@
 #include <iostream>
 #include <string>
 
+using namespace std;
+
 typedef int UserId;
 
 namespace nsA {

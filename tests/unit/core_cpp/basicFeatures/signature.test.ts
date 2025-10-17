@@ -87,7 +87,6 @@ describe('Signature Test', () => {
             cls => cls.getName() === 'DefaultClass')?.getMethodWithName('constructor');
         assert.isDefined(targetMethod)
         const signature = targetMethod!.getSignature();
-        console.log(signature.toString());
         expect(signature.toString()).toEqual('@signature/signature.cpp: nsA.DefaultClass.constructor(char, int)');
     });
 
@@ -97,11 +96,31 @@ describe('Signature Test', () => {
             cls => cls.getName() === 'Base')?.getMethodWithName('constructor');
         assert.isDefined(targetMethod)
         const signature = targetMethod!.getSignature();
-        console.log(signature.toString());
         expect(signature.toString()).toEqual('@signature/signature.cpp: Base.constructor(char&)');
     });
 
-    it('case8: alias type signature', () => {
+    it('case8: field signature test1', () => {
+        const arkFile = scene.getFiles().find(file => file.getName().endsWith('signature.cpp'));
+        const namespace = arkFile?.getNamespaces().find(ns => ns.getName() === 'nsA');
+        const targetClass = namespace?.getClasses().find(cls => cls.getName() === 'DefaultClass');
+        const field = targetClass?.getFields().find(field => field.getName() === 'name');
+        assert.isDefined(field)
+        const signature = field!.getSignature();
+        console.log(signature.toString());
+        expect(signature.toString()).toEqual('@signature/signature.cpp: nsA.DefaultClass.name');
+    });
+
+    it('case9: field signature test2', () => {
+        const arkFile = scene.getFiles().find(file => file.getName().endsWith('signature.cpp'));
+        const targetClass = arkFile?.getClasses().find(cls => cls.getName() === 'Base');
+        const field = targetClass?.getFields().find(field => field.getName() === 'name');
+        assert.isDefined(field)
+        const signature = field!.getSignature();
+        console.log(signature.toString());
+        expect(signature.toString()).toEqual('@signature/signature.cpp: Base.name');
+    });
+
+    it('case10: alias type signature', () => {
         const arkFile = scene.getFiles().find(file => file.getName().endsWith('signature.cpp'));
         const targetMethod = arkFile?.getDefaultClass().getDefaultArkMethod();
         assert.isDefined(targetMethod)
