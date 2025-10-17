@@ -17,6 +17,7 @@
 // utils_string.h
 #pragma once
 #include <string>
+#include <set>
 #include <vector>
 #include <clang-c/Index.h>
 
@@ -46,3 +47,5 @@ inline bool StartsWith(std::string_view s, std::string_view p) noexcept
 {
     return s.rfind(p, 0) == 0;
 }
+
+bool IsBuiltInType(std::string& type);

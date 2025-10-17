@@ -74,7 +74,7 @@ static void PatchGotosInFunction(json& node, const std::unordered_map<std::strin
     if (node.is_object()) {
         auto itMark = node.find("_isGoto");
         if (itMark != node.end() && itMark->is_boolean() && *itMark) {
-            // Label name comes from inner[0].name (your AST structure)
+            // Label name comes from inner[0].name
             std::string labelName;
             if (node.contains("inner") && node["inner"].is_array() && !node["inner"].empty()) {
                 const json& labelRef = node["inner"][0];
@@ -145,20 +145,6 @@ void fillMemberName(json &node, const std::string &displayName)
             node["name"] = member;
         }
     }
-}
-
-// Determine fallback kind from code string
-inline bool fillKindBycode(json &node, const std::string &codeStr,
-                           const std::string &prefix, const std::string &kind,
-                           const std::string &argField = "")
-{
-    size_t pos = codeStr.find(prefix + "(");
-    if (pos != std::string::npos && pos == 0) {
-        node["kind"] = kind;
-        if (!argField.empty()) node[argField] = ExtractParentContent(codeStr, codeStr.find('(', pos));
-        return true;
-    }
-    return false;
 }
 
 // ========================AST attribute assistance ======================
@@ -262,7 +248,7 @@ static bool GetExpansionInfo(CXSourceRange range, SourceSlice& out)
 
     if (bf && ef && bf == ef && eo >= bo) {
         CXString sfile = clang_getFileName(bf);
-        out.filename = Cx2Str(sfile); // your existing helper
+        out.filename = Cx2Str(sfile);
         clang_disposeString(sfile);
         return !out.filename.empty();
     }
@@ -289,8 +275,6 @@ static bool TrySliceFromCache(const SourceSlice& s, std::string& outCode)
     if (s.endOffset > content.size()) {
         return false;
     }
-    // Avoid extra allocation by using string_view when building json later if you want,
-    // but here we materialize a std::string for simplicity.
     outCode = content.substr(s.beginOffset, s.endOffset - s.beginOffset);
     return true;
 }
@@ -407,42 +391,6 @@ std::string handleUnexposedExpr(json node)
     return "ImplicitCastExpr";
 }
 
-// Recursively extract all dimensions of IntegerLiteral, supporting multi-level ImplicitCastExpr nesting
-void extractArraySizes(const json &node, std::vector<std::string> &arraySizes)
-{
-    if (node.contains("kind")) {
-        if (node["kind"] == "IntegerLiteral" && node.contains("value")) {
-            arraySizes.push_back(node["value"]);
-        } else if (node["kind"] == "ImplicitCastExpr" && node.contains("inner")) {
-            forEachChild(const_cast<json&>(node), [&](json &gchild) { extractArraySizes(gchild, arraySizes); });
-        }
-    }
-}
-
-void annotateNewExprArrayInfo(json &node, const json &children)
-{
-    bool isArray = false;
-    std::vector<std::string> arraySizes;
-    for (const auto &child:children) {
-        extractArraySizes(child, arraySizes);
-    }
-    std::string codeStr = node["code"];
-    if (!arraySizes.empty() && codeStr.find("[") != std::string::npos && codeStr.find("]") != std::string::npos) {
-        isArray = true;
-        std::reverse(arraySizes.begin(), arraySizes.end());
-        node["arraySizes"] = arraySizes;
-    }
-    node["isArray"] = isArray;
-}
-
-void annotateMemberExprIsArrow(json &node)
-{
-    if (node.contains("code")) {
-        std::string codeStr = node["code"];
-        node["isArrow"] = (codeStr.find("->") != std::string::npos);
-    }
-}
-
 // Determine if callExpr node is a template constructor call
 bool TemplateConstructCallExpr(std::string nameStr, std::string typeStr)
 {
@@ -507,16 +455,6 @@ std::string unifyTypeStr(CXString typeSpelling)
     return typeStr;
 }
 
-std::string getMemberInClassName(CXCursor cursor)
-{
-    CXCursor parentCursor = clang_getCursorSemanticParent(cursor);
-    CXCursorKind kind = clang_getCursorKind(parentCursor);
-    if (kind != CXCursor_ClassDecl && kind != CXCursor_StructDecl) {
-        return "";
-    }
-    return Cx2Str(clang_getCursorSpelling(parentCursor));
-}
-
 // Get reference information
 json getReferenceDecl(CXCursor cursor, CXCursorKind kind_cursor)
 {
@@ -532,85 +470,6 @@ json getReferenceDecl(CXCursor cursor, CXCursorKind kind_cursor)
         refNode["type"] = {{"qualType", unifyTypeStr(clang_getTypeSpelling(clang_getCursorType(referenced)))}};
     }
     return refNode;
-}
-
-// Check and supplement array trait typeid noexpect
-void detectAndFillSpecialKind(json &node)
-{
-    if (!node.contains("code")) {
-        return;
-    }
-    std::string codeStr = node["code"];
-    // __arra_rank/extent
-    static const std::vector<std::pair<std::string, std::string>> traitFuncs = {
-        {"__array_rank", "ArrayTypeTraitExpr"}, {"__array_extent", "ArrayTypeTraitExpr"},
-        {"__array_rank_u", "ArrayTypeTraitExpr"}, {"__array_extent_u", "ArrayTypeTraitExpr"}
-    };
-    for (const auto &[func, kind]: traitFuncs) {
-        if (fillKindBycode(node, codeStr, func, kind, "traitArgs")) {
-            node["traitFunc"] = func;
-            break;
-        }
-    }
-    // noexcept(expr)
-    fillKindBycode(node, codeStr, "noexcept", "CXXNoexceptExpr", "noexceptArg");
-    // typeid(expr)
-    fillKindBycode(node, codeStr, "typeid", "CXXTypeidExpr", "typeArg");
-}
-
-void postprocessCallExpr(json& node)
-{
-    // Extract name from DeclRef/OverloadedDeclRef node; if empty, use referencedDecl.name
-    auto nameFromDeclRef = [](const json& n) -> std::string {
-        std::string n1 = n.value("name", "");
-        if (n1.empty() && n.contains("referencedDecl")) {
-            return n["referencedDecl"].value("name", "");
-        }
-        return n1;
-    };
-    // Look for the first OverloadedDeclRef name in a child's inner
-    auto findOverloadedNameIn = [](const json& parent) -> std::string {
-        if (!parent.contains("inner") || parent["inner"].empty()) return "";
-        for (const auto& gc : parent["inner"]) {
-            if (gc.contains("kind") && gc["kind"] == "OverloadedDeclRef") {
-                return gc.value("name", "");
-            }
-        }
-        return "";
-    };
-    // ---------- Complete name ----------
-    const bool missingName = !node.contains("name") || node["name"].is_null() || node["name"] == "";
-    const bool hasChildren = node.contains("inner") && !node["inner"].empty();
-    if (missingName && hasChildren) {
-        for (const auto& child : node["inner"]) {
-            const bool isDeclRef = child.contains("kind") &&
-            (child["kind"] == "DeclRefExpr" || child["kind"] == "OverloadedDeclRef");
-            if (isDeclRef) {
-                node["name"] = nameFromDeclRef(child);
-                break;
-            }
-            const std::string cand = findOverloadedNameIn(child);
-            if (!cand.empty()) {
-                node["name"] = cand;
-            }
-        }
-    }
-    // ---------- Identify AtomicCallExpr  ----------
-    static const std::vector<std::string> kAtomicFuncs = {
-        "atomic_fetch_add", "atomic_fetch_sub", "atomic_fetch_and", "atomic_fetch_or",
-        "atomic_fetch_xor", "atomic_exchange", "atomic_load", "atomic_store",
-        "atomic_compare_exchange"
-    };
-    if (!node.contains("name") || node["name"].is_null()) {
-        return;
-    }
-    const std::string name = node["name"];
-    if (std::find(kAtomicFuncs.begin(), kAtomicFuncs.end(), name) == kAtomicFuncs.end()) {
-        return;
-    }
-
-    node["kind"] = "AtomicCallExpr";
-    node["atomicFunc"] = name;
 }
 
 void patchPseudoDestructorExpr(json &node)
@@ -733,33 +592,6 @@ std::vector<CXCursorKind> locCursorKind = {CXCursor_FunctionDecl, CXCursor_Class
                                            CXCursor_FunctionTemplate, CXCursor_MacroExpansion, CXCursor_MacroDefinition,
                                            CXCursor_UsingDirective, CXCursor_Namespace,
                                            CXCursor_TypeAliasTemplateDecl};
-
-// Determine if it is a built-in data type
-bool IsBuiltInType(std::string& type)
-{
-    // Built-in types list
-    std::set<std::string> builtInTypes = {
-        "int", "float", "double", "char", "bool",
-        "short", "long", "unsigned int", "unsigned char",
-        "unsigned short", "unsigned long", "void"
-    };
-    return builtInTypes.count(type);
-}
-
-// Construct default type node for template function
-json buildTemplateDefaultType(const std::string& codeStr)
-{
-    auto eq = codeStr.find('=');
-    std::string typeStr = eq == std::string::npos ? "" : codeStr.substr(eq + 1);
-    typeStr.erase(std::remove(typeStr.begin(), typeStr.end(), ' '), typeStr.end());
-    if (IsBuiltInType(typeStr))
-        return {{"kind", "BuildInType"}, {"type", {{"qualType", typeStr}}}, {"inner", json::array()}};
-
-    json recordNode = {{"kind", "RecordType"}, {"type", {{"qualType", typeStr}}}};
-    json elaboratedNode = {{"kind", "ElaboratedType"}, {"type", {{"qualType", typeStr}}}, {"inner", {recordNode}}};
-    return {{"kind", "TemplateArgument"}, {"type", {{"qualType", typeStr}}}, {"inner", {elaboratedNode}}};
-}
-
 
 inline bool isRemovable(const json& j)
 {
@@ -1215,22 +1047,12 @@ void relateMemberType(const std::string& typeStr, json& children)
     }
 }
 
-void nodePostprocess(
-    json& node,
-    CXCursor cursor,
-    CXCursorKind kind_cursor,
-    json& children)
+void nodePostprocess(json& node, CXCursor cursor, CXCursorKind kind_cursor, json& children)
 {
     std::string codeStr = node.value("code", "");
     std::string typeStr = node["type"]["qualType"];
-    if (kind_cursor == CXCursor_UnexposedDecl) {
-        TryNormalizeDecompositionDecl(node, children, derivedDataTypeMap);
-    }
-    // --- High-level transformations ---
-    if (node["kind"] == "UsingDecl" && isUsingInheritClass(node, children)) {
-        node["kind"] = "CXXConstructorDecl";
-        node["mangledName"] = getMemberInClassName(cursor);
-    }
+    // structured bindings; using-decl → CtorDecl
+    phasePreNormalize(node, cursor, kind_cursor, children, derivedDataTypeMap);
     if (node["kind"] == "InitListExpr" && typeStr.find("std::pair") != std::string::npos) {
         fixMapPairInitListChildren(children, typeStr);
     } else if (node["kind"] == "CXXOperatorCallExpr") {
@@ -1241,12 +1063,10 @@ void nodePostprocess(
         implicitCastExprPostProcess(node, children, codeStr);
     } else if (node["kind"] == "CXXConstructorDecl") {
         children = addCXXCtorInitializer(children, node);
-    } else if (node["kind"] == "TypedefDecl" &&
-               (children.empty() ||
-                (children[0]["kind"] != "CXXRecordDecl" && children[0]["kind"] != "EnumDecl"))) {
+    } else if (node["kind"] == "TypedefDecl" && (children.empty() ||
+              (children[0]["kind"] != "CXXRecordDecl" && children[0]["kind"] != "EnumDecl"))) {
         json newChildren = json::array();
-        buildTypedefChild(clang_getTypedefDeclUnderlyingType(cursor),
-                          newChildren, children, node);
+        buildTypedefChild(clang_getTypedefDeclUnderlyingType(cursor), newChildren, children, node);
         children = newChildren;
     }
     if (node["kind"] == "CXXMemberCallExpr" || node["kind"] == "MemberExpr")
@@ -1275,7 +1095,6 @@ void nodePostprocess(
     }
     detectAndFillSpecialKind(node);
 }
-
 
 json getSourceContentMasked(CXTranslationUnit tu, CXSourceRange range, uint32_t want)
 {
@@ -1675,7 +1494,7 @@ static void inclusionVisitorBuildHeaderUnits(CXFile includedFile,
     if (!IsInUserWhitelistPath(incPath)) {
         return;
     }
-    // Build a "basic" headerUnit (note: your JSON uses lowercase "inclusion directive")
+    // Build a "basic" headerUnit
     json beginJ = {{"line", line}, {"col", col}, {"offset", offset}, {"tokLen", 0u}};
     json endJ   = {{"line", line}, {"col", col}, {"offset", offset}};
     json j = {

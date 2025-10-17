@@ -73,7 +73,6 @@ inline bool IsHugeInitializerByTokLen(const json& node) noexcept
     if (node.value("kind", "") != "InitListExpr" || !node.contains("range")) {
         return false;
     }
-    // If your schema stores tokLen elsewhere, change here accordingly.
     const auto tokLen = static_cast<size_t>(
         node["range"]["begin"].value("tokLen", 0u)
     );

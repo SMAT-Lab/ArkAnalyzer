@@ -123,3 +123,21 @@ void fillMemberExprName(json& node);
 void updateTypedefClassConstructor(json& children);
 
 void deduceDecltype(json &node, json &children);
+
+void detectAndFillSpecialKind(json &node);
+
+json buildTemplateDefaultType(const std::string& codeStr);
+
+void annotateNewExprArrayInfo(json &node, const json &children);
+
+void annotateMemberExprIsArrow(json &node);
+
+void postprocessCallExpr(json& node);
+
+void phasePreNormalize(json& node,
+                       CXCursor cursor,
+                       CXCursorKind kind_cursor,
+                       json& children,
+                       const std::map<std::string, json>& derivedDataTypeMap);
+
+std::string getMemberInClassName(CXCursor cursor);

@@ -96,3 +96,15 @@ bool IsSameFile(const std::string& pathA, const std::string& pathB)
         return false;
     }
 }
+
+// Determine if it is a built-in data type
+bool IsBuiltInType(std::string& type)
+{
+    // Built-in types list
+    std::set<std::string> builtInTypes = {
+        "int", "float", "double", "char", "bool",
+        "short", "long", "unsigned int", "unsigned char",
+        "unsigned short", "unsigned long", "void"
+    };
+    return builtInTypes.count(type);
+}
