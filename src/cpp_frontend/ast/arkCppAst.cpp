@@ -25,6 +25,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 #include <clang-c/Index.h>
@@ -391,19 +392,6 @@ std::string handleUnexposedExpr(json node)
     return "ImplicitCastExpr";
 }
 
-// Determine if callExpr node is a template constructor call
-bool TemplateConstructCallExpr(std::string nameStr, std::string typeStr)
-{
-    if (nameStr.empty()) {
-        return false;
-    }
-    if (typeStr.find(nameStr) == 0 && typeStr.find('<') !=
-        std::string::npos && typeStr.find('>') != std::string::npos) {
-        return true;
-    }
-    return false;
-}
-
 // Recursively fix the kind of the first child node of CallExpr, complete missing types
 void fixCallExprChildKind(json &node)
 {
@@ -431,25 +419,34 @@ void fixCallExprChildKind(json &node)
     }
 }
 
-// Unified Node Type
 std::string unifyTypeStr(CXString typeSpelling)
 {
+    // 从 libclang 取出类型拼写
     std::string typeStr = clang_getCString(typeSpelling);
-    if (typeStr.find("set<") == 0 || typeStr.find("vector<") == 0 || typeStr.find("deque<") == 0 ||
-        typeStr.find("stack<") == 0 || typeStr.find("list<") == 0) {
-            typeStr = "std::" + typeStr;
-        }
-    clang_disposeString(typeSpelling);
-    std::string oldStr = "std::string";
-    std::string newStr = "std::basic_string<char>";
-    if (typeStr.find(oldStr) != std::string::npos) {
-        size_t pos = 0;
-        while ((pos = typeStr.find(oldStr, pos)) != std::string::npos) {
-            typeStr.replace(pos, oldStr.length(), newStr);
-            pos += newStr.length();
-        }
+    clang_disposeString(typeSpelling); // 及时释放 CXString
+    // --- 场景1：缺少 std:: 前缀的容器名 ---
+    // 某些平台/头文件组合下，libclang 可能返回 "vector<int>"、"set<T>" 等没带命名空间的拼写。
+    // 这里把常见顺序容器/关联容器统一补上 "std::" 前缀，确保后续匹配一致。
+    if (typeStr.find("set<") == 0 || typeStr.find("vector<") == 0 ||
+        typeStr.find("deque<") == 0 || typeStr.find("stack<") == 0 ||
+        typeStr.find("list<") == 0) {
+        // 例："vector<int>" -> "std::vector<int>"
+        typeStr = "std::" + typeStr;
     }
+    // --- 场景2：统一 string 的别名 ---
+    // 把出现的“独立 std::string”替换为 "std::basic_string<char>"。
+    // 这能让以下两种来源的类型被视为等价：
+    //   - 源码写 std::string
+    //   - 模板/推导/实现细节暴露为 std::basic_string<char>
+    // 同时通过左右边界检查，避免污染 std::string_view / std::stringbuf 等。
+    SafeReplaceStdString(typeStr);
+    // --- 场景3：修正 MSVC STL 暴露的实现细节类型名 ---
+    // MSVC 有时会把 pair<const char*, int> 这种写成
+    // "pair<_Unrefwrap_t<const char, int>>" 之类的内部实现名。
+    // 为了稳定下游匹配，这里强制归一化成可阅读、可比较的标准写法。
     if (typeStr.find("pair<_Unrefwrap_t<const char") != std::string::npos) {
+        // 注意：此处是一个实用的兜底规则，假设 value 是 int，
+        // 可按项目需要扩展泛化（比如解析出第二模板参数的真实类型）。
         typeStr = "std::pair<const char *, int>";
     }
     return typeStr;
@@ -544,20 +541,6 @@ void fixImplicitCastExprAndDeclRef(json &node, const std::unordered_map<std::str
 // Cache all classes, structs
 std::map<std::string, json> derivedDataTypeMap;
 
-bool IsConstructorByTypeStr(std::string typeStr)
-{
-    return typeStr.find("std::map") == 0 || typeStr.find("std::unordered_map") == 0 ||
-           typeStr.find("std::__tree_const_iterator") != std::string::npos || typeStr == "key_type" ||
-           typeStr == "const key_type" || typeStr == "const std::basic_string<char>" ||
-           typeStr.find("lambda at") != std::string::npos || typeStr.find("struct") == 0;
-}
-
-bool IsConstructorByNameStr(std::string nameStr)
-{
-    return nameStr == "vector" || nameStr == "__tree_const_iterator" || nameStr == "set" || nameStr == "queue" ||
-    nameStr == "deque" || nameStr == "stack" || nameStr == "list";
-}
-
 // Determine if it is an inherited parent class constructor
 bool isUsingInheritClass(json& node, json& children)
 {
@@ -571,18 +554,6 @@ bool isUsingInheritClass(json& node, json& children)
         }
     }
     return false;
-}
-
-bool IsConstructorByCodeStr(std::string codeStr, std::string nameStr, std::string typeStr)
-{
-        bool cond1 = (typeStr == nameStr);
-        bool cond2 = (typeStr == "iterator" && codeStr.find(".find") != std::string::npos);
-        bool cond3 = (codeStr.find("]") != std::string::npos && nameStr == "basic_string");
-        bool cond4 = (codeStr.find("std::string") == 0);
-        bool cond5 = ConstructCallExpr(codeStr, typeStr);
-        bool cond6 = TemplateConstructCallExpr(nameStr, typeStr);
-        bool result = cond1 || cond2 || cond3 || cond4 || cond5 || cond6;
-        return result;
 }
 
 std::vector<CXCursorKind> locCursorKind = {CXCursor_FunctionDecl, CXCursor_ClassDecl, CXCursor_Destructor,
@@ -782,8 +753,7 @@ void fillNodeKindTag(json& node, CXCursor cursor, CXCursorKind kind_cursor, cons
             node["kind"] = "UserDefinedLiteral";
         else if (typeStr.find("ostream") == 0 || nameStr.find("operator") != std::string::npos)
             node["kind"] = "CXXOperatorCallExpr";
-        else if (IsConstructorByTypeStr(typeStr) || IsConstructorByNameStr(nameStr) ||
-                 IsConstructorByCodeStr(codeStr, nameStr, typeStr))
+        else if (IsCtorLikeByCalleeAndType(node))
             node["kind"] = "CXXConstructExpr";
         else if ((codeStr.find(".") != std::string::npos || codeStr.find("->") != std::string::npos) &&
                  nameStr.find("operator") == std::string::npos && codeStr.find(nameStr) != 0)
