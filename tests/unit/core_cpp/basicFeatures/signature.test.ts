@@ -39,7 +39,7 @@ describe('Signature Test', () => {
 
     it('case1: file signature test', () => {
         const arkFile = scene.getFiles().find(file => file.getName().endsWith('signature.cpp'));
-        assert.isDefined(arkFile)
+        assert.isDefined(arkFile);
         const fileSignature = arkFile!.getFileSignature();
         expect(fileSignature.getProjectName()).toEqual('signature');
         expect(fileSignature.getFileName()).toEqual('signature.cpp');
@@ -48,7 +48,7 @@ describe('Signature Test', () => {
     it('case2: namespace signature test', () => {
         const arkFile = scene.getFiles().find(file => file.getName().endsWith('signature.cpp'));
         const namespace = arkFile?.getNamespaces().find(ns => ns.getName() === 'nsA');
-        assert.isDefined(namespace)
+        assert.isDefined(namespace);
         const nsSignature = namespace!.getSignature();
         expect(nsSignature.getDeclaringFileSignature().getFileName()).toEqual('signature.cpp');
         expect(nsSignature.getDeclaringFileSignature().getProjectName()).toEqual('signature');
@@ -58,7 +58,7 @@ describe('Signature Test', () => {
         const arkFile = scene.getFiles().find(file => file.getName().endsWith('signature.cpp'));
         const namespace = arkFile?.getNamespaces().find(ns => ns.getName() === 'nsA');
         const targetClass = namespace?.getClasses().find(cls => cls.getName() === 'DefaultClass');
-        assert.isDefined(targetClass)
+        assert.isDefined(targetClass);
         const clsSignature = targetClass!.getSignature();
         expect(clsSignature.toString()).toEqual('@signature/signature.cpp: nsA.DefaultClass');
     });
@@ -66,7 +66,7 @@ describe('Signature Test', () => {
     it('case4: class signature test2', () => {
         const arkFile = scene.getFiles().find(file => file.getName().endsWith('signature.cpp'));
         const targetClass = arkFile?.getClasses().find(cls => cls.getName() === 'Base');
-        assert.isDefined(targetClass)
+        assert.isDefined(targetClass);
         const clsSignature = targetClass!.getSignature();
         expect(clsSignature.toString()).toEqual('@signature/signature.cpp: Base');
     });
@@ -104,7 +104,7 @@ describe('Signature Test', () => {
         const namespace = arkFile?.getNamespaces().find(ns => ns.getName() === 'nsA');
         const targetClass = namespace?.getClasses().find(cls => cls.getName() === 'DefaultClass');
         const field = targetClass?.getFields().find(field => field.getName() === 'name');
-        assert.isDefined(field)
+        assert.isDefined(field);
         const signature = field!.getSignature();
         console.log(signature.toString());
         expect(signature.toString()).toEqual('@signature/signature.cpp: nsA.DefaultClass.name');
@@ -114,7 +114,7 @@ describe('Signature Test', () => {
         const arkFile = scene.getFiles().find(file => file.getName().endsWith('signature.cpp'));
         const targetClass = arkFile?.getClasses().find(cls => cls.getName() === 'Base');
         const field = targetClass?.getFields().find(field => field.getName() === 'name');
-        assert.isDefined(field)
+        assert.isDefined(field);
         const signature = field!.getSignature();
         console.log(signature.toString());
         expect(signature.toString()).toEqual('@signature/signature.cpp: Base.name');
