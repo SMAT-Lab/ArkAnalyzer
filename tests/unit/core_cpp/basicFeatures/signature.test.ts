@@ -75,7 +75,7 @@ describe('Signature Test', () => {
         const arkFile = scene.getFiles().find(file => file.getName().endsWith('signature.cpp'));
         const namespace = arkFile?.getNamespaces().find(ns => ns.getName() === 'nsA');
         const targetMethod = namespace?.getClasses().find(cls => cls.isDefaultArkClass())?.getMethodWithName('Func');
-        assert.isDefined(targetMethod)
+        assert.isDefined(targetMethod);
         const signature = targetMethod!.getSignature();
         expect(signature.toString()).toEqual('@signature/signature.cpp: nsA.%dflt.Func()');
     });
@@ -105,10 +105,10 @@ describe('Signature Test', () => {
         const arkFile = scene.getFiles().find(file => file.getName().endsWith('signature.cpp'));
         const targetMethod = arkFile?.getDefaultClass().getDefaultArkMethod();
         assert.isDefined(targetMethod)
-        const aliasType = targetMethod!.getBody()?.getAliasTypeByName('Base_Alias');
+        const aliasType = targetMethod!.getBody()?.getAliasTypeByName('BaseAlias');
         assert.isDefined(aliasType);
         expect((aliasType!.getOriginalType() as ClassType).getClassSignature().toString()).toEqual('@signature/signature.cpp: Base');
-        expect(aliasType!.getSignature().toString()).toEqual('@signature/signature.cpp: %dflt.[static]%dflt()#Base_Alias');
+        expect(aliasType!.getSignature().toString()).toEqual('@signature/signature.cpp: %dflt.[static]%dflt()#BaseAlias');
     });
 
 });

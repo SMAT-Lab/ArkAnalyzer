@@ -55,7 +55,7 @@ public:
     }
 };
 
-typedef Base Base_Alias;
+typedef Base BaseAlias;
 
 int main()
 {
@@ -63,7 +63,7 @@ int main()
     nsA::DefaultClass dClass('A', 0);
     UserId age = dClass.GetAge();
 
-    Base_Alias bClass('A');
+    BaseAlias bClass('A');
     char name = bClass.GetName();
     return 0;
 }

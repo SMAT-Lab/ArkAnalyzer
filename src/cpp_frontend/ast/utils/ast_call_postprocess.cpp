@@ -1249,11 +1249,13 @@ void postprocessCallExpr(json& node)
     node["atomicFunc"] = name;
 }
 
-static inline bool KindIs(const json& n, std::string_view k) noexcept {
+static inline bool KindIs(const json& n, std::string_view k) noexcept
+{
     return n.contains("kind") && n["kind"].is_string() && n["kind"].get_ref<const std::string&>() == k;
 }
 
-static inline bool KindIn(const json& n, std::initializer_list<std::string_view> ks) noexcept {
+static inline bool KindIn(const json& n, std::initializer_list<std::string_view> ks) noexcept
+{
     if (!n.contains("kind") || !n["kind"].is_string()) {
         return false;
     }
@@ -1295,7 +1297,8 @@ void phasePreNormalize(json& node,
                        CXCursor cursor,
                        CXCursorKind kind_cursor,
                        json& children,
-                       const std::map<std::string, json>& derivedDataTypeMap) {
+                       const std::map<std::string, json>& derivedDataTypeMap)
+{
     if (kind_cursor == CXCursor_UnexposedDecl) {
         TryNormalizeDecompositionDecl(node, children, derivedDataTypeMap);
     }
