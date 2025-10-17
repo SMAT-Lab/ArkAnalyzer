@@ -756,8 +756,8 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         return stmts;
     }
 
-    private decompositionDeclToStmts(unexposedDecl: CxxAstNode): Stmt[] {
-        return this.ArkCxxValueTransformer.bindingNodeToValueAndStmts(unexposedDecl).stmts;
+    private decompositionDeclToStmts(decompositionDecl: CxxAstNode): Stmt[] {
+        return this.ArkCxxValueTransformer.bindingNodeToValueAndStmts(decompositionDecl).stmts;
     }
 
     private cxxVariableDeclarationListToStmts(variableDeclarationList: CxxAstNode): Stmt[] {

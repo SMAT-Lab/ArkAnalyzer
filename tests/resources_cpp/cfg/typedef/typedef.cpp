@@ -30,9 +30,9 @@ typedef union {
 } Value;
 
 typedef enum {
-    RED;
-    GREEN;
-    BLUE;
+    RED,
+    GREEN,
+    BLUE,
 } Color;
 
 
