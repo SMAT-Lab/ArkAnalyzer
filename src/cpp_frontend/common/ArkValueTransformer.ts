@@ -1829,7 +1829,10 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             } else if (newExpression.kind === 'InitListExpr') {
                 return this.getConstructArgs(newExpression);
             }
-            return args;
+            return args.filter(arg =>
+                arg?.kind !== 'TemplateRef' &&
+                arg?.kind !== 'NamespaceRef',
+            );
         })();
 
         const { args: argValues, argPositions } = this.cxxParseArguments(stmts, constructArgs);

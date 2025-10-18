@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-export const REFERENCE_EXPECT_BASICUSAGE = {
+export const BINGING_EXPECT_BASICUSAGE = {
     blocks: [
         {
             id: 0,
@@ -24,8 +24,10 @@ export const REFERENCE_EXPECT_BASICUSAGE = {
                 'instanceinvoke %0.<@%unk/%unk: pair<typename __unwrap_ref_decay<int>::type, typename __unwrap_ref_decay<int>::type>.constructor()>(%1)',
                 'x = %0[0]',
                 'y = %0[1]',
-                'a = staticinvoke <@%unk/%unk: .undefined()>(std, pair, 3, 4)[0]',
-                'b = staticinvoke <@%unk/%unk: .undefined()>(std, pair, 3, 4)[1]',
+                '%2 = new @%unk/%unk: std::pair<int, int>',
+                'instanceinvoke %2.<@%unk/%unk: std::pair<int, int>.constructor()>(3, 4)',
+                'a = %2[0]',
+                'b = %2[1]',
                 'return',
             ],
             preds: [],
@@ -34,7 +36,7 @@ export const REFERENCE_EXPECT_BASICUSAGE = {
     ],
 };
 
-export const REFERENCE_EXPECT_REFERENCE = {
+export const BINGING_EXPECT_REFERENCE = {
     blocks: [
         {
             id: 0,
@@ -54,7 +56,7 @@ export const REFERENCE_EXPECT_REFERENCE = {
     ],
 };
 
-export const REFERENCE_EXPECT_TUPLEUSAGE = {
+export const BINGING_EXPECT_TUPLEUSAGE = {
     blocks: [
         {
             id: 0,
@@ -71,7 +73,7 @@ export const REFERENCE_EXPECT_TUPLEUSAGE = {
     ],
 };
 
-export const REFERENCE_EXPECT_STRUCT = {
+export const BINGING_EXPECT_STRUCT = {
     blocks: [
         {
             id: 0,
@@ -93,7 +95,7 @@ export const REFERENCE_EXPECT_STRUCT = {
     ],
 };
 
-export const REFERENCE_EXPECT_MAP = {
+export const BINGING_EXPECT_MAP = {
     blocks: [
         {
             id: 0,
@@ -160,13 +162,14 @@ export const REFERENCE_EXPECT_MAP = {
     ],
 };
 
-export const REFERENCE_EXPECT_GETSTRUCTINFO = {
+export const BINGING_EXPECT_GETSTRUCTINFO = {
     blocks: [
         {
             id: 0,
             stmts: [
                 'this = this: @structBinding/structBinding.cpp: %dflt',
-                '%0 = staticinvoke <@%unk/%unk: .undefined()>(\'David\', 22, true)',
+                '%0 = new @%unk/%unk: std::tuple<std::basic_string<char>, int, bool>',
+                "instanceinvoke %0.<@%unk/%unk: std::tuple<std::basic_string<char>, int, bool>.constructor()>('David', 22, true)",
                 'return %0',
             ],
             preds: [],
@@ -175,7 +178,7 @@ export const REFERENCE_EXPECT_GETSTRUCTINFO = {
     ],
 };
 
-export const REFERENCE_EXPECT_FUNCTIONRETURN = {
+export const BINGING_EXPECT_FUNCTIONRETURN = {
     blocks: [
         {
             id: 0,
@@ -192,7 +195,7 @@ export const REFERENCE_EXPECT_FUNCTIONRETURN = {
     ],
 };
 
-export const REFERENCE_EXPECT_CONSTREFERENCE = {
+export const BINGING_EXPECT_CONSTREFERENCE = {
     blocks: [
         {
             id: 0,
