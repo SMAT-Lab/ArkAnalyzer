@@ -16,6 +16,7 @@
 #pragma once
 #include <string>
 #include <string_view>
+#include <unordered_set>
 #include <map>
 #include "json.hpp"
 #include <clang-c/Index.h>
@@ -45,8 +46,8 @@ void PostprocessPseudoDestructor(json& node, const json& children, std::string_v
 bool ConstructCallExpr(std::string codeStr, std::string typeStr);
 
 
-std::vector<std::string>
-ParseTemplateArgsAfterEqual(const std::string& codeRaw, const std::string& tplNameHint);
+std::vector<std::string> ParseTemplateArgsAfterEqual(const std::string& codeRaw, const std::string& tplNameHint);
+
 
 bool IsBuiltinNameNoSpace(const std::string& tokNoSpace);
 
@@ -122,4 +123,24 @@ void fillMemberExprName(json& node);
 
 void updateTypedefClassConstructor(json& children);
 
-void deduceDecltype(json& node, json&children);
+void deduceDecltype(json &node, json &children);
+
+void detectAndFillSpecialKind(json &node);
+
+json buildTemplateDefaultType(const std::string& codeStr);
+
+void annotateNewExprArrayInfo(json &node, const json &children);
+
+void annotateMemberExprIsArrow(json &node);
+
+void postprocessCallExpr(json& node);
+
+void phasePreNormalize(json& node,
+                       CXCursor cursor,
+                       CXCursorKind kind_cursor,
+                       json& children,
+                       const std::map<std::string, json>& derivedDataTypeMap);
+
+std::string getMemberInClassName(CXCursor cursor);
+
+bool IsCtorLikeByCalleeAndType(const json& node);

@@ -333,9 +333,9 @@ describe('Other Test', () => {
     });
     it('case8: stdInitializerListExpr Test', () => {
         const scene = buildScene('stdInitializerListExpr');
-        testBlocks(scene, 'stdInitializerListExpr.cpp', 'example1', INITIALZERLIST.LIST_EXPECT_EXAMPLE1.blocks);
-        testBlocks(scene, 'stdInitializerListExpr.cpp', 'example2', INITIALZERLIST.LIST_EXPECT_EXAMPLE2.blocks);
-        testBlocks(scene, 'stdInitializerListExpr.cpp', 'example3', INITIALZERLIST.LIST_EXPECT_EXAMPLE3.blocks);
+        testBlocks(scene, 'stdInitializerListExpr.cpp', 'Example1', INITIALZERLIST.LIST_EXPECT_EXAMPLE1.blocks);
+        testBlocks(scene, 'stdInitializerListExpr.cpp', 'Example2', INITIALZERLIST.LIST_EXPECT_EXAMPLE2.blocks);
+        testBlocks(scene, 'stdInitializerListExpr.cpp', 'Example3', INITIALZERLIST.LIST_EXPECT_EXAMPLE3.blocks);
     });
 });
 

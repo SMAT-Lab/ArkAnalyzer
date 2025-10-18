@@ -174,7 +174,7 @@ function reCheckModifiers(methodName: string, cls: ArkClass, method: ArkMethod):
     if (methodsWithSameName.length === 0) {
         return;
     }
-    method.addModifier(methodsWithSameName[0].getModifiers())
+    method.addModifier(methodsWithSameName[0].getModifiers());
 }
 
 function checkAndUpdateCxxMethod(method: ArkMethod, cls: ArkClass): void {
