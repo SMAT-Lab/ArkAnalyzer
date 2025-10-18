@@ -141,6 +141,7 @@ export function buildArkMethodFromArkClass(methodNode: CxxAstNode, declaringClas
         returnType = VoidType.getInstance();
     }
     // @ts-ignore
+    reCheckModifiers(methodName, declaringClass, mtd);
     const methodSubSignature = new MethodSubSignature(methodName, methodParameters, returnType, mtd.isStatic());
     const methodSignature = new MethodSignature(mtd.getDeclaringArkClass().getSignature(), methodSubSignature);
     const begin = methodNode.range?.begin ?? { line: 0, col: 0 };
@@ -165,6 +166,15 @@ export function buildArkMethodFromArkClass(methodNode: CxxAstNode, declaringClas
     checkAndUpdateCxxMethod(mtd, declaringClass);
     declaringClass.addMethod(mtd);
     IRUtils.setComments(mtd, methodNode, sourceFile, mtd.getDeclaringArkFile().getScene().getOptions());
+}
+
+// When a function is implemented outside the class, it retrieves the modifier at the original definition
+function reCheckModifiers(methodName: string, cls: ArkClass, method: ArkMethod): void {
+    let methodsWithSameName = cls.getAllMethodsWithName(methodName);
+    if (methodsWithSameName.length === 0) {
+        return;
+    }
+    method.addModifier(methodsWithSameName[0].getModifiers());
 }
 
 function checkAndUpdateCxxMethod(method: ArkMethod, cls: ArkClass): void {

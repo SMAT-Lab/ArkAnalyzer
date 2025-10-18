@@ -19,10 +19,12 @@
 #include <vector>
 #include <iostream>
 #include <set>
+#include <string_view>
+#include <map>
 #define TWO 2
 #define THREE 3
+#define FOUR 4
 #define FIVE 5
-
 
 bool IsParenWrapped(std::string_view s) noexcept
 {
@@ -718,7 +720,6 @@ nlohmann::json addCXXCtorInitializer(nlohmann::json& children,
                k == "IntegerLiteral"   || k == "StringLiteral" || k == "CharacterLiteral" ||
                k == "FloatingLiteral";
     };
-
     for (int i = 0; i < static_cast<int>(children.size()); ++i) {
         std::string k = children[i].value("kind", "");
         const std::string c = children[i].value("code", "");
@@ -759,8 +760,551 @@ nlohmann::json addCXXCtorInitializer(nlohmann::json& children,
             }
             continue;
         }
-
         out.push_back(children[i]);
     }
     return out;
+}
+
+inline bool IsBindingNameNode(const json& c)
+{
+    const std::string ck = c.value("kind", "");
+    const std::string cn = c.value("name", "");
+    if (cn.empty() || (!cn.empty() && cn.front() == '[')) {
+        return false;
+    }
+    return (ck == "UnexposedDecl" || ck == "BindingDecl");
+}
+
+// 初始化器/表达式结点：后缀 "Expr" 或常见包裹层
+inline bool IsExprLikeKind(std::string_view ck)
+{
+    const auto n = ck.size();
+    const bool endsWithExpr = (n >= FOUR && ck.rfind("Expr") == n - FOUR);
+    return endsWithExpr || ck == "MaterializeTemporaryExpr" || ck == "ExprWithCleanups";
+}
+
+// 小工具：string_view 查找
+inline bool SvFind(std::string_view s, std::string_view pat) noexcept
+{
+    return s.find(pat) != std::string_view::npos;
+}
+
+// tuple-like 类型识别（大小写敏感；标准库实现通常小写）
+inline bool IsTupleLikeType(std::string_view qt) noexcept
+{
+    return SvFind(qt, "std::pair<")  || SvFind(qt, "pair<")  ||
+           SvFind(qt, "std::tuple<") || SvFind(qt, "tuple<") ||
+           SvFind(qt, "std::array<") || SvFind(qt, "array<") ||
+           SvFind(qt, "initializer_list<");
+}
+
+// 粗略数组类型（T[N]）
+inline bool LooksArrayType(const std::string& qt)
+{
+    return qt.find('[') != std::string::npos && qt.find(']') != std::string::npos;
+}
+
+// 统计 "[a, b , c]" 中的名字个数：用 string_view 单扫
+int CountBindingsInBrackets(std::string_view s) noexcept
+{
+    if (s.size() >= TWO && s.front() == '[' && s.back() == ']') {
+        s.remove_prefix(1);
+        s.remove_suffix(1);
+    }
+    int cnt = 0;
+    size_t i = 0;
+    size_t n = s.size();
+    while (i < n) {
+        // 跳前导空白
+        while (i < n && (s[i]==' ' || s[i]=='\t' || s[i]=='\n' || s[i]=='\r')) {
+            ++i;
+        }
+        // 读到 ',' 或结尾
+        size_t j = i;
+        while (j < n && s[j] != ',') {
+            ++j;
+        }
+        // 去 token 尾空白
+        size_t end = j;
+        while (end > i && (s[end-1]==' ' || s[end-1]=='\t' || s[end-1]=='\n' || s[end-1]=='\r')) {
+            --end;
+        }
+        if (end > i) {
+            ++cnt; // 非空 token 计数
+        }
+        i = (j < n ? j + 1 : j); // 跳过逗号
+    }
+    return cnt;
+}
+
+// 规整类型名（去 const/volatile/struct/class 与末尾 & * 空格）
+std::string NormalizeTypeName(std::string qt)
+{
+    auto stripPrefix = [](std::string& s, std::string_view p) {
+        if (s.size() >= p.size() && s.compare(0, p.size(), p) == 0) {
+            s.erase(0, p.size());
+        }
+    };
+    // Trim 两端空白
+    while (!qt.empty() && (qt.front() == ' ' || qt.front() == '\t' || qt.front() == '\n' || qt.front() == '\r')) {
+        qt.erase(qt.begin());
+    }
+    while (!qt.empty() && (qt.back () == ' ' || qt.back () == '\t' || qt.back() == '\n' || qt.back() == '\r')) {
+        qt.pop_back();
+    }
+    stripPrefix(qt, "const ");
+    stripPrefix(qt, "volatile ");
+    stripPrefix(qt, "struct ");
+    stripPrefix(qt, "class ");
+    while (!qt.empty() && (qt.back() == '&' || qt.back() == '*' || qt.back() == ' ')) {
+        qt.pop_back();
+    }
+    return qt;
+}
+
+// 派生的 Record 信息里查字段数是否足够
+bool IsAggregateRecordWithEnoughFields(const std::string& qt,
+                                       int need,
+                                       const std::map<std::string,
+                                       json>& derivedDataTypeMap)
+{
+    if (qt.empty()) {
+        return false;
+    }
+    const std::string key = NormalizeTypeName(qt);
+    auto it = derivedDataTypeMap.find(key);
+    if (it == derivedDataTypeMap.end()) {
+        return false;
+    }
+    const json& rec = it->second;
+    if (rec.value("kind", "") != "CXXRecordDecl") {
+        return false;
+    }
+    if (!rec.contains("inner") || !rec["inner"].is_array()) {
+        return false;
+    }
+    int fieldCnt = 0;
+    for (const auto& mem : rec["inner"]) {
+        if (mem.value("kind", "") == "FieldDecl") {
+            ++fieldCnt;
+        }
+    }
+    return fieldCnt >= need && fieldCnt > 0;
+}
+
+/**
+ * @brief 累加单个子节点的统计信息，用于 DecompositionDecl 判定阶段的一次遍历。
+ * 语义（与原循环等价）：
+ *  1) 若该子节点是绑定名（BindingDecl 候选），则 bindCnt++；
+ *  2) 若该子节点是“表达式样”结点（末尾为 "Expr" 或常见包裹层），则 exprCnt++；
+ *     - 同时若还未记录初始化器的类型串（initQualType 为空），尝试从 c["type"]["qualType"] 取一次；
+ *  3) 若该子节点类型串里包含 std::tuple_element<> / tuple_element<>，则 anyTupleElementType = true；
+ * @param c  单个子节点 JSON（只读，不修改）
+ * @param bindCnt  输出/累加：绑定名计数
+ * @param exprCnt  输出/累加：表达式样结点计数
+ * @param anyTupleElementType 输出/累加：是否出现过 tuple_element<> 类型迹象（任一命中即置 true）
+ * @param initQualType 输出/设置：首次遇到表达式样结点时记录其 type.qualType（若已非空则不再改写）
+ */
+void AccumulateChildStats(const json& c,
+                          int& bindCnt,
+                          int& exprCnt,
+                          bool& anyTupleElementType,
+                          std::string& initQualType) noexcept
+{
+    const std::string ck = c.value("kind", "");
+    if (IsBindingNameNode(c)) {
+        ++bindCnt;
+    }
+    if (IsExprLikeKind(ck)) {
+        ++exprCnt;
+        if (initQualType.empty()) {
+            if (auto it = c.find("type"); it != c.end() && it->is_object()) {
+                initQualType = it->value("qualType", "");
+            }
+        }
+    }
+    if (auto it = c.find("type"); it != c.end() && it->is_object()) {
+        const std::string bqt = it->value("qualType", "");
+        if (bqt.find("std::tuple_element<") != std::string::npos || bqt.find("tuple_element<") != std::string::npos) {
+            anyTupleElementType = true;
+        }
+    }
+}
+
+/**
+ * TryNormalizeDecompositionDecl
+ * ------------------------------------------------------------
+ * 解决的源码场景（libclang 19.x 无 CXCursor_DecompositionDecl/BindingDecl）：
+ *
+ *  1) tuple/pair 解构：
+ *      auto [x, y] = std::make_pair(1, 2);
+ *      auto [a, b] = std::pair{3, 4};
+ *
+ *     在我们当前的 JSON AST 中通常呈现为（父/子节点都被标成 UnexposedDecl）：
+ *       DeclStmt
+ *         └─ UnexposedDecl name="[x, y]"          ← 本函数要“正名”的父节点
+ *             ├─ UnexposedDecl name="x"           ← 绑定名（将被改成 BindingDecl）
+ *             ├─ UnexposedDecl name="y"           ← 绑定名（将被改成 BindingDecl）
+ *             └─ …（CallExpr / MaterializeTemporaryExpr / ExprWithCleanups 等初始化器）
+ *
+ *  2) 结构体聚合解构（aggregate structured binding）：
+ *      struct Person { std::string name; int age; double salary; };
+ *      Person person{"Bob", 30, 50000.0};
+ *      auto [name, age, salary] = person;
+ *
+ *     在 JSON AST 中通常呈现为：
+ *       DeclStmt
+ *         └─ UnexposedDecl name="[name, age, salary]"
+ *             ├─ UnexposedDecl name="name"
+ *             ├─ UnexposedDecl name="age"
+ *             ├─ UnexposedDecl name="salary"
+ *             └─ DeclRefExpr name="person" type="Person"    ← 初始化器（引用变量）
+ *
+ *  目标：
+ *    - 把父节点 UnexposedDecl 正名为 DecompositionDecl；
+ *    - 把子节点中的“绑定名”正名为 BindingDecl，并附上 bindingIndex（从左到右：0,1,2,...）。
+ *
+ *  判断依据（综合启发式 + 类型证据），对应 JSON 关键片段：
+ *    - node.kind == "UnexposedDecl" 且 node.name 形如 "[x, y, ...]"。
+ *    - children 内：至少一个“绑定名”结点（UnexposedDecl/BindingDecl，且 name 是标识符），
+ *                   至少一个“初始化器”表达式（kind 以 "Expr" 结尾，或 MaterializeTemporaryExpr / ExprWithCleanups）。
+ *    - 类型侧证据三选一：
+ *        (A) 父类型/初始化器类型是 tuple-like（pair/tuple/array/initializer_list）或数组 T[N]；
+ *        (B) 绑定名类型出现 tuple_element<k, T>::type 的模式；
+ *        (C) 初始化器/父类型可在 derivedDataTypeMap 中命中一个 CXXRecordDecl，
+ *            且其 FieldDecl 数量 >= 绑定名个数（判定为结构体聚合解构）。
+ *
+ *  注意：
+ *    - 本函数必须在 nodePostprocess(...) 的最前面调用；
+ *      此时子结点仍在形参 `children` 中，还未 swap 到 node["inner"]。
+ * @param[in,out] node
+ *   待判定与可能被“正名”的父结点 JSON。
+ *   - 输入：要求 `node.kind`、`node.name` 等字段可读，`node.type.qualType`（若有）可读；
+ *   - 输出：若命中，`node.kind` 将被设置为 `"DecompositionDecl"`。
+ *
+ * @param[in,out] children
+ *   `node` 的子结点数组（JSON array）。
+ *   - 输入：遍历读取每个子结点的 `kind`、`name`、`type.qualType`；
+ *   - 输出：对被识别为绑定名的子结点，写入 `kind="BindingDecl"` 与 `bindingIndex` 序号。
+ *
+ * @param[in] derivedDataTypeMap
+ *   由“规整后的类型名”映射到派生到的类型定义 JSON（通常为 `CXXRecordDecl`）的查表。
+ *   - 用途：判断某些初始化器/父类型是否为“聚合记录体”且字段数 ≥ 绑定个数；
+ */
+bool TryNormalizeDecompositionDecl(json& node, json& children, const std::map<std::string, json>& derivedDataTypeMap)
+{
+    // ---------- 0) 父节点的快速筛选 ----------
+    const std::string kind = node.value("kind", "");
+    if (kind != "UnexposedDecl") {
+        return false;
+    }
+    const std::string nm = node.value("name", ""); // 例如 "[x, y]" 或 "[name, age, salary]"
+    if (nm.size() < TWO || nm.front() != '[' || nm.back() != ']') {
+        return false;
+    }
+    if (!children.is_array()) {
+        return false;
+    }
+    // ---------- 2) 单次遍历 children ----------
+    int bindCnt = 0;
+    int exprCnt = 0;
+    bool anyTupleElementType = false;
+    std::string initQualType;
+    for (const auto& c : children) {
+        AccumulateChildStats(c, bindCnt, exprCnt, anyTupleElementType, initQualType);
+    }
+    // ---------- 3) 语法/形态侧 ----------
+    if (bindCnt < 1) {
+        return false;
+    }
+    if (exprCnt < 1) {
+        return false;
+    }
+    const int namesInBracket = CountBindingsInBrackets(std::string_view(nm));
+    if (namesInBracket > 0 && bindCnt > 0 && namesInBracket != bindCnt) {
+        return false;
+    }
+    // ---------- 4) 类型侧 ----------
+    const std::string parentQT = node.contains("type") ? node["type"].value("qualType", "") : "";
+    const bool tupleLikeByParent = IsTupleLikeType(parentQT) || LooksArrayType(parentQT);
+    const bool tupleLikeByInit = IsTupleLikeType(initQualType) || LooksArrayType(initQualType);
+    const bool aggregateByInit = IsAggregateRecordWithEnoughFields(initQualType, bindCnt, derivedDataTypeMap);
+    const bool aggregateByParent = IsAggregateRecordWithEnoughFields(parentQT, bindCnt, derivedDataTypeMap);
+    if (!tupleLikeByParent && !tupleLikeByInit && !aggregateByInit && !aggregateByParent && !anyTupleElementType) {
+        return false;
+    }
+    // ---------- 5) 命中：执行正名 ----------
+    node["kind"] = "DecompositionDecl";
+    int idx = 0;
+    for (auto& c : children) {
+        if (IsBindingNameNode(c)) {
+            c["kind"] = "BindingDecl";
+            c["bindingIndex"] = idx++;
+        }
+    }
+    return true;
+}
+
+// Fix for std::pair's map InitListExpr
+void fixMapPairInitListChildren(json &children, const std::string &typeStr)
+{
+    for (auto &child:children) {
+        if (child["kind"] == "InitListExpr" && child["type"]["qualType"] == "void") {
+            child["type"]["qualType"] = typeStr.substr(0, typeStr.find('['));
+            child["kind"] = "CXXConstructExpr";
+        }
+    }
+}
+
+void fillMemberExprName(json& node)
+{
+    if (node["name"] != "") {
+        return;
+    }
+    std::string codeStr = node["code"];
+    size_t index1 = codeStr.find("->");
+    size_t index2 = codeStr.find(".");
+    size_t index = 0;
+    if (index1 == std::string::npos && index2 == std::string::npos) {
+        return;
+    } else if (index1 != std::string::npos && index2 != std::string::npos) {
+        index = index1 < index2 ? index1 + TWO : index2 + 1; // 去掉成员访问符的长度
+    } else {
+        index = index1 != std::string::npos ? index1 + TWO : index2 + 1;
+    }
+    size_t index3 = codeStr.find("(");
+    if (index3 != std::string::npos) {
+        node["name"] = codeStr.substr(index, index3 - index);
+    } else {
+        node["name"] = codeStr.substr(index);
+    }
+}
+
+// Modify class declaration node type under typedef to constructorExpr
+void updateTypedefClassConstructor(json& children)
+{
+    if (children.size() < TWO || (children[0]["kind"] != "TypeRef" && children[1]["kind"] != "CallExpr")) {
+        return;
+    }
+    if (children[0]["type"]["qualType"] == children[1]["type"]["qualType"] && (children[1]["name"] == "map" ||
+        children[1]["name"] == "unordered_map")) {
+            children[1]["kind"] = "CXXConstructExpr";
+        }
+}
+
+// decltype type deduction
+void deduceDecltype(json& node, json&children)
+{
+    if (children.size() == 0 || !node.contains("type") ||
+        node["type"].value("qualType", "").find("decltype(") == std::string::npos) {
+        return;
+    }
+    if (children[0].contains("type")) {
+        node["type"]["qualType"] = children[0]["type"]["qualType"];
+    }
+}
+
+// Determine fallback kind from code string
+inline bool fillKindBycode(json &node, const std::string &codeStr,
+                           const std::string &prefix, const std::string &kind,
+                           const std::string &argField = "")
+{
+    size_t pos = codeStr.find(prefix + "(");
+    if (pos != std::string::npos && pos == 0) {
+        node["kind"] = kind;
+        if (!argField.empty()) {
+            node[argField] = ExtractParentContent(codeStr, codeStr.find('(', pos));
+        }
+        return true;
+    }
+    return false;
+}
+
+// Check and supplement array trait typeid noexpect
+void detectAndFillSpecialKind(json &node)
+{
+    if (!node.contains("code")) {
+        return;
+    }
+    std::string codeStr = node["code"];
+    // __arra_rank/extent
+    static const std::vector<std::pair<std::string, std::string>> traitFuncs = {
+        {"__array_rank", "ArrayTypeTraitExpr"}, {"__array_extent", "ArrayTypeTraitExpr"},
+        {"__array_rank_u", "ArrayTypeTraitExpr"}, {"__array_extent_u", "ArrayTypeTraitExpr"}
+    };
+    for (const auto &[func, kind]: traitFuncs) {
+        if (fillKindBycode(node, codeStr, func, kind, "traitArgs")) {
+            node["traitFunc"] = func;
+            break;
+        }
+    }
+    // noexcept(expr)
+    fillKindBycode(node, codeStr, "noexcept", "CXXNoexceptExpr", "noexceptArg");
+    // typeid(expr)
+    fillKindBycode(node, codeStr, "typeid", "CXXTypeidExpr", "typeArg");
+}
+
+// Construct default type node for template function
+json buildTemplateDefaultType(const std::string& codeStr)
+{
+    auto eq = codeStr.find('=');
+    std::string typeStr = eq == std::string::npos ? "" : codeStr.substr(eq + 1);
+    typeStr.erase(std::remove(typeStr.begin(), typeStr.end(), ' '), typeStr.end());
+    if (IsBuiltInType(typeStr))
+        return {{"kind", "BuildInType"}, {"type", {{"qualType", typeStr}}}, {"inner", json::array()}};
+
+    json recordNode = {{"kind", "RecordType"}, {"type", {{"qualType", typeStr}}}};
+    json elaboratedNode = {{"kind", "ElaboratedType"}, {"type", {{"qualType", typeStr}}}, {"inner", {recordNode}}};
+    return {{"kind", "TemplateArgument"}, {"type", {{"qualType", typeStr}}}, {"inner", {elaboratedNode}}};
+}
+
+// Recursively extract all dimensions of IntegerLiteral, supporting multi-level ImplicitCastExpr nesting
+void extractArraySizes(const json &node, std::vector<std::string> &arraySizes)
+{
+    if (node.contains("kind")) {
+        if (node["kind"] == "IntegerLiteral" && node.contains("value")) {
+            arraySizes.push_back(node["value"]);
+        } else if (node["kind"] == "ImplicitCastExpr" && node.contains("inner")) {
+            forEachChild(const_cast<json&>(node), [&](json &gchild) { extractArraySizes(gchild, arraySizes); });
+        }
+    }
+}
+
+void annotateNewExprArrayInfo(json &node, const json &children)
+{
+    bool isArray = false;
+    std::vector<std::string> arraySizes;
+    for (const auto &child:children) {
+        extractArraySizes(child, arraySizes);
+    }
+    std::string codeStr = node["code"];
+    if (!arraySizes.empty() && codeStr.find("[") != std::string::npos && codeStr.find("]") != std::string::npos) {
+        isArray = true;
+        std::reverse(arraySizes.begin(), arraySizes.end());
+        node["arraySizes"] = arraySizes;
+    }
+    node["isArray"] = isArray;
+}
+
+void annotateMemberExprIsArrow(json &node)
+{
+    if (node.contains("code")) {
+        std::string codeStr = node["code"];
+        node["isArrow"] = (codeStr.find("->") != std::string::npos);
+    }
+}
+
+void postprocessCallExpr(json& node)
+{
+    // Extract name from DeclRef/OverloadedDeclRef node; if empty, use referencedDecl.name
+    auto nameFromDeclRef = [](const json& n) -> std::string {
+        std::string n1 = n.value("name", "");
+        if (n1.empty() && n.contains("referencedDecl")) {
+            return n["referencedDecl"].value("name", "");
+        }
+        return n1;
+    };
+    // Look for the first OverloadedDeclRef name in a child's inner
+    auto findOverloadedNameIn = [](const json& parent) -> std::string {
+        if (!parent.contains("inner") || parent["inner"].empty()) return "";
+        for (const auto& gc : parent["inner"]) {
+            if (gc.contains("kind") && gc["kind"] == "OverloadedDeclRef") {
+                return gc.value("name", "");
+            }
+        }
+        return "";
+    };
+    // ---------- Complete name ----------
+    const bool missingName = !node.contains("name") || node["name"].is_null() || node["name"] == "";
+    const bool hasChildren = node.contains("inner") && !node["inner"].empty();
+    if (missingName && hasChildren) {
+        for (const auto& child : node["inner"]) {
+            const bool isDeclRef = child.contains("kind") &&
+            (child["kind"] == "DeclRefExpr" || child["kind"] == "OverloadedDeclRef");
+            if (isDeclRef) {
+                node["name"] = nameFromDeclRef(child);
+                break;
+            }
+            const std::string cand = findOverloadedNameIn(child);
+            if (!cand.empty()) {
+                node["name"] = cand;
+            }
+        }
+    }
+    // ---------- Identify AtomicCallExpr  ----------
+    static const std::vector<std::string> kAtomicFuncs = {
+        "atomic_fetch_add", "atomic_fetch_sub", "atomic_fetch_and", "atomic_fetch_or",
+        "atomic_fetch_xor", "atomic_exchange", "atomic_load", "atomic_store",
+        "atomic_compare_exchange"
+    };
+    if (!node.contains("name") || node["name"].is_null()) {
+        return;
+    }
+    const std::string name = node["name"];
+    if (std::find(kAtomicFuncs.begin(), kAtomicFuncs.end(), name) == kAtomicFuncs.end()) {
+        return;
+    }
+
+    node["kind"] = "AtomicCallExpr";
+    node["atomicFunc"] = name;
+}
+
+static inline bool KindIs(const json& n, std::string_view k) noexcept
+{
+    return n.contains("kind") && n["kind"].is_string() && n["kind"].get_ref<const std::string&>() == k;
+}
+
+static inline bool KindIn(const json& n, std::initializer_list<std::string_view> ks) noexcept
+{
+    if (!n.contains("kind") || !n["kind"].is_string()) {
+        return false;
+    }
+    const auto& s = n["kind"].get_ref<const std::string&>();
+    for (auto kk : ks) {
+        if (s == kk) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// Determine if it is an inherited parent class constructor
+bool isUsingInheritClass(json& node, json& children, const std::map<std::string, json>& derivedDataTypeMap)
+{
+    if (children.size() == 0) {
+        return false;
+    }
+    if (children[0]["kind"] == "TypeRef" && children[0].contains("type")) {
+        std::string type = children[0]["type"].value("qualType", "");
+        if (derivedDataTypeMap.count(type)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+std::string getMemberInClassName(CXCursor cursor)
+{
+    CXCursor parentCursor = clang_getCursorSemanticParent(cursor);
+    CXCursorKind kind = clang_getCursorKind(parentCursor);
+    if (kind != CXCursor_ClassDecl && kind != CXCursor_StructDecl) {
+        return "";
+    }
+    return Cx2Str(clang_getCursorSpelling(parentCursor));
+}
+
+void phasePreNormalize(json& node,
+                       CXCursor cursor,
+                       CXCursorKind kind_cursor,
+                       json& children,
+                       const std::map<std::string, json>& derivedDataTypeMap)
+{
+    if (kind_cursor == CXCursor_UnexposedDecl) {
+        TryNormalizeDecompositionDecl(node, children, derivedDataTypeMap);
+    }
+    // Using 继承构造 -> 构造声明
+    if (KindIs(node, "UsingDecl") && isUsingInheritClass(node, children, derivedDataTypeMap)) {
+        node["kind"] = "CXXConstructorDecl";
+        node["mangledName"] = getMemberInClassName(cursor);
+    }
 }

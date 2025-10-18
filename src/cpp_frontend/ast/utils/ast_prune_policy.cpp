@@ -72,7 +72,7 @@ uint32_t SelectFieldMaskForCursorKind(CXCursorKind k)
         case CXCursor_CXXMethod:
         case CXCursor_Constructor:
         case CXCursor_Destructor:
-            return WANT_KIND | WANT_NAME | WANT_RANGE | WANT_REFERENCED | WANT_CODE;
+            return WANT_KIND | WANT_NAME | WANT_RANGE | WANT_REFERENCED | WANT_CODE | WANT_TYPE;
         // Variables, parameters, fields: need type information
         case CXCursor_ParmDecl:
         case CXCursor_FieldDecl:

@@ -61,6 +61,7 @@ import * as INCLUDE_IN_SCOPE from '../../../resources_cpp/cfg/includeInScope/inc
 import * as STRUCTBINDING from '../../../resources_cpp/cfg/structBinding/structBindingExpect';
 import * as CALLEXPR_EXPECT from '../../../resources_cpp/cfg/call/callExpect';
 import * as MALLOC_EXPECT from '../../../resources_cpp/cfg/malloc/mallocSampleExpects';
+import * as INITIALZERLIST from '../../../resources_cpp/cfg/stdInitializerListExpr/initializerListExpects';
 
 // Standard library header file configuration for DevEco
 const deveco_c = process.env.DEVECO_C !== undefined ? process.env.DEVECO_C : '';
@@ -330,6 +331,12 @@ describe('Other Test', () => {
         const scene = buildScene('malloc');
         testBlocks(scene, 'mallocSample.cpp', 'main', MALLOC_EXPECT.MALLOC_EXPECT_CASE1.blocks);
     });
+    it('case8: stdInitializerListExpr Test', () => {
+        const scene = buildScene('stdInitializerListExpr');
+        testBlocks(scene, 'stdInitializerListExpr.cpp', 'Example1', INITIALZERLIST.LIST_EXPECT_EXAMPLE1.blocks);
+        testBlocks(scene, 'stdInitializerListExpr.cpp', 'Example2', INITIALZERLIST.LIST_EXPECT_EXAMPLE2.blocks);
+        testBlocks(scene, 'stdInitializerListExpr.cpp', 'Example3', INITIALZERLIST.LIST_EXPECT_EXAMPLE3.blocks);
+    });
 });
 
 describe('Lazy Import Test', () => {
@@ -406,7 +413,7 @@ describe('typedef Test', () => {
     });
 });
 
-describe('thread Test', () => {
+describe('feature Test', () => {
     it('case1: thread', () => {
         const scene = buildScene('thread');
         testBlocks(scene, 'thread.cpp', 'Case1', THREAD_EXPECT.THREAD_EXPECT_CASE1.blocks);

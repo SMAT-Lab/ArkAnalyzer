@@ -13,32 +13,33 @@
  * limitations under the License.
  */
 
-#include <map>
-#include <string>
+#include <initializer_list>
 #include <vector>
 
-typedef int UserId;
-typedef unsigned int uint;
-
-typedef struct {
-    int x, y;
-} Point;
-
-typedef union {
-    int x;
-    float y;
-} Value;
-
-typedef enum {
-    RED,
-    GREEN,
-    BLUE,
-} Color;
-
-
-int main()
+void Example1()
 {
-    typedef std::map<std::string, std::vector<int>> StrToVecMap;
-    StrToVecMap myMap;
-    myMap["key"].push_back(1);
+    std::initializer_list<int> list = {1, 2, 3, 4, 5};
+    //这里会产生 CXXStdInitializerListExpr
+}
+
+void Func(std::initializer_list<int> list) {}
+
+void Example2()
+{
+    Func({1, 2, 3});
+    //这里会产生 CXXStdInitializerListExpr
+
+    std::vector<int> vec = {1, 2, 3, 4};
+    //这里也会产生
+}
+
+class MyClass {
+public:
+    MyClass(std::initializer_list<int> list) {}
+};
+
+void Example3()
+{
+    MyClass obj{1, 2, 3, 4};
+    //这里会产生 CXXStdInitializerListExpr
 }

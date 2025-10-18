@@ -21,7 +21,7 @@ import { ArkClass, ClassCategory } from '../../../core/model/ArkClass';
 import { buildArkMethodFromArkClass, buildInitMethod } from './ArkMethodBuilder';
 import { buildModifiers, buildTypeParameters, buildModifiersForCxxClass } from './builderUtils';
 import { buildProperty2ArkField } from './ArkFieldBuilder';
-import { Stmt } from '../../../core/base/Stmt';
+import { ArkAssignStmt, Stmt } from '../../../core/base/Stmt';
 import { ANONYMOUS_CLASS_DELIMITER, ANONYMOUS_CLASS_PREFIX, DEFAULT_ARK_CLASS_NAME } from '../../../core/common/Const';
 import { IRUtils } from '../../common/IRUtils';
 import { ClassSignature } from '../../../core/model/ArkSignature';
@@ -31,6 +31,16 @@ import { buildDecorators } from './builderUtils';
 import { buildDefaultArkMethodFromArkClass } from './ArkMethodBuilder';
 import { CxxAstNode, CxxTranslationUnit } from '../../ast/ArkCxxAstNode';
 import { buildArkClassFromCxxClass } from './ArkFileBuilder';
+import { ArkField } from '../../../core/model/ArkField';
+import { Value } from '../../../core/base/Value';
+import { NumberConstant } from '../../../core/base/Constant';
+import { ValueUtil } from '../../../core/common/ValueUtil';
+import { ArkNormalBinopExpr, NormalBinaryOperator } from '../../../core/base/Expr';
+import { Local } from '../../../core/base/Local';
+import { FullPosition } from '../../../core/base/Position';
+import { ArkMetadataKind, EnumInitTypeUserMetadata } from '../../../core/model/ArkMetadata';
+import { ArkInstanceFieldRef } from '../../../core/base/Ref';
+import { UnknownType } from '../../../core/base/Type';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkClassBuilder');
 
@@ -235,17 +245,25 @@ function buildInitMethodsForClassTag(
 
 function buildArkClassMembers(clsNode: CxxAstNode, cls: ArkClass, sourceFile: CxxAstNode): void {
     buildMethodsForClass(clsNode, cls, sourceFile);
+    let staticIRTransformer: ArkCxxIRTransformer;
     const tagStr = (clsNode.tagUsed ?? '');
     const staticInitStmts: Stmt[] = [];
     const instanceInitStmts: Stmt[] = [];
+    const enumFieldInfo = { lastFieldName: '', curValue: 0, isCurValueValid: true };
     for (const member of clsNode.inner as CxxAstNode[]) {
         if (member.kind === 'FieldDecl' || member.kind === 'VarDecl') {
             const arkField = buildProperty2ArkField(member, sourceFile, cls);
-            if (clsNode.kind === 'CXXRecordDecl' && (tagStr === 'class' || tagStr === 'struct')) {
-                arkField.getInitializer().forEach(stmt => instanceInitStmts.push(stmt));
+            // If the parameter innner is not empty, it means it contains initialization information
+            if (member.inner.length > 0) {
+                staticIRTransformer = new ArkCxxIRTransformer(sourceFile as CxxTranslationUnit, cls.getStaticInitMethod());
+                getInitStmts(staticIRTransformer, arkField, member.inner[member.inner.length - 1]);
             }
+            arkField.getInitializer().forEach(stmt => instanceInitStmts.push(stmt));
+            // Initialization of enumeration types
         } else if (member.kind === 'EnumConstantDecl') {
             const arkField = buildProperty2ArkField(member, sourceFile, cls);
+            staticIRTransformer = new ArkCxxIRTransformer(sourceFile as CxxTranslationUnit, cls.getStaticInitMethod());
+            getInitStmts(staticIRTransformer, arkField, member.inner[0], enumFieldInfo);
             arkField.getInitializer().forEach(stmt => staticInitStmts.push(stmt));
         } else if (
             member.kind === 'CXXMethodDecl' ||
@@ -265,12 +283,7 @@ function buildArkClassMembers(clsNode: CxxAstNode, cls: ArkClass, sourceFile: Cx
 
 
 function buildMethodsForClass(clsNode: CxxAstNode, cls: ArkClass, sourceFile: CxxAstNode): void {
-    let cxxAccessModifier = 'private';
     clsNode.inner.forEach((member: CxxAstNode) => {
-        if (member.kind.toString() === 'CXXAccessSpecifier') {
-            cxxAccessModifier = member.code.split(':')[0];
-        }
-        member.access = cxxAccessModifier;
         if (
             member.kind.toString() === 'CXXMethodDecl' ||
             member.kind.toString() === 'CXXConstructorDecl' ||
@@ -304,4 +317,65 @@ function genDefaultArkMethod(cls: ArkClass, sourceFile: CxxAstNode, node?: CxxAs
     let defaultMethod = new ArkMethod();
     buildDefaultArkMethodFromArkClass(cls, defaultMethod, sourceFile, node);
     cls.setDefaultArkMethod(defaultMethod);
+}
+
+function getInitStmts(
+    transformer: ArkCxxIRTransformer | undefined,
+    field: ArkField,
+    initNode?: CxxAstNode,
+    enumFieldInfo?: {
+        lastFieldName: string,
+        curValue: number,
+        isCurValueValid: boolean
+    }
+): void {
+    let initValue: Value;
+    let initPositions;
+    const stmts: Stmt[] = [];
+    if (!transformer) {
+        return;
+    }
+    if (initNode) {
+        let initStmts: Stmt[] = [];
+        ({ value: initValue, valueOriginalPositions: initPositions, stmts: initStmts } = transformer.cxxNodeToValueAndStmts(initNode));
+        initStmts.forEach(stmt => stmts.push(stmt));
+        if (enumFieldInfo !== undefined) {
+            if (initValue instanceof NumberConstant) {
+                enumFieldInfo.curValue = parseFloat(initValue.getValue()) + 1;
+                enumFieldInfo.isCurValueValid = true;
+            } else {
+                enumFieldInfo.lastFieldName = field.getName();
+                enumFieldInfo.isCurValueValid = false;
+            }
+        }
+    }
+    else if (enumFieldInfo !== undefined) {
+        if (enumFieldInfo.isCurValueValid) {
+            initValue = ValueUtil.getOrCreateNumberConst(enumFieldInfo.curValue);
+            enumFieldInfo.curValue += 1;
+        } else {
+            initValue = new ArkNormalBinopExpr(new Local(enumFieldInfo.lastFieldName), ValueUtil.getOrCreateNumberConst(1), NormalBinaryOperator.Addition);
+            enumFieldInfo.lastFieldName = field.getName();
+        }
+        initPositions = [FullPosition.DEFAULT];
+        field.setMetadata(ArkMetadataKind.ENUM_INIT_TYPE_USER, new EnumInitTypeUserMetadata(false));
+    } else {
+        return;
+    }
+    const fieldRef = new ArkInstanceFieldRef(transformer.getThisLocal(), field.getSignature());
+    const fieldRefPositions = [FullPosition.DEFAULT, FullPosition.DEFAULT];
+    const assignStmt = new ArkAssignStmt(fieldRef, initValue);
+    assignStmt.setOperandOriginalPositions([...fieldRefPositions, ...initPositions]);
+    stmts.push(assignStmt);
+
+    const fieldSourceCode = field.getCode();
+    const fieldOriginPosition = field.getOriginPosition();
+    for (const stmt of stmts) {
+        stmt.setOriginPositionInfo(fieldOriginPosition);
+        stmt.setOriginalText(fieldSourceCode);
+    }
+    field.setInitializer(stmts);
+    if (field.getType() instanceof UnknownType) {
+        field.getSignature().setType(initValue.getType());
+    }
 }

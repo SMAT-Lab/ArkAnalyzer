@@ -249,3 +249,60 @@ export const FOR_STATEMENT_EXPECT_CASE6 = {
         },
     ],
 };
+
+export const FOR_STATEMENT_EXPECT_CASE7 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @loopStatement/ForStatementSample.ts: %dflt',
+                'i = 0',
+            ],
+            preds: [],
+            succes: [1],
+        },
+        {
+            id: 1,
+            stmts: [
+                'if i < 10',
+
+            ],
+            preds: [0, 5],
+            succes: [2, 4],
+        },
+        {
+            id: 2,
+            stmts: [
+                'if i === 5',
+
+            ],
+            preds: [1],
+            succes: [3, 5],
+        },
+        {
+            id: 3,
+            stmts: [
+                'return 42',
+
+            ],
+            preds: [2],
+            succes: [],
+        },
+        {
+            id: 4,
+            stmts: [
+                'return 0',
+            ],
+            preds: [1],
+            succes: [],
+        },
+        {
+            id: 5,
+            stmts: [
+                'i = i + 1',
+            ],
+            preds: [2],
+            succes: [1],
+        },
+    ],
+};
