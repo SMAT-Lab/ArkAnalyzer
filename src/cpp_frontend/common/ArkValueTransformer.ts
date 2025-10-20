@@ -38,7 +38,7 @@ import {
     ArkArrayTypeTraitExpr,
     ArkNoExpectExpr,
     ArkTypeIdExpr,
-    ArkCxxNewArrayExpr,
+    ArkCxxNewArrayExpr, ArkCxxInitArrayExpr,
 } from '../base/Expr';
 import {
     AnyType,
@@ -2108,7 +2108,9 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             stmts.push(assignStmt);
         }
         if (isInitZero) {
-            let assignStmt = new ArkAssignStmt(arrayLocal, initializerZero);
+            // When the array is initialized to 0, initialize Values only contains one element for use by the upper layer
+            let initExpr = new ArkCxxInitArrayExpr(initializerValues[0] ?? initializerZero)
+            let assignStmt = new ArkAssignStmt(arrayLocal, initExpr);
             stmts.push(assignStmt);
         }
         return {
