@@ -15,10 +15,79 @@
 
 import { AbstractExpr, ArkCastExpr } from '../../core/base/Expr';
 import { Value } from '../../core/base/Value';
-import { BooleanType, Type } from '../../core/base/Type';
+import { ArrayType, BooleanType, Type } from '../../core/base/Type';
 import { ArkMethod } from '../../core/model/ArkMethod';
 import { AbstractRef } from '../../core/base/Ref';
 import { CxxSizeTType, CxxStdTypeName, CxxTypeBitWidth, CxxTypeSigned, TypeInfo } from './Type';
+import { TypeInference } from '../../core/common/TypeInference';
+
+
+export class ArkCxxNewArrayExpr extends AbstractExpr {
+    private baseType: Type;
+    private size: Value;
+    private elementsNumber: number = 0;
+
+    private fromLiteral: boolean;
+
+    constructor(baseType: Type, size: Value, fromLiteral: boolean = false, elementsNumber?: number) {
+        super();
+        this.baseType = baseType;
+        this.size = size;
+        this.fromLiteral = fromLiteral;
+        if (elementsNumber) {
+            this.elementsNumber = elementsNumber;
+        }
+    }
+
+    public getElementsNumber(): number {
+        return this.elementsNumber;
+    }
+
+    public setElementsNumber(elementsNumber: number): void {
+        this.elementsNumber = elementsNumber;
+    }
+    public getSize(): Value {
+        return this.size;
+    }
+
+    public setSize(newSize: Value): void {
+        this.size = newSize;
+    }
+
+    public getType(): ArrayType {
+        return new ArrayType(this.baseType, 1);
+    }
+
+    public getBaseType(): Type {
+        return this.baseType;
+    }
+
+    public setBaseType(newType: Type): void {
+        this.baseType = newType;
+    }
+
+    public isFromLiteral(): boolean {
+        return this.fromLiteral;
+    }
+
+    public inferType(arkMethod: ArkMethod): ArkCxxNewArrayExpr {
+        const type = TypeInference.inferUnclearedType(this.baseType, arkMethod.getDeclaringArkClass());
+        if (type) {
+            this.baseType = type;
+        }
+        return this;
+    }
+
+    public getUses(): Value[] {
+        let uses: Value[] = [this.size];
+        uses.push(...this.size.getUses());
+        return uses;
+    }
+
+    public toString(): string {
+        return 'newarray (' + this.baseType + ')[' + this.size + ']';
+    }
+}
 
 export class ArkSizeOfExpr extends AbstractExpr {
     private op: Value;
