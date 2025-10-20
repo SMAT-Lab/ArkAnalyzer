@@ -12,4 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#ifndef INCLUDEINCLASS_H
+#define INCLUDEINCLASS_H
 #define NUM 1
+#endif

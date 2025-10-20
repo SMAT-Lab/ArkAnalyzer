@@ -1124,7 +1124,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
                 return this.cxxNewExpressionToValueAndStmts(callExpression);
             } else if (callExpression.inner[0].kind === 'CXXPseudoDestructorExpression') {
                 return this.cxxCallExpressionToValueAndStmts(callExpression.inner[0]);
-            } else if (callExpression.name === 'basic_string') {
+            } else if (callExpression.name === 'basic_string' || callExpression.inner[0].kind === 'MaterializeTemporaryExpr') {
                 return this.cxxNodeToValueAndStmts(callExpression.inner[0]);
             }
         }
@@ -1987,7 +1987,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         const oriType = arrayLiteralExpression.type.qualType;
         let arrayLength = 0; // Indicate the length of the array
         let elementsNumber = 0; // Indicates the total number of elements included
-        if (!dimensions){
+        if (!dimensions) {
             // Obtain dimensional information
             dimensions = this.getArrayDimensions(oriType);
         }
@@ -2043,7 +2043,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         for (const element of arrayLiteralExpression.inner) {
             // If there is still dimension information in the array, build an internal array
             let { value: elementValue, valueOriginalPositions: elementPosition, stmts: elementStmts } =
-                dimensions.length > 0 ? this.cxxArrayLiteralExpressionToValueAndStmts(element, dimensions) :this.cxxNodeToValueAndStmts(element);
+                dimensions.length > 0 ? this.cxxArrayLiteralExpressionToValueAndStmts(element, dimensions) : this.cxxNodeToValueAndStmts(element);
             elementStmts.forEach(stmt => stmts.push(stmt));
             if (IRUtils.moreThanOneAddress(elementValue)) {
                 ({
@@ -2109,7 +2109,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         }
         if (isInitZero) {
             // When the array is initialized to 0, initialize Values only contains one element for use by the upper layer
-            let initExpr = new ArkCxxInitArrayExpr(initializerValues[0] ?? initializerZero)
+            let initExpr = new ArkCxxInitArrayExpr(initializerValues[0] ?? initializerZero);
             let assignStmt = new ArkAssignStmt(arrayLocal, initExpr);
             stmts.push(assignStmt);
         }

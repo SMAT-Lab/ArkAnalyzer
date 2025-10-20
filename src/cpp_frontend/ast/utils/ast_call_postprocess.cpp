@@ -25,6 +25,7 @@
 #define THREE 3
 #define FOUR 4
 #define FIVE 5
+#define THIRTYTWO 32
 
 bool IsParenWrapped(std::string_view s) noexcept
 {
@@ -165,9 +166,61 @@ void PostprocessPseudoDestructor(json& node, const json& children, std::string_v
 //   - This is a syntactic quick check: it does not validate the right-hand expression.
 //   - Only ASCII whitespace (<= ' ') is skipped; no Unicode whitespace handling.
 //   - Time: O(n) due to the initial trim; Space: O(1).
-enum class FoldPattern { Left, Right }; // Left: (... op pack) ; Right: (pack op ...)
+enum class FoldPattern { LEFT, RIGHT }; // Left: (... op pack) ; Right: (pack op ...)
 
-// Unified detection for simple fold expressions: returns true if either left or right fold is matched,
+// Try to match a left fold: "(... OP expr)" and return OP via opOut.
+// Precondition: t is already trimmed and starts with '(' and ends with ')'.
+static bool TryDetectLeftFold(std::string_view t, char& opOut) noexcept
+{
+    // Must start with "(..."
+    if (t.rfind("(...", 0) != 0) {
+        return false;
+    }
+    size_t i = FOUR; // skip "(..."
+    while (i < t.size() && static_cast<unsigned char>(t[i]) <= ' ') {
+        ++i; // skip whitespace
+    }
+    if (i >= t.size()) {
+        return false;
+    }
+    const char c = t[i];
+    switch (c) {
+        case '+': case '-': case '*': case '/':
+        case '&': case '|': case '^':
+            opOut = c;
+            return true;
+        default:
+            return false;
+    }
+}
+
+// Try to match a right fold: "(expr OP ...)" and return OP via opOut.
+// Precondition: t is already trimmed and starts with '(' and ends with ')'.
+static inline bool TryDetectRightFold(std::string_view t, char& opOut) noexcept
+{
+    // Must end with "...)"
+    if (t.size() < FOUR || t.substr(t.size() - FOUR) != "...)") {
+        return false;
+    }
+    size_t i = t.size() - FOUR; // points to the beginning of "..."
+    while (i > 0 && static_cast<unsigned char>(t[i - 1]) <= ' ') {
+        --i; // skip whitespace to the left
+    }
+    if (i == 0) {
+        return false;
+    }
+    const char c = t[i - 1]; // operator should be right before "..."
+    switch (c) {
+        case '+': case '-': case '*': case '/':
+        case '&': case '|': case '^':
+            opOut = c;
+            return true;
+        default:
+            return false;
+    }
+}
+
+// Unified detection for simple fold expressions: returns true if either left or right fold matches,
 // and writes the operator symbol (opOut) and fold pattern (patternOut).
 bool LooksLikeSimpleFold(std::string_view s, char& opOut, FoldPattern& patternOut) noexcept
 {
@@ -177,46 +230,15 @@ bool LooksLikeSimpleFold(std::string_view s, char& opOut, FoldPattern& patternOu
     if (t.size() < FIVE || t.front() != '(' || t.back() != ')') {
         return false;
     }
-
-    // ---- Try detecting left fold: starts with "(..." ----
-    if (t.rfind("(...", 0) == 0) { // starts-with
-        size_t i = FOUR; // skip "(..."
-        while (i < t.size() && (unsigned char)t[i] <= ' ') {
-            ++i;
-        }
-        if (i >= t.size()) {
-            return false;
-        }
-        const char c = t[i];
-        switch (c) {
-            case '+': case '-': case '*': case '/':
-            case '&': case '|': case '^':
-                opOut = c;
-                patternOut = FoldPattern::Left;
-                return true;
-            default:
-                return false;
-        }
+    // Left fold: "(... OP expr)"
+    if (TryDetectLeftFold(t, opOut)) {
+        patternOut = FoldPattern::LEFT;
+        return true;
     }
-    // ---- Try detecting right fold: ends with "...)" ----
-    if (t.size() >= FOUR && t.substr(t.size() - FOUR) == "...)") {
-        size_t i = t.size() - FOUR; // points to start of "..."
-        while (i > 0 && (unsigned char)t[i - 1] <= ' ') {
-            --i; // skip whitespace to the left
-        }
-        if (i == 0) {
-            return false;
-        }
-        const char c = t[i - 1];
-        switch (c) {
-            case '+': case '-': case '*': case '/':
-            case '&': case '|': case '^':
-                opOut = c;
-                patternOut = FoldPattern::Right;
-                return true;
-            default:
-                return false;
-        }
+    // Right fold: "(expr OP ...)"
+    if (TryDetectRightFold(t, opOut)) {
+        patternOut = FoldPattern::RIGHT;
+        return true;
     }
     return false;
 }
@@ -598,7 +620,7 @@ void patchFoldExpr(json &node)
     node = {
         {"kind", "CXXFoldExpr"},
         {"op", std::string(1, op)},
-        {"pattern", (pat == FoldPattern::Left ? "left" : "right")},
+        {"pattern", (pat == FoldPattern::LEFT ? "left" : "right")},
         {"code", code},
         {"inner", inner},
         {"range", range},
@@ -948,7 +970,6 @@ bool IsAggregateRecordWithEnoughFields(const std::string& qt,
  *  2) If the child node represents an "expression-like" node
  *     (kind ends with "Expr" or is a common wrapper type),
  *     increment exprCnt.
- *     - Additionally, if initQualType is still empty, try to extract c["type"]["qualType"] as the initializer type string.
  *  3) If the child's type string contains "std::tuple_element<>" or "tuple_element<>", set anyTupleElementType = true.
  * @param c                  Input: a single child node in JSON (read-only, not modified)
  * @param bindCnt            Output/accumulator: count of binding name nodes
@@ -1399,7 +1420,8 @@ static bool LooksLikeMemberSyntax(std::string_view code)
         return false; // Not a call or constructor-like pattern
     }
     std::string_view head = TrimView(s.substr(0, lb));
-    // 3) Check only the head part for member syntax, to avoid false positives from numeric literals in arguments (e.g., 2.0, 1.0e-3)
+    // 3) Check only the head part for member syntax
+    // to avoid false positives from numeric literals in arguments (e.g., 2.0, 1.0e-3)
     return (head.find("->") != std::string_view::npos) || (head.find('.') != std::string_view::npos);
 }
 
@@ -1417,8 +1439,8 @@ static const json* FindCalleeRef(const json& callNode)
         }
     }
     for (size_t i = 0; i + 1 < arr.size(); ++i) {
-        if (arr[i].value("kind","") == "NamespaceRef") {
-            const std::string k2 = arr[i+1].value("kind","");
+        if (arr[i].value("kind", "") == "NamespaceRef") {
+            const std::string k2 = arr[i+1].value("kind", "");
             if (k2 == "TemplateRef" || k2 == "TypeRef" || k2 == "DeclRefExpr") {
                 return &arr[i + 1];
             }
@@ -1450,16 +1472,93 @@ static bool IsNameEquivalent(const std::string& base, const std::string& name)
     return it->second.count(name) != 0;
 }
 
-static inline std::string TrimCopy(std::string s) { Trim(s); return s; }
+static inline std::string TrimCopy(std::string s) {
+    Trim(s);
+    return s;
+}
+
+// Try to decide ctor-likeness by parsing the "type-like head" before '(' or '{' in `code`.
+// Examples handled:
+//   - "std::vector<int>(n)"   -> compare "vector" with baseName
+//   - "std::pair{1,2.0}"      -> compare "pair" with baseName
+//   - "(std::pair{1,2.0})"    -> outer parens stripped
+static bool MatchCtorByCodeHead(const std::string& code, const std::string& baseName)
+{
+    std::string s = code;
+    Trim(s);
+    // Handle outer parentheses gracefully, e.g., (std::pair{1,2.0})
+    if (IsParenWrapped(s) && s.size() >= TWO) {
+        s = s.substr(1, s.size() - TWO);
+        Trim(s);
+    }
+    // Find the first '(' or '{'
+    const size_t lb1 = s.find('(');
+    const size_t lb2 = s.find('{');
+    const size_t lb  = std::min(lb1 == std::string::npos ? s.size() : lb1, lb2 == std::string::npos ? s.size() : lb2);
+
+    if (lb == std::string::npos || lb == 0 || lb >= s.size()) {
+        return false;
+    }
+
+    // Take the head before '(' / '{'
+    std::string head = s.substr(0, lb); // e.g. "std::vector" / "std::pair"
+    Trim(head);
+
+    // Remove template argument tail
+    const size_t lt = head.find('<');
+    if (lt != std::string::npos) {
+        head = head.substr(0, lt);
+    }
+    Trim(head);
+    // Extract last identifier (strip namespaces)
+    const size_t kk = head.rfind("::");
+    std::string last = (kk == std::string::npos) ? head : head.substr(kk + TWO);
+    Trim(last);
+    // Compare with the base type name (handles basic_string vs string inside IsNameEquivalent)
+    return IsNameEquivalent(baseName, last);
+}
+
+// Return whether a baseName is one of common std container alias names,
+// e.g. key_type / mapped_type / value_type / size_type / difference_type
+static inline bool IsStdContainerAlias(std::string_view s)
+{
+    return (s == "key_type" || s == "mapped_type" ||
+            s == "value_type" || s == "size_type" || s == "difference_type");
+}
+
+// Heuristic: infer constructor-like usage from
+//   (1) baseName looks like a std container alias (key_type / mapped_type / ...)
+//   (2) nodeName looks ctor-ish (basic_string / *string*)
+//   (3) code RHS looks like a literal or a brace-init
+// Examples: map["Alice"] ... where key_type is basic_string<char>
+//           some_alias{...} with class-like nodeName
+static inline bool MatchCtorByContainerAlias(const std::string& baseName,
+                                             const std::string& nodeName,
+                                             const std::string& code)
+{
+    if (!IsStdContainerAlias(baseName) || nodeName.empty()) {
+        return false;
+    }
+    std::string t = TrimCopy(code);
+    if (t.empty()) {
+        return false;
+    }
+    // Loosely detect "literal-like" tokens: string/char/number start
+    const unsigned char c0 = static_cast<unsigned char>(t.front());
+    const bool looksLiteral = (t.front() == '"' || t.front() == '\'' || std::isdigit(c0) != 0);
+    const bool braceInit = (t.front() == '{');
+    // Trigger only if node.name looks constructor-like (e.g., basic_string)
+    // and RHS is literal or brace-init, to avoid over-generalization.
+    const bool ctorishName  = (nodeName == "basic_string" || nodeName.find("string") != std::string::npos);
+    return ctorishName && (looksLiteral || braceInit);
+}
 
 // Purpose: Based on limited node (json) information — mainly code / type.qualType / name / callee —
 // try to heuristically determine whether the expression is "constructor-like".
-// Typical cases handled:
 //   - Explicit construction: std::string("hi"), std::pair{1, 2.0}, std::array{1, 2, 3}
 //   - Implicit construction triggered by containers or aliases: e.g., map["Alice"]
 //     invokes key_type's basic_string("Alice") constructor.
 //   - List initialization: T{...} (including internal constructions returned from push/emplace).
-// External helper functions required:
 //   - LooksLikeMemberSyntax(std::string): checks if the code looks like member syntax (. or ->)
 //   - Trim / TrimCopy: removes leading and trailing whitespace
 //   - IsParenWrapped(std::string): checks whether the outermost layer is wrapped by parentheses
@@ -1520,7 +1619,7 @@ bool IsCtorLikeByCalleeAndType(const json& node)
     // ===== step 1: Retry matching using callee.name if available =====
     // Solves:
     //   - node.name may be missing or different; callee often contains the true invoked name.
-    //   - For example, in template instantiations or wrapper overloads, callee is closer to the visible constructor name.
+    //   - in template instantiations or wrapper overloads, callee is closer to the visible constructor name.
     if (const json* callee = FindCalleeRef(node)) {
         std::string calleeName = callee->value("name", "");
         if (!calleeName.empty()) {
@@ -1533,37 +1632,8 @@ bool IsCtorLikeByCalleeAndType(const json& node)
         }
     }
     // ===== step 2: Fallback — extract the last identifier before '(' or '{' from code =====
-    // Solves:
-    //   - Some nodes (like CXXFunctionalCastExpr → T(args) / T{args})
-    //     lack structured callee info but have explicit type names in code.
-    //   - Extract the identifier before '(' or '{' (remove template args/namespaces) and compare.
-    {
-        std::string s = code;
-        Trim(s);
-        // Handle outer parentheses gracefully, e.g., (std::pair{1,2.0})
-        if (IsParenWrapped(s) && s.size() >= TWO) {
-            s = s.substr(1, s.size() - TWO);
-            Trim(s);
-        }
-        size_t lb1 = s.find('('), lb2 = s.find('{');
-        size_t lb = std::min(lb1 == std::string::npos ? s.size() : lb1, lb2 == std::string::npos ? s.size() : lb2);
-        if (lb != std::string::npos && lb > 0 && lb < s.size()) {
-            std::string head = s.substr(0, lb); // e.g. "std::vector" / "std::pair"
-            Trim(head);
-            // Remove template argument tail
-            size_t lt = head.find('<');
-            if (lt != std::string::npos) {
-                head = head.substr(0, lt);
-            }
-            Trim(head);
-            // Extract last identifier (remove namespaces)
-            size_t kk = head.rfind("::");
-            std::string last = (kk == std::string::npos) ? head : head.substr(kk + TWO);
-            Trim(last);
-            if (IsNameEquivalent(baseName, last)) {
-                return true; // Hit: code type name matches base type
-            }
-        }
+    if (MatchCtorByCodeHead(code, baseName)) {
+        return true; // Hit: code type name matches base type
     }
     // ===== step 3: List-initialization fallback ({...} + result looks like a class) =====
     // Solves:
@@ -1577,28 +1647,9 @@ bool IsCtorLikeByCalleeAndType(const json& node)
             return true; // Hit: list initialization of a class type
         }
     }
-    // ===== step 4: Container alias fallback (based on qualType + node.name + code pattern) =====
-    // Solves:
-    //   - Handles cases like map["Alice"] triggering implicit construction:
-    //       key_type = std::basic_string<char>, RHS = literal or brace-init,
-    //       node.name often "basic_string".
-    //     When richer type info is unavailable, infer constructor from alias + literal/brace.
-    auto IsStdContainerAlias = [](std::string_view s) {
-        return (s == "key_type" || s == "mapped_type" || s == "value_type" || s == "size_type" || s == "difference_type");
-    };
-    if (IsStdContainerAlias(baseName) && !nodeName.empty()) {
-        std::string t = TrimCopy(code);
-        // Loosely detect "literal-like" tokens: string/char/number start
-        bool looksLiteral = !t.empty() &&
-            (t.front() == '"' || t.front() == '\'' ||
-             std::isdigit(static_cast<unsigned char>(t.front())));
-        bool braceInit = (!t.empty() && t.front() == '{');
-        // Trigger only if node.name looks constructor-like (e.g., basic_string)
-        // and RHS is literal or brace-init, to avoid over-generalization.
-        bool ctorishName = (nodeName == "basic_string" || nodeName.find("string") != std::string::npos);
-        if (ctorishName && (looksLiteral || braceInit)) {
-            return true; // Hit: container alias + ctorish name + literal/list → implicit construction
-        }
+    // ===== step 4: Container alias fallback =====
+    if (MatchCtorByContainerAlias(baseName, nodeName, code)) {
+        return true; // Hit: container alias + ctorish name + literal/list → implicit construction
     }
     // None of the heuristics matched → not constructor-like
     return false;
@@ -1611,7 +1662,7 @@ static inline unsigned long long StableIdFromRange(const json& r)
     const auto& e = r.value("end",   json::object());
     const unsigned bo = b.value("offset", 0u);
     const unsigned eo = e.value("offset", 0u);
-    return (static_cast<unsigned long long>(bo) << 32) | static_cast<unsigned long long>(eo);
+    return (static_cast<unsigned long long>(bo) << THIRTYTWO) | static_cast<unsigned long long>(eo);
 }
 
 // Return the function node (FunctionDecl / CXXMethodDecl / CXXConstructorDecl / CXXDestructorDecl)
@@ -1622,14 +1673,15 @@ json* FindEnclosingFunction(json& node, unsigned off)
         return nullptr;
     }
     const std::string kind = node.value("kind", "");
-    const auto inRange = [&](const json& n)->bool {
+    const unsigned off0 = off;
+    const auto inRange = [off0](const json& n) -> bool {
         if (!n.contains("range")) {
             return false;
         }
         const auto& r = n["range"];
         const unsigned b = r.value("begin", json::object()).value("offset", 0u);
-        const unsigned e = r.value("end", json::object()).value("offset", 0u);
-        return (b <= off && off <= e);
+        const unsigned e = r.value("end",   json::object()).value("offset", 0u);
+        return (b <= off0 && off0 <= e);
     };
     const bool isFunc = (kind == "FunctionDecl" || kind == "CXXMethodDecl" ||
     kind == "CXXConstructorDecl" || kind == "CXXDestructorDecl");

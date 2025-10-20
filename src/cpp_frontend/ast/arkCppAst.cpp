@@ -466,8 +466,7 @@ static std::string BuildScopeForCursor(CXCursor cur)
     std::vector<std::string> parts;
     // climb semantic parents
     for (CXCursor p = clang_getCursorSemanticParent(cur); !clang_equalCursors(p, clang_getNullCursor()) &&
-         clang_getCursorKind(p) != CXCursor_TranslationUnit; )
-    {
+         clang_getCursorKind(p) != CXCursor_TranslationUnit;) {
         std::string name = Cx2Str(clang_getCursorSpelling(p));
         if (!name.empty()) {
             parts.push_back(std::move(name));
@@ -1372,7 +1371,8 @@ static OriginInfo ComputeOriginInfo(CXCursor cursor)
 // Utility: check if a cursor kind represents a function
 static inline bool IsFunctionCursor(CXCursorKind k)
 {
-    return k == CXCursor_FunctionDecl || k == CXCursor_CXXMethod || k == CXCursor_Constructor || k == CXCursor_Destructor;
+    return k == CXCursor_FunctionDecl || k == CXCursor_CXXMethod ||
+           k == CXCursor_Constructor || k == CXCursor_Destructor;
 }
 
 // ==========================buildASTJson Main Body========================
