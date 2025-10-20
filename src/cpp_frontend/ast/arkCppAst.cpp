@@ -421,50 +421,91 @@ void fixCallExprChildKind(json &node)
 
 std::string unifyTypeStr(CXString typeSpelling)
 {
-    // 从 libclang 取出类型拼写
+    // Retrieve the type spelling from libclang
     std::string typeStr = clang_getCString(typeSpelling);
-    clang_disposeString(typeSpelling); // 及时释放 CXString
-    // --- 场景1：缺少 std:: 前缀的容器名 ---
-    // 某些平台/头文件组合下，libclang 可能返回 "vector<int>"、"set<T>" 等没带命名空间的拼写。
-    // 这里把常见顺序容器/关联容器统一补上 "std::" 前缀，确保后续匹配一致。
+    clang_disposeString(typeSpelling); // Release CXString promptly
+    // --- Case 1: Missing "std::" prefix in container names ---
+    // On some platforms or header combinations, libclang may return spellings
+    // like "vector<int>" or "set<T>" without the namespace qualifier.
+    // Here we prepend "std::" to common sequential/associative containers
+    // to ensure consistent matching later.
     if (typeStr.find("set<") == 0 || typeStr.find("vector<") == 0 ||
-        typeStr.find("deque<") == 0 || typeStr.find("stack<") == 0 ||
-        typeStr.find("list<") == 0) {
-        // 例："vector<int>" -> "std::vector<int>"
+        typeStr.find("deque<") == 0 || typeStr.find("stack<") == 0 || typeStr.find("list<") == 0) {
+        // Example: "vector<int>" -> "std::vector<int>"
         typeStr = "std::" + typeStr;
     }
-    // --- 场景2：统一 string 的别名 ---
-    // 把出现的“独立 std::string”替换为 "std::basic_string<char>"。
-    // 这能让以下两种来源的类型被视为等价：
-    //   - 源码写 std::string
-    //   - 模板/推导/实现细节暴露为 std::basic_string<char>
-    // 同时通过左右边界检查，避免污染 std::string_view / std::stringbuf 等。
+    // --- Case 2: Unify string aliases ---
+    // Replace any occurrence of a standalone “std::string” with
+    // "std::basic_string<char>".
+    // This ensures that the following forms are treated as equivalent:
+    //   - Source code using std::string
+    //   - Template/implementation forms exposing std::basic_string<char>
+    // Boundary checks are applied to avoid affecting types like
+    // std::string_view or std::stringbuf.
     SafeReplaceStdString(typeStr);
-    // --- 场景3：修正 MSVC STL 暴露的实现细节类型名 ---
-    // MSVC 有时会把 pair<const char*, int> 这种写成
-    // "pair<_Unrefwrap_t<const char, int>>" 之类的内部实现名。
-    // 为了稳定下游匹配，这里强制归一化成可阅读、可比较的标准写法。
+    // --- Case 3: Normalize MSVC STL internal implementation type names ---
+    // MSVC sometimes exposes internal implementation names such as
+    // "pair<_Unrefwrap_t<const char, int>>" for types like pair<const char*, int>.
+    // To stabilize downstream comparisons, normalize these to
+    // a standard, human-readable form.
     if (typeStr.find("pair<_Unrefwrap_t<const char") != std::string::npos) {
-        // 注意：此处是一个实用的兜底规则，假设 value 是 int，
-        // 可按项目需要扩展泛化（比如解析出第二模板参数的真实类型）。
+        // Note: This is a practical fallback rule assuming the value type is int.
+        // It can be generalized to parse the actual second template argument
+        // if needed by the project.
         typeStr = "std::pair<const char *, int>";
     }
     return typeStr;
 }
 
-// Get reference information
+// Build a textual scope like "A::B::C" for the given cursor.
+// - Walks semantic parents up to TranslationUnit
+// - Skips empty/anonymous names
+// - Does NOT include the cursor's own name
+static std::string BuildScopeForCursor(CXCursor cur)
+{
+    std::vector<std::string> parts;
+    // climb semantic parents
+    for (CXCursor p = clang_getCursorSemanticParent(cur); !clang_equalCursors(p, clang_getNullCursor()) &&
+         clang_getCursorKind(p) != CXCursor_TranslationUnit; )
+    {
+        std::string name = Cx2Str(clang_getCursorSpelling(p));
+        if (!name.empty()) {
+            parts.push_back(std::move(name));
+        }
+        CXCursor np = clang_getCursorSemanticParent(p);
+        if (clang_equalCursors(np, p)) {
+            break;
+        }
+        p = np;
+    }
+    // outer -> inner
+    std::reverse(parts.begin(), parts.end());
+    // join with "::"
+    std::string scope;
+    for (size_t i = 0; i < parts.size(); ++i) {
+        if (i) {
+            scope += "::";
+        }
+        scope += parts[i];
+    }
+    return scope; // empty string means global scope
+}
+
 json getReferenceDecl(CXCursor cursor, CXCursorKind kind_cursor)
 {
     json refNode;
     CXCursor referenced = clang_getCursorReferenced(cursor);
     if (!clang_isInvalid(kind_cursor)) {
-        refNode["name"] = Cx2Str(clang_getCursorSpelling(referenced));
-        std::string kind = Cx2Str(clang_getCursorKindSpelling(clang_getCursorKind(referenced)));
-        if (kind == "ParamDecl") {
-            kind = "ParamVarDecl";
+        std::string refName = Cx2Str(clang_getCursorSpelling(referenced));
+        std::string refKind = Cx2Str(clang_getCursorKindSpelling(clang_getCursorKind(referenced)));
+        if (refKind == "ParamDecl") {
+            refKind = "ParamVarDecl";
         }
-        refNode["kind"] = kind;
+        refNode["name"] = refName;
+        refNode["kind"] = refKind;
         refNode["type"] = {{"qualType", unifyTypeStr(clang_getTypeSpelling(clang_getCursorType(referenced)))}};
+        std::string scope = BuildScopeForCursor(referenced);
+        refNode["scope"] = scope;
     }
     return refNode;
 }

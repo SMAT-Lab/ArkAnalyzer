@@ -50,7 +50,7 @@ uint32_t SelectFieldMaskForCursorKind(CXCursorKind k)
         case CXCursor_UnexposedDecl:
             return WANT_KIND | WANT_NAME | WANT_TYPE | WANT_CODE;
         case CXCursor_DeclRefExpr:
-            return WANT_KIND | WANT_NAME | WANT_TYPE | WANT_CODE | WANT_RANGE;
+            return WANT_KIND | WANT_NAME | WANT_TYPE | WANT_CODE | WANT_RANGE | WANT_REFERENCED;
         // Operators and simple statements: keep basic info
         case CXCursor_BinaryOperator:
         case CXCursor_UnaryOperator:
