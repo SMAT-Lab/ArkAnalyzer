@@ -209,9 +209,9 @@ libclang.so（可从llvm预编译版本的lib目录下获取）
 
 ## 三、基于ArkAnalyzer npm包分析C++项目
 
-1、删除package.json的postinstall配置
+1、修改package.json文件中dumper工具的目录，删除postinstall配置，将dumper工具打包到包中
 
-![img_19.png](img_19.png)
+![img_17.png](img_17.png)
 
 2、在arkanalyzer根目录下执行下列命令进行打包生成arkanalyzer-1.0.8.tgz包
    
