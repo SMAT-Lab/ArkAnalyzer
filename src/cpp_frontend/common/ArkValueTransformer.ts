@@ -1124,7 +1124,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
                 return this.cxxNewExpressionToValueAndStmts(callExpression);
             } else if (callExpression.inner[0].kind === 'CXXPseudoDestructorExpression') {
                 return this.cxxCallExpressionToValueAndStmts(callExpression.inner[0]);
-            } else if (callExpression.name === 'basic_string') {
+            } else if (callExpression.name === 'basic_string' || callExpression.inner[0].kind === 'MaterializeTemporaryExpr') {
                 return this.cxxNodeToValueAndStmts(callExpression.inner[0]);
             }
         }
