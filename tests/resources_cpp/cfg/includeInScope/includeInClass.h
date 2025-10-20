@@ -12,7 +12,4 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef INCLUDEINCLASS_H
-#define INCLUDEINCLASS_H
-std::cout << "Using optimized processing" << std::endl;
-#endif
+#define NUM 1

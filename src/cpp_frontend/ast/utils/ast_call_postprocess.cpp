@@ -167,18 +167,20 @@ void PostprocessPseudoDestructor(json& node, const json& children, std::string_v
 //   - Time: O(n) due to the initial trim; Space: O(1).
 enum class FoldPattern { Left, Right }; // Left: (... op pack) ; Right: (pack op ...)
 
-// 统一检测：命中左折叠/右折叠之一则返回 true，并写出 opOut 与 patternOut
+// Unified detection for simple fold expressions: returns true if either left or right fold is matched,
+// and writes the operator symbol (opOut) and fold pattern (patternOut).
 bool LooksLikeSimpleFold(std::string_view s, char& opOut, FoldPattern& patternOut) noexcept
 {
     opOut = 0;
     const std::string_view t = TrimView(s);
-    // 完全带括号 "( ... )"
+    // Must be fully parenthesized "( ... )"
     if (t.size() < FIVE || t.front() != '(' || t.back() != ')') {
         return false;
     }
-    // ---- 尝试左折叠：以 "(..." 开头 ----
+
+    // ---- Try detecting left fold: starts with "(..." ----
     if (t.rfind("(...", 0) == 0) { // starts-with
-        size_t i = FOUR; // 跳过 "(..."
+        size_t i = FOUR; // skip "(..."
         while (i < t.size() && (unsigned char)t[i] <= ' ') {
             ++i;
         }
@@ -196,13 +198,13 @@ bool LooksLikeSimpleFold(std::string_view s, char& opOut, FoldPattern& patternOu
                 return false;
         }
     }
-    // ---- 尝试右折叠：以 "...)" 结尾 ----
+    // ---- Try detecting right fold: ends with "...)" ----
     if (t.size() >= FOUR && t.substr(t.size() - FOUR) == "...)") {
-        size_t i = t.size() - FOUR; // 指向 "..." 起始
+        size_t i = t.size() - FOUR; // points to start of "..."
         while (i > 0 && (unsigned char)t[i - 1] <= ' ') {
-            --i; // 跳过左侧空白
+            --i; // skip whitespace to the left
         }
-        if (i == 0){
+        if (i == 0) {
             return false;
         }
         const char c = t[i - 1];
@@ -218,7 +220,6 @@ bool LooksLikeSimpleFold(std::string_view s, char& opOut, FoldPattern& patternOu
     }
     return false;
 }
-
 
 // ---- helpers: builtin-name set (tokens must be whitespace-stripped) ----
 static bool IsBuiltinNameNoSpaceImpl(const std::string& s)
@@ -534,41 +535,45 @@ void RecoverCtorForVarDecl(json& varDecl)
 }
 
 /**
- * @brief 识别并改写“简单折叠表达式（C++17 fold expression）”的包装节点为 CXXFoldExpr。
- * 适用源码形态（必须“完全带括号”，空白任意；仅支持单字符运算符）：
- *   1) 左折叠（本函数沿用既有命名习惯）：
+ * @brief Detects and rewrites “simple fold expressions (C++17 fold expressions)”
+ *        wrapper nodes into `CXXFoldExpr`.
+ * Supported source patterns (must be *fully parenthesized*, whitespace-insensitive;
+ * only single-character operators are recognized):
+ *   1) Left fold (following existing naming convention):
  *        (... + args)      →  pattern: "left",  op: "+"
- *      其它可识别单字符运算符：+ - * / & | ^
- *   2) 右折叠：
+ *      Other recognized single-character operators: + - * / & | ^
+ *
+ *   2) Right fold:
  *        (args + ...)      →  pattern: "right", op: "+"
- *      其它可识别单字符运算符同上。
- * 触发前提（满足全部才改写，否则保持原状）：
+ *      Other recognized single-character operators are the same as above.
+ * Trigger conditions (all must be met for rewriting to occur; otherwise, no change):
  *   - node.kind ∈ { "ImplicitCastExpr", "UnexposedExpr", "ParenExpr" }
- *   - node.code 存在，且 LooksLikeSimpleFold(code, op, pattern) 判真
- *   - 代码串必须是完全括号包裹的形态 "( ... )"
- *   - 左折叠要求以 "(..." 起始；右折叠要求以 "...)" 结束
- * 改写效果：
+ *   - node.code exists, and LooksLikeSimpleFold(code, op, pattern) returns true
+ *   - The code string must be *fully wrapped in parentheses*, i.e., "( ... )"
+ *   - Left fold requires the code to start with "(..."; right fold requires it to end with "...)"
+ * Rewrite behavior:
  *   - node.kind        ← "CXXFoldExpr"
- *   - node.op          ← 运算符（string，当前为单字符）
+ *   - node.op          ← operator symbol (string, currently single-character)
  *   - node.pattern     ← "left" | "right"
- *   - 保留原 node.code / node.inner / node.range / node.type / node.valueCategory
- *     （若 node.type 缺失则填充 { "qualType": "<dependent type>" }）
- * 典型输入/输出（示例）：
- *   源码：return (... + args);
- *   之前：{ "kind":"UnexposedExpr", "code":"(... + args)", "inner":[{ "kind":"DeclRefExpr","name":"args"}], ... }
- *   之后：{
- *            "kind":"CXXFoldExpr", "op":"+", "pattern":"left",
- *            "code":"(... + args)", "inner":[{ "kind":"DeclRefExpr","name":"args"}], ...
- *          }
- *   源码：return (args + ...);
- *   之后：{ "kind":"CXXFoldExpr", "op":"+", "pattern":"right", "code":"(args + ...)", ... }
- * 设计取舍与限制：
- *   - 仅识别“简单”折叠：单字符运算符（+ - * / & | ^），不含 << >> && || 等双字符。
- *   - 必须是最外层一对括号包裹形态；更复杂/嵌套的折叠需扩展 LooksLikeSimpleFold。
- *   - 依赖字符串匹配，对 tokenize 插入空格具鲁棒性（Trim + 边界判定），
- *     但若未来需要保留精确空白/注释，请确保尽量命中缓存切片 TrySliceFromCache。
- *   - 与 handleUnexposedExpr 的分工：允许其先产出 UnexposedExpr，
- *     最终由本函数在 nodePostprocess 阶段统一改写为 CXXFoldExpr。
+ *   - Preserve original node.code / node.inner / node.range / node.type / node.valueCategory
+ *     (if node.type is missing, fill with `{ "qualType": "<dependent type>" }`)
+ * Example input/output:
+ *   Source: return (... + args);
+ *   Before: { "kind":"UnexposedExpr", "code":"(... + args)", "inner":[{ "kind":"DeclRefExpr","name":"args"}], ... }
+ *   After:  {
+ *              "kind":"CXXFoldExpr", "op":"+", "pattern":"left",
+ *              "code":"(... + args)", "inner":[{ "kind":"DeclRefExpr","name":"args"}], ...
+ *           }
+ *   Source: return (args + ...);
+ *   After:  { "kind":"CXXFoldExpr", "op":"+", "pattern":"right", "code":"(args + ...)", ... }
+ * Design decisions and limitations:
+ *   - Only detects *simple* fold expressions: single-character operators (+ - * / & | ^),
+ *     not multi-character ones like << >> && ||.
+ *   - Must be strictly parenthesized at the outermost level; nested folds require extending LooksLikeSimpleFold.
+ *   - Relies on string pattern matching; robust to inserted spaces via Trim and boundary checks.
+ *     If future requirements include preserving whitespace/comments, ensure TrySliceFromCache is used when possible.
+ *   - Division of responsibility with handleUnexposedExpr:
+ *     this function converts UnexposedExpr → CXXFoldExpr during the nodePostprocess phase.
  */
 void patchFoldExpr(json &node)
 {
@@ -614,30 +619,23 @@ void buildNodeRange(json& node, json& parent)
     if (!parent.contains("range") || parent["range"].is_null() || parent["range"] == json()) {
         return;
     }
-
     const std::string cCode = node["code"];
     const std::string pCode = parent["code"];
-
     const size_t index1 = pCode.find(cCode);
     if (index1 == std::string::npos) {
         return;
     }
-
     const json& pRange = parent["range"];
     const size_t baseOffset = static_cast<size_t>(pRange["begin"]["offset"]);
-
     const int startOffset = static_cast<int>(baseOffset + index1);
     const int endOffset = startOffset + static_cast<int>(cCode.size()) - 1;
-
     int startLine = pRange["begin"]["line"];
     int endLine = startLine;
     int startCol = pRange["begin"]["col"];
     int endCol = startCol;
-
     int curOffset = 0;
     int line = startLine;
     int col = startCol;
-
     for (size_t i = 0; i < pCode.size(); ++i) {
         if (curOffset == startOffset) {
             startLine = line;
@@ -828,7 +826,7 @@ inline bool IsBindingNameNode(const json& c)
     return (ck == "UnexposedDecl" || ck == "BindingDecl");
 }
 
-// 初始化器/表达式结点：后缀 "Expr" 或常见包裹层
+// Initializer or expression-like node: ends with "Expr" or matches common wrapper kinds
 inline bool IsExprLikeKind(std::string_view ck)
 {
     const auto n = ck.size();
@@ -836,28 +834,26 @@ inline bool IsExprLikeKind(std::string_view ck)
     return endsWithExpr || ck == "MaterializeTemporaryExpr" || ck == "ExprWithCleanups";
 }
 
-// 小工具：string_view 查找
+// Utility: check if a substring exists in a string_view
 inline bool SvFind(std::string_view s, std::string_view pat) noexcept
 {
     return s.find(pat) != std::string_view::npos;
 }
 
-// tuple-like 类型识别（大小写敏感；标准库实现通常小写）
+// Identify tuple-like types (case-sensitive; standard library names are usually lowercase)
 inline bool IsTupleLikeType(std::string_view qt) noexcept
 {
-    return SvFind(qt, "std::pair<")  || SvFind(qt, "pair<")  ||
-           SvFind(qt, "std::tuple<") || SvFind(qt, "tuple<") ||
-           SvFind(qt, "std::array<") || SvFind(qt, "array<") ||
-           SvFind(qt, "initializer_list<");
+    return SvFind(qt, "std::pair<")  || SvFind(qt, "pair<")  || SvFind(qt, "std::tuple<") || SvFind(qt, "tuple<") ||
+           SvFind(qt, "std::array<") || SvFind(qt, "array<") || SvFind(qt, "initializer_list<");
 }
 
-// 粗略数组类型（T[N]）
+// Rough check for array-like types (pattern T[N])
 inline bool LooksArrayType(const std::string& qt)
 {
     return qt.find('[') != std::string::npos && qt.find(']') != std::string::npos;
 }
 
-// 统计 "[a, b , c]" 中的名字个数：用 string_view 单扫
+// Count the number of names inside a bracketed list like "[a, b, c]" using a single pass over string_view
 int CountBindingsInBrackets(std::string_view s) noexcept
 {
     if (s.size() >= TWO && s.front() == '[' && s.back() == ']') {
@@ -868,29 +864,29 @@ int CountBindingsInBrackets(std::string_view s) noexcept
     size_t i = 0;
     size_t n = s.size();
     while (i < n) {
-        // 跳前导空白
-        while (i < n && (s[i]==' ' || s[i]=='\t' || s[i]=='\n' || s[i]=='\r')) {
+        // Skip leading whitespace
+        while (i < n && (s[i] == ' ' || s[i] == '\t' || s[i] == '\n' || s[i] == '\r')) {
             ++i;
         }
-        // 读到 ',' 或结尾
+        // Read until ',' or end of string
         size_t j = i;
         while (j < n && s[j] != ',') {
             ++j;
         }
-        // 去 token 尾空白
+        // Trim trailing whitespace in token
         size_t end = j;
-        while (end > i && (s[end-1]==' ' || s[end-1]=='\t' || s[end-1]=='\n' || s[end-1]=='\r')) {
+        while (end > i && (s[end - 1] == ' ' || s[end - 1] == '\t' || s[end - 1] == '\n' || s[end - 1] == '\r')) {
             --end;
         }
         if (end > i) {
-            ++cnt; // 非空 token 计数
+            ++cnt; // Count non-empty token
         }
-        i = (j < n ? j + 1 : j); // 跳过逗号
+        i = (j < n ? j + 1 : j); // Skip comma
     }
     return cnt;
 }
 
-// 规整类型名（去 const/volatile/struct/class 与末尾 & * 空格）
+// Normalize the type name by removing const/volatile/struct/class keywords and trimming trailing &, *, and whitespace
 std::string NormalizeTypeName(std::string qt)
 {
     auto stripPrefix = [](std::string& s, std::string_view p) {
@@ -898,7 +894,6 @@ std::string NormalizeTypeName(std::string qt)
             s.erase(0, p.size());
         }
     };
-    // Trim 两端空白
     while (!qt.empty() && (qt.front() == ' ' || qt.front() == '\t' || qt.front() == '\n' || qt.front() == '\r')) {
         qt.erase(qt.begin());
     }
@@ -915,7 +910,7 @@ std::string NormalizeTypeName(std::string qt)
     return qt;
 }
 
-// 派生的 Record 信息里查字段数是否足够
+// Check whether the derived Record information contains enough fields
 bool IsAggregateRecordWithEnoughFields(const std::string& qt,
                                        int need,
                                        const std::map<std::string,
@@ -946,17 +941,22 @@ bool IsAggregateRecordWithEnoughFields(const std::string& qt,
 }
 
 /**
- * @brief 累加单个子节点的统计信息，用于 DecompositionDecl 判定阶段的一次遍历。
- * 语义（与原循环等价）：
- *  1) 若该子节点是绑定名（BindingDecl 候选），则 bindCnt++；
- *  2) 若该子节点是“表达式样”结点（末尾为 "Expr" 或常见包裹层），则 exprCnt++；
- *     - 同时若还未记录初始化器的类型串（initQualType 为空），尝试从 c["type"]["qualType"] 取一次；
- *  3) 若该子节点类型串里包含 std::tuple_element<> / tuple_element<>，则 anyTupleElementType = true；
- * @param c  单个子节点 JSON（只读，不修改）
- * @param bindCnt  输出/累加：绑定名计数
- * @param exprCnt  输出/累加：表达式样结点计数
- * @param anyTupleElementType 输出/累加：是否出现过 tuple_element<> 类型迹象（任一命中即置 true）
- * @param initQualType 输出/设置：首次遇到表达式样结点时记录其 type.qualType（若已非空则不再改写）
+ * @brief Accumulate statistics for a single child node during the DecompositionDecl detection pass.
+ * Semantics (equivalent to the original loop logic):
+ *  1) If the child node represents a binding name (BindingDecl candidate),
+ *     increment bindCnt.
+ *  2) If the child node represents an "expression-like" node
+ *     (kind ends with "Expr" or is a common wrapper type),
+ *     increment exprCnt.
+ *     - Additionally, if initQualType is still empty, try to extract c["type"]["qualType"] as the initializer type string.
+ *  3) If the child's type string contains "std::tuple_element<>" or "tuple_element<>", set anyTupleElementType = true.
+ * @param c                  Input: a single child node in JSON (read-only, not modified)
+ * @param bindCnt            Output/accumulator: count of binding name nodes
+ * @param exprCnt            Output/accumulator: count of expression-like nodes
+ * @param anyTupleElementType Output/accumulator: flag indicating whether any node
+ *                            has a tuple_element<> type (set to true once matched)
+ * @param initQualType       Output/set-once: records the first encountered expression node’s
+ *                            type.qualType (ignored if already non-empty)
  */
 void AccumulateChildStats(const json& c,
                           int& bindCnt,
@@ -987,78 +987,82 @@ void AccumulateChildStats(const json& c,
 /**
  * TryNormalizeDecompositionDecl
  * ------------------------------------------------------------
- * 解决的源码场景（libclang 19.x 无 CXCursor_DecompositionDecl/BindingDecl）：
+ * Problem context (libclang 19.x does not expose CXCursor_DecompositionDecl / BindingDecl):
  *
- *  1) tuple/pair 解构：
+ *  1) Tuple / pair decomposition:
  *      auto [x, y] = std::make_pair(1, 2);
  *      auto [a, b] = std::pair{3, 4};
  *
- *     在我们当前的 JSON AST 中通常呈现为（父/子节点都被标成 UnexposedDecl）：
+ *     In our current JSON AST, this usually appears as (both parent/child nodes marked as UnexposedDecl):
  *       DeclStmt
- *         └─ UnexposedDecl name="[x, y]"          ← 本函数要“正名”的父节点
- *             ├─ UnexposedDecl name="x"           ← 绑定名（将被改成 BindingDecl）
- *             ├─ UnexposedDecl name="y"           ← 绑定名（将被改成 BindingDecl）
- *             └─ …（CallExpr / MaterializeTemporaryExpr / ExprWithCleanups 等初始化器）
+ *         └─ UnexposedDecl name="[x, y]"          ← parent node to be renamed by this function
+ *             ├─ UnexposedDecl name="x"           ← binding name (will be changed to BindingDecl)
+ *             ├─ UnexposedDecl name="y"           ← binding name (will be changed to BindingDecl)
+ *             └─ … (CallExpr / MaterializeTemporaryExpr / ExprWithCleanups, etc. as initializer)
  *
- *  2) 结构体聚合解构（aggregate structured binding）：
+ *  2) Aggregate structured binding:
  *      struct Person { std::string name; int age; double salary; };
  *      Person person{"Bob", 30, 50000.0};
  *      auto [name, age, salary] = person;
  *
- *     在 JSON AST 中通常呈现为：
+ *     In JSON AST, this usually appears as:
  *       DeclStmt
  *         └─ UnexposedDecl name="[name, age, salary]"
  *             ├─ UnexposedDecl name="name"
  *             ├─ UnexposedDecl name="age"
  *             ├─ UnexposedDecl name="salary"
- *             └─ DeclRefExpr name="person" type="Person"    ← 初始化器（引用变量）
+ *             └─ DeclRefExpr name="person" type="Person"    ← initializer (variable reference)
  *
- *  目标：
- *    - 把父节点 UnexposedDecl 正名为 DecompositionDecl；
- *    - 把子节点中的“绑定名”正名为 BindingDecl，并附上 bindingIndex（从左到右：0,1,2,...）。
+ *  Goal:
+ *    - Rename the parent node UnexposedDecl → DecompositionDecl;
+ *    - Rename child binding-name nodes to BindingDecl and assign each a bindingIndex (0, 1, 2, ... left to right).
  *
- *  判断依据（综合启发式 + 类型证据），对应 JSON 关键片段：
- *    - node.kind == "UnexposedDecl" 且 node.name 形如 "[x, y, ...]"。
- *    - children 内：至少一个“绑定名”结点（UnexposedDecl/BindingDecl，且 name 是标识符），
- *                   至少一个“初始化器”表达式（kind 以 "Expr" 结尾，或 MaterializeTemporaryExpr / ExprWithCleanups）。
- *    - 类型侧证据三选一：
- *        (A) 父类型/初始化器类型是 tuple-like（pair/tuple/array/initializer_list）或数组 T[N]；
- *        (B) 绑定名类型出现 tuple_element<k, T>::type 的模式；
- *        (C) 初始化器/父类型可在 derivedDataTypeMap 中命中一个 CXXRecordDecl，
- *            且其 FieldDecl 数量 >= 绑定名个数（判定为结构体聚合解构）。
+ *  Heuristic and type-based criteria (based on JSON snippets):
+ *    - node.kind == "UnexposedDecl" and node.name looks like "[x, y, ...]".
+ *    - children contain at least:
+ *         • one “binding name” node (UnexposedDecl / BindingDecl with identifier name), and
+ *         • one “initializer” expression (kind ends with "Expr" or is MaterializeTemporaryExpr / ExprWithCleanups).
+ *    - Type-based evidence (any of the following is true):
+ *        (A) The parent/initializer type is tuple-like (pair / tuple / array / initializer_list) or array T[N];
+ *        (B) Binding name types show the pattern tuple_element<k, T>::type;
+ *        (C) The initializer/parent type exists in derivedDataTypeMap as a CXXRecordDecl
+ *            whose FieldDecl count ≥ number of bindings (→ aggregate structured binding).
  *
- *  注意：
- *    - 本函数必须在 nodePostprocess(...) 的最前面调用；
- *      此时子结点仍在形参 `children` 中，还未 swap 到 node["inner"]。
+ *  Notes:
+ *    - This function must be called at the very beginning of nodePostprocess(...);
+ *      at that point, child nodes are still in the parameter `children`, not yet swapped into node["inner"].
+ *
  * @param[in,out] node
- *   待判定与可能被“正名”的父结点 JSON。
- *   - 输入：要求 `node.kind`、`node.name` 等字段可读，`node.type.qualType`（若有）可读；
- *   - 输出：若命中，`node.kind` 将被设置为 `"DecompositionDecl"`。
+ *   The candidate parent node (JSON) to be checked and possibly renamed.
+ *   - Input: expects readable fields `node.kind`, `node.name`, and optionally `node.type.qualType`;
+ *   - Output: if matched, sets `node.kind` to `"DecompositionDecl"`.
  *
  * @param[in,out] children
- *   `node` 的子结点数组（JSON array）。
- *   - 输入：遍历读取每个子结点的 `kind`、`name`、`type.qualType`；
- *   - 输出：对被识别为绑定名的子结点，写入 `kind="BindingDecl"` 与 `bindingIndex` 序号。
+ *   The JSON array of child nodes belonging to `node`.
+ *   - Input: used to read each child’s `kind`, `name`, and `type.qualType`;
+ *   - Output: any node identified as a binding name will be assigned
+ *             `kind = "BindingDecl"` and a sequential `bindingIndex`.
  *
  * @param[in] derivedDataTypeMap
- *   由“规整后的类型名”映射到派生到的类型定义 JSON（通常为 `CXXRecordDecl`）的查表。
- *   - 用途：判断某些初始化器/父类型是否为“聚合记录体”且字段数 ≥ 绑定个数；
+ *   A lookup table mapping "normalized type names" to their derived type definitions (usually `CXXRecordDecl` JSONs).
+ *   - Used to determine whether the initializer/parent type represents an aggregate record
+ *     and whether its field count ≥ number of bindings.
  */
 bool TryNormalizeDecompositionDecl(json& node, json& children, const std::map<std::string, json>& derivedDataTypeMap)
 {
-    // ---------- 0) 父节点的快速筛选 ----------
+    // ---------- 0) Quick filter for parent node ----------
     const std::string kind = node.value("kind", "");
     if (kind != "UnexposedDecl") {
         return false;
     }
-    const std::string nm = node.value("name", ""); // 例如 "[x, y]" 或 "[name, age, salary]"
+    const std::string nm = node.value("name", ""); // e.g., "[x, y]" or "[name, age, salary]"
     if (nm.size() < TWO || nm.front() != '[' || nm.back() != ']') {
         return false;
     }
     if (!children.is_array()) {
         return false;
     }
-    // ---------- 2) 单次遍历 children ----------
+    // ---------- 2) Single-pass traversal over children ----------
     int bindCnt = 0;
     int exprCnt = 0;
     bool anyTupleElementType = false;
@@ -1066,7 +1070,7 @@ bool TryNormalizeDecompositionDecl(json& node, json& children, const std::map<st
     for (const auto& c : children) {
         AccumulateChildStats(c, bindCnt, exprCnt, anyTupleElementType, initQualType);
     }
-    // ---------- 3) 语法/形态侧 ----------
+    // ---------- 3) Syntax / structural heuristics ----------
     if (bindCnt < 1) {
         return false;
     }
@@ -1077,7 +1081,7 @@ bool TryNormalizeDecompositionDecl(json& node, json& children, const std::map<st
     if (namesInBracket > 0 && bindCnt > 0 && namesInBracket != bindCnt) {
         return false;
     }
-    // ---------- 4) 类型侧 ----------
+    // ---------- 4) Type-based heuristics ----------
     const std::string parentQT = node.contains("type") ? node["type"].value("qualType", "") : "";
     const bool tupleLikeByParent = IsTupleLikeType(parentQT) || LooksArrayType(parentQT);
     const bool tupleLikeByInit = IsTupleLikeType(initQualType) || LooksArrayType(initQualType);
@@ -1086,7 +1090,7 @@ bool TryNormalizeDecompositionDecl(json& node, json& children, const std::map<st
     if (!tupleLikeByParent && !tupleLikeByInit && !aggregateByInit && !aggregateByParent && !anyTupleElementType) {
         return false;
     }
-    // ---------- 5) 命中：执行正名 ----------
+    // ---------- 5) Match confirmed: perform normalization ----------
     node["kind"] = "DecompositionDecl";
     int idx = 0;
     for (auto& c : children) {
@@ -1121,7 +1125,7 @@ void fillMemberExprName(json& node)
     if (index1 == std::string::npos && index2 == std::string::npos) {
         return;
     } else if (index1 != std::string::npos && index2 != std::string::npos) {
-        index = index1 < index2 ? index1 + TWO : index2 + 1; // 去掉成员访问符的长度
+        index = index1 < index2 ? index1 + TWO : index2 + 1; // Remove the length of the member access operator
     } else {
         index = index1 != std::string::npos ? index1 + TWO : index2 + 1;
     }
@@ -1287,8 +1291,7 @@ void postprocessCallExpr(json& node)
     // ---------- Identify AtomicCallExpr  ----------
     static const std::vector<std::string> kAtomicFuncs = {
         "atomic_fetch_add", "atomic_fetch_sub", "atomic_fetch_and", "atomic_fetch_or",
-        "atomic_fetch_xor", "atomic_exchange", "atomic_load", "atomic_store",
-        "atomic_compare_exchange"
+        "atomic_fetch_xor", "atomic_exchange", "atomic_load", "atomic_store", "atomic_compare_exchange"
     };
     if (!node.contains("name") || node["name"].is_null()) {
         return;
@@ -1355,14 +1358,14 @@ void phasePreNormalize(json& node,
     if (kind_cursor == CXCursor_UnexposedDecl) {
         TryNormalizeDecompositionDecl(node, children, derivedDataTypeMap);
     }
-    // Using 继承构造 -> 构造声明
+    // Using-declaration for inherited constructors -> constructor declaration
     if (KindIs(node, "UsingDecl") && isUsingInheritClass(node, children, derivedDataTypeMap)) {
         node["kind"] = "CXXConstructorDecl";
         node["mangledName"] = getMemberInClassName(cursor);
     }
 }
 
-// 从 "std::vector<int>" 等取“基名”（如 "vector"）
+// Extract the base name from a qualified or templated type string, e.g., "std::vector<int>" → "vector"
 static std::string UnqualTemplateName(const std::string& qualType)
 {
     if (qualType.empty()) {
@@ -1380,28 +1383,27 @@ static std::string UnqualTemplateName(const std::string& qualType)
 
 static bool LooksLikeMemberSyntax(std::string_view code)
 {
-    // 1) 去空白、剥外层括号（宽容形如 "(obj.method(...))"）
+    // 1) Trim whitespace and strip outer parentheses (to handle tolerant cases like "(obj.method(...))")
     std::string_view s = TrimView(code);
     if (IsParenWrapped(s) && s.size() >= TWO) {
         s.remove_prefix(1);
         s.remove_suffix(1);
         s = TrimView(s);
     }
-
-    // 2) 截取 callee 头部（第一个 '(' 或 '{' 之前）
+    // 2) Extract the callee head (before the first '(' or '{')
     size_t lb1 = s.find('(');
     size_t lb2 = s.find('{');
     size_t lb  = std::min(lb1 == std::string_view::npos ? s.size() : lb1,
                           lb2 == std::string_view::npos ? s.size() : lb2);
     if (lb == 0 || lb == std::string_view::npos) {
-        return false; // 不是调用/构造样式
+        return false; // Not a call or constructor-like pattern
     }
     std::string_view head = TrimView(s.substr(0, lb));
-    // 3) 只在 head 上判断成员语法，避免被参数里的 2.0、1.0e-3 等误伤
+    // 3) Check only the head part for member syntax, to avoid false positives from numeric literals in arguments (e.g., 2.0, 1.0e-3)
     return (head.find("->") != std::string_view::npos) || (head.find('.') != std::string_view::npos);
 }
 
-// 若是结构化的调用节点，返回被调用实体（可能有 name）
+// If the node represents a structured call expression, return its callee entity (which may contain a "name" field)
 static const json* FindCalleeRef(const json& callNode)
 {
     if (!callNode.contains("inner") || !callNode["inner"].is_array()) {
@@ -1425,61 +1427,65 @@ static const json* FindCalleeRef(const json& callNode)
     return nullptr;
 }
 
-// base 是结果类型去限定+去模板后的基名（如 "basic_string_view"）
-// name 是源码侧看到的标识符（如 "string_view"）
+// 'base' is the unqualified and untemplated base name of the result type
+//     (e.g., "basic_string_view").
+// 'name' is the identifier as seen in the source code
+//     (e.g., "string_view").
 static bool IsNameEquivalent(const std::string& base, const std::string& name)
 {
     if (base == name) {
         return true;
     }
-    // 常见 std 别名到 basic_* 的映射
+    // Common std alias mappings for basic_* types
     static const std::unordered_map<std::string, std::unordered_set<std::string>> kAliases = {
-        // string 系
+        // string family
         {"basic_string",      {"string", "wstring", "u16string", "u32string", "u8string"}},
-        // string_view 系
+        // string_view family
         {"basic_string_view", {"string_view", "wstring_view", "u16string_view", "u32string_view", "u8string_view"}},
     };
-
     auto it = kAliases.find(base);
     if (it == kAliases.end()) {
         return false;
     }
     return it->second.count(name) != 0;
 }
+
 static inline std::string TrimCopy(std::string s) { Trim(s); return s; }
 
-// 目的：基于节点（json）的有限信息（主要是 code / type.qualType / name / callee），
-// 尽可能判断这个表达式是否“像构造”（constructor-like）。
-// 适配的典型场景：
-//   - 显式构造：std::string("hi"), std::pair{1,2.0}, std::array{1,2,3}
-//   - 容器/别名触发的隐式构造：map["Alice"] 时对 key_type 的 basic_string("Alice") 构造
-//   - 列表初始化：T{...}（含容器 push/emplace 返回的内部构造）
-//
-// 依赖的外部工具函数：
-//   - LooksLikeMemberSyntax(std::string): 代码串是否看起来是成员语法（. 或 ->）
-//   - Trim / TrimCopy: 去除首尾空白
-//   - IsParenWrapped(std::string): 外层是否用 () 包一层
-//   - UnqualTemplateName(std::string): 从 "std::vector<int>" 等取“基名”（如 "vector"）
-//   - FindCalleeRef(const json&): 若是结构化的调用节点，返回被调用实体（可能有 name）
-//   - IsNameEquivalent(a, b): 名称等价判定（支持 string/basic_string 这类别名等价）
+// Purpose: Based on limited node (json) information — mainly code / type.qualType / name / callee —
+// try to heuristically determine whether the expression is "constructor-like".
+// Typical cases handled:
+//   - Explicit construction: std::string("hi"), std::pair{1, 2.0}, std::array{1, 2, 3}
+//   - Implicit construction triggered by containers or aliases: e.g., map["Alice"]
+//     invokes key_type's basic_string("Alice") constructor.
+//   - List initialization: T{...} (including internal constructions returned from push/emplace).
+// External helper functions required:
+//   - LooksLikeMemberSyntax(std::string): checks if the code looks like member syntax (. or ->)
+//   - Trim / TrimCopy: removes leading and trailing whitespace
+//   - IsParenWrapped(std::string): checks whether the outermost layer is wrapped by parentheses
+//   - UnqualTemplateName(std::string): extracts base name from qualified or templated type
+//       e.g., "std::vector<int>" → "vector"
+//   - FindCalleeRef(const json&): if the node represents a structured call, returns its callee (may have "name")
+//   - IsNameEquivalent(a, b): determines if two names are equivalent (handles aliases like string/basic_string)
 bool IsCtorLikeByCalleeAndType(const json& node)
 {
-    // ------- 守卫：类型必须是一个对象 -------
+    // ------- Guard: the node must be an object -------
     if (!node.is_object()) {
         return false;
     }
-    // ------- 提取 code 串并做最基本过滤 -------
-    // 需要 code 是因为很多时候无法从结构化字段推断，只能回退到 code 进行启发式判断。
+    // ------- Extract code string and perform basic filtering -------
+    // Code is essential since structural fields may not be sufficient;
+    // fall back to code string for heuristic judgment.
     const std::string code = node.value("code", "");
     if (code.empty()) {
         return false;
     }
-    // 成员调用绝不是构造（如 obj.method(...) / obj.member(...)），先排除掉
+    // Member calls (e.g., obj.method(...), obj.member(...)) are never constructors.
     if (LooksLikeMemberSyntax(code)) {
         return false;
     }
-    // ------- 提取类型（只依赖现有的 type.qualType） -------
-    // 很多场景下只有 qualType 可用，所以围绕它做最大化的利用。
+    // ------- Extract type info (only rely on type.qualType) -------
+    // In many cases, only qualType is available — maximize its use.
     if (!node.contains("type") || !node["type"].contains("qualType")) {
         return false;
     }
@@ -1487,33 +1493,34 @@ bool IsCtorLikeByCalleeAndType(const json& node)
     if (resultTy.empty() || resultTy == "<dependent type>") {
         return false;
     }
-    // ------- 从 qualType 提取“基名” -------
-    // 例如：std::map<std::string,int> => "map"
-    //      std::basic_string<char> => "basic_string"（IsNameEquivalent 会兼容 string）
+    // ------- Extract the "base name" from qualType -------
+    // e.g., std::map<std::string,int> → "map"
+    //       std::basic_string<char> → "basic_string" (IsNameEquivalent will treat "string" as equivalent)
     const std::string baseName = UnqualTemplateName(resultTy);
     if (baseName.empty()) {
         return false;
     }
-    // ------- 常用元信息 -------
+    // ------- Common metadata -------
     const std::string nodeName = node.value("name", "");
-    const std::string kind     = node.value("kind", "");
-    // ===== step0：使用 node.name 进行“最直观”的匹配 =====
-    // 解决的问题：
-    //   - 对很多 brace-init / 函数式构造，前端已经把“被调用名”放在 node.name。
-    //     如果 node.name（去命名空间后）与基名等价（兼容 string/basic_string），
-    //     就可以直接判为构造。
+    const std::string kind = node.value("kind", "");
+    // ===== step 0: Direct matching using node.name =====
+    // Solves:
+    //   - For many brace-init / functional-style constructions, the frontend
+    //     already puts the callee name in node.name.
+    //     If node.name (after trimming namespace) matches the base type name
+    //     (considering string/basic_string alias), treat as constructor.
     if (!nodeName.empty()) {
         size_t kk = nodeName.rfind("::");
         std::string nodeSimple = (kk == std::string::npos) ? nodeName : nodeName.substr(kk + TWO);
         Trim(nodeSimple);
         if (IsNameEquivalent(baseName, nodeSimple)) {
-            return true; // 命中：由“被调用名 == 结果类型基名”直接推断为构造
+            return true; // Hit: callee name equals base type → constructor
         }
     }
-    // ===== step1：若有结构化 callee，用 callee.name 再比一次 =====
-    // 解决的问题：
-    //   - 某些节点 node.name 可能为空或不是想要的名字，但可以通过 callee 引用拿到“真实被调名称”。
-    //   - 例如模板实例化或重载包装层次存在时，callee 更接近“可见的构造名”。
+    // ===== step 1: Retry matching using callee.name if available =====
+    // Solves:
+    //   - node.name may be missing or different; callee often contains the true invoked name.
+    //   - For example, in template instantiations or wrapper overloads, callee is closer to the visible constructor name.
     if (const json* callee = FindCalleeRef(node)) {
         std::string calleeName = callee->value("name", "");
         if (!calleeName.empty()) {
@@ -1521,79 +1528,158 @@ bool IsCtorLikeByCalleeAndType(const json& node)
             std::string calleeSimple = (kk == std::string::npos) ? calleeName : calleeName.substr(kk + TWO);
             Trim(calleeSimple);
             if (IsNameEquivalent(baseName, calleeSimple)) {
-                return true; // 命中：由 callee 名称与类型基名等价推断为构造
+                return true; // Hit: callee name equivalent to base type name
             }
         }
     }
-    // ===== step2：回退到 code 字符串，抽取“( 或 { 之前的最后标识符”进行比对 =====
-    // 解决的问题：
-    //   - 有些场景（如 CXXFunctionalCastExpr 格式：T(args) / T{args}），
-    //     结构化信息里拿不到被调名，但 code 仍然呈现出显式的类型名。
-    //   - 抽取 "(" 或 "{" 之前的最后一个标识符（去掉模板参数/命名空间）来比对。
+    // ===== step 2: Fallback — extract the last identifier before '(' or '{' from code =====
+    // Solves:
+    //   - Some nodes (like CXXFunctionalCastExpr → T(args) / T{args})
+    //     lack structured callee info but have explicit type names in code.
+    //   - Extract the identifier before '(' or '{' (remove template args/namespaces) and compare.
     {
         std::string s = code;
         Trim(s);
-        // 宽容外层括号：例如 (std::pair{1,2.0})
+        // Handle outer parentheses gracefully, e.g., (std::pair{1,2.0})
         if (IsParenWrapped(s) && s.size() >= TWO) {
             s = s.substr(1, s.size() - TWO);
             Trim(s);
         }
         size_t lb1 = s.find('('), lb2 = s.find('{');
         size_t lb = std::min(lb1 == std::string::npos ? s.size() : lb1, lb2 == std::string::npos ? s.size() : lb2);
-        // 无法定位“头部标识符”，放弃这条路径
-        if (!(lb != std::string::npos && lb > 0 && lb < s.size())) {
-            // 跳过
-        } else {
-            std::string head = s.substr(0, lb); // 例："std::vector" / "std::pair"
+        if (lb != std::string::npos && lb > 0 && lb < s.size()) {
+            std::string head = s.substr(0, lb); // e.g. "std::vector" / "std::pair"
             Trim(head);
-            // 去掉模板实参尾巴
+            // Remove template argument tail
             size_t lt = head.find('<');
             if (lt != std::string::npos) {
                 head = head.substr(0, lt);
             }
             Trim(head);
-            // 取最后一段标识符（去命名空间）
+            // Extract last identifier (remove namespaces)
             size_t kk = head.rfind("::");
             std::string last = (kk == std::string::npos) ? head : head.substr(kk + TWO);
             Trim(last);
             if (IsNameEquivalent(baseName, last)) {
-                return true; // 命中：code 上的“类型名”与结果类型基名等价
+                return true; // Hit: code type name matches base type
             }
         }
     }
-    // ===== step3：列表初始化兜底（{...} + 结果像“类”） =====
-    // 解决的问题：
-    //   - 形如 "{a,b,c}" 这种如果出现在“构造语境”（结果类型像类：带命名空间或模板），
-    //     可以基本认定为 list-initialization 的构造。
+    // ===== step 3: List-initialization fallback ({...} + result looks like a class) =====
+    // Solves:
+    //   - For code like "{a,b,c}", if the result type looks class-like (has namespace/template),
+    //     it is very likely a list initialization of a class type.
     {
         std::string t = TrimCopy(code);
         bool braceInit = (!t.empty() && t.front() == '{');
-        bool likelyClassResult = (resultTy.find("::") != std::string::npos || resultTy.find('<') != std::string::npos);
+        bool likelyClassResult = (resultTy.find("::") != std::string::npos || resultTy.find('<')  != std::string::npos);
         if (braceInit && likelyClassResult) {
-            return true; // 命中：这是“类类型”的列表初始化，视为构造
+            return true; // Hit: list initialization of a class type
         }
     }
-    // ===== step4：容器“别名”兜底（只依赖 qualType + node.name + code 形态） =====
-    // 解决的问题：
-    //   - 处理 map["Alice"] 这类通过 operator[] 触发的隐式构造：
-    //       key_type 为 std::basic_string<char>，右值是字面量/大括号，node.name 往往是 basic_string
-    //     在没有更丰富的类型系统信息时，通过“alias + 字面量/brace + ctorish 名字”推断为构造。
+    // ===== step 4: Container alias fallback (based on qualType + node.name + code pattern) =====
+    // Solves:
+    //   - Handles cases like map["Alice"] triggering implicit construction:
+    //       key_type = std::basic_string<char>, RHS = literal or brace-init,
+    //       node.name often "basic_string".
+    //     When richer type info is unavailable, infer constructor from alias + literal/brace.
     auto IsStdContainerAlias = [](std::string_view s) {
         return (s == "key_type" || s == "mapped_type" || s == "value_type" || s == "size_type" || s == "difference_type");
     };
     if (IsStdContainerAlias(baseName) && !nodeName.empty()) {
         std::string t = TrimCopy(code);
-        // 很宽松的“像字面量”判定：字符串/字符/数字开头。
-        // 可按需扩展：u8"…", u"…", U"…", L"…", 'x', 数字/0x/0b/浮点/true/false/nullptr 等。
-        bool looksLiteral = !t.empty() && (t.front() == '"' || t.front() == '\'' || std::isdigit(static_cast<unsigned char>(t.front())));
+        // Loosely detect "literal-like" tokens: string/char/number start
+        bool looksLiteral = !t.empty() &&
+            (t.front() == '"' || t.front() == '\'' ||
+             std::isdigit(static_cast<unsigned char>(t.front())));
         bool braceInit = (!t.empty() && t.front() == '{');
-        // 仅当 node.name 像“构造器名”（例如 basic_string 或包含 string 的名字）
-        // 且右侧是字面量/大括号时，判定为构造，避免过度泛化。
+        // Trigger only if node.name looks constructor-like (e.g., basic_string)
+        // and RHS is literal or brace-init, to avoid over-generalization.
         bool ctorishName = (nodeName == "basic_string" || nodeName.find("string") != std::string::npos);
         if (ctorishName && (looksLiteral || braceInit)) {
-            return true; // 命中：容器别名 + 构造名 + 字面量/列表，推断为隐式构造
+            return true; // Hit: container alias + ctorish name + literal/list → implicit construction
         }
     }
-    // 所有启发式均未命中，认为不像构造
+    // None of the heuristics matched → not constructor-like
     return false;
 }
+
+// Compute a stable ID: (beginOffset << 32) | endOffset
+static inline unsigned long long StableIdFromRange(const json& r)
+{
+    const auto& b = r.value("begin", json::object());
+    const auto& e = r.value("end",   json::object());
+    const unsigned bo = b.value("offset", 0u);
+    const unsigned eo = e.value("offset", 0u);
+    return (static_cast<unsigned long long>(bo) << 32) | static_cast<unsigned long long>(eo);
+}
+
+// Return the function node (FunctionDecl / CXXMethodDecl / CXXConstructorDecl / CXXDestructorDecl)
+// that contains the given offset 'off'. Return nullptr if no such function is found.
+json* FindEnclosingFunction(json& node, unsigned off)
+{
+    if (!node.is_object()) {
+        return nullptr;
+    }
+    const std::string kind = node.value("kind", "");
+    const auto inRange = [&](const json& n)->bool {
+        if (!n.contains("range")) {
+            return false;
+        }
+        const auto& r = n["range"];
+        const unsigned b = r.value("begin", json::object()).value("offset", 0u);
+        const unsigned e = r.value("end", json::object()).value("offset", 0u);
+        return (b <= off && off <= e);
+    };
+    const bool isFunc = (kind == "FunctionDecl" || kind == "CXXMethodDecl" ||
+    kind == "CXXConstructorDecl" || kind == "CXXDestructorDecl");
+    if (isFunc) {
+        unsigned b = node.value("range", json::object()).value("begin", json::object()).value("offset", 0u);
+        unsigned e = node.value("range", json::object()).value("end",   json::object()).value("offset", 0u);
+    }
+    if (isFunc && inRange(node)) {
+        return &node;
+    }
+    if (node.contains("inner") && node["inner"].is_array()) {
+        for (auto& ch : node["inner"]) {
+            if (auto* got = FindEnclosingFunction(ch, off)) {
+                return got;
+            }
+        }
+    }
+    return nullptr;
+}
+
+// Iterate over headerUnits and annotate entries whose #include directives
+// appear inside the body of a function.
+// For each inclusion directive found within a function range,
+// attach metadata describing its enclosing function (id, name, kind, range).
+// If location information is missing, the entry will be skipped.
+void AnnotateFunctionLocalIncludes(json& ast, std::vector<json>& headerUnits)
+{
+    for (size_t i = 0; i < headerUnits.size(); ++i) {
+        auto& hu = headerUnits[i];
+        if (!hu.is_object() || hu.value("kind", "") != "inclusion directive") {
+            continue;
+        }
+        const unsigned off = hu.value("range", json::object()).value("begin", json::object()).value("offset", 0u);
+        if (off == 0u) {
+            continue; // Skip if location info is missing
+        }
+        if (json* func = FindEnclosingFunction(ast, off)) {
+            unsigned long long fid = 0;
+            if (func->contains("id") && (*func)["id"].is_number_unsigned()) {
+                fid = (*func)["id"].get<unsigned long long>();
+            } else if (func->contains("range")) {
+                fid = StableIdFromRange((*func)["range"]);
+            }
+            hu["enclosingFunction"] = {
+                {"id", fid},
+                {"name", func->value("name", "")},
+                {"kind", func->value("kind", "")},
+                {"range", func->value("range", json::object())}
+            };
+        }
+    }
+}
+

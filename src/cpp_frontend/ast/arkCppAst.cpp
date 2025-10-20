@@ -828,7 +828,6 @@ static void FillLiteralValueIfNeeded(json& node,
         case CXCursor_StringLiteral: {
             const std::string nodeCodeStr = node.value("code", "");
             node["value"] = nodeCodeStr;
-
             if (kind_cursor != CXCursor_StringLiteral) {
                 if (CXEvalResult ev = clang_Cursor_Evaluate(cursor)) {
                     fillCXEvalResult(ev, node);
@@ -872,7 +871,6 @@ void fillNodeSourceContent(json& node, const json& content, CXCursorKind kind_cu
         node["code"] = codeStr;
         node["locFile"] = node["fileName"];
         node["range"] = {{"begin", content["begin"]}, {"end", content["end"]}};
-        node["included"] = fileStr;
         return;
     }
     // Literal node value field
@@ -1066,6 +1064,11 @@ void nodePostprocess(json& node, CXCursor cursor, CXCursorKind kind_cursor, json
     detectAndFillSpecialKind(node);
 }
 
+// Retrieve source content and range information based on the given CXSourceRange and mask.
+// - When WANT_CODE is set: extracts the actual source code slice.
+// - When WANT_RANGE is set: records line/column/offset information.
+// - Always produces a consistent JSON object containing the requested fields.
+// - Uses cached slicing when possible for performance.
 json getSourceContentMasked(CXTranslationUnit tu, CXSourceRange range, uint32_t want)
 {
     SourceSlice s;
@@ -1083,24 +1086,27 @@ json getSourceContentMasked(CXTranslationUnit tu, CXSourceRange range, uint32_t 
         end["line"]   = s.endLine;
         end["col"]    = s.endCol;
         end["offset"] = s.endOffset;
-        // 64-bit 稳定 ID：高 32 位 beginOffset，低 32 位 endOffset
+        // 64-bit stable ID: high 32 bits = beginOffset, low 32 bits = endOffset
         j["id"] = (static_cast<unsigned long long>(s.beginOffset) << SHIFT_BITS_FOR_OFFSET) |
                   static_cast<unsigned long long>(s.endOffset);
     }
-    // 若不需要 CODE，直接返回
+    // If code extraction is not requested, return immediately
     if (!needCode) {
         return j;
     }
+    // If the expansion file information is invalid, fall back to direct retrieval
     if (!sameFileValid) {
         const SourceExtent ext{nullptr, nullptr, 0u, 0u, range};
         j["code"] = getSourceCode(tu, ext);
         return j;
     }
+    // Try reading from the cached source slice first
     std::string code;
     if (TrySliceFromCache(s, code)) {
         j["code"] = std::move(code);
         return j;
     }
+    // Fallback: extract source text directly from file
     const SourceExtent ext{s.file, s.file, s.beginOffset, s.endOffset, range};
     j["code"] = getSourceCode(tu, ext);
     return j;
@@ -1155,10 +1161,6 @@ static bool HandleInclusionDirective(
     if (w.range && content.contains("begin") && content.contains("end")) {
         node["range"] = {{"begin", content["begin"]}, {"end", content["end"]}};
     }
-
-    // The file that performed the inclusion
-    node["included"] = fileStr;
-
     return true;
 }
 
@@ -1169,30 +1171,33 @@ static inline bool NeedDisplayName(const WantMask& w)
     return w.name || (w.extras && (w.range || w.loc));
 }
 
-// 填充 name / opcode（仅当 wantName == true 才执行任何操作）
+// Fill the "name" and "opcode" fields (only executed when wantName == true)
 void FillNameAndOpcode(json& node, CXCursor cursor, CXCursorKind kind_cursor, bool wantName) noexcept
 {
     if (!wantName) {
         return;
     }
     if (kind_cursor == CXCursor_UnaryOperator) {
-        // 会顺带写入 opcode 相关的字段（你现有函数里就是这么做的）
+        // Also fills opcode-related fields (as implemented in fillUnaryOperatorInfo)
         fillUnaryOperatorInfo(node, cursor);
-        // 只在有拼写名时写 name
-        std::string nm = Cx2Str(clang_getCursorSpelling(cursor));
-        if (!nm.empty()) node["name"] = nm;
-        return;
-    }
-    if (kind_cursor == CXCursor_BinaryOperator ||
-        kind_cursor == CXCursor_CompoundAssignOperator) {
-        node["opcode"] = Cx2Str(
-            clang_Cursor_getBinaryOpcodeStr(clang_Cursor_getBinaryOpcode(cursor)));
+        // Write "name" only when spelling is available
         std::string nm = Cx2Str(clang_getCursorSpelling(cursor));
         if (!nm.empty()) {
             node["name"] = nm;
         }
         return;
     }
+    if (kind_cursor == CXCursor_BinaryOperator || kind_cursor == CXCursor_CompoundAssignOperator) {
+        // Record opcode for binary or compound assignment operators
+        node["opcode"] = Cx2Str(clang_Cursor_getBinaryOpcodeStr(clang_Cursor_getBinaryOpcode(cursor)));
+        // Write "name" only when spelling is available
+        std::string nm = Cx2Str(clang_getCursorSpelling(cursor));
+        if (!nm.empty()) {
+            node["name"] = nm;
+        }
+        return;
+    }
+    // Default case: fill only the spelling name
     node["name"] = Cx2Str(clang_getCursorSpelling(cursor));
 }
 
@@ -1225,8 +1230,7 @@ void ApplyExtras(json& node, CXCursor cursor, CXCursorKind kind, const WantMask&
 }
 
 
-void fillNodeProperties(json& node, CXCursor cursor, CXCursorKind kind_cursor,
-                        bool isInclude, CXFile file)
+void fillNodeProperties(json& node, CXCursor cursor, CXCursorKind kind_cursor, CXFile file)
 {
     // ===== 1) Policy unpack =====
     const uint32_t wantBits = SelectFieldMaskForCursorKind(kind_cursor);
@@ -1236,9 +1240,6 @@ void fillNodeProperties(json& node, CXCursor cursor, CXCursorKind kind_cursor,
     CXTranslationUnit tu = clang_Cursor_getTranslationUnit(cursor);
     const std::string kindSpelling = Cx2Str(clang_getCursorKindSpelling(kind_cursor));
     const std::string fileName = (file ? Cx2Str(clang_getFileName(file)) : std::string());
-    if (isInclude) {
-        node["include"] = true;
-    }
     // ===== 3) type (on demand) =====
     if (w.type) {
         node["type"] = {{"qualType", unifyTypeStr(clang_getTypeSpelling(clang_getCursorType(cursor)))}};
@@ -1330,10 +1331,7 @@ static OriginInfo ComputeOriginInfo(CXCursor cursor)
 // Utility: check if a cursor kind represents a function
 static inline bool IsFunctionCursor(CXCursorKind k)
 {
-    return k == CXCursor_FunctionDecl ||
-           k == CXCursor_CXXMethod   ||
-           k == CXCursor_Constructor ||
-           k == CXCursor_Destructor;
+    return k == CXCursor_FunctionDecl || k == CXCursor_CXXMethod || k == CXCursor_Constructor || k == CXCursor_Destructor;
 }
 
 // ==========================buildASTJson Main Body========================
@@ -1343,7 +1341,7 @@ json buildASTJson(CXCursor cursor, bool actionScope,
 {
     // -------- 1) Origin & kind --------
     const CXCursorKind kind = clang_getCursorKind(cursor);
-    const OriginInfo   oi   = ComputeOriginInfo(cursor);
+    const OriginInfo oi = ComputeOriginInfo(cursor);
     // -------- 2) Materialization gate --------
     // Skip nodes that should not be materialized
     if (!ShouldMaterializeCursor(cursor, kind, oi.fromMainSpell, oi.fromMainByExpansion, oi.fileName)) {
@@ -1361,7 +1359,7 @@ json buildASTJson(CXCursor cursor, bool actionScope,
         // Only needed for passing into fillNodeProperties.
         // Simpler to fetch here again; could also be cached in ComputeOriginInfo.
         clang_getSpellingLocation(clang_getCursorLocation(cursor), &spellFile, nullptr, nullptr, nullptr);
-        fillNodeProperties(node, cursor, kind, oi.isUserHeader, spellFile);
+        fillNodeProperties(node, cursor, kind, spellFile);
     }
     // Small decoration: mark delete[] expressions
     if (node.value("kind", "") == "CXXDeleteExpr" &&
@@ -1469,15 +1467,38 @@ static void inclusionVisitorBuildHeaderUnits(CXFile includedFile,
     json endJ   = {{"line", line}, {"col", col}, {"offset", offset}};
     json j = {
         {"kind", "inclusion directive"},
-        {"include", true},
         // Without DPP enabled we can't get the original line text; use a fallback code string here
         {"code", "#include \"" + Slashify(incPath) + "\""},
         {"fileName", CanonicalCached(incPath)},         // included file
         {"locFile", CanonicalCached(includerPath)},    // file where the directive resides (typically the main file)
-        {"included", ctx ? ctx->normMain : CanonicalCached(includerPath)}, // field points to main.cpp
         {"range", {{"begin", beginJ}, {"end", endJ}}}
     };
     headerUnits.push_back(std::move(j));
+}
+
+// Collect and attach #include information into ast["headerUnits"]
+// - Call libclang to collect inclusions only when headerUnits is empty (avoid duplication)
+// - Annotate includes that appear inside function bodies with inFunction / enclosingFunction
+// - Attach the collected results to ast["headerUnits"] and clear the global temporary vector
+// - Ensure ast["headerUnits"] always exists (even if empty)
+static void CollectAndAttachHeaderUnits(json& ast, CXTranslationUnit tu, const std::string& normMain)
+{
+    // 1) Collect inclusions (only once)
+    if (headerUnits.empty()) {
+        InclusionCtx ctx{normMain, /*onlyFromMain=*/true};
+        clang_getInclusions(tu, inclusionVisitorBuildHeaderUnits, &ctx);
+    }
+    // 2) Annotate: mark function-local includes with inFunction / enclosingFunction
+    AnnotateFunctionLocalIncludes(ast, headerUnits);
+    // 3) Attach to AST and clear the global cache
+    if (!headerUnits.empty() && ast.contains("kind")) {
+        ast["headerUnits"] = headerUnits;
+        headerUnits.clear();
+    }
+    // 4) Fallback: always ensure ast["headerUnits"] exists
+    if (!ast.contains("headerUnits")) {
+        ast["headerUnits"] = json::array();
+    }
 }
 
 json buildAndProcessAST(CXTranslationUnit unit, const CommandLineOptions& opts)
@@ -1486,21 +1507,10 @@ json buildAndProcessAST(CXTranslationUnit unit, const CommandLineOptions& opts)
     // Collect all parameter/variable declarations in current scope, return name to type mapping
     std::unordered_map<std::string, std::string> varTypeMap;
     json ast = buildASTJson(clang_getTranslationUnitCursor(unit), false, varTypeMap);
-    std::cout << "[STEP1] buildASTJson finished\n";
+    std::cout << "[STEP] buildASTJson finished\n";
     std::string normMain = CanonicalCached(fs::canonical(opts.inputFile).string());
-    // Collect header files when not using CXTranslationUnit_DetailedPreprocessingRecord
-    if (headerUnits.empty()) {
-        InclusionCtx ctx{normMain, true};
-        clang_getInclusions(unit, inclusionVisitorBuildHeaderUnits, &ctx);
-    }
-    if (!headerUnits.empty() && ast.contains("kind")) {
-        ast["headerUnits"] = headerUnits;
-        headerUnits.clear();
-    }
-    if (!ast.contains("headerUnits")) {
-        ast["headerUnits"] = json::array();
-    }
-    std::cout << "[STEP3] AST built successfully\n";
+    CollectAndAttachHeaderUnits(ast, unit, normMain);
+    std::cout << "[STEP] AST built successfully\n";
     return ast;
 }
 

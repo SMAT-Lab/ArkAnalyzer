@@ -45,6 +45,7 @@ export const INCLUDE_IN_CLASS_CASE1 = {
                     id: 0,
                     stmts: [
                         "this = this: @includeInScope/includeInScope.cpp: IncludeInClass",
+                        "a = 1",
                         "return",
                     ],
                     preds: [],

@@ -144,3 +144,5 @@ void phasePreNormalize(json& node,
 std::string getMemberInClassName(CXCursor cursor);
 
 bool IsCtorLikeByCalleeAndType(const json& node);
+
+void AnnotateFunctionLocalIncludes(json& ast, std::vector<json>& headerUnits);

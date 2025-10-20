@@ -89,6 +89,45 @@ export class ArkCxxNewArrayExpr extends AbstractExpr {
     }
 }
 
+export class ArkCxxInitArrayExpr extends AbstractExpr {
+    private op: Value;
+    constructor(op: Value) {
+        super();
+        this.op = op;
+    }
+
+    public getOp(): Value {
+        return this.op;
+    }
+
+    public setOp(newOp: Value): void {
+        this.op = newOp;
+    }
+
+    public getUses(): Value[] {
+        let uses: Value[] = [];
+        uses.push(this.op);
+        uses.push(...this.op.getUses());
+        return uses;
+    }
+
+
+    public getType(): Type {
+        return this.op.getType();
+    }
+
+    public toString(): string {
+        return 'initArrayWith(' + this.op + ')';
+    }
+
+    public inferType(arkMethod: ArkMethod): AbstractExpr {
+        if (this.op instanceof AbstractRef || this.op instanceof AbstractExpr) {
+            this.op.inferType(arkMethod);
+        }
+        return this;
+    }
+}
+
 export class ArkSizeOfExpr extends AbstractExpr {
     private op: Value;
 
