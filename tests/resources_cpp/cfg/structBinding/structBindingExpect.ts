@@ -147,7 +147,6 @@ export const BINGING_EXPECT_MAP = {
                 '%12 = scores.<@std/map.h: map.value>',
                 'name = %12[0]',
                 'score = %12[1]',
-                '%12 = <unknown>%12',
             ],
             preds: [1, 4],
             succes: [4, 5],

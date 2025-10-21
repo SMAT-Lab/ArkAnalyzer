@@ -344,14 +344,9 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
             // Processing structured binding under cyclic conditions
         } else if (declStmts.kind === 'DecompositionDecl') {
             const {
-                value: initValue,
-                valueOriginalPositions: initOriPos,
                 stmts: initStmts,
             } = this.ArkCxxValueTransformer.bindingNodeToValueAndStmts(declStmts, yieldValue);
-            const assignStmt = new ArkAssignStmt(initValue, castExpr);
-            assignStmt.setOperandOriginalPositions([...initOriPos, ...castExprPositions]);
             initStmts.forEach(stmt => stmts.push(stmt));
-            stmts.push(assignStmt);
         } else {
             const { value: initValue, valueOriginalPositions: initOriPos, stmts: initStmts } = this.cxxNodeToValueAndStmts(declStmts);
             const assignStmt = new ArkAssignStmt(initValue, castExpr);
