@@ -38,7 +38,7 @@ import {
     ArkArrayTypeTraitExpr,
     ArkNoExpectExpr,
     ArkTypeIdExpr,
-    ArkCxxNewArrayExpr, ArkCxxInitArrayExpr,
+    ArkCxxNewArrayExpr, ArkCxxInitArrayExpr, ArkCxxFolderExpr,
 } from '../base/Expr';
 import {
     AnyType,
@@ -146,7 +146,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         'CXXCtorInitializer': this.cxxCtorInitializerToValueAndStmts,
         'CXXDeleteExpr': this.cxxDeleteExpressionToValueAndStmts,
         'CXXDynamicCastExpr': this.castExpressionToValueAndStmts,
-        'CXXFoldExpr': this.cxxCallExpressionToValueAndStmts,
+        'CXXFoldExpr': this.cxxFoldExprToValueAndStmts,
         'CXXFunctionalCastExpr': this.castExpressionToValueAndStmts,
         'CXXMemberCallExpr': this.cxxMemberCallExpressionToValueAndStmts,
         'CXXNewExpr': this.cxxNewExpressionToValueAndStmts,
@@ -733,6 +733,28 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         return { value: castExpr, valueOriginalPositions: castExprPosition, stmts: stmts };
     }
 
+    private cxxFoldExprToValueAndStmts(CXXFoldExpr: CxxAstNode): ValueAndStmts {
+        const stmts: Stmt[] = [];
+        let {
+            value: exprValue,
+            valueOriginalPositions: exprPositions,
+            stmts: exprStmts,
+        } = this.cxxNodeToValueAndStmts(CXXFoldExpr.inner[CXXFoldExpr.inner.length - 1]);
+        exprStmts.forEach((stmt: Stmt) => stmts.push(stmt));
+        if (IRUtils.moreThanOneAddress(exprValue)) {
+            ({
+                value: exprValue,
+                valueOriginalPositions: exprPositions,
+                stmts: exprStmts,
+            } = this.ArkCxxIRTransformer.generateAssignStmtForValue(exprValue, exprPositions));
+            exprStmts.forEach((stmt: Stmt) => stmts.push(stmt));
+        }
+        const foldOp = CXXFoldExpr.op ?? ' ';
+        const folderExpr = new ArkCxxFolderExpr(exprValue, foldOp);
+        const folderExprPosition = [FullPosition.cxxBuildFromNode(CXXFoldExpr, this.cxxSourceFile), ...exprPositions];
+        return { value: folderExpr, valueOriginalPositions: folderExprPosition, stmts: stmts };
+
+    }
     /**
      *Convert C++conditional expression to IR
      *@ param conditionalExpression - C++AST node, representing conditional expression

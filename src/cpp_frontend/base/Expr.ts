@@ -340,3 +340,47 @@ export class ArkNoExpectExpr extends AbstractExpr {
         return this;
     }
 }
+
+// cxx folder expression
+export class ArkCxxFolderExpr extends AbstractExpr {
+    private arg: Value;
+    private op: string;
+    constructor(arg: Value, op: string) {
+        super();
+        this.arg = arg;
+        this.op = op;
+    }
+
+    public getArg(): Value {
+        return this.arg;
+    }
+
+    public setArg(newArg: Value): void {
+        this.arg = newArg;
+    }
+
+    public getUses(): Value[] {
+        let uses: Value[] = [];
+        uses.push(this.arg);
+        uses.push(...this.arg.getUses());
+        return uses;
+    }
+
+    public getType(): Type {
+        return this.arg.getType();
+    }
+    public getOp(): string {
+        return this.op;
+    }
+    public toString(): string {
+        return `CxxFolderExpr(`+ this.arg + this.op  + `...)`;
+    }
+
+    public inferType(arkMethod: ArkMethod): AbstractExpr {
+        let arg = this.getArg();
+        if (arg instanceof AbstractRef || arg instanceof AbstractExpr) {
+            arg.inferType(arkMethod);
+        }
+        return this;
+    }
+}
