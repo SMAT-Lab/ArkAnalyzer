@@ -1570,8 +1570,7 @@ static bool MatchCtorByListInit(const std::string& resultTy,
 
 // Heuristic: match by callee.name when available.
 // Returns true if callee's simple name (namespace stripped) is equivalent to baseName.
-static bool MatchCtorByCalleeName(const json& node,
-                                         const std::string& baseName) noexcept
+static bool MatchCtorByCalleeName(const json& node, const std::string& baseName) noexcept
 {
     const json* callee = FindCalleeRef(node);
     if (!callee) {
