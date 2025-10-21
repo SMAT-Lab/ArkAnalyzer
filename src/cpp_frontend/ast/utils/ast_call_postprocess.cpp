@@ -1553,8 +1553,7 @@ static bool MatchCtorByContainerAlias(const std::string& baseName,
 // Heuristic: list-initialization of a class-like type.
 // Returns true if `code` starts with '{' and `resultTy` looks class-like
 // (i.e., contains a namespace qualifier or template arguments).
-static bool MatchCtorByListInit(const std::string& resultTy,
-                                       const std::string& code) noexcept
+static bool MatchCtorByListInit(const std::string& resultTy, const std::string& code) noexcept
 {
     std::string t = TrimCopy(code);
     if (t.empty()) {

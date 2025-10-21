@@ -21,11 +21,11 @@ import { AbstractRef } from '../../core/base/Ref';
 import { CxxSizeTType, CxxStdTypeName, CxxTypeBitWidth, CxxTypeSigned, TypeInfo } from './Type';
 import { TypeInference } from '../../core/common/TypeInference';
 
-
+// Expression when creating a new array
 export class ArkCxxNewArrayExpr extends AbstractExpr {
     private baseType: Type;
-    private size: Value;
-    private elementsNumber: number = 0;
+    private size: Value; // The length of the current one-dimensional array
+    private elementsNumber: number = 0; // The total number of elements contained in the array
 
     private fromLiteral: boolean;
 
@@ -89,6 +89,7 @@ export class ArkCxxNewArrayExpr extends AbstractExpr {
     }
 }
 
+// Array 0 initialization expression
 export class ArkCxxInitArrayExpr extends AbstractExpr {
     private op: Value;
     constructor(op: Value) {
@@ -128,6 +129,7 @@ export class ArkCxxInitArrayExpr extends AbstractExpr {
     }
 }
 
+// Sizeof expression
 export class ArkSizeOfExpr extends AbstractExpr {
     private op: Value;
 
@@ -170,7 +172,7 @@ export class ArkSizeOfExpr extends AbstractExpr {
         return this;
     }
 }
-
+// Type conversion expression
 export class ArkCxxCastExpr extends ArkCastExpr {
     private cxxCastType: string;
 
@@ -196,6 +198,7 @@ export class ArkCxxCastExpr extends ArkCastExpr {
     }
 }
 
+// __array_extent  expression
 export class ArkArrayTypeTraitExpr extends AbstractExpr {
     private op: Value;
     private dimensionOrder: number = 0;
@@ -254,6 +257,7 @@ export class ArkArrayTypeTraitExpr extends AbstractExpr {
     }
 }
 
+// typeid expression
 export class ArkTypeIdExpr extends AbstractExpr {
     private op: Value;
 
@@ -293,6 +297,7 @@ export class ArkTypeIdExpr extends AbstractExpr {
     }
 }
 
+// noexcept expression
 export class ArkNoExpectExpr extends AbstractExpr {
     private op: Value;
 
