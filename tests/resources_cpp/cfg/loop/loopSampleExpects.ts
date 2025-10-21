@@ -277,7 +277,6 @@ export const LOOP_EXPECT_CASE9 = {
                 '%8 = map2.<@CXX/std/BuiltinClass: IteratorResult.value>',
                 'key = %8[0]',
                 'value = %8[1]',
-                '%8 = <unknown>%8',
             ],
             preds: [0, 2],
             succes: [2, 3],
