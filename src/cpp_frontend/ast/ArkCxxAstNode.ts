@@ -92,6 +92,7 @@ export interface CxxAstNode {
 
     /** Derived information: unary/binary operator */
     opcode?: string; // Binary / CompoundAssign / UnaryOperator
+    op?: string; // CxxFolderExpr
     isPostfix?: boolean; // UnaryOperator
 
     /** Whether MemberExpr is accessed via -> */
