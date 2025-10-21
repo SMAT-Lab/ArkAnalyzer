@@ -1526,7 +1526,8 @@ static void CollectAndAttachHeaderUnits(json& ast, CXTranslationUnit tu, const s
 {
     // 1) Collect inclusions (only once)
     if (headerUnits.empty()) {
-        InclusionCtx ctx{normMain, /*onlyFromMain=*/true};
+        // onlyFromMain = true: include items only from main
+        InclusionCtx ctx{normMain, true};
         clang_getInclusions(tu, inclusionVisitorBuildHeaderUnits, &ctx);
     }
     // 2) Annotate: mark function-local includes with inFunction / enclosingFunction

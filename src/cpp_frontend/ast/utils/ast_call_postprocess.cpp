@@ -196,7 +196,7 @@ static bool TryDetectLeftFold(std::string_view t, char& opOut) noexcept
 
 // Try to match a right fold: "(expr OP ...)" and return OP via opOut.
 // Precondition: t is already trimmed and starts with '(' and ends with ')'.
-static inline bool TryDetectRightFold(std::string_view t, char& opOut) noexcept
+static bool TryDetectRightFold(std::string_view t, char& opOut) noexcept
 {
     // Must end with "...)"
     if (t.size() < FOUR || t.substr(t.size() - FOUR) != "...)") {
@@ -1472,13 +1472,13 @@ static bool IsNameEquivalent(const std::string& base, const std::string& name)
     return it->second.count(name) != 0;
 }
 
-static inline std::string TrimCopy(std::string s) {
+static inline std::string TrimCopy(std::string s)
+{
     Trim(s);
     return s;
 }
 
 // Try to decide ctor-likeness by parsing the "type-like head" before '(' or '{' in `code`.
-// Examples handled:
 //   - "std::vector<int>(n)"   -> compare "vector" with baseName
 //   - "std::pair{1,2.0}"      -> compare "pair" with baseName
 //   - "(std::pair{1,2.0})"    -> outer parens stripped
@@ -1495,15 +1495,12 @@ static bool MatchCtorByCodeHead(const std::string& code, const std::string& base
     const size_t lb1 = s.find('(');
     const size_t lb2 = s.find('{');
     const size_t lb  = std::min(lb1 == std::string::npos ? s.size() : lb1, lb2 == std::string::npos ? s.size() : lb2);
-
     if (lb == std::string::npos || lb == 0 || lb >= s.size()) {
         return false;
     }
-
     // Take the head before '(' / '{'
     std::string head = s.substr(0, lb); // e.g. "std::vector" / "std::pair"
     Trim(head);
-
     // Remove template argument tail
     const size_t lt = head.find('<');
     if (lt != std::string::npos) {
@@ -1532,9 +1529,9 @@ static inline bool IsStdContainerAlias(std::string_view s)
 //   (3) code RHS looks like a literal or a brace-init
 // Examples: map["Alice"] ... where key_type is basic_string<char>
 //           some_alias{...} with class-like nodeName
-static inline bool MatchCtorByContainerAlias(const std::string& baseName,
-                                             const std::string& nodeName,
-                                             const std::string& code)
+static bool MatchCtorByContainerAlias(const std::string& baseName,
+                                      const std::string& nodeName,
+                                      const std::string& code)
 {
     if (!IsStdContainerAlias(baseName) || nodeName.empty()) {
         return false;
@@ -1553,9 +1550,48 @@ static inline bool MatchCtorByContainerAlias(const std::string& baseName,
     return ctorishName && (looksLiteral || braceInit);
 }
 
+// Heuristic: list-initialization of a class-like type.
+// Returns true if `code` starts with '{' and `resultTy` looks class-like
+// (i.e., contains a namespace qualifier or template arguments).
+static bool MatchCtorByListInit(const std::string& resultTy,
+                                       const std::string& code) noexcept
+{
+    std::string t = TrimCopy(code);
+    if (t.empty()) {
+        return false;
+    }
+    const bool braceInit = (t.front() == '{');
+    const bool likelyClassResult =
+        (resultTy.find("::") != std::string::npos) ||
+        (resultTy.find('<')  != std::string::npos);
+
+    return braceInit && likelyClassResult;
+}
+
+// Heuristic: match by callee.name when available.
+// Returns true if callee's simple name (namespace stripped) is equivalent to baseName.
+static bool MatchCtorByCalleeName(const json& node,
+                                         const std::string& baseName) noexcept
+{
+    const json* callee = FindCalleeRef(node);
+    if (!callee) {
+        return false;
+    }
+    std::string calleeName = callee->value("name", "");
+    if (calleeName.empty()) {
+        return false;
+    }
+    const size_t kk = calleeName.rfind("::");
+    std::string calleeSimple = (kk == std::string::npos)
+        ? calleeName
+        : calleeName.substr(kk + TWO);
+    Trim(calleeSimple);
+    return IsNameEquivalent(baseName, calleeSimple);
+}
+
 // Purpose: Based on limited node (json) information — mainly code / type.qualType / name / callee —
 // try to heuristically determine whether the expression is "constructor-like".
-//   - Explicit construction: std::string("hi"), std::pair{1, 2.0}, std::array{1, 2, 3}
+//   - Explicit construction: e.g., std::pair{1, 2.0}
 //   - Implicit construction triggered by containers or aliases: e.g., map["Alice"]
 //     invokes key_type's basic_string("Alice") constructor.
 //   - List initialization: T{...} (including internal constructions returned from push/emplace).
@@ -1617,35 +1653,16 @@ bool IsCtorLikeByCalleeAndType(const json& node)
         }
     }
     // ===== step 1: Retry matching using callee.name if available =====
-    // Solves:
-    //   - node.name may be missing or different; callee often contains the true invoked name.
-    //   - in template instantiations or wrapper overloads, callee is closer to the visible constructor name.
-    if (const json* callee = FindCalleeRef(node)) {
-        std::string calleeName = callee->value("name", "");
-        if (!calleeName.empty()) {
-            size_t kk = calleeName.rfind("::");
-            std::string calleeSimple = (kk == std::string::npos) ? calleeName : calleeName.substr(kk + TWO);
-            Trim(calleeSimple);
-            if (IsNameEquivalent(baseName, calleeSimple)) {
-                return true; // Hit: callee name equivalent to base type name
-            }
-        }
+    if (MatchCtorByCalleeName(node, baseName)) {
+        return true; // Hit: callee name equivalent to base type name
     }
     // ===== step 2: Fallback — extract the last identifier before '(' or '{' from code =====
     if (MatchCtorByCodeHead(code, baseName)) {
         return true; // Hit: code type name matches base type
     }
     // ===== step 3: List-initialization fallback ({...} + result looks like a class) =====
-    // Solves:
-    //   - For code like "{a,b,c}", if the result type looks class-like (has namespace/template),
-    //     it is very likely a list initialization of a class type.
-    {
-        std::string t = TrimCopy(code);
-        bool braceInit = (!t.empty() && t.front() == '{');
-        bool likelyClassResult = (resultTy.find("::") != std::string::npos || resultTy.find('<')  != std::string::npos);
-        if (braceInit && likelyClassResult) {
-            return true; // Hit: list initialization of a class type
-        }
+    if (MatchCtorByListInit(resultTy, code)) {
+        return true; // Hit: list initialization of a class type
     }
     // ===== step 4: Container alias fallback =====
     if (MatchCtorByContainerAlias(baseName, nodeName, code)) {
