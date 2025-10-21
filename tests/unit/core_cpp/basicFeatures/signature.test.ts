@@ -31,6 +31,7 @@ function buildScene(folderName: string): Scene {
     config.buildFromProjectDir(folderName, includeDirs);
     let scene = new Scene();
     scene.buildSceneFromProjectDir(config);
+    scene.inferTypes();
     return scene;
 }
 
@@ -128,6 +129,18 @@ describe('Signature Test', () => {
         assert.isDefined(aliasType);
         expect((aliasType!.getOriginalType() as ClassType).getClassSignature().toString()).toEqual('@signature/signature.cpp: Base');
         expect(aliasType!.getSignature().toString()).toEqual('@signature/signature.cpp: %dflt.[static]%dflt()#BaseAlias');
+    });
+
+    it('case11: invokeExpr signature', () => {
+        const arkFile = scene.getFiles().find(file => file.getName().endsWith('signature.cpp'));
+        const targetMethod = arkFile?.getDefaultClass().getMethodWithName('main');
+        assert.isDefined(targetMethod);
+        const stmts = targetMethod!.getCfg()!.getStmts();
+        expect(stmts[1].getInvokeExpr()?.getMethodSignature().toString()).toEqual('@signature/signature.cpp: nsA.%dflt.Func()');
+        expect(stmts[3].getInvokeExpr()?.getMethodSignature().toString()).toEqual('@signature/signature.cpp: nsA.DefaultClass.constructor()');
+        expect(stmts[5].getInvokeExpr()?.getMethodSignature().toString()).toEqual('@signature/signature.cpp: nsA.DefaultClass.GetAge()');
+        expect(stmts[7].getInvokeExpr()?.getMethodSignature().toString()).toEqual('@signature/signature.cpp: Base.constructor(char&)');
+        expect(stmts[9].getInvokeExpr()?.getMethodSignature().toString()).toEqual('@signature/signature.cpp: Base.GetName()');
     });
 
 });

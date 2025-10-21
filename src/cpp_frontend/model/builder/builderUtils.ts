@@ -33,6 +33,7 @@ import { CxxAstNode, CxxTranslationUnit } from '../../ast/ArkCxxAstNode';
 import { Decorator } from '../../../core/base/Decorator';
 import { buildArkMethodFromArkClass } from './ArkMethodBuilder';
 import { ArkFile } from '../../../core/model/ArkFile';
+import { BuiltinCxx } from '../../common/Builtin';
 
 const FUNC_PTR_REGEX = /\(\s*\*\s*(?:\[\s*[^]]*\s*\])?\s*\)\s*\(\s*[^)]*\s*\)/;
 
@@ -294,6 +295,28 @@ export function buildReferenceType(preStr: string, arkInstance: ArkMethod | ArkC
 export function isCXXSTLContainer(qualType: string):boolean {
     let STLContainerPtn = /(set|map|vector|queue|deque|stack|list|pair)<[^>]*>/g;
     return STLContainerPtn.test(qualType);
+}
+
+export function isFuncInClassOrNamespace(callExpr: CxxAstNode): boolean {
+    let callerNode = callExpr;
+    while (callerNode.inner.length !== 0) {
+        let innerNode = callerNode.inner[0];
+        if ((innerNode.kind === 'NamespaceRef' && innerNode.name !== 'std') || innerNode.kind === 'TypeRef') {
+            return true;
+        }
+        // case: namespace xxx { Func() {} }; using namespace xxx;   Func();
+        if (isFuncWithoutNamespace(innerNode)) {
+            return true;
+        }
+        callerNode = innerNode;
+    }
+    return false;
+}
+
+export function isFuncWithoutNamespace(node: CxxAstNode): boolean {
+    return node.kind === 'DeclRefExpr' && node.referencedDecl?.kind === 'FunctionDecl' &&
+        node.referencedDecl.scope !== undefined && node.referencedDecl.scope !== '' &&
+        !node.referencedDecl!.scope!.includes(BuiltinCxx.CXXSTDREF) && node.referencedDecl!.scope !== BuiltinCxx.CXXSTD;
 }
 
 export function buildTypeFromDerivedType(preStr: string, arkInstance: ArkMethod | ArkClass | ArkField | undefined): Type {

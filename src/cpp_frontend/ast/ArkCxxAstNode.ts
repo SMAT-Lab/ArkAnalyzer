@@ -42,6 +42,7 @@ export interface CxxReferencedDecl {
     kind?: string; // VarDecl / ParamVarDecl / FunctionDecl ...
     name?: string;
     type?: CxxTypeInfo;
+    scope?: string;
 }
 
 /** Target information for CXXCtorInitializer */

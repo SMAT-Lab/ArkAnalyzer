@@ -907,7 +907,7 @@ export class TypeInference {
             return null;
         }
         //split and iterate to infer each type
-        const singleNames = refName.split('.');
+        const singleNames = refName.split(/\.|::|->/);
         let type = null;
         for (let i = 0; i < singleNames.length; i++) {
             let genericName: string = EMPTY_STRING;

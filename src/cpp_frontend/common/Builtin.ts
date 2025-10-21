@@ -36,6 +36,8 @@ export class BuiltinCxx {
     public static UNORDERED_MULTISET = 'unordered_multiset';
     public static OBJECT = 'Object';
     public static REGEXP = 'RegExp';
+    public static CXXSTD = 'std';
+    public static CXXSTDREF = 'std::';
 
     public static BUILT_IN_CLASSES = this.buildBuiltInClasses();
 
