@@ -85,8 +85,7 @@ export const TEMPLATE_EXPECT_CASE5 = {
             stmts: [
                 'args = parameter0: Args...',
                 'this = this: @template/template.cpp: %dflt',
-                '%0 = staticinvoke <@%unk/%unk: .undefined()>(args)',
-                'return %0',
+                'return CxxFolderExpr(args+...)',
             ],
             preds: [],
             succes: [],

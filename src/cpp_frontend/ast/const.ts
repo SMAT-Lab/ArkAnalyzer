@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -33,7 +33,7 @@ export function findProjectRoot(startDIr: string = __dirname): string {
 const projectRoot = findProjectRoot(__dirname);
 
 function getPrintAstExePath(): string {
-    let printAstExePath = path.join(projectRoot, 'src', 'cpp_frontend', 'ast', 'arkCppAstDumper.exe');
+    let printAstExePath = path.join(projectRoot, 'src', 'cpp_frontend', 'ast', 'dumper', 'arkCppAstDumper.exe');
     if (!fs.existsSync(printAstExePath)) {
         printAstExePath = path.join(projectRoot, 'lib', 'ast', 'arkCppAstDumper.exe');
     }
@@ -41,7 +41,7 @@ function getPrintAstExePath(): string {
 }
 
 function getPrintAstExePathLinux(): string {
-    let printAstExePath = path.join(projectRoot, 'src', 'cpp_frontend', 'ast', 'arkCppAstDumper');
+    let printAstExePath = path.join(projectRoot, 'src', 'cpp_frontend', 'ast', 'dumper', 'arkCppAstDumper');
     if (!fs.existsSync(printAstExePath)) {
         printAstExePath = path.join(projectRoot, 'lib', 'ast', 'arkCppAstDumper');
     }

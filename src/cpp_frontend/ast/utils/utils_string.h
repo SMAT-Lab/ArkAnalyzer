@@ -17,6 +17,8 @@
 // utils_string.h
 #pragma once
 #include <string>
+#include <cstring>
+#include <cctype>
 #include <set>
 #include <vector>
 #include <clang-c/Index.h>
@@ -49,3 +51,5 @@ inline bool StartsWith(std::string_view s, std::string_view p) noexcept
 }
 
 bool IsBuiltInType(std::string& type);
+
+void SafeReplaceStdString(std::string& s);

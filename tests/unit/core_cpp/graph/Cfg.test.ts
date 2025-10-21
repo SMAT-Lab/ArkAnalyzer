@@ -432,14 +432,14 @@ describe('feature Test', () => {
     it('case3: structBinding', () => {
         const scene = buildScene('structBinding');
         scene.inferTypes();
-        testBlocks(scene, 'structBinding.cpp', 'BasicUsage', STRUCTBINDING.REFERENCE_EXPECT_BASICUSAGE.blocks);
-        testBlocks(scene, 'structBinding.cpp', 'ReferenceUsage', STRUCTBINDING.REFERENCE_EXPECT_REFERENCE.blocks);
-        testBlocks(scene, 'structBinding.cpp', 'TupleUsage', STRUCTBINDING.REFERENCE_EXPECT_TUPLEUSAGE.blocks);
-        testBlocks(scene, 'structBinding.cpp', 'StructUsage', STRUCTBINDING.REFERENCE_EXPECT_STRUCT.blocks);
-        testBlocks(scene, 'structBinding.cpp', 'MapUsage', STRUCTBINDING.REFERENCE_EXPECT_MAP.blocks);
-        testBlocks(scene, 'structBinding.cpp', 'GetStudentInfo', STRUCTBINDING.REFERENCE_EXPECT_GETSTRUCTINFO.blocks);
-        testBlocks(scene, 'structBinding.cpp', 'FunctionReturnUsage', STRUCTBINDING.REFERENCE_EXPECT_FUNCTIONRETURN.blocks);
-        testBlocks(scene, 'structBinding.cpp', 'ConstReferenceUsage', STRUCTBINDING.REFERENCE_EXPECT_CONSTREFERENCE.blocks);
+        testBlocks(scene, 'structBinding.cpp', 'BasicUsage', STRUCTBINDING.BINGING_EXPECT_BASICUSAGE.blocks);
+        testBlocks(scene, 'structBinding.cpp', 'ReferenceUsage', STRUCTBINDING.BINGING_EXPECT_REFERENCE.blocks);
+        testBlocks(scene, 'structBinding.cpp', 'TupleUsage', STRUCTBINDING.BINGING_EXPECT_TUPLEUSAGE.blocks);
+        testBlocks(scene, 'structBinding.cpp', 'StructUsage', STRUCTBINDING.BINGING_EXPECT_STRUCT.blocks);
+        testBlocks(scene, 'structBinding.cpp', 'MapUsage', STRUCTBINDING.BINGING_EXPECT_MAP.blocks);
+        testBlocks(scene, 'structBinding.cpp', 'GetStudentInfo', STRUCTBINDING.BINGING_EXPECT_GETSTRUCTINFO.blocks);
+        testBlocks(scene, 'structBinding.cpp', 'FunctionReturnUsage', STRUCTBINDING.BINGING_EXPECT_FUNCTIONRETURN.blocks);
+        testBlocks(scene, 'structBinding.cpp', 'ConstReferenceUsage', STRUCTBINDING.BINGING_EXPECT_CONSTREFERENCE.blocks);
     });
 });
 

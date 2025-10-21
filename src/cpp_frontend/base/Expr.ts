@@ -15,11 +15,121 @@
 
 import { AbstractExpr, ArkCastExpr } from '../../core/base/Expr';
 import { Value } from '../../core/base/Value';
-import { BooleanType, Type } from '../../core/base/Type';
+import { ArrayType, BooleanType, Type } from '../../core/base/Type';
 import { ArkMethod } from '../../core/model/ArkMethod';
 import { AbstractRef } from '../../core/base/Ref';
 import { CxxSizeTType, CxxStdTypeName, CxxTypeBitWidth, CxxTypeSigned, TypeInfo } from './Type';
+import { TypeInference } from '../../core/common/TypeInference';
 
+// Expression when creating a new array
+export class ArkCxxNewArrayExpr extends AbstractExpr {
+    private baseType: Type;
+    private size: Value; // The length of the current one-dimensional array
+    private elementsNumber: number = 0; // The total number of elements contained in the array
+
+    private fromLiteral: boolean;
+
+    constructor(baseType: Type, size: Value, fromLiteral: boolean = false, elementsNumber?: number) {
+        super();
+        this.baseType = baseType;
+        this.size = size;
+        this.fromLiteral = fromLiteral;
+        if (elementsNumber) {
+            this.elementsNumber = elementsNumber;
+        }
+    }
+
+    public getElementsNumber(): number {
+        return this.elementsNumber;
+    }
+
+    public setElementsNumber(elementsNumber: number): void {
+        this.elementsNumber = elementsNumber;
+    }
+    public getSize(): Value {
+        return this.size;
+    }
+
+    public setSize(newSize: Value): void {
+        this.size = newSize;
+    }
+
+    public getType(): ArrayType {
+        return new ArrayType(this.baseType, 1);
+    }
+
+    public getBaseType(): Type {
+        return this.baseType;
+    }
+
+    public setBaseType(newType: Type): void {
+        this.baseType = newType;
+    }
+
+    public isFromLiteral(): boolean {
+        return this.fromLiteral;
+    }
+
+    public inferType(arkMethod: ArkMethod): ArkCxxNewArrayExpr {
+        const type = TypeInference.inferUnclearedType(this.baseType, arkMethod.getDeclaringArkClass());
+        if (type) {
+            this.baseType = type;
+        }
+        return this;
+    }
+
+    public getUses(): Value[] {
+        let uses: Value[] = [this.size];
+        uses.push(...this.size.getUses());
+        return uses;
+    }
+
+    public toString(): string {
+        return 'newarray (' + this.baseType + ')[' + this.size + ']';
+    }
+}
+
+// Array 0 initialization expression
+export class ArkCxxInitArrayExpr extends AbstractExpr {
+    private op: Value;
+    constructor(op: Value) {
+        super();
+        this.op = op;
+    }
+
+    public getOp(): Value {
+        return this.op;
+    }
+
+    public setOp(newOp: Value): void {
+        this.op = newOp;
+    }
+
+    public getUses(): Value[] {
+        let uses: Value[] = [];
+        uses.push(this.op);
+        uses.push(...this.op.getUses());
+        return uses;
+    }
+
+
+    public getType(): Type {
+        return this.op.getType();
+    }
+
+    public toString(): string {
+        return 'initArrayWith(' + this.op + ')';
+    }
+
+    public inferType(arkMethod: ArkMethod): AbstractExpr {
+        if (this.op instanceof AbstractRef || this.op instanceof AbstractExpr) {
+            this.op.inferType(arkMethod);
+        }
+        return this;
+    }
+}
+
+// Sizeof expression
 export class ArkSizeOfExpr extends AbstractExpr {
     private op: Value;
 
@@ -62,7 +172,7 @@ export class ArkSizeOfExpr extends AbstractExpr {
         return this;
     }
 }
-
+// Type conversion expression
 export class ArkCxxCastExpr extends ArkCastExpr {
     private cxxCastType: string;
 
@@ -88,6 +198,7 @@ export class ArkCxxCastExpr extends ArkCastExpr {
     }
 }
 
+// __array_extent  expression
 export class ArkArrayTypeTraitExpr extends AbstractExpr {
     private op: Value;
     private dimensionOrder: number = 0;
@@ -146,6 +257,7 @@ export class ArkArrayTypeTraitExpr extends AbstractExpr {
     }
 }
 
+// typeid expression
 export class ArkTypeIdExpr extends AbstractExpr {
     private op: Value;
 
@@ -185,6 +297,7 @@ export class ArkTypeIdExpr extends AbstractExpr {
     }
 }
 
+// noexcept expression
 export class ArkNoExpectExpr extends AbstractExpr {
     private op: Value;
 
@@ -223,6 +336,50 @@ export class ArkNoExpectExpr extends AbstractExpr {
     public inferType(arkMethod: ArkMethod): AbstractExpr {
         if (this.op instanceof AbstractRef || this.op instanceof AbstractExpr) {
             this.op.inferType(arkMethod);
+        }
+        return this;
+    }
+}
+
+// cxx folder expression
+export class ArkCxxFolderExpr extends AbstractExpr {
+    private arg: Value;
+    private op: string;
+    constructor(arg: Value, op: string) {
+        super();
+        this.arg = arg;
+        this.op = op;
+    }
+
+    public getArg(): Value {
+        return this.arg;
+    }
+
+    public setArg(newArg: Value): void {
+        this.arg = newArg;
+    }
+
+    public getUses(): Value[] {
+        let uses: Value[] = [];
+        uses.push(this.arg);
+        uses.push(...this.arg.getUses());
+        return uses;
+    }
+
+    public getType(): Type {
+        return this.arg.getType();
+    }
+    public getOp(): string {
+        return this.op;
+    }
+    public toString(): string {
+        return `CxxFolderExpr(` + this.arg + this.op + `...)`;
+    }
+
+    public inferType(arkMethod: ArkMethod): AbstractExpr {
+        let arg = this.getArg();
+        if (arg instanceof AbstractRef || arg instanceof AbstractExpr) {
+            arg.inferType(arkMethod);
         }
         return this;
     }

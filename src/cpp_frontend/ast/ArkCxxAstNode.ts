@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -92,6 +92,7 @@ export interface CxxAstNode {
 
     /** Derived information: unary/binary operator */
     opcode?: string; // Binary / CompoundAssign / UnaryOperator
+    op?: string; // CxxFolderExpr
     isPostfix?: boolean; // UnaryOperator
 
     /** Whether MemberExpr is accessed via -> */

@@ -14,5 +14,5 @@
  */
 #ifndef INCLUDEINCLASS_H
 #define INCLUDEINCLASS_H
-std::cout << "Using optimized processing" << std::endl;
+#define NUM 1
 #endif

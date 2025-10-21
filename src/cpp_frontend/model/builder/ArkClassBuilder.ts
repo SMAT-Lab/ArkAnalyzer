@@ -318,7 +318,7 @@ function genDefaultArkMethod(cls: ArkClass, sourceFile: CxxAstNode, node?: CxxAs
     buildDefaultArkMethodFromArkClass(cls, defaultMethod, sourceFile, node);
     cls.setDefaultArkMethod(defaultMethod);
 }
-
+// Get initialization statement when member variables contain default values
 function getInitStmts(
     transformer: ArkCxxIRTransformer | undefined,
     field: ArkField,

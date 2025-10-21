@@ -34,8 +34,9 @@ private:
 public:
     void Process()
     {
+        #include "includeInClass.h"
         #ifdef USE_OPTIMIZED_VERSION
-            #include "includeInClass.h"
+            int a = NUM;
         #endif
     }
 };

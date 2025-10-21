@@ -9,7 +9,7 @@
   "main": "lib/index.js",
   "scripts": {
     "build": "tsc",
-    "prepack": "tsc -p ./tsconfig.prod.json",
+    "prepack": "tsc -p ./tsconfig.prod.json && npx copyfiles -f arkCppAst/* lib/ast",
     "test": "vitest",
     "testonce": "vitest --no-color run",
     "coverage": "vitest run --coverage",

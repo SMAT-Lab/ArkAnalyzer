@@ -23,7 +23,6 @@ import {
     ArkDeleteExpr,
     ArkCxxDeleteArrayExpr,
     ArkInstanceInvokeExpr,
-    ArkNewArrayExpr,
     ArkNewExpr,
     ArkNormalBinopExpr,
     ArkPtrInvokeExpr,
@@ -33,7 +32,14 @@ import {
     RelationalBinaryOperator,
     AbstractInvokeExpr,
 } from '../../core/base/Expr';
-import { ArkSizeOfExpr, ArkCxxCastExpr, ArkArrayTypeTraitExpr, ArkNoExpectExpr, ArkTypeIdExpr } from '../base/Expr';
+import {
+    ArkSizeOfExpr,
+    ArkCxxCastExpr,
+    ArkArrayTypeTraitExpr,
+    ArkNoExpectExpr,
+    ArkTypeIdExpr,
+    ArkCxxNewArrayExpr, ArkCxxInitArrayExpr, ArkCxxFolderExpr,
+} from '../base/Expr';
 import {
     AnyType,
     ArrayType,
@@ -140,7 +146,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         'CXXCtorInitializer': this.cxxCtorInitializerToValueAndStmts,
         'CXXDeleteExpr': this.cxxDeleteExpressionToValueAndStmts,
         'CXXDynamicCastExpr': this.castExpressionToValueAndStmts,
-        'CXXFoldExpr': this.cxxCallExpressionToValueAndStmts,
+        'CXXFoldExpr': this.cxxFoldExprToValueAndStmts,
         'CXXFunctionalCastExpr': this.castExpressionToValueAndStmts,
         'CXXMemberCallExpr': this.cxxMemberCallExpressionToValueAndStmts,
         'CXXNewExpr': this.cxxNewExpressionToValueAndStmts,
@@ -222,7 +228,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
     private isNodeRelatedToImplicitNode(node: CxxAstNode): boolean {
         if (node.inner && node.inner instanceof Array) {
             return (
-                node.inner.length !== 0 && node.inner[0].kind === 'ImplicitCastExpr' && (node.name === '__tree_const_iterator' || node.name === 'basic_string')
+                node.inner.length !== 0 && node.inner[0].kind === 'ImplicitCastExpr' && (node.name === '__tree_const_iterator')
             );
         }
         return false;
@@ -727,6 +733,28 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         return { value: castExpr, valueOriginalPositions: castExprPosition, stmts: stmts };
     }
 
+    private cxxFoldExprToValueAndStmts(CXXFoldExpr: CxxAstNode): ValueAndStmts {
+        const stmts: Stmt[] = [];
+        let {
+            value: exprValue,
+            valueOriginalPositions: exprPositions,
+            stmts: exprStmts,
+        } = this.cxxNodeToValueAndStmts(CXXFoldExpr.inner[CXXFoldExpr.inner.length - 1]);
+        exprStmts.forEach((stmt: Stmt) => stmts.push(stmt));
+        if (IRUtils.moreThanOneAddress(exprValue)) {
+            ({
+                value: exprValue,
+                valueOriginalPositions: exprPositions,
+                stmts: exprStmts,
+            } = this.ArkCxxIRTransformer.generateAssignStmtForValue(exprValue, exprPositions));
+            exprStmts.forEach((stmt: Stmt) => stmts.push(stmt));
+        }
+        const foldOp = CXXFoldExpr.op ?? ' ';
+        const folderExpr = new ArkCxxFolderExpr(exprValue, foldOp);
+        const folderExprPosition = [FullPosition.cxxBuildFromNode(CXXFoldExpr, this.cxxSourceFile), ...exprPositions];
+        return { value: folderExpr, valueOriginalPositions: folderExprPosition, stmts: stmts };
+
+    }
     /**
      *Convert C++conditional expression to IR
      *@ param conditionalExpression - C++AST node, representing conditional expression
@@ -1118,7 +1146,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
                 return this.cxxNewExpressionToValueAndStmts(callExpression);
             } else if (callExpression.inner[0].kind === 'CXXPseudoDestructorExpression') {
                 return this.cxxCallExpressionToValueAndStmts(callExpression.inner[0]);
-            } else if (callExpression.name === 'basic_string') {
+            } else if (callExpression.name === 'basic_string' || callExpression.inner[0].kind === 'MaterializeTemporaryExpr') {
                 return this.cxxNodeToValueAndStmts(callExpression.inner[0]);
             }
         }
@@ -1829,7 +1857,10 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             } else if (newExpression.kind === 'InitListExpr') {
                 return this.getConstructArgs(newExpression);
             }
-            return args;
+            return args.filter(arg =>
+                arg?.kind !== 'TemplateRef' &&
+                arg?.kind !== 'NamespaceRef',
+            );
         })();
 
         const { args: argValues, argPositions } = this.cxxParseArguments(stmts, constructArgs);
@@ -1935,14 +1966,15 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         const { args: argumentValues, argPositions: argPositions } = this.cxxParseArguments(stmts, newArrayExpression.inner);
         let argumentsLength = newArrayExpression.inner ? newArrayExpression.inner.length : 0;
         let arrayLengthValue: Value;
-        let arrayLength = -1;
+        let fromLiteral: boolean; // Does it contain specific elements
         let arrayLengthPosition = FullPosition.DEFAULT;
         if (argumentsLength === 1 && (argumentValues[0].getType() instanceof NumberType || argumentValues[0].getType() instanceof UnknownType)) {
             arrayLengthValue = argumentValues[0];
             arrayLengthPosition = argPositions[0];
+            fromLiteral = false;
         } else {
             arrayLengthValue = CxxValueUtil.getOrCreateNumberConst(argumentsLength);
-            arrayLength = argumentsLength;
+            fromLiteral = true;
         }
         if (baseType instanceof UnknownType) {
             if (argumentsLength > 1 && !(argumentValues[0].getType() instanceof UnknownType)) {
@@ -1956,12 +1988,11 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             baseType,
             arrayLengthValue,
             arrayLengthPosition,
-            arrayLength,
             argumentValues,
             argPositions,
             stmts,
             newArrayExprPosition,
-            false
+            fromLiteral
         );
     }
 
@@ -1970,14 +2001,24 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
      *@ param arrayLiteralExpression - Array literal node in C++abstract syntax tree
      *@ returns The ValueAndStmts object containing the converted value and related statements
      */
-    private cxxArrayLiteralExpressionToValueAndStmts(arrayLiteralExpression: CxxAstNode): ValueAndStmts {
+    private cxxArrayLiteralExpressionToValueAndStmts(arrayLiteralExpression: CxxAstNode, dimensions?: number[], isInitZero?: boolean): ValueAndStmts {
         const stmts: Stmt[] = [];
         const elementTypes: Set<Type> = new Set();
         const elementValues: Value[] = [];
         const elementPositions: FullPosition[] = [];
-        const arrayLength = arrayLiteralExpression.inner.length;
-        this.getArrayLiteralExpression(arrayLiteralExpression, stmts, elementTypes, elementValues, elementPositions);
         const oriType = arrayLiteralExpression.type.qualType;
+        let arrayLength = 0; // Indicate the length of the array
+        let elementsNumber = 0; // Indicates the total number of elements included
+        if (!dimensions) {
+            // Obtain dimensional information
+            dimensions = this.getArrayDimensions(oriType);
+        }
+        arrayLength = dimensions[0] ?? arrayLiteralExpression.inner.length;
+        elementsNumber = dimensions.reduce((acc, cur) => acc * cur, 1) ?? arrayLength;
+        dimensions.shift();
+        isInitZero = (arrayLiteralExpression.inner?.length === 1 && arrayLiteralExpression.inner[0].code === '0' ||
+            arrayLiteralExpression.inner?.length === 0);
+        this.getArrayLiteralExpression(arrayLiteralExpression, stmts, elementTypes, elementValues, elementPositions, dimensions, isInitZero);
         if (isCxxFunctionPointer(oriType)) {
             // If it's an array of function pointers, the array symbols in the type should be removed here before resolving for the base type.
             arrayLiteralExpression.type.qualType = arrayLiteralExpression.type.qualType.replace(/\[.*?\]/g, '');
@@ -1990,9 +2031,20 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         }
         const newArrayExprPosition = FullPosition.cxxBuildFromNode(arrayLiteralExpression, this.cxxSourceFile);
         return this.cxxGenerateArrayExprAndStmts(baseType, CxxValueUtil.getOrCreateNumberConst(arrayLength),
-            FullPosition.DEFAULT, arrayLength, elementValues, elementPositions, stmts, newArrayExprPosition, true);
+            FullPosition.DEFAULT, elementValues, elementPositions, stmts, newArrayExprPosition, true, elementsNumber, isInitZero);
     }
 
+    // Analyze array dimension information
+    private getArrayDimensions(declaration: string): number[] {
+        // Extract all dimensional numbers using regular expressions
+        const dimensions = declaration.match(/\[(\d+)\]/g);
+        if (!dimensions) {
+            return [];
+        }
+        // Parse numbers and return a dimension array
+        return dimensions
+            .map(dim => parseInt(dim.replace(/[\[\]]/g, '')));
+    }
     /**
      *Process array literal expression and convert it to intermediate representation
      *@ param arrayLiteralExpression array literal expression node
@@ -2002,14 +2054,18 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
      *@ param elementPositions is used to collect the list of array element position information
      */
     private getArrayLiteralExpression(
-        arrayLiteralExpression: any,
+        arrayLiteralExpression: CxxAstNode,
         stmts: Stmt[],
         elementTypes: Set<Type>,
         elementValues: Value[],
-        elementPositions: FullPosition[]
+        elementPositions: FullPosition[],
+        dimensions: number[],
+        isInitZero: boolean
     ): void {
         for (const element of arrayLiteralExpression.inner) {
-            let { value: elementValue, valueOriginalPositions: elementPosition, stmts: elementStmts } = this.cxxNodeToValueAndStmts(element);
+            // If there is still dimension information in the array, build an internal array
+            let { value: elementValue, valueOriginalPositions: elementPosition, stmts: elementStmts } =
+                dimensions.length > 0 ? this.cxxArrayLiteralExpressionToValueAndStmts(element, dimensions) : this.cxxNodeToValueAndStmts(element);
             elementStmts.forEach(stmt => stmts.push(stmt));
             if (IRUtils.moreThanOneAddress(elementValue)) {
                 ({
@@ -2043,15 +2099,16 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         baseType: Type,
         arrayLengthValue: Value,
         arrayLengthPosition: FullPosition,
-        arrayLength: number,
         initializerValues: Value[],
         initializerPositions: FullPosition[],
         currStmts: Stmt[],
         newArrayExprPosition: FullPosition,
-        fromLiteral: boolean
+        fromLiteral: boolean,
+        elementsNumber?: number,
+        isInitZero?: boolean
     ): ValueAndStmts {
         const stmts: Stmt[] = [...currStmts];
-        const newArrayExpr = new ArkNewArrayExpr(baseType, arrayLengthValue, fromLiteral);
+        const newArrayExpr = new ArkCxxNewArrayExpr(baseType, arrayLengthValue, fromLiteral, elementsNumber);
         const newArrayExprPositions = [newArrayExprPosition, arrayLengthPosition];
         const {
             value: arrayLocal,
@@ -2059,12 +2116,23 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             stmts: arrayStmts,
         } = this.ArkCxxIRTransformer.generateAssignStmtForValue(newArrayExpr, newArrayExprPositions);
         arrayStmts.forEach(stmt => stmts.push(stmt));
-        for (let i = 0; i < arrayLength; i++) {
+        const initializerZero = CxxValueUtil.getOrCreateNumberConst(0);
+        for (let i = 0; i < initializerValues.length; i++) {
+            // If the array is initialized with 0 or does not contain specific elements, do not create element statements
+            if (isInitZero || !fromLiteral) {
+                break;
+            }
             const indexValue = CxxValueUtil.getOrCreateNumberConst(i);
             const arrayRef = new ArkArrayRef(arrayLocal as Local, indexValue);
             const arrayRefPositions = [arrayLocalPositions[0], ...arrayLocalPositions, FullPosition.DEFAULT];
             const assignStmt = new ArkAssignStmt(arrayRef, initializerValues[i]);
             assignStmt.setOperandOriginalPositions([...arrayRefPositions, initializerPositions[i]]);
+            stmts.push(assignStmt);
+        }
+        if (isInitZero) {
+            // When the array is initialized to 0, initialize Values only contains one element for use by the upper layer
+            let initExpr = new ArkCxxInitArrayExpr(initializerValues[0] ?? initializerZero);
+            let assignStmt = new ArkAssignStmt(arrayLocal, initExpr);
             stmts.push(assignStmt);
         }
         return {

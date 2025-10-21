@@ -16,6 +16,7 @@
 #pragma once
 #include <string>
 #include <string_view>
+#include <unordered_set>
 #include <map>
 #include "json.hpp"
 #include <clang-c/Index.h>
@@ -141,3 +142,7 @@ void phasePreNormalize(json& node,
                        const std::map<std::string, json>& derivedDataTypeMap);
 
 std::string getMemberInClassName(CXCursor cursor);
+
+bool IsCtorLikeByCalleeAndType(const json& node);
+
+void AnnotateFunctionLocalIncludes(json& ast, std::vector<json>& headerUnits);
