@@ -108,30 +108,68 @@ export function buildArkNamespace(node: CxxAstNode, declaringInstance: ArkFile |
     }
 }
 
+function processUsingDeclInNamespace(usingDeclNode: CxxAstNode, namespace: ArkNamespace): void {
+    // CXXTodo: using NS::Member,  scenario 'NS is from other file' is not handled.
+    const curArkFile = namespace.getDeclaringArkFile();
+    let curNS: ArkNamespace | undefined | null;
+    for (const [index, value] of usingDeclNode.inner.entries()) {
+        if (index === usingDeclNode.inner.length - 1) {
+            let usingCls = curNS?.getClassWithName(value.name);
+            if (usingCls) {
+                namespace.addArkClass(usingCls);
+                return;
+            }
+            let usingFunc = curNS?.getDefaultClass().getMethodWithName(value.name);
+            if (usingFunc) {
+                namespace.getDefaultClass().addMethod(usingFunc);
+                return;
+            }
+        }
+        if (index === 0) {
+            curNS = curArkFile.getNamespaceWithName(value.name);
+            if (!curNS) {
+                return;
+            }
+            continue;
+        }
+        curNS = curNS?.getNamespaceWithName(value.name);
+        if (!curNS) {
+            return;
+        }
+    }
+}
+
 // TODO: check and update
 function buildNamespaceMembers(node: CxxAstNode, namespace: ArkNamespace, sourceFile: CxxAstNode): void {
     const statements = node.inner;
     statements.forEach((child: CxxAstNode) => {
-        if (child.kind === 'Namespace') {
-            let childNs: ArkNamespace = new ArkNamespace();
-            childNs.setDeclaringArkNamespace(namespace);
-            childNs.setDeclaringArkFile(namespace.getDeclaringArkFile());
-
-            buildArkNamespace(child, namespace, childNs, sourceFile);
-            namespace.addNamespace(childNs);
-        } else if (child.kind === 'CXXRecordDecl' || child.kind === 'ClassTemplate') {
-            let cls: ArkClass = new ArkClass();
-
-            buildNormalArkClassFromArkNamespace(child, namespace, cls, sourceFile);
-            namespace.addArkClass(cls);
-        } else if (child.kind === 'FunctionDecl' || child.kind === 'FriendDecl') {
-            logger.trace('This is a MethodDeclaration in ArkNamespace.');
-            let mthd: ArkMethod = new ArkMethod();
-
-            buildArkMethodFromArkClass(child, namespace.getDefaultClass(), mthd, sourceFile);
-        } else {
-            logger.trace('Child joined default method of arkFile: ', child.kind);
-            // join default method
+        switch (child.kind) {
+            case 'Namespace':
+                let childNs: ArkNamespace = new ArkNamespace();
+                childNs.setDeclaringArkNamespace(namespace);
+                childNs.setDeclaringArkFile(namespace.getDeclaringArkFile());
+                buildArkNamespace(child, namespace, childNs, sourceFile);
+                namespace.addNamespace(childNs);
+                return;
+            case 'CXXRecordDecl':
+            case 'ClassTemplate':
+                let cls: ArkClass = new ArkClass();
+                buildNormalArkClassFromArkNamespace(child, namespace, cls, sourceFile);
+                namespace.addArkClass(cls);
+                return;
+            case 'FunctionDecl':
+            case 'FriendDecl':
+                logger.trace('This is a MethodDeclaration in ArkNamespace.');
+                let mthd: ArkMethod = new ArkMethod();
+                buildArkMethodFromArkClass(child, namespace.getDefaultClass(), mthd, sourceFile);
+                return;
+            case 'UsingDecl':
+                // CXXTodo: using NS::Member,  scenario 'NS is from other file' is not handled.
+                processUsingDeclInNamespace(child, namespace);
+                return;
+            default:
+                logger.trace('Child joined default method of arkFile: ', child.kind);
+                // join default method
         }
     });
 }
