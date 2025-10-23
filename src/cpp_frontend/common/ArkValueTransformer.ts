@@ -1066,7 +1066,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         // [Scenario 6] Construction field signature
         // If base is a class local variable, use the complete class signature
         const memberName = memberExpression.name || memberExpression.code;
-        if (baseValue instanceof Local && baseClassType !== null) {
+        if ((baseValue instanceof Local || baseValue instanceof ArkArrayRef) && baseClassType !== null) {
             fieldSignature = new FieldSignature(
                 memberName, // Field name (such as insert)
                 baseClassType.getClassSignature(), // Base class type signature

@@ -74,7 +74,7 @@ export const LOOP_EXPECT_CASE2 = {
         { id: 1, stmts: ['if i < 2'], preds: [0, 2], succes: [2, 3] },
         {
             id: 2,
-            stmts: ['%3 = arr[i].<@%unk/%unk: .a>', '%4 = arr[i].<@%unk/%unk: .b>', 'staticinvoke <@%unk/%unk: .printf()>(\'%d %d\\n\', %3, %4)', 'i = i + 1'],
+            stmts: ['%3 = arr[i].<@loop/loopSample.cpp: Data.a>', '%4 = arr[i].<@loop/loopSample.cpp: Data.b>', 'staticinvoke <@%unk/%unk: .printf()>(\'%d %d\\n\', %3, %4)', 'i = i + 1'],
             preds: [1],
             succes: [1],
         },
