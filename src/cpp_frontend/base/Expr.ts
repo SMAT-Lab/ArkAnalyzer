@@ -17,9 +17,45 @@ import { AbstractExpr, ArkCastExpr } from '../../core/base/Expr';
 import { Value } from '../../core/base/Value';
 import { ArrayType, BooleanType, Type } from '../../core/base/Type';
 import { ArkMethod } from '../../core/model/ArkMethod';
-import { AbstractRef } from '../../core/base/Ref';
+import { AbstractFieldRef, AbstractRef } from '../../core/base/Ref';
 import { CxxSizeTType, CxxStdTypeName, CxxTypeBitWidth, CxxTypeSigned, TypeInfo } from './Type';
 import { TypeInference } from '../../core/common/TypeInference';
+
+/**
+ * delete[] expression in C++
+ *  1. c++: delete[] a / delete[] a.b / delete[] a->b
+ */
+export class ArkCxxDeleteArrayExpr extends AbstractExpr {
+    private field: AbstractFieldRef | Value;
+
+    constructor(field: AbstractFieldRef | Value) {
+        super();
+        this.field = field;
+    }
+
+    public getField(): AbstractFieldRef | Value {
+        return this.field;
+    }
+
+    public setField(newField: AbstractFieldRef | Value): void {
+        this.field = newField;
+    }
+
+    public getType(): Type {
+        return BooleanType.getInstance();
+    }
+
+    public getUses(): Value[] {
+        const uses: Value[] = [];
+        uses.push(this.field);
+        uses.push(...this.field.getUses());
+        return uses;
+    }
+
+    public toString(): string {
+        return 'delete[] ' + this.field;
+    }
+}
 
 // Expression when creating a new array
 export class ArkCxxNewArrayExpr extends AbstractExpr {
@@ -373,7 +409,7 @@ export class ArkCxxFolderExpr extends AbstractExpr {
         return this.op;
     }
     public toString(): string {
-        return `CxxFolderExpr(`+ this.arg + this.op  + `...)`;
+        return `CxxFolderExpr(` + this.arg + this.op + `...)`;
     }
 
     public inferType(arkMethod: ArkMethod): AbstractExpr {

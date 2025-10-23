@@ -521,42 +521,6 @@ export class ArkDeleteExpr extends AbstractExpr {
     }
 }
 
-/**
- * delete[] expression in C++
- *  1. c++: delete[] a / delete[] a.b / delete[] a->b
- */
-export class ArkCxxDeleteArrayExpr extends AbstractExpr {
-    private field: AbstractFieldRef | Value;
-
-    constructor(field: AbstractFieldRef | Value) {
-        super();
-        this.field = field;
-    }
-
-    public getField(): AbstractFieldRef | Value {
-        return this.field;
-    }
-
-    public setField(newField: AbstractFieldRef | Value): void {
-        this.field = newField;
-    }
-
-    public getType(): Type {
-        return BooleanType.getInstance();
-    }
-
-    public getUses(): Value[] {
-        const uses: Value[] = [];
-        uses.push(this.field);
-        uses.push(...this.field.getUses());
-        return uses;
-    }
-
-    public toString(): string {
-        return 'delete[] ' + this.field;
-    }
-}
-
 export class ArkAwaitExpr extends AbstractExpr {
     private promise: Value;
 

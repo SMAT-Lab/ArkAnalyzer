@@ -50,11 +50,10 @@ std::vector<std::string> g_user_include_dirs;
 static std::string g_normMainFile;
 
 //===================Tool Functions Area===================
-json buildASTJson(CXCursor cursor, bool actionScope, std::unordered_map<std::string, std::string>& varTypeMap);
+json buildASTJson(CXCursor cursor, std::unordered_map<std::string, std::string>& varTypeMap);
 
 struct VisitContext {
     json& children;
-    bool actionScope; // Whether it is the same scope
     // Collect all parameter/variable declarations in the current scope, return name to type mapping
     std::unordered_map<std::string, std::string>& varTypeMap;
 };
@@ -96,26 +95,26 @@ static void PatchGotosInFunction(json& node, const std::unordered_map<std::strin
 }
 
 
-inline void visitAllChildren(CXCursor cursor, json& children, bool actionScope,
+inline void visitAllChildren(CXCursor cursor, json& children,
                              std::unordered_map<std::string, std::string>& varTypeMap)
 {
-    VisitContext context{children, actionScope, varTypeMap}; //  Encapsulate all parameters
+    VisitContext context{children, varTypeMap}; //  Encapsulate all parameters
 
     clang_visitChildren(
         cursor,
         [](CXCursor child, CXCursor parent, CXClientData client_data) {
             VisitContext* ctx = static_cast<VisitContext*>(client_data);
-            json childAst = buildASTJson(child, ctx->actionScope, ctx->varTypeMap);
+            json childAst = buildASTJson(child, ctx->varTypeMap);
             if (!childAst.is_null()) ctx->children.push_back(childAst);
             return CXChildVisit_Continue;
         },
         &context);
 }
 
-json visitLinkageSpec(CXCursor& cursor, bool actionScope, std::unordered_map<std::string, std::string>& varTypeMap)
+json visitLinkageSpec(CXCursor& cursor, std::unordered_map<std::string, std::string>& varTypeMap)
 {
     json children = json::array();
-    visitAllChildren(cursor, children, actionScope, varTypeMap);
+    visitAllChildren(cursor, children, varTypeMap);
     if (children.size() == 1) {
         return children[0];
     }
@@ -1377,7 +1376,7 @@ static inline bool IsFunctionCursor(CXCursorKind k)
 
 // ==========================buildASTJson Main Body========================
 
-json buildASTJson(CXCursor cursor, bool actionScope,
+json buildASTJson(CXCursor cursor,
                   std::unordered_map<std::string, std::string>& varTypeMap)
 {
     // -------- 1) Origin & kind --------
@@ -1391,7 +1390,7 @@ json buildASTJson(CXCursor cursor, bool actionScope,
     // -------- 3) Special cases (fast path) --------
     // Handle linkage specifications directly
     if (kind == CXCursor_LinkageSpec) {
-        return visitLinkageSpec(cursor, actionScope, varTypeMap);
+        return visitLinkageSpec(cursor, varTypeMap);
     }
     // -------- 4) Core node properties --------
     json node;
@@ -1415,12 +1414,6 @@ json buildASTJson(CXCursor cursor, bool actionScope,
     }
     // Fix ImplicitCastExpr (add type) / DeclRef (fallback name)
     fixImplicitCastExprAndDeclRef(node, varTypeMap);
-    // Enable actionScope when entering a function/method body
-    if (node.contains("kind") &&
-        (node["kind"] == "FunctionDecl" || node["kind"] == "CXXMethodDecl" ||
-         node["kind"] == "CXXConstructorDecl" || node["kind"] == "CXXDestructorDecl")) {
-        actionScope = true;
-    }
     // -------- 5) Early prune (opaque) --------
     // Convert large InitListExpr into opaque nodes
     if (ShouldPruneInitList(node)) {
@@ -1433,7 +1426,7 @@ json buildASTJson(CXCursor cursor, bool actionScope,
     }
     // -------- 7) Children build --------
     json children = json::array();
-    visitAllChildren(cursor, children, actionScope, varTypeMap);
+    visitAllChildren(cursor, children, varTypeMap);
     // -------- 8) Postprocess & patch --------
     nodePostprocess(node, cursor, kind, children);
     if (isFunc) {
@@ -1548,7 +1541,7 @@ json buildAndProcessAST(CXTranslationUnit unit, const CommandLineOptions& opts)
     g_normMainFile = CanonicalCached(fs::canonical(opts.inputFile).string());
     // Collect all parameter/variable declarations in current scope, return name to type mapping
     std::unordered_map<std::string, std::string> varTypeMap;
-    json ast = buildASTJson(clang_getTranslationUnitCursor(unit), false, varTypeMap);
+    json ast = buildASTJson(clang_getTranslationUnitCursor(unit), varTypeMap);
     std::cout << "[STEP] buildASTJson finished\n";
     std::string normMain = CanonicalCached(fs::canonical(opts.inputFile).string());
     CollectAndAttachHeaderUnits(ast, unit, normMain);

@@ -383,6 +383,7 @@ describe('Lazy Import Test', () => {
 describe('namespace Test', () => {
     it('case1: namespace', () => {
         const scene = buildScene('namespace');
+        scene.inferTypes();
         testBlocks(scene, 'namespace.cpp', 'Test', NAMESPACE_EXPECT.NAMESPACE_CASE1.blocks);
     });
 });
@@ -403,6 +404,11 @@ describe('using Test', () => {
     it('case4: using', () => {
         const scene = buildScene('using');
         testBlocks(scene, 'usingcase.cpp', 'TestUsingEnumMember', USING_EXPECT.USING_EXPECT_CASE4.blocks);
+    });
+    it('case5: using', () => {
+        const scene = buildScene('using');
+        scene.inferTypes();
+        testBlocks(scene, 'usingcase.cpp', 'TestNamespaceUsing', USING_EXPECT.USING_EXPECT_CASE5.blocks);
     });
 });
 

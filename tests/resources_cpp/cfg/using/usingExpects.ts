@@ -89,3 +89,19 @@ export const USING_EXPECT_CASE4 = {
         },
     ],
 };
+
+export const USING_EXPECT_CASE5 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @using/usingcase.cpp: %dflt',
+                'v = staticinvoke <@using/usingcase.cpp: ns1.%dflt.Foo()>()',
+                "staticinvoke <@%unk/%unk: .cout()>('[test_namespace_using] v = ', v)",
+                'return'
+            ],
+            preds: [],
+            succes: []
+        },
+    ],
+};

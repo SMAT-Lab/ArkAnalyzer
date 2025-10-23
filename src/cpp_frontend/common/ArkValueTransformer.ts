@@ -21,7 +21,6 @@ import {
     AbstractBinopExpr,
     ArkConditionExpr,
     ArkDeleteExpr,
-    ArkCxxDeleteArrayExpr,
     ArkInstanceInvokeExpr,
     ArkNewExpr,
     ArkNormalBinopExpr,
@@ -38,7 +37,10 @@ import {
     ArkArrayTypeTraitExpr,
     ArkNoExpectExpr,
     ArkTypeIdExpr,
-    ArkCxxNewArrayExpr, ArkCxxInitArrayExpr, ArkCxxFolderExpr,
+    ArkCxxNewArrayExpr,
+    ArkCxxInitArrayExpr,
+    ArkCxxFolderExpr,
+    ArkCxxDeleteArrayExpr,
 } from '../base/Expr';
 import {
     AnyType,
@@ -66,16 +68,25 @@ import { buildArkMethodFromArkClass, buildDefaultConstructor } from '../model/bu
 import { Builtin } from '../../core/common/Builtin';
 import { Constant, NullConstant } from '../../core/base/Constant';
 import { ArkCxxIRTransformer, ValueAndStmts } from './ArkIRTransformer';
-import { buildTypeFromPreStr, convertDataType, cxxNode2Type, isCxxFunctionPointer, isCXXSTLContainer, } from '../model/builder/builderUtils';
+import {
+    buildTypeFromPreStr,
+    convertDataType,
+    cxxNode2Type,
+    isCxxFunctionPointer,
+    isCXXSTLContainer,
+    isFuncInClassOrNamespace,
+    isFuncWithoutNamespace,
+} from '../model/builder/builderUtils';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { ArkValueTransformer } from '../../core/common/ArkValueTransformer';
 import { ModelUtils } from '../../core/common/ModelUtils';
 import { CONSTRUCTOR_NAME, THIS_NAME } from '../../core/common/TSConst';
 import { TypeInference } from './TypeInference';
 import { setTs2CxxFuncMapOfClass } from './ModelUtils';
-import { CxxAstNode, CxxTranslationUnit } from '../ast/ArkCxxAstNode';
+import { CxxAstNode, CxxTranslationUnit, CxxTypeInfo } from '../ast/ArkCxxAstNode';
 import { BinaryOperator } from '../../core/base/Expr';
 import { DummyStmt } from '../../core/common/ArkIRTransformer';
+import { BuiltinCxx } from './Builtin';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkValueTransformer');
 
@@ -172,6 +183,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         'MaterializeTemporaryExpr': this.materializeTemporaryExprToValueAndStmts,
         'MemberExpr': this.memberExpressionToValueAndStmts,
         'MemberRef': this.memberExpressionToValueAndStmts,
+        'NamespaceRef': this.cxxNamespaceRefToValueAndStmts,
         'ParenExpr': this.processInnerNodeToValueAndStmts,
         'RecoveryExpr': this.RecoverExpressionToValueAndStmts,
         'StringLiteral': this.cxxLiteralNodeToValueAndStmts,
@@ -292,6 +304,14 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         };
     }
 
+    private cxxNamespaceRefToValueAndStmts(node: CxxAstNode): ValueAndStmts {
+        return {
+            value: new Local(node.code),
+            valueOriginalPositions: [FullPosition.cxxBuildFromNode(node, this.cxxSourceFile)],
+            stmts: [],
+        };
+    }
+
     /**
      *Convert the C++construction expression node into a combination of values and statements.
      * The main scenarios are structure and class construction, STL data structure object construction, and thread object construction
@@ -381,7 +401,20 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             return this.cxxNodeToValueAndStmts(node.inner[0]);
         }
         // Handle the invocation of static members of a class, such as A::a
-        if (node.code.includes('::') && node.inner.length > 0 && node.inner[0]?.kind === 'TypeRef') {
+        if (node.code.includes('::') && node.inner.length > 0 &&
+            (node.inner[0]?.kind === 'TypeRef' || node.inner[0]?.kind === 'NamespaceRef' && node.inner[0]?.name !== BuiltinCxx.CXXSTD)) {
+            return this.staticMemberExprToValueAndStmts(node);
+        }
+        // Handle the scenario:  namespace xxx { Func() {} }; using namespace xxx;   Func();
+        if (isFuncWithoutNamespace(node)) {
+            const innerNsNode = {
+                kind: 'NamespaceRef',
+                name: node.referencedDecl!.scope,
+                code: node.referencedDecl!.scope,
+                inner: [],
+                type: { qualType: '' } as CxxTypeInfo,
+            } as CxxAstNode;
+            node.inner.unshift(innerNsNode);
             return this.staticMemberExprToValueAndStmts(node);
         }
         return this.cxxIdentifierToValueAndStmts(node);
@@ -1148,6 +1181,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
                 return this.cxxCallExpressionToValueAndStmts(callExpression.inner[0]);
             } else if (callExpression.name === 'basic_string' || callExpression.inner[0].kind === 'MaterializeTemporaryExpr') {
                 return this.cxxNodeToValueAndStmts(callExpression.inner[0]);
+            } else if (isFuncInClassOrNamespace(callExpression)) {
+                return this.cxxMemberCallExpressionToValueAndStmts(callExpression);
             }
         }
 
@@ -1806,12 +1841,22 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
                 realGenericTypes!.push(this.cxxResolveTypeNode(undefined, typeArgument));
             });
         }
-        let curClass = this.declaringMethod.getDeclaringArkFile().getClassWithName(className);
-        let classSignature = curClass ? curClass.getSignature() : ArkSignatureBuilder.buildClassSignatureFromClassName(className);
-        let classType = new ClassType(classSignature, realGenericTypes);
-        if (className === Builtin.OBJECT) {
-            classSignature = Builtin.OBJECT_CLASS_SIGNATURE;
-            classType = Builtin.OBJECT_CLASS_TYPE;
+        // Handle the scenarios of namespace::Member and class::member
+        const parentClassOrNs = newExpression.getParent?.(true).inner.filter(
+            inn => ['TypeRef', 'NamespaceRef'].includes(inn.kind));
+        let refType: Type | null = null;
+        if (parentClassOrNs) {
+            refType = TypeInference.inferUnclearRefName(className, this.declaringMethod.getDeclaringArkClass());
+        }
+        let classType: ClassType;
+        let classSignature: ClassSignature;
+        if (refType instanceof ClassType) {
+            classType = refType;
+            classSignature = classType.getClassSignature();
+        } else {
+            let curClass = this.declaringMethod.getDeclaringArkFile().getClassWithName(className);
+            classSignature = curClass ? curClass.getSignature() : ArkSignatureBuilder.buildClassSignatureFromClassName(className);
+            classType = new ClassType(classSignature, realGenericTypes);
         }
         const newExpr = new ArkNewExpr(classType);
         const {value: newLocal, valueOriginalPositions: newLocalPositions, stmts: newExprStmts, } =
@@ -2690,18 +2735,18 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
                 return new ArrayType(new UnclearReferenceType(qualType.slice(0, qualType.indexOf('['))), count);
             }
             return new ArrayType(baseType, count);
-        } else if (qualType.startsWith('std::')) {
+        } else if (qualType.startsWith(BuiltinCxx.CXXSTDREF)) {
             const match = /std::(\w+)/g.exec(qualType); // Handle standard library container types
             const containerName = match ? match[1] : null;
             if (containerName && convertDataType(containerName) === 'unsupported' && this.isCxxStdContainer(containerName)) {
-                const fileSignature = new FileSignature('std', containerName + '.h');
+                const fileSignature = new FileSignature(BuiltinCxx.CXXSTD, containerName + '.h');
                 const classSignature = new ClassSignature(containerName, fileSignature);
                 return new ClassType(classSignature);
             } else if (containerName === 'thread') {
                 return new Thread();
             }
-        } else if (qualType === 'std' && node && node.kind === 'NamespaceRef') {
-            const fileSignature = new FileSignature('std', 'iostream.h');
+        } else if (qualType === BuiltinCxx.CXXSTD && node && node.kind === 'NamespaceRef') {
+            const fileSignature = new FileSignature(BuiltinCxx.CXXSTD, 'iostream.h');
             const classSignature = new ClassSignature('iostream', fileSignature);
             return new ClassType(classSignature);
         } else if (qualType.includes('vector')) {
