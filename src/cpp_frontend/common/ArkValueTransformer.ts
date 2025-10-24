@@ -1060,7 +1060,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         // [Scenario 1] Process this ->field or this ->method calls in C++code
         // If it's a class member reference (MemberExpr/MemberRef) but has no inner[0], it means implicit this, need to supplement this node
         if ((memberExpression.kind === 'MemberExpr' || memberExpression.kind === 'MemberRef') && memberExpression.inner[0] === undefined) {
-            let node = memberExpression;
+            let node: CxxAstNode = {...memberExpression};
             node.kind = 'CXXThisExpr'; // Convert to explicit this pointer
             memberExpression.inner[0] = node; //  As base node
         }
