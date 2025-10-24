@@ -1066,7 +1066,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         // If it's a class member reference (MemberExpr/MemberRef) but has no inner[0], it means implicit this, need to supplement this node
         if ((memberExpression.kind === 'MemberExpr' || memberExpression.kind === 'MemberRef') && memberExpression.inner[0] === undefined) {
             memberExpression.inner[0] = {
-                kind: 'CXXThisExpr',  // Convert to explicit this pointer
+                kind: 'CXXThisExpr', // Convert to explicit this pointer
                 name: memberExpression.name,
                 code: '',
                 type: { qualType: 'void' },
@@ -1079,11 +1079,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         // [Scenario 3] Processing chained member access, such as a.b.c or (* ptr). field
         // If the base is a member access, generate an assignment statement to ensure the validity of SSA
         if (memberExpression.inner[0].kind === 'MemberExpr' || memberExpression.kind === 'MemberRef') {
-            ({
-                value: baseValue,
-                valueOriginalPositions: basePositions,
-                stmts: baseStmts,
-            } = this.ArkCxxIRTransformer.generateAssignStmtForValue(baseValue, basePositions));
+            ({ value: baseValue, valueOriginalPositions: basePositions, stmts: baseStmts, } =
+                this.ArkCxxIRTransformer.generateAssignStmtForValue(baseValue, basePositions));
         }
         // [Scenario 4] On special occasions, the caller directly specifies the baseValue (generally used to replace the base,
         // such as virtual members, generics, etc.)

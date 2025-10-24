@@ -94,12 +94,10 @@ static void PatchGotosInFunction(json& node, const std::unordered_map<std::strin
     }
 }
 
-
 inline void visitAllChildren(CXCursor cursor, json& children,
                              std::unordered_map<std::string, std::string>& varTypeMap)
 {
     VisitContext context{children, varTypeMap}; //  Encapsulate all parameters
-
     clang_visitChildren(
         cursor,
         [](CXCursor child, CXCursor parent, CXClientData client_data) {

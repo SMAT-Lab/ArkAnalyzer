@@ -406,38 +406,62 @@ void RewriteTypeAliasTemplateArgs(json& typeAliasDecl, json& children)
     children.swap(newChildren);
 }
 
-// Merge the std of namespace and the T of typename into the name attribute of aliasTemplateDecl,
-// The source code scenario is as follows:
-// template<typename T>
-// using MyMap = std::map<int, T>;
+// Merge NamespaceRef and TemplateRef nodes under a TypeAliasDecl to form a combined display name.
+// For example:
+//   template<typename T>
+//   using MyMap = std::map<int, T>;
+// will be represented as:
+//   TemplateRef(name="std::map<int, T>"), BuiltinType(name="int"), TypeRef(name="T")
 void mergeTypeAliasDeclChild(json& newChildren, json& children, json& parent)
 {
+    newChildren = json::array();
     bool existNamespace = false;
-    std::string templateName = "";
-    for (int i = 0; i < children.size(); i++) {
-        if (children[i]["kind"] == "NamespaceRef") {
+    int nsIdx  = -1;  // Index of NamespaceRef in 'children'
+    int tplIdx = -1;  // Index of TemplateRef in 'children'
+    int tplOutIdx = -1; // Index of TemplateRef in 'newChildren'
+    for (int i = 0; i < static_cast<int>(children.size()); ++i) {
+        const std::string k = children[i].value("kind", "");
+        if (!existNamespace && k == "NamespaceRef") {
+            // Record the position of the namespace but don't push it into newChildren.
+            // Its name will later be concatenated into the TemplateRef display name.
             existNamespace = true;
+            nsIdx = i;
+            continue;  // Skip adding NamespaceRef to newChildren
+        }
+        if (existNamespace && tplIdx < 0 && k == "TemplateRef") {
+            // First TemplateRef encountered after a NamespaceRef:
+            // record its positions in both the old and new containers.
+            tplIdx = i;
+            newChildren.push_back(children[i]);  // Temporarily push; will update name/code later.
+            tplOutIdx = static_cast<int>(newChildren.size()) - 1;
             continue;
         }
-        if (existNamespace && children[i]["kind"] == "TemplateRef") {
-            std::string namespaceStr = children[i - 1]["name"]; // get name of NamespaceRef node
-            std::string templateStr = children[i]["name"];
-            templateName = namespaceStr + "::" + templateStr + "<";
-            newChildren.push_back(children[i]);
-            continue;
-        }
-        if (existNamespace) {
-            templateName += children[i]["name"];
-            if (i < children.size() - 1) {
-                templateName += ", ";
-            }
-            continue;
-        }
+        // For all other nodes (including template arguments or cases without namespace),
+        // retain them as-is in newChildren.
         newChildren.push_back(children[i]);
     }
-    if (existNamespace) {
-        newChildren[0]["name"] = templateName + ">";
-        newChildren[0]["code"] = templateName + ">";
+    // If pattern "NamespaceRef + TemplateRef<args...>" is found,
+    // update TemplateRef's display name while keeping argument nodes intact.
+    if (existNamespace && tplIdx >= 0 && tplOutIdx >= 0) {
+        const std::string nsName = children[nsIdx].value("name", "");
+        std::string tplName = children[tplIdx].value("name", "");
+        // Collect the display names of template arguments (following the TemplateRef),
+        // but do NOT remove those nodes from newChildren.
+        std::string argList;
+        for (int i = tplIdx + 1; i < static_cast<int>(children.size()); ++i) {
+            if (!argList.empty()) {
+                argList += ", ";
+            }
+            argList += children[i].value("name", "");
+        }
+        // Compose the combined name like "std::vector<int, T>".
+        // If there are no template arguments, the result is simply "ns::name".
+        std::string combined = nsName.empty() ? tplName : (nsName + "::" + tplName);
+        if (!argList.empty()) {
+            combined += "<" + argList + ">";
+        }
+        newChildren[tplOutIdx]["name"] = combined;
+        newChildren[tplOutIdx]["code"] = combined;
     }
 }
 
@@ -511,6 +535,60 @@ bool LooksLikeParenInitNode(const json& n)
     return false;
 }
 
+/**
+ * Scenario: Default construction of an alias / template-alias variable is
+ *           misparsed as a CallExpr on the variable name itself.
+ * Typical source patterns:
+ *   using MyMap = std::map<int, T>;
+ *   ...
+ *   MyMap<float> m;         // default construction
+ * Mis-shaped AST shape we want to fix (VarDecl inner):
+ *   inn[0] = TemplateRef / TypeRef / ElaboratedType   // the alias/type side
+ *   inn[1] = CallExpr { code: "m", inner: [] }        // looks like calling the var
+ * What this pass does:
+ *   If the shape matches (type-ish first child, then a CallExpr whose code equals
+ *   the variable name and has no arguments), and the declared type is not a
+ *   reference/array/function, we rewrite inn[1] to: kind": "CXXConstructExpr",
+ */
+static bool RewriteAliasDefaultCtorCall(json& inn,
+                                        const std::string& varName,
+                                        const std::string& qt)
+{
+    auto kind0 = inn[0].value("kind", "");
+    auto kind1 = inn[1].value("kind", "");
+    const bool k0Typeish = (kind0 == "TemplateRef" || kind0 == "TypeRef" || kind0 == "ElaboratedType");
+    const bool k1Call = (kind1 == "CallExpr");
+    const std::string callCode = inn[1].value("code", "");
+    const bool noArgs = (!inn[1].contains("inner") || !inn[1]["inner"].is_array() || inn[1]["inner"].empty());
+    if (k0Typeish && k1Call && !varName.empty() && callCode == varName && noArgs) {
+        // exclude ref/array/function types
+        auto ends_with = [](const std::string& s, const char* suf) {
+            const size_t n = std::strlen(suf);
+            return s.size() >= n && s.compare(s.size() - n, n, suf) == 0;
+        };
+        if (!ends_with(qt, "&") && !ends_with(qt, "&&") &&
+            qt.find('[') == std::string::npos && qt.find('(') == std::string::npos)
+        {
+            json ctor
+            = {
+                {"kind", "CXXConstructExpr"},
+                {"name", ShortTypeNameFromQual(qt)},
+                {"type", {{"qualType", qt}}},
+                {"valueCategory", "prvalue"},
+                {"inner", json::array()},
+                {"code",  ShortTypeNameFromQual(qt) + "()"},
+                {"isImplicit", true}
+            };
+            if (inn[1].contains("range")) {
+                ctor["range"] = inn[1]["range"];
+            }
+            inn[1] = std::move(ctor);
+            return true;
+        }
+    }
+    return false;
+}
+
 // ---- Restore parenthesized initialization in VarDecl to CXXConstructExpr ----
 void RecoverCtorForVarDecl(json& varDecl)
 {
@@ -526,15 +604,17 @@ void RecoverCtorForVarDecl(json& varDecl)
     }
     const std::string qt  = varDecl["type"].value("qualType", "");
     const std::string viC = inn[1].value("code", "");
-
+    const std::string varName = varDecl.value("name", "");
     if (!IsClassLikeQualType(qt)) {
+        return;
+    }
+    if (RewriteAliasDefaultCtorCall(inn, varName, qt)) {
         return;
     }
     // If the code may include surrounding whitespace, TrimView before checking parentheses.
     if (!IsParenWrapped(TrimView(viC))) {
         return;
     }
-
     json ctor = {
         {"kind", "CXXConstructExpr"},
         {"name", ShortTypeNameFromQual(qt)},
@@ -1349,7 +1429,7 @@ static inline bool KindIn(const json& n, std::initializer_list<std::string_view>
 static std::string SimpleName(std::string s)
 {
     // Remove leading qualifiers/keywords
-    auto strip = [&](std::string_view p){
+    auto strip = [&s](std::string_view p) {
         if (s.rfind(p, 0) == 0) {
             s.erase(0, p.size());
         }
@@ -1407,7 +1487,7 @@ static bool IsInheritedCtorUsing(const json& node, const json& children)
     // Extract the identifier after '::' (until semicolon, space, or bracket)
     std::string rhs = code.substr(pos + TWO);
     size_t i = 0;
-    while (i < rhs.size() && (std::isalnum((unsigned char)rhs[i]) || rhs[i] == '_')) {
+    while (i < rhs.size() && (std::isalnum(static_cast<unsigned char>(rhs[i])) || rhs[i] == '_')) {
         ++i;
     }
     rhs = rhs.substr(0, i);
