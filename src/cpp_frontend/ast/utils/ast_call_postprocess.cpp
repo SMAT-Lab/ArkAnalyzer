@@ -1345,19 +1345,98 @@ static inline bool KindIn(const json& n, std::initializer_list<std::string_view>
     return false;
 }
 
-// Determine if it is an inherited parent class constructor
-bool isUsingInheritClass(json& node, json& children, const std::map<std::string, json>& derivedDataTypeMap)
+// Helper: extract a simple name (strip namespaces, leading keywords, and template arguments)
+static std::string SimpleName(std::string s)
 {
-    if (children.size() == 0) {
+    // Remove leading qualifiers/keywords
+    auto strip = [&](std::string_view p){
+        if (s.rfind(p, 0) == 0) {
+            s.erase(0, p.size());
+        }
+    };
+    strip("struct ");
+    strip("class ");
+    strip("const ");
+    strip("volatile ");
+    // Remove template arguments
+    auto lt = s.find('<');
+    if (lt != std::string::npos) {
+        s.erase(lt);
+    }
+    // Keep the token after the last '::'
+    auto pos = s.rfind("::");
+    if (pos != std::string::npos) {
+        s = s.substr(pos + TWO);
+    }
+    Trim(s);
+    return s;
+}
+
+/**
+ * @brief Determine whether a `using` declaration represents an inherited constructor.
+ * Identification rules (tightened version)
+ * 1) Parse the right-hand identifier `X` from the `using` declaration source/name (`using A::X;`).
+ * 2) Extract the base class simple name `A` from the first `TypeRef` or from the left-hand text.
+ * 3) Only if `X == A` (after removing namespace prefixes, struct/class keywords, and template
+ *    arguments) is the declaration considered an *inherited constructor* (`using Base::Base;`);
+ *    otherwise, it remains a normal `using` declaration.
+ * Coverage and exclusion
+ * Correctly recognized as inherited constructor (`CXXConstructorDecl`):
+ *   - `struct D : B { using B::B; };`
+ *   - `struct D : ns::B { using ns::B::B; };`          (namespaces supported)
+ *   - `struct D : B<T> { using B<T>::B; };`            (template base/alias supported)
+ *
+ * Explicitly excluded (remain `UsingDecl`):
+ *   - `using Base::Foo;` / `using Base::bar;`          → importing members/overloads, not constructors
+ *   - `using std::vector<T>::value_type;`              → any non-constructor `using` declaration
+ */
+static bool IsInheritedCtorUsing(const json& node, const json& children)
+{
+    if (!node.contains("code") && !node.contains("name")) {
         return false;
     }
-    if (children[0]["kind"] == "TypeRef" && children[0].contains("type")) {
-        std::string type = children[0]["type"].value("qualType", "");
-        if (derivedDataTypeMap.count(type)) {
-            return true;
+    std::string code = node.value("code", node.value("name", ""));
+    if (code.empty()) {
+        return false;
+    }
+    // Locate the right-hand identifier in `using A::B;`
+    auto pos = code.find("::");
+    if (pos == std::string::npos) {
+        return false;
+    }
+    // Extract the identifier after '::' (until semicolon, space, or bracket)
+    std::string rhs = code.substr(pos + TWO);
+    size_t i = 0;
+    while (i < rhs.size() && (std::isalnum((unsigned char)rhs[i]) || rhs[i] == '_')) {
+        ++i;
+    }
+    rhs = rhs.substr(0, i);
+    rhs = SimpleName(rhs);
+    if (rhs.empty()) {
+        return false;
+    }
+    // Determine base class name — prefer children[0].type.qualType, otherwise fallback to code
+    std::string baseName;
+    if (children.is_array() && !children.empty() && children[0].value("kind", "") == "TypeRef") {
+        baseName = SimpleName(children[0]["type"].value("qualType", ""));
+        if (baseName.empty()) {
+            baseName = SimpleName(children[0].value("name", ""));
         }
     }
-    return false;
+    if (baseName.empty()) {
+        // Fallback: derive from left-hand part of `using A::B;`
+        std::string lhs = code.substr(code.find("using") + FIVE);
+        Trim(lhs);
+        auto c2 = lhs.find("::");
+        if (c2 != std::string::npos) {
+            baseName = SimpleName(lhs.substr(0, c2));
+        }
+    }
+    if (baseName.empty()) {
+        return false;
+    }
+    // Only if the right-hand identifier exactly matches the base class simple name it as an inherited constructor.
+    return rhs == baseName;
 }
 
 std::string getMemberInClassName(CXCursor cursor)
@@ -1380,7 +1459,7 @@ void phasePreNormalize(json& node,
         TryNormalizeDecompositionDecl(node, children, derivedDataTypeMap);
     }
     // Using-declaration for inherited constructors -> constructor declaration
-    if (KindIs(node, "UsingDecl") && isUsingInheritClass(node, children, derivedDataTypeMap)) {
+    if (KindIs(node, "UsingDecl") && IsInheritedCtorUsing(node, children)) {
         node["kind"] = "CXXConstructorDecl";
         node["mangledName"] = getMemberInClassName(cursor);
     }

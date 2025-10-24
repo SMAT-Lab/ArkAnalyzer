@@ -580,21 +580,6 @@ void fixImplicitCastExprAndDeclRef(json &node, const std::unordered_map<std::str
 // Cache all classes, structs
 std::map<std::string, json> derivedDataTypeMap;
 
-// Determine if it is an inherited parent class constructor
-bool isUsingInheritClass(json& node, json& children)
-{
-    if (children.size() == 0) {
-        return false;
-    }
-    if (children[0]["kind"] == "TypeRef" && children[0].contains("type")) {
-        std::string type = children[0]["type"].value("qualType", "");
-        if (derivedDataTypeMap.count(type)) {
-            return true;
-        }
-    }
-    return false;
-}
-
 std::vector<CXCursorKind> locCursorKind = {CXCursor_FunctionDecl, CXCursor_ClassDecl, CXCursor_Destructor,
                                            CXCursor_TemplateTypeParameter, CXCursor_StructDecl, CXCursor_UnionDecl,
                                            CXCursor_VarDecl, CXCursor_EnumDecl, CXCursor_ClassTemplate,
