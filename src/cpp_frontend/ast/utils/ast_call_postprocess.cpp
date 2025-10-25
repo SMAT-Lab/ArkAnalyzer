@@ -406,38 +406,59 @@ void RewriteTypeAliasTemplateArgs(json& typeAliasDecl, json& children)
     children.swap(newChildren);
 }
 
-// Merge the std of namespace and the T of typename into the name attribute of aliasTemplateDecl,
-// The source code scenario is as follows:
-// template<typename T>
-// using MyMap = std::map<int, T>;
+// Merge NamespaceRef and TemplateRef nodes under a TypeAliasDecl to form a combined display name.
+// In this example template<typename T> using MyMap = std::map<int, T>; will be
+// represented as: emplateRef(name="std::map<int, T>"), BuiltinType(name="int"), TypeRef(name="T")
 void mergeTypeAliasDeclChild(json& newChildren, json& children, json& parent)
 {
+    newChildren = json::array();
     bool existNamespace = false;
-    std::string templateName = "";
-    for (int i = 0; i < children.size(); i++) {
-        if (children[i]["kind"] == "NamespaceRef") {
+    int nsIdx  = -1;  // Index of NamespaceRef in 'children'
+    int tplIdx = -1;  // Index of TemplateRef in 'children'
+    int tplOutIdx = -1; // Index of TemplateRef in 'newChildren'
+    for (int i = 0; i < static_cast<int>(children.size()); ++i) {
+        const std::string k = children[i].value("kind", "");
+        if (!existNamespace && k == "NamespaceRef") {
+            // Record the position of the namespace but don't push it into newChildren.
+            // Its name will later be concatenated into the TemplateRef display name.
             existNamespace = true;
+            nsIdx = i;
+            continue;  // Skip adding NamespaceRef to newChildren
+        }
+        if (existNamespace && tplIdx < 0 && k == "TemplateRef") {
+            // First TemplateRef encountered after a NamespaceRef:
+            // record its positions in both the old and new containers.
+            tplIdx = i;
+            newChildren.push_back(children[i]);  // Temporarily push; will update name/code later.
+            tplOutIdx = static_cast<int>(newChildren.size()) - 1;
             continue;
         }
-        if (existNamespace && children[i]["kind"] == "TemplateRef") {
-            std::string namespaceStr = children[i - 1]["name"]; // get name of NamespaceRef node
-            std::string templateStr = children[i]["name"];
-            templateName = namespaceStr + "::" + templateStr + "<";
-            newChildren.push_back(children[i]);
-            continue;
-        }
-        if (existNamespace) {
-            templateName += children[i]["name"];
-            if (i < children.size() - 1) {
-                templateName += ", ";
-            }
-            continue;
-        }
+        // For all other nodes (including template arguments or cases without namespace),
+        // retain them as-is in newChildren.
         newChildren.push_back(children[i]);
     }
-    if (existNamespace) {
-        newChildren[0]["name"] = templateName + ">";
-        newChildren[0]["code"] = templateName + ">";
+    // If pattern "NamespaceRef + TemplateRef<args...>" is found,
+    // update TemplateRef's display name while keeping argument nodes intact.
+    if (existNamespace && tplIdx >= 0 && tplOutIdx >= 0) {
+        const std::string nsName = children[nsIdx].value("name", "");
+        std::string tplName = children[tplIdx].value("name", "");
+        // Collect the display names of template arguments (following the TemplateRef),
+        // but do NOT remove those nodes from newChildren.
+        std::string argList;
+        for (int i = tplIdx + 1; i < static_cast<int>(children.size()); ++i) {
+            if (!argList.empty()) {
+                argList += ", ";
+            }
+            argList += children[i].value("name", "");
+        }
+        // Compose the combined name like "std::vector<int, T>".
+        // If there are no template arguments, the result is simply "ns::name".
+        std::string combined = nsName.empty() ? tplName : (nsName + "::" + tplName);
+        if (!argList.empty()) {
+            combined += "<" + argList + ">";
+        }
+        newChildren[tplOutIdx]["name"] = combined;
+        newChildren[tplOutIdx]["code"] = combined;
     }
 }
 
@@ -511,6 +532,59 @@ bool LooksLikeParenInitNode(const json& n)
     return false;
 }
 
+/**
+ * Scenario: Default construction of an alias / template-alias variable is
+ *           misparsed as a CallExpr on the variable name itself.
+ * Typical source patterns:
+ *   using MyMap = std::map<int, T>;
+ *   ...
+ *   MyMap<float> m;         // default construction
+ * Mis-shaped AST shape we want to fix (VarDecl inner):
+ *   inn[0] = TemplateRef / TypeRef / ElaboratedType   // the alias/type side
+ *   inn[1] = CallExpr { code: "m", inner: [] }        // looks like calling the var
+ * What this pass does:
+ *   If the shape matches (type-ish first child, then a CallExpr whose code equals
+ *   the variable name and has no arguments), and the declared type is not a
+ *   reference/array/function, we rewrite inn[1] to: kind": "CXXConstructExpr",
+ */
+static bool RewriteAliasDefaultCtorCall(json& inn,
+                                        const std::string& varName,
+                                        const std::string& qt)
+{
+    auto kind0 = inn[0].value("kind", "");
+    auto kind1 = inn[1].value("kind", "");
+    const bool k0Typeish = (kind0 == "TemplateRef" || kind0 == "TypeRef" || kind0 == "ElaboratedType");
+    const bool k1Call = (kind1 == "CallExpr");
+    const std::string callCode = inn[1].value("code", "");
+    const bool noArgs = (!inn[1].contains("inner") || !inn[1]["inner"].is_array() || inn[1]["inner"].empty());
+    if (k0Typeish && k1Call && !varName.empty() && callCode == varName && noArgs) {
+        // exclude ref/array/function types
+        auto endsWith = [](const std::string& s, const char* suf) {
+            const size_t n = std::strlen(suf);
+            return s.size() >= n && s.compare(s.size() - n, n, suf) == 0;
+        };
+        if (!endsWith(qt, "&") && !endsWith(qt, "&&") && qt.find('[') ==
+            std::string::npos && qt.find('(') == std::string::npos) {
+            json ctor
+            = {
+                {"kind", "CXXConstructExpr"},
+                {"name", ShortTypeNameFromQual(qt)},
+                {"type", {{"qualType", qt}}},
+                {"valueCategory", "prvalue"},
+                {"inner", json::array()},
+                {"code",  ShortTypeNameFromQual(qt) + "()"},
+                {"isImplicit", true}
+            };
+            if (inn[1].contains("range")) {
+                ctor["range"] = inn[1]["range"];
+            }
+            inn[1] = std::move(ctor);
+            return true;
+        }
+    }
+    return false;
+}
+
 // ---- Restore parenthesized initialization in VarDecl to CXXConstructExpr ----
 void RecoverCtorForVarDecl(json& varDecl)
 {
@@ -526,15 +600,17 @@ void RecoverCtorForVarDecl(json& varDecl)
     }
     const std::string qt  = varDecl["type"].value("qualType", "");
     const std::string viC = inn[1].value("code", "");
-
+    const std::string varName = varDecl.value("name", "");
     if (!IsClassLikeQualType(qt)) {
+        return;
+    }
+    if (RewriteAliasDefaultCtorCall(inn, varName, qt)) {
         return;
     }
     // If the code may include surrounding whitespace, TrimView before checking parentheses.
     if (!IsParenWrapped(TrimView(viC))) {
         return;
     }
-
     json ctor = {
         {"kind", "CXXConstructExpr"},
         {"name", ShortTypeNameFromQual(qt)},
@@ -1345,19 +1421,98 @@ static inline bool KindIn(const json& n, std::initializer_list<std::string_view>
     return false;
 }
 
-// Determine if it is an inherited parent class constructor
-bool isUsingInheritClass(json& node, json& children, const std::map<std::string, json>& derivedDataTypeMap)
+// Helper: extract a simple name (strip namespaces, leading keywords, and template arguments)
+static std::string SimpleName(std::string s)
 {
-    if (children.size() == 0) {
+    // Remove leading qualifiers/keywords
+    auto strip = [&s](std::string_view p) {
+        if (s.rfind(p, 0) == 0) {
+            s.erase(0, p.size());
+        }
+    };
+    strip("struct ");
+    strip("class ");
+    strip("const ");
+    strip("volatile ");
+    // Remove template arguments
+    auto lt = s.find('<');
+    if (lt != std::string::npos) {
+        s.erase(lt);
+    }
+    // Keep the token after the last '::'
+    auto pos = s.rfind("::");
+    if (pos != std::string::npos) {
+        s = s.substr(pos + TWO);
+    }
+    Trim(s);
+    return s;
+}
+
+/**
+ * @brief Determine whether a `using` declaration represents an inherited constructor.
+ * Identification rules (tightened version)
+ * 1) Parse the right-hand identifier `X` from the `using` declaration source/name (`using A::X;`).
+ * 2) Extract the base class simple name `A` from the first `TypeRef` or from the left-hand text.
+ * 3) Only if `X == A` (after removing namespace prefixes, struct/class keywords, and template
+ *    arguments) is the declaration considered an *inherited constructor* (`using Base::Base;`);
+ *    otherwise, it remains a normal `using` declaration.
+ * Coverage and exclusion
+ * Correctly recognized as inherited constructor (`CXXConstructorDecl`):
+ *   - `struct D : B { using B::B; };`
+ *   - `struct D : ns::B { using ns::B::B; };`          (namespaces supported)
+ *   - `struct D : B<T> { using B<T>::B; };`            (template base/alias supported)
+ *
+ * Explicitly excluded (remain `UsingDecl`):
+ *   - `using Base::Foo;` / `using Base::bar;`          → importing members/overloads, not constructors
+ *   - `using std::vector<T>::value_type;`              → any non-constructor `using` declaration
+ */
+static bool IsInheritedCtorUsing(const json& node, const json& children)
+{
+    if (!node.contains("code") && !node.contains("name")) {
         return false;
     }
-    if (children[0]["kind"] == "TypeRef" && children[0].contains("type")) {
-        std::string type = children[0]["type"].value("qualType", "");
-        if (derivedDataTypeMap.count(type)) {
-            return true;
+    std::string code = node.value("code", node.value("name", ""));
+    if (code.empty()) {
+        return false;
+    }
+    // Locate the right-hand identifier in `using A::B;`
+    auto pos = code.find("::");
+    if (pos == std::string::npos) {
+        return false;
+    }
+    // Extract the identifier after '::' (until semicolon, space, or bracket)
+    std::string rhs = code.substr(pos + TWO);
+    size_t i = 0;
+    while (i < rhs.size() && (std::isalnum(static_cast<unsigned char>(rhs[i])) || rhs[i] == '_')) {
+        ++i;
+    }
+    rhs = rhs.substr(0, i);
+    rhs = SimpleName(rhs);
+    if (rhs.empty()) {
+        return false;
+    }
+    // Determine base class name — prefer children[0].type.qualType, otherwise fallback to code
+    std::string baseName;
+    if (children.is_array() && !children.empty() && children[0].value("kind", "") == "TypeRef") {
+        baseName = SimpleName(children[0]["type"].value("qualType", ""));
+        if (baseName.empty()) {
+            baseName = SimpleName(children[0].value("name", ""));
         }
     }
-    return false;
+    if (baseName.empty()) {
+        // Fallback: derive from left-hand part of `using A::B;`
+        std::string lhs = code.substr(code.find("using") + FIVE);
+        Trim(lhs);
+        auto c2 = lhs.find("::");
+        if (c2 != std::string::npos) {
+            baseName = SimpleName(lhs.substr(0, c2));
+        }
+    }
+    if (baseName.empty()) {
+        return false;
+    }
+    // Only if the right-hand identifier exactly matches the base class simple name it as an inherited constructor.
+    return rhs == baseName;
 }
 
 std::string getMemberInClassName(CXCursor cursor)
@@ -1380,7 +1535,7 @@ void phasePreNormalize(json& node,
         TryNormalizeDecompositionDecl(node, children, derivedDataTypeMap);
     }
     // Using-declaration for inherited constructors -> constructor declaration
-    if (KindIs(node, "UsingDecl") && isUsingInheritClass(node, children, derivedDataTypeMap)) {
+    if (KindIs(node, "UsingDecl") && IsInheritedCtorUsing(node, children)) {
         node["kind"] = "CXXConstructorDecl";
         node["mangledName"] = getMemberInClassName(cursor);
     }

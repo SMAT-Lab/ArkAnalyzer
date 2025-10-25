@@ -19,6 +19,7 @@ import { FullPosition } from '../../core/base/Position';
 import { ArkAssignStmt, ArkIfStmt, ArkInvokeStmt, Stmt } from '../../core/base/Stmt';
 import {
     AbstractBinopExpr,
+    AbstractInvokeExpr,
     ArkConditionExpr,
     ArkDeleteExpr,
     ArkInstanceInvokeExpr,
@@ -27,22 +28,23 @@ import {
     ArkPtrInvokeExpr,
     ArkStaticInvokeExpr,
     ArkUnopExpr,
+    BinaryOperator,
     NormalBinaryOperator,
     RelationalBinaryOperator,
-    AbstractInvokeExpr,
 } from '../../core/base/Expr';
 import {
-    ArkSizeOfExpr,
-    ArkCxxCastExpr,
     ArkArrayTypeTraitExpr,
-    ArkNoExpectExpr,
-    ArkTypeIdExpr,
-    ArkCxxNewArrayExpr,
-    ArkCxxInitArrayExpr,
-    ArkCxxFolderExpr,
+    ArkCxxCastExpr,
     ArkCxxDeleteArrayExpr,
+    ArkCxxFolderExpr,
+    ArkCxxInitArrayExpr,
+    ArkCxxNewArrayExpr,
+    ArkNoExpectExpr,
+    ArkSizeOfExpr,
+    ArkTypeIdExpr,
 } from '../base/Expr';
 import {
+    AliasType,
     AnyType,
     ArrayType,
     ClassType,
@@ -52,13 +54,17 @@ import {
     UnclearReferenceType,
     UndefinedType,
     UnknownType,
-    AliasType,
 } from '../../core/base/Type';
 import { PointerType, ReferenceType, SmartPointerType, Thread } from '../base/Type';
 import { ArkSignatureBuilder } from '../../core/model/builder/ArkSignatureBuilder';
-import { ClassSignature, FieldSignature, MethodSignature, FileSignature } from '../../core/model/ArkSignature';
+import { ClassSignature, FieldSignature, FileSignature, MethodSignature } from '../../core/model/ArkSignature';
 import { Value } from '../../core/base/Value';
-import { COMPONENT_CREATE_FUNCTION, COMPONENT_CUSTOMVIEW, COMPONENT_FOR_EACH, COMPONENT_LAZY_FOR_EACH } from '../../core/common/EtsConst';
+import {
+    COMPONENT_CREATE_FUNCTION,
+    COMPONENT_CUSTOMVIEW,
+    COMPONENT_FOR_EACH,
+    COMPONENT_LAZY_FOR_EACH,
+} from '../../core/common/EtsConst';
 import { CxxValueUtil } from './ValueUtil';
 import { IRUtils } from './IRUtils';
 import { AbstractFieldRef, ArkArrayRef, ArkInstanceFieldRef } from '../../core/base/Ref';
@@ -84,7 +90,6 @@ import { CONSTRUCTOR_NAME, THIS_NAME } from '../../core/common/TSConst';
 import { TypeInference } from './TypeInference';
 import { setTs2CxxFuncMapOfClass } from './ModelUtils';
 import { CxxAstNode, CxxTranslationUnit, CxxTypeInfo } from '../ast/ArkCxxAstNode';
-import { BinaryOperator } from '../../core/base/Expr';
 import { DummyStmt } from '../../core/common/ArkIRTransformer';
 import { BuiltinCxx } from './Builtin';
 
@@ -1060,9 +1065,13 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         // [Scenario 1] Process this ->field or this ->method calls in C++code
         // If it's a class member reference (MemberExpr/MemberRef) but has no inner[0], it means implicit this, need to supplement this node
         if ((memberExpression.kind === 'MemberExpr' || memberExpression.kind === 'MemberRef') && memberExpression.inner[0] === undefined) {
-            let node = memberExpression;
-            node.kind = 'CXXThisExpr'; // Convert to explicit this pointer
-            memberExpression.inner[0] = node; //  As base node
+            memberExpression.inner[0] = {
+                kind: 'CXXThisExpr', // Convert to explicit this pointer
+                name: memberExpression.name,
+                code: '',
+                type: { qualType: 'void' },
+                inner: []
+            }; //  As base node
         }
         // [Scenario 2] Recursively process base object, such as testMap in testMap.insert
         //  Get baseValue (e.g., testMap), position information, and possible preceding statements (e.g., auto tmp = ...;)
@@ -1070,11 +1079,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         // [Scenario 3] Processing chained member access, such as a.b.c or (* ptr). field
         // If the base is a member access, generate an assignment statement to ensure the validity of SSA
         if (memberExpression.inner[0].kind === 'MemberExpr' || memberExpression.kind === 'MemberRef') {
-            ({
-                value: baseValue,
-                valueOriginalPositions: basePositions,
-                stmts: baseStmts,
-            } = this.ArkCxxIRTransformer.generateAssignStmtForValue(baseValue, basePositions));
+            ({ value: baseValue, valueOriginalPositions: basePositions, stmts: baseStmts, } =
+                this.ArkCxxIRTransformer.generateAssignStmtForValue(baseValue, basePositions));
         }
         // [Scenario 4] On special occasions, the caller directly specifies the baseValue (generally used to replace the base,
         // such as virtual members, generics, etc.)
@@ -1099,7 +1105,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         // [Scenario 6] Construction field signature
         // If base is a class local variable, use the complete class signature
         const memberName = memberExpression.name || memberExpression.code;
-        if (baseValue instanceof Local && baseClassType !== null) {
+        if ((baseValue instanceof Local || baseValue instanceof ArkArrayRef) && baseClassType !== null) {
             fieldSignature = new FieldSignature(
                 memberName, // Field name (such as insert)
                 baseClassType.getClassSignature(), // Base class type signature
