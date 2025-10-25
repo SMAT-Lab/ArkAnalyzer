@@ -38,7 +38,7 @@ function buildGenericImportInfo(node: CxxAstNode, sourceFile: CxxTranslationUnit
     let importInfos: ImportInfo[] = [];
     const importFrom: string = normalize(node.fileName ?? node.name ?? '');
     let importClauseName = importClauseNameBuilder(node);
-    let importType = '';
+    let importType = node.enclosingFunction?.name ?? '';
     let importInfo = new ImportInfo();
     importInfo.build(importClauseName, importType, importFrom, originTsPosition, 0);
     importInfo.setTsSourceCode(tsSourceCode);
