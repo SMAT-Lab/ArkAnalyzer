@@ -407,11 +407,8 @@ void RewriteTypeAliasTemplateArgs(json& typeAliasDecl, json& children)
 }
 
 // Merge NamespaceRef and TemplateRef nodes under a TypeAliasDecl to form a combined display name.
-// For example:
-//   template<typename T>
-//   using MyMap = std::map<int, T>;
-// will be represented as:
-//   TemplateRef(name="std::map<int, T>"), BuiltinType(name="int"), TypeRef(name="T")
+// case template<typename T>; using MyMap = std::map<int, T>;
+// represented as: emplateRef(name="std::map<int, T>"), BuiltinType(name="int"), TypeRef(name="T")
 void mergeTypeAliasDeclChild(json& newChildren, json& children, json& parent)
 {
     newChildren = json::array();
@@ -562,13 +559,12 @@ static bool RewriteAliasDefaultCtorCall(json& inn,
     const bool noArgs = (!inn[1].contains("inner") || !inn[1]["inner"].is_array() || inn[1]["inner"].empty());
     if (k0Typeish && k1Call && !varName.empty() && callCode == varName && noArgs) {
         // exclude ref/array/function types
-        auto ends_with = [](const std::string& s, const char* suf) {
+        auto endsWith = [](const std::string& s, const char* suf) {
             const size_t n = std::strlen(suf);
             return s.size() >= n && s.compare(s.size() - n, n, suf) == 0;
         };
-        if (!ends_with(qt, "&") && !ends_with(qt, "&&") &&
-            qt.find('[') == std::string::npos && qt.find('(') == std::string::npos)
-        {
+        if (!endsWith(qt, "&") && !endsWith(qt, "&&") && qt.find('[') ==
+            std::string::npos && qt.find('(') == std::string::npos) {
             json ctor
             = {
                 {"kind", "CXXConstructExpr"},
