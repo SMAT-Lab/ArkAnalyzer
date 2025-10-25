@@ -407,7 +407,7 @@ void RewriteTypeAliasTemplateArgs(json& typeAliasDecl, json& children)
 }
 
 // Merge NamespaceRef and TemplateRef nodes under a TypeAliasDecl to form a combined display name.
-// case template<typename T>; using MyMap = std::map<int, T>;
+// In this example template<typename T> using MyMap = std::map<int, T>; will be
 // represented as: emplateRef(name="std::map<int, T>"), BuiltinType(name="int"), TypeRef(name="T")
 void mergeTypeAliasDeclChild(json& newChildren, json& children, json& parent)
 {
