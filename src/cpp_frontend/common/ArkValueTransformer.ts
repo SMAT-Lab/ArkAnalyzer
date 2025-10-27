@@ -1851,6 +1851,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         const parentClassOrNs = newExpression.getParent?.(true).inner.filter(
             inn => ['TypeRef', 'NamespaceRef'].includes(inn.kind));
         let refType: Type | null = null;
+        // If the parent node has a namespaceRef or TypeRef, it indicates a constructor call,
+        // and should infer the type of the corresponding namespace/class.
         if (parentClassOrNs && parentClassOrNs.length > 0) {
             refType = TypeInference.inferUnclearRefName(className, this.declaringMethod.getDeclaringArkClass());
         }

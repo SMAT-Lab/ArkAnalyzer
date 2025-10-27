@@ -849,20 +849,23 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
                 }
                 break;
             case UnaryOperator.Deref:
-                if (opType instanceof PointerType) {
-                    if (opType.getLevel() === 1) {
-                        valueType = opType.getBaseType();
-                    } else {
-                        valueType = new PointerType(opType.getBaseType(), opType.getLevel() - 1);
-                    }
-                } else {
-                    valueType = opType;
-                }
+                valueType = this.buildTypeForDerefExpr(opType);
                 break;
             default:
                 valueType = opType;
         }
         return valueType;
+    }
+
+    private buildTypeForDerefExpr(opType: Type | PointerType) {
+        if (opType instanceof PointerType) {
+            if (opType.getLevel() === 1) {
+                return opType.getBaseType();
+            } else {
+                return new PointerType(opType.getBaseType(), opType.getLevel() - 1);
+            }
+        }
+        return opType;
     }
 
     private buildTypeForBinOpExpr(value: ArkNormalBinopExpr): Type {
