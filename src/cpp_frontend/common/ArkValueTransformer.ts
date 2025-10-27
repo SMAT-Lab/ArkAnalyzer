@@ -1851,7 +1851,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         const parentClassOrNs = newExpression.getParent?.(true).inner.filter(
             inn => ['TypeRef', 'NamespaceRef'].includes(inn.kind));
         let refType: Type | null = null;
-        if (parentClassOrNs) {
+        if (parentClassOrNs && parentClassOrNs.length > 0) {
             refType = TypeInference.inferUnclearRefName(className, this.declaringMethod.getDeclaringArkClass());
         }
         let classType: ClassType;
