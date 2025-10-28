@@ -20,7 +20,10 @@ import {
     ArkCastExpr,
     ArkConditionExpr,
     ArkInstanceInvokeExpr,
+    ArkNormalBinopExpr,
     ArkStaticInvokeExpr,
+    ArkUnopExpr,
+    NormalBinaryOperator,
     RelationalBinaryOperator,
     UnaryOperator,
 } from '../../core/base/Expr';
@@ -29,7 +32,7 @@ import { Value } from '../../core/base/Value';
 import * as ts from 'ohos-typescript';
 import { Local } from '../../core/base/Local';
 import { ArkAliasTypeDefineStmt, ArkAssignStmt, ArkIfStmt, ArkInvokeStmt, ArkReturnStmt, ArkReturnVoidStmt, ArkThrowStmt, Stmt } from '../../core/base/Stmt';
-import { AliasType, BooleanType, ClassType, UnknownType, VoidType } from '../../core/base/Type';
+import { AliasType, BooleanType, ClassType, UnknownType, VoidType, Type } from '../../core/base/Type';
 import { CxxValueUtil } from './ValueUtil';
 import { IRUtils } from './IRUtils';
 import { ArkMethod } from '../../core/model/ArkMethod';
@@ -37,17 +40,17 @@ import { COMPONENT_CREATE_FUNCTION, COMPONENT_POP_FUNCTION, COMPONENT_REPEAT } f
 import { FullPosition, LineColPosition } from '../../core/base/Position';
 import { ArkCxxValueTransformer } from './ArkValueTransformer';
 import { AliasTypeSignature, ClassSignature, FieldSignature, MethodSignature, MethodSubSignature } from '../../core/model/ArkSignature';
-import { BuiltinCxx } from '../common/Builtin';
+import { BuiltinCxx } from './Builtin';
 import { ArkSignatureBuilder } from '../../core/model/builder/ArkSignatureBuilder';
-import { ArkIRTransformer } from '../../core/common/ArkIRTransformer';
+import { ArkIRTransformer, DummyStmt } from '../../core/common/ArkIRTransformer';
 import { AbstractTypeExpr } from '../../core/base/TypeExpr';
 import { buildModifiers } from '../model/builder/builderUtils';
 import { ModelUtils } from '../../core/common/ModelUtils';
 import { ArkClass } from '../../core/model/ArkClass';
 import { buildNormalArkClassFromArkMethod } from '../model/builder/ArkClassBuilder';
 import { CxxAstNode, CxxTranslationUnit } from '../ast/ArkCxxAstNode';
-import { DummyStmt } from '../../core/common/ArkIRTransformer';
 import { ValueUtil } from '../../core/common/ValueUtil';
+import { PointerType } from '../base/Type';
 
 export type ValueAndStmts = {
     value: Value;
@@ -814,7 +817,15 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
     }
 
     public generateAssignStmtForValue(value: Value, valueOriginalPositions: FullPosition[]): ValueAndStmts {
-        const leftOp = this.ArkCxxValueTransformer.generateTempLocal(value.getType());
+        let valueType: Type;
+        if (value instanceof ArkUnopExpr) {
+            valueType = this.buildTypeForUnopExpr(value);
+        } else if (value instanceof ArkNormalBinopExpr) {
+            valueType = this.buildTypeForBinOpExpr(value);
+        } else {
+            valueType = value.getType();
+        }
+        const leftOp = this.ArkCxxValueTransformer.generateTempLocal(valueType);
         const leftOpPosition = valueOriginalPositions[0];
         const assignStmt = new ArkAssignStmt(leftOp, value);
         assignStmt.setOperandOriginalPositions([leftOpPosition, ...valueOriginalPositions]);
@@ -823,6 +834,53 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
             valueOriginalPositions: [leftOpPosition],
             stmts: [assignStmt],
         };
+    }
+
+    private buildTypeForUnopExpr(value: ArkUnopExpr): Type {
+        const opType = value.getOp().getType();
+        const opCode = value.getOperator();
+        let valueType: Type;
+        switch (opCode) {
+            case UnaryOperator.Addr:
+                if (opType instanceof PointerType) {
+                    valueType = new PointerType(opType.getBaseType(), opType.getLevel() + 1);
+                } else {
+                    valueType = new PointerType(opType, 1);
+                }
+                break;
+            case UnaryOperator.Deref:
+                valueType = this.buildTypeForDerefExpr(opType);
+                break;
+            default:
+                valueType = opType;
+        }
+        return valueType;
+    }
+
+    private buildTypeForDerefExpr(opType: Type | PointerType): Type {
+        if (opType instanceof PointerType) {
+            if (opType.getLevel() === 1) {
+                return opType.getBaseType();
+            } else {
+                return new PointerType(opType.getBaseType(), opType.getLevel() - 1);
+            }
+        }
+        return opType;
+    }
+
+    private buildTypeForBinOpExpr(value: ArkNormalBinopExpr): Type {
+        const valueOpCode = value.getOperator();
+        if (valueOpCode !== NormalBinaryOperator.Addition && valueOpCode !== NormalBinaryOperator.Subtraction) {
+            return value.getType();
+        }
+        const opValue1Type = value.getOp1().getType();
+        const opValue2Type = value.getOp2().getType();
+        if (opValue1Type instanceof PointerType) {
+            return opValue1Type;
+        } else if (opValue2Type instanceof PointerType) {
+            return opValue2Type;
+        }
+        return value.getType();
     }
 
     public setBuilderMethodContextFlag(builderMethodContextFlag: boolean): void {}

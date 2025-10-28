@@ -51,6 +51,15 @@ export interface CxxCtorAnyInit {
     name: string;
     type?: CxxTypeInfo;
 }
+
+/** Target information for enclosingFunction */
+export interface CxxEnclosingFunction {
+    id?: number;
+    kind?: string;
+    name?: string;
+    range?: CxxRange;
+}
+
 export type CxxAstNodeLite = Omit<CxxAstNode, 'inner'>;
 
 /** General C++ AST node (compatible with Clang JSON) */
@@ -157,6 +166,8 @@ export interface CxxAstNode {
     };
 
     access?: string;
+
+    enclosingFunction?: CxxEnclosingFunction;
     /** Reserved for future fields */
     [key: string]: unknown;
 }

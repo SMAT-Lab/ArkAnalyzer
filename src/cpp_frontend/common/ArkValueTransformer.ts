@@ -24,7 +24,6 @@ import {
     ArkDeleteExpr,
     ArkInstanceInvokeExpr,
     ArkNewExpr,
-    ArkNormalBinopExpr,
     ArkPtrInvokeExpr,
     ArkStaticInvokeExpr,
     ArkUnopExpr,
@@ -39,6 +38,7 @@ import {
     ArkCxxFolderExpr,
     ArkCxxInitArrayExpr,
     ArkCxxNewArrayExpr,
+    ArkCxxNormalBinOpExpr,
     ArkNoExpectExpr,
     ArkSizeOfExpr,
     ArkTypeIdExpr,
@@ -243,7 +243,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
     }
 
     private isNodeRelatedToImplicitNode(node: CxxAstNode): boolean {
-        if (node.inner && node.inner instanceof Array) {
+        if (node.inner) {
             return (
                 node.inner.length !== 0 && node.inner[0].kind === 'ImplicitCastExpr' && (node.name === '__tree_const_iterator')
             );
@@ -809,7 +809,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         const {value: conditionValue, valueOriginalPositions: conditionPositions, stmts: conditionStmts, } =
             this.cxxConditionToValueAndStmts(conditionNode);
         conditionStmts.forEach(stmt => stmts.push(stmt));
-        let isBooleanExpr = conditionNode.type.qualType === 'bool' ? true : false;
+        let isBooleanExpr = conditionNode.type.qualType === 'bool';
         const ifStmt = new ArkIfStmt(conditionValue as ArkConditionExpr);
         ifStmt.setOperandOriginalPositions(conditionPositions);
         stmts.push(ifStmt);
@@ -1645,7 +1645,6 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         } else {
             ({
                 value: callerValue,
-                valueOriginalPositions: callerPositions,
                 stmts: callerStmts,
             } = this.ArkCxxIRTransformer.generateAssignStmtForValue(callerValue, callerPositions));
             callerStmts.forEach(stmt => stmts.push(stmt));
@@ -1851,7 +1850,9 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         const parentClassOrNs = newExpression.getParent?.(true).inner.filter(
             inn => ['TypeRef', 'NamespaceRef'].includes(inn.kind));
         let refType: Type | null = null;
-        if (parentClassOrNs) {
+        // If the parent node has a namespaceRef or TypeRef, it indicates a constructor call,
+        // and should infer the type of the corresponding namespace/class.
+        if (parentClassOrNs && parentClassOrNs.length > 0) {
             refType = TypeInference.inferUnclearRefName(className, this.declaringMethod.getDeclaringArkClass());
         }
         let classType: ClassType;
@@ -2217,7 +2218,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         let exprPositions = [FullPosition.cxxBuildFromNode(prefixUnaryExpression, this.cxxSourceFile)];
         if (operatorToken === '++' || operatorToken === '--') {
             const binaryOperator = operatorToken === '++' ? NormalBinaryOperator.Addition : NormalBinaryOperator.Subtraction;
-            const binopExpr = new ArkNormalBinopExpr(operandValue, CxxValueUtil.getOrCreateNumberConst(1), binaryOperator);
+            const binopExpr = new ArkCxxNormalBinOpExpr(operandValue, CxxValueUtil.getOrCreateNumberConst(1), binaryOperator);
             exprPositions.push(...operandPositions, FullPosition.DEFAULT);
             const assignStmt = new ArkAssignStmt(operandValue, binopExpr);
             assignStmt.setOperandOriginalPositions([...operandPositions, ...exprPositions]);
@@ -2275,7 +2276,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         const operatorToken = postfixUnaryExpression.opcode;
         if (operatorToken === '++' || operatorToken === '--') {
             const binaryOperator = operatorToken === '++' ? NormalBinaryOperator.Addition : NormalBinaryOperator.Subtraction;
-            const binopExpr = new ArkNormalBinopExpr(operandValue, CxxValueUtil.getOrCreateNumberConst(1), binaryOperator);
+            const binopExpr = new ArkCxxNormalBinOpExpr(operandValue, CxxValueUtil.getOrCreateNumberConst(1), binaryOperator);
             exprPositions.push(...operandPositions, FullPosition.DEFAULT);
             const assignStmt = new ArkAssignStmt(operandValue, binopExpr);
             assignStmt.setOperandOriginalPositions([...operandPositions, ...exprPositions]);
@@ -2485,7 +2486,9 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             if (this.isRelationalOperator(operatorToken as BinaryOperator)) {
                 exprValue = new ArkConditionExpr(opValue1, opValue2, operatorToken as RelationalBinaryOperator);
             } else {
-                exprValue = new ArkNormalBinopExpr(opValue1, opValue2, operatorToken as NormalBinaryOperator);
+                exprValue = new ArkCxxNormalBinOpExpr(opValue1, opValue2, operatorToken as NormalBinaryOperator);
+                const exprTye = cxxNode2Type(binaryExpression.type.qualType ?? '', undefined, undefined);
+                (exprValue as ArkCxxNormalBinOpExpr).setCxxType(exprTye);
             }
             exprValuePositions.push(...opPositions1, ...opPositions2);
         } else {
@@ -2526,7 +2529,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         let leftOpPositions: FullPosition[];
         const operator = this.cxxCcompoundAssignmentTokenToBinaryOperator(binaryExpression.opcode ?? '');
         if (operator) {
-            const exprValue = new ArkNormalBinopExpr(leftValue, rightValue, operator);
+            const exprValue = new ArkCxxNormalBinOpExpr(leftValue, rightValue, operator);
             const exprValuePosition = FullPosition.cxxBuildFromNode(binaryExpression, this.cxxSourceFile);
             const assignStmt = new ArkAssignStmt(leftValue, exprValue);
             assignStmt.setOperandOriginalPositions([...leftPositions, exprValuePosition, ...leftPositions, ...rightPositions]);

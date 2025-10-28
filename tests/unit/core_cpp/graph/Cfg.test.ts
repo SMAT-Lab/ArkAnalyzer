@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-import { BasicBlock, SceneConfig } from '../../../../src';
-import { describe, it, expect } from 'vitest';
+import { BasicBlock, FileUtils, Scene, SceneConfig } from '../../../../src';
+import { Language } from '../../../../src/core/model/ArkFile';
+import { describe, expect, it, vi } from 'vitest';
 import path from 'path';
-import { Scene } from '../../../../src';
 import { assertClassBlocksEqual, testBlocks, testBlocksWithSignature } from '../../common';
 import * as CONDITION_EXPECT from '../../../resources_cpp/cfg/conditionalOperator';
 import * as IF_EXPECT from '../../../resources_cpp/cfg/if/ifSampleExpects';
@@ -460,6 +460,7 @@ describe('decltype Test', () => {
 describe('include in scope', () => {
     it('case1: includeInScope', () => {
         const scene = buildScene('includeInScope');
+        scene.inferTypes();
         testBlocks(scene, 'includeInScope.cpp', 'IncludeInFunction', INCLUDE_IN_SCOPE.INCLUDE_IN_FUNCTION_CASE1.blocks);
         testBlocksClass(scene, 'includeInScope.cpp', 'IncludeInClass', INCLUDE_IN_SCOPE.INCLUDE_IN_CLASS_CASE1);
     });
@@ -468,6 +469,7 @@ describe('include in scope', () => {
 const BASE_DIR = 'tests/resources_cpp/cfg';
 
 function buildScene(folderName: string): Scene {
+    vi.spyOn(FileUtils, 'getFileLanguage').mockReturnValue(Language.CXX);
     let config: SceneConfig = new SceneConfig();
     config.setSupportFileExts(['.c', '.cpp', '.h', '.hpp']);
     let includeDirs: string[] = [];

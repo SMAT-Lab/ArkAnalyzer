@@ -13,9 +13,18 @@
  * limitations under the License.
  */
 
-import { AbstractExpr, ArkCastExpr } from '../../core/base/Expr';
+import {
+    AbstractBinopExpr,
+    AbstractExpr,
+    ArkCastExpr,
+    NormalBinaryOperator,
+} from '../../core/base/Expr';
 import { Value } from '../../core/base/Value';
-import { ArrayType, BooleanType, Type } from '../../core/base/Type';
+import {
+    ArrayType,
+    BooleanType,
+    Type,
+} from '../../core/base/Type';
 import { ArkMethod } from '../../core/model/ArkMethod';
 import { AbstractFieldRef, AbstractRef } from '../../core/base/Ref';
 import { CxxSizeTType, CxxStdTypeName, CxxTypeBitWidth, CxxTypeSigned, TypeInfo } from './Type';
@@ -418,5 +427,22 @@ export class ArkCxxFolderExpr extends AbstractExpr {
             arg.inferType(arkMethod);
         }
         return this;
+    }
+}
+
+export class ArkCxxNormalBinOpExpr extends AbstractBinopExpr {
+    constructor(op1: Value, op2: Value, operator: NormalBinaryOperator) {
+        super(op1, op2, operator);
+    }
+
+    public getType(): Type {
+        if (!this.type) {
+            this.setType();
+        }
+        return this.type;
+    }
+
+    public setCxxType(type: Type): void {
+        this.type = type;
     }
 }

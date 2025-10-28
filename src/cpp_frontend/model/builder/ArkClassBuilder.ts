@@ -253,8 +253,8 @@ function buildArkClassMembers(clsNode: CxxAstNode, cls: ArkClass, sourceFile: Cx
     for (const member of clsNode.inner as CxxAstNode[]) {
         if (member.kind === 'FieldDecl' || member.kind === 'VarDecl') {
             const arkField = buildProperty2ArkField(member, sourceFile, cls);
-            // If the parameter innner is not empty, it means it contains initialization information
-            if (member.inner.length > 0) {
+            // If the parameter inner is not empty, it means it contains initialization information
+            if (member.inner.length > 0 && !member.inner[member.inner.length - 1].kind.endsWith('Ref')) {
                 staticIRTransformer = new ArkCxxIRTransformer(sourceFile as CxxTranslationUnit, cls.getStaticInitMethod());
                 getInitStmts(staticIRTransformer, arkField, member.inner[member.inner.length - 1]);
             }
