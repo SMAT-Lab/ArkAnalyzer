@@ -857,7 +857,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         return valueType;
     }
 
-    private buildTypeForDerefExpr(opType: Type | PointerType) {
+    private buildTypeForDerefExpr(opType: Type | PointerType): Type {
         if (opType instanceof PointerType) {
             if (opType.getLevel() === 1) {
                 return opType.getBaseType();

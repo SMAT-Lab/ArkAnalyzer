@@ -2488,7 +2488,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             } else {
                 exprValue = new ArkCxxNormalBinOpExpr(opValue1, opValue2, operatorToken as NormalBinaryOperator);
                 const exprTye = cxxNode2Type(binaryExpression.type.qualType ?? '', undefined, undefined);
-                (exprValue as ArkCxxNormalBinOpExpr).setType(exprTye);
+                (exprValue as ArkCxxNormalBinOpExpr).setCxxType(exprTye);
             }
             exprValuePositions.push(...opPositions1, ...opPositions2);
         } else {
