@@ -13,9 +13,23 @@
  * limitations under the License.
  */
 
-import { AbstractExpr, ArkCastExpr } from '../../core/base/Expr';
+import {
+    AbstractBinopExpr,
+    AbstractExpr,
+    ArkCastExpr,
+    NormalBinaryOperator,
+} from '../../core/base/Expr';
 import { Value } from '../../core/base/Value';
-import { ArrayType, BooleanType, Type } from '../../core/base/Type';
+import {
+    ArrayType,
+    BigIntType,
+    BooleanType, EnumValueType, NullType,
+    NumberType,
+    StringType,
+    Type,
+    UndefinedType, UnionType,
+    UnknownType,
+} from '../../core/base/Type';
 import { ArkMethod } from '../../core/model/ArkMethod';
 import { AbstractFieldRef, AbstractRef } from '../../core/base/Ref';
 import { CxxSizeTType, CxxStdTypeName, CxxTypeBitWidth, CxxTypeSigned, TypeInfo } from './Type';
@@ -418,5 +432,99 @@ export class ArkCxxFolderExpr extends AbstractExpr {
             arg.inferType(arkMethod);
         }
         return this;
+    }
+}
+
+export class ArkCxxNormalBinOpExpr extends AbstractBinopExpr {
+    constructor(op1: Value, op2: Value, operator: NormalBinaryOperator) {
+        super(op1, op2, operator);
+    }
+
+    public getType(): Type {
+        if (!this.type) {
+            this.setType();
+        }
+        return this.type;
+    }
+
+    private parseThisType(op: Type): Type {
+        if (op instanceof UnionType) {
+            return op.getCurrType();
+        } else if (op instanceof EnumValueType) {
+            return op.getConstant()?.getType() || op;
+        }
+        return op;
+    }
+
+    public setType(type :Type = UnknownType.getInstance()): void {
+        let op1Type = this.parseThisType(this.op1.getType());
+        let op2Type = this.parseThisType(this.op2.getType());
+        if (type !== UnknownType.getInstance()){
+            this.type = type;
+            return;
+        }
+        switch (this.operator) {
+            case '+':
+                if (op1Type === StringType.getInstance() || op2Type === StringType.getInstance()) {
+                    type = StringType.getInstance();
+                }
+                if (op1Type === NumberType.getInstance() && op2Type === NumberType.getInstance()) {
+                    type = NumberType.getInstance();
+                }
+                if (op1Type === BigIntType.getInstance() && op2Type === BigIntType.getInstance()) {
+                    type = BigIntType.getInstance();
+                }
+                break;
+            case '-':
+            case '*':
+            case '/':
+            case '%':
+            case '**':
+                if (op1Type === BigIntType.getInstance() || op2Type === BigIntType.getInstance()) {
+                    type = BigIntType.getInstance();
+                } else {
+                    type = NumberType.getInstance();
+                }
+                break;
+            case '!=':
+            case '!==':
+            case '<':
+            case '>':
+            case '<=':
+            case '>=':
+            case '&&':
+            case '||':
+            case '==':
+            case '===':
+            case 'in':
+                type = BooleanType.getInstance();
+                break;
+            case '&':
+            case '|':
+            case '^':
+            case '<<':
+            case '>>':
+                if (op1Type === NumberType.getInstance() && op2Type === NumberType.getInstance()) {
+                    type = NumberType.getInstance();
+                }
+                if (op1Type === BigIntType.getInstance() && op2Type === BigIntType.getInstance()) {
+                    type = BigIntType.getInstance();
+                }
+                break;
+            case '>>>':
+                if (op1Type === NumberType.getInstance() && op2Type === NumberType.getInstance()) {
+                    type = NumberType.getInstance();
+                }
+                break;
+            case '??':
+                if (op1Type === UnknownType.getInstance() || op1Type === UndefinedType.getInstance() || op1Type === NullType.getInstance()) {
+                    type = op2Type;
+                } else {
+                    type = op1Type;
+                }
+                break;
+            default:
+        }
+        this.type = type;
     }
 }
