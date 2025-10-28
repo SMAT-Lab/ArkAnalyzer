@@ -442,7 +442,7 @@ export class ArkCxxNormalBinOpExpr extends AbstractBinopExpr {
         return this.type;
     }
 
-    public setCxxType(type: Type) {
+    public setCxxType(type: Type): void {
         this.type = type;
     }
 }
