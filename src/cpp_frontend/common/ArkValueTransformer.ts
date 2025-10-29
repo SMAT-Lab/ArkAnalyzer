@@ -859,9 +859,9 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
      *@ param innerAsNodes An AST node array containing call information and parameters. The first element is the call node, and the rest are parameter nodes
      *@ returns an array containing two elements: the first element is the call node, and the second element is the parameter node array
      */
-    private getArgumentNodeForRecover(innerAsNodes: CxxAstNode[]): {}[] {
+    private getArgumentNodeForRecover(innerAsNodes: CxxAstNode[]):  [{}, CxxAstNode[]] {
         let callNode = {};
-        let argumentNodes = [];
+        const argumentNodes: CxxAstNode[] = [];
         for (let i = 0; i < innerAsNodes.length; i++) {
             if (i === 0) {
                 callNode = innerAsNodes[i];
@@ -1194,7 +1194,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
 
         const stmts: Stmt[] = [];
         const [callNode, argumentNodes] = this.getArgumentNode(callExpression.inner);
-        const argus = this.cxxParseArgumentsOfCallExpression(stmts, argumentNodes);
+        const argus = this.cxxParseArgumentsOfCallExpression(stmts, argumentNodes, callNode);
         if (callExpression.name === 'napi_define_class') {
             setTs2CxxFuncMapOfClass(argus.args, true, this.declaringMethod);
         }
@@ -1759,15 +1759,38 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
 
     private cxxParseArgumentsOfCallExpression(
         currStmts: Stmt[],
-        callExpression: any
+        callExpression: CxxAstNode[],
+        callNode?: CxxAstNode,
     ): {
         realGenericTypes: Type[] | undefined;
         args: Value[];
         argPositions: FullPosition[];
     } {
         let realGenericTypes: Type[] | undefined;
+        if (callNode) {
+            const qualType = callNode.type.qualType;
+            // Match the content within the outermost<>layer
+            const match = qualType.match(/<(.*)>/);
+            let members: string[] | undefined;
+            if (match && match[1]) {
+                // Extract content from<>
+                const contentInsideBrackets = match[1];
+                // Separate members with commas and store them in an array
+                members = contentInsideBrackets.split(',').map(item => item.trim());
+                // Use the members array for subsequent processing
+            }
+            if (members?.length) {
+                realGenericTypes = [];
+                members.forEach((typeArgument: string) => {
+                    realGenericTypes!.push(this.cxxResolveTypeNode(undefined, typeArgument));
+                });
+            }
+        }
         let builderMethodIndexes: Set<number> | undefined;
-        const { args: args, argPositions: argPositions } = this.cxxParseArguments(currStmts, callExpression, builderMethodIndexes);
+        const {
+            args: args,
+            argPositions: argPositions,
+        } = this.cxxParseArguments(currStmts, callExpression, builderMethodIndexes);
         return {
             realGenericTypes: realGenericTypes,
             args: args,
@@ -1840,9 +1863,20 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         }
         const stmts: Stmt[] = [];
         let realGenericTypes: Type[] | undefined;
-        if (newExpression.typeArguments) {
+        const qualType = newExpression.type.qualType;
+        // Match the content within the outermost<>layer
+        const match = qualType.match(/<(.*)>/);
+        let members: string[] | undefined;
+        if (match && match[1]) {
+            // Extract content from<>
+            const contentInsideBrackets = match[1];
+            // Separate members with commas and store them in an array
+            members = contentInsideBrackets.split(',').map(item => item.trim());
+            // Use the members array for subsequent processing
+        }
+        if (members?.length) {
             realGenericTypes = [];
-            newExpression.typeArguments.forEach((typeArgument: string) => {
+            members.forEach((typeArgument: string) => {
                 realGenericTypes!.push(this.cxxResolveTypeNode(undefined, typeArgument));
             });
         }
