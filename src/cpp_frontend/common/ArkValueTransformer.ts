@@ -2022,7 +2022,9 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
      */
     private getNewExpressionClassName(newExpression: CxxAstNode): string {
         let oriType = '';
-        if (newExpression.type.desugaredQualType) {
+        if (newExpression.name !== '') {
+            oriType = newExpression.name;
+        } else if (newExpression.type.desugaredQualType) {
             oriType = newExpression.type.desugaredQualType;
         } else if (newExpression.type.qualType) {
             oriType = newExpression.type.qualType;
