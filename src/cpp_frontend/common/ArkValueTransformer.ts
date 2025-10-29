@@ -1916,6 +1916,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         constructorMethodSignature: MethodSignature,
         className: string,
     ): void {
+        // if case : struct LargeStruct s;, inner.length is 0, so we need to avoid it
         if (newExpression.inner.length === 0) {
             return ;
         }
