@@ -1916,10 +1916,6 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         constructorMethodSignature: MethodSignature,
         className: string,
     ): void {
-        // if case : struct LargeStruct s;, inner.length is 0, so we need to avoid it
-        if (newExpression.inner.length === 0) {
-            return ;
-        }
         // 对象构造，使用 invokeStmt 表达
         const constructArgs:CxxAstNode[] = (():CxxAstNode[] => {
             let args:CxxAstNode[] = newExpression.inner;
@@ -1930,7 +1926,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             } else if (
                 newExpression.kind === 'CXXConstructExpr' &&
                 newExpression.type.qualType.startsWith('struct') &&
-                args && args[0].inner[0]?.kind === 'CompoundLiteralExpr'
+                args.length > 0 && args[0].inner[0]?.kind === 'CompoundLiteralExpr' // if case : struct LargeStruct s;, inner.length is 0, so we need to avoid it
             ) {
                 return this.getConstructArgs(args[0].inner[0].inner);
             } else if (newExpression.kind === 'InitListExpr') {

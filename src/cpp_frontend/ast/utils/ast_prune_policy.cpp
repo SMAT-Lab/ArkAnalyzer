@@ -61,7 +61,6 @@ uint32_t SelectFieldMaskForCursorKind(CXCursorKind k)
         // Control flow blocks: keep only kind + code
         case CXCursor_DoStmt:
         case CXCursor_SwitchStmt:
-            return WANT_KIND | WANT_CODE;
         case CXCursor_CompoundStmt:
             return WANT_KIND | WANT_CODE | WANT_RANGE;
         case CXCursor_IfStmt:
