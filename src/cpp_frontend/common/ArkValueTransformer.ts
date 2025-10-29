@@ -1766,9 +1766,23 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         args: Value[];
         argPositions: FullPosition[];
     } {
+        let realGenericTypes = this.getRealGenericTypes(callNode);
+        let builderMethodIndexes: Set<number> | undefined;
+        const {
+            args: args,
+            argPositions: argPositions,
+        } = this.cxxParseArguments(currStmts, callExpression, builderMethodIndexes);
+        return {
+            realGenericTypes: realGenericTypes,
+            args: args,
+            argPositions: argPositions,
+        };
+    }
+
+    private getRealGenericTypes(node: CxxAstNode | undefined): Type[] | undefined {
         let realGenericTypes: Type[] | undefined;
-        if (callNode) {
-            const qualType = callNode.type.qualType;
+        if (node) {
+            const qualType = node.type.qualType;
             // Match the content within the outermost<>layer
             const match = qualType.match(/<(.*)>/);
             let members: string[] | undefined;
@@ -1785,17 +1799,9 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
                     realGenericTypes!.push(this.cxxResolveTypeNode(undefined, typeArgument));
                 });
             }
+            return realGenericTypes;
         }
-        let builderMethodIndexes: Set<number> | undefined;
-        const {
-            args: args,
-            argPositions: argPositions,
-        } = this.cxxParseArguments(currStmts, callExpression, builderMethodIndexes);
-        return {
-            realGenericTypes: realGenericTypes,
-            args: args,
-            argPositions: argPositions,
-        };
+        return undefined;
     }
 
     private cxxParseArguments(
@@ -1862,24 +1868,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             return this.cxxNewArrayExpressionToValueAndStmts(newExpression);
         }
         const stmts: Stmt[] = [];
-        let realGenericTypes: Type[] | undefined;
-        const qualType = newExpression.type.qualType;
-        // Match the content within the outermost<>layer
-        const match = qualType.match(/<(.*)>/);
-        let members: string[] | undefined;
-        if (match && match[1]) {
-            // Extract content from<>
-            const contentInsideBrackets = match[1];
-            // Separate members with commas and store them in an array
-            members = contentInsideBrackets.split(',').map(item => item.trim());
-            // Use the members array for subsequent processing
-        }
-        if (members?.length) {
-            realGenericTypes = [];
-            members.forEach((typeArgument: string) => {
-                realGenericTypes!.push(this.cxxResolveTypeNode(undefined, typeArgument));
-            });
-        }
+        let realGenericTypes = this.getRealGenericTypes(newExpression);
         // Handle the scenarios of namespace::Member and class::member
         const parentClassOrNs = newExpression.getParent?.(true).inner.filter(
             inn => ['TypeRef', 'NamespaceRef'].includes(inn.kind));
