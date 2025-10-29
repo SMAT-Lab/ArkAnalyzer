@@ -15,7 +15,6 @@
  
 // napi_init.cpp
 #include "napi/native_api.h"
-#include "hilog/log.h"
 
 #define TWO 2
 
@@ -54,7 +53,6 @@ GlobalConfig::~GlobalConfig()
 
 void GlobalConfig::Destructor(napi_env env, void* nativeObject, [[maybe_unused]] void* finalizeHint)
 {
-    OH_LOG_INFO(LOG_APP, "GlobalConfig::Destructor called");
     delete reinterpret_cast<GlobalConfig*>(nativeObject);
 }
 
@@ -75,8 +73,6 @@ napi_value GlobalConfig::Init(napi_env env, napi_value exports)
 
 napi_value GlobalConfig::New(napi_env env, napi_callback_info info)
 {
-    OH_LOG_INFO(LOG_APP, "GlobalConfig::New called");
-
     napi_value newTarget;
     napi_get_new_target(env, info, &newTarget);
     if (newTarget != nullptr) {
@@ -104,8 +100,6 @@ napi_value GlobalConfig::New(napi_env env, napi_callback_info info)
                                        nullptr,
                                        &obj->wrapper_);
         if (status != napi_ok) {
-            OH_LOG_INFO(LOG_APP, "Failed to bind native object to js object"
-                        ", return code: %{public}d", status);
             delete obj;
             return jsThis;
         }
@@ -130,8 +124,6 @@ napi_value GlobalConfig::New(napi_env env, napi_callback_info info)
 
 napi_value GlobalConfig::GetValue(napi_env env, napi_callback_info info)
 {
-    OH_LOG_INFO(LOG_APP, "GlobalConfig::GetValue called");
-
     napi_value jsThis;
     napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
 
@@ -146,8 +138,6 @@ napi_value GlobalConfig::GetValue(napi_env env, napi_callback_info info)
 
 napi_value GlobalConfig::SetValue(napi_env env, napi_callback_info info)
 {
-    OH_LOG_INFO(LOG_APP, "GlobalConfig::SetValue called");
-
     size_t argc = 1;
     napi_value value;
     napi_value jsThis;
@@ -164,8 +154,6 @@ napi_value GlobalConfig::SetValue(napi_env env, napi_callback_info info)
 
 napi_value GlobalConfig::PlusOne(napi_env env, napi_callback_info info)
 {
-    OH_LOG_INFO(LOG_APP, "GlobalConfig::PlusOne called");
-
     napi_value jsThis;
     napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
 

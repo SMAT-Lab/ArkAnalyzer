@@ -20,6 +20,7 @@ import {
     ArkCastExpr,
     ArkConditionExpr,
     ArkInstanceInvokeExpr,
+    ArkNewExpr,
     ArkNormalBinopExpr,
     ArkStaticInvokeExpr,
     ArkUnopExpr,
@@ -822,6 +823,8 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
             valueType = this.buildTypeForUnopExpr(value);
         } else if (value instanceof ArkNormalBinopExpr) {
             valueType = this.buildTypeForBinOpExpr(value);
+        } else if (value instanceof ArkNewExpr) {
+            valueType = new PointerType(value.getClassType(), 1);
         } else {
             valueType = value.getType();
         }

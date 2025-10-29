@@ -342,10 +342,12 @@ describe('Other Test', () => {
 describe('Lazy Import Test', () => {
     it('case1: lazy import case1', () => {
         const scene = buildScene('lazyImport/lazyImportCase1');
+        scene.inferTypes();
         testBlocksClass(scene, 'lazyImportCase1.cpp', 'GlobalConfig', LAZY_IMPORT_EXPECT1.LAZY_IMPORT_CASE1_CLASS);
     });
     it('case2: lazy import case2', () => {
         const scene = buildScene('lazyImport/lazyImportCase2');
+        scene.inferTypes();
         testBlocks(scene, 'lazyImportCase2.cpp', 'DefineObject', lazyImportCase2.DEFINE_OBJECT_EXPECT.blocks);
         testBlocks(scene, 'lazyImportCase2.cpp', 'CallObject', lazyImportCase2.CALL_OBJECT_EXPECT.blocks);
     });
@@ -355,10 +357,12 @@ describe('Lazy Import Test', () => {
     });
     it('case4: lazy import case4', () => {
         const scene = buildScene('lazyImport/lazyImportCase4');
+        scene.inferTypes();
         testBlocks(scene, 'lazyImportCase4.cpp', 'NativeCallArkTS', lazyImportCase4.NativeCallArkTS_EXPECT.blocks);
     });
     it('case5: lazy import case5', () => {
         const scene = buildScene('lazyImport/lazyImportCase5');
+        scene.inferTypes();
         testBlocks(scene, 'lazyImportCase5.cpp', 'Napi_AddPropertyInt32', lazyImportCase5.Napi_AddPropertyInt32_EXPECT.blocks);
         if (is_system_win32) {
             testBlocks(scene, 'lazyImportCase5.cpp', 'CallbackToArkTS', lazyImportCase5.CallbackToArkTS_EXPECT.blocks);
@@ -366,16 +370,19 @@ describe('Lazy Import Test', () => {
     });
     it('case6: lazy import case6', () => {
         const scene = buildScene('lazyImport/lazyImportCase6');
+        scene.inferTypes();
         if (is_system_win32) {
             testBlocks(scene, 'lazyImportCase6.cpp', 'CallFunction', lazyImportCase6.CallFunction_EXPECT.blocks);
         }
     });
     it('case7: lazy import case7', () => {
         const scene = buildScene('lazyImport/lazyImportCase7');
+        scene.inferTypes();
         testBlocks(scene, 'lazyImportCase7.cpp', 'ModifyObject', lazyImportCase7.ModifyObject_EXPECT.blocks);
     });
     it('case8: lazy import case8', () => {
         const scene = buildScene('lazyImport/lazyImportCase8');
+        scene.inferTypes();
         testBlocks(scene, 'lazyImportCase8.cpp', 'NativeCallArkTS', lazyImportCase8.NativeCallArkTS8_EXPECT.blocks);
     });
 });
@@ -470,16 +477,31 @@ const BASE_DIR = 'tests/resources_cpp/cfg';
 
 function buildScene(folderName: string): Scene {
     vi.spyOn(FileUtils, 'getFileLanguage').mockReturnValue(Language.CXX);
+    vi.spyOn(Scene.prototype, 'getSdkGlobal').mockReturnValue(null);
     let config: SceneConfig = new SceneConfig();
     config.setSupportFileExts(['.c', '.cpp', '.h', '.hpp']);
     let includeDirs: string[] = [];
     // header file configuration for DevEco
     includeDirs.push(path.join(deveco_c, 'c++', 'v1'));
     includeDirs.push(path.join(deveco_include, 'include'));
+    if (folderName.includes('lazyImport')) {
+        includeDirs.push(...getNapiIncludeDirs());
+    }
     config.buildFromProjectDir(path.join(BASE_DIR, folderName), includeDirs);
     let scene = new Scene();
     scene.buildSceneFromProjectDir(config);
     return scene;
+}
+
+function getNapiIncludeDirs(): string[] {
+    if (deveco_c === '') {
+        return [];
+    }
+    const devecoStudioDir = path.resolve(deveco_c, '..', '..');
+    return [
+        path.join(devecoStudioDir, 'sysroot\\usr\\include\\aarch64-linux-ohos'),
+        path.join(devecoStudioDir, 'sysroot\\usr\\include'),
+    ];
 }
 
 function testBlocksClass(scene: Scene, filePath: string, className: string, expectBlocks: any, isCheckOverload?: boolean): void {

@@ -56,7 +56,9 @@ export enum CxxStdTypeName {
     INT16_T,
     INT32_T,
     INT64_T,
-    SIZE_T
+    SIZE_T,
+    INTPTR_T,
+    UINTPTR_T,
 }
 
 /**
@@ -353,6 +355,10 @@ function cxxStdTypeNameToStr(cxxStdTypeName: CxxStdTypeName): string {
             return 'int64_t';
         case CxxStdTypeName.SIZE_T:
             return 'size_t';
+        case CxxStdTypeName.INTPTR_T:
+            return 'intptr_t';
+        case CxxStdTypeName.UINTPTR_T:
+            return 'uintptr_t';
         default:
             return '';
     }

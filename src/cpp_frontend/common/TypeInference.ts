@@ -676,6 +676,10 @@ export class TypeInference {
                 return CxxIntType.getInstance(CxxTypeSigned.SIGNED, CxxTypeBitWidth.SIXTY_FOUR_BITS, CxxStdTypeName.INT64_T);
             case 'uint64_t':
                 return CxxIntType.getInstance(CxxTypeSigned.UNSIGNED, CxxTypeBitWidth.SIXTY_FOUR_BITS, CxxStdTypeName.UINT64_T);
+            case 'intptr_t':
+                return CxxIntType.getInstance(CxxTypeSigned.SIGNED, CxxTypeBitWidth.UNKNOWN, CxxStdTypeName.INTPTR_T);
+            case 'uintptr_t':
+                return CxxIntType.getInstance(CxxTypeSigned.UNSIGNED, CxxTypeBitWidth.UNKNOWN, CxxStdTypeName.UINTPTR_T);
             case 'size_t':
                 return CxxSizeTType.getInstance(CxxTypeSigned.UNSIGNED, CxxTypeBitWidth.UNKNOWN, CxxStdTypeName.SIZE_T);
             case 'long':

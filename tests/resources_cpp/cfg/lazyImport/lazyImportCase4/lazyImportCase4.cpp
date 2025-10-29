@@ -16,7 +16,9 @@
 // How Native calls ArkTS methods
 
 #include "NativeMap.h"
+#include "napi/native_api.h"
 #define TWO 2
+
 static napi_value NativeCallArkTS(napi_env env, napi_callback_info info)
 {
     size_t argc = 1;

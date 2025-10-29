@@ -23,7 +23,7 @@ static napi_value CallFunction(napi_env env, napi_callback_info info)
     // Get instance object
     size_t argc = 1;
     napi_value args[1] = {nullptr};
-    napi_get_cb_info(env, info, &argc, args, NULL, NULL);  // AST node missing corresponding to NULL
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);  // AST node missing corresponding to NULL
     // Get object's method
     napi_value onCall;
     napi_get_named_property(env, args[0], "onCall", &onCall);
