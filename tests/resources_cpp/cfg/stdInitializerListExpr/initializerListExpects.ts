@@ -45,7 +45,7 @@ export const LIST_EXPECT_EXAMPLE2 = {
                 '%0[1] = 2',
                 '%0[2] = 3',
                 'staticinvoke <@%unk/%unk: .Func()>(%0)',
-                '%1 = new @%unk/%unk: std::vector<int>',
+                '%1 = new @%unk/%unk: std::vector<int><int>',
                 '%2 = newarray (int[])[4]',
                 '%2[0] = 1',
                 '%2[1] = 2',

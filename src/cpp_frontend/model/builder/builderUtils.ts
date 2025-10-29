@@ -278,6 +278,9 @@ export function buildTypeFromPreStr(preStr: string, arkInstance: ArkMethod | Ark
         let baseType = cxxNode2Type(preStr.slice(preStr.indexOf('<') + 1, preStr.lastIndexOf('>')), undefined);
         return new SmartPointerType(baseType, 0, preStr);
     }
+    if (preStr.includes('__unwrap_ref_decay')){
+        return cxxNode2Type(preStr.slice(preStr.indexOf('<') + 1, preStr.lastIndexOf('>')), undefined);
+    }
     return baseType;
 }
 

@@ -120,7 +120,7 @@ export const POINTER_EXPECT_CASE4 = {
             stmts: [
                 'this = this: @pointer/pointerExpr.cpp: %dflt',
                 'ptr1 = staticinvoke <@%unk/%unk: .make_unique()>(42)',
-                '%0 = new @%unk/%unk: unique_ptr<int>',
+                '%0 = new @%unk/%unk: unique_ptr<int><int>',
                 '%1 = new @%unk/%unk: int',
                 'instanceinvoke %1.<@%unk/%unk: int.constructor()>(42)',
                 'instanceinvoke %0.<@%unk/%unk: unique_ptr<int>.constructor()>(%1)',
@@ -142,7 +142,7 @@ export const POINTER_EXPECT_CASE5 = {
             stmts: [
                 'this = this: @pointer/pointerExpr.cpp: %dflt',
                 'ptr1 = staticinvoke <@%unk/%unk: .make_shared()>(42)',
-                '%0 = new @%unk/%unk: shared_ptr<int>',
+                '%0 = new @%unk/%unk: shared_ptr<int><int>',
                 '%1 = new @%unk/%unk: int',
                 'instanceinvoke %1.<@%unk/%unk: int.constructor()>(42)',
                 'instanceinvoke %0.<@%unk/%unk: shared_ptr<int>.constructor()>(%1)',

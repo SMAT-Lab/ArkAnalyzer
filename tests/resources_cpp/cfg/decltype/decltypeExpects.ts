@@ -20,7 +20,7 @@ export const AUTO_EXPECT_CASE1 = {
             stmts: [
                 'this = this: @decltype/decltype.cpp: %dflt',
                 'a = 5',
-                '%0 = new @%unk/%unk: std::vector<int>',
+                '%0 = new @%unk/%unk: std::vector<int><int>',
                 '%1 = newarray (int[])[3]',
                 '%1[0] = 1',
                 '%1[1] = 2',
@@ -30,7 +30,7 @@ export const AUTO_EXPECT_CASE1 = {
                 'it = instanceinvoke vec.<@std/vector.h: vector.begin()>()',
                 'it2 = vec[0]',
                 'lambda = %AM0$AutoTest',
-                'return',
+                'return'
             ],
             preds: [],
             succes: [],

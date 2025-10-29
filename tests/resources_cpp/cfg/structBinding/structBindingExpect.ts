@@ -19,12 +19,12 @@ export const BINGING_EXPECT_BASICUSAGE = {
             id: 0,
             stmts: [
                 'this = this: @structBinding/structBinding.cpp: %dflt',
-                '%0 = new @%unk/%unk: pair<typename __unwrap_ref_decay<int>::type, typename __unwrap_ref_decay<int>::type>',
+                '%0 = new @%unk/%unk: pair<typename __unwrap_ref_decay<int>::type, typename __unwrap_ref_decay<int>::type><int,int>',
                 '%1 = staticinvoke <@%unk/%unk: .make_pair()>(1, 2)',
                 'instanceinvoke %0.<@%unk/%unk: pair<typename __unwrap_ref_decay<int>::type, typename __unwrap_ref_decay<int>::type>.constructor()>(%1)',
                 'x = %0[0]',
                 'y = %0[1]',
-                '%2 = new @%unk/%unk: std::pair<int, int>',
+                '%2 = new @%unk/%unk: std::pair<int, int><int,int>',
                 'instanceinvoke %2.<@%unk/%unk: std::pair<int, int>.constructor()>(3, 4)',
                 'a = %2[0]',
                 'b = %2[1]',
@@ -42,14 +42,15 @@ export const BINGING_EXPECT_REFERENCE = {
             id: 0,
             stmts: [
                 'this = this: @structBinding/structBinding.cpp: %dflt',
-                '%0 = new @%unk/%unk: pair<typename __unwrap_ref_decay<int>::type, typename __unwrap_ref_decay<int>::type>',
+                '%0 = new @%unk/%unk: pair<typename __unwrap_ref_decay<int>::type, typename __unwrap_ref_decay<int>::type><int,int>',
                 '%1 = staticinvoke <@%unk/%unk: .make_pair()>(10, 20)',
                 'instanceinvoke %0.<@%unk/%unk: pair<typename __unwrap_ref_decay<int>::type, typename __unwrap_ref_decay<int>::type>.constructor()>(%1)',
                 'pair = %0',
                 'x = pair[0]',
                 'y = pair[1]',
                 'x = 100',
-                'return'],
+                'return',
+            ],
             preds: [],
             succes: [],
         },
@@ -62,10 +63,10 @@ export const BINGING_EXPECT_TUPLEUSAGE = {
             id: 0,
             stmts: [
                 'this = this: @structBinding/structBinding.cpp: %dflt',
-                'name = staticinvoke <@%unk/%unk: .make_tuple()>(\'Alice\', 25, 95.5)[0]',
-                'age = staticinvoke <@%unk/%unk: .make_tuple()>(\'Alice\', 25, 95.5)[1]',
-                'score = staticinvoke <@%unk/%unk: .make_tuple()>(\'Alice\', 25, 95.5)[2]',
-                'return',
+                "name = staticinvoke <@%unk/%unk: .make_tuple()>('Alice', 25, 95.5)[0]",
+                "age = staticinvoke <@%unk/%unk: .make_tuple()>('Alice', 25, 95.5)[1]",
+                "score = staticinvoke <@%unk/%unk: .make_tuple()>('Alice', 25, 95.5)[2]",
+                'return'
             ],
             preds: [],
             succes: [],
@@ -101,12 +102,12 @@ export const BINGING_EXPECT_MAP = {
             id: 0,
             stmts: [
                 'this = this: @structBinding/structBinding.cpp: %dflt',
-                '%0 = new @%unk/%unk: std::map<std::basic_string<char>, int>',
-                '%1 = new @%unk/%unk: const std::pair<const std::basic_string<char>, int>',
+                '%0 = new @%unk/%unk: std::map<std::basic_string<char>, int><string,int>',
+                '%1 = new @%unk/%unk: const std::pair<const std::basic_string<char>, int><string,int>',
                 'instanceinvoke %1.<@%unk/%unk: const std::pair<const std::basic_string<char>, int>.constructor()>(\'Alice\', 90)',
-                '%2 = new @%unk/%unk: const std::pair<const std::basic_string<char>, int>',
+                '%2 = new @%unk/%unk: const std::pair<const std::basic_string<char>, int><string,int>',
                 'instanceinvoke %2.<@%unk/%unk: const std::pair<const std::basic_string<char>, int>.constructor()>(\'Bob\', 85)',
-                '%3 = new @%unk/%unk: const std::pair<const std::basic_string<char>, int>',
+                '%3 = new @%unk/%unk: const std::pair<const std::basic_string<char>, int><string,int>',
                 'instanceinvoke %3.<@%unk/%unk: const std::pair<const std::basic_string<char>, int>.constructor()>(\'Charlie\', 95)',
                 '%4 = newarray (const std::pair<const std::basic_string<char>, int>[])[3]',
                 '%4[0] = %1',
@@ -134,7 +135,7 @@ export const BINGING_EXPECT_MAP = {
             stmts: [
                 '%8 = scores.<@std/map.h: map.value>',
                 'item = <unknown>%8',
-                "staticinvoke <@%unk/%unk: .cout()>(\'Overall object access\')"
+                'staticinvoke <@%unk/%unk: .cout()>(\'Overall object access\')',
             ],
             preds: [1],
             succes: [1],
@@ -155,7 +156,7 @@ export const BINGING_EXPECT_MAP = {
                 '%12 = scores.<@std/map.h: map.value>',
                 'name = %12[0]',
                 'score = %12[1]',
-                "staticinvoke <@%unk/%unk: .cout()>(\'Structured binding access\')"
+                'staticinvoke <@%unk/%unk: .cout()>(\'Structured binding access\')',
             ],
             preds: [3],
             succes: [3],
@@ -163,10 +164,10 @@ export const BINGING_EXPECT_MAP = {
         { id: 5, stmts: ['return'], preds: [3], succes: [] },
         {
             id: 6,
-            stmts: [ '%9 = instanceinvoke scores.<@%unk/%unk: .Symbol.iterator()>()' ],
-            preds: [ 1 ],
-            succes: [ 3 ]
-        }
+            stmts: ['%9 = instanceinvoke scores.<@%unk/%unk: .Symbol.iterator()>()'],
+            preds: [1],
+            succes: [3],
+        },
     ],
 };
 
@@ -176,8 +177,8 @@ export const BINGING_EXPECT_GETSTRUCTINFO = {
             id: 0,
             stmts: [
                 'this = this: @structBinding/structBinding.cpp: %dflt',
-                '%0 = new @%unk/%unk: std::tuple<std::basic_string<char>, int, bool>',
-                "instanceinvoke %0.<@%unk/%unk: std::tuple<std::basic_string<char>, int, bool>.constructor()>('David', 22, true)",
+                '%0 = new @%unk/%unk: std::tuple<std::basic_string<char>, int, bool><string,int,boolean>',
+                'instanceinvoke %0.<@%unk/%unk: std::tuple<std::basic_string<char>, int, bool>.constructor()>(\'David\', 22, true)',
                 'return %0',
             ],
             preds: [],
