@@ -1916,6 +1916,9 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         constructorMethodSignature: MethodSignature,
         className: string,
     ): void {
+        if (newExpression.inner.length === 0) {
+            return ;
+        }
         // 对象构造，使用 invokeStmt 表达
         const constructArgs:CxxAstNode[] = (():CxxAstNode[] => {
             let args:CxxAstNode[] = newExpression.inner;
