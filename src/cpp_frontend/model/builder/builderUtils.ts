@@ -389,6 +389,8 @@ const typeMap: Record<string, string> = {
     int32_t: 'number',
     int64_t: 'number',
     size_t: 'number',
+    intptr_t: 'number',
+    uintptr_t: 'number',
     // void
     void: 'void',
     'std::type_info': 'type_info',

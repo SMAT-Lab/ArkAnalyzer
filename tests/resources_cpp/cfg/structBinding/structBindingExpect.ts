@@ -114,6 +114,7 @@ export const BINGING_EXPECT_MAP = {
                 '%4[2] = %3',
                 'instanceinvoke %0.<@%unk/%unk: std::map<std::basic_string<char>, int>.constructor()>(%4)',
                 'scores = %0',
+                '%5 = instanceinvoke scores.<@%unk/%unk: .Symbol.iterator()>()',
             ],
             preds: [],
             succes: [1],
@@ -121,43 +122,51 @@ export const BINGING_EXPECT_MAP = {
         {
             id: 1,
             stmts: [
-                '%5 = instanceinvoke scores.<@%unk/%unk: .Symbol.iterator()>()',
-                '%6 = instanceinvoke %5.<@%unk/%unk: .std::next()>()',
-                '%7 = %6.<@CXX/std/BuiltinClass: IterableIterator.std::end>',
+                '%6 = instanceinvoke %5.<@%unk/%unk: .next()>()',
+                '%7 = %6.<@CXX/std/BuiltinClass: IterableIterator.done>',
                 'if %7 == true',
-                '%8 = scores.<@std/map.h: map.value>',
-                'item = <unknown>%8',
             ],
             preds: [0, 2],
-            succes: [2, 3],
+            succes: [2, 6],
         },
         {
             id: 2,
-            stmts: ['staticinvoke <@%unk/%unk: .cout()>(\'Overall object access\')'],
+            stmts: [
+                '%8 = scores.<@std/map.h: map.value>',
+                'item = <unknown>%8',
+                "staticinvoke <@%unk/%unk: .cout()>(\'Overall object access\')"
+            ],
             preds: [1],
             succes: [1],
         },
         {
             id: 3,
             stmts: [
-                '%9 = instanceinvoke scores.<@%unk/%unk: .Symbol.iterator()>()',
-                '%10 = instanceinvoke %9.<@%unk/%unk: .std::next()>()',
-                '%11 = %10.<@CXX/std/BuiltinClass: IterableIterator.std::end>',
+                '%10 = instanceinvoke %9.<@%unk/%unk: .next()>()',
+                '%11 = %10.<@CXX/std/BuiltinClass: IterableIterator.done>',
                 'if %11 == true',
-                '%12 = scores.<@std/map.h: map.value>',
-                'name = %12[0]',
-                'score = %12[1]',
             ],
-            preds: [1, 4],
+            preds: [6, 4],
             succes: [4, 5],
         },
         {
             id: 4,
-            stmts: ['staticinvoke <@%unk/%unk: .cout()>(\'Structured binding access\')'],
+            stmts: [
+                '%12 = scores.<@std/map.h: map.value>',
+                'name = %12[0]',
+                'score = %12[1]',
+                "staticinvoke <@%unk/%unk: .cout()>(\'Structured binding access\')"
+            ],
             preds: [3],
             succes: [3],
         },
         { id: 5, stmts: ['return'], preds: [3], succes: [] },
+        {
+            id: 6,
+            stmts: [ '%9 = instanceinvoke scores.<@%unk/%unk: .Symbol.iterator()>()' ],
+            preds: [ 1 ],
+            succes: [ 3 ]
+        }
     ],
 };
 
