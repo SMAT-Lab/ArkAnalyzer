@@ -57,12 +57,12 @@ export const THREAD_EXPECT_CASE3 = {
             id: 0,
             stmts: [
                 'this = this: @thread/thread.cpp: %dflt',
-                '%0 = new @%unk/%unk: thread',
-                'instanceinvoke %0.<@%unk/%unk: thread.constructor()>(Hello)',
+                '%0 = new @%unk/%unk: std::thread',
+                'instanceinvoke %0.<@%unk/%unk: std::thread.constructor()>(Hello)',
                 't = %0',
                 'instanceinvoke t.<@%unk/%unk: .join()>()',
-                'staticinvoke <@%unk/%unk: .cout()>(\'Hello from main!\\n\')',
-                'return 0',
+                "staticinvoke <@%unk/%unk: .cout()>('Hello from main!\\n')",
+                'return 0'
             ],
             preds: [],
             succes: [],
@@ -77,8 +77,8 @@ export const THREAD_EXPECT_CASE4 = {
             stmts: [
                 'this = this: @thread/thread.cpp: %dflt',
                 'a = 5',
-                '%0 = new @%unk/%unk: thread',
-                'instanceinvoke %0.<@%unk/%unk: thread.constructor()>(PrintSum, a, 7)',
+                '%0 = new @%unk/%unk: std::thread',
+                'instanceinvoke %0.<@%unk/%unk: std::thread.constructor()>(PrintSum, a, 7)',
                 't = %0',
                 'instanceinvoke t.<@%unk/%unk: .join()>()',
                 'return 0',

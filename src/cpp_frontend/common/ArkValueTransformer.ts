@@ -2011,19 +2011,53 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
      */
     private getNewExpressionClassName(newExpression: CxxAstNode): string {
         let oriType = '';
-        if (newExpression.name !== '') {
-            oriType = newExpression.name;
-        } else if (newExpression.type.desugaredQualType) {
+        if (newExpression.type.desugaredQualType) {
             oriType = newExpression.type.desugaredQualType;
         } else if (newExpression.type.qualType) {
             oriType = newExpression.type.qualType;
         } else if (newExpression.code) {
             oriType = newExpression.code;
         }
+        oriType = this.removeOutermostTemplateArgs(oriType);
         if (isCXXSTLContainer(oriType)) {
             return oriType;
         }
         return oriType.replace(/[()]|\ \*|struct\ |union\ /g, '');
+    }
+
+    /**
+     *Remove the outermost template parameter (angle brackets and their contents) from the string
+     *@ param typeStr is a type string containing template parameters
+     *@ returns string after removing the outermost template parameter
+     */
+    private removeOutermostTemplateArgs(typeStr: string): string {
+        // Find the position of the first '<'
+        const start = typeStr.indexOf('<');
+        if (start === -1) {
+            return typeStr; // Cannot find '<', return the original string directly
+        }
+
+        let bracketCount = 1;
+        let end = -1;
+
+        // Starting from the first '<', search and calculate bracket matches
+        for (let i = start + 1; i < typeStr.length; i++) {
+            if (typeStr[i] === '<') {
+                bracketCount++;
+            } else if (typeStr[i] === '>') {
+                bracketCount--;
+                if (bracketCount === 0) {
+                    end = i;
+                    break;
+                }
+            }
+        }
+
+        // If a matching ending '>' is found, remove this paragraph
+        if (end !== -1) {
+            return typeStr.substring(0, start) + typeStr.substring(end + 1);
+        }
+        return typeStr;
     }
 
     /**

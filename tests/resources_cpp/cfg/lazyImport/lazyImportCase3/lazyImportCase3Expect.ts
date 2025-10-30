@@ -37,9 +37,9 @@ export const MapDemo_EXPECT = {
                 '%4 = args[1]',
                 '%5 = &num',
                 'staticinvoke <@%unk/%unk: .napi_get_value_int32()>(env, %4, %5)',
-                '%6 = new @%unk/%unk: pair<typename __unwrap_ref_decay<char (&)[1024]>::type, typename __unwrap_ref_decay<int &>::type><char ()&[],int&>',
+                '%6 = new @%unk/%unk: pair<char ()&[],int&>',
                 '%7 = staticinvoke <@%unk/%unk: .make_pair()>(str1, num)',
-                'instanceinvoke %6.<@%unk/%unk: pair<typename __unwrap_ref_decay<char (&)[1024]>::type, typename __unwrap_ref_decay<int &>::type>.constructor()>(%7)',
+                'instanceinvoke %6.<@%unk/%unk: pair.constructor()>(%7)',
                 'instanceinvoke testmap.<@%unk/%unk: .insert()>(%6)',
                 '%8 = instanceinvoke testmap.<@%unk/%unk: .Symbol.iterator()>()'
             ],
