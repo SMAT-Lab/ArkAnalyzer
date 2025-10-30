@@ -66,6 +66,7 @@ import * as INITIALZERLIST from '../../../resources_cpp/cfg/stdInitializerListEx
 // Standard library header file configuration for DevEco
 const deveco_c = process.env.DEVECO_C !== undefined ? process.env.DEVECO_C : '';
 const deveco_include = process.env.DEVECO_INCLUDE !== undefined ? process.env.DEVECO_INCLUDE : '';
+const deveco_sysroot_include = process.env.DEVECO_SYSROOT_INCLUDE !== undefined ? process.env.DEVECO_SYSROOT_INCLUDE : '';
 const is_system_win32 = process.platform === 'win32';
 
 describe('CfgTest', () => {
@@ -497,10 +498,9 @@ function getNapiIncludeDirs(): string[] {
     if (deveco_c === '') {
         return [];
     }
-    const devecoStudioDir = path.resolve(deveco_c, '..', '..');
     return [
-        path.join(devecoStudioDir, 'sysroot\\usr\\include\\aarch64-linux-ohos'),
-        path.join(devecoStudioDir, 'sysroot\\usr\\include'),
+        path.join(deveco_sysroot_include, 'x86_64-linux-ohos'),
+        deveco_sysroot_include,
     ];
 }
 
