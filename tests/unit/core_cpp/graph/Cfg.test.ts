@@ -495,9 +495,6 @@ function buildScene(folderName: string): Scene {
 }
 
 function getNapiIncludeDirs(): string[] {
-    if (deveco_c === '') {
-        return [];
-    }
     return [
         path.join(deveco_sysroot_include, 'x86_64-linux-ohos'),
         deveco_sysroot_include,
