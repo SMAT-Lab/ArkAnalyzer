@@ -23,7 +23,7 @@ export const POINTER_EXPECT_CASE1 = {
                 'this = this: @pointer/pointerExpr.cpp: %dflt',
                 'q = p',
                 '%0 = new @pointer/pointerExpr.cpp: MyClass',
-                'instanceinvoke %0.<@pointer/pointerExpr.cpp: MyClass.constructor()>(2)',
+                'instanceinvoke %0.<@pointer/pointerExpr.cpp: MyClass.constructor(int)>(2)',
                 'clsPtr = %0',
                 'return',
             ],

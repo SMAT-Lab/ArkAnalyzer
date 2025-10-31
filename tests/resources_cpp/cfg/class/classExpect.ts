@@ -352,7 +352,7 @@ export const MAIN_EXPECT = {
             stmts: [
                 'this = this: @class/classSample.cpp: %dflt',
                 '%0 = new @class/classSample.cpp: Derived',
-                "instanceinvoke %0.<@class/classSample.cpp: Derived.constructor()>('X', 101, 75, 3.6)",
+                "instanceinvoke %0.<@class/classSample.cpp: Derived.constructor(char&, int, int, double)>('X', 101, 75, 3.6)",
                 'd = %0',
                 'instanceinvoke d.<@class/classSample.cpp: Derived.Introduce()>()',
                 '%1 = new @class/classSample.cpp: Dog',

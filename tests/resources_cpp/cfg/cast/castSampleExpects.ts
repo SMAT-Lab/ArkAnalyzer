@@ -116,7 +116,7 @@ export const CAST_EXPECT_CASE6 = {
                 "instanceinvoke %0.<@%unk/%unk: std::basic_string.constructor()>('hello')",
                 'y = <CXXFunctionalCastExpr: string>%0',
                 '%1 = new @cast/castSample.cpp: Widget',
-                'instanceinvoke %1.<@cast/castSample.cpp: Widget.constructor()>(42)',
+                'instanceinvoke %1.<@cast/castSample.cpp: Widget.constructor(int)>(42)',
                 'w = <CXXFunctionalCastExpr: @cast/castSample.cpp: Widget>%1',
                 'return'
             ],

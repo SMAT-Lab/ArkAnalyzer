@@ -160,7 +160,7 @@ export const LAZY_IMPORT_CASE1_CLASS = {
                     id: 3,
                     stmts: [
                         '%7 = new @lazyImportCase1/lazyImportCase1.cpp: GlobalConfig',
-                        'instanceinvoke %7.<@lazyImportCase1/lazyImportCase1.cpp: GlobalConfig.constructor()>(value)',
+                        'instanceinvoke %7.<@lazyImportCase1/lazyImportCase1.cpp: GlobalConfig.constructor(double)>(value)',
                         'obj = %7',
                         'obj-><@lazyImportCase1/lazyImportCase1.cpp: GlobalConfig.env_> = env',
                         '%8 = <CXXReinterpretCastExpr: void*>obj',

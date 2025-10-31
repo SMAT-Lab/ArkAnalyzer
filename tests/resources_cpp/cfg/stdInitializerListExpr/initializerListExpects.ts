@@ -73,7 +73,7 @@ export const LIST_EXPECT_EXAMPLE3 = {
                 '%1[1] = 2',
                 '%1[2] = 3',
                 '%1[3] = 4',
-                'instanceinvoke %0.<@stdInitializerListExpr/stdInitializerListExpr.cpp: MyClass.constructor()>(%1)',
+                'instanceinvoke %0.<@stdInitializerListExpr/stdInitializerListExpr.cpp: MyClass.constructor(std::initializer_list<int>)>(%1)',
                 'obj = %0',
                 'return'
             ],

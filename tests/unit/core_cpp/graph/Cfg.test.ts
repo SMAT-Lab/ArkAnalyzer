@@ -420,6 +420,7 @@ describe('using Test', () => {
 describe('typedef Test', () => {
     it('case1: typedef', () => {
         const scene = buildScene('typedef');
+        scene.inferTypes();
         testBlocks(scene, 'typedef.cpp', 'main', TYPEDEF_EXPECT.TYPEDEF_EXPECT_CASE1.blocks);
     });
 });

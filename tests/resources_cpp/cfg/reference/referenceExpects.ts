@@ -54,7 +54,7 @@ export const REFERENCE_EXPECT_CASE3 = {
             stmts: [
                 'this = this: @reference/reference.cpp: %dflt',
                 '%0 = new @reference/reference.cpp: MyClass',
-                'instanceinvoke %0.<@reference/reference.cpp: MyClass.constructor()>(5)',
+                'instanceinvoke %0.<@reference/reference.cpp: MyClass.constructor(int)>(5)',
                 'a = %0',
                 'b = a',
                 'return',
