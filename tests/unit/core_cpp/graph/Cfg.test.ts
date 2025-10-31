@@ -63,9 +63,6 @@ import * as CALLEXPR_EXPECT from '../../../resources_cpp/cfg/call/callExpect';
 import * as MALLOC_EXPECT from '../../../resources_cpp/cfg/malloc/mallocSampleExpects';
 import * as INITIALZERLIST from '../../../resources_cpp/cfg/stdInitializerListExpr/initializerListExpects';
 
-// Standard library header file configuration for DevEco
-const deveco_c = process.env.DEVECO_C !== undefined ? process.env.DEVECO_C : '';
-const deveco_include = process.env.DEVECO_INCLUDE !== undefined ? process.env.DEVECO_INCLUDE : '';
 const deveco_sysroot_include = process.env.DEVECO_SYSROOT_INCLUDE !== undefined ? process.env.DEVECO_SYSROOT_INCLUDE : '';
 const is_system_win32 = process.platform === 'win32';
 
@@ -483,8 +480,6 @@ function buildScene(folderName: string): Scene {
     config.setSupportFileExts(['.c', '.cpp', '.h', '.hpp']);
     let includeDirs: string[] = [];
     // header file configuration for DevEco
-    includeDirs.push(path.join(deveco_c, 'c++', 'v1'));
-    includeDirs.push(path.join(deveco_include, 'include'));
     if (folderName.includes('lazyImport')) {
         includeDirs.push(...getNapiIncludeDirs());
     }

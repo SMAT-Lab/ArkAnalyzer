@@ -22,6 +22,9 @@ import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { ClangPath } from './const';
 import {CxxAstNode, CxxAstNodeLite} from './ArkCxxAstNode';
 
+const deveco_c = process.env.DEVECO_C !== undefined ? process.env.DEVECO_C : '';
+const deveco_include = process.env.DEVECO_INCLUDE !== undefined ? process.env.DEVECO_INCLUDE : '';
+
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'astUtils');
 
 export type GetParentFn = {
@@ -274,6 +277,10 @@ function constructParseArguments(srcFilePath: string, ccJsonPath: string | null,
     }
     if (ccJsonPath) {
         args.push('-c', ccJsonPath);
+    } else {
+        // Provide default header file search path
+        args.push('-i', path.join(deveco_c, 'c++', 'v1'));
+        args.push('-i', path.join(deveco_include, 'include'));
     }
     if (includeDirs && includeDirs.length > 0) {
         includeDirs.forEach(dir => {
