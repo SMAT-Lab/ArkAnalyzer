@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-void case1()
+void Case1()
 {
     int a[10] = {0};
 }

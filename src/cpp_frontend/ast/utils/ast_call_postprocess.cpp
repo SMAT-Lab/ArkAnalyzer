@@ -563,7 +563,8 @@ static bool RewriteAliasDefaultCtorCall(json& inn,
 // CXXConstructExpr of type D, preserving the original code text.
 // Before: VarDecl → ExprWithCleanups → CallExpr("d1(HUNDRED)")
 // After : VarDecl → CXXConstructExpr(name="D", code="d1(HUNDRED)")
-static bool TryRewriteVarInitAsConstructor(json& varDecl, json& initNode) {
+static bool TryRewriteVarInitAsConstructor(json& varDecl, json& initNode)
+{
     if (!varDecl.is_object() || !initNode.is_object()) {
         return false;
     }
