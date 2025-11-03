@@ -62,6 +62,7 @@ import * as STRUCTBINDING from '../../../resources_cpp/cfg/structBinding/structB
 import * as CALLEXPR_EXPECT from '../../../resources_cpp/cfg/call/callExpect';
 import * as MALLOC_EXPECT from '../../../resources_cpp/cfg/malloc/mallocSampleExpects';
 import * as INITIALZERLIST from '../../../resources_cpp/cfg/stdInitializerListExpr/initializerListExpects';
+import * as SUPPLEMENTARY from '../../../resources_cpp/cfg/supplementary/supplementary'
 
 const deveco_sysroot_include = process.env.DEVECO_SYSROOT_INCLUDE !== undefined ? process.env.DEVECO_SYSROOT_INCLUDE : '';
 const is_system_win32 = process.platform === 'win32';
@@ -469,6 +470,14 @@ describe('include in scope', () => {
         scene.inferTypes();
         testBlocks(scene, 'includeInScope.cpp', 'IncludeInFunction', INCLUDE_IN_SCOPE.INCLUDE_IN_FUNCTION_CASE1.blocks);
         testBlocksClass(scene, 'includeInScope.cpp', 'IncludeInClass', INCLUDE_IN_SCOPE.INCLUDE_IN_CLASS_CASE1);
+    });
+});
+
+describe('supplementary', () => {
+    it('case1: supplementary', () => {
+        const scene = buildScene('supplementary');
+        scene.inferTypes();
+        testBlocks(scene, 'supplementary.cpp', 'case1', SUPPLEMENTARY.SUP_CASE1.blocks);
     });
 });
 
