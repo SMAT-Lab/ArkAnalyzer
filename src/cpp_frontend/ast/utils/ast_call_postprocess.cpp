@@ -37,13 +37,6 @@ bool IsParenWrapped(const std::string& s) noexcept
     return IsParenWrapped(std::string_view{s});
 }
 
-void swapChildNode(json &children)
-{
-    json child = children[1];
-    children[1] = children[0];
-    children[0] = child;
-}
-
 bool ConstructCallExpr(std::string codeStr, std::string typeStr)
 {
     size_t index = codeStr.find('(');
@@ -57,21 +50,6 @@ bool ConstructCallExpr(std::string codeStr, std::string typeStr)
     return false;
 }
 
-// Modify child node types under CXXConstructExpr node
-void changeChildNodeType(json &children)
-{
-    if (children.size() == 1) {
-        std::string typeStr = children[0]["type"]["qualType"];
-        std::string codeStr = children[0]["code"];
-        std::string kindStr = children[0]["kind"];
-        if (typeStr == "iterator" || typeStr == "std::basic_string<char>" ||
-        (kindStr == "ImplicitCastExpr" && ConstructCallExpr(codeStr, typeStr))) {
-            children[0]["kind"] = "MaterializeTemporaryExpr";
-        }
-    }
-}
-
-
 // -------- operatorCallExprPostProcess --------
 void operatorCallExprPostProcess(
     json& node,
@@ -80,8 +58,9 @@ void operatorCallExprPostProcess(
 {
     if (children.size() >= TWO) {
         std::string childName1 = children[1]["name"].is_null() ? "" : children[1]["name"];
-        if (children[1]["code"] == "<<" || childName1.find("operator") != std::string::npos)
-            swapChildNode(children);
+        if (children[1]["code"] == "<<" || childName1.find("operator") != std::string::npos) {
+            std::swap(children[0], children[1]);
+        }
         std::string childName0 = children[0]["name"].is_null() ? "" : children[0]["name"];
         if (childName0.find("operator") != std::string::npos) children[0]["castKind"] = "FunctionToPointerDecay";
     }
@@ -103,15 +82,26 @@ void implicitCastExprPostProcess(
     }
 }
 
+static inline std::string TrimCopy(std::string s)
+{
+    Trim(s);
+    return s;
+}
+
 // Post-process a CallExpr node: adjust kind for member calls or fix missing kinds
 void callExprPostProcess(json& node, json& children)
 {
     // If the first child is a MemberExpr, upgrade the call to CXXMemberCallExpr
     if (!children.empty() && children[0]["kind"] == "MemberExpr") {
         node["kind"] = "CXXMemberCallExpr";
-    } else {
-        // Otherwise, try to normalize child node types
-        changeChildNodeType(children);
+    } else if (children.size() == 1) {
+        std::string typeStr = children[0]["type"]["qualType"];
+        std::string codeStr = children[0]["code"];
+        std::string kindStr = children[0]["kind"];
+        if (typeStr == "iterator" || typeStr == "std::basic_string<char>" ||
+        (kindStr == "ImplicitCastExpr" && ConstructCallExpr(codeStr, typeStr))) {
+            children[0]["kind"] = "MaterializeTemporaryExpr";
+        }
     }
     // If it's still a plain CallExpr and the first child is missing kind info,
     // infer its kind from referencedDecl or code pattern.
@@ -253,11 +243,6 @@ static bool IsBuiltinNameNoSpaceImpl(const std::string& s)
         "float", "double", "longdouble"
     };
     return kBuiltin.count(s) != 0;
-}
-
-bool IsBuiltinNameNoSpace(const std::string& tokNoSpace)
-{
-    return IsBuiltinNameNoSpaceImpl(tokNoSpace);
 }
 
 json MakeMinimalTypeNodeFromToken(const std::string& tokNoSpace)
@@ -520,18 +505,6 @@ std::string ShortTypeNameFromQual(const std::string& qt)
     return (pos == std::string::npos) ? base : base.substr(pos + 1);
 }
 
-bool LooksLikeParenInitNode(const json& n)
-{
-    const std::string k = n.value("kind", "");
-    const std::string c = n.value("code", "");
-    // Use only in the VarDecl context; avoid indiscriminately promoting
-    // generic parenthesized expressions such as fold/cast nodes.
-    if (k == "UnexposedExpr" || k == "ParenExpr" || k == "ImplicitCastExpr") {
-        return (c.size() >= TWO && c.front() == '(' && c.back() == ')');
-    }
-    return false;
-}
-
 /**
  * Scenario: Default construction of an alias / template-alias variable is
  *           misparsed as a CallExpr on the variable name itself.
@@ -585,7 +558,58 @@ static bool RewriteAliasDefaultCtorCall(json& inn,
     return false;
 }
 
-// ---- Restore parenthesized initialization in VarDecl to CXXConstructExpr ----
+// Fixes the mis-serialized “functional-style initialization” case, e.g: D d1(HUNDRED);dumped as CallExpr "d1(HUNDRED)"
+// Converts such patterns (where call head == varName) into a proper
+// CXXConstructExpr of type D, preserving the original code text.
+// Before: VarDecl → ExprWithCleanups → CallExpr("d1(HUNDRED)")
+// After : VarDecl → CXXConstructExpr(name="D", code="d1(HUNDRED)")
+static bool TryRewriteVarInitAsConstructor(json& varDecl, json& initNode) {
+    if (!varDecl.is_object() || !initNode.is_object()) {
+        return false;
+    }
+    const std::string qt = varDecl["type"].value("qualType", "");
+    const std::string varName = varDecl.value("name", "");
+    const std::string viC = initNode.value("code", "");
+    if (qt.empty() || varName.empty() || viC.empty()) {
+        return false;
+    }
+    std::string t = TrimCopy(viC);
+    const size_t pos = t.find('(');
+    if (pos == std::string::npos || pos == 0) {
+        return false;
+    }
+    const std::string head = TrimCopy(t.substr(0, pos));
+    if (head != varName) {
+        return false;
+    }
+    if (!initNode.contains("inner") || !initNode["inner"].is_array() || initNode["inner"].empty()) {
+        return false;
+    }
+
+    const json& i1 = initNode["inner"][0];
+    if (i1.value("kind", "") != "CallExpr") {
+        return false;
+    }
+    json ctor = {
+        {"kind", "CXXConstructExpr"},
+        {"name", ShortTypeNameFromQual(qt)},
+        {"type", {{"qualType", qt}}},
+        {"valueCategory", "prvalue"},
+        {"code", viC}
+    };
+    if (i1.contains("inner") && i1["inner"].is_array()) {
+        ctor["inner"] = i1["inner"];
+    } else {
+        ctor["inner"] = json::array({i1});
+    }
+    if (initNode.contains("range")) {
+        ctor["range"] = initNode["range"];
+    }
+    initNode = std::move(ctor);
+    return true;
+}
+
+// ---- Restore parenthesized / functional initialization in VarDecl to CXXConstructExpr ----
 void RecoverCtorForVarDecl(json& varDecl)
 {
     if (varDecl.value("kind", "") != "VarDecl") {
@@ -598,16 +622,18 @@ void RecoverCtorForVarDecl(json& varDecl)
     if (inn.size() < TWO) {
         return;
     }
-    const std::string qt  = varDecl["type"].value("qualType", "");
-    const std::string viC = inn[1].value("code", "");
+    const std::string qt = varDecl["type"].value("qualType", "");
     const std::string varName = varDecl.value("name", "");
+    const std::string viC = inn[1].value("code", "");
     if (!IsClassLikeQualType(qt)) {
         return;
     }
     if (RewriteAliasDefaultCtorCall(inn, varName, qt)) {
         return;
     }
-    // If the code may include surrounding whitespace, TrimView before checking parentheses.
+    if (TryRewriteVarInitAsConstructor(varDecl, inn[1])) {
+        return;
+    }
     if (!IsParenWrapped(TrimView(viC))) {
         return;
     }
@@ -617,18 +643,14 @@ void RecoverCtorForVarDecl(json& varDecl)
         {"type", {{"qualType", qt}}},
         {"valueCategory", "prvalue"}
     };
-
-    if (inn[1].contains("inner") && inn[1]["inner"].is_array()) {
+    if (inn[1].contains("inner") && inn[1]["inner"].is_array())
         ctor["inner"] = inn[1]["inner"];
-    } else {
+    else
         ctor["inner"] = json::array({inn[1]});
-    }
-
     ctor["code"] = ShortTypeNameFromQual(qt) + viC;
     if (inn[1].contains("range")) {
         ctor["range"] = inn[1]["range"];
     }
-
     inn[1] = std::move(ctor);
 }
 
@@ -1625,12 +1647,6 @@ static bool IsNameEquivalent(const std::string& base, const std::string& name)
         return false;
     }
     return it->second.count(name) != 0;
-}
-
-static inline std::string TrimCopy(std::string s)
-{
-    Trim(s);
-    return s;
 }
 
 // Try to decide ctor-likeness by parsing the "type-like head" before '(' or '{' in `code`.

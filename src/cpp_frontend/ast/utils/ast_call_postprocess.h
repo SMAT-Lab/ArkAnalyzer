@@ -33,23 +33,13 @@ void forEachChild(json& node, F&& f)
     }
 }
 
-// --- Forward declarations for helpers defined elsewhere ---
-// These are already implemented in your original .cpp; we just declare them here.
-void changeChildNodeType(json& children);
-
 // --- Public API: move these 5 postprocess helpers into a separate TU ---
 void operatorCallExprPostProcess(json& node, json& children);
 void implicitCastExprPostProcess(json& node, json& children, std::string codeStr);
 void callExprPostProcess(json& node, json& children);
 void PostprocessPseudoDestructor(json& node, const json& children, std::string_view codeStr);
 
-bool ConstructCallExpr(std::string codeStr, std::string typeStr);
-
-
 std::vector<std::string> ParseTemplateArgsAfterEqual(const std::string& codeRaw, const std::string& tplNameHint);
-
-
-bool IsBuiltinNameNoSpace(const std::string& tokNoSpace);
 
 json MakeMinimalTypeNodeFromToken(const std::string& tokNoSpace);
 
@@ -81,9 +71,6 @@ bool LooksLikeSimpleLeftFold(std::string_view s, char& opOut) noexcept;
 bool IsClassLikeQualType(const std::string& qt) noexcept;
 std::string StripTemplates(std::string s);
 std::string ShortTypeNameFromQual(const std::string& qt);
-
-// Only intended in VarDecl context: whether node looks like a parenthesized init
-bool LooksLikeParenInitNode(const json& n);
 
 // Promote VarDecl’s parenthesized init to CXXConstructExpr if it’s a class-like type
 void RecoverCtorForVarDecl(json& varDecl);

@@ -1083,9 +1083,7 @@ void nodePostprocess(json& node, CXCursor cursor, CXCursorKind kind_cursor, json
     // --- Remaining generic handlers ---
     HandleTemplateAndCursorSpecific(node, kind_cursor, codeStr, children);
     patchFoldExpr(node);
-    if (node.value("kind", "") == "VarDecl") {
-        RecoverCtorForVarDecl(node);
-    }
+    RecoverCtorForVarDecl(node);
     detectAndFillSpecialKind(node);
 }
 
