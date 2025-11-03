@@ -603,9 +603,11 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         stmts.push(dummyInitializerStmt);
 
         if (conditionNoe) {
-            const { value: conditionValue, stmts: conditionStmts } = this.ArkCxxValueTransformer.cxxConditionToValueAndStmts(conditionNoe);
+            const { value: conditionValue, valueOriginalPositions: conditionPositions, stmts: conditionStmts } = this.ArkCxxValueTransformer.cxxConditionToValueAndStmts(conditionNoe);
             conditionStmts.forEach(stmt => stmts.push(stmt));
-            stmts.push(new ArkIfStmt(conditionValue as ArkConditionExpr));
+            const ifStmt = new ArkIfStmt(conditionValue as ArkConditionExpr);
+            ifStmt.setOperandOriginalPositions(conditionPositions);
+            stmts.push(ifStmt);
         } else {
             // The omitted condition always evaluates to true.
             const trueConstant = CxxValueUtil.getBooleanConstant(true);
@@ -623,17 +625,21 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         const dummyInitializerStmt = new DummyStmt(ArkIRTransformer.DUMMY_LOOP_INITIALIZER_STMT);
         stmts.push(dummyInitializerStmt);
 
-        const { value: conditionExpr, stmts: conditionStmts } = this.ArkCxxValueTransformer.cxxConditionToValueAndStmts(whileStatement.inner[0]);
+        const { value: conditionExpr, valueOriginalPositions: conditionPositions, stmts: conditionStmts } = this.ArkCxxValueTransformer.cxxConditionToValueAndStmts(whileStatement.inner[0]);
         conditionStmts.forEach(stmt => stmts.push(stmt));
-        stmts.push(new ArkIfStmt(conditionExpr as ArkConditionExpr));
+        const ifStmt = new ArkIfStmt(conditionExpr as ArkConditionExpr);
+        ifStmt.setOperandOriginalPositions(conditionPositions);
+        stmts.push(ifStmt);
         return stmts;
     }
 
     private cxxDoStatementToStmts(doStatement: CxxAstNode): Stmt[] {
         const stmts: Stmt[] = [];
-        const { value: conditionExpr, stmts: conditionStmts } = this.ArkCxxValueTransformer.cxxConditionToValueAndStmts(doStatement.inner[1]);
+        const { value: conditionExpr, valueOriginalPositions: conditionPositions, stmts: conditionStmts } = this.ArkCxxValueTransformer.cxxConditionToValueAndStmts(doStatement.inner[1]);
         conditionStmts.forEach(stmt => stmts.push(stmt));
-        stmts.push(new ArkIfStmt(conditionExpr as ArkConditionExpr));
+        const ifStmt = new ArkIfStmt(conditionExpr as ArkConditionExpr);
+        ifStmt.setOperandOriginalPositions(conditionPositions);
+        stmts.push(ifStmt);
         return stmts;
     }
 
