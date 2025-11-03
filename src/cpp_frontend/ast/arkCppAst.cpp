@@ -358,6 +358,9 @@ std::string handleUnexposedExpr(json node)
         return "UnexposedExpr";
     }
     if (q == "<dependent type>") {
+        if (IsPlainFuncCall(code)) {
+            return "CallExpr";
+        }
         return "UnexposedExpr";
     }
     if (nm.empty()) {

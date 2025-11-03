@@ -1905,3 +1905,40 @@ void AnnotateFunctionLocalIncludes(json& ast, std::vector<json>& headerUnits)
     }
 }
 
+/**
+ * @brief Determine whether the given source code fragment represents a plain function call, e.g. `foo(...)`.
+ *
+ * Rules (intentionally narrow to avoid false positives):
+ *   1) Accepts only the form "top-level identifier + optional whitespace + '('".
+ *   2) Does NOT recognize member calls (e.g., obj.foo(...), ptr->foo(...)).
+ *   3) Does NOT recognize calls wrapped by parentheses or casts (e.g., (foo)(...), (void)foo(...)).
+ *   4) Does NOT recognize dereferenced calls (e.g., (*fp)(...)).
+ *
+ * Complexity: O(n), where n is the length of `code`. Performs a single linear scan
+ * without memory allocation, making it suitable for hot-path usage.
+ *
+ * Note: Always cast to `unsigned char` before passing to std::isalpha / std::isalnum / std::isspace
+ * to avoid undefined behavior for negative `char` values.
+ *
+ * @param code Source code fragment (string_view, no data copied)
+ * @return true  if the fragment has the plain form `foo(...)`
+ * @return false otherwise
+ */
+bool IsPlainFuncCall(std::string_view code)
+{
+    code = TrimView(code);
+    if (code.size() < FOUR) {
+        return false;
+    }
+    if (!(std::isalpha((unsigned char)code.front()) || code.front() == '_')) {
+        return false;
+    }
+    size_t i = 0;
+    while (i < code.size() && (std::isalnum((unsigned char)code[i]) || code[i] == '_')) {
+        ++i;
+    }
+    while (i < code.size() && std::isspace((unsigned char)code[i])) {
+        ++i;
+    }
+    return (i < code.size() && code[i] == '(');
+}

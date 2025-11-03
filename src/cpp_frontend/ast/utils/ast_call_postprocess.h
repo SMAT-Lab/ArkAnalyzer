@@ -146,3 +146,5 @@ std::string getMemberInClassName(CXCursor cursor);
 bool IsCtorLikeByCalleeAndType(const json& node);
 
 void AnnotateFunctionLocalIncludes(json& ast, std::vector<json>& headerUnits);
+
+bool IsPlainFuncCall(std::string_view code);
