@@ -29,15 +29,15 @@
 
 配置llvm的bin目录到环境变量
 
-![img_3.png](../../img_3.png)
+![img_22.png](img_22.png)
 
 下载Visual Studio 2022安装包进行安装，打开Visual Studio install选择C++的桌面开发进行安装环境
 
-![img_1.png](../../img_1.png)
+![img_20.png](img_20.png)
 
 下载arkAnalyzer-cpp代码，将json.hpp文件放在arkanalyzer\src\cpp_frontend\ast\utils的目录下，在arkanalyzer\src\cpp_frontend\ast\cmake\toolchains\windows.cmake文件中配置llvm的clang-c和libclang.dll的路径
 
-![img_4.png](../../img_4.png)
+![img_23.png](img_23.png)
 
 在arkanalyzer\src\cpp_frontend\ast的目录下执行以下命令，在arkanalyzer\src\cpp_frontend\ast\build\Release目录下生成工具
 
@@ -76,7 +76,7 @@
 #### 2.2、构建linux版本的arkCppAstDumper（x86和arm同理）
 下载linux版本的llvm预编译版本并解压
 
-![img_2.png](../../img_2.png)
+![img_21.png](img_21.png)
 
 下载arkAnalyzer-cpp代码，将json.hpp文件放在arkanalyzer\src\cpp_frontend\ast\utils的目录下，在arkanalyzer\src\cpp_frontend\ast\cmake\toolchains\linux.cmake文件中配置llvm的clang-c和libclang.so的路径
 
@@ -193,7 +193,7 @@ libclang.so（可从llvm预编译版本的lib目录下获取）
 
 4、设置DevEco Studio的llvm路径配置到环境变量，当没有编译数据库时作为头文件搜索路径
 
-![img_16.png](img_16.png)
+![img_8.png](img_8.png)
 
 5、执行接口，SceneConfig作为参数传给buildSceneFromFiles方法生成Scene结构的ArkIR，路径：arkanalyzer\src\Scene.ts
 

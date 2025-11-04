@@ -18,16 +18,16 @@ import { Scene, SceneConfig, ClassType } from '../../../../src';
 import path from 'path';
 
 // Standard library header file configuration for DevEco
-const deveco_c = process.env.DEVECO_C !== undefined ? process.env.DEVECO_C : '';
-const deveco_include = process.env.DEVECO_INCLUDE !== undefined ? process.env.DEVECO_INCLUDE : '';
+const deveco_c = process.env.DEVECO_C;
 
 function buildScene(folderName: string): Scene {
     let config: SceneConfig = new SceneConfig();
     config.setSupportFileExts(['.c', '.cpp', '.h', '.hpp']);
     let includeDirs: string[] = [];
-    // header file configuration for DevEco
-    includeDirs.push(path.join(deveco_c, 'c++', 'v1'));
-    includeDirs.push(path.join(deveco_include, 'include'));
+    if (deveco_c != undefined) {
+        // header file configuration for DevEco
+        includeDirs.push(path.join(deveco_c, 'c++', 'v1'));
+    }
     config.buildFromProjectDir(folderName, includeDirs);
     let scene = new Scene();
     scene.buildSceneFromProjectDir(config);
