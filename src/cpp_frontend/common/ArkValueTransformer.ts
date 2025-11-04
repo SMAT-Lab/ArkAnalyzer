@@ -859,9 +859,9 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
      *@ param innerAsNodes An AST node array containing call information and parameters. The first element is the call node, and the rest are parameter nodes
      *@ returns an array containing two elements: the first element is the call node, and the second element is the parameter node array
      */
-    private getArgumentNodeForRecover(innerAsNodes: CxxAstNode[]): {}[] {
+    private getArgumentNodeForRecover(innerAsNodes: CxxAstNode[]): [{}, CxxAstNode[]] {
         let callNode = {};
-        let argumentNodes = [];
+        const argumentNodes: CxxAstNode[] = [];
         for (let i = 0; i < innerAsNodes.length; i++) {
             if (i === 0) {
                 callNode = innerAsNodes[i];
@@ -891,6 +891,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             'MemberExpr',
             'OverloadedDeclRef',
             'ArraySubscriptExpr',
+            'CXXOperatorCallExpr'
         ]);
         function unwrapImplicit(n?: CxxAstNode): CxxAstNode | undefined {
             while (n && n.kind === 'ImplicitCastExpr') {
@@ -1194,7 +1195,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
 
         const stmts: Stmt[] = [];
         const [callNode, argumentNodes] = this.getArgumentNode(callExpression.inner);
-        const argus = this.cxxParseArgumentsOfCallExpression(stmts, argumentNodes);
+        const argus = this.cxxParseArgumentsOfCallExpression(stmts, argumentNodes, callNode);
         if (callExpression.name === 'napi_define_class') {
             setTs2CxxFuncMapOfClass(argus.args, true, this.declaringMethod);
         }
@@ -1759,20 +1760,49 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
 
     private cxxParseArgumentsOfCallExpression(
         currStmts: Stmt[],
-        callExpression: any
+        callExpression: CxxAstNode[],
+        callNode?: CxxAstNode,
     ): {
         realGenericTypes: Type[] | undefined;
         args: Value[];
         argPositions: FullPosition[];
     } {
-        let realGenericTypes: Type[] | undefined;
+        let realGenericTypes = this.getRealGenericTypes(callNode);
         let builderMethodIndexes: Set<number> | undefined;
-        const { args: args, argPositions: argPositions } = this.cxxParseArguments(currStmts, callExpression, builderMethodIndexes);
+        const {
+            args: args,
+            argPositions: argPositions,
+        } = this.cxxParseArguments(currStmts, callExpression, builderMethodIndexes);
         return {
             realGenericTypes: realGenericTypes,
             args: args,
             argPositions: argPositions,
         };
+    }
+
+    private getRealGenericTypes(node: CxxAstNode | undefined): Type[] | undefined {
+        let realGenericTypes: Type[] | undefined;
+        if (node) {
+            const qualType = node.type.qualType;
+            // Match the content within the outermost<>layer
+            const match = qualType.match(/<(.*)>/);
+            let members: string[] | undefined;
+            if (match && match[1]) {
+                // Extract content from<>
+                const contentInsideBrackets = match[1];
+                // Separate members with commas and store them in an array
+                members = contentInsideBrackets.split(',').map(item => item.trim());
+                // Use the members array for subsequent processing
+            }
+            if (members?.length) {
+                realGenericTypes = [];
+                members.forEach((typeArgument: string) => {
+                    realGenericTypes!.push(this.cxxResolveTypeNode(undefined, typeArgument));
+                });
+            }
+            return realGenericTypes;
+        }
+        return undefined;
     }
 
     private cxxParseArguments(
@@ -1839,13 +1869,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             return this.cxxNewArrayExpressionToValueAndStmts(newExpression);
         }
         const stmts: Stmt[] = [];
-        let realGenericTypes: Type[] | undefined;
-        if (newExpression.typeArguments) {
-            realGenericTypes = [];
-            newExpression.typeArguments.forEach((typeArgument: string) => {
-                realGenericTypes!.push(this.cxxResolveTypeNode(undefined, typeArgument));
-            });
-        }
+        let realGenericTypes = this.getRealGenericTypes(newExpression);
         // Handle the scenarios of namespace::Member and class::member
         const parentClassOrNs = newExpression.getParent?.(true).inner.filter(
             inn => ['TypeRef', 'NamespaceRef'].includes(inn.kind));
@@ -1853,13 +1877,15 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         // If the parent node has a namespaceRef or TypeRef, it indicates a constructor call,
         // and should infer the type of the corresponding namespace/class.
         if (parentClassOrNs && parentClassOrNs.length > 0) {
-            refType = TypeInference.inferUnclearRefName(className, this.declaringMethod.getDeclaringArkClass());
+            refType = TypeInference.inferUnclearRefName(className, this.declaringMethod.getDeclaringArkClass()) ??
+                this.buildCxxTypeFromQualTypeAndTagUsed(undefined, className, '');
         }
         let classType: ClassType;
         let classSignature: ClassSignature;
         if (refType instanceof ClassType) {
             classType = refType;
-            classSignature = classType.getClassSignature();
+        } else if (refType instanceof AliasType && refType.getOriginalType() instanceof ClassType) {
+            classType = refType.getOriginalType() as ClassType;
         } else {
             let curClass = this.declaringMethod.getDeclaringArkFile().getClassWithName(className);
             classSignature = curClass ? curClass.getSignature() : ArkSignatureBuilder.buildClassSignatureFromClassName(className);
@@ -1869,9 +1895,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         const {value: newLocal, valueOriginalPositions: newLocalPositions, stmts: newExprStmts, } =
             this.ArkCxxIRTransformer.generateAssignStmtForValue(newExpr, [FullPosition.cxxBuildFromNode(newExpression, this.cxxSourceFile)]);
         newExprStmts.forEach(stmt => stmts.push(stmt));
-        const constructorMethodSubSignature = ArkSignatureBuilder.buildMethodSubSignatureFromMethodName(CONSTRUCTOR_NAME);
-        const constructorMethodSignature = new MethodSignature(classSignature, constructorMethodSubSignature);
-        this.cxxEmitCtorInvokeAndMemberInits(stmts, newExpression, newLocal as Local, newLocalPositions, constructorMethodSignature, className);
+        this.cxxEmitCtorInvokeAndMemberInits(stmts, newExpression, newLocal as Local, newLocalPositions, classType, className);
         return { value: newLocal, valueOriginalPositions: newLocalPositions, stmts: stmts };
     }
 
@@ -1890,7 +1914,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         newExpression: CxxAstNode,
         newLocal: Local,
         newLocalPositions: FullPosition[],
-        constructorMethodSignature: MethodSignature,
+        classType: ClassType,
         className: string,
     ): void {
         // 对象构造，使用 invokeStmt 表达
@@ -1903,7 +1927,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             } else if (
                 newExpression.kind === 'CXXConstructExpr' &&
                 newExpression.type.qualType.startsWith('struct') &&
-                args && args[0].inner[0]?.kind === 'CompoundLiteralExpr'
+                args.length > 0 && args[0].inner[0]?.kind === 'CompoundLiteralExpr' // if case : struct LargeStruct s;, inner.length is 0, so we need to avoid it
             ) {
                 return this.getConstructArgs(args[0].inner[0].inner);
             } else if (newExpression.kind === 'InitListExpr') {
@@ -1916,6 +1940,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         })();
 
         const { args: argValues, argPositions } = this.cxxParseArguments(stmts, constructArgs);
+        const constructorMethodSignature = this.getConstructorSignatureByClassTypeAndArgs(classType, argValues);
         const instanceInvokeExpr = new ArkInstanceInvokeExpr(newLocal, constructorMethodSignature, argValues);
         const invokeStmt = new ArkInvokeStmt(instanceInvokeExpr);
         const instanceInvokeExprPositions = [newLocalPositions[0], ...newLocalPositions, ...argPositions];
@@ -1942,6 +1967,39 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
                 stmts.push(assignStmt);
             }
         }
+    }
+
+    private getConstructorSignatureByClassTypeAndArgs(classType: ClassType, args: Value[]): MethodSignature {
+        const file = this.declaringMethod.getDeclaringArkFile();
+        const arkClass = file.getClass(classType.getClassSignature());
+        const constructorMethodSubSignature = ArkSignatureBuilder.buildMethodSubSignatureFromMethodName(CONSTRUCTOR_NAME);
+        if (!arkClass) {
+            return new MethodSignature(
+                ArkSignatureBuilder.buildClassSignatureFromClassName(classType.getClassSignature().getClassName()), constructorMethodSubSignature);
+        }
+        const constructors = arkClass.getMethodsWithName(CONSTRUCTOR_NAME);
+        if (constructors.length === 0) {
+            return new MethodSignature(classType.getClassSignature(), constructorMethodSubSignature);
+        } else if (constructors.length === 1) {
+            return constructors[0].getSignature();
+        }
+        const argsStr = args.map(arg => arg.getType().getTypeString());
+        for (const constructor of constructors) {
+            const paramTypes = constructor.getSignature().getMethodSubSignature().getParameterTypes();
+            if (paramTypes.length !== args.length) {
+                continue;
+            }
+            for (const [idx, paramType] of paramTypes.entries()) {
+                const paramTypeStr = paramType.getTypeString();
+                if (!paramTypeStr.includes(argsStr[idx]) && !argsStr[idx].includes(paramTypeStr)) {
+                    break;
+                }
+                if (idx === paramTypes.length - 1) {
+                    return constructor.getSignature();
+                }
+            }
+        }
+        return new MethodSignature(classType.getClassSignature(), constructorMethodSubSignature);
     }
 
     /**
@@ -1995,10 +2053,46 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         } else if (newExpression.code) {
             oriType = newExpression.code;
         }
+        oriType = this.removeOutermostTemplateArgs(oriType);
         if (isCXXSTLContainer(oriType)) {
             return oriType;
         }
         return oriType.replace(/[()]|\ \*|struct\ |union\ /g, '');
+    }
+
+    /**
+     *Remove the outermost template parameter (angle brackets and their contents) from the string
+     *@ param typeStr is a type string containing template parameters
+     *@ returns string after removing the outermost template parameter
+     */
+    private removeOutermostTemplateArgs(typeStr: string): string {
+        // Find the position of the first '<'
+        const start = typeStr.indexOf('<');
+        if (start === -1) {
+            return typeStr; // Cannot find '<', return the original string directly
+        }
+
+        let bracketCount = 1;
+        let end = -1;
+
+        // Starting from the first '<', search and calculate bracket matches
+        for (let i = start + 1; i < typeStr.length; i++) {
+            if (typeStr[i] === '<') {
+                bracketCount++;
+            } else if (typeStr[i] === '>') {
+                bracketCount--;
+                if (bracketCount === 0) {
+                    end = i;
+                    break;
+                }
+            }
+        }
+
+        // If a matching ending '>' is found, remove this paragraph
+        if (end !== -1) {
+            return typeStr.substring(0, start) + typeStr.substring(end + 1);
+        }
+        return typeStr;
     }
 
     /**
@@ -2728,7 +2822,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         } else {
             let type = this.resolveCxxTypeReferenceNode(qualType); // Handle alias type references
             if (!(type instanceof UnclearReferenceType)) {
-                return this.resolveCxxTypeReferenceNode(qualType);
+                return type;
             }
         }
         let nodeType = cxxNode2Type(qualType, this.declaringMethod, this.cxxSourceFile, node);

@@ -23,7 +23,7 @@ export const THREAD_EXPECT_CASE1 = {
                 'instanceinvoke %0.<@%unk/%unk: thread.constructor()>(Hello)',
                 't = %0',
                 'instanceinvoke t.<@%unk/%unk: .join()>()',
-                "staticinvoke <@%unk/%unk: .cout()>('Hello from main!\\n')",
+                'staticinvoke <@%unk/%unk: .cout()>(\'Hello from main!\\n\')',
                 'return 0',
             ],
             preds: [],
@@ -62,7 +62,7 @@ export const THREAD_EXPECT_CASE3 = {
                 't = %0',
                 'instanceinvoke t.<@%unk/%unk: .join()>()',
                 "staticinvoke <@%unk/%unk: .cout()>('Hello from main!\\n')",
-                'return 0',
+                'return 0'
             ],
             preds: [],
             succes: [],

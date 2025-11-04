@@ -16,8 +16,6 @@
 // How to manage Native-side C++ objects on the ArkTS side
 #include <cstdint>
 #include "napi/native_api.h"
-#include "hilog/log.h"
-#define LOG_TAG "MY_TAG"
 
 class TestClass {
 public:
@@ -35,20 +33,16 @@ private:
 
 static napi_value DefineObject(napi_env env, napi_callback_info info)
 {
-    OH_LOG_INFO(LOG_APP, "enter DefineObject");
-
     napi_value result;
     auto a = new TestClass();
     int64_t addrValue = static_cast<int64_t>(reinterpret_cast<intptr_t>(a));
     napi_create_bigint_int64(env, addrValue, &result);
-    OH_LOG_INFO(LOG_APP, "end DefineObject, addrValue:%{public}ld", addrValue);
     napi_create_double(env, 1, &result);
     return result;
 }
 
 static napi_value CallObject(napi_env env, napi_callback_info info)
 {
-    OH_LOG_INFO(LOG_APP, "enter CallObject");
     size_t argc = 1;
     napi_value args[1] = {nullptr};
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
@@ -56,8 +50,6 @@ static napi_value CallObject(napi_env env, napi_callback_info info)
     bool flag = false;
     napi_get_value_bigint_int64(env, args[0], &addrValue, &flag);
     TestClass *a = reinterpret_cast<TestClass *>(addrValue);
-    OH_LOG_INFO(LOG_APP, "CallObject, addrValue:%{public}ld", addrValue);
-    OH_LOG_INFO(LOG_APP, "CallObject, value:%{public}d", a->GetValue());
     a->SetValue(1);
     return nullptr;
 }

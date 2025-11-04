@@ -16,7 +16,7 @@
 // How to perform map data interaction between ArkTS side and Native side
 
 #include "NativeMap.h"
-#include "hilog/log.h"
+#include "napi/native_api.h"
 #include <map>
 #include <string>
 
@@ -36,9 +36,9 @@ napi_value MapDemo(napi_env env, napi_callback_info info)
     napi_get_value_string_utf8(env, args[0], str1, A_HUNDRED, &str1Len);
     int num;
     napi_get_value_int32(env, args[1], &num);
-    testmap.insert(std::make_pair(str1, num));  // Current AST lacks nodes corresponding to this line of code
-    for (auto e: testmap) {  // Current AST lacks nodes corresponding to for loop
-        OH_LOG_ERROR(LOG_APP, "key is: %{public}s, value is  %{public}d", (e.first).c_str(), e.second);
+    testmap.insert(std::make_pair(str1, num));
+    for (auto e: testmap) {
+        // ...
     }
 
     return nullptr;

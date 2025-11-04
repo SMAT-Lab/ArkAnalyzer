@@ -358,6 +358,9 @@ std::string handleUnexposedExpr(json node)
         return "UnexposedExpr";
     }
     if (q == "<dependent type>") {
+        if (IsPlainFuncCall(code)) {
+            return "CallExpr";
+        }
         return "UnexposedExpr";
     }
     if (nm.empty()) {
@@ -1080,9 +1083,7 @@ void nodePostprocess(json& node, CXCursor cursor, CXCursorKind kind_cursor, json
     // --- Remaining generic handlers ---
     HandleTemplateAndCursorSpecific(node, kind_cursor, codeStr, children);
     patchFoldExpr(node);
-    if (node.value("kind", "") == "VarDecl") {
-        RecoverCtorForVarDecl(node);
-    }
+    RecoverCtorForVarDecl(node);
     detectAndFillSpecialKind(node);
 }
 

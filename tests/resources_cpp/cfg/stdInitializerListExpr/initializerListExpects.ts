@@ -51,7 +51,7 @@ export const LIST_EXPECT_EXAMPLE2 = {
                 '%2[1] = 2',
                 '%2[2] = 3',
                 '%2[3] = 4',
-                'instanceinvoke %1.<@%unk/%unk: std::vector<int>.constructor()>(%2)',
+                'instanceinvoke %1.<@%unk/%unk: std::vector.constructor()>(%2)',
                 'vec = %1',
                 'return'
             ],
@@ -73,7 +73,7 @@ export const LIST_EXPECT_EXAMPLE3 = {
                 '%1[1] = 2',
                 '%1[2] = 3',
                 '%1[3] = 4',
-                'instanceinvoke %0.<@stdInitializerListExpr/stdInitializerListExpr.cpp: MyClass.constructor()>(%1)',
+                'instanceinvoke %0.<@stdInitializerListExpr/stdInitializerListExpr.cpp: MyClass.constructor(std::initializer_list<int>)>(%1)',
                 'obj = %0',
                 'return'
             ],

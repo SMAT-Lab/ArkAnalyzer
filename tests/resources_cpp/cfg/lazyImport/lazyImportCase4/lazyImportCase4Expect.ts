@@ -18,11 +18,11 @@ export const NativeCallArkTS_EXPECT = {
         {
             id: 0,
             stmts: [
-                'env = parameter0: int',
-                'info = parameter1: int',
+                'env = parameter0: napi_env',
+                'info = parameter1: napi_callback_info',
                 'this = this: @lazyImportCase4/lazyImportCase4.cpp: %dflt',
                 'argc = 1',
-                '%0 = newarray (void)[1]',
+                '%0 = newarray (napi_value[])[1]',
                 '%0[0] = null',
                 'args = %0',
                 '%1 = &argc',
@@ -31,7 +31,7 @@ export const NativeCallArkTS_EXPECT = {
                 '%2 = &argv',
                 'staticinvoke <@%unk/%unk: .napi_create_int32()>(env, 2, %2)',
                 'result = null',
-                '%3 = args.<@%unk/%unk: .0>',
+                '%3 = args[0]',
                 '%4 = &argv',
                 '%5 = &result',
                 'staticinvoke <@%unk/%unk: .napi_call_function()>(env, null, %3, 1, %4, %5)',

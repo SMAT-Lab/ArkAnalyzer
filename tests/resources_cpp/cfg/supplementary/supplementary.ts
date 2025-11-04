@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,17 +13,15 @@
  * limitations under the License.
  */
 
-export const TYPEDEF_EXPECT_CASE1 = {
+export const SUP_CASE1 = {
     blocks: [
         {
             id: 0,
             stmts: [
-                'this = this: @typedef/typedef.cpp: %dflt',
-                'type @typedef/typedef.cpp: %dflt.main()#StrToVecMap = @std/map.h: map',
-                '%0 = new @std/map.h: map',
-                'instanceinvoke %0.<@std/map.h: map.constructor()>()',
-                'myMap = %0',
-                "instanceinvoke myMap['key'].<@%unk/%unk: .push_back()>(1)",
+                'this = this: @supplementary/supplementary.cpp: %dflt',
+                '%0 = newarray (int[])[10]',
+                '%0 = initArrayWith(0)',
+                'a = %0',
                 'return',
             ],
             preds: [],

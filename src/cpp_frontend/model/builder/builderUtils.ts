@@ -278,6 +278,9 @@ export function buildTypeFromPreStr(preStr: string, arkInstance: ArkMethod | Ark
         let baseType = cxxNode2Type(preStr.slice(preStr.indexOf('<') + 1, preStr.lastIndexOf('>')), undefined);
         return new SmartPointerType(baseType, 0, preStr);
     }
+    if (preStr.includes('__unwrap_ref_decay')) {
+        return cxxNode2Type(preStr.slice(preStr.indexOf('<') + 1, preStr.lastIndexOf('>')), undefined);
+    }
     return baseType;
 }
 
@@ -389,6 +392,8 @@ const typeMap: Record<string, string> = {
     int32_t: 'number',
     int64_t: 'number',
     size_t: 'number',
+    intptr_t: 'number',
+    uintptr_t: 'number',
     // void
     void: 'void',
     'std::type_info': 'type_info',

@@ -137,7 +137,7 @@ describe('Signature Test', () => {
         assert.isDefined(targetMethod);
         const stmts = targetMethod!.getCfg()!.getStmts();
         expect(stmts[1].getInvokeExpr()?.getMethodSignature().toString()).toEqual('@signature/signature.cpp: nsA.%dflt.Func()');
-        expect(stmts[3].getInvokeExpr()?.getMethodSignature().toString()).toEqual('@signature/signature.cpp: nsA.DefaultClass.constructor()');
+        expect(stmts[3].getInvokeExpr()?.getMethodSignature().toString()).toEqual('@signature/signature.cpp: nsA.DefaultClass.constructor(char, int)');
         expect(stmts[5].getInvokeExpr()?.getMethodSignature().toString()).toEqual('@signature/signature.cpp: nsA.DefaultClass.GetAge()');
         expect(stmts[7].getInvokeExpr()?.getMethodSignature().toString()).toEqual('@signature/signature.cpp: Base.constructor(char&)');
         expect(stmts[9].getInvokeExpr()?.getMethodSignature().toString()).toEqual('@signature/signature.cpp: Base.GetName()');

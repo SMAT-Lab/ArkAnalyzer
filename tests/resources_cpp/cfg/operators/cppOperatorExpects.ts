@@ -145,7 +145,7 @@ export const OPERATOR_EXPECT_CASE5 = {
             stmts: [
                 'this = this: @operators/cppOperators.cpp: %dflt',
                 '%0 = new @operators/cppOperators.cpp: MyClass',
-                "instanceinvoke %0.<@operators/cppOperators.cpp: MyClass.constructor()>('A', 2)",
+                "instanceinvoke %0.<@operators/cppOperators.cpp: MyClass.constructor(char, int)>('A', 2)",
                 'aClass = %0',
                 'age = instanceinvoke aClass.<@operators/cppOperators.cpp: MyClass.GetAge()>()',
                 'j = sizeof(age)',

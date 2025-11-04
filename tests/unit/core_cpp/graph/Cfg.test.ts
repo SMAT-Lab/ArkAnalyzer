@@ -62,10 +62,9 @@ import * as STRUCTBINDING from '../../../resources_cpp/cfg/structBinding/structB
 import * as CALLEXPR_EXPECT from '../../../resources_cpp/cfg/call/callExpect';
 import * as MALLOC_EXPECT from '../../../resources_cpp/cfg/malloc/mallocSampleExpects';
 import * as INITIALZERLIST from '../../../resources_cpp/cfg/stdInitializerListExpr/initializerListExpects';
+import * as SUPPLEMENTARY from '../../../resources_cpp/cfg/supplementary/supplementary';
 
-// Standard library header file configuration for DevEco
-const deveco_c = process.env.DEVECO_C !== undefined ? process.env.DEVECO_C : '';
-const deveco_include = process.env.DEVECO_INCLUDE !== undefined ? process.env.DEVECO_INCLUDE : '';
+const deveco_sysroot_include = process.env.DEVECO_SYSROOT_INCLUDE !== undefined ? process.env.DEVECO_SYSROOT_INCLUDE : '';
 const is_system_win32 = process.platform === 'win32';
 
 describe('CfgTest', () => {
@@ -342,10 +341,12 @@ describe('Other Test', () => {
 describe('Lazy Import Test', () => {
     it('case1: lazy import case1', () => {
         const scene = buildScene('lazyImport/lazyImportCase1');
+        scene.inferTypes();
         testBlocksClass(scene, 'lazyImportCase1.cpp', 'GlobalConfig', LAZY_IMPORT_EXPECT1.LAZY_IMPORT_CASE1_CLASS);
     });
     it('case2: lazy import case2', () => {
         const scene = buildScene('lazyImport/lazyImportCase2');
+        scene.inferTypes();
         testBlocks(scene, 'lazyImportCase2.cpp', 'DefineObject', lazyImportCase2.DEFINE_OBJECT_EXPECT.blocks);
         testBlocks(scene, 'lazyImportCase2.cpp', 'CallObject', lazyImportCase2.CALL_OBJECT_EXPECT.blocks);
     });
@@ -355,10 +356,12 @@ describe('Lazy Import Test', () => {
     });
     it('case4: lazy import case4', () => {
         const scene = buildScene('lazyImport/lazyImportCase4');
+        scene.inferTypes();
         testBlocks(scene, 'lazyImportCase4.cpp', 'NativeCallArkTS', lazyImportCase4.NativeCallArkTS_EXPECT.blocks);
     });
     it('case5: lazy import case5', () => {
         const scene = buildScene('lazyImport/lazyImportCase5');
+        scene.inferTypes();
         testBlocks(scene, 'lazyImportCase5.cpp', 'Napi_AddPropertyInt32', lazyImportCase5.Napi_AddPropertyInt32_EXPECT.blocks);
         if (is_system_win32) {
             testBlocks(scene, 'lazyImportCase5.cpp', 'CallbackToArkTS', lazyImportCase5.CallbackToArkTS_EXPECT.blocks);
@@ -366,16 +369,19 @@ describe('Lazy Import Test', () => {
     });
     it('case6: lazy import case6', () => {
         const scene = buildScene('lazyImport/lazyImportCase6');
+        scene.inferTypes();
         if (is_system_win32) {
             testBlocks(scene, 'lazyImportCase6.cpp', 'CallFunction', lazyImportCase6.CallFunction_EXPECT.blocks);
         }
     });
     it('case7: lazy import case7', () => {
         const scene = buildScene('lazyImport/lazyImportCase7');
+        scene.inferTypes();
         testBlocks(scene, 'lazyImportCase7.cpp', 'ModifyObject', lazyImportCase7.ModifyObject_EXPECT.blocks);
     });
     it('case8: lazy import case8', () => {
         const scene = buildScene('lazyImport/lazyImportCase8');
+        scene.inferTypes();
         testBlocks(scene, 'lazyImportCase8.cpp', 'NativeCallArkTS', lazyImportCase8.NativeCallArkTS8_EXPECT.blocks);
     });
 });
@@ -415,6 +421,7 @@ describe('using Test', () => {
 describe('typedef Test', () => {
     it('case1: typedef', () => {
         const scene = buildScene('typedef');
+        scene.inferTypes();
         testBlocks(scene, 'typedef.cpp', 'main', TYPEDEF_EXPECT.TYPEDEF_EXPECT_CASE1.blocks);
     });
 });
@@ -466,20 +473,37 @@ describe('include in scope', () => {
     });
 });
 
+describe('supplementary', () => {
+    it('case1: supplementary', () => {
+        const scene = buildScene('supplementary');
+        scene.inferTypes();
+        testBlocks(scene, 'supplementary.cpp', 'Case1', SUPPLEMENTARY.SUP_CASE1.blocks);
+    });
+});
+
 const BASE_DIR = 'tests/resources_cpp/cfg';
 
 function buildScene(folderName: string): Scene {
     vi.spyOn(FileUtils, 'getFileLanguage').mockReturnValue(Language.CXX);
+    vi.spyOn(Scene.prototype, 'getSdkGlobal').mockReturnValue(null);
     let config: SceneConfig = new SceneConfig();
     config.setSupportFileExts(['.c', '.cpp', '.h', '.hpp']);
     let includeDirs: string[] = [];
     // header file configuration for DevEco
-    includeDirs.push(path.join(deveco_c, 'c++', 'v1'));
-    includeDirs.push(path.join(deveco_include, 'include'));
+    if (folderName.includes('lazyImport')) {
+        includeDirs.push(...getNapiIncludeDirs());
+    }
     config.buildFromProjectDir(path.join(BASE_DIR, folderName), includeDirs);
     let scene = new Scene();
     scene.buildSceneFromProjectDir(config);
     return scene;
+}
+
+function getNapiIncludeDirs(): string[] {
+    return [
+        path.join(deveco_sysroot_include, 'x86_64-linux-ohos'),
+        deveco_sysroot_include,
+    ];
 }
 
 function testBlocksClass(scene: Scene, filePath: string, className: string, expectBlocks: any, isCheckOverload?: boolean): void {
