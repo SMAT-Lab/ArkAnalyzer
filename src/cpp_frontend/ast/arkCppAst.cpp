@@ -758,6 +758,65 @@ static bool applyDeclLikeKind(json& node, CXCursor cursor, CXCursorKind k)
     }
 }
 
+/**
+ * Infers whether a ClassTemplate node is declared with `struct` or `class`
+ * based on its source code string, and writes the result to
+ * node["tagUsed"] = "struct" / "class".
+ * Typical source examples:
+ *   template<typename T> struct Foo { ... };
+ *   template<class T, class U> class Bar { ... };
+ */
+static void DetectClassTemplateTagFromCode(nlohmann::json &node)
+{
+    std::string code = node.value("code", "");
+    if (code.empty()) {
+        return;
+    }
+    // 1. Find the "template" keyword (fallback to start if not found)
+    const std::string tplKw = "template";
+    size_t posTemplate = code.find(tplKw);
+    size_t searchFrom  = (posTemplate == std::string::npos) ? 0 : posTemplate + tplKw.size();
+    size_t posAfterTplArgs = 0;
+    if (!SkipAngleBracketBlock(code, searchFrom, posAfterTplArgs)) {
+        // No template parameter list found, fallback search for struct/class
+        const size_t posStruct = code.find("struct ");
+        const size_t posClass = code.find("class ");
+        if (posStruct != std::string::npos && (posClass == std::string::npos || posStruct < posClass)) {
+            node["tagUsed"] = "struct";
+        } else if (posClass != std::string::npos) {
+            node["tagUsed"] = "class";
+        }
+        return;
+    }
+    // The class header starts right after the '>' of the template parameter list
+    std::string header = code.substr(posAfterTplArgs);
+    // Trim leading whitespace
+    size_t firstNonSpace = header.find_first_not_of(" \t\r\n");
+    if (firstNonSpace != std::string::npos) {
+        header.erase(0, firstNonSpace);
+    }
+    // Limit search up to the first '{' or ';' to avoid entering class body
+    size_t brace = header.find('{');
+    size_t semi  = header.find(';');
+    size_t lim   = header.size();
+    if (brace != std::string::npos) {
+        lim = std::min(lim, brace);
+    }
+    if (semi != std::string::npos) {
+        lim = std::min(lim, semi);
+    }
+    std::string headPart = header.substr(0, lim);
+    // Look for "struct " / "class " within the class header
+    size_t posStruct = headPart.find("struct ");
+    size_t posClass  = headPart.find("class ");
+    if (posStruct != std::string::npos &&
+        (posClass == std::string::npos || posStruct < posClass)) {
+        node["tagUsed"] = "struct";
+    } else if (posClass != std::string::npos) {
+        node["tagUsed"] = "class";
+    }
+}
+
 void fillNodeKindTag(json& node, CXCursor cursor, CXCursorKind kind_cursor, const std::string& kindSpelling)
 {
     std::string nameStr = node.value("name", "");
@@ -766,11 +825,12 @@ void fillNodeKindTag(json& node, CXCursor cursor, CXCursorKind kind_cursor, cons
     switch (kind_cursor) {
         case CXCursor_ClassDecl: node["kind"] = "CXXRecordDecl"; node["tagUsed"] = "class";   return;
         case CXCursor_StructDecl: node["kind"] = "CXXRecordDecl"; node["tagUsed"] = "struct";  return;
-        case CXCursor_EnumDecl: node["kind"] = "EnumDecl";      node["tagUsed"] = "enum";    return;
+        case CXCursor_EnumDecl: node["kind"] = "EnumDecl"; node["tagUsed"] = "enum";    return;
         case CXCursor_UnionDecl: node["kind"] = "CXXRecordDecl"; node["tagUsed"] = "union";   return;
         case CXCursor_UnexposedExpr: node["kind"] = handleUnexposedExpr(node); return;
         case CXCursor_UsingDirective: node["kind"] = "UsingDirectiveDecl"; node["isImplicit"] = true; return;
         case CXCursor_MemberRefExpr: node["kind"] = "MemberExpr"; fillMemberName(node, nameStr); return;
+        case CXCursor_ClassTemplate: node["kind"] = "ClassTemplate"; DetectClassTemplateTagFromCode(node); return;
         default: break;
     }
     if (kind_cursor == CXCursor_CallExpr) {
@@ -1069,6 +1129,7 @@ void nodePostprocess(json& node, CXCursor cursor, CXCursorKind kind_cursor, json
     if (node["kind"] == "VarDecl") {
         updateTypedefClassConstructor(children);
         deduceDecltype(node, children);
+        PropagateAliasTemplateArgToRef(node, children);
     }
     // --- Extracted specialized postprocessing ---
     PostprocessPseudoDestructor(node, children, codeStr);

@@ -109,51 +109,96 @@ bool IsBuiltInType(std::string& type)
     return builtInTypes.count(type);
 }
 
-// 将类型字符串做“语义无损”的统一化，便于后续做规则匹配/等价判断。
-// 典型输入来自 libclang 的 clang_getTypeSpelling：
-//   - "std::string"
-//   - "std::map<std::string, int>"
-//   - "vector<int>"（某些场景下少了 std:: 前缀）
-//   - "pair<_Unrefwrap_t<const char, int>>"（MSVC STL 的实现细节名）
-// 统一输出示例：
-//   - "std::basic_string<char>"
-//   - "std::map<std::basic_string<char>, int>"
-//   - "std::vector<int>"
-//   - "std::pair<const char *, int>"
+/**
+ * Normalizes type strings into a semantically consistent form to enable
+ * reliable rule matching and equivalence comparison across platforms or compilers.
+ * Typical input examples (from clang_getTypeSpelling):
+ *   - "std::string"
+ *   - "std::map<std::string, int>"
+ *   - "vector<int>"              // sometimes missing std:: prefix
+ *   - "pair<_Unrefwrap_t<const char, int>>" // MSVC STL internal name
+ * Unified normalized output examples:
+ *   - "std::basic_string<char>"
+ *   - "std::map<std::basic_string<char>, int>"
+ *   - "std::vector<int>"
+ *   - "std::pair<const char *, int>"
+ * The function replaces standalone occurrences of "std::string"
+ * with "std::basic_string<char>", preserving semantics and preventing
+ * false matches in cases like "std::string_view" or "std::stringify".
+ */
 void SafeReplaceStdString(std::string& s)
 {
-    // 要查找的原始记法。注意不要硬编码长度，避免替换区间越界（比如误吞掉
-    // "std::map<std::string, int>" 里的逗号）。
+    // The original token to search for. Avoid hardcoded length boundaries to prevent partial replacements
+    // (e.g., replacing inside "std::map<std::string, int>").
     static const char* kFrom = "std::string";
     const size_t nFrom = std::strlen(kFrom);
-    // 统一后的目标记法：标准库 string 的“真实类型别名” basic_string<char>
-    // 这么做能把 string 和 basic_string<char> 当作同类处理，便于比较。
+    // Target normalized form — the canonical alias for std::string.
+    // This allows "std::string" and "std::basic_string<char>" to be treated as equivalent.
     const std::string kTo = "std::basic_string<char>";
     size_t pos = 0;
     while ((pos = s.find(kFrom, pos)) != std::string::npos) {
-        // 判断是否是“独立的标识符”，避免把 string_view/stringify 等误伤。
-        // 规则：左右两边若接的是标识符字符（字母/数字/_/::），就不替换。
+        // Check if the match is a standalone identifier.
+        // Rule: do not replace if adjacent characters are identifier characters
+        // (letters, digits, '_', or ':').
         auto isIdentChar = [](char ch)->bool {
             return std::isalnum(static_cast<unsigned char>(ch)) || ch == '_' || ch == ':';
         };
-
-        // 左侧边界：pos==0 或 左侧不是标识符字符，才视为独立 token 的左边界
-        bool leftOK  = (pos == 0) || !isIdentChar(s[pos - 1]);
-
-        // 右侧边界：pos+nFrom 要么到末尾，要么下一个不是标识符字符
+        // Left boundary: ok if it's the beginning or the previous char is not identifier-like
+        bool leftOK = (pos == 0) || !isIdentChar(s[pos - 1]);
+        // Right boundary: ok if end of string or next char is not identifier-like
         size_t end = pos + nFrom;
         bool rightOK = (end >= s.size()) || !isIdentChar(s[end]);
         if (leftOK && rightOK) {
-            // 确认是“独立的 std::string”
-            // 典型命中场景：
-            //   1) 模板参数：std::map<std::string, int> ->  std::map<std::basic_string<char>, int>
-            //   2) 变量/返回值：std::string ->  std::basic_string<char>
-            //   3) 嵌套模板：std::vector<std::string> ->  std::vector<std::basic_string<char>>
+            // Confirmed standalone "std::string"
+            // Typical cases:
+            //   1) Template arg: std::map<std::string, int>
+            //   2) Variable/return type: std::string
+            //   3) Nested template: std::vector<std::string>
             s.replace(pos, nFrom, kTo);
-            pos += kTo.size();  // 继续向后搜索，避免死循环
+            pos += kTo.size();  // move forward to continue search
         } else {
-            // 非独立 token（如 std::string_view / std::stringify），跳过这一段
+            // Skip non-standalone cases like std::string_view or std::stringify
             pos = end;
         }
     }
 };
+
+// Utility: Skip an entire '<...>' block starting from `start`, supporting nested brackets.
+// Returns true if the outermost pair of angle brackets is balanced,
+// and sets `outPos` to the position right after the matching '>'.
+// Returns false if no matching brackets are found or if the structure is malformed.
+bool SkipAngleBracketBlock(const std::string& code, size_t start, size_t& outPos)
+{
+    const size_t n = code.size();
+    if (start >= n) {
+        return false;
+    }
+    // Find the first '<' starting from `start`
+    size_t lt = (code[start] == '<') ? start : code.find('<', start);
+    if (lt == std::string::npos) {
+        return false;
+    }
+    int depth = 0;
+    for (size_t i = lt; i < n; ++i) {
+        char c = code[i];
+        if (c == '<') {
+            ++depth;
+            continue;
+        }
+        if (c != '>') {
+            continue;
+        }
+        if (depth <= 0) {
+            return false; // unmatched or extra '>'
+        }
+        --depth;
+        if (depth != 0) {
+            continue;
+        }
+        // Found the matching outermost '>'
+        outPos = i + 1;
+        return true;
+    }
+    // Reached the end without balancing
+    return false;
+}

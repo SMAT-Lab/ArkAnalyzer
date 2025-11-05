@@ -53,3 +53,5 @@ inline bool StartsWith(std::string_view s, std::string_view p) noexcept
 bool IsBuiltInType(std::string& type);
 
 void SafeReplaceStdString(std::string& s);
+
+bool SkipAngleBracketBlock(const std::string& code, size_t start, size_t& outPos);
