@@ -1780,12 +1780,12 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         };
     }
 
-    private getRealGenericTypes(node: CxxAstNode | undefined): Type[] | undefined {
+    private getRealGenericTypes(node: CxxAstNode | undefined, qualType?: string): Type[] | undefined {
         let realGenericTypes: Type[] | undefined;
-        if (node) {
-            const qualType = node.type.qualType;
+        const nodeType = qualType ?? node?.type.qualType;
+        if (nodeType) {
             // Match the content within the outermost<>layer
-            const match = qualType.match(/<(.*)>/);
+            const match = nodeType.match(/<(.*)>/);
             let members: string[] | undefined;
             if (match && match[1]) {
                 // Extract content from<>
@@ -1935,7 +1935,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             }
             return args.filter(arg =>
                 arg?.kind !== 'TemplateRef' &&
-                arg?.kind !== 'NamespaceRef',
+                arg?.kind !== 'NamespaceRef' &&
+                arg?.kind !== 'TypeRef',
             );
         })();
 
@@ -2844,7 +2845,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             if (containerName && convertDataType(containerName) === 'unsupported' && this.isCxxStdContainer(containerName)) {
                 const fileSignature = new FileSignature(BuiltinCxx.CXXSTD, containerName + '.h');
                 const classSignature = new ClassSignature(containerName, fileSignature);
-                return new ClassType(classSignature);
+                const realGenericTypes = this.getRealGenericTypes(node, qualType);
+                return new ClassType(classSignature, realGenericTypes);
             } else if (containerName === 'thread') {
                 return new Thread();
             }

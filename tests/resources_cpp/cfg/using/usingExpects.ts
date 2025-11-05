@@ -105,3 +105,43 @@ export const USING_EXPECT_CASE5 = {
         },
     ],
 };
+
+export const USING_EXPECT_CASE6 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @using/usingcase.cpp: %dflt',
+                '%0 = new @std/vector.h: vector',
+                '%1 = newarray (int[])[3]',
+                '%1[0] = 1',
+                '%1[1] = 2',
+                '%1[2] = 3',
+                'instanceinvoke %0.<@std/vector.h: vector.constructor()>(%1)',
+                'return %0'
+            ],
+            preds: [],
+            succes: []
+        },
+    ],
+};
+
+export const USING_EXPECT_CASE7 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @using/usingcase.cpp: %dflt',
+                '%0 = new @std/map.h: map<float>',
+                'instanceinvoke %0.<@std/map.h: map.constructor()>()',
+                'm = %0',
+                'm[1] = 3.14',
+                '%1 = m[1]',
+                "staticinvoke <@%unk/%unk: .cout()>('[test_using_type_alias_template] m[1] = ', %1)",
+                'return'
+            ],
+            preds: [],
+            succes: []
+        },
+    ],
+};

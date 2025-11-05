@@ -187,7 +187,7 @@ export const VECTOR_CLASS_EXPECT = {
                         '%4 = this.<@overload/overloadSample.cpp: Vector.y>',
                         '%5 = other.<@overload/overloadSample.cpp: Vector.y>',
                         '%6 = %4 + %5',
-                        'instanceinvoke %0.<@overload/overloadSample.cpp: Vector.constructor(double, double)>(Vector, %3, %6)',
+                        'instanceinvoke %0.<@overload/overloadSample.cpp: Vector.constructor(double, double)>(%3, %6)',
                         'return %0',
                     ],
                     preds: [],

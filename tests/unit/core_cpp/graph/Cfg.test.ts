@@ -415,6 +415,8 @@ describe('using Test', () => {
         const scene = buildScene('using');
         scene.inferTypes();
         testBlocks(scene, 'usingcase.cpp', 'TestNamespaceUsing', USING_EXPECT.USING_EXPECT_CASE5.blocks);
+        testBlocks(scene, 'usingcase.cpp', 'MakeIntvec', USING_EXPECT.USING_EXPECT_CASE6.blocks);
+        testBlocks(scene, 'usingcase.cpp', 'TestUsingTypeAliasTemplate', USING_EXPECT.USING_EXPECT_CASE7.blocks);
     });
 });
 
