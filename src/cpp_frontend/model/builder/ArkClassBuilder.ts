@@ -251,36 +251,65 @@ function buildArkClassMembers(clsNode: CxxAstNode, cls: ArkClass, sourceFile: Cx
     const instanceInitStmts: Stmt[] = [];
     const enumFieldInfo = { lastFieldName: '', curValue: 0, isCurValueValid: true };
     for (const member of clsNode.inner as CxxAstNode[]) {
-        if (member.kind === 'FieldDecl' || member.kind === 'VarDecl') {
-            const arkField = buildProperty2ArkField(member, sourceFile, cls);
-            // If the parameter inner is not empty, it means it contains initialization information
-            if (member.inner.length > 0 && !member.inner[member.inner.length - 1].kind.endsWith('Ref')) {
-                staticIRTransformer = new ArkCxxIRTransformer(sourceFile as CxxTranslationUnit, cls.getStaticInitMethod());
-                getInitStmts(staticIRTransformer, arkField, member.inner[member.inner.length - 1]);
+        switch (member.kind) {
+            case 'FieldDecl':
+            case 'VarDecl': {
+                const arkField = buildProperty2ArkField(member, sourceFile, cls);
+                // If the parameter inner is not empty, it means it contains initialization information
+                if (member.inner.length > 0 && !member.inner[member.inner.length - 1].kind.endsWith('Ref')) {
+                    staticIRTransformer = new ArkCxxIRTransformer(sourceFile as CxxTranslationUnit, cls.getStaticInitMethod());
+                    getInitStmts(staticIRTransformer, arkField, member.inner[member.inner.length - 1]);
+                }
+                arkField.getInitializer().forEach(stmt => instanceInitStmts.push(stmt));
+                break;
             }
-            arkField.getInitializer().forEach(stmt => instanceInitStmts.push(stmt));
-            // Initialization of enumeration types
-        } else if (member.kind === 'EnumConstantDecl') {
-            const arkField = buildProperty2ArkField(member, sourceFile, cls);
-            staticIRTransformer = new ArkCxxIRTransformer(sourceFile as CxxTranslationUnit, cls.getStaticInitMethod());
-            getInitStmts(staticIRTransformer, arkField, member.inner[0], enumFieldInfo);
-            arkField.getInitializer().forEach(stmt => staticInitStmts.push(stmt));
-        } else if (
-            member.kind === 'CXXMethodDecl' ||
-            member.kind === 'CXXConstructorDecl' ||
-            member.kind === 'CXXAccessSpecifier' ||
-            member.kind === 'CXXDestructorDecl'
-        ) {
-            // ignore
-        } else if (member.kind === 'EnumDecl' || member.kind === 'CXXRecordDecl') {
-            buildArkClassFromCxxClass(member, cls.getDeclaringArkFile(), sourceFile);
-        } else {
-            logger.warn('Please contact developers to support new member type: ', member.kind);
+            case 'EnumConstantDecl': {
+                const arkField = buildProperty2ArkField(member, sourceFile, cls);
+                staticIRTransformer = new ArkCxxIRTransformer(sourceFile as CxxTranslationUnit, cls.getStaticInitMethod());
+                getInitStmts(staticIRTransformer, arkField, member.inner[0], enumFieldInfo);
+                arkField.getInitializer().forEach(stmt => staticInitStmts.push(stmt));
+                break;
+            }
+            case 'CXXMethodDecl':
+            case 'CXXConstructorDecl':
+            case 'CXXAccessSpecifier':
+            case 'CXXDestructorDecl':
+                // ignore
+                break;
+            case 'EnumDecl':
+            case 'CXXRecordDecl':
+                buildArkClassFromCxxClass(member, cls.getDeclaringArkFile(), sourceFile);
+                break;
+            case 'UsingDecl':
+                processUsingDeclInClass(member, cls);
+                break;
+            default:
+                logger.warn('Please contact developers to support new member type: ', member.kind);
+                break;
         }
     }
     buildInitMethodsForClassTag(tagStr, cls, sourceFile, instanceInitStmts, staticInitStmts);
 }
 
+function processUsingDeclInClass(usingDecl: CxxAstNode, cls: ArkClass): void {
+    if (usingDecl.inner.length != 2) {
+        return;
+    }
+    const curFile = cls.getDeclaringArkFile();
+    const usingClass = curFile.getClassWithName(usingDecl.inner[0].name.replace(/struct |class /g, ''));
+    if (!usingClass) {
+        return;
+    }
+    const usingMemberName = usingDecl.inner[1].name;
+    const member = usingClass.getMethodWithName(usingMemberName) ?? usingClass.getStaticFieldWithName(usingMemberName);
+    // CXXTodo: classSignature belongs to the base class and needs special handling during the inferType process.
+    if (member instanceof ArkMethod) {
+        cls.addMethod(member);
+    }
+    if (member instanceof ArkField) {
+        cls.addField(member);
+    }
+}
 
 function buildMethodsForClass(clsNode: CxxAstNode, cls: ArkClass, sourceFile: CxxAstNode): void {
     clsNode.inner.forEach((member: CxxAstNode) => {
