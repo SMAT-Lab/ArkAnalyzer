@@ -31,6 +31,8 @@ export const MIX_OF_STATEMENTS_EXPECT_CASE1 = {
             ],
             preds: [0],
             succes: [3],
+            exceptionalPreds: [],
+            exceptionalSucces: [2]
         },
         {
             id: 2,
@@ -40,6 +42,8 @@ export const MIX_OF_STATEMENTS_EXPECT_CASE1 = {
             ],
             preds: [],
             succes: [3],
+            exceptionalPreds: [1],
+            exceptionalSucces: []
         },
         {
             id: 3,
@@ -103,6 +107,8 @@ export const MIX_OF_STATEMENTS_EXPECT_CASE2 = {
             ],
             preds: [0],
             succes: [4],
+            exceptionalPreds: [],
+            exceptionalSucces: [3]
         },
         {
             id: 3,
@@ -112,6 +118,8 @@ export const MIX_OF_STATEMENTS_EXPECT_CASE2 = {
             ],
             preds: [],
             succes: [4],
+            exceptionalPreds: [2],
+            exceptionalSucces: []
         },
         {
             id: 4,
@@ -142,6 +150,8 @@ export const MIX_OF_STATEMENTS_EXPECT_CASE3 = {
             ],
             preds: [0],
             succes: [3],
+            exceptionalPreds: [],
+            exceptionalSucces: [2]
         },
         {
             id: 2,
@@ -151,6 +161,8 @@ export const MIX_OF_STATEMENTS_EXPECT_CASE3 = {
             ],
             preds: [],
             succes: [3],
+            exceptionalPreds: [1],
+            exceptionalSucces: [7]
         },
         {
             id: 3,
@@ -167,6 +179,8 @@ export const MIX_OF_STATEMENTS_EXPECT_CASE3 = {
             ],
             preds: [3],
             succes: [6],
+            exceptionalPreds: [],
+            exceptionalSucces: [5]
         },
         {
             id: 5,
@@ -176,6 +190,8 @@ export const MIX_OF_STATEMENTS_EXPECT_CASE3 = {
             ],
             preds: [],
             succes: [6],
+            exceptionalPreds: [4],
+            exceptionalSucces: []
         },
         {
             id: 6,
@@ -193,6 +209,8 @@ export const MIX_OF_STATEMENTS_EXPECT_CASE3 = {
             ],
             preds: [],
             succes: [8, 9],
+            exceptionalPreds: [2],
+            exceptionalSucces: []
         },
         {
             id: 8,
@@ -249,6 +267,8 @@ export const MIX_OF_STATEMENTS_EXPECT_CASE4 = {
             ],
             preds: [2],
             succes: [6],
+            exceptionalPreds: [],
+            exceptionalSucces: [4]
         },
         {
             id: 4,
@@ -258,6 +278,8 @@ export const MIX_OF_STATEMENTS_EXPECT_CASE4 = {
             ],
             preds: [],
             succes: [6],
+            exceptionalPreds: [3, 5],
+            exceptionalSucces: []
         },
         {
             id: 5,
@@ -266,6 +288,8 @@ export const MIX_OF_STATEMENTS_EXPECT_CASE4 = {
             ],
             preds: [1],
             succes: [],
+            exceptionalPreds: [],
+            exceptionalSucces: [4]
         },
         {
             id: 6,

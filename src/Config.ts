@@ -18,6 +18,7 @@ import path from 'path';
 import Logger, { LOG_MODULE_TYPE } from './utils/logger';
 import { getAllFiles } from './utils/getAllFiles';
 import { Language } from './core/model/ArkFile';
+import { FileUtils } from './utils/FileUtils';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'Config');
 
@@ -154,7 +155,7 @@ export class SceneConfig {
         } else {
             absoluteFilePath = path.join(projectDir, fileOrDirectory);
         }
-        if (fs.statSync(absoluteFilePath).isDirectory()) {
+        if (FileUtils.isDirectory(absoluteFilePath)) {
             getAllFiles(absoluteFilePath, this.getOptions().supportFileExts!, this.options.ignoreFileNames).forEach(filePath => {
                 if (!this.projectFiles.includes(filePath)) {
                     this.projectFiles.push(filePath);
@@ -172,7 +173,7 @@ export class SceneConfig {
         } else {
             absoluteFilePath = path.join(projectDir, fileOrDirectory);
         }
-        if (fs.statSync(absoluteFilePath).isDirectory()) {
+        if (FileUtils.isDirectory(absoluteFilePath)) {
             getAllFiles(absoluteFilePath, this.getOptions().supportFileExts!, this.options.ignoreFileNames).forEach(filePath => {
                 this.fileLanguages.set(filePath, languageTag);
             });

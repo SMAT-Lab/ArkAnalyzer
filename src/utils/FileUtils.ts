@@ -39,8 +39,11 @@ export class FileUtils {
 
     public static isDirectory(srcPath: string): boolean {
         try {
-            return fs.statSync(srcPath).isDirectory();
-        } catch (e) {}
+            const stats = fs.statSync(srcPath, { throwIfNoEntry: false });
+            return stats ? stats.isDirectory() : false;
+        } catch (e) {
+            logger.warn(srcPath + ' not found.');
+        }
         return false;
     }
 
@@ -115,7 +118,7 @@ export class ModulePath {
 
 export function getFileRecursively(srcDir: string, fileName: string, visited: Set<string> = new Set<string>()): string {
     let res = '';
-    if (!fs.existsSync(srcDir) || !fs.statSync(srcDir).isDirectory()) {
+    if (!FileUtils.isDirectory(srcDir)) {
         logger.warn(`Input directory ${srcDir} is not exist`);
         return res;
     }

@@ -14,9 +14,8 @@
     "testonce": "vitest --no-color run",
     "coverage": "vitest run --coverage",
     "heapdump": "npm run build && node --expose-gc out/tests/HeapDumpTest.js",
-    "gendoc": "npx typedoc",
     "postinstall": "node script/npmInstall.js",
-    "copyCollectionDefintion": "ts-node script/typescriptCollectionDefinitionCopy.ts"
+    "gendoc": "npx typedoc"
   },
   "dependencies": {
     "commander": "13.1.0",

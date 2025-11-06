@@ -16,6 +16,7 @@
 import fs from 'fs';
 import path from 'path';
 import Logger, { LOG_MODULE_TYPE } from './logger';
+import { FileUtils } from './FileUtils';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'getAllFiles');
 /**
@@ -58,7 +59,7 @@ export function getAllFiles(
         //TODO: 增加排除文件后缀和目录
 
         // 如果是目录，递归提取
-        if (fs.statSync(realFile).isDirectory()) {
+        if (FileUtils.isDirectory(realFile)) {
             getAllFiles(realFile, exts, ignore, filenameArr, visited);
         } else {
             // 如果是文件，则判断其扩展名是否在给定的扩展名数组中

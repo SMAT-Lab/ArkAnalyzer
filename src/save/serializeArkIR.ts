@@ -23,6 +23,7 @@ import { ArkFile } from '../core/model/ArkFile';
 import { JsonPrinter } from './JsonPrinter';
 import { Printer } from './Printer';
 import { PointerAnalysis } from '../callgraph/pointerAnalysis/PointerAnalysis';
+import { FileUtils } from '../utils/FileUtils';
 
 export function buildSceneFromSingleFile(filename: string, verbose: boolean = false): Scene {
     if (verbose) {
@@ -130,7 +131,7 @@ function serializeSingleTsFile(input: string, output: string, options: any): voi
 
 function serializeFile(arkFile: ArkFile, output: string, options: any, scene: Scene): void {
     let outPath: string;
-    if (fs.existsSync(output) && fs.statSync(output).isDirectory()) {
+    if (FileUtils.isDirectory(output)) {
         outPath = path.join(output, arkFile.getName() + '.json');
     } else if (!fs.existsSync(output) && output.endsWith('/')) {
         outPath = path.join(output, arkFile.getName() + '.json');
@@ -145,7 +146,7 @@ function serializeFile(arkFile: ArkFile, output: string, options: any, scene: Sc
     if (options.entrypoint) {
         let arkFile = scene.getFiles()[1];
         let outPath: string;
-        if (fs.existsSync(output) && fs.statSync(output).isDirectory()) {
+        if (FileUtils.isDirectory(output)) {
             outPath = path.join(output, arkFile.getName() + '.json');
         } else if (!fs.existsSync(output) && output.endsWith('/')) {
             outPath = path.join(output, arkFile.getName() + '.json');
@@ -159,7 +160,7 @@ function serializeFile(arkFile: ArkFile, output: string, options: any, scene: Sc
 
 function serializeMultipleTsFiles(inputDir: string, outDir: string, options: any): void {
     console.log(`Serializing multiple TS files to JSON: '${inputDir}' -> '${outDir}'`);
-    if (fs.existsSync(outDir) && !fs.statSync(outDir).isDirectory()) {
+    if (!FileUtils.isDirectory(outDir)) {
         console.error(`ERROR: Output path must be a directory.`);
         process.exit(1);
     }
@@ -215,7 +216,7 @@ function serializeMultipleTsFiles(inputDir: string, outDir: string, options: any
 function serializeTsProject(inputDir: string, outDir: string, options: any): void {
     console.log(`Serializing TS project to JSON: '${inputDir}' -> '${outDir}'`);
 
-    if (fs.existsSync(outDir) && !fs.statSync(outDir).isDirectory()) {
+    if (!FileUtils.isDirectory(outDir)) {
         console.error(`ERROR: Output path must be a directory.`);
         process.exit(1);
     }
@@ -284,7 +285,7 @@ export const program = new Command()
         }
 
         // Handle the case where the input is a directory
-        if (fs.statSync(input).isDirectory() && !(options.multi || options.project)) {
+        if (FileUtils.isDirectory(input) && !(options.multi || options.project)) {
             console.error(`ERROR: If the input is a directory, you must provide the '-p' or '-m' flag.`);
             process.exit(1);
         }
