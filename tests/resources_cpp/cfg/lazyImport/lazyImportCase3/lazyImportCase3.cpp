@@ -19,6 +19,7 @@
 #include "napi/native_api.h"
 #include <map>
 #include <string>
+#include <cstdio>
 
 #define A_HUNDRED 100
 
@@ -38,7 +39,7 @@ napi_value MapDemo(napi_env env, napi_callback_info info)
     napi_get_value_int32(env, args[1], &num);
     testmap.insert(std::make_pair(str1, num));
     for (auto e: testmap) {
-        // ...
+        printf("%d %s\n", e.first, e.second.c_str());
     }
 
     return nullptr;

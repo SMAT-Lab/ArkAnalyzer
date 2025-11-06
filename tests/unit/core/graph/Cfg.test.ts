@@ -66,6 +66,7 @@ import {
     TRY_CATCH_EXPECT_CASE1,
     TRY_CATCH_EXPECT_CASE2
 } from '../../../resources/cfg/tryCatch/TryCatchExpect';
+import { CLOSURE_EXPECT_CASE1, CLOSURE_EXPECT_CASE2, CLOSURE_EXPECT_CASE3 } from '../../../resources/cfg/closure/ClosureExpect';
 
 describe('CfgTest', () => {
     it('case1: patching interface', () => {
@@ -175,10 +176,10 @@ describe('CfgTest', () => {
     });
 
     it('case4: loop statement', () => {
-            const scene = buildScene('loop');
-            testBlocks(scene, 'LoopSample.ts', 'case1', LOOP_EXPECT_CASE1.blocks);
-            testBlocks(scene, 'LoopSample.ts', 'case2', LOOP_EXPECT_CASE2.blocks);
-        },
+        const scene = buildScene('loop');
+        testBlocks(scene, 'LoopSample.ts', 'case1', LOOP_EXPECT_CASE1.blocks);
+        testBlocks(scene, 'LoopSample.ts', 'case2', LOOP_EXPECT_CASE2.blocks);
+    },
     );
 
     it('case5: mix of statements', () => {
@@ -193,6 +194,13 @@ describe('CfgTest', () => {
         const scene = buildScene('tryCatch');
         testBlocks(scene, 'TryCatchSample.ts', 'case1', TRY_CATCH_EXPECT_CASE1.blocks);
         testBlocks(scene, 'TryCatchSample.ts', 'case2', TRY_CATCH_EXPECT_CASE2.blocks);
+    });
+
+    it('case7: closure statement', () => {
+        const scene = buildScene('closure');
+        testBlocks(scene, 'ClosureSample.ts', 'case1', CLOSURE_EXPECT_CASE3.blocks);
+        testBlocks(scene, 'ClosureSample.ts', 'callClosure', CLOSURE_EXPECT_CASE1.blocks);
+        testBlocks(scene, 'ClosureSample.ts', '%AM1$case1', CLOSURE_EXPECT_CASE2.blocks);
     });
 });
 

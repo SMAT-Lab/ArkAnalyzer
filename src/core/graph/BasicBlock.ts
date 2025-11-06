@@ -35,8 +35,9 @@ export class BasicBlock {
     private predecessorBlocks: BasicBlock[] = [];
     private successorBlocks: BasicBlock[] = [];
     private exceptionalSuccessorBlocks?: BasicBlock[];
+    private exceptionalPredecessorBlocks?: BasicBlock[];
 
-    constructor() {}
+    constructor() { }
 
     public getId(): number {
         return this.id;
@@ -284,6 +285,16 @@ export class BasicBlock {
         return this.exceptionalSuccessorBlocks;
     }
 
+    public getExceptionalPredecessorBlocks(): BasicBlock[] | undefined {
+        return this.exceptionalPredecessorBlocks;
+    }
+
+    public addExceptionalPredecessorBlock(block: BasicBlock): void {
+        if (!this.exceptionalPredecessorBlocks) {
+            this.exceptionalPredecessorBlocks = [];
+        }
+        this.exceptionalPredecessorBlocks.push(block);
+    }
     public addExceptionalSuccessorBlock(block: BasicBlock): void {
         if (!this.exceptionalSuccessorBlocks) {
             this.exceptionalSuccessorBlocks = [];
