@@ -24,7 +24,7 @@ function buildScene(folderName: string): Scene {
     let config: SceneConfig = new SceneConfig();
     config.setSupportFileExts(['.c', '.cpp', '.h', '.hpp']);
     let includeDirs: string[] = [];
-    if (deveco_c != undefined) {
+    if (deveco_c !== undefined) {
         // header file configuration for DevEco
         includeDirs.push(path.join(deveco_c, 'c++', 'v1'));
     }
