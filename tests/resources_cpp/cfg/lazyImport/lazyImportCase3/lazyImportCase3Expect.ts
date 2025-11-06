@@ -68,6 +68,6 @@ export const MapDemo_EXPECT = {
             preds: [1],
             succes: [1]
         },
-        { id: 3, stmts: [ 'return null' ], preds: [ 1 ], succes: [] }
+        { id: 3, stmts: ['return null'], preds: [1], succes: [] }
     ],
 };
