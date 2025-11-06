@@ -24,6 +24,8 @@ export const TRAP_EXPECT_CASE1 = {
                     ],
                     preds: [0],
                     succes: [3],
+                    exceptionalPreds: [],
+                    exceptionalSucces: [2]
                 },
             ],
             catchBlocks: [
@@ -35,6 +37,8 @@ export const TRAP_EXPECT_CASE1 = {
                     ],
                     preds: [],
                     succes: [3],
+                    exceptionalPreds: [1],
+                    exceptionalSucces: [5]
                 },
             ],
         },
@@ -48,6 +52,8 @@ export const TRAP_EXPECT_CASE1 = {
                     ],
                     preds: [],
                     succes: [3],
+                    exceptionalPreds: [1],
+                    exceptionalSucces: [5]
                 },
             ],
             catchBlocks: [
@@ -60,6 +66,8 @@ export const TRAP_EXPECT_CASE1 = {
                     ],
                     preds: [],
                     succes: [],
+                    exceptionalPreds: [2],
+                    exceptionalSucces: []
                 },
             ],
         },
@@ -77,6 +85,8 @@ export const TRAP_EXPECT_CASE2 = {
                     ],
                     preds: [0],
                     succes: [3],
+                    exceptionalPreds: [],
+                    exceptionalSucces: [2]
                 },
             ],
             catchBlocks: [
@@ -88,6 +98,8 @@ export const TRAP_EXPECT_CASE2 = {
                     ],
                     preds: [],
                     succes: [3],
+                    exceptionalPreds: [1],
+                    exceptionalSucces: []
                 },
             ],
         },
@@ -105,6 +117,8 @@ export const TRAP_EXPECT_CASE3 = {
                     ],
                     preds: [0],
                     succes: [2],
+                    exceptionalPreds: [],
+                    exceptionalSucces: [4]
                 },
             ],
             catchBlocks: [
@@ -117,6 +131,8 @@ export const TRAP_EXPECT_CASE3 = {
                     ],
                     preds: [],
                     succes: [],
+                    exceptionalPreds: [1],
+                    exceptionalSucces: []
                 },
             ],
         },
@@ -135,6 +151,8 @@ export const TRAP_EXPECT_CASE4 = {
                     ],
                     preds: [0],
                     succes: [2, 3],
+                    exceptionalPreds: [],
+                    exceptionalSucces: [2]
                 },
                 {
                     id: 2,
@@ -143,6 +161,8 @@ export const TRAP_EXPECT_CASE4 = {
                     ],
                     preds: [1],
                     succes: [4],
+                    exceptionalPreds: [],
+                    exceptionalSucces: []
                 },
                 {
                     id: 3,
@@ -151,6 +171,8 @@ export const TRAP_EXPECT_CASE4 = {
                     ],
                     preds: [1],
                     succes: [4],
+                    exceptionalPreds: [],
+                    exceptionalSucces: []
                 },
                 {
                     id: 4,
@@ -159,6 +181,8 @@ export const TRAP_EXPECT_CASE4 = {
                     ],
                     preds: [2, 3],
                     succes: [9],
+                    exceptionalPreds: [],
+                    exceptionalSucces: [5]
                 },
             ],
             catchBlocks: [
@@ -171,6 +195,8 @@ export const TRAP_EXPECT_CASE4 = {
                     ],
                     preds: [],
                     succes: [6, 7],
+                    exceptionalPreds: [4],
+                    exceptionalSucces: []
                 },
                 {
                     id: 6,
@@ -179,6 +205,8 @@ export const TRAP_EXPECT_CASE4 = {
                     ],
                     preds: [5],
                     succes: [8],
+                    exceptionalPreds: [],
+                    exceptionalSucces: []
                 },
                 {
                     id: 7,
@@ -187,6 +215,8 @@ export const TRAP_EXPECT_CASE4 = {
                     ],
                     preds: [5],
                     succes: [8],
+                    exceptionalPreds: [],
+                    exceptionalSucces: []
                 },
                 {
                     id: 8,
@@ -195,6 +225,8 @@ export const TRAP_EXPECT_CASE4 = {
                     ],
                     preds: [6, 7],
                     succes: [9],
+                    exceptionalPreds: [],
+                    exceptionalSucces: [14]
                 },
             ],
         },
@@ -209,6 +241,8 @@ export const TRAP_EXPECT_CASE4 = {
                     ],
                     preds: [],
                     succes: [6, 7],
+                    exceptionalPreds: [4],
+                    exceptionalSucces: []
                 },
                 {
                     id: 6,
@@ -217,6 +251,8 @@ export const TRAP_EXPECT_CASE4 = {
                     ],
                     preds: [5],
                     succes: [8],
+                    exceptionalPreds: [],
+                    exceptionalSucces: []
                 },
                 {
                     id: 7,
@@ -225,6 +261,8 @@ export const TRAP_EXPECT_CASE4 = {
                     ],
                     preds: [5],
                     succes: [8],
+                    exceptionalPreds: [],
+                    exceptionalSucces: []
                 },
                 {
                     id: 8,
@@ -233,6 +271,8 @@ export const TRAP_EXPECT_CASE4 = {
                     ],
                     preds: [6, 7],
                     succes: [9],
+                    exceptionalPreds: [],
+                    exceptionalSucces: [14]
                 },
             ],
             catchBlocks: [
@@ -245,6 +285,8 @@ export const TRAP_EXPECT_CASE4 = {
                     ],
                     preds: [],
                     succes: [15, 16],
+                    exceptionalPreds: [8],
+                    exceptionalSucces: []
                 },
                 {
                     id: 15,
@@ -253,6 +295,8 @@ export const TRAP_EXPECT_CASE4 = {
                     ],
                     preds: [14],
                     succes: [17],
+                    exceptionalPreds: [],
+                    exceptionalSucces: []
                 },
                 {
                     id: 16,
@@ -261,6 +305,8 @@ export const TRAP_EXPECT_CASE4 = {
                     ],
                     preds: [14],
                     succes: [17],
+                    exceptionalPreds: [],
+                    exceptionalSucces: []
                 },
                 {
                     id: 17,
@@ -271,6 +317,8 @@ export const TRAP_EXPECT_CASE4 = {
                     ],
                     preds: [15, 16],
                     succes: [],
+                    exceptionalPreds: [],
+                    exceptionalSucces: []
                 },
             ],
         },
@@ -288,6 +336,8 @@ export const TRAP_EXPECT_CASE5 = {
                     ],
                     preds: [0],
                     succes: [3],
+                    exceptionalPreds: [],
+                    exceptionalSucces: [2]
                 },
             ],
             catchBlocks: [
@@ -299,6 +349,8 @@ export const TRAP_EXPECT_CASE5 = {
                     ],
                     preds: [],
                     succes: [3],
+                    exceptionalPreds: [1],
+                    exceptionalSucces: [5]
                 },
             ],
         },
@@ -312,6 +364,8 @@ export const TRAP_EXPECT_CASE5 = {
                     ],
                     preds: [],
                     succes: [3],
+                    exceptionalPreds: [1],
+                    exceptionalSucces: [5]
                 },
             ],
             catchBlocks: [
@@ -324,6 +378,8 @@ export const TRAP_EXPECT_CASE5 = {
                     ],
                     preds: [],
                     succes: [],
+                    exceptionalPreds: [2],
+                    exceptionalSucces: []
                 },
             ],
         },
@@ -341,6 +397,8 @@ export const TRAP_EXPECT_CASE6 = {
                     ],
                     preds: [0],
                     succes: [2],
+                    exceptionalPreds: [],
+                    exceptionalSucces: []
                 },
                 {
                     id: 2,
@@ -349,6 +407,8 @@ export const TRAP_EXPECT_CASE6 = {
                     ],
                     preds: [1],
                     succes: [4],
+                    exceptionalPreds: [],
+                    exceptionalSucces: [3]
                 },
                 {
                     id: 4,
@@ -357,6 +417,8 @@ export const TRAP_EXPECT_CASE6 = {
                     ],
                     preds: [2, 3],
                     succes: [6],
+                    exceptionalPreds: [],
+                    exceptionalSucces: [5]
                 },
             ],
             catchBlocks: [
@@ -368,6 +430,8 @@ export const TRAP_EXPECT_CASE6 = {
                     ],
                     preds: [],
                     succes: [6],
+                    exceptionalPreds: [4],
+                    exceptionalSucces: [9]
                 },
             ],
         },
@@ -381,6 +445,8 @@ export const TRAP_EXPECT_CASE6 = {
                     ],
                     preds: [],
                     succes: [6],
+                    exceptionalPreds: [4],
+                    exceptionalSucces: [9]
                 },
             ],
             catchBlocks: [
@@ -393,6 +459,8 @@ export const TRAP_EXPECT_CASE6 = {
                     ],
                     preds: [],
                     succes: [],
+                    exceptionalPreds: [5],
+                    exceptionalSucces: []
                 },
             ],
         },
@@ -405,6 +473,8 @@ export const TRAP_EXPECT_CASE6 = {
                     ],
                     preds: [1],
                     succes: [4],
+                    exceptionalPreds: [],
+                    exceptionalSucces: [3]
                 },
             ],
             catchBlocks: [
@@ -416,6 +486,8 @@ export const TRAP_EXPECT_CASE6 = {
                     ],
                     preds: [],
                     succes: [4],
+                    exceptionalPreds: [2],
+                    exceptionalSucces: [8]
                 },
             ],
         },
@@ -429,6 +501,8 @@ export const TRAP_EXPECT_CASE6 = {
                     ],
                     preds: [],
                     succes: [4],
+                    exceptionalPreds: [2],
+                    exceptionalSucces: [8]
                 },
             ],
             catchBlocks: [
@@ -441,6 +515,8 @@ export const TRAP_EXPECT_CASE6 = {
                     ],
                     preds: [],
                     succes: [],
+                    exceptionalPreds: [3],
+                    exceptionalSucces: []
                 },
             ],
         },
@@ -458,6 +534,8 @@ export const TRAP_EXPECT_CASE7 = {
                     ],
                     preds: [0],
                     succes: [3],
+                    exceptionalPreds: [],
+                    exceptionalSucces: [2]
                 },
             ],
             catchBlocks: [
@@ -469,6 +547,8 @@ export const TRAP_EXPECT_CASE7 = {
                     ],
                     preds: [],
                     succes: [3],
+                    exceptionalPreds: [1],
+                    exceptionalSucces: [9]
                 },
             ],
         },
@@ -482,6 +562,8 @@ export const TRAP_EXPECT_CASE7 = {
                     ],
                     preds: [],
                     succes: [3],
+                    exceptionalPreds: [1],
+                    exceptionalSucces: [9]
                 },
             ],
             catchBlocks: [
@@ -493,6 +575,8 @@ export const TRAP_EXPECT_CASE7 = {
                     ],
                     preds: [],
                     succes: [10, 11],
+                    exceptionalPreds: [2],
+                    exceptionalSucces: []
                 },
                 {
                     id: 10,
@@ -501,6 +585,8 @@ export const TRAP_EXPECT_CASE7 = {
                     ],
                     preds: [9],
                     succes: [11],
+                    exceptionalPreds: [],
+                    exceptionalSucces: []
                 },
                 {
                     id: 11,
@@ -509,6 +595,8 @@ export const TRAP_EXPECT_CASE7 = {
                     ],
                     preds: [9, 10],
                     succes: [],
+                    exceptionalPreds: [],
+                    exceptionalSucces: []
                 },
             ],
         },
@@ -526,6 +614,8 @@ export const TRAP_EXPECT_CASE8 = {
                     ],
                     preds: [0],
                     succes: [3],
+                    exceptionalPreds: [],
+                    exceptionalSucces: [2]
                 },
             ],
             catchBlocks: [
@@ -537,6 +627,8 @@ export const TRAP_EXPECT_CASE8 = {
                     ],
                     preds: [],
                     succes: [3],
+                    exceptionalPreds: [1],
+                    exceptionalSucces: [8]
                 },
             ],
         },
@@ -550,6 +642,8 @@ export const TRAP_EXPECT_CASE8 = {
                     ],
                     preds: [],
                     succes: [3],
+                    exceptionalPreds: [1],
+                    exceptionalSucces: [8]
                 },
             ],
             catchBlocks: [
@@ -561,6 +655,8 @@ export const TRAP_EXPECT_CASE8 = {
                     ],
                     preds: [],
                     succes: [9, 10],
+                    exceptionalPreds: [2],
+                    exceptionalSucces: []
                 },
                 {
                     id: 9,
@@ -569,6 +665,8 @@ export const TRAP_EXPECT_CASE8 = {
                     ],
                     preds: [8],
                     succes: [10],
+                    exceptionalPreds: [],
+                    exceptionalSucces: []
                 },
                 {
                     id: 10,
@@ -577,6 +675,8 @@ export const TRAP_EXPECT_CASE8 = {
                     ],
                     preds: [8, 9],
                     succes: [],
+                    exceptionalPreds: [],
+                    exceptionalSucces: []
                 },
             ],
         },
