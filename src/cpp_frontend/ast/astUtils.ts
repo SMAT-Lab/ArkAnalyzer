@@ -276,7 +276,7 @@ function constructParseArguments(srcFilePath: string, ccJsonPath: string | null,
     }
     if (ccJsonPath) {
         args.push('-c', ccJsonPath);
-    } else if (deveco_c != undefined){
+    } else if (deveco_c != undefined) {
         // Provide default header file search path
         args.push('-i', path.join(deveco_c, 'c++', 'v1'));
     }

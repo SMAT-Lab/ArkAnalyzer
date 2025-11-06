@@ -292,7 +292,7 @@ function buildArkClassMembers(clsNode: CxxAstNode, cls: ArkClass, sourceFile: Cx
 }
 
 function processUsingDeclInClass(usingDecl: CxxAstNode, cls: ArkClass): void {
-    if (usingDecl.inner.length != 2) {
+    if (usingDecl.inner.length !== 2) {
         return;
     }
     const curFile = cls.getDeclaringArkFile();
