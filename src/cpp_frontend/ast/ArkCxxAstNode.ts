@@ -37,12 +37,18 @@ export interface CxxTypeInfo {
     typeAliasDeclQualifiedName?: string;
 }
 
+export interface CxxAliasInfo {
+    declCode?: string;
+    range?: CxxRange;
+}
+
 /** Target information for DeclRef */
 export interface CxxReferencedDecl {
     kind?: string; // VarDecl / ParamVarDecl / FunctionDecl ...
     name?: string;
     type?: CxxTypeInfo;
     scope?: string;
+    alias?: CxxAliasInfo;
 }
 
 /** Target information for CXXCtorInitializer */

@@ -2887,8 +2887,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         }
         // Scenario: using value_type_t = typename T::value_type;
         let outerType = ModelUtils.findSymbolInFileWithName(outerTemplateRefName, this.declaringMethod.getDeclaringArkClass(), true);
-        if (outerType instanceof AliasType && outerType.getOriginalType() instanceof UnclearReferenceType &&
-            (outerType.getOriginalType() as UnclearReferenceType).getName() === BuiltinCxx.TYPENAME_KEYWORD &&
+        if (outerType instanceof AliasType && templateRefNodes[0].referencedDecl?.alias?.declCode?.includes(BuiltinCxx.TYPENAME_KEYWORD) &&
             realGenericType instanceof ClassType) {
             const valueType = realGenericType.getRealGenericTypes()?.[0] ?? realGenericType;
             outerType.setOriginalType(valueType);
