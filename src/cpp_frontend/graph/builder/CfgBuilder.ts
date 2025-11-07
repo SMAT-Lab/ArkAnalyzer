@@ -244,10 +244,17 @@ export class CfgBuilder {
         this.exits.push(ifexit);
         ifstm.condition = c.inner[0].code;
         ifstm.code = 'if (' + ifstm.condition + ')';
-        if (c.inner.length >= 2 && c.inner[1].kind.toString() === 'CompoundStmt') {
-            this.walkAST(ifstm, ifexit, [...c.inner[1].inner]);
-        } else {
-            this.walkAST(ifstm, ifexit, [c.inner[1]]);
+        if (c.inner.length >= 2) { // length >= 2 means there is a condition and a body
+            if (c.inner[1].kind.toString() === 'CompoundStmt') {
+                // Body is a braced block { ... }
+                this.walkAST(ifstm, ifexit, [...c.inner[1].inner]);
+            } else {
+                // Reaching this branch means there's no braces {}
+                this.walkAST(ifstm, ifexit, [c.inner[1]]);
+            }
+        } else if (c.inner.length == 1) {
+            // Only one child; treat it as the body
+            this.walkAST(ifstm, ifexit, [c.inner[0]]);
         }
         if (c.inner.length > 2) {
             if (c.inner[2].kind.toString() === 'CompoundStmt') {

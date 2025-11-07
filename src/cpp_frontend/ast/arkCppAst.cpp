@@ -490,25 +490,6 @@ static std::string BuildScopeForCursor(CXCursor cur)
     return scope; // empty string means global scope
 }
 
-json getReferenceDecl(CXCursor cursor, CXCursorKind kind_cursor)
-{
-    json refNode;
-    CXCursor referenced = clang_getCursorReferenced(cursor);
-    if (!clang_isInvalid(kind_cursor)) {
-        std::string refName = Cx2Str(clang_getCursorSpelling(referenced));
-        std::string refKind = Cx2Str(clang_getCursorKindSpelling(clang_getCursorKind(referenced)));
-        if (refKind == "ParamDecl") {
-            refKind = "ParamVarDecl";
-        }
-        refNode["name"] = refName;
-        refNode["kind"] = refKind;
-        refNode["type"] = {{"qualType", unifyTypeStr(clang_getTypeSpelling(clang_getCursorType(referenced)))}};
-        std::string scope = BuildScopeForCursor(referenced);
-        refNode["scope"] = scope;
-    }
-    return refNode;
-}
-
 void patchPseudoDestructorExpr(json &node)
 {
     // Check if current is MemberExpr + TypeRef combination and contains ~, infer as pseudo-destructor
@@ -989,12 +970,6 @@ void fillVarDeclStorageClass(json& node, CXCursor cursor, CXCursorKind kind_curs
     }
 }
 
-void fillDeclRefInfo(json& node, CXCursor cursor, CXCursorKind kind_cursor)
-{
-    if (kind_cursor == CXCursor_DeclRefExpr)
-        node["referencedDecl"] = getReferenceDecl(cursor, kind_cursor);
-}
-
 void fillNodeIdRangeLoc(json& node, const json& content, CXCursorKind kind_cursor,
                         CXFile file, const std::string& displayName)
 {
@@ -1194,6 +1169,77 @@ json getSourceContentMasked(CXTranslationUnit tu, CXSourceRange range, uint32_t 
     const SourceExtent ext{s.file, s.file, s.beginOffset, s.endOffset, range};
     j["code"] = getSourceCode(tu, ext);
     return j;
+}
+
+static inline std::string GetDeclCodeOnly(CXCursor c)
+{
+    CXTranslationUnit tu = clang_Cursor_getTranslationUnit(c);
+    CXSourceRange r = clang_getCursorExtent(c);
+    json j = getSourceContentMasked(tu, r, WANT_CODE);
+    return j.value("code", "");
+}
+
+static CXChildVisitResult FindInnerTypeAliasDecl(CXCursor c, CXCursor, CXClientData data) {
+    auto* s = static_cast<std::pair<bool,CXCursor>*>(data);
+    if (clang_getCursorKind(c) == CXCursor_TypeAliasDecl) {
+        s->first = true;
+        s->second = c;
+        return CXChildVisit_Break;
+    }
+    return CXChildVisit_Continue;
+}
+
+// Build a lightweight description of the referenced declaration for the given cursor.
+// - Fills name/kind/type/scope for the declaration being referenced.
+// - If the target is a type alias (including template alias), also attach the full
+// "using ... = ..." source text as alias.declCode for easy display.
+json getReferenceDecl(CXCursor cursor, CXCursorKind /*kind_cursor*/)
+{
+    json refNode;
+    // Resolve the declaration referenced at this use site.
+    CXCursor referenced = clang_getCursorReferenced(cursor);
+    if (clang_equalCursors(referenced, clang_getNullCursor())) {
+        return refNode; // nothing to report
+    }
+    // Basic identity of the referenced declaration.
+    std::string refName = Cx2Str(clang_getCursorSpelling(referenced));
+    CXCursorKind rk = clang_getCursorKind(referenced);
+    std::string refKind = Cx2Str(clang_getCursorKindSpelling(rk));
+    // Normalize ParamDecl to ParamVarDecl for consistency with other parts of the pipeline.
+    if (refKind == "ParamDecl") {
+        refKind = "ParamVarDecl";
+    }
+    refNode["name"] = refName;
+    refNode["kind"] = refKind;
+    refNode["type"] = { {"qualType", unifyTypeStr(clang_getTypeSpelling(clang_getCursorType(referenced)))} };
+    refNode["scope"] = BuildScopeForCursor(referenced);
+    // Attach alias source text for plain type aliases:  using X = ... ;
+    if (rk == CXCursor_TypeAliasDecl) {
+        const std::string code = GetDeclCodeOnly(referenced);
+        if (!code.empty()) {
+            refNode["alias"] = { {"declCode", code} };
+        }
+    }
+    // Template alias: the actual "using" lives inside the TypeAliasTemplateDecl as a child
+    // TypeAliasDecl. Find that child and attach its source text.
+    else if (rk == CXCursor_TypeAliasTemplateDecl) {
+        std::pair<bool, CXCursor> st{false, clang_getNullCursor()};
+        clang_visitChildren(referenced, &FindInnerTypeAliasDecl, &st);
+        if (st.first) {
+            const std::string code = GetDeclCodeOnly(st.second); // only the source text
+            if (!code.empty()) {
+                refNode["alias"] = { {"declCode", code} };
+            }
+        }
+    }
+    return refNode;
+}
+
+void fillDeclRefInfo(json& node, CXCursor cursor, CXCursorKind kind_cursor)
+{
+    if (kind_cursor == CXCursor_DeclRefExpr || kind_cursor == CXCursor_TypeRef || kind_cursor == CXCursor_TemplateRef) {
+        node["referencedDecl"] = getReferenceDecl(cursor, kind_cursor);
+    }
 }
 
 static inline void EnsureDeclRefName(json& node, CXCursorKind kind_cursor)
