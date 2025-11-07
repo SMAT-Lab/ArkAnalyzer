@@ -1179,8 +1179,9 @@ static inline std::string GetDeclCodeOnly(CXCursor c)
     return j.value("code", "");
 }
 
-static CXChildVisitResult FindInnerTypeAliasDecl(CXCursor c, CXCursor, CXClientData data) {
-    auto* s = static_cast<std::pair<bool,CXCursor>*>(data);
+static CXChildVisitResult FindInnerTypeAliasDecl(CXCursor c, CXCursor, CXClientData data)
+{
+    auto* s = static_cast<std::pair<bool, CXCursor>*>(data);
     if (clang_getCursorKind(c) == CXCursor_TypeAliasDecl) {
         s->first = true;
         s->second = c;
@@ -1219,10 +1220,9 @@ json getReferenceDecl(CXCursor cursor, CXCursorKind /*kind_cursor*/)
         if (!code.empty()) {
             refNode["alias"] = { {"declCode", code} };
         }
-    }
-    // Template alias: the actual "using" lives inside the TypeAliasTemplateDecl as a child
-    // TypeAliasDecl. Find that child and attach its source text.
-    else if (rk == CXCursor_TypeAliasTemplateDecl) {
+    } else if (rk == CXCursor_TypeAliasTemplateDecl) {
+        // Template alias: the actual "using" lives inside the TypeAliasTemplateDecl as a child TypeAliasDecl.
+        // Find that child and attach its source text.
         std::pair<bool, CXCursor> st{false, clang_getNullCursor()};
         clang_visitChildren(referenced, &FindInnerTypeAliasDecl, &st);
         if (st.first) {

@@ -67,7 +67,7 @@ import {
 } from '../../core/common/EtsConst';
 import { CxxValueUtil } from './ValueUtil';
 import { IRUtils } from './IRUtils';
-import { AbstractFieldRef, ArkArrayRef, ArkInstanceFieldRef } from '../../core/base/Ref';
+import { AbstractFieldRef, ArkArrayRef, ArkInstanceFieldRef, ArkStaticFieldRef } from '../../core/base/Ref';
 import { ArkCxxInstanceFieldRef } from '../base/Ref';
 import { ArkMethod } from '../../core/model/ArkMethod';
 import { buildArkMethodFromArkClass, buildDefaultConstructor } from '../model/builder/ArkMethodBuilder';
@@ -92,6 +92,7 @@ import { setTs2CxxFuncMapOfClass } from './ModelUtils';
 import { CxxAstNode, CxxTranslationUnit, CxxTypeInfo } from '../ast/ArkCxxAstNode';
 import { DummyStmt } from '../../core/common/ArkIRTransformer';
 import { BuiltinCxx } from './Builtin';
+import { ArkClass } from '../../core/model/ArkClass';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkValueTransformer');
 
@@ -404,6 +405,18 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
     private declAndTypeRefToValueAndStmts(node: CxxAstNode): ValueAndStmts {
         if (node.inner?.length > 0 && !node.type) {
             return this.cxxNodeToValueAndStmts(node.inner[0]);
+        }
+        // Handle the scenario: using Color::RED; Color c = RED;
+        if (node.referencedDecl?.kind === 'EnumConstantDecl' && node.inner.length === 0) {
+            const typeRefNode = {
+                kind: 'TypeRef',
+                name: node.referencedDecl!.scope,
+                code: node.referencedDecl!.scope,
+                inner: [],
+                type: node.referencedDecl!.type,
+            } as CxxAstNode;
+            node.inner.push(typeRefNode);
+            return this.staticMemberExprToValueAndStmts(node);
         }
         // Handle the invocation of static members of a class, such as A::a
         if (node.code.includes('::') && node.inner.length > 0 &&
@@ -1119,11 +1132,23 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         // [Scenario 7] Set field types to support C++complex type resolution (such as template, pointer, const, etc.)
         fieldSignature.setType(this.cxxResolveTypeNode(memberExpression));
         // [Scenario 8] Generate the field reference object of IR layer (such as testMap. insert)
-        const fieldRef = new ArkCxxInstanceFieldRef(
-            baseValue as Local, // baseValue（eg: testMap）
-            memberExpression.isArrow ?? false, // Whether it is arrow access (->)
-            fieldSignature // Field signature (such as insert)
-        );
+        let fieldRef: ArkCxxInstanceFieldRef | ArkStaticFieldRef;
+        if (memberExpression.referencedDecl?.kind === 'EnumConstantDecl') {
+            const enumClassName = memberExpression.inner[0].name.replace('enum', '').trim();
+            const enumArkClass = ModelUtils.findSymbolInFileWithName(enumClassName, this.declaringMethod.getDeclaringArkClass());
+            const enumSignature =
+                (enumArkClass instanceof ArkClass) ?
+                enumArkClass.getSignature() :
+                ArkSignatureBuilder.buildClassSignatureFromClassName(enumClassName);
+            fieldSignature = new FieldSignature(memberName, enumSignature, UnknownType.getInstance(),true);
+            fieldRef = new ArkStaticFieldRef(fieldSignature);
+        } else {
+            fieldRef = new ArkCxxInstanceFieldRef(
+                baseValue as Local, // baseValue（eg: testMap）
+                memberExpression.isArrow ?? false, // Whether it is arrow access (->)
+                fieldSignature // Field signature (such as insert)
+            );
+        }
         // Record node location information for subsequent traceability and debugging
         const fieldRefPositions = [FullPosition.cxxBuildFromNode(memberExpression, this.cxxSourceFile), ...basePositions];
         // Return resolution results, including IR field references, location information, and related SSA statements

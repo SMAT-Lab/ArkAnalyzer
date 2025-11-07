@@ -68,25 +68,22 @@ export const USING_EXPECT_CASE4 = {
             id: 0,
             stmts: [
                 'this = this: @using/usingcase.cpp: %dflt',
-                'c = RED',
-                '%0 = Color.<@%unk/%unk: .RED>',
-                'if c == %0',
+                "c = @using/usingcase.cpp: Color.[static]RED",
+                "%0 = @using/usingcase.cpp: Color.[static]RED",
+                'if c == %0'
             ],
             preds: [],
-            succes: [1, 2],
+            succes: [1, 2]
         },
         {
             id: 1,
-            stmts: ["staticinvoke <@%unk/%unk: .cout()>('[test_using_enum_member] Red\\n')"],
+            stmts: [
+                "staticinvoke <@%unk/%unk: .cout()>('[test_using_enum_member] Red\\n')"
+            ],
             preds: [0],
-            succes: [2],
+            succes: [2]
         },
-        {
-            id: 2,
-            stmts: ['return'],
-            preds: [1, 0],
-            succes: [],
-        },
+        { id: 2, stmts: ['return'], preds: [1, 0], succes: [] }
     ],
 };
 
