@@ -2854,6 +2854,9 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             const fileSignature = new FileSignature(BuiltinCxx.CXXSTD, 'iostream.h');
             const classSignature = new ClassSignature('iostream', fileSignature);
             return new ClassType(classSignature);
+        } else if (node && node.inner?.[0]?.kind === 'TemplateRef') {
+            // Handling template types
+            return this.buildCxxTemplateType(node);
         } else if (qualType.includes('vector')) {
             let dimension = 0; // Handle std::vector scenarios (must be after std:: check)
             let dataType = this.resolveVectorType(qualType, dimension);
@@ -2866,6 +2869,32 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             return new SmartPointerType(baseType, 0, qualType);
         }
         return undefined;
+    }
+
+    private buildCxxTemplateType(node: CxxAstNode): Type | undefined {
+        const templateRefNodes = node.inner.filter(inn => inn.kind === 'TemplateRef');
+        if (templateRefNodes.length === 0) {
+            return undefined;
+        }
+        const outerTemplateRefName = templateRefNodes[0].name ?? templateRefNodes[0].code ?? '';
+        const genericTypeStr = templateRefNodes[0].type.qualType ?? '';
+        if (outerTemplateRefName === '' || genericTypeStr === '') {
+            return undefined;
+        }
+        const realGenericType = this.buildCxxTypeFromQualType(undefined, genericTypeStr);
+        if (!realGenericType) {
+            return undefined;
+        }
+        // Scenario: using value_type_t = typename T::value_type;
+        let outerType = ModelUtils.findSymbolInFileWithName(outerTemplateRefName, this.declaringMethod.getDeclaringArkClass(), true);
+        if (outerType instanceof AliasType && outerType.getOriginalType() instanceof UnclearReferenceType &&
+            (outerType.getOriginalType() as UnclearReferenceType).getName() === BuiltinCxx.TYPENAME_KEYWORD &&
+            realGenericType instanceof ClassType) {
+            const valueType = realGenericType.getRealGenericTypes()?.[0] ?? realGenericType;
+            outerType.setOriginalType(valueType);
+            return outerType;
+        }
+        return new UnclearReferenceType(outerTemplateRefName, [realGenericType]);
     }
 
     private buildCxxTypeFromTagUsed(tagUsed: string): Type | undefined {
