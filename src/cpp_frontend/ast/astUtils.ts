@@ -251,6 +251,7 @@ export class AstUtils {
             case 'win32':
                 return ClangPath.WindowsPath;
             case 'linux':
+            case 'darwin':
                 return ClangPath.LinuxPath;
             default:
                 return ClangPath.Unknown;
@@ -279,8 +280,8 @@ function constructParseArguments(srcFilePath: string, ccJsonPath: string | null,
         args.push('-c', ccJsonPath);
     } else if (deveco_c !== undefined && deveco_include !== undefined) {
         // Provide default header file search path
-        args.push('-i', path.join(deveco_c, 'c++', 'v1'));
-        args.push('-i', path.join(deveco_include, 'include'));
+        args.push('-i', deveco_c);
+        args.push('-i', deveco_include);
     }
     if (includeDirs && includeDirs.length > 0) {
         includeDirs.forEach(dir => {
