@@ -409,6 +409,7 @@ describe('using Test', () => {
     });
     it('case4: using', () => {
         const scene = buildScene('using');
+        scene.inferTypes();
         testBlocks(scene, 'usingcase.cpp', 'TestUsingEnumMember', USING_EXPECT.USING_EXPECT_CASE4.blocks);
     });
     it('case5: using', () => {
