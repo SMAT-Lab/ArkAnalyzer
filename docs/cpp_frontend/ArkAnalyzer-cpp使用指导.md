@@ -89,7 +89,7 @@
     make
 
 执行依赖的文件：
-libclang.so（可从llvm预编译版本的lib目录下获取）
+libclang.so（可从llvm预编译版本的LLVM-19.1.7-Linux-X64/lib目录下获取）
 
 #### 2.3、构建mac版本的arkCppAstDumper（x86和arm同理）
 ##### 2.3.1、在linux平台交叉编译构建mac版本的arkCppAstDumper
@@ -129,7 +129,7 @@ libclang.so（可从llvm预编译版本的lib目录下获取）
     make
 
 执行依赖的文件：
-* libclang.dylib（可从llvm预编译版本的lib目录下获取）
+* libclang.dylib（可从llvm预编译版本的LLVM-19.1.7-macOS-ARM64/lib目录下获取）
 
 ### 3、使用arkCppAstDumper工具
 
@@ -193,14 +193,14 @@ libclang.so（可从llvm预编译版本的lib目录下获取）
 
 4、设置c++头文件到环境变量，当没有编译数据库时作为头文件搜索路径
 
-* windows平台设置DevEco studio目录下c++头文件
+* windows平台设置DevEco studio目录下的c++头文件
   ![img_8.png](img_8.png)
 
 * linux平台设置commomd-line-tools目录下的c++头文件
 ![img_16.png](img_16.png)
 
 * mac平台设置DevEco studio和MacOSX.sdk目录下的c++头文件
-* ![img_19.png](img_19.png)
+![img_19.png](img_19.png)
 
 5、执行接口，SceneConfig作为参数传给buildSceneFromFiles方法生成Scene结构的ArkIR，路径：arkanalyzer\src\Scene.ts
 
