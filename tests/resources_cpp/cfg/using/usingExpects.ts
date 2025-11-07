@@ -145,3 +145,19 @@ export const USING_EXPECT_CASE7 = {
         },
     ],
 };
+
+export const USING_EXPECT_CASE8 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @using/usingcase.cpp: %dflt',
+                'x = 3.14',
+                "staticinvoke <@%unk/%unk: .cout()>('[test_template_type_alias] x = ', x)",
+                'return'
+            ],
+            preds: [],
+            succes: []
+        },
+    ],
+};

@@ -33,7 +33,7 @@ import { Value } from '../../core/base/Value';
 import * as ts from 'ohos-typescript';
 import { Local } from '../../core/base/Local';
 import { ArkAliasTypeDefineStmt, ArkAssignStmt, ArkIfStmt, ArkInvokeStmt, ArkReturnStmt, ArkReturnVoidStmt, ArkThrowStmt, Stmt } from '../../core/base/Stmt';
-import { AliasType, BooleanType, ClassType, UnknownType, VoidType, Type } from '../../core/base/Type';
+import { AliasType, BooleanType, ClassType, UnknownType, VoidType, Type, UnclearReferenceType } from '../../core/base/Type';
 import { CxxValueUtil } from './ValueUtil';
 import { IRUtils } from './IRUtils';
 import { ArkMethod } from '../../core/model/ArkMethod';
@@ -229,7 +229,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         }
         const typeNode: CxxAstNode | undefined =
             Array.isArray(typeDefDecl.inner) ? typeDefDecl.inner[0] : undefined;
-        const rightOp = typeNode && typeNode.code ? typeNode.code : 'int'; // If there is no type code, use int type as fallback
+        const rightOp = typeNode?.code ?? typeNode?.name ?? 'int'; // If there is no type code, use int type as fallback
 
         let rightType;
         //  Identify the tagUsed attribute to determine struct, union, and enum nodes
@@ -245,6 +245,13 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
             aliasType.setGenericTypes(genericTypes);
             aliasType.setOriginalType(buildGenericType(rightType, aliasType));
             rightType = aliasType.getOriginalType();
+        }
+        // scenario: template<typename T> , using value_type_t = typename T::value_type;
+        if (rightOp.startsWith('typename ')) {
+            rightType = aliasType.getGenericTypes()?.[0];
+            if (rightType) {
+                aliasType.setOriginalType(new UnclearReferenceType(BuiltinCxx.TYPENAME_KEYWORD, [rightType]));
+            }
         }
 
         let expr = this.cxxGenerateAliasTypeExpr(rightOp, aliasType);
