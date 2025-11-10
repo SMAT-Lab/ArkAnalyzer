@@ -1919,6 +1919,10 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         const newExpr = new ArkNewExpr(classType);
         const {value: newLocal, valueOriginalPositions: newLocalPositions, stmts: newExprStmts, } =
             this.ArkCxxIRTransformer.generateAssignStmtForValue(newExpr, [FullPosition.cxxBuildFromNode(newExpression, this.cxxSourceFile)]);
+        // When using the new keyword, the type of Local should be a pointer type.
+        if (newExpression.kind === 'CXXNewExpr') {
+            (newLocal as Local).setType(new PointerType(classType, 1));
+        }
         newExprStmts.forEach(stmt => stmts.push(stmt));
         this.cxxEmitCtorInvokeAndMemberInits(stmts, newExpression, newLocal as Local, newLocalPositions, classType, className);
         return { value: newLocal, valueOriginalPositions: newLocalPositions, stmts: stmts };
@@ -2906,19 +2910,45 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         if (outerTemplateRefName === '' || genericTypeStr === '') {
             return undefined;
         }
-        const realGenericType = this.buildCxxTypeFromQualType(undefined, genericTypeStr);
+        const realGenericType = this.buildCxxTypeFromQualTypeAndTagUsed(undefined, genericTypeStr, '');
         if (!realGenericType) {
             return undefined;
         }
         // Scenario: using value_type_t = typename T::value_type;
-        let outerType = ModelUtils.findSymbolInFileWithName(outerTemplateRefName, this.declaringMethod.getDeclaringArkClass(), true);
-        if (outerType instanceof AliasType && templateRefNodes[0].referencedDecl?.alias?.declCode?.includes(BuiltinCxx.TYPENAME_KEYWORD) &&
+        let outerObj = ModelUtils.findSymbolInFileWithName(outerTemplateRefName, this.declaringMethod.getDeclaringArkClass());
+        if (outerObj instanceof AliasType && templateRefNodes[0].referencedDecl?.alias?.declCode?.includes(BuiltinCxx.TYPENAME_KEYWORD) &&
             realGenericType instanceof ClassType) {
             const valueType = realGenericType.getRealGenericTypes()?.[0] ?? realGenericType;
-            outerType.setOriginalType(valueType);
-            return outerType;
+            outerObj.setOriginalType(valueType);
+            return outerObj;
+        }
+        // Scenario: struct Foo { using Vec = std::vector<T> };  Foo<int>::Vec v = {1, 2, 3};
+        if (node.type.qualType.includes('::') && outerObj instanceof ArkClass) {
+            const refNodes = node.inner.slice(1).filter(inn => inn.kind === 'TypeRef');
+            return this.buildTypeFromClassTypeMember(refNodes, outerObj);
         }
         return new UnclearReferenceType(outerTemplateRefName, [realGenericType]);
+    }
+
+    private buildTypeFromClassTypeMember(refNodes: CxxAstNode[], arkClass: ArkClass): Type | undefined {
+        if (refNodes.length === 0) {
+            return undefined;
+        }
+        const field = arkClass.getFieldWithName(refNodes[0].code);
+        if (!field) {
+            return undefined;
+        }
+        const fieldType = field.getType();
+        if (refNodes.length === 1) {
+            return fieldType;
+        }
+        if (fieldType instanceof ClassType) {
+            const fieldClass = ModelUtils.findSymbolInFileWithName(refNodes[0].code, this.declaringMethod.getDeclaringArkClass());
+            if (fieldClass instanceof ArkClass) {
+                return this.buildTypeFromClassTypeMember(refNodes.slice(1), fieldClass);
+            }
+        }
+        return undefined;
     }
 
     private buildCxxTypeFromTagUsed(tagUsed: string): Type | undefined {
