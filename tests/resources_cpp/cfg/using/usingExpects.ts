@@ -158,3 +158,26 @@ export const USING_EXPECT_CASE8 = {
         },
     ],
 };
+
+export const USING_EXPECT_CASE9 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @using/usingcase.cpp: %dflt',
+                '%0 = new @std/vector.h: vector<int>',
+                '%1 = newarray (int[])[3]',
+                '%1[0] = 1',
+                '%1[1] = 2',
+                '%1[2] = 3',
+                'instanceinvoke %0.<@std/vector.h: vector.constructor()>(%1)',
+                'v = %0',
+                '%2 = v[0]',
+                "staticinvoke <@%unk/%unk: .cout()>('[test_nested_alias_in_class] v[0] = ', %2)",
+                'return'
+            ],
+            preds: [],
+            succes: []
+        },
+    ],
+};

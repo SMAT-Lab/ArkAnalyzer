@@ -14,7 +14,7 @@
  */
 
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
-import { AbstractExpr, ArkInstanceInvokeExpr, ArkPtrInvokeExpr, ArkStaticInvokeExpr } from '../../core/base/Expr';
+import { AbstractExpr, ArkInstanceInvokeExpr, ArkNewExpr, ArkPtrInvokeExpr, ArkStaticInvokeExpr } from '../../core/base/Expr';
 import { Local } from '../../core/base/Local';
 import {
     AbstractFieldRef,
@@ -521,6 +521,8 @@ export class TypeInference {
             value.setType(type);
         } else if (value instanceof AbstractFieldRef) {
             value.getFieldSignature().setType(type);
+        } else if (value instanceof ArkNewExpr && type instanceof AliasType && type.getOriginalType() instanceof ClassType) {
+            value.getClassType().setClassSignature((type.getOriginalType() as ClassType).getClassSignature());
         }
     }
 
