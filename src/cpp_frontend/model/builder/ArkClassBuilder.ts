@@ -18,17 +18,15 @@ import { ArkMethod } from '../../../core/model/ArkMethod';
 import { ArkNamespace } from '../../../core/model/ArkNamespace';
 import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
 import { ArkClass, ClassCategory } from '../../../core/model/ArkClass';
-import { buildArkMethodFromArkClass, buildInitMethod } from './ArkMethodBuilder';
-import { buildModifiers, buildTypeParameters, buildModifiersForCxxClass } from './builderUtils';
+import { buildArkMethodFromArkClass, buildDefaultArkMethodFromArkClass, buildInitMethod } from './ArkMethodBuilder';
+import { buildDecorators, buildModifiers, buildModifiersForCxxClass, buildTypeParameters } from './builderUtils';
 import { buildProperty2ArkField } from './ArkFieldBuilder';
-import { ArkAssignStmt, Stmt } from '../../../core/base/Stmt';
+import { ArkAliasTypeDefineStmt, ArkAssignStmt, Stmt } from '../../../core/base/Stmt';
 import { ANONYMOUS_CLASS_DELIMITER, ANONYMOUS_CLASS_PREFIX, DEFAULT_ARK_CLASS_NAME } from '../../../core/common/Const';
 import { IRUtils } from '../../common/IRUtils';
 import { ClassSignature } from '../../../core/model/ArkSignature';
 import { init4InstanceInitMethod, init4StaticInitMethod } from '../../../core/model/builder/ArkClassBuilder';
 import { ArkCxxIRTransformer } from '../../common/ArkIRTransformer';
-import { buildDecorators } from './builderUtils';
-import { buildDefaultArkMethodFromArkClass } from './ArkMethodBuilder';
 import { CxxAstNode, CxxTranslationUnit } from '../../ast/ArkCxxAstNode';
 import { buildArkClassFromCxxClass } from './ArkFileBuilder';
 import { ArkField } from '../../../core/model/ArkField';
@@ -187,7 +185,7 @@ function buildClass2ArkClass(clsNode: CxxAstNode, cls: ArkClass, sourceFile: Cxx
             cls.addGenericType(typeParameter);
         });
     }
-    cls.setCategory(ClassCategory.CLASS);
+    cls.setCategory(clsNode.tagUsed === 'struct' ? ClassCategory.STRUCT : ClassCategory.CLASS);
     init4InstanceInitMethod(cls);
     init4StaticInitMethod(cls);
     buildArkClassMembers(clsNode, cls, sourceFile);
@@ -283,6 +281,9 @@ function buildArkClassMembers(clsNode: CxxAstNode, cls: ArkClass, sourceFile: Cx
             case 'UsingDecl':
                 processUsingDeclInClass(member, cls);
                 break;
+            case 'TypeAliasDecl':
+                processTypeAliasDeclInClass(member, cls, sourceFile, instanceInitStmts);
+                break;
             default:
                 logger.warn('Please contact developers to support new member type: ', member.kind);
                 break;
@@ -308,6 +309,21 @@ function processUsingDeclInClass(usingDecl: CxxAstNode, cls: ArkClass): void {
     }
     if (member instanceof ArkField) {
         cls.addField(member);
+    }
+}
+
+function processTypeAliasDeclInClass(typeAliasDecl: CxxAstNode, cls: ArkClass, sourceFile: CxxAstNode, instanceInitStmts: Stmt[]): void {
+    const arkField = buildProperty2ArkField(typeAliasDecl, sourceFile, cls);
+    //  it's a  type alias declaration
+    const staticIRTransformer = new ArkCxxIRTransformer(sourceFile as CxxTranslationUnit, cls.getStaticInitMethod());
+    const stmts = staticIRTransformer.cxxNodeToStmts(typeAliasDecl);
+    if (stmts.length === 0) {
+        return;
+    }
+    stmts.forEach(stmt => instanceInitStmts.push(stmt));
+    arkField.getInitializer().push(...stmts);
+    if (stmts[0] instanceof ArkAliasTypeDefineStmt) {
+        arkField.getSignature().setType(stmts[0].getAliasType());
     }
 }
 
