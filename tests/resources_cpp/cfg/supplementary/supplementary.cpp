@@ -13,6 +13,17 @@
  * limitations under the License.
  */
 
+#define ONE 1
+#define TWO 2
+#define THREE 3
+#define FOUR 4
+#define FIVE 5
+#define SIX 6
+#define SEVEN 7
+#define EIGHT 8
+#define NINE 9
+#define TEN 10
+
 void Case1()
 {
     int a[10] = {0};
@@ -32,31 +43,30 @@ void postAdd()
     d = c++ * b++;
 
     // 4.Only self increasing, without affecting other variables
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < FOUR; i++)
     {
     }
 
     // 5.Multivariate parallel self increasing
-    for (int i = 0,j = 1; i < 4; i++,j++)
-    {
+    for (int i = 0 ,j = ONE; i < FOUR; i++ ,j++){
     }
 
     // 6.If is judged as an expression and then self increases, affecting the distribution of branches
-    if (a++ > 0)
-    {
-        b = 2;
+    if (a++ > 0){
+        b = TWO;
     }
     while (a++ > 0){}
-    do{} while (a++ > 0);
+    do {
+    } while (a++ > 0);
 
     // 7.As an expression in ternary expressions, it increases after judgment and affects the distribution of branches
-    int f = a++ > 0 ? 1 : 3;
-        int e = a++?: 3; // Default ternary expression
+    int f = a++ > 0 ? ONE : THREE;
+    int e = a++?: THREE; // Default ternary expression
     // 8.The use of comma operator in linking
-    int g = (a++ ,a + 1, a + 2);
+    int g = (a++ ,a + ONE , a + TWO);
 
     // 9.The array increases automatically after use
     int arr[10] = {0};
-    int idx = 1;
-    arr[idx++] = 1;
+    int idx = ONE;
+    arr[idx++] = ONE;
 }
