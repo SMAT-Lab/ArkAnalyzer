@@ -1138,15 +1138,15 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             const enumArkClass = ModelUtils.findSymbolInFileWithName(enumClassName, this.declaringMethod.getDeclaringArkClass());
             const enumSignature =
                 (enumArkClass instanceof ArkClass) ?
-                enumArkClass.getSignature() :
-                ArkSignatureBuilder.buildClassSignatureFromClassName(enumClassName);
-            fieldSignature = new FieldSignature(memberName, enumSignature, UnknownType.getInstance(),true);
+                    enumArkClass.getSignature() :
+                    ArkSignatureBuilder.buildClassSignatureFromClassName(enumClassName);
+            fieldSignature = new FieldSignature(memberName, enumSignature, UnknownType.getInstance(), true);
             fieldRef = new ArkStaticFieldRef(fieldSignature);
         } else {
             fieldRef = new ArkCxxInstanceFieldRef(
                 baseValue as Local, // baseValue（eg: testMap）
                 memberExpression.isArrow ?? false, // Whether it is arrow access (->)
-                fieldSignature // Field signature (such as insert)
+                fieldSignature, // Field signature (such as insert)
             );
         }
         // Record node location information for subsequent traceability and debugging

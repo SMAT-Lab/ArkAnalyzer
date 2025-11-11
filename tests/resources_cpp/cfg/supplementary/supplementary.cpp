@@ -57,16 +57,15 @@ void postAdd() {
   while (a++ > 0) {
   }
   do {
+    a++;
   } while (a++ > 0);
 
   // 7.As an expression in ternary expressions, it increases after judgment and
   // affects the distribution of branches
   int f = a++ > 0 ? ONE : THREE;
   int e = a++ ?: THREE;  // Default ternary expression
-  // 8.The use of comma operator in linking
-  int g = (a++, a + ONE, a + TWO);
 
-  // 9.The array increases automatically after use
+  // 8.The array increases automatically after use
   int arr[10] = {0};
   int idx = ONE;
   arr[idx++] = ONE;

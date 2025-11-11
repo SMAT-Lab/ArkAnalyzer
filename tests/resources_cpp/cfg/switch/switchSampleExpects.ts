@@ -35,11 +35,11 @@ export const SWITCH_EXPECT_CASE1 = {
             id: 5,
             stmts: [
                 '%1 = @switch/switchSample.cpp: NumConstant.[static]THREE',
-                'if a == %1'
+                'if a == %1',
             ],
             preds: [0],
-            succes: [2, 3]
-        }
+            succes: [2, 3],
+        },
     ],
 };
 
@@ -65,11 +65,11 @@ export const SWITCH_EXPECT_CASE2 = {
             id: 5,
             stmts: [
                 '%1 = @switch/switchSample.cpp: NumConstant.[static]THREE',
-                'if a == %1'
+                'if a == %1',
             ],
             preds: [0],
-            succes: [2, 3]
-        }
+            succes: [2, 3],
+        },
     ],
 };
 
@@ -92,10 +92,10 @@ export const SWITCH_EXPECT_CASE3 = {
             id: 2,
             stmts: [
                 '%2 = @switch/switchSample.cpp: NumConstant.[static]FOUR',
-                'if b == %2'
+                'if b == %2',
             ],
             preds: [1, 8],
-            succes: [3, 9]
+            succes: [3, 9],
         },
         { id: 3, stmts: ['b = @switch/switchSample.cpp: NumConstant.[static]FOUR'], preds: [2], succes: [4] },
         { id: 4, stmts: ['b = @switch/switchSample.cpp: NumConstant.[static]FIVE'], preds: [3, 9], succes: [5] },
@@ -106,7 +106,7 @@ export const SWITCH_EXPECT_CASE3 = {
             id: 8,
             stmts: [
                 '%1 = @switch/switchSample.cpp: NumConstant.[static]THREE',
-                'if a == %1'
+                'if a == %1',
             ],
             preds: [0],
             succes: [2, 6],
@@ -115,10 +115,10 @@ export const SWITCH_EXPECT_CASE3 = {
             id: 9,
             stmts: [
                 '%3 = @switch/switchSample.cpp: NumConstant.[static]FIVE',
-                'if b == %3'
+                'if b == %3',
             ],
             preds: [2],
-            succes: [4, 5]
+            succes: [4, 5],
         },
     ],
 };
@@ -139,33 +139,33 @@ export const SWITCH_EXPECT_CASE4 = {
             id: 1,
             stmts: [
                 '%0 = @switch/switchSample.cpp: NumConstant.[static]THREE',
-                'if i < %0'
+                'if i < %0',
             ],
             preds: [0, 8],
-            succes: [2, 7]
+            succes: [2, 7],
         },
         {
             id: 2,
             stmts: [
                 '%1 = @switch/switchSample.cpp: NumConstant.[static]TWO',
-                'if i == %1'
+                'if i == %1',
             ],
             preds: [1],
-            succes: [3, 9]
+            succes: [3, 9],
         },
         { id: 3, stmts: ['b = @switch/switchSample.cpp: NumConstant.[static]TWO'], preds: [2], succes: [4] },
         { id: 4, stmts: ['b = @switch/switchSample.cpp: NumConstant.[static]THREE'], preds: [3, 9], succes: [8] },
         {
             id: 5,
             stmts: ['b = @switch/switchSample.cpp: NumConstant.[static]TEN'],
-            preds: [ 9 ],
-            succes: [ 6 ]
+            preds: [9],
+            succes: [6],
         },
         {
             id: 6,
             stmts: ['b = @switch/switchSample.cpp: NumConstant.[static]TEN'],
             preds: [5],
-            succes: [8]
+            succes: [8],
         },
         { id: 7, stmts: ['return'], preds: [1], succes: [] },
         { id: 8, stmts: ['i = i + 1'], preds: [4, 6], succes: [1] },
@@ -173,10 +173,10 @@ export const SWITCH_EXPECT_CASE4 = {
             id: 9,
             stmts: [
                 '%2 = @switch/switchSample.cpp: NumConstant.[static]THREE',
-                'if i == %2'
+                'if i == %2',
             ],
             preds: [2],
-            succes: [4, 5]
+            succes: [4, 5],
         },
     ],
 };
@@ -187,19 +187,19 @@ export const SWITCH_EXPECT_CASE5 = {
             id: 0,
             stmts: ['this = this: @switch/switchSample.cpp: %dflt', 'a = 0', 'b = 1'],
             preds: [],
-            succes: [1]
+            succes: [1],
         },
         {
             id: 1,
             stmts: ['b = @switch/switchSample.cpp: NumConstant.[static]TEN'],
             preds: [0],
-            succes: [2]
+            succes: [2],
         },
         {
             id: 2,
             stmts: ['a = @switch/switchSample.cpp: NumConstant.[static]ONE', 'return'],
             preds: [1],
-            succes: []
+            succes: [],
         },
     ],
 };
@@ -214,16 +214,16 @@ export const SWITCH_EXPECT_CASE6 = {
                 'b = 1',
                 'a = a + 1',
                 '%0 = @switch/switchSample.cpp: NumConstant.[static]ONE',
-                'if a == %0'
+                'if a == %0',
             ],
             preds: [],
-            succes: [1, 2]
+            succes: [1, 2],
         },
         {
             id: 1,
             stmts: ['b = @switch/switchSample.cpp: NumConstant.[static]ONE'],
             preds: [0],
-            succes: [3]
+            succes: [3],
         },
         { id: 2, stmts: ['b = 0'], preds: [0], succes: [3] },
         { id: 3, stmts: ['return'], preds: [1, 2], succes: [] },
@@ -239,53 +239,53 @@ export const SWITCH_EXPECT_CASE7 = {
                 'a = 0',
                 'b = 1',
                 '%0 = @switch/switchSample.cpp: NumConstant.[static]TWO',
-                'if a == %0'
+                'if a == %0',
             ],
             preds: [],
-            succes: [1, 6]
+            succes: [1, 6],
         },
         {
             id: 1,
             stmts: ['b = @switch/switchSample.cpp: NumConstant.[static]TWO'],
             preds: [0],
-            succes: [2]
+            succes: [2],
         },
         {
             id: 2,
             stmts: ['b = @switch/switchSample.cpp: NumConstant.[static]THREE'],
             preds: [1, 6],
-            succes: [5]
+            succes: [5],
         },
         {
             id: 3,
             stmts: ['b = @switch/switchSample.cpp: NumConstant.[static]FOUR'],
             preds: [7],
-            succes: [4]
+            succes: [4],
         },
         {
             id: 4,
             stmts: ['b = @switch/switchSample.cpp: NumConstant.[static]TEN'],
             preds: [3, 7],
-            succes: [5]
+            succes: [5],
         },
         { id: 5, stmts: ['return'], preds: [2, 4], succes: [] },
         {
             id: 6,
             stmts: [
                 '%1 = @switch/switchSample.cpp: NumConstant.[static]THREE',
-                'if a == %1'
+                'if a == %1',
             ],
             preds: [0],
-            succes: [2, 7]
+            succes: [2, 7],
         },
         {
             id: 7,
             stmts: [
                 '%2 = @switch/switchSample.cpp: NumConstant.[static]FOUR',
-                'if a == %2'
+                'if a == %2',
             ],
             preds: [6],
-            succes: [3, 4]
+            succes: [3, 4],
         },
     ],
 };
@@ -299,32 +299,32 @@ export const SWITCH_EXPECT_CASE8 = {
                 'a = 0',
                 'b = 1',
                 '%0 = @switch/switchSample.cpp: NumConstant.[static]TWO',
-                'if a == %0'
+                'if a == %0',
             ],
             preds: [],
-            succes: [1, 4]
+            succes: [1, 4],
         },
         {
             id: 1,
             stmts: ['b = @switch/switchSample.cpp: NumConstant.[static]THREE'],
             preds: [0, 4],
-            succes: [3]
+            succes: [3],
         },
         {
             id: 2,
             stmts: ['b = @switch/switchSample.cpp: NumConstant.[static]TEN'],
             preds: [4],
-            succes: [3]
+            succes: [3],
         },
         { id: 3, stmts: ['return'], preds: [1, 2], succes: [] },
         {
             id: 4,
             stmts: [
                 '%1 = @switch/switchSample.cpp: NumConstant.[static]THREE',
-                'if a == %1'
+                'if a == %1',
             ],
             preds: [0],
-            succes: [1, 2]
+            succes: [1, 2],
         },
     ],
 };
@@ -338,38 +338,38 @@ export const SWITCH_EXPECT_CASE9 = {
                 'a = 0',
                 'b = 1',
                 '%0 = @switch/switchSample.cpp: NumConstant.[static]TWO',
-                'if a == %0'
+                'if a == %0',
             ],
             preds: [],
-            succes: [1, 5]
+            succes: [1, 5],
         },
         {
             id: 1,
             stmts: ['b = @switch/switchSample.cpp: NumConstant.[static]TWO'],
             preds: [0],
-            succes: [4]
+            succes: [4],
         },
         {
             id: 2,
             stmts: ['b = @switch/switchSample.cpp: NumConstant.[static]THREE'],
             preds: [5],
-            succes: [4]
+            succes: [4],
         },
         {
             id: 3,
             stmts: ['b = @switch/switchSample.cpp: NumConstant.[static]TEN'],
             preds: [5],
-            succes: [4]
+            succes: [4],
         },
         { id: 4, stmts: ['return'], preds: [1, 2, 3], succes: [] },
         {
             id: 5,
             stmts: [
                 '%1 = @switch/switchSample.cpp: NumConstant.[static]THREE',
-                'if a == %1'
+                'if a == %1',
             ],
             preds: [0],
-            succes: [2, 3]
+            succes: [2, 3],
         },
     ],
 };
@@ -383,16 +383,16 @@ export const SWITCH_EXPECT_CASE10 = {
                 'a = 0',
                 'b = 1',
                 '%0 = @switch/switchSample.cpp: NumConstant.[static]TWO',
-                'if a == %0'
+                'if a == %0',
             ],
             preds: [],
-            succes: [1, 4]
+            succes: [1, 4],
         },
         {
             id: 1,
             stmts: ['b = @switch/switchSample.cpp: NumConstant.[static]THREE'],
             preds: [0, 4],
-            succes: [3]
+            succes: [3],
         },
         { id: 2, stmts: ['b = 0'], preds: [4], succes: [3] },
         { id: 3, stmts: ['return'], preds: [1, 2], succes: [] },
@@ -400,10 +400,10 @@ export const SWITCH_EXPECT_CASE10 = {
             id: 4,
             stmts: [
                 '%1 = @switch/switchSample.cpp: NumConstant.[static]THREE',
-                'if a == %1'
+                'if a == %1',
             ],
             preds: [0],
-            succes: [1, 2]
+            succes: [1, 2],
         },
     ],
 };
@@ -417,26 +417,26 @@ export const SWITCH_EXPECT_CASE11 = {
                 'a = 0',
                 'b = 1',
                 '%0 = @switch/switchSample.cpp: NumConstant.[static]TWO',
-                'if a == %0'
+                'if a == %0',
             ],
             preds: [],
-            succes: [1, 3]
+            succes: [1, 3],
         },
         {
             id: 1,
             stmts: ['b = @switch/switchSample.cpp: NumConstant.[static]THREE'],
             preds: [0, 3],
-            succes: [2]
+            succes: [2],
         },
         { id: 2, stmts: ['return'], preds: [1, 3], succes: [] },
         {
             id: 3,
             stmts: [
                 '%1 = @switch/switchSample.cpp: NumConstant.[static]THREE',
-                'if a == %1'
+                'if a == %1',
             ],
             preds: [0],
-            succes: [1, 2]
+            succes: [1, 2],
         },
     ],
 };
@@ -447,29 +447,29 @@ export const SWITCH_EXPECT_CASE12 = {
             id: 0,
             stmts: ['b = @switch/switchSample.cpp: NumConstant.[static]TWO'],
             preds: [8],
-            succes: [3]
+            succes: [3],
         },
         {
             id: 1,
             stmts: ['b = @switch/switchSample.cpp: NumConstant.[static]THREE'],
             preds: [4],
-            succes: [3]
+            succes: [3],
         },
         {
             id: 2,
             stmts: ['b = @switch/switchSample.cpp: NumConstant.[static]TEN'],
             preds: [4],
-            succes: [3]
+            succes: [3],
         },
         { id: 3, stmts: ['return'], preds: [0, 1, 2], succes: [] },
         {
             id: 4,
             stmts: [
                 '%3 = @switch/switchSample.cpp: NumConstant.[static]THREE',
-                'if a == %3'
+                'if a == %3',
             ],
             preds: [8],
-            succes: [1, 2]
+            succes: [1, 2],
         },
         {
             id: 5,
@@ -477,27 +477,27 @@ export const SWITCH_EXPECT_CASE12 = {
                 'this = this: @switch/switchSample.cpp: %dflt',
                 'a = 0',
                 '%0 = @switch/switchSample.cpp: NumConstant.[static]ONE',
-                'if a > %0'
+                'if a > %0',
             ],
             preds: [],
-            succes: [6, 7]
+            succes: [6, 7],
         },
         {
             id: 6,
             stmts: ['b = @switch/switchSample.cpp: NumConstant.[static]TWO'],
             preds: [5],
-            succes: [8]
+            succes: [8],
         },
         { id: 7, stmts: ['b = 3'], preds: [5], succes: [8] },
         {
             id: 8,
             stmts: [
                 '%2 = @switch/switchSample.cpp: NumConstant.[static]TWO',
-                'if a == %2'
+                'if a == %2',
             ],
             preds: [6, 7],
-            succes: [0, 4]
-        }
+            succes: [0, 4],
+        },
     ],
 };
 
@@ -510,59 +510,59 @@ export const SWITCH_EXPECT_CASE13 = {
                 'a = 0',
                 'b = 1',
                 '%0 = @switch/switchSample.cpp: NumConstant.[static]TWO',
-                'if a == %0'
+                'if a == %0',
             ],
             preds: [],
-            succes: [1, 8]
+            succes: [1, 8],
         },
         {
             id: 1,
             stmts: ['b = @switch/switchSample.cpp: NumConstant.[static]TWO'],
             preds: [0],
-            succes: [4]
+            succes: [4],
         },
         {
             id: 2,
             stmts: ['b = @switch/switchSample.cpp: NumConstant.[static]THREE'],
             preds: [8],
-            succes: [4]
+            succes: [4],
         },
         {
             id: 3,
             stmts: ['b = @switch/switchSample.cpp: NumConstant.[static]TEN'],
             preds: [8],
-            succes: [4]
+            succes: [4],
         },
         {
             id: 4,
             stmts: [
                 '%2 = @switch/switchSample.cpp: NumConstant.[static]ONE',
-                'if a > %2'
+                'if a > %2',
             ],
             preds: [1, 2, 3],
-            succes: [5, 6]
+            succes: [5, 6],
         },
         {
             id: 5,
             stmts: ['b = @switch/switchSample.cpp: NumConstant.[static]TWO'],
             preds: [4],
-            succes: [7]
+            succes: [7],
         },
         {
             id: 6,
             stmts: ['b = @switch/switchSample.cpp: NumConstant.[static]THREE'],
             preds: [4],
-            succes: [7]
+            succes: [7],
         },
         { id: 7, stmts: ['return'], preds: [5, 6], succes: [] },
         {
             id: 8,
             stmts: [
                 '%1 = @switch/switchSample.cpp: NumConstant.[static]THREE',
-                'if a == %1'
+                'if a == %1',
             ],
             preds: [0],
-            succes: [2, 3]
+            succes: [2, 3],
         },
     ],
 };
