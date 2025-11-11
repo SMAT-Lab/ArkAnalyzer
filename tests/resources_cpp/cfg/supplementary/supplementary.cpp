@@ -37,9 +37,8 @@ void PostAdd()
     // 2.Post-increment after complex expressions
     int c = b + a++;
 
-
-    int d = 0;
     // 3.When not declared, use auto increment
+    int d = 0;
     d = b++;
     d = c++ * b++;
 
@@ -54,7 +53,9 @@ void PostAdd()
         b = TWO;
     }
 
-    while (a++ > 0) {}
+    while (a++ > 0) {
+        a--;
+    }
 
     do {
         a++;
