@@ -93,11 +93,12 @@ static inline std::string TrimCopy(std::string s)
     return s;
 }
 
-void deleteSameCallExprChildNode(json& node, json& children) {
-   if (!children.empty() && children[children.size() - 1].value("kind", "") == "CallExpr" &&
-       children[children.size() - 1].value("code", "") == node.value("code", "")) {
-       children.erase(children.size() - 1); // Delete the child nodes of CallExpr that are the same as CallExpr
-   }
+void deleteSameCallExprChildNode(json& node, json& children)
+{
+    if (!children.empty() && children[children.size() - 1].value("kind", "") == "CallExpr" &&
+        children[children.size() - 1].value("code", "") == node.value("code", "")) {
+        children.erase(children.size() - 1); // Delete the child nodes of CallExpr that are the same as CallExpr
+    }
 }
 
 // Post-process a CallExpr node: adjust kind for member calls or fix missing kinds
