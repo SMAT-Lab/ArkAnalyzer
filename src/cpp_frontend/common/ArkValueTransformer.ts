@@ -1450,29 +1450,29 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         }
         // operator<< / operator>> and lambda cout scenario
         if (
-            (callExpression.inner[0].kind === 'ImplicitCastExpr' && callExpression.inner[0].name === 'operator>>') ||
+            (callExpression.inner[0]?.kind === 'ImplicitCastExpr' && callExpression.inner[0]?.name === 'operator>>') ||
             callExpression.name === 'operator<<' ||
-            callExpression.inner[0].name === 'operator<<' ||
+            callExpression.inner[0]?.name === 'operator<<' ||
             callExpression.inner[1]?.type.qualType.toString().includes('(lambda at')) {
             return this.CXXOperatorExpressionCoutToValueAndStmts(callExpression, []);
         }
 
         // Relational binary operator or assignment operator
-        if (callExpression.inner[0].kind === 'ImplicitCastExpr' &&
-            (ArkCxxValueTransformer.isRelationalBinaryOperator(callExpression.inner[0].code) ||
+        if (callExpression.inner[0]?.kind === 'ImplicitCastExpr' &&
+            (ArkCxxValueTransformer.isRelationalBinaryOperator(callExpression.inner[0]?.code) ||
                 callExpression.name === 'operator=')) {
             return this.CXXOperatorExpressionToBinaryOperator(callExpression);
         }
 
         // Unary operators (++ / --)
-        if (callExpression.inner[0].kind === 'ImplicitCastExpr' &&
-            ['++', '--'].includes(callExpression.inner[0].code)) {
+        if (callExpression.inner[0]?.kind === 'ImplicitCastExpr' &&
+            ['++', '--'].includes(callExpression.inner[0]?.code)) {
             return this.CXXOperatorExpressionToUnaryOperator(callExpression);
         }
 
         // Arrow operator (->) in iteration
-        if (callExpression.inner[0].kind === 'ImplicitCastExpr' &&
-            callExpression.inner[0].code === '->') {
+        if (callExpression.inner[0]?.kind === 'ImplicitCastExpr' &&
+            callExpression.inner[0]?.code === '->') {
             return this.cxxNodeToValueAndStmts(callExpression.inner[1]);
         }
         return null;
@@ -1508,7 +1508,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
      *@ returns the processed value and statement object. If it cannot be processed, it returns null
      */
     private handleOverloadedOp(cxxOperatorCallExpr: CxxAstNode): ValueAndStmts | null {
-        if (cxxOperatorCallExpr.type?.qualType === '' || cxxOperatorCallExpr.inner?.[0].castKind !== 'FunctionToPointerDecay') {
+        if (cxxOperatorCallExpr.type?.qualType === '' ||
+            cxxOperatorCallExpr.inner?.[0]?.castKind !== 'FunctionToPointerDecay') {
             return null;
         }
         let callType = cxxNode2Type(cxxOperatorCallExpr.type.qualType, this.declaringMethod);
@@ -1728,6 +1729,11 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         } else if (callerValue instanceof Local) {
             invokeValue = this.buildInvokeValueForLocal(callerValue, args, realGenericTypes);
         } else {
+            ({
+                value: callerValue,
+                valueOriginalPositions: callerPositions,
+                stmts:callerStmts,
+            } = this.ArkCxxIRTransformer.generateAssignStmtForValue(callerValue, callerPositions));
             stmts.push(...callerStmts);
             const methodSignature = ArkSignatureBuilder.buildMethodSignatureFromMethodName((callerValue as Local).getName());
             invokeValue = new ArkStaticInvokeExpr(methodSignature, args, realGenericTypes);

@@ -285,10 +285,14 @@ export class CfgBuilder {
         loopExit.lasts.add(loopstm);
         loopstm.condition = c.inner[0].code;
         loopstm.code = 'while (' + loopstm.condition + ')';
-        if (c.inner[1].kind.toString() === 'CompoundStmt') {
-            this.walkAST(loopstm, loopstm, [...c.inner[1].inner]);
-        } else {
-            this.walkAST(loopstm, loopstm, [c.inner[1]]);
+        if (c.inner.length >= 2) {
+            if (c.inner[1].kind.toString() === 'CompoundStmt') {
+                this.walkAST(loopstm, loopstm, [...c.inner[1].inner]);
+            } else {
+                this.walkAST(loopstm, loopstm, [c.inner[1]]);
+            }
+        } else if (c.inner.length == 1 && c.inner[0].kind.toString() === 'CompoundStmt') {
+            this.walkAST(loopstm, loopstm, [c.inner[0]]);
         }
         if (!loopstm.nextF) {
             loopstm.nextF = loopExit;
