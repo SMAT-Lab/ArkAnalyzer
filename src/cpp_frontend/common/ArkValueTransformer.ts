@@ -2884,16 +2884,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             }
             return new ArrayType(baseType, count);
         } else if (qualType.startsWith(BuiltinCxx.CXXSTDREF)) {
-            const match = /std::(\w+)/g.exec(qualType); // Handle standard library container types
-            const containerName = match ? match[1] : null;
-            if (containerName && convertDataType(containerName) === 'unsupported' && this.isCxxStdContainer(containerName)) {
-                const fileSignature = new FileSignature(BuiltinCxx.CXXSTD, containerName + '.h');
-                const classSignature = new ClassSignature(containerName, fileSignature);
-                const realGenericTypes = this.getRealGenericTypes(node, qualType);
-                return new ClassType(classSignature, realGenericTypes);
-            } else if (containerName === 'thread') {
-                return new Thread();
-            }
+            return this.buildTypeForCxxStdType(qualType, node);
         } else if (qualType === BuiltinCxx.CXXSTD && node && node.kind === 'NamespaceRef') {
             const fileSignature = new FileSignature(BuiltinCxx.CXXSTD, 'iostream.h');
             const classSignature = new ClassSignature('iostream', fileSignature);
@@ -2911,6 +2902,21 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             // Locate the type represented by the smart pointer
             let baseType = cxxNode2Type(qualType.slice(qualType.indexOf('<') + 1, qualType.lastIndexOf('>')), undefined);
             return new SmartPointerType(baseType, 0, qualType);
+        }
+        return undefined;
+    }
+
+    private buildTypeForCxxStdType(qualType: string, node: CxxAstNode | undefined): Type | undefined {
+        const match = /std::(\w+)/g.exec(qualType);
+        const containerName = match ? match[1] : null;
+        // Handle standard library container types
+        if (containerName && convertDataType(containerName) === 'unsupported' && this.isCxxStdContainer(containerName)) {
+            const fileSignature = new FileSignature(BuiltinCxx.CXXSTD, containerName + '.h');
+            const classSignature = new ClassSignature(containerName, fileSignature);
+            const realGenericTypes = this.getRealGenericTypes(node, qualType);
+            return new ClassType(classSignature, realGenericTypes);
+        } else if (containerName === 'thread') {
+            return new Thread();
         }
         return undefined;
     }
