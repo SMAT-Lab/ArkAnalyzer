@@ -62,6 +62,7 @@ function mapSyntaxKindToFieldOriginType(syntaxKind: String): FieldCategory | nul
     let fieldOriginType: FieldCategory | null = null;
     switch (syntaxKind) {
         case 'FieldDecl':
+        case 'TypeAliasDecl':
             fieldOriginType = FieldCategory.PROPERTY_DECLARATION;
             break;
         default:
