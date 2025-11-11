@@ -78,7 +78,12 @@ void implicitCastExprPostProcess(
         node["kind"] = "ExprWithCleanups";
     } else if (!children.empty() && children[0]["kind"] == "DeclRefExpr" &&
         codeStr.find(children[0]["code"]) == 0 && codeStr.find("(") != std::string::npos) {
-        node["kind"] = "RecoveryExpr";
+        if (children[0]["name"] == "__builtin___memset_chk") {
+            children[0]["name"] = "memset";
+            node = children[0]; // Memset compatible with Mac environment
+        } else {
+            node["kind"] = "RecoveryExpr";
+        }
     }
 }
 
@@ -126,6 +131,10 @@ void callExprPostProcess(json& node, json& children)
                 // Default to DeclRefExpr
                 child0["kind"] = "DeclRefExpr";
             }
+        }
+        if (!children.empty() && children[children.size() - 1].value("kind", "") == "CallExpr" &&
+            children[children.size() - 1].value("code", "") == node.value("code", "")) {
+            children.erase(children.size() - 1); // Delete the child nodes of CallExpr that are the same as CallExpr
         }
     }
 }
