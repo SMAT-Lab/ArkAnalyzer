@@ -29,44 +29,45 @@ void Case1()
     int a[10] = {0};
 }
 
-void postAdd()
-{
-    int a = 0;
-    // 1.Auto-increment after use
-    int b = a++;
-    // 2.Post-increment after complex expressions
-    int c = a + a++;
+void postAdd() {
+  int a = 0;
+  // 1.Auto-increment after use
+  int b = a++;
+  // 2.Post-increment after complex expressions
+  int c = a + a++;
 
-    int d = 0;
-    // 3.When not declared, use auto increment
-    d = b++;
-    d = c++ * b++;
+  int d = 0;
+  // 3.When not declared, use auto increment
+  d = b++;
+  d = c++ * b++;
 
-    // 4.Only self increasing, without affecting other variables
-    for (int i = 0; i < FOUR; i++)
-    {
-    }
+  // 4.Only self increasing, without affecting other variables
+  for (int i = 0; i < FOUR; i++) {
+  }
 
-    // 5.Multivariate parallel self increasing
-    for (int i = 0 ,j = ONE; i < FOUR; i++ ,j++){
-    }
+  // 5.Multivariate parallel self increasing
+  for (int i = 0, j = ONE; i < FOUR; i++, j++) {
+  }
 
-    // 6.If is judged as an expression and then self increases, affecting the distribution of branches
-    if (a++ > 0){
-        b = TWO;
-    }
-    while (a++ > 0){}
-    do {
-    } while (a++ > 0);
+  // 6.If is judged as an expression and then self increases, affecting the
+  // distribution of branches
+  if (a++ > 0) {
+    b = TWO;
+  }
+  while (a++ > 0) {
+  }
+  do {
+  } while (a++ > 0);
 
-    // 7.As an expression in ternary expressions, it increases after judgment and affects the distribution of branches
-    int f = a++ > 0 ? ONE : THREE;
-    int e = a++?: THREE; // Default ternary expression
-    // 8.The use of comma operator in linking
-    int g = (a++ ,a + ONE , a + TWO);
+  // 7.As an expression in ternary expressions, it increases after judgment and
+  // affects the distribution of branches
+  int f = a++ > 0 ? ONE : THREE;
+  int e = a++ ?: THREE;  // Default ternary expression
+  // 8.The use of comma operator in linking
+  int g = (a++, a + ONE, a + TWO);
 
-    // 9.The array increases automatically after use
-    int arr[10] = {0};
-    int idx = ONE;
-    arr[idx++] = ONE;
+  // 9.The array increases automatically after use
+  int arr[10] = {0};
+  int idx = ONE;
+  arr[idx++] = ONE;
 }
