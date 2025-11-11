@@ -34,7 +34,7 @@ void postAdd() {
   // 1.Auto-increment after use
   int b = a++;
   // 2.Post-increment after complex expressions
-  int c = a + a++;
+  int c = b + a++;
 
   int d = 0;
   // 3.When not declared, use auto increment
