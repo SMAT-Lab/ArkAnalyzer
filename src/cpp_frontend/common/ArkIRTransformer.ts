@@ -20,7 +20,6 @@ import {
     ArkCastExpr,
     ArkConditionExpr,
     ArkInstanceInvokeExpr,
-    ArkNewExpr,
     ArkNormalBinopExpr,
     ArkStaticInvokeExpr,
     ArkUnopExpr,
@@ -45,13 +44,14 @@ import { BuiltinCxx } from './Builtin';
 import { ArkSignatureBuilder } from '../../core/model/builder/ArkSignatureBuilder';
 import { ArkIRTransformer, DummyStmt } from '../../core/common/ArkIRTransformer';
 import { AbstractTypeExpr } from '../../core/base/TypeExpr';
-import { buildModifiers } from '../model/builder/builderUtils';
+import { buildModifiers, buildTypeParameters } from '../model/builder/builderUtils';
 import { ModelUtils } from '../../core/common/ModelUtils';
 import { ArkClass } from '../../core/model/ArkClass';
 import { buildNormalArkClassFromArkMethod } from '../model/builder/ArkClassBuilder';
 import { CxxAstNode, CxxTranslationUnit } from '../ast/ArkCxxAstNode';
 import { ValueUtil } from '../../core/common/ValueUtil';
 import { PointerType } from '../base/Type';
+import { buildGenericType } from '../../core/model/builder/builderUtils';
 
 export type ValueAndStmts = {
     value: Value;
@@ -192,7 +192,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
                 stmts = this.typeDefDeclToStmts(node);
                 break;
             case 'TypeAliasTemplateDecl':
-                stmts = this.typeDefDeclToStmts(node.inner[1]); // skip TemplateTypeParameter node
+                stmts = this.typeDefDeclToStmts(node);
                 break;
             case 'CXXRecordDecl':
                 stmts = this.cxxClassDeclarationToStmts(node);
@@ -222,9 +222,13 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
 
     private typeDefDeclToStmts(typeAliasDeclaration: CxxAstNode): Stmt[] {
         const aliasName = typeAliasDeclaration.name;
+        let typeDefDecl: CxxAstNode = typeAliasDeclaration;
+        if (typeAliasDeclaration.kind === 'TypeAliasTemplateDecl') {
+            typeDefDecl = typeAliasDeclaration.inner[typeAliasDeclaration.inner.length - 1];
+        }
         const typeNode: CxxAstNode | undefined =
-            Array.isArray(typeAliasDeclaration.inner) ? typeAliasDeclaration.inner[0] : undefined;
-        const rightOp = typeNode && typeNode.code ? typeNode.code : 'int'; // If there is no type code, use int type as fallback
+            Array.isArray(typeDefDecl.inner) ? typeDefDecl.inner[0] : undefined;
+        const rightOp = typeNode?.code ?? typeNode?.name ?? 'int'; // If there is no type code, use int type as fallback
 
         let rightType;
         //  Identify the tagUsed attribute to determine struct, union, and enum nodes
@@ -235,7 +239,30 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         }
 
         const aliasType = new AliasType(aliasName, rightType, new AliasTypeSignature(aliasName, this.declaringMethod.getSignature()));
+        if (typeAliasDeclaration.kind === 'TypeAliasTemplateDecl') {
+            const genericTypes = buildTypeParameters(typeAliasDeclaration, this.cxxSourceFile, this.declaringMethod);
+            aliasType.setGenericTypes(genericTypes);
+            aliasType.setOriginalType(buildGenericType(rightType, aliasType));
+            rightType = aliasType.getOriginalType();
+        }
+        // scenario: template<typename T> , using value_type_t = typename T::value_type;
+        if (rightOp.startsWith(BuiltinCxx.TYPENAME_KEYWORD)) {
+            rightType = aliasType.getGenericTypes()?.[0];
+            if (rightType) {
+                aliasType.setOriginalType(rightType);
+            }
+        }
+
         let expr = this.cxxGenerateAliasTypeExpr(rightOp, aliasType);
+
+        if (typeAliasDeclaration.kind === 'TypeAliasTemplateDecl') {
+            let realGenericTypes: Type[] = [];
+            typeAliasDeclaration.inner.filter(inn => inn.kind === 'TemplateTypeParameter')
+                .forEach(typeArgument => { realGenericTypes.push(this.ArkCxxValueTransformer.cxxResolveTypeNode(typeArgument));
+            });
+            expr.setRealGenericTypes(realGenericTypes);
+        }
+
         const modifiers = buildModifiers(typeAliasDeclaration);
         aliasType.setModifiers(modifiers);
 
@@ -832,8 +859,6 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
             valueType = this.buildTypeForUnopExpr(value);
         } else if (value instanceof ArkNormalBinopExpr) {
             valueType = this.buildTypeForBinOpExpr(value);
-        } else if (value instanceof ArkNewExpr) {
-            valueType = new PointerType(value.getClassType(), 1);
         } else {
             valueType = value.getType();
         }

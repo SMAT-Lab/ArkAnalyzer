@@ -33,7 +33,7 @@ async function runCommands() {
     try {
         removeFolder('arktools');
         await execCommand('git clone https://gitee.com/yifei-xue/arktools.git');
-        await execCommand('npm install arktools/lib/ohos-typescript-4.9.5-r4-OpenHarmony-v5.0.0-Release.tgz --no-save');
+        await execCommand('npm install arktools/lib/ohos-typescript-4.9.5-r4-OpenHarmony-6.0-Release.tgz --no-save');
         removeFolder('arktools');
     } catch (error) {
         console.error(error);

@@ -38,7 +38,11 @@ export class Cfg {
     private defUseChains: DefUseChain[] = [];
     private declaringMethod: ArkMethod = new ArkMethod();
 
-    constructor() {}
+    constructor() { }
+
+    public getStmtToBlock(): Map<Stmt, BasicBlock> {
+        return this.stmtToBlock;
+    }
 
     public getStmts(): Stmt[] {
         let stmts = new Array<Stmt>();

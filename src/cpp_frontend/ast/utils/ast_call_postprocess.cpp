@@ -78,7 +78,12 @@ void implicitCastExprPostProcess(
         node["kind"] = "ExprWithCleanups";
     } else if (!children.empty() && children[0]["kind"] == "DeclRefExpr" &&
         codeStr.find(children[0]["code"]) == 0 && codeStr.find("(") != std::string::npos) {
-        node["kind"] = "RecoveryExpr";
+        if (children[0]["name"] == "__builtin___memset_chk") {
+            children[0]["name"] = "memset";
+            node = children[0]; // Memset compatible with Mac environment
+        } else {
+            node["kind"] = "RecoveryExpr";
+        }
     }
 }
 
@@ -86,6 +91,14 @@ static inline std::string TrimCopy(std::string s)
 {
     Trim(s);
     return s;
+}
+
+void deleteSameCallExprChildNode(json& node, json& children)
+{
+    if (!children.empty() && children[children.size() - 1].value("kind", "") == "CallExpr" &&
+        children[children.size() - 1].value("code", "") == node.value("code", "")) {
+        children.erase(children.size() - 1); // Delete the child nodes of CallExpr that are the same as CallExpr
+    }
 }
 
 // Post-process a CallExpr node: adjust kind for member calls or fix missing kinds
@@ -127,6 +140,7 @@ void callExprPostProcess(json& node, json& children)
                 child0["kind"] = "DeclRefExpr";
             }
         }
+        deleteSameCallExprChildNode(node, children);
     }
 }
 
@@ -1958,4 +1972,37 @@ bool IsPlainFuncCall(std::string_view code)
         ++i;
     }
     return (i < code.size() && code[i] == '(');
+}
+
+// Based on the VarDecl type, fill in the missing template argument type
+// for TemplateRef nodes.
+void PropagateAliasTemplateArgToRef(json& node, json& children)
+{
+    if (node.value("kind", "") != "VarDecl") {
+        return;
+    }
+    // Full type of the VarDecl, e.g., value_type_t<std::vector<double>>
+    std::string qt = node["type"].value("qualType", "");
+    if (qt.empty()) {
+        return;
+    }
+    // Find the template name and the <...> part
+    size_t lt = qt.find('<');
+    size_t gt = qt.rfind('>');
+    if (lt == std::string::npos || gt == std::string::npos || gt <= lt + 1) {
+        return;
+    }
+    std::string aliasName = qt.substr(0, lt); // value_type_t
+    std::string argStr = qt.substr(lt + 1, gt - lt - 1); // std::vector<double>
+    Trim(aliasName);
+    Trim(argStr);
+    if (aliasName.empty() || argStr.empty()) {
+        return;
+    }
+    for (auto &c : children) {
+        if (c.value("kind", "") == "TemplateRef" && c.value("name", "") ==
+        aliasName && c["type"].value("qualType", "").empty()) {
+            c["type"]["qualType"] = argStr;
+        }
+    }
 }

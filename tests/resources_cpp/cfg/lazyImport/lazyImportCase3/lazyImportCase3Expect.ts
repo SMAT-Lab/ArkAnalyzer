@@ -49,13 +49,25 @@ export const MapDemo_EXPECT = {
         {
             id: 1,
             stmts: [
-                'e = <unknown>%11',
-                '%8 = instanceinvoke testmap.<@%unk/%unk: .Symbol.iterator()>()',
-                '%9 = instanceinvoke %8.<@%unk/%unk: .next()>()'
+                '%9 = instanceinvoke %8.<@%unk/%unk: .next()>()',
+                '%10 = %9.<@CXX/std/BuiltinClass: IteratorResult.done>',
+                'if %10 == true'
             ],
-            preds: [0, 1],
-            succes: [1, 2],
+            preds: [0, 2],
+            succes: [2, 3],
         },
-        { id: 2, stmts: ['return null'], preds: [1], succes: [] },
+        {
+            id: 2,
+            stmts: [
+                '%11 = testmap.<@CXX/std/BuiltinClass: IteratorResult.value>',
+                'e = <unknown>%11',
+                '%12 = e.<@%unk/%unk: .first>',
+                '%13 = instanceinvoke e.<@%unk/%unk: .second()>()',
+                "staticinvoke <@%unk/%unk: .printf()>('%d %s\\n', %12, %13)"
+            ],
+            preds: [1],
+            succes: [1]
+        },
+        { id: 3, stmts: ['return null'], preds: [1], succes: [] }
     ],
 };

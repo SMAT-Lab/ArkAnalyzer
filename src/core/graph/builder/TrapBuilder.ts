@@ -45,8 +45,8 @@ export class TrapBuilder {
     private blockBuildersBeforeTry: Set<BlockBuilder>;
 
     constructor(blockBuildersBeforeTry: Set<BlockBuilder>, blockBuilderToCfgBlock: Map<BlockBuilder, BasicBlock>,
-                arkIRTransformer: ArkIRTransformer,
-                basicBlockSet: Set<BasicBlock>) {
+        arkIRTransformer: ArkIRTransformer,
+        basicBlockSet: Set<BasicBlock>) {
         this.blockBuildersBeforeTry = blockBuildersBeforeTry;
         this.processedBlockBuildersBeforeTry = new Set();
         this.arkIRTransformer = arkIRTransformer;
@@ -215,9 +215,9 @@ export class TrapBuilder {
     }
 
     private buildTrapsRecursively(startBlockBuilder: BlockBuilder,
-                                  endBlockBuilder?: BlockBuilder): {
-        traps: Trap[], newStartBlockBuilder: BlockBuilder
-    } {
+        endBlockBuilder?: BlockBuilder): {
+            traps: Trap[], newStartBlockBuilder: BlockBuilder
+        } {
         const queue: BlockBuilder[] = [];
         const visitedBlockBuilders = new Set<BlockBuilder>();
         queue.push(startBlockBuilder);
@@ -322,6 +322,7 @@ export class TrapBuilder {
         }
         for (const tryTailBlock of tryTailBlocks) {
             tryTailBlock.addExceptionalSuccessorBlock(catchBfsBlocks[0]);
+            catchBfsBlocks[0].addExceptionalPredecessorBlock(tryTailBlock);
         }
         return [new Trap(tryBfsBlocks, catchBfsBlocks)];
     }
@@ -355,17 +356,20 @@ export class TrapBuilder {
             // try -> catch trap
             for (const tryTailBlock of tryTailBlocks) {
                 tryTailBlock.addExceptionalSuccessorBlock(catchBfsBlocks[0]);
+                catchBfsBlocks[0].addExceptionalPredecessorBlock(tryTailBlock);
             }
             traps.push(new Trap(tryBfsBlocks, catchBfsBlocks));
             // catch -> finally trap
             for (const catchTailBlock of catchTailBlocks) {
                 catchTailBlock.addExceptionalSuccessorBlock(copyFinallyBfsBlocks[0]);
+                copyFinallyBfsBlocks[0].addExceptionalPredecessorBlock(catchTailBlock);
             }
             traps.push(new Trap(catchBfsBlocks, copyFinallyBfsBlocks));
         } else {
             // try -> finally trap
             for (const tryTailBlock of tryTailBlocks) {
                 tryTailBlock.addExceptionalSuccessorBlock(copyFinallyBfsBlocks[0]);
+                copyFinallyBfsBlocks[0].addExceptionalPredecessorBlock(tryTailBlock);
             }
             traps.push(new Trap(tryBfsBlocks, copyFinallyBfsBlocks));
         }

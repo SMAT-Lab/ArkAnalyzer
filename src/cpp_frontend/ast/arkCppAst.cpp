@@ -490,25 +490,6 @@ static std::string BuildScopeForCursor(CXCursor cur)
     return scope; // empty string means global scope
 }
 
-json getReferenceDecl(CXCursor cursor, CXCursorKind kind_cursor)
-{
-    json refNode;
-    CXCursor referenced = clang_getCursorReferenced(cursor);
-    if (!clang_isInvalid(kind_cursor)) {
-        std::string refName = Cx2Str(clang_getCursorSpelling(referenced));
-        std::string refKind = Cx2Str(clang_getCursorKindSpelling(clang_getCursorKind(referenced)));
-        if (refKind == "ParamDecl") {
-            refKind = "ParamVarDecl";
-        }
-        refNode["name"] = refName;
-        refNode["kind"] = refKind;
-        refNode["type"] = {{"qualType", unifyTypeStr(clang_getTypeSpelling(clang_getCursorType(referenced)))}};
-        std::string scope = BuildScopeForCursor(referenced);
-        refNode["scope"] = scope;
-    }
-    return refNode;
-}
-
 void patchPseudoDestructorExpr(json &node)
 {
     // Check if current is MemberExpr + TypeRef combination and contains ~, infer as pseudo-destructor
@@ -758,6 +739,65 @@ static bool applyDeclLikeKind(json& node, CXCursor cursor, CXCursorKind k)
     }
 }
 
+/**
+ * Infers whether a ClassTemplate node is declared with `struct` or `class`
+ * based on its source code string, and writes the result to
+ * node["tagUsed"] = "struct" / "class".
+ * Typical source examples:
+ *   template<typename T> struct Foo { ... };
+ *   template<class T, class U> class Bar { ... };
+ */
+static void DetectClassTemplateTagFromCode(nlohmann::json &node)
+{
+    std::string code = node.value("code", "");
+    if (code.empty()) {
+        return;
+    }
+    // 1. Find the "template" keyword (fallback to start if not found)
+    const std::string tplKw = "template";
+    size_t posTemplate = code.find(tplKw);
+    size_t searchFrom  = (posTemplate == std::string::npos) ? 0 : posTemplate + tplKw.size();
+    size_t posAfterTplArgs = 0;
+    if (!SkipAngleBracketBlock(code, searchFrom, posAfterTplArgs)) {
+        // No template parameter list found, fallback search for struct/class
+        const size_t posStruct = code.find("struct ");
+        const size_t posClass = code.find("class ");
+        if (posStruct != std::string::npos && (posClass == std::string::npos || posStruct < posClass)) {
+            node["tagUsed"] = "struct";
+        } else if (posClass != std::string::npos) {
+            node["tagUsed"] = "class";
+        }
+        return;
+    }
+    // The class header starts right after the '>' of the template parameter list
+    std::string header = code.substr(posAfterTplArgs);
+    // Trim leading whitespace
+    size_t firstNonSpace = header.find_first_not_of(" \t\r\n");
+    if (firstNonSpace != std::string::npos) {
+        header.erase(0, firstNonSpace);
+    }
+    // Limit search up to the first '{' or ';' to avoid entering class body
+    size_t brace = header.find('{');
+    size_t semi  = header.find(';');
+    size_t lim   = header.size();
+    if (brace != std::string::npos) {
+        lim = std::min(lim, brace);
+    }
+    if (semi != std::string::npos) {
+        lim = std::min(lim, semi);
+    }
+    std::string headPart = header.substr(0, lim);
+    // Look for "struct " / "class " within the class header
+    size_t posStruct = headPart.find("struct ");
+    size_t posClass  = headPart.find("class ");
+    if (posStruct != std::string::npos &&
+        (posClass == std::string::npos || posStruct < posClass)) {
+        node["tagUsed"] = "struct";
+    } else if (posClass != std::string::npos) {
+        node["tagUsed"] = "class";
+    }
+}
+
 void fillNodeKindTag(json& node, CXCursor cursor, CXCursorKind kind_cursor, const std::string& kindSpelling)
 {
     std::string nameStr = node.value("name", "");
@@ -766,11 +806,12 @@ void fillNodeKindTag(json& node, CXCursor cursor, CXCursorKind kind_cursor, cons
     switch (kind_cursor) {
         case CXCursor_ClassDecl: node["kind"] = "CXXRecordDecl"; node["tagUsed"] = "class";   return;
         case CXCursor_StructDecl: node["kind"] = "CXXRecordDecl"; node["tagUsed"] = "struct";  return;
-        case CXCursor_EnumDecl: node["kind"] = "EnumDecl";      node["tagUsed"] = "enum";    return;
+        case CXCursor_EnumDecl: node["kind"] = "EnumDecl"; node["tagUsed"] = "enum";    return;
         case CXCursor_UnionDecl: node["kind"] = "CXXRecordDecl"; node["tagUsed"] = "union";   return;
         case CXCursor_UnexposedExpr: node["kind"] = handleUnexposedExpr(node); return;
         case CXCursor_UsingDirective: node["kind"] = "UsingDirectiveDecl"; node["isImplicit"] = true; return;
         case CXCursor_MemberRefExpr: node["kind"] = "MemberExpr"; fillMemberName(node, nameStr); return;
+        case CXCursor_ClassTemplate: node["kind"] = "ClassTemplate"; DetectClassTemplateTagFromCode(node); return;
         default: break;
     }
     if (kind_cursor == CXCursor_CallExpr) {
@@ -929,12 +970,6 @@ void fillVarDeclStorageClass(json& node, CXCursor cursor, CXCursorKind kind_curs
     }
 }
 
-void fillDeclRefInfo(json& node, CXCursor cursor, CXCursorKind kind_cursor)
-{
-    if (kind_cursor == CXCursor_DeclRefExpr)
-        node["referencedDecl"] = getReferenceDecl(cursor, kind_cursor);
-}
-
 void fillNodeIdRangeLoc(json& node, const json& content, CXCursorKind kind_cursor,
                         CXFile file, const std::string& displayName)
 {
@@ -1069,6 +1104,7 @@ void nodePostprocess(json& node, CXCursor cursor, CXCursorKind kind_cursor, json
     if (node["kind"] == "VarDecl") {
         updateTypedefClassConstructor(children);
         deduceDecltype(node, children);
+        PropagateAliasTemplateArgToRef(node, children);
     }
     // --- Extracted specialized postprocessing ---
     PostprocessPseudoDestructor(node, children, codeStr);
@@ -1133,6 +1169,77 @@ json getSourceContentMasked(CXTranslationUnit tu, CXSourceRange range, uint32_t 
     const SourceExtent ext{s.file, s.file, s.beginOffset, s.endOffset, range};
     j["code"] = getSourceCode(tu, ext);
     return j;
+}
+
+static inline std::string GetDeclCodeOnly(CXCursor c)
+{
+    CXTranslationUnit tu = clang_Cursor_getTranslationUnit(c);
+    CXSourceRange r = clang_getCursorExtent(c);
+    json j = getSourceContentMasked(tu, r, WANT_CODE);
+    return j.value("code", "");
+}
+
+static CXChildVisitResult FindInnerTypeAliasDecl(CXCursor c, CXCursor, CXClientData data)
+{
+    auto* s = static_cast<std::pair<bool, CXCursor>*>(data);
+    if (clang_getCursorKind(c) == CXCursor_TypeAliasDecl) {
+        s->first = true;
+        s->second = c;
+        return CXChildVisit_Break;
+    }
+    return CXChildVisit_Continue;
+}
+
+// Build a lightweight description of the referenced declaration for the given cursor.
+// - Fills name/kind/type/scope for the declaration being referenced.
+// - If the target is a type alias (including template alias), also attach the full
+// "using ... = ..." source text as alias.declCode for easy display.
+json getReferenceDecl(CXCursor cursor, CXCursorKind /*kind_cursor*/)
+{
+    json refNode;
+    // Resolve the declaration referenced at this use site.
+    CXCursor referenced = clang_getCursorReferenced(cursor);
+    if (clang_equalCursors(referenced, clang_getNullCursor())) {
+        return refNode; // nothing to report
+    }
+    // Basic identity of the referenced declaration.
+    std::string refName = Cx2Str(clang_getCursorSpelling(referenced));
+    CXCursorKind rk = clang_getCursorKind(referenced);
+    std::string refKind = Cx2Str(clang_getCursorKindSpelling(rk));
+    // Normalize ParamDecl to ParamVarDecl for consistency with other parts of the pipeline.
+    if (refKind == "ParamDecl") {
+        refKind = "ParamVarDecl";
+    }
+    refNode["name"] = refName;
+    refNode["kind"] = refKind;
+    refNode["type"] = { {"qualType", unifyTypeStr(clang_getTypeSpelling(clang_getCursorType(referenced)))} };
+    refNode["scope"] = BuildScopeForCursor(referenced);
+    // Attach alias source text for plain type aliases:  using X = ... ;
+    if (rk == CXCursor_TypeAliasDecl) {
+        const std::string code = GetDeclCodeOnly(referenced);
+        if (!code.empty()) {
+            refNode["alias"] = { {"declCode", code} };
+        }
+    } else if (rk == CXCursor_TypeAliasTemplateDecl) {
+        // Template alias: the actual "using" lives inside the TypeAliasTemplateDecl as a child TypeAliasDecl.
+        // Find that child and attach its source text.
+        std::pair<bool, CXCursor> st{false, clang_getNullCursor()};
+        clang_visitChildren(referenced, &FindInnerTypeAliasDecl, &st);
+        if (st.first) {
+            const std::string code = GetDeclCodeOnly(st.second); // only the source text
+            if (!code.empty()) {
+                refNode["alias"] = { {"declCode", code} };
+            }
+        }
+    }
+    return refNode;
+}
+
+void fillDeclRefInfo(json& node, CXCursor cursor, CXCursorKind kind_cursor)
+{
+    if (kind_cursor == CXCursor_DeclRefExpr || kind_cursor == CXCursor_TypeRef || kind_cursor == CXCursor_TemplateRef) {
+        node["referencedDecl"] = getReferenceDecl(cursor, kind_cursor);
+    }
 }
 
 static inline void EnsureDeclRefName(json& node, CXCursorKind kind_cursor)

@@ -19,8 +19,8 @@ export const TYPEDEF_EXPECT_CASE1 = {
             id: 0,
             stmts: [
                 'this = this: @typedef/typedef.cpp: %dflt',
-                'type @typedef/typedef.cpp: %dflt.main()#StrToVecMap = @std/map.h: map',
-                '%0 = new @std/map.h: map',
+                'type @typedef/typedef.cpp: %dflt.main()#StrToVecMap = @std/map.h: map<string,@std/vector.h: vector<int>>',
+                '%0 = new @std/map.h: map<string,@std/vector.h: vector<int>>',
                 'instanceinvoke %0.<@std/map.h: map.constructor()>()',
                 'myMap = %0',
                 "instanceinvoke myMap['key'].<@%unk/%unk: .push_back()>(1)",

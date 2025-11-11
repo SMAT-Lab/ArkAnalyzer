@@ -135,3 +135,5 @@ bool IsCtorLikeByCalleeAndType(const json& node);
 void AnnotateFunctionLocalIncludes(json& ast, std::vector<json>& headerUnits);
 
 bool IsPlainFuncCall(std::string_view code);
+
+void PropagateAliasTemplateArgToRef(json& node, json& children);

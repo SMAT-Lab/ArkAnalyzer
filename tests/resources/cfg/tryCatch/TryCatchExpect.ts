@@ -31,6 +31,8 @@ export const TRY_CATCH_EXPECT_CASE1 = {
             ],
             preds: [0],
             succes: [2, 4],
+            exceptionalPreds: [],
+            exceptionalSucces: [3]
         },
         {
             id: 2,
@@ -39,6 +41,8 @@ export const TRY_CATCH_EXPECT_CASE1 = {
             ],
             preds: [1],
             succes: [4],
+            exceptionalPreds: [],
+            exceptionalSucces: [3]
         },
         {
             id: 3,
@@ -48,6 +52,8 @@ export const TRY_CATCH_EXPECT_CASE1 = {
             ],
             preds: [],
             succes: [4],
+            exceptionalPreds: [1, 2],
+            exceptionalSucces: []
         },
         {
             id: 4,
@@ -77,6 +83,8 @@ export const TRY_CATCH_EXPECT_CASE2 = {
             ],
             preds: [0],
             succes: [3],
+            exceptionalPreds: [],
+            exceptionalSucces: [2]
         },
         {
             id: 2,
@@ -86,6 +94,8 @@ export const TRY_CATCH_EXPECT_CASE2 = {
             ],
             preds: [],
             succes: [3],
+            exceptionalPreds: [1],
+            exceptionalSucces: [5]
         },
         {
             id: 3,
@@ -114,6 +124,8 @@ export const TRY_CATCH_EXPECT_CASE2 = {
             ],
             preds: [],
             succes: [],
+            exceptionalPreds: [2],
+            exceptionalSucces: []
         },
     ],
 };

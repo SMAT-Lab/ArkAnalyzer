@@ -19,8 +19,8 @@ export const USING_EXPECT_CASE1 = {
             id: 0,
             stmts: [
                 'this = this: @using/usingcase.cpp: %dflt',
-                "staticinvoke <@%unk/%unk: .cout()>('[test_using_namespace] hello')",
-                'return'
+                'staticinvoke <@%unk/%unk: .cout()>(\'[test_using_namespace] hello\')',
+                'return',
             ],
             preds: [],
             succes: [],
@@ -34,7 +34,7 @@ export const USING_EXPECT_CASE2 = {
             id: 0,
             stmts: [
                 'this = this: @using/usingcase.cpp: %dflt',
-                "staticinvoke <@%unk/%unk: .cout()>('[test_using_declaration] hello')",
+                'staticinvoke <@%unk/%unk: .cout()>(\'[test_using_declaration] hello\')',
                 'return',
             ],
             preds: [],
@@ -68,8 +68,8 @@ export const USING_EXPECT_CASE4 = {
             id: 0,
             stmts: [
                 'this = this: @using/usingcase.cpp: %dflt',
-                'c = RED',
-                '%0 = Color.<@%unk/%unk: .RED>',
+                'c = @using/usingcase.cpp: Color.[static]RED',
+                '%0 = @using/usingcase.cpp: Color.[static]RED',
                 'if c == %0',
             ],
             preds: [],
@@ -77,16 +77,13 @@ export const USING_EXPECT_CASE4 = {
         },
         {
             id: 1,
-            stmts: ["staticinvoke <@%unk/%unk: .cout()>('[test_using_enum_member] Red\\n')"],
+            stmts: [
+                'staticinvoke <@%unk/%unk: .cout()>(\'[test_using_enum_member] Red\\n\')',
+            ],
             preds: [0],
             succes: [2],
         },
-        {
-            id: 2,
-            stmts: ['return'],
-            preds: [1, 0],
-            succes: [],
-        },
+        { id: 2, stmts: ['return'], preds: [1, 0], succes: [] },
     ],
 };
 
@@ -97,11 +94,90 @@ export const USING_EXPECT_CASE5 = {
             stmts: [
                 'this = this: @using/usingcase.cpp: %dflt',
                 'v = staticinvoke <@using/usingcase.cpp: ns1.%dflt.Foo()>()',
-                "staticinvoke <@%unk/%unk: .cout()>('[test_namespace_using] v = ', v)",
-                'return'
+                'staticinvoke <@%unk/%unk: .cout()>(\'[test_namespace_using] v = \', v)',
+                'return',
             ],
             preds: [],
-            succes: []
+            succes: [],
+        },
+    ],
+};
+
+export const USING_EXPECT_CASE6 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @using/usingcase.cpp: %dflt',
+                '%0 = new @std/vector.h: vector',
+                '%1 = newarray (int[])[3]',
+                '%1[0] = 1',
+                '%1[1] = 2',
+                '%1[2] = 3',
+                'instanceinvoke %0.<@std/vector.h: vector.constructor()>(%1)',
+                'return %0',
+            ],
+            preds: [],
+            succes: [],
+        },
+    ],
+};
+
+export const USING_EXPECT_CASE7 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @using/usingcase.cpp: %dflt',
+                '%0 = new @std/map.h: map<float>',
+                'instanceinvoke %0.<@std/map.h: map.constructor()>()',
+                'm = %0',
+                'm[1] = 3.14',
+                '%1 = m[1]',
+                'staticinvoke <@%unk/%unk: .cout()>(\'[test_using_type_alias_template] m[1] = \', %1)',
+                'return',
+            ],
+            preds: [],
+            succes: [],
+        },
+    ],
+};
+
+export const USING_EXPECT_CASE8 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @using/usingcase.cpp: %dflt',
+                'x = 3.14',
+                'staticinvoke <@%unk/%unk: .cout()>(\'[test_template_type_alias] x = \', x)',
+                'return',
+            ],
+            preds: [],
+            succes: [],
+        },
+    ],
+};
+
+export const USING_EXPECT_CASE9 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @using/usingcase.cpp: %dflt',
+                '%0 = new @std/vector.h: vector<int>',
+                '%1 = newarray (int[])[3]',
+                '%1[0] = 1',
+                '%1[1] = 2',
+                '%1[2] = 3',
+                'instanceinvoke %0.<@std/vector.h: vector.constructor()>(%1)',
+                'v = %0',
+                '%2 = v[0]',
+                'staticinvoke <@%unk/%unk: .cout()>(\'[test_nested_alias_in_class] v[0] = \', %2)',
+                'return',
+            ],
+            preds: [],
+            succes: [],
         },
     ],
 };

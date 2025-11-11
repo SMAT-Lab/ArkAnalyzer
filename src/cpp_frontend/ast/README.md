@@ -21,37 +21,47 @@ arkCppAstDumper是基于llvm开发的工具，对C/C++生成简洁的抽象语�
 - mingw.cmake：在linux环境交叉编译构建windows执行文件的构建脚本
 - windows.cmake：在windows环境的构建脚本
 
-## windows
+## windows版本
 
 ### 环境准备
 
 - llvm 19.1.7
 - cmake 3.10及以上
-- 构建工具visual studio 17(支持c++17以上的编译器)
+- 构建工具visual studio 2022 17(支持c++17以上的编译器)，选择C++的桌面开发进行安装环境（windows平台构建）
+- llvm-ming 与llvm版本一致，（llvm平台交叉编译构建）
 
-### 构建
+### windows平台构建
 
      mkdir build && cd build
      cmake -DCMAKE_TOOLCHAIN_FILE=..\cmake\toolchains\windows.cmake ..
      cmake --build . --config Release
      //开启头文件节点记录统计可在build同级目录 执行 cmake -B build -DARK_ENABLE_PROFILING=ON
 
-构建成功将会在/build下生成**arkCppAstDumper.exe**可执行文件
+### linux平台交叉编译构建
+
+     mkdir build && cd build
+     cmake -DCMAKE_TOOLCHAIN_FILE=..\cmake\toolchains\windows.cmake ..
+     make
+
+构建成功将会在/build/Release目录下生成**arkCppAstDumper.exe**可执行文件
 
 ### 工具执行的依赖文件
 
-- libclang.dll（可从windows环境下clang的bin目录下获取）
-- libc++.dll (可从交叉编译的llvm-mingw获取)
-- libunwind.dll (可从交叉编译的llvm-mingw获取)
+- libclang.dll（可从windows版本的llvm的clang+llvm-19.1.7-x86_64-pc-windows-msvc\bin目录下获取）
+
+llvm平台交叉编译构建的工具需额外依赖下面的两个文件
+
+- libc++.dll (可从llvm-mingw的x86_64-w64-mingw32\bin目录下获取)
+- libunwind.dll (可从llvm-mingw的x86_64-w64-mingw32\bin目录下获取)
 
 ### 工具解析cpp文件需引入的标准库头文件
 
-- visual studio 17会默认查找MSVC头文件
+- visual studio 2022 17会默认查找MSVC头文件
 
-- devEcoStudio需配置下列环境变量,环境变量不能有空格且需高优先级
+- devEco Studio需配置下列环境变量
 
-  1、DEVECO_C=/devEcoStudio/sdk/default/openharmony/native/llvm/include \
-  2、DEVECO_INCLUDE=/devEcoStudio/sdk/default/openharmony/native/llvm/lib/clang/<版本号>
+      DEVECO_C=D:\Huawei\DevEco Studio\sdk\default\openharmony\native\llvm\include\libcxx-ohos\include
+      DEVECO_SYSROOT_INCLUDE=D:\Huawei\DevEco Studio\sdk\default\openharmony\native\sysroot\usr\include
   
 
 ## linux
@@ -81,10 +91,10 @@ arkCppAstDumper是基于llvm开发的工具，对C/C++生成简洁的抽象语�
 
 ### 工具解析cpp文件需引入的标准库头文件
 
-- common-line-tools需配置下列环境变量,,环境变量不能有空格且需高优先级
+- common-line-tools需配置下列环境变量
 
-  1、DEVECO_C=/devEcoStudio/sdk/default/openharmony/native/llvm/include \
-  2、DEVECO_INCLUDE=/devEcoStudio/sdk/default/openharmony/native/llvm/lib/clang/<版本号>
+      DEVECO_C=/common-line-tools/sdk/default/openharmony/native/llvm/include/libcxx-ohos/include
+      DEVECO_SYSROOT_INCLUDE=/common-line-tools/sdk/default/openharmony/native/sysroot/usr/include
 
 ## arkCppAstDumper工具使用示例
 

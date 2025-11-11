@@ -29,15 +29,15 @@
 
 配置llvm的bin目录到环境变量
 
-![img_3.png](../../img_3.png)
+![img_22.png](img_22.png)
 
 下载Visual Studio 2022安装包进行安装，打开Visual Studio install选择C++的桌面开发进行安装环境
 
-![img_1.png](../../img_1.png)
+![img_20.png](img_20.png)
 
 下载arkAnalyzer-cpp代码，将json.hpp文件放在arkanalyzer\src\cpp_frontend\ast\utils的目录下，在arkanalyzer\src\cpp_frontend\ast\cmake\toolchains\windows.cmake文件中配置llvm的clang-c和libclang.dll的路径
 
-![img_4.png](../../img_4.png)
+![img_23.png](img_23.png)
 
 在arkanalyzer\src\cpp_frontend\ast的目录下执行以下命令，在arkanalyzer\src\cpp_frontend\ast\build\Release目录下生成工具
 
@@ -76,7 +76,7 @@
 #### 2.2、构建linux版本的arkCppAstDumper（x86和arm同理）
 下载linux版本的llvm预编译版本并解压
 
-![img_2.png](../../img_2.png)
+![img_21.png](img_21.png)
 
 下载arkAnalyzer-cpp代码，将json.hpp文件放在arkanalyzer\src\cpp_frontend\ast\utils的目录下，在arkanalyzer\src\cpp_frontend\ast\cmake\toolchains\linux.cmake文件中配置llvm的clang-c和libclang.so的路径
 
@@ -89,7 +89,7 @@
     make
 
 执行依赖的文件：
-libclang.so（可从llvm预编译版本的lib目录下获取）
+libclang.so（可从llvm预编译版本的LLVM-19.1.7-Linux-X64/lib目录下获取）
 
 #### 2.3、构建mac版本的arkCppAstDumper（x86和arm同理）
 ##### 2.3.1、在linux平台交叉编译构建mac版本的arkCppAstDumper
@@ -129,7 +129,7 @@ libclang.so（可从llvm预编译版本的lib目录下获取）
     make
 
 执行依赖的文件：
-* libclang.dylib（可从llvm预编译版本的lib目录下获取）
+* libclang.dylib（可从llvm预编译版本的LLVM-19.1.7-macOS-ARM64/lib目录下获取）
 
 ### 3、使用arkCppAstDumper工具
 
@@ -191,9 +191,16 @@ libclang.so（可从llvm预编译版本的lib目录下获取）
 
 ![img_14.png](img_14.png)
 
-4、设置DevEco Studio的llvm路径配置到环境变量，当没有编译数据库时作为头文件搜索路径
+4、设置c++头文件到环境变量，当没有编译数据库时作为头文件搜索路径
 
+* windows平台设置DevEco studio目录下的c++头文件
+  ![img_8.png](img_8.png)
+
+* linux平台设置commomd-line-tools目录下的c++头文件
 ![img_16.png](img_16.png)
+
+* mac平台设置DevEco studio和MacOSX.sdk目录下的c++头文件
+![img_19.png](img_19.png)
 
 5、执行接口，SceneConfig作为参数传给buildSceneFromFiles方法生成Scene结构的ArkIR，路径：arkanalyzer\src\Scene.ts
 

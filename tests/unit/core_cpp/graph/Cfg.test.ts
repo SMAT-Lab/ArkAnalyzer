@@ -409,12 +409,17 @@ describe('using Test', () => {
     });
     it('case4: using', () => {
         const scene = buildScene('using');
+        scene.inferTypes();
         testBlocks(scene, 'usingcase.cpp', 'TestUsingEnumMember', USING_EXPECT.USING_EXPECT_CASE4.blocks);
     });
     it('case5: using', () => {
         const scene = buildScene('using');
         scene.inferTypes();
         testBlocks(scene, 'usingcase.cpp', 'TestNamespaceUsing', USING_EXPECT.USING_EXPECT_CASE5.blocks);
+        testBlocks(scene, 'usingcase.cpp', 'MakeIntvec', USING_EXPECT.USING_EXPECT_CASE6.blocks);
+        testBlocks(scene, 'usingcase.cpp', 'TestUsingTypeAliasTemplate', USING_EXPECT.USING_EXPECT_CASE7.blocks);
+        testBlocks(scene, 'usingcase.cpp', 'TestTemplateTypeAlias', USING_EXPECT.USING_EXPECT_CASE8.blocks);
+        testBlocks(scene, 'usingcase.cpp', 'TestNestedAliasInClass', USING_EXPECT.USING_EXPECT_CASE9.blocks);
     });
 });
 

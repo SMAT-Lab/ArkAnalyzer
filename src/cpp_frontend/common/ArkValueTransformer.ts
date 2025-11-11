@@ -67,7 +67,7 @@ import {
 } from '../../core/common/EtsConst';
 import { CxxValueUtil } from './ValueUtil';
 import { IRUtils } from './IRUtils';
-import { AbstractFieldRef, ArkArrayRef, ArkInstanceFieldRef } from '../../core/base/Ref';
+import { AbstractFieldRef, ArkArrayRef, ArkInstanceFieldRef, ArkStaticFieldRef } from '../../core/base/Ref';
 import { ArkCxxInstanceFieldRef } from '../base/Ref';
 import { ArkMethod } from '../../core/model/ArkMethod';
 import { buildArkMethodFromArkClass, buildDefaultConstructor } from '../model/builder/ArkMethodBuilder';
@@ -92,6 +92,7 @@ import { setTs2CxxFuncMapOfClass } from './ModelUtils';
 import { CxxAstNode, CxxTranslationUnit, CxxTypeInfo } from '../ast/ArkCxxAstNode';
 import { DummyStmt } from '../../core/common/ArkIRTransformer';
 import { BuiltinCxx } from './Builtin';
+import { ArkClass } from '../../core/model/ArkClass';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkValueTransformer');
 
@@ -404,6 +405,18 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
     private declAndTypeRefToValueAndStmts(node: CxxAstNode): ValueAndStmts {
         if (node.inner?.length > 0 && !node.type) {
             return this.cxxNodeToValueAndStmts(node.inner[0]);
+        }
+        // Handle the scenario: using Color::RED; Color c = RED;
+        if (node.referencedDecl?.kind === 'EnumConstantDecl' && node.inner.length === 0) {
+            const typeRefNode = {
+                kind: 'TypeRef',
+                name: node.referencedDecl!.scope,
+                code: node.referencedDecl!.scope,
+                inner: [],
+                type: node.referencedDecl!.type,
+            } as CxxAstNode;
+            node.inner.push(typeRefNode);
+            return this.staticMemberExprToValueAndStmts(node);
         }
         // Handle the invocation of static members of a class, such as A::a
         if (node.code.includes('::') && node.inner.length > 0 &&
@@ -1085,14 +1098,45 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         }
         // [Scenario 4] On special occasions, the caller directly specifies the baseValue (generally used to replace the base,
         // such as virtual members, generics, etc.)
-        if (localValue !== undefined && localValue !== null) {
+        if (localValue) {
             baseValue = localValue;
         }
         // Combine preceding statements to ensure complete order
         stmts.push(...baseStmts);
         // [Scenario 5] Get the member's field signature
         // The purpose is to associate the insert in testMap.insert with the base type (such as the type of testMap) to form a complete field signature
+        const fieldSignature = this.buildFieldSignatureFromMemberExpr(baseValue, memberExpression);
+        // [Scenario 6] Generate the field reference object of IR layer (such as testMap. insert)
+        let fieldRef: ArkCxxInstanceFieldRef | ArkStaticFieldRef;
+        if (memberExpression.referencedDecl?.kind === 'EnumConstantDecl') {
+            fieldRef = new ArkStaticFieldRef(fieldSignature);
+        } else {
+            fieldRef = new ArkCxxInstanceFieldRef(
+                baseValue as Local, // baseValue（eg: testMap）
+                memberExpression.isArrow ?? false, // Whether it is arrow access (->)
+                fieldSignature, // Field signature (such as insert)
+            );
+        }
+        // Record node location information for subsequent traceability and debugging
+        const fieldRefPositions = [FullPosition.cxxBuildFromNode(memberExpression, this.cxxSourceFile), ...basePositions];
+        // Return resolution results, including IR field references, location information, and related SSA statements
+        return { value: fieldRef, valueOriginalPositions: fieldRefPositions, stmts: stmts };
+    }
+
+    private buildFieldSignatureFromMemberExpr(baseValue: Value, memberExpression: CxxAstNode): FieldSignature {
         let fieldSignature: FieldSignature;
+        const memberName = memberExpression.name || memberExpression.code;
+        // ==Scenarios for Special Handling of Enum Members==
+        if (memberExpression.referencedDecl?.kind === 'EnumConstantDecl') {
+            const enumClassName = memberExpression.inner[0].name.replace('enum', '').trim();
+            const enumArkClass = ModelUtils.findSymbolInFileWithName(enumClassName, this.declaringMethod.getDeclaringArkClass());
+            const enumSignature =
+                (enumArkClass instanceof ArkClass) ?
+                    enumArkClass.getSignature() :
+                    ArkSignatureBuilder.buildClassSignatureFromClassName(enumClassName);
+            return new FieldSignature(memberName, enumSignature, UnknownType.getInstance(), true);
+        }
+        // ==Handling common scenarios==
         let baseType = baseValue.getType();
         let baseClassType: ClassType | null = null;
         // Judge whether the base is a class type or its pointer/reference
@@ -1103,9 +1147,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         } else if (baseType instanceof ReferenceType && (baseType as ReferenceType).getBaseType() instanceof ClassType) {
             baseClassType = (baseType as ReferenceType).getBaseType() as ClassType;
         }
-        // [Scenario 6] Construction field signature
+        // Construction field signature
         // If base is a class local variable, use the complete class signature
-        const memberName = memberExpression.name || memberExpression.code;
         if ((baseValue instanceof Local || baseValue instanceof ArkArrayRef) && baseClassType !== null) {
             fieldSignature = new FieldSignature(
                 memberName, // Field name (such as insert)
@@ -1116,18 +1159,9 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             // Otherwise, it is generated only according to the field name
             fieldSignature = ArkSignatureBuilder.buildFieldSignatureFromFieldName(memberName);
         }
-        // [Scenario 7] Set field types to support C++complex type resolution (such as template, pointer, const, etc.)
+        // Set field types to support C++complex type resolution (such as template, pointer, const, etc.)
         fieldSignature.setType(this.cxxResolveTypeNode(memberExpression));
-        // [Scenario 8] Generate the field reference object of IR layer (such as testMap. insert)
-        const fieldRef = new ArkCxxInstanceFieldRef(
-            baseValue as Local, // baseValue（eg: testMap）
-            memberExpression.isArrow ?? false, // Whether it is arrow access (->)
-            fieldSignature // Field signature (such as insert)
-        );
-        // Record node location information for subsequent traceability and debugging
-        const fieldRefPositions = [FullPosition.cxxBuildFromNode(memberExpression, this.cxxSourceFile), ...basePositions];
-        // Return resolution results, including IR field references, location information, and related SSA statements
-        return { value: fieldRef, valueOriginalPositions: fieldRefPositions, stmts: stmts };
+        return fieldSignature;
     }
 
     /**
@@ -1425,29 +1459,29 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         }
         // operator<< / operator>> and lambda cout scenario
         if (
-            (callExpression.inner[0].kind === 'ImplicitCastExpr' && callExpression.inner[0].name === 'operator>>') ||
+            (callExpression.inner[0]?.kind === 'ImplicitCastExpr' && callExpression.inner[0]?.name === 'operator>>') ||
             callExpression.name === 'operator<<' ||
-            callExpression.inner[0].name === 'operator<<' ||
+            callExpression.inner[0]?.name === 'operator<<' ||
             callExpression.inner[1]?.type.qualType.toString().includes('(lambda at')) {
             return this.CXXOperatorExpressionCoutToValueAndStmts(callExpression, []);
         }
 
         // Relational binary operator or assignment operator
-        if (callExpression.inner[0].kind === 'ImplicitCastExpr' &&
-            (ArkCxxValueTransformer.isRelationalBinaryOperator(callExpression.inner[0].code) ||
+        if (callExpression.inner[0]?.kind === 'ImplicitCastExpr' &&
+            (ArkCxxValueTransformer.isRelationalBinaryOperator(callExpression.inner[0]?.code) ||
                 callExpression.name === 'operator=')) {
             return this.CXXOperatorExpressionToBinaryOperator(callExpression);
         }
 
         // Unary operators (++ / --)
-        if (callExpression.inner[0].kind === 'ImplicitCastExpr' &&
-            ['++', '--'].includes(callExpression.inner[0].code)) {
+        if (callExpression.inner[0]?.kind === 'ImplicitCastExpr' &&
+            ['++', '--'].includes(callExpression.inner[0]?.code)) {
             return this.CXXOperatorExpressionToUnaryOperator(callExpression);
         }
 
         // Arrow operator (->) in iteration
-        if (callExpression.inner[0].kind === 'ImplicitCastExpr' &&
-            callExpression.inner[0].code === '->') {
+        if (callExpression.inner[0]?.kind === 'ImplicitCastExpr' &&
+            callExpression.inner[0]?.code === '->') {
             return this.cxxNodeToValueAndStmts(callExpression.inner[1]);
         }
         return null;
@@ -1483,7 +1517,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
      *@ returns the processed value and statement object. If it cannot be processed, it returns null
      */
     private handleOverloadedOp(cxxOperatorCallExpr: CxxAstNode): ValueAndStmts | null {
-        if (cxxOperatorCallExpr.type?.qualType === '' || cxxOperatorCallExpr.inner?.[0].castKind !== 'FunctionToPointerDecay') {
+        if (cxxOperatorCallExpr.type?.qualType === '' ||
+            cxxOperatorCallExpr.inner?.[0]?.castKind !== 'FunctionToPointerDecay') {
             return null;
         }
         let callType = cxxNode2Type(cxxOperatorCallExpr.type.qualType, this.declaringMethod);
@@ -1703,6 +1738,11 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         } else if (callerValue instanceof Local) {
             invokeValue = this.buildInvokeValueForLocal(callerValue, args, realGenericTypes);
         } else {
+            ({
+                value: callerValue,
+                valueOriginalPositions: callerPositions,
+                stmts:callerStmts,
+            } = this.ArkCxxIRTransformer.generateAssignStmtForValue(callerValue, callerPositions));
             stmts.push(...callerStmts);
             const methodSignature = ArkSignatureBuilder.buildMethodSignatureFromMethodName((callerValue as Local).getName());
             invokeValue = new ArkStaticInvokeExpr(methodSignature, args, realGenericTypes);
@@ -1780,12 +1820,12 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         };
     }
 
-    private getRealGenericTypes(node: CxxAstNode | undefined): Type[] | undefined {
+    private getRealGenericTypes(node: CxxAstNode | undefined, qualType?: string): Type[] | undefined {
         let realGenericTypes: Type[] | undefined;
-        if (node) {
-            const qualType = node.type.qualType;
+        const nodeType = qualType ?? node?.type.qualType;
+        if (nodeType) {
             // Match the content within the outermost<>layer
-            const match = qualType.match(/<(.*)>/);
+            const match = nodeType.match(/<(.*)>/);
             let members: string[] | undefined;
             if (match && match[1]) {
                 // Extract content from<>
@@ -1894,6 +1934,10 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         const newExpr = new ArkNewExpr(classType);
         const {value: newLocal, valueOriginalPositions: newLocalPositions, stmts: newExprStmts, } =
             this.ArkCxxIRTransformer.generateAssignStmtForValue(newExpr, [FullPosition.cxxBuildFromNode(newExpression, this.cxxSourceFile)]);
+        // When using the new keyword, the type of Local should be a pointer type.
+        if (newExpression.kind === 'CXXNewExpr') {
+            (newLocal as Local).setType(new PointerType(classType, 1));
+        }
         newExprStmts.forEach(stmt => stmts.push(stmt));
         this.cxxEmitCtorInvokeAndMemberInits(stmts, newExpression, newLocal as Local, newLocalPositions, classType, className);
         return { value: newLocal, valueOriginalPositions: newLocalPositions, stmts: stmts };
@@ -1935,7 +1979,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             }
             return args.filter(arg =>
                 arg?.kind !== 'TemplateRef' &&
-                arg?.kind !== 'NamespaceRef',
+                arg?.kind !== 'NamespaceRef' &&
+                arg?.kind !== 'TypeRef',
             );
         })();
 
@@ -2839,19 +2884,14 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             }
             return new ArrayType(baseType, count);
         } else if (qualType.startsWith(BuiltinCxx.CXXSTDREF)) {
-            const match = /std::(\w+)/g.exec(qualType); // Handle standard library container types
-            const containerName = match ? match[1] : null;
-            if (containerName && convertDataType(containerName) === 'unsupported' && this.isCxxStdContainer(containerName)) {
-                const fileSignature = new FileSignature(BuiltinCxx.CXXSTD, containerName + '.h');
-                const classSignature = new ClassSignature(containerName, fileSignature);
-                return new ClassType(classSignature);
-            } else if (containerName === 'thread') {
-                return new Thread();
-            }
+            return this.buildTypeForCxxStdType(qualType, node);
         } else if (qualType === BuiltinCxx.CXXSTD && node && node.kind === 'NamespaceRef') {
             const fileSignature = new FileSignature(BuiltinCxx.CXXSTD, 'iostream.h');
             const classSignature = new ClassSignature('iostream', fileSignature);
             return new ClassType(classSignature);
+        } else if (node && node.inner?.[0]?.kind === 'TemplateRef') {
+            // Handling template types
+            return this.buildCxxTemplateType(node);
         } else if (qualType.includes('vector')) {
             let dimension = 0; // Handle std::vector scenarios (must be after std:: check)
             let dataType = this.resolveVectorType(qualType, dimension);
@@ -2862,6 +2902,72 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             // Locate the type represented by the smart pointer
             let baseType = cxxNode2Type(qualType.slice(qualType.indexOf('<') + 1, qualType.lastIndexOf('>')), undefined);
             return new SmartPointerType(baseType, 0, qualType);
+        }
+        return undefined;
+    }
+
+    private buildTypeForCxxStdType(qualType: string, node: CxxAstNode | undefined): Type | undefined {
+        const match = /std::(\w+)/g.exec(qualType);
+        const containerName = match ? match[1] : null;
+        // Handle standard library container types
+        if (containerName && convertDataType(containerName) === 'unsupported' && this.isCxxStdContainer(containerName)) {
+            const fileSignature = new FileSignature(BuiltinCxx.CXXSTD, containerName + '.h');
+            const classSignature = new ClassSignature(containerName, fileSignature);
+            const realGenericTypes = this.getRealGenericTypes(node, qualType);
+            return new ClassType(classSignature, realGenericTypes);
+        } else if (containerName === 'thread') {
+            return new Thread();
+        }
+        return undefined;
+    }
+
+    private buildCxxTemplateType(node: CxxAstNode): Type | undefined {
+        const templateRefNodes = node.inner.filter(inn => inn.kind === 'TemplateRef');
+        if (templateRefNodes.length === 0) {
+            return undefined;
+        }
+        const outerTemplateRefName = templateRefNodes[0].name ?? templateRefNodes[0].code ?? '';
+        const genericTypeStr = templateRefNodes[0].type.qualType ?? '';
+        if (outerTemplateRefName === '' || genericTypeStr === '') {
+            return undefined;
+        }
+        const realGenericType = this.buildCxxTypeFromQualTypeAndTagUsed(undefined, genericTypeStr, '');
+        if (!realGenericType) {
+            return undefined;
+        }
+        // Scenario: using value_type_t = typename T::value_type;
+        let outerObj = ModelUtils.findSymbolInFileWithName(outerTemplateRefName, this.declaringMethod.getDeclaringArkClass());
+        if (outerObj instanceof AliasType && templateRefNodes[0].referencedDecl?.alias?.declCode?.includes(BuiltinCxx.TYPENAME_KEYWORD) &&
+            realGenericType instanceof ClassType) {
+            const valueType = realGenericType.getRealGenericTypes()?.[0] ?? realGenericType;
+            outerObj.setOriginalType(valueType);
+            return outerObj;
+        }
+        // Scenario: struct Foo { using Vec = std::vector<T> };  Foo<int>::Vec v = {1, 2, 3};
+        if (node.type.qualType.includes('::') && outerObj instanceof ArkClass) {
+            const refNodes = node.inner.slice(1).filter(inn => inn.kind === 'TypeRef');
+            return this.buildTypeFromClassTypeMember(refNodes, outerObj);
+        }
+        return new UnclearReferenceType(outerTemplateRefName, [realGenericType]);
+    }
+
+    private buildTypeFromClassTypeMember(refNodes: CxxAstNode[], arkClass: ArkClass): Type | undefined {
+        if (refNodes.length === 0) {
+            return undefined;
+        }
+        const field = arkClass.getFieldWithName(refNodes[0].code);
+        if (!field) {
+            return undefined;
+        }
+        const fieldType = field.getType();
+        if (refNodes.length === 1) {
+            return fieldType;
+        }
+        if (fieldType instanceof ClassType) {
+            const fieldClass = ModelUtils.findSymbolInFileWithName(refNodes[0].code, this.declaringMethod.getDeclaringArkClass());
+            if (fieldClass instanceof ArkClass) {
+                return this.buildTypeFromClassTypeMember(refNodes.slice(1), fieldClass);
+            }
         }
         return undefined;
     }
