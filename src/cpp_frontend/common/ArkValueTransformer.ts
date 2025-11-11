@@ -1098,49 +1098,17 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         }
         // [Scenario 4] On special occasions, the caller directly specifies the baseValue (generally used to replace the base,
         // such as virtual members, generics, etc.)
-        if (localValue !== undefined && localValue !== null) {
+        if (localValue) {
             baseValue = localValue;
         }
         // Combine preceding statements to ensure complete order
         stmts.push(...baseStmts);
         // [Scenario 5] Get the member's field signature
         // The purpose is to associate the insert in testMap.insert with the base type (such as the type of testMap) to form a complete field signature
-        let fieldSignature: FieldSignature;
-        let baseType = baseValue.getType();
-        let baseClassType: ClassType | null = null;
-        // Judge whether the base is a class type or its pointer/reference
-        if (baseType instanceof ClassType) {
-            baseClassType = baseType as ClassType;
-        } else if (baseType instanceof PointerType && (baseType as PointerType).getBaseType() instanceof ClassType) {
-            baseClassType = (baseType as PointerType).getBaseType() as ClassType;
-        } else if (baseType instanceof ReferenceType && (baseType as ReferenceType).getBaseType() instanceof ClassType) {
-            baseClassType = (baseType as ReferenceType).getBaseType() as ClassType;
-        }
-        // [Scenario 6] Construction field signature
-        // If base is a class local variable, use the complete class signature
-        const memberName = memberExpression.name || memberExpression.code;
-        if ((baseValue instanceof Local || baseValue instanceof ArkArrayRef) && baseClassType !== null) {
-            fieldSignature = new FieldSignature(
-                memberName, // Field name (such as insert)
-                baseClassType.getClassSignature(), // Base class type signature
-                UnknownType.getInstance() // Unknown type preemption
-            );
-        } else {
-            // Otherwise, it is generated only according to the field name
-            fieldSignature = ArkSignatureBuilder.buildFieldSignatureFromFieldName(memberName);
-        }
-        // [Scenario 7] Set field types to support C++complex type resolution (such as template, pointer, const, etc.)
-        fieldSignature.setType(this.cxxResolveTypeNode(memberExpression));
-        // [Scenario 8] Generate the field reference object of IR layer (such as testMap. insert)
+        const fieldSignature = this.buildFieldSignatureFromMemberExpr(baseValue, memberExpression);
+        // [Scenario 6] Generate the field reference object of IR layer (such as testMap. insert)
         let fieldRef: ArkCxxInstanceFieldRef | ArkStaticFieldRef;
         if (memberExpression.referencedDecl?.kind === 'EnumConstantDecl') {
-            const enumClassName = memberExpression.inner[0].name.replace('enum', '').trim();
-            const enumArkClass = ModelUtils.findSymbolInFileWithName(enumClassName, this.declaringMethod.getDeclaringArkClass());
-            const enumSignature =
-                (enumArkClass instanceof ArkClass) ?
-                    enumArkClass.getSignature() :
-                    ArkSignatureBuilder.buildClassSignatureFromClassName(enumClassName);
-            fieldSignature = new FieldSignature(memberName, enumSignature, UnknownType.getInstance(), true);
             fieldRef = new ArkStaticFieldRef(fieldSignature);
         } else {
             fieldRef = new ArkCxxInstanceFieldRef(
@@ -1153,6 +1121,47 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         const fieldRefPositions = [FullPosition.cxxBuildFromNode(memberExpression, this.cxxSourceFile), ...basePositions];
         // Return resolution results, including IR field references, location information, and related SSA statements
         return { value: fieldRef, valueOriginalPositions: fieldRefPositions, stmts: stmts };
+    }
+
+    private buildFieldSignatureFromMemberExpr(baseValue: Value, memberExpression: CxxAstNode): FieldSignature {
+        let fieldSignature: FieldSignature;
+        const memberName = memberExpression.name || memberExpression.code;
+        // ==Scenarios for Special Handling of Enum Members==
+        if (memberExpression.referencedDecl?.kind === 'EnumConstantDecl') {
+            const enumClassName = memberExpression.inner[0].name.replace('enum', '').trim();
+            const enumArkClass = ModelUtils.findSymbolInFileWithName(enumClassName, this.declaringMethod.getDeclaringArkClass());
+            const enumSignature =
+                (enumArkClass instanceof ArkClass) ?
+                    enumArkClass.getSignature() :
+                    ArkSignatureBuilder.buildClassSignatureFromClassName(enumClassName);
+            return new FieldSignature(memberName, enumSignature, UnknownType.getInstance(), true);
+        }
+        // ==Handling common scenarios==
+        let baseType = baseValue.getType();
+        let baseClassType: ClassType | null = null;
+        // Judge whether the base is a class type or its pointer/reference
+        if (baseType instanceof ClassType) {
+            baseClassType = baseType as ClassType;
+        } else if (baseType instanceof PointerType && (baseType as PointerType).getBaseType() instanceof ClassType) {
+            baseClassType = (baseType as PointerType).getBaseType() as ClassType;
+        } else if (baseType instanceof ReferenceType && (baseType as ReferenceType).getBaseType() instanceof ClassType) {
+            baseClassType = (baseType as ReferenceType).getBaseType() as ClassType;
+        }
+        // Construction field signature
+        // If base is a class local variable, use the complete class signature
+        if ((baseValue instanceof Local || baseValue instanceof ArkArrayRef) && baseClassType !== null) {
+            fieldSignature = new FieldSignature(
+                memberName, // Field name (such as insert)
+                baseClassType.getClassSignature(), // Base class type signature
+                UnknownType.getInstance() // Unknown type preemption
+            );
+        } else {
+            // Otherwise, it is generated only according to the field name
+            fieldSignature = ArkSignatureBuilder.buildFieldSignatureFromFieldName(memberName);
+        }
+        // Set field types to support C++complex type resolution (such as template, pointer, const, etc.)
+        fieldSignature.setType(this.cxxResolveTypeNode(memberExpression));
+        return fieldSignature;
     }
 
     /**

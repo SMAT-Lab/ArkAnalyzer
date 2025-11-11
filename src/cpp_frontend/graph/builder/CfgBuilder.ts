@@ -252,7 +252,7 @@ export class CfgBuilder {
                 // Reaching this branch means there's no braces {}
                 this.walkAST(ifstm, ifexit, [c.inner[1]]);
             }
-        } else if (c.inner.length == 1) {
+        } else if (c.inner.length === 1) {
             // Only one child; treat it as the body
             this.walkAST(ifstm, ifexit, [c.inner[0]]);
         }
@@ -291,7 +291,7 @@ export class CfgBuilder {
             } else {
                 this.walkAST(loopstm, loopstm, [c.inner[1]]);
             }
-        } else if (c.inner.length == 1 && c.inner[0].kind.toString() === 'CompoundStmt') {
+        } else if (c.inner.length === 1 && c.inner[0].kind.toString() === 'CompoundStmt') {
             this.walkAST(loopstm, loopstm, [c.inner[0]]);
         }
         if (!loopstm.nextF) {
