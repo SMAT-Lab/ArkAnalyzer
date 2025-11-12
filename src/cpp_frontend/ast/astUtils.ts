@@ -191,7 +191,10 @@ export class AstUtils {
     }
 
 
-    static extractCppModifier(code: string): string | null {
+    static extractAllCppModifiers(code: string): string[] {
+        if (!code) {
+            return [];
+        }
         const cppModifiers = [
             'static',
             'public',
@@ -212,24 +215,21 @@ export class AstUtils {
         ];
         // Construct the regular expression; \b ensures whole-word matching
         const pattern = new RegExp(`\\b(${cppModifiers.join('|')})\\b`, 'g');
-        const match = pattern.exec(code);
-        if (match) {
-            return match[1];
-        }
-        return null;
+        const matches = code.match(pattern);
+        return matches ? matches : [];
     }
 
     // Members in the syntax tree do not have control attributes, please process them here
     private static processAccess(cursor: CxxAstNode): void {
+        cursor.modifiers = [];
         // C++access control is a partition declaration that updates current information when encountering an access control symbol
         if (cursor.kind === 'CXXAccessSpecifier') {
-            this.currentAccess = this.extractCppModifier(cursor.code) ?? '';
+            this.currentAccess = this.extractAllCppModifiers(cursor.code)[0] ?? '';
         } else {
-            let codeModifier = this.extractCppModifier(cursor.code);
+            let codeModifier = this.extractAllCppModifiers(cursor.code);
+            cursor.modifiers.push(this.currentAccess);
             if (codeModifier !== null) {
-                cursor.access = codeModifier;
-            } else if (!cursor.isImplicit) {
-                cursor.access = this.currentAccess;
+                cursor.modifiers?.push(...codeModifier);
             }
         }
     }

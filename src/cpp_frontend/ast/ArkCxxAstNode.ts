@@ -171,7 +171,7 @@ export interface CxxAstNode {
         (isNeedInner?: false): CxxAstNodeLite; // Lightweight snapshot (excluding inner)
     };
 
-    access?: string;
+    modifiers?: string[];
 
     enclosingFunction?: CxxEnclosingFunction;
     /** Reserved for future fields */
