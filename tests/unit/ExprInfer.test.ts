@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -35,7 +35,7 @@ describe('ArkCastExpr Test', () => {
         assert.equal(stmts![1].toString(), 'a = <any>1');
 
         assert.isTrue(stmts![2] instanceof ArkAssignStmt);
-        assert.equal((stmts![2] as ArkAssignStmt).getLeftOp().getType().toString(), 'any');
+        assert.equal((stmts![2] as ArkAssignStmt).getLeftOp().getType().toString(), 'any|string');
         assert.isTrue((stmts![2] as ArkAssignStmt).getRightOp() instanceof ArkCastExpr);
         assert.equal(((stmts![2] as ArkAssignStmt).getRightOp() as ArkCastExpr).getType().toString(), 'string');
         assert.equal(((stmts![2] as ArkAssignStmt).getRightOp() as ArkCastExpr).getOp().getType().toString(), 'number');

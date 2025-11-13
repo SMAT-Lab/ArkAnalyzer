@@ -84,6 +84,14 @@ export class ImportInfo extends ArkBaseModel implements FromInfo {
         return this.lazyExportInfo || null;
     }
 
+    public getExportInfo(): ExportInfo | null | undefined {
+        return this.lazyExportInfo;
+    }
+
+    public setExportInfo(exportInfo: ExportInfo | null): void {
+        this.lazyExportInfo = exportInfo;
+    }
+
     public setDeclaringArkFile(declaringArkFile: ArkFile): void {
         this.declaringArkFile = declaringArkFile;
     }

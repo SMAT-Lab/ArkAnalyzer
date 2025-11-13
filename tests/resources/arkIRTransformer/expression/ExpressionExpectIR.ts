@@ -453,7 +453,7 @@ export const LiteralExpression_Expect_IR = {
         operandOriginalPositions: [[22, 7, 22, 19], [22, 30, 22, 31]],
     },
     {
-        text: '%3 = instanceinvoke placeholder1.<@%unk/%unk: .toString()>()',
+        text: '%3 = instanceinvoke placeholder1.<@built-in/lib.es5.d.ts: Number.toString(number)>()',
         operandOriginalPositions: [[23, 40, 23, 52], [23, 40, 23, 52], [23, 40, 23, 52]],
     },
     {
@@ -469,7 +469,7 @@ export const LiteralExpression_Expect_IR = {
         operandOriginalPositions: [[24, 7, 24, 19], [24, 30, 24, 44]],
     },
     {
-        text: '%5 = instanceinvoke placeholder2.<@%unk/%unk: .toString()>()',
+        text: '%5 = instanceinvoke placeholder2.<@built-in/lib.es5.d.ts: String.toString()>()',
         operandOriginalPositions: [[25, 29, 25, 41], [25, 29, 25, 41], [25, 29, 25, 41]],
     },
     {

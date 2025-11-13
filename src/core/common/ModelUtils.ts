@@ -426,6 +426,7 @@ export class ModelUtils {
         let property: ArkExport | ArkField | null =
             arkClass.getMethodWithName(name) ??
             arkClass.getStaticMethodWithName(name) ??
+            arkClass.getMethodWithName('Get-' + name) ??
             arkClass.getFieldWithName(name) ??
             arkClass.getStaticFieldWithName(name);
         if (property) {
@@ -440,13 +441,14 @@ export class ModelUtils {
                 return property;
             }
         }
+        const objectClass = arkClass.getDeclaringArkFile().getScene().getSdkGlobal('Object');
+        if (objectClass instanceof ArkClass && arkClass !== objectClass) {
+            return this.findPropertyInClass(name, objectClass);
+        }
         return null;
     }
 
     public static findDeclaredLocal(local: Local, arkMethod: ArkMethod, times: number = 0): Local | null {
-        if (arkMethod.getDeclaringArkFile().getScene().getOptions().isScanAbc) {
-            return null;
-        }
         const name: string = local.getName();
         if (name === THIS_NAME || name.startsWith(TEMP_LOCAL_PREFIX)) {
             return null;
@@ -867,7 +869,7 @@ function getArkFileFormMap(projectName: string, filePath: string, scene: Scene):
     return null;
 }
 
-function findExportInfoInfile(fromInfo: FromInfo, file: ArkFile): ExportInfo | undefined {
+export function findExportInfoInfile(fromInfo: FromInfo, file: ArkFile): ExportInfo | undefined {
     const exportName = fromInfo.isDefault() ? DEFAULT : fromInfo.getOriginName();
     let exportInfo = file.getExportInfoBy(exportName);
     if (exportInfo) {

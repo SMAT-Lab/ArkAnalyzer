@@ -770,7 +770,7 @@ export const SourceAliasTypeWithGenericType = `function aliasTypeWithGenericType
 `;
 
 export const SourceAliasTypeWithClassType = `function aliasTypeWithClassType(): void {
-  type StringClass = ClassWithGeneric<string>;
+  type StringClass = ClassWithGeneric<string><string>;
 }
 `;
 
@@ -994,7 +994,7 @@ class BigIntClass {
       return %5
 
     label2:
-      %6 = instanceinvoke num.<@%unk/%unk: .toString()>()
+      %6 = instanceinvoke num.<@built-in/lib.es5.d.ts: Number.toString(number)>()
       return %6
   }
 
@@ -1022,9 +1022,9 @@ class BigIntClass {
 `;
 
 export const SourceIROfObjectType = `class %dflt {
-  foo(obj: @ES2015/BuiltinClass: Object): @ES2015/BuiltinClass: Object {
+  foo(obj: @built-in/lib.es5.d.ts: Object): @built-in/lib.es5.d.ts: Object {
     label0:
-      obj = parameter0: @ES2015/BuiltinClass: Object
+      obj = parameter0: @built-in/lib.es5.d.ts: Object
       this = this: @type/objectType.ts: %dflt
       staticinvoke <@built-in/lib.es2015.core.d.ts: ObjectConstructor.keys(@built-in/lib.es2015.core.d.ts: %AC3)>(obj)
       instanceinvoke obj.<@built-in/lib.es5.d.ts: Object.toLocaleString()>()
@@ -1034,19 +1034,19 @@ export const SourceIROfObjectType = `class %dflt {
   %dflt(): void {
     label0:
       this = this: @type/objectType.ts: %dflt
-      %0 = new @ES2015/BuiltinClass: Object
-      %0 = instanceinvoke %0.<@ES2015/BuiltinClass: Object.constructor()>()
+      %0 = new @built-in/lib.es5.d.ts: Object
+      %0 = instanceinvoke %0.<@built-in/lib.es5.d.ts: ObjectConstructor.construct-signature(any)>()
       emptyObj = %0
-      a = staticinvoke <@type/objectType.ts: %dflt.foo(@ES2015/BuiltinClass: Object)>(emptyObj)
-      type @type/objectType.ts: %dflt.[static]%dflt()#newObject = @ES2015/BuiltinClass: Object
-      %1 = @ES2015/BuiltinClass: Object.[static]prototype
+      a = staticinvoke <@type/objectType.ts: %dflt.foo(@built-in/lib.es5.d.ts: Object)>(emptyObj)
+      type @type/objectType.ts: %dflt.[static]%dflt()#newObject = @built-in/lib.es5.d.ts: Object
+      %1 = @built-in/lib.es5.d.ts: ObjectConstructor.prototype
       newEmptyObj = staticinvoke <@built-in/lib.es5.d.ts: ObjectConstructor.create(any)>(%1)
-      b = staticinvoke <@type/objectType.ts: %dflt.foo(@ES2015/BuiltinClass: Object)>(newEmptyObj)
+      b = staticinvoke <@type/objectType.ts: %dflt.foo(@built-in/lib.es5.d.ts: Object)>(newEmptyObj)
       return
   }
 }
 class ClassA {
-  fieldA: @ES2015/BuiltinClass: Object
+  fieldA: @built-in/lib.es5.d.ts: Object
 
   constructor(): @type/objectType.ts: ClassA {
     label0:

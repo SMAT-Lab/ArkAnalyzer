@@ -77,7 +77,7 @@ export class DummyMainCreater {
     }
 
     public createDummyMain(): void {
-        const dummyMainFile = new ArkFile(Language.UNKNOWN);
+        const dummyMainFile = new ArkFile(Language.JAVASCRIPT);
         dummyMainFile.setScene(this.scene);
         const dummyMainFileSignature = new FileSignature(this.scene.getProjectName(), '@dummyFile');
         dummyMainFile.setFileSignature(dummyMainFileSignature);

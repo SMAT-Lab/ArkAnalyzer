@@ -14,7 +14,7 @@
  */
 
 import { ErrorEvent, MessageEvents, ThreadWorkerGlobalScope, worker } from '@kit.ArkTS';
-import { Vector } from './Vector';
+import { Vector } from '../Vector';
 
 const workerPort: ThreadWorkerGlobalScope = worker.workerPort;
 

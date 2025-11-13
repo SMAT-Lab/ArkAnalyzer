@@ -23,6 +23,7 @@ import { getColNo, getLineNo, LineCol, setCol, setLine, setLineCol } from '../ba
 import { ArkBaseModel } from './ArkBaseModel';
 import { ArkError } from '../common/ArkError';
 import { NAME_DELIMITER } from '../common/Const';
+import { SdkUtils } from '../common/SdkUtils';
 
 /**
  * @category core/model
@@ -189,7 +190,12 @@ export class ArkNamespace extends ArkBaseModel implements ArkExport {
 
     public addArkClass(arkClass: ArkClass, originName?: string): void {
         const name = originName ?? arkClass.getName();
-        this.classes.set(name, arkClass);
+        const cls = this.classes.get(name);
+        if (!cls) {
+            this.classes.set(name, arkClass);
+        } else {
+            SdkUtils.copyMembers(arkClass, cls);
+        }
         if (!originName && !arkClass.isAnonymousClass()) {
             const index = name.indexOf(NAME_DELIMITER);
             if (index > 0) {

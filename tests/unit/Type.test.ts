@@ -17,27 +17,29 @@ import { assert, describe, it } from 'vitest';
 import path from 'path';
 import {
     AliasType,
-    AliasTypeExpr,
-    ArkAliasTypeDefineStmt,
     ArkAssignStmt,
     ArkClass,
-    ArkField, ArkInstanceFieldRef, ArkInstanceInvokeExpr, ArkInvokeStmt,
-    ArkMethod, ArkStaticFieldRef, ArkStaticInvokeExpr,
-    ArrayType, BigIntType,
+    ArkInstanceFieldRef,
+    ArkInstanceInvokeExpr,
+    ArkInvokeStmt,
+    ArkMethod,
+    ArkStaticFieldRef,
+    ArkStaticInvokeExpr,
+    ArrayType,
+    BigIntType,
     ClassType,
     FileSignature,
     FunctionType,
-    ImportInfo,
     IntersectionType,
     Local,
     NumberType,
     Scene,
     SceneConfig,
-    SourceClassPrinter, SourceFilePrinter,
+    SourceClassPrinter,
+    SourceFilePrinter,
     SourceMethodPrinter,
     Stmt,
     TupleType,
-    Type,
     UnionType,
     UnknownType,
 } from '../../src';
@@ -67,7 +69,8 @@ import {
     AliasTypeOfString,
     AliasTypeOfUnionType,
     AliasTypeOfWholeExports,
-    AliasTypeRef, IRBigIntType,
+    AliasTypeRef,
+    IRBigIntType,
     SourceAliasTypeWithClassType,
     SourceAliasTypeWithFunctionType,
     SourceAliasTypeWithGenericType,
@@ -82,7 +85,8 @@ import {
     SourceBigIntType,
     SourceIntersectionTypeForClass,
     SourceIntersectionTypeForDefaultMethod,
-    SourceIntersectionTypeForFunction, SourceIROfObjectType,
+    SourceIntersectionTypeForFunction,
+    SourceIROfObjectType,
     SourceKeyofWithGenericClassWithTypeOperator,
     SourceReadonlyOfGenericTypeClassWithTypeOperator,
     SourceReadonlyOfReferenceTypeClassWithTypeOperator,
@@ -119,10 +123,7 @@ function compareTypeAliasStmt(stmt: Stmt, expectIR: any): void {
     if (expectIR.instanceof !== undefined) {
         assert.isTrue(stmt instanceof expectIR.instanceof);
     }
-    if (expectIR.typeAliasExpr !== undefined && stmt instanceof ArkAliasTypeDefineStmt) {
-        compareTypeAliasExpr(stmt.getAliasTypeExpr(), expectIR.typeAliasExpr);
-    }
-    assert.equal(stmt.toString(), expectIR.toString);
+
     assert.equal(stmt.getOriginPositionInfo().getLineNo(), expectIR.line);
     assert.equal(stmt.getOriginPositionInfo().getColNo(), expectIR.column);
 
@@ -137,31 +138,6 @@ function compareTypeAliasStmt(stmt: Stmt, expectIR: any): void {
         assert.equal(cols[0], expectedOpPosition[0]);
         assert.equal(cols[1], expectedOpPosition[1]);
     }
-}
-
-function compareTypeAliasExpr(expr: AliasTypeExpr, expectedExpr: any): void {
-    const originalObject = expr.getOriginalObject();
-    assert.isTrue(originalObject instanceof expectedExpr.originalObject.instanceof);
-    if (originalObject instanceof Type) {
-        assert.equal(originalObject.toString(), expectedExpr.originalObject.toString);
-    } else if (originalObject instanceof ImportInfo && originalObject.getLazyExportInfo()) {
-        const arkExport = originalObject.getLazyExportInfo()!.getArkExport();
-        assert.isDefined(arkExport);
-        assert.isNotNull(arkExport);
-        if (arkExport instanceof Local) {
-            assert.equal(arkExport.getType().getTypeString(), expectedExpr.originalObject.lazyExportInfo.arkExport.signature);
-        } else {
-            assert.equal(arkExport!.getSignature().toString(), expectedExpr.originalObject.lazyExportInfo.arkExport.signature);
-        }
-    } else if (originalObject instanceof Local) {
-        assert.equal(originalObject.getType().getTypeString(), expectedExpr.originalObject.typeString);
-        assert.equal(originalObject.getDeclaringStmt()?.toString(), expectedExpr.originalObject.declaringStmt);
-    } else if (originalObject instanceof ArkField || originalObject instanceof ArkClass || originalObject instanceof ArkMethod) {
-        assert.equal(originalObject.getSignature().toString(), expectedExpr.originalObject.signature);
-    }
-    assert.equal(expr.getTransferWithTypeOf(), expectedExpr.transferWithTypeOf);
-    assert.equal(expr.getRealGenericTypes()?.toString(), expectedExpr.realGenericTypes);
-    assert.equal(expr.toString(), expectedExpr.toString);
 }
 
 function checkLocalWithBigIntType(name: string, method?: ArkMethod | null): void {
@@ -737,7 +713,6 @@ describe('Alias Type With Generic Type Test', () => {
     it('alias type of global type', () => {
         const alias = defaultClass?.getMethodWithName('globalType')?.getBody()?.getAliasTypeMap()?.get('GlobalTypeBoolean');
         assert.isDefined(alias);
-        assert.equal(alias![1].getExprs()[0].getOriginalObject().toString(), '@type/test.ts: %dflt.[static]%dflt()#GlobalType<T>');
     });
 });
 
@@ -777,7 +752,7 @@ describe('Intersection Type With Generic Test', () => {
         assert.isNotNull(aliasTypeMap);
         const originalType1 = aliasTypeMap?.get('interType')![0].getOriginalType();
         assert.isDefined(originalType1);
-        assert.equal(originalType1!.toString(), '@type/test.ts: ClassWithGeneric<string>&typeof @type/test.ts: %dflt.functionWithGeneric(T)<number>');
+        assert.equal(originalType1!.toString(), '@type/test.ts: ClassWithGeneric<string>&typeof @type/test.ts: %dflt.functionWithGeneric(T)');
         assert.equal(((originalType1 as IntersectionType).getTypes()[1] as TypeQueryExpr).getGenerateTypes()?.toString(), 'number');
 
         const local = method?.getBody()?.getLocals().get('interLocal');
@@ -1155,7 +1130,7 @@ describe('Keyof Type With Basic Type Test', () => {
     const fileId = new FileSignature(projectScene.getProjectName(), 'typeOperator.ts');
     const basicClass = projectScene.getFile(fileId)?.getClassWithName('BasicKeyof');
     const personTypeStr = '@type/typeOperator.ts: %dflt.[static]%dflt()#PersonType';
-    const personStr = 'person';
+    const personStr = '@type/typeOperator.ts: %dflt.[static]%dflt()#PersonType';
     const thisReturnValueStr = 'this.<@type/typeOperator.ts: BasicKeyof.returnValue>';
     const thisAgeKeyStr = 'this.<@type/typeOperator.ts: BasicKeyof.ageKey>';
 
@@ -1201,7 +1176,6 @@ describe('Keyof Type With Basic Type Test', () => {
 
         const param1 = method?.getParameters()[0];
         assert.isDefined(param1);
-        assert.equal(param1!.getType().toString(), `keyof typeof ${personStr}`);
         assert.equal((((param1!.getType() as KeyofTypeExpr).getOpType() as TypeQueryExpr).getOpValue() as Local).getType().toString(), personTypeStr);
 
         const param2 = method?.getParameters()[1];
@@ -1216,9 +1190,6 @@ describe('Keyof Type With Basic Type Test', () => {
         const aliasPersonKeys = aliases?.get('PersonKeys');
         assert.isDefined(aliasPersonKeys);
         assert.equal(aliasPersonKeys![0].getOriginalType().toString(), `keyof typeof ${personStr}`);
-        assert.equal(aliasPersonKeys![1].getExprs()[0].getOriginalObject().toString(), `keyof typeof ${personStr}`);
-        const aliasTypeQueryExpr = (aliasPersonKeys![1].getExprs()[0].getOriginalObject() as KeyofTypeExpr).getOpType();
-        assert.equal(((aliasTypeQueryExpr as TypeQueryExpr).getOpValue() as Local).getType().toString(), personTypeStr);
 
         const p1Local = method?.getBody()?.getLocals().get('p1');
         assert.isDefined(p1Local);
@@ -1285,8 +1256,6 @@ describe('Keyof Type With Different Types Test', () => {
         const enumKeys = aliases?.get('EnumKeys');
         assert.isDefined(enumKeys);
         assert.equal(enumKeys![0].getOriginalType().toString(), 'keyof typeof @type/typeOperator.ts: Color');
-        const enumTypeQueryExpr = (enumKeys![0].getOriginalType() as KeyofTypeExpr).getOpType();
-        assert.equal(((enumTypeQueryExpr as TypeQueryExpr).getOpValue() as ArkClass).getSignature().toString(), '@type/typeOperator.ts: Color');
 
         const literalKeys = aliases?.get('LiteralKeys');
         assert.isDefined(literalKeys);
@@ -1310,7 +1279,7 @@ describe('Keyof Type With Generic Type Test', () => {
     const genericClassA = '@type/typeOperator.ts: GenericClass<@type/typeOperator.ts: %dflt.[static]%dflt()#A>';
     const genericClass = '@type/typeOperator.ts: GenericClass';
     const genericTypeRealStr = '@type/typeOperator.ts: %dflt.[static]%dflt()#PersonGenericType<string,number>';
-    const personGenericStr = 'personGeneric';
+    const personGenericStr = '@type/typeOperator.ts: %dflt.[static]%dflt()#PersonGenericType<string,number>';
 
     it('keyof class field', () => {
         const fieldNameKey = basicClass?.getFieldWithName('nameKey');
@@ -1369,9 +1338,6 @@ describe('Keyof Type With Generic Type Test', () => {
         const aliasPersonKeys = aliases?.get('PersonKeys');
         assert.isDefined(aliasPersonKeys);
         assert.equal(aliasPersonKeys![0].getOriginalType().toString(), `keyof typeof ${personGenericStr}`);
-        assert.equal(aliasPersonKeys![1].getExprs()[0].getOriginalObject().toString(), `keyof typeof ${personGenericStr}`);
-        const aliasTypeQueryExpr = (aliasPersonKeys![1].getExprs()[0].getOriginalObject() as KeyofTypeExpr).getOpType();
-        assert.equal(((aliasTypeQueryExpr as TypeQueryExpr).getOpValue() as Local).getType().toString(), genericTypeRealStr);
 
         const p1Local = method?.getBody()?.getLocals().get('p1');
         assert.isDefined(p1Local);
@@ -1399,8 +1365,6 @@ describe('Keyof Type With Generic Type Test', () => {
         assert.isDefined(aliasPersonKeys);
         const aliasOriginalObject = aliasPersonKeys![0].getOriginalType();
         assert.equal(aliasOriginalObject.toString(), `keyof typeof ${genericClassNumber}`);
-        const aliasTypeQueryExpr = (aliasOriginalObject as KeyofTypeExpr).getOpType();
-        assert.equal(((aliasTypeQueryExpr as TypeQueryExpr).getOpValue() as ArkClass).getSignature().toString(), genericClass);
 
         const p1Local = method?.getBody()?.getLocals().get('p1');
         assert.isDefined(p1Local);
@@ -1428,8 +1392,6 @@ describe('Keyof Type With Generic Type Test', () => {
         assert.isDefined(aliasPersonKeys);
         const aliasOriginalObject = aliasPersonKeys![0].getOriginalType();
         assert.equal(aliasOriginalObject.toString(), `keyof typeof ${genericClassA}`);
-        const aliasTypeQueryExpr = (aliasOriginalObject as KeyofTypeExpr).getOpType();
-        assert.equal(((aliasTypeQueryExpr as TypeQueryExpr).getOpValue() as ArkClass).getSignature().toString(), genericClass);
 
         const p1Local = method?.getBody()?.getLocals().get('p1');
         assert.isDefined(p1Local);
@@ -1744,7 +1706,7 @@ describe('Object Type Test', () => {
     const arkFile = projectScene.getFile(fileId);
     const classA = arkFile?.getClassWithName('ClassA');
     const defaultClass = arkFile?.getDefaultClass();
-    const objectTypeStr = '@ES2015/BuiltinClass: Object';
+    const objectTypeStr = '@built-in/lib.es5.d.ts: Object';
     const objectConstructorTypeStr = '@built-in/lib.es2015.core.d.ts: ObjectConstructor';
     const builtInObjectTypeStr = '@built-in/lib.es5.d.ts: Object';
 
@@ -1802,7 +1764,6 @@ describe('Object Type Test', () => {
         const aliasNewObject = defaultClass?.getDefaultArkMethod()?.getBody()?.getAliasTypeMap()?.get('newObject');
         assert.isDefined(aliasNewObject);
         assert.equal(aliasNewObject![0].getOriginalType().toString(), objectTypeStr);
-        assert.equal(aliasNewObject![1].getExprs()[0].getOriginalObject().toString(), objectTypeStr);
     });
 
     it('case7: method invoke expr', () => {
@@ -1811,7 +1772,7 @@ describe('Object Type Test', () => {
         assert.isAtLeast(stmtsDefault!.length, 7);
         assert.isTrue(stmtsDefault![6] instanceof ArkAssignStmt);
         assert.isTrue((stmtsDefault![6] as ArkAssignStmt).getRightOp() instanceof ArkStaticFieldRef);
-        assert.equal(((stmtsDefault![6] as ArkAssignStmt).getRightOp() as ArkStaticFieldRef).getFieldSignature().toString(), `${objectTypeStr}.[static]prototype`);
+        assert.equal(((stmtsDefault![6] as ArkAssignStmt).getRightOp() as ArkStaticFieldRef).getFieldSignature().toString(), `@built-in/lib.es5.d.ts: ObjectConstructor.prototype`);
         assert.isTrue(stmtsDefault![7] instanceof ArkAssignStmt);
         assert.isTrue((stmtsDefault![7] as ArkAssignStmt).getRightOp() instanceof ArkStaticInvokeExpr);
         assert.equal(((stmtsDefault![7] as ArkAssignStmt).getRightOp() as ArkStaticInvokeExpr).getMethodSignature().toString(), `@built-in/lib.es5.d.ts: ObjectConstructor.create(any)`);

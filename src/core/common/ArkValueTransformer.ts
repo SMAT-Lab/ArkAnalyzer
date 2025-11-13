@@ -285,11 +285,9 @@ export class ArkValueTransformer {
         const anonymousClass = new ArkClass();
         if (declaringArkNamespace) {
             buildNormalArkClassFromArkNamespace(objectLiteralExpression, declaringArkNamespace, anonymousClass, this.sourceFile, this.declaringMethod);
-            declaringArkNamespace.addArkClass(anonymousClass);
         } else {
             const declaringArkFile = declaringArkClass.getDeclaringArkFile();
             buildNormalArkClassFromArkFile(objectLiteralExpression, declaringArkFile, anonymousClass, this.sourceFile, this.declaringMethod);
-            declaringArkFile.addArkClass(anonymousClass);
         }
 
         const objectLiteralExpressionPosition = FullPosition.buildFromNode(objectLiteralExpression, this.sourceFile);
@@ -437,11 +435,9 @@ export class ArkValueTransformer {
         const newClass = new ArkClass();
         if (declaringArkNamespace) {
             buildNormalArkClassFromArkNamespace(classExpression, declaringArkNamespace, newClass, this.sourceFile, this.declaringMethod);
-            declaringArkNamespace.addArkClass(newClass);
         } else {
             const declaringArkFile = declaringArkClass.getDeclaringArkFile();
             buildNormalArkClassFromArkFile(classExpression, declaringArkFile, newClass, this.sourceFile, this.declaringMethod);
-            declaringArkFile.addArkClass(newClass);
         }
         const classValue = this.addNewLocal(newClass.getName(), new ClassType(newClass.getSignature()));
         return {
@@ -770,7 +766,7 @@ export class ArkValueTransformer {
         } else {
             // TODO: deal with ArkStaticFieldRef
             const fieldSignature = ArkSignatureBuilder.buildFieldSignatureFromFieldName(argumentValue.toString());
-            elementAccessExpr = new ArkInstanceFieldRef(baseValue as Local, fieldSignature);
+            elementAccessExpr = new ArkInstanceFieldRef(baseValue as Local, fieldSignature, true);
         }
         // reserve positions for field name
         const exprPositions = [FullPosition.buildFromNode(elementAccessExpression, this.sourceFile), ...basePositions, ...arguPositions];

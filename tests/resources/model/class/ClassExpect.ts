@@ -333,7 +333,7 @@ export const EnumClass2 = `enum TestEnum2 {
     label0:
       this = this: @class/ClassWithOtherCategory.ts: TestEnum2
       @class/ClassWithOtherCategory.ts: TestEnum2.[static]A = a
-      %0 = instanceinvoke str.<@%unk/%unk: .toString()>()
+      %0 = instanceinvoke str.<@built-in/lib.es5.d.ts: String.toString()>()
       %1 = 'abc ' + %0
       @class/ClassWithOtherCategory.ts: TestEnum2.[static]B = %1
       %2 = 2 + 2

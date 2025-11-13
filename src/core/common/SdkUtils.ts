@@ -17,7 +17,7 @@ import { ArkFile } from '../model/ArkFile';
 import { ArkExport, ExportInfo } from '../model/ArkExport';
 import { COMPONENT_ATTRIBUTE } from './EtsConst';
 import { GLOBAL_THIS_NAME, THIS_NAME } from './TSConst';
-import { TEMP_LOCAL_PREFIX } from './Const';
+import { DEFAULT_ARK_METHOD_NAME, TEMP_LOCAL_PREFIX } from './Const';
 import { ArkClass, ClassCategory } from '../model/ArkClass';
 import { LocalSignature } from '../model/ArkSignature';
 import { Local } from '../base/Local';
@@ -149,6 +149,23 @@ export class SdkUtils {
                 this.loadClass(globalMap, cls);
             }
         });
+        file.getNamespaces().forEach(ns => {
+            const oldNs = globalMap.get(ns.getName());
+            if (oldNs instanceof ArkNamespace && oldNs !== ns) {
+                SdkUtils.copyNamespace(ns, oldNs);
+            }
+        });
+    }
+
+    private static copyNamespace(ns: ArkNamespace, oldNs: ArkNamespace): void {
+        ns.getClasses().forEach(cls => {
+            const oldCls = oldNs.getClassWithName(cls.getName());
+            if (oldCls) {
+                this.copyMembers(cls, oldCls);
+            } else {
+                oldNs.addArkClass(cls);
+            }
+        });
     }
 
     public static loadAPI(api: ArkExport, globalMap: Map<string, ArkExport>, override: boolean = false): void {
@@ -222,12 +239,15 @@ export class SdkUtils {
         }
     }
 
-    private static copyMembers(from: ArkClass, to: ArkClass): void {
+    public static copyMembers(from: ArkClass, to: ArkClass): void {
         from.getMethods().forEach(method => {
             const dist = method.isStatic() ? to.getStaticMethodWithName(method.getName()) : to.getMethodWithName(method.getName());
             const distSignatures = dist?.getDeclareSignatures();
             if (distSignatures) {
                 method.getDeclareSignatures()?.forEach(x => distSignatures.push(x));
+            } else if (method.getName() === DEFAULT_ARK_METHOD_NAME && dist) {
+                method.getBody()?.getLocals().forEach(local => dist.getBody()?.getLocals().set(local.getName(), local));
+                method.getBody()?.getAliasTypeMap()?.forEach(type => dist.getBody()?.getAliasTypeMap()?.set(type[0].getName(), type));
             } else {
                 to.addMethod(method);
             }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -20,6 +20,8 @@ import { IRInference } from '../common/IRInference';
 import { ArkBaseModel } from '../model/ArkBaseModel';
 import { ModelUtils } from '../common/ModelUtils';
 import { ArkClass } from '../model/ArkClass';
+import { Local } from './Local';
+import { TypeInference } from '../common/TypeInference';
 
 /**
  * abstract type expr represents the type operations of types or values.
@@ -104,7 +106,7 @@ export class TypeQueryExpr extends AbstractTypeExpr {
         if (opValue instanceof ArkBaseModel) {
             return ModelUtils.parseArkBaseModel2Type(opValue) ?? UnknownType.getInstance();
         }
-        return opValue.getType();
+        return this.genericTypes ? TypeInference.replaceTypeWithReal(opValue.getType(), this.genericTypes) : opValue.getType();
     }
 
     public getTypeString(): string {
@@ -113,6 +115,9 @@ export class TypeQueryExpr extends AbstractTypeExpr {
         const genericStr = gTypes && gTypes.length > 0 ? `<${gTypes.join(',')}>` : '';
         if (opValue instanceof ArkClass || opValue instanceof ArkMethod) {
             return `typeof ${opValue.getSignature().toString()}${genericStr}`;
+        } else if (opValue instanceof Local) {
+            const type = TypeInference.replaceTypeWithReal(opValue.getType(), gTypes);
+            return `typeof ${type.toString()}`;
         }
         return `typeof ${opValue.toString()}${genericStr}`;
     }

@@ -111,7 +111,6 @@ function buildArkFile(arkFile: ArkFile, astRoot: ts.SourceFile): void {
             let cls: ArkClass = new ArkClass();
 
             buildNormalArkClassFromArkFile(child, arkFile, cls, astRoot);
-            arkFile.addArkClass(cls);
 
             if (cls.isExported()) {
                 arkFile.addExportInfo(buildExportInfo(cls, arkFile, LineColPosition.buildFromNode(child, astRoot)));

@@ -100,7 +100,6 @@ function buildNamespaceMembers(node: ts.ModuleBlock, namespace: ArkNamespace, so
             let cls: ArkClass = new ArkClass();
 
             buildNormalArkClassFromArkNamespace(child, namespace, cls, sourceFile);
-            namespace.addArkClass(cls);
 
             if (cls.isExported()) {
                 namespace.addExportInfo(buildExportInfo(cls, namespace.getDeclaringArkFile(), LineColPosition.buildFromNode(child, sourceFile)));

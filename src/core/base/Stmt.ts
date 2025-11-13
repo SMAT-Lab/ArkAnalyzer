@@ -66,14 +66,14 @@ export abstract class Stmt {
      * @returns The definition in 3AC (may be a **null**).
      * @example
      * 1. get the def in stmt.
-    ```typescript
-    for (const block of this.blocks) {
-    for (const stmt of block.getStmts()) {
-        const defValue = stmt.getDef();
-        ...
-        }
-    }
-    ```
+     ```typescript
+     for (const block of this.blocks) {
+     for (const stmt of block.getStmts()) {
+     const defValue = stmt.getDef();
+     ...
+     }
+     }
+     ```
      */
     public getDef(): Value | null {
         return null;
@@ -105,13 +105,13 @@ export abstract class Stmt {
      * @returns The CFG (i.e., control flow graph) of an {@link ArkBody} in which the statement is.
      * @example
      * 1. get the ArkFile based on stmt.
-    ```typescript
-    const arkFile = stmt.getCfg()?.getDeclaringMethod().getDeclaringArkFile();
-    ```
-    2. get the ArkMethod based on stmt.
-    ```typescript
-    let sourceMethod: ArkMethod = stmt.getCfg()?.getDeclaringMethod();
-    ```
+     ```typescript
+     const arkFile = stmt.getCfg()?.getDeclaringMethod().getDeclaringArkFile();
+     ```
+     2. get the ArkMethod based on stmt.
+     ```typescript
+     let sourceMethod: ArkMethod = stmt.getCfg()?.getDeclaringMethod();
+     ```
      */
     public getCfg(): Cfg {
         return this.cfg;
@@ -144,15 +144,15 @@ export abstract class Stmt {
     }
 
     /**
-     * Returns the method's invocation expression (including method signature and its arguments) 
+     * Returns the method's invocation expression (including method signature and its arguments)
      * in the current statement. An **undefined** will be returned if there is no method used in this statement.
      * @returns  the method's invocation expression from the statement. An **undefined** will be returned if there is
      *     no method can be found in this statement.
      * @example
      * 1. get invoke expr based on stmt.
-    ```typescript
-    let invoke = stmt.getInvokeExpr();
-    ```
+     ```typescript
+     let invoke = stmt.getInvokeExpr();
+     ```
      */
     public getInvokeExpr(): AbstractInvokeExpr | undefined {
         for (const use of this.getUses()) {
@@ -169,11 +169,11 @@ export abstract class Stmt {
      * @example
      * 1. Traverse expression of statement.
 
-    ```typescript
-    for (const expr of stmt.getExprs()) {
-        ...
-    }
-    ```
+     ```typescript
+     for (const expr of stmt.getExprs()) {
+     ...
+     }
+     ```
      */
     public getExprs(): AbstractExpr[] {
         let exprs: AbstractExpr[] = [];
@@ -252,23 +252,23 @@ export abstract class Stmt {
     }
 
     /**
-     * Returns the original position of the statement. 
-     * The position consists of two parts: line number and column number. 
-     * In the source file, the former (i.e., line number) indicates which line the statement is in, 
-     * and the latter (i.e., column number) indicates the position of the statement in the line. 
-     * The position is described as `LineColPosition(lineNo,colNum)` in ArkAnalyzer, 
+     * Returns the original position of the statement.
+     * The position consists of two parts: line number and column number.
+     * In the source file, the former (i.e., line number) indicates which line the statement is in,
+     * and the latter (i.e., column number) indicates the position of the statement in the line.
+     * The position is described as `LineColPosition(lineNo,colNum)` in ArkAnalyzer,
      * and its default value is LineColPosition(-1,-1).
      * @returns The original location of the statement.
      * @example
      * 1. Get the stmt position info to make some condition judgements.
-    ```typescript
-    for (const stmt of stmts) {
-        if (stmt.getOriginPositionInfo().getLineNo() === -1) {
-            stmt.setOriginPositionInfo(originalStmt.getOriginPositionInfo());
-            this.stmtToOriginalStmt.set(stmt, originalStmt);
-        }
-    }
-    ```
+     ```typescript
+     for (const stmt of stmts) {
+     if (stmt.getOriginPositionInfo().getLineNo() === -1) {
+     stmt.setOriginPositionInfo(originalStmt.getOriginPositionInfo());
+     this.stmtToOriginalStmt.set(stmt, originalStmt);
+     }
+     }
+     ```
      */
     public getOriginPositionInfo(): LineColPosition {
         return this.originalPosition;
@@ -337,15 +337,15 @@ export class ArkAssignStmt extends Stmt {
     }
 
     /**
-     * Returns the right operand of the assigning statement. 
+     * Returns the right operand of the assigning statement.
      * @returns The right operand of the assigning statement.
      * @example
      * 1. If the statement is `a=b;`, the right operand is `b`; if the statement is `dd = cc + 5;`, the right operand
      *     is `cc + 5`.
      * 2. Get the rightOp from stmt.
-    ```typescript
-    const rightOp = stmt.getRightOp();
-    ```
+     ```typescript
+     const rightOp = stmt.getRightOp();
+     ```
      */
     public getRightOp(): Value {
         return this.rightOp;
@@ -419,9 +419,9 @@ export class ArkIfStmt extends Stmt {
      * 1. When a statement is `if (a > b)`, the operands are `a` and `b`, the operator is `<`. Therefore, the condition
      *     expression is `a > b`.
      * 2. get a conditon expr from a condition statement.
-    ```typescript
+     ```typescript
      let expr = (this.original as ArkIfStmt).getConditionExpr();
-    ```
+     ```
      */
     public getConditionExpr(): ArkConditionExpr {
         return this.conditionExpr;
@@ -575,8 +575,11 @@ export class ArkAliasTypeDefineStmt extends Stmt {
         return str;
     }
 
-    public getExprs(): AliasTypeExpr[] {
-        return [this.getAliasTypeExpr()];
+    public getUses(): Value[] {
+        const values: Value[] = [];
+        this.getTypeExprs().forEach(e => e.getUses().forEach(use => values.push(use)));
+        values.push(this.aliasTypeExpr);
+        return values;
     }
 
     public getTypeExprs(): AbstractTypeExpr[] {
