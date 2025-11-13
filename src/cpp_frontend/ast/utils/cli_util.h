@@ -18,6 +18,8 @@
 #include <string>
 #include <vector>
 
+extern std::vector<std::string> g_user_include_dirs_ccjson;
+
 struct CommandLineOptions {
     std::string inputFile;
     std::string outputFile;

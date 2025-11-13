@@ -74,7 +74,7 @@ export class IRUtils {
     }
 
     public static isTempLocal(value: Value): boolean {
-        return value instanceof Local && value.getName().startsWith(NAME_PREFIX);
+        return value instanceof Local && (value.getName() ?? '').startsWith(NAME_PREFIX);
     }
 
     public static findOperandIdx(stmt: Stmt, operand: Value): number {

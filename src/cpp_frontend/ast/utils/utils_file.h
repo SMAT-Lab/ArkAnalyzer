@@ -37,6 +37,7 @@ inline const std::vector<std::string> kDenyPrefixes = {
     "/sdk/default/",
     "/llvm/include/",
     "/libcxx/include/",
+    "/usr/include/",
     "/usr/local/include/",
     "Windows Kits",
     "Microsoft Visual Studio"

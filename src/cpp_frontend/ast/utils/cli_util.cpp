@@ -26,6 +26,7 @@
 
 using json = nlohmann::json;
 namespace fs = std::filesystem;
+std::vector<std::string> g_user_include_dirs_ccjson;
 #define FOUR 4
 #define THREE 3
 #define TWO 2
@@ -384,6 +385,10 @@ void FilterAndNormalizeArgs(const std::vector<std::string>& argv,
         if (arg.empty() || IsFilterArgs(arg, normalizeArgs, entryNorm, inputNorm, static_cast<int>(i)) ||
             IsNormalizeArgs(arg, normalizeArgs, outArgs)) {
             continue;
+        }
+        // Add the - I information in ccjson
+        if (arg.find("-I") == 0) {
+            g_user_include_dirs_ccjson.push_back(arg.substr(2));
         }
         // Pass-through: anything not filtered/normalized is forwarded as-is.
         outArgs.push_back(std::move(arg));
