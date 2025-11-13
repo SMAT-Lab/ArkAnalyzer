@@ -208,10 +208,7 @@ export class AstUtils {
             'friend',
             'constexpr',
             'volatile',
-            'extern',
-            'register',
-            'thread_local',
-            'typedef',
+            'noexcept',
         ];
         // Construct the regular expression; \b ensures whole-word matching
         const pattern = new RegExp(`\\b(${cppModifiers.join('|')})\\b`, 'g');
