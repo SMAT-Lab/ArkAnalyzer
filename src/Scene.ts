@@ -237,6 +237,10 @@ export class Scene {
         });
         if (this.buildStage < SceneBuildStage.SDK_INFERRED) {
             this.sdkArkFilesMap.forEach(file => {
+                // CXXTodo: C++ does not handle SDK files.
+                if (file.getLanguage() === Language.CXX) {
+                    return;
+                }
                 InferenceManager.getInstance().getInference(file.getLanguage()).doInfer(file);
                 SdkUtils.mergeGlobalAPI(file, this.sdkGlobalMap);
             });

@@ -1435,7 +1435,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         } else {
             const operatorToken: string = (callExpression.name ?? '').replace('operator', '');
             const operator = ArkCxxIRTransformer.cxxTokenToUnaryOperator(operatorToken);
-            if (operator) {
+            if (operator && innerStmts.length > 0) {
                 elementAccessExpr = new ArkUnopExpr(innerStmts[0].value, operator);
             } else {
                 elementAccessExpr = CxxValueUtil.getUndefinedConst();

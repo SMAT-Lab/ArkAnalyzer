@@ -21,7 +21,7 @@ describe('SCCTest', () => {
     config.buildFromProjectDir('./tests/resources_cpp/scc');
     let projectScene: Scene = new Scene();
     projectScene.buildSceneFromProjectDir(config);
-    projectScene.inferTypes();
+    projectScene.inferTypesOld();
 
     let cg = new CallGraph(projectScene);
     let cgBuilder = new CallGraphBuilder(cg, projectScene);
