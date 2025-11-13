@@ -620,7 +620,8 @@ static bool IsSystemishByPath(const std::string& fileName)
         return false;
     }
     const std::string norm = CanonicalCached(fileName);
-    if (norm.find("MacOSX") != std::string::npos) {
+    if (norm.find("MacOSX") != std::string::npos || norm.find("DevEco Studio") != std::string::npos ||
+        norm.find("command-line-tools") != std::string::npos) {
         return false;
     }
     for (const auto& p : kDenyPrefixes) {
