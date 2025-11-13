@@ -91,7 +91,7 @@ export const BUILT_IN_EXPECT_CASE4_LINUX = {
             stmts: [
                 'this = this: @builtInAndSTLFunc/builtInAndSTLFunction.cpp: %dflt',
                 '%0 = &g_counter',
-                'staticinvoke <@%unk/%unk: .undefined()>(__c11_atomic_fetch_add, %0, 1, 5)',
+                'staticinvoke <@%unk/%unk: .undefined()>(__c11_atomic_fetch_add, %0, 1)',
                 'return',
             ],
             preds: [],
