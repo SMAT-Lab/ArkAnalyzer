@@ -39,7 +39,7 @@ const FUNC_PTR_REGEX = /\(\s*\*\s*(?:\[\s*[^]]*\s*\])?\s*\)\s*\(\s*[^)]*\s*\)/;
 
 function extractCommonModifiers(node: CxxAstNode): number {
     let modifiers: number = 0;
-    if (!node.modifiers){
+    if (!node.modifiers) {
         return modifiers;
     }
     for (let i = 0; i < node.modifiers.length; i++) {
