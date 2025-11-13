@@ -2441,6 +2441,13 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
     public declStmtToValueAndStmts(variableDeclarationList: CxxAstNode): ValueAndStmts {
         const stmts: Stmt[] = [];
         let isConst = variableDeclarationList.type!.qualType.toString().startsWith('const ');
+        if (variableDeclarationList.inner.length == 0 && variableDeclarationList.kind.toString() == "DeclStmt") {
+            return {
+                value: CxxValueUtil.getUndefinedConst(),
+                valueOriginalPositions: [FullPosition.DEFAULT],
+                stmts: stmts,
+            };
+        }
         const { stmts: declaredStmts } = this.cxxVariableDeclarationToValueAndStmts(variableDeclarationList, isConst);
         declaredStmts.forEach(s => stmts.push(s));
         return {

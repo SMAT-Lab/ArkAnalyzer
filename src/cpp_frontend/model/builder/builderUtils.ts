@@ -42,7 +42,7 @@ function extractCommonModifiers(node: CxxAstNode): number {
     if (!node.modifiers){
         return modifiers;
     }
-    for (let i = 0; i < node.modifiers.length; i++){
+    for (let i = 0; i < node.modifiers.length; i++) {
         if (Object.prototype.hasOwnProperty.call(node, 'modifiers')) {
             modifiers |= modifierKind2CxxEnum(node.modifiers[i]);
         }

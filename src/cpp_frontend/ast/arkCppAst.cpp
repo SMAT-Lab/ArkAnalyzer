@@ -614,7 +614,7 @@ static const std::string& CanonicalCached(const std::string& path)
 
 // Path fallback: some Windows/MSVC headers are not marked as system headers
 // under certain configurations. Use kDenyPrefixes (should include Windows Kits / MSVC / SDK prefixes).
-static inline bool IsSystemishByPath(const std::string& fileName)
+static bool IsSystemishByPath(const std::string& fileName)
 {
     if (fileName.empty()) {
         return false;
@@ -1447,7 +1447,7 @@ static OriginInfo ComputeOriginInfo(CXCursor cursor)
     oi.fileName = spellFile ? Cx2Str(clang_getFileName(spellFile)) : "";
 
     // If there is no location information, search through the defined cursor
-    if (oi.fileName.empty()){
+    if (oi.fileName.empty()) {
         CXCursor definition = clang_getCursorDefinition(cursor);
         loc = clang_getCursorLocation(definition);
         clang_getSpellingLocation(loc, &spellFile, nullptr, nullptr, nullptr);
@@ -1668,7 +1668,7 @@ int main(int argc, char** argv)
 
     g_user_include_dirs = opts.userIncludeDirs;
     g_user_include_dirs.insert(g_user_include_dirs.end(),
-        g_user_include_dirs_ccjson.begin(), g_user_include_dirs_ccjson.end());
+        g_userIncludeDirsCcjson.begin(), g_userIncludeDirsCcjson.end());
     CXIndex index = clang_createIndex(0, 0);
     auto t1 = std::chrono::high_resolution_clock::now();
     CXTranslationUnit unit = createTranslationUnit(index, opts, clangArgs.cstrArgs);
