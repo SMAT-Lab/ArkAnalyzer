@@ -635,7 +635,7 @@ export const BasicOuterMethod2_Expect_IR = {
                 declaringStmt: null,
                 usedStmts: [
                     {
-                        text: 'instanceinvoke %0.<@%unk/%unk: .forEach()>(%AM0$basicOuterMethod2)'
+                        text: 'instanceinvoke %0.<@built-in/lib.es5.d.ts: Array.forEach(@built-in/lib.es5.d.ts: Array.%AM4(T, number, T[]), any)>(%AM0$basicOuterMethod2)'
                     }
                 ]
             }
@@ -651,7 +651,7 @@ export const BasicOuterMethod2_Expect_IR = {
                 text: '%0 = this.<@function/ClosureParamsTest.ts: BasicTest.listeners>',
             },
             {
-                text: 'instanceinvoke %0.<@%unk/%unk: .forEach()>(%AM0$basicOuterMethod2)',
+                text: 'instanceinvoke %0.<@built-in/lib.es5.d.ts: Array.forEach(@built-in/lib.es5.d.ts: Array.%AM4(T, number, T[]), any)>(%AM0$basicOuterMethod2)',
             },
             {
                 text: 'return',
@@ -1223,7 +1223,7 @@ export const ClosureClassMethod_Expect_IR = {
                         text: 'count = count + item'
                     },
                     {
-                        text: '%5 = instanceinvoke count.<@%unk/%unk: .toString()>()'
+                        text: '%5 = instanceinvoke count.<@built-in/lib.es5.d.ts: String.toString()>()'
                     }
                 ]
             },
@@ -1346,7 +1346,7 @@ export const ClosureNamespaceFunction_Expect_IR = {
                 },
                 usedStmts: [
                     {
-                        text: '%1 = instanceinvoke outerInput.<@%unk/%unk: .toString()>()'
+                        text: '%1 = instanceinvoke outerInput.<@built-in/lib.es5.d.ts: Number.toString(number)>()'
                     }
                 ]
             },
@@ -2097,7 +2097,7 @@ export const MultipleOuterMethod2_Expect_IR = {
                 declaringStmt: null,
                 usedStmts: [
                     {
-                        text: 'instanceinvoke %0.<@%unk/%unk: .forEach()>(%AM1$outerMethod2)'
+                        text: 'instanceinvoke %0.<@built-in/lib.es5.d.ts: Array.forEach(@built-in/lib.es5.d.ts: Array.%AM4(T, number, T[]), any)>(%AM1$outerMethod2)'
                     }
                 ]
             }
@@ -2117,7 +2117,7 @@ export const MultipleOuterMethod2_Expect_IR = {
                 text: '%0 = this.<@function/ClosureParamsTest.ts: MultipleNestedTest.listeners>',
             },
             {
-                text: 'instanceinvoke %0.<@%unk/%unk: .forEach()>(%AM1$outerMethod2)',
+                text: 'instanceinvoke %0.<@built-in/lib.es5.d.ts: Array.forEach(@built-in/lib.es5.d.ts: Array.%AM4(T, number, T[]), any)>(%AM1$outerMethod2)',
             },
             {
                 text: 'return',
@@ -2164,7 +2164,7 @@ export const MultipleAnonymousMethod1_Expect_IR = {
                 },
                 usedStmts: [
                     {
-                        text: 'instanceinvoke listener.<@%unk/%unk: .forEach()>(%AM2$%AM1$outerMethod2)'
+                        text: 'instanceinvoke listener.<@built-in/lib.es5.d.ts: Array.forEach(@built-in/lib.es5.d.ts: Array.%AM4(T, number, T[]), any)>(%AM2$%AM1$outerMethod2)'
                     }
                 ]
             },
@@ -2180,7 +2180,7 @@ export const MultipleAnonymousMethod1_Expect_IR = {
                 declaringStmt: null,
                 usedStmts: [
                     {
-                        text: 'instanceinvoke listener.<@%unk/%unk: .forEach()>(%AM2$%AM1$outerMethod2)'
+                        text: 'instanceinvoke listener.<@built-in/lib.es5.d.ts: Array.forEach(@built-in/lib.es5.d.ts: Array.%AM4(T, number, T[]), any)>(%AM2$%AM1$outerMethod2)'
                     }
                 ]
             }

@@ -121,7 +121,7 @@ export function buildArkMethodFromArkClass(methodNode: CxxAstNode, declaringClas
     }
     handleFunctionTemplate(methodNode, mtd, sourceFile);
     mtd.setCode(methodNode.code);
-    mtd.setModifiers(buildModifiers(methodNode));
+    mtd.addModifier(buildModifiers(methodNode));
     if (methodNode.kind === 'FriendDecl' && methodNode.inner.length > 0) {
         methodNode = methodNode.inner[0];
     }

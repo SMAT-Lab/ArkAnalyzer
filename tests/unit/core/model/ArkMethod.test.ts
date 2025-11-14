@@ -317,7 +317,7 @@ describe('Nested Method with Return Statement', () => {
     assert.isNotNull(method);
     const stmts = method?.getBody()?.getCfg().getStmts();
     assert.isDefined(stmts);
-    expect((stmts as Stmt[])[2].toString()).toEqual('%0 = instanceinvoke param.<@%unk/%unk: .toString()>()');
+    expect((stmts as Stmt[])[2].toString()).toEqual('%0 = instanceinvoke param.<@built-in/lib.es5.d.ts: String.toString()>()');
     const local = method?.getBody()?.getLocals().get('param');
     assert.isDefined(local);
     expect((local as Local).getType().toString()).toEqual('string');

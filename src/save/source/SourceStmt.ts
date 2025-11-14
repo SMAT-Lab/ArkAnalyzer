@@ -39,7 +39,7 @@ import {
     ArkThrowStmt,
     Stmt
 } from '../../core/base/Stmt';
-import { AliasType, ClassType, Type } from '../../core/base/Type';
+import { AliasType, ClassType, FunctionType, Type } from '../../core/base/Type';
 import { Value } from '../../core/base/Value';
 import { BasicBlock } from '../../core/graph/BasicBlock';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
@@ -829,6 +829,10 @@ export class SourceTypeAliasStmt extends SourceStmt {
         if (typeObject instanceof Type) {
             if (typeObject instanceof AliasType) {
                 this.setText(`${modifier}type ${this.aliasType.getName()}${genericTypes} = ${typeOf}${typeObject.getName()}${realGenericTypes};`);
+            } else if (typeObject instanceof ClassType) {
+                this.setText(`${modifier}type ${this.aliasType.getName()}${genericTypes} = ${typeOf}${this.transformer.typeToString(typeObject)};`);
+            } else if (typeObject instanceof FunctionType) {
+                this.setText(`${modifier}type ${this.aliasType.getName()}${genericTypes} = ${typeOf}${typeObject.getMethodSignature().getMethodSubSignature().getMethodName()}${realGenericTypes};`);
             } else {
                 this.setText(
                     `${modifier}type ${this.aliasType.getName()}${genericTypes} = ${typeOf}${this.transformer.typeToString(typeObject)}${realGenericTypes};`

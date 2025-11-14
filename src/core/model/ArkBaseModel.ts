@@ -61,6 +61,12 @@ export enum ModifierType {
     FRIEND = 1 << 22,
     VIRTUAL = 1 << 23,
     PURE_VIRTUAL = 1 << 24,
+    INLINE = 1 << 25,
+    MUTABLE = 1 << 26,
+    EXPLICIT = 1 << 27,
+    CONSTEXPR = 1 << 28,
+    VOLATILE = 1 << 29,
+    NOEXCEPT = 1 << 30,
 }
 
 export const MODIFIER_TYPE_MASK = 0xffff;
@@ -115,6 +121,12 @@ const MODIFIER_KIND_2_ENUM_CXX = new Map<string, ModifierType>([
     ['pure virtual', ModifierType.PURE_VIRTUAL],
     // In C++, a class with pure virtual functions is an abstract class. This sets a modifier to correspond to the abstract class in TypeScript.
     ['abstract', ModifierType.ABSTRACT],
+    ['inline', ModifierType.INLINE],
+    ['mutable', ModifierType.MUTABLE],
+    ['explicit', ModifierType.EXPLICIT],
+    ['constexpr', ModifierType.CONSTEXPR],
+    ['volatile', ModifierType.VOLATILE],
+    ['noexcept', ModifierType.NOEXCEPT],
 ]);
 
 const MODIFIER_KIND_2_ENUM = new Map<ts.SyntaxKind, ModifierType>([

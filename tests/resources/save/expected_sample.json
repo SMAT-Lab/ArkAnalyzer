@@ -1727,10 +1727,10 @@
                         },
                         "method": {
                           "declaringClass": {
-                            "name": "",
+                            "name": "String",
                             "declaringFile": {
-                              "projectName": "%unk",
-                              "fileName": "%unk"
+                              "projectName": "built-in",
+                              "fileName": "lib.es5.d.ts"
                             },
                             "declaringNamespace": null
                           },
@@ -1818,10 +1818,10 @@
                         },
                         "method": {
                           "declaringClass": {
-                            "name": "",
+                            "name": "String",
                             "declaringFile": {
-                              "projectName": "%unk",
-                              "fileName": "%unk"
+                              "projectName": "built-in",
+                              "fileName": "lib.es5.d.ts"
                             },
                             "declaringNamespace": null
                           },
@@ -2764,10 +2764,10 @@
                         },
                         "method": {
                           "declaringClass": {
-                            "name": "",
+                            "name": "String",
                             "declaringFile": {
-                              "projectName": "%unk",
-                              "fileName": "%unk"
+                              "projectName": "built-in",
+                              "fileName": "lib.es5.d.ts"
                             },
                             "declaringNamespace": null
                           },
@@ -2800,15 +2800,24 @@
                         },
                         "method": {
                           "declaringClass": {
-                            "name": "",
+                            "name": "Number",
                             "declaringFile": {
-                              "projectName": "%unk",
-                              "fileName": "%unk"
+                              "projectName": "built-in",
+                              "fileName": "lib.es5.d.ts"
                             },
                             "declaringNamespace": null
                           },
                           "name": "toString",
-                          "parameters": [],
+                          "parameters": [
+                            {
+                              "name": "radix",
+                              "type": {
+                                "_": "NumberType"
+                              },
+                              "isOptional": true,
+                              "isRest": false
+                            }
+                          ],
                           "returnType": {
                             "_": "StringType"
                           }
@@ -3628,15 +3637,24 @@
                         },
                         "method": {
                           "declaringClass": {
-                            "name": "",
+                            "name": "Number",
                             "declaringFile": {
-                              "projectName": "%unk",
-                              "fileName": "%unk"
+                              "projectName": "built-in",
+                              "fileName": "lib.es5.d.ts"
                             },
                             "declaringNamespace": null
                           },
                           "name": "toString",
-                          "parameters": [],
+                          "parameters": [
+                            {
+                              "name": "radix",
+                              "type": {
+                                "_": "NumberType"
+                              },
+                              "isOptional": true,
+                              "isRest": false
+                            }
+                          ],
                           "returnType": {
                             "_": "StringType"
                           }
@@ -3664,15 +3682,24 @@
                         },
                         "method": {
                           "declaringClass": {
-                            "name": "",
+                            "name": "Number",
                             "declaringFile": {
-                              "projectName": "%unk",
-                              "fileName": "%unk"
+                              "projectName": "built-in",
+                              "fileName": "lib.es5.d.ts"
                             },
                             "declaringNamespace": null
                           },
                           "name": "toString",
-                          "parameters": [],
+                          "parameters": [
+                            {
+                              "name": "radix",
+                              "type": {
+                                "_": "NumberType"
+                              },
+                              "isOptional": true,
+                              "isRest": false
+                            }
+                          ],
                           "returnType": {
                             "_": "StringType"
                           }

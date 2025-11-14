@@ -39,16 +39,16 @@ const FUNC_PTR_REGEX = /\(\s*\*\s*(?:\[\s*[^]]*\s*\])?\s*\)\s*\(\s*[^)]*\s*\)/;
 
 function extractCommonModifiers(node: CxxAstNode): number {
     let modifiers: number = 0;
-    const nodeType: string = node?.type?.qualType ?? '';
-
-    if (Object.prototype.hasOwnProperty.call(node, 'access')) {
-        modifiers |= modifierKind2CxxEnum(node.access ?? '');
+    if (!node.modifiers) {
+        return modifiers;
+    }
+    for (let i = 0; i < node.modifiers.length; i++) {
+        if (Object.prototype.hasOwnProperty.call(node, 'modifiers')) {
+            modifiers |= modifierKind2CxxEnum(node.modifiers[i]);
+        }
     }
     if (Object.prototype.hasOwnProperty.call(node, 'storageClass')) {
         modifiers |= modifierKind2CxxEnum(node.storageClass ?? '');
-    }
-    if (nodeType.includes('const')) {
-        modifiers |= modifierKind2CxxEnum('const');
     }
     return modifiers;
 }

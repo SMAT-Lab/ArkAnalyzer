@@ -26,6 +26,7 @@
 
 using json = nlohmann::json;
 namespace fs = std::filesystem;
+std::vector<std::string> g_userIncludeDirsCcjson;
 #define FOUR 4
 #define THREE 3
 #define TWO 2
@@ -366,14 +367,11 @@ void NormalizeStdFlags(std::vector<std::string>& outArgs, EffectiveLang lang)
 } // namespace
 
 // Normalize and filter compiler arguments coming from compile_commands.json.
-void FilterAndNormalizeArgs(const std::vector<std::string>& argv,
-                            const std::string& entryFile,
-                            const std::string& inputFile,
-                            std::vector<std::string>& outArgs)
+void FilterAndNormalizeArgs(const std::vector<std::string>& argv, const std::string& entryFile,
+                            const std::string& inputFile, std::vector<std::string>& outArgs)
 {
     const std::string entryNorm = NormalizePath(entryFile);
     const std::string inputNorm = NormalizePath(inputFile);
-
     NormalizeArgs normalizeArgs;
     for (size_t i = 0; i < argv.size(); ++i) {
         std::string arg = argv[i];
@@ -384,6 +382,10 @@ void FilterAndNormalizeArgs(const std::vector<std::string>& argv,
         if (arg.empty() || IsFilterArgs(arg, normalizeArgs, entryNorm, inputNorm, static_cast<int>(i)) ||
             IsNormalizeArgs(arg, normalizeArgs, outArgs)) {
             continue;
+        }
+        // Add the - I information in ccjson
+        if (arg.find("-I") == 0) {
+            g_userIncludeDirsCcjson.push_back(arg.substr(TWO));
         }
         // Pass-through: anything not filtered/normalized is forwarded as-is.
         outArgs.push_back(std::move(arg));

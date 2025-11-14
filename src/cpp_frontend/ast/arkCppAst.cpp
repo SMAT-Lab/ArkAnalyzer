@@ -614,12 +614,16 @@ static const std::string& CanonicalCached(const std::string& path)
 
 // Path fallback: some Windows/MSVC headers are not marked as system headers
 // under certain configurations. Use kDenyPrefixes (should include Windows Kits / MSVC / SDK prefixes).
-static inline bool IsSystemishByPath(const std::string& fileName)
+static bool IsSystemishByPath(const std::string& fileName)
 {
     if (fileName.empty()) {
         return false;
     }
     const std::string norm = CanonicalCached(fileName);
+    if (norm.find("MacOSX") != std::string::npos || norm.find("DevEco Studio") != std::string::npos ||
+        norm.find("command-line-tools") != std::string::npos) {
+        return false;
+    }
     for (const auto& p : kDenyPrefixes) {
         if (!p.empty() && norm.find(p) != std::string::npos) {
             return true;
@@ -1436,12 +1440,20 @@ struct OriginInfo {
 static OriginInfo ComputeOriginInfo(CXCursor cursor)
 {
     OriginInfo oi;
-    const CXSourceLocation loc = clang_getCursorLocation(cursor);
+    CXSourceLocation loc = clang_getCursorLocation(cursor);
 
     // Spelling location (where the cursor is written in source)
     CXFile spellFile{};
     clang_getSpellingLocation(loc, &spellFile, nullptr, nullptr, nullptr);
     oi.fileName = spellFile ? Cx2Str(clang_getFileName(spellFile)) : "";
+
+    // If there is no location information, search through the defined cursor
+    if (oi.fileName.empty()) {
+        CXCursor definition = clang_getCursorDefinition(cursor);
+        loc = clang_getCursorLocation(definition);
+        clang_getSpellingLocation(loc, &spellFile, nullptr, nullptr, nullptr);
+        oi.fileName = spellFile ? Cx2Str(clang_getFileName(spellFile)) : "";
+    }
     oi.isUserHeader = IsInUserWhitelistPath(oi.fileName);
     oi.fromMainSpell = clang_Location_isFromMainFile(loc);
 
@@ -1656,6 +1668,8 @@ int main(int argc, char** argv)
     ClangArgs clangArgs = cliutil::GetClangArgs(opts);
 
     g_user_include_dirs = opts.userIncludeDirs;
+    g_user_include_dirs.insert(g_user_include_dirs.end(),
+        g_userIncludeDirsCcjson.begin(), g_userIncludeDirsCcjson.end());
     CXIndex index = clang_createIndex(0, 0);
     auto t1 = std::chrono::high_resolution_clock::now();
     CXTranslationUnit unit = createTranslationUnit(index, opts, clangArgs.cstrArgs);

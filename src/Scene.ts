@@ -32,14 +32,16 @@ import { fetchDependenciesFromFile, parseJsonText } from './utils/json5parser';
 import { getAllFiles } from './utils/getAllFiles';
 import { FileUtils, getFileRecursively } from './utils/FileUtils';
 import { ArkExport, ExportInfo, ExportType } from './core/model/ArkExport';
-import { addInitInConstructor, buildDefaultConstructor, replaceSuper2Constructor } from './core/model/builder/ArkMethodBuilder';
+import {
+    addInitInConstructor,
+    buildDefaultConstructor,
+    replaceSuper2Constructor
+} from './core/model/builder/ArkMethodBuilder';
 import { addInitInConstructor as addCxxInitInConstructor } from './cpp_frontend/model/builder/ArkMethodBuilder';
 import { DEFAULT_ARK_CLASS_NAME, STATIC_INIT_METHOD_NAME } from './core/common/Const';
 import { CallGraph } from './callgraph/model/CallGraph';
 import { CallGraphBuilder } from './callgraph/model/builder/CallGraphBuilder';
 import { buildArkFileFromFile as buildArkCxxFileFromFile } from './cpp_frontend/model/builder/ArkFileBuilder';
-
-import { IRInference } from './core/common/IRInference';
 import { IRInference as CxxIRInference } from './cpp_frontend/common/IRInference';
 import { ImportInfo } from './core/model/ArkImport';
 import { ALL, CONSTRUCTOR_NAME, TSCONFIG_JSON } from './core/common/TSConst';
@@ -47,6 +49,8 @@ import { BUILD_PROFILE_JSON5, OH_PACKAGE_JSON5 } from './core/common/EtsConst';
 import { SdkUtils } from './core/common/SdkUtils';
 import { PointerAnalysisConfig } from './callgraph/pointerAnalysis/PointerAnalysisConfig';
 import { ValueUtil } from './core/common/ValueUtil';
+import { InferenceManager } from './core/inference/Inference';
+import { IRInference } from './core/common/IRInference';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'Scene');
 
@@ -104,7 +108,8 @@ export class Scene {
     private unhandledFilePaths: Set<string> = new Set<string>();
     private unhandledSdkFilePaths: string[] = [];
 
-    constructor() { }
+    constructor() {
+    }
 
     /*
      * Set all static field to be null, then all related objects could be freed by GC.
@@ -230,10 +235,13 @@ export class Scene {
                 }
             }
         });
-        // If the SDK inference phase has not been completed, execute the type inference and global API merge of the SDK file
         if (this.buildStage < SceneBuildStage.SDK_INFERRED) {
             this.sdkArkFilesMap.forEach(file => {
-                IRInference.inferFile(file);
+                // CXXTodo: C++ does not handle SDK files.
+                if (file.getLanguage() === Language.CXX) {
+                    return;
+                }
+                InferenceManager.getInstance().getInference(file.getLanguage()).doInfer(file);
                 SdkUtils.mergeGlobalAPI(file, this.sdkGlobalMap);
             });
             this.sdkArkFilesMap.forEach(file => {
@@ -1120,6 +1128,24 @@ export class Scene {
      ```
      */
     public inferTypes(): void {
+
+        this.filesMap.forEach(file => {
+            InferenceManager.getInstance().getInference(file.getLanguage()).doInfer(file);
+        });
+        if (this.buildStage < SceneBuildStage.TYPE_INFERRED) {
+            this.getMethodsMap(true);
+            this.buildStage = SceneBuildStage.TYPE_INFERRED;
+        }
+        SdkUtils.dispose();
+    }
+
+    /**
+     * @deprecated This method is deprecated and will be removed in the next major release.
+     * Please use the new type inference system instead.
+     *
+     * Scheduled for removal: one month from deprecation date.
+     */
+    public inferTypesOld(): void {
         // CXXTodo: Building the mapping between declarations and implementations of C++ functions in cross-file scenarios.
         CxxIRInference.buildCxxFuncMap(this);
         this.filesMap.forEach(file => {
@@ -1236,7 +1262,8 @@ export class Scene {
                     // 遗留问题：只统计了项目文件的namespace，没统计sdk文件内部的引入
                     const importNameSpaceClasses = classMap.get(importNameSpace.getNamespaceSignature())!;
                     importClasses.push(...importNameSpaceClasses.filter(c => !importClasses.includes(c) && c.getName() !== DEFAULT_ARK_CLASS_NAME));
-                } catch { }
+                } catch {
+                }
             }
         }
         const fileClasses = classMap.get(file.getFileSignature())!;
@@ -1369,7 +1396,8 @@ export class Scene {
                     // 遗留问题：只统计了项目文件，没统计sdk文件内部的引入
                     const importNameSpaceClasses = globalVariableMap.get(importNameSpace.getNamespaceSignature())!;
                     importLocals.push(...importNameSpaceClasses.filter(c => !importLocals.includes(c) && c.getName() !== DEFAULT_ARK_CLASS_NAME));
-                } catch { }
+                } catch {
+                }
             }
         }
         const fileLocals = globalVariableMap.get(file.getFileSignature())!;
