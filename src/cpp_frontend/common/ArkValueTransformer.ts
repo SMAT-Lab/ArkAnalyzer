@@ -2425,7 +2425,6 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
                 tempStmts.forEach(stmt => stmts.push(stmt));
                 value = tempValue;
             }
-            .0
             const binaryOperator = operatorToken === '++' ? NormalBinaryOperator.Addition : NormalBinaryOperator.Subtraction;
             const binopExpr = new ArkCxxNormalBinOpExpr(operandValue, CxxValueUtil.getOrCreateNumberConst(1), binaryOperator);
             exprPositions.push(...operandPositions, FullPosition.DEFAULT);
