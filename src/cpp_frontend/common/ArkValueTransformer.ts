@@ -2410,17 +2410,30 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             exprStmts.forEach(stmt => stmts.push(stmt));
         }
 
-        let value: Value;
+        let value: Value | undefined = undefined;
         let exprPositions = [FullPosition.cxxBuildFromNode(postfixUnaryExpression, this.cxxSourceFile)];
         const operatorToken = postfixUnaryExpression.opcode;
+        // Use temporary variables to store the value before self increment, and avoid this expression for some non assignment operation scenarios
         if (operatorToken === '++' || operatorToken === '--') {
+            const needAssign: string[] = ['VarDecl', 'BinaryOperator', 'BinaryConditionalOperator', 'ConditionalOperator', 'ArraySubscriptExpr'];
+            let parent = (postfixUnaryExpression.parent ?? postfixUnaryExpression.getParent?.(true)) ?? null;
+            if (parent && needAssign.includes(parent.kind)) {
+                let {
+                    value: tempValue,
+                    stmts: tempStmts,
+                } = this.arkIRTransformer.generateAssignStmtForValue(operandValue, exprPositions);
+                tempStmts.forEach(stmt => stmts.push(stmt));
+                value = tempValue;
+            }
             const binaryOperator = operatorToken === '++' ? NormalBinaryOperator.Addition : NormalBinaryOperator.Subtraction;
             const binopExpr = new ArkCxxNormalBinOpExpr(operandValue, CxxValueUtil.getOrCreateNumberConst(1), binaryOperator);
             exprPositions.push(...operandPositions, FullPosition.DEFAULT);
             const assignStmt = new ArkAssignStmt(operandValue, binopExpr);
             assignStmt.setOperandOriginalPositions([...operandPositions, ...exprPositions]);
             stmts.push(assignStmt);
-            value = operandValue;
+            if (value === undefined) {
+                value = operandValue;
+            }
         } else {
             value = CxxValueUtil.getUndefinedConst();
             exprPositions = [FullPosition.DEFAULT];
