@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+import { NAME_PREFIX } from './Const';
+
 export const CONSTRUCTOR_NAME = 'constructor';
 export const SUPER_NAME = 'super';
 export const THIS_NAME = 'this';
@@ -25,6 +27,8 @@ export const ALL = '*';
 export const IMPORT = 'import';
 export const PROMISE = 'Promise';
 export const FUNCTION = 'Function';
+
+export const TEMP_ALL_PREFIX = NAME_PREFIX + ALL;
 
 // ast const
 export const DECLARE_KEYWORD = 'DeclareKeyword';

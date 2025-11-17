@@ -420,7 +420,7 @@ describe("export From Test", () => {
         const fileId = new FileSignature(projectScene.getProjectName(), 'from/exportAllFromOtherFile.ts');
         const file = projectScene.getFile(fileId);
         const exportInfo = file?.getExportInfoBy(ExportAllFromOtherFile_Expect_IR.exportClauseName);
-        compareExportInfo(exportInfo, ExportAllFromOtherFile_Expect_IR);
+        assert.isUndefined(exportInfo);
     });
 
     it('export all with as name from other file', () => {

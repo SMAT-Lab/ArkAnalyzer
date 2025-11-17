@@ -18,7 +18,7 @@ import { LineColPosition } from '../../base/Position';
 import { ArkExport, ExportInfo, ExportType, FromInfo } from '../ArkExport';
 import { buildModifiers } from './builderUtils';
 import { ArkFile } from '../ArkFile';
-import { ALL, DEFAULT } from '../../common/TSConst';
+import { ALL, DEFAULT, TEMP_ALL_PREFIX } from '../../common/TSConst';
 import { ArkBaseModel, ModifierType } from '../ArkBaseModel';
 import { IRUtils } from '../../common/IRUtils';
 import { ArkClass } from '../ArkClass';
@@ -26,6 +26,12 @@ import { buildNormalArkClassFromArkFile } from './ArkClassBuilder';
 import { ArkNamespace } from '../ArkNamespace';
 
 export { buildExportInfo, buildExportAssignment, buildExportDeclaration };
+
+let tempIndex: number = 0;
+
+function getTempAll(): string {
+    return `${TEMP_ALL_PREFIX}${tempIndex++}`
+}
 
 function buildExportInfo(arkInstance: ArkExport, arkFile: ArkFile, line: LineColPosition): ExportInfo {
     let exportClauseName: string;
@@ -98,7 +104,8 @@ function buildExportDeclaration(node: ts.ExportDeclaration, sourceFile: ts.Sourc
         exportInfos.push(builder1.exportClauseName(node.exportClause.name.text).build());
     } else if (!node.exportClause && node.moduleSpecifier) {
         // just like: export * from './yy'
-        exportInfos.push(builder1.exportClauseName(ALL).build());
+        const tempAll = getTempAll();
+        exportInfos.push(builder1.nameBeforeAs(tempAll).exportClauseName(tempAll).build());
     }
     return exportInfos;
 }
