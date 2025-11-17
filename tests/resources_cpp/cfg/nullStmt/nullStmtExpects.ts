@@ -61,7 +61,7 @@ export const NULLSTMT_EXPECT_CASE4 = {
         },
         {
             id: 1,
-            stmts: ['count = count - 1', 'if count > 0'],
+            stmts: ['%0 = count', 'count = count - 1', 'if %0 > 0'],
             preds: [0, 1],
             succes: [1, 4],
         },
@@ -94,7 +94,7 @@ export const NULLSTMT_EXPECT_CASE6 = {
         },
         {
             id: 1,
-            stmts: ['x = x - 1', 'if x > 0'],
+            stmts: ['%0 = x', 'x = x - 1', 'if %0 > 0'],
             preds: [0, 1],
             succes: [1, 2],
         },

@@ -483,6 +483,7 @@ describe('supplementary', () => {
         const scene = buildScene('supplementary');
         scene.inferTypesOld();
         testBlocks(scene, 'supplementary.cpp', 'Case1', SUPPLEMENTARY.SUP_CASE1.blocks);
+        testBlocks(scene, 'supplementary.cpp', 'PostAdd', SUPPLEMENTARY.POST_AND.blocks);
     });
 });
 
