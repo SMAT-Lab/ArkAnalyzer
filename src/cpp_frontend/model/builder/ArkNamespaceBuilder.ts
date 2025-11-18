@@ -157,6 +157,9 @@ function buildNamespaceMembers(node: CxxAstNode, namespace: ArkNamespace, source
                 buildNormalArkClassFromArkNamespace(child, namespace, cls, sourceFile);
                 namespace.addArkClass(cls);
                 return;
+            case 'CXXConstructorDecl':
+            case 'CXXDestructorDecl':
+            case 'CXXMethodDecl':
             case 'FunctionDecl':
             case 'FriendDecl':
                 logger.trace('This is a MethodDeclaration in ArkNamespace.');
