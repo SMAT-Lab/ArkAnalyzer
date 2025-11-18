@@ -306,14 +306,12 @@ export function buildDefaultConstructor(arkClass: ArkClass): boolean {
     if (superConstructor) {
         // @ts-ignore
         parameters = superConstructor.getParameters();
-
         for (let index = 0; index < parameters.length; index++) {
             const parameterRef = new ArkParameterRef(index, parameters[index].getType());
             const parameterLocal = new Local(parameters[index].getName(), parameterRef.getType());
             locals.add(parameterLocal);
             parameterArgs.push(parameterLocal);
             basicBlock.addStmt(new ArkAssignStmt(parameterLocal, parameterRef));
-            index++;
         }
     }
 
