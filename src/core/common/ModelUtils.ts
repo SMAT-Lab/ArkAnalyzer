@@ -23,7 +23,6 @@ import {
     ClassSignature,
     FieldSignature,
     FileSignature,
-    fileSignatureCompare,
     LocalSignature,
     MethodSignature,
     NamespaceSignature,
@@ -40,10 +39,13 @@ import { buildDefaultExportInfo } from '../model/builder/ArkExportBuilder';
 import {
     AliasType,
     AnnotationNamespaceType,
-    ClassType, EnumValueType,
-    FunctionType, LiteralType,
+    ClassType,
+    EnumValueType,
+    FunctionType,
+    LiteralType,
     Type,
-    UnclearReferenceType, UnionType,
+    UnclearReferenceType,
+    UnionType,
     UnknownType
 } from '../base/Type';
 import { Scene } from '../../Scene';
