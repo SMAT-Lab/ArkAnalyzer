@@ -57,7 +57,6 @@ import {
 } from '../base/Expr';
 import { ModelUtils } from '../common/ModelUtils';
 import { Local } from '../base/Local';
-import { Bind, InferLanguage } from './InferenceBuilder';
 import { Builtin } from '../common/Builtin';
 import { ArkClass } from '../model/ArkClass';
 import { Constant } from '../base/Constant';
@@ -65,8 +64,29 @@ import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { ClassSignature } from '../model/ArkSignature';
 import { ImportInfo } from '../model/ArkImport';
 import { ArkField } from '../model/ArkField';
+import { Scene } from '../../Scene';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ValueInference');
+
+export enum InferLanguage {
+    UNKNOWN = -1,
+    COMMON = 0,
+    ARK_TS1_1 = 1,
+    ARK_TS1_2 = 2,
+    JAVA_SCRIPT = 3,
+    CXX = 21,
+    ABC = 51
+}
+
+export const valueCtors: Map<Function, InferLanguage> = new Map<Function, InferLanguage>();
+
+export function Bind(lang: InferLanguage = InferLanguage.COMMON): Function {
+    return (constructor: new () => ValueInference<Value>) => {
+        valueCtors.set(constructor, lang);
+        logger.info('the ValueInference %s registered.', constructor.name);
+        return constructor;
+    };
+}
 
 /**
  * Abstract base class for value-specific inference operations
@@ -374,6 +394,12 @@ export class InstanceInvokeExprInference extends ValueInference<ArkInstanceInvok
             if (arrayClass instanceof ArkClass) {
                 baseType = new ClassType(arrayClass.getSignature(), [baseType.getBaseType()]);
             }
+        } else if (baseType instanceof GenericType) {
+            const newType = baseType.getDefaultType() ?? baseType.getConstraint();
+            if (!newType) {
+                return null;
+            }
+            return this.inferInvokeExpr(newType, expr, arkMethod, methodName);
         } else if (baseType instanceof StringType || baseType instanceof NumberType || baseType instanceof BooleanType) {
             // Convert primitive types to their wrapper class types
             const name = baseType.getName();
@@ -384,6 +410,10 @@ export class InstanceInvokeExprInference extends ValueInference<ArkInstanceInvok
             }
         }
         const scene = arkMethod.getDeclaringArkFile().getScene();
+        return this.inferMethodFromBase(baseType, expr, scene, methodName);
+    }
+
+    public static inferMethodFromBase(baseType: Type, expr: AbstractInvokeExpr, scene: Scene, methodName: string): AbstractInvokeExpr | null {
         // Dispatch to appropriate inference method based on resolved base type
         if (baseType instanceof ClassType) {
             return IRInference.inferInvokeExprWithDeclaredClass(expr, baseType, methodName, scene);

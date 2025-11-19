@@ -19,8 +19,9 @@ import { ArkFile, Language } from '../model/ArkFile';
 import { Stmt } from '../base/Stmt';
 import { Value } from '../base/Value';
 import { ArkTs2InferenceBuilder, ArkTsInferenceBuilder, JsInferenceBuilder } from './arkts/ArkTsInference';
-import { InferLanguage } from './InferenceBuilder';
+
 import { AbcInferenceBuilder } from './abc/AbcInference';
+import { InferLanguage } from './ValueInference';
 
 
 export type ArkModel = ArkBaseModel | ArkFile | Stmt;
