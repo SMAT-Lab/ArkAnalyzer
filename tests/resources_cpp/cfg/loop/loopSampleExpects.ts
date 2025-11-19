@@ -230,7 +230,7 @@ export const LOOP_EXPECT_CASE8 = {
         {
             id: 2,
             stmts: [
-                '%8 = map1.<@CXX/std/BuiltinClass: IteratorResult.value>',
+                '%8 = %6.<@CXX/std/BuiltinClass: IteratorResult.value>',
                 'pair = <unknown>%8',
                 '%9 = pair.<@%unk/%unk: .first>',
                 '%10 = pair.<@%unk/%unk: .second>',
@@ -281,7 +281,7 @@ export const LOOP_EXPECT_CASE9 = {
         {
             id: 2,
             stmts: [
-                '%8 = map2.<@CXX/std/BuiltinClass: IteratorResult.value>',
+                '%8 = %6.<@CXX/std/BuiltinClass: IteratorResult.value>',
                 'key = %8[0]',
                 'value = %8[1]',
                 '%9 = instanceinvoke value.<@%unk/%unk: .c_str()>()',

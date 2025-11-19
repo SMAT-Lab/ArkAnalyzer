@@ -65,6 +65,9 @@ function mapSyntaxKindToFieldOriginType(syntaxKind: String): FieldCategory | nul
         case 'TypeAliasDecl':
             fieldOriginType = FieldCategory.PROPERTY_DECLARATION;
             break;
+        case 'EnumConstantDecl':
+            fieldOriginType = FieldCategory.ENUM_MEMBER;
+            break;
         default:
     }
     return fieldOriginType;

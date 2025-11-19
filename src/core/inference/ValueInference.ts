@@ -65,6 +65,9 @@ import { ClassSignature } from '../model/ArkSignature';
 import { ImportInfo } from '../model/ArkImport';
 import { ArkField } from '../model/ArkField';
 import { Scene } from '../../Scene';
+import { setTs2CxxFuncMapOfClass } from '../../cpp_frontend/common/ModelUtils';
+import { PointerType, ReferenceType } from '../../cpp_frontend/base/Type';
+import { IRInference as CXXIRInference} from '../../cpp_frontend/common/IRInference';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ValueInference');
 
@@ -475,7 +478,7 @@ export class StaticInvokeExprInference extends InstanceInvokeExprInference {
         return !result || result === expr ? undefined : result;
     }
 
-    private getBaseType(expr: ArkStaticInvokeExpr, arkMethod: ArkMethod): Type | null {
+    protected getBaseType(expr: ArkStaticInvokeExpr, arkMethod: ArkMethod): Type | null {
         const className = expr.getMethodSignature().getDeclaringClassSignature().getClassName();
         if (className && className !== UNKNOWN_CLASS_NAME) {
             return TypeInference.inferBaseType(className, arkMethod.getDeclaringArkClass());
@@ -831,5 +834,195 @@ export class AbcFieldRefInference extends FieldRefInference {
             }
         }
         return super.preInfer(value, stmt);
+    }
+}
+
+@Bind(InferLanguage.CXX)
+export class CxxParameterRefInference extends ParameterRefInference {
+    /**
+     * Performs inference on a parameter reference within the context of a statement
+     * Handles special cases for pointer type and reference type
+     * @param {ArkParameterRef} value - The parameter reference to infer
+     * @param {Stmt} stmt - The statement containing the parameter reference
+     * @returns {Value | undefined} Always returns undefined as parameter references are resolved in-place
+     */
+    public infer(value: ArkParameterRef, stmt: Stmt): Value | undefined {
+        const paramType = value.getType();
+        // Set a temporary type for type inference
+        let baseType: Type | null | undefined = undefined;
+        if (paramType instanceof PointerType || paramType instanceof ReferenceType) {
+            baseType = paramType.getBaseType();
+            value.setType(baseType);
+        }
+        // Do infer
+        super.infer(value, stmt);
+        // Restore the pointer and reference type
+        if (paramType instanceof PointerType || paramType instanceof ReferenceType) {
+            paramType.setBaseType(value.getType());
+            value.setType(paramType);
+        }
+        return undefined;
+    }
+}
+
+@Bind(InferLanguage.CXX)
+export class CxxFieldRefInference extends FieldRefInference {
+
+    public getValueName(): string {
+        return 'ArkCxxInstanceFieldRef';
+    }
+
+    /**
+     * Performs inference on a field reference within the context of a statement
+     * Handles special cases for pointer type and reference type, and generates updated field signatures
+     * @param {ArkInstanceFieldRef} value - The field reference to infer
+     * @param {Stmt} stmt - The statement containing the field reference
+     * @returns {Value | undefined} Returns a new ArkArrayRef for array types, ArkStaticFieldRef for static fields,
+     *          or undefined for regular instance fields
+     */
+    public infer(value: ArkInstanceFieldRef, stmt: Stmt): Value | undefined {
+        // Set a temporary type for type inference
+        const baseType = value.getBase().getType();
+        let baseTypeWithoutPtrOrRef: Type | undefined = undefined;
+        if (baseType instanceof PointerType || baseType instanceof ReferenceType) {
+            baseTypeWithoutPtrOrRef = baseType.getBaseType();
+            value.getBase().setType(baseTypeWithoutPtrOrRef);
+        }
+        // Do infer
+        const inferRes = super.infer(value, stmt);
+        // Restore the pointer and reference type
+        if (baseType instanceof PointerType || baseType instanceof ReferenceType) {
+            baseType.setBaseType(value.getBase().getType());
+            value.getBase().setType(baseType);
+        }
+        return inferRes;
+    }
+}
+
+@Bind(InferLanguage.CXX)
+export class CxxInstanceInvokeExprInference extends InstanceInvokeExprInference {
+
+    /**
+     * Performs inference on an instance invocation expression within the context of a statement
+     * Handles special cases for pointer type and reference type
+     * @param {ArkInstanceInvokeExpr} value - The invocation expression to infer
+     * @param {Stmt} stmt - The statement containing the invocation
+     * @returns {Value | undefined} Returns a new invocation expression if transformed, undefined otherwise
+     */
+    public infer(value: ArkInstanceInvokeExpr, stmt: Stmt): Value | undefined {
+        const arkMethod = stmt.getCfg().getDeclaringMethod();
+        let baseType = value.getBase().getType();
+        if (baseType instanceof PointerType || baseType instanceof ReferenceType) {
+            baseType = baseType.getBaseType();
+        }
+        const result = InstanceInvokeExprInference.inferInvokeExpr(baseType, value, arkMethod, this.getMethodName(value, arkMethod));
+        return !result || result === value ? undefined : result;
+    }
+
+    /**
+     * Performs post-inference processing on invocation expressions
+     * Process lazy import case -- Record the mapping relationship between cpp functions and ts functions
+     * @param {ArkInstanceInvokeExpr} value - The original invocation expression
+     * @param {Value} newValue - The new value after inference
+     * @param {Stmt} stmt - The statement containing the invocation
+     */
+    public postInfer(value: ArkInstanceInvokeExpr, newValue: Value, stmt: Stmt): void {
+        super.postInfer(value, newValue, stmt);
+        // Process lazy import case -- add 'ts2cxxFuncMap' to scene
+        const invokeBaseType = value.getBase().getType();
+        if (invokeBaseType instanceof ClassType && invokeBaseType.getClassSignature().getClassName() === 'napi_property_descriptor') {
+            setTs2CxxFuncMapOfClass(value.getArgs(), false, stmt.getCfg().getDeclaringMethod());
+        }
+    }
+}
+
+@Bind(InferLanguage.CXX)
+export class CxxLocalInference extends LocalInference {
+
+    public preInfer(value: Local): boolean {
+        const type = value.getType();
+        if (type instanceof  FunctionType) {
+            // lambda function
+            return true;
+        } else if (type instanceof PointerType && type.getBaseType() instanceof FunctionType) {
+            // function pointer
+            return true;
+        }
+        return super.preInfer(value);
+    }
+
+    /**
+     * Performs inference on a local
+     * Handles special cases for function pointer in c++
+     * @param {Local} value - The local variable in method
+     * @param {Stmt} stmt - The statement containing the local
+     * @returns {Value | undefined} Returns undefined
+     */
+    public infer(value: Local, stmt: Stmt): Value | undefined {
+        const type = value.getType();
+        const arkMethod = stmt.getCfg().getDeclaringMethod();
+        let newType;
+        if (type instanceof PointerType && type.getBaseType() instanceof FunctionType) {
+            const methodSignature = (type.getBaseType() as FunctionType).getMethodSignature();
+            methodSignature.getMethodSubSignature().getParameters().forEach(p => TypeInference.inferParameterType(p, arkMethod));
+            TypeInference.inferSignatureReturnType(methodSignature, arkMethod);
+            return undefined;
+        } else {
+            newType = TypeInference.inferUnclearedType(type, arkMethod.getDeclaringArkClass());
+        }
+        if (newType) {
+            // If the type of value is functionType and the current file is a CXX file,
+            // it should be represented as a CXX function pointer type ==> PointerType(FunctionType, 1).
+            if (newType instanceof FunctionType) {
+                value.setType(new PointerType(newType, 1));
+            } else {
+                value.setType(newType);
+            }
+            return undefined;
+        }
+        return super.infer(value, stmt);
+    }
+}
+
+@Bind(InferLanguage.CXX)
+export class CxxArkPtrInvokeExprInference extends StaticInvokeExprInference {
+
+    public getValueName(): string {
+        return 'ArkPtrInvokeExpr';
+    }
+
+    public infer(expr: ArkPtrInvokeExpr, stmt: Stmt): Value | undefined {
+        const ptrType = expr.getFuncPtrLocal().getType();
+        if (ptrType instanceof FunctionType) {
+            // lambda function
+            expr.setMethodSignature(ptrType.getMethodSignature());
+        } else if (ptrType instanceof PointerType && ptrType.getBaseType() instanceof FunctionType) {
+            // function pointer
+            expr.setMethodSignature((ptrType.getBaseType() as FunctionType).getMethodSignature());
+        }
+        super.infer(expr, stmt);
+        return undefined;
+    }
+}
+
+@Bind(InferLanguage.CXX)
+export class CxxStaticInvokeExprInference extends StaticInvokeExprInference {
+
+    public infer(expr: ArkPtrInvokeExpr, stmt: Stmt): Value | undefined {
+        const arkMethod = stmt.getCfg().getDeclaringMethod();
+        const methodName = this.getMethodName(expr, arkMethod);
+        // special case process
+        if (methodName === SUPER_NAME) {
+            const superCtor = arkMethod.getDeclaringArkClass().getSuperClass()?.getMethodWithName(CONSTRUCTOR_NAME);
+            if (superCtor) {
+                expr.setMethodSignature(superCtor.getSignature());
+            }
+            return undefined;
+        }
+        const baseType = this.getBaseType(expr, arkMethod);
+        // CXXTodo: whether to use the interface replacement method? Are there any other approaches?
+        const result = baseType ? InstanceInvokeExprInference.inferInvokeExpr(baseType, expr, arkMethod, methodName) :
+            CXXIRInference.inferStaticInvokeExprByMethodName(methodName, arkMethod, expr);
+        return !result || result === expr ? undefined : result;
     }
 }

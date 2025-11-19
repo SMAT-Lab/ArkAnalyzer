@@ -114,7 +114,7 @@ export function findExportInfo(fromInfo: FromInfo): ExportInfo | null {
         }
         return null;
     }
-    if (fromInfo instanceof ImportInfo && (fromInfo as ImportInfo).getImportClauseName().startsWith('#include')) {
+    if (fromInfo instanceof ImportInfo && fromInfo.getImportClauseName().startsWith('#include')) {
         return processIncludeRef(fromInfo, file);
     }
     return processHeaderExportInfos(fromInfo, file);
@@ -264,7 +264,7 @@ function findMatchingCxxMethod(funcElements: Value[], declMethod: ArkMethod): Ar
         }
         // If it is local and does not start with "%" => Member function of current class or global function
         for (const cls of classesToBeSearched) {
-            let matchMtd = cls.getMethodWithName(mtdName);
+            let matchMtd = cls.getMethodWithName(mtdName) ?? cls.getStaticMethodWithName(mtdName);
             if (matchMtd) {
                 matchMtd = getFuncImplement(matchMtd);
                 cxxFunc.push(matchMtd);

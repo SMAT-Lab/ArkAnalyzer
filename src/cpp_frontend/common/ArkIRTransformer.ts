@@ -335,7 +335,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         const stmts: Stmt[] = [];
         let entry = forOfStatement.inner[1];
         // Handle iterable initialization
-        let { iterableValue, iterablePositions, iteratorInvokeExpr, iteratorInvokeExprPositions } = this.handleForRangeIterInit(entry, stmts);
+        let { iterablePositions, iteratorInvokeExpr, iteratorInvokeExprPositions } = this.handleForRangeIterInit(entry, stmts);
         // Handle iterable.next
         const {
             iteratorNextInvokeExpr,
@@ -343,6 +343,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         } = this.handleForRangeIterNext(iteratorInvokeExpr, iteratorInvokeExprPositions, stmts, iterablePositions);
         // Handle iterable result value
         const {
+            iteratorResult,
             iteratorResultPositions,
             doneFieldRef,
             doneFieldRefPositions,
@@ -351,7 +352,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         const {
             valueFieldRef,
             valueFieldRefPositions,
-        } = this.handleForRangeIterDone(doneFieldRef, doneFieldRefPositions, stmts, iterableValue, iteratorResultPositions);
+        } = this.handleForRangeIterDone(doneFieldRef, doneFieldRefPositions, stmts, iteratorResult, iteratorResultPositions);
         // Handle whether iterable is finished
         const {
             value: yieldValue,
@@ -390,7 +391,6 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
 
     private handleForRangeIterInit(entry: CxxAstNode, stmts: Stmt[]
     ): {
-        iterableValue: Value,
         iterablePositions: FullPosition[],
         iteratorInvokeExpr: ArkInstanceInvokeExpr,
         iteratorInvokeExprPositions: FullPosition[] }
@@ -413,7 +413,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         const iteratorMethodSignature = new MethodSignature(ClassSignature.DEFAULT, iteratorMethodSubSignature);
         const iteratorInvokeExpr = new ArkInstanceInvokeExpr(iterableValue as Local, iteratorMethodSignature, []);
         const iteratorInvokeExprPositions = [iterablePositions[0], ...iterablePositions];
-        return { iterableValue, iterablePositions, iteratorInvokeExpr, iteratorInvokeExprPositions };
+        return { iterablePositions, iteratorInvokeExpr, iteratorInvokeExprPositions };
     }
 
     private handleForRangeIterNext(
@@ -468,19 +468,19 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
     }
 
     private handleForRangeIterResult(iteratorNextInvokeExpr: ArkInstanceInvokeExpr, iteratorNextInvokeExprPositions: FullPosition[], stmts: Stmt[]
-    ): { iteratorResultPositions: FullPosition[], doneFieldRef: ArkInstanceFieldRef, doneFieldRefPositions: FullPosition[] } {
+    ): { iteratorResult: Value, iteratorResultPositions: FullPosition[], doneFieldRef: ArkInstanceFieldRef, doneFieldRefPositions: FullPosition[] } {
         const {
             value: iteratorResult,
             valueOriginalPositions: iteratorResultPositions,
             stmts: iteratorResultStmts,
         } = this.generateAssignStmtForValue(iteratorNextInvokeExpr, iteratorNextInvokeExprPositions);
         iteratorResultStmts.forEach(stmt => stmts.push(stmt));
-        (iteratorResult as Local).setType(BuiltinCxx.ITERATOR_CLASS_TYPE);
+        (iteratorResult as Local).setType(BuiltinCxx.ITERATOR_RESULT_CLASS_TYPE);
         const doneFieldSignature = new FieldSignature(BuiltinCxx.ITERATOR_RESULT_DONE,
             BuiltinCxx.ITERATOR_RESULT_CLASS_SIGNATURE, BooleanType.getInstance(), false);
         const doneFieldRef = new ArkInstanceFieldRef(iteratorResult as Local, doneFieldSignature);
         const doneFieldRefPositions = [iteratorResultPositions[0], ...iteratorResultPositions];
-        return { iteratorResultPositions, doneFieldRef, doneFieldRefPositions };
+        return { iteratorResult, iteratorResultPositions, doneFieldRef, doneFieldRefPositions };
     }
 
     private cxxCatchClauseToStmts(catchClause: CxxAstNode): Stmt[] {

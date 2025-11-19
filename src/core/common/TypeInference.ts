@@ -94,7 +94,6 @@ import { IRInference } from './IRInference';
 import { AbstractTypeExpr, KeyofTypeExpr, TypeQueryExpr } from '../base/TypeExpr';
 import { SdkUtils } from './SdkUtils';
 import { ModifierType } from '../model/ArkBaseModel';
-import { Language } from '../model/ArkFile';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'TypeInference');
 const unknownFileName: string[] = [UNKNOWN_FILE_NAME, Builtin.DUMMY_FILE_NAME];
@@ -511,6 +510,8 @@ export class TypeInference {
         } else if (type instanceof TypeQueryExpr) {
             return this.isUnclearType(type.getType()) ||
                 !!type.getGenerateTypes()?.find(t => this.checkType(t, e => e instanceof UnclearReferenceType || e instanceof GenericType));
+        } else if (type instanceof PointerType || type instanceof ReferenceType) {
+            return this.isUnclearType(type.getBaseType());
         }
         return false;
     }
@@ -591,14 +592,6 @@ export class TypeInference {
         }
         if (value instanceof AbstractRef || value instanceof AbstractExpr || value instanceof Local) {
             value.inferType(arkMethod);
-            // CXXTodo: If the type of value is functionType and the current file is a CXX file,
-            // it should be represented as a CXX function pointer type ==> PointerType(FunctionType, 1).
-            const valueType = value.getType();
-            if (arkMethod.getLanguage() === Language.CXX && valueType instanceof FunctionType) {
-                if (value instanceof ArkParameterRef || value instanceof Local) {
-                    value.setType(new PointerType(valueType, 1));
-                }
-            }
         }
         return value.getType();
     }
@@ -721,8 +714,8 @@ export class TypeInference {
         if (!refName) {
             return null;
         }
-        //split and iterate to infer each type
-        const singleNames = refName.split('.');
+        //split and iterate to infer each type. In C++, the operators used to access members also include :: and ->
+        const singleNames = refName.split(/\.|::|->/);
         let type = null;
         for (let i = 0; i < singleNames.length; i++) {
             let genericName: string = EMPTY_STRING;
@@ -770,27 +763,22 @@ export class TypeInference {
             baseType = baseType.getCurrType();
         }
         let propertyAndType: [any, Type] | null = null;
-        let typeWithoutPtrOrRef = baseType;
-        // CXXTodo: If it is a Cxx pointer or reference type, it is necessary to obtain its baseType and determine whether type inference is required.
-        if (baseType instanceof PointerType || baseType instanceof ReferenceType) {
-            typeWithoutPtrOrRef = baseType.getBaseType();
-        }
-        if (typeWithoutPtrOrRef instanceof ClassType) {
+        if (baseType instanceof ClassType) {
             if (
                 fieldName === Builtin.ITERATOR_RESULT_VALUE &&
-                typeWithoutPtrOrRef.getClassSignature().getDeclaringFileSignature().getProjectName() === Builtin.DUMMY_PROJECT_NAME
+                baseType.getClassSignature().getDeclaringFileSignature().getProjectName() === Builtin.DUMMY_PROJECT_NAME
             ) {
-                const types = typeWithoutPtrOrRef.getRealGenericTypes();
+                const types = baseType.getRealGenericTypes();
                 if (types && types.length > 0) {
                     return [null, types[0]];
                 }
                 return null;
             }
-            propertyAndType = this.inferClassFieldType(declareClass, typeWithoutPtrOrRef, fieldName);
-        } else if (typeWithoutPtrOrRef instanceof ArrayType) {
+            propertyAndType = this.inferClassFieldType(declareClass, baseType, fieldName);
+        } else if (baseType instanceof ArrayType) {
             propertyAndType = this.inferArrayFieldType(declareClass, fieldName);
-        } else if (typeWithoutPtrOrRef instanceof AnnotationNamespaceType) {
-            const namespace = declareClass.getDeclaringArkFile().getScene().getNamespace(typeWithoutPtrOrRef.getNamespaceSignature());
+        } else if (baseType instanceof AnnotationNamespaceType) {
+            const namespace = declareClass.getDeclaringArkFile().getScene().getNamespace(baseType.getNamespaceSignature());
             if (namespace) {
                 const property = ModelUtils.findPropertyInNamespace(fieldName, namespace);
                 const propertyType = this.parseArkExport2Type(property);

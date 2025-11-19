@@ -59,7 +59,7 @@ export const MapDemo_EXPECT = {
         {
             id: 2,
             stmts: [
-                '%11 = testmap.<@CXX/std/BuiltinClass: IteratorResult.value>',
+                '%11 = %9.<@CXX/std/BuiltinClass: IteratorResult.value>',
                 'e = <unknown>%11',
                 '%12 = e.<@%unk/%unk: .first>',
                 '%13 = instanceinvoke e.<@%unk/%unk: .second()>()',

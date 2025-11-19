@@ -29,7 +29,6 @@ import {
     UnionType,
     UnknownType,
 } from '../base/Type';
-import { PointerType, ReferenceType } from '../../cpp_frontend/base/Type';
 import { Local } from '../base/Local';
 import { TypeInference } from './TypeInference';
 import {
@@ -208,9 +207,6 @@ export class IRInference {
                 method = cls?.getMethodWithName(CALL_SIGNATURE_NAME);
             } else if (type instanceof FunctionType) {
                 signature = type.getMethodSignature();
-            } else if (type instanceof PointerType && type.getBaseType() instanceof FunctionType) {
-                // CXXTodo: The type of a function pointer in CXX is 'PointerType(FunctionType, 1)'
-                signature = (type.getBaseType() as FunctionType).getMethodSignature();
             }
         }
         if (method) {
@@ -433,15 +429,10 @@ export class IRInference {
     }
 
     private static inferInvokeExpr(expr: AbstractInvokeExpr, baseType: Type, methodName: string, scene: Scene): AbstractInvokeExpr | null {
-        let typeWithoutPtrOrRef = baseType;
-        // CXXTodo: If it is a Cxx pointer or reference type, it is necessary to obtain its baseType and determine whether type inference is required.
-        if (baseType instanceof PointerType || baseType instanceof ReferenceType) {
-            typeWithoutPtrOrRef = baseType.getBaseType();
-        }
-        if (typeWithoutPtrOrRef instanceof AliasType) {
-            return this.inferInvokeExpr(expr, typeWithoutPtrOrRef.getOriginalType(), methodName, scene);
-        } else if (typeWithoutPtrOrRef instanceof UnionType) {
-            for (let type of typeWithoutPtrOrRef.flatType()) {
+        if (baseType instanceof AliasType) {
+            return this.inferInvokeExpr(expr, baseType.getOriginalType(), methodName, scene);
+        } else if (baseType instanceof UnionType) {
+            for (let type of baseType.flatType()) {
                 if (type instanceof UndefinedType || type instanceof NullType) {
                     continue;
                 }
@@ -451,10 +442,10 @@ export class IRInference {
                 }
             }
         }
-        if (typeWithoutPtrOrRef instanceof ClassType) {
-            return this.inferInvokeExprWithDeclaredClass(expr, typeWithoutPtrOrRef, methodName, scene);
-        } else if (typeWithoutPtrOrRef instanceof AnnotationNamespaceType) {
-            const namespace = scene.getNamespace(typeWithoutPtrOrRef.getNamespaceSignature());
+        if (baseType instanceof ClassType) {
+            return this.inferInvokeExprWithDeclaredClass(expr, baseType, methodName, scene);
+        } else if (baseType instanceof AnnotationNamespaceType) {
+            const namespace = scene.getNamespace(baseType.getNamespaceSignature());
             if (namespace) {
                 const foundMethod = ModelUtils.findPropertyInNamespace(methodName, namespace);
                 if (foundMethod instanceof ArkMethod) {
@@ -464,10 +455,10 @@ export class IRInference {
                     return expr instanceof ArkInstanceInvokeExpr ? new ArkStaticInvokeExpr(signature, expr.getArgs(), expr.getRealGenericTypes()) : expr;
                 }
             }
-        } else if (typeWithoutPtrOrRef instanceof FunctionType) {
-            return IRInference.inferInvokeExprWithFunction(methodName, expr, typeWithoutPtrOrRef, scene);
-        } else if (typeWithoutPtrOrRef instanceof ArrayType) {
-            return IRInference.inferInvokeExprWithArray(methodName, expr, typeWithoutPtrOrRef, scene);
+        } else if (baseType instanceof FunctionType) {
+            return IRInference.inferInvokeExprWithFunction(methodName, expr, baseType, scene);
+        } else if (baseType instanceof ArrayType) {
+            return IRInference.inferInvokeExprWithArray(methodName, expr, baseType, scene);
         }
         return null;
     }
@@ -672,15 +663,10 @@ export class IRInference {
         let propertyType = IRInference.repairType(propertyAndType?.[1], fieldName, arkClass);
         let staticFlag: boolean;
         let signature: BaseSignature;
-        let typeWithoutPtrOrRef = baseType;
-        // CXXTodo: If it is a Cxx pointer or reference type, it is necessary to obtain its baseType and determine whether type inference is required.
-        if (baseType instanceof PointerType || baseType instanceof ReferenceType) {
-            typeWithoutPtrOrRef = baseType.getBaseType();
-        }
-        if (typeWithoutPtrOrRef instanceof ClassType) {
+        if (baseType instanceof ClassType) {
             let property = propertyAndType?.[0];
             if (!property) {
-                const subField = this.findPropertyFormChildrenClass(fieldName, arkClass, typeWithoutPtrOrRef);
+                const subField = this.findPropertyFormChildrenClass(fieldName, arkClass, baseType);
                 if (subField) {
                     property = subField;
                 }
@@ -688,15 +674,15 @@ export class IRInference {
                 !(property.getType() instanceof GenericType)) {
                 return property.getSignature();
             }
-            staticFlag = typeWithoutPtrOrRef.getClassSignature().getClassName() === DEFAULT_ARK_CLASS_NAME ||
+            staticFlag = baseType.getClassSignature().getClassName() === DEFAULT_ARK_CLASS_NAME ||
                 ((property instanceof ArkField || property instanceof ArkMethod) && property.isStatic());
-            signature = property instanceof ArkMethod ? property.getSignature().getDeclaringClassSignature() : typeWithoutPtrOrRef.getClassSignature();
-        } else if (typeWithoutPtrOrRef instanceof ArrayType) {
+            signature = property instanceof ArkMethod ? property.getSignature().getDeclaringClassSignature() : baseType.getClassSignature();
+        } else if (baseType instanceof ArrayType) {
             const property = propertyAndType?.[0];
             return property instanceof ArkField ? property.getSignature() : null;
-        } else if (typeWithoutPtrOrRef instanceof AnnotationNamespaceType) {
+        } else if (baseType instanceof AnnotationNamespaceType) {
             staticFlag = true;
-            signature = typeWithoutPtrOrRef.getNamespaceSignature();
+            signature = baseType.getNamespaceSignature();
         } else {
             return null;
         }
@@ -905,18 +891,6 @@ export class IRInference {
 
     public static inferParameterRef(ref: ArkParameterRef, arkMethod: ArkMethod): AbstractRef {
         const paramType = ref.getType();
-        let baseType: Type | null | undefined;
-        // CXXTodo: If it is a Cxx pointer or reference type, it is necessary to obtain its baseType and determine whether type inference is required.
-        if (paramType instanceof PointerType || paramType instanceof ReferenceType) {
-            baseType = paramType.getBaseType();
-            if (TypeInference.isUnclearType(baseType)) {
-                baseType = TypeInference.inferUnclearedType(baseType, arkMethod.getDeclaringArkClass());
-                if (baseType) {
-                    paramType.setBaseType(baseType);
-                    return ref;
-                }
-            }
-        }
         if (paramType instanceof UnknownType || paramType instanceof UnclearReferenceType) {
             const signature = arkMethod.getDeclareSignatures()?.[0] ?? arkMethod.getSignature();
             const type1 = signature.getMethodSubSignature().getParameters()[ref.getIndex()]?.getType();
