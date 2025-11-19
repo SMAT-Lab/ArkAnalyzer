@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-export * from './exportAllFromThisFile';
 
-export * as newName from './exportAllFromThisFile';
+import { MathUtils, some } from './exportAllFromOtherFile';
 
-export * from '../else';
+let a = some();
+let b = MathUtils;

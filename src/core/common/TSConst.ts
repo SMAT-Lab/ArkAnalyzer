@@ -28,7 +28,7 @@ export const IMPORT = 'import';
 export const PROMISE = 'Promise';
 export const FUNCTION = 'Function';
 
-export const TEMP_ALL_PREFIX = NAME_PREFIX + ALL;
+export const TEMP_EXPORT_ALL_PREFIX = NAME_PREFIX + ALL;
 
 // ast const
 export const DECLARE_KEYWORD = 'DeclareKeyword';

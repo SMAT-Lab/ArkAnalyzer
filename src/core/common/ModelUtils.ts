@@ -34,7 +34,7 @@ import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { FileUtils, ModulePath } from '../../utils/FileUtils';
 import path from 'path';
 import { Sdk } from '../../Config';
-import { ALL, DEFAULT, TEMP_ALL_PREFIX, THIS_NAME } from './TSConst';
+import { ALL, DEFAULT, TEMP_EXPORT_ALL_PREFIX, THIS_NAME } from './TSConst';
 import { buildDefaultExportInfo } from '../model/builder/ArkExportBuilder';
 import {
     AliasType,
@@ -757,10 +757,10 @@ export function findExportInfo(fromInfo: FromInfo): ExportInfo | null {
         return null;
     }
     // expand export *
-    if (fromInfo.getOriginName().startsWith(TEMP_ALL_PREFIX) && fromInfo instanceof ExportInfo) {
+    if (fromInfo.getOriginName().startsWith(TEMP_EXPORT_ALL_PREFIX) && fromInfo instanceof ExportInfo) {
         const declaringArkFile = fromInfo.getDeclaringArkFile();
         if (declaringArkFile !== file) {
-            file.getExportInfos().filter(f => f.getExportClauseName().startsWith(TEMP_ALL_PREFIX)).forEach(e => findExportInfo(e));
+            file.getExportInfos().filter(f => f.getExportClauseName().startsWith(TEMP_EXPORT_ALL_PREFIX)).forEach(e => findExportInfo(e));
             file.getExportInfos().filter(f => !f.isDefault()).forEach(exportInfo => declaringArkFile.addExportInfo(exportInfo));
         }
         declaringArkFile.removeExportInfo(fromInfo);

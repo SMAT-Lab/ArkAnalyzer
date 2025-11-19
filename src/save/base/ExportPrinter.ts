@@ -16,7 +16,7 @@
 import { ExportInfo, ExportType } from '../../core/model/ArkExport';
 import { ArkMetadataKind, CommentsMetadata } from '../../core/model/ArkMetadata';
 import { BasePrinter } from './BasePrinter';
-import { TEMP_ALL_PREFIX } from '../../core/common/TSConst';
+import { TEMP_EXPORT_ALL_PREFIX } from '../../core/common/TSConst';
 
 export class ExportPrinter extends BasePrinter {
     info: ExportInfo;
@@ -44,7 +44,7 @@ export class ExportPrinter extends BasePrinter {
             return this.printer.toString();
         }
 
-        if (this.info.getExportClauseName().startsWith(TEMP_ALL_PREFIX)) {
+        if (this.info.getExportClauseName().startsWith(TEMP_EXPORT_ALL_PREFIX)) {
             // just like: export * as xx from './yy'
             this.printer.writeIndent().write(`export *`);
         } else {

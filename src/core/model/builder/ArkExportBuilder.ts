@@ -18,7 +18,7 @@ import { LineColPosition } from '../../base/Position';
 import { ArkExport, ExportInfo, ExportType, FromInfo } from '../ArkExport';
 import { buildModifiers } from './builderUtils';
 import { ArkFile } from '../ArkFile';
-import { ALL, DEFAULT, TEMP_ALL_PREFIX } from '../../common/TSConst';
+import { ALL, DEFAULT, TEMP_EXPORT_ALL_PREFIX } from '../../common/TSConst';
 import { ArkBaseModel, ModifierType } from '../ArkBaseModel';
 import { IRUtils } from '../../common/IRUtils';
 import { ArkClass } from '../ArkClass';
@@ -30,7 +30,7 @@ export { buildExportInfo, buildExportAssignment, buildExportDeclaration };
 let tempIndex: number = 0;
 
 function getTempAll(): string {
-    return `${TEMP_ALL_PREFIX}${tempIndex++}`
+    return `${TEMP_EXPORT_ALL_PREFIX}${tempIndex++}`
 }
 
 function buildExportInfo(arkInstance: ArkExport, arkFile: ArkFile, line: LineColPosition): ExportInfo {

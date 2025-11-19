@@ -43,7 +43,6 @@ export const ExportAllWithAsNameFromThisFile_Expect_IR = {
 
 export const ExportAllFromOtherFile_Expect_IR = {
     _default: false,
-    nameBeforeAs: '*',
     exportClauseName: '*',
     exportClauseType: ExportType.CLASS,
     modifiers: [],
