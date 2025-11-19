@@ -293,3 +293,46 @@ export const LOOP_EXPECT_CASE9 = {
         { id: 3, stmts: ['return'], preds: [1], succes: [] },
     ],
 };
+
+export const LOOP_EXPECT_CASE10 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @loop/loopSample.cpp: %dflt',
+                '%0 = new @%unk/%unk: std::vector<int>',
+                '%1 = newarray (int[])[5]',
+                '%1[0] = 1',
+                '%1[1] = 2',
+                '%1[2] = 3',
+                '%1[3] = 4',
+                '%1[4] = 5',
+                'instanceinvoke %0.<@%unk/%unk: std::vector.constructor()>(%1)',
+                'num = %0',
+                'it = instanceinvoke num.<@std/vector.h: vector.begin()>()'
+            ],
+            preds: [],
+            succes: [ 1 ]
+        },
+        {
+            id: 1,
+            stmts: [
+                '%2 = instanceinvoke num.<@std/vector.h: vector.end()>()',
+                'if it != %2'
+            ],
+            preds: [ 0, 2 ],
+            succes: [ 2, 3 ]
+        },
+        {
+            id: 2,
+            stmts: [
+                '%3 = *it',
+                "staticinvoke <@%unk/%unk: .printf()>('%d\\n', %3)",
+                'it = it + 1'
+            ],
+            preds: [ 1 ],
+            succes: [ 1 ]
+        },
+        { id: 3, stmts: [ 'return' ], preds: [ 1 ], succes: [] }
+    ],
+};

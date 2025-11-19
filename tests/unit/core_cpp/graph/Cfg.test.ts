@@ -87,6 +87,8 @@ describe('CfgTest', () => {
         testBlocks(scene, 'ifSample.cpp', 'Case5', IF_EXPECT.IF_EXPECT_CASE5.blocks);
         testBlocks(scene, 'ifSample.cpp', 'Case6', IF_EXPECT.IF_EXPECT_CASE6.blocks);
         testBlocks(scene, 'ifSample.cpp', 'Case7', IF_EXPECT.IF_EXPECT_CASE7.blocks);
+        testBlocks(scene, 'ifSample.cpp', 'Case8', IF_EXPECT.IF_EXPECT_CASE8.blocks);
+        testBlocks(scene, 'ifSample.cpp', 'Case9', IF_EXPECT.IF_EXPECT_CASE9.blocks);
     });
 
     it('case3: switch statement', () => {
@@ -117,11 +119,15 @@ describe('CfgTest', () => {
         testBlocks(scene, 'loopSample.cpp', 'Case7', LOOP_EXPECT.LOOP_EXPECT_CASE7.blocks);
         testBlocks(scene, 'loopSample.cpp', 'Case8', LOOP_EXPECT.LOOP_EXPECT_CASE8.blocks);
         testBlocks(scene, 'loopSample.cpp', 'Case9', LOOP_EXPECT.LOOP_EXPECT_CASE9.blocks);
+        testBlocks(scene, 'loopSample.cpp', 'Case10', LOOP_EXPECT.LOOP_EXPECT_CASE10.blocks);
     });
     it('case5: while-continue statement', () => {
         const scene = buildScene('whileContinue');
         testBlocks(scene, 'whileContinueSample.cpp', 'main', WHILE_CONTINUE_EXPECT.WHILE_CONTINUE_EXPECT_MAIN.blocks);
         testBlocks(scene, 'whileContinueSample.cpp', 'DoStmtFunc', WHILE_CONTINUE_EXPECT.DO_WHILE_STMT.blocks);
+        testBlocks(scene, 'whileContinueSample.cpp', 'CommaExprFunc',WHILE_CONTINUE_EXPECT.COMMA_EXPRESSION.blocks);
+        testBlocks(scene, 'whileContinueSample.cpp', 'EmptyDoWhile',WHILE_CONTINUE_EXPECT.EMPTY_DO_WHILE.blocks);
+        testBlocks(scene, 'whileContinueSample.cpp', 'ContinueDoWhile',WHILE_CONTINUE_EXPECT.CONTINUE_DO_WHILE.blocks);
     });
     it('case6: goto statement', () => {
         const scene = buildScene('goto');

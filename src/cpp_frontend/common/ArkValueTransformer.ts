@@ -1050,7 +1050,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         } else {
             varNode = identifier;
         }
-        const varName = varNode.kind === 'TypeRef' ? varNode.code : varNode.name;
+        let varName = varNode.kind === 'TypeRef' ? varNode.code : varNode.name;
         const varType = cxxNode2Type(identifier, undefined);
         if (varName === UndefinedType.getInstance().getName()) {
             identifierValue = CxxValueUtil.getUndefinedConst();
@@ -1058,6 +1058,9 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             if (variableDefFlag) {
                 identifierValue = this.addNewLocal(varName, varType);
             } else {
+                if (identifier.name?.includes('::' + varName + '<')) { // Determine whether it is a variable template
+                    varName = identifier.name;
+                }
                 identifierValue = this.getOrCreateLocal(varName, varType);
             }
         }
