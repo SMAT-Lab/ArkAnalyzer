@@ -144,35 +144,55 @@ function buildNamespaceMembers(node: CxxAstNode, namespace: ArkNamespace, source
     const statements = node.inner;
     statements.forEach((child: CxxAstNode) => {
         switch (child.kind) {
-            case 'Namespace':
+            case 'Namespace': {
                 let childNs: ArkNamespace = new ArkNamespace();
                 childNs.setDeclaringArkNamespace(namespace);
                 childNs.setDeclaringArkFile(namespace.getDeclaringArkFile());
                 buildArkNamespace(child, namespace, childNs, sourceFile);
                 namespace.addNamespace(childNs);
                 return;
+            }
             case 'CXXRecordDecl':
-            case 'ClassTemplate':
+            case 'ClassTemplate': {
                 let cls: ArkClass = new ArkClass();
                 buildNormalArkClassFromArkNamespace(child, namespace, cls, sourceFile);
                 namespace.addArkClass(cls);
                 return;
+            }
             case 'CXXConstructorDecl':
             case 'CXXDestructorDecl':
-            case 'CXXMethodDecl':
+            case 'CXXMethodDecl': {
+                let className = child.mangledName;
+                if (!className){
+                    logger.trace('Declaration class not found', child);
+                    return;
+                }
+                let arkClass = namespace.getClassWithName(className);
+                if (!arkClass) {
+                    arkClass = new ArkClass();
+                    arkClass.setDeclaringArkNamespace(namespace);
+                    arkClass.setDeclaringArkFile(namespace.getDeclaringArkFile());
+                    const classSignature = new ClassSignature(className, arkClass.getDeclaringArkFile().getFileSignature(), arkClass.getDeclaringArkNamespace()?.getSignature() || null);
+                    arkClass.setSignature(classSignature);
+                    namespace.addArkClass(arkClass, className);
+                }
+                let mtd: ArkMethod = new ArkMethod();
+                buildArkMethodFromArkClass(child, arkClass, mtd, sourceFile);
+                return;
+            }
             case 'FunctionDecl':
-            case 'FriendDecl':
-                logger.trace('This is a MethodDeclaration in ArkNamespace.');
+            case 'FriendDecl': {
                 let mthd: ArkMethod = new ArkMethod();
                 buildArkMethodFromArkClass(child, namespace.getDefaultClass(), mthd, sourceFile);
                 return;
+            }
             case 'UsingDecl':
                 // CXXTodo: using NS::Member,  scenario 'NS is from other file' is not handled.
                 processUsingDeclInNamespace(child, namespace);
                 return;
             default:
                 logger.trace('Child joined default method of arkFile: ', child.kind);
-                // join default method
+            // join default method
         }
     });
 }
