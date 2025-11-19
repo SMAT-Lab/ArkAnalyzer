@@ -19,7 +19,7 @@ import { ArkFile } from '../core/model/ArkFile';
 import { DotFilePrinter } from './DotPrinter';
 import { SourceFilePrinter } from './source/SourceFilePrinter';
 import { Printer } from './Printer';
-import { JsonPrinter } from './JsonPrinter';
+import { JsonPrinter } from './json/JsonPrinter';
 import { ArkIRFilePrinter } from './arkir/ArkIRFilePrinter';
 import { Scene } from '../Scene';
 import { PrinterOptions, setPrinterOptions } from './base/BasePrinter';
