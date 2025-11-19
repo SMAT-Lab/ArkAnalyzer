@@ -184,8 +184,6 @@ export class Scene {
 
     public buildSceneFromFiles(sceneConfig: SceneConfig): void {
         this.buildBasicInfo(sceneConfig);
-        this.buildOhPkgContentMap();
-        initModulePathMap(this.ohPkgContentMap);
         this.getFilesOrderByDependency();
     }
 
@@ -217,6 +215,8 @@ export class Scene {
         } else {
             logger.warn('This project has no tsconfig.json!');
         }
+        this.buildOhPkgContentMap();
+        initModulePathMap(this.ohPkgContentMap);
 
         // handle sdks
         if (this.options.enableBuiltIn && !sceneConfig.getSdksObj().find(sdk => sdk.name === SdkUtils.BUILT_IN_NAME)) {
@@ -697,13 +697,13 @@ export class Scene {
      * it build bodies of all methods, generate extended classes, and add DefaultConstructors.
      */
     public buildScene4HarmonyProject(): void {
-        this.buildOhPkgContentMap();
+
         this.modulePath2NameMap.forEach((value, key) => {
             let moduleScene = new ModuleScene(this);
             moduleScene.ModuleSceneBuilder(value, key, this.options.supportFileExts!);
             this.moduleScenesMap.set(value, moduleScene);
         });
-        initModulePathMap(this.ohPkgContentMap);
+
         this.buildAllMethodBody();
         this.updateOrAddDefaultConstructors();
     }
