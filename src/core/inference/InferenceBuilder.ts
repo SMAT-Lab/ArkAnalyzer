@@ -15,32 +15,8 @@
 
 
 import { ClassInference, FileInference, ImportInfoInference, MethodInference, StmtInference } from './ModelInference';
-import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
-import { ValueInference } from './ValueInference';
+import { InferLanguage, valueCtors, ValueInference } from './ValueInference';
 import { Value } from '../base/Value';
-
-const valueCtors: Map<Function, InferLanguage> = new Map<Function, InferLanguage>();
-const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'InferenceBuilder');
-
-export enum InferLanguage {
-    UNKNOWN = -1,
-    COMMON = 0,
-    ARK_TS1_1 = 1,
-    ARK_TS1_2 = 2,
-    JAVA_SCRIPT = 3,
-    CXX = 21,
-    ABC = 51
-}
-
-export function Bind(lang: InferLanguage = InferLanguage.COMMON): Function {
-    return (constructor: new () => ValueInference<Value>) => {
-        valueCtors.set(constructor, lang);
-        logger.info('the ValueInference %s registered.', constructor.name);
-        return constructor;
-    };
-}
-
-import('./ValueInference');
 
 export abstract class InferenceBuilder {
 

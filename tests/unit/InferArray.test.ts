@@ -361,6 +361,17 @@ describe("function Test", () => {
         assert.isTrue(locals?.get('arr1')?.getType() instanceof ArrayType);
         assert.equal(locals?.get('arr2')?.getType().toString(), 'string[]');
     })
+
+    it('testParamGenericWithConstraint', () => {
+        const fileId = new FileSignature(scene.getProjectName(), 'inferSample.ts');
+        const file = scene.getFile(fileId);
+        const stmts = file?.getDefaultClass()?.getMethodWithName('genericFunction')
+            ?.getCfg()?.getStmts();
+        assert.isDefined(stmts);
+        if (stmts) {
+            assert.equal(stmts[2].toString(), 'instanceinvoke a.<@inferType/inferSample.ts: TestInterface.callf()>()');
+        }
+    })
 })
 
 describe("for Test without sdk", () => {

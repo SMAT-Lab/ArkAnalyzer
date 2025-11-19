@@ -643,11 +643,6 @@ export class TypeInference {
         const newReturnType = this.inferUnclearedType(currReturnType, arkMethod.getDeclaringArkClass());
         if (newReturnType) {
             oldSignature.getMethodSubSignature().setReturnType(newReturnType);
-        } else if (arkMethod.getBody()) {
-            const returnType = TypeInference.inferReturnType(arkMethod);
-            if (returnType) {
-                oldSignature.getMethodSubSignature().setReturnType(returnType);
-            }
         }
     }
 

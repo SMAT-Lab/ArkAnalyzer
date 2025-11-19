@@ -120,3 +120,11 @@ namespace testGV1 {
         counter += fileGV;
     }
 }
+
+export interface TestInterface {
+    callf(): string
+}
+
+function genericFunction<T extends TestInterface>(a: T): void {
+    a.callf();
+}
