@@ -15,15 +15,17 @@
 
 import path from 'path';
 import fs from 'fs';
+
 import { Command, InvalidArgumentError } from 'commander';
-import { PrinterBuilder } from './PrinterBuilder';
-import { SceneConfig } from '../Config';
-import { Scene } from '../Scene';
-import { ArkFile } from '../core/model/ArkFile';
+
+import { PrinterBuilder } from '../PrinterBuilder';
+import { SceneConfig } from '../../Config';
+import { Scene } from '../../Scene';
+import { ArkFile } from '../../core/model/ArkFile';
 import { JsonPrinter } from './JsonPrinter';
-import { Printer } from './Printer';
-import { PointerAnalysis } from '../callgraph/pointerAnalysis/PointerAnalysis';
-import { FileUtils } from '../utils/FileUtils';
+import { Printer } from '../Printer';
+import { PointerAnalysis } from '../../callgraph/pointerAnalysis/PointerAnalysis';
+import { FileUtils } from '../../utils/FileUtils';
 
 export function buildSceneFromSingleFile(filename: string, verbose: boolean = false): Scene {
     if (verbose) {
@@ -33,7 +35,7 @@ export function buildSceneFromSingleFile(filename: string, verbose: boolean = fa
     const projectDir = path.dirname(filepath);
     const config = new SceneConfig();
     config.buildConfig('single-file', projectDir, []);
-    config.getProjectFiles().push(filepath);
+    (config as any).projectFiles = [filepath]; // Force single file
     const scene = new Scene();
     scene.buildSceneFromProjectDir(config);
     return scene;
@@ -57,18 +59,18 @@ export function serializeArkFile(arkFile: ArkFile, output?: string): void {
         filename = path.join(outputDir, arkFile.getName() + '.json');
     }
     fs.mkdirSync(path.dirname(filename), { recursive: true });
-    let printer: Printer = new JsonPrinter(arkFile);
+    const printer: Printer = new JsonPrinter(arkFile);
     const fd = fs.openSync(filename, 'w');
     fs.writeFileSync(fd, printer.dump());
     fs.closeSync(fd);
 }
 
 export function serializeScene(scene: Scene, outDir: string, verbose: boolean = false): void {
-    let files = scene.getFiles();
+    const files = scene.getFiles();
     console.log(`Serializing Scene with ${files.length} files to '${outDir}'...`);
-    for (let f of files) {
-        let filepath = f.getName();
-        let outPath = path.join(outDir, filepath + '.json');
+    for (const f of files) {
+        const filepath = f.getName();
+        const outPath = path.join(outDir, filepath + '.json');
         if (verbose) {
             console.log(`Serializing ArkIR for '${filepath}' to '${outPath}'...`);
         }
@@ -82,15 +84,15 @@ export function serializeScene(scene: Scene, outDir: string, verbose: boolean = 
 function serializeSingleTsFile(input: string, output: string, options: any): void {
     options.verbose && console.log(`Serializing TS file to JSON: '${input}' -> '${output}'`);
 
-    let filepath = path.resolve(input);
-    let projectDir = path.dirname(filepath);
+    const filepath = path.resolve(input);
+    const projectDir = path.dirname(filepath);
 
     const scene = buildSceneFromSingleFile(filepath, options.verbose);
 
-    let files = scene.getFiles();
+    const files = scene.getFiles();
     if (options.verbose) {
         console.log(`Scene contains ${files.length} files`);
-        for (let f of files) {
+        for (const f of files) {
             console.log(`- '${f.getName()}'`);
         }
     }
@@ -123,7 +125,7 @@ function serializeSingleTsFile(input: string, output: string, options: any): voi
     }
     // Note: we explicitly push a single path to the project files (in config),
     //       so we expect there is only *one* ArkFile in the scene.
-    let arkFile = scene.getFiles()[0];
+    const arkFile = scene.getFiles()[0];
     serializeFile(arkFile, output, options, scene);
 
     options.verbose && console.log('All done!');
@@ -140,11 +142,11 @@ function serializeFile(arkFile: ArkFile, output: string, options: any, scene: Sc
     }
 
     console.log(`Serializing ArkIR for '${arkFile.getName()}' to '${outPath}'...`);
-    let printer = new PrinterBuilder();
+    const printer = new PrinterBuilder();
     printer.dumpToJson(arkFile, outPath);
 
     if (options.entrypoint) {
-        let arkFile = scene.getFiles()[1];
+        const arkFile = scene.getFiles()[1];
         let outPath: string;
         if (FileUtils.isDirectory(output)) {
             outPath = path.join(output, arkFile.getName() + '.json');
@@ -156,61 +158,6 @@ function serializeFile(arkFile: ArkFile, output: string, options: any, scene: Sc
         console.log(`Serializing entrypoint to '${outPath}'...`);
         printer.dumpToJson(arkFile, outPath);
     }
-}
-
-function serializeMultipleTsFiles(inputDir: string, outDir: string, options: any): void {
-    console.log(`Serializing multiple TS files to JSON: '${inputDir}' -> '${outDir}'`);
-    if (!FileUtils.isDirectory(outDir)) {
-        console.error(`ERROR: Output path must be a directory.`);
-        process.exit(1);
-    }
-
-    if (options.verbose) {
-        console.log('Building scene...');
-    }
-    let config = new SceneConfig();
-    config.buildFromProjectDir(inputDir);
-    let scene = new Scene();
-    scene.buildSceneFromProjectDir(config);
-
-    let files = scene.getFiles();
-    if (options.verbose) {
-        console.log(`Scene contains ${files.length} files`);
-        files.forEach(f => console.log(`- '${f.getName()}'`));
-    }
-
-    if (options.inferTypes) {
-        if (options.verbose) {
-            console.log('Inferring types...');
-        }
-        scene.inferTypes();
-        if (options.inferTypes > 1) {
-            for (let i = 1; i < options.inferTypes; i++) {
-                options.verbose && console.log(`Inferring types one more time (${i + 1} / ${options.inferTypes})...`);
-                scene.inferTypes();
-            }
-        }
-    }
-
-    if (options.entrypoint) {
-        if (options.verbose) {
-            console.log('Generating entrypoint...');
-        }
-        PointerAnalysis.pointerAnalysisForWholeProject(scene);
-        files = scene.getFiles();
-    }
-
-    if (options.verbose) {
-        console.log('Serializing...');
-    }
-    let printer = new PrinterBuilder();
-    for (let f of files) {
-        let filepath = f.getName();
-        let outPath = path.join(outDir, filepath + '.json');
-        console.log(`Serializing ArkIR for '${filepath}' to '${outPath}'...`);
-        printer.dumpToJson(f, outPath);
-    }
-    console.log('All done!');
 }
 
 function serializeTsProject(inputDir: string, outDir: string, options: any): void {
@@ -266,7 +213,6 @@ export const program = new Command()
     .description('Serialize ArkIR for TypeScript files or projects to JSON')
     .argument('<input>', 'Input file or directory')
     .argument('<output>', 'Output file or directory')
-    .option('-m, --multi', 'Flag to indicate the input is a directory', false)
     .option('-p, --project', 'Flag to indicate the input is a project directory', false)
     .option('-t, --infer-types [times]', 'Infer types in the ArkIR', myParseInt)
     .option('-e, --entrypoint', 'Generate entrypoint for the files', false)
@@ -292,8 +238,6 @@ export const program = new Command()
 
         if (options.project) {
             serializeTsProject(input, output, options);
-        } else if (options.multi) {
-            serializeMultipleTsFiles(input, output, options);
         } else {
             serializeSingleTsFile(input, output, options);
         }
