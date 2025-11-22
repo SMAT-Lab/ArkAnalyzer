@@ -380,6 +380,17 @@ describe("function Test", () => {
             assert.equal(stmts[2].toString(), 'instanceinvoke a.<@inferType/inferSample.ts: TestInterface.callf()>()');
         }
     })
+
+    it('testGenericWithDefaultSpread', () => {
+        const fileId = new FileSignature(scene.getProjectName(), 'inferSample.ts');
+        const file = scene.getFile(fileId);
+        const stmts = file?.getDefaultClass()?.getMethodWithName('test2')
+            ?.getCfg()?.getStmts();
+        assert.isDefined(stmts);
+        if (stmts) {
+            assert.equal(stmts[3].toString(), 'instanceinvoke a.<@inferType/inferSample.ts: Config2.ffff()>()');
+        }
+    })
 })
 
 describe("for Test without sdk", () => {

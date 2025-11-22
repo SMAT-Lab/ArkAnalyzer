@@ -24,7 +24,7 @@ import { InferenceBuilder } from '../InferenceBuilder';
 import { InferLanguage, ValueInference } from '../ValueInference';
 import { ArkAliasTypeDefineStmt, Stmt } from '../../base/Stmt';
 import { Value } from '../../base/Value';
-import { Type } from '../../base/Type';
+import { GenericType, Type } from '../../base/Type';
 import { AbstractFieldRef, ArkParameterRef, GlobalRef } from '../../base/Ref';
 import { Local } from '../../base/Local';
 import { AbcMethodInference } from '../abc/AbcInference';
@@ -89,7 +89,7 @@ export class ArkTsStmtInference extends StmtInference {
 
     public transferRight2Left(leftOp: Value, rightType: Type, method: ArkMethod): Stmt[] | undefined {
         const projectName = method.getDeclaringArkFile().getProjectName();
-        if (!TypeInference.isUnclearType(rightType) || TypeInference.isDummyClassType(rightType)) {
+        if (!TypeInference.isUnclearType(rightType) || rightType instanceof GenericType || TypeInference.isDummyClassType(rightType)) {
             let leftType = leftOp.getType();
             if (TypeInference.isTypeCanBeOverride(leftType) || TypeInference.isAnonType(leftType, projectName)) {
                 leftType = rightType;
