@@ -32,7 +32,7 @@ import { Value } from '../../core/base/Value';
 import * as ts from 'ohos-typescript';
 import { Local } from '../../core/base/Local';
 import { ArkAliasTypeDefineStmt, ArkAssignStmt, ArkIfStmt, ArkInvokeStmt, ArkReturnStmt, ArkReturnVoidStmt, ArkThrowStmt, Stmt } from '../../core/base/Stmt';
-import { AliasType, BooleanType, ClassType, UnknownType, VoidType, Type } from '../../core/base/Type';
+import { AliasType, BooleanType, ClassType, UnknownType, VoidType, Type, AnyType } from '../../core/base/Type';
 import { CxxValueUtil } from './ValueUtil';
 import { IRUtils } from './IRUtils';
 import { ArkMethod } from '../../core/model/ArkMethod';
@@ -498,6 +498,15 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
             stmts.push(assignStmt);
             catchStmts.forEach(stmt => stmts.push(stmt));
         }
+        // When the scenario is catch (...)
+        else {
+            const caughtExceptionRef = new ArkCaughtExceptionRef(AnyType.getInstance());
+            const catchValue = new Local('error');
+            const assignStmt = new ArkAssignStmt(catchValue, caughtExceptionRef);
+            assignStmt.setOriginPositionInfo(LineColPosition.cxxBuildFromNode(catchClause))
+            stmts.push(assignStmt);
+        }
+
         return stmts;
     }
 
