@@ -656,8 +656,8 @@ export class IRInference {
                 const classType = new ClassType(arrayClass.getSignature(), [baseType.getBaseType()]);
                 return inferMember(classType, value, arkMethod);
             }
-        } else if (baseType instanceof StringType || baseType instanceof NumberType || baseType instanceof BooleanType
-            || baseType instanceof BigIntType) {
+        } else if (baseType instanceof StringType || baseType instanceof NumberType || baseType instanceof BooleanType ||
+            baseType instanceof BigIntType) {
             // Convert primitive types to their wrapper class types
             const name = baseType.getName();
             const className = name.charAt(0).toUpperCase() + name.slice(1);
@@ -718,7 +718,7 @@ export class IRInference {
             }
         } else if (baseType instanceof AnnotationNamespaceType) {
             staticFlag = true;
-            signature = new FieldSignature(fieldName, baseType.getNamespaceSignature(), propertyType ?? ref.getType(), staticFlag)
+            signature = new FieldSignature(fieldName, baseType.getNamespaceSignature(), propertyType ?? ref.getType(), staticFlag);
         }
         if (!signature) {
             return null;
