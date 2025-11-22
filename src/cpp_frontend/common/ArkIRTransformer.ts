@@ -77,7 +77,7 @@ function nodeInnerNode(node: CxxAstNode): CxxAstNode {
 export class ArkCxxIRTransformer extends ArkIRTransformer {
     private readonly cxxSourceFile: CxxTranslationUnit;
     private ArkCxxValueTransformer: ArkCxxValueTransformer;
-
+    private catchedExceptions: Value[] = [];
     constructor(sourceFile: CxxTranslationUnit, declaringMethod: ArkMethod) {
         super(sourceFile as unknown as ts.SourceFile, declaringMethod);
         this.cxxSourceFile = sourceFile;
@@ -499,18 +499,18 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
                 valueOriginalPositions: catchOriPos,
                 stmts: catchStmts,
             } = this.ArkCxxValueTransformer.cxxVariableDeclarationToValueAndStmts(catchClause.inner[0], false, false);
+            this.catchedExceptions.push(catchValue);
             const caughtExceptionRef = new ArkCaughtExceptionRef(catchValue.getType());
             const assignStmt = new ArkAssignStmt(catchValue, caughtExceptionRef);
             assignStmt.setOperandOriginalPositions(catchOriPos);
             stmts.push(assignStmt);
             catchStmts.forEach(stmt => stmts.push(stmt));
-        }
-        // When the scenario is catch (...)
-        else {
+        } else { // When the scenario is catch (...)
             const caughtExceptionRef = new ArkCaughtExceptionRef(AnyType.getInstance());
             const catchValue = new Local('error');
+            this.catchedExceptions.push(catchValue);
             const assignStmt = new ArkAssignStmt(catchValue, caughtExceptionRef);
-            assignStmt.setOriginPositionInfo(LineColPosition.cxxBuildFromNode(catchClause))
+            assignStmt.setOriginPositionInfo(LineColPosition.cxxBuildFromNode(catchClause));
             stmts.push(assignStmt);
         }
 
@@ -828,7 +828,14 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
 
     private cxxThrowStatementToStmts(throwStatement: CxxAstNode): Stmt[] {
         const stmts: Stmt[] = [];
-        const { value: throwValue, valueOriginalPositions: throwValuePositions, stmts: throwStmts } = this.cxxNodeToValueAndStmts(throwStatement.inner[0]);
+        let {
+            value: throwValue,
+            valueOriginalPositions: throwValuePositions,
+            stmts: throwStmts,
+        } = this.cxxNodeToValueAndStmts(throwStatement.inner[0]);
+        if (throwStatement.inner.length === 0 && this.catchedExceptions.length !== 0) {
+            throwValue = this.catchedExceptions[this.catchedExceptions.length - 1];
+        }
         throwStmts.forEach(stmt => stmts.push(stmt));
         const throwStmt = new ArkThrowStmt(throwValue);
         throwStmt.setOperandOriginalPositions(throwValuePositions);

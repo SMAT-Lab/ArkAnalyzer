@@ -630,8 +630,11 @@ export class CfgBuilder {
             if (catchBlock.code) {
                 text += this.removeAfterBraces(catchBlock.code);
             }
-            let catchOrNot = new ConditionStatementBuilder('catchOrNot', text, catchBlock.inner[0], scopeID);
-            let catchExit = new StatementBuilder('catch exit', '', catchBlock.inner[1], scopeID);
+            if (catchBlock.inner?.length === 0){
+                continue;
+            }
+            let catchOrNot = new ConditionStatementBuilder('catchOrNot', text, catchBlock, scopeID);
+            let catchExit = new StatementBuilder('catch exit', '', catchBlock, scopeID);
             catchOrNot.nextF = catchExit;
             catchExit.lasts.add(catchOrNot);
             if (catchBlock.inner && catchBlock.inner[0].id === '0x0') {
@@ -724,6 +727,7 @@ export class CfgBuilder {
             case 'TypeAliasTemplateDecl':
             case 'UnaryOperator':
             case 'VarDecl':
+
                 s = new StatementBuilder('statement', innerNode.code, innerNode, scope.id);
                 this.judgeLastType(s, lastStatement);
                 lastStatement = s;
@@ -788,6 +792,12 @@ export class CfgBuilder {
                 this.judgeLastType(s, lastStatement);
                 lastStatement = s;
                 break;
+            case 'ImplicitCastExpr':{
+                for (let i = 0; i < innerNode.inner.length; i++) {
+                    let inner = innerNode.inner[i];
+                    lastStatement = this.handleASTStmtSuccession(inner, lastStatement, scope);
+                }
+            }
             default:
                 break;
         }

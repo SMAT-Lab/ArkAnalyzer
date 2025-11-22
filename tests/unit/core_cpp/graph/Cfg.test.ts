@@ -496,6 +496,7 @@ describe('supplementary', () => {
         const scene = buildScene('trap');
         scene.inferTypes();
         testBlocks(scene, 'cxxTrap.cpp', 'Case1', TRAP.TRAP_EXPECT_CASE1.blocks);
+        testBlocks(scene, 'cxxTrap.cpp', 'outerFunction', TRAP.OUTERFUNC_EXPECT_CASE1.blocks);
     });
 });
 

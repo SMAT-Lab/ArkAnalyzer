@@ -23,7 +23,8 @@ void Case1() {
     bool flag = true;
     try {
         if (a == 0) {
-            throw runtime_error("zreo");
+            flag = false;
+            throw runtime_error("zero");
         }
     }
     catch (const logic_error& e) {
@@ -37,4 +38,18 @@ void Case1() {
         a = 7;
     }
     a = 4;
+}
+
+void innerFunction() {
+    throw std::runtime_error("error1");
+}
+
+void outerFunction() {
+    try {
+        innerFunction();
+    }
+    catch (const std::exception& e) {
+        std::cout << "catch: " << e.what() << std::endl;
+        throw; // throw again
+    }
 }
