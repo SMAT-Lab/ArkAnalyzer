@@ -28,12 +28,8 @@ import {
     FunctionType,
     GenericType,
     LexicalEnvType,
-    NullType,
-    NumberType,
     StringType,
-    Type,
-    UndefinedType,
-    UnionType
+    Type
 } from '../base/Type';
 import { TypeInference } from '../common/TypeInference';
 import { IRInference } from '../common/IRInference';
@@ -57,14 +53,12 @@ import {
 } from '../base/Expr';
 import { ModelUtils } from '../common/ModelUtils';
 import { Local } from '../base/Local';
-import { Builtin } from '../common/Builtin';
 import { ArkClass } from '../model/ArkClass';
 import { Constant } from '../base/Constant';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { ClassSignature } from '../model/ArkSignature';
 import { ImportInfo } from '../model/ArkImport';
 import { ArkField } from '../model/ArkField';
-import { Scene } from '../../Scene';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ValueInference');
 
@@ -265,15 +259,11 @@ export class FieldRefInference extends ValueInference<ArkInstanceFieldRef> {
             }
         }
         // Generate updated field signature based on current context
-        const newFieldSignature = IRInference.generateNewFieldSignature(value, arkMethod.getDeclaringArkClass(), baseType);
-        if (newFieldSignature) {
-            value.setFieldSignature(newFieldSignature);
-            if (newFieldSignature.isStatic()) {
-                return new ArkStaticFieldRef(newFieldSignature);
-            }
-        }
-        return undefined;
+        const result = IRInference.inferInstanceMember(baseType, value, arkMethod, IRInference.updateRefSignature);
+        return !result || result === value ? undefined : result;
     }
+
+
 }
 
 @Bind()
@@ -304,19 +294,13 @@ export class StaticFieldRefInference extends ValueInference<ArkStaticFieldRef> {
     public infer(value: ArkStaticFieldRef, stmt: Stmt): Value | undefined {
         const baseSignature = value.getFieldSignature().getDeclaringSignature();
         const baseName = baseSignature instanceof ClassSignature ? baseSignature.getClassName() : baseSignature.getNamespaceName();
-        const arkClass = stmt.getCfg().getDeclaringMethod().getDeclaringArkClass();
-        const baseType = TypeInference.inferBaseType(baseName, arkClass);
+        const arkMethod = stmt.getCfg().getDeclaringMethod();
+        const baseType = TypeInference.inferBaseType(baseName, arkMethod.getDeclaringArkClass());
         if (!baseType) {
             return undefined;
         }
-        const newFieldSignature = IRInference.generateNewFieldSignature(value, arkClass, baseType);
-        if (newFieldSignature) {
-            value.setFieldSignature(newFieldSignature);
-            if (newFieldSignature.isStatic()) {
-                return new ArkStaticFieldRef(newFieldSignature);
-            }
-        }
-        return undefined;
+        const result = IRInference.inferInstanceMember(baseType, value, arkMethod, IRInference.updateRefSignature);
+        return !result || result === value ? undefined : result;
     }
 }
 
@@ -349,7 +333,7 @@ export class InstanceInvokeExprInference extends ValueInference<ArkInstanceInvok
      */
     public infer(value: ArkInstanceInvokeExpr, stmt: Stmt): Value | undefined {
         const arkMethod = stmt.getCfg().getDeclaringMethod();
-        const result = InstanceInvokeExprInference.inferInvokeExpr(value.getBase().getType(), value, arkMethod, this.getMethodName(value, arkMethod));
+        const result = IRInference.inferInstanceMember(value.getBase().getType(), value, arkMethod, InstanceInvokeExprInference.inferInvokeExpr);
         return !result || result === value ? undefined : result;
     }
 
@@ -375,45 +359,9 @@ export class InstanceInvokeExprInference extends ValueInference<ArkInstanceInvok
         return expr.getMethodSignature().getMethodSubSignature().getMethodName();
     }
 
-    public static inferInvokeExpr(baseType: Type, expr: AbstractInvokeExpr, arkMethod: ArkMethod, methodName: string): AbstractInvokeExpr | null {
-        // Handle baseType
-        if (baseType instanceof AliasType) {
-            baseType = TypeInference.replaceAliasType(baseType);
-        } else if (baseType instanceof UnionType) {
-            for (let type of baseType.flatType()) {
-                if (type instanceof UndefinedType || type instanceof NullType) {
-                    continue;
-                }
-                let result = this.inferInvokeExpr(type, expr, arkMethod, methodName);
-                if (result) {
-                    return result;
-                }
-            }
-        } else if (baseType instanceof ArrayType) {
-            const arrayClass = arkMethod.getDeclaringArkFile().getScene().getSdkGlobal(Builtin.ARRAY);
-            if (arrayClass instanceof ArkClass) {
-                baseType = new ClassType(arrayClass.getSignature(), [baseType.getBaseType()]);
-            }
-        } else if (baseType instanceof GenericType) {
-            const newType = baseType.getDefaultType() ?? baseType.getConstraint();
-            if (!newType) {
-                return null;
-            }
-            return this.inferInvokeExpr(newType, expr, arkMethod, methodName);
-        } else if (baseType instanceof StringType || baseType instanceof NumberType || baseType instanceof BooleanType) {
-            // Convert primitive types to their wrapper class types
-            const name = baseType.getName();
-            const className = name.charAt(0).toUpperCase() + name.slice(1);
-            const arrayClass = arkMethod.getDeclaringArkFile().getScene().getSdkGlobal(className);
-            if (arrayClass instanceof ArkClass) {
-                baseType = new ClassType(arrayClass.getSignature());
-            }
-        }
+    public static inferInvokeExpr(baseType: Type, expr: AbstractInvokeExpr, arkMethod: ArkMethod): AbstractInvokeExpr | null {
+        const methodName = expr.getMethodSignature().getMethodSubSignature().getMethodName();
         const scene = arkMethod.getDeclaringArkFile().getScene();
-        return this.inferMethodFromBase(baseType, expr, scene, methodName);
-    }
-
-    public static inferMethodFromBase(baseType: Type, expr: AbstractInvokeExpr, scene: Scene, methodName: string): AbstractInvokeExpr | null {
         // Dispatch to appropriate inference method based on resolved base type
         if (baseType instanceof ClassType) {
             return IRInference.inferInvokeExprWithDeclaredClass(expr, baseType, methodName, scene);
@@ -470,7 +418,7 @@ export class StaticInvokeExprInference extends InstanceInvokeExprInference {
             return undefined;
         }
         const baseType = this.getBaseType(expr, arkMethod);
-        const result = baseType ? InstanceInvokeExprInference.inferInvokeExpr(baseType, expr, arkMethod, methodName) :
+        const result = baseType ? IRInference.inferInstanceMember(baseType, expr, arkMethod, InstanceInvokeExprInference.inferInvokeExpr) :
             IRInference.inferStaticInvokeExprByMethodName(methodName, arkMethod, expr);
         return !result || result === expr ? undefined : result;
     }
@@ -711,7 +659,7 @@ export class ArkTsInstanceInvokeExprInference extends InstanceInvokeExprInferenc
         const arkMethod = stmt.getCfg().getDeclaringMethod();
         TypeInference.inferRealGenericTypes(value.getRealGenericTypes(), arkMethod.getDeclaringArkClass());
         const result =
-            InstanceInvokeExprInference.inferInvokeExpr(value.getBase().getType(), value, arkMethod, super.getMethodName(value, arkMethod)) ??
+            IRInference.inferInstanceMember(value.getBase().getType(), value, arkMethod, InstanceInvokeExprInference.inferInvokeExpr) ??
             IRInference.processExtendFunc(value, arkMethod, super.getMethodName(value, arkMethod));
         return !result || result === value ? undefined : result;
     }
