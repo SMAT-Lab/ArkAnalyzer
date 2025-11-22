@@ -30,7 +30,7 @@ export { buildExportInfo, buildExportAssignment, buildExportDeclaration };
 let tempIndex: number = 0;
 
 function getTempAll(): string {
-    return `${TEMP_EXPORT_ALL_PREFIX}${tempIndex++}`
+    return `${TEMP_EXPORT_ALL_PREFIX}${tempIndex++}`;
 }
 
 function buildExportInfo(arkInstance: ArkExport, arkFile: ArkFile, line: LineColPosition): ExportInfo {
