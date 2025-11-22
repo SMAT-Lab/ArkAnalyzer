@@ -39,9 +39,9 @@ export const LOOP_EXPECT_CASE1 = {
             id: 2,
             stmts: [
                 '%3 = arr[i]',
-                'c = %3.<@%unk/%unk: .0>',
-                '%4 = arr[i]',
-                'd = %4.<@%unk/%unk: .1>',
+                "c = %3[0]",
+                "%4 = arr[i]",
+                "d = %4[1]",
                 'staticinvoke <@%unk/%unk: .printf()>(\'%d %d\\n\', c, d)',
                 'i = i + 1',
             ],
