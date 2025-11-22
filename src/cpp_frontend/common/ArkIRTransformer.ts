@@ -27,12 +27,19 @@ import {
     RelationalBinaryOperator,
     UnaryOperator,
 } from '../../core/base/Expr';
-import { ArkCaughtExceptionRef, ArkInstanceFieldRef, ArkParameterRef, ArkThisRef, GlobalRef } from '../../core/base/Ref';
+import {
+    ArkArrayRef,
+    ArkCaughtExceptionRef,
+    ArkInstanceFieldRef,
+    ArkParameterRef,
+    ArkThisRef,
+    GlobalRef,
+} from '../../core/base/Ref';
 import { Value } from '../../core/base/Value';
 import * as ts from 'ohos-typescript';
 import { Local } from '../../core/base/Local';
 import { ArkAliasTypeDefineStmt, ArkAssignStmt, ArkIfStmt, ArkInvokeStmt, ArkReturnStmt, ArkReturnVoidStmt, ArkThrowStmt, Stmt } from '../../core/base/Stmt';
-import { AliasType, BooleanType, ClassType, UnknownType, VoidType, Type } from '../../core/base/Type';
+import { AliasType, BooleanType, ClassType, UnknownType, VoidType, Type, AnyType } from '../../core/base/Type';
 import { CxxValueUtil } from './ValueUtil';
 import { IRUtils } from './IRUtils';
 import { ArkMethod } from '../../core/model/ArkMethod';
@@ -498,6 +505,15 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
             stmts.push(assignStmt);
             catchStmts.forEach(stmt => stmts.push(stmt));
         }
+        // When the scenario is catch (...)
+        else {
+            const caughtExceptionRef = new ArkCaughtExceptionRef(AnyType.getInstance());
+            const catchValue = new Local('error');
+            const assignStmt = new ArkAssignStmt(catchValue, caughtExceptionRef);
+            assignStmt.setOriginPositionInfo(LineColPosition.cxxBuildFromNode(catchClause))
+            stmts.push(assignStmt);
+        }
+
         return stmts;
     }
 
@@ -859,6 +875,8 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
             valueType = this.buildTypeForUnopExpr(value);
         } else if (value instanceof ArkNormalBinopExpr) {
             valueType = this.buildTypeForBinOpExpr(value);
+        } else if (value instanceof ArkArrayRef) {
+            valueType = this.buildTypeForArrayRefExpr(value);
         } else {
             valueType = value.getType();
         }
@@ -918,6 +936,10 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
             return opValue2Type;
         }
         return value.getType();
+    }
+
+    private buildTypeForArrayRefExpr(value: ArkArrayRef): Type {
+        return value.getBase().getType();
     }
 
     public setBuilderMethodContextFlag(builderMethodContextFlag: boolean): void {}

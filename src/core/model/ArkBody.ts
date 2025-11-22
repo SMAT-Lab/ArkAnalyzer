@@ -20,15 +20,16 @@ import { Trap } from '../base/Trap';
 import { Value } from '../base/Value';
 import { ArkAliasTypeDefineStmt } from '../base/Stmt';
 import { LocalSignature } from './ArkSignature';
+import { CxxTrap } from '../../cpp_frontend/base/Trap';
 
 export class ArkBody {
     private locals: Map<string, Local>;
     private usedGlobals?: Map<string, Value>;
     private cfg: Cfg;
     private aliasTypeMap?: Map<string, [AliasType, ArkAliasTypeDefineStmt]>;
-    private traps?: Trap[];
+    private traps?: Trap[]|CxxTrap[];
 
-    constructor(locals: Set<Local>, cfg: Cfg, aliasTypeMap?: Map<string, [AliasType, ArkAliasTypeDefineStmt]>, traps?: Trap[]) {
+    constructor(locals: Set<Local>, cfg: Cfg, aliasTypeMap?: Map<string, [AliasType, ArkAliasTypeDefineStmt]>, traps?: Trap[] | CxxTrap[]) {
         this.cfg = cfg;
         this.aliasTypeMap = aliasTypeMap;
         this.locals = new Map<string, Local>();
@@ -79,7 +80,7 @@ export class ArkBody {
         return null;
     }
 
-    public getTraps(): Trap[] | undefined {
+    public getTraps(): Trap[] | CxxTrap[] | undefined {
         return this.traps;
     }
 

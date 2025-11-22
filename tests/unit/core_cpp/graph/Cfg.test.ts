@@ -63,6 +63,7 @@ import * as CALLEXPR_EXPECT from '../../../resources_cpp/cfg/call/callExpect';
 import * as MALLOC_EXPECT from '../../../resources_cpp/cfg/malloc/mallocSampleExpects';
 import * as INITIALZERLIST from '../../../resources_cpp/cfg/stdInitializerListExpr/initializerListExpects';
 import * as SUPPLEMENTARY from '../../../resources_cpp/cfg/supplementary/supplementary';
+import * as TRAP from '../../../resources_cpp/cfg/trap/cxxTrapExpects';
 
 const deveco_sysroot_include = process.env.DEVECO_SYSROOT_INCLUDE !== undefined ? process.env.DEVECO_SYSROOT_INCLUDE : '';
 const is_system_win32 = process.platform === 'win32';
@@ -490,6 +491,11 @@ describe('supplementary', () => {
         scene.inferTypes();
         testBlocks(scene, 'supplementary.cpp', 'Case1', SUPPLEMENTARY.SUP_CASE1.blocks);
         testBlocks(scene, 'supplementary.cpp', 'PostAdd', SUPPLEMENTARY.POST_AND.blocks);
+    });
+    it('case1: trap', () => {
+        const scene = buildScene('trap');
+        scene.inferTypes();
+        testBlocks(scene, 'cxxTrap.cpp', 'Case1', TRAP.TRAP_EXPECT_CASE1.blocks);
     });
 });
 
