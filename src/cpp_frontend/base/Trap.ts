@@ -14,22 +14,20 @@
  */
 
 import { BasicBlock } from '../../core/graph/BasicBlock';
+import { Trap } from '../../core/base/Trap';
 
-export class CxxTrap {
-    private readonly tryBlocks: BasicBlock[];
+export class CxxTrap extends Trap {
 
-    private readonly catchBlocks: BasicBlock[][];
+
+    private readonly cxxCatchBlocks: BasicBlock[][];
 
     constructor(tryBlocks: BasicBlock[], catchBlocks: BasicBlock[][]) {
-        this.tryBlocks = tryBlocks;
-        this.catchBlocks = catchBlocks;
+        super(tryBlocks, []);
+
+        this.cxxCatchBlocks = catchBlocks;
     }
 
-    public getTryBlocks(): BasicBlock[] {
-        return this.tryBlocks;
-    }
-
-    public getCatchBlocks(): BasicBlock[][] {
-        return this.catchBlocks;
+    public getCxxCatchBlocks(): BasicBlock[][] {
+        return this.cxxCatchBlocks;
     }
 }
