@@ -93,7 +93,7 @@ export const COMPOUND_LITERAL_EXPECT_CASE5 = {
             stmts: [
                 'this = this: @compoundLiteral/compoundLiteralExpr.cpp: %dflt',
                 '%0 = new @compoundLiteral/compoundLiteralExpr.cpp: ShoppingList',
-                '%1 = new @%unk/%unk: std::vector<string>',
+                '%1 = new @%unk/%unk: std::vector<@std/basic_string.h: basic_string<char>>',
                 '%2 = newarray (string[])[3]',
                 '%2[0] = \'苹果\'',
                 '%2[1] = \'牛奶\'',
