@@ -2808,7 +2808,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
                 return { value: constant, valueOriginalPositions: pos, stmts };
             }
             case 'CharacterLiteral': {
-                const constant = CxxValueUtil.createStringConst(S(literalNode.code));
+                const constant = CxxValueUtil.createCharConst(S(literalNode.code));
                 return { value: constant, valueOriginalPositions: pos, stmts };
             }
             case 'CXXBoolLiteralExpr': {

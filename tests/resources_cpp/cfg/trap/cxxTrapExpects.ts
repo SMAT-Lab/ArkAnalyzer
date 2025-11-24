@@ -20,7 +20,7 @@ export const TRAP_EXPECT_CASE1 = {
             stmts: [
                 'this = this: @trap/cxxTrap.cpp: %dflt',
                 'a = 1',
-                'x = \'c\'',
+                'x = c',
                 'flag = true',
             ],
             preds: [],

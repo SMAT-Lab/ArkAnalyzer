@@ -102,7 +102,7 @@ export const POINTER_EXPECT_CASE3 = {
                 'instanceinvoke %10.<@%unk/%unk: char.constructor()>()',
                 's-><@pointer/pointerExpr.cpp: MyStruct.size> = %10',
                 '%11 = s-><@pointer/pointerExpr.cpp: MyStruct.size>',
-                "*%11 = 'S'",
+                '*%11 = S',
                 '%12 = *ss-><@%unk/%unk: .size>',
                 'size = *%12',
             ],
@@ -127,7 +127,7 @@ export const POINTER_EXPECT_CASE4 = {
                 'ptr2 = %0',
                 '*ptr1 = 100',
                 'rawPtr = instanceinvoke ptr1.<@%unk/%unk: .get()>()',
-                'return'
+                'return',
             ],
             preds: [],
             succes: [],
@@ -149,7 +149,7 @@ export const POINTER_EXPECT_CASE5 = {
                 'ptr2 = %0',
                 '*ptr1 = 100',
                 'rawPtr = instanceinvoke ptr1.<@%unk/%unk: .get()>()',
-                'return'
+                'return',
             ],
             preds: [],
             succes: [],
@@ -162,7 +162,7 @@ export const POINTER_EXPECT_CASE6 = {
         {
             id: 0,
             stmts: [
-                'this = this: @pointer/pointerExpr.cpp: %dflt'
+                'this = this: @pointer/pointerExpr.cpp: %dflt',
             ],
             preds: [],
             succes: [1],
@@ -174,7 +174,7 @@ export const POINTER_EXPECT_CASE6 = {
                 'node2 = staticinvoke <@%unk/%unk: .make_shared()>(2)',
                 'node1-><@%unk/%unk: .next> = node2',
                 'node2-><@%unk/%unk: .parent> = node1',
-                'return'
+                'return',
             ],
             preds: [0],
             succes: [],
@@ -196,7 +196,7 @@ export const POINTER_NODE_CLASS1 = {
                         'this = this: @pointer/pointerExpr.cpp: Node',
                         'instanceinvoke this.<@pointer/pointerExpr.cpp: Node.%instInit()>()',
                         'this.<@pointer/pointerExpr.cpp: Node.data> = value',
-                        'return this'
+                        'return this',
                     ],
                     preds: [],
                     succes: [],
