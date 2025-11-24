@@ -39,7 +39,7 @@ import { Value } from '../../core/base/Value';
 import * as ts from 'ohos-typescript';
 import { Local } from '../../core/base/Local';
 import { ArkAliasTypeDefineStmt, ArkAssignStmt, ArkIfStmt, ArkInvokeStmt, ArkReturnStmt, ArkReturnVoidStmt, ArkThrowStmt, Stmt } from '../../core/base/Stmt';
-import { AliasType, BooleanType, ClassType, UnknownType, VoidType, Type, AnyType } from '../../core/base/Type';
+import { AliasType, BooleanType, ClassType, UnknownType, VoidType, Type, AnyType, ArrayType } from '../../core/base/Type';
 import { CxxValueUtil } from './ValueUtil';
 import { IRUtils } from './IRUtils';
 import { ArkMethod } from '../../core/model/ArkMethod';
@@ -946,6 +946,16 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
     }
 
     private buildTypeForArrayRefExpr(value: ArkArrayRef): Type {
+        const valueBaseType = value.getBase().getType();
+        if (valueBaseType instanceof ArrayType) {
+            const dimension = valueBaseType.getDimension();
+            const baseTypeOfArray = valueBaseType.getBaseType();
+            if (dimension === 1) {
+                return baseTypeOfArray;
+            }
+            // Handle multi-dimension array
+            return new ArrayType(baseTypeOfArray, dimension - 1);
+        }
         return value.getBase().getType();
     }
 
