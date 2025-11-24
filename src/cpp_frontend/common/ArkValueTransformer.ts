@@ -325,10 +325,6 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
      *@ returns ValueAndStmts object, including converted values and related statements
      */
     private cxxConstructExprToValueAndStmts(node: CxxAstNode): ValueAndStmts {
-        let parent = (node.parent ?? node.getParent?.(true)) ?? null;
-        if (parent && parent.kind === 'CXXConstructorDecl') {
-            return this.cxxSuperExpressionToValueAndStmts(node);
-        }
         if (!this.isPairConstructExpr(node) &&
             (this.isNodeRelatedToCXXLambdaFunc(node) || this.isNodeRelatedToMaterialize(node) || this.isNodeRelatedToImplicitNode(node)) &&
             node.inner?.length > 0) {
@@ -543,11 +539,15 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         if (!cxxCtorInitializer.inner || cxxCtorInitializer.inner.length === 0) {
             return this.unprocessedNodeToValueAndStmts(cxxCtorInitializer);
         }
-        if (cxxCtorInitializer.inner[0].kind === 'CXXInheritedCtorInitExpr') {
+        const firstInnerNode = cxxCtorInitializer.inner[0];
+        if (firstInnerNode.kind === 'CXXInheritedCtorInitExpr') {
             // Processing of using parent:: parent
-            return this.cxxInheritedCtorInitExprToValueAndStmts(cxxCtorInitializer.inner[0]);
+            return this.cxxInheritedCtorInitExprToValueAndStmts(firstInnerNode);
+        } else if (firstInnerNode.kind === 'CXXConstructExpr') {
+            // Processing of case: Left(const char& name) : Base(name) // call base class constructor
+            return this.cxxSuperExpressionToValueAndStmts(firstInnerNode);
         }
-        const assignRight = cxxCtorInitializer.inner[0];
+        const assignRight = firstInnerNode;
         const CtorInit2ThisMemberExpr = {
             kind: 'MemberExpr',
             name: cxxCtorInitializer.anyInit?.name ?? '',
