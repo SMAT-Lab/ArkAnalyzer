@@ -1137,7 +1137,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
                 (enumArkClass instanceof ArkClass) ?
                     enumArkClass.getSignature() :
                     ArkSignatureBuilder.buildClassSignatureFromClassName(enumClassName);
-            return new FieldSignature(memberName, enumSignature, UnknownType.getInstance(), true);
+            return new FieldSignature(memberName, enumSignature, enumSignature.getType(), true);
         }
         // ==Handling common scenarios==
         let baseType = baseValue.getType();
@@ -1156,7 +1156,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             fieldSignature = new FieldSignature(
                 memberName, // Field name (such as insert)
                 baseClassType.getClassSignature(), // Base class type signature
-                UnknownType.getInstance() // Unknown type preemption
+                baseType // baseType as its type
             );
         } else {
             // Otherwise, it is generated only according to the field name
