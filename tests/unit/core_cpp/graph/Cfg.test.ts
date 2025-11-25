@@ -23,7 +23,8 @@ import * as IF_EXPECT from '../../../resources_cpp/cfg/if/ifSampleExpects';
 import * as SWITCH_EXPECT from '../../../resources_cpp/cfg/switch/switchSampleExpects';
 import * as LOOP_EXPECT from '../../../resources_cpp/cfg/loop/loopSampleExpects';
 import * as GOTO_EXPECT from '../../../resources_cpp/cfg/goto/gotoSampleExpects';
-import * as BINARY_CONDITIONAL_EXPECT from '../../../resources_cpp/cfg/binaryConditional/binaryConditionalSampleExpects';
+import * as BINARY_CONDITIONAL_EXPECT
+    from '../../../resources_cpp/cfg/binaryConditional/binaryConditionalSampleExpects';
 import * as POINTER_EXPECT from '../../../resources_cpp/cfg/pointer/pointerExprExpects';
 import * as REFERENCE_EXPECT from '../../../resources_cpp/cfg/reference/referenceExpects';
 import * as DATA_STRUCT_EXPECT from '../../../resources_cpp/cfg/dataStruct/dataStructExpects';

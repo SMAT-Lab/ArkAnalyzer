@@ -39,9 +39,9 @@ export const LOOP_EXPECT_CASE1 = {
             id: 2,
             stmts: [
                 '%3 = arr[i]',
-                "c = %3[0]",
-                "%4 = arr[i]",
-                "d = %4[1]",
+                'c = %3[0]',
+                '%4 = arr[i]',
+                'd = %4[1]',
                 'staticinvoke <@%unk/%unk: .printf()>(\'%d %d\\n\', c, d)',
                 'i = i + 1',
             ],
@@ -199,13 +199,13 @@ export const LOOP_EXPECT_CASE8 = {
             id: 0,
             stmts: [
                 'this = this: @loop/loopSample.cpp: %dflt',
-                '%0 = new @%unk/%unk: std::map<int,string>',
-                '%1 = new @%unk/%unk: const std::pair<int,string>',
-                "instanceinvoke %1.<@%unk/%unk: const std::pair.constructor()>(1, 'one')",
-                '%2 = new @%unk/%unk: const std::pair<int,string>',
-                "instanceinvoke %2.<@%unk/%unk: const std::pair.constructor()>(2, 'two')",
-                '%3 = new @%unk/%unk: const std::pair<int,string>',
-                "instanceinvoke %3.<@%unk/%unk: const std::pair.constructor()>(3, 'three')",
+                '%0 = new @%unk/%unk: std::map<int,@std/basic_string.h: basic_string<char>>',
+                '%1 = new @%unk/%unk: const std::pair<int,@std/basic_string.h: basic_string<char>>',
+                'instanceinvoke %1.<@%unk/%unk: const std::pair.constructor()>(1, \'one\')',
+                '%2 = new @%unk/%unk: const std::pair<int,@std/basic_string.h: basic_string<char>>',
+                'instanceinvoke %2.<@%unk/%unk: const std::pair.constructor()>(2, \'two\')',
+                '%3 = new @%unk/%unk: const std::pair<int,@std/basic_string.h: basic_string<char>>',
+                'instanceinvoke %3.<@%unk/%unk: const std::pair.constructor()>(3, \'three\')',
                 '%4 = newarray (const std::pair<const int, std::basic_string<char>>[])[3]',
                 '%4[0] = %1',
                 '%4[1] = %2',
@@ -250,13 +250,13 @@ export const LOOP_EXPECT_CASE9 = {
             id: 0,
             stmts: [
                 'this = this: @loop/loopSample.cpp: %dflt',
-                '%0 = new @%unk/%unk: std::map<int,string>',
-                '%1 = new @%unk/%unk: const std::pair<int,string>',
-                "instanceinvoke %1.<@%unk/%unk: const std::pair.constructor()>(1, 'one')",
-                '%2 = new @%unk/%unk: const std::pair<int,string>',
-                "instanceinvoke %2.<@%unk/%unk: const std::pair.constructor()>(2, 'two')",
-                '%3 = new @%unk/%unk: const std::pair<int,string>',
-                "instanceinvoke %3.<@%unk/%unk: const std::pair.constructor()>(3, 'three')",
+                '%0 = new @%unk/%unk: std::map<int,@std/basic_string.h: basic_string<char>>',
+                '%1 = new @%unk/%unk: const std::pair<int,@std/basic_string.h: basic_string<char>>',
+                'instanceinvoke %1.<@%unk/%unk: const std::pair.constructor()>(1, \'one\')',
+                '%2 = new @%unk/%unk: const std::pair<int,@std/basic_string.h: basic_string<char>>',
+                'instanceinvoke %2.<@%unk/%unk: const std::pair.constructor()>(2, \'two\')',
+                '%3 = new @%unk/%unk: const std::pair<int,@std/basic_string.h: basic_string<char>>',
+                'instanceinvoke %3.<@%unk/%unk: const std::pair.constructor()>(3, \'three\')',
                 '%4 = newarray (const std::pair<const int, std::basic_string<char>>[])[3]',
                 '%4[0] = %1',
                 '%4[1] = %2',
@@ -309,30 +309,30 @@ export const LOOP_EXPECT_CASE10 = {
                 '%1[4] = 5',
                 'instanceinvoke %0.<@%unk/%unk: std::vector.constructor()>(%1)',
                 'num = %0',
-                'it = instanceinvoke num.<@std/vector.h: vector.begin()>()'
+                'it = instanceinvoke num.<@std/vector.h: vector.begin()>()',
             ],
             preds: [],
-            succes: [ 1 ]
+            succes: [1],
         },
         {
             id: 1,
             stmts: [
                 '%2 = instanceinvoke num.<@std/vector.h: vector.end()>()',
-                'if it != %2'
+                'if it != %2',
             ],
-            preds: [ 0, 2 ],
-            succes: [ 2, 3 ]
+            preds: [0, 2],
+            succes: [2, 3],
         },
         {
             id: 2,
             stmts: [
                 '%3 = *it',
-                "staticinvoke <@%unk/%unk: .printf()>('%d\\n', %3)",
-                'it = it + 1'
+                'staticinvoke <@%unk/%unk: .printf()>(\'%d\\n\', %3)',
+                'it = it + 1',
             ],
-            preds: [ 1 ],
-            succes: [ 1 ]
+            preds: [1],
+            succes: [1],
         },
-        { id: 3, stmts: [ 'return' ], preds: [ 1 ], succes: [] }
+        { id: 3, stmts: ['return'], preds: [1], succes: [] },
     ],
 };
