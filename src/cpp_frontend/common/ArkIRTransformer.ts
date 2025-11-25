@@ -634,7 +634,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
                 initNode = node;
             } else if (node.kind === 'BinaryOperator' || node.kind === 'ExprWithCleanups') {
                 conditionNoe = node;
-            } else if (node.kind === 'UnaryOperator' || node.kind === 'CXXOperatorCallExpr') {
+            } else if (node.kind === 'UnaryOperator' || node.kind === 'CXXOperatorCallExpr' || node.kind === 'CompoundAssignOperator') {
                 incrementor = node;
             }
         }
