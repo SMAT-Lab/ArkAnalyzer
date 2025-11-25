@@ -629,14 +629,22 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         let initNode: CxxAstNode | undefined;
         let conditionNoe: CxxAstNode | undefined;
         let incrementor: CxxAstNode | undefined;
-        for (const node of forStatement.inner) {
-            if (node.kind === 'DeclStmt') {
-                initNode = node;
-            } else if (node.kind === 'BinaryOperator' || node.kind === 'ExprWithCleanups') {
-                conditionNoe = node;
-            } else if (node.kind === 'UnaryOperator' || node.kind === 'CXXOperatorCallExpr' || node.kind === 'CompoundAssignOperator') {
-                incrementor = node;
+        if (forStatement.inner.length < 4) {
+            // When the for structure is incomplete, allocate positions according to the statement type. In cases of misclassification, the syntax tree structure needs to be further improved
+            for (const node of forStatement.inner) {
+                if (node.kind === 'DeclStmt') {
+                    initNode = node;
+                } else if (node.kind === 'BinaryOperator' || node.kind === 'ExprWithCleanups') {
+                    conditionNoe = node;
+                } else if (node.kind === 'UnaryOperator' || node.kind === 'CXXOperatorCallExpr' || node.kind === 'CompoundAssignOperator') {
+                    incrementor = node;
+                }
             }
+        } else {
+            // The complete for structure allocates corresponding statements in order
+            initNode = forStatement.inner[0];
+            conditionNoe = forStatement.inner[1];
+            incrementor = forStatement.inner[2];
         }
 
         if (initNode) {
