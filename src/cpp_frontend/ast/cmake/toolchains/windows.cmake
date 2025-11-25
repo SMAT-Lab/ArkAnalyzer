@@ -7,4 +7,4 @@ find_library(CLANG_LIBRARIES
   HINTS "./clang+llvm-20.1.6-x86_64-pc-windows-msvc/lib"
 )
 
-message(STATUS "Found libClang on Windows $ {CLANG_LIBRARIES}")
+message(STATUS "Found libClang on Windows ${CLANG_LIBRARIES}")
