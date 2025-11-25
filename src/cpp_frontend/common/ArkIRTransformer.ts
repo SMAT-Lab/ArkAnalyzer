@@ -884,7 +884,9 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
             valueType = this.buildTypeForBinOpExpr(value);
         } else if (value instanceof ArkArrayRef) {
             valueType = this.buildTypeForArrayRefExpr(value);
-        } else {
+        } else if (value instanceof ArkInstanceInvokeExpr) {
+            valueType = value.getMethodSignature().getMethodSubSignature().getReturnType();
+        }else {
             valueType = value.getType();
         }
         const leftOp = this.ArkCxxValueTransformer.generateTempLocal(valueType);

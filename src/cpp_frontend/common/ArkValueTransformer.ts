@@ -558,7 +558,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             ],
             type: cxxCtorInitializer.anyInit?.type ?? '',
         };
-        return this.cxxAssignmentToValueAndStmts(CtorInit2ThisMemberExpr as CxxAstNode, assignRight, false, false, UnknownType.getInstance(), true);
+        const initType = cxxNode2Type(CtorInit2ThisMemberExpr as CxxAstNode, undefined);
+        return this.cxxAssignmentToValueAndStmts(CtorInit2ThisMemberExpr as CxxAstNode, assignRight, false, false, initType, true);
     }
 
     /**
@@ -2630,7 +2631,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         const binaryExpressionLeft = binaryExpression.inner[0];
         const binaryExpressionRight = binaryExpression.inner[1];
         if (operatorToken === '=') {
-            return this.cxxAssignmentToValueAndStmts(binaryExpressionLeft, binaryExpressionRight, false, false, UnknownType.getInstance(), true);
+            const leftType = cxxNode2Type(binaryExpressionLeft, undefined);
+            return this.cxxAssignmentToValueAndStmts(binaryExpressionLeft, binaryExpressionRight, false, false, leftType, true);
         }
         const stmts: Stmt[] = [];
         const binaryExpressionPosition = FullPosition.cxxBuildFromNode(binaryExpression, this.cxxSourceFile);
