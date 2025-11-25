@@ -19,8 +19,6 @@ import path from 'path';
 
 import { ArkAssignStmt, ArkInvokeStmt, Stmt } from '../../../../src';
 import { AbstractInvokeExpr } from '../../../../src';
-// @ts-ignore
-import { testBlocks } from '../../common';
 
 describe('check func parm', () => {
     it('case1: check func parm', () => {

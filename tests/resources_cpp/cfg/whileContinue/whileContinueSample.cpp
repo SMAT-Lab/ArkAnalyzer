@@ -14,6 +14,7 @@
  */
 
 #include <cstdio>
+#include <iostream>
 #define TWO 2
 #define TEN 10
 

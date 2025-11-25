@@ -114,7 +114,6 @@ export function testBlocksWithSignature(scene: Scene, filePath: string, classNam
         assert.isDefined(blocks);
         return;
     }
-    // @ts-ignore
     assertBlocksEqual(blocks, expectBlocks);
 }
 
@@ -129,7 +128,6 @@ export function showTestBlocks(scene: Scene, filePath: string, methodName: strin
         assert.isDefined(blocks);
         return;
     }
-    // @ts-ignore
     showCfgStmt(blocks);
 }
 
@@ -140,18 +138,18 @@ export function showCfgStmt(blocks: Set<BasicBlock>): void {
     }
     blockMap.forEach((value: BasicBlock, key) => {
         const block = blockMap.get(key);
+        if (block === undefined) {
+            return;
+        }
         const stmts: string[] = [];
-        // @ts-ignore
         for (const stmt of block.getStmts()) {
             stmts.push(stmt.toString());
         }
         const preds: number[] = [];
-        // @ts-ignore
         block.getPredecessors().forEach(predBlock => {
             preds.push(predBlock.getId());
         });
         const succes: number[] = [];
-        // @ts-ignore
         block.getSuccessors().forEach(succBlock => {
             succes.push(succBlock.getId());
         });
