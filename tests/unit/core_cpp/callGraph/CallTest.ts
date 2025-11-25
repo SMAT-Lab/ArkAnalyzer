@@ -30,7 +30,6 @@ function runScene(config: SceneConfig, fileName: string): void {
     projectScene.inferTypes();
 
     let entryPoints: MethodSignature[] = [];
-    // @ts-ignore
     entryPoints.push(
         ...projectScene
             .getFiles()

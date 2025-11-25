@@ -529,7 +529,6 @@ export class CxxBodyBuilder {
         const closuresParam = new MethodParameter();
         closuresParam.setName(closuresLocal.getName());
         closuresParam.setType(closuresLocal.getType());
-        // @ts-ignore
         params.unshift(closuresParam);
         let newSubSignature = new MethodSubSignature(oldSubSignature.getMethodName(), params, oldSubSignature.getReturnType(), oldSubSignature.isStatic());
         return new MethodSignature(oldSignature.getDeclaringClassSignature(), newSubSignature);
