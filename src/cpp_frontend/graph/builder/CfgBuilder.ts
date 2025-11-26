@@ -727,7 +727,6 @@ export class CfgBuilder {
             case 'TypeAliasTemplateDecl':
             case 'UnaryOperator':
             case 'VarDecl':
-
                 s = new StatementBuilder('statement', innerNode.code, innerNode, scope.id);
                 this.judgeLastType(s, lastStatement);
                 lastStatement = s;
@@ -792,14 +791,19 @@ export class CfgBuilder {
                 this.judgeLastType(s, lastStatement);
                 lastStatement = s;
                 break;
-            case 'ImplicitCastExpr':{
-                for (let i = 0; i < innerNode.inner.length; i++) {
-                    let inner = innerNode.inner[i];
-                    lastStatement = this.handleASTStmtSuccession(inner, lastStatement, scope);
-                }
-            }
+            case 'ImplicitCastExpr':
+                lastStatement = this.ASTNodeImplicitCastExpr(innerNode, lastStatement, scope);
+                break;
             default:
                 break;
+        }
+        return lastStatement;
+    }
+
+    private ASTNodeImplicitCastExpr(implicitCastExpr: CxxAstNode, lastStatement: StatementBuilder, scope: Scope): StatementBuilder {
+        for (let i = 0; i < implicitCastExpr.inner.length; i++) {
+            let inner = implicitCastExpr.inner[i];
+            lastStatement = this.handleASTStmtSuccession(inner, lastStatement, scope);
         }
         return lastStatement;
     }

@@ -162,23 +162,7 @@ function buildNamespaceMembers(node: CxxAstNode, namespace: ArkNamespace, source
             case 'CXXConstructorDecl':
             case 'CXXDestructorDecl':
             case 'CXXMethodDecl': {
-                let className = child.mangledName;
-                if (!className) {
-                    logger.trace('Declaration class not found', child);
-                    return;
-                }
-                let arkClass = namespace.getClassWithName(className);
-                if (!arkClass) {
-                    arkClass = new ArkClass();
-                    arkClass.setDeclaringArkNamespace(namespace);
-                    arkClass.setDeclaringArkFile(namespace.getDeclaringArkFile());
-                    const classSignature = new ClassSignature(
-                        className, arkClass.getDeclaringArkFile().getFileSignature(), arkClass.getDeclaringArkNamespace()?.getSignature() || null);
-                    arkClass.setSignature(classSignature);
-                    namespace.addArkClass(arkClass, className);
-                }
-                let mtd: ArkMethod = new ArkMethod();
-                buildArkMethodFromArkClass(child, arkClass, mtd, sourceFile);
+                buildArkMethodForClassMethodInNamespace(child, namespace, sourceFile);
                 return;
             }
             case 'FunctionTemplate':
@@ -197,4 +181,24 @@ function buildNamespaceMembers(node: CxxAstNode, namespace: ArkNamespace, source
             // join default method
         }
     });
+}
+
+function buildArkMethodForClassMethodInNamespace(methodNode: CxxAstNode, namespace: ArkNamespace, sourceFile: CxxAstNode): void {
+    let className = methodNode.mangledName;
+    if (!className) {
+        logger.trace('Declaration class not found', methodNode);
+        return;
+    }
+    let arkClass = namespace.getClassWithName(className);
+    if (!arkClass) {
+        arkClass = new ArkClass();
+        arkClass.setDeclaringArkNamespace(namespace);
+        arkClass.setDeclaringArkFile(namespace.getDeclaringArkFile());
+        const classSignature = new ClassSignature(
+            className, arkClass.getDeclaringArkFile().getFileSignature(), arkClass.getDeclaringArkNamespace()?.getSignature() || null);
+        arkClass.setSignature(classSignature);
+        namespace.addArkClass(arkClass, className);
+    }
+    let mtd: ArkMethod = new ArkMethod();
+    buildArkMethodFromArkClass(methodNode, arkClass, mtd, sourceFile);
 }
