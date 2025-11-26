@@ -223,7 +223,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
             cls.setDeclaringArkNamespace(declaringArkNamespace);
         }
         cls.setDeclaringArkFile(this.declaringMethod.getDeclaringArkFile());
-        buildNormalArkClassFromArkMethod(node, cls, this.cxxSourceFile, this.declaringMethod);
+        buildNormalArkClassFromArkMethod(node, cls, this.cxxSourceFile);
         return [];
     }
 

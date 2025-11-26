@@ -22,6 +22,8 @@
 #define TWO 2
 #define THREE 3
 #define FOUR 4
+#define FIVE 5
+#define TEN 10
 
 int Case1()
 {
@@ -140,7 +142,8 @@ void Case7()
 // Comma expression
 int Case8()
 {
-    int a = 5, b = 10;
+    int a = FIVE;
+    int b = TEN;
     if (a++, b > a) {
         return b;
     }

@@ -191,6 +191,9 @@ export class CxxFloatingPointType extends NumberType {
     public static getInstance(): CxxFloatingPointType {
         return new CxxFloatingPointType();
     }
+    public getBitWith(): CxxTypeBitWidth {
+        return CxxTypeBitWidth.UNKNOWN;
+    }
 }
 
 /**
