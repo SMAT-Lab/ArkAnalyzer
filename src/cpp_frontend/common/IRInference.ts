@@ -195,7 +195,7 @@ export class IRInference {
         return expr;
     }
 
-    private static processArkExportForMethodAndSignature(arkExport: ArkExport | null ,
+    private static processArkExportForMethodAndSignature(arkExport: ArkExport | null,
                                                          arkClass: ArkClass
     ): {mtd: ArkMethod | undefined | null, sig: MethodSignature | undefined} {
         let method: ArkMethod | undefined | null;

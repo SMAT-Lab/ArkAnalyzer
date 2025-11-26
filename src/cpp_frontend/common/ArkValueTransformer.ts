@@ -1237,7 +1237,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         if (callExpression.name === 'napi_define_class') {
             setTs2CxxFuncMapOfClass(argus.args, true, this.declaringMethod);
         }
-        const returnType = cxxNode2Type(callExpression, this.declaringMethod)
+        const returnType = cxxNode2Type(callExpression, this.declaringMethod);
         return this.cxxGenerateInvokeValueAndStmts(callNode, argus, stmts, callExpression, returnType);
     }
 
@@ -1798,7 +1798,11 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         }
     }
 
-    private buildInvokeValueForLocal(callerValue: Local, args: Value[], realGenericTypes: Type[] | undefined, cxxMemberCallExprType?: Type): ArkPtrInvokeExpr | ArkStaticInvokeExpr {
+    private buildInvokeValueForLocal(callerValue: Local,
+                                     args: Value[],
+                                     realGenericTypes: Type[] | undefined,
+                                     cxxMemberCallExprType?: Type
+    ): ArkPtrInvokeExpr | ArkStaticInvokeExpr {
         const callerName = callerValue.getName();
         const methodSignature = ArkSignatureBuilder.buildMethodSignatureFromMethodName(callerName);
         methodSignature.getMethodSubSignature().setReturnType(cxxMemberCallExprType ?? UnknownType.getInstance());

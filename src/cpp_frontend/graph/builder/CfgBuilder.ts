@@ -1414,12 +1414,7 @@ export class CfgBuilder {
             basicBlockSet.add(blockInCfg);
             blockBuilderToCfgBlock.set(this.blocks[i], blockInCfg);
         }
-        return {
-            blocksContainLoopCondition,
-            blockBuildersBeforeTry,
-            blockBuildersContainSwitch,
-            valueAndStmtsOfSwitchAndCasesAll,
-        };
+        return { blocksContainLoopCondition, blockBuildersBeforeTry, blockBuildersContainSwitch, valueAndStmtsOfSwitchAndCasesAll };
     }
 
     private generateReturnStmt(arkIRTransformer: ArkCxxIRTransformer): Stmt {
