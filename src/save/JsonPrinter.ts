@@ -100,6 +100,17 @@ import { Cfg } from '../core/graph/Cfg';
 import { BasicBlock } from '../core/graph/BasicBlock';
 import { ArkBody } from '../core/model/ArkBody';
 import { Decorator } from '../core/base/Decorator';
+import {
+    CxxCharType,
+    CxxFloatingPointType,
+    CxxIntegralType,
+    CxxWcharType,
+    PointerType,
+    ReferenceType,
+    SmartPointerType,
+    Thread,
+    TypeInfo,
+} from '../cpp_frontend/base/Type';
 
 export class JsonPrinter extends Printer {
     constructor(private arkFile: ArkFile) {
@@ -246,6 +257,43 @@ export class JsonPrinter extends Printer {
             };
         } else if (type instanceof BooleanType) {
             return { _: 'BooleanType' };
+        } else if (type instanceof CxxIntegralType) {
+            return {
+                _: type.getTypeString(),
+                signType: type.getSignType(),
+            };
+        } else if (type instanceof CxxFloatingPointType) {
+            return {
+                _: type.getTypeString(),
+                bitWidth: type.getBitWith(),
+            };
+        } else if (type instanceof CxxCharType) {
+            return { _: type.getTypeString() };
+        } else if (type instanceof CxxWcharType) {
+            return { _: type.getTypeString() };
+
+        } else if (type instanceof SmartPointerType) {
+            return {
+                _: 'SmartPointerType',
+                baseType: this.serializeType(type.getBaseType()),
+            };
+        } else if (type instanceof PointerType) {
+            return {
+                _: 'PointerType',
+                baseType: this.serializeType(type.getBaseType()),
+            };
+        } else if (type instanceof ReferenceType) {
+            return {
+                _: 'ReferenceType',
+                baseType: this.serializeType(type.getBaseType()),
+            };
+        } else if (type instanceof TypeInfo) {
+            return {
+                _: 'TypeInfo',
+                name: type.getName(),
+            };
+        } else if (type instanceof Thread) {
+            return { _: 'Thread' };
         } else if (type instanceof NumberType) {
             return { _: 'NumberType' };
         } else if (type instanceof BigIntType) {
