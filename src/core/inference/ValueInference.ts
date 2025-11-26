@@ -902,6 +902,15 @@ export class CxxFieldRefInference extends FieldRefInference {
 @Bind(InferLanguage.CXX)
 export class CxxInstanceInvokeExprInference extends InstanceInvokeExprInference {
 
+    public preInfer(value: ArkInstanceInvokeExpr, stmt: Stmt | undefined): boolean {
+        let isNeedInfer: boolean = false;
+        if (value.getArgs().length !== value.getMethodSignature().getParamLength() ||
+            value.getMethodSignature().getMethodSubSignature().getParameterTypes().some(t => TypeInference.isUnclearType(t))) {
+            isNeedInfer = true;
+        }
+        return isNeedInfer || super.preInfer(value, stmt);
+    }
+
     /**
      * Performs inference on an instance invocation expression within the context of a statement
      * Handles special cases for pointer type and reference type
