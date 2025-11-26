@@ -285,13 +285,7 @@ function buildArkClassMembers(clsNode: CxxAstNode, cls: ArkClass, sourceFile: Cx
                 break;
             case 'EnumDecl':
             case 'CXXRecordDecl': {
-                const newCls = new ArkClass();
-                const namespace = cls.getDeclaringArkNamespace();
-                if (namespace) {
-                    buildNormalArkClassFromArkNamespace(member, namespace, newCls, sourceFile, cls);
-                } else {
-                    buildNormalArkClassFromArkFile(member, cls.getDeclaringArkFile(), newCls, sourceFile, cls);
-                }
+                processClassDeclInClass(member, cls, sourceFile);
                 break;
             }
             case 'UsingDecl':
@@ -306,6 +300,16 @@ function buildArkClassMembers(clsNode: CxxAstNode, cls: ArkClass, sourceFile: Cx
         }
     }
     buildInitMethodsForClassTag(tagStr, cls, sourceFile, instanceInitStmts, staticInitStmts);
+}
+
+function processClassDeclInClass(classDeclNode: CxxAstNode, cls: ArkClass, sourceFile: CxxAstNode): void {
+    const newCls = new ArkClass();
+    const namespace = cls.getDeclaringArkNamespace();
+    if (namespace) {
+        buildNormalArkClassFromArkNamespace(classDeclNode, namespace, newCls, sourceFile, cls);
+    } else {
+        buildNormalArkClassFromArkFile(classDeclNode, cls.getDeclaringArkFile(), newCls, sourceFile, cls);
+    }
 }
 
 function processUsingDeclInClass(usingDecl: CxxAstNode, cls: ArkClass): void {
