@@ -895,21 +895,18 @@ auto g_isCtorBoolOrInitList = [](const nlohmann::json &node) {
 };
 
 // Add variable initialization nodes for constructor
-nlohmann::json addCXXCtorInitializer(nlohmann::json& children,
-                                     nlohmann::json& parent)
+nlohmann::json addCXXCtorInitializer(nlohmann::json& children, nlohmann::json& parent)
 {
     nlohmann::json out = nlohmann::json::array();
     nlohmann::json memberRef = nullptr;
     nlohmann::json pendingArg = nullptr;
     constexpr bool kEnableReversePair = true;
     auto isValueLike = [](const std::string& k) {
-        return k == "ImplicitCastExpr" || k == "UnexposedExpr" || k == "ParenExpr" ||
-               k == "IntegerLiteral"   || k == "StringLiteral" || k == "CharacterLiteral" ||
-               k == "FloatingLiteral";
+        return k == "ImplicitCastExpr" || k == "UnexposedExpr" || k == "ParenExpr" || k == "IntegerLiteral" ||
+               k == "StringLiteral" || k == "CharacterLiteral" || k == "FloatingLiteral";
     };
     for (int i = 0; i < static_cast<int>(children.size()); ++i) {
         std::string k = children[i].value("kind", "");
-        const std::string c = children[i].value("code", "");
         if (k == "MemberRef" || k == "TypeRef") {
             memberRef = children[i];
             // If the node immediately following a MemberRef/TypeRef is a CXXConstructExpr
@@ -945,13 +942,12 @@ nlohmann::json addCXXCtorInitializer(nlohmann::json& children,
             continue;
         }
 
-        if (k == "OverloadedDeclRef") {
-            if (!memberRef.is_null()) {
-                out.push_back(buildCXXInheritedCtorInitExpr(memberRef, children[i]));
-                memberRef = nullptr;
-            } else {
-                out.push_back(children[i]);
-            }
+        if (k == "OverloadedDeclRef" && !memberRef.is_null()) {
+            out.push_back(buildCXXInheritedCtorInitExpr(memberRef, children[i]));
+            memberRef = nullptr;
+            continue;
+        } else if (k == "OverloadedDeclRef") {
+            out.push_back(children[i]);
             continue;
         }
         out.push_back(children[i]);
