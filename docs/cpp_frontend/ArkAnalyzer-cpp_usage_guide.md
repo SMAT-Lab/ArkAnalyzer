@@ -35,7 +35,7 @@
 
 ![img_20.png](img_20.png)
 
-下载arkAnalyzer-cpp代码，将json.hpp文件放在arkanalyzer\src\cpp_frontend\ast\utils的目录下，在arkanalyzer\src\cpp_frontend\ast\cmake\toolchains\windows.cmake文件中配置llvm的clang-c和libclang.dll的路径
+下载arkAnalyzer-cpp代码，将json.hpp文件放在arkanalyzer\src\cpp_frontend\ast\utils的目录下，在arkanalyzer\src\cpp_frontend\ast\cmake\toolchains\windows.cmake文件中配置llvm的clang-c和libclang的路径
 
 ![img_23.png](img_23.png)
 
@@ -168,7 +168,7 @@ libclang.so（可从llvm预编译版本的LLVM-19.1.7-Linux-X64/lib目录下获�
 
 ## 二、使用ArkAnalyzer源码分析C++项目
 
-1、将arkCppAstDumper工具及其依赖的文件放在arkanalyzer\src\cpp_frontend\ast\arkCppAst目录下
+1、将arkCppAstDumper工具及其依赖的文件放在arkanalyzer\src\cpp_frontend\ast\dumper目录下
 
 ![img_12.png](img_12.png)
 
@@ -232,4 +232,14 @@ libclang.so（可从llvm预编译版本的LLVM-19.1.7-Linux-X64/lib目录下获�
 
 ![img_15.png](img_15.png)
 
+## 四、单元测试运行
 
+配置：将arkCppAstDumper工具及其依赖的文件放在arkanalyzer\src\cpp_frontend\ast\dumper目录下
+
+1、运行单个单元测试，执行以下终端命令
+
+    npm test 单元测试用例路径
+
+2、运行所有单元测试，在项目的跟目录下执行以下终端命令
+
+    npm test

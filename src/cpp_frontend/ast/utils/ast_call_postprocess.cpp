@@ -877,40 +877,45 @@ nlohmann::json buildCXXCtorInitializer(nlohmann::json& memberRef, nlohmann::json
     nlohmann::json ctor;
     ctor["kind"] = "CXXCtorInitializer";
     ctor["anyInit"] = {{"kind", "FieldDecl"}, {"name", memberRef["name"]}, {"type", memberRef["type"]}};
-
     nlohmann::json argNode = arg;
     nlohmann::json inner = nlohmann::json::array();
     inner.push_back(argNode);
     ctor["inner"] = std::move(inner);
     const std::string base = memberRef.value("code", "");
-    std::string argCode = argNode.value("code", "");
-    if (argCode.size() >= TWO && argCode.front() == '(' && argCode.back() == ')') {
-        argCode = argCode.substr(1, argCode.size() - TWO);
-    }
-    ctor["code"] = base + "(" + argCode + ")";
-
+    ctor["code"] = base;
     buildNodeRange(ctor, parent);
     return ctor;
 }
 
+auto g_isCtorBoolOrInitList = [](const nlohmann::json &node) {
+    const std::string kind = node.value("kind", "");
+    return kind == "CXXConstructExpr" ||
+           kind == "CXXBoolLiteralExpr" ||
+           kind == "InitListExpr";
+};
+
 // Add variable initialization nodes for constructor
-nlohmann::json addCXXCtorInitializer(nlohmann::json& children,
-                                     nlohmann::json& parent)
+nlohmann::json addCXXCtorInitializer(nlohmann::json& children, nlohmann::json& parent)
 {
     nlohmann::json out = nlohmann::json::array();
     nlohmann::json memberRef = nullptr;
     nlohmann::json pendingArg = nullptr;
     constexpr bool kEnableReversePair = true;
     auto isValueLike = [](const std::string& k) {
-        return k == "ImplicitCastExpr" || k == "UnexposedExpr" || k == "ParenExpr" ||
-               k == "IntegerLiteral"   || k == "StringLiteral" || k == "CharacterLiteral" ||
-               k == "FloatingLiteral";
+        return k == "ImplicitCastExpr" || k == "UnexposedExpr" || k == "ParenExpr" || k == "IntegerLiteral" ||
+               k == "StringLiteral" || k == "CharacterLiteral" || k == "FloatingLiteral";
     };
     for (int i = 0; i < static_cast<int>(children.size()); ++i) {
         std::string k = children[i].value("kind", "");
-        const std::string c = children[i].value("code", "");
         if (k == "MemberRef" || k == "TypeRef") {
             memberRef = children[i];
+            // If the node immediately following a MemberRef/TypeRef is a CXXConstructExpr
+            // or CXXBoolLiteralExpr (e.g. `foo(true)` or `foo(Bar(...))`), treat this
+            // successor node as the initializer argument of the current member and cache it in pendingArg.
+            if (pendingArg.is_null() && i + 1 < static_cast<int>(children.size()) &&
+                g_isCtorBoolOrInitList(children[i + 1])) {
+                    pendingArg = children[++i];
+            }
             // Reverse pairing: value before field
             if (kEnableReversePair && !pendingArg.is_null()) {
                 out.push_back(buildCXXCtorInitializer(memberRef, pendingArg, parent));
@@ -937,13 +942,12 @@ nlohmann::json addCXXCtorInitializer(nlohmann::json& children,
             continue;
         }
 
-        if (k == "OverloadedDeclRef") {
-            if (!memberRef.is_null()) {
-                out.push_back(buildCXXInheritedCtorInitExpr(memberRef, children[i]));
-                memberRef = nullptr;
-            } else {
-                out.push_back(children[i]);
-            }
+        if (k == "OverloadedDeclRef" && !memberRef.is_null()) {
+            out.push_back(buildCXXInheritedCtorInitExpr(memberRef, children[i]));
+            memberRef = nullptr;
+            continue;
+        } else if (k == "OverloadedDeclRef") {
+            out.push_back(children[i]);
             continue;
         }
         out.push_back(children[i]);

@@ -77,6 +77,7 @@ import { getFileAbsPath } from '../../utils/FileUtils';
 import { ImportInfo } from '../../core/model/ArkImport';
 import { PointerType, ReferenceType } from '../base/Type';
 import { SdkUtils } from '../../core/common/SdkUtils';
+import { ArkExport } from '../../core/model/ArkExport';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'IRInference');
 
@@ -170,7 +171,7 @@ export class IRInference {
         return this.inferStaticInvokeExprByMethodName(methodName, arkMethod, expr);
     }
 
-    private static inferStaticInvokeExprByMethodName(methodName: string, arkMethod: ArkMethod, expr: AbstractInvokeExpr): AbstractInvokeExpr {
+    public static inferStaticInvokeExprByMethodName(methodName: string, arkMethod: ArkMethod, expr: AbstractInvokeExpr): AbstractInvokeExpr {
         const arkClass = arkMethod.getDeclaringArkClass();
         const arkExport =
             ModelUtils.getStaticMethodWithName(methodName, arkClass) ??
@@ -178,8 +179,27 @@ export class IRInference {
             ModelUtils.findDeclaredLocal(new Local(methodName), arkMethod) ??
             ModelUtils.getArkExportInImportInfoWithName(methodName, arkClass.getDeclaringArkFile()) ??
             arkClass.getDeclaringArkFile().getScene().getSdkGlobal(methodName);
-        let method;
-        let signature;
+        let { mtd: method, sig: signature } = this.processArkExportForMethodAndSignature(arkExport, arkClass);
+        if (method) {
+            signature = method.matchMethodSignature(expr.getArgs());
+            TypeInference.inferSignatureReturnType(signature, method);
+        }
+        if (signature) {
+            if (arkExport instanceof Local) {
+                expr = new ArkPtrInvokeExpr(signature, arkExport, expr.getArgs(), expr.getRealGenericTypes());
+            } else {
+                expr.setMethodSignature(signature);
+            }
+            this.inferArgs(expr, arkMethod);
+        }
+        return expr;
+    }
+
+    private static processArkExportForMethodAndSignature(arkExport: ArkExport | null,
+                                                         arkClass: ArkClass
+    ): {mtd: ArkMethod | undefined | null, sig: MethodSignature | undefined} {
+        let method: ArkMethod | undefined | null;
+        let signature: MethodSignature | undefined;
         if (arkExport instanceof ArkMethod) {
             method = arkExport;
         } else if (arkExport instanceof ArkClass) {
@@ -198,19 +218,7 @@ export class IRInference {
         } else if (arkExport instanceof AliasType && arkExport.getOriginalType() instanceof FunctionType) {
             signature = (arkExport.getOriginalType() as FunctionType).getMethodSignature();
         }
-        if (method) {
-            signature = method.matchMethodSignature(expr.getArgs());
-            TypeInference.inferSignatureReturnType(signature, method);
-        }
-        if (signature) {
-            if (arkExport instanceof Local) {
-                expr = new ArkPtrInvokeExpr(signature, arkExport, expr.getArgs(), expr.getRealGenericTypes());
-            } else {
-                expr.setMethodSignature(signature);
-            }
-            this.inferArgs(expr, arkMethod);
-        }
-        return expr;
+        return { mtd: method, sig: signature };
     }
 
     public static inferInstanceInvokeExpr(expr: ArkInstanceInvokeExpr, arkMethod: ArkMethod): AbstractInvokeExpr {
@@ -639,7 +647,7 @@ export class IRInference {
         }
     }
 
-    private static generateNewFieldSignature(ref: AbstractFieldRef, arkClass: ArkClass, baseType: Type): FieldSignature | null {
+    public static generateNewFieldSignature(ref: AbstractFieldRef, arkClass: ArkClass, baseType: Type): FieldSignature | null {
         if (baseType instanceof UnionType) {
             for (let type of baseType.flatType()) {
                 if (type instanceof UndefinedType || type instanceof NullType) {

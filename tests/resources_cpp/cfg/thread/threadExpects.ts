@@ -61,8 +61,8 @@ export const THREAD_EXPECT_CASE3 = {
                 'instanceinvoke %0.<@%unk/%unk: std::thread.constructor()>(Hello)',
                 't = %0',
                 'instanceinvoke t.<@%unk/%unk: .join()>()',
-                "staticinvoke <@%unk/%unk: .cout()>('Hello from main!\\n')",
-                'return 0'
+                'staticinvoke <@%unk/%unk: .cout()>(\'Hello from main!\\n\')',
+                'return 0',
             ],
             preds: [],
             succes: [],

@@ -23,7 +23,8 @@ import * as IF_EXPECT from '../../../resources_cpp/cfg/if/ifSampleExpects';
 import * as SWITCH_EXPECT from '../../../resources_cpp/cfg/switch/switchSampleExpects';
 import * as LOOP_EXPECT from '../../../resources_cpp/cfg/loop/loopSampleExpects';
 import * as GOTO_EXPECT from '../../../resources_cpp/cfg/goto/gotoSampleExpects';
-import * as BINARY_CONDITIONAL_EXPECT from '../../../resources_cpp/cfg/binaryConditional/binaryConditionalSampleExpects';
+import * as BINARY_CONDITIONAL_EXPECT
+    from '../../../resources_cpp/cfg/binaryConditional/binaryConditionalSampleExpects';
 import * as POINTER_EXPECT from '../../../resources_cpp/cfg/pointer/pointerExprExpects';
 import * as REFERENCE_EXPECT from '../../../resources_cpp/cfg/reference/referenceExpects';
 import * as DATA_STRUCT_EXPECT from '../../../resources_cpp/cfg/dataStruct/dataStructExpects';
@@ -63,6 +64,7 @@ import * as CALLEXPR_EXPECT from '../../../resources_cpp/cfg/call/callExpect';
 import * as MALLOC_EXPECT from '../../../resources_cpp/cfg/malloc/mallocSampleExpects';
 import * as INITIALZERLIST from '../../../resources_cpp/cfg/stdInitializerListExpr/initializerListExpects';
 import * as SUPPLEMENTARY from '../../../resources_cpp/cfg/supplementary/supplementary';
+import * as TRAP from '../../../resources_cpp/cfg/trap/cxxTrapExpects';
 
 const deveco_sysroot_include = process.env.DEVECO_SYSROOT_INCLUDE !== undefined ? process.env.DEVECO_SYSROOT_INCLUDE : '';
 const is_system_win32 = process.platform === 'win32';
@@ -87,6 +89,8 @@ describe('CfgTest', () => {
         testBlocks(scene, 'ifSample.cpp', 'Case5', IF_EXPECT.IF_EXPECT_CASE5.blocks);
         testBlocks(scene, 'ifSample.cpp', 'Case6', IF_EXPECT.IF_EXPECT_CASE6.blocks);
         testBlocks(scene, 'ifSample.cpp', 'Case7', IF_EXPECT.IF_EXPECT_CASE7.blocks);
+        testBlocks(scene, 'ifSample.cpp', 'Case8', IF_EXPECT.IF_EXPECT_CASE8.blocks);
+        testBlocks(scene, 'ifSample.cpp', 'Case9', IF_EXPECT.IF_EXPECT_CASE9.blocks);
     });
 
     it('case3: switch statement', () => {
@@ -117,11 +121,15 @@ describe('CfgTest', () => {
         testBlocks(scene, 'loopSample.cpp', 'Case7', LOOP_EXPECT.LOOP_EXPECT_CASE7.blocks);
         testBlocks(scene, 'loopSample.cpp', 'Case8', LOOP_EXPECT.LOOP_EXPECT_CASE8.blocks);
         testBlocks(scene, 'loopSample.cpp', 'Case9', LOOP_EXPECT.LOOP_EXPECT_CASE9.blocks);
+        testBlocks(scene, 'loopSample.cpp', 'Case10', LOOP_EXPECT.LOOP_EXPECT_CASE10.blocks);
     });
     it('case5: while-continue statement', () => {
         const scene = buildScene('whileContinue');
         testBlocks(scene, 'whileContinueSample.cpp', 'main', WHILE_CONTINUE_EXPECT.WHILE_CONTINUE_EXPECT_MAIN.blocks);
         testBlocks(scene, 'whileContinueSample.cpp', 'DoStmtFunc', WHILE_CONTINUE_EXPECT.DO_WHILE_STMT.blocks);
+        testBlocks(scene, 'whileContinueSample.cpp', 'CommaExprFunc', WHILE_CONTINUE_EXPECT.COMMA_EXPRESSION.blocks);
+        testBlocks(scene, 'whileContinueSample.cpp', 'EmptyDoWhile', WHILE_CONTINUE_EXPECT.EMPTY_DO_WHILE.blocks);
+        testBlocks(scene, 'whileContinueSample.cpp', 'ContinueDoWhile', WHILE_CONTINUE_EXPECT.CONTINUE_DO_WHILE.blocks);
     });
     it('case6: goto statement', () => {
         const scene = buildScene('goto');
@@ -238,7 +246,7 @@ describe('Function Test', () => {
 
     it('case3: Lambda Function Test', () => {
         const scene = buildScene('lambdaFunc');
-        scene.inferTypesOld();
+        scene.inferTypes();
         testBlocks(scene, 'lambdaFuncSample.cpp', 'Case1', LAMBDA_EXPECT.LAMBDA_EXPECT_CASE1.blocks);
         testBlocks(scene, 'lambdaFuncSample.cpp', 'Case2', LAMBDA_EXPECT.LAMBDA_EXPECT_CASE2.blocks);
         testBlocks(scene, 'lambdaFuncSample.cpp', 'Case3', LAMBDA_EXPECT.LAMBDA_EXPECT_CASE3.blocks);
@@ -255,7 +263,7 @@ describe('Function Test', () => {
 
     it('case5: Overload Test', () => {
         const scene = buildScene('overload');
-        scene.inferTypesOld();
+        scene.inferTypes();
         testBlocksWithSignature(scene, 'overloadSample.cpp', '', 'PrintInfo(int)', OVERLOAD.OVERLOAD_PRINT_INFO_CASE1_EXPECT.blocks);
         testBlocksWithSignature(scene, 'overloadSample.cpp', '', 'PrintInfo(char)', OVERLOAD.OVERLOAD_PRINT_INFO_CASE2_EXPECT.blocks);
         testBlocksWithSignature(scene, 'overloadSample.cpp', '', 'PrintInfo(int, char)', OVERLOAD.OVERLOAD_PRINT_INFO_CASE3_EXPECT.blocks);
@@ -341,12 +349,12 @@ describe('Other Test', () => {
 describe('Lazy Import Test', () => {
     it('case1: lazy import case1', () => {
         const scene = buildScene('lazyImport/lazyImportCase1');
-        scene.inferTypesOld();
+        scene.inferTypes();
         testBlocksClass(scene, 'lazyImportCase1.cpp', 'GlobalConfig', LAZY_IMPORT_EXPECT1.LAZY_IMPORT_CASE1_CLASS);
     });
     it('case2: lazy import case2', () => {
         const scene = buildScene('lazyImport/lazyImportCase2');
-        scene.inferTypesOld();
+        scene.inferTypes();
         testBlocks(scene, 'lazyImportCase2.cpp', 'DefineObject', lazyImportCase2.DEFINE_OBJECT_EXPECT.blocks);
         testBlocks(scene, 'lazyImportCase2.cpp', 'CallObject', lazyImportCase2.CALL_OBJECT_EXPECT.blocks);
     });
@@ -356,12 +364,12 @@ describe('Lazy Import Test', () => {
     });
     it('case4: lazy import case4', () => {
         const scene = buildScene('lazyImport/lazyImportCase4');
-        scene.inferTypesOld();
+        scene.inferTypes();
         testBlocks(scene, 'lazyImportCase4.cpp', 'NativeCallArkTS', lazyImportCase4.NativeCallArkTS_EXPECT.blocks);
     });
     it('case5: lazy import case5', () => {
         const scene = buildScene('lazyImport/lazyImportCase5');
-        scene.inferTypesOld();
+        scene.inferTypes();
         testBlocks(scene, 'lazyImportCase5.cpp', 'Napi_AddPropertyInt32', lazyImportCase5.Napi_AddPropertyInt32_EXPECT.blocks);
         if (is_system_win32) {
             testBlocks(scene, 'lazyImportCase5.cpp', 'CallbackToArkTS', lazyImportCase5.CallbackToArkTS_EXPECT.blocks);
@@ -369,19 +377,19 @@ describe('Lazy Import Test', () => {
     });
     it('case6: lazy import case6', () => {
         const scene = buildScene('lazyImport/lazyImportCase6');
-        scene.inferTypesOld();
+        scene.inferTypes();
         if (is_system_win32) {
             testBlocks(scene, 'lazyImportCase6.cpp', 'CallFunction', lazyImportCase6.CallFunction_EXPECT.blocks);
         }
     });
     it('case7: lazy import case7', () => {
         const scene = buildScene('lazyImport/lazyImportCase7');
-        scene.inferTypesOld();
+        scene.inferTypes();
         testBlocks(scene, 'lazyImportCase7.cpp', 'ModifyObject', lazyImportCase7.ModifyObject_EXPECT.blocks);
     });
     it('case8: lazy import case8', () => {
         const scene = buildScene('lazyImport/lazyImportCase8');
-        scene.inferTypesOld();
+        scene.inferTypes();
         testBlocks(scene, 'lazyImportCase8.cpp', 'NativeCallArkTS', lazyImportCase8.NativeCallArkTS8_EXPECT.blocks);
     });
 });
@@ -389,7 +397,7 @@ describe('Lazy Import Test', () => {
 describe('namespace Test', () => {
     it('case1: namespace', () => {
         const scene = buildScene('namespace');
-        scene.inferTypesOld();
+        scene.inferTypes();
         testBlocks(scene, 'namespace.cpp', 'Test', NAMESPACE_EXPECT.NAMESPACE_CASE1.blocks);
     });
 });
@@ -409,12 +417,12 @@ describe('using Test', () => {
     });
     it('case4: using', () => {
         const scene = buildScene('using');
-        scene.inferTypesOld();
+        scene.inferTypes();
         testBlocks(scene, 'usingcase.cpp', 'TestUsingEnumMember', USING_EXPECT.USING_EXPECT_CASE4.blocks);
     });
     it('case5: using', () => {
         const scene = buildScene('using');
-        scene.inferTypesOld();
+        scene.inferTypes();
         testBlocks(scene, 'usingcase.cpp', 'TestNamespaceUsing', USING_EXPECT.USING_EXPECT_CASE5.blocks);
         testBlocks(scene, 'usingcase.cpp', 'MakeIntvec', USING_EXPECT.USING_EXPECT_CASE6.blocks);
         testBlocks(scene, 'usingcase.cpp', 'TestUsingTypeAliasTemplate', USING_EXPECT.USING_EXPECT_CASE7.blocks);
@@ -426,7 +434,7 @@ describe('using Test', () => {
 describe('typedef Test', () => {
     it('case1: typedef', () => {
         const scene = buildScene('typedef');
-        scene.inferTypesOld();
+        scene.inferTypes();
         testBlocks(scene, 'typedef.cpp', 'main', TYPEDEF_EXPECT.TYPEDEF_EXPECT_CASE1.blocks);
     });
 });
@@ -441,7 +449,7 @@ describe('feature Test', () => {
     });
     it('case2: functionPointer', () => {
         const scene = buildScene('functionPointer');
-        scene.inferTypesOld();
+        scene.inferTypes();
         testBlocks(scene, 'functionPointer.cpp', 'Case1', FUNCPTR_EXPECT.FUNCPTR_EXPECT_CASE1.blocks);
         testBlocks(scene, 'functionPointer.cpp', 'Case2', FUNCPTR_EXPECT.FUNCPTR_EXPECT_CASE2.blocks);
         testBlocks(scene, 'functionPointer.cpp', 'Case3', FUNCPTR_EXPECT.FUNCPTR_EXPECT_CASE3.blocks);
@@ -449,7 +457,7 @@ describe('feature Test', () => {
     });
     it('case3: structBinding', () => {
         const scene = buildScene('structBinding');
-        scene.inferTypesOld();
+        scene.inferTypes();
         testBlocks(scene, 'structBinding.cpp', 'BasicUsage', STRUCTBINDING.BINGING_EXPECT_BASICUSAGE.blocks);
         testBlocks(scene, 'structBinding.cpp', 'ReferenceUsage', STRUCTBINDING.BINGING_EXPECT_REFERENCE.blocks);
         testBlocks(scene, 'structBinding.cpp', 'TupleUsage', STRUCTBINDING.BINGING_EXPECT_TUPLEUSAGE.blocks);
@@ -472,7 +480,7 @@ describe('decltype Test', () => {
 describe('include in scope', () => {
     it('case1: includeInScope', () => {
         const scene = buildScene('includeInScope');
-        scene.inferTypesOld();
+        scene.inferTypes();
         testBlocks(scene, 'includeInScope.cpp', 'IncludeInFunction', INCLUDE_IN_SCOPE.INCLUDE_IN_FUNCTION_CASE1.blocks);
         testBlocksClass(scene, 'includeInScope.cpp', 'IncludeInClass', INCLUDE_IN_SCOPE.INCLUDE_IN_CLASS_CASE1);
     });
@@ -481,9 +489,15 @@ describe('include in scope', () => {
 describe('supplementary', () => {
     it('case1: supplementary', () => {
         const scene = buildScene('supplementary');
-        scene.inferTypesOld();
+        scene.inferTypes();
         testBlocks(scene, 'supplementary.cpp', 'Case1', SUPPLEMENTARY.SUP_CASE1.blocks);
         testBlocks(scene, 'supplementary.cpp', 'PostAdd', SUPPLEMENTARY.POST_AND.blocks);
+    });
+    it('case1: trap', () => {
+        const scene = buildScene('trap');
+        scene.inferTypes();
+        testBlocks(scene, 'cxxTrap.cpp', 'Case1', TRAP.TRAP_EXPECT_CASE1.blocks);
+        testBlocks(scene, 'cxxTrap.cpp', 'OuterFunction', TRAP.OUTERFUNC_EXPECT_CASE1.blocks);
     });
 });
 

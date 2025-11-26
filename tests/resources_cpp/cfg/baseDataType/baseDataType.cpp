@@ -35,6 +35,7 @@ int main()
         char32_t char32Data1 = U'\U0001F600';
         char32_t char32Data2[] = U"hello";
         char charData4 = char(); // clang::CXXScalarValueInitExpr, valid, charData4 is initialized to ""
+        string ss = "hello";
     } else {
         short shortData1 = -1;
         unsigned short shortData2 = 1;

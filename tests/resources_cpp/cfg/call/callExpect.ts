@@ -73,7 +73,7 @@ export const CXXMETHODDEFAULT_CASE3_EXPECT = {
             preds: [],
             succes: [1, 2],
         },
-        { id: 1, stmts: ['c = \'o\''], preds: [0], succes: [2] },
+        { id: 1, stmts: ['c = o'], preds: [0], succes: [2] },
         {
             id: 2,
             stmts: ['c = c + 1', 'return'],

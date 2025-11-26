@@ -28,7 +28,7 @@ export const BINGING_EXPECT_BASICUSAGE = {
                 'instanceinvoke %2.<@%unk/%unk: std::pair.constructor()>(3, 4)',
                 'a = %2[0]',
                 'b = %2[1]',
-                'return'
+                'return',
             ],
             preds: [],
             succes: [],
@@ -63,10 +63,10 @@ export const BINGING_EXPECT_TUPLEUSAGE = {
             id: 0,
             stmts: [
                 'this = this: @structBinding/structBinding.cpp: %dflt',
-                "name = staticinvoke <@%unk/%unk: .make_tuple()>('Alice', 25, 95.5)[0]",
-                "age = staticinvoke <@%unk/%unk: .make_tuple()>('Alice', 25, 95.5)[1]",
-                "score = staticinvoke <@%unk/%unk: .make_tuple()>('Alice', 25, 95.5)[2]",
-                'return'
+                'name = staticinvoke <@%unk/%unk: .make_tuple()>(\'Alice\', 25, 95.5)[0]',
+                'age = staticinvoke <@%unk/%unk: .make_tuple()>(\'Alice\', 25, 95.5)[1]',
+                'score = staticinvoke <@%unk/%unk: .make_tuple()>(\'Alice\', 25, 95.5)[2]',
+                'return',
             ],
             preds: [],
             succes: [],
@@ -102,13 +102,13 @@ export const BINGING_EXPECT_MAP = {
             id: 0,
             stmts: [
                 'this = this: @structBinding/structBinding.cpp: %dflt',
-                '%0 = new @%unk/%unk: std::map<string,int>',
+                '%0 = new @%unk/%unk: std::map<@std/basic_string.h: basic_string<char>,int>',
                 '%1 = new @%unk/%unk: const std::pair<string,int>',
-                "instanceinvoke %1.<@%unk/%unk: const std::pair.constructor()>('Alice', 90)",
+                'instanceinvoke %1.<@%unk/%unk: const std::pair.constructor()>(\'Alice\', 90)',
                 '%2 = new @%unk/%unk: const std::pair<string,int>',
-                "instanceinvoke %2.<@%unk/%unk: const std::pair.constructor()>('Bob', 85)",
+                'instanceinvoke %2.<@%unk/%unk: const std::pair.constructor()>(\'Bob\', 85)',
                 '%3 = new @%unk/%unk: const std::pair<string,int>',
-                "instanceinvoke %3.<@%unk/%unk: const std::pair.constructor()>('Charlie', 95)",
+                'instanceinvoke %3.<@%unk/%unk: const std::pair.constructor()>(\'Charlie\', 95)',
                 '%4 = newarray (const std::pair<const std::basic_string<char>, int>[])[3]',
                 '%4[0] = %1',
                 '%4[1] = %2',
@@ -124,7 +124,7 @@ export const BINGING_EXPECT_MAP = {
             id: 1,
             stmts: [
                 '%6 = instanceinvoke %5.<@%unk/%unk: .next()>()',
-                '%7 = %6.<@CXX/std/BuiltinClass: IterableIterator.done>',
+                '%7 = %6.<@CXX/std/BuiltinClass: IteratorResult.done>',
                 'if %7 == true',
             ],
             preds: [0, 2],
@@ -133,7 +133,7 @@ export const BINGING_EXPECT_MAP = {
         {
             id: 2,
             stmts: [
-                '%8 = scores.<@std/map.h: map.value>',
+                '%8 = %6.<@CXX/std/BuiltinClass: IteratorResult.value>',
                 'item = <unknown>%8',
                 'staticinvoke <@%unk/%unk: .cout()>(\'Overall object access\')',
             ],
@@ -144,7 +144,7 @@ export const BINGING_EXPECT_MAP = {
             id: 3,
             stmts: [
                 '%10 = instanceinvoke %9.<@%unk/%unk: .next()>()',
-                '%11 = %10.<@CXX/std/BuiltinClass: IterableIterator.done>',
+                '%11 = %10.<@CXX/std/BuiltinClass: IteratorResult.done>',
                 'if %11 == true',
             ],
             preds: [6, 4],
@@ -153,7 +153,7 @@ export const BINGING_EXPECT_MAP = {
         {
             id: 4,
             stmts: [
-                '%12 = scores.<@std/map.h: map.value>',
+                '%12 = %10.<@CXX/std/BuiltinClass: IteratorResult.value>',
                 'name = %12[0]',
                 'score = %12[1]',
                 'staticinvoke <@%unk/%unk: .cout()>(\'Structured binding access\')',
@@ -177,8 +177,8 @@ export const BINGING_EXPECT_GETSTRUCTINFO = {
             id: 0,
             stmts: [
                 'this = this: @structBinding/structBinding.cpp: %dflt',
-                '%0 = new @%unk/%unk: std::tuple<string,int,boolean>',
-                "instanceinvoke %0.<@%unk/%unk: std::tuple.constructor()>('David', 22, true)",
+                '%0 = new @%unk/%unk: std::tuple<@std/basic_string.h: basic_string<char>,int,boolean>',
+                'instanceinvoke %0.<@%unk/%unk: std::tuple.constructor()>(\'David\', 22, true)',
                 'return %0',
             ],
             preds: [],

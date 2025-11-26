@@ -22,12 +22,12 @@ import { ArkMethod } from '../../../core/model/ArkMethod';
 import { ArkCxxIRTransformer, ValueAndStmts } from '../../common/ArkIRTransformer';
 import { IRUtils } from '../../common/IRUtils';
 import { AliasType, ClassType, UnclearReferenceType, UnknownType, VoidType } from '../../../core/base/Type';
-import { Trap } from '../../../core/base/Trap';
+import { CxxTrap } from '../../base/Trap';
 import { GlobalRef } from '../../../core/base/Ref';
 import { LoopBuilder } from '../../../core/graph/builder/LoopBuilder';
 import { CxxSwitchBuilder } from './SwitchBuilder';
 import { CxxConditionBuilder } from './ConditionBuilder';
-import { TrapBuilder } from '../../../core/graph/builder/TrapBuilder';
+import { CxxTrapBuilder } from './TrapBuilder';
 import { ModifierType } from '../../../core/model/ArkBaseModel';
 import { BlockBuilder as CoreBlockBuilder, Catch, TextError, Variable, Scope } from '../../../core/graph/builder/CfgBuilder';
 import { ModelUtils } from '../../../core/common/ModelUtils';
@@ -125,8 +125,8 @@ export class SwitchStatementBuilder extends StatementBuilder {
 export class TryStatementBuilder extends StatementBuilder {
     tryFirst: StatementBuilder | null = null;
     tryExit: StatementBuilder | null = null;
-    catchStatement: any[] = [];
-    catchError: any[] = [];
+    catchStatement: StatementBuilder[] = [];
+    catchError: CxxAstNode[] = [];
     finallyStatement: StatementBuilder | null = null;
     afterFinal: StatementBuilder | null = null;
 
@@ -630,14 +630,17 @@ export class CfgBuilder {
             if (catchBlock.code) {
                 text += this.removeAfterBraces(catchBlock.code);
             }
-            let catchOrNot = new ConditionStatementBuilder('catchOrNot', text, c, scopeID);
-            let catchExit = new StatementBuilder('catch exit', '', c, scopeID);
+            if (catchBlock.inner?.length === 0) {
+                continue;
+            }
+            let catchOrNot = new ConditionStatementBuilder('catchOrNot', text, catchBlock, scopeID);
+            let catchExit = new StatementBuilder('catch exit', '', catchBlock, scopeID);
             catchOrNot.nextF = catchExit;
             catchExit.lasts.add(catchOrNot);
             if (catchBlock.inner && catchBlock.inner[0].id === '0x0') {
                 catchBlock.inner[0].kind = 'catch_all_exception';
             }
-            this.walkAST(catchOrNot, catchExit, catchBlock.inner);
+            this.walkAST(catchOrNot, catchExit, catchBlock.inner[catchBlock.inner.length - 1].inner);
             if (!catchOrNot.nextT) {
                 catchOrNot.nextT = catchExit;
                 catchExit.lasts.add(catchOrNot);
@@ -646,11 +649,7 @@ export class CfgBuilder {
             catchStatement.next = catchOrNot.nextT;
             trystmt.catchStatement.push(catchStatement);
             catchStatement.lasts.add(trystmt);
-            if (catchBlock.inner[0].name) {
-                trystmt.catchError.push(catchBlock.inner[0].name);
-            } else {
-                trystmt.catchError.push('Error');
-            }
+            trystmt.catchError.push(catchBlock.inner[0]);
         }
         let final = new StatementBuilder('statement', 'finally', c, scopeID);
         let finalExit = new StatementBuilder('finallyExit', '', c, scopeID);
@@ -792,8 +791,19 @@ export class CfgBuilder {
                 this.judgeLastType(s, lastStatement);
                 lastStatement = s;
                 break;
+            case 'ImplicitCastExpr':
+                lastStatement = this.ASTNodeImplicitCastExpr(innerNode, lastStatement, scope);
+                break;
             default:
                 break;
+        }
+        return lastStatement;
+    }
+
+    private ASTNodeImplicitCastExpr(implicitCastExpr: CxxAstNode, lastStatement: StatementBuilder, scope: Scope): StatementBuilder {
+        for (let i = 0; i < implicitCastExpr.inner.length; i++) {
+            let inner = implicitCastExpr.inner[i];
+            lastStatement = this.handleASTStmtSuccession(inner, lastStatement, scope);
         }
         return lastStatement;
     }
@@ -1204,7 +1214,7 @@ export class CfgBuilder {
         locals: Set<Local>;
         globals: Map<string, GlobalRef> | null;
         aliasTypeMap: Map<string, [AliasType, ArkAliasTypeDefineStmt]>;
-        traps: Trap[];
+        traps: CxxTrap[];
     } {
         if (this.astRoot.kind.toString() === 'LambdaExpr' && this.astRoot.inner[this.astRoot.inner.length - 1].kind.toString() !== 'CompoundStmt') {
             return this.buildCfgForSimpleArrowFunction();
@@ -1218,7 +1228,7 @@ export class CfgBuilder {
         locals: Set<Local>;
         globals: Map<string, GlobalRef> | null;
         aliasTypeMap: Map<string, [AliasType, ArkAliasTypeDefineStmt]>;
-        traps: Trap[];
+        traps: CxxTrap[];
     } {
         const stmts: Stmt[] = [];
         const arkIRTransformer = new ArkCxxIRTransformer(this.sourceFile as CxxTranslationUnit, this.declaringMethod);
@@ -1267,7 +1277,7 @@ export class CfgBuilder {
         locals: Set<Local>;
         globals: Map<string, GlobalRef> | null;
         aliasTypeMap: Map<string, [AliasType, ArkAliasTypeDefineStmt]>;
-        traps: Trap[];
+        traps: CxxTrap[];
     } {
         const { blockBuilderToCfgBlock, basicBlockSet, arkIRTransformer } = this.initializeBuild();
         const {
@@ -1286,10 +1296,7 @@ export class CfgBuilder {
             valueAndStmtsOfSwitchAndCasesAll,
             arkIRTransformer
         );
-        // Only do a core type adaptation for TrapBuilder ——
-        const asCoreMapForTrap = blockBuilderToCfgBlock as unknown as Map<CoreBlockBuilder, BasicBlock>;
-        const asCoreBeforeTry = blockBuildersBeforeTry as unknown as Set<CoreBlockBuilder>;
-        const trapBuilder = new TrapBuilder(asCoreBeforeTry, asCoreMapForTrap, arkIRTransformer, basicBlockSet);
+        const trapBuilder = new CxxTrapBuilder(blockBuildersBeforeTry, blockBuilderToCfgBlock, basicBlockSet);
         const traps = trapBuilder.buildTraps();
         this.removeEmptyBlocks(basicBlockSet);
         const cfg = this.createCfg(blockBuilderToCfgBlock, basicBlockSet, currBlockId);
@@ -1389,6 +1396,9 @@ export class CfgBuilder {
                     const valueAndStmtsOfSwitchAndCases = arkIRTransformer.cxxSwitchStatementToValueAndStmts(statementBuilder.astNode as CxxAstNode);
                     valueAndStmtsOfSwitchAndCasesAll.push(valueAndStmtsOfSwitchAndCases);
                     continue;
+                } else if (statementBuilder.type === '') {
+                    blockBuildersContainSwitch.push(this.blocks[i]);
+                    continue;
                 }
                 if (statementBuilder.astNode && statementBuilder.code !== '') {
                     arkIRTransformer.cxxNodeToStmts(statementBuilder.astNode).forEach(s => stmtsInBlock.push(s));
@@ -1404,12 +1414,7 @@ export class CfgBuilder {
             basicBlockSet.add(blockInCfg);
             blockBuilderToCfgBlock.set(this.blocks[i], blockInCfg);
         }
-        return {
-            blocksContainLoopCondition,
-            blockBuildersBeforeTry,
-            blockBuildersContainSwitch,
-            valueAndStmtsOfSwitchAndCasesAll,
-        };
+        return { blocksContainLoopCondition, blockBuildersBeforeTry, blockBuildersContainSwitch, valueAndStmtsOfSwitchAndCasesAll };
     }
 
     private generateReturnStmt(arkIRTransformer: ArkCxxIRTransformer): Stmt {

@@ -718,6 +718,8 @@ export class TypeInference {
                 return CxxCharType.getInstance(CxxTypeSigned.SIGNED, CxxTypeBitWidth.EIGHT_BITS, CxxStdTypeName.SIGNED_CHAR);
             case 'unsigned char':
                 return CxxCharType.getInstance(CxxTypeSigned.UNSIGNED, CxxTypeBitWidth.EIGHT_BITS, CxxStdTypeName.UNSIGNED_CHAR);
+            case 'unsignedchar':
+                return CxxCharType.getInstance(CxxTypeSigned.UNSIGNED, CxxTypeBitWidth.EIGHT_BITS, CxxStdTypeName.UNSIGNED_CHAR);
             case 'char16_t':
                 return CxxCharType.getInstance(CxxTypeSigned.UNSIGNED, CxxTypeBitWidth.SIXTEEN_BITS, CxxStdTypeName.CHAR16_T);
             case 'char32_t':

@@ -16,6 +16,7 @@
 import { ArkInstanceFieldRef } from '../../core/base/Ref';
 import { Local } from '../../core/base/Local';
 import { FieldSignature } from '../../core/model/ArkSignature';
+import { Type } from '../../core/base/Type';
 
 /**
  * C++ member access implementation, designed as a derived class because it needs to distinguish between p.f
@@ -35,5 +36,9 @@ export class ArkCxxInstanceFieldRef extends ArkInstanceFieldRef {
 
     public toString(): string {
         return this.getBase().toString() + (this.isArrow ? '->' : '.') + '<' + this.getFieldSignature() + '>';
+    }
+
+    public getType(): Type {
+        return this.getFieldSignature().getType();
     }
 }

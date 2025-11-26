@@ -37,7 +37,7 @@ import {
     updateMethodSignaturesAndLineCols,
 } from '../../../core/model/builder/ArkMethodBuilder';
 import { buildGenericType } from '../../../core/model/builder/builderUtils';
-import { CONSTRUCTOR_NAME, THIS_NAME } from '../../../core/common/TSConst';
+import { CONSTRUCTOR_NAME, SUPER_NAME, THIS_NAME } from '../../../core/common/TSConst';
 import { ArkSignatureBuilder } from '../../../core/model/builder/ArkSignatureBuilder';
 import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
 import {CxxAstNode} from '../../ast/ArkCxxAstNode';
@@ -140,7 +140,6 @@ export function buildArkMethodFromArkClass(methodNode: CxxAstNode, declaringClas
         addParamsToCXXInheritedCtorInitExpr(methodNode, mtd, methodParameters);
         returnType = VoidType.getInstance();
     }
-    // @ts-ignore
     reCheckModifiers(methodName, declaringClass, mtd);
     const methodSubSignature = new MethodSubSignature(methodName, methodParameters, returnType, mtd.isStatic());
     const methodSignature = new MethodSignature(mtd.getDeclaringArkClass().getSignature(), methodSubSignature);
@@ -304,7 +303,6 @@ export function buildDefaultConstructor(arkClass: ArkClass): boolean {
     let parameterArgs: Value[] = [];
     const superConstructor = arkClass.getSuperClass()?.getMethodWithName(CONSTRUCTOR_NAME);
     if (superConstructor) {
-        // @ts-ignore
         parameters = superConstructor.getParameters();
         for (let index = 0; index < parameters.length; index++) {
             const parameterRef = new ArkParameterRef(index, parameters[index].getType());
@@ -318,14 +316,12 @@ export function buildDefaultConstructor(arkClass: ArkClass): boolean {
     basicBlock.addStmt(new ArkAssignStmt(thisLocal, new ArkThisRef(new ClassType(arkClass.getSignature()))));
 
     if (superConstructor) {
-        // @ts-ignore
         const superMethodSubSignature = new MethodSubSignature(SUPER_NAME, parameters, superConstructor.getReturnType());
         const superMethodSignature = new MethodSignature(arkClass.getSignature(), superMethodSubSignature);
         const superInvokeExpr = new ArkStaticInvokeExpr(superMethodSignature, parameterArgs);
         basicBlock.addStmt(new ArkInvokeStmt(superInvokeExpr));
     }
 
-    // @ts-ignore
     const methodSubSignature = new MethodSubSignature(CONSTRUCTOR_NAME, parameters, thisLocal.getType(), defaultConstructor.isStatic());
     defaultConstructor.setImplementationSignature(new MethodSignature(arkClass.getSignature(), methodSubSignature));
     basicBlock.addStmt(new ArkReturnStmt(thisLocal));

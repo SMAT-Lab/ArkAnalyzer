@@ -23,7 +23,7 @@ function buildScene(folderName: string): Scene {
     config.buildFromProjectDir(folderName);
     let scene = new Scene();
     scene.buildSceneFromProjectDir(config);
-    scene.inferTypesOld();
+    scene.inferTypes();
     return scene;
 }
 

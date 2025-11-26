@@ -367,6 +367,7 @@ const typeMap: Record<string, string> = {
     char: 'string',
     'signed char': 'string',
     'unsigned char': 'string',
+    'unsignedchar': 'string',
     wchar_t: 'string',
     char16_t: 'string',
     char32_t: 'string',

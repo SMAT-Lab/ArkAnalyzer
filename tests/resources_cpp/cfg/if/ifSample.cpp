@@ -13,12 +13,17 @@
  * limitations under the License.
  */
 
+#include <type_traits>
+#include <iostream>
+
 #define MINUS_ONE (-1)
 #define MINUS_TWO (-2)
 #define ONE 1
 #define TWO 2
 #define THREE 3
 #define FOUR 4
+#define FIVE 5
+#define TEN 10
 
 int Case1()
 {
@@ -134,8 +139,32 @@ void Case7()
     }
 }
 
+// Comma expression
+int Case8()
+{
+    int a = FIVE;
+    int b = TEN;
+    if (a++, b > a) {
+        return b;
+    }
+    return a;
+}
+
+template<typename T>
+void Case9(const T& value)
+{
+    if constexpr (std::is_integral_v<T>) {
+        std::cout << "Integral: " << value << std::endl;
+    } else if constexpr (std::is_floating_point_v<T>) {
+        std::cout << "Floating-point: " << value << std::endl;
+    } else {
+        std::cout << "Other: " << value << std::endl;
+    }
+}
+
 int main()
 {
     Case3();
+    Case9(1);
     return 0;
 }

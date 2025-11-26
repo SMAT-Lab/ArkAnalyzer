@@ -325,10 +325,6 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
      *@ returns ValueAndStmts object, including converted values and related statements
      */
     private cxxConstructExprToValueAndStmts(node: CxxAstNode): ValueAndStmts {
-        let parent = (node.parent ?? node.getParent?.(true)) ?? null;
-        if (parent && parent.kind === 'CXXConstructorDecl') {
-            return this.cxxSuperExpressionToValueAndStmts(node);
-        }
         if (!this.isPairConstructExpr(node) &&
             (this.isNodeRelatedToCXXLambdaFunc(node) || this.isNodeRelatedToMaterialize(node) || this.isNodeRelatedToImplicitNode(node)) &&
             node.inner?.length > 0) {
@@ -543,11 +539,15 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         if (!cxxCtorInitializer.inner || cxxCtorInitializer.inner.length === 0) {
             return this.unprocessedNodeToValueAndStmts(cxxCtorInitializer);
         }
-        if (cxxCtorInitializer.inner[0].kind === 'CXXInheritedCtorInitExpr') {
+        const firstInnerNode = cxxCtorInitializer.inner[0];
+        if (firstInnerNode.kind === 'CXXInheritedCtorInitExpr') {
             // Processing of using parent:: parent
-            return this.cxxInheritedCtorInitExprToValueAndStmts(cxxCtorInitializer.inner[0]);
+            return this.cxxInheritedCtorInitExprToValueAndStmts(firstInnerNode);
+        } else if (firstInnerNode.kind === 'CXXConstructExpr') {
+            // Processing of case: Left(const char& name) : Base(name) // call base class constructor
+            return this.cxxSuperExpressionToValueAndStmts(firstInnerNode);
         }
-        const assignRight = cxxCtorInitializer.inner[0];
+        const assignRight = firstInnerNode;
         const CtorInit2ThisMemberExpr = {
             kind: 'MemberExpr',
             name: cxxCtorInitializer.anyInit?.name ?? '',
@@ -558,7 +558,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             ],
             type: cxxCtorInitializer.anyInit?.type ?? '',
         };
-        return this.cxxAssignmentToValueAndStmts(CtorInit2ThisMemberExpr as CxxAstNode, assignRight, false, false, UnknownType.getInstance(), true);
+        const initType = cxxNode2Type(CtorInit2ThisMemberExpr as CxxAstNode, undefined);
+        return this.cxxAssignmentToValueAndStmts(CtorInit2ThisMemberExpr as CxxAstNode, assignRight, false, false, initType, true);
     }
 
     /**
@@ -1050,7 +1051,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         } else {
             varNode = identifier;
         }
-        const varName = varNode.kind === 'TypeRef' ? varNode.code : varNode.name;
+        let varName = varNode.kind === 'TypeRef' ? varNode.code : varNode.name;
         const varType = cxxNode2Type(identifier, undefined);
         if (varName === UndefinedType.getInstance().getName()) {
             identifierValue = CxxValueUtil.getUndefinedConst();
@@ -1058,6 +1059,9 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             if (variableDefFlag) {
                 identifierValue = this.addNewLocal(varName, varType);
             } else {
+                if (identifier.name?.includes('::' + varName + '<')) { // Determine whether it is a variable template
+                    varName = identifier.name;
+                }
                 identifierValue = this.getOrCreateLocal(varName, varType);
             }
         }
@@ -1134,7 +1138,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
                 (enumArkClass instanceof ArkClass) ?
                     enumArkClass.getSignature() :
                     ArkSignatureBuilder.buildClassSignatureFromClassName(enumClassName);
-            return new FieldSignature(memberName, enumSignature, UnknownType.getInstance(), true);
+            return new FieldSignature(memberName, enumSignature, enumSignature.getType(), true);
         }
         // ==Handling common scenarios==
         let baseType = baseValue.getType();
@@ -1153,7 +1157,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             fieldSignature = new FieldSignature(
                 memberName, // Field name (such as insert)
                 baseClassType.getClassSignature(), // Base class type signature
-                UnknownType.getInstance() // Unknown type preemption
+                baseType // baseType as its type
             );
         } else {
             // Otherwise, it is generated only according to the field name
@@ -1233,7 +1237,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         if (callExpression.name === 'napi_define_class') {
             setTs2CxxFuncMapOfClass(argus.args, true, this.declaringMethod);
         }
-        return this.cxxGenerateInvokeValueAndStmts(callNode, argus, stmts, callExpression);
+        const returnType = cxxNode2Type(callExpression, this.declaringMethod);
+        return this.cxxGenerateInvokeValueAndStmts(callNode, argus, stmts, callExpression, returnType);
     }
 
     /**
@@ -1650,7 +1655,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             argPositions: FullPosition[];
         },
         currStmts: Stmt[],
-        callExpression: any
+        callExpression: any,
+        returnType?: Type,
     ): ValueAndStmts {
         const stmts: Stmt[] = [...currStmts];
         let { value: callerValue, valueOriginalPositions: callerPositions, stmts: callerStmts } = this.cxxNodeToValueAndStmts(functionNameNode);
@@ -1660,7 +1666,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         let invokeValuePositions: FullPosition[] = [FullPosition.cxxBuildFromNode(callExpression, this.cxxSourceFile)];
         const { args, argPositions, realGenericTypes } = argus;
         if (callerValue instanceof AbstractFieldRef) {
-            invokeValue = this.buildInvokeValueForFieldRef(callerValue, args, realGenericTypes, invokeValuePositions, callerPositions);
+            invokeValue = this.buildInvokeValueForFieldRef(callerValue, args, realGenericTypes, invokeValuePositions, callerPositions, returnType);
         } else if (callerValue instanceof Local) {
             const callerName = callerValue.getName();
             let classSignature = ArkSignatureBuilder.buildClassSignatureFromClassName(callerName);
@@ -1704,10 +1710,11 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         if ((callExpression.parent ?? callExpression.getParent?.(true))?.type?.qualType === 'std::thread') {
             return this.cxxNewExpressionToValueAndStmts(callExpression);
         }
+        const cxxMemberCallExprType = cxxNode2Type(callExpression.type.qualType, this.declaringMethod, this.cxxSourceFile, callExpression);
         let realGenericTypes: Type[] | undefined;
         const stmts: Stmt[] = [];
         const [_, rightNodes] = this.getArgumentNode(callExpression.inner);
-        return this.buildValueAndStmtsForMemberCall(stmts, callExpression.inner[0], rightNodes, callExpression, realGenericTypes);
+        return this.buildValueAndStmtsForMemberCall(stmts, callExpression.inner[0], rightNodes, callExpression, realGenericTypes, cxxMemberCallExprType);
     }
 
     /**
@@ -1724,7 +1731,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         callerNode: any,
         argNodes: any[],
         callExpression: any,
-        realGenericTypes: Type[] | undefined
+        realGenericTypes: Type[] | undefined,
+        cxxMemberCallExprType?: Type
     ): ValueAndStmts {
         const { args, argPositions: argPositionsAll } = this.cxxParseArguments(stmts, argNodes);
         const argPositionsAllFlat = argPositionsAll.flat();
@@ -1734,9 +1742,9 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         let invokeValue: Value;
         let invokeValuePositions: FullPosition[] = [FullPosition.cxxBuildFromNode(callExpression, this.cxxSourceFile)];
         if (callerValue instanceof ArkInstanceFieldRef) {
-            invokeValue = this.buildInvokeValueForFieldRef(callerValue, args, realGenericTypes, invokeValuePositions, callerPositions);
+            invokeValue = this.buildInvokeValueForFieldRef(callerValue, args, realGenericTypes, invokeValuePositions, callerPositions, cxxMemberCallExprType);
         } else if (callerValue instanceof Local) {
-            invokeValue = this.buildInvokeValueForLocal(callerValue, args, realGenericTypes);
+            invokeValue = this.buildInvokeValueForLocal(callerValue, args, realGenericTypes, cxxMemberCallExprType);
         } else {
             ({
                 value: callerValue,
@@ -1771,7 +1779,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         args: Value[],
         realGenericTypes: Type[] | undefined,
         invokeValuePositions: FullPosition[],
-        callerPositions: FullPosition[]
+        callerPositions: FullPosition[],
+        returnType?: Type
     ): ArkInstanceFieldRef | ArkStaticInvokeExpr {
         let methodSignature: MethodSignature;
         const declareSignature = callerValue.getFieldSignature().getDeclaringSignature();
@@ -1780,6 +1789,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         } else {
             methodSignature = ArkSignatureBuilder.buildMethodSignatureFromMethodName(callerValue.getFieldName());
         }
+        methodSignature.getMethodSubSignature().setReturnType(returnType ?? UnknownType.getInstance());
         if (callerValue instanceof ArkInstanceFieldRef) {
             invokeValuePositions.push(...callerPositions.slice());
             return new ArkInstanceInvokeExpr(callerValue.getBase(), methodSignature, args, realGenericTypes);
@@ -1788,9 +1798,14 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         }
     }
 
-    private buildInvokeValueForLocal(callerValue: Local, args: Value[], realGenericTypes: Type[] | undefined): ArkPtrInvokeExpr | ArkStaticInvokeExpr {
+    private buildInvokeValueForLocal(callerValue: Local,
+                                     args: Value[],
+                                     realGenericTypes: Type[] | undefined,
+                                     cxxMemberCallExprType?: Type
+    ): ArkPtrInvokeExpr | ArkStaticInvokeExpr {
         const callerName = callerValue.getName();
         const methodSignature = ArkSignatureBuilder.buildMethodSignatureFromMethodName(callerName);
+        methodSignature.getMethodSubSignature().setReturnType(cxxMemberCallExprType ?? UnknownType.getInstance());
         if (callerValue.getType() instanceof FunctionType) {
             return new ArkPtrInvokeExpr(methodSignature, callerValue, args, realGenericTypes);
         } else {
@@ -2627,7 +2642,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         const binaryExpressionLeft = binaryExpression.inner[0];
         const binaryExpressionRight = binaryExpression.inner[1];
         if (operatorToken === '=') {
-            return this.cxxAssignmentToValueAndStmts(binaryExpressionLeft, binaryExpressionRight, false, false, UnknownType.getInstance(), true);
+            const leftType = cxxNode2Type(binaryExpressionLeft, undefined);
+            return this.cxxAssignmentToValueAndStmts(binaryExpressionLeft, binaryExpressionRight, false, false, leftType, true);
         }
         const stmts: Stmt[] = [];
         const binaryExpressionPosition = FullPosition.cxxBuildFromNode(binaryExpression, this.cxxSourceFile);
@@ -2805,7 +2821,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
                 return { value: constant, valueOriginalPositions: pos, stmts };
             }
             case 'CharacterLiteral': {
-                const constant = CxxValueUtil.createStringConst(S(literalNode.code));
+                const constant = CxxValueUtil.createCharConst(S(literalNode.code));
                 return { value: constant, valueOriginalPositions: pos, stmts };
             }
             case 'CXXBoolLiteralExpr': {
@@ -3017,7 +3033,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
 
     private isCxxStdContainer(typeName: string): boolean {
         const typeNameInLowerCase = typeName.toLowerCase();
-        const stdContainerLists = ['map', 'vector', 'deque', 'list', 'array', 'set', 'stack', 'queue'];
+        const stdContainerLists = ['map', 'vector', 'deque', 'list', 'array',
+            'set', 'stack', 'queue', 'stringstream', 'basic_string'];
         return stdContainerLists.some(containerType => typeNameInLowerCase.includes(containerType));
     }
 

@@ -27,12 +27,19 @@ import {
     RelationalBinaryOperator,
     UnaryOperator,
 } from '../../core/base/Expr';
-import { ArkCaughtExceptionRef, ArkInstanceFieldRef, ArkParameterRef, ArkThisRef, GlobalRef } from '../../core/base/Ref';
+import {
+    ArkArrayRef,
+    ArkCaughtExceptionRef,
+    ArkInstanceFieldRef,
+    ArkParameterRef,
+    ArkThisRef,
+    GlobalRef,
+} from '../../core/base/Ref';
 import { Value } from '../../core/base/Value';
 import * as ts from 'ohos-typescript';
 import { Local } from '../../core/base/Local';
 import { ArkAliasTypeDefineStmt, ArkAssignStmt, ArkIfStmt, ArkInvokeStmt, ArkReturnStmt, ArkReturnVoidStmt, ArkThrowStmt, Stmt } from '../../core/base/Stmt';
-import { AliasType, BooleanType, ClassType, UnknownType, VoidType, Type } from '../../core/base/Type';
+import { AliasType, BooleanType, ClassType, UnknownType, VoidType, Type, AnyType, ArrayType, StringType } from '../../core/base/Type';
 import { CxxValueUtil } from './ValueUtil';
 import { IRUtils } from './IRUtils';
 import { ArkMethod } from '../../core/model/ArkMethod';
@@ -50,7 +57,7 @@ import { ArkClass } from '../../core/model/ArkClass';
 import { buildNormalArkClassFromArkMethod } from '../model/builder/ArkClassBuilder';
 import { CxxAstNode, CxxTranslationUnit } from '../ast/ArkCxxAstNode';
 import { ValueUtil } from '../../core/common/ValueUtil';
-import { PointerType } from '../base/Type';
+import { CxxCharType, CxxStdTypeName, CxxTypeBitWidth, CxxTypeSigned, PointerType } from '../base/Type';
 import { buildGenericType } from '../../core/model/builder/builderUtils';
 
 export type ValueAndStmts = {
@@ -70,7 +77,7 @@ function nodeInnerNode(node: CxxAstNode): CxxAstNode {
 export class ArkCxxIRTransformer extends ArkIRTransformer {
     private readonly cxxSourceFile: CxxTranslationUnit;
     private ArkCxxValueTransformer: ArkCxxValueTransformer;
-
+    private catchedExceptions: Value[] = [];
     constructor(sourceFile: CxxTranslationUnit, declaringMethod: ArkMethod) {
         super(sourceFile as unknown as ts.SourceFile, declaringMethod);
         this.cxxSourceFile = sourceFile;
@@ -216,7 +223,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
             cls.setDeclaringArkNamespace(declaringArkNamespace);
         }
         cls.setDeclaringArkFile(this.declaringMethod.getDeclaringArkFile());
-        buildNormalArkClassFromArkMethod(node, cls, this.cxxSourceFile, this.declaringMethod);
+        buildNormalArkClassFromArkMethod(node, cls, this.cxxSourceFile);
         return [];
     }
 
@@ -335,7 +342,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         const stmts: Stmt[] = [];
         let entry = forOfStatement.inner[1];
         // Handle iterable initialization
-        let { iterableValue, iterablePositions, iteratorInvokeExpr, iteratorInvokeExprPositions } = this.handleForRangeIterInit(entry, stmts);
+        let { iterablePositions, iteratorInvokeExpr, iteratorInvokeExprPositions } = this.handleForRangeIterInit(entry, stmts);
         // Handle iterable.next
         const {
             iteratorNextInvokeExpr,
@@ -343,6 +350,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         } = this.handleForRangeIterNext(iteratorInvokeExpr, iteratorInvokeExprPositions, stmts, iterablePositions);
         // Handle iterable result value
         const {
+            iteratorResult,
             iteratorResultPositions,
             doneFieldRef,
             doneFieldRefPositions,
@@ -351,7 +359,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         const {
             valueFieldRef,
             valueFieldRefPositions,
-        } = this.handleForRangeIterDone(doneFieldRef, doneFieldRefPositions, stmts, iterableValue, iteratorResultPositions);
+        } = this.handleForRangeIterDone(doneFieldRef, doneFieldRefPositions, stmts, iteratorResult, iteratorResultPositions);
         // Handle whether iterable is finished
         const {
             value: yieldValue,
@@ -390,7 +398,6 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
 
     private handleForRangeIterInit(entry: CxxAstNode, stmts: Stmt[]
     ): {
-        iterableValue: Value,
         iterablePositions: FullPosition[],
         iteratorInvokeExpr: ArkInstanceInvokeExpr,
         iteratorInvokeExprPositions: FullPosition[] }
@@ -413,7 +420,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         const iteratorMethodSignature = new MethodSignature(ClassSignature.DEFAULT, iteratorMethodSubSignature);
         const iteratorInvokeExpr = new ArkInstanceInvokeExpr(iterableValue as Local, iteratorMethodSignature, []);
         const iteratorInvokeExprPositions = [iterablePositions[0], ...iterablePositions];
-        return { iterableValue, iterablePositions, iteratorInvokeExpr, iteratorInvokeExprPositions };
+        return { iterablePositions, iteratorInvokeExpr, iteratorInvokeExprPositions };
     }
 
     private handleForRangeIterNext(
@@ -468,19 +475,19 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
     }
 
     private handleForRangeIterResult(iteratorNextInvokeExpr: ArkInstanceInvokeExpr, iteratorNextInvokeExprPositions: FullPosition[], stmts: Stmt[]
-    ): { iteratorResultPositions: FullPosition[], doneFieldRef: ArkInstanceFieldRef, doneFieldRefPositions: FullPosition[] } {
+    ): { iteratorResult: Value, iteratorResultPositions: FullPosition[], doneFieldRef: ArkInstanceFieldRef, doneFieldRefPositions: FullPosition[] } {
         const {
             value: iteratorResult,
             valueOriginalPositions: iteratorResultPositions,
             stmts: iteratorResultStmts,
         } = this.generateAssignStmtForValue(iteratorNextInvokeExpr, iteratorNextInvokeExprPositions);
         iteratorResultStmts.forEach(stmt => stmts.push(stmt));
-        (iteratorResult as Local).setType(BuiltinCxx.ITERATOR_CLASS_TYPE);
+        (iteratorResult as Local).setType(BuiltinCxx.ITERATOR_RESULT_CLASS_TYPE);
         const doneFieldSignature = new FieldSignature(BuiltinCxx.ITERATOR_RESULT_DONE,
             BuiltinCxx.ITERATOR_RESULT_CLASS_SIGNATURE, BooleanType.getInstance(), false);
         const doneFieldRef = new ArkInstanceFieldRef(iteratorResult as Local, doneFieldSignature);
         const doneFieldRefPositions = [iteratorResultPositions[0], ...iteratorResultPositions];
-        return { iteratorResultPositions, doneFieldRef, doneFieldRefPositions };
+        return { iteratorResult, iteratorResultPositions, doneFieldRef, doneFieldRefPositions };
     }
 
     private cxxCatchClauseToStmts(catchClause: CxxAstNode): Stmt[] {
@@ -492,12 +499,21 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
                 valueOriginalPositions: catchOriPos,
                 stmts: catchStmts,
             } = this.ArkCxxValueTransformer.cxxVariableDeclarationToValueAndStmts(catchClause.inner[0], false, false);
+            this.catchedExceptions.push(catchValue);
             const caughtExceptionRef = new ArkCaughtExceptionRef(catchValue.getType());
             const assignStmt = new ArkAssignStmt(catchValue, caughtExceptionRef);
             assignStmt.setOperandOriginalPositions(catchOriPos);
             stmts.push(assignStmt);
             catchStmts.forEach(stmt => stmts.push(stmt));
+        } else { // When the scenario is catch (...)
+            const caughtExceptionRef = new ArkCaughtExceptionRef(AnyType.getInstance());
+            const catchValue = new Local('error');
+            this.catchedExceptions.push(catchValue);
+            const assignStmt = new ArkAssignStmt(catchValue, caughtExceptionRef);
+            assignStmt.setOriginPositionInfo(LineColPosition.cxxBuildFromNode(catchClause));
+            stmts.push(assignStmt);
         }
+
         return stmts;
     }
 
@@ -613,14 +629,23 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         let initNode: CxxAstNode | undefined;
         let conditionNoe: CxxAstNode | undefined;
         let incrementor: CxxAstNode | undefined;
-        for (const node of forStatement.inner) {
-            if (node.kind === 'DeclStmt') {
-                initNode = node;
-            } else if (node.kind === 'BinaryOperator' || node.kind === 'ExprWithCleanups') {
-                conditionNoe = node;
-            } else if (node.kind === 'UnaryOperator' || node.kind === 'CXXOperatorCallExpr') {
-                incrementor = node;
+        if (forStatement.inner.length < 4) {
+            // When the for structure is incomplete, allocate positions according to the statement type.
+            // In cases of misclassification, the syntax tree structure needs to be further improved
+            for (const node of forStatement.inner) {
+                if (node.kind === 'DeclStmt') {
+                    initNode = node;
+                } else if (node.kind === 'BinaryOperator' || node.kind === 'ExprWithCleanups') {
+                    conditionNoe = node;
+                } else if (node.kind === 'UnaryOperator' || node.kind === 'CXXOperatorCallExpr' || node.kind === 'CompoundAssignOperator') {
+                    incrementor = node;
+                }
             }
+        } else {
+            // The complete for structure allocates corresponding statements in order
+            initNode = forStatement.inner[0];
+            conditionNoe = forStatement.inner[1];
+            incrementor = forStatement.inner[2];
         }
 
         if (initNode) {
@@ -812,7 +837,14 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
 
     private cxxThrowStatementToStmts(throwStatement: CxxAstNode): Stmt[] {
         const stmts: Stmt[] = [];
-        const { value: throwValue, valueOriginalPositions: throwValuePositions, stmts: throwStmts } = this.cxxNodeToValueAndStmts(throwStatement.inner[0]);
+        let {
+            value: throwValue,
+            valueOriginalPositions: throwValuePositions,
+            stmts: throwStmts,
+        } = this.cxxNodeToValueAndStmts(throwStatement.inner[0]);
+        if (throwStatement.inner.length === 0 && this.catchedExceptions.length !== 0) {
+            throwValue = this.catchedExceptions[this.catchedExceptions.length - 1];
+        }
         throwStmts.forEach(stmt => stmts.push(stmt));
         const throwStmt = new ArkThrowStmt(throwValue);
         throwStmt.setOperandOriginalPositions(throwValuePositions);
@@ -859,6 +891,10 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
             valueType = this.buildTypeForUnopExpr(value);
         } else if (value instanceof ArkNormalBinopExpr) {
             valueType = this.buildTypeForBinOpExpr(value);
+        } else if (value instanceof ArkArrayRef) {
+            valueType = this.buildTypeForArrayRefExpr(value);
+        } else if (value instanceof ArkInstanceInvokeExpr) {
+            valueType = value.getMethodSignature().getMethodSubSignature().getReturnType();
         } else {
             valueType = value.getType();
         }
@@ -918,6 +954,22 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
             return opValue2Type;
         }
         return value.getType();
+    }
+
+    private buildTypeForArrayRefExpr(value: ArkArrayRef): Type {
+        const valueBaseType = value.getBase().getType();
+        if (valueBaseType instanceof ArrayType) {
+            const dimension = valueBaseType.getDimension();
+            const baseTypeOfArray = valueBaseType.getBaseType();
+            if (dimension === 1) {
+                return baseTypeOfArray;
+            }
+            // Handle multi-dimension array
+            return new ArrayType(baseTypeOfArray, dimension - 1);
+        } else if (valueBaseType instanceof StringType) {
+            return CxxCharType.getInstance(CxxTypeSigned.UNKNOWN, CxxTypeBitWidth.EIGHT_BITS, CxxStdTypeName.CHAR);
+        }
+        return value.getBase().getType();
     }
 
     public setBuilderMethodContextFlag(builderMethodContextFlag: boolean): void {}
