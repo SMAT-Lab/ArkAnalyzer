@@ -139,7 +139,7 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
     }
 
     public getCategory(): ClassCategory {
-        return this.category;
+        return this.category ?? ClassCategory.CLASS;
     }
 
     public setCategory(category: ClassCategory): void {

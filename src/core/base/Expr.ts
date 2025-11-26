@@ -46,6 +46,7 @@ import { ArkClass, ClassCategory } from '../model/ArkClass';
 import { ArkField } from '../model/ArkField';
 import { ModelUtils } from '../common/ModelUtils';
 import { PointerType } from '../../cpp_frontend/base/Type';
+import { ArkAssignStmt } from './Stmt';
 
 /**
  * @category core/base/expr
@@ -817,23 +818,71 @@ export class ArkConditionExpr extends AbstractBinopExpr {
     public inferType(arkMethod: ArkMethod): ArkConditionExpr {
         this.inferOpType(this.op1, arkMethod);
         const op1Type = this.op1.getType();
-        if (this.operator === RelationalBinaryOperator.InEquality && this.op2 === ValueUtil.getOrCreateNumberConst(0)) {
-            if (op1Type instanceof StringType) {
-                this.op2 = ValueUtil.createStringConst(EMPTY_STRING);
-            } else if (op1Type instanceof BooleanType) {
-                this.op2 = ValueUtil.getBooleanConstant(false);
-            } else if (op1Type instanceof ClassType) {
+        this.type = BooleanType.getInstance();
+        if (this.operator !== RelationalBinaryOperator.InEquality || this.op2 !== ValueUtil.getOrCreateNumberConst(0)) {
+            this.inferOpType(this.getOp2(), arkMethod);
+            return this;
+        }
+        if (op1Type instanceof StringType) {
+            this.op2 = ValueUtil.createStringConst(EMPTY_STRING);
+        } else if (op1Type instanceof BooleanType) {
+            this.op2 = ValueUtil.getBooleanConstant(false);
+        } else if (op1Type instanceof ClassType || op1Type instanceof UnknownType || op1Type instanceof UnclearReferenceType) {
+            const newOp1 = this.isValueAssignWithLogicalNotExpr(this.op1);
+            if (newOp1) {
+                this.op1 = newOp1;
+                this.operator = RelationalBinaryOperator.Equality;
+            }
+            this.op2 = ValueUtil.getUndefinedConst();
+        } else if (op1Type instanceof UnionType) {
+            if (this.isClassTypeUnionNullUndefined(op1Type)) {
+                const newOp1 = this.isValueAssignWithLogicalNotExpr(this.op1);
+                if (newOp1) {
+                    this.op1 = newOp1;
+                    this.operator = RelationalBinaryOperator.Equality;
+                }
                 this.op2 = ValueUtil.getUndefinedConst();
             }
-        } else {
-            this.inferOpType(this.getOp2(), arkMethod);
         }
-        this.type = BooleanType.getInstance();
         return this;
     }
 
     public fillType(): void {
         this.type = BooleanType.getInstance();
+    }
+
+    private isValueAssignWithLogicalNotExpr(op: Value): Value | null {
+        if (!(op instanceof Local)) {
+            return null;
+        }
+        const declaringStmt = op.getDeclaringStmt();
+        if (!declaringStmt || !(declaringStmt instanceof ArkAssignStmt)) {
+            return null;
+        }
+        const rightOp = declaringStmt.getRightOp();
+        if (rightOp instanceof ArkUnopExpr && rightOp.getOperator() === UnaryOperator.LogicalNot) {
+            return rightOp.getOp();
+        }
+        return null;
+    }
+
+    private isClassTypeUnionNullUndefined(unionType: UnionType): boolean {
+        const types = unionType.getTypes();
+        let findClassType = false;
+        for (const t of types) {
+            if (t instanceof NullType || t instanceof UndefinedType) {
+                continue;
+            }
+            if (t instanceof ClassType) {
+                if (findClassType) {
+                    return false;
+                }
+                findClassType = true;
+                continue;
+            }
+            return false;
+        }
+        return findClassType;
     }
 }
 
