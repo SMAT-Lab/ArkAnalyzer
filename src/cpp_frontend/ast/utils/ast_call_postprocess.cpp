@@ -887,7 +887,7 @@ nlohmann::json buildCXXCtorInitializer(nlohmann::json& memberRef, nlohmann::json
     return ctor;
 }
 
-auto isCtorBoolOrInitList = [](const nlohmann::json &node) {
+auto g_isCtorBoolOrInitList = [](const nlohmann::json &node) {
     const std::string kind = node.value("kind", "");
     return kind == "CXXConstructExpr" ||
            kind == "CXXBoolLiteralExpr" ||
@@ -916,7 +916,7 @@ nlohmann::json addCXXCtorInitializer(nlohmann::json& children,
             // or CXXBoolLiteralExpr (e.g. `foo(true)` or `foo(Bar(...))`), treat this
             // successor node as the initializer argument of the current member and cache it in pendingArg.
             if (pendingArg.is_null() && i + 1 < static_cast<int>(children.size()) &&
-                isCtorBoolOrInitList(children[i + 1])) {
+                g_isCtorBoolOrInitList(children[i + 1])) {
                     pendingArg = children[++i];
             }
             // Reverse pairing: value before field
