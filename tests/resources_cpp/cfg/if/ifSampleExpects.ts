@@ -169,10 +169,10 @@ export const IF_EXPECT_CASE8 = {
                 'if %1 != 0'
             ],
             preds: [],
-            succes: [ 1, 2 ]
+            succes: [1, 2]
         },
-        { id: 1, stmts: [ 'return b' ], preds: [ 0 ], succes: [] },
-        { id: 2, stmts: [ 'return a' ], preds: [ 0 ], succes: [] }
+        { id: 1, stmts: ['return b'], preds: [0], succes: [] },
+        { id: 2, stmts: ['return a'], preds: [0], succes: [] }
     ],
 };
 
@@ -186,32 +186,32 @@ export const IF_EXPECT_CASE9 = {
                 'if std::is_integral_v<T> != 0'
             ],
             preds: [],
-            succes: [ 1, 2 ]
+            succes: [1, 2]
         },
         {
             id: 1,
-            stmts: [ "staticinvoke <@%unk/%unk: .cout()>('Integral: ', value)" ],
-            preds: [ 0 ],
-            succes: [ 5 ]
+            stmts: ["staticinvoke <@%unk/%unk: .cout()>('Integral: ', value)"],
+            preds: [0],
+            succes: [5]
         },
         {
             id: 2,
-            stmts: [ 'if std::is_floating_point_v<T> != 0' ],
-            preds: [ 0 ],
-            succes: [ 3, 4 ]
+            stmts: ['if std::is_floating_point_v<T> != 0'],
+            preds: [0],
+            succes: [3, 4]
         },
         {
             id: 3,
-            stmts: [ "staticinvoke <@%unk/%unk: .cout()>('Floating-point: ', value)" ],
-            preds: [ 2 ],
-            succes: [ 5 ]
+            stmts: ["staticinvoke <@%unk/%unk: .cout()>('Floating-point: ', value)"],
+            preds: [2],
+            succes: [5]
         },
         {
             id: 4,
-            stmts: [ "staticinvoke <@%unk/%unk: .cout()>('Other: ', value)" ],
-            preds: [ 2 ],
-            succes: [ 5 ]
+            stmts: ["staticinvoke <@%unk/%unk: .cout()>('Other: ', value)"],
+            preds: [2],
+            succes: [5]
         },
-        { id: 5, stmts: [ 'return' ], preds: [ 1, 3, 4 ], succes: [] }
+        { id: 5, stmts: ['return'], preds: [1, 3, 4], succes: [] }
     ],
 };

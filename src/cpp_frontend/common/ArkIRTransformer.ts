@@ -630,7 +630,8 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         let conditionNoe: CxxAstNode | undefined;
         let incrementor: CxxAstNode | undefined;
         if (forStatement.inner.length < 4) {
-            // When the for structure is incomplete, allocate positions according to the statement type. In cases of misclassification, the syntax tree structure needs to be further improved
+            // When the for structure is incomplete, allocate positions according to the statement type.
+            // In cases of misclassification, the syntax tree structure needs to be further improved
             for (const node of forStatement.inner) {
                 if (node.kind === 'DeclStmt') {
                     initNode = node;
@@ -894,7 +895,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
             valueType = this.buildTypeForArrayRefExpr(value);
         } else if (value instanceof ArkInstanceInvokeExpr) {
             valueType = value.getMethodSignature().getMethodSubSignature().getReturnType();
-        }else {
+        } else {
             valueType = value.getType();
         }
         const leftOp = this.ArkCxxValueTransformer.generateTempLocal(valueType);

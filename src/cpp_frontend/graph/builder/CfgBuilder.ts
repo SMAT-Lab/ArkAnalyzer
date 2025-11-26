@@ -630,7 +630,7 @@ export class CfgBuilder {
             if (catchBlock.code) {
                 text += this.removeAfterBraces(catchBlock.code);
             }
-            if (catchBlock.inner?.length === 0){
+            if (catchBlock.inner?.length === 0) {
                 continue;
             }
             let catchOrNot = new ConditionStatementBuilder('catchOrNot', text, catchBlock, scopeID);

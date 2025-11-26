@@ -23,9 +23,9 @@
 
 using namespace nsA;
 
-extern const int kVersion;
+extern const int K_VERSION;
 
-enum class Color {
+enum Color {
     RED,
     GREEN,
     BLUE,

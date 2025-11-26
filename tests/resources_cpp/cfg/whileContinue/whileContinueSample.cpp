@@ -17,6 +17,7 @@
 #include <iostream>
 #define TWO 2
 #define TEN 10
+#define FIVE 5
 
 int main(int num)
 {
@@ -41,28 +42,30 @@ void DoStmtFunc()
 void CommaExprFunc()
 {
     int i = 0;
-    while(++i, i< 5) {
+    while(++i, i < FIVE) {
         std::cout << "i = " << i << std::endl;
     }
 }
 
-void EmptyDoWhile() {
+void EmptyDoWhile()
+{
     int count = 0;
 
     // 空体的 do-while 循环
-    do ; while (++count < 5);
+    do ; while (++count < FIVE);
 
     std::cout << "Final count: " << count << std::endl;
 }
 
-void ContinueDoWhile() {
+void ContinueDoWhile()
+{
     int i = 0;
 
     do {
         i++;
-        if (i % 2 == 0) {
+        if (i % TWO == 0) {
             continue; // 跳转到条件检查，后面的代码不会执行
         }
         std::cout << "After continue: " << i << " (odd number)" << std::endl;
-    } while (i < 5);
+    } while (i < FIVE);
 }

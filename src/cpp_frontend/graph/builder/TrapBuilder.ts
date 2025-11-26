@@ -81,8 +81,8 @@ export class CxxTrapBuilder {
         const singleTraps = this.buildSingleTraps(
             tryResult.bfsBlocks,
             tryResult.tailBlocks,
-            catchResult.bfsBlocks,  // 这里现在是二维数组
-            catchResult.tailBlocks,  // 这里现在是二维数组
+            catchResult.bfsBlocks, // It is a two-dimensional array here now.
+            catchResult.tailBlocks, // It is a two-dimensional array here now.
             finallyBlockBuilder,
 
         );
@@ -260,7 +260,7 @@ export class CxxTrapBuilder {
     private buildTrapsIfNoFinally(
         tryBfsBlocks: BasicBlock[],
         tryTailBlocks: BasicBlock[],
-        catchBfsBlocks: BasicBlock[][],  // Two dimensional array, each subarray represents a catch block group
+        catchBfsBlocks: BasicBlock[][], // Two-dimensional array, each subarray represents a catch block group
         catchTailBlocks: BasicBlock[][],
         finallyBlockBuilder: BlockBuilder,
     ): CxxTrap[] {

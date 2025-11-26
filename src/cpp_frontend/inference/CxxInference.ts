@@ -42,7 +42,7 @@ class CxxFileInference extends FileInference {
             this.isBuildCxxFuncMap = true;
         }
         file.getImportInfos().filter(i => i.getExportInfo() === undefined)
-            .forEach(info => this.importInfoInference.doInfer(info))
+            .forEach(info => this.importInfoInference.doInfer(info));
     }
 }
 
