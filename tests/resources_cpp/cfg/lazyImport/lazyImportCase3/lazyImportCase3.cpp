@@ -15,7 +15,6 @@
 
 // How to perform map data interaction between ArkTS side and Native side
 
-#include "NativeMap.h"
 #include "napi/native_api.h"
 #include <map>
 #include <string>
