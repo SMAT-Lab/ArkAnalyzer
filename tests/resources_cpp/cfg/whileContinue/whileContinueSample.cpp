@@ -42,7 +42,7 @@ void DoStmtFunc()
 void CommaExprFunc()
 {
     int i = 0;
-    while(++i, i < FIVE) {
+    while (++i, i < FIVE) {
         std::cout << "i = " << i << std::endl;
     }
 }
