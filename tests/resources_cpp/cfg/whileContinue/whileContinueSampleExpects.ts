@@ -64,21 +64,21 @@ export const COMMA_EXPRESSION = {
                 'i = 0'
             ],
             preds: [],
-            succes: [ 1 ]
+            succes: [1]
         },
         {
             id: 1,
-            stmts: [ 'i = i + 1', '%0 = i < 5', 'if %0 != 0' ],
-            preds: [ 0, 2 ],
-            succes: [ 2, 3 ]
+            stmts: ['i = i + 1', '%0 = i < 5', 'if %0 != 0'],
+            preds: [0, 2],
+            succes: [2, 3]
         },
         {
             id: 2,
-            stmts: [ "staticinvoke <@%unk/%unk: .cout()>('i = ', i)" ],
-            preds: [ 1 ],
-            succes: [ 1 ]
+            stmts: ["staticinvoke <@%unk/%unk: .cout()>('i = ', i)"],
+            preds: [1],
+            succes: [1]
         },
-        { id: 3, stmts: [ 'return' ], preds: [ 1 ], succes: [] }
+        { id: 3, stmts: ['return'], preds: [1], succes: [] }
     ],
 };
 
@@ -91,13 +91,13 @@ export const EMPTY_DO_WHILE = {
                 'count = 0'
             ],
             preds: [],
-            succes: [ 1 ]
+            succes: [1]
         },
         {
             id: 1,
-            stmts: [ 'count = count + 1', 'if count < 5' ],
-            preds: [ 0, 1 ],
-            succes: [ 1, 2 ]
+            stmts: ['count = count + 1', 'if count < 5'],
+            preds: [0, 1],
+            succes: [1, 2]
         },
         {
             id: 2,
@@ -105,7 +105,7 @@ export const EMPTY_DO_WHILE = {
                 "staticinvoke <@%unk/%unk: .cout()>('Final count: ', count)",
                 'return'
             ],
-            preds: [ 1 ],
+            preds: [1],
             succes: []
         }
     ],
@@ -120,23 +120,23 @@ export const CONTINUE_DO_WHILE = {
                 'i = 0'
             ],
             preds: [],
-            succes: [ 1 ]
+            succes: [1]
         },
         {
             id: 1,
-            stmts: [ 'i = i + 1', '%0 = i % 2', 'if %0 == 0' ],
-            preds: [ 0, 2 ],
-            succes: [ 2, 3 ]
+            stmts: ['i = i + 1', '%0 = i % 2', 'if %0 == 0'],
+            preds: [0, 2],
+            succes: [2, 3]
         },
-        { id: 2, stmts: [ 'if i < 5' ], preds: [ 1, 3 ], succes: [ 1, 4 ] },
+        { id: 2, stmts: ['if i < 5'], preds: [1, 3], succes: [1, 4] },
         {
             id: 3,
             stmts: [
                 "staticinvoke <@%unk/%unk: .cout()>('After continue: ', i, ' (odd number)')"
             ],
-            preds: [ 1 ],
-            succes: [ 2 ]
+            preds: [1],
+            succes: [2]
         },
-        { id: 4, stmts: [ 'return' ], preds: [ 2 ], succes: [] }
+        { id: 4, stmts: ['return'], preds: [2], succes: [] }
     ],
 };

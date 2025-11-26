@@ -1237,7 +1237,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         if (callExpression.name === 'napi_define_class') {
             setTs2CxxFuncMapOfClass(argus.args, true, this.declaringMethod);
         }
-        return this.cxxGenerateInvokeValueAndStmts(callNode, argus, stmts, callExpression);
+        const returnType = cxxNode2Type(callExpression, this.declaringMethod)
+        return this.cxxGenerateInvokeValueAndStmts(callNode, argus, stmts, callExpression, returnType);
     }
 
     /**
@@ -1654,7 +1655,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             argPositions: FullPosition[];
         },
         currStmts: Stmt[],
-        callExpression: any
+        callExpression: any,
+        returnType?: Type,
     ): ValueAndStmts {
         const stmts: Stmt[] = [...currStmts];
         let { value: callerValue, valueOriginalPositions: callerPositions, stmts: callerStmts } = this.cxxNodeToValueAndStmts(functionNameNode);
@@ -1664,7 +1666,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         let invokeValuePositions: FullPosition[] = [FullPosition.cxxBuildFromNode(callExpression, this.cxxSourceFile)];
         const { args, argPositions, realGenericTypes } = argus;
         if (callerValue instanceof AbstractFieldRef) {
-            invokeValue = this.buildInvokeValueForFieldRef(callerValue, args, realGenericTypes, invokeValuePositions, callerPositions);
+            invokeValue = this.buildInvokeValueForFieldRef(callerValue, args, realGenericTypes, invokeValuePositions, callerPositions, returnType);
         } else if (callerValue instanceof Local) {
             const callerName = callerValue.getName();
             let classSignature = ArkSignatureBuilder.buildClassSignatureFromClassName(callerName);
@@ -1708,10 +1710,11 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         if ((callExpression.parent ?? callExpression.getParent?.(true))?.type?.qualType === 'std::thread') {
             return this.cxxNewExpressionToValueAndStmts(callExpression);
         }
+        const cxxMemberCallExprType = cxxNode2Type(callExpression.type.qualType, this.declaringMethod, this.cxxSourceFile, callExpression);
         let realGenericTypes: Type[] | undefined;
         const stmts: Stmt[] = [];
         const [_, rightNodes] = this.getArgumentNode(callExpression.inner);
-        return this.buildValueAndStmtsForMemberCall(stmts, callExpression.inner[0], rightNodes, callExpression, realGenericTypes);
+        return this.buildValueAndStmtsForMemberCall(stmts, callExpression.inner[0], rightNodes, callExpression, realGenericTypes, cxxMemberCallExprType);
     }
 
     /**
@@ -1728,7 +1731,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         callerNode: any,
         argNodes: any[],
         callExpression: any,
-        realGenericTypes: Type[] | undefined
+        realGenericTypes: Type[] | undefined,
+        cxxMemberCallExprType?: Type
     ): ValueAndStmts {
         const { args, argPositions: argPositionsAll } = this.cxxParseArguments(stmts, argNodes);
         const argPositionsAllFlat = argPositionsAll.flat();
@@ -1738,9 +1742,9 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         let invokeValue: Value;
         let invokeValuePositions: FullPosition[] = [FullPosition.cxxBuildFromNode(callExpression, this.cxxSourceFile)];
         if (callerValue instanceof ArkInstanceFieldRef) {
-            invokeValue = this.buildInvokeValueForFieldRef(callerValue, args, realGenericTypes, invokeValuePositions, callerPositions);
+            invokeValue = this.buildInvokeValueForFieldRef(callerValue, args, realGenericTypes, invokeValuePositions, callerPositions, cxxMemberCallExprType);
         } else if (callerValue instanceof Local) {
-            invokeValue = this.buildInvokeValueForLocal(callerValue, args, realGenericTypes);
+            invokeValue = this.buildInvokeValueForLocal(callerValue, args, realGenericTypes, cxxMemberCallExprType);
         } else {
             ({
                 value: callerValue,
@@ -1775,7 +1779,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         args: Value[],
         realGenericTypes: Type[] | undefined,
         invokeValuePositions: FullPosition[],
-        callerPositions: FullPosition[]
+        callerPositions: FullPosition[],
+        returnType?: Type
     ): ArkInstanceFieldRef | ArkStaticInvokeExpr {
         let methodSignature: MethodSignature;
         const declareSignature = callerValue.getFieldSignature().getDeclaringSignature();
@@ -1784,6 +1789,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         } else {
             methodSignature = ArkSignatureBuilder.buildMethodSignatureFromMethodName(callerValue.getFieldName());
         }
+        methodSignature.getMethodSubSignature().setReturnType(returnType ?? UnknownType.getInstance());
         if (callerValue instanceof ArkInstanceFieldRef) {
             invokeValuePositions.push(...callerPositions.slice());
             return new ArkInstanceInvokeExpr(callerValue.getBase(), methodSignature, args, realGenericTypes);
@@ -1792,9 +1798,10 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         }
     }
 
-    private buildInvokeValueForLocal(callerValue: Local, args: Value[], realGenericTypes: Type[] | undefined): ArkPtrInvokeExpr | ArkStaticInvokeExpr {
+    private buildInvokeValueForLocal(callerValue: Local, args: Value[], realGenericTypes: Type[] | undefined, cxxMemberCallExprType?: Type): ArkPtrInvokeExpr | ArkStaticInvokeExpr {
         const callerName = callerValue.getName();
         const methodSignature = ArkSignatureBuilder.buildMethodSignatureFromMethodName(callerName);
+        methodSignature.getMethodSubSignature().setReturnType(cxxMemberCallExprType ?? UnknownType.getInstance());
         if (callerValue.getType() instanceof FunctionType) {
             return new ArkPtrInvokeExpr(methodSignature, callerValue, args, realGenericTypes);
         } else {

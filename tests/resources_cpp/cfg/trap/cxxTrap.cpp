@@ -17,7 +17,14 @@
 #include <stdexcept>
 using namespace std;
 
-void Case1() {
+#define TWO 2
+#define FOUR 4
+#define FIVE 5
+#define SEVEN 7
+#define NINE 9
+
+void Case1()
+{
     int a = 1;
     char x = 'c';
     bool flag = true;
@@ -28,25 +35,27 @@ void Case1() {
         }
     }
     catch (const logic_error& e) {
-        a = 9;
-        a = 2;
+        a = NINE;
+        a = TWO;
     }
     catch (const runtime_error& e) {
-        a = 5;
+        a = FIVE;
     }
     catch (...) {
-        a = 7;
+        a = SEVEN;
     }
-    a = 4;
+    a = FOUR;
 }
 
-void innerFunction() {
+void InnerFunction()
+{
     throw std::runtime_error("error1");
 }
 
-void outerFunction() {
+void OuterFunction()
+{
     try {
-        innerFunction();
+        InnerFunction();
     }
     catch (const std::exception& e) {
         std::cout << "catch: " << e.what() << std::endl;

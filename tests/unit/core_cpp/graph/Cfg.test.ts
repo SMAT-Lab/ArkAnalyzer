@@ -127,9 +127,9 @@ describe('CfgTest', () => {
         const scene = buildScene('whileContinue');
         testBlocks(scene, 'whileContinueSample.cpp', 'main', WHILE_CONTINUE_EXPECT.WHILE_CONTINUE_EXPECT_MAIN.blocks);
         testBlocks(scene, 'whileContinueSample.cpp', 'DoStmtFunc', WHILE_CONTINUE_EXPECT.DO_WHILE_STMT.blocks);
-        testBlocks(scene, 'whileContinueSample.cpp', 'CommaExprFunc',WHILE_CONTINUE_EXPECT.COMMA_EXPRESSION.blocks);
-        testBlocks(scene, 'whileContinueSample.cpp', 'EmptyDoWhile',WHILE_CONTINUE_EXPECT.EMPTY_DO_WHILE.blocks);
-        testBlocks(scene, 'whileContinueSample.cpp', 'ContinueDoWhile',WHILE_CONTINUE_EXPECT.CONTINUE_DO_WHILE.blocks);
+        testBlocks(scene, 'whileContinueSample.cpp', 'CommaExprFunc', WHILE_CONTINUE_EXPECT.COMMA_EXPRESSION.blocks);
+        testBlocks(scene, 'whileContinueSample.cpp', 'EmptyDoWhile', WHILE_CONTINUE_EXPECT.EMPTY_DO_WHILE.blocks);
+        testBlocks(scene, 'whileContinueSample.cpp', 'ContinueDoWhile', WHILE_CONTINUE_EXPECT.CONTINUE_DO_WHILE.blocks);
     });
     it('case6: goto statement', () => {
         const scene = buildScene('goto');
@@ -497,7 +497,7 @@ describe('supplementary', () => {
         const scene = buildScene('trap');
         scene.inferTypes();
         testBlocks(scene, 'cxxTrap.cpp', 'Case1', TRAP.TRAP_EXPECT_CASE1.blocks);
-        testBlocks(scene, 'cxxTrap.cpp', 'outerFunction', TRAP.OUTERFUNC_EXPECT_CASE1.blocks);
+        testBlocks(scene, 'cxxTrap.cpp', 'OuterFunction', TRAP.OUTERFUNC_EXPECT_CASE1.blocks);
     });
 });
 

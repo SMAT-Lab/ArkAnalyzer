@@ -163,7 +163,7 @@ function buildNamespaceMembers(node: CxxAstNode, namespace: ArkNamespace, source
             case 'CXXDestructorDecl':
             case 'CXXMethodDecl': {
                 let className = child.mangledName;
-                if (!className){
+                if (!className) {
                     logger.trace('Declaration class not found', child);
                     return;
                 }
@@ -172,7 +172,8 @@ function buildNamespaceMembers(node: CxxAstNode, namespace: ArkNamespace, source
                     arkClass = new ArkClass();
                     arkClass.setDeclaringArkNamespace(namespace);
                     arkClass.setDeclaringArkFile(namespace.getDeclaringArkFile());
-                    const classSignature = new ClassSignature(className, arkClass.getDeclaringArkFile().getFileSignature(), arkClass.getDeclaringArkNamespace()?.getSignature() || null);
+                    const classSignature = new ClassSignature(
+                        className, arkClass.getDeclaringArkFile().getFileSignature(), arkClass.getDeclaringArkNamespace()?.getSignature() || null);
                     arkClass.setSignature(classSignature);
                     namespace.addArkClass(arkClass, className);
                 }

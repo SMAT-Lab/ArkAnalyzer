@@ -90,7 +90,7 @@ export const OUTERFUNC_EXPECT_CASE1 = {
         },
         {
             id: 1,
-            stmts: ['staticinvoke <@trap/cxxTrap.cpp: %dflt.innerFunction()>()'],
+            stmts: ['staticinvoke <@trap/cxxTrap.cpp: %dflt.InnerFunction()>()'],
             preds: [0],
             succes: [3],
             exceptionalPreds: [],

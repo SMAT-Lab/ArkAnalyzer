@@ -941,7 +941,7 @@ export class CxxLocalInference extends LocalInference {
 
     public preInfer(value: Local): boolean {
         const type = value.getType();
-        if (type instanceof  FunctionType) {
+        if (type instanceof FunctionType) {
             // lambda function
             return true;
         } else if (type instanceof PointerType && type.getBaseType() instanceof FunctionType) {

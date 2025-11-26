@@ -17,17 +17,18 @@
 #include "myHeader.h"
 
 #define TWO 2
+#define EIGHTEEN 18
 
 int main()
 {
     // namespace.h
-    DefaultClass dClass('A', 18);
+    DefaultClass dClass('A', EIGHTEEN);
     dClass.PrintInfo();
     nsA::FuncInNamespace();
 
     // myHeader.h
     Point p = {1.0, TWO};
-    Circle c(p, 5.0, Color::GREEN);
+    Circle c(p, 1.0, Color::GREEN);
     double area = c.CalculateArea();
     std::cout << "Area of circle is : " << area << std::endl;
     c.PrintInfo();
