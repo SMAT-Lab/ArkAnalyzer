@@ -156,7 +156,6 @@ function buildNamespaceMembers(node: CxxAstNode, namespace: ArkNamespace, source
             case 'ClassTemplate': {
                 let cls: ArkClass = new ArkClass();
                 buildNormalArkClassFromArkNamespace(child, namespace, cls, sourceFile);
-                namespace.addArkClass(cls);
                 return;
             }
             case 'CXXConstructorDecl':
