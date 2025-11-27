@@ -124,7 +124,7 @@ export const BINGING_EXPECT_MAP = {
             id: 1,
             stmts: [
                 '%6 = instanceinvoke %5.<@%unk/%unk: .next()>()',
-                '%7 = %6.<@CXX/std/BuiltinClass: IteratorResult.done>',
+                '%7 = %6.<@CXX/std/BuiltinClass: IteratorResult.end>',
                 'if %7 == true',
             ],
             preds: [0, 2],
@@ -144,7 +144,7 @@ export const BINGING_EXPECT_MAP = {
             id: 3,
             stmts: [
                 '%10 = instanceinvoke %9.<@%unk/%unk: .next()>()',
-                '%11 = %10.<@CXX/std/BuiltinClass: IteratorResult.done>',
+                '%11 = %10.<@CXX/std/BuiltinClass: IteratorResult.end>',
                 'if %11 == true',
             ],
             preds: [6, 4],
