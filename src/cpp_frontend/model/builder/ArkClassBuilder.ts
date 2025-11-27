@@ -77,11 +77,13 @@ export function buildNormalArkClassFromArkNamespace(
         cls.setColumn(clsNode.range.begin.col);
     }
     buildNormalArkClass(clsNode, cls, sourceFile, declaringClass);
+    arkNamespace.addArkClass(cls);
 }
 
 export function buildNormalArkClass(clsNode: CxxAstNode, cls: ArkClass, sourceFile: CxxAstNode, declaringClass?:ArkClass): void {
     if (clsNode.kind === 'CXXRecordDecl') {
         switch (clsNode.tagUsed) {
+
             case 'struct':
                 buildStruct2ArkClass(clsNode, cls, sourceFile, declaringClass);
                 break;
@@ -106,12 +108,7 @@ export function buildNormalArkClass(clsNode: CxxAstNode, cls: ArkClass, sourceFi
 }
 
 function buildUnion2ArkClass(clsNode: CxxAstNode, cls: ArkClass, sourceFile: CxxAstNode, declaringClass?:ArkClass): void {
-    let className: string;
-    if (clsNode.name) {
-        className = clsNode.name;
-    } else {
-        className = genAnonymousClassName(clsNode, cls, declaringClass);
-    }
+    const className = genClassName(clsNode.name ? clsNode.name : '', cls, declaringClass);
     const classSignature = new ClassSignature(
         className,
         cls.getDeclaringArkFile().getFileSignature(),
@@ -126,13 +123,7 @@ function buildUnion2ArkClass(clsNode: CxxAstNode, cls: ArkClass, sourceFile: Cxx
 }
 
 function buildStruct2ArkClass(clsNode: CxxAstNode, cls: ArkClass, sourceFile: CxxAstNode, declaringClass?:ArkClass): void {
-    let className: string;
-    if (clsNode.name && !clsNode.name.startsWith('(unnamed')) {
-        className = clsNode.name;
-    } else {
-        className = genAnonymousClassName(clsNode, cls, declaringClass);
-    }
-
+    const className = genClassName(clsNode.name ? clsNode.name : '', cls, declaringClass);
     const classSignature = new ClassSignature(
         className,
         cls.getDeclaringArkFile().getFileSignature(),
@@ -153,22 +144,6 @@ function buildStruct2ArkClass(clsNode: CxxAstNode, cls: ArkClass, sourceFile: Cx
     buildArkClassMembers(clsNode, cls, sourceFile);
 }
 
-function genAnonymousClassName(clsNode: CxxAstNode, cls: ArkClass, declaringClass?:ArkClass): string {
-    const declaringArkNamespace = cls.getDeclaringArkNamespace();
-    const declaringArkFile = cls.getDeclaringArkFile();
-    let anonymousClassName: string;
-    let declaringMethodName = '';
-    if (declaringClass) {
-        declaringMethodName =
-            declaringClass.getName() + ANONYMOUS_CLASS_DELIMITER + ANONYMOUS_CLASS_DELIMITER;
-    }
-    if (declaringArkNamespace) {
-        anonymousClassName = ANONYMOUS_CLASS_PREFIX + ANONYMOUS_CLASS_DELIMITER + declaringMethodName + declaringArkNamespace.getAnonymousClassNumber();
-    } else {
-        anonymousClassName = ANONYMOUS_CLASS_PREFIX + ANONYMOUS_CLASS_DELIMITER + declaringMethodName + declaringArkFile.getAnonymousClassNumber();
-    }
-    return anonymousClassName;
-}
 
 function buildClass2ArkClass(clsNode: CxxAstNode, cls: ArkClass, sourceFile: CxxAstNode, declaringClass?:ArkClass): void {
     const className = genClassName(clsNode.name ? clsNode.name : '', cls, declaringClass);
@@ -210,13 +185,7 @@ function processCXXHeritage(clsNode: CxxAstNode, cls: ArkClass): void {
 }
 
 function buildEnum2ArkClass(clsNode: CxxAstNode, cls: ArkClass, sourceFile: CxxAstNode, declaringClass?:ArkClass): void {
-    let className: string;
-    if (clsNode.name) {
-        className = clsNode.name;
-    } else {
-        className = genAnonymousClassName(clsNode, cls, declaringClass);
-    }
-
+    const className = genClassName(clsNode.name ? clsNode.name : '', cls, declaringClass);
     const classSignature = new ClassSignature(
         className,
         cls.getDeclaringArkFile().getFileSignature(),
