@@ -126,13 +126,14 @@ export function buildArkClassFromCxxClass(classNode: CxxAstNode, arkFile: ArkFil
 }
 
 function buildImportInfoFromIncludeOrUsing(child: CxxAstNode, astRoot: CxxAstNode, arkFile: ArkFile): void {
-    let importInfos = buildImportInfo(child, astRoot, arkFile);
-    importInfos?.forEach(element => {
-        element.setDeclaringArkFile(arkFile);
-        if (shouldAddCxxHeaderImport(element)) {
-            arkFile.addImportInfo(element);
-        }
-    });
+    let importInfo = buildImportInfo(child, astRoot, arkFile);
+    if (!importInfo) {
+        return;
+    }
+    importInfo.setDeclaringArkFile(arkFile);
+    if (shouldAddCxxHeaderImport(importInfo)) {
+        arkFile.addImportInfo(importInfo);
+    }
 }
 
 function addExportInfoOnCondition(currNode: CxxAstNode, arkInstance: ArkExport, arkFile: ArkFile): void {

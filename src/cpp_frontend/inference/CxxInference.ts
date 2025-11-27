@@ -17,7 +17,7 @@ import { ClassInference, FileInference, ImportInfoInference, MethodInference, St
 import { ArkFile } from '../../core/model/ArkFile';
 import { IRInference } from '../common/IRInference';
 import { ImportInfo } from '../../core/model/ArkImport';
-import { findExportInfo, getArkFile } from '../common/ModelUtils';
+import { findExportInfo, getArkFile, getCxxArkExportInImportInfoWithName, PatchRegistry } from '../common/ModelUtils';
 import { ArkClass } from '../../core/model/ArkClass';
 import { TypeInference } from '../common/TypeInference';
 import { ArkMethod } from '../../core/model/ArkMethod';
@@ -27,6 +27,7 @@ import { ExportInfo } from '../../core/model/ArkExport';
 import { ValueInference, InferLanguage } from '../../core/inference/ValueInference';
 import { Value } from '../../core/base/Value';
 import { ArkAliasTypeDefineStmt, Stmt } from '../../core/base/Stmt';
+import { ModelUtils } from '../../core/common/ModelUtils';
 
 class CxxFileInference extends FileInference {
     private isBuildCxxFuncMap: boolean = false;
@@ -38,11 +39,17 @@ class CxxFileInference extends FileInference {
     public preInfer(file: ArkFile): void {
         if (!this.isBuildCxxFuncMap) {
             const scene = file.getScene();
-            IRInference.buildCxxFuncMap(scene);
+            IRInference.mapCxxDeclAndImpl(scene);
             this.isBuildCxxFuncMap = true;
         }
+        PatchRegistry.patchMethod(ModelUtils, 'getArkExportInImportInfoWithName', getCxxArkExportInImportInfoWithName);
         file.getImportInfos().filter(i => i.getExportInfo() === undefined)
             .forEach(info => this.importInfoInference.doInfer(info));
+    }
+
+    public postInfer(file: ArkFile) {
+        super.postInfer(file);
+        PatchRegistry.restoredMethod(ModelUtils, 'getArkExportInImportInfoWithName');
     }
 }
 
@@ -60,7 +67,7 @@ class CxxImportInference extends ImportInfoInference {
      * @param fromInfo
      */
     public infer(fromInfo: ImportInfo): ExportInfo | null {
-        return findExportInfo(fromInfo);
+        return findExportInfo(fromInfo, this.fromFile);
     }
 }
 

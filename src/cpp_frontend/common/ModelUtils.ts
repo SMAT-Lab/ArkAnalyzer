@@ -14,8 +14,8 @@
  */
 
 import { ArkFile, Language } from '../../core/model/ArkFile';
-import { FileSignature, fileSignatureCompare } from '../../core/model/ArkSignature';
-import { ExportInfo, ExportType, FromInfo } from '../../core/model/ArkExport';
+import { FileSignature } from '../../core/model/ArkSignature';
+import { ArkExport, ExportInfo, ExportType, FromInfo } from '../../core/model/ArkExport';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { getFileAbsPath } from '../../utils/FileUtils';
 import path from 'path';
@@ -27,8 +27,10 @@ import { Local } from '../../core/base/Local';
 import { StringConstant } from '../../core/base/Constant';
 import { INSTANCE_INIT_METHOD_NAME, STATIC_INIT_METHOD_NAME, TEMP_LOCAL_PREFIX } from '../../core/common/Const';
 import { FunctionType } from '../../core/base/Type';
+import { ArkNamespace } from '../../core/model/ArkNamespace';
+import { ModelUtils } from '../../core/common/ModelUtils';
 
-// Common C++standard library header files (excluding the. h suffix)
+// Common C++standard library header files (excluding the .h suffix)
 const CXX_STD_HEADERS = new Set([
     'iostream',
     'iomanip',
@@ -98,20 +100,17 @@ export function getArkFile(im: FromInfo): ArkFile | null | undefined {
  * #include "xx/xx.h" ==> Precompilation directly expands ==> Equivalent to importing all content of the file ==> Get exportInfo directly from header file
  * find from info's export
  * @param fromInfo importInfo or exportInfo
+ * @param fromFile The file where the imported object is located
  */
-export function findExportInfo(fromInfo: FromInfo): ExportInfo | null {
-    let file = getArkFile(fromInfo);
+export function findExportInfo(fromInfo: FromInfo, fromFile?: ArkFile | null): ExportInfo | null {
+    // scenario 1. processing using namespace xxx
+    if (fromInfo instanceof ImportInfo && fromInfo.getImportType() === 'NamespaceImport' && fromInfo.getFrom() === '') {
+        return processNamespaceImport(fromInfo);
+    }
+    // scenario 2. processing #include "xx.h"
+    let file = fromFile ?? getArkFile(fromInfo);
     if (!file) {
         logger.warn(`${fromInfo.getOriginName()} ${fromInfo.getFrom()} file not found: ${fromInfo.getDeclaringArkFile()?.getFileSignature()?.toString()}`);
-        return null;
-    }
-    if (fileSignatureCompare(file.getFileSignature(), fromInfo.getDeclaringArkFile().getFileSignature())) {
-        for (let exportInfo of file.getExportInfos()) {
-            if (exportInfo.getOriginName() === fromInfo.getOriginName()) {
-                exportInfo.setArkExport(file.getDefaultClass());
-                return exportInfo;
-            }
-        }
         return null;
     }
     if (fromInfo instanceof ImportInfo && fromInfo.getImportClauseName().startsWith('#include')) {
@@ -125,6 +124,34 @@ export function shouldAddCxxHeaderImport(element: ImportInfo): boolean {
         return false;
     }
     return isValidCxxHeaderPath(element.getImportClauseName());
+}
+
+function processNamespaceImport(fromInfo: ImportInfo): ExportInfo | null {
+    const declFile = fromInfo.getDeclaringArkFile();
+    const namespaceName = fromInfo.getImportClauseName();
+    // namespace is from current file or importInfo
+    let lazyExportInfo = declFile.getExportInfoBy(namespaceName) ??
+        declFile.getImportInfoBy(namespaceName)?.getExportInfo();
+    if (lazyExportInfo) {
+        let arkExport = lazyExportInfo.getArkExport() || null;
+        lazyExportInfo.setArkExport(arkExport);
+        if (!arkExport) {
+            return lazyExportInfo;
+        }
+        lazyExportInfo.setExportClauseType(ExportType.NAME_SPACE);
+        // If the namespace is imported in a header file, it is necessary to construct the  exportInfo for the imported namespace.
+        if (isValidCxxHeaderPath(declFile.getFilePath())) {
+            const namespaceExportInfo = new ExportInfo.Builder()
+                .exportClauseType(ExportType.NAME_SPACE)
+                .exportClauseName(namespaceName)
+                .declaringArkFile(declFile)
+                .arkExport(arkExport)
+                .build();
+            declFile.addExportInfo(namespaceExportInfo);
+        }
+        return lazyExportInfo;
+    }
+    return null;
 }
 
 function isValidCxxHeaderPath(headerPath: string | undefined): boolean {
@@ -152,7 +179,7 @@ function isValidCxxHeaderPath(headerPath: string | undefined): boolean {
 }
 
 /* Handling header file references for # include "xx/xx. h" */
-function processIncludeRef(fromInfo: FromInfo, headerFile: ArkFile): ExportInfo {
+function processIncludeRef(fromInfo: ImportInfo, headerFile: ArkFile): ExportInfo {
     // 1.Construct # include "xxx/xx" The exportInfo referenced by the header file is the DefaultClass of the header file
     const includeExportInfo = new ExportInfo.Builder()
         .exportClauseType(ExportType.CLASS)
@@ -162,10 +189,19 @@ function processIncludeRef(fromInfo: FromInfo, headerFile: ArkFile): ExportInfo 
         .build();
     // 2.Add the exportInfo of the header file to the importInfoMaps of the current file, and set lazyImportInfo
     const declFile = fromInfo.getDeclaringArkFile();
-    let includeClauseName = (fromInfo as ImportInfo).getImportClauseName();
+    let includeClauseName = fromInfo.getImportClauseName();
     for (const exportInfo of headerFile.getExportInfos()) {
         let headerRealIm = new ImportInfo();
-        headerRealIm.build(exportInfo.getExportClauseName(), 'NamedImports', headerFile.getFilePath(), exportInfo.getOriginTsPosition(), 0);
+        // if there is "using namespace xxx" in declFile or the indirectly referenced file, we should keep the original import type
+        const curClauseName = exportInfo.getExportClauseName();
+        let importType: string;
+        if (declFile.getImportInfoBy(curClauseName)?.getImportType() === 'NamespaceImport' ||
+            headerFile.getImportInfoBy(curClauseName)?.getImportType() === 'NamespaceImport') {
+            importType = 'NamespaceImport';
+        } else {
+            importType = 'NamedImports';
+        }
+        headerRealIm.build(curClauseName, importType, headerFile.getFilePath(), exportInfo.getOriginTsPosition(), 0);
         headerRealIm.setTsSourceCode(includeClauseName);
         headerRealIm.setDeclaringArkFile(declFile);
         if (shouldAddCxxHeaderImport(headerRealIm)) {
@@ -318,4 +354,56 @@ function getFuncImplement(mtd: ArkMethod): ArkMethod {
         return mtd;
     }
     return realImplMtd;
+}
+
+export function getCxxArkExportInImportInfoWithName(name: string, arkFile: ArkFile): ArkExport | null {
+    let arkExport = arkFile.getImportInfoBy(name)?.getLazyExportInfo()?.getArkExport();
+    if (arkExport) {
+        return arkExport;
+    }
+    // if using namespace in file，we can call the method or class in the namespace without a prefix.
+    for (const im of arkFile.getImportInfos()) {
+        const imArkExport = im.getLazyExportInfo()?.getArkExport();
+        if (im.getImportType() !== 'NamespaceImport' ||  !(imArkExport instanceof ArkNamespace)) {
+            continue;
+        }
+        const imNS = imArkExport as ArkNamespace;
+        arkExport = ModelUtils.findPropertyInNamespace(name, imNS);
+        if (arkExport) {
+            return arkExport;
+        }
+    }
+    return null;
+}
+
+export class PatchRegistry {
+    private static _instance: PatchRegistry;
+    private static originalMap = new Map<string, Function>();
+
+    private constructor() {}
+
+    public static get instance(): PatchRegistry {
+        if (!this._instance) {
+            this._instance = new PatchRegistry();
+            Object.freeze(this._instance);
+        }
+        return this._instance;
+    }
+
+    public static patchMethod(targetModule: any, methodName: string, newFunction: Function) {
+        const key = `${targetModule.constructor.name}.${methodName}`;
+        if (!this.originalMap.has(key)) {
+            this.originalMap.set(key, targetModule[methodName]);
+        }
+        targetModule[methodName] = newFunction;
+    }
+
+    public static restoredMethod(targetModule: any, methodName: string) {
+        const key = `${targetModule.constructor.name}.${methodName}`;
+        if (!this.originalMap.has(key)) {
+            return;
+        }
+        targetModule[methodName] = this.originalMap.get(key)!;
+        this.originalMap.delete(key);
+    }
 }
