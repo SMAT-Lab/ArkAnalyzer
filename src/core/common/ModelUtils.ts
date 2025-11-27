@@ -23,7 +23,6 @@ import {
     ClassSignature,
     FieldSignature,
     FileSignature,
-    fileSignatureCompare,
     LocalSignature,
     MethodSignature,
     NamespaceSignature,
@@ -35,15 +34,18 @@ import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { FileUtils, ModulePath } from '../../utils/FileUtils';
 import path from 'path';
 import { Sdk } from '../../Config';
-import { ALL, DEFAULT, THIS_NAME } from './TSConst';
+import { ALL, DEFAULT, TEMP_EXPORT_ALL_PREFIX, THIS_NAME } from './TSConst';
 import { buildDefaultExportInfo } from '../model/builder/ArkExportBuilder';
 import {
     AliasType,
     AnnotationNamespaceType,
-    ClassType, EnumValueType,
-    FunctionType, LiteralType,
+    ClassType,
+    EnumValueType,
+    FunctionType,
+    LiteralType,
     Type,
-    UnclearReferenceType, UnionType,
+    UnclearReferenceType,
+    UnionType,
     UnknownType
 } from '../base/Type';
 import { Scene } from '../../Scene';
@@ -754,13 +756,14 @@ export function findExportInfo(fromInfo: FromInfo): ExportInfo | null {
         logger.warn(`${fromInfo.getOriginName()} ${fromInfo.getFrom()} file not found: ${fromInfo.getDeclaringArkFile()?.getFileSignature()?.toString()}`);
         return null;
     }
-    if (fileSignatureCompare(file.getFileSignature(), fromInfo.getDeclaringArkFile().getFileSignature())) {
-        for (let exportInfo of file.getExportInfos()) {
-            if (exportInfo.getOriginName() === fromInfo.getOriginName()) {
-                exportInfo.setArkExport(file.getDefaultClass());
-                return exportInfo;
-            }
+    // expand export *
+    if (fromInfo.getOriginName().startsWith(TEMP_EXPORT_ALL_PREFIX) && fromInfo instanceof ExportInfo) {
+        const declaringArkFile = fromInfo.getDeclaringArkFile();
+        if (declaringArkFile !== file) {
+            file.getExportInfos().filter(f => f.getExportClauseName().startsWith(TEMP_EXPORT_ALL_PREFIX)).forEach(e => findExportInfo(e));
+            file.getExportInfos().filter(f => !f.isDefault()).forEach(exportInfo => declaringArkFile.addExportInfo(exportInfo));
         }
+        declaringArkFile.removeExportInfo(fromInfo);
         return null;
     }
     let exportInfo = findExportInfoInfile(fromInfo, file) || null;

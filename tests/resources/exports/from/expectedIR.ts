@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -18,7 +18,6 @@ import { ArkClass, DEFAULT_ARK_CLASS_NAME } from '../../../../src';
 
 export const ExportAllFromThisFile_Expect_IR = {
     _default: false,
-    nameBeforeAs: '*',
     exportClauseName: '*',
     exportClauseType: ExportType.CLASS,
     modifiers: [],
@@ -44,7 +43,6 @@ export const ExportAllWithAsNameFromThisFile_Expect_IR = {
 
 export const ExportAllFromOtherFile_Expect_IR = {
     _default: false,
-    nameBeforeAs: '*',
     exportClauseName: '*',
     exportClauseType: ExportType.CLASS,
     modifiers: [],
