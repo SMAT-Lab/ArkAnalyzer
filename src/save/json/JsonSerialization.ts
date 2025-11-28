@@ -122,6 +122,17 @@ import {
     ValueDto,
     polymorphic,
 } from './JsonDto';
+import {
+    CxxCharType,
+    CxxDoubleType,
+    CxxFloatType,
+    CxxIntType,
+    CxxLongDoubleType,
+    CxxLongLongType,
+    CxxLongType,
+    CxxShortType,
+    CxxSizeTType, CxxWcharType, PointerType, ReferenceType, SmartPointerType, Thread, TypeInfo,
+} from '../../cpp_frontend/base/Type';
 
 export function serializeArkScene(scene: Scene): SceneDto {
     return {
@@ -257,6 +268,86 @@ export function serializeType(type: Type): TypeDto {
         return polymorphic('TupleType', {
             types: type.getTypes().map(type => serializeType(type)),
         });
+    } else if (type instanceof CxxIntType) {
+        return {
+            kind: 'CxxIntType',
+            text: type.toString(),
+        };
+    } else if (type instanceof CxxShortType) {
+        return {
+            kind: 'CxxShortType',
+            text: type.toString(),
+        };
+    } else if (type instanceof CxxLongType) {
+        return {
+            kind: 'CxxLongType',
+            text: type.toString(),
+        };
+    } else if (type instanceof CxxLongLongType) {
+        return {
+            kind: 'CxxLongLongType',
+            text: type.toString(),
+        };
+    } else if (type instanceof CxxSizeTType) {
+        return {
+            kind: 'CxxSizeTType',
+            text: type.toString(),
+        };
+    } else if (type instanceof CxxShortType) {
+        return {
+            kind: 'CxxShortType',
+            text: type.toString(),
+        };
+    } else if (type instanceof CxxFloatType) {
+        return {
+            kind: 'CxxFloatType',
+            text: type.toString(),
+        };
+    } else if (type instanceof CxxDoubleType) {
+        return {
+            kind: 'CxxDoubleType',
+            text: type.toString(),
+        };
+    } else if (type instanceof CxxLongDoubleType) {
+        return {
+            kind: 'CxxLongDoubleType',
+            text: type.toString(),
+        };
+    } else if (type instanceof CxxCharType) {
+        return {
+            kind: 'CxxCharType',
+            text: type.toString(),
+        };
+    } else if (type instanceof CxxWcharType) {
+        return {
+            kind: 'CxxWcharType',
+            text: type.toString(),
+        };
+    } else if (type instanceof PointerType) {
+        return {
+            kind: 'PointerType',
+            text: type.toString(),
+        };
+    } else if (type instanceof SmartPointerType) {
+        return {
+            kind: 'SmartPointerType',
+            text: type.toString(),
+        };
+    } else if (type instanceof ReferenceType) {
+        return {
+            kind: 'ReferenceType',
+            text: type.toString(),
+        };
+    } else if (type instanceof Thread) {
+        return {
+            kind: 'Thread',
+            text: type.toString(),
+        };
+    } else if (type instanceof TypeInfo) {
+        return {
+            kind: 'TypeInfo',
+            text: type.toString(),
+        };
     } else if (type instanceof BooleanType) {
         return polymorphic('BooleanType', {});
     } else if (type instanceof NumberType) {
