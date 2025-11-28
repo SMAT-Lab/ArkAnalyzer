@@ -140,7 +140,7 @@ export function buildArkMethodFromArkClass(methodNode: CxxAstNode, declaringClas
         addParamsToCXXInheritedCtorInitExpr(methodNode, mtd, methodParameters);
         returnType = VoidType.getInstance();
     }
-    reCheckModifiers(methodName, declaringClass, mtd);
+    reCheckModifiers(methodName, declaringClass, mtd, methodParameters);
     const methodSubSignature = new MethodSubSignature(methodName, methodParameters, returnType, mtd.isStatic());
     const methodSignature = new MethodSignature(mtd.getDeclaringArkClass().getSignature(), methodSubSignature);
     const begin = methodNode.range?.begin ?? { line: 0, col: 0 };
@@ -168,12 +168,29 @@ export function buildArkMethodFromArkClass(methodNode: CxxAstNode, declaringClas
 }
 
 // When a function is implemented outside the class, it retrieves the modifier at the original definition
-function reCheckModifiers(methodName: string, cls: ArkClass, method: ArkMethod): void {
+function reCheckModifiers(methodName: string, cls: ArkClass, method: ArkMethod, parameters: MethodParameter[]): void {
     let methodsWithSameName = cls.getAllMethodsWithName(methodName);
     if (methodsWithSameName.length === 0) {
         return;
     }
-    method.addModifier(methodsWithSameName[0].getModifiers());
+    for (const preMtd of methodsWithSameName) {
+        let preParameters = preMtd.getSubSignature().getParameters();
+        if (compareParameters(preParameters, parameters)) {
+            method.addModifier(preMtd.getModifiers());
+        }
+    }
+}
+
+function compareParameters(preParameters: MethodParameter[], parameters: MethodParameter[]): boolean {
+    if (preParameters.length !== parameters.length) {
+        return false;
+    }
+    for (let i = 0; i < parameters.length; i++) {
+        if (parameters[i].getType().toString() !== preParameters[i].getType().toString()) {
+            return false;
+        }
+    }
+    return true;
 }
 
 function checkAndUpdateCxxMethod(method: ArkMethod, cls: ArkClass): void {
