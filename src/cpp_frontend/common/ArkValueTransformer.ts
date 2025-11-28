@@ -3033,8 +3033,9 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
 
     private isCxxStdContainer(typeName: string): boolean {
         const typeNameInLowerCase = typeName.toLowerCase();
-        const stdContainerLists = ['map', 'vector', 'deque', 'list', 'array',
-            'set', 'stack', 'queue', 'stringstream', 'basic_string'];
+        const stdContainerLists = ['map', 'vector', 'deque', 'list', 'array', 'forward_list', 'multimap', 'multiset',
+            'set', 'stack', 'queue', 'stringstream', 'basic_string', 'unordered_set', 'unordered_map', 'unordered_multiset',
+            'unordered_multimap', 'priority_queue', ];
         return stdContainerLists.some(containerType => typeNameInLowerCase.includes(containerType));
     }
 
