@@ -200,7 +200,7 @@ function buildArkFile(arkFile: ArkFile, astRoot: CxxAstNode): void {
                 buildImportInfoFromIncludeOrUsing(child, astRoot, arkFile);
                 break;
             default:
-                logger.trace('Child joined default method of arkFile: ', child.kind ?? child.code);
+                logger.error('Child joined default method of arkFile: ', child.kind ?? child.code);
                 break;
         }
     });
