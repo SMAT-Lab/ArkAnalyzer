@@ -402,13 +402,9 @@ export function addInitInConstructor(constructor: ArkMethod): void {
 }
 
 export function isMethodImplementation(node: CxxAstNode): boolean {
-    let isFuncImpl: boolean = false;
     switch (node.kind) {
         case 'LambdaExpr':
-            if (node.inner && node.inner.length > 0) {
-                isFuncImpl = true;
-            }
-            break;
+            return (node.inner && node.inner.length > 0);
         case 'CXXMethodDecl':
         case 'CXXConstructorDecl':
         case 'CXXDestructorDecl':
@@ -417,12 +413,10 @@ export function isMethodImplementation(node: CxxAstNode): boolean {
         case 'FriendDecl':
             // CXXConstructorDecl-CXXCtorInitializer: using Base::Base
             // ==> The constructor of the subclass has the same implementation as that of the parent class.
-            if (node.inner.find((inn: CxxAstNode) => (inn.kind === 'CompoundStmt' || inn.kind === 'CXXCtorInitializer'))) {
-                isFuncImpl = true;
-            }
-            break;
+            return !!node.inner?.find((inn: CxxAstNode) =>
+                (inn.kind === 'CompoundStmt' || inn.kind === 'CXXCtorInitializer')
+            );
         default:
-            break;
+            return false;
     }
-    return isFuncImpl;
 }
