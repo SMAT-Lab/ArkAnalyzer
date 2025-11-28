@@ -17,7 +17,7 @@
 import { Stmt } from '../base/Stmt';
 import { Value } from '../base/Value';
 import { Inference, InferenceFlow } from './Inference';
-import { ArkArrayRef, ArkInstanceFieldRef, ArkParameterRef, ArkStaticFieldRef, ClosureFieldRef } from '../base/Ref';
+import { ArkInstanceFieldRef, ArkParameterRef, ArkStaticFieldRef, ClosureFieldRef } from '../base/Ref';
 import {
     AliasType,
     AnnotationNamespaceType,
@@ -29,6 +29,7 @@ import {
     GenericType,
     LexicalEnvType,
     StringType,
+    TupleType,
     Type
 } from '../base/Type';
 import { TypeInference } from '../common/TypeInference';
@@ -59,6 +60,7 @@ import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { ClassSignature } from '../model/ArkSignature';
 import { ImportInfo } from '../model/ArkImport';
 import { ArkField } from '../model/ArkField';
+import { Builtin } from '../common/Builtin';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ValueInference');
 
@@ -249,15 +251,6 @@ export class FieldRefInference extends ValueInference<ArkInstanceFieldRef> {
     public infer(value: ArkInstanceFieldRef, stmt: Stmt): Value | undefined {
         const baseType = TypeInference.replaceAliasType(value.getBase().getType());
         const arkMethod = stmt.getCfg().getDeclaringMethod();
-        // Special handling for array types with dynamic field access
-        if (baseType instanceof ArrayType && value.isDynamic()) {
-            const index = TypeInference.getLocalFromMethodBody(value.getFieldName(), arkMethod);
-            if (index) {
-                return new ArkArrayRef(value.getBase(), index);
-            } else {
-                return new ArkArrayRef(value.getBase(), ValueUtil.createConst(value.getFieldName()));
-            }
-        }
         // Generate updated field signature based on current context
         const result = IRInference.inferInstanceMember(baseType, value, arkMethod, IRInference.updateRefSignature);
         return !result || result === value ? undefined : result;
@@ -362,6 +355,17 @@ export class InstanceInvokeExprInference extends ValueInference<ArkInstanceInvok
     public static inferInvokeExpr(baseType: Type, expr: AbstractInvokeExpr, arkMethod: ArkMethod): AbstractInvokeExpr | null {
         const methodName = expr.getMethodSignature().getMethodSubSignature().getMethodName();
         const scene = arkMethod.getDeclaringArkFile().getScene();
+        if (baseType instanceof ArrayType || baseType instanceof TupleType) {
+            const arrayInterface = scene.getSdkGlobal(Builtin.ARRAY);
+            const realTypes = baseType instanceof ArrayType ? [baseType.getBaseType()] : undefined;
+            if (arrayInterface instanceof ArkClass) {
+                baseType = new ClassType(arrayInterface.getSignature(), realTypes);
+            } else if (methodName === Builtin.ITERATOR_FUNCTION) {
+                expr.getMethodSignature().getMethodSubSignature().setReturnType(Builtin.ITERATOR_CLASS_TYPE);
+                expr.setRealGenericTypes(realTypes ?? expr.getRealGenericTypes());
+                return expr;
+            }
+        }
         // Dispatch to appropriate inference method based on resolved base type
         if (baseType instanceof ClassType) {
             return IRInference.inferInvokeExprWithDeclaredClass(expr, baseType, methodName, scene);
@@ -378,8 +382,6 @@ export class InstanceInvokeExprInference extends ValueInference<ArkInstanceInvok
             }
         } else if (baseType instanceof FunctionType) {
             return IRInference.inferInvokeExprWithFunction(methodName, expr, baseType, scene);
-        } else if (baseType instanceof ArrayType) {
-            return IRInference.inferInvokeExprWithArray(methodName, expr, baseType, scene);
         }
         return null;
     }

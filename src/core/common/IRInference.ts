@@ -17,12 +17,20 @@ import {
     AliasType,
     AnnotationNamespaceType,
     AnyType,
-    ArrayType, BigIntType, BooleanType,
+    ArrayType,
+    BigIntType,
+    BooleanType,
     ClassType,
+    EnumValueType,
     FunctionType,
     GenericType,
+    IntersectionType,
     LexicalEnvType,
-    NullType, NumberType, StringType,
+    LiteralType,
+    NullType,
+    NumberType,
+    StringType,
+    TupleType,
     Type,
     UnclearReferenceType,
     UndefinedType,
@@ -51,7 +59,8 @@ import {
     ClassSignature,
     FieldSignature,
     FileSignature,
-    MethodSignature, MethodSubSignature
+    MethodSignature,
+    MethodSubSignature
 } from '../model/ArkSignature';
 import { CONSTRUCTOR_NAME, FUNCTION, IMPORT, SUPER_NAME, THIS_NAME } from './TSConst';
 import { Builtin } from './Builtin';
@@ -632,13 +641,26 @@ export class IRInference {
         }
     }
 
-    public static inferInstanceMember<T extends Value>(baseType: Type, value: T, arkMethod: ArkMethod,
-                                                       inferMember: (declareType: Type, value: T, arkMethod: ArkMethod) => T | null): T | null {
+    public static inferInstanceMember<T extends U, U extends Value>(baseType: Type, value: T, arkMethod: ArkMethod,
+                                                                    inferMember: (declareType: Type, value: T, arkMethod: ArkMethod) => U | null): U | null {
+        if (baseType instanceof ClassType || baseType instanceof AnnotationNamespaceType ||
+            baseType instanceof FunctionType || baseType instanceof ArrayType || baseType instanceof TupleType) {
+            return inferMember(baseType, value, arkMethod);
+        } else if (baseType instanceof StringType || baseType instanceof NumberType || baseType instanceof BooleanType ||
+            baseType instanceof BigIntType || baseType instanceof LiteralType) {
+            // Convert primitive types to their wrapper class types
+            const name = baseType instanceof LiteralType ? typeof baseType.getLiteralName() : baseType.getName();
+            const className = name.charAt(0).toUpperCase() + name.slice(1);
+            const arrayClass = arkMethod.getDeclaringArkFile().getScene().getSdkGlobal(className);
+            if (arrayClass instanceof ArkClass) {
+                return inferMember(new ClassType(arrayClass.getSignature(), arrayClass.getRealTypes()), value, arkMethod);
+            }
+        }
         // handle baseType to classType\namespace\functionType
         if (baseType instanceof AliasType) {
             return IRInference.inferInstanceMember(TypeInference.replaceAliasType(baseType), value, arkMethod, inferMember);
-        } else if (baseType instanceof UnionType) {
-            for (let type of baseType.flatType()) {
+        } else if (baseType instanceof UnionType || baseType instanceof IntersectionType) {
+            for (let type of baseType.getTypes()) {
                 if (type instanceof UndefinedType || type instanceof NullType) {
                     continue;
                 }
@@ -650,23 +672,12 @@ export class IRInference {
         } else if (baseType instanceof GenericType) {
             const newType = baseType.getDefaultType() ?? baseType.getConstraint();
             return newType ? IRInference.inferInstanceMember(newType, value, arkMethod, inferMember) : null;
-        } else if (baseType instanceof ArrayType) {
-            const arrayClass = arkMethod.getDeclaringArkFile().getScene().getSdkGlobal(Builtin.ARRAY);
-            if (arrayClass instanceof ArkClass) {
-                const classType = new ClassType(arrayClass.getSignature(), [baseType.getBaseType()]);
-                return inferMember(classType, value, arkMethod);
-            }
-        } else if (baseType instanceof StringType || baseType instanceof NumberType || baseType instanceof BooleanType ||
-            baseType instanceof BigIntType) {
-            // Convert primitive types to their wrapper class types
-            const name = baseType.getName();
-            const className = name.charAt(0).toUpperCase() + name.slice(1);
-            const arrayClass = arkMethod.getDeclaringArkFile().getScene().getSdkGlobal(className);
-            if (arrayClass instanceof ArkClass) {
-                return inferMember(new ClassType(arrayClass.getSignature(), arrayClass.getRealTypes()), value, arkMethod);
-            }
+        } else if (baseType instanceof EnumValueType) {
+            const newType = baseType.getConstant()?.getType();
+            return newType ? IRInference.inferInstanceMember(newType, value, arkMethod, inferMember) : null;
         }
-        return inferMember(baseType, value, arkMethod);
+        logger.error('unsupported Type:' + baseType.getTypeString());
+        return null;
     }
 
     public static generateNewFieldSignature(ref: AbstractFieldRef, arkClass: ArkClass, baseType: Type): FieldSignature | null {
@@ -692,21 +703,32 @@ export class IRInference {
         return IRInference.getFieldSignature(ref, baseType, arkClass);
     }
 
-    public static updateRefSignature(baseType: Type, ref: AbstractFieldRef, arkMethod: ArkMethod): AbstractFieldRef | null {
+    public static updateRefSignature(baseType: Type, ref: AbstractFieldRef, arkMethod: ArkMethod): AbstractRef | null {
         const fieldName = ref.getFieldName().replace(/[\"|\']/g, '');
+        if (baseType instanceof TupleType) {
+            const n = Number(fieldName);
+            if (!isNaN(n) && baseType.getTypes().length) {
+                ref.getFieldSignature().setType(baseType.getTypes()[n]);
+            }
+            return ref;
+        } else if (baseType instanceof ArrayType) {
+            if (ref instanceof ArkInstanceFieldRef && ref.isDynamic()) {
+                const index = TypeInference.getLocalFromMethodBody(fieldName, arkMethod);
+                return new ArkArrayRef(ref.getBase(), index ?? ValueUtil.createConst(fieldName));
+            } else {
+                const arrayClass = arkMethod.getDeclaringArkFile().getScene().getSdkGlobal(Builtin.ARRAY);
+                if (arrayClass instanceof ArkClass) {
+                    baseType = new ClassType(arrayClass.getSignature(), [baseType.getBaseType()]);
+                }
+            }
+        }
         const arkClass = arkMethod.getDeclaringArkClass();
         const propertyAndType = TypeInference.inferFieldType(baseType, fieldName, arkClass);
         let propertyType = IRInference.repairType(propertyAndType?.[1], fieldName, arkClass);
         let staticFlag: boolean = false;
         let signature: FieldSignature | null = null;
         if (baseType instanceof ClassType) {
-            let property = propertyAndType?.[0];
-            if (!property) {
-                const subField = IRInference.findPropertyFormChildrenClass(fieldName, arkClass, baseType);
-                if (subField) {
-                    property = subField;
-                }
-            }
+            const property = propertyAndType?.[0] ?? IRInference.findPropertyFormChildrenClass(fieldName, arkClass, baseType);
             staticFlag = baseType.getClassSignature().getClassName() === DEFAULT_ARK_CLASS_NAME ||
                 ((property instanceof ArkField || property instanceof ArkMethod) && property.isStatic());
             if (property instanceof ArkField && property.getCategory() !== FieldCategory.ENUM_MEMBER &&
@@ -714,7 +736,7 @@ export class IRInference {
                 signature = property.getSignature();
             } else {
                 const baseSignature = property instanceof ArkMethod ? property.getSignature().getDeclaringClassSignature() : baseType.getClassSignature();
-                signature = new FieldSignature(fieldName, baseSignature, propertyType ?? ref.getType(), staticFlag)
+                signature = new FieldSignature(fieldName, baseSignature, propertyType ?? ref.getType(), staticFlag);
             }
         } else if (baseType instanceof AnnotationNamespaceType) {
             staticFlag = true;
