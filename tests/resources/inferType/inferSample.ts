@@ -128,3 +128,10 @@ export interface TestInterface {
 function genericFunction<T extends TestInterface>(a: T): void {
     a.callf();
 }
+
+function testArrayInstacnceOf(): void {
+    let a = ['1', 2, false];
+    if (a instanceof Array) {
+        console.info(a);
+    }
+}

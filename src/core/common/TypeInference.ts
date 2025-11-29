@@ -692,8 +692,8 @@ export class TypeInference {
     public static inferUnclearRefType(urType: UnclearReferenceType, arkClass: ArkClass): Type | null {
         const realTypes = urType.getGenericTypes();
         this.inferRealGenericTypes(realTypes, arkClass);
-        if (urType.getName() === Builtin.ARRAY) {
-            return new ArrayType(realTypes[0] ?? AnyType.getInstance(), 1);
+        if (urType.getName() === Builtin.ARRAY && realTypes.length > 0) {
+            return new ArrayType(realTypes[0], 1);
         }
         const type = this.inferUnclearRefName(urType.getName(), arkClass);
         return type ? this.replaceTypeWithReal(type, realTypes) : null;
@@ -1074,9 +1074,10 @@ export class TypeInference {
             return type1;
         } else if (leftType instanceof UnionType) {
             const isExist = leftType.getTypes().find(t => this.isSameType(t, rightType));
-            if (isExist) {
-                return type1;
+            if (!isExist) {
+                leftType.getTypes().push(type2);
             }
+            return type1;
         } else if (leftType instanceof IntersectionType) {
             const isExist = leftType.getTypes().find(t => !this.isSameType(t, rightType));
             if (!isExist) {
