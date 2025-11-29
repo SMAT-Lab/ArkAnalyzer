@@ -39,7 +39,7 @@ export const LOOP_EXPECT_CASE1 = {
             stmts: [
                 '%4 = instanceinvoke %3.<@%unk/%unk: .next()>()',
                 '%5 = %4.<@ES2015/BuiltinClass: IteratorResult.done>',
-                'if %5 == true',
+                'if %5 != true',
             ],
             preds: [0, 2],
             succes: [2, 3],
@@ -91,7 +91,7 @@ export const LOOP_EXPECT_CASE2 = {
             stmts: [
                 '%4 = instanceinvoke %3.<@%unk/%unk: .next()>()',
                 '%5 = %4.<@ES2015/BuiltinClass: IteratorResult.done>',
-                'if %5 == true',
+                'if %5 != true',
             ],
             preds: [0, 2],
             succes: [2, 3],
