@@ -27,3 +27,106 @@ export const NAMESPACE_CASE1 = {
         },
     ],
 };
+
+export const NAMESPACE_SCHOOL_EXPECT = {
+    blocks: [
+        {
+            className: '%dflt',
+            fields: [],
+            heritageClasses: [],
+            blocks: [
+                {
+                    methodName: '%dflt',
+                    blocks: [
+                        {
+                            id: 0,
+                            stmts: ['this = this: @namespace/namespace.cpp: School.%dflt', 'return'],
+                            preds: [],
+                            succes: [],
+                        },
+                    ]
+                },
+            ]
+        },
+        {
+            className: 'Student$University',
+            fields: ['name', 'id'],
+            heritageClasses: [],
+            blocks: [
+                {
+                    methodName: 'constructor',
+                    blocks: [
+                        {
+                            id: 0,
+                            stmts: ['n = parameter0: string&', 'i = parameter1: int', 'this = this: @namespace/namespace.cpp: School.Student$University', 'instanceinvoke this.<@namespace/namespace.cpp: School.Student$University.%instInit()>()', 'this.<@namespace/namespace.cpp: School.Student$University.name> = n', 'this.<@namespace/namespace.cpp: School.Student$University.id> = i', 'return this'],
+                            preds: [],
+                            succes: [],
+                        },
+                    ]
+                },
+                {
+                    methodName: 'display',
+                    blocks: [
+                        {
+                            id: 0,
+                            stmts: ['this = this: @namespace/namespace.cpp: School.Student$University', '%0 = this.<@namespace/namespace.cpp: School.Student$University.name>', '%1 = this.<@namespace/namespace.cpp: School.Student$University.id>', 'staticinvoke <@%unk/%unk: .cout()>(\'student: \', %0, \', id: \', %1)', 'return'],
+                            preds: [],
+                            succes: [],
+                        },
+                    ]
+                },
+                {
+                    methodName: '%statInit',
+                    blocks: [
+                        {
+                            id: 0,
+                            stmts: ['this = this: @namespace/namespace.cpp: School.Student$University', 'return'],
+                            preds: [],
+                            succes: [],
+                        },
+                    ]
+                },
+            ]
+        },
+        {
+            className: 'University',
+            fields: ['name'],
+            heritageClasses: [],
+            blocks: [
+                {
+                    methodName: 'constructor',
+                    blocks: [
+                        {
+                            id: 0,
+                            stmts: ['n = parameter0: string&', 'this = this: @namespace/namespace.cpp: School.University', 'instanceinvoke this.<@namespace/namespace.cpp: School.University.%instInit()>()', 'this.<@namespace/namespace.cpp: School.University.name> = n', 'return this'],
+                            preds: [],
+                            succes: [],
+                        },
+                    ]
+                },
+                {
+                    methodName: 'welcome',
+                    blocks: [
+                        {
+                            id: 0,
+                            stmts: ['this = this: @namespace/namespace.cpp: School.University', '%0 = this.<@namespace/namespace.cpp: School.University.name>', 'staticinvoke <@%unk/%unk: .cout()>(\'welcome to\', %0)', 'return'],
+                            preds: [],
+                            succes: [],
+                        },
+                    ]
+                },
+                {
+                    methodName: '%statInit',
+                    blocks: [
+                        {
+                            id: 0,
+                            stmts: ['this = this: @namespace/namespace.cpp: School.University', 'return'],
+                            preds: [],
+                            succes: [],
+                        },
+                    ]
+                },
+            ]
+        },
+    ]
+};

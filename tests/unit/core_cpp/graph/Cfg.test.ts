@@ -399,6 +399,7 @@ describe('namespace Test', () => {
         const scene = buildScene('namespace');
         scene.inferTypes();
         testBlocks(scene, 'namespace.cpp', 'Test', NAMESPACE_EXPECT.NAMESPACE_CASE1.blocks);
+        testNamespaceClasses(scene, 'namespace.cpp', 'School', NAMESPACE_EXPECT.NAMESPACE_SCHOOL_EXPECT.blocks);
     });
 });
 
@@ -552,5 +553,54 @@ function testBlocksClass(scene: Scene, filePath: string, className: string, expe
         if (classBlock) {
             assertClassBlocksEqual(method, classBlock);
         }
+    });
+}
+
+function testNamespaceClasses(scene: Scene, filePath: string, namespaceName: string, expectBlocks: any): void {
+    const arkFile = scene.getFiles().find(file => file.getName().endsWith(filePath));
+    const arkNamespace = arkFile?.getNamespaces().find(ns => ns.getName() === namespaceName);
+
+    if (!arkNamespace) {
+        throw new Error(`Namespace ${namespaceName} not found in file ${filePath}`);
+    }
+
+    const namespaceBlockMap = new Map<string, any>();
+    for (const classBlock of expectBlocks) {
+        namespaceBlockMap.set(classBlock.className, classBlock);
+    }
+
+    // Check each class under the namespace
+    arkNamespace.getClasses().forEach(arkClass => {
+        const expectedClassData = namespaceBlockMap.get(arkClass.getName());
+        if (!expectedClassData) {
+            throw new Error(`Expected class data for ${arkClass.getName()} not found`);
+        }
+
+        // 1. Check class inheritance relationships
+        const heritageClasses = new Set<string>();
+        arkClass.getAllHeritageClasses()?.forEach(heritageClass => {
+            heritageClasses.add(heritageClass.getName());
+        });
+        expect(heritageClasses).toEqual(new Set(expectedClassData.heritageClasses));
+
+        // 2. Check class fields
+        const fieldOfClass = new Set<string>();
+        arkClass.getFields()?.forEach(field => {
+            fieldOfClass.add(field.getName());
+        });
+        expect(fieldOfClass).toEqual(new Set(expectedClassData.fields));
+
+        // 3. Check class member functions
+        const classBlockMap = new Map<string, BasicBlock[]>();
+        for (const block of expectedClassData.blocks) {
+            classBlockMap.set(block.methodName, block.blocks);
+        }
+
+        arkClass.getMethods().forEach(method => {
+            const classBlock = classBlockMap.get(method.getName());
+            if (classBlock) {
+                assertClassBlocksEqual(method, classBlock);
+            }
+        });
     });
 }
