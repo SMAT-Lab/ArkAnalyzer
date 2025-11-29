@@ -17,7 +17,7 @@ import { ClassInference, FileInference, ImportInfoInference, MethodInference, St
 import { ArkFile } from '../../core/model/ArkFile';
 import { IRInference } from '../common/IRInference';
 import { ImportInfo } from '../../core/model/ArkImport';
-import { findExportInfo, getArkFile, getCxxArkExportInImportInfoWithName, PatchRegistry } from '../common/ModelUtils';
+import { findExportInfo, getArkFile, PatchRegistry, CxxModelUtils } from '../common/ModelUtils';
 import { ArkClass } from '../../core/model/ArkClass';
 import { TypeInference } from '../common/TypeInference';
 import { ArkMethod } from '../../core/model/ArkMethod';
@@ -42,7 +42,8 @@ class CxxFileInference extends FileInference {
             IRInference.mapCxxDeclAndImpl(scene);
             this.isBuildCxxFuncMap = true;
         }
-        PatchRegistry.patchMethod(ModelUtils, 'getArkExportInImportInfoWithName', getCxxArkExportInImportInfoWithName);
+        PatchRegistry.patchMethod(ModelUtils, 'getArkExportInImportInfoWithName', CxxModelUtils.getArkExportInImportInfoWithName);
+        PatchRegistry.patchMethod(ModelUtils, 'findPropertyInClass', CxxModelUtils.findPropertyInClass);
         file.getImportInfos().filter(i => i.getExportInfo() === undefined)
             .forEach(info => this.importInfoInference.doInfer(info));
     }
@@ -50,6 +51,7 @@ class CxxFileInference extends FileInference {
     public postInfer(file: ArkFile) {
         super.postInfer(file);
         PatchRegistry.restoredMethod(ModelUtils, 'getArkExportInImportInfoWithName');
+        PatchRegistry.restoredMethod(ModelUtils, 'findPropertyInClass');
     }
 }
 

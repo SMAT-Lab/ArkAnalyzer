@@ -121,7 +121,6 @@ export function buildArkClassFromCxxClass(classNode: CxxAstNode, arkFile: ArkFil
         classNode.tagUsed = classNode.tagUsed ? classNode.tagUsed : 'class';
     }
     buildNormalArkClassFromArkFile(classNode, arkFile, cls, astRoot);
-    arkFile.addArkClass(cls);
     addExportInfoOnCondition(classNode, cls, arkFile);
 }
 
