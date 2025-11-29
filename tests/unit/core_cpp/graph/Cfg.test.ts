@@ -65,6 +65,7 @@ import * as MALLOC_EXPECT from '../../../resources_cpp/cfg/malloc/mallocSampleEx
 import * as INITIALZERLIST from '../../../resources_cpp/cfg/stdInitializerListExpr/initializerListExpects';
 import * as SUPPLEMENTARY from '../../../resources_cpp/cfg/supplementary/supplementary';
 import * as TRAP from '../../../resources_cpp/cfg/trap/cxxTrapExpects';
+import * as OVERWRITE from '../../../resources_cpp/cfg/overwrite/overwriteExpect';
 
 const deveco_sysroot_include = process.env.DEVECO_SYSROOT_INCLUDE !== undefined ? process.env.DEVECO_SYSROOT_INCLUDE : '';
 const is_system_win32 = process.platform === 'win32';
@@ -281,6 +282,14 @@ describe('Function Test', () => {
         testBlocks(scene, 'call.cpp', 'Case1', CALLEXPR_EXPECT.CXXMEMBERCALL_EXPECT.blocks);
         testBlocks(scene, 'call.cpp', 'Case2', CALLEXPR_EXPECT.CXXMETHODDEFAULT_CASE2_EXPECT.blocks);
         testBlocks(scene, 'call.cpp', 'Case3', CALLEXPR_EXPECT.CXXMETHODDEFAULT_CASE3_EXPECT.blocks);
+    });
+
+    it('case7: overwrite Test', () => {
+        const scene = buildScene('overwrite');
+        scene.inferTypes();
+        testBlocksWithSignature(scene, 'overwriteSample.cpp', 'Calculator', 'add(int, int)', OVERWRITE.OVERWRITE_PRINT_INFO_CASE1_EXPECT.blocks);
+        testBlocksWithSignature(scene, 'overwriteSample.cpp', 'Calculator', 'add(double, double)', OVERWRITE.OVERWRITE_PRINT_INFO_CASE2_EXPECT.blocks);
+        testBlocksWithSignature(scene, 'overwriteSample.cpp', 'Calculator', 'add(int, int, int)', OVERWRITE.OVERWRITE_PRINT_INFO_CASE3_EXPECT.blocks);
     });
 });
 
