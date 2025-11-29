@@ -349,7 +349,7 @@ export const OVERLOAD_MAIN_EXPECT = {
                 'staticinvoke <@%unk/%unk: .cout()>(\'aaa\')',
                 'distance = staticinvoke <@overload/overloadSample.cpp: %dflt.operator""_km(long double)>(5.3)',
                 `ch = staticinvoke <@overload/overloadSample.cpp: %dflt.operator""_c(char)>(a)`,
-                'return',
+                'return undefinedValue',
             ],
             preds: [],
             succes: [],
