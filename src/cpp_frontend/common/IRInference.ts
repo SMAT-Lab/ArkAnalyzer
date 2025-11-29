@@ -927,11 +927,26 @@ export class IRInference {
             }
             const sortedRefFiles = this.sortRefFiles(headerPath, refFiles);
             for (const cls of ModelUtils.getAllClassesInFile(headerArkFile)) {
+                this.mapClassDeclAndImpl(sortedRefFiles, cls);
                 for (const mtd of cls.getMethods(true)) {
                     this.findMtdImpl(mtd, sortedRefFiles, scene);
                 }
             }
         }
+    }
+
+    private static mapClassDeclAndImpl(cppFiles: ArkFile[], clsInHeader: ArkClass): void {
+        const tgtClsName = clsInHeader.getName();
+        const tgtNamespaceName = clsInHeader.getDeclaringArkNamespace()?.getName();
+        for (const cppFile of cppFiles) {
+            const refArkClasses = this.getClassWithNameAndNamespace(tgtClsName, cppFile, tgtNamespaceName);
+            if (refArkClasses.length !== 1) {
+                continue;
+            }
+            refArkClasses[0].setDeclareSignature(clsInHeader.getSignature());
+            break;
+        }
+
     }
 
     /**

@@ -28,7 +28,8 @@ import { StringConstant } from '../../core/base/Constant';
 import { INSTANCE_INIT_METHOD_NAME, STATIC_INIT_METHOD_NAME, TEMP_LOCAL_PREFIX } from '../../core/common/Const';
 import { FunctionType } from '../../core/base/Type';
 import { ArkNamespace } from '../../core/model/ArkNamespace';
-import { ModelUtils } from '../../core/common/ModelUtils';
+import { findArkExport, ModelUtils } from '../../core/common/ModelUtils';
+import { ArkField } from '../../core/model/ArkField';
 
 // Common C++standard library header files (excluding the .h suffix)
 const CXX_STD_HEADERS = new Set([
@@ -356,26 +357,6 @@ function getFuncImplement(mtd: ArkMethod): ArkMethod {
     return realImplMtd;
 }
 
-export function getCxxArkExportInImportInfoWithName(name: string, arkFile: ArkFile): ArkExport | null {
-    let arkExport = arkFile.getImportInfoBy(name)?.getLazyExportInfo()?.getArkExport();
-    if (arkExport) {
-        return arkExport;
-    }
-    // if using namespace in file，we can call the method or class in the namespace without a prefix.
-    for (const im of arkFile.getImportInfos()) {
-        const imArkExport = im.getLazyExportInfo()?.getArkExport();
-        if (im.getImportType() !== 'NamespaceImport' ||  !(imArkExport instanceof ArkNamespace)) {
-            continue;
-        }
-        const imNS = imArkExport as ArkNamespace;
-        arkExport = ModelUtils.findPropertyInNamespace(name, imNS);
-        if (arkExport) {
-            return arkExport;
-        }
-    }
-    return null;
-}
-
 export class PatchRegistry {
     private static _instance: PatchRegistry;
     private static originalMap = new Map<string, Function>();
@@ -405,5 +386,69 @@ export class PatchRegistry {
         }
         targetModule[methodName] = this.originalMap.get(key)!;
         this.originalMap.delete(key);
+    }
+}
+
+export class CxxModelUtils {
+
+    public static getArkExportInImportInfoWithName(name: string, arkFile: ArkFile): ArkExport | null {
+        let arkExport = arkFile.getImportInfoBy(name)?.getLazyExportInfo()?.getArkExport();
+        if (arkExport) {
+            return arkExport;
+        }
+        // if using namespace in file，we can call the method or class in the namespace without a prefix.
+        for (const im of arkFile.getImportInfos()) {
+            const imArkExport = im.getLazyExportInfo()?.getArkExport();
+            if (im.getImportType() !== 'NamespaceImport' ||  !(imArkExport instanceof ArkNamespace)) {
+                continue;
+            }
+            const imNS = imArkExport as ArkNamespace;
+            arkExport = ModelUtils.findPropertyInNamespace(name, imNS);
+            if (arkExport) {
+                return arkExport;
+            }
+        }
+        return null;
+    }
+
+    public static findPropertyInClass(name: string, arkClass: ArkClass): ArkExport | ArkField | null {
+        let property: ArkExport | ArkField | null =
+            arkClass.getMethodWithName(name) ??
+            arkClass.getStaticMethodWithName(name) ??
+            arkClass.getMethodWithName('Get-' + name) ??
+            arkClass.getFieldWithName(name) ??
+            arkClass.getStaticFieldWithName(name);
+        if (property) {
+            return property;
+        }
+        if (arkClass.isDefaultArkClass()) {
+            return findArkExport(arkClass.getDeclaringArkFile().getExportInfoBy(name));
+        }
+        // In cases where a class's declaration and definition are separated, we may consider searching for the property at the class declaration.
+        const clsDeclareSignature = arkClass.getDeclareSignature();
+        let declClass: ArkClass | undefined | null;
+        if (clsDeclareSignature) {
+            declClass = arkClass.getDeclaringArkFile().getScene().getFile(
+                clsDeclareSignature.getDeclaringFileSignature())?.getClass(clsDeclareSignature);
+        }
+        const heritageClasses = arkClass.getAllHeritageClasses();
+        if (declClass) {
+            property = this.findPropertyInClass(name, declClass);
+            if (property) {
+                return property;
+            }
+            heritageClasses.push(...declClass.getAllHeritageClasses());
+        }
+        for (const heritage of heritageClasses) {
+            property = this.findPropertyInClass(name, heritage);
+            if (property) {
+                return property;
+            }
+        }
+        const objectClass = arkClass.getDeclaringArkFile().getScene().getSdkGlobal('Object');
+        if (objectClass instanceof ArkClass && arkClass !== objectClass) {
+            return this.findPropertyInClass(name, objectClass);
+        }
+        return null;
     }
 }

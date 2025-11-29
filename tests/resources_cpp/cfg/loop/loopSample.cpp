@@ -16,6 +16,8 @@
 #include <cstdio>
 #include <iostream>
 #include <map>
+#include <vector>
+#include <string>
 
 #define TWO 2
 
