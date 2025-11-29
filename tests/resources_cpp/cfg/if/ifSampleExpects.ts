@@ -17,7 +17,7 @@ export const IF_EXPECT_CASE1 = {
     blocks: [
         {
             id: 0,
-            stmts: ['this = this: @if/ifSample.cpp: %dflt', 'i = 0', 'j = undefined', 'if i > 0'],
+            stmts: ['this = this: @if/ifSample.cpp: %dflt', 'i = g_num', 'j = undefined', 'if i > 0'],
             preds: [],
             succes: [1, 2],
         },

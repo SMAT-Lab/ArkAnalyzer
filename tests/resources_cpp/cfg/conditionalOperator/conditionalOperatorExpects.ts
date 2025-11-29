@@ -135,7 +135,7 @@ export const CONDITIONAL_OPERATOR_EXPECT_CASE5 = {
         { id: 6, stmts: ['%3 = 3'], preds: [1], succes: [7] },
         { id: 7, stmts: ['j = %3'], preds: [5, 6], succes: [9] },
         { id: 8, stmts: ['j = 4'], preds: [0], succes: [9] },
-        { id: 9, stmts: ['return'], preds: [7, 8], succes: [] },
+        { id: 9, stmts: ['return undefinedValue'], preds: [7, 8], succes: [] },
     ],
 };
 
@@ -173,7 +173,7 @@ export const CONDITIONAL_OPERATOR_EXPECT_CASE7 = {
             preds: [],
             succes: [1, 2],
         },
-        { id: 1, stmts: ['return'], preds: [0, 3, 4], succes: [] },
+        { id: 1, stmts: ['return undefinedValue'], preds: [0, 3, 4], succes: [] },
         { id: 2, stmts: ['if i > 0'], preds: [0], succes: [3, 4] },
         { id: 3, stmts: ['j = i'], preds: [2], succes: [1] },
         { id: 4, stmts: ['j = -i'], preds: [2], succes: [1] },

@@ -483,7 +483,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         } = this.generateAssignStmtForValue(iteratorNextInvokeExpr, iteratorNextInvokeExprPositions);
         iteratorResultStmts.forEach(stmt => stmts.push(stmt));
         (iteratorResult as Local).setType(BuiltinCxx.ITERATOR_RESULT_CLASS_TYPE);
-        const doneFieldSignature = new FieldSignature(BuiltinCxx.ITERATOR_RESULT_DONE,
+        const doneFieldSignature = new FieldSignature(BuiltinCxx.ITERATOR_RESULT_END,
             BuiltinCxx.ITERATOR_RESULT_CLASS_SIGNATURE, BooleanType.getInstance(), false);
         const doneFieldRef = new ArkInstanceFieldRef(iteratorResult as Local, doneFieldSignature);
         const doneFieldRefPositions = [iteratorResultPositions[0], ...iteratorResultPositions];

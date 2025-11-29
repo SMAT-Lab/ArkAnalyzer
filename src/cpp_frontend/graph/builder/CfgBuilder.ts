@@ -1434,6 +1434,9 @@ export class CfgBuilder {
                 this.declaringMethod.getSubSignature().setReturnType(VoidType.getInstance());
             }
         }
+        if (!(this.declaringMethod.getSubSignature().getReturnType() instanceof VoidType)) {
+            return new ArkReturnStmt(new Local('undefinedValue', this.declaringMethod.getSubSignature().getReturnType()));
+        }
         return new ArkReturnVoidStmt();
     }
 

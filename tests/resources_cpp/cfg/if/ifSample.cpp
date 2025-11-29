@@ -25,9 +25,11 @@
 #define FIVE 5
 #define TEN 10
 
+int g_num = 10;
+
 int Case1()
 {
-    int i = 0;
+    int i = g_num;
     int j;
     if (i > 0) {
         j = i;

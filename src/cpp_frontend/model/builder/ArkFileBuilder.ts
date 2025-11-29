@@ -34,6 +34,8 @@ import { init4InstanceInitMethod, init4StaticInitMethod } from '../../../core/mo
 import { CxxAstNode } from '../../ast/ArkCxxAstNode';
 import { ArkExport } from '../../../core/model/ArkExport';
 import { Scene } from '../../../Scene';
+import { buildProperty2ArkField } from './ArkFieldBuilder';
+import { DEFAULT_ARK_CLASS_NAME } from '../../../core/common/Const';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkFileBuilder');
 
@@ -197,6 +199,12 @@ function buildArkFile(arkFile: ArkFile, astRoot: CxxAstNode): void {
             case 'inclusion directive':
             case 'UsingDirectiveDecl':
                 buildImportInfoFromIncludeOrUsing(child, astRoot, arkFile);
+                break;
+            case 'VarDecl':
+                // handle global variable
+                child.mangledName = DEFAULT_ARK_CLASS_NAME;
+                const arkDefaultClass = getDeclaringArkClassOfMethod(child, arkFile);
+                buildProperty2ArkField(child, astRoot, arkDefaultClass);
                 break;
             default:
                 logger.error('Child joined default method of arkFile: ', child.kind ?? child.code);
