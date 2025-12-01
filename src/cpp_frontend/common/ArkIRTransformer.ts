@@ -59,7 +59,9 @@ import { CxxAstNode, CxxTranslationUnit } from '../ast/ArkCxxAstNode';
 import { ValueUtil } from '../../core/common/ValueUtil';
 import { CxxCharType, CxxStdTypeName, CxxTypeBitWidth, CxxTypeSigned, PointerType } from '../base/Type';
 import { buildGenericType } from '../../core/model/builder/builderUtils';
+import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 
+const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkIRTransformer');
 export type ValueAndStmts = {
     value: Value;
     valueOriginalPositions: FullPosition[]; // original positions of value and its uses
@@ -630,9 +632,15 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         let conditionNoe: CxxAstNode | undefined;
         let incrementor: CxxAstNode | undefined;
         // The complete for structure allocates corresponding statements in order, so we need to process them in order.
-        initNode = forStatement.inner[0];
-        conditionNoe = forStatement.inner[1];
-        incrementor = forStatement.inner[2];
+        if (forStatement.inner.length === 4){
+            initNode = forStatement.inner[0];
+            conditionNoe = forStatement.inner[1];
+            incrementor = forStatement.inner[2];
+        } else {
+            logger.error('Current node syntax tree generation error');
+            return stmts;
+        }
+
 
         if (initNode) {
             this.cxxNodeToStmts(initNode).forEach(stmt => stmts.push(stmt));
