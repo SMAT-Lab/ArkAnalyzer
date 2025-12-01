@@ -2066,11 +2066,6 @@ static bool FindTopLevelSemicolons(const std::string &header,
 }
 
 // Extract init / cond / inc segments from the source code of a for statement.
-// For example:
-//   for (int i = 0; i < TWO; i++)  -> "int i = 0", "i < TWO", "i++"
-//   for (; i < TWO; i++)           -> "",           "i < TWO", "i++"
-//   for (;; i++)                   -> "",           "",        "i++"
-//   for (;;)                       -> "",           "",        ""
 static bool SplitForHeader(const std::string &forCode,
                            std::string &outInit,
                            std::string &outCond,
@@ -2091,12 +2086,20 @@ static bool SplitForHeader(const std::string &forCode,
         char c = forCode[i];
         if (c == '(') {
             ++depth;
-        } else if (c == ')') {
-            if (depth > 0 && --depth == 0) {
-                posR = i;
-                break;
-            }
+            continue;
         }
+        if (c != ')') {
+            continue;
+        }
+        if (depth == 0) {
+            continue;
+        }
+        --depth;
+        if (depth != 0) {
+            continue;
+        }
+        posR = i;
+        break;
     }
     if (posR == std::string::npos || posR <= posL + 1) {
         return false;
@@ -2116,7 +2119,6 @@ static bool SplitForHeader(const std::string &forCode,
         outCond = header.substr(semi1 + 1, semi2 - semi1 - 1);
         outInc  = header.substr(semi2 + 1);
     }
-
     Trim(outInit);
     Trim(outCond);
     Trim(outInc);
