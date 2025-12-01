@@ -46,7 +46,7 @@ int Calculator::Add(int a, int b, int c)
     return a + b + c;
 }
 
-void Calculator::log(const string& operation)
+void Calculator::Log(const string& operation)
 {
     cout << "Operation: " << operation << endl;
 }
