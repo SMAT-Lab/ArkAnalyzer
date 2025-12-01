@@ -632,7 +632,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         let conditionNoe: CxxAstNode | undefined;
         let incrementor: CxxAstNode | undefined;
         // The complete for structure allocates corresponding statements in order, so we need to process them in order.
-        if (forStatement.inner.length === 4){
+        if (forStatement.inner.length === 4) {
             initNode = forStatement.inner[0];
             conditionNoe = forStatement.inner[1];
             incrementor = forStatement.inner[2];
