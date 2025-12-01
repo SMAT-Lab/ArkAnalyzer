@@ -101,6 +101,14 @@ describe("Infer Array Test", () => {
         }
     })
 
+    it('testInstanceofArray', () => {
+        const fileId = new FileSignature(projectScene.getProjectName(), 'inferSample.ts');
+        const file = projectScene.getFile(fileId);
+        const stmts = file?.getDefaultClass()?.getMethodWithName('testArrayInstacnceOf')?.getCfg()?.getStmts();
+        assert.isDefined(stmts);
+        assert.equal(stmts?.[6].toString(), '%1 = a instanceof @built-in/lib.es5.d.ts: Array<T>');
+    })
+
     it('fieldRef to ArrayRef case', () => {
         const fileId = new FileSignature(projectScene.getProjectName(), 'inferSample.ts');
         const file = projectScene.getFile(fileId);
