@@ -116,6 +116,21 @@ export type TypeDto =
     | Polymorphic<'AnnotationTypeQueryType', AnnotationTypeQueryTypeDto>
     | Polymorphic<'EnumValueType', EnumValueTypeDto>
     | Polymorphic<'LexicalEnvType', LexicalEnvTypeDto>
+    | Polymorphic<'CxxIntType', CxxBaseTypeDto>
+    | Polymorphic<'CxxShortType', CxxBaseTypeDto>
+    | Polymorphic<'CxxLongType', CxxBaseTypeDto>
+    | Polymorphic<'CxxLongLongType', CxxBaseTypeDto>
+    | Polymorphic<'CxxSizeTType', CxxBaseTypeDto>
+    | Polymorphic<'CxxFloatType', CxxBaseTypeDto>
+    | Polymorphic<'CxxDoubleType', CxxBaseTypeDto>
+    | Polymorphic<'CxxLongDoubleType', CxxBaseTypeDto>
+    | Polymorphic<'CxxCharType', CxxBaseTypeDto>
+    | Polymorphic<'CxxWcharType', CxxBaseTypeDto>
+    | Polymorphic<'PointerType', CxxBaseTypeDto>
+    | Polymorphic<'SmartPointerType', CxxBaseTypeDto>
+    | Polymorphic<'ReferenceType', CxxBaseTypeDto>
+    | Polymorphic<'Thread', CxxBaseTypeDto>
+    | Polymorphic<'TypeInfo', CxxBaseTypeDto>
     | UnhandledTypeDto;
 
 export interface AnyTypeDto { }
@@ -152,6 +167,10 @@ export interface UndefinedTypeDto { }
 
 export interface LiteralTypeDto {
     literal: string | number | boolean;
+}
+
+export interface CxxBaseTypeDto {
+    text: string;
 }
 
 export interface ClassTypeDto {
@@ -262,6 +281,16 @@ export type ValueDto =
     | Polymorphic<'ClosureFieldRef', ClosureFieldRefDto>
     | Polymorphic<'InstanceFieldRef', InstanceFieldRefDto>
     | Polymorphic<'StaticFieldRef', StaticFieldRefDto>
+    | Polymorphic<'ArkCxxDeleteArrayExpr', ArkCxxDeleteArrayExprDto>
+    | Polymorphic<'ArkCxxNewArrayExpr', ArkCxxNewArrayExprDto>
+    | Polymorphic<'ArkCxxInitArrayExpr', ArkCxxInitArrayExprDto>
+    | Polymorphic<'ArkSizeOfExpr', ArkSizeOfExprDto>
+    | Polymorphic<'ArkCxxCastExpr', ArkCxxCastExprDto>
+    | Polymorphic<'ArkArrayTypeTraitExpr', ArkArrayTypeTraitExprDto>
+    | Polymorphic<'ArkTypeIdExpr', ArkTypeIdExprDto>
+    | Polymorphic<'ArkNoExpectExpr', ArkNoExpectExprDto>
+    | Polymorphic<'ArkCxxFolderExpr', ArkCxxFolderExprDto>
+    | Polymorphic<'ArkCxxNormalBinOpExpr', ArkCxxNormalBinOpExprDto>
     | UnhandledValueDto;
 
 export interface LocalValueDto extends LocalDto { }
@@ -387,6 +416,55 @@ export interface UnhandledValueDto extends UnhandledDto {
     type: TypeDto;
 }
 
+export interface ArkCxxDeleteArrayExprDto {
+    field: ValueDto;
+    type: TypeDto;
+}
+
+export interface ArkCxxNewArrayExprDto {
+    baseType: TypeDto;
+    size: ValueDto;
+    elementsNumber: number;
+}
+
+export interface ArkCxxInitArrayExprDto {
+    op: ValueDto;
+}
+
+export interface ArkSizeOfExprDto {
+    op: ValueDto;
+}
+
+export interface ArkCxxCastExprDto {
+    cxxCastType: string;
+}
+
+export interface ArkArrayTypeTraitExprDto {
+    op: ValueDto;
+    dimensionOrder: number;
+    func: string;
+}
+
+export interface ArkTypeIdExprDto {
+    op: ValueDto;
+}
+
+export interface ArkNoExpectExprDto {
+    op: ValueDto;
+}
+
+export interface ArkCxxFolderExprDto {
+    arg: ValueDto;
+    op: string;
+}
+
+export interface ArkCxxNormalBinOpExprDto {
+    op1: ValueDto;
+    op2: ValueDto;
+    type: TypeDto;
+    operator: string;
+}
+
 // Statement DTOs using polymorphic pattern
 export type StmtDto =
     | Polymorphic<'AssignStmt', AssignStmtDto>
@@ -395,6 +473,7 @@ export type StmtDto =
     | Polymorphic<'ReturnVoidStmt', ReturnVoidStmtDto>
     | Polymorphic<'ReturnStmt', ReturnStmtDto>
     | Polymorphic<'ThrowStmt', ThrowStmtDto>
+    | Polymorphic<'AliasTypeDefineStmt', AliasTypeDefineStmtDto>
     | UnhandledStmtDto;
 
 export interface AssignStmtDto {
@@ -418,6 +497,10 @@ export interface ReturnStmtDto {
 
 export interface ThrowStmtDto {
     arg: ValueDto;
+}
+export interface AliasTypeDefineStmtDto {
+    aliasType: TypeDto;
+    aliasTypeExpr: ValueDto;
 }
 
 export interface UnhandledStmtDto extends UnhandledDto { }
