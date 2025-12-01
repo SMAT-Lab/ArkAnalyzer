@@ -209,3 +209,33 @@ void Case10()
 end:
     return;
 }
+
+void Case11()
+{
+    int b;
+    int c;
+    goto L;
+    {
+        b = 1;
+    L:
+        c = 2;
+        c++;
+    }
+}
+
+int Case12()
+{
+    int a;
+    int c;
+    goto L;
+    {
+        a = 1;
+        a--;
+        {
+        L:
+            c = 2;
+            c++;
+        }
+    }
+    return c;
+}

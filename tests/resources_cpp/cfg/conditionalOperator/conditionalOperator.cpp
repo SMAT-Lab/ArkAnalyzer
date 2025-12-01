@@ -56,7 +56,7 @@ int Case6()
     return k;
 }
 
-int Case7()
+int main()
 {
     int i = 0;
     if (i > -1) {

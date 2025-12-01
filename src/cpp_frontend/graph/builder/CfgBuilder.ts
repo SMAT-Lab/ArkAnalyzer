@@ -687,9 +687,16 @@ export class CfgBuilder {
     walkAST(lastStatement: StatementBuilder, nextStatement: StatementBuilder, nodes: CxxAstNode[]): void {
         let scope = new Scope(this.scopes.length);
         this.scopes.push(scope);
+        let gotoLabel = lastStatement.next?.type === 'gotoStatement' && nextStatement.type === 'blockExit';
         for (let i = 0; i < nodes.length; i++) {
             let innerNode = nodes[i];
             let nodeKind = innerNode.kind;
+            if (nodeKind === 'LabelStmt' && this.gotoStmtMap.get(innerNode.name) != undefined) {
+                gotoLabel = false;
+            }
+            if (gotoLabel && nodeKind !== 'CompoundStmt') { // Skip the code between goto and label in the code block
+                continue;
+            }
             lastStatement = this.handleASTStmtSuccession(innerNode, lastStatement, scope);
             if (nodeKind === 'ReturnStmt') {
                 break;
@@ -1435,7 +1442,8 @@ export class CfgBuilder {
             }
         }
         if (!(this.declaringMethod.getSubSignature().getReturnType() instanceof VoidType)) {
-            return new ArkReturnStmt(new Local('undefinedValue', this.declaringMethod.getSubSignature().getReturnType()));
+            const methodName = this.declaringMethod.getSubSignature().getMethodName();
+            return new ArkReturnStmt(new Local((methodName === 'main' ? '0' : 'undefinedValue'), this.declaringMethod.getSubSignature().getReturnType()));
         }
         return new ArkReturnVoidStmt();
     }

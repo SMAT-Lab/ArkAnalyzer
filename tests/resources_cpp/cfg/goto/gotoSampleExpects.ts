@@ -191,3 +191,38 @@ export const GOTO_EXPECT_CASE10 = {
         },
     ],
 };
+
+export const GOTO_EXPECT_CASE11 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @goto/gotoSample.cpp: %dflt',
+                'b = undefined',
+                'c = undefined'
+            ],
+            preds: [],
+            succes: [ 1 ]
+        },
+        { id: 1, stmts: [ 'c = 2' ], preds: [ 0 ], succes: [ 2 ] },
+        { id: 2, stmts: [ 'c = c + 1', 'return' ], preds: [ 1 ], succes: [] }
+    ],
+};
+
+export const GOTO_EXPECT_CASE12 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @goto/gotoSample.cpp: %dflt',
+                'a = undefined',
+                'c = undefined'
+            ],
+            preds: [],
+            succes: [ 1 ]
+        },
+        { id: 1, stmts: [ 'c = 2' ], preds: [ 0 ], succes: [ 2 ] },
+        { id: 2, stmts: [ 'c = c + 1' ], preds: [ 1 ], succes: [ 3 ] },
+        { id: 3, stmts: [ 'return c' ], preds: [ 2 ], succes: [] }
+    ],
+};

@@ -160,7 +160,7 @@ export const CONDITIONAL_OPERATOR_EXPECT_CASE6 = {
     ],
 };
 
-export const CONDITIONAL_OPERATOR_EXPECT_CASE7 = {
+export const CONDITIONAL_OPERATOR_EXPECT_MAIN = {
     blocks: [
         {
             id: 0,
@@ -173,7 +173,7 @@ export const CONDITIONAL_OPERATOR_EXPECT_CASE7 = {
             preds: [],
             succes: [1, 2],
         },
-        { id: 1, stmts: ['return undefinedValue'], preds: [0, 3, 4], succes: [] },
+        { id: 1, stmts: ['return 0'], preds: [0, 3, 4], succes: [] },
         { id: 2, stmts: ['if i > 0'], preds: [0], succes: [3, 4] },
         { id: 3, stmts: ['j = i'], preds: [2], succes: [1] },
         { id: 4, stmts: ['j = -i'], preds: [2], succes: [1] },

@@ -79,7 +79,7 @@ describe('CfgTest', () => {
         testBlocks(scene, 'conditionalOperator.cpp', 'Case4', CONDITION_EXPECT.CONDITIONAL_OPERATOR_EXPECT_CASE4.blocks);
         testBlocks(scene, 'conditionalOperator.cpp', 'Case5', CONDITION_EXPECT.CONDITIONAL_OPERATOR_EXPECT_CASE5.blocks);
         testBlocks(scene, 'conditionalOperator.cpp', 'Case6', CONDITION_EXPECT.CONDITIONAL_OPERATOR_EXPECT_CASE6.blocks);
-        testBlocks(scene, 'conditionalOperator.cpp', 'Case7', CONDITION_EXPECT.CONDITIONAL_OPERATOR_EXPECT_CASE7.blocks);
+        testBlocks(scene, 'conditionalOperator.cpp', 'main', CONDITION_EXPECT.CONDITIONAL_OPERATOR_EXPECT_MAIN.blocks);
     });
     it('case2: if statement', () => {
         const scene = buildScene('if');
@@ -144,6 +144,8 @@ describe('CfgTest', () => {
         testBlocks(scene, 'gotoSample.cpp', 'Case8', GOTO_EXPECT.GOTO_EXPECT_CASE8.blocks);
         testBlocks(scene, 'gotoSample.cpp', 'Case9', GOTO_EXPECT.GOTO_EXPECT_CASE9.blocks);
         testBlocks(scene, 'gotoSample.cpp', 'Case10', GOTO_EXPECT.GOTO_EXPECT_CASE10.blocks);
+        testBlocks(scene, 'gotoSample.cpp', 'Case11', GOTO_EXPECT.GOTO_EXPECT_CASE11.blocks);
+        testBlocks(scene, 'gotoSample.cpp', 'Case12', GOTO_EXPECT.GOTO_EXPECT_CASE12.blocks);
     });
     it('case7: binaryCondition', () => {
         const scene = buildScene('binaryConditional');
