@@ -19,40 +19,45 @@ using namespace std;
 class Calculator {
 public:
     // Method declarations (inside class)
-    int add(int a, int b);
-    double add(double a, double b);
-    int add(int a, int b, int c);
+    int Add(int a, int b);
+    double Add(double a, double b);
+    int Add(int a, int b, int c);
 
 private:
-    void log(const string& operation);
+    void Log(const string& operation);
 };
 
 // Method implementations (outside class)
-int Calculator::add(int a, int b) {
-    log("Integer addition");
+int Calculator::Add(int a, int b)
+{
+    Log("Integer addition");
     return a + b;
 }
 
-double Calculator::add(double a, double b) {
-    log("Decimal addition");
+double Calculator::Add(double a, double b)
+{
+    Log("Decimal addition");
     return a + b;
 }
 
-int Calculator::add(int a, int b, int c) {
-    log("Three number addition");
+int Calculator::Add(int a, int b, int c)
+{
+    Log("Three number addition");
     return a + b + c;
 }
 
-void Calculator::log(const string& operation) {
+void Calculator::log(const string& operation)
+{
     cout << "Operation: " << operation << endl;
 }
 
-int main() {
+int main()
+{
     Calculator calc;
 
-    cout << "Result: " << calc.add(5, 3) << endl;
-    cout << "Result: " << calc.add(2.5, 3.7) << endl;
-    cout << "Result: " << calc.add(1, 2, 3) << endl;
+    cout << "Result: " << calc.Add(5, 3) << endl;
+    cout << "Result: " << calc.Add(2.5, 3.7) << endl;
+    cout << "Result: " << calc.Add(1, 2, 3) << endl;
 
     return 0;
 }

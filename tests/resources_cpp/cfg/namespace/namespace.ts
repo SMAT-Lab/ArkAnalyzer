@@ -69,7 +69,7 @@ export const NAMESPACE_SCHOOL_EXPECT = {
                     blocks: [
                         {
                             id: 0,
-                            stmts: ['this = this: @namespace/namespace.cpp: School.Student$University', '%0 = this.<@namespace/namespace.cpp: School.Student$University.name>', '%1 = this.<@namespace/namespace.cpp: School.Student$University.id>', 'staticinvoke <@%unk/%unk: .cout()>(\'student: \', %0, \', id: \', %1)', 'return'],
+                            stmts: ['this = this: @namespace/namespace.cpp: School.Student$University', '%0 = this.<@namespace/namespace.cpp: School.Student$University.name>', '%1 = this.<@namespace/namespace.cpp: School.Student$University.id>', 'staticinvoke <@%unk/%unk: .cout()>(\'STUDENT_TEXT\', %0, \', \', \'ID_TEXT\', %1)', 'return'],
                             preds: [],
                             succes: [],
                         },
@@ -109,7 +109,7 @@ export const NAMESPACE_SCHOOL_EXPECT = {
                     blocks: [
                         {
                             id: 0,
-                            stmts: ['this = this: @namespace/namespace.cpp: School.University', '%0 = this.<@namespace/namespace.cpp: School.University.name>', 'staticinvoke <@%unk/%unk: .cout()>(\'welcome to\', %0)', 'return'],
+                            stmts: ['this = this: @namespace/namespace.cpp: School.University', '%0 = this.<@namespace/namespace.cpp: School.University.name>', 'staticinvoke <@%unk/%unk: .cout()>(\'WELCOME_TEXT\', %0)', 'return'],
                             preds: [],
                             succes: [],
                         },

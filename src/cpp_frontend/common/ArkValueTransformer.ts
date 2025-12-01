@@ -3039,7 +3039,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         const typeNameInLowerCase = typeName.toLowerCase();
         const stdContainerLists = ['map', 'vector', 'deque', 'list', 'array', 'forward_list', 'multimap', 'multiset',
             'set', 'stack', 'queue', 'stringstream', 'basic_string', 'unordered_set', 'unordered_map', 'unordered_multiset',
-            'unordered_multimap', 'priority_queue', ];
+            'unordered_multimap', 'priority_queue'];
         return stdContainerLists.some(containerType => typeNameInLowerCase.includes(containerType));
     }
 
