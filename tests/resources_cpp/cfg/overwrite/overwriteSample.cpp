@@ -16,6 +16,14 @@
 #include <iostream>
 using namespace std;
 
+#define INT_OPERAND_1 5
+#define INT_OPERAND_2 3
+#define DOUBLE_OPERAND_1 2.5
+#define DOUBLE_OPERAND_2 3.7
+#define TRIPLE_OPERAND_1 1
+#define TRIPLE_OPERAND_2 2
+#define TRIPLE_OPERAND_3 3
+
 class Calculator {
 public:
     // Method declarations (inside class)
@@ -55,9 +63,9 @@ int main()
 {
     Calculator calc;
 
-    cout << "Result: " << calc.Add(5, 3) << endl;
-    cout << "Result: " << calc.Add(2.5, 3.7) << endl;
-    cout << "Result: " << calc.Add(1, 2, 3) << endl;
+    cout << "Result: " << calc.Add(INT_OPERAND_1, INT_OPERAND_2) << endl;
+    cout << "Result: " << calc.Add(DOUBLE_OPERAND_1, DOUBLE_OPERAND_2) << endl;
+    cout << "Result: " << calc.Add(TRIPLE_OPERAND_1, TRIPLE_OPERAND_2, TRIPLE_OPERAND_3) << endl;
 
     return 0;
 }
