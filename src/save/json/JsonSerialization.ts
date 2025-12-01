@@ -14,7 +14,7 @@
  */
 
 import {
-    AliasType,
+    AliasType, AliasTypeExpr,
     AliasTypeSignature,
     AnnotationNamespaceType,
     AnnotationTypeQueryType,
@@ -722,8 +722,14 @@ export function serializeValue(value: Value): ValueDto {
             type: serializeType(value.getType()),
             operator: value.getOperator(),
         });
+    } else if (value instanceof AliasTypeExpr) {
+        return polymorphic('AliasTypeExpr', {
+            originalObject: serializeValue(value.getOriginalObject() as unknown as Value),
+            transferWithTypeOf: value.getTransferWithTypeOf(),
+            realGenericTypes: value.getRealGenericTypes()?.map(type => serializeType(type)),
+            originalType: value.getOriginalType() ? serializeType(value.getOriginalType()!) : undefined,
+        });
     }
-
     // Fallback for unhandled value types
     console.info(`Unhandled Value: ${value.constructor.name} (${value.toString()})`);
     return {

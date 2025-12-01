@@ -57,6 +57,7 @@ import {
     Stmt,
 } from '../core/base/Stmt';
 import {
+    AliasTypeExpr,
     ArkAwaitExpr,
     ArkCastExpr,
     ArkConditionExpr,
@@ -631,6 +632,14 @@ export class JsonPrinter extends Printer {
                 type: this.serializeType(value.getType()),
                 operator: value.getOperator(),
             };
+        } else if (value instanceof AliasTypeExpr) {
+                return {
+                    _: 'AliasTypeExpr',
+                    originalObject: this.serializeValue(value.getOriginalObject() as unknown as Value),
+                    transferWithTypeOf: value.getTransferWithTypeOf(),
+                    realGenericTypes: value.getRealGenericTypes()?.map(type => this.serializeType(type)),
+                    originalType: value.getOriginalType() ? this.serializeType(value.getOriginalType()!) : undefined,
+                };
         } else {
             console.warn(`Unhandled Value: ${value.constructor.name} (${value.toString()})`);
             return { _: value.constructor.name, text: value.toString(), type: this.serializeType(value.getType()) };

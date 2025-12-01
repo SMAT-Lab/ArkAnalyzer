@@ -291,6 +291,7 @@ export type ValueDto =
     | Polymorphic<'ArkNoExpectExpr', ArkNoExpectExprDto>
     | Polymorphic<'ArkCxxFolderExpr', ArkCxxFolderExprDto>
     | Polymorphic<'ArkCxxNormalBinOpExpr', ArkCxxNormalBinOpExprDto>
+    | Polymorphic<'AliasTypeExpr', AliasTypeExprDto>
     | UnhandledValueDto;
 
 export interface LocalValueDto extends LocalDto { }
@@ -463,6 +464,13 @@ export interface ArkCxxNormalBinOpExprDto {
     op2: ValueDto;
     type: TypeDto;
     operator: string;
+}
+
+export interface AliasTypeExprDto {
+    originalObject: ValueDto;
+    transferWithTypeOf: boolean;
+    realGenericTypes?: TypeDto[];
+    originalType?: TypeDto;
 }
 
 // Statement DTOs using polymorphic pattern
