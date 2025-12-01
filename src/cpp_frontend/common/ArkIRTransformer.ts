@@ -629,24 +629,10 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         let initNode: CxxAstNode | undefined;
         let conditionNoe: CxxAstNode | undefined;
         let incrementor: CxxAstNode | undefined;
-        if (forStatement.inner.length < 4) {
-            // When the for structure is incomplete, allocate positions according to the statement type.
-            // In cases of misclassification, the syntax tree structure needs to be further improved
-            for (const node of forStatement.inner) {
-                if (node.kind === 'DeclStmt') {
-                    initNode = node;
-                } else if (node.kind === 'BinaryOperator' || node.kind === 'ExprWithCleanups') {
-                    conditionNoe = node;
-                } else if (node.kind === 'UnaryOperator' || node.kind === 'CXXOperatorCallExpr' || node.kind === 'CompoundAssignOperator') {
-                    incrementor = node;
-                }
-            }
-        } else {
-            // The complete for structure allocates corresponding statements in order
-            initNode = forStatement.inner[0];
-            conditionNoe = forStatement.inner[1];
-            incrementor = forStatement.inner[2];
-        }
+        // The complete for structure allocates corresponding statements in order, so we need to process them in order.
+        initNode = forStatement.inner[0];
+        conditionNoe = forStatement.inner[1];
+        incrementor = forStatement.inner[2];
 
         if (initNode) {
             this.cxxNodeToStmts(initNode).forEach(stmt => stmts.push(stmt));
@@ -654,18 +640,18 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         const dummyInitializerStmt = new DummyStmt(ArkIRTransformer.DUMMY_LOOP_INITIALIZER_STMT);
         stmts.push(dummyInitializerStmt);
 
-        if (conditionNoe) {
+        if (conditionNoe.kind === 'NullStmt') {
+            // The omitted condition always evaluates to true.
+            const trueConstant = CxxValueUtil.getBooleanConstant(true);
+            const conditionExpr = new ArkConditionExpr(trueConstant, trueConstant, RelationalBinaryOperator.Equality);
+            stmts.push(new ArkIfStmt(conditionExpr));
+        } else if (conditionNoe) {
             const { value: conditionValue, valueOriginalPositions: conditionPositions, stmts: conditionStmts } =
                 this.ArkCxxValueTransformer.cxxConditionToValueAndStmts(conditionNoe);
             conditionStmts.forEach(stmt => stmts.push(stmt));
             const ifStmt = new ArkIfStmt(conditionValue as ArkConditionExpr);
             ifStmt.setOperandOriginalPositions(conditionPositions);
             stmts.push(ifStmt);
-        } else {
-            // The omitted condition always evaluates to true.
-            const trueConstant = CxxValueUtil.getBooleanConstant(true);
-            const conditionExpr = new ArkConditionExpr(trueConstant, trueConstant, RelationalBinaryOperator.Equality);
-            stmts.push(new ArkIfStmt(conditionExpr));
         }
         if (incrementor) {
             this.cxxNodeToValueAndStmts(incrementor).stmts.forEach(stmt => stmts.push(stmt));
