@@ -3,7 +3,7 @@ project(indirectRef)
 
 set(CMAKE_CXX_STANDARD 17)
 
-file(GLOB SOURCE "src/*.cpp", "main.cpp")
+file(GLOB SOURCE "src/*.cpp" "main.cpp")
 
 add_executable(indirectRef ${SOURCE})
 
