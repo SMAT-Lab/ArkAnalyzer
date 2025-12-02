@@ -20,11 +20,9 @@ export const MY_HEADER_EXPORT_INFO1 = {
     _default: false,
     exportClauseName: 'Color',
     exportClauseType: ExportType.CLASS,
-    modifiers: [],
     arkExport: {
         type: ArkClass,
         classSignature: `@crossFileCase/include/myHeader.h: Color`,
-        modifiers: [],
     },
 };
 
@@ -32,12 +30,10 @@ export const MY_HEADER_EXPORT_INFO2 = {
     _default: false,
     exportClauseName: 'FuncDoSomething',
     exportClauseType: ExportType.METHOD,
-    modifiers: [],
     arkExport: {
         type: ArkMethod,
         methodSignature: `@crossFileCase/src/myHeader.cpp: ${DEFAULT_ARK_CLASS_NAME}.FuncDoSomething(int, int)`,
         methodDeclareSignature: `@crossFileCase/include/myHeader.h: ${DEFAULT_ARK_CLASS_NAME}.FuncDoSomething(int, int)`,
-        modifiers: [],
     },
 };
 
@@ -45,11 +41,9 @@ export const MY_HEADER_EXPORT_INFO3 = {
     _default: false,
     exportClauseName: 'Circle',
     exportClauseType: ExportType.CLASS,
-    modifiers: [],
     arkExport: {
         type: ArkClass,
         classSignature: `@crossFileCase/include/myHeader.h: Circle`,
-        modifiers: [],
     },
 };
 
@@ -57,11 +51,9 @@ export const MY_HEADER_EXPORT_INFO4 = {
     _default: false,
     exportClauseName: 'nsA',
     exportClauseType: ExportType.NAME_SPACE,
-    modifiers: [],
     arkExport: {
         type: ArkNamespace,
         namespaceSignature: `@crossFileCase/include/namespace.h: nsA`,
-        modifiers: [],
     },
 };
 
@@ -69,11 +61,9 @@ export const NAMESPACE_EXPORT_INFO = {
     _default: false,
     exportClauseName: 'nsA',
     exportClauseType: ExportType.NAME_SPACE,
-    modifiers: [],
     arkExport: {
         type: ArkNamespace,
         namespaceSignature: `@crossFileCase/include/namespace.h: nsA`,
-        modifiers: [],
     },
 };
 

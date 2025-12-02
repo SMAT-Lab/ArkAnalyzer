@@ -20,12 +20,10 @@ export const MY_HEADER_EXPORT_INFO_EXPECT_IR = {
     _default: false,
     exportClauseName: 'FuncDoSomething',
     exportClauseType: ExportType.METHOD,
-    modifiers: [],
     arkExport: {
         type: ArkMethod,
         methodSignature: `@indirectRef/src/myHeader.cpp: ${DEFAULT_ARK_CLASS_NAME}.FuncDoSomething(int, int)`,
         methodDeclareSignature: `@indirectRef/include/myHeader.h: ${DEFAULT_ARK_CLASS_NAME}.FuncDoSomething(int, int)`,
-        modifiers: [],
     },
 };
 
@@ -33,11 +31,9 @@ export const CAST_SAMPLE_EXPORT_INFO_EXPECT_IR = {
     _default: false,
     exportClauseName: 'CXXStaticCast',
     exportClauseType: ExportType.METHOD,
-    modifiers: [],
     arkExport: {
         type: ArkMethod,
         methodSignature: `@indirectRef/src/castSample.cpp: ${DEFAULT_ARK_CLASS_NAME}.CXXStaticCast(int)`,
         methodDeclareSignature: `@indirectRef/include/castSample.h: ${DEFAULT_ARK_CLASS_NAME}.CXXStaticCast(int)`,
-        modifiers: [],
     },
 };

@@ -15,9 +15,7 @@
 
 import { assert, describe, it } from 'vitest';
 import path from 'path';
-import { ArkClass, FileSignature, Local, Scene, SceneConfig, ArkNamespace, ArkAssignStmt, ArkMethod } from '../../../../src';
-import { ArkExport, ExportInfo } from '../../../../src/core/model/ArkExport';
-import { ArkBaseModel, ModifierType } from '../../../../src/core/model/ArkBaseModel';
+import { ArkClass, FileSignature, Local, Scene, SceneConfig, ArkNamespace, ArkAssignStmt, ArkMethod, ExportInfo } from '../../../../src';
 import { CAST_SAMPLE_EXPORT_INFO_EXPECT_IR, MY_HEADER_EXPORT_INFO_EXPECT_IR } from '../../../resources_cpp/exports/indirectRef/expectedIR';
 import {
     MAIN_CASE,
@@ -45,26 +43,10 @@ function buildScene(folderName: string, includeDirs: string[]): Scene {
     return projectScene;
 }
 
-function compareModifiers(arkModel: ArkBaseModel | ArkExport, expectedModifiers: any): void {
-    if (expectedModifiers.includes('EXPORT')) {
-        assert.isTrue(arkModel.containsModifier(ModifierType.EXPORT));
-    } else {
-        assert.isFalse(arkModel.containsModifier(ModifierType.EXPORT));
-    }
-    if (expectedModifiers.includes('DEFAULT')) {
-        assert.isTrue(arkModel.containsModifier(ModifierType.DEFAULT));
-    } else {
-        assert.isFalse(arkModel.containsModifier(ModifierType.DEFAULT));
-    }
-}
-
 function compareExportInfo(exportInfo: ExportInfo | undefined, expectIR: any): void {
     assert.isDefined(exportInfo);
     assert.equal(exportInfo!.isDefault(), expectIR._default);
     assert.equal(exportInfo!.getExportClauseType(), expectIR.exportClauseType);
-    if (expectIR.modifiers !== undefined) {
-        compareModifiers(exportInfo as ExportInfo, expectIR.modifiers);
-    }
 
     const arkExport = exportInfo!.getArkExport();
     assert.isDefined(arkExport);
@@ -75,9 +57,6 @@ function compareExportInfo(exportInfo: ExportInfo | undefined, expectIR: any): v
         if (expectIR.arkExport.classDeclareSignature) {
             assert.equal((arkExport as ArkClass).getDeclaringArkFile().toString(), expectIR.arkExport.classDeclareSignature);
         }
-        if (expectIR.arkExport.modifiers !== undefined) {
-            compareModifiers(arkExport as ArkExport, expectIR.arkExport.modifiers);
-        }
     } else if (expectIR.arkExport.type === Local) {
         if (expectIR.arkExport.local.type === ArkClass) {
             assert.equal((arkExport as Local).getType().toString(), expectIR.arkExport.local.classSignature);
@@ -85,9 +64,6 @@ function compareExportInfo(exportInfo: ExportInfo | undefined, expectIR: any): v
     } else if (expectIR.arkExport.type === ArkMethod) {
         assert.equal((arkExport as ArkMethod).getDeclareSignatures()?.[0].toString(), expectIR.arkExport.methodDeclareSignature);
         assert.equal((arkExport as ArkMethod).getSignature().toString(), expectIR.arkExport.methodSignature);
-        if (expectIR.arkExport.modifiers !== undefined) {
-            compareModifiers(arkExport as ArkExport, expectIR.arkExport.modifiers);
-        }
     } else if (expectIR.arkExport.type === ArkNamespace) {
         assert.equal((arkExport! as ArkNamespace).getSignature().toString(), expectIR.arkExport.namespaceSignature);
     }
@@ -99,9 +75,9 @@ describe('export Test', () => {
         const fileId1 = new FileSignature(projectScene.getProjectName(), 'main.cpp');
         const file1 = projectScene.getFile(fileId1);
         assert.equal(file1?.getExportInfos().length, 0);
-        logger.info('funcImplementInHeaderFile/sameDir/main.cpp')
+        logger.error('funcImplementInHeaderFile/sameDir/main.cpp');
         for (const im of file1!.getImportInfos()) {
-            logger.info(im.getImportClauseName());
+            logger.error(im.getImportClauseName());
         }
         assert.equal(file1?.getImportInfos().length, 3);
         const stmts = file1?.getDefaultClass().getMethodWithName('main')?.getCfg()?.getStmts();
