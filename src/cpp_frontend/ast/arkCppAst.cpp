@@ -1120,6 +1120,7 @@ void nodePostprocess(json& node, CXCursor cursor, CXCursorKind kind_cursor, json
         mergeTypeAliasDeclChild(newChildren, children, node);
         children = newChildren;
     }
+    NormalizeForStmtChildren(node, kind_cursor, children);
     // --- Remaining generic handlers ---
     HandleTemplateAndCursorSpecific(node, kind_cursor, codeStr, children);
     patchFoldExpr(node);
