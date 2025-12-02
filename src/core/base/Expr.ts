@@ -802,6 +802,10 @@ export abstract class AbstractBinopExpr extends AbstractExpr {
         this.type = type;
     }
 
+    public setOperator(operator: BinaryOperator): void {
+        this.operator = operator;
+    }
+
     public inferType(arkMethod: ArkMethod): AbstractBinopExpr {
         this.inferOpType(this.op1, arkMethod);
         this.inferOpType(this.op2, arkMethod);

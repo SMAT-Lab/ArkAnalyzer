@@ -14,7 +14,7 @@
  */
 
 
-import { Stmt } from '../base/Stmt';
+import { ArkAssignStmt, Stmt } from '../base/Stmt';
 import { Value } from '../base/Value';
 import { Inference, InferenceFlow } from './Inference';
 import { ArkArrayRef, ArkInstanceFieldRef, ArkParameterRef, ArkStaticFieldRef, ClosureFieldRef } from '../base/Ref';
@@ -32,8 +32,10 @@ import {
     NumberType,
     StringType,
     Type,
+    UnclearReferenceType,
     UndefinedType,
-    UnionType
+    UnionType,
+    UnknownType,
 } from '../base/Type';
 import { TypeInference } from '../common/TypeInference';
 import { IRInference } from '../common/IRInference';
@@ -53,7 +55,9 @@ import {
     ArkNormalBinopExpr,
     ArkPtrInvokeExpr,
     ArkStaticInvokeExpr,
-    RelationalBinaryOperator
+    ArkUnopExpr,
+    RelationalBinaryOperator,
+    UnaryOperator,
 } from '../base/Expr';
 import { ModelUtils } from '../common/ModelUtils';
 import { Local } from '../base/Local';
@@ -584,18 +588,69 @@ export class ArkConditionExprInference extends ArkNormalBinOpExprInference {
     }
 
     public infer(value: ArkConditionExpr): Value | undefined {
-        if (value.getOperator() === RelationalBinaryOperator.InEquality && value.getOp2() === ValueUtil.getOrCreateNumberConst(0)) {
-            const op1Type = value.getOp1().getType();
-            if (op1Type instanceof StringType) {
-                value.setOp2(ValueUtil.createStringConst(EMPTY_STRING));
-            } else if (op1Type instanceof BooleanType) {
-                value.setOp2(ValueUtil.getBooleanConstant(false));
-            } else if (op1Type instanceof ClassType) {
+        if (value.getOperator() !== RelationalBinaryOperator.InEquality || value.getOp2() !== ValueUtil.getOrCreateNumberConst(0)) {
+            value.fillType();
+            return undefined;
+        }
+        const op1 = value.getOp1();
+        const op1Type = op1.getType();
+        if (op1Type instanceof StringType) {
+            value.setOp2(ValueUtil.createStringConst(EMPTY_STRING));
+        } else if (op1Type instanceof BooleanType) {
+            value.setOp2(ValueUtil.getBooleanConstant(false));
+        } else if (op1Type instanceof ClassType || op1Type instanceof UnknownType || op1Type instanceof UnclearReferenceType) {
+            const newOp1 = this.isValueAssignWithLogicalNotExpr(op1);
+            if (newOp1) {
+                value.setOp1(newOp1);
+                value.setOperator(RelationalBinaryOperator.Equality);
+            }
+            value.setOp2(ValueUtil.getUndefinedConst());
+        } else if (op1Type instanceof UnionType) {
+            if (this.isClassTypeUnionNullUndefined(op1Type)) {
+                const newOp1 = this.isValueAssignWithLogicalNotExpr(op1);
+                if (newOp1) {
+                    value.setOp1(newOp1);
+                    value.setOperator(RelationalBinaryOperator.Equality);
+                }
                 value.setOp2(ValueUtil.getUndefinedConst());
             }
         }
         value.fillType();
         return undefined;
+    }
+
+    private isValueAssignWithLogicalNotExpr(op: Value): Value | null {
+        if (!(op instanceof Local)) {
+            return null;
+        }
+        const declaringStmt = op.getDeclaringStmt();
+        if (!declaringStmt || !(declaringStmt instanceof ArkAssignStmt)) {
+            return null;
+        }
+        const rightOp = declaringStmt.getRightOp();
+        if (rightOp instanceof ArkUnopExpr && rightOp.getOperator() === UnaryOperator.LogicalNot) {
+            return rightOp.getOp();
+        }
+        return null;
+    }
+
+    private isClassTypeUnionNullUndefined(unionType: UnionType): boolean {
+        const types = unionType.getTypes();
+        let findClassType = false;
+        for (const t of types) {
+            if (t instanceof NullType || t instanceof UndefinedType) {
+                continue;
+            }
+            if (t instanceof ClassType) {
+                if (findClassType) {
+                    return false;
+                }
+                findClassType = true;
+                continue;
+            }
+            return false;
+        }
+        return findClassType;
     }
 }
 
