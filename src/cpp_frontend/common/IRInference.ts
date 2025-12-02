@@ -927,15 +927,16 @@ export class IRInference {
             }
             const sortedRefFiles = this.sortRefFiles(headerPath, refFiles);
             for (const cls of ModelUtils.getAllClassesInFile(headerArkFile)) {
-                this.mapClassDeclAndImpl(sortedRefFiles, cls);
+                const implClasses = this.mapClassDeclAndImpl(sortedRefFiles, cls);
                 for (const mtd of cls.getMethods(true)) {
-                    this.findMtdImpl(mtd, sortedRefFiles, scene);
+                    this.findMtdImpl(mtd, implClasses);
                 }
             }
         }
     }
 
-    private static mapClassDeclAndImpl(cppFiles: ArkFile[], clsInHeader: ArkClass): void {
+    private static mapClassDeclAndImpl(cppFiles: ArkFile[], clsInHeader: ArkClass): ArkClass[] {
+        const implClasses: ArkClass[] = [];
         const tgtClsName = clsInHeader.getName();
         const tgtNamespaceName = clsInHeader.getDeclaringArkNamespace()?.getName();
         for (const cppFile of cppFiles) {
@@ -944,9 +945,9 @@ export class IRInference {
                 continue;
             }
             refArkClasses[0].setDeclareSignature(clsInHeader.getSignature());
-            break;
+            implClasses.push(refArkClasses[0]);
         }
-
+        return implClasses;
     }
 
     /**
@@ -955,12 +956,12 @@ export class IRInference {
      *@ param headerPath - Header file path
      *@ param sortedRefFiles - sorted reference file array
      */
-    private static findMtdImpl(mtd: ArkMethod, sortedRefFiles: ArkFile[], scene: Scene): void {
+    private static findMtdImpl(mtd: ArkMethod, implClasses: ArkClass[]): void {
         if (mtd.getImplementationSignature() || mtd.isDefaultArkMethod() ||
             mtd.getName() === INSTANCE_INIT_METHOD_NAME || mtd.getName() === STATIC_INIT_METHOD_NAME) {
             return;
         }
-        this.mapHeaderToSource(mtd, sortedRefFiles, scene);
+        this.mapHeaderToSource(mtd, implClasses);
     }
 
     /**
@@ -1033,30 +1034,13 @@ export class IRInference {
         return [...prioritized, ...others];
     }
 
-    /**
-     *Map the method declaration to the corresponding source code implementation,
-     *Find the corresponding method implementation in the reference file by matching the method signature,
-     * and establish the association between declaration and implementation
-     *
-     *@ param mtdDecl - target method declaration object, used to obtain declaration information and set implementation signature
-     *@ param headerFile - Header file path, as one of the reference files
-     *@ param refFiles - reference file list, used to search method implementation
-     */
-    private static mapHeaderToSource(mtdDecl: ArkMethod, refFiles: ArkFile[], scene: Scene): void {
-        const tgtClsName = mtdDecl.getDeclaringArkClass().getName();
-        const tgtNamespaceName = mtdDecl.getDeclaringArkClass().getDeclaringArkNamespace()?.getName();
+    private static mapHeaderToSource(mtdDecl: ArkMethod, implClasses: ArkClass[]): void {
         const tgtMtdSubSig = mtdDecl.getSubSignature();
         const matchKey = tgtMtdSubSig.toString().replace('[static]', '');
-        for (const refFile of refFiles) {
-            const refArkClasses = this.getClassWithNameAndNamespace(tgtClsName, refFile, tgtNamespaceName);
-            if (refArkClasses.length === 0) {
-                continue;
-            }
-            const matchedMtdImpl = this.getMatchedMtdImpl(mtdDecl, refArkClasses, matchKey);
-            if (matchedMtdImpl) {
-                this.processMethodDeclAndImpl(mtdDecl, matchedMtdImpl);
-                return;
-            }
+        const matchedMtdImpl = this.getMatchedMtdImpl(mtdDecl, implClasses, matchKey);
+        if (matchedMtdImpl) {
+            this.processMethodDeclAndImpl(mtdDecl, matchedMtdImpl);
+            return;
         }
     }
 

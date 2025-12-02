@@ -32,10 +32,12 @@ import { assertBlocksEqual } from '../../common';
 
 const BASE_DIR = 'tests/resources_cpp/exports';
 const is_system_win32 = process.platform === 'win32';
+const deveco_c = process.env.DEVECO_C !== undefined ? process.env.DEVECO_C : '';
+const deveco_include = process.env.DEVECO_INCLUDE !== undefined ? process.env.DEVECO_INCLUDE : '';
 
-function buildScene(folderName: string): Scene {
+function buildScene(folderName: string, includeDirs: string[]): Scene {
     let config: SceneConfig = new SceneConfig();
-    config.buildFromProjectDir(path.join(BASE_DIR, folderName));
+    config.buildFromProjectDir(path.join(BASE_DIR, folderName), includeDirs);
     let projectScene: Scene = new Scene();
     projectScene.buildSceneFromProjectDir(config);
     projectScene.inferTypes();
@@ -90,11 +92,10 @@ function compareExportInfo(exportInfo: ExportInfo | undefined, expectIR: any): v
     }
 }
 
-let projectScene = buildScene('');
-
 describe('export Test', () => {
     it('function implement in header file case1', () => {
-        const fileId1 = new FileSignature(projectScene.getProjectName(), 'funcImplementInHeaderFile/sameDir/main.cpp');
+        const projectScene = buildScene('funcImplementInHeaderFile/sameDir', [deveco_c, deveco_include]);
+        const fileId1 = new FileSignature(projectScene.getProjectName(), 'main.cpp');
         const file1 = projectScene.getFile(fileId1);
         assert.equal(file1?.getExportInfos().length, 0);
         assert.equal(file1?.getImportInfos().length, 3);
@@ -103,11 +104,11 @@ describe('export Test', () => {
         if (stmts) {
             assert.equal(
                 stmts[1].getInvokeExpr()?.getMethodSignature().toString(),
-                '@exports/funcImplementInHeaderFile/sameDir/myHeader.h: %dflt.FuncDoSomething(int, int)'
+                '@sameDir/myHeader.h: %dflt.FuncDoSomething(int, int)'
             );
         }
 
-        const fileId2 = new FileSignature(projectScene.getProjectName(), 'funcImplementInHeaderFile/sameDir/myHeader.h');
+        const fileId2 = new FileSignature(projectScene.getProjectName(), 'myHeader.h');
         const file2 = projectScene.getFile(fileId2);
         assert.equal(file2?.getExportInfos().length, 1);
         assert.equal(file2?.getImportInfos().length, 0);
@@ -116,7 +117,8 @@ describe('export Test', () => {
     });
 
     it('function implement in header file case2', () => {
-        const fileId1 = new FileSignature(projectScene.getProjectName(), 'funcImplementInHeaderFile/diffDir/main.cpp');
+        const projectScene = buildScene('funcImplementInHeaderFile/diffDir', [deveco_c, deveco_include]);
+        const fileId1 = new FileSignature(projectScene.getProjectName(), 'main.cpp');
         const file1 = projectScene.getFile(fileId1);
         assert.equal(file1?.getExportInfos().length, 0);
         assert.equal(file1?.getImportInfos().length, 3);
@@ -125,11 +127,11 @@ describe('export Test', () => {
         if (stmts) {
             assert.equal(
                 stmts[1].getInvokeExpr()?.getMethodSignature().toString(),
-                '@exports/funcImplementInHeaderFile/diffDir/include/myHeader.h: %dflt.FuncDoSomething(int, int)'
+                '@diffDir/include/myHeader.h: %dflt.FuncDoSomething(int, int)'
             );
         }
 
-        const fileId2 = new FileSignature(projectScene.getProjectName(), 'funcImplementInHeaderFile/diffDir/include/myHeader.h');
+        const fileId2 = new FileSignature(projectScene.getProjectName(), 'include/myHeader.h');
         const file2 = projectScene.getFile(fileId2);
         assert.equal(file2?.getExportInfos().length, 1);
         assert.equal(file2?.getImportInfos().length, 0);
@@ -138,7 +140,8 @@ describe('export Test', () => {
     });
 
     it('function implement in cpp file case', () => {
-        const fileId1 = new FileSignature(projectScene.getProjectName(), 'funcImplementInCpp/main.cpp');
+        const projectScene = buildScene('funcImplementInCpp', [deveco_c, deveco_include]);
+        const fileId1 = new FileSignature(projectScene.getProjectName(), 'main.cpp');
         const file1 = projectScene.getFile(fileId1);
         assert.equal(file1?.getExportInfos().length, 0);
         assert.equal(file1?.getImportInfos().length, 6);
@@ -147,83 +150,90 @@ describe('export Test', () => {
         if (stmts && is_system_win32) {
             assert.equal(
                 stmts[1].getInvokeExpr()?.getMethodSignature().toString(),
-                '@exports/funcImplementInCpp/include/test.h: %dflt.FuncDoSomething(int, int)'
+                '@funcImplementInCpp/include/test.h: %dflt.FuncDoSomething(int, int)'
             );
-            assert.equal(stmts[9].getDef()?.getType().toString(), '@exports/funcImplementInCpp/include/test.h: Circle');
-            assert.equal(stmts[10].getInvokeExpr()?.getMethodSignature().toString(), '@exports/funcImplementInCpp/include/test.h: Circle.CalculateArea()');
-            assert.equal(stmts[12].getInvokeExpr()?.getMethodSignature().toString(), '@exports/funcImplementInCpp/include/test.h: Circle.PrintInfo()');
+            assert.equal(stmts[9].getDef()?.getType().toString(), '@funcImplementInCpp/include/test.h: Circle');
+            assert.equal(stmts[10].getInvokeExpr()?.getMethodSignature().toString(), '@funcImplementInCpp/include/test.h: Circle.CalculateArea()');
+            assert.equal(stmts[12].getInvokeExpr()?.getMethodSignature().toString(), '@funcImplementInCpp/include/test.h: Circle.PrintInfo()');
         }
 
-        const fileId2 = new FileSignature(projectScene.getProjectName(), 'funcImplementInCpp/include/test.h');
+        const fileId2 = new FileSignature(projectScene.getProjectName(), 'include/test.h');
         const file2 = projectScene.getFile(fileId2);
         assert.equal(file2?.getExportInfos().length, 4);
         assert.equal(file2?.getImportInfos().length, 0);
         const stmts2 = file2?.getDefaultClass().getMethodWithName('FuncDoSomething')?.getCfg()?.getStmts();
         assert.isUndefined(stmts2);
 
-        const fileId3 = new FileSignature(projectScene.getProjectName(), 'funcImplementInCpp/src/test.cpp');
+        const fileId3 = new FileSignature(projectScene.getProjectName(), 'src/test.cpp');
         const file3 = projectScene.getFile(fileId3);
         assert.equal(file3?.getExportInfos().length, 0);
         assert.equal(file3?.getImportInfos().length, 0);
         const stmts3 = file3?.getClassWithName('Circle')?.getMethodWithName('CalculateArea')?.getCfg()?.getStmts();
         assert.isNotEmpty(stmts3);
-        assert.equal(stmts3![1].toString(), '%0 = this.<@exports/funcImplementInCpp/src/test.cpp: Circle.radius>');
+        assert.equal(stmts3![1].toString(), '%0 = this.<@funcImplementInCpp/src/test.cpp: Circle.radius>');
     });
 
     it('Indirect referencing header file case', () => {
-        const fileId1 = new FileSignature(projectScene.getProjectName(), 'indirectRef/main.cpp');
+        const customizedIncludePath = path.join(path.resolve(__dirname, '../../..'), 'resources_cpp/exports/indirectRef/include');
+        const projectScene = buildScene('indirectRef', [deveco_c, deveco_include, customizedIncludePath]);
+        const fileId1 = new FileSignature(projectScene.getProjectName(), 'main.cpp');
         const file1 = projectScene.getFile(fileId1);
         const stmts = file1?.getDefaultClass().getMethodWithName('main')?.getCfg()?.getStmts();
         assert.isNotEmpty(stmts);
         if (stmts) {
-            assert.equal(stmts[1].getInvokeExpr()?.getMethodSignature().toString(), '@exports/indirectRef/include/myHeader.h: %dflt.FuncDoSomething(int, int)');
+            assert.equal(stmts[1].getInvokeExpr()?.getMethodSignature().toString(), '@indirectRef/include/myHeader.h: %dflt.FuncDoSomething(int, int)');
         }
         let importInfos = file1?.getImportInfos();
         assert.equal(importInfos!.length, 5);
-        assert.equal(importInfos![0].getLazyExportInfo()?.getArkExport()?.getSignature().toString(), '@exports/indirectRef/include/myHeader.h: %dflt');
-        assert.equal(importInfos![3].getLazyExportInfo()?.getArkExport()?.getSignature().toString(), '@exports/indirectRef/include/castSample.h: %dflt');
+        assert.equal(importInfos![0].getLazyExportInfo()?.getArkExport()?.getSignature().toString(), '@indirectRef/include/myHeader.h: %dflt');
+        assert.equal(importInfos![3].getLazyExportInfo()?.getArkExport()?.getSignature().toString(), '@indirectRef/include/castSample.h: %dflt');
         let invokeMethod = importInfos![4].getLazyExportInfo()?.getArkExport();
         assert.isNotEmpty(invokeMethod);
         assert.isTrue(invokeMethod instanceof ArkMethod);
         assert.equal(
             (invokeMethod as ArkMethod).getSignature().toString(),
-            '@exports/indirectRef/src/castSample.cpp: %dflt.CXXStaticCast(int)'
+            '@indirectRef/src/castSample.cpp: %dflt.CXXStaticCast(int)'
         );
         assert.equal(
             (invokeMethod as ArkMethod).getDeclareSignatures()?.[0].toString(),
-            '@exports/indirectRef/include/castSample.h: %dflt.CXXStaticCast(int)'
+            '@indirectRef/include/castSample.h: %dflt.CXXStaticCast(int)'
         );
 
-        const fileId2 = new FileSignature(projectScene.getProjectName(), 'indirectRef/include/myHeader.h');
+        const fileId2 = new FileSignature(projectScene.getProjectName(), 'include/myHeader.h');
         const file2 = projectScene.getFile(fileId2);
         assert.equal(file2?.getExportInfos().length, 1);
         let exportInfo = file2?.getExportInfoBy(MY_HEADER_EXPORT_INFO_EXPECT_IR.exportClauseName);
         compareExportInfo(exportInfo, MY_HEADER_EXPORT_INFO_EXPECT_IR);
         importInfos = file2?.getImportInfos();
         assert.equal(file2?.getImportInfos().length, 2);
-        assert.equal(importInfos![0].getLazyExportInfo()?.getArkExport()?.getSignature().toString(), '@exports/indirectRef/include/castSample.h: %dflt');
+        assert.equal(importInfos![0].getLazyExportInfo()?.getArkExport()?.getSignature().toString(), '@indirectRef/include/castSample.h: %dflt');
         invokeMethod = importInfos![1].getLazyExportInfo()?.getArkExport();
         assert.isNotEmpty(invokeMethod);
         assert.isTrue(invokeMethod instanceof ArkMethod);
         assert.equal(
             (invokeMethod as ArkMethod).getSignature().toString(),
-            '@exports/indirectRef/src/castSample.cpp: %dflt.CXXStaticCast(int)'
+            '@indirectRef/src/castSample.cpp: %dflt.CXXStaticCast(int)'
         );
         assert.equal(
             (invokeMethod as ArkMethod).getDeclareSignatures()?.[0].toString(),
-            '@exports/indirectRef/include/castSample.h: %dflt.CXXStaticCast(int)'
+            '@indirectRef/include/castSample.h: %dflt.CXXStaticCast(int)'
         );
 
-        const fileId3 = new FileSignature(projectScene.getProjectName(), 'indirectRef/include/castSample.h');
+        const fileId3 = new FileSignature(projectScene.getProjectName(), 'include/castSample.h');
         const file3 = projectScene.getFile(fileId3);
         assert.equal(file3?.getExportInfos().length, 1);
         assert.equal(file3?.getImportInfos().length, 0);
         exportInfo = file3?.getExportInfoBy(CAST_SAMPLE_EXPORT_INFO_EXPECT_IR.exportClauseName);
         compareExportInfo(exportInfo, CAST_SAMPLE_EXPORT_INFO_EXPECT_IR);
     });
+});
+
+describe('cross file case', () => {
+    const customizedIncludePath = path.join(path.resolve(__dirname, '../../..'), 'resources_cpp/exports/crossFileCase/include');
+    const projectScene = buildScene('crossFileCase', [deveco_c, deveco_include, customizedIncludePath]);
 
     it('cross file case1', () => {
-        const fileId = new FileSignature(projectScene.getProjectName(), 'crossFileCase/include/myHeader.h');
+        const fileId = new FileSignature(projectScene.getProjectName(), 'include/myHeader.h');
         const file = projectScene.getFile(fileId);
         assert.equal(file?.getExportInfos().length, 4);
         let exportInfo: ExportInfo | undefined;
@@ -236,38 +246,38 @@ describe('export Test', () => {
         compareExportInfo(exportInfo, MY_HEADER_EXPORT_INFO3);
         assert.equal(
             (exportInfo?.getArkExport() as ArkClass).getFieldWithName('center')?.getType().toString(),
-            '@exports/crossFileCase/include/namespace.h: nsA.Point'
+            '@crossFileCase/include/namespace.h: nsA.Point'
         );
         assert.equal(
             (exportInfo?.getArkExport() as ArkClass).getMethodWithName('CalculateArea')?.getSignature().toString(),
-            '@exports/crossFileCase/src/myHeader.cpp: Circle.CalculateArea()'
+            '@crossFileCase/src/myHeader.cpp: Circle.CalculateArea()'
         );
         exportInfo = file?.getExportInfoBy(MY_HEADER_EXPORT_INFO4.exportClauseName);
         compareExportInfo(exportInfo, MY_HEADER_EXPORT_INFO4);
     });
 
     it('cross file case2', () => {
-        const fileId = new FileSignature(projectScene.getProjectName(), 'crossFileCase/src/myHeader.cpp');
+        const fileId = new FileSignature(projectScene.getProjectName(), 'src/myHeader.cpp');
         const file = projectScene.getFile(fileId);
         assert.equal(file?.getImportInfos().length, 6);
         assert.equal(
             file?.getDefaultClass().getMethodWithName('FuncDoSomething')?.getDeclareSignatures()?.[0].toString(),
-            '@exports/crossFileCase/include/myHeader.h: %dflt.FuncDoSomething(int, int)'
+            '@crossFileCase/include/myHeader.h: %dflt.FuncDoSomething(int, int)'
         );
         assert.equal(
             file?.getClassWithName('Circle')?.getDeclareSignature()?.toString(),
-            '@exports/crossFileCase/include/myHeader.h: Circle'
+            '@crossFileCase/include/myHeader.h: Circle'
         );
         const stmts = file?.getClassWithName('Circle')?.getMethodWithName('PrintInfo')?.getCfg()?.getStmts();
         assert.isNotEmpty(stmts);
-        assert.equal(stmts![1].toString(), '%0 = this.<@exports/crossFileCase/include/myHeader.h: Circle.center>');
-        assert.equal(stmts![2].toString(), '%1 = %0.<@exports/crossFileCase/include/namespace.h: nsA.Point.x>');
-        assert.equal(stmts![3].toString(), '%2 = this.<@exports/crossFileCase/include/myHeader.h: Circle.center>');
-        assert.equal(stmts![4].toString(), '%3 = %2.<@exports/crossFileCase/include/namespace.h: nsA.Point.y>');
+        assert.equal(stmts![1].toString(), '%0 = this.<@crossFileCase/include/myHeader.h: Circle.center>');
+        assert.equal(stmts![2].toString(), '%1 = %0.<@crossFileCase/include/namespace.h: nsA.Point.x>');
+        assert.equal(stmts![3].toString(), '%2 = this.<@crossFileCase/include/myHeader.h: Circle.center>');
+        assert.equal(stmts![4].toString(), '%3 = %2.<@crossFileCase/include/namespace.h: nsA.Point.y>');
     });
 
     it('cross file case3', () => {
-        const fileId = new FileSignature(projectScene.getProjectName(), 'crossFileCase/include/namespace.h');
+        const fileId = new FileSignature(projectScene.getProjectName(), 'include/namespace.h');
         const file = projectScene.getFile(fileId);
         assert.equal(file?.getExportInfos().length, 1);
         let exportInfo: ExportInfo | undefined;
@@ -276,17 +286,17 @@ describe('export Test', () => {
     });
 
     it('cross file case4', () => {
-        const fileId = new FileSignature(projectScene.getProjectName(), 'crossFileCase/src/namespace.cpp');
+        const fileId = new FileSignature(projectScene.getProjectName(), 'src/namespace.cpp');
         const file = projectScene.getFile(fileId);
         assert.equal(file?.getImportInfos().length, 3);
         assert.equal(
             file?.getNamespaceWithName('nsA')?.getDefaultClass().getMethodWithName('FuncInNamespace')?.
             getDeclareSignatures()?.[0].toString(),
-            '@exports/crossFileCase/include/namespace.h: nsA.%dflt.FuncInNamespace()'
+            '@crossFileCase/include/namespace.h: nsA.%dflt.FuncInNamespace()'
         );
         assert.equal(
             file?.getNamespaceWithName('nsA')?.getClassWithName('DefaultClass')?.getDeclareSignature()?.toString(),
-            '@exports/crossFileCase/include/namespace.h: nsA.DefaultClass'
+            '@crossFileCase/include/namespace.h: nsA.DefaultClass'
         );
         const defaultClass = file?.getNamespaceWithName('nsA')?.getClassWithName('DefaultClass');
         const stmts = defaultClass?.getMethodWithName('constructor')?.getCfg()?.getStmts();
@@ -296,7 +306,7 @@ describe('export Test', () => {
     });
 
     it('cross file case5', () => {
-        const fileId = new FileSignature(projectScene.getProjectName(), 'crossFileCase/main.cpp');
+        const fileId = new FileSignature(projectScene.getProjectName(), 'main.cpp');
         const file = projectScene.getFile(fileId);
         assert.equal(file?.getImportInfos().length, 6);
         const blocks = file?.getDefaultClass().getMethodWithName('main')?.getCfg()?.getBlocks();

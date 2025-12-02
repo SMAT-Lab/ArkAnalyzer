@@ -30,17 +30,17 @@ import { ArkAliasTypeDefineStmt, Stmt } from '../../core/base/Stmt';
 import { ModelUtils } from '../../core/common/ModelUtils';
 
 class CxxFileInference extends FileInference {
-    private isCxxPreprocessed: boolean = false;
+    private preprocessedProjectName: string = '';
 
     /**
      * Build Cxx Function
      * @param file
      */
     public preInfer(file: ArkFile): void {
-        if (!this.isCxxPreprocessed) {
-            const scene = file.getScene();
+        const scene = file.getScene();
+        if (this.preprocessedProjectName !== scene.getProjectName()) {
             IRInference.mapCxxDeclAndImpl(scene);
-            this.isCxxPreprocessed = true;
+            this.preprocessedProjectName = scene.getProjectName();
         }
         PatchRegistry.patchMethod(ModelUtils, 'getArkExportInImportInfoWithName', CxxModelUtils.getArkExportInImportInfoWithName);
         PatchRegistry.patchMethod(ModelUtils, 'findPropertyInClass', CxxModelUtils.findPropertyInClass);
