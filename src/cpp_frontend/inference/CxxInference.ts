@@ -134,7 +134,6 @@ export class CxxStmtInference extends StmtInference {
 
 }
 
-
 export class CxxInferenceBuilder extends InferenceBuilder {
 
     public buildFileInference(): FileInference {

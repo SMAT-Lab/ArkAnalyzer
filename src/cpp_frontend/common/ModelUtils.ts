@@ -371,7 +371,7 @@ export class PatchRegistry {
         return this._instance;
     }
 
-    public static patchMethod(targetModule: any, methodName: string, newFunction: Function) {
+    public static patchMethod(targetModule: any, methodName: string, newFunction: Function): void {
         const key = `${targetModule.constructor.name}.${methodName}`;
         if (!this.originalMap.has(key)) {
             this.originalMap.set(key, targetModule[methodName]);
@@ -379,7 +379,7 @@ export class PatchRegistry {
         targetModule[methodName] = newFunction;
     }
 
-    public static restoredMethod(targetModule: any, methodName: string) {
+    public static restoredMethod(targetModule: any, methodName: string): void {
         const key = `${targetModule.constructor.name}.${methodName}`;
         if (!this.originalMap.has(key)) {
             return;
