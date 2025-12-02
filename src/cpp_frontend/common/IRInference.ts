@@ -1109,7 +1109,7 @@ export class IRInference {
         }
         // 2. Set the signature of the function Declaration corresponding to the current function Implementation
         const declSignature = mtdDecl.getDeclareSignatures();
-        const declSignatureInMtdImpl =  mtdImpl.getDeclareSignatures();
+        const declSignatureInMtdImpl = mtdImpl.getDeclareSignatures();
         if (declSignature) {
             declSignatureInMtdImpl ? declSignatureInMtdImpl.push(...declSignature) : mtdImpl.setDeclareSignatures(declSignature);
         }

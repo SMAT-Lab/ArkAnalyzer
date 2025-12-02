@@ -399,7 +399,7 @@ export class CxxModelUtils {
         // if using namespace in file，we can call the method or class in the namespace without a prefix.
         for (const im of arkFile.getImportInfos()) {
             const imArkExport = im.getLazyExportInfo()?.getArkExport();
-            if (im.getImportType() !== 'NamespaceImport' ||  !(imArkExport instanceof ArkNamespace)) {
+            if (im.getImportType() !== 'NamespaceImport' || !(imArkExport instanceof ArkNamespace)) {
                 continue;
             }
             const imNS = imArkExport as ArkNamespace;
