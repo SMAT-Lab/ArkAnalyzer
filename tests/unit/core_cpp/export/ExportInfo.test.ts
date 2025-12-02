@@ -15,7 +15,18 @@
 
 import { assert, describe, it } from 'vitest';
 import path from 'path';
-import { ArkClass, FileSignature, Local, Scene, SceneConfig, ArkNamespace, ArkAssignStmt, ArkMethod, ExportInfo } from '../../../../src';
+import {
+    ArkClass,
+    FileSignature,
+    Local,
+    Scene,
+    SceneConfig,
+    ArkNamespace,
+    ArkAssignStmt,
+    ArkMethod,
+    ExportInfo,
+    LOG_LEVEL,
+} from '../../../../src';
 import { CAST_SAMPLE_EXPORT_INFO_EXPECT_IR, MY_HEADER_EXPORT_INFO_EXPECT_IR } from '../../../resources_cpp/exports/indirectRef/expectedIR';
 import {
     MAIN_CASE,
@@ -27,6 +38,8 @@ import {
 } from '../../../resources_cpp/exports/crossFileCase/expectedIR';
 import { assertBlocksEqual } from '../../common';
 import Logger, { LOG_MODULE_TYPE } from '../../../../src/utils/logger';
+import ConsoleLogger from '../../../../src/utils/logger';
+ConsoleLogger.configure('', LOG_LEVEL.INFO, LOG_LEVEL.INFO, true);
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ExportInfoTest');
 
 const BASE_DIR = 'tests/resources_cpp/exports';
@@ -75,9 +88,9 @@ describe('export Test', () => {
         const fileId1 = new FileSignature(projectScene.getProjectName(), 'main.cpp');
         const file1 = projectScene.getFile(fileId1);
         assert.equal(file1?.getExportInfos().length, 0);
-        logger.error('funcImplementInHeaderFile/sameDir/main.cpp');
+        logger.info('funcImplementInHeaderFile/sameDir/main.cpp');
         for (const im of file1!.getImportInfos()) {
-            logger.error(im.getImportClauseName());
+            logger.info(im.getImportClauseName());
         }
         assert.equal(file1?.getImportInfos().length, 3);
         const stmts = file1?.getDefaultClass().getMethodWithName('main')?.getCfg()?.getStmts();
