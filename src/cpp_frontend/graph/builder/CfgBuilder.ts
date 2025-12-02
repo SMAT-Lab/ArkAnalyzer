@@ -691,7 +691,7 @@ export class CfgBuilder {
         for (let i = 0; i < nodes.length; i++) {
             let innerNode = nodes[i];
             let nodeKind = innerNode.kind;
-            if (nodeKind === 'LabelStmt' && this.gotoStmtMap.get(innerNode.name) != undefined) {
+            if (nodeKind === 'LabelStmt' && this.gotoStmtMap.get(innerNode.name) !== undefined) {
                 gotoLabel = false;
             }
             if (gotoLabel && nodeKind !== 'CompoundStmt') { // Skip the code between goto and label in the code block
