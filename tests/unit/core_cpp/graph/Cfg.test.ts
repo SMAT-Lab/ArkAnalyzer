@@ -289,9 +289,9 @@ describe('Function Test', () => {
     it('case7: overwrite Test', () => {
         const scene = buildScene('overwrite');
         scene.inferTypes();
-        testBlocksWithSignature(scene, 'overwriteSample.cpp', 'Calculator', 'add(int, int)', OVERWRITE.OVERWRITE_PRINT_INFO_CASE1_EXPECT.blocks);
-        testBlocksWithSignature(scene, 'overwriteSample.cpp', 'Calculator', 'add(double, double)', OVERWRITE.OVERWRITE_PRINT_INFO_CASE2_EXPECT.blocks);
-        testBlocksWithSignature(scene, 'overwriteSample.cpp', 'Calculator', 'add(int, int, int)', OVERWRITE.OVERWRITE_PRINT_INFO_CASE3_EXPECT.blocks);
+        testBlocksWithSignature(scene, 'overwriteSample.cpp', 'Calculator', 'Add(int, int)', OVERWRITE.OVERWRITE_PRINT_INFO_CASE1_EXPECT.blocks);
+        testBlocksWithSignature(scene, 'overwriteSample.cpp', 'Calculator', 'Add(double, double)', OVERWRITE.OVERWRITE_PRINT_INFO_CASE2_EXPECT.blocks);
+        testBlocksWithSignature(scene, 'overwriteSample.cpp', 'Calculator', 'Add(int, int, int)', OVERWRITE.OVERWRITE_PRINT_INFO_CASE3_EXPECT.blocks);
     });
 });
 
