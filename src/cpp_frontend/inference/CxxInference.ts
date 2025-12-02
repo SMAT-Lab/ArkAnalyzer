@@ -42,16 +42,16 @@ class CxxFileInference extends FileInference {
             IRInference.mapCxxDeclAndImpl(scene);
             this.preprocessedProjectName = scene.getProjectName();
         }
-        PatchRegistry.patchMethod(ModelUtils, 'getArkExportInImportInfoWithName', CxxModelUtils.getArkExportInImportInfoWithName);
-        PatchRegistry.patchMethod(ModelUtils, 'findPropertyInClass', CxxModelUtils.findPropertyInClass);
+        PatchRegistry.patchStaticMethod(ModelUtils, 'getArkExportInImportInfoWithName', CxxModelUtils.getArkExportInImportInfoWithName);
+        PatchRegistry.patchStaticMethod(ModelUtils, 'findPropertyInClass', CxxModelUtils.findPropertyInClass);
         file.getImportInfos().filter(i => i.getExportInfo() === undefined)
             .forEach(info => this.importInfoInference.doInfer(info));
     }
 
     public postInfer(file: ArkFile): void {
         super.postInfer(file);
-        PatchRegistry.restoredMethod(ModelUtils, 'getArkExportInImportInfoWithName');
-        PatchRegistry.restoredMethod(ModelUtils, 'findPropertyInClass');
+        PatchRegistry.restoredStaticMethod(ModelUtils, 'getArkExportInImportInfoWithName');
+        PatchRegistry.restoredStaticMethod(ModelUtils, 'findPropertyInClass');
     }
 }
 

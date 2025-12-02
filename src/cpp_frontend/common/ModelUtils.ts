@@ -357,9 +357,17 @@ function getFuncImplement(mtd: ArkMethod): ArkMethod {
     return realImplMtd;
 }
 
+type PatchClassType = abstract new (...args: unknown[]) => unknown;
+type StaticMethodKeys<C extends PatchClassType> = Extract<
+    {
+        [K in keyof C]: C[K] extends Function ? K : never;
+    }[keyof C],
+    string
+>;
+
 export class PatchRegistry {
     private static _instance: PatchRegistry;
-    private static originalMap = new Map<string, Function>();
+    private static originalMap = new Map<string, unknown>();
 
     private constructor() {}
 
@@ -371,20 +379,27 @@ export class PatchRegistry {
         return this._instance;
     }
 
-    public static patchMethod(targetModule: any, methodName: string, newFunction: Function): void {
-        const key = `${targetModule.constructor.name}.${methodName}`;
+    public static patchStaticMethod<
+        C extends PatchClassType,
+        K extends StaticMethodKeys<C>
+    >(targetModule: C, methodName: K, newFunction: C[K]): void {
+        const key = `${targetModule.name}.static.${methodName}`;
         if (!this.originalMap.has(key)) {
             this.originalMap.set(key, targetModule[methodName]);
         }
         targetModule[methodName] = newFunction;
     }
 
-    public static restoredMethod(targetModule: any, methodName: string): void {
-        const key = `${targetModule.constructor.name}.${methodName}`;
-        if (!this.originalMap.has(key)) {
+    public static restoredStaticMethod<
+        C extends PatchClassType,
+        K extends StaticMethodKeys<C>
+    >(targetModule: C, methodName: K): void {
+        const key = `${targetModule.name}.static.${methodName}`;
+        const original = this.originalMap.get(key);
+        if (!original) {
             return;
         }
-        targetModule[methodName] = this.originalMap.get(key)!;
+        targetModule[methodName] = original as C[K];
         this.originalMap.delete(key);
     }
 }
