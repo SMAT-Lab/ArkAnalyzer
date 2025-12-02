@@ -437,7 +437,9 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
             stmts: iteratorStmts,
         } = this.generateAssignStmtForValue(iteratorInvokeExpr, iteratorInvokeExprPositions);
         iteratorStmts.forEach(stmt => stmts.push(stmt));
-        (iterator as Local).setType(BuiltinCxx.ITERATOR_CLASS_TYPE);
+        if (iterator instanceof Local) {
+            iterator.setType(BuiltinCxx.ITERATOR_CLASS_TYPE);
+        }
         const nextMethodSubSignature = new MethodSubSignature(BuiltinCxx.ITERATOR_NEXT, [], BuiltinCxx.ITERATOR_RESULT_CLASS_TYPE);
         const nextMethodSignature = new MethodSignature(ClassSignature.DEFAULT, nextMethodSubSignature);
         const iteratorNextInvokeExpr = new ArkInstanceInvokeExpr(iterator as Local, nextMethodSignature, []);
