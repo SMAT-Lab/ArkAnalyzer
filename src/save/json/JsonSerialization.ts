@@ -14,11 +14,11 @@
  */
 
 import {
-    AliasType, AliasTypeExpr,
+    AliasType,
     AliasTypeSignature,
     AnnotationNamespaceType,
     AnnotationTypeQueryType,
-    AnyType, ArkAliasTypeDefineStmt,
+    AnyType,
     ArkArrayRef,
     ArkAssignStmt,
     ArkAwaitExpr,
@@ -722,13 +722,6 @@ export function serializeValue(value: Value): ValueDto {
             type: serializeType(value.getType()),
             operator: value.getOperator(),
         });
-    } else if (value instanceof AliasTypeExpr) {
-        return polymorphic('AliasTypeExpr', {
-            originalObject: serializeValue(value.getOriginalObject() as unknown as Value),
-            transferWithTypeOf: value.getTransferWithTypeOf(),
-            realGenericTypes: value.getRealGenericTypes()?.map(type => serializeType(type)),
-            originalType: value.getOriginalType() ? serializeType(value.getOriginalType()!) : undefined,
-        });
     }
     // Fallback for unhandled value types
     console.info(`Unhandled Value: ${value.constructor.name} (${value.toString()})`);
@@ -762,11 +755,6 @@ export function serializeStmt(stmt: Stmt): StmtDto {
     } else if (stmt instanceof ArkThrowStmt) {
         return polymorphic('ThrowStmt', {
             arg: serializeValue(stmt.getOp()),
-        });
-    } else if (stmt instanceof ArkAliasTypeDefineStmt) {
-        return polymorphic('AliasTypeDefineStmt', {
-            aliasType: serializeType(stmt.getAliasType()),
-            aliasTypeExpr: serializeValue(stmt.getAliasTypeExpr()),
         });
     }
 

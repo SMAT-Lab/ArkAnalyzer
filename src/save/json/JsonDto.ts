@@ -291,7 +291,6 @@ export type ValueDto =
     | Polymorphic<'ArkNoExpectExpr', ArkNoExpectExprDto>
     | Polymorphic<'ArkCxxFolderExpr', ArkCxxFolderExprDto>
     | Polymorphic<'ArkCxxNormalBinOpExpr', ArkCxxNormalBinOpExprDto>
-    | Polymorphic<'AliasTypeExpr', AliasTypeExprDto>
     | UnhandledValueDto;
 
 export interface LocalValueDto extends LocalDto { }
@@ -466,13 +465,6 @@ export interface ArkCxxNormalBinOpExprDto {
     operator: string;
 }
 
-export interface AliasTypeExprDto {
-    originalObject: ValueDto;
-    transferWithTypeOf: boolean;
-    realGenericTypes?: TypeDto[];
-    originalType?: TypeDto;
-}
-
 // Statement DTOs using polymorphic pattern
 export type StmtDto =
     | Polymorphic<'AssignStmt', AssignStmtDto>
@@ -481,7 +473,6 @@ export type StmtDto =
     | Polymorphic<'ReturnVoidStmt', ReturnVoidStmtDto>
     | Polymorphic<'ReturnStmt', ReturnStmtDto>
     | Polymorphic<'ThrowStmt', ThrowStmtDto>
-    | Polymorphic<'AliasTypeDefineStmt', AliasTypeDefineStmtDto>
     | UnhandledStmtDto;
 
 export interface AssignStmtDto {
@@ -505,10 +496,6 @@ export interface ReturnStmtDto {
 
 export interface ThrowStmtDto {
     arg: ValueDto;
-}
-export interface AliasTypeDefineStmtDto {
-    aliasType: TypeDto;
-    aliasTypeExpr: ValueDto;
 }
 
 export interface UnhandledStmtDto extends UnhandledDto { }
