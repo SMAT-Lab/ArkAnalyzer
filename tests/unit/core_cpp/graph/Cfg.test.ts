@@ -67,6 +67,8 @@ import * as SUPPLEMENTARY from '../../../resources_cpp/cfg/supplementary/supplem
 import * as TRAP from '../../../resources_cpp/cfg/trap/cxxTrapExpects';
 import * as OVERWRITE from '../../../resources_cpp/cfg/overwrite/overwriteExpect';
 
+const deveco_c = process.env.DEVECO_C !== undefined ? process.env.DEVECO_C : '';
+const deveco_include = process.env.DEVECO_INCLUDE !== undefined ? process.env.DEVECO_INCLUDE : '';
 const deveco_sysroot_include = process.env.DEVECO_SYSROOT_INCLUDE !== undefined ? process.env.DEVECO_SYSROOT_INCLUDE : '';
 const is_system_win32 = process.platform === 'win32';
 
@@ -522,6 +524,8 @@ function buildScene(folderName: string): Scene {
     config.setSupportFileExts(['.c', '.cpp', '.h', '.hpp']);
     let includeDirs: string[] = [];
     // header file configuration for DevEco
+    includeDirs.push(deveco_c);
+    includeDirs.push(deveco_include);
     if (folderName.includes('lazyImport')) {
         includeDirs.push(...getNapiIncludeDirs());
     }
