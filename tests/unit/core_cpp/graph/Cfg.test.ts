@@ -575,7 +575,7 @@ function testNamespaceClasses(scene: Scene, filePath: string, namespaceName: str
         throw new Error(`Namespace ${namespaceName} not found in file ${filePath}`);
     }
 
-    const namespaceBlockMap = new Map<string, unknown>();
+    const namespaceBlockMap = new Map<string, any>();
     for (const classBlock of expectBlocks) {
         namespaceBlockMap.set(classBlock.className, classBlock);
     }
