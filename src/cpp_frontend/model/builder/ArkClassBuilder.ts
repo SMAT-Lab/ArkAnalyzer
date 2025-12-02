@@ -53,7 +53,7 @@ export function buildNormalArkClassFromArkMethod(clsNode: CxxAstNode, cls: ArkCl
 export function buildNormalArkClassFromArkFile(clsNode: CxxAstNode, arkFile: ArkFile, cls: ArkClass,
                                                sourceFile: CxxAstNode, declaringClass?:ArkClass): void {
     cls.setDeclaringArkFile(arkFile);
-    cls.setCode(clsNode.name);
+    cls.setCode(clsNode.code);
     if (clsNode.range?.begin) {
         cls.setLine(clsNode.range.begin.line);
         cls.setColumn(clsNode.range.begin.col);
@@ -83,7 +83,6 @@ export function buildNormalArkClassFromArkNamespace(
 export function buildNormalArkClass(clsNode: CxxAstNode, cls: ArkClass, sourceFile: CxxAstNode, declaringClass?:ArkClass): void {
     if (clsNode.kind === 'CXXRecordDecl') {
         switch (clsNode.tagUsed) {
-
             case 'struct':
                 buildStruct2ArkClass(clsNode, cls, sourceFile, declaringClass);
                 break;
