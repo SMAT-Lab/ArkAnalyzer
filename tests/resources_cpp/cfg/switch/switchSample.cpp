@@ -262,13 +262,11 @@ void HandleGameSelection()
     int game = GAME_SHOOTING;
     int difficulty = DIFFICULTY_NORMAL;
 
-    switch (game)
-    {
+    switch (game) {
         case GAME_SHOOTING:
             cout << "Shooting Game - ";
             cout << "Shooting Game2 - ";
-            switch (difficulty)
-            {
+            switch (difficulty) {
                 case DIFFICULTY_EASY:
                     cout << "Easy Mode\n";
                     break;
@@ -283,8 +281,7 @@ void HandleGameSelection()
 
         case GAME_RACING:
             cout << "Racing Game - ";
-            switch (difficulty)
-            {
+            switch (difficulty) {
                 case TRACK_BEGINNER:
                     cout << "Beginner Track\n";
                     break;
@@ -303,8 +300,7 @@ void ProcessOptions()
 {
     int option = OPTION_TWO;
 
-    switch (int score = BASE_SCORE; option)
-    {
+    switch (int score = BASE_SCORE; option) {
         case OPTION_ONE:
             cout << "Option one, Score=" << score << endl;
             break;
@@ -321,8 +317,7 @@ void ProcessChoice()
 {
     int choice = CHOICE_TWO;
 
-    switch (choice)
-    {
+    switch (choice) {
         case CHOICE_ONE:
             cout << "Selected one\n";
             break;
@@ -349,10 +344,8 @@ void ProcessChoice()
 template<typename T>
 void ProcessValue(T value)
 {
-    if constexpr (sizeof(T) == 4)
-    {
-        switch (value)
-        {
+    if constexpr (sizeof(T) == 4) {
+        switch (value) {
             case VALUE_ZERO:
                 cout << "Zero\n";
                 break;
@@ -363,10 +356,8 @@ void ProcessValue(T value)
                 cout << "Other Integer\n";
         }
     }
-    else if constexpr (sizeof(T) == 1)
-    {
-        switch (value)
-        {
+    else if constexpr (sizeof(T) == 1) {
+        switch (value) {
             case CHAR_A:
                 cout << "Letter A\n";
                 break;
