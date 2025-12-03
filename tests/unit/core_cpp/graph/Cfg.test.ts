@@ -148,6 +148,8 @@ describe('CfgTest', () => {
         testBlocks(scene, 'gotoSample.cpp', 'Case10', GOTO_EXPECT.GOTO_EXPECT_CASE10.blocks);
         testBlocks(scene, 'gotoSample.cpp', 'Case11', GOTO_EXPECT.GOTO_EXPECT_CASE11.blocks);
         testBlocks(scene, 'gotoSample.cpp', 'Case12', GOTO_EXPECT.GOTO_EXPECT_CASE12.blocks);
+        testBlocks(scene, 'gotoSample.cpp', 'Case13', GOTO_EXPECT.GOTO_EXPECT_CASE13.blocks);
+        testBlocks(scene, 'gotoSample.cpp', 'Case14', GOTO_EXPECT.GOTO_EXPECT_CASE14.blocks);
     });
     it('case7: binaryCondition', () => {
         const scene = buildScene('binaryConditional');

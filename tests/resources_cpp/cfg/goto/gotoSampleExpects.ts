@@ -19,12 +19,12 @@ export const GOTO_EXPECT_CASE1 = {
             id: 0,
             stmts: ['this = this: @goto/gotoSample.cpp: %dflt', 'j = undefined', 'num = 1', 'if num > 0'],
             preds: [],
-            succes: [1, 2],
+            succes: [ 1, 3 ]
         },
-        { id: 1, stmts: ['num = num - 1'], preds: [0], succes: [4] },
-        { id: 2, stmts: ['num = num + 1'], preds: [0], succes: [3] },
-        { id: 3, stmts: ['j = 1'], preds: [2], succes: [4] },
-        { id: 4, stmts: ['return 0'], preds: [1, 3], succes: [] },
+        { id: 1, stmts: [ 'num = num - 1' ], preds: [ 0 ], succes: [ 2 ] },
+        { id: 2, stmts: [ 'return 0' ], preds: [ 1, 4 ], succes: [] },
+        { id: 3, stmts: [ 'num = num + 1' ], preds: [ 0 ], succes: [ 4 ] },
+        { id: 4, stmts: [ 'j = 1' ], preds: [ 3 ], succes: [ 2 ] }
     ],
 };
 
@@ -64,15 +64,15 @@ export const GOTO_EXPECT_CASE4 = {
             id: 0,
             stmts: ['this = this: @goto/gotoSample.cpp: %dflt', 'j = undefined', 'num = 1', 'if num == 0'],
             preds: [],
-            succes: [1, 2],
+            succes: [ 1, 4 ]
         },
-        { id: 1, stmts: ['j = j + 1'], preds: [0, 7], succes: [3] },
-        { id: 2, stmts: ['if num == 1'], preds: [0], succes: [3, 4] },
-        { id: 3, stmts: ['j = j - 1'], preds: [1, 2], succes: [5] },
-        { id: 4, stmts: ['if num == 2'], preds: [2], succes: [5, 6] },
-        { id: 5, stmts: ['return 0'], preds: [3, 4], succes: [] },
-        { id: 6, stmts: ['num = num + 1'], preds: [4], succes: [7] },
-        { id: 7, stmts: ['j = 1'], preds: [6], succes: [1] },
+        { id: 1, stmts: [ 'j = j + 1' ], preds: [ 0, 7 ], succes: [ 2 ] },
+        { id: 2, stmts: [ 'j = j - 1' ], preds: [ 1, 4 ], succes: [ 3 ] },
+        { id: 3, stmts: [ 'return 0' ], preds: [ 2, 5 ], succes: [] },
+        { id: 4, stmts: [ 'if num == 1' ], preds: [ 0 ], succes: [ 2, 5 ] },
+        { id: 5, stmts: [ 'if num == 2' ], preds: [ 4 ], succes: [ 3, 6 ] },
+        { id: 6, stmts: [ 'num = num + 1' ], preds: [ 5 ], succes: [ 7 ] },
+        { id: 7, stmts: [ 'j = 1' ], preds: [ 6 ], succes: [ 1 ] }
     ],
 };
 
@@ -82,11 +82,11 @@ export const GOTO_EXPECT_CASE5 = {
             id: 0,
             stmts: ['this = this: @goto/gotoSample.cpp: %dflt', 'i = 0', 'j = undefined', 'if i < 0'],
             preds: [],
-            succes: [1, 2],
+            succes: [ 1, 3 ]
         },
-        { id: 1, stmts: ['j = 1'], preds: [0], succes: [3] },
-        { id: 2, stmts: ['j = 2'], preds: [0], succes: [3] },
-        { id: 3, stmts: ['return j'], preds: [1, 2], succes: [] },
+        { id: 1, stmts: [ 'j = 1' ], preds: [ 0 ], succes: [ 2 ] },
+        { id: 2, stmts: [ 'return j' ], preds: [ 1, 3 ], succes: [] },
+        { id: 3, stmts: [ 'j = 2' ], preds: [ 0 ], succes: [ 2 ] }
     ],
 };
 
@@ -110,20 +110,15 @@ export const GOTO_EXPECT_CASE7 = {
             id: 0,
             stmts: ['this = this: @goto/gotoSample.cpp: %dflt', 'i = 0', 'j = undefined', 'if i < 0'],
             preds: [],
-            succes: [1, 4],
+            succes: [ 1, 5 ]
         },
-        {
-            id: 1,
-            stmts: ['if i < 1'],
-            preds: [0],
-            succes: [2, 3],
-        },
-        { id: 2, stmts: ['j = 1'], preds: [1], succes: [7] },
-        { id: 3, stmts: ['j = 2'], preds: [1], succes: [7] },
-        { id: 4, stmts: ['if i > 1'], preds: [0], succes: [5, 6] },
-        { id: 5, stmts: ['j = 3'], preds: [4], succes: [7] },
-        { id: 6, stmts: ['j = 4'], preds: [4], succes: [7] },
-        { id: 7, stmts: ['return j'], preds: [2, 3, 5, 6], succes: [] },
+        { id: 1, stmts: [ 'if i < 1' ], preds: [ 0 ], succes: [ 2, 4 ] },
+        { id: 2, stmts: [ 'j = 1' ], preds: [ 1 ], succes: [ 3 ] },
+        { id: 3, stmts: [ 'return j' ], preds: [ 2, 4, 6, 7 ], succes: [] },
+        { id: 4, stmts: [ 'j = 2' ], preds: [ 1 ], succes: [ 3 ] },
+        { id: 5, stmts: [ 'if i > 1' ], preds: [ 0 ], succes: [ 6, 7 ] },
+        { id: 6, stmts: [ 'j = 3' ], preds: [ 5 ], succes: [ 3 ] },
+        { id: 7, stmts: [ 'j = 4' ], preds: [ 5 ], succes: [ 3 ] }
     ],
 };
 
@@ -224,5 +219,30 @@ export const GOTO_EXPECT_CASE12 = {
         { id: 1, stmts: ['c = 2'], preds: [0], succes: [2] },
         { id: 2, stmts: ['c = c + 1'], preds: [1], succes: [3] },
         { id: 3, stmts: ['return c'], preds: [2], succes: [] }
+    ],
+};
+
+export const GOTO_EXPECT_CASE13 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: ['this = this: @goto/gotoSample.cpp: %dflt', 'i = 0', 'a = undefined'],
+            preds: [],
+            succes: [ 1 ]
+        },
+        { id: 1, stmts: [ 'a = a + 1' ], preds: [ 0, 2 ], succes: [ 2 ] },
+        { id: 2, stmts: [ "staticinvoke <@%unk/%unk: .cout()>('i: ', a)", 'if a >= 2' ], preds: [ 1 ], succes: [ 3, 1 ]},
+        { id: 3, stmts: [ 'if i < 4' ], preds: [ 2, 5 ], succes: [ 5, 4 ] },
+        { id: 4, stmts: [ 'return a' ], preds: [ 3 ], succes: [] },
+        { id: 5, stmts: [ 'i = i + 1' ], preds: [ 3 ], succes: [ 3 ] }
+    ],
+};
+
+export const GOTO_EXPECT_CASE14 = {
+    blocks: [
+        {id: 0, stmts: [ 'this = this: @goto/gotoSample.cpp: %dflt', 'i = 0' ], preds: [], succes: [ 1 ]},
+        {id: 1, stmts: [ "staticinvoke <@%unk/%unk: .cout()>('i: ', i)" ], preds: [ 0, 2 ], succes: [ 2 ]},
+        {id: 2, stmts: [ 'i = i + 1', 'if i < 3' ], preds: [ 1 ], succes: [ 3, 1 ]},
+        {id: 3, stmts: [ "staticinvoke <@%unk/%unk: .cout()>('goto end')", 'return' ], preds: [ 2 ], succes: []}
     ],
 };

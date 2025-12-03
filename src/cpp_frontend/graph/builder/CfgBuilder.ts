@@ -162,6 +162,7 @@ export class CfgBuilder {
     private sourceFile: CxxAstNode;
     private declaringMethod: ArkMethod;
     private gotoStmtMap: Map<string, StatementBuilder[]>;
+    private labelStmtMap: Map<string, StatementBuilder>;
 
     constructor(ast: CxxAstNode, name: string, declaringMethod: ArkMethod, sourceFile: CxxAstNode) {
         this.name = name;
@@ -187,6 +188,7 @@ export class CfgBuilder {
         this.sourceFile = sourceFile;
         this.arrowFunctionWithoutBlock = true;
         this.gotoStmtMap = new Map();
+        this.labelStmtMap = new Map();
     }
 
     public getDeclaringMethod(): ArkMethod {
@@ -214,6 +216,11 @@ export class CfgBuilder {
         } else {
             lastStatement.next = s;
             s.lasts.add(lastStatement);
+            // Process the passTmies when multiple goto entries exist in a node
+            if (lastStatement.code.includes('goto label:') &&
+                lastStatement.lasts.size > 1 && s.passTmies === 0) {
+                s.passTmies += (lastStatement.lasts.size  - 1);
+            }
         }
     }
 
@@ -523,8 +530,20 @@ export class CfgBuilder {
         let gotoStmtsOfLabel = this.gotoStmtMap.get(label);
         if (gotoStmtsOfLabel === undefined) {
             this.gotoStmtMap.set(label, [s]);
+            this.handleLabelStmtPassTimes(s, label);
         } else {
             gotoStmtsOfLabel.push(s);
+            this.handleLabelStmtPassTimes(s, label);
+        }
+    }
+
+    handleLabelStmtPassTimes(s: StatementBuilder, label: string): void {
+        if (this.labelStmtMap.has(label)) {
+            const labelStmt = this.labelStmtMap.get(label);
+            if (labelStmt?.next) {
+                labelStmt.next.passTmies = (labelStmt.next.passTmies || 0) + 1;
+            }
+            this.judgeLastType(<StatementBuilder>this.labelStmtMap.get(label)?.next, s);
         }
     }
 
@@ -556,6 +575,9 @@ export class CfgBuilder {
         let labelStmt = new StatementBuilder('statement', 'goto label:' + innerNode.name, innerNode, scopeID);
         // Handle the sequence relationship between goto statements and label statements
         let label: string = innerNode.code.substring(0, innerNode.code.indexOf(':'));
+        if (!this.labelStmtMap.has(label)) {
+            this.labelStmtMap.set(label, labelStmt);
+        }
         for (const [key, gotoStmts] of this.gotoStmtMap) {
             if (key === label) {
                 for (const gotoStmt of gotoStmts) {
