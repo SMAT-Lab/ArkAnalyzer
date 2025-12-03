@@ -439,6 +439,8 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         iteratorStmts.forEach(stmt => stmts.push(stmt));
         if (iterator instanceof Local) {
             iterator.setType(BuiltinCxx.ITERATOR_CLASS_TYPE);
+        } else {
+            logger.error(LOG_MODULE_TYPE.DEFAULT, 'iterator is not a local');
         }
         const nextMethodSubSignature = new MethodSubSignature(BuiltinCxx.ITERATOR_NEXT, [], BuiltinCxx.ITERATOR_RESULT_CLASS_TYPE);
         const nextMethodSignature = new MethodSignature(ClassSignature.DEFAULT, nextMethodSubSignature);
