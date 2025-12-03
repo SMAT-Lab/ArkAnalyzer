@@ -169,7 +169,8 @@ function isValidCxxHeaderPath(headerPath: string | undefined): boolean {
 
     // Split the path and check the last file name
     const parts = normalized.split('/');
-    const filename = parts.length > 0 ? parts[parts.length - 1] : '';
+    let filename = parts.length > 0 ? parts[parts.length - 1] : '';
+    filename = filename.replace('"', '');
 
     // Determine whether it is a standard library name or a standard library name+ h
     if (CXX_STD_HEADERS.has(filename) || (filename.endsWith('.h') && CXX_STD_HEADERS.has(filename.replace(/\.h$/, '')))) {
