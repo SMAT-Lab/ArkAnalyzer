@@ -355,8 +355,7 @@ void ProcessValue(T value)
             default:
                 cout << "Other Integer\n";
         }
-    }
-    else if constexpr (sizeof(T) == 1) {
+    } else if constexpr (sizeof(T) == 1) {
         switch (value) {
             case CHAR_A:
                 cout << "Letter A\n";
