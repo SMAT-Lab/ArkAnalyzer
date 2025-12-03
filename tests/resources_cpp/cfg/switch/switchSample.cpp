@@ -306,11 +306,14 @@ void ProcessOptions()
     switch (int score = BASE_SCORE; option)
     {
         case OPTION_ONE:
-            cout << "Option 1, Score=" << score << endl;
+            cout << "Option one, Score=" << score << endl;
             break;
         case OPTION_TWO:
-            cout << "Option 2, Score=" << score * 2 << endl;
+            cout << "Option two, Score=" << score * OPTION_TWO << endl;
             break;
+        default:
+            cout << "Invalid Option\n";
+            return;
     }
 }
 
@@ -321,22 +324,25 @@ void ProcessChoice()
     switch (choice)
     {
         case CHOICE_ONE:
-            cout << "Selected 1\n";
+            cout << "Selected one\n";
             break;
 
         case CHOICE_TWO:
         {
             int count = INITIAL_COUNT;
-            cout << "Selected 2, Count=" << count << endl;
+            cout << "Selected two, Count=" << count << endl;
             break;
         }
 
         case CHOICE_THREE:
         {
             string message = "Hello";
-            cout << message << " from case 3\n";
+            cout << message << " from case three\n";
             break;
         }
+        default:
+             cout << "Invalid Option\n";
+             return;
     }
 }
 
@@ -367,6 +373,9 @@ void ProcessValue(T value)
             case CHAR_B:
                 cout << "Letter B\n";
                 break;
+            default:
+                cout << "Other Character\n";
+                return;
         }
     }
 }
