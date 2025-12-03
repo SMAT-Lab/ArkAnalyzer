@@ -12,8 +12,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <iostream>
+using namespace std;
 
 #define MARCO_THREE 3
+#define GAME_SHOOTING 1
+#define GAME_RACING   2
+
+#define DIFFICULTY_EASY    1
+#define DIFFICULTY_NORMAL  2
+#define DIFFICULTY_HARD    3
+#define TRACK_BEGINNER     1
+#define TRACK_INTERMEDIATE 2
+#define OPTION_ONE   1
+#define OPTION_TWO   2
+#define BASE_SCORE 100
+#define CHOICE_ONE   1
+#define CHOICE_TWO   2
+#define CHOICE_THREE 3
+#define INITIAL_COUNT 5
+#define VALUE_ZERO   0
+#define VALUE_ONE    1
+#define CHAR_A      'A'
+#define CHAR_B      'B'
 
 enum NumConstant {
     ONE,
@@ -234,6 +255,129 @@ void Case13()
     } else {
         b = THREE;
     }
+}
+
+void HandleGameSelection()
+{
+    int game = GAME_SHOOTING;
+    int difficulty = DIFFICULTY_NORMAL;
+
+    switch (game)
+    {
+        case GAME_SHOOTING:
+            cout << "Shooting Game - ";
+            cout << "Shooting Game2 - ";
+            switch (difficulty)
+            {
+                case DIFFICULTY_EASY:
+                    cout << "Easy Mode\n";
+                    break;
+                case DIFFICULTY_NORMAL:
+                    cout << "Normal Mode\n";
+                    break;
+                case DIFFICULTY_HARD:
+                    cout << "Hard Mode\n";
+                    break;
+            }
+            break;
+
+        case GAME_RACING:
+            cout << "Racing Game - ";
+            switch (difficulty)
+            {
+                case TRACK_BEGINNER:
+                    cout << "Beginner Track\n";
+                    break;
+                case TRACK_INTERMEDIATE:
+                    cout << "Intermediate Track\n";
+                    break;
+            }
+            break;
+        default:
+            cout << "Invalid Game\n";
+            break;
+    }
+}
+
+void ProcessOptions()
+{
+    int option = OPTION_TWO;
+
+    switch (int score = BASE_SCORE; option)
+    {
+        case OPTION_ONE:
+            cout << "Option 1, Score=" << score << endl;
+            break;
+        case OPTION_TWO:
+            cout << "Option 2, Score=" << score * 2 << endl;
+            break;
+    }
+}
+
+void ProcessChoice()
+{
+    int choice = CHOICE_TWO;
+
+    switch (choice)
+    {
+        case CHOICE_ONE:
+            cout << "Selected 1\n";
+            break;
+
+        case CHOICE_TWO:
+        {
+            int count = INITIAL_COUNT;
+            cout << "Selected 2, Count=" << count << endl;
+            break;
+        }
+
+        case CHOICE_THREE:
+        {
+            string message = "Hello";
+            cout << message << " from case 3\n";
+            break;
+        }
+    }
+}
+
+template<typename T>
+void ProcessValue(T value)
+{
+    if constexpr (sizeof(T) == 4)
+    {
+        switch (value)
+        {
+            case VALUE_ZERO:
+                cout << "Zero\n";
+                break;
+            case VALUE_ONE:
+                cout << "One\n";
+                break;
+            default:
+                cout << "Other Integer\n";
+        }
+    }
+    else if constexpr (sizeof(T) == 1)
+    {
+        switch (value)
+        {
+            case CHAR_A:
+                cout << "Letter A\n";
+                break;
+            case CHAR_B:
+                cout << "Letter B\n";
+                break;
+        }
+    }
+}
+
+void TestConstexprSwitch()
+{
+    int num = VALUE_ONE;
+    ProcessValue(num);
+
+    char ch = CHAR_A;
+    ProcessValue(ch);
 }
 
 int main()

@@ -566,3 +566,237 @@ export const SWITCH_EXPECT_CASE13 = {
         },
     ],
 };
+
+export const SWITCH_EXPECT_NEST = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @switch/switchSample.cpp: %dflt',
+                'game = 1',
+                'difficulty = 2',
+                'if game == 1',
+            ],
+            preds: [],
+            succes: [1, 10],
+        },
+        {
+            id: 1,
+            stmts: [
+                'staticinvoke <@%unk/%unk: .cout()>(\'Shooting Game - \')',
+                'staticinvoke <@%unk/%unk: .cout()>(\'Shooting Game2 - \')',
+                'if difficulty == 1',
+            ],
+            preds: [0],
+            succes: [2, 11],
+        },
+        {
+            id: 2,
+            stmts: ['staticinvoke <@%unk/%unk: .cout()>(\'Easy Mode\\n\')'],
+            preds: [1],
+            succes: [9],
+        },
+        {
+            id: 3,
+            stmts: ['staticinvoke <@%unk/%unk: .cout()>(\'Normal Mode\\n\')'],
+            preds: [11],
+            succes: [9],
+        },
+        {
+            id: 4,
+            stmts: ['staticinvoke <@%unk/%unk: .cout()>(\'Hard Mode\\n\')'],
+            preds: [12],
+            succes: [9],
+        },
+        {
+            id: 5,
+            stmts: [
+                'staticinvoke <@%unk/%unk: .cout()>(\'Racing Game - \')',
+                'if difficulty == 1',
+            ],
+            preds: [10],
+            succes: [6, 13],
+        },
+        {
+            id: 6,
+            stmts: ['staticinvoke <@%unk/%unk: .cout()>(\'Beginner Track\\n\')'],
+            preds: [5],
+            succes: [9],
+        },
+        {
+            id: 7,
+            stmts: ['staticinvoke <@%unk/%unk: .cout()>(\'Intermediate Track\\n\')'],
+            preds: [13],
+            succes: [9],
+        },
+        {
+            id: 8,
+            stmts: ['staticinvoke <@%unk/%unk: .cout()>(\'Invalid Game\\n\')'],
+            preds: [10],
+            succes: [9],
+        },
+        {
+            id: 9,
+            stmts: ['return'],
+            preds: [
+                8, 2, 3, 4,
+                6, 7, 12, 13,
+            ],
+            succes: [],
+        },
+        { id: 10, stmts: ['if game == 2'], preds: [0], succes: [5, 8] },
+        {
+            id: 11,
+            stmts: ['if difficulty == 2'],
+            preds: [1],
+            succes: [3, 12],
+        },
+        {
+            id: 12,
+            stmts: ['if difficulty == 3'],
+            preds: [11],
+            succes: [4, 9],
+        },
+        {
+            id: 13,
+            stmts: ['if difficulty == 2'],
+            preds: [5],
+            succes: [7, 9],
+        },
+    ],
+};
+
+export const SWITCH_EXPECT_PROCESS_CHOICE = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @switch/switchSample.cpp: %dflt',
+                'choice = 2',
+                'if choice == 1',
+            ],
+            preds: [],
+            succes: [1, 5],
+        },
+        {
+            id: 1,
+            stmts: ['staticinvoke <@%unk/%unk: .cout()>(\'Selected 1\\n\')'],
+            preds: [0],
+            succes: [4],
+        },
+        {
+            id: 2,
+            stmts: [
+                'count = 5',
+                'staticinvoke <@%unk/%unk: .cout()>(\'Selected 2, Count=\', count)',
+            ],
+            preds: [5],
+            succes: [4],
+        },
+        {
+            id: 3,
+            stmts: [
+                'message = \'Hello\'',
+                'staticinvoke <@%unk/%unk: .cout()>(message, \' from case 3\\n\')',
+            ],
+            preds: [6],
+            succes: [4],
+        },
+        { id: 4, stmts: ['return'], preds: [1, 2, 3, 6], succes: [] },
+        { id: 5, stmts: ['if choice == 2'], preds: [0], succes: [2, 6] },
+        { id: 6, stmts: ['if choice == 3'], preds: [5], succes: [3, 4] },
+    ],
+};
+
+
+export const SWITCH_EXPECT_PROCESS_VALUE = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'value = parameter0: T',
+                'this = this: @switch/switchSample.cpp: %dflt',
+                'if sizeof(T) == 4',
+            ],
+            preds: [],
+            succes: [1, 5],
+        },
+        { id: 1, stmts: ['if value == 0'], preds: [0], succes: [2, 10] },
+        {
+            id: 2,
+            stmts: ['staticinvoke <@%unk/%unk: .cout()>(\'Zero\\n\')'],
+            preds: [1],
+            succes: [9],
+        },
+        {
+            id: 3,
+            stmts: ['staticinvoke <@%unk/%unk: .cout()>(\'One\\n\')'],
+            preds: [10],
+            succes: [9],
+        },
+        {
+            id: 4,
+            stmts: ['staticinvoke <@%unk/%unk: .cout()>(\'Other Integer\\n\')'],
+            preds: [10],
+            succes: [9],
+        },
+        {
+            id: 5,
+            stmts: ['if sizeof(T) == 1'],
+            preds: [0],
+            succes: [6, 9],
+        },
+        {
+            id: 6,
+            stmts: ['if value == CHAR_A'],
+            preds: [5],
+            succes: [7, 11],
+        },
+        {
+            id: 7,
+            stmts: ['staticinvoke <@%unk/%unk: .cout()>(\'Letter A\\n\')'],
+            preds: [6],
+            succes: [9],
+        },
+        {
+            id: 8,
+            stmts: ['staticinvoke <@%unk/%unk: .cout()>(\'Letter B\\n\')'],
+            preds: [11],
+            succes: [9],
+        },
+        {
+            id: 9,
+            stmts: ['return'],
+            preds: [
+                2, 3, 4, 5,
+                7, 8, 11,
+            ],
+            succes: [],
+        },
+        { id: 10, stmts: ['if value == 1'], preds: [1], succes: [3, 4] },
+        {
+            id: 11,
+            stmts: ['if value == CHAR_B'],
+            preds: [6],
+            succes: [8, 9],
+        },
+    ],
+};
+
+export const SWITCH_EXPECT_TEST_CONST = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @switch/switchSample.cpp: %dflt',
+                'num = 1',
+                'staticinvoke <@switch/switchSample.cpp: %dflt.ProcessValue(T)>(num)',
+                'ch = CHAR_A',
+                'staticinvoke <@switch/switchSample.cpp: %dflt.ProcessValue(T)>(ch)',
+                'return',
+            ],
+            preds: [],
+            succes: [],
+        },
+    ],
+};

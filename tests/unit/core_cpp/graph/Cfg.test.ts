@@ -98,6 +98,7 @@ describe('CfgTest', () => {
 
     it('case3: switch statement', () => {
         const scene = buildScene('switch');
+        scene.inferTypes();
         testBlocks(scene, 'switchSample.cpp', 'Case1', SWITCH_EXPECT.SWITCH_EXPECT_CASE1.blocks);
         testBlocks(scene, 'switchSample.cpp', 'Case2', SWITCH_EXPECT.SWITCH_EXPECT_CASE2.blocks);
         testBlocks(scene, 'switchSample.cpp', 'Case3', SWITCH_EXPECT.SWITCH_EXPECT_CASE3.blocks);
@@ -111,6 +112,11 @@ describe('CfgTest', () => {
         testBlocks(scene, 'switchSample.cpp', 'Case11', SWITCH_EXPECT.SWITCH_EXPECT_CASE11.blocks);
         testBlocks(scene, 'switchSample.cpp', 'Case12', SWITCH_EXPECT.SWITCH_EXPECT_CASE12.blocks);
         testBlocks(scene, 'switchSample.cpp', 'Case13', SWITCH_EXPECT.SWITCH_EXPECT_CASE13.blocks);
+        testBlocks(scene, 'switchSample.cpp', 'HandleGameSelection', SWITCH_EXPECT.SWITCH_EXPECT_NEST.blocks);
+        testBlocks(scene, 'switchSample.cpp', 'ProcessChoice', SWITCH_EXPECT.SWITCH_EXPECT_PROCESS_CHOICE.blocks);
+        testBlocks(scene, 'switchSample.cpp', 'ProcessValue', SWITCH_EXPECT.SWITCH_EXPECT_PROCESS_VALUE.blocks);
+        testBlocks(scene, 'switchSample.cpp', 'TestConstexprSwitch', SWITCH_EXPECT.SWITCH_EXPECT_TEST_CONST.blocks);
+
     });
 
     it('case4: loop statement', () => {

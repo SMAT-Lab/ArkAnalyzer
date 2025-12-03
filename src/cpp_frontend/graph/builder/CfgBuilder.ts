@@ -381,11 +381,6 @@ export class CfgBuilder {
     }
 
     private sliceCaseDefaultNode(node: CxxAstNode, clauses: CxxAstNode[]): void {
-        if (node.kind === 'BreakStmt' || node.kind === 'DefaultStmt' || node.kind === 'ContinueStmt' ||
-            node.kind === 'GotoStmt') {
-            clauses.push(node);
-            return;
-        }
         if (node.kind === 'CaseStmt') {
             for (let i = 0; i < node.inner.length; i++) {
                 let isCaseOrDefault = node.inner[i].kind === 'CaseStmt' || node.inner[i].kind === 'DefaultStmt';
@@ -399,6 +394,9 @@ export class CfgBuilder {
                     clauses.push(node);
                 }
             }
+        } else {
+            // Divide subsequent nodes into cases
+            clauses.push(node);
         }
     }
 
@@ -414,11 +412,13 @@ export class CfgBuilder {
         // When there are no case brackets, case and break/continue are separate nodes in cpp,
         // here we add the break/continue nodes as inner members of case or default nodes
         return tempClauses.reduce((acc: CxxAstNode[], curr: CxxAstNode, idx: number, arr: CxxAstNode[]) => {
-            if (['CaseStmt', 'DefaultStmt'].includes(curr.kind.toString())) {
+            if (['CaseStmt', 'DefaultStmt'].includes(curr.kind)) {
                 curr.parent = switchNode.inner[1];
-                if (idx + 1 < arr.length && ['BreakStmt', 'ContinueStmt', 'GotoStmt'].includes(arr[idx + 1].kind.toString())) {
+                // Reconstruct the syntax tree structure
+                while (idx + 1 < arr.length && !['CaseStmt', 'DefaultStmt'].includes(arr[idx + 1].kind)) {
                     arr[idx + 1].parent = curr;
                     curr.inner.push(arr[idx + 1]);
+                    idx++;
                 }
                 acc.push(curr);
             }
