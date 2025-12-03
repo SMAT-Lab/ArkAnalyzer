@@ -240,9 +240,9 @@ export const GOTO_EXPECT_CASE13 = {
 
 export const GOTO_EXPECT_CASE14 = {
     blocks: [
-        {id: 0, stmts: [ 'this = this: @goto/gotoSample.cpp: %dflt', 'i = 0' ], preds: [], succes: [ 1 ]},
-        {id: 1, stmts: [ "staticinvoke <@%unk/%unk: .cout()>('i: ', i)" ], preds: [ 0, 2 ], succes: [ 2 ]},
-        {id: 2, stmts: [ 'i = i + 1', 'if i < 3' ], preds: [ 1 ], succes: [ 3, 1 ]},
-        {id: 3, stmts: [ "staticinvoke <@%unk/%unk: .cout()>('goto end')", 'return' ], preds: [ 2 ], succes: []}
+        { id: 0, stmts: [ 'this = this: @goto/gotoSample.cpp: %dflt', 'i = 0' ], preds: [], succes: [ 1 ] },
+        { id: 1, stmts: [ "staticinvoke <@%unk/%unk: .cout()>('i: ', i)" ], preds: [ 0, 2 ], succes: [ 2 ] },
+        { id: 2, stmts: [ 'i = i + 1', 'if i < 3' ], preds: [ 1 ], succes: [ 3, 1 ] },
+        { id: 3, stmts: [ "staticinvoke <@%unk/%unk: .cout()>('goto end')", 'return' ], preds: [ 2 ], succes: [] }
     ],
 };

@@ -74,7 +74,7 @@ export class StatementBuilder {
     addressCode3: string[] = [];
     block: BlockBuilder | null;
     ifExitPass: boolean;
-    passTmies: number = 0;
+    passTimes: number = 0;
     numOfIdentifier: number = 0;
     isDoWhile: boolean = false;
     hasDoWhileBody: boolean = false;
@@ -216,10 +216,10 @@ export class CfgBuilder {
         } else {
             lastStatement.next = s;
             s.lasts.add(lastStatement);
-            // Process the passTmies when multiple goto entries exist in a node
+            // Process the passTimes when multiple goto entries exist in a node
             if (lastStatement.code.includes('goto label:') &&
-                lastStatement.lasts.size > 1 && s.passTmies === 0) {
-                s.passTmies += (lastStatement.lasts.size  - 1);
+                lastStatement.lasts.size > 1 && s.passTimes === 0) {
+                s.passTimes += (lastStatement.lasts.size - 1);
             }
         }
     }
@@ -541,9 +541,9 @@ export class CfgBuilder {
         if (this.labelStmtMap.has(label)) {
             const labelStmt = this.labelStmtMap.get(label);
             if (labelStmt?.next) {
-                labelStmt.next.passTmies = (labelStmt.next.passTmies || 0) + 1;
+                labelStmt.next.passTimes = (labelStmt.next.passTimes || 0) + 1;
             }
-            this.judgeLastType(<StatementBuilder>this.labelStmtMap.get(label)?.next, s);
+            this.judgeLastType(<StatementBuilder> this.labelStmtMap.get(label)?.next, s);
         }
     }
 
@@ -906,8 +906,8 @@ export class CfgBuilder {
             if (((stmt.type === 'continueStatement' || stmt.next.type === 'loopStatement') && stmt.next.block) || stmt.next.type.includes('exit')) {
                 return null;
             }
-            stmt.next.passTmies++;
-            if (stmt.next.passTmies === stmt.next.lasts.size || stmt.next.type === 'loopStatement' || stmt.next.isDoWhile) {
+            stmt.next.passTimes++;
+            if (stmt.next.passTimes === stmt.next.lasts.size || stmt.next.type === 'loopStatement' || stmt.next.isDoWhile) {
                 if (
                     stmt.next.scopeID !== stmt.scopeID &&
                     !(stmt.next instanceof ConditionStatementBuilder && stmt.next.doStatement)

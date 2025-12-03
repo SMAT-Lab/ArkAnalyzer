@@ -50,7 +50,7 @@ export class StatementBuilder {
     addressCode3: string[] = [];
     block: BlockBuilder | null;
     ifExitPass: boolean;
-    passTmies: number = 0;
+    passTimes: number = 0;
     numOfIdentifier: number = 0;
     isDoWhile: boolean = false;
 
@@ -651,8 +651,8 @@ export class CfgBuilder {
             if (((stmt.type === 'continueStatement' || stmt.next.type === 'loopStatement') && stmt.next.block) || stmt.next.type.includes('exit')) {
                 return null;
             }
-            stmt.next.passTmies++;
-            if (stmt.next.passTmies === stmt.next.lasts.size || stmt.next.type === 'loopStatement' || stmt.next.isDoWhile) {
+            stmt.next.passTimes++;
+            if (stmt.next.passTimes === stmt.next.lasts.size || stmt.next.type === 'loopStatement' || stmt.next.isDoWhile) {
                 if (
                     stmt.next.scopeID !== stmt.scopeID &&
                     !(stmt.next instanceof ConditionStatementBuilder && stmt.next.doStatement) &&
