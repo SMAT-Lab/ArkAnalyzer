@@ -250,7 +250,7 @@ int Case13()
     L:
         a++;
         std::cout << "i: " << a << std::endl;
-        if (a >= 2) {
+        if (a >= TWO) {
             goto L;
         }
     }
@@ -263,7 +263,7 @@ void Case14()
 L:
     std::cout<< "i: " << i << std::endl;
     i++;
-    if (i < 3) {
+    if (i < THREE) {
         goto L;
     }
     std::cout<< "goto end" << std::endl;
