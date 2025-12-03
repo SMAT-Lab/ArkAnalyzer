@@ -92,6 +92,8 @@ export class PagBuilder {
     private globalThisPagNode?: PagGlobalThisNode;
     private externalScopeVariableMap: Map<Local, Local[]> = new Map();
     private retriggerNodesList: Set<NodeID> = new Set();
+    // Record arrow function object nodes: funcName -> function object node ID
+    private arrowFunctionObjectMap: Map<string, NodeID> = new Map();
 
     constructor(p: Pag, cg: CallGraph, s: Scene, config: PointerAnalysisConfig) {
         this.pag = p;
@@ -225,6 +227,9 @@ export class PagBuilder {
 
     private buildInvokeExprInStmt(stmt: Stmt, fpag: FuncPag): void {
         // TODO: discuss if we need a invokeStmt
+        if(!stmt.getInvokeExpr()) {
+            return;
+        }
 
         let callSites = this.cg.getCallSiteByStmt(stmt);
         if (callSites.length !== 0) {
@@ -329,6 +334,11 @@ export class PagBuilder {
         this.addCallsEdgesFromFuncPag(funcPag, cid);
         this.addDynamicCallSite(funcPag, funcID, cid);
         this.addUnknownCallSite(funcPag, funcID);
+        
+        // Check if this is an arrow function and set up its 'this' binding
+        // Must be called after addEdgesFromFuncPag to ensure this node is created
+        this.setupArrowFunctionThis(funcID, cid);
+        
         this.handledFunc.add(`${cid}-${funcID}`);
     }
 
@@ -353,6 +363,11 @@ export class PagBuilder {
             // Take place of the real stmt for return
             if (dstPagNode.getStmt() instanceof ArkReturnStmt) {
                 dstPagNode.setStmt(e.stmt);
+            }
+
+            // Record arrow function object node (for variable assignment, field assignment, etc.)
+            if (srcPagNode instanceof PagFuncNode) {
+                this.recordArrowFunctionObjectNode(srcPagNode, e.src);
             }
 
             // for demand-driven analysis, add fake parameter heapObj nodes
@@ -396,7 +411,7 @@ export class PagBuilder {
                 if (ivkExpr instanceof ArkInstanceInvokeExpr) {
                     this.addThisRefCallEdge(cid, ivkExpr.getBase(), callee, calleeCid, cs.callerFuncID);
                 } else {
-                    logger.error(`constructor or intrinsic func is static ${ivkExpr!.toString()}`);
+                    logger.debug(`constructor or intrinsic func is static ${ivkExpr!.toString()}`);
                 }
             }
 
@@ -793,7 +808,7 @@ export class PagBuilder {
             return srcNodes;
         }
         if (calleeNode.isSdkMethod()) {
-            logger.error(`SDK method ${calleeMethod.getSignature().toString()} shoule be handled by plugin`);
+            logger.warn(`SDK method ${calleeMethod.getSignature().toString()} should be handled by plugin (ignored)`);
             return srcNodes;
         }
 
@@ -863,6 +878,11 @@ export class PagBuilder {
             // Get or create new PAG node for argument and parameter
             let srcPagNode = this.getOrNewPagNode(callerCid, arg, callStmt);
             let dstPagNode = this.getOrNewPagNode(calleeCid, param, callStmt);
+
+            // Record arrow function object node for later thisPt setup
+            if (srcPagNode instanceof PagFuncNode) {
+                this.recordArrowFunctionObjectNode(srcPagNode, arg);
+            }
 
             this.pag.addPagEdge(srcPagNode, dstPagNode, PagEdgeKind.Copy, callStmt);
             srcNodes.push(srcPagNode.getID());
@@ -1469,5 +1489,122 @@ export class PagBuilder {
 
     public getContextSelector(): ContextSelector {
         return this.ctxSelector;
+    }
+
+    /**
+     * Record arrow function object node for later thisPt setup
+     */
+    private recordArrowFunctionObjectNode(funcNode: PagFuncNode, funcValue: Value): void {
+        const methodSig = funcNode.getMethod();
+        if (!methodSig) {
+            return;
+        }
+        
+        const funcName = methodSig.getMethodSubSignature().getMethodName();
+        
+        // Only record arrow functions (name contains %AM)
+        if (funcName.includes('%AM')) {
+            this.arrowFunctionObjectMap.set(funcName, funcNode.getID());
+            logger.debug(`Recorded arrow function object: ${funcName} -> Node ${funcNode.getID()}`);
+        }
+    }
+
+    /**
+     * Set up 'this' binding for arrow functions
+     * 1. Set the thisPt of arrow function object node (pointing to ThisRef node inside arrow function body)
+     * 2. Establish This edge from arrow function's ThisRef to outer function's this
+     */
+    private setupArrowFunctionThis(funcID: FuncID, cid: ContextID): void {
+        const arkMethod = this.cg.getArkMethodByFuncID(funcID);
+        if (!arkMethod) {
+            return;
+        }
+
+        // Check if this is an arrow function (name contains %AM)
+        const funcName = arkMethod.getName();
+        if (!funcName.includes('%AM')) {
+            return;
+        }
+
+        logger.debug(`Setting up arrow function this for ${funcName} (FuncID: ${funcID}, Ctx: ${cid})`);
+
+        // 1. Get ThisRef node inside the arrow function body
+        const arrowFuncThisRefID = this.recordThisRefNode(arkMethod, cid);
+        if (arrowFuncThisRefID === -1) {
+            return;
+        }
+
+        // 2. Look up arrow function object node from map (O(1))
+        const arrowFuncObjNodeID = this.arrowFunctionObjectMap.get(funcName);
+        if (arrowFuncObjNodeID !== undefined) {
+            const funcNode = this.pag.getNode(arrowFuncObjNodeID) as PagFuncNode;
+            funcNode.setThisPt(arrowFuncThisRefID);
+            logger.debug(`Set function object node ${arrowFuncObjNodeID} thisPt to ThisRef ${arrowFuncThisRefID}`);
+        } else {
+            logger.warn(`Arrow function object node not found for ${funcName}`);
+        }
+
+        // 3. Get the outer function of arrow function and establish This edge
+        const outerMethod = arkMethod.getOuterMethod();
+        if (!outerMethod) {
+            logger.warn(`Could not find outer method for arrow function ${funcName}`);
+            return;
+        }
+
+        logger.debug(`Arrow function outer method: ${outerMethod.getName()}`);
+        
+        // Get context of arrow function object node (in which context of outer function the arrow function object is created)
+        const arrowFuncObjNode = arrowFuncObjNodeID !== undefined ? this.pag.getNode(arrowFuncObjNodeID) as PagNode : undefined;
+        const outerContextID = arrowFuncObjNode?.getCid();
+        
+        // Find 'this' local node of outer function in specified context
+        const outerThisNode = this.findThisNodeForMethod(outerMethod, outerContextID);
+        if (outerThisNode) {
+            const arrowFuncThisRef = this.pag.getNode(arrowFuncThisRefID) as PagThisRefNode;
+            
+            // Establish This edge: outer this -> arrow function ThisRef
+            if (this.pag.addPagEdge(outerThisNode, arrowFuncThisRef, PagEdgeKind.This)) {
+                logger.info(`Connected arrow function ${funcName} this (Node ${arrowFuncThisRefID}) to outer this (Node ${outerThisNode.getID()})`);
+                
+                // Add outer this node to retrigger list to ensure pointer propagation
+                this.retriggerNodesList.add(outerThisNode.getID());
+            }
+        }
+    }
+
+    /**
+     * Find 'this' local node for the specified method in the specified context
+     * @param method Target method
+     * @param contextID Optional context ID. If not specified, returns the 'this' node in the first found context
+     */
+    private findThisNodeForMethod(method: ArkMethod, contextID?: ContextID): PagLocalNode | undefined {
+        const cfg = method.getCfg();
+        if (!cfg) return undefined;
+
+        // Find 'this' assignment statement in method: this = this: ClassName
+        const thisAssignStmt = cfg
+            .getStmts()
+            .find(s => s instanceof ArkAssignStmt && s.getRightOp() instanceof ArkThisRef);
+        
+        if (!thisAssignStmt) return undefined;
+
+        const thisLocal = (thisAssignStmt as ArkAssignStmt).getLeftOp();
+        if (!(thisLocal instanceof Local)) return undefined;
+
+        const ctx2NodeMap = this.pag.getNodesByValue(thisLocal);
+        if (!ctx2NodeMap || ctx2NodeMap.size === 0) return undefined;
+
+        // If context is specified, find node in that context
+        if (contextID !== undefined) {
+            const nodeID = ctx2NodeMap.get(contextID);
+            if (nodeID === undefined) return undefined;
+            return this.pag.getNode(nodeID) as PagLocalNode;
+        }
+
+        // Otherwise return 'this' node in the first found context
+        const firstNodeID = ctx2NodeMap.values().next().value;
+        if (firstNodeID === undefined) return undefined;
+        
+        return this.pag.getNode(firstNodeID) as PagLocalNode;
     }
 }

@@ -33,6 +33,7 @@ import { DiffPTData, IPtsCollection } from './PtsDS';
 import { Local } from '../../core/base/Local';
 import { ArkMethod } from '../../core/model/ArkMethod';
 import { ArkArrayRef } from '../../core/base/Ref';
+import { CONTAINER_ELEMENT_CID } from './context/Context';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'PTA');
 
@@ -168,6 +169,7 @@ export class PointerAnalysis extends AbstractAnalysis {
 
             // do pointer transfer
             this.solveWorklist();
+            
             // process dynamic call
             if (this.config.analysisScale === PtaAnalysisScale.WholeProgram || this.ptaStat.iterTimes === 1) {
                 reanalyzer = this.onTheFlyDynamicCallSolve();
@@ -256,8 +258,9 @@ export class PointerAnalysis extends AbstractAnalysis {
         instanceFieldNodeMap!.forEach((nodeIDs, cid) => {
             // TODO: check cid
             // cid === -1 will escape the check, mainly for globalThis
+            // cid === CONTAINER_ELEMENT_CID will escape the check, for container element/field nodes
             let baseCid = node.getCid();
-            if (baseCid !== -1 && cid !== baseCid) {
+            if (baseCid !== -1 && cid !== CONTAINER_ELEMENT_CID && cid !== baseCid) {
                 return;
             }
             nodeIDs.forEach((nodeID: number) => {
@@ -322,6 +325,9 @@ export class PointerAnalysis extends AbstractAnalysis {
             this.ptaStat.numProcessedLoad++;
             for (let pt of diffPts!) {
                 let srcNode;
+                if(fieldNode.getID() === 51) {
+                    console.log('fieldNode', fieldNode.getValue());
+                }
                 if (fieldNode instanceof PagArrayNode) {
                     let arrayBase = (fieldNode.getValue() as ArkArrayRef).getBase();
                     srcNode = this.pag.getOrClonePagContainerFieldNode(pt, arrayBase, 'Array');

@@ -104,6 +104,13 @@ export class ContainerPlugin implements IPagPlugin {
             return;
         }
 
+        const baseNode = this.pag.getNode(basePt) as PagNode;
+        
+        // Skip global abstract container objects (Ctx:0) to avoid type confusion between different container instances
+        if (baseNode.getCid() === 0) {
+            return;
+        }
+
         const argNode = this.pag.getOrNewNode(cid, argValue, cs.callStmt) as PagNode;
         const containerFieldNode = this.pag.getOrClonePagContainerFieldNode(basePt, baseValue, 'Array');
 
@@ -120,6 +127,13 @@ export class ContainerPlugin implements IPagPlugin {
         const argIndex = 0;
         let argValue = cs.args![argIndex];
         if (!argValue) {
+            return;
+        }
+
+        const baseNode = this.pag.getNode(basePt) as PagNode;
+        
+        // Skip global abstract container objects (Ctx:0) to avoid type confusion between different container instances
+        if (baseNode.getCid() === 0) {
             return;
         }
 
@@ -142,6 +156,14 @@ export class ContainerPlugin implements IPagPlugin {
             return;
         }
 
+        const baseNode = this.pag.getNode(basePt) as PagNode;
+        
+        // Skip global abstract Map objects (Ctx:0) to avoid type confusion between different Map types
+        // Global abstract Maps may come from field initialization, causing Map<K,V1> and Map<K,V2> to share data
+        if (baseNode.getCid() === 0) {
+            return;
+        }
+
         const argNode = this.pag.getOrNewNode(cid, argValue, cs.callStmt) as PagNode;
         const containerFieldNode = this.pag.getOrClonePagContainerFieldNode(basePt, baseValue, 'Map');
 
@@ -160,6 +182,13 @@ export class ContainerPlugin implements IPagPlugin {
             return;
         }
         const leftValue = cs.callStmt.getLeftOp();
+
+        const baseNode = this.pag.getNode(basePt) as PagNode;
+        
+        // Skip global abstract Map objects (Ctx:0) to avoid type confusion between different Map types
+        if (baseNode.getCid() === 0) {
+            return;
+        }
 
         const leftValueNode = this.pag.getOrNewNode(cid, leftValue, cs.callStmt) as PagNode;
         const containerFieldNode = this.pag.getOrClonePagContainerFieldNode(basePt, baseValue, 'Map');
