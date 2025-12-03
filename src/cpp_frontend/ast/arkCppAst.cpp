@@ -669,6 +669,7 @@ static bool IsLightExpansionExpr(CXCursorKind k)
         case CXCursor_GNUNullExpr:
         case CXCursor_CXXNullPtrLiteralExpr:
         case CXCursor_CStyleCastExpr:
+        case CXCursor_UnexposedExpr:
         case CXCursor_ParenExpr:
             return true;
         default:
