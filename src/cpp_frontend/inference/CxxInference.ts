@@ -19,7 +19,7 @@ import { IRInference } from '../common/IRInference';
 import { ImportInfo } from '../../core/model/ArkImport';
 import { findExportInfo, getArkFile, PatchRegistry, CxxModelUtils } from '../common/ModelUtils';
 import { ArkClass } from '../../core/model/ArkClass';
-import { TypeInference } from '../common/TypeInference';
+import { TypeInference as CxxTypeInference } from '../common/TypeInference';
 import { ArkMethod } from '../../core/model/ArkMethod';
 import { MethodSignature } from '../../core/model/ArkSignature';
 import { InferenceBuilder } from '../../core/inference/InferenceBuilder';
@@ -28,6 +28,7 @@ import { ValueInference, InferLanguage } from '../../core/inference/ValueInferen
 import { Value } from '../../core/base/Value';
 import { ArkAliasTypeDefineStmt, Stmt } from '../../core/base/Stmt';
 import { ModelUtils } from '../../core/common/ModelUtils';
+import { TypeInference } from '../../core/common/TypeInference';
 
 class CxxFileInference extends FileInference {
     private preprocessedProjectName: string = '';
@@ -44,6 +45,7 @@ class CxxFileInference extends FileInference {
         }
         PatchRegistry.patchStaticMethod(ModelUtils, 'getArkExportInImportInfoWithName', CxxModelUtils.getArkExportInImportInfoWithName);
         PatchRegistry.patchStaticMethod(ModelUtils, 'findPropertyInClass', CxxModelUtils.findPropertyInClass);
+        PatchRegistry.patchStaticMethod(TypeInference, 'inferUnclearedType', CxxTypeInference.inferUnclearedType);
         file.getImportInfos().filter(i => i.getExportInfo() === undefined)
             .forEach(info => this.importInfoInference.doInfer(info));
     }
@@ -52,6 +54,7 @@ class CxxFileInference extends FileInference {
         super.postInfer(file);
         PatchRegistry.restoredStaticMethod(ModelUtils, 'getArkExportInImportInfoWithName');
         PatchRegistry.restoredStaticMethod(ModelUtils, 'findPropertyInClass');
+        PatchRegistry.restoredStaticMethod(TypeInference, 'inferUnclearedType');
     }
 }
 
@@ -80,11 +83,11 @@ class CxxClassInference extends ClassInference {
      */
     public preInfer(arkClass: ArkClass): void {
         super.preInfer(arkClass);
-        TypeInference.inferGenericType(arkClass.getGenericsTypes(), arkClass);
+        CxxTypeInference.inferGenericType(arkClass.getGenericsTypes(), arkClass);
         arkClass.getFields()
-            .filter(p => TypeInference.isUnclearType(p.getType()))
+            .filter(p => CxxTypeInference.isUnclearType(p.getType()))
             .forEach(f => {
-                const newType = TypeInference.inferUnclearedType(f.getType(), arkClass);
+                const newType = CxxTypeInference.inferUnclearedType(f.getType(), arkClass);
                 if (newType) {
                     f.getSignature().setType(newType);
                 }
@@ -98,7 +101,7 @@ class CxxMethodInference extends MethodInference {
      * @param arkMethod
      */
     public preInfer(arkMethod: ArkMethod): void {
-        TypeInference.inferGenericType(arkMethod.getGenericTypes(), arkMethod.getDeclaringArkClass());
+        CxxTypeInference.inferGenericType(arkMethod.getGenericTypes(), arkMethod.getDeclaringArkClass());
         const signatures: MethodSignature[] = [];
         arkMethod.getDeclareSignatures()?.forEach(m => signatures.push(m));
         const impl = arkMethod.getImplementationSignature();
@@ -109,9 +112,9 @@ class CxxMethodInference extends MethodInference {
             s.getMethodSubSignature()
                 .getParameters()
                 .forEach(p => {
-                    TypeInference.inferParameterType(p, arkMethod);
+                    CxxTypeInference.inferParameterType(p, arkMethod);
                 });
-            TypeInference.inferSignatureReturnType(s, arkMethod);
+            CxxTypeInference.inferSignatureReturnType(s, arkMethod);
         });
     }
 }
@@ -123,7 +126,7 @@ export class CxxStmtInference extends StmtInference {
     }
 
     public typeSpread(stmt: Stmt, method: ArkMethod): Set<Stmt> {
-        if (stmt instanceof ArkAliasTypeDefineStmt && TypeInference.isUnclearType(stmt.getAliasType().getOriginalType())) {
+        if (stmt instanceof ArkAliasTypeDefineStmt && CxxTypeInference.isUnclearType(stmt.getAliasType().getOriginalType())) {
             const originalType = stmt.getAliasTypeExpr().getOriginalType();
             if (originalType) {
                 stmt.getAliasType().setOriginalType(originalType);

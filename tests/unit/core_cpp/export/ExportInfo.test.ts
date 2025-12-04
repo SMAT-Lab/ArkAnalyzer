@@ -25,6 +25,7 @@ import {
     ArkAssignStmt,
     ArkMethod,
     ExportInfo,
+    ClassType
 } from '../../../../src';
 import { CAST_SAMPLE_EXPORT_INFO_EXPECT_IR, MY_HEADER_EXPORT_INFO_EXPECT_IR } from '../../../resources_cpp/exports/indirectRef/expectedIR';
 import {
@@ -35,7 +36,8 @@ import {
     MY_HEADER_EXPORT_INFO4,
     NAMESPACE_EXPORT_INFO,
 } from '../../../resources_cpp/exports/crossFileCase/expectedIR';
-import { assertBlocksEqual } from '../../common';
+import { assertBlocksEqual, testBlocksClass } from '../../common';
+import { BASE_DATA_EXPECT, INNER_CLASS_EXPECT } from '../../../resources_cpp/exports/nestedCase/expectIR';
 
 const BASE_DIR = 'tests/resources_cpp/exports';
 const is_system_win32 = process.platform === 'win32';
@@ -299,4 +301,44 @@ describe('cross file case', () => {
         assertBlocksEqual(blocks!, MAIN_CASE.blocks);
     });
 
+});
+
+describe('nested case', () => {
+    const customizedIncludePath = path.join(path.resolve(__dirname, '../../..'), 'resources_cpp/exports/nestedCase/include');
+    const projectScene = buildScene('nestedCase', [deveco_c, deveco_include, customizedIncludePath]);
+
+    it('namespaceB.h', () => {
+        const fileId = new FileSignature(projectScene.getProjectName(), 'include/namespaceB.h');
+        const file = projectScene.getFile(fileId);
+        assert.isNotEmpty(file);
+        testBlocksClass(projectScene, fileId.getFileName(), 'BaseData', BASE_DATA_EXPECT, 'SAME_NAMESPACE');
+
+        const dfltClass = file?.getNamespaceWithName('SAME_NAMESPACE')?.getDefaultClass();
+        assert.equal(
+            dfltClass?.getMethodWithName('GetId')?.getSignature().toString(),
+            '@nestedCase/src/namespaceB.cpp: SAME_NAMESPACE.%dflt.GetId(@nestedCase/include/namespaceB.h: SAME_NAMESPACE.BaseData&)'
+        );
+        assert.equal(
+            (dfltClass?.getMethodWithName('GetType')?.getReturnType() as ClassType).getClassSignature().toString(),
+            '@nestedCase/include/namespaceB.h: SAME_NAMESPACE.INDENT_TYPE$BaseData'
+        );
+    });
+
+    it('namespaceA.h', () => {
+        const fileId = new FileSignature(projectScene.getProjectName(), 'include/namespaceA.h');
+        const file = projectScene.getFile(fileId);
+        assert.isNotEmpty(file);
+        testBlocksClass(projectScene, fileId.getFileName(), 'InnerClass$OuterClass', INNER_CLASS_EXPECT, 'SAME_NAMESPACE');
+
+        const outterClass = file?.getNamespaceWithName('SAME_NAMESPACE')?.getClassWithName('OuterClass');
+        assert.equal(
+            outterClass?.getMethodWithName('ProcessInner')?.getDeclareSignatures()?.[0].toString(),
+            '@nestedCase/include/namespaceA.h: SAME_NAMESPACE.OuterClass.ProcessInner(@nestedCase/include/namespaceA.h: ' +
+            'SAME_NAMESPACE.InnerClass$OuterClass&)'
+        );
+        assert.equal(
+            outterClass?.getMethodWithName('ProcessBase')?.getDeclareSignatures()?.[0].toString(),
+            '@nestedCase/include/namespaceA.h: SAME_NAMESPACE.OuterClass.ProcessBase(@nestedCase/include/namespaceB.h: SAME_NAMESPACE.BaseData&)'
+        );
+    });
 });

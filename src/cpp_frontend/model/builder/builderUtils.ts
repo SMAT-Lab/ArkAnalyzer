@@ -372,6 +372,7 @@ const typeMap: Record<string, string> = {
     char16_t: 'string',
     char32_t: 'string',
     'std::basic_string<char>': 'string',
+    'basic_string<char>': 'string',
     // Number
     short: 'number',
     'unsigned short': 'number',
@@ -402,5 +403,6 @@ const typeMap: Record<string, string> = {
 };
 
 export function convertDataType(typeName: string): string {
-    return typeMap[typeName] ?? 'unsupported';
+    const formattedTypeName = typeName.replace(BuiltinCxx.CXXSTDREF, '');
+    return typeMap[formattedTypeName] ?? 'unsupported';
 }

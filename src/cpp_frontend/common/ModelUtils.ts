@@ -407,18 +407,33 @@ export class PatchRegistry {
 
 export class CxxModelUtils {
 
-    public static getArkExportInImportInfoWithName(name: string, arkFile: ArkFile): ArkExport | null {
+    public static getArkExportInImportInfoWithName(name: string, arkFile: ArkFile, arkClass?: ArkClass): ArkExport | null {
         let arkExport = arkFile.getImportInfoBy(name)?.getLazyExportInfo()?.getArkExport();
         if (arkExport) {
             return arkExport;
         }
-        // if using namespace in file，we can call the method or class in the namespace without a prefix.
+        let declNamespace: ArkNamespace | undefined;
+        if (arkClass) {
+            declNamespace = arkClass.getDeclaringArkNamespace();
+        }
+        // if using namespace or use type in same name namespace in file，we can call the method or class in the namespace without a prefix.
         for (const im of arkFile.getImportInfos()) {
             const imArkExport = im.getLazyExportInfo()?.getArkExport();
-            if (im.getImportType() !== 'NamespaceImport' || !(imArkExport instanceof ArkNamespace)) {
-                continue;
+            if (!(imArkExport instanceof ArkNamespace)) {
+                continue
             }
             const imNS = imArkExport as ArkNamespace;
+            // using namespace xxx
+            if (im.getImportType() === 'NamespaceImport') {
+                arkExport = ModelUtils.findPropertyInNamespace(name, imNS);
+                if (arkExport) {
+                    return arkExport;
+                }
+            }
+            // infer type within the same namespace across different files
+            if (declNamespace?.getName() !== imNS.getName()) {
+                continue;
+            }
             arkExport = ModelUtils.findPropertyInNamespace(name, imNS);
             if (arkExport) {
                 return arkExport;

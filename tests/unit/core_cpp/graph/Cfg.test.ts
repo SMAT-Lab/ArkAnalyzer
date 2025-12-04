@@ -17,7 +17,7 @@ import { BasicBlock, FileUtils, Scene, SceneConfig } from '../../../../src';
 import { Language } from '../../../../src/core/model/ArkFile';
 import { describe, expect, it, vi } from 'vitest';
 import path from 'path';
-import { assertClassBlocksEqual, testBlocks, testBlocksWithSignature } from '../../common';
+import { assertClassBlocksEqual, testBlocks, testBlocksWithSignature, testBlocksClass } from '../../common';
 import * as CONDITION_EXPECT from '../../../resources_cpp/cfg/conditionalOperator';
 import * as IF_EXPECT from '../../../resources_cpp/cfg/if/ifSampleExpects';
 import * as SWITCH_EXPECT from '../../../resources_cpp/cfg/switch/switchSampleExpects';
@@ -281,7 +281,7 @@ describe('Function Test', () => {
         testBlocksWithSignature(scene, 'overloadSample.cpp', '', 'PrintInfo(int)', OVERLOAD.OVERLOAD_PRINT_INFO_CASE1_EXPECT.blocks);
         testBlocksWithSignature(scene, 'overloadSample.cpp', '', 'PrintInfo(char)', OVERLOAD.OVERLOAD_PRINT_INFO_CASE2_EXPECT.blocks);
         testBlocksWithSignature(scene, 'overloadSample.cpp', '', 'PrintInfo(int, char)', OVERLOAD.OVERLOAD_PRINT_INFO_CASE3_EXPECT.blocks);
-        testBlocksClass(scene, 'overloadSample.cpp', 'Person', OVERLOAD.OVERLOAD_CLASS_PERSON_EXPECT, true);
+        testBlocksClass(scene, 'overloadSample.cpp', 'Person', OVERLOAD.OVERLOAD_CLASS_PERSON_EXPECT, undefined, true);
         testBlocksClass(scene, 'overloadSample.cpp', 'Vector', OVERLOAD.VECTOR_CLASS_EXPECT);
         testBlocks(scene, 'overloadSample.cpp', 'operator<<', OVERLOAD.OVERLOAD_COUT_EXPECT.blocks);
         testBlocks(scene, 'overloadSample.cpp', 'operator>>', OVERLOAD.OVERLOAD_CIN_EXPECT.blocks);
@@ -549,35 +549,6 @@ function getNapiIncludeDirs(): string[] {
         path.join(deveco_sysroot_include, 'x86_64-linux-ohos'),
         deveco_sysroot_include,
     ];
-}
-
-function testBlocksClass(scene: Scene, filePath: string, className: string, expectBlocks: any, isCheckOverload?: boolean): void {
-    const arkFile = scene.getFiles().find(file => file.getName().endsWith(filePath));
-    const arkClass = arkFile?.getClasses().find(arkClass => arkClass.getName() === className);
-    const classBlockMap = new Map<String, BasicBlock[]>();
-    for (const block of expectBlocks.blocks) {
-        classBlockMap.set(block.methodName, block.blocks);
-    }
-    // 1.Check class inheritance
-    const heritageClasses = new Set();
-    arkClass?.getAllHeritageClasses()?.forEach(heritageClass => {
-        heritageClasses.add(heritageClass.getName());
-    });
-    expect(heritageClasses).toEqual(new Set(expectBlocks.heritageClasses));
-    // 2.Check class fields
-    const fieldOfClass = new Set();
-    arkClass?.getFields()?.forEach(field => {
-        fieldOfClass.add(field.getName());
-    });
-    expect(fieldOfClass).toEqual(new Set(expectBlocks.fields));
-    // 3.Check class member functions
-    arkClass?.getMethods()?.forEach(method => {
-        const mapKey = isCheckOverload ? method.getSubSignature().toString() : method.getName();
-        const classBlock = classBlockMap.get(mapKey);
-        if (classBlock) {
-            assertClassBlocksEqual(method, classBlock);
-        }
-    });
 }
 
 function testNamespaceClasses(scene: Scene, filePath: string, namespaceName: string, expectBlocks: any): void {

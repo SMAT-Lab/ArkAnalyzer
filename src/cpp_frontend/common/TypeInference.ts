@@ -14,7 +14,7 @@
  */
 
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
-import { AbstractExpr, ArkInstanceInvokeExpr, ArkNewExpr, ArkPtrInvokeExpr, ArkStaticInvokeExpr } from '../../core/base/Expr';
+import { AbstractExpr, ArkInstanceInvokeExpr, ArkNewExpr, ArkPtrInvokeExpr, ArkStaticInvokeExpr, AbstractInvokeExpr } from '../../core/base/Expr';
 import { Local } from '../../core/base/Local';
 import {
     AbstractFieldRef,
@@ -92,10 +92,11 @@ import { AbstractTypeExpr, KeyofTypeExpr, TypeQueryExpr } from '../../core/base/
 import { SdkUtils } from '../../core/common/SdkUtils';
 import { ModifierType } from '../../core/model/ArkBaseModel';
 import { BuiltinCxx } from './Builtin';
-import { setTs2CxxFuncMapOfClass } from './ModelUtils';
+import { CxxModelUtils, setTs2CxxFuncMapOfClass } from './ModelUtils';
 import { Language } from '../../core/model/ArkFile';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'TypeInference');
+const unknownFileName: string[] = [UNKNOWN_FILE_NAME, Builtin.DUMMY_FILE_NAME];
 
 export class TypeInference {
     public static inferTypeInArkField(arkField: ArkField): void {
@@ -146,34 +147,72 @@ export class TypeInference {
      * @returns
      */
     public static inferUnclearedType(leftOpType: Type, declaringArkClass: ArkClass, visited: Set<Type> = new Set()): Type | null | undefined {
-        if (visited.has(leftOpType)) {
-            return leftOpType;
+        let typeWithoutPtrOrRef = leftOpType;
+        if (typeWithoutPtrOrRef instanceof PointerType || typeWithoutPtrOrRef instanceof ReferenceType) {
+            typeWithoutPtrOrRef = typeWithoutPtrOrRef.getBaseType();
+        }
+        if (visited.has(typeWithoutPtrOrRef)) {
+            return typeWithoutPtrOrRef;
         } else {
-            visited.add(leftOpType);
+            visited.add(typeWithoutPtrOrRef);
         }
         let type;
-        if (leftOpType instanceof ClassType && leftOpType.getClassSignature().getDeclaringFileSignature().getFileName() === UNKNOWN_FILE_NAME) {
-            type = TypeInference.inferUnclearRefName(leftOpType.getClassSignature().getClassName(), declaringArkClass);
-        } else if (leftOpType instanceof ArrayType) {
+        if (typeWithoutPtrOrRef instanceof ClassType && unknownFileName.includes(typeWithoutPtrOrRef.getClassSignature().getDeclaringFileSignature().getFileName())) {
+            const realTypes = typeWithoutPtrOrRef.getRealGenericTypes();
+            this.inferRealGenericTypes(realTypes, declaringArkClass);
+            let newType = this.inferUnclearRefName(typeWithoutPtrOrRef.getClassSignature().getClassName(), declaringArkClass);
+            type = newType ? this.replaceTypeWithReal(newType, realTypes) : null;
+        } else if (typeWithoutPtrOrRef instanceof TypeQueryExpr) {
+            this.inferRealGenericTypes(typeWithoutPtrOrRef.getGenerateTypes(), declaringArkClass);
+            type = typeWithoutPtrOrRef;
+        } else if (typeWithoutPtrOrRef instanceof TupleType) {
+            this.inferRealGenericTypes(typeWithoutPtrOrRef.getTypes(), declaringArkClass);
+            type = typeWithoutPtrOrRef;
+        } else if (typeWithoutPtrOrRef instanceof GenericType) {
+            this.inferGenericType([typeWithoutPtrOrRef], declaringArkClass);
+            type = typeWithoutPtrOrRef;
+        } else if (typeWithoutPtrOrRef instanceof AnnotationNamespaceType) {
+            type = this.inferBaseType(typeWithoutPtrOrRef.getOriginType(), declaringArkClass);
+        } else if (typeWithoutPtrOrRef instanceof UnclearReferenceType) {
+            type = this.inferUnclearRefType(typeWithoutPtrOrRef, declaringArkClass);
+        }
+        if (type) {
+            if (leftOpType instanceof PointerType || leftOpType instanceof ReferenceType) {
+                leftOpType.setBaseType(type);
+                return leftOpType;
+            }
+            return type;
+        }
+        type = this.inferUnclearComplexType(typeWithoutPtrOrRef, declaringArkClass, visited);
+        if (type) {
+            if (leftOpType instanceof PointerType || leftOpType instanceof ReferenceType) {
+                leftOpType.setBaseType(type);
+                return leftOpType;
+            }
+        }
+        return type;
+    }
+
+    public static inferUnclearComplexType(leftOpType: Type, declaringArkClass: ArkClass, visited: Set<Type>): Type | undefined {
+        let type;
+        if (leftOpType instanceof ArrayType) {
             let baseType = this.inferUnclearedType(leftOpType.getBaseType(), declaringArkClass, visited);
             if (baseType) {
                 leftOpType.setBaseType(baseType);
                 type = leftOpType;
             }
         } else if (leftOpType instanceof AliasType) {
-            let baseType = this.inferUnclearedType(leftOpType.getOriginalType(), declaringArkClass, visited);
+            const defArkClass = declaringArkClass.getDeclaringArkFile().getScene().getMethod(
+                leftOpType.getSignature().getDeclaringMethodSignature())?.getDeclaringArkClass();
+            let baseType = this.inferUnclearedType(leftOpType.getOriginalType(), defArkClass ?? declaringArkClass, visited);
             if (baseType) {
                 leftOpType.setOriginalType(baseType);
                 type = leftOpType;
             }
-        } else if (leftOpType instanceof GenericType) {
-            this.inferGenericType([leftOpType], declaringArkClass);
-            type = leftOpType;
-        } else if (leftOpType instanceof UnclearReferenceType) {
-            type = this.inferUnclearRefType(leftOpType, declaringArkClass);
         }
         return type;
     }
+
     /**
      * Type information in inference method
      * @param arkMethod Ark method object for type inference
@@ -653,6 +692,7 @@ export class TypeInference {
         if (!cxxTypeStr) {
             return NumberType.getInstance();
         }
+        cxxTypeStr = cxxTypeStr.replace(BuiltinCxx.CXXSTDREF, '');
         switch (cxxTypeStr) {
             case 'short':
                 return CxxShortType.getInstance(CxxTypeSigned.SIGNED, CxxTypeBitWidth.SIXTEEN_BITS, CxxStdTypeName.SHORT);
@@ -1072,7 +1112,7 @@ export class TypeInference {
         }
         let arkExport: ArkExport | null =
             ModelUtils.findSymbolInFileWithName(baseName, arkClass) ??
-            ModelUtils.getArkExportInImportInfoWithName(baseName, arkClass.getDeclaringArkFile());
+            CxxModelUtils.getArkExportInImportInfoWithName(baseName, arkClass.getDeclaringArkFile(), arkClass);
         if (!arkExport && !arkClass.getDeclaringArkFile().getImportInfoBy(baseName)) {
             arkExport = arkClass.getDeclaringArkFile().getScene().getSdkGlobal(baseName);
         }
@@ -1090,7 +1130,7 @@ export class TypeInference {
         const declaredArkFile = arkClass.getDeclaringArkFile();
         let arkExport: ArkExport | null =
             ModelUtils.findSymbolInFileWithName(typeName, arkClass, true) ??
-            ModelUtils.getArkExportInImportInfoWithName(typeName, declaredArkFile);
+            CxxModelUtils.getArkExportInImportInfoWithName(typeName, declaredArkFile, arkClass);
         //if not found or local in built-in then look up global in sdks
         if ((!arkExport || (arkExport instanceof Local && declaredArkFile.getProjectName() === SdkUtils.BUILT_IN_NAME)) &&
             !declaredArkFile.getImportInfoBy(typeName)) {
@@ -1104,17 +1144,6 @@ export class TypeInference {
             return type;
         }
         return arkClass.getGenericsTypes()?.find(g => g.getName() === typeName) || null;
-    }
-
-    /**
-     *Get the corresponding type information according to the global name
-     *@ param globalName - global name string
-     *@ param arkMethod - Ark method object, used to obtain declaration file and scene information
-     *@ returns the type object parsed. If it is not found, it returns null
-     */
-    public static getTypeByGlobalName(globalName: string, arkMethod: ArkMethod): Type | null {
-        const arkExport: ArkExport | null = arkMethod.getDeclaringArkFile().getScene().getSdkGlobal(globalName);
-        return this.parseArkExport2Type(arkExport);
     }
 
     /**
@@ -1296,5 +1325,24 @@ export class TypeInference {
         if (returnType) {
             IRInference.inferRightWithSdkType(returnType, stmt.getOp().getType(), arkMethod.getDeclaringArkClass());
         }
+    }
+
+    public static inferMethodFromImportNamespace(baseType: Type, expr: AbstractInvokeExpr, arkMethod: ArkMethod, methodName: string): AbstractInvokeExpr | null {
+        if (!(baseType instanceof AnnotationNamespaceType)) {
+            return null;
+        }
+        const im = arkMethod.getDeclaringArkFile().getImportInfoBy(baseType.getNamespaceSignature().getNamespaceName());
+        if (!im || !(im.getLazyExportInfo()?.getArkExport() instanceof ArkNamespace)) {
+            return null;
+        }
+        const matchedNamespace = im.getLazyExportInfo()?.getArkExport() as ArkNamespace;
+        const foundMethod = ModelUtils.findPropertyInNamespace(methodName, matchedNamespace);
+        if (foundMethod instanceof ArkMethod) {
+            let signature = foundMethod.matchMethodSignature(expr.getArgs());
+            TypeInference.inferSignatureReturnType(signature, foundMethod);
+            expr.setMethodSignature(signature);
+            return expr instanceof ArkInstanceInvokeExpr ? new ArkStaticInvokeExpr(signature, expr.getArgs(), expr.getRealGenericTypes()) : expr;
+        }
+        return null;
     }
 }

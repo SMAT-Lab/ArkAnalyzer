@@ -68,6 +68,7 @@ import { Scene } from '../../Scene';
 import { setTs2CxxFuncMapOfClass } from '../../cpp_frontend/common/ModelUtils';
 import { PointerType, ReferenceType } from '../../cpp_frontend/base/Type';
 import { IRInference as CXXIRInference} from '../../cpp_frontend/common/IRInference';
+import { TypeInference as CxxTypeInference } from '../../cpp_frontend/common/TypeInference';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ValueInference');
 
@@ -924,7 +925,9 @@ export class CxxInstanceInvokeExprInference extends InstanceInvokeExprInference 
         if (baseType instanceof PointerType || baseType instanceof ReferenceType) {
             baseType = baseType.getBaseType();
         }
-        const result = InstanceInvokeExprInference.inferInvokeExpr(baseType, value, arkMethod, this.getMethodName(value, arkMethod));
+        const methodName = this.getMethodName(value, arkMethod);
+        const result = InstanceInvokeExprInference.inferInvokeExpr(baseType, value, arkMethod, methodName) ??
+            CxxTypeInference.inferMethodFromImportNamespace(baseType, value, arkMethod, methodName);
         return !result || result === value ? undefined : result;
     }
 
@@ -1017,7 +1020,7 @@ export class CxxArkPtrInvokeExprInference extends StaticInvokeExprInference {
 @Bind(InferLanguage.CXX)
 export class CxxStaticInvokeExprInference extends StaticInvokeExprInference {
 
-    public infer(expr: ArkPtrInvokeExpr, stmt: Stmt): Value | undefined {
+    public infer(expr: ArkStaticInvokeExpr, stmt: Stmt): Value | undefined {
         const arkMethod = stmt.getCfg().getDeclaringMethod();
         const methodName = this.getMethodName(expr, arkMethod);
         // special case process
@@ -1030,7 +1033,9 @@ export class CxxStaticInvokeExprInference extends StaticInvokeExprInference {
         }
         const baseType = this.getBaseType(expr, arkMethod);
         // CXXTodo: whether to use the interface replacement method? Are there any other approaches?
-        const result = baseType ? InstanceInvokeExprInference.inferInvokeExpr(baseType, expr, arkMethod, methodName) :
+        const result = baseType ?
+            (InstanceInvokeExprInference.inferInvokeExpr(baseType, expr, arkMethod, methodName) ??
+                CxxTypeInference.inferMethodFromImportNamespace(baseType, expr, arkMethod, methodName)) :
             CXXIRInference.inferStaticInvokeExprByMethodName(methodName, arkMethod, expr);
         return !result || result === expr ? undefined : result;
     }
