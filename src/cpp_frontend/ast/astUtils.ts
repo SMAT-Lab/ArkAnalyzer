@@ -32,7 +32,7 @@ export type GetParentFn = {
 export class AstUtils {
     private static currentAccess: string = 'public';
 
-    public static parse(sourceFile: string, ccJsonPath: string | null, includeDirs: string[] | null, llvmPath: string): CxxAstNode {
+    public static parse(sourceFile: string, ccJsonPath: string | null, includeDirs: string[] | null, llvmPath: string, cppAstPath: string): CxxAstNode {
         if (!fs.existsSync(sourceFile)) {
             logger.warn('parse file is not exists');
             return {
@@ -54,7 +54,7 @@ export class AstUtils {
                 inner: []
             };
         }
-        let astPath: string = this.getAstOutputPath(sourceFile);
+        let astPath: string = this.getAstOutputPath(sourceFile, cppAstPath);
         let includeArgs = constructParseArguments(sourceFile, ccJsonPath, includeDirs);
         let parseArguments: string[] = [sourceFile, '-o', astPath];
         parseArguments = [...parseArguments, ...includeArgs];
@@ -228,8 +228,11 @@ export class AstUtils {
         }
     }
 
-    private static getAstOutputPath(sourceFile: string): string {
+    private static getAstOutputPath(sourceFile: string, cppAstPath: string): string {
         const fileName = `${path.parse(path.basename(sourceFile)).name}_AST.json`;
+        if (cppAstPath !== '') {
+            return path.join(cppAstPath, fileName);
+        }
         return path.join(ClangPath.protectRoot, 'src', 'cpp_frontend', 'ast', 'out', fileName);
     }
 

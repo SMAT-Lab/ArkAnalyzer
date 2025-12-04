@@ -112,7 +112,7 @@ export function buildArkFileFromFile(absoluteFilePath: string, projectDir: strin
     arkFile.setCode(fs.readFileSync(arkFile.getFilePath(), 'utf8'));
     let sdkPath = extractOhosSdkPath(arkFile.getScene().getProjectSdkMap());
     let llvmPath = findLLVMPath(sdkPath);
-    const jsonObject = AstUtils.parse(absoluteFilePath, scene.getCcjsonPath(), includeDirs, llvmPath);
+    const jsonObject = AstUtils.parse(absoluteFilePath, scene.getCcjsonPath(), includeDirs, llvmPath, scene.getCppAstPath());
     genDefaultArkClass(arkFile, jsonObject);
     buildArkFile(arkFile, jsonObject);
 }
