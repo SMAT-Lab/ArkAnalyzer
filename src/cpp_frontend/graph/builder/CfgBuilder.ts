@@ -24,7 +24,6 @@ import { IRUtils } from '../../common/IRUtils';
 import { AliasType, ClassType, UnclearReferenceType, UnknownType, VoidType } from '../../../core/base/Type';
 import { CxxTrap } from '../../base/Trap';
 import { GlobalRef } from '../../../core/base/Ref';
-import { LoopBuilder } from '../../../core/graph/builder/LoopBuilder';
 import { CxxSwitchBuilder } from './SwitchBuilder';
 import { CxxConditionBuilder } from './ConditionBuilder';
 import { CxxTrapBuilder } from './TrapBuilder';
@@ -33,6 +32,7 @@ import { BlockBuilder as CoreBlockBuilder, Catch, TextError, Variable, Scope } f
 import { ModelUtils } from '../../../core/common/ModelUtils';
 import { CONSTRUCTOR_NAME, PROMISE } from '../../../core/common/TSConst';
 import { CxxAstNode, CxxTranslationUnit } from '../../ast/ArkCxxAstNode';
+import { CxxLoopBuilder } from './LoopBuilder';
 
 export class BlockBuilder {
     id: number;
@@ -1479,11 +1479,9 @@ export class CfgBuilder {
         arkIRTransformer: ArkCxxIRTransformer
     ): void {
         const asCoreMap = blockBuilderToCfgBlock as unknown as Map<CoreBlockBuilder, BasicBlock>;
-        const asCoreSet = blocksContainLoopCondition as unknown as Set<CoreBlockBuilder>;
         const asCoreArr = blockBuildersContainSwitch as unknown as CoreBlockBuilder[];
-        const asCoreBlocks = this.blocks as unknown as CoreBlockBuilder[]; // 适配 this.blocks
-        const loopBuilder = new LoopBuilder();
-        loopBuilder.rebuildBlocksInLoop(asCoreMap, asCoreSet, basicBlockSet, asCoreBlocks);
+        const loopBuilder = new CxxLoopBuilder();
+        loopBuilder.rebuildBlocksInLoop(blockBuilderToCfgBlock, blocksContainLoopCondition, basicBlockSet, this.blocks);
         const switchBuilder = new CxxSwitchBuilder();
         switchBuilder.buildSwitch(asCoreMap, asCoreArr, valueAndStmtsOfSwitchAndCasesAll, arkIRTransformer, basicBlockSet);
         const conditionalBuilder = new CxxConditionBuilder();
