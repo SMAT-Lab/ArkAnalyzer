@@ -22,9 +22,6 @@ import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { ClangPath } from './const';
 import {CxxAstNode, CxxAstNodeLite} from './ArkCxxAstNode';
 
-const deveco_c = process.env.DEVECO_C;
-const deveco_include = process.env.DEVECO_INCLUDE;
-
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'astUtils');
 
 export type GetParentFn = {
@@ -77,7 +74,7 @@ export class AstUtils {
         const parseResult = spawnSync(clangPath, parseArguments, { stdio: ['inherit', 'pipe'], encoding: 'utf-8', env: envVars });
 
         if (parseResult.status) {
-            logger.info('Error parsing ast', parseResult.stderr);
+            logger.error('Error parsing ast', parseResult.stderr);
         } else {
             logger.info('Parsing completed!');
         }
@@ -275,10 +272,6 @@ function constructParseArguments(srcFilePath: string, ccJsonPath: string | null,
     }
     if (ccJsonPath) {
         args.push('-c', ccJsonPath);
-    } else if (deveco_c !== undefined && deveco_include !== undefined) {
-        // Provide default header file search path
-        args.push('-i', deveco_c);
-        args.push('-i', deveco_include);
     }
     if (includeDirs && includeDirs.length > 0) {
         includeDirs.forEach(dir => {

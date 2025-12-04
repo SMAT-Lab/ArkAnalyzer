@@ -13,13 +13,4 @@
  * limitations under the License.
  */
 
-export const NULLPTR_EXPECT_CASE1 = {
-    blocks: [
-        {
-            id: 0,
-            stmts: ['this = this: @nullPtr/nullPtrSample.cpp: %dflt', 'p = null', 'return undefinedValue'],
-            preds: [],
-            succes: [],
-        },
-    ],
-};
+export * from './overwriteExpect';

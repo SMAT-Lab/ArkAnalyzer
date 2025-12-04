@@ -543,11 +543,15 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         if (firstInnerNode.kind === 'CXXInheritedCtorInitExpr') {
             // Processing of using parent:: parent
             return this.cxxInheritedCtorInitExprToValueAndStmts(firstInnerNode);
-        } else if (firstInnerNode.kind === 'CXXConstructExpr') {
+        } else if (firstInnerNode.kind === 'CXXConstructExpr' && cxxCtorInitializer.anyInit?.name.startsWith('class ')) {
             // Processing of case: Left(const char& name) : Base(name) // call base class constructor
             return this.cxxSuperExpressionToValueAndStmts(firstInnerNode);
         }
-        const assignRight = firstInnerNode;
+        // If the kind of firstNode is CXXConstructExpr and firstNode does not correspond to a parent class initialization call,
+        // it is equivalent to directly assigning a value to the class member.
+        // For example, the constructor of class Circle in file 'tests/resources_cpp/exports/crossFileCase/include/myHeader.h'.
+        const assignRight =
+            (firstInnerNode.kind === 'CXXConstructExpr' && firstInnerNode.inner.length > 0) ? firstInnerNode.inner[0] : firstInnerNode;
         const CtorInit2ThisMemberExpr = {
             kind: 'MemberExpr',
             name: cxxCtorInitializer.anyInit?.name ?? '',
@@ -3033,8 +3037,9 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
 
     private isCxxStdContainer(typeName: string): boolean {
         const typeNameInLowerCase = typeName.toLowerCase();
-        const stdContainerLists = ['map', 'vector', 'deque', 'list', 'array',
-            'set', 'stack', 'queue', 'stringstream', 'basic_string'];
+        const stdContainerLists = ['map', 'vector', 'deque', 'list', 'array', 'forward_list', 'multimap', 'multiset',
+            'set', 'stack', 'queue', 'stringstream', 'basic_string', 'unordered_set', 'unordered_map', 'unordered_multiset',
+            'unordered_multimap', 'priority_queue'];
         return stdContainerLists.some(containerType => typeNameInLowerCase.includes(containerType));
     }
 

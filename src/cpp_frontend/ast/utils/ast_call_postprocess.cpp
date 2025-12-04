@@ -2010,3 +2010,192 @@ void PropagateAliasTemplateArgToRef(json& node, json& children)
         }
     }
 }
+
+// Scan the header string and find the two top-level ';' positions.
+// Returns true if both semicolons are found; otherwise returns false and
+// leaves semi1 / semi2 as std::string::npos.
+static bool FindTopLevelSemicolons(const std::string &header,
+                                   size_t &semi1,
+                                   size_t &semi2)
+{
+    semi1 = std::string::npos;
+    semi2 = std::string::npos;
+
+    int  parenDepth = 0;
+    bool inSingle = false;
+    bool inDouble = false;
+    char prev = '\0';
+    for (size_t i = 0; i < header.size(); ++i) {
+        char c = header[i];
+        if (inSingle) {
+            if (c == '\'' && prev != '\\') {
+                inSingle = false;
+            }
+            prev = c;
+            continue;
+        }
+        if (inDouble) {
+            if (c == '"' && prev != '\\') {
+                inDouble = false;
+            }
+            prev = c;
+            continue;
+        }
+
+        if (c == '\'') {
+            inSingle = true;
+        } else if (c == '"') {
+            inDouble = true;
+        } else if (c == '(') {
+            ++parenDepth;
+        } else if (c == ')') {
+            if (parenDepth > 0) {
+                --parenDepth;
+            }
+        } else if (c == ';' && parenDepth == 0) {
+            if (semi1 == std::string::npos) {
+                semi1 = i;
+            } else if (semi2 == std::string::npos) {
+                semi2 = i;
+                break;  // Only care about the first two
+            }
+        }
+        prev = c;
+    }
+    return (semi1 != std::string::npos && semi2 != std::string::npos);
+}
+
+// Extract init / cond / inc segments from the source code of a for statement.
+static bool SplitForHeader(const std::string &forCode, std::string &outInit, std::string &outCond, std::string &outInc)
+{
+    auto posFor = forCode.find("for");
+    if (posFor == std::string::npos) {
+        return false;
+    }
+    auto posL = forCode.find('(', posFor);
+    if (posL == std::string::npos) {
+        return false;
+    }
+    // Find the matching ')' for the '('
+    int depth = 0;
+    size_t posR = std::string::npos;
+    for (size_t i = posL; i < forCode.size(); ++i) {
+        char c = forCode[i];
+        if (c == '(') {
+            ++depth;
+            continue;
+        }
+        if (c != ')') {
+            continue;
+        }
+        if (depth == 0) {
+            continue;
+        }
+        --depth;
+        if (depth != 0) {
+            continue;
+        }
+        posR = i;
+        break;
+    }
+    if (posR == std::string::npos || posR <= posL + 1) {
+        return false;
+    }
+    std::string header = forCode.substr(posL + 1, posR - posL - 1);
+    // Find the two top-level ';' in the header
+    size_t semi1 = std::string::npos;
+    size_t semi2 = std::string::npos;
+    const bool ok = FindTopLevelSemicolons(header, semi1, semi2);
+    if (!ok) {
+        // Non-standard for(init; cond; inc) form, fall back to a best-effort split
+        outInit = header;
+        outCond.clear();
+        outInc.clear();
+    } else {
+        outInit = header.substr(0, semi1);
+        outCond = header.substr(semi1 + 1, semi2 - semi1 - 1);
+        outInc  = header.substr(semi2 + 1);
+    }
+    Trim(outInit);
+    Trim(outCond);
+    Trim(outInc);
+    return true;
+}
+
+// Build a NullStmt placeholder used for omitted for-header slots.
+static json MakeNullForSlot()
+{
+    json j = json::object();
+    j["kind"] = "NullStmt";
+    j["type"] = {{"qualType", ""}};
+    j["code"] = "";
+    return j;
+}
+
+// Take the next header child (init/cond/inc) from children.
+// If all header children are already consumed, return a NullStmt placeholder.
+// - children: ForStmt.inner (array)
+// - headerIdx: current index into the header part [0, headerCount)
+// - headerCount: number of header children (children.size() - 1, body excluded)
+static json TakeForHeaderChild(json &children, size_t &headerIdx, size_t headerCount)
+{
+    if (headerIdx < headerCount) {
+        json slot = std::move(children[headerIdx++]);
+        return slot;
+    }
+    return MakeNullForSlot();
+}
+
+// Normalize ForStmt.inner into 4 slots: init / cond / inc / body.
+// Use NullStmt as placeholder for omitted parts.
+void NormalizeForStmtChildren(json &node, CXCursorKind kind_cursor, json &children)
+{
+    if (kind_cursor != CXCursor_ForStmt) {
+        return;
+    }
+    if (!children.is_array() || children.empty()) {
+        return;
+    }
+
+    const std::string code = node.value("code", "");
+    if (code.empty()) {
+        return;
+    }
+    // ---------------- 1) Split init/cond/inc segments from code ----------------
+    std::string segInit;
+    std::string segCond;
+    std::string segInc;
+    if (!SplitForHeader(code, segInit, segCond, segInc)) {
+        return;
+    }
+    const bool hasInit = !segInit.empty();
+    const bool hasCond = !segCond.empty();
+    const bool hasInc  = !segInc.empty();
+    // ---------------- 2) Reorder libclang children into 4 slots ----------------
+    // In libclang's ForStmt, the last child is always the body.
+    json body = children.back();
+    const size_t headerCount = children.size() > 0 ? (children.size() - 1) : 0;
+    size_t headerIdx = 0;
+    json normalized = json::array();
+    // init slot
+    if (hasInit) {
+        normalized.push_back(TakeForHeaderChild(children, headerIdx, headerCount));
+    } else {
+        normalized.push_back(MakeNullForSlot());
+    }
+    // cond slot
+    if (hasCond) {
+        normalized.push_back(TakeForHeaderChild(children, headerIdx, headerCount));
+    } else {
+        normalized.push_back(MakeNullForSlot());
+    }
+    // inc slot
+    if (hasInc) {
+        normalized.push_back(TakeForHeaderChild(children, headerIdx, headerCount));
+    } else {
+        normalized.push_back(MakeNullForSlot());
+    }
+    // body slot
+    normalized.push_back(std::move(body));
+    children = std::move(normalized);
+}

@@ -65,7 +65,10 @@ import * as MALLOC_EXPECT from '../../../resources_cpp/cfg/malloc/mallocSampleEx
 import * as INITIALZERLIST from '../../../resources_cpp/cfg/stdInitializerListExpr/initializerListExpects';
 import * as SUPPLEMENTARY from '../../../resources_cpp/cfg/supplementary/supplementary';
 import * as TRAP from '../../../resources_cpp/cfg/trap/cxxTrapExpects';
+import * as OVERWRITE from '../../../resources_cpp/cfg/overwrite/overwriteExpect';
 
+const deveco_c = process.env.DEVECO_C !== undefined ? process.env.DEVECO_C : '';
+const deveco_include = process.env.DEVECO_INCLUDE !== undefined ? process.env.DEVECO_INCLUDE : '';
 const deveco_sysroot_include = process.env.DEVECO_SYSROOT_INCLUDE !== undefined ? process.env.DEVECO_SYSROOT_INCLUDE : '';
 const is_system_win32 = process.platform === 'win32';
 
@@ -78,7 +81,7 @@ describe('CfgTest', () => {
         testBlocks(scene, 'conditionalOperator.cpp', 'Case4', CONDITION_EXPECT.CONDITIONAL_OPERATOR_EXPECT_CASE4.blocks);
         testBlocks(scene, 'conditionalOperator.cpp', 'Case5', CONDITION_EXPECT.CONDITIONAL_OPERATOR_EXPECT_CASE5.blocks);
         testBlocks(scene, 'conditionalOperator.cpp', 'Case6', CONDITION_EXPECT.CONDITIONAL_OPERATOR_EXPECT_CASE6.blocks);
-        testBlocks(scene, 'conditionalOperator.cpp', 'Case7', CONDITION_EXPECT.CONDITIONAL_OPERATOR_EXPECT_CASE7.blocks);
+        testBlocks(scene, 'conditionalOperator.cpp', 'main', CONDITION_EXPECT.CONDITIONAL_OPERATOR_EXPECT_MAIN.blocks);
     });
     it('case2: if statement', () => {
         const scene = buildScene('if');
@@ -95,6 +98,7 @@ describe('CfgTest', () => {
 
     it('case3: switch statement', () => {
         const scene = buildScene('switch');
+        scene.inferTypes();
         testBlocks(scene, 'switchSample.cpp', 'Case1', SWITCH_EXPECT.SWITCH_EXPECT_CASE1.blocks);
         testBlocks(scene, 'switchSample.cpp', 'Case2', SWITCH_EXPECT.SWITCH_EXPECT_CASE2.blocks);
         testBlocks(scene, 'switchSample.cpp', 'Case3', SWITCH_EXPECT.SWITCH_EXPECT_CASE3.blocks);
@@ -108,6 +112,11 @@ describe('CfgTest', () => {
         testBlocks(scene, 'switchSample.cpp', 'Case11', SWITCH_EXPECT.SWITCH_EXPECT_CASE11.blocks);
         testBlocks(scene, 'switchSample.cpp', 'Case12', SWITCH_EXPECT.SWITCH_EXPECT_CASE12.blocks);
         testBlocks(scene, 'switchSample.cpp', 'Case13', SWITCH_EXPECT.SWITCH_EXPECT_CASE13.blocks);
+        testBlocks(scene, 'switchSample.cpp', 'HandleGameSelection', SWITCH_EXPECT.SWITCH_EXPECT_NEST.blocks);
+        testBlocks(scene, 'switchSample.cpp', 'ProcessChoice', SWITCH_EXPECT.SWITCH_EXPECT_PROCESS_CHOICE.blocks);
+        testBlocks(scene, 'switchSample.cpp', 'ProcessValue', SWITCH_EXPECT.SWITCH_EXPECT_PROCESS_VALUE.blocks);
+        testBlocks(scene, 'switchSample.cpp', 'TestConstexprSwitch', SWITCH_EXPECT.SWITCH_EXPECT_TEST_CONST.blocks);
+
     });
 
     it('case4: loop statement', () => {
@@ -143,6 +152,10 @@ describe('CfgTest', () => {
         testBlocks(scene, 'gotoSample.cpp', 'Case8', GOTO_EXPECT.GOTO_EXPECT_CASE8.blocks);
         testBlocks(scene, 'gotoSample.cpp', 'Case9', GOTO_EXPECT.GOTO_EXPECT_CASE9.blocks);
         testBlocks(scene, 'gotoSample.cpp', 'Case10', GOTO_EXPECT.GOTO_EXPECT_CASE10.blocks);
+        testBlocks(scene, 'gotoSample.cpp', 'Case11', GOTO_EXPECT.GOTO_EXPECT_CASE11.blocks);
+        testBlocks(scene, 'gotoSample.cpp', 'Case12', GOTO_EXPECT.GOTO_EXPECT_CASE12.blocks);
+        testBlocks(scene, 'gotoSample.cpp', 'Case13', GOTO_EXPECT.GOTO_EXPECT_CASE13.blocks);
+        testBlocks(scene, 'gotoSample.cpp', 'Case14', GOTO_EXPECT.GOTO_EXPECT_CASE14.blocks);
     });
     it('case7: binaryCondition', () => {
         const scene = buildScene('binaryConditional');
@@ -282,6 +295,14 @@ describe('Function Test', () => {
         testBlocks(scene, 'call.cpp', 'Case2', CALLEXPR_EXPECT.CXXMETHODDEFAULT_CASE2_EXPECT.blocks);
         testBlocks(scene, 'call.cpp', 'Case3', CALLEXPR_EXPECT.CXXMETHODDEFAULT_CASE3_EXPECT.blocks);
     });
+
+    it('case7: overwrite Test', () => {
+        const scene = buildScene('overwrite');
+        scene.inferTypes();
+        testBlocksWithSignature(scene, 'overwriteSample.cpp', 'Calculator', 'Add(int, int)', OVERWRITE.OVERWRITE_PRINT_INFO_CASE1_EXPECT.blocks);
+        testBlocksWithSignature(scene, 'overwriteSample.cpp', 'Calculator', 'Add(double, double)', OVERWRITE.OVERWRITE_PRINT_INFO_CASE2_EXPECT.blocks);
+        testBlocksWithSignature(scene, 'overwriteSample.cpp', 'Calculator', 'Add(int, int, int)', OVERWRITE.OVERWRITE_PRINT_INFO_CASE3_EXPECT.blocks);
+    });
 });
 
 describe('Other Test', () => {
@@ -399,6 +420,7 @@ describe('namespace Test', () => {
         const scene = buildScene('namespace');
         scene.inferTypes();
         testBlocks(scene, 'namespace.cpp', 'Test', NAMESPACE_EXPECT.NAMESPACE_CASE1.blocks);
+        testNamespaceClasses(scene, 'namespace.cpp', 'School', NAMESPACE_EXPECT.NAMESPACE_SCHOOL_EXPECT.blocks);
     });
 });
 
@@ -510,6 +532,8 @@ function buildScene(folderName: string): Scene {
     config.setSupportFileExts(['.c', '.cpp', '.h', '.hpp']);
     let includeDirs: string[] = [];
     // header file configuration for DevEco
+    includeDirs.push(deveco_c);
+    includeDirs.push(deveco_include);
     if (folderName.includes('lazyImport')) {
         includeDirs.push(...getNapiIncludeDirs());
     }
@@ -552,5 +576,54 @@ function testBlocksClass(scene: Scene, filePath: string, className: string, expe
         if (classBlock) {
             assertClassBlocksEqual(method, classBlock);
         }
+    });
+}
+
+function testNamespaceClasses(scene: Scene, filePath: string, namespaceName: string, expectBlocks: any): void {
+    const arkFile = scene.getFiles().find(file => file.getName().endsWith(filePath));
+    const arkNamespace = arkFile?.getNamespaces().find(ns => ns.getName() === namespaceName);
+
+    if (!arkNamespace) {
+        throw new Error(`Namespace ${namespaceName} not found in file ${filePath}`);
+    }
+
+    const namespaceBlockMap = new Map<string, any>();
+    for (const classBlock of expectBlocks) {
+        namespaceBlockMap.set(classBlock.className, classBlock);
+    }
+
+    // Check each class under the namespace
+    arkNamespace.getClasses().forEach(arkClass => {
+        const expectedClassData = namespaceBlockMap.get(arkClass.getName());
+        if (!expectedClassData) {
+            throw new Error(`Expected class data for ${arkClass.getName()} not found`);
+        }
+
+        // 1. Check class inheritance relationships
+        const heritageClasses = new Set<string>();
+        arkClass.getAllHeritageClasses()?.forEach(heritageClass => {
+            heritageClasses.add(heritageClass.getName());
+        });
+        expect(heritageClasses).toEqual(new Set(expectedClassData.heritageClasses));
+
+        // 2. Check class fields
+        const fieldOfClass = new Set<string>();
+        arkClass.getFields()?.forEach(field => {
+            fieldOfClass.add(field.getName());
+        });
+        expect(fieldOfClass).toEqual(new Set(expectedClassData.fields));
+
+        // 3. Check class member functions
+        const classBlockMap = new Map<string, BasicBlock[]>();
+        for (const block of expectedClassData.blocks) {
+            classBlockMap.set(block.methodName, block.blocks);
+        }
+
+        arkClass.getMethods().forEach(method => {
+            const classBlock = classBlockMap.get(method.getName());
+            if (classBlock) {
+                assertClassBlocksEqual(method, classBlock);
+            }
+        });
     });
 }

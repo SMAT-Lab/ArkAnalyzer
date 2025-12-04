@@ -17,7 +17,7 @@ import { ClassInference, FileInference, ImportInfoInference, MethodInference, St
 import { ArkFile } from '../../core/model/ArkFile';
 import { IRInference } from '../common/IRInference';
 import { ImportInfo } from '../../core/model/ArkImport';
-import { findExportInfo, getArkFile } from '../common/ModelUtils';
+import { findExportInfo, getArkFile, PatchRegistry, CxxModelUtils } from '../common/ModelUtils';
 import { ArkClass } from '../../core/model/ArkClass';
 import { TypeInference } from '../common/TypeInference';
 import { ArkMethod } from '../../core/model/ArkMethod';
@@ -27,22 +27,31 @@ import { ExportInfo } from '../../core/model/ArkExport';
 import { ValueInference, InferLanguage } from '../../core/inference/ValueInference';
 import { Value } from '../../core/base/Value';
 import { ArkAliasTypeDefineStmt, Stmt } from '../../core/base/Stmt';
+import { ModelUtils } from '../../core/common/ModelUtils';
 
 class CxxFileInference extends FileInference {
-    private isBuildCxxFuncMap: boolean = false;
+    private preprocessedProjectName: string = '';
 
     /**
      * Build Cxx Function
      * @param file
      */
     public preInfer(file: ArkFile): void {
-        if (!this.isBuildCxxFuncMap) {
-            const scene = file.getScene();
-            IRInference.buildCxxFuncMap(scene);
-            this.isBuildCxxFuncMap = true;
+        const scene = file.getScene();
+        if (this.preprocessedProjectName !== scene.getProjectName()) {
+            IRInference.mapCxxDeclAndImpl(scene);
+            this.preprocessedProjectName = scene.getProjectName();
         }
+        PatchRegistry.patchStaticMethod(ModelUtils, 'getArkExportInImportInfoWithName', CxxModelUtils.getArkExportInImportInfoWithName);
+        PatchRegistry.patchStaticMethod(ModelUtils, 'findPropertyInClass', CxxModelUtils.findPropertyInClass);
         file.getImportInfos().filter(i => i.getExportInfo() === undefined)
             .forEach(info => this.importInfoInference.doInfer(info));
+    }
+
+    public postInfer(file: ArkFile): void {
+        super.postInfer(file);
+        PatchRegistry.restoredStaticMethod(ModelUtils, 'getArkExportInImportInfoWithName');
+        PatchRegistry.restoredStaticMethod(ModelUtils, 'findPropertyInClass');
     }
 }
 
@@ -60,7 +69,7 @@ class CxxImportInference extends ImportInfoInference {
      * @param fromInfo
      */
     public infer(fromInfo: ImportInfo): ExportInfo | null {
-        return findExportInfo(fromInfo);
+        return findExportInfo(fromInfo, this.fromFile);
     }
 }
 
@@ -124,7 +133,6 @@ export class CxxStmtInference extends StmtInference {
     }
 
 }
-
 
 export class CxxInferenceBuilder extends InferenceBuilder {
 

@@ -111,6 +111,14 @@ import {
     Thread,
     TypeInfo,
 } from '../cpp_frontend/base/Type';
+import {
+    ArkArrayTypeTraitExpr,
+    ArkCxxCastExpr,
+    ArkCxxDeleteArrayExpr, ArkCxxFolderExpr,
+    ArkCxxInitArrayExpr,
+    ArkCxxNewArrayExpr, ArkCxxNormalBinOpExpr, ArkNoExpectExpr,
+    ArkSizeOfExpr, ArkTypeIdExpr,
+} from '../cpp_frontend/base/Expr';
 
 export class JsonPrinter extends Printer {
     constructor(private arkFile: ArkFile) {
@@ -582,6 +590,46 @@ export class JsonPrinter extends Printer {
             return { _: 'InstanceFieldRef', instance: this.serializeValue(value.getBase()), field: this.serializeFieldSignature(value.getFieldSignature()) };
         } else if (value instanceof ArkStaticFieldRef) {
             return { _: 'StaticFieldRef', field: this.serializeFieldSignature(value.getFieldSignature()) };
+        } else if (value instanceof ArkCxxDeleteArrayExpr) {
+            return {
+                _: 'ArkCxxDeleteArrayExpr',
+                field: this.serializeValue(value.getField()),
+                type: this.serializeType(value.getType()),
+            };
+        } else if (value instanceof ArkCxxNewArrayExpr) {
+            return {
+                _: 'ArkCxxNewArrayExpr',
+                baseType: this.serializeType(value.getBaseType()),
+                size: this.serializeValue(value.getSize()),
+                elementsNumber: value.getElementsNumber(),
+            };
+        } else if (value instanceof ArkCxxInitArrayExpr) {
+            return { _: 'ArkCxxInitArrayExpr', op: this.serializeValue(value.getOp()) };
+        } else if (value instanceof ArkSizeOfExpr) {
+            return { _: 'ArkSizeOfExpr', op: this.serializeValue(value.getOp()) };
+        } else if (value instanceof ArkCxxCastExpr) {
+            return { _: 'ArkCxxCastExpr', cxxCastType: value.getCxxCastType() };
+        } else if (value instanceof ArkArrayTypeTraitExpr) {
+            return {
+                _: 'ArkArrayTypeTraitExpr',
+                op: this.serializeValue(value.getOp()),
+                dimensionOrder: value.getDimensionOrder(),
+                func: value.getFunc(),
+            };
+        } else if (value instanceof ArkTypeIdExpr) {
+            return { _: 'ArkTypeIdExpr', op: this.serializeValue(value.getOp()) };
+        } else if (value instanceof ArkNoExpectExpr) {
+            return { _: 'ArkNoExpectExpr', op: this.serializeValue(value.getOp()) };
+        } else if (value instanceof ArkCxxFolderExpr) {
+            return { _: 'ArkCxxFolderExpr', arg: this.serializeValue(value.getArg()), op: value.getOp() };
+        } else if (value instanceof ArkCxxNormalBinOpExpr) {
+            return {
+                _: 'ArkCxxNormalBinOpExpr',
+                op1: this.serializeValue(value.getOp1()),
+                op2: this.serializeValue(value.getOp2()),
+                type: this.serializeType(value.getType()),
+                operator: value.getOperator(),
+            };
         } else {
             console.warn(`Unhandled Value: ${value.constructor.name} (${value.toString()})`);
             return { _: value.constructor.name, text: value.toString(), type: this.serializeType(value.getType()) };

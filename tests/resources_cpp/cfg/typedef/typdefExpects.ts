@@ -24,7 +24,7 @@ export const TYPEDEF_EXPECT_CASE1 = {
                 'instanceinvoke %0.<@std/map.h: map.constructor()>()',
                 'myMap = %0',
                 "instanceinvoke myMap['key'].<@%unk/%unk: .push_back()>(1)",
-                'return',
+                'return 0',
             ],
             preds: [],
             succes: [],

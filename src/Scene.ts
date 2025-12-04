@@ -1147,7 +1147,7 @@ export class Scene {
      */
     public inferTypesOld(): void {
         // CXXTodo: Building the mapping between declarations and implementations of C++ functions in cross-file scenarios.
-        CxxIRInference.buildCxxFuncMap(this);
+        CxxIRInference.mapCxxDeclAndImpl(this);
         this.filesMap.forEach(file => {
             try {
                 // CXXTodo: Distinguish between C++ and TS/ArkTS.

@@ -50,7 +50,7 @@ export const MapDemo_EXPECT = {
             id: 1,
             stmts: [
                 '%9 = instanceinvoke %8.<@%unk/%unk: .next()>()',
-                '%10 = %9.<@CXX/std/BuiltinClass: IteratorResult.done>',
+                '%10 = %9.<@CXX/std/BuiltinClass: IteratorResult.end>',
                 'if %10 == true'
             ],
             preds: [0, 2],

@@ -62,7 +62,7 @@ export class BuiltinCxx {
     public static ITERATOR = 'IterableIterator';
     public static ITERATOR_NEXT = 'next';
     public static ITERATOR_RESULT = 'IteratorResult';
-    public static ITERATOR_RESULT_DONE = 'done';
+    public static ITERATOR_RESULT_END = 'end';
     public static ITERATOR_RESULT_VALUE = 'value';
 
     public static ITERATOR_CLASS_SIGNATURE = this.buildBuiltInClassSignature(this.ITERATOR);

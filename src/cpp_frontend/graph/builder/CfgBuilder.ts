@@ -74,7 +74,7 @@ export class StatementBuilder {
     addressCode3: string[] = [];
     block: BlockBuilder | null;
     ifExitPass: boolean;
-    passTmies: number = 0;
+    passTimes: number = 0;
     numOfIdentifier: number = 0;
     isDoWhile: boolean = false;
     hasDoWhileBody: boolean = false;
@@ -162,6 +162,7 @@ export class CfgBuilder {
     private sourceFile: CxxAstNode;
     private declaringMethod: ArkMethod;
     private gotoStmtMap: Map<string, StatementBuilder[]>;
+    private labelStmtMap: Map<string, StatementBuilder>;
 
     constructor(ast: CxxAstNode, name: string, declaringMethod: ArkMethod, sourceFile: CxxAstNode) {
         this.name = name;
@@ -187,6 +188,7 @@ export class CfgBuilder {
         this.sourceFile = sourceFile;
         this.arrowFunctionWithoutBlock = true;
         this.gotoStmtMap = new Map();
+        this.labelStmtMap = new Map();
     }
 
     public getDeclaringMethod(): ArkMethod {
@@ -214,6 +216,11 @@ export class CfgBuilder {
         } else {
             lastStatement.next = s;
             s.lasts.add(lastStatement);
+            // Process the passTimes when multiple goto entries exist in a node
+            if (lastStatement.code.includes('goto label:') &&
+                lastStatement.lasts.size > 1 && s.passTimes === 0) {
+                s.passTimes += (lastStatement.lasts.size - 1);
+            }
         }
     }
 
@@ -381,11 +388,6 @@ export class CfgBuilder {
     }
 
     private sliceCaseDefaultNode(node: CxxAstNode, clauses: CxxAstNode[]): void {
-        if (node.kind === 'BreakStmt' || node.kind === 'DefaultStmt' || node.kind === 'ContinueStmt' ||
-            node.kind === 'GotoStmt') {
-            clauses.push(node);
-            return;
-        }
         if (node.kind === 'CaseStmt') {
             for (let i = 0; i < node.inner.length; i++) {
                 let isCaseOrDefault = node.inner[i].kind === 'CaseStmt' || node.inner[i].kind === 'DefaultStmt';
@@ -399,6 +401,9 @@ export class CfgBuilder {
                     clauses.push(node);
                 }
             }
+        } else {
+            // Divide subsequent nodes into cases
+            clauses.push(node);
         }
     }
 
@@ -414,11 +419,13 @@ export class CfgBuilder {
         // When there are no case brackets, case and break/continue are separate nodes in cpp,
         // here we add the break/continue nodes as inner members of case or default nodes
         return tempClauses.reduce((acc: CxxAstNode[], curr: CxxAstNode, idx: number, arr: CxxAstNode[]) => {
-            if (['CaseStmt', 'DefaultStmt'].includes(curr.kind.toString())) {
+            if (['CaseStmt', 'DefaultStmt'].includes(curr.kind)) {
                 curr.parent = switchNode.inner[1];
-                if (idx + 1 < arr.length && ['BreakStmt', 'ContinueStmt', 'GotoStmt'].includes(arr[idx + 1].kind.toString())) {
+                // Reconstruct the syntax tree structure
+                while (idx + 1 < arr.length && !['CaseStmt', 'DefaultStmt'].includes(arr[idx + 1].kind)) {
                     arr[idx + 1].parent = curr;
                     curr.inner.push(arr[idx + 1]);
+                    idx++;
                 }
                 acc.push(curr);
             }
@@ -523,8 +530,20 @@ export class CfgBuilder {
         let gotoStmtsOfLabel = this.gotoStmtMap.get(label);
         if (gotoStmtsOfLabel === undefined) {
             this.gotoStmtMap.set(label, [s]);
+            this.handleLabelStmtPassTimes(s, label);
         } else {
             gotoStmtsOfLabel.push(s);
+            this.handleLabelStmtPassTimes(s, label);
+        }
+    }
+
+    handleLabelStmtPassTimes(s: StatementBuilder, label: string): void {
+        if (this.labelStmtMap.has(label)) {
+            const labelStmt = this.labelStmtMap.get(label);
+            if (labelStmt?.next) {
+                labelStmt.next.passTimes = (labelStmt.next.passTimes || 0) + 1;
+            }
+            this.judgeLastType(<StatementBuilder> this.labelStmtMap.get(label)?.next, s);
         }
     }
 
@@ -556,6 +575,9 @@ export class CfgBuilder {
         let labelStmt = new StatementBuilder('statement', 'goto label:' + innerNode.name, innerNode, scopeID);
         // Handle the sequence relationship between goto statements and label statements
         let label: string = innerNode.code.substring(0, innerNode.code.indexOf(':'));
+        if (!this.labelStmtMap.has(label)) {
+            this.labelStmtMap.set(label, labelStmt);
+        }
         for (const [key, gotoStmts] of this.gotoStmtMap) {
             if (key === label) {
                 for (const gotoStmt of gotoStmts) {
@@ -687,9 +709,16 @@ export class CfgBuilder {
     walkAST(lastStatement: StatementBuilder, nextStatement: StatementBuilder, nodes: CxxAstNode[]): void {
         let scope = new Scope(this.scopes.length);
         this.scopes.push(scope);
+        let gotoLabel = lastStatement.next?.type === 'gotoStatement' && nextStatement.type === 'blockExit';
         for (let i = 0; i < nodes.length; i++) {
             let innerNode = nodes[i];
             let nodeKind = innerNode.kind;
+            if (nodeKind === 'LabelStmt' && this.gotoStmtMap.get(innerNode.name) !== undefined) {
+                gotoLabel = false;
+            }
+            if (gotoLabel && nodeKind !== 'CompoundStmt') { // Skip the code between goto and label in the code block
+                continue;
+            }
             lastStatement = this.handleASTStmtSuccession(innerNode, lastStatement, scope);
             if (nodeKind === 'ReturnStmt') {
                 break;
@@ -877,8 +906,8 @@ export class CfgBuilder {
             if (((stmt.type === 'continueStatement' || stmt.next.type === 'loopStatement') && stmt.next.block) || stmt.next.type.includes('exit')) {
                 return null;
             }
-            stmt.next.passTmies++;
-            if (stmt.next.passTmies === stmt.next.lasts.size || stmt.next.type === 'loopStatement' || stmt.next.isDoWhile) {
+            stmt.next.passTimes++;
+            if (stmt.next.passTimes === stmt.next.lasts.size || stmt.next.type === 'loopStatement' || stmt.next.isDoWhile) {
                 if (
                     stmt.next.scopeID !== stmt.scopeID &&
                     !(stmt.next instanceof ConditionStatementBuilder && stmt.next.doStatement)
@@ -1433,6 +1462,10 @@ export class CfgBuilder {
             } else {
                 this.declaringMethod.getSubSignature().setReturnType(VoidType.getInstance());
             }
+        }
+        if (!(this.declaringMethod.getSubSignature().getReturnType() instanceof VoidType)) {
+            const methodName = this.declaringMethod.getSubSignature().getMethodName();
+            return new ArkReturnStmt(new Local((methodName === 'main' ? '0' : 'undefinedValue'), this.declaringMethod.getSubSignature().getReturnType()));
         }
         return new ArkReturnVoidStmt();
     }

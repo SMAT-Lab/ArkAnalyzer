@@ -82,6 +82,8 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
 
     // In order to record the mapping between arkTS and CPP functions
     private ts2cxxFuncMap: Map<string, ArkMethod[]> = new Map<string, ArkMethod[]>();
+    // When the declaration and definition of a class in C++ are separated, record the signature of the relevant declaration.
+    private classDeclareSignature?: ClassSignature;
 
     constructor() {
         super();
@@ -635,5 +637,13 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
 
     public getTs2cxxFuncMap(): Map<string, ArkMethod[]> {
         return this.ts2cxxFuncMap;
+    }
+
+    public getDeclareSignature(): ClassSignature | undefined {
+        return this.classDeclareSignature;
+    }
+
+    public setDeclareSignature(classSig: ClassSignature): void {
+        this.classDeclareSignature = classSig;
     }
 }

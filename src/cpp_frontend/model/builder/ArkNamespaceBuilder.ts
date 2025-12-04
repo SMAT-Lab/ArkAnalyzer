@@ -176,7 +176,7 @@ function buildNamespaceMembers(node: CxxAstNode, namespace: ArkNamespace, source
                 processUsingDeclInNamespace(child, namespace);
                 return;
             default:
-                logger.trace('Child joined default method of arkFile: ', child.kind);
+                logger.error('Child joined default method of arkFile: ', child.kind);
             // join default method
         }
     });

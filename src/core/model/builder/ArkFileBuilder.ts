@@ -151,7 +151,7 @@ function buildArkFile(arkFile: ArkFile, astRoot: ts.SourceFile): void {
         } else if (ts.isExpressionStatement(child) && ts.isStringLiteral(child.expression)) {
             child.expression.text.trim() === ARKTS_STATIC_MARK && arkFile.setLanguage(Language.ARKTS1_2);
         } else {
-            logger.trace('Child joined default method of arkFile: ', ts.SyntaxKind[child.kind]);
+            logger.error('Child joined default method of arkFile: ', ts.SyntaxKind[child.kind]);
         }
     });
 

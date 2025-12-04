@@ -221,7 +221,7 @@ export const LOOP_EXPECT_CASE8 = {
             id: 1,
             stmts: [
                 '%6 = instanceinvoke %5.<@%unk/%unk: .next()>()',
-                '%7 = %6.<@CXX/std/BuiltinClass: IteratorResult.done>',
+                '%7 = %6.<@CXX/std/BuiltinClass: IteratorResult.end>',
                 'if %7 == true',
             ],
             preds: [0, 2],
@@ -272,7 +272,7 @@ export const LOOP_EXPECT_CASE9 = {
             id: 1,
             stmts: [
                 '%6 = instanceinvoke %5.<@%unk/%unk: .next()>()',
-                '%7 = %6.<@CXX/std/BuiltinClass: IteratorResult.done>',
+                '%7 = %6.<@CXX/std/BuiltinClass: IteratorResult.end>',
                 'if %7 == true',
             ],
             preds: [0, 2],

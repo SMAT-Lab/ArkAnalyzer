@@ -287,6 +287,10 @@ export class ArkArrayTypeTraitExpr extends AbstractExpr {
         return CxxSizeTType.getInstance(CxxTypeSigned.UNSIGNED, CxxTypeBitWidth.UNKNOWN, CxxStdTypeName.SIZE_T);
     }
 
+    public getFunc(): string {
+        return this.func;
+    }
+
     public toString(): string {
         if (this.func === '__array_extent') {
             return this.func + '(' + this.op + ',' + this.dimensionOrder + ')';

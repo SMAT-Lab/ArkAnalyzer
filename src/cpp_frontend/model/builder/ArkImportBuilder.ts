@@ -20,22 +20,22 @@ import { ArkFile } from '../../../core/model/ArkFile';
 import { normalize } from 'path';
 import { CxxAstNode, CxxTranslationUnit} from '../../ast/ArkCxxAstNode';
 
-export function buildImportInfo(node: any, sourceFile: any, arkFile: ArkFile): ImportInfo[] {
+export function buildImportInfo(node: any, sourceFile: any, arkFile: ArkFile): ImportInfo | null {
+    // just like: #include '../xxx' => import '../xxx'
     if (node.kind === 'inclusion directive') {
-        // just like: #include '../xxx' => import '../xxx'
         return buildGenericImportInfo(node, sourceFile, arkFile, n => `#include "${normalize(n.fileName ?? n.name ?? '')}"`);
     }
+    // just like: using namespace xxx
     if (node.kind === 'UsingDirectiveDecl') {
-        return buildGenericImportInfo(node, sourceFile, arkFile, n => n.code);
+        return buildUsingNamspaceImportInfo(node, sourceFile, arkFile);
     }
-    return [];
+    return null;
 }
 
 function buildGenericImportInfo(node: CxxAstNode, sourceFile: CxxTranslationUnit, arkFile: ArkFile,
-                                importClauseNameBuilder: (node: CxxAstNode) => string): ImportInfo[] {
+                                importClauseNameBuilder: (node: CxxAstNode) => string): ImportInfo {
     const originTsPosition = LineColPosition.cxxBuildFromNode(node);
     const tsSourceCode = node.code;
-    let importInfos: ImportInfo[] = [];
     const importFrom: string = normalize(node.fileName ?? node.name ?? '');
     let importClauseName = importClauseNameBuilder(node);
     let importType = node.enclosingFunction?.name ?? '';
@@ -43,6 +43,21 @@ function buildGenericImportInfo(node: CxxAstNode, sourceFile: CxxTranslationUnit
     importInfo.build(importClauseName, importType, importFrom, originTsPosition, 0);
     importInfo.setTsSourceCode(tsSourceCode);
     IRUtils.setComments(importInfo, node, sourceFile, arkFile.getScene().getOptions());
-    importInfos.push(importInfo);
-    return importInfos;
+    return importInfo;
+}
+
+function buildUsingNamspaceImportInfo(node: CxxAstNode, sourceFile: CxxTranslationUnit, arkFile: ArkFile): ImportInfo | null {
+    const originTsPosition = LineColPosition.cxxBuildFromNode(node);
+    if (node.inner.length === 0 || node.inner[0].kind !== 'NamespaceRef') {
+        return null;
+    }
+    let importClauseName = node.inner[0].name;
+    const sourceCode = `using namespace ${importClauseName}`;
+    const importFrom: string = '';
+    let importType = 'NamespaceImport';
+    let importInfo = new ImportInfo();
+    importInfo.build(importClauseName, importType, importFrom, originTsPosition, 0);
+    importInfo.setTsSourceCode(sourceCode);
+    IRUtils.setComments(importInfo, node, sourceFile, arkFile.getScene().getOptions());
+    return importInfo;
 }

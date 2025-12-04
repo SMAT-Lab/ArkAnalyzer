@@ -34,6 +34,8 @@ import { init4InstanceInitMethod, init4StaticInitMethod } from '../../../core/mo
 import { CxxAstNode } from '../../ast/ArkCxxAstNode';
 import { ArkExport } from '../../../core/model/ArkExport';
 import { Scene } from '../../../Scene';
+import { buildProperty2ArkField } from './ArkFieldBuilder';
+import { DEFAULT_ARK_CLASS_NAME } from '../../../core/common/Const';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkFileBuilder');
 
@@ -121,18 +123,18 @@ export function buildArkClassFromCxxClass(classNode: CxxAstNode, arkFile: ArkFil
         classNode.tagUsed = classNode.tagUsed ? classNode.tagUsed : 'class';
     }
     buildNormalArkClassFromArkFile(classNode, arkFile, cls, astRoot);
-    arkFile.addArkClass(cls);
     addExportInfoOnCondition(classNode, cls, arkFile);
 }
 
 function buildImportInfoFromIncludeOrUsing(child: CxxAstNode, astRoot: CxxAstNode, arkFile: ArkFile): void {
-    let importInfos = buildImportInfo(child, astRoot, arkFile);
-    importInfos?.forEach(element => {
-        element.setDeclaringArkFile(arkFile);
-        if (shouldAddCxxHeaderImport(element)) {
-            arkFile.addImportInfo(element);
-        }
-    });
+    let importInfo = buildImportInfo(child, astRoot, arkFile);
+    if (!importInfo) {
+        return;
+    }
+    importInfo.setDeclaringArkFile(arkFile);
+    if (shouldAddCxxHeaderImport(importInfo)) {
+        arkFile.addImportInfo(importInfo);
+    }
 }
 
 function addExportInfoOnCondition(currNode: CxxAstNode, arkInstance: ArkExport, arkFile: ArkFile): void {
@@ -198,8 +200,14 @@ function buildArkFile(arkFile: ArkFile, astRoot: CxxAstNode): void {
             case 'UsingDirectiveDecl':
                 buildImportInfoFromIncludeOrUsing(child, astRoot, arkFile);
                 break;
+            case 'VarDecl':
+                // handle global variable
+                child.mangledName = DEFAULT_ARK_CLASS_NAME;
+                const arkDefaultClass = getDeclaringArkClassOfMethod(child, arkFile);
+                buildProperty2ArkField(child, astRoot, arkDefaultClass);
+                break;
             default:
-                logger.trace('Child joined default method of arkFile: ', child.kind ?? child.code);
+                logger.error('Child joined default method of arkFile: ', child.kind ?? child.code);
                 break;
         }
     });

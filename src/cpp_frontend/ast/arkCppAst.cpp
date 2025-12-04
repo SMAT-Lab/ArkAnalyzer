@@ -669,6 +669,7 @@ static bool IsLightExpansionExpr(CXCursorKind k)
         case CXCursor_GNUNullExpr:
         case CXCursor_CXXNullPtrLiteralExpr:
         case CXCursor_CStyleCastExpr:
+        case CXCursor_UnexposedExpr:
         case CXCursor_ParenExpr:
             return true;
         default:
@@ -1120,6 +1121,7 @@ void nodePostprocess(json& node, CXCursor cursor, CXCursorKind kind_cursor, json
         mergeTypeAliasDeclChild(newChildren, children, node);
         children = newChildren;
     }
+    NormalizeForStmtChildren(node, kind_cursor, children);
     // --- Remaining generic handlers ---
     HandleTemplateAndCursorSpecific(node, kind_cursor, codeStr, children);
     patchFoldExpr(node);

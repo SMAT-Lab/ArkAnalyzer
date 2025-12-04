@@ -12,6 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <iostream>
 
 #define ZERO 0
 #define ONE 1
@@ -208,4 +209,62 @@ void Case10()
     }
 end:
     return;
+}
+
+void Case11()
+{
+    int b;
+    int c;
+    goto L;
+    {
+        b = 1;
+    L:
+        c = TWO;
+        c++;
+    }
+}
+
+int Case12()
+{
+    int a;
+    int c;
+    goto L;
+    {
+        a = 1;
+        a--;
+        {
+        L:
+            c = TWO;
+            c++;
+        }
+    }
+    return c;
+}
+
+int Case13()
+{
+    int i = 0;
+    int a;
+    goto L;
+    for (; i < FOUR; i++) {
+    L:
+        a++;
+        std::cout << "i: " << a << std::endl;
+        if (a >= TWO) {
+            goto L;
+        }
+    }
+    return a;
+}
+
+void Case14()
+{
+    int i = 0;
+L:
+    std::cout<< "i: " << i << std::endl;
+    i++;
+    if (i < THREE) {
+        goto L;
+    }
+    std::cout<< "goto end" << std::endl;
 }
