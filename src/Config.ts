@@ -67,6 +67,7 @@ export class SceneConfig {
     private includeDirs: string[] = []; // Include directories that the C++ project depends on.
     private fileLanguages: Map<string, Language> = new Map();
     private ccjsonPath: string = '';
+    private cppAstPath: string = '';
 
     private options: SceneOptions;
 
@@ -238,6 +239,14 @@ export class SceneConfig {
 
     public getCcjsonPath(): string {
         return this.ccjsonPath;
+    }
+
+    public setCppAstPath(cppAstPath: string): void {
+        this.cppAstPath = cppAstPath;
+    }
+
+    public getCppAstPath(): string {
+        return this.cppAstPath;
     }
 
     public getFileLanguages(): Map<string, Language> {

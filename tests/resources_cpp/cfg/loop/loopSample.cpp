@@ -109,11 +109,20 @@ void Case9()
     }
 }
 
+
 void Case10()
 {
     std::vector<int> num = {1, 2, 3, 4, 5};
     for (auto it = num.begin(); it != num.end(); ++it) {
         printf("%d\n", *it);
+    }
+}
+
+void Case11()
+{
+    std::vector<int> num = {1, 2, 3, 4, 5};
+    for (auto a : num) {
+        std::cout << a;
     }
 }
 
