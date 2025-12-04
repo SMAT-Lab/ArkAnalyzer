@@ -41,7 +41,8 @@ export const MapDemo_EXPECT = {
                 '%7 = staticinvoke <@%unk/%unk: .make_pair()>(str1, num)',
                 'instanceinvoke %6.<@%unk/%unk: pair.constructor()>(%7)',
                 'instanceinvoke testmap.<@%unk/%unk: .insert()>(%6)',
-                '%8 = instanceinvoke testmap.<@%unk/%unk: .Symbol.iterator()>()'
+                '%8 = instanceinvoke testmap.<@%unk/%unk: .iterator()>()',
+                '%8 = testmap.<@CXX/std/BuiltinClass: operator*.begin>',
             ],
             preds: [],
             succes: [1],
@@ -49,9 +50,8 @@ export const MapDemo_EXPECT = {
         {
             id: 1,
             stmts: [
-                '%9 = instanceinvoke %8.<@%unk/%unk: .next()>()',
-                '%10 = %9.<@CXX/std/BuiltinClass: IteratorResult.end>',
-                'if %10 == true'
+                '%9 = testmap.<@CXX/std/BuiltinClass: operator*.end>',
+                'if %8 == %9',
             ],
             preds: [0, 2],
             succes: [2, 3],
@@ -59,15 +59,16 @@ export const MapDemo_EXPECT = {
         {
             id: 2,
             stmts: [
-                '%11 = %9.<@CXX/std/BuiltinClass: IteratorResult.value>',
-                'e = <unknown>%11',
-                '%12 = e.<@%unk/%unk: .first>',
-                '%13 = instanceinvoke e.<@%unk/%unk: .second()>()',
-                "staticinvoke <@%unk/%unk: .printf()>('%d %s\\n', %12, %13)"
+                '%10 = %8.<@CXX/std/BuiltinClass: IterableIterator.*>',
+                'e = <value_type>%10',
+                '%11 = e.<@%unk/%unk: .first>',
+                '%12 = instanceinvoke e.<@%unk/%unk: .second()>()',
+                'staticinvoke <@%unk/%unk: .printf()>(\'%d %s\\n\', %11, %12)',
+                '%8 = instanceinvoke %8.<@%unk/%unk: .iterator++()>()',
             ],
             preds: [1],
-            succes: [1]
+            succes: [1],
         },
-        { id: 3, stmts: ['return null'], preds: [1], succes: [] }
+        { id: 3, stmts: ['return null'], preds: [1], succes: [] },
     ],
 };

@@ -131,6 +131,7 @@ describe('CfgTest', () => {
         testBlocks(scene, 'loopSample.cpp', 'Case8', LOOP_EXPECT.LOOP_EXPECT_CASE8.blocks);
         testBlocks(scene, 'loopSample.cpp', 'Case9', LOOP_EXPECT.LOOP_EXPECT_CASE9.blocks);
         testBlocks(scene, 'loopSample.cpp', 'Case10', LOOP_EXPECT.LOOP_EXPECT_CASE10.blocks);
+        testBlocks(scene, 'loopSample.cpp', 'Case11', LOOP_EXPECT.LOOP_EXPECT_CASE11.blocks);
     });
     it('case5: while-continue statement', () => {
         const scene = buildScene('whileContinue');

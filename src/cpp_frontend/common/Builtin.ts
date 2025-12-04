@@ -58,12 +58,13 @@ export class BuiltinCxx {
     // signature for built-in class
 
 
-    public static ITERATOR_FUNCTION = 'Symbol.iterator';
+    public static ITERATOR_FUNCTION = 'iterator';
     public static ITERATOR = 'IterableIterator';
-    public static ITERATOR_NEXT = 'next';
-    public static ITERATOR_RESULT = 'IteratorResult';
+    public static ITERATOR_NEXT = 'iterator++';
+    public static ITERATOR_RESULT = 'operator*';
+    public static ITERATOR_RESULT_BEGIN = 'begin';
     public static ITERATOR_RESULT_END = 'end';
-    public static ITERATOR_RESULT_VALUE = 'value';
+    public static ITERATOR_VALUE = '*';
 
     public static ITERATOR_CLASS_SIGNATURE = this.buildBuiltInClassSignature(this.ITERATOR);
     public static ITERATOR_RESULT_CLASS_SIGNATURE = this.buildBuiltInClassSignature(this.ITERATOR_RESULT);
