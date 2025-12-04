@@ -526,7 +526,8 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         return { iteratorNextInvokeExpr, iteratorNextInvokeExprPositions };
     }
 
-    private handleForRangeIterResult(iteratorNextInvokeExpr: ArkInstanceInvokeExpr, iteratorNextInvokeExprPositions: FullPosition[], stmts: Stmt[], iterator: Local,
+    private handleForRangeIterResult(iteratorNextInvokeExpr: ArkInstanceInvokeExpr,
+                                     iteratorNextInvokeExprPositions: FullPosition[], stmts: Stmt[], iterator: Local,
     ): { valueFieldRef: ArkInstanceFieldRef, valueFieldRefPositions: FullPosition[] } {
         const nextStmt = new ArkAssignStmt(iterator, iteratorNextInvokeExpr);
         stmts.push(nextStmt);
