@@ -97,6 +97,24 @@ int Instantiation3()
     return 0;
 }
 
+template<typename T, auto N>
+class FixedArray {
+private:
+    T data[N];
+
+public:
+    constexpr size_t size() const { return N; }
+
+    T& operator[](size_t index)
+    {
+        if (index >= N) throw std::out_of_range("Index out of range");
+        return data[index];
+    }
+};
+
+FixedArray<int, 10> arr1;
+FixedArray<double, 100> arr2;
+
 int main()
 {
     double d = 2.718;

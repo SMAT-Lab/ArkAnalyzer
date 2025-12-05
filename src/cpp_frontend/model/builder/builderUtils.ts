@@ -21,7 +21,7 @@ import {
     UnclearReferenceType,
     FunctionType,
 } from '../../../core/base/Type';
-import { PointerType, ReferenceType, ReferCategory, NapiType, SmartPointerType } from '../../base/Type';
+import { PointerType, ReferenceType, ReferCategory, NapiType, SmartPointerType, CxxNonType } from '../../base/Type';
 import { TypeInference } from '../../common/TypeInference';
 import { ArkField } from '../../../core/model/ArkField';
 import { ArkClass } from '../../../core/model/ArkClass';
@@ -106,20 +106,29 @@ export function buildTypeParameters(clsNode: CxxAstNode, sourceFile: CxxAstNode,
     const genericTypes: GenericType[] = [];
     let index = -1;
     for (const innerNode of clsNode.inner) {
-        if (innerNode.kind !== 'TemplateTypeParameter') {
-            continue;
+        if (innerNode.kind === 'TemplateTypeParameter') {
+            let typename = innerNode.name;
+            let defaultType;
+            if (innerNode.inner && innerNode.inner.length > 0) {
+                innerNode.default = innerNode.inner[0].type.qualType;
+            }
+            if (innerNode.default) {
+                defaultType = cxxNode2Type(innerNode.default, arkInstance, sourceFile);
+            }
+            let templateType = new GenericType(typename, defaultType);
+            templateType.setIndex(++index);
+            genericTypes.push(templateType);
+        } else if (innerNode.kind === 'NonTypeTemplateParameter') {
+            let templateType;
+            if (innerNode.type.qualType === 'auto') {
+                templateType = new CxxNonType(innerNode.name, undefined, true);
+            } else {
+                const nonType = cxxNode2Type(innerNode.type.qualType, arkInstance, sourceFile);
+                templateType = new CxxNonType(innerNode.name, nonType);
+            }
+            templateType.setIndex(++index);
+            genericTypes.push(templateType);
         }
-        let typename = innerNode.name;
-        let defaultType;
-        if (innerNode.inner && innerNode.inner.length > 0) {
-            innerNode.default = innerNode.inner[0].type.qualType;
-        }
-        if (innerNode.default) {
-            defaultType = cxxNode2Type(innerNode.default, arkInstance, sourceFile);
-        }
-        let templateType = new GenericType(typename, defaultType);
-        templateType.setIndex(++index);
-        genericTypes.push(templateType);
     }
     return genericTypes;
 }

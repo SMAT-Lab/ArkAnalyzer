@@ -162,3 +162,26 @@ export const TEMPLATE_MYCONTAINER_CLASS = {
         },
     ],
 };
+
+export const TEMPLATE_FIXEDARRAY_CLASS = {
+    fields: [
+        'data',
+    ],
+    heritageClasses: [],
+    blocks: [
+        {
+            methodName: 'size',
+            blocks: [
+                {
+                    id: 0,
+                    stmts: [
+                        'this = this: @template/template.cpp: FixedArray',
+                        'return N',
+                    ],
+                    preds: [],
+                    succes: [],
+                },
+            ],
+        },
+    ],
+};

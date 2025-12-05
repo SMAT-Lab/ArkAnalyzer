@@ -229,6 +229,7 @@ describe('Type Test', () => {
         testBlocks(scene, 'template.cpp', 'Max2', TEMPLATE_EXPECT.TEMPLATE_EXPECT_CASE2.blocks);
         testBlocks(scene, 'template.cpp', 'PrintPair', TEMPLATE_EXPECT.TEMPLATE_EXPECT_CASE3.blocks);
         testBlocksClass(scene, 'template.cpp', 'MyContainer', TEMPLATE_EXPECT.TEMPLATE_MYCONTAINER_CLASS);
+        testBlocksClass(scene, 'template.cpp', 'FixedArray', TEMPLATE_EXPECT.TEMPLATE_FIXEDARRAY_CLASS);
         testBlocks(scene, 'template.cpp', 'main', TEMPLATE_EXPECT.TEMPLATE_EXPECT_CASE4.blocks);
         testBlocks(scene, 'template.cpp', 'Sum', TEMPLATE_EXPECT.TEMPLATE_EXPECT_CASE5.blocks);
         testBlocks(scene, 'template.cpp', 'Instantiation3', TEMPLATE_EXPECT.TEMPLATE_EXPECT_CASE6.blocks);
