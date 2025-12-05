@@ -36,8 +36,8 @@ import {
     MY_HEADER_EXPORT_INFO4,
     NAMESPACE_EXPORT_INFO,
 } from '../../../resources_cpp/exports/crossFileCase/expectedIR';
-import { assertBlocksEqual, testBlocksClass } from '../../common';
-import { BASE_DATA_EXPECT, INNER_CLASS_EXPECT } from '../../../resources_cpp/exports/nestedCase/expectIR';
+import { assertBlocksEqual, testBlocks, testBlocksClass } from '../../common';
+import { BASE_DATA_EXPECT, INNER_CLASS_EXPECT, MAIN_EXPECT } from '../../../resources_cpp/exports/nestedCase/expectIR';
 
 const BASE_DIR = 'tests/resources_cpp/exports';
 const is_system_win32 = process.platform === 'win32';
@@ -315,6 +315,10 @@ describe('nested case', () => {
 
         const dfltClass = file?.getNamespaceWithName('SAME_NAMESPACE')?.getDefaultClass();
         assert.equal(
+            dfltClass?.getMethodWithName('GetId')?.getDeclareSignatures()?.[0].toString(),
+            '@nestedCase/include/namespaceB.h: SAME_NAMESPACE.%dflt.GetId(@nestedCase/include/namespaceB.h: SAME_NAMESPACE.BaseData&)'
+        );
+        assert.equal(
             dfltClass?.getMethodWithName('GetId')?.getSignature().toString(),
             '@nestedCase/src/namespaceB.cpp: SAME_NAMESPACE.%dflt.GetId(@nestedCase/include/namespaceB.h: SAME_NAMESPACE.BaseData&)'
         );
@@ -340,5 +344,61 @@ describe('nested case', () => {
             outterClass?.getMethodWithName('ProcessBase')?.getDeclareSignatures()?.[0].toString(),
             '@nestedCase/include/namespaceA.h: SAME_NAMESPACE.OuterClass.ProcessBase(@nestedCase/include/namespaceB.h: SAME_NAMESPACE.BaseData&)'
         );
+    });
+
+    it('namespaceB.cpp', () => {
+        const fileId = new FileSignature(projectScene.getProjectName(), 'src/namespaceB.cpp');
+        const file = projectScene.getFile(fileId);
+        assert.isNotEmpty(file);
+
+        const dfltClass = file?.getNamespaceWithName('SAME_NAMESPACE')?.getDefaultClass();
+        assert.equal(
+            dfltClass?.getMethodWithName('GetId')?.getSignature().toString(),
+            '@nestedCase/src/namespaceB.cpp: SAME_NAMESPACE.%dflt.GetId(@nestedCase/include/namespaceB.h: SAME_NAMESPACE.BaseData&)'
+        );
+        assert.equal(
+            dfltClass?.getMethodWithName('GetType')?.getSignature().toString(),
+            '@nestedCase/src/namespaceB.cpp: SAME_NAMESPACE.%dflt.GetType(@nestedCase/include/namespaceB.h: SAME_NAMESPACE.BaseData&)'
+        );
+        assert.equal(
+            dfltClass?.getMethodWithName('GetType')?.getReturnType().toString(),
+            '@nestedCase/include/namespaceB.h: SAME_NAMESPACE.INDENT_TYPE$BaseData'
+        );
+        const stmts = dfltClass?.getMethodWithName('GetType')?.getCfg()?.getStmts();
+        assert.equal(
+            stmts?.[2].toString(),
+            '%0 = data.<@nestedCase/include/namespaceB.h: SAME_NAMESPACE.BaseData.type>'
+        );
+    });
+
+    it('namespaceA.cpp', () => {
+        const fileId = new FileSignature(projectScene.getProjectName(), 'src/namespaceA.cpp');
+        const file = projectScene.getFile(fileId);
+        assert.isNotEmpty(file);
+        const dfltClass = file?.getNamespaceWithName('SAME_NAMESPACE')?.getClassWithName('OuterClass');
+        assert.equal(
+            dfltClass?.getMethodWithName('ProcessInner')?.getSignature().toString(),
+            '@nestedCase/src/namespaceA.cpp: SAME_NAMESPACE.OuterClass.ProcessInner(@nestedCase/include/namespaceA.h: SAME_NAMESPACE.InnerClass$OuterClass&)'
+        );
+        assert.equal(
+            dfltClass?.getMethodWithName('ProcessInner')?.getDeclareSignatures()?.[0].toString(),
+            '@nestedCase/include/namespaceA.h: SAME_NAMESPACE.OuterClass.ProcessInner(@nestedCase/include/namespaceA.h: SAME_NAMESPACE.InnerClass$OuterClass&)'
+        );
+        assert.equal(
+            dfltClass?.getMethodWithName('ProcessBase')?.getSignature().toString(),
+            '@nestedCase/src/namespaceA.cpp: SAME_NAMESPACE.OuterClass.ProcessBase(@nestedCase/include/namespaceB.h: SAME_NAMESPACE.BaseData&)'
+        );
+        assert.equal(
+            dfltClass?.getMethodWithName('ProcessBase')?.getDeclareSignatures()?.[0].toString(),
+            '@nestedCase/include/namespaceA.h: SAME_NAMESPACE.OuterClass.ProcessBase(@nestedCase/include/namespaceB.h: SAME_NAMESPACE.BaseData&)'
+        );
+    });
+
+    it('main.cpp', () => {
+        // TODO: same name namespace importInfos
+        const fileId = new FileSignature(projectScene.getProjectName(), 'main.cpp');
+        const file = projectScene.getFile(fileId);
+        assert.isNotEmpty(file);
+        testBlocks(projectScene, 'main.cpp', 'main', MAIN_EXPECT.blocks);
     });
 });

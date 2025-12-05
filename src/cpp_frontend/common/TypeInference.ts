@@ -81,6 +81,7 @@ import {
     ANONYMOUS_METHOD_PREFIX,
     INSTANCE_INIT_METHOD_NAME,
     LEXICAL_ENV_NAME_PREFIX,
+    NAME_DELIMITER,
     STATIC_INIT_METHOD_NAME,
     UNKNOWN_FILE_NAME,
 } from '../../core/common/Const';
@@ -1016,7 +1017,9 @@ export class TypeInference {
                 }
                 return null;
             }
-            propertyAndType = this.inferClassFieldType(declareClass, typeWithoutPtrOrRef, fieldName);
+            propertyAndType =
+                this.inferClassFieldType(declareClass, typeWithoutPtrOrRef, fieldName) ??
+                this.inferNestedClassType(declareClass, typeWithoutPtrOrRef, fieldName);
         } else if (typeWithoutPtrOrRef instanceof ArrayType) {
             propertyAndType = this.inferArrayFieldType(declareClass, fieldName);
         } else if (typeWithoutPtrOrRef instanceof AnnotationNamespaceType) {
@@ -1046,7 +1049,7 @@ export class TypeInference {
         if (!arkClass) {
             return null;
         }
-        const property = ModelUtils.findPropertyInClass(fieldName, arkClass);
+        const property = CxxModelUtils.findPropertyInClass(fieldName, arkClass);
         let propertyType: Type | null = null;
         if (property instanceof ArkField) {
             if (arkClass.getCategory() === ClassCategory.ENUM) {
@@ -1089,7 +1092,7 @@ export class TypeInference {
     private static inferArrayFieldType(declareClass: ArkClass, fieldName: string): [ArkField, Type] | null {
         const arrayClass = declareClass.getDeclaringArkFile().getScene().getSdkGlobal(Builtin.ARRAY);
         if (arrayClass instanceof ArkClass) {
-            const property = ModelUtils.findPropertyInClass(fieldName, arrayClass);
+            const property = CxxModelUtils.findPropertyInClass(fieldName, arrayClass);
             if (property instanceof ArkField) {
                 return [property, property.getType()];
             }
@@ -1342,6 +1345,24 @@ export class TypeInference {
             TypeInference.inferSignatureReturnType(signature, foundMethod);
             expr.setMethodSignature(signature);
             return expr instanceof ArkInstanceInvokeExpr ? new ArkStaticInvokeExpr(signature, expr.getArgs(), expr.getRealGenericTypes()) : expr;
+        }
+        return null;
+    }
+
+    public static inferNestedClassType(declareClass: ArkClass, baseType: ClassType, fieldName: string): [any, Type] | null {
+        const arkClass = declareClass.getDeclaringArkFile().getScene().getClass(baseType.getClassSignature());
+        if (!arkClass) {
+            return null;
+        }
+        const declScope = arkClass.getDeclaringArkNamespace() ?? arkClass.getDeclaringArkFile();
+        const nestedClassName = fieldName + NAME_DELIMITER + baseType.getClassSignature().getClassName();
+        const nestedClass = declScope.getClassWithName(nestedClassName);
+        if (!nestedClass) {
+            return null;
+        }
+        const type = this.parseArkExport2Type(nestedClass);
+        if (type) {
+            return [nestedClass, type];
         }
         return null;
     }

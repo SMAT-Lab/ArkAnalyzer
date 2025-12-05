@@ -650,18 +650,7 @@ export class IRInference {
     }
 
     public static generateNewFieldSignature(ref: AbstractFieldRef, arkClass: ArkClass, baseType: Type): FieldSignature | null {
-        if (baseType instanceof UnionType) {
-            for (let type of baseType.flatType()) {
-                if (type instanceof UndefinedType || type instanceof NullType) {
-                    continue;
-                }
-                let newFieldSignature = this.generateNewFieldSignature(ref, arkClass, type);
-                if (!TypeInference.isUnclearType(newFieldSignature?.getType())) {
-                    return newFieldSignature;
-                }
-            }
-            return null;
-        } else if (baseType instanceof AliasType) {
+        if (baseType instanceof AliasType) {
             return this.generateNewFieldSignature(ref, arkClass, baseType.getOriginalType());
         }
         const fieldName = ref.getFieldName().replace(/[\"|\']/g, '');

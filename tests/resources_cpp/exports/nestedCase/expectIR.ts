@@ -87,3 +87,28 @@ export const INNER_CLASS_EXPECT = {
     ],
 };
 
+export const MAIN_EXPECT = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @nestedCase/main.cpp: %dflt',
+                '%0 = new @%unk/%unk: SAME_NAMESPACE::BaseData',
+                '%1 = @%unk/%unk: struct SAME_NAMESPACE::BaseData.[static]MAP',
+                'instanceinvoke %0.<@%unk/%unk: SAME_NAMESPACE::BaseData.constructor()>(1, %1)',
+                'base = %0',
+                '%2 = new @nestedCase/include/namespaceA.h: SAME_NAMESPACE.OuterClass',
+                'instanceinvoke %2.<@nestedCase/include/namespaceA.h: SAME_NAMESPACE.OuterClass.constructor()>()',
+                'outer = %2',
+                'instanceinvoke outer.<@nestedCase/include/namespaceA.h: SAME_NAMESPACE.OuterClass.ProcessBase(@nestedCase/include/namespaceB.h: SAME_NAMESPACE.BaseData&)>(base)',
+                '%3 = new @nestedCase/include/namespaceA.h: SAME_NAMESPACE.InnerClass$OuterClass',
+                "instanceinvoke %3.<@nestedCase/include/namespaceA.h: SAME_NAMESPACE.InnerClass$OuterClass.constructor(int, string&, @nestedCase/include/namespaceB.h: SAME_NAMESPACE.BaseData&)>(1, 'AAA', base)",
+                'inner = %3',
+                'instanceinvoke outer.<@nestedCase/include/namespaceA.h: SAME_NAMESPACE.OuterClass.ProcessInner(@nestedCase/include/namespaceA.h: SAME_NAMESPACE.InnerClass$OuterClass&)>(inner)',
+                'return 0',
+            ],
+            preds: [],
+            succes: [],
+        },
+    ],
+};

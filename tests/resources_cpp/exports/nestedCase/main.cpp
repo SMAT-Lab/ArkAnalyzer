@@ -23,8 +23,8 @@ int main()
 {
     SAME_NAMESPACE::BaseData base(1, BaseData::INDENT_TYPE::MAP);
     SAME_NAMESPACE::OuterClass outer;
-    outer.processBase(base);
-    OuterClass::InnerClass inner(1, BaseData::INDENT_TYPE::MAP, base);
-    outer.processInner(inner);
+    outer.ProcessBase(base);
+    OuterClass::InnerClass inner(1, "AAA", base);
+    outer.ProcessInner(inner);
     return 0;
 }

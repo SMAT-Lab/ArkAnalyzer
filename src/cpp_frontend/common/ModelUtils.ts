@@ -358,53 +358,6 @@ function getFuncImplement(mtd: ArkMethod): ArkMethod {
     return realImplMtd;
 }
 
-type PatchClassType = abstract new (...args: unknown[]) => unknown;
-type StaticMethodKeys<C extends PatchClassType> = Extract<
-    {
-        [K in keyof C]: C[K] extends Function ? K : never;
-    }[keyof C],
-    string
->;
-
-export class PatchRegistry {
-    private static _instance: PatchRegistry;
-    private static originalMap = new Map<string, unknown>();
-
-    private constructor() {}
-
-    public static get instance(): PatchRegistry {
-        if (!this._instance) {
-            this._instance = new PatchRegistry();
-            Object.freeze(this._instance);
-        }
-        return this._instance;
-    }
-
-    public static patchStaticMethod<
-        C extends PatchClassType,
-        K extends StaticMethodKeys<C>
-    >(targetModule: C, methodName: K, newFunction: C[K]): void {
-        const key = `${targetModule.name}.static.${methodName}`;
-        if (!this.originalMap.has(key)) {
-            this.originalMap.set(key, targetModule[methodName]);
-        }
-        targetModule[methodName] = newFunction;
-    }
-
-    public static restoredStaticMethod<
-        C extends PatchClassType,
-        K extends StaticMethodKeys<C>
-    >(targetModule: C, methodName: K): void {
-        const key = `${targetModule.name}.static.${methodName}`;
-        const original = this.originalMap.get(key);
-        if (!original) {
-            return;
-        }
-        targetModule[methodName] = original as C[K];
-        this.originalMap.delete(key);
-    }
-}
-
 export class CxxModelUtils {
 
     public static getArkExportInImportInfoWithName(name: string, arkFile: ArkFile, arkClass?: ArkClass): ArkExport | null {
