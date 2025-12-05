@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { Type, NumberType, UnionType } from '../../core/base/Type';
+import { Type, NumberType, UnionType, GenericType } from '../../core/base/Type';
 import { Value } from '../../core/base/Value';
 
 /** Enum representing the bitWidth of Cxx types. */
@@ -573,4 +573,21 @@ export class TypeInfo extends Type {
     public getTypeString(): string {
         return this.name;
     }
+}
+
+export class CxxNonType extends GenericType {
+
+    private isAutoType: boolean = false;
+    constructor(name: string, defaultType?: Type, isAutoType: boolean = false) {
+        super(name, defaultType);
+        this.isAutoType = isAutoType;
+    }
+
+    public getIsAutoType(): boolean {
+        return this.isAutoType;
+    }
+    public setIsAutoType(isAutoType: boolean): void {
+        this.isAutoType = isAutoType;
+    }
+
 }
