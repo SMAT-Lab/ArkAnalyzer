@@ -34,7 +34,7 @@ public:
     void Sound() const override{}
 };
 
-void MakeSound(Animal& animal)
+void MakeSound(const Animal& animal)
 {
     animal.Sound();
 }

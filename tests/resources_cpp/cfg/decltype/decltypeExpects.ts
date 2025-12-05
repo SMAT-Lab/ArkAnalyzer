@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -42,7 +42,7 @@ export const DECLTYPE_EXPECT_CASE1 = {
     blocks: [
         {
             id: 0,
-            stmts: ['this = this: @decltype/decltype.cpp: %dflt', 'a = 10', 'w = 10', 'b = 5', 'y = b', 'c = 10', 'y = c', 'z = 42', 'return'],
+            stmts: ['this = this: @decltype/decltype.cpp: %dflt', 'a = 10', 'w = 10', 'b = 5', 'y = b', 'c = 10', 'e = c', 'z = 42', 'return'],
             preds: [],
             succes: [],
         },
