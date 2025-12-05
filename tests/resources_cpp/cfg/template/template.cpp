@@ -47,7 +47,7 @@ int Max2(Q a, Q b)
 int Instantiation1(int x, int y)
 {
     int z = Max1(x, y);
-    int y = Max2(x, y);
+    int r = Max2(x, y);
     PrintPair(x, y);
     return 0;
 }
