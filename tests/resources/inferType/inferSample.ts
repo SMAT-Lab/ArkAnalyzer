@@ -135,3 +135,24 @@ function testArrayInstacnceOf(): void {
         console.info(a);
     }
 }
+
+class IConfig {
+    id: string;
+}
+
+class Config2 extends IConfig {
+    id: string;
+
+    ffff(): void {
+        console.log('xx');
+    }
+}
+
+interface CCContext {
+    queryConfig<T extends IConfig = Config2>(id: string): T
+}
+
+function test2(c: CCContext): void {
+    let a = c.queryConfig('aa');
+    a.ffff();
+}
