@@ -14,6 +14,7 @@
  */
 
 #include <iostream>
+#include <stdexcept>
 
 #define TWO 2
 #define PI 3.14
