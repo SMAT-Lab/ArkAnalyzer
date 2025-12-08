@@ -48,6 +48,14 @@ void PtrType(int *p, int **pp)
 // 2. Basic pointer operations
 void BasePtrOp(MyStruct *s, MyStruct s1)
 {
+    int num = 100;
+    const int const_num = 200;
+
+    const int* p1 = &num;
+    int const* p2 = &const_num;
+    int* const p3 = &num;
+    const int* const p4 = &const_num;
+
     int x = 1;
     int *p = &x;
     int y = *p;

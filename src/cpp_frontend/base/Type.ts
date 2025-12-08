@@ -374,11 +374,14 @@ function cxxStdTypeNameToStr(cxxStdTypeName: CxxStdTypeName): string {
 export class PointerType extends Type {
     private baseType: Type; // Base type, such as int in int *
     private level: number; // Represents the level of pointer
+    private isConstPointer: boolean = false; // Whether the pointer is a const pointer
+    private isPointerToConst: boolean = false; // Whether the pointer points to a const type
 
-    constructor(baseType: Type, level: number) {
+    constructor(baseType: Type, level: number, oriStr?: string) {
         super();
         this.baseType = baseType;
         this.level = level;
+        this.analyzePointer(oriStr ?? '');
     }
 
     public getBaseType(): Type {
@@ -404,6 +407,40 @@ export class PointerType extends Type {
             strs.push('*');
         }
         return strs.join('');
+    }
+
+    public getIsConstPointer(): boolean {
+        return this.isConstPointer;
+    }
+
+    public setIsConstPointer(isConstPointer: boolean): void {
+        this.isConstPointer = isConstPointer;
+    }
+
+    public getIsPointerToConst(): boolean {
+        return this.isPointerToConst;
+    }
+
+    public setIsPointerToConst(isPointerToConst: boolean): void {
+        this.isPointerToConst = isPointerToConst;
+    }
+
+    private analyzePointer(oriStr: string): void {
+        if (!oriStr || !oriStr.includes('*')) {
+            return;
+        }
+
+        const starIndex = oriStr.indexOf('*');
+
+        // Analyze the const keywords to the left and right of the asterisk
+        const leftPart = oriStr.substring(0, starIndex);
+        const rightPart = oriStr.substring(starIndex + 1);
+
+        // Check if there is const on the right side (pointer itself is a constant)
+        this.isConstPointer = /\bconst\b/.test(rightPart);
+
+        // Check if there is const on the left side (the pointer points to a constant)
+        this.isPointerToConst = /\bconst\b/.test(leftPart);
     }
 }
 
