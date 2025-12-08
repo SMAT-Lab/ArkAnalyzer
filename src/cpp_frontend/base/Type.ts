@@ -376,7 +376,8 @@ export class PointerType extends Type {
     private level: number; // Represents the level of pointer
     private isConstPointer: boolean = false; // Whether the pointer is a const pointer
     private isPointerToConst: boolean = false; // Whether the pointer points to a const type
-
+    private isVolatilePointer: boolean = false; // Whether the pointer is a volatile pointer
+    private isPointerToVolatileType: boolean = false; // Whether the pointer points to a volatile type
     constructor(baseType: Type, level: number, oriStr?: string) {
         super();
         this.baseType = baseType;
@@ -441,6 +442,28 @@ export class PointerType extends Type {
 
         // Check if there is const on the left side (the pointer points to a constant)
         this.isPointerToConst = /\bconst\b/.test(leftPart);
+
+        // Check if there is volatile on the right side (pointer itself is a volatile)
+        this.isVolatilePointer = /\bvolatile\b/.test(rightPart);
+
+        // Check if there is volatile on the left side (the pointer points to a volatile)
+        this.isPointerToVolatileType = /\bvolatile\b/.test(leftPart);
+    }
+
+    public getIsVolatilePointer(): boolean {
+        return this.isVolatilePointer;
+    }
+
+    public setIsVolatilePointer(isVolatilePointer: boolean): void {
+        this.isVolatilePointer = isVolatilePointer;
+    }
+
+    public getIsPointerToVolatileType(): boolean {
+        return this.isPointerToVolatileType;
+    }
+
+    public setIsPointerToVolatileType(isPointerToVolatileType: boolean): void {
+        this.isPointerToVolatileType = isPointerToVolatileType;
     }
 }
 
