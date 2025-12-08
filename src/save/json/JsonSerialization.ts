@@ -280,35 +280,35 @@ export function serializeType(type: Type): TypeDto {
         });
     } else if (type instanceof CxxIntType) {
         return polymorphic('CxxIntType', {
-            text: type.toString(),
+            signType: type.getSignType().toString(),
         });
     } else if (type instanceof CxxShortType) {
         return polymorphic('CxxShortType', {
-            text: type.toString(),
+            signType: type.getSignType().toString(),
         });
     } else if (type instanceof CxxLongType) {
         return polymorphic('CxxLongType', {
-            text: type.toString(),
+            signType: type.getSignType().toString(),
         });
     } else if (type instanceof CxxLongLongType) {
         return polymorphic('CxxLongLongType', {
-            text: type.toString(),
+            signType: type.getSignType().toString(),
         });
     } else if (type instanceof CxxSizeTType) {
         return polymorphic('CxxSizeTType', {
-            text: type.toString(),
+            signType: type.getSignType().toString(),
         });
     } else if (type instanceof CxxFloatType) {
         return polymorphic('CxxFloatType', {
-            text: type.toString(),
+            bitWidth: type.getBitWith(),
         });
     } else if (type instanceof CxxDoubleType) {
         return polymorphic('CxxDoubleType', {
-            text: type.toString(),
+            bitWidth: type.getBitWith(),
         });
     } else if (type instanceof CxxLongDoubleType) {
         return polymorphic('CxxLongDoubleType', {
-            text: type.toString(),
+            bitWidth: type.getBitWith(),
         });
     } else if (type instanceof CxxCharType) {
         return polymorphic('CxxCharType', {
@@ -320,15 +320,15 @@ export function serializeType(type: Type): TypeDto {
         });
     } else if (type instanceof PointerType) {
         return polymorphic('PointerType', {
-            text: type.toString(),
+            baseType:  serializeType(type.getBaseType()),
         });
     } else if (type instanceof SmartPointerType) {
         return polymorphic('SmartPointerType', {
-            text: type.toString(),
+            baseType:  serializeType(type.getBaseType()),
         });
     } else if (type instanceof ReferenceType) {
         return polymorphic('ReferenceType', {
-            text: type.toString(),
+            baseType:  serializeType(type.getBaseType()),
         });
     } else if (type instanceof Thread) {
         return polymorphic('Thread', {
@@ -336,7 +336,7 @@ export function serializeType(type: Type): TypeDto {
         });
     } else if (type instanceof TypeInfo) {
         return polymorphic('TypeInfo', {
-            text: type.toString(),
+            name: type.toString(),
         });
 
     } else if (type instanceof BooleanType) {
