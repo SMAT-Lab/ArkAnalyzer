@@ -374,11 +374,15 @@ function cxxStdTypeNameToStr(cxxStdTypeName: CxxStdTypeName): string {
 export class PointerType extends Type {
     private baseType: Type; // Base type, such as int in int *
     private level: number; // Represents the level of pointer
-
-    constructor(baseType: Type, level: number) {
+    private isConstPointer: boolean = false; // Whether the pointer is a const pointer
+    private isPointerToConst: boolean = false; // Whether the pointer points to a const type
+    private isVolatilePointer: boolean = false; // Whether the pointer is a volatile pointer
+    private isPointerToVolatileType: boolean = false; // Whether the pointer points to a volatile type
+    constructor(baseType: Type, level: number, oriStr?: string) {
         super();
         this.baseType = baseType;
         this.level = level;
+        this.analyzePointer(oriStr ?? '');
     }
 
     public getBaseType(): Type {
@@ -404,6 +408,62 @@ export class PointerType extends Type {
             strs.push('*');
         }
         return strs.join('');
+    }
+
+    public getIsConstPointer(): boolean {
+        return this.isConstPointer;
+    }
+
+    public setIsConstPointer(isConstPointer: boolean): void {
+        this.isConstPointer = isConstPointer;
+    }
+
+    public getIsPointerToConst(): boolean {
+        return this.isPointerToConst;
+    }
+
+    public setIsPointerToConst(isPointerToConst: boolean): void {
+        this.isPointerToConst = isPointerToConst;
+    }
+
+    private analyzePointer(oriStr: string): void {
+        if (!oriStr || !oriStr.includes('*')) {
+            return;
+        }
+
+        const starIndex = oriStr.indexOf('*');
+
+        // Analyze the const keywords to the left and right of the asterisk
+        const leftPart = oriStr.substring(0, starIndex);
+        const rightPart = oriStr.substring(starIndex + 1);
+
+        // Check if there is const on the right side (pointer itself is a constant)
+        this.isConstPointer = /\bconst\b/.test(rightPart);
+
+        // Check if there is const on the left side (the pointer points to a constant)
+        this.isPointerToConst = /\bconst\b/.test(leftPart);
+
+        // Check if there is volatile on the right side (pointer itself is a volatile)
+        this.isVolatilePointer = /\bvolatile\b/.test(rightPart);
+
+        // Check if there is volatile on the left side (the pointer points to a volatile)
+        this.isPointerToVolatileType = /\bvolatile\b/.test(leftPart);
+    }
+
+    public getIsVolatilePointer(): boolean {
+        return this.isVolatilePointer;
+    }
+
+    public setIsVolatilePointer(isVolatilePointer: boolean): void {
+        this.isVolatilePointer = isVolatilePointer;
+    }
+
+    public getIsPointerToVolatileType(): boolean {
+        return this.isPointerToVolatileType;
+    }
+
+    public setIsPointerToVolatileType(isPointerToVolatileType: boolean): void {
+        this.isPointerToVolatileType = isPointerToVolatileType;
     }
 }
 

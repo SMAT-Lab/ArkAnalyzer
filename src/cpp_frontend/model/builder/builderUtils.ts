@@ -166,6 +166,12 @@ export function buildParameters(params: CxxAstNode[], arkInstance: ArkMethod | A
 export function buildReturnType(mtdNode: CxxAstNode, sourceFile: CxxAstNode, method: ArkMethod): Type {
     let nodeType = mtdNode.type;
     if (nodeType) {
+        if (nodeType?.qualType) {
+            const qualType = nodeType.qualType;
+            if (qualType.includes('noexcept') && !qualType.includes('noexcept(false)')) {
+                method.addModifier(modifierKind2CxxEnum('noexcept'));
+            }
+        }
         let funcRetType;
         let isLambdaFunc = nodeType.qualType.startsWith('(lambda at');
         if (!isLambdaFunc) {
@@ -255,6 +261,7 @@ export function cxxNode2Type(
  *@ returns Type object constructed
  */
 export function buildTypeFromPreStr(preStr: string, arkInstance: ArkMethod | ArkClass | ArkField | undefined): Type {
+    const oriStr = preStr;
     // 1. Remove modifiers such as const/static/mutable
     preStr = preStr.replace(/\b(const|static|mutable)\s*\b/g, '');
     let pointerLevel = 0;
@@ -277,7 +284,7 @@ export function buildTypeFromPreStr(preStr: string, arkInstance: ArkMethod | Ark
     // Need to Handle precedence between pointers and other types/modifiers
     // 4. Wrap pointers and references
     if (pointerLevel > 0) { // && !(baseType instanceof FunctionPointer) || pointerLevel > 1
-        baseType = new PointerType(baseType, pointerLevel);
+        baseType = new PointerType(baseType, pointerLevel, oriStr);
     }
     if (referenceCount > 0) {
         return buildReferenceType(preStr, arkInstance, referenceCount, baseType);

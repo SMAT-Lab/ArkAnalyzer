@@ -114,3 +114,26 @@ export const FUNCPTR_EXPECT_GREET = {
         },
     ],
 };
+
+export const FUNCPTR_EXPECT_ADD = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'a = parameter0: int',
+                'b = parameter1: int',
+                'this = this: @functionPointer/functionPointer.cpp: %dflt',
+                'if b == undefined',
+            ],
+            preds: [],
+            succes: [1, 2],
+        },
+        { id: 1, stmts: ['b = 4'], preds: [0], succes: [2] },
+        {
+            id: 2,
+            stmts: ['%0 = a + b', 'return %0'],
+            preds: [1, 0],
+            succes: [],
+        },
+    ],
+};
