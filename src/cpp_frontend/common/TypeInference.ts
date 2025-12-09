@@ -158,7 +158,8 @@ export class TypeInference {
             visited.add(typeWithoutPtrOrRef);
         }
         let type;
-        if (typeWithoutPtrOrRef instanceof ClassType && unknownFileName.includes(typeWithoutPtrOrRef.getClassSignature().getDeclaringFileSignature().getFileName())) {
+        if (typeWithoutPtrOrRef instanceof ClassType &&
+            unknownFileName.includes(typeWithoutPtrOrRef.getClassSignature().getDeclaringFileSignature().getFileName())) {
             const realTypes = typeWithoutPtrOrRef.getRealGenericTypes();
             this.inferRealGenericTypes(realTypes, declaringArkClass);
             let newType = this.inferUnclearRefName(typeWithoutPtrOrRef.getClassSignature().getClassName(), declaringArkClass);
