@@ -37,7 +37,7 @@ void Case3(char c = 'o')
     c++;
 }
 
-void exampleFunction(int requiredParam,
+void ExampleFunction(int requiredParam,
     [[maybe_unused]] int unusedParam = 0,
     [[maybe_unused]] const std::string& unusedStr = "")
 {
