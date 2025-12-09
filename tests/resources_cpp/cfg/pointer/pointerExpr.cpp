@@ -55,6 +55,7 @@ void BasePtrOp(MyStruct *s, MyStruct s1)
     int const* p2 = &const_num;
     int* const p3 = &num;
     const int* const p4 = &const_num;
+    volatile int *volatile p5;
 
     int x = 1;
     int *p = &x;

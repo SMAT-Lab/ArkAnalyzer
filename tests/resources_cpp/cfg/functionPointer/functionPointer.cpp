@@ -20,7 +20,7 @@ using namespace std;
 #define FOUR 4
 
 // Define a function
-int Add(int a, int b)
+int Add(int a, int b = FOUR)
 {
     return a + b;
 }
