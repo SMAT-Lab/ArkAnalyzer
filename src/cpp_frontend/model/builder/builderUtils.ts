@@ -166,6 +166,12 @@ export function buildParameters(params: CxxAstNode[], arkInstance: ArkMethod | A
 export function buildReturnType(mtdNode: CxxAstNode, sourceFile: CxxAstNode, method: ArkMethod): Type {
     let nodeType = mtdNode.type;
     if (nodeType) {
+        if (nodeType?.qualType) {
+            const qualType = nodeType.qualType;
+            if (qualType.includes('noexcept') && !qualType.includes('noexcept(false)')) {
+                method.addModifier(modifierKind2CxxEnum('noexcept'));
+            }
+        }
         let funcRetType;
         let isLambdaFunc = nodeType.qualType.startsWith('(lambda at');
         if (!isLambdaFunc) {

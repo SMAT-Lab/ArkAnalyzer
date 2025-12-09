@@ -90,3 +90,14 @@ int Case3()
     return 0;
 }
 
+void Func1() noexcept {
+    // 如果这里抛出异常，程序会调用std::terminate()
+}
+
+void Func2() noexcept (false) {
+    // 可以抛出异常
+}
+
+void Func3() noexcept (true) {
+    // 可以抛出异常
+}

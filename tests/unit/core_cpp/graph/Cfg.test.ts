@@ -15,7 +15,7 @@
 
 import { BasicBlock, FileUtils, Scene, SceneConfig } from '../../../../src';
 import { Language } from '../../../../src/core/model/ArkFile';
-import { describe, expect, it, vi } from 'vitest';
+import { assert, describe, expect, it, vi } from 'vitest';
 import path from 'path';
 import { assertClassBlocksEqual, testBlocks, testBlocksWithSignature, testBlocksClass } from '../../common';
 import * as CONDITION_EXPECT from '../../../resources_cpp/cfg/conditionalOperator';
@@ -66,6 +66,7 @@ import * as INITIALZERLIST from '../../../resources_cpp/cfg/stdInitializerListEx
 import * as SUPPLEMENTARY from '../../../resources_cpp/cfg/supplementary/supplementary';
 import * as TRAP from '../../../resources_cpp/cfg/trap/cxxTrapExpects';
 import * as OVERWRITE from '../../../resources_cpp/cfg/overwrite/overwriteExpect';
+import { ModifierType } from '../../../../src/core/model/ArkBaseModel';
 
 const deveco_c = process.env.DEVECO_C !== undefined ? process.env.DEVECO_C : '';
 const deveco_include = process.env.DEVECO_INCLUDE !== undefined ? process.env.DEVECO_INCLUDE : '';
@@ -474,10 +475,21 @@ describe('feature Test', () => {
     it('case2: functionPointer', () => {
         const scene = buildScene('functionPointer');
         scene.inferTypes();
+        testBlocks(scene, 'functionPointer.cpp', 'Add', FUNCPTR_EXPECT.FUNCPTR_EXPECT_ADD.blocks);
         testBlocks(scene, 'functionPointer.cpp', 'Case1', FUNCPTR_EXPECT.FUNCPTR_EXPECT_CASE1.blocks);
         testBlocks(scene, 'functionPointer.cpp', 'Case2', FUNCPTR_EXPECT.FUNCPTR_EXPECT_CASE2.blocks);
         testBlocks(scene, 'functionPointer.cpp', 'Case3', FUNCPTR_EXPECT.FUNCPTR_EXPECT_CASE3.blocks);
         testBlocks(scene, 'functionPointer.cpp', 'Greet', FUNCPTR_EXPECT.FUNCPTR_EXPECT_GREET.blocks);
+        const arkFile = scene.getFiles().find((file) => file.getName().endsWith('functionPointer.cpp'));
+        const arkMethod1 = arkFile?.getDefaultClass().getMethods()
+            .find((method) => (method.getName() === 'Func1'));
+        assert(arkMethod1?.getModifiers() === ModifierType.NOEXCEPT);
+        const arkMethod2 = arkFile?.getDefaultClass().getMethods()
+            .find((method) => (method.getName() === 'Func2'));
+        assert(arkMethod2?.getModifiers() === 0);
+        const arkMethod3 = arkFile?.getDefaultClass().getMethods()
+            .find((method) => (method.getName() === 'Func3'));
+        assert(arkMethod3?.getModifiers() === ModifierType.NOEXCEPT);
     });
     it('case3: structBinding', () => {
         const scene = buildScene('structBinding');
