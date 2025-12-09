@@ -16,7 +16,7 @@
 import path from 'path';
 import fs from 'fs';
 import { describe, expect, it } from 'vitest';
-import { ArkFile, Scene, SceneConfig } from '../../../src';
+import { ArkFile, Scene, SceneConfig } from '../../../src/index';
 import { JsonPrinter } from '../../../src/save/json/JsonPrinter';
 
 function compareClassJson(arkClass: any, expectedClass: any): void {

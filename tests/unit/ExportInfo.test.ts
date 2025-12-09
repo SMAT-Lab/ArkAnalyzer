@@ -17,7 +17,7 @@ import { assert, describe, expect, it } from 'vitest';
 import path from 'path';
 import {
     AliasClassSignature,
-    ArkClass,
+    ArkClass, ArkMethod,
     ClassType,
     FileSignature,
     GlobalRef,
@@ -420,7 +420,7 @@ describe("export From Test", () => {
         const fileId = new FileSignature(projectScene.getProjectName(), 'from/exportAllFromOtherFile.ts');
         const file = projectScene.getFile(fileId);
         const exportInfo = file?.getExportInfoBy(ExportAllFromOtherFile_Expect_IR.exportClauseName);
-        compareExportInfo(exportInfo, ExportAllFromOtherFile_Expect_IR);
+        assert.isUndefined(exportInfo);
     });
 
     it('export all with as name from other file', () => {
@@ -428,5 +428,14 @@ describe("export From Test", () => {
         const file = projectScene.getFile(fileId);
         const exportInfo = file?.getExportInfoBy(ExportAllWithAsNameFromOtherFile_Expect_IR.exportClauseName);
         compareExportInfo(exportInfo, ExportAllWithAsNameFromOtherFile_Expect_IR);
+    });
+
+    it('use export all', () => {
+        const fileId = new FileSignature(projectScene.getProjectName(), 'from/usedExport.ts');
+        const file = projectScene.getFile(fileId);
+        const some = file?.getImportInfoBy('some')?.getExportInfo()?.getArkExport();
+        assert.isTrue(some instanceof ArkMethod);
+        const mathUtils = file?.getImportInfoBy('MathUtils')?.getExportInfo()?.getArkExport();
+        assert.isTrue(mathUtils instanceof ArkClass);
     });
 })

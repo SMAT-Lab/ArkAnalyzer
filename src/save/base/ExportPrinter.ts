@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -16,6 +16,7 @@
 import { ExportInfo, ExportType } from '../../core/model/ArkExport';
 import { ArkMetadataKind, CommentsMetadata } from '../../core/model/ArkMetadata';
 import { BasePrinter } from './BasePrinter';
+import { TEMP_EXPORT_ALL_PREFIX } from '../../core/common/TSConst';
 
 export class ExportPrinter extends BasePrinter {
     info: ExportInfo;
@@ -43,16 +44,14 @@ export class ExportPrinter extends BasePrinter {
             return this.printer.toString();
         }
 
-        if (this.info.getExportClauseName() === '*') {
+        if (this.info.getExportClauseName().startsWith(TEMP_EXPORT_ALL_PREFIX)) {
             // just like: export * as xx from './yy'
-            if (this.info.getNameBeforeAs() && this.info.getNameBeforeAs() !== '*') {
-                this.printer.writeIndent().write(`export ${this.info.getNameBeforeAs()} as ${this.info.getExportClauseName()}`);
-            } else {
-                this.printer.writeIndent().write(`export ${this.info.getExportClauseName()}`);
-            }
+            this.printer.writeIndent().write(`export *`);
         } else {
             // just like: export {xxx as x} from './yy'
-            if (this.info.getNameBeforeAs()) {
+            if (this.info.getNameBeforeAs() === '*') {
+                this.printer.writeIndent().write(`export * as ${this.info.getExportClauseName()}`);
+            } else if (this.info.getNameBeforeAs()) {
                 this.printer.write(`export {${this.info.getNameBeforeAs()} as ${this.info.getExportClauseName()}}`);
             } else {
                 this.printer.write(`export {${this.info.getExportClauseName()}}`);

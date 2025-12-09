@@ -723,6 +723,7 @@ export function serializeValue(value: Value): ValueDto {
             operator: value.getOperator(),
         });
     }
+
     // Fallback for unhandled value types
     console.info(`Unhandled Value: ${value.constructor.name} (${value.toString()})`);
     return {
