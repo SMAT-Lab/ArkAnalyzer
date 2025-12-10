@@ -373,7 +373,7 @@ export class CxxModelUtils {
         for (const im of arkFile.getImportInfos()) {
             const imArkExport = im.getLazyExportInfo()?.getArkExport();
             if (!(imArkExport instanceof ArkNamespace)) {
-                continue
+                continue;
             }
             const imNS = imArkExport as ArkNamespace;
             // using namespace xxx
