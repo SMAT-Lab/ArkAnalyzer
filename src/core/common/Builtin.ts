@@ -24,6 +24,8 @@ export class Builtin {
     public static SET = 'Set';
     public static MAP = 'Map';
     public static REGEXP = 'RegExp';
+    public static BIGINT = 'BigInt';
+    public static FUNCTION = 'Function';
 
     public static BUILT_IN_CLASSES = this.buildBuiltInClasses();
 
@@ -79,7 +81,7 @@ export class Builtin {
         return new FileSignature(this.DUMMY_PROJECT_NAME, this.DUMMY_FILE_NAME);
     }
 
-    public static buildBuiltInClassSignature(className: string): ClassSignature {
+    public static buildBuiltInClassSignature(className: string, fileSignature?: FileSignature): ClassSignature {
         return new ClassSignature(className, this.BUILT_IN_CLASSES_FILE_SIGNATURE);
     }
 

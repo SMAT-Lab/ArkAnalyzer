@@ -156,3 +156,54 @@ function test2(c: CCContext): void {
     let a = c.queryConfig('aa');
     a.ffff();
 }
+
+enum Week {
+    MON = 0,
+    TUE = '1'
+}
+
+class BaseChangeInfer {
+    string2String(): void {
+        const str = 'string';
+        str.length;
+        str.toUpperCase();
+    }
+
+    number2Number(): void {
+        const str = 13;
+        str.toPrecision(2);
+    }
+
+    boolean2Boolean(): void {
+        const str = true;
+        str.valueOf();
+    }
+
+    bigint2Wrapper(str: bigint): void {
+        str.toLocaleString();
+        str[Symbol.toStringTag];
+    }
+
+    literal2Wrapper(a: '1', b: false, c: 3): void {
+        a.length;
+        a.charAt(0);
+        b.valueOf();
+        c.toExponential();
+    }
+
+    function2Wrapper(callback: () => void, d: Function): void {
+        callback.name;
+        callback();
+        d.length;
+        d().toString();
+    }
+
+    enum2Wrapper(v: Week): void {
+        Week.MON.valueOf();
+        let t: Week = Week.MON;
+        t.valueOf();
+        Week.TUE.valueOf();
+        t = Week.TUE;
+    }
+
+}

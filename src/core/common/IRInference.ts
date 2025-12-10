@@ -650,7 +650,7 @@ export class IRInference {
             baseType instanceof BigIntType || baseType instanceof LiteralType) {
             // Convert primitive types to their wrapper class types
             const name = baseType instanceof LiteralType ? typeof baseType.getLiteralName() : baseType.getName();
-            const className = name.charAt(0).toUpperCase() + name.slice(1);
+            const className = baseType instanceof BigIntType ? Builtin.BIGINT : name.charAt(0).toUpperCase() + name.slice(1);
             const arrayClass = arkMethod.getDeclaringArkFile().getScene().getSdkGlobal(className);
             if (arrayClass instanceof ArkClass) {
                 return inferMember(new ClassType(arrayClass.getSignature(), arrayClass.getRealTypes()), value, arkMethod);
@@ -707,7 +707,7 @@ export class IRInference {
         const fieldName = ref.getFieldName().replace(/[\"|\']/g, '');
         if (baseType instanceof TupleType) {
             const n = Number(fieldName);
-            if (!isNaN(n) && baseType.getTypes().length) {
+            if (!isNaN(n) && n < baseType.getTypes().length) {
                 ref.getFieldSignature().setType(baseType.getTypes()[n]);
             }
             return ref;
@@ -721,7 +721,28 @@ export class IRInference {
                     baseType = new ClassType(arrayClass.getSignature(), [baseType.getBaseType()]);
                 }
             }
+        } else if (baseType instanceof FunctionType) {
+            const arrayClass = arkMethod.getDeclaringArkFile().getScene().getSdkGlobal(Builtin.FUNCTION);
+            if (arrayClass instanceof ArkClass) {
+                baseType = new ClassType(arrayClass.getSignature());
+            }
         }
+        let { staticFlag, signature } = IRInference.genFieldSignature(fieldName, baseType, ref, arkMethod);
+        if (!signature) {
+            return null;
+        }
+        if (staticFlag) {
+            return new ArkStaticFieldRef(signature);
+        } else {
+            ref.setFieldSignature(signature);
+            return ref;
+        }
+    }
+
+    private static genFieldSignature(fieldName: string, baseType: Type, ref: AbstractFieldRef, arkMethod: ArkMethod): {
+        staticFlag: boolean,
+        signature: FieldSignature | null
+    } {
         const arkClass = arkMethod.getDeclaringArkClass();
         const propertyAndType = TypeInference.inferFieldType(baseType, fieldName, arkClass);
         let propertyType = IRInference.repairType(propertyAndType?.[1], fieldName, arkClass);
@@ -742,15 +763,7 @@ export class IRInference {
             staticFlag = true;
             signature = new FieldSignature(fieldName, baseType.getNamespaceSignature(), propertyType ?? ref.getType(), staticFlag);
         }
-        if (!signature) {
-            return null;
-        }
-        if (staticFlag) {
-            return new ArkStaticFieldRef(signature);
-        } else {
-            ref.setFieldSignature(signature);
-            return ref;
-        }
+        return { staticFlag, signature };
     }
 
     private static getFieldSignature(ref: AbstractFieldRef, baseType: Type, arkClass: ArkClass): FieldSignature | null {
