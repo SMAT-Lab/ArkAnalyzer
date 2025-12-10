@@ -207,7 +207,7 @@ function buildArkFile(arkFile: ArkFile, astRoot: CxxAstNode): void {
                 buildProperty2ArkField(child, astRoot, arkDefaultClass);
                 break;
             default:
-                logger.error('Child joined default method of arkFile: ', child.kind ?? child.code);
+                logger.trace('Child joined default method of arkFile: ', child.kind ?? child.code);
                 break;
         }
     });
