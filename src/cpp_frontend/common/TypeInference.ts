@@ -1351,7 +1351,7 @@ export class TypeInference {
         return null;
     }
 
-    public static inferNestedClassType(declareClass: ArkClass, baseType: ClassType, fieldName: string): [any, Type] | null {
+    public static inferNestedClassType(declareClass: ArkClass, baseType: ClassType, fieldName: string): [ArkClass, Type] | null {
         const arkClass = declareClass.getDeclaringArkFile().getScene().getClass(baseType.getClassSignature());
         if (!arkClass) {
             return null;
