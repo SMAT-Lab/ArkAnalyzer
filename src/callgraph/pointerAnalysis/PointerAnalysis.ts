@@ -325,9 +325,6 @@ export class PointerAnalysis extends AbstractAnalysis {
             this.ptaStat.numProcessedLoad++;
             for (let pt of diffPts!) {
                 let srcNode;
-                if(fieldNode.getID() === 51) {
-                    console.log('fieldNode', fieldNode.getValue());
-                }
                 if (fieldNode instanceof PagArrayNode) {
                     let arrayBase = (fieldNode.getValue() as ArkArrayRef).getBase();
                     srcNode = this.pag.getOrClonePagContainerFieldNode(pt, arrayBase, 'Array');

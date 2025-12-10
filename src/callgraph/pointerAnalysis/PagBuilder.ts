@@ -226,7 +226,7 @@ export class PagBuilder {
 
     private buildInvokeExprInStmt(stmt: Stmt, fpag: FuncPag): void {
         // TODO: discuss if we need a invokeStmt
-        if(!stmt.getInvokeExpr()) {
+        if (!stmt.getInvokeExpr()) {
             return;
         }
 
@@ -333,11 +333,11 @@ export class PagBuilder {
         this.addCallsEdgesFromFuncPag(funcPag, cid);
         this.addDynamicCallSite(funcPag, funcID, cid);
         this.addUnknownCallSite(funcPag, funcID);
-        
+
         // Check if this is an arrow function and set up its 'this' binding
         // Must be called after addEdgesFromFuncPag to ensure this node is created
         this.setupArrowFunctionThis(funcID, cid);
-        
+
         this.handledFunc.add(`${cid}-${funcID}`);
     }
 
@@ -398,13 +398,13 @@ export class PagBuilder {
         let src = edge.src as ClosureFieldRef;
         let dst = edge.dst;
 
-          let fieldName = src.getFieldName();
+        let fieldName = src.getFieldName();
         let closureValues = (src.getBase().getType() as LexicalEnvType).getClosures();
         // search out method closure local with closureFieldRef.fieldName
         let srcValue = closureValues.find(value => value.getName() === fieldName);
         let dstPagNode = this.getOrNewPagNode(cid, dst, edge.stmt);
 
-          if (srcValue) {
+        if (srcValue) {
             // unable to get parent method cid, connect all the value nodes in different cid
             let srcPagNodes = this.pag.getNodesByValue(srcValue);
             if (srcPagNodes) {
@@ -412,7 +412,7 @@ export class PagBuilder {
                     let srcNode = this.pag.getNode(srcNodeID)! as PagNode;
                     this.pag.addPagEdge(srcNode,
                         dstPagNode, edge.kind, edge.stmt);
-                    
+
                     this.retriggerNodesList.add(srcNodeID);
                 });
             }
@@ -917,7 +917,7 @@ export class PagBuilder {
 
         return srcNodes;
     }
-    
+
     /**
      * process the return value PAG edge for invoke stmt
      */
@@ -1211,7 +1211,7 @@ export class PagBuilder {
 
         let condition: boolean =
             (lhOp instanceof Local &&
-                (   rhOp instanceof Local || rhOp instanceof ArkParameterRef || 
+                (rhOp instanceof Local || rhOp instanceof ArkParameterRef ||
                     rhOp instanceof ArkThisRef || rhOp instanceof ArkStaticFieldRef ||
                     rhOp instanceof ClosureFieldRef)) ||
             (lhOp instanceof ArkStaticFieldRef && rhOp instanceof Local);
@@ -1493,9 +1493,9 @@ export class PagBuilder {
         if (!methodSig) {
             return;
         }
-        
+
         const funcName = methodSig.getMethodSubSignature().getMethodName();
-        
+
         // Only record arrow functions (name contains %AM)
         if (funcName.includes('%AM')) {
             this.arrowFunctionObjectMap.set(funcName, funcNode.getID());
@@ -1546,20 +1546,20 @@ export class PagBuilder {
         }
 
         logger.debug(`Arrow function outer method: ${outerMethod.getName()}`);
-        
+
         // Get context of arrow function object node (in which context of outer function the arrow function object is created)
         const arrowFuncObjNode = arrowFuncObjNodeID !== undefined ? this.pag.getNode(arrowFuncObjNodeID) as PagNode : undefined;
         const outerContextID = arrowFuncObjNode?.getCid();
-        
+
         // Find 'this' local node of outer function in specified context
         const outerThisNode = this.findThisNodeForMethod(outerMethod, outerContextID);
         if (outerThisNode) {
             const arrowFuncThisRef = this.pag.getNode(arrowFuncThisRefID) as PagThisRefNode;
-            
+
             // Establish This edge: outer this -> arrow function ThisRef
             if (this.pag.addPagEdge(outerThisNode, arrowFuncThisRef, PagEdgeKind.This)) {
                 logger.info(`Connected arrow function ${funcName} this (Node ${arrowFuncThisRefID}) to outer this (Node ${outerThisNode.getID()})`);
-                
+
                 // Add outer this node to retrigger list to ensure pointer propagation
                 this.retriggerNodesList.add(outerThisNode.getID());
             }
@@ -1573,32 +1573,31 @@ export class PagBuilder {
      */
     private findThisNodeForMethod(method: ArkMethod, contextID?: ContextID): PagLocalNode | undefined {
         const cfg = method.getCfg();
-        if (!cfg) return undefined;
+        if (!cfg) { return undefined; }
 
         // Find 'this' assignment statement in method: this = this: ClassName
         const thisAssignStmt = cfg
             .getStmts()
             .find(s => s instanceof ArkAssignStmt && s.getRightOp() instanceof ArkThisRef);
-        
-        if (!thisAssignStmt) return undefined;
+
+        if (!thisAssignStmt) { return undefined; }
 
         const thisLocal = (thisAssignStmt as ArkAssignStmt).getLeftOp();
-        if (!(thisLocal instanceof Local)) return undefined;
+        if (!(thisLocal instanceof Local)) { return undefined; }
 
         const ctx2NodeMap = this.pag.getNodesByValue(thisLocal);
-        if (!ctx2NodeMap || ctx2NodeMap.size === 0) return undefined;
+        if (!ctx2NodeMap || ctx2NodeMap.size === 0) { return undefined; }
 
         // If context is specified, find node in that context
         if (contextID !== undefined) {
             const nodeID = ctx2NodeMap.get(contextID);
-            if (nodeID === undefined) return undefined;
+            if (nodeID === undefined) { return undefined; }
             return this.pag.getNode(nodeID) as PagLocalNode;
         }
 
         // Otherwise return 'this' node in the first found context
         const firstNodeID = ctx2NodeMap.values().next().value;
-        if (firstNodeID === undefined) return undefined;
-        
+        if (firstNodeID === undefined) { return undefined; }
         return this.pag.getNode(firstNodeID) as PagLocalNode;
     }
 }

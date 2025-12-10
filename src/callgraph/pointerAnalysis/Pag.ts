@@ -356,7 +356,7 @@ export class PagNode extends BaseNode {
         if (this.getKind() === PagNodeKind.ThisRef) {
             const thisRef = this.value as ArkThisRef;
             label = label + `\n${thisRef.toString()}`;
-            
+
             const funcName = this.getFunctionNameFromThisRefNode();
             if (funcName) {
                 label = label + `\n${funcName}()`;
@@ -366,7 +366,7 @@ export class PagNode extends BaseNode {
         if (this.getKind() === PagNodeKind.Function) {
             const funcNode = this as unknown as PagFuncNode;
             label = label + ` thisPt:{${funcNode.getThisPt()}}`;
-            
+
             const methodSig = funcNode.getMethod();
             if (methodSig) {
                 const funcName = methodSig.getMethodSubSignature().getMethodName();
@@ -390,26 +390,26 @@ export class PagNode extends BaseNode {
 
     public getFunctionNameFromThisRefNode(): string | undefined {
         const outgoingEdges = this.getOutgoingEdges();
-        
+
         for (const edge of outgoingEdges) {
             const dstNode = edge.getDstNode() as PagNode;
-            if (!dstNode) continue;
-            
+            if (!dstNode) { continue; }
+
             const value = dstNode.getValue();
-            if (!(value instanceof Local)) continue;
-            
+            if (!(value instanceof Local)) { continue; }
+
             const local = value as Local;
-            if (local.getName() !== 'this') continue;
-            
+            if (local.getName() !== 'this') { continue; }
+
             const declaringStmt = local.getDeclaringStmt();
-            if (!declaringStmt) continue;
-            
+            if (!declaringStmt) { continue; }
+
             const method = declaringStmt.getCfg()?.getDeclaringMethod();
-            if (!method) continue;
-            
+            if (!method) { continue; }
+
             return method.getName();
         }
-        
+
         return undefined;
     }
 }
@@ -752,23 +752,23 @@ export class Pag extends BaseExplicitGraph {
      * @returns PagInstanceFieldNode for the access, or undefined if error
      */
     private handleContainerFieldAccess(
-        baseNode: PagNewContainerExprNode, 
-        src: PagInstanceFieldNode, 
+        baseNode: PagNewContainerExprNode,
+        src: PagInstanceFieldNode,
         basePt: NodeID
     ): PagInstanceFieldNode | undefined {
         // Container types (Array, Set, Map) have two kinds of access:
         // 1. Element access (arr[0]) - should create element node via getOrClonePagContainerFieldNode
         // 2. Property access (arr.length) - should create field node as regular object fields
-        
+
         const fieldRef = src.getValue() as ArkInstanceFieldRef;
         const fieldName = fieldRef.getFieldSignature().getFieldName();
         const base = fieldRef.getBase();
-        
+
         // Get container type from the node's value
         // PagNewContainerExprNode can contain either ArkNewExpr or ArkNewArrayExpr
         const containerValue = baseNode.getValue();
         let containerClassSig = '';
-        
+
         if (containerValue instanceof ArkNewExpr) {
             // Regular container object: new Map(), new Set()
             containerClassSig = containerValue.getClassType().getClassSignature().toString();
@@ -780,7 +780,7 @@ export class Pag extends BaseExplicitGraph {
             const baseType = base.getType();
             containerClassSig = baseType.toString();
         }
-        
+
         // Determine if this is element access or property access based on container type
         let isElementAccess = false;
         let containerType = '';
@@ -789,10 +789,10 @@ export class Pag extends BaseExplicitGraph {
             containerType = 'Array';
             // Array: exclude known properties (length, push, pop, etc.)
             // Everything else should be treated as element access
-            const arrayProperties = ['length', 'push', 'pop', 'shift', 'unshift', 'splice', 
-                                    'slice', 'concat', 'join', 'reverse', 'sort', 'indexOf', 
-                                    'lastIndexOf', 'forEach', 'map', 'filter', 'reduce', 
-                                    'reduceRight', 'every', 'some', 'find', 'findIndex'];
+            const arrayProperties = ['length', 'push', 'pop', 'shift', 'unshift', 'splice',
+                'slice', 'concat', 'join', 'reverse', 'sort', 'indexOf',
+                'lastIndexOf', 'forEach', 'map', 'filter', 'reduce',
+                'reduceRight', 'every', 'some', 'find', 'findIndex'];
             isElementAccess = !arrayProperties.includes(fieldName);
         } else if (containerClassSig.includes('lib.es2015.collection.d.ts: Map')) {
             containerType = 'Map';
@@ -803,7 +803,7 @@ export class Pag extends BaseExplicitGraph {
             // Set: 'field' is the virtual field name for element access
             isElementAccess = (fieldName === 'field');
         }
-        
+
         if (isElementAccess && containerType) {
             // This is element access (e.g., arr[i], map.get(key), set elements)
             // IMPORTANT: In some cases, the type of arr.i may be unknow,
