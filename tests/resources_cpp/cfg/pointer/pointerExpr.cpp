@@ -49,12 +49,12 @@ void PtrType(int *p, int **pp)
 void BasePtrOp(MyStruct *s, MyStruct s1)
 {
     int num = 100;
-    const int const_num = 200;
+    const int constNum = 200;
 
     const int* p1 = &num;
-    int const* p2 = &const_num;
+    int const* p2 = &constNum;
     int* const p3 = &num;
-    const int* const p4 = &const_num;
+    const int* const p4 = &constNum;
     volatile int *volatile p5;
 
     int x = 1;
