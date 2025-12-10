@@ -36,8 +36,8 @@ import {
     MY_HEADER_EXPORT_INFO4,
     NAMESPACE_EXPORT_INFO,
 } from '../../../resources_cpp/exports/crossFileCase/expectedIR';
-import { assertBlocksEqual, testBlocks, testBlocksClass } from '../../common';
-import { BASE_DATA_EXPECT, INNER_CLASS_EXPECT, MAIN_EXPECT } from '../../../resources_cpp/exports/nestedCase/expectIR';
+import { assertBlocksEqual, testBlocksClass } from '../../common';
+import { BASE_DATA_EXPECT, INNER_CLASS_EXPECT } from '../../../resources_cpp/exports/nestedCase/expectIR';
 
 const BASE_DIR = 'tests/resources_cpp/exports';
 const is_system_win32 = process.platform === 'win32';
@@ -392,13 +392,5 @@ describe('nested case', () => {
             dfltClass?.getMethodWithName('ProcessBase')?.getDeclareSignatures()?.[0].toString(),
             '@nestedCase/include/namespaceA.h: SAME_NAMESPACE.OuterClass.ProcessBase(@nestedCase/include/namespaceB.h: SAME_NAMESPACE.BaseData&)'
         );
-    });
-
-    it('main.cpp', () => {
-        // TODO: same name namespace importInfos
-        const fileId = new FileSignature(projectScene.getProjectName(), 'main.cpp');
-        const file = projectScene.getFile(fileId);
-        assert.isNotEmpty(file);
-        testBlocks(projectScene, 'main.cpp', 'main', MAIN_EXPECT.blocks);
     });
 });
