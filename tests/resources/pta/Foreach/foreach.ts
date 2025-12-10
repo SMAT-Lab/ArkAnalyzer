@@ -32,7 +32,7 @@ namespace Foreach {
     }
 
     function setForeach(): void {
-        let s = new Set();
+        let s = new Set<MyCustomSpan>();
         let ele = new MyCustomSpan(0);
         s.add(ele);
         s.forEach((value: MyCustomSpan) => {
@@ -41,7 +41,7 @@ namespace Foreach {
     }
 
     function mapForeach(): void {
-        let s = new Map();
+        let s = new Map<number, MyCustomSpan>();
         let ele = new MyCustomSpan(0);
         s.set(0, ele);
         s.forEach((value: MyCustomSpan, index: number) => {

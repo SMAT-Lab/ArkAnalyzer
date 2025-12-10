@@ -24,7 +24,7 @@ import { BuiltApiType, getBuiltInApiType } from '../PTAUtils';
 import { IPagPlugin } from './IPagPlugin';
 import { ArkAssignStmt } from '../../../core/base/Stmt';
 import { Local } from '../../../core/base/Local';
-import { FunctionType } from '../../../core/base/Type';
+import { FunctionType, LexicalEnvType } from '../../../core/base/Type';
 
 // built-in container APIs
 const containerApiList = [
@@ -192,7 +192,16 @@ export class ContainerPlugin implements IPagPlugin {
             return;
         }
 
-        const elementRef = paramRefValues[0];
+        /**
+         * NOTE!: paramRefValues[0] OR paramRefValues[1]?
+         * when the callback use the closure, the first parameter is LexicalEnvType,
+         * when not use, we need to use the second parameter as the element type.
+         */
+        let elementRef = paramRefValues[0];
+        if (elementRef.getType() instanceof LexicalEnvType) {
+            elementRef = paramRefValues[1];
+        }
+
         const elementNode = this.pag.getOrNewNode(calleeCid, elementRef, cs.callStmt) as PagNode;
         this.pag.addPagEdge(containerFieldNode, elementNode, PagEdgeKind.Copy, cs.callStmt);
         srcNodes.push(containerFieldNode.getID());

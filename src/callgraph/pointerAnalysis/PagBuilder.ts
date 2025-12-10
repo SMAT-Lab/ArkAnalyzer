@@ -24,7 +24,7 @@ import {
     ArkNewExpr,
     ArkPtrInvokeExpr,
 } from '../../core/base/Expr';
-import { AbstractFieldRef, ArkArrayRef, ArkInstanceFieldRef, ArkParameterRef, ArkStaticFieldRef, ArkThisRef } from '../../core/base/Ref';
+import { AbstractFieldRef, ArkArrayRef, ArkInstanceFieldRef, ArkParameterRef, ArkStaticFieldRef, ArkThisRef, ClosureFieldRef } from '../../core/base/Ref';
 import { Value } from '../../core/base/Value';
 import { ArkMethod } from '../../core/model/ArkMethod';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
@@ -32,7 +32,7 @@ import { Local } from '../../core/base/Local';
 import { NodeID } from '../../core/graph/BaseExplicitGraph';
 import { ClassSignature } from '../../core/model/ArkSignature';
 import { ArkClass } from '../../core/model/ArkClass';
-import { ClassType, FunctionType } from '../../core/base/Type';
+import { ClassType, FunctionType, LexicalEnvType } from '../../core/base/Type';
 import { Constant } from '../../core/base/Constant';
 import { PAGStat } from '../common/Statistics';
 import {
@@ -45,7 +45,6 @@ import {
     PagFuncNode,
     PagGlobalThisNode,
     PagLocalNode,
-    PagNewContainerExprNode,
     PagNode,
     PagNodeType,
     PagThisRefNode,
@@ -355,6 +354,12 @@ export class PagBuilder {
         }
 
         for (let e of inEdges) {
+            // handle closure field ref
+            if (e.src instanceof ClosureFieldRef) {
+                this.addClosureEdges(e, cid);
+                continue;
+            }
+
             let srcPagNode = this.getOrNewPagNode(cid, e.src, e.stmt);
             let dstPagNode = this.getOrNewPagNode(cid, e.dst, e.stmt);
 
@@ -382,6 +387,38 @@ export class PagBuilder {
         }
 
         return true;
+    }
+
+    /**
+     * handle closure field ref intra-procedural edge
+     * @param edge the intra-procedural edge with ClosureFieldRef as src
+     * @param cid 
+     */
+    public addClosureEdges(edge: IntraProceduralEdge, cid: ContextID): void {
+        let src = edge.src as ClosureFieldRef;
+        let dst = edge.dst;
+
+          let fieldName = src.getFieldName();
+        let closureValues = (src.getBase().getType() as LexicalEnvType).getClosures();
+        // search out method closure local with closureFieldRef.fieldName
+        let srcValue = closureValues.find(value => value.getName() === fieldName);
+        let dstPagNode = this.getOrNewPagNode(cid, dst, edge.stmt);
+
+          if (srcValue) {
+            // unable to get parent method cid, connect all the value nodes in different cid
+            let srcPagNodes = this.pag.getNodesByValue(srcValue);
+            if (srcPagNodes) {
+                srcPagNodes.forEach(srcNodeID => {
+                    let srcNode = this.pag.getNode(srcNodeID)! as PagNode;
+                    this.pag.addPagEdge(srcNode,
+                        dstPagNode, edge.kind, edge.stmt);
+                    
+                    this.retriggerNodesList.add(srcNodeID);
+                });
+            }
+        } else {
+            throw new Error(`error find closure local: ${fieldName}`);
+        }
     }
 
     /// add Copy edges interprocedural
@@ -851,17 +888,6 @@ export class PagBuilder {
 
         let srcNodes: NodeID[] = [];
 
-        /**
-         *  process foreach situation
-         *  e.g. arr.forEach((item) => { ... })
-         *  cs.args is anonymous method local, will have only 1 parameter
-         *  but inside foreach will have >= 1 parameters
-         */
-        if (callStmt.getInvokeExpr()?.getMethodSignature().getMethodSubSignature().getMethodName() === 'forEach') {
-            srcNodes.push(...this.addForeachParamPagEdge(callerCid, calleeCid, callStmt, params));
-            return srcNodes;
-        }
-
         // add args to parameters edges
         for (let i = offset; i <= args.length; i++) {
             let arg = args[i];
@@ -891,41 +917,7 @@ export class PagBuilder {
 
         return srcNodes;
     }
-
-    /**
-     * temporary solution for foreach
-     * deprecate when foreach is handled by built-in method
-     * connect the element node with the value inside foreach
-     */
-    private addForeachParamPagEdge(callerCid: ContextID, calleeCid: ContextID, callStmt: Stmt, params: Value[]): NodeID[] {
-        // container value is the base value of callstmt, its points-to is PagNewContainerExprNode
-        let srcNodes: NodeID[] = [];
-        let containerValue = (callStmt.getInvokeExpr() as ArkInstanceInvokeExpr).getBase();
-        let param = params[0];
-        if (!containerValue || !param) {
-            return srcNodes;
-        }
-
-        let basePagNode = this.getOrNewPagNode(callerCid, containerValue, callStmt);
-        let dstPagNode = this.getOrNewPagNode(calleeCid, param, callStmt);
-
-        for (let pt of basePagNode.getPointTo()) {
-            let newContainerExprPagNode = this.pag.getNode(pt) as PagNewContainerExprNode;
-
-            // PagNewContainerExprNode's points-to is the element node
-            if (!newContainerExprPagNode || !newContainerExprPagNode.getElementNode()) {
-                continue;
-            }
-            let srcPagNode = this.pag.getNode(newContainerExprPagNode.getElementNode()!) as PagNode;
-
-            // connect the element node with the value inside foreach
-            this.pag.addPagEdge(srcPagNode, dstPagNode, PagEdgeKind.Copy, callStmt);
-            srcNodes.push(srcPagNode.getID());
-        }
-
-        return srcNodes;
-    }
-
+    
     /**
      * process the return value PAG edge for invoke stmt
      */
@@ -1219,7 +1211,9 @@ export class PagBuilder {
 
         let condition: boolean =
             (lhOp instanceof Local &&
-                (rhOp instanceof Local || rhOp instanceof ArkParameterRef || rhOp instanceof ArkThisRef || rhOp instanceof ArkStaticFieldRef)) ||
+                (   rhOp instanceof Local || rhOp instanceof ArkParameterRef || 
+                    rhOp instanceof ArkThisRef || rhOp instanceof ArkStaticFieldRef ||
+                    rhOp instanceof ClosureFieldRef)) ||
             (lhOp instanceof ArkStaticFieldRef && rhOp instanceof Local);
 
         if (condition) {
