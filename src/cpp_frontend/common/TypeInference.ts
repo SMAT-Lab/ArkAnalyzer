@@ -1331,7 +1331,8 @@ export class TypeInference {
         }
     }
 
-    public static inferMethodFromImportNamespace(baseType: Type, expr: AbstractInvokeExpr, arkMethod: ArkMethod, methodName: string): AbstractInvokeExpr | null {
+    public static inferMethodFromImportNamespace(baseType: Type, expr: AbstractInvokeExpr,
+                                                 arkMethod: ArkMethod, methodName: string): AbstractInvokeExpr | null {
         if (!(baseType instanceof AnnotationNamespaceType)) {
             return null;
         }

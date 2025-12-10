@@ -12,7 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+#ifndef NAMESPACE_B
+#define NAMESPACE_B
 namespace SAME_NAMESPACE {
     struct BaseData {
         enum INDENT_TYPE { MAP, SEQ, NONE };
@@ -26,3 +27,4 @@ namespace SAME_NAMESPACE {
 
     BaseData::INDENT_TYPE GetType(const BaseData& data);
 }
+#endif

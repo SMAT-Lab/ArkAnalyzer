@@ -18,7 +18,7 @@
 using namespace SAME_NAMESPACE;
 
 
-// TODO: To handle the scenario where the same namespace is imported from multiple header files
+// CxxTODO: To handle the scenario where the same namespace is imported from multiple header files
 int main()
 {
     SAME_NAMESPACE::BaseData base(1, BaseData::INDENT_TYPE::MAP);

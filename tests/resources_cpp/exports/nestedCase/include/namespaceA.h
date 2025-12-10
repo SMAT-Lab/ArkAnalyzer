@@ -12,7 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+#ifndef NAMESPACE_A
+#define NAMESPACE_A
 #include "namespaceB.h"
 #include <iostream>
 #include <string>
@@ -43,3 +44,5 @@ namespace SAME_NAMESPACE {
         void ProcessBase(const BaseData& base_obj);
     };
 }
+
+#endif
