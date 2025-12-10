@@ -115,8 +115,7 @@ public:
     }
 };
 
-FixedArray<int, 10> g_arr1;
-FixedArray<double, 100> g_arr2;
+FixedArray<int, TWENTY> g_arr1;
 
 int main()
 {
