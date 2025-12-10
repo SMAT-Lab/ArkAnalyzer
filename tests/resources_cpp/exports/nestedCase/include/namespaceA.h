@@ -34,7 +34,8 @@ namespace SAME_NAMESPACE {
 
             void PrintFullInfo() const
             {
-                cout << "InnerClass [ID: " << inner_id << ", inner_name: " << inner_name << "] | " << GetId(inner_base) << endl;
+                cout << "InnerClass [ID: " << inner_id
+                << ", inner_name: " << inner_name << "] | " << GetId(inner_base) << endl;
             }
         };
 
