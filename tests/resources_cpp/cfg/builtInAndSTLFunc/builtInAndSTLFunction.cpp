@@ -17,6 +17,7 @@
 #include <iostream>
 #include <type_traits>
 #include <atomic>
+#include <stdatomic.h>
 
 using namespace std;
 struct MyStruct {
