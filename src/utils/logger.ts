@@ -32,15 +32,12 @@ export enum LOG_MODULE_TYPE {
 }
 
 export default class ConsoleLogger {
-    private static isConfigure: boolean = false;
-
     public static configure(
-        logFilePath: string = 'out/arkanalyzer.log',
-        arkanalyzer_level: LOG_LEVEL = LOG_LEVEL.INFO,
+        logFilePath: string,
+        arkanalyzer_level: LOG_LEVEL = LOG_LEVEL.ERROR,
         tool_level: LOG_LEVEL = LOG_LEVEL.INFO,
         use_console: boolean = false
     ): void {
-        this.isConfigure = true;
         let appendersTypes: string[] = [];
         if (logFilePath) {
             appendersTypes.push('file');
@@ -96,9 +93,6 @@ export default class ConsoleLogger {
             logger = getLogger(log_type);
         } else {
             logger = getLogger(LOG_MODULE_TYPE.TOOL);
-        }
-        if (!this.isConfigure) {
-            this.configure();
         }
         logger.addContext('module', log_type);
         logger.addContext('tag', tag);
