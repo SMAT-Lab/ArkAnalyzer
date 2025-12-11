@@ -53,7 +53,9 @@ namespace ArrayFieldOutTest {
         private btnList: Array<BtnStruct> = [];
 
         foo(arr: Array<BtnStruct>) {
+            
             this.btnList = Clone.getInstance().clone(arr);
+            return arr.length;  
         }
 
         goo() {
@@ -67,3 +69,4 @@ namespace ArrayFieldOutTest {
         obj.goo();
     }
 }
+
