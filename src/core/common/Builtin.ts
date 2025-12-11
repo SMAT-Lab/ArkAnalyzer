@@ -81,7 +81,7 @@ export class Builtin {
         return new FileSignature(this.DUMMY_PROJECT_NAME, this.DUMMY_FILE_NAME);
     }
 
-    public static buildBuiltInClassSignature(className: string, fileSignature?: FileSignature): ClassSignature {
+    public static buildBuiltInClassSignature(className: string): ClassSignature {
         return new ClassSignature(className, this.BUILT_IN_CLASSES_FILE_SIGNATURE);
     }
 

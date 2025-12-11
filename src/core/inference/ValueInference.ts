@@ -249,7 +249,7 @@ export class FieldRefInference extends ValueInference<ArkInstanceFieldRef> {
      *          or undefined for regular instance fields
      */
     public infer(value: ArkInstanceFieldRef, stmt: Stmt): Value | undefined {
-        const baseType = TypeInference.replaceAliasType(value.getBase().getType());
+        const baseType = value.getBase().getType();
         const arkMethod = stmt.getCfg().getDeclaringMethod();
         // Generate updated field signature based on current context
         const result = IRInference.inferInstanceMember(baseType, value, arkMethod, IRInference.updateRefSignature);

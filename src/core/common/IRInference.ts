@@ -19,7 +19,6 @@ import {
     AnyType,
     ArrayType,
     BigIntType,
-    BooleanType,
     ClassType,
     EnumValueType,
     FunctionType,
@@ -28,8 +27,7 @@ import {
     LexicalEnvType,
     LiteralType,
     NullType,
-    NumberType,
-    StringType,
+    PrimitiveType,
     TupleType,
     Type,
     UnclearReferenceType,
@@ -643,11 +641,7 @@ export class IRInference {
 
     public static inferInstanceMember<T extends U, U extends Value>(baseType: Type, value: T, arkMethod: ArkMethod,
                                                                     inferMember: (declareType: Type, value: T, arkMethod: ArkMethod) => U | null): U | null {
-        if (baseType instanceof ClassType || baseType instanceof AnnotationNamespaceType ||
-            baseType instanceof FunctionType || baseType instanceof ArrayType || baseType instanceof TupleType) {
-            return inferMember(baseType, value, arkMethod);
-        } else if (baseType instanceof StringType || baseType instanceof NumberType || baseType instanceof BooleanType ||
-            baseType instanceof BigIntType || baseType instanceof LiteralType) {
+        if (baseType instanceof PrimitiveType) {
             // Convert primitive types to their wrapper class types
             const name = baseType instanceof LiteralType ? typeof baseType.getLiteralName() : baseType.getName();
             const className = baseType instanceof BigIntType ? Builtin.BIGINT : name.charAt(0).toUpperCase() + name.slice(1);
@@ -655,9 +649,10 @@ export class IRInference {
             if (arrayClass instanceof ArkClass) {
                 return inferMember(new ClassType(arrayClass.getSignature(), arrayClass.getRealTypes()), value, arkMethod);
             }
-        }
-        // handle baseType to classType\namespace\functionType
-        if (baseType instanceof AliasType) {
+        } else if (baseType instanceof EnumValueType) {
+            const newType = baseType.getConstant()?.getType();
+            return newType ? IRInference.inferInstanceMember(newType, value, arkMethod, inferMember) : null;
+        } else if (baseType instanceof AliasType) {
             return IRInference.inferInstanceMember(TypeInference.replaceAliasType(baseType), value, arkMethod, inferMember);
         } else if (baseType instanceof UnionType || baseType instanceof IntersectionType) {
             for (let type of baseType.getTypes()) {
@@ -672,12 +667,8 @@ export class IRInference {
         } else if (baseType instanceof GenericType) {
             const newType = baseType.getDefaultType() ?? baseType.getConstraint();
             return newType ? IRInference.inferInstanceMember(newType, value, arkMethod, inferMember) : null;
-        } else if (baseType instanceof EnumValueType) {
-            const newType = baseType.getConstant()?.getType();
-            return newType ? IRInference.inferInstanceMember(newType, value, arkMethod, inferMember) : null;
         }
-        logger.error('unsupported Type:' + baseType.getTypeString());
-        return null;
+        return inferMember(baseType, value, arkMethod);
     }
 
     public static generateNewFieldSignature(ref: AbstractFieldRef, arkClass: ArkClass, baseType: Type): FieldSignature | null {
