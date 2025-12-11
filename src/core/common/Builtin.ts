@@ -24,6 +24,8 @@ export class Builtin {
     public static SET = 'Set';
     public static MAP = 'Map';
     public static REGEXP = 'RegExp';
+    public static BIGINT = 'BigInt';
+    public static FUNCTION = 'Function';
 
     public static BUILT_IN_CLASSES = this.buildBuiltInClasses();
 

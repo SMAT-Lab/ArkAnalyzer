@@ -34,6 +34,7 @@ import {
     StringType
 } from '../../src';
 import Logger, { LOG_LEVEL, LOG_MODULE_TYPE } from '../../src/utils/logger';
+import { ArkIRClassPrinter } from '../../src/save/arkir/ArkIRClassPrinter';
 
 const logPath = 'out/ArkAnalyzer.log';
 const logger = Logger.getLogger(LOG_MODULE_TYPE.TOOL, 'InferArrayTest');
@@ -390,6 +391,114 @@ describe("function Test", () => {
         if (stmts) {
             assert.equal(stmts[3].toString(), 'instanceinvoke a.<@inferType/inferSample.ts: Config2.ffff()>()');
         }
+    })
+
+    const BaseChangeInferIR = `class BaseChangeInfer {
+  %instInit(): void {
+    label0:
+      this = this: @inferType/inferSample.ts: BaseChangeInfer
+      return
+  }
+
+  constructor(): @inferType/inferSample.ts: BaseChangeInfer {
+    label0:
+      this = this: @inferType/inferSample.ts: BaseChangeInfer
+      instanceinvoke this.<@inferType/inferSample.ts: BaseChangeInfer.%instInit()>()
+      return this
+  }
+
+  static %statInit(): void {
+    label0:
+      this = this: @inferType/inferSample.ts: BaseChangeInfer
+      return
+  }
+
+  %AM0(): void
+
+  string2String(): void {
+    label0:
+      this = this: @inferType/inferSample.ts: BaseChangeInfer
+      str = 'string'
+      %0 = str.<@built-in/lib.es5.d.ts: String.length>
+      instanceinvoke str.<@built-in/lib.es5.d.ts: String.toUpperCase()>()
+      return
+  }
+
+  number2Number(): void {
+    label0:
+      this = this: @inferType/inferSample.ts: BaseChangeInfer
+      str = 13
+      instanceinvoke str.<@built-in/lib.es5.d.ts: Number.toPrecision(number)>(2)
+      return
+  }
+
+  boolean2Boolean(): void {
+    label0:
+      this = this: @inferType/inferSample.ts: BaseChangeInfer
+      str = true
+      instanceinvoke str.<@built-in/lib.es5.d.ts: Boolean.valueOf()>()
+      return
+  }
+
+  bigint2Wrapper(str: bigint): void {
+    label0:
+      str = parameter0: bigint
+      this = this: @inferType/inferSample.ts: BaseChangeInfer
+      instanceinvoke str.<@built-in/lib.es2020.bigint.d.ts: BigInt.toLocaleString(Intl.LocalesArgument, @built-in/lib.es2020.bigint.d.ts: BigIntToLocaleStringOptions)>()
+      %0 = Symbol.<@built-in/lib.es2015.symbol.wellknown.d.ts: SymbolConstructor.toStringTag>
+      %1 = str.<@built-in/lib.es2020.bigint.d.ts: BigInt.%0>
+      return
+  }
+
+  literal2Wrapper(a: '1', b: false, c: 3): void {
+    label0:
+      a = parameter0: '1'
+      b = parameter1: false
+      c = parameter2: 3
+      this = this: @inferType/inferSample.ts: BaseChangeInfer
+      %0 = a.<@built-in/lib.es5.d.ts: String.length>
+      instanceinvoke a.<@built-in/lib.es5.d.ts: String.charAt(number)>(0)
+      instanceinvoke b.<@built-in/lib.es5.d.ts: Boolean.valueOf()>()
+      instanceinvoke c.<@built-in/lib.es5.d.ts: Number.toExponential(number)>()
+      return
+  }
+
+  function2Wrapper(callback: @inferType/inferSample.ts: BaseChangeInfer.%AM0(), d: @built-in/lib.es5.d.ts: Function): void {
+    label0:
+      callback = parameter0: @inferType/inferSample.ts: BaseChangeInfer.%AM0()
+      d = parameter1: @built-in/lib.es5.d.ts: Function
+      this = this: @inferType/inferSample.ts: BaseChangeInfer
+      %0 = callback.<@built-in/lib.es2015.core.d.ts: Function.name>
+      ptrinvoke <@inferType/inferSample.ts: BaseChangeInfer.callback()>()
+      %1 = d.<@built-in/lib.es5.d.ts: Function.length>
+      %2 = ptrinvoke <@%unk/%unk: .d()>()
+      instanceinvoke %2.<@%unk/%unk: .toString()>()
+      return
+  }
+
+  enum2Wrapper(v: @inferType/inferSample.ts: Week): void {
+    label0:
+      v = parameter0: @inferType/inferSample.ts: Week
+      this = this: @inferType/inferSample.ts: BaseChangeInfer
+      %0 = @inferType/inferSample.ts: Week.[static]MON
+      instanceinvoke %0.<@built-in/lib.es5.d.ts: Number.valueOf()>()
+      t = @inferType/inferSample.ts: Week.[static]MON
+      instanceinvoke t.<@built-in/lib.es5.d.ts: Number.valueOf()>()
+      %1 = @inferType/inferSample.ts: Week.[static]TUE
+      instanceinvoke %1.<@built-in/lib.es5.d.ts: String.valueOf()>()
+      t = @inferType/inferSample.ts: Week.[static]TUE
+      return
+  }
+}
+`
+    it('testBaseTypeTransfer', () => {
+        const fileId = new FileSignature(scene.getProjectName(), 'inferSample.ts');
+        const file = scene.getFile(fileId);
+        const cls = file?.getClassWithName('BaseChangeInfer');
+        assert.isDefined(cls);
+        const printer = new ArkIRClassPrinter(cls!);
+        const s1 = printer.dump();
+        assert.equal(s1, BaseChangeInferIR);
     })
 })
 
