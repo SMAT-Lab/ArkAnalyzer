@@ -296,7 +296,7 @@ export const MIX_OF_STATEMENTS_EXPECT_CASE4 = {
             stmts: [
                 'j = j + 1',
             ],
-            preds: [2, 3, 5, 4],
+            preds: [2, 3, 4],
             succes: [1],
         },
     ],

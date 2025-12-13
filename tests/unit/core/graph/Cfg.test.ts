@@ -37,6 +37,7 @@ import {
     CONDITIONAL_OPERATOR_EXPECT_CASE5,
     CONDITIONAL_OPERATOR_EXPECT_CASE6,
     CONDITIONAL_OPERATOR_EXPECT_CASE7,
+    CONDITIONAL_OPERATOR_EXPECT_CASE8,
 } from '../../../resources/cfg/conditionalOperator/ConditionalOperatorExpect';
 import {
     SWITCH_EXPECT_CASE1,
@@ -62,11 +63,12 @@ import {
     MIX_OF_STATEMENTS_EXPECT_CASE3,
     MIX_OF_STATEMENTS_EXPECT_CASE4,
 } from '../../../resources/cfg/mixOfStatements/MixOfStatementsExpect';
+import { TRY_CATCH_EXPECT_CASE1, TRY_CATCH_EXPECT_CASE2 } from '../../../resources/cfg/tryCatch/TryCatchExpect';
 import {
-    TRY_CATCH_EXPECT_CASE1,
-    TRY_CATCH_EXPECT_CASE2
-} from '../../../resources/cfg/tryCatch/TryCatchExpect';
-import { CLOSURE_EXPECT_CASE1, CLOSURE_EXPECT_CASE2, CLOSURE_EXPECT_CASE3 } from '../../../resources/cfg/closure/ClosureExpect';
+    CLOSURE_EXPECT_CASE1,
+    CLOSURE_EXPECT_CASE2,
+    CLOSURE_EXPECT_CASE3,
+} from '../../../resources/cfg/closure/ClosureExpect';
 
 describe('CfgTest', () => {
     it('case1: patching interface', () => {
@@ -148,6 +150,7 @@ describe('CfgTest', () => {
         testBlocks(scene, fileName, 'case5', CONDITIONAL_OPERATOR_EXPECT_CASE5.blocks);
         testBlocks(scene, fileName, 'case6', CONDITIONAL_OPERATOR_EXPECT_CASE6.blocks);
         testBlocks(scene, fileName, 'case7', CONDITIONAL_OPERATOR_EXPECT_CASE7.blocks);
+        testBlocks(scene, fileName, 'case8', CONDITIONAL_OPERATOR_EXPECT_CASE8.blocks);
 
         const arkFile = scene.getFiles().find((file) => file.getName().endsWith(fileName));
         const stmts = arkFile?.getDefaultClass().getMethodWithName('case1')?.getCfg()?.getStmts();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -376,7 +376,7 @@ export const CONDITIONAL_OPERATOR_EXPECT_CASE7 = {
                 'if i > %0',
             ],
             preds: [],
-            succes: [1, 2],
+            succes: [2, 1],
         },
         {
             id: 2,
@@ -408,6 +408,70 @@ export const CONDITIONAL_OPERATOR_EXPECT_CASE7 = {
                 'return',
             ],
             preds: [0, 3, 4],
+            succes: [],
+        },
+    ],
+};
+
+export const CONDITIONAL_OPERATOR_EXPECT_CASE8 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @conditionalOperator/ConditionalOperatorSample.ts: %dflt',
+                'i = 0',
+                'if i > 0',
+            ],
+            preds: [],
+            succes: [3, 1],
+        },
+        {
+            id: 3,
+            stmts: [
+                'if 1 != 0',
+            ],
+            preds: [0],
+            succes: [4, 5],
+        },
+        {
+            id: 4,
+            stmts: [
+                'i = 2',
+            ],
+            preds: [3],
+            succes: [6],
+        },
+        {
+            id: 5,
+            stmts: [
+                'i = 3',
+            ],
+            preds: [3],
+            succes: [6],
+        },
+        {
+            id: 6,
+            stmts: [
+                'i = 4',
+            ],
+            preds: [4, 5],
+            succes: [2],
+        },
+        {
+            id: 1,
+            stmts: [
+                'i = 5',
+            ],
+            preds: [0],
+            succes: [2],
+        },
+        {
+            id: 2,
+            stmts: [
+                'i = 6',
+                'return',
+            ],
+            preds: [1, 6],
             succes: [],
         },
     ],
