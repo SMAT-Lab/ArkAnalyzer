@@ -749,26 +749,28 @@ export function getArkFile(im: FromInfo): ArkFile | null | undefined {
 /**
  * find from info's export
  * @param fromInfo importInfo or exportInfo
+ * @param visited
  */
-export function findExportInfo(fromInfo: FromInfo): ExportInfo | null {
+export function findExportInfo(fromInfo: FromInfo, visited: Set<ArkFile> = new Set([fromInfo.getDeclaringArkFile()])): ExportInfo | null {
     let file = getArkFile(fromInfo);
     if (!file) {
         logger.warn(`${fromInfo.getOriginName()} ${fromInfo.getFrom()} file not found: ${fromInfo.getDeclaringArkFile()?.getFileSignature()?.toString()}`);
         return null;
     }
-    // expand export *
-    if (fromInfo.getOriginName().startsWith(TEMP_EXPORT_ALL_PREFIX) && fromInfo instanceof ExportInfo) {
-        const declaringArkFile = fromInfo.getDeclaringArkFile();
-        if (declaringArkFile !== file) {
-            file.getExportInfos().filter(f => f.getExportClauseName().startsWith(TEMP_EXPORT_ALL_PREFIX)).forEach(e => findExportInfo(e));
-            file.getExportInfos().filter(f => !f.isDefault()).forEach(exportInfo => declaringArkFile.addExportInfo(exportInfo));
-        }
-        declaringArkFile.removeExportInfo(fromInfo);
-        return null;
+    if (fromInfo.getOriginName() === ALL) {
+        const exportInfo = buildDefaultExportInfo(fromInfo, file);
+        file.addExportInfo(exportInfo, ALL);
+        return exportInfo;
     }
-    let exportInfo = findExportInfoInfile(fromInfo, file) || null;
+    //check cycle
+    if (visited.has(file)) {
+        logger.warn(`It existed a cycle in: ${fromInfo.getDeclaringArkFile()?.getFileSignature()?.toString()}`);
+        return null;
+    } else {
+        visited.add(file);
+    }
+    let exportInfo = findExportInfoInfile(fromInfo, file, visited) || null;
     if (exportInfo === null) {
-        logger.warn('export info not found, ' + fromInfo.getFrom() + ' in file: ' + fromInfo.getDeclaringArkFile().getFileSignature().toString());
         return null;
     }
     const arkExport = findArkExport(exportInfo);
@@ -871,7 +873,20 @@ function getArkFileFormMap(projectName: string, filePath: string, scene: Scene):
     return null;
 }
 
-export function findExportInfoInfile(fromInfo: FromInfo, file: ArkFile): ExportInfo | undefined {
+export function findExportInfoInfile(fromInfo: FromInfo, file: ArkFile,
+                                     visited: Set<ArkFile> = new Set([fromInfo.getDeclaringArkFile()])): ExportInfo | undefined {
+    // expand export *
+    file.getExportInfos().filter(f => f.getExportClauseName().startsWith(TEMP_EXPORT_ALL_PREFIX))
+        .forEach(e => {
+            findExportInfo(e, visited);
+            file.removeExportInfo(e);
+        });
+    if (fromInfo.getOriginName().startsWith(TEMP_EXPORT_ALL_PREFIX) && fromInfo instanceof ExportInfo) {
+        const declaringArkFile = fromInfo.getDeclaringArkFile();
+        file.getExportInfos().filter(f => !f.isDefault()).forEach(exportInfo => declaringArkFile.addExportInfo(exportInfo));
+        declaringArkFile.removeExportInfo(fromInfo);
+        return undefined;
+    }
     const exportName = fromInfo.isDefault() ? DEFAULT : fromInfo.getOriginName();
     let exportInfo = file.getExportInfoBy(exportName);
     if (exportInfo) {

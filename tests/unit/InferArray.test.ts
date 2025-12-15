@@ -281,6 +281,19 @@ describe("Infer Array Test", () => {
         const arkExport = file?.getImportInfoBy('myNamespaceA')?.getLazyExportInfo()?.getArkExport();
         assert.isDefined((arkExport as ArkNamespace).getExportInfoBy('a')?.getArkExport());
     })
+
+    it('import symbol form export *', () => {
+        const fileId = new FileSignature(projectScene.getProjectName(), 'exportAll/main/Index.ets');
+        const file = projectScene.getFile(fileId);
+        const arkExport = file?.getImportInfoBy('Ineterface2')?.getLazyExportInfo()?.getArkExport();
+        assert.isTrue(arkExport instanceof ArkClass);
+    })
+
+    it('check export info not null', () => {
+        projectScene.getFiles().forEach(file => {
+            file.getExportInfos().forEach(e => assert.isNotNull(e.getArkExport()));
+        })
+    })
 })
 
 describe("function Test", () => {
