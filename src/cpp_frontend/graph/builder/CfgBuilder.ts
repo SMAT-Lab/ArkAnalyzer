@@ -33,6 +33,7 @@ import { ModelUtils } from '../../../core/common/ModelUtils';
 import { CONSTRUCTOR_NAME, PROMISE } from '../../../core/common/TSConst';
 import { CxxAstNode, CxxTranslationUnit } from '../../ast/ArkCxxAstNode';
 import { CxxLoopBuilder } from './LoopBuilder';
+import { CxxIfBuilder } from './IfBuilder';
 
 export class BlockBuilder {
     id: number;
@@ -1490,6 +1491,8 @@ export class CfgBuilder {
             basicBlockSet,
             ModelUtils.isArkUIBuilderMethod(this.declaringMethod)
         );
+        const ifBuilder = new CxxIfBuilder();
+        ifBuilder.rebuildIf(basicBlockSet);
     }
 
     private createCfg(blockBuilderToCfgBlock: Map<BlockBuilder, BasicBlock>, basicBlockSet: Set<BasicBlock>, prevBlockId: number): Cfg {

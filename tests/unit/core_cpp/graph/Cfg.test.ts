@@ -83,6 +83,7 @@ describe('CfgTest', () => {
         testBlocks(scene, 'conditionalOperator.cpp', 'Case5', CONDITION_EXPECT.CONDITIONAL_OPERATOR_EXPECT_CASE5.blocks);
         testBlocks(scene, 'conditionalOperator.cpp', 'Case6', CONDITION_EXPECT.CONDITIONAL_OPERATOR_EXPECT_CASE6.blocks);
         testBlocks(scene, 'conditionalOperator.cpp', 'main', CONDITION_EXPECT.CONDITIONAL_OPERATOR_EXPECT_MAIN.blocks);
+        testBlocks(scene, 'conditionalOperator.cpp', 'TernaryWithLogicalOperators', CONDITION_EXPECT.CONDITIONAL_WITH_LOGICAL_EXPECT.blocks);
     });
     it('case2: if statement', () => {
         const scene = buildScene('if');
@@ -95,6 +96,8 @@ describe('CfgTest', () => {
         testBlocks(scene, 'ifSample.cpp', 'Case7', IF_EXPECT.IF_EXPECT_CASE7.blocks);
         testBlocks(scene, 'ifSample.cpp', 'Case8', IF_EXPECT.IF_EXPECT_CASE8.blocks);
         testBlocks(scene, 'ifSample.cpp', 'Case9', IF_EXPECT.IF_EXPECT_CASE9.blocks);
+        testBlocks(scene, 'ifSample.cpp', 'Case10', IF_EXPECT.IF_EXPECT_CASE10.blocks);
+        testBlocks(scene, 'ifSample.cpp', 'Case11', IF_EXPECT.IF_EXPECT_CASE11.blocks);
     });
 
     it('case3: switch statement', () => {
@@ -133,6 +136,8 @@ describe('CfgTest', () => {
         testBlocks(scene, 'loopSample.cpp', 'Case9', LOOP_EXPECT.LOOP_EXPECT_CASE9.blocks);
         testBlocks(scene, 'loopSample.cpp', 'Case10', LOOP_EXPECT.LOOP_EXPECT_CASE10.blocks);
         testBlocks(scene, 'loopSample.cpp', 'Case11', LOOP_EXPECT.LOOP_EXPECT_CASE11.blocks);
+        testBlocks(scene, 'loopSample.cpp', 'ForWithLogicalOperators', LOOP_EXPECT.LOOP_EXPECT_CASE12.blocks);
+        testBlocks(scene, 'loopSample.cpp', 'NestedLoopExample', LOOP_EXPECT.LOOP_EXPECT_CASE13.blocks);
     });
     it('case5: while-continue statement', () => {
         const scene = buildScene('whileContinue');
@@ -141,6 +146,8 @@ describe('CfgTest', () => {
         testBlocks(scene, 'whileContinueSample.cpp', 'CommaExprFunc', WHILE_CONTINUE_EXPECT.COMMA_EXPRESSION.blocks);
         testBlocks(scene, 'whileContinueSample.cpp', 'EmptyDoWhile', WHILE_CONTINUE_EXPECT.EMPTY_DO_WHILE.blocks);
         testBlocks(scene, 'whileContinueSample.cpp', 'ContinueDoWhile', WHILE_CONTINUE_EXPECT.CONTINUE_DO_WHILE.blocks);
+        testBlocks(scene, 'whileContinueSample.cpp', 'WhileWithLogicalOperators', WHILE_CONTINUE_EXPECT.CONTINUE_WHILE_WITH_LOGICAL_OPERATORS.blocks);
+        testBlocks(scene, 'whileContinueSample.cpp', 'DoWhileWithLogicalOperators', WHILE_CONTINUE_EXPECT.CONTINUE_DO_WHILE_WITH_LOGICAL_OPERATORS.blocks);
     });
     it('case6: goto statement', () => {
         const scene = buildScene('goto');

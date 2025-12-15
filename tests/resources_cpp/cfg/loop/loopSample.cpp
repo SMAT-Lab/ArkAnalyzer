@@ -20,6 +20,10 @@
 #include <string>
 
 #define TWO 2
+#define THREE 3
+#define FIVE 5
+#define TEN 10
+#define FIFTEEN 15
 
 struct Data {
     int a;
@@ -125,6 +129,30 @@ void Case11()
         std::cout << a;
     }
 }
+
+void ForWithLogicalOperators()
+{
+    // 包含 && 和 || 运算符的 for 循环
+    for (int i = 0; (i < TEN && i != FIVE) || (i >= TEN && i < FIFTEEN); i++) {
+        if (i < TEN) {
+            std::cout << "First condition active: i = " << i << std::endl;
+        } else {
+            std::cout << "Second condition active: i = " << i << std::endl;
+        }
+    }
+}
+
+void NestedLoopExample()
+{
+    // 外层循环使用 &&
+    for (int i = 0; i < FIVE && i != THREE; i++) {
+        // 内层循环使用 ||
+        for (int j = 0; j < THREE || (j >= THREE && j < FIVE); j++) {
+            std::cout << "i = " << i << ", j = " << j << std::endl;
+        }
+    }
+}
+
 
 int main()
 {

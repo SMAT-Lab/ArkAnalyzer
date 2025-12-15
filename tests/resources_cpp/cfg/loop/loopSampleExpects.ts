@@ -374,3 +374,65 @@ export const LOOP_EXPECT_CASE11 = {
         { id: 3, stmts: ['return'], preds: [1], succes: [] },
     ],
 };
+
+export const LOOP_EXPECT_CASE12 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: ['this = this: @loop/loopSample.cpp: %dflt', 'i = 0'],
+            preds: [],
+            succes: [1],
+        },
+        { id: 1, stmts: ['if i < 10'], preds: [0, 6], succes: [8, 7] },
+        { id: 2, stmts: ['if i < 10'], preds: [8, 9], succes: [3, 4] },
+        {
+            id: 3,
+            stmts: [
+                'staticinvoke <@%unk/%unk: .cout()>(\'First condition active: i = \', i)',
+            ],
+            preds: [2],
+            succes: [6],
+        },
+        {
+            id: 4,
+            stmts: [
+                'staticinvoke <@%unk/%unk: .cout()>(\'Second condition active: i = \', i)',
+            ],
+            preds: [2],
+            succes: [6],
+        },
+        { id: 5, stmts: ['return'], preds: [7, 9], succes: [] },
+        { id: 6, stmts: ['i = i + 1'], preds: [3, 4], succes: [1] },
+        { id: 7, stmts: ['if i >= 10'], preds: [1, 8], succes: [9, 5] },
+        { id: 8, stmts: ['if i != 5'], preds: [1], succes: [2, 7] },
+        { id: 9, stmts: ['if i < 15'], preds: [7], succes: [2, 5] },
+    ],
+};
+
+export const LOOP_EXPECT_CASE13 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: ['this = this: @loop/loopSample.cpp: %dflt', 'i = 0'],
+            preds: [],
+            succes: [1],
+        },
+        { id: 1, stmts: ['if i < 5'], preds: [0, 5], succes: [7, 4] },
+        { id: 2, stmts: ['if j < 3'], preds: [6, 3], succes: [3, 8] },
+        {
+            id: 3,
+            stmts: [
+                'staticinvoke <@%unk/%unk: .cout()>(\'i = \', i, \', j = \', j)',
+                'j = j + 1',
+            ],
+            preds: [2, 9],
+            succes: [2],
+        },
+        { id: 4, stmts: ['return'], preds: [1, 7], succes: [] },
+        { id: 5, stmts: ['i = i + 1'], preds: [8, 9], succes: [1] },
+        { id: 6, stmts: ['j = 0'], preds: [7], succes: [2] },
+        { id: 7, stmts: ['if i != 3'], preds: [1], succes: [6, 4] },
+        { id: 8, stmts: ['if j >= 3'], preds: [2], succes: [9, 5] },
+        { id: 9, stmts: ['if j < 5'], preds: [8], succes: [3, 5] },
+    ],
+};

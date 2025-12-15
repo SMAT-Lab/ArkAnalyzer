@@ -102,6 +102,9 @@ function nodeInnerNode(node: CxxAstNode): CxxAstNode {
 }
 
 export class ArkCxxIRTransformer extends ArkIRTransformer {
+    public static readonly DUMMY_IF_OPERATOR_AND_SIGNAL = 'If(&&)';
+    public static readonly DUMMY_IF_OPERATOR_END = 'IfEnd';
+    public static readonly DUMMY_IF_OPERATOR_OR_SIGNAL = 'If(||)';
     private readonly cxxSourceFile: CxxTranslationUnit;
     private ArkCxxValueTransformer: ArkCxxValueTransformer;
     private catchedExceptions: Value[] = [];
@@ -728,12 +731,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
             const conditionExpr = new ArkConditionExpr(trueConstant, trueConstant, RelationalBinaryOperator.Equality);
             stmts.push(new ArkIfStmt(conditionExpr));
         } else if (conditionNoe) {
-            const { value: conditionValue, valueOriginalPositions: conditionPositions, stmts: conditionStmts } =
-                this.ArkCxxValueTransformer.cxxConditionToValueAndStmts(conditionNoe);
-            conditionStmts.forEach(stmt => stmts.push(stmt));
-            const ifStmt = new ArkIfStmt(conditionValue as ArkConditionExpr);
-            ifStmt.setOperandOriginalPositions(conditionPositions);
-            stmts.push(ifStmt);
+            this.cxxIfStatementToStmts(conditionNoe).forEach(stmt => stmts.push(stmt));
         }
         if (incrementor) {
             this.cxxNodeToValueAndStmts(incrementor).stmts.forEach(stmt => stmts.push(stmt));
@@ -745,24 +743,13 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         const stmts: Stmt[] = [];
         const dummyInitializerStmt = new DummyStmt(ArkIRTransformer.DUMMY_LOOP_INITIALIZER_STMT);
         stmts.push(dummyInitializerStmt);
-
-        const { value: conditionExpr, valueOriginalPositions: conditionPositions, stmts: conditionStmts } =
-            this.ArkCxxValueTransformer.cxxConditionToValueAndStmts(whileStatement.inner[0]);
-        conditionStmts.forEach(stmt => stmts.push(stmt));
-        const ifStmt = new ArkIfStmt(conditionExpr as ArkConditionExpr);
-        ifStmt.setOperandOriginalPositions(conditionPositions);
-        stmts.push(ifStmt);
+        this.cxxIfStatementToStmts(whileStatement.inner[0]).forEach(stmt => stmts.push(stmt));
         return stmts;
     }
 
     private cxxDoStatementToStmts(doStatement: CxxAstNode): Stmt[] {
         const stmts: Stmt[] = [];
-        const { value: conditionExpr, valueOriginalPositions: conditionPositions, stmts: conditionStmts } =
-            this.ArkCxxValueTransformer.cxxConditionToValueAndStmts(doStatement.inner[1]);
-        conditionStmts.forEach(stmt => stmts.push(stmt));
-        const ifStmt = new ArkIfStmt(conditionExpr as ArkConditionExpr);
-        ifStmt.setOperandOriginalPositions(conditionPositions);
-        stmts.push(ifStmt);
+        this.cxxIfStatementToStmts(doStatement.inner[1]).forEach(stmt => stmts.push(stmt));
         return stmts;
     }
 
@@ -900,14 +887,37 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         return this.ArkCxxValueTransformer.declStmtToValueAndStmts(variableDeclarationList).stmts;
     }
 
-    private cxxIfStatementToStmts(ifStatement: CxxAstNode): Stmt[] {
+    public cxxIfStatementToStmts(ifStatement: CxxAstNode, depth: number = 0, context?: {
+        conditionExpr: Value | undefined
+    }): Stmt[] {
         const stmts: Stmt[] = [];
-        const { value: conditionExpr, valueOriginalPositions: conditionExprPositions, stmts: conditionStmts } =
-            this.ArkCxxValueTransformer.cxxConditionToValueAndStmts(ifStatement.inner[0]);
-        conditionStmts.forEach(stmt => stmts.push(stmt));
-        const ifStmt = new ArkIfStmt(conditionExpr as ArkConditionExpr);
-        ifStmt.setOperandOriginalPositions(conditionExprPositions);
-        stmts.push(ifStmt);
+        if (ifStatement.kind === 'IfStmt') {
+            return this.cxxIfStatementToStmts(ifStatement.inner[0], depth);
+        } else if (ifStatement.kind === 'BinaryOperator' && ifStatement.opcode === '||') {
+            // || The child of a node must have two child nodes
+            this.cxxIfStatementToStmts(ifStatement.inner[0], depth + 1).forEach(stmt => stmts.push(stmt));
+            stmts.push(new DummyStmt(ArkCxxIRTransformer.DUMMY_IF_OPERATOR_OR_SIGNAL + depth));
+            this.cxxIfStatementToStmts(ifStatement.inner[1], depth + 1).forEach(stmt => stmts.push(stmt));
+            stmts.push(new DummyStmt(ArkCxxIRTransformer.DUMMY_IF_OPERATOR_END + depth));
+        } else if (ifStatement.kind === 'BinaryOperator' && ifStatement.opcode === '&&') {
+            // && The child of a node must have two child nodes
+            this.cxxIfStatementToStmts(ifStatement.inner[0], depth + 1).forEach(stmt => stmts.push(stmt));
+            stmts.push(new DummyStmt(ArkCxxIRTransformer.DUMMY_IF_OPERATOR_AND_SIGNAL + depth));
+            this.cxxIfStatementToStmts(ifStatement.inner[1], depth + 1).forEach(stmt => stmts.push(stmt));
+            stmts.push(new DummyStmt(ArkCxxIRTransformer.DUMMY_IF_OPERATOR_END + depth));
+        } else if (ifStatement.kind === 'ParenExpr') {
+            return this.cxxIfStatementToStmts(ifStatement.inner[0], depth);
+        } else {
+            const { value: conditionExpr, valueOriginalPositions: conditionExprPositions, stmts: conditionStmts } =
+                this.ArkCxxValueTransformer.cxxConditionToValueAndStmts(ifStatement);
+            conditionStmts.forEach(stmt => stmts.push(stmt));
+            const ifStmt = new ArkIfStmt(conditionExpr as ArkConditionExpr);
+            ifStmt.setOperandOriginalPositions(conditionExprPositions);
+            stmts.push(ifStmt);
+            if (context){
+                context.conditionExpr = conditionExpr;
+            }
+        }
         return stmts;
     }
 

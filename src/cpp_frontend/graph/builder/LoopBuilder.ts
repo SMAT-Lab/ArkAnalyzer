@@ -18,7 +18,8 @@ import { ArkAssignStmt, ArkIfStmt, Stmt } from '../../../core/base/Stmt';
 import { AbstractInvokeExpr, ArkInstanceInvokeExpr } from '../../../core/base/Expr';
 import { BuiltinCxx } from '../../common/Builtin';
 import { BlockBuilder } from './CfgBuilder';
-import { ArkIRTransformer } from '../../../core/common/ArkIRTransformer';
+import { ArkIRTransformer, DummyStmt } from '../../../core/common/ArkIRTransformer';
+import { ArkCxxIRTransformer } from '../../common/ArkIRTransformer';
 
 /**
  * Builder for loop in CFG
@@ -336,6 +337,9 @@ export class CxxLoopBuilder {
                 continue;
             }
             if (stmt instanceof ArkIfStmt) {
+                ifStmtIdx = i;
+            }
+            if (stmt instanceof DummyStmt && (stmt.toString()?.startsWith(ArkCxxIRTransformer.DUMMY_IF_OPERATOR_END))) {
                 ifStmtIdx = i;
             }
         }
