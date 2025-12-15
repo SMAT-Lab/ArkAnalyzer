@@ -55,9 +55,8 @@ export class AstUtils {
             };
         }
         let astPath: string = this.getAstOutputPath(sourceFile, cppAstPath);
-        let includeArgs = constructParseArguments(sourceFile, ccJsonPath, includeDirs);
         let parseArguments: string[] = [sourceFile, '-o', astPath];
-        parseArguments = [...parseArguments, ...includeArgs];
+        parseArguments = [...parseArguments];
         this.ensureOutputDir(path.dirname(astPath));
         const sep = path.delimiter;
         const existingPath = process.env.PATH ?? '';
@@ -90,7 +89,7 @@ export class AstUtils {
                 return;
             }
             let fileName = '';
-            let loc = entry.locFile;
+            let loc = entry.loc;
             if (!loc) {
                 if (entry.kind === 'inclusion directive') {
                     entry.locFile = sourceFile;
@@ -100,8 +99,8 @@ export class AstUtils {
                 }
                 return;
             }
-            if (entry.locFile) {
-                fileName = entry.locFile;
+            if (loc.file) {
+                fileName = loc.file;
             }
             if (Object.prototype.hasOwnProperty.call(entry, 'include') && entry.include && entry.kind !== 'inclusion directive') {
                 newInner.push(entry);
@@ -265,25 +264,6 @@ async function deleteFile(filePath: string): Promise<void> {
     } catch (err) {
         logger.warn('delete file is not ok:', filePath);
     }
-}
-
-function constructParseArguments(srcFilePath: string, ccJsonPath: string | null, includeDirs: string[] | null): string[] {
-    const args: string[] = [];
-    const ext = path.extname(srcFilePath).toLowerCase();
-    const isHeader = ext === '.h' || ext === '.hpp';
-
-    if (!ccJsonPath && !isHeader) {
-        ccJsonPath = findCompileCommands(srcFilePath);
-    }
-    if (ccJsonPath) {
-        args.push('-c', ccJsonPath);
-    }
-    if (includeDirs && includeDirs.length > 0) {
-        includeDirs.forEach(dir => {
-            args.push('-i', `${dir}`);
-        });
-    }
-    return args;
 }
 
 /**

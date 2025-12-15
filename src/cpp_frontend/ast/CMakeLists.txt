@@ -1,42 +1,50 @@
 cmake_minimum_required(VERSION 3.16)
-project(arkCppAstDumper LANGUAGES CXX)
+project(astJsonDumper LANGUAGES CXX)
 
-# Allow enabling lightweight profiling with -DARK_ENABLE_PROFILING=ON
-option(ARK_ENABLE_PROFILING "Enable Ark lightweight profiling" OFF)
-message(STATUS "ARK_ENABLE_PROFILING = ${ARK_ENABLE_PROFILING}")
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Platform-specific toolchain (if needed)
-if(WIN32)
-  include(cmake/toolchains/windows.cmake)
-endif()
+find_package(LLVM REQUIRED CONFIG)
+find_package(Clang REQUIRED CONFIG)
 
-add_executable(arkCppAstDumper
-  arkCppAst.cpp
-  utils/utils_string.cpp
-  utils/utils_file.cpp
-  utils/cli_util.cpp
-  utils/mat_metrics.cpp
-  utils/ast_prune_policy.cpp
-  utils/ast_call_postprocess.cpp
+message(STATUS "LLVM_PACKAGE_VERSION: ${LLVM_PACKAGE_VERSION}")
+message(STATUS "LLVM_DIR: ${LLVM_DIR}")
+message(STATUS "LLVM_INCLUDE_DIRS: ${LLVM_INCLUDE_DIRS}")
+message(STATUS "Clang_DIR: ${Clang_DIR}")
+message(STATUS "CLANG_INCLUDE_DIRS: ${CLANG_INCLUDE_DIRS}")
+
+add_executable(astJsonDumper
+    cppAstDumper.cpp
+    utils/compile_db_utils.cpp
 )
 
-# Require C++17 features
-target_compile_features(arkCppAstDumper PRIVATE cxx_std_17)
-
-# Include paths and library linkage
-target_include_directories(arkCppAstDumper PRIVATE
-  ${CLANG_INCLUDE_DIRS}
-  ${CMAKE_CURRENT_SOURCE_DIR}/utils
+# for "utils/compile_db_utils.h"
+target_include_directories(astJsonDumper PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
 )
-target_link_libraries(arkCppAstDumper PRIVATE ${CLANG_LIBRARIES})
 
-# Enable lightweight profiling macros (ARK_PROFILE_SCOPE)
-if(ARK_ENABLE_PROFILING)
-  target_compile_definitions(arkCppAstDumper PRIVATE ARK_ENABLE_PROFILING=1)
-endif()
+# LLVM_DEFINITIONS is usually "-D..." style; keep as compile options.
+separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND "${LLVM_DEFINITIONS}")
+target_compile_options(astJsonDumper PRIVATE ${LLVM_DEFINITIONS_LIST})
 
-# MSVC: enable UTF-8 via compiler option (not macro); also silence old deprecation warnings
+target_link_libraries(astJsonDumper PRIVATE
+    clangTooling
+    clangFrontend
+    clangAST
+    clangLex
+    clangBasic
+)
+
 if(MSVC)
-  target_compile_options(arkCppAstDumper PRIVATE /utf-8)
-  target_compile_definitions(arkCppAstDumper PRIVATE _SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING)
+    target_compile_options(astJsonDumper PRIVATE
+        /utf-8
+        /wd4291
+        /wd4244
+    )
+    target_link_options(astJsonDumper PRIVATE
+        /ignore:4199
+    )
 endif()
