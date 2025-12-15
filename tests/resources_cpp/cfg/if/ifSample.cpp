@@ -182,7 +182,7 @@ int Case10()
     int c = TWO;
     if (b > a || b > c || c > 0) {
         return b;
-    } else if (a < b && a >c) {
+    } else if (a < b && a > c) {
         return c;
     }
     return a;
