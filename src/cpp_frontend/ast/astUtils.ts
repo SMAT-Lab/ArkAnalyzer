@@ -32,6 +32,14 @@ export type GetParentFn = {
 export class AstUtils {
     private static currentAccess: string = 'public';
 
+    private static deleteFileSync(filePath: string): void {
+        try {
+            fs.unlinkSync(filePath);
+        } catch {
+            logger.warn('delete file failed:', filePath);
+        }
+    }
+
     public static parse(sourceFile: string, ccJsonPath: string | null, includeDirs: string[] | null, llvmPath: string, cppAstPath: string): CxxAstNode {
         if (!fs.existsSync(sourceFile)) {
             logger.warn('parse file is not exists');
@@ -77,10 +85,13 @@ export class AstUtils {
         } else {
             logger.info('Parsing completed!');
         }
-        let translationUnit = JSON.parse(fs.readFileSync(astPath, 'utf-8')) as CxxAstNode;
-        translationUnit = this.filter(sourceFile, translationUnit) as CxxAstNode;
-        deleteFile(astPath);
-        return translationUnit;
+        try {
+            let tu = JSON.parse(fs.readFileSync(astPath, 'utf-8')) as CxxAstNode;
+            tu = this.filter(sourceFile, tu) as CxxAstNode;
+            return tu;
+        } finally {
+            this.deleteFileSync(astPath);
+        }
     }
 
     private static updateInner(sourceFile: string, firstOccurrenceOfMainFile: boolean, entry: CxxAstNode, newInner: CxxAstNode[]): void {
@@ -254,15 +265,6 @@ export class AstUtils {
             default:
                 return ClangPath.Unknown;
         }
-    }
-}
-
-async function deleteFile(filePath: string): Promise<void> {
-    try {
-        await fs.promises.unlink(filePath);
-        logger.info('delete file ok:', filePath);
-    } catch (err) {
-        logger.warn('delete file is not ok:', filePath);
     }
 }
 
