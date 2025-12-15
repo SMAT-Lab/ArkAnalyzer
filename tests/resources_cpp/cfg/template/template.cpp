@@ -14,6 +14,7 @@
  */
 
 #include <iostream>
+#include <stdexcept>
 
 #define TWO 2
 #define PI 3.14
@@ -46,7 +47,7 @@ int Max2(Q a, Q b)
 int Instantiation1(int x, int y)
 {
     int z = Max1(x, y);
-    int y = Max2(x, y);
+    int r = Max2(x, y);
     PrintPair(x, y);
     return 0;
 }
@@ -96,6 +97,25 @@ int Instantiation3()
     int z = Sum(1, 2, 3, 4, 5, 6);
     return 0;
 }
+
+template<typename T, auto N>
+class FixedArray {
+private:
+    T data[N];
+
+public:
+    constexpr size_t Size() const { return N; }
+
+    T& operator[](size_t index)
+    {
+        if (index >= N) {
+            throw std::out_of_range("Index out of range");
+        }
+        return data[index];
+    }
+};
+
+FixedArray<int, TWENTY> g_arr1;
 
 int main()
 {

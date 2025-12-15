@@ -79,6 +79,7 @@ import { PointerType, ReferenceType } from '../base/Type';
 import { SdkUtils } from '../../core/common/SdkUtils';
 import { ArkNamespace } from '../../core/model/ArkNamespace';
 import { ArkExport } from '../../core/model/ArkExport';
+import { CxxModelUtils } from './ModelUtils';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'IRInference');
 
@@ -178,7 +179,7 @@ export class IRInference {
             ModelUtils.getStaticMethodWithName(methodName, arkClass) ??
             arkMethod.getFunctionLocal(methodName) ??
             ModelUtils.findDeclaredLocal(new Local(methodName), arkMethod) ??
-            ModelUtils.getArkExportInImportInfoWithName(methodName, arkClass.getDeclaringArkFile()) ??
+            CxxModelUtils.getArkExportInImportInfoWithName(methodName, arkClass.getDeclaringArkFile(), arkClass) ??
             arkClass.getDeclaringArkFile().getScene().getSdkGlobal(methodName);
         let { mtd: method, sig: signature } = this.processArkExportForMethodAndSignature(arkExport, arkClass);
         if (method) {
@@ -649,18 +650,7 @@ export class IRInference {
     }
 
     public static generateNewFieldSignature(ref: AbstractFieldRef, arkClass: ArkClass, baseType: Type): FieldSignature | null {
-        if (baseType instanceof UnionType) {
-            for (let type of baseType.flatType()) {
-                if (type instanceof UndefinedType || type instanceof NullType) {
-                    continue;
-                }
-                let newFieldSignature = this.generateNewFieldSignature(ref, arkClass, type);
-                if (!TypeInference.isUnclearType(newFieldSignature?.getType())) {
-                    return newFieldSignature;
-                }
-            }
-            return null;
-        } else if (baseType instanceof AliasType) {
+        if (baseType instanceof AliasType) {
             return this.generateNewFieldSignature(ref, arkClass, baseType.getOriginalType());
         }
         const fieldName = ref.getFieldName().replace(/[\"|\']/g, '');
@@ -944,8 +934,11 @@ export class IRInference {
             if (refArkClasses.length !== 1) {
                 continue;
             }
-            refArkClasses[0].setDeclareSignature(clsInHeader.getSignature());
             implClasses.push(refArkClasses[0]);
+            if (tgtClsName === DEFAULT_ARK_CLASS_NAME) {
+                continue;
+            }
+            refArkClasses[0].setDeclareSignature(clsInHeader.getSignature());
         }
         return implClasses;
     }

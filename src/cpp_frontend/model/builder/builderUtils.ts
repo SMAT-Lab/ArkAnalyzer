@@ -21,7 +21,7 @@ import {
     UnclearReferenceType,
     FunctionType,
 } from '../../../core/base/Type';
-import { PointerType, ReferenceType, ReferCategory, NapiType, SmartPointerType } from '../../base/Type';
+import { PointerType, ReferenceType, ReferCategory, NapiType, SmartPointerType, CxxNonType } from '../../base/Type';
 import { TypeInference } from '../../common/TypeInference';
 import { ArkField } from '../../../core/model/ArkField';
 import { ArkClass } from '../../../core/model/ArkClass';
@@ -106,20 +106,29 @@ export function buildTypeParameters(clsNode: CxxAstNode, sourceFile: CxxAstNode,
     const genericTypes: GenericType[] = [];
     let index = -1;
     for (const innerNode of clsNode.inner) {
-        if (innerNode.kind !== 'TemplateTypeParameter') {
-            continue;
+        if (innerNode.kind === 'TemplateTypeParameter') {
+            let typename = innerNode.name;
+            let defaultType;
+            if (innerNode.inner && innerNode.inner.length > 0) {
+                innerNode.default = innerNode.inner[0].type.qualType;
+            }
+            if (innerNode.default) {
+                defaultType = cxxNode2Type(innerNode.default, arkInstance, sourceFile);
+            }
+            let templateType = new GenericType(typename, defaultType);
+            templateType.setIndex(++index);
+            genericTypes.push(templateType);
+        } else if (innerNode.kind === 'NonTypeTemplateParameter') {
+            let templateType;
+            if (innerNode.type.qualType === 'auto') {
+                templateType = new CxxNonType(innerNode.name, undefined, true);
+            } else {
+                const nonType = cxxNode2Type(innerNode.type.qualType, arkInstance, sourceFile);
+                templateType = new CxxNonType(innerNode.name, nonType);
+            }
+            templateType.setIndex(++index);
+            genericTypes.push(templateType);
         }
-        let typename = innerNode.name;
-        let defaultType;
-        if (innerNode.inner && innerNode.inner.length > 0) {
-            innerNode.default = innerNode.inner[0].type.qualType;
-        }
-        if (innerNode.default) {
-            defaultType = cxxNode2Type(innerNode.default, arkInstance, sourceFile);
-        }
-        let templateType = new GenericType(typename, defaultType);
-        templateType.setIndex(++index);
-        genericTypes.push(templateType);
     }
     return genericTypes;
 }
@@ -157,6 +166,12 @@ export function buildParameters(params: CxxAstNode[], arkInstance: ArkMethod | A
 export function buildReturnType(mtdNode: CxxAstNode, sourceFile: CxxAstNode, method: ArkMethod): Type {
     let nodeType = mtdNode.type;
     if (nodeType) {
+        if (nodeType?.qualType) {
+            const qualType = nodeType.qualType;
+            if (qualType.includes('noexcept') && !qualType.includes('noexcept(false)')) {
+                method.addModifier(modifierKind2CxxEnum('noexcept'));
+            }
+        }
         let funcRetType;
         let isLambdaFunc = nodeType.qualType.startsWith('(lambda at');
         if (!isLambdaFunc) {
@@ -246,6 +261,7 @@ export function cxxNode2Type(
  *@ returns Type object constructed
  */
 export function buildTypeFromPreStr(preStr: string, arkInstance: ArkMethod | ArkClass | ArkField | undefined): Type {
+    const oriStr = preStr;
     // 1. Remove modifiers such as const/static/mutable
     preStr = preStr.replace(/\b(const|static|mutable)\s*\b/g, '');
     let pointerLevel = 0;
@@ -268,7 +284,7 @@ export function buildTypeFromPreStr(preStr: string, arkInstance: ArkMethod | Ark
     // Need to Handle precedence between pointers and other types/modifiers
     // 4. Wrap pointers and references
     if (pointerLevel > 0) { // && !(baseType instanceof FunctionPointer) || pointerLevel > 1
-        baseType = new PointerType(baseType, pointerLevel);
+        baseType = new PointerType(baseType, pointerLevel, oriStr);
     }
     if (referenceCount > 0) {
         return buildReferenceType(preStr, arkInstance, referenceCount, baseType);
@@ -372,6 +388,7 @@ const typeMap: Record<string, string> = {
     char16_t: 'string',
     char32_t: 'string',
     'std::basic_string<char>': 'string',
+    'basic_string<char>': 'string',
     // Number
     short: 'number',
     'unsigned short': 'number',
@@ -402,5 +419,6 @@ const typeMap: Record<string, string> = {
 };
 
 export function convertDataType(typeName: string): string {
-    return typeMap[typeName] ?? 'unsupported';
+    const formattedTypeName = typeName.replace(BuiltinCxx.CXXSTDREF, '');
+    return typeMap[formattedTypeName] ?? 'unsupported';
 }

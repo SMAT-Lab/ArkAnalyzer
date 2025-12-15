@@ -358,67 +358,35 @@ function getFuncImplement(mtd: ArkMethod): ArkMethod {
     return realImplMtd;
 }
 
-type PatchClassType = abstract new (...args: unknown[]) => unknown;
-type StaticMethodKeys<C extends PatchClassType> = Extract<
-    {
-        [K in keyof C]: C[K] extends Function ? K : never;
-    }[keyof C],
-    string
->;
-
-export class PatchRegistry {
-    private static _instance: PatchRegistry;
-    private static originalMap = new Map<string, unknown>();
-
-    private constructor() {}
-
-    public static get instance(): PatchRegistry {
-        if (!this._instance) {
-            this._instance = new PatchRegistry();
-            Object.freeze(this._instance);
-        }
-        return this._instance;
-    }
-
-    public static patchStaticMethod<
-        C extends PatchClassType,
-        K extends StaticMethodKeys<C>
-    >(targetModule: C, methodName: K, newFunction: C[K]): void {
-        const key = `${targetModule.name}.static.${methodName}`;
-        if (!this.originalMap.has(key)) {
-            this.originalMap.set(key, targetModule[methodName]);
-        }
-        targetModule[methodName] = newFunction;
-    }
-
-    public static restoredStaticMethod<
-        C extends PatchClassType,
-        K extends StaticMethodKeys<C>
-    >(targetModule: C, methodName: K): void {
-        const key = `${targetModule.name}.static.${methodName}`;
-        const original = this.originalMap.get(key);
-        if (!original) {
-            return;
-        }
-        targetModule[methodName] = original as C[K];
-        this.originalMap.delete(key);
-    }
-}
-
 export class CxxModelUtils {
 
-    public static getArkExportInImportInfoWithName(name: string, arkFile: ArkFile): ArkExport | null {
+    public static getArkExportInImportInfoWithName(name: string, arkFile: ArkFile, arkClass?: ArkClass): ArkExport | null {
         let arkExport = arkFile.getImportInfoBy(name)?.getLazyExportInfo()?.getArkExport();
         if (arkExport) {
             return arkExport;
         }
-        // if using namespace in file，we can call the method or class in the namespace without a prefix.
+        let declNamespace: ArkNamespace | undefined;
+        if (arkClass) {
+            declNamespace = arkClass.getDeclaringArkNamespace();
+        }
+        // if using namespace or use type in same name namespace in file，we can call the method or class in the namespace without a prefix.
         for (const im of arkFile.getImportInfos()) {
             const imArkExport = im.getLazyExportInfo()?.getArkExport();
-            if (im.getImportType() !== 'NamespaceImport' || !(imArkExport instanceof ArkNamespace)) {
+            if (!(imArkExport instanceof ArkNamespace)) {
                 continue;
             }
             const imNS = imArkExport as ArkNamespace;
+            // using namespace xxx
+            if (im.getImportType() === 'NamespaceImport') {
+                arkExport = ModelUtils.findPropertyInNamespace(name, imNS);
+                if (arkExport) {
+                    return arkExport;
+                }
+            }
+            // infer type within the same namespace across different files
+            if (declNamespace?.getName() !== imNS.getName()) {
+                continue;
+            }
             arkExport = ModelUtils.findPropertyInNamespace(name, imNS);
             if (arkExport) {
                 return arkExport;

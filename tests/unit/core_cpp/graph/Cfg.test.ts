@@ -15,9 +15,9 @@
 
 import { BasicBlock, FileUtils, Scene, SceneConfig } from '../../../../src';
 import { Language } from '../../../../src/core/model/ArkFile';
-import { describe, expect, it, vi } from 'vitest';
+import { assert, describe, expect, it, vi } from 'vitest';
 import path from 'path';
-import { assertClassBlocksEqual, testBlocks, testBlocksWithSignature } from '../../common';
+import { assertClassBlocksEqual, testBlocks, testBlocksWithSignature, testBlocksClass } from '../../common';
 import * as CONDITION_EXPECT from '../../../resources_cpp/cfg/conditionalOperator';
 import * as IF_EXPECT from '../../../resources_cpp/cfg/if/ifSampleExpects';
 import * as SWITCH_EXPECT from '../../../resources_cpp/cfg/switch/switchSampleExpects';
@@ -66,6 +66,7 @@ import * as INITIALZERLIST from '../../../resources_cpp/cfg/stdInitializerListEx
 import * as SUPPLEMENTARY from '../../../resources_cpp/cfg/supplementary/supplementary';
 import * as TRAP from '../../../resources_cpp/cfg/trap/cxxTrapExpects';
 import * as OVERWRITE from '../../../resources_cpp/cfg/overwrite/overwriteExpect';
+import { ModifierType } from '../../../../src/core/model/ArkBaseModel';
 
 const deveco_c = process.env.DEVECO_C !== undefined ? process.env.DEVECO_C : '';
 const deveco_include = process.env.DEVECO_INCLUDE !== undefined ? process.env.DEVECO_INCLUDE : '';
@@ -82,6 +83,7 @@ describe('CfgTest', () => {
         testBlocks(scene, 'conditionalOperator.cpp', 'Case5', CONDITION_EXPECT.CONDITIONAL_OPERATOR_EXPECT_CASE5.blocks);
         testBlocks(scene, 'conditionalOperator.cpp', 'Case6', CONDITION_EXPECT.CONDITIONAL_OPERATOR_EXPECT_CASE6.blocks);
         testBlocks(scene, 'conditionalOperator.cpp', 'main', CONDITION_EXPECT.CONDITIONAL_OPERATOR_EXPECT_MAIN.blocks);
+        testBlocks(scene, 'conditionalOperator.cpp', 'TernaryWithLogicalOperators', CONDITION_EXPECT.CONDITIONAL_WITH_LOGICAL_EXPECT.blocks);
     });
     it('case2: if statement', () => {
         const scene = buildScene('if');
@@ -94,6 +96,8 @@ describe('CfgTest', () => {
         testBlocks(scene, 'ifSample.cpp', 'Case7', IF_EXPECT.IF_EXPECT_CASE7.blocks);
         testBlocks(scene, 'ifSample.cpp', 'Case8', IF_EXPECT.IF_EXPECT_CASE8.blocks);
         testBlocks(scene, 'ifSample.cpp', 'Case9', IF_EXPECT.IF_EXPECT_CASE9.blocks);
+        testBlocks(scene, 'ifSample.cpp', 'Case10', IF_EXPECT.IF_EXPECT_CASE10.blocks);
+        testBlocks(scene, 'ifSample.cpp', 'Case11', IF_EXPECT.IF_EXPECT_CASE11.blocks);
     });
 
     it('case3: switch statement', () => {
@@ -132,6 +136,8 @@ describe('CfgTest', () => {
         testBlocks(scene, 'loopSample.cpp', 'Case9', LOOP_EXPECT.LOOP_EXPECT_CASE9.blocks);
         testBlocks(scene, 'loopSample.cpp', 'Case10', LOOP_EXPECT.LOOP_EXPECT_CASE10.blocks);
         testBlocks(scene, 'loopSample.cpp', 'Case11', LOOP_EXPECT.LOOP_EXPECT_CASE11.blocks);
+        testBlocks(scene, 'loopSample.cpp', 'ForWithLogicalOperators', LOOP_EXPECT.LOOP_EXPECT_CASE12.blocks);
+        testBlocks(scene, 'loopSample.cpp', 'NestedLoopExample', LOOP_EXPECT.LOOP_EXPECT_CASE13.blocks);
     });
     it('case5: while-continue statement', () => {
         const scene = buildScene('whileContinue');
@@ -140,6 +146,8 @@ describe('CfgTest', () => {
         testBlocks(scene, 'whileContinueSample.cpp', 'CommaExprFunc', WHILE_CONTINUE_EXPECT.COMMA_EXPRESSION.blocks);
         testBlocks(scene, 'whileContinueSample.cpp', 'EmptyDoWhile', WHILE_CONTINUE_EXPECT.EMPTY_DO_WHILE.blocks);
         testBlocks(scene, 'whileContinueSample.cpp', 'ContinueDoWhile', WHILE_CONTINUE_EXPECT.CONTINUE_DO_WHILE.blocks);
+        testBlocks(scene, 'whileContinueSample.cpp', 'WhileWithLogicalOperators', WHILE_CONTINUE_EXPECT.CONTINUE_WHILE_WITH_LOGICAL_OPERATORS.blocks);
+        testBlocks(scene, 'whileContinueSample.cpp', 'DoWhileWithLogicalOperators', WHILE_CONTINUE_EXPECT.CONTINUE_DO_WHILE_WITH_LOGICAL_OPERATORS.blocks);
     });
     it('case6: goto statement', () => {
         const scene = buildScene('goto');
@@ -229,6 +237,7 @@ describe('Type Test', () => {
         testBlocks(scene, 'template.cpp', 'Max2', TEMPLATE_EXPECT.TEMPLATE_EXPECT_CASE2.blocks);
         testBlocks(scene, 'template.cpp', 'PrintPair', TEMPLATE_EXPECT.TEMPLATE_EXPECT_CASE3.blocks);
         testBlocksClass(scene, 'template.cpp', 'MyContainer', TEMPLATE_EXPECT.TEMPLATE_MYCONTAINER_CLASS);
+        testBlocksClass(scene, 'template.cpp', 'FixedArray', TEMPLATE_EXPECT.TEMPLATE_FIXEDARRAY_CLASS);
         testBlocks(scene, 'template.cpp', 'main', TEMPLATE_EXPECT.TEMPLATE_EXPECT_CASE4.blocks);
         testBlocks(scene, 'template.cpp', 'Sum', TEMPLATE_EXPECT.TEMPLATE_EXPECT_CASE5.blocks);
         testBlocks(scene, 'template.cpp', 'Instantiation3', TEMPLATE_EXPECT.TEMPLATE_EXPECT_CASE6.blocks);
@@ -281,7 +290,7 @@ describe('Function Test', () => {
         testBlocksWithSignature(scene, 'overloadSample.cpp', '', 'PrintInfo(int)', OVERLOAD.OVERLOAD_PRINT_INFO_CASE1_EXPECT.blocks);
         testBlocksWithSignature(scene, 'overloadSample.cpp', '', 'PrintInfo(char)', OVERLOAD.OVERLOAD_PRINT_INFO_CASE2_EXPECT.blocks);
         testBlocksWithSignature(scene, 'overloadSample.cpp', '', 'PrintInfo(int, char)', OVERLOAD.OVERLOAD_PRINT_INFO_CASE3_EXPECT.blocks);
-        testBlocksClass(scene, 'overloadSample.cpp', 'Person', OVERLOAD.OVERLOAD_CLASS_PERSON_EXPECT, true);
+        testBlocksClass(scene, 'overloadSample.cpp', 'Person', OVERLOAD.OVERLOAD_CLASS_PERSON_EXPECT, undefined, true);
         testBlocksClass(scene, 'overloadSample.cpp', 'Vector', OVERLOAD.VECTOR_CLASS_EXPECT);
         testBlocks(scene, 'overloadSample.cpp', 'operator<<', OVERLOAD.OVERLOAD_COUT_EXPECT.blocks);
         testBlocks(scene, 'overloadSample.cpp', 'operator>>', OVERLOAD.OVERLOAD_CIN_EXPECT.blocks);
@@ -473,10 +482,21 @@ describe('feature Test', () => {
     it('case2: functionPointer', () => {
         const scene = buildScene('functionPointer');
         scene.inferTypes();
+        testBlocks(scene, 'functionPointer.cpp', 'Add', FUNCPTR_EXPECT.FUNCPTR_EXPECT_ADD.blocks);
         testBlocks(scene, 'functionPointer.cpp', 'Case1', FUNCPTR_EXPECT.FUNCPTR_EXPECT_CASE1.blocks);
         testBlocks(scene, 'functionPointer.cpp', 'Case2', FUNCPTR_EXPECT.FUNCPTR_EXPECT_CASE2.blocks);
         testBlocks(scene, 'functionPointer.cpp', 'Case3', FUNCPTR_EXPECT.FUNCPTR_EXPECT_CASE3.blocks);
         testBlocks(scene, 'functionPointer.cpp', 'Greet', FUNCPTR_EXPECT.FUNCPTR_EXPECT_GREET.blocks);
+        const arkFile = scene.getFiles().find((file) => file.getName().endsWith('functionPointer.cpp'));
+        const arkMethod1 = arkFile?.getDefaultClass().getMethods()
+            .find((method) => (method.getName() === 'Func1'));
+        assert(arkMethod1?.getModifiers() === ModifierType.NOEXCEPT);
+        const arkMethod2 = arkFile?.getDefaultClass().getMethods()
+            .find((method) => (method.getName() === 'Func2'));
+        assert(arkMethod2?.getModifiers() === 0);
+        const arkMethod3 = arkFile?.getDefaultClass().getMethods()
+            .find((method) => (method.getName() === 'Func3'));
+        assert(arkMethod3?.getModifiers() === ModifierType.NOEXCEPT);
     });
     it('case3: structBinding', () => {
         const scene = buildScene('structBinding');
@@ -549,35 +569,6 @@ function getNapiIncludeDirs(): string[] {
         path.join(deveco_sysroot_include, 'x86_64-linux-ohos'),
         deveco_sysroot_include,
     ];
-}
-
-function testBlocksClass(scene: Scene, filePath: string, className: string, expectBlocks: any, isCheckOverload?: boolean): void {
-    const arkFile = scene.getFiles().find(file => file.getName().endsWith(filePath));
-    const arkClass = arkFile?.getClasses().find(arkClass => arkClass.getName() === className);
-    const classBlockMap = new Map<String, BasicBlock[]>();
-    for (const block of expectBlocks.blocks) {
-        classBlockMap.set(block.methodName, block.blocks);
-    }
-    // 1.Check class inheritance
-    const heritageClasses = new Set();
-    arkClass?.getAllHeritageClasses()?.forEach(heritageClass => {
-        heritageClasses.add(heritageClass.getName());
-    });
-    expect(heritageClasses).toEqual(new Set(expectBlocks.heritageClasses));
-    // 2.Check class fields
-    const fieldOfClass = new Set();
-    arkClass?.getFields()?.forEach(field => {
-        fieldOfClass.add(field.getName());
-    });
-    expect(fieldOfClass).toEqual(new Set(expectBlocks.fields));
-    // 3.Check class member functions
-    arkClass?.getMethods()?.forEach(method => {
-        const mapKey = isCheckOverload ? method.getSubSignature().toString() : method.getName();
-        const classBlock = classBlockMap.get(mapKey);
-        if (classBlock) {
-            assertClassBlocksEqual(method, classBlock);
-        }
-    });
 }
 
 function testNamespaceClasses(scene: Scene, filePath: string, namespaceName: string, expectBlocks: any): void {

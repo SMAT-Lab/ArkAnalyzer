@@ -15,6 +15,7 @@
 
 import { ClassCategory } from '../../core/model/ArkClass';
 import { ExportType } from '../../core/model/ArkExport';
+import { CxxTypeBitWidth } from '../../cpp_frontend/base/Type';
 
 // Polymorphic wrapper type for discriminated unions
 type Polymorphic<K, T> = T & { _: K; };
@@ -116,21 +117,21 @@ export type TypeDto =
     | Polymorphic<'AnnotationTypeQueryType', AnnotationTypeQueryTypeDto>
     | Polymorphic<'EnumValueType', EnumValueTypeDto>
     | Polymorphic<'LexicalEnvType', LexicalEnvTypeDto>
-    | Polymorphic<'CxxIntType', CxxBaseTypeDto>
-    | Polymorphic<'CxxShortType', CxxBaseTypeDto>
-    | Polymorphic<'CxxLongType', CxxBaseTypeDto>
-    | Polymorphic<'CxxLongLongType', CxxBaseTypeDto>
-    | Polymorphic<'CxxSizeTType', CxxBaseTypeDto>
-    | Polymorphic<'CxxFloatType', CxxBaseTypeDto>
-    | Polymorphic<'CxxDoubleType', CxxBaseTypeDto>
-    | Polymorphic<'CxxLongDoubleType', CxxBaseTypeDto>
-    | Polymorphic<'CxxCharType', CxxBaseTypeDto>
-    | Polymorphic<'CxxWcharType', CxxBaseTypeDto>
-    | Polymorphic<'PointerType', CxxBaseTypeDto>
-    | Polymorphic<'SmartPointerType', CxxBaseTypeDto>
-    | Polymorphic<'ReferenceType', CxxBaseTypeDto>
-    | Polymorphic<'Thread', CxxBaseTypeDto>
-    | Polymorphic<'TypeInfo', CxxBaseTypeDto>
+    | Polymorphic<'CxxIntType', CxxIntTypeDto>
+    | Polymorphic<'CxxShortType', CxxShortTypeDto>
+    | Polymorphic<'CxxLongType', CxxLongTypeDto>
+    | Polymorphic<'CxxLongLongType', CxxLongLongTypeDto>
+    | Polymorphic<'CxxSizeTType', CxxSizeTTypeDto>
+    | Polymorphic<'CxxFloatType', CxxFloatTypeDto>
+    | Polymorphic<'CxxDoubleType', CxxDoubleTypeDto>
+    | Polymorphic<'CxxLongDoubleType', CxxLongDoubleTypeDto>
+    | Polymorphic<'CxxCharType', CxxCharTypeDto>
+    | Polymorphic<'CxxWcharType', CxxWcharTypeDto>
+    | Polymorphic<'PointerType', PointerTypeDto>
+    | Polymorphic<'SmartPointerType', SmartPointerTypeDto>
+    | Polymorphic<'ReferenceType', ReferenceTypeDto>
+    | Polymorphic<'Thread', ThreadDto>
+    | Polymorphic<'TypeInfo', TypeInfoDto>
     | UnhandledTypeDto;
 
 export interface AnyTypeDto { }
@@ -169,8 +170,64 @@ export interface LiteralTypeDto {
     literal: string | number | boolean;
 }
 
-export interface CxxBaseTypeDto {
+export interface CxxIntTypeDto {
+    signType: string;
+}
+
+export interface CxxShortTypeDto {
+    signType: string;
+}
+
+export interface CxxLongTypeDto {
+    signType: string;
+}
+
+export interface CxxLongLongTypeDto {
+    signType: string;
+}
+
+export interface CxxSizeTTypeDto {
+    signType: string;
+}
+
+export interface CxxFloatTypeDto {
+    bitWidth: CxxTypeBitWidth;
+}
+
+export interface CxxDoubleTypeDto {
+    bitWidth: CxxTypeBitWidth;
+}
+
+export interface CxxLongDoubleTypeDto {
+    bitWidth: CxxTypeBitWidth;
+}
+
+export interface CxxCharTypeDto {
     text: string;
+}
+
+export interface CxxWcharTypeDto {
+    text: string;
+}
+
+export interface PointerTypeDto {
+    baseType: TypeDto;
+}
+
+export interface SmartPointerTypeDto {
+    baseType: TypeDto;
+}
+
+export interface ReferenceTypeDto {
+    baseType: TypeDto;
+}
+
+export interface ThreadDto {
+    text: string;
+}
+
+export interface TypeInfoDto {
+    name: string;
 }
 
 export interface ClassTypeDto {

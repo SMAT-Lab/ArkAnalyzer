@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -161,6 +161,50 @@ void Case9(const T& value)
         std::cout << "Floating-point: " << value << std::endl;
     } else {
         std::cout << "Other: " << value << std::endl;
+    }
+}
+
+int Case10()
+{
+    bool isReady = true;
+    bool hasPermission = false;
+    bool isEnabled = true;
+    bool isConnected = true;
+
+    // Use&&and | | combination conditions
+    if ((isReady && hasPermission) || (isEnabled && isConnected)) {
+        std::cout << "Condition met, execute operation" << std::endl;
+    } else {
+        std::cout << "Conditions not met" << std::endl;
+    }
+    int a = FIVE;
+    int b = TEN;
+    int c = TWO;
+    if (b > a || b > c || c > 0) {
+        return b;
+    } else if (a < b && a > c) {
+        return c;
+    }
+    return a;
+}
+
+void Case11()
+{
+    bool a = true;
+    bool b = false;
+    if (a || b) {
+        std::cout << "The condition is true";
+    } else {
+        std::cout << "The condition is false";
+    }
+
+    bool c = true;
+
+    // Common misconception: Believing that && and || are at the same level
+    if (b && c || a) {
+        // Actually equivalent to: a | | (b&&c)
+        // Instead of: (a | | b)&&c
+        std::cout << "This will be executed!" << std::endl;
     }
 }
 

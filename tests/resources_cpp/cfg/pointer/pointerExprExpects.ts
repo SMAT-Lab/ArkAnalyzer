@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -41,13 +41,20 @@ export const POINTER_EXPECT_CASE2 = {
                 's = parameter0: @pointer/pointerExpr.cpp: MyStruct*',
                 's1 = parameter1: @pointer/pointerExpr.cpp: MyStruct',
                 'this = this: @pointer/pointerExpr.cpp: %dflt',
+                'num = 100',
+                'constNum = 200',
+                'p1 = &num',
+                'p2 = &constNum',
+                'p3 = &num',
+                'p4 = &constNum',
+                'p5 = undefined',
                 'x = 1',
                 'p = &x',
                 'y = *p',
                 '*p = 2',
                 'p = p + 1',
                 's-><@pointer/pointerExpr.cpp: MyStruct.id> = 0',
-                `s-><@pointer/pointerExpr.cpp: MyStruct.name> = 'example'`,
+                "s-><@pointer/pointerExpr.cpp: MyStruct.name> = 'example'",
                 'id = s1.<@pointer/pointerExpr.cpp: MyStruct.id>',
                 'return',
             ],

@@ -270,3 +270,37 @@ export function fullPositionArray2String(fullPositions: FullPosition[]): string 
     fullPositions.forEach(position => positions.push(fullPosition2String(position)));
     return `[${positions.join(', ')}]`;
 }
+
+export function testBlocksClass(
+    scene: Scene, filePath: string, className: string, expectBlocks: any, namespaceName?: string, isCheckOverload?: boolean
+): void {
+    const arkFile = scene.getFiles().find(file => file.getName().endsWith(filePath));
+    const arkClass =
+        namespaceName ?
+        arkFile?.getNamespaceWithName(namespaceName)?.getClassWithName(className) :
+        arkFile?.getClasses().find(arkClass => arkClass.getName() === className);
+    const classBlockMap = new Map<String, BasicBlock[]>();
+    for (const block of expectBlocks.blocks) {
+        classBlockMap.set(block.methodName, block.blocks);
+    }
+    // 1.Check class inheritance
+    const heritageClasses = new Set();
+    arkClass?.getAllHeritageClasses()?.forEach(heritageClass => {
+        heritageClasses.add(heritageClass.getName());
+    });
+    expect(heritageClasses).toEqual(new Set(expectBlocks.heritageClasses));
+    // 2.Check class fields
+    const fieldOfClass = new Set();
+    arkClass?.getFields()?.forEach(field => {
+        fieldOfClass.add(field.getName());
+    });
+    expect(fieldOfClass).toEqual(new Set(expectBlocks.fields));
+    // 3.Check class member functions
+    arkClass?.getMethods()?.forEach(method => {
+        const mapKey = isCheckOverload ? method.getSubSignature().toString() : method.getName();
+        const classBlock = classBlockMap.get(mapKey);
+        if (classBlock) {
+            assertClassBlocksEqual(method, classBlock);
+        }
+    });
+}

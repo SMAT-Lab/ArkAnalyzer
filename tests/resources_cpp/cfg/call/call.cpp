@@ -12,6 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <string>
 #define FOURTYTWO 42
 
 struct Foo {
@@ -36,7 +37,7 @@ void Case3(char c = 'o')
     c++;
 }
 
-void exampleFunction(int requiredParam,
+void ExampleFunction(int requiredParam,
     [[maybe_unused]] int unusedParam = 0,
     [[maybe_unused]] const std::string& unusedStr = "")
 {

@@ -71,7 +71,8 @@ import { ArkField } from '../model/ArkField';
 import { Scene } from '../../Scene';
 import { setTs2CxxFuncMapOfClass } from '../../cpp_frontend/common/ModelUtils';
 import { PointerType, ReferenceType } from '../../cpp_frontend/base/Type';
-import { IRInference as CXXIRInference} from '../../cpp_frontend/common/IRInference';
+import { IRInference as CxxIRInference} from '../../cpp_frontend/common/IRInference';
+import { TypeInference as CxxTypeInference } from '../../cpp_frontend/common/TypeInference';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ValueInference');
 
@@ -936,21 +937,17 @@ export class CxxFieldRefInference extends FieldRefInference {
      *          or undefined for regular instance fields
      */
     public infer(value: ArkInstanceFieldRef, stmt: Stmt): Value | undefined {
-        // Set a temporary type for type inference
-        const baseType = value.getBase().getType();
-        let baseTypeWithoutPtrOrRef: Type | undefined = undefined;
-        if (baseType instanceof PointerType || baseType instanceof ReferenceType) {
-            baseTypeWithoutPtrOrRef = baseType.getBaseType();
-            value.getBase().setType(baseTypeWithoutPtrOrRef);
+        const baseType = CxxTypeInference.replaceAliasType(value.getBase().getType());
+        const arkMethod = stmt.getCfg().getDeclaringMethod();
+        // Generate updated field signature based on current context
+        const newFieldSignature = CxxIRInference.generateNewFieldSignature(value, arkMethod.getDeclaringArkClass(), baseType);
+        if (newFieldSignature) {
+            value.setFieldSignature(newFieldSignature);
+            if (newFieldSignature.isStatic()) {
+                return new ArkStaticFieldRef(newFieldSignature);
+            }
         }
-        // Do infer
-        const inferRes = super.infer(value, stmt);
-        // Restore the pointer and reference type
-        if (baseType instanceof PointerType || baseType instanceof ReferenceType) {
-            baseType.setBaseType(value.getBase().getType());
-            value.getBase().setType(baseType);
-        }
-        return inferRes;
+        return undefined;
     }
 }
 
@@ -979,7 +976,9 @@ export class CxxInstanceInvokeExprInference extends InstanceInvokeExprInference 
         if (baseType instanceof PointerType || baseType instanceof ReferenceType) {
             baseType = baseType.getBaseType();
         }
-        const result = InstanceInvokeExprInference.inferInvokeExpr(baseType, value, arkMethod, this.getMethodName(value, arkMethod));
+        const methodName = this.getMethodName(value, arkMethod);
+        const result = InstanceInvokeExprInference.inferInvokeExpr(baseType, value, arkMethod, methodName) ??
+            CxxTypeInference.inferMethodFromImportNamespace(baseType, value, arkMethod, methodName);
         return !result || result === value ? undefined : result;
     }
 
@@ -1072,7 +1071,7 @@ export class CxxArkPtrInvokeExprInference extends StaticInvokeExprInference {
 @Bind(InferLanguage.CXX)
 export class CxxStaticInvokeExprInference extends StaticInvokeExprInference {
 
-    public infer(expr: ArkPtrInvokeExpr, stmt: Stmt): Value | undefined {
+    public infer(expr: ArkStaticInvokeExpr, stmt: Stmt): Value | undefined {
         const arkMethod = stmt.getCfg().getDeclaringMethod();
         const methodName = this.getMethodName(expr, arkMethod);
         // special case process
@@ -1085,8 +1084,50 @@ export class CxxStaticInvokeExprInference extends StaticInvokeExprInference {
         }
         const baseType = this.getBaseType(expr, arkMethod);
         // CXXTodo: whether to use the interface replacement method? Are there any other approaches?
-        const result = baseType ? InstanceInvokeExprInference.inferInvokeExpr(baseType, expr, arkMethod, methodName) :
-            CXXIRInference.inferStaticInvokeExprByMethodName(methodName, arkMethod, expr);
+        const result = baseType ?
+            (InstanceInvokeExprInference.inferInvokeExpr(baseType, expr, arkMethod, methodName) ??
+                CxxTypeInference.inferMethodFromImportNamespace(baseType, expr, arkMethod, methodName)) :
+            CxxIRInference.inferStaticInvokeExprByMethodName(methodName, arkMethod, expr);
         return !result || result === expr ? undefined : result;
+    }
+}
+
+@Bind(InferLanguage.CXX)
+export class CxxArkNewExprInference extends ArkNewExprInference {
+
+    public infer(value: ArkNewExpr, stmt: Stmt): Value | undefined {
+        const className = value.getClassType().getClassSignature().getClassName();
+        const arkMethod = stmt.getCfg().getDeclaringMethod();
+        let type: Type | undefined | null = ModelUtils.findDeclaredLocal(new Local(className), arkMethod, 1)?.getType();
+        if (TypeInference.isUnclearType(type)) {
+            type = CxxTypeInference.inferUnclearRefName(className, arkMethod.getDeclaringArkClass());
+        }
+        if (type instanceof AliasType) {
+            const originType = TypeInference.replaceAliasType(type);
+            if (originType instanceof FunctionType) {
+                type = originType.getMethodSignature().getMethodSubSignature().getReturnType();
+            } else if (originType instanceof PointerType && originType.getBaseType() instanceof FunctionType) {
+                type = (originType.getBaseType() as FunctionType).getMethodSignature().getMethodSubSignature().getReturnType();
+            } else {
+                type = originType;
+            }
+        }
+        if (type && type instanceof ClassType) {
+            value.getClassType().setClassSignature(type.getClassSignature());
+            TypeInference.inferRealGenericTypes(value.getClassType().getRealGenericTypes(), arkMethod.getDeclaringArkClass());
+        }
+        return undefined;
+    }
+}
+
+@Bind(InferLanguage.CXX)
+export class CxxArkNewArrayExprInference extends ArkNewArrayExprInference {
+
+    public infer(value: ArkNewArrayExpr, stmt: Stmt): Value | undefined {
+        const type = CxxTypeInference.inferUnclearedType(value.getBaseType(), stmt.getCfg().getDeclaringMethod().getDeclaringArkClass());
+        if (type) {
+            value.setBaseType(type);
+        }
+        return undefined;
     }
 }

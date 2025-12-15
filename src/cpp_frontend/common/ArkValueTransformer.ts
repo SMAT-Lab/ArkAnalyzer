@@ -16,7 +16,7 @@
 import * as ts from 'ohos-typescript';
 import { Local } from '../../core/base/Local';
 import { FullPosition } from '../../core/base/Position';
-import { ArkAssignStmt, ArkIfStmt, ArkInvokeStmt, Stmt } from '../../core/base/Stmt';
+import { ArkAssignStmt, ArkInvokeStmt, Stmt } from '../../core/base/Stmt';
 import {
     AbstractBinopExpr,
     AbstractInvokeExpr,
@@ -824,13 +824,10 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         // Peel off 'ImplicitCastExpr'
         const conditionNode = conditionalExpression.inner[InnerIdx].kind === 'ImplicitCastExpr' ?
             conditionalExpression.inner[InnerIdx].inner[0] : conditionalExpression.inner[InnerIdx];
-        const {value: conditionValue, valueOriginalPositions: conditionPositions, stmts: conditionStmts, } =
-            this.cxxConditionToValueAndStmts(conditionNode);
-        conditionStmts.forEach(stmt => stmts.push(stmt));
+        let conditionExpr: Value | undefined;
+        const context = { conditionExpr: conditionExpr };
+        this.ArkCxxIRTransformer.cxxIfStatementToStmts(conditionNode, 0, context).forEach(stmt => stmts.push(stmt));
         let isBooleanExpr = conditionNode.type.qualType === 'bool';
-        const ifStmt = new ArkIfStmt(conditionValue as ArkConditionExpr);
-        ifStmt.setOperandOriginalPositions(conditionPositions);
-        stmts.push(ifStmt);
         stmts.push(new DummyStmt(ArkCxxIRTransformer.DUMMY_CONDITIONAL_OPERATOR_IF_TRUE_STMT + currConditionalOperatorIndex));
         // inner[1] is a value whose expression is true
         InnerIdx++;
@@ -840,9 +837,9 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             // else kind is BinaryConditionalOperator,No need to parse the node again, the result of the judgment is its value
         } else {
             whenTrueValueAndStmts = {
-                value: isBooleanExpr ? CxxValueUtil.getOrCreateNumberConst(1) : (conditionValue as ArkConditionExpr).getOp1(),
+                value: isBooleanExpr ? CxxValueUtil.getOrCreateNumberConst(1) : (context.conditionExpr! as ArkConditionExpr).getOp1(),
                 stmts: [],
-                valueOriginalPositions: conditionPositions,
+                valueOriginalPositions: [],
             };
         }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -154,6 +154,29 @@ export const TEMPLATE_MYCONTAINER_CLASS = {
                         '%1 = this.<@template/template.cpp: MyContainer.data2>',
                         '%2 = %0 + %1',
                         'return %2',
+                    ],
+                    preds: [],
+                    succes: [],
+                },
+            ],
+        },
+    ],
+};
+
+export const TEMPLATE_FIXEDARRAY_CLASS = {
+    fields: [
+        'data',
+    ],
+    heritageClasses: [],
+    blocks: [
+        {
+            methodName: 'size',
+            blocks: [
+                {
+                    id: 0,
+                    stmts: [
+                        'this = this: @template/template.cpp: FixedArray',
+                        'return N',
                     ],
                     preds: [],
                     succes: [],

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -20,7 +20,7 @@ using namespace std;
 #define FOUR 4
 
 // Define a function
-int Add(int a, int b)
+int Add(int a, int b = FOUR)
 {
     return a + b;
 }
@@ -90,3 +90,14 @@ int Case3()
     return 0;
 }
 
+void Func1() noexcept {
+    // 如果这里抛出异常，程序会调用std::terminate()
+}
+
+void Func2() noexcept (false) {
+    // 可以抛出异常
+}
+
+void Func3() noexcept (true) {
+    // 可以抛出异常
+}

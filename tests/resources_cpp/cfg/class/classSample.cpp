@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -113,7 +113,7 @@ class Dog : public Animal {
 public:
     void Sound() const override
     {
-        std::cout << "wo wo wo!" <<  std::endl;
+        std::cout << "wo wo wo!" << std::endl;
     }
 };
 
@@ -121,7 +121,7 @@ class Cat : public Animal {
 public:
     void Sound() const override
     {
-        std::cout << "meow meow mewo!" <<  std::endl;
+        std::cout << "meow meow mewo!" << std::endl;
     }
 };
 
@@ -129,7 +129,7 @@ class Pig : public Animal {
 public:
     void Sound() const override
     {
-        std::cout << "Aooooooowooooo!" <<  std::endl;
+        std::cout << "Aooooooowooooo!" << std::endl;
     }
 };
 
@@ -143,7 +143,7 @@ class D : public Base {
     // CXXInheritedCtorInitExpr node is generated here: subclass constructor calls inherited constructor from
     // parent class, compiler generates D(int x) : B(x) {}.
     using Base::Base;
-}
+};
 
 int main()
 {

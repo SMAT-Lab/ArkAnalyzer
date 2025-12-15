@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -18,6 +18,8 @@
 #define TWO 2
 #define TEN 10
 #define FIVE 5
+#define TWENTY 20
+#define THREE 3
 
 int main(int num)
 {
@@ -68,4 +70,41 @@ void ContinueDoWhile()
         }
         std::cout << "After continue: " << i << " (odd number)" << std::endl;
     } while (i < FIVE);
+}
+
+void WhileWithLogicalOperators()
+{
+    int a = 0;
+    int b = TEN;
+
+    // Using&&and | | while loops
+    while ((a < FIVE && b > 0) || (a >= FIVE && b < TWENTY)) {
+        std::cout << "a = " << a << ", b = " << b << std::endl;
+
+        if (a < FIVE) {
+            a++;
+            b--;
+        } else {
+            b++;
+        }
+    }
+}
+
+void DoWhileWithLogicalOperators()
+{
+    int x = 0;
+    int y = 0;
+
+    // Do while loop containing&&and | | operators
+    do {
+        std::cout << "x = " << x << ", y = " << y << std::endl;
+
+        if (x < THREE) {
+            x++;
+        } else {
+            y++;
+        }
+
+        // Cycle continuation condition: (x<5&&y<2) or (x>=5&&y<3)
+    } while ((x < FIVE && y < TWO) || (x >= FIVE && y < THREE));
 }

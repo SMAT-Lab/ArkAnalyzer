@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -177,5 +177,28 @@ export const CONDITIONAL_OPERATOR_EXPECT_MAIN = {
         { id: 2, stmts: ['if i > 0'], preds: [0], succes: [3, 4] },
         { id: 3, stmts: ['j = i'], preds: [2], succes: [1] },
         { id: 4, stmts: ['j = -i'], preds: [2], succes: [1] },
+    ],
+};
+
+export const CONDITIONAL_WITH_LOGICAL_EXPECT = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @conditionalOperator/conditionalOperator.cpp: %dflt',
+                'a = 5',
+                'b = 10',
+                'result = 0',
+                'if a < 10',
+            ],
+            preds: [],
+            succes: [5, 4],
+        },
+        { id: 1, stmts: ['result = a + b'], preds: [5, 6], succes: [3] },
+        { id: 2, stmts: ['result = a - b'], preds: [4, 6], succes: [3] },
+        { id: 3, stmts: ['return'], preds: [1, 2], succes: [] },
+        { id: 4, stmts: ['if a >= 10'], preds: [0, 5], succes: [6, 2] },
+        { id: 5, stmts: ['if b > 5'], preds: [0], succes: [1, 4] },
+        { id: 6, stmts: ['if b < 15'], preds: [4], succes: [1, 2] },
     ],
 };

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -12,6 +12,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#define FIVE 5
+#define TEN 10
+#define FIFTEEN 15
 
 int Case1()
 {
@@ -54,6 +57,20 @@ int Case6()
     int j = i > 0 ? i : -i;
     int k = j > 0 ? j : -j;
     return k;
+}
+
+void TernaryWithLogicalOperators()
+{
+    int a = FIVE;
+    int b = TEN;
+    int result = 0;
+
+    // 使用包含 && 和 || 运算符的三元运算符
+    result = (a < TEN && b > FIVE) || (a >= TEN && b < FIFTEEN) ?
+             (a + b) :
+             (a - b);
+
+    std::cout << "Result: " << result << std::endl;
 }
 
 int main()

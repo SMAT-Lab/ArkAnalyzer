@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -166,13 +166,13 @@ export const IF_EXPECT_CASE8 = {
                 '%0 = a',
                 'a = a + 1',
                 '%1 = b > a',
-                'if %1 != 0'
+                'if %1 != 0',
             ],
             preds: [],
-            succes: [1, 2]
+            succes: [1, 2],
         },
         { id: 1, stmts: ['return b'], preds: [0], succes: [] },
-        { id: 2, stmts: ['return a'], preds: [0], succes: [] }
+        { id: 2, stmts: ['return a'], preds: [0], succes: [] },
     ],
 };
 
@@ -183,35 +183,142 @@ export const IF_EXPECT_CASE9 = {
             stmts: [
                 'value = parameter0: T&',
                 'this = this: @if/ifSample.cpp: %dflt',
-                'if std::is_integral_v<T> != 0'
+                'if std::is_integral_v<T> != 0',
             ],
             preds: [],
-            succes: [1, 2]
+            succes: [1, 2],
         },
         {
             id: 1,
-            stmts: ["staticinvoke <@%unk/%unk: .cout()>('Integral: ', value)"],
+            stmts: ['staticinvoke <@%unk/%unk: .cout()>(\'Integral: \', value)'],
             preds: [0],
-            succes: [5]
+            succes: [5],
         },
         {
             id: 2,
             stmts: ['if std::is_floating_point_v<T> != 0'],
             preds: [0],
-            succes: [3, 4]
+            succes: [3, 4],
         },
         {
             id: 3,
-            stmts: ["staticinvoke <@%unk/%unk: .cout()>('Floating-point: ', value)"],
+            stmts: ['staticinvoke <@%unk/%unk: .cout()>(\'Floating-point: \', value)'],
             preds: [2],
-            succes: [5]
+            succes: [5],
         },
         {
             id: 4,
-            stmts: ["staticinvoke <@%unk/%unk: .cout()>('Other: ', value)"],
+            stmts: ['staticinvoke <@%unk/%unk: .cout()>(\'Other: \', value)'],
             preds: [2],
-            succes: [5]
+            succes: [5],
         },
-        { id: 5, stmts: ['return'], preds: [1, 3, 4], succes: [] }
+        { id: 5, stmts: ['return'], preds: [1, 3, 4], succes: [] },
+    ],
+};
+
+export const IF_EXPECT_CASE10 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @if/ifSample.cpp: %dflt',
+                'isReady = true',
+                'hasPermission = false',
+                'isEnabled = true',
+                'isConnected = true',
+                'if isReady != 0',
+            ],
+            preds: [],
+            succes: [9, 8],
+        },
+        {
+            id: 1,
+            stmts: [
+                'staticinvoke <@%unk/%unk: .cout()>(\'Condition met, execute operation\')',
+            ],
+            preds: [9, 10],
+            succes: [3],
+        },
+        {
+            id: 2,
+            stmts: ['staticinvoke <@%unk/%unk: .cout()>(\'Conditions not met\')'],
+            preds: [8, 10],
+            succes: [3],
+        },
+        {
+            id: 3,
+            stmts: ['a = 5', 'b = 10', 'c = 2', 'if b > a'],
+            preds: [1, 2],
+            succes: [4, 12],
+        },
+        { id: 4, stmts: ['return b'], preds: [3, 11, 12], succes: [] },
+        { id: 5, stmts: ['if a < b'], preds: [11], succes: [13, 7] },
+        { id: 6, stmts: ['return c'], preds: [13], succes: [] },
+        { id: 7, stmts: ['return a'], preds: [5, 13], succes: [] },
+        {
+            id: 8,
+            stmts: ['if isEnabled != 0'],
+            preds: [0, 9],
+            succes: [10, 2],
+        },
+        {
+            id: 9,
+            stmts: ['if hasPermission != 0'],
+            preds: [0],
+            succes: [1, 8],
+        },
+        {
+            id: 10,
+            stmts: ['if isConnected != 0'],
+            preds: [8],
+            succes: [1, 2],
+        },
+        { id: 11, stmts: ['if c > 0'], preds: [12], succes: [4, 5] },
+        { id: 12, stmts: ['if b > c'], preds: [3], succes: [4, 11] },
+        { id: 13, stmts: ['if a > c'], preds: [5], succes: [6, 7] },
+    ],
+};
+
+export const IF_EXPECT_CASE11 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @if/ifSample.cpp: %dflt',
+                'a = true',
+                'b = false',
+                'if a != 0',
+            ],
+            preds: [],
+            succes: [1, 6],
+        },
+        {
+            id: 1,
+            stmts: ['staticinvoke <@%unk/%unk: .cout()>(\'The condition is true\')'],
+            preds: [0, 6],
+            succes: [3],
+        },
+        {
+            id: 2,
+            stmts: ['staticinvoke <@%unk/%unk: .cout()>(\'The condition is false\')'],
+            preds: [6],
+            succes: [3],
+        },
+        {
+            id: 3,
+            stmts: ['c = true', 'if b != 0'],
+            preds: [1, 2],
+            succes: [8, 7],
+        },
+        {
+            id: 4,
+            stmts: ['staticinvoke <@%unk/%unk: .cout()>(\'This will be executed!\')'],
+            preds: [7, 8],
+            succes: [5],
+        },
+        { id: 5, stmts: ['return'], preds: [4, 7], succes: [] },
+        { id: 6, stmts: ['if b != 0'], preds: [0], succes: [1, 2] },
+        { id: 7, stmts: ['if a != 0'], preds: [3, 8], succes: [4, 5] },
+        { id: 8, stmts: ['if c != 0'], preds: [3], succes: [4, 7] },
     ],
 };

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -63,30 +63,37 @@ export const OPERATOR_EXPECT_CASE2 = {
     blocks: [
         {
             id: 0,
-            stmts: ['this = this: @operators/cppOperators.cpp: %dflt', 'a = -1', 'b = 1', '%0 = a == b', '%1 = a > b', '%2 = %0 && %1', 'if %2 != 0'],
+            stmts: [
+                'this = this: @operators/cppOperators.cpp: %dflt',
+                'a = -1',
+                'b = 1',
+                'if a == b',
+            ],
             preds: [],
-            succes: [1, 2],
+            succes: [11, 2],
         },
-        { id: 1, stmts: ['a = a + b'], preds: [0], succes: [2] },
+        { id: 1, stmts: ['a = a + b'], preds: [11], succes: [2] },
         {
             id: 2,
-            stmts: ['%3 = a != b', '%4 = a < b', '%5 = %3 || %4', 'if %5 != 0'],
-            preds: [0, 1],
-            succes: [3, 4],
+            stmts: ['if a != b'],
+            preds: [0, 1, 11],
+            succes: [3, 12],
         },
-        { id: 3, stmts: ['b = b + a'], preds: [2], succes: [4] },
-        { id: 4, stmts: ['if a >= b'], preds: [2, 3], succes: [5, 6] },
+        { id: 3, stmts: ['b = b + a'], preds: [2, 12], succes: [4] },
+        { id: 4, stmts: ['if a >= b'], preds: [3, 12], succes: [5, 6] },
         { id: 5, stmts: ['return a'], preds: [4], succes: [] },
         { id: 6, stmts: ['if a <= b'], preds: [4], succes: [7, 8] },
         { id: 7, stmts: ['return b'], preds: [6], succes: [] },
         {
             id: 8,
-            stmts: ['%6 = a == b', '%7 = !%6', 'if %7 != 0'],
+            stmts: ['%0 = a == b', '%1 = !%0', 'if %1 != 0'],
             preds: [6],
             succes: [9, 10],
         },
-        { id: 9, stmts: ['%8 = -1', 'return %8'], preds: [8], succes: [] },
+        { id: 9, stmts: ['%2 = -1', 'return %2'], preds: [8], succes: [] },
         { id: 10, stmts: ['return 0'], preds: [8], succes: [] },
+        { id: 11, stmts: ['if a > b'], preds: [0], succes: [1, 2] },
+        { id: 12, stmts: ['if a < b'], preds: [2], succes: [3, 4] },
     ],
 };
 

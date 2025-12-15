@@ -49,7 +49,7 @@ private:
     char name;
 
 public:
-    explicit Base(char& pname) : name(pname) {}
+    explicit Base(const char& pname) : name(pname) {}
 
     char GetName() const
     {

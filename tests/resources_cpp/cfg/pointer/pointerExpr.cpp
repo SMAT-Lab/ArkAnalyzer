@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -48,6 +48,15 @@ void PtrType(int *p, int **pp)
 // 2. Basic pointer operations
 void BasePtrOp(MyStruct *s, MyStruct s1)
 {
+    int num = 100;
+    const int constNum = 200;
+
+    const int* p1 = &num;
+    int const* p2 = &constNum;
+    int* const p3 = &num;
+    const int* const p4 = &constNum;
+    volatile int *volatile p5;
+
     int x = 1;
     int *p = &x;
     int y = *p;
