@@ -1,18 +1,3 @@
-// cppAstDumper.cpp
-//
-// Streaming AST JSON dumper:
-// - JSONNodeDumper writes directly into final raw_ostream (no string->parse)
-// - Patch missing fields inside the same JSON object; stream inner/headerUnits
-//
-// Features:
-// 1) JSONNodeDumper base fields (id/kind/loc/range/...)
-// 2) Prune: only nodes written in main file (macro expansion included)
-// 3) Patch only when dumper didn't output: name / code
-// 4) headerUnits: collect #include via PPCallbacks, attach to TU
-// 5) Output: <stem>_AST.json default; -o "-" stdout; -o dir => dir/<stem>_AST.json;
-//            -o file: single input exact; multi inputs derived
-// 6) Print argv / inputs / -o / output path per input
-
 #include "clang/AST/ASTConsumer.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Decl.h"
