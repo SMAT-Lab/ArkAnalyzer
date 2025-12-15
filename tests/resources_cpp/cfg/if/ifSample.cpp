@@ -182,21 +182,21 @@ int Case10()
     int a = FIVE;
     int b = TEN;
     int c = TWO;
-    if (b > a || b >c || c > 0) {
+    if (b > a || b > c || c > 0) {
         return b;
-    } else if (a < b && a >c){
+    } else if (a < b && a >c) {
         return c;
     }
     return a;
 }
 
-void Case11(){
+void Case11() {
     bool a = true;
     bool b = false;
-    if (a || b){
-        std::cout<< "The condition is true";
-    }else {
-        std::cout<< "The condition is false";
+    if (a || b) {
+        std::cout << "The condition is true";
+    } else {
+        std::cout << "The condition is false";
     }
 
     bool c = true;
@@ -208,7 +208,6 @@ void Case11(){
         std::cout << "This will be executed!" << std::endl;
     }
 }
-
 int main()
 {
     Case3();

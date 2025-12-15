@@ -914,7 +914,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
             const ifStmt = new ArkIfStmt(conditionExpr as ArkConditionExpr);
             ifStmt.setOperandOriginalPositions(conditionExprPositions);
             stmts.push(ifStmt);
-            if (context){
+            if (context) {
                 context.conditionExpr = conditionExpr;
             }
         }
