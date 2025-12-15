@@ -164,8 +164,6 @@ void Case9(const T& value)
     }
 }
 
-
-
 int Case10()
 {
     bool isReady = true;
@@ -190,7 +188,8 @@ int Case10()
     return a;
 }
 
-void Case11() {
+void Case11()
+{
     bool a = true;
     bool b = false;
     if (a || b) {
