@@ -153,6 +153,12 @@ void NestedLoopExample()
     }
 }
 
+void Case_For_CondDecl_BoolCompare() {
+    int count = 0;
+    for (int i = 0; bool ok = (i < TWO); ++i) {
+        count++;
+    }
+}
 
 int main()
 {

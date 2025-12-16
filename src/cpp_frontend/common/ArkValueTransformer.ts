@@ -1531,7 +1531,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         if (callType instanceof ReferenceType) {
             callType = callType.getBaseType();
         }
-        if (callType.getTypeString() === 'std::istream' || callType.getTypeString() === 'std::ostream') {
+        if (callType.getTypeString().includes('istream') || callType.getTypeString().includes('ostream')) {
             return this.buildInvokeValueForOverloadedStreamOp(cxxOperatorCallExpr);
         }
         if (!(callType instanceof ClassType)) {
@@ -1568,9 +1568,6 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         // because the input/output operator is actually a binary operation: stream (left operand)+object (right operand)
         const defaultClass = this.declaringMethod.getDeclaringArkFile().getDefaultClass();
         const arkMtds = defaultClass.getAllMethodsWithName(cxxOperatorCallExpr.name);
-        if (arkMtds.length === 0) {
-            return null;
-        }
         let matchMtd: ArkMethod | undefined;
         for (const mtd of arkMtds) {
             const params = mtd.getParameters();
@@ -1583,8 +1580,13 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
                 break;
             }
         }
+        const argus = {
+            realGenericTypes: undefined,
+            args: args,
+            argPositions: argPositionsAll,
+        };
         if (!matchMtd) {
-            return null;
+            return this.cxxGenerateInvokeValueAndStmts(cxxOperatorCallExpr.inner[0], argus, stmts, cxxOperatorCallExpr);;
         }
         // Construct callNode
         const callNode = {
@@ -1595,11 +1597,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             range: cxxOperatorCallExpr.range,
             type: cxxOperatorCallExpr.type,
         };
-        const argus = {
-            realGenericTypes: undefined,
-            args: args,
-            argPositions: argPositionsAll,
-        };
+
         const valueAndStmts = this.cxxGenerateInvokeValueAndStmts(callNode, argus, stmts, cxxOperatorCallExpr);
         if (valueAndStmts.value instanceof ArkStaticInvokeExpr) {
             valueAndStmts.value.setMethodSignature(matchMtd.getSignature());
