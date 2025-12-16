@@ -406,8 +406,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         if (node.referencedDecl?.kind === 'EnumConstantDecl' && node.inner.length === 0) {
             const typeRefNode = {
                 kind: 'TypeRef',
-                name: node.referencedDecl!.scope,
-                code: node.referencedDecl!.scope,
+                name: node.referencedDecl!.name,
+                code: node.referencedDecl!.name,
                 inner: [],
                 type: node.referencedDecl!.type,
             } as CxxAstNode;
@@ -2826,7 +2826,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
                 return { value: constant, valueOriginalPositions: pos, stmts };
             }
             case 'CXXBoolLiteralExpr': {
-                const raw = (literalNode.value ?? literalNode.code ?? '').trim().toLowerCase();
+                const raw = (literalNode.value ?? literalNode.code ?? '').toString().trim().toLowerCase();
                 const b = raw === 'true' || raw === '1';
                 const constant = CxxValueUtil.getBooleanConstant(b);
                 return { value: constant, valueOriginalPositions: pos, stmts };

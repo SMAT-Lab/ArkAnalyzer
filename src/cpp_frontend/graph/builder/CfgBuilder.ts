@@ -266,8 +266,10 @@ export class CfgBuilder {
         }
         if (c.inner.length > 2) {
             if (c.inner[2].kind.toString() === 'CompoundStmt') {
+                // Handle else here
                 this.walkAST(ifstm, ifexit, [...c.inner[2].inner]);
             } else {
+                // Handle else-if here
                 this.walkAST(ifstm, ifexit, [c.inner[2]]);
             }
         }
@@ -393,9 +395,7 @@ export class CfgBuilder {
             for (let i = 0; i < node.inner.length; i++) {
                 let isCaseOrDefault = node.inner[i].kind === 'CaseStmt' || node.inner[i].kind === 'DefaultStmt';
                 if (isCaseOrDefault) {
-                    let caseClause = JSON.parse(JSON.stringify(node));
-                    caseClause.inner = caseClause.inner.slice(0, i);
-                    clauses.push(caseClause);
+                    clauses.push(node);
                     this.sliceCaseDefaultNode(node.inner[i], clauses);
                 }
                 if (i === node.inner.length - 1 && !isCaseOrDefault) {
@@ -445,9 +445,9 @@ export class CfgBuilder {
         switchstm.code = 'switch (' + c.inner[0].code + ')';
         let lastCaseExit: StatementBuilder | null = null;
         c.inner[1].inner = this.getCaseDefClauseAsts(c);
-
-        for (let i = 0; i < c.inner[1].inner.length; i++) {
-            const clause = c.inner[1].inner[i];
+        const astNodeCase = c.inner[1];
+        for (let i = 0; i < astNodeCase.inner.length; i++) {
+            const clause = astNodeCase.inner[i];
             let casestm: StatementBuilder;
             let caseBody: CxxAstNode[] = [...clause.inner];
             if (clause.kind.toString() === 'CaseStmt') {
@@ -477,7 +477,7 @@ export class CfgBuilder {
                 casestm.next?.lasts.add(lastCaseExit);
             }
             lastCaseExit = caseExit;
-            if (i === c.inner[1].inner.length - 1) {
+            if (i === astNodeCase.inner.length - 1) {
                 caseExit.next = switchExit;
                 switchExit.lasts.add(caseExit);
             }
