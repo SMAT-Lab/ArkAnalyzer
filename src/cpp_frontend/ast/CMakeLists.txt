@@ -17,6 +17,11 @@ message(STATUS "CLANG_INCLUDE_DIRS: ${CLANG_INCLUDE_DIRS}")
 add_executable(astJsonDumper
     cppAstDumper.cpp
     utils/compile_db_utils.cpp
+    utils/output_path.cpp
+    utils/cli_options.cpp
+    utils/source_utils.cpp
+    utils/header_units.cpp
+    utils/json_streaming.cpp
 )
 
 # for "utils/compile_db_utils.h"

@@ -100,39 +100,56 @@ export class CxxConditionBuilder {
         });
     }
 
-    private generateBlocksContainConditionalOperatorGroup(
-        sourceStmts: Stmt[],
-        basicBlockSet: Set<BasicBlock>
-    ): {
-        generatedTopBlock: BasicBlock;
-        generatedBottomBlocks: BasicBlock[];
-    } {
-        const { firstEndPos: firstEndPos } = this.findFirstConditionalOperator(sourceStmts);
-        if (firstEndPos === -1) {
-            return this.generateBlockWithoutConditionalOperator(sourceStmts);
+    private generateBlocksContainConditionalOperatorGroup(sourceStmts: Stmt[], basicBlockSet: Set<BasicBlock>):
+        { generatedTopBlock: BasicBlock; generatedBottomBlocks: BasicBlock[] } {
+        const addAll = (blocks: Iterable<BasicBlock>) => {
+            for (const b of blocks) basicBlockSet.add(b);
+        };
+        const link = (from: BasicBlock[], to: BasicBlock) => {
+            for (const b of from) {
+                b.addSuccessorBlock(to);
+                to.addPredecessorBlock(b);
+            }
+        };
+        type Seg = { top: BasicBlock; bottoms: BasicBlock[] };
+        const segs: Seg[] = [];
+        let tail: | { generatedTopBlock: BasicBlock; generatedBottomBlocks: BasicBlock[] } | undefined;
+        let offset = 0;
+        while (offset < sourceStmts.length) {
+            const rest = sourceStmts.slice(offset);
+            const { firstEndPos } = this.findFirstConditionalOperator(rest);
+            if (firstEndPos === -1) {
+                tail = this.generateBlockWithoutConditionalOperator(rest);
+                break;
+            }
+            const { generatedTopBlock, generatedBottomBlocks, generatedAllBlocks, } =
+                this.generateBlocksContainSingleConditionalOperator(rest.slice(0, firstEndPos + 1));
+            addAll(generatedAllBlocks);
+            segs.push({ top: generatedTopBlock, bottoms: generatedBottomBlocks });
+            offset += firstEndPos + 1;
         }
-        const {
-            generatedTopBlock: firstGeneratedTopBlock,
-            generatedBottomBlocks: firstGeneratedBottomBlocks,
-            generatedAllBlocks: firstGeneratedAllBlocks,
-        } = this.generateBlocksContainSingleConditionalOperator(sourceStmts.slice(0, firstEndPos + 1));
-        const generatedTopBlock = firstGeneratedTopBlock;
-        let generatedBottomBlocks = firstGeneratedBottomBlocks;
-        firstGeneratedAllBlocks.forEach(block => basicBlockSet.add(block));
-        const stmtsCnt = sourceStmts.length;
-        if (firstEndPos !== stmtsCnt - 1) {
-            // need handle other conditional operators
-            const { generatedTopBlock: restGeneratedTopBlock, generatedBottomBlocks: restGeneratedBottomBlocks } =
-                this.generateBlocksContainConditionalOperatorGroup(sourceStmts.slice(firstEndPos + 1, stmtsCnt), basicBlockSet);
-            firstGeneratedBottomBlocks.forEach(firstGeneratedBottomBlock => {
-                firstGeneratedBottomBlock.addSuccessorBlock(restGeneratedTopBlock);
-                restGeneratedTopBlock.addPredecessorBlock(firstGeneratedBottomBlock);
-            });
-            restGeneratedBottomBlocks.forEach(block => basicBlockSet.add(block));
-            this.removeUnnecessaryBlocksInConditionalOperator(restGeneratedTopBlock, basicBlockSet);
-            generatedBottomBlocks = restGeneratedBottomBlocks;
+        if (segs.length === 0) { return tail ?? this.generateBlockWithoutConditionalOperator(sourceStmts); }
+        let suffixTop: BasicBlock;
+        let suffixBottoms: BasicBlock[];
+        if (tail) {
+            suffixTop = tail.generatedTopBlock;
+            suffixBottoms = tail.generatedBottomBlocks;
+        } else {
+            const last = segs[segs.length - 1];
+            suffixTop = last.top;
+            suffixBottoms = last.bottoms;
         }
-        return { generatedTopBlock, generatedBottomBlocks };
+        for (let i = segs.length - 1; i >= 0; i--) {
+            const cur = segs[i];
+            if (i === segs.length - 1 && !tail) {
+                continue;
+            }
+            link(cur.bottoms, suffixTop);
+            addAll(suffixBottoms);
+            this.removeUnnecessaryBlocksInConditionalOperator(suffixTop, basicBlockSet);
+            suffixTop = cur.top;
+        }
+        return { generatedTopBlock: segs[0].top, generatedBottomBlocks: suffixBottoms };
     }
 
     private generateBlocksContainSingleConditionalOperator(sourceStmts: Stmt[]): {
