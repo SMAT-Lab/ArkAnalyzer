@@ -12,24 +12,28 @@
 
 namespace ast_dumper {
 
-static bool EndsWith(const std::string &s, const char *suffix) {
+static bool EndsWith(const std::string &s, const char *suffix)
+{
     const size_t n = std::strlen(suffix);
     return s.size() >= n && s.compare(s.size() - n, n, suffix) == 0;
 }
 
-static std::string NormalizeBackslashToSlash(std::string p) {
+static std::string NormalizeBackslashToSlash(std::string p)
+{
     for (char &ch : p) if (ch == '\\') ch = '/';
     return p;
 }
 
-std::string GetBuildPathFromArgv(int argc, const char **argv) {
+std::string GetBuildPathFromArgv(int argc, const char **argv)
+{
     for (int i = 0; i + 1 < argc; ++i) {
         if (std::strcmp(argv[i], "-p") == 0) return std::string(argv[i + 1]);
     }
     return {};
 }
 
-void PrintBuildPathDiagnostics(llvm::StringRef BuildPath, llvm::raw_ostream &OS) {
+void PrintBuildPathDiagnostics(llvm::StringRef BuildPath, llvm::raw_ostream &OS)
+{
     if (BuildPath.empty()) return;
 
     OS << "[ASTDumper] -p = " << BuildPath << "\n";
@@ -47,8 +51,8 @@ void PrintBuildPathDiagnostics(llvm::StringRef BuildPath, llvm::raw_ostream &OS)
     if (!TestDB && !Err.empty()) OS << "[ASTDumper] load error: " << Err << "\n";
 }
 
-bool HasCompileCommandForAnyInput(clang::tooling::CompilationDatabase &DB,
-                                  llvm::ArrayRef<std::string> Inputs) {
+bool HasCompileCommandForAnyInput(clang::tooling::CompilationDatabase &DB, llvm::ArrayRef<std::string> Inputs)
+{
     for (const auto &p : Inputs) {
         auto cmds = DB.getCompileCommands(p);
         if (!cmds.empty()) return true;
@@ -62,7 +66,8 @@ bool HasCompileCommandForAnyInput(clang::tooling::CompilationDatabase &DB,
 }
 
 std::unique_ptr<clang::tooling::CompilationDatabase>
-MakeFallbackDB(llvm::ArrayRef<std::string> Inputs) {
+MakeFallbackDB(llvm::ArrayRef<std::string> Inputs)
+{
     bool hasC = false, hasCxx = false;
     for (const auto &f : Inputs) {
         if (EndsWith(f, ".c")) hasC = true;
@@ -80,7 +85,8 @@ clang::tooling::CompilationDatabase *SelectDBForInputs(
     clang::tooling::CompilationDatabase &ParserDB,
     llvm::ArrayRef<std::string> Inputs,
     std::unique_ptr<clang::tooling::CompilationDatabase> &OwnedFallback,
-    llvm::raw_ostream &Log) {
+    llvm::raw_ostream &Log)
+{
 
     if (HasCompileCommandForAnyInput(ParserDB, Inputs)) return &ParserDB;
 
@@ -89,7 +95,8 @@ clang::tooling::CompilationDatabase *SelectDBForInputs(
     return OwnedFallback.get();
 }
 
-clang::tooling::ArgumentsAdjuster MakeOhosLibcxxFixAdjuster() {
+clang::tooling::ArgumentsAdjuster MakeOhosLibcxxFixAdjuster()
+{
     using clang::tooling::CommandLineArguments;
 
     return clang::tooling::ArgumentsAdjuster(
