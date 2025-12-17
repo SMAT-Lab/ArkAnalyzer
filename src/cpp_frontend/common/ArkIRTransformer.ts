@@ -705,22 +705,21 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
 
     private cxxForStatementToStmts(forStatement: CxxAstNode): Stmt[] {
         const stmts: Stmt[] = [];
-        let initNode: CxxAstNode | undefined;
+        let initNode: CxxAstNode[] | undefined;
         let conditionNoe: CxxAstNode | undefined;
         let incrementor: CxxAstNode | undefined;
         // The complete for structure allocates corresponding statements in order, so we need to process them in order.
-        if (forStatement.inner.length === 4) {
-            initNode = forStatement.inner[0];
-            conditionNoe = forStatement.inner[1];
-            incrementor = forStatement.inner[2];
+        if (forStatement.inner.length === 5) {
+            initNode = forStatement.inner.slice(0, 2);
+            conditionNoe = forStatement.inner[2];
+            incrementor = forStatement.inner[3];
         } else {
             logger.error('Current node syntax tree generation error');
             return stmts;
         }
 
-
         if (initNode) {
-            this.cxxNodeToStmts(initNode).forEach(stmt => stmts.push(stmt));
+            initNode.forEach(node=>this.cxxNodeToStmts( node).forEach(stmt=>stmts.push(stmt)));
         }
         const dummyInitializerStmt = new DummyStmt(ArkIRTransformer.DUMMY_LOOP_INITIALIZER_STMT);
         stmts.push(dummyInitializerStmt);

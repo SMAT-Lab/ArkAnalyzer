@@ -185,3 +185,11 @@ export interface CxxTranslationUnit extends CxxAstNode {
     headerUnits?: CxxAstNode[];
     projectName?: string;
 }
+
+export function getNodeAt(node: CxxAstNode, index: number): CxxAstNode | undefined {
+    // Unified Border Protection Inspection
+    if (!node?.inner?.length || index < 0 || index >= node.inner.length) {
+        return undefined;
+    }
+    return node.inner[index];
+}
