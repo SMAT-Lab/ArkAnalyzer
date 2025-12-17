@@ -196,7 +196,14 @@ export const CONDITIONAL_WITH_LOGICAL_EXPECT = {
         },
         { id: 1, stmts: ['result = a + b'], preds: [5, 6], succes: [3] },
         { id: 2, stmts: ['result = a - b'], preds: [4, 6], succes: [3] },
-        { id: 3, stmts: ['return'], preds: [1, 2], succes: [] },
+        {
+            id: 3, stmts: [
+                '%1 = staticinvoke <@%unk/%unk: .operator<<()>(cout, \'Result: \')',
+                '%2 = staticinvoke <@%unk/%unk: .operator<<()>(%1, result)',
+                'staticinvoke <@%unk/%unk: .operator<<()>(%2, endl)',
+                'return',
+            ], preds: [1, 2], succes: [],
+        },
         { id: 4, stmts: ['if a >= 10'], preds: [0, 5], succes: [6, 2] },
         { id: 5, stmts: ['if b > 5'], preds: [0], succes: [1, 4] },
         { id: 6, stmts: ['if b < 15'], preds: [4], succes: [1, 2] },
