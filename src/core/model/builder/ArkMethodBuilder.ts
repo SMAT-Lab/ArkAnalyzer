@@ -39,14 +39,7 @@ import { BasicBlock } from '../../graph/BasicBlock';
 import { Local } from '../../base/Local';
 import { Value } from '../../base/Value';
 import { CONSTRUCTOR_NAME, SUPER_NAME, THIS_NAME } from '../../common/TSConst';
-import {
-    ANONYMOUS_METHOD_PREFIX,
-    CALL_SIGNATURE_NAME,
-    DEFAULT_ARK_CLASS_NAME,
-    DEFAULT_ARK_METHOD_NAME,
-    NAME_DELIMITER,
-    NAME_PREFIX,
-} from '../../common/Const';
+import { ANONYMOUS_METHOD_PREFIX, CALL_SIGNATURE_NAME, DEFAULT_ARK_CLASS_NAME, DEFAULT_ARK_METHOD_NAME, NAME_DELIMITER, NAME_PREFIX } from '../../common/Const';
 import { ArkSignatureBuilder } from './ArkSignatureBuilder';
 import { IRUtils } from '../../common/IRUtils';
 import { ArkErrorCode } from '../../common/ArkError';
@@ -88,7 +81,11 @@ export function buildArkMethodFromArkClass(
     declaringMethod?: ArkMethod
 ): void {
     mtd.setDeclaringArkClass(declaringClass);
-    declaringMethod !== undefined && mtd.setOuterMethod(declaringMethod);
+    if (declaringMethod !== undefined && !declaringMethod.isGenerated() && !declaringMethod.isDefaultArkMethod()) {
+        // If declaringMethod is %dflt, %instInit, %statInit, then the method should be taken as nested method of them.
+        // Otherwise, it will fail to handle global vars of this method or failed to do the free of bodyBuilder.
+        mtd.setOuterMethod(declaringMethod);
+    }
 
     ts.isFunctionDeclaration(methodNode) && mtd.setAsteriskToken(methodNode.asteriskToken !== undefined);
 

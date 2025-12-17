@@ -90,12 +90,11 @@ class NestedTestClass {
 }
 
 interface InterfaceA {
-    optionalMethod?(): void
+    optionalMethod?(): void;
 }
 
 class ClassA {
-    optionalMethod?(): void {
-    }
+    optionalMethod?(): void {}
 }
 
 type MyType = {
@@ -110,7 +109,7 @@ const myObject: {
 
 function paramWithInitializer(a: string, x: number = 5, y = 'abc', z: number = x + 1): number {
     console.log(a + y);
-    return (x + z);
+    return x + z;
 }
 
 function getA(): number {
@@ -133,7 +132,7 @@ function paramInitializerWithIfBranch(a = 3): number {
 
 function paramInitializerWithTernary(a = 3): number {
     let b: number;
-    a > 0 ? b = a : b = -a;
+    a > 0 ? (b = a) : (b = -a);
     return b;
 }
 
@@ -159,13 +158,10 @@ function paramInitializerWithSwitch(a = 3): void {
         default:
             console.log(a);
     }
-
 }
 
 function returnFunc(): Function {
-    const nestedReturnFunc = (): void => {
-
-    };
+    const nestedReturnFunc = (): void => {};
     return nestedReturnFunc;
 }
 
@@ -175,13 +171,44 @@ function func(): Function {
 
 let globalNumber = 2;
 
+import { GLOBAL_NUM } from './Consts';
+
 function assign2Global(): void {
     globalNumber = 3;
 }
 
-function constructor(): void {
+function returnGlobal(): number {
+    return GLOBAL_NUM;
 }
 
+const ptrWithGlobal = (): void => {
+    console.log(globalNumber);
+};
+
+const arr = [1, 2, 3];
+
+function globalUsedInFunc(): void {
+    console.log(globalNumber);
+    arr.forEach(a => {
+        console.log(a + globalNumber);
+    });
+}
+
+class GlobalTest {
+    f = (): void => {
+        console.log(GLOBAL_NUM);
+    };
+
+    goo(): void {
+        console.log(globalNumber);
+        arr.forEach(a => {
+            console.log(a + globalNumber);
+        });
+    }
+}
+
+function constructor(): void {}
+
 namespace ConstructorTest {
-    export function constructor(): void { }
+    export function constructor(): void {}
 }
