@@ -169,7 +169,7 @@ function buildArkFile(arkFile: ArkFile, astRoot: CxxAstNode): void {
                 break;
             case 'FunctionDecl':
             case 'FriendDecl':
-            case 'FunctionTemplate':
+            case 'FunctionTemplateDecl':
                 buildArkMethodFromCxxMethod(child, arkFile, astRoot);
                 break;
             case 'NamespaceDecl':

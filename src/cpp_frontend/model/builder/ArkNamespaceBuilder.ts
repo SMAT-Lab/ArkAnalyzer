@@ -164,7 +164,7 @@ function buildNamespaceMembers(node: CxxAstNode, namespace: ArkNamespace, source
                 buildArkMethodForClassMethodInNamespace(child, namespace, sourceFile);
                 return;
             }
-            case 'FunctionTemplate':
+            case 'FunctionTemplateDecl':
             case 'FunctionDecl':
             case 'FriendDecl': {
                 let mthd: ArkMethod = new ArkMethod();

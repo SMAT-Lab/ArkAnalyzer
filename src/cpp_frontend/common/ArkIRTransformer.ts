@@ -166,7 +166,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
     public cxxNodeToStmts(node: CxxAstNode): Stmt[] {
         let stmts: Stmt[] = [];
         switch (node.kind) {
-            case 'ParmDecl':
+            case 'ParmVarDecl':
                 stmts = this.cxxParameterToStmts(node);
                 break;
             case 'BreakStmt':
@@ -295,7 +295,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
 
         if (typeAliasDeclaration.kind === 'TypeAliasTemplateDecl') {
             let realGenericTypes: Type[] = [];
-            typeAliasDeclaration.inner.filter(inn => inn.kind === 'TemplateTypeParameter')
+            typeAliasDeclaration.inner.filter(inn => inn.kind === 'TemplateTypeDecl')
                 .forEach(typeArgument => {
                     realGenericTypes.push(this.ArkCxxValueTransformer.cxxResolveTypeNode(typeArgument));
                 });

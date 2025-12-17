@@ -816,8 +816,8 @@ export class CfgBuilder {
                 break;
             case 'NullStmt':
                 break;
-            case 'ParmDecl':
-                s = new StatementBuilder('statement', 'ParmDecl', innerNode, scope.id);
+            case 'ParmVarDecl':
+                s = new StatementBuilder('statement', 'ParmVarDecl', innerNode, scope.id);
                 this.judgeLastType(s, lastStatement);
                 lastStatement = s;
                 break;
@@ -1185,7 +1185,7 @@ export class CfgBuilder {
                     stmts.push(this.astRoot.inner[i]);
                 }
                 const length = this.astRoot.inner[i].inner.length;
-                if (this.astRoot.inner[i].kind === 'ParmDecl' && length > 0 &&
+                if (this.astRoot.inner[i].kind === 'ParmVarDecl' && length > 0 &&
                     this.astRoot.inner[i].inner[length - 1].kind !== 'TypeRef') {
                     stmts.push(this.astRoot.inner[i]);
                     continue;
@@ -1203,7 +1203,7 @@ export class CfgBuilder {
         let stmts: CxxAstNode[] = [];
         if (['TranslationUnit', 'Namespace'].includes(this.astRoot.kind)) {
             stmts = [...this.astRoot.inner];
-        } else if (['FunctionDecl', 'CXXMethodDecl', 'CXXConstructorDecl', 'LambdaExpr', 'FunctionTemplate', 'CXXDestructorDecl'].includes(
+        } else if (['FunctionDecl', 'CXXMethodDecl', 'CXXConstructorDecl', 'LambdaExpr', 'FunctionTemplateDecl', 'CXXDestructorDecl'].includes(
                 this.astRoot.kind)) {
             stmts = this.getFuncBodyStmt();
         }

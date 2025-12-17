@@ -49,8 +49,8 @@ function getSpecificNodes(methodNode: CxxAstNode, targetNode: string): CxxAstNod
         return [];
     }
     // Handle Cpp lambda functions
-    if (!(isCxxFunctionPointer(methodNode.type.qualType)) &&
-        !['FunctionDecl', 'CXXMethodDecl', 'CXXConstructorDecl', 'CXXDestructorDecl', 'FriendDecl', 'LambdaExpr', 'FunctionTemplate'].includes(
+    if (methodNode.type && !(isCxxFunctionPointer(methodNode.type.qualType)) &&
+        !['FunctionDecl', 'CXXMethodDecl', 'CXXConstructorDecl', 'CXXDestructorDecl', 'FriendDecl', 'LambdaExpr', 'FunctionTemplateDecl'].includes(
             methodNode.kind
         ) &&
         methodNode.inner
@@ -80,15 +80,15 @@ export function buildDefaultArkMethodFromArkClass(declaringClass: ArkClass, mtd:
     mtd.setCxxBodyBuilder(bodyBuilder);
 }
 
-export function handleFunctionTemplate(methodNode: CxxAstNode, mtd: ArkMethod, sourceFile: CxxAstNode): void {
-    if (methodNode.kind !== 'FunctionTemplate') {
+export function handleFunctionTemplateDecl(methodNode: CxxAstNode, mtd: ArkMethod, sourceFile: CxxAstNode): void {
+    if (methodNode.kind !== 'FunctionTemplateDecl') {
         return;
     }
     mtd.isGenericsMethod();
     let templateTypesArray = [];
     let index = -1;
     for (const innerNode of methodNode.inner) {
-        if (innerNode.kind !== 'TemplateTypeParameter') {
+        if (innerNode.kind !== 'TemplateTypeParmVarDecl') {
             continue;
         }
         let typename = innerNode.name;
@@ -106,6 +106,7 @@ export function handleFunctionTemplate(methodNode: CxxAstNode, mtd: ArkMethod, s
         let templateType = new GenericType(typename, defaultType);
         templateType.setIndex(++index);
         templateTypesArray.push(templateType);
+
     }
     mtd.setGenericTypes(templateTypesArray);
 }
@@ -116,10 +117,12 @@ export function buildArkMethodFromArkClass(methodNode: CxxAstNode, declaringClas
     if (declaringMethod !== undefined) {
         mtd.setOuterMethod(declaringMethod);
     }
-    if (methodNode.kind === 'FunctionDecl' || methodNode.kind === 'FunctionTemplate') {
+    if (methodNode.kind === 'FunctionDecl' || methodNode.kind === 'FunctionTemplateDecl') {
         mtd.setAsteriskToken(false);
     }
-    handleFunctionTemplate(methodNode, mtd, sourceFile);
+    handleFunctionTemplateDecl(methodNode, mtd, sourceFile);
+    // After processing the template parameters, proceed to the corresponding functions below
+    methodNode = methodNode.kind === 'FunctionTemplateDecl' ? methodNode.inner[methodNode.inner.length - 1]: methodNode;
     mtd.setCode(methodNode.code);
     mtd.addModifier(buildModifiers(methodNode));
     if (methodNode.kind === 'FriendDecl' && methodNode.inner.length > 0) {
@@ -127,7 +130,7 @@ export function buildArkMethodFromArkClass(methodNode: CxxAstNode, declaringClas
     }
     const methodName = buildMethodName(methodNode, declaringClass, sourceFile, declaringMethod);
     const methodParameters: MethodParameter[] = [];
-    const parameters = getSpecificNodes(methodNode, 'ParmDecl');
+    const parameters = getSpecificNodes(methodNode, 'ParmVarDecl');
     buildParameters(parameters, mtd, sourceFile).forEach(parameter => {
         buildGenericType(parameter.getType(), mtd);
         methodParameters.push(parameter);
@@ -257,7 +260,7 @@ function buildMethodName(node: CxxAstNode, declaringClass: ArkClass, sourceFile:
         case 'CXXMethodDecl':
         case 'FunctionDecl':
         case 'CXXDestructorDecl':
-        case 'FunctionTemplate':
+        case 'FunctionTemplateDecl':
             name = node.name.toString();
             break;
         case 'CXXConstructorDecl':
@@ -267,7 +270,7 @@ function buildMethodName(node: CxxAstNode, declaringClass: ArkClass, sourceFile:
             name = buildAnonymousMethodName(node, declaringClass);
             break;
         case 'VarDecl':
-        case 'ParmDecl':
+        case 'ParmVarDecl':
             if (isCxxFunctionPointer(node.type.qualType)) {
                 name = buildAnonymousMethodName(node, declaringClass);
             }
@@ -426,7 +429,7 @@ export function isMethodImplementation(node: CxxAstNode): boolean {
         case 'CXXConstructorDecl':
         case 'CXXDestructorDecl':
         case 'FunctionDecl':
-        case 'FunctionTemplate':
+        case 'FunctionTemplateDecl':
         case 'FriendDecl':
             // CXXConstructorDecl-CXXCtorInitializer: using Base::Base
             // ==> The constructor of the subclass has the same implementation as that of the parent class.

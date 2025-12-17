@@ -106,7 +106,7 @@ export function buildTypeParameters(clsNode: CxxAstNode, sourceFile: CxxAstNode,
     const genericTypes: GenericType[] = [];
     let index = -1;
     for (const innerNode of clsNode.inner) {
-        if (innerNode.kind === 'TemplateTypeParameter') {
+        if (innerNode.kind === 'TemplateTypeDecl') {
             let typename = innerNode.name;
             let defaultType;
             if (innerNode.inner && innerNode.inner.length > 0) {
