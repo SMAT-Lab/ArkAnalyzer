@@ -112,6 +112,8 @@ export class AstUtils {
             }
             if (loc.file) {
                 fileName = loc.file;
+            } else if (loc.spellingLoc && loc.spellingLoc.file) {
+                fileName = loc.spellingLoc.file;
             }
             if (Object.prototype.hasOwnProperty.call(entry, 'include') && entry.include && entry.kind !== 'inclusion directive') {
                 newInner.push(entry);

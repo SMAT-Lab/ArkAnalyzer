@@ -15,25 +15,16 @@
 #include <iostream>
 #include <string>
 
-#define NAMESPACE_A nsA
-#define FUNC_NAME Func
-
-namespace NAMESPACE_A {
-    void FUNC_NAME() {}
+namespace nsA {
+    void Func() {}
 }
 
-using namespace NAMESPACE_A;
+using namespace nsA;
 
 void Test()
 {
-    FUNC_NAME();
+    Func();
 }
-
-#define SCHOOL_NAMESPACE School
-#define UNIVERSITY_CLASS University
-#define STUDENT_CLASS Student
-#define DISPLAY_FUNC Display
-#define WELCOME_FUNC Welcome
 
 #define SCHOOL_NAME "THU"
 #define STUDENT1_NAME "zhang"
@@ -44,17 +35,17 @@ void Test()
 #define ID_TEXT "id: "
 #define WELCOME_TEXT "welcome to"
 
-namespace SCHOOL_NAMESPACE {
-    class UNIVERSITY_CLASS {
+namespace School {
+    class University {
     private:
         std::string name;
 
     public:
-        class STUDENT_CLASS {
+        class Student {
         public:
-            STUDENT_CLASS(const std::string& n, int i) : name(n), id(i) {}
+            Student(const std::string& n, int i) : name(n), id(i) {}
 
-            void DISPLAY_FUNC() const
+            void Display() const
             {
                 std::cout << STUDENT_TEXT << name << ", " << ID_TEXT << id << std::endl;
             }
@@ -64,9 +55,9 @@ namespace SCHOOL_NAMESPACE {
             int id;
         };
 
-        explicit UNIVERSITY_CLASS(const std::string& n) : name(n) {}
+        explicit University(const std::string& n) : name(n) {}
 
-        void WELCOME_FUNC() const
+        void Welcome() const
         {
             std::cout << WELCOME_TEXT << name << std::endl;
         }
@@ -76,15 +67,15 @@ namespace SCHOOL_NAMESPACE {
 int main()
 {
     // 使用命名空间下的嵌套类
-    SCHOOL_NAMESPACE::UNIVERSITY_CLASS tsinghua(SCHOOL_NAME);
-    tsinghua.WELCOME_FUNC();
+    School::University tsinghua(SCHOOL_NAME);
+    tsinghua.Welcome();
 
     // 创建学生对象
-    SCHOOL_NAMESPACE::UNIVERSITY_CLASS::STUDENT_CLASS student1(STUDENT1_NAME, STUDENT1_ID);
-    student1.DISPLAY_FUNC();
+    School::University::Student student1(STUDENT1_NAME, STUDENT1_ID);
+    student1.Display();
 
-    SCHOOL_NAMESPACE::UNIVERSITY_CLASS::STUDENT_CLASS student2(STUDENT2_NAME, STUDENT2_ID);
-    student2.DISPLAY_FUNC();
+    School::University::Student student2(STUDENT2_NAME, STUDENT2_ID);
+    student2.Display();
 
     return 0;
 }

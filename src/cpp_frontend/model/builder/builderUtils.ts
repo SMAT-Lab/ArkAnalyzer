@@ -323,19 +323,9 @@ export function isFuncInClassOrNamespace(callExpr: CxxAstNode): boolean {
         if ((innerNode.kind === 'NamespaceRef' && innerNode.name !== 'std') || innerNode.kind === 'TypeRef') {
             return true;
         }
-        // case: namespace xxx { Func() {} }; using namespace xxx;   Func();
-        if (isFuncWithoutNamespace(innerNode)) {
-            return true;
-        }
         callerNode = innerNode;
     }
     return false;
-}
-
-export function isFuncWithoutNamespace(node: CxxAstNode): boolean {
-    return node.kind === 'DeclRefExpr' && node.referencedDecl?.kind === 'FunctionDecl' &&
-        node.referencedDecl.scope !== undefined && node.referencedDecl.scope !== '' &&
-        !node.referencedDecl!.scope!.includes(BuiltinCxx.CXXSTDREF) && node.referencedDecl!.scope !== BuiltinCxx.CXXSTD;
 }
 
 export function buildTypeFromDerivedType(preStr: string, arkInstance: ArkMethod | ArkClass | ArkField | undefined): Type {

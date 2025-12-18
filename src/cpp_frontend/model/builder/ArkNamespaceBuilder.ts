@@ -22,7 +22,7 @@ import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
 import { ArkClass } from '../../../core/model/ArkClass';
 import { ArkMethod } from '../../../core/model/ArkMethod';
 import { ClassSignature, NamespaceSignature } from '../../../core/model/ArkSignature';
-import { CxxAstNode } from '../../ast/ArkCxxAstNode';
+import { CxxAstNode, getNodeStartLineAndCol } from '../../ast/ArkCxxAstNode';
 import { DEFAULT_ARK_CLASS_NAME } from '../../../core/common/Const';
 import { buildDefaultArkMethodFromArkClass } from './ArkMethodBuilder';
 
@@ -91,12 +91,9 @@ export function buildArkNamespace(node: CxxAstNode, declaringInstance: ArkFile |
     ns.setCode(node.code);
 
     // set line and column
-    if (node.range?.begin) {
-        ns.setLine(node.range.begin.line);
-    } else {
-        ns.setLine(-1);
-        ns.setColumn(-1);
-    }
+    const nodePos = getNodeStartLineAndCol(node);
+    ns.setLine(nodePos.line);
+    ns.setColumn(nodePos.col);
 
     genDefaultArkClass(ns, node, sourceFile);
 

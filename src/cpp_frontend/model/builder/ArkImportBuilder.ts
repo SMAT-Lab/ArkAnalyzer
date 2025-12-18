@@ -19,6 +19,7 @@ import { IRUtils } from '../../common/IRUtils';
 import { ArkFile } from '../../../core/model/ArkFile';
 import { normalize } from 'path';
 import { CxxAstNode, CxxTranslationUnit} from '../../ast/ArkCxxAstNode';
+import { buildExportInfo } from '../../../core/model/builder/ArkExportBuilder';
 
 export function buildImportInfo(node: any, sourceFile: any, arkFile: ArkFile): ImportInfo | null {
     // just like: #include '../xxx' => import '../xxx'
@@ -48,10 +49,10 @@ function buildGenericImportInfo(node: CxxAstNode, sourceFile: CxxTranslationUnit
 
 function buildUsingNamspaceImportInfo(node: CxxAstNode, sourceFile: CxxTranslationUnit, arkFile: ArkFile): ImportInfo | null {
     const originTsPosition = LineColPosition.cxxBuildFromNode(node);
-    if (node.inner.length === 0 || node.inner[0].kind !== 'NamespaceRef') {
+    if (!node.nominatedNamespace) {
         return null;
     }
-    let importClauseName = node.inner[0].name;
+    const importClauseName = node.nominatedNamespace.name;
     const sourceCode = `using namespace ${importClauseName}`;
     const importFrom: string = '';
     let importType = 'NamespaceImport';
@@ -59,5 +60,10 @@ function buildUsingNamspaceImportInfo(node: CxxAstNode, sourceFile: CxxTranslati
     importInfo.build(importClauseName, importType, importFrom, originTsPosition, 0);
     importInfo.setTsSourceCode(sourceCode);
     IRUtils.setComments(importInfo, node, sourceFile, arkFile.getScene().getOptions());
+    // scenario in cpp file: namespace xxx { Func() {} }; using namespace xxx;
+    const namespaceInCpp = arkFile.getNamespaceWithName(importClauseName);
+    if (namespaceInCpp) {
+        importInfo.setExportInfo(buildExportInfo(namespaceInCpp, arkFile, new LineColPosition(namespaceInCpp.getLine(), namespaceInCpp.getColumn())));
+    }
     return importInfo;
 }
