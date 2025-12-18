@@ -1133,7 +1133,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         const memberName = memberExpression.name || memberExpression.code;
         // ==Scenarios for Special Handling of Enum Members==
         if (memberExpression.referencedDecl?.kind === 'EnumConstantDecl') {
-            const enumClassName = memberExpression.inner[0].name.replace('enum', '').trim();
+            const enumClassName = memberExpression.type.qualType.replace('enum', '').trim();
             const enumArkClass = ModelUtils.findSymbolInFileWithName(enumClassName, this.declaringMethod.getDeclaringArkClass());
             const enumSignature =
                 (enumArkClass instanceof ArkClass) ?

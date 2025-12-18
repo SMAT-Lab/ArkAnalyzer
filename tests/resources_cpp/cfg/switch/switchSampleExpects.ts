@@ -583,35 +583,35 @@ export const SWITCH_EXPECT_NEST = {
         {
             id: 1,
             stmts: [
-                'staticinvoke <@%unk/%unk: .cout()>(\'Shooting Game - \')',
-                'staticinvoke <@%unk/%unk: .cout()>(\'Shooting Game2 - \')',
-                'if difficulty == 1',
+                "staticinvoke <@%unk/%unk: .operator<<()>(cout, 'Shooting Game - ')",
+                "staticinvoke <@%unk/%unk: .operator<<()>(cout, 'Shooting Game2 - ')",
+                'if difficulty == 1'
             ],
             preds: [0],
             succes: [2, 11],
         },
         {
             id: 2,
-            stmts: ['staticinvoke <@%unk/%unk: .cout()>(\'Easy Mode\\n\')'],
+            stmts: ["staticinvoke <@%unk/%unk: .operator<<()>(cout, 'Easy Mode\\n')"],
             preds: [1],
             succes: [9],
         },
         {
             id: 3,
-            stmts: ['staticinvoke <@%unk/%unk: .cout()>(\'Normal Mode\\n\')'],
+            stmts: [ "staticinvoke <@%unk/%unk: .operator<<()>(cout, 'Normal Mode\\n')"],
             preds: [11],
             succes: [9],
         },
         {
             id: 4,
-            stmts: ['staticinvoke <@%unk/%unk: .cout()>(\'Hard Mode\\n\')'],
+            stmts: ["staticinvoke <@%unk/%unk: .operator<<()>(cout, 'Hard Mode\\n')"],
             preds: [12],
             succes: [9],
         },
         {
             id: 5,
             stmts: [
-                'staticinvoke <@%unk/%unk: .cout()>(\'Racing Game - \')',
+                "staticinvoke <@%unk/%unk: .operator<<()>(cout, 'Racing Game - ')",
                 'if difficulty == 1',
             ],
             preds: [10],
@@ -619,19 +619,19 @@ export const SWITCH_EXPECT_NEST = {
         },
         {
             id: 6,
-            stmts: ['staticinvoke <@%unk/%unk: .cout()>(\'Beginner Track\\n\')'],
+            stmts: ["staticinvoke <@%unk/%unk: .operator<<()>(cout, 'Beginner Track\\n')"],
             preds: [5],
             succes: [9],
         },
         {
             id: 7,
-            stmts: ['staticinvoke <@%unk/%unk: .cout()>(\'Intermediate Track\\n\')'],
+            stmts: ["staticinvoke <@%unk/%unk: .operator<<()>(cout, 'Intermediate Track\\n')"],
             preds: [13],
             succes: [9],
         },
         {
             id: 8,
-            stmts: ['staticinvoke <@%unk/%unk: .cout()>(\'Invalid Game\\n\')'],
+            stmts: ["staticinvoke <@%unk/%unk: .operator<<()>(cout, 'Invalid Game\\n')"],
             preds: [10],
             succes: [9],
         },
@@ -680,7 +680,7 @@ export const SWITCH_EXPECT_PROCESS_CHOICE = {
         },
         {
             id: 1,
-            stmts: ['staticinvoke <@%unk/%unk: .cout()>(\'Selected one\\n\')'],
+            stmts: ["staticinvoke <@%unk/%unk: .operator<<()>(cout, 'Selected one\\n')"],
             preds: [0],
             succes: [5],
         },
@@ -688,7 +688,9 @@ export const SWITCH_EXPECT_PROCESS_CHOICE = {
             id: 2,
             stmts: [
                 'count = 5',
-                'staticinvoke <@%unk/%unk: .cout()>(\'Selected two, Count=\', count)',
+                "%0 = staticinvoke <@%unk/%unk: .operator<<()>(cout, 'Selected two, Count=')",
+                '%1 = staticinvoke <@%unk/%unk: .operator<<()>(%0, count)',
+                'staticinvoke <@%unk/%unk: .operator<<()>(%1, endl)'
             ],
             preds: [6],
             succes: [5],
@@ -696,8 +698,11 @@ export const SWITCH_EXPECT_PROCESS_CHOICE = {
         {
             id: 3,
             stmts: [
-                'message = \'Hello\'',
-                'staticinvoke <@%unk/%unk: .cout()>(message, \' from case three\\n\')',
+                '%2 = new @%unk/%unk: std::basic_string',
+                "instanceinvoke %2.<@%unk/%unk: std::basic_string.constructor()>('Hello')",
+                'message = %2',
+                '%3 = staticinvoke <@%unk/%unk: .operator<<()>(cout, message)',
+                "staticinvoke <@%unk/%unk: .operator<<()>(%3, ' from case three\\n')"
             ],
             preds: [7],
             succes: [5],
@@ -705,7 +710,7 @@ export const SWITCH_EXPECT_PROCESS_CHOICE = {
         {
             id: 4,
             stmts: [
-                'staticinvoke <@%unk/%unk: .cout()>(\'Invalid Option\\n\')',
+                "staticinvoke <@%unk/%unk: .operator<<()>(cout, 'Invalid Option\\n')",
                 'return',
             ],
             preds: [7],
@@ -733,19 +738,19 @@ export const SWITCH_EXPECT_PROCESS_VALUE = {
         { id: 1, stmts: ['if value == 0'], preds: [0], succes: [2, 11] },
         {
             id: 2,
-            stmts: ['staticinvoke <@%unk/%unk: .cout()>(\'Zero\\n\')'],
+            stmts: ["staticinvoke <@%unk/%unk: .operator<<()>(cout, 'Zero\\n')"],
             preds: [1],
             succes: [10],
         },
         {
             id: 3,
-            stmts: ['staticinvoke <@%unk/%unk: .cout()>(\'One\\n\')'],
+            stmts: ["staticinvoke <@%unk/%unk: .operator<<()>(cout, 'One\\n')"],
             preds: [11],
             succes: [10],
         },
         {
             id: 4,
-            stmts: ['staticinvoke <@%unk/%unk: .cout()>(\'Other Integer\\n\')'],
+            stmts: ["staticinvoke <@%unk/%unk: .operator<<()>(cout, 'Other Integer\\n')"],
             preds: [11],
             succes: [10],
         },
@@ -763,20 +768,20 @@ export const SWITCH_EXPECT_PROCESS_VALUE = {
         },
         {
             id: 7,
-            stmts: ['staticinvoke <@%unk/%unk: .cout()>(\'Letter A\\n\')'],
+            stmts: ["staticinvoke <@%unk/%unk: .operator<<()>(cout, 'Letter A\\n')"],
             preds: [6],
             succes: [10],
         },
         {
             id: 8,
-            stmts: ['staticinvoke <@%unk/%unk: .cout()>(\'Letter B\\n\')'],
+            stmts: ["staticinvoke <@%unk/%unk: .operator<<()>(cout, 'Letter B\\n')"],
             preds: [12],
             succes: [10],
         },
         {
             id: 9,
             stmts: [
-                'staticinvoke <@%unk/%unk: .cout()>(\'Other Character\\n\')',
+                "staticinvoke <@%unk/%unk: .operator<<()>(cout, 'Other Character\\n')",
                 'return',
             ],
             preds: [12],
