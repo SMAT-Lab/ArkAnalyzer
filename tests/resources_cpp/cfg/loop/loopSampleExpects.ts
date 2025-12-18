@@ -388,7 +388,9 @@ export const LOOP_EXPECT_CASE12 = {
         {
             id: 3,
             stmts: [
-                'staticinvoke <@%unk/%unk: .cout()>(\'First condition active: i = \', i)',
+                '%0 = staticinvoke <@%unk/%unk: .operator<<()>(cout, \'First condition active: i = \')',
+                '%1 = staticinvoke <@%unk/%unk: .operator<<()>(%0, i)',
+                'staticinvoke <@%unk/%unk: .operator<<()>(%1, endl)',
             ],
             preds: [2],
             succes: [6],
@@ -396,7 +398,9 @@ export const LOOP_EXPECT_CASE12 = {
         {
             id: 4,
             stmts: [
-                'staticinvoke <@%unk/%unk: .cout()>(\'Second condition active: i = \', i)',
+                '%2 = staticinvoke <@%unk/%unk: .operator<<()>(cout, \'Second condition active: i = \')',
+                '%3 = staticinvoke <@%unk/%unk: .operator<<()>(%2, i)',
+                'staticinvoke <@%unk/%unk: .operator<<()>(%3, endl)',
             ],
             preds: [2],
             succes: [6],
@@ -422,7 +426,11 @@ export const LOOP_EXPECT_CASE13 = {
         {
             id: 3,
             stmts: [
-                'staticinvoke <@%unk/%unk: .cout()>(\'i = \', i, \', j = \', j)',
+                '%0 = staticinvoke <@%unk/%unk: .operator<<()>(cout, \'i = \')',
+                '%1 = staticinvoke <@%unk/%unk: .operator<<()>(%0, i)',
+                '%2 = staticinvoke <@%unk/%unk: .operator<<()>(%1, \', j = \')',
+                '%3 = staticinvoke <@%unk/%unk: .operator<<()>(%2, j)',
+                'staticinvoke <@%unk/%unk: .operator<<()>(%3, endl)',
                 'j = j + 1',
             ],
             preds: [2, 9],

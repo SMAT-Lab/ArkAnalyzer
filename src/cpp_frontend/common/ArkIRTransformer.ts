@@ -76,7 +76,7 @@ import { BuiltinCxx } from './Builtin';
 import { ArkSignatureBuilder } from '../../core/model/builder/ArkSignatureBuilder';
 import { ArkIRTransformer, DummyStmt } from '../../core/common/ArkIRTransformer';
 import { AbstractTypeExpr } from '../../core/base/TypeExpr';
-import { buildModifiers, buildTypeParameters, cxxNode2Type } from '../model/builder/builderUtils';
+import { buildModifiers, buildTypeParameters } from '../model/builder/builderUtils';
 import { ModelUtils } from '../../core/common/ModelUtils';
 import { ArkClass } from '../../core/model/ArkClass';
 import { buildNormalArkClassFromArkMethod } from '../model/builder/ArkClassBuilder';
@@ -403,8 +403,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
             stmts: yieldValueStmts,
         } = this.generateAssignStmtForValue(valueFieldRef, valueFieldRefPositions);
         yieldValueStmts.forEach(stmt => stmts.push(stmt));
-        const type = cxxNode2Type(forOfStatement.inner[0].type.qualType, this.declaringMethod);
-        const castExpr = new ArkCastExpr(yieldValue, type);
+        const castExpr = new ArkCastExpr(yieldValue, UnknownType.getInstance());
         const castExprPositions = [yieldValuePositions[0], ...yieldValuePositions];
         const declStmts: CxxAstNode = forOfStatement.inner[0];
         if (declStmts.kind === 'VarDecl') {
@@ -731,8 +730,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         }
         const dummyInitializerStmt = new DummyStmt(ArkIRTransformer.DUMMY_LOOP_INITIALIZER_STMT);
         stmts.push(dummyInitializerStmt);
-
-        if (conditionNoe.kind === 'NullStmt') {
+        if (conditionNoe.kind === undefined) {
             // The omitted condition always evaluates to true.
             const trueConstant = CxxValueUtil.getBooleanConstant(true);
             const conditionExpr = new ArkConditionExpr(trueConstant, trueConstant, RelationalBinaryOperator.Equality);

@@ -225,7 +225,11 @@ function buildArkClassMembers(clsNode: CxxAstNode, cls: ArkClass, sourceFile: Cx
     const staticInitStmts: Stmt[] = [];
     const instanceInitStmts: Stmt[] = [];
     const enumFieldInfo = { lastFieldName: '', curValue: 0, isCurValueValid: true };
-    for (const member of clsNode.inner as CxxAstNode[]) {
+    for (let i = 0; i < clsNode.inner.length; i++) {
+        let member = clsNode.inner[i];
+        if (i === 0 && member.kind === 'CXXRecordDecl') {
+            continue;
+        }
         switch (member.kind) {
             case 'FieldDecl':
             case 'VarDecl': {
