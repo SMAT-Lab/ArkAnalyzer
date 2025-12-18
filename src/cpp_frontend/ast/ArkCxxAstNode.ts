@@ -26,6 +26,8 @@ export interface CxxPosition {
 export interface CxxRange {
     begin: CxxPosition;
     end: CxxPosition;
+    spellingLoc?: SpellingLoc; // Spelling Location related to macros
+    expansionLoc?: CxxPosition; // Expansion Location related to macros
 }
 
 /** Type information */
@@ -47,7 +49,6 @@ export interface CxxReferencedDecl {
     kind?: string; // VarDecl / ParamVarDecl / FunctionDecl ...
     name?: string;
     type?: CxxTypeInfo;
-    scope?: string;
     alias?: CxxAliasInfo;
 }
 
@@ -64,6 +65,18 @@ export interface CxxEnclosingFunction {
     kind?: string;
     name?: string;
     range?: CxxRange;
+}
+
+/** Spelling Location related to macros */
+export interface SpellingLoc extends CxxPosition {
+    file?: string;
+}
+
+/** Target information for UsingDirectiveDecl  */
+export interface NominatedNamespace {
+    id: number;
+    kind: string;
+    name: string;
 }
 
 export type CxxAstNodeLite = Omit<CxxAstNode, 'inner'>;
@@ -135,6 +148,9 @@ export interface CxxAstNode {
     anyInit?: CxxCtorAnyInit; // e.g., { kind: "FieldDecl", name, type }
     baseInit?: CxxTypeInfo; // Used for base class initialization
 
+    /** Specific to UsingDirectiveDecl  */
+    nominatedNamespace?: NominatedNamespace;
+
     /** Header/include relationship related */
     include?: boolean; // Node comes from a user header via include
     included?: string; // Host file path for InclusionDirective
@@ -146,6 +162,8 @@ export interface CxxAstNode {
         file?: string;
         line?: number;
         col?: number;
+        spellingLoc?: SpellingLoc; // Spelling Location related to macros
+        expansionLoc?: CxxPosition; // Expansion Location related to macros
     };
 
     /** Precise range (begin/end includes offset and tokLen) */
@@ -196,6 +214,14 @@ export function getNodeAt(node: CxxAstNode, index: number): CxxAstNode | undefin
         return undefined;
     }
     return node.inner[index];
+}
+
+/** Get the starting line and column numbers of the ast node, Default LineColPosition is (0, 0). */
+export function getNodeStartLineAndCol(node: CxxAstNode): CxxPosition {
+    if (node.loc?.line && node.loc?.col) {
+        return { line: node.loc.line, col: node.loc.col };
+    }
+    return node.loc?.expansionLoc ?? node.range?.begin ?? node.range?.expansionLoc ?? { line: 0, col: 0 };
 }
 
 export interface defaultArg {

@@ -79,9 +79,7 @@ import {
     convertDataType,
     cxxNode2Type,
     isCxxFunctionPointer,
-    isCXXSTLContainer,
-    isFuncInClassOrNamespace,
-    isFuncWithoutNamespace,
+    isCXXSTLContainer, isFuncInClassOrNamespace,
 } from '../model/builder/builderUtils';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { ArkValueTransformer } from '../../core/common/ArkValueTransformer';
@@ -89,7 +87,7 @@ import { ModelUtils } from '../../core/common/ModelUtils';
 import { CONSTRUCTOR_NAME, THIS_NAME } from '../../core/common/TSConst';
 import { TypeInference } from './TypeInference';
 import { setTs2CxxFuncMapOfClass } from './ModelUtils';
-import { CxxAstNode, CxxTranslationUnit, CxxTypeInfo } from '../ast/ArkCxxAstNode';
+import { CxxAstNode, CxxTranslationUnit } from '../ast/ArkCxxAstNode';
 import { DummyStmt } from '../../core/common/ArkIRTransformer';
 import { BuiltinCxx } from './Builtin';
 import { ArkClass } from '../../core/model/ArkClass';
@@ -417,18 +415,6 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         // Handle the invocation of static members of a class, such as A::a
         if (node.code.includes('::') && node.inner.length > 0 &&
             (node.inner[0]?.kind === 'TypeRef' || node.inner[0]?.kind === 'NamespaceRef' && node.inner[0]?.name !== BuiltinCxx.CXXSTD)) {
-            return this.staticMemberExprToValueAndStmts(node);
-        }
-        // Handle the scenario:  namespace xxx { Func() {} }; using namespace xxx;   Func();
-        if (isFuncWithoutNamespace(node)) {
-            const innerNsNode = {
-                kind: 'NamespaceRef',
-                name: node.referencedDecl!.scope,
-                code: node.referencedDecl!.scope,
-                inner: [],
-                type: { qualType: '' } as CxxTypeInfo,
-            } as CxxAstNode;
-            node.inner.unshift(innerNsNode);
             return this.staticMemberExprToValueAndStmts(node);
         }
         return this.cxxIdentifierToValueAndStmts(node);

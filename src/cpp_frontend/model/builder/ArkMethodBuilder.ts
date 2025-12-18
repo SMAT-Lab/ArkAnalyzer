@@ -40,7 +40,7 @@ import { buildGenericType } from '../../../core/model/builder/builderUtils';
 import { CONSTRUCTOR_NAME, SUPER_NAME, THIS_NAME } from '../../../core/common/TSConst';
 import { ArkSignatureBuilder } from '../../../core/model/builder/ArkSignatureBuilder';
 import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
-import {CxxAstNode} from '../../ast/ArkCxxAstNode';
+import { CxxAstNode, getNodeStartLineAndCol } from '../../ast/ArkCxxAstNode';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkMethodBuilder');
 
@@ -143,18 +143,16 @@ export function buildArkMethodFromArkClass(methodNode: CxxAstNode, declaringClas
     reCheckModifiers(methodName, declaringClass, mtd, methodParameters);
     const methodSubSignature = new MethodSubSignature(methodName, methodParameters, returnType, mtd.isStatic());
     const methodSignature = new MethodSignature(mtd.getDeclaringArkClass().getSignature(), methodSubSignature);
-    const begin = methodNode.range?.begin ?? { line: 0, col: 0 };
-    const line = begin.line;
-    const character = begin.col;
+    const nodePos = getNodeStartLineAndCol(methodNode);
     if (isMethodImplementation(methodNode)) {
         mtd.setImplementationSignature(methodSignature);
-        mtd.setLine(line);
-        mtd.setColumn(character);
+        mtd.setLine(nodePos.line);
+        mtd.setColumn(nodePos.col);
         let bodyBuilder = new CxxBodyBuilder(mtd.getSignature(), methodNode, mtd, sourceFile);
         mtd.setCxxBodyBuilder(bodyBuilder);
     } else {
         mtd.setDeclareSignatures(methodSignature);
-        mtd.setDeclareLinesAndCols([line + 1], [character + 1]);
+        mtd.setDeclareLinesAndCols([nodePos.line], [nodePos.col]);
     }
 
     if (mtd.hasBuilderDecorator()) {

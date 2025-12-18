@@ -112,6 +112,8 @@ export class AstUtils {
             }
             if (loc.file) {
                 fileName = loc.file;
+            } else if (loc.spellingLoc && loc.spellingLoc.file) {
+                fileName = loc.spellingLoc.file;
             }
             if (Object.prototype.hasOwnProperty.call(entry, 'include') && entry.include && entry.kind !== 'inclusion directive') {
                 newInner.push(entry);
@@ -127,11 +129,8 @@ export class AstUtils {
     private static filter(sourceFile: string, translationUnit: CxxAstNode):CxxAstNode {
         let newInner: CxxAstNode[] = [];
         let firstOccurrenceOfMainFile: boolean = false;
-        for (let index in translationUnit.inner) {
-            if (Object.prototype.hasOwnProperty.call(translationUnit.inner, index)) {
-                let entry = translationUnit.inner[index];
-                this.updateInner(sourceFile, firstOccurrenceOfMainFile, entry, newInner);
-            }
+        for (const entry of translationUnit.inner) {
+            this.updateInner(sourceFile, firstOccurrenceOfMainFile, entry, newInner);
         }
         translationUnit.inner = newInner;
         translationUnit.fileName = sourceFile;

@@ -27,7 +27,7 @@ import { IRUtils } from '../../common/IRUtils';
 import { ClassSignature } from '../../../core/model/ArkSignature';
 import { init4InstanceInitMethod, init4StaticInitMethod } from '../../../core/model/builder/ArkClassBuilder';
 import { ArkCxxIRTransformer } from '../../common/ArkIRTransformer';
-import { CxxAstNode, CxxTranslationUnit } from '../../ast/ArkCxxAstNode';
+import { CxxAstNode, CxxTranslationUnit, getNodeStartLineAndCol } from '../../ast/ArkCxxAstNode';
 import { ArkField } from '../../../core/model/ArkField';
 import { Value } from '../../../core/base/Value';
 import { NumberConstant } from '../../../core/base/Constant';
@@ -54,10 +54,9 @@ export function buildNormalArkClassFromArkFile(clsNode: CxxAstNode, arkFile: Ark
                                                sourceFile: CxxAstNode, declaringClass?:ArkClass): void {
     cls.setDeclaringArkFile(arkFile);
     cls.setCode(clsNode.code);
-    if (clsNode.range?.begin) {
-        cls.setLine(clsNode.range.begin.line);
-        cls.setColumn(clsNode.range.begin.col);
-    }
+    const nodePos = getNodeStartLineAndCol(clsNode);
+    cls.setLine(nodePos.line);
+    cls.setColumn(nodePos.col);
     buildNormalArkClass(clsNode, cls, sourceFile, declaringClass);
     arkFile.addArkClass(cls);
 }
@@ -72,10 +71,9 @@ export function buildNormalArkClassFromArkNamespace(
     cls.setDeclaringArkNamespace(arkNamespace);
     cls.setDeclaringArkFile(arkNamespace.getDeclaringArkFile());
     cls.setCode(clsNode.code);
-    if (clsNode.range?.begin) {
-        cls.setLine(clsNode.range.begin.line);
-        cls.setColumn(clsNode.range.begin.col);
-    }
+    const nodePos = getNodeStartLineAndCol(clsNode);
+    cls.setLine(nodePos.line);
+    cls.setColumn(nodePos.col);
     buildNormalArkClass(clsNode, cls, sourceFile, declaringClass);
     arkNamespace.addArkClass(cls);
 }
