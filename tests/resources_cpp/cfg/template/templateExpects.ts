@@ -59,8 +59,9 @@ export const TEMPLATE_EXPECT_CASE3 = {
                 'a = parameter0: T1',
                 'b = parameter1: T2',
                 'this = this: @template/template.cpp: %dflt',
-                'staticinvoke <@%unk/%unk: .cout()>(\'First:\', a, \', Second\', b)',
-                'return',
+                "%0 = staticinvoke <@%unk/%unk: .operator<<()>(cout, 'two different parm')",
+                'staticinvoke <@%unk/%unk: .operator<<()>(%0, endl)',
+                'return'
             ],
             preds: [],
             succes: [],

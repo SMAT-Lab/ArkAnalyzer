@@ -88,7 +88,7 @@ export function handleFunctionTemplateDecl(methodNode: CxxAstNode, mtd: ArkMetho
     let templateTypesArray = [];
     let index = -1;
     for (const innerNode of methodNode.inner) {
-        if (innerNode.kind !== 'TemplateTypeParmVarDecl') {
+        if (innerNode.kind !== 'TemplateTypeParmVarDecl' && innerNode.kind !== 'TemplateTypeParmDecl') {
             continue;
         }
         let typename = innerNode.name;
@@ -97,11 +97,8 @@ export function handleFunctionTemplateDecl(methodNode: CxxAstNode, mtd: ArkMetho
             typename = typename + '...';
         }
         let defaultType;
-        if (innerNode.inner && innerNode.inner.length > 0) {
-            innerNode.default = innerNode.inner[0].type.qualType;
-        }
-        if (innerNode.default) {
-            defaultType = cxxNode2Type(innerNode.default, mtd, sourceFile);
+        if (innerNode.defaultArg) {
+            defaultType = cxxNode2Type(innerNode.defaultArg.type.qualType, mtd, sourceFile);
         }
         let templateType = new GenericType(typename, defaultType);
         templateType.setIndex(++index);

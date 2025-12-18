@@ -702,7 +702,15 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         }
         return valueAndStmtsOfSwitchAndCases;
     }
-
+    /**
+     * Convert C++for statement nodes to Ark IR statement arrays
+     * Under forStmt, there will be 5 child nodes. Taking for (a ; b; c) as an example,
+     * the content of block a is at node 0, if block b contains assignments, it will be at node 1,
+     * the Boolean judgment of block b is at node 2, the successor operation of block c's loop body is at node 3,
+     * and the loop body is at node 4
+     * @param forStatement -The for statement node in C++AST
+     * @returns Converted Ark IR statement array
+     */
     private cxxForStatementToStmts(forStatement: CxxAstNode): Stmt[] {
         const stmts: Stmt[] = [];
         let initNode: CxxAstNode[] | undefined;

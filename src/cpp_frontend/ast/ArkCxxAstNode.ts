@@ -174,8 +174,12 @@ export interface CxxAstNode {
     modifiers?: string[];
 
     enclosingFunction?: CxxEnclosingFunction;
+
     /** Reserved for future fields */
     [key: string]: unknown;
+
+    defaultArg?: defaultArg;
+
 }
 
 /** root type */
@@ -192,4 +196,9 @@ export function getNodeAt(node: CxxAstNode, index: number): CxxAstNode | undefin
         return undefined;
     }
     return node.inner[index];
+}
+
+export interface defaultArg {
+    kind: string;
+    type: CxxTypeInfo;
 }

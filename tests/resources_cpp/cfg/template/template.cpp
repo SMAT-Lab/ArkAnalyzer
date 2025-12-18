@@ -26,7 +26,7 @@
 template <typename T1, typename T2>
 void PrintPair(T1 a, T2 b)
 {
-    std::cout << "First:" << a << ", Second" << b << std::endl;
+    std::cout << "two different parm" << std::endl;
 }
 
 //  Function template
