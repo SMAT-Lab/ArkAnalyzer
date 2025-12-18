@@ -129,11 +129,8 @@ export class AstUtils {
     private static filter(sourceFile: string, translationUnit: CxxAstNode):CxxAstNode {
         let newInner: CxxAstNode[] = [];
         let firstOccurrenceOfMainFile: boolean = false;
-        for (let index in translationUnit.inner) {
-            if (Object.prototype.hasOwnProperty.call(translationUnit.inner, index)) {
-                let entry = translationUnit.inner[index];
-                this.updateInner(sourceFile, firstOccurrenceOfMainFile, entry, newInner);
-            }
+        for (const entry of translationUnit.inner) {
+            this.updateInner(sourceFile, firstOccurrenceOfMainFile, entry, newInner);
         }
         translationUnit.inner = newInner;
         translationUnit.fileName = sourceFile;
