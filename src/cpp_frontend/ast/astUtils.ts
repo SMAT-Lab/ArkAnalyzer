@@ -96,7 +96,7 @@ export class AstUtils {
 
     private static updateInner(sourceFile: string, firstOccurrenceOfMainFile: boolean, entry: CxxAstNode, newInner: CxxAstNode[]): void {
         if (!firstOccurrenceOfMainFile) {
-            if (Object.prototype.hasOwnProperty.call(entry, 'isImplicit') && entry.isImplicit && entry.kind !== 'UsingDirectiveDecl') {
+            if (entry.isImplicit && entry.kind !== 'UsingDirectiveDecl') {
                 return;
             }
             let fileName = '';
@@ -115,7 +115,7 @@ export class AstUtils {
             } else if (loc.spellingLoc && loc.spellingLoc.file) {
                 fileName = loc.spellingLoc.file;
             }
-            if (Object.prototype.hasOwnProperty.call(entry, 'include') && entry.include && entry.kind !== 'inclusion directive') {
+            if (entry.include && entry.kind !== 'inclusion directive') {
                 newInner.push(entry);
                 return;
             }
@@ -141,12 +141,11 @@ export class AstUtils {
 
     private static filterChildren(cursor: CxxAstNode): CxxAstNode[] {
         let filteredChildren: CxxAstNode[] = [];
-        if (!Object.prototype.hasOwnProperty.call(cursor, 'inner')) {
+        if (!cursor.inner) {
             return filteredChildren;
         }
         filteredChildren = cursor.inner.filter(
-            (item: CxxAstNode) => !Object.prototype.hasOwnProperty.call(cursor, 'isImplicit') ||
-                                           !item.isImplicit || cursor.kind === 'LambdaExpr' || item.isUsed
+            (item: CxxAstNode) => !item.isImplicit || cursor.kind === 'LambdaExpr' || item.isUsed
         );
         return filteredChildren;
     }
@@ -169,11 +168,11 @@ export class AstUtils {
     }
 
     private static fullInfo(cursor: CxxAstNode): void {
-        if (!Array.isArray(cursor.inner)) {
+        if (!cursor.inner) {
             cursor.inner = [];
         }
         cursor.inner = this.filterChildren(cursor);
-        if (!Object.prototype.hasOwnProperty.call(cursor, 'name') || cursor.name === undefined) {
+        if (cursor.name === undefined) {
             cursor.name = '';
         }
         // The default access property of class is 'private',The default access property of struct is 'public'
@@ -185,11 +184,7 @@ export class AstUtils {
             this.currentAccess = '';
         }
 
-        for (const idx in cursor.inner) {
-            if (!Object.prototype.hasOwnProperty.call(cursor.inner, idx)) {
-                continue;
-            }
-            const currentCursor = cursor.inner[idx];
+        for (const currentCursor of cursor.inner) {
             // Overloaded implementation without any usage of 'any' or type assertions
             Object.assign(currentCursor, { getParent: this.makeGetParent(cursor) });
             if (cursor.kind === 'CXXRecordDecl' || cursor.kind === 'CXXMethodDecl' || cursor.kind === 'FunctionDecl') {
