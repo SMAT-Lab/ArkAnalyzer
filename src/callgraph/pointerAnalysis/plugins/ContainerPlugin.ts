@@ -27,13 +27,7 @@ import { Local } from '../../../core/base/Local';
 import { FunctionType, LexicalEnvType } from '../../../core/base/Type';
 
 // built-in container APIs
-const containerApiList = [
-    BuiltApiType.ArrayPush,
-    BuiltApiType.MapSet,
-    BuiltApiType.MapGet,
-    BuiltApiType.SetAdd,
-    BuiltApiType.Foreach,
-];
+const containerApiList = [BuiltApiType.ArrayPush, BuiltApiType.MapSet, BuiltApiType.MapGet, BuiltApiType.SetAdd, BuiltApiType.Foreach];
 
 /**
  * ContainerPlugin processes built-in container APIs like Array, Set, and Map.
@@ -89,11 +83,12 @@ export class ContainerPlugin implements IPagPlugin {
                 break;
             case BuiltApiType.MapGet:
                 this.processMapGet(cs, cid, basePTNode, baseValue, srcNodes);
+                break;
             case BuiltApiType.Foreach:
                 this.processForeach(cs, cid, basePTNode, baseValue, srcNodes, calleeMethod);
                 break;
             default:
-        };
+        }
         return srcNodes;
     }
 

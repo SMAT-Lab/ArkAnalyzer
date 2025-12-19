@@ -23,7 +23,7 @@ import * as fs from 'fs';
  * Top layer of context
  */
 
-export let emptyID: number = -1;
+export const emptyID: number = -1;
 export interface ContextSelector {
     ctxCache: ContextCache;
     ctxManager: ContextItemManager;
@@ -106,8 +106,7 @@ export class KObjContextSelector implements ContextSelector {
         return this.ctxCache.getOrNewContextID(context);
     }
 
-    public dump(dir: string, cg: CallGraph): void {
-    }
+    public dump(dir: string, cg: CallGraph): void {}
 }
 
 export class KFuncContextSelector implements ContextSelector {
