@@ -411,7 +411,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
                 value: initValue,
                 valueOriginalPositions: initOriPos,
                 stmts: initStmts,
-            } = this.ArkCxxValueTransformer.cxxVariableDeclarationToValueAndStmts(declStmts, true, false);
+            } = this.ArkCxxValueTransformer.cxxVariableDeclarationToValueAndStmts(declStmts, false);
             const assignStmt = new ArkAssignStmt(initValue, castExpr);
             assignStmt.setOperandOriginalPositions([...initOriPos, ...castExprPositions]);
             stmts.push(assignStmt);
@@ -552,7 +552,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
                 value: catchValue,
                 valueOriginalPositions: catchOriPos,
                 stmts: catchStmts,
-            } = this.ArkCxxValueTransformer.cxxVariableDeclarationToValueAndStmts(catchClause.inner[0], false, false);
+            } = this.ArkCxxValueTransformer.cxxVariableDeclarationToValueAndStmts(catchClause.inner[0], false);
             this.catchedExceptions.push(catchValue);
             const caughtExceptionRef = new ArkCaughtExceptionRef(catchValue.getType());
             const assignStmt = new ArkAssignStmt(catchValue, caughtExceptionRef);
@@ -875,7 +875,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
     private cxxDeclStatementToStmts(declStatement: CxxAstNode): Stmt[] {
         const stmts: Stmt[] = [];
         if (declStatement.inner.length === 0) {
-            return this.ArkCxxValueTransformer.declStmtToValueAndStmts(declStatement).stmts;
+            return this.ArkCxxValueTransformer.cxxVariableDeclarationToValueAndStmts(declStatement).stmts;
         }
         for (const child of declStatement.inner) {
             const childStmts = this.cxxNodeToStmts(child);
@@ -889,7 +889,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
     }
 
     private cxxVariableDeclarationListToStmts(variableDeclarationList: CxxAstNode): Stmt[] {
-        return this.ArkCxxValueTransformer.declStmtToValueAndStmts(variableDeclarationList).stmts;
+        return this.ArkCxxValueTransformer.cxxVariableDeclarationToValueAndStmts(variableDeclarationList).stmts;
     }
 
     public cxxIfStatementToStmts(ifStatement: CxxAstNode, depth: number = 0, context?: {

@@ -91,6 +91,7 @@ import { CxxAstNode, CxxTranslationUnit } from '../ast/ArkCxxAstNode';
 import { DummyStmt } from '../../core/common/ArkIRTransformer';
 import { BuiltinCxx } from './Builtin';
 import { ArkClass } from '../../core/model/ArkClass';
+import { ValueUtil } from '../../core/common/ValueUtil';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkValueTransformer');
 
@@ -2446,27 +2447,20 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         };
     }
 
-    /**
-     *Convert C++variable declaration statements to IR
-     *@ param variableDeclarationList - C++AST node, representing variable declaration list
-     *@ returns ValueAndStmts object, containing the converted value and statement list
-     */
-    public declStmtToValueAndStmts(variableDeclarationList: CxxAstNode): ValueAndStmts {
-        const stmts: Stmt[] = [];
-        let isConst = variableDeclarationList.type!.qualType.toString().startsWith('const ');
-        if (variableDeclarationList.inner.length === 0 && variableDeclarationList.kind.toString() === 'DeclStmt') {
-            return {
-                value: CxxValueUtil.getUndefinedConst(),
-                valueOriginalPositions: [FullPosition.DEFAULT],
-                stmts: stmts,
-            };
+    public declStmtToValueAndStmts(decl: CxxAstNode): ValueAndStmts {
+        const stmt: Stmt[] = [];
+        let value: Value = ValueUtil.getUndefinedConst();
+        let fullPositions: FullPosition[] = [];
+        for (const node of decl.inner){
+            const valueAndStmts =this.cxxNodeToValueAndStmts(node);
+            valueAndStmts.stmts.forEach(s =>stmt.push(s));
+            value = valueAndStmts.value;
+            fullPositions.push(...valueAndStmts.valueOriginalPositions);
         }
-        const { stmts: declaredStmts } = this.cxxVariableDeclarationToValueAndStmts(variableDeclarationList, isConst);
-        declaredStmts.forEach(s => stmts.push(s));
         return {
-            value: CxxValueUtil.getUndefinedConst(),
-            valueOriginalPositions: [FullPosition.DEFAULT],
-            stmts: stmts,
+            value: value,
+            valueOriginalPositions: fullPositions,
+            stmts: stmt,
         };
     }
 
@@ -2477,7 +2471,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
      *@ param needRightOp - Whether the right operand is required, the default is true
      *@ returns the ValueAndStmts object containing values and statements
      */
-    public cxxVariableDeclarationToValueAndStmts(variableDeclaration: CxxAstNode, isConst: boolean, needRightOp: boolean = true): ValueAndStmts {
+    public cxxVariableDeclarationToValueAndStmts(variableDeclaration: CxxAstNode, needRightOp: boolean = true): ValueAndStmts {
+        let isConst = variableDeclaration.type.qualType.includes("const");
         const leftOpNode = variableDeclaration;
         let rightOpNode: CxxAstNode | undefined = undefined;
         if (variableDeclaration.inner !== null && variableDeclaration.inner.length !== 0) {
