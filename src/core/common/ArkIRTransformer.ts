@@ -610,7 +610,7 @@ export class ArkIRTransformer {
         } = this.generateAssignStmtForValue(doneFieldRef, doneFieldRefPositions);
         doneFlagStmts.forEach(stmt => stmts.push(stmt));
         (doneFlag as Local).setType(BooleanType.getInstance());
-        const conditionExpr = new ArkConditionExpr(doneFlag, ValueUtil.getBooleanConstant(true), RelationalBinaryOperator.Equality);
+        const conditionExpr = new ArkConditionExpr(doneFlag, ValueUtil.getBooleanConstant(true), RelationalBinaryOperator.InEquality);
         const conditionExprPositions = [doneFlagPositions[0], ...doneFlagPositions, FullPosition.DEFAULT];
         const ifStmt = new ArkIfStmt(conditionExpr);
         ifStmt.setOperandOriginalPositions(conditionExprPositions);
