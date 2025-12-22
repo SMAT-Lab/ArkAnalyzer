@@ -138,6 +138,7 @@ describe('CfgTest', () => {
         testBlocks(scene, 'loopSample.cpp', 'Case11', LOOP_EXPECT.LOOP_EXPECT_CASE11.blocks);
         testBlocks(scene, 'loopSample.cpp', 'ForWithLogicalOperators', LOOP_EXPECT.LOOP_EXPECT_CASE12.blocks);
         testBlocks(scene, 'loopSample.cpp', 'NestedLoopExample', LOOP_EXPECT.LOOP_EXPECT_CASE13.blocks);
+        testBlocks(scene, 'loopSample.cpp', 'CaseForCondDeclBoolCompare', LOOP_EXPECT.LOOP_EXPECT_CASE14.blocks);
     });
     it('case5: while-continue statement', () => {
         const scene = buildScene('whileContinue');

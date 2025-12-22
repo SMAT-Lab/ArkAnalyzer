@@ -444,3 +444,27 @@ export const LOOP_EXPECT_CASE13 = {
         { id: 9, stmts: ['if j < 5'], preds: [8], succes: [3, 5] },
     ],
 };
+
+export const LOOP_EXPECT_CASE14 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @loop/loopSample.cpp: %dflt',
+                'count = 0',
+                'i = 0',
+                'ok = i < 2',
+            ],
+            preds: [],
+            succes: [1],
+        },
+        { id: 1, stmts: ['if ok != 0'], preds: [0, 2], succes: [2, 3] },
+        {
+            id: 2,
+            stmts: ['count = count + 1', 'i = i + 1'],
+            preds: [1],
+            succes: [1],
+        },
+        { id: 3, stmts: ['return'], preds: [1], succes: [] },
+    ],
+};
