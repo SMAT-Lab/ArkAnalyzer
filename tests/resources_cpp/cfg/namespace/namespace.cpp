@@ -62,6 +62,62 @@ namespace School {
             std::cout << WELCOME_TEXT << name << std::endl;
         }
     };
+
+    // Nested anonymous namespace case
+    namespace {
+        const std::string kLogPrefix = "[Nested AnonymousSpace] ";
+
+        int g_local_counter = 0;
+
+        void PrintInfoInNested()
+        {
+            std::cout << kLogPrefix << "Current counter value: " << g_local_counter << std::endl;
+        }
+
+        class LocalHelperInNested {
+        private:
+            int value_;
+        public:
+            LocalHelperInNested(int v) : value_(v) { g_local_counter++; }
+            int GetValue() const { return value_; }
+        };
+    }
+}
+
+// anonymous namespace case
+namespace {
+    const std::string kLogPrefix = "[AnonymousSpace] ";
+
+    int g_local_counter = 0;
+
+    void PrintInfo()
+    {
+        std::cout << kLogPrefix << "Current counter value: " << g_local_counter << std::endl;
+    }
+
+    class LocalHelper {
+    private:
+        int value_;
+    public:
+        LocalHelper(int v) : value_(v) { g_local_counter++; }
+        int GetValue() const { return value_; }
+    };
+}
+
+void TestAnonymousNamespace()
+{
+    PrintInfo(); // counter=0
+    g_local_counter = 5;
+    PrintInfo(); // counter=5
+    LocalHelper helper1(100);
+    PrintInfo(); // counter=6
+
+    // nested namespace
+    School::PrintInfoInNested(); // counter=0
+    School::g_local_counter = 5;
+    School::PrintInfoInNested(); // counter=5
+    School::LocalHelperInNested helper2(100);
+    School::PrintInfoInNested(); // counter=5
 }
 
 int main()

@@ -86,7 +86,7 @@ import { ArkValueTransformer } from '../../core/common/ArkValueTransformer';
 import { ModelUtils } from '../../core/common/ModelUtils';
 import { CONSTRUCTOR_NAME, THIS_NAME } from '../../core/common/TSConst';
 import { TypeInference } from './TypeInference';
-import { setTs2CxxFuncMapOfClass } from './ModelUtils';
+import { CxxModelUtils, setTs2CxxFuncMapOfClass } from './ModelUtils';
 import { CxxAstNode, CxxTranslationUnit } from '../ast/ArkCxxAstNode';
 import { DummyStmt } from '../../core/common/ArkIRTransformer';
 import { BuiltinCxx } from './Builtin';
@@ -1121,7 +1121,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         // ==Scenarios for Special Handling of Enum Members==
         if (memberExpression.referencedDecl?.kind === 'EnumConstantDecl') {
             const enumClassName = memberExpression.type.qualType.replace('enum', '').trim();
-            const enumArkClass = ModelUtils.findSymbolInFileWithName(enumClassName, this.declaringMethod.getDeclaringArkClass());
+            const enumArkClass = CxxModelUtils.findSymbolInFileWithName(enumClassName, this.declaringMethod.getDeclaringArkClass());
             const enumSignature =
                 (enumArkClass instanceof ArkClass) ?
                     enumArkClass.getSignature() :
@@ -1214,13 +1214,27 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
                 return this.cxxCallExpressionToValueAndStmts(callExpression.inner[0]);
             } else if (callExpression.name === 'basic_string' || callExpression.inner[0].kind === 'MaterializeTemporaryExpr') {
                 return this.cxxNodeToValueAndStmts(callExpression.inner[0]);
-            } else if (isFuncInClassOrNamespace(callExpression)) {
-                return this.cxxMemberCallExpressionToValueAndStmts(callExpression);
             }
         }
 
         const stmts: Stmt[] = [];
         const [callNode, argumentNodes] = this.getArgumentNode(callExpression.inner);
+
+        if (callNode && isFuncInClassOrNamespace(callNode) && callNode.referencedDecl?.name) {
+            // Process static function calls
+            callNode.kind = 'MemberExpr';
+            const replaceFuncName = callNode.referencedDecl.name;
+            callNode.name = replaceFuncName;
+            const outerName = callNode.code.replace('::' + replaceFuncName, '');
+            callNode.inner[0] = {
+                kind: 'DeclRefExpr',
+                name: outerName,
+                code: outerName,
+                type: { qualType: outerName },
+                inner: []
+            } as CxxAstNode;
+            return this.buildValueAndStmtsForMemberCall(stmts, callNode, argumentNodes, callExpression, undefined);
+        }
         const argus = this.cxxParseArgumentsOfCallExpression(stmts, argumentNodes, callNode);
         if (callExpression.name === 'napi_define_class') {
             setTs2CxxFuncMapOfClass(argus.args, true, this.declaringMethod);
@@ -2093,7 +2107,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
     private getNewExpressionClassName(newExpression: CxxAstNode): string {
         let oriType = '';
         if (newExpression.type.desugaredQualType) {
-            oriType = newExpression.type.desugaredQualType;
+            oriType = newExpression.type.desugaredQualType.replace(BuiltinCxx.ANONYMOUS_NAMESPACE_REF, '');
         } else if (newExpression.type.qualType) {
             oriType = newExpression.type.qualType;
         } else if (newExpression.code) {
@@ -2952,7 +2966,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             return undefined;
         }
         // Scenario: using value_type_t = typename T::value_type;
-        let outerObj = ModelUtils.findSymbolInFileWithName(outerTemplateRefName, this.declaringMethod.getDeclaringArkClass());
+        let outerObj = CxxModelUtils.findSymbolInFileWithName(outerTemplateRefName, this.declaringMethod.getDeclaringArkClass());
         if (outerObj instanceof AliasType && templateRefNodes[0].referencedDecl?.alias?.declCode?.includes(BuiltinCxx.TYPENAME_KEYWORD) &&
             realGenericType instanceof ClassType) {
             const valueType = realGenericType.getRealGenericTypes()?.[0] ?? realGenericType;
@@ -2980,7 +2994,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             return fieldType;
         }
         if (fieldType instanceof ClassType) {
-            const fieldClass = ModelUtils.findSymbolInFileWithName(refNodes[0].code, this.declaringMethod.getDeclaringArkClass());
+            const fieldClass = CxxModelUtils.findSymbolInFileWithName(refNodes[0].code, this.declaringMethod.getDeclaringArkClass());
             if (fieldClass instanceof ArkClass) {
                 return this.buildTypeFromClassTypeMember(refNodes.slice(1), fieldClass);
             }

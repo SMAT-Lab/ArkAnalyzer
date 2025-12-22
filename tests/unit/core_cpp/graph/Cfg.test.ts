@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { BasicBlock, FileUtils, Scene, SceneConfig } from '../../../../src';
+import { BasicBlock, FileUtils, Scene, SceneConfig, ArkNamespace } from '../../../../src';
 import { Language } from '../../../../src/core/model/ArkFile';
 import { assert, describe, expect, it, vi } from 'vitest';
 import path from 'path';
@@ -431,7 +431,9 @@ describe('namespace Test', () => {
         const scene = buildScene('namespace');
         scene.inferTypes();
         testBlocks(scene, 'namespace.cpp', 'Test', NAMESPACE_EXPECT.NAMESPACE_CASE1.blocks);
-        testNamespaceClasses(scene, 'namespace.cpp', 'School', NAMESPACE_EXPECT.NAMESPACE_SCHOOL_EXPECT.blocks);
+        testNamespaceClasses(scene, 'namespace.cpp', 'School', NAMESPACE_EXPECT.NAMESPACE_SCHOOL_EXPECT);
+        testNamespaceClasses(scene, 'namespace.cpp', '%AN0', NAMESPACE_EXPECT.NAMESPACE_AN0_EXPECT);
+        testBlocks(scene, 'namespace.cpp', 'TestAnonymousNamespace', NAMESPACE_EXPECT.NAMESPACE_TEST_ANONYMOUS_NAMESPACE.blocks);
     });
 });
 
@@ -573,26 +575,39 @@ function getNapiIncludeDirs(): string[] {
     ];
 }
 
-function testNamespaceClasses(scene: Scene, filePath: string, namespaceName: string, expectBlocks: any): void {
+function testNamespaceClasses(scene: Scene, filePath: string, namespaceName: string, expectIR: any, namespace?: ArkNamespace): void {
     const arkFile = scene.getFiles().find(file => file.getName().endsWith(filePath));
-    const arkNamespace = arkFile?.getNamespaces().find(ns => ns.getName() === namespaceName);
+    const arkNamespace = namespace ? namespace : arkFile?.getNamespaces().find(ns => ns.getName() === namespaceName);
 
     if (!arkNamespace) {
         throw new Error(`Namespace ${namespaceName} not found in file ${filePath}`);
     }
 
-    const namespaceBlockMap = new Map<string, any>();
-    for (const classBlock of expectBlocks) {
-        namespaceBlockMap.set(classBlock.className, classBlock);
+    const namespaceClassBlockMap = new Map<string, any>();
+    for (const classBlock of expectIR.classBlocks) {
+        namespaceClassBlockMap.set(classBlock.className, classBlock);
     }
-
     // Check each class under the namespace
-    arkNamespace.getClasses().forEach(arkClass => {
-        const expectedClassData = namespaceBlockMap.get(arkClass.getName());
+    testClassInNamespace(arkNamespace, namespaceClassBlockMap);
+
+    const nestedNamspaceBlockMap = new Map<string, any>();
+    for (const nsBlock of expectIR.nestedNamespaces) {
+        nestedNamspaceBlockMap.set(nsBlock.namespaceName, nsBlock);
+    }
+    // check each nested namespace in the namespace
+    arkNamespace.getNamespaces().forEach(namespace => {
+        const nsName = namespace.getName();
+        testNamespaceClasses(scene, filePath, nsName, nestedNamspaceBlockMap.get(nsName), namespace);
+    })
+}
+
+function testClassInNamespace(ns: ArkNamespace, nsExpectClassMap: Map<string, any>): void{
+    // Check each class under the namespace
+    ns.getClasses().forEach(arkClass => {
+        const expectedClassData = nsExpectClassMap.get(arkClass.getName());
         if (!expectedClassData) {
             throw new Error(`Expected class data for ${arkClass.getName()} not found`);
         }
-
         // 1. Check class inheritance relationships
         const heritageClasses = new Set<string>();
         arkClass.getAllHeritageClasses()?.forEach(heritageClass => {

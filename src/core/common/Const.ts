@@ -53,3 +53,6 @@ export const CONSTRUCTORFUCNNAME = 'constructor';
 export const POSTMESSAGEFUNCNAME = 'postMessage';
 export const POSTMESSAGEWITHSHAREDSENDABLEFUNCNAME = 'postMessageWithSharedSendable';
 export const ONMESSAGEFUNCNAME = 'onmessage';
+
+// ArkNamespace const
+export const ANONYMOUS_NAMESPACE_PREFIX = NAME_PREFIX + 'AN';

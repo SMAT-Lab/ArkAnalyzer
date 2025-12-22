@@ -69,7 +69,7 @@ import { ClassSignature } from '../model/ArkSignature';
 import { ImportInfo } from '../model/ArkImport';
 import { ArkField } from '../model/ArkField';
 import { Scene } from '../../Scene';
-import { setTs2CxxFuncMapOfClass } from '../../cpp_frontend/common/ModelUtils';
+import { setTs2CxxFuncMapOfClass, CxxModelUtils } from '../../cpp_frontend/common/ModelUtils';
 import { PointerType, ReferenceType } from '../../cpp_frontend/base/Type';
 import { IRInference as CxxIRInference} from '../../cpp_frontend/common/IRInference';
 import { TypeInference as CxxTypeInference } from '../../cpp_frontend/common/TypeInference';
@@ -979,6 +979,19 @@ export class CxxInstanceInvokeExprInference extends InstanceInvokeExprInference 
         const methodName = this.getMethodName(value, arkMethod);
         const result = InstanceInvokeExprInference.inferInvokeExpr(baseType, value, arkMethod, methodName) ??
             CxxTypeInference.inferMethodFromImportNamespace(baseType, value, arkMethod, methodName);
+
+        if (!result && baseType instanceof AnnotationNamespaceType) {
+            const namespace = arkMethod.getDeclaringArkFile().getScene().getNamespace(baseType.getNamespaceSignature());
+            if (namespace) {
+                const foundMethod = CxxModelUtils.findPropertyInNamespace(methodName, namespace);
+                if (foundMethod instanceof ArkMethod) {
+                    let signature = foundMethod.matchMethodSignature(value.getArgs());
+                    CxxTypeInference.inferSignatureReturnType(signature, foundMethod);
+                    value.setMethodSignature(signature);
+                    return new ArkStaticInvokeExpr(signature, value.getArgs(), value.getRealGenericTypes());
+                }
+            }
+        }
         return !result || result === value ? undefined : result;
     }
 

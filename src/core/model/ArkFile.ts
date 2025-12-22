@@ -80,6 +80,8 @@ export class ArkFile {
 
     private anonymousClassNumber: number = 0;
 
+    private anonymousNamespaceNumber: number = 0;
+
     private ast: ts.SourceFile | null = null;
 
     constructor(language: Language) {
@@ -374,6 +376,10 @@ export class ArkFile {
 
     public getAnonymousClassNumber(): number {
         return this.anonymousClassNumber++;
+    }
+
+    public getAnonymousNamespaceNumber(): number {
+        return this.anonymousNamespaceNumber++;
     }
 
     public getAST(): ts.SourceFile | null {

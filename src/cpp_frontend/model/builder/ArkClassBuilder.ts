@@ -171,7 +171,7 @@ function genClassName(declaringName: string, cls: ArkClass, declaring?: ArkMetho
     }
     let suffix: string = '';
     if (declaring instanceof ArkClass) {
-        suffix = ANONYMOUS_CLASS_DELIMITER + declaring.getName() + '.';
+        suffix = ANONYMOUS_CLASS_DELIMITER + declaring.getName();
     } else {
         suffix = declaring ? ANONYMOUS_CLASS_DELIMITER + declaring.getDeclaringArkClass().getName() + '.' + declaring.getName() : '';
     }

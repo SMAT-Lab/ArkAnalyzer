@@ -176,7 +176,7 @@ export class IRInference {
     public static inferStaticInvokeExprByMethodName(methodName: string, arkMethod: ArkMethod, expr: AbstractInvokeExpr): AbstractInvokeExpr {
         const arkClass = arkMethod.getDeclaringArkClass();
         const arkExport =
-            ModelUtils.getStaticMethodWithName(methodName, arkClass) ??
+            CxxModelUtils.getStaticMethodWithName(methodName, arkClass) ??
             arkMethod.getFunctionLocal(methodName) ??
             ModelUtils.findDeclaredLocal(new Local(methodName), arkMethod) ??
             CxxModelUtils.getArkExportInImportInfoWithName(methodName, arkClass.getDeclaringArkFile(), arkClass) ??
@@ -454,7 +454,7 @@ export class IRInference {
         } else if (typeWithoutPtrOrRef instanceof AnnotationNamespaceType) {
             const namespace = scene.getNamespace(typeWithoutPtrOrRef.getNamespaceSignature());
             if (namespace) {
-                const foundMethod = ModelUtils.findPropertyInNamespace(methodName, namespace);
+                const foundMethod = CxxModelUtils.findPropertyInNamespace(methodName, namespace);
                 if (foundMethod instanceof ArkMethod) {
                     let signature = foundMethod.matchMethodSignature(expr.getArgs());
                     TypeInference.inferSignatureReturnType(signature, foundMethod);

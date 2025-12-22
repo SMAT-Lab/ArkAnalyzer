@@ -21,15 +21,22 @@ import { getFileAbsPath } from '../../utils/FileUtils';
 import path from 'path';
 import { ImportInfo } from '../../core/model/ArkImport';
 import { ArkMethod } from '../../core/model/ArkMethod';
-import { ArkClass } from '../../core/model/ArkClass';
+import { ArkClass, ClassCategory } from '../../core/model/ArkClass';
 import { Value } from '../../core/base/Value';
 import { Local } from '../../core/base/Local';
 import { StringConstant } from '../../core/base/Constant';
-import { INSTANCE_INIT_METHOD_NAME, STATIC_INIT_METHOD_NAME, TEMP_LOCAL_PREFIX } from '../../core/common/Const';
+import {
+    ANONYMOUS_NAMESPACE_PREFIX,
+    DEFAULT_ARK_CLASS_NAME,
+    INSTANCE_INIT_METHOD_NAME,
+    STATIC_INIT_METHOD_NAME,
+    TEMP_LOCAL_PREFIX,
+} from '../../core/common/Const';
 import { FunctionType } from '../../core/base/Type';
 import { ArkNamespace } from '../../core/model/ArkNamespace';
-import { findArkExport, ModelUtils } from '../../core/common/ModelUtils';
+import { findArkExport } from '../../core/common/ModelUtils';
 import { ArkField } from '../../core/model/ArkField';
+import { TypeInference } from '../../core/common/TypeInference';
 
 // Common C++standard library header files (excluding the .h suffix)
 const CXX_STD_HEADERS = new Set([
@@ -378,7 +385,7 @@ export class CxxModelUtils {
             const imNS = imArkExport as ArkNamespace;
             // using namespace xxx
             if (im.getImportType() === 'NamespaceImport') {
-                arkExport = ModelUtils.findPropertyInNamespace(name, imNS);
+                arkExport = CxxModelUtils.findPropertyInNamespace(name, imNS);
                 if (arkExport) {
                     return arkExport;
                 }
@@ -387,7 +394,7 @@ export class CxxModelUtils {
             if (declNamespace?.getName() !== imNS.getName()) {
                 continue;
             }
-            arkExport = ModelUtils.findPropertyInNamespace(name, imNS);
+            arkExport = CxxModelUtils.findPropertyInNamespace(name, imNS);
             if (arkExport) {
                 return arkExport;
             }
@@ -432,6 +439,118 @@ export class CxxModelUtils {
         const objectClass = arkClass.getDeclaringArkFile().getScene().getSdkGlobal('Object');
         if (objectClass instanceof ArkClass && arkClass !== objectClass) {
             return this.findPropertyInClass(name, objectClass);
+        }
+        return null;
+    }
+
+    public static getClassFromAnonymousNamespaceByName(className: string, declFile: ArkFile): ArkClass | null {
+        const anonyNamespaces = declFile.getNamespaces().filter(ns => ns.getName().startsWith(ANONYMOUS_NAMESPACE_PREFIX));
+        for (const anonyNamespace of anonyNamespaces) {
+            const matchedClass = anonyNamespace.getClassWithName(className);
+            if (matchedClass) {
+                return matchedClass;
+            }
+        }
+        return null;
+    }
+
+    public static getStaticMethodWithName(methodName: string, thisClass: ArkClass): ArkMethod | null {
+        const thisNamespace = thisClass.getDeclaringArkNamespace();
+        if (thisNamespace) {
+            const defaultClass = thisNamespace.getClassWithName(DEFAULT_ARK_CLASS_NAME);
+            if (defaultClass) {
+                const method = defaultClass.getMethodWithName(methodName);
+                if (method) {
+                    return method;
+                }
+            }
+        }
+        return this.getStaticMethodInFileWithName(methodName, thisClass.getDeclaringArkFile());
+    }
+
+    public static getStaticMethodInFileWithName(methodName: string, arkFile: ArkFile): ArkMethod | null {
+        const anonymousNamespaces: ArkNamespace[] = this.getAccessibleAnonNamespacesInFile(arkFile);
+        const allDefaultClasses: ArkClass[] = [];
+        allDefaultClasses.push(arkFile.getDefaultClass());
+        anonymousNamespaces.forEach(ns => {
+            allDefaultClasses.push(ns.getDefaultClass());
+        });
+        for (const defaultClass of allDefaultClasses) {
+            let method = defaultClass.getMethodWithName(methodName);
+            if (method) {
+                return method;
+            }
+        }
+        return null;
+    }
+
+    public static getAccessibleAnonNamespacesInFile(file: ArkFile, namespace?: ArkNamespace): ArkNamespace[] {
+        const anonymousNamespaces: ArkNamespace[] = [];
+        const traversableNamespace = namespace ? namespace.getNamespaces() : file.getNamespaces();
+        for (const ns of traversableNamespace) {
+            if (ns.getName().startsWith(ANONYMOUS_NAMESPACE_PREFIX)) {
+                anonymousNamespaces.push(ns);
+                anonymousNamespaces.push(...this.getAccessibleAnonNamespacesInFile(file, ns));
+            }
+        }
+        return anonymousNamespaces;
+    }
+
+    public static findPropertyInNamespace(name: string, namespace: ArkNamespace): ArkExport | undefined {
+        const allAccessibleNamespaces = [namespace];
+        allAccessibleNamespaces.push(...this.getAccessibleAnonNamespacesInFile(namespace.getDeclaringArkFile(), namespace));
+        for (const ns of allAccessibleNamespaces) {
+            const property = ns.getDefaultClass()?.getMethodWithName(name) ??
+                findArkExport(ns.getExportInfoBy(name)) ??
+                ns.getClassWithName(name) ??
+                ns.getNamespaceWithName(name) ??
+                ns.getDefaultClass()?.getDefaultArkMethod()?.getBody()?.getAliasTypeByName(name) ??
+                ns.getDefaultClass()?.getDefaultArkMethod()?.getBody()?.getLocals()?.get(name);
+            if (property) {
+                return property;
+            }
+        }
+        return undefined;
+    }
+
+    public static findSymbolInFileWithName(symbolName: string, arkClass: ArkClass, onlyType: boolean = false): ArkExport | null {
+        // find symbol from enum value
+        if (arkClass.getCategory() === ClassCategory.ENUM) {
+            const field = arkClass.getStaticFieldWithName(symbolName);
+            if (field) {
+                return new Local(symbolName, TypeInference.getEnumValueType(field) ?? field.getType());
+            }
+        }
+        // look up symbol from inner to outer
+        let currNamespace: ArkNamespace | null | undefined = arkClass.getDeclaringArkNamespace();
+        let result: ArkExport | null | undefined;
+        while (currNamespace) {
+            result = this.findPropertyInNamespace(symbolName, currNamespace);
+            if (result) {
+                return result;
+            }
+            currNamespace = currNamespace.getDeclaringArkNamespace();
+        }
+        const file = arkClass.getDeclaringArkFile();
+        result =
+            file.getClassWithName(symbolName) ??
+            file.getDefaultClass().getDefaultArkMethod()?.getBody()?.getAliasTypeByName(symbolName) ??
+            file.getDefaultClass()?.getDefaultArkMethod()?.getBody()?.getLocals().get(symbolName);
+        if (!result && !onlyType) {
+            result = file.getNamespaceWithName(symbolName) ??
+                file.getDefaultClass().getMethodWithName(symbolName);
+
+        }
+        if (result) {
+            return result;
+        }
+
+        const allAnonyNamespaces = this.getAccessibleAnonNamespacesInFile(file);
+        for (const ns of allAnonyNamespaces) {
+            result = this.findPropertyInNamespace(symbolName, ns);
+            if (result) {
+                return result;
+            }
         }
         return null;
     }

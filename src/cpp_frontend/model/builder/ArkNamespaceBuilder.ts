@@ -23,7 +23,7 @@ import { ArkClass } from '../../../core/model/ArkClass';
 import { ArkMethod } from '../../../core/model/ArkMethod';
 import { ClassSignature, NamespaceSignature } from '../../../core/model/ArkSignature';
 import { CxxAstNode, getNodeStartLineAndCol } from '../../ast/ArkCxxAstNode';
-import { DEFAULT_ARK_CLASS_NAME } from '../../../core/common/Const';
+import { ANONYMOUS_NAMESPACE_PREFIX, DEFAULT_ARK_CLASS_NAME } from '../../../core/common/Const';
 import { buildDefaultArkMethodFromArkClass } from './ArkMethodBuilder';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkNamespaceBuilder');
@@ -79,7 +79,7 @@ export function buildArkNamespace(node: CxxAstNode, declaringInstance: ArkFile |
         ns.setDeclaringArkFile(declaringInstance.getDeclaringArkFile());
     }
     ns.setDeclaringInstance(declaringInstance);
-    const namespaceName = node.name;
+    const namespaceName = genNamespaceName(node.name ? node.name : '', declaringInstance);
     const namespaceSignature = new NamespaceSignature(
         namespaceName,
         ns.getDeclaringArkFile().getFileSignature(),
@@ -103,6 +103,14 @@ export function buildArkNamespace(node: CxxAstNode, declaringInstance: ArkFile |
     } else {
         logger.warn('JSDocNamespaceDeclaration found.');
     }
+}
+
+function genNamespaceName(name: string, declaringInstance: ArkFile | ArkNamespace): string {
+    if (!name) {
+        const num = declaringInstance.getAnonymousNamespaceNumber();
+        name = ANONYMOUS_NAMESPACE_PREFIX + num;
+    }
+    return name;
 }
 
 function processUsingDeclInNamespace(usingDeclNode: CxxAstNode, namespace: ArkNamespace): void {
@@ -141,7 +149,7 @@ function buildNamespaceMembers(node: CxxAstNode, namespace: ArkNamespace, source
     const statements = node.inner;
     statements.forEach((child: CxxAstNode) => {
         switch (child.kind) {
-            case 'Namespace': {
+            case 'NamespaceDecl': {
                 let childNs: ArkNamespace = new ArkNamespace();
                 childNs.setDeclaringArkNamespace(namespace);
                 childNs.setDeclaringArkFile(namespace.getDeclaringArkFile());

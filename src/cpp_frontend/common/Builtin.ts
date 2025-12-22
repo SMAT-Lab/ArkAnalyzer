@@ -39,6 +39,7 @@ export class BuiltinCxx {
     public static CXXSTD = 'std';
     public static CXXSTDREF = 'std::';
     public static TYPENAME_KEYWORD = 'typename ';
+    public static ANONYMOUS_NAMESPACE_REF = '(anonymous namespace)::';
 
     public static BUILT_IN_CLASSES = this.buildBuiltInClasses();
 

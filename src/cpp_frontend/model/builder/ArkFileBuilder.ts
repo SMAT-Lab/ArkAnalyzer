@@ -173,7 +173,6 @@ function buildArkFile(arkFile: ArkFile, astRoot: CxxAstNode): void {
                 buildArkMethodFromCxxMethod(child, arkFile, astRoot);
                 break;
             case 'NamespaceDecl':
-            case 'Namespace':
                 let ns: ArkNamespace = new ArkNamespace();
                 ns.setDeclaringArkFile(arkFile);
                 buildArkNamespace(child, arkFile, ns, astRoot);

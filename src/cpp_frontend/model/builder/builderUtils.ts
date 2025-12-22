@@ -34,6 +34,7 @@ import { Decorator } from '../../../core/base/Decorator';
 import { buildArkMethodFromArkClass } from './ArkMethodBuilder';
 import { ArkFile } from '../../../core/model/ArkFile';
 import { BuiltinCxx } from '../../common/Builtin';
+import { CxxModelUtils } from '../../common/ModelUtils';
 
 const FUNC_PTR_REGEX = /\(\s*\*\s*(?:\[\s*[^]]*\s*\])?\s*\)\s*\(\s*[^)]*\s*\)/;
 
@@ -316,16 +317,10 @@ export function isCXXSTLContainer(qualType: string):boolean {
     return STLContainerPtn.test(qualType);
 }
 
-export function isFuncInClassOrNamespace(callExpr: CxxAstNode): boolean {
-    let callerNode = callExpr;
-    while (callerNode.inner.length !== 0) {
-        let innerNode = callerNode.inner[0];
-        if ((innerNode.kind === 'NamespaceRef' && innerNode.name !== 'std') || innerNode.kind === 'TypeRef') {
-            return true;
-        }
-        callerNode = innerNode;
-    }
-    return false;
+export function isFuncInClassOrNamespace(callNode: CxxAstNode): boolean {
+    return callNode.kind === 'DeclRefExpr' && callNode.inner.length === 0 &&
+        callNode.code.includes('::') && !callNode.code.startsWith(BuiltinCxx.CXXSTDREF);
+
 }
 
 export function buildTypeFromDerivedType(preStr: string, arkInstance: ArkMethod | ArkClass | ArkField | undefined): Type {
@@ -347,7 +342,9 @@ export function buildTypeFromDerivedType(preStr: string, arkInstance: ArkMethod 
     let arkClass: ArkClass | null = null;
     if (arkInstance instanceof ArkMethod || arkInstance instanceof ArkClass) {
         const file = arkInstance.getDeclaringArkFile?.();
-        arkClass = file?.getClassWithName?.(typeStr) ?? getAnonymousClassByTypeCode(typeStr, file);
+        arkClass = file?.getClassWithName?.(typeStr) ??
+            getAnonymousClassByTypeCode(typeStr, file) ??
+            CxxModelUtils.getClassFromAnonymousNamespaceByName(typeStr, file);
     }
     if (arkClass) {
         return new ClassType(arkClass.getSignature(), innerType);
