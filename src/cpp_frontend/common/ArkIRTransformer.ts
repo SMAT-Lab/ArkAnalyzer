@@ -76,7 +76,7 @@ import { BuiltinCxx } from './Builtin';
 import { ArkSignatureBuilder } from '../../core/model/builder/ArkSignatureBuilder';
 import { ArkIRTransformer, DummyStmt } from '../../core/common/ArkIRTransformer';
 import { AbstractTypeExpr } from '../../core/base/TypeExpr';
-import { buildModifiers, buildTypeParameters } from '../model/builder/builderUtils';
+import { buildModifiers, buildTypeParameters, cxxNode2Type } from '../model/builder/builderUtils';
 import { ModelUtils } from '../../core/common/ModelUtils';
 import { ArkClass } from '../../core/model/ArkClass';
 import { buildNormalArkClassFromArkMethod } from '../model/builder/ArkClassBuilder';
@@ -232,6 +232,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
             case 'TypeAliasTemplateDecl':
                 stmts = this.typeDefDeclToStmts(node);
                 break;
+            case 'EnumDecl':
             case 'CXXRecordDecl':
                 stmts = this.cxxClassDeclarationToStmts(node);
                 break;
@@ -254,7 +255,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
             cls.setDeclaringArkNamespace(declaringArkNamespace);
         }
         cls.setDeclaringArkFile(this.declaringMethod.getDeclaringArkFile());
-        buildNormalArkClassFromArkMethod(node, cls, this.cxxSourceFile);
+        buildNormalArkClassFromArkMethod(node, cls, this.cxxSourceFile, this.declaringMethod);
         return [];
     }
 
@@ -266,11 +267,11 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         }
         const typeNode: CxxAstNode | undefined =
             Array.isArray(typeDefDecl.inner) ? typeDefDecl.inner[0] : undefined;
-        const rightOp = typeNode?.code ?? typeNode?.name ?? 'int'; // If there is no type code, use int type as fallback
+        const rightOp = typeAliasDeclaration.type.desugaredQualType ? typeAliasDeclaration.type.desugaredQualType : typeAliasDeclaration.type.qualType; // If there is no type code, use int type as fallback
 
         let rightType;
         //  Identify the tagUsed attribute to determine struct, union, and enum nodes
-        rightType = this.ArkCxxValueTransformer.cxxResolveTypeNode(typeNode);
+        rightType = cxxNode2Type(rightOp, undefined);
 
         if (rightType instanceof AbstractTypeExpr) {
             rightType = rightType.getType();

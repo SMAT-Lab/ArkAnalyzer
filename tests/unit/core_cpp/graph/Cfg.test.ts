@@ -535,6 +535,7 @@ describe('supplementary', () => {
         scene.inferTypes();
         testBlocks(scene, 'supplementary.cpp', 'Case1', SUPPLEMENTARY.SUP_CASE1.blocks);
         testBlocks(scene, 'supplementary.cpp', 'PostAdd', SUPPLEMENTARY.POST_AND.blocks);
+        testBlocks(scene, 'supplementary.cpp', 'DeclStmt', SUPPLEMENTARY.DECLSTMT.blocks);
     });
     it('case1: trap', () => {
         const scene = buildScene('trap');

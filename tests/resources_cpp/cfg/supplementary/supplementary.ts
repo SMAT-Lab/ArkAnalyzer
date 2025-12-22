@@ -120,3 +120,34 @@ export const POST_AND = {
         },
     ],
 };
+
+export const DECLSTMT = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @supplementary/supplementary.cpp: %dflt',
+                'type @supplementary/supplementary.cpp: %dflt.DeclStmt()#myInt = int',
+                'type @supplementary/supplementary.cpp: %dflt.DeclStmt()#A = int',
+                'b = undefined',
+                'b = 2',
+                'a = b',
+                'c = undefined',
+                'd = 4',
+                'x = 3',
+                'i = 0',
+                'j = 0',
+            ],
+            preds: [],
+            succes: [1],
+        },
+        { id: 1, stmts: ['if i < 5'], preds: [0, 2], succes: [2, 3] },
+        {
+            id: 2,
+            stmts: ['j = j + 1', 'i = i + 1'],
+            preds: [1],
+            succes: [1],
+        },
+        { id: 3, stmts: ['return'], preds: [1], succes: [] },
+    ],
+};

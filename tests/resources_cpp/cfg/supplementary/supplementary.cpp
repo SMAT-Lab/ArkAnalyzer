@@ -71,3 +71,18 @@ void PostAdd()
     int idx = ONE;
     arr[idx++] = ONE;
 }
+
+void DeclStmt()
+{
+    using myInt = int;
+    typedef int A;
+    int b;
+    int a = b = TWO;
+    int c,d = FOUR;
+    const int x = THREE;
+    enum E {C ,D};
+    struct S { int xx ;};
+    for (int i = 0, j = 0; i < FIVE; i++){
+        j++;
+    }
+}

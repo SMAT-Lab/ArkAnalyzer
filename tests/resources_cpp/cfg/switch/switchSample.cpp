@@ -372,7 +372,8 @@ void ProcessValue(T value)
     }
 }
 
-int CaseWithInit() {
+int CaseWithInit()
+{
     int value = CONST_TWO;
 
     switch(int y = value * CONST_TWO; y) {
