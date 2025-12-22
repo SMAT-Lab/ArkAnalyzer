@@ -653,13 +653,17 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
 
     /** Convert C++ switch statements to ValueAndStmts */
     public cxxSwitchStatementToValueAndStmts(switchStatement: CxxAstNode): ValueAndStmts[] {
+        // switchNode.inner[length - 2] is the value
         const valueAndStmtsOfSwitchAndCases: ValueAndStmts[] = [];
         const exprStmts: Stmt[] = [];
+        for (let i = 0; i < switchStatement.inner.length - 2; i++) {
+            this.cxxNodeToValueAndStmts(switchStatement.inner[i]).stmts.forEach(stmt => exprStmts.push(stmt));
+        }
         let {
             value: exprValue,
             valueOriginalPositions: exprPositions,
             stmts: exprTempStmts,
-        } = this.cxxNodeToValueAndStmts(switchStatement.inner[0]);
+        } = this.cxxNodeToValueAndStmts(switchStatement.inner[switchStatement.inner.length - 2]);
         exprTempStmts.forEach(stmt => exprStmts.push(stmt));
         if (IRUtils.moreThanOneAddress(exprValue)) {
             ({
@@ -674,8 +678,8 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
             valueOriginalPositions: exprPositions,
             stmts: exprStmts,
         });
-
-        for (const clause of switchStatement.inner[1].inner) {
+        // switchNode.inner[length - 1] is the cases
+        for (const clause of switchStatement.inner[switchStatement.inner.length - 1].inner) {
             if (clause.kind.toString() === 'CaseStmt') {
                 const clauseStmts: Stmt[] = [];
                 let {

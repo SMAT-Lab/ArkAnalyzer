@@ -120,7 +120,7 @@ describe('CfgTest', () => {
         testBlocks(scene, 'switchSample.cpp', 'ProcessChoice', SWITCH_EXPECT.SWITCH_EXPECT_PROCESS_CHOICE.blocks);
         testBlocks(scene, 'switchSample.cpp', 'ProcessValue', SWITCH_EXPECT.SWITCH_EXPECT_PROCESS_VALUE.blocks);
         testBlocks(scene, 'switchSample.cpp', 'TestConstexprSwitch', SWITCH_EXPECT.SWITCH_EXPECT_TEST_CONST.blocks);
-
+        testBlocks(scene, 'switchSample.cpp', 'CaseWithInit', SWITCH_EXPECT.SWITCH_EXPECT_WITH_INIT.blocks);
     });
 
     it('case4: loop statement', () => {

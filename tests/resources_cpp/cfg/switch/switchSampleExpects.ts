@@ -820,3 +820,33 @@ export const SWITCH_EXPECT_TEST_CONST = {
         },
     ],
 };
+
+export const SWITCH_EXPECT_WITH_INIT = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @switch/switchSample.cpp: %dflt',
+                'value = 2',
+                'y = value * 2',
+                'if y == 2',
+            ],
+            preds: [],
+            succes: [1, 4],
+        },
+        {
+            id: 1,
+            stmts: ['staticinvoke <@%unk/%unk: .operator<<()>(cout, \'2\')'],
+            preds: [0],
+            succes: [3],
+        },
+        {
+            id: 2,
+            stmts: ['staticinvoke <@%unk/%unk: .operator<<()>(cout, \'4\')'],
+            preds: [4],
+            succes: [3],
+        },
+        { id: 3, stmts: ['return 0'], preds: [1, 2, 4], succes: [] },
+        { id: 4, stmts: ['if y == 4'], preds: [0], succes: [2, 3] },
+    ],
+};

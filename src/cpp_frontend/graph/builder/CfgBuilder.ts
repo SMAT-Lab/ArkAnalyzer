@@ -413,15 +413,16 @@ export class CfgBuilder {
         // When cpp parses case: without statements and no break,
         // it will treat the following case/default as inner nodes of that case,
         // so the original ast needs to be split into individual cases and defaults
+        let length = switchNode.inner.length;
         let tempClauses: CxxAstNode[] = [];
-        for (let node of switchNode.inner[1].inner) {
+        for (let node of switchNode.inner[length - 1].inner) {
             this.sliceCaseDefaultNode(node, tempClauses);
         }
         // When there are no case brackets, case and break/continue are separate nodes in cpp,
         // here we add the break/continue nodes as inner members of case or default nodes
         return tempClauses.reduce((acc: CxxAstNode[], curr: CxxAstNode, idx: number, arr: CxxAstNode[]) => {
             if (['CaseStmt', 'DefaultStmt'].includes(curr.kind)) {
-                curr.parent = switchNode.inner[1];
+                curr.parent = switchNode.inner[length - 1];
                 // Reconstruct the syntax tree structure
                 while (idx + 1 < arr.length && !['CaseStmt', 'DefaultStmt'].includes(arr[idx + 1].kind)) {
                     arr[idx + 1].parent = curr;
@@ -435,6 +436,7 @@ export class CfgBuilder {
     }
 
     ASTNodeSwitchStatement(c: CxxAstNode, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
+        // In the switchNode node, inner [length-1] is Case related and inner [length-2] is a switch variable, which may be preceded by a declaration statement
         this.breakin = 'switch';
         let switchstm = new SwitchStatementBuilder('switchStatement', '', c, scopeID);
         this.judgeLastType(switchstm, lastStatement);
@@ -444,8 +446,8 @@ export class CfgBuilder {
         switchExit.lasts.add(switchstm);
         switchstm.code = 'switch (' + c.inner[0].code + ')';
         let lastCaseExit: StatementBuilder | null = null;
-        c.inner[1].inner = this.getCaseDefClauseAsts(c);
-        const astNodeCase = c.inner[1];
+        c.inner[c.inner.length - 1].inner = this.getCaseDefClauseAsts(c);
+        const astNodeCase = c.inner[c.inner.length - 1];
         for (let i = 0; i < astNodeCase.inner.length; i++) {
             const clause = astNodeCase.inner[i];
             let casestm: StatementBuilder;

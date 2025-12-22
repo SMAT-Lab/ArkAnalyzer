@@ -198,7 +198,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         'UnexposedExpr': this.processInnerNodeToValueAndStmts,
         'UnresolvedLookupExpr': this.cxxIdentifierToValueAndStmts,
         'UserDefinedLiteral': this.userDefinedLiteralToValueAndStmts,
-        'VarDecl': this.processInnerNodeToValueAndStmts
+        'VarDecl': this.cxxVariableDeclarationToValueAndStmts
     };
 
     constructor(arkIRTransformer: ArkCxxIRTransformer, sourceFile: CxxTranslationUnit, declaringMethod: ArkMethod) {
