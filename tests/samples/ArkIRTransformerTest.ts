@@ -25,7 +25,6 @@ import {
     Stmt,
 } from '../../src';
 import { ArkMetadataKind, CommentsMetadata } from '../../src/core/model/ArkMetadata';
-import { ArkIRMethodPrinter } from '../../src/save/arkir/ArkIRMethodPrinter';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.TOOL, 'ArkIRTransformerTest');
 Logger.configure('out/ArkIRTransformerTest.log', LOG_LEVEL.INFO, LOG_LEVEL.INFO, false);
@@ -159,7 +158,7 @@ class ArkIRTransformerTest {
         const sceneConfig: SceneConfig = new SceneConfig();
         sceneConfig.buildFromProjectDir(projectDir);
         const scene = new Scene();
-        scene.buildSceneFromProjectDir(sceneConfig);
+        scene.buildSceneFromFiles(sceneConfig);
 
         const printerBuilder = new PrinterBuilder('out');
         for (const arkFile of scene.getFiles()) {
@@ -171,25 +170,16 @@ class ArkIRTransformerTest {
     public printIR(): void {
         logger.info('printIR start');
 
-        const configJsonPath = 'tests/resources/arkIRTransformer/mainModule';
+        const projectPath = 'tests/resources/arkIRTransformer/mainModule';
         const sceneConfig: SceneConfig = new SceneConfig();
-        sceneConfig.buildFromProjectDir(configJsonPath);
+        sceneConfig.buildFromProjectDir(projectPath);
         const scene = new Scene();
-        scene.buildSceneFromProjectDir(sceneConfig);
+        scene.buildSceneFromFiles(sceneConfig);
         scene.inferTypes();
 
         const printerBuilder = new PrinterBuilder('out');
         for (const arkFile of scene.getFiles()) {
             printerBuilder.dumpToIR(arkFile);
-
-            for (const arkClass of ModelUtils.getAllClassesInFile(arkFile)) {
-                logger.info('========= arkClass:', arkClass.getSignature().toString(), ' =======');
-                for (const arkMethod of arkClass.getMethods(true)) {
-                    logger.info('***** arkMethod: ', arkMethod.getName());
-                    const printer = new ArkIRMethodPrinter(arkMethod);
-                    logger.info(printer.dump());
-                }
-            }
         }
 
         logger.info('printIR end');
@@ -218,5 +208,5 @@ class ArkIRTransformerTest {
 }
 
 const arkIRTransformerTest = new ArkIRTransformerTest();
-arkIRTransformerTest.printIR();
+arkIRTransformerTest.printCfg();
 

@@ -33,6 +33,9 @@ import { ConditionBuilder } from './ConditionBuilder';
 import { TrapBuilder } from './TrapBuilder';
 import { CONSTRUCTOR_NAME, PROMISE } from '../../common/TSConst';
 import { ModifierType } from '../../model/ArkBaseModel';
+import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
+
+const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'CfgBuilder');
 
 class StatementBuilder {
     type: string;
@@ -164,6 +167,24 @@ export class BlockBuilder {
     constructor(id: number, stmts: StatementBuilder[]) {
         this.id = id;
         this.stmts = stmts;
+    }
+
+    public removePredecessorBlock(block: BlockBuilder): boolean {
+        let index = this.lasts.indexOf(block);
+        if (index < 0) {
+            return false;
+        }
+        this.lasts.splice(index, 1);
+        return true;
+    }
+
+    public removeSuccessorBlock(block: BlockBuilder): boolean {
+        let index = this.nexts.indexOf(block);
+        if (index < 0) {
+            return false;
+        }
+        this.nexts.splice(index, 1);
+        return true;
     }
 }
 
@@ -1354,5 +1375,189 @@ export class CfgBuilder {
                 cfgBlock.addPredecessorBlock(predecessorBlock);
             }
         }
+    }
+
+    public static replaceBlockBuilderAndBasicBlock(blockBuilderToCfgBlock: Map<BlockBuilder, BasicBlock>,
+        oldBlockBuilder: BlockBuilder, newBlockBuilder: BlockBuilder): void {
+        CfgBuilder.replaceBlockBuilder(oldBlockBuilder, newBlockBuilder);
+
+        const oldBasicBlock = blockBuilderToCfgBlock.get(oldBlockBuilder);
+        const newBasicBlock = blockBuilderToCfgBlock.get(newBlockBuilder);
+        if (!oldBasicBlock || !newBasicBlock) {
+            return;
+        }
+        CfgBuilder.replaceBasicBlock(oldBasicBlock, newBasicBlock);
+    }
+
+    public static replaceBlockBuilder(oldBlockBuilder: BlockBuilder, newBlockBuilder: BlockBuilder): void {
+        CfgBuilder.replaceBlockBuilderInPredecessors(oldBlockBuilder, newBlockBuilder);
+        CfgBuilder.replaceBlockBuilderInSuccessors(oldBlockBuilder, newBlockBuilder);
+    }
+
+    public static replaceBlockBuilderInPredecessors(oldBlockBuilder: BlockBuilder,
+        newBlockBuilder: BlockBuilder): void {
+        const predecessors = [...oldBlockBuilder.lasts];
+        for (let predecessorIndex = 0; predecessorIndex < predecessors.length; predecessorIndex++) {
+            const predecessor = predecessors[predecessorIndex];
+            const successorIndex = predecessor.nexts.indexOf(oldBlockBuilder);
+            if (successorIndex !== -1) {
+                predecessor.nexts[successorIndex] = newBlockBuilder;
+                oldBlockBuilder.lasts.splice(predecessorIndex, 1);
+                newBlockBuilder.lasts.push(predecessor);
+            } else {
+                logger.trace(
+                    `replaceBlockBuilderInPredecessors: ${oldBlockBuilder.id} not found in ${predecessor.id}'s successors`);
+            }
+        }
+    }
+
+    public static replaceBlockBuilderInSuccessors(oldBlockBuilder: BlockBuilder, newBlockBuilder: BlockBuilder): void {
+        const successors = [...oldBlockBuilder.nexts];
+        for (let successorIndex = 0; successorIndex < successors.length; successorIndex++) {
+            const successor = successors[successorIndex];
+            const predecessorIndex = successor.lasts.indexOf(oldBlockBuilder);
+            if (predecessorIndex !== -1) {
+                successor.lasts[predecessorIndex] = newBlockBuilder;
+                oldBlockBuilder.nexts.splice(successorIndex, 1);
+                newBlockBuilder.nexts.push(successor);
+            } else {
+                logger.trace(
+                    `replaceBlockBuilderInSuccessors: ${oldBlockBuilder.id} not found in ${successor.id}'s predecessors`);
+            }
+        }
+    }
+
+    public static unlinkPredecessorsOfBlockBuilder(blockBuilder: BlockBuilder): void {
+        const predecessors = [...blockBuilder.lasts];
+        predecessors.forEach(predecessor => {
+            CfgBuilder.unlinkBlockBuilder(predecessor, blockBuilder);
+        });
+    }
+
+    public static unlinkSuccessorsOfBlockBuilder(blockBuilder: BlockBuilder): void {
+        const successors = [...blockBuilder.nexts];
+        successors.forEach(successor => {
+            CfgBuilder.unlinkBlockBuilder(blockBuilder, successor);
+        });
+    }
+
+    public static unlinkBlockBuilder(predecessor: BlockBuilder, successor: BlockBuilder): void {
+        predecessor.removeSuccessorBlock(successor);
+        successor.removePredecessorBlock(predecessor);
+    }
+
+    public static unlinkPredecessorsAndSuccessorsOfBlockBuilder(blockBuilder: BlockBuilder): void {
+        CfgBuilder.unlinkPredecessorsOfBlockBuilder(blockBuilder);
+        CfgBuilder.unlinkSuccessorsOfBlockBuilder(blockBuilder);
+    }
+
+    public static pruneBlockBuilder(blockBuilder: BlockBuilder): boolean {
+        const successors = [...blockBuilder.nexts];
+        if (successors.length > 1) {
+            // can not handle multi successors
+            return false;
+        } else if (successors.length === 1) {
+            CfgBuilder.replaceBlockBuilderInPredecessors(blockBuilder, successors[0]);
+        }
+        CfgBuilder.unlinkPredecessorsAndSuccessorsOfBlockBuilder(blockBuilder);
+        return true;
+    }
+
+    public static replaceBasicBlock(oldBasicBlock: BasicBlock, newBasicBlock: BasicBlock): void {
+        CfgBuilder.replaceBasicBlockInPredecessors(oldBasicBlock, newBasicBlock);
+        CfgBuilder.replaceBasicBlockInSuccessors(oldBasicBlock, [newBasicBlock]);
+    }
+
+    // only 1 to 1
+    public static replaceBasicBlockInPredecessors(oldBasicBlock: BasicBlock, newBasicBlock: BasicBlock): void {
+        const predecessors = [...oldBasicBlock.getPredecessors()];
+        for (const predecessor of predecessors) {
+            const successorIndex = predecessor.getSuccessors().indexOf(oldBasicBlock);
+            if (successorIndex !== -1) {
+                // can not change positon in successors of predecessor
+                predecessor.setSuccessorBlock(successorIndex, newBasicBlock);
+                oldBasicBlock.removePredecessorBlock(predecessor);
+                newBasicBlock.addPredecessorBlock(predecessor);
+            } else {
+                logger.trace(
+                    `replaceBasicBlockInPredecessors: ${oldBasicBlock.getId()} not found in ${predecessor.getId()}'s successors`);
+            }
+        }
+    }
+
+    public static replaceBasicBlockInSuccessors(oldBasicBlock: BasicBlock, newBasicBlocks: BasicBlock[]): void {
+        const successors = [...oldBasicBlock.getSuccessors()];
+        for (const successor of successors) {
+            const predecessorIndex = successor.getPredecessors().indexOf(oldBasicBlock);
+            if (predecessorIndex !== -1) {
+                successor.removePredecessorBlock(oldBasicBlock);
+                oldBasicBlock.removeSuccessorBlock(successor);
+                newBasicBlocks.forEach(newBasicBlock => {
+                    newBasicBlock.addSuccessorBlock(successor);
+                    successor.addPredecessorBlock(newBasicBlock);
+                });
+            } else {
+                logger.trace(
+                    `replaceBasicBlockInSuccessors: ${oldBasicBlock.getId()} not found in ${successor.getId()}'s predecessors`);
+            }
+        }
+    }
+
+    public static linkPredecessorsOfBasicBlock(basicBlock: BasicBlock, predecessors: BasicBlock[]): void {
+        predecessors.forEach(predecessor => {
+            CfgBuilder.linkBasicBlock(predecessor, basicBlock);
+        });
+    }
+
+    public static unlinkPredecessorsOfBasicBlock(basicBlock: BasicBlock): void {
+        const predecessors = [...basicBlock.getPredecessors()];
+        predecessors.forEach(predecessor => {
+            CfgBuilder.unlinkBasicBlock(predecessor, basicBlock);
+        });
+    }
+
+    public static unlinkSuccessorsOfBasicBlock(basicBlock: BasicBlock): void {
+        const successors = [...basicBlock.getSuccessors()];
+        successors.forEach(successor => {
+            CfgBuilder.unlinkBasicBlock(basicBlock, successor);
+        });
+    }
+
+    public static linkSuccessorOfIfBasicBlock(ifBasicBlock: BasicBlock, trueBranchSuccessor: BasicBlock,
+        falseBranchSuccessor: BasicBlock): void {
+        CfgBuilder.linkBasicBlock(ifBasicBlock, trueBranchSuccessor);
+        CfgBuilder.linkBasicBlock(ifBasicBlock, falseBranchSuccessor);
+    }
+
+    public static unlinkPredecessorsAndSuccessorsOfBasicBlock(basicBlock: BasicBlock): void {
+        CfgBuilder.unlinkPredecessorsOfBasicBlock(basicBlock);
+        CfgBuilder.unlinkSuccessorsOfBasicBlock(basicBlock);
+    }
+
+    public static pruneBasicBlock(basicBlock: BasicBlock): boolean {
+        const successors = [...basicBlock.getSuccessors()];
+        if (successors.length > 1) {
+            // can not handle multi successors
+            return false;
+        } else if (successors.length === 1) {
+            CfgBuilder.replaceBasicBlockInPredecessors(basicBlock, successors[0]);
+        }
+        CfgBuilder.unlinkPredecessorsAndSuccessorsOfBasicBlock(basicBlock);
+        return true;
+    }
+
+    public static linkBasicBlock(predecessor: BasicBlock, successor: BasicBlock): void {
+        predecessor.addSuccessorBlock(successor);
+        successor.addPredecessorBlock(predecessor);
+    }
+
+    public static unlinkBasicBlock(predecessor: BasicBlock, successor: BasicBlock): void {
+        predecessor.removeSuccessorBlock(successor);
+        successor.removePredecessorBlock(predecessor);
+    }
+
+    public static linkExceptionalBasicBlock(predecessor: BasicBlock, exceptionalSuccessor: BasicBlock): void {
+        predecessor.addExceptionalSuccessorBlock(exceptionalSuccessor);
+        exceptionalSuccessor.addExceptionalPredecessorBlock(predecessor);
     }
 }
