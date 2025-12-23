@@ -30,7 +30,7 @@ import {
     ANONYMOUS_CLASS_DELIMITER,
     ANONYMOUS_CLASS_PREFIX,
     DEFAULT_ARK_CLASS_NAME,
-    INSTANCE_INIT_METHOD_NAME,
+    INSTANCE_INIT_METHOD_NAME, NESTED_CLASS_METHOD_DELIMITER,
     STATIC_BLOCK_METHOD_NAME_PREFIX,
     STATIC_INIT_METHOD_NAME,
 } from '../../common/Const';
@@ -356,7 +356,7 @@ function genClassName(declaringName: string, cls: ArkClass, declaringMethod?: Ar
         const num = declaringArkNamespace ? declaringArkNamespace.getAnonymousClassNumber() : cls.getDeclaringArkFile().getAnonymousClassNumber();
         declaringName = ANONYMOUS_CLASS_PREFIX + num;
     }
-    const suffix = declaringMethod ? ANONYMOUS_CLASS_DELIMITER + declaringMethod.getDeclaringArkClass().getName() + '.' + declaringMethod.getName() : '';
+    const suffix = declaringMethod ? `${ANONYMOUS_CLASS_DELIMITER}${declaringMethod.getDeclaringArkClass().getName()}${NESTED_CLASS_METHOD_DELIMITER}${declaringMethod.getName()}` : '';
     return declaringName + suffix;
 }
 

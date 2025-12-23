@@ -20,7 +20,7 @@ import { MethodParameter } from './builder/ArkMethodBuilder';
 import {
     ANONYMOUS_CLASS_PREFIX,
     LEXICAL_ENV_NAME_PREFIX,
-    NAME_DELIMITER,
+    NAME_DELIMITER, NESTED_CLASS_METHOD_DELIMITER,
     UNKNOWN_CLASS_NAME,
     UNKNOWN_FILE_NAME,
     UNKNOWN_NAMESPACE_NAME,
@@ -154,7 +154,7 @@ export class ClassSignature {
         if (this.className.startsWith(ANONYMOUS_CLASS_PREFIX)) {
             let temp = this.className;
             do {
-                temp = temp.substring(temp.indexOf(NAME_DELIMITER) + 1, temp.lastIndexOf('.'));
+                temp = temp.substring(temp.indexOf(NAME_DELIMITER) + 1, temp.lastIndexOf(NESTED_CLASS_METHOD_DELIMITER));
             } while (temp.startsWith(ANONYMOUS_CLASS_PREFIX));
             return temp;
         }

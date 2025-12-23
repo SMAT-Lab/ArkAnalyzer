@@ -54,7 +54,7 @@ import {
     DEFAULT_ARK_CLASS_NAME,
     DEFAULT_ARK_METHOD_NAME,
     LEXICAL_ENV_NAME_PREFIX,
-    NAME_DELIMITER,
+    NAME_DELIMITER, NESTED_CLASS_METHOD_DELIMITER,
     TEMP_LOCAL_PREFIX
 } from './Const';
 import { EMPTY_STRING } from './ValueUtil';
@@ -476,7 +476,7 @@ export class ModelUtils {
         if (!invokeMethod) {
             const className = arkMethod.getDeclaringArkClass().getName();
             const outerStart = className.indexOf(NAME_DELIMITER);
-            const outerEnd = className.lastIndexOf('.');
+            const outerEnd = className.lastIndexOf(NESTED_CLASS_METHOD_DELIMITER);
             if (outerStart > -1 && outerEnd > -1) {
                 invokeMethod = arkMethod
                     .getDeclaringArkFile()
