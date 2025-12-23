@@ -1979,8 +1979,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         // 对象构造，使用 invokeStmt 表达
         const constructArgs:CxxAstNode[] = (():CxxAstNode[] => {
             let args:CxxAstNode[] = newExpression.inner;
-            if (newExpression.kind === 'CXXNewExpr' && newExpression.inner[1]?.kind === 'CXXConstructExpr') {
-                return [...newExpression.inner[1].inner];
+            if (newExpression.kind === 'CXXNewExpr' && newExpression.inner[0]?.kind === 'CXXConstructExpr') {
+                return [...newExpression.inner[0].inner];
             } else if (newExpression.kind === 'CompoundLiteralExpr') {
                 return this.getConstructArgs(args);
             } else if (
