@@ -98,7 +98,7 @@ export function handleFunctionTemplateDecl(methodNode: CxxAstNode, mtd: ArkMetho
         }
         let defaultType;
         if (innerNode.defaultArg) {
-            defaultType = cxxNode2Type(innerNode.defaultArg.type.qualType, mtd, sourceFile);
+            defaultType = cxxNode2Type(innerNode, mtd, sourceFile);
         }
         let templateType = new GenericType(typename, defaultType);
         templateType.setIndex(++index);

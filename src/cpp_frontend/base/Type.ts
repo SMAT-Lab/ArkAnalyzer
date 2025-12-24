@@ -378,11 +378,10 @@ export class PointerType extends Type {
     private isPointerToConst: boolean = false; // Whether the pointer points to a const type
     private isVolatilePointer: boolean = false; // Whether the pointer is a volatile pointer
     private isPointerToVolatileType: boolean = false; // Whether the pointer points to a volatile type
-    constructor(baseType: Type, level: number, oriStr?: string) {
+    constructor(baseType: Type, level: number) {
         super();
         this.baseType = baseType;
         this.level = level;
-        this.analyzePointer(oriStr ?? '');
     }
 
     public getBaseType(): Type {
@@ -424,30 +423,6 @@ export class PointerType extends Type {
 
     public setIsPointerToConst(isPointerToConst: boolean): void {
         this.isPointerToConst = isPointerToConst;
-    }
-
-    private analyzePointer(oriStr: string): void {
-        if (!oriStr || !oriStr.includes('*')) {
-            return;
-        }
-
-        const starIndex = oriStr.indexOf('*');
-
-        // Analyze the const keywords to the left and right of the asterisk
-        const leftPart = oriStr.substring(0, starIndex);
-        const rightPart = oriStr.substring(starIndex + 1);
-
-        // Check if there is const on the right side (pointer itself is a constant)
-        this.isConstPointer = /\bconst\b/.test(rightPart);
-
-        // Check if there is const on the left side (the pointer points to a constant)
-        this.isPointerToConst = /\bconst\b/.test(leftPart);
-
-        // Check if there is volatile on the right side (pointer itself is a volatile)
-        this.isVolatilePointer = /\bvolatile\b/.test(rightPart);
-
-        // Check if there is volatile on the left side (the pointer points to a volatile)
-        this.isPointerToVolatileType = /\bvolatile\b/.test(leftPart);
     }
 
     public getIsVolatilePointer(): boolean {
@@ -650,4 +625,69 @@ export class CxxNonType extends GenericType {
         this.isAutoType = isAutoType;
     }
 
+}
+
+export class CxxArrayType extends Type {
+    private baseType: Type;
+    private dimension: number; // array dimension
+    private dimensionSizes: number[]; // each dimension's size
+    constructor(baseType: Type, dimension: number, dimensionSizes?: number[]) {
+        super();
+        this.baseType = baseType;
+        this.dimension = dimension;
+        this.dimension = dimension;
+        this.dimensionSizes = dimensionSizes || new Array(dimension).fill(0);
+    }
+
+    /**
+     * Returns the base type of this array, such as `Any`, `Unknown`, `TypeParameter`, etc.
+     * @returns The base type of array.
+     */
+    public getBaseType(): Type {
+        return this.baseType;
+    }
+
+    public setBaseType(newType: Type): void {
+        this.baseType = newType;
+    }
+
+    public getDimension(): number {
+        return this.dimension;
+    }
+
+    public getDimensionSizes(): number[] {
+        return this.dimensionSizes;
+    }
+
+    public setDimensionSizes(sizes: number[]): void {
+        if (sizes.length !== this.dimension) {
+            throw new Error(`Dimension sizes length ${sizes.length} doesn't match array dimension ${this.dimension}`);
+        }
+        this.dimensionSizes = sizes;
+    }
+
+    public getDimensionSize(index: number): number {
+        if (index < 0 || index >= this.dimension) {
+            throw new Error(`Index ${index} out of bounds for dimension ${this.dimension}`);
+        }
+        return this.dimensionSizes[index];
+    }
+
+    public getTypeString(): string {
+        const strs: string[] = [];
+        if (this.baseType instanceof UnionType) {
+            strs.push('(' + this.baseType.toString() + ')');
+        } else if (this.baseType) {
+            strs.push(this.baseType.toString());
+        }
+
+        for (let i = 0; i < this.dimension; i++) {
+            if (i < this.dimensionSizes.length && this.dimensionSizes[i] >= 0) {
+                strs.push(`[${this.dimensionSizes[i]}]`); // Display specific size
+            } else {
+                strs.push('[]'); // No size specified
+            }
+        }
+        return strs.join('');
+    }
 }

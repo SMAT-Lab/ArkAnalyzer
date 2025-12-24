@@ -119,7 +119,7 @@ export function buildArkFileFromFile(absoluteFilePath: string, projectDir: strin
 
 export function buildArkClassFromCxxClass(classNode: CxxAstNode, arkFile: ArkFile, astRoot: CxxAstNode): void {
     let cls: ArkClass = new ArkClass();
-    if (classNode.kind === 'ClassTemplate') {
+    if (classNode.kind === 'ClassTemplateDecl') {
         classNode.tagUsed = classNode.tagUsed ? classNode.tagUsed : 'class';
     }
     buildNormalArkClassFromArkFile(classNode, arkFile, cls, astRoot);
@@ -164,7 +164,7 @@ function buildArkFile(arkFile: ArkFile, astRoot: CxxAstNode): void {
         let childKind = child.kind;
         switch (childKind) {
             case 'CXXRecordDecl':
-            case 'ClassTemplate':
+            case 'ClassTemplateDecl':
                 buildArkClassFromCxxClass(child, arkFile, astRoot);
                 break;
             case 'FunctionDecl':

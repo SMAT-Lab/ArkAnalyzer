@@ -96,7 +96,7 @@ export function buildNormalArkClass(clsNode: CxxAstNode, cls: ArkClass, sourceFi
             default:
         }
     }
-    if (clsNode.kind === 'ClassTemplate') {
+    if (clsNode.kind === 'ClassTemplateDecl') {
         buildClass2ArkClass(clsNode, cls, sourceFile); // The kind attribute of template classes will not be automatically classified as 'class' in tagUsed
     } else if (clsNode.kind === 'EnumDecl') {
         buildEnum2ArkClass(clsNode, cls, sourceFile, declaring);
@@ -151,7 +151,7 @@ function buildClass2ArkClass(clsNode: CxxAstNode, cls: ArkClass, sourceFile: Cxx
         processCXXHeritage(clsNode, cls);
     }
 
-    if (clsNode.kind === 'ClassTemplate') {
+    if (clsNode.kind === 'ClassTemplateDecl') {
         buildTypeParameters(clsNode, sourceFile, cls).forEach(typeParameter => {
             cls.addGenericType(typeParameter);
         });

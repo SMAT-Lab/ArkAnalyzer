@@ -51,13 +51,12 @@ import {
     FunctionType,
     NumberType,
     Type,
-    UnclearReferenceType,
     UndefinedType,
     UnknownType,
 } from '../../core/base/Type';
-import { PointerType, ReferenceType, SmartPointerType, Thread } from '../base/Type';
+import { PointerType, ReferenceType} from '../base/Type';
 import { ArkSignatureBuilder } from '../../core/model/builder/ArkSignatureBuilder';
-import { ClassSignature, FieldSignature, FileSignature, MethodSignature } from '../../core/model/ArkSignature';
+import { ClassSignature, FieldSignature, MethodSignature } from '../../core/model/ArkSignature';
 import { Value } from '../../core/base/Value';
 import {
     COMPONENT_CREATE_FUNCTION,
@@ -75,8 +74,6 @@ import { Builtin } from '../../core/common/Builtin';
 import { Constant, NullConstant } from '../../core/base/Constant';
 import { ArkCxxIRTransformer, ValueAndStmts } from './ArkIRTransformer';
 import {
-    buildTypeFromPreStr,
-    convertDataType,
     cxxNode2Type,
     isCxxFunctionPointer,
     isCXXSTLContainer, isFuncInClassOrNamespace,
@@ -451,7 +448,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         let pNode = (node.parent ?? node.getParent?.(true)) ?? null;
         if (
             pNode && pNode?.inner?.length > 0 &&
-            (pNode.inner[0].kind === 'TypeRef' || !node.type.qualType.includes('[') || this.cxxResolveTypeNode(node) instanceof ClassType)
+            (pNode.inner[0].kind === 'TypeRef' || !node.type.qualType.includes('[') || cxxNode2Type(node, this.declaringMethod) instanceof ClassType)
         ) {
             return this.cxxNewExpressionToValueAndStmts(node);
         }
@@ -672,7 +669,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         // [1.typeid's inner.length is 0 or 2, then the type name is passed in; 2. std:: Type refers to the type in the namespace]==>
         // Parameter function call to construct the string corresponding to the type into the parameter
         if (CXXTypeidExpr.inner.length === 0 || (CXXTypeidExpr.inner.length === 2 && CXXTypeidExpr.inner[1].kind === 'TypeRef')) {
-            const innerType = cxxNode2Type(CXXTypeidExpr.typeArg ?? '', undefined, undefined);
+            const innerType = cxxNode2Type(CXXTypeidExpr, undefined, undefined);
             typeValue = new Local(innerType.toString(), innerType);
         } else {
             let innerValueAndStmts = this.cxxNodeToValueAndStmts(CXXTypeidExpr.inner[0]);
@@ -771,7 +768,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             exprStmts.forEach((stmt: Stmt) => stmts.push(stmt));
         }
         const castType = castExpression.kind;
-        const castExpr = new ArkCxxCastExpr(exprValue, this.cxxResolveTypeNode(castExpression), castType);
+        const castExpr = new ArkCxxCastExpr(exprValue, cxxNode2Type(castExpression, this.declaringMethod), castType);
         const castExprPosition = [FullPosition.cxxBuildFromNode(castExpression, this.cxxSourceFile), ...exprPositions];
         return { value: castExpr, valueOriginalPositions: castExprPosition, stmts: stmts };
     }
@@ -1152,7 +1149,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             fieldSignature = ArkSignatureBuilder.buildFieldSignatureFromFieldName(memberName);
         }
         // Set field types to support C++complex type resolution (such as template, pointer, const, etc.)
-        fieldSignature.setType(this.cxxResolveTypeNode(memberExpression));
+        fieldSignature.setType(cxxNode2Type(memberExpression, this.declaringMethod));
         return fieldSignature;
     }
 
@@ -1528,7 +1525,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             cxxOperatorCallExpr.inner?.[0]?.castKind !== 'FunctionToPointerDecay') {
             return null;
         }
-        let callType = cxxNode2Type(cxxOperatorCallExpr.type.qualType, this.declaringMethod);
+        let callType = cxxNode2Type(cxxOperatorCallExpr, this.declaringMethod);
         if (callType instanceof ReferenceType) {
             callType = callType.getBaseType();
         }
@@ -1710,7 +1707,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         if ((callExpression.parent ?? callExpression.getParent?.(true))?.type?.qualType === 'std::thread') {
             return this.cxxNewExpressionToValueAndStmts(callExpression);
         }
-        const cxxMemberCallExprType = cxxNode2Type(callExpression.type.qualType, this.declaringMethod, this.cxxSourceFile, callExpression);
+        const cxxMemberCallExprType = cxxNode2Type(callExpression, this.declaringMethod, this.cxxSourceFile, callExpression);
         let realGenericTypes: Type[] | undefined;
         const stmts: Stmt[] = [];
         const [_, rightNodes] = this.getArgumentNode(callExpression.inner);
@@ -1852,7 +1849,10 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             if (members?.length) {
                 realGenericTypes = [];
                 members.forEach((typeArgument: string) => {
-                    realGenericTypes!.push(this.cxxResolveTypeNode(undefined, typeArgument));
+                    // TODO: this is a errow, need to be fixed
+                    if (node){
+                        realGenericTypes!.push(cxxNode2Type(node, this.declaringMethod));
+                    }
                 });
             }
             return realGenericTypes;
@@ -1933,7 +1933,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         // and should infer the type of the corresponding namespace/class.
         if (parentClassOrNs && parentClassOrNs.length > 0) {
             refType = TypeInference.inferUnclearRefName(className, this.declaringMethod.getDeclaringArkClass()) ??
-                this.buildCxxTypeFromQualTypeAndTagUsed(undefined, className, '');
+                cxxNode2Type(newExpression, this.declaringMethod.getDeclaringArkClass());
         }
         let classType: ClassType;
         let classSignature: ClassSignature;
@@ -2163,7 +2163,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
     private cxxNewArrayExpressionToValueAndStmts(newArrayExpression: CxxAstNode): ValueAndStmts {
         let baseType: Type = UnknownType.getInstance();
         if (newArrayExpression.type.qualType) {
-            const argumentType = this.cxxResolveTypeNode(newArrayExpression);
+            const argumentType = cxxNode2Type(newArrayExpression, this.declaringMethod);
             if (!(argumentType instanceof AnyType || argumentType instanceof UnknownType)) {
                 baseType = argumentType;
             }
@@ -2229,7 +2229,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             // If it's an array of function pointers, the array symbols in the type should be removed here before resolving for the base type.
             arrayLiteralExpression.type.qualType = arrayLiteralExpression.type.qualType.replace(/\[.*?\]/g, '');
         }
-        let baseType: Type = this.cxxResolveTypeNode(arrayLiteralExpression);
+        let baseType: Type = cxxNode2Type(arrayLiteralExpression, this.declaringMethod);
         arrayLiteralExpression.type.qualType = oriType;
         if (baseType === UnknownType.getInstance()) {
             // If the type is uncertain, it is regarded as an unknown reference type
@@ -2502,7 +2502,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         if (this.isCxxArray(leftOpNode.type.qualType) && rightOpNode?.kind === 'IntegerLiteral') {
             rightOpNode = undefined;
         }
-        const declarationType = variableDeclaration.type ? this.cxxResolveTypeNode(variableDeclaration) : UnknownType.getInstance();
+        const declarationType = variableDeclaration.type ? cxxNode2Type(variableDeclaration, this.declaringMethod) : UnknownType.getInstance();
         const assignment = this.cxxAssignmentToValueAndStmts(leftOpNode, rightOpNode, true, isConst, declarationType, needRightOp);
         if (declarationType instanceof ReferenceType && assignment.stmts[0] instanceof ArkAssignStmt) {
             declarationType.setSourceValue(assignment.stmts[0].getRightOp());
@@ -2656,7 +2656,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
                 exprValue = new ArkConditionExpr(opValue1, opValue2, operatorToken as RelationalBinaryOperator);
             } else {
                 exprValue = new ArkCxxNormalBinOpExpr(opValue1, opValue2, operatorToken as NormalBinaryOperator);
-                const exprTye = cxxNode2Type(binaryExpression.type.qualType ?? '', undefined, undefined);
+                const exprTye = cxxNode2Type(binaryExpression, undefined, undefined);
                 (exprValue as ArkCxxNormalBinOpExpr).setCxxType(exprTye);
             }
             exprValuePositions.push(...opPositions1, ...opPositions2);
@@ -2833,266 +2833,6 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
                 return null;
             }
         }
-    }
-
-    /**
-     *Parse C++type nodes and build corresponding Type objects
-     *@ param node C++AST node, possibly undefined
-     *@ param stringItem Optional string item, used for type resolution
-     *@ returns The parsed Type object
-     */
-    public cxxResolveTypeNode(node: CxxAstNode | undefined, stringItem?: string): Type {
-        // Step 1: Extract qualType and tagUsed
-        const { qualType, tagUsed } = this.extractQualTypeAndTag(node, stringItem);
-        // Step 2: Build Type object from qualType and tagUsed
-        return this.buildCxxTypeFromQualTypeAndTagUsed(node, qualType, tagUsed);
-    }
-
-    /**
-     * Extract qualType and tagUsed from input parameters
-     *@ param node - CxxAstNode object, which may contain type information and label information
-     *@ param stringItem - optional string parameter with the highest priority
-     *@ returns Objects containing qualType and tagUsed
-     */
-    private extractQualTypeAndTag(node: CxxAstNode | undefined, stringItem?: string): { qualType: string; tagUsed: string } {
-        // If a valid string is provided, use it as qualType first;
-        // otherwise, try to use the node's type information or code.
-        let qualType: string;
-        if (typeof stringItem === 'string' && stringItem.trim()) {
-            qualType = stringItem;
-        } else if (typeof node?.type?.qualType === 'string' && node.type.qualType.trim()) {
-            qualType = node.type.qualType;
-        } else if (typeof node?.code === 'string' && node.code.trim()) {
-            qualType = node.code;
-        } else {
-            qualType = '';
-        }
-
-        const tagUsed = typeof node?.tagUsed === 'string' ? node.tagUsed : '';
-        return { qualType, tagUsed };
-    }
-
-    /**
-     *Build corresponding Type objects according to qualType and tagUsed.
-     *
-     *This function is based on the passed in type string qualType and tag TagUsed,
-     *Resolve and construct the corresponding Type object. Support array, standard library container, structure, enumeration, union and other types.
-     *
-     *@ param node - C++AST node, used to help determine the type (optional)
-     *@ param qualType - Full type string with modifiers, such as "int []", "std:: vector<int>"
-     *@ param tagUsed - type label, such as "struct", "enum", "union", etc
-     *@ returns the parsed Type object
-     */
-    private buildCxxTypeFromQualTypeAndTagUsed(node: CxxAstNode | undefined, qualType: string, tagUsed: string): Type {
-        let cxxType = this.buildCxxTypeFromQualType(node, qualType) ?? this.buildCxxTypeFromTagUsed(tagUsed);
-        if (cxxType) {
-            return cxxType;
-        }
-        if (node && node.kind === 'InitListExpr') {
-            if (qualType.includes('[') && qualType.includes(']')) {
-                return new ArrayType(new UnclearReferenceType(qualType), node.inner.length);
-            } else if (isCxxFunctionPointer(qualType)) {
-                return new UnclearReferenceType(qualType);
-            }
-        } else {
-            let type = this.resolveCxxTypeReferenceNode(qualType); // Handle alias type references
-            if (!(type instanceof UnclearReferenceType)) {
-                return type;
-            }
-        }
-        let nodeType = cxxNode2Type(qualType, this.declaringMethod, this.cxxSourceFile, node);
-        return nodeType instanceof UnclearReferenceType ? UnknownType.getInstance() : nodeType;
-    }
-
-    private buildCxxTypeFromQualType(node: CxxAstNode | undefined, qualType: string): Type | undefined {
-        if (qualType.includes('[') && qualType.includes(']')) {
-            const count = qualType.match(/\[/g)?.length ?? 0;
-            let baseType = cxxNode2Type(qualType.slice(0, qualType.indexOf('[')) +
-                qualType.slice(qualType.lastIndexOf(']') + 1), this.declaringMethod, this.cxxSourceFile, node);
-            if (baseType instanceof UnclearReferenceType) {
-                return new ArrayType(new UnclearReferenceType(qualType.slice(0, qualType.indexOf('['))), count);
-            }
-            return new ArrayType(baseType, count);
-        } else if (qualType.startsWith(BuiltinCxx.CXXSTDREF)) {
-            return this.buildTypeForCxxStdType(qualType, node);
-        } else if (qualType === BuiltinCxx.CXXSTD && node && node.kind === 'NamespaceRef') {
-            const fileSignature = new FileSignature(BuiltinCxx.CXXSTD, 'iostream.h');
-            const classSignature = new ClassSignature('iostream', fileSignature);
-            return new ClassType(classSignature);
-        } else if (node && node.inner?.[0]?.kind === 'TemplateRef') {
-            // Handling template types
-            return this.buildCxxTemplateType(node);
-        } else if (qualType.includes('vector')) {
-            let dimension = 0; // Handle std::vector scenarios (must be after std:: check)
-            let dataType = this.resolveVectorType(qualType, dimension);
-            return new ArrayType(buildTypeFromPreStr(dataType, undefined), dimension);
-        } else if (qualType === 'thread') {
-            return new Thread();
-        } else if (qualType.includes('unique_ptr') || qualType.includes('shared_ptr') || qualType.includes('weak_ptr')) {
-            // Locate the type represented by the smart pointer
-            let baseType = cxxNode2Type(qualType.slice(qualType.indexOf('<') + 1, qualType.lastIndexOf('>')), undefined);
-            return new SmartPointerType(baseType, 0, qualType);
-        }
-        return undefined;
-    }
-
-    private buildTypeForCxxStdType(qualType: string, node: CxxAstNode | undefined): Type | undefined {
-        const match = /std::(\w+)/g.exec(qualType);
-        const containerName = match ? match[1] : null;
-        // Handle standard library container types
-        if (containerName && convertDataType(containerName) === 'unsupported' && this.isCxxStdContainer(containerName)) {
-            const fileSignature = new FileSignature(BuiltinCxx.CXXSTD, containerName + '.h');
-            const classSignature = new ClassSignature(containerName, fileSignature);
-            const realGenericTypes = this.getRealGenericTypes(node, qualType);
-            return new ClassType(classSignature, realGenericTypes);
-        } else if (containerName === 'thread') {
-            return new Thread();
-        }
-        return undefined;
-    }
-
-    private buildCxxTemplateType(node: CxxAstNode): Type | undefined {
-        const templateRefNodes = node.inner.filter(inn => inn.kind === 'TemplateRef');
-        if (templateRefNodes.length === 0) {
-            return undefined;
-        }
-        const outerTemplateRefName = templateRefNodes[0].name ?? templateRefNodes[0].code ?? '';
-        const genericTypeStr = templateRefNodes[0].type.qualType ?? '';
-        if (outerTemplateRefName === '' || genericTypeStr === '') {
-            return undefined;
-        }
-        const realGenericType = this.buildCxxTypeFromQualTypeAndTagUsed(undefined, genericTypeStr, '');
-        if (!realGenericType) {
-            return undefined;
-        }
-        // Scenario: using value_type_t = typename T::value_type;
-        let outerObj = CxxModelUtils.findSymbolInFileWithName(outerTemplateRefName, this.declaringMethod.getDeclaringArkClass());
-        if (outerObj instanceof AliasType && templateRefNodes[0].referencedDecl?.alias?.declCode?.includes(BuiltinCxx.TYPENAME_KEYWORD) &&
-            realGenericType instanceof ClassType) {
-            const valueType = realGenericType.getRealGenericTypes()?.[0] ?? realGenericType;
-            outerObj.setOriginalType(valueType);
-            return outerObj;
-        }
-        // Scenario: struct Foo { using Vec = std::vector<T> };  Foo<int>::Vec v = {1, 2, 3};
-        if (node.type.qualType.includes('::') && outerObj instanceof ArkClass) {
-            const refNodes = node.inner.slice(1).filter(inn => inn.kind === 'TypeRef');
-            return this.buildTypeFromClassTypeMember(refNodes, outerObj);
-        }
-        return new UnclearReferenceType(outerTemplateRefName, [realGenericType]);
-    }
-
-    private buildTypeFromClassTypeMember(refNodes: CxxAstNode[], arkClass: ArkClass): Type | undefined {
-        if (refNodes.length === 0) {
-            return undefined;
-        }
-        const field = arkClass.getFieldWithName(refNodes[0].code);
-        if (!field) {
-            return undefined;
-        }
-        const fieldType = field.getType();
-        if (refNodes.length === 1) {
-            return fieldType;
-        }
-        if (fieldType instanceof ClassType) {
-            const fieldClass = CxxModelUtils.findSymbolInFileWithName(refNodes[0].code, this.declaringMethod.getDeclaringArkClass());
-            if (fieldClass instanceof ArkClass) {
-                return this.buildTypeFromClassTypeMember(refNodes.slice(1), fieldClass);
-            }
-        }
-        return undefined;
-    }
-
-    private buildCxxTypeFromTagUsed(tagUsed: string): Type | undefined {
-        let fileSignature: FileSignature;
-        let classSignature: ClassSignature;
-        switch (tagUsed) {
-            case 'struct':
-                fileSignature = new FileSignature(this.cxxSourceFile?.projectName ?? '', this.sourceFile.fileName);
-                classSignature = new ClassSignature('struct', fileSignature, null);
-                return new ClassType(classSignature);
-            case 'enum':
-                fileSignature = new FileSignature(this.cxxSourceFile?.projectName ?? '', this.sourceFile.fileName);
-                classSignature = new ClassSignature('enum', fileSignature, null);
-                return new ClassType(classSignature);
-            case 'union':
-                fileSignature = new FileSignature(this.cxxSourceFile?.projectName ?? '', this.sourceFile.fileName);
-                classSignature = new ClassSignature('union', fileSignature, null);
-                return new ClassType(classSignature);
-            default:
-                break;
-        }
-        return undefined;
-    }
-
-
-    private isCxxStdContainer(typeName: string): boolean {
-        const typeNameInLowerCase = typeName.toLowerCase();
-        const stdContainerLists = ['map', 'vector', 'deque', 'list', 'array', 'forward_list', 'multimap', 'multiset',
-            'set', 'stack', 'queue', 'stringstream', 'basic_string', 'unordered_set', 'unordered_map', 'unordered_multiset',
-            'unordered_multimap', 'priority_queue'];
-        return stdContainerLists.some(containerType => typeNameInLowerCase.includes(containerType));
-    }
-
-    /**
-     *Resolve the C++type reference node and convert it to an internal Type representation
-     *@ param typeReferenceNode refers to a node of type, which can be a string or CxxAstNode object
-     *@ returns The parsed Type object
-     */
-    private resolveCxxTypeReferenceNode(typeReferenceNode: string | CxxAstNode): Type {
-        const typeReferenceFullName =
-            typeof typeReferenceNode === 'string'
-                ? typeReferenceNode
-                : typeReferenceNode.name ?? ''; // 假设 CxxAstNode 有 name 字段
-        if (typeReferenceFullName === Builtin.OBJECT) {
-            return Builtin.OBJECT_CLASS_TYPE;
-        }
-        const aliasTypeAndStmt = this.aliasTypeMap.get(typeReferenceFullName);
-        const genericTypes: Type[] = [];
-        if (typeof typeReferenceNode !== 'string' && typeReferenceNode.typeArguments) {
-            for (const typeArgument of typeReferenceNode.typeArguments) {
-                genericTypes.push(this.cxxResolveTypeNode(undefined, typeArgument));
-            }
-        }
-        if (!aliasTypeAndStmt) {
-            const typeName =
-                typeof typeReferenceNode === 'string'
-                    ? typeReferenceNode
-                    : typeReferenceNode.name ?? '';
-            const local = this.locals.get(typeName);
-            if (local !== undefined) {
-                return local.getType();
-            }
-            return new UnclearReferenceType(typeName, genericTypes);
-        } else {
-            if (genericTypes.length > 0) {
-                const oldAlias = aliasTypeAndStmt[0];
-                let alias = new AliasType(
-                    oldAlias.getName(),
-                    TypeInference.replaceTypeWithReal(oldAlias.getOriginalType(), genericTypes),
-                    oldAlias.getSignature(),
-                    oldAlias.getGenericTypes()
-                );
-                alias.setRealGenericTypes(genericTypes);
-                return alias;
-            }
-            return aliasTypeAndStmt[0];
-        }
-    }
-
-    /**
-     *Resolve vector types, recursively process nested vector types and return the innermost type
-     *@ param kind - type string, which may contain vector<>structure
-     *@ param dimension - the current recursive dimension level
-     *@ returns the parsed innermost type string
-     */
-    private resolveVectorType(kind: string, dimension: number): string {
-        if (!kind.includes('vector')) {
-            return kind;
-        }
-        let lowDimension = kind.substring(kind.indexOf('vector<') + 7, kind.lastIndexOf('>'));
-        dimension++;
-        lowDimension = this.resolveVectorType(lowDimension, dimension);
-        return lowDimension;
     }
 
     public static isCxxCompoundAssignmentOperator(op?: string): boolean {

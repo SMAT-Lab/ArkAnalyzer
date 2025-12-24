@@ -15,13 +15,13 @@
 
 import {
     ClassType,
+    FunctionType,
     GenericType,
     Type,
-    UnknownType,
     UnclearReferenceType,
-    FunctionType,
+    UnknownType,
 } from '../../../core/base/Type';
-import { PointerType, ReferenceType, ReferCategory, NapiType, SmartPointerType, CxxNonType } from '../../base/Type';
+import { CxxArrayType, CxxNonType, PointerType, ReferCategory, ReferenceType } from '../../base/Type';
 import { TypeInference } from '../../common/TypeInference';
 import { ArkField } from '../../../core/model/ArkField';
 import { ArkClass } from '../../../core/model/ArkClass';
@@ -29,7 +29,7 @@ import { ArkMethod } from '../../../core/model/ArkMethod';
 import { MethodParameter } from '../../../core/model/builder/ArkMethodBuilder';
 import { modifierKind2CxxEnum } from '../../../core/model/ArkBaseModel';
 import { buildGenericType } from '../../../core/model/builder/builderUtils';
-import { CxxAstNode, CxxTranslationUnit } from '../../ast/ArkCxxAstNode';
+import { CxxAstNode, CxxTranslationUnit, defaultArg } from '../../ast/ArkCxxAstNode';
 import { Decorator } from '../../../core/base/Decorator';
 import { buildArkMethodFromArkClass } from './ArkMethodBuilder';
 import { ArkFile } from '../../../core/model/ArkFile';
@@ -107,24 +107,23 @@ export function buildTypeParameters(clsNode: CxxAstNode, sourceFile: CxxAstNode,
     const genericTypes: GenericType[] = [];
     let index = -1;
     for (const innerNode of clsNode.inner) {
-        if (innerNode.kind === 'TemplateTypeDecl') {
-            let typename = innerNode.name;
+        if (innerNode.kind === 'TemplateTypeParmDecl') {
             let defaultType;
             if (innerNode.inner && innerNode.inner.length > 0) {
                 innerNode.default = innerNode.inner[0].type.qualType;
             }
-            if (innerNode.default) {
-                defaultType = cxxNode2Type(innerNode.default, arkInstance, sourceFile);
+            if (innerNode.defaultArg) {
+                defaultType = cxxNode2Type(innerNode, arkInstance, undefined,undefined,innerNode.defaultArg);
             }
-            let templateType = new GenericType(typename, defaultType);
+            let templateType = new GenericType(innerNode.name, defaultType);
             templateType.setIndex(++index);
             genericTypes.push(templateType);
-        } else if (innerNode.kind === 'NonTypeTemplateParameter') {
+        } else if (innerNode.kind === 'NonTypeTemplateParmDecl') {
             let templateType;
             if (innerNode.type.qualType === 'auto') {
                 templateType = new CxxNonType(innerNode.name, undefined, true);
             } else {
-                const nonType = cxxNode2Type(innerNode.type.qualType, arkInstance, sourceFile);
+                const nonType = cxxNode2Type(innerNode, arkInstance, sourceFile);
                 templateType = new CxxNonType(innerNode.name, nonType);
             }
             templateType.setIndex(++index);
@@ -154,7 +153,7 @@ export function buildParameters(params: CxxAstNode[], arkInstance: ArkMethod | A
         }
         // type
         if (parameter.type) {
-            methodParameter.setType(buildGenericType(cxxNode2Type(parameter.type.qualType, arkInstance, sourceFile, parameter), arkInstance));
+            methodParameter.setType(buildGenericType(cxxNode2Type(parameter, arkInstance, sourceFile, parameter), arkInstance));
         } else {
             methodParameter.setType(UnknownType.getInstance());
         }
@@ -173,19 +172,18 @@ export function buildReturnType(mtdNode: CxxAstNode, sourceFile: CxxAstNode, met
                 method.addModifier(modifierKind2CxxEnum('noexcept'));
             }
         }
-        let funcRetType;
         let isLambdaFunc = nodeType.qualType.startsWith('(lambda at');
         if (!isLambdaFunc) {
-            // Ordinary function
-            funcRetType = nodeType.qualType.split('(')[0].trim();
+            // Retrieve the function return value portion from the function signature
+            mtdNode.type.qualType = nodeType.qualType.split('(')[0].trim();
         } else if (mtdNode.inner[0]?.inner[0]?.type.qualType.includes(' -> ')) {
             // Handle lambda functions with return values
-            funcRetType = mtdNode.inner[0].inner[0].type.qualType.split(' -> ')[1];
+            mtdNode.type.qualType = mtdNode.inner[0].inner[0].type.qualType.split(' -> ')[1];
         } else {
             // Lambda function without return value
             return UnknownType.getInstance();
         }
-        return cxxNode2Type(funcRetType, method, sourceFile);
+        return cxxNode2Type(mtdNode, method, sourceFile);
     } else {
         return UnknownType.getInstance();
     }
@@ -211,41 +209,24 @@ export function buildFuncPtrType(funcPtrNode: CxxAstNode, arkMtd: ArkMethod, sou
  *@ returns Type after conversion
  */
 export function cxxNode2Type(
-    nodeQualType: CxxAstNode | string,
+    nodeQualType: CxxAstNode ,
     arkInstance: ArkMethod | ArkClass | ArkField | undefined,
     sourceFile?: CxxAstNode,
-    currNode?: CxxAstNode
+    currNode?: CxxAstNode,
+    defaultArg?: defaultArg
 ): Type {
+    if (defaultArg) {
+        return buildTypeFromPreStr(defaultArg.type.qualType,nodeQualType as CxxAstNode, arkInstance);
+    }
+
     // Handle function pointer type
     if (currNode && arkInstance instanceof ArkMethod && isCxxFunctionPointer(currNode.type.qualType)) {
         return buildFuncPtrType(currNode, arkInstance, sourceFile!);
     }
-    // Handle napi type
-    if (typeof nodeQualType === 'string' && nodeQualType.startsWith('napi_') && nodeQualType !== 'napi_property_descriptor') {
-        return new NapiType(nodeQualType);
-    }
-    // Handle special type
-    if (nodeQualType === 'void () const') {
-        return buildTypeFromPreStr('VoidKeyword', arkInstance);
-    }
-    // Handle generic types
-    let templateTypes: GenericType[] | undefined;
-    if (arkInstance instanceof ArkMethod) {
-        templateTypes = arkInstance.getGenericTypes() ?? arkInstance.getDeclaringArkClass()?.getGenericsTypes();
-    } else if (arkInstance instanceof ArkClass) {
-        templateTypes = arkInstance.getGenericsTypes();
-    }
-    if (templateTypes) {
-        for (const t of templateTypes) {
-            if (nodeQualType === t.getName()) {
-                return t;
-            }
-        }
-    }
 
     // Default processing
-    const typeString = typeof nodeQualType === 'string' ? nodeQualType : nodeQualType.type.qualType;
-    return buildTypeFromPreStr(typeString, arkInstance);
+    let typeString = nodeQualType.type.desugaredQualType ?? nodeQualType.type.qualType;
+    return buildTypeFromPreStr(typeString, nodeQualType, arkInstance);
 }
 
 /**
@@ -261,51 +242,104 @@ export function cxxNode2Type(
  *@ param arkInstance The optional ArkMethod, ArkClass or ArkField instances are used to assist type construction
  *@ returns Type object constructed
  */
-export function buildTypeFromPreStr(preStr: string, arkInstance: ArkMethod | ArkClass | ArkField | undefined): Type {
+export function buildTypeFromPreStr(preStr: string, node: CxxAstNode, arkInstance: ArkMethod | ArkClass | ArkField | undefined): Type {
     const oriStr = preStr;
     // 1. Remove modifiers such as const/static/mutable
     preStr = preStr.replace(/\b(const|static|mutable)\s*\b/g, '');
-    let pointerLevel = 0;
+
+    // 2. One traversal simultaneously counts the number of references and pointers, and constructs a base string without references
     let referenceCount = 0;
-    // 2. Handle pointers and references; only process if not an STL container
-    if (!isCXXSTLContainer(preStr)) {
-        referenceCount = (preStr.match(/&/g) || []).length;
-        preStr = preStr.replace(/&/g, '').trim();
-        pointerLevel = (preStr.match(/\*/g) || []).length;
-        preStr = preStr.replace(/\*/g, '').trim();
+    let pointerLevel = 0;
+    let baseStr = '';
+    for (let i = 0; i < preStr.length; i++) {
+        const char = preStr[i];
+        if (char === '&') {
+            referenceCount++;
+        } else if (char === '*') {
+            pointerLevel++;
+            baseStr += char;  // Keep * characters
+        } else {
+            baseStr += char;  // Keep other characters
+        }
     }
-    // 3. Infer the type
-    const postStr = convertDataType(preStr);
-    let baseType: Type;
-    if (postStr === 'unsupported') {
-        baseType = buildTypeFromDerivedType(preStr, arkInstance);
-    } else {
-        baseType = TypeInference.buildTypeFromStr(postStr, preStr);
-    }
-    // Need to Handle precedence between pointers and other types/modifiers
-    // 4. Wrap pointers and references
-    if (pointerLevel > 0) { // && !(baseType instanceof FunctionPointer) || pointerLevel > 1
-        baseType = new PointerType(baseType, pointerLevel, oriStr);
-    }
+    baseStr = baseStr.trim();  // Remove the leading and trailing spaces
+
+    // 3. Handling reference types
     if (referenceCount > 0) {
-        return buildReferenceType(preStr, arkInstance, referenceCount, baseType);
+        return buildReferenceType(baseStr, referenceCount, node, arkInstance);
     }
-    if (preStr.includes('unique') || preStr.includes('shared') || preStr.includes('weak')) {
-        // Locate the type represented by the smart pointer
-        let baseType = cxxNode2Type(preStr.slice(preStr.indexOf('<') + 1, preStr.lastIndexOf('>')), undefined);
-        return new SmartPointerType(baseType, 0, preStr);
+
+    // 4. Array judgment
+    if (baseStr.includes('[') && baseStr.includes(']')) {
+        return buildArrayType(baseStr, node,  arkInstance);
     }
-    if (preStr.includes('__unwrap_ref_decay')) {
-        return cxxNode2Type(preStr.slice(preStr.indexOf('<') + 1, preStr.lastIndexOf('>')), undefined);
+
+    // 5. Handling pointer types
+
+    if (pointerLevel > 0) {
+        baseStr = baseStr.replace(/\*/g, '').trim();
+        return buildPointerType(baseStr, oriStr, pointerLevel, node, arkInstance);
     }
-    return baseType;
+
+    // 6. template
+    let templateTypes: GenericType[] | undefined;
+    if (arkInstance instanceof ArkMethod) {
+        templateTypes = arkInstance.getGenericTypes() ?? arkInstance.getDeclaringArkClass()?.getGenericsTypes();
+    } else if (arkInstance instanceof ArkClass) {
+        templateTypes = arkInstance.getGenericsTypes();
+    }
+    if (templateTypes) {
+        for (const t of templateTypes) {
+            if (preStr === t.getName()) {
+                return t;
+            }
+        }
+    }
+
+    // 7. Base type
+    const baseTypeStr = convertDataType(baseStr);
+    if (baseTypeStr !== 'unsupported') {
+        return TypeInference.buildTypeFromStr(baseTypeStr, baseStr);
+    }
+
+    // 8.STL Type and custom type
+    return buildTypeFromDerivedType(baseStr, node, arkInstance);
 }
 
-export function buildReferenceType(preStr: string, arkInstance: ArkMethod | ArkClass | ArkField | undefined, referenceCount: number, baseType: Type): Type {
-    let referCategory = referenceCount % 2 === 1 ? ReferCategory.LVALUE_REF : ReferCategory.RVALUE_REF;
+export function buildArrayType(qualType: string, node: CxxAstNode, arkInstance: ArkMethod | ArkClass | ArkField | undefined): Type {
+    const count = qualType.match(/\[/g)?.length ?? 0;
+    let baseType = buildTypeFromPreStr(qualType.slice(0, qualType.indexOf('[')) +
+        qualType.slice(qualType.lastIndexOf(']') + 1), node, arkInstance);
     if (baseType instanceof UnclearReferenceType) {
-        baseType = cxxNode2Type(preStr, arkInstance);
+        return new CxxArrayType(new UnclearReferenceType(qualType.slice(0, qualType.indexOf('['))), count);
     }
+    return new CxxArrayType(baseType, count);
+}
+
+export function buildPointerType(preStr: string, oriStr: string, pointerLevel: number, node: CxxAstNode, arkInstance: ArkMethod | ArkClass | ArkField | undefined): Type {
+    let baseType = buildTypeFromPreStr(preStr, node, arkInstance);
+    const pointerType = new PointerType(baseType, pointerLevel);
+
+    const starIndex = oriStr.indexOf('*');
+    if (starIndex === -1) {
+        return pointerType;
+    }
+    // Analyze the const keywords to the left and right of the asterisk
+    const leftPart = oriStr.substring(0, starIndex);
+    const rightPart = oriStr.substring(starIndex + 1);
+
+    pointerType.setIsPointerToVolatileType(/\bvolatile\b/.test(leftPart));
+    pointerType.setIsVolatilePointer(/\bvolatile\b/.test(rightPart));
+    pointerType.setIsPointerToConst(/\bconst\b/.test(leftPart));
+    pointerType.setIsConstPointer(/\bconst\b/.test(rightPart));
+
+    return pointerType;
+}
+
+export function buildReferenceType(preStr: string, referenceCount: number, node: CxxAstNode, arkInstance: ArkMethod | ArkClass | ArkField | undefined): Type {
+    let referCategory = referenceCount % 2 === 1 ? ReferCategory.LVALUE_REF : ReferCategory.RVALUE_REF;
+    // cxxTodo: this need to confirm;
+    let baseType =node.inner[0] ? cxxNode2Type(node.inner[0],arkInstance) : buildTypeFromPreStr(preStr, node, arkInstance);
     if (baseType instanceof GenericType && referenceCount % 2 === 0) {
         referCategory = ReferCategory.UNIVERSAL_REF;
     }
@@ -323,7 +357,7 @@ export function isFuncInClassOrNamespace(callNode: CxxAstNode): boolean {
 
 }
 
-export function buildTypeFromDerivedType(preStr: string, arkInstance: ArkMethod | ArkClass | ArkField | undefined): Type {
+export function buildTypeFromDerivedType(preStr: string, node: CxxAstNode, arkInstance: ArkMethod | ArkClass | ArkField | undefined): Type {
     const outerPartMatch = preStr.match(/^([^<]+)/);
     const outerPart = outerPartMatch ? outerPartMatch[1] : null;
     let typeStr: string;
@@ -337,7 +371,7 @@ export function buildTypeFromDerivedType(preStr: string, arkInstance: ArkMethod 
     }
     const innerPartMatch = preStr.match(/<([^>]+)>/);
     const innerPart = innerPartMatch ? innerPartMatch[1] : null;
-    let innerType = innerPart === null ? [] : [buildTypeFromPreStr(innerPart, arkInstance)];
+    let innerType = innerPart === null ? [] : [buildTypeFromPreStr(innerPart, node, arkInstance)];
 
     let arkClass: ArkClass | null = null;
     if (arkInstance instanceof ArkMethod || arkInstance instanceof ArkClass) {
@@ -409,3 +443,7 @@ export function convertDataType(typeName: string): string {
     const formattedTypeName = typeName.replace(BuiltinCxx.CXXSTDREF, '');
     return typeMap[formattedTypeName] ?? 'unsupported';
 }
+
+// export function normalizeTypeString(raw: string): string {
+//
+// }

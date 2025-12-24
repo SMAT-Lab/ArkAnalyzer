@@ -271,7 +271,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
 
         let rightType;
         //  Identify the tagUsed attribute to determine struct, union, and enum nodes
-        rightType = cxxNode2Type(rightOp, undefined);
+        rightType = cxxNode2Type(typeAliasDeclaration, undefined);
 
         if (rightType instanceof AbstractTypeExpr) {
             rightType = rightType.getType();
@@ -296,9 +296,9 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
 
         if (typeAliasDeclaration.kind === 'TypeAliasTemplateDecl') {
             let realGenericTypes: Type[] = [];
-            typeAliasDeclaration.inner.filter(inn => inn.kind === 'TemplateTypeDecl')
+            typeAliasDeclaration.inner.filter(inn => inn.kind === 'TemplateTypeParmDecl')
                 .forEach(typeArgument => {
-                    realGenericTypes.push(this.ArkCxxValueTransformer.cxxResolveTypeNode(typeArgument));
+                    realGenericTypes.push(cxxNode2Type(typeArgument, this.declaringMethod));
                 });
             expr.setRealGenericTypes(realGenericTypes);
         }

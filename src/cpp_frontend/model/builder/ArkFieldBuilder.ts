@@ -36,16 +36,17 @@ export function buildProperty2ArkField(member: CxxAstNode, sourceFile: CxxAstNod
 
     let fieldType: Type = UnknownType.getInstance();
     if ((member.kind === 'FieldDecl' || member.kind === 'VarDecl') && member.type) {
-        fieldType = buildGenericType(cxxNode2Type(member.type.qualType, cls, sourceFile), field);
+        fieldType = buildGenericType(cxxNode2Type(member, cls, sourceFile), field);
     }
     if (member.kind === 'EnumConstantDecl') {
         field.addModifier(ModifierType.STATIC);
         fieldType = new ClassType(cls.getSignature());
     }
+    // TODO: handle array type
     if (member.type.qualType.includes('[') && member.type.qualType.includes(']')) {
         const matches = member.type.qualType.match(/\[/g);
         const count = matches ? matches.length : 0;
-        let baseType = cxxNode2Type(member.type.qualType.slice(0, member.type.qualType.indexOf('[')), cls, sourceFile);
+        let baseType = cxxNode2Type(member, cls, sourceFile);
         if (baseType instanceof UnclearReferenceType) {
             fieldType = new ArrayType(new UnclearReferenceType(member.type.qualType.slice(0, member.type.qualType.indexOf('['))), count);
         }
