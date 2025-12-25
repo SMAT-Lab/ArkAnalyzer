@@ -21,14 +21,20 @@ import {
 } from '../../core/base/Expr';
 import { Value } from '../../core/base/Value';
 import {
+    AliasType,
     ArrayType,
-    BooleanType,
+    BooleanType, ClassType, FunctionType,
     Type,
 } from '../../core/base/Type';
 import { ArkMethod } from '../../core/model/ArkMethod';
 import { AbstractFieldRef, AbstractRef } from '../../core/base/Ref';
 import { CxxSizeTType, CxxStdTypeName, CxxTypeBitWidth, CxxTypeSigned, TypeInfo } from './Type';
 import { TypeInference } from '../../core/common/TypeInference';
+import { UNKNOWN_FILE_NAME } from '../../core/common/Const';
+import { ModelUtils } from '../../core/common/ModelUtils';
+import { Local } from '../../core/base/Local';
+import { ClassCategory } from '../../core/model/ArkClass';
+
 
 /**
  * delete[] expression in C++
@@ -448,5 +454,74 @@ export class ArkCxxNormalBinOpExpr extends AbstractBinopExpr {
 
     public setCxxType(type: Type): void {
         this.type = type;
+    }
+}
+
+// Declare class objects on the stack
+export class ArkAllocExpr extends AbstractExpr {
+    private classType: ClassType;
+
+    constructor(classType: ClassType) {
+        super();
+        this.classType = classType;
+    }
+
+    public getClassType(): ClassType {
+        return this.classType;
+    }
+
+    public getUses(): Value[] {
+        return [];
+    }
+
+    public getType(): Type {
+        return this.classType;
+    }
+
+    public toString(): string {
+        return 'alloc ' + this.classType;
+    }
+
+    /**
+     *Inference type method
+     *@ param arkMethod - Ark method object, the context used for type inference
+     *@ returns the ArkNewExpr instance of the current object
+     */
+    public inferType(arkMethod: ArkMethod): ArkAllocExpr {
+        const classSignature = this.classType.getClassSignature();
+        if (classSignature.getDeclaringFileSignature().getFileName() === UNKNOWN_FILE_NAME) {
+            const className = classSignature.getClassName();
+            let type: Type | null | undefined = ModelUtils.findDeclaredLocal(new Local(className), arkMethod, 1)?.getType();
+            if (TypeInference.isUnclearType(type)) {
+                type = TypeInference.inferUnclearRefName(className, arkMethod.getDeclaringArkClass());
+            }
+            // If the type is an alias type, replace with the original type
+            if (type instanceof AliasType) {
+                const originalType = TypeInference.replaceAliasType(type);
+                if (originalType instanceof FunctionType) {
+                    type = originalType.getMethodSignature().getMethodSubSignature().getReturnType();
+                } else {
+                    type = originalType;
+                }
+            }
+            if (type && type instanceof ClassType) {
+                const instanceType = this.constructorSignature(type, arkMethod) ?? type;
+                this.classType.setClassSignature(instanceType.getClassSignature());
+                TypeInference.inferRealGenericTypes(this.classType.getRealGenericTypes(), arkMethod.getDeclaringArkClass());
+            }
+        }
+        return this;
+    }
+
+    private constructorSignature(type: ClassType, arkMethod: ArkMethod): ClassType | undefined {
+        const classConstructor = arkMethod.getDeclaringArkFile().getScene().getClass(type.getClassSignature());
+        if (classConstructor?.getCategory() === ClassCategory.INTERFACE) {
+            const type = classConstructor.getMethodWithName('construct-signature')?.getReturnType();
+            if (type) {
+                const returnType = TypeInference.replaceAliasType(type);
+                return returnType instanceof ClassType ? returnType : undefined;
+            }
+        }
+        return undefined;
     }
 }

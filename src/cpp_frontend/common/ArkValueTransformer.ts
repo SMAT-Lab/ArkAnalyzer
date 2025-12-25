@@ -32,6 +32,7 @@ import {
     RelationalBinaryOperator,
 } from '../../core/base/Expr';
 import {
+    ArkAllocExpr,
     ArkArrayTypeTraitExpr,
     ArkCxxCastExpr,
     ArkCxxDeleteArrayExpr,
@@ -1951,9 +1952,9 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             classSignature = curClass ? curClass.getSignature() : ArkSignatureBuilder.buildClassSignatureFromClassName(className);
             classType = new ClassType(classSignature, realGenericTypes);
         }
-        const newExpr = new ArkNewExpr(classType);
+        const expr =newExpression.kind === 'CXXNewExpr'? new ArkNewExpr(classType): new ArkAllocExpr(classType);
         const {value: newLocal, valueOriginalPositions: newLocalPositions, stmts: newExprStmts, } =
-            this.ArkCxxIRTransformer.generateAssignStmtForValue(newExpr, [FullPosition.cxxBuildFromNode(newExpression, this.cxxSourceFile)]);
+            this.ArkCxxIRTransformer.generateAssignStmtForValue(expr, [FullPosition.cxxBuildFromNode(newExpression, this.cxxSourceFile)]);
         // When using the new keyword, the type of Local should be a pointer type.
         if (newExpression.kind === 'CXXNewExpr') {
             (newLocal as Local).setType(new PointerType(classType, 1));
