@@ -130,7 +130,7 @@ export class ArkCxxNewArrayExpr extends AbstractExpr {
     }
 
     public toString(): string {
-        return 'newarray (' + this.baseType + ')[' + this.size + ']';
+        return 'array (' + this.baseType + ')';
     }
 }
 

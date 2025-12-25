@@ -190,7 +190,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
                 stmts = this.cxxDeclStatementToStmts(node);
                 break;
             case 'VarDecl':
-                stmts = this.cxxVariableStatementToStmts(node);
+                stmts = this.cxxVariableDeclarationListToStmts(node);
                 break;
             case 'CompoundStmt':
                 stmts = this.compoundToStmts(node);
@@ -871,10 +871,6 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
             stmts.push(...exprStmts);
         }
         return stmts;
-    }
-
-    private cxxVariableStatementToStmts(variableStatement: CxxAstNode): Stmt[] {
-        return this.cxxVariableDeclarationListToStmts(variableStatement);
     }
 
     private cxxDeclStatementToStmts(declStatement: CxxAstNode): Stmt[] {

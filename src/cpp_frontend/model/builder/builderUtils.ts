@@ -35,8 +35,10 @@ import { buildArkMethodFromArkClass } from './ArkMethodBuilder';
 import { ArkFile } from '../../../core/model/ArkFile';
 import { BuiltinCxx } from '../../common/Builtin';
 import { CxxModelUtils } from '../../common/ModelUtils';
+import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
 
 const FUNC_PTR_REGEX = /\(\s*\*\s*(?:\[\s*[^]]*\s*\])?\s*\)\s*\(\s*[^)]*\s*\)/;
+const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkValueTransformer');
 
 function extractCommonModifiers(node: CxxAstNode): number {
     let modifiers: number = 0;
@@ -113,7 +115,7 @@ export function buildTypeParameters(clsNode: CxxAstNode, sourceFile: CxxAstNode,
                 innerNode.default = innerNode.inner[0].type.qualType;
             }
             if (innerNode.defaultArg) {
-                defaultType = cxxNode2Type(innerNode, arkInstance, undefined,undefined,innerNode.defaultArg);
+                defaultType = cxxNode2Type(innerNode, arkInstance, undefined, undefined, innerNode.defaultArg);
             }
             let templateType = new GenericType(innerNode.name, defaultType);
             templateType.setIndex(++index);
@@ -209,14 +211,14 @@ export function buildFuncPtrType(funcPtrNode: CxxAstNode, arkMtd: ArkMethod, sou
  *@ returns Type after conversion
  */
 export function cxxNode2Type(
-    nodeQualType: CxxAstNode ,
+    nodeQualType: CxxAstNode,
     arkInstance: ArkMethod | ArkClass | ArkField | undefined,
     sourceFile?: CxxAstNode,
     currNode?: CxxAstNode,
-    defaultArg?: defaultArg
+    defaultArg?: defaultArg,
 ): Type {
     if (defaultArg) {
-        return buildTypeFromPreStr(defaultArg.type.qualType,nodeQualType as CxxAstNode, arkInstance);
+        return buildTypeFromPreStr(defaultArg.type.qualType, nodeQualType as CxxAstNode, arkInstance);
     }
 
     // Handle function pointer type
@@ -271,7 +273,7 @@ export function buildTypeFromPreStr(preStr: string, node: CxxAstNode, arkInstanc
 
     // 4. Array judgment
     if (baseStr.includes('[') && baseStr.includes(']')) {
-        return buildArrayType(baseStr, node,  arkInstance);
+        return buildArrayType(baseStr, node, arkInstance);
     }
 
     // 5. Handling pointer types
@@ -310,10 +312,27 @@ export function buildArrayType(qualType: string, node: CxxAstNode, arkInstance: 
     const count = qualType.match(/\[/g)?.length ?? 0;
     let baseType = buildTypeFromPreStr(qualType.slice(0, qualType.indexOf('[')) +
         qualType.slice(qualType.lastIndexOf(']') + 1), node, arkInstance);
+    let dimensionSizes: number[] = [];
+    const dimensionMatches = qualType.match(/\[(\d*)\]/g);
+    if (dimensionMatches) {
+        dimensionSizes = dimensionMatches.map(dim => {
+            const numStr = dim.match(/\d+/)?.[0];
+            return numStr ? parseInt(numStr, 10) : 0;
+        });
+    } else {
+        // 如果无法从字符串中提取维度，则尝试从node.inner中获取
+        try {
+            for (let i = 0; i < count; i++) {
+                dimensionSizes.push(Number(node.inner[i].value) ?? 0);
+            }
+        } catch (e) {
+            logger.error('this node case is unexpect');
+        }
+    }
     if (baseType instanceof UnclearReferenceType) {
         return new CxxArrayType(new UnclearReferenceType(qualType.slice(0, qualType.indexOf('['))), count);
     }
-    return new CxxArrayType(baseType, count);
+    return new CxxArrayType(baseType, count, dimensionSizes);
 }
 
 export function buildPointerType(preStr: string, oriStr: string, pointerLevel: number, node: CxxAstNode, arkInstance: ArkMethod | ArkClass | ArkField | undefined): Type {
@@ -339,14 +358,14 @@ export function buildPointerType(preStr: string, oriStr: string, pointerLevel: n
 export function buildReferenceType(preStr: string, referenceCount: number, node: CxxAstNode, arkInstance: ArkMethod | ArkClass | ArkField | undefined): Type {
     let referCategory = referenceCount % 2 === 1 ? ReferCategory.LVALUE_REF : ReferCategory.RVALUE_REF;
     // cxxTodo: this need to confirm;
-    let baseType =node.inner[0] ? cxxNode2Type(node.inner[0],arkInstance) : buildTypeFromPreStr(preStr, node, arkInstance);
+    let baseType = node.inner[0] ? cxxNode2Type(node.inner[0], arkInstance) : buildTypeFromPreStr(preStr, node, arkInstance);
     if (baseType instanceof GenericType && referenceCount % 2 === 0) {
         referCategory = ReferCategory.UNIVERSAL_REF;
     }
     return new ReferenceType(baseType, referCategory);
 }
 
-export function isCXXSTLContainer(qualType: string):boolean {
+export function isCXXSTLContainer(qualType: string): boolean {
     let STLContainerPtn = /(set|map|vector|queue|deque|stack|list|pair)<[^>]*>/g;
     return STLContainerPtn.test(qualType);
 }

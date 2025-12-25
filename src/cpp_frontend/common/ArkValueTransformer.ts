@@ -46,7 +46,6 @@ import {
 import {
     AliasType,
     AnyType,
-    ArrayType,
     ClassType,
     FunctionType,
     NumberType,
@@ -54,7 +53,7 @@ import {
     UndefinedType,
     UnknownType,
 } from '../../core/base/Type';
-import { PointerType, ReferenceType} from '../base/Type';
+import { CxxArrayType, PointerType, ReferenceType } from '../base/Type';
 import { ArkSignatureBuilder } from '../../core/model/builder/ArkSignatureBuilder';
 import { ClassSignature, FieldSignature, MethodSignature } from '../../core/model/ArkSignature';
 import { Value } from '../../core/base/Value';
@@ -1127,6 +1126,12 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         }
         // ==Handling common scenarios==
         let baseType = baseValue.getType();
+        if (baseValue instanceof ArkArrayRef){
+            let arrayBaseType = TypeInference.replaceTypeWithReal(baseValue.getBase().getType());
+            if (arrayBaseType instanceof CxxArrayType) {
+                baseType = arrayBaseType.getBaseType();
+            }
+        }
         let baseClassType: ClassType | null = null;
         // Judge whether the base is a class type or its pointer/reference
         if (baseType instanceof ClassType) {
@@ -1187,7 +1192,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         }
 
         let elementAccessExpr: Value;
-        if (baseValue.getType() instanceof ArrayType || baseValue.getType() instanceof PointerType) {
+        if (baseValue.getType() instanceof CxxArrayType || baseValue.getType() instanceof PointerType) {
             elementAccessExpr = new ArkArrayRef(baseValue as Local, argumentValue);
         } else {
             // TODO: deal with ArkStaticFieldRef
