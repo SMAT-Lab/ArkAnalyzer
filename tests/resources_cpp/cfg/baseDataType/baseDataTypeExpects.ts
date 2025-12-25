@@ -34,7 +34,7 @@ export const BASE_DATA_TYPE_EXPECT_MAIN = {
                 'char32Data1 = U0001F600',
                 "char32Data2 = 'hello'",
                 "charData4 = ''",
-                '%0 = alloc @%unk/%unk: std::basic_string',
+                '%0 = new @%unk/%unk: std::basic_string',
                 "instanceinvoke %0.<@%unk/%unk: std::basic_string.constructor()>('hello')",
                 'ss = %0'
             ],

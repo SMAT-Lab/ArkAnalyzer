@@ -32,7 +32,6 @@ import {
     RelationalBinaryOperator,
 } from '../../core/base/Expr';
 import {
-    ArkAllocExpr,
     ArkArrayTypeTraitExpr,
     ArkCxxCastExpr,
     ArkCxxDeleteArrayExpr,
