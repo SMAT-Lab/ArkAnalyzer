@@ -195,7 +195,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         'UnexposedExpr': this.processInnerNodeToValueAndStmts,
         'UnresolvedLookupExpr': this.cxxIdentifierToValueAndStmts,
         'UserDefinedLiteral': this.userDefinedLiteralToValueAndStmts,
-        'VarDecl': this.cxxVariableDeclarationToValueAndStmts
+        'VarDecl': this.cxxVariableDeclarationToValueAndStmts,
     };
 
     constructor(arkIRTransformer: ArkCxxIRTransformer, sourceFile: CxxTranslationUnit, declaringMethod: ArkMethod) {
@@ -285,7 +285,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         return node.inner.length !== 0 && node.inner[0].kind === 'CXXFunctionalCastExpr';
     }
 
-    private undefinedToValueAndStmts():ValueAndStmts {
+    private undefinedToValueAndStmts(): ValueAndStmts {
         logger.warn(
             'ArkValueTransformer-Cpp NodeToValueAndStmts: node is undefined. Method signature is : ',
             this.declaringMethod?.getSignature()?.toString(),
@@ -492,6 +492,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             stmts: stmts,
         };
     }
+
     /**
      *Convert user-defined literals into sets of values and statements
      *The syntax format of user-defined literals is: original value+suffix (for example: 123_km, "hello" _s, 'a' _s)
@@ -739,7 +740,11 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
      *@ returns The object containing the converted value and statement array
      */
     private cxxDeleteExpressionToValueAndStmts(deleteExpression: CxxAstNode): ValueAndStmts {
-        const { value: exprValue, valueOriginalPositions: exprPositions, stmts: stmts } = this.cxxNodeToValueAndStmts(deleteExpression.inner[0]);
+        const {
+            value: exprValue,
+            valueOriginalPositions: exprPositions,
+            stmts: stmts,
+        } = this.cxxNodeToValueAndStmts(deleteExpression.inner[0]);
         const isArray = deleteExpression.isArray;
         const deleteExpr = isArray ? new ArkCxxDeleteArrayExpr(exprValue) : new ArkDeleteExpr(exprValue);
         const deleteExprPosition = [FullPosition.cxxBuildFromNode(deleteExpression, this.cxxSourceFile), ...exprPositions];
@@ -795,6 +800,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         return { value: folderExpr, valueOriginalPositions: folderExprPosition, stmts: stmts };
 
     }
+
     /**
      *Convert C++conditional expression to IR
      *@ param conditionalExpression - C++AST node, representing conditional expression
@@ -835,11 +841,10 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         stmts.push(assignStmtWhenTrue);
 
 
-
         stmts.push(new DummyStmt(ArkCxxIRTransformer.DUMMY_CONDITIONAL_OPERATOR_IF_FALSE_STMT + currConditionalOperatorIndex));
         // The last internal node is the value when the expression is false
         InnerIdx = conditionalExpression.inner.length - 1;
-        const {value: whenFalseValue, valueOriginalPositions: whenFalsePositions, stmts: whenFalseStmts, } =
+        const { value: whenFalseValue, valueOriginalPositions: whenFalsePositions, stmts: whenFalseStmts } =
             this.cxxNodeToValueAndStmts(conditionalExpression.inner[InnerIdx]);
         whenFalseStmts.forEach(stmt => stmts.push(stmt));
         const assignStmt = new ArkAssignStmt(resultLocal, whenFalseValue);
@@ -890,14 +895,16 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             'MemberExpr',
             'OverloadedDeclRef',
             'ArraySubscriptExpr',
-            'CXXOperatorCallExpr'
+            'CXXOperatorCallExpr',
         ]);
+
         function unwrapImplicit(n?: CxxAstNode): CxxAstNode | undefined {
             while (n && n.kind === 'ImplicitCastExpr') {
                 n = n.inner?.[0];
             }
             return n;
         }
+
         let callNode: CxxAstNode | undefined;
         const argumentNodes: CxxAstNode[] = [];
         for (let i = 0; i < innerAstNodes.length; i++) {
@@ -940,7 +947,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         args: Value[],
         argPositionsAllFlat: FullPosition[],
         componentExpression: CxxAstNode,
-        currStmts: Stmt[]
+        currStmts: Stmt[],
     ): ValueAndStmts {
         const stmts: Stmt[] = [...currStmts];
         const componentExpressionPosition = FullPosition.cxxBuildFromNode(componentExpression, this.cxxSourceFile);
@@ -964,7 +971,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         args: Value[],
         argPositionsAllFlat: FullPosition[],
         componentExpression: CxxAstNode,
-        currStmts: Stmt[]
+        currStmts: Stmt[],
     ): ValueAndStmts {
         const stmts: Stmt[] = [...currStmts];
         const componentExpressionPosition = FullPosition.cxxBuildFromNode(componentExpression, this.cxxSourceFile);
@@ -1004,7 +1011,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         componentName: string,
         createArgs: Value[],
         componentExpressionPosition: FullPosition,
-        createArgsPositionsAllFlat: FullPosition[]
+        createArgsPositionsAllFlat: FullPosition[],
     ): ValueAndStmts {
         const createMethodSignature = ArkSignatureBuilder.buildMethodSignatureFromClassNameAndMethodName(componentName, COMPONENT_CREATE_FUNCTION);
         const createInvokeExpr = new ArkStaticInvokeExpr(createMethodSignature, createArgs);
@@ -1073,16 +1080,20 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
                 name: memberExpression.name,
                 code: '',
                 type: { qualType: 'void' },
-                inner: []
+                inner: [],
             }; //  As base node
         }
         // [Scenario 2] Recursively process base object, such as testMap in testMap.insert
         //  Get baseValue (e.g., testMap), position information, and possible preceding statements (e.g., auto tmp = ...;)
-        let { value: baseValue, valueOriginalPositions: basePositions, stmts: baseStmts } = this.cxxNodeToValueAndStmts(memberExpression.inner[0]);
+        let {
+            value: baseValue,
+            valueOriginalPositions: basePositions,
+            stmts: baseStmts,
+        } = this.cxxNodeToValueAndStmts(memberExpression.inner[0]);
         // [Scenario 3] Processing chained member access, such as a.b.c or (* ptr). field
         // If the base is a member access, generate an assignment statement to ensure the validity of SSA
         if (memberExpression.inner[0].kind === 'MemberExpr' || memberExpression.kind === 'MemberRef') {
-            ({ value: baseValue, valueOriginalPositions: basePositions, stmts: baseStmts, } =
+            ({ value: baseValue, valueOriginalPositions: basePositions, stmts: baseStmts } =
                 this.ArkCxxIRTransformer.generateAssignStmtForValue(baseValue, basePositions));
         }
         // [Scenario 4] On special occasions, the caller directly specifies the baseValue (generally used to replace the base,
@@ -1127,7 +1138,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         }
         // ==Handling common scenarios==
         let baseType = baseValue.getType();
-        if (baseValue instanceof ArkArrayRef){
+        if (baseValue instanceof ArkArrayRef) {
             let arrayBaseType = TypeInference.replaceTypeWithReal(baseValue.getBase().getType());
             if (arrayBaseType instanceof CxxArrayType) {
                 baseType = arrayBaseType.getBaseType();
@@ -1148,7 +1159,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             fieldSignature = new FieldSignature(
                 memberName, // Field name (such as insert)
                 baseClassType.getClassSignature(), // Base class type signature
-                baseType // baseType as its type
+                baseType, // baseType as its type
             );
         } else {
             // Otherwise, it is generated only according to the field name
@@ -1167,7 +1178,11 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
      */
     private cxxElementAccessExpressionToValueAndStmts(elementAccessExpression: CxxAstNode): ValueAndStmts {
         const stmts: Stmt[] = [];
-        let { value: baseValue, valueOriginalPositions: basePositions, stmts: baseStmts } = this.cxxNodeToValueAndStmts(elementAccessExpression.inner[0]);
+        let {
+            value: baseValue,
+            valueOriginalPositions: basePositions,
+            stmts: baseStmts,
+        } = this.cxxNodeToValueAndStmts(elementAccessExpression.inner[0]);
         baseStmts.forEach(stmt => stmts.push(stmt));
         if (!(baseValue instanceof Local)) {
             ({
@@ -1234,7 +1249,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
                 name: outerName,
                 code: outerName,
                 type: { qualType: outerName },
-                inner: []
+                inner: [],
             } as CxxAstNode;
             return this.buildValueAndStmtsForMemberCall(stmts, callNode, argumentNodes, callExpression, undefined);
         }
@@ -1567,7 +1582,10 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             return null;
         }
         const stmts: Stmt[] = [];
-        const { args, argPositions: argPositionsAll } = this.cxxParseArguments(stmts, cxxOperatorCallExpr.inner.slice(1));
+        const {
+            args,
+            argPositions: argPositionsAll,
+        } = this.cxxParseArguments(stmts, cxxOperatorCallExpr.inner.slice(1));
         // The input/output operator must be overloaded as a global function, and the overloaded function only has 2 parameters,
         // because the input/output operator is actually a binary operation: stream (left operand)+object (right operand)
         const defaultClass = this.declaringMethod.getDeclaringArkFile().getDefaultClass();
@@ -1590,7 +1608,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             argPositions: argPositionsAll,
         };
         if (!matchMtd) {
-            return this.cxxGenerateInvokeValueAndStmts(cxxOperatorCallExpr.inner[0], argus, stmts, cxxOperatorCallExpr);;
+            return this.cxxGenerateInvokeValueAndStmts(cxxOperatorCallExpr.inner[0], argus, stmts, cxxOperatorCallExpr);
+            ;
         }
         // Construct callNode
         const callNode = {
@@ -1662,7 +1681,11 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         returnType?: Type,
     ): ValueAndStmts {
         const stmts: Stmt[] = [...currStmts];
-        let { value: callerValue, valueOriginalPositions: callerPositions, stmts: callerStmts } = this.cxxNodeToValueAndStmts(functionNameNode);
+        let {
+            value: callerValue,
+            valueOriginalPositions: callerPositions,
+            stmts: callerStmts,
+        } = this.cxxNodeToValueAndStmts(functionNameNode);
         callerStmts.forEach(stmt => stmts.push(stmt));
 
         let invokeValue: Value;
@@ -1735,11 +1758,15 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         argNodes: any[],
         callExpression: any,
         realGenericTypes: Type[] | undefined,
-        cxxMemberCallExprType?: Type
+        cxxMemberCallExprType?: Type,
     ): ValueAndStmts {
         const { args, argPositions: argPositionsAll } = this.cxxParseArguments(stmts, argNodes);
         const argPositionsAllFlat = argPositionsAll.flat();
-        let { value: callerValue, valueOriginalPositions: callerPositions, stmts: callerStmts } = this.cxxNodeToValueAndStmts(callerNode);
+        let {
+            value: callerValue,
+            valueOriginalPositions: callerPositions,
+            stmts: callerStmts,
+        } = this.cxxNodeToValueAndStmts(callerNode);
         stmts.push(...callerStmts);
 
         let invokeValue: Value;
@@ -1752,7 +1779,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             ({
                 value: callerValue,
                 valueOriginalPositions: callerPositions,
-                stmts:callerStmts,
+                stmts: callerStmts,
             } = this.ArkCxxIRTransformer.generateAssignStmtForValue(callerValue, callerPositions));
             stmts.push(...callerStmts);
             const methodSignature = ArkSignatureBuilder.buildMethodSignatureFromMethodName((callerValue as Local).getName());
@@ -1783,7 +1810,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         realGenericTypes: Type[] | undefined,
         invokeValuePositions: FullPosition[],
         callerPositions: FullPosition[],
-        returnType?: Type
+        returnType?: Type,
     ): ArkInstanceFieldRef | ArkStaticInvokeExpr {
         let methodSignature: MethodSignature;
         const declareSignature = callerValue.getFieldSignature().getDeclaringSignature();
@@ -1804,7 +1831,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
     private buildInvokeValueForLocal(callerValue: Local,
                                      args: Value[],
                                      realGenericTypes: Type[] | undefined,
-                                     cxxMemberCallExprType?: Type
+                                     cxxMemberCallExprType?: Type,
     ): ArkPtrInvokeExpr | ArkStaticInvokeExpr {
         const callerName = callerValue.getName();
         const methodSignature = ArkSignatureBuilder.buildMethodSignatureFromMethodName(callerName);
@@ -1856,7 +1883,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
                 realGenericTypes = [];
                 members.forEach((typeArgument: string) => {
                     // TODO: this is a errow, need to be fixed
-                    if (node){
+                    if (node) {
                         realGenericTypes!.push(cxxNode2Type(node, this.declaringMethod));
                     }
                 });
@@ -1869,7 +1896,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
     private cxxParseArguments(
         currStmts: Stmt[],
         argumentNodes?: CxxAstNode[],
-        builderMethodIndexes?: Set<number>
+        builderMethodIndexes?: Set<number>,
     ): {
         args: Value[];
         argPositions: FullPosition[];
@@ -1887,7 +1914,11 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
                     this.builderMethodContextFlag = true;
                     this.ArkCxxIRTransformer.setBuilderMethodContextFlag(true);
                 }
-                let { value: argValue, valueOriginalPositions: argPositionsSingle, stmts: argStmts } = this.cxxNodeToValueAndStmts(argument);
+                let {
+                    value: argValue,
+                    valueOriginalPositions: argPositionsSingle,
+                    stmts: argStmts,
+                } = this.cxxNodeToValueAndStmts(argument);
                 this.builderMethodContextFlag = prevBuilderMethodContextFlag;
                 this.ArkCxxIRTransformer.setBuilderMethodContextFlag(prevBuilderMethodContextFlag);
                 argStmts.forEach(s => currStmts.push(s));
@@ -1952,8 +1983,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             classSignature = curClass ? curClass.getSignature() : ArkSignatureBuilder.buildClassSignatureFromClassName(className);
             classType = new ClassType(classSignature, realGenericTypes);
         }
-        const expr =newExpression.kind === 'CXXNewExpr'? new ArkNewExpr(classType): new ArkAllocExpr(classType);
-        const {value: newLocal, valueOriginalPositions: newLocalPositions, stmts: newExprStmts, } =
+        const expr = new ArkNewExpr(classType);
+        const { value: newLocal, valueOriginalPositions: newLocalPositions, stmts: newExprStmts } =
             this.ArkCxxIRTransformer.generateAssignStmtForValue(expr, [FullPosition.cxxBuildFromNode(newExpression, this.cxxSourceFile)]);
         // When using the new keyword, the type of Local should be a pointer type.
         if (newExpression.kind === 'CXXNewExpr') {
@@ -1983,8 +2014,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         className: string,
     ): void {
         // 对象构造，使用 invokeStmt 表达
-        const constructArgs:CxxAstNode[] = (():CxxAstNode[] => {
-            let args:CxxAstNode[] = newExpression.inner;
+        const constructArgs: CxxAstNode[] = ((): CxxAstNode[] => {
+            let args: CxxAstNode[] = newExpression.inner;
             if (newExpression.kind === 'CXXNewExpr' && newExpression.inner[0]?.kind === 'CXXConstructExpr') {
                 return [...newExpression.inner[0].inner];
             } else if (newExpression.kind === 'CompoundLiteralExpr') {
@@ -2175,7 +2206,10 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             }
         }
         const stmts: Stmt[] = [];
-        const { args: argumentValues, argPositions: argPositions } = this.cxxParseArguments(stmts, newArrayExpression.inner);
+        const {
+            args: argumentValues,
+            argPositions: argPositions,
+        } = this.cxxParseArguments(stmts, newArrayExpression.inner);
         let argumentsLength = newArrayExpression.inner ? newArrayExpression.inner.length : 0;
         let arrayLengthValue: Value;
         let fromLiteral: boolean; // Does it contain specific elements
@@ -2204,7 +2238,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             argPositions,
             stmts,
             newArrayExprPosition,
-            fromLiteral
+            fromLiteral,
         );
     }
 
@@ -2257,6 +2291,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         return dimensions
             .map(dim => parseInt(dim.replace(/[\[\]]/g, '')));
     }
+
     /**
      *Process array literal expression and convert it to intermediate representation
      *@ param arrayLiteralExpression array literal expression node
@@ -2272,7 +2307,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         elementValues: Value[],
         elementPositions: FullPosition[],
         dimensions: number[],
-        isInitZero: boolean
+        isInitZero: boolean,
     ): void {
         for (const element of arrayLiteralExpression.inner) {
             // If there is still dimension information in the array, build an internal array
@@ -2317,7 +2352,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         newArrayExprPosition: FullPosition,
         fromLiteral: boolean,
         elementsNumber?: number,
-        isInitZero?: boolean
+        isInitZero?: boolean,
     ): ValueAndStmts {
         const stmts: Stmt[] = [...currStmts];
         const newArrayExpr = new ArkCxxNewArrayExpr(baseType, arrayLengthValue, fromLiteral, elementsNumber);
@@ -2420,7 +2455,11 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
      */
     private cxxPostfixUnaryExpressionToValueAndStmts(postfixUnaryExpression: CxxAstNode): ValueAndStmts {
         const stmts: Stmt[] = [];
-        let { value: operandValue, valueOriginalPositions: operandPositions, stmts: exprStmts } = this.cxxNodeToValueAndStmts(postfixUnaryExpression.inner[0]);
+        let {
+            value: operandValue,
+            valueOriginalPositions: operandPositions,
+            stmts: exprStmts,
+        } = this.cxxNodeToValueAndStmts(postfixUnaryExpression.inner[0]);
         exprStmts.forEach(stmt => stmts.push(stmt));
         if (IRUtils.moreThanOneAddress(operandValue)) {
             ({
@@ -2471,9 +2510,9 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         const stmt: Stmt[] = [];
         let value: Value = ValueUtil.getUndefinedConst();
         let fullPositions: FullPosition[] = [];
-        for (const node of decl.inner){
-            const valueAndStmts =this.cxxNodeToValueAndStmts(node);
-            valueAndStmts.stmts.forEach(s =>stmt.push(s));
+        for (const node of decl.inner) {
+            const valueAndStmts = this.cxxNodeToValueAndStmts(node);
+            valueAndStmts.stmts.forEach(s => stmt.push(s));
             value = valueAndStmts.value;
             fullPositions.push(...valueAndStmts.valueOriginalPositions);
         }
@@ -2492,7 +2531,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
      *@ returns the ValueAndStmts object containing values and statements
      */
     public cxxVariableDeclarationToValueAndStmts(variableDeclaration: CxxAstNode, needRightOp: boolean = true): ValueAndStmts {
-        let isConst = variableDeclaration.type.qualType.includes("const");
+        let isConst = variableDeclaration.type.qualType.includes('const');
         const leftOpNode = variableDeclaration;
         let rightOpNode: CxxAstNode | undefined = undefined;
         if (variableDeclaration.inner !== null && variableDeclaration.inner.length !== 0) {
@@ -2520,6 +2559,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         const pattern = /\[.*\]/;
         return pattern.test(qualType);
     }
+
     private getStdContainerType(declCode: string): string | null {
         const match = /\b(std::\w+)</g.exec(declCode);
         return match ? match[1] : null;
@@ -2537,7 +2577,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
      *@ returns the ValueAndStmts object containing the value, original position and statement list
      */
     private cxxAssignmentToValueAndStmts(leftOpNode: CxxAstNode, rightOpNode: CxxAstNode | undefined, variableDefFlag: boolean,
-        isConst: boolean, declarationType: Type, needRightOp: boolean = true): ValueAndStmts {
+                                         isConst: boolean, declarationType: Type, needRightOp: boolean = true): ValueAndStmts {
         let leftValueAndStmts: ValueAndStmts;
         if (leftOpNode.kind.toString() === 'VarDecl') {
             leftValueAndStmts = this.cxxIdentifierToValueAndStmts(leftOpNode, variableDefFlag);
@@ -2547,7 +2587,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         const { value: leftValue, valueOriginalPositions: leftPositions, stmts: leftStmts } = leftValueAndStmts;
         let stmts: Stmt[] = [];
         if (needRightOp) {
-            const {value: rightValue, valueOriginalPositions: rightPositions, stmts: rightStmts, } =
+            const { value: rightValue, valueOriginalPositions: rightPositions, stmts: rightStmts } =
                 this.cxxAssignmentRightOpToValueAndStmts(rightOpNode, leftValue);
             if (leftValue instanceof Local) {
                 if (variableDefFlag) {
@@ -2593,7 +2633,11 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         let tempRightStmts: Stmt[] = [];
         const rightStmts: Stmt[] = [];
         if (rightOpNode) {
-            ({ value: rightValue, valueOriginalPositions: rightPositions, stmts: tempRightStmts } = this.cxxNodeToValueAndStmts(rightOpNode));
+            ({
+                value: rightValue,
+                valueOriginalPositions: rightPositions,
+                stmts: tempRightStmts,
+            } = this.cxxNodeToValueAndStmts(rightOpNode));
             tempRightStmts.forEach(stmt => rightStmts.push(stmt));
         } else {
             rightValue = CxxValueUtil.getUndefinedConst();
@@ -2624,7 +2668,11 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         let { value, valueOriginalPositions, stmts } = this.cxxNodeToValueAndStmts(node);
         stmts.forEach(stmt => allStmts.push(stmt));
         if (IRUtils.moreThanOneAddress(value)) {
-            ({ value, valueOriginalPositions, stmts } = this.arkIRTransformer.generateAssignStmtForValue(value, valueOriginalPositions));
+            ({
+                value,
+                valueOriginalPositions,
+                stmts,
+            } = this.arkIRTransformer.generateAssignStmtForValue(value, valueOriginalPositions));
             stmts.forEach(stmt => allStmts.push(stmt));
         }
         return { value, valueOriginalPositions, stmts: allStmts };
@@ -2647,9 +2695,17 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         }
         const stmts: Stmt[] = [];
         const binaryExpressionPosition = FullPosition.cxxBuildFromNode(binaryExpression, this.cxxSourceFile);
-        const { value: opValue1, valueOriginalPositions: opPositions1, stmts: opStmts1 } = this.cxxNodeToSingleAddressValueAndStmts(binaryExpressionLeft);
+        const {
+            value: opValue1,
+            valueOriginalPositions: opPositions1,
+            stmts: opStmts1,
+        } = this.cxxNodeToSingleAddressValueAndStmts(binaryExpressionLeft);
         opStmts1.forEach(stmt => stmts.push(stmt));
-        const { value: opValue2, valueOriginalPositions: opPositions2, stmts: opStmts2 } = this.cxxNodeToSingleAddressValueAndStmts(binaryExpressionRight);
+        const {
+            value: opValue2,
+            valueOriginalPositions: opPositions2,
+            stmts: opStmts2,
+        } = this.cxxNodeToSingleAddressValueAndStmts(binaryExpressionRight);
         opStmts2.forEach(stmt => stmts.push(stmt));
         let exprValue: Value;
         let exprValuePositions = [binaryExpressionPosition];
@@ -2685,9 +2741,17 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
      */
     private cxxCompoundAssignmentToValueAndStmts(binaryExpression: CxxAstNode): ValueAndStmts {
         const stmts: Stmt[] = [];
-        let { value: leftValue, valueOriginalPositions: leftPositions, stmts: leftStmts } = this.cxxNodeToValueAndStmts(binaryExpression.inner[0]);
+        let {
+            value: leftValue,
+            valueOriginalPositions: leftPositions,
+            stmts: leftStmts,
+        } = this.cxxNodeToValueAndStmts(binaryExpression.inner[0]);
         leftStmts.forEach(stmt => stmts.push(stmt));
-        let { value: rightValue, valueOriginalPositions: rightPositions, stmts: rightStmts } = this.cxxNodeToValueAndStmts(binaryExpression.inner[1]);
+        let {
+            value: rightValue,
+            valueOriginalPositions: rightPositions,
+            stmts: rightStmts,
+        } = this.cxxNodeToValueAndStmts(binaryExpression.inner[1]);
         rightStmts.forEach(stmt => stmts.push(stmt));
         if (IRUtils.moreThanOneAddress(leftValue) && IRUtils.moreThanOneAddress(rightValue)) {
             const {
@@ -2762,7 +2826,11 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
      */
     public cxxConditionToValueAndStmts(condition: CxxAstNode): ValueAndStmts {
         const stmts: Stmt[] = [];
-        let { value: conditionValue, valueOriginalPositions: conditionPositions, stmts: conditionStmts } = this.cxxNodeToValueAndStmts(condition);
+        let {
+            value: conditionValue,
+            valueOriginalPositions: conditionPositions,
+            stmts: conditionStmts,
+        } = this.cxxNodeToValueAndStmts(condition);
         conditionStmts.forEach(stmt => stmts.push(stmt));
         let conditionExpr: ArkConditionExpr;
         if (conditionValue instanceof AbstractBinopExpr && this.isRelationalOperator(conditionValue.getOperator())) {
@@ -2787,7 +2855,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         };
     }
 
-    private parseFloatAsCxxFloat(s:string): number {
+    private parseFloatAsCxxFloat(s: string): number {
         const num = Number.parseFloat(s);
         // perform a float32 round-trip using Float32Array to simulate C++ 'float' precision
         const f32 = new Float32Array(1);
