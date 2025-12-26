@@ -231,7 +231,7 @@ export function cxxNode2Type(
     }
     // Default processing
     let typeString = (nodeQualType.type.desugaredQualType ?? nodeQualType.type.qualType)
-        .replace(/\s+|\b(const|volatile|mutable)\b\s*/gi, '');
+        .replace(/\b(const|volatile|mutable)\b\s*/gi, '').trim();
 
     if (nodeQualType.kind === 'InitListExpr' && typeString === 'void') {
         let multipleTypePara: Type[] = [];
@@ -389,6 +389,11 @@ export function isFuncInClassOrNamespace(callNode: CxxAstNode): boolean {
 
 }
 
+export function isCxxBasicString(qualType: string): boolean {
+    const preType = qualType.replace(/\b(const|static|mutable)\s*\b/g, '');
+    return convertDataType(preType) === 'string';
+}
+
 export function buildTypeFromDerivedType(preStr: string, node: CxxAstNode, arkInstance: ArkMethod | ArkClass | ArkField | undefined): Type {
     const outerPartMatch = preStr.match(/^([^<]+)/);
     const outerPart = outerPartMatch ? outerPartMatch[1] : null;
@@ -475,7 +480,3 @@ export function convertDataType(typeName: string): string {
     const formattedTypeName = typeName.replace(BuiltinCxx.CXXSTDREF, '');
     return typeMap[formattedTypeName] ?? 'unsupported';
 }
-
-// export function normalizeTypeString(raw: string): string {
-//
-// }

@@ -80,6 +80,7 @@ import { SdkUtils } from '../../core/common/SdkUtils';
 import { ArkNamespace } from '../../core/model/ArkNamespace';
 import { ArkExport } from '../../core/model/ArkExport';
 import { CxxModelUtils } from './ModelUtils';
+import { BuiltinCxx } from './Builtin';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'IRInference');
 
@@ -184,7 +185,14 @@ export class IRInference {
         let { mtd: method, sig: signature } = this.processArkExportForMethodAndSignature(arkExport, arkClass);
         if (method) {
             signature = method.matchMethodSignature(expr.getArgs());
-            TypeInference.inferSignatureReturnType(signature, method);
+            // Handle Standard Operator Overloading
+            if ([BuiltinCxx.OPERATOR_ISTREAM, BuiltinCxx.OPERATOR_OSTREAM].includes(methodName) &&
+                !CxxModelUtils.isIOStreamObjectMatched(signature.getMethodSubSignature().getParameters(), expr.getArgs(), method.getDeclaringArkFile().getScene())) {
+                signature = undefined;
+            }
+            if (signature) {
+                TypeInference.inferSignatureReturnType(signature, method);
+            }
         }
         if (signature) {
             if (arkExport instanceof Local) {
