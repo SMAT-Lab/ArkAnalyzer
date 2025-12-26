@@ -40,8 +40,8 @@ function buildImportDeclarationNode(node: ts.ImportDeclaration, sourceFile: ts.S
     }
 
     let modifiers = 0;
-    if (node.modifiers) {
-        modifiers = buildModifiers(node);
+    if (node.importClause.isTypeOnly) {
+
     }
 
     // just like: import '../xxx'

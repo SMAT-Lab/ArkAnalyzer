@@ -55,6 +55,8 @@ export enum ModifierType {
     OUT = 1 << 12,
     OVERRIDE = 1 << 13,
     DECLARE = 1 << 14,
+    TYPE = 1 << 15,
+    LAZY = 1 << 16,
 }
 
 export const MODIFIER_TYPE_MASK = 0xffff;
@@ -93,6 +95,8 @@ const MODIFIER_KIND_2_ENUM = new Map<ts.SyntaxKind, ModifierType>([
     [ts.SyntaxKind.OutKeyword, ModifierType.OUT],
     [ts.SyntaxKind.OverrideKeyword, ModifierType.OVERRIDE],
     [ts.SyntaxKind.StaticKeyword, ModifierType.STATIC],
+    [ts.SyntaxKind.TypeKeyword, ModifierType.TYPE],
+    [ts.SyntaxKind.TypeKeyword, ModifierType.LAZY],
 ]);
 
 export function modifierKind2Enum(kind: ts.SyntaxKind): ModifierType {
