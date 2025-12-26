@@ -136,7 +136,7 @@ export class ArkCxxNewArrayExpr extends AbstractExpr {
     }
 
     public toString(): string {
-        return 'array (' + this.baseType + ')';
+        return 'newarray (' + this.baseType + ')';
     }
 }
 
