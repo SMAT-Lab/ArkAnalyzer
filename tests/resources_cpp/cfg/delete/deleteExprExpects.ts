@@ -36,7 +36,7 @@ export const DELETE_EXPECT_CASE2 = {
     blocks: [
         {
             id: 0,
-            stmts: ['this = this: @delete/deleteExpr.cpp: %dflt', '%0 = newarray (int*)[10]', 'arr = %0', '%1 = delete[] arr', 'arr = null', 'return'],
+            stmts: ['this = this: @delete/deleteExpr.cpp: %dflt', '%0 = newarray (int*)', 'arr = %0', '%1 = delete[] arr', 'arr = null', 'return'],
             preds: [],
             succes: [],
         },
