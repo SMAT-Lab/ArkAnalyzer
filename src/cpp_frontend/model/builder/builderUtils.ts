@@ -19,6 +19,7 @@ import {
     GenericType,
     Type,
     UnclearReferenceType,
+    UnionType,
     UnknownType,
 } from '../../../core/base/Type';
 import { CxxArrayType, CxxNonType, PointerType, ReferCategory, ReferenceType } from '../../base/Type';
@@ -39,7 +40,6 @@ import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
 
 const FUNC_PTR_REGEX = /\(\s*\*\s*(?:\[\s*[^]]*\s*\])?\s*\)\s*\(\s*[^)]*\s*\)/;
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkValueTransformer');
-const typeCache = new Map<string, Type>;
 
 function extractCommonModifiers(node: CxxAstNode): number {
     let modifiers: number = 0;
@@ -226,15 +226,22 @@ export function cxxNode2Type(
     if (currNode && arkInstance instanceof ArkMethod && isCxxFunctionPointer(currNode.type.qualType)) {
         return buildFuncPtrType(currNode, arkInstance, sourceFile!);
     }
-
-    // Default processing
-    let typeString = nodeQualType.type.desugaredQualType ?? nodeQualType.type.qualType;
-    if (typeCache.has(typeString)) {
-        return typeCache.get(typeString)!;
+    if (!nodeQualType.type) {
+        return UnknownType.getInstance();
     }
-    let type = buildTypeFromPreStr(typeString, nodeQualType, arkInstance);
-    typeCache.set(typeString, type);
-    return type;
+    // Default processing
+    let typeString = (nodeQualType.type.desugaredQualType ?? nodeQualType.type.qualType)
+        .replace(/\s+|\b(const|volatile|mutable)\b\s*/gi, '');
+
+    if (nodeQualType.kind === 'InitListExpr' && typeString === 'void') {
+        let multipleTypePara: Type[] = [];
+        nodeQualType.inner.forEach((item: CxxAstNode) => {
+            multipleTypePara.push(cxxNode2Type(item, arkInstance, sourceFile));
+        });
+        return new UnionType(multipleTypePara);
+    }
+
+    return buildTypeFromPreStr(typeString, nodeQualType, arkInstance);
 }
 
 /**
@@ -251,7 +258,6 @@ export function cxxNode2Type(
  *@ returns Type object constructed
  */
 export function buildTypeFromPreStr(preStr: string, node: CxxAstNode, arkInstance: ArkMethod | ArkClass | ArkField | undefined): Type {
-    const oriStr = preStr;
     // 1. Remove modifiers such as const/static/mutable
     preStr = preStr.replace(/\b(const|static|mutable)\s*\b/g, '');
 
@@ -286,7 +292,7 @@ export function buildTypeFromPreStr(preStr: string, node: CxxAstNode, arkInstanc
 
     if (pointerLevel > 0) {
         baseStr = baseStr.replace(/\*/g, '').trim();
-        return buildPointerType(baseStr, oriStr, pointerLevel, node, arkInstance);
+        return buildPointerType(baseStr, pointerLevel, node, arkInstance);
     }
 
     // 6. template
@@ -326,7 +332,7 @@ export function buildArrayType(qualType: string, node: CxxAstNode, arkInstance: 
             return numStr ? parseInt(numStr, 10) : 0;
         });
     } else {
-        // 如果无法从字符串中提取维度，则尝试从node.inner中获取
+        // If dimensions cannot be extracted from the string, try getting them from node-INNER
         try {
             for (let i = 0; i < count; i++) {
                 dimensionSizes.push(Number(node.inner[i].value) ?? 0);
@@ -341,10 +347,10 @@ export function buildArrayType(qualType: string, node: CxxAstNode, arkInstance: 
     return new CxxArrayType(baseType, count, dimensionSizes);
 }
 
-export function buildPointerType(preStr: string, oriStr: string, pointerLevel: number, node: CxxAstNode, arkInstance: ArkMethod | ArkClass | ArkField | undefined): Type {
+export function buildPointerType(preStr: string, pointerLevel: number, node: CxxAstNode, arkInstance: ArkMethod | ArkClass | ArkField | undefined): Type {
     let baseType = buildTypeFromPreStr(preStr, node, arkInstance);
     const pointerType = new PointerType(baseType, pointerLevel);
-
+    let oriStr = node.type.qualType;
     const starIndex = oriStr.indexOf('*');
     if (starIndex === -1) {
         return pointerType;
@@ -364,7 +370,8 @@ export function buildPointerType(preStr: string, oriStr: string, pointerLevel: n
 export function buildReferenceType(preStr: string, referenceCount: number, node: CxxAstNode, arkInstance: ArkMethod | ArkClass | ArkField | undefined): Type {
     let referCategory = referenceCount % 2 === 1 ? ReferCategory.LVALUE_REF : ReferCategory.RVALUE_REF;
     // cxxTodo: this need to confirm;
-    let baseType = node.inner[0] ? cxxNode2Type(node.inner[0], arkInstance) : buildTypeFromPreStr(preStr, node, arkInstance);
+    preStr = preStr.replace(/(\(\))+$/g, '');
+    let baseType = buildTypeFromPreStr(preStr, node, arkInstance);
     if (baseType instanceof GenericType && referenceCount % 2 === 0) {
         referCategory = ReferCategory.UNIVERSAL_REF;
     }

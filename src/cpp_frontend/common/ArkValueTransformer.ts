@@ -49,7 +49,7 @@ import {
     ClassType,
     FunctionType,
     NumberType,
-    Type,
+    Type, UnclearReferenceType,
     UndefinedType,
     UnknownType,
 } from '../../core/base/Type';
@@ -2593,8 +2593,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
                     leftValue.setConstFlag(isConst);
                     leftValue.setType(declarationType);
                 }
-                if (leftValue.getType() instanceof UnknownType && !(rightValue.getType() instanceof UnknownType) &&
-                    !(rightValue.getType() instanceof UndefinedType)
+                if ((leftValue.getType() instanceof UnknownType || leftValue.getType() instanceof UnclearReferenceType)
+                    && !(rightValue.getType() instanceof UnknownType) && !(rightValue.getType() instanceof UndefinedType)
                 ) {
                     leftValue.setType(rightValue.getType());
                 }
