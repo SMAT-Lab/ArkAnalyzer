@@ -39,6 +39,7 @@ import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
 
 const FUNC_PTR_REGEX = /\(\s*\*\s*(?:\[\s*[^]]*\s*\])?\s*\)\s*\(\s*[^)]*\s*\)/;
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkValueTransformer');
+const typeCache = new Map<string, Type>;
 
 function extractCommonModifiers(node: CxxAstNode): number {
     let modifiers: number = 0;
@@ -228,7 +229,12 @@ export function cxxNode2Type(
 
     // Default processing
     let typeString = nodeQualType.type.desugaredQualType ?? nodeQualType.type.qualType;
-    return buildTypeFromPreStr(typeString, nodeQualType, arkInstance);
+    if (typeCache.has(typeString)) {
+        return typeCache.get(typeString)!;
+    }
+    let type = buildTypeFromPreStr(typeString, nodeQualType, arkInstance);
+    typeCache.set(typeString, type);
+    return type;
 }
 
 /**
