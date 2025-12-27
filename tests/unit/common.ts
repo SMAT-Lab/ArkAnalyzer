@@ -25,6 +25,18 @@ import {
 } from '../../src';
 import { assert, expect } from 'vitest';
 import { ArkIRMethodPrinter } from '../../src/save/arkir/ArkIRMethodPrinter';
+import { ReachingDefProblem } from '../../src/core/dataflow/ReachingDef';
+import { MFPDataFlowSolver } from '../../src/core/dataflow/GenericDataFlow';
+
+interface ReachingDefNodeMap {
+    [nodeId: string]: string;
+}
+
+interface ReachingDefExpectSolution {
+    in: ReachingDefNodeMap;
+    out: ReachingDefNodeMap;
+}
+
 
 export function buildScene(projectPath: string, needInferTypes: boolean = true) {
     const config: SceneConfig = new SceneConfig();
@@ -97,6 +109,36 @@ export function testBlocks(scene: Scene, filePath: string, methodName: string, e
     const StmtToBlockLength = arkMethod?.getCfg()?.getStmtToBlock().size;
     assert(stmtsLength === StmtToBlockLength);
     assertBlocksEqual(blocks, expectBlocks);
+}
+
+export function testReachingDef(scene: Scene, filePath: string, methodName: string, expectSolution: ReachingDefExpectSolution): void {
+    const arkFile = scene.getFiles().find((file) => file.getName().endsWith(filePath));
+    const arkMethod = arkFile?.getDefaultClass().getMethods()
+        .find((method) => (method.getName() === methodName));
+    assert(arkFile);
+    assert(arkMethod);
+    assert(expectSolution && expectSolution.in && expectSolution.out);
+
+    let reachingDefProblem = new ReachingDefProblem(arkMethod);
+    let mfpSolver = new MFPDataFlowSolver();
+    let reachingDefSolution = mfpSolver.calculateMopSolutionForwards(reachingDefProblem);
+    assert(Object.keys(expectSolution.in).length === reachingDefSolution.in.size);
+    assert(Object.keys(expectSolution.out).length === reachingDefSolution.out.size);
+    reachingDefSolution.in.forEach((defs, nodeId) => {
+        const actual = defs ? Array.from(defs).join(', ') : '';
+        assert(expectSolution.in && Object.prototype.hasOwnProperty.call(expectSolution.in, nodeId));
+        const expected = expectSolution.in[nodeId];
+        assert(actual === expected);
+    });
+
+    reachingDefSolution.out.forEach((defs, nodeId) => {
+        const actual = defs ? Array.from(defs).join(', ') : '';
+        assert(
+            expectSolution.out && Object.prototype.hasOwnProperty.call(expectSolution.out, nodeId)
+        );
+        const expected = expectSolution.out[nodeId];
+        assert(actual === expected);
+    });
 }
 
 export function assertBlocksEqual(blocks: Set<BasicBlock>, expectBlocks: any[]): void {

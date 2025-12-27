@@ -22,7 +22,7 @@ Logger.configure('', LOG_LEVEL.ERROR, LOG_LEVEL.INFO, false);
 let config: SceneConfig = new SceneConfig();
 
 function runDir(): Scene {
-    config.buildFromProjectDir('tests/resources/reachingDef');
+    config.buildFromProjectDir('tests/resources/reachingDef/loop');
     let projectScene: Scene = new Scene();
     projectScene.buildSceneFromProjectDir(config);
     projectScene.inferTypes();
