@@ -180,7 +180,7 @@ describe("Infer Array Test", () => {
         const embedClassType = file?.getDefaultClass().getMethodWithName('foo')?.getBody()?.getLocals().get('t')?.getType();
         assert.isDefined(embedClassType);
         if (embedClassType) {
-            assert.equal(embedClassType.toString(), '@inferType/inferSample.ts: Test$%dflt.foo');
+            assert.equal(embedClassType.toString(), '@inferType/inferSample.ts: Test$%dflt-foo');
         }
     })
 

@@ -257,7 +257,7 @@ describe("export Test", () => {
 
     it('this case', () => {
         const fileId = new FileSignature(projectScene.getProjectName(), 'Lottie_Report.ets');
-        const type = projectScene.getFile(fileId)?.getClassWithName('%AC4$MyComponent.build')
+        const type = projectScene.getFile(fileId)?.getClassWithName('%AC4$MyComponent-build')
             ?.getMethodWithName('%instInit')?.getBody()?.getUsedGlobals()?.get(THIS_NAME)?.getType();
         assert.equal(type?.getTypeString(), '@exports/Lottie_Report.ets: MyComponent');
 
@@ -271,7 +271,7 @@ describe("export Test", () => {
         const stmts = projectScene.getFile(fileId)?.getClassWithName('Foo')?.getMethodWithName('func')?.getCfg()?.getStmts();
         const stmt = stmts?.[stmts?.length - 2];
         assert.isDefined(stmt);
-        assert.equal(stmt?.getInvokeExpr()?.getArgs()[0].getType().getTypeString(), '@exports/Lottie_Report.ets: %AC2$%AC1$Foo.%instInit.%instInit.%AM0$%instInit()');
+        assert.equal(stmt?.getInvokeExpr()?.getArgs()[0].getType().getTypeString(), '@exports/Lottie_Report.ets: %AC2$%AC1$Foo-%instInit-%instInit.%AM0$%instInit()');
     });
 
     it('export local case', () => {
@@ -392,7 +392,7 @@ describe("export ObjectLiteral Test", () => {
         const exportInfo = file?.getExportInfoBy(DefaultExportObjectLiteral_Expect_IR.exportClauseName);
         compareExportInfo(exportInfo, DefaultExportObjectLiteral_Expect_IR);
 
-        const anonymousClass = file?.getClassWithName('%AC0$%dflt.%dflt');
+        const anonymousClass = file?.getClassWithName('%AC0$%dflt-%dflt');
         assert.isDefined(anonymousClass);
         assert.isNotNull(anonymousClass);
         assert.isTrue((anonymousClass as ArkClass).getFields().some(field => field.getName() === 'data'));

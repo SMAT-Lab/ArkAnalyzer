@@ -230,11 +230,11 @@ export const Destructuring_Expect_IR = {
             operandOriginalPositions: [[16, 10, 16, 12], [16, 5, 16, 13], [16, 5, 16, 13], [-1, -1, -1, -1]],
         },
         {
-            text: '%3 = new @assignment/DestructuringSample.ts: %AC0$%dflt.%dflt',
+            text: '%3 = new @assignment/DestructuringSample.ts: %AC0$%dflt-%dflt',
             operandOriginalPositions: [[17, 20, 17, 36], [17, 20, 17, 36]],
         },
         {
-            text: '%3 = instanceinvoke %3.<@assignment/DestructuringSample.ts: %AC0$%dflt.%dflt.constructor()>()',
+            text: '%3 = instanceinvoke %3.<@assignment/DestructuringSample.ts: %AC0$%dflt-%dflt.constructor()>()',
             operandOriginalPositions: [[17, 20, 17, 36], [17, 20, 17, 36], [17, 20, 17, 36]],
         },
         {
@@ -242,19 +242,19 @@ export const Destructuring_Expect_IR = {
             operandOriginalPositions: [[17, 7, 17, 17], [17, 20, 17, 36]],
         },
         {
-            text: 'd3 = %2.<@assignment/DestructuringSample.ts: %AC0$%dflt.%dflt.d3>',
+            text: 'd3 = %2.<@assignment/DestructuringSample.ts: %AC0$%dflt-%dflt.d3>',
             operandOriginalPositions: [[17, 9, 17, 11], [17, 7, 17, 17], [17, 7, 17, 17]],
         },
         {
-            text: 'd4 = %2.<@assignment/DestructuringSample.ts: %AC0$%dflt.%dflt.d4>',
+            text: 'd4 = %2.<@assignment/DestructuringSample.ts: %AC0$%dflt-%dflt.d4>',
             operandOriginalPositions: [[17, 13, 17, 15], [17, 7, 17, 17], [17, 7, 17, 17]],
         },
         {
-            text: '%5 = new @assignment/DestructuringSample.ts: %AC1$%dflt.%dflt',
+            text: '%5 = new @assignment/DestructuringSample.ts: %AC1$%dflt-%dflt',
             operandOriginalPositions: [[18, 28, 18, 44], [18, 28, 18, 44]],
         },
         {
-            text: '%5 = instanceinvoke %5.<@assignment/DestructuringSample.ts: %AC1$%dflt.%dflt.constructor()>()',
+            text: '%5 = instanceinvoke %5.<@assignment/DestructuringSample.ts: %AC1$%dflt-%dflt.constructor()>()',
             operandOriginalPositions: [[18, 28, 18, 44], [18, 28, 18, 44], [18, 28, 18, 44]],
         },
         {
@@ -262,11 +262,11 @@ export const Destructuring_Expect_IR = {
             operandOriginalPositions: [[18, 7, 18, 25], [18, 28, 18, 44]],
         },
         {
-            text: 'd7 = %4.<@assignment/DestructuringSample.ts: %AC1$%dflt.%dflt.d5>',
+            text: 'd7 = %4.<@assignment/DestructuringSample.ts: %AC1$%dflt-%dflt.d5>',
             operandOriginalPositions: [[18, 9, 18, 15], [18, 7, 18, 25], [18, 7, 18, 25]],
         },
         {
-            text: 'd8 = %4.<@assignment/DestructuringSample.ts: %AC1$%dflt.%dflt.d6>',
+            text: 'd8 = %4.<@assignment/DestructuringSample.ts: %AC1$%dflt-%dflt.d6>',
             operandOriginalPositions: [[18, 17, 18, 23], [18, 7, 18, 25], [18, 7, 18, 25]],
         },
         {
@@ -302,11 +302,11 @@ export const Destructuring_Expect_IR = {
             operandOriginalPositions: [[21, 6, 21, 9], [21, 1, 21, 10], [21, 1, 21, 10], [-1, -1, -1, -1]],
         },
         {
-            text: '%9 = new @assignment/DestructuringSample.ts: %AC2$%dflt.%dflt',
+            text: '%9 = new @assignment/DestructuringSample.ts: %AC2$%dflt-%dflt',
             operandOriginalPositions: [[22, 26, 22, 44], [22, 26, 22, 44]],
         },
         {
-            text: '%9 = instanceinvoke %9.<@assignment/DestructuringSample.ts: %AC2$%dflt.%dflt.constructor()>()',
+            text: '%9 = instanceinvoke %9.<@assignment/DestructuringSample.ts: %AC2$%dflt-%dflt.constructor()>()',
             operandOriginalPositions: [[22, 26, 22, 44], [22, 26, 22, 44], [22, 26, 22, 44]],
         },
         {
@@ -314,11 +314,11 @@ export const Destructuring_Expect_IR = {
             operandOriginalPositions: [[22, 2, 22, 23], [22, 26, 22, 44]],
         },
         {
-            text: 'd9 = %8.<@assignment/DestructuringSample.ts: %AC2$%dflt.%dflt.d11>',
+            text: 'd9 = %8.<@assignment/DestructuringSample.ts: %AC2$%dflt-%dflt.d11>',
             operandOriginalPositions: [[22, 4, 22, 11], [22, 2, 22, 23], [22, 2, 22, 23]],
         },
         {
-            text: 'd10 = %8.<@assignment/DestructuringSample.ts: %AC2$%dflt.%dflt.d12>',
+            text: 'd10 = %8.<@assignment/DestructuringSample.ts: %AC2$%dflt-%dflt.d12>',
             operandOriginalPositions: [[22, 13, 22, 21], [22, 2, 22, 23], [22, 2, 22, 23]],
         },
         {

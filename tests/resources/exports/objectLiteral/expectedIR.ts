@@ -26,7 +26,7 @@ export const DefaultExportObjectLiteral_Expect_IR = {
         type: Local,
         local: {
             type: ArkClass,
-            classSignature: '@exports/objectLiteral/exportObjectLiteral.ts: %AC0$%dflt.%dflt'
+            classSignature: '@exports/objectLiteral/exportObjectLiteral.ts: %AC0$%dflt-%dflt'
         }
     }
 };
