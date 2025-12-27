@@ -73,9 +73,12 @@ import { Builtin } from '../../core/common/Builtin';
 import { Constant, NullConstant } from '../../core/base/Constant';
 import { ArkCxxIRTransformer, ValueAndStmts } from './ArkIRTransformer';
 import {
-    cxxNode2Type, isCxxBasicString,
+    cxxNode2Type,
+    isCxxBasicString,
+    buildTypeFromPreStr,
     isCxxFunctionPointer,
-    isCXXSTLContainer, isFuncInClassOrNamespace,
+    isCXXSTLContainer,
+    isFuncInClassOrNamespace,
 } from '../model/builder/builderUtils';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { ArkValueTransformer } from '../../core/common/ArkValueTransformer';
@@ -1900,7 +1903,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
                 members.forEach((typeArgument: string) => {
                     // TODO: this is a errow, need to be fixed
                     if (node) {
-                        realGenericTypes!.push(cxxNode2Type(node, this.declaringMethod));
+                        realGenericTypes!.push(buildTypeFromPreStr(typeArgument, node, this.declaringMethod));
                     }
                 });
             }

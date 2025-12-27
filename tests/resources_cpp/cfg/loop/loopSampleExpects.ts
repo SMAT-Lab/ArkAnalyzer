@@ -199,7 +199,7 @@ export const LOOP_EXPECT_CASE8 = {
             id: 0,
             stmts: [
                 'this = this: @loop/loopSample.cpp: %dflt',
-                '%0 = new @%unk/%unk: std::map<std::map<int, std::basic_string<char>>,std::map<int, std::basic_string<char>>>',
+                '%0 = new @%unk/%unk: std::map<int,string>',
                 '%1 = newarray (int|char[4])',
                 '%1[0] = 1',
                 '%1[1] = \'one\'',
@@ -252,7 +252,7 @@ export const LOOP_EXPECT_CASE9 = {
             id: 0,
             stmts: [
                 'this = this: @loop/loopSample.cpp: %dflt',
-                '%0 = new @%unk/%unk: std::map<std::map<int, std::basic_string<char>>,std::map<int, std::basic_string<char>>>',
+                '%0 = new @%unk/%unk: std::map<int,string>',
                 '%1 = newarray (int|char[4])',
                 '%1[0] = 1',
                 '%1[1] = \'one\'',
@@ -303,7 +303,7 @@ export const LOOP_EXPECT_CASE10 = {
             id: 0,
             stmts: [
                 'this = this: @loop/loopSample.cpp: %dflt',
-                '%0 = new @%unk/%unk: std::vector<std::vector<int>>',
+                '%0 = new @%unk/%unk: std::vector<int>',
                 '%1 = newarray (int[5])',
                 '%1[0] = 1',
                 '%1[1] = 2',
@@ -345,7 +345,7 @@ export const LOOP_EXPECT_CASE11 = {
             id: 0,
             stmts: [
                 'this = this: @loop/loopSample.cpp: %dflt',
-                '%0 = new @%unk/%unk: std::vector<std::vector<int>>',
+                '%0 = new @%unk/%unk: std::vector<int>',
                 '%1 = newarray (int[5])',
                 '%1[0] = 1',
                 '%1[1] = 2',
