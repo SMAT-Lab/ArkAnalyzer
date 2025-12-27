@@ -295,6 +295,15 @@ describe("Infer Array Test", () => {
             file.getExportInfos().forEach(e => assert.isNotNull(e.getArkExport()));
         })
     })
+
+    it('ptr union type 2 function case', () => {
+        const fileId = new FileSignature(projectScene.getProjectName(), 'Field.ts');
+        const file = projectScene.getFile(fileId);
+        const method = file?.getClassWithName('TestPTA')?.getMethodWithName('goo');
+        const stmt = method?.getCfg()?.getStmts()[1];
+        assert.equal(stmt?.toString(), 'ptrinvoke <@inferType/Field.ts: TestPTA.this.onClick2(number)>(2)');
+    })
+
 })
 
 describe("function Test", () => {
@@ -512,6 +521,14 @@ describe("function Test", () => {
         const printer = new ArkIRClassPrinter(cls!);
         const s1 = printer.dump();
         assert.equal(s1, BaseChangeInferIR);
+    })
+
+    it('pta union type CallBack 2 function case', () => {
+        const fileId = new FileSignature(scene.getProjectName(), 'test2.ets');
+        const file = scene.getFile(fileId);
+        const method = file?.getClassWithName('TestCallback')?.getMethodWithName('foo');
+        const stmt = method?.getCfg()?.getStmts()[1];
+        assert.equal(stmt?.toString(), 'ptrinvoke <@etsSdk/api/@ohos.base.d.ts: Callback.this.myCallback(T)>(\'abc\')');
     })
 })
 

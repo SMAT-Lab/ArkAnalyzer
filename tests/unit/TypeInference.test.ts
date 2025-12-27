@@ -15,9 +15,19 @@
 
 import { assert, describe, expect, it, vi } from 'vitest';
 import path from 'path';
-import { ArkClass, ClassType, CONSTRUCTOR_NAME, MethodSignature, Scene, SceneConfig, TypeInference } from '../../src';
+import {
+    ArkClass,
+    ClassType,
+    CONSTRUCTOR_NAME,
+    MethodSignature,
+    Printer,
+    Scene,
+    SceneConfig,
+    TypeInference
+} from '../../src';
 import { OperandOriginalPositions_Expect_IR } from '../resources/inferType/IRChange/OperandOriginalPositionsExpect';
 import { testMethodStmts } from './common';
+import { ArkIRFilePrinter } from '../../src/save/arkir/ArkIRFilePrinter';
 
 describe('StaticSingleAssignmentFormer Test', () => {
     let config: SceneConfig = new SceneConfig();
@@ -121,6 +131,122 @@ describe('IR Changes with Type Inference Test', () => {
     it('operand original positions case', () => {
         testMethodStmts(scene, 'OperandOriginalPositionsTest.ts', OperandOriginalPositions_Expect_IR.stmts, 'Sample',
             'testOperandOriginalPositions');
+    });
+
+});
+
+describe('Import Type Inference Test', () => {
+    const config: SceneConfig = new SceneConfig();
+    config.buildFromProjectDir(path.join(__dirname, '../resources/typeInference/importType'));
+    const scene = new Scene();
+    scene.buildSceneFromProjectDir(config);
+    scene.inferTypes();
+
+    const CASE1_EXPECT = `class %dflt {
+  %dflt(): void {
+    label0:
+      this = this: @importType/MyComponent2.ets: %dflt
+      return
+  }
+}
+import * as XX from './MyComponent';
+import {f, MyComponent} from './MyComponent';
+@Component
+struct MyComponent2 {
+  %instInit(): void {
+    label0:
+      this = this: @importType/MyComponent2.ets: MyComponent2
+      return
+  }
+
+  static %statInit(): void {
+    label0:
+      this = this: @importType/MyComponent2.ets: MyComponent2
+      return
+  }
+
+  constructor(##storage?: LocalStorage): @importType/MyComponent2.ets: MyComponent2 {
+    label0:
+      ##storage = parameter0: LocalStorage
+      this = this: @importType/MyComponent2.ets: MyComponent2
+      instanceinvoke this.<@importType/MyComponent2.ets: MyComponent2.%instInit()>()
+      return this
+  }
+
+  build(): void {
+    label0:
+      this = this: @importType/MyComponent2.ets: MyComponent2
+      %0 = staticinvoke <@%unk/%unk: Row.create()>()
+      %1 = new @importType/MyComponent2.ets: %AC0$MyComponent2.build
+      %1 = instanceinvoke %1.<@importType/MyComponent2.ets: %AC0$MyComponent2.build.constructor()>()
+      instanceinvoke XX.<@importType/MyComponent.ets: MyComponent.constructor(string)>(%1)
+      %2 = new @importType/MyComponent2.ets: %AC1$MyComponent2.build
+      %2 = instanceinvoke %2.<@importType/MyComponent2.ets: %AC1$MyComponent2.build.constructor()>()
+      %3 = new @importType/MyComponent.ets: MyComponent
+      %3 = instanceinvoke %3.<@importType/MyComponent.ets: MyComponent.constructor(string)>(%2)
+      %4 = staticinvoke <@%unk/%unk: View.create()>(%3)
+      staticinvoke <@%unk/%unk: View.pop()>()
+      staticinvoke <@%unk/%unk: Row.pop()>()
+      return
+  }
+}
+object %AC0$MyComponent2.build {
+  status1: string
+  status2: string
+  callback: @importType/MyComponent2.ets: %AC0$MyComponent2.build.%AM0$%instInit()
+
+  constructor(): @importType/MyComponent2.ets: %AC0$MyComponent2.build {
+    label0:
+      this = this: @importType/MyComponent2.ets: %AC0$MyComponent2.build
+      instanceinvoke this.<@importType/MyComponent2.ets: %AC0$MyComponent2.build.%instInit()>()
+      return this
+  }
+
+  %instInit(): void {
+    label0:
+      this = this: @importType/MyComponent2.ets: %AC0$MyComponent2.build
+      this.<@importType/MyComponent2.ets: %AC0$MyComponent2.build.status1> = 'aaa'
+      this.<@importType/MyComponent2.ets: %AC0$MyComponent2.build.status2> = 'bbb'
+      this.<@importType/MyComponent2.ets: %AC0$MyComponent2.build.callback> = %AM0$%instInit
+      return
+  }
+
+  %AM0$%instInit(): void {
+    label0:
+      this = this: @importType/MyComponent2.ets: %AC0$MyComponent2.build
+      instanceinvoke console.<@%unk/%unk: .log()>('cccc')
+      staticinvoke <@importType/MyComponent.ets: %dflt.f(string)>('hello')
+      staticinvoke <@importType/MyComponent.ets: %dflt.f(string)>('hello2')
+      return
+  }
+}
+object %AC1$MyComponent2.build {
+  status1: string
+
+  constructor(): @importType/MyComponent2.ets: %AC1$MyComponent2.build {
+    label0:
+      this = this: @importType/MyComponent2.ets: %AC1$MyComponent2.build
+      instanceinvoke this.<@importType/MyComponent2.ets: %AC1$MyComponent2.build.%instInit()>()
+      return this
+  }
+
+  %instInit(): void {
+    label0:
+      this = this: @importType/MyComponent2.ets: %AC1$MyComponent2.build
+      this.<@importType/MyComponent2.ets: %AC1$MyComponent2.build.status1> = 'xxxx'
+      return
+  }
+}
+`;
+
+    it('case1: ', () => {
+        let arkfile = scene.getFiles().find((value) => {
+            return value.getName().endsWith('MyComponent2.ets');
+        });
+        assert.isDefined(arkfile);
+        let printer: Printer = new ArkIRFilePrinter(arkfile!);
+        let ir = printer.dump();
+        expect(ir).eq(CASE1_EXPECT);
     });
 
 });

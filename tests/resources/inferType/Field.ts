@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -69,4 +69,23 @@ class User {
     roles = ['user'];
     selectIndex: number = 0;
     role: string = this.roles[this.selectIndex];
+}
+
+class TestPTA {
+    onClick1: (data: number) => void;
+    onClick2: undefined | ((data: number) => void);
+
+    /**
+     * 正确，@main/mian.ets: Test.%AM0(number)，ArkPtrInvokeExpr，有param，有arg，数据流构建成功
+     */
+    foo(): void {
+        this.onClick1(1);
+    }
+
+    /**
+     * 错误，@main/mian.ets: Test.onClick2()，ArkInstanceInvokeExpr，没有param，有arg，数据流构建失败
+     */
+    goo(): void {
+        this.onClick2(2);
+    }
 }
