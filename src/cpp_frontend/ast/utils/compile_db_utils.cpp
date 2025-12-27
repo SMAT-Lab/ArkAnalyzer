@@ -1,7 +1,6 @@
 #include "compile_db_utils.h"
 
 #include "clang/Tooling/CompilationDatabase.h"
-#include "clang/Tooling/FixedCompilationDatabase.h"
 
 #include "llvm/ADT/SmallString.h"
 #include "llvm/Support/FileSystem.h"

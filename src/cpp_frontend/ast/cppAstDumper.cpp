@@ -14,6 +14,7 @@
 #include "llvm/Support/JSON.h"
 #include "llvm/Support/Path.h"
 #include "llvm/Support/raw_ostream.h"
+#include <llvm/Demangle/Demangle.h>
 #include "utils/source_utils.h"
 #include "utils/cli_options.h"
 #include "utils/output_path.h"
@@ -65,6 +66,14 @@ public:
         return TraverseStmt(Child);
     }
 
+    template<typename T>
+    void callJsonNodeDumper(T* t, ast_dumper::JsonDumperProbeStream &Probe) {
+        JSONNodeDumper dumper(Probe, Ctx.getSourceManager(), Ctx, Ctx.getPrintingPolicy(),
+                                          &Ctx.getCommentCommandTraits());
+        dumper.Visit(t);
+        Probe.flush();
+    }
+
 public:
     bool TraverseForStmt(ForStmt *FS)
     {
@@ -106,18 +115,11 @@ public:
 
         bool dumperHasName = false;
         bool dumperHasCode = false;
-        {
-            ast_dumper::JsonDumperProbeStream Probe(OS);
-            JSONNodeDumper dumper(Probe, Ctx.getSourceManager(), Ctx, Ctx.getPrintingPolicy(),
-                                  &Ctx.getCommentCommandTraits());
-            dumper.Visit(D);
-            Probe.flush();
-
-            dumperHasName = Probe.hasNameKey();
-            dumperHasCode = Probe.hasCodeKey();
-            wroteAnyField = (Probe.bytesWritten() > 0);
-
-        }
+        ast_dumper::JsonDumperProbeStream Probe(OS);
+        callJsonNodeDumper(D, Probe);
+        dumperHasName = Probe.hasNameKey();
+        dumperHasCode = Probe.hasCodeKey();
+        wroteAnyField = (Probe.bytesWritten() > 0);
 
         if (!dumperHasName) {
             std::string name;
@@ -180,17 +182,10 @@ public:
         bool wroteAnyField = false;
 
         bool dumperHasCode = false;
-        {
-            ast_dumper::JsonDumperProbeStream Probe(OS);
-            JSONNodeDumper dumper(Probe, Ctx.getSourceManager(), Ctx, Ctx.getPrintingPolicy(),
-                                  &Ctx.getCommentCommandTraits());
-            dumper.Visit(S);
-            Probe.flush();
-
-            dumperHasCode = Probe.hasCodeKey();
-            wroteAnyField = (Probe.bytesWritten() > 0);
-
-        }
+        ast_dumper::JsonDumperProbeStream Probe(OS);
+        callJsonNodeDumper(S, Probe);
+        dumperHasCode = Probe.hasCodeKey();
+        wroteAnyField = (Probe.bytesWritten() > 0);
 
         if (!dumperHasCode) {
             std::string code = ast_dumper::GetSourceTextByRange(SM, Ctx.getLangOpts(), S->getSourceRange(), true);
@@ -226,16 +221,10 @@ public:
         bool wroteAnyField = false;
 
         bool dumperHasCode = false;
-        {
-            ast_dumper::JsonDumperProbeStream Probe(OS);
-            JSONNodeDumper dumper(Probe, Ctx.getSourceManager(), Ctx, Ctx.getPrintingPolicy(),
-                                 &Ctx.getCommentCommandTraits());
-            dumper.Visit(Init);
-            Probe.flush();
-
-            dumperHasCode = Probe.hasCodeKey();
-            wroteAnyField = (Probe.bytesWritten() > 0);
-        }
+        ast_dumper::JsonDumperProbeStream Probe(OS);
+        callJsonNodeDumper(Init, Probe);
+        dumperHasCode = Probe.hasCodeKey();
+        wroteAnyField = (Probe.bytesWritten() > 0);
 
         if (!dumperHasCode) {
             std::string code = ast_dumper::GetSourceTextByRange(SM, Ctx.getLangOpts(), Init->getSourceRange(), true);

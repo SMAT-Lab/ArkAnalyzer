@@ -22,6 +22,7 @@ public:
 
 private:
     llvm::raw_ostream &Out;
+    std::string buffer;
     uint64_t Bytes = 0;
     bool HasName = false;
     bool HasCode = false;
@@ -92,10 +93,53 @@ private:
         }
     }
 
+    std::string extractClassNameOptimized(const std::string& str) {
+        size_t colonPos = str.find("::");
+        if (colonPos == std::string::npos) {
+            return "";
+        }
+
+        // Search for the starting position of the class name from the current position forward
+        for (size_t i = colonPos - 1; i > 0; --i) {
+            if (str[i] == ' ') {
+                return str.substr(i + 1, colonPos - i - 1);
+            }
+        }
+
+        // If no space is found, it indicates that the class name starts from the beginning of the string
+        if (colonPos > 0) {
+            return str.substr(0, colonPos);
+        }
+        return "";
+    }
+
+    void updateMangledName(const char *Ptr, size_t Size) {
+        buffer.append(Ptr, Size);
+        auto nodeJson = llvm::json::parse("{" + buffer + "}");
+        if (nodeJson) {
+            if (auto *obj = nodeJson->getAsObject()) {
+                if (auto mangleStr = (*obj)["mangledName"].getAsString()) {
+                    // Decoding the mangledName field and simplifying it to a class name
+                    std::string mangledName = extractClassNameOptimized(llvm::demangle(mangleStr.value().str()));
+                    if (mangledName.empty()) {
+                        obj->erase("mangledName");
+                    } else {
+                        (*obj)["mangledName"] = mangledName;
+                    }
+                    llvm::json::Value jsonValue(std::move(*obj));
+                    std::string valueStr = llvm::formatv("{0}", jsonValue).str();
+                    buffer = valueStr.substr(1, valueStr.size() - 2);
+                }
+            }
+        }
+    }
+
     void write_impl(const char *Ptr, size_t Size) override {
         if (Size == 0) return;
         scanKeys(Ptr, Size);
-        Out.write(Ptr, Size);
+        updateMangledName(Ptr, Size);
+        Out << buffer;
+        buffer.clear();
         Bytes += Size;
     }
 
