@@ -329,8 +329,9 @@ export const LOOP_EXPECT_CASE10 = {
         {
             id: 2,
             stmts: [
-                'staticinvoke <@%unk/%unk: .printf()>(\'%d\\n\', undefined)',
-                'it = it + 1',
+                '%3 = *it',
+                "staticinvoke <@%unk/%unk: .printf()>('%d\\n', %3)",
+                'it = it + 1'
             ],
             preds: [1],
             succes: [1],

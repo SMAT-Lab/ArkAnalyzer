@@ -1513,7 +1513,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
 
         // Unary operators (++ / --)
         if (callExpression.inner[0]?.kind === 'ImplicitCastExpr' &&
-            ['++', '--'].includes(callExpression.inner[0]?.code)) {
+            ['++', '--', '*'].includes(callExpression.inner[0]?.code)) {
             return this.CXXOperatorExpressionToUnaryOperator(callExpression);
         }
 
