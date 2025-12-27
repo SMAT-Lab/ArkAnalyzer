@@ -15,7 +15,6 @@
 
 import { ClassType, GenericType, UnknownType, VoidType } from '../../../core/base/Type';
 import { CxxBodyBuilder } from './BodyBuilder';
-import { buildViewTree } from '../../../core/graph/builder/ViewTreeBuilder';
 import { ArkClass } from '../../../core/model/ArkClass';
 import { ArkMethod } from '../../../core/model/ArkMethod';
 import {
@@ -161,11 +160,6 @@ export function buildArkMethodFromArkClass(methodNode: CxxAstNode, declaringClas
         mtd.setDeclareLinesAndCols([nodePos.line], [nodePos.col]);
     }
 
-    if (mtd.hasBuilderDecorator()) {
-        mtd.setViewTree(buildViewTree(mtd));
-    } else if (declaringClass.hasComponentDecorator() && mtd.getSubSignature().toString() === 'build()' && !mtd.isStatic()) {
-        declaringClass.setViewTree(buildViewTree(mtd));
-    }
     checkAndUpdateCxxMethod(mtd, declaringClass);
     declaringClass.addMethod(mtd);
     IRUtils.setComments(mtd, methodNode, sourceFile, mtd.getDeclaringArkFile().getScene().getOptions());

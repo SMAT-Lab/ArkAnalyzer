@@ -1209,11 +1209,8 @@ export class CfgBuilder {
                 this.astRoot.kind)) {
             stmts = this.getFuncBodyStmt();
         }
-        if (!ModelUtils.isArkUIBuilderMethod(this.declaringMethod)) {
-            this.walkAST(this.entry, this.exit, stmts);
-        } else {
-            this.handleBuilder(stmts);
-        }
+
+        this.walkAST(this.entry, this.exit, stmts);
 
         this.addReturnInEmptyMethod();
         this.deleteExit();
@@ -1223,18 +1220,6 @@ export class CfgBuilder {
         this.blocks = this.blocks.filter(b => b.stmts.length !== 0);
         this.buildBlocksNextLast();
         this.addReturnStmt();
-    }
-
-    private handleBuilder(stmts: CxxAstNode[]): void {
-        let lastStmt = this.entry;
-        for (const stmt of stmts) {
-            const stmtBuilder = new StatementBuilder('statement', stmt.code, stmt, 0);
-            lastStmt.next = stmtBuilder;
-            stmtBuilder.lasts.add(lastStmt);
-            lastStmt = stmtBuilder;
-        }
-        lastStmt.next = this.exit;
-        this.exit.lasts.add(lastStmt);
     }
 
     public isBodyEmpty(): boolean {

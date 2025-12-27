@@ -214,7 +214,7 @@ function buildArkFile(arkFile: ArkFile, astRoot: CxxAstNode): void {
 
 // Get ArkClass of 'CXXMethodDecl'/'CXXConstructorDecl'/'CXXDestructorDecl'
 function getDeclaringArkClassOfMethod(mtd: CxxAstNode, arkFile: ArkFile): ArkClass {
-    const className: string = mtd.name ?? '';
+    const className: string = mtd.mangledName ?? '';
     let arkClass = arkFile.getClasses().find(arkClass => arkClass.getName() === className);
     if (!arkClass) {
         arkClass = new ArkClass();
