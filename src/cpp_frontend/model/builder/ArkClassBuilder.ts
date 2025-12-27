@@ -97,7 +97,7 @@ export function buildNormalArkClass(clsNode: CxxAstNode, cls: ArkClass, sourceFi
         }
     }
     if (clsNode.kind === 'ClassTemplateDecl') {
-        buildClass2ArkClass(clsNode, cls, sourceFile); // The kind attribute of template classes will not be automatically classified as 'class' in tagUsed
+        buildTemplateClass(clsNode, cls, sourceFile); // The kind attribute of template classes will not be automatically classified as 'class' in tagUsed
     } else if (clsNode.kind === 'EnumDecl') {
         buildEnum2ArkClass(clsNode, cls, sourceFile, declaring);
     }
@@ -160,6 +160,25 @@ function buildClass2ArkClass(clsNode: CxxAstNode, cls: ArkClass, sourceFile: Cxx
     init4InstanceInitMethod(cls);
     init4StaticInitMethod(cls);
     buildArkClassMembers(clsNode, cls, sourceFile);
+    cls.setModifiers(buildModifiersForCxxClass(cls));
+}
+
+function buildTemplateClass(clsNode: CxxAstNode, cls: ArkClass, sourceFile: CxxAstNode, declaring?: ArkMethod | ArkClass): void {
+    const className = genClassName(clsNode.name ? clsNode.name : '', cls, declaring);
+    const classSignature = new ClassSignature(className, cls.getDeclaringArkFile().getFileSignature(), cls.getDeclaringArkNamespace()?.getSignature() || null);
+    cls.setSignature(classSignature);
+
+    if (clsNode.inner) {
+        processCXXHeritage(clsNode, cls);
+    }
+    buildTypeParameters(clsNode, sourceFile, cls).forEach(typeParameter => {
+        cls.addGenericType(typeParameter);
+    });
+    let classBody: CxxAstNode = clsNode.inner[clsNode.inner.length - 1];
+    cls.setCategory(clsNode.tagUsed === 'struct' ? ClassCategory.STRUCT : ClassCategory.CLASS);
+    init4InstanceInitMethod(cls);
+    init4StaticInitMethod(cls);
+    buildArkClassMembers(classBody, cls, sourceFile);
     cls.setModifiers(buildModifiersForCxxClass(cls));
 }
 

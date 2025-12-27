@@ -189,13 +189,14 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         'MemberRef': this.memberExpressionToValueAndStmts,
         'NamespaceRef': this.cxxNamespaceRefToValueAndStmts,
         'ParenExpr': this.processInnerNodeToValueAndStmts,
+        'ParenListExpr': this.processInnerNodeToValueAndStmts,
         'RecoveryExpr': this.RecoverExpressionToValueAndStmts,
         'StringLiteral': this.cxxLiteralNodeToValueAndStmts,
         'TypeRef': this.declAndTypeRefToValueAndStmts,
         'UnaryExpr': this.unaryExprToValueAndStmts,
         'UnaryOperator': this.unaryOperatorToValueAndStmts,
         'UnexposedExpr': this.processInnerNodeToValueAndStmts,
-        'UnresolvedLookupExpr': this.cxxIdentifierToValueAndStmts,
+        'UnresolvedLookupExpr': this.castExpressionToValueAndStmts,
         'UserDefinedLiteral': this.userDefinedLiteralToValueAndStmts,
         'VarDecl': this.cxxVariableDeclarationToValueAndStmts,
     };
@@ -287,7 +288,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             return false;
         }
         return (
-            ['IntegerLiteral', 'InitListExpr', 'CompoundLiteralExpr', 'CXXOperatorCallExpr'].includes(firstChildKind) ||
+            ['IntegerLiteral', 'InitListExpr', 'CompoundLiteralExpr', 'CXXOperatorCallExpr', 'BinaryOperator'].includes(firstChildKind) ||
             (firstChildKind === 'ImplicitCastExpr' && !newExpression.inner[0].code.includes('('))
         );
     }
@@ -909,6 +910,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             'OverloadedDeclRef',
             'ArraySubscriptExpr',
             'CXXOperatorCallExpr',
+            'UnresolvedLookupExpr'
         ]);
 
         function unwrapImplicit(n?: CxxAstNode): CxxAstNode | undefined {
@@ -922,8 +924,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         const argumentNodes: CxxAstNode[] = [];
         for (let i = 0; i < innerAstNodes.length; i++) {
             const node = innerAstNodes[i];
-            if (i === 0 && node.inner?.length) {
-                const first = unwrapImplicit(node.inner[0]);
+            if (i === 0) {
+                const first = unwrapImplicit(node);
                 if (!first) {
                     continue;
                 }

@@ -18,7 +18,13 @@ import { CxxBodyBuilder } from './BodyBuilder';
 import { buildViewTree } from '../../../core/graph/builder/ViewTreeBuilder';
 import { ArkClass } from '../../../core/model/ArkClass';
 import { ArkMethod } from '../../../core/model/ArkMethod';
-import { buildModifiers, buildParameters, buildReturnType, cxxNode2Type, isCxxFunctionPointer } from './builderUtils';
+import {
+    buildModifiers,
+    buildParameters,
+    buildReturnType,
+    buildTypeFromPreStr,
+    isCxxFunctionPointer,
+} from './builderUtils';
 import { ArkParameterRef, ArkThisRef } from '../../../core/base/Ref';
 import { ArkBody } from '../../../core/model/ArkBody';
 import { Cfg } from '../../../core/graph/Cfg';
@@ -98,7 +104,7 @@ export function handleFunctionTemplateDecl(methodNode: CxxAstNode, mtd: ArkMetho
         }
         let defaultType;
         if (innerNode.defaultArg) {
-            defaultType = cxxNode2Type(innerNode, mtd, sourceFile);
+            defaultType = buildTypeFromPreStr(innerNode.defaultArg.type.qualType, innerNode, undefined);
         }
         let templateType = new GenericType(typename, defaultType);
         templateType.setIndex(++index);

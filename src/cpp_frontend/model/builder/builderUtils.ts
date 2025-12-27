@@ -116,7 +116,7 @@ export function buildTypeParameters(clsNode: CxxAstNode, sourceFile: CxxAstNode,
                 innerNode.default = innerNode.inner[0].type.qualType;
             }
             if (innerNode.defaultArg) {
-                defaultType = cxxNode2Type(innerNode, arkInstance, undefined, undefined, innerNode.defaultArg);
+                defaultType = buildTypeFromPreStr(innerNode.defaultArg.type.qualType, innerNode, arkInstance);
             }
             let templateType = new GenericType(innerNode.name, defaultType);
             templateType.setIndex(++index);
