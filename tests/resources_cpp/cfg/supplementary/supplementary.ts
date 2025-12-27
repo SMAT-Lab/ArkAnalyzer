@@ -19,7 +19,7 @@ export const SUP_CASE1 = {
             id: 0,
             stmts: [
                 'this = this: @supplementary/supplementary.cpp: %dflt',
-                '%0 = array (int[10])',
+                '%0 = newarray (int[10])',
                 '%0 = initArrayWith(0)',
                 'a = %0',
                 'return',
@@ -106,7 +106,7 @@ export const POST_AND = {
         {
             id: 17,
             stmts: [
-                '%14 = array (int[10])',
+                '%14 = newarray (int[10])',
                 '%14 = initArrayWith(0)',
                 'arr = %14',
                 'idx = 1',

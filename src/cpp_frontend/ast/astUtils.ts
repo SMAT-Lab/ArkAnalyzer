@@ -145,7 +145,7 @@ export class AstUtils {
             return filteredChildren;
         }
         filteredChildren = cursor.inner.filter(
-            (item: CxxAstNode) => !item.isImplicit || cursor.kind === 'LambdaExpr' || item.isUsed
+            (item: CxxAstNode) => !item.isImplicit || cursor.kind === 'LambdaExpr'
         );
         return filteredChildren;
     }

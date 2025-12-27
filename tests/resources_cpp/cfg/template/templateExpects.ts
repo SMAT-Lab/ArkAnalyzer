@@ -86,7 +86,7 @@ export const TEMPLATE_EXPECT_CASE5 = {
             stmts: [
                 'args = parameter0: Args...',
                 'this = this: @template/template.cpp: %dflt',
-                'return CxxFolderExpr(args+...)',
+                'return CxxFolderExpr(args ...)',
             ],
             preds: [],
             succes: [],

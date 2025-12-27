@@ -34,9 +34,12 @@ import {
 } from '../../core/common/Const';
 import { FunctionType } from '../../core/base/Type';
 import { ArkNamespace } from '../../core/model/ArkNamespace';
-import { findArkExport } from '../../core/common/ModelUtils';
+import { findArkExport, ModelUtils } from '../../core/common/ModelUtils';
 import { ArkField } from '../../core/model/ArkField';
 import { TypeInference } from '../../core/common/TypeInference';
+import { MethodParameter } from '../../core/model/builder/ArkMethodBuilder';
+import { Scene } from '../../Scene';
+import { ReferenceType } from '../base/Type';
 
 // Common C++standard library header files (excluding the .h suffix)
 const CXX_STD_HEADERS = new Set([
@@ -553,5 +556,23 @@ export class CxxModelUtils {
             }
         }
         return null;
+    }
+
+    public static isIOStreamObjectMatched(parameters: MethodParameter[], args: Value[], scene: Scene): boolean {
+        // Compare the output object directly, i.e., the last param/arg
+        const lastParam = parameters.length > 0 ? parameters[parameters.length - 1] : null;
+        const lastArg = args.length > 0 ? args[args.length - 1] : null;
+        if (!lastParam || !lastArg) {
+            return false;
+        }
+        let lastParamType = lastParam.getType();
+        let lastArgType = lastArg.getType();
+        if (lastParamType instanceof ReferenceType) {
+            lastParamType = lastParamType.getBaseType();
+        }
+        if (lastArgType instanceof ReferenceType) {
+            lastArgType = lastArgType.getBaseType();
+        }
+        return ModelUtils.matchType(lastParamType, lastArgType, lastArg, scene);
     }
 }
