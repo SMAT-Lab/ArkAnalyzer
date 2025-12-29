@@ -1,3 +1,17 @@
+/*
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 #pragma once
 
 #include "llvm/Support/raw_ostream.h"
@@ -35,9 +49,13 @@ private:
     size_t TailLen = 0;
 
     static bool findPatternFixed6(const char *Data, size_t Len, const char *Pat6) {
-        if (Len < kPatLen) return false;
+        if (Len < kPatLen) {
+            return false;
+        }
         for (size_t i = 0; i + kPatLen <= Len; ++i) {
-            if (std::memcmp(Data + i, Pat6, kPatLen) == 0) return true;
+            if (std::memcmp(Data + i, Pat6, kPatLen) == 0) {
+                return true;
+            }
         }
         return false;
     }
@@ -57,13 +75,21 @@ private:
             std::memcpy(buf, Tail, TailLen);
             std::memcpy(buf + TailLen, Ptr, take);
 
-            if (!HasName && findPatternFixed6(buf, total, kName)) HasName = true;
-            if (!HasCode && findPatternFixed6(buf, total, kCode)) HasCode = true;
+            if (!HasName && findPatternFixed6(buf, total, kName)) {
+                HasName = true;
+            }
+            if (!HasCode && findPatternFixed6(buf, total, kCode)) {
+                HasCode = true;
+            }
         }
 
         // chunk
-        if (!HasName && findPatternFixed6(Ptr, Size, kName)) HasName = true;
-        if (!HasCode && findPatternFixed6(Ptr, Size, kCode)) HasCode = true;
+        if (!HasName && findPatternFixed6(Ptr, Size, kName)) {
+            HasName = true;
+        }
+        if (!HasCode && findPatternFixed6(Ptr, Size, kCode)) {
+            HasCode = true;
+        }
 
         // update tail
         if (Size >= kTailMax) {
@@ -143,7 +169,9 @@ private:
         Bytes += Size;
     }
 
-    uint64_t current_pos() const override { return Bytes; }
+    uint64_t current_pos() const override {
+        return Bytes;
+    }
 };
 
 } // namespace ast_dumper

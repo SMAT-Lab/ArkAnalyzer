@@ -1,3 +1,17 @@
+/*
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 #include "clang/AST/ASTConsumer.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Decl.h"
@@ -77,17 +91,29 @@ public:
 public:
     bool TraverseForStmt(ForStmt *FS)
     {
-        if (!FS) return true;
+        if (!FS) {
+            return true;
+        }
         // 保持 RAV 的 visit 链路
-        if (!WalkUpFromForStmt(FS)) return false;
-
+        if (!WalkUpFromForStmt(FS)) {
+            return false;
+        }
         // 按 clang JSON 的固定槽位顺序输出
-        if (!traverseStmtOrEmpty(FS->getInit())) return false;
-        if (!traverseStmtOrEmpty(FS->getConditionVariableDeclStmt())) return false;
-        if (!traverseStmtOrEmpty(FS->getCond())) return false;
-        if (!traverseStmtOrEmpty(FS->getInc())) return false;
-        if (!traverseStmtOrEmpty(FS->getBody())) return false;
-
+        if (!traverseStmtOrEmpty(FS->getInit())) {
+            return false;
+        }
+        if (!traverseStmtOrEmpty(FS->getConditionVariableDeclStmt())) {
+            return false;
+        }
+        if (!traverseStmtOrEmpty(FS->getCond())) {
+            return false;
+        }
+        if (!traverseStmtOrEmpty(FS->getInc())) {
+            return false;
+        }
+        if (!traverseStmtOrEmpty(FS->getBody())) {
+            return false;
+        }
         return true;
     }
 
@@ -97,6 +123,31 @@ public:
         TraverseDecl(Ctx.getTranslationUnitDecl());
         OS << "\n";
         OS.flush();
+    }
+
+    void dumperNodeName(Decl *D, bool dumperHasName, bool wroteAnyField) {
+        if (!dumperHasName) {
+            std::string name;
+            if (const auto *ND = dyn_cast<NamedDecl>(D)) name = ND->getNameAsString();
+            else if (isa<TranslationUnitDecl>(D))        name = "TranslationUnit";
+
+            if (!name.empty()) {
+                ast_dumper::json::writeCommaIf(wroteAnyField, OS);
+                ast_dumper::json::writeKey(OS, "name");
+                ast_dumper::json::PrintJsonString(OS, name);
+            }
+        }
+    }
+
+    void dumperNodeCode(Decl *D, bool dumperHasCode, bool wroteAnyField) {
+        if (!dumperHasCode) {
+            std::string code = ast_dumper::GetSourceTextByRange(SM, Ctx.getLangOpts(), D->getSourceRange(), true);
+            if (!code.empty()) {
+                ast_dumper::json::writeCommaIf(wroteAnyField, OS);
+                ast_dumper::json::writeKey(OS, "code");
+                ast_dumper::json::PrintJsonString(OS, code);
+            }
+        }
     }
 
     bool TraverseDecl(Decl *D)
@@ -112,7 +163,6 @@ public:
 
         OS << '{';
         bool wroteAnyField = false;
-
         bool dumperHasName = false;
         bool dumperHasCode = false;
         ast_dumper::JsonDumperProbeStream Probe(OS);
@@ -121,29 +171,11 @@ public:
         dumperHasCode = Probe.hasCodeKey();
         wroteAnyField = (Probe.bytesWritten() > 0);
 
-        if (!dumperHasName) {
-            std::string name;
-            if (const auto *ND = dyn_cast<NamedDecl>(D)) name = ND->getNameAsString();
-            else if (isa<TranslationUnitDecl>(D))        name = "TranslationUnit";
+        dumperNodeName(D, dumperHasName, wroteAnyField);
+        dumperNodeCode(D, dumperHasCode, wroteAnyField);
 
-            if (!name.empty()) {
-                ast_dumper::json::WriteCommaIf(wroteAnyField, OS);
-                ast_dumper::json::WriteKey(OS, "name");
-                ast_dumper::json::PrintJsonString(OS, name);
-            }
-        }
-
-        if (!dumperHasCode) {
-            std::string code = ast_dumper::GetSourceTextByRange(SM, Ctx.getLangOpts(), D->getSourceRange(), true);
-            if (!code.empty()) {
-                ast_dumper::json::WriteCommaIf(wroteAnyField, OS);
-                ast_dumper::json::WriteKey(OS, "code");
-                ast_dumper::json::PrintJsonString(OS, code);
-            }
-        }
-
-        ast_dumper::json::WriteCommaIf(wroteAnyField, OS);
-        ast_dumper::json::WriteKey(OS, "inner");
+        ast_dumper::json::writeCommaIf(wroteAnyField, OS);
+        ast_dumper::json::writeKey(OS, "inner");
         OS << '[';
         InnerFirstChildStack.push_back(1);
 
@@ -190,14 +222,14 @@ public:
         if (!dumperHasCode) {
             std::string code = ast_dumper::GetSourceTextByRange(SM, Ctx.getLangOpts(), S->getSourceRange(), true);
             if (!code.empty()) {
-                ast_dumper::json::WriteCommaIf(wroteAnyField, OS);
-                ast_dumper::json::WriteKey(OS, "code");
+                ast_dumper::json::writeCommaIf(wroteAnyField, OS);
+                ast_dumper::json::writeKey(OS, "code");
                 ast_dumper::json::PrintJsonString(OS, code);
             }
         }
 
-        ast_dumper::json::WriteCommaIf(wroteAnyField, OS);
-        ast_dumper::json::WriteKey(OS, "inner");
+        ast_dumper::json::writeCommaIf(wroteAnyField, OS);
+        ast_dumper::json::writeKey(OS, "inner");
         OS << '[';
         InnerFirstChildStack.push_back(1);
 
@@ -229,14 +261,14 @@ public:
         if (!dumperHasCode) {
             std::string code = ast_dumper::GetSourceTextByRange(SM, Ctx.getLangOpts(), Init->getSourceRange(), true);
             if (!code.empty()) {
-                ast_dumper::json::WriteCommaIf(wroteAnyField, OS);
-                ast_dumper::json::WriteKey(OS, "code");
+                ast_dumper::json::writeCommaIf(wroteAnyField, OS);
+                ast_dumper::json::writeKey(OS, "code");
                 ast_dumper::json::PrintJsonString(OS, code);
             }
         }
 
-        ast_dumper::json::WriteCommaIf(wroteAnyField, OS);
-        ast_dumper::json::WriteKey(OS, "inner");
+        ast_dumper::json::writeCommaIf(wroteAnyField, OS);
+        ast_dumper::json::writeKey(OS, "inner");
         OS << '[';
         InnerFirstChildStack.push_back(1);
 
@@ -265,9 +297,13 @@ private:
 
     void writeChildCommaIfNeeded()
     {
-        if (InnerFirstChildStack.empty()) return;
+        if (InnerFirstChildStack.empty()) {
+            return;
+        }
         uint8_t &first = InnerFirstChildStack.back();
-        if (!first) OS << ',';
+        if (!first) {
+            OS << ',';
+        }
         first = 0;
     }
 };
