@@ -60,9 +60,9 @@ void HeaderFileCollector::InclusionDirective(clang::SourceLocation HashLoc,
     }
 
     // loc: expansion position
-    clang::SourceLocation E = SM.getExpansionLoc(HashLoc);
-    if (E.isValid()) {
-        clang::PresumedLoc PL = SM.getPresumedLoc(E);
+    clang::SourceLocation expansion = SM.getExpansionLoc(HashLoc);
+    if (expansion.isValid()) {
+        clang::PresumedLoc PL = SM.getPresumedLoc(expansion);
         if (PL.isValid()) {
             inc["loc"] = llvm::json::Object{
                 {"file", std::string(PL.getFilename())},
@@ -73,10 +73,10 @@ void HeaderFileCollector::InclusionDirective(clang::SourceLocation HashLoc,
     }
 
     // code: full "#include ..." line
-    clang::SourceLocation E = SM.getExpansionLoc(HashLoc);
-    if (E.isValid()) {
-        clang::FileID FID = SM.getFileID(E);
-        unsigned LineNo = SM.getSpellingLineNumber(E);
+    clang::SourceLocation codeLoc = SM.getExpansionLoc(HashLoc);
+    if (codeLoc.isValid()) {
+        clang::FileID FID = SM.getFileID(codeLoc);
+        unsigned LineNo = SM.getSpellingLineNumber(codeLoc);
         clang::SourceLocation LB = SM.translateLineCol(FID, LineNo, 1);
         clang::SourceLocation LNext = SM.translateLineCol(FID, LineNo + 1, 1);
 
