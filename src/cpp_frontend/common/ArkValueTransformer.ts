@@ -683,7 +683,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         let typeValue: Value;
         // [1.typeid's inner.length is 0 or 2, then the type name is passed in; 2. std:: Type refers to the type in the namespace]==>
         // Parameter function call to construct the string corresponding to the type into the parameter
-        if (CXXTypeidExpr.inner.length === 0 || (CXXTypeidExpr.inner.length === 2 && CXXTypeidExpr.inner[1].kind === 'TypeRef')) {
+        if (CXXTypeidExpr.inner.length === 0) {
             const innerType = cxxNode2Type(CXXTypeidExpr, undefined, undefined);
             typeValue = new Local(innerType.toString(), innerType);
         } else {

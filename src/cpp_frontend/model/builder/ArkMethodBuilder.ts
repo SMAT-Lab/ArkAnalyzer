@@ -15,14 +15,13 @@
 
 import { ClassType, GenericType, UnknownType, VoidType } from '../../../core/base/Type';
 import { CxxBodyBuilder } from './BodyBuilder';
-import { buildViewTree } from '../../../core/graph/builder/ViewTreeBuilder';
 import { ArkClass } from '../../../core/model/ArkClass';
 import { ArkMethod } from '../../../core/model/ArkMethod';
 import {
     buildModifiers,
     buildParameters,
     buildReturnType,
-    buildTypeFromPreStr,
+    cxxNode2Type,
     isCxxFunctionPointer,
 } from './builderUtils';
 import { ArkParameterRef, ArkThisRef } from '../../../core/base/Ref';
@@ -104,7 +103,7 @@ export function handleFunctionTemplateDecl(methodNode: CxxAstNode, mtd: ArkMetho
         }
         let defaultType;
         if (innerNode.defaultArg) {
-            defaultType = buildTypeFromPreStr(innerNode.defaultArg.type.qualType, innerNode, undefined);
+            defaultType = cxxNode2Type(innerNode, undefined);
         }
         let templateType = new GenericType(typename, defaultType);
         templateType.setIndex(++index);
@@ -161,11 +160,6 @@ export function buildArkMethodFromArkClass(methodNode: CxxAstNode, declaringClas
         mtd.setDeclareLinesAndCols([nodePos.line], [nodePos.col]);
     }
 
-    if (mtd.hasBuilderDecorator()) {
-        mtd.setViewTree(buildViewTree(mtd));
-    } else if (declaringClass.hasComponentDecorator() && mtd.getSubSignature().toString() === 'build()' && !mtd.isStatic()) {
-        declaringClass.setViewTree(buildViewTree(mtd));
-    }
     checkAndUpdateCxxMethod(mtd, declaringClass);
     declaringClass.addMethod(mtd);
     IRUtils.setComments(mtd, methodNode, sourceFile, mtd.getDeclaringArkFile().getScene().getOptions());

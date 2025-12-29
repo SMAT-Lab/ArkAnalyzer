@@ -116,7 +116,7 @@ export function buildTypeParameters(clsNode: CxxAstNode, sourceFile: CxxAstNode,
                 innerNode.default = innerNode.inner[0].type.qualType;
             }
             if (innerNode.defaultArg) {
-                defaultType = buildTypeFromPreStr(innerNode.defaultArg.type.qualType, innerNode, arkInstance);
+                defaultType = cxxNode2Type(innerNode, arkInstance);
             }
             let templateType = new GenericType(innerNode.name, defaultType);
             templateType.setIndex(++index);
@@ -226,13 +226,11 @@ export function cxxNode2Type(
     if (currNode && arkInstance instanceof ArkMethod && isCxxFunctionPointer(currNode.type.qualType)) {
         return buildFuncPtrType(currNode, arkInstance, sourceFile!);
     }
-    if (!nodeQualType.type) {
+    // Default processing
+    let typeString = getTrueTypeString(nodeQualType);
+    if (typeString === '') {
         return UnknownType.getInstance();
     }
-    // Default processing
-    let typeString = (nodeQualType.type.desugaredQualType ?? nodeQualType.type.qualType)
-        .replace(/\b(const|volatile|mutable)\b\s*/gi, '').trim();
-
     if (nodeQualType.kind === 'InitListExpr' && typeString === 'void') {
         let multipleTypePara: Type[] = [];
         nodeQualType.inner.forEach((item: CxxAstNode) => {
@@ -242,6 +240,17 @@ export function cxxNode2Type(
     }
 
     return buildTypeFromPreStr(typeString, nodeQualType, arkInstance);
+}
+
+function getTrueTypeString(nodeQualType: CxxAstNode): string {
+    if (nodeQualType.kind === 'CXXTypeidExpr' && nodeQualType.typeArg) {
+        return nodeQualType.typeArg.desugaredQualType ?? nodeQualType.typeArg.qualType;
+    } else if (['TemplateTypeParmDecl', 'TemplateTypeParmVarDecl'].includes(nodeQualType.kind) && nodeQualType.defaultArg) {
+        return nodeQualType.defaultArg.type.desugaredQualType ?? nodeQualType.defaultArg.type.qualType;
+    } else if (nodeQualType.type){
+        return nodeQualType.type.desugaredQualType ?? nodeQualType.type.qualType;
+    }
+    return '';
 }
 
 /**
