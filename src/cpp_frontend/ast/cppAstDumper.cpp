@@ -307,12 +307,12 @@ public:
         std::string OutPath = ast_dumper::ComputeOutPath(InFile,
                                                          ast_dumper::cli::OutputFilename().getValue(),
                                                          gInputCount);
-        llvm::errs() << "[ASTDumper] Input: " << InFile << "\n";
+        llvm::outs() << "[ASTDumper] Input: " << InFile << "\n";
         if (OutPath == "-") {
-            llvm::errs() << "[ASTDumper] Output: <stdout>\n";
+            llvm::outs() << "[ASTDumper] Output: <stdout>\n";
             return std::make_unique<AstJsonConsumer>(llvm::outs(), HUStore);
         }
-        llvm::errs() << "[ASTDumper] Output: " << OutPath << "\n";
+        llvm::outs() << "[ASTDumper] Output: " << OutPath << "\n";
 
         // ensure output dir exists
         {
@@ -323,7 +323,7 @@ public:
         std::error_code EC;
         FileOS = std::make_unique<llvm::raw_fd_ostream>(OutPath, EC, llvm::sys::fs::OF_Text);
         if (EC) {
-            llvm::errs() << "Cannot open output file " << OutPath << ": " << EC.message() << "\n";
+            llvm::outs() << "Cannot open output file " << OutPath << ": " << EC.message() << "\n";
             return nullptr;
         }
 
@@ -342,36 +342,35 @@ int main(int argc, const char **argv)
     auto start = std::chrono::high_resolution_clock::now();
 
     // argv dump
-    llvm::errs() << "[ASTDumper] argv:\n";
+    llvm::outs() << "[ASTDumper] argv:\n";
     for (int i = 0; i < argc; ++i)
-        llvm::errs() << "  argv[" << i << "] = " << argv[i] << "\n";
+        llvm::outs() << "  argv[" << i << "] = " << argv[i] << "\n";
 
     ast_dumper::cli::EnsureRegistered();
     auto ExpectedParser = CommonOptionsParser::create(argc, argv, ast_dumper::cli::JsonASTCategory());
     if (!ExpectedParser) {
-        llvm::errs() << ExpectedParser.takeError();
+        llvm::outs() << ExpectedParser.takeError();
         return 1;
     }
 
     CommonOptionsParser &OptionsParser = ExpectedParser.get();
     gInputCount = (unsigned)OptionsParser.getSourcePathList().size();
 
-    llvm::errs() << "[ASTDumper] inputs (" << gInputCount << "):\n";
+    llvm::outs() << "[ASTDumper] inputs (" << gInputCount << "):\n";
     for (auto &p : OptionsParser.getSourcePathList())
-        llvm::errs() << "  " << p << "\n";
+        llvm::outs() << "  " << p << "\n";
 
     const std::string outOpt = ast_dumper::cli::OutputFilename().getValue();
-    llvm::errs() << "[ASTDumper] -o = " << (outOpt.empty() ? "<default>" : outOpt) << "\n";
+    llvm::outs() << "[ASTDumper] -o = " << (outOpt.empty() ? "<default>" : outOpt) << "\n";
 
     // -p diagnostics (optional)
     const std::string BuildPath = ast_dumper::GetBuildPathFromArgv(argc, argv);
-    ast_dumper::PrintBuildPathDiagnostics(BuildPath, llvm::errs());
+    ast_dumper::PrintBuildPathDiagnostics(BuildPath);
 
     // select compilation DB (use fallback only if inputs have no compile command)
     CompilationDatabase &ParserDB = OptionsParser.getCompilations();
     std::unique_ptr<CompilationDatabase> FallbackDB;
-    CompilationDatabase *DB = ast_dumper::SelectDBForInputs(
-        ParserDB, OptionsParser.getSourcePathList(), FallbackDB, llvm::errs());
+    CompilationDatabase *DB = ast_dumper::SelectDBForInputs(ParserDB, OptionsParser.getSourcePathList(), FallbackDB);
 
     ClangTool Tool(*DB, OptionsParser.getSourcePathList());
     Tool.appendArgumentsAdjuster(getClangSyntaxOnlyAdjuster());
@@ -381,6 +380,6 @@ int main(int argc, const char **argv)
 
     auto end = std::chrono::high_resolution_clock::now();
     double ms = (double)std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-    llvm::errs() << "[ASTDumper] finished in " << ms << " ms\n";
+    llvm::outs() << "[ASTDumper] finished in " << ms << " ms\n";
     return result;
 }

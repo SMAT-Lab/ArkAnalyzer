@@ -31,23 +31,23 @@ std::string GetBuildPathFromArgv(int argc, const char **argv)
     return {};
 }
 
-void PrintBuildPathDiagnostics(llvm::StringRef BuildPath, llvm::raw_ostream &OS)
+void PrintBuildPathDiagnostics(llvm::StringRef BuildPath)
 {
     if (BuildPath.empty()) return;
 
-    OS << "[ASTDumper] -p = " << BuildPath << "\n";
-    OS << "[ASTDumper] exists(build dir) = "
+    llvm::outs() << "[ASTDumper] -p = " << BuildPath << "\n";
+    llvm::outs() << "[ASTDumper] exists(build dir) = "
        << (llvm::sys::fs::exists(BuildPath) ? "yes" : "no") << "\n";
 
     llvm::SmallString<512> CC(BuildPath);
     llvm::sys::path::append(CC, "compile_commands.json");
-    OS << "[ASTDumper] exists(compile_commands.json) = "
+    llvm::outs() << "[ASTDumper] exists(compile_commands.json) = "
        << (llvm::sys::fs::exists(CC) ? "yes" : "no") << "\n";
 
     std::string Err;
     auto TestDB = clang::tooling::CompilationDatabase::loadFromDirectory(BuildPath, Err);
-    OS << "[ASTDumper] loadFromDirectory = " << (TestDB ? "OK" : "FAILED") << "\n";
-    if (!TestDB && !Err.empty()) OS << "[ASTDumper] load error: " << Err << "\n";
+    llvm::outs() << "[ASTDumper] loadFromDirectory = " << (TestDB ? "OK" : "FAILED") << "\n";
+    if (!TestDB && !Err.empty()) llvm::outs() << "[ASTDumper] load error: " << Err << "\n";
 }
 
 bool HasCompileCommandForAnyInput(clang::tooling::CompilationDatabase &DB, llvm::ArrayRef<std::string> Inputs)
@@ -75,7 +75,7 @@ MakeFallbackDB(llvm::ArrayRef<std::string> Inputs)
     }
 
     std::vector<std::string> args;
-    args.push_back((hasCxx && !hasC) ? "-std=c++20" : (hasC && !hasCxx) ? "-std=c99" : "-std=c++20");
+    args.push_back((hasCxx && !hasC) ? "-std=c++17" : (hasC && !hasCxx) ? "-std=c99" : "-std=c++17");
     args.push_back("-fsyntax-only");
     return std::make_unique<clang::tooling::FixedCompilationDatabase>(".", args);
 }
@@ -83,13 +83,12 @@ MakeFallbackDB(llvm::ArrayRef<std::string> Inputs)
 clang::tooling::CompilationDatabase *SelectDBForInputs(
     clang::tooling::CompilationDatabase &ParserDB,
     llvm::ArrayRef<std::string> Inputs,
-    std::unique_ptr<clang::tooling::CompilationDatabase> &OwnedFallback,
-    llvm::raw_ostream &Log)
+    std::unique_ptr<clang::tooling::CompilationDatabase> &OwnedFallback)
 {
 
     if (HasCompileCommandForAnyInput(ParserDB, Inputs)) return &ParserDB;
 
-    Log << "[ASTDumper] No compile command for inputs. Use fallback compile flags.\n";
+    llvm::outs() << "[ASTDumper] No compile command for inputs. Use fallback compile flags.\n";
     OwnedFallback = MakeFallbackDB(Inputs);
     return OwnedFallback.get();
 }

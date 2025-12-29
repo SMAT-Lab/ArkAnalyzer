@@ -16,7 +16,7 @@ namespace ast_dumper {
 std::string GetBuildPathFromArgv(int argc, const char **argv);
 
 // Print basic checks for build dir + compile_commands.json + loadFromDirectory().
-void PrintBuildPathDiagnostics(llvm::StringRef BuildPath, llvm::raw_ostream &OS);
+void PrintBuildPathDiagnostics(llvm::StringRef BuildPath);
 
 // True if DB contains compile commands for any input file (tries slash-normalization on Windows).
 bool HasCompileCommandForAnyInput(clang::tooling::CompilationDatabase &DB,
@@ -30,8 +30,7 @@ MakeFallbackDB(llvm::ArrayRef<std::string> Inputs);
 clang::tooling::CompilationDatabase *SelectDBForInputs(
     clang::tooling::CompilationDatabase &ParserDB,
     llvm::ArrayRef<std::string> Inputs,
-    std::unique_ptr<clang::tooling::CompilationDatabase> &OwnedFallback,
-    llvm::raw_ostream &Log);
+    std::unique_ptr<clang::tooling::CompilationDatabase> &OwnedFallback);
 
 // OHOS: inject libc++ headers (include/c++/v1) + prefer -stdlib=libc++ for OHOS targets only.
 clang::tooling::ArgumentsAdjuster MakeOhosLibcxxFixAdjuster();
