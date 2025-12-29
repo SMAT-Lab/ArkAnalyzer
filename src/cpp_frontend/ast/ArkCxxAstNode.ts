@@ -135,7 +135,7 @@ export interface CxxAstNode {
     traitFunc?: string;
     traitArgs?: string;
     noexceptArg?: string;
-    typeArg?: string;
+    typeArg?: CxxTypeInfo;
     atomicFunc?: string;
 
     /** Annotation for pseudo-destructor expression */

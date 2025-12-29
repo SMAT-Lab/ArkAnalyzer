@@ -21,7 +21,7 @@ import {
     buildModifiers,
     buildParameters,
     buildReturnType,
-    buildTypeFromPreStr,
+    cxxNode2Type,
     isCxxFunctionPointer,
 } from './builderUtils';
 import { ArkParameterRef, ArkThisRef } from '../../../core/base/Ref';
@@ -103,7 +103,7 @@ export function handleFunctionTemplateDecl(methodNode: CxxAstNode, mtd: ArkMetho
         }
         let defaultType;
         if (innerNode.defaultArg) {
-            defaultType = buildTypeFromPreStr(innerNode.defaultArg.type.qualType, innerNode, undefined);
+            defaultType = cxxNode2Type(innerNode, undefined);
         }
         let templateType = new GenericType(typename, defaultType);
         templateType.setIndex(++index);
