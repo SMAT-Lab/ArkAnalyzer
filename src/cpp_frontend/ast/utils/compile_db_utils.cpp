@@ -31,21 +31,29 @@ static bool EndsWith(const std::string &s, const char *suffix)
 
 static std::string NormalizeBackslashToSlash(std::string p)
 {
-    for (char &ch : p) if (ch == '\\') ch = '/';
+    for (char &ch : p) {
+        if (ch == '\\') {
+            ch = '/';
+        }
+    }
     return p;
 }
 
 std::string GetBuildPathFromArgv(int argc, const char **argv)
 {
     for (int i = 0; i + 1 < argc; ++i) {
-        if (std::strcmp(argv[i], "-p") == 0) return std::string(argv[i + 1]);
+        if (std::strcmp(argv[i], "-p") == 0) {
+            return std::string(argv[i + 1]);
+        }
     }
     return {};
 }
 
 void PrintBuildPathDiagnostics(llvm::StringRef BuildPath)
 {
-    if (BuildPath.empty()) return;
+    if (BuildPath.empty()) {
+        return;
+    }
 
     llvm::outs() << "[ASTDumper] -p = " << BuildPath << "\n";
     llvm::outs() << "[ASTDumper] exists(build dir) = "
@@ -59,7 +67,9 @@ void PrintBuildPathDiagnostics(llvm::StringRef BuildPath)
     std::string Err;
     auto TestDB = clang::tooling::CompilationDatabase::loadFromDirectory(BuildPath, Err);
     llvm::outs() << "[ASTDumper] loadFromDirectory = " << (TestDB ? "OK" : "FAILED") << "\n";
-    if (!TestDB && !Err.empty()) llvm::outs() << "[ASTDumper] load error: " << Err << "\n";
+    if (!TestDB && !Err.empty()) {
+        llvm::outs() << "[ASTDumper] load error: " << Err << "\n";
+    }
 }
 
 bool HasCompileCommandForAnyInput(clang::tooling::CompilationDatabase &DB, llvm::ArrayRef<std::string> Inputs)
@@ -79,11 +89,16 @@ bool HasCompileCommandForAnyInput(clang::tooling::CompilationDatabase &DB, llvm:
 std::unique_ptr<clang::tooling::CompilationDatabase>
 MakeFallbackDB(llvm::ArrayRef<std::string> Inputs)
 {
-    bool hasC = false, hasCxx = false;
+    bool hasC = false;
+    bool hasCxx = false;
     for (const auto &f : Inputs) {
-        if (EndsWith(f, ".c")) hasC = true;
+        if (EndsWith(f, ".c")) {
+            hasC = true;
+        }
         if (EndsWith(f, ".cc") || EndsWith(f, ".cpp") || EndsWith(f, ".cxx") ||
-            EndsWith(f, ".h")  || EndsWith(f, ".hpp")) hasCxx = true;
+            EndsWith(f, ".h")  || EndsWith(f, ".hpp")) {
+                hasCxx = true;
+            }
     }
 
     std::vector<std::string> args;
@@ -92,13 +107,12 @@ MakeFallbackDB(llvm::ArrayRef<std::string> Inputs)
     return std::make_unique<clang::tooling::FixedCompilationDatabase>(".", args);
 }
 
-clang::tooling::CompilationDatabase *SelectDBForInputs(
-    clang::tooling::CompilationDatabase &ParserDB,
-    llvm::ArrayRef<std::string> Inputs,
-    std::unique_ptr<clang::tooling::CompilationDatabase> &OwnedFallback)
+clang::tooling::CompilationDatabase *SelectDBForInputs(clang::tooling::CompilationDatabase &ParserDB,
+    llvm::ArrayRef<std::string> Inputs, std::unique_ptr<clang::tooling::CompilationDatabase> &OwnedFallback)
 {
-
-    if (HasCompileCommandForAnyInput(ParserDB, Inputs)) return &ParserDB;
+    if (HasCompileCommandForAnyInput(ParserDB, Inputs)) {
+        return &ParserDB;
+    }
 
     llvm::outs() << "[ASTDumper] No compile command for inputs. Use fallback compile flags.\n";
     OwnedFallback = MakeFallbackDB(Inputs);
@@ -128,7 +142,10 @@ clang::tooling::ArgumentsAdjuster MakeOhosLibcxxFixAdjuster()
             bool isOhosTarget = false;
             for (const auto &a : NewArgs) {
                 llvm::StringRef R(a);
-                if (R.starts_with("--target=") && R.contains("ohos")) { isOhosTarget = true; break; }
+                if (R.starts_with("--target=") && R.contains("ohos")) {
+                    isOhosTarget = true;
+                    break;
+                }
             }
             if (!isOhosTarget) return NewArgs;
 

@@ -48,7 +48,8 @@ private:
     char Tail[kTailMax] = {0};
     size_t TailLen = 0;
 
-    static bool findPatternFixed6(const char *Data, size_t Len, const char *Pat6) {
+    static bool findPatternFixed6(const char *Data, size_t Len, const char *Pat6)
+    {
         if (Len < kPatLen) {
             return false;
         }
@@ -60,7 +61,8 @@ private:
         return false;
     }
 
-    void scanKeys(const char *Ptr, size_t Size) {
+    void scanKeys(const char *Ptr, size_t Size)
+    {
         if (HasName && HasCode) return;
 
         const char *kName = "\"name\"";
@@ -139,7 +141,8 @@ private:
         return "";
     }
 
-    void updateMangledName(const char *Ptr, size_t Size) {
+    void updateMangledName(const char *Ptr, size_t Size)
+    {
         buffer.append(Ptr, Size);
         auto nodeJson = llvm::json::parse("{" + buffer + "}");
         if (nodeJson) {
@@ -160,7 +163,8 @@ private:
         }
     }
 
-    void write_impl(const char *Ptr, size_t Size) override {
+    void write_impl(const char *Ptr, size_t Size) override
+    {
         if (Size == 0) return;
         scanKeys(Ptr, Size);
         updateMangledName(Ptr, Size);
@@ -169,7 +173,8 @@ private:
         Bytes += Size;
     }
 
-    uint64_t current_pos() const override {
+    uint64_t current_pos() const override
+    {
         return Bytes;
     }
 };

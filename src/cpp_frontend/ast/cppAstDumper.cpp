@@ -51,7 +51,7 @@ using llvm::json::Object;
 using llvm::json::Value;
 
 // for -o file multi-input derivation
-static unsigned gInputCount = 0;
+static unsigned g_InputCount = 0;
 
 // ---- AST streamer ----
 class ASTJsonStreamer : public RecursiveASTVisitor<ASTJsonStreamer> {
@@ -61,29 +61,30 @@ public:
         : Ctx(Ctx), SM(Ctx.getSourceManager()), OS(OS), HUStore(std::move(HUStore)) {}
 
     private:
-    void emitEmptyChild()
+    void EmitEmptyChild()
     {
         writeChildCommaIfNeeded();
         OS << "{}";
     }
 
-    bool traverseStmtOrEmpty(Stmt *Child)
+    bool TraverseStmtOrEmpty(Stmt *Child)
     {
         if (!Child) {
-            emitEmptyChild();
+            EmitEmptyChild();
             return true;
         }
         if (!ast_dumper::IsFromMainFileIncludingExpansion(SM, Child->getBeginLoc())) {
-            emitEmptyChild();
+            EmitEmptyChild();
             return true;
         }
         return TraverseStmt(Child);
     }
 
     template<typename T>
-    void callJsonNodeDumper(T* t, ast_dumper::JsonDumperProbeStream &Probe) {
+    void CallJsonNodeDumper(T* t, ast_dumper::JsonDumperProbeStream &Probe)
+    {
         JSONNodeDumper dumper(Probe, Ctx.getSourceManager(), Ctx, Ctx.getPrintingPolicy(),
-                                          &Ctx.getCommentCommandTraits());
+            &Ctx.getCommentCommandTraits());
         dumper.Visit(t);
         Probe.flush();
     }
@@ -99,37 +100,40 @@ public:
             return false;
         }
         // 按 clang JSON 的固定槽位顺序输出
-        if (!traverseStmtOrEmpty(FS->getInit())) {
+        if (!TraverseStmtOrEmpty(FS->getInit())) {
             return false;
         }
-        if (!traverseStmtOrEmpty(FS->getConditionVariableDeclStmt())) {
+        if (!TraverseStmtOrEmpty(FS->getConditionVariableDeclStmt())) {
             return false;
         }
-        if (!traverseStmtOrEmpty(FS->getCond())) {
+        if (!TraverseStmtOrEmpty(FS->getCond())) {
             return false;
         }
-        if (!traverseStmtOrEmpty(FS->getInc())) {
+        if (!TraverseStmtOrEmpty(FS->getInc())) {
             return false;
         }
-        if (!traverseStmtOrEmpty(FS->getBody())) {
+        if (!TraverseStmtOrEmpty(FS->getBody())) {
             return false;
         }
         return true;
     }
 
 
-    void emitTranslationUnit()
+    void EmitTranslationUnit()
     {
         TraverseDecl(Ctx.getTranslationUnitDecl());
         OS << "\n";
         OS.flush();
     }
 
-    void dumperNodeName(Decl *D, bool dumperHasName, bool wroteAnyField) {
+    void DumperNodeName(Decl *D, bool dumperHasName, bool wroteAnyField) {
         if (!dumperHasName) {
             std::string name;
-            if (const auto *ND = dyn_cast<NamedDecl>(D)) name = ND->getNameAsString();
-            else if (isa<TranslationUnitDecl>(D))        name = "TranslationUnit";
+            if (const auto *ND = dyn_cast<NamedDecl>(D)) {
+                name = ND->getNameAsString();
+            } else if (isa<TranslationUnitDecl>(D)) {
+                name = "TranslationUnit";
+            }
 
             if (!name.empty()) {
                 ast_dumper::json::writeCommaIf(wroteAnyField, OS);
@@ -139,9 +143,10 @@ public:
         }
     }
 
-    void dumperNodeCode(Decl *D, bool dumperHasCode, bool wroteAnyField) {
+    template<typename T>
+    void DumperNodeCode(T *t, bool dumperHasCode, bool wroteAnyField) {
         if (!dumperHasCode) {
-            std::string code = ast_dumper::GetSourceTextByRange(SM, Ctx.getLangOpts(), D->getSourceRange(), true);
+            std::string code = ast_dumper::GetSourceTextByRange(SM, Ctx.getLangOpts(), t->getSourceRange(), true);
             if (!code.empty()) {
                 ast_dumper::json::writeCommaIf(wroteAnyField, OS);
                 ast_dumper::json::writeKey(OS, "code");
@@ -152,11 +157,15 @@ public:
 
     bool TraverseDecl(Decl *D)
     {
-        if (!D) return true;
+        if (!D) {
+            return true;
+        }
 
         if (!isa<TranslationUnitDecl>(D)) {
             SourceLocation L = bestDeclLoc(D);
-            if (!ast_dumper::IsFromMainFileIncludingExpansion(SM, L)) return true;
+            if (!ast_dumper::IsFromMainFileIncludingExpansion(SM, L)) {
+                return true;
+            }
         }
 
         writeChildCommaIfNeeded();
@@ -166,13 +175,13 @@ public:
         bool dumperHasName = false;
         bool dumperHasCode = false;
         ast_dumper::JsonDumperProbeStream Probe(OS);
-        callJsonNodeDumper(D, Probe);
+        CallJsonNodeDumper(D, Probe);
         dumperHasName = Probe.hasNameKey();
         dumperHasCode = Probe.hasCodeKey();
         wroteAnyField = (Probe.bytesWritten() > 0);
 
-        dumperNodeName(D, dumperHasName, wroteAnyField);
-        dumperNodeCode(D, dumperHasCode, wroteAnyField);
+        DumperNodeName(D, dumperHasName, wroteAnyField);
+        DumperNodeCode(D, dumperHasCode, wroteAnyField);
 
         ast_dumper::json::writeCommaIf(wroteAnyField, OS);
         ast_dumper::json::writeKey(OS, "inner");
@@ -205,8 +214,12 @@ public:
 
     bool TraverseStmt(Stmt *S)
     {
-        if (!S) return true;
-        if (!ast_dumper::IsFromMainFileIncludingExpansion(SM, S->getBeginLoc())) return true;
+        if (!S) {
+            return true;
+        }
+        if (!ast_dumper::IsFromMainFileIncludingExpansion(SM, S->getBeginLoc())) {
+            return true;
+        }
 
         writeChildCommaIfNeeded();
 
@@ -215,18 +228,11 @@ public:
 
         bool dumperHasCode = false;
         ast_dumper::JsonDumperProbeStream Probe(OS);
-        callJsonNodeDumper(S, Probe);
+        CallJsonNodeDumper(S, Probe);
         dumperHasCode = Probe.hasCodeKey();
         wroteAnyField = (Probe.bytesWritten() > 0);
 
-        if (!dumperHasCode) {
-            std::string code = ast_dumper::GetSourceTextByRange(SM, Ctx.getLangOpts(), S->getSourceRange(), true);
-            if (!code.empty()) {
-                ast_dumper::json::writeCommaIf(wroteAnyField, OS);
-                ast_dumper::json::writeKey(OS, "code");
-                ast_dumper::json::PrintJsonString(OS, code);
-            }
-        }
+        DumperNodeCode(S, dumperHasCode, wroteAnyField);
 
         ast_dumper::json::writeCommaIf(wroteAnyField, OS);
         ast_dumper::json::writeKey(OS, "inner");
@@ -244,8 +250,12 @@ public:
 
     bool TraverseConstructorInitializer(CXXCtorInitializer *Init)
     {
-        if (!Init) return true;
-        if (!ast_dumper::IsFromMainFileIncludingExpansion(SM, Init->getSourceLocation())) return true;
+        if (!Init) {
+            return true;
+        }
+        if (!ast_dumper::IsFromMainFileIncludingExpansion(SM, Init->getSourceLocation())) {
+            return true;
+        }
 
         writeChildCommaIfNeeded();
 
@@ -254,18 +264,11 @@ public:
 
         bool dumperHasCode = false;
         ast_dumper::JsonDumperProbeStream Probe(OS);
-        callJsonNodeDumper(Init, Probe);
+        CallJsonNodeDumper(Init, Probe);
         dumperHasCode = Probe.hasCodeKey();
         wroteAnyField = (Probe.bytesWritten() > 0);
 
-        if (!dumperHasCode) {
-            std::string code = ast_dumper::GetSourceTextByRange(SM, Ctx.getLangOpts(), Init->getSourceRange(), true);
-            if (!code.empty()) {
-                ast_dumper::json::writeCommaIf(wroteAnyField, OS);
-                ast_dumper::json::writeKey(OS, "code");
-                ast_dumper::json::PrintJsonString(OS, code);
-            }
-        }
+        DumperNodeCode(Init, dumperHasCode, wroteAnyField);
 
         ast_dumper::json::writeCommaIf(wroteAnyField, OS);
         ast_dumper::json::writeKey(OS, "inner");
@@ -317,7 +320,7 @@ public:
     void HandleTranslationUnit(ASTContext &Ctx) override
     {
         ASTJsonStreamer streamer(Ctx, OS, HUStore);
-        streamer.emitTranslationUnit();
+        streamer.EmitTranslationUnit();
     }
 
 private:
@@ -342,7 +345,7 @@ public:
     {
         std::string OutPath = ast_dumper::ComputeOutPath(InFile,
                                                          ast_dumper::cli::OutputFilename().getValue(),
-                                                         gInputCount);
+                                                         g_InputCount);
         llvm::outs() << "[ASTDumper] Input: " << InFile << "\n";
         if (OutPath == "-") {
             llvm::outs() << "[ASTDumper] Output: <stdout>\n";
@@ -353,7 +356,9 @@ public:
         // ensure output dir exists
         {
             llvm::SmallString<256> Dir = llvm::sys::path::parent_path(OutPath);
-            if (!Dir.empty()) llvm::sys::fs::create_directories(Dir);
+            if (!Dir.empty()) {
+                llvm::sys::fs::create_directories(Dir);
+            }
         }
 
         std::error_code EC;
@@ -390,9 +395,9 @@ int main(int argc, const char **argv)
     }
 
     CommonOptionsParser &OptionsParser = ExpectedParser.get();
-    gInputCount = (unsigned)OptionsParser.getSourcePathList().size();
+    g_InputCount = (unsigned)OptionsParser.getSourcePathList().size();
 
-    llvm::outs() << "[ASTDumper] inputs (" << gInputCount << "):\n";
+    llvm::outs() << "[ASTDumper] inputs (" << g_InputCount << "):\n";
     for (auto &p : OptionsParser.getSourcePathList())
         llvm::outs() << "  " << p << "\n";
 

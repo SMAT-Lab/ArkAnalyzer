@@ -45,11 +45,10 @@ void HeaderFileCollector::InclusionDirective(clang::SourceLocation HashLoc,
     inc["relativePath"] = RelativePath.str();
 
     // includedFrom: file containing this #include
-    {
-        clang::FileID FID = SM.getFileID(HashLoc);
-        if (FID.isValid()) {
-            if (const clang::FileEntry *FE = SM.getFileEntryForID(FID))
-                inc["includedFrom"] = FE->tryGetRealPathName().str();
+    clang::FileID FID = SM.getFileID(HashLoc);
+    if (FID.isValid()) {
+        if (const clang::FileEntry *FE = SM.getFileEntryForID(FID)) {
+            inc["includedFrom"] = FE->tryGetRealPathName().str();
         }
     }
 
@@ -61,42 +60,40 @@ void HeaderFileCollector::InclusionDirective(clang::SourceLocation HashLoc,
     }
 
     // loc: expansion position
-    {
-        clang::SourceLocation E = SM.getExpansionLoc(HashLoc);
-        if (E.isValid()) {
-            clang::PresumedLoc PL = SM.getPresumedLoc(E);
-            if (PL.isValid()) {
-                inc["loc"] = llvm::json::Object{
-                    {"file", std::string(PL.getFilename())},
-                    {"line", (int64_t)PL.getLine()},
-                    {"col",  (int64_t)PL.getColumn()},
-                };
-            }
+    clang::SourceLocation E = SM.getExpansionLoc(HashLoc);
+    if (E.isValid()) {
+        clang::PresumedLoc PL = SM.getPresumedLoc(E);
+        if (PL.isValid()) {
+            inc["loc"] = llvm::json::Object{
+                {"file", std::string(PL.getFilename())},
+                {"line", (int64_t)PL.getLine()},
+                {"col",  (int64_t)PL.getColumn()},
+            };
         }
     }
 
     // code: full "#include ..." line
-    {
-        clang::SourceLocation E = SM.getExpansionLoc(HashLoc);
-        if (E.isValid()) {
-            clang::FileID FID = SM.getFileID(E);
-            unsigned LineNo = SM.getSpellingLineNumber(E);
-            clang::SourceLocation LB = SM.translateLineCol(FID, LineNo, 1);
-            clang::SourceLocation LNext = SM.translateLineCol(FID, LineNo + 1, 1);
+    clang::SourceLocation E = SM.getExpansionLoc(HashLoc);
+    if (E.isValid()) {
+        clang::FileID FID = SM.getFileID(E);
+        unsigned LineNo = SM.getSpellingLineNumber(E);
+        clang::SourceLocation LB = SM.translateLineCol(FID, LineNo, 1);
+        clang::SourceLocation LNext = SM.translateLineCol(FID, LineNo + 1, 1);
 
-            clang::CharSourceRange CR = (LNext.isValid())
-                ? clang::CharSourceRange::getCharRange(LB, LNext)
-                : clang::CharSourceRange::getCharRange(LB, SM.getLocForEndOfFile(FID));
+        clang::CharSourceRange CR = (LNext.isValid())
+            ? clang::CharSourceRange::getCharRange(LB, LNext)
+            : clang::CharSourceRange::getCharRange(LB, SM.getLocForEndOfFile(FID));
 
-            inc["code"] = clang::Lexer::getSourceText(CR, SM, PP.getLangOpts()).str();
-        }
+        inc["code"] = clang::Lexer::getSourceText(CR, SM, PP.getLangOpts()).str();
     }
 
     // aggregate
     std::string key = !headerAbs.empty() ? headerAbs : ("<unresolved>:" + FileName.str());
     llvm::json::Object &HU = Store->ByHeader[key];
     HU["header"] = key;
-    if (!HU.get("includes")) HU["includes"] = llvm::json::Array{};
+    if (!HU.get("includes")) {
+        HU["includes"] = llvm::json::Array{};
+    }
     HU["includes"].getAsArray()->push_back(llvm::json::Value(std::move(inc)));
 }
 

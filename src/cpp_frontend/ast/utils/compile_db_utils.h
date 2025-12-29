@@ -37,8 +37,7 @@ bool HasCompileCommandForAnyInput(clang::tooling::CompilationDatabase &DB,
                                   llvm::ArrayRef<std::string> Inputs);
 
 // Create a minimal fallback DB when no compile command is found.
-std::unique_ptr<clang::tooling::CompilationDatabase>
-MakeFallbackDB(llvm::ArrayRef<std::string> Inputs);
+std::unique_ptr<clang::tooling::CompilationDatabase> MakeFallbackDB(llvm::ArrayRef<std::string> Inputs);
 
 // Select DB for inputs; returns ParserDB or OwnedFallback.get().
 clang::tooling::CompilationDatabase *SelectDBForInputs(
