@@ -52,14 +52,14 @@ void PrintBuildPathDiagnostics(llvm::StringRef BuildPath)
 
 bool HasCompileCommandForAnyInput(clang::tooling::CompilationDatabase &DB, llvm::ArrayRef<std::string> Inputs)
 {
-    for (const auto &p : Inputs) {
-        auto cmds = DB.getCompileCommands(p);
-        if (!cmds.empty()) return true;
-
-        // Windows: compile_commands may record '/' paths while inputs are '\'.
-        auto p2 = NormalizeBackslashToSlash(p);
-        cmds = DB.getCompileCommands(p2);
-        if (!cmds.empty()) return true;
+    for (const auto &file : Inputs) {
+        auto fileN = NormalizeBackslashToSlash(file);
+        auto AllCommands = DB.getAllCompileCommands();
+        for (auto &Command: AllCommands) {
+            if (Command.Filename == file || Command.Filename == fileN) {
+                return true;
+            }
+        }
     }
     return false;
 }
@@ -75,7 +75,7 @@ MakeFallbackDB(llvm::ArrayRef<std::string> Inputs)
     }
 
     std::vector<std::string> args;
-    args.push_back((hasCxx && !hasC) ? "-std=c++17" : (hasC && !hasCxx) ? "-std=c99" : "-std=c++17");
+    args.push_back((hasCxx && !hasC) ? "-std=c++20" : (hasC && !hasCxx) ? "-std=c99" : "-std=c++20");
     args.push_back("-fsyntax-only");
     return std::make_unique<clang::tooling::FixedCompilationDatabase>(".", args);
 }
