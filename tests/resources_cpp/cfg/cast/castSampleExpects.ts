@@ -112,7 +112,7 @@ export const CAST_EXPECT_CASE6 = {
             stmts: [
                 'this = this: @cast/castSample.cpp: %dflt',
                 'x = <CXXFunctionalCastExpr: int>3.14',
-                '%0 = new @%unk/%unk: std::basic_string',
+                '%0 = new @%unk/%unk: std::basic_string<char>',
                 'instanceinvoke %0.<@%unk/%unk: std::basic_string.constructor()>(\'hello\')',
                 'y = <CXXFunctionalCastExpr: string>%0',
                 '%1 = new @cast/castSample.cpp: Widget',
