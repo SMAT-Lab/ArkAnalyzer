@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -455,7 +455,7 @@ describe("import & export modifier test", () => {
         }
     });
     it('import', () => {
-        const fileId = new FileSignature(projectScene.getProjectName(), 'importModifier.ts');
+        const fileId = new FileSignature(projectScene.getProjectName(), 'importModifier.ets');
         const file = projectScene.getFile(fileId);
         if (file) {
             const result = new JsonPrinter(file).dump();

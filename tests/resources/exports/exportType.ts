@@ -14,7 +14,7 @@
  */
 type Cat = {
     name: string;
-}
+};
 
 class Dog {
     name: string | undefined;

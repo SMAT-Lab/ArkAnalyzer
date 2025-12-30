@@ -139,18 +139,6 @@ export function buildModifiers(node: ts.Node): number {
     return modifiers;
 }
 
-export function buildImportModifiers(node: ts.Node): number {
-    let modifiers: number = 0;
-
-    if (ts.canHaveModifiers(node)) {
-        ts.getModifiers(node)?.forEach(modifier => {
-            modifiers |= modifierKind2Enum(modifier.kind);
-        });
-    }
-
-    return modifiers;
-}
-
 export function buildHeritageClauses(heritageClauses?: ts.NodeArray<HeritageClause>): Map<string, string> {
     let heritageClausesMap: Map<string, string> = new Map<string, string>();
     heritageClauses?.forEach(heritageClause => {

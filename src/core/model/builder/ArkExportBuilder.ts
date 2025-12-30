@@ -62,7 +62,6 @@ export function buildDefaultExportInfo(im: FromInfo, file: ArkFile, arkExport?: 
 function buildExportDeclaration(node: ts.ExportDeclaration, sourceFile: ts.SourceFile, arkFile: ArkFile): ExportInfo[] {
     const originTsPosition = LineColPosition.buildFromNode(node, sourceFile);
     const tsSourceCode = node.getText(sourceFile);
-
     let exportFrom = '';
     if (node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
         exportFrom = node.moduleSpecifier.text;
@@ -80,11 +79,8 @@ function buildExportDeclaration(node: ts.ExportDeclaration, sourceFile: ts.Sourc
                 modifier |= ModifierType.TYPE;
             }
             let builder = new ExportInfo.Builder()
-                .exportClauseType(ExportType.UNKNOWN)
-                .exportClauseName(element.name.text)
-                .tsSourceCode(tsSourceCode)
-                .exportFrom(exportFrom)
-                .originTsPosition(originTsPosition)
+                .exportClauseType(ExportType.UNKNOWN).exportClauseName(element.name.text)
+                .tsSourceCode(tsSourceCode).exportFrom(exportFrom).originTsPosition(originTsPosition)
                 .declaringArkFile(arkFile)
                 .setLeadingComments(IRUtils.getCommentsMetadata(node, sourceFile, arkFile.getScene().getOptions(), true))
                 .setTrailingComments(IRUtils.getCommentsMetadata(node, sourceFile, arkFile.getScene().getOptions(), false))
@@ -96,14 +92,10 @@ function buildExportDeclaration(node: ts.ExportDeclaration, sourceFile: ts.Sourc
         });
         return exportInfos;
     }
-
     let builder1 = new ExportInfo.Builder()
-        .exportClauseType(ExportType.UNKNOWN)
-        .nameBeforeAs(ALL)
-        .modifiers(modifiers)
-        .tsSourceCode(tsSourceCode)
-        .exportFrom(exportFrom)
-        .declaringArkFile(arkFile)
+        .exportClauseType(ExportType.UNKNOWN).nameBeforeAs(ALL)
+        .modifiers(modifiers).tsSourceCode(tsSourceCode)
+        .exportFrom(exportFrom).declaringArkFile(arkFile)
         .setLeadingComments(IRUtils.getCommentsMetadata(node, sourceFile, arkFile.getScene().getOptions(), true))
         .setTrailingComments(IRUtils.getCommentsMetadata(node, sourceFile, arkFile.getScene().getOptions(), false))
         .originTsPosition(originTsPosition);

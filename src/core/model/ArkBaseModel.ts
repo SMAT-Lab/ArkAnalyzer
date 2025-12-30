@@ -96,7 +96,7 @@ const MODIFIER_KIND_2_ENUM = new Map<ts.SyntaxKind, ModifierType>([
     [ts.SyntaxKind.OverrideKeyword, ModifierType.OVERRIDE],
     [ts.SyntaxKind.StaticKeyword, ModifierType.STATIC],
     [ts.SyntaxKind.TypeKeyword, ModifierType.TYPE],
-    [ts.SyntaxKind.TypeKeyword, ModifierType.LAZY],
+    [ts.SyntaxKind.LazyKeyword, ModifierType.LAZY],
 ]);
 
 export function modifierKind2Enum(kind: ts.SyntaxKind): ModifierType {

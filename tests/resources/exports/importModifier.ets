@@ -19,9 +19,7 @@ import type CatDlf from './exportType';
 
 import lazy { x } from 'mod';
 import lazy { x as v } from 'mod';
-import lazy
+import lazy x1 from 'mod';
 
-x1
-from
-'mod';
+
 
