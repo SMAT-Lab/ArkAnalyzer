@@ -58,10 +58,8 @@ export const LOOP_EXPECT_CASE2 = {
             id: 0,
             stmts: [
                 'this = this: @loop/loopSample.cpp: %dflt',
-                '%0 = new @loop/loopSample.cpp: Data',
-                'instanceinvoke %0.<@loop/loopSample.cpp: Data.constructor()>(1, 2)',
-                '%1 = new @loop/loopSample.cpp: Data',
-                'instanceinvoke %1.<@loop/loopSample.cpp: Data.constructor()>(3, 4)',
+                '%0 = AggregateExpr(1,2)',
+                '%1 = AggregateExpr(3,4)',
                 '%2 = newarray (@loop/loopSample.cpp: Data[2])',
                 '%2[0] = %0',
                 '%2[1] = %1',
@@ -303,7 +301,7 @@ export const LOOP_EXPECT_CASE10 = {
             id: 0,
             stmts: [
                 'this = this: @loop/loopSample.cpp: %dflt',
-                '%0 = new @%unk/%unk: std::vector<int>',
+                '%0 = new @%unk/%unk: std::vector',
                 '%1 = newarray (int[5])',
                 '%1[0] = 1',
                 '%1[1] = 2',
@@ -330,8 +328,8 @@ export const LOOP_EXPECT_CASE10 = {
             id: 2,
             stmts: [
                 '%3 = *it',
-                "staticinvoke <@%unk/%unk: .printf()>('%d\\n', %3)",
-                'it = it + 1'
+                'staticinvoke <@%unk/%unk: .printf()>(\'%d\\n\', %3)',
+                'it = it + 1',
             ],
             preds: [1],
             succes: [1],
@@ -346,7 +344,7 @@ export const LOOP_EXPECT_CASE11 = {
             id: 0,
             stmts: [
                 'this = this: @loop/loopSample.cpp: %dflt',
-                '%0 = new @%unk/%unk: std::vector<int>',
+                '%0 = new @%unk/%unk: std::vector',
                 '%1 = newarray (int[5])',
                 '%1[0] = 1',
                 '%1[1] = 2',

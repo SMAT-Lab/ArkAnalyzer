@@ -525,3 +525,106 @@ export class ArkAllocExpr extends AbstractExpr {
         return undefined;
     }
 }
+
+/**
+ * Aggregate expression to represent such cases :
+ *     struct Point q = (struct Point){.x = 5, .y = 8, .name = 'c'};
+ *     int* arr = (int[5]){1, 2, 3, 4, 5};
+ *     the right value is {},its kind is CompoundLiteralExpr or InitListExpr
+*/
+export class ArkAggregateExpr extends AbstractExpr {
+    private type: Type; // the whole Aggregate's type
+    private elements: Value[]; // the elements of Aggregate
+
+    constructor(elements: Value[], type: Type) {
+        super();
+        this.elements = elements;
+        this.type = type;
+    }
+
+    public getElements(): Value[] {
+        return this.elements;
+    }
+
+    public setType(type: Type): void {
+        this.type = type;
+    }
+
+    public getUses(): Value[] {
+        let uses: Value[] = [];
+        for (const element of this.elements) {
+            uses.push(element);
+            uses.push(...element.getUses());
+        }
+        return uses;
+    }
+
+    public getType(): Type {
+        return this.type;
+    }
+
+    public inferType(arkMethod: ArkMethod): ArkAggregateExpr {
+        const trueType = TypeInference.inferUnclearedType(this.type, arkMethod.getDeclaringArkClass());
+        if (trueType) {
+            this.type = trueType;
+        }
+        return this;
+    }
+
+    public toString(): string {
+        return `AggregateExpr(${this.elements})`;
+    }
+}
+
+/**
+ * ArkDesignatedInitExpr is used to represent designated initializers in aggregate initialization expressions.
+ * It consists of an initializer value and a designator, which specifies the field or element to be initialized.
+ * For example:
+ *     struct Point q = (struct Point){.x = 5, .y = 8, .name = 'c'};
+ *     its kind is DesignatedInitExpr
+ */
+export class ArkDesignatedInitExpr extends AbstractExpr {
+    private init: Value; // the initializer value such as x,y, name
+    private designator: Value; // the designator such as 5,8,c
+
+    constructor(init: Value, designator: Value) {
+        super();
+        this.init = init;
+        this.designator = designator;
+    }
+
+    public getInit(): Value {
+        return this.init;
+    }
+
+    public getDesignator(): Value {
+        return this.designator;
+    }
+
+    public inferType(arkMethod: ArkMethod): ArkDesignatedInitExpr {
+        if (this.init instanceof AbstractRef || this.init instanceof AbstractExpr) {
+            this.init.inferType(arkMethod);
+        }
+        if (this.designator instanceof AbstractRef || this.designator instanceof AbstractExpr) {
+            this.designator.inferType(arkMethod);
+        }
+        return this;
+    }
+
+    public getUses(): Value[] {
+        let uses: Value[] = [];
+        uses.push(this.init);
+        uses.push(this.designator);
+        uses.push(...this.init.getUses());
+        uses.push(...this.designator.getUses());
+        return uses;
+    }
+
+    public getType(): Type {
+        return this.init.getType();
+    }
+
+    public toString(): string {
+        return this.init + ' = ' + this.designator;
+    }
+}

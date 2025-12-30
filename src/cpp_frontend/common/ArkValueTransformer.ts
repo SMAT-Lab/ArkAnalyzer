@@ -32,13 +32,14 @@ import {
     RelationalBinaryOperator,
 } from '../../core/base/Expr';
 import {
+    ArkAggregateExpr,
     ArkArrayTypeTraitExpr,
     ArkCxxCastExpr,
     ArkCxxDeleteArrayExpr,
     ArkCxxFolderExpr,
     ArkCxxInitArrayExpr,
     ArkCxxNewArrayExpr,
-    ArkCxxNormalBinOpExpr,
+    ArkCxxNormalBinOpExpr, ArkDesignatedInitExpr,
     ArkNoExpectExpr,
     ArkSizeOfExpr,
     ArkTypeIdExpr,
@@ -152,7 +153,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         'CallExpr': this.cxxCallExpressionToValueAndStmts,
         'CharacterLiteral': this.cxxLiteralNodeToValueAndStmts,
         'CompoundAssignOperator': this.cxxCompoundAssignmentToValueAndStmts,
-        'CompoundLiteralExpr': this.cxxNewExpressionToValueAndStmts,
+        'CompoundLiteralExpr': this.cxxAggregateToValueAndStmts,
         'ConditionalOperator': this.cxxConditionalExpressionToValueAndStmts,
         'ConstantExpr': this.processInnerNodeToValueAndStmts,
         'CXXBindTemporaryExpr': this.processInnerNodeToValueAndStmts,
@@ -229,6 +230,67 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         }
 
         return this.unprocessedNodeToValueAndStmts(node);
+    }
+    /**
+     * Convert an unprocessed C++AST node into a combination of values and statements
+     * @param aggregate - C++AST node to be converted
+     * @returns Objects containing converted values and related statements
+     * @throws Error if the node cannot be processed
+     * For example:
+     *     struct Point q = (struct Point){.x = 5, .y = 8, .name = 'c'};
+     *     int* arr = (int[5]){1, 2, 3, 4, 5};
+     *     the right value is {},its kind is CompoundLiteralExpr or InitListExpr
+    */
+    private cxxAggregateToValueAndStmts(aggregate: CxxAstNode): ValueAndStmts {
+        const stmts: Stmt[] = [];
+        const type = cxxNode2Type(aggregate, this.declaringMethod);
+        const typeName = aggregate.type?.qualType ?? 'unknown';
+        let classSignature: ClassSignature;
+        if (!(type instanceof ClassType)) {
+            classSignature = ArkSignatureBuilder.buildClassSignatureFromClassName(typeName);
+        } else {
+            classSignature = type.getClassSignature();
+        }
+        const list =aggregate.kind === 'InitListExpr' ? aggregate : aggregate.inner[aggregate.inner.length - 1];
+        let elements: Value[] = [];
+        if (list.kind !== 'InitListExpr') {
+            return this.unprocessedNodeToValueAndStmts(aggregate);
+        }
+        const aggregateExpr = new ArkAggregateExpr(elements, type);
+        const fullPosition = [FullPosition.cxxBuildFromNode(aggregate, this.cxxSourceFile)];
+        let {
+            value: temp,
+            valueOriginalPositions: tempPositions,
+            stmts: exprStmts,
+        } = this.ArkCxxIRTransformer.generateAssignStmtForValue(aggregateExpr, fullPosition);
+        for (let i = 0; i < list.inner.length; i++) {
+            if (list.inner[i].kind === 'DesignatedInitExpr') {
+                // Because the syntax tree does not have fields representing field information,
+                // regular matching is used to preserve the information.
+                // If there are any changes to the syntax tree, optimization can be made here
+                const dotIndex = list.inner[i].code.indexOf('.');
+                const equalsIndex = list.inner[i].code.indexOf('=');
+                const field = list.inner[i].code.substring(dotIndex + 1, equalsIndex).trim();
+                const type = cxxNode2Type(list.inner[i].inner[0], this.declaringMethod);
+                const fieldSignature = new FieldSignature(field, classSignature, type, false);
+                const init = new ArkCxxInstanceFieldRef(temp as Local, false, fieldSignature);
+                const valueAndStmts = this.cxxNodeToValueAndStmts(list.inner[i].inner[0]);
+                const designator = valueAndStmts.value;
+                valueAndStmts.stmts.forEach((stmt: Stmt) => stmts.push(stmt));
+                const designatedInitExpr = new ArkDesignatedInitExpr(init, designator);
+                elements.push(designatedInitExpr);
+            } else {
+                const valueAndStmts = this.cxxNodeToValueAndStmts(list.inner[i]);
+                elements.push(valueAndStmts.value)
+                valueAndStmts.stmts.forEach((stmt: Stmt) => stmts.push(stmt));
+            }
+        }
+        exprStmts.forEach((stmt: Stmt) => stmts.push(stmt));
+        return {
+            value: temp,
+            valueOriginalPositions: tempPositions,
+            stmts: stmts,
+        };
     }
 
     private cxxThisExpressionToValueAndStmts(thisExpression: CxxAstNode): ValueAndStmts {
@@ -476,7 +538,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             pNode && pNode?.inner?.length > 0 &&
             (pNode.inner[0].kind === 'TypeRef' || !node.type.qualType.includes('[') || cxxNode2Type(node, this.declaringMethod) instanceof ClassType)
         ) {
-            return this.cxxNewExpressionToValueAndStmts(node);
+            return this.cxxAggregateToValueAndStmts(node);
         }
         return this.cxxArrayLiteralExpressionToValueAndStmts(node);
     }

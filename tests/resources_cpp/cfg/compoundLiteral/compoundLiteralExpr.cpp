@@ -17,7 +17,21 @@
 #include <string>
 #include <vector>
 
-// 1. Simple struct - contains basic types
+#define ONE 1
+#define TWO 2
+#define THREE 3
+#define FOUR 4
+#define FIVE 5
+#define SIX 6
+#define EIGHT 8
+#define THIRTY 30
+#define RED 255
+#define GREEN 128
+#define BLUE 0
+#define LENGTH 10.5
+#define MONEY 100.5
+
+ // 1. Simple struct - contains basic types
 struct Point {
     int x;
     int y;
@@ -26,7 +40,7 @@ struct Point {
 
 // 2. Struct containing arrays
 struct Color {
-    unsigned char rgb[3];
+    unsigned char rgb[THREE];
 };
 
 // 3. Struct containing nested structs
@@ -50,25 +64,26 @@ struct ShoppingList {
 
 void Case1()
 {
-    struct Point q = (struct Point){.x = 5, .y = 8, .name = 'c'};
+    struct Point q = (struct Point){ .x = FIVE, .y = EIGHT, .name = 'c' };
+    int* arr = (int[FIVE]){ ONE, TWO, THREE, FOUR, FIVE };
 }
 
 void Case2()
 {
-    struct Color c1 = {255, 128, 0};
+    struct Color c1 = { RED, GREEN, BLUE };
 }
 
 void Case3()
 {
-    Circle circ1 = {{5, 5}, 10.5};
+    Circle circ1 = { {FIVE, FIVE}, LENGTH };
 }
 
 void Case4()
 {
-    Person p2 = {"Alice", 30};
+    Person p2 = { "Alice", THIRTY };
 }
 
 void Case5()
 {
-    ShoppingList list = {{"苹果", "牛奶", "面包"}, 100.5};
+    ShoppingList list = { {"apple", "milk", "bread"}, MONEY };
 }
