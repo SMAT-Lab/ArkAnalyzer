@@ -1900,7 +1900,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
 
     private getRealGenericTypes(node: CxxAstNode | undefined, qualType?: string): Type[] | undefined {
         let realGenericTypes: Type[] | undefined;
-        const nodeType = qualType ?? node?.type.qualType;
+        const nodeType = qualType ?? node?.type.desugaredQualType;
         if (nodeType) {
             // Match the content within the outermost<>layer
             const match = nodeType.match(/<(.*)>/);

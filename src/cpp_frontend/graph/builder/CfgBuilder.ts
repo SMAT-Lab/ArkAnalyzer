@@ -1203,7 +1203,7 @@ export class CfgBuilder {
 
     buildCfgBuilder(): void {
         let stmts: CxxAstNode[] = [];
-        if (['TranslationUnit', 'NamespaceDecl'].includes(this.astRoot.kind)) {
+        if (['TranslationUnitDecl', 'NamespaceDecl'].includes(this.astRoot.kind)) {
             stmts = [...this.astRoot.inner];
         } else if (['FunctionDecl', 'CXXMethodDecl', 'CXXConstructorDecl', 'LambdaExpr', 'FunctionTemplateDecl', 'CXXDestructorDecl'].includes(
                 this.astRoot.kind)) {
