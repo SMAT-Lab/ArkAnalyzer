@@ -350,7 +350,7 @@ export const OVERLOAD_MAIN_EXPECT = {
                 "%1 = new @overload/overloadSample.cpp: Person",
                 "%2 = new @%unk/%unk: std::basic_string",
                 "instanceinvoke %2.<@%unk/%unk: std::basic_string.constructor()>('Alice')",
-                "instanceinvoke %1.<@overload/overloadSample.cpp: Person.constructor()>(%2)",
+                "instanceinvoke %1.<@overload/overloadSample.cpp: Person.constructor()>(%2, 30)",
                 "p2 = %1",
                 "%3 = new @overload/overloadSample.cpp: Person",
                 "%4 = new @%unk/%unk: std::basic_string",

@@ -176,6 +176,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         'CXXThisExpr': this.cxxThisExpressionToValueAndStmts,
         'CXXTypeidExpr': this.cxxTypeidExprToValueAndStmts,
         'CStyleCastExpr': this.castExpressionToValueAndStmts,
+        'CXXTemporaryObjectExpr': this.cxxTemporaryObjectExprToValueAndStmts,
         'DeclRefExpr': this.declAndTypeRefToValueAndStmts,
         'DeclStmt': this.declStmtToValueAndStmts,
         'DecompositionDecl': this.bindingNodeToValueAndStmts,
@@ -325,6 +326,16 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             valueOriginalPositions: [FullPosition.cxxBuildFromNode(node, this.cxxSourceFile)],
             stmts: [],
         };
+    }
+
+    private cxxTemporaryObjectExprToValueAndStmts(node: CxxAstNode): ValueAndStmts {
+        // if case: return Vector(x + other.x, y + other.y); ==> In the C++17 standard, a temporary object is no longer created in the return statement,
+        // instead, the object is directly constructed at the return value location. Therefore, it is processed here as a ConstructExpr.
+        const parentNode = node.getParent?.(false);
+        if (!parentNode || parentNode.kind !== 'ReturnStmt') {
+            return this.unprocessedNodeToValueAndStmts(node);
+        }
+        return this.cxxConstructExprToValueAndStmts(node);
     }
 
     /**
@@ -2050,11 +2061,6 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
                 return this.getConstructArgs(args[0].inner[0].inner);
             } else if (newExpression.kind === 'InitListExpr') {
                 return this.getConstructArgs(newExpression);
-            } else if (
-                // if case: Vector(x + other.x, y + other.y) or Person p3("Charlie");
-                this.isNodeRelatedToTemporaryObjectExpr(newExpression)
-            ) {
-                return this.getConstructArgs(args[0].inner[0].inner);
             }
             return args.filter(arg =>
                 arg?.kind !== 'TemplateRef' &&
