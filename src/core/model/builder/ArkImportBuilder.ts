@@ -16,9 +16,9 @@
 import ts from 'ohos-typescript';
 import { LineColPosition } from '../../base/Position';
 import { ImportInfo } from '../ArkImport';
-import { buildModifiers } from './builderUtils';
 import { IRUtils } from '../../common/IRUtils';
 import { ArkFile } from '../ArkFile';
+import { ModifierType } from '../ArkBaseModel';
 
 export function buildImportInfo(node: ts.ImportEqualsDeclaration | ts.ImportDeclaration, sourceFile: ts.SourceFile, arkFile: ArkFile): ImportInfo[] {
     if (ts.isImportDeclaration(node)) {
@@ -38,12 +38,7 @@ function buildImportDeclarationNode(node: ts.ImportDeclaration, sourceFile: ts.S
     if (ts.isStringLiteral(node.moduleSpecifier)) {
         importFrom = node.moduleSpecifier.text;
     }
-
     let modifiers = 0;
-    if (node.importClause.isTypeOnly) {
-
-    }
-
     // just like: import '../xxx'
     if (!node.importClause) {
         let importClauseName = '';
@@ -55,8 +50,13 @@ function buildImportDeclarationNode(node: ts.ImportDeclaration, sourceFile: ts.S
         importInfos.push(importInfo);
         return importInfos;
     }
-
-    //just like: import fs from 'fs'
+    if (node.importClause.isTypeOnly) {
+        modifiers |= ModifierType.TYPE;
+    }
+    if (node.importClause.isLazy) {
+        modifiers |= ModifierType.LAZY;
+    }
+    //just like: import zs from 'xxx'
     if (node.importClause.name && ts.isIdentifier(node.importClause.name)) {
         let importClauseName = node.importClause.name.text;
         const pos = LineColPosition.buildFromNode(node.importClause.name, sourceFile);
@@ -83,13 +83,17 @@ function buildImportDeclarationNode(node: ts.ImportDeclaration, sourceFile: ts.S
             if (element.name === undefined || !ts.isIdentifier(element.name)) {
                 return;
             }
+            let modifier = modifiers;
+            if (element.isTypeOnly) {
+                modifier |= ModifierType.TYPE;
+            }
             let importClauseName = element.name.text;
             const pos = LineColPosition.buildFromNode(element, sourceFile);
             let importInfo = new ImportInfo();
             if (element.propertyName && ts.isIdentifier(element.propertyName)) {
-                importInfo.build(importClauseName, importType, importFrom, pos, modifiers, element.propertyName.text);
+                importInfo.build(importClauseName, importType, importFrom, pos, modifier, element.propertyName.text);
             } else {
-                importInfo.build(importClauseName, importType, importFrom, pos, modifiers);
+                importInfo.build(importClauseName, importType, importFrom, pos, modifier);
             }
             importInfo.setTsSourceCode(tsSourceCode);
             IRUtils.setComments(importInfo, node, sourceFile, arkFile.getScene().getOptions());
@@ -122,8 +126,8 @@ function buildImportEqualsDeclarationNode(node: ts.ImportEqualsDeclaration, sour
     let importInfos: ImportInfo[] = [];
     let importType = 'EqualsImport';
     let modifiers = 0;
-    if (node.modifiers) {
-        modifiers = buildModifiers(node);
+    if (node.isTypeOnly) {
+        modifiers |= ModifierType.TYPE;
     }
     if (
         node.moduleReference &&
