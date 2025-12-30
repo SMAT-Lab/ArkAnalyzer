@@ -174,6 +174,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
             case 'GotoStmt':
                 stmts = [];
                 break;
+            case 'CXXRewrittenBinaryOperator':
             case 'BinaryOperator':
             case 'CallExpr':
             case 'CompoundAssignOperator':

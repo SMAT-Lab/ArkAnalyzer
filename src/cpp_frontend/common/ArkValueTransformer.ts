@@ -146,6 +146,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         'ArrayTypeTraitExpr': this.arrayTypeTraitExprToValueAndStmts,
         'AtomicCallExpr': this.cxxCallExpressionToValueAndStmts,
         'BinaryConditionalOperator': this.cxxConditionalExpressionToValueAndStmts,
+        'CXXRewrittenBinaryOperator': this.cxxBinaryExpressionToValueAndStmts,
         'BinaryOperator': this.cxxBinaryExpressionToValueAndStmts,
         'BindingDecl': this.bindingNodeToValueAndStmts,
         'CallExpr': this.cxxCallExpressionToValueAndStmts,
@@ -2712,7 +2713,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
      *@ returns The ValueAndStmts object containing calculated values and related statements
      */
     private cxxBinaryExpressionToValueAndStmts(binaryExpression: CxxAstNode): ValueAndStmts {
-        const operatorToken = binaryExpression.opcode;
+        const operatorToken = binaryExpression.opcode ?? '!=';
         const binaryExpressionLeft = binaryExpression.inner[0];
         const binaryExpressionRight = binaryExpression.inner[1];
         if (operatorToken === '=') {
