@@ -121,44 +121,61 @@ private:
         }
     }
 
-    std::string extractClassNameOptimized(const std::string& str) {
-        size_t colonPos = str.find("::");
-        if (colonPos == std::string::npos) {
-            return "";
-        }
-
-        // Search for the starting position of the class name from the current position forward
-        for (size_t i = colonPos - 1; i > 0; --i) {
-            if (str[i] == ' ') {
-                return str.substr(i + 1, colonPos - i - 1);
+    void decodeNodeMangledName(const std::string &demangleStr, llvm::json::Object *obj)
+    {
+        std::string mangledName = "";
+        size_t colonPos = demangleStr.find("::");
+        if (colonPos != std::string::npos) {
+            // Search for the starting position of the class name from the current position forward
+            for (size_t i = colonPos - 1; i > 0; --i) {
+                if (demangleStr[i] == ' ') {
+                    mangledName = demangleStr.substr(i + 1, colonPos - i - 1);
+                    break;
+                }
+            }
+            // If no space is found, it indicates that the class name starts from the beginning of the string
+            if (mangledName.empty() && colonPos > 0) {
+                mangledName = demangleStr.substr(0, colonPos);
             }
         }
-
-        // If no space is found, it indicates that the class name starts from the beginning of the string
-        if (colonPos > 0) {
-            return str.substr(0, colonPos);
-        }
-        return "";
+        (*obj)["mangledName"] = mangledName;
     }
 
-    void updateMangledName(const char *Ptr, size_t Size)
+    std::string decodeUtf8Octal(const std::string &input)
+    {
+        std::string output;
+        output.reserve(input.size());
+        for (size_t i = 0; i < input.size();) {
+            if (input[i] == '\\' && i + 3 < input.size() && input[i + 1] >= '0' && input[i + 1] <= '7' &&
+                input[i + 2] >= '0' && input[i + 2] <= '7' && input[i + 3] >= '0' && input[i + 3] <= '7') {
+                unsigned char byte = (input[i + 1] - '0') * 64 + (input[i + 2] - '0') * 8 + (input[i + 3] - '0');
+                output.push_back(static_cast<char>(byte));
+                i += 4; // utf-8编码的八进制表示长度为3
+            } else {
+                output.push_back(input[i]);
+                ++i;
+            }
+        }
+        return output;
+    }
+
+    void updateNodeField(const char *Ptr, size_t Size)
     {
         buffer.append(Ptr, Size);
         auto nodeJson = llvm::json::parse("{" + buffer + "}");
         if (nodeJson) {
             if (auto *obj = nodeJson->getAsObject()) {
                 if (auto mangleStr = (*obj)["mangledName"].getAsString()) {
-                    // Decoding the mangledName field and simplifying it to a class name
-                    std::string mangledName = extractClassNameOptimized(llvm::demangle(mangleStr.value().str()));
-                    if (mangledName.empty()) {
-                        obj->erase("mangledName");
-                    } else {
-                        (*obj)["mangledName"] = mangledName;
-                    }
-                    llvm::json::Value jsonValue(std::move(*obj));
-                    std::string valueStr = llvm::formatv("{0}", jsonValue).str();
-                    buffer = valueStr.substr(1, valueStr.size() - 2);
+                    decodeNodeMangledName(llvm::demangle(mangleStr.value().str()), obj);
+                } else {
+                    obj->erase("mangledName");
                 }
+                if (auto valueStr = (*obj)["value"].getAsString()) {
+                    (*obj)["value"] = decodeUtf8Octal(valueStr.value().str());
+                }
+                llvm::json::Value jsonValue(std::move(*obj));
+                std::string valueStr = llvm::formatv("{0}", jsonValue).str();
+                buffer = valueStr.substr(1, valueStr.size() - 2);
             }
         }
     }
@@ -167,7 +184,7 @@ private:
     {
         if (Size == 0) return;
         scanKeys(Ptr, Size);
-        updateMangledName(Ptr, Size);
+        updateNodeField(Ptr, Size);
         Out << buffer;
         buffer.clear();
         Bytes += Size;
