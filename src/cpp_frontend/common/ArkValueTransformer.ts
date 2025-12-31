@@ -1703,7 +1703,6 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         };
         if (!matchMtd) {
             return this.cxxGenerateInvokeValueAndStmts(cxxOperatorCallExpr.inner[0], argus, stmts, cxxOperatorCallExpr);
-            ;
         }
         // Construct callNode
         const callNode = {
