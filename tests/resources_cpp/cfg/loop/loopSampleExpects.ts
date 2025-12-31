@@ -301,7 +301,7 @@ export const LOOP_EXPECT_CASE10 = {
             id: 0,
             stmts: [
                 'this = this: @loop/loopSample.cpp: %dflt',
-                '%0 = new @%unk/%unk: std::vector',
+                '%0 = new @%unk/%unk: std::vector<int>',
                 '%1 = newarray (int[5])',
                 '%1[0] = 1',
                 '%1[1] = 2',
