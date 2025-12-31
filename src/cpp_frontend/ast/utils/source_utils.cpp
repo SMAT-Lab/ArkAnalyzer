@@ -18,30 +18,29 @@
 
 namespace ast_dumper {
 
-bool IsFromMainFileIncludingExpansion(const clang::SourceManager &SM,
-                                      clang::SourceLocation Loc)
+bool IsFromMainFileIncludingExpansion(const clang::SourceManager &sm, clang::SourceLocation loc)
 {
-    if (Loc.isInvalid()) {
+    if (loc.isInvalid()) {
         return false;
     }
-    clang::SourceLocation E = SM.getExpansionLoc(Loc);
-    return E.isValid() && SM.isWrittenInMainFile(E);
+    clang::SourceLocation sl = sm.getExpansionLoc(loc);
+    return sl.isValid() && sm.isWrittenInMainFile(sl);
 }
 
-std::string GetSourceTextByRange(const clang::SourceManager &SM,
-                                 const clang::LangOptions &LO,
-                                 clang::SourceRange SR,
-                                 bool UseExpansionRange)
+std::string GetSourceTextByRange(const clang::SourceManager &sm,
+                                 const clang::LangOptions &lo,
+                                 clang::SourceRange sr,
+                                 bool useExpansionRange)
 {
-    if (SR.isInvalid()) {
+    if (sr.isInvalid()) {
         return "";
     }
-    clang::CharSourceRange CR = UseExpansionRange ?
-        SM.getExpansionRange(SR) : clang::CharSourceRange::getTokenRange(SR);
-    if (CR.isInvalid()) {
+    clang::CharSourceRange cr = useExpansionRange ?
+        sm.getExpansionRange(sr) : clang::CharSourceRange::getTokenRange(sr);
+    if (cr.isInvalid()) {
         return "";
     }
-    return clang::Lexer::getSourceText(CR, SM, LO).str();
+    return clang::Lexer::getSourceText(cr, sm, lo).str();
 }
 
 } // namespace ast_dumper

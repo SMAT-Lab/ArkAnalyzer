@@ -24,6 +24,9 @@
 #include <string>
 #include <vector>
 
+#define SMALL_STRING_SIZE_256 256
+#define SMALL_STRING_SIZE_512 512
+
 namespace ast_dumper {
 
 // Parse "-p <build_dir>" from argv (for debug/diagnostics only).
@@ -33,8 +36,7 @@ std::string GetBuildPathFromArgv(int argc, const char **argv);
 void PrintBuildPathDiagnostics(llvm::StringRef BuildPath);
 
 // True if DB contains compile commands for any input file (tries slash-normalization on Windows).
-bool HasCompileCommandForAnyInput(clang::tooling::CompilationDatabase &DB,
-                                  llvm::ArrayRef<std::string> Inputs);
+bool HasCompileCommandForAnyInput(clang::tooling::CompilationDatabase &DB, llvm::ArrayRef<std::string> Inputs);
 
 // Create a minimal fallback DB when no compile command is found.
 std::unique_ptr<clang::tooling::CompilationDatabase> MakeFallbackDB(llvm::ArrayRef<std::string> Inputs);

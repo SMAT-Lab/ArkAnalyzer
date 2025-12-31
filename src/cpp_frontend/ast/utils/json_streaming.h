@@ -23,13 +23,13 @@ class raw_ostream;
 namespace ast_dumper::json {
 
 // Escapes and writes a JSON string (quoted + escaped).
-void PrintJsonString(llvm::raw_ostream &OS, llvm::StringRef S);
+void PrintJsonString(llvm::raw_ostream &os, llvm::StringRef sr);
 
 // Writes a JSON key (e.g., "key":).
-void writeKey(llvm::raw_ostream &OS, llvm::StringRef Key);
+void writeKey(llvm::raw_ostream &os, llvm::StringRef key);
 
 // If a field has already been written, outputs ',' and sets WroteAnyField to true.
-void writeCommaIf(bool &WroteAnyField, llvm::raw_ostream &OS);
+void writeCommaIf(bool &wroteAnyField, llvm::raw_ostream &os);
 
 
 } // namespace ast_dumper::json

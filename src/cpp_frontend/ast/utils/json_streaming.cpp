@@ -20,22 +20,22 @@
 
 namespace ast_dumper::json {
 
-void PrintJsonString(llvm::raw_ostream &OS, llvm::StringRef S)
+void PrintJsonString(llvm::raw_ostream &os, llvm::StringRef sr)
 {
-    OS << llvm::formatv("{0}", llvm::json::Value(S));
+    os << llvm::formatv("{0}", llvm::json::Value(sr));
 }
 
-void writeKey(llvm::raw_ostream &OS, llvm::StringRef Key)
+void writeKey(llvm::raw_ostream &os, llvm::StringRef key)
 {
-    OS << '"' << Key << "\":";
+    os << '"' << key << "\":";
 }
 
-void writeCommaIf(bool &WroteAnyField, llvm::raw_ostream &OS)
+void writeCommaIf(bool &wroteAnyField, llvm::raw_ostream &os)
 {
-    if (WroteAnyField) {
-        OS << ',';
+    if (wroteAnyField) {
+        os << ',';
     }
-    WroteAnyField = true;
+    wroteAnyField = true;
 }
 
 } // namespace ast_dumper::json

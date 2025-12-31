@@ -20,6 +20,16 @@
 #include <cstdint>
 #include <cstring>
 
+#define OCTAL_MIN '0'
+#define OCTAL_MAX '7'
+#define OCTAL_size 4
+#define BYTE64 64
+#define BYTE8 8
+#define ONE 1
+#define TWO 2
+#define THREE 3
+
+
 namespace ast_dumper {
 
 // JsonDumperProbeStream:
@@ -28,33 +38,33 @@ namespace ast_dumper {
 // - Used to decide whether to synthesize missing fields while streaming.
 class JsonDumperProbeStream final : public llvm::raw_ostream {
 public:
-    explicit JsonDumperProbeStream(llvm::raw_ostream &Out) : Out(Out) {}
+    explicit JsonDumperProbeStream(llvm::raw_ostream &out) : out(out) {}
 
-    bool hasNameKey() const { return HasName; }
-    bool hasCodeKey() const { return HasCode; }
-    uint64_t bytesWritten() const { return Bytes; }
+    bool HasNameKey() const { return hasName; }
+    bool HasCodeKey() const { return hasCode; }
+    uint64_t BytesWritten() const { return bytes; }
 
 private:
-    llvm::raw_ostream &Out;
+    llvm::raw_ostream &out;
     std::string buffer;
-    uint64_t Bytes = 0;
-    bool HasName = false;
-    bool HasCode = false;
+    uint64_t bytes = 0;
+    bool hasName = false;
+    bool hasCode = false;
 
     // "\"name\"" and "\"code\"" are both length 6.
     static constexpr size_t kPatLen = 6;
     static constexpr size_t kTailMax = kPatLen - 1;
 
-    char Tail[kTailMax] = {0};
-    size_t TailLen = 0;
+    char tail[kTailMax] = {0};
+    size_t tailLen = 0;
 
-    static bool findPatternFixed6(const char *Data, size_t Len, const char *Pat6)
+    static bool findPatternFixed6(const char *data, size_t len, const char *pat6)
     {
-        if (Len < kPatLen) {
+        if (len < kPatLen) {
             return false;
         }
-        for (size_t i = 0; i + kPatLen <= Len; ++i) {
-            if (std::memcmp(Data + i, Pat6, kPatLen) == 0) {
+        for (size_t i = 0; i + kPatLen <= len; ++i) {
+            if (std::memcmp(data + i, pat6, kPatLen) == 0) {
                 return true;
             }
         }
@@ -63,60 +73,62 @@ private:
 
     void scanKeys(const char *Ptr, size_t Size)
     {
-        if (HasName && HasCode) return;
+        if (hasName && hasCode) {
+            return;
+        }
 
         const char *kName = "\"name\"";
         const char *kCode = "\"code\"";
 
         // boundary: tail + prefix
-        if (TailLen > 0 && Size > 0) {
+        if (tailLen > 0 && Size > 0) {
             char buf[kTailMax + (kPatLen - 1)];
             const size_t take = (Size < (kPatLen - 1)) ? Size : (kPatLen - 1);
-            const size_t total = TailLen + take;
+            const size_t total = tailLen + take;
 
-            std::memcpy(buf, Tail, TailLen);
-            std::memcpy(buf + TailLen, Ptr, take);
+            memcpy_s(buf, sizeof(buf), tail, tailLen);
+            memcpy_s(buf + tailLen, sizeof(buf) - tailLen, Ptr, take);
 
-            if (!HasName && findPatternFixed6(buf, total, kName)) {
-                HasName = true;
+            if (!hasName && findPatternFixed6(buf, total, kName)) {
+                hasName = true;
             }
-            if (!HasCode && findPatternFixed6(buf, total, kCode)) {
-                HasCode = true;
+            if (!hasCode && findPatternFixed6(buf, total, kCode)) {
+                hasCode = true;
             }
         }
 
         // chunk
-        if (!HasName && findPatternFixed6(Ptr, Size, kName)) {
-            HasName = true;
+        if (!hasName && findPatternFixed6(Ptr, Size, kName)) {
+            hasName = true;
         }
-        if (!HasCode && findPatternFixed6(Ptr, Size, kCode)) {
-            HasCode = true;
+        if (!hasCode && findPatternFixed6(Ptr, Size, kCode)) {
+            hasCode = true;
         }
 
         // update tail
         if (Size >= kTailMax) {
-            std::memcpy(Tail, Ptr + (Size - kTailMax), kTailMax);
-            TailLen = kTailMax;
+            memcpy_s(tail, sizeof(tail), Ptr + (Size - kTailMax), kTailMax);
+            tailLen = kTailMax;
         } else {
             char tmp[kTailMax + kTailMax];
             size_t tmpLen = 0;
 
-            if (TailLen > 0) {
-                std::memcpy(tmp, Tail, TailLen);
-                tmpLen += TailLen;
+            if (tailLen > 0) {
+                memcpy_s(tmp, sizeof(tmp), tail, tailLen);
+                tmpLen += tailLen;
             }
             if (Size > 0) {
-                std::memcpy(tmp + tmpLen, Ptr, Size);
+                memcpy_s(tmp + tmpLen, sizeof(tmp) - tmpLen, Ptr, Size);
                 tmpLen += Size;
             }
 
             if (tmpLen > kTailMax) {
                 const size_t start = tmpLen - kTailMax;
-                std::memcpy(Tail, tmp + start, kTailMax);
-                TailLen = kTailMax;
+                memcpy_s(tail, sizeof(tail), tmp + start, kTailMax);
+                tailLen = kTailMax;
             } else {
-                std::memcpy(Tail, tmp, tmpLen);
-                TailLen = tmpLen;
+                memcpy_s(tail, sizeof(tail), tmp, tmpLen);
+                tailLen = tmpLen;
             }
         }
     }
@@ -141,16 +153,20 @@ private:
         (*obj)["mangledName"] = mangledName;
     }
 
-    std::string decodeUtf8Octal(const std::string &input)
+    std::string decodeUtfOctal(const std::string &input)
     {
         std::string output;
         output.reserve(input.size());
         for (size_t i = 0; i < input.size();) {
-            if (input[i] == '\\' && i + 3 < input.size() && input[i + 1] >= '0' && input[i + 1] <= '7' &&
-                input[i + 2] >= '0' && input[i + 2] <= '7' && input[i + 3] >= '0' && input[i + 3] <= '7') {
-                unsigned char byte = (input[i + 1] - '0') * 64 + (input[i + 2] - '0') * 8 + (input[i + 3] - '0');
+            if (input[i] == '\\' && i + THREE < input.size() &&
+                input[i + ONE] >= OCTAL_MIN && input[i + ONE] <= OCTAL_MAX &&
+                input[i + TWO] >= OCTAL_MIN && input[i + TWO] <= OCTAL_MAX &&
+                input[i + THREE] >= OCTAL_MIN && input[i + THREE] <= OCTAL_MAX) {
+                unsigned char byte = (input[i + ONE] - OCTAL_MIN) * BYTE64 +
+                                     (input[i + TWO] - OCTAL_MIN) * BYTE8 +
+                                     (input[i + THREE] - OCTAL_MIN);
                 output.push_back(static_cast<char>(byte));
-                i += 4; // utf-8编码的八进制表示长度为3
+                i += OCTAL_size; // utf-8编码的八进制表示长度为3
             } else {
                 output.push_back(input[i]);
                 ++i;
@@ -159,9 +175,9 @@ private:
         return output;
     }
 
-    void updateNodeField(const char *Ptr, size_t Size)
+    void updateNodeField(const char *ptr, size_t size)
     {
-        buffer.append(Ptr, Size);
+        buffer.append(ptr, size);
         auto nodeJson = llvm::json::parse("{" + buffer + "}");
         if (nodeJson) {
             if (auto *obj = nodeJson->getAsObject()) {
@@ -171,7 +187,7 @@ private:
                     obj->erase("mangledName");
                 }
                 if (auto valueStr = (*obj)["value"].getAsString()) {
-                    (*obj)["value"] = decodeUtf8Octal(valueStr.value().str());
+                    (*obj)["value"] = decodeUtfOctal(valueStr.value().str());
                 }
                 llvm::json::Value jsonValue(std::move(*obj));
                 std::string valueStr = llvm::formatv("{0}", jsonValue).str();
@@ -182,17 +198,19 @@ private:
 
     void write_impl(const char *Ptr, size_t Size) override
     {
-        if (Size == 0) return;
+        if (Size == 0) {
+            return;
+        }
         scanKeys(Ptr, Size);
         updateNodeField(Ptr, Size);
-        Out << buffer;
+        out << buffer;
         buffer.clear();
-        Bytes += Size;
+        bytes += Size;
     }
 
     uint64_t current_pos() const override
     {
-        return Bytes;
+        return bytes;
     }
 };
 

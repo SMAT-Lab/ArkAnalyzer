@@ -23,13 +23,12 @@
 namespace ast_dumper {
 
 // main-file check (macro expansion included)
-bool IsFromMainFileIncludingExpansion(const clang::SourceManager &SM,
-                                      clang::SourceLocation Loc);
+bool IsFromMainFileIncludingExpansion(const clang::SourceManager &sm, clang::SourceLocation loc);
 
 // extract source text for a range (default: expansion range)
-std::string GetSourceTextByRange(const clang::SourceManager &SM,
-                                 const clang::LangOptions &LO,
-                                 clang::SourceRange SR,
-                                 bool UseExpansionRange = true);
+std::string GetSourceTextByRange(const clang::SourceManager &sm,
+                                 const clang::LangOptions &lo,
+                                 clang::SourceRange sr,
+                                 bool useExpansionRange = true);
 
 } // namespace ast_dumper

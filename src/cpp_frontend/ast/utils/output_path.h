@@ -18,6 +18,8 @@
 
 #include "llvm/ADT/StringRef.h"
 
+#define SMALL_STRING_SIZE 256
+
 namespace ast_dumper {
 
 // default output: <input_dir>/<stem>_AST.json

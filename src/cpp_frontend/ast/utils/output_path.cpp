@@ -18,8 +18,6 @@
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/Path.h"
 
-#define SMALL_STRING_SIZE 256
-
 namespace ast_dumper {
 
 std::string DefaultOutPathForInput(llvm::StringRef inFile)
@@ -39,7 +37,9 @@ bool LooksLikeDirectoryPath(llvm::StringRef p)
         return false;
     }
     char last = p.back();
-    if (last == '/' || last == '\\') return true;
+    if (last == '/' || last == '\\') {
+        return true;
+    }
 
     llvm::sys::fs::file_status st;
     return (!llvm::sys::fs::status(p, st) && llvm::sys::fs::is_directory(st));
@@ -48,7 +48,9 @@ bool LooksLikeDirectoryPath(llvm::StringRef p)
 std::string ComputeOutPath(llvm::StringRef inFile, llvm::StringRef o, unsigned inputCount)
 {
     if (o.empty()) return DefaultOutPathForInput(inFile);
-    if (o == "-") return "-";
+    if (o == "-") {
+        return "-";
+    }
 
     if (LooksLikeDirectoryPath(o)) {
         llvm::SmallString<SMALL_STRING_SIZE> dir(o);
@@ -61,7 +63,9 @@ std::string ComputeOutPath(llvm::StringRef inFile, llvm::StringRef o, unsigned i
     }
 
     // -o is a file
-    if (inputCount <= 1) return o.str();
+    if (inputCount <= 1) {
+        return o.str();
+    }
 
     llvm::SmallString<SMALL_STRING_SIZE> oPath(o);
     llvm::SmallString<SMALL_STRING_SIZE> oDir = llvm::sys::path::parent_path(oPath);

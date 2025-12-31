@@ -51,19 +51,19 @@ using llvm::json::Object;
 using llvm::json::Value;
 
 // for -o file multi-input derivation
-static unsigned g_InputCount = 0;
+static unsigned g_inputCount = 0;
 
 // ---- AST streamer ----
 class ASTJsonStreamer : public RecursiveASTVisitor<ASTJsonStreamer> {
 public:
-    ASTJsonStreamer(ASTContext &Ctx, llvm::raw_ostream &OS,
-                    std::shared_ptr<ast_dumper::HeaderUnitsStore> HUStore)
-        : Ctx(Ctx), SM(Ctx.getSourceManager()), OS(OS), HUStore(std::move(HUStore)) {}
+    ASTJsonStreamer(ASTContext &ctx, llvm::raw_ostream &os,
+                    std::shared_ptr<ast_dumper::HeaderUnitsStore> huStore)
+        : Ctx(ctx), SM(ctx.getSourceManager()), OS(os), HUStore(std::move(huStore)) {}
 
     private:
     void EmitEmptyChild()
     {
-        writeChildCommaIfNeeded();
+        WriteChildCommaIfNeeded();
         OS << "{}";
     }
 
@@ -81,12 +81,12 @@ public:
     }
 
     template<typename T>
-    void CallJsonNodeDumper(T* t, ast_dumper::JsonDumperProbeStream &Probe)
+    void CallJsonNodeDumper(T* t, ast_dumper::JsonDumperProbeStream &probe)
     {
-        JSONNodeDumper dumper(Probe, Ctx.getSourceManager(), Ctx, Ctx.getPrintingPolicy(),
+        JSONNodeDumper dumper(probe, Ctx.getSourceManager(), Ctx, Ctx.getPrintingPolicy(),
             &Ctx.getCommentCommandTraits());
         dumper.Visit(t);
-        Probe.flush();
+        probe.flush();
     }
 
 public:
@@ -126,7 +126,8 @@ public:
         OS.flush();
     }
 
-    void DumperNodeName(Decl *D, bool dumperHasName, bool wroteAnyField) {
+    void DumperNodeName(Decl *D, bool dumperHasName, bool wroteAnyField)
+    {
         if (!dumperHasName) {
             std::string name;
             if (const auto *ND = dyn_cast<NamedDecl>(D)) {
@@ -144,7 +145,8 @@ public:
     }
 
     template<typename T>
-    void DumperNodeCode(T *t, bool dumperHasCode, bool wroteAnyField) {
+    void DumperNodeCode(T *t, bool dumperHasCode, bool wroteAnyField)
+    {
         if (!dumperHasCode) {
             std::string code = ast_dumper::GetSourceTextByRange(SM, Ctx.getLangOpts(), t->getSourceRange(), true);
             if (!code.empty()) {
@@ -168,17 +170,17 @@ public:
             }
         }
 
-        writeChildCommaIfNeeded();
+        WriteChildCommaIfNeeded();
 
         OS << '{';
         bool wroteAnyField = false;
         bool dumperHasName = false;
         bool dumperHasCode = false;
-        ast_dumper::JsonDumperProbeStream Probe(OS);
-        CallJsonNodeDumper(D, Probe);
-        dumperHasName = Probe.hasNameKey();
-        dumperHasCode = Probe.hasCodeKey();
-        wroteAnyField = (Probe.bytesWritten() > 0);
+        ast_dumper::JsonDumperProbeStream probe(OS);
+        CallJsonNodeDumper(D, probe);
+        dumperHasName = probe.HasNameKey();
+        dumperHasCode = probe.HasCodeKey();
+        wroteAnyField = (probe.BytesWritten() > 0);
 
         DumperNodeName(D, dumperHasName, wroteAnyField);
         DumperNodeCode(D, dumperHasCode, wroteAnyField);
@@ -221,16 +223,16 @@ public:
             return true;
         }
 
-        writeChildCommaIfNeeded();
+        WriteChildCommaIfNeeded();
 
         OS << '{';
         bool wroteAnyField = false;
 
         bool dumperHasCode = false;
-        ast_dumper::JsonDumperProbeStream Probe(OS);
-        CallJsonNodeDumper(S, Probe);
-        dumperHasCode = Probe.hasCodeKey();
-        wroteAnyField = (Probe.bytesWritten() > 0);
+        ast_dumper::JsonDumperProbeStream probe(OS);
+        CallJsonNodeDumper(S, probe);
+        dumperHasCode = probe.HasCodeKey();
+        wroteAnyField = (probe.BytesWritten() > 0);
 
         DumperNodeCode(S, dumperHasCode, wroteAnyField);
 
@@ -257,16 +259,16 @@ public:
             return true;
         }
 
-        writeChildCommaIfNeeded();
+        WriteChildCommaIfNeeded();
 
         OS << '{';
         bool wroteAnyField = false;
 
         bool dumperHasCode = false;
-        ast_dumper::JsonDumperProbeStream Probe(OS);
-        CallJsonNodeDumper(Init, Probe);
-        dumperHasCode = Probe.hasCodeKey();
-        wroteAnyField = (Probe.bytesWritten() > 0);
+        ast_dumper::JsonDumperProbeStream probe(OS);
+        CallJsonNodeDumper(Init, probe);
+        dumperHasCode = probe.HasCodeKey();
+        wroteAnyField = (probe.BytesWritten() > 0);
 
         DumperNodeCode(Init, dumperHasCode, wroteAnyField);
 
@@ -298,7 +300,7 @@ private:
         return L.isValid() ? L : D->getBeginLoc();
     }
 
-    void writeChildCommaIfNeeded()
+    void WriteChildCommaIfNeeded()
     {
         if (InnerFirstChildStack.empty()) {
             return;
@@ -314,106 +316,103 @@ private:
 // ---- Consumer ----
 class AstJsonConsumer : public ASTConsumer {
 public:
-    AstJsonConsumer(llvm::raw_ostream &OS, std::shared_ptr<ast_dumper::HeaderUnitsStore> HUStore)
-        : OS(OS), HUStore(std::move(HUStore)) {}
+    AstJsonConsumer(llvm::raw_ostream &os, std::shared_ptr<ast_dumper::HeaderUnitsStore> huStore)
+        : os(os), huStore(std::move(huStore)) {}
 
-    void HandleTranslationUnit(ASTContext &Ctx) override
+    void HandleTranslationUnit(ASTContext &ctx) override
     {
-        ASTJsonStreamer streamer(Ctx, OS, HUStore);
+        ASTJsonStreamer streamer(ctx, os, huStore);
         streamer.EmitTranslationUnit();
     }
 
 private:
-    llvm::raw_ostream &OS;
-    std::shared_ptr<ast_dumper::HeaderUnitsStore> HUStore;
+    llvm::raw_ostream &os;
+    std::shared_ptr<ast_dumper::HeaderUnitsStore> huStore;
 };
 
 // ---- FrontendAction ----
 class JSONFrontendAction : public ASTFrontendAction {
 public:
-    JSONFrontendAction() : HUStore(std::make_shared<ast_dumper::HeaderUnitsStore>()) {}
+    JSONFrontendAction() : huStore(std::make_shared<ast_dumper::HeaderUnitsStore>()) {}
 
     bool BeginSourceFileAction(CompilerInstance &CI) override
     {
         Preprocessor &PP = CI.getPreprocessor();
         SourceManager &SM = CI.getSourceManager();
-        PP.addPPCallbacks(std::make_unique<ast_dumper::HeaderFileCollector>(SM, PP, HUStore));
+        PP.addPPCallbacks(std::make_unique<ast_dumper::HeaderFileCollector>(SM, PP, huStore));
         return true;
     }
 
     std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &, llvm::StringRef InFile) override
     {
-        std::string OutPath = ast_dumper::ComputeOutPath(InFile,
+        std::string outPath = ast_dumper::ComputeOutPath(InFile,
                                                          ast_dumper::cli::OutputFilename().getValue(),
-                                                         g_InputCount);
+                                                         g_inputCount);
         llvm::outs() << "[ASTDumper] Input: " << InFile << "\n";
-        if (OutPath == "-") {
+        if (outPath == "-") {
             llvm::outs() << "[ASTDumper] Output: <stdout>\n";
-            return std::make_unique<AstJsonConsumer>(llvm::outs(), HUStore);
+            return std::make_unique<AstJsonConsumer>(llvm::outs(), huStore);
         }
-        llvm::outs() << "[ASTDumper] Output: " << OutPath << "\n";
+        llvm::outs() << "[ASTDumper] Output: " << outPath << "\n";
 
         // ensure output dir exists
         {
-            llvm::SmallString<256> Dir = llvm::sys::path::parent_path(OutPath);
+            llvm::SmallString<SMALL_STRING_SIZE_256> Dir = llvm::sys::path::parent_path(outPath);
             if (!Dir.empty()) {
                 llvm::sys::fs::create_directories(Dir);
             }
         }
 
         std::error_code EC;
-        FileOS = std::make_unique<llvm::raw_fd_ostream>(OutPath, EC, llvm::sys::fs::OF_Text);
+        fileOS = std::make_unique<llvm::raw_fd_ostream>(outPath, EC, llvm::sys::fs::OF_Text);
         if (EC) {
-            llvm::outs() << "Cannot open output file " << OutPath << ": " << EC.message() << "\n";
+            llvm::outs() << "Cannot open output file " << outPath << ": " << EC.message() << "\n";
             return nullptr;
         }
 
-        return std::make_unique<AstJsonConsumer>(*FileOS, HUStore);
+        return std::make_unique<AstJsonConsumer>(*fileOS, huStore);
     }
 
 private:
-    std::unique_ptr<llvm::raw_fd_ostream> FileOS;
-    std::shared_ptr<ast_dumper::HeaderUnitsStore> HUStore;
+    std::unique_ptr<llvm::raw_fd_ostream> fileOS;
+    std::shared_ptr<ast_dumper::HeaderUnitsStore> huStore;
 };
-
-
 
 int main(int argc, const char **argv)
 {
     auto start = std::chrono::high_resolution_clock::now();
-
     // argv dump
     llvm::outs() << "[ASTDumper] argv:\n";
     for (int i = 0; i < argc; ++i)
         llvm::outs() << "  argv[" << i << "] = " << argv[i] << "\n";
 
     ast_dumper::cli::EnsureRegistered();
-    auto ExpectedParser = CommonOptionsParser::create(argc, argv, ast_dumper::cli::JsonASTCategory());
-    if (!ExpectedParser) {
-        llvm::outs() << ExpectedParser.takeError();
+    auto expectedParser = CommonOptionsParser::create(argc, argv, ast_dumper::cli::JsonASTCategory());
+    if (!expectedParser) {
+        llvm::outs() << expectedParser.takeError();
         return 1;
     }
 
-    CommonOptionsParser &OptionsParser = ExpectedParser.get();
-    g_InputCount = (unsigned)OptionsParser.getSourcePathList().size();
+    CommonOptionsParser &optionsParser = expectedParser.get();
+    g_inputCount = (unsigned)optionsParser.getSourcePathList().size();
 
-    llvm::outs() << "[ASTDumper] inputs (" << g_InputCount << "):\n";
-    for (auto &p : OptionsParser.getSourcePathList())
+    llvm::outs() << "[ASTDumper] inputs (" << g_inputCount << "):\n";
+    for (auto &p : optionsParser.getSourcePathList())
         llvm::outs() << "  " << p << "\n";
 
     const std::string outOpt = ast_dumper::cli::OutputFilename().getValue();
     llvm::outs() << "[ASTDumper] -o = " << (outOpt.empty() ? "<default>" : outOpt) << "\n";
 
     // -p diagnostics (optional)
-    const std::string BuildPath = ast_dumper::GetBuildPathFromArgv(argc, argv);
-    ast_dumper::PrintBuildPathDiagnostics(BuildPath);
+    const std::string buildPath = ast_dumper::GetBuildPathFromArgv(argc, argv);
+    ast_dumper::PrintBuildPathDiagnostics(buildPath);
 
     // select compilation DB (use fallback only if inputs have no compile command)
-    CompilationDatabase &ParserDB = OptionsParser.getCompilations();
-    std::unique_ptr<CompilationDatabase> FallbackDB;
-    CompilationDatabase *DB = ast_dumper::SelectDBForInputs(ParserDB, OptionsParser.getSourcePathList(), FallbackDB);
+    CompilationDatabase &parserDB = optionsParser.getCompilations();
+    std::unique_ptr<CompilationDatabase> fallbackDB;
+    CompilationDatabase *db = ast_dumper::SelectDBForInputs(parserDB, optionsParser.getSourcePathList(), fallbackDB);
 
-    ClangTool Tool(*DB, OptionsParser.getSourcePathList());
+    ClangTool Tool(*db, optionsParser.getSourcePathList());
     Tool.appendArgumentsAdjuster(getClangSyntaxOnlyAdjuster());
     Tool.appendArgumentsAdjuster(ast_dumper::MakeOhosLibcxxFixAdjuster());
 

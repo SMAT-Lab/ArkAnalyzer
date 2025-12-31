@@ -59,16 +59,16 @@ void PrintBuildPathDiagnostics(llvm::StringRef BuildPath)
     llvm::outs() << "[ASTDumper] exists(build dir) = "
        << (llvm::sys::fs::exists(BuildPath) ? "yes" : "no") << "\n";
 
-    llvm::SmallString<512> CC(BuildPath);
+    llvm::SmallString<SMALL_STRING_SIZE_512> CC(BuildPath);
     llvm::sys::path::append(CC, "compile_commands.json");
     llvm::outs() << "[ASTDumper] exists(compile_commands.json) = "
        << (llvm::sys::fs::exists(CC) ? "yes" : "no") << "\n";
 
-    std::string Err;
-    auto TestDB = clang::tooling::CompilationDatabase::loadFromDirectory(BuildPath, Err);
+    std::string err;
+    auto TestDB = clang::tooling::CompilationDatabase::loadFromDirectory(BuildPath, err);
     llvm::outs() << "[ASTDumper] loadFromDirectory = " << (TestDB ? "OK" : "FAILED") << "\n";
-    if (!TestDB && !Err.empty()) {
-        llvm::outs() << "[ASTDumper] load error: " << Err << "\n";
+    if (!TestDB && !err.empty()) {
+        llvm::outs() << "[ASTDumper] load error: " << err << "\n";
     }
 }
 
@@ -161,7 +161,7 @@ clang::tooling::ArgumentsAdjuster MakeOhosLibcxxFixAdjuster()
 
             // Inject libc++ headers: <toolchain>/include/c++/v1 (some OHOS ccjson misses it).
             if (!gccToolchain.empty() && !containsSubstr("include/c++/v1")) {
-                llvm::SmallString<512> P(gccToolchain);
+                llvm::SmallString<SMALL_STRING_SIZE_512> P(gccToolchain);
                 llvm::sys::path::append(P, "include", "c++", "v1");
                 if (llvm::sys::fs::exists(P)) {
                     NewArgs.push_back("-isystem");
