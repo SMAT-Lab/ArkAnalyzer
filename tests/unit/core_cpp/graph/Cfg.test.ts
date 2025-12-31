@@ -597,10 +597,10 @@ function testNamespaceClasses(scene: Scene, filePath: string, namespaceName: str
     arkNamespace.getNamespaces().forEach(namespace => {
         const nsName = namespace.getName();
         testNamespaceClasses(scene, filePath, nsName, nestedNamspaceBlockMap.get(nsName), namespace);
-    })
+    });
 }
 
-function testClassInNamespace(ns: ArkNamespace, nsExpectClassMap: Map<string, any>): void{
+function testClassInNamespace(ns: ArkNamespace, nsExpectClassMap: Map<string, any>): void {
     // Check each class under the namespace
     ns.getClasses().forEach(arkClass => {
         const expectedClassData = nsExpectClassMap.get(arkClass.getName());

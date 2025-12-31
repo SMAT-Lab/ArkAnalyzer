@@ -268,7 +268,8 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         }
         const typeNode: CxxAstNode | undefined =
             Array.isArray(typeDefDecl.inner) ? typeDefDecl.inner[0] : undefined;
-        const rightOp = typeAliasDeclaration.type.desugaredQualType ? typeAliasDeclaration.type.desugaredQualType : typeAliasDeclaration.type.qualType; // If there is no type code, use int type as fallback
+        const rightOp = typeAliasDeclaration.type.desugaredQualType ?
+            typeAliasDeclaration.type.desugaredQualType : typeAliasDeclaration.type.qualType; // If there is no type code, use int type as fallback
 
         let rightType;
         //  Identify the tagUsed attribute to determine struct, union, and enum nodes

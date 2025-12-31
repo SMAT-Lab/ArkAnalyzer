@@ -20,7 +20,7 @@ export const NAMESPACE_CASE1 = {
             stmts: [
                 'this = this: @namespace/namespace.cpp: %dflt',
                 'staticinvoke <@namespace/namespace.cpp: nsA.%dflt.Func()>()',
-                'return'
+                'return',
             ],
             preds: [],
             succes: [],
@@ -44,9 +44,9 @@ export const NAMESPACE_SCHOOL_EXPECT = {
                             preds: [],
                             succes: [],
                         },
-                    ]
+                    ],
                 },
-            ]
+            ],
         },
         {
             className: 'Student$University',
@@ -62,7 +62,7 @@ export const NAMESPACE_SCHOOL_EXPECT = {
                             preds: [],
                             succes: [],
                         },
-                    ]
+                    ],
                 },
                 {
                     methodName: 'display',
@@ -73,7 +73,7 @@ export const NAMESPACE_SCHOOL_EXPECT = {
                             preds: [],
                             succes: [],
                         },
-                    ]
+                    ],
                 },
                 {
                     methodName: '%statInit',
@@ -84,9 +84,9 @@ export const NAMESPACE_SCHOOL_EXPECT = {
                             preds: [],
                             succes: [],
                         },
-                    ]
+                    ],
                 },
-            ]
+            ],
         },
         {
             className: 'University',
@@ -102,7 +102,7 @@ export const NAMESPACE_SCHOOL_EXPECT = {
                             preds: [],
                             succes: [],
                         },
-                    ]
+                    ],
                 },
                 {
                     methodName: 'welcome',
@@ -113,7 +113,7 @@ export const NAMESPACE_SCHOOL_EXPECT = {
                             preds: [],
                             succes: [],
                         },
-                    ]
+                    ],
                 },
                 {
                     methodName: '%statInit',
@@ -124,9 +124,9 @@ export const NAMESPACE_SCHOOL_EXPECT = {
                             preds: [],
                             succes: [],
                         },
-                    ]
+                    ],
                 },
-            ]
+            ],
         },
     ],
     nestedNamespaces: [
@@ -146,15 +146,15 @@ export const NAMESPACE_SCHOOL_EXPECT = {
                                     stmts: [
                                         'this = this: @namespace/namespace.cpp: School.%AN0.%dflt',
                                         '%0 = new @%unk/%unk: std::basic_string<char>',
-                                        "instanceinvoke %0.<@%unk/%unk: std::basic_string.constructor()>('[Nested AnonymousSpace] ')",
+                                        'instanceinvoke %0.<@%unk/%unk: std::basic_string.constructor()>(\'[Nested AnonymousSpace] \')',
                                         'kLogPrefix = %0',
                                         'g_local_counter = 0',
-                                        'return'
+                                        'return',
                                     ],
                                     preds: [],
                                     succes: [],
                                 },
-                            ]
+                            ],
                         },
                         {
                             methodName: 'PrintInfoInNested',
@@ -162,19 +162,19 @@ export const NAMESPACE_SCHOOL_EXPECT = {
                                 {
                                     id: 0,
                                     stmts: [
-                                        "this = this: @namespace/namespace.cpp: School.%AN0.%dflt",
-                                        "%0 = staticinvoke <@%unk/%unk: .operator<<()>(cout, kLogPrefix)",
-                                        "%1 = staticinvoke <@%unk/%unk: .operator<<()>(%0, 'Current counter value: ')",
-                                        "%2 = staticinvoke <@%unk/%unk: .operator<<()>(%1, g_local_counter)",
-                                        "staticinvoke <@%unk/%unk: .operator<<()>(%2, endl)",
-                                        "return",
+                                        'this = this: @namespace/namespace.cpp: School.%AN0.%dflt',
+                                        '%0 = staticinvoke <@%unk/%unk: .operator<<()>(cout, kLogPrefix)',
+                                        '%1 = staticinvoke <@%unk/%unk: .operator<<()>(%0, \'Current counter value: \')',
+                                        '%2 = staticinvoke <@%unk/%unk: .operator<<()>(%1, g_local_counter)',
+                                        'staticinvoke <@%unk/%unk: .operator<<()>(%2, endl)',
+                                        'return',
                                     ],
                                     preds: [],
                                     succes: [],
                                 },
-                            ]
+                            ],
                         },
-                    ]
+                    ],
                 },
                 {
                     className: 'LocalHelperInNested',
@@ -189,15 +189,15 @@ export const NAMESPACE_SCHOOL_EXPECT = {
                                     stmts: [
                                         'v = parameter0: int',
                                         'this = this: @namespace/namespace.cpp: School.%AN0.LocalHelperInNested',
-                                        "instanceinvoke this.<@namespace/namespace.cpp: School.%AN0.LocalHelperInNested.%instInit()>()",
+                                        'instanceinvoke this.<@namespace/namespace.cpp: School.%AN0.LocalHelperInNested.%instInit()>()',
                                         'this.<@namespace/namespace.cpp: School.%AN0.LocalHelperInNested.value_> = v',
                                         'g_local_counter = g_local_counter + 1',
-                                        'return this'
+                                        'return this',
                                     ],
                                     preds: [],
                                     succes: [],
                                 },
-                            ]
+                            ],
                         },
                         {
                             methodName: 'GetValue',
@@ -207,19 +207,19 @@ export const NAMESPACE_SCHOOL_EXPECT = {
                                     stmts: [
                                         'this = this: @namespace/namespace.cpp: School.%AN0.LocalHelperInNested',
                                         '%0 = this-><@namespace/namespace.cpp: School.%AN0.LocalHelperInNested.value_>',
-                                        'return %0'
+                                        'return %0',
                                     ],
                                     preds: [],
                                     succes: [],
                                 },
-                            ]
-                        }
-                    ]
-                }
+                            ],
+                        },
+                    ],
+                },
             ],
-            nestedNamespaces: []
+            nestedNamespaces: [],
         },
-    ]
+    ],
 };
 
 export const NAMESPACE_AN0_EXPECT = {
@@ -237,15 +237,15 @@ export const NAMESPACE_AN0_EXPECT = {
                             stmts: [
                                 'this = this: @namespace/namespace.cpp: %AN0.%dflt',
                                 '%0 = new @%unk/%unk: std::basic_string<char>',
-                                "instanceinvoke %0.<@%unk/%unk: std::basic_string.constructor()>('[AnonymousSpace] ')",
+                                'instanceinvoke %0.<@%unk/%unk: std::basic_string.constructor()>(\'[AnonymousSpace] \')',
                                 'kLogPrefix = %0',
                                 'g_local_counter = 0',
-                                'return'
+                                'return',
                             ],
                             preds: [],
                             succes: [],
                         },
-                    ]
+                    ],
                 },
                 {
                     methodName: 'PrintInfo',
@@ -255,17 +255,17 @@ export const NAMESPACE_AN0_EXPECT = {
                             stmts: [
                                 'this = this: @namespace/namespace.cpp: %AN0.%dflt',
                                 '%0 = staticinvoke <@%unk/%unk: .operator<<()>(cout, kLogPrefix)',
-                                "%1 = staticinvoke <@%unk/%unk: .operator<<()>(%0, 'Current counter value: ')",
+                                '%1 = staticinvoke <@%unk/%unk: .operator<<()>(%0, \'Current counter value: \')',
                                 '%2 = staticinvoke <@%unk/%unk: .operator<<()>(%1, g_local_counter)',
                                 'staticinvoke <@%unk/%unk: .operator<<()>(%2, endl)',
-                                'return'
+                                'return',
                             ],
                             preds: [],
                             succes: [],
                         },
-                    ]
+                    ],
                 },
-            ]
+            ],
         },
         {
             className: 'LocalHelper',
@@ -280,15 +280,15 @@ export const NAMESPACE_AN0_EXPECT = {
                             stmts: [
                                 'v = parameter0: int',
                                 'this = this: @namespace/namespace.cpp: %AN0.LocalHelper',
-                                "instanceinvoke this.<@namespace/namespace.cpp: %AN0.LocalHelper.%instInit()>()",
+                                'instanceinvoke this.<@namespace/namespace.cpp: %AN0.LocalHelper.%instInit()>()',
                                 'this.<@namespace/namespace.cpp: %AN0.LocalHelper.value_> = v',
                                 'g_local_counter = g_local_counter + 1',
-                                'return this'
+                                'return this',
                             ],
                             preds: [],
                             succes: [],
                         },
-                    ]
+                    ],
                 },
                 {
                     methodName: 'GetValue',
@@ -298,17 +298,17 @@ export const NAMESPACE_AN0_EXPECT = {
                             stmts: [
                                 'this = this: @namespace/namespace.cpp: %AN0.LocalHelper',
                                 '%0 = this-><@namespace/namespace.cpp: %AN0.LocalHelper.value_>',
-                                'return %0'
+                                'return %0',
                             ],
                             preds: [],
                             succes: [],
                         },
-                    ]
-                }
-            ]
-        }
+                    ],
+                },
+            ],
+        },
     ],
-    nestedNamespaces: []
+    nestedNamespaces: [],
 };
 
 export const NAMESPACE_TEST_ANONYMOUS_NAMESPACE = {
@@ -316,22 +316,22 @@ export const NAMESPACE_TEST_ANONYMOUS_NAMESPACE = {
         {
             id: 0,
             stmts: [
-                "this = this: @namespace/namespace.cpp: %dflt",
-                "staticinvoke <@namespace/namespace.cpp: %AN0.%dflt.PrintInfo()>()",
-                "g_local_counter = 5",
-                "staticinvoke <@namespace/namespace.cpp: %AN0.%dflt.PrintInfo()>()",
-                "%0 = new @namespace/namespace.cpp: %AN0.LocalHelper",
-                "instanceinvoke %0.<@namespace/namespace.cpp: %AN0.LocalHelper.constructor(int)>(100)",
-                "helper1 = %0",
-                "staticinvoke <@namespace/namespace.cpp: %AN0.%dflt.PrintInfo()>()",
-                "staticinvoke <@namespace/namespace.cpp: School.%AN0.%dflt.PrintInfoInNested()>()",
-                "g_local_counter = 5",
-                "staticinvoke <@namespace/namespace.cpp: School.%AN0.%dflt.PrintInfoInNested()>()",
-                "%1 = new @namespace/namespace.cpp: School.%AN0.LocalHelperInNested",
-                "instanceinvoke %1.<@namespace/namespace.cpp: School.%AN0.LocalHelperInNested.constructor(int)>(100)",
-                "helper2 = %1",
-                "staticinvoke <@namespace/namespace.cpp: School.%AN0.%dflt.PrintInfoInNested()>()",
-                "return",
+                'this = this: @namespace/namespace.cpp: %dflt',
+                'staticinvoke <@namespace/namespace.cpp: %AN0.%dflt.PrintInfo()>()',
+                'g_local_counter = 5',
+                'staticinvoke <@namespace/namespace.cpp: %AN0.%dflt.PrintInfo()>()',
+                '%0 = new @namespace/namespace.cpp: %AN0.LocalHelper',
+                'instanceinvoke %0.<@namespace/namespace.cpp: %AN0.LocalHelper.constructor(int)>(100)',
+                'helper1 = %0',
+                'staticinvoke <@namespace/namespace.cpp: %AN0.%dflt.PrintInfo()>()',
+                'staticinvoke <@namespace/namespace.cpp: School.%AN0.%dflt.PrintInfoInNested()>()',
+                'g_local_counter = 5',
+                'staticinvoke <@namespace/namespace.cpp: School.%AN0.%dflt.PrintInfoInNested()>()',
+                '%1 = new @namespace/namespace.cpp: School.%AN0.LocalHelperInNested',
+                'instanceinvoke %1.<@namespace/namespace.cpp: School.%AN0.LocalHelperInNested.constructor(int)>(100)',
+                'helper2 = %1',
+                'staticinvoke <@namespace/namespace.cpp: School.%AN0.%dflt.PrintInfoInNested()>()',
+                'return',
             ],
             preds: [],
             succes: [],

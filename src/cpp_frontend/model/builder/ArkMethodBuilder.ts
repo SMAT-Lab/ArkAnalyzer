@@ -124,7 +124,7 @@ export function buildArkMethodFromArkClass(methodNode: CxxAstNode, declaringClas
     }
     handleFunctionTemplateDecl(methodNode, mtd, sourceFile);
     // After processing the template parameters, proceed to the corresponding functions below
-    methodNode = methodNode.kind === 'FunctionTemplateDecl' ? methodNode.inner[methodNode.inner.length - 1]: methodNode;
+    methodNode = methodNode.kind === 'FunctionTemplateDecl' ? methodNode.inner[methodNode.inner.length - 1] : methodNode;
     mtd.setCode(methodNode.code);
     mtd.addModifier(buildModifiers(methodNode));
     if (methodNode.kind === 'FriendDecl' && methodNode.inner.length > 0) {
