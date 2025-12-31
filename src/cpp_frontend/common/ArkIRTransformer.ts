@@ -407,7 +407,8 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         yieldValueStmts.forEach(stmt => stmts.push(stmt));
         const castExpr = new ArkCastExpr(yieldValue, UnknownType.getInstance());
         const castExprPositions = [yieldValuePositions[0], ...yieldValuePositions];
-        const declStmts: CxxAstNode = forOfStatement.inner[0];
+        let declStmts: CxxAstNode = forOfStatement.inner[0];
+        declStmts = declStmts.kind === 'DeclStmt' ? declStmts.inner[0] : declStmts;
         if (declStmts.kind === 'VarDecl') {
             const {
                 value: initValue,

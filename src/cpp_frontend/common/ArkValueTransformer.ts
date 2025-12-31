@@ -433,15 +433,21 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             innerStmts = [];
         } else {
             // If yieldValue does not exist, obtain it by recursively calling cxxNodeToValueAndSTms
-            const result = this.cxxNodeToValueAndStmts(node.inner[length - 1]);
-            objectValue = result.value;
+            const result = this.cxxNodeToValueAndStmts(node.inner[0]);
             valueOriginalPositions = result.valueOriginalPositions;
             innerStmts = result.stmts;
+            const tempVas= this.ArkCxxIRTransformer.generateAssignStmtForValue(result.value, valueOriginalPositions);
+            tempVas.stmts.forEach(stmt => innerStmts.push(stmt));
+            objectValue = tempVas.value;
         }
         innerStmts.forEach(stmt => stmts.push(stmt));
-        for (let i = 0; i < length - 1; i++) {
+        let index = 0;
+        for (let i = 0; i < length; i++) {
+            if (node.inner[i].kind !== 'BindingDecl') {
+                continue;
+            }
             const leftValueAndStmts = this.cxxIdentifierToValueAndStmts(node.inner[i]);
-            const indexValue = CxxValueUtil.getOrCreateNumberConst(i);
+            const indexValue = CxxValueUtil.getOrCreateNumberConst(index++);
             const arrayRef = new ArkArrayRef(objectValue as Local, indexValue);
             const assignStmt = new ArkAssignStmt(leftValueAndStmts.value, arrayRef);
             stmts.push(assignStmt);

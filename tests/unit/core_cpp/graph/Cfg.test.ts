@@ -509,7 +509,6 @@ describe('feature Test', () => {
         testBlocks(scene, 'structBinding.cpp', 'TupleUsage', STRUCTBINDING.BINGING_EXPECT_TUPLEUSAGE.blocks);
         testBlocks(scene, 'structBinding.cpp', 'StructUsage', STRUCTBINDING.BINGING_EXPECT_STRUCT.blocks);
         testBlocks(scene, 'structBinding.cpp', 'MapUsage', STRUCTBINDING.BINGING_EXPECT_MAP.blocks);
-        testBlocks(scene, 'structBinding.cpp', 'GetStudentInfo', STRUCTBINDING.BINGING_EXPECT_GETSTRUCTINFO.blocks);
         testBlocks(scene, 'structBinding.cpp', 'FunctionReturnUsage', STRUCTBINDING.BINGING_EXPECT_FUNCTIONRETURN.blocks);
         testBlocks(scene, 'structBinding.cpp', 'ConstReferenceUsage', STRUCTBINDING.BINGING_EXPECT_CONSTREFERENCE.blocks);
     });

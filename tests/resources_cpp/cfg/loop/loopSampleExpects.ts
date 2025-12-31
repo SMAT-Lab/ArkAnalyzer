@@ -229,7 +229,6 @@ export const LOOP_EXPECT_CASE8 = {
             id: 2,
             stmts: [
                 '%7 = %5.<@CXX/std/BuiltinClass: IterableIterator.*>',
-                'pair = undefined',
                 'pair = <unknown>%7',
                 '%8 = pair.<@%unk/%unk: .first>',
                 '%9 = pair.<@%unk/%unk: .second>',
@@ -282,8 +281,8 @@ export const LOOP_EXPECT_CASE9 = {
             id: 2,
             stmts: [
                 '%7 = %5.<@CXX/std/BuiltinClass: IterableIterator.*>',
-                'key = value[0]',
-                'value = <unknown>%7',
+                'key = %7[0]',
+                'value = %7[1]',
                 '%8 = instanceinvoke value.<@%unk/%unk: .c_str()>()',
                 'staticinvoke <@%unk/%unk: .printf()>(\'%d %s\\n\', key, %8)',
                 '%5 = instanceinvoke %5.<@%unk/%unk: .iterator++()>()',
@@ -369,7 +368,6 @@ export const LOOP_EXPECT_CASE11 = {
             id: 2,
             stmts: [
                 '%4 = %2.<@CXX/std/BuiltinClass: IterableIterator.*>',
-                'a = undefined',
                 'a = <unknown>%4',
                 'staticinvoke <@%unk/%unk: .operator<<()>(cout, a)',
                 '%2 = instanceinvoke %2.<@%unk/%unk: .iterator++()>()',
