@@ -19,7 +19,7 @@ export const LIST_EXPECT_EXAMPLE1 = {
             id: 0,
             stmts: [
                 'this = this: @stdInitializerListExpr/stdInitializerListExpr.cpp: %dflt',
-                '%0 = newarray (int[])[5]',
+                '%0 = newarray (int[5])',
                 '%0[0] = 1',
                 '%0[1] = 2',
                 '%0[2] = 3',
@@ -40,13 +40,13 @@ export const LIST_EXPECT_EXAMPLE2 = {
             id: 0,
             stmts: [
                 'this = this: @stdInitializerListExpr/stdInitializerListExpr.cpp: %dflt',
-                '%0 = newarray (int[])[3]',
+                '%0 = newarray (int[3])',
                 '%0[0] = 1',
                 '%0[1] = 2',
                 '%0[2] = 3',
                 'staticinvoke <@%unk/%unk: .Func()>(%0)',
                 '%1 = new @%unk/%unk: std::vector<int>',
-                '%2 = newarray (int[])[4]',
+                '%2 = newarray (int[4])',
                 '%2[0] = 1',
                 '%2[1] = 2',
                 '%2[2] = 3',
@@ -68,7 +68,7 @@ export const LIST_EXPECT_EXAMPLE3 = {
             stmts: [
                 'this = this: @stdInitializerListExpr/stdInitializerListExpr.cpp: %dflt',
                 '%0 = new @stdInitializerListExpr/stdInitializerListExpr.cpp: MyClass',
-                '%1 = newarray (int[])[4]',
+                '%1 = newarray (int[4])',
                 '%1[0] = 1',
                 '%1[1] = 2',
                 '%1[2] = 3',
