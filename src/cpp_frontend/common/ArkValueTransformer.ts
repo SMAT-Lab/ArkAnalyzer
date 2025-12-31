@@ -251,7 +251,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         } else {
             classSignature = type.getClassSignature();
         }
-        const list =aggregate.kind === 'InitListExpr' ? aggregate : aggregate.inner[aggregate.inner.length - 1];
+        const list = aggregate.kind === 'InitListExpr' ? aggregate : aggregate.inner[aggregate.inner.length - 1];
         let elements: Value[] = [];
         if (list.kind !== 'InitListExpr') {
             return this.unprocessedNodeToValueAndStmts(aggregate);
@@ -281,7 +281,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
                 elements.push(designatedInitExpr);
             } else {
                 const valueAndStmts = this.cxxNodeToValueAndStmts(list.inner[i]);
-                elements.push(valueAndStmts.value)
+                elements.push(valueAndStmts.value);
                 valueAndStmts.stmts.forEach((stmt: Stmt) => stmts.push(stmt));
             }
         }
@@ -317,7 +317,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
 
     // Judge whether the child nodes of the current node are materializing temporary variables
     private isNodeRelatedToMaterializeTemporaryExpr(node: CxxAstNode): boolean {
-        return  node.inner[0]?.kind === 'MaterializeTemporaryExpr';
+        return node.inner[0]?.kind === 'MaterializeTemporaryExpr';
     }
 
     // Judge whether the child nodes of the current node are temporary object variables after optimization, except string literal
@@ -436,7 +436,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             const result = this.cxxNodeToValueAndStmts(node.inner[0]);
             valueOriginalPositions = result.valueOriginalPositions;
             innerStmts = result.stmts;
-            const tempVas= this.ArkCxxIRTransformer.generateAssignStmtForValue(result.value, valueOriginalPositions);
+            const tempVas = this.ArkCxxIRTransformer.generateAssignStmtForValue(result.value, valueOriginalPositions);
             tempVas.stmts.forEach(stmt => innerStmts.push(stmt));
             objectValue = tempVas.value;
         }
@@ -2698,8 +2698,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
                     leftValue.setType(declarationType);
                 }
                 if ((leftValue.getType() instanceof UnknownType || leftValue.getType() instanceof UnclearReferenceType)
-                    && !(rightValue.getType() instanceof UnknownType) && !(rightValue.getType() instanceof UndefinedType)
-                ) {
+                    && !(rightValue.getType() instanceof UnknownType) && !(rightValue.getType() instanceof UndefinedType)) {
                     leftValue.setType(rightValue.getType());
                 }
             }
