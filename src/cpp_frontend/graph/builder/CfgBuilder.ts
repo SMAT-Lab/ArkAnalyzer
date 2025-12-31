@@ -791,9 +791,7 @@ export class CfgBuilder {
                 lastStatement = this.ASTNodeDoStatement(innerNode, lastStatement, scope.id);
                 break;
             case 'ExprWithCleanups':
-                s = new StatementBuilder('statement', 'ExprWithCleanups', innerNode, scope.id);
-                this.judgeLastType(s, lastStatement);
-                lastStatement = s;
+                lastStatement = this.ASTNodeImplicitCastExpr(innerNode, lastStatement, scope);
                 break;
             case 'GotoStmt':
             case 'IndirectGotoStmt':
