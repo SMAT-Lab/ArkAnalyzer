@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -57,8 +57,7 @@ import {
     ClassSignature,
     FieldSignature,
     FileSignature,
-    MethodSignature,
-    MethodSubSignature
+    MethodSignature
 } from '../model/ArkSignature';
 import { CONSTRUCTOR_NAME, FUNCTION, IMPORT, SUPER_NAME, THIS_NAME } from './TSConst';
 import { Builtin } from './Builtin';
@@ -510,12 +509,8 @@ export class IRInference {
         }
         let method;
         if (methodName === CONSTRUCTOR_NAME) {
-            method = declaredClass?.getMethodWithName('construct-signature') ?? declaredClass?.getMethodWithName(CONSTRUCTOR_NAME);
-            if (!method) {
-                const subSignature = new MethodSubSignature(methodName, [], new ClassType(baseType.getClassSignature()));
-                expr.setMethodSignature(new MethodSignature(baseType.getClassSignature(), subSignature));
-                return expr;
-            }
+            method = declaredClass?.getMethodWithName('construct-signature') ??
+                declaredClass.getMethodWithName(CALL_SIGNATURE_NAME) ?? declaredClass?.getMethodWithName(CONSTRUCTOR_NAME);
         } else {
             const member = ModelUtils.findPropertyInClass(methodName, declaredClass);
             method = member instanceof ArkClass ? member.getMethodWithName(CALL_SIGNATURE_NAME) ?? member.getMethodWithName(CONSTRUCTOR_NAME) : member;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -412,14 +412,14 @@ export class ModelUtils {
         return method.getDeclaringArkFile().getClassWithName(signature.getClassName());
     }
 
-    public static findPropertyInNamespace(name: string, namespace: ArkNamespace): ArkExport | undefined {
+    public static findPropertyInNamespace(name: string, namespace: ArkNamespace): ArkExport | null | undefined {
         return (
+            namespace.getDefaultClass()?.getDefaultArkMethod()?.getBody()?.getLocals()?.get(name) ??
             namespace.getDefaultClass()?.getMethodWithName(name) ??
             findArkExport(namespace.getExportInfoBy(name)) ??
             namespace.getClassWithName(name) ??
             namespace.getNamespaceWithName(name) ??
-            namespace.getDefaultClass()?.getDefaultArkMethod()?.getBody()?.getAliasTypeByName(name) ??
-            namespace.getDefaultClass()?.getDefaultArkMethod()?.getBody()?.getLocals()?.get(name)
+            namespace.getDefaultClass()?.getDefaultArkMethod()?.getBody()?.getAliasTypeByName(name)
         );
     }
 

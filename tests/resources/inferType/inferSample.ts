@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -206,4 +206,19 @@ class BaseChangeInfer {
         t = Week.TUE;
     }
 
+}
+
+class ArrayCatTest {
+    foo(): void {
+        let a = new Intl.NumberFormat('123');
+        const arr1 = [1, 2, 3];
+        const arr2 = [4, 5];
+        const arr3 = [...arr1, ...arr2];
+    }
+
+    goo(): void {
+        const arr11 = callSomeMethod1();
+        const arr22 = callSomeMethod2();
+        const arr33 = [...arr11, ...arr22];
+    }
 }
