@@ -724,26 +724,24 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
      *@ returns ValueAndStmts object, including converted values and related statements
      */
     private arrayTypeTraitExprToValueAndStmts(ArrayTypeTraitExpr: CxxAstNode): ValueAndStmts {
-        const traitFunc = ArrayTypeTraitExpr.traitFunc ?? '';
-        const traitArgs = ArrayTypeTraitExpr.traitArgs?.split(',') ?? [];
-        const numArg = Number(traitArgs[traitArgs.length - 1].trim());
         const stmts: Stmt[] = [];
-        let innerNode = ArrayTypeTraitExpr;
-        while (Array.isArray(innerNode.inner) && innerNode.inner.length !== 0) {
-            innerNode = innerNode.inner[0];
-            if (innerNode.kind !== 'ArrayTypeTraitExpr') {
-                break;
+        let dimensionSizes: number[] = [];
+        let op: Value | null = null;
+        for (let i = 0; i < ArrayTypeTraitExpr.inner.length; i++) {
+            if (ArrayTypeTraitExpr.inner[i].kind === 'IntegerLiteral') {
+                dimensionSizes.push(Number(ArrayTypeTraitExpr.inner[i].value));
+            } else if (ArrayTypeTraitExpr.inner[i].kind === 'DeclRefExpr') {
+                const innerValueAndStmts = this.cxxNodeToValueAndStmts(ArrayTypeTraitExpr.inner[i]);
+                op = innerValueAndStmts.value;
+                innerValueAndStmts.stmts.forEach(stmt => stmts.push(stmt));
             }
         }
-        let innerValueAndStmts = this.cxxNodeToValueAndStmts(innerNode);
-        innerValueAndStmts.stmts.forEach(stmt => stmts.push(stmt));
-        const arrayRankExpr = new ArkArrayTypeTraitExpr(innerValueAndStmts.value, traitFunc, numArg);
+        const arrayRankExpr = new ArkArrayTypeTraitExpr(dimensionSizes, op);
         return {
             value: arrayRankExpr,
             valueOriginalPositions: [FullPosition.cxxBuildFromNode(ArrayTypeTraitExpr, this.cxxSourceFile)],
             stmts: stmts,
         };
-
     }
 
     /**

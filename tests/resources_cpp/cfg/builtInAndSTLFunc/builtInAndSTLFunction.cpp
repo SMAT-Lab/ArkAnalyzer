@@ -39,7 +39,7 @@ void CXXTypeidExprTest()
 void ArrayTypeTraitTest()
 {
     int arr2[5][3];
-    int rank2 = __array_rank(decltype(arr2));
+    int rank2 = __array_rank(int[5][3]);
     int dim1Size = __array_extent(decltype(arr2), 1);
 }
 

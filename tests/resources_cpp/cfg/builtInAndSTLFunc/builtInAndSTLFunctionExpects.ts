@@ -43,9 +43,9 @@ export const BUILT_IN_EXPECT_CASE2 = {
             stmts: [
                 'this = this: @builtInAndSTLFunc/builtInAndSTLFunction.cpp: %dflt',
                 'arr2 = undefined',
-                'rank2 = __array_rank(arr2)',
-                'dim1Size = __array_extent(arr2,1)',
-                'return',
+                'rank2 = ArrayTypeTrait(3,5)',
+                'dim1Size = ArrayTypeTrait(arr2)',
+                'return'
             ],
             preds: [],
             succes: [],

@@ -97,6 +97,7 @@ export class ArkCxxNewArrayExpr extends AbstractExpr {
     public setElementsNumber(elementsNumber: number): void {
         this.elementsNumber = elementsNumber;
     }
+
     public getSize(): Value {
         return this.size;
     }
@@ -143,6 +144,7 @@ export class ArkCxxNewArrayExpr extends AbstractExpr {
 // Array 0 initialization expression
 export class ArkCxxInitArrayExpr extends AbstractExpr {
     private op: Value;
+
     constructor(op: Value) {
         super();
         this.op = op;
@@ -223,6 +225,7 @@ export class ArkSizeOfExpr extends AbstractExpr {
         return this;
     }
 }
+
 // Type conversion expression
 export class ArkCxxCastExpr extends ArkCastExpr {
     private cxxCastType: string;
@@ -249,20 +252,18 @@ export class ArkCxxCastExpr extends ArkCastExpr {
     }
 }
 
-// __array_extent  expression
+// __array_extent  expression,the inner of node is DeclRefExpr or several IntegerLiteral
 export class ArkArrayTypeTraitExpr extends AbstractExpr {
-    private op: Value;
-    private dimensionOrder: number = 0;
-    private func: string;
+    private op: Value | null;
+    private dimensionSizes: number[];
 
-    constructor(op: Value, func: string, dimensionOrder: number = 0) {
+    constructor(dimensionSizes: number[] = [], op: Value | null) {
         super();
-        this.op = op;
-        this.dimensionOrder = dimensionOrder;
-        this.func = func;
+        this.op = op || null;
+        this.dimensionSizes = dimensionSizes;
     }
 
-    public getOp(): Value {
+    public getOp(): Value | null {
         return this.op;
     }
 
@@ -272,36 +273,37 @@ export class ArkArrayTypeTraitExpr extends AbstractExpr {
 
     public getUses(): Value[] {
         let uses: Value[] = [];
-        uses.push(this.op);
-        uses.push(...this.op.getUses());
+        if (this.op) {
+            uses.push(this.op);
+            uses.push(...this.op.getUses());
+        }
         return uses;
     }
 
-    public getDimensionOrder(): number {
-        return this.dimensionOrder;
+    public getDimensionOrder(): number[] {
+        return this.dimensionSizes;
     }
 
-    public setDimensionOrder(dimensionOrder: number): void {
-        this.dimensionOrder = dimensionOrder;
+    public setDimensionOrder(dimensionOrder: number[]): void {
+        this.dimensionSizes = dimensionOrder;
     }
 
-    public getOpType(): Type {
-        return this.op.getType();
+    public getOpType(): Type | null {
+        if (this.op) {
+            return this.op.getType();
+        }
+        return null;
     }
 
     public getType(): Type {
         return CxxSizeTType.getInstance(CxxTypeSigned.UNSIGNED, CxxTypeBitWidth.UNKNOWN, CxxStdTypeName.SIZE_T);
     }
 
-    public getFunc(): string {
-        return this.func;
-    }
-
     public toString(): string {
-        if (this.func === '__array_extent') {
-            return this.func + '(' + this.op + ',' + this.dimensionOrder + ')';
+        if (this.op) {
+            return 'ArrayTypeTrait(' + this.op + this.dimensionSizes + ')';
         }
-        return this.func + '(' + this.op + ')';
+        return 'ArrayTypeTrait(' + this.dimensionSizes + ')';
     }
 
     public inferType(arkMethod: ArkMethod): AbstractExpr {
@@ -400,6 +402,7 @@ export class ArkNoExpectExpr extends AbstractExpr {
 export class ArkCxxFolderExpr extends AbstractExpr {
     private arg: Value;
     private op: string;
+
     constructor(arg: Value, op: string) {
         super();
         this.arg = arg;
@@ -424,9 +427,11 @@ export class ArkCxxFolderExpr extends AbstractExpr {
     public getType(): Type {
         return this.arg.getType();
     }
+
     public getOp(): string {
         return this.op;
     }
+
     public toString(): string {
         return `CxxFolderExpr(` + this.arg + this.op + `...)`;
     }
@@ -531,7 +536,7 @@ export class ArkAllocExpr extends AbstractExpr {
  *     struct Point q = (struct Point){.x = 5, .y = 8, .name = 'c'};
  *     int* arr = (int[5]){1, 2, 3, 4, 5};
  *     the right value is {},its kind is CompoundLiteralExpr or InitListExpr
-*/
+ */
 export class ArkAggregateExpr extends AbstractExpr {
     private type: Type; // the whole Aggregate's type
     private elements: Value[]; // the elements of Aggregate
