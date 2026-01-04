@@ -532,6 +532,13 @@ describe("function Test", () => {
         assert.equal(stmt?.toString(), '%0 = instanceinvoke %0.<@built-in/lib.es5.d.ts: Intl.%AC1.construct-signature(string|string[], @built-in/lib.es5.d.ts: Intl.NumberFormatOptions)>(\'123\')');
     })
 
+    it('test array cat', () => {
+        const fileId = new FileSignature(scene.getProjectName(), 'inferSample.ts');
+        const file = scene.getFile(fileId);
+        const stmt = file?.getClassWithName('ArrayCatTest')?.getMethodWithName('goo')?.getCfg()?.getStmts()[3];
+        assert.equal(stmt?.toString(), 'arr33 = instanceinvoke arr11.<@built-in/lib.es5.d.ts: Array.concat(@built-in/lib.es5.d.ts: ConcatArray<T>[])>(arr22)');
+    })
+
     it('pta union type CallBack 2 function case', () => {
         const fileId = new FileSignature(scene.getProjectName(), 'test2.ets');
         const file = scene.getFile(fileId);
