@@ -320,13 +320,6 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         return node.inner[0]?.kind === 'MaterializeTemporaryExpr';
     }
 
-    // Judge whether the child nodes of the current node are temporary object variables after optimization, except string literal
-    private isNodeRelatedToTemporaryObjectExpr(node: CxxAstNode): boolean {
-        return this.isNodeRelatedToMaterializeTemporaryExpr(node) &&
-            ['CXXTemporaryObjectExpr', 'CXXBindTemporaryExpr'].includes(node.inner[0].inner[0]?.kind) &&
-            node.inner[0].inner[0].inner !== undefined;
-    }
-
     // Check if the child nodes of the current node are member function calls
     private isNodeRelatedToCXXMember(node: CxxAstNode): boolean {
         return (
@@ -410,7 +403,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         if (!this.isPairConstructExpr(node) &&
             (this.isNodeRelatedToCXXLambdaFunc(node) ||
             (this.isNodeRelatedToMaterializeTemporaryExpr(node) &&
-                (!this.isNodeRelatedToTemporaryObjectExpr(node) || isCxxBasicString(node.type.desugaredQualType ?? ''))) ||
+                (isCxxBasicString(node.type.desugaredQualType ?? ''))) ||
             this.isNodeRelatedToImplicitNode(node)) && node.inner?.length > 0) {
             return this.cxxNodeToValueAndStmts(node.inner[0]);
         }
@@ -622,7 +615,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         if (firstInnerNode.kind === 'CXXInheritedCtorInitExpr') {
             // Processing of using parent:: parent
             return this.cxxInheritedCtorInitExprToValueAndStmts(firstInnerNode);
-        } else if (firstInnerNode.kind === 'CXXConstructExpr' && cxxCtorInitializer.anyInit?.name.startsWith('class ')) {
+        } else if (firstInnerNode.kind === 'CXXConstructExpr' && cxxCtorInitializer.baseInit) {
             // Processing of case: Left(const char& name) : Base(name) // call base class constructor
             return this.cxxSuperExpressionToValueAndStmts(firstInnerNode);
         }
@@ -703,7 +696,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         }
         const stmts: Stmt[] = [];
         const { args: argValues } = this.cxxParseArguments(stmts, cxxConstructExpr.inner);
-        const superClass = cls.getHeritageClass(cxxConstructExpr.name);
+        const superClass = cls.getHeritageClass(cxxConstructExpr.type.qualType ?? '');
         if (!superClass) {
             return this.cxxNewExpressionToValueAndStmts(cxxConstructExpr);
         }
@@ -2150,22 +2143,6 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         // Processing the interface between cpp and ts
         if (className === 'napi_property_descriptor') {
             setTs2CxxFuncMapOfClass(argValues, false, this.declaringMethod);
-        }
-
-        // Processing scenarios where initialization statements contain member variables
-        if (newExpression.kind === 'CompoundLiteralExpr' && newExpression.inner[1].kind === 'InitListExpr') {
-            const newExprInit = newExpression.inner[1];
-            for (const element of newExprInit.inner) {
-                const memberValueAndStmts = this.memberExpressionToValueAndStmts(element.inner[0], newLocal);
-                const fieldRef = memberValueAndStmts.value;
-                const rightOpNode = element.inner[1];
-                const rightValueAndStmts = this.cxxAssignmentRightOpToValueAndStmts(rightOpNode, fieldRef);
-                const assignStmt = new ArkAssignStmt(fieldRef, rightValueAndStmts.value);
-                const leftPositions = memberValueAndStmts.valueOriginalPositions;
-                const rightPositions = rightValueAndStmts.valueOriginalPositions;
-                assignStmt.setOperandOriginalPositions([...leftPositions, ...rightPositions]);
-                stmts.push(assignStmt);
-            }
         }
     }
 

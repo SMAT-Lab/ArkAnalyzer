@@ -198,6 +198,8 @@ export interface CxxAstNode {
 
     defaultArg?: defaultArg;
 
+    bases?: classBase[]
+
 }
 
 /** root type */
@@ -227,4 +229,10 @@ export function getNodeStartLineAndCol(node: CxxAstNode): CxxPosition {
 export interface defaultArg {
     kind: string;
     type: CxxTypeInfo;
+}
+
+export interface classBase {
+    access: string;
+    type: CxxTypeInfo;
+    writtenAccess: string;
 }

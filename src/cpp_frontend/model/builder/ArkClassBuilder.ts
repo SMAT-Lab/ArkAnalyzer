@@ -198,9 +198,9 @@ function genClassName(declaringName: string, cls: ArkClass, declaring?: ArkMetho
 }
 
 function processCXXHeritage(clsNode: CxxAstNode, cls: ArkClass): void {
-    for (let i = 0; i < clsNode.inner.length; i++) {
-        if (clsNode.inner[i].kind === 'C++ base class specifier') {
-            cls.addHeritageClassName(clsNode.inner[i].type.qualType);
+    if (clsNode.bases) {
+        for (let i = 0; i < clsNode.bases.length; i++) {
+            cls.addHeritageClassName(clsNode.bases[i].type.qualType);
         }
     }
 }
