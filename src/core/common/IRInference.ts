@@ -57,7 +57,8 @@ import {
     ClassSignature,
     FieldSignature,
     FileSignature,
-    MethodSignature
+    MethodSignature,
+    MethodSubSignature
 } from '../model/ArkSignature';
 import { CONSTRUCTOR_NAME, FUNCTION, IMPORT, SUPER_NAME, THIS_NAME } from './TSConst';
 import { Builtin } from './Builtin';
@@ -511,6 +512,11 @@ export class IRInference {
         if (methodName === CONSTRUCTOR_NAME) {
             method = declaredClass?.getMethodWithName('construct-signature') ??
                 declaredClass.getMethodWithName(CALL_SIGNATURE_NAME) ?? declaredClass?.getMethodWithName(CONSTRUCTOR_NAME);
+            if (!method) {
+                const subSignature = new MethodSubSignature(methodName, [], new ClassType(baseType.getClassSignature()));
+                expr.setMethodSignature(new MethodSignature(baseType.getClassSignature(), subSignature));
+                return expr;
+            }
         } else {
             const member = ModelUtils.findPropertyInClass(methodName, declaredClass);
             method = member instanceof ArkClass ? member.getMethodWithName(CALL_SIGNATURE_NAME) ?? member.getMethodWithName(CONSTRUCTOR_NAME) : member;
