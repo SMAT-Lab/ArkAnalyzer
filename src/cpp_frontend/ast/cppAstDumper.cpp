@@ -397,8 +397,9 @@ int main(int argc, const char **argv)
     g_inputCount = (unsigned)optionsParser.getSourcePathList().size();
 
     llvm::outs() << "[ASTDumper] inputs (" << g_inputCount << "):\n";
-    for (auto &p : optionsParser.getSourcePathList())
+    for (auto &p : optionsParser.getSourcePathList()) {
         llvm::outs() << "  " << p << "\n";
+    }
 
     const std::string outOpt = ast_dumper::cli::OutputFilename().getValue();
     llvm::outs() << "[ASTDumper] -o = " << (outOpt.empty() ? "<default>" : outOpt) << "\n";
@@ -407,13 +408,8 @@ int main(int argc, const char **argv)
     const std::string buildPath = ast_dumper::GetBuildPathFromArgv(argc, argv);
     ast_dumper::PrintBuildPathDiagnostics(buildPath);
 
-    // select compilation DB (use fallback only if inputs have no compile command)
     CompilationDatabase &parserDB = optionsParser.getCompilations();
-    std::unique_ptr<CompilationDatabase> fallbackDB;
-    CompilationDatabase *db = ast_dumper::SelectDBForInputs(parserDB, optionsParser.getSourcePathList(), fallbackDB);
-
-    ClangTool Tool(*db, optionsParser.getSourcePathList());
-    Tool.appendArgumentsAdjuster(getClangSyntaxOnlyAdjuster());
+    ClangTool Tool(parserDB, optionsParser.getSourcePathList());
     Tool.appendArgumentsAdjuster(ast_dumper::MakeOhosLibcxxFixAdjuster());
 
     int result = Tool.run(newFrontendActionFactory<JSONFrontendAction>().get());

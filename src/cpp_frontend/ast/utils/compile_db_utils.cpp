@@ -23,22 +23,6 @@
 
 namespace ast_dumper {
 
-static bool EndsWith(const std::string &s, const char *suffix)
-{
-    const size_t n = std::strlen(suffix);
-    return s.size() >= n && s.compare(s.size() - n, n, suffix) == 0;
-}
-
-static std::string NormalizeBackslashToSlash(std::string p)
-{
-    for (char &ch : p) {
-        if (ch == '\\') {
-            ch = '/';
-        }
-    }
-    return p;
-}
-
 std::string GetBuildPathFromArgv(int argc, const char **argv)
 {
     for (int i = 0; i + 1 < argc; ++i) {
@@ -72,112 +56,52 @@ void PrintBuildPathDiagnostics(llvm::StringRef BuildPath)
     }
 }
 
-bool HasCompileCommandForAnyInput(clang::tooling::CompilationDatabase &DB, llvm::ArrayRef<std::string> Inputs)
-{
-    for (const auto &file : Inputs) {
-        auto fileN = NormalizeBackslashToSlash(file);
-        auto AllCommands = DB.getAllCompileCommands();
-        for (auto &Command: AllCommands) {
-            if (Command.Filename == file || Command.Filename == fileN) {
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
-std::unique_ptr<clang::tooling::CompilationDatabase>
-MakeFallbackDB(llvm::ArrayRef<std::string> Inputs)
-{
-    bool hasC = false;
-    bool hasCxx = false;
-    for (const auto &f : Inputs) {
-        if (EndsWith(f, ".c")) {
-            hasC = true;
-        }
-        if (EndsWith(f, ".cc") || EndsWith(f, ".cpp") || EndsWith(f, ".cxx") ||
-            EndsWith(f, ".h")  || EndsWith(f, ".hpp")) {
-                hasCxx = true;
-            }
-    }
-
-    std::vector<std::string> args;
-    args.push_back((hasCxx && !hasC) ? "-std=c++20" : (hasC && !hasCxx) ? "-std=c99" : "-std=c++20");
-    args.push_back("-fsyntax-only");
-    return std::make_unique<clang::tooling::FixedCompilationDatabase>(".", args);
-}
-
-clang::tooling::CompilationDatabase *SelectDBForInputs(clang::tooling::CompilationDatabase &ParserDB,
-    llvm::ArrayRef<std::string> Inputs, std::unique_ptr<clang::tooling::CompilationDatabase> &OwnedFallback)
-{
-    if (HasCompileCommandForAnyInput(ParserDB, Inputs)) {
-        return &ParserDB;
-    }
-
-    llvm::outs() << "[ASTDumper] No compile command for inputs. Use fallback compile flags.\n";
-    OwnedFallback = MakeFallbackDB(Inputs);
-    return OwnedFallback.get();
-}
-
 clang::tooling::ArgumentsAdjuster MakeOhosLibcxxFixAdjuster()
 {
     using clang::tooling::CommandLineArguments;
 
     return clang::tooling::ArgumentsAdjuster(
-        [](const CommandLineArguments &Args, llvm::StringRef /*File*/) {
+        [](const CommandLineArguments &Args, llvm::StringRef File) {
             CommandLineArguments NewArgs = Args;
-
-            auto containsSubstr = [&](llvm::StringRef sub) {
-                for (const auto &a : NewArgs)
-                    if (llvm::StringRef(a).contains(sub)) return true;
-                return false;
-            };
-            auto hasExact = [&](llvm::StringRef exact) {
-                for (const auto &a : NewArgs)
-                    if (llvm::StringRef(a) == exact) return true;
-                return false;
-            };
 
             // Only touch OHOS TUs.
             bool isOhosTarget = false;
+            bool isExistCSystem = false;
+            bool isExistStdlib = false;
+            bool isExistNostdinc = false;
             for (const auto &a : NewArgs) {
+                llvm::outs()<<"arg: "<<a<<"\n";
                 llvm::StringRef R(a);
                 if (R.starts_with("--target=") && R.contains("ohos")) {
                     isOhosTarget = true;
-                    break;
-                }
-            }
-            if (!isOhosTarget) return NewArgs;
-
-            // Find --gcc-toolchain=...
-            std::string gccToolchain;
-            for (const auto &a : NewArgs) {
-                llvm::StringRef R(a);
-                if (R.starts_with("--gcc-toolchain=")) {
-                    gccToolchain = R.substr(std::strlen("--gcc-toolchain=")).str();
-                    break;
+                } else if (R.contains("-stdlib=")) {
+                    isOhosTarget = true;
+                } else if (R == "-nostdinc++") {
+                    isExistNostdinc = true;
+                } else if (R == "-std=c++17") {
+                    isExistCSystem = true;
                 }
             }
 
-            // Inject libc++ headers: <toolchain>/include/c++/v1 (some OHOS ccjson misses it).
-            if (!gccToolchain.empty() && !containsSubstr("include/c++/v1")) {
-                llvm::SmallString<SMALL_STRING_SIZE_512> P(gccToolchain);
-                llvm::sys::path::append(P, "include", "c++", "v1");
-                if (llvm::sys::fs::exists(P)) {
-                    NewArgs.push_back("-isystem");
-                    NewArgs.push_back(P.str().str());
+            // support c++17
+            if (!isExistCSystem) {
+                if (File.ends_with(".c")) {
+                   NewArgs.push_back("-std=c99");
+                } else if (File.ends_with(".cc") || File.ends_with(".cpp") || File.ends_with(".cxx") ||
+                           File.ends_with(".h")  || File.ends_with(".hpp")) {
+                   NewArgs.push_back("-std=c++17");
                 }
             }
 
             // Prefer libc++ only if user/ccjson didn't specify.
-            if (!containsSubstr("-stdlib=")) NewArgs.push_back("-stdlib=libc++");
-
-            // -nostdinc++ disables standard C++ headers; remove for OHOS parsing.
-            if (hasExact("-nostdinc++")) {
-                NewArgs.erase(std::remove(NewArgs.begin(), NewArgs.end(), std::string("-nostdinc++")),
-                              NewArgs.end());
+            if (!isOhosTarget) {
+                NewArgs.push_back("-stdlib=libc++");
             }
 
+            // -nostdinc++ disables standard C++ headers; remove for OHOS parsing.
+            if (isExistNostdinc) {
+                NewArgs.erase(std::remove(NewArgs.begin(), NewArgs.end(), std::string("-nostdinc++")), NewArgs.end());
+            }
             return NewArgs;
         }
     );
