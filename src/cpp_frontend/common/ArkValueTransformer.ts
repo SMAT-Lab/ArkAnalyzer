@@ -386,7 +386,11 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
     private cxxTemporaryObjectExprToValueAndStmts(node: CxxAstNode): ValueAndStmts {
         // if case: return Vector(x + other.x, y + other.y); ==> In the C++17 standard, a temporary object is no longer created in the return statement,
         // instead, the object is directly constructed at the return value location. Therefore, it is processed here as a ConstructExpr.
-        const parentNode = node.getParent?.(false);
+        const parentNode = node.getParent?.(false) as CxxAstNode;
+        // case: Vector{1,2,3} Implicit call to destructor
+        if (parentNode?.dtor?.kind === 'CXXDestructorDecl') {
+            return this.cxxConstructExprToValueAndStmts(node.inner[0]);
+        }
         if (!parentNode || parentNode.kind !== 'ReturnStmt') {
             return this.unprocessedNodeToValueAndStmts(node);
         }

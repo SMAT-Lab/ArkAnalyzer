@@ -117,28 +117,13 @@ function processUsingDeclInNamespace(usingDeclNode: CxxAstNode, namespace: ArkNa
     // CXXTodo: using NS::Member,  scenario 'NS is from other file' is not handled.
     const curArkFile = namespace.getDeclaringArkFile();
     let curNS: ArkNamespace | undefined | null;
-    for (const [index, value] of usingDeclNode.inner.entries()) {
-        if (index === usingDeclNode.inner.length - 1) {
-            let usingCls = curNS?.getClassWithName(value.name);
-            if (usingCls) {
-                namespace.addArkClass(usingCls);
-                return;
-            }
-            let usingFunc = curNS?.getDefaultClass().getMethodWithName(value.name);
-            if (usingFunc) {
-                namespace.getDefaultClass().addMethod(usingFunc);
-                return;
-            }
-        }
-        if (index === 0) {
-            curNS = curArkFile.getNamespaceWithName(value.name);
-            if (!curNS) {
-                return;
-            }
-            continue;
-        }
-        curNS = curNS?.getNamespaceWithName(value.name);
-        if (!curNS) {
+    if (usingDeclNode.name.includes('::')) {
+        const namespaceName = usingDeclNode.name.substring(0, usingDeclNode.name.indexOf('::'));
+        const memberName = usingDeclNode.name.substring(usingDeclNode.name.indexOf('::') + 2);
+        curNS = curArkFile.getNamespaceWithName(namespaceName);
+        let usingFunc = curNS?.getDefaultClass().getMethodWithName(memberName);
+        if (usingFunc) {
+            namespace.getDefaultClass().addMethod(usingFunc);
             return;
         }
     }
