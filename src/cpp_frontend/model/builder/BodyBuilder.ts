@@ -25,6 +25,7 @@ import { ArkAliasTypeDefineStmt, ArkAssignStmt, ArkInvokeStmt, ArkReturnStmt } f
 import { AliasType, ArrayType, ClosureType, FunctionType, LexicalEnvType, Type, UnclearReferenceType, UnionType } from '../../../core/base/Type';
 import { AbstractInvokeExpr, ArkPtrInvokeExpr } from '../../../core/base/Expr';
 import { CxxAstNode } from '../../ast/ArkCxxAstNode';
+import { ReferCategory, ReferenceType } from '../../base/Type';
 
 type NestedMethodChain = {
     parent: ArkMethod;
@@ -37,18 +38,6 @@ export class CxxBodyBuilder {
 
     constructor(methodSignature: MethodSignature, sourceAstNode: CxxAstNode, declaringMethod: ArkMethod, sourceFile: CxxAstNode) {
         this.cfgBuilder = new CfgBuilder(sourceAstNode, methodSignature.getMethodSubSignature().getMethodName(), declaringMethod, sourceFile);
-    }
-
-    public buildBody(): void {
-        const arkBody: ArkBody | null = this.build();
-        if (arkBody) {
-            const declMethod = this.cfgBuilder.getDeclaringMethod();
-            declMethod.setBody(arkBody);
-            arkBody.getCfg().setDeclaringMethod(declMethod);
-            if (declMethod.getOuterMethod() === undefined) {
-                this.handleGlobalAndClosure();
-            }
-        }
     }
 
     public build(): ArkBody | null {
@@ -78,40 +67,41 @@ export class CxxBodyBuilder {
     }
 
     /**
-     * Find out all locals in the parent method which are used by the childrenChain, these locals are the closures of the root node of the childrenChain.
-     * childrenChain contains all nested method from the root node of the childrenChain.
+     * Find out all locals in the parent method which are used by the nested method, these locals are the closures of the rnested method.
+     * nestedMethod is current nested method.
      * baseLocals are all locals defined in the outer function.
-     * allNestedLocals are collect all locals defined in all outer functions of this childrenChain.
-     * Only the globals of the root of the childrenChain, which are in the baseLocals but not in the allNestedLocals are the actual closures that in baseLocals.
+     * baseClosures are all closures of the outer function.
+     *
+     * When processing the CxxAstNode 'lambdaExpr', the closures of the nested function may be initially constructed.
+     * Here, the true closures of the nested function are filtered out based on the locals and closures of the outer function.
      */
-    private findClosuresUsedInNested(childrenChain: NestedMethodChain, baseLocals: Map<string, Local>, allNestedLocals: Map<string, Local>): Local[] | null {
+    private findClosuresUsedInNested(nestedMethod: ArkMethod, baseLocals: Map<string, Local>, baseClosures: Local[] | null): Local[] | null {
         let closuresRes: Local[] = [];
+        const baseClosuresMap = new Map<string, Local>();
+        baseClosures?.forEach((c) => {
+            baseClosuresMap.set(c.getName(), c);
+        });
 
-        const nestedMethod = childrenChain.parent;
-        let nestedGlobals = nestedMethod.getCxxBodyBuilder()?.getGlobals();
-        if (nestedGlobals !== undefined) {
-            for (let global of nestedGlobals.values()) {
-                const nestedLocal = allNestedLocals.get(global.getName());
-                const closure = baseLocals.get(global.getName());
-                if (nestedLocal === undefined && closure !== undefined) {
-                    closuresRes.push(closure);
-                }
-            }
-        }
-        const children = childrenChain.children;
-        if (children === null) {
+        const nestedLocals = nestedMethod.getBody()?.getLocals();
+        if (!nestedLocals) {
             return closuresRes;
         }
-        for (let chain of children) {
-            const nestedLocals = nestedMethod.getBody()?.getLocals();
-            if (nestedLocals !== undefined) {
-                nestedLocals.forEach((value, key) => {
-                    allNestedLocals.set(key, value);
-                });
-            }
-            const closures = this.findClosuresUsedInNested(chain, baseLocals, allNestedLocals);
-            if (closures) {
-                closuresRes.push(...closures);
+        const nestedTempClosure = Array.from(nestedLocals).find(
+            ([key, value]) => key === LEXICAL_ENV_NAME_PREFIX && value.getType() instanceof LexicalEnvType);
+        if (!nestedTempClosure) {
+            return closuresRes;
+        }
+        const [tempClosureKey, tempClosureLocal] = nestedTempClosure;
+        // Delete temporary closures
+        nestedLocals.delete(tempClosureKey);
+        const tempClosures = (tempClosureLocal.getType() as LexicalEnvType).getClosures();
+        // Since the temporary closures may contain global variables, it is necessary to filter the temporary closures
+        // based on the locals closures of the outer function.
+        for (let closure of tempClosures) {
+            const closureName = closure.getName();
+            const closureFromBase = baseLocals.get(closureName) ?? baseClosuresMap.get(closureName);
+            if (closureFromBase) {
+                closuresRes.push(closureFromBase);
             }
         }
         return closuresRes;
@@ -123,9 +113,9 @@ export class CxxBodyBuilder {
      * 3. Update the root node of the childrenChain to add parameterRef assign stmt and closureRef assign stmt.
      * 4. Recursively do this for all nested method level by level.
      */
-    private buildLexicalEnv(childrenChain: NestedMethodChain, baseLocals: Map<string, Local>, index: number): number {
-        let usedClosures = this.findClosuresUsedInNested(childrenChain, baseLocals, new Map<string, Local>());
+    private buildLexicalEnv(childrenChain: NestedMethodChain, baseLocals: Map<string, Local>, index: number, baseClosures: Local[] | null): number {
         const nestedMethod = childrenChain.parent;
+        let usedClosures = this.findClosuresUsedInNested(nestedMethod, baseLocals, baseClosures);
         const nestedSignature = nestedMethod.getImplementationSignature();
         if (nestedSignature !== null && usedClosures !== null && usedClosures.length > 0) {
             let lexicalEnv = new LexicalEnvType(nestedSignature, usedClosures);
@@ -145,7 +135,7 @@ export class CxxBodyBuilder {
             if (newBaseLocals === undefined) {
                 return index;
             }
-            index = this.buildLexicalEnv(nextChain, newBaseLocals, index);
+            index = this.buildLexicalEnv(nextChain, newBaseLocals, index, usedClosures);
         }
         return index;
     }
@@ -189,7 +179,7 @@ export class CxxBodyBuilder {
              * Find out all closures from Level 0 used by these Level 1 functions as well as all their children nested functions.
              * This will be done level by level recursively.
              */
-            closuresIndex = this.buildLexicalEnv(nestedChain, outerLocals, closuresIndex);
+            closuresIndex = this.buildLexicalEnv(nestedChain, outerLocals, closuresIndex, null);
 
             /**
              * Step3: Delete old globals which are recognized as closures, then the rest globals are the true globals.
@@ -578,14 +568,14 @@ export class CxxBodyBuilder {
         if (body === undefined) {
             return;
         }
-        let stmts = Array.from(body.getCfg().getBlocks())[0].getStmts();
+        let stmts = body.getCfg().getStartingBlock()!.getStmts();
         let index = 0;
         const parameterRef = new ArkParameterRef(index, lexicalEnv);
         const closuresLocal = new Local(closuresParam.getName(), lexicalEnv);
         body.addLocal(closuresLocal.getName(), closuresLocal);
         let assignStmt = new ArkAssignStmt(closuresLocal, parameterRef);
         assignStmt.setCfg(body.getCfg());
-        stmts.splice(index, 0, assignStmt);
+        body.getCfg().insertBefore(assignStmt, stmts[index]);
         closuresLocal.setDeclaringStmt(assignStmt);
 
         oldParamRefs?.forEach(paramRef => {
@@ -599,13 +589,18 @@ export class CxxBodyBuilder {
                 local = new Local(closure.getName(), closure.getType());
                 body.addLocal(local.getName(), local);
             } else {
-                local.setType(closure.getType());
+                // handle reference capture
+                let newType = closure.getType()
+                if (local.getType() instanceof ReferenceType) {
+                    newType = new ReferenceType(newType, ReferCategory.LVALUE_REF);
+                }
+                local.setType(newType);
             }
             index++;
-            const closureFieldRef = new ClosureFieldRef(closuresParam, closure.getName(), closure.getType());
+            const closureFieldRef = new ClosureFieldRef(closuresLocal, closure.getName(), closure.getType());
             let assignStmt = new ArkAssignStmt(local, closureFieldRef);
             assignStmt.setCfg(body.getCfg());
-            stmts.splice(index, 0, assignStmt);
+            body.getCfg().insertBefore(assignStmt, stmts[index]);
             local.setDeclaringStmt(assignStmt);
             closuresLocal.addUsedStmt(assignStmt);
         }

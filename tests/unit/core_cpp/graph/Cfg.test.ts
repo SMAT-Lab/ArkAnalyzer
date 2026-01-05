@@ -13,11 +13,25 @@
  * limitations under the License.
  */
 
-import { BasicBlock, FileUtils, Scene, SceneConfig, ArkNamespace } from '../../../../src';
+import {
+    BasicBlock,
+    FileUtils,
+    Scene,
+    SceneConfig,
+    ArkNamespace,
+    LEXICAL_ENV_NAME_PREFIX,
+    LexicalEnvType,
+} from '../../../../src';
 import { Language } from '../../../../src/core/model/ArkFile';
 import { assert, describe, expect, it, vi } from 'vitest';
 import path from 'path';
-import { assertClassBlocksEqual, testBlocks, testBlocksWithSignature, testBlocksClass } from '../../common';
+import {
+    assertClassBlocksEqual,
+    testBlocks,
+    testBlocksWithSignature,
+    testBlocksClass,
+    assertBlocksEqual,
+} from '../../common';
 import * as CONDITION_EXPECT from '../../../resources_cpp/cfg/conditionalOperator';
 import * as IF_EXPECT from '../../../resources_cpp/cfg/if/ifSampleExpects';
 import * as SWITCH_EXPECT from '../../../resources_cpp/cfg/switch/switchSampleExpects';
@@ -275,6 +289,15 @@ describe('Function Test', () => {
         testBlocks(scene, 'lambdaFuncSample.cpp', 'Case2', LAMBDA_EXPECT.LAMBDA_EXPECT_CASE2.blocks);
         testBlocks(scene, 'lambdaFuncSample.cpp', 'Case3', LAMBDA_EXPECT.LAMBDA_EXPECT_CASE3.blocks);
         testBlocks(scene, 'lambdaFuncSample.cpp', 'Case4', LAMBDA_EXPECT.LAMBDA_EXPECT_CASE4.blocks);
+        testBlocks(scene, 'lambdaFuncSample.cpp', 'Case5', LAMBDA_EXPECT.LAMBDA_EXPECT_CASE5.blocks);
+        testLambdaFunction(scene, 'lambdaFuncSample.cpp', '%AM0$Case1', LAMBDA_EXPECT.LAMBDA_EXPECT_AM0_Case1);
+        testLambdaFunction(scene, 'lambdaFuncSample.cpp', '%AM1$Case2', LAMBDA_EXPECT.LAMBDA_EXPECT_AM1_Case2);
+        testLambdaFunction(scene, 'lambdaFuncSample.cpp', '%AM2$Case2', LAMBDA_EXPECT.LAMBDA_EXPECT_AM2_Case2);
+        testLambdaFunction(scene, 'lambdaFuncSample.cpp', '%AM3$Case3', LAMBDA_EXPECT.LAMBDA_EXPECT_AM3_Case3);
+        testLambdaFunction(scene, 'lambdaFuncSample.cpp', '%AM4$Case4', LAMBDA_EXPECT.LAMBDA_EXPECT_AM4_Case4);
+        testLambdaFunction(scene, 'lambdaFuncSample.cpp', '%AM5$Case5', LAMBDA_EXPECT.LAMBDA_EXPECT_AM5_Case5);
+        testLambdaFunction(scene, 'lambdaFuncSample.cpp', '%AM6$Case5', LAMBDA_EXPECT.LAMBDA_EXPECT_AM6_Case5);
+        testLambdaFunction(scene, 'lambdaFuncSample.cpp', '%AM7$Case5', LAMBDA_EXPECT.LAMBDA_EXPECT_AM7_Case5);
     });
 
     it('case4: delete Expression Test', () => {
@@ -634,4 +657,36 @@ function testClassInNamespace(ns: ArkNamespace, nsExpectClassMap: Map<string, an
             }
         });
     });
+}
+
+function testLambdaFunction(scene: Scene, filePath: string, methodName: string, expectIR: any): void {
+    const arkFile = scene.getFiles().find((file) => file.getName().endsWith(filePath));
+    const arkMethod = arkFile?.getDefaultClass().getMethods()
+        .find((method) => (method.getName() === methodName));
+    // 1. test blocks
+    const blocks = arkMethod?.getCfg()?.getBlocks();
+    if (!blocks) {
+        assert.isDefined(blocks);
+        return;
+    }
+    const stmtsLength = arkMethod?.getCfg()?.getStmts().length;
+    const StmtToBlockLength = arkMethod?.getCfg()?.getStmtToBlock().size;
+    assert(stmtsLength === StmtToBlockLength);
+    assertBlocksEqual(blocks, expectIR.blocks);
+    // 2. test outer function
+    expect(arkMethod?.getOuterMethod()?.getSignature().toString()).toEqual(expectIR.outerFunctionSignature);
+    // 3. test closures
+    const locals = arkMethod?.getBody()?.getLocals();
+    if (!locals) {
+        assert.isDefined(locals);
+        return;
+    }
+    const closureLocalPair = Array.from(locals).find(
+        ([key, value]) => key.startsWith(LEXICAL_ENV_NAME_PREFIX) && value.getType() instanceof LexicalEnvType);
+    if (!closureLocalPair) {
+        return;
+    }
+    const [_, closureLocal] = closureLocalPair;
+    const closures = new Set((closureLocal.getType() as LexicalEnvType).getClosures().map(c => c.getName()));
+    expect(closures).toEqual(new Set(expectIR.closures));
 }

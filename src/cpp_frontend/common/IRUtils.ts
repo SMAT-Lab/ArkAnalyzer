@@ -133,4 +133,52 @@ export class IRUtils {
         }
         return defaultPositions;
     }
+
+    public static getLambdaCapture(lambdaCode: string): string {
+        if (!lambdaCode.startsWith('[')) {
+            return '';
+        }
+        let depth = 0;
+        for (let i = 0; i < lambdaCode.length; i++) {
+            const ch = lambdaCode[i];
+            if (ch ==='[') {
+                depth++;
+            } else if (ch === ']') {
+                depth--;
+                if (depth === 0) {
+                    return lambdaCode.substring(1, i);
+                }
+            }
+        }
+        return '';
+    }
+
+    public static analyzeLambdaDefaultCapture(captureList: string): {
+        hasDefaultValueCapture: boolean;
+        hasDefaultRefCapture: boolean;
+    } {
+        const parts = captureList.split(',').map(p => p.trim()).filter(Boolean);
+        let hasDefaultValueCapture = false;
+        let hasDefaultRefCapture = false;
+
+        for (const part of parts) {
+            if (part === '=') {
+                hasDefaultValueCapture = true;
+            } else if (part === '&') {
+                hasDefaultRefCapture = true;
+            }
+        }
+        return { hasDefaultValueCapture, hasDefaultRefCapture };
+    }
+
+    public static getLambdaExplicitCaptureVars(lambdaExpr: CxxAstNode): CxxAstNode[] {
+        const captureNodes: CxxAstNode[] = [];
+        for (const child of lambdaExpr.inner) {
+            if (child.kind === 'ParmVarDecl' ||  child.kind === 'CompoundStmt') {
+                return captureNodes;
+            }
+            captureNodes.push(child);
+        }
+        return captureNodes;
+    }
 }

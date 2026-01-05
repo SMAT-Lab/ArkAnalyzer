@@ -49,12 +49,14 @@ import {
     AnyType,
     ClassType,
     FunctionType,
+    LexicalEnvType,
     NumberType,
-    Type, UnclearReferenceType,
+    Type,
+    UnclearReferenceType,
     UndefinedType,
     UnknownType,
 } from '../../core/base/Type';
-import { CxxArrayType, PointerType, ReferenceType } from '../base/Type';
+import { CxxArrayType, PointerType, ReferCategory, ReferenceType } from '../base/Type';
 import { ArkSignatureBuilder } from '../../core/model/builder/ArkSignatureBuilder';
 import { ClassSignature, FieldSignature, MethodSignature } from '../../core/model/ArkSignature';
 import { Value } from '../../core/base/Value';
@@ -66,7 +68,7 @@ import {
 } from '../../core/common/EtsConst';
 import { CxxValueUtil } from './ValueUtil';
 import { IRUtils } from './IRUtils';
-import { AbstractFieldRef, ArkArrayRef, ArkInstanceFieldRef, ArkStaticFieldRef } from '../../core/base/Ref';
+import { AbstractFieldRef, ArkArrayRef, ArkInstanceFieldRef, ArkStaticFieldRef, GlobalRef } from '../../core/base/Ref';
 import { ArkCxxInstanceFieldRef } from '../base/Ref';
 import { ArkMethod } from '../../core/model/ArkMethod';
 import { buildArkMethodFromArkClass, buildDefaultConstructor } from '../model/builder/ArkMethodBuilder';
@@ -92,6 +94,7 @@ import { DummyStmt } from '../../core/common/ArkIRTransformer';
 import { BuiltinCxx } from './Builtin';
 import { ArkClass } from '../../core/model/ArkClass';
 import { ValueUtil } from '../../core/common/ValueUtil';
+import { LEXICAL_ENV_NAME_PREFIX } from '../../core/common/Const';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkValueTransformer');
 
@@ -1352,13 +1355,13 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
     }
 
     /**
-     *Process the 'cout<<...' expression in C++, extract its operands and construct corresponding statements and values.
+     *Process the 'cout<<...' or lambda expression in C++, extract its operands and construct corresponding statements and values.
      *
      *@ param callExpression - The currently processed C++AST node, which represents an operator calling expression (such as<<).
      *@ param callArgus - An array used to collect the parameter nodes involved in the expression.
      *@ returns the ValueAndStmts object containing values and statements. If it cannot be processed, it returns null.
      */
-    private CXXOperatorExpressionCoutToValueAndStmts(callExpression: CxxAstNode, callArgus: CxxAstNode[]): ValueAndStmts | null {
+    private streamOrLambdaExprToValueAndStmts(callExpression: CxxAstNode, callArgus: CxxAstNode[]): ValueAndStmts | null {
         const stmts: Stmt[] = [];
         // Because inner extracts the last parameters in turn, it traverses the last parameters in reverse order
         for (let i = callExpression.inner.length - 1; i >= 0; i--) {
@@ -1374,16 +1377,16 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             if (innerNode.kind === 'CXXOperatorCallExpr') {
                 // Recursive call processing CXXOperatorCallExpr
                 if (innerNode.type.qualType !== 'std::ostream') {
-                    return this.CXXOperatorExpressionCoutToValueAndStmts(innerNode, callArgus);
+                    return this.streamOrLambdaExprToValueAndStmts(innerNode, callArgus);
                 }
                 // When the type is std:: ostream, it indicates an overloaded stream operator and records the overloaded node of the stream operator
                 callArgus.push(innerNode);
                 // Recursive call to process CXXOperatorCallExpr nested in the inner of CXXOperatorCallExpr
                 if (innerNode.inner[1].kind === 'CXXOperatorCallExpr') {
-                    return this.CXXOperatorExpressionCoutToValueAndStmts(innerNode.inner[1], callArgus);
+                    return this.streamOrLambdaExprToValueAndStmts(innerNode.inner[1], callArgus);
                 }
                 // If there is no nested CXXOperatorCallExpr, the ValueAndStmts of overloaded stream operators will be built directly
-                return this.buildValueAndStmtsForStream(innerNode.inner[1], callArgus.reverse(), stmts, callExpression);
+                return this.buildValueAndStmtsForStreamOrLambdaCall(innerNode.inner[1], callArgus.reverse(), stmts, callExpression);
             }
             while (innerNode.kind === 'ImplicitCastExpr' && innerNode.valueCategory === 'lvalue' && innerNode.inner.length > 0) {
                 innerNode = innerNode.inner[0];
@@ -1396,14 +1399,14 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
                     innerNode.type.qualType.includes('lambda at'))
             ) {
                 // Get DeclRefExpr and its subsequent nodes
-                return this.buildValueAndStmtsForStream(innerNode, callArgus.reverse(), stmts, callExpression);
+                return this.buildValueAndStmtsForStreamOrLambdaCall(innerNode, callArgus.reverse(), stmts, callExpression);
             }
         }
         return null;
     }
 
     /**
-     *Build a collection of values and statements for stream operations
+     *Build a collection of values and statements for stream operations or lambda function call
      *
      *@ param streamNode The AST node of the stream node
      *@ param args parameter array of stream operation
@@ -1411,7 +1414,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
      *@ param streamExpr AST node of stream expression
      *@ returns The ValueAndStmts object containing values and statements
      */
-    private buildValueAndStmtsForStream(streamNode: CxxAstNode, args: CxxAstNode[], stmts: Stmt[], streamExpr: CxxAstNode): ValueAndStmts {
+    private buildValueAndStmtsForStreamOrLambdaCall(streamNode: CxxAstNode, args: CxxAstNode[], stmts: Stmt[], streamExpr: CxxAstNode): ValueAndStmts {
         let nonOverloadedArgs = [];
         const currValueAndStmts: ValueAndStmts = {
             value: new Local(streamExpr.code),
@@ -1423,19 +1426,16 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             if (arg.kind === 'CXXOperatorCallExpr') {
                 // Standard stream operator+overloaded stream operator
                 // 1. Object of standard stream operator, call std:: stream function
-                this.buildValueAndStmtsForStdStream(streamNode, nonOverloadedArgs, streamExpr, currValueAndStmts);
+                this.buildValueAndStmtsForStdStreamOrLambdaCall(streamNode, nonOverloadedArgs, streamExpr, currValueAndStmts);
                 // 2. Overload the object of the output operator and call the overloaded function
                 this.buildValueAndStmtsForOverloadedStream(streamNode, arg, currValueAndStmts);
                 nonOverloadedArgs = [];
             } else {
                 nonOverloadedArgs.push(arg);
-                if (i !== args.length - 1) {
-                    continue;
-                }
-                // At the end of the loop, process the remaining standard stream operators
-                this.buildValueAndStmtsForStdStream(streamNode, nonOverloadedArgs, streamExpr, currValueAndStmts);
             }
         }
+        // process the remaining standard stream operators
+        this.buildValueAndStmtsForStdStreamOrLambdaCall(streamNode, nonOverloadedArgs, streamExpr, currValueAndStmts);
         return currValueAndStmts;
     }
 
@@ -1462,17 +1462,14 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
     }
 
     /**
-     *Build a collection of values and statements for standard flow nodes
+     *Build a collection of values and statements for standard flow or lambda call nodes
      *@ param streamNode - AST node of the stream node
      *@ param nonOverlooadedArgs - non overloaded parameter array
      *@ param streamExpr - AST node of stream expression
      *@ param currValueAndStmts - current value and statement collection object, used to store processing results
      */
-    private buildValueAndStmtsForStdStream(streamNode: CxxAstNode, nonOverloadedArgs: [] | any,
+    private buildValueAndStmtsForStdStreamOrLambdaCall(streamNode: CxxAstNode, nonOverloadedArgs: [] | any,
                                            streamExpr: CxxAstNode, currValueAndStmts: ValueAndStmts): void {
-        if (nonOverloadedArgs.length === 0) {
-            return;
-        }
         const stmts: Stmt[] = [];
         const argus = this.cxxParseArgumentsOfCallExpression(stmts, nonOverloadedArgs);
         const normalCoutValueAndStmts = this.cxxGenerateInvokeValueAndStmts(streamNode, argus, stmts, streamExpr);
@@ -1578,7 +1575,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             callExpression.name === 'operator<<' ||
             callExpression.inner[0]?.name === 'operator<<' ||
             callExpression.inner[1]?.type.qualType.toString().includes('(lambda at')) {
-            return this.CXXOperatorExpressionCoutToValueAndStmts(callExpression, []);
+            return this.streamOrLambdaExprToValueAndStmts(callExpression, []);
         }
 
         // Relational binary operator or assignment operator
@@ -2037,19 +2034,137 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
 
     private cxxCallableNodeToValueAndStmts(callableNode: CxxAstNode): ValueAndStmts {
         const declaringClass = this.declaringMethod.getDeclaringArkClass();
-        const arrowArkMethod = new ArkMethod();
-        if (this.builderMethodContextFlag) {
-            ModelUtils.implicitArkUIBuilderMethods.add(arrowArkMethod);
-        }
-        buildArkMethodFromArkClass(callableNode, declaringClass, arrowArkMethod, this.cxxSourceFile, this.declaringMethod);
+        const lambdaArkMethod = new ArkMethod();
+        buildArkMethodFromArkClass(callableNode, declaringClass, lambdaArkMethod, this.cxxSourceFile, this.declaringMethod);
 
-        const callableType = new FunctionType(arrowArkMethod.getSignature());
-        const callableValue = this.addNewLocal(arrowArkMethod.getName(), callableType);
+        const closure = this.buildClosuresForLambda(callableNode, lambdaArkMethod);
+        if (closure) {
+            lambdaArkMethod.getBody()?.addLocal(closure.getName(), closure);
+        }
+
+        const callableType = new FunctionType(lambdaArkMethod.getSignature());
+        const callableValue = this.addNewLocal(lambdaArkMethod.getName(), callableType);
         return {
             value: callableValue,
             valueOriginalPositions: [FullPosition.cxxBuildFromNode(callableNode, this.cxxSourceFile)],
             stmts: [],
         };
+    }
+
+    private buildClosuresForLambda(lambdaExpr: CxxAstNode, lambdaArkMethod: ArkMethod): Local | null {
+        const lambdaCaptureList = IRUtils.getLambdaCapture(lambdaExpr.code);
+        const { hasDefaultValueCapture, hasDefaultRefCapture } = IRUtils.analyzeLambdaDefaultCapture(lambdaCaptureList);
+        const explicitVars = IRUtils.getLambdaExplicitCaptureVars(lambdaExpr);
+        if (explicitVars.length === 0 && !hasDefaultValueCapture && !hasDefaultRefCapture) {
+            return null;
+        } else if (hasDefaultValueCapture && hasDefaultRefCapture) {
+            logger.warn(`lambda function captures variables by value and by reference simultaneously, which leads to failed to obtain closures.
+             MethodSignature of lambda functon is ${lambdaArkMethod.getSignature().toString()}.`);
+            return null;
+        }
+
+        const localsInLambda = lambdaArkMethod.getBody()?.getLocals();
+        const globalsUsedInLambda = lambdaArkMethod.getCxxBodyBuilder()?.getGlobals();
+        const explicitClosures: string[] = [];
+        const closuresRes: Local[] = [];
+        let lexicalEnv: LexicalEnvType;
+
+        // Process the explicitly captured closures
+        this.processExplicitVariablesAndClosures(explicitVars, explicitClosures, localsInLambda, closuresRes);
+        // If there are no implicitly capture closures:
+        if (!globalsUsedInLambda || !(hasDefaultValueCapture || hasDefaultRefCapture)) {
+            lexicalEnv = new LexicalEnvType(lambdaArkMethod.getSignature(), closuresRes);
+            return new Local(LEXICAL_ENV_NAME_PREFIX, lexicalEnv);
+        }
+
+        // If there are implicitly capture closures:
+        this.processImplitcitCaptureClosures(globalsUsedInLambda, explicitClosures, localsInLambda, hasDefaultRefCapture, closuresRes);
+        lexicalEnv = new LexicalEnvType(lambdaArkMethod.getSignature(), closuresRes);
+        return new Local(LEXICAL_ENV_NAME_PREFIX, lexicalEnv);
+    }
+
+    private processExplicitVariablesAndClosures(
+        explicitVars: CxxAstNode[], explicitClosures: string[], localsInLambda: Map<string, Local> | undefined, closuresRes: Local[]
+    ) : void {
+        for (const explicitVar of explicitVars) {
+            let varName = '';
+            let isValueUsed = true;
+            if (explicitVar.kind === 'DeclRefExpr') {
+                // Reference capture
+                isValueUsed = false;
+                varName = explicitVar.referencedDecl?.name ?? explicitVar.code;
+            } else if (explicitVar.kind === 'ImplicitCastExpr' && explicitVar.inner?.[0]?.kind === 'DeclRefExpr') {
+                // Value capture
+                varName = explicitVar.inner[0].referencedDecl?.name ?? explicitVar.inner[0].code;
+            } else {
+                logger.warn(`Unprocessed capture Node: ${explicitVar.kind}`);
+                continue;
+            }
+            explicitClosures.push(varName);
+            let closure = this.getExplicitClosureByName(varName);
+            if (!closure) {
+                continue;
+            }
+            const varLocal = localsInLambda?.get(varName);
+            if (closure && varLocal) {
+                const closureType = closure.getType();
+                // Set the reference type for the case of capture by reference.
+                if (!isValueUsed && !(closureType instanceof ReferenceType)) {
+                    varLocal.setType(new ReferenceType(closureType, ReferCategory.LVALUE_REF));
+                }
+                closuresRes.push(varLocal);
+            }
+        }
+    }
+
+    private getExplicitClosureByName(varName: string): Local | undefined {
+        // 1.从上一层的局部变量找
+        let closure = this.locals.get(varName);
+        if (closure) {
+            return closure;
+        }
+        // 2.从上一层函数的闭包找
+        for (const [key, value] of this.locals) {
+            if (!key.startsWith(LEXICAL_ENV_NAME_PREFIX) || !(value.getType() instanceof LexicalEnvType))  {
+                continue;
+            }
+            (value.getType() as LexicalEnvType).getClosures().forEach(c => {
+                if (c.getName() === varName) {
+                    closure = c;
+                    return;
+                }
+            });
+            if (closure) {
+                break;
+            }
+        }
+        return closure;
+    }
+
+    private processImplitcitCaptureClosures(
+        globalsUsedInLambda: Map<string, GlobalRef>,
+        explicitClosures: string[],
+        localsInLambda: Map<string, Local> | undefined,
+        hasDefaultRefCapture: boolean,
+        closuresRes: Local[]
+    ): void {
+        // It is impossible to distinguish whether globals are real globals or closures. Currently, they are uniformly treated as closures,
+        // and the judgment will be made later in function 'handleGlobalAndClosure'.
+        for (const key of globalsUsedInLambda!.keys()) {
+            if (explicitClosures.includes(key) || this.globals?.get(key)) {
+                continue;
+            }
+            const global = localsInLambda?.get(key);
+            if (!global) {
+                continue;
+            }
+            const oriGlobalType = global.getType();
+            // Set the reference type for the case of capture by reference.
+            if (hasDefaultRefCapture && !(oriGlobalType instanceof ReferenceType)) {
+                global.setType(new ReferenceType(oriGlobalType, ReferCategory.LVALUE_REF));
+            }
+            closuresRes.push(global);
+        }
     }
 
     private cxxNewExpressionToValueAndStmts(newExpression: CxxAstNode): ValueAndStmts {

@@ -14,6 +14,14 @@
  */
 
 #include <cstdio>
+#include <functional>
+
+#define TWO 2
+#define FIVE 5
+#define TEN 10
+#define FLOAT_NUM 2.0
+
+int g_num = TWO;
 
 // No capture, with parameters
 void Case1()
@@ -27,8 +35,15 @@ void Case1()
 void Case2()
 {
     const int a = 5;
+    int b = 6;
+    // Specify different capture methods for each variable
     auto func = [a](int x) { return x + a; };
     int res = func(1);
+    printf("%d", res);
+
+    // Capture all environment variables by value
+    auto allByValue = [=](int x) { return x + a + b + g_num; };
+    res = allByValue(1);
     printf("%d", res);
 }
 
@@ -45,4 +60,33 @@ void Case4()
 {
     auto func = [](int x) { printf("%d", x); };
     func(1);
+}
+
+// Reference capture of lambda
+void Case5()
+{
+    int x = 2;
+    int y = 5;
+
+    // Specify different capture methods for each variable
+    auto byRef = [&x, y]() {
+        x++;
+        return x + y;
+    };
+    int res = byRef();
+
+    // Capture all environment variables by reference
+    auto allByRef = [&]() {
+        x++;
+        y++;
+        return x + y;
+    };
+    res = allByRef();
+
+    // Capture part of environment variables by reference
+    auto partByRef = [&, y]() {
+        x++;
+        return x + y;
+    };
+    res = partByRef();
 }
