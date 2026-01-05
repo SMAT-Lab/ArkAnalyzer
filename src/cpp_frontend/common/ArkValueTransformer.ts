@@ -391,7 +391,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         if (parentNode?.dtor?.kind === 'CXXDestructorDecl') {
             return this.cxxConstructExprToValueAndStmts(node.inner[0]);
         }
-        if (!parentNode || parentNode.kind !== 'ReturnStmt') {
+        if (!parentNode || parentNode.kind !== 'ExprWithCleanups' && parentNode.kind !== 'ReturnStmt') {
             return this.unprocessedNodeToValueAndStmts(node);
         }
         return this.cxxConstructExprToValueAndStmts(node);
