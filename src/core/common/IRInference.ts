@@ -498,11 +498,9 @@ export class IRInference {
     }
 
     public static inferInvokeExprWithDeclaredClass(expr: AbstractInvokeExpr, baseType: ClassType, methodName: string, scene: Scene): AbstractInvokeExpr | null {
-        if (methodName === Builtin.ITERATOR_NEXT &&
-            baseType.getClassSignature().getDeclaringFileSignature().getProjectName() === Builtin.DUMMY_PROJECT_NAME) {
-            expr.getMethodSignature().getMethodSubSignature().setReturnType(Builtin.ITERATOR_RESULT_CLASS_TYPE);
-            expr.setRealGenericTypes(baseType.getRealGenericTypes());
-            return expr;
+        const result = this.inferSpecialMethod(expr, baseType, methodName);
+        if (result) {
+            return result;
         }
         let declaredClass = scene.getClass(baseType.getClassSignature()) ?? scene.getSdkGlobal(baseType.getClassSignature().getClassName());
         if (!(declaredClass instanceof ArkClass)) {
@@ -532,6 +530,16 @@ export class IRInference {
             return expr;
         } else if (method instanceof ArkField || method instanceof Local) {
             return this.changePtrInvokeExpr(method, scene, expr) ?? expr;
+        }
+        return null;
+    }
+
+    private static inferSpecialMethod(expr: AbstractInvokeExpr, baseType: ClassType, methodName: string): AbstractInvokeExpr | null {
+        if (methodName === Builtin.ITERATOR_NEXT &&
+            baseType.getClassSignature().getDeclaringFileSignature().getProjectName() === Builtin.DUMMY_PROJECT_NAME) {
+            expr.getMethodSignature().getMethodSubSignature().setReturnType(Builtin.ITERATOR_RESULT_CLASS_TYPE);
+            expr.setRealGenericTypes(baseType.getRealGenericTypes());
+            return expr;
         }
         return null;
     }

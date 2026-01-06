@@ -526,7 +526,7 @@ describe("function Test", () => {
     it('test ns local', () => {
         const fileId = new FileSignature(scene.getProjectName(), 'inferSample.ts');
         const file = scene.getFile(fileId);
-        const stmt = file?.getClassWithName('ArrayCatTest')?.getMethodWithName('foo')?.getCfg()?.getStmts()[2];
+        const stmt = file?.getClassWithName('NameSpaceLocalTest')?.getMethodWithName('foo')?.getCfg()?.getStmts()[2];
         assert.equal(stmt?.toString(), '%0 = instanceinvoke %0.<@built-in/lib.es5.d.ts: Intl.%AC1.construct-signature(string|string[], @built-in/lib.es5.d.ts: Intl.NumberFormatOptions)>(\'123\')');
     })
 
