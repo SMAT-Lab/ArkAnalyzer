@@ -113,7 +113,7 @@ export const USING_EXPECT_CASE6 = {
             id: 0,
             stmts: [
                 'this = this: @using/usingcase.cpp: %dflt',
-                '%0 = new @%unk/%unk: std::initializer_list<int>',
+                '%0 = new @%unk/%unk: std::initializer_list<value_type>',
                 '%1 = newarray (int[3])',
                 '%1[0] = 1',
                 '%1[1] = 2',

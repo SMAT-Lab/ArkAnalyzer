@@ -145,8 +145,8 @@ export const NAMESPACE_SCHOOL_EXPECT = {
                                     id: 0,
                                     stmts: [
                                         'this = this: @namespace/namespace.cpp: School.%AN0.%dflt',
-                                        '%0 = new @%unk/%unk: std::basic_string<char>',
-                                        'instanceinvoke %0.<@%unk/%unk: std::basic_string.constructor()>(\'[Nested AnonymousSpace] \')',
+                                        '%0 = new @%unk/%unk: std::string',
+                                        'instanceinvoke %0.<@%unk/%unk: std::string.constructor()>(\'[Nested AnonymousSpace] \')',
                                         'kLogPrefix = %0',
                                         'g_local_counter = 0',
                                         'return',
@@ -236,8 +236,8 @@ export const NAMESPACE_AN0_EXPECT = {
                             id: 0,
                             stmts: [
                                 'this = this: @namespace/namespace.cpp: %AN0.%dflt',
-                                '%0 = new @%unk/%unk: std::basic_string<char>',
-                                'instanceinvoke %0.<@%unk/%unk: std::basic_string.constructor()>(\'[AnonymousSpace] \')',
+                                '%0 = new @%unk/%unk: std::string',
+                                'instanceinvoke %0.<@%unk/%unk: std::string.constructor()>(\'[AnonymousSpace] \')',
                                 'kLogPrefix = %0',
                                 'g_local_counter = 0',
                                 'return',

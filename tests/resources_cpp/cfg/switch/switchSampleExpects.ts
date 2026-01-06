@@ -698,8 +698,8 @@ export const SWITCH_EXPECT_PROCESS_CHOICE = {
         {
             id: 3,
             stmts: [
-                '%2 = new @%unk/%unk: std::basic_string<char>',
-                'instanceinvoke %2.<@%unk/%unk: std::basic_string.constructor()>(\'Hello\')',
+                '%2 = new @%unk/%unk: std::string',
+                'instanceinvoke %2.<@%unk/%unk: std::string.constructor()>(\'Hello\')',
                 'message = %2',
                 '%3 = staticinvoke <@%unk/%unk: .operator<<()>(cout, message)',
                 'staticinvoke <@%unk/%unk: .operator<<()>(%3, \' from case three\\n\')',
