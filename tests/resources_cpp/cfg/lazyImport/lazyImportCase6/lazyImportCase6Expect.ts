@@ -18,11 +18,11 @@ export const CallFunction_EXPECT = {
         {
             id: 0,
             stmts: [
-                'env = parameter0: napi_env',
-                'info = parameter1: napi_callback_info',
+                'env = parameter0: struct napi_env__*',
+                'info = parameter1: struct napi_callback_info__*',
                 'this = this: @lazyImportCase6/lazyImportCase6.cpp: %dflt',
                 'argc = 1',
-                '%0 = newarray (napi_value[])[1]',
+                '%0 = newarray (napi_value[0])',
                 '%0[0] = null',
                 'args = %0',
                 '%1 = &argc',
@@ -30,7 +30,7 @@ export const CallFunction_EXPECT = {
                 'onCall = undefined',
                 '%2 = args[0]',
                 '%3 = &onCall',
-                "staticinvoke <@%unk/%unk: .napi_get_named_property()>(env, %2, 'onCall', %3)",
+                'staticinvoke <@%unk/%unk: .napi_get_named_property()>(env, %2, \'onCall\', %3)',
                 'res = undefined',
                 '%4 = args[0]',
                 '%5 = &res',

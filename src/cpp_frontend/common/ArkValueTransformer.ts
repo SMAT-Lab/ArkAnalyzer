@@ -202,7 +202,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         'UnaryExpr': this.unaryExprToValueAndStmts,
         'UnaryOperator': this.unaryOperatorToValueAndStmts,
         'UnexposedExpr': this.processInnerNodeToValueAndStmts,
-        'UnresolvedLookupExpr': this.castExpressionToValueAndStmts,
+        'UnresolvedLookupExpr': this.declAndTypeRefToValueAndStmts,
         'UserDefinedLiteral': this.userDefinedLiteralToValueAndStmts,
         'VarDecl': this.cxxVariableDeclarationToValueAndStmts,
     };
@@ -3071,8 +3071,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         const S = (v: string | undefined | null): string => v ?? '';
         switch (literalNode.kind) {
             case 'IntegerLiteral': {
-                const num = Number.parseFloat(S(literalNode.value) || S(literalNode.code));
-                const constant = CxxValueUtil.getOrCreateNumberConst(Number.isFinite(num) ? num : 0);
+                const num = (S(literalNode.value) || S(literalNode.code));
+                const constant = CxxValueUtil.getOrCreateNumberConst(num ? num : 0);
                 return { value: constant, valueOriginalPositions: pos, stmts };
             }
             case 'FloatingLiteral': {
