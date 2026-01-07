@@ -1247,7 +1247,7 @@ export class CfgBuilder {
     } {
         const stmts: Stmt[] = [];
         const arkIRTransformer = new ArkCxxIRTransformer(this.sourceFile as CxxTranslationUnit, this.declaringMethod);
-        arkIRTransformer.prebuildStmts().forEach(stmt => stmts.push(stmt));
+        stmts.push(...arkIRTransformer.prebuildStmts());
         const expressionBodyNode = this.astRoot;
         const expressionBodyStmts: Stmt[] = [];
         let {
@@ -1255,20 +1255,20 @@ export class CfgBuilder {
             valueOriginalPositions: expressionBodyPositions,
             stmts: tempStmts,
         } = arkIRTransformer.cxxNodeToValueAndStmts(expressionBodyNode);
-        tempStmts.forEach(stmt => expressionBodyStmts.push(stmt));
+        expressionBodyStmts.push(...tempStmts);
         if (IRUtils.moreThanOneAddress(expressionBodyValue)) {
             ({
                 value: expressionBodyValue,
                 valueOriginalPositions: expressionBodyPositions,
                 stmts: tempStmts,
             } = arkIRTransformer.generateAssignStmtForValue(expressionBodyValue, expressionBodyPositions));
-            tempStmts.forEach(stmt => expressionBodyStmts.push(stmt));
+            expressionBodyStmts.push(...tempStmts);
         }
         const returnStmt = new ArkReturnStmt(expressionBodyValue);
         returnStmt.setOperandOriginalPositions([expressionBodyPositions[0], ...expressionBodyPositions]);
         expressionBodyStmts.push(returnStmt);
         arkIRTransformer.cxxMapStmtsToTsStmt(expressionBodyStmts, expressionBodyNode);
-        expressionBodyStmts.forEach(stmt => stmts.push(stmt));
+        stmts.push(...expressionBodyStmts);
         const cfg = new Cfg();
         const blockInCfg = new BasicBlock();
         blockInCfg.setId(0);
@@ -1416,7 +1416,7 @@ export class CfgBuilder {
                     continue;
                 }
                 if (statementBuilder.astNode && statementBuilder.code !== '') {
-                    arkIRTransformer.cxxNodeToStmts(statementBuilder.astNode).forEach(s => stmtsInBlock.push(s));
+                    stmtsInBlock.push(...arkIRTransformer.cxxNodeToStmts(statementBuilder.astNode));
                 } else if (statementBuilder.code.startsWith('return')) {
                     stmtsInBlock.push(this.generateReturnStmt(arkIRTransformer));
                 }
