@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -521,6 +521,13 @@ describe("function Test", () => {
         const printer = new ArkIRClassPrinter(cls!);
         const s1 = printer.dump();
         assert.equal(s1, BaseChangeInferIR);
+    })
+
+    it('test ns local', () => {
+        const fileId = new FileSignature(scene.getProjectName(), 'inferSample.ts');
+        const file = scene.getFile(fileId);
+        const stmt = file?.getClassWithName('NameSpaceLocalTest')?.getMethodWithName('foo')?.getCfg()?.getStmts()[2];
+        assert.equal(stmt?.toString(), '%0 = instanceinvoke %0.<@built-in/lib.es5.d.ts: Intl.%AC1.construct-signature(string|string[], @built-in/lib.es5.d.ts: Intl.NumberFormatOptions)>(\'123\')');
     })
 
     it('pta union type CallBack 2 function case', () => {
