@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -1185,15 +1185,14 @@ export class ArkValueTransformer {
             return this.generateArrayExprFromLiteral(elementValues, elementTypes, elementPositions, wholePosition, 0,
                 arrayLength, stmts);
         } else if (firstSpreadIdx === 0) {
+            const scene = this.declaringMethod.getDeclaringArkFile().getScene();
             if (arrayLength === 1) { // only spread element
-                const sliceMethodSubSignature = ArkSignatureBuilder.buildMethodSubSignatureFromMethodName(Builtin.SLICE);
-                const sliceMethodSignature = new MethodSignature(Builtin.ARRAY_CLASS_SIGNATURE, sliceMethodSubSignature);
+                const sliceMethodSignature = Builtin.buildArrayMethodSignature(Builtin.SLICE, scene);
                 const sliceInvokeExpr = new ArkInstanceInvokeExpr(elementValues[0] as Local, sliceMethodSignature, []);
                 const sliceInvokeExprPositions = [wholePosition, elementPositions[0]];
                 return { value: sliceInvokeExpr, valueOriginalPositions: sliceInvokeExprPositions, stmts: stmts };
             } else { // spread element start
-                const concatMethodSubSignature = ArkSignatureBuilder.buildMethodSubSignatureFromMethodName(Builtin.CONCAT);
-                const concatMethodSignature = new MethodSignature(Builtin.ARRAY_CLASS_SIGNATURE, concatMethodSubSignature);
+                const concatMethodSignature = Builtin.buildArrayMethodSignature(Builtin.CONCAT, scene);
                 const concatInvokeExpr = new ArkInstanceInvokeExpr(elementValues[0] as Local, concatMethodSignature, elementValues.slice(1));
                 const concatInvokeExprPositions = [wholePosition, ...elementPositions];
                 return { value: concatInvokeExpr, valueOriginalPositions: concatInvokeExprPositions, stmts: stmts };
@@ -1201,9 +1200,8 @@ export class ArkValueTransformer {
         } else { // contains spread elements and begins with literal elements.
             const beginLiteralValueAndStmts = this.generateArrayExprFromLiteral(elementValues, elementTypes,
                 elementPositions, wholePosition, 0, firstSpreadIdx, stmts);
-
-            const concatMethodSubSignature = ArkSignatureBuilder.buildMethodSubSignatureFromMethodName(Builtin.CONCAT);
-            const concatMethodSignature = new MethodSignature(Builtin.ARRAY_CLASS_SIGNATURE, concatMethodSubSignature);
+            const scene = this.declaringMethod.getDeclaringArkFile().getScene();
+            const concatMethodSignature = Builtin.buildArrayMethodSignature(Builtin.CONCAT, scene);
             const concatInvokeExpr = new ArkInstanceInvokeExpr(beginLiteralValueAndStmts.value as Local,
                 concatMethodSignature, elementValues.slice(firstSpreadIdx));
 

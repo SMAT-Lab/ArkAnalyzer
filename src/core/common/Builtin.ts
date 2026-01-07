@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,7 +14,9 @@
  */
 
 import { ClassSignature, FileSignature, MethodSignature, MethodSubSignature } from '../model/ArkSignature';
-import { ClassType, GenericType, StringType } from '../base/Type';
+import { ClassType, GenericType, StringType, UnknownType } from '../base/Type';
+import { Scene } from '../../Scene';
+import { ArkClass } from '../model/ArkClass';
 
 export class Builtin {
     // built-in classes
@@ -97,5 +99,21 @@ export class Builtin {
 
     public static isBuiltinClass(className: string): boolean {
         return this.BUILT_IN_CLASSES.has(className);
+    }
+
+    public static buildArrayMethodSignature(methodName: string, scene: Scene): MethodSignature {
+        let methodSignature = this.getBuiltInMethodSignature(Builtin.ARRAY, methodName, scene);
+        if (!methodSignature) {
+            methodSignature = new MethodSignature(Builtin.ARRAY_CLASS_SIGNATURE, new MethodSubSignature(methodName, [], UnknownType.getInstance(), false));
+        }
+        return methodSignature;
+    }
+
+    public static getBuiltInMethodSignature(className: string, methodName: string, scene: Scene): MethodSignature | undefined {
+        const globalClass = scene.getSdkGlobal(className);
+        if (globalClass instanceof ArkClass) {
+            return globalClass.getMethodWithName(methodName)?.getSignature();
+        }
+        return undefined;
     }
 }

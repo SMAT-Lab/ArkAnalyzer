@@ -213,3 +213,17 @@ class NameSpaceLocalTest {
         let a = new Intl.NumberFormat('123');
     }
 }
+
+class ArrayCatTest {
+    foo(): void {
+        const arr1 = [1, 2, 3];
+        const arr2 = [4, 5];
+        const arr3 = [...arr1, ...arr2];
+    }
+
+    goo(): void {
+        const arr11 = callSomeMethod1();
+        const arr22 = callSomeMethod2();
+        const arr33 = [...arr11, ...arr22];
+    }
+}
