@@ -114,5 +114,6 @@ export class Builtin {
         if (globalClass instanceof ArkClass) {
             return globalClass.getMethodWithName(methodName)?.getSignature();
         }
+        return undefined;
     }
 }
