@@ -1,0 +1,537 @@
+{
+  "signature": {
+    "projectName": "exports",
+    "fileName": "exportType.ts"
+  },
+  "namespaces": [],
+  "classes": [
+    {
+      "signature": {
+        "name": "%dflt",
+        "declaringFile": {
+          "projectName": "exports",
+          "fileName": "exportType.ts"
+        }
+      },
+      "modifiers": 0,
+      "decorators": [],
+      "category": 0,
+      "superClassName": "",
+      "implementedInterfaceNames": [],
+      "fields": [],
+      "methods": [
+        {
+          "signature": {
+            "declaringClass": {
+              "name": "%dflt",
+              "declaringFile": {
+                "projectName": "exports",
+                "fileName": "exportType.ts"
+              }
+            },
+            "name": "%dflt",
+            "parameters": [],
+            "returnType": {
+              "_": "VoidType"
+            }
+          },
+          "modifiers": 0,
+          "decorators": [],
+          "body": {
+            "locals": [
+              {
+                "name": "this",
+                "type": {
+                  "_": "ClassType",
+                  "signature": {
+                    "name": "%dflt",
+                    "declaringFile": {
+                      "projectName": "exports",
+                      "fileName": "exportType.ts"
+                    }
+                  }
+                }
+              }
+            ],
+            "cfg": {
+              "blocks": [
+                {
+                  "id": 0,
+                  "successors": [],
+                  "predecessors": [],
+                  "stmts": [
+                    {
+                      "_": "AssignStmt",
+                      "left": {
+                        "_": "Local",
+                        "name": "this",
+                        "type": {
+                          "_": "ClassType",
+                          "signature": {
+                            "name": "%dflt",
+                            "declaringFile": {
+                              "projectName": "exports",
+                              "fileName": "exportType.ts"
+                            }
+                          }
+                        }
+                      },
+                      "right": {
+                        "_": "ThisRef",
+                        "type": {
+                          "_": "ClassType",
+                          "signature": {
+                            "name": "%dflt",
+                            "declaringFile": {
+                              "projectName": "exports",
+                              "fileName": "exportType.ts"
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "kind": "ArkAliasTypeDefineStmt",
+                      "text": "type @exports/exportType.ts: %dflt.[static]%dflt()#Cat = @exports/exportType.ts: %AC0"
+                    },
+                    {
+                      "kind": "ArkAliasTypeDefineStmt",
+                      "text": "export type @exports/exportType.ts: %dflt.[static]%dflt()#A = '1'"
+                    },
+                    {
+                      "_": "ReturnVoidStmt"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "signature": {
+        "name": "Dog",
+        "declaringFile": {
+          "projectName": "exports",
+          "fileName": "exportType.ts"
+        }
+      },
+      "modifiers": 0,
+      "decorators": [],
+      "category": 0,
+      "superClassName": "",
+      "implementedInterfaceNames": [],
+      "fields": [
+        {
+          "signature": {
+            "declaringClass": {
+              "name": "Dog",
+              "declaringFile": {
+                "projectName": "exports",
+                "fileName": "exportType.ts"
+              }
+            },
+            "name": "name",
+            "type": {
+              "_": "UnionType",
+              "types": [
+                {
+                  "_": "StringType"
+                },
+                {
+                  "_": "UndefinedType"
+                }
+              ]
+            }
+          },
+          "modifiers": 0,
+          "decorators": [],
+          "questionToken": false,
+          "exclamationToken": false
+        }
+      ],
+      "methods": [
+        {
+          "signature": {
+            "declaringClass": {
+              "name": "Dog",
+              "declaringFile": {
+                "projectName": "exports",
+                "fileName": "exportType.ts"
+              }
+            },
+            "name": "%instInit",
+            "parameters": [],
+            "returnType": {
+              "_": "VoidType"
+            }
+          },
+          "modifiers": 0,
+          "decorators": [],
+          "body": {
+            "locals": [
+              {
+                "name": "this",
+                "type": {
+                  "_": "ClassType",
+                  "signature": {
+                    "name": "Dog",
+                    "declaringFile": {
+                      "projectName": "exports",
+                      "fileName": "exportType.ts"
+                    }
+                  }
+                }
+              }
+            ],
+            "cfg": {
+              "blocks": [
+                {
+                  "id": 0,
+                  "successors": [],
+                  "predecessors": [],
+                  "stmts": [
+                    {
+                      "_": "AssignStmt",
+                      "left": {
+                        "_": "Local",
+                        "name": "this",
+                        "type": {
+                          "_": "ClassType",
+                          "signature": {
+                            "name": "Dog",
+                            "declaringFile": {
+                              "projectName": "exports",
+                              "fileName": "exportType.ts"
+                            }
+                          }
+                        }
+                      },
+                      "right": {
+                        "_": "ThisRef",
+                        "type": {
+                          "_": "ClassType",
+                          "signature": {
+                            "name": "Dog",
+                            "declaringFile": {
+                              "projectName": "exports",
+                              "fileName": "exportType.ts"
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "_": "ReturnVoidStmt"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "signature": {
+            "declaringClass": {
+              "name": "Dog",
+              "declaringFile": {
+                "projectName": "exports",
+                "fileName": "exportType.ts"
+              }
+            },
+            "name": "constructor",
+            "parameters": [],
+            "returnType": {
+              "_": "ClassType",
+              "signature": {
+                "name": "Dog",
+                "declaringFile": {
+                  "projectName": "exports",
+                  "fileName": "exportType.ts"
+                }
+              }
+            }
+          },
+          "modifiers": 0,
+          "decorators": [],
+          "body": {
+            "locals": [
+              {
+                "name": "this",
+                "type": {
+                  "_": "ClassType",
+                  "signature": {
+                    "name": "Dog",
+                    "declaringFile": {
+                      "projectName": "exports",
+                      "fileName": "exportType.ts"
+                    }
+                  }
+                }
+              }
+            ],
+            "cfg": {
+              "blocks": [
+                {
+                  "id": 0,
+                  "successors": [],
+                  "predecessors": [],
+                  "stmts": [
+                    {
+                      "_": "AssignStmt",
+                      "left": {
+                        "_": "Local",
+                        "name": "this",
+                        "type": {
+                          "_": "ClassType",
+                          "signature": {
+                            "name": "Dog",
+                            "declaringFile": {
+                              "projectName": "exports",
+                              "fileName": "exportType.ts"
+                            }
+                          }
+                        }
+                      },
+                      "right": {
+                        "_": "ThisRef",
+                        "type": {
+                          "_": "ClassType",
+                          "signature": {
+                            "name": "Dog",
+                            "declaringFile": {
+                              "projectName": "exports",
+                              "fileName": "exportType.ts"
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "_": "CallStmt",
+                      "expr": {
+                        "_": "InstanceCallExpr",
+                        "instance": {
+                          "_": "Local",
+                          "name": "this",
+                          "type": {
+                            "_": "ClassType",
+                            "signature": {
+                              "name": "Dog",
+                              "declaringFile": {
+                                "projectName": "exports",
+                                "fileName": "exportType.ts"
+                              }
+                            }
+                          }
+                        },
+                        "method": {
+                          "declaringClass": {
+                            "name": "Dog",
+                            "declaringFile": {
+                              "projectName": "exports",
+                              "fileName": "exportType.ts"
+                            }
+                          },
+                          "name": "%instInit",
+                          "parameters": [],
+                          "returnType": {
+                            "_": "VoidType"
+                          }
+                        },
+                        "args": []
+                      }
+                    },
+                    {
+                      "_": "ReturnStmt",
+                      "arg": {
+                        "_": "Local",
+                        "name": "this",
+                        "type": {
+                          "_": "ClassType",
+                          "signature": {
+                            "name": "Dog",
+                            "declaringFile": {
+                              "projectName": "exports",
+                              "fileName": "exportType.ts"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "signature": {
+            "declaringClass": {
+              "name": "Dog",
+              "declaringFile": {
+                "projectName": "exports",
+                "fileName": "exportType.ts"
+              }
+            },
+            "name": "%statInit",
+            "parameters": [],
+            "returnType": {
+              "_": "VoidType"
+            }
+          },
+          "modifiers": 16,
+          "decorators": [],
+          "body": {
+            "locals": [
+              {
+                "name": "this",
+                "type": {
+                  "_": "ClassType",
+                  "signature": {
+                    "name": "Dog",
+                    "declaringFile": {
+                      "projectName": "exports",
+                      "fileName": "exportType.ts"
+                    }
+                  }
+                }
+              }
+            ],
+            "cfg": {
+              "blocks": [
+                {
+                  "id": 0,
+                  "successors": [],
+                  "predecessors": [],
+                  "stmts": [
+                    {
+                      "_": "AssignStmt",
+                      "left": {
+                        "_": "Local",
+                        "name": "this",
+                        "type": {
+                          "_": "ClassType",
+                          "signature": {
+                            "name": "Dog",
+                            "declaringFile": {
+                              "projectName": "exports",
+                              "fileName": "exportType.ts"
+                            }
+                          }
+                        }
+                      },
+                      "right": {
+                        "_": "ThisRef",
+                        "type": {
+                          "_": "ClassType",
+                          "signature": {
+                            "name": "Dog",
+                            "declaringFile": {
+                              "projectName": "exports",
+                              "fileName": "exportType.ts"
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "_": "ReturnVoidStmt"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "signature": {
+        "name": "%AC0",
+        "declaringFile": {
+          "projectName": "exports",
+          "fileName": "exportType.ts"
+        }
+      },
+      "modifiers": 0,
+      "decorators": [],
+      "category": 4,
+      "superClassName": "",
+      "implementedInterfaceNames": [],
+      "fields": [
+        {
+          "signature": {
+            "declaringClass": {
+              "name": "%AC0",
+              "declaringFile": {
+                "projectName": "exports",
+                "fileName": "exportType.ts"
+              }
+            },
+            "name": "name",
+            "type": {
+              "_": "StringType"
+            }
+          },
+          "modifiers": 0,
+          "decorators": [],
+          "questionToken": false,
+          "exclamationToken": false
+        }
+      ],
+      "methods": []
+    }
+  ],
+  "importInfos": [],
+  "exportInfos": [
+    {
+      "exportName": "Cat",
+      "exportType": 4,
+      "modifiers": 32768
+    },
+    {
+      "exportName": "Dog",
+      "exportType": 1,
+      "modifiers": 32768
+    },
+    {
+      "exportName": "Cat1",
+      "exportType": 4,
+      "nameBeforeAs": "Cat",
+      "modifiers": 32768
+    },
+    {
+      "exportName": "Dog1",
+      "exportType": 1,
+      "nameBeforeAs": "Dog",
+      "modifiers": 0
+    },
+    {
+      "exportName": "A",
+      "exportType": 4,
+      "modifiers": 32776
+    },
+    {
+      "exportName": "default",
+      "exportType": 4,
+      "nameBeforeAs": "A",
+      "modifiers": 512
+    },
+    {
+      "exportName": "Cat2",
+      "exportType": 4,
+      "exportFrom": "./exportType",
+      "nameBeforeAs": "Cat",
+      "modifiers": 32768
+    },
+    {
+      "exportName": "Dog2",
+      "exportType": 1,
+      "exportFrom": "./exportType",
+      "nameBeforeAs": "Dog",
+      "modifiers": 0
+    }
+  ]
+}

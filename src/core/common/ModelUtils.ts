@@ -762,13 +762,7 @@ export function findExportInfo(fromInfo: FromInfo, visited: Set<ArkFile> = new S
         file.addExportInfo(exportInfo, ALL);
         return exportInfo;
     }
-    //check cycle
-    if (visited.has(file)) {
-        logger.warn(`It existed a cycle in: ${fromInfo.getDeclaringArkFile()?.getFileSignature()?.toString()}`);
-        return null;
-    } else {
-        visited.add(file);
-    }
+
     let exportInfo = findExportInfoInfile(fromInfo, file, visited) || null;
     if (exportInfo === null) {
         return null;
@@ -875,15 +869,20 @@ function getArkFileFormMap(projectName: string, filePath: string, scene: Scene):
 
 export function findExportInfoInfile(fromInfo: FromInfo, file: ArkFile,
                                      visited: Set<ArkFile> = new Set([fromInfo.getDeclaringArkFile()])): ExportInfo | undefined {
-    // expand export *
-    file.getExportInfos().filter(f => f.getExportClauseName().startsWith(TEMP_EXPORT_ALL_PREFIX))
-        .forEach(e => {
-            findExportInfo(e, visited);
-            file.removeExportInfo(e);
-        });
+    //check cycle
+    if (!visited.has(file)) {
+        visited.add(file);
+        // expand export *
+        file.getExportInfos().filter(f => f.getExportClauseName().startsWith(TEMP_EXPORT_ALL_PREFIX))
+            .forEach(e => {
+                findExportInfo(e, visited);
+                file.removeExportInfo(e);
+            });
+    }
     if (fromInfo.getOriginName().startsWith(TEMP_EXPORT_ALL_PREFIX) && fromInfo instanceof ExportInfo) {
         const declaringArkFile = fromInfo.getDeclaringArkFile();
-        file.getExportInfos().filter(f => !f.isDefault()).forEach(exportInfo => declaringArkFile.addExportInfo(exportInfo));
+        file.getExportInfos().filter(f => !f.isDefault() && !f.getExportClauseName().startsWith(TEMP_EXPORT_ALL_PREFIX))
+            .forEach(exportInfo => declaringArkFile.addExportInfo(exportInfo));
         declaringArkFile.removeExportInfo(fromInfo);
         return undefined;
     }

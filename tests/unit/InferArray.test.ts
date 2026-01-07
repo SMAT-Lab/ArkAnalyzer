@@ -17,7 +17,8 @@ import { assert, describe, it } from 'vitest';
 import path from 'path';
 import {
     AliasType,
-    ArkAssignStmt, ArkClass,
+    ArkAssignStmt,
+    ArkClass,
     ArkInstanceFieldRef,
     ArkInvokeStmt,
     ArkNamespace,
@@ -35,6 +36,7 @@ import {
 } from '../../src';
 import Logger, { LOG_LEVEL, LOG_MODULE_TYPE } from '../../src/utils/logger';
 import { ArkIRClassPrinter } from '../../src/save/arkir/ArkIRClassPrinter';
+import { ModifierType } from '../../src/core/model/ArkBaseModel';
 
 const logPath = 'out/ArkAnalyzer.log';
 const logger = Logger.getLogger(LOG_MODULE_TYPE.TOOL, 'InferArrayTest');
@@ -536,6 +538,14 @@ describe("function Test", () => {
         const method = file?.getClassWithName('TestCallback')?.getMethodWithName('foo');
         const stmt = method?.getCfg()?.getStmts()[1];
         assert.equal(stmt?.toString(), 'ptrinvoke <@etsSdk/api/@ohos.base.d.ts: Callback.this.myCallback(T)>(\'abc\')');
+    })
+
+    it('import type', () => {
+        const fileId = new FileSignature('etsSdk', 'api/@ohos.multimedia.media.d.ts');
+        const file = scene.getFile(fileId);
+        const image = file?.getImportInfoBy('image');
+        assert.isDefined(image);
+        assert.isTrue(image?.containsModifier(ModifierType.TYPE));
     })
 })
 

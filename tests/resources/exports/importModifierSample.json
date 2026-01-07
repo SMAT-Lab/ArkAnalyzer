@@ -1,0 +1,157 @@
+{
+  "signature": {
+    "projectName": "exports",
+    "fileName": "importModifier.ts"
+  },
+  "namespaces": [],
+  "classes": [
+    {
+      "signature": {
+        "name": "%dflt",
+        "declaringFile": {
+          "projectName": "exports",
+          "fileName": "importModifier.ts"
+        }
+      },
+      "modifiers": 0,
+      "decorators": [],
+      "category": 0,
+      "superClassName": "",
+      "implementedInterfaceNames": [],
+      "fields": [],
+      "methods": [
+        {
+          "signature": {
+            "declaringClass": {
+              "name": "%dflt",
+              "declaringFile": {
+                "projectName": "exports",
+                "fileName": "importModifier.ts"
+              }
+            },
+            "name": "%dflt",
+            "parameters": [],
+            "returnType": {
+              "_": "VoidType"
+            }
+          },
+          "modifiers": 0,
+          "decorators": [],
+          "body": {
+            "locals": [
+              {
+                "name": "this",
+                "type": {
+                  "_": "ClassType",
+                  "signature": {
+                    "name": "%dflt",
+                    "declaringFile": {
+                      "projectName": "exports",
+                      "fileName": "importModifier.ts"
+                    }
+                  }
+                }
+              }
+            ],
+            "cfg": {
+              "blocks": [
+                {
+                  "id": 0,
+                  "successors": [],
+                  "predecessors": [],
+                  "stmts": [
+                    {
+                      "_": "AssignStmt",
+                      "left": {
+                        "_": "Local",
+                        "name": "this",
+                        "type": {
+                          "_": "ClassType",
+                          "signature": {
+                            "name": "%dflt",
+                            "declaringFile": {
+                              "projectName": "exports",
+                              "fileName": "importModifier.ts"
+                            }
+                          }
+                        }
+                      },
+                      "right": {
+                        "_": "ThisRef",
+                        "type": {
+                          "_": "ClassType",
+                          "signature": {
+                            "name": "%dflt",
+                            "declaringFile": {
+                              "projectName": "exports",
+                              "fileName": "importModifier.ts"
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "_": "ReturnVoidStmt"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "importInfos": [
+    {
+      "importName": "Cat",
+      "importType": "NamedImports",
+      "importFrom": "./exportType",
+      "modifiers": 32768
+    },
+    {
+      "importName": "Dog",
+      "importType": "NamedImports",
+      "importFrom": "./exportType",
+      "modifiers": 0
+    },
+    {
+      "importName": "Cat1",
+      "importType": "NamedImports",
+      "importFrom": "./exportType",
+      "modifiers": 32768
+    },
+    {
+      "importName": "Dog1",
+      "importType": "NamedImports",
+      "importFrom": "./exportType",
+      "modifiers": 32768
+    },
+    {
+      "importName": "CatDlf",
+      "importType": "Identifier",
+      "importFrom": "./exportType",
+      "modifiers": 32768
+    },
+    {
+      "importName": "x",
+      "importType": "NamedImports",
+      "importFrom": "mod",
+      "modifiers": 65536
+    },
+    {
+      "importName": "v",
+      "importType": "NamedImports",
+      "importFrom": "mod",
+      "nameBeforeAs": "x",
+      "modifiers": 65536
+    },
+    {
+      "importName": "x1",
+      "importType": "Identifier",
+      "importFrom": "mod",
+      "modifiers": 65536
+    }
+  ],
+  "exportInfos": []
+}

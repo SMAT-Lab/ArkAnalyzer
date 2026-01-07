@@ -62,25 +62,29 @@ export function buildDefaultExportInfo(im: FromInfo, file: ArkFile, arkExport?: 
 function buildExportDeclaration(node: ts.ExportDeclaration, sourceFile: ts.SourceFile, arkFile: ArkFile): ExportInfo[] {
     const originTsPosition = LineColPosition.buildFromNode(node, sourceFile);
     const tsSourceCode = node.getText(sourceFile);
-    const modifiers = node.modifiers ? buildModifiers(node) : 0;
     let exportFrom = '';
     if (node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
         exportFrom = node.moduleSpecifier.text;
+    }
+    let modifiers = 0;
+    if (node.isTypeOnly) {
+        modifiers |= ModifierType.TYPE;
     }
     let exportInfos: ExportInfo[] = [];
     // just like: export {xxx as x} from './yy'
     if (node.exportClause && ts.isNamedExports(node.exportClause) && node.exportClause.elements) {
         node.exportClause.elements.forEach(element => {
+            let modifier = modifiers;
+            if (element.isTypeOnly) {
+                modifier |= ModifierType.TYPE;
+            }
             let builder = new ExportInfo.Builder()
-                .exportClauseType(ExportType.UNKNOWN)
-                .exportClauseName(element.name.text)
-                .tsSourceCode(tsSourceCode)
-                .exportFrom(exportFrom)
-                .originTsPosition(originTsPosition)
+                .exportClauseType(ExportType.UNKNOWN).exportClauseName(element.name.text)
+                .tsSourceCode(tsSourceCode).exportFrom(exportFrom).originTsPosition(originTsPosition)
                 .declaringArkFile(arkFile)
                 .setLeadingComments(IRUtils.getCommentsMetadata(node, sourceFile, arkFile.getScene().getOptions(), true))
                 .setTrailingComments(IRUtils.getCommentsMetadata(node, sourceFile, arkFile.getScene().getOptions(), false))
-                .modifiers(modifiers);
+                .modifiers(modifier);
             if (element.propertyName && ts.isIdentifier(element.propertyName)) {
                 builder.nameBeforeAs(element.propertyName.text);
             }
@@ -88,14 +92,10 @@ function buildExportDeclaration(node: ts.ExportDeclaration, sourceFile: ts.Sourc
         });
         return exportInfos;
     }
-
     let builder1 = new ExportInfo.Builder()
-        .exportClauseType(ExportType.UNKNOWN)
-        .nameBeforeAs(ALL)
-        .modifiers(modifiers)
-        .tsSourceCode(tsSourceCode)
-        .exportFrom(exportFrom)
-        .declaringArkFile(arkFile)
+        .exportClauseType(ExportType.UNKNOWN).nameBeforeAs(ALL)
+        .modifiers(modifiers).tsSourceCode(tsSourceCode)
+        .exportFrom(exportFrom).declaringArkFile(arkFile)
         .setLeadingComments(IRUtils.getCommentsMetadata(node, sourceFile, arkFile.getScene().getOptions(), true))
         .setTrailingComments(IRUtils.getCommentsMetadata(node, sourceFile, arkFile.getScene().getOptions(), false))
         .originTsPosition(originTsPosition);
@@ -186,7 +186,8 @@ export function buildExportVariableStatement(node: ts.VariableStatement, sourceF
 export function buildExportTypeAliasDeclaration(node: ts.TypeAliasDeclaration, sourceFile: ts.SourceFile, arkFile: ArkFile): ExportInfo[] {
     let exportInfos: ExportInfo[] = [];
     const originTsPosition = LineColPosition.buildFromNode(node, sourceFile);
-    const modifiers = node.modifiers ? buildModifiers(node) : 0;
+    let modifiers = node.modifiers ? buildModifiers(node) : 0;
+    modifiers |= ModifierType.TYPE;
     const tsSourceCode = node.getText(sourceFile);
     const exportInfo = new ExportInfo.Builder()
         .exportClauseName(node.name.text)

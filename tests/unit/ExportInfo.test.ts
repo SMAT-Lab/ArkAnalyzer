@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -21,6 +21,7 @@ import {
     ClassType,
     FileSignature,
     GlobalRef,
+    JsonPrinter,
     Local,
     Scene,
     SceneConfig,
@@ -46,6 +47,7 @@ import {
     ExportAllWithAsNameFromThisFile_Expect_IR,
 } from '../resources/exports/from/expectedIR';
 import { DefaultExportObjectLiteral_Expect_IR } from '../resources/exports/objectLiteral/expectedIR';
+import fs from 'fs';
 
 function buildScene(): Scene {
     let config: SceneConfig = new SceneConfig();
@@ -437,5 +439,31 @@ describe("export From Test", () => {
         assert.isTrue(some instanceof ArkMethod);
         const mathUtils = file?.getImportInfoBy('MathUtils')?.getExportInfo()?.getArkExport();
         assert.isTrue(mathUtils instanceof ArkClass);
+    });
+})
+
+describe("import & export modifier test", () => {
+    it('export', () => {
+        const fileId = new FileSignature(projectScene.getProjectName(), 'exportType.ts');
+        const file = projectScene.getFile(fileId);
+        if (file) {
+            const ir = JSON.parse(new JsonPrinter(file).dump());
+            let expected = JSON.parse(fs.readFileSync(path.join(__dirname, '../resources/exports/exportTypeSample.json'), 'utf8'));
+            expect(ir.exportInfos).toEqual(expected.exportInfos);
+        } else {
+            assert.fail('file not found: ' + fileId.toString());
+        }
+    });
+    it('import', () => {
+        const fileId = new FileSignature(projectScene.getProjectName(), 'importModifier.ets');
+        const file = projectScene.getFile(fileId);
+        if (file) {
+            const result = new JsonPrinter(file).dump();
+            const ir = JSON.parse(result);
+            let expected = JSON.parse(fs.readFileSync(path.join(__dirname, '../resources/exports/importModifierSample.json'), 'utf8'));
+            expect(ir.importInfos).toEqual(expected.importInfos);
+        } else {
+            assert.fail('file not found: ' + fileId.toString());
+        }
     });
 })
