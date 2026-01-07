@@ -90,3 +90,20 @@ void Case5()
     };
     res = partByRef();
 }
+
+// Nested lambda
+void Case6()
+{
+    int a = 5;
+    int c = 10;
+
+    auto outer = [=](int x) {
+        int b = 1;
+        auto inner = [=]() {
+            return a + b + x;
+        };
+        return inner() + c;
+    };
+
+    int res = outer(1);
+}

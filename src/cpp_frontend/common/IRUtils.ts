@@ -25,6 +25,7 @@ import { FullPosition } from '../../core/base/Position';
 import { Local } from '../../core/base/Local';
 import { NAME_PREFIX } from '../../core/common/Const';
 import { CxxAstNode } from '../ast/ArkCxxAstNode';
+import { CxxClosureCaptureType } from '../base/Ref';
 
 export class IRUtils {
     public static moreThanOneAddress(value: Value): boolean {
@@ -153,22 +154,18 @@ export class IRUtils {
         return '';
     }
 
-    public static analyzeLambdaDefaultCapture(captureList: string): {
-        hasDefaultValueCapture: boolean;
-        hasDefaultRefCapture: boolean;
-    } {
+    public static analyzeLambdaDefaultCapture(captureList: string): CxxClosureCaptureType | null {
         const parts = captureList.split(',').map(p => p.trim()).filter(Boolean);
-        let hasDefaultValueCapture = false;
-        let hasDefaultRefCapture = false;
+        let defaultCaptureType: CxxClosureCaptureType | null = null;
 
         for (const part of parts) {
             if (part === '=') {
-                hasDefaultValueCapture = true;
+                defaultCaptureType = CxxClosureCaptureType.BY_VALUE;
             } else if (part === '&') {
-                hasDefaultRefCapture = true;
+                defaultCaptureType = CxxClosureCaptureType.BY_REF;
             }
         }
-        return { hasDefaultValueCapture, hasDefaultRefCapture };
+        return defaultCaptureType;
     }
 
     public static getLambdaExplicitCaptureVars(lambdaExpr: CxxAstNode): CxxAstNode[] {

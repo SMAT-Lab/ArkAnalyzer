@@ -49,14 +49,13 @@ import {
     AnyType,
     ClassType,
     FunctionType,
-    LexicalEnvType,
     NumberType,
     Type,
     UnclearReferenceType,
     UndefinedType,
     UnknownType,
 } from '../../core/base/Type';
-import { CxxArrayType, PointerType, ReferCategory, ReferenceType } from '../base/Type';
+import { CxxArrayType, PointerType, ReferenceType } from '../base/Type';
 import { ArkSignatureBuilder } from '../../core/model/builder/ArkSignatureBuilder';
 import { ClassSignature, FieldSignature, MethodSignature } from '../../core/model/ArkSignature';
 import { Value } from '../../core/base/Value';
@@ -68,7 +67,7 @@ import {
 } from '../../core/common/EtsConst';
 import { CxxValueUtil } from './ValueUtil';
 import { IRUtils } from './IRUtils';
-import { AbstractFieldRef, ArkArrayRef, ArkInstanceFieldRef, ArkStaticFieldRef, GlobalRef } from '../../core/base/Ref';
+import { AbstractFieldRef, ArkArrayRef, ArkInstanceFieldRef, ArkStaticFieldRef } from '../../core/base/Ref';
 import { ArkCxxInstanceFieldRef } from '../base/Ref';
 import { ArkMethod } from '../../core/model/ArkMethod';
 import { buildArkMethodFromArkClass, buildDefaultConstructor } from '../model/builder/ArkMethodBuilder';
@@ -94,7 +93,6 @@ import { DummyStmt } from '../../core/common/ArkIRTransformer';
 import { BuiltinCxx } from './Builtin';
 import { ArkClass } from '../../core/model/ArkClass';
 import { ValueUtil } from '../../core/common/ValueUtil';
-import { LEXICAL_ENV_NAME_PREFIX } from '../../core/common/Const';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkValueTransformer');
 
@@ -2037,11 +2035,6 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         const lambdaArkMethod = new ArkMethod();
         buildArkMethodFromArkClass(callableNode, declaringClass, lambdaArkMethod, this.cxxSourceFile, this.declaringMethod);
 
-        const closure = this.buildClosuresForLambda(callableNode, lambdaArkMethod);
-        if (closure) {
-            lambdaArkMethod.getBody()?.addLocal(closure.getName(), closure);
-        }
-
         const callableType = new FunctionType(lambdaArkMethod.getSignature());
         const callableValue = this.addNewLocal(lambdaArkMethod.getName(), callableType);
         return {
@@ -2049,122 +2042,6 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             valueOriginalPositions: [FullPosition.cxxBuildFromNode(callableNode, this.cxxSourceFile)],
             stmts: [],
         };
-    }
-
-    private buildClosuresForLambda(lambdaExpr: CxxAstNode, lambdaArkMethod: ArkMethod): Local | null {
-        const lambdaCaptureList = IRUtils.getLambdaCapture(lambdaExpr.code);
-        const { hasDefaultValueCapture, hasDefaultRefCapture } = IRUtils.analyzeLambdaDefaultCapture(lambdaCaptureList);
-        const explicitVars = IRUtils.getLambdaExplicitCaptureVars(lambdaExpr);
-        if (explicitVars.length === 0 && !hasDefaultValueCapture && !hasDefaultRefCapture) {
-            return null;
-        } else if (hasDefaultValueCapture && hasDefaultRefCapture) {
-            logger.warn(`lambda function captures variables by value and by reference simultaneously, which leads to failed to obtain closures.
-             MethodSignature of lambda functon is ${lambdaArkMethod.getSignature().toString()}.`);
-            return null;
-        }
-
-        const localsInLambda = lambdaArkMethod.getBody()?.getLocals();
-        const globalsUsedInLambda = lambdaArkMethod.getCxxBodyBuilder()?.getGlobals();
-        const explicitClosures: string[] = [];
-        const closuresRes: Local[] = [];
-        let lexicalEnv: LexicalEnvType;
-
-        // Process the explicitly captured closures
-        this.processExplicitVariablesAndClosures(explicitVars, explicitClosures, localsInLambda, closuresRes);
-        // If there are no implicitly capture closures:
-        if (!globalsUsedInLambda || !(hasDefaultValueCapture || hasDefaultRefCapture)) {
-            lexicalEnv = new LexicalEnvType(lambdaArkMethod.getSignature(), closuresRes);
-            return new Local(LEXICAL_ENV_NAME_PREFIX, lexicalEnv);
-        }
-
-        // If there are implicitly capture closures:
-        this.processImplitcitCaptureClosures(globalsUsedInLambda, explicitClosures, localsInLambda, hasDefaultRefCapture, closuresRes);
-        lexicalEnv = new LexicalEnvType(lambdaArkMethod.getSignature(), closuresRes);
-        return new Local(LEXICAL_ENV_NAME_PREFIX, lexicalEnv);
-    }
-
-    private processExplicitVariablesAndClosures(
-        explicitVars: CxxAstNode[], explicitClosures: string[], localsInLambda: Map<string, Local> | undefined, closuresRes: Local[]
-    ) : void {
-        for (const explicitVar of explicitVars) {
-            let varName = '';
-            let isValueUsed = true;
-            if (explicitVar.kind === 'DeclRefExpr') {
-                // Reference capture
-                isValueUsed = false;
-                varName = explicitVar.referencedDecl?.name ?? explicitVar.code;
-            } else if (explicitVar.kind === 'ImplicitCastExpr' && explicitVar.inner?.[0]?.kind === 'DeclRefExpr') {
-                // Value capture
-                varName = explicitVar.inner[0].referencedDecl?.name ?? explicitVar.inner[0].code;
-            } else {
-                logger.warn(`Unprocessed capture Node: ${explicitVar.kind}`);
-                continue;
-            }
-            explicitClosures.push(varName);
-            let closure = this.getExplicitClosureByName(varName);
-            if (!closure) {
-                continue;
-            }
-            const varLocal = localsInLambda?.get(varName);
-            if (closure && varLocal) {
-                const closureType = closure.getType();
-                // Set the reference type for the case of capture by reference.
-                if (!isValueUsed && !(closureType instanceof ReferenceType)) {
-                    varLocal.setType(new ReferenceType(closureType, ReferCategory.LVALUE_REF));
-                }
-                closuresRes.push(varLocal);
-            }
-        }
-    }
-
-    private getExplicitClosureByName(varName: string): Local | undefined {
-        // 1.从上一层的局部变量找
-        let closure = this.locals.get(varName);
-        if (closure) {
-            return closure;
-        }
-        // 2.从上一层函数的闭包找
-        for (const [key, value] of this.locals) {
-            if (!key.startsWith(LEXICAL_ENV_NAME_PREFIX) || !(value.getType() instanceof LexicalEnvType))  {
-                continue;
-            }
-            (value.getType() as LexicalEnvType).getClosures().forEach(c => {
-                if (c.getName() === varName) {
-                    closure = c;
-                    return;
-                }
-            });
-            if (closure) {
-                break;
-            }
-        }
-        return closure;
-    }
-
-    private processImplitcitCaptureClosures(
-        globalsUsedInLambda: Map<string, GlobalRef>,
-        explicitClosures: string[],
-        localsInLambda: Map<string, Local> | undefined,
-        hasDefaultRefCapture: boolean,
-        closuresRes: Local[]
-    ): void {
-        // It is impossible to distinguish whether globals are real globals or closures. Currently, they are uniformly treated as closures,
-        // and the judgment will be made later in function 'handleGlobalAndClosure'.
-        for (const key of globalsUsedInLambda!.keys()) {
-            if (explicitClosures.includes(key) || this.globals?.get(key)) {
-                continue;
-            }
-            const global = localsInLambda?.get(key);
-            if (!global) {
-                continue;
-            }
-            const oriGlobalType = global.getType();
-            // Set the reference type for the case of capture by reference.
-            if (hasDefaultRefCapture && !(oriGlobalType instanceof ReferenceType)) {
-                global.setType(new ReferenceType(oriGlobalType, ReferCategory.LVALUE_REF));
-            }
-            closuresRes.push(global);
-        }
     }
 
     private cxxNewExpressionToValueAndStmts(newExpression: CxxAstNode): ValueAndStmts {

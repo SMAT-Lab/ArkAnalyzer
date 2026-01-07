@@ -20,12 +20,16 @@ import { CfgBuilder } from '../../graph/builder/CfgBuilder';
 import { Local } from '../../../core/base/Local';
 import { MethodParameter } from '../../../core/model/builder/ArkMethodBuilder';
 import { LEXICAL_ENV_NAME_PREFIX, NAME_DELIMITER, NAME_PREFIX } from '../../../core/common/Const';
-import { ArkParameterRef, ArkStaticFieldRef, ClosureFieldRef, GlobalRef } from '../../../core/base/Ref';
+import { ArkParameterRef, ArkStaticFieldRef, GlobalRef } from '../../../core/base/Ref';
 import { ArkAliasTypeDefineStmt, ArkAssignStmt, ArkInvokeStmt, ArkReturnStmt } from '../../../core/base/Stmt';
 import { AliasType, ArrayType, ClosureType, FunctionType, LexicalEnvType, Type, UnclearReferenceType, UnionType } from '../../../core/base/Type';
 import { AbstractInvokeExpr, ArkPtrInvokeExpr } from '../../../core/base/Expr';
 import { CxxAstNode } from '../../ast/ArkCxxAstNode';
-import { ReferCategory, ReferenceType } from '../../base/Type';
+import { IRUtils } from '../../common/IRUtils';
+import { CxxClosureCaptureType, CxxClosureFieldRef } from '../../base/Ref';
+import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
+
+const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'BodyBuilder');
 
 type NestedMethodChain = {
     parent: ArkMethod;
@@ -75,33 +79,34 @@ export class CxxBodyBuilder {
      * When processing the CxxAstNode 'lambdaExpr', the closures of the nested function may be initially constructed.
      * Here, the true closures of the nested function are filtered out based on the locals and closures of the outer function.
      */
-    private findClosuresUsedInNested(nestedMethod: ArkMethod, baseLocals: Map<string, Local>, baseClosures: Local[] | null): Local[] | null {
+    private findClosuresUsedInNested(childrenChain: NestedMethodChain, baseLocals: Map<string, Local>, allNestedLocals: Map<string, Local>): Local[] | null {
         let closuresRes: Local[] = [];
-        const baseClosuresMap = new Map<string, Local>();
-        baseClosures?.forEach((c) => {
-            baseClosuresMap.set(c.getName(), c);
-        });
 
-        const nestedLocals = nestedMethod.getBody()?.getLocals();
-        if (!nestedLocals) {
+        const nestedMethod = childrenChain.parent;
+        let nestedGlobals = nestedMethod.getCxxBodyBuilder()?.getGlobals();
+        if (nestedGlobals !== undefined) {
+            for (let global of nestedGlobals.values()) {
+                const nestedLocal = allNestedLocals.get(global.getName());
+                const closure = baseLocals.get(global.getName());
+                if (nestedLocal === undefined && closure !== undefined) {
+                    closuresRes.push(closure);
+                }
+            }
+        }
+        const children = childrenChain.children;
+        if (children === null) {
             return closuresRes;
         }
-        const nestedTempClosure = Array.from(nestedLocals).find(
-            ([key, value]) => key === LEXICAL_ENV_NAME_PREFIX && value.getType() instanceof LexicalEnvType);
-        if (!nestedTempClosure) {
-            return closuresRes;
-        }
-        const [tempClosureKey, tempClosureLocal] = nestedTempClosure;
-        // Delete temporary closures
-        nestedLocals.delete(tempClosureKey);
-        const tempClosures = (tempClosureLocal.getType() as LexicalEnvType).getClosures();
-        // Since the temporary closures may contain global variables, it is necessary to filter the temporary closures
-        // based on the locals closures of the outer function.
-        for (let closure of tempClosures) {
-            const closureName = closure.getName();
-            const closureFromBase = baseLocals.get(closureName) ?? baseClosuresMap.get(closureName);
-            if (closureFromBase) {
-                closuresRes.push(closureFromBase);
+        for (let chain of children) {
+            const nestedLocals = nestedMethod.getBody()?.getLocals();
+            if (nestedLocals !== undefined) {
+                nestedLocals.forEach((value, key) => {
+                    allNestedLocals.set(key, value);
+                });
+            }
+            const closures = this.findClosuresUsedInNested(chain, baseLocals, allNestedLocals);
+            if (closures) {
+                closuresRes.push(...closures);
             }
         }
         return closuresRes;
@@ -114,8 +119,8 @@ export class CxxBodyBuilder {
      * 4. Recursively do this for all nested method level by level.
      */
     private buildLexicalEnv(childrenChain: NestedMethodChain, baseLocals: Map<string, Local>, index: number, baseClosures: Local[] | null): number {
+        let usedClosures = this.findClosuresUsedInNested(childrenChain, baseLocals, new Map<string, Local>());
         const nestedMethod = childrenChain.parent;
-        let usedClosures = this.findClosuresUsedInNested(nestedMethod, baseLocals, baseClosures);
         const nestedSignature = nestedMethod.getImplementationSignature();
         if (nestedSignature !== null && usedClosures !== null && usedClosures.length > 0) {
             let lexicalEnv = new LexicalEnvType(nestedSignature, usedClosures);
@@ -583,26 +588,48 @@ export class CxxBodyBuilder {
             paramRef.setIndex(index);
         });
 
+        const lambdaExprNode = method.getCxxBodyBuilder()?.getCfgBuilder().astRoot;
+        const lambdaCaptureList = lambdaExprNode ? IRUtils.getLambdaCapture(lambdaExprNode.code) : '';
+        const defaultCaptureType = IRUtils.analyzeLambdaDefaultCapture(lambdaCaptureList);
+        const explicitVars = lambdaExprNode ? IRUtils.getLambdaExplicitCaptureVars(lambdaExprNode) : [];
+        const explicitCaptureTypeMap = this.buildExplicitClosureCaptureTypeMap(explicitVars);
+
         for (let closure of closures) {
             let local = body.getLocals().get(closure.getName());
             if (local === undefined) {
                 local = new Local(closure.getName(), closure.getType());
                 body.addLocal(local.getName(), local);
             } else {
-                // handle reference capture
-                let newType = closure.getType()
-                if (local.getType() instanceof ReferenceType) {
-                    newType = new ReferenceType(newType, ReferCategory.LVALUE_REF);
-                }
-                local.setType(newType);
+                local.setType(closure.getType());
             }
             index++;
-            const closureFieldRef = new ClosureFieldRef(closuresLocal, closure.getName(), closure.getType());
+            const captureType = explicitCaptureTypeMap.get(closure.getName()) ??
+                (defaultCaptureType === CxxClosureCaptureType.BY_REF ? CxxClosureCaptureType.BY_REF : CxxClosureCaptureType.BY_VALUE);
+            const closureFieldRef = new CxxClosureFieldRef(closuresLocal, closure.getName(), closure.getType(), captureType);
             let assignStmt = new ArkAssignStmt(local, closureFieldRef);
             assignStmt.setCfg(body.getCfg());
             body.getCfg().insertBefore(assignStmt, stmts[index]);
             local.setDeclaringStmt(assignStmt);
             closuresLocal.addUsedStmt(assignStmt);
         }
+    }
+
+    private buildExplicitClosureCaptureTypeMap(explicitVars: CxxAstNode[]): Map<string, CxxClosureCaptureType> {
+        const closureCaptureTypeMap = new Map<string, CxxClosureCaptureType>();
+        let varName = '';
+        for (const explicitVar of explicitVars) {
+            if (explicitVar.kind === 'DeclRefExpr') {
+                // Reference capture
+                varName = explicitVar.referencedDecl?.name ?? explicitVar.code;
+                closureCaptureTypeMap.set(varName, CxxClosureCaptureType.BY_REF);
+            } else if (explicitVar.kind === 'ImplicitCastExpr' && explicitVar.inner?.[0]?.kind === 'DeclRefExpr') {
+                // Value capture
+                varName = explicitVar.inner[0].referencedDecl?.name ?? explicitVar.inner[0].code;
+                closureCaptureTypeMap.set(varName, CxxClosureCaptureType.BY_VALUE);
+            } else {
+                logger.warn(`Unprocessed capture Node: ${explicitVar.kind}`);
+            }
+        }
+        return closureCaptureTypeMap;
     }
 }

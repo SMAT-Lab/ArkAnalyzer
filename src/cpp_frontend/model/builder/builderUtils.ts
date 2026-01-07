@@ -179,9 +179,6 @@ export function buildReturnType(mtdNode: CxxAstNode, sourceFile: CxxAstNode, met
         if (!isLambdaFunc) {
             // Retrieve the function return value portion from the function signature
             mtdNode.type.qualType = nodeType.qualType.split('(')[0].trim();
-        } else if (mtdNode.inner[0]?.inner[0]?.type.qualType.includes(' -> ')) {
-            // Handle lambda functions with return values
-            mtdNode.type.qualType = mtdNode.inner[0].inner[0].type.qualType.split(' -> ')[1];
         } else {
             // Lambda function without return value
             return UnknownType.getInstance();

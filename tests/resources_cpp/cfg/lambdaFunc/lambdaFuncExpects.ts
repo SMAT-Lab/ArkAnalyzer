@@ -98,7 +98,25 @@ export const LAMBDA_EXPECT_CASE5 = {
                 "allByRef = %AM6$Case5",
                 "res = ptrinvoke <@lambdaFunc/lambdaFuncSample.cpp: %dflt.allByRef([x, y])>(%closures1)",
                 "partByRef = %AM7$Case5",
-                "res = ptrinvoke <@lambdaFunc/lambdaFuncSample.cpp: %dflt.partByRef([y, x])>(%closures2)",
+                "res = ptrinvoke <@lambdaFunc/lambdaFuncSample.cpp: %dflt.partByRef([x, y])>(%closures2)",
+                "return",
+            ],
+            preds: [],
+            succes: [],
+        },
+    ],
+};
+
+export const LAMBDA_EXPECT_CASE6 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                "this = this: @lambdaFunc/lambdaFuncSample.cpp: %dflt",
+                "a = 5",
+                "c = 10",
+                "outer = %AM8$Case6",
+                "res = ptrinvoke <@lambdaFunc/lambdaFuncSample.cpp: %dflt.outer([c, a], int)>(%closures0, 1)",
                 "return",
             ],
             preds: [],
@@ -254,13 +272,59 @@ export const LAMBDA_EXPECT_AM7_Case5 = {
         {
             id: 0,
             stmts: [
-                "%closures2 = parameter0: [y, x]",
-                "y = %closures2.y",
+                "%closures2 = parameter0: [x, y]",
                 "x = %closures2.x",
+                "y = %closures2.y",
                 "this = this: @lambdaFunc/lambdaFuncSample.cpp: %dflt",
                 "x = x + 1",
                 "%0 = x + y",
                 "return %0",
+            ],
+            preds: [],
+            succes: [],
+        },
+    ],
+};
+
+export const LAMBDA_EXPECT_AM9_AM8_Case6 = {
+    outerFunctionSignature: '@lambdaFunc/lambdaFuncSample.cpp: %dflt.%AM8$Case6([c, a], int)',
+    closures: ['a', 'b', 'x'],
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                "%closures1 = parameter0: [a, b, x]",
+                "a = %closures1.a",
+                "b = %closures1.b",
+                "x = %closures1.x",
+                "this = this: @lambdaFunc/lambdaFuncSample.cpp: %dflt",
+                "%0 = a + b",
+                "%1 = %0 + x",
+                "return %1",
+            ],
+            preds: [],
+            succes: [],
+        },
+    ],
+};
+
+export const LAMBDA_EXPECT_AM8_Case6 = {
+    outerFunctionSignature: '@lambdaFunc/lambdaFuncSample.cpp: %dflt.Case6()',
+    closures: ['a', 'c'],
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                "%closures0 = parameter0: [c, a]",
+                "x = parameter1: int",
+                "c = %closures0.c",
+                "a = %closures0.a",
+                "this = this: @lambdaFunc/lambdaFuncSample.cpp: %dflt",
+                "b = 1",
+                "inner = %AM9$%AM8$Case6",
+                "%0 = ptrinvoke <@lambdaFunc/lambdaFuncSample.cpp: %dflt.inner([a, b, x])>(%closures1)",
+                "%1 = %0 + c",
+                "return %1",
             ],
             preds: [],
             succes: [],
