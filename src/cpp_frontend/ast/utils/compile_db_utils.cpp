@@ -56,54 +56,20 @@ void PrintBuildPathDiagnostics(llvm::StringRef BuildPath)
     }
 }
 
-clang::tooling::ArgumentsAdjuster MakeOhosLibcxxFixAdjuster()
+void InsertArgumentAdjuster(ClangTool &Tool, llvm::StringRef sourceFile)
 {
-    using clang::tooling::CommandLineArguments;
-
-    return clang::tooling::ArgumentsAdjuster(
-        [](const CommandLineArguments &Args, llvm::StringRef File) {
-            CommandLineArguments NewArgs = Args;
-
-            // Only touch OHOS TUs.
-            bool isOhosTarget = false;
-            bool isExistCSystem = false;
-            bool isExistStdlib = false;
-            bool isExistNostdinc = false;
-            for (const auto &a : NewArgs) {
-                llvm::outs()<<"arg: "<<a<<"\n";
-                llvm::StringRef R(a);
-                if (R.starts_with("--target=") && R.contains("ohos")) {
-                    isOhosTarget = true;
-                } else if (R.contains("-stdlib=")) {
-                    isOhosTarget = true;
-                } else if (R == "-nostdinc++") {
-                    isExistNostdinc = true;
-                } else if (R == "-std=c++17") {
-                    isExistCSystem = true;
-                }
-            }
-
-            // support c++17
-            if (!isExistCSystem) {
-                if (File.ends_with(".c")) {
-                   NewArgs.push_back("-std=c99");
-                } else if (File.ends_with(".cc") || File.ends_with(".cpp") || File.ends_with(".cxx") ||
-                           File.ends_with(".h")  || File.ends_with(".hpp")) {
-                   NewArgs.push_back("-std=c++17");
-                }
-            }
-
-            // Prefer libc++ only if user/ccjson didn't specify.
-            if (!isOhosTarget) {
-                NewArgs.push_back("-stdlib=libc++");
-            }
-
-            // -nostdinc++ disables standard C++ headers; remove for OHOS parsing.
-            if (isExistNostdinc) {
-                NewArgs.erase(std::remove(NewArgs.begin(), NewArgs.end(), std::string("-nostdinc++")), NewArgs.end());
-            }
-            return NewArgs;
-        }
+    std::string cppStandard = "";
+    if (sourceFile.ends_with(".c")) {
+        cppStandard = "-std=c99";
+    } else if (sourceFile.ends_with(".cc") || sourceFile.ends_with(".cpp") || sourceFile.ends_with(".cxx") ||
+               sourceFile.ends_with(".h") || sourceFile.ends_with(".hpp")) {
+        cppStandard = "-std=c++17";
+    }
+    Tool.appendArgumentsAdjuster(
+        getInsertArgumentAdjuster(
+            {"-std=c++17", "-stdlib=libc++"},
+            ArgumentInsertPosition::BEGIN
+        )
     );
 }
 

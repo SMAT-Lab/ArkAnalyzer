@@ -16,6 +16,7 @@
 
 #include "clang/Tooling/ArgumentsAdjusters.h"
 #include "clang/Tooling/CompilationDatabase.h"
+#include "clang/Tooling/Tooling.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/Support/raw_ostream.h"
@@ -26,6 +27,8 @@
 
 #define SMALL_STRING_SIZE_256 256
 #define SMALL_STRING_SIZE_512 512
+
+using namespace clang::tooling;
 
 namespace ast_dumper {
 
@@ -47,7 +50,7 @@ clang::tooling::CompilationDatabase *SelectDBForInputs(
     llvm::ArrayRef<std::string> Inputs,
     std::unique_ptr<clang::tooling::CompilationDatabase> &OwnedFallback);
 
-// OHOS: inject libc++ headers (include/c++/v1) + prefer -stdlib=libc++ for OHOS targets only.
-clang::tooling::ArgumentsAdjuster MakeOhosLibcxxFixAdjuster();
+// Add compiler line(-std=c++17)
+void InsertArgumentAdjuster(ClangTool &Tool, llvm::StringRef sourceFile);
 
 } // namespace ast_dumper

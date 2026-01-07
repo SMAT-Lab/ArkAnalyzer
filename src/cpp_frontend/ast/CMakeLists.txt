@@ -14,6 +14,7 @@ message(STATUS "LLVM_INCLUDE_DIRS: ${LLVM_INCLUDE_DIRS}")
 message(STATUS "Clang_DIR: ${Clang_DIR}")
 message(STATUS "CLANG_INCLUDE_DIRS: ${CLANG_INCLUDE_DIRS}")
 
+add_definitions(-fno-rtti)
 add_executable(astJsonDumper
     cppAstDumper.cpp
     utils/compile_db_utils.cpp
@@ -39,8 +40,10 @@ target_link_libraries(astJsonDumper PRIVATE
     clangTooling
     clangFrontend
     clangAST
+    clangSerialization
     clangLex
     clangBasic
+    LLVMSupport
 )
 
 if(MSVC)

@@ -383,8 +383,14 @@ int main(int argc, const char **argv)
     auto start = std::chrono::high_resolution_clock::now();
     // argv dump
     llvm::outs() << "[ASTDumper] argv:\n";
-    for (int i = 0; i < argc; ++i)
+    llvm::StringRef sourceFile = "";
+    for (int i = 0; i < argc; ++i) {
+        llvm::StringRef argvStr(argv[i]);
+        if (argvStr.ends_with(".c") || argvStr.ends_with(".cpp")) {
+            sourceFile = argvStr;
+        }
         llvm::outs() << "  argv[" << i << "] = " << argv[i] << "\n";
+    }
 
     ast_dumper::cli::EnsureRegistered();
     auto expectedParser = CommonOptionsParser::create(argc, argv, ast_dumper::cli::JsonASTCategory());
@@ -410,7 +416,7 @@ int main(int argc, const char **argv)
 
     CompilationDatabase &parserDB = optionsParser.getCompilations();
     ClangTool Tool(parserDB, optionsParser.getSourcePathList());
-    Tool.appendArgumentsAdjuster(ast_dumper::MakeOhosLibcxxFixAdjuster());
+    ast_dumper::InsertArgumentAdjuster(Tool, sourceFile);
 
     int result = Tool.run(newFrontendActionFactory<JSONFrontendAction>().get());
 
