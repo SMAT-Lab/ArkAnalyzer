@@ -125,6 +125,24 @@ export const LAMBDA_EXPECT_CASE6 = {
     ],
 };
 
+export const LAMBDA_EXPECT_CASE7 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                "this = this: @lambdaFunc/lambdaFuncSample.cpp: %dflt",
+                "x = 2",
+                "y = 5",
+                "mutableLambda = %AM10$Case7",
+                "res = ptrinvoke <@lambdaFunc/lambdaFuncSample.cpp: %dflt.mutableLambda([x, y])>(%closures0)",
+                "return",
+            ],
+            preds: [],
+            succes: [],
+        },
+    ],
+};
+
 export const LAMBDA_EXPECT_AM0_Case1 = {
     outerFunctionSignature: '@lambdaFunc/lambdaFuncSample.cpp: %dflt.Case1()',
     closures: [],
@@ -325,6 +343,47 @@ export const LAMBDA_EXPECT_AM8_Case6 = {
                 "%0 = ptrinvoke <@lambdaFunc/lambdaFuncSample.cpp: %dflt.inner([a, b, x])>(%closures1)",
                 "%1 = %0 + c",
                 "return %1",
+            ],
+            preds: [],
+            succes: [],
+        },
+    ],
+};
+
+export const LAMBDA_EXPECT_AM10_Case7 = {
+    outerFunctionSignature: '@lambdaFunc/lambdaFuncSample.cpp: %dflt.Case7()',
+    closures: ['x', 'y'],
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                "%closures0 = parameter0: [x, y]",
+                "x = %closures0.x",
+                "y = %closures0.y",
+                "this = this: @lambdaFunc/lambdaFuncSample.cpp: %dflt",
+                "x = x + 1",
+                "y = y + 1",
+                "%0 = x + y",
+                "return %0",
+            ],
+            preds: [],
+            succes: [],
+        },
+    ],
+};
+
+export const LAMBDA_EXPECT_AM11_Case8 = {
+    outerFunctionSignature: '@lambdaFunc/lambdaFuncSample.cpp: %dflt.Case8()',
+    closures: [],
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                "x = parameter0: int",
+                "y = parameter1: int",
+                "this = this: @lambdaFunc/lambdaFuncSample.cpp: %dflt",
+                "%0 = x + y",
+                "return %0",
             ],
             preds: [],
             succes: [],

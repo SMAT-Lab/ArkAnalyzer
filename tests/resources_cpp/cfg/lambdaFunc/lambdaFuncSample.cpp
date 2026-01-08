@@ -107,3 +107,24 @@ void Case6()
 
     int res = outer(1);
 }
+
+// mutable lambda
+void Case7()
+{
+    int x = 2;
+    int y = 5;
+    auto mutableLambda = [&x, y]() mutable {
+        x++;
+        y++;  // What is modified is the captured copy.
+        return x + y;
+    };
+
+    int res = mutableLambda();
+}
+
+// constexpr lambda
+void Case8()
+{
+    auto func = [](int x, int y) constexpr { return x + y; };
+    int res = func(1, 1);
+}

@@ -118,6 +118,9 @@ export interface CxxAstNode {
     /** Storage class (e.g., "static" for member VarDecl) */
     storageClass?: string;
 
+    /** The access modifier of class member stored in 'AccessSpecDecl' node. (e.g., public or private)*/
+    access?: string;
+
     /** Target information parsed from DeclRef */
     referencedDecl?: CxxReferencedDecl;
 

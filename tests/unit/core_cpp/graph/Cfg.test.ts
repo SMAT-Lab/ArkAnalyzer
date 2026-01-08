@@ -291,6 +291,7 @@ describe('Function Test', () => {
         testBlocks(scene, 'lambdaFuncSample.cpp', 'Case4', LAMBDA_EXPECT.LAMBDA_EXPECT_CASE4.blocks);
         testBlocks(scene, 'lambdaFuncSample.cpp', 'Case5', LAMBDA_EXPECT.LAMBDA_EXPECT_CASE5.blocks);
         testBlocks(scene, 'lambdaFuncSample.cpp', 'Case6', LAMBDA_EXPECT.LAMBDA_EXPECT_CASE6.blocks);
+        testBlocks(scene, 'lambdaFuncSample.cpp', 'Case7', LAMBDA_EXPECT.LAMBDA_EXPECT_CASE7.blocks);
         testLambdaFunction(scene, 'lambdaFuncSample.cpp', '%AM0$Case1', LAMBDA_EXPECT.LAMBDA_EXPECT_AM0_Case1);
         testLambdaFunction(scene, 'lambdaFuncSample.cpp', '%AM1$Case2', LAMBDA_EXPECT.LAMBDA_EXPECT_AM1_Case2);
         testLambdaFunction(scene, 'lambdaFuncSample.cpp', '%AM2$Case2', LAMBDA_EXPECT.LAMBDA_EXPECT_AM2_Case2);
@@ -301,6 +302,16 @@ describe('Function Test', () => {
         testLambdaFunction(scene, 'lambdaFuncSample.cpp', '%AM7$Case5', LAMBDA_EXPECT.LAMBDA_EXPECT_AM7_Case5);
         testLambdaFunction(scene, 'lambdaFuncSample.cpp', '%AM9$%AM8$Case6', LAMBDA_EXPECT.LAMBDA_EXPECT_AM9_AM8_Case6);
         testLambdaFunction(scene, 'lambdaFuncSample.cpp', '%AM8$Case6', LAMBDA_EXPECT.LAMBDA_EXPECT_AM8_Case6);
+        testLambdaFunction(scene, 'lambdaFuncSample.cpp', '%AM10$Case7', LAMBDA_EXPECT.LAMBDA_EXPECT_AM10_Case7);
+        testLambdaFunction(scene, 'lambdaFuncSample.cpp', '%AM11$Case8', LAMBDA_EXPECT.LAMBDA_EXPECT_AM11_Case8);
+
+        const arkFile = scene.getFiles().find((file) => file.getName().endsWith('lambdaFuncSample.cpp'));
+        let arkMethod = arkFile?.getDefaultClass().getMethods()
+            .find((method) => (method.getName() === '%AM10$Case7'));
+        expect(arkMethod?.getModifiers()).toEqual(ModifierType.MUTABLE);
+        arkMethod = arkFile?.getDefaultClass().getMethods()
+            .find((method) => (method.getName() === '%AM11$Case8'));
+        expect(arkMethod?.getModifiers()).toEqual(ModifierType.CONSTEXPR);
     });
 
     it('case4: delete Expression Test', () => {
