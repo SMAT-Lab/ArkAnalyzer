@@ -145,9 +145,7 @@ export class AstUtils {
         if (!cursor.inner) {
             return filteredChildren;
         }
-        filteredChildren = cursor.inner.filter(
-            (item: CxxAstNode) => !item.isImplicit || cursor.kind === 'LambdaExpr'
-        );
+        filteredChildren = cursor.inner.filter((item: CxxAstNode) => !item.isImplicit);
         return filteredChildren;
     }
 

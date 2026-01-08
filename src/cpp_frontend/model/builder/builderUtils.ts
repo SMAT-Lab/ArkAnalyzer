@@ -480,6 +480,7 @@ const typeMap: Record<string, string> = {
     void: 'void',
     'std::type_info': 'type_info',
     'type_info': 'type_info',
+    auto: 'auto',
 };
 
 export function convertDataType(typeName: string): string {

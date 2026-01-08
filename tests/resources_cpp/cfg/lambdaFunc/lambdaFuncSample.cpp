@@ -128,3 +128,16 @@ void Case8()
     auto func = [](int x, int y) constexpr { return x + y; };
     int res = func(1, 1);
 }
+
+// Generic lambda
+void Case9()
+{
+    auto genericLambda = [](auto x, auto y) { return x + y; };
+
+    auto res1 = genericLambda(1, TWO);
+    auto res2 = genericLambda(FLOAT_NUM, FLOAT_NUM);
+
+    auto explicitGenericLambda = []<typename T, typename U>(T x, U y) { return x + y; };
+    res1 = explicitGenericLambda(1, TWO);
+    res2 = explicitGenericLambda(FLOAT_NUM, FLOAT_NUM);
+}

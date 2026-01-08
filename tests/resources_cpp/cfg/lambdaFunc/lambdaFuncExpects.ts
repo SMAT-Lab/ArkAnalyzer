@@ -143,9 +143,30 @@ export const LAMBDA_EXPECT_CASE7 = {
     ],
 };
 
+export const LAMBDA_EXPECT_CASE9 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                "this = this: @lambdaFunc/lambdaFuncSample.cpp: %dflt",
+                "genericLambda = %AM12$Case9",
+                "res1 = ptrinvoke <@lambdaFunc/lambdaFuncSample.cpp: %dflt.genericLambda(auto, auto)>(1, 2)",
+                "res2 = ptrinvoke <@lambdaFunc/lambdaFuncSample.cpp: %dflt.genericLambda(auto, auto)>(2, 2)",
+                "explicitGenericLambda = %AM13$Case9",
+                "res1 = ptrinvoke <@lambdaFunc/lambdaFuncSample.cpp: %dflt.explicitGenericLambda(T, U)>(1, 2)",
+                "res2 = ptrinvoke <@lambdaFunc/lambdaFuncSample.cpp: %dflt.explicitGenericLambda(T, U)>(2, 2)",
+                "return",
+            ],
+            preds: [],
+            succes: [],
+        },
+    ],
+};
+
 export const LAMBDA_EXPECT_AM0_Case1 = {
     outerFunctionSignature: '@lambdaFunc/lambdaFuncSample.cpp: %dflt.Case1()',
     closures: [],
+    genericTypes: [],
     blocks: [
         {
             id: 0,
@@ -164,6 +185,7 @@ export const LAMBDA_EXPECT_AM0_Case1 = {
 export const LAMBDA_EXPECT_AM1_Case2 = {
     outerFunctionSignature: '@lambdaFunc/lambdaFuncSample.cpp: %dflt.Case2()',
     closures: ['a'],
+    genericTypes: [],
     blocks: [
         {
             id: 0,
@@ -184,6 +206,7 @@ export const LAMBDA_EXPECT_AM1_Case2 = {
 export const LAMBDA_EXPECT_AM2_Case2 = {
     outerFunctionSignature: '@lambdaFunc/lambdaFuncSample.cpp: %dflt.Case2()',
     closures: ['a', 'b'],
+    genericTypes: [],
     blocks: [
         {
             id: 0,
@@ -207,6 +230,7 @@ export const LAMBDA_EXPECT_AM2_Case2 = {
 export const LAMBDA_EXPECT_AM3_Case3 = {
     outerFunctionSignature: '@lambdaFunc/lambdaFuncSample.cpp: %dflt.Case3()',
     closures: [],
+    genericTypes: [],
     blocks: [
         {
             id: 0,
@@ -225,6 +249,7 @@ export const LAMBDA_EXPECT_AM3_Case3 = {
 export const LAMBDA_EXPECT_AM4_Case4 = {
     outerFunctionSignature: '@lambdaFunc/lambdaFuncSample.cpp: %dflt.Case4()',
     closures: [],
+    genericTypes: [],
     blocks: [
         {
             id: 0,
@@ -243,6 +268,7 @@ export const LAMBDA_EXPECT_AM4_Case4 = {
 export const LAMBDA_EXPECT_AM5_Case5 = {
     outerFunctionSignature: '@lambdaFunc/lambdaFuncSample.cpp: %dflt.Case5()',
     closures: ['x', 'y'],
+    genericTypes: [],
     blocks: [
         {
             id: 0,
@@ -264,6 +290,7 @@ export const LAMBDA_EXPECT_AM5_Case5 = {
 export const LAMBDA_EXPECT_AM6_Case5 = {
     outerFunctionSignature: '@lambdaFunc/lambdaFuncSample.cpp: %dflt.Case5()',
     closures: ['x', 'y'],
+    genericTypes: [],
     blocks: [
         {
             id: 0,
@@ -286,6 +313,7 @@ export const LAMBDA_EXPECT_AM6_Case5 = {
 export const LAMBDA_EXPECT_AM7_Case5 = {
     outerFunctionSignature: '@lambdaFunc/lambdaFuncSample.cpp: %dflt.Case5()',
     closures: ['x', 'y'],
+    genericTypes: [],
     blocks: [
         {
             id: 0,
@@ -307,6 +335,7 @@ export const LAMBDA_EXPECT_AM7_Case5 = {
 export const LAMBDA_EXPECT_AM9_AM8_Case6 = {
     outerFunctionSignature: '@lambdaFunc/lambdaFuncSample.cpp: %dflt.%AM8$Case6([c, a], int)',
     closures: ['a', 'b', 'x'],
+    genericTypes: [],
     blocks: [
         {
             id: 0,
@@ -329,6 +358,7 @@ export const LAMBDA_EXPECT_AM9_AM8_Case6 = {
 export const LAMBDA_EXPECT_AM8_Case6 = {
     outerFunctionSignature: '@lambdaFunc/lambdaFuncSample.cpp: %dflt.Case6()',
     closures: ['a', 'c'],
+    genericTypes: [],
     blocks: [
         {
             id: 0,
@@ -353,6 +383,7 @@ export const LAMBDA_EXPECT_AM8_Case6 = {
 export const LAMBDA_EXPECT_AM10_Case7 = {
     outerFunctionSignature: '@lambdaFunc/lambdaFuncSample.cpp: %dflt.Case7()',
     closures: ['x', 'y'],
+    genericTypes: [],
     blocks: [
         {
             id: 0,
@@ -375,12 +406,53 @@ export const LAMBDA_EXPECT_AM10_Case7 = {
 export const LAMBDA_EXPECT_AM11_Case8 = {
     outerFunctionSignature: '@lambdaFunc/lambdaFuncSample.cpp: %dflt.Case8()',
     closures: [],
+    genericTypes: [],
     blocks: [
         {
             id: 0,
             stmts: [
                 "x = parameter0: int",
                 "y = parameter1: int",
+                "this = this: @lambdaFunc/lambdaFuncSample.cpp: %dflt",
+                "%0 = x + y",
+                "return %0",
+            ],
+            preds: [],
+            succes: [],
+        },
+    ],
+};
+
+export const LAMBDA_EXPECT_AM12_Case9 = {
+    outerFunctionSignature: '@lambdaFunc/lambdaFuncSample.cpp: %dflt.Case9()',
+    closures: [],
+    genericTypes: [],
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                "x = parameter0: auto",
+                "y = parameter1: auto",
+                "this = this: @lambdaFunc/lambdaFuncSample.cpp: %dflt",
+                "%0 = x + y",
+                "return %0",
+            ],
+            preds: [],
+            succes: [],
+        },
+    ],
+};
+
+export const LAMBDA_EXPECT_AM13_Case9 = {
+    outerFunctionSignature: '@lambdaFunc/lambdaFuncSample.cpp: %dflt.Case9()',
+    closures: [],
+    genericTypes: ['T', 'U'],
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                "x = parameter0: T",
+                "y = parameter1: U",
                 "this = this: @lambdaFunc/lambdaFuncSample.cpp: %dflt",
                 "%0 = x + y",
                 "return %0",

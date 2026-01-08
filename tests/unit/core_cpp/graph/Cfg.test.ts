@@ -292,6 +292,7 @@ describe('Function Test', () => {
         testBlocks(scene, 'lambdaFuncSample.cpp', 'Case5', LAMBDA_EXPECT.LAMBDA_EXPECT_CASE5.blocks);
         testBlocks(scene, 'lambdaFuncSample.cpp', 'Case6', LAMBDA_EXPECT.LAMBDA_EXPECT_CASE6.blocks);
         testBlocks(scene, 'lambdaFuncSample.cpp', 'Case7', LAMBDA_EXPECT.LAMBDA_EXPECT_CASE7.blocks);
+        testBlocks(scene, 'lambdaFuncSample.cpp', 'Case9', LAMBDA_EXPECT.LAMBDA_EXPECT_CASE9.blocks);
         testLambdaFunction(scene, 'lambdaFuncSample.cpp', '%AM0$Case1', LAMBDA_EXPECT.LAMBDA_EXPECT_AM0_Case1);
         testLambdaFunction(scene, 'lambdaFuncSample.cpp', '%AM1$Case2', LAMBDA_EXPECT.LAMBDA_EXPECT_AM1_Case2);
         testLambdaFunction(scene, 'lambdaFuncSample.cpp', '%AM2$Case2', LAMBDA_EXPECT.LAMBDA_EXPECT_AM2_Case2);
@@ -304,6 +305,8 @@ describe('Function Test', () => {
         testLambdaFunction(scene, 'lambdaFuncSample.cpp', '%AM8$Case6', LAMBDA_EXPECT.LAMBDA_EXPECT_AM8_Case6);
         testLambdaFunction(scene, 'lambdaFuncSample.cpp', '%AM10$Case7', LAMBDA_EXPECT.LAMBDA_EXPECT_AM10_Case7);
         testLambdaFunction(scene, 'lambdaFuncSample.cpp', '%AM11$Case8', LAMBDA_EXPECT.LAMBDA_EXPECT_AM11_Case8);
+        testLambdaFunction(scene, 'lambdaFuncSample.cpp', '%AM12$Case9', LAMBDA_EXPECT.LAMBDA_EXPECT_AM12_Case9);
+        testLambdaFunction(scene, 'lambdaFuncSample.cpp', '%AM13$Case9', LAMBDA_EXPECT.LAMBDA_EXPECT_AM13_Case9);
 
         const arkFile = scene.getFiles().find((file) => file.getName().endsWith('lambdaFuncSample.cpp'));
         let arkMethod = arkFile?.getDefaultClass().getMethods()
@@ -703,4 +706,8 @@ function testLambdaFunction(scene: Scene, filePath: string, methodName: string, 
     const [_, closureLocal] = closureLocalPair;
     const closures = new Set((closureLocal.getType() as LexicalEnvType).getClosures().map(c => c.getName()));
     expect(closures).toEqual(new Set(expectIR.closures));
+    // 4. test generic types
+    const genericTypes = arkMethod?.getGenericTypes() ?? [];
+    const genericTypesName = new Set(genericTypes.map(t => t.getName()));
+    expect(genericTypesName).toEqual(new Set(expectIR.genericTypes));
 }
