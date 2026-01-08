@@ -360,6 +360,8 @@ export function buildDefaultConstructor(arkClass: ArkClass): boolean {
     defaultConstructor.setLineCol(0);
 
     const thisLocal = new Local(THIS_NAME, new ClassType(arkClass.getSignature()));
+    const thisDefStmt = new ArkAssignStmt(thisLocal, new ArkThisRef(new ClassType(arkClass.getSignature())));
+    thisLocal.setDeclaringStmt(thisDefStmt);
     const locals: Set<Local> = new Set([thisLocal]);
     const basicBlock = new BasicBlock();
     basicBlock.setId(0);
@@ -376,11 +378,10 @@ export function buildDefaultConstructor(arkClass: ArkClass): boolean {
             locals.add(parameterLocal);
             parameterArgs.push(parameterLocal);
             basicBlock.addStmt(new ArkAssignStmt(parameterLocal, parameterRef));
-            index++;
         }
     }
 
-    basicBlock.addStmt(new ArkAssignStmt(thisLocal, new ArkThisRef(new ClassType(arkClass.getSignature()))));
+    basicBlock.addStmt(thisDefStmt);
 
     if (superConstructor) {
         const superInvokeExpr = new ArkInstanceInvokeExpr(thisLocal, superConstructor.getSignature(), parameterArgs);

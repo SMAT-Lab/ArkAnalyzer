@@ -31,8 +31,8 @@ class Q extends B {
 
 class C {
     c: number;
-    constructor(c: number) {
-        this.c = c;
+    constructor(c1: number, c2: number) {
+        this.c = c1 + c2;
     }
 
     foo(): void {}
@@ -51,7 +51,7 @@ class E extends C {
     e: string;
 
     constructor(c: number, e: string) {
-        super(c);
+        super(c, 1);
         this.e = e;
     }
 
