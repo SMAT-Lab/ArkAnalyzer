@@ -303,7 +303,7 @@ describe("Infer Array Test", () => {
         const file = projectScene.getFile(fileId);
         const method = file?.getClassWithName('TestPTA')?.getMethodWithName('goo');
         const stmt = method?.getCfg()?.getStmts()[1];
-        assert.equal(stmt?.toString(), 'ptrinvoke <@inferType/Field.ts: TestPTA.this.onClick2(number)>(2)');
+        assert.equal(stmt?.toString(), 'ptrinvoke this.onClick2<@inferType/Field.ts: TestPTA.%AM1(number)>(2)');
     })
 
 })
@@ -493,9 +493,9 @@ describe("function Test", () => {
       d = parameter1: @built-in/lib.es5.d.ts: Function
       this = this: @inferType/inferSample.ts: BaseChangeInfer
       %0 = callback.<@built-in/lib.es2015.core.d.ts: Function.name>
-      ptrinvoke <@inferType/inferSample.ts: BaseChangeInfer.callback()>()
+      ptrinvoke callback<@inferType/inferSample.ts: BaseChangeInfer.%AM0()>()
       %1 = d.<@built-in/lib.es5.d.ts: Function.length>
-      %2 = ptrinvoke <@%unk/%unk: .d()>()
+      %2 = ptrinvoke d<@built-in/lib.es5.d.ts: Function.call(@built-in/lib.es5.d.ts: Function, any, any[])>()
       instanceinvoke %2.<@%unk/%unk: .toString()>()
       return
   }
@@ -544,7 +544,7 @@ describe("function Test", () => {
         const file = scene.getFile(fileId);
         const method = file?.getClassWithName('TestCallback')?.getMethodWithName('foo');
         const stmt = method?.getCfg()?.getStmts()[1];
-        assert.equal(stmt?.toString(), 'ptrinvoke <@etsSdk/api/@ohos.base.d.ts: Callback.this.myCallback(T)>(\'abc\')');
+        assert.equal(stmt?.toString(), 'ptrinvoke this.myCallback<@etsSdk/api/@ohos.base.d.ts: Callback.create(T)>(\'abc\')');
     })
 
     it('import type', () => {
@@ -553,6 +553,17 @@ describe("function Test", () => {
         const image = file?.getImportInfoBy('image');
         assert.isDefined(image);
         assert.isTrue(image?.containsModifier(ModifierType.TYPE));
+    })
+
+    it('test change ptr', () => {
+        const fileId = new FileSignature(scene.getProjectName(), 'inferSample.ts');
+        const file = scene.getFile(fileId);
+        const stmt1 = file?.getClassWithName('ChangePtrTest')?.getMethodWithName('callField')?.getCfg()?.getStmts()[1];
+        assert.equal(stmt1?.toString(), 'ptrinvoke this.fieldA<@inferType/inferSample.ts: ChangePtrTest.%AM0$%instInit(number)>(111)');
+        const stmt2 = file?.getClassWithName('ChangePtrTest')?.getMethodWithName('callField')?.getCfg()?.getStmts()[2];
+        assert.equal(stmt2?.toString(), 'ptrinvoke this.fieldB<@inferType/inferSample.ts: ChangePtrTest.%AM1$%instInit(number)>(222)');
+        const stmt3 = file?.getClassWithName('ChangePtrTest')?.getMethodWithName('callField')?.getCfg()?.getStmts()[5];
+        assert.equal(stmt3?.toString(), 'ptrinvoke this.fieldC<@built-in/lib.es5.d.ts: Function.call(@built-in/lib.es5.d.ts: Function, any, any[])>(333)');
     })
 })
 

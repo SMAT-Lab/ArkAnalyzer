@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -154,7 +154,7 @@ const CASE1_EXPECT = `class %dflt {
       z = %2
       y = staticinvoke <@save/basic.ts: %dflt.controlTest()>()
       a = notPerson.<@save/basic.ts: Person.age>
-      ptrinvoke <@save/basic.ts: Person.notPerson.growOld()>()
+      ptrinvoke notPerson.growOld<@save/basic.ts: Person.%AM0$%instInit()>()
       staticinvoke <@save/basic.ts: Person.[static]wooooof()>()
       return
   }
@@ -627,7 +627,7 @@ class ExtendedAdder extends Adder {
     label0:
       b = parameter0: string
       this = this: @save/basic.ts: ExtendedAdder
-      %0 = ptrinvoke <@save/basic.ts: ExtendedAdder.this.superAdd(string)>(b)
+      %0 = ptrinvoke this.superAdd<@save/basic.ts: ExtendedAdder.%AM0$%instInit(string)>(b)
       return %0
   }
 }

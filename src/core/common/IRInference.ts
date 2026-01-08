@@ -50,7 +50,6 @@ import { Scene } from '../../Scene';
 import { ArkClass } from '../model/ArkClass';
 import { findArkExport, ModelUtils } from './ModelUtils';
 import { ArkField, FieldCategory } from '../model/ArkField';
-import { CALL_BACK } from './EtsConst';
 import {
     AliasClassSignature,
     BaseSignature,
@@ -60,7 +59,7 @@ import {
     MethodSignature,
     MethodSubSignature
 } from '../model/ArkSignature';
-import { CONSTRUCTOR_NAME, FUNCTION, IMPORT, SUPER_NAME, THIS_NAME } from './TSConst';
+import { CALL, CONSTRUCTOR_NAME, FUNCTION, IMPORT, SUPER_NAME, THIS_NAME } from './TSConst';
 import { Builtin } from './Builtin';
 import { ArkBody } from '../model/ArkBody';
 import { ArkAssignStmt, ArkInvokeStmt } from '../base/Stmt';
@@ -557,8 +556,9 @@ export class IRInference {
         let methodSignature;
         if (type instanceof FunctionType) {
             methodSignature = type.getMethodSignature();
-        } else if (type instanceof ClassType && type.getClassSignature().getClassName().endsWith(CALL_BACK)) {
-            const callback = scene.getClass(type.getClassSignature())?.getMethodWithName(CALL_SIGNATURE_NAME);
+        } else if (type instanceof ClassType) {
+            const methodName = type.getClassSignature().getClassName() === FUNCTION ? CALL : CALL_SIGNATURE_NAME;
+            const callback = scene.getClass(type.getClassSignature())?.getMethodWithName(methodName);
             if (callback) {
                 methodSignature = callback.getSignature();
             }

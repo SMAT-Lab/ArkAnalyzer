@@ -227,3 +227,26 @@ class ArrayCatTest {
         const arr33 = [...arr11, ...arr22];
     }
 }
+
+class ChangePtrTest {
+    fieldA = (data: number): void => {
+        console.log(data);
+    };
+
+    fieldB: Function = (data: number): void => {
+        console.log(data);
+    };
+
+    fieldC: Function | undefined;
+
+    callField(): void {
+        // 正确表示为ArkPtrInvokeExpr，funcPtr指向this.fieldA
+        this.fieldA(111);
+        // 错误表示为ArkInstanceInvokeExpr，methodSignature为A.fieldB方法，但是calss A没有fieldB方法，所以methodSignature中的param为空，return type为Unknown
+        this.fieldB(222);
+        // 错误表示为ArkInstanceInvokeExpr，methodSignature为A.fieldC方法，但是calss A没有fieldC方法，所以methodSignature中的param为空，return type为Unknown
+        if (this.fieldC) {
+            this.fieldC(333);
+        }
+    }
+}
