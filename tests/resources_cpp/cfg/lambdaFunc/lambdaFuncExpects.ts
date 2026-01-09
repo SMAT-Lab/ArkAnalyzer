@@ -163,6 +163,40 @@ export const LAMBDA_EXPECT_CASE9 = {
     ],
 };
 
+export const LAMBDA_EXPECT_APPLY = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                "f = parameter0: Func",
+                "v = parameter1: int",
+                "this = this: @lambdaFunc/lambdaFuncSample.cpp: %dflt",
+                "%0 = ptrinvoke <@%unk/%unk: .f()>(v)",
+                "return %0",
+            ],
+            preds: [],
+            succes: [],
+        },
+    ],
+};
+
+export const LAMBDA_EXPECT_CASE10 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                "this = this: @lambdaFunc/lambdaFuncSample.cpp: %dflt",
+                "base = 1",
+                "func = %AM14$Case10",
+                "res = staticinvoke <@lambdaFunc/lambdaFuncSample.cpp: %dflt.Apply(Func, int)>(func, 2)",
+                "return",
+            ],
+            preds: [],
+            succes: [],
+        },
+    ],
+};
+
 export const LAMBDA_EXPECT_AM0_Case1 = {
     outerFunctionSignature: '@lambdaFunc/lambdaFuncSample.cpp: %dflt.Case1()',
     closures: [],
@@ -455,6 +489,27 @@ export const LAMBDA_EXPECT_AM13_Case9 = {
                 "y = parameter1: U",
                 "this = this: @lambdaFunc/lambdaFuncSample.cpp: %dflt",
                 "%0 = x + y",
+                "return %0",
+            ],
+            preds: [],
+            succes: [],
+        },
+    ],
+};
+
+export const LAMBDA_EXPECT_AM14_Case10 = {
+    outerFunctionSignature: '@lambdaFunc/lambdaFuncSample.cpp: %dflt.Case10()',
+    closures: ['base'],
+    genericTypes: [],
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                "%closures0 = parameter0: [base]",
+                "x = parameter1: int",
+                "base = %closures0.base",
+                "this = this: @lambdaFunc/lambdaFuncSample.cpp: %dflt",
+                "%0 = x + base",
                 "return %0",
             ],
             preds: [],

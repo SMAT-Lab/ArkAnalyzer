@@ -18,7 +18,6 @@
 
 #define TWO 2
 #define FIVE 5
-#define TEN 10
 #define FLOAT_NUM 2.0
 
 int g_num = TWO;
@@ -140,4 +139,18 @@ void Case9()
     auto explicitGenericLambda = []<typename T, typename U>(T x, U y) { return x + y; };
     res1 = explicitGenericLambda(1, TWO);
     res2 = explicitGenericLambda(FLOAT_NUM, FLOAT_NUM);
+}
+
+// Lambda functions as template parameters, C++ still had no constraints on template types in C++17. (which called 'Concept' in C++20)
+template <typename Func>
+int Apply(Func f, int v)
+{
+    return f(v);
+}
+
+void Case10()
+{
+    int base = 1;
+    auto func = [base](int x) { return x + base; };
+    int res = Apply(func, TWO);
 }
