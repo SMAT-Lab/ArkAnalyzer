@@ -304,7 +304,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
 
     // Judge whether the current node is related to the lambda function of CPP
     private isNodeRelatedToCXXLambdaFunc(node: CxxAstNode): boolean {
-        return !!node.type?.qualType?.startsWith('(lambda at');
+        return node.type?.qualType?.startsWith('(lambda at') || node.inner?.[0]?.kind === 'LambdaExpr';
     }
 
     private isNodeRelatedToImplicitNode(node: CxxAstNode): boolean {
@@ -542,7 +542,12 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             pNode && pNode?.inner?.length > 0 &&
             (pNode.inner[0].kind === 'TypeRef' || !node.type.qualType.includes('[') || cxxNode2Type(node, this.declaringMethod) instanceof ClassType)
         ) {
-            return this.cxxAggregateToValueAndStmts(node);
+            try {
+                return this.cxxAggregateToValueAndStmts(node);
+            } catch (error) {
+                logger.error(`Error in cxxAggregateToValueAndStmts.`);
+                return this.unprocessedNodeToValueAndStmts(node);
+            }
         }
         return this.cxxArrayLiteralExpressionToValueAndStmts(node);
     }
@@ -1635,16 +1640,31 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             cxxOperatorCallExpr.inner?.[0]?.castKind !== 'FunctionToPointerDecay') {
             return null;
         }
+
+        // Handling Recursive function, e.g. Case10 in lambdaFuncSample.cpp
+        if (cxxOperatorCallExpr.inner?.[1]) {
+            let callNode = cxxOperatorCallExpr.inner[1];
+            while (callNode.kind === 'ImplicitCastExpr' && callNode.valueCategory === 'lvalue' && callNode.inner.length > 0) {
+                callNode = callNode.inner[0];
+            }
+            if (callNode.type.qualType.includes('std::function') || this.isNodeRelatedToCXXLambdaFunc(callNode)) {
+                return this.buildValueAndStmtsForMemberCall(
+                    [], cxxOperatorCallExpr.inner[1], [...cxxOperatorCallExpr.inner.slice(2)], cxxOperatorCallExpr, undefined);
+            }
+        }
+
         let callType = cxxNode2Type(cxxOperatorCallExpr, this.declaringMethod);
         if (callType instanceof ReferenceType) {
             callType = callType.getBaseType();
         }
+        // Handling overloaded stream operators
         if (callType.getTypeString().includes('istream') || callType.getTypeString().includes('ostream')) {
             return this.buildInvokeValueForOverloadedStreamOp(cxxOperatorCallExpr);
         }
         if (!(callType instanceof ClassType)) {
             return null;
         }
+        // Handling overloaded operators in user-defined class
         const classSignature = callType.getClassSignature();
         const arkClass = this.declaringMethod.getDeclaringArkFile().getScene().getClass(classSignature);
         if (!arkClass) {
@@ -1795,7 +1815,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             }
             const methodSignature = ArkSignatureBuilder.buildMethodSignatureFromMethodName(callerName);
             const callerType = callerValue.getType();
-            if (callerType instanceof FunctionType || (callerType instanceof PointerType && callerType.getBaseType() instanceof FunctionType)) {
+            if (callerType instanceof FunctionType || (callerType instanceof PointerType && callerType.getBaseType() instanceof FunctionType) ||
+                !this.getGlobals()?.has(callerName)) {
                 invokeValue = new ArkPtrInvokeExpr(methodSignature, callerValue, args, realGenericTypes);
             } else {
                 invokeValue = new ArkStaticInvokeExpr(methodSignature, args, realGenericTypes);
@@ -2611,12 +2632,6 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         if (variableDeclaration.inner !== null && variableDeclaration.inner.length !== 0) {
             rightOpNode = nodeInnerNode(variableDeclaration);
         }
-        if (variableDeclaration.type.qualType.toString() === 'int' && variableDeclaration.code.startsWith('std::')) {
-            const containerType = this.getStdContainerType(variableDeclaration.code);
-            if (containerType) {
-                variableDeclaration.type.qualType = containerType;
-            }
-        }
         // In this case, the non assigned information on the right node needs to be discarded
         if (this.isCxxArray(leftOpNode.type.qualType) && rightOpNode?.kind === 'IntegerLiteral') {
             rightOpNode = undefined;
@@ -2632,11 +2647,6 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
     private isCxxArray(qualType: string): boolean {
         const pattern = /\[.*\]/;
         return pattern.test(qualType);
-    }
-
-    private getStdContainerType(declCode: string): string | null {
-        const match = /\b(std::\w+)</g.exec(declCode);
-        return match ? match[1] : null;
     }
 
     /**

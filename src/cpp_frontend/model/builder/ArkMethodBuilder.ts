@@ -86,7 +86,7 @@ export function buildDefaultArkMethodFromArkClass(declaringClass: ArkClass, mtd:
 }
 
 export function handleFunctionTemplateDecl(methodNode: CxxAstNode, mtd: ArkMethod, sourceFile: CxxAstNode): void {
-    if (methodNode.kind !== 'FunctionTemplateDecl') {
+    if (methodNode.kind !== 'FunctionTemplateDecl' && methodNode.kind !== 'LambdaExpr') {
         return;
     }
     mtd.isGenericsMethod();

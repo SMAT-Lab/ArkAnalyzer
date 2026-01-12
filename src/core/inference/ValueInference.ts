@@ -1144,3 +1144,11 @@ export class CxxArkNewArrayExprInference extends ArkNewArrayExprInference {
         return undefined;
     }
 }
+
+@Bind(InferLanguage.CXX)
+export class CxxClosureFieldRefInference extends ClosureFieldRefInference {
+
+    public getValueName(): string {
+        return 'CxxClosureFieldRef';
+    }
+}

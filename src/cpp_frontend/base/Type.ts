@@ -691,3 +691,19 @@ export class CxxArrayType extends Type {
         return strs.join('');
     }
 }
+
+export class AutoType extends Type {
+    private static readonly INSTANCE = new AutoType();
+
+    public static getInstance(): AutoType {
+        return this.INSTANCE;
+    }
+
+    private constructor() {
+        super();
+    }
+
+    public getTypeString(): string {
+        return 'auto';
+    }
+}

@@ -18,7 +18,6 @@
 
 #define TWO 2
 #define FIVE 5
-#define TEN 10
 #define FLOAT_NUM 2.0
 
 int g_num = TWO;
@@ -106,4 +105,68 @@ void Case6()
     };
 
     int res = outer(1);
+}
+
+// mutable lambda
+void Case7()
+{
+    int x = 2;
+    int y = 5;
+    auto mutableLambda = [&x, y]() mutable {
+        x++;
+        y++;  // What is modified is the captured copy.
+        return x + y;
+    };
+
+    int res = mutableLambda();
+}
+
+// constexpr lambda
+void Case8()
+{
+    auto func = [](int x, int y) constexpr { return x + y; };
+    int res = func(1, 1);
+}
+
+// Generic lambda
+void Case9()
+{
+    auto genericLambda = [](auto x, auto y) { return x + y; };
+
+    auto res1 = genericLambda(1, TWO);
+    auto res2 = genericLambda(FLOAT_NUM, FLOAT_NUM);
+
+    auto explicitGenericLambda = []<typename T, typename U>(T x, U y) { return x + y; };
+    res1 = explicitGenericLambda(1, TWO);
+    res2 = explicitGenericLambda(FLOAT_NUM, FLOAT_NUM);
+}
+
+// Lambda functions as template parameters, C++ still had no constraints on template types in C++17. (which called 'Concept' in C++20)
+template <typename Func>
+int Apply(Func f, int v)
+{
+    return f(v);
+}
+
+void Case10()
+{
+    int base = 1;
+    auto func = [base](int x) { return x + base; };
+    int res = Apply(func, TWO);
+}
+
+// Recursive lambda
+void Case11()
+{
+    // C++11:
+    std::function<int(int)> factorial = [&](int n) {
+        return n == 0 ? 1 : n * factorial(n - 1);
+    };
+    int res = factorial(FIVE);
+
+    // C++14及以后：
+    auto fact = [](auto self, int n) -> int {
+        return n == 0 ? 1 : n * self(self, n - 1);
+    };
+    res = fact(fact, FIVE);
 }

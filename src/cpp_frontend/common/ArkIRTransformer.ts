@@ -273,7 +273,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
 
         let rightType;
         //  Identify the tagUsed attribute to determine struct, union, and enum nodes
-        rightType = cxxNode2Type(typeAliasDeclaration, undefined);
+        rightType = cxxNode2Type(typeAliasDeclaration, this.declaringMethod);
 
         if (rightType instanceof AbstractTypeExpr) {
             rightType = rightType.getType();

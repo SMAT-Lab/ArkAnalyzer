@@ -30,7 +30,7 @@ export type GetParentFn = {
 };
 
 export class AstUtils {
-    private static currentAccess: string = 'public';
+    private static currentAccess: string = '';
 
     private static deleteFileSync(filePath: string): void {
         try {
@@ -145,9 +145,7 @@ export class AstUtils {
         if (!cursor.inner) {
             return filteredChildren;
         }
-        filteredChildren = cursor.inner.filter(
-            (item: CxxAstNode) => !item.isImplicit || cursor.kind === 'LambdaExpr'
-        );
+        filteredChildren = cursor.inner.filter((item: CxxAstNode) => !item.isImplicit);
         return filteredChildren;
     }
 
@@ -176,6 +174,12 @@ export class AstUtils {
         if (cursor.name === undefined) {
             cursor.name = '';
         }
+
+        // handle modifiers of lambda function
+        if (cursor.kind === 'LambdaExpr') {
+            this.processAccess(cursor);
+        }
+
         // The default access property of class is 'private',The default access property of struct is 'public'
         if (cursor.kind === 'CXXRecordDecl' && cursor.tagUsed === 'class') {
             this.currentAccess = 'private';
@@ -224,15 +228,53 @@ export class AstUtils {
     private static processAccess(cursor: CxxAstNode): void {
         cursor.modifiers = [];
         // C++access control is a partition declaration that updates current information when encountering an access control symbol
-        if (cursor.kind === 'CXXAccessSpecifier') {
-            this.currentAccess = this.extractAllCppModifiers(cursor.code)[0] ?? '';
+        if (cursor.kind === 'AccessSpecDecl') {
+            this.currentAccess = cursor.access ?? this.extractAllCppModifiers(cursor.code)[0] ?? '';
         } else {
-            let codeModifier = this.extractAllCppModifiers(cursor.code);
-            cursor.modifiers.push(this.currentAccess);
+            const extractedCode = this.getCodeForExtractModifiers(cursor);
+            let codeModifier = this.extractAllCppModifiers(extractedCode);
+            if (this.currentAccess !== '') {
+                cursor.modifiers.push(this.currentAccess);
+            }
             if (codeModifier !== null) {
-                cursor.modifiers?.push(...codeModifier);
+                cursor.modifiers.push(...codeModifier);
             }
         }
+    }
+
+    private static getCodeForExtractModifiers(cursor: CxxAstNode): string {
+        let extractedCode = cursor.code;
+        if (!['CXXConstructorDecl', 'CXXDestructorDecl', 'CXXMethodDecl', 'FriendDecl', 'FunctionDecl', 'FunctionTemplateDecl'].includes(cursor.kind)) {
+            return extractedCode;
+        }
+        const bodyNode = cursor.inner.filter(inn => inn.kind === 'CompoundStmt');
+        const bodyCode = bodyNode.length === 0 ? '' : bodyNode[0].code;
+        return this.stripFucntionParams(extractedCode.replace(bodyCode, ''));
+    }
+
+    private static stripFucntionParams(code: string): string {
+        let depth = 0;
+        let start = -1;
+        let end = -1;
+        for (let i = 0; i < code.length; i++) {
+            const ch = code[i];
+            if (ch === '(') {
+                if (depth === 0) {
+                    start = i;
+                }
+                depth++;
+            } else if (ch === ')') {
+                depth--;
+                if (depth === 0) {
+                    end = i;
+                    break;
+                }
+            }
+        }
+        if (start === -1 || end === -1) {
+            return code;
+        }
+        return code.slice(0, start).trimEnd() + ' ' + code.slice(end + 1).trimStart();
     }
 
     private static getAstOutputPath(sourceFile: string, cppAstPath: string): string {
