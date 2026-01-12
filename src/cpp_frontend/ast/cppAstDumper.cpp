@@ -157,6 +157,24 @@ public:
         }
     }
 
+    // Retrieve the original ID of the alias
+    void AliasOriginalID(Decl *D)
+    {
+        if (auto *TD = dyn_cast<TypedefDecl>(D)) {
+            QualType underlying = TD->getUnderlyingType();
+            if (const RecordType *RT = underlying->getAs<RecordType>()) {
+                if (CXXRecordDecl *RD = dyn_cast<CXXRecordDecl>(RT->getDecl())) {
+                    OS << "\"originalId\":\"" << RD <<"\",";
+                }
+            }
+            if (const EnumType *ET = underlying->getAs<EnumType>()) {
+                if (EnumDecl *ED = dyn_cast<EnumDecl>(ET->getDecl())) {
+                    OS << "\"originalId\":\"" << ED <<"\",";
+                }
+            }
+        }
+    }
+
     bool TraverseDecl(Decl *D)
     {
         if (!D) {
@@ -173,6 +191,7 @@ public:
         WriteChildCommaIfNeeded();
 
         OS << '{';
+        AliasOriginalID(D);
         bool wroteAnyField = false;
         bool dumperHasName = false;
         bool dumperHasCode = false;
