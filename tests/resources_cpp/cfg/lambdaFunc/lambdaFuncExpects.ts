@@ -197,6 +197,24 @@ export const LAMBDA_EXPECT_CASE10 = {
     ],
 };
 
+export const LAMBDA_EXPECT_CASE11 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                "this = this: @lambdaFunc/lambdaFuncSample.cpp: %dflt",
+                "factorial = %AM15$Case11",
+                "res = ptrinvoke <@lambdaFunc/lambdaFuncSample.cpp: %dflt.factorial([factorial], int)>(%closures0, 5)",
+                "fact = %AM16$Case11",
+                "res = ptrinvoke <@lambdaFunc/lambdaFuncSample.cpp: %dflt.fact(auto, int)>(fact, 5)",
+                "return",
+            ],
+            preds: [],
+            succes: [],
+        },
+    ],
+};
+
 export const LAMBDA_EXPECT_AM0_Case1 = {
     outerFunctionSignature: '@lambdaFunc/lambdaFuncSample.cpp: %dflt.Case1()',
     closures: [],
@@ -515,5 +533,68 @@ export const LAMBDA_EXPECT_AM14_Case10 = {
             preds: [],
             succes: [],
         },
+    ],
+};
+
+export const LAMBDA_EXPECT_AM15_Case11 = {
+    outerFunctionSignature: '@lambdaFunc/lambdaFuncSample.cpp: %dflt.Case11()',
+    closures: ['factorial'],
+    genericTypes: [],
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                '%closures0 = parameter0: [factorial]',
+                'n = parameter1: int',
+                'factorial = %closures0.factorial',
+                'this = this: @lambdaFunc/lambdaFuncSample.cpp: %dflt',
+                'if n == 0'
+            ],
+            preds: [],
+            succes: [ 1, 2 ]
+        },
+        { id: 1, stmts: [ '%0 = 1' ], preds: [ 0 ], succes: [ 3 ] },
+        {
+            id: 2,
+            stmts: [
+                '%1 = n - 1',
+                '%2 = ptrinvoke <@lambdaFunc/lambdaFuncSample.cpp: %dflt.factorial([factorial], int)>(%1)',
+                '%0 = n * %2'
+            ],
+            preds: [ 0 ],
+            succes: [ 3 ]
+        },
+        { id: 3, stmts: [ 'return %0' ], preds: [ 1, 2 ], succes: [] },
+    ],
+};
+
+export const LAMBDA_EXPECT_AM16_Case11 = {
+    outerFunctionSignature: '@lambdaFunc/lambdaFuncSample.cpp: %dflt.Case11()',
+    closures: [],
+    genericTypes: [],
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'self = parameter0: auto',
+                'n = parameter1: int',
+                'this = this: @lambdaFunc/lambdaFuncSample.cpp: %dflt',
+                'if n == 0'
+            ],
+            preds: [],
+            succes: [ 1, 2 ]
+        },
+        { id: 1, stmts: [ '%0 = 1' ], preds: [ 0 ], succes: [ 3 ] },
+        {
+            id: 2,
+            stmts: [
+                '%1 = n - 1',
+                '%2 = ptrinvoke <@%unk/%unk: .self()>(self, %1)',
+                '%0 = n * %2'
+            ],
+            preds: [ 0 ],
+            succes: [ 3 ]
+        },
+        { id: 3, stmts: [ 'return %0' ], preds: [ 1, 2 ], succes: [] },
     ],
 };

@@ -154,3 +154,19 @@ void Case10()
     auto func = [base](int x) { return x + base; };
     int res = Apply(func, TWO);
 }
+
+// Recursive lambda
+void Case11()
+{
+    // C++11:
+    std::function<int(int)> factorial = [&](int n) {
+        return n == 0 ? 1 : n * factorial(n - 1);
+    };
+    int res = factorial(FIVE);
+
+    // C++14及以后：
+    auto fact = [](auto self, int n) -> int {
+        return n == 0 ? 1 : n * self(self, n - 1);
+    };
+    res = fact(fact, FIVE);
+}
