@@ -542,7 +542,12 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             pNode && pNode?.inner?.length > 0 &&
             (pNode.inner[0].kind === 'TypeRef' || !node.type.qualType.includes('[') || cxxNode2Type(node, this.declaringMethod) instanceof ClassType)
         ) {
-            return this.cxxAggregateToValueAndStmts(node);
+            try {
+                return this.cxxAggregateToValueAndStmts(node);
+            } catch (error) {
+                logger.error(`Error in cxxAggregateToValueAndStmts.`);
+                return this.unprocessedNodeToValueAndStmts(node);
+            }
         }
         return this.cxxArrayLiteralExpressionToValueAndStmts(node);
     }

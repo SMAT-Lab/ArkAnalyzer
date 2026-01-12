@@ -123,7 +123,6 @@ import {
     polymorphic,
 } from './JsonDto';
 import {
-    ArkArrayTypeTraitExpr,
     ArkCxxCastExpr,
     ArkCxxDeleteArrayExpr,
     ArkCxxFolderExpr,
@@ -695,12 +694,6 @@ export function serializeValue(value: Value): ValueDto {
     } else if (value instanceof ArkCxxCastExpr) {
         return polymorphic('ArkCxxCastExpr', {
             cxxCastType: value.getCxxCastType(),
-        });
-    } else if (value instanceof ArkArrayTypeTraitExpr) {
-        return polymorphic('ArkArrayTypeTraitExpr', {
-            op: serializeValue(value.getOp()),
-            dimensionOrder: value.getDimensionOrder(),
-            func: value.getFunc(),
         });
     } else if (value instanceof ArkTypeIdExpr) {
         return polymorphic('ArkTypeIdExpr', {
