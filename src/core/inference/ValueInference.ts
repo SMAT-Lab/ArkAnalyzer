@@ -21,32 +21,24 @@ import { ArkInstanceFieldRef, ArkParameterRef, ArkStaticFieldRef, ClosureFieldRe
 import {
     AliasType,
     AnnotationNamespaceType,
-    AnyType,
     ArrayType,
     BooleanType,
     ClassType,
     FunctionType,
-    GenericType,
     LexicalEnvType,
     StringType,
     TupleType,
-    Type, UnionType
+    Type,
+    UnionType
 } from '../base/Type';
 import { TypeInference } from '../common/TypeInference';
 import { IRInference } from '../common/IRInference';
 import { ArkMethod } from '../model/ArkMethod';
 import { EMPTY_STRING, ValueUtil } from '../common/ValueUtil';
-import {
-    ANONYMOUS_CLASS_PREFIX,
-    CALL_SIGNATURE_NAME,
-    INSTANCE_INIT_METHOD_NAME,
-    NAME_PREFIX,
-    UNKNOWN_CLASS_NAME
-} from '../common/Const';
+import { CALL_SIGNATURE_NAME, NAME_PREFIX, UNKNOWN_CLASS_NAME } from '../common/Const';
 import { CALL, CONSTRUCTOR_NAME, FUNCTION, IMPORT, SUPER_NAME, THIS_NAME } from '../common/TSConst';
 import {
     AbstractInvokeExpr,
-    AliasTypeExpr,
     ArkCastExpr,
     ArkConditionExpr,
     ArkInstanceInvokeExpr,
@@ -64,8 +56,6 @@ import { ArkClass } from '../model/ArkClass';
 import { Constant } from '../base/Constant';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { ClassSignature } from '../model/ArkSignature';
-import { ImportInfo } from '../model/ArkImport';
-import { ArkField } from '../model/ArkField';
 import { Builtin } from '../common/Builtin';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ValueInference');
@@ -646,165 +636,3 @@ export class LocalInference extends ValueInference<Local> {
     }
 }
 
-
-@Bind(InferLanguage.ARK_TS1_1)
-export class ArkTSFieldRefInference extends FieldRefInference {
-    public preInfer(value: ArkInstanceFieldRef, stmt: Stmt): boolean {
-        if (stmt.getDef() === value && this.isAnonClassThisRef(value, stmt.getCfg().getDeclaringMethod())) {
-            return false;
-        }
-        return super.preInfer(value);
-    }
-
-    /**
-     * Checks if a value represents an anonymous class 'this' field reference
-     * Identifies field references that access fields directly on 'this' in anonymous class constructors
-     * @param {Value} stmtDef - The value to check (typically a field reference)
-     * @param {ArkMethod} arkMethod - The method containing the value
-     * @returns {boolean} True if the value is an anonymous class 'this' field reference
-     */
-    private isAnonClassThisRef(stmtDef: Value, arkMethod: ArkMethod): boolean {
-        return (arkMethod.getName() === INSTANCE_INIT_METHOD_NAME || arkMethod.getName() === CONSTRUCTOR_NAME) &&
-            stmtDef instanceof ArkInstanceFieldRef &&
-            stmtDef.getBase().getName() === THIS_NAME &&
-            arkMethod.getDeclaringArkClass().isAnonymousClass() &&
-            stmtDef.getFieldName().indexOf('.') === -1;
-    }
-}
-
-
-@Bind(InferLanguage.ARK_TS1_1)
-export class ArkTsInstanceInvokeExprInference extends InstanceInvokeExprInference {
-    /**
-     * Performs inference on an instance invocation expression within the context of a statement
-     * Enhances the base implementation with real generic type inference and extension function support
-     * @param {ArkInstanceInvokeExpr} value - The invocation expression to infer
-     * @param {Stmt} stmt - The statement containing the invocation
-     * @returns {Value | undefined} Returns a new expression if transformed, undefined otherwise
-     */
-    public infer(value: ArkInstanceInvokeExpr, stmt: Stmt): Value | undefined {
-        const arkMethod = stmt.getCfg().getDeclaringMethod();
-        TypeInference.inferRealGenericTypes(value.getRealGenericTypes(), arkMethod.getDeclaringArkClass());
-        const result =
-            IRInference.inferInstanceMember(value.getBase().getType(), value, arkMethod, InstanceInvokeExprInference.inferInvokeExpr) ??
-            IRInference.processExtendFunc(value, arkMethod, super.getMethodName(value, arkMethod));
-        return !result || result === value ? undefined : result;
-    }
-}
-
-
-@Bind(InferLanguage.ARK_TS1_1)
-export class AliasTypeExprInference extends ValueInference<AliasTypeExpr> {
-    public getValueName(): string {
-        return 'AliasTypeExpr';
-    }
-
-    public preInfer(value: AliasTypeExpr): boolean {
-        return value.getOriginalType() === undefined;
-    }
-
-    public infer(value: AliasTypeExpr, stmt: Stmt): Value | undefined {
-        let originalObject = value.getOriginalObject();
-        const arkMethod = stmt.getCfg().getDeclaringMethod();
-
-        let type;
-        let originalLocal;
-        if (originalObject instanceof Local) {
-            originalLocal = ModelUtils.findArkModelByRefName(originalObject.getName(), arkMethod.getDeclaringArkClass());
-            if (AliasTypeExpr.isAliasTypeOriginalModel(originalLocal)) {
-                originalObject = originalLocal;
-            }
-        }
-        if (originalObject instanceof ImportInfo) {
-            const arkExport = originalObject.getLazyExportInfo()?.getArkExport();
-            const importClauseName = originalObject.getImportClauseName();
-            if (importClauseName.includes('.') && arkExport instanceof ArkClass) {
-                type = TypeInference.inferUnclearRefName(importClauseName, arkExport);
-            } else if (arkExport) {
-                type = TypeInference.parseArkExport2Type(arkExport);
-            }
-        } else if (originalObject instanceof Type) {
-            type = TypeInference.inferUnclearedType(originalObject, arkMethod.getDeclaringArkClass());
-        } else if (originalObject instanceof ArkField) {
-            type = originalObject.getType();
-        } else {
-            type = TypeInference.parseArkExport2Type(originalObject);
-        }
-        if (type) {
-            const realGenericTypes = value.getRealGenericTypes();
-            if (TypeInference.checkType(type, t => t instanceof GenericType || t instanceof AnyType) && realGenericTypes && realGenericTypes.length > 0) {
-                TypeInference.inferRealGenericTypes(realGenericTypes, arkMethod.getDeclaringArkClass());
-                type = TypeInference.replaceTypeWithReal(type, realGenericTypes);
-            }
-            value.setOriginalType(type);
-            if (AliasTypeExpr.isAliasTypeOriginalModel(originalLocal)) {
-                value.setOriginalObject(originalLocal);
-            }
-        }
-        return undefined;
-    }
-}
-
-
-@Bind(InferLanguage.ARK_TS1_1)
-export class ArkTSLocalInference extends LocalInference {
-    public getValueName(): string {
-        return 'Local';
-    }
-
-    public preInfer(value: Local): boolean {
-        const type = value.getType();
-        if (value.getName() === THIS_NAME && type instanceof ClassType &&
-            type.getClassSignature().getClassName().startsWith(ANONYMOUS_CLASS_PREFIX)) {
-            return true;
-        } else if (type instanceof FunctionType) {
-            return true;
-        }
-        return super.preInfer(value);
-    }
-
-    public infer(value: Local, stmt: Stmt): Value | undefined {
-        const name = value.getName();
-        const type = value.getType();
-        const arkMethod = stmt.getCfg().getDeclaringMethod();
-        let newType;
-        if (name === THIS_NAME) {
-            newType = IRInference.inferThisLocal(arkMethod)?.getType();
-            if (newType) {
-                value.setType(newType);
-            }
-            return undefined;
-        } else if (type instanceof FunctionType) {
-            const methodSignature = type.getMethodSignature();
-            methodSignature.getMethodSubSignature().getParameters().forEach(p => TypeInference.inferParameterType(p, arkMethod));
-            TypeInference.inferSignatureReturnType(methodSignature, arkMethod);
-            return undefined;
-        } else {
-            newType = TypeInference.inferUnclearedType(type, arkMethod.getDeclaringArkClass());
-        }
-        if (newType) {
-            value.setType(newType);
-            return undefined;
-        }
-        return super.infer(value, stmt);
-    }
-}
-
-@Bind(InferLanguage.ABC)
-export class AbcFieldRefInference extends FieldRefInference {
-    public getValueName(): string {
-        return 'ArkInstanceFieldRef';
-    }
-
-    public preInfer(value: ArkInstanceFieldRef, stmt: Stmt): boolean {
-        const type = value.getType();
-        const projectName = stmt.getCfg().getDeclaringMethod().getDeclaringArkFile().getProjectName();
-        if (TypeInference.isAnonType(type, projectName)) {
-            const baseType = value.getBase().getType();
-            if (!TypeInference.isUnclearType(baseType) && !TypeInference.isAnonType(baseType, projectName)) {
-                return true;
-            }
-        }
-        return super.preInfer(value, stmt);
-    }
-}

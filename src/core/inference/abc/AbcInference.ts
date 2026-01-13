@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -20,13 +20,13 @@ import { ArkMethod } from '../../model/ArkMethod';
 import { FileSignature, MethodSignature } from '../../model/ArkSignature';
 import { InferenceBuilder } from '../InferenceBuilder';
 import { SdkUtils } from '../../common/SdkUtils';
-import { InferLanguage, ValueInference } from '../ValueInference';
+import { Bind, FieldRefInference, InferLanguage, ValueInference } from '../ValueInference';
 import { Stmt } from '../../base/Stmt';
 import { TypeInference } from '../../common/TypeInference';
 import { Value } from '../../base/Value';
 import { GenericType, Type } from '../../base/Type';
 import { Local } from '../../base/Local';
-import { AbstractFieldRef, ArkParameterRef } from '../../base/Ref';
+import { AbstractFieldRef, ArkInstanceFieldRef, ArkParameterRef } from '../../base/Ref';
 import { ArkTsStmtInference } from '../arkts/ArkTsInference';
 
 
@@ -151,5 +151,24 @@ export class AbcInferenceBuilder extends InferenceBuilder {
         const valueInferences = this.getValueInferences(InferLanguage.COMMON);
         this.getValueInferences(InferLanguage.ABC).forEach(e => valueInferences.push(e));
         return new AbcStmtInference(valueInferences);
+    }
+}
+
+@Bind(InferLanguage.ABC)
+export class AbcFieldRefInference extends FieldRefInference {
+    public getValueName(): string {
+        return 'ArkInstanceFieldRef';
+    }
+
+    public preInfer(value: ArkInstanceFieldRef, stmt: Stmt): boolean {
+        const type = value.getType();
+        const projectName = stmt.getCfg().getDeclaringMethod().getDeclaringArkFile().getProjectName();
+        if (TypeInference.isAnonType(type, projectName)) {
+            const baseType = value.getBase().getType();
+            if (!TypeInference.isUnclearType(baseType) && !TypeInference.isAnonType(baseType, projectName)) {
+                return true;
+            }
+        }
+        return super.preInfer(value, stmt);
     }
 }

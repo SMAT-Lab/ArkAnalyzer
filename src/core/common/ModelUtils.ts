@@ -67,7 +67,7 @@ import { MethodParameter } from '../model/builder/ArkMethodBuilder';
 import { Value } from '../base/Value';
 import { Constant } from '../base/Constant';
 import { Builtin } from './Builtin';
-import { CALL_BACK } from './EtsConst';
+import { CALL_BACK, COMPONENT } from './EtsConst';
 
 export class ModelUtils {
     public static implicitArkUIBuilderMethods: Set<ArkMethod> = new Set();
@@ -239,9 +239,15 @@ export class ModelUtils {
                 return new Local(symbolName, TypeInference.getEnumValueType(field) ?? field.getType());
             }
         }
+        let result: ArkExport | null | undefined;
+        if (arkClass.hasDecorator(COMPONENT)) {
+            result = arkClass.getMethodWithName(symbolName) ?? arkClass.getStaticMethodWithName(symbolName);
+        }
+        if (result) {
+            return result;
+        }
         // look up symbol from inner to outer
         let currNamespace: ArkNamespace | null | undefined = arkClass.getDeclaringArkNamespace();
-        let result: ArkExport | null | undefined;
         while (currNamespace) {
             result = currNamespace.getClassWithName(symbolName) ??
                 currNamespace.getDefaultClass()?.getDefaultArkMethod()?.getBody()?.getAliasTypeByName(symbolName) ??
