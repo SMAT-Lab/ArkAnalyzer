@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -30,14 +30,20 @@ import {
     LexicalEnvType,
     StringType,
     TupleType,
-    Type
+    Type, UnionType
 } from '../base/Type';
 import { TypeInference } from '../common/TypeInference';
 import { IRInference } from '../common/IRInference';
 import { ArkMethod } from '../model/ArkMethod';
 import { EMPTY_STRING, ValueUtil } from '../common/ValueUtil';
-import { ANONYMOUS_CLASS_PREFIX, INSTANCE_INIT_METHOD_NAME, NAME_PREFIX, UNKNOWN_CLASS_NAME } from '../common/Const';
-import { CONSTRUCTOR_NAME, IMPORT, SUPER_NAME, THIS_NAME } from '../common/TSConst';
+import {
+    ANONYMOUS_CLASS_PREFIX,
+    CALL_SIGNATURE_NAME,
+    INSTANCE_INIT_METHOD_NAME,
+    NAME_PREFIX,
+    UNKNOWN_CLASS_NAME
+} from '../common/Const';
+import { CALL, CONSTRUCTOR_NAME, FUNCTION, IMPORT, SUPER_NAME, THIS_NAME } from '../common/TSConst';
 import {
     AbstractInvokeExpr,
     AliasTypeExpr,
@@ -441,9 +447,28 @@ export class ArkPtrInvokeExprInference extends StaticInvokeExprInference {
     }
 
     public infer(expr: ArkPtrInvokeExpr, stmt: Stmt): Value | undefined {
-        const ptrType = expr.getFuncPtrLocal().getType();
+        let ptrType: Type | undefined = expr.getFuncPtrLocal().getType();
+        if (ptrType instanceof UnionType) {
+            const funType = ptrType.getTypes().find(t => t instanceof FunctionType);
+            if (funType instanceof FunctionType) {
+                ptrType = funType;
+            } else {
+                ptrType = ptrType.getTypes().find(t => t instanceof ClassType);
+            }
+        }
+        let methodSignature;
         if (ptrType instanceof FunctionType) {
-            expr.setMethodSignature(ptrType.getMethodSignature());
+            methodSignature = ptrType.getMethodSignature();
+        } else if (ptrType instanceof ClassType) {
+            const methodName = ptrType.getClassSignature().getClassName() === FUNCTION ? CALL : CALL_SIGNATURE_NAME;
+            const scene = stmt.getCfg().getDeclaringMethod().getDeclaringArkFile().getScene();
+            const callback = scene.getClass(ptrType.getClassSignature())?.getMethodWithName(methodName);
+            if (callback) {
+                methodSignature = callback.getSignature();
+            }
+        }
+        if (methodSignature) {
+            expr.setMethodSignature(methodSignature);
         }
         super.infer(expr, stmt);
         return undefined;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -378,7 +378,7 @@ describe('Nested Method with Function Expression', () => {
         const rightOpLocal = outerMethod.getBody()?.getLocals().get(nestedName);
         assert.isDefined(rightOpLocal);
         expect((rightOpLocal as Local).getType().toString()).toEqual(`@method/method.ts: %dflt.${nestedName}()`);
-        expect((stmts as Stmt[])[2].toString()).toEqual('ptrinvoke <@method/method.ts: %dflt.innerFunction3()>()');
+        expect((stmts as Stmt[])[2].toString()).toEqual('ptrinvoke innerFunction3<@method/method.ts: %dflt.%AM2$outerFunction3()>()');
     });
 });
 
@@ -420,7 +420,7 @@ describe('Nested Method with Arrow Function', () => {
         const rightOpLocal = outerMethod.getBody()?.getLocals().get(nestedName);
         assert.isDefined(rightOpLocal);
         expect((rightOpLocal as Local).getType().toString()).toEqual(`@method/method.ts: %dflt.${nestedName}()`);
-        expect((stmts as Stmt[])[2].toString()).toEqual('ptrinvoke <@method/method.ts: %dflt.innerFunction4()>()');
+        expect((stmts as Stmt[])[2].toString()).toEqual('ptrinvoke innerFunction4<@method/method.ts: %dflt.%AM3$outerFunction4()>()');
     });
 });
 
@@ -492,8 +492,8 @@ describe('Nested Method in Class', () => {
         const stmts = outerMethod?.getBody()?.getCfg().getStmts();
         assert.isDefined(stmts);
         expect((stmts as Stmt[])[1].toString()).toEqual('staticinvoke <@method/method.ts: %dflt.%innerFunction1$outerFunction1()>()');
-        expect((stmts as Stmt[])[4].toString()).toEqual('ptrinvoke <@method/method.ts: NestedTestClass.innerFunction2()>()');
-        expect((stmts as Stmt[])[5].toString()).toEqual('ptrinvoke <@method/method.ts: NestedTestClass.innerFunction3()>()');
+        expect((stmts as Stmt[])[4].toString()).toEqual('ptrinvoke innerFunction2<@method/method.ts: NestedTestClass.%AM1$outerMethod()>()');
+        expect((stmts as Stmt[])[5].toString()).toEqual('ptrinvoke innerFunction3<@method/method.ts: NestedTestClass.%AM2$outerMethod()>()');
 
         const locals = outerMethod?.getBody()?.getLocals();
         assert.isDefined(locals);
