@@ -53,6 +53,8 @@ private:
     clang::SourceManager &SM;
     clang::Preprocessor &PP;
     std::shared_ptr<HeaderUnitsStore> Store;
+    std::string CurrentFile;
+    std::vector<std::string> HeaderFileSet;
 };
 
 } // namespace ast_dumper

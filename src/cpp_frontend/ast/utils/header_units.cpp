@@ -23,7 +23,11 @@ namespace ast_dumper {
 HeaderFileCollector::HeaderFileCollector(clang::SourceManager &SM,
                                          clang::Preprocessor &PP,
                                          std::shared_ptr<HeaderUnitsStore> Store)
-    : SM(SM), PP(PP), Store(std::move(Store)) {}
+    : SM(SM), PP(PP), Store(std::move(Store)) {
+        clang::FileID MainFileID = SM.getMainFileID();
+        const clang::FileEntry *MainFile = SM.getFileEntryForID(MainFileID);
+        CurrentFile = MainFile->tryGetRealPathName().str();
+    }
 
 void HeaderFileCollector::InclusionDirective(clang::SourceLocation HashLoc,
                                              const clang::Token &,
@@ -52,6 +56,11 @@ void HeaderFileCollector::InclusionDirective(clang::SourceLocation HashLoc,
         }
     }
 
+    if (inc.getString("includedFrom") != CurrentFile ||
+        std::find(HeaderFileSet.begin(), HeaderFileSet.end(), FileName.str()) != HeaderFileSet.end()) {
+        return;
+    }
+    HeaderFileSet.push_back(FileName.str());
     // fileName: resolved header path (if available)
     std::string headerAbs;
     if (File.has_value()) {
