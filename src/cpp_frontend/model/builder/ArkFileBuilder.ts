@@ -185,6 +185,20 @@ function buildArkMethodFromCxxMethod(mtdNode: CxxAstNode, arkFile: ArkFile, astR
  * @returns
  */
 function buildArkFile(arkFile: ArkFile, astRoot: CxxAstNode): void {
+    // handle header units
+    astRoot.headerUnits?.forEach((child: CxxAstNode) => {
+        if (!child.includes) {
+            return;
+        }
+        for (const includeInfo of child.includes) {
+            if (includeInfo.kind !== 'InclusionDirective') {
+                logger.trace('Unprocess kind of header unit: ', includeInfo.kind ?? includeInfo.code);
+                continue;
+            }
+            buildImportInfoFromInclude(includeInfo, child, astRoot, arkFile);
+        }
+    });
+    // handle non-header unit
     const statements = astRoot.inner ?? [];
     statements.forEach((child: CxxAstNode) => {
         let childKind = child.kind;
@@ -233,19 +247,6 @@ function buildArkFile(arkFile: ArkFile, astRoot: CxxAstNode): void {
             default:
                 logger.trace('Child joined default method of arkFile: ', child.kind ?? child.code);
                 break;
-        }
-    });
-    // handle header units
-    astRoot.headerUnits?.forEach((child: CxxAstNode) => {
-        if (!child.includes) {
-            return;
-        }
-        for (const includeInfo of child.includes) {
-            if (includeInfo.kind !== 'InclusionDirective') {
-                logger.trace('Unprocess kind of header unit: ', includeInfo.kind ?? includeInfo.code);
-                continue;
-            }
-            buildImportInfoFromInclude(includeInfo, child, astRoot, arkFile);
         }
     });
 }

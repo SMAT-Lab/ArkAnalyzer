@@ -172,7 +172,7 @@ describe('export Test', () => {
         }
         let importInfos = file1?.getImportInfos();
         assert.equal(importInfos!.length, 6);
-        assert.equal(importInfos![1].getLazyExportInfo()?.getArkExport()?.getSignature().toString(), '@indirectRef/include/myHeader.h: %dflt');
+        assert.equal(importInfos![0].getLazyExportInfo()?.getArkExport()?.getSignature().toString(), '@indirectRef/include/myHeader.h: %dflt');
         assert.equal(importInfos![4].getLazyExportInfo()?.getArkExport()?.getSignature().toString(), '@indirectRef/include/castSample.h: %dflt');
         let invokeMethod = importInfos![5].getLazyExportInfo()?.getArkExport();
         assert.isNotEmpty(invokeMethod);
@@ -246,7 +246,7 @@ describe('cross file case', () => {
     it('cross file case2', () => {
         const fileId = new FileSignature(projectScene.getProjectName(), 'src/myHeader.cpp');
         const file = projectScene.getFile(fileId);
-        assert.equal(file?.getImportInfos().length, 6);
+        assert.equal(file?.getImportInfos().length, 7);
         assert.equal(
             file?.getDefaultClass().getMethodWithName('FuncDoSomething')?.getDeclareSignatures()?.[0].toString(),
             '@crossFileCase/include/myHeader.h: %dflt.FuncDoSomething(int, int)'
@@ -257,10 +257,10 @@ describe('cross file case', () => {
         );
         const stmts = file?.getClassWithName('Circle')?.getMethodWithName('PrintInfo')?.getCfg()?.getStmts();
         assert.isNotEmpty(stmts);
-        assert.equal(stmts![1].toString(), '%0 = this.<@crossFileCase/include/myHeader.h: Circle.center>');
-        assert.equal(stmts![2].toString(), '%1 = %0.<@crossFileCase/include/namespace.h: nsA.Point.x>');
-        assert.equal(stmts![3].toString(), '%2 = this.<@crossFileCase/include/myHeader.h: Circle.center>');
-        assert.equal(stmts![4].toString(), '%3 = %2.<@crossFileCase/include/namespace.h: nsA.Point.y>');
+        assert.equal(stmts![2].toString(), '%1 = this-><@crossFileCase/include/myHeader.h: Circle.center>');
+        assert.equal(stmts![3].toString(), '%2 = %1.<@crossFileCase/include/namespace.h: nsA.Point.x>');
+        assert.equal(stmts![6].toString(), '%5 = this-><@crossFileCase/include/myHeader.h: Circle.center>');
+        assert.equal(stmts![7].toString(), '%6 = %5.<@crossFileCase/include/namespace.h: nsA.Point.y>');
     });
 
     it('cross file case3', () => {
@@ -275,7 +275,7 @@ describe('cross file case', () => {
     it('cross file case4', () => {
         const fileId = new FileSignature(projectScene.getProjectName(), 'src/namespace.cpp');
         const file = projectScene.getFile(fileId);
-        assert.equal(file?.getImportInfos().length, 3);
+        assert.equal(file?.getImportInfos().length, 4);
         assert.equal(
             file?.getNamespaceWithName('nsA')?.getDefaultClass().getMethodWithName('FuncInNamespace')?.
             getDeclareSignatures()?.[0].toString(),
