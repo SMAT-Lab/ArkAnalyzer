@@ -416,7 +416,8 @@ export function buildTypeFromDerivedType(preStr: string, node: CxxAstNode, arkIn
     const innerPart = innerPartMatch ? innerPartMatch[1] : null;
     let innerType = innerPart === null ? [] : [buildTypeFromPreStr(innerPart, node, arkInstance)];
     if (arkInstance instanceof ArkMethod) {
-        let aliasType = arkInstance.getBody()?.getAliasTypeByName(typeStr)?.getOriginalType();
+        // Obtain the use of alias types
+        let aliasType = arkInstance.getBody()?.getAliasTypeByName(typeStr);
         if (aliasType) {
             return aliasType;
         }
@@ -427,8 +428,9 @@ export function buildTypeFromDerivedType(preStr: string, node: CxxAstNode, arkIn
         arkClass = file?.getClassWithName?.(typeStr) ??
             getAnonymousClassByTypeCode(typeStr, file) ??
             CxxModelUtils.getClassFromAnonymousNamespaceByName(typeStr, file);
+        // Obtain the use of alias types
         let aliasType =
-            file?.getDefaultClass().getDefaultArkMethod()?.getBody()?.getAliasTypeByName(typeStr)?.getOriginalType();
+            file?.getDefaultClass().getDefaultArkMethod()?.getBody()?.getAliasTypeByName(typeStr);
         if (aliasType) {
             return aliasType;
         }
