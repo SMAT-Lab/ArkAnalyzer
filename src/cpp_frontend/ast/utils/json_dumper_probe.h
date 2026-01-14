@@ -22,7 +22,7 @@
 
 #define OCTAL_MIN '0'
 #define OCTAL_MAX '7'
-#define OCTAL_size 4
+#define OCTAL_SIZE 4
 #define BYTE64 64
 #define BYTE8 8
 #define ONE 1
@@ -31,6 +31,11 @@
 
 
 namespace ast_dumper {
+
+std::vector<std::string> g_nameModifies = {
+    "_ZN", // linux Name Modification
+    "@@QEA", "@@SA", "??0", "??1", "??4", "??_9", "?name@@3", "?name@@2" // MSVC Name Modification
+};
 
 // JsonDumperProbeStream:
 // - Pass-through: forwards JSONNodeDumper output to an underlying raw_ostream.
@@ -58,7 +63,7 @@ private:
     char tail[kTailMax] = {0};
     size_t tailLen = 0;
 
-    static bool findPatternFixed6(const char *data, size_t len, const char *pat6)
+    static bool FindPatternFixed6(const char *data, size_t len, const char *pat6)
     {
         if (len < kPatLen) {
             return false;
@@ -71,7 +76,7 @@ private:
         return false;
     }
 
-    void scanKeys(const char *Ptr, size_t Size)
+    void ScanKeys(const char *Ptr, size_t Size)
     {
         if (hasName && hasCode) {
             return;
@@ -89,19 +94,19 @@ private:
             memcpy_s(buf, sizeof(buf), tail, tailLen);
             memcpy_s(buf + tailLen, sizeof(buf) - tailLen, Ptr, take);
 
-            if (!hasName && findPatternFixed6(buf, total, kName)) {
+            if (!hasName && FindPatternFixed6(buf, total, kName)) {
                 hasName = true;
             }
-            if (!hasCode && findPatternFixed6(buf, total, kCode)) {
+            if (!hasCode && FindPatternFixed6(buf, total, kCode)) {
                 hasCode = true;
             }
         }
 
         // chunk
-        if (!hasName && findPatternFixed6(Ptr, Size, kName)) {
+        if (!hasName && FindPatternFixed6(Ptr, Size, kName)) {
             hasName = true;
         }
-        if (!hasCode && findPatternFixed6(Ptr, Size, kCode)) {
+        if (!hasCode && FindPatternFixed6(Ptr, Size, kCode)) {
             hasCode = true;
         }
 
@@ -135,29 +140,33 @@ private:
 
     // Extract the class name from the string,
     // case: "public: __cdecl nsA::DefaultClass::DefaultClass(char, int)" to "DefaultClass"
-    void decodeNodeMangledName(const std::string &demangleStr, llvm::json::Object *obj)
+    std::string DecodeNodeMangledName(const std::string &demangle)
     {
+        std::string demangleStr = llvm::demangle(demangle); // decode
         std::string mangledName = "";
-        size_t colonPos = demangleStr.rfind("::");
-        if (colonPos != std::string::npos) {
-            // Search for the starting position of the class name from the current position forward
-            for (size_t i = colonPos - 1; i > 0; --i) {
-                if (demangleStr[i] == ' ' || demangleStr[i] == ':') {
-                    mangledName = demangleStr.substr(i + 1, colonPos - i - 1);
+        size_t bracketPos = demangleStr.find("(");
+        if (bracketPos != std::string::npos) {
+            size_t colonIndex = 0;
+            for (size_t i = bracketPos - 1; i > 0; --i) {
+                if (colonIndex == 0 && demangleStr[i] == ':') {
+                    colonIndex = i; // Record the index of "::" after the class name
+                }
+                if (colonIndex != 0 && i + ONE < colonIndex && (demangleStr[i] == ' ' || demangleStr[i] == ':')) {
+                    mangledName = demangleStr.substr(i + ONE, colonIndex - i - TWO);
                     break;
                 }
             }
             // If no space is found, it indicates that the class name starts from the beginning of the string
-            if (mangledName.empty() && colonPos > 0) {
-                mangledName = demangleStr.substr(0, colonPos);
+            if (mangledName.empty() && colonIndex > 0) {
+                mangledName = demangleStr.substr(0, colonIndex - ONE);
             }
         }
-        (*obj)["mangledName"] = mangledName;
+        return mangledName;
     }
 
     // Decoding the octal representation of UTF-8 encoding
     // case: "\\346\\227\\266\\351\\227\\264" to "时间"
-    std::string decodeUtfOctal(const std::string &input)
+    std::string DecodeUtfOctal(const std::string &input)
     {
         std::string output;
         output.reserve(input.size());
@@ -170,7 +179,7 @@ private:
                                      (input[i + TWO] - OCTAL_MIN) * BYTE8 +
                                      (input[i + THREE] - OCTAL_MIN);
                 output.push_back(static_cast<char>(byte));
-                i += OCTAL_size; // utf-8编码的八进制表示长度为3
+                i += OCTAL_SIZE; // utf-8编码的八进制表示长度为3
             } else {
                 output.push_back(input[i]);
                 ++i;
@@ -179,19 +188,35 @@ private:
         return output;
     }
 
-    void updateNodeField(const char *ptr, size_t size)
+    // Determine whether it is a name modification of a member
+    bool IsInModifies(const std::string demangle)
+    {
+        for (auto modify : g_nameModifies) {
+            if (demangle.find(modify) != std::string::npos) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    void UpdateNodeField(const char *ptr, size_t size)
     {
         buffer.append(ptr, size);
         auto nodeJson = llvm::json::parse("{" + buffer + "}");
         if (nodeJson) {
             if (auto *obj = nodeJson->getAsObject()) {
-                if (auto mangleStr = (*obj)["mangledName"].getAsString()) {
-                    decodeNodeMangledName(llvm::demangle(mangleStr.value().str()), obj);
-                } else {
+                std::string mangleStr;
+                if (auto mangle = (*obj)["mangledName"].getAsString()) {
+                    mangleStr = mangle.value().str();
+                }
+                bool inModifies = IsInModifies(mangleStr);
+                if (mangleStr.empty() || !inModifies) {
                     obj->erase("mangledName");
+                } else {
+                    (*obj)["mangledName"] = DecodeNodeMangledName(mangleStr);
                 }
                 if (auto valueStr = (*obj)["value"].getAsString()) {
-                    (*obj)["value"] = decodeUtfOctal(valueStr.value().str());
+                    (*obj)["value"] = DecodeUtfOctal(valueStr.value().str());
                 }
                 llvm::json::Value jsonValue(std::move(*obj));
                 std::string valueStr = llvm::formatv("{0}", jsonValue).str();
@@ -205,8 +230,8 @@ private:
         if (Size == 0) {
             return;
         }
-        scanKeys(Ptr, Size);
-        updateNodeField(Ptr, Size);
+        ScanKeys(Ptr, Size);
+        UpdateNodeField(Ptr, Size);
         out << buffer;
         buffer.clear();
         bytes += Size;

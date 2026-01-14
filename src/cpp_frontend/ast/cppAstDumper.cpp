@@ -232,7 +232,6 @@ public:
         return true;
     }
 
-
     bool TraverseStmt(Stmt *S)
     {
         if (!S) {
