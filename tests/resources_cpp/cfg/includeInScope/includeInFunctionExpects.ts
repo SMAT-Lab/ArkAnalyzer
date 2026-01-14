@@ -21,12 +21,12 @@ export const INCLUDE_IN_FUNCTION_CASE1 = {
                 'this = this: @includeInScope/includeInScope.cpp: %dflt',
                 'a = g_NUM',
                 'b = a + 1',
-                'c = staticinvoke <@%unk/%unk: .add()>(a, b)',
-                '%0 = new @%unk/%unk: MyStruct',
-                'instanceinvoke %0.<@%unk/%unk: MyStruct.constructor()>()',
+                'c = staticinvoke <@includeInScope/includeInFunction.h: %dflt.add(int, int)>(a, b)',
+                '%0 = new @includeInScope/includeInFunction.h: MyStruct',
+                'instanceinvoke %0.<@includeInScope/includeInFunction.h: MyStruct.constructor()>()',
                 'myStruct = %0',
-                'myStruct.<@%unk/%unk: MyStruct.age> = g_NUM',
-                'return'
+                'myStruct.<@includeInScope/includeInFunction.h: MyStruct.age> = g_NUM',
+                'return',
             ],
             preds: [],
             succes: []

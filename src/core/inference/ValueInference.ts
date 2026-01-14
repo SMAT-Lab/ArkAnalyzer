@@ -73,6 +73,7 @@ import { setTs2CxxFuncMapOfClass, CxxModelUtils } from '../../cpp_frontend/commo
 import { PointerType, ReferenceType } from '../../cpp_frontend/base/Type';
 import { IRInference as CxxIRInference} from '../../cpp_frontend/common/IRInference';
 import { TypeInference as CxxTypeInference } from '../../cpp_frontend/common/TypeInference';
+import { ArkAggregateExpr } from '../../cpp_frontend/base/Expr';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ValueInference');
 
@@ -1150,5 +1151,25 @@ export class CxxClosureFieldRefInference extends ClosureFieldRefInference {
 
     public getValueName(): string {
         return 'CxxClosureFieldRef';
+    }
+}
+
+@Bind(InferLanguage.CXX)
+export class ArkAggregateExprInference extends ValueInference<ArkAggregateExpr> {
+
+    public getValueName(): string {
+        return 'ArkAggregateExpr';
+    }
+
+    public preInfer(value: ArkAggregateExpr): boolean {
+        return TypeInference.isUnclearType(value.getType());
+    }
+
+    public infer(value: ArkAggregateExpr, stmt: Stmt): Value | undefined {
+        const type = TypeInference.inferUnclearedType(value.getType(), stmt.getCfg().getDeclaringMethod().getDeclaringArkClass());
+        if (type) {
+            value.setType(type);
+        }
+        return undefined;
     }
 }

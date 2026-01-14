@@ -67,7 +67,7 @@ export interface CxxEnclosingFunction {
     range?: CxxRange;
 }
 
-/** Spelling Location related to macros */
+/** Spelling Location related to macros or inclusion directive */
 export interface SpellingLoc extends CxxPosition {
     file?: string;
 }
@@ -85,6 +85,19 @@ export interface DtorType {
     kind?: string;
     name?: string;
     type?: CxxTypeInfo;
+}
+
+/** Target information for Inclusion Directive */
+export interface CxxIncludeInfo {
+    code: string; // inclusion directive code
+    fileName?: string; // include header file absolute path. When the target cannot be found in the search path, this property does not exist.
+    includeName: string; // include header file name
+    includedFrom: string; // The absolute path of the translation unit file where the 'InclusionDirective' node is located.
+    isAngled: boolean; // whether it is a reference enclosed in angle brackets or not.
+    kind: string; // kind of node
+    loc: SpellingLoc; // inclusion directive position in translate unit file
+    relativePath: string; // the relative path of the header file relative to the search path
+    searchPath: string; // path of searching header files
 }
 
 export type CxxAstNodeLite = Omit<CxxAstNode, 'inner'>;
@@ -163,10 +176,7 @@ export interface CxxAstNode {
     nominatedNamespace?: NominatedNamespace;
 
     /** Header/include relationship related */
-    include?: boolean; // Node comes from a user header via include
-    included?: string; // Host file path for InclusionDirective
-    fileName?: string; // File name for TranslationUnit/Include
-    locFile?: string; // File name written by locCursorKind
+    includes?: CxxIncludeInfo[],
 
     /** Simple location (line/column); some nodes may not have this */
     loc?: {

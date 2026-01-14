@@ -27,11 +27,11 @@ import { ArkMethod } from '../../../core/model/ArkMethod';
 import { AstUtils } from '../../ast/astUtils';
 import { FileSignature, ClassSignature } from '../../../core/model/ArkSignature';
 import { LineColPosition } from '../../../core/base/Position';
-import { buildImportInfo } from './ArkImportBuilder';
+import { buildGenericImportInfo, buildUsingNamespaceImportInfo } from './ArkImportBuilder';
 import { shouldAddCxxHeaderImport } from '../../common/ModelUtils';
 import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
 import { init4InstanceInitMethod, init4StaticInitMethod } from '../../../core/model/builder/ArkClassBuilder';
-import { CxxAstNode } from '../../ast/ArkCxxAstNode';
+import { CxxAstNode, CxxIncludeInfo } from '../../ast/ArkCxxAstNode';
 import { ArkExport } from '../../../core/model/ArkExport';
 import { Scene } from '../../../Scene';
 import { buildProperty2ArkField } from './ArkFieldBuilder';
@@ -126,8 +126,36 @@ export function buildArkClassFromCxxClass(classNode: CxxAstNode, arkFile: ArkFil
     addExportInfoOnCondition(classNode, cls, arkFile);
 }
 
-function buildImportInfoFromIncludeOrUsing(child: CxxAstNode, astRoot: CxxAstNode, arkFile: ArkFile): void {
-    let importInfo = buildImportInfo(child, astRoot, arkFile);
+/**
+ * Building import info from inclusion directive (just like: #include '../xxx.h')
+ *
+ * @param includeInfo Info of inclusion
+ * @param includeNode Ast node of inclusion
+ * @param astRoot Ast node of translate unit file
+ * @param arkFile ArkFile of translate unit file
+ * @returns
+ */
+function buildImportInfoFromInclude(includeInfo: CxxIncludeInfo, includeNode: CxxAstNode, astRoot: CxxAstNode, arkFile: ArkFile): void {
+    let importInfo = buildGenericImportInfo(includeInfo, includeNode, astRoot, arkFile);
+    if (!importInfo) {
+        return;
+    }
+    importInfo.setDeclaringArkFile(arkFile);
+    if (shouldAddCxxHeaderImport(importInfo)) {
+        arkFile.addImportInfo(importInfo);
+    }
+}
+
+/**
+ * Building import info from using namespace declaration (just like: using namespace xxx)
+ *
+ * @param usingNode Ast node of using declaration
+ * @param astRoot Ast node of translate unit file
+ * @param arkFile ArkFile of translate unit file
+ * @returns
+ */
+function buildImportInfoFromUsing(usingNode: CxxAstNode, astRoot: CxxAstNode, arkFile: ArkFile): void {
+    let importInfo = buildUsingNamespaceImportInfo(usingNode, astRoot, arkFile);
     if (!importInfo) {
         return;
     }
@@ -138,8 +166,7 @@ function buildImportInfoFromIncludeOrUsing(child: CxxAstNode, astRoot: CxxAstNod
 }
 
 function addExportInfoOnCondition(currNode: CxxAstNode, arkInstance: ArkExport, arkFile: ArkFile): void {
-    if (Object.prototype.hasOwnProperty.call(currNode, 'locFile') &&
-        typeof currNode.locFile === 'string' && currNode.locFile.endsWith('.h')) {
+    if (currNode.loc?.file?.endsWith('.h')) {
         arkFile.addExportInfo(buildExportInfo(arkInstance, arkFile, LineColPosition.cxxBuildFromNode(currNode)));
     }
 }
@@ -158,8 +185,7 @@ function buildArkMethodFromCxxMethod(mtdNode: CxxAstNode, arkFile: ArkFile, astR
  * @returns
  */
 function buildArkFile(arkFile: ArkFile, astRoot: CxxAstNode): void {
-    const includeNodes = astRoot.headerUnits?.filter((item: CxxAstNode) => item?.kind === 'inclusion directive') ?? [];
-    const statements = [...includeNodes, ...(astRoot.inner ?? [])];
+    const statements = astRoot.inner ?? [];
     statements.forEach((child: CxxAstNode) => {
         let childKind = child.kind;
         switch (childKind) {
@@ -195,9 +221,8 @@ function buildArkFile(arkFile: ArkFile, astRoot: CxxAstNode): void {
                 child = { ...child, tagUsed: 'enum' };
                 buildArkClassFromCxxClass(child, arkFile, astRoot);
                 break;
-            case 'inclusion directive':
             case 'UsingDirectiveDecl':
-                buildImportInfoFromIncludeOrUsing(child, astRoot, arkFile);
+                buildImportInfoFromUsing(child, astRoot, arkFile);
                 break;
             case 'VarDecl':
                 // handle global variable
@@ -208,6 +233,19 @@ function buildArkFile(arkFile: ArkFile, astRoot: CxxAstNode): void {
             default:
                 logger.trace('Child joined default method of arkFile: ', child.kind ?? child.code);
                 break;
+        }
+    });
+    // handle header units
+    astRoot.headerUnits?.forEach((child: CxxAstNode) => {
+        if (!child.includes) {
+            return;
+        }
+        for (const includeInfo of child.includes) {
+            if (includeInfo.kind !== 'InclusionDirective') {
+                logger.trace('Unprocess kind of header unit: ', includeInfo.kind ?? includeInfo.code);
+                continue;
+            }
+            buildImportInfoFromInclude(includeInfo, child, astRoot, arkFile);
         }
     });
 }
