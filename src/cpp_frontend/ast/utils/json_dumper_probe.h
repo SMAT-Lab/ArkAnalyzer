@@ -133,14 +133,16 @@ private:
         }
     }
 
+    // Extract the class name from the string,
+    // case: "public: __cdecl nsA::DefaultClass::DefaultClass(char, int)" to "DefaultClass"
     void decodeNodeMangledName(const std::string &demangleStr, llvm::json::Object *obj)
     {
         std::string mangledName = "";
-        size_t colonPos = demangleStr.find("::");
+        size_t colonPos = demangleStr.rfind("::");
         if (colonPos != std::string::npos) {
             // Search for the starting position of the class name from the current position forward
             for (size_t i = colonPos - 1; i > 0; --i) {
-                if (demangleStr[i] == ' ') {
+                if (demangleStr[i] == ' ' || demangleStr[i] == ':') {
                     mangledName = demangleStr.substr(i + 1, colonPos - i - 1);
                     break;
                 }
@@ -153,6 +155,8 @@ private:
         (*obj)["mangledName"] = mangledName;
     }
 
+    // Decoding the octal representation of UTF-8 encoding
+    // case: "\\346\\227\\266\\351\\227\\264" to "时间"
     std::string decodeUtfOctal(const std::string &input)
     {
         std::string output;
