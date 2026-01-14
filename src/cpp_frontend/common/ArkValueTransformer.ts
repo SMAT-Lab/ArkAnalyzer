@@ -1140,7 +1140,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             varNode = identifier;
         }
         let varName = varNode.kind === 'TypeRef' ? varNode.code : varNode.name;
-        const varType = cxxNode2Type(identifier, undefined);
+        const varType = cxxNode2Type(identifier, this.declaringMethod);
         if (varName === UndefinedType.getInstance().getName()) {
             identifierValue = CxxValueUtil.getUndefinedConst();
         } else {
