@@ -44,7 +44,7 @@ interface ModuleInfo {
     name: string;
     path?: string;
 }
-
+export const classMap : Map<string, ArkClass> = new Map<string, ArkClass>();
 function extractOhosSdkPath(mapData: Map<string, ModuleInfo>): string {
     for (const [key, value] of mapData.entries()) {
         if (key !== 'ohosSdk') {
@@ -124,6 +124,9 @@ export function buildArkClassFromCxxClass(classNode: CxxAstNode, arkFile: ArkFil
     }
     buildNormalArkClassFromArkFile(classNode, arkFile, cls, astRoot);
     addExportInfoOnCondition(classNode, cls, arkFile);
+    if (classNode.id) {
+        classMap.set(classNode.id,cls);
+    }
 }
 
 /**
@@ -185,6 +188,7 @@ function buildArkMethodFromCxxMethod(mtdNode: CxxAstNode, arkFile: ArkFile, astR
  * @returns
  */
 function buildArkFile(arkFile: ArkFile, astRoot: CxxAstNode): void {
+    classMap.clear();
     // handle header units
     astRoot.headerUnits?.forEach((child: CxxAstNode) => {
         if (!child.includes) {
@@ -203,6 +207,7 @@ function buildArkFile(arkFile: ArkFile, astRoot: CxxAstNode): void {
     statements.forEach((child: CxxAstNode) => {
         let childKind = child.kind;
         switch (childKind) {
+            case 'RecordDecl':
             case 'CXXRecordDecl':
             case 'ClassTemplateDecl':
                 buildArkClassFromCxxClass(child, arkFile, astRoot);
@@ -225,11 +230,6 @@ function buildArkFile(arkFile: ArkFile, astRoot: CxxAstNode): void {
                 // Member function, construction and destructor need to establish the function class first
                 const arkClass = getDeclaringArkClassOfMethod(child, arkFile);
                 buildArkMethodFromCxxMethod(child, arkFile, astRoot, arkClass);
-                break;
-            case 'TypedefDecl':
-                if (child.inner?.[0]?.kind === 'CXXRecordDecl') {
-                    buildArkClassFromCxxClass(child.inner[0], arkFile, astRoot);
-                }
                 break;
             case 'EnumDecl':
                 child = { ...child, tagUsed: 'enum' };
