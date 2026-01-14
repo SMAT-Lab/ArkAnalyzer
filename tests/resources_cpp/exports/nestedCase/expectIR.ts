@@ -71,12 +71,17 @@ export const INNER_CLASS_EXPECT = {
                     id: 0,
                     stmts: [
                         'this = this: @nestedCase/include/namespaceA.h: SAME_NAMESPACE.InnerClass$OuterClass',
-                        '%0 = this.<@nestedCase/include/namespaceA.h: SAME_NAMESPACE.InnerClass$OuterClass.inner_id>',
-                        '%1 = this.<@nestedCase/include/namespaceA.h: SAME_NAMESPACE.InnerClass$OuterClass.inner_name>',
-                        '%2 = this.<@nestedCase/include/namespaceA.h: SAME_NAMESPACE.InnerClass$OuterClass.inner_base>',
-                        '%3 = staticinvoke <@nestedCase/include/namespaceB.h: SAME_NAMESPACE.%dflt.GetId(@nestedCase/include/namespaceB.h: ' +
-                        'SAME_NAMESPACE.BaseData&)>(%2)',
-                        "staticinvoke <@%unk/%unk: .cout()>('InnerClass [ID: ', %0, ', inner_name: ', %1, '] | ', %3)",
+                        '%0 = staticinvoke <@%unk/%unk: .operator<<()>(cout, \'InnerClass [ID: \')',
+                        '%1 = this-><@nestedCase/include/namespaceA.h: SAME_NAMESPACE.InnerClass$OuterClass.inner_id>',
+                        '%2 = staticinvoke <@%unk/%unk: .operator<<()>(%0, %1)',
+                        '%3 = staticinvoke <@%unk/%unk: .operator<<()>(%2, \', inner_name: \')',
+                        '%4 = this-><@nestedCase/include/namespaceA.h: SAME_NAMESPACE.InnerClass$OuterClass.inner_name>',
+                        '%5 = staticinvoke <@%unk/%unk: .operator<<()>(%3, %4)',
+                        '%6 = staticinvoke <@%unk/%unk: .operator<<()>(%5, \'] | \')',
+                        '%7 = this-><@nestedCase/include/namespaceA.h: SAME_NAMESPACE.InnerClass$OuterClass.inner_base>',
+                        '%8 = staticinvoke <@nestedCase/include/namespaceB.h: SAME_NAMESPACE.%dflt.GetId(@nestedCase/include/namespaceB.h: SAME_NAMESPACE.BaseData&)>(%7)',
+                        '%9 = staticinvoke <@%unk/%unk: .operator<<()>(%6, %8)',
+                        'staticinvoke <@%unk/%unk: .operator<<()>(%9, endl)',
                         'return'
                     ],
                     preds: [],

@@ -105,7 +105,10 @@ export type CxxAstNodeLite = Omit<CxxAstNode, 'inner'>;
 /** General C++ AST node (compatible with Clang JSON) */
 export interface CxxAstNode {
     /** Unique node ID */
-    id?: number | string;
+    id?: string;
+
+    /** Unique node ID */
+    originalId?: string;
 
     /** Node kind (e.g., "TranslationUnit", "FunctionDecl", "CXXConstructExpr", etc.) */
     kind: string;

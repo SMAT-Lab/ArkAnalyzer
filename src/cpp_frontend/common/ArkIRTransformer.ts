@@ -85,6 +85,7 @@ import { ValueUtil } from '../../core/common/ValueUtil';
 import { CxxCharType, CxxStdTypeName, CxxTypeBitWidth, CxxTypeSigned, PointerType } from '../base/Type';
 import { buildGenericType } from '../../core/model/builder/builderUtils';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
+import { classMap } from '../model/builder/ArkFileBuilder';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkIRTransformer');
 export type ValueAndStmts = {
@@ -273,7 +274,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
 
         let rightType;
         //  Identify the tagUsed attribute to determine struct, union, and enum nodes
-        rightType = cxxNode2Type(typeAliasDeclaration, this.declaringMethod);
+        rightType = this.getAnonymousInformation(typeAliasDeclaration);
 
         if (rightType instanceof AbstractTypeExpr) {
             rightType = rightType.getType();
@@ -317,6 +318,16 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         this.getAliasTypeMap().set(aliasName, [aliasType, aliasTypeDefineStmt]);
 
         return [aliasTypeDefineStmt];
+    }
+
+    private getAnonymousInformation(node: CxxAstNode): Type {
+        if (node.inner.length === 0 && node.originalId) {
+            const cls = classMap.get(node.originalId);
+            if (cls) {
+                return new ClassType(cls.getSignature());
+            }
+        }
+        return cxxNode2Type(node, this.declaringMethod);
     }
 
     // When there are default parameters, how to handle them

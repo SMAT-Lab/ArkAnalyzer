@@ -415,13 +415,23 @@ export function buildTypeFromDerivedType(preStr: string, node: CxxAstNode, arkIn
     const innerPartMatch = preStr.match(/<([^>]+)>/);
     const innerPart = innerPartMatch ? innerPartMatch[1] : null;
     let innerType = innerPart === null ? [] : [buildTypeFromPreStr(innerPart, node, arkInstance)];
-
+    if (arkInstance instanceof ArkMethod) {
+        let aliasType = arkInstance.getBody()?.getAliasTypeByName(typeStr)?.getOriginalType();
+        if (aliasType) {
+            return aliasType;
+        }
+    }
     let arkClass: ArkClass | null = null;
     if (arkInstance instanceof ArkMethod || arkInstance instanceof ArkClass) {
         const file = arkInstance.getDeclaringArkFile?.();
         arkClass = file?.getClassWithName?.(typeStr) ??
             getAnonymousClassByTypeCode(typeStr, file) ??
             CxxModelUtils.getClassFromAnonymousNamespaceByName(typeStr, file);
+        let aliasType =
+            file?.getDefaultClass().getDefaultArkMethod()?.getBody()?.getAliasTypeByName(typeStr)?.getOriginalType();
+        if (aliasType) {
+            return aliasType;
+        }
     }
     if (arkClass) {
         return new ClassType(arkClass.getSignature(), innerType);

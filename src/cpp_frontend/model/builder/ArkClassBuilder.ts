@@ -79,7 +79,7 @@ export function buildNormalArkClassFromArkNamespace(
 }
 
 export function buildNormalArkClass(clsNode: CxxAstNode, cls: ArkClass, sourceFile: CxxAstNode, declaring?: ArkMethod | ArkClass): void {
-    if (clsNode.kind === 'CXXRecordDecl') {
+    if (clsNode.kind === 'CXXRecordDecl' || clsNode.kind === 'RecordDecl') {
         switch (clsNode.tagUsed) {
             case 'struct':
                 buildStruct2ArkClass(clsNode, cls, sourceFile, declaring);
@@ -249,9 +249,6 @@ function buildArkClassMembers(clsNode: CxxAstNode, cls: ArkClass, sourceFile: Cx
     const enumFieldInfo = { lastFieldName: '', curValue: 0, isCurValueValid: true };
     for (let i = 0; i < clsNode.inner.length; i++) {
         let member = clsNode.inner[i];
-        if (i === 0 && member.kind === 'CXXRecordDecl') {
-            continue;
-        }
         switch (member.kind) {
             case 'FieldDecl':
             case 'VarDecl': {

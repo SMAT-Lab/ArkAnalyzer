@@ -71,7 +71,7 @@ export const USING_EXPECT_CASE4 = {
             stmts: [
                 'this = this: @using/usingcase.cpp: %dflt',
                 'c = @using/usingcase.cpp: Color.[static]RED',
-                '%0 = @using/usingcase.cpp: Color.[static]Color::RED',
+                '%0 = @using/usingcase.cpp: Color.[static]RED',
                 'if c == %0',
             ],
             preds: [],

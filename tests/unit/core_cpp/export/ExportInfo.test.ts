@@ -295,7 +295,7 @@ describe('cross file case', () => {
     it('cross file case5', () => {
         const fileId = new FileSignature(projectScene.getProjectName(), 'main.cpp');
         const file = projectScene.getFile(fileId);
-        assert.equal(file?.getImportInfos().length, 6);
+        assert.equal(file?.getImportInfos().length, 7);
         const blocks = file?.getDefaultClass().getMethodWithName('main')?.getCfg()?.getBlocks();
         assert.isDefined(blocks);
         assertBlocksEqual(blocks!, MAIN_CASE.blocks);
