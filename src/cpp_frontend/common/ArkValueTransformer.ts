@@ -39,9 +39,11 @@ import {
     ArkCxxFolderExpr,
     ArkCxxInitArrayExpr,
     ArkCxxNewArrayExpr,
-    ArkCxxNormalBinOpExpr, ArkDesignatedInitExpr,
+    ArkCxxNormalBinOpExpr,
+    ArkDesignatedInitExpr,
     ArkNoExpectExpr,
-    ArkTypeIdExpr, ArkUnaryExpr,
+    ArkTypeIdExpr,
+    ArkCxxUnaryExpr, Operator,
 } from '../base/Expr';
 import {
     AliasType,
@@ -564,10 +566,24 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         }
     }
 
-    // CTodo：Need to add judgment criteria after changing the syntax tree
+    // expression with either a type or (unevaluated) expression operand.
+    // Used for sizeof/alignof (C99 6.5.3.4) and vec_step (OpenCL 1.1 6.11.12).
     private unaryExprToValueAndStmts(unaryExprNode: CxxAstNode): ValueAndStmts {
         const stmts: Stmt[] = [];
-        let unaryValue: Value;
+        let unaryValue: Value | Type;
+        const operatorString = unaryExprNode.name ?? '';
+        let operator:Operator;
+        switch (operatorString) {
+            case 'sizeof':
+                operator = Operator.sizeof;
+                break;
+            case 'alignof':
+                operator = Operator.alignof;
+                break;
+            default:
+                operator = Operator.Unknown;
+                logger.warn(`Unsupported unary operator: ${operatorString}`);
+        }
         let operpositions: FullPosition[] = [FullPosition.cxxBuildFromNode(unaryExprNode, this.cxxSourceFile)];
         if (unaryExprNode.inner.length > 0) {
             let { value: innerValue, valueOriginalPositions: innerPositions, stmts: innerStmts } =
@@ -578,9 +594,9 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         } else {
             const typeNameMatch = unaryExprNode.code.match(/\(([^)]*)\)/);
             const typeName = typeNameMatch ? typeNameMatch[1] : '';
-            unaryValue = CxxValueUtil.createStringConst(typeName);
+            unaryValue = buildTypeFromPreStr(typeName, unaryExprNode, this.declaringMethod);
         }
-        const unaryExpr = new ArkUnaryExpr(unaryExprNode.name, unaryValue);
+        const unaryExpr = new ArkCxxUnaryExpr(operator, unaryValue);
         return {
             value: unaryExpr,
             valueOriginalPositions: operpositions,

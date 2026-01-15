@@ -129,7 +129,7 @@ import {
     ArkCxxInitArrayExpr,
     ArkCxxNewArrayExpr, ArkCxxNormalBinOpExpr,
     ArkNoExpectExpr,
-    ArkUnaryExpr,
+    ArkCxxUnaryExpr,
     ArkTypeIdExpr,
 } from '../../cpp_frontend/base/Expr';
 import {
@@ -687,9 +687,15 @@ export function serializeValue(value: Value): ValueDto {
         return polymorphic('ArkCxxInitArrayExpr', {
             op: serializeValue(value.getOp()),
         });
-    } else if (value instanceof ArkUnaryExpr) {
-        return polymorphic('ArkSizeOfExpr', {
-            op: serializeValue(value.getOp()),
+    } else if (value instanceof ArkCxxUnaryExpr) {
+        let op = value.getOp();
+        if (op instanceof Type){
+            return polymorphic('ArkCxxUnaryExpr', {
+                op: serializeType(op),
+            });
+        }
+        return polymorphic('ArkCxxUnaryExpr', {
+            op: serializeValue(op),
         });
     } else if (value instanceof ArkCxxCastExpr) {
         return polymorphic('ArkCxxCastExpr', {
