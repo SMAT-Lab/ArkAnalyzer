@@ -188,7 +188,6 @@ function buildArkMethodFromCxxMethod(mtdNode: CxxAstNode, arkFile: ArkFile, astR
  * @returns
  */
 function buildArkFile(arkFile: ArkFile, astRoot: CxxAstNode): void {
-    classMap.clear();
     // handle header units
     astRoot.headerUnits?.forEach((child: CxxAstNode) => {
         if (!child.includes) {
@@ -207,6 +206,8 @@ function buildArkFile(arkFile: ArkFile, astRoot: CxxAstNode): void {
     statements.forEach((child: CxxAstNode) => {
         let childKind = child.kind;
         switch (childKind) {
+            // 'RecordDecl' ---C Language (struct/class/union)
+            // 'CXXRecordDecl' ---C++ Language (struct/class/union)
             case 'RecordDecl':
             case 'CXXRecordDecl':
             case 'ClassTemplateDecl':

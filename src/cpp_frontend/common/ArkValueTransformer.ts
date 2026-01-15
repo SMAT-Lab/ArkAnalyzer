@@ -41,8 +41,7 @@ import {
     ArkCxxNewArrayExpr,
     ArkCxxNormalBinOpExpr, ArkDesignatedInitExpr,
     ArkNoExpectExpr,
-    ArkSizeOfExpr,
-    ArkTypeIdExpr,
+    ArkTypeIdExpr, ArkUnaryExpr,
 } from '../base/Expr';
 import {
     AliasType,
@@ -197,7 +196,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         'RecoveryExpr': this.RecoverExpressionToValueAndStmts,
         'StringLiteral': this.cxxLiteralNodeToValueAndStmts,
         'TypeRef': this.declAndTypeRefToValueAndStmts,
-        'UnaryExpr': this.unaryExprToValueAndStmts,
+        'UnaryExprOrTypeTraitExpr': this.unaryExprToValueAndStmts,
         'UnaryOperator': this.unaryOperatorToValueAndStmts,
         'UnexposedExpr': this.processInnerNodeToValueAndStmts,
         'UnresolvedLookupExpr': this.declAndTypeRefToValueAndStmts,
@@ -577,12 +576,11 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             stmts.push(...innerStmts);
             operpositions.push(...innerPositions);
         } else {
-            const typeNameMatch = unaryExprNode.code.match(/sizeof\((\w+)\)/);
+            const typeNameMatch = unaryExprNode.code.match(/\(([^)]*)\)/);
             const typeName = typeNameMatch ? typeNameMatch[1] : '';
             unaryValue = CxxValueUtil.createStringConst(typeName);
-
         }
-        const unaryExpr = new ArkSizeOfExpr(unaryValue);
+        const unaryExpr = new ArkUnaryExpr(unaryExprNode.name, unaryValue);
         return {
             value: unaryExpr,
             valueOriginalPositions: operpositions,

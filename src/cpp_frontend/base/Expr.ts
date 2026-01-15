@@ -183,11 +183,13 @@ export class ArkCxxInitArrayExpr extends AbstractExpr {
 }
 
 // Sizeof expression
-export class ArkSizeOfExpr extends AbstractExpr {
+export class ArkUnaryExpr extends AbstractExpr {
+    private operator: string;
     private op: Value;
 
-    constructor(op: Value) {
+    constructor(operator: string, op: Value) {
         super();
+        this.operator = operator;
         this.op = op;
     }
 
@@ -215,7 +217,7 @@ export class ArkSizeOfExpr extends AbstractExpr {
     }
 
     public toString(): string {
-        return 'sizeof(' + this.op + ')';
+        return this.operator + '(' + this.op + ')';
     }
 
     public inferType(arkMethod: ArkMethod): AbstractExpr {
