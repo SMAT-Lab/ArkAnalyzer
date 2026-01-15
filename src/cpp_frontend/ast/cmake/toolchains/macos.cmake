@@ -1,18 +1,27 @@
-# --- cmake/toolchains/linux.cmake ---
+# --- cmake/toolchains/macos.cmake ---
+if (NOT DEFINED OSXCROSS_TARGET_DIR)
+    set(OSXCROSS_TARGET_DIR "/opt/osxcross")
+endif()
 
-set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
-set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-set(CMAKE_INSTALL_RPATH "$ORIGIN")
+set(OSXCROSS_TARGET "darwin24.5")
+set(OSXCROSS_SDK "MacOSX15.5.sdk")
+set(CMAKE_SYSTEM_NAME "Darwin")
+set(CMAKE_SYSTEM_PROCESSOR "${ARCH}")
 
-# libclang的头文件路径
-set(CLANG_INCLUDE_DIRS
-   "/opt/buildtools/llvm-19.1.7/llvm/include"
-)
+set(OSXCROSS_HOST "${ARCH}-apple-${OSXCROSS_TARGET}")
+set(CMAKE_C_COMPILER "${OSXCROSS_TARGET_DIR}/bin/${OSXCROSS_HOST}-clang")
+set(CMAKE_CXX_COMPILER "${OSXCROSS_TARGET_DIR}/bin/${OSXCROSS_HOST}-clang++")
 
-# 查找libclang.so
-find_library(CLANG_LIBRARIES
-   NAMES libclang clang clang-cpp
-   PATHS "/opt/buildtools/llvm-19.1.7/lib"
-)
+set(CMAKE_FIND_ROOT_PATH "${OSXCROSS_SDK}" "${OSXCROSS_TARGET_DIR}/macports/pkgs/opt/local")
 
-message(STATUS "Found libclang on linux: ${CLANG_LIBRARIES}")
+set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
+
+set(CMAKE_AR "${OSXCROSS_TARGET_DIR}/bin/${OSXCROSS_HOST}-ar" CACHE FILEPATH "ar")
+set(CMAKE_RANLIB "${OSXCROSS_TARGET_DIR}/bin/${OSXCROSS_HOST}-ranlib" CACHE FILEPATH "ranlib")
+set(CMAKE_INSTALL_NAME_TOOL "${OSXCROSS_TARGET_DIR}/bin/${OSXCROSS_HOST}-install_name_tool" CACHE FILEPATH "install_name_tool")
+
+set(ENV{PKG_CONFIG_LIBDIR} "${OSXCROSS_TARGET_DIR}/macports/pkgs/opt/local/lib/pkgconfig")
+set(ENV{PKG_CONFIG_SYSROOT_DIR} "${OSXCROSS_TARGET_DIR}/macports/pkgs")
