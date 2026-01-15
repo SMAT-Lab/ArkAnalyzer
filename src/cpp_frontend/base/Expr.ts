@@ -203,7 +203,7 @@ export class ArkCxxUnaryExpr extends AbstractExpr {
         return this.op;
     }
 
-    public setOp(newOp: Value): void {
+    public setOp(newOp: Value | Type): void {
         this.op = newOp;
     }
 
