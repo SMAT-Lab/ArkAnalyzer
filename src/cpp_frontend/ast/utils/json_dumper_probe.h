@@ -32,11 +32,6 @@
 
 namespace ast_dumper {
 
-std::vector<std::string> g_nameModifies = {
-    "_ZN", // linux Name Modification
-    "@@QEA", "@@SA", "??0", "??1", "??4", "??_9", "?name@@3", "?name@@2" // MSVC Name Modification
-};
-
 // JsonDumperProbeStream:
 // - Pass-through: forwards JSONNodeDumper output to an underlying raw_ostream.
 // - Probes whether specific JSON keys ("name"/"code") appear in the dumper output.
@@ -188,32 +183,20 @@ private:
         return output;
     }
 
-    // Determine whether it is a name modification of a member
-    bool IsInModifies(const std::string demangle)
-    {
-        for (auto modify : g_nameModifies) {
-            if (demangle.find(modify) != std::string::npos) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     void UpdateNodeField(const char *ptr, size_t size)
     {
         buffer.append(ptr, size);
         auto nodeJson = llvm::json::parse("{" + buffer + "}");
         if (nodeJson) {
             if (auto *obj = nodeJson->getAsObject()) {
-                std::string mangleStr;
-                if (auto mangle = (*obj)["mangledName"].getAsString()) {
-                    mangleStr = mangle.value().str();
+                std::string mangledName;
+                if (auto mangleStr = (*obj)["mangledName"].getAsString()) {
+                    mangledName = DecodeNodeMangledName(mangleStr.value().str());
                 }
-                bool inModifies = IsInModifies(mangleStr);
-                if (mangleStr.empty() || !inModifies) {
+                if (!mangledName.empty() && mangledName != "std") {
+                    (*obj)["mangledName"] = mangledName;
+                }else {
                     obj->erase("mangledName");
-                } else {
-                    (*obj)["mangledName"] = DecodeNodeMangledName(mangleStr);
                 }
                 if (auto valueStr = (*obj)["value"].getAsString()) {
                     (*obj)["value"] = DecodeUtfOctal(valueStr.value().str());
