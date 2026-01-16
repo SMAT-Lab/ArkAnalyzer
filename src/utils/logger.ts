@@ -28,6 +28,7 @@ export enum LOG_MODULE_TYPE {
     DEFAULT = 'default',
     ARKANALYZER = 'ArkAnalyzer',
     HOMECHECK = 'HomeCheck',
+    HOMEFLOW= 'HomeFlow',
     TOOL = 'Tool',
 }
 
