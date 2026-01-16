@@ -80,7 +80,7 @@ import { buildModifiers, buildTypeParameters, cxxNode2Type } from '../model/buil
 import { ModelUtils } from '../../core/common/ModelUtils';
 import { ArkClass } from '../../core/model/ArkClass';
 import { buildNormalArkClassFromArkMethod } from '../model/builder/ArkClassBuilder';
-import { CxxAstNode, CxxTranslationUnit } from '../ast/ArkCxxAstNode';
+import { astKind, CxxAstNode, CxxTranslationUnit } from '../ast/ArkCxxAstNode';
 import { ValueUtil } from '../../core/common/ValueUtil';
 import { CxxCharType, CxxStdTypeName, CxxTypeBitWidth, CxxTypeSigned, PointerType } from '../base/Type';
 import { buildGenericType } from '../../core/model/builder/builderUtils';
@@ -148,18 +148,18 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
 
     // Determine whether to generate temporary variable assignment statement based on operator
     private shouldGenerateCxxExtraAssignStmt(expression: CxxAstNode): boolean {
-        if (expression.kind.toString() === 'ParentExpr') {
+        if (expression.kind === astKind.ParentExpr) {
             return this.shouldGenerateCxxExtraAssignStmt(expression.inner[0]);
         }
         return !(
-            (expression.kind.toString() === 'BinaryOperator' && expression.opcode === '=') ||
+            (expression.kind === astKind.BinaryOperator && expression.opcode === '=') ||
             ArkCxxValueTransformer.isCxxCompoundAssignmentOperator(expression.opcode) ||
-            expression.kind.toString() === 'CXXNewExpr' ||
-            expression.kind.toString() === 'CallExpr' ||
-            (expression.kind.toString() === 'UnaryOperator' && (expression.opcode === '++' || expression.opcode === '--')) ||
-            expression.kind.toString() === 'CXXOperatorCallExpr' ||
-            expression.kind.toString() === 'CXXConstructExpr' ||
-            expression.kind.toString() === 'CXXCtorInitializer'
+            expression.kind === astKind.CXXNewExpr ||
+            expression.kind === astKind.CallExpr ||
+            (expression.kind === astKind.UnaryOperator && (expression.opcode === '++' || expression.opcode === '--')) ||
+            expression.kind === astKind.CXXOperatorCallExpr ||
+            expression.kind === astKind.CXXConstructExpr ||
+            expression.kind === astKind.CXXCtorInitializer
         );
     }
 
@@ -167,80 +167,80 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
     public cxxNodeToStmts(node: CxxAstNode): Stmt[] {
         let stmts: Stmt[] = [];
         switch (node.kind) {
-            case 'ParmVarDecl':
+            case astKind.ParmVarDecl:
                 stmts = this.cxxParameterToStmts(node);
                 break;
-            case 'BreakStmt':
-            case 'ContinueStmt':
-            case 'GotoStmt':
+            case astKind.BreakStmt:
+            case astKind.ContinueStmt:
+            case astKind.GotoStmt:
                 stmts = [];
                 break;
-            case 'CXXRewrittenBinaryOperator':
-            case 'BinaryOperator':
-            case 'CallExpr':
-            case 'CompoundAssignOperator':
-            case 'CXXConstructExpr':
-            case 'CXXOperatorCallExpr':
-            case 'UnaryOperator':
-            case 'RecoveryExpr':
-            case 'CXXDeleteExpr':
-            case 'AtomicCallExpr':
-            case 'CXXCtorInitializer':
+            case astKind.CXXRewrittenBinaryOperator:
+            case astKind.BinaryOperator:
+            case astKind.CallExpr:
+            case astKind.CompoundAssignOperator:
+            case astKind.CXXConstructExpr:
+            case astKind.CXXOperatorCallExpr:
+            case astKind.UnaryOperator:
+            case astKind.RecoveryExpr:
+            case astKind.CXXDeleteExpr:
+            case astKind.AtomicCallExpr:
+            case astKind.CXXCtorInitializer:
                 stmts = this.cxxExpressionStatementToStmts(node);
                 break;
-            case 'DeclStmt':
+            case astKind.DeclStmt:
                 stmts = this.cxxDeclStatementToStmts(node);
                 break;
-            case 'VarDecl':
+            case astKind.VarDecl:
                 stmts = this.cxxVariableDeclarationListToStmts(node);
                 break;
-            case 'CompoundStmt':
+            case astKind.CompoundStmt:
                 stmts = this.compoundToStmts(node);
                 break;
-            case 'CXXMemberCallExpr':
+            case astKind.CXXMemberCallExpr:
                 stmts = this.memberCallExprToStmts(node);
                 break;
-            case 'CXXCatchStmt':
+            case astKind.CXXCatchStmt:
                 stmts = this.cxxCatchClauseToStmts(node);
                 break;
-            case 'CXXThrowExpr':
+            case astKind.CXXThrowExpr:
                 stmts = this.cxxThrowStatementToStmts(node);
                 break;
-            case 'DoStmt':
+            case astKind.DoStmt:
                 stmts = this.cxxDoStatementToStmts(node);
                 break;
-            case 'ExprWithCleanups':
+            case astKind.ExprWithCleanups:
                 stmts = this.expressionWithCleanup(node);
                 break;
-            case 'ForStmt':
+            case astKind.ForStmt:
                 stmts = this.cxxForStatementToStmts(node);
                 break;
-            case 'IfStmt':
+            case astKind.IfStmt:
                 stmts = this.cxxIfStatementToStmts(node);
                 break;
-            case 'ReturnStmt':
+            case astKind.ReturnStmt:
                 stmts = this.cxxReturnStatementToStmts(node);
                 break;
-            case 'WhileStmt':
+            case astKind.WhileStmt:
                 stmts = this.cxxWhileStatementToStmts(node);
                 break;
-            case 'CXXForRangeStmt':
+            case astKind.CXXForRangeStmt:
                 stmts = this.forRangeStatementToStmts(node);
                 break;
-            case 'TypedefDecl':
-            case 'TypeAliasDecl':
+            case astKind.TypedefDecl:
+            case astKind.TypeAliasDecl:
                 stmts = this.typeDefDeclToStmts(node);
                 break;
-            case 'TypeAliasTemplateDecl':
+            case astKind.TypeAliasTemplateDecl:
                 stmts = this.typeDefDeclToStmts(node);
                 break;
-            case 'EnumDecl':
-            case 'CXXRecordDecl':
+            case astKind.EnumDecl:
+            case astKind.CXXRecordDecl:
                 stmts = this.cxxClassDeclarationToStmts(node);
                 break;
-            case 'DecompositionDecl':
+            case astKind.DecompositionDecl:
                 stmts = this.decompositionDeclToStmts(node);
-            case 'unsupported kind':
+            case astKind.unsupported_kind:
                 break;
         }
         this.cxxMapStmtsToTsStmt(stmts, node);
@@ -264,7 +264,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
     private typeDefDeclToStmts(typeAliasDeclaration: CxxAstNode): Stmt[] {
         const aliasName = typeAliasDeclaration.name;
         let typeDefDecl: CxxAstNode = typeAliasDeclaration;
-        if (typeAliasDeclaration.kind === 'TypeAliasTemplateDecl') {
+        if (typeAliasDeclaration.kind === astKind.TypeAliasTemplateDecl) {
             typeDefDecl = typeAliasDeclaration.inner[typeAliasDeclaration.inner.length - 1];
         }
         const typeNode: CxxAstNode | undefined =
@@ -281,7 +281,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         }
 
         const aliasType = new AliasType(aliasName, rightType, new AliasTypeSignature(aliasName, this.declaringMethod.getSignature()));
-        if (typeAliasDeclaration.kind === 'TypeAliasTemplateDecl') {
+        if (typeAliasDeclaration.kind === astKind.TypeAliasTemplateDecl) {
             const genericTypes = buildTypeParameters(typeAliasDeclaration, this.cxxSourceFile, this.declaringMethod);
             aliasType.setGenericTypes(genericTypes);
             aliasType.setOriginalType(buildGenericType(rightType, aliasType));
@@ -297,9 +297,9 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
 
         let expr = this.cxxGenerateAliasTypeExpr(rightOp, aliasType);
 
-        if (typeAliasDeclaration.kind === 'TypeAliasTemplateDecl') {
+        if (typeAliasDeclaration.kind === astKind.TypeAliasTemplateDecl) {
             let realGenericTypes: Type[] = [];
-            typeAliasDeclaration.inner.filter(inn => inn.kind === 'TemplateTypeParmDecl')
+            typeAliasDeclaration.inner.filter(inn => inn.kind === astKind.TemplateTypeParmDecl)
                 .forEach(typeArgument => {
                     realGenericTypes.push(cxxNode2Type(typeArgument, this.declaringMethod));
                 });
@@ -420,8 +420,8 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         const castExpr = new ArkCastExpr(yieldValue, UnknownType.getInstance());
         const castExprPositions = [yieldValuePositions[0], ...yieldValuePositions];
         let declStmts: CxxAstNode = forOfStatement.inner[0];
-        declStmts = declStmts.kind === 'DeclStmt' ? declStmts.inner[0] : declStmts;
-        if (declStmts.kind === 'VarDecl') {
+        declStmts = declStmts.kind === astKind.DeclStmt ? declStmts.inner[0] : declStmts;
+        if (declStmts.kind === astKind.VarDecl) {
             const {
                 value: initValue,
                 valueOriginalPositions: initOriPos,
@@ -432,7 +432,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
             stmts.push(assignStmt);
             stmts.push(...initStmts);
             // Processing structured binding under cyclic conditions
-        } else if (declStmts.kind === 'DecompositionDecl') {
+        } else if (declStmts.kind === astKind.DecompositionDecl) {
             const {
                 stmts: initStmts,
             } = this.ArkCxxValueTransformer.bindingNodeToValueAndStmts(declStmts, yieldValue);
@@ -695,7 +695,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         });
         // switchNode.inner[length - 1] is the cases
         for (const clause of switchStatement.inner[switchStatement.inner.length - 1].inner) {
-            if (clause.kind.toString() === 'CaseStmt') {
+            if (clause.kind.toString() === astKind.CaseStmt) {
                 const clauseStmts: Stmt[] = [];
                 let {
                     value: clauseValue,
@@ -911,21 +911,21 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         conditionExpr: Value | undefined
     }): Stmt[] {
         const stmts: Stmt[] = [];
-        if (ifStatement.kind === 'IfStmt') {
+        if (ifStatement.kind === astKind.IfStmt) {
             return this.cxxIfStatementToStmts(ifStatement.inner[0], depth);
-        } else if (ifStatement.kind === 'BinaryOperator' && ifStatement.opcode === '||') {
+        } else if (ifStatement.kind === astKind.BinaryOperator && ifStatement.opcode === '||') {
             // || The child of a node must have two child nodes
             stmts.push(...this.cxxIfStatementToStmts(ifStatement.inner[0], depth + 1));
             stmts.push(new DummyStmt(ArkCxxIRTransformer.DUMMY_IF_OPERATOR_OR_SIGNAL + depth));
             stmts.push(...this.cxxIfStatementToStmts(ifStatement.inner[1], depth + 1));
             stmts.push(new DummyStmt(ArkCxxIRTransformer.DUMMY_IF_OPERATOR_END + depth));
-        } else if (ifStatement.kind === 'BinaryOperator' && ifStatement.opcode === '&&') {
+        } else if (ifStatement.kind === astKind.BinaryOperator && ifStatement.opcode === '&&') {
             // && The child of a node must have two child nodes
             stmts.push(...this.cxxIfStatementToStmts(ifStatement.inner[0], depth + 1));
             stmts.push(new DummyStmt(ArkCxxIRTransformer.DUMMY_IF_OPERATOR_AND_SIGNAL + depth));
             stmts.push(...this.cxxIfStatementToStmts(ifStatement.inner[1], depth + 1));
             stmts.push(new DummyStmt(ArkCxxIRTransformer.DUMMY_IF_OPERATOR_END + depth));
-        } else if (ifStatement.kind === 'ParenExpr') {
+        } else if (ifStatement.kind === astKind.ParenExpr) {
             return this.cxxIfStatementToStmts(ifStatement.inner[0], depth);
         } else {
             const { value: conditionExpr, valueOriginalPositions: conditionExprPositions, stmts: conditionStmts } =

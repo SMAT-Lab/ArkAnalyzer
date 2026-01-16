@@ -89,7 +89,7 @@ import { ModelUtils } from '../../core/common/ModelUtils';
 import { CONSTRUCTOR_NAME, THIS_NAME } from '../../core/common/TSConst';
 import { TypeInference } from './TypeInference';
 import { CxxModelUtils, setTs2CxxFuncMapOfClass } from './ModelUtils';
-import { CxxAstNode, CxxTranslationUnit } from '../ast/ArkCxxAstNode';
+import { astKind, CxxAstNode, CxxTranslationUnit } from '../ast/ArkCxxAstNode';
 import { DummyStmt } from '../../core/common/ArkIRTransformer';
 import { BuiltinCxx } from './Builtin';
 import { ArkClass } from '../../core/model/ArkClass';
@@ -121,11 +121,11 @@ function nodeInnerNode(node: CxxAstNode): CxxAstNode {
         const last = node.inner[node.inner.length - 1];
 
         // Return InitListExpr first
-        if (last?.kind === 'InitListExpr') {
+        if (last?.kind === astKind.InitListExpr) {
             return last;
         }
         // Arrays containing only one TypeRef node do not return
-        if (!(node.inner.length === 1 && node.inner[0]?.kind === 'TypeRef') && !isCxxFunctionPointer(node.type.qualType)) {
+        if (!(node.inner.length === 1 && node.inner[0]?.kind === astKind.TypeRef) && !isCxxFunctionPointer(node.type.qualType)) {
             return last;
         }
     }
@@ -145,66 +145,67 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
 
     // An object that records the corresponding processing functions of CXX ast nodes.
     private nodeTransformerFuncMap: TransformerType = {
-        'ArraySubscriptExpr': this.cxxElementAccessExpressionToValueAndStmts,
-        'ArrayTypeTraitExpr': this.arrayTypeTraitExprToValueAndStmts,
-        'AtomicCallExpr': this.cxxCallExpressionToValueAndStmts,
-        'BinaryConditionalOperator': this.cxxConditionalExpressionToValueAndStmts,
-        'CXXRewrittenBinaryOperator': this.cxxBinaryExpressionToValueAndStmts,
-        'BinaryOperator': this.cxxBinaryExpressionToValueAndStmts,
-        'BindingDecl': this.bindingNodeToValueAndStmts,
-        'CallExpr': this.cxxCallExpressionToValueAndStmts,
-        'CharacterLiteral': this.cxxLiteralNodeToValueAndStmts,
-        'CompoundAssignOperator': this.cxxCompoundAssignmentToValueAndStmts,
-        'CompoundLiteralExpr': this.cxxAggregateToValueAndStmts,
-        'ConditionalOperator': this.cxxConditionalExpressionToValueAndStmts,
-        'ConstantExpr': this.processInnerNodeToValueAndStmts,
-        'CXXBindTemporaryExpr': this.processInnerNodeToValueAndStmts,
-        'CXXBoolLiteralExpr': this.cxxLiteralNodeToValueAndStmts,
-        'CXXConstCastExpr': this.castExpressionToValueAndStmts,
-        'CXXConstructExpr': this.cxxConstructExprToValueAndStmts,
-        'CXXCtorInitializer': this.cxxCtorInitializerToValueAndStmts,
-        'CXXDeleteExpr': this.cxxDeleteExpressionToValueAndStmts,
-        'CXXDynamicCastExpr': this.castExpressionToValueAndStmts,
-        'CXXFoldExpr': this.cxxFoldExprToValueAndStmts,
-        'CXXFunctionalCastExpr': this.castExpressionToValueAndStmts,
-        'CXXMemberCallExpr': this.cxxMemberCallExpressionToValueAndStmts,
-        'CXXNewExpr': this.cxxNewExpressionToValueAndStmts,
-        'CXXNoexceptExpr': this.cxxNoexceptExprToValueAndStmts,
-        'CXXNullPtrLiteralExpr': this.cxxLiteralNodeToValueAndStmts,
-        'CXXOperatorCallExpr': this.cxxOperatorExpressionToValueAndStmts,
-        'CXXReinterpretCastExpr': this.castExpressionToValueAndStmts,
-        'CXXScalarValueInitExpr': this.cxxScalarValueInitToValueAndStmts,
-        'CXXStdInitializerListExpr': this.processInnerNodeToValueAndStmts,
-        'CXXStaticCastExpr': this.castExpressionToValueAndStmts,
-        'CXXThisExpr': this.cxxThisExpressionToValueAndStmts,
-        'CXXTypeidExpr': this.cxxTypeidExprToValueAndStmts,
-        'CStyleCastExpr': this.castExpressionToValueAndStmts,
-        'CXXTemporaryObjectExpr': this.cxxTemporaryObjectExprToValueAndStmts,
-        'DeclRefExpr': this.declAndTypeRefToValueAndStmts,
-        'DeclStmt': this.declStmtToValueAndStmts,
-        'DecompositionDecl': this.bindingNodeToValueAndStmts,
-        'ExprWithCleanups': this.processInnerNodeToValueAndStmts,
-        'FloatingLiteral': this.cxxLiteralNodeToValueAndStmts,
-        'ImplicitCastExpr': this.implicitCastExprToValueAndStmts,
-        'InitListExpr': this.initListExprToValueAndStmts,
-        'IntegerLiteral': this.cxxLiteralNodeToValueAndStmts,
-        'LambdaExpr': this.cxxCallableNodeToValueAndStmts,
-        'MaterializeTemporaryExpr': this.materializeTemporaryExprToValueAndStmts,
-        'MemberExpr': this.memberExpressionToValueAndStmts,
-        'MemberRef': this.memberExpressionToValueAndStmts,
-        'NamespaceRef': this.cxxNamespaceRefToValueAndStmts,
-        'ParenExpr': this.processInnerNodeToValueAndStmts,
-        'ParenListExpr': this.processInnerNodeToValueAndStmts,
-        'RecoveryExpr': this.RecoverExpressionToValueAndStmts,
-        'StringLiteral': this.cxxLiteralNodeToValueAndStmts,
-        'TypeRef': this.declAndTypeRefToValueAndStmts,
-        'UnaryExprOrTypeTraitExpr': this.unaryExprToValueAndStmts,
-        'UnaryOperator': this.unaryOperatorToValueAndStmts,
-        'UnexposedExpr': this.processInnerNodeToValueAndStmts,
-        'UnresolvedLookupExpr': this.declAndTypeRefToValueAndStmts,
-        'UserDefinedLiteral': this.userDefinedLiteralToValueAndStmts,
-        'VarDecl': this.cxxVariableDeclarationToValueAndStmts,
+        [astKind.ArraySubscriptExpr]: this.cxxElementAccessExpressionToValueAndStmts,
+        [astKind.ArrayTypeTraitExpr]: this.arrayTypeTraitExprToValueAndStmts,
+        [astKind.AtomicCallExpr]: this.cxxCallExpressionToValueAndStmts,
+        [astKind.BinaryConditionalOperator]: this.cxxConditionalExpressionToValueAndStmts,
+        [astKind.CXXRewrittenBinaryOperator]: this.cxxBinaryExpressionToValueAndStmts,
+        [astKind.BinaryOperator]: this.cxxBinaryExpressionToValueAndStmts,
+        [astKind.BindingDecl]: this.bindingNodeToValueAndStmts,
+        [astKind.CallExpr]: this.cxxCallExpressionToValueAndStmts,
+        [astKind.CharacterLiteral]: this.cxxLiteralNodeToValueAndStmts,
+        [astKind.CompoundAssignOperator]: this.cxxCompoundAssignmentToValueAndStmts,
+        [astKind.CompoundLiteralExpr]: this.cxxAggregateToValueAndStmts,
+        [astKind.ConditionalOperator]: this.cxxConditionalExpressionToValueAndStmts,
+        [astKind.ConstantExpr]: this.processInnerNodeToValueAndStmts,
+        [astKind.CXXBindTemporaryExpr]: this.processInnerNodeToValueAndStmts,
+        [astKind.CXXBoolLiteralExpr]: this.cxxLiteralNodeToValueAndStmts,
+        [astKind.CXXConstCastExpr]: this.castExpressionToValueAndStmts,
+        [astKind.CXXConstructExpr]: this.cxxConstructExprToValueAndStmts,
+        [astKind.CXXCtorInitializer]: this.cxxCtorInitializerToValueAndStmts,
+        [astKind.CXXDeleteExpr]: this.cxxDeleteExpressionToValueAndStmts,
+        [astKind.CXXDynamicCastExpr]: this.castExpressionToValueAndStmts,
+        [astKind.CXXFoldExpr]: this.cxxFoldExprToValueAndStmts,
+        [astKind.CXXFunctionalCastExpr]: this.castExpressionToValueAndStmts,
+        [astKind.CXXMemberCallExpr]: this.cxxMemberCallExpressionToValueAndStmts,
+        [astKind.CXXNewExpr]: this.cxxNewExpressionToValueAndStmts,
+        [astKind.CXXNoexceptExpr]: this.cxxNoexceptExprToValueAndStmts,
+        [astKind.CXXNullPtrLiteralExpr]: this.cxxLiteralNodeToValueAndStmts,
+        [astKind.CXXOperatorCallExpr]: this.cxxOperatorExpressionToValueAndStmts,
+        [astKind.CXXReinterpretCastExpr]: this.castExpressionToValueAndStmts,
+        [astKind.CXXScalarValueInitExpr]: this.cxxScalarValueInitToValueAndStmts,
+        [astKind.CXXStdInitializerListExpr]: this.processInnerNodeToValueAndStmts,
+        [astKind.CXXStaticCastExpr]: this.castExpressionToValueAndStmts,
+        [astKind.CXXThisExpr]: this.cxxThisExpressionToValueAndStmts,
+        [astKind.CXXTypeidExpr]: this.cxxTypeidExprToValueAndStmts,
+        [astKind.CStyleCastExpr]: this.castExpressionToValueAndStmts,
+        [astKind.CXXTemporaryObjectExpr]: this.cxxTemporaryObjectExprToValueAndStmts,
+        [astKind.DeclRefExpr]: this.declAndTypeRefToValueAndStmts,
+        [astKind.DeclStmt]: this.declStmtToValueAndStmts,
+        [astKind.DecompositionDecl]: this.bindingNodeToValueAndStmts,
+        [astKind.ExprWithCleanups]: this.processInnerNodeToValueAndStmts,
+        [astKind.FloatingLiteral]: this.cxxLiteralNodeToValueAndStmts,
+        [astKind.ImplicitCastExpr]: this.implicitCastExprToValueAndStmts,
+        [astKind.InitListExpr]: this.initListExprToValueAndStmts,
+        [astKind.IntegerLiteral]: this.cxxLiteralNodeToValueAndStmts,
+        [astKind.LambdaExpr]: this.cxxCallableNodeToValueAndStmts,
+        [astKind.MaterializeTemporaryExpr]: this.materializeTemporaryExprToValueAndStmts,
+        [astKind.MemberExpr]: this.memberExpressionToValueAndStmts,
+        [astKind.MemberRef]: this.memberExpressionToValueAndStmts,
+        [astKind.NamespaceRef]: this.cxxNamespaceRefToValueAndStmts,
+        [astKind.ParenExpr]: this.processInnerNodeToValueAndStmts,
+        [astKind.ParenListExpr]: this.processInnerNodeToValueAndStmts,
+        [astKind.RecoveryExpr]: this.RecoverExpressionToValueAndStmts,
+        [astKind.StringLiteral]: this.cxxLiteralNodeToValueAndStmts,
+        [astKind.TypeRef]: this.declAndTypeRefToValueAndStmts,
+        [astKind.UnaryExprOrTypeTraitExpr]: this.unaryExprToValueAndStmts,
+        [astKind.UnaryOperator]: this.unaryOperatorToValueAndStmts,
+        [astKind.UnexposedExpr]: this.processInnerNodeToValueAndStmts,
+        [astKind.UnresolvedLookupExpr]: this.declAndTypeRefToValueAndStmts,
+        [astKind.UserDefinedLiteral]: this.userDefinedLiteralToValueAndStmts,
+        [astKind.VarDecl]: this.cxxVariableDeclarationToValueAndStmts,
     };
+
 
     constructor(arkIRTransformer: ArkCxxIRTransformer, sourceFile: CxxTranslationUnit, declaringMethod: ArkMethod) {
         super(arkIRTransformer, sourceFile as unknown as ts.SourceFile, declaringMethod);
@@ -253,9 +254,9 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         } else {
             classSignature = type.getClassSignature();
         }
-        const list = aggregate.kind === 'InitListExpr' ? aggregate : aggregate.inner[aggregate.inner.length - 1];
+        const list = aggregate.kind === astKind.InitListExpr ? aggregate : aggregate.inner[aggregate.inner.length - 1];
         let elements: Value[] = [];
-        if (list.kind !== 'InitListExpr') {
+        if (list.kind !== astKind.InitListExpr) {
             return this.unprocessedNodeToValueAndStmts(aggregate);
         }
         const aggregateExpr = new ArkAggregateExpr(elements, type);
@@ -266,7 +267,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             stmts: exprStmts,
         } = this.ArkCxxIRTransformer.generateAssignStmtForValue(aggregateExpr, fullPosition);
         for (let i = 0; i < list.inner.length; i++) {
-            if (list.inner[i].kind === 'DesignatedInitExpr') {
+            if (list.inner[i].kind === astKind.DesignatedInitExpr) {
                 // Because the syntax tree does not have fields representing field information,
                 // regular matching is used to preserve the information.
                 // If there are any changes to the syntax tree, optimization can be made here
@@ -305,13 +306,13 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
 
     // Judge whether the current node is related to the lambda function of CPP
     private isNodeRelatedToCXXLambdaFunc(node: CxxAstNode): boolean {
-        return node.type?.qualType?.startsWith('(lambda at') || node.inner?.[0]?.kind === 'LambdaExpr';
+        return node.type?.qualType?.startsWith('(lambda at') || node.inner?.[0]?.kind === astKind.LambdaExpr;
     }
 
     private isNodeRelatedToImplicitNode(node: CxxAstNode): boolean {
         if (node.inner) {
             return (
-                node.inner.length !== 0 && node.inner[0].kind === 'ImplicitCastExpr' && (node.name === '__tree_const_iterator')
+                node.inner.length !== 0 && node.inner[0].kind === astKind.ImplicitCastExpr && (node.name === '__tree_const_iterator')
             );
         }
         return false;
@@ -319,14 +320,14 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
 
     // Judge whether the child nodes of the current node are materializing temporary variables
     private isNodeRelatedToMaterializeTemporaryExpr(node: CxxAstNode): boolean {
-        return node.inner[0]?.kind === 'MaterializeTemporaryExpr';
+        return node.inner[0]?.kind === astKind.MaterializeTemporaryExpr;
     }
 
     // Check if the child nodes of the current node are member function calls
     private isNodeRelatedToCXXMember(node: CxxAstNode): boolean {
         return (
-            (node.inner.length !== 0 && node.inner[0].kind === 'CXXMemberCallExpr') ||
-            (node.inner[0].kind === 'ImplicitCastExpr' && node.inner[0].inner[0] && node.inner[0].inner[0].kind === 'CXXMemberCallExpr')
+            (node.inner.length !== 0 && node.inner[0].kind === astKind.CXXMemberCallExpr) ||
+            (node.inner[0].kind === astKind.ImplicitCastExpr && node.inner[0].inner[0] && node.inner[0].inner[0].kind === astKind.CXXMemberCallExpr)
         );
     }
 
@@ -337,7 +338,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
 
     // Multi-layer std::pair construction
     private isNodeRelatedToTemporary(node: CxxAstNode): boolean {
-        return node.inner.length !== 0 && node.inner[0].kind === 'CXXBindTemporaryExpr' && node.code === node.inner[0].code;
+        return node.inner.length !== 0 && node.inner[0].kind === astKind.CXXBindTemporaryExpr && node.code === node.inner[0].code;
     }
 
     // Expressions that are not new statements (excluding constructors as parameters)
@@ -346,9 +347,18 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         if (!firstChildKind) {
             return false;
         }
+
+        const targetKinds: string[] = [
+            astKind.IntegerLiteral,
+            astKind.InitListExpr,
+            astKind.CompoundLiteralExpr,
+            astKind.CXXOperatorCallExpr,
+            astKind.BinaryOperator
+        ];
+
         return (
-            ['IntegerLiteral', 'InitListExpr', 'CompoundLiteralExpr', 'CXXOperatorCallExpr', 'BinaryOperator'].includes(firstChildKind) ||
-            (firstChildKind === 'ImplicitCastExpr' && !newExpression.inner[0].code.includes('('))
+            targetKinds.includes(firstChildKind) ||
+            (firstChildKind === astKind.ImplicitCastExpr && !newExpression.inner[0].code.includes('('))
         );
     }
 
@@ -390,10 +400,10 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         // instead, the object is directly constructed at the return value location. Therefore, it is processed here as a ConstructExpr.
         const parentNode = node.getParent?.(false) as CxxAstNode;
         // case: Vector{1,2,3} Implicit call to destructor
-        if (parentNode?.dtor?.kind === 'CXXDestructorDecl') {
+        if (parentNode?.dtor?.kind === astKind.CXXDestructorDecl) {
             return this.cxxConstructExprToValueAndStmts(node.inner[0]);
         }
-        if (!parentNode || parentNode.kind !== 'ExprWithCleanups' && parentNode.kind !== 'ReturnStmt') {
+        if (!parentNode || parentNode.kind !== astKind.ExprWithCleanups && parentNode.kind !== astKind.ReturnStmt) {
             return this.unprocessedNodeToValueAndStmts(node);
         }
         return this.cxxConstructExprToValueAndStmts(node);
@@ -442,7 +452,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         stmts.push(...innerStmts);
         let index = 0;
         for (let i = 0; i < length; i++) {
-            if (node.inner[i].kind !== 'BindingDecl') {
+            if (node.inner[i].kind !== astKind.BindingDecl) {
                 continue;
             }
             const leftValueAndStmts = this.cxxIdentifierToValueAndStmts(node.inner[i]);
@@ -492,7 +502,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             return this.cxxNodeToValueAndStmts(node.inner[0]);
         }
         // Handle the scenario: using Color::RED; Color c = RED;
-        if (node.referencedDecl?.kind === 'EnumConstantDecl' && node.inner.length === 0) {
+        if (node.referencedDecl?.kind === astKind.EnumConstantDecl && node.inner.length === 0) {
             const typeRefNode = {
                 kind: 'TypeRef',
                 name: node.referencedDecl!.name,
@@ -505,14 +515,14 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         }
         // Handle the invocation of static members of a class, such as A::a
         if (node.code.includes('::') && node.inner.length > 0 &&
-            (node.inner[0]?.kind === 'TypeRef' || node.inner[0]?.kind === 'NamespaceRef' && node.inner[0]?.name !== BuiltinCxx.CXXSTD)) {
+            (node.inner[0]?.kind === astKind.TypeRef || node.inner[0]?.kind === astKind.NamespaceRef && node.inner[0]?.name !== BuiltinCxx.CXXSTD)) {
             return this.staticMemberExprToValueAndStmts(node);
         }
         return this.cxxIdentifierToValueAndStmts(node);
     }
 
     private staticMemberExprToValueAndStmts(declRefExpr: CxxAstNode): ValueAndStmts {
-        declRefExpr.kind = 'MemberExpr'; // Replace the type with "member invocation"
+        declRefExpr.kind = astKind.MemberExpr; // Replace the type with "member invocation"
         return this.memberExpressionToValueAndStmts(declRefExpr);
     }
 
@@ -541,7 +551,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         let pNode = (node.parent ?? node.getParent?.(true)) ?? null;
         if (
             pNode && pNode?.inner?.length > 0 &&
-            (pNode.inner[0].kind === 'TypeRef' || !node.type.qualType.includes('[') || cxxNode2Type(node, this.declaringMethod) instanceof ClassType)
+            (pNode.inner[0].kind === astKind.TypeRef || !node.type.qualType.includes('[') || cxxNode2Type(node, this.declaringMethod) instanceof ClassType)
         ) {
             try {
                 return this.cxxAggregateToValueAndStmts(node);
@@ -574,10 +584,10 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         const operatorString = unaryExprNode.name ?? '';
         let operator:Operator;
         switch (operatorString) {
-            case 'sizeof':
+            case Operator.sizeof:
                 operator = Operator.sizeof;
                 break;
-            case 'alignof':
+            case Operator.alignof:
                 operator = Operator.alignof;
                 break;
             default:
@@ -636,10 +646,10 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             return this.unprocessedNodeToValueAndStmts(cxxCtorInitializer);
         }
         const firstInnerNode = cxxCtorInitializer.inner[0];
-        if (firstInnerNode.kind === 'CXXInheritedCtorInitExpr') {
+        if (firstInnerNode.kind === astKind.CXXInheritedCtorInitExpr) {
             // Processing of using parent:: parent
             return this.cxxInheritedCtorInitExprToValueAndStmts(firstInnerNode);
-        } else if (firstInnerNode.kind === 'CXXConstructExpr' && cxxCtorInitializer.baseInit) {
+        } else if (firstInnerNode.kind === astKind.CXXConstructExpr && cxxCtorInitializer.baseInit) {
             // Processing of case: Left(const char& name) : Base(name) // call base class constructor
             return this.cxxSuperExpressionToValueAndStmts(firstInnerNode);
         }
@@ -647,7 +657,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         // it is equivalent to directly assigning a value to the class member.
         // For example, the constructor of class Circle in file 'tests/resources_cpp/exports/crossFileCase/include/myHeader.h'.
         const assignRight =
-            (firstInnerNode.kind === 'CXXConstructExpr' && firstInnerNode.inner.length > 0) ? firstInnerNode.inner[0] : firstInnerNode;
+            (firstInnerNode.kind === astKind.CXXConstructExpr && firstInnerNode.inner.length > 0) ? firstInnerNode.inner[0] : firstInnerNode;
         const CtorInit2ThisMemberExpr = {
             kind: 'MemberExpr',
             name: cxxCtorInitializer.anyInit?.name ?? '',
@@ -752,9 +762,9 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         let dimensionSizes: number[] = [];
         let op: Value | null = null;
         for (let i = 0; i < ArrayTypeTraitExpr.inner.length; i++) {
-            if (ArrayTypeTraitExpr.inner[i].kind === 'IntegerLiteral') {
+            if (ArrayTypeTraitExpr.inner[i].kind === astKind.IntegerLiteral) {
                 dimensionSizes.push(Number(ArrayTypeTraitExpr.inner[i].value));
-            } else if (ArrayTypeTraitExpr.inner[i].kind === 'DeclRefExpr') {
+            } else if (ArrayTypeTraitExpr.inner[i].kind === astKind.DeclRefExpr) {
                 const innerValueAndStmts = this.cxxNodeToValueAndStmts(ArrayTypeTraitExpr.inner[i]);
                 op = innerValueAndStmts.value;
                 stmts.push(...innerValueAndStmts.stmts);
@@ -921,7 +931,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         const stmts: Stmt[] = [];
         const currConditionalOperatorIndex = this.conditionalOperatorNo++;
         // Peel off 'ImplicitCastExpr'
-        const conditionNode = conditionalExpression.inner[InnerIdx].kind === 'ImplicitCastExpr' ?
+        const conditionNode = conditionalExpression.inner[InnerIdx].kind === astKind.ImplicitCastExpr ?
             conditionalExpression.inner[InnerIdx].inner[0] : conditionalExpression.inner[InnerIdx];
         let conditionExpr: Value | undefined;
         const context = { conditionExpr: conditionExpr };
@@ -932,7 +942,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         // inner[1] is a value whose expression is true
         InnerIdx++;
         let whenTrueValueAndStmts: ValueAndStmts;
-        if (conditionalExpression.kind === 'ConditionalOperator') {
+        if (conditionalExpression.kind === astKind.ConditionalOperator) {
             whenTrueValueAndStmts = this.cxxNodeToValueAndStmts(conditionalExpression.inner[InnerIdx]);
             // else kind is BinaryConditionalOperator,No need to parse the node again, the result of the judgment is its value
         } else {
@@ -999,17 +1009,17 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             return [call, args];
         }
         // Several callable kinds
-        const CALLABLE_KINDS = new Set([
-            'DeclRefExpr',
-            'MemberExpr',
-            'OverloadedDeclRef',
-            'ArraySubscriptExpr',
-            'CXXOperatorCallExpr',
-            'UnresolvedLookupExpr'
+        const CALLABLE_KINDS = new Set<string>([
+            astKind.DeclRefExpr,
+            astKind.MemberExpr,
+            astKind.OverloadedDeclRef,
+            astKind.ArraySubscriptExpr,
+            astKind.CXXOperatorCallExpr,
+            astKind.UnresolvedLookupExpr,
         ]);
 
         function unwrapImplicit(n?: CxxAstNode): CxxAstNode | undefined {
-            while (n && n.kind === 'ImplicitCastExpr') {
+            while (n && n.kind === astKind.ImplicitCastExpr) {
                 n = n.inner?.[0];
             }
             return n;
@@ -1039,7 +1049,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
     private getDeclRef(astNode: CxxAstNode): CxxAstNode | undefined {
         let n: CxxAstNode | undefined = astNode;
         while (n) {
-            if (n.kind === 'DeclRefExpr') {
+            if (n.kind === astKind.DeclRefExpr) {
                 return n;
             }
             // No child node or empty child node, end
@@ -1153,7 +1163,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         } else {
             varNode = identifier;
         }
-        let varName = varNode.kind === 'TypeRef' ? varNode.code : varNode.name;
+        let varName = varNode.kind === astKind.TypeRef ? varNode.code : varNode.name;
         const varType = cxxNode2Type(identifier, this.declaringMethod);
         if (varName === UndefinedType.getInstance().getName()) {
             identifierValue = CxxValueUtil.getUndefinedConst();
@@ -1184,7 +1194,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         const stmts: Stmt[] = [];
         // [Scenario 1] Process this ->field or this ->method calls in C++code
         // If it's a class member reference (MemberExpr/MemberRef) but has no inner[0], it means implicit this, need to supplement this node
-        if ((memberExpression.kind === 'MemberExpr' || memberExpression.kind === 'MemberRef') && memberExpression.inner[0] === undefined) {
+        if ((memberExpression.kind === astKind.MemberExpr || memberExpression.kind === astKind.MemberRef) && memberExpression.inner[0] === undefined) {
             memberExpression.inner[0] = {
                 kind: 'CXXThisExpr', // Convert to explicit this pointer
                 name: memberExpression.name,
@@ -1202,7 +1212,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         } = this.cxxNodeToValueAndStmts(memberExpression.inner[0]);
         // [Scenario 3] Processing chained member access, such as a.b.c or (* ptr). field
         // If the base is a member access, generate an assignment statement to ensure the validity of SSA
-        if (memberExpression.inner[0].kind === 'MemberExpr' || memberExpression.kind === 'MemberRef') {
+        if (memberExpression.inner[0].kind === astKind.MemberExpr || memberExpression.kind === astKind.MemberRef) {
             ({ value: baseValue, valueOriginalPositions: basePositions, stmts: baseStmts } =
                 this.ArkCxxIRTransformer.generateAssignStmtForValue(baseValue, basePositions));
         }
@@ -1218,7 +1228,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         const fieldSignature = this.buildFieldSignatureFromMemberExpr(baseValue, memberExpression);
         // [Scenario 6] Generate the field reference object of IR layer (such as testMap. insert)
         let fieldRef: ArkCxxInstanceFieldRef | ArkStaticFieldRef;
-        if (memberExpression.referencedDecl?.kind === 'EnumConstantDecl') {
+        if (memberExpression.referencedDecl?.kind === astKind.EnumConstantDecl) {
             fieldRef = new ArkStaticFieldRef(fieldSignature);
         } else {
             fieldRef = new ArkCxxInstanceFieldRef(
@@ -1237,7 +1247,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         let fieldSignature: FieldSignature;
         const memberName = memberExpression.referencedDecl?.name || memberExpression.name || memberExpression.code;
         // ==Scenarios for Special Handling of Enum Members==
-        if (memberExpression.referencedDecl?.kind === 'EnumConstantDecl') {
+        if (memberExpression.referencedDecl?.kind === astKind.EnumConstantDecl) {
             const enumClassName = memberExpression.type.qualType.replace('enum', '').trim();
             const enumArkClass = CxxModelUtils.findSymbolInFileWithName(enumClassName, this.declaringMethod.getDeclaringArkClass());
             const enumSignature =
@@ -1335,12 +1345,12 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
     }
 
     private cxxCallExpressionToValueAndStmts(callExpression: CxxAstNode): ValueAndStmts {
-        if (callExpression.kind === 'CallExpr' && callExpression.inner?.length > 0) {
+        if (callExpression.kind === astKind.CallExpr && callExpression.inner?.length > 0) {
             if ((callExpression.parent ?? callExpression.getParent?.(true))?.type?.qualType === 'std::thread') {
                 return this.cxxNewExpressionToValueAndStmts(callExpression);
-            } else if (callExpression.inner[0].kind === 'CXXPseudoDestructorExpression') {
+            } else if (callExpression.inner[0].kind === astKind.CXXPseudoDestructorExpression) {
                 return this.cxxCallExpressionToValueAndStmts(callExpression.inner[0]);
-            } else if (callExpression.name === 'basic_string' || callExpression.inner[0].kind === 'MaterializeTemporaryExpr') {
+            } else if (callExpression.name === 'basic_string' || callExpression.inner[0].kind === astKind.MaterializeTemporaryExpr) {
                 return this.cxxNodeToValueAndStmts(callExpression.inner[0]);
             }
         }
@@ -1391,7 +1401,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             ) {
                 callArgus.push(innerNode);
             }
-            if (innerNode.kind === 'CXXOperatorCallExpr') {
+            if (innerNode.kind === astKind.CXXOperatorCallExpr) {
                 // Recursive call processing CXXOperatorCallExpr
                 if (innerNode.type.qualType !== 'std::ostream') {
                     return this.streamOrLambdaExprToValueAndStmts(innerNode, callArgus);
@@ -1399,17 +1409,17 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
                 // When the type is std:: ostream, it indicates an overloaded stream operator and records the overloaded node of the stream operator
                 callArgus.push(innerNode);
                 // Recursive call to process CXXOperatorCallExpr nested in the inner of CXXOperatorCallExpr
-                if (innerNode.inner[1].kind === 'CXXOperatorCallExpr') {
+                if (innerNode.inner[1].kind === astKind.CXXOperatorCallExpr) {
                     return this.streamOrLambdaExprToValueAndStmts(innerNode.inner[1], callArgus);
                 }
                 // If there is no nested CXXOperatorCallExpr, the ValueAndStmts of overloaded stream operators will be built directly
                 return this.buildValueAndStmtsForStreamOrLambdaCall(innerNode.inner[1], callArgus.reverse(), stmts, callExpression);
             }
-            while (innerNode.kind === 'ImplicitCastExpr' && innerNode.valueCategory === 'lvalue' && innerNode.inner.length > 0) {
+            while (innerNode.kind === astKind.ImplicitCastExpr && innerNode.valueCategory === 'lvalue' && innerNode.inner.length > 0) {
                 innerNode = innerNode.inner[0];
             }
             if (
-                innerNode.kind === 'DeclRefExpr' &&
+                innerNode.kind === astKind.DeclRefExpr &&
                 (innerNode.type.qualType.includes('iostream') ||
                     innerNode.type.qualType.includes('ostream') ||
                     innerNode.type.qualType.includes('istream') ||
@@ -1440,7 +1450,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         };
         for (let i = 0; i < args.length; i += 1) {
             let arg = args[i];
-            if (arg.kind === 'CXXOperatorCallExpr') {
+            if (arg.kind === astKind.CXXOperatorCallExpr) {
                 // Standard stream operator+overloaded stream operator
                 // 1. Object of standard stream operator, call std:: stream function
                 this.buildValueAndStmtsForStdStreamOrLambdaCall(streamNode, nonOverloadedArgs, streamExpr, currValueAndStmts);
@@ -1588,7 +1598,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         }
         // operator<< / operator>> and lambda cout scenario
         if (
-            (callExpression.inner[0]?.kind === 'ImplicitCastExpr' && callExpression.inner[0]?.name === 'operator>>') ||
+            (callExpression.inner[0]?.kind === astKind.ImplicitCastExpr && callExpression.inner[0]?.name === 'operator>>') ||
             callExpression.name === 'operator<<' ||
             callExpression.inner[0]?.name === 'operator<<' ||
             callExpression.inner[1]?.type.qualType.toString().includes('(lambda at')) {
@@ -1596,20 +1606,20 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         }
 
         // Relational binary operator or assignment operator
-        if (callExpression.inner[0]?.kind === 'ImplicitCastExpr' &&
+        if (callExpression.inner[0]?.kind === astKind.ImplicitCastExpr &&
             (ArkCxxValueTransformer.isRelationalBinaryOperator(callExpression.inner[0]?.code) ||
                 this.getOverloadOpName(callExpression) === 'operator=')) {
             return this.CXXOperatorExpressionToBinaryOperator(callExpression);
         }
 
         // Unary operators (++ / --)
-        if (callExpression.inner[0]?.kind === 'ImplicitCastExpr' &&
+        if (callExpression.inner[0]?.kind === astKind.ImplicitCastExpr &&
             ['++', '--', '*'].includes(callExpression.inner[0]?.code)) {
             return this.CXXOperatorExpressionToUnaryOperator(callExpression);
         }
 
         // Arrow operator (->) in iteration
-        if (callExpression.inner[0]?.kind === 'ImplicitCastExpr' &&
+        if (callExpression.inner[0]?.kind === astKind.ImplicitCastExpr &&
             callExpression.inner[0]?.code === '->') {
             return this.cxxNodeToValueAndStmts(callExpression.inner[1]);
         }
@@ -1621,17 +1631,22 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
      */
     private collectInnerOperatorStmts(callExpression: CxxAstNode, innerStmts: ValueAndStmts[]): void {
         for (let innerNode of callExpression.inner) {
+            // 将第一组递归表达式类型定义为 string 数组
+            const recursiveKinds: string[] = [
+                astKind.CXXOperatorCallExpr,
+                astKind.MaterializeTemporaryExpr,
+                astKind.CXXBindTemporaryExpr,
+                astKind.CXXConstructExpr
+            ];
+
             if (
-                innerNode.kind === 'CXXOperatorCallExpr' ||
-                innerNode.kind === 'MaterializeTemporaryExpr' ||
-                innerNode.kind === 'CXXBindTemporaryExpr' ||
-                innerNode.kind === 'CXXConstructExpr' ||
-                (innerNode.kind === 'ImplicitCastExpr' && innerNode.castKind !== 'FunctionToPointerDecay')
+                recursiveKinds.includes(innerNode.kind) ||
+                (innerNode.kind === astKind.ImplicitCastExpr && innerNode.castKind !== 'FunctionToPointerDecay')
             ) {
                 innerStmts.push(...this.cxxOperatorExpressionToValueAndStmts(innerNode, false));
-            } else if (innerNode.kind === 'DeclRefExpr') {
+            } else if (innerNode.kind === astKind.DeclRefExpr) {
                 innerStmts.push(this.cxxIdentifierToValueAndStmts(innerNode));
-            } else if (innerNode.kind === 'IntegerLiteral' || innerNode.kind === 'StringLiteral') {
+            } else if (innerNode.kind === astKind.IntegerLiteral || innerNode.kind === astKind.StringLiteral) {
                 let literalNode = this.cxxLiteralNodeToValueAndStmts(innerNode);
                 if (literalNode) {
                     innerStmts.push(literalNode);
@@ -1658,7 +1673,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         // Handling Recursive function, e.g. Case10 in lambdaFuncSample.cpp
         if (cxxOperatorCallExpr.inner?.[1]) {
             let callNode = cxxOperatorCallExpr.inner[1];
-            while (callNode.kind === 'ImplicitCastExpr' && callNode.valueCategory === 'lvalue' && callNode.inner.length > 0) {
+            while (callNode.kind === astKind.ImplicitCastExpr && callNode.valueCategory === 'lvalue' && callNode.inner.length > 0) {
                 callNode = callNode.inner[0];
             }
             if (callNode.type.qualType.includes('std::function') || this.isNodeRelatedToCXXLambdaFunc(callNode)) {
@@ -1821,7 +1836,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             const callerName = callerValue.getName();
             let classSignature = ArkSignatureBuilder.buildClassSignatureFromClassName(callerName);
             let cls = ModelUtils.getClass(this.declaringMethod, classSignature);
-            if (cls?.hasComponentDecorator() && ['CallExpr', 'CXXOperatorCallExpr'].includes(callExpression)) {
+            const callExprs: string[] = [astKind.CallExpr, astKind.CXXOperatorCallExpr];
+            if (cls?.hasComponentDecorator() && callExprs.includes(callExpression)) {
                 return this.cxxGenerateCustomViewStmt(callerName, args, argPositions, callExpression, stmts);
             } else if (callerName === COMPONENT_FOR_EACH || callerName === COMPONENT_LAZY_FOR_EACH) {
                 // foreach/lazyforeach will be parsed as ts.callExpression
@@ -2033,7 +2049,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         const argPositions: FullPosition[] = [];
         if (argumentNodes) {
             for (let i = 0; i < argumentNodes.length; i++) {
-                if (argumentNodes[i].kind.toString() === 'CXXDefaultArgExpr') {
+                if (argumentNodes[i].kind === astKind.CXXDefaultArgExpr) {
                     continue;
                 }
                 const argument = argumentNodes[i];
@@ -2089,7 +2105,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         let realGenericTypes = this.getRealGenericTypes(newExpression);
         // Handle the scenarios of namespace::Member and class::member
         const parentClassOrNs = newExpression.getParent?.(true).inner.filter(
-            inn => ['TypeRef', 'NamespaceRef'].includes(inn.kind));
+            inn => ([astKind.TypeRef, astKind.NamespaceRef] as string[]).includes(inn.kind));
         let refType: Type | null = null;
         // If the parent node has a namespaceRef or TypeRef, it indicates a constructor call,
         // and should infer the type of the corresponding namespace/class.
@@ -2112,7 +2128,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         const { value: newLocal, valueOriginalPositions: newLocalPositions, stmts: newExprStmts } =
             this.ArkCxxIRTransformer.generateAssignStmtForValue(expr, [FullPosition.cxxBuildFromNode(newExpression, this.cxxSourceFile)]);
         // When using the new keyword, the type of Local should be a pointer type.
-        if (newExpression.kind === 'CXXNewExpr') {
+        if (newExpression.kind === astKind.CXXNewExpr) {
             (newLocal as Local).setType(new PointerType(classType, 1));
         }
         stmts.push(...newExprStmts);
@@ -2141,23 +2157,23 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         // 对象构造，使用 invokeStmt 表达
         const constructArgs: CxxAstNode[] = ((): CxxAstNode[] => {
             let args: CxxAstNode[] = newExpression.inner;
-            if (newExpression.kind === 'CXXNewExpr' && newExpression.inner[0]?.kind === 'CXXConstructExpr') {
+            if (newExpression.kind === astKind.CXXNewExpr && newExpression.inner[0]?.kind === astKind.CXXConstructExpr) {
                 return [...newExpression.inner[0].inner];
-            } else if (newExpression.kind === 'CompoundLiteralExpr') {
+            } else if (newExpression.kind === astKind.CompoundLiteralExpr) {
                 return this.getConstructArgs(args);
             } else if (
-                newExpression.kind === 'CXXConstructExpr' &&
+                newExpression.kind === astKind.CXXConstructExpr &&
                 newExpression.type.qualType.startsWith('struct') &&
-                args.length > 0 && args[0].inner[0]?.kind === 'CompoundLiteralExpr' // if case : struct LargeStruct s;, inner.length is 0, so we need to avoid it
+                args.length > 0 && args[0].inner[0]?.kind === astKind.CompoundLiteralExpr // if case : struct LargeStruct s;, inner.length is 0, so we need to avoid it
             ) {
                 return this.getConstructArgs(args[0].inner[0].inner);
-            } else if (newExpression.kind === 'InitListExpr') {
+            } else if (newExpression.kind === astKind.InitListExpr) {
                 return this.getConstructArgs(newExpression);
             }
             return args.filter(arg =>
-                arg?.kind !== 'TemplateRef' &&
-                arg?.kind !== 'NamespaceRef' &&
-                arg?.kind !== 'TypeRef',
+                arg?.kind !== astKind.TemplateRef &&
+                arg?.kind !== astKind.NamespaceRef &&
+                arg?.kind !== astKind.TypeRef,
             );
         })();
 
@@ -2220,18 +2236,18 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         let arr: CxxAstNode[];
         if (Array.isArray(constructArgs)) {
             arr = constructArgs;
-        } else if (constructArgs.kind === 'InitListExpr') {
+        } else if (constructArgs.kind === astKind.InitListExpr) {
             arr = constructArgs.inner ?? [];
         } else {
             // Parameters of some scenarios (such as CXXConstructExpr) may be placed in InitListExpr of inner [1]
             arr = constructArgs.inner ?? [];
         }
         // 2) If the second element itself is InitListExpr, take its inner as the real parameter
-        if (arr[1]?.kind === 'InitListExpr') {
+        if (arr[1]?.kind === astKind.InitListExpr) {
             arr = arr[1].inner ?? [];
         }
         // 3) If there is "implicit conversion" (original logic: check whether the second element is ImplicitCastExpr)
-        const useInner1 = arr[1]?.kind === 'ImplicitCastExpr';
+        const useInner1 = arr[1]?.kind === astKind.ImplicitCastExpr;
         // 4) Generate a new parameter list (equivalent to the original logic)
         const newConstructArgs: CxxAstNode[] = [];
         for (let i = 0; i < arr.length; i++) {
@@ -2584,7 +2600,13 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         const operatorToken = postfixUnaryExpression.opcode;
         // Use temporary variables to store the value before self increment, and avoid this expression for some non assignment operation scenarios
         if (operatorToken === '++' || operatorToken === '--') {
-            const needAssign: string[] = ['VarDecl', 'BinaryOperator', 'BinaryConditionalOperator', 'ConditionalOperator', 'ArraySubscriptExpr'];
+            const needAssign: string[] = [
+                astKind.VarDecl,
+                astKind.BinaryOperator,
+                astKind.BinaryConditionalOperator,
+                astKind.ConditionalOperator,
+                astKind.ArraySubscriptExpr
+            ];
             let parent = (postfixUnaryExpression.parent ?? postfixUnaryExpression.getParent?.(true)) ?? null;
             if (parent && needAssign.includes(parent.kind)) {
                 let {
@@ -2647,7 +2669,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             rightOpNode = nodeInnerNode(variableDeclaration);
         }
         // In this case, the non assigned information on the right node needs to be discarded
-        if (this.isCxxArray(leftOpNode.type.qualType) && rightOpNode?.kind === 'IntegerLiteral') {
+        if (this.isCxxArray(leftOpNode.type.qualType) && rightOpNode?.kind === astKind.IntegerLiteral) {
             rightOpNode = undefined;
         }
         const declarationType = variableDeclaration.type ? cxxNode2Type(variableDeclaration, this.declaringMethod) : UnknownType.getInstance();
@@ -2677,7 +2699,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
     private cxxAssignmentToValueAndStmts(leftOpNode: CxxAstNode, rightOpNode: CxxAstNode | undefined, variableDefFlag: boolean,
                                          isConst: boolean, declarationType: Type, needRightOp: boolean = true): ValueAndStmts {
         let leftValueAndStmts: ValueAndStmts;
-        if (leftOpNode.kind.toString() === 'VarDecl') {
+        if (leftOpNode.kind.toString() === astKind.VarDecl) {
             leftValueAndStmts = this.cxxIdentifierToValueAndStmts(leftOpNode, variableDefFlag);
         } else {
             leftValueAndStmts = this.cxxNodeToValueAndStmts(leftOpNode);
@@ -2699,7 +2721,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             }
             const assignStmt = new ArkAssignStmt(leftValue, rightValue);
             assignStmt.setOperandOriginalPositions([...leftPositions, ...rightPositions]);
-            if (leftOpNode.kind === 'InitListExpr') {
+            if (leftOpNode.kind === astKind.InitListExpr) {
                 stmts.push(...rightStmts);
                 stmts.push(assignStmt);
                 stmts.push(...leftStmts);
@@ -2966,36 +2988,38 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
      *@ param literalNode - an AST node representing a C++literal
      *@ returns the object containing the value, original location information and statement list. If the node type cannot be processed, null is returned
      */
+
     private cxxLiteralNodeToValueAndStmts(literalNode: CxxAstNode): ValueAndStmts | null {
         const stmts: Stmt[] = [];
         const pos = [FullPosition.cxxBuildFromNode(literalNode, this.cxxSourceFile)];
         const S = (v: string | undefined | null): string => v ?? '';
+
         switch (literalNode.kind) {
-            case 'IntegerLiteral': {
+            case astKind.IntegerLiteral: {
                 const num = (S(literalNode.value) || S(literalNode.code));
                 const constant = CxxValueUtil.getOrCreateNumberConst(num ? num : 0);
                 return { value: constant, valueOriginalPositions: pos, stmts };
             }
-            case 'FloatingLiteral': {
+            case astKind.FloatingLiteral: {
                 const num = this.parseFloatAsCxxFloat(S(literalNode.value) || S(literalNode.code));
                 const constant = CxxValueUtil.getOrCreateNumberConst(Number.isFinite(num) ? num : 0);
                 return { value: constant, valueOriginalPositions: pos, stmts };
             }
-            case 'StringLiteral': {
+            case astKind.StringLiteral: {
                 const constant = CxxValueUtil.createStringConst(S(literalNode.value) || S(literalNode.code));
                 return { value: constant, valueOriginalPositions: pos, stmts };
             }
-            case 'CharacterLiteral': {
+            case astKind.CharacterLiteral: {
                 const constant = CxxValueUtil.createCharConst(S(literalNode.code));
                 return { value: constant, valueOriginalPositions: pos, stmts };
             }
-            case 'CXXBoolLiteralExpr': {
+            case astKind.CXXBoolLiteralExpr: {
                 const raw = (literalNode.value ?? literalNode.code ?? '').toString().trim().toLowerCase();
                 const b = raw === 'true' || raw === '1';
                 const constant = CxxValueUtil.getBooleanConstant(b);
                 return { value: constant, valueOriginalPositions: pos, stmts };
             }
-            case 'CXXNullPtrLiteralExpr': {
+            case astKind.CXXNullPtrLiteralExpr: {
                 const constant = NullConstant.getInstance();
                 return { value: constant, valueOriginalPositions: pos, stmts };
             }
