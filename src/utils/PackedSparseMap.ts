@@ -93,9 +93,13 @@ export class PackedSparseMap {
     }
 
     private ensureOwnerCapacity(owner: number): void {
-        if (owner < this.offsets.length) return;
+        if (owner < this.offsets.length) {
+            return;
+        }
         let newSize = this.offsets.length;
-        if (newSize === 0) newSize = 1;
+        if (newSize === 0) {
+            newSize = 1;
+        }
         while (newSize <= owner) {
             newSize <<= 1;
         }
@@ -127,7 +131,9 @@ export class PackedSparseMap {
 
     private ensurePoolCapacity(additional: number): void {
         const required = this.poolSize + additional;
-        if (required <= this.poolCapacity) return;
+        if (required <= this.poolCapacity) {
+            return;
+        }
         let newCapacity = Math.max(this.poolCapacity << 1, 1024);
         while (newCapacity < required) {
             newCapacity <<= 1;

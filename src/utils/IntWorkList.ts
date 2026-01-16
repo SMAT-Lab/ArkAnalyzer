@@ -29,7 +29,9 @@ export class IntWorkList {
     constructor(initialCapacity: number = 1024) {
         // Ensure power of 2 capacity for efficient masking
         this.capacity = 1;
-        while (this.capacity < initialCapacity) this.capacity <<= 1;
+        while (this.capacity < initialCapacity) {
+            this.capacity <<= 1;
+        }
         this.mask = this.capacity - 1;
         this.buffer = new Int32Array(this.capacity);
     }

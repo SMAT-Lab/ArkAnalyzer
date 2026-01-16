@@ -62,10 +62,14 @@ export class IntMap {
      * Check if the list for a key contains a value.
      */
     public contains(key: number, value: number): boolean {
-        if (key >= this.keyRange) return false;
+        if (key >= this.keyRange) {
+            return false;
+        }
         let curr = this.heads[key];
         while (curr !== -1) {
-            if (this.values[curr] === value) return true;
+            if (this.values[curr] === value) {
+                return true;
+            }
             curr = this.nexts[curr];
         }
         return false;
@@ -75,7 +79,9 @@ export class IntMap {
      * Add a value only if it doesn't already exist in the key's list.
      */
     public addUnique(key: number, value: number): boolean {
-        if (this.contains(key, value)) return false;
+        if (this.contains(key, value)) {
+            return false;
+        }
         this.add(key, value);
         return true;
     }
@@ -85,7 +91,9 @@ export class IntMap {
      * Efficient for loops: for (const v of map.getValues(key)) { ... }
      */
     public *getValues(key: number): IterableIterator<number> {
-        if (key >= this.keyRange) return;
+        if (key >= this.keyRange) {
+            return;
+        }
         let curr = this.heads[key];
         while (curr !== -1) {
             yield this.values[curr];
@@ -98,7 +106,9 @@ export class IntMap {
      */
     public getAsArray(key: number): number[] {
         const result: number[] = [];
-        if (key >= this.keyRange) return result;
+        if (key >= this.keyRange) {
+            return result;
+        }
         let curr = this.heads[key];
         while (curr !== -1) {
             result.push(this.values[curr]);
@@ -111,7 +121,9 @@ export class IntMap {
      * Check if a key has any values.
      */
     public has(key: number): boolean {
-        if (key >= this.keyRange) return false;
+        if (key >= this.keyRange) {
+            return false;
+        }
         return this.heads[key] !== -1;
     }
 
