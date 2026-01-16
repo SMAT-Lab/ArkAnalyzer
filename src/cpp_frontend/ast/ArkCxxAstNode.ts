@@ -110,6 +110,9 @@ export interface CxxAstNode {
     /** Unique node ID */
     originalId?: string;
 
+    /** Is there any initialization of member variables */
+    hasInClassInitializer?: boolean;
+
     /** Node kind (e.g., "TranslationUnit", "FunctionDecl", "CXXConstructExpr", etc.) */
     kind: string;
 
