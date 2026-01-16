@@ -566,27 +566,6 @@ export class Thread extends Type {
     }
 }
 
-/**
- * NapiType class represents the types defined in native_api that start with the prefix 'napi_', inherited from Type base class,
- * such as napi_value, napi_ref, etc.
- */
-export class NapiType extends Type {
-    private name: string;
-
-    constructor(name: string) {
-        super();
-        this.name = name;
-    }
-
-    public getName(): string {
-        return this.name;
-    }
-
-    public getTypeString(): string {
-        return this.name;
-    }
-}
-
 export class TypeInfo extends Type {
     private name: string;
     private type: Type;

@@ -619,7 +619,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         const stmts: Stmt[] = [];
         const literalStr = this.getOverloadOpName(userDefinedLiteral).replace('operator""', '');
         const argNode = userDefinedLiteral.inner[1];
-        argNode.code = argNode.code.replace(literalStr, ''); // 获取原始值（比如123，'a'）
+        argNode.code = argNode.code.replace(literalStr, ''); // Get the primitive value (e.g., 123, 'a')
         return this.buildValueAndStmtsForMemberCall(stmts, userDefinedLiteral.inner[0], [argNode], userDefinedLiteral, undefined);
     }
 
@@ -2518,7 +2518,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             stmts.push(...operandStmts);
         }
 
-        const operatorToken: string = prefixUnaryExpression.opcode ?? ''; // 可选字段兜底为空串
+        const operatorToken: string = prefixUnaryExpression.opcode ?? ''; // Optional fields default to empty strings.
         let exprPositions = [FullPosition.cxxBuildFromNode(prefixUnaryExpression, this.cxxSourceFile)];
         if (operatorToken === '++' || operatorToken === '--') {
             const binaryOperator = operatorToken === '++' ? NormalBinaryOperator.Addition : NormalBinaryOperator.Subtraction;

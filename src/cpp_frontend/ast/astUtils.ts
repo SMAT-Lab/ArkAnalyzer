@@ -95,43 +95,34 @@ export class AstUtils {
         }
     }
 
-    private static updateInner(sourceFile: string, firstOccurrenceOfMainFile: boolean, entry: CxxAstNode, newInner: CxxAstNode[]): void {
-        if (!firstOccurrenceOfMainFile) {
-            if (entry.isImplicit && entry.kind !== 'UsingDirectiveDecl') {
-                return;
-            }
-            let fileName = '';
-            let loc = entry.loc;
-            if (!loc) {
-                if (entry.kind === 'inclusion directive') {
-                    entry.locFile = sourceFile;
-                    newInner.push(entry);
-                } else {
-                    logger.warn('Node skipped due to missing "locFile", kind of node: ', entry.kind);
-                }
-                return;
-            }
-            if (loc.file) {
-                fileName = loc.file;
-            } else if (loc.spellingLoc && loc.spellingLoc.file) {
-                fileName = loc.spellingLoc.file;
-            }
-            if (entry.include && entry.kind !== 'inclusion directive') {
-                newInner.push(entry);
-                return;
-            }
-            if (fileName !== sourceFile) {
-                return;
-            }
+    private static updateInner(sourceFile: string, entry: CxxAstNode, newInner: CxxAstNode[]): void {
+        // isImplicit=true indicates that the node must exist under the rules of the C/C++ language but is not explicitly
+        // written in the source code, so it needs to be filtered out.
+        if (entry.isImplicit) {
+            return;
         }
+        let fileName = '';
+        let loc = entry.loc;
+        if (!loc) {
+            logger.warn('Node skipped due to missing "locFile", kind of node: ', entry.kind);
+            return;
+        }
+        if (loc.file) {
+            fileName = loc.file;
+        } else if (loc.spellingLoc && loc.spellingLoc.file) {
+            fileName = loc.spellingLoc.file;
+        }
+        if (fileName !== sourceFile) {
+            return;
+        }
+
         newInner.push(entry);
     }
 
     private static filter(sourceFile: string, translationUnit: CxxAstNode):CxxAstNode {
         let newInner: CxxAstNode[] = [];
-        let firstOccurrenceOfMainFile: boolean = false;
         for (const entry of translationUnit.inner) {
-            this.updateInner(sourceFile, firstOccurrenceOfMainFile, entry, newInner);
+            this.updateInner(sourceFile, entry, newInner);
         }
         translationUnit.inner = newInner;
         translationUnit.fileName = sourceFile;
