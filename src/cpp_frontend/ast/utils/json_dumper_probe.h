@@ -140,7 +140,7 @@ private:
         std::string demangleStr = llvm::demangle(demangle); // decode
         std::string mangledName = "";
         size_t bracketPos = demangleStr.find("(");
-        if (bracketPos != std::string::npos) {
+        if (bracketPos != std::string::npos && bracketPos != 0) {
             size_t colonIndex = 0;
             for (size_t i = bracketPos - 1; i > 0; --i) {
                 if (colonIndex == 0 && demangleStr[i] == ':') {

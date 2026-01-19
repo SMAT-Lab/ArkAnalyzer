@@ -363,7 +363,7 @@ function searchCompileCommandsInDir(dir: string): string {
     for (const entry of entries) {
         const fullPath = path.join(dir, entry.name);
         if (entry.isFile() && entry.name === 'compile_commands.json') {
-            return fullPath;
+            return dir;
         } else if (entry.isDirectory()) {
             const result = searchCompileCommandsInDir(fullPath);
             if (result) {
