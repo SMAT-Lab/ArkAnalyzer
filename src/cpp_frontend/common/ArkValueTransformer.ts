@@ -983,15 +983,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
      *@ returns an array containing two elements: the first element is the call node, and the second element is the parameter node array
      */
     private getArgumentNodeForRecover(innerAsNodes: CxxAstNode[]): [{}, CxxAstNode[]] {
-        let callNode = {};
-        const argumentNodes: CxxAstNode[] = [];
-        for (let i = 0; i < innerAsNodes.length; i++) {
-            if (i === 0) {
-                callNode = innerAsNodes[i];
-            } else {
-                argumentNodes.push(innerAsNodes[i]);
-            }
-        }
+        const [callNode,...argumentNodes] = innerAsNodes;
         return [callNode, argumentNodes];
     }
 
