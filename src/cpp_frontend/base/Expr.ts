@@ -181,34 +181,49 @@ export class ArkCxxInitArrayExpr extends AbstractExpr {
         return this;
     }
 }
+export enum Operator {
+    sizeof = 'sizeof',
+    alignof = 'alignof',
+    Unknown = 'Unknown'
+}
 
-// Sizeof expression
-export class ArkUnaryExpr extends AbstractExpr {
-    private operator: string;
-    private op: Value;
+// expression with either a type or (unevaluated) expression operand.
+// Used for sizeof/alignof (C99 6.5.3.4) and vec_step (OpenCL 1.1 6.11.12).
+export class ArkCxxUnaryExpr extends AbstractExpr {
+    private operator: Operator;
+    private op: Value | Type;
 
-    constructor(operator: string, op: Value) {
+    constructor(operator: Operator, op: Value | Type) {
         super();
         this.operator = operator;
         this.op = op;
     }
 
-    public getOp(): Value {
+    public getOp(): Value | Type{
         return this.op;
     }
 
-    public setOp(newOp: Value): void {
+    public setOp(newOp: Value | Type): void {
         this.op = newOp;
+    }
+
+    public getOperator(): string {
+        return this.operator;
     }
 
     public getUses(): Value[] {
         let uses: Value[] = [];
-        uses.push(this.op);
-        uses.push(...this.op.getUses());
+        if (!(this.op instanceof Type)) {
+            uses.push(this.op);
+            uses.push(...this.op.getUses());
+        }
         return uses;
     }
 
     public getOpType(): Type {
+        if (this.op instanceof Type) {
+            return this.op;
+        }
         return this.op.getType();
     }
 

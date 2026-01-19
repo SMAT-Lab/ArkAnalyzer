@@ -20,7 +20,7 @@ import * as os from 'os';
 
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { ClangPath } from './const';
-import {CxxAstNode, CxxAstNodeLite} from './ArkCxxAstNode';
+import { astKind, CxxAstNode, CxxAstNodeLite } from './ArkCxxAstNode';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'astUtils');
 
@@ -95,43 +95,34 @@ export class AstUtils {
         }
     }
 
-    private static updateInner(sourceFile: string, firstOccurrenceOfMainFile: boolean, entry: CxxAstNode, newInner: CxxAstNode[]): void {
-        if (!firstOccurrenceOfMainFile) {
-            if (entry.isImplicit && entry.kind !== 'UsingDirectiveDecl') {
-                return;
-            }
-            let fileName = '';
-            let loc = entry.loc;
-            if (!loc) {
-                if (entry.kind === 'inclusion directive') {
-                    entry.locFile = sourceFile;
-                    newInner.push(entry);
-                } else {
-                    logger.warn('Node skipped due to missing "locFile", kind of node: ', entry.kind);
-                }
-                return;
-            }
-            if (loc.file) {
-                fileName = loc.file;
-            } else if (loc.spellingLoc && loc.spellingLoc.file) {
-                fileName = loc.spellingLoc.file;
-            }
-            if (entry.include && entry.kind !== 'inclusion directive') {
-                newInner.push(entry);
-                return;
-            }
-            if (fileName !== sourceFile) {
-                return;
-            }
+    private static updateInner(sourceFile: string, entry: CxxAstNode, newInner: CxxAstNode[]): void {
+        // isImplicit=true indicates that the node must exist under the rules of the C/C++ language but is not explicitly
+        // written in the source code, so it needs to be filtered out.
+        if (entry.isImplicit) {
+            return;
         }
+        let fileName = '';
+        let loc = entry.loc;
+        if (!loc) {
+            logger.warn('Node skipped due to missing "locFile", kind of node: ', entry.kind);
+            return;
+        }
+        if (loc.file) {
+            fileName = loc.file;
+        } else if (loc.spellingLoc && loc.spellingLoc.file) {
+            fileName = loc.spellingLoc.file;
+        }
+        if (fileName !== sourceFile) {
+            return;
+        }
+
         newInner.push(entry);
     }
 
     private static filter(sourceFile: string, translationUnit: CxxAstNode):CxxAstNode {
         let newInner: CxxAstNode[] = [];
-        let firstOccurrenceOfMainFile: boolean = false;
         for (const entry of translationUnit.inner) {
-            this.updateInner(sourceFile, firstOccurrenceOfMainFile, entry, newInner);
+            this.updateInner(sourceFile, entry, newInner);
         }
         translationUnit.inner = newInner;
         translationUnit.fileName = sourceFile;
@@ -181,9 +172,9 @@ export class AstUtils {
         }
 
         // The default access property of class is 'private',The default access property of struct is 'public'
-        if (cursor.kind === 'CXXRecordDecl' && cursor.tagUsed === 'class') {
+        if (cursor.kind === astKind.CXXRecordDecl && cursor.tagUsed === 'class') {
             this.currentAccess = 'private';
-        } else if (cursor.kind === 'CXXRecordDecl' && cursor.tagUsed === 'struct') {
+        } else if (cursor.kind === astKind.CXXRecordDecl && cursor.tagUsed === 'struct') {
             this.currentAccess = 'public';
         } else {
             this.currentAccess = '';
@@ -192,7 +183,7 @@ export class AstUtils {
         for (const currentCursor of cursor.inner) {
             // Overloaded implementation without any usage of 'any' or type assertions
             Object.assign(currentCursor, { getParent: this.makeGetParent(cursor) });
-            if (cursor.kind === 'CXXRecordDecl' || cursor.kind === 'CXXMethodDecl' || cursor.kind === 'FunctionDecl') {
+            if (cursor.kind === astKind.CXXRecordDecl || cursor.kind === astKind.CXXMethodDecl || cursor.kind === astKind.FunctionDecl) {
                 this.processAccess(currentCursor);
             }
             this.fullInfo(currentCursor);
