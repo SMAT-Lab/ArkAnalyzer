@@ -1349,47 +1349,69 @@ export class CfgBuilder {
         };
     }
 
+    /**
+     * Removes empty basic blocks from the CFG.
+     *
+     * Strategy:
+     * 1. Identify all empty blocks first (Snapshot).
+     * 2. For each empty block, bypass it by connecting its predecessors directly to its successors.
+     * 3. Delete the empty block.
+     *
+     * Note: This version strictly performs deletion and does NOT trigger block merging.
+     */
     private removeEmptyBlocks(basicBlockSet: Set<BasicBlock>): void {
+        // 1. Initialization: Create a static snapshot of blocks to process.
+        // We filter upfront to only include empty blocks.
+        // This acts as our "Worklist" but we won't be adding new items to it.
+        const emptyBlocksToProcess: BasicBlock[] = [];
+
         for (const bb of basicBlockSet) {
-            if (bb.getStmts().length > 0) {
+            // Condition: The block has no executable statements.
+            if (bb.getStmts().length === 0) {
+                emptyBlocksToProcess.push(bb);
+            }
+        }
+
+        // 2. Processing Loop
+        for (const bb of emptyBlocksToProcess) {
+            // Safety check: The block might have been removed or altered by a previous iteration
+            // (though unlikely in this specific logic, it's good defensive programming).
+            if (!basicBlockSet.has(bb)) {
                 continue;
             }
-            const predecessors = bb.getPredecessors();
-            const successors = bb.getSuccessors();
 
-            // the empty basic block with neither predecessor nor successor could be deleted directly
-            if (predecessors.length === 0 && successors.length === 0) {
-                basicBlockSet.delete(bb);
-                continue;
-            }
+            // Snapshot neighbors to avoid modification issues during iteration
+            const predecessors = [...bb.getPredecessors()];
+            const successors = [...bb.getSuccessors()];
 
-            // the empty basic block with predecessor but no successor could be deleted directly and remove its ID from the predecessor blocks
-            if (predecessors.length > 0 && successors.length === 0) {
-                for (const predecessor of predecessors) {
-                    predecessor.removeSuccessorBlock(bb);
+            // 3. Relinking Logic (Bypassing the current empty block)
+
+            // 3a. Update Predecessors
+            for (const pred of predecessors) {
+                // Remove the edge: Pred -> BB
+                pred.removeSuccessorBlock(bb);
+
+                // Add new edges: Pred -> [All Successors of BB]
+                for (const succ of successors) {
+                    // Avoid self-loops if the empty block was just a bridge
+                    if (pred !== succ) {
+                        pred.addSuccessorBlock(succ);
+                    }
                 }
-                basicBlockSet.delete(bb);
-                continue;
             }
+            // 3b. Update Successors
+            for (const succ of successors) {
+                // Remove the edge: BB -> Succ
+                succ.removePredecessorBlock(bb);
 
-            // the empty basic block with successor but no predecessor could be deleted directly and remove its ID from the successor blocks
-            if (predecessors.length === 0 && successors.length > 0) {
-                for (const successor of successors) {
-                    successor.removePredecessorBlock(bb);
+                // Add new edges: [All Predecessors of BB] -> Succ
+                for (const pred of predecessors) {
+                    if (succ !== pred) {
+                        succ.addPredecessorBlock(pred);
+                    }
                 }
-                basicBlockSet.delete(bb);
-                continue;
             }
-
-            // the rest case is the empty basic block both with predecessor and successor, should relink its predecessor and successor
-            for (const predecessor of predecessors) {
-                predecessor.removeSuccessorBlock(bb);
-                successors.forEach(successor => predecessor.addSuccessorBlock(successor));
-            }
-            for (const successor of successors) {
-                successor.removePredecessorBlock(bb);
-                predecessors.forEach(predecessor => successor.addPredecessorBlock(predecessor));
-            }
+            // 4. Final Deletion
             basicBlockSet.delete(bb);
         }
     }
