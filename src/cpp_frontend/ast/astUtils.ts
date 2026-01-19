@@ -20,7 +20,7 @@ import * as os from 'os';
 
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { ClangPath } from './const';
-import {CxxAstNode, CxxAstNodeLite} from './ArkCxxAstNode';
+import { astKind, CxxAstNode, CxxAstNodeLite } from './ArkCxxAstNode';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'astUtils');
 
@@ -172,9 +172,9 @@ export class AstUtils {
         }
 
         // The default access property of class is 'private',The default access property of struct is 'public'
-        if (cursor.kind === 'CXXRecordDecl' && cursor.tagUsed === 'class') {
+        if (cursor.kind === astKind.CXXRecordDecl && cursor.tagUsed === 'class') {
             this.currentAccess = 'private';
-        } else if (cursor.kind === 'CXXRecordDecl' && cursor.tagUsed === 'struct') {
+        } else if (cursor.kind === astKind.CXXRecordDecl && cursor.tagUsed === 'struct') {
             this.currentAccess = 'public';
         } else {
             this.currentAccess = '';
@@ -183,7 +183,7 @@ export class AstUtils {
         for (const currentCursor of cursor.inner) {
             // Overloaded implementation without any usage of 'any' or type assertions
             Object.assign(currentCursor, { getParent: this.makeGetParent(cursor) });
-            if (cursor.kind === 'CXXRecordDecl' || cursor.kind === 'CXXMethodDecl' || cursor.kind === 'FunctionDecl') {
+            if (cursor.kind === astKind.CXXRecordDecl || cursor.kind === astKind.CXXMethodDecl || cursor.kind === astKind.FunctionDecl) {
                 this.processAccess(currentCursor);
             }
             this.fullInfo(currentCursor);
