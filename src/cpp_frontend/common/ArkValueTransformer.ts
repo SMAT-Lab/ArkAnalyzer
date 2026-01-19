@@ -312,7 +312,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
     private isNodeRelatedToImplicitNode(node: CxxAstNode): boolean {
         if (node.inner) {
             return (
-                node.inner.length !== 0 && node.inner[0].kind === astKind.ImplicitCastExpr && (node.name === '__tree_const_iterator')
+                node.inner?.[0]?.kind === astKind.ImplicitCastExpr && (node.name === '__tree_const_iterator')
             );
         }
         return false;
@@ -320,13 +320,13 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
 
     // Judge whether the child nodes of the current node are materializing temporary variables
     private isNodeRelatedToMaterializeTemporaryExpr(node: CxxAstNode): boolean {
-        return node.inner[0]?.kind === astKind.MaterializeTemporaryExpr;
+        return node.inner?.[0]?.kind === astKind.MaterializeTemporaryExpr;
     }
 
     // Check if the child nodes of the current node are member function calls
     private isNodeRelatedToCXXMember(node: CxxAstNode): boolean {
         return (
-            (node.inner.length !== 0 && node.inner[0].kind === astKind.CXXMemberCallExpr) ||
+            (node.inner?.[0]?.kind === astKind.CXXMemberCallExpr) ||
             (node.inner[0].kind === astKind.ImplicitCastExpr && node.inner[0].inner[0] && node.inner[0].inner[0].kind === astKind.CXXMemberCallExpr)
         );
     }
@@ -338,7 +338,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
 
     // Multi-layer std::pair construction
     private isNodeRelatedToTemporary(node: CxxAstNode): boolean {
-        return node.inner.length !== 0 && node.inner[0].kind === astKind.CXXBindTemporaryExpr && node.code === node.inner[0].code;
+        return node.inner?.[0]?.kind === astKind.CXXBindTemporaryExpr && node.code === node.inner[0].code;
     }
 
     // Expressions that are not new statements (excluding constructors as parameters)
@@ -363,7 +363,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
     }
 
     private isNodeRelatedToCXXFuncCast(node: CxxAstNode): boolean {
-        return node.inner.length !== 0 && node.inner[0].kind === 'CXXFunctionalCastExpr';
+        return node.inner[0]?.kind === 'CXXFunctionalCastExpr';
     }
 
     private undefinedToValueAndStmts(): ValueAndStmts {
@@ -551,7 +551,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         let pNode = (node.parent ?? node.getParent?.(true)) ?? null;
         if (
             pNode && pNode?.inner?.length > 0 &&
-            (pNode.inner[0].kind === astKind.TypeRef || !node.type.qualType.includes('[') || cxxNode2Type(node, this.declaringMethod) instanceof ClassType)
+            (pNode.inner[0]?.kind === astKind.TypeRef || !node.type.qualType.includes('[') || cxxNode2Type(node, this.declaringMethod) instanceof ClassType)
         ) {
             try {
                 return this.cxxAggregateToValueAndStmts(node);
@@ -1212,7 +1212,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         } = this.cxxNodeToValueAndStmts(memberExpression.inner[0]);
         // [Scenario 3] Processing chained member access, such as a.b.c or (* ptr). field
         // If the base is a member access, generate an assignment statement to ensure the validity of SSA
-        if (memberExpression.inner[0].kind === astKind.MemberExpr || memberExpression.kind === astKind.MemberRef) {
+        if (memberExpression.inner[0]?.kind === astKind.MemberExpr || memberExpression.kind === astKind.MemberRef) {
             ({ value: baseValue, valueOriginalPositions: basePositions, stmts: baseStmts } =
                 this.ArkCxxIRTransformer.generateAssignStmtForValue(baseValue, basePositions));
         }
@@ -1331,7 +1331,6 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         if (baseValue.getType() instanceof CxxArrayType || baseValue.getType() instanceof PointerType) {
             elementAccessExpr = new ArkArrayRef(baseValue as Local, argumentValue);
         } else {
-            // TODO: deal with ArkStaticFieldRef
             const fieldSignature = ArkSignatureBuilder.buildFieldSignatureFromFieldName(argumentValue.toString());
             elementAccessExpr = new ArkInstanceFieldRef(baseValue as Local, fieldSignature);
         }
