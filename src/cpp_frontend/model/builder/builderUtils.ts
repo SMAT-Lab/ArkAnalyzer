@@ -33,7 +33,6 @@ import { buildGenericType } from '../../../core/model/builder/builderUtils';
 import { CxxAstNode, CxxTranslationUnit, defaultArg } from '../../ast/ArkCxxAstNode';
 import { Decorator } from '../../../core/base/Decorator';
 import { buildArkMethodFromArkClass } from './ArkMethodBuilder';
-import { ArkFile } from '../../../core/model/ArkFile';
 import { BuiltinCxx } from '../../common/Builtin';
 import { CxxModelUtils } from '../../common/ModelUtils';
 import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
@@ -426,7 +425,6 @@ export function buildTypeFromDerivedType(preStr: string, node: CxxAstNode, arkIn
     if (arkInstance instanceof ArkMethod || arkInstance instanceof ArkClass) {
         const file = arkInstance.getDeclaringArkFile?.();
         arkClass = file?.getClassWithName?.(typeStr) ??
-            getAnonymousClassByTypeCode(typeStr, file) ??
             CxxModelUtils.getClassFromAnonymousNamespaceByName(typeStr, file);
         // Obtain the use of alias types
         let aliasType =
@@ -439,16 +437,6 @@ export function buildTypeFromDerivedType(preStr: string, node: CxxAstNode, arkIn
         return new ClassType(arkClass.getSignature(), innerType);
     }
     return TypeInference.buildTypeFromStr(preStr);
-}
-
-/** Handling anonymous cases, such as '(unnamed struct ...)' */
-function getAnonymousClassByTypeCode(typeCode: string, file: ArkFile): ArkClass | null {
-    for (const cls of file.getClasses()) {
-        if (cls.isAnonymousClass() && cls.getCode() === typeCode) {
-            return cls;
-        }
-    }
-    return null;
 }
 
 const typeMap: Record<string, string> = {
