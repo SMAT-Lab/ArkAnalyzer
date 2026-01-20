@@ -118,3 +118,60 @@ export const LOOP_EXPECT_CASE2 = {
         },
     ],
 };
+
+export const LOOP_EXPECT_CASE3 = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @loop/LoopSample.ts: %dflt',
+                'i = 0',
+            ],
+            preds: [
+            ],
+            succes: [
+                1,
+            ],
+        },
+        {
+            id: 1,
+            stmts: [
+                'if i > 1',
+            ],
+            preds: [
+                0,
+                1,
+            ],
+            succes: [
+                1,
+                2,
+            ],
+        },
+        {
+            id: 2,
+            stmts: [
+                'i = i + 1',
+                'if i > 100',
+            ],
+            preds: [
+                1,
+                2,
+            ],
+            succes: [
+                2,
+                3,
+            ],
+        },
+        {
+            id: 3,
+            stmts: [
+                'return',
+            ],
+            preds: [
+                2,
+            ],
+            succes: [
+            ],
+        },
+    ],
+};

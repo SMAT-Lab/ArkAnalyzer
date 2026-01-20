@@ -27,6 +27,16 @@ function case2(): void {
     }
 }
 
+function case3(): void {
+    let i = 0;
+    do {
+    } while (i > 1);
+
+    do {
+        ++i;
+    } while (i > 100);
+}
+
 function testFor(): void {
     const arr = [1, 2, 3];
     for (const item of arr) {

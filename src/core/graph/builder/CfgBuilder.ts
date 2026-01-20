@@ -56,6 +56,7 @@ class StatementBuilder {
     passTmies: number = 0;
     numOfIdentifier: number = 0;
     isDoWhile: boolean = false;
+    hasDoWhileBody: boolean = false;
 
     constructor(type: string, code: string, astNode: ts.Node | null, scopeID: number) {
         this.type = type;
@@ -416,6 +417,7 @@ export class CfgBuilder {
         loopstm.condition = c.expression.getText(this.sourceFile);
         loopstm.code = 'while (' + loopstm.condition + ')';
         loopstm.isDoWhile = true;
+        loopstm.hasDoWhileBody = false;
         if (ts.isBlock(c.statement)) {
             this.walkAST(lastStatement, loopstm, [...c.statement.statements]);
         } else {
@@ -431,6 +433,7 @@ export class CfgBuilder {
             lastStatement.next?.lasts.add(loopstm);
         }
         if (loopstm.nextT && loopstm.nextT !== loopstm) {
+            loopstm.hasDoWhileBody = true;
             loopstm.nextT.isDoWhile = true;
             loopstm.doStatement = loopstm.nextT;
         }
@@ -732,7 +735,8 @@ export class CfgBuilder {
             const block = new BlockBuilder(this.blocks.length, []);
             this.blocks.push(block);
             while (stmt && !handledStmts.has(stmt)) {
-                if (stmt.type === 'loopStatement' && block.stmts.length > 0 && !stmt.isDoWhile) {
+                if (stmt.type === 'loopStatement' && block.stmts.length > 0 &&
+                    (!stmt.isDoWhile || (stmt.isDoWhile && !stmt.hasDoWhileBody))) {
                     stmtQueue.push(stmt);
                     break;
                 }
