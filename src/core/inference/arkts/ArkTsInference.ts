@@ -16,7 +16,7 @@
 import { ClassInference, ImportInfoInference, MethodInference, StmtInference } from '../ModelInference';
 import { ImportInfo } from '../../model/ArkImport';
 import { getArkFile, ModelUtils } from '../../common/ModelUtils';
-import { ArkClass } from '../../model/ArkClass';
+import { ArkClass, ClassCategory } from '../../model/ArkClass';
 import { TypeInference } from '../../common/TypeInference';
 import { ArkMethod } from '../../model/ArkMethod';
 import { MethodSignature } from '../../model/ArkSignature';
@@ -244,10 +244,10 @@ export class ArkTsInstanceInvokeExprInference extends InstanceInvokeExprInferenc
      * @param methodName
      */
     private processExtendFunc(expr: AbstractInvokeExpr, arkMethod: ArkMethod, methodName: string): AbstractInvokeExpr | null {
-        const type = TypeInference.inferBaseType(methodName, arkMethod.getDeclaringArkClass());
-        if (type instanceof FunctionType) {
-            const methodSignature = type.getMethodSignature();
-            expr.setMethodSignature(methodSignature);
+        const annoMethod = arkMethod.getDeclaringArkClass().getMethodWithName(methodName) ??
+            arkMethod.getDeclaringArkFile().getDefaultClass().getMethodWithName(methodName);
+        if (annoMethod) {
+            expr.setMethodSignature(annoMethod.getSignature());
             return expr;
         }
         return null;
@@ -342,12 +342,22 @@ export class ArkTSLocalInference extends LocalInference {
             TypeInference.inferSignatureReturnType(methodSignature, arkMethod);
             return undefined;
         } else {
-            newType = TypeInference.inferUnclearedType(type, arkMethod.getDeclaringArkClass());
+            newType = TypeInference.inferUnclearedType(type, arkMethod.getDeclaringArkClass()) ?? this.getEnumValue(arkMethod.getDeclaringArkClass(), name);
         }
         if (newType) {
             value.setType(newType);
             return undefined;
         }
         return super.infer(value, stmt);
+    }
+
+    private getEnumValue(arkClass: ArkClass, name: string): Type | null {
+        if (arkClass.getCategory() === ClassCategory.ENUM) {
+            const field = arkClass.getStaticFieldWithName(name);
+            if (field) {
+                return TypeInference.getEnumValueType(field);
+            }
+        }
+        return null;
     }
 }

@@ -14,7 +14,7 @@
  */
 
 import { Local } from '../base/Local';
-import { ArkClass, ClassCategory } from '../model/ArkClass';
+import { ArkClass } from '../model/ArkClass';
 import { ArkFile, Language } from '../model/ArkFile';
 import { ArkMethod } from '../model/ArkMethod';
 import { ArkNamespace } from '../model/ArkNamespace';
@@ -54,7 +54,8 @@ import {
     DEFAULT_ARK_CLASS_NAME,
     DEFAULT_ARK_METHOD_NAME,
     LEXICAL_ENV_NAME_PREFIX,
-    NAME_DELIMITER, NESTED_CLASS_METHOD_DELIMITER,
+    NAME_DELIMITER,
+    NESTED_CLASS_METHOD_DELIMITER,
     TEMP_LOCAL_PREFIX
 } from './Const';
 import { EMPTY_STRING } from './ValueUtil';
@@ -67,7 +68,7 @@ import { MethodParameter } from '../model/builder/ArkMethodBuilder';
 import { Value } from '../base/Value';
 import { Constant } from '../base/Constant';
 import { Builtin } from './Builtin';
-import { CALL_BACK, COMPONENT } from './EtsConst';
+import { CALL_BACK } from './EtsConst';
 
 export class ModelUtils {
     public static implicitArkUIBuilderMethods: Set<ArkMethod> = new Set();
@@ -232,22 +233,9 @@ export class ModelUtils {
     }
 
     public static findSymbolInFileWithName(symbolName: string, arkClass: ArkClass, onlyType: boolean = false): ArkExport | null {
-        // find symbol from enum value
-        if (arkClass.getCategory() === ClassCategory.ENUM) {
-            const field = arkClass.getStaticFieldWithName(symbolName);
-            if (field) {
-                return new Local(symbolName, TypeInference.getEnumValueType(field) ?? field.getType());
-            }
-        }
-        let result: ArkExport | null | undefined;
-        if (arkClass.hasDecorator(COMPONENT)) {
-            result = arkClass.getMethodWithName(symbolName) ?? arkClass.getStaticMethodWithName(symbolName);
-        }
-        if (result) {
-            return result;
-        }
         // look up symbol from inner to outer
         let currNamespace: ArkNamespace | null | undefined = arkClass.getDeclaringArkNamespace();
+        let result: ArkExport | null | undefined;
         while (currNamespace) {
             result = currNamespace.getClassWithName(symbolName) ??
                 currNamespace.getDefaultClass()?.getDefaultArkMethod()?.getBody()?.getAliasTypeByName(symbolName) ??
