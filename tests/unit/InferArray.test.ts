@@ -37,6 +37,7 @@ import {
 import Logger, { LOG_LEVEL, LOG_MODULE_TYPE } from '../../src/utils/logger';
 import { ArkIRClassPrinter } from '../../src/save/arkir/ArkIRClassPrinter';
 import { ModifierType } from '../../src/core/model/ArkBaseModel';
+import { ArkIRFilePrinter } from '../../src/save/arkir/ArkIRFilePrinter';
 
 const logPath = 'out/ArkAnalyzer.log';
 const logger = Logger.getLogger(LOG_MODULE_TYPE.TOOL, 'InferArrayTest');
@@ -564,6 +565,297 @@ describe("function Test", () => {
         assert.equal(stmt2?.toString(), 'ptrinvoke this.fieldB<@inferType/inferSample.ts: ChangePtrTest.%AM1$%instInit(number)>(222)');
         const stmt3 = file?.getClassWithName('ChangePtrTest')?.getMethodWithName('callField')?.getCfg()?.getStmts()[5];
         assert.equal(stmt3?.toString(), 'ptrinvoke this.fieldC<@built-in/lib.es5.d.ts: Function.call(@built-in/lib.es5.d.ts: Function, any, any[])>(333)');
+    })
+
+    it('ArkUI extend function', () => {
+        const fileId = new FileSignature(scene.getProjectName(), 'ArktsExtend.ets');
+        const file = scene.getFile(fileId);
+        assert.isDefined(file);
+        const printer = new ArkIRFilePrinter(file!);
+        const s1 = printer.dump();
+        const fileIR = `class %dflt {
+  %dflt(): void {
+    label0:
+      this = this: @inferType/ArktsExtend.ets: %dflt
+      return
+  }
+
+  %AM0(): void
+
+  @Styles
+  globalFancy1<T>(): T {
+    label0:
+      this = this: @inferType/ArktsExtend.ets: %dflt
+      %0 = @etsSdk/api/@internal/component/ets/enums.d.ts: Color.[static]Pink
+      %1 = instanceinvoke CommonInstance.<@etsSdk/api/@internal/component/ets/common.d.ts: CommonMethod.width(Length)>(150)
+      %2 = instanceinvoke %1.<@etsSdk/api/@internal/component/ets/common.d.ts: CommonMethod.height(Length)>(100)
+      instanceinvoke %2.<@etsSdk/api/@internal/component/ets/common.d.ts: CommonMethod.backgroundColor(ResourceColor)>(%0)
+      return
+  }
+
+  @Styles
+  fancy<T>(): T {
+    label0:
+      this = this: @inferType/ArktsExtend.ets: %dflt
+      instanceinvoke CommonInstance.<@etsSdk/api/@internal/component/ets/common.d.ts: CommonMethod.width(Length)>(300)
+      return
+  }
+
+  @Extend(Text)
+  makeMeClick(onClick: @inferType/ArktsExtend.ets: %dflt.%AM0()): @etsSdk/api/@internal/component/ets/text.d.ts: TextAttribute {
+    label0:
+      onClick = parameter0: @inferType/ArktsExtend.ets: %dflt.%AM0()
+      this = this: @inferType/ArktsExtend.ets: %dflt
+      %0 = @etsSdk/api/@internal/component/ets/enums.d.ts: Color.[static]Blue
+      %1 = instanceinvoke TextInstance.<@etsSdk/api/@internal/component/ets/common.d.ts: CommonMethod.backgroundColor(ResourceColor)>(%0)
+      instanceinvoke %1.<@etsSdk/api/@internal/component/ets/common.d.ts: CommonMethod.onClick(@etsSdk/api/@internal/component/ets/common.d.ts: CommonMethod.%AM1(@etsSdk/api/@internal/component/ets/common.d.ts: ClickEvent))>(onClick)
+      return
+  }
+
+  @AnimatableExtend(Text)
+  animatableWidth(width: number): @etsSdk/api/@internal/component/ets/text.d.ts: TextAttribute {
+    label0:
+      width = parameter0: number
+      this = this: @inferType/ArktsExtend.ets: %dflt
+      instanceinvoke TextInstance.<@etsSdk/api/@internal/component/ets/common.d.ts: CommonMethod.width(Length)>(width)
+      return
+  }
+}
+typeliteral %AC0 {
+  heightValue?: number
+}
+typeliteral %AC1 {
+  label?: string
+}
+typeliteral %AC2 {
+  textWidth?: number
+}
+@Entry
+@Component
+struct GlobalFancy {
+  @State
+  heightValue: number
+
+  static %statInit(): void {
+    label0:
+      this = this: @inferType/ArktsExtend.ets: GlobalFancy
+      return
+  }
+
+  constructor(value?: @inferType/ArktsExtend.ets: GlobalFancy, ##storage?: LocalStorage): @inferType/ArktsExtend.ets: GlobalFancy {
+    label0:
+      value = parameter0: @inferType/ArktsExtend.ets: %AC0
+      ##storage = parameter1: LocalStorage
+      this = this: @inferType/ArktsExtend.ets: GlobalFancy
+      instanceinvoke this.<@inferType/ArktsExtend.ets: GlobalFancy.%instInit()>()
+      return this
+  }
+
+  %instInit(): void {
+    label0:
+      this = this: @inferType/ArktsExtend.ets: GlobalFancy
+      this.<@inferType/ArktsExtend.ets: GlobalFancy.heightValue> = 100
+      return
+  }
+
+  @Styles
+  fancy<T>(): T {
+    label0:
+      this = this: @inferType/ArktsExtend.ets: GlobalFancy
+      %0 = @etsSdk/api/@internal/component/ets/enums.d.ts: Color.[static]Gray
+      %1 = this.<@inferType/ArktsExtend.ets: GlobalFancy.heightValue>
+      %2 = instanceinvoke CommonInstance.<@etsSdk/api/@internal/component/ets/common.d.ts: CommonMethod.width(Length)>(200)
+      %3 = instanceinvoke %2.<@etsSdk/api/@internal/component/ets/common.d.ts: CommonMethod.height(Length)>(%1)
+      %4 = instanceinvoke %3.<@etsSdk/api/@internal/component/ets/common.d.ts: CommonMethod.backgroundColor(ResourceColor)>(%0)
+      instanceinvoke %4.<@etsSdk/api/@internal/component/ets/common.d.ts: CommonMethod.onClick(@etsSdk/api/@internal/component/ets/common.d.ts: CommonMethod.%AM1(@etsSdk/api/@internal/component/ets/common.d.ts: ClickEvent))>(%AM0$fancy)
+      return
+  }
+
+  %AM0$fancy(): void {
+    label0:
+      this = this: @inferType/ArktsExtend.ets: GlobalFancy
+      this.<@inferType/ArktsExtend.ets: GlobalFancy.heightValue> = 200
+      return
+  }
+
+  build(): void {
+    label0:
+      this = this: @inferType/ArktsExtend.ets: GlobalFancy
+      %0 = new @inferType/ArktsExtend.ets: %AC3$GlobalFancy-build
+      %0 = instanceinvoke %0.<@inferType/ArktsExtend.ets: %AC3$GlobalFancy-build.constructor()>()
+      %1 = staticinvoke <@etsSdk/api/@internal/component/ets/column.d.ts: ColumnInterface.create(@etsSdk/api/@internal/component/ets/column.d.ts: ColumnOptions)>(%0)
+      %2 = staticinvoke <@etsSdk/api/@internal/component/ets/text.d.ts: TextInterface.create(string|Resource, @etsSdk/api/@internal/component/ets/text.d.ts: TextOptions)>('FancyA')
+      staticinvoke <@%unk/%unk: Text.pop()>()
+      %3 = instanceinvoke %2.<@inferType/ArktsExtend.ets: %dflt.globalFancy1()>()
+      instanceinvoke %3.<@etsSdk/api/@internal/component/ets/text.d.ts: TextAttribute.fontSize(number|string|Resource)>(30)
+      %4 = staticinvoke <@etsSdk/api/@internal/component/ets/text.d.ts: TextInterface.create(string|Resource, @etsSdk/api/@internal/component/ets/text.d.ts: TextOptions)>('FancyB')
+      staticinvoke <@%unk/%unk: Text.pop()>()
+      %5 = instanceinvoke %4.<@inferType/ArktsExtend.ets: GlobalFancy.fancy()>()
+      instanceinvoke %5.<@etsSdk/api/@internal/component/ets/text.d.ts: TextAttribute.fontSize(number|string|Resource)>(30)
+      staticinvoke <@%unk/%unk: Column.pop()>()
+      instanceinvoke %1.<@etsSdk/api/@internal/component/ets/common.d.ts: CommonMethod.width(Length)>('100%')
+      return
+  }
+}
+object %AC3$GlobalFancy-build {
+  space: string|number
+
+  constructor(): @inferType/ArktsExtend.ets: %AC3$GlobalFancy-build {
+    label0:
+      this = this: @inferType/ArktsExtend.ets: %AC3$GlobalFancy-build
+      instanceinvoke this.<@inferType/ArktsExtend.ets: %AC3$GlobalFancy-build.%instInit()>()
+      return this
+  }
+
+  %instInit(): void {
+    label0:
+      this = this: @inferType/ArktsExtend.ets: %AC3$GlobalFancy-build
+      this.<@etsSdk/api/@internal/component/ets/column.d.ts: ColumnOptions.space> = 10
+      return
+  }
+}
+@Entry
+@Component
+struct FancyUse {
+  @State
+  label: string
+
+  static %statInit(): void {
+    label0:
+      this = this: @inferType/ArktsExtend.ets: FancyUse
+      return
+  }
+
+  constructor(value?: @inferType/ArktsExtend.ets: FancyUse, ##storage?: LocalStorage): @inferType/ArktsExtend.ets: FancyUse {
+    label0:
+      value = parameter0: @inferType/ArktsExtend.ets: %AC1
+      ##storage = parameter1: LocalStorage
+      this = this: @inferType/ArktsExtend.ets: FancyUse
+      instanceinvoke this.<@inferType/ArktsExtend.ets: FancyUse.%instInit()>()
+      return this
+  }
+
+  %instInit(): void {
+    label0:
+      this = this: @inferType/ArktsExtend.ets: FancyUse
+      this.<@inferType/ArktsExtend.ets: FancyUse.label> = 'Hello World'
+      return
+  }
+
+  onClickHandler(): void {
+    label0:
+      this = this: @inferType/ArktsExtend.ets: FancyUse
+      this.<@inferType/ArktsExtend.ets: FancyUse.label> = 'Hello ArkUI'
+      return
+  }
+
+  build(): void {
+    label0:
+      this = this: @inferType/ArktsExtend.ets: FancyUse
+      %0 = new @inferType/ArktsExtend.ets: %AC4$FancyUse-build
+      %0 = instanceinvoke %0.<@inferType/ArktsExtend.ets: %AC4$FancyUse-build.constructor()>()
+      %1 = staticinvoke <@%unk/%unk: Row.create()>(%0)
+      %2 = this.<@inferType/ArktsExtend.ets: FancyUse.label>
+      %3 = instanceinvoke %2.<@built-in/lib.es5.d.ts: String.toString()>()
+      %4 = staticinvoke <@etsSdk/api/@internal/component/ets/text.d.ts: TextInterface.create(string|Resource, @etsSdk/api/@internal/component/ets/text.d.ts: TextOptions)>(%3)
+      staticinvoke <@%unk/%unk: Text.pop()>()
+      %5 = instanceinvoke %4.<@inferType/ArktsExtend.ets: %dflt.makeMeClick(@inferType/ArktsExtend.ets: %dflt.%AM0())>(%AM0$build)
+      instanceinvoke %5.<@inferType/ArktsExtend.ets: %dflt.fancy()>()
+      staticinvoke <@%unk/%unk: Row.pop()>()
+      return
+  }
+
+  %AM0$build(): void {
+    label0:
+      this = this: @inferType/ArktsExtend.ets: FancyUse
+      instanceinvoke this.<@inferType/ArktsExtend.ets: FancyUse.onClickHandler()>()
+      return
+  }
+}
+object %AC4$FancyUse-build {
+  space: number
+
+  constructor(): @inferType/ArktsExtend.ets: %AC4$FancyUse-build {
+    label0:
+      this = this: @inferType/ArktsExtend.ets: %AC4$FancyUse-build
+      instanceinvoke this.<@inferType/ArktsExtend.ets: %AC4$FancyUse-build.%instInit()>()
+      return this
+  }
+
+  %instInit(): void {
+    label0:
+      this = this: @inferType/ArktsExtend.ets: %AC4$FancyUse-build
+      this.<@inferType/ArktsExtend.ets: %AC4$FancyUse-build.space> = 10
+      return
+  }
+}
+@Entry
+@Component
+struct AnimatablePropertyText {
+  @State
+  textWidth: number
+
+  static %statInit(): void {
+    label0:
+      this = this: @inferType/ArktsExtend.ets: AnimatablePropertyText
+      return
+  }
+
+  constructor(value?: @inferType/ArktsExtend.ets: AnimatablePropertyText, ##storage?: LocalStorage): @inferType/ArktsExtend.ets: AnimatablePropertyText {
+    label0:
+      value = parameter0: @inferType/ArktsExtend.ets: %AC2
+      ##storage = parameter1: LocalStorage
+      this = this: @inferType/ArktsExtend.ets: AnimatablePropertyText
+      instanceinvoke this.<@inferType/ArktsExtend.ets: AnimatablePropertyText.%instInit()>()
+      return this
+  }
+
+  %instInit(): void {
+    label0:
+      this = this: @inferType/ArktsExtend.ets: AnimatablePropertyText
+      this.<@inferType/ArktsExtend.ets: AnimatablePropertyText.textWidth> = 80
+      return
+  }
+
+  build(): void {
+    label0:
+      this = this: @inferType/ArktsExtend.ets: AnimatablePropertyText
+      %0 = staticinvoke <@etsSdk/api/@internal/component/ets/column.d.ts: ColumnInterface.create(@etsSdk/api/@internal/component/ets/column.d.ts: ColumnOptions)>()
+      %1 = new @inferType/ArktsExtend.ets: %AC5$AnimatablePropertyText-build
+      %1 = instanceinvoke %1.<@inferType/ArktsExtend.ets: %AC5$AnimatablePropertyText-build.constructor()>()
+      %2 = this.<@inferType/ArktsExtend.ets: AnimatablePropertyText.textWidth>
+      %3 = staticinvoke <@etsSdk/api/@internal/component/ets/text.d.ts: TextInterface.create(string|Resource, @etsSdk/api/@internal/component/ets/text.d.ts: TextOptions)>('AnimatableProperty')
+      staticinvoke <@%unk/%unk: Text.pop()>()
+      %4 = instanceinvoke %3.<@inferType/ArktsExtend.ets: %dflt.animatableWidth(number)>(%2)
+      instanceinvoke %4.<@etsSdk/api/@internal/component/ets/common.d.ts: CommonMethod.animation(@etsSdk/api/@internal/component/ets/common.d.ts: AnimateParam)>(%1)
+      staticinvoke <@%unk/%unk: Column.pop()>()
+      %5 = instanceinvoke %0.<@etsSdk/api/@internal/component/ets/common.d.ts: CommonMethod.width(Length)>('100%')
+      instanceinvoke %5.<@etsSdk/api/@internal/component/ets/common.d.ts: CommonMethod.padding(Padding|Length|LocalizedPadding)>(10)
+      return
+  }
+}
+object %AC5$AnimatablePropertyText-build {
+  duration: number
+  curve: @etsSdk/api/@internal/component/ets/enums.d.ts: Curve|string|@etsSdk/api/@internal/component/ets/common.d.ts: ICurve|@etsSdk/api/@internal/component/ets/enums.d.ts: Curve.[static]Ease
+
+  constructor(): @inferType/ArktsExtend.ets: %AC5$AnimatablePropertyText-build {
+    label0:
+      this = this: @inferType/ArktsExtend.ets: %AC5$AnimatablePropertyText-build
+      instanceinvoke this.<@inferType/ArktsExtend.ets: %AC5$AnimatablePropertyText-build.%instInit()>()
+      return this
+  }
+
+  %instInit(): void {
+    label0:
+      this = this: @inferType/ArktsExtend.ets: %AC5$AnimatablePropertyText-build
+      this.<@etsSdk/api/@internal/component/ets/common.d.ts: AnimateParam.duration> = 2000
+      %0 = @etsSdk/api/@internal/component/ets/enums.d.ts: Curve.[static]Ease
+      this.<@etsSdk/api/@internal/component/ets/common.d.ts: AnimateParam.curve> = %0
+      return
+  }
+}
+`;
+        assert.equal(s1, fileIR);
     })
 })
 

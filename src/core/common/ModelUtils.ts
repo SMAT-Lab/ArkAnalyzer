@@ -14,7 +14,7 @@
  */
 
 import { Local } from '../base/Local';
-import { ArkClass, ClassCategory } from '../model/ArkClass';
+import { ArkClass } from '../model/ArkClass';
 import { ArkFile, Language } from '../model/ArkFile';
 import { ArkMethod } from '../model/ArkMethod';
 import { ArkNamespace } from '../model/ArkNamespace';
@@ -54,7 +54,8 @@ import {
     DEFAULT_ARK_CLASS_NAME,
     DEFAULT_ARK_METHOD_NAME,
     LEXICAL_ENV_NAME_PREFIX,
-    NAME_DELIMITER, NESTED_CLASS_METHOD_DELIMITER,
+    NAME_DELIMITER,
+    NESTED_CLASS_METHOD_DELIMITER,
     TEMP_LOCAL_PREFIX
 } from './Const';
 import { EMPTY_STRING } from './ValueUtil';
@@ -232,13 +233,6 @@ export class ModelUtils {
     }
 
     public static findSymbolInFileWithName(symbolName: string, arkClass: ArkClass, onlyType: boolean = false): ArkExport | null {
-        // find symbol from enum value
-        if (arkClass.getCategory() === ClassCategory.ENUM) {
-            const field = arkClass.getStaticFieldWithName(symbolName);
-            if (field) {
-                return new Local(symbolName, TypeInference.getEnumValueType(field) ?? field.getType());
-            }
-        }
         // look up symbol from inner to outer
         let currNamespace: ArkNamespace | null | undefined = arkClass.getDeclaringArkNamespace();
         let result: ArkExport | null | undefined;

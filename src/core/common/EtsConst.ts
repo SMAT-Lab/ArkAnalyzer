@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -1019,3 +1019,4 @@ export const ON_OFF: Set<string> = new Set(['on', 'off']);
 
 export const OH_PACKAGE_JSON5 = 'oh-package.json5';
 export const BUILD_PROFILE_JSON5 = 'build-profile.json5';
+export const COMPONENT: string = 'Component';

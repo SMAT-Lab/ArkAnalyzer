@@ -62,7 +62,7 @@ import {
 import { CALL, CONSTRUCTOR_NAME, FUNCTION, IMPORT, SUPER_NAME, THIS_NAME } from './TSConst';
 import { Builtin } from './Builtin';
 import { ArkBody } from '../model/ArkBody';
-import { ArkAssignStmt, ArkInvokeStmt } from '../base/Stmt';
+import { ArkAssignStmt } from '../base/Stmt';
 import {
     AbstractFieldRef,
     AbstractRef,
@@ -254,37 +254,13 @@ export class IRInference {
             return expr;
         }
         expr.getArgs().forEach(arg => TypeInference.inferValueType(arg, arkMethod));
-        let result = this.inferInvokeExpr(expr, baseType, methodName, scene) ?? this.processExtendFunc(expr, arkMethod, methodName);
+        let result = this.inferInvokeExpr(expr, baseType, methodName, scene);
         if (result) {
             this.inferArgs(result, arkMethod);
             return result;
         }
         logger.warn('invoke ArkInstanceInvokeExpr MethodSignature type fail: ', expr.toString());
         return expr;
-    }
-
-    /**
-     * process arkUI function with Annotation @Extend @Styles @AnimatableExtend
-     * @param expr
-     * @param arkMethod
-     * @param methodName
-     */
-    public static processExtendFunc(expr: AbstractInvokeExpr, arkMethod: ArkMethod, methodName: string): AbstractInvokeExpr | null {
-        const type = TypeInference.inferBaseType(methodName, arkMethod.getDeclaringArkClass());
-        if (type instanceof FunctionType) {
-            const methodSignature = type.getMethodSignature();
-            // because of last stmt is ArkReturnVoidStmt, the ArkInvokeStmt at -2 before ArkReturnVoidStmt.
-            const stmts = arkMethod.getDeclaringArkFile().getScene().getMethod(methodSignature)?.getCfg()?.getStmts();
-            if (stmts) {
-                const endStmt = stmts[stmts.length - 2];
-                if (endStmt instanceof ArkInvokeStmt) {
-                    methodSignature.getMethodSubSignature().setReturnType(endStmt.getInvokeExpr().getType());
-                }
-            }
-            expr.setMethodSignature(methodSignature);
-            return expr;
-        }
-        return null;
     }
 
     public static inferFieldRef(ref: ArkInstanceFieldRef, arkMethod: ArkMethod): AbstractRef {
