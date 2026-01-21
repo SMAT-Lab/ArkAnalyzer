@@ -74,8 +74,10 @@ export class AstUtils {
         const parseResult = spawnSync(clangPath, parseArguments, { stdio: ['inherit', 'pipe'], encoding: 'utf-8', env: envVars });
 
         if (parseResult.status) {
+            console.log('result: ' + parseResult.stdout);
             logger.error('Error parsing ast', parseResult.stderr);
         } else {
+            console.log('result: success'+ parseResult.stdout);
             logger.info('Parsing completed!');
         }
         let tu = JSON.parse(fs.readFileSync(astPath, 'utf-8')) as CxxAstNode;
