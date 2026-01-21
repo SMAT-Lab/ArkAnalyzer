@@ -21,6 +21,7 @@ import * as os from 'os';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { ClangPath } from './const';
 import { astKind, CxxAstNode, CxxAstNodeLite } from './ArkCxxAstNode';
+import { assert } from 'vitest';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'astUtils');
 
@@ -82,6 +83,8 @@ export class AstUtils {
         const parseResult = spawnSync(clangPath, parseArguments, { stdio: ['inherit', 'pipe'], encoding: 'utf-8', env: envVars });
 
         if (parseResult.status) {
+            // @ts-ignore
+            assert.isDefined(parseResult, parseResult.output);
             logger.error('Error parsing ast', parseResult.stderr);
         } else {
             logger.info('Parsing completed!');
