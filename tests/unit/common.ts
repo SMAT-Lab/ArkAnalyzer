@@ -27,6 +27,8 @@ import { assert, expect } from 'vitest';
 import { ArkClass } from '../../src';
 import { ArkIRMethodPrinter } from '../../src/save/arkir/ArkIRMethodPrinter';
 
+const deveco_c = process.env.DEVECO_C !== undefined ? process.env.DEVECO_C : '';
+
 export function buildScene(projectPath: string, needInferTypes: boolean = true) {
     const config: SceneConfig = new SceneConfig();
     config.buildFromProjectDir(projectPath);
@@ -91,7 +93,7 @@ export function testBlocks(scene: Scene, filePath: string, methodName: string, e
         .find((method) => (method.getName() === methodName));
     const blocks = arkMethod?.getCfg()?.getBlocks();
     if (!blocks) {
-        assert.isDefined(blocks);
+        assert.isDefined(blocks, deveco_c);
         return;
     }
     const stmtsLength = arkMethod?.getCfg()?.getStmts().length;
