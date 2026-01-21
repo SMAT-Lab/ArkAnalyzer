@@ -84,14 +84,14 @@ export class AstUtils {
         if (parseResult.status) {
             logger.error('Error parsing ast', parseResult.stderr);
         } else {
-            logger.error('Parsing completed! ' + parseResult.stdout);
+            logger.info('Parsing completed!');
         }
         try {
             let tu = JSON.parse(fs.readFileSync(astPath, 'utf-8')) as CxxAstNode;
             tu = this.filter(sourceFile, tu) as CxxAstNode;
             return tu;
         } finally {
-            this.deleteFileSync(astPath);
+            this.deleteFileSync('');
         }
     }
 
