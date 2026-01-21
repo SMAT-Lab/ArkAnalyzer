@@ -14,6 +14,8 @@
  */
 #include <iostream>
 #include <string>
+#define FIVE 5
+#define ONE_HUNDRED 100
 
 namespace nsA {
     void Func() {}
@@ -65,20 +67,20 @@ namespace School {
 
     // Nested anonymous namespace case
     namespace {
-        const std::string kLogPrefix = "[Nested AnonymousSpace] ";
+        const std::string g_LogPrefix = "[Nested AnonymousSpace] ";
 
-        int g_local_counter = 0;
+        int g_localCounter = 0;
 
         void PrintInfoInNested()
         {
-            std::cout << kLogPrefix << "Current counter value: " << g_local_counter << std::endl;
+            std::cout << g_LogPrefix << "Current counter value: " << g_localCounter << std::endl;
         }
 
         class LocalHelperInNested {
         private:
             int value_;
         public:
-            LocalHelperInNested(int v) : value_(v) { g_local_counter++; }
+            LocalHelperInNested(int v) : value_(v) { g_localCounter++; }
             int GetValue() const { return value_; }
         };
     }
@@ -86,20 +88,20 @@ namespace School {
 
 // anonymous namespace case
 namespace {
-    const std::string kLogPrefix = "[AnonymousSpace] ";
+    const std::string g_LogPrefix = "[AnonymousSpace] ";
 
-    int g_local_counter = 0;
+    int g_localCounter = 0;
 
     void PrintInfo()
     {
-        std::cout << kLogPrefix << "Current counter value: " << g_local_counter << std::endl;
+        std::cout << g_LogPrefix << "Current counter value: " << g_localCounter << std::endl;
     }
 
     class LocalHelper {
     private:
         int value_;
     public:
-        LocalHelper(int v) : value_(v) { g_local_counter++; }
+        LocalHelper(int v) : value_(v) { g_localCounter++; }
         int GetValue() const { return value_; }
     };
 }
@@ -107,16 +109,16 @@ namespace {
 void TestAnonymousNamespace()
 {
     PrintInfo(); // counter=0
-    g_local_counter = 5;
+    g_localCounter = FIVE;
     PrintInfo(); // counter=5
-    LocalHelper helper1(100);
+    LocalHelper helper1(ONE_HUNDRED);
     PrintInfo(); // counter=6
 
     // nested namespace
     School::PrintInfoInNested(); // counter=0
-    School::g_local_counter = 5;
+    School::g_localCounter = FIVE;
     School::PrintInfoInNested(); // counter=5
-    School::LocalHelperInNested helper2(100);
+    School::LocalHelperInNested helper2(ONE_HUNDRED);
     School::PrintInfoInNested(); // counter=5
 }
 

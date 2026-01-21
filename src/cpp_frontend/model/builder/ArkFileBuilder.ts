@@ -125,7 +125,7 @@ export function buildArkClassFromCxxClass(classNode: CxxAstNode, arkFile: ArkFil
     buildNormalArkClassFromArkFile(classNode, arkFile, cls, astRoot);
     addExportInfoOnCondition(classNode, cls, arkFile);
     if (classNode.id) {
-        classMap.set(classNode.id,cls);
+        classMap.set(classNode.id, cls);
     }
 }
 
