@@ -91,7 +91,7 @@ export class AstUtils {
             tu = this.filter(sourceFile, tu) as CxxAstNode;
             return tu;
         } finally {
-            this.deleteFileSync('');
+            this.deleteFileSync(astPath);
         }
     }
 
