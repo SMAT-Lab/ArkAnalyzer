@@ -32,14 +32,6 @@ export type GetParentFn = {
 export class AstUtils {
     private static currentAccess: string = '';
 
-    private static deleteFileSync(filePath: string): void {
-        try {
-            fs.unlinkSync(filePath);
-        } catch {
-            logger.warn('delete file failed:', filePath);
-        }
-    }
-
     public static parse(sourceFile: string, ccJsonPath: string | null, includeDirs: string[] | null, llvmPath: string, cppAstPath: string): CxxAstNode {
         if (!fs.existsSync(sourceFile)) {
             logger.warn('parse file is not exists');
@@ -86,13 +78,9 @@ export class AstUtils {
         } else {
             logger.info('Parsing completed!');
         }
-        try {
-            let tu = JSON.parse(fs.readFileSync(astPath, 'utf-8')) as CxxAstNode;
-            tu = this.filter(sourceFile, tu) as CxxAstNode;
-            return tu;
-        } finally {
-            this.deleteFileSync(astPath);
-        }
+        let tu = JSON.parse(fs.readFileSync(astPath, 'utf-8')) as CxxAstNode;
+        tu = this.filter(sourceFile, tu) as CxxAstNode;
+        return tu;
     }
 
     private static updateInner(sourceFile: string, entry: CxxAstNode, newInner: CxxAstNode[]): void {
