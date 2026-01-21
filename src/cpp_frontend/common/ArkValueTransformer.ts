@@ -289,6 +289,9 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             }
         }
         stmts.push(...exprStmts);
+        if (typeName === 'napi_property_descriptor') {
+            setTs2CxxFuncMapOfClass(elements, false, this.declaringMethod);
+        }
         return {
             value: temp,
             valueOriginalPositions: tempPositions,

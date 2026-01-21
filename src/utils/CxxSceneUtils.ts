@@ -27,6 +27,9 @@ import { ArkArrayRef } from '../core/base/Ref';
 import { ArkField } from '../core/model/ArkField';
 import { FunctionType } from '../core/base/Type';
 import { CONSTRUCTOR_NAME } from '../core/common/TSConst';
+import type { ArkAggregateExpr } from '../cpp_frontend/base/Expr';
+import Logger, { LOG_MODULE_TYPE } from './logger';
+const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkValueTransformer');
 
 export class CxxSceneUtils {
     public static puncture(cxxModulePath: string, tsFile: ArkFile): void {
@@ -83,17 +86,36 @@ export class CxxSceneUtils {
     }
 
     private static processPropDesc(s: Stmt, ts2cxxFuncMap: Map<string, ArkMethod[]>, tsClass: ArkClass): void {
+        let constant: Value | undefined;
         if (s instanceof ArkInvokeStmt) {
-            const constant = s.getInvokeExpr().getArg(0);
-            if (constant instanceof Constant) {
-                const tsMtdName = constant.getValue();
-                const arkMethods = ts2cxxFuncMap.get(tsMtdName);
-                if (arkMethods?.length === 1) {
-                    this.mergeMethod(tsMtdName, tsClass, arkMethods[0]);
-                } else if (arkMethods?.length === 2) {
-                    this.mergeMethod('Get-' + tsMtdName, tsClass, arkMethods[0]);
-                    this.mergeMethod('Set-' + tsMtdName, tsClass, arkMethods[1]);
+            // This scenario corresponds to the registration of class objects
+            constant = s.getInvokeExpr().getArg(0);
+        } else if (s instanceof ArkAssignStmt && s.getLeftOp() instanceof ArkArrayRef) {
+            // The registration scenario is a structure aggregation scenario, where the syntax tree does not contain a construct,
+            // and each unit is expressed using an aggregation expression
+            let rightOp = s.getRightOp();
+            if ((rightOp as Local).getName().startsWith('%')) {
+                const declaringStmt = (rightOp as Local).getDeclaringStmt();
+                if (declaringStmt instanceof ArkAssignStmt) {
+                    rightOp = declaringStmt.getRightOp();
                 }
+            }
+            try {
+                // Due to the order of type definitions, type judgment cannot be performed here,
+                // so try+assertion is used to avoid runtime errors
+                constant = (rightOp as ArkAggregateExpr).getElements()[0];
+            } catch (e) {
+                logger.info('This is Unknow scene');
+            }
+        }
+        if (constant instanceof Constant) {
+            const tsMtdName = constant.getValue();
+            const arkMethods = ts2cxxFuncMap.get(tsMtdName);
+            if (arkMethods?.length === 1) {
+                this.mergeMethod(tsMtdName, tsClass, arkMethods[0]);
+            } else if (arkMethods?.length === 2) {
+                this.mergeMethod('Get-' + tsMtdName, tsClass, arkMethods[0]);
+                this.mergeMethod('Set-' + tsMtdName, tsClass, arkMethods[1]);
             }
         }
     }
