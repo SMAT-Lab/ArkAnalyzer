@@ -78,11 +78,11 @@ void DeclStmt()
     typedef int A;
     int b;
     int a = b = TWO;
-    int c,d = FOUR;
+    int c, d = FOUR;
     const int x = THREE;
-    enum E {C ,D};
+    enum E {C , D};
     struct S { int xx ;};
-    for (int i = 0, j = 0; i < FIVE; i++){
+    for (int i = 0, j = 0; i < FIVE; i++) {
         j++;
     }
 }

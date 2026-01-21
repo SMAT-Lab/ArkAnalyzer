@@ -141,7 +141,8 @@ void Case9()
     res2 = explicitGenericLambda(FLOAT_NUM, FLOAT_NUM);
 }
 
-// Lambda functions as template parameters, C++ still had no constraints on template types in C++17. (which called 'Concept' in C++20)
+// Lambda functions as template parameters,
+// C++ still had no constraints on template types in C++17. (which called 'Concept' in C++20)
 template <typename Func>
 int Apply(Func f, int v)
 {

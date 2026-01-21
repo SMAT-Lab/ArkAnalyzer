@@ -181,6 +181,7 @@ export class ArkCxxInitArrayExpr extends AbstractExpr {
         return this;
     }
 }
+
 export enum Operator {
     sizeof = 'sizeof',
     alignof = 'alignof',
@@ -199,7 +200,7 @@ export class ArkCxxUnaryExpr extends AbstractExpr {
         this.op = op;
     }
 
-    public getOp(): Value | Type{
+    public getOp(): Value | Type {
         return this.op;
     }
 

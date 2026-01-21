@@ -14,7 +14,13 @@
  */
 
 import { AbstractBinopExpr, AbstractInvokeExpr, ArkCastExpr, ArkUnopExpr } from '../../core/base/Expr';
-import { AbstractFieldRef, AbstractRef, ArkArrayRef, ArkInstanceFieldRef, ArkStaticFieldRef } from '../../core/base/Ref';
+import {
+    AbstractFieldRef,
+    AbstractRef,
+    ArkArrayRef,
+    ArkInstanceFieldRef,
+    ArkStaticFieldRef,
+} from '../../core/base/Ref';
 import { Value } from '../../core/base/Value';
 import { Scene } from '../../Scene';
 import { SceneOptions } from '../../Config';
@@ -24,7 +30,7 @@ import { ArkBaseModel } from '../../core/model/ArkBaseModel';
 import { FullPosition } from '../../core/base/Position';
 import { Local } from '../../core/base/Local';
 import { NAME_PREFIX } from '../../core/common/Const';
-import { CxxAstNode } from '../ast/ArkCxxAstNode';
+import { astKind, CxxAstNode } from '../ast/ArkCxxAstNode';
 import { CxxClosureCaptureType } from '../base/Ref';
 
 export class IRUtils {
@@ -142,7 +148,7 @@ export class IRUtils {
         let depth = 0;
         for (let i = 0; i < lambdaCode.length; i++) {
             const ch = lambdaCode[i];
-            if (ch ==='[') {
+            if (ch === '[') {
                 depth++;
             } else if (ch === ']') {
                 depth--;
@@ -171,7 +177,7 @@ export class IRUtils {
     public static getLambdaExplicitCaptureVars(lambdaExpr: CxxAstNode): CxxAstNode[] {
         const captureNodes: CxxAstNode[] = [];
         for (const child of lambdaExpr.inner) {
-            if (child.kind === 'ParmVarDecl' ||  child.kind === 'CompoundStmt') {
+            if (child.kind === astKind.ParmVarDecl || child.kind === astKind.CompoundStmt) {
                 return captureNodes;
             }
             captureNodes.push(child);

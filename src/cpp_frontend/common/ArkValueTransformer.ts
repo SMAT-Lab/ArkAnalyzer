@@ -986,7 +986,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
      *@ returns an array containing two elements: the first element is the call node, and the second element is the parameter node array
      */
     private getArgumentNodeForRecover(innerAsNodes: CxxAstNode[]): [{}, CxxAstNode[]] {
-        const [callNode,...argumentNodes] = innerAsNodes;
+        const [callNode, ...argumentNodes] = innerAsNodes;
         return [callNode, argumentNodes];
     }
 
@@ -2156,9 +2156,10 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             } else if (newExpression.kind === astKind.CompoundLiteralExpr) {
                 return this.getConstructArgs(args);
             } else if (
+                // if case : struct LargeStruct s;, inner.length is 0, so we need to avoid it
                 newExpression.kind === astKind.CXXConstructExpr &&
                 newExpression.type.qualType.startsWith('struct') &&
-                args.length > 0 && args[0].inner[0]?.kind === astKind.CompoundLiteralExpr // if case : struct LargeStruct s;, inner.length is 0, so we need to avoid it
+                args.length > 0 && args[0].inner[0]?.kind === astKind.CompoundLiteralExpr
             ) {
                 return this.getConstructArgs(args[0].inner[0].inner);
             } else if (newExpression.kind === astKind.InitListExpr) {
@@ -2708,8 +2709,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
                     leftValue.setConstFlag(isConst);
                     leftValue.setType(declarationType);
                 }
-                if ((leftValue.getType() instanceof UnknownType || leftValue.getType() instanceof UnclearReferenceType)
-                    && !(rightValue.getType() instanceof UnknownType) && !(rightValue.getType() instanceof UndefinedType)) {
+                if ((leftValue.getType() instanceof UnknownType || leftValue.getType() instanceof UnclearReferenceType) &&
+                    !(rightValue.getType() instanceof UnknownType) && !(rightValue.getType() instanceof UndefinedType)) {
                     leftValue.setType(rightValue.getType());
                 }
             }

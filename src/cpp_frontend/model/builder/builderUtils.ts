@@ -243,7 +243,7 @@ function getTrueTypeString(nodeQualType: CxxAstNode): string {
         return nodeQualType.typeArg.desugaredQualType ?? nodeQualType.typeArg.qualType;
     } else if (['TemplateTypeParmDecl', 'TemplateTypeParmVarDecl'].includes(nodeQualType.kind) && nodeQualType.defaultArg) {
         return nodeQualType.defaultArg.type.desugaredQualType ?? nodeQualType.defaultArg.type.qualType;
-    } else if (nodeQualType.type){
+    } else if (nodeQualType.type) {
         return nodeQualType.type.desugaredQualType ?? nodeQualType.type.qualType;
     }
     return '';
