@@ -101,21 +101,11 @@ export class AstUtils {
         if (entry.isImplicit) {
             return;
         }
-        let fileName = '';
         let loc = entry.loc;
         if (!loc) {
             logger.warn('Node skipped due to missing "locFile", kind of node: ', entry.kind);
             return;
         }
-        if (loc.file) {
-            fileName = loc.file;
-        } else if (loc.spellingLoc && loc.spellingLoc.file) {
-            fileName = loc.spellingLoc.file;
-        }
-        if (fileName !== sourceFile) {
-            return;
-        }
-
         newInner.push(entry);
     }
 
