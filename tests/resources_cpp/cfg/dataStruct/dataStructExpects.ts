@@ -116,6 +116,42 @@ export const DATA_STRUCT_EXPECT_SET = {
     ],
 };
 
+export const DATA_STRUCT_EXPECT_SET_LINUX = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @dataStruct/dataStruct.cpp: %dflt',
+                '%0 = new @%unk/%unk: std::set<int>',
+                'instanceinvoke %0.<@%unk/%unk: std::set.constructor()>()',
+                'set1 = %0',
+                'instanceinvoke set1.<@%unk/%unk: std::set.insert()>(1)',
+                'instanceinvoke set1.<@%unk/%unk: std::set.insert()>(2)',
+                'instanceinvoke set1.<@%unk/%unk: std::set.insert()>(3)',
+                '%1 = new @%unk/%unk: std::set<int>',
+                '%2 = instanceinvoke set1.<@%unk/%unk: std::set.begin()>()',
+                '%3 = instanceinvoke set1.<@%unk/%unk: std::set.end()>()',
+                'instanceinvoke %1.<@%unk/%unk: std::set.constructor()>(%2, %3)',
+                'set2 = %1',
+                'a = instanceinvoke set2.<@%unk/%unk: std::set.find()>(2)',
+                '%4 = new @%unk/%unk: std::__tree_const_iterator<int,std::__tree_node<int,void >**,long>',
+                'instanceinvoke %4.<@%unk/%unk: std::__tree_const_iterator.constructor()>(a)',
+                'instanceinvoke set2.<@%unk/%unk: std::set.erase()>(%4)',
+                '%5 = new @%unk/%unk: std::set<int>',
+                'instanceinvoke %5.<@%unk/%unk: std::set.constructor()>(set1)',
+                'set3 = %5',
+                '%6 = instanceinvoke set3.<@%unk/%unk: std::set.count()>(3)',
+                '%7 = staticinvoke <@%unk/%unk: .operator<<()>(cout, %6)',
+                'staticinvoke <@%unk/%unk: .operator<<()>(%7, endl)',
+                'instanceinvoke set1.<@%unk/%unk: std::set.clear()>()',
+                'return',
+            ],
+            preds: [],
+            succes: [],
+        },
+    ],
+};
+
 export const DATA_STRUCT_EXPECT_MAP = {
     blocks: [
         {

@@ -225,7 +225,8 @@ describe('Type Test', () => {
     it('case5: DataStruct Test', () => {
         const scene = buildScene('dataStruct');
         testBlocks(scene, 'dataStruct.cpp', 'VectorTest', DATA_STRUCT_EXPECT.DATA_STRUCT_EXPECT_VECTOR.blocks);
-        testBlocks(scene, 'dataStruct.cpp', 'SetTest', DATA_STRUCT_EXPECT.DATA_STRUCT_EXPECT_SET.blocks);
+        testBlocks(scene, 'dataStruct.cpp', 'SetTest',
+            is_system_win32 ? DATA_STRUCT_EXPECT.DATA_STRUCT_EXPECT_SET.blocks : DATA_STRUCT_EXPECT.DATA_STRUCT_EXPECT_SET_LINUX.blocks);
         testBlocks(scene, 'dataStruct.cpp', 'MapTest', DATA_STRUCT_EXPECT.DATA_STRUCT_EXPECT_MAP.blocks);
         testBlocks(scene, 'dataStruct.cpp', 'UnorderedMapTest', DATA_STRUCT_EXPECT.DATA_STRUCT_EXPECT_MAP2.blocks);
         testBlocks(scene, 'dataStruct.cpp', 'QueueTest', DATA_STRUCT_EXPECT.DATA_STRUCT_EXPECT_QUEUE.blocks);

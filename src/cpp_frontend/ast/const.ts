@@ -41,9 +41,9 @@ function getPrintAstExePath(): string {
 }
 
 function getPrintAstExePathLinux(): string {
-    let printAstExePath = path.join(projectRoot, 'src', 'cpp_frontend', 'ast', 'dumper', 'arkCppAstDumper');
+    let printAstExePath = path.join(projectRoot, 'src', 'cpp_frontend', 'ast', 'dumper', 'astJsonDumper');
     if (!fs.existsSync(printAstExePath)) {
-        printAstExePath = path.join(projectRoot, 'lib', 'ast', 'arkCppAstDumper');
+        printAstExePath = path.join(projectRoot, 'lib', 'ast', 'astJsonDumper');
     }
     return printAstExePath;
 }

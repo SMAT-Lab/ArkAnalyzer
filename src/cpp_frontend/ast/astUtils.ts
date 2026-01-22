@@ -288,12 +288,6 @@ export class AstUtils {
 
 function constructParseArguments(srcFilePath: string, ccJsonPath: string | null, includeDirs: string[] | null): string[] {
     const args: string[] = [];
-    const ext = path.extname(srcFilePath).toLowerCase();
-    const isHeader = ext === '.h' || ext === '.hpp';
-
-    if (!ccJsonPath && !isHeader) {
-        ccJsonPath = findCompileCommands(srcFilePath);
-    }
     if (ccJsonPath) {
         args.push('-p', ccJsonPath);
     }
