@@ -203,7 +203,8 @@ private:
                 }
                 llvm::json::Value jsonValue(std::move(*obj));
                 std::string valueStr = llvm::formatv("{0}", jsonValue).str();
-                buffer = valueStr.substr(1, valueStr.size() - 2);
+                // Delete manually added {} before and after
+                buffer = valueStr.substr(1, valueStr.size() - TWO);
             }
         }
     }

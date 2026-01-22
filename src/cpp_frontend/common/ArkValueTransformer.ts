@@ -403,7 +403,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         // instead, the object is directly constructed at the return value location. Therefore, it is processed here as a ConstructExpr.
         const parentNode = node.getParent?.(false) as CxxAstNode;
         // case: Vector{1,2,3} Implicit call to destructor
-        if (parentNode?.dtor?.kind === astKind.CXXDestructorDecl) {
+        if (parentNode?.dtor?.kind === astKind.CXXDestructorDecl && node.inner.length > 0) {
             return this.cxxConstructExprToValueAndStmts(node.inner[0]);
         }
         if (!parentNode || parentNode.kind !== astKind.ExprWithCleanups && parentNode.kind !== astKind.ReturnStmt) {

@@ -46,7 +46,6 @@
 
 using namespace clang;
 using namespace clang::tooling;
-// using llvm::json::Array;
 using llvm::json::Object;
 using llvm::json::Value;
 
@@ -61,12 +60,14 @@ public:
         : Ctx(ctx), SM(ctx.getSourceManager()), OS(os), HUStore(std::move(huStore)) {}
 
     private:
+    // Handling empty child nodes
     void EmitEmptyChild()
     {
         WriteChildCommaIfNeeded();
         OS << "{}";
     }
 
+    // Traverse the nodes under the statement
     bool TraverseStmtOrEmpty(Stmt *Child)
     {
         if (!Child) {
@@ -80,6 +81,7 @@ public:
         return TraverseStmt(Child);
     }
 
+    // Call the native clang method
     template<typename T>
     void CallJsonNodeDumper(T* t, ast_dumper::JsonDumperProbeStream &probe)
     {
@@ -90,6 +92,7 @@ public:
     }
 
 public:
+    // Traverse forStmt
     bool TraverseForStmt(ForStmt *FS)
     {
         if (!FS) {
@@ -118,7 +121,7 @@ public:
         return true;
     }
 
-
+    // handle TranslationUnit
     void EmitTranslationUnit()
     {
         TraverseDecl(Ctx.getTranslationUnitDecl());
@@ -126,6 +129,7 @@ public:
         OS.flush();
     }
 
+    // Output node name
     void DumperNodeName(Decl *D, bool dumperHasName, bool wroteAnyField)
     {
         if (!dumperHasName) {
@@ -144,6 +148,7 @@ public:
         }
     }
 
+    // Output node code
     template<typename T>
     void DumperNodeCode(T *t, bool dumperHasCode, bool wroteAnyField)
     {
@@ -175,6 +180,7 @@ public:
         }
     }
 
+    // Traverse all Decls in the syntax tree
     bool TraverseDecl(Decl *D)
     {
         if (!D) {
@@ -232,6 +238,7 @@ public:
         return true;
     }
 
+    // Traverse all Stmts in the syntax tree
     bool TraverseStmt(Stmt *S)
     {
         if (!S) {
@@ -268,6 +275,7 @@ public:
         return true;
     }
 
+    // Traverse ConstructorInitializer node type
     bool TraverseConstructorInitializer(CXXCtorInitializer *Init)
     {
         if (!Init) {
@@ -353,6 +361,7 @@ class JSONFrontendAction : public ASTFrontendAction {
 public:
     JSONFrontendAction() : huStore(std::make_shared<ast_dumper::HeaderUnitsStore>()) {}
 
+    // Front end processing of referenced header files
     bool BeginSourceFileAction(CompilerInstance &CI) override
     {
         Preprocessor &PP = CI.getPreprocessor();
