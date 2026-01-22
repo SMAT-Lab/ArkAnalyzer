@@ -420,10 +420,11 @@ export class ModelUtils {
     public static findPropertyInClass(name: string, arkClass: ArkClass): ArkExport | ArkField | null {
         let property: ArkExport | ArkField | null =
             arkClass.getMethodWithName(name) ??
-            arkClass.getStaticMethodWithName(name) ??
-            arkClass.getMethodWithName('Get-' + name) ??
             arkClass.getFieldWithName(name) ??
-            arkClass.getStaticFieldWithName(name);
+            arkClass.getStaticMethodWithName(name) ??
+            arkClass.getStaticFieldWithName(name) ??
+            arkClass.getMethodWithName('Get-' + name) ??
+            arkClass.getStaticMethodWithName('Get-' + name);
         if (property) {
             return property;
         }

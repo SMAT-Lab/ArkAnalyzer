@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -16,7 +16,7 @@
 
 import { ModifierType } from '../model/ArkBaseModel';
 import { ArkFile } from '../model/ArkFile';
-import { ArkAssignStmt, ArkReturnStmt, Stmt } from '../base/Stmt';
+import { ArkAssignStmt, ArkInvokeStmt, ArkReturnStmt, Stmt } from '../base/Stmt';
 import { Value } from '../base/Value';
 import { ArkModel, Inference, InferenceFlow, InferenceManager } from './Inference';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
@@ -362,13 +362,31 @@ export class StmtInference extends ArkModelInference {
      */
     public postInfer(stmt: Stmt, defType: Type | undefined): InferStmtResult | undefined {
         const method = stmt.getCfg().getDeclaringMethod();
-        const impactedStmts = this.typeSpread(stmt, method);
+        let replacedStmts: Stmt[] = [];
+        let impactedStmts: Set<Stmt> = new Set();
+        if (stmt instanceof ArkAssignStmt && stmt.getLeftOp() instanceof AbstractInvokeExpr) {
+            const invokeExpr = stmt.getLeftOp() as AbstractInvokeExpr;
+            const cls = method.getDeclaringArkFile().getScene().getClass(invokeExpr.getMethodSignature().getDeclaringClassSignature());
+            const name = invokeExpr.getMethodSignature().getMethodSubSignature().getMethodName().replace('Get-', 'Set-');
+            const invokeMethod = cls?.getMethodWithName(name) ?? cls?.getStaticMethodWithName(name);
+            if (invokeMethod) {
+                invokeExpr.setMethodSignature(invokeMethod.getSignature());
+            }
+            invokeExpr.setArgs([stmt.getRightOp()]);
+            replacedStmts.push(new ArkInvokeStmt(invokeExpr));
+        } else {
+            impactedStmts = this.typeSpread(stmt, method);
+        }
         const finalDef = stmt.getDef();
         if (defType !== finalDef?.getType() && finalDef instanceof Local &&
             (method.getBody()?.getUsedGlobals()?.get(finalDef.getName()) || !finalDef.getName().startsWith(NAME_PREFIX))) {
             finalDef.getUsedStmts().forEach(e => impactedStmts.add(e));
         }
-        return impactedStmts.size > 0 ? { oldStmt: stmt, impactedStmts: Array.from(impactedStmts) } : undefined;
+        return {
+            oldStmt: stmt,
+            impactedStmts: impactedStmts.size > 0 ? Array.from(impactedStmts) : undefined,
+            replacedStmts: replacedStmts.length > 0 ? replacedStmts : undefined
+        };
     }
 
     /**

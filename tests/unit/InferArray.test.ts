@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { assert, describe, it } from 'vitest';
+import { assert, describe, expect, it } from 'vitest';
 import path from 'path';
 import {
     AliasType,
@@ -38,6 +38,7 @@ import Logger, { LOG_LEVEL, LOG_MODULE_TYPE } from '../../src/utils/logger';
 import { ArkIRClassPrinter } from '../../src/save/arkir/ArkIRClassPrinter';
 import { ModifierType } from '../../src/core/model/ArkBaseModel';
 import { ArkIRFilePrinter } from '../../src/save/arkir/ArkIRFilePrinter';
+import { ArkIRMethodPrinter } from '../../src/save/arkir/ArkIRMethodPrinter';
 
 const logPath = 'out/ArkAnalyzer.log';
 const logger = Logger.getLogger(LOG_MODULE_TYPE.TOOL, 'InferArrayTest');
@@ -856,7 +857,32 @@ object %AC5$AnimatablePropertyText-build {
 }
 `;
         assert.equal(s1, fileIR);
-    })
+    });
+
+    it('infer to getter setter', () => {
+        const expectMethodIR = `test(): void {
+  label0:
+    this = this: @inferType/inferSample.ts: AA
+    str = staticinvoke <@inferType/inferSample.ts: AA.[static]Get-Str()>()
+    staticinvoke <@inferType/inferSample.ts: AA.[static]Set-Str(string)>(str)
+    %0 = new @inferType/inferSample.ts: AA
+    %0 = instanceinvoke %0.<@inferType/inferSample.ts: AA.constructor()>()
+    aa = %0
+    n = instanceinvoke aa.<@inferType/inferSample.ts: AA.Get-count()>()
+    instanceinvoke aa.<@inferType/inferSample.ts: AA.Set-count(number)>(n)
+    return
+}
+`;
+        const fileId = new FileSignature(scene.getProjectName(), 'inferSample.ts');
+        const method = scene.getFile(fileId)?.getClassWithName('AA')?.getMethodWithName('test');
+        if (method) {
+            const printer = new ArkIRMethodPrinter(method, '');
+            const s1 = printer.dump();
+            assert.equal(s1, expectMethodIR);
+        } else {
+            assert.fail('not found test method');
+        }
+    });
 })
 
 describe("for Test without sdk", () => {
