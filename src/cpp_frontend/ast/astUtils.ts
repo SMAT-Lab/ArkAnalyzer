@@ -32,6 +32,14 @@ export type GetParentFn = {
 export class AstUtils {
     private static currentAccess: string = '';
 
+    private static deleteFileSync(filePath: string): void {
+        try {
+            fs.unlinkSync(filePath);
+        } catch {
+            logger.warn('delete file failed:', filePath);
+        }
+    }
+
     public static parse(sourceFile: string, ccJsonPath: string | null, includeDirs: string[] | null, llvmPath: string, cppAstPath: string): CxxAstNode {
         if (!fs.existsSync(sourceFile)) {
             logger.warn('parse file is not exists');
@@ -55,10 +63,7 @@ export class AstUtils {
             };
         }
         let astPath: string = this.getAstOutputPath(sourceFile, cppAstPath);
-        console.log("outfile: " + astPath);
         let includeArgs = constructParseArguments(sourceFile, ccJsonPath, includeDirs);
-        console.log("sourceFile " + sourceFile);
-        console.log("ccJsonPath " + ccJsonPath);
         let parseArguments: string[] = [sourceFile, '-o', astPath];
         parseArguments = [...parseArguments, ...includeArgs];
         this.ensureOutputDir(path.dirname(astPath));
@@ -75,17 +80,19 @@ export class AstUtils {
             : undefined;
 
         const parseResult = spawnSync(clangPath, parseArguments, { stdio: ['inherit', 'pipe'], encoding: 'utf-8', env: envVars });
-        console.log('clangPath: ' + clangPath);
+
         if (parseResult.status) {
-            console.log('result: ' + parseResult.stdout);
             logger.error('Error parsing ast', parseResult.stderr);
         } else {
-            console.log('result: success'+ parseResult.stderr);
             logger.info('Parsing completed!');
         }
-        let tu = JSON.parse(fs.readFileSync(astPath, 'utf-8')) as CxxAstNode;
-        tu = this.filter(sourceFile, tu) as CxxAstNode;
-        return tu;
+        try {
+            let tu = JSON.parse(fs.readFileSync(astPath, 'utf-8')) as CxxAstNode;
+            tu = this.filter(sourceFile, tu) as CxxAstNode;
+            return tu;
+        } finally {
+            this.deleteFileSync(astPath);
+        }
     }
 
     private static updateInner(sourceFile: string, entry: CxxAstNode, newInner: CxxAstNode[]): void {
@@ -293,7 +300,6 @@ function constructParseArguments(srcFilePath: string, ccJsonPath: string | null,
     if (includeDirs && includeDirs.length > 0) {
         includeDirs.forEach(dir => {
             args.push('--extra-arg-before=-I' + `${dir}`);
-            console.log("arg: "+ '--extra-arg-before=-I' + `${dir}`);
         });
     }
     return args;
