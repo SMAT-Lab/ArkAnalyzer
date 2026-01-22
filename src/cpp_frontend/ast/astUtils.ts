@@ -55,7 +55,10 @@ export class AstUtils {
             };
         }
         let astPath: string = this.getAstOutputPath(sourceFile, cppAstPath);
+        console.log("outfile: " + astPath);
         let includeArgs = constructParseArguments(sourceFile, ccJsonPath, includeDirs);
+        console.log("sourceFile " + sourceFile);
+        console.log("ccJsonPath " + ccJsonPath);
         let parseArguments: string[] = [sourceFile, '-o', astPath];
         parseArguments = [...parseArguments, ...includeArgs];
         this.ensureOutputDir(path.dirname(astPath));
@@ -77,7 +80,7 @@ export class AstUtils {
             console.log('result: ' + parseResult.stdout);
             logger.error('Error parsing ast', parseResult.stderr);
         } else {
-            console.log('result: success'+ parseResult.stdout);
+            console.log('result: success'+ parseResult.stderr);
             logger.info('Parsing completed!');
         }
         let tu = JSON.parse(fs.readFileSync(astPath, 'utf-8')) as CxxAstNode;
@@ -290,6 +293,7 @@ function constructParseArguments(srcFilePath: string, ccJsonPath: string | null,
     if (includeDirs && includeDirs.length > 0) {
         includeDirs.forEach(dir => {
             args.push('--extra-arg-before=-I' + `${dir}`);
+            console.log("arg: "+ '--extra-arg-before=-I' + `${dir}`);
         });
     }
     return args;
