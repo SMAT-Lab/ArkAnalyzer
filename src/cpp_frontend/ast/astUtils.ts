@@ -75,7 +75,7 @@ export class AstUtils {
             : undefined;
 
         const parseResult = spawnSync(clangPath, parseArguments, { stdio: ['inherit', 'pipe'], encoding: 'utf-8', env: envVars });
-
+        console.log('clangPath: ' + clangPath);
         if (parseResult.status) {
             console.log('result: ' + parseResult.stdout);
             logger.error('Error parsing ast', parseResult.stderr);
