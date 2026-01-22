@@ -17,7 +17,7 @@ import { ArkFile } from '../../../core/model/ArkFile';
 import { ArkMethod } from '../../../core/model/ArkMethod';
 import { ArkNamespace } from '../../../core/model/ArkNamespace';
 import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
-import { ArkClass, ClassCategory } from '../../../core/model/ArkClass';
+import { ArkClass, ClassCategory, heritageClassWithInfo } from '../../../core/model/ArkClass';
 import { buildArkMethodFromArkClass, buildDefaultArkMethodFromArkClass, buildInitMethod } from './ArkMethodBuilder';
 import { buildDecorators, buildModifiers, buildModifiersForCxxClass, buildTypeParameters } from './builderUtils';
 import { buildProperty2ArkField } from './ArkFieldBuilder';
@@ -200,7 +200,12 @@ function genClassName(declaringName: string, cls: ArkClass, declaring?: ArkMetho
 function processCXXHeritage(clsNode: CxxAstNode, cls: ArkClass): void {
     if (clsNode.bases) {
         for (let i = 0; i < clsNode.bases.length; i++) {
-            cls.addHeritageClassName(clsNode.bases[i].type.qualType);
+            let classInfo: heritageClassWithInfo = {
+                baseClass: undefined,
+                isVirtual: clsNode.bases[i].isVirtual ?? false,
+                access: clsNode.bases[i].access ?? 'private',
+            };
+            cls.addHeritageClassNameWithInfo(clsNode.bases[i].type.qualType, classInfo);
         }
     }
 }

@@ -43,6 +43,12 @@ export enum ClassCategory {
     UNION = 6,
 }
 
+export interface heritageClassWithInfo{
+    baseClass: ArkClass | undefined | null;
+    isVirtual: boolean ;
+    access: string;
+}
+
 /**
  * @category core/model
  */
@@ -59,7 +65,7 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
      * The superclass name is placed first; if it does not exist, an empty string `''` will occupy this position.
      * The values of the `heritageClasses` map will be replaced with `ArkClass` or `null` during type inference.
      */
-    private heritageClasses: Map<string, ArkClass | null | undefined> = new Map<string, ArkClass | null | undefined>();
+    private heritageClasses: Map<string, heritageClassWithInfo | undefined> = new Map<string, heritageClassWithInfo | undefined>();
 
     private genericsTypes?: GenericType[];
     private realTypes?: Type[];
@@ -207,6 +213,11 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
         this.heritageClasses.set(className, undefined);
     }
 
+    public addHeritageClassNameWithInfo(className: string, classInfo: heritageClassWithInfo): void {
+        this.heritageClasses.set(className, classInfo);
+    }
+
+
     /**
      * Returns the superclass of this class.
      * @returns The superclass of this class.
@@ -223,7 +234,8 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
         if (!heritageClassName) {
             return null;
         }
-        let superClass = this.heritageClasses.get(heritageClassName);
+        let superClassWithInfo = this.heritageClasses.get(heritageClassName);
+        let superClass = superClassWithInfo?.baseClass;
         if (superClass === undefined) {
             let type =
                 TypeInference.inferUnclearRefName(heritageClassName, this) ??
@@ -238,9 +250,14 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
                     this.realTypes = realGenericTypes;
                 }
             }
-            this.heritageClasses.set(heritageClassName, superClass || null);
+            superClassWithInfo = {
+                baseClass: superClass,
+                isVirtual: superClassWithInfo?.isVirtual ?? false,
+                access: superClassWithInfo?.access ?? 'private',
+            };
+            this.heritageClasses.set(heritageClassName, superClassWithInfo);
         }
-        return superClass || null;
+        return superClassWithInfo?.baseClass || null;
     }
 
     public getAllHeritageClasses(): ArkClass[] {
@@ -248,7 +265,11 @@ export class ArkClass extends ArkBaseModel implements ArkExport {
         this.heritageClasses.forEach((v, k) => {
             const heritage = v ?? this.getHeritageClass(k);
             if (heritage) {
-                result.push(heritage);
+                if ('baseClass' in heritage && heritage.baseClass) {
+                    result.push(heritage.baseClass);
+                } else if (heritage instanceof ArkClass) {
+                    result.push(heritage);
+                }
             }
         });
         return result;

@@ -263,7 +263,8 @@ export interface defaultArg {
 export interface classBase {
     access: string;
     type: CxxTypeInfo;
-    writtenAccess: string;
+    isVirtual?: boolean;
+    writtenAccess?: string;
 }
 export enum astKind {
     ArraySubscriptExpr = 'ArraySubscriptExpr',
