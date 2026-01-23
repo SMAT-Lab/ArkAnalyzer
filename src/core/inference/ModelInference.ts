@@ -32,7 +32,7 @@ import { CONSTRUCTOR_NAME, GLOBAL_THIS_NAME, PROMISE } from '../common/TSConst';
 import { SdkUtils } from '../common/SdkUtils';
 import { IRInference } from '../common/IRInference';
 import { Local } from '../base/Local';
-import { LEXICAL_ENV_NAME_PREFIX, NAME_PREFIX } from '../common/Const';
+import { GETTER_PREFIX, LEXICAL_ENV_NAME_PREFIX, NAME_PREFIX, SETTER_PREFIX } from '../common/Const';
 import { ArkClass } from '../model/ArkClass';
 import { ValueInference } from './ValueInference';
 import { AbstractTypeExpr } from '../base/TypeExpr';
@@ -367,7 +367,7 @@ export class StmtInference extends ArkModelInference {
         if (stmt instanceof ArkAssignStmt && stmt.getLeftOp() instanceof AbstractInvokeExpr) {
             const invokeExpr = stmt.getLeftOp() as AbstractInvokeExpr;
             const cls = method.getDeclaringArkFile().getScene().getClass(invokeExpr.getMethodSignature().getDeclaringClassSignature());
-            const name = invokeExpr.getMethodSignature().getMethodSubSignature().getMethodName().replace('Get-', 'Set-');
+            const name = invokeExpr.getMethodSignature().getMethodSubSignature().getMethodName().replace(GETTER_PREFIX, SETTER_PREFIX);
             const invokeMethod = cls?.getMethodWithName(name) ?? cls?.getStaticMethodWithName(name);
             if (invokeMethod) {
                 invokeExpr.setMethodSignature(invokeMethod.getSignature());
