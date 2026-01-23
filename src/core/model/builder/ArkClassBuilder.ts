@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -20,9 +20,21 @@ import { ArkNamespace } from '../ArkNamespace';
 import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
 import ts, { ClassElement, EnumMember, ParameterDeclaration, TypeElement } from 'ohos-typescript';
 import { ArkClass, ClassCategory } from '../ArkClass';
-import { buildArkMethodFromArkClass, buildDefaultArkMethodFromArkClass, buildInitMethod, checkAndUpdateMethod } from './ArkMethodBuilder';
-import { buildDecorators, buildGenericType, buildHeritageClauses, buildModifiers, buildTypeParameters, tsNode2Type } from './builderUtils';
-import { buildGetAccessor2ArkField, buildIndexSignature2ArkField, buildProperty2ArkField } from './ArkFieldBuilder';
+import {
+    buildArkMethodFromArkClass,
+    buildDefaultArkMethodFromArkClass,
+    buildInitMethod,
+    checkAndUpdateMethod
+} from './ArkMethodBuilder';
+import {
+    buildDecorators,
+    buildGenericType,
+    buildHeritageClauses,
+    buildModifiers,
+    buildTypeParameters,
+    tsNode2Type
+} from './builderUtils';
+import { buildIndexSignature2ArkField, buildProperty2ArkField } from './ArkFieldBuilder';
 import { ArkIRTransformer } from '../../common/ArkIRTransformer';
 import { ArkAssignStmt, ArkInvokeStmt, Stmt } from '../../base/Stmt';
 import { ArkInstanceFieldRef } from '../../base/Ref';
@@ -447,9 +459,7 @@ function buildMethodsForClass(clsNode: ClassLikeNodeWithMethod, cls: ArkClass, s
         ) {
             let mthd: ArkMethod = new ArkMethod();
             buildArkMethodFromArkClass(member, cls, mthd, sourceFile);
-            if (ts.isGetAccessor(member)) {
-                buildGetAccessor2ArkField(member, mthd, sourceFile);
-            } else if (ts.isConstructorDeclaration(member)) {
+            if (ts.isConstructorDeclaration(member)) {
                 buildParameterProperty2ArkField(member.parameters, cls, sourceFile);
             }
         }

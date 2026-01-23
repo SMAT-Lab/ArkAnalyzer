@@ -77,6 +77,7 @@ import {
     ANONYMOUS_CLASS_PREFIX,
     CALL_SIGNATURE_NAME,
     DEFAULT_ARK_CLASS_NAME,
+    GETTER_PREFIX,
     LEXICAL_ENV_NAME_PREFIX,
     NAME_DELIMITER,
     NAME_PREFIX,
@@ -701,7 +702,10 @@ export class IRInference {
                 baseType = new ClassType(arrayClass.getSignature());
             }
         }
-        let { staticFlag, signature } = IRInference.genFieldSignature(fieldName, baseType, ref, arkMethod);
+        let { staticFlag, signature, value } = IRInference.genFieldSignature(fieldName, baseType, ref, arkMethod);
+        if (value) {
+            return value;
+        }
         if (!signature) {
             return null;
         }
@@ -715,7 +719,8 @@ export class IRInference {
 
     private static genFieldSignature(fieldName: string, baseType: Type, ref: AbstractFieldRef, arkMethod: ArkMethod): {
         staticFlag: boolean,
-        signature: FieldSignature | null
+        signature: FieldSignature | null,
+        value?: AbstractInvokeExpr
     } {
         const arkClass = arkMethod.getDeclaringArkClass();
         const propertyAndType = TypeInference.inferFieldType(baseType, fieldName, arkClass);
@@ -724,6 +729,11 @@ export class IRInference {
         let signature: FieldSignature | null = null;
         if (baseType instanceof ClassType) {
             const property = propertyAndType?.[0] ?? IRInference.findPropertyFormChildrenClass(fieldName, arkClass, baseType);
+            if (property instanceof ArkMethod && property.getName().startsWith(GETTER_PREFIX) && ref instanceof ArkInstanceFieldRef) {
+                const expr = property.isStatic() ? new ArkStaticInvokeExpr(property.getSignature(), [])
+                    : new ArkInstanceInvokeExpr(ref.getBase(), property.getSignature(), []);
+                return { staticFlag: staticFlag, signature: signature, value: expr };
+            }
             staticFlag = baseType.getClassSignature().getClassName() === DEFAULT_ARK_CLASS_NAME ||
                 ((property instanceof ArkField || property instanceof ArkMethod) && property.isStatic());
             if (property instanceof ArkField && property.getCategory() !== FieldCategory.ENUM_MEMBER &&

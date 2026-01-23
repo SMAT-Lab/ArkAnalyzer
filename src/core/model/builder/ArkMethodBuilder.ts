@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -39,7 +39,16 @@ import { BasicBlock } from '../../graph/BasicBlock';
 import { Local } from '../../base/Local';
 import { Value } from '../../base/Value';
 import { CONSTRUCTOR_NAME, SUPER_NAME, THIS_NAME } from '../../common/TSConst';
-import { ANONYMOUS_METHOD_PREFIX, CALL_SIGNATURE_NAME, DEFAULT_ARK_CLASS_NAME, DEFAULT_ARK_METHOD_NAME, NAME_DELIMITER, NAME_PREFIX } from '../../common/Const';
+import {
+    ANONYMOUS_METHOD_PREFIX,
+    CALL_SIGNATURE_NAME,
+    DEFAULT_ARK_CLASS_NAME,
+    DEFAULT_ARK_METHOD_NAME,
+    GETTER_PREFIX,
+    NAME_DELIMITER,
+    NAME_PREFIX,
+    SETTER_PREFIX
+} from '../../common/Const';
 import { ArkSignatureBuilder } from './ArkSignatureBuilder';
 import { IRUtils } from '../../common/IRUtils';
 import { ArkErrorCode } from '../../common/ArkError';
@@ -167,9 +176,9 @@ function buildMethodName(node: MethodLikeNode, declaringClass: ArkClass, sourceF
     } else if (ts.isCallSignatureDeclaration(node)) {
         name = CALL_SIGNATURE_NAME;
     } else if (ts.isGetAccessor(node) && ts.isIdentifier(node.name)) {
-        name = 'Get-' + node.name.text;
+        name = GETTER_PREFIX + node.name.text;
     } else if (ts.isSetAccessor(node) && ts.isIdentifier(node.name)) {
-        name = 'Set-' + node.name.text;
+        name = SETTER_PREFIX + node.name.text;
     } else if (ts.isArrowFunction(node)) {
         name = buildAnonymousMethodName(node, declaringClass);
     }

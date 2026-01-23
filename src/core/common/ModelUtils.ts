@@ -53,6 +53,7 @@ import {
     ANONYMOUS_CLASS_PREFIX,
     DEFAULT_ARK_CLASS_NAME,
     DEFAULT_ARK_METHOD_NAME,
+    GETTER_PREFIX,
     LEXICAL_ENV_NAME_PREFIX,
     NAME_DELIMITER,
     NESTED_CLASS_METHOD_DELIMITER,
@@ -420,10 +421,11 @@ export class ModelUtils {
     public static findPropertyInClass(name: string, arkClass: ArkClass): ArkExport | ArkField | null {
         let property: ArkExport | ArkField | null =
             arkClass.getMethodWithName(name) ??
-            arkClass.getStaticMethodWithName(name) ??
-            arkClass.getMethodWithName('Get-' + name) ??
             arkClass.getFieldWithName(name) ??
-            arkClass.getStaticFieldWithName(name);
+            arkClass.getStaticMethodWithName(name) ??
+            arkClass.getStaticFieldWithName(name) ??
+            arkClass.getMethodWithName(GETTER_PREFIX + name) ??
+            arkClass.getStaticMethodWithName(GETTER_PREFIX + name);
         if (property) {
             return property;
         }
@@ -436,7 +438,7 @@ export class ModelUtils {
                 return property;
             }
         }
-        const objectClass = arkClass.getDeclaringArkFile().getScene().getSdkGlobal('Object');
+        const objectClass = arkClass.getDeclaringArkFile().getScene().getSdkGlobal(Builtin.OBJECT);
         if (objectClass instanceof ArkClass && arkClass !== objectClass) {
             return this.findPropertyInClass(name, objectClass);
         }

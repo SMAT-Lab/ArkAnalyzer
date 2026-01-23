@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -19,6 +19,7 @@ import { ClassCategory } from '../../core/model/ArkClass';
 import { CommentsMetadata } from '../../core/model/ArkMetadata';
 import { Printer } from '../Printer';
 import { PrinterUtils } from './PrinterUtils';
+import { GETTER_PREFIX, SETTER_PREFIX } from '../../core/common/Const';
 
 export interface Dump {
     getLine(): number;
@@ -63,11 +64,11 @@ export abstract class BasePrinter extends Printer implements Dump {
         if (name === '_Constructor') {
             return 'constructor';
         }
-        if (name.startsWith('Get-')) {
-            return name.replace('Get-', 'get ');
+        if (name.startsWith(GETTER_PREFIX)) {
+            return name.replace(GETTER_PREFIX, 'get ');
         }
-        if (name.startsWith('Set-')) {
-            return name.replace('Set-', 'set ');
+        if (name.startsWith(SETTER_PREFIX)) {
+            return name.replace(SETTER_PREFIX, 'set ');
         }
         return name;
     }

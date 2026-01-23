@@ -250,3 +250,32 @@ class ChangePtrTest {
         }
     }
 }
+
+class AA {
+    static x = 'x';
+
+    static get Str(): string {
+        return 'a';
+    }
+
+    static set Str(str: string) {
+        AA.x = str;
+    }
+
+    private _count: number;
+    get count(): number {
+        return this._count;
+    }
+
+    set count(value: number) {
+        this._count = value;
+    }
+
+    test(): void {
+        let str = AA.Str;
+        AA.Str = str;
+        let aa = new AA();
+        let n = aa.count;
+        aa.count = n;
+    }
+}
