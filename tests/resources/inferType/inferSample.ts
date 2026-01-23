@@ -252,10 +252,10 @@ class ChangePtrTest {
 }
 
 class AA {
-    static x = "x";
+    static x = 'x';
 
     static get Str(): string {
-        return "a";
+        return 'a';
     }
 
     static set Str(str: string) {
@@ -271,7 +271,7 @@ class AA {
         this._count = value;
     }
 
-    test() {
+    test(): void {
         let str = AA.Str;
         AA.Str = str;
         let aa = new AA();

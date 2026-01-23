@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { assert, describe, expect, it } from 'vitest';
+import { assert, describe, it } from 'vitest';
 import path from 'path';
 import {
     AliasType,
