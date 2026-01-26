@@ -2001,34 +2001,56 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
     }
 
     private getRealGenericTypes(node: CxxAstNode | undefined, qualType?: string): Type[] | undefined {
-        let realGenericTypes: Type[] | undefined;
-        let nodeType = qualType ?? node?.type.qualType;
-        if (node?.type.desugaredQualType && node?.type.typeAliasDeclId) {
-            nodeType = node?.type.desugaredQualType;
-        }
-        if (nodeType) {
-            // Match the content within the outermost<>layer
-            const match = nodeType.match(/<(.*)>/);
-            let members: string[] | undefined;
-            if (match && match[1]) {
-                // Extract content from<>
-                const contentInsideBrackets = match[1];
-                // Separate members with commas and store them in an array
-                members = contentInsideBrackets.split(',').map(item => item.trim());
-                // Use the members array for subsequent processing
+        if (!node) return undefined;
+
+        // 1. Determine the target type string
+        const nodeType = this.getTargetQualType(node, qualType);
+        if (!nodeType) return undefined;
+
+        // 2. Extract and split template content
+        const match = nodeType.match(/<(.*)>/);
+        if (!match || !match[1]) return undefined;
+
+        const members = this.splitTemplateArguments(match[1]);
+
+        // 3. Map to Type objects
+        return members.map(arg => buildTypeFromPreStr(arg, node, this.declaringMethod));
+    }
+
+    /**
+     * Resolves the type string based on priority (provided qualType > desugared > default).
+     */
+    private getTargetQualType(node: CxxAstNode, qualType?: string): string | undefined {
+        if (qualType) return qualType;
+
+        return (node.type.desugaredQualType && node.type.typeAliasDeclId)
+            ? node.type.desugaredQualType
+            : node.type.qualType;
+    }
+
+    /**
+     * Splits template arguments by comma, but remains aware of nested brackets
+     * to prevent incorrect splitting of nested templates.
+     */
+    private splitTemplateArguments(content: string): string[] {
+        const parts: string[] = [];
+        let current = "";
+        let depth = 0;
+
+        for (const char of content) {
+            if (char === '<') depth++;
+            if (char === '>') depth--;
+
+            if (char === ',' && depth === 0) {
+                parts.push(current.trim());
+                current = "";
+            } else {
+                current += char;
             }
-            if (members?.length) {
-                realGenericTypes = [];
-                members.forEach((typeArgument: string) => {
-                    // TODO: this is a errow, need to be fixed
-                    if (node) {
-                        realGenericTypes!.push(buildTypeFromPreStr(typeArgument, node, this.declaringMethod));
-                    }
-                });
-            }
-            return realGenericTypes;
         }
-        return undefined;
+
+        if (current.trim()) parts.push(current.trim());
+        return parts;
     }
 
     private cxxParseArguments(
@@ -2583,9 +2605,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         stmts.push(...exprStmts);
         if (IRUtils.moreThanOneAddress(operandValue)) {
             ({
-                value: operandValue,
-                valueOriginalPositions: operandPositions,
-                stmts: exprStmts,
+                value: operandValue, valueOriginalPositions: operandPositions, stmts: exprStmts,
             } = this.ArkCxxIRTransformer.generateAssignStmtForValue(operandValue, operandPositions));
             stmts.push(...exprStmts);
         }
@@ -2596,11 +2616,8 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         // Use temporary variables to store the value before self increment, and avoid this expression for some non assignment operation scenarios
         if (operatorToken === '++' || operatorToken === '--') {
             const needAssign: string[] = [
-                astKind.VarDecl,
-                astKind.BinaryOperator,
-                astKind.BinaryConditionalOperator,
-                astKind.ConditionalOperator,
-                astKind.ArraySubscriptExpr
+                astKind.VarDecl, astKind.BinaryOperator, astKind.BinaryConditionalOperator,
+                astKind.ConditionalOperator, astKind.ArraySubscriptExpr,
             ];
             let parent = (postfixUnaryExpression.parent ?? postfixUnaryExpression.getParent?.(true)) ?? null;
             if (parent && needAssign.includes(parent.kind)) {
@@ -2626,9 +2643,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
         }
 
         return {
-            value: value,
-            valueOriginalPositions: exprPositions,
-            stmts: stmts,
+            value: value, valueOriginalPositions: exprPositions, stmts: stmts,
         };
     }
 

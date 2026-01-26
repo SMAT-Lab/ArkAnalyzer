@@ -1360,60 +1360,49 @@ export class CfgBuilder {
      * Note: This version strictly performs deletion and does NOT trigger block merging.
      */
     private removeEmptyBlocks(basicBlockSet: Set<BasicBlock>): void {
-        // 1. Initialization: Create a static snapshot of blocks to process.
-        // We filter upfront to only include empty blocks.
-        // This acts as our "Worklist" but we won't be adding new items to it.
-        const emptyBlocksToProcess: BasicBlock[] = [];
+        // Phase 1: Identify all candidates for removal.
+        // We collect them into an array to avoid concurrent modification issues
+        // during the initial filtering.
+        const emptyBlocks = Array.from(basicBlockSet).filter(bb => bb.getStmts().length === 0);
 
-        for (const bb of basicBlockSet) {
-            // Condition: The block has no executable statements.
-            if (bb.getStmts().length === 0) {
-                emptyBlocksToProcess.push(bb);
-            }
+        for (const bb of emptyBlocks) {
+            // Double-check existence as a previous iteration might have merged/deleted it.
+            if (!basicBlockSet.has(bb)) continue;
+
+            // Phase 2: Perform the surgical removal and graph relinking.
+            this.bypassAndRemoveBlock(bb, basicBlockSet);
         }
+    }
 
-        // 2. Processing Loop
-        for (const bb of emptyBlocksToProcess) {
-            // Safety check: The block might have been removed or altered by a previous iteration
-            // (though unlikely in this specific logic, it's good defensive programming).
-            if (!basicBlockSet.has(bb)) {
-                continue;
-            }
+    /**
+     * Bypasses a block by connecting all its predecessors directly to its successors.
+     */
+    private bypassAndRemoveBlock(bb: BasicBlock, basicBlockSet: Set<BasicBlock>): void {
+        const predecessors = bb.getPredecessors();
+        const successors = bb.getSuccessors();
 
-            // Snapshot neighbors to avoid modification issues during iteration
-            const predecessors = [...bb.getPredecessors()];
-            const successors = [...bb.getSuccessors()];
+        // Link every Predecessor to every Successor (Pred -> Succ)
+        for (const pred of predecessors) {
+            // Sever the connection to the target block
+            pred.removeSuccessorBlock(bb);
 
-            // 3. Relinking Logic (Bypassing the current empty block)
-
-            // 3a. Update Predecessors
-            for (const pred of predecessors) {
-                // Remove the edge: Pred -> BB
-                pred.removeSuccessorBlock(bb);
-
-                // Add new edges: Pred -> [All Successors of BB]
-                for (const succ of successors) {
-                    // Avoid self-loops if the empty block was just a bridge
-                    if (pred !== succ) {
-                        pred.addSuccessorBlock(succ);
-                    }
-                }
-            }
-            // 3b. Update Successors
             for (const succ of successors) {
-                // Remove the edge: BB -> Succ
-                succ.removePredecessorBlock(bb);
+                // Prevent introducing trivial self-loops (Pred -> Pred)
+                if (pred === succ) continue;
 
-                // Add new edges: [All Predecessors of BB] -> Succ
-                for (const pred of predecessors) {
-                    if (succ !== pred) {
-                        succ.addPredecessorBlock(pred);
-                    }
-                }
+                // Standard Handshake: Maintain bidirectional CFG edges
+                pred.addSuccessorBlock(succ);
+                succ.addPredecessorBlock(pred);
             }
-            // 4. Final Deletion
-            basicBlockSet.delete(bb);
         }
+
+        // Phase 3: Final cleanup of outgoing edges from the removed block
+        for (const succ of successors) {
+            succ.removePredecessorBlock(bb);
+        }
+
+        // Phase 4: Erase from the global set
+        basicBlockSet.delete(bb);
     }
 
     private initializeBuild(): {

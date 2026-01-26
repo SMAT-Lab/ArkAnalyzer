@@ -21,6 +21,16 @@ import { IRUtils } from '../../common/IRUtils';
 import { BlockBuilder } from '../../../core/graph/builder/CfgBuilder';
 import { FullPosition } from '../../../core/base/Position';
 
+interface BlockSegment {
+    top: BasicBlock;
+    bottoms: BasicBlock[];
+}
+
+interface OperatorGroupResult {
+    generatedTopBlock: BasicBlock;
+    generatedBottomBlocks: BasicBlock[];
+}
+
 /**
  * Builder for condition in CFG
  */
@@ -103,60 +113,81 @@ export class CxxConditionBuilder {
         });
     }
 
-    private generateBlocksContainConditionalOperatorGroup(sourceStmts: Stmt[], basicBlockSet: Set<BasicBlock>):
-        { generatedTopBlock: BasicBlock; generatedBottomBlocks: BasicBlock[] } {
-        const addAll = (blocks: Iterable<BasicBlock>): void => {
-            for (const b of blocks) {
-                basicBlockSet.add(b);
-            }
-        };
-        const link = (from: BasicBlock[], to: BasicBlock): void => {
-            for (const b of from) {
-                b.addSuccessorBlock(to);
-                to.addPredecessorBlock(b);
-            }
-        };
-        type Seg = { top: BasicBlock; bottoms: BasicBlock[] };
-        const segs: Seg[] = [];
-        let tail: | { generatedTopBlock: BasicBlock; generatedBottomBlocks: BasicBlock[] } | undefined;
+    private generateBlocksContainConditionalOperatorGroup(
+        sourceStmts: Stmt[],
+        basicBlockSet: Set<BasicBlock>,
+    ): OperatorGroupResult {
+        const { segs, tail } = this.segmentSourceStatements(sourceStmts, basicBlockSet);
+
+        // Case 1: No conditional operators found, or only a trailing non-operator block
+        if (segs.length === 0) {
+            return tail ?? this.generateBlockWithoutConditionalOperator(sourceStmts);
+        }
+
+        // Case 2: Multi-segment linking
+        let { suffixTop, suffixBottoms } = this.initializeSuffix(segs, tail);
+
+        // Backward link segments: Seg[i].bottoms -> Seg[i+1].top
+        for (let i = segs.length - 1; i >= 0; i--) {
+            // Skip the last segment if there's no tail, as it's already the initial suffix
+            if (i === segs.length - 1 && !tail) continue;
+
+            const cur = segs[i];
+            this.linkBlocks(cur.bottoms, suffixTop);
+            this.addBlocksToSet(suffixBottoms, basicBlockSet);
+            this.removeUnnecessaryBlocksInConditionalOperator(suffixTop, basicBlockSet);
+
+            suffixTop = cur.top;
+        }
+
+        return { generatedTopBlock: segs[0].top, generatedBottomBlocks: suffixBottoms };
+    }
+
+    private segmentSourceStatements(
+        sourceStmts: Stmt[],
+        basicBlockSet: Set<BasicBlock>,
+    ): { segs: BlockSegment[]; tail?: OperatorGroupResult } {
+        const segs: BlockSegment[] = [];
         let offset = 0;
+        let tail: OperatorGroupResult | undefined;
+
         while (offset < sourceStmts.length) {
             const rest = sourceStmts.slice(offset);
             const { firstEndPos } = this.findFirstConditionalOperator(rest);
+
             if (firstEndPos === -1) {
                 tail = this.generateBlockWithoutConditionalOperator(rest);
                 break;
             }
-            const { generatedTopBlock, generatedBottomBlocks, generatedAllBlocks } =
-                this.generateBlocksContainSingleConditionalOperator(rest.slice(0, firstEndPos + 1));
-            addAll(generatedAllBlocks);
-            segs.push({ top: generatedTopBlock, bottoms: generatedBottomBlocks });
+
+            const result = this.generateBlocksContainSingleConditionalOperator(rest.slice(0, firstEndPos + 1));
+            this.addBlocksToSet(result.generatedAllBlocks, basicBlockSet);
+            segs.push({ top: result.generatedTopBlock, bottoms: result.generatedBottomBlocks });
             offset += firstEndPos + 1;
         }
-        if (segs.length === 0) {
-            return tail ?? this.generateBlockWithoutConditionalOperator(sourceStmts);
-        }
-        let suffixTop: BasicBlock;
-        let suffixBottoms: BasicBlock[];
+        return { segs, tail };
+    }
+
+    private initializeSuffix(segs: BlockSegment[], tail?: OperatorGroupResult): {
+        suffixTop: BasicBlock;
+        suffixBottoms: BasicBlock[]
+    } {
         if (tail) {
-            suffixTop = tail.generatedTopBlock;
-            suffixBottoms = tail.generatedBottomBlocks;
-        } else {
-            const last = segs[segs.length - 1];
-            suffixTop = last.top;
-            suffixBottoms = last.bottoms;
+            return { suffixTop: tail.generatedTopBlock, suffixBottoms: tail.generatedBottomBlocks };
         }
-        for (let i = segs.length - 1; i >= 0; i--) {
-            const cur = segs[i];
-            if (i === segs.length - 1 && !tail) {
-                continue;
-            }
-            link(cur.bottoms, suffixTop);
-            addAll(suffixBottoms);
-            this.removeUnnecessaryBlocksInConditionalOperator(suffixTop, basicBlockSet);
-            suffixTop = cur.top;
+        const last = segs[segs.length - 1];
+        return { suffixTop: last.top, suffixBottoms: last.bottoms };
+    }
+
+    private addBlocksToSet(blocks: Iterable<BasicBlock>, set: Set<BasicBlock>): void {
+        for (const b of blocks) set.add(b);
+    }
+
+    private linkBlocks(from: BasicBlock[], to: BasicBlock): void {
+        for (const b of from) {
+            b.addSuccessorBlock(to);
+            to.addPredecessorBlock(b);
         }
-        return { generatedTopBlock: segs[0].top, generatedBottomBlocks: suffixBottoms };
     }
 
     private generateBlocksContainSingleConditionalOperator(sourceStmts: Stmt[]): {
