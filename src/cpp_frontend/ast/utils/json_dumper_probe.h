@@ -71,7 +71,7 @@ private:
         return false;
     }
 
-    void ScanKeys(const char *Ptr, size_t Size)
+    void ScanKeys(const char *ptr, size_t size)
     {
         if (hasName && hasCode) {
             return;
@@ -81,13 +81,13 @@ private:
         const char *kCode = "\"code\"";
 
         // boundary: tail + prefix
-        if (tailLen > 0 && Size > 0) {
+        if (tailLen > 0 && size > 0) {
             char buf[kTailMax + (kPatLen - 1)];
-            const size_t take = (Size < (kPatLen - 1)) ? Size : (kPatLen - 1);
+            const size_t take = (size < (kPatLen - 1)) ? size : (kPatLen - 1);
             const size_t total = tailLen + take;
 
             memcpy_s(buf, sizeof(buf), tail, tailLen);
-            memcpy_s(buf + tailLen, sizeof(buf) - tailLen, Ptr, take);
+            memcpy_s(buf + tailLen, sizeof(buf) - tailLen, ptr, take);
 
             if (!hasName && FindPatternFixed6(buf, total, kName)) {
                 hasName = true;
@@ -98,16 +98,16 @@ private:
         }
 
         // chunk
-        if (!hasName && FindPatternFixed6(Ptr, Size, kName)) {
+        if (!hasName && FindPatternFixed6(ptr, size, kName)) {
             hasName = true;
         }
-        if (!hasCode && FindPatternFixed6(Ptr, Size, kCode)) {
+        if (!hasCode && FindPatternFixed6(ptr, size, kCode)) {
             hasCode = true;
         }
 
         // update tail
-        if (Size >= kTailMax) {
-            memcpy_s(tail, sizeof(tail), Ptr + (Size - kTailMax), kTailMax);
+        if (size >= kTailMax) {
+            memcpy_s(tail, sizeof(tail), ptr + (size - kTailMax), kTailMax);
             tailLen = kTailMax;
         } else {
             char tmp[kTailMax + kTailMax];
@@ -117,9 +117,9 @@ private:
                 memcpy_s(tmp, sizeof(tmp), tail, tailLen);
                 tmpLen += tailLen;
             }
-            if (Size > 0) {
-                memcpy_s(tmp + tmpLen, sizeof(tmp) - tmpLen, Ptr, Size);
-                tmpLen += Size;
+            if (size > 0) {
+                memcpy_s(tmp + tmpLen, sizeof(tmp) - tmpLen, ptr, size);
+                tmpLen += size;
             }
 
             if (tmpLen > kTailMax) {
@@ -195,7 +195,7 @@ private:
                 }
                 if (!mangledName.empty() && mangledName != "std") {
                     (*obj)["mangledName"] = mangledName;
-                }else {
+                } else {
                     obj->erase("mangledName");
                 }
                 if (auto valueStr = (*obj)["value"].getAsString()) {
