@@ -33,7 +33,7 @@ using namespace clang::tooling;
 namespace ast_dumper {
 
 // Parse "-p <build_dir>" from argv (for debug/diagnostics only).
-std::string getBuildPathFromArgv(int argc, const char **argv);
+std::string GetBuildPathFromArgv(int argc, const char **argv);
 
 // Print basic checks for build dir + compile_commands.json + loadFromDirectory().
 void printBuildPathDiagnostics(llvm::StringRef BuildPath);

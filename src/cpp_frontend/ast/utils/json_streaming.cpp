@@ -30,12 +30,12 @@ void writeKey(llvm::raw_ostream &os, llvm::StringRef key)
     os << '"' << key << "\":";
 }
 
-void writeCommaIf(bool &WroteAnyField, llvm::raw_ostream &os)
+void writeCommaIf(bool &wroteAnyField, llvm::raw_ostream &os)
 {
-    if (WroteAnyField) {
+    if (wroteAnyField) {
         os << ',';
     }
-    WroteAnyField = true;
+    wroteAnyField = true;
 }
 
 } // namespace ast_dumper::json

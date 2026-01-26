@@ -438,7 +438,7 @@ int main(int argc, const char **argv)
     llvm::outs() << "[ASTDumper] -o = " << (outOpt.empty() ? "<default>" : outOpt) << "\n";
 
     // -p diagnostics (optional)
-    const std::string buildPath = ast_dumper::getBuildPathFromArgv(argc, argv);
+    const std::string buildPath = ast_dumper::GetBuildPathFromArgv(argc, argv);
     ast_dumper::printBuildPathDiagnostics(buildPath);
 
     CompilationDatabase &parserDB = optionsParser.getCompilations();

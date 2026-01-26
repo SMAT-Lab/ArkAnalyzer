@@ -23,7 +23,7 @@
 
 namespace ast_dumper {
 
-std::string getBuildPathFromArgv(int argc, const char **argv)
+std::string GetBuildPathFromArgv(int argc, const char **argv)
 {
     for (int i = 0; i + 1 < argc; ++i) {
         if (std::strcmp(argv[i], "-p") == 0) {
@@ -66,9 +66,7 @@ void insertArgumentAdjuster(ClangTool &Tool, llvm::StringRef sourceFile)
         cppStandard = "-std=c++17";
     }
     Tool.appendArgumentsAdjuster(
-        getinsertArgumentAdjuster(
-            {"-std=c++17", "-stdlib=libc++"}, ArgumentInsertPosition::BEGIN
-        )
+        getinsertArgumentAdjuster({"-std=c++17", "-stdlib=libc++"}, ArgumentInsertPosition::BEGIN)
     );
 }
 

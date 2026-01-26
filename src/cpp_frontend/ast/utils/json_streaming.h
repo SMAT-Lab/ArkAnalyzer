@@ -29,7 +29,7 @@ void PrintJsonString(llvm::raw_ostream &os, llvm::StringRef sr);
 void writeKey(llvm::raw_ostream &os, llvm::StringRef key);
 
 // If a field has already been written, outputs ',' and sets WroteAnyField to true.
-void writeCommaIf(bool &WroteAnyField, llvm::raw_ostream &os);
+void writeCommaIf(bool &wroteAnyField, llvm::raw_ostream &os);
 
 
 } // namespace ast_dumper::json
