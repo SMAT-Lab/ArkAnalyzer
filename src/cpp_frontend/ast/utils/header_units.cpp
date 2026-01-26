@@ -27,7 +27,7 @@ HeaderFileCollector::HeaderFileCollector(clang::SourceManager &SM,
 {
     clang::FileID MainFileID = SM.getMainFileID();
     const clang::FileEntry *MainFile = SM.getFileEntryForID(MainFileID);
-    CurrentFile = MainFile->tryGetRealPathName().str();
+    currentFile = MainFile->tryGetRealPathName().str();
 }
 
 void HeaderFileCollector::InclusionDirective(clang::SourceLocation HashLoc,
