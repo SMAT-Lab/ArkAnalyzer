@@ -141,7 +141,7 @@ public:
             }
 
             if (!name.empty()) {
-                ast_dumper::json::writeCommaIf(wroteAnyField, os);
+                ast_dumper::json::WriteCommaIf(wroteAnyField, os);
                 ast_dumper::json::writeKey(os, "name");
                 ast_dumper::json::PrintJsonString(os, name);
             }
@@ -155,7 +155,7 @@ public:
         if (!dumperHasCode) {
             std::string code = ast_dumper::GetSourceTextByRange(sm, ctx.getLangOpts(), t->getSourceRange(), true);
             if (!code.empty()) {
-                ast_dumper::json::writeCommaIf(wroteAnyField, os);
+                ast_dumper::json::WriteCommaIf(wroteAnyField, os);
                 ast_dumper::json::writeKey(os, "code");
                 ast_dumper::json::PrintJsonString(os, code);
             }
@@ -210,7 +210,7 @@ public:
         DumperNodeName(D, dumperHasName, wroteAnyField);
         DumperNodeCode(D, dumperHasCode, wroteAnyField);
 
-        ast_dumper::json::writeCommaIf(wroteAnyField, os);
+        ast_dumper::json::WriteCommaIf(wroteAnyField, os);
         ast_dumper::json::writeKey(os, "inner");
         os << '[';
         InnerFirstChildStack.push_back(1);
@@ -261,7 +261,7 @@ public:
 
         DumperNodeCode(S, dumperHasCode, wroteAnyField);
 
-        ast_dumper::json::writeCommaIf(wroteAnyField, os);
+        ast_dumper::json::WriteCommaIf(wroteAnyField, os);
         ast_dumper::json::writeKey(os, "inner");
         os << '[';
         InnerFirstChildStack.push_back(1);
@@ -298,7 +298,7 @@ public:
 
         DumperNodeCode(Init, dumperHasCode, wroteAnyField);
 
-        ast_dumper::json::writeCommaIf(wroteAnyField, os);
+        ast_dumper::json::WriteCommaIf(wroteAnyField, os);
         ast_dumper::json::writeKey(os, "inner");
         os << '[';
         InnerFirstChildStack.push_back(1);
