@@ -66,7 +66,7 @@ void insertArgumentAdjuster(ClangTool &Tool, llvm::StringRef sourceFile)
         cppStandard = "-std=c++17";
     }
     Tool.appendArgumentsAdjuster(
-        getinsertArgumentAdjuster({"-std=c++17", "-stdlib=libc++"}, ArgumentInsertPosition::BEGIN)
+        getInsertArgumentAdjuster({"-std=c++17", "-stdlib=libc++"}, ArgumentInsertPosition::BEGIN)
     );
 }
 
