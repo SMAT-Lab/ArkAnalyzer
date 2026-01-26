@@ -1317,8 +1317,45 @@ export class ArkValueTransformer {
         }
     }
 
+    private generateAssignmentForPostfixOperator(operatorToken: ts.SyntaxKind,
+        postfixUnaryExpression: ts.PostfixUnaryExpression,
+        originOperandValue: Value,
+        originOperandPositions: FullPosition[], stmts: Stmt[]): Value | undefined {
+        let returnValue: Value | undefined;
+        let parent = postfixUnaryExpression.parent;
+        let parentChild = postfixUnaryExpression as ts.Node;
+        while (parent && parent.kind === ts.SyntaxKind.ParenthesizedExpression) {
+            parentChild = parent;
+            parent = parent.parent;
+        }
+        let shouldSkipAssignment = false;
+
+        if (parent && parent.kind === ts.SyntaxKind.ExpressionStatement) {
+            shouldSkipAssignment = true;
+        }
+
+        if (parent && parent.kind === ts.SyntaxKind.ForStatement) {
+            const forStatement = parent as ts.ForStatement;
+            const condition = forStatement.condition;
+            if (condition !== parentChild) {
+                shouldSkipAssignment = true;
+            }
+        }
+
+        if (!shouldSkipAssignment) {
+            let {
+                value: tempValue,
+                valueOriginalPositions: _,
+                stmts: tempStmt,
+            } = this.arkIRTransformer.generateAssignStmtForValue(originOperandValue, originOperandPositions);
+            tempStmt.forEach(stmt => stmts.push(stmt));
+            returnValue = tempValue;
+        }
+        return returnValue;
+    }
+
     private postfixUnaryExpressionToValueAndStmts(postfixUnaryExpression: ts.PostfixUnaryExpression): ValueAndStmts {
-        const stmts: Stmt[] = [];
+        let stmts: Stmt[] = [];
         let {
             value: originOperandValue, valueOriginalPositions: originOperandPositions, stmts: exprStmts,
         } = this.tsNodeToValueAndStmts(postfixUnaryExpression.operand);
@@ -1336,10 +1373,11 @@ export class ArkValueTransformer {
             operandValue = originOperandValue;
             operandPositions = originOperandPositions;
         }
-
         let exprPositions = [FullPosition.buildFromNode(postfixUnaryExpression, this.sourceFile)];
         const operatorToken = postfixUnaryExpression.operator;
         if (operatorToken === ts.SyntaxKind.PlusPlusToken || operatorToken === ts.SyntaxKind.MinusMinusToken) {
+            let returnValue = this.generateAssignmentForPostfixOperator(operatorToken, postfixUnaryExpression,
+                originOperandValue, originOperandPositions, stmts);
             const binaryOperator = operatorToken === ts.SyntaxKind.PlusPlusToken ? NormalBinaryOperator.Addition : NormalBinaryOperator.Subtraction;
             const binopExpr = new ArkNormalBinopExpr(operandValue, ValueUtil.getOrCreateNumberConst(1), binaryOperator);
             exprPositions.push(...operandPositions, FullPosition.DEFAULT);
@@ -1351,13 +1389,13 @@ export class ArkValueTransformer {
                 lastAssignStmt.setOperandOriginalPositions([...originOperandPositions, ...operandPositions]);
                 stmts.push(lastAssignStmt);
             }
+            if (returnValue === undefined) {
+                returnValue = originOperandValue;
+            }
             return {
-                value: originOperandValue,
-                valueOriginalPositions: originOperandPositions,
-                stmts: stmts,
+                value: returnValue, valueOriginalPositions: originOperandPositions, stmts: stmts,
             };
         }
-
         return {
             value: ValueUtil.getUndefinedConst(),
             valueOriginalPositions: [FullPosition.DEFAULT],
