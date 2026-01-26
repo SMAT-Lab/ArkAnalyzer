@@ -276,12 +276,12 @@ export function buildTypeFromPreStr(preStr: string, node: CxxAstNode, arkInstanc
             referenceCount++;
         } else if (char === '*') {
             pointerLevel++;
-            baseStr += char;  // Keep * characters
+            baseStr += char; // Keep * characters
         } else {
-            baseStr += char;  // Keep other characters
+            baseStr += char; // Keep other characters
         }
     }
-    baseStr = baseStr.trim();  // Remove the leading and trailing spaces
+    baseStr = baseStr.trim(); // Remove the leading and trailing spaces
 
     // 3. Handling reference types
     if (referenceCount > 0) {

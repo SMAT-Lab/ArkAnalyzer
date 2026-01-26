@@ -43,9 +43,9 @@ export enum ClassCategory {
     UNION = 6,
 }
 
-export interface heritageClassWithInfo{
+export interface heritageClassWithInfo {
     baseClass: ArkClass | undefined | null;
-    isVirtual: boolean ;
+    isVirtual: boolean;
     access: string;
 }
 

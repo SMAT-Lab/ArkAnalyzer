@@ -689,7 +689,7 @@ export function serializeValue(value: Value): ValueDto {
         });
     } else if (value instanceof ArkCxxUnaryExpr) {
         let op = value.getOp();
-        if (op instanceof Type){
+        if (op instanceof Type) {
             return polymorphic('ArkCxxUnaryExpr', {
                 op: serializeType(op),
             });

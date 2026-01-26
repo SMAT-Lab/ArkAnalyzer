@@ -67,13 +67,13 @@ namespace School {
 
     // Nested anonymous namespace case
     namespace {
-        const std::string g_LogPrefix = "[Nested AnonymousSpace] ";
+        const std::string g_logPrefix = "[Nested AnonymousSpace] ";
 
         int g_localCounter = 0;
 
         void PrintInfoInNested()
         {
-            std::cout << g_LogPrefix << "Current counter value: " << g_localCounter << std::endl;
+            std::cout << g_logPrefix << "Current counter value: " << g_localCounter << std::endl;
         }
 
         class LocalHelperInNested {
@@ -88,13 +88,13 @@ namespace School {
 
 // anonymous namespace case
 namespace {
-    const std::string g_LogPrefix = "[AnonymousSpace] ";
+    const std::string g_logPrefix = "[AnonymousSpace] ";
 
     int g_localCounter = 0;
 
     void PrintInfo()
     {
-        std::cout << g_LogPrefix << "Current counter value: " << g_localCounter << std::endl;
+        std::cout << g_logPrefix << "Current counter value: " << g_localCounter << std::endl;
     }
 
     class LocalHelper {
