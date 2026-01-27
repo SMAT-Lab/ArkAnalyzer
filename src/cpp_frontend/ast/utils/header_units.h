@@ -35,7 +35,7 @@ class HeaderFileCollector final : public clang::PPCallbacks {
 public:
     HeaderFileCollector(clang::SourceManager &SM,
                         clang::Preprocessor &PP,
-                        std::shared_ptr<HeaderUnitsStore> Store);
+                        std::shared_ptr<HeaderUnitsStore> store);
 
     void InclusionDirective(clang::SourceLocation HashLoc,
                             const clang::Token &IncludeTok,
@@ -52,9 +52,9 @@ public:
 private:
     clang::SourceManager &SM;
     clang::Preprocessor &PP;
-    std::shared_ptr<HeaderUnitsStore> Store;
-    std::string CurrentFile;
-    std::vector<std::string> HeaderFileSet;
+    std::shared_ptr<HeaderUnitsStore> store;
+    std::string currentFile;
+    std::vector<std::string> headerFileSet;
 };
 
 } // namespace ast_dumper

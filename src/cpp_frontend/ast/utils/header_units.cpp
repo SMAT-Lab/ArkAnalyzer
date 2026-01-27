@@ -22,12 +22,13 @@ namespace ast_dumper {
 
 HeaderFileCollector::HeaderFileCollector(clang::SourceManager &SM,
                                          clang::Preprocessor &PP,
-                                         std::shared_ptr<HeaderUnitsStore> Store)
-    : SM(SM), PP(PP), Store(std::move(Store)) {
-        clang::FileID MainFileID = SM.getMainFileID();
-        const clang::FileEntry *MainFile = SM.getFileEntryForID(MainFileID);
-        CurrentFile = MainFile->tryGetRealPathName().str();
-    }
+                                         std::shared_ptr<HeaderUnitsStore> store)
+    : SM(SM), PP(PP), store(std::move(store))
+{
+    clang::FileID MainFileID = SM.getMainFileID();
+    const clang::FileEntry *MainFile = SM.getFileEntryForID(MainFileID);
+    currentFile = MainFile->tryGetRealPathName().str();
+}
 
 void HeaderFileCollector::InclusionDirective(clang::SourceLocation HashLoc,
                                              const clang::Token &,
@@ -56,11 +57,11 @@ void HeaderFileCollector::InclusionDirective(clang::SourceLocation HashLoc,
         }
     }
 
-    if (inc.getString("includedFrom") != CurrentFile ||
-        std::find(HeaderFileSet.begin(), HeaderFileSet.end(), FileName.str()) != HeaderFileSet.end()) {
+    if (inc.getString("includedFrom") != currentFile ||
+        std::find(headerFileSet.begin(), headerFileSet.end(), FileName.str()) != headerFileSet.end()) {
         return;
     }
-    HeaderFileSet.push_back(FileName.str());
+    headerFileSet.push_back(FileName.str());
     // fileName: resolved header path (if available)
     std::string headerAbs;
     if (File.has_value()) {
@@ -73,11 +74,8 @@ void HeaderFileCollector::InclusionDirective(clang::SourceLocation HashLoc,
     if (expansion.isValid()) {
         clang::PresumedLoc PL = SM.getPresumedLoc(expansion);
         if (PL.isValid()) {
-            inc["loc"] = llvm::json::Object{
-                {"file", std::string(PL.getFilename())},
-                {"line", (int64_t)PL.getLine()},
-                {"col",  (int64_t)PL.getColumn()},
-            };
+            inc["loc"] = llvm::json::Object{{"file", std::string(PL.getFilename())}, {"line", (int64_t)PL.getLine()},
+                {"col",  (int64_t)PL.getColumn()}};
         }
     }
 
@@ -98,7 +96,7 @@ void HeaderFileCollector::InclusionDirective(clang::SourceLocation HashLoc,
 
     // aggregate
     std::string key = !headerAbs.empty() ? headerAbs : ("<unresolved>:" + FileName.str());
-    llvm::json::Object &HU = Store->ByHeader[key];
+    llvm::json::Object &HU = store->ByHeader[key];
     HU["header"] = key;
     if (!HU.get("includes")) {
         HU["includes"] = llvm::json::Array{};

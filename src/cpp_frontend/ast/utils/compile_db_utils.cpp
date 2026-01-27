@@ -33,7 +33,7 @@ std::string GetBuildPathFromArgv(int argc, const char **argv)
     return {};
 }
 
-void PrintBuildPathDiagnostics(llvm::StringRef BuildPath)
+void printBuildPathDiagnostics(llvm::StringRef BuildPath)
 {
     if (BuildPath.empty()) {
         return;
@@ -56,7 +56,7 @@ void PrintBuildPathDiagnostics(llvm::StringRef BuildPath)
     }
 }
 
-void InsertArgumentAdjuster(ClangTool &Tool, llvm::StringRef sourceFile)
+void insertArgumentAdjuster(ClangTool &Tool, llvm::StringRef sourceFile)
 {
     std::string cppStandard = "";
     if (sourceFile.ends_with(".c")) {
@@ -66,10 +66,7 @@ void InsertArgumentAdjuster(ClangTool &Tool, llvm::StringRef sourceFile)
         cppStandard = "-std=c++17";
     }
     Tool.appendArgumentsAdjuster(
-        getInsertArgumentAdjuster(
-            {"-std=c++17", "-stdlib=libc++"},
-            ArgumentInsertPosition::BEGIN
-        )
+        getInsertArgumentAdjuster({"-std=c++17", "-stdlib=libc++"}, ArgumentInsertPosition::BEGIN)
     );
 }
 

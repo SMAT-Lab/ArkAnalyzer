@@ -36,21 +36,9 @@ namespace ast_dumper {
 std::string GetBuildPathFromArgv(int argc, const char **argv);
 
 // Print basic checks for build dir + compile_commands.json + loadFromDirectory().
-void PrintBuildPathDiagnostics(llvm::StringRef BuildPath);
-
-// True if DB contains compile commands for any input file (tries slash-normalization on Windows).
-bool HasCompileCommandForAnyInput(clang::tooling::CompilationDatabase &DB, llvm::ArrayRef<std::string> Inputs);
-
-// Create a minimal fallback DB when no compile command is found.
-std::unique_ptr<clang::tooling::CompilationDatabase> MakeFallbackDB(llvm::ArrayRef<std::string> Inputs);
-
-// Select DB for inputs; returns ParserDB or OwnedFallback.get().
-clang::tooling::CompilationDatabase *SelectDBForInputs(
-    clang::tooling::CompilationDatabase &ParserDB,
-    llvm::ArrayRef<std::string> Inputs,
-    std::unique_ptr<clang::tooling::CompilationDatabase> &OwnedFallback);
+void printBuildPathDiagnostics(llvm::StringRef BuildPath);
 
 // Add compiler line(-std=c++17)
-void InsertArgumentAdjuster(ClangTool &Tool, llvm::StringRef sourceFile);
+void insertArgumentAdjuster(ClangTool &Tool, llvm::StringRef sourceFile);
 
 } // namespace ast_dumper

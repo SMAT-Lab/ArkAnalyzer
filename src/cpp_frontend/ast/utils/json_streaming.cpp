@@ -30,7 +30,7 @@ void writeKey(llvm::raw_ostream &os, llvm::StringRef key)
     os << '"' << key << "\":";
 }
 
-void writeCommaIf(bool &wroteAnyField, llvm::raw_ostream &os)
+void WriteCommaIf(bool &wroteAnyField, llvm::raw_ostream &os)
 {
     if (wroteAnyField) {
         os << ',';
