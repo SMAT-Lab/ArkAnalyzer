@@ -130,7 +130,9 @@ export class CxxConditionBuilder {
         // Backward link segments: Seg[i].bottoms -> Seg[i+1].top
         for (let i = segs.length - 1; i >= 0; i--) {
             // Skip the last segment if there's no tail, as it's already the initial suffix
-            if (i === segs.length - 1 && !tail) continue;
+            if (i === segs.length - 1 && !tail) {
+                continue;
+            }
 
             const cur = segs[i];
             this.linkBlocks(cur.bottoms, suffixTop);
@@ -180,7 +182,9 @@ export class CxxConditionBuilder {
     }
 
     private addBlocksToSet(blocks: Iterable<BasicBlock>, set: Set<BasicBlock>): void {
-        for (const b of blocks) set.add(b);
+        for (const b of blocks) {
+            set.add(b);
+        }
     }
 
     private linkBlocks(from: BasicBlock[], to: BasicBlock): void {

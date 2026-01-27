@@ -2009,7 +2009,9 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
 
         // 2. Extract and split template content
         const match = nodeType.match(/<(.*)>/);
-        if (!match || !match[1]) return undefined;
+        if (!match || !match[1]) {
+            return undefined;
+        }
 
         const members = this.splitTemplateArguments(match[1]);
 
@@ -2043,13 +2045,15 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
 
             if (char === ',' && depth === 0) {
                 parts.push(current.trim());
-                current = "";
+                current = '';
             } else {
                 current += char;
             }
         }
 
-        if (current.trim()) parts.push(current.trim());
+        if (current.trim()) {
+            parts.push(current.trim());
+        }
         return parts;
     }
 
