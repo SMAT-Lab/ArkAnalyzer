@@ -67,7 +67,7 @@ namespace School {
 
     // Nested anonymous namespace case
     namespace {
-        const std::string g_logPrefix = "[Nested AnonymousSpace] ";
+        const std::string g_logPrefix = "[NestedAnonymousSpace] ";
 
         int g_localCounter = 0;
 

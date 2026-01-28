@@ -146,7 +146,7 @@ export const NAMESPACE_SCHOOL_EXPECT = {
                                     stmts: [
                                         'this = this: @namespace/namespace.cpp: School.%AN0.%dflt',
                                         '%0 = new @%unk/%unk: std::string',
-                                        'instanceinvoke %0.<@%unk/%unk: std::string.constructor()>(\'[Nested AnonymousSpace] \')',
+                                        'instanceinvoke %0.<@%unk/%unk: std::string.constructor()>(\'[NestedAnonymousSpace] \')',
                                         'g_logPrefix = %0',
                                         'g_localCounter = 0',
                                         'return',
