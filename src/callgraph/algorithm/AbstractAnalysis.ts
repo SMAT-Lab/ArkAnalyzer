@@ -34,6 +34,7 @@ export abstract class AbstractAnalysis {
     protected cgBuilder!: CallGraphBuilder;
     protected workList: FuncID[] = [];
     protected processedMethod!: IPtsCollection<FuncID>;
+    private classHierarchyCache: Map<string, ArkClass[]> = new Map();
 
     constructor(s: Scene, cg: CallGraph) {
         this.scene = s;
@@ -60,6 +61,12 @@ export abstract class AbstractAnalysis {
     }
 
     public getClassHierarchy(arkClass: ArkClass): ArkClass[] {
+        // Check if already in cache
+        const cacheKey = arkClass.getSignature().toString();
+        if (this.classHierarchyCache.has(cacheKey)) {
+            return this.classHierarchyCache.get(cacheKey)!;
+        }
+
         // TODO: remove abstract class
         let classWorkList: ArkClass[] = [arkClass];
         // TODO: check class with no super Class
@@ -71,6 +78,8 @@ export abstract class AbstractAnalysis {
             classWorkList.push(...tempClass.getExtendedClasses().values());
             classHierarchy.push(tempClass);
         }
+        // Cache the result
+        this.classHierarchyCache.set(cacheKey, classHierarchy);
 
         return classHierarchy;
     }
