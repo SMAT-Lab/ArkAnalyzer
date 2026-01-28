@@ -517,7 +517,7 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             return this.staticMemberExprToValueAndStmts(node);
         }
         // Handle the invocation of static members of a class, such as A::a
-        if (node.code.includes('::') && node.inner.length > 0 &&
+        if (node.code?.includes('::') && node.inner.length > 0 &&
             (node.inner[0]?.kind === astKind.TypeRef || node.inner[0]?.kind === astKind.NamespaceRef && node.inner[0]?.name !== BuiltinCxx.CXXSTD)) {
             return this.staticMemberExprToValueAndStmts(node);
         }
@@ -2001,11 +2001,15 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
     }
 
     private getRealGenericTypes(node: CxxAstNode | undefined, qualType?: string): Type[] | undefined {
-        if (!node) return undefined;
+        if (!node) {
+            return undefined;
+        }
 
         // 1. Determine the target type string
         const nodeType = this.getTargetQualType(node, qualType);
-        if (!nodeType) return undefined;
+        if (!nodeType) {
+            return undefined;
+        }
 
         // 2. Extract and split template content
         const match = nodeType.match(/<(.*)>/);
@@ -2023,7 +2027,9 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
      * Resolves the type string based on priority (provided qualType > desugared > default).
      */
     private getTargetQualType(node: CxxAstNode, qualType?: string): string | undefined {
-        if (qualType) return qualType;
+        if (qualType) {
+            return qualType;
+        }
 
         return (node.type.desugaredQualType && node.type.typeAliasDeclId)
             ? node.type.desugaredQualType
@@ -2036,12 +2042,16 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
      */
     private splitTemplateArguments(content: string): string[] {
         const parts: string[] = [];
-        let current = "";
+        let current = '';
         let depth = 0;
 
         for (const char of content) {
-            if (char === '<') depth++;
-            if (char === '>') depth--;
+            if (char === '<') {
+                depth++;
+            }
+            if (char === '>') {
+                depth--;
+            }
 
             if (char === ',' && depth === 0) {
                 parts.push(current.trim());
