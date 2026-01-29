@@ -134,7 +134,7 @@ export const DATA_STRUCT_EXPECT_SET_LINUX = {
                 'instanceinvoke %1.<@%unk/%unk: std::set.constructor()>(%2, %3)',
                 'set2 = %1',
                 'a = instanceinvoke set2.<@%unk/%unk: std::set.find()>(2)',
-                '%4 = new @%unk/%unk: std::__tree_const_iterator<int,std::__tree_node<int,void >**,long>',
+                '%4 = new @%unk/%unk: std::__tree_const_iterator<int,std::__tree_node<int, void >**,long>',
                 'instanceinvoke %4.<@%unk/%unk: std::__tree_const_iterator.constructor()>(a)',
                 'instanceinvoke set2.<@%unk/%unk: std::set.erase()>(%4)',
                 '%5 = new @%unk/%unk: std::set<int>',
