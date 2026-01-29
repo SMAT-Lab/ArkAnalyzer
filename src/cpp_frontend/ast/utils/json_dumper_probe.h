@@ -86,8 +86,8 @@ private:
             const size_t take = (size < (kPatLen - 1)) ? size : (kPatLen - 1);
             const size_t total = tailLen + take;
 
-            memcpy_s(buf, sizeof(buf), tail, tailLen);
-            memcpy_s(buf + tailLen, sizeof(buf) - tailLen, ptr, take);
+            (void)memcpy_s(buf, sizeof(buf), tail, tailLen);
+            (void)memcpy_s(buf + tailLen, sizeof(buf) - tailLen, ptr, take);
 
             if (!hasName && FindPatternFixed6(buf, total, kName)) {
                 hasName = true;
@@ -107,27 +107,27 @@ private:
 
         // update tail
         if (size >= kTailMax) {
-            memcpy_s(tail, sizeof(tail), ptr + (size - kTailMax), kTailMax);
+            (void)memcpy_s(tail, sizeof(tail), ptr + (size - kTailMax), kTailMax);
             tailLen = kTailMax;
         } else {
             char tmp[kTailMax + kTailMax];
             size_t tmpLen = 0;
 
             if (tailLen > 0) {
-                memcpy_s(tmp, sizeof(tmp), tail, tailLen);
+                (void)memcpy_s(tmp, sizeof(tmp), tail, tailLen);
                 tmpLen += tailLen;
             }
             if (size > 0) {
-                memcpy_s(tmp + tmpLen, sizeof(tmp) - tmpLen, ptr, size);
+                (void)memcpy_s(tmp + tmpLen, sizeof(tmp) - tmpLen, ptr, size);
                 tmpLen += size;
             }
 
             if (tmpLen > kTailMax) {
                 const size_t start = tmpLen - kTailMax;
-                memcpy_s(tail, sizeof(tail), tmp + start, kTailMax);
+                (void)memcpy_s(tail, sizeof(tail), tmp + start, kTailMax);
                 tailLen = kTailMax;
             } else {
-                memcpy_s(tail, sizeof(tail), tmp, tmpLen);
+                (void)memcpy_s(tail, sizeof(tail), tmp, tmpLen);
                 tailLen = tmpLen;
             }
         }
