@@ -240,7 +240,9 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
                 break;
             case astKind.DecompositionDecl:
                 stmts = this.decompositionDeclToStmts(node);
-            case astKind.unsupported_kind:
+                break;
+            default:
+                logger.warn('this ' + node.kind + ' is not supported');
                 break;
         }
         this.cxxMapStmtsToTsStmt(stmts, node);

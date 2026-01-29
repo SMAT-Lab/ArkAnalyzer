@@ -1367,7 +1367,9 @@ export class CfgBuilder {
 
         for (const bb of emptyBlocks) {
             // Double-check existence as a previous iteration might have merged/deleted it.
-            if (!basicBlockSet.has(bb)) continue;
+            if (!basicBlockSet.has(bb)) {
+                continue;
+            }
 
             // Phase 2: Perform the surgical removal and graph relinking.
             this.bypassAndRemoveBlock(bb, basicBlockSet);
@@ -1388,7 +1390,9 @@ export class CfgBuilder {
 
             for (const succ of successors) {
                 // Prevent introducing trivial self-loops (Pred -> Pred)
-                if (pred === succ) continue;
+                if (pred === succ) {
+                    continue;
+                }
 
                 // Standard Handshake: Maintain bidirectional CFG edges
                 pred.addSuccessorBlock(succ);
