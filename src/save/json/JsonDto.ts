@@ -341,7 +341,7 @@ export type ValueDto =
     | Polymorphic<'ArkCxxDeleteArrayExpr', ArkCxxDeleteArrayExprDto>
     | Polymorphic<'ArkCxxNewArrayExpr', ArkCxxNewArrayExprDto>
     | Polymorphic<'ArkCxxInitArrayExpr', ArkCxxInitArrayExprDto>
-    | Polymorphic<'ArkSizeOfExpr', ArkSizeOfExprDto>
+    | Polymorphic<'ArkCxxUnaryExpr', ArkCxxUnaryExprDto>
     | Polymorphic<'ArkCxxCastExpr', ArkCxxCastExprDto>
     | Polymorphic<'ArkArrayTypeTraitExpr', ArkArrayTypeTraitExprDto>
     | Polymorphic<'ArkTypeIdExpr', ArkTypeIdExprDto>
@@ -488,8 +488,8 @@ export interface ArkCxxInitArrayExprDto {
     op: ValueDto;
 }
 
-export interface ArkSizeOfExprDto {
-    op: ValueDto;
+export interface ArkCxxUnaryExprDto {
+
 }
 
 export interface ArkCxxCastExprDto {

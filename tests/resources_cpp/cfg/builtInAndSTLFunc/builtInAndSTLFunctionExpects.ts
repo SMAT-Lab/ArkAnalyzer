@@ -43,9 +43,9 @@ export const BUILT_IN_EXPECT_CASE2 = {
             stmts: [
                 'this = this: @builtInAndSTLFunc/builtInAndSTLFunction.cpp: %dflt',
                 'arr2 = undefined',
-                'rank2 = __array_rank(arr2)',
-                'dim1Size = __array_extent(arr2,1)',
-                'return',
+                'rank2 = ArrayTypeTrait(3,5)',
+                'dim1Size = ArrayTypeTrait(arr2)',
+                'return'
             ],
             preds: [],
             succes: [],
@@ -91,7 +91,7 @@ export const BUILT_IN_EXPECT_CASE4_LINUX = {
             stmts: [
                 'this = this: @builtInAndSTLFunc/builtInAndSTLFunction.cpp: %dflt',
                 '%0 = &g_counter',
-                'staticinvoke <@%unk/%unk: .undefined()>(__c11_atomic_fetch_add, %0, 1)',
+                'staticinvoke <@%unk/%unk: .__c11_atomic_fetch_add()>(%0, 1, 5)',
                 'return',
             ],
             preds: [],

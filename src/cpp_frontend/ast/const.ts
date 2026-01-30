@@ -33,17 +33,17 @@ export function findProjectRoot(startDIr: string = __dirname): string {
 const projectRoot = findProjectRoot(__dirname);
 
 function getPrintAstExePath(): string {
-    let printAstExePath = path.join(projectRoot, 'src', 'cpp_frontend', 'ast', 'dumper', 'arkCppAstDumper.exe');
+    let printAstExePath = path.join(projectRoot, 'src', 'cpp_frontend', 'ast', 'dumper', 'astJsonDumper.exe');
     if (!fs.existsSync(printAstExePath)) {
-        printAstExePath = path.join(projectRoot, 'lib', 'ast', 'arkCppAstDumper.exe');
+        printAstExePath = path.join(projectRoot, 'lib', 'ast', 'astJsonDumper.exe');
     }
     return printAstExePath;
 }
 
 function getPrintAstExePathLinux(): string {
-    let printAstExePath = path.join(projectRoot, 'src', 'cpp_frontend', 'ast', 'dumper', 'arkCppAstDumper');
+    let printAstExePath = path.join(projectRoot, 'src', 'cpp_frontend', 'ast', 'dumper', 'astJsonDumper');
     if (!fs.existsSync(printAstExePath)) {
-        printAstExePath = path.join(projectRoot, 'lib', 'ast', 'arkCppAstDumper');
+        printAstExePath = path.join(projectRoot, 'lib', 'ast', 'astJsonDumper');
     }
     return printAstExePath;
 }

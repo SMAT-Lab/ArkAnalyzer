@@ -64,7 +64,9 @@ import {
     CxxTypeSigned,
     CxxWcharType,
     PointerType,
-    ReferenceType, TypeInfo,
+    ReferenceType,
+    TypeInfo,
+    AutoType,
 } from '../base/Type';
 import { ArkMethod } from '../../core/model/ArkMethod';
 import { ArkExport } from '../../core/model/ArkExport';
@@ -685,6 +687,8 @@ export class TypeInference {
             }
             case 'type_info':
                 return new TypeInfo('type_info', new UnclearReferenceType(tsTypeStr));
+            case 'auto':
+                return AutoType.getInstance();
             default:
                 return new UnclearReferenceType(tsTypeStr);
         }
@@ -1026,7 +1030,7 @@ export class TypeInference {
         } else if (typeWithoutPtrOrRef instanceof AnnotationNamespaceType) {
             const namespace = declareClass.getDeclaringArkFile().getScene().getNamespace(typeWithoutPtrOrRef.getNamespaceSignature());
             if (namespace) {
-                const property = ModelUtils.findPropertyInNamespace(fieldName, namespace);
+                const property = CxxModelUtils.findPropertyInNamespace(fieldName, namespace);
                 const propertyType = this.parseArkExport2Type(property);
                 if (propertyType) {
                     propertyAndType = [property, propertyType];
@@ -1115,7 +1119,7 @@ export class TypeInference {
             return this.parseArkExport2Type(arkClass.getDeclaringArkFile().getExportInfoBy(DEFAULT)?.getArkExport());
         }
         let arkExport: ArkExport | null =
-            ModelUtils.findSymbolInFileWithName(baseName, arkClass) ??
+            CxxModelUtils.findSymbolInFileWithName(baseName, arkClass) ??
             CxxModelUtils.getArkExportInImportInfoWithName(baseName, arkClass.getDeclaringArkFile(), arkClass);
         if (!arkExport && !arkClass.getDeclaringArkFile().getImportInfoBy(baseName)) {
             arkExport = arkClass.getDeclaringArkFile().getScene().getSdkGlobal(baseName);
@@ -1133,7 +1137,7 @@ export class TypeInference {
         //look up from declared file, if not found then from imports
         const declaredArkFile = arkClass.getDeclaringArkFile();
         let arkExport: ArkExport | null =
-            ModelUtils.findSymbolInFileWithName(typeName, arkClass, true) ??
+            CxxModelUtils.findSymbolInFileWithName(typeName, arkClass, true) ??
             CxxModelUtils.getArkExportInImportInfoWithName(typeName, declaredArkFile, arkClass);
         //if not found or local in built-in then look up global in sdks
         if ((!arkExport || (arkExport instanceof Local && declaredArkFile.getProjectName() === SdkUtils.BUILT_IN_NAME)) &&
@@ -1341,7 +1345,7 @@ export class TypeInference {
             return null;
         }
         const matchedNamespace = im.getLazyExportInfo()?.getArkExport() as ArkNamespace;
-        const foundMethod = ModelUtils.findPropertyInNamespace(methodName, matchedNamespace);
+        const foundMethod = CxxModelUtils.findPropertyInNamespace(methodName, matchedNamespace);
         if (foundMethod instanceof ArkMethod) {
             let signature = foundMethod.matchMethodSignature(expr.getArgs());
             TypeInference.inferSignatureReturnType(signature, foundMethod);

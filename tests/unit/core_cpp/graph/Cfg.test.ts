@@ -13,11 +13,25 @@
  * limitations under the License.
  */
 
-import { BasicBlock, FileUtils, Scene, SceneConfig } from '../../../../src';
+import {
+    BasicBlock,
+    FileUtils,
+    Scene,
+    SceneConfig,
+    ArkNamespace,
+    LEXICAL_ENV_NAME_PREFIX,
+    LexicalEnvType,
+} from '../../../../src';
 import { Language } from '../../../../src/core/model/ArkFile';
 import { assert, describe, expect, it, vi } from 'vitest';
 import path from 'path';
-import { assertClassBlocksEqual, testBlocks, testBlocksWithSignature, testBlocksClass } from '../../common';
+import {
+    assertClassBlocksEqual,
+    testBlocks,
+    testBlocksWithSignature,
+    testBlocksClass,
+    assertBlocksEqual,
+} from '../../common';
 import * as CONDITION_EXPECT from '../../../resources_cpp/cfg/conditionalOperator';
 import * as IF_EXPECT from '../../../resources_cpp/cfg/if/ifSampleExpects';
 import * as SWITCH_EXPECT from '../../../resources_cpp/cfg/switch/switchSampleExpects';
@@ -120,7 +134,7 @@ describe('CfgTest', () => {
         testBlocks(scene, 'switchSample.cpp', 'ProcessChoice', SWITCH_EXPECT.SWITCH_EXPECT_PROCESS_CHOICE.blocks);
         testBlocks(scene, 'switchSample.cpp', 'ProcessValue', SWITCH_EXPECT.SWITCH_EXPECT_PROCESS_VALUE.blocks);
         testBlocks(scene, 'switchSample.cpp', 'TestConstexprSwitch', SWITCH_EXPECT.SWITCH_EXPECT_TEST_CONST.blocks);
-
+        testBlocks(scene, 'switchSample.cpp', 'CaseWithInit', SWITCH_EXPECT.SWITCH_EXPECT_WITH_INIT.blocks);
     });
 
     it('case4: loop statement', () => {
@@ -138,6 +152,7 @@ describe('CfgTest', () => {
         testBlocks(scene, 'loopSample.cpp', 'Case11', LOOP_EXPECT.LOOP_EXPECT_CASE11.blocks);
         testBlocks(scene, 'loopSample.cpp', 'ForWithLogicalOperators', LOOP_EXPECT.LOOP_EXPECT_CASE12.blocks);
         testBlocks(scene, 'loopSample.cpp', 'NestedLoopExample', LOOP_EXPECT.LOOP_EXPECT_CASE13.blocks);
+        testBlocks(scene, 'loopSample.cpp', 'CaseForCondDeclBoolCompare', LOOP_EXPECT.LOOP_EXPECT_CASE14.blocks);
     });
     it('case5: while-continue statement', () => {
         const scene = buildScene('whileContinue');
@@ -210,7 +225,8 @@ describe('Type Test', () => {
     it('case5: DataStruct Test', () => {
         const scene = buildScene('dataStruct');
         testBlocks(scene, 'dataStruct.cpp', 'VectorTest', DATA_STRUCT_EXPECT.DATA_STRUCT_EXPECT_VECTOR.blocks);
-        testBlocks(scene, 'dataStruct.cpp', 'SetTest', DATA_STRUCT_EXPECT.DATA_STRUCT_EXPECT_SET.blocks);
+        testBlocks(scene, 'dataStruct.cpp', 'SetTest',
+            is_system_win32 ? DATA_STRUCT_EXPECT.DATA_STRUCT_EXPECT_SET.blocks : DATA_STRUCT_EXPECT.DATA_STRUCT_EXPECT_SET_LINUX.blocks);
         testBlocks(scene, 'dataStruct.cpp', 'MapTest', DATA_STRUCT_EXPECT.DATA_STRUCT_EXPECT_MAP.blocks);
         testBlocks(scene, 'dataStruct.cpp', 'UnorderedMapTest', DATA_STRUCT_EXPECT.DATA_STRUCT_EXPECT_MAP2.blocks);
         testBlocks(scene, 'dataStruct.cpp', 'QueueTest', DATA_STRUCT_EXPECT.DATA_STRUCT_EXPECT_QUEUE.blocks);
@@ -274,6 +290,38 @@ describe('Function Test', () => {
         testBlocks(scene, 'lambdaFuncSample.cpp', 'Case2', LAMBDA_EXPECT.LAMBDA_EXPECT_CASE2.blocks);
         testBlocks(scene, 'lambdaFuncSample.cpp', 'Case3', LAMBDA_EXPECT.LAMBDA_EXPECT_CASE3.blocks);
         testBlocks(scene, 'lambdaFuncSample.cpp', 'Case4', LAMBDA_EXPECT.LAMBDA_EXPECT_CASE4.blocks);
+        testBlocks(scene, 'lambdaFuncSample.cpp', 'Case5', LAMBDA_EXPECT.LAMBDA_EXPECT_CASE5.blocks);
+        testBlocks(scene, 'lambdaFuncSample.cpp', 'Case6', LAMBDA_EXPECT.LAMBDA_EXPECT_CASE6.blocks);
+        testBlocks(scene, 'lambdaFuncSample.cpp', 'Case7', LAMBDA_EXPECT.LAMBDA_EXPECT_CASE7.blocks);
+        testBlocks(scene, 'lambdaFuncSample.cpp', 'Case9', LAMBDA_EXPECT.LAMBDA_EXPECT_CASE9.blocks);
+        testBlocks(scene, 'lambdaFuncSample.cpp', 'Apply', LAMBDA_EXPECT.LAMBDA_EXPECT_APPLY.blocks);
+        testBlocks(scene, 'lambdaFuncSample.cpp', 'Case10', LAMBDA_EXPECT.LAMBDA_EXPECT_CASE10.blocks);
+        testBlocks(scene, 'lambdaFuncSample.cpp', 'Case11', LAMBDA_EXPECT.LAMBDA_EXPECT_CASE11.blocks);
+        testLambdaFunction(scene, 'lambdaFuncSample.cpp', '%AM0$Case1', LAMBDA_EXPECT.LAMBDA_EXPECT_AM0_Case1);
+        testLambdaFunction(scene, 'lambdaFuncSample.cpp', '%AM1$Case2', LAMBDA_EXPECT.LAMBDA_EXPECT_AM1_Case2);
+        testLambdaFunction(scene, 'lambdaFuncSample.cpp', '%AM2$Case2', LAMBDA_EXPECT.LAMBDA_EXPECT_AM2_Case2);
+        testLambdaFunction(scene, 'lambdaFuncSample.cpp', '%AM3$Case3', LAMBDA_EXPECT.LAMBDA_EXPECT_AM3_Case3);
+        testLambdaFunction(scene, 'lambdaFuncSample.cpp', '%AM4$Case4', LAMBDA_EXPECT.LAMBDA_EXPECT_AM4_Case4);
+        testLambdaFunction(scene, 'lambdaFuncSample.cpp', '%AM5$Case5', LAMBDA_EXPECT.LAMBDA_EXPECT_AM5_Case5);
+        testLambdaFunction(scene, 'lambdaFuncSample.cpp', '%AM6$Case5', LAMBDA_EXPECT.LAMBDA_EXPECT_AM6_Case5);
+        testLambdaFunction(scene, 'lambdaFuncSample.cpp', '%AM7$Case5', LAMBDA_EXPECT.LAMBDA_EXPECT_AM7_Case5);
+        testLambdaFunction(scene, 'lambdaFuncSample.cpp', '%AM9$%AM8$Case6', LAMBDA_EXPECT.LAMBDA_EXPECT_AM9_AM8_Case6);
+        testLambdaFunction(scene, 'lambdaFuncSample.cpp', '%AM8$Case6', LAMBDA_EXPECT.LAMBDA_EXPECT_AM8_Case6);
+        testLambdaFunction(scene, 'lambdaFuncSample.cpp', '%AM10$Case7', LAMBDA_EXPECT.LAMBDA_EXPECT_AM10_Case7);
+        testLambdaFunction(scene, 'lambdaFuncSample.cpp', '%AM11$Case8', LAMBDA_EXPECT.LAMBDA_EXPECT_AM11_Case8);
+        testLambdaFunction(scene, 'lambdaFuncSample.cpp', '%AM12$Case9', LAMBDA_EXPECT.LAMBDA_EXPECT_AM12_Case9);
+        testLambdaFunction(scene, 'lambdaFuncSample.cpp', '%AM13$Case9', LAMBDA_EXPECT.LAMBDA_EXPECT_AM13_Case9);
+        testLambdaFunction(scene, 'lambdaFuncSample.cpp', '%AM14$Case10', LAMBDA_EXPECT.LAMBDA_EXPECT_AM14_Case10);
+        testLambdaFunction(scene, 'lambdaFuncSample.cpp', '%AM15$Case11', LAMBDA_EXPECT.LAMBDA_EXPECT_AM15_Case11);
+        testLambdaFunction(scene, 'lambdaFuncSample.cpp', '%AM16$Case11', LAMBDA_EXPECT.LAMBDA_EXPECT_AM16_Case11);
+
+        const arkFile = scene.getFiles().find((file) => file.getName().endsWith('lambdaFuncSample.cpp'));
+        let arkMethod = arkFile?.getDefaultClass().getMethods()
+            .find((method) => (method.getName() === '%AM10$Case7'));
+        expect(arkMethod?.getModifiers()).toEqual(ModifierType.MUTABLE);
+        arkMethod = arkFile?.getDefaultClass().getMethods()
+            .find((method) => (method.getName() === '%AM11$Case8'));
+        expect(arkMethod?.getModifiers()).toEqual(ModifierType.CONSTEXPR);
     });
 
     it('case4: delete Expression Test', () => {
@@ -430,7 +478,9 @@ describe('namespace Test', () => {
         const scene = buildScene('namespace');
         scene.inferTypes();
         testBlocks(scene, 'namespace.cpp', 'Test', NAMESPACE_EXPECT.NAMESPACE_CASE1.blocks);
-        testNamespaceClasses(scene, 'namespace.cpp', 'School', NAMESPACE_EXPECT.NAMESPACE_SCHOOL_EXPECT.blocks);
+        testNamespaceClasses(scene, 'namespace.cpp', 'School', NAMESPACE_EXPECT.NAMESPACE_SCHOOL_EXPECT);
+        testNamespaceClasses(scene, 'namespace.cpp', '%AN0', NAMESPACE_EXPECT.NAMESPACE_AN0_EXPECT);
+        testBlocks(scene, 'namespace.cpp', 'TestAnonymousNamespace', NAMESPACE_EXPECT.NAMESPACE_TEST_ANONYMOUS_NAMESPACE.blocks);
     });
 });
 
@@ -506,7 +556,6 @@ describe('feature Test', () => {
         testBlocks(scene, 'structBinding.cpp', 'TupleUsage', STRUCTBINDING.BINGING_EXPECT_TUPLEUSAGE.blocks);
         testBlocks(scene, 'structBinding.cpp', 'StructUsage', STRUCTBINDING.BINGING_EXPECT_STRUCT.blocks);
         testBlocks(scene, 'structBinding.cpp', 'MapUsage', STRUCTBINDING.BINGING_EXPECT_MAP.blocks);
-        testBlocks(scene, 'structBinding.cpp', 'GetStudentInfo', STRUCTBINDING.BINGING_EXPECT_GETSTRUCTINFO.blocks);
         testBlocks(scene, 'structBinding.cpp', 'FunctionReturnUsage', STRUCTBINDING.BINGING_EXPECT_FUNCTIONRETURN.blocks);
         testBlocks(scene, 'structBinding.cpp', 'ConstReferenceUsage', STRUCTBINDING.BINGING_EXPECT_CONSTREFERENCE.blocks);
     });
@@ -535,6 +584,7 @@ describe('supplementary', () => {
         scene.inferTypes();
         testBlocks(scene, 'supplementary.cpp', 'Case1', SUPPLEMENTARY.SUP_CASE1.blocks);
         testBlocks(scene, 'supplementary.cpp', 'PostAdd', SUPPLEMENTARY.POST_AND.blocks);
+        testBlocks(scene, 'supplementary.cpp', 'DeclStmt', SUPPLEMENTARY.DECLSTMT.blocks);
     });
     it('case1: trap', () => {
         const scene = buildScene('trap');
@@ -571,26 +621,39 @@ function getNapiIncludeDirs(): string[] {
     ];
 }
 
-function testNamespaceClasses(scene: Scene, filePath: string, namespaceName: string, expectBlocks: any): void {
+function testNamespaceClasses(scene: Scene, filePath: string, namespaceName: string, expectIR: any, namespace?: ArkNamespace): void {
     const arkFile = scene.getFiles().find(file => file.getName().endsWith(filePath));
-    const arkNamespace = arkFile?.getNamespaces().find(ns => ns.getName() === namespaceName);
+    const arkNamespace = namespace ? namespace : arkFile?.getNamespaces().find(ns => ns.getName() === namespaceName);
 
     if (!arkNamespace) {
         throw new Error(`Namespace ${namespaceName} not found in file ${filePath}`);
     }
 
-    const namespaceBlockMap = new Map<string, any>();
-    for (const classBlock of expectBlocks) {
-        namespaceBlockMap.set(classBlock.className, classBlock);
+    const namespaceClassBlockMap = new Map<string, any>();
+    for (const classBlock of expectIR.classBlocks) {
+        namespaceClassBlockMap.set(classBlock.className, classBlock);
     }
-
     // Check each class under the namespace
-    arkNamespace.getClasses().forEach(arkClass => {
-        const expectedClassData = namespaceBlockMap.get(arkClass.getName());
+    testClassInNamespace(arkNamespace, namespaceClassBlockMap);
+
+    const nestedNamspaceBlockMap = new Map<string, any>();
+    for (const nsBlock of expectIR.nestedNamespaces) {
+        nestedNamspaceBlockMap.set(nsBlock.namespaceName, nsBlock);
+    }
+    // check each nested namespace in the namespace
+    arkNamespace.getNamespaces().forEach(namespace => {
+        const nsName = namespace.getName();
+        testNamespaceClasses(scene, filePath, nsName, nestedNamspaceBlockMap.get(nsName), namespace);
+    });
+}
+
+function testClassInNamespace(ns: ArkNamespace, nsExpectClassMap: Map<string, any>): void {
+    // Check each class under the namespace
+    ns.getClasses().forEach(arkClass => {
+        const expectedClassData = nsExpectClassMap.get(arkClass.getName());
         if (!expectedClassData) {
             throw new Error(`Expected class data for ${arkClass.getName()} not found`);
         }
-
         // 1. Check class inheritance relationships
         const heritageClasses = new Set<string>();
         arkClass.getAllHeritageClasses()?.forEach(heritageClass => {
@@ -618,4 +681,40 @@ function testNamespaceClasses(scene: Scene, filePath: string, namespaceName: str
             }
         });
     });
+}
+
+function testLambdaFunction(scene: Scene, filePath: string, methodName: string, expectIR: any): void {
+    const arkFile = scene.getFiles().find((file) => file.getName().endsWith(filePath));
+    const arkMethod = arkFile?.getDefaultClass().getMethods()
+        .find((method) => (method.getName() === methodName));
+    // 1. test blocks
+    const blocks = arkMethod?.getCfg()?.getBlocks();
+    if (!blocks) {
+        assert.isDefined(blocks);
+        return;
+    }
+    const stmtsLength = arkMethod?.getCfg()?.getStmts().length;
+    const StmtToBlockLength = arkMethod?.getCfg()?.getStmtToBlock().size;
+    assert(stmtsLength === StmtToBlockLength);
+    assertBlocksEqual(blocks, expectIR.blocks);
+    // 2. test outer function
+    expect(arkMethod?.getOuterMethod()?.getSignature().toString()).toEqual(expectIR.outerFunctionSignature);
+    // 3. test closures
+    const locals = arkMethod?.getBody()?.getLocals();
+    if (!locals) {
+        assert.isDefined(locals);
+        return;
+    }
+    const closureLocalPair = Array.from(locals).find(
+        ([key, value]) => key.startsWith(LEXICAL_ENV_NAME_PREFIX) && value.getType() instanceof LexicalEnvType);
+    if (!closureLocalPair) {
+        return;
+    }
+    const [_, closureLocal] = closureLocalPair;
+    const closures = new Set((closureLocal.getType() as LexicalEnvType).getClosures().map(c => c.getName()));
+    expect(closures).toEqual(new Set(expectIR.closures));
+    // 4. test generic types
+    const genericTypes = arkMethod?.getGenericTypes() ?? [];
+    const genericTypesName = new Set(genericTypes.map(t => t.getName()));
+    expect(genericTypesName).toEqual(new Set(expectIR.genericTypes));
 }

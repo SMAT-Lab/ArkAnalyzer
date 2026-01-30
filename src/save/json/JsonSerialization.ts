@@ -123,14 +123,13 @@ import {
     polymorphic,
 } from './JsonDto';
 import {
-    ArkArrayTypeTraitExpr,
     ArkCxxCastExpr,
     ArkCxxDeleteArrayExpr,
     ArkCxxFolderExpr,
     ArkCxxInitArrayExpr,
     ArkCxxNewArrayExpr, ArkCxxNormalBinOpExpr,
     ArkNoExpectExpr,
-    ArkSizeOfExpr,
+    ArkCxxUnaryExpr,
     ArkTypeIdExpr,
 } from '../../cpp_frontend/base/Expr';
 import {
@@ -688,19 +687,19 @@ export function serializeValue(value: Value): ValueDto {
         return polymorphic('ArkCxxInitArrayExpr', {
             op: serializeValue(value.getOp()),
         });
-    } else if (value instanceof ArkSizeOfExpr) {
-        return polymorphic('ArkSizeOfExpr', {
-            op: serializeValue(value.getOp()),
+    } else if (value instanceof ArkCxxUnaryExpr) {
+        let op = value.getOp();
+        if (op instanceof Type) {
+            return polymorphic('ArkCxxUnaryExpr', {
+                op: serializeType(op),
+            });
+        }
+        return polymorphic('ArkCxxUnaryExpr', {
+            op: serializeValue(op),
         });
     } else if (value instanceof ArkCxxCastExpr) {
         return polymorphic('ArkCxxCastExpr', {
             cxxCastType: value.getCxxCastType(),
-        });
-    } else if (value instanceof ArkArrayTypeTraitExpr) {
-        return polymorphic('ArkArrayTypeTraitExpr', {
-            op: serializeValue(value.getOp()),
-            dimensionOrder: value.getDimensionOrder(),
-            func: value.getFunc(),
         });
     } else if (value instanceof ArkTypeIdExpr) {
         return polymorphic('ArkTypeIdExpr', {

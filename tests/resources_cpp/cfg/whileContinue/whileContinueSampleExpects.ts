@@ -74,7 +74,11 @@ export const COMMA_EXPRESSION = {
         },
         {
             id: 2,
-            stmts: ['staticinvoke <@%unk/%unk: .cout()>(\'i = \', i)'],
+            stmts: [
+                '%1 = staticinvoke <@%unk/%unk: .operator<<()>(cout, \'i = \')',
+                '%2 = staticinvoke <@%unk/%unk: .operator<<()>(%1, i)',
+                'staticinvoke <@%unk/%unk: .operator<<()>(%2, endl)',
+            ],
             preds: [1],
             succes: [1],
         },
@@ -102,7 +106,9 @@ export const EMPTY_DO_WHILE = {
         {
             id: 2,
             stmts: [
-                'staticinvoke <@%unk/%unk: .cout()>(\'Final count: \', count)',
+                '%0 = staticinvoke <@%unk/%unk: .operator<<()>(cout, \'Final count: \')',
+                '%1 = staticinvoke <@%unk/%unk: .operator<<()>(%0, count)',
+                'staticinvoke <@%unk/%unk: .operator<<()>(%1, endl)',
                 'return',
             ],
             preds: [1],
@@ -132,7 +138,10 @@ export const CONTINUE_DO_WHILE = {
         {
             id: 3,
             stmts: [
-                'staticinvoke <@%unk/%unk: .cout()>(\'After continue: \', i, \' (odd number)\')',
+                '%1 = staticinvoke <@%unk/%unk: .operator<<()>(cout, \'After continue: \')',
+                '%2 = staticinvoke <@%unk/%unk: .operator<<()>(%1, i)',
+                '%3 = staticinvoke <@%unk/%unk: .operator<<()>(%2, \' (odd number)\')',
+                'staticinvoke <@%unk/%unk: .operator<<()>(%3, endl)',
             ],
             preds: [1],
             succes: [2],
@@ -157,7 +166,11 @@ export const CONTINUE_WHILE_WITH_LOGICAL_OPERATORS = {
         {
             id: 2,
             stmts: [
-                'staticinvoke <@%unk/%unk: .cout()>(\'a = \', a, \', b = \', b)',
+                '%0 = staticinvoke <@%unk/%unk: .operator<<()>(cout, \'a = \')',
+                '%1 = staticinvoke <@%unk/%unk: .operator<<()>(%0, a)',
+                '%2 = staticinvoke <@%unk/%unk: .operator<<()>(%1, \', b = \')',
+                '%3 = staticinvoke <@%unk/%unk: .operator<<()>(%2, b)',
+                'staticinvoke <@%unk/%unk: .operator<<()>(%3, endl)',
                 'if a < 5',
             ],
             preds: [7, 8],
@@ -192,7 +205,11 @@ export const CONTINUE_DO_WHILE_WITH_LOGICAL_OPERATORS = {
         {
             id: 1,
             stmts: [
-                'staticinvoke <@%unk/%unk: .cout()>(\'x = \', x, \', y = \', y)',
+                '%0 = staticinvoke <@%unk/%unk: .operator<<()>(cout, \'x = \')',
+                '%1 = staticinvoke <@%unk/%unk: .operator<<()>(%0, x)',
+                '%2 = staticinvoke <@%unk/%unk: .operator<<()>(%1, \', y = \')',
+                '%3 = staticinvoke <@%unk/%unk: .operator<<()>(%2, y)',
+                'staticinvoke <@%unk/%unk: .operator<<()>(%3, endl)',
                 'if x < 3',
             ],
             preds: [0, 6, 7],

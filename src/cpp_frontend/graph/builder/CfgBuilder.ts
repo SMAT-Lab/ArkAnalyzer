@@ -31,7 +31,7 @@ import { ModifierType } from '../../../core/model/ArkBaseModel';
 import { BlockBuilder as CoreBlockBuilder, Catch, TextError, Variable, Scope } from '../../../core/graph/builder/CfgBuilder';
 import { ModelUtils } from '../../../core/common/ModelUtils';
 import { CONSTRUCTOR_NAME, PROMISE } from '../../../core/common/TSConst';
-import { CxxAstNode, CxxTranslationUnit } from '../../ast/ArkCxxAstNode';
+import { astKind, CxxAstNode, CxxTranslationUnit } from '../../ast/ArkCxxAstNode';
 import { CxxLoopBuilder } from './LoopBuilder';
 import { CxxIfBuilder } from './IfBuilder';
 
@@ -253,7 +253,7 @@ export class CfgBuilder {
         ifstm.condition = c.inner[0].code;
         ifstm.code = 'if (' + ifstm.condition + ')';
         if (c.inner.length >= 2) { // length >= 2 means there is a condition and a body
-            if (c.inner[1].kind.toString() === 'CompoundStmt') {
+            if (c.inner[1].kind === astKind.CompoundStmt) {
                 // Body is a braced block { ... }
                 this.walkAST(ifstm, ifexit, [...c.inner[1].inner]);
             } else {
@@ -265,9 +265,11 @@ export class CfgBuilder {
             this.walkAST(ifstm, ifexit, [c.inner[0]]);
         }
         if (c.inner.length > 2) {
-            if (c.inner[2].kind.toString() === 'CompoundStmt') {
+            if (c.inner[2].kind === astKind.CompoundStmt) {
+                // Handle else here
                 this.walkAST(ifstm, ifexit, [...c.inner[2].inner]);
             } else {
+                // Handle else-if here
                 this.walkAST(ifstm, ifexit, [c.inner[2]]);
             }
         }
@@ -294,12 +296,12 @@ export class CfgBuilder {
         loopstm.condition = c.inner[0].code;
         loopstm.code = 'while (' + loopstm.condition + ')';
         if (c.inner.length >= 2) {
-            if (c.inner[1].kind.toString() === 'CompoundStmt') {
+            if (c.inner[1].kind === astKind.CompoundStmt) {
                 this.walkAST(loopstm, loopstm, [...c.inner[1].inner]);
             } else {
                 this.walkAST(loopstm, loopstm, [c.inner[1]]);
             }
-        } else if (c.inner.length === 1 && c.inner[0].kind.toString() === 'CompoundStmt') {
+        } else if (c.inner.length === 1 && c.inner[0].kind.toString() === astKind.CompoundStmt) {
             this.walkAST(loopstm, loopstm, [c.inner[0]]);
         }
         if (!loopstm.nextF) {
@@ -332,7 +334,7 @@ export class CfgBuilder {
         loopstm.nextF = loopExit;
         loopExit.lasts.add(loopstm);
         loopstm.code = this.getPrefix(c.code, ' {\r\n');
-        if (c.inner[c.inner.length - 1].kind === 'CompoundStmt') {
+        if (c.inner[c.inner.length - 1].kind === astKind.CompoundStmt) {
             this.walkAST(loopstm, loopstm, [...c.inner[c.inner.length - 1].inner]);
         } else {
             this.walkAST(loopstm, loopstm, [c.inner[c.inner.length - 1]]);
@@ -391,11 +393,9 @@ export class CfgBuilder {
     private sliceCaseDefaultNode(node: CxxAstNode, clauses: CxxAstNode[]): void {
         if (node.kind === 'CaseStmt') {
             for (let i = 0; i < node.inner.length; i++) {
-                let isCaseOrDefault = node.inner[i].kind === 'CaseStmt' || node.inner[i].kind === 'DefaultStmt';
+                let isCaseOrDefault = node.inner[i].kind === astKind.CaseStmt || node.inner[i].kind === astKind.DefaultStmt;
                 if (isCaseOrDefault) {
-                    let caseClause = JSON.parse(JSON.stringify(node));
-                    caseClause.inner = caseClause.inner.slice(0, i);
-                    clauses.push(caseClause);
+                    clauses.push(node);
                     this.sliceCaseDefaultNode(node.inner[i], clauses);
                 }
                 if (i === node.inner.length - 1 && !isCaseOrDefault) {
@@ -409,21 +409,22 @@ export class CfgBuilder {
     }
 
     // Convert cpp's case-default ast format to TS's caseClause/defaultClause
-    private getCaseDefClauseAsts(switchNode: CxxAstNode):CxxAstNode[] {
+    private getCaseDefClauseAsts(switchNode: CxxAstNode): CxxAstNode[] {
         // When cpp parses case: without statements and no break,
         // it will treat the following case/default as inner nodes of that case,
         // so the original ast needs to be split into individual cases and defaults
+        let length = switchNode.inner.length;
         let tempClauses: CxxAstNode[] = [];
-        for (let node of switchNode.inner[1].inner) {
+        for (let node of switchNode.inner[length - 1].inner) {
             this.sliceCaseDefaultNode(node, tempClauses);
         }
         // When there are no case brackets, case and break/continue are separate nodes in cpp,
         // here we add the break/continue nodes as inner members of case or default nodes
         return tempClauses.reduce((acc: CxxAstNode[], curr: CxxAstNode, idx: number, arr: CxxAstNode[]) => {
             if (['CaseStmt', 'DefaultStmt'].includes(curr.kind)) {
-                curr.parent = switchNode.inner[1];
+                curr.parent = switchNode.inner[length - 1];
                 // Reconstruct the syntax tree structure
-                while (idx + 1 < arr.length && !['CaseStmt', 'DefaultStmt'].includes(arr[idx + 1].kind)) {
+                while (idx + 1 < arr.length && !([astKind.CaseStmt, astKind.DefaultStmt] as string[]).includes(arr[idx + 1].kind)) {
                     arr[idx + 1].parent = curr;
                     curr.inner.push(arr[idx + 1]);
                     idx++;
@@ -435,6 +436,7 @@ export class CfgBuilder {
     }
 
     ASTNodeSwitchStatement(c: CxxAstNode, lastStatement: StatementBuilder, scopeID: number): StatementBuilder {
+        // In the switchNode node, inner [length-1] is Case related and inner [length-2] is a switch variable, which may be preceded by a declaration statement
         this.breakin = 'switch';
         let switchstm = new SwitchStatementBuilder('switchStatement', '', c, scopeID);
         this.judgeLastType(switchstm, lastStatement);
@@ -444,10 +446,10 @@ export class CfgBuilder {
         switchExit.lasts.add(switchstm);
         switchstm.code = 'switch (' + c.inner[0].code + ')';
         let lastCaseExit: StatementBuilder | null = null;
-        c.inner[1].inner = this.getCaseDefClauseAsts(c);
-
-        for (let i = 0; i < c.inner[1].inner.length; i++) {
-            const clause = c.inner[1].inner[i];
+        c.inner[c.inner.length - 1].inner = this.getCaseDefClauseAsts(c);
+        const astNodeCase = c.inner[c.inner.length - 1];
+        for (let i = 0; i < astNodeCase.inner.length; i++) {
+            const clause = astNodeCase.inner[i];
             let casestm: StatementBuilder;
             let caseBody: CxxAstNode[] = [...clause.inner];
             if (clause.kind.toString() === 'CaseStmt') {
@@ -477,7 +479,7 @@ export class CfgBuilder {
                 casestm.next?.lasts.add(lastCaseExit);
             }
             lastCaseExit = caseExit;
-            if (i === c.inner[1].inner.length - 1) {
+            if (i === astNodeCase.inner.length - 1) {
                 caseExit.next = switchExit;
                 switchExit.lasts.add(caseExit);
             }
@@ -503,12 +505,12 @@ export class CfgBuilder {
             while (childInner.inner && childInner.inner.length > 0) {
                 const n0 = childInner.inner[0];
                 const innerKind = n0?.kind;
-                if (innerKind === 'DeclRefExpr') {
+                if (innerKind === astKind.DeclRefExpr) {
                     // 3) Safely read referencedDecl? .name； Use n0. name/n0. code/empty string at the bottom
                     caller = n0.referencedDecl?.name || n0.name || n0.code || '';
                     break;
                 }
-                if (innerKind === 'ImplicitCastExpr') {
+                if (innerKind === astKind.ImplicitCastExpr) {
                     childInner = n0; // Continue to traverse downward
                     continue;
                 }
@@ -638,9 +640,9 @@ export class CfgBuilder {
         let tryBlock: CxxAstNode | undefined = undefined;
         let catchBlockList: CxxAstNode[] = [];
         for (const node of c.inner) {
-            if (node.kind === 'CompoundStmt') {
+            if (node.kind === astKind.CompoundStmt) {
                 tryBlock = node;
-            } else if (node.kind === 'CXXCatchStmt') {
+            } else if (node.kind === astKind.CXXCatchStmt) {
                 catchBlockList.push(node);
             }
         }
@@ -692,10 +694,16 @@ export class CfgBuilder {
     }
 
     private hitsControlBoundaryBeforeRoot(node: CxxAstNode): boolean {
-        const CONTROL_BOUNDARY_KINDS = new Set([
-            'IfStmt', 'WhileStmt', 'DoStmt', 'ForStmt',
-            'CaseStmt', 'DefaultStmt', 'CXXTryStmt',
+        const CONTROL_BOUNDARY_KINDS = new Set<string>([
+            astKind.IfStmt,
+            astKind.WhileStmt,
+            astKind.DoStmt,
+            astKind.ForStmt,
+            astKind.CaseStmt,
+            astKind.DefaultStmt,
+            astKind.CXXTryStmt,
         ]);
+
         let p: CxxAstNode | null = node;
         const rootId = this.astRoot.id;
         while (p && p.id !== rootId) {
@@ -717,15 +725,15 @@ export class CfgBuilder {
             if (nodeKind === 'LabelStmt' && this.gotoStmtMap.get(innerNode.name) !== undefined) {
                 gotoLabel = false;
             }
-            if (gotoLabel && nodeKind !== 'CompoundStmt') { // Skip the code between goto and label in the code block
+            if (gotoLabel && nodeKind !== astKind.CompoundStmt) { // Skip the code between goto and label in the code block
                 continue;
             }
             lastStatement = this.handleASTStmtSuccession(innerNode, lastStatement, scope);
-            if (nodeKind === 'ReturnStmt') {
+            if (nodeKind === astKind.ReturnStmt) {
                 break;
-            } else if (nodeKind === 'BreakStmt' || nodeKind === 'ContinueStmt') {
+            } else if (nodeKind === astKind.BreakStmt || nodeKind === astKind.ContinueStmt) {
                 return;
-            } else if (nodeKind === 'GotoStmt') {
+            } else if (nodeKind === astKind.GotoStmt) {
                 if (this.hitsControlBoundaryBeforeRoot(innerNode)) {
                     return;
                 }
@@ -738,90 +746,89 @@ export class CfgBuilder {
     }
 
     handleASTStmtSuccession(innerNode: CxxAstNode, lastStatement: StatementBuilder, scope: Scope): StatementBuilder {
-        let nodeKind = innerNode.kind.toString();
         let s: StatementBuilder;
-        switch (nodeKind) {
-            case 'AtomicCallExpr':
-            case 'BinaryOperator':
-            case 'CallExpr':
-            case 'CompoundAssignOperator':
-            case 'CXXConstructExpr':
-            case 'CXXCtorInitializer':
-            case 'CXXDeleteExpr':
-            case 'CXXOperatorCallExpr':
-            case 'CXXThrowExpr':
-            case 'DeclStmt':
-            case 'RecoveryExpr':
-            case 'TypedefDecl':
-            case 'TypeAliasDecl':
-            case 'TypeAliasTemplateDecl':
-            case 'UnaryOperator':
-            case 'VarDecl':
+
+        // 直接使用 innerNode.kind 进行 switch
+        switch (innerNode.kind) {
+            case astKind.AtomicCallExpr:
+            case astKind.BinaryOperator:
+            case astKind.CallExpr:
+            case astKind.CompoundAssignOperator:
+            case astKind.CXXConstructExpr:
+            case astKind.CXXCtorInitializer:
+            case astKind.CXXDeleteExpr:
+            case astKind.CXXOperatorCallExpr:
+            case astKind.CXXThrowExpr:
+            case astKind.DeclStmt:
+            case astKind.RecoveryExpr:
+            case astKind.TypedefDecl:
+            case astKind.TypeAliasDecl:
+            case astKind.TypeAliasTemplateDecl:
+            case astKind.UnaryOperator:
+            case astKind.VarDecl:
                 s = new StatementBuilder('statement', innerNode.code, innerNode, scope.id);
                 this.judgeLastType(s, lastStatement);
                 lastStatement = s;
                 break;
-            case 'BreakStmt':
+            case astKind.BreakStmt:
                 this.ASTNodeBreakStatement(innerNode, lastStatement);
                 break;
-            case 'CompoundStmt':
+            case astKind.CompoundStmt:
                 let blockExit = new StatementBuilder('blockExit', '', innerNode, scope.id);
                 this.exits.push(blockExit);
                 this.walkAST(lastStatement, blockExit, [...innerNode.inner]);
                 lastStatement = blockExit;
                 break;
-            case 'ContinueStmt':
+            case astKind.ContinueStmt:
                 const lastLoop = this.loopStack[this.loopStack.length - 1];
                 this.judgeLastType(lastLoop, lastStatement);
                 lastLoop.lasts.add(lastStatement);
                 break;
-            case 'CXXMemberCallExpr':
+            case astKind.CXXMemberCallExpr:
                 lastStatement = this.ASTNodeCXXMemberCallExpr(innerNode, lastStatement, scope.id);
                 break;
-            case 'CXXForRangeStmt':
-            case 'ForStmt':
+            case astKind.CXXForRangeStmt:
+            case astKind.ForStmt:
                 lastStatement = this.ASTNodeForStatement(innerNode, lastStatement, scope.id);
                 break;
-            case 'CXXTryStmt':
+            case astKind.CXXTryStmt:
                 lastStatement = this.ASTNodeTryStatement(innerNode, lastStatement, scope.id);
                 break;
-            case 'DoStmt':
+            case astKind.DoStmt:
                 lastStatement = this.ASTNodeDoStatement(innerNode, lastStatement, scope.id);
                 break;
-            case 'ExprWithCleanups':
-                s = new StatementBuilder('statement', 'ExprWithCleanups', innerNode, scope.id);
-                this.judgeLastType(s, lastStatement);
-                lastStatement = s;
+            case astKind.ExprWithCleanups:
+                lastStatement = this.ASTNodeImplicitCastExpr(innerNode, lastStatement, scope);
                 break;
-            case 'GotoStmt':
-            case 'IndirectGotoStmt':
+            case astKind.GotoStmt:
+            case astKind.IndirectGotoStmt:
                 this.ASTNodeGotoStatement(innerNode, lastStatement, scope.id);
                 break;
-            case 'IfStmt':
+            case astKind.IfStmt:
                 lastStatement = this.ASTNodeIfStatement(innerNode, lastStatement, scope.id);
                 break;
-            case 'LabelStmt':
+            case astKind.LabelStmt:
                 lastStatement = this.ASTNodeLabelStatement(innerNode, lastStatement, scope.id);
                 break;
-            case 'ReturnStmt':
+            case astKind.ReturnStmt:
                 s = new StatementBuilder('returnStatement', innerNode.code, innerNode, scope.id);
                 this.judgeLastType(s, lastStatement);
                 lastStatement = s;
                 break;
-            case 'SwitchStmt':
+            case astKind.SwitchStmt:
                 lastStatement = this.ASTNodeSwitchStatement(innerNode, lastStatement, scope.id);
                 break;
-            case 'WhileStmt':
+            case astKind.WhileStmt:
                 lastStatement = this.ASTNodeWhileStatement(innerNode, lastStatement, scope.id);
                 break;
-            case 'NullStmt':
+            case astKind.NullStmt:
                 break;
-            case 'ParmDecl':
-                s = new StatementBuilder('statement', 'ParmDecl', innerNode, scope.id);
+            case astKind.ParmVarDecl:
+                s = new StatementBuilder('statement', 'ParmVarDecl', innerNode, scope.id);
                 this.judgeLastType(s, lastStatement);
                 lastStatement = s;
                 break;
-            case 'ImplicitCastExpr':
+            case astKind.ImplicitCastExpr:
                 lastStatement = this.ASTNodeImplicitCastExpr(innerNode, lastStatement, scope);
                 break;
             default:
@@ -1084,7 +1091,7 @@ export class CfgBuilder {
         if (notReturnStmts.length === 1 && notReturnStmts[0].block) {
             let p: CxxAstNode | null = notReturnStmts[0].astNode;
             while (p && p.id !== this.astRoot.id) {
-                if (p.kind === 'CXXTryStmt' || p.kind === 'SwitchStmt') {
+                if (p.kind === astKind.CXXTryStmt || p.kind === astKind.SwitchStmt) {
                     TryOrSwitchExit = true;
                     break;
                 }
@@ -1181,16 +1188,21 @@ export class CfgBuilder {
         let stmts: CxxAstNode[] = [];
         if (this.astRoot.inner) {
             for (let i = 0; i < this.astRoot.inner.length; i++) {
-                if (this.astRoot.kind === 'CXXConstructorDecl' && ['CXXConstructExpr', 'CXXCtorInitializer'].includes(this.astRoot.inner[i].kind)) {
+                const allowedInnerKinds: string[] = [
+                    astKind.CXXConstructExpr,
+                    astKind.CXXCtorInitializer
+                ];
+
+                if (this.astRoot.kind === astKind.CXXConstructorDecl && allowedInnerKinds.includes(this.astRoot.inner[i].kind)) {
                     stmts.push(this.astRoot.inner[i]);
                 }
                 const length = this.astRoot.inner[i].inner.length;
-                if (this.astRoot.inner[i].kind === 'ParmDecl' && length > 0 &&
-                    this.astRoot.inner[i].inner[length - 1].kind !== 'TypeRef') {
+                if (this.astRoot.inner[i].kind === astKind.ParmVarDecl && length > 0 &&
+                    this.astRoot.inner[i].inner[length - 1].kind !== astKind.TypeRef) {
                     stmts.push(this.astRoot.inner[i]);
                     continue;
                 }
-                if (this.astRoot.inner[i].kind === 'CompoundStmt') {
+                if (this.astRoot.inner[i].kind === astKind.CompoundStmt) {
                     stmts.push(...this.astRoot.inner[i].inner);
                     break;
                 }
@@ -1201,17 +1213,27 @@ export class CfgBuilder {
 
     buildCfgBuilder(): void {
         let stmts: CxxAstNode[] = [];
-        if (['TranslationUnit', 'Namespace'].includes(this.astRoot.kind)) {
+        const translationUnitKinds: string[] = [
+            astKind.TranslationUnitDecl,
+            astKind.NamespaceDecl
+        ];
+
+        const functionKinds: string[] = [
+            astKind.FunctionDecl,
+            astKind.CXXMethodDecl,
+            astKind.CXXConstructorDecl,
+            astKind.LambdaExpr,
+            astKind.FunctionTemplateDecl,
+            astKind.CXXDestructorDecl
+        ];
+
+        if (translationUnitKinds.includes(this.astRoot.kind)) {
             stmts = [...this.astRoot.inner];
-        } else if (['FunctionDecl', 'CXXMethodDecl', 'CXXConstructorDecl', 'LambdaExpr', 'FunctionTemplate', 'CXXDestructorDecl'].includes(
-                this.astRoot.kind)) {
+        } else if (functionKinds.includes(this.astRoot.kind)) {
             stmts = this.getFuncBodyStmt();
         }
-        if (!ModelUtils.isArkUIBuilderMethod(this.declaringMethod)) {
-            this.walkAST(this.entry, this.exit, stmts);
-        } else {
-            this.handleBuilder(stmts);
-        }
+
+        this.walkAST(this.entry, this.exit, stmts);
 
         this.addReturnInEmptyMethod();
         this.deleteExit();
@@ -1221,18 +1243,6 @@ export class CfgBuilder {
         this.blocks = this.blocks.filter(b => b.stmts.length !== 0);
         this.buildBlocksNextLast();
         this.addReturnStmt();
-    }
-
-    private handleBuilder(stmts: CxxAstNode[]): void {
-        let lastStmt = this.entry;
-        for (const stmt of stmts) {
-            const stmtBuilder = new StatementBuilder('statement', stmt.code, stmt, 0);
-            lastStmt.next = stmtBuilder;
-            stmtBuilder.lasts.add(lastStmt);
-            lastStmt = stmtBuilder;
-        }
-        lastStmt.next = this.exit;
-        this.exit.lasts.add(lastStmt);
     }
 
     public isBodyEmpty(): boolean {
@@ -1246,7 +1256,7 @@ export class CfgBuilder {
         aliasTypeMap: Map<string, [AliasType, ArkAliasTypeDefineStmt]>;
         traps: CxxTrap[];
     } {
-        if (this.astRoot.kind.toString() === 'LambdaExpr' && this.astRoot.inner[this.astRoot.inner.length - 1].kind.toString() !== 'CompoundStmt') {
+        if (this.astRoot.kind === astKind.LambdaExpr && this.astRoot.inner[this.astRoot.inner.length - 1].kind !== astKind.CompoundStmt) {
             return this.buildCfgForSimpleArrowFunction();
         }
 
@@ -1262,7 +1272,7 @@ export class CfgBuilder {
     } {
         const stmts: Stmt[] = [];
         const arkIRTransformer = new ArkCxxIRTransformer(this.sourceFile as CxxTranslationUnit, this.declaringMethod);
-        arkIRTransformer.prebuildStmts().forEach(stmt => stmts.push(stmt));
+        stmts.push(...arkIRTransformer.prebuildStmts());
         const expressionBodyNode = this.astRoot;
         const expressionBodyStmts: Stmt[] = [];
         let {
@@ -1270,20 +1280,20 @@ export class CfgBuilder {
             valueOriginalPositions: expressionBodyPositions,
             stmts: tempStmts,
         } = arkIRTransformer.cxxNodeToValueAndStmts(expressionBodyNode);
-        tempStmts.forEach(stmt => expressionBodyStmts.push(stmt));
+        expressionBodyStmts.push(...tempStmts);
         if (IRUtils.moreThanOneAddress(expressionBodyValue)) {
             ({
                 value: expressionBodyValue,
                 valueOriginalPositions: expressionBodyPositions,
                 stmts: tempStmts,
             } = arkIRTransformer.generateAssignStmtForValue(expressionBodyValue, expressionBodyPositions));
-            tempStmts.forEach(stmt => expressionBodyStmts.push(stmt));
+            expressionBodyStmts.push(...tempStmts);
         }
         const returnStmt = new ArkReturnStmt(expressionBodyValue);
         returnStmt.setOperandOriginalPositions([expressionBodyPositions[0], ...expressionBodyPositions]);
         expressionBodyStmts.push(returnStmt);
         arkIRTransformer.cxxMapStmtsToTsStmt(expressionBodyStmts, expressionBodyNode);
-        expressionBodyStmts.forEach(stmt => stmts.push(stmt));
+        stmts.push(...expressionBodyStmts);
         const cfg = new Cfg();
         const blockInCfg = new BasicBlock();
         blockInCfg.setId(0);
@@ -1339,49 +1349,64 @@ export class CfgBuilder {
         };
     }
 
+    /**
+     * Removes empty basic blocks from the CFG.
+     *
+     * Strategy:
+     * 1. Identify all empty blocks first (Snapshot).
+     * 2. For each empty block, bypass it by connecting its predecessors directly to its successors.
+     * 3. Delete the empty block.
+     *
+     * Note: This version strictly performs deletion and does NOT trigger block merging.
+     */
     private removeEmptyBlocks(basicBlockSet: Set<BasicBlock>): void {
-        for (const bb of basicBlockSet) {
-            if (bb.getStmts().length > 0) {
-                continue;
-            }
-            const predecessors = bb.getPredecessors();
-            const successors = bb.getSuccessors();
+        // Phase 1: Identify all candidates for removal.
+        // We collect them into an array to avoid concurrent modification issues
+        // during the initial filtering.
+        const emptyBlocks = Array.from(basicBlockSet).filter(bb => bb.getStmts().length === 0);
 
-            // the empty basic block with neither predecessor nor successor could be deleted directly
-            if (predecessors.length === 0 && successors.length === 0) {
-                basicBlockSet.delete(bb);
-                continue;
-            }
-
-            // the empty basic block with predecessor but no successor could be deleted directly and remove its ID from the predecessor blocks
-            if (predecessors.length > 0 && successors.length === 0) {
-                for (const predecessor of predecessors) {
-                    predecessor.removeSuccessorBlock(bb);
-                }
-                basicBlockSet.delete(bb);
+        for (const bb of emptyBlocks) {
+            // Double-check existence as a previous iteration might have merged/deleted it.
+            if (!basicBlockSet.has(bb)) {
                 continue;
             }
 
-            // the empty basic block with successor but no predecessor could be deleted directly and remove its ID from the successor blocks
-            if (predecessors.length === 0 && successors.length > 0) {
-                for (const successor of successors) {
-                    successor.removePredecessorBlock(bb);
-                }
-                basicBlockSet.delete(bb);
-                continue;
-            }
-
-            // the rest case is the empty basic block both with predecessor and successor, should relink its predecessor and successor
-            for (const predecessor of predecessors) {
-                predecessor.removeSuccessorBlock(bb);
-                successors.forEach(successor => predecessor.addSuccessorBlock(successor));
-            }
-            for (const successor of successors) {
-                successor.removePredecessorBlock(bb);
-                predecessors.forEach(predecessor => successor.addPredecessorBlock(predecessor));
-            }
-            basicBlockSet.delete(bb);
+            // Phase 2: Perform the surgical removal and graph relinking.
+            this.bypassAndRemoveBlock(bb, basicBlockSet);
         }
+    }
+
+    /**
+     * Bypasses a block by connecting all its predecessors directly to its successors.
+     */
+    private bypassAndRemoveBlock(bb: BasicBlock, basicBlockSet: Set<BasicBlock>): void {
+        const predecessors = bb.getPredecessors();
+        const successors = bb.getSuccessors();
+
+        // Link every Predecessor to every Successor (Pred -> Succ)
+        for (const pred of predecessors) {
+            // Sever the connection to the target block
+            pred.removeSuccessorBlock(bb);
+
+            for (const succ of successors) {
+                // Prevent introducing trivial self-loops (Pred -> Pred)
+                if (pred === succ) {
+                    continue;
+                }
+
+                // Standard Handshake: Maintain bidirectional CFG edges
+                pred.addSuccessorBlock(succ);
+                succ.addPredecessorBlock(pred);
+            }
+        }
+
+        // Phase 3: Final cleanup of outgoing edges from the removed block
+        for (const succ of successors) {
+            succ.removePredecessorBlock(bb);
+        }
+
+        // Phase 4: Erase from the global set
+        basicBlockSet.delete(bb);
     }
 
     private initializeBuild(): {
@@ -1431,7 +1456,7 @@ export class CfgBuilder {
                     continue;
                 }
                 if (statementBuilder.astNode && statementBuilder.code !== '') {
-                    arkIRTransformer.cxxNodeToStmts(statementBuilder.astNode).forEach(s => stmtsInBlock.push(s));
+                    stmtsInBlock.push(...arkIRTransformer.cxxNodeToStmts(statementBuilder.astNode));
                 } else if (statementBuilder.code.startsWith('return')) {
                     stmtsInBlock.push(this.generateReturnStmt(arkIRTransformer));
                 }

@@ -630,7 +630,7 @@ export class ModelUtils {
         return ModelUtils.matchType(paramType, argType, arg, scene);
     }
 
-    private static matchType(paramType: Type, argType: Type, arg: Value, scene: Scene): boolean {
+    public static matchType(paramType: Type, argType: Type, arg: Value, scene: Scene): boolean {
         if (paramType instanceof LiteralType) {
             const argStr = arg instanceof Constant ? arg.getValue() : argType.getTypeString();
             return argStr.replace(/[\"|\']/g, '') ===

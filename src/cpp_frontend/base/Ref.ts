@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { ArkInstanceFieldRef } from '../../core/base/Ref';
+import { ArkInstanceFieldRef, ClosureFieldRef } from '../../core/base/Ref';
 import { Local } from '../../core/base/Local';
 import { FieldSignature } from '../../core/model/ArkSignature';
 import { Type } from '../../core/base/Type';
@@ -40,5 +40,23 @@ export class ArkCxxInstanceFieldRef extends ArkInstanceFieldRef {
 
     public getType(): Type {
         return this.getFieldSignature().getType();
+    }
+}
+
+export enum CxxClosureCaptureType {
+    BY_VALUE = 0,
+    BY_REF = 1,
+}
+
+export class CxxClosureFieldRef extends ClosureFieldRef {
+    private captureType: CxxClosureCaptureType;
+
+    constructor(base: Local, fieldName: string, type: Type, captureType: CxxClosureCaptureType) {
+        super(base, fieldName, type);
+        this.captureType = captureType;
+    }
+
+    public getCaptureType(): CxxClosureCaptureType {
+        return this.captureType;
     }
 }

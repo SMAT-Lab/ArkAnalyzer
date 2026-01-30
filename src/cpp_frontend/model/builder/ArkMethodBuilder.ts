@@ -15,10 +15,15 @@
 
 import { ClassType, GenericType, UnknownType, VoidType } from '../../../core/base/Type';
 import { CxxBodyBuilder } from './BodyBuilder';
-import { buildViewTree } from '../../../core/graph/builder/ViewTreeBuilder';
 import { ArkClass } from '../../../core/model/ArkClass';
 import { ArkMethod } from '../../../core/model/ArkMethod';
-import { buildModifiers, buildParameters, buildReturnType, cxxNode2Type, isCxxFunctionPointer } from './builderUtils';
+import {
+    buildModifiers,
+    buildParameters,
+    buildReturnType,
+    cxxNode2Type,
+    isCxxFunctionPointer,
+} from './builderUtils';
 import { ArkParameterRef, ArkThisRef } from '../../../core/base/Ref';
 import { ArkBody } from '../../../core/model/ArkBody';
 import { Cfg } from '../../../core/graph/Cfg';
@@ -40,7 +45,7 @@ import { buildGenericType } from '../../../core/model/builder/builderUtils';
 import { CONSTRUCTOR_NAME, SUPER_NAME, THIS_NAME } from '../../../core/common/TSConst';
 import { ArkSignatureBuilder } from '../../../core/model/builder/ArkSignatureBuilder';
 import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
-import {CxxAstNode} from '../../ast/ArkCxxAstNode';
+import { CxxAstNode, getNodeStartLineAndCol } from '../../ast/ArkCxxAstNode';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkMethodBuilder');
 
@@ -49,8 +54,8 @@ function getSpecificNodes(methodNode: CxxAstNode, targetNode: string): CxxAstNod
         return [];
     }
     // Handle Cpp lambda functions
-    if (!(isCxxFunctionPointer(methodNode.type.qualType)) &&
-        !['FunctionDecl', 'CXXMethodDecl', 'CXXConstructorDecl', 'CXXDestructorDecl', 'FriendDecl', 'LambdaExpr', 'FunctionTemplate'].includes(
+    if (methodNode.type && !(isCxxFunctionPointer(methodNode.type.qualType)) &&
+        !['FunctionDecl', 'CXXMethodDecl', 'CXXConstructorDecl', 'CXXDestructorDecl', 'FriendDecl', 'LambdaExpr', 'FunctionTemplateDecl'].includes(
             methodNode.kind
         ) &&
         methodNode.inner
@@ -80,15 +85,15 @@ export function buildDefaultArkMethodFromArkClass(declaringClass: ArkClass, mtd:
     mtd.setCxxBodyBuilder(bodyBuilder);
 }
 
-export function handleFunctionTemplate(methodNode: CxxAstNode, mtd: ArkMethod, sourceFile: CxxAstNode): void {
-    if (methodNode.kind !== 'FunctionTemplate') {
+export function handleFunctionTemplateDecl(methodNode: CxxAstNode, mtd: ArkMethod, sourceFile: CxxAstNode): void {
+    if (methodNode.kind !== 'FunctionTemplateDecl' && methodNode.kind !== 'LambdaExpr') {
         return;
     }
     mtd.isGenericsMethod();
     let templateTypesArray = [];
     let index = -1;
     for (const innerNode of methodNode.inner) {
-        if (innerNode.kind !== 'TemplateTypeParameter') {
+        if (innerNode.kind !== 'TemplateTypeParmVarDecl' && innerNode.kind !== 'TemplateTypeParmDecl') {
             continue;
         }
         let typename = innerNode.name;
@@ -97,15 +102,13 @@ export function handleFunctionTemplate(methodNode: CxxAstNode, mtd: ArkMethod, s
             typename = typename + '...';
         }
         let defaultType;
-        if (innerNode.inner && innerNode.inner.length > 0) {
-            innerNode.default = innerNode.inner[0].type.qualType;
-        }
-        if (innerNode.default) {
-            defaultType = cxxNode2Type(innerNode.default, mtd, sourceFile);
+        if (innerNode.defaultArg) {
+            defaultType = cxxNode2Type(innerNode, undefined);
         }
         let templateType = new GenericType(typename, defaultType);
         templateType.setIndex(++index);
         templateTypesArray.push(templateType);
+
     }
     mtd.setGenericTypes(templateTypesArray);
 }
@@ -116,10 +119,12 @@ export function buildArkMethodFromArkClass(methodNode: CxxAstNode, declaringClas
     if (declaringMethod !== undefined) {
         mtd.setOuterMethod(declaringMethod);
     }
-    if (methodNode.kind === 'FunctionDecl' || methodNode.kind === 'FunctionTemplate') {
+    if (methodNode.kind === 'FunctionDecl' || methodNode.kind === 'FunctionTemplateDecl') {
         mtd.setAsteriskToken(false);
     }
-    handleFunctionTemplate(methodNode, mtd, sourceFile);
+    handleFunctionTemplateDecl(methodNode, mtd, sourceFile);
+    // After processing the template parameters, proceed to the corresponding functions below
+    methodNode = methodNode.kind === 'FunctionTemplateDecl' ? methodNode.inner[methodNode.inner.length - 1] : methodNode;
     mtd.setCode(methodNode.code);
     mtd.addModifier(buildModifiers(methodNode));
     if (methodNode.kind === 'FriendDecl' && methodNode.inner.length > 0) {
@@ -127,7 +132,7 @@ export function buildArkMethodFromArkClass(methodNode: CxxAstNode, declaringClas
     }
     const methodName = buildMethodName(methodNode, declaringClass, sourceFile, declaringMethod);
     const methodParameters: MethodParameter[] = [];
-    const parameters = getSpecificNodes(methodNode, 'ParmDecl');
+    const parameters = getSpecificNodes(methodNode, 'ParmVarDecl');
     buildParameters(parameters, mtd, sourceFile).forEach(parameter => {
         buildGenericType(parameter.getType(), mtd);
         methodParameters.push(parameter);
@@ -143,25 +148,18 @@ export function buildArkMethodFromArkClass(methodNode: CxxAstNode, declaringClas
     reCheckModifiers(methodName, declaringClass, mtd, methodParameters);
     const methodSubSignature = new MethodSubSignature(methodName, methodParameters, returnType, mtd.isStatic());
     const methodSignature = new MethodSignature(mtd.getDeclaringArkClass().getSignature(), methodSubSignature);
-    const begin = methodNode.range?.begin ?? { line: 0, col: 0 };
-    const line = begin.line;
-    const character = begin.col;
+    const nodePos = getNodeStartLineAndCol(methodNode);
     if (isMethodImplementation(methodNode)) {
         mtd.setImplementationSignature(methodSignature);
-        mtd.setLine(line);
-        mtd.setColumn(character);
+        mtd.setLine(nodePos.line);
+        mtd.setColumn(nodePos.col);
         let bodyBuilder = new CxxBodyBuilder(mtd.getSignature(), methodNode, mtd, sourceFile);
         mtd.setCxxBodyBuilder(bodyBuilder);
     } else {
         mtd.setDeclareSignatures(methodSignature);
-        mtd.setDeclareLinesAndCols([line + 1], [character + 1]);
+        mtd.setDeclareLinesAndCols([nodePos.line], [nodePos.col]);
     }
 
-    if (mtd.hasBuilderDecorator()) {
-        mtd.setViewTree(buildViewTree(mtd));
-    } else if (declaringClass.hasComponentDecorator() && mtd.getSubSignature().toString() === 'build()' && !mtd.isStatic()) {
-        declaringClass.setViewTree(buildViewTree(mtd));
-    }
     checkAndUpdateCxxMethod(mtd, declaringClass);
     declaringClass.addMethod(mtd);
     IRUtils.setComments(mtd, methodNode, sourceFile, mtd.getDeclaringArkFile().getScene().getOptions());
@@ -257,7 +255,7 @@ function buildMethodName(node: CxxAstNode, declaringClass: ArkClass, sourceFile:
         case 'CXXMethodDecl':
         case 'FunctionDecl':
         case 'CXXDestructorDecl':
-        case 'FunctionTemplate':
+        case 'FunctionTemplateDecl':
             name = node.name.toString();
             break;
         case 'CXXConstructorDecl':
@@ -267,7 +265,7 @@ function buildMethodName(node: CxxAstNode, declaringClass: ArkClass, sourceFile:
             name = buildAnonymousMethodName(node, declaringClass);
             break;
         case 'VarDecl':
-        case 'ParmDecl':
+        case 'ParmVarDecl':
             if (isCxxFunctionPointer(node.type.qualType)) {
                 name = buildAnonymousMethodName(node, declaringClass);
             }
@@ -426,7 +424,7 @@ export function isMethodImplementation(node: CxxAstNode): boolean {
         case 'CXXConstructorDecl':
         case 'CXXDestructorDecl':
         case 'FunctionDecl':
-        case 'FunctionTemplate':
+        case 'FunctionTemplateDecl':
         case 'FriendDecl':
             // CXXConstructorDecl-CXXCtorInitializer: using Base::Base
             // ==> The constructor of the subclass has the same implementation as that of the parent class.

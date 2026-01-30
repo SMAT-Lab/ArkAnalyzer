@@ -22,8 +22,8 @@ import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
 import { ArkClass } from '../../../core/model/ArkClass';
 import { ArkMethod } from '../../../core/model/ArkMethod';
 import { ClassSignature, NamespaceSignature } from '../../../core/model/ArkSignature';
-import { CxxAstNode } from '../../ast/ArkCxxAstNode';
-import { DEFAULT_ARK_CLASS_NAME } from '../../../core/common/Const';
+import { CxxAstNode, getNodeStartLineAndCol } from '../../ast/ArkCxxAstNode';
+import { ANONYMOUS_NAMESPACE_PREFIX, DEFAULT_ARK_CLASS_NAME } from '../../../core/common/Const';
 import { buildDefaultArkMethodFromArkClass } from './ArkMethodBuilder';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkNamespaceBuilder');
@@ -79,7 +79,7 @@ export function buildArkNamespace(node: CxxAstNode, declaringInstance: ArkFile |
         ns.setDeclaringArkFile(declaringInstance.getDeclaringArkFile());
     }
     ns.setDeclaringInstance(declaringInstance);
-    const namespaceName = node.name;
+    const namespaceName = genNamespaceName(node.name ? node.name : '', declaringInstance);
     const namespaceSignature = new NamespaceSignature(
         namespaceName,
         ns.getDeclaringArkFile().getFileSignature(),
@@ -91,12 +91,9 @@ export function buildArkNamespace(node: CxxAstNode, declaringInstance: ArkFile |
     ns.setCode(node.code);
 
     // set line and column
-    if (node.range?.begin) {
-        ns.setLine(node.range.begin.line);
-    } else {
-        ns.setLine(-1);
-        ns.setColumn(-1);
-    }
+    const nodePos = getNodeStartLineAndCol(node);
+    ns.setLine(nodePos.line);
+    ns.setColumn(nodePos.col);
 
     genDefaultArkClass(ns, node, sourceFile);
 
@@ -108,32 +105,25 @@ export function buildArkNamespace(node: CxxAstNode, declaringInstance: ArkFile |
     }
 }
 
+function genNamespaceName(name: string, declaringInstance: ArkFile | ArkNamespace): string {
+    if (!name) {
+        const num = declaringInstance.getAnonymousNamespaceNumber();
+        name = ANONYMOUS_NAMESPACE_PREFIX + num;
+    }
+    return name;
+}
+
 function processUsingDeclInNamespace(usingDeclNode: CxxAstNode, namespace: ArkNamespace): void {
     // CXXTodo: using NS::Member,  scenario 'NS is from other file' is not handled.
     const curArkFile = namespace.getDeclaringArkFile();
     let curNS: ArkNamespace | undefined | null;
-    for (const [index, value] of usingDeclNode.inner.entries()) {
-        if (index === usingDeclNode.inner.length - 1) {
-            let usingCls = curNS?.getClassWithName(value.name);
-            if (usingCls) {
-                namespace.addArkClass(usingCls);
-                return;
-            }
-            let usingFunc = curNS?.getDefaultClass().getMethodWithName(value.name);
-            if (usingFunc) {
-                namespace.getDefaultClass().addMethod(usingFunc);
-                return;
-            }
-        }
-        if (index === 0) {
-            curNS = curArkFile.getNamespaceWithName(value.name);
-            if (!curNS) {
-                return;
-            }
-            continue;
-        }
-        curNS = curNS?.getNamespaceWithName(value.name);
-        if (!curNS) {
+    if (usingDeclNode.name.includes('::')) {
+        const namespaceName = usingDeclNode.name.substring(0, usingDeclNode.name.indexOf('::'));
+        const memberName = usingDeclNode.name.substring(usingDeclNode.name.indexOf('::') + 2);
+        curNS = curArkFile.getNamespaceWithName(namespaceName);
+        let usingFunc = curNS?.getDefaultClass().getMethodWithName(memberName);
+        if (usingFunc) {
+            namespace.getDefaultClass().addMethod(usingFunc);
             return;
         }
     }
@@ -144,7 +134,7 @@ function buildNamespaceMembers(node: CxxAstNode, namespace: ArkNamespace, source
     const statements = node.inner;
     statements.forEach((child: CxxAstNode) => {
         switch (child.kind) {
-            case 'Namespace': {
+            case 'NamespaceDecl': {
                 let childNs: ArkNamespace = new ArkNamespace();
                 childNs.setDeclaringArkNamespace(namespace);
                 childNs.setDeclaringArkFile(namespace.getDeclaringArkFile());
@@ -153,7 +143,7 @@ function buildNamespaceMembers(node: CxxAstNode, namespace: ArkNamespace, source
                 return;
             }
             case 'CXXRecordDecl':
-            case 'ClassTemplate': {
+            case 'ClassTemplateDecl': {
                 let cls: ArkClass = new ArkClass();
                 buildNormalArkClassFromArkNamespace(child, namespace, cls, sourceFile);
                 return;
@@ -164,7 +154,7 @@ function buildNamespaceMembers(node: CxxAstNode, namespace: ArkNamespace, source
                 buildArkMethodForClassMethodInNamespace(child, namespace, sourceFile);
                 return;
             }
-            case 'FunctionTemplate':
+            case 'FunctionTemplateDecl':
             case 'FunctionDecl':
             case 'FriendDecl': {
                 let mthd: ArkMethod = new ArkMethod();

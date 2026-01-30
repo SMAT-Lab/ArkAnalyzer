@@ -26,6 +26,8 @@ export interface CxxPosition {
 export interface CxxRange {
     begin: CxxPosition;
     end: CxxPosition;
+    spellingLoc?: SpellingLoc; // Spelling Location related to macros
+    expansionLoc?: CxxPosition; // Expansion Location related to macros
 }
 
 /** Type information */
@@ -47,7 +49,6 @@ export interface CxxReferencedDecl {
     kind?: string; // VarDecl / ParamVarDecl / FunctionDecl ...
     name?: string;
     type?: CxxTypeInfo;
-    scope?: string;
     alias?: CxxAliasInfo;
 }
 
@@ -66,12 +67,51 @@ export interface CxxEnclosingFunction {
     range?: CxxRange;
 }
 
+/** Spelling Location related to macros or inclusion directive */
+export interface SpellingLoc extends CxxPosition {
+    file?: string;
+}
+
+/** Target information for UsingDirectiveDecl  */
+export interface NominatedNamespace {
+    id: number;
+    kind: string;
+    name: string;
+}
+
+/** Target information for dtor  */
+export interface DtorType {
+    id?: number;
+    kind?: string;
+    name?: string;
+    type?: CxxTypeInfo;
+}
+
+/** Target information for Inclusion Directive */
+export interface CxxIncludeInfo {
+    code: string; // inclusion directive code
+    fileName?: string; // include header file absolute path. When the target cannot be found in the search path, this property does not exist.
+    includeName: string; // include header file name
+    includedFrom: string; // The absolute path of the translation unit file where the 'InclusionDirective' node is located.
+    isAngled: boolean; // whether it is a reference enclosed in angle brackets or not.
+    kind: string; // kind of node
+    loc: SpellingLoc; // inclusion directive position in translate unit file
+    relativePath: string; // the relative path of the header file relative to the search path
+    searchPath: string; // path of searching header files
+}
+
 export type CxxAstNodeLite = Omit<CxxAstNode, 'inner'>;
 
 /** General C++ AST node (compatible with Clang JSON) */
 export interface CxxAstNode {
     /** Unique node ID */
-    id?: number | string;
+    id?: string;
+
+    /** Unique node ID */
+    originalId?: string;
+
+    /** Is there any initialization of member variables */
+    hasInClassInitializer?: boolean;
 
     /** Node kind (e.g., "TranslationUnit", "FunctionDecl", "CXXConstructExpr", etc.) */
     kind: string;
@@ -96,6 +136,9 @@ export interface CxxAstNode {
 
     /** Storage class (e.g., "static" for member VarDecl) */
     storageClass?: string;
+
+    /** The access modifier of class member stored in 'AccessSpecDecl' node. (e.g., public or private)*/
+    access?: string;
 
     /** Target information parsed from DeclRef */
     referencedDecl?: CxxReferencedDecl;
@@ -122,7 +165,7 @@ export interface CxxAstNode {
     traitFunc?: string;
     traitArgs?: string;
     noexceptArg?: string;
-    typeArg?: string;
+    typeArg?: CxxTypeInfo;
     atomicFunc?: string;
 
     /** Annotation for pseudo-destructor expression */
@@ -135,17 +178,19 @@ export interface CxxAstNode {
     anyInit?: CxxCtorAnyInit; // e.g., { kind: "FieldDecl", name, type }
     baseInit?: CxxTypeInfo; // Used for base class initialization
 
+    /** Specific to UsingDirectiveDecl  */
+    nominatedNamespace?: NominatedNamespace;
+
     /** Header/include relationship related */
-    include?: boolean; // Node comes from a user header via include
-    included?: string; // Host file path for InclusionDirective
-    fileName?: string; // File name for TranslationUnit/Include
-    locFile?: string; // File name written by locCursorKind
+    includes?: CxxIncludeInfo[],
 
     /** Simple location (line/column); some nodes may not have this */
     loc?: {
         file?: string;
         line?: number;
         col?: number;
+        spellingLoc?: SpellingLoc; // Spelling Location related to macros
+        expansionLoc?: CxxPosition; // Expansion Location related to macros
     };
 
     /** Precise range (begin/end includes offset and tokLen) */
@@ -174,8 +219,16 @@ export interface CxxAstNode {
     modifiers?: string[];
 
     enclosingFunction?: CxxEnclosingFunction;
+
     /** Reserved for future fields */
     [key: string]: unknown;
+
+    defaultArg?: defaultArg;
+
+    bases?: classBase[];
+
+    dtor?: DtorType;
+
 }
 
 /** root type */
@@ -184,4 +237,141 @@ export interface CxxTranslationUnit extends CxxAstNode {
     fileName?: string;
     headerUnits?: CxxAstNode[];
     projectName?: string;
+}
+
+export function getNodeAt(node: CxxAstNode, index: number): CxxAstNode | undefined {
+    // Unified Border Protection Inspection
+    if (!node?.inner?.length || index < 0 || index >= node.inner.length) {
+        return undefined;
+    }
+    return node.inner[index];
+}
+
+/** Get the starting line and column numbers of the ast node, Default LineColPosition is (0, 0). */
+export function getNodeStartLineAndCol(node: CxxAstNode): CxxPosition {
+    if (node.loc?.line && node.loc?.col) {
+        return { line: node.loc.line, col: node.loc.col };
+    }
+    return node.loc?.expansionLoc ?? node.range?.begin ?? node.range?.expansionLoc ?? { line: 0, col: 0 };
+}
+
+export interface defaultArg {
+    kind: string;
+    type: CxxTypeInfo;
+}
+
+export interface classBase {
+    access: string;
+    type: CxxTypeInfo;
+    isVirtual?: boolean;
+    writtenAccess?: string;
+}
+export enum astKind {
+    ArraySubscriptExpr = 'ArraySubscriptExpr',
+    ArrayTypeTraitExpr = 'ArrayTypeTraitExpr',
+    AtomicCallExpr = 'AtomicCallExpr',
+    BinaryConditionalOperator = 'BinaryConditionalOperator',
+    BinaryOperator = 'BinaryOperator',
+    BindingDecl = 'BindingDecl',
+    BreakStmt = 'BreakStmt',
+    CallExpr = 'CallExpr',
+    CaseStmt = 'CaseStmt',
+    CharacterLiteral = 'CharacterLiteral',
+    ClassTemplateDecl = 'ClassTemplateDecl',
+    CompoundAssignOperator = 'CompoundAssignOperator',
+    CompoundLiteralExpr = 'CompoundLiteralExpr',
+    CompoundStmt = 'CompoundStmt',
+    ConditionalOperator = 'ConditionalOperator',
+    ConstantExpr = 'ConstantExpr',
+    ContinueStmt = 'ContinueStmt',
+    CStyleCastExpr = 'CStyleCastExpr',
+    CXXBindTemporaryExpr = 'CXXBindTemporaryExpr',
+    CXXBoolLiteralExpr = 'CXXBoolLiteralExpr',
+    CXXCatchStmt = 'CXXCatchStmt',
+    CXXConstCastExpr = 'CXXConstCastExpr',
+    CXXConstructorDecl = 'CXXConstructorDecl',
+    CXXConstructExpr = 'CXXConstructExpr',
+
+    CXXCtorInitializer = 'CXXCtorInitializer',
+    CXXDefaultArgExpr = 'CXXDefaultArgExpr',
+    CXXDeleteExpr = 'CXXDeleteExpr',
+    CXXDestructorDecl = 'CXXDestructorDecl',
+    CXXDynamicCastExpr = 'CXXDynamicCastExpr',
+    CXXFoldExpr = 'CXXFoldExpr',
+    CXXForRangeStmt = 'CXXForRangeStmt',
+    CXXFunctionalCastExpr = 'CXXFunctionalCastExpr',
+    CXXInheritedCtorInitExpr = 'CXXInheritedCtorInitExpr',
+    CXXMemberCallExpr = 'CXXMemberCallExpr',
+    CXXMethodDecl = 'CXXMethodDecl',
+    CXXNewExpr = 'CXXNewExpr',
+    CXXNoexceptExpr = 'CXXNoexceptExpr',
+    CXXNullPtrLiteralExpr = 'CXXNullPtrLiteralExpr',
+    CXXOperatorCallExpr = 'CXXOperatorCallExpr',
+    CXXPseudoDestructorExpression = 'CXXPseudoDestructorExpression',
+    CXXRecordDecl = 'CXXRecordDecl',
+    CXXReinterpretCastExpr = 'CXXReinterpretCastExpr',
+    CXXRewrittenBinaryOperator = 'CXXRewrittenBinaryOperator',
+    CXXScalarValueInitExpr = 'CXXScalarValueInitExpr',
+    CXXStaticCastExpr = 'CXXStaticCastExpr',
+    CXXStdInitializerListExpr = 'CXXStdInitializerListExpr',
+    CXXTemporaryObjectExpr = 'CXXTemporaryObjectExpr',
+    CXXThisExpr = 'CXXThisExpr',
+    CXXThrowExpr = 'CXXThrowExpr',
+    CXXTryStmt = 'CXXTryStmt',
+    CXXTypeidExpr = 'CXXTypeidExpr',
+    DeclRefExpr = 'DeclRefExpr',
+    DeclStmt = 'DeclStmt',
+    DecompositionDecl = 'DecompositionDecl',
+    DefaultStmt = 'DefaultStmt',
+    DesignatedInitExpr = 'DesignatedInitExpr',
+    DoStmt = 'DoStmt',
+    EnumDecl = 'EnumDecl',
+    EnumConstantDecl = 'EnumConstantDecl',
+    ExprWithCleanups = 'ExprWithCleanups',
+    FloatingLiteral = 'FloatingLiteral',
+    ForStmt = 'ForStmt',
+    FriendDecl = 'FriendDecl',
+    FunctionDecl = 'FunctionDecl',
+    FunctionTemplateDecl = 'FunctionTemplateDecl',
+    GotoStmt = 'GotoStmt',
+    IfStmt = 'IfStmt',
+    ImplicitCastExpr = 'ImplicitCastExpr',
+    IndirectGotoStmt = 'IndirectGotoStmt',
+    InitListExpr = 'InitListExpr',
+    IntegerLiteral = 'IntegerLiteral',
+    LabelStmt = 'LabelStmt',
+    LambdaExpr = 'LambdaExpr',
+    LinkageSpecDecl = 'LinkageSpecDecl',
+    MaterializeTemporaryExpr = 'MaterializeTemporaryExpr',
+    MemberExpr = 'MemberExpr',
+    MemberRef = 'MemberRef',
+    NamespaceRef = 'NamespaceRef',
+    NamespaceDecl = 'NamespaceDecl',
+    NullStmt = 'NullStmt',
+    OverloadedDeclRef = 'OverloadedDeclRef',
+    ParenExpr = 'ParenExpr',
+    ParenListExpr = 'ParenListExpr',
+    ParentExpr = 'ParentExpr',
+    ParmVarDecl = 'ParmVarDecl',
+    RecordDecl = 'RecordDecl',
+    RecoveryExpr = 'RecoveryExpr',
+    ReturnStmt = 'ReturnStmt',
+    StringLiteral = 'StringLiteral',
+    SwitchStmt = 'SwitchStmt',
+    TemplateRef = 'TemplateRef',
+    TemplateTypeParmDecl = 'TemplateTypeParmDecl',
+    TranslationUnitDecl = 'TranslationUnitDecl',
+    TypeAliasDecl = 'TypeAliasDecl',
+    TypeAliasTemplateDecl = 'TypeAliasTemplateDecl',
+    TypedefDecl = 'TypedefDecl',
+    TypeRef = 'TypeRef',
+    UnaryExprOrTypeTraitExpr = 'UnaryExprOrTypeTraitExpr',
+    UnaryOperator = 'UnaryOperator',
+    UnexposedExpr = 'UnexposedExpr',
+    UnresolvedLookupExpr = 'UnresolvedLookupExpr',
+    unsupported_kind = 'unsupported kind',
+    UserDefinedLiteral = 'UserDefinedLiteral',
+    UsingDirectiveDecl = 'UsingDirectiveDecl',
+    VarDecl = 'VarDecl',
+    WhileStmt = 'WhileStmt',
 }

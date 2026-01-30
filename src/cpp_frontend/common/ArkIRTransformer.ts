@@ -80,11 +80,12 @@ import { buildModifiers, buildTypeParameters, cxxNode2Type } from '../model/buil
 import { ModelUtils } from '../../core/common/ModelUtils';
 import { ArkClass } from '../../core/model/ArkClass';
 import { buildNormalArkClassFromArkMethod } from '../model/builder/ArkClassBuilder';
-import { CxxAstNode, CxxTranslationUnit } from '../ast/ArkCxxAstNode';
+import { astKind, CxxAstNode, CxxTranslationUnit } from '../ast/ArkCxxAstNode';
 import { ValueUtil } from '../../core/common/ValueUtil';
 import { CxxCharType, CxxStdTypeName, CxxTypeBitWidth, CxxTypeSigned, PointerType } from '../base/Type';
 import { buildGenericType } from '../../core/model/builder/builderUtils';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
+import { classMap } from '../model/builder/ArkFileBuilder';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ArkIRTransformer');
 export type ValueAndStmts = {
@@ -147,18 +148,18 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
 
     // Determine whether to generate temporary variable assignment statement based on operator
     private shouldGenerateCxxExtraAssignStmt(expression: CxxAstNode): boolean {
-        if (expression.kind.toString() === 'ParentExpr') {
+        if (expression.kind === astKind.ParentExpr) {
             return this.shouldGenerateCxxExtraAssignStmt(expression.inner[0]);
         }
         return !(
-            (expression.kind.toString() === 'BinaryOperator' && expression.opcode === '=') ||
+            (expression.kind === astKind.BinaryOperator && expression.opcode === '=') ||
             ArkCxxValueTransformer.isCxxCompoundAssignmentOperator(expression.opcode) ||
-            expression.kind.toString() === 'CXXNewExpr' ||
-            expression.kind.toString() === 'CallExpr' ||
-            (expression.kind.toString() === 'UnaryOperator' && (expression.opcode === '++' || expression.opcode === '--')) ||
-            expression.kind.toString() === 'CXXOperatorCallExpr' ||
-            expression.kind.toString() === 'CXXConstructExpr' ||
-            expression.kind.toString() === 'CXXCtorInitializer'
+            expression.kind === astKind.CXXNewExpr ||
+            expression.kind === astKind.CallExpr ||
+            (expression.kind === astKind.UnaryOperator && (expression.opcode === '++' || expression.opcode === '--')) ||
+            expression.kind === astKind.CXXOperatorCallExpr ||
+            expression.kind === astKind.CXXConstructExpr ||
+            expression.kind === astKind.CXXCtorInitializer
         );
     }
 
@@ -166,78 +167,82 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
     public cxxNodeToStmts(node: CxxAstNode): Stmt[] {
         let stmts: Stmt[] = [];
         switch (node.kind) {
-            case 'ParmDecl':
+            case astKind.ParmVarDecl:
                 stmts = this.cxxParameterToStmts(node);
                 break;
-            case 'BreakStmt':
-            case 'ContinueStmt':
-            case 'GotoStmt':
+            case astKind.BreakStmt:
+            case astKind.ContinueStmt:
+            case astKind.GotoStmt:
                 stmts = [];
                 break;
-            case 'BinaryOperator':
-            case 'CallExpr':
-            case 'CompoundAssignOperator':
-            case 'CXXConstructExpr':
-            case 'CXXOperatorCallExpr':
-            case 'UnaryOperator':
-            case 'RecoveryExpr':
-            case 'CXXDeleteExpr':
-            case 'AtomicCallExpr':
-            case 'CXXCtorInitializer':
+            case astKind.CXXRewrittenBinaryOperator:
+            case astKind.BinaryOperator:
+            case astKind.CallExpr:
+            case astKind.CompoundAssignOperator:
+            case astKind.CXXConstructExpr:
+            case astKind.CXXOperatorCallExpr:
+            case astKind.UnaryOperator:
+            case astKind.RecoveryExpr:
+            case astKind.CXXDeleteExpr:
+            case astKind.AtomicCallExpr:
+            case astKind.CXXCtorInitializer:
                 stmts = this.cxxExpressionStatementToStmts(node);
                 break;
-            case 'DeclStmt':
+            case astKind.DeclStmt:
                 stmts = this.cxxDeclStatementToStmts(node);
                 break;
-            case 'VarDecl':
-                stmts = this.cxxVariableStatementToStmts(node);
+            case astKind.VarDecl:
+                stmts = this.cxxVariableDeclarationListToStmts(node);
                 break;
-            case 'CompoundStmt':
+            case astKind.CompoundStmt:
                 stmts = this.compoundToStmts(node);
                 break;
-            case 'CXXMemberCallExpr':
+            case astKind.CXXMemberCallExpr:
                 stmts = this.memberCallExprToStmts(node);
                 break;
-            case 'CXXCatchStmt':
+            case astKind.CXXCatchStmt:
                 stmts = this.cxxCatchClauseToStmts(node);
                 break;
-            case 'CXXThrowExpr':
+            case astKind.CXXThrowExpr:
                 stmts = this.cxxThrowStatementToStmts(node);
                 break;
-            case 'DoStmt':
+            case astKind.DoStmt:
                 stmts = this.cxxDoStatementToStmts(node);
                 break;
-            case 'ExprWithCleanups':
+            case astKind.ExprWithCleanups:
                 stmts = this.expressionWithCleanup(node);
                 break;
-            case 'ForStmt':
+            case astKind.ForStmt:
                 stmts = this.cxxForStatementToStmts(node);
                 break;
-            case 'IfStmt':
+            case astKind.IfStmt:
                 stmts = this.cxxIfStatementToStmts(node);
                 break;
-            case 'ReturnStmt':
+            case astKind.ReturnStmt:
                 stmts = this.cxxReturnStatementToStmts(node);
                 break;
-            case 'WhileStmt':
+            case astKind.WhileStmt:
                 stmts = this.cxxWhileStatementToStmts(node);
                 break;
-            case 'CXXForRangeStmt':
+            case astKind.CXXForRangeStmt:
                 stmts = this.forRangeStatementToStmts(node);
                 break;
-            case 'TypedefDecl':
-            case 'TypeAliasDecl':
+            case astKind.TypedefDecl:
+            case astKind.TypeAliasDecl:
                 stmts = this.typeDefDeclToStmts(node);
                 break;
-            case 'TypeAliasTemplateDecl':
+            case astKind.TypeAliasTemplateDecl:
                 stmts = this.typeDefDeclToStmts(node);
                 break;
-            case 'CXXRecordDecl':
+            case astKind.EnumDecl:
+            case astKind.CXXRecordDecl:
                 stmts = this.cxxClassDeclarationToStmts(node);
                 break;
-            case 'DecompositionDecl':
+            case astKind.DecompositionDecl:
                 stmts = this.decompositionDeclToStmts(node);
-            case 'unsupported kind':
+                break;
+            default:
+                logger.warn('this ' + node.kind + ' is not supported');
                 break;
         }
         this.cxxMapStmtsToTsStmt(stmts, node);
@@ -254,30 +259,31 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
             cls.setDeclaringArkNamespace(declaringArkNamespace);
         }
         cls.setDeclaringArkFile(this.declaringMethod.getDeclaringArkFile());
-        buildNormalArkClassFromArkMethod(node, cls, this.cxxSourceFile);
+        buildNormalArkClassFromArkMethod(node, cls, this.cxxSourceFile, this.declaringMethod);
         return [];
     }
 
     private typeDefDeclToStmts(typeAliasDeclaration: CxxAstNode): Stmt[] {
         const aliasName = typeAliasDeclaration.name;
         let typeDefDecl: CxxAstNode = typeAliasDeclaration;
-        if (typeAliasDeclaration.kind === 'TypeAliasTemplateDecl') {
+        if (typeAliasDeclaration.kind === astKind.TypeAliasTemplateDecl) {
             typeDefDecl = typeAliasDeclaration.inner[typeAliasDeclaration.inner.length - 1];
         }
         const typeNode: CxxAstNode | undefined =
             Array.isArray(typeDefDecl.inner) ? typeDefDecl.inner[0] : undefined;
-        const rightOp = typeNode?.code ?? typeNode?.name ?? 'int'; // If there is no type code, use int type as fallback
+        const rightOp = typeAliasDeclaration.type.desugaredQualType ?
+            typeAliasDeclaration.type.desugaredQualType : typeAliasDeclaration.type.qualType; // If there is no type code, use int type as fallback
 
         let rightType;
         //  Identify the tagUsed attribute to determine struct, union, and enum nodes
-        rightType = this.ArkCxxValueTransformer.cxxResolveTypeNode(typeNode);
+        rightType = this.getAnonymousInformation(typeAliasDeclaration);
 
         if (rightType instanceof AbstractTypeExpr) {
             rightType = rightType.getType();
         }
 
         const aliasType = new AliasType(aliasName, rightType, new AliasTypeSignature(aliasName, this.declaringMethod.getSignature()));
-        if (typeAliasDeclaration.kind === 'TypeAliasTemplateDecl') {
+        if (typeAliasDeclaration.kind === astKind.TypeAliasTemplateDecl) {
             const genericTypes = buildTypeParameters(typeAliasDeclaration, this.cxxSourceFile, this.declaringMethod);
             aliasType.setGenericTypes(genericTypes);
             aliasType.setOriginalType(buildGenericType(rightType, aliasType));
@@ -293,11 +299,11 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
 
         let expr = this.cxxGenerateAliasTypeExpr(rightOp, aliasType);
 
-        if (typeAliasDeclaration.kind === 'TypeAliasTemplateDecl') {
+        if (typeAliasDeclaration.kind === astKind.TypeAliasTemplateDecl) {
             let realGenericTypes: Type[] = [];
-            typeAliasDeclaration.inner.filter(inn => inn.kind === 'TemplateTypeParameter')
+            typeAliasDeclaration.inner.filter(inn => inn.kind === astKind.TemplateTypeParmDecl)
                 .forEach(typeArgument => {
-                    realGenericTypes.push(this.ArkCxxValueTransformer.cxxResolveTypeNode(typeArgument));
+                    realGenericTypes.push(cxxNode2Type(typeArgument, this.declaringMethod));
                 });
             expr.setRealGenericTypes(realGenericTypes);
         }
@@ -314,6 +320,16 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         this.getAliasTypeMap().set(aliasName, [aliasType, aliasTypeDefineStmt]);
 
         return [aliasTypeDefineStmt];
+    }
+
+    private getAnonymousInformation(node: CxxAstNode): Type {
+        if (node.inner.length === 0 && node.originalId) {
+            const cls = classMap.get(node.originalId);
+            if (cls) {
+                return new ClassType(cls.getSignature());
+            }
+        }
+        return cxxNode2Type(node, this.declaringMethod);
     }
 
     // When there are default parameters, how to handle them
@@ -402,27 +418,27 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
             valueOriginalPositions: yieldValuePositions,
             stmts: yieldValueStmts,
         } = this.generateAssignStmtForValue(valueFieldRef, valueFieldRefPositions);
-        yieldValueStmts.forEach(stmt => stmts.push(stmt));
-        const type = cxxNode2Type(forOfStatement.inner[0].type.qualType, this.declaringMethod);
-        const castExpr = new ArkCastExpr(yieldValue, type);
+        stmts.push(...yieldValueStmts);
+        const castExpr = new ArkCastExpr(yieldValue, UnknownType.getInstance());
         const castExprPositions = [yieldValuePositions[0], ...yieldValuePositions];
-        const declStmts: CxxAstNode = forOfStatement.inner[0];
-        if (declStmts.kind === 'VarDecl') {
+        let declStmts: CxxAstNode = forOfStatement.inner[0];
+        declStmts = declStmts.kind === astKind.DeclStmt ? declStmts.inner[0] : declStmts;
+        if (declStmts.kind === astKind.VarDecl) {
             const {
                 value: initValue,
                 valueOriginalPositions: initOriPos,
                 stmts: initStmts,
-            } = this.ArkCxxValueTransformer.cxxVariableDeclarationToValueAndStmts(declStmts, true, false);
+            } = this.ArkCxxValueTransformer.cxxVariableDeclarationToValueAndStmts(declStmts, false);
             const assignStmt = new ArkAssignStmt(initValue, castExpr);
             assignStmt.setOperandOriginalPositions([...initOriPos, ...castExprPositions]);
             stmts.push(assignStmt);
-            initStmts.forEach(stmt => stmts.push(stmt));
+            stmts.push(...initStmts);
             // Processing structured binding under cyclic conditions
-        } else if (declStmts.kind === 'DecompositionDecl') {
+        } else if (declStmts.kind === astKind.DecompositionDecl) {
             const {
                 stmts: initStmts,
             } = this.ArkCxxValueTransformer.bindingNodeToValueAndStmts(declStmts, yieldValue);
-            initStmts.forEach(stmt => stmts.push(stmt));
+            stmts.push(...initStmts);
         } else {
             const {
                 value: initValue,
@@ -431,7 +447,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
             } = this.cxxNodeToValueAndStmts(declStmts);
             const assignStmt = new ArkAssignStmt(initValue, castExpr);
             assignStmt.setOperandOriginalPositions([...initOriPos, ...castExprPositions]);
-            initStmts.forEach(stmt => stmts.push(stmt));
+            stmts.push(...initStmts);
             stmts.push(assignStmt);
         }
         return stmts;
@@ -448,14 +464,14 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
             valueOriginalPositions: iterablePositions,
             stmts: iterableStmts,
         } = this.cxxNodeToValueAndStmts(entry);
-        iterableStmts.forEach(stmt => stmts.push(stmt));
+        stmts.push(...iterableStmts);
         if (!(iterableValue instanceof Local)) {
             ({
                 value: iterableValue,
                 valueOriginalPositions: iterablePositions,
                 stmts: iterableStmts,
             } = this.generateAssignStmtForValue(iterableValue, iterablePositions));
-            iterableStmts.forEach(stmt => stmts.push(stmt));
+            stmts.push(...iterableStmts);
         }
         const iteratorMethodSubSignature = new MethodSubSignature(BuiltinCxx.ITERATOR_FUNCTION, [], BuiltinCxx.ITERATOR_CLASS_TYPE);
         const iteratorMethodSignature = new MethodSignature(ClassSignature.DEFAULT, iteratorMethodSubSignature);
@@ -476,7 +492,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
             valueOriginalPositions: iteratorPositions,
             stmts: iteratorStmts,
         } = this.generateAssignStmtForValue(iteratorInvokeExpr, iteratorInvokeExprPositions);
-        iteratorStmts.forEach(stmt => stmts.push(stmt));
+        stmts.push(...iteratorStmts);
         if (iterator instanceof Local) {
             iterator.setType(BuiltinCxx.ITERATOR_CLASS_TYPE);
         } else {
@@ -513,7 +529,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
             valueOriginalPositions: doneFlagPositions,
             stmts: doneFlagStmts,
         } = this.generateAssignStmtForValue(doneFieldRef, doneFieldRefPositions);
-        doneFlagStmts.forEach(stmt => stmts.push(stmt));
+        stmts.push(...doneFlagStmts);
         (doneFlag as Local).setType(BooleanType.getInstance());
         const conditionExpr = new ArkConditionExpr(iterator, doneFlag, RelationalBinaryOperator.Equality);
         const conditionExprPositions = [doneFlagPositions[0], ...doneFlagPositions, FullPosition.DEFAULT];
@@ -553,13 +569,13 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
                 value: catchValue,
                 valueOriginalPositions: catchOriPos,
                 stmts: catchStmts,
-            } = this.ArkCxxValueTransformer.cxxVariableDeclarationToValueAndStmts(catchClause.inner[0], false, false);
+            } = this.ArkCxxValueTransformer.cxxVariableDeclarationToValueAndStmts(catchClause.inner[0], false);
             this.catchedExceptions.push(catchValue);
             const caughtExceptionRef = new ArkCaughtExceptionRef(catchValue.getType());
             const assignStmt = new ArkAssignStmt(catchValue, caughtExceptionRef);
             assignStmt.setOperandOriginalPositions(catchOriPos);
             stmts.push(assignStmt);
-            catchStmts.forEach(stmt => stmts.push(stmt));
+            stmts.push(...catchStmts);
         } else { // When the scenario is catch (...)
             const caughtExceptionRef = new ArkCaughtExceptionRef(AnyType.getInstance());
             const catchValue = new Local('error');
@@ -585,14 +601,14 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
                 valueOriginalPositions: exprPositions,
                 stmts: exprStmts,
             } = this.cxxNodeToValueAndStmts(returnStatement.inner[0]);
-            exprStmts.forEach(stmt => stmts.push(stmt));
+            stmts.push(...exprStmts);
             if (IRUtils.moreThanOneAddress(exprValue)) {
                 ({
                     value: exprValue,
                     valueOriginalPositions: exprPositions,
                     stmts: exprStmts,
                 } = this.generateAssignStmtForValue(exprValue, exprPositions));
-                exprStmts.forEach(stmt => stmts.push(stmt));
+                stmts.push(...exprStmts);
             }
             const returnStmt = new ArkReturnStmt(exprValue);
             returnStmt.setOperandOriginalPositions(exprPositions);
@@ -619,7 +635,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
             this.cxxAddInvokeStmts(exprValue, exprPositions, stmts);
         } else if (this.shouldGenerateCxxExtraAssignStmt(expressionStatement)) {
             const { stmts: exprStmts } = this.generateAssignStmtForValue(exprValue, exprPositions);
-            exprStmts.forEach(stmt => stmts.push(stmt));
+            stmts.push(...exprStmts);
         }
         return stmts;
     }
@@ -654,44 +670,48 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
 
     /** Convert C++ switch statements to ValueAndStmts */
     public cxxSwitchStatementToValueAndStmts(switchStatement: CxxAstNode): ValueAndStmts[] {
+        // switchNode.inner[length - 2] is the value
         const valueAndStmtsOfSwitchAndCases: ValueAndStmts[] = [];
         const exprStmts: Stmt[] = [];
+        for (let i = 0; i < switchStatement.inner.length - 2; i++) {
+            exprStmts.push(...this.cxxNodeToValueAndStmts(switchStatement.inner[i]).stmts);
+        }
         let {
             value: exprValue,
             valueOriginalPositions: exprPositions,
             stmts: exprTempStmts,
-        } = this.cxxNodeToValueAndStmts(switchStatement.inner[0]);
-        exprTempStmts.forEach(stmt => exprStmts.push(stmt));
+        } = this.cxxNodeToValueAndStmts(switchStatement.inner[switchStatement.inner.length - 2]);
+        exprStmts.push(...exprTempStmts);
         if (IRUtils.moreThanOneAddress(exprValue)) {
             ({
                 value: exprValue,
                 valueOriginalPositions: exprPositions,
                 stmts: exprTempStmts,
             } = this.generateAssignStmtForValue(exprValue, exprPositions));
-            exprTempStmts.forEach(stmt => exprStmts.push(stmt));
+            exprStmts.push(...exprTempStmts);
         }
         valueAndStmtsOfSwitchAndCases.push({
             value: exprValue,
             valueOriginalPositions: exprPositions,
             stmts: exprStmts,
         });
-
-        for (const clause of switchStatement.inner[1].inner) {
-            if (clause.kind.toString() === 'CaseStmt') {
+        // switchNode.inner[length - 1] is the cases
+        for (const clause of switchStatement.inner[switchStatement.inner.length - 1].inner) {
+            if (clause.kind.toString() === astKind.CaseStmt) {
                 const clauseStmts: Stmt[] = [];
                 let {
                     value: clauseValue,
                     valueOriginalPositions: clausePositions,
                     stmts: clauseTempStmts,
                 } = this.cxxNodeToValueAndStmts(clause.inner[0]);
-                clauseTempStmts.forEach(stmt => clauseStmts.push(stmt));
+                clauseStmts.push(...clauseTempStmts);
                 if (IRUtils.moreThanOneAddress(clauseValue)) {
                     ({
                         value: clauseValue,
                         valueOriginalPositions: clausePositions,
                         stmts: clauseTempStmts,
                     } = this.generateAssignStmtForValue(clauseValue, clausePositions));
-                    clauseTempStmts.forEach(stmt => clauseStmts.push(stmt));
+                    clauseStmts.push(...clauseTempStmts);
                 }
                 valueAndStmtsOfSwitchAndCases.push({
                     value: clauseValue,
@@ -702,39 +722,45 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         }
         return valueAndStmtsOfSwitchAndCases;
     }
-
+    /**
+     * Convert C++for statement nodes to Ark IR statement arrays
+     * Under forStmt, there will be 5 child nodes. Taking for (a ; b; c) as an example,
+     * the content of block a is at node 0, if block b contains assignments, it will be at node 1,
+     * the Boolean judgment of block b is at node 2, the successor operation of block c's loop body is at node 3,
+     * and the loop body is at node 4
+     * @param forStatement -The for statement node in C++AST
+     * @returns Converted Ark IR statement array
+     */
     private cxxForStatementToStmts(forStatement: CxxAstNode): Stmt[] {
         const stmts: Stmt[] = [];
-        let initNode: CxxAstNode | undefined;
+        let initNode: CxxAstNode[] | undefined;
         let conditionNoe: CxxAstNode | undefined;
         let incrementor: CxxAstNode | undefined;
         // The complete for structure allocates corresponding statements in order, so we need to process them in order.
-        if (forStatement.inner.length === 4) {
-            initNode = forStatement.inner[0];
-            conditionNoe = forStatement.inner[1];
-            incrementor = forStatement.inner[2];
+        if (forStatement.inner.length === 5) {
+            initNode = forStatement.inner.slice(0, 2);
+            conditionNoe = forStatement.inner[2];
+            incrementor = forStatement.inner[3];
         } else {
             logger.error('Current node syntax tree generation error');
             return stmts;
         }
 
-
         if (initNode) {
-            this.cxxNodeToStmts(initNode).forEach(stmt => stmts.push(stmt));
+            initNode.forEach(node=>this.cxxNodeToStmts( node).forEach(stmt=>stmts.push(stmt)));
         }
         const dummyInitializerStmt = new DummyStmt(ArkIRTransformer.DUMMY_LOOP_INITIALIZER_STMT);
         stmts.push(dummyInitializerStmt);
-
-        if (conditionNoe.kind === 'NullStmt') {
+        if (conditionNoe.kind === undefined) {
             // The omitted condition always evaluates to true.
             const trueConstant = CxxValueUtil.getBooleanConstant(true);
             const conditionExpr = new ArkConditionExpr(trueConstant, trueConstant, RelationalBinaryOperator.Equality);
             stmts.push(new ArkIfStmt(conditionExpr));
         } else if (conditionNoe) {
-            this.cxxIfStatementToStmts(conditionNoe).forEach(stmt => stmts.push(stmt));
+            stmts.push(...this.cxxIfStatementToStmts(conditionNoe));
         }
         if (incrementor) {
-            this.cxxNodeToValueAndStmts(incrementor).stmts.forEach(stmt => stmts.push(stmt));
+            stmts.push(...this.cxxNodeToValueAndStmts(incrementor).stmts);
         }
         return stmts;
     }
@@ -743,13 +769,13 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         const stmts: Stmt[] = [];
         const dummyInitializerStmt = new DummyStmt(ArkIRTransformer.DUMMY_LOOP_INITIALIZER_STMT);
         stmts.push(dummyInitializerStmt);
-        this.cxxIfStatementToStmts(whileStatement.inner[0]).forEach(stmt => stmts.push(stmt));
+        stmts.push(...this.cxxIfStatementToStmts(whileStatement.inner[0]));
         return stmts;
     }
 
     private cxxDoStatementToStmts(doStatement: CxxAstNode): Stmt[] {
         const stmts: Stmt[] = [];
-        this.cxxIfStatementToStmts(doStatement.inner[1]).forEach(stmt => stmts.push(stmt));
+        stmts.push(...this.cxxIfStatementToStmts(doStatement.inner[1]));
         return stmts;
     }
 
@@ -863,14 +889,10 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         return stmts;
     }
 
-    private cxxVariableStatementToStmts(variableStatement: CxxAstNode): Stmt[] {
-        return this.cxxVariableDeclarationListToStmts(variableStatement);
-    }
-
     private cxxDeclStatementToStmts(declStatement: CxxAstNode): Stmt[] {
         const stmts: Stmt[] = [];
         if (declStatement.inner.length === 0) {
-            return this.ArkCxxValueTransformer.declStmtToValueAndStmts(declStatement).stmts;
+            return this.ArkCxxValueTransformer.cxxVariableDeclarationToValueAndStmts(declStatement).stmts;
         }
         for (const child of declStatement.inner) {
             const childStmts = this.cxxNodeToStmts(child);
@@ -884,33 +906,33 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
     }
 
     private cxxVariableDeclarationListToStmts(variableDeclarationList: CxxAstNode): Stmt[] {
-        return this.ArkCxxValueTransformer.declStmtToValueAndStmts(variableDeclarationList).stmts;
+        return this.ArkCxxValueTransformer.cxxVariableDeclarationToValueAndStmts(variableDeclarationList).stmts;
     }
 
     public cxxIfStatementToStmts(ifStatement: CxxAstNode, depth: number = 0, context?: {
         conditionExpr: Value | undefined
     }): Stmt[] {
         const stmts: Stmt[] = [];
-        if (ifStatement.kind === 'IfStmt') {
+        if (ifStatement.kind === astKind.IfStmt) {
             return this.cxxIfStatementToStmts(ifStatement.inner[0], depth);
-        } else if (ifStatement.kind === 'BinaryOperator' && ifStatement.opcode === '||') {
+        } else if (ifStatement.kind === astKind.BinaryOperator && ifStatement.opcode === '||') {
             // || The child of a node must have two child nodes
-            this.cxxIfStatementToStmts(ifStatement.inner[0], depth + 1).forEach(stmt => stmts.push(stmt));
+            stmts.push(...this.cxxIfStatementToStmts(ifStatement.inner[0], depth + 1));
             stmts.push(new DummyStmt(ArkCxxIRTransformer.DUMMY_IF_OPERATOR_OR_SIGNAL + depth));
-            this.cxxIfStatementToStmts(ifStatement.inner[1], depth + 1).forEach(stmt => stmts.push(stmt));
+            stmts.push(...this.cxxIfStatementToStmts(ifStatement.inner[1], depth + 1));
             stmts.push(new DummyStmt(ArkCxxIRTransformer.DUMMY_IF_OPERATOR_END + depth));
-        } else if (ifStatement.kind === 'BinaryOperator' && ifStatement.opcode === '&&') {
+        } else if (ifStatement.kind === astKind.BinaryOperator && ifStatement.opcode === '&&') {
             // && The child of a node must have two child nodes
-            this.cxxIfStatementToStmts(ifStatement.inner[0], depth + 1).forEach(stmt => stmts.push(stmt));
+            stmts.push(...this.cxxIfStatementToStmts(ifStatement.inner[0], depth + 1));
             stmts.push(new DummyStmt(ArkCxxIRTransformer.DUMMY_IF_OPERATOR_AND_SIGNAL + depth));
-            this.cxxIfStatementToStmts(ifStatement.inner[1], depth + 1).forEach(stmt => stmts.push(stmt));
+            stmts.push(...this.cxxIfStatementToStmts(ifStatement.inner[1], depth + 1));
             stmts.push(new DummyStmt(ArkCxxIRTransformer.DUMMY_IF_OPERATOR_END + depth));
-        } else if (ifStatement.kind === 'ParenExpr') {
+        } else if (ifStatement.kind === astKind.ParenExpr) {
             return this.cxxIfStatementToStmts(ifStatement.inner[0], depth);
         } else {
             const { value: conditionExpr, valueOriginalPositions: conditionExprPositions, stmts: conditionStmts } =
                 this.ArkCxxValueTransformer.cxxConditionToValueAndStmts(ifStatement);
-            conditionStmts.forEach(stmt => stmts.push(stmt));
+            stmts.push(...conditionStmts);
             const ifStmt = new ArkIfStmt(conditionExpr as ArkConditionExpr);
             ifStmt.setOperandOriginalPositions(conditionExprPositions);
             stmts.push(ifStmt);
@@ -931,7 +953,7 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
         if (throwStatement.inner.length === 0 && this.catchedExceptions.length !== 0) {
             throwValue = this.catchedExceptions[this.catchedExceptions.length - 1];
         }
-        throwStmts.forEach(stmt => stmts.push(stmt));
+        stmts.push(...throwStmts);
         const throwStmt = new ArkThrowStmt(throwValue);
         throwStmt.setOperandOriginalPositions(throwValuePositions);
         stmts.push(throwStmt);

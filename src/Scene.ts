@@ -51,6 +51,7 @@ import { PointerAnalysisConfig } from './callgraph/pointerAnalysis/PointerAnalys
 import { ValueUtil } from './core/common/ValueUtil';
 import { InferenceManager } from './core/inference/Inference';
 import { IRInference } from './core/common/IRInference';
+import { findCompileCommands } from './cpp_frontend/ast/astUtils';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'Scene');
 
@@ -392,6 +393,15 @@ export class Scene {
         this.buildStage = SceneBuildStage.METHOD_DONE;
     }
 
+    private findCCJsonPath(file: string, ccjsonPath: string): string {
+        const ext = path.extname(file).toLowerCase();
+        const isHeader = ext === '.h' || ext === '.hpp';
+        if (!ccjsonPath && !isHeader) {
+            return findCompileCommands(file);
+        }
+        return ccjsonPath;
+    }
+
     private genArkFiles(): void {
         this.projectFiles.forEach(file => {
             logger.trace('=== parse file:', file);
@@ -400,6 +410,7 @@ export class Scene {
                 arkFile.setScene(this);
                 // CXXTodo: Distinguish between C++ and TS/ArkTS. Call different builder functions based on file language.
                 if (arkFile.getLanguage() === Language.CXX) {
+                    this.ccjsonPath = this.findCCJsonPath(file, this.ccjsonPath);
                     buildArkCxxFileFromFile(file, this.realProjectDir, arkFile, this.projectName, this.includeDirs);
                 } else {
                     buildArkFileFromFile(file, this.realProjectDir, arkFile, this.projectName);

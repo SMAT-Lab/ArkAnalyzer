@@ -14,7 +14,13 @@
  */
 
 import { AbstractBinopExpr, AbstractInvokeExpr, ArkCastExpr, ArkUnopExpr } from '../../core/base/Expr';
-import { AbstractFieldRef, AbstractRef, ArkArrayRef, ArkInstanceFieldRef, ArkStaticFieldRef } from '../../core/base/Ref';
+import {
+    AbstractFieldRef,
+    AbstractRef,
+    ArkArrayRef,
+    ArkInstanceFieldRef,
+    ArkStaticFieldRef,
+} from '../../core/base/Ref';
 import { Value } from '../../core/base/Value';
 import { Scene } from '../../Scene';
 import { SceneOptions } from '../../Config';
@@ -24,7 +30,8 @@ import { ArkBaseModel } from '../../core/model/ArkBaseModel';
 import { FullPosition } from '../../core/base/Position';
 import { Local } from '../../core/base/Local';
 import { NAME_PREFIX } from '../../core/common/Const';
-import { CxxAstNode } from '../ast/ArkCxxAstNode';
+import { astKind, CxxAstNode } from '../ast/ArkCxxAstNode';
+import { CxxClosureCaptureType } from '../base/Ref';
 
 export class IRUtils {
     public static moreThanOneAddress(value: Value): boolean {
@@ -132,5 +139,49 @@ export class IRUtils {
             defaultPositions.push(FullPosition.DEFAULT);
         }
         return defaultPositions;
+    }
+
+    public static getLambdaCapture(lambdaCode: string): string {
+        if (!lambdaCode.startsWith('[')) {
+            return '';
+        }
+        let depth = 0;
+        for (let i = 0; i < lambdaCode.length; i++) {
+            const ch = lambdaCode[i];
+            if (ch === '[') {
+                depth++;
+            } else if (ch === ']') {
+                depth--;
+                if (depth === 0) {
+                    return lambdaCode.substring(1, i);
+                }
+            }
+        }
+        return '';
+    }
+
+    public static analyzeLambdaDefaultCapture(captureList: string): CxxClosureCaptureType | null {
+        const parts = captureList.split(',').map(p => p.trim()).filter(Boolean);
+        let defaultCaptureType: CxxClosureCaptureType | null = null;
+
+        for (const part of parts) {
+            if (part === '=') {
+                defaultCaptureType = CxxClosureCaptureType.BY_VALUE;
+            } else if (part === '&') {
+                defaultCaptureType = CxxClosureCaptureType.BY_REF;
+            }
+        }
+        return defaultCaptureType;
+    }
+
+    public static getLambdaExplicitCaptureVars(lambdaExpr: CxxAstNode): CxxAstNode[] {
+        const captureNodes: CxxAstNode[] = [];
+        for (const child of lambdaExpr.inner) {
+            if (child.kind === astKind.ParmVarDecl || child.kind === astKind.CompoundStmt) {
+                return captureNodes;
+            }
+            captureNodes.push(child);
+        }
+        return captureNodes;
     }
 }

@@ -35,6 +35,8 @@ using namespace std;
 #define VALUE_ONE    1
 #define CHAR_A      'A'
 #define CHAR_B      'B'
+#define CONST_TWO 2
+#define CONST_FOUR 4
 
 enum NumConstant {
     ONE,
@@ -368,6 +370,17 @@ void ProcessValue(T value)
                 return;
         }
     }
+}
+
+int CaseWithInit()
+{
+    int value = CONST_TWO;
+
+    switch (int y = value * CONST_TWO; y) {
+        case CONST_TWO: std::cout << "2"; break;
+        case CONST_FOUR: std::cout << "4"; break;
+    }
+    return 0;
 }
 
 void TestConstexprSwitch()

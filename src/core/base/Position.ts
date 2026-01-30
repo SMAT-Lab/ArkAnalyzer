@@ -16,7 +16,7 @@
 import ts from 'ohos-typescript';
 
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
-import { CxxAstNode } from '../../cpp_frontend/ast/ArkCxxAstNode';
+import { CxxAstNode, getNodeStartLineAndCol } from '../../cpp_frontend/ast/ArkCxxAstNode';
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'Position');
 
 const LOW_BITS_SIZE = 16;
@@ -107,13 +107,8 @@ export class LineColPosition {
      * @returns A LineColPosition object containing the line and character information. Default LineColPosition is (0, 0).
      */
     public static cxxBuildFromNode(node: CxxAstNode): LineColPosition {
-        let line = 0;
-        let character = 0;
-        if (node.range?.begin && node.range.begin.line) {
-            line = node.range.begin.line;
-            character = node.range.begin.col;
-        }
-        return new LineColPosition(line, character);
+        const nodePos = getNodeStartLineAndCol(node);
+        return new LineColPosition(nodePos.line, nodePos.col);
     }
 }
 
@@ -164,7 +159,8 @@ export class FullPosition {
         const startLine = begin?.line ?? 0;
         const startCharacter = begin?.col ?? 0;
         const endLine = end?.line ?? startLine;
-        const endCharacter = end?.col ?? (begin?.tokLen != null ? startCharacter + begin.tokLen : startCharacter);
+        const endCharacter = (end && end.tokLen) ? end.col + end.tokLen :
+            (begin?.tokLen != null ? startCharacter + begin.tokLen : startCharacter);
         return new FullPosition(startLine, startCharacter, endLine, endCharacter);
     }
 

@@ -34,7 +34,14 @@ import {
 } from '../../core/base/Type';
 import { Local } from '../../core/base/Local';
 import { TypeInference } from './TypeInference';
-import { AbstractExpr, AbstractInvokeExpr, AliasTypeExpr, ArkInstanceInvokeExpr, ArkPtrInvokeExpr, ArkStaticInvokeExpr } from '../../core/base/Expr';
+import {
+    AbstractExpr,
+    AbstractInvokeExpr,
+    AliasTypeExpr,
+    ArkInstanceInvokeExpr,
+    ArkPtrInvokeExpr,
+    ArkStaticInvokeExpr,
+} from '../../core/base/Expr';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { Scene } from '../../Scene';
 import { ArkClass } from '../../core/model/ArkClass';
@@ -54,7 +61,14 @@ import { CONSTRUCTOR_NAME, FUNCTION, IMPORT, SUPER_NAME, THIS_NAME } from '../..
 import { Builtin } from '../../core/common/Builtin';
 import { ArkBody } from '../../core/model/ArkBody';
 import { ArkAssignStmt, ArkInvokeStmt } from '../../core/base/Stmt';
-import { AbstractFieldRef, AbstractRef, ArkArrayRef, ArkInstanceFieldRef, ArkParameterRef, ArkStaticFieldRef } from '../../core/base/Ref';
+import {
+    AbstractFieldRef,
+    AbstractRef,
+    ArkArrayRef,
+    ArkInstanceFieldRef,
+    ArkParameterRef,
+    ArkStaticFieldRef,
+} from '../../core/base/Ref';
 import { Value } from '../../core/base/Value';
 import { Constant } from '../../core/base/Constant';
 import {
@@ -67,7 +81,7 @@ import {
     UNKNOWN_CLASS_NAME,
     UNKNOWN_FILE_NAME,
     INSTANCE_INIT_METHOD_NAME,
-    STATIC_INIT_METHOD_NAME
+    STATIC_INIT_METHOD_NAME,
 } from '../../core/common/Const';
 import { ValueUtil } from '../../core/common/ValueUtil';
 import { ArkFile } from '../../core/model/ArkFile';
@@ -80,6 +94,7 @@ import { SdkUtils } from '../../core/common/SdkUtils';
 import { ArkNamespace } from '../../core/model/ArkNamespace';
 import { ArkExport } from '../../core/model/ArkExport';
 import { CxxModelUtils } from './ModelUtils';
+import { BuiltinCxx } from './Builtin';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'IRInference');
 
@@ -176,7 +191,7 @@ export class IRInference {
     public static inferStaticInvokeExprByMethodName(methodName: string, arkMethod: ArkMethod, expr: AbstractInvokeExpr): AbstractInvokeExpr {
         const arkClass = arkMethod.getDeclaringArkClass();
         const arkExport =
-            ModelUtils.getStaticMethodWithName(methodName, arkClass) ??
+            CxxModelUtils.getStaticMethodWithName(methodName, arkClass) ??
             arkMethod.getFunctionLocal(methodName) ??
             ModelUtils.findDeclaredLocal(new Local(methodName), arkMethod) ??
             CxxModelUtils.getArkExportInImportInfoWithName(methodName, arkClass.getDeclaringArkFile(), arkClass) ??
@@ -184,7 +199,15 @@ export class IRInference {
         let { mtd: method, sig: signature } = this.processArkExportForMethodAndSignature(arkExport, arkClass);
         if (method) {
             signature = method.matchMethodSignature(expr.getArgs());
-            TypeInference.inferSignatureReturnType(signature, method);
+            // Handle Standard Operator Overloading
+            if ([BuiltinCxx.OPERATOR_ISTREAM, BuiltinCxx.OPERATOR_OSTREAM].includes(methodName) &&
+                !CxxModelUtils.isIOStreamObjectMatched(signature.getMethodSubSignature().getParameters(),
+                    expr.getArgs(), method.getDeclaringArkFile().getScene())) {
+                signature = undefined;
+            }
+            if (signature) {
+                TypeInference.inferSignatureReturnType(signature, method);
+            }
         }
         if (signature) {
             if (arkExport instanceof Local) {
@@ -198,8 +221,8 @@ export class IRInference {
     }
 
     private static processArkExportForMethodAndSignature(arkExport: ArkExport | null,
-                                                         arkClass: ArkClass
-    ): {mtd: ArkMethod | undefined | null, sig: MethodSignature | undefined} {
+                                                         arkClass: ArkClass,
+    ): { mtd: ArkMethod | undefined | null, sig: MethodSignature | undefined } {
         let method: ArkMethod | undefined | null;
         let signature: MethodSignature | undefined;
         if (arkExport instanceof ArkMethod) {
@@ -454,7 +477,7 @@ export class IRInference {
         } else if (typeWithoutPtrOrRef instanceof AnnotationNamespaceType) {
             const namespace = scene.getNamespace(typeWithoutPtrOrRef.getNamespaceSignature());
             if (namespace) {
-                const foundMethod = ModelUtils.findPropertyInNamespace(methodName, namespace);
+                const foundMethod = CxxModelUtils.findPropertyInNamespace(methodName, namespace);
                 if (foundMethod instanceof ArkMethod) {
                     let signature = foundMethod.matchMethodSignature(expr.getArgs());
                     TypeInference.inferSignatureReturnType(signature, foundMethod);
@@ -503,7 +526,7 @@ export class IRInference {
         expr: AbstractInvokeExpr,
         baseType: ClassType,
         methodName: string,
-        scene: Scene
+        scene: Scene,
     ): AbstractInvokeExpr | null {
         let declaredClass = scene.getClass(baseType.getClassSignature());
         if (!declaredClass) {
@@ -728,7 +751,7 @@ export class IRInference {
                 }
                 if (type instanceof UnknownType) {
                     anonField.setSignature(
-                        new FieldSignature(anonField.getName(), property.getDeclaringArkClass().getSignature(), new FunctionType(property.getSignature()))
+                        new FieldSignature(anonField.getName(), property.getDeclaringArkClass().getSignature(), new FunctionType(property.getSignature())),
                     );
                 }
             }

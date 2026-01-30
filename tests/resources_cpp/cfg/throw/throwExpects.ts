@@ -80,9 +80,11 @@ export const THROW_EXPECT_CASE3 = {
         {
             id: 1,
             stmts: [
-                'staticinvoke <@%unk/%unk: .cout()>(\'before throw\')',
+                '%0 = staticinvoke <@%unk/%unk: .operator<<()>(cout, \'before throw\')',
+                'staticinvoke <@%unk/%unk: .operator<<()>(%0, endl)',
                 'throw 42',
-                'staticinvoke <@%unk/%unk: .cout()>(\'after throw\')',
+                '%1 = staticinvoke <@%unk/%unk: .operator<<()>(cout, \'after throw\')',
+                'staticinvoke <@%unk/%unk: .operator<<()>(%1, endl)',
             ],
             preds: [0],
             succes: [3],
@@ -93,7 +95,9 @@ export const THROW_EXPECT_CASE3 = {
             id: 2,
             stmts: [
                 'e = caughtexception: int',
-                'staticinvoke <@%unk/%unk: .cout()>(\'Caught exception: \', e)',
+                '%2 = staticinvoke <@%unk/%unk: .operator<<()>(cout, \'Caught exception: \')',
+                '%3 = staticinvoke <@%unk/%unk: .operator<<()>(%2, e)',
+                'staticinvoke <@%unk/%unk: .operator<<()>(%3, endl)',
             ],
             preds: [],
             succes: [3],

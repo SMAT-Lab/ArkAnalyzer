@@ -21,14 +21,15 @@ export const OVERWRITE_PRINT_INFO_CASE1_EXPECT = {
                 'a = parameter0: int',
                 'b = parameter1: int',
                 'this = this: @overwrite/overwriteSample.cpp: Calculator',
-                '%0 = this.<@overwrite/overwriteSample.cpp: Calculator.Log>',
-                "instanceinvoke this.<@overwrite/overwriteSample.cpp: Calculator.Log(string&)>(%0, 'Integer addition')",
+                '%0 = new @%unk/%unk: std::string',
+                'instanceinvoke %0.<@%unk/%unk: std::string.constructor()>(\'Integer addition\')',
+                'instanceinvoke this.<@overwrite/overwriteSample.cpp: Calculator.Log(string&)>(%0)',
                 '%1 = a + b',
-                'return %1'
+                'return %1',
             ],
             preds: [],
-            succes: []
-        }
+            succes: [],
+        },
     ],
 };
 
@@ -40,14 +41,15 @@ export const OVERWRITE_PRINT_INFO_CASE2_EXPECT = {
                 'a = parameter0: double',
                 'b = parameter1: double',
                 'this = this: @overwrite/overwriteSample.cpp: Calculator',
-                '%0 = this.<@overwrite/overwriteSample.cpp: Calculator.Log>',
-                "instanceinvoke this.<@overwrite/overwriteSample.cpp: Calculator.Log(string&)>(%0, 'Decimal addition')",
+                '%0 = new @%unk/%unk: std::string',
+                'instanceinvoke %0.<@%unk/%unk: std::string.constructor()>(\'Decimal addition\')',
+                'instanceinvoke this.<@overwrite/overwriteSample.cpp: Calculator.Log(string&)>(%0)',
                 '%1 = a + b',
-                'return %1'
+                'return %1',
             ],
             preds: [],
-            succes: []
-        }
+            succes: [],
+        },
     ],
 };
 
@@ -60,14 +62,15 @@ export const OVERWRITE_PRINT_INFO_CASE3_EXPECT = {
                 'b = parameter1: int',
                 'c = parameter2: int',
                 'this = this: @overwrite/overwriteSample.cpp: Calculator',
-                '%0 = this.<@overwrite/overwriteSample.cpp: Calculator.Log>',
-                "instanceinvoke this.<@overwrite/overwriteSample.cpp: Calculator.Log(string&)>(%0, 'Three number addition')",
+                '%0 = new @%unk/%unk: std::string',
+                'instanceinvoke %0.<@%unk/%unk: std::string.constructor()>(\'Three number addition\')',
+                'instanceinvoke this.<@overwrite/overwriteSample.cpp: Calculator.Log(string&)>(%0)',
                 '%1 = a + b',
                 '%2 = %1 + c',
-                'return %2'
+                'return %2',
             ],
             preds: [],
-            succes: []
-        }
+            succes: [],
+        },
     ],
 };

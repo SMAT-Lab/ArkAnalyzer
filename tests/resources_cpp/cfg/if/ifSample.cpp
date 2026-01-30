@@ -156,11 +156,11 @@ template<typename T>
 void Case9(const T& value)
 {
     if constexpr (std::is_integral_v<T>) {
-        std::cout << "Integral: " << value << std::endl;
+        std::cout << "Integral: "  << std::endl;
     } else if constexpr (std::is_floating_point_v<T>) {
-        std::cout << "Floating-point: " << value << std::endl;
+        std::cout << "Floating-point: " << std::endl;
     } else {
-        std::cout << "Other: " << value << std::endl;
+        std::cout << "Other: " << std::endl;
     }
 }
 

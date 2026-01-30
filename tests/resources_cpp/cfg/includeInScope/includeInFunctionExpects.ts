@@ -26,7 +26,7 @@ export const INCLUDE_IN_FUNCTION_CASE1 = {
                 'instanceinvoke %0.<@includeInScope/includeInFunction.h: MyStruct.constructor()>()',
                 'myStruct = %0',
                 'myStruct.<@includeInScope/includeInFunction.h: MyStruct.age> = g_NUM',
-                'return'
+                'return',
             ],
             preds: [],
             succes: []

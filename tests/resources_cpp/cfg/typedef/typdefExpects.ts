@@ -19,15 +19,15 @@ export const TYPEDEF_EXPECT_CASE1 = {
             id: 0,
             stmts: [
                 'this = this: @typedef/typedef.cpp: %dflt',
-                'type @typedef/typedef.cpp: %dflt.main()#StrToVecMap = @std/map.h: map<string,@std/vector.h: vector<int>>',
-                '%0 = new @std/map.h: map<string,@std/vector.h: vector<int>>',
-                'instanceinvoke %0.<@std/map.h: map.constructor()>()',
+                'type @typedef/typedef.cpp: %dflt.main()#StrToVecMap = std::map<std::string, std::vector<int>>',
+                '%0 = new @%unk/%unk: std::map<string,std::vector<int>>',
+                'instanceinvoke %0.<@%unk/%unk: std::map.constructor()>()',
                 'myMap = %0',
                 "instanceinvoke myMap['key'].<@%unk/%unk: .push_back()>(1)",
-                'return 0',
+                'return 0'
             ],
             preds: [],
-            succes: [],
-        },
+            succes: []
+        }
     ],
 };

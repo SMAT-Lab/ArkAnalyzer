@@ -69,10 +69,11 @@ import { ClassSignature } from '../model/ArkSignature';
 import { ImportInfo } from '../model/ArkImport';
 import { ArkField } from '../model/ArkField';
 import { Scene } from '../../Scene';
-import { setTs2CxxFuncMapOfClass } from '../../cpp_frontend/common/ModelUtils';
+import { setTs2CxxFuncMapOfClass, CxxModelUtils } from '../../cpp_frontend/common/ModelUtils';
 import { PointerType, ReferenceType } from '../../cpp_frontend/base/Type';
 import { IRInference as CxxIRInference} from '../../cpp_frontend/common/IRInference';
 import { TypeInference as CxxTypeInference } from '../../cpp_frontend/common/TypeInference';
+import { ArkAggregateExpr } from '../../cpp_frontend/base/Expr';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'ValueInference');
 
@@ -979,6 +980,19 @@ export class CxxInstanceInvokeExprInference extends InstanceInvokeExprInference 
         const methodName = this.getMethodName(value, arkMethod);
         const result = InstanceInvokeExprInference.inferInvokeExpr(baseType, value, arkMethod, methodName) ??
             CxxTypeInference.inferMethodFromImportNamespace(baseType, value, arkMethod, methodName);
+
+        if (!result && baseType instanceof AnnotationNamespaceType) {
+            const namespace = arkMethod.getDeclaringArkFile().getScene().getNamespace(baseType.getNamespaceSignature());
+            if (namespace) {
+                const foundMethod = CxxModelUtils.findPropertyInNamespace(methodName, namespace);
+                if (foundMethod instanceof ArkMethod) {
+                    let signature = foundMethod.matchMethodSignature(value.getArgs());
+                    CxxTypeInference.inferSignatureReturnType(signature, foundMethod);
+                    value.setMethodSignature(signature);
+                    return new ArkStaticInvokeExpr(signature, value.getArgs(), value.getRealGenericTypes());
+                }
+            }
+        }
         return !result || result === value ? undefined : result;
     }
 
@@ -1127,6 +1141,34 @@ export class CxxArkNewArrayExprInference extends ArkNewArrayExprInference {
         const type = CxxTypeInference.inferUnclearedType(value.getBaseType(), stmt.getCfg().getDeclaringMethod().getDeclaringArkClass());
         if (type) {
             value.setBaseType(type);
+        }
+        return undefined;
+    }
+}
+
+@Bind(InferLanguage.CXX)
+export class CxxClosureFieldRefInference extends ClosureFieldRefInference {
+
+    public getValueName(): string {
+        return 'CxxClosureFieldRef';
+    }
+}
+
+@Bind(InferLanguage.CXX)
+export class ArkAggregateExprInference extends ValueInference<ArkAggregateExpr> {
+
+    public getValueName(): string {
+        return 'ArkAggregateExpr';
+    }
+
+    public preInfer(value: ArkAggregateExpr): boolean {
+        return TypeInference.isUnclearType(value.getType());
+    }
+
+    public infer(value: ArkAggregateExpr, stmt: Stmt): Value | undefined {
+        const type = TypeInference.inferUnclearedType(value.getType(), stmt.getCfg().getDeclaringMethod().getDeclaringArkClass());
+        if (type) {
+            value.setType(type);
         }
         return undefined;
     }

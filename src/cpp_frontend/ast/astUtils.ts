@@ -20,7 +20,7 @@ import * as os from 'os';
 
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { ClangPath } from './const';
-import {CxxAstNode, CxxAstNodeLite} from './ArkCxxAstNode';
+import { astKind, CxxAstNode, CxxAstNodeLite } from './ArkCxxAstNode';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'astUtils');
 
@@ -30,7 +30,15 @@ export type GetParentFn = {
 };
 
 export class AstUtils {
-    private static currentAccess: string = 'public';
+    private static currentAccess: string = '';
+
+    private static deleteFileSync(filePath: string): void {
+        try {
+            fs.unlinkSync(filePath);
+        } catch {
+            logger.warn('delete file failed:', filePath);
+        }
+    }
 
     public static parse(sourceFile: string, ccJsonPath: string | null, includeDirs: string[] | null, llvmPath: string, cppAstPath: string): CxxAstNode {
         if (!fs.existsSync(sourceFile)) {
@@ -78,50 +86,33 @@ export class AstUtils {
         } else {
             logger.info('Parsing completed!');
         }
-        let translationUnit = JSON.parse(fs.readFileSync(astPath, 'utf-8')) as CxxAstNode;
-        translationUnit = this.filter(sourceFile, translationUnit) as CxxAstNode;
-        deleteFile(astPath);
-        return translationUnit;
+        try {
+            let tu = JSON.parse(fs.readFileSync(astPath, 'utf-8')) as CxxAstNode;
+            tu = this.filter(sourceFile, tu) as CxxAstNode;
+            return tu;
+        } finally {
+            this.deleteFileSync(astPath);
+        }
     }
 
-    private static updateInner(sourceFile: string, firstOccurrenceOfMainFile: boolean, entry: CxxAstNode, newInner: CxxAstNode[]): void {
-        if (!firstOccurrenceOfMainFile) {
-            if (Object.prototype.hasOwnProperty.call(entry, 'isImplicit') && entry.isImplicit && entry.kind !== 'UsingDirectiveDecl') {
-                return;
-            }
-            let fileName = '';
-            let loc = entry.locFile;
-            if (!loc) {
-                if (entry.kind === 'inclusion directive') {
-                    entry.locFile = sourceFile;
-                    newInner.push(entry);
-                } else {
-                    logger.warn('Node skipped due to missing "locFile", kind of node: ', entry.kind);
-                }
-                return;
-            }
-            if (entry.locFile) {
-                fileName = entry.locFile;
-            }
-            if (Object.prototype.hasOwnProperty.call(entry, 'include') && entry.include && entry.kind !== 'inclusion directive') {
-                newInner.push(entry);
-                return;
-            }
-            if (fileName !== sourceFile) {
-                return;
-            }
+    private static updateInner(sourceFile: string, entry: CxxAstNode, newInner: CxxAstNode[]): void {
+        // isImplicit=true indicates that the node must exist under the rules of the C/C++ language but is not explicitly
+        // written in the source code, so it needs to be filtered out.
+        if (entry.isImplicit) {
+            return;
+        }
+        let loc = entry.loc;
+        if (!loc) {
+            logger.warn('Node skipped due to missing "locFile", kind of node: ', entry.kind);
+            return;
         }
         newInner.push(entry);
     }
 
     private static filter(sourceFile: string, translationUnit: CxxAstNode):CxxAstNode {
         let newInner: CxxAstNode[] = [];
-        let firstOccurrenceOfMainFile: boolean = false;
-        for (let index in translationUnit.inner) {
-            if (Object.prototype.hasOwnProperty.call(translationUnit.inner, index)) {
-                let entry = translationUnit.inner[index];
-                this.updateInner(sourceFile, firstOccurrenceOfMainFile, entry, newInner);
-            }
+        for (const entry of translationUnit.inner) {
+            this.updateInner(sourceFile, entry, newInner);
         }
         translationUnit.inner = newInner;
         translationUnit.fileName = sourceFile;
@@ -132,13 +123,10 @@ export class AstUtils {
 
     private static filterChildren(cursor: CxxAstNode): CxxAstNode[] {
         let filteredChildren: CxxAstNode[] = [];
-        if (!Object.prototype.hasOwnProperty.call(cursor, 'inner')) {
+        if (!cursor.inner) {
             return filteredChildren;
         }
-        filteredChildren = cursor.inner.filter(
-            (item: CxxAstNode) => !Object.prototype.hasOwnProperty.call(cursor, 'isImplicit') ||
-                                           !item.isImplicit || cursor.kind === 'LambdaExpr' || item.isUsed
-        );
+        filteredChildren = cursor.inner.filter((item: CxxAstNode) => !item.isImplicit);
         return filteredChildren;
     }
 
@@ -160,30 +148,32 @@ export class AstUtils {
     }
 
     private static fullInfo(cursor: CxxAstNode): void {
-        if (!Array.isArray(cursor.inner)) {
+        if (!cursor.inner) {
             cursor.inner = [];
         }
         cursor.inner = this.filterChildren(cursor);
-        if (!Object.prototype.hasOwnProperty.call(cursor, 'name') || cursor.name === undefined) {
+        if (cursor.name === undefined) {
             cursor.name = '';
         }
+
+        // handle modifiers of lambda function
+        if (cursor.kind === 'LambdaExpr') {
+            this.processAccess(cursor);
+        }
+
         // The default access property of class is 'private',The default access property of struct is 'public'
-        if (cursor.kind === 'CXXRecordDecl' && cursor.tagUsed === 'class') {
+        if (cursor.kind === astKind.CXXRecordDecl && cursor.tagUsed === 'class') {
             this.currentAccess = 'private';
-        } else if (cursor.kind === 'CXXRecordDecl' && cursor.tagUsed === 'struct') {
+        } else if (cursor.kind === astKind.CXXRecordDecl && cursor.tagUsed === 'struct') {
             this.currentAccess = 'public';
         } else {
             this.currentAccess = '';
         }
 
-        for (const idx in cursor.inner) {
-            if (!Object.prototype.hasOwnProperty.call(cursor.inner, idx)) {
-                continue;
-            }
-            const currentCursor = cursor.inner[idx];
+        for (const currentCursor of cursor.inner) {
             // Overloaded implementation without any usage of 'any' or type assertions
             Object.assign(currentCursor, { getParent: this.makeGetParent(cursor) });
-            if (cursor.kind === 'CXXRecordDecl' || cursor.kind === 'CXXMethodDecl' || cursor.kind === 'FunctionDecl') {
+            if (cursor.kind === astKind.CXXRecordDecl || cursor.kind === astKind.CXXMethodDecl || cursor.kind === astKind.FunctionDecl) {
                 this.processAccess(currentCursor);
             }
             this.fullInfo(currentCursor);
@@ -219,15 +209,53 @@ export class AstUtils {
     private static processAccess(cursor: CxxAstNode): void {
         cursor.modifiers = [];
         // C++access control is a partition declaration that updates current information when encountering an access control symbol
-        if (cursor.kind === 'CXXAccessSpecifier') {
-            this.currentAccess = this.extractAllCppModifiers(cursor.code)[0] ?? '';
+        if (cursor.kind === 'AccessSpecDecl') {
+            this.currentAccess = cursor.access ?? this.extractAllCppModifiers(cursor.code)[0] ?? '';
         } else {
-            let codeModifier = this.extractAllCppModifiers(cursor.code);
-            cursor.modifiers.push(this.currentAccess);
+            const extractedCode = this.getCodeForExtractModifiers(cursor);
+            let codeModifier = this.extractAllCppModifiers(extractedCode);
+            if (this.currentAccess !== '') {
+                cursor.modifiers.push(this.currentAccess);
+            }
             if (codeModifier !== null) {
-                cursor.modifiers?.push(...codeModifier);
+                cursor.modifiers.push(...codeModifier);
             }
         }
+    }
+
+    private static getCodeForExtractModifiers(cursor: CxxAstNode): string {
+        let extractedCode = cursor.code;
+        if (!['CXXConstructorDecl', 'CXXDestructorDecl', 'CXXMethodDecl', 'FriendDecl', 'FunctionDecl', 'FunctionTemplateDecl'].includes(cursor.kind)) {
+            return extractedCode;
+        }
+        const bodyNode = cursor.inner.filter(inn => inn.kind === 'CompoundStmt');
+        const bodyCode = bodyNode.length === 0 ? '' : bodyNode[0].code;
+        return this.stripFucntionParams(extractedCode.replace(bodyCode, ''));
+    }
+
+    private static stripFucntionParams(code: string): string {
+        let depth = 0;
+        let start = -1;
+        let end = -1;
+        for (let i = 0; i < code.length; i++) {
+            const ch = code[i];
+            if (ch === '(') {
+                if (depth === 0) {
+                    start = i;
+                }
+                depth++;
+            } else if (ch === ')') {
+                depth--;
+                if (depth === 0) {
+                    end = i;
+                    break;
+                }
+            }
+        }
+        if (start === -1 || end === -1) {
+            return code;
+        }
+        return code.slice(0, start).trimEnd() + ' ' + code.slice(end + 1).trimStart();
     }
 
     private static getAstOutputPath(sourceFile: string, cppAstPath: string): string {
@@ -258,29 +286,14 @@ export class AstUtils {
     }
 }
 
-async function deleteFile(filePath: string): Promise<void> {
-    try {
-        await fs.promises.unlink(filePath);
-        logger.info('delete file ok:', filePath);
-    } catch (err) {
-        logger.warn('delete file is not ok:', filePath);
-    }
-}
-
 function constructParseArguments(srcFilePath: string, ccJsonPath: string | null, includeDirs: string[] | null): string[] {
     const args: string[] = [];
-    const ext = path.extname(srcFilePath).toLowerCase();
-    const isHeader = ext === '.h' || ext === '.hpp';
-
-    if (!ccJsonPath && !isHeader) {
-        ccJsonPath = findCompileCommands(srcFilePath);
-    }
     if (ccJsonPath) {
-        args.push('-c', ccJsonPath);
+        args.push('-p', ccJsonPath);
     }
     if (includeDirs && includeDirs.length > 0) {
         includeDirs.forEach(dir => {
-            args.push('-i', `${dir}`);
+            args.push('--extra-arg-before=-I' + `${dir}`);
         });
     }
     return args;
@@ -325,7 +338,7 @@ function searchCompileCommandsInDir(dir: string): string {
     for (const entry of entries) {
         const fullPath = path.join(dir, entry.name);
         if (entry.isFile() && entry.name === 'compile_commands.json') {
-            return fullPath;
+            return dir;
         } else if (entry.isDirectory()) {
             const result = searchCompileCommandsInDir(fullPath);
             if (result) {

@@ -20,11 +20,16 @@ import { CfgBuilder } from '../../graph/builder/CfgBuilder';
 import { Local } from '../../../core/base/Local';
 import { MethodParameter } from '../../../core/model/builder/ArkMethodBuilder';
 import { LEXICAL_ENV_NAME_PREFIX, NAME_DELIMITER, NAME_PREFIX } from '../../../core/common/Const';
-import { ArkParameterRef, ArkStaticFieldRef, ClosureFieldRef, GlobalRef } from '../../../core/base/Ref';
+import { ArkParameterRef, ArkStaticFieldRef, GlobalRef } from '../../../core/base/Ref';
 import { ArkAliasTypeDefineStmt, ArkAssignStmt, ArkInvokeStmt, ArkReturnStmt } from '../../../core/base/Stmt';
 import { AliasType, ArrayType, ClosureType, FunctionType, LexicalEnvType, Type, UnclearReferenceType, UnionType } from '../../../core/base/Type';
 import { AbstractInvokeExpr, ArkPtrInvokeExpr } from '../../../core/base/Expr';
 import { CxxAstNode } from '../../ast/ArkCxxAstNode';
+import { IRUtils } from '../../common/IRUtils';
+import { CxxClosureCaptureType, CxxClosureFieldRef } from '../../base/Ref';
+import Logger, { LOG_MODULE_TYPE } from '../../../utils/logger';
+
+const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'BodyBuilder');
 
 type NestedMethodChain = {
     parent: ArkMethod;
@@ -37,18 +42,6 @@ export class CxxBodyBuilder {
 
     constructor(methodSignature: MethodSignature, sourceAstNode: CxxAstNode, declaringMethod: ArkMethod, sourceFile: CxxAstNode) {
         this.cfgBuilder = new CfgBuilder(sourceAstNode, methodSignature.getMethodSubSignature().getMethodName(), declaringMethod, sourceFile);
-    }
-
-    public buildBody(): void {
-        const arkBody: ArkBody | null = this.build();
-        if (arkBody) {
-            const declMethod = this.cfgBuilder.getDeclaringMethod();
-            declMethod.setBody(arkBody);
-            arkBody.getCfg().setDeclaringMethod(declMethod);
-            if (declMethod.getOuterMethod() === undefined) {
-                this.handleGlobalAndClosure();
-            }
-        }
     }
 
     public build(): ArkBody | null {
@@ -78,11 +71,13 @@ export class CxxBodyBuilder {
     }
 
     /**
-     * Find out all locals in the parent method which are used by the childrenChain, these locals are the closures of the root node of the childrenChain.
-     * childrenChain contains all nested method from the root node of the childrenChain.
+     * Find out all locals in the parent method which are used by the nested method, these locals are the closures of the rnested method.
+     * nestedMethod is current nested method.
      * baseLocals are all locals defined in the outer function.
-     * allNestedLocals are collect all locals defined in all outer functions of this childrenChain.
-     * Only the globals of the root of the childrenChain, which are in the baseLocals but not in the allNestedLocals are the actual closures that in baseLocals.
+     * baseClosures are all closures of the outer function.
+     *
+     * When processing the CxxAstNode 'lambdaExpr', the closures of the nested function may be initially constructed.
+     * Here, the true closures of the nested function are filtered out based on the locals and closures of the outer function.
      */
     private findClosuresUsedInNested(childrenChain: NestedMethodChain, baseLocals: Map<string, Local>, allNestedLocals: Map<string, Local>): Local[] | null {
         let closuresRes: Local[] = [];
@@ -123,7 +118,7 @@ export class CxxBodyBuilder {
      * 3. Update the root node of the childrenChain to add parameterRef assign stmt and closureRef assign stmt.
      * 4. Recursively do this for all nested method level by level.
      */
-    private buildLexicalEnv(childrenChain: NestedMethodChain, baseLocals: Map<string, Local>, index: number): number {
+    private buildLexicalEnv(childrenChain: NestedMethodChain, baseLocals: Map<string, Local>, index: number, baseClosures: Local[] | null): number {
         let usedClosures = this.findClosuresUsedInNested(childrenChain, baseLocals, new Map<string, Local>());
         const nestedMethod = childrenChain.parent;
         const nestedSignature = nestedMethod.getImplementationSignature();
@@ -145,7 +140,7 @@ export class CxxBodyBuilder {
             if (newBaseLocals === undefined) {
                 return index;
             }
-            index = this.buildLexicalEnv(nextChain, newBaseLocals, index);
+            index = this.buildLexicalEnv(nextChain, newBaseLocals, index, usedClosures);
         }
         return index;
     }
@@ -189,7 +184,7 @@ export class CxxBodyBuilder {
              * Find out all closures from Level 0 used by these Level 1 functions as well as all their children nested functions.
              * This will be done level by level recursively.
              */
-            closuresIndex = this.buildLexicalEnv(nestedChain, outerLocals, closuresIndex);
+            closuresIndex = this.buildLexicalEnv(nestedChain, outerLocals, closuresIndex, null);
 
             /**
              * Step3: Delete old globals which are recognized as closures, then the rest globals are the true globals.
@@ -578,20 +573,26 @@ export class CxxBodyBuilder {
         if (body === undefined) {
             return;
         }
-        let stmts = Array.from(body.getCfg().getBlocks())[0].getStmts();
+        let stmts = body.getCfg().getStartingBlock()!.getStmts();
         let index = 0;
         const parameterRef = new ArkParameterRef(index, lexicalEnv);
         const closuresLocal = new Local(closuresParam.getName(), lexicalEnv);
         body.addLocal(closuresLocal.getName(), closuresLocal);
         let assignStmt = new ArkAssignStmt(closuresLocal, parameterRef);
         assignStmt.setCfg(body.getCfg());
-        stmts.splice(index, 0, assignStmt);
+        body.getCfg().insertBefore(assignStmt, stmts[index]);
         closuresLocal.setDeclaringStmt(assignStmt);
 
         oldParamRefs?.forEach(paramRef => {
             index++;
             paramRef.setIndex(index);
         });
+
+        const lambdaExprNode = method.getCxxBodyBuilder()?.getCfgBuilder().astRoot;
+        const lambdaCaptureList = lambdaExprNode ? IRUtils.getLambdaCapture(lambdaExprNode.code) : '';
+        const defaultCaptureType = IRUtils.analyzeLambdaDefaultCapture(lambdaCaptureList);
+        const explicitVars = lambdaExprNode ? IRUtils.getLambdaExplicitCaptureVars(lambdaExprNode) : [];
+        const explicitCaptureTypeMap = this.buildExplicitClosureCaptureTypeMap(explicitVars);
 
         for (let closure of closures) {
             let local = body.getLocals().get(closure.getName());
@@ -602,12 +603,33 @@ export class CxxBodyBuilder {
                 local.setType(closure.getType());
             }
             index++;
-            const closureFieldRef = new ClosureFieldRef(closuresParam, closure.getName(), closure.getType());
+            const captureType = explicitCaptureTypeMap.get(closure.getName()) ??
+                (defaultCaptureType === CxxClosureCaptureType.BY_REF ? CxxClosureCaptureType.BY_REF : CxxClosureCaptureType.BY_VALUE);
+            const closureFieldRef = new CxxClosureFieldRef(closuresLocal, closure.getName(), closure.getType(), captureType);
             let assignStmt = new ArkAssignStmt(local, closureFieldRef);
             assignStmt.setCfg(body.getCfg());
-            stmts.splice(index, 0, assignStmt);
+            body.getCfg().insertBefore(assignStmt, stmts[index]);
             local.setDeclaringStmt(assignStmt);
             closuresLocal.addUsedStmt(assignStmt);
         }
+    }
+
+    private buildExplicitClosureCaptureTypeMap(explicitVars: CxxAstNode[]): Map<string, CxxClosureCaptureType> {
+        const closureCaptureTypeMap = new Map<string, CxxClosureCaptureType>();
+        let varName = '';
+        for (const explicitVar of explicitVars) {
+            if (explicitVar.kind === 'DeclRefExpr') {
+                // Reference capture
+                varName = explicitVar.referencedDecl?.name ?? explicitVar.code;
+                closureCaptureTypeMap.set(varName, CxxClosureCaptureType.BY_REF);
+            } else if (explicitVar.kind === 'ImplicitCastExpr' && explicitVar.inner?.[0]?.kind === 'DeclRefExpr') {
+                // Value capture
+                varName = explicitVar.inner[0].referencedDecl?.name ?? explicitVar.inner[0].code;
+                closureCaptureTypeMap.set(varName, CxxClosureCaptureType.BY_VALUE);
+            } else {
+                logger.warn(`Unprocessed capture Node: ${explicitVar.kind}`);
+            }
+        }
+        return closureCaptureTypeMap;
     }
 }

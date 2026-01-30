@@ -21,14 +21,20 @@ import {
 } from '../../core/base/Expr';
 import { Value } from '../../core/base/Value';
 import {
+    AliasType,
     ArrayType,
-    BooleanType,
+    BooleanType, ClassType, FunctionType,
     Type,
 } from '../../core/base/Type';
 import { ArkMethod } from '../../core/model/ArkMethod';
 import { AbstractFieldRef, AbstractRef } from '../../core/base/Ref';
 import { CxxSizeTType, CxxStdTypeName, CxxTypeBitWidth, CxxTypeSigned, TypeInfo } from './Type';
 import { TypeInference } from '../../core/common/TypeInference';
+import { UNKNOWN_FILE_NAME } from '../../core/common/Const';
+import { ModelUtils } from '../../core/common/ModelUtils';
+import { Local } from '../../core/base/Local';
+import { ClassCategory } from '../../core/model/ArkClass';
+
 
 /**
  * delete[] expression in C++
@@ -91,6 +97,7 @@ export class ArkCxxNewArrayExpr extends AbstractExpr {
     public setElementsNumber(elementsNumber: number): void {
         this.elementsNumber = elementsNumber;
     }
+
     public getSize(): Value {
         return this.size;
     }
@@ -130,13 +137,14 @@ export class ArkCxxNewArrayExpr extends AbstractExpr {
     }
 
     public toString(): string {
-        return 'newarray (' + this.baseType + ')[' + this.size + ']';
+        return 'newarray (' + this.baseType + ')';
     }
 }
 
 // Array 0 initialization expression
 export class ArkCxxInitArrayExpr extends AbstractExpr {
     private op: Value;
+
     constructor(op: Value) {
         super();
         this.op = op;
@@ -174,31 +182,49 @@ export class ArkCxxInitArrayExpr extends AbstractExpr {
     }
 }
 
-// Sizeof expression
-export class ArkSizeOfExpr extends AbstractExpr {
-    private op: Value;
+export enum Operator {
+    sizeof = 'sizeof',
+    alignof = 'alignof',
+    Unknown = 'Unknown'
+}
 
-    constructor(op: Value) {
+// expression with either a type or (unevaluated) expression operand.
+// Used for sizeof/alignof (C99 6.5.3.4) and vec_step (OpenCL 1.1 6.11.12).
+export class ArkCxxUnaryExpr extends AbstractExpr {
+    private operator: Operator;
+    private op: Value | Type;
+
+    constructor(operator: Operator, op: Value | Type) {
         super();
+        this.operator = operator;
         this.op = op;
     }
 
-    public getOp(): Value {
+    public getOp(): Value | Type {
         return this.op;
     }
 
-    public setOp(newOp: Value): void {
+    public setOp(newOp: Value | Type): void {
         this.op = newOp;
+    }
+
+    public getOperator(): string {
+        return this.operator;
     }
 
     public getUses(): Value[] {
         let uses: Value[] = [];
-        uses.push(this.op);
-        uses.push(...this.op.getUses());
+        if (!(this.op instanceof Type)) {
+            uses.push(this.op);
+            uses.push(...this.op.getUses());
+        }
         return uses;
     }
 
     public getOpType(): Type {
+        if (this.op instanceof Type) {
+            return this.op;
+        }
         return this.op.getType();
     }
 
@@ -207,7 +233,7 @@ export class ArkSizeOfExpr extends AbstractExpr {
     }
 
     public toString(): string {
-        return 'sizeof(' + this.op + ')';
+        return this.operator + '(' + this.op + ')';
     }
 
     public inferType(arkMethod: ArkMethod): AbstractExpr {
@@ -217,6 +243,7 @@ export class ArkSizeOfExpr extends AbstractExpr {
         return this;
     }
 }
+
 // Type conversion expression
 export class ArkCxxCastExpr extends ArkCastExpr {
     private cxxCastType: string;
@@ -243,20 +270,18 @@ export class ArkCxxCastExpr extends ArkCastExpr {
     }
 }
 
-// __array_extent  expression
+// __array_extent  expression,the inner of node is DeclRefExpr or several IntegerLiteral
 export class ArkArrayTypeTraitExpr extends AbstractExpr {
-    private op: Value;
-    private dimensionOrder: number = 0;
-    private func: string;
+    private op: Value | null;
+    private dimensionSizes: number[];
 
-    constructor(op: Value, func: string, dimensionOrder: number = 0) {
+    constructor(dimensionSizes: number[] = [], op: Value | null) {
         super();
-        this.op = op;
-        this.dimensionOrder = dimensionOrder;
-        this.func = func;
+        this.op = op || null;
+        this.dimensionSizes = dimensionSizes;
     }
 
-    public getOp(): Value {
+    public getOp(): Value | null {
         return this.op;
     }
 
@@ -266,36 +291,37 @@ export class ArkArrayTypeTraitExpr extends AbstractExpr {
 
     public getUses(): Value[] {
         let uses: Value[] = [];
-        uses.push(this.op);
-        uses.push(...this.op.getUses());
+        if (this.op) {
+            uses.push(this.op);
+            uses.push(...this.op.getUses());
+        }
         return uses;
     }
 
-    public getDimensionOrder(): number {
-        return this.dimensionOrder;
+    public getDimensionOrder(): number[] {
+        return this.dimensionSizes;
     }
 
-    public setDimensionOrder(dimensionOrder: number): void {
-        this.dimensionOrder = dimensionOrder;
+    public setDimensionOrder(dimensionOrder: number[]): void {
+        this.dimensionSizes = dimensionOrder;
     }
 
-    public getOpType(): Type {
-        return this.op.getType();
+    public getOpType(): Type | null {
+        if (this.op) {
+            return this.op.getType();
+        }
+        return null;
     }
 
     public getType(): Type {
         return CxxSizeTType.getInstance(CxxTypeSigned.UNSIGNED, CxxTypeBitWidth.UNKNOWN, CxxStdTypeName.SIZE_T);
     }
 
-    public getFunc(): string {
-        return this.func;
-    }
-
     public toString(): string {
-        if (this.func === '__array_extent') {
-            return this.func + '(' + this.op + ',' + this.dimensionOrder + ')';
+        if (this.op) {
+            return 'ArrayTypeTrait(' + this.op + this.dimensionSizes + ')';
         }
-        return this.func + '(' + this.op + ')';
+        return 'ArrayTypeTrait(' + this.dimensionSizes + ')';
     }
 
     public inferType(arkMethod: ArkMethod): AbstractExpr {
@@ -394,6 +420,7 @@ export class ArkNoExpectExpr extends AbstractExpr {
 export class ArkCxxFolderExpr extends AbstractExpr {
     private arg: Value;
     private op: string;
+
     constructor(arg: Value, op: string) {
         super();
         this.arg = arg;
@@ -418,9 +445,11 @@ export class ArkCxxFolderExpr extends AbstractExpr {
     public getType(): Type {
         return this.arg.getType();
     }
+
     public getOp(): string {
         return this.op;
     }
+
     public toString(): string {
         return `CxxFolderExpr(` + this.arg + this.op + `...)`;
     }
@@ -448,5 +477,177 @@ export class ArkCxxNormalBinOpExpr extends AbstractBinopExpr {
 
     public setCxxType(type: Type): void {
         this.type = type;
+    }
+}
+
+// Declare class objects on the stack
+export class ArkAllocExpr extends AbstractExpr {
+    private classType: ClassType;
+
+    constructor(classType: ClassType) {
+        super();
+        this.classType = classType;
+    }
+
+    public getClassType(): ClassType {
+        return this.classType;
+    }
+
+    public getUses(): Value[] {
+        return [];
+    }
+
+    public getType(): Type {
+        return this.classType;
+    }
+
+    public toString(): string {
+        return 'alloc ' + this.classType;
+    }
+
+    /**
+     *Inference type method
+     *@ param arkMethod - Ark method object, the context used for type inference
+     *@ returns the ArkNewExpr instance of the current object
+     */
+    public inferType(arkMethod: ArkMethod): ArkAllocExpr {
+        const classSignature = this.classType.getClassSignature();
+        if (classSignature.getDeclaringFileSignature().getFileName() === UNKNOWN_FILE_NAME) {
+            const className = classSignature.getClassName();
+            let type: Type | null | undefined = ModelUtils.findDeclaredLocal(new Local(className), arkMethod, 1)?.getType();
+            if (TypeInference.isUnclearType(type)) {
+                type = TypeInference.inferUnclearRefName(className, arkMethod.getDeclaringArkClass());
+            }
+            // If the type is an alias type, replace with the original type
+            if (type instanceof AliasType) {
+                const originalType = TypeInference.replaceAliasType(type);
+                if (originalType instanceof FunctionType) {
+                    type = originalType.getMethodSignature().getMethodSubSignature().getReturnType();
+                } else {
+                    type = originalType;
+                }
+            }
+            if (type && type instanceof ClassType) {
+                const instanceType = this.constructorSignature(type, arkMethod) ?? type;
+                this.classType.setClassSignature(instanceType.getClassSignature());
+                TypeInference.inferRealGenericTypes(this.classType.getRealGenericTypes(), arkMethod.getDeclaringArkClass());
+            }
+        }
+        return this;
+    }
+
+    private constructorSignature(type: ClassType, arkMethod: ArkMethod): ClassType | undefined {
+        const classConstructor = arkMethod.getDeclaringArkFile().getScene().getClass(type.getClassSignature());
+        if (classConstructor?.getCategory() === ClassCategory.INTERFACE) {
+            const type = classConstructor.getMethodWithName('construct-signature')?.getReturnType();
+            if (type) {
+                const returnType = TypeInference.replaceAliasType(type);
+                return returnType instanceof ClassType ? returnType : undefined;
+            }
+        }
+        return undefined;
+    }
+}
+
+/**
+ * Aggregate expression to represent such cases :
+ *     struct Point q = (struct Point){.x = 5, .y = 8, .name = 'c'};
+ *     int* arr = (int[5]){1, 2, 3, 4, 5};
+ *     the right value is {},its kind is CompoundLiteralExpr or InitListExpr
+ */
+export class ArkAggregateExpr extends AbstractExpr {
+    private type: Type; // the whole Aggregate's type
+    private elements: Value[]; // the elements of Aggregate
+
+    constructor(elements: Value[], type: Type) {
+        super();
+        this.elements = elements;
+        this.type = type;
+    }
+
+    public getElements(): Value[] {
+        return this.elements;
+    }
+
+    public setType(type: Type): void {
+        this.type = type;
+    }
+
+    public getUses(): Value[] {
+        let uses: Value[] = [];
+        for (const element of this.elements) {
+            uses.push(element);
+            uses.push(...element.getUses());
+        }
+        return uses;
+    }
+
+    public getType(): Type {
+        return this.type;
+    }
+
+    public inferType(arkMethod: ArkMethod): ArkAggregateExpr {
+        const trueType = TypeInference.inferUnclearedType(this.type, arkMethod.getDeclaringArkClass());
+        if (trueType) {
+            this.type = trueType;
+        }
+        return this;
+    }
+
+    public toString(): string {
+        return `AggregateExpr(${this.elements})`;
+    }
+}
+
+/**
+ * ArkDesignatedInitExpr is used to represent designated initializers in aggregate initialization expressions.
+ * It consists of an initializer value and a designator, which specifies the field or element to be initialized.
+ * For example:
+ *     struct Point q = (struct Point){.x = 5, .y = 8, .name = 'c'};
+ *     its kind is DesignatedInitExpr
+ */
+export class ArkDesignatedInitExpr extends AbstractExpr {
+    private init: Value; // the initializer value such as x,y, name
+    private designator: Value; // the designator such as 5,8,c
+
+    constructor(init: Value, designator: Value) {
+        super();
+        this.init = init;
+        this.designator = designator;
+    }
+
+    public getInit(): Value {
+        return this.init;
+    }
+
+    public getDesignator(): Value {
+        return this.designator;
+    }
+
+    public inferType(arkMethod: ArkMethod): ArkDesignatedInitExpr {
+        if (this.init instanceof AbstractRef || this.init instanceof AbstractExpr) {
+            this.init.inferType(arkMethod);
+        }
+        if (this.designator instanceof AbstractRef || this.designator instanceof AbstractExpr) {
+            this.designator.inferType(arkMethod);
+        }
+        return this;
+    }
+
+    public getUses(): Value[] {
+        let uses: Value[] = [];
+        uses.push(this.init);
+        uses.push(this.designator);
+        uses.push(...this.init.getUses());
+        uses.push(...this.designator.getUses());
+        return uses;
+    }
+
+    public getType(): Type {
+        return this.init.getType();
+    }
+
+    public toString(): string {
+        return this.init + ' = ' + this.designator;
     }
 }

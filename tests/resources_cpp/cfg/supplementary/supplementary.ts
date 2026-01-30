@@ -19,7 +19,7 @@ export const SUP_CASE1 = {
             id: 0,
             stmts: [
                 'this = this: @supplementary/supplementary.cpp: %dflt',
-                '%0 = newarray (int[])[10]',
+                '%0 = newarray (int[10])',
                 '%0 = initArrayWith(0)',
                 'a = %0',
                 'return',
@@ -106,7 +106,7 @@ export const POST_AND = {
         {
             id: 17,
             stmts: [
-                '%14 = newarray (int[])[10]',
+                '%14 = newarray (int[10])',
                 '%14 = initArrayWith(0)',
                 'arr = %14',
                 'idx = 1',
@@ -118,5 +118,36 @@ export const POST_AND = {
             preds: [15, 16],
             succes: [],
         },
+    ],
+};
+
+export const DECLSTMT = {
+    blocks: [
+        {
+            id: 0,
+            stmts: [
+                'this = this: @supplementary/supplementary.cpp: %dflt',
+                'type @supplementary/supplementary.cpp: %dflt.DeclStmt()#myInt = int',
+                'type @supplementary/supplementary.cpp: %dflt.DeclStmt()#A = int',
+                'b = undefined',
+                'b = 2',
+                'a = b',
+                'c = undefined',
+                'd = 4',
+                'x = 3',
+                'i = 0',
+                'j = 0',
+            ],
+            preds: [],
+            succes: [1],
+        },
+        { id: 1, stmts: ['if i < 5'], preds: [0, 2], succes: [2, 3] },
+        {
+            id: 2,
+            stmts: ['j = j + 1', 'i = i + 1'],
+            preds: [1],
+            succes: [1],
+        },
+        { id: 3, stmts: ['return'], preds: [1], succes: [] },
     ],
 };

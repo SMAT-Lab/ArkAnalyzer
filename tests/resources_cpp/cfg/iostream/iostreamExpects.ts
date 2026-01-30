@@ -17,7 +17,12 @@ export const IOSTREAM_EXPECT_CASE1 = {
     blocks: [
         {
             id: 0,
-            stmts: ['this = this: @iostream/iostreamTest.cpp: %dflt', `staticinvoke <@%unk/%unk: .cout()>('Hello World!')`, 'return 0'],
+            stmts: [
+                'this = this: @iostream/iostreamTest.cpp: %dflt',
+                '%0 = staticinvoke <@%unk/%unk: .operator<<()>(cout, \'Hello World!\')',
+                'staticinvoke <@%unk/%unk: .operator<<()>(%0, endl)',
+                'return 0',
+            ],
             preds: [],
             succes: [],
         },
