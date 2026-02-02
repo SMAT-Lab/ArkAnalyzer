@@ -41,58 +41,137 @@ export class AstUtils {
     }
 
     public static parse(sourceFile: string, ccJsonPath: string | null, includeDirs: string[] | null, llvmPath: string, cppAstPath: string): CxxAstNode {
+        logger.info(`[Debug] Parsing File: ${sourceFile}`);
         if (!fs.existsSync(sourceFile)) {
             logger.warn('parse file is not exists');
-            return {
-                kind: '',
-                name: '',
-                code: '',
-                type: { qualType: '' },
-                inner: []
-            };
+            return this.createEmptyNode();
         }
-        let clangPath: string = this.getPlatformClang().toString();
-        if (clangPath === '') {
-            logger.warn('can not find clang path');
-            return {
-                kind: '',
-                name: '',
-                code: '',
-                type: { qualType: '' },
-                inner: []
-            };
-        }
-        let astPath: string = this.getAstOutputPath(sourceFile, cppAstPath);
-        let includeArgs = constructParseArguments(sourceFile, ccJsonPath, includeDirs);
-        let parseArguments: string[] = [sourceFile, '-o', astPath];
-        parseArguments = [...parseArguments, ...includeArgs];
+
+        const clangPath: string = this.getPlatformClang().toString();
+        logger.info(`[Debug] Clang Path: ${clangPath}`);
+
+        // 1. Prepare the path and directory
+        const rawAstPath = this.getAstOutputPath(sourceFile, cppAstPath);
+        const astPath = path.resolve(rawAstPath);
         this.ensureOutputDir(path.dirname(astPath));
+        const workingDir = this.getWorkingDir(ccJsonPath);
+
+        // 2. Prepare the Include path (automatically inject source code root directory)
+        const finalIncludeDirs = includeDirs ? [...includeDirs] : [];
+        const projectRoot = this.resolveProjectRoot(sourceFile);
+        if (projectRoot && !finalIncludeDirs.includes(projectRoot)) {
+            finalIncludeDirs.push(projectRoot);
+        }
+
+        // 3. Build parameters and environment
+        let parseArguments: string[] = [sourceFile, '-o', astPath];
+        parseArguments = [...parseArguments, ...constructParseArguments(sourceFile, ccJsonPath, finalIncludeDirs)];
+
         const sep = path.delimiter;
         const existingPath = process.env.PATH ?? '';
-        // Check whether llvmPath needs to be added to PATH (avoid adding it twice)
-        const shouldAppendLlvmPath = llvmPath && !existingPath.split(sep).includes(llvmPath);
-        // If llvmPath needs to be appended, construct a new environment variable object; otherwise, use the default environment variables
-        const envVars = shouldAppendLlvmPath
-            ? {
-                  ...process.env,
-                  PATH: existingPath + sep + llvmPath,
-              }
-            : undefined;
+        const shouldAppend = llvmPath && !existingPath.split(sep).includes(llvmPath);
+        const envVars = shouldAppend ? { ...process.env, PATH: existingPath + sep + llvmPath } : undefined;
 
-        const parseResult = spawnSync(clangPath, parseArguments, { stdio: ['inherit', 'pipe'], encoding: 'utf-8', env: envVars });
+        // 4. Execute Clang
+        const status = this.runClang(clangPath, parseArguments, envVars, workingDir);
 
-        if (parseResult.status) {
-            logger.error('Error parsing ast', parseResult.stderr);
-        } else {
-            logger.info('Parsing completed!');
-        }
+        // 5. Processing result
+        return this.processAstFile(astPath, sourceFile, status);
+    }
+
+    /**
+     * Auxiliary method: Try to find and return the root directory of src/main/cpp
+     */
+    private static resolveProjectRoot(sourceFile: string): string | null {
         try {
-            let tu = JSON.parse(fs.readFileSync(astPath, 'utf-8')) as CxxAstNode;
+            let currentDir = path.dirname(sourceFile);
+            for (let i = 0; i < 10; i++) {
+                if (path.dirname(currentDir) === currentDir) {
+                    break;
+                }
+                if (path.basename(currentDir) === 'cpp' && path.basename(path.dirname(currentDir)) === 'main') {
+                    const absRoot = path.resolve(currentDir);
+                    logger.info(`[Debug] Found Source Root: ${absRoot}`);
+                    return absRoot;
+                }
+                currentDir = path.dirname(currentDir);
+            }
+        } catch (e) {
+            logger.error('[Debug] Error finding source root:', e);
+        }
+        return null;
+    }
+
+    /**
+     * Auxiliary method: Determine Work Catalog (CWD)
+     */
+    private static getWorkingDir(ccJsonPath: string | null): string {
+        let workingDir = process.cwd();
+        if (ccJsonPath && fs.existsSync(ccJsonPath)) {
+            const stats = fs.statSync(ccJsonPath);
+            if (stats.isFile()) {
+                workingDir = path.dirname(ccJsonPath);
+            } else {
+                workingDir = ccJsonPath;
+            }
+        }
+        return workingDir;
+    }
+
+    /**
+     * Auxiliary method: Execute Clang process and print debugging logs
+     */
+    private static runClang(clangPath: string, args: string[], env: NodeJS.ProcessEnv | undefined, cwd: string): number {
+        const fullCmd = `"${clangPath}" ${args.map(a => a.includes(' ') ? `"${a}"` : a).join(' ')}`;
+        logger.info('================================================================');
+        logger.info(`[Debug] CWD: ${cwd}`);
+        logger.info(`[Debug] CMD: ${fullCmd}`);
+        logger.info('================================================================');
+
+        const result = spawnSync(clangPath, args, {
+            stdio: ['inherit', 'pipe'],
+            encoding: 'utf-8',
+            env: env,
+            cwd: cwd
+        });
+
+        if (result.status !== 0) {
+            logger.error(`[Debug] Clang exited with code ${result.status}`);
+            logger.error(`[Debug] Stderr: ${result.stderr}`);
+            return result.status ?? -1;
+        } else {
+            logger.info('[Debug] Clang finished successfully.');
+            return 0;
+        }
+    }
+
+    /**
+     * Auxiliary method: Read and parse the generated AST JSON file
+     */
+    private static processAstFile(astPath: string, sourceFile: string, status: number): CxxAstNode {
+        try {
+            if (!fs.existsSync(astPath)) {
+                logger.error(`[Debug] AST file missing at: ${astPath}`);
+                return this.createEmptyNode();
+            }
+            const content = fs.readFileSync(astPath, 'utf-8');
+            if (!content || content.trim() === '') {
+                return this.createEmptyNode();
+            }
+            let tu = JSON.parse(content) as CxxAstNode;
             tu = this.filter(sourceFile, tu) as CxxAstNode;
             return tu;
+        } catch (e) {
+            logger.error('Failed to parse AST json:', e);
+            return this.createEmptyNode();
         } finally {
+            // [Debug] If you need to debug file generation, you can comment out the following line
             this.deleteFileSync(astPath);
         }
+    }
+
+    private static createEmptyNode(): CxxAstNode {
+        return { kind: '', name: '', code: '', type: { qualType: '' }, inner: [] };
     }
 
     private static updateInner(sourceFile: string, entry: CxxAstNode, newInner: CxxAstNode[]): void {
