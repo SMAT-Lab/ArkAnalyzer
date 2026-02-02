@@ -343,7 +343,11 @@ export function buildArrayType(qualType: string, node: CxxAstNode, arkInstance: 
                 dimensionSizes.push(Number(node.inner[i].value) ?? 0);
             }
         } catch (e) {
-            logger.error('this node case is unexpect');
+            // When a node is of reference type, the processing strategy is to parse the type as much as possible,
+            // so it is not directly parsed according to Unclear Reference.
+            // At this time, the type field cannot obtain array length information.
+            logger.warn(node + 'this node case is unexpect');
+            return TypeInference.buildTypeFromStr(qualType);
         }
     }
     if (baseType instanceof UnclearReferenceType) {
