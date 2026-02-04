@@ -15,7 +15,8 @@
 
 import { Constant, StringConstant } from '../../core/base/Constant';
 import { EMPTY_STRING, ValueUtil } from '../../core/common/ValueUtil';
-import { CharConstant } from '../base/Constant';
+import { CharConstant, compileConstants } from '../base/Constant';
+import { Type } from '../../core/base/Type';
 
 const charPrefixType = ['L"', "L\'", 'u"', "u\'", 'U"', "U\'"];
 
@@ -49,5 +50,14 @@ export class CxxValueUtil extends ValueUtil {
         }
         str = this.normalizeString(str);
         return new CharConstant(str);
+    }
+
+    /** Create C++ char constants */
+    public static createCompileConst(str: string, compileType: Type): Constant {
+        if (str === EMPTY_STRING) {
+            return this.EMPTY_STRING_CONSTANT;
+        }
+        str = this.normalizeString(str);
+        return new compileConstants(str, compileType);
     }
 }

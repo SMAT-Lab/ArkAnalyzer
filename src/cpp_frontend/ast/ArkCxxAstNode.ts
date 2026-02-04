@@ -347,6 +347,7 @@ export enum astKind {
     MemberRef = 'MemberRef',
     NamespaceRef = 'NamespaceRef',
     NamespaceDecl = 'NamespaceDecl',
+    NonTypeTemplateParmDecl = 'NonTypeTemplateParmDecl',
     NullStmt = 'NullStmt',
     OverloadedDeclRef = 'OverloadedDeclRef',
     ParenExpr = 'ParenExpr',
