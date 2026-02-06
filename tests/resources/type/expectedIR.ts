@@ -919,20 +919,20 @@ export const SourceKeyofWithGenericClassWithTypeOperator = `class KeyofWithGener
 `;
 
 export const SourceBigIntType = `class BigIntClass {
-  private fieldA: bigint = 1n;
+  private fieldA: bigint = 1nn;
   fieldB: number & bigint;
   static fieldC: bigint | number;
   transfer2String(num: number | bigint): string | bigint {
     if (typeof(num) === 'bigint') {
-      let a: bigint = 10n;
-      const b: bigint = 100n;
-      const c: bigint = this.fieldA + 100n;
+      let a: bigint = 10nn;
+      const b: bigint = 100nn;
+      const c: bigint = this.fieldA + 100nn;
       return ((a + b - c) * a) / b + num;
     }
     return num.toString();
   }
   testBitOperator(a: bigint, b: bigint): bigint {
-    const c: bigint = a ^ b & a | b << 1n >> 2n;
+    const c: bigint = a ^ b & a | b << 1nn >> 2nn;
     const aa: number = 123;
     const bb: number = 456;
     const cc: number = aa ^ bb & aa | bb << aa >> bb >>> aa;
@@ -971,7 +971,7 @@ class BigIntClass {
   %instInit(): void {
     label0:
       this = this: @type/bigIntType.ts: BigIntClass
-      this.<@type/bigIntType.ts: BigIntClass.fieldA> = 1
+      this.<@type/bigIntType.ts: BigIntClass.fieldA> = 1n
       return
   }
 
@@ -982,10 +982,10 @@ class BigIntClass {
       if typeof num === 'bigint' goto label1 label2
 
     label1:
-      a = 10
-      b = 100
+      a = 10n
+      b = 100n
       %0 = this.<@type/bigIntType.ts: BigIntClass.fieldA>
-      c = %0 + 100
+      c = %0 + 100n
       %1 = a + b
       %2 = %1 - c
       %3 = %2 * a
@@ -1005,8 +1005,8 @@ class BigIntClass {
       this = this: @type/bigIntType.ts: BigIntClass
       %0 = b & a
       %1 = a ^ %0
-      %2 = b << 1
-      %3 = %2 >> 2
+      %2 = b << 1n
+      %3 = %2 >> 2n
       c = %1 | %3
       aa = 123
       bb = 456
