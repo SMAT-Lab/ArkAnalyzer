@@ -27,7 +27,8 @@ import {
     MethodSignature,
     methodSubSignatureCompare,
     ClassSignature,
-    FileSignature
+    FileSignature,
+    FieldSignature
 } from '../../src/core/model/ArkSignature';
 import { ArkField, FieldCategory } from '../../src/core/model/ArkField';
 import { ArkClass, ClassCategory } from '../../src/core/model/ArkClass';
@@ -104,8 +105,8 @@ describe('ArkAnalyzer Core Bug Reproduction', () => {
         const cls2 = new ArkClass();
         cls2.setSignature(cls2Sig);
         const staticField = new ArkField();
-        const fieldSig = new (require('../../src/core/model/ArkSignature').FieldSignature)(
-            cls2Sig, 'staticVar', BooleanType.getInstance()
+        const fieldSig = new FieldSignature(
+            'staticVar', cls2Sig, BooleanType.getInstance(), true
         );
         staticField.setSignature(fieldSig);
         staticField.addModifier(16); // ModifierType.STATIC
