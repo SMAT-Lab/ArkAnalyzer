@@ -217,25 +217,33 @@ export class ArkFile {
     }
 
     public getClassWithName(className: string): ArkClass | null {
-        // 先查找顶层类
-        let cls = this.classes.get(className);
-        if (cls) return cls;
+        // First, search for the top-level class
+        let cls: ArkClass | null | undefined = this.classes.get(className);
+        if (cls) {
+            return cls;
+        }
 
-        // 递归查找命名空间内的类
+        // Recursively search for classes within namespaces
         for (const ns of this.namespaces.values()) {
             cls = this.findClassInNamespace(ns, className);
-            if (cls) return cls;
+            if (cls) {
+                return cls;
+            }
         }
         return null;
     }
 
     private findClassInNamespace(namespace: ArkNamespace, className: string): ArkClass | null {
-        let cls = namespace.getClassWithName(className);
-        if (cls) return cls;
+        const cls = namespace.getClassWithName(className);
+        if (cls) {
+            return cls;
+        }
 
         for (const ns of namespace.getNamespaces()) {
-            cls = this.findClassInNamespace(ns, className);
-            if (cls) return cls;
+            const found = this.findClassInNamespace(ns, className);
+            if (found) {
+                return found;
+            }
         }
         return null;
     }

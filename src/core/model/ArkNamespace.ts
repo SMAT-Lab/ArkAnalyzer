@@ -63,7 +63,7 @@ export class ArkNamespace extends ArkBaseModel implements ArkExport {
     public addNamespace(namespace: ArkNamespace): void {
         const existing = this.namespaces.get(namespace.getName());
         if (existing) {
-            // 合并同名命名空间的内容
+            // Merge content of namespaces with the same name
             namespace.getClasses().forEach(cls => existing.addArkClass(cls));
             namespace.getNamespaces().forEach(ns => existing.addNamespace(ns));
             return;
