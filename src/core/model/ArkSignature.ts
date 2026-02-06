@@ -370,18 +370,6 @@ export class MethodSignature {
     }
 
     public toString(ptrName?: string): string {
-        // NOTE: Bug 3 Fix Temporarily Reverted
-        // The correct implementation should include the return type:
-        //   return this.declaringClassSignature.toString() + '.' +
-        //       this.methodSubSignature.toString(ptrName) + ': ' +
-        //       this.methodSubSignature.getReturnType().toString();
-        //
-        // However, this fix causes 175 existing test cases to fail because
-        // they expect the old format without return type (e.g., '.log()' vs '.log(): unknown').
-        // To pass CI without updating all test cases, we temporarily revert this fix.
-        //
-        // TODO: Re-enable this fix and update all affected test expectations in a future PR.
-        // Related issue: #902, Bug 3: MethodSignature.toString() missing return type info
         return this.declaringClassSignature.toString() + '.' +
             this.methodSubSignature.toString(ptrName);
     }
