@@ -72,7 +72,7 @@ export class BooleanConstant extends Constant {
         super(value.toString(), BooleanType.getInstance());
     }
 
-    public static getInstance(value: boolean): NullConstant {
+    public static getInstance(value: boolean): BooleanConstant {
         return value ? this.TRUE : this.FALSE;
     }
 }
@@ -85,7 +85,7 @@ export class NumberConstant extends Constant {
 
 export class BigIntConstant extends Constant {
     constructor(value: bigint) {
-        super(value.toString(), BigIntType.getInstance());
+        super(value.toString() + 'n', BigIntType.getInstance());
     }
 }
 

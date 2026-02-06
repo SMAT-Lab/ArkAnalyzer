@@ -140,7 +140,6 @@ export class BasicBlock {
 
     public getHead(): Stmt | null {
         const stmts = this.getStmts();
-        ValueAsserts.assertNotEmptyArray(stmts, 'stmts in this basic block should not be empty');
         if (stmts.length === 0) {
             return null;
         }
@@ -149,7 +148,6 @@ export class BasicBlock {
 
     public getTail(): Stmt | null {
         const stmts = this.getStmts();
-        ValueAsserts.assertNotEmptyArray(stmts, 'stmts in this basic block should not be empty');
         let size = stmts.length;
         if (size === 0) {
             return null;

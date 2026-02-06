@@ -155,7 +155,9 @@ export class ArkField extends ArkBaseModel {
             !this.containsModifier(ModifierType.PUBLIC) &&
             !this.containsModifier(ModifierType.PRIVATE) &&
             !this.containsModifier(ModifierType.PROTECTED) &&
-            this.getDeclaringArkClass().getCategory() === ClassCategory.CLASS
+            (this.getDeclaringArkClass().getCategory() === ClassCategory.CLASS ||
+                this.getDeclaringArkClass().getCategory() === ClassCategory.INTERFACE ||
+                this.getDeclaringArkClass().getCategory() === ClassCategory.OBJECT)
         ) {
             return true;
         }
