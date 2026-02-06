@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
+
 import { ArkIfStmt, ArkReturnStmt, ArkReturnVoidStmt, Stmt } from '../base/Stmt';
 import { ArkError, ArkErrorCode } from '../common/ArkError';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
-import { ValueAsserts } from '../../utils/ValueAsserts';
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'BasicBlock');
 
 /**
