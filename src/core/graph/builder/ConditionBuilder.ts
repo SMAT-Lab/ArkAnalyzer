@@ -240,12 +240,62 @@ export class ConditionBuilder {
         return [bottomBlock];
     }
 
+    private resolveBottomBlocksForTempReassign(tempResultReassignStmt: Stmt | null,
+        currBottomBlock: BasicBlock,
+        targetLocal: Local, allBlocks: Set<BasicBlock>,
+        targetValuePosition?: FullPosition): BasicBlock[] {
+        let newBottomBlocks: BasicBlock[] = [];
+        if (!tempResultReassignStmt) {
+            return [currBottomBlock];
+        }
+
+        const oldPredecessors = Array.from(currBottomBlock.getPredecessors());
+        const newPredecessors: BasicBlock[] = [];
+        const prevTempResultLocal = (tempResultReassignStmt as ArkAssignStmt).getRightOp() as Local;
+        let replaceSuccess = { value: false };
+        for (const predecessor of oldPredecessors) {
+            newPredecessors.push(
+                ...this.replaceTempRecursively(predecessor,
+                    targetLocal,
+                    prevTempResultLocal,
+                    allBlocks,
+                    targetValuePosition,
+                    replaceSuccess)
+            );
+        }
+
+        if (replaceSuccess.value) {
+            CfgBuilder.unlinkPredecessorsOfBasicBlock(currBottomBlock);
+            currBottomBlock.remove(tempResultReassignStmt);
+        }
+        else {
+            let stmt = tempResultReassignStmt as ArkAssignStmt;
+            stmt.setLeftOp(targetLocal);
+            if (targetValuePosition) {
+                const restPositions = stmt.getOperandOriginalPositions()?.slice(1);
+                if (restPositions) {
+                    stmt.setOperandOriginalPositions([targetValuePosition, ...restPositions]);
+                }
+            }
+        }
+
+        if (currBottomBlock.getStmts().length === 0) {
+            newBottomBlocks = newPredecessors;
+            allBlocks.delete(currBottomBlock);
+        } else if (replaceSuccess.value) {
+            CfgBuilder.linkPredecessorsOfBasicBlock(currBottomBlock, newPredecessors);
+            newBottomBlocks = [currBottomBlock];
+        }
+        return newBottomBlocks;
+    }
+
     private replaceTempRecursively(
         currBottomBlock: BasicBlock,
         targetLocal: Local,
         tempResultLocal: Local,
         allBlocks: Set<BasicBlock>,
-        targetValuePosition?: FullPosition
+        targetValuePosition?: FullPosition,
+        replaceSuccess: { value: boolean } = { value: false }
     ): BasicBlock[] {
         const stmts = currBottomBlock.getStmts();
         const stmtsCnt = stmts.length;
@@ -259,6 +309,7 @@ export class ConditionBuilder {
                 tempResultReassignStmt = stmt;
                 continue;
             }
+            replaceSuccess.value = true;
             stmt.setLeftOp(targetLocal);
             if (targetValuePosition) {
                 const restPositions = stmt.getOperandOriginalPositions()?.slice(1);
@@ -268,28 +319,10 @@ export class ConditionBuilder {
             }
         }
 
-        let newBottomBlocks: BasicBlock[] = [];
-        if (tempResultReassignStmt) {
-            const oldPredecessors = Array.from(currBottomBlock.getPredecessors());
-            const newPredecessors: BasicBlock[] = [];
-            const prevTempResultLocal = (tempResultReassignStmt as ArkAssignStmt).getRightOp() as Local;
-            for (const predecessor of oldPredecessors) {
-                newPredecessors.push(...this.replaceTempRecursively(predecessor, targetLocal, prevTempResultLocal, allBlocks, targetValuePosition));
-            }
-
-            CfgBuilder.unlinkPredecessorsOfBasicBlock(currBottomBlock);
-            currBottomBlock.remove(tempResultReassignStmt);
-            if (currBottomBlock.getStmts().length === 0) {
-                // remove this block
-                newBottomBlocks = newPredecessors;
-                allBlocks.delete(currBottomBlock);
-            } else {
-                CfgBuilder.linkPredecessorsOfBasicBlock(currBottomBlock, newPredecessors);
-                newBottomBlocks = [currBottomBlock];
-            }
-        } else {
-            newBottomBlocks = [currBottomBlock];
-        }
+        let newBottomBlocks: BasicBlock[] = this.resolveBottomBlocksForTempReassign(tempResultReassignStmt,
+            currBottomBlock,
+            targetLocal, allBlocks,
+            targetValuePosition);
         return newBottomBlocks;
     }
 }
