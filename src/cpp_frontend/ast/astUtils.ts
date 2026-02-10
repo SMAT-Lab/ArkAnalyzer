@@ -23,6 +23,8 @@ import { ClangPath } from './const';
 import { astKind, CxxAstNode, CxxAstNodeLite } from './ArkCxxAstNode';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'astUtils');
+// Module level cache: Sub project root directory (including. cxx directory) ->compile_commands.json absolute path
+const ccJsonCache: Map<string, string> = new Map();
 
 export type GetParentFn = {
     (isNeedInner: true): CxxAstNode;
@@ -380,28 +382,56 @@ function constructParseArguments(srcFilePath: string, ccJsonPath: string | null,
 
 /**
  * Find the absolute path of compile_commands.json starting from a file path.
- * It goes upward to find a ".cxx" directory, and then recursively searches
- * inside it for compile_commands.json.
- * @param filePath Absolute path of the input file
+ * Strict logic: Only traverses upward (ancestors) to find a ".cxx" directory.
+ * Does NOT search sibling/uncle directories.
+ * Caches the result based on the project root (the directory containing .cxx).
+ * * @param filePath Absolute path of the input file
  * @returns Absolute path of compile_commands.json if found, otherwise empty string
  */
 export function findCompileCommands(filePath: string): string {
-    let dir = path.dirname(filePath);
+    // 1. [Cache hit check]
+    // Traverse the cache and check if the current file is located in a known sub project directory
+    // Logic: If the filePath starts with projectRoot, it means it belongs to this sub project
+    for (const [projectRoot, jsonPath] of ccJsonCache) {
+        // 加上 path.sep 确保是目录层级的匹配 (防止 /app 匹配 /apple)
+        if (filePath === projectRoot || filePath.startsWith(projectRoot + path.sep)) {
+            return jsonPath;
+        }
+    }
 
+    let currentDir = path.dirname(filePath);
+
+    // 2. [Upstream search logic]
     while (true) {
-        const cxxDir = path.join(dir, '.cxx');
+        // Core logic: Only check the. cxx directory under the current directory
+        // Will not check other sibling directories under the current directory, achieving the requirement of 'not querying uncle directories'
+        const cxxDir = path.join(currentDir, '.cxx');
+
         if (fs.existsSync(cxxDir) && fs.statSync(cxxDir).isDirectory()) {
+            // Found. cxx, indicating that the current dir is the root directory of a sub project
+            // Recursive search for JSON files within. cxx (this is necessary as JSON is often hidden deep within. cxx)
             const result = searchCompileCommandsInDir(cxxDir);
+
             if (result) {
+                // [Establish cache]
+                // Key: CurrentDir (the root directory of the sub project, which is the parent directory of. cxx)
+                // Value: result (full path of json file)
+                ccJsonCache.set(currentDir, result);
                 return result;
+            } else {
+                // If there is a. cxx directory but json cannot be found, it usually means that it has not been compiled or the build structure is abnormal.
+                // At this point, the upward search should be stopped to prevent incorrect matching to higher-level parent projects (if nested),
+                // Alternatively, according to your needs, you can choose to continue searching upwards.
+                // The default strategy here is to identify. cxx as the project boundary.
+                return '';
             }
         }
 
-        const parent = path.dirname(dir);
-        if (parent === dir) {
-            break; // reached the root directory
+        const parent = path.dirname(currentDir);
+        if (parent === currentDir) {
+            break; // Arriving at the system root directory, stop
         }
-        dir = parent;
+        currentDir = parent; // Continue moving up one layer
     }
 
     return '';
@@ -409,11 +439,18 @@ export function findCompileCommands(filePath: string): string {
 
 /**
  * Recursively search for compile_commands.json inside a directory
+ * This is only used INSIDE the .cxx directory.
  * @param dir Directory path to start searching
  * @returns Absolute path of compile_commands.json if found, otherwise empty string
  */
 function searchCompileCommandsInDir(dir: string): string {
-    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    let entries;
+    try {
+        entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch (e) {
+        return '';
+    }
+
     for (const entry of entries) {
         const fullPath = path.join(dir, entry.name);
         if (entry.isFile() && entry.name === 'compile_commands.json') {

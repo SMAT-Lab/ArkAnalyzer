@@ -396,7 +396,7 @@ export class Scene {
     private findCCJsonPath(file: string, ccjsonPath: string): string {
         const ext = path.extname(file).toLowerCase();
         const isHeader = ext === '.h' || ext === '.hpp';
-        if (!ccjsonPath && !isHeader) {
+        if (!isHeader) {
             return findCompileCommands(file);
         }
         return ccjsonPath;
