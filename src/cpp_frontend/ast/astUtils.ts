@@ -385,6 +385,8 @@ function constructParseArguments(srcFilePath: string, ccJsonPath: string | null,
  * Strict logic: Only traverses upward (ancestors) to find a ".cxx" directory.
  * Does NOT search sibling/uncle directories.
  * Caches the result based on the project root (the directory containing .cxx).
+ * CxxTodo :Further confirmation can be made on whether there is a summary of the entire project's ccjson,
+ * which only needs to be provided once in the scene build,(the directory containing ./.idea/.deveco/cxx/.cache)
  * * @param filePath Absolute path of the input file
  * @returns Absolute path of compile_commands.json if found, otherwise empty string
  */
