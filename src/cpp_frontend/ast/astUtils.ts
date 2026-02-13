@@ -393,7 +393,7 @@ export function findCompileCommands(filePath: string): string {
     // Traverse the cache and check if the current file is located in a known sub project directory
     // Logic: If the filePath starts with projectRoot, it means it belongs to this sub project
     for (const [projectRoot, jsonPath] of ccJsonCache) {
-        // 加上 path.sep 确保是目录层级的匹配 (防止 /app 匹配 /apple)
+        // Add path.sep to ensure directory level matching (prevent/app matching/apple)
         if (filePath === projectRoot || filePath.startsWith(projectRoot + path.sep)) {
             return jsonPath;
         }

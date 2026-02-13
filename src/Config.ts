@@ -237,6 +237,11 @@ export class SceneConfig {
         this.ccjsonPath = ccjsonPath;
     }
 
+    // If the project config does not actively configure ccjson,
+    // it will be null when executed for the first time.
+    // Before generating the syntax tree,
+    // an automated search will be attempted in the file directory in astUtils (applicable to DevEco projects that load compiled databases).
+    // But it won't be backfilled in config anymore, it will be used directly in the scene
     public getCcjsonPath(): string {
         return this.ccjsonPath;
     }
