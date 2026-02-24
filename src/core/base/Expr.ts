@@ -39,7 +39,7 @@ import { Value } from './Value';
 import { AbstractFieldRef, AbstractRef, ArkInstanceFieldRef, ArkStaticFieldRef } from './Ref';
 import { EMPTY_STRING, ValueUtil } from '../common/ValueUtil';
 import { ArkMethod } from '../model/ArkMethod';
-import { UNKNOWN_FILE_NAME } from '../common/Const';
+import { CONSTRUCT_SIGNATURE_NAME, UNKNOWN_FILE_NAME } from '../common/Const';
 import { IRInference } from '../common/IRInference';
 import { ImportInfo } from '../model/ArkImport';
 import { ArkClass, ClassCategory } from '../model/ArkClass';
@@ -450,7 +450,7 @@ export class ArkNewExpr extends AbstractExpr {
     private constructorSignature(type: ClassType, arkMethod: ArkMethod): ClassType | undefined {
         const classConstructor = arkMethod.getDeclaringArkFile().getScene().getClass(type.getClassSignature());
         if (classConstructor?.getCategory() === ClassCategory.INTERFACE) {
-            const type = classConstructor.getMethodWithName('construct-signature')?.getReturnType();
+            const type = classConstructor.getMethodWithName(CONSTRUCT_SIGNATURE_NAME)?.getReturnType();
             if (type) {
                 const returnType = TypeInference.replaceAliasType(type);
                 return returnType instanceof ClassType ? returnType : undefined;
