@@ -373,7 +373,13 @@ export class StmtInference extends ArkModelInference {
                 invokeExpr.setMethodSignature(invokeMethod.getSignature());
             }
             invokeExpr.setArgs([stmt.getRightOp()]);
-            replacedStmts.push(new ArkInvokeStmt(invokeExpr));
+            const invokeStmt = new ArkInvokeStmt(invokeExpr);
+            invokeStmt.setOriginalText(stmt.getOriginalText() ?? '');
+            invokeStmt.setOperandOriginalPositions(stmt.getOperandOriginalPositions() ?? []);
+            invokeStmt.setCfg(stmt.getCfg());
+            invokeStmt.setOriginPositionInfo(stmt.getOriginPositionInfo());
+            invokeStmt.metadata = stmt.metadata;
+            replacedStmts.push(invokeStmt);
         } else {
             impactedStmts = this.typeSpread(stmt, method);
         }
