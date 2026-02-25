@@ -20,22 +20,31 @@ import { FunctionType } from '../core/base/Type';
 
 export const LIFECYCLE_METHOD_NAME: string[] = [
     'onCreate', // 组件实例创建
-    'onDestroy', // 组件实例销毁
     'onWindowStageCreate', // 窗口创建
+    'onWindowStageWillDestroy', // 当WindowStage即将销毁时，系统触发该回调
     'onWindowStageDestroy', // 窗口销毁
+    'onWindowStageRestore', // 当UIAbility跨端迁移时，目标端UIAbility恢复页面栈时回调
+    'onDestroy', // 当UIAbility被销毁，系统触发该回调
+    'onWillForeground', // 应用转到前台前触发，在onForeground前被调用
     'onForeground', // 应用进入前台
+    'onDidForeground', // 应用转到前台后触发，在onForeground后被调用
+    'onWillBackground', // 应用从前台转到后台前触发，在onBackground前被调用
     'onBackground', // 应用进入后台
+    'onDidBackground', // 当应用从前台转到后台后触发，在onBackground之后被调用
+    'onContinue', // 当UIAbility准备跨端迁移时触发
+    'onNewWant', // 当已经启动的UIAbility实例再次被拉起时，系统会触发该回调
+    'onDump', // 应用调测场景下，通过命令行dump UIAbility数据时，系统会触发该回调
+    'onSaveState', // 当应用出现故障时，系统将触发该回调
+    'onSaveStateAsync', // 当应用出现故障时，将触发该回调来保存UIAbility的数据
+    'onShare', // 当跨端分享元服务时，系统触发该回调
+    'onPrepareToTerminate', // 在UIAbility即将关闭前，系统会触发该回调
+    'onPrepareToTerminateAsync', // 在UIAbility关闭前，系统会触发该回调
+    'onBackPressed', // 当UIAbility侧滑返回时触发
+    'onCollaborate', // 在多设备协同场景下，协同方应用在被拉起的过程中返回是否接受协同
+    'onSessionCreate', // 实例创建完成后，系统会触发该回调
+    'onSessionDestory', // 实例销毁后，系统触发该回调
     'onBackup', // 应用数据备份
     'onRestore', // 应用数据恢复
-    'onContinue',
-    'onNewWant',
-    'onDump',
-    'onSaveState',
-    'onShare',
-    'onPrepareToTerminate',
-    'onBackPressed',
-    'onSessionCreate',
-    'onSessionDestory',
     'onAddForm',
     'onCastToNormalForm',
     'onUpdateForm',
@@ -44,8 +53,8 @@ export const LIFECYCLE_METHOD_NAME: string[] = [
     'onRemoveForm',
     'onConfigurationUpdate',
     'onAcquireFormState',
-    'onWindowStageWillDestroy',
 ];
+
 export const CALLBACK_METHOD_NAME: string[] = [
     'onClick', // 点击事件，当用户点击组件时触发
     'onTouch', // 触摸事件，当手指在组件上按下、滑动、抬起时触发
@@ -66,23 +75,24 @@ export const CALLBACK_METHOD_NAME: string[] = [
 ];
 
 export const COMPONENT_LIFECYCLE_METHOD_NAME: string[] = [
-    'build',
-    'aboutToAppear',
-    'aboutToDisappear',
-    'aboutToReuse',
-    'aboutToRecycle',
-    'onWillApplyTheme',
+    'build', // 用于定义自定义组件的声明式UI描述
+    'aboutToAppear', // 创建自定义组件的新实例后，在其build()函数执行前调用
+    'onDidBuild', // 在自定义组件的build()函数执行后调用
+    'aboutToDisappear', // 自定义组件析构销毁时执行
+    'onPageShow', // 每次显示时触发一次，包括路由跳转、应用进入前台等场景
+    'onPageHide', // 每次隐藏时触发一次，包括路由跳转、应用进入后台等场景
+    'onBackPress', // 当用户点击返回按钮时触发
+    'onNewParam', // 当之前存在于路由栈中的页面，通过单实例模式移动到栈顶时触发该回调。
+    'aboutToReuse', // 当一个状态管理V2的可复用自定义组件从复用池被取出重新加入到节点树时触发
+    'aboutToRecycle', // 在可复用组件从组件树上被加入到复用缓存之前调用
+    'onWillApplyTheme', // 在创建自定义组件的新实例后，在执行其build()函数之前执行
+    'pageTransition', // 进入此页面或移动到其他页面时实现动画
+    'onFormRecycle', // 卡片回收时执行
+    'onFormRecover', // 卡片恢复时执行
     'onLayout',
     'onPlaceChildren',
     'onMeasure',
     'onMeasureSize',
-    'onPageShow',
-    'onPageHide',
-    'onFormRecycle',
-    'onFormRecover',
-    'onBackPress',
-    'pageTransition',
-    'onDidBuild',
 ];
 
 export interface AbilityMessage {
