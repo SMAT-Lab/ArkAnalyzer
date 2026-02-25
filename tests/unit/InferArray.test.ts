@@ -686,14 +686,14 @@ struct GlobalFancy {
       %0 = instanceinvoke %0.<@inferType/ArktsExtend.ets: %AC3$GlobalFancy-build.constructor()>()
       %1 = staticinvoke <@etsSdk/api/@internal/component/ets/column.d.ts: ColumnInterface.create(@etsSdk/api/@internal/component/ets/column.d.ts: ColumnOptions)>(%0)
       %2 = staticinvoke <@etsSdk/api/@internal/component/ets/text.d.ts: TextInterface.create(string|Resource, @etsSdk/api/@internal/component/ets/text.d.ts: TextOptions)>('FancyA')
-      staticinvoke <@%unk/%unk: Text.pop()>()
+      staticinvoke <@etsSdk/api/@internal/component/ets/common.d.ts: CommonMethod.pop()>()
       %3 = instanceinvoke %2.<@inferType/ArktsExtend.ets: %dflt.globalFancy1()>()
       instanceinvoke %3.<@etsSdk/api/@internal/component/ets/text.d.ts: TextAttribute.fontSize(number|string|Resource)>(30)
       %4 = staticinvoke <@etsSdk/api/@internal/component/ets/text.d.ts: TextInterface.create(string|Resource, @etsSdk/api/@internal/component/ets/text.d.ts: TextOptions)>('FancyB')
-      staticinvoke <@%unk/%unk: Text.pop()>()
+      staticinvoke <@etsSdk/api/@internal/component/ets/common.d.ts: CommonMethod.pop()>()
       %5 = instanceinvoke %4.<@inferType/ArktsExtend.ets: GlobalFancy.fancy()>()
       instanceinvoke %5.<@etsSdk/api/@internal/component/ets/text.d.ts: TextAttribute.fontSize(number|string|Resource)>(30)
-      staticinvoke <@%unk/%unk: Column.pop()>()
+      staticinvoke <@etsSdk/api/@internal/component/ets/common.d.ts: CommonMethod.pop()>()
       instanceinvoke %1.<@etsSdk/api/@internal/component/ets/common.d.ts: CommonMethod.width(Length)>('100%')
       return
   }
@@ -759,10 +759,10 @@ struct FancyUse {
       %2 = this.<@inferType/ArktsExtend.ets: FancyUse.label>
       %3 = instanceinvoke %2.<@built-in/lib.es5.d.ts: String.toString()>()
       %4 = staticinvoke <@etsSdk/api/@internal/component/ets/text.d.ts: TextInterface.create(string|Resource, @etsSdk/api/@internal/component/ets/text.d.ts: TextOptions)>(%3)
-      staticinvoke <@%unk/%unk: Text.pop()>()
+      staticinvoke <@etsSdk/api/@internal/component/ets/common.d.ts: CommonMethod.pop()>()
       %5 = instanceinvoke %4.<@inferType/ArktsExtend.ets: %dflt.makeMeClick(@inferType/ArktsExtend.ets: %dflt.%AM0())>(%AM0$build)
       instanceinvoke %5.<@inferType/ArktsExtend.ets: %dflt.fancy()>()
-      staticinvoke <@%unk/%unk: Row.pop()>()
+      staticinvoke <@etsSdk/api/@internal/component/ets/common.d.ts: CommonMethod.pop()>()
       return
   }
 
@@ -826,10 +826,10 @@ struct AnimatablePropertyText {
       %1 = instanceinvoke %1.<@inferType/ArktsExtend.ets: %AC5$AnimatablePropertyText-build.constructor()>()
       %2 = this.<@inferType/ArktsExtend.ets: AnimatablePropertyText.textWidth>
       %3 = staticinvoke <@etsSdk/api/@internal/component/ets/text.d.ts: TextInterface.create(string|Resource, @etsSdk/api/@internal/component/ets/text.d.ts: TextOptions)>('AnimatableProperty')
-      staticinvoke <@%unk/%unk: Text.pop()>()
+      staticinvoke <@etsSdk/api/@internal/component/ets/common.d.ts: CommonMethod.pop()>()
       %4 = instanceinvoke %3.<@inferType/ArktsExtend.ets: %dflt.animatableWidth(number)>(%2)
       instanceinvoke %4.<@etsSdk/api/@internal/component/ets/common.d.ts: CommonMethod.animation(@etsSdk/api/@internal/component/ets/common.d.ts: AnimateParam)>(%1)
-      staticinvoke <@%unk/%unk: Column.pop()>()
+      staticinvoke <@etsSdk/api/@internal/component/ets/common.d.ts: CommonMethod.pop()>()
       %5 = instanceinvoke %0.<@etsSdk/api/@internal/component/ets/common.d.ts: CommonMethod.width(Length)>('100%')
       instanceinvoke %5.<@etsSdk/api/@internal/component/ets/common.d.ts: CommonMethod.padding(Padding|Length|LocalizedPadding)>(10)
       return

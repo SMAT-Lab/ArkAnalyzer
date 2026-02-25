@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -38,7 +38,7 @@ import { IRUtils } from './IRUtils';
 import { ArkMethod } from '../model/ArkMethod';
 import { buildArkMethodFromArkClass } from '../model/builder/ArkMethodBuilder';
 import { ArkSignatureBuilder } from '../model/builder/ArkSignatureBuilder';
-import { COMPONENT_BRANCH_FUNCTION, COMPONENT_CREATE_FUNCTION, COMPONENT_IF, COMPONENT_POP_FUNCTION, COMPONENT_REPEAT } from './EtsConst';
+import { COMPONENT_BRANCH_FUNCTION, COMPONENT_CREATE_FUNCTION, COMPONENT_IF, COMPONENT_REPEAT } from './EtsConst';
 import { FullPosition, LineColPosition } from '../base/Position';
 import { ModelUtils } from './ModelUtils';
 import { Builtin } from './Builtin';
@@ -368,9 +368,7 @@ export class ArkIRTransformer {
             }
         }
         if (hasRepeat) {
-            const popMethodSignature = ArkSignatureBuilder.buildMethodSignatureFromClassNameAndMethodName(COMPONENT_REPEAT, COMPONENT_POP_FUNCTION);
-            const popInvokeExpr = new ArkStaticInvokeExpr(popMethodSignature, []);
-            const popInvokeStmt = new ArkInvokeStmt(popInvokeExpr);
+            const popInvokeStmt = this.arkValueTransformer.generateComponentPopStmts(COMPONENT_REPEAT);
             stmts.push(popInvokeStmt);
         }
     }
@@ -720,9 +718,8 @@ export class ArkIRTransformer {
 
                 this.tsNodeToStmts(ifStatement.elseStatement).forEach(stmt => stmts.push(stmt));
             }
-            const popMethodSignature = ArkSignatureBuilder.buildMethodSignatureFromClassNameAndMethodName(COMPONENT_IF, COMPONENT_POP_FUNCTION);
-            const popInvokeExpr = new ArkStaticInvokeExpr(popMethodSignature, []);
-            const popInvokeStmt = new ArkInvokeStmt(popInvokeExpr);
+
+            const popInvokeStmt = this.arkValueTransformer.generateComponentPopStmts(COMPONENT_IF);
             stmts.push(popInvokeStmt);
         } else {
             const {

@@ -63,7 +63,7 @@ import {
 } from '../base/Type';
 import { ArkSignatureBuilder } from '../model/builder/ArkSignatureBuilder';
 import { CONSTRUCTOR_NAME, SUPER_NAME, THIS_NAME } from './TSConst';
-import { ClassSignature, FieldSignature, MethodSignature } from '../model/ArkSignature';
+import { AliasClassSignature, ClassSignature, FieldSignature, MethodSignature } from '../model/ArkSignature';
 import { Value } from '../base/Value';
 import {
     COMPONENT_CREATE_FUNCTION,
@@ -411,12 +411,22 @@ export class ArkValueTransformer {
         };
     }
 
-    private generateComponentPopStmts(componentName: string, componentExpressionPosition: FullPosition): Stmt {
-        const popMethodSignature = ArkSignatureBuilder.buildMethodSignatureFromClassNameAndMethodName(componentName, COMPONENT_POP_FUNCTION);
+    public generateComponentPopStmts(componentName: string, componentExpressionPosition?: FullPosition): Stmt {
+        const cls = this.declaringMethod.getDeclaringArkFile().getScene().getSdkGlobal('CommonMethod');
+        let popMethodSignature;
+        if (cls instanceof ArkClass) {
+            const commonSignature = cls.getMethodWithName(COMPONENT_POP_FUNCTION)?.getSignature();
+            if (commonSignature) {
+                popMethodSignature = new MethodSignature(new AliasClassSignature(componentName, commonSignature.getDeclaringClassSignature()),
+                    commonSignature.getMethodSubSignature());
+            }
+        }
+        popMethodSignature = popMethodSignature ?? ArkSignatureBuilder.buildMethodSignatureFromClassNameAndMethodName(componentName, COMPONENT_POP_FUNCTION);
         const popInvokeExpr = new ArkStaticInvokeExpr(popMethodSignature, []);
-        const popInvokeExprPositions = [componentExpressionPosition];
         const popInvokeStmt = new ArkInvokeStmt(popInvokeExpr);
-        popInvokeStmt.setOperandOriginalPositions(popInvokeExprPositions);
+        if (componentExpressionPosition) {
+            popInvokeStmt.setOperandOriginalPositions([componentExpressionPosition]);
+        }
         return popInvokeStmt;
     }
 
