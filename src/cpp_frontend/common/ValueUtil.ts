@@ -15,7 +15,7 @@
 
 import { Constant, StringConstant } from '../../core/base/Constant';
 import { EMPTY_STRING, ValueUtil } from '../../core/common/ValueUtil';
-import { CharConstant, compileConstants } from '../base/Constant';
+import { CharConstant, CompileConstants } from '../base/Constant';
 import { Type } from '../../core/base/Type';
 
 const charPrefixType = ['L"', "L\'", 'u"', "u\'", 'U"', "U\'"];
@@ -58,6 +58,6 @@ export class CxxValueUtil extends ValueUtil {
             return this.EMPTY_STRING_CONSTANT;
         }
         str = this.normalizeString(str);
-        return new compileConstants(str, compileType);
+        return new CompileConstants(str, compileType);
     }
 }

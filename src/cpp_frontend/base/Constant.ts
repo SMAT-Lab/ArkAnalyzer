@@ -23,7 +23,7 @@ export class CharConstant extends Constant {
     }
 }
 // compileConstants
-export class compileConstants extends Constant {
+export class CompileConstants extends Constant {
     constructor(value: string, compileType: Type) {
         super(value.toString(), compileType);
     }
