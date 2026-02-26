@@ -66,6 +66,7 @@ import { CONSTRUCTOR_NAME, SUPER_NAME, THIS_NAME } from './TSConst';
 import { AliasClassSignature, ClassSignature, FieldSignature, MethodSignature } from '../model/ArkSignature';
 import { Value } from '../base/Value';
 import {
+    COMMON_METHOD,
     COMPONENT_CREATE_FUNCTION,
     COMPONENT_CUSTOMVIEW,
     COMPONENT_FOR_EACH,
@@ -412,7 +413,7 @@ export class ArkValueTransformer {
     }
 
     public generateComponentPopStmts(componentName: string, componentExpressionPosition?: FullPosition): Stmt {
-        const cls = this.declaringMethod.getDeclaringArkFile().getScene().getSdkGlobal('CommonMethod');
+        const cls = this.declaringMethod.getDeclaringArkFile().getScene().getSdkGlobal(COMMON_METHOD);
         let popMethodSignature;
         if (cls instanceof ArkClass) {
             const commonSignature = cls.getMethodWithName(COMPONENT_POP_FUNCTION)?.getSignature();

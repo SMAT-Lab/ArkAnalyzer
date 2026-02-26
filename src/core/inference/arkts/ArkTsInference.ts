@@ -40,6 +40,7 @@ import { CONSTRUCTOR_NAME, THIS_NAME } from '../../common/TSConst';
 import { AbstractInvokeExpr, AliasTypeExpr, ArkInstanceInvokeExpr } from '../../base/Expr';
 import { IRInference } from '../../common/IRInference';
 import { ArkField } from '../../model/ArkField';
+import { COMPONENT_EXTEND_DECORATOR } from '../../common/EtsConst';
 
 class ArkTsImportInference extends ImportInfoInference {
     /**
@@ -246,7 +247,7 @@ export class ArkTsInstanceInvokeExprInference extends InstanceInvokeExprInferenc
     private processExtendFunc(expr: AbstractInvokeExpr, arkMethod: ArkMethod, methodName: string): AbstractInvokeExpr | null {
         const annoMethod = arkMethod.getDeclaringArkClass().getMethodWithName(methodName) ??
             arkMethod.getDeclaringArkFile().getDefaultClass().getMethodWithName(methodName);
-        if (annoMethod) {
+        if (annoMethod && annoMethod.hasDecorator(COMPONENT_EXTEND_DECORATOR)) {
             expr.setMethodSignature(annoMethod.getSignature());
             return expr;
         }

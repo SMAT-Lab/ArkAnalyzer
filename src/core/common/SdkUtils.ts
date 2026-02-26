@@ -15,7 +15,7 @@
 
 import { ArkFile } from '../model/ArkFile';
 import { ArkExport, ExportInfo } from '../model/ArkExport';
-import { COMPONENT_ATTRIBUTE, COMPONENT_POP_FUNCTION } from './EtsConst';
+import { COMMON_METHOD, COMPONENT_ATTRIBUTE, COMPONENT_POP_FUNCTION } from './EtsConst';
 import { GLOBAL_THIS_NAME, THIS_NAME } from './TSConst';
 import { DEFAULT_ARK_METHOD_NAME, TEMP_LOCAL_PREFIX } from './Const';
 import { ArkClass, ClassCategory } from '../model/ArkClass';
@@ -273,7 +273,7 @@ export class SdkUtils {
     }
 
     public static extendArkUI(scene: Scene): void {
-        const cls = scene.getSdkGlobal('CommonMethod');
+        const cls = scene.getSdkGlobal(COMMON_METHOD);
         if (cls instanceof ArkClass) {
             const mtd = new ArkMethod();
             mtd.setDeclaringArkClass(cls);
