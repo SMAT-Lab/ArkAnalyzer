@@ -483,21 +483,24 @@ export const ClassBConstructorIR = `constructor(): @class/ClassWithHeritage.ts: 
 }
 `;
 
-export const ClassCConstructorIR = `constructor(c: number): @class/ClassWithHeritage.ts: C {
+export const ClassCConstructorIR = `constructor(c1: number, c2: number): @class/ClassWithHeritage.ts: C {
   label0:
-    c = parameter0: number
+    c1 = parameter0: number
+    c2 = parameter1: number
     this = this: @class/ClassWithHeritage.ts: C
     instanceinvoke this.<@class/ClassWithHeritage.ts: C.%instInit()>()
-    this.<@class/ClassWithHeritage.ts: C.c> = c
+    %0 = c1 + c2
+    this.<@class/ClassWithHeritage.ts: C.c> = %0
     return this
 }
 `;
 
-export const ClassDConstructorIR = `constructor(c: number): @class/ClassWithHeritage.ts: D {
+export const ClassDConstructorIR = `constructor(c1: number, c2: number): @class/ClassWithHeritage.ts: D {
   label0:
-    c = parameter0: number
+    c1 = parameter0: number
+    c2 = parameter1: number
     this = this: @class/ClassWithHeritage.ts: D
-    instanceinvoke this.<@class/ClassWithHeritage.ts: C.constructor(number)>(c)
+    instanceinvoke this.<@class/ClassWithHeritage.ts: C.constructor(number, number)>(c1, c2)
     instanceinvoke this.<@class/ClassWithHeritage.ts: D.%instInit()>()
     return this
 }
@@ -508,7 +511,7 @@ export const ClassEConstructorIR = `constructor(c: number, e: string): @class/Cl
     c = parameter0: number
     e = parameter1: string
     this = this: @class/ClassWithHeritage.ts: E
-    instanceinvoke this.<@class/ClassWithHeritage.ts: C.constructor(number)>(c)
+    instanceinvoke this.<@class/ClassWithHeritage.ts: C.constructor(number, number)>(c, 1)
     instanceinvoke this.<@class/ClassWithHeritage.ts: E.%instInit()>()
     this.<@class/ClassWithHeritage.ts: E.e> = e
     return this
@@ -526,11 +529,12 @@ export const ClassFConstructorIR = `constructor(f: string): @class/ClassWithHeri
 }
 `;
 
-export const ClassGConstructorIR = `constructor(c: number): @class/ClassWithHeritage.ts: G {
+export const ClassGConstructorIR = `constructor(c1: number, c2: number): @class/ClassWithHeritage.ts: G {
   label0:
-    c = parameter0: number
+    c1 = parameter0: number
+    c2 = parameter1: number
     this = this: @class/ClassWithHeritage.ts: G
-    instanceinvoke this.<@class/ClassWithHeritage.ts: D.constructor(number)>(c)
+    instanceinvoke this.<@class/ClassWithHeritage.ts: D.constructor(number, number)>(c1, c2)
     instanceinvoke this.<@class/ClassWithHeritage.ts: G.%instInit()>()
     return this
 }
