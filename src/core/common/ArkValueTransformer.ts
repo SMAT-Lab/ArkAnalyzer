@@ -413,16 +413,20 @@ export class ArkValueTransformer {
     }
 
     public generateComponentPopStmts(componentName: string, componentExpressionPosition?: FullPosition): Stmt {
-        const cls = this.declaringMethod.getDeclaringArkFile().getScene().getSdkGlobal(COMMON_METHOD);
-        let popMethodSignature;
-        if (cls instanceof ArkClass) {
-            const commonSignature = cls.getMethodWithName(COMPONENT_POP_FUNCTION)?.getSignature();
-            if (commonSignature) {
-                popMethodSignature = new MethodSignature(new AliasClassSignature(componentName, commonSignature.getDeclaringClassSignature()),
-                    commonSignature.getMethodSubSignature());
+        let popMethodSignature = ModelUtils.popMethodSignatureCache.get(componentName);
+        if (!popMethodSignature) {
+            const cls = this.declaringMethod.getDeclaringArkFile().getScene().getSdkGlobal(COMMON_METHOD);
+            if (cls instanceof ArkClass) {
+                const commonSignature = cls.getMethodWithName(COMPONENT_POP_FUNCTION)?.getSignature();
+                if (commonSignature) {
+                    const classSignature = new AliasClassSignature(componentName, commonSignature.getDeclaringClassSignature());
+                    popMethodSignature = new MethodSignature(classSignature, commonSignature.getMethodSubSignature());
+                }
             }
+            popMethodSignature = popMethodSignature ??
+                ArkSignatureBuilder.buildMethodSignatureFromClassNameAndMethodName(componentName, COMPONENT_POP_FUNCTION);
+            ModelUtils.popMethodSignatureCache.set(componentName, popMethodSignature);
         }
-        popMethodSignature = popMethodSignature ?? ArkSignatureBuilder.buildMethodSignatureFromClassNameAndMethodName(componentName, COMPONENT_POP_FUNCTION);
         const popInvokeExpr = new ArkStaticInvokeExpr(popMethodSignature, []);
         const popInvokeStmt = new ArkInvokeStmt(popInvokeExpr);
         if (componentExpressionPosition) {
