@@ -879,6 +879,7 @@ object %AC5$AnimatablePropertyText-build {
             const printer = new ArkIRMethodPrinter(method, '');
             const s1 = printer.dump();
             assert.equal(s1, expectMethodIR);
+            method.getCfg()?.getStmts().filter(s => s instanceof ArkInvokeStmt).forEach(s => assert.isDefined(s.getCfg()));
         } else {
             assert.fail('not found test method');
         }
