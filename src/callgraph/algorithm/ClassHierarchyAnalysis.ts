@@ -22,6 +22,7 @@ import { CallGraph, CallSite } from '../model/CallGraph';
 import { AbstractAnalysis } from './AbstractAnalysis';
 import { CallGraphBuilder } from '../model/builder/CallGraphBuilder';
 import { ClassSignature } from '../../core/model/ArkSignature';
+import { CONSTRUCTOR_NAME } from '../../core/common/TSConst';
 
 export class ClassHierarchyAnalysis extends AbstractAnalysis {
     constructor(scene: Scene, cg: CallGraph, cb: CallGraphBuilder) {
@@ -31,17 +32,18 @@ export class ClassHierarchyAnalysis extends AbstractAnalysis {
 
     public resolveCall(callerMethod: NodeID, invokeStmt: Stmt): CallSite[] {
         let invokeExpr = invokeStmt.getInvokeExpr();
-        const stmtDeclareClass: ClassSignature = invokeStmt.getCfg().getDeclaringMethod().getDeclaringArkClass().getSignature();
-        let resolveResult: CallSite[] = [];
-
         if (!invokeExpr) {
             return [];
         }
 
+        const stmtDeclareClass: ClassSignature = invokeStmt.getCfg().getDeclaringMethod().getDeclaringArkClass().getSignature();
+        let resolveResult: CallSite[] = [];
+
         // process anonymous method call
         this.getParamAnonymousMethod(invokeExpr).forEach(method => {
+            const nodeID = this.cg.getCallGraphNodeByMethod(method).getID();
             resolveResult.push(
-                this.cg.getCallSiteManager().newCallSite(invokeStmt, undefined, this.cg.getCallGraphNodeByMethod(method).getID(), callerMethod)
+                this.cg.getCallSiteManager().newCallSite(invokeStmt, undefined, nodeID, callerMethod)
             );
         });
 
@@ -49,34 +51,32 @@ export class ClassHierarchyAnalysis extends AbstractAnalysis {
         if (!calleeMethod) {
             return resolveResult;
         }
-        if (invokeExpr instanceof ArkStaticInvokeExpr) {
+
+        let declareClass = calleeMethod.getDeclaringArkClass();
+        if (invokeExpr instanceof ArkStaticInvokeExpr || 
+            calleeMethod.isPrivate() ||
+            calleeMethod.getName() === CONSTRUCTOR_NAME ||
+            this.checkSuperInvoke(invokeStmt, declareClass, stmtDeclareClass)) {
             // get specific method
+            const nodeID = this.cg.getCallGraphNodeByMethod(calleeMethod!.getSignature()).getID();
             resolveResult.push(
-                this.cg.getCallSiteManager().newCallSite(
-                    invokeStmt, undefined,
-                    this.cg.getCallGraphNodeByMethod(calleeMethod!.getSignature()).getID(), callerMethod!
-                )
+                this.cg.getCallSiteManager().newCallSite(invokeStmt, undefined, nodeID, callerMethod)
             );
         } else {
-            let declareClass = calleeMethod.getDeclaringArkClass();
-            
-            // block super invoke 
-            if (this.checkSuperInvoke(invokeStmt, declareClass, stmtDeclareClass)) {
-                resolveResult.push(this.cg.getCallSiteManager().newCallSite(invokeStmt, undefined,
-                        this.cg.getCallGraphNodeByMethod(calleeMethod!.getSignature()).getID(), callerMethod!));
-                return resolveResult;
-            }
+            const classHierarchy = this.getClassHierarchy(declareClass);
+            const calleeMethodName = calleeMethod.getName();
+            const declareClassSignature = declareClass.getSignature();
 
-            this.getClassHierarchy(declareClass).forEach((arkClass: ArkClass) => {
-                let possibleCalleeMethod = arkClass.getMethodWithName(calleeMethod!.getName());
+            for (const arkClass of classHierarchy) {
+                let possibleCalleeMethod = arkClass.getMethodWithName(calleeMethodName);
 
                 if (
                     possibleCalleeMethod &&
                     possibleCalleeMethod.isGenerated() &&
-                    arkClass.getSignature().toString() !== declareClass.getSignature().toString()
+                    arkClass.getSignature() !== declareClassSignature
                 ) {
                     // remove the generated method in extended classes
-                    return;
+                    continue;
                 }
 
                 if (possibleCalleeMethod && !possibleCalleeMethod.isAbstract()) {
@@ -86,7 +86,7 @@ export class ClassHierarchyAnalysis extends AbstractAnalysis {
                             this.cg.getCallGraphNodeByMethod(possibleCalleeMethod.getSignature()).getID(), callerMethod
                         ));
                 }
-            });
+            }
         }
 
         return resolveResult;
