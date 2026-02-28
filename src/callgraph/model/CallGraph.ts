@@ -39,9 +39,9 @@ export enum CallGraphNodeKind {
 }
 
 export class CallGraphEdge extends BaseEdge {
-    private directCalls: StmtSet = new Set();
-    private specialCalls: StmtSet = new Set();
-    private indirectCalls: StmtSet = new Set();
+    private directCalls?: StmtSet;
+    private specialCalls?: StmtSet;
+    private indirectCalls?: StmtSet;
     // private callSiteID: CallSiteID;
 
     constructor(src: CallGraphNode, dst: CallGraphNode) {
@@ -49,21 +49,30 @@ export class CallGraphEdge extends BaseEdge {
     }
 
     public addDirectCallSite(stmt: Stmt): void {
+        if (!this.directCalls) {
+            this.directCalls = new Set();
+        }
         this.directCalls.add(stmt);
     }
 
     public addSpecialCallSite(stmt: Stmt): void {
+        if (!this.specialCalls) {
+            this.specialCalls = new Set();
+        }
         this.specialCalls.add(stmt);
     }
 
     public addInDirectCallSite(stmt: Stmt): void {
+        if (!this.indirectCalls) {
+            this.indirectCalls = new Set();
+        }
         this.indirectCalls.add(stmt);
     }
 
     public getDotAttr(): string {
-        const indirectCallNums: number = this.indirectCalls.size;
-        const directCallNums: number = this.directCalls.size;
-        const specialCallNums: number = this.specialCalls.size;
+        const indirectCallNums: number = this.indirectCalls?.size ?? 0;
+        const directCallNums: number = this.directCalls?.size ?? 0;
+        const specialCallNums: number = this.specialCalls?.size ?? 0;
 
         if (indirectCallNums !== 0 && directCallNums === 0) {
             return 'color=red';
@@ -207,11 +216,11 @@ export class CallGraph extends BaseExplicitGraph {
     public removeCallGraphEdge(nodeID: NodeID): void {
         let node = this.getNode(nodeID) as CallGraphNode;
 
-        for (const inEdge of node.getIncomingEdge()) {
+        for (const inEdge of node.getIncomingEdge() ?? []) {
             node.removeIncomingEdge(inEdge);
         }
 
-        for (const outEdge of node.getOutgoingEdges()) {
+        for (const outEdge of node.getOutgoingEdges()??[]) {
             node.removeIncomingEdge(outEdge);
         }
     }
@@ -360,7 +369,7 @@ export class CallGraph extends BaseExplicitGraph {
             travserdFuncs.add(nodeID);
 
             let node = this.getNode(nodeID)!;
-            for (let e of node.getOutgoingEdges()) {
+            for (let e of node.getOutgoingEdges()??[]) {
                 let dst = e.getDstID();
                 if (dst === dstID) {
                     return true;
