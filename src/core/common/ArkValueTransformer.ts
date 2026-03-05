@@ -63,9 +63,10 @@ import {
 } from '../base/Type';
 import { ArkSignatureBuilder } from '../model/builder/ArkSignatureBuilder';
 import { CONSTRUCTOR_NAME, SUPER_NAME, THIS_NAME } from './TSConst';
-import { ClassSignature, FieldSignature, MethodSignature } from '../model/ArkSignature';
+import { AliasClassSignature, ClassSignature, FieldSignature, MethodSignature } from '../model/ArkSignature';
 import { Value } from '../base/Value';
 import {
+    COMMON_METHOD,
     COMPONENT_CREATE_FUNCTION,
     COMPONENT_CUSTOMVIEW,
     COMPONENT_FOR_EACH,
@@ -411,12 +412,26 @@ export class ArkValueTransformer {
         };
     }
 
-    private generateComponentPopStmts(componentName: string, componentExpressionPosition: FullPosition): Stmt {
-        const popMethodSignature = ArkSignatureBuilder.buildMethodSignatureFromClassNameAndMethodName(componentName, COMPONENT_POP_FUNCTION);
+    public generateComponentPopStmts(componentName: string, componentExpressionPosition?: FullPosition): Stmt {
+        let popMethodSignature = ModelUtils.popMethodSignatureCache.get(componentName);
+        if (!popMethodSignature) {
+            const cls = this.declaringMethod.getDeclaringArkFile().getScene().getSdkGlobal(COMMON_METHOD);
+            if (cls instanceof ArkClass) {
+                const commonSignature = cls.getMethodWithName(COMPONENT_POP_FUNCTION)?.getSignature();
+                if (commonSignature) {
+                    const classSignature = new AliasClassSignature(componentName, commonSignature.getDeclaringClassSignature());
+                    popMethodSignature = new MethodSignature(classSignature, commonSignature.getMethodSubSignature());
+                }
+            }
+            popMethodSignature = popMethodSignature ??
+                ArkSignatureBuilder.buildMethodSignatureFromClassNameAndMethodName(componentName, COMPONENT_POP_FUNCTION);
+            ModelUtils.popMethodSignatureCache.set(componentName, popMethodSignature);
+        }
         const popInvokeExpr = new ArkStaticInvokeExpr(popMethodSignature, []);
-        const popInvokeExprPositions = [componentExpressionPosition];
         const popInvokeStmt = new ArkInvokeStmt(popInvokeExpr);
-        popInvokeStmt.setOperandOriginalPositions(popInvokeExprPositions);
+        if (componentExpressionPosition) {
+            popInvokeStmt.setOperandOriginalPositions([componentExpressionPosition]);
+        }
         return popInvokeStmt;
     }
 
