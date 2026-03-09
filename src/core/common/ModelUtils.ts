@@ -73,13 +73,14 @@ import { CALL_BACK } from './EtsConst';
 
 export class ModelUtils {
     public static implicitArkUIBuilderMethods: Set<ArkMethod> = new Set();
-
+    public static popMethodSignatureCache = new Map<string, MethodSignature>();
     /*
      * Set static field to be null, then all related objects could be freed by GC.
      * Static field implicitArkUIBuilderMethods is only used during method body building, the dispose method should be called after build all body.
      */
     public static dispose(): void {
         this.implicitArkUIBuilderMethods.clear();
+        this.popMethodSignatureCache.clear();
     }
 
     public static getMethodSignatureFromArkClass(arkClass: ArkClass, methodName: string): MethodSignature | null {

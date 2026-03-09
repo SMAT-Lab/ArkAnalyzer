@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -15,21 +15,22 @@
 
 import { ArkFile } from '../model/ArkFile';
 import { ArkExport, ExportInfo } from '../model/ArkExport';
-import { COMPONENT_ATTRIBUTE } from './EtsConst';
+import { COMMON_METHOD, COMPONENT_ATTRIBUTE, COMPONENT_POP_FUNCTION } from './EtsConst';
 import { GLOBAL_THIS_NAME, THIS_NAME } from './TSConst';
 import { DEFAULT_ARK_METHOD_NAME, TEMP_LOCAL_PREFIX } from './Const';
 import { ArkClass, ClassCategory } from '../model/ArkClass';
-import { LocalSignature } from '../model/ArkSignature';
+import { LocalSignature, MethodSignature, MethodSubSignature } from '../model/ArkSignature';
 import { Local } from '../base/Local';
 import { ArkMethod } from '../model/ArkMethod';
 import path from 'path';
-import { ClassType } from '../base/Type';
+import { ClassType, VoidType } from '../base/Type';
 import { AbstractFieldRef } from '../base/Ref';
 import { ArkNamespace } from '../model/ArkNamespace';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { Sdk } from '../../Config';
 import ts from 'ohos-typescript';
 import fs from 'fs';
+import { Scene } from '../../Scene';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'SdkUtils');
 
@@ -268,6 +269,18 @@ export class SdkUtils {
                 .arkExport(new Local(leftOp.getFieldName(), leftOp.getType()))
                 .build();
             globalThis.addExportInfo(exportInfo);
+        }
+    }
+
+    public static extendArkUI(scene: Scene): void {
+        const cls = scene.getSdkGlobal(COMMON_METHOD);
+        if (cls instanceof ArkClass) {
+            const mtd = new ArkMethod();
+            mtd.setDeclaringArkClass(cls);
+            const methodSubSignature = new MethodSubSignature(COMPONENT_POP_FUNCTION, [], VoidType.getInstance(), false);
+            mtd.setDeclareSignatures(new MethodSignature(cls.getSignature(), methodSubSignature));
+            mtd.setIsGeneratedFlag(true);
+            cls.addMethod(mtd);
         }
     }
 }
