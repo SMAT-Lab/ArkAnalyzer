@@ -590,20 +590,9 @@ export class TypeInfo extends Type {
 }
 
 export class CxxNonType extends GenericType {
-
-    private isAutoType: boolean = false;
     constructor(name: string, defaultType?: Type, isAutoType: boolean = false) {
         super(name, defaultType);
-        this.isAutoType = isAutoType;
     }
-
-    public getIsAutoType(): boolean {
-        return this.isAutoType;
-    }
-    public setIsAutoType(isAutoType: boolean): void {
-        this.isAutoType = isAutoType;
-    }
-
 }
 
 export class CxxArrayType extends Type {

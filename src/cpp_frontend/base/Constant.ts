@@ -15,9 +15,16 @@
 
 import { CxxCharType } from './Type';
 import { Constant } from '../../core/base/Constant';
-
+import { Type } from '../../core/base/Type';
+// CharConstant
 export class CharConstant extends Constant {
     constructor(value: string) {
         super(value.toString(), CxxCharType.getInstance());
+    }
+}
+// compileConstants
+export class CompileConstants extends Constant {
+    constructor(value: string, compileType: Type) {
+        super(value.toString(), compileType);
     }
 }

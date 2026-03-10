@@ -516,6 +516,15 @@ export class ArkCxxValueTransformer extends ArkValueTransformer {
             node.inner.push(typeRefNode);
             return this.staticMemberExprToValueAndStmts(node);
         }
+        // when node.referencedDecl?.kind === astKind.NonTypeTemplateParmDecl ,this value is a const expr
+        if (node.referencedDecl?.kind === astKind.NonTypeTemplateParmDecl) {
+            return {
+                value: CxxValueUtil.createCompileConst(node.name, cxxNode2Type(node, this.declaringMethod)),
+                valueOriginalPositions: [],
+                stmts: [],
+            };
+        }
+
         // Handle the invocation of static members of a class, such as A::a
         if (node.code?.includes('::') && node.inner.length > 0 &&
             (node.inner[0]?.kind === astKind.TypeRef || node.inner[0]?.kind === astKind.NamespaceRef && node.inner[0]?.name !== BuiltinCxx.CXXSTD)) {

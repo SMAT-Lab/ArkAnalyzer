@@ -22,7 +22,7 @@ import {
     UnionType,
     UnknownType,
 } from '../../../core/base/Type';
-import { CxxArrayType, CxxNonType, PointerType, ReferCategory, ReferenceType } from '../../base/Type';
+import { AutoType, CxxArrayType, CxxNonType, PointerType, ReferCategory, ReferenceType } from '../../base/Type';
 import { TypeInference } from '../../common/TypeInference';
 import { ArkField } from '../../../core/model/ArkField';
 import { ArkClass } from '../../../core/model/ArkClass';
@@ -30,7 +30,7 @@ import { ArkMethod } from '../../../core/model/ArkMethod';
 import { MethodParameter } from '../../../core/model/builder/ArkMethodBuilder';
 import { modifierKind2CxxEnum } from '../../../core/model/ArkBaseModel';
 import { buildGenericType } from '../../../core/model/builder/builderUtils';
-import { CxxAstNode, CxxTranslationUnit, defaultArg } from '../../ast/ArkCxxAstNode';
+import { astKind, CxxAstNode, CxxTranslationUnit, defaultArg } from '../../ast/ArkCxxAstNode';
 import { Decorator } from '../../../core/base/Decorator';
 import { buildArkMethodFromArkClass } from './ArkMethodBuilder';
 import { BuiltinCxx } from '../../common/Builtin';
@@ -109,7 +109,7 @@ export function buildTypeParameters(clsNode: CxxAstNode, sourceFile: CxxAstNode,
     const genericTypes: GenericType[] = [];
     let index = -1;
     for (const innerNode of clsNode.inner) {
-        if (innerNode.kind === 'TemplateTypeParmDecl') {
+        if (innerNode.kind === astKind.TemplateTypeParmDecl) {
             let defaultType;
             if (innerNode.inner && innerNode.inner.length > 0) {
                 innerNode.default = innerNode.inner[0].type.qualType;
@@ -120,10 +120,10 @@ export function buildTypeParameters(clsNode: CxxAstNode, sourceFile: CxxAstNode,
             let templateType = new GenericType(innerNode.name, defaultType);
             templateType.setIndex(++index);
             genericTypes.push(templateType);
-        } else if (innerNode.kind === 'NonTypeTemplateParmDecl') {
+        } else if (innerNode.kind === astKind.NonTypeTemplateParmDecl) {
             let templateType;
             if (innerNode.type.qualType === 'auto') {
-                templateType = new CxxNonType(innerNode.name, undefined, true);
+                templateType = new CxxNonType(innerNode.name, AutoType.getInstance());
             } else {
                 const nonType = cxxNode2Type(innerNode, arkInstance, sourceFile);
                 templateType = new CxxNonType(innerNode.name, nonType);
@@ -343,7 +343,11 @@ export function buildArrayType(qualType: string, node: CxxAstNode, arkInstance: 
                 dimensionSizes.push(Number(node.inner[i].value) ?? 0);
             }
         } catch (e) {
-            logger.error('this node case is unexpect');
+            // When a node is of reference type, the processing strategy is to parse the type as much as possible,
+            // so it is not directly parsed according to Unclear Reference.
+            // At this time, the type field cannot obtain array length information.
+            logger.warn(node + 'this node case is unexpect');
+            return TypeInference.buildTypeFromStr(qualType);
         }
     }
     if (baseType instanceof UnclearReferenceType) {

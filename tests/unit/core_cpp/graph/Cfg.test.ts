@@ -258,7 +258,6 @@ describe('Type Test', () => {
         testBlocks(scene, 'template.cpp', 'Sum', TEMPLATE_EXPECT.TEMPLATE_EXPECT_CASE5.blocks);
         testBlocks(scene, 'template.cpp', 'Instantiation3', TEMPLATE_EXPECT.TEMPLATE_EXPECT_CASE6.blocks);
     });
-
     it('case9: class Test', () => {
         const scene = buildScene('class');
         testBlocksClass(scene, 'classSample.cpp', 'Base', CLASS_EXPECT.BASE_CLASS_EXPECT);

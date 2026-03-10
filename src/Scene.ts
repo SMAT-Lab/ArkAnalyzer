@@ -396,10 +396,11 @@ export class Scene {
     private findCCJsonPath(file: string, ccjsonPath: string): string {
         const ext = path.extname(file).toLowerCase();
         const isHeader = ext === '.h' || ext === '.hpp';
-        if (!ccjsonPath && !isHeader) {
-            return findCompileCommands(file);
+        let currentCcjsonPath = '';
+        if (!isHeader) {
+            currentCcjsonPath = findCompileCommands(file);
         }
-        return ccjsonPath;
+        return currentCcjsonPath === '' ? ccjsonPath : currentCcjsonPath;
     }
 
     private genArkFiles(): void {

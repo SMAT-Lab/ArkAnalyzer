@@ -264,62 +264,115 @@ export class ArkCxxIRTransformer extends ArkIRTransformer {
     }
 
     private typeDefDeclToStmts(typeAliasDeclaration: CxxAstNode): Stmt[] {
+        // 1. Preprocess node to get the actual declaration and type string
+        const { rightOp, typeNode } = this.preprocessTypeAlias(typeAliasDeclaration);
+
+        // 2. Resolve the underlying type (handling anonymous types and AbstractTypeExpr)
+        let rightType = this.resolveInitialRightType(typeAliasDeclaration);
+
+        // 3. Create the AliasType instance
         const aliasName = typeAliasDeclaration.name;
-        let typeDefDecl: CxxAstNode = typeAliasDeclaration;
-        if (typeAliasDeclaration.kind === astKind.TypeAliasTemplateDecl) {
-            typeDefDecl = typeAliasDeclaration.inner[typeAliasDeclaration.inner.length - 1];
+        const aliasType = new AliasType(aliasName, rightType,
+            new AliasTypeSignature(aliasName, this.declaringMethod.getSignature()));
+
+        // 4. Handle Template definitions and 'typename' keyword logic
+        this.configureTemplateAndTypename(typeAliasDeclaration, aliasType, rightOp, rightType);
+
+        // 5. Generate the type expression
+        const expr = this.cxxGenerateAliasTypeExpr(rightOp, aliasType);
+
+        // 6. Populate real generic types if it is a template declaration
+        this.populateRealGenericTypes(typeAliasDeclaration, expr);
+
+        // 7. Set modifiers
+        aliasType.setModifiers(buildModifiers(typeAliasDeclaration));
+
+        // 8. Create and return the statement
+        const stmt = this.createAliasStmt(aliasType, expr, typeAliasDeclaration, typeNode);
+
+        this.getAliasTypeMap().set(aliasName, [aliasType, stmt]);
+        return [stmt];
+    }
+
+    /**
+     * Extracts the target declaration node and the type string (right operand).
+     */
+    private preprocessTypeAlias(node: CxxAstNode): {
+        targetDecl: CxxAstNode,
+        rightOp: string,
+        typeNode: CxxAstNode | undefined
+    } {
+        let targetDecl: CxxAstNode = node;
+        if (node.kind === astKind.TypeAliasTemplateDecl) {
+            targetDecl = node.inner[node.inner.length - 1];
         }
-        const typeNode: CxxAstNode | undefined =
-            Array.isArray(typeDefDecl.inner) ? typeDefDecl.inner[0] : undefined;
-        const rightOp = typeAliasDeclaration.type.desugaredQualType ?
-            typeAliasDeclaration.type.desugaredQualType : typeAliasDeclaration.type.qualType; // If there is no type code, use int type as fallback
 
-        let rightType;
-        //  Identify the tagUsed attribute to determine struct, union, and enum nodes
-        rightType = this.getAnonymousInformation(typeAliasDeclaration);
+        const typeNode: CxxAstNode | undefined = Array.isArray(targetDecl.inner) ? targetDecl.inner[0] : undefined;
 
+        let rightOp = node.type?.desugaredQualType ?? 'unknown';
+        if (rightOp === 'unknown') {
+            logger.warn(`${node} is a new style that is not supported.`);
+        }
+
+        return { targetDecl, rightOp, typeNode };
+    }
+
+    /**
+     * Resolves the basic right-hand side type, handling anonymous structs/unions/enums.
+     */
+    private resolveInitialRightType(node: CxxAstNode): Type {
+        let rightType = this.getAnonymousInformation(node);
         if (rightType instanceof AbstractTypeExpr) {
             rightType = rightType.getType();
         }
+        return rightType;
+    }
 
-        const aliasType = new AliasType(aliasName, rightType, new AliasTypeSignature(aliasName, this.declaringMethod.getSignature()));
-        if (typeAliasDeclaration.kind === astKind.TypeAliasTemplateDecl) {
-            const genericTypes = buildTypeParameters(typeAliasDeclaration, this.cxxSourceFile, this.declaringMethod);
+    /**
+     * Configures generics for template aliases and handles the 'typename' keyword.
+     */
+    private configureTemplateAndTypename(node: CxxAstNode, aliasType: AliasType, rightOp: string, initialRightType: Type): void {
+        // Handle Template Alias
+        if (node.kind === astKind.TypeAliasTemplateDecl) {
+            const genericTypes = buildTypeParameters(node, this.cxxSourceFile, this.declaringMethod);
             aliasType.setGenericTypes(genericTypes);
-            aliasType.setOriginalType(buildGenericType(rightType, aliasType));
-            rightType = aliasType.getOriginalType();
+            aliasType.setOriginalType(buildGenericType(initialRightType, aliasType));
         }
-        // scenario: template<typename T> , using value_type_t = typename T::value_type;
+
+        // Handle scenario: template<typename T> using value_type_t = typename T::value_type;
         if (rightOp.startsWith(BuiltinCxx.TYPENAME_KEYWORD)) {
-            rightType = aliasType.getGenericTypes()?.[0];
-            if (rightType) {
-                aliasType.setOriginalType(rightType);
+            const firstGeneric = aliasType.getGenericTypes()?.[0];
+            if (firstGeneric) {
+                aliasType.setOriginalType(firstGeneric);
             }
         }
+    }
 
-        let expr = this.cxxGenerateAliasTypeExpr(rightOp, aliasType);
-
-        if (typeAliasDeclaration.kind === astKind.TypeAliasTemplateDecl) {
-            let realGenericTypes: Type[] = [];
-            typeAliasDeclaration.inner.filter(inn => inn.kind === astKind.TemplateTypeParmDecl)
+    /**
+     * Extracts real generic types from TemplateTypeParmDecl nodes and sets them on the expression.
+     */
+    private populateRealGenericTypes(node: CxxAstNode, expr: AliasTypeExpr): void {
+        if (node.kind === astKind.TypeAliasTemplateDecl) {
+            const realGenericTypes: Type[] = [];
+            node.inner.filter(inn => inn.kind === astKind.TemplateTypeParmDecl)
                 .forEach(typeArgument => {
                     realGenericTypes.push(cxxNode2Type(typeArgument, this.declaringMethod));
                 });
             expr.setRealGenericTypes(realGenericTypes);
         }
+    }
 
-        const modifiers = buildModifiers(typeAliasDeclaration);
-        aliasType.setModifiers(modifiers);
+    /**
+     * Constructs the final ArkAliasTypeDefineStmt and sets source positions.
+     */
+    private createAliasStmt(aliasType: AliasType, expr: AliasTypeExpr, node: CxxAstNode, typeNode: CxxAstNode | undefined): ArkAliasTypeDefineStmt {
+        const stmt = new ArkAliasTypeDefineStmt(aliasType, expr);
 
-        const aliasTypeDefineStmt = new ArkAliasTypeDefineStmt(aliasType, expr);
-        const leftPosition = FullPosition.cxxBuildFromNode(typeAliasDeclaration, this.cxxSourceFile);
+        const leftPosition = FullPosition.cxxBuildFromNode(node, this.cxxSourceFile);
         const rightPosition = FullPosition.cxxBuildFromNode(typeNode, this.cxxSourceFile);
-        const operandOriginalPositions = [leftPosition, rightPosition];
-        aliasTypeDefineStmt.setOperandOriginalPositions(operandOriginalPositions);
 
-        this.getAliasTypeMap().set(aliasName, [aliasType, aliasTypeDefineStmt]);
-
-        return [aliasTypeDefineStmt];
+        stmt.setOperandOriginalPositions([leftPosition, rightPosition]);
+        return stmt;
     }
 
     private getAnonymousInformation(node: CxxAstNode): Type {
