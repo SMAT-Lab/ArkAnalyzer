@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2026 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -653,7 +653,7 @@ export class TypeInference {
             const types: Type[] = Array.from(typeMap.values());
             returnType = types.length === 1 ? types[0] : new UnionType(types);
         } else {
-            returnType = VoidType.getInstance()
+            returnType = VoidType.getInstance();
         }
         if (arkMethod.containsModifier(ModifierType.ASYNC)) {
             const promise = arkMethod.getDeclaringArkFile().getScene().getSdkGlobal(PROMISE);
