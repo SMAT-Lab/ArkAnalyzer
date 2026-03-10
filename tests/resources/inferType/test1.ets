@@ -37,3 +37,13 @@ export class SCBTransitionManager {
 export enum Events {
     STATE_CHANGE = 'stateChange'
 }
+
+namespace MethodReturnType {
+    async function foo() {
+        console.log('this is async method');
+    }
+
+    async function goo() {
+        await foo();
+    }
+}

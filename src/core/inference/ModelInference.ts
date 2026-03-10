@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -25,7 +25,7 @@ import { ImportInfo } from '../model/ArkImport';
 import { fileSignatureCompare, NamespaceSignature } from '../model/ArkSignature';
 import { findArkExport, findExportInfoInfile, ModelUtils } from '../common/ModelUtils';
 import { ArkMethod } from '../model/ArkMethod';
-import { ClassType, FunctionType, GenericType, Type, VoidType } from '../base/Type';
+import { ClassType, FunctionType, GenericType, Type, UnclearReferenceType, UnknownType, VoidType } from '../base/Type';
 import { TypeInference } from '../common/TypeInference';
 import { AbstractFieldRef, ArkParameterRef, ArkStaticFieldRef, GlobalRef } from '../base/Ref';
 import { CONSTRUCTOR_NAME, GLOBAL_THIS_NAME, PROMISE } from '../common/TSConst';
@@ -322,8 +322,11 @@ export class MethodInference extends ArkModelInference {
             });
         }
         //infers return type
-        if (!method.getBody() || method.getName() === CONSTRUCTOR_NAME ||
-            !TypeInference.isUnclearType(method.getImplementationSignature()?.getMethodSubSignature().getReturnType())) {
+        if (!method.getBody() || method.getName() === CONSTRUCTOR_NAME || method.getAsteriskToken()) {
+            return;
+        }
+        const rt = method.getImplementationSignature()?.getMethodSubSignature().getReturnType();
+        if (!TypeInference.isUnclearType(rt) || rt instanceof GenericType) {
             return;
         }
         const returnType = TypeInference.inferReturnType(method);

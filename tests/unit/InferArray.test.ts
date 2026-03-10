@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -39,6 +39,7 @@ import { ArkIRClassPrinter } from '../../src/save/arkir/ArkIRClassPrinter';
 import { ModifierType } from '../../src/core/model/ArkBaseModel';
 import { ArkIRFilePrinter } from '../../src/save/arkir/ArkIRFilePrinter';
 import { ArkIRMethodPrinter } from '../../src/save/arkir/ArkIRMethodPrinter';
+import { SdkUtils } from '../../src/core/common/SdkUtils';
 
 const logPath = 'out/ArkAnalyzer.log';
 const logger = Logger.getLogger(LOG_MODULE_TYPE.TOOL, 'InferArrayTest');
@@ -884,6 +885,17 @@ object %AC5$AnimatablePropertyText-build {
             assert.fail('not found test method');
         }
     });
+
+    it('infer method return type  case', () => {
+        const returnType = scene.getFiles().find(file => file.getName().endsWith('test1.ets'))?.getNamespaceWithName('MethodReturnType')?.getDefaultClass()
+            .getMethodWithName('foo')?.getReturnType();
+        assert.isDefined(returnType);
+        assert.equal(returnType!.toString(), '@etsSdk/api/@internal/Promise.d.ts: Promise<void>');
+        const returnType2 = scene.getFiles().find(file => file.getName().endsWith('test1.ets'))?.getNamespaceWithName('MethodReturnType')?.getDefaultClass()
+            .getMethodWithName('goo')?.getReturnType();
+        assert.isDefined(returnType2);
+        assert.equal(returnType2!.toString(), '@etsSdk/api/@internal/Promise.d.ts: Promise<void>');
+    });
 })
 
 describe("for Test without sdk", () => {
@@ -975,5 +987,19 @@ describe("Test built in version", () => {
         scene.buildSceneFromProjectDir(config);
         scene.inferTypes();
         assert.isNotNull((scene.getSdkGlobal('Promise') as ArkClass).getMethodWithName('any'));
+    })
+
+    it('built in path case', () => {
+        let config: SceneConfig = new SceneConfig();
+        config.getSdksObj().push({
+            moduleName: "",
+            name: SdkUtils.BUILT_IN_NAME,
+            path: path.resolve('./node_modules/ohos-typescript/lib')
+        })
+        config.buildFromProjectDir('./tests/resources/dependency/exampleProject/DependencyTest');
+        config.getOptions().enableBuiltIn = true;
+        let scene: Scene = new Scene();
+        scene.buildSceneFromProjectDir(config);
+        assert.isTrue(scene.getOptions().sdkGlobalFolders?.some(x => x.includes(path.sep)));
     })
 })
