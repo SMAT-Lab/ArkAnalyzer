@@ -15,7 +15,7 @@
 
 import { Scene } from '../../Scene';
 import { AbstractInvokeExpr } from '../../core/base/Expr';
-import { Stmt } from '../../core/base/Stmt';
+import { ArkAssignStmt, ArkInvokeStmt, Stmt } from '../../core/base/Stmt';
 import { FunctionType } from '../../core/base/Type';
 import { ArkClass } from '../../core/model/ArkClass';
 import { ArkMethod } from '../../core/model/ArkMethod';
@@ -50,7 +50,7 @@ export abstract class AbstractAnalysis {
     }
 
     protected abstract resolveCall(sourceMethod: NodeID, invokeStmt: Stmt): CallSite[];
-    protected abstract preProcessMethod(funcID: FuncID): CallSite[];
+    protected abstract preProcessMethod(funcID: FuncID, displayGeneratedMethod: boolean): CallSite[];
 
     public resolveInvokeExpr(invokeExpr: AbstractInvokeExpr): ArkMethod | undefined {
         const method = this.scene.getMethod(invokeExpr.getMethodSignature());
@@ -95,13 +95,11 @@ export abstract class AbstractAnalysis {
             }
 
             // pre process for RTA only
-            this.preProcessMethod(method).forEach((cs: CallSite) => {
+            this.preProcessMethod(method, displayGeneratedMethod).forEach((cs: CallSite) => {
                 this.workList.push(cs.calleeFuncID);
             });
 
-            this.processMethod(method).forEach((cs: CallSite) => {
-                this.processCallSite(method, cs, displayGeneratedMethod);
-            });
+            this.processMethod(method, displayGeneratedMethod);
         }
     }
 
@@ -115,17 +113,15 @@ export abstract class AbstractAnalysis {
                 continue;
             }
 
-            this.preProcessMethod(cgNode.getID());
+            this.preProcessMethod(cgNode.getID(),displayGeneratedMethod);
 
-            this.processMethod(cgNode.getID()).forEach((cs: CallSite) => {
-                this.processCallSite(cgNode.getID(), cs, displayGeneratedMethod, true);
-            });
+            this.processMethod(cgNode.getID(), displayGeneratedMethod);
         }
 
         this.cgBuilder.setEntries();
     }
 
-    private processCallSite(method: FuncID, cs: CallSite, displayGeneratedMethod: boolean, isProject: boolean = false): void {
+    protected processCallSite(method: FuncID, cs: CallSite, displayGeneratedMethod: boolean, isProject: boolean = false): void {
         let me = this.cg.getArkMethodByFuncID(cs.calleeFuncID);
         let meNode = this.cg.getNode(cs.calleeFuncID) as CallGraphNode;
         this.addCallGraphEdge(method, me, cs, displayGeneratedMethod);
@@ -153,7 +149,7 @@ export abstract class AbstractAnalysis {
         });
     }
 
-    protected processMethod(methodID: FuncID): CallSite[] {
+    protected processMethod(methodID: FuncID, displayGeneratedMethod: boolean): void {
         let cgNode = this.cg.getNode(methodID) as CallGraphNode;
         let arkMethod = this.scene.getMethod(cgNode.getMethod(), true);
         let calleeMethods: CallSite[] = [];
@@ -164,19 +160,18 @@ export abstract class AbstractAnalysis {
 
         const cfg = arkMethod.getCfg();
         if (!cfg) {
-            return [];
+            return;
         }
         cfg.getStmts().forEach(stmt => {
-            if (stmt.containsInvokeExpr()) {
+            if (stmt instanceof ArkInvokeStmt || (stmt instanceof ArkAssignStmt && stmt.getRightOp() instanceof AbstractInvokeExpr)) {
                 this.resolveCall(cgNode.getID(), stmt).forEach(callSite => {
                     calleeMethods.push(callSite);
                     this.cg.addStmtToCallSiteMap(stmt, callSite);
                     this.cg.addMethodToCallSiteMap(callSite.calleeFuncID, callSite);
+                    this.processCallSite(methodID, callSite, displayGeneratedMethod, true);
                 });
             }
         });
-
-        return calleeMethods;
     }
 
     protected getParamAnonymousMethod(invokeExpr: AbstractInvokeExpr): MethodSignature[] {

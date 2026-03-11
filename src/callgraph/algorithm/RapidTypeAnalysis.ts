@@ -15,7 +15,7 @@
 
 import { ArkNewExpr, ArkStaticInvokeExpr } from '../../core/base/Expr';
 import { Scene } from '../../Scene';
-import { Stmt } from '../../core/base/Stmt';
+import { ArkAssignStmt, Stmt } from '../../core/base/Stmt';
 import { ArkClass } from '../../core/model/ArkClass';
 import { ClassSignature } from '../../core/model/ArkSignature';
 import { NodeID } from '../../core/graph/BaseExplicitGraph';
@@ -98,7 +98,7 @@ export class RapidTypeAnalysis extends AbstractAnalysis {
         return resolveResult;
     }
 
-    protected preProcessMethod(funcID: FuncID): CallSite[] {
+    protected preProcessMethod(funcID: FuncID, displayGeneratedMethod: boolean): CallSite[] {
         let newCallSites: CallSite[] = [];
         let instancedClasses: Set<ClassSignature> = this.collectInstancedClassesInMethod(funcID);
         let newlyInstancedClasses = new Set(Array.from(instancedClasses).filter(item => !this.instancedClasses.has(item)));
@@ -109,14 +109,10 @@ export class RapidTypeAnalysis extends AbstractAnalysis {
                 ignoredCalls.forEach(call => {
                     this.cg.addDynamicCallEdge(call.caller, call.callee, call.callStmt);
                     const newCallSite = this.cg.getCallSiteManager().newCallSite(call.callStmt, undefined, call.callee, call.caller);
-                    // 保持与 processMethod 一致：同步更新索引
                     this.cg.addStmtToCallSiteMap(call.callStmt, newCallSite);
                     this.cg.addMethodToCallSiteMap(call.callee, newCallSite);
-                    newCallSites.push(newCallSite);
+                    this.processCallSite(funcID, newCallSite, displayGeneratedMethod, true);
 
-                    newCallSites.push(
-                        this.cg.getCallSiteManager().newCallSite(call.callStmt, undefined, call.callee, call.caller)
-                    );
                 });
             }
             this.instancedClasses.add(sig);
@@ -141,13 +137,17 @@ export class RapidTypeAnalysis extends AbstractAnalysis {
         }
 
         for (let stmt of cfg!.getStmts()) {
-            let stmtExpr = stmt.getExprs()[0];
-            if (stmtExpr instanceof ArkNewExpr) {
-                let classSig: ClassSignature = (stmtExpr.getType() as ClassType).getClassSignature();
-                if (classSig != null) {
-                    // TODO: need to check if different stmt has single sig
-                    instancedClasses.add(classSig);
-                }
+            let stmtExpr: ArkNewExpr | undefined;
+            if(stmt instanceof ArkAssignStmt && stmt.getRightOp() instanceof ArkNewExpr) {
+                stmtExpr = stmt.getRightOp() as ArkNewExpr;
+            } else {
+                continue;
+            }
+
+            let classSig: ClassSignature = (stmtExpr.getType() as ClassType).getClassSignature();
+            if (classSig != null) {
+                // TODO: need to check if different stmt has single sig
+                instancedClasses.add(classSig);
             }
         }
         return instancedClasses;
