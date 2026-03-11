@@ -25,7 +25,7 @@ import { ImportInfo } from '../model/ArkImport';
 import { fileSignatureCompare, NamespaceSignature } from '../model/ArkSignature';
 import { findArkExport, findExportInfoInfile, ModelUtils } from '../common/ModelUtils';
 import { ArkMethod } from '../model/ArkMethod';
-import { ClassType, FunctionType, GenericType, Type, UnclearReferenceType, UnknownType, VoidType } from '../base/Type';
+import { ClassType, FunctionType, GenericType, Type, VoidType } from '../base/Type';
 import { TypeInference } from '../common/TypeInference';
 import { AbstractFieldRef, ArkParameterRef, ArkStaticFieldRef, GlobalRef } from '../base/Ref';
 import { CONSTRUCTOR_NAME, GLOBAL_THIS_NAME, PROMISE } from '../common/TSConst';
