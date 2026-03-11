@@ -152,7 +152,6 @@ export abstract class AbstractAnalysis {
     protected processMethod(methodID: FuncID, displayGeneratedMethod: boolean): void {
         let cgNode = this.cg.getNode(methodID) as CallGraphNode;
         let arkMethod = this.scene.getMethod(cgNode.getMethod(), true);
-        let calleeMethods: CallSite[] = [];
 
         if (!arkMethod) {
             throw new Error('can not find method');
@@ -162,15 +161,18 @@ export abstract class AbstractAnalysis {
         if (!cfg) {
             return;
         }
-        cfg.getStmts().forEach(stmt => {
-            if (stmt instanceof ArkInvokeStmt || (stmt instanceof ArkAssignStmt && stmt.getRightOp() instanceof AbstractInvokeExpr)) {
+        cfg.getBlocks().forEach(block => {
+            block.getStmts().forEach(stmt => {
+                if (!(stmt instanceof ArkInvokeStmt || (stmt instanceof ArkAssignStmt && stmt.getRightOp() instanceof AbstractInvokeExpr))) {
+                    return;
+                }
+
                 this.resolveCall(cgNode.getID(), stmt).forEach(callSite => {
-                    calleeMethods.push(callSite);
                     this.cg.addStmtToCallSiteMap(stmt, callSite);
                     this.cg.addMethodToCallSiteMap(callSite.calleeFuncID, callSite);
                     this.processCallSite(methodID, callSite, displayGeneratedMethod, true);
                 });
-            }
+            });
         });
     }
 

@@ -267,8 +267,7 @@ export class CallGraph extends BaseExplicitGraph {
 
     public addStmtToCallSiteMap(stmt: Stmt, cs: CallSite): boolean {
         if (this.stmtToCallSitemap.has(stmt)) {
-            let callSites = this.stmtToCallSitemap.get(stmt) ?? [];
-            this.stmtToCallSitemap.set(stmt, [...callSites, cs]);
+            this.stmtToCallSitemap.get(stmt)!.push(cs);
             return false;
         }
         this.stmtToCallSitemap.set(stmt, [cs]);

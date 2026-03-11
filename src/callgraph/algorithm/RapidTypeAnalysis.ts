@@ -101,7 +101,12 @@ export class RapidTypeAnalysis extends AbstractAnalysis {
     protected preProcessMethod(funcID: FuncID, displayGeneratedMethod: boolean): CallSite[] {
         let newCallSites: CallSite[] = [];
         let instancedClasses: Set<ClassSignature> = this.collectInstancedClassesInMethod(funcID);
-        let newlyInstancedClasses = new Set(Array.from(instancedClasses).filter(item => !this.instancedClasses.has(item)));
+        let newlyInstancedClasses = new Set<ClassSignature>();
+        for (const sig of instancedClasses) {
+            if (!this.instancedClasses.has(sig)) {
+                newlyInstancedClasses.add(sig);
+            }
+        }
 
         newlyInstancedClasses.forEach(sig => {
             let ignoredCalls = this.ignoredCalls.get(sig);
