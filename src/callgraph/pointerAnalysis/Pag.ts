@@ -390,6 +390,9 @@ export class PagNode extends BaseNode {
 
     public getFunctionNameFromThisRefNode(): string | undefined {
         const outgoingEdges = this.getOutgoingEdges();
+        if (!outgoingEdges) {
+            return undefined;
+        }
 
         for (const edge of outgoingEdges) {
             const dstNode = edge.getDstNode() as PagNode;
