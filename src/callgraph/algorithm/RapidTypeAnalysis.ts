@@ -98,7 +98,7 @@ export class RapidTypeAnalysis extends AbstractAnalysis {
         return resolveResult;
     }
 
-    protected preProcessMethod(funcID: FuncID, displayGeneratedMethod: boolean): CallSite[] {
+    protected preProcessMethod(funcID: FuncID): CallSite[] {
         let newCallSites: CallSite[] = [];
         let instancedClasses: Set<ClassSignature> = this.collectInstancedClassesInMethod(funcID);
         let newlyInstancedClasses = new Set<ClassSignature>();
@@ -116,8 +116,6 @@ export class RapidTypeAnalysis extends AbstractAnalysis {
                     const newCallSite = this.cg.getCallSiteManager().newCallSite(call.callStmt, undefined, call.callee, call.caller);
                     this.cg.addStmtToCallSiteMap(call.callStmt, newCallSite);
                     this.cg.addMethodToCallSiteMap(call.callee, newCallSite);
-                    this.processCallSite(funcID, newCallSite, displayGeneratedMethod, true);
-
                 });
             }
             this.instancedClasses.add(sig);

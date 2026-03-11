@@ -50,7 +50,7 @@ export abstract class AbstractAnalysis {
     }
 
     protected abstract resolveCall(sourceMethod: NodeID, invokeStmt: Stmt): CallSite[];
-    protected abstract preProcessMethod(funcID: FuncID, displayGeneratedMethod: boolean): CallSite[];
+    protected abstract preProcessMethod(funcID: FuncID): CallSite[];
 
     public resolveInvokeExpr(invokeExpr: AbstractInvokeExpr): ArkMethod | undefined {
         const method = this.scene.getMethod(invokeExpr.getMethodSignature());
@@ -95,7 +95,7 @@ export abstract class AbstractAnalysis {
             }
 
             // pre process for RTA only
-            this.preProcessMethod(method, displayGeneratedMethod).forEach((cs: CallSite) => {
+            this.preProcessMethod(method).forEach((cs: CallSite) => {
                 this.workList.push(cs.calleeFuncID);
             });
 
@@ -113,7 +113,7 @@ export abstract class AbstractAnalysis {
                 continue;
             }
 
-            this.preProcessMethod(cgNode.getID(),displayGeneratedMethod);
+            this.preProcessMethod(cgNode.getID());
 
             this.processMethod(cgNode.getID(), displayGeneratedMethod);
         }
