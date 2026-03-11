@@ -217,7 +217,7 @@ export class Scene {
         }
         sceneConfig.getSdksObj()?.forEach(sdk => {
             if (!sdk.moduleName) {
-                this.buildSdk(sdk.name, sdk.path);
+                this.buildSdk(sdk.name, path.normalize(sdk.path));
                 this.projectSdkMap.set(sdk.name, sdk);
             } else {
                 let moduleSdks = this.moduleSdkMap.get(sdk.moduleName);
@@ -633,7 +633,7 @@ export class Scene {
             try {
                 const arkFile: ArkFile = new ArkFile(FileUtils.getFileLanguage(file, this.fileLanguages));
                 arkFile.setScene(this);
-                buildArkFileFromFile(file, path.normalize(sdkPath), arkFile, sdkName);
+                buildArkFileFromFile(file, sdkPath, arkFile, sdkName);
                 ModelUtils.getAllClassesInFile(arkFile).forEach(cls => {
                     cls.getDefaultArkMethod()?.buildBody();
                     cls.getDefaultArkMethod()?.freeBodyBuilder();

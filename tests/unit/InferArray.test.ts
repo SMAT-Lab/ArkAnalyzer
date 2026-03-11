@@ -39,6 +39,7 @@ import { ArkIRClassPrinter } from '../../src/save/arkir/ArkIRClassPrinter';
 import { ModifierType } from '../../src/core/model/ArkBaseModel';
 import { ArkIRFilePrinter } from '../../src/save/arkir/ArkIRFilePrinter';
 import { ArkIRMethodPrinter } from '../../src/save/arkir/ArkIRMethodPrinter';
+import { SdkUtils } from '../../src/core/common/SdkUtils';
 
 const logPath = 'out/ArkAnalyzer.log';
 const logger = Logger.getLogger(LOG_MODULE_TYPE.TOOL, 'InferArrayTest');
@@ -975,5 +976,19 @@ describe("Test built in version", () => {
         scene.buildSceneFromProjectDir(config);
         scene.inferTypes();
         assert.isNotNull((scene.getSdkGlobal('Promise') as ArkClass).getMethodWithName('any'));
+    })
+
+    it('built in path case', () => {
+        let config: SceneConfig = new SceneConfig();
+        config.getSdksObj().push({
+            moduleName: "",
+            name: SdkUtils.BUILT_IN_NAME,
+            path: path.resolve('./node_modules/ohos-typescript/lib')
+        })
+        config.buildFromProjectDir('./tests/resources/dependency/exampleProject/DependencyTest');
+        config.getOptions().enableBuiltIn = true;
+        let scene: Scene = new Scene();
+        scene.buildSceneFromProjectDir(config);
+        assert.isTrue(scene.getOptions().sdkGlobalFolders?.some(x => x.includes(path.sep)));
     })
 })
