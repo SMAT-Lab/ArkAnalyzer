@@ -23,6 +23,7 @@ import { CallGraph, CallSite, FuncID } from '../model/CallGraph';
 import { AbstractAnalysis } from './AbstractAnalysis';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { ClassType } from '../../core/base/Type';
+import { CallGraphBuilder } from '../model/builder/CallGraphBuilder';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'RTA');
 
@@ -32,8 +33,9 @@ export class RapidTypeAnalysis extends AbstractAnalysis {
     // TODO: Set duplicated check
     private ignoredCalls: Map<ClassSignature, Set<{ caller: NodeID; callee: NodeID; callStmt: Stmt }>> = new Map();
 
-    constructor(scene: Scene, cg: CallGraph) {
+    constructor(scene: Scene, cg: CallGraph, cb: CallGraphBuilder) {
         super(scene, cg);
+        this.cgBuilder = cb;
     }
 
     public resolveCall(callerMethod: NodeID, invokeStmt: Stmt): CallSite[] {
@@ -106,6 +108,12 @@ export class RapidTypeAnalysis extends AbstractAnalysis {
             if (ignoredCalls) {
                 ignoredCalls.forEach(call => {
                     this.cg.addDynamicCallEdge(call.caller, call.callee, call.callStmt);
+                    const newCallSite = this.cg.getCallSiteManager().newCallSite(call.callStmt, undefined, call.callee, call.caller);
+                    // 保持与 processMethod 一致：同步更新索引
+                    this.cg.addStmtToCallSiteMap(call.callStmt, newCallSite);
+                    this.cg.addMethodToCallSiteMap(call.callee, newCallSite);
+                    newCallSites.push(newCallSite);
+
                     newCallSites.push(
                         this.cg.getCallSiteManager().newCallSite(call.callStmt, undefined, call.callee, call.caller)
                     );

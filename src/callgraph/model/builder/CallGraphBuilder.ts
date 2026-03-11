@@ -100,6 +100,11 @@ export class CallGraphBuilder {
         classHierarchyAnalysis.projectStart(displayGeneratedMethod);
     }
 
+    public buildRTA4WholeProject(displayGeneratedMethod: boolean = false): void {
+        let rapidTypeAnalysis: RapidTypeAnalysis = new RapidTypeAnalysis(this.scene, this.cg, this);
+        rapidTypeAnalysis.projectStart(displayGeneratedMethod);
+    }
+
     public buildRapidTypeCallGraph(entries: Method[], displayGeneratedMethod: boolean = false): void {
         let cgEntries: NodeID[] = [];
         entries.forEach((entry: Method) => {
@@ -107,7 +112,7 @@ export class CallGraphBuilder {
         });
         this.cg.setEntries(cgEntries);
 
-        let rapidTypeAnalysis: RapidTypeAnalysis = new RapidTypeAnalysis(this.scene, this.cg);
+        let rapidTypeAnalysis: RapidTypeAnalysis = new RapidTypeAnalysis(this.scene, this.cg, this);
         rapidTypeAnalysis.start(displayGeneratedMethod);
     }
 
