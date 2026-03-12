@@ -99,7 +99,7 @@ export abstract class AbstractAnalysis {
                 this.workList.push(cs.calleeFuncID);
             });
 
-            this.processMethod(method, displayGeneratedMethod);
+            this.processMethod(method, displayGeneratedMethod, false);
         }
     }
 
@@ -115,7 +115,7 @@ export abstract class AbstractAnalysis {
 
             this.preProcessMethod(cgNode.getID());
 
-            this.processMethod(cgNode.getID(), displayGeneratedMethod);
+            this.processMethod(cgNode.getID(), displayGeneratedMethod, true);
         }
 
         this.cgBuilder.setEntries();
@@ -149,7 +149,7 @@ export abstract class AbstractAnalysis {
         });
     }
 
-    protected processMethod(methodID: FuncID, displayGeneratedMethod: boolean): void {
+    protected processMethod(methodID: FuncID, displayGeneratedMethod: boolean, isProject: boolean = false): void {
         let cgNode = this.cg.getNode(methodID) as CallGraphNode;
         let arkMethod = this.scene.getMethod(cgNode.getMethod(), true);
 
@@ -170,7 +170,7 @@ export abstract class AbstractAnalysis {
                 this.resolveCall(cgNode.getID(), stmt).forEach(callSite => {
                     this.cg.addStmtToCallSiteMap(stmt, callSite);
                     this.cg.addMethodToCallSiteMap(callSite.calleeFuncID, callSite);
-                    this.processCallSite(methodID, callSite, displayGeneratedMethod, true);
+                    this.processCallSite(methodID, callSite, displayGeneratedMethod, isProject);
                 });
             });
         });
