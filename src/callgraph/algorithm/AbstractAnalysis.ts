@@ -21,6 +21,7 @@ import { ArkClass } from '../../core/model/ArkClass';
 import { ArkMethod } from '../../core/model/ArkMethod';
 import { MethodSignature } from '../../core/model/ArkSignature';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
+import { IntWorkList } from '../../utils/IntWorkList';
 import { NodeID } from '../../core/graph/BaseExplicitGraph';
 import { CallGraph, FuncID, CallSite, CallGraphNode } from '../model/CallGraph';
 import { CallGraphBuilder } from '../model/builder/CallGraphBuilder';
@@ -32,7 +33,7 @@ export abstract class AbstractAnalysis {
     protected scene: Scene;
     protected cg: CallGraph;
     protected cgBuilder!: CallGraphBuilder;
-    protected workList: FuncID[] = [];
+    protected workList: IntWorkList = new IntWorkList();
     protected processedMethod!: IPtsCollection<FuncID>;
     private classHierarchyCache: Map<string, ArkClass[]> = new Map();
 
@@ -86,8 +87,8 @@ export abstract class AbstractAnalysis {
 
     public start(displayGeneratedMethod: boolean): void {
         this.init();
-        while (this.workList.length !== 0) {
-            const method = this.workList.shift() as FuncID;
+        while (!this.workList.isEmpty()) {
+            const method = this.workList.pop() as FuncID;
             const cgNode = this.cg.getNode(method) as CallGraphNode;
 
             if (this.processedMethod.contains(method) || cgNode.isSdkMethod()) {
