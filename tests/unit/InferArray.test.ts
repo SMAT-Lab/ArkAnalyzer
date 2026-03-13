@@ -884,6 +884,17 @@ object %AC5$AnimatablePropertyText-build {
             assert.fail('not found test method');
         }
     });
+
+    it('infer method return type  case', () => {
+        const returnType = scene.getFiles().find(file => file.getName().endsWith('test1.ets'))?.getNamespaceWithName('MethodReturnType')?.getDefaultClass()
+            .getMethodWithName('foo')?.getReturnType();
+        assert.isDefined(returnType);
+        assert.equal(returnType!.toString(), '@etsSdk/api/@internal/Promise.d.ts: Promise<void>');
+        const returnType2 = scene.getFiles().find(file => file.getName().endsWith('test1.ets'))?.getNamespaceWithName('MethodReturnType')?.getDefaultClass()
+            .getMethodWithName('goo')?.getReturnType();
+        assert.isDefined(returnType2);
+        assert.equal(returnType2!.toString(), '@etsSdk/api/@internal/Promise.d.ts: Promise<void>');
+    });
 })
 
 describe("for Test without sdk", () => {
