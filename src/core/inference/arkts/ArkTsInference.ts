@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -106,8 +106,6 @@ export class ArkTsStmtInference extends StmtInference {
             let leftType = leftOp.getType();
             if (TypeInference.isTypeCanBeOverride(leftType) || TypeInference.isAnonType(leftType, projectName)) {
                 leftType = rightType;
-            } else {
-                leftType = TypeInference.union(leftType, rightType);
             }
             if (leftOp.getType() !== leftType) {
                 return ArkTsStmtInference.updateUnionType(leftOp, leftType, method);
@@ -138,8 +136,6 @@ export class ArkTsStmtInference extends StmtInference {
             let leftType = ref.getType();
             if (TypeInference.isTypeCanBeOverride(leftType)) {
                 leftType = srcType;
-            } else {
-                leftType = TypeInference.union(leftType, srcType);
             }
             if (ref.getType() !== leftType) {
                 ref.setType(leftType);

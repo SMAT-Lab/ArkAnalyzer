@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -26,8 +26,7 @@ import { TypeInference } from '../../common/TypeInference';
 import { Value } from '../../base/Value';
 import { GenericType, Type } from '../../base/Type';
 import { Local } from '../../base/Local';
-import { AbstractFieldRef, ArkInstanceFieldRef, ArkParameterRef } from '../../base/Ref';
-import { ArkTsStmtInference } from '../arkts/ArkTsInference';
+import { AbstractFieldRef, ArkInstanceFieldRef, ArkParameterRef, GlobalRef } from '../../base/Ref';
 
 
 class AbcImportInference extends ImportInfoInference {
@@ -103,6 +102,40 @@ class AbcStmtInference extends StmtInference {
         super(valueInferences);
     }
 
+
+    public static updateUnionType(target: Value, srcType: Type, method: ArkMethod): Stmt[] | undefined {
+        if (target instanceof Local) {
+            target.setType(srcType);
+            const globalRef = method.getBody()?.getUsedGlobals()?.get(target.getName());
+            let result;
+            if (globalRef instanceof GlobalRef) {
+                result = this.updateGlobalRef(globalRef.getRef(), srcType);
+            }
+            return result ? result : target.getUsedStmts();
+        } else if (target instanceof AbstractFieldRef) {
+            target.getFieldSignature().setType(srcType);
+        } else if (target instanceof ArkParameterRef) {
+            target.setType(srcType);
+        }
+        return undefined;
+    }
+
+    public static updateGlobalRef(ref: Value | null, srcType: Type): Stmt[] | undefined {
+        if (ref instanceof Local) {
+            let leftType = ref.getType();
+            if (TypeInference.isTypeCanBeOverride(leftType)) {
+                leftType = srcType;
+            } else {
+                leftType = TypeInference.union(leftType, srcType);
+            }
+            if (ref.getType() !== leftType) {
+                ref.setType(leftType);
+                return ref.getUsedStmts();
+            }
+        }
+        return undefined;
+    }
+
     public transferRight2Left(leftOp: Value, rightType: Type, method: ArkMethod): Stmt[] | undefined {
         const projectName = method.getDeclaringArkFile().getProjectName();
         if (!TypeInference.isUnclearType(rightType) || rightType instanceof GenericType || !TypeInference.isAnonType(rightType, projectName)) {
@@ -113,7 +146,7 @@ class AbcStmtInference extends StmtInference {
                 leftType = TypeInference.union(leftType, rightType);
             }
             if (leftOp.getType() !== leftType) {
-                return ArkTsStmtInference.updateUnionType(leftOp, leftType, method);
+                return AbcStmtInference.updateUnionType(leftOp, leftType, method);
             }
         }
         return undefined;
