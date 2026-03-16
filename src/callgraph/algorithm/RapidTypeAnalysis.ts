@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { ArkNewExpr, ArkStaticInvokeExpr } from '../../core/base/Expr';
+import { ArkInstanceInvokeExpr, ArkNewExpr, ArkStaticInvokeExpr } from '../../core/base/Expr';
 import { Scene } from '../../Scene';
 import { ArkAssignStmt, Stmt } from '../../core/base/Stmt';
 import { ArkClass } from '../../core/model/ArkClass';
@@ -32,10 +32,12 @@ export class RapidTypeAnalysis extends AbstractAnalysis {
     private instancedClasses: Set<ClassSignature> = new Set();
     // TODO: Set duplicated check
     private ignoredCalls: Map<ClassSignature, Set<{ caller: NodeID; callee: NodeID; callStmt: Stmt }>> = new Map();
+    private enableThisPrune: boolean;
 
-    constructor(scene: Scene, cg: CallGraph, cb: CallGraphBuilder) {
+    constructor(scene: Scene, cg: CallGraph, cb: CallGraphBuilder, enableThisPrune: boolean = false) {
         super(scene, cg);
         this.cgBuilder = cb;
+        this.enableThisPrune = enableThisPrune;
     }
 
     public resolveCall(callerMethod: NodeID, invokeStmt: Stmt): CallSite[] {
@@ -67,6 +69,24 @@ export class RapidTypeAnalysis extends AbstractAnalysis {
             );
         } else {
             let declareClass = calleeMethod!.getDeclaringArkClass();
+
+            // Aggressive heuristic: when enabled and the call is `this.foo()`,
+            // only keep the implementation of `foo` in the current declaring class,
+            // instead of exploring the whole class hierarchy.
+            if (this.enableThisPrune && invokeExpr instanceof ArkInstanceInvokeExpr) {
+                const base = invokeExpr.getBase();
+                if (base.getName && base.getName() === 'this') {
+                    const curClass = invokeStmt.getCfg().getDeclaringMethod().getDeclaringArkClass();
+                    let methodInCurClass = curClass.getMethodWithName(calleeMethod!.getName());
+                    if (methodInCurClass) {
+                        const callSite = this.cg.getCallSiteManager().newCallSite(invokeStmt, undefined, 
+                            this.cg.getCallGraphNodeByMethod(methodInCurClass.getSignature()).getID(), callerMethod);
+                        resolveResult.push(callSite);
+                        return resolveResult;
+                    }
+                }
+            }
+
             // TODO: super class method should be placed at the end
             this.getClassHierarchy(declareClass).forEach((arkClass: ArkClass) => {
                 let possibleCalleeMethod = arkClass.getMethodWithName(calleeMethod!.getName());
@@ -116,6 +136,7 @@ export class RapidTypeAnalysis extends AbstractAnalysis {
                     const newCallSite = this.cg.getCallSiteManager().newCallSite(call.callStmt, undefined, call.callee, call.caller);
                     this.cg.addStmtToCallSiteMap(call.callStmt, newCallSite);
                     this.cg.addMethodToCallSiteMap(call.callee, newCallSite);
+                    newCallSites.push(newCallSite);
                 });
             }
             this.instancedClasses.add(sig);
@@ -135,7 +156,6 @@ export class RapidTypeAnalysis extends AbstractAnalysis {
 
         let cfg = arkMethod!.getCfg();
         if (!cfg) {
-            logger.error(`arkMethod ${arkMethod.getSignature().toString()} has no cfg`);
             return instancedClasses;
         }
 
