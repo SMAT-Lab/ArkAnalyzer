@@ -15,7 +15,7 @@
 
 import { ArkNewExpr, ArkStaticInvokeExpr } from '../../core/base/Expr';
 import { Scene } from '../../Scene';
-import { Stmt } from '../../core/base/Stmt';
+import { ArkAssignStmt, Stmt } from '../../core/base/Stmt';
 import { ArkClass } from '../../core/model/ArkClass';
 import { ClassSignature } from '../../core/model/ArkSignature';
 import { NodeID } from '../../core/graph/BaseExplicitGraph';
@@ -23,6 +23,7 @@ import { CallGraph, CallSite, FuncID } from '../model/CallGraph';
 import { AbstractAnalysis } from './AbstractAnalysis';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { ClassType } from '../../core/base/Type';
+import { CallGraphBuilder } from '../model/builder/CallGraphBuilder';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'RTA');
 
@@ -32,8 +33,9 @@ export class RapidTypeAnalysis extends AbstractAnalysis {
     // TODO: Set duplicated check
     private ignoredCalls: Map<ClassSignature, Set<{ caller: NodeID; callee: NodeID; callStmt: Stmt }>> = new Map();
 
-    constructor(scene: Scene, cg: CallGraph) {
+    constructor(scene: Scene, cg: CallGraph, cb: CallGraphBuilder) {
         super(scene, cg);
+        this.cgBuilder = cb;
     }
 
     public resolveCall(callerMethod: NodeID, invokeStmt: Stmt): CallSite[] {
@@ -99,16 +101,21 @@ export class RapidTypeAnalysis extends AbstractAnalysis {
     protected preProcessMethod(funcID: FuncID): CallSite[] {
         let newCallSites: CallSite[] = [];
         let instancedClasses: Set<ClassSignature> = this.collectInstancedClassesInMethod(funcID);
-        let newlyInstancedClasses = new Set(Array.from(instancedClasses).filter(item => !this.instancedClasses.has(item)));
+        let newlyInstancedClasses = new Set<ClassSignature>();
+        for (const sig of instancedClasses) {
+            if (!this.instancedClasses.has(sig)) {
+                newlyInstancedClasses.add(sig);
+            }
+        }
 
         newlyInstancedClasses.forEach(sig => {
             let ignoredCalls = this.ignoredCalls.get(sig);
             if (ignoredCalls) {
                 ignoredCalls.forEach(call => {
                     this.cg.addDynamicCallEdge(call.caller, call.callee, call.callStmt);
-                    newCallSites.push(
-                        this.cg.getCallSiteManager().newCallSite(call.callStmt, undefined, call.callee, call.caller)
-                    );
+                    const newCallSite = this.cg.getCallSiteManager().newCallSite(call.callStmt, undefined, call.callee, call.caller);
+                    this.cg.addStmtToCallSiteMap(call.callStmt, newCallSite);
+                    this.cg.addMethodToCallSiteMap(call.callee, newCallSite);
                 });
             }
             this.instancedClasses.add(sig);
@@ -133,13 +140,17 @@ export class RapidTypeAnalysis extends AbstractAnalysis {
         }
 
         for (let stmt of cfg!.getStmts()) {
-            let stmtExpr = stmt.getExprs()[0];
-            if (stmtExpr instanceof ArkNewExpr) {
-                let classSig: ClassSignature = (stmtExpr.getType() as ClassType).getClassSignature();
-                if (classSig != null) {
-                    // TODO: need to check if different stmt has single sig
-                    instancedClasses.add(classSig);
-                }
+            let stmtExpr: ArkNewExpr | undefined;
+            if(stmt instanceof ArkAssignStmt && stmt.getRightOp() instanceof ArkNewExpr) {
+                stmtExpr = stmt.getRightOp() as ArkNewExpr;
+            } else {
+                continue;
+            }
+
+            let classSig: ClassSignature = (stmtExpr.getType() as ClassType).getClassSignature();
+            if (classSig != null) {
+                // TODO: need to check if different stmt has single sig
+                instancedClasses.add(classSig);
             }
         }
         return instancedClasses;
