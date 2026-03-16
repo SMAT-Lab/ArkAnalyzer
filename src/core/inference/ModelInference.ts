@@ -322,8 +322,11 @@ export class MethodInference extends ArkModelInference {
             });
         }
         //infers return type
-        if (!method.getBody() || method.getName() === CONSTRUCTOR_NAME ||
-            !TypeInference.isUnclearType(method.getImplementationSignature()?.getMethodSubSignature().getReturnType())) {
+        if (!method.getBody() || method.getName() === CONSTRUCTOR_NAME || method.getAsteriskToken()) {
+            return;
+        }
+        const rt = method.getImplementationSignature()?.getMethodSubSignature().getReturnType();
+        if (!TypeInference.isUnclearType(rt) || rt instanceof GenericType) {
             return;
         }
         const returnType = TypeInference.inferReturnType(method);
