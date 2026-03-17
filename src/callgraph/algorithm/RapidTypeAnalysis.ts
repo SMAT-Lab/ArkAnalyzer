@@ -26,6 +26,7 @@ import { ClassType } from '../../core/base/Type';
 import { CallGraphBuilder } from '../model/builder/CallGraphBuilder';
 import { CONSTRUCTOR_NAME, THIS_NAME } from '../../core/common/TSConst';
 import { Local } from '../../core/base/Local';
+import { DEFAULT_ARK_CLASS_NAME, DEFAULT_ARK_METHOD_NAME } from '../../core/common/Const';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'RTA');
 
@@ -40,6 +41,18 @@ export class RapidTypeAnalysis extends AbstractAnalysis {
         super(scene, cg);
         this.cgBuilder = cb;
         this.enableThisPrune = enableThisPrune;
+    }
+
+    protected init(): void {
+        this.scene.getClasses().filter(c => c.getName() === DEFAULT_ARK_CLASS_NAME).forEach(c => {
+            const dfltMethod = c.getMethodWithName(DEFAULT_ARK_METHOD_NAME)?.getSignature();
+            if (dfltMethod) {
+                const funcID = this.cg.getCallGraphNodeByMethod(dfltMethod).getID();
+                this.workList.push(funcID);
+            }
+        });
+
+        super.init();
     }
 
     public resolveCall(callerMethod: NodeID, invokeStmt: Stmt): CallSite[] {
@@ -99,6 +112,19 @@ export class RapidTypeAnalysis extends AbstractAnalysis {
                 return resolveResult;
             }
 
+            // Private methods cannot be overridden; only the declaring class has an implementation.
+            if (calleeMethod!.isPrivate()) {
+                const calleeNode = this.cg.getCallGraphNodeByMethod(calleeMethod!.getSignature());
+                if (this.instancedClasses.has(declareClass.getSignature())) {
+                    resolveResult.push(
+                        this.cg.getCallSiteManager().newCallSite(invokeStmt, undefined, calleeNode.getID(), callerMethod)
+                    );
+                } else {
+                    this.addIgnoredCalls(declareClass.getSignature(), callerMethod, calleeNode.getID(), invokeStmt);
+                }
+                return resolveResult;
+            }
+
             // TODO: super class method should be placed at the end
             this.getClassHierarchy(declareClass).forEach((arkClass: ArkClass) => {
                 let possibleCalleeMethod = arkClass.getMethodWithName(calleeMethod!.getName());
@@ -117,12 +143,14 @@ export class RapidTypeAnalysis extends AbstractAnalysis {
 
                 let calleeNode = this.cg.getCallGraphNodeByMethod(possibleCalleeMethod.getSignature());
 
-                if (!this.instancedClasses.has(arkClass.getSignature())) {
-                    this.addIgnoredCalls(arkClass.getSignature(), callerMethod, calleeNode.getID(), invokeStmt);
-                } else {
+                const isSdkClass = this.scene.hasSdkFile(arkClass.getSignature().getDeclaringFileSignature());
+                const isInstanced = this.instancedClasses.has(arkClass.getSignature());
+                if (isSdkClass || isInstanced) {
                     resolveResult.push(
                         this.cg.getCallSiteManager().newCallSite(invokeStmt, undefined, calleeNode.getID(), callerMethod)
                     );
+                } else {
+                    this.addIgnoredCalls(arkClass.getSignature(), callerMethod, calleeNode.getID(), invokeStmt);
                 }
             });
         }
