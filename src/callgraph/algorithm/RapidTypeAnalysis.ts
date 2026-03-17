@@ -24,6 +24,8 @@ import { AbstractAnalysis } from './AbstractAnalysis';
 import Logger, { LOG_MODULE_TYPE } from '../../utils/logger';
 import { ClassType } from '../../core/base/Type';
 import { CallGraphBuilder } from '../model/builder/CallGraphBuilder';
+import { CONSTRUCTOR_NAME, THIS_NAME } from '../../core/common/TSConst';
+import { Local } from '../../core/base/Local';
 
 const logger = Logger.getLogger(LOG_MODULE_TYPE.ARKANALYZER, 'RTA');
 
@@ -69,14 +71,14 @@ export class RapidTypeAnalysis extends AbstractAnalysis {
             );
         } else {
             let declareClass = calleeMethod!.getDeclaringArkClass();
+            const methodName = calleeMethod!.getName();
 
             // Aggressive heuristic: when enabled and the call is `this.foo()`,
             // only keep the implementation of `foo` in the current declaring class,
             // or the first superclass that defines it (e.g. B.m() calling this.foo() → A.foo() when B extends A).
             if (this.enableThisPrune && invokeExpr instanceof ArkInstanceInvokeExpr) {
                 const base = invokeExpr.getBase();
-                if (base.getName && base.getName() === 'this') {
-                    const methodName = calleeMethod!.getName();
+                if (base.getName && base.getName() === THIS_NAME) {
                     let curClass: ArkClass | null = invokeStmt.getCfg().getDeclaringMethod().getDeclaringArkClass();
                     while (curClass) {
                         const methodInClass = curClass.getMethodWithName(methodName);
@@ -89,6 +91,12 @@ export class RapidTypeAnalysis extends AbstractAnalysis {
                         curClass = curClass.getSuperClass();
                     }
                 }
+            }
+
+            const directCallSite = this.resolveConstructorClassFromNew(methodName, invokeStmt, callerMethod);
+            if (directCallSite) {
+                resolveResult.push(directCallSite);
+                return resolveResult;
             }
 
             // TODO: super class method should be placed at the end
@@ -120,6 +128,43 @@ export class RapidTypeAnalysis extends AbstractAnalysis {
         }
 
         return resolveResult;
+    }
+
+    private resolveConstructorClassFromNew(methodName: string, invokeStmt: Stmt, callerMethod: NodeID): CallSite | null {
+        if (methodName !== CONSTRUCTOR_NAME) {
+            return null;
+        }
+
+        if (!(invokeStmt instanceof ArkAssignStmt)) {
+            return null;
+        }
+
+        const leftOp = invokeStmt.getLeftOp();
+        if (!(leftOp instanceof Local)) {
+            return null;
+        }
+
+        const declaringStmt = leftOp.getDeclaringStmt();
+        if (!(declaringStmt && declaringStmt instanceof ArkAssignStmt)) {
+            return null;
+        }
+
+        const rightOp = declaringStmt.getRightOp();
+        if (!(rightOp instanceof ArkNewExpr)) {
+            return null;
+        }
+
+        const classSig = rightOp.getClassType().getClassSignature();
+        const constructorMethod = this.scene.getClass(classSig)?.getMethodWithName(CONSTRUCTOR_NAME);
+        if (!constructorMethod) {
+            return null;
+        }
+        return this.cg.getCallSiteManager().newCallSite(
+            invokeStmt,
+            undefined,
+            this.cg.getCallGraphNodeByMethod(constructorMethod.getSignature()).getID(),
+            callerMethod
+        );
     }
 
     protected preProcessMethod(funcID: FuncID): CallSite[] {
