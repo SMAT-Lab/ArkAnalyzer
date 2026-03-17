@@ -72,17 +72,21 @@ export class RapidTypeAnalysis extends AbstractAnalysis {
 
             // Aggressive heuristic: when enabled and the call is `this.foo()`,
             // only keep the implementation of `foo` in the current declaring class,
-            // instead of exploring the whole class hierarchy.
+            // or the first superclass that defines it (e.g. B.m() calling this.foo() → A.foo() when B extends A).
             if (this.enableThisPrune && invokeExpr instanceof ArkInstanceInvokeExpr) {
                 const base = invokeExpr.getBase();
                 if (base.getName && base.getName() === 'this') {
-                    const curClass = invokeStmt.getCfg().getDeclaringMethod().getDeclaringArkClass();
-                    let methodInCurClass = curClass.getMethodWithName(calleeMethod!.getName());
-                    if (methodInCurClass) {
-                        const callSite = this.cg.getCallSiteManager().newCallSite(invokeStmt, undefined, 
-                            this.cg.getCallGraphNodeByMethod(methodInCurClass.getSignature()).getID(), callerMethod);
-                        resolveResult.push(callSite);
-                        return resolveResult;
+                    const methodName = calleeMethod!.getName();
+                    let curClass: ArkClass | null = invokeStmt.getCfg().getDeclaringMethod().getDeclaringArkClass();
+                    while (curClass) {
+                        const methodInClass = curClass.getMethodWithName(methodName);
+                        if (methodInClass && !methodInClass.isAbstract()) {
+                            const callSite = this.cg.getCallSiteManager().newCallSite(invokeStmt, undefined,
+                                this.cg.getCallGraphNodeByMethod(methodInClass.getSignature()).getID(), callerMethod);
+                            resolveResult.push(callSite);
+                            return resolveResult;
+                        }
+                        curClass = curClass.getSuperClass();
                     }
                 }
             }
