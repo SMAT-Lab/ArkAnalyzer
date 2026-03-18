@@ -564,7 +564,7 @@ describe("function Test", () => {
         const stmt1 = file?.getClassWithName('ChangePtrTest')?.getMethodWithName('callField')?.getCfg()?.getStmts()[1];
         assert.equal(stmt1?.toString(), 'ptrinvoke this.fieldA<@inferType/inferSample.ts: ChangePtrTest.%AM0$%instInit(number)>(111)');
         const stmt2 = file?.getClassWithName('ChangePtrTest')?.getMethodWithName('callField')?.getCfg()?.getStmts()[2];
-        assert.equal(stmt2?.toString(), 'ptrinvoke this.fieldB<@inferType/inferSample.ts: ChangePtrTest.%AM1$%instInit(number)>(222)');
+        assert.equal(stmt2?.toString(), 'ptrinvoke this.fieldB<@built-in/lib.es5.d.ts: Function.call(@built-in/lib.es5.d.ts: Function, any, any[])>(222)');
         const stmt3 = file?.getClassWithName('ChangePtrTest')?.getMethodWithName('callField')?.getCfg()?.getStmts()[5];
         assert.equal(stmt3?.toString(), 'ptrinvoke this.fieldC<@built-in/lib.es5.d.ts: Function.call(@built-in/lib.es5.d.ts: Function, any, any[])>(333)');
     })
@@ -838,7 +838,7 @@ struct AnimatablePropertyText {
 }
 object %AC5$AnimatablePropertyText-build {
   duration: number
-  curve: @etsSdk/api/@internal/component/ets/enums.d.ts: Curve|string|@etsSdk/api/@internal/component/ets/common.d.ts: ICurve|@etsSdk/api/@internal/component/ets/enums.d.ts: Curve.[static]Ease
+  curve: @etsSdk/api/@internal/component/ets/enums.d.ts: Curve|string|@etsSdk/api/@internal/component/ets/common.d.ts: ICurve
 
   constructor(): @inferType/ArktsExtend.ets: %AC5$AnimatablePropertyText-build {
     label0:
