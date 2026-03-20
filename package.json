@@ -1,6 +1,6 @@
 {
   "name": "arkanalyzer",
-  "version": "1.0.8",
+  "version": "1.0.86",
   "files": [
     "docs",
     "lib",
@@ -8,14 +8,14 @@
   ],
   "main": "lib/index.js",
   "scripts": {
+    "prebuild": "node script/npmInstall.js",
     "build": "tsc",
-    "prepack": "tsc -p ./tsconfig.prod.json",
-    "test": "vitest",
-    "testonce": "vitest --no-color run",
-    "coverage": "vitest run --coverage",
+    "prepack": "npm run build && tsc -p ./tsconfig.prod.json",
+    "test": "npm run build && vitest",
+    "testonce": "npm run build && vitest --no-color run",
+    "coverage": "npm run build && vitest run --coverage",
     "heapdump": "npm run build && node --expose-gc out/tests/HeapDumpTest.js",
-    "postinstall": "node script/npmInstall.js",
-    "gendoc": "npx typedoc"
+    "gendoc": "npm run build && npx typedoc"
   },
   "dependencies": {
     "commander": "13.1.0",
