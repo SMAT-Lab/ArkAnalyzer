@@ -117,7 +117,7 @@ export function buildArkMethodFromArkClass(
         buildGenericType(parameter.getType(), mtd);
         methodParameters.push(parameter);
     });
-    let returnType = UnknownType.getInstance();
+    let returnType: Type = UnknownType.getInstance();
     if (methodNode.type) {
         returnType = buildGenericType(buildReturnType(methodNode.type, sourceFile, mtd), mtd);
     }
@@ -345,22 +345,29 @@ function needDefaultConstructorInClass(arkClass: ArkClass): boolean {
     );
 }
 
-function recursivelyCheckAndBuildSuperConstructor(arkClass: ArkClass): void {
+function recursivelyCheckAndBuildSuperConstructor(arkClass: ArkClass, visited: Set<ArkClass> = new Set()): void {
+    if (visited.has(arkClass)) {
+        return;
+    }
+    visited.add(arkClass);
     let superClass: ArkClass | null = arkClass.getSuperClass();
     while (superClass !== null) {
+        if (visited.has(superClass)) {
+            break;
+        }
         if (superClass.getMethodWithName(CONSTRUCTOR_NAME) === null) {
-            buildDefaultConstructor(superClass);
+            buildDefaultConstructor(superClass, visited);
         }
         superClass = superClass.getSuperClass();
     }
 }
 
-export function buildDefaultConstructor(arkClass: ArkClass): boolean {
+export function buildDefaultConstructor(arkClass: ArkClass, visited: Set<ArkClass> = new Set()): boolean {
     if (!needDefaultConstructorInClass(arkClass)) {
         return false;
     }
 
-    recursivelyCheckAndBuildSuperConstructor(arkClass);
+    recursivelyCheckAndBuildSuperConstructor(arkClass, visited);
 
     const defaultConstructor: ArkMethod = new ArkMethod();
     defaultConstructor.setDeclaringArkClass(arkClass);

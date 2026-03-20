@@ -254,18 +254,18 @@ describe("export Test", () => {
             ?.getMethodWithName('testArrayMap')?.getCfg()?.getStmts()[5];
         assert.isDefined(stmt);
         const arrayType = stmt?.getInvokeExpr()?.getType();
-        assert.equal(arrayType?.getTypeString(), 'string[]');
+        assert.equal(arrayType?.toString(), 'string[]');
     });
 
     it('this case', () => {
         const fileId = new FileSignature(projectScene.getProjectName(), 'Lottie_Report.ets');
         const type = projectScene.getFile(fileId)?.getClassWithName('%AC4$MyComponent-build')
             ?.getMethodWithName('%instInit')?.getBody()?.getUsedGlobals()?.get(THIS_NAME)?.getType();
-        assert.equal(type?.getTypeString(), '@exports/Lottie_Report.ets: MyComponent');
+        assert.equal(type?.toString(), '@exports/Lottie_Report.ets: MyComponent');
 
         const type2 = projectScene.getFile(fileId)?.getClassWithName('MyComponent')
             ?.getMethodWithName('%AM0$func1')?.getBody()?.getLocals().get(THIS_NAME)?.getType();
-        assert.equal(type2?.getTypeString(), '@exports/Lottie_Report.ets: MyComponent');
+        assert.equal(type2?.toString(), '@exports/Lottie_Report.ets: MyComponent');
     });
 
     it('setTimeout case', () => {
@@ -273,7 +273,7 @@ describe("export Test", () => {
         const stmts = projectScene.getFile(fileId)?.getClassWithName('Foo')?.getMethodWithName('func')?.getCfg()?.getStmts();
         const stmt = stmts?.[stmts?.length - 2];
         assert.isDefined(stmt);
-        assert.equal(stmt?.getInvokeExpr()?.getArgs()[0].getType().getTypeString(), '@exports/Lottie_Report.ets: %AC2$%AC1$Foo-%instInit-%instInit.%AM0$%instInit()');
+        assert.equal(stmt?.getInvokeExpr()?.getArgs()[0].getType().toString(), '@exports/Lottie_Report.ets: %AC2$%AC1$Foo-%instInit-%instInit.%AM0$%instInit()');
     });
 
     it('export local case', () => {
@@ -289,14 +289,14 @@ describe("export Test", () => {
             .getDefaultArkMethod()?.getBody()?.getLocals();
         assert.isNotEmpty(locals);
         if (locals) {
-            assert.equal(locals.get('a1')?.getType().getTypeString(), '@built-in/lib.es2015.collection.d.ts: Set<string>');
-            assert.equal(locals.get('a2')?.getType().getTypeString(), '@built-in/lib.es2015.collection.d.ts: Map<string,string>')
-            assert.equal(locals.get('a3')?.getType().getTypeString(), '@built-in/lib.es2015.collection.d.ts: Set<string[]>')
-            assert.equal(locals.get('a4')?.getType().getTypeString(), '@built-in/lib.es2015.collection.d.ts: Set<@built-in/lib.es2015.collection.d.ts: Set<@built-in/lib.es2015.collection.d.ts: Set<string>>>')
-            assert.equal(locals.get('%1')?.getType().getTypeString(), '@built-in/lib.es2015.collection.d.ts: Set<any>');
-            assert.equal(locals.get('%2')?.getType().getTypeString(), '@built-in/lib.es2015.collection.d.ts: Map<any,string>')
-            assert.equal(locals.get('%3')?.getType().getTypeString(), '@built-in/lib.es2015.collection.d.ts: Set<any[]>')
-            assert.equal(locals.get('%4')?.getType().getTypeString(), '@built-in/lib.es2015.collection.d.ts: Set<@built-in/lib.es2015.collection.d.ts: Set<@built-in/lib.es2015.collection.d.ts: Set<any>>>')
+            assert.equal(locals.get('a1')?.getType().toString(), '@built-in/lib.es2015.collection.d.ts: Set<string>');
+            assert.equal(locals.get('a2')?.getType().toString(), '@built-in/lib.es2015.collection.d.ts: Map<string,string>')
+            assert.equal(locals.get('a3')?.getType().toString(), '@built-in/lib.es2015.collection.d.ts: Set<string[]>')
+            assert.equal(locals.get('a4')?.getType().toString(), '@built-in/lib.es2015.collection.d.ts: Set<@built-in/lib.es2015.collection.d.ts: Set<@built-in/lib.es2015.collection.d.ts: Set<string>>>')
+            assert.equal(locals.get('%1')?.getType().toString(), '@built-in/lib.es2015.collection.d.ts: Set<any>');
+            assert.equal(locals.get('%2')?.getType().toString(), '@built-in/lib.es2015.collection.d.ts: Map<any,string>')
+            assert.equal(locals.get('%3')?.getType().toString(), '@built-in/lib.es2015.collection.d.ts: Set<any[]>')
+            assert.equal(locals.get('%4')?.getType().toString(), '@built-in/lib.es2015.collection.d.ts: Set<@built-in/lib.es2015.collection.d.ts: Set<@built-in/lib.es2015.collection.d.ts: Set<any>>>')
 
         }
     })

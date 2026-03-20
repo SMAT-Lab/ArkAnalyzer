@@ -1757,7 +1757,7 @@ describe('Object Type Test', () => {
         assert.isDefined(localNewEmptyObj);
         assert.equal(localNewEmptyObj!.getType().toString(), '@type/objectType.ts: %dflt.[static]%dflt()#newObject');
         assert.isTrue(localNewEmptyObj!.getType() instanceof AliasType);
-        assert.equal((localNewEmptyObj!.getType() as AliasType).getOriginalType().getTypeString(), objectTypeStr);
+        assert.equal((localNewEmptyObj!.getType() as AliasType).getOriginalType().toString(), objectTypeStr);
     });
 
     it('case6: alias Type', () => {

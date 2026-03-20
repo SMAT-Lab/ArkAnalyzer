@@ -696,7 +696,7 @@ export abstract class AbstractBinopExpr extends AbstractExpr {
     public setType(): void {
         let op1Type = this.parseType(this.op1.getType());
         let op2Type = this.parseType(this.op2.getType());
-        let type = UnknownType.getInstance();
+        let type: Type = UnknownType.getInstance();
         switch (this.operator) {
             case '+':
                 if (op1Type === StringType.getInstance() || op2Type === StringType.getInstance()) {
@@ -1175,7 +1175,7 @@ export class AliasTypeExpr extends AbstractExpr {
             return `${typeOf}${typeObject.getSignature().toString()}<${this.getRealGenericTypes()!.join(',')}>`;
         }
         if (typeObject instanceof Type) {
-            return `${typeOf}${typeObject.getTypeString()}`;
+            return `${typeOf}${typeObject.toString()}`;
         }
         if (typeObject instanceof ImportInfo) {
             let res = `${typeOf}import('${typeObject.getFrom()}')`;

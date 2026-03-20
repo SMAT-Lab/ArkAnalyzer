@@ -15,7 +15,7 @@
 
 import path from 'path';
 import { transfer2UnixPath } from '../../utils/pathTransfer';
-import { ClassType, Type } from '../base/Type';
+import { ClassType, Type, UnknownType } from '../base/Type';
 import { MethodParameter } from './builder/ArkMethodBuilder';
 import {
     ANONYMOUS_CLASS_PREFIX,
@@ -307,15 +307,18 @@ export class MethodSubSignature {
         return this.staticFlag;
     }
 
-    public toString(ptrName?: string): string {
+    public toString(ptrName?: string, visited?: Set<Type>): string {
         let paraStr = '';
         this.getParameterTypes().forEach(parameterType => {
-            paraStr += parameterType.toString() + ', ';
+            const typeStr = parameterType
+                ? (visited ? parameterType.toStringWithVisited(visited) : parameterType.toString())
+                : UnknownType.getInstance().toString();
+            paraStr += typeStr + ', ';
         });
         paraStr = paraStr.replace(/, $/, '');
-        let tmpSig = `${ptrName ?? this.getMethodName()}(${paraStr})`;
+        const tmpSig = `${ptrName ?? this.getMethodName()}(${paraStr})`;
         if (this.isStatic()) {
-            tmpSig = '[static]' + tmpSig;
+            return '[static]' + tmpSig;
         }
         return tmpSig;
     }
@@ -369,8 +372,8 @@ export class MethodSignature {
         return this.methodSubSignature.getReturnType();
     }
 
-    public toString(ptrName?: string): string {
-        return this.declaringClassSignature.toString() + '.' + this.methodSubSignature.toString(ptrName);
+    public toString(ptrName?: string, visited?: Set<Type>): string {
+        return this.declaringClassSignature.toString() + '.' + this.methodSubSignature.toString(ptrName, visited);
     }
 
     public toMapKey(): string {
@@ -425,8 +428,8 @@ export class AliasTypeSignature {
         return this.declaringMethodSignature;
     }
 
-    public toString(): string {
-        return this.declaringMethodSignature.toString() + '#' + this.name;
+    public toString(visited?: Set<Type>): string {
+        return this.declaringMethodSignature.toString(undefined, visited) + '#' + this.name;
     }
 }
 
