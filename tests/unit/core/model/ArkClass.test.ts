@@ -472,7 +472,7 @@ describe('ArkClass with Heritage Class Test', () => {
 
         const thisLocal = method?.getBody()?.getLocals().get(THIS_NAME);
         assert.isDefined(thisLocal);
-        assert.equal(thisLocal!.getType().getTypeString(), '@class/ClassWithHeritage.ts: G');
+        assert.equal(thisLocal!.getType().toString(), '@class/ClassWithHeritage.ts: G');
         const thisLocalStmts = thisLocal!.getUsedStmts();
         assert.isAtLeast(thisLocalStmts!.length, 1);
         assert.equal(thisLocalStmts![0].toString(), 'instanceinvoke this.<@class/ClassWithHeritage.ts: C.foo()>()');

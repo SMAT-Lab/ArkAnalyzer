@@ -628,9 +628,9 @@ export class ModelUtils {
 
     private static matchType(paramType: Type, argType: Type, arg: Value, scene: Scene): boolean {
         if (paramType instanceof LiteralType) {
-            const argStr = arg instanceof Constant ? arg.getValue() : argType.getTypeString();
+            const argStr = arg instanceof Constant ? arg.getValue() : argType.toString();
             return argStr.replace(/[\"|\']/g, '') ===
-                paramType.getTypeString().replace(/[\"|\']/g, '');
+                paramType.toString().replace(/[\"|\']/g, '');
         } else if (paramType instanceof ClassType && argType instanceof EnumValueType) {
             return paramType.getClassSignature() === argType.getFieldSignature().getDeclaringSignature();
         } else if (paramType instanceof EnumValueType) {
@@ -764,7 +764,7 @@ export function findExportInfo(fromInfo: FromInfo, visited: Set<ArkFile> = new S
     if (exportInfo === null) {
         return null;
     }
-    const arkExport = findArkExport(exportInfo);
+    const arkExport = findArkExport(exportInfo, visited);
     exportInfo.setArkExport(arkExport);
     if (arkExport) {
         exportInfo.setExportClauseType(arkExport.getExportType());
@@ -772,7 +772,7 @@ export function findExportInfo(fromInfo: FromInfo, visited: Set<ArkFile> = new S
     return exportInfo;
 }
 
-export function findArkExport(exportInfo: ExportInfo | undefined): ArkExport | null {
+export function findArkExport(exportInfo: ExportInfo | undefined, visited: Set<ArkFile> = new Set()): ArkExport | null {
     if (!exportInfo) {
         return null;
     }
@@ -780,18 +780,20 @@ export function findArkExport(exportInfo: ExportInfo | undefined): ArkExport | n
     if (arkExport || arkExport === null) {
         return arkExport;
     }
+    const declaringFile = exportInfo.getDeclaringArkFile();
+    const effectiveVisited = visited.size > 0 ? visited : new Set([declaringFile]);
     if (!exportInfo.getFrom()) {
         const name = exportInfo.getOriginName();
-        const defaultClass = exportInfo.getDeclaringArkNamespace()?.getDefaultClass() ?? exportInfo.getDeclaringArkFile().getDefaultClass();
+        const defaultClass = exportInfo.getDeclaringArkNamespace()?.getDefaultClass() ?? declaringFile.getDefaultClass();
         if (exportInfo.getExportClauseType() === ExportType.LOCAL) {
             arkExport = defaultClass.getDefaultArkMethod()?.getBody()?.getExportLocalByName(name);
         } else if (exportInfo.getExportClauseType() === ExportType.TYPE) {
             arkExport = defaultClass.getDefaultArkMethod()?.getBody()?.getAliasTypeByName(name);
         } else {
-            arkExport = findArkExportInFile(name, exportInfo.getDeclaringArkFile());
+            arkExport = findArkExportInFile(name, declaringFile, effectiveVisited);
         }
     } else if (exportInfo.getExportClauseType() === ExportType.UNKNOWN) {
-        const result = findExportInfo(exportInfo);
+        const result = findExportInfo(exportInfo, effectiveVisited);
         if (result) {
             arkExport = result.getArkExport() || null;
         }
@@ -805,7 +807,7 @@ export function findArkExport(exportInfo: ExportInfo | undefined): ArkExport | n
     return arkExport || null;
 }
 
-export function findArkExportInFile(name: string, declaringArkFile: ArkFile): ArkExport | null {
+export function findArkExportInFile(name: string, declaringArkFile: ArkFile, visited: Set<ArkFile> = new Set([declaringArkFile])): ArkExport | null {
     let arkExport: ArkExport | undefined | null =
         declaringArkFile.getNamespaceWithName(name) ??
         declaringArkFile.getDefaultClass().getDefaultArkMethod()?.getBody()?.getAliasTypeByName(name) ??
@@ -816,7 +818,7 @@ export function findArkExportInFile(name: string, declaringArkFile: ArkFile): Ar
     if (!arkExport) {
         const importInfo = declaringArkFile.getImportInfoBy(name);
         if (importInfo) {
-            const result = findExportInfo(importInfo);
+            const result = findExportInfo(importInfo, visited);
             if (result) {
                 arkExport = result.getArkExport();
             }
@@ -879,13 +881,25 @@ export function findExportInfoInfile(fromInfo: FromInfo, file: ArkFile,
     if (fromInfo.getOriginName().startsWith(TEMP_EXPORT_ALL_PREFIX) && fromInfo instanceof ExportInfo) {
         const declaringArkFile = fromInfo.getDeclaringArkFile();
         file.getExportInfos().filter(f => !f.isDefault() && !f.getExportClauseName().startsWith(TEMP_EXPORT_ALL_PREFIX))
-            .forEach(exportInfo => declaringArkFile.addExportInfo(exportInfo));
+            .forEach(exportInfo => {
+                const existing = declaringArkFile.getExportInfoBy(exportInfo.getExportClauseName());
+                if (!existing || existing.getFrom()) {
+                    declaringArkFile.addExportInfo(exportInfo);
+                }
+            });
         declaringArkFile.removeExportInfo(fromInfo);
         return undefined;
     }
     const exportName = fromInfo.isDefault() ? DEFAULT : fromInfo.getOriginName();
     let exportInfo = file.getExportInfoBy(exportName);
     if (exportInfo) {
+        // Re-export with target already in visited indicates a cycle; return undefined to avoid stack overflow
+        if (exportInfo.getFrom()) {
+            const targetFile = getArkFile(exportInfo);
+            if (targetFile && visited.has(targetFile)) {
+                return undefined;
+            }
+        }
         return exportInfo;
     }
 
@@ -901,7 +915,7 @@ export function findExportInfoInfile(fromInfo: FromInfo, file: ArkFile,
         exportInfo = buildDefaultExportInfo(fromInfo, file);
         file.addExportInfo(exportInfo, ALL);
     } else if (/\.d\.e?ts$/.test(file.getName())) {
-        let declare = exportName === DEFAULT ? undefined : findArkExportInFile(fromInfo.getOriginName(), file) || undefined;
+        let declare = exportName === DEFAULT ? undefined : findArkExportInFile(fromInfo.getOriginName(), file, visited) || undefined;
         exportInfo = buildDefaultExportInfo(fromInfo, file, declare);
     }
 
